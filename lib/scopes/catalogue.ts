@@ -70,6 +70,16 @@ export const SCOPE_CATALOGUE: ScopeCatalogueItem[] = [
     suggestedRateTypes: ["scope", "labour", "material", "allowance"],
   },
   {
+    type: "external_stairs",
+    label: "External Stairs",
+    category: "External",
+    description:
+      "External timber stairs, landings, handrails and simple access stair allowances.",
+    estimateSupport: "rough_allowance",
+    defaultEnabled: true,
+    suggestedRateTypes: ["scope", "labour", "material", "allowance"],
+  },
+  {
     type: "demolition",
     label: "Demolition / strip-out",
     category: "Preparation",

@@ -11,15 +11,22 @@ import {
   buildStaticConstraintQuestions,
   buildStaticEstimate,
   STATIC_CONSTRAINT_SEEDS,
-  STATIC_INCLUDED_WORK_AREAS,
-  STATIC_PANEL_SCOPE_SUMMARIES,
-  STATIC_SCOPE_ASSUMPTIONS,
-  STATIC_SCOPE_EXCLUSIONS,
 } from "@/lib/assistant/mock-seed";
 import type {
   AssistantState,
   ConstraintRow,
 } from "@/lib/assistant/types";
+import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
+import {
+  buildDerivedFactDisplays,
+  mergeDerivedFactsIntoRecords,
+  deriveFactsForProject,
+} from "@/lib/scopes/derived-facts";
+import { normalizeAnswerForUi } from "@/lib/scopes/fact-values";
+import {
+  buildPanelScopeSummariesFromScopeReview,
+  buildScopeReview,
+} from "@/lib/scopes/scope-review";
 
 type DbWorkArea = {
   id: string;
@@ -106,6 +113,13 @@ type DbProject = {
   quality_level: string | null;
 };
 
+type DbProjectFact = {
+  key: string;
+  work_area_id: string | null;
+  value: unknown;
+  source: string | null;
+};
+
 function parseJsonStringArray(value: unknown): string[] {
   if (!Array.isArray(value)) return [];
   return value.filter((item): item is string => typeof item === "string");
@@ -129,6 +143,28 @@ function parseOptions(value: unknown): string[] | undefined {
   return options.length > 0 ? options : undefined;
 }
 
+const catalogueByType = new Map(
+  SCOPE_CATALOGUE.map((item) => [item.type, item])
+);
+
+function getWorkAreaSummary(wa: DbWorkArea): string {
+  if (wa.summary) return wa.summary;
+  const catalogue = catalogueByType.get(wa.type);
+  if (catalogue) return catalogue.description;
+  return "Included in this estimate.";
+}
+
+function buildIncludedWorkAreasFromDb(workAreas: DbWorkArea[]): WorkArea[] {
+  return workAreas
+    .filter((wa) => wa.status === "confirmed")
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((wa) => ({
+      ...mapWorkArea(wa),
+      summary: getWorkAreaSummary(wa),
+    }));
+}
+
+
 export function mapWorkArea(row: DbWorkArea): WorkArea {
   return {
     id: row.id,
@@ -144,6 +180,9 @@ export function mapQuestion(
   row: DbQuestion,
   workAreaName?: string
 ): Question {
+  const options = parseOptions(row.options);
+  const rawValue = parseAnswerValue(row.answer_value);
+
   return {
     id: row.id,
     workAreaId: row.work_area_id ?? undefined,
@@ -152,10 +191,17 @@ export function mapQuestion(
     label: row.label,
     questionText: row.question_text,
     inputType: row.input_type as Question["inputType"],
-    options: parseOptions(row.options),
+    options,
     required: row.required,
     unit: row.unit ?? undefined,
-    value: parseAnswerValue(row.answer_value),
+    value:
+      rawValue === null
+        ? null
+        : normalizeAnswerForUi(
+            rawValue,
+            row.input_type as Question["inputType"],
+            options
+          ),
   };
 }
 
@@ -263,6 +309,7 @@ export function buildAssistantState(input: {
   constraints: DbConstraint[];
   estimate: DbEstimate | null;
   lineItems: DbLineItem[];
+  projectFacts?: DbProjectFact[];
 }): AssistantState {
   const workAreas = input.workAreas.map(mapWorkArea);
   const workAreaNameById = new Map(
@@ -306,6 +353,36 @@ export function buildAssistantState(input: {
         ? mapEstimate(input.estimate, input.lineItems)
         : null;
 
+  const confirmedWorkAreas = input.workAreas.filter(
+    (workArea) => workArea.status === "confirmed"
+  );
+  const derivedFacts = deriveFactsForProject({
+    workAreas: confirmedWorkAreas.map((workArea) => ({
+      id: workArea.id,
+      type: workArea.type,
+    })),
+    projectFacts: input.projectFacts ?? [],
+  });
+  const mergedFacts = mergeDerivedFactsIntoRecords(
+    input.projectFacts ?? [],
+    derivedFacts
+  );
+
+  const scopeAssumptions = input.estimate
+    ? parseJsonStringArray(input.estimate.assumptions)
+    : [];
+  const scopeExclusions = input.estimate
+    ? parseJsonStringArray(input.estimate.exclusions)
+    : [];
+
+  const scopeReview = buildScopeReview({
+    workAreas: input.workAreas,
+    projectFacts: input.projectFacts ?? [],
+    questions: questionBlock?.questions ?? [],
+    scopeAssumptions,
+    scopeExclusions,
+  });
+
   return {
     project: {
       id: input.project.id,
@@ -319,10 +396,12 @@ export function buildAssistantState(input: {
     submittedConstraints,
     estimate,
     scopeSummary: {
-      includedWorkAreas: STATIC_INCLUDED_WORK_AREAS,
-      scopeAssumptions: STATIC_SCOPE_ASSUMPTIONS,
-      scopeExclusions: STATIC_SCOPE_EXCLUSIONS,
+      includedWorkAreas: buildIncludedWorkAreasFromDb(input.workAreas),
+      scopeAssumptions,
+      scopeExclusions,
     },
-    panelScopeSummaries: STATIC_PANEL_SCOPE_SUMMARIES,
+    scopeReview,
+    panelScopeSummaries: buildPanelScopeSummariesFromScopeReview(scopeReview),
+    derivedFactDisplays: buildDerivedFactDisplays(mergedFacts),
   };
 }

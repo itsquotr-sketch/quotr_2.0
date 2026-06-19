@@ -43,7 +43,7 @@ export function BriefInput({
         onClick={() => onSubmit(text.trim())}
         disabled={disabled || isSaving || !text.trim()}
       >
-        {isSaving ? "Saving…" : "Analyse job"}
+        {isSaving ? "Analysing brief…" : "Analyse job"}
       </Button>
     </div>
   );

@@ -59,6 +59,7 @@ export async function getAssistantState(
     { data: questions },
     { data: constraints },
     { data: estimate },
+    { data: projectFacts },
   ] = await Promise.all([
     supabase
       .from("work_areas")
@@ -93,6 +94,10 @@ export async function getAssistantState(
       )
       .eq("project_id", projectId)
       .maybeSingle(),
+    supabase
+      .from("project_facts")
+      .select("key, work_area_id, value, source")
+      .eq("project_id", projectId),
   ]);
 
   const { data: lineItems } = estimate?.id
@@ -113,6 +118,7 @@ export async function getAssistantState(
     constraints: constraints ?? [],
     estimate: estimate ?? null,
     lineItems: lineItems ?? [],
+    projectFacts: projectFacts ?? [],
   });
 }
 

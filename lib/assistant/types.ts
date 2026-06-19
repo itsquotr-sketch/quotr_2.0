@@ -41,6 +41,45 @@ export type PanelScopeSummary = {
   summary: string;
 };
 
+export type DerivedFactDisplay = {
+  workAreaId: string;
+  label: string;
+  text: string;
+};
+
+export type ScopeReviewSourceLabel =
+  | "brief"
+  | "answered"
+  | "calculated"
+  | "assumed"
+  | "default"
+  | "system";
+
+export type ScopeReviewFact = {
+  key: string;
+  label: string;
+  value: string;
+  unit?: string;
+  sourceLabel: ScopeReviewSourceLabel;
+  sourcePriority: number;
+};
+
+export type ScopeReviewWorkArea = {
+  workAreaId: string;
+  workAreaType: string;
+  workAreaName: string;
+  summary?: string;
+  facts: ScopeReviewFact[];
+  missingItems: string[];
+  assumptions: string[];
+};
+
+export type ScopeReview = {
+  workAreas: ScopeReviewWorkArea[];
+  generalAssumptions: string[];
+  generalExclusions: string[];
+};
+
 export type AssistantState = {
   project: AssistantProject;
   workAreas: WorkArea[];
@@ -49,7 +88,9 @@ export type AssistantState = {
   submittedConstraints: ConstraintRow[];
   estimate: Estimate | null;
   scopeSummary: ScopeSummary;
+  scopeReview: ScopeReview;
   panelScopeSummaries: PanelScopeSummary[];
+  derivedFactDisplays: DerivedFactDisplay[];
 };
 
 export type AssistantActionState = {

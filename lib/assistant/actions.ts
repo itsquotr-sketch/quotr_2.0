@@ -3,13 +3,13 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { AssistantStage, QualityLevel } from "@/components/assistant/types";
+import { extractFromBrief } from "@/lib/ai/extract";
 import {
-  STATIC_ESTIMATE_TOTALS,
-  STATIC_LINE_ITEM_SEEDS,
-  STATIC_QUESTION_BLOCK,
-  STATIC_QUESTION_SEEDS,
-  STATIC_WORK_AREA_SEEDS,
-} from "@/lib/assistant/mock-seed";
+  aiFactsToRows,
+  aiWorkAreasToRows,
+  factDedupeKey,
+} from "@/lib/ai/mappers";
+import { AIExtractionError } from "@/lib/ai/schema";
 import {
   canRunStageAction,
   getAuthOrgContext,
@@ -21,9 +21,32 @@ import type {
   QuestionAnswerInput,
   WorkAreaSelection,
 } from "@/lib/assistant/types";
+import {
+  calculateEstimate,
+  EstimateEngineError,
+} from "@/lib/estimate/calculate-estimate";
+import { getEstimateContext } from "@/lib/estimate/context";
+import { buildLineItemNotes } from "@/lib/estimate/line-items";
 import { createClient } from "@/lib/supabase/server";
+import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
+import {
+  deriveFactsForProject,
+  mergeDerivedFactsIntoRecords,
+} from "@/lib/scopes/derived-facts";
+import { buildQuestionBlockFromProjectState } from "@/lib/scopes/questions";
+import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 
 const BRIEF_MAX_LENGTH = 5000;
+
+const BRIEF_ANALYSIS_ERROR =
+  "We couldn't analyse your brief. Please try again or check your setup.";
+const NO_WORK_AREAS_ERROR =
+  "No supported work areas were detected. Try adding more detail or check your enabled work areas in Setup.";
+
+const CATALOGUE_TYPES = SCOPE_CATALOGUE.map((item) => item.type);
+const CATALOGUE_BY_TYPE = new Map(
+  SCOPE_CATALOGUE.map((item) => [item.type, item])
+);
 
 const qualityLevelSchema = z.enum([
   "budget",
@@ -68,6 +91,34 @@ async function loadProjectStage(projectId: string) {
   };
 }
 
+async function loadAllowedWorkAreaTypes(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string
+): Promise<string[]> {
+  const { data: orgWorkAreas, error } = await supabase
+    .from("organisation_work_areas")
+    .select("work_area_type")
+    .eq("org_id", orgId)
+    .eq("enabled", true);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  const catalogueSet = new Set(CATALOGUE_TYPES);
+  const enabled = (orgWorkAreas ?? [])
+    .map((row) => row.work_area_type)
+    .filter((type) => catalogueSet.has(type));
+
+  if (enabled.length > 0) {
+    return enabled;
+  }
+
+  return SCOPE_CATALOGUE.filter((item) => item.defaultEnabled).map(
+    (item) => item.type
+  );
+}
+
 export async function saveBriefAndSeedWorkAreas(
   projectId: string,
   briefText: string
@@ -97,47 +148,148 @@ export async function saveBriefAndSeedWorkAreas(
     return { error: "This action is not available at the current stage." };
   }
 
-  const { error: updateError } = await supabase
+  const { error: briefError } = await supabase
     .from("projects")
-    .update({
-      brief_text: trimmed,
-      stage: "confirm_work_areas",
-    })
+    .update({ brief_text: trimmed })
     .eq("id", projectId);
 
-  if (updateError) {
-    return { error: updateError.message };
+  if (briefError) {
+    return { error: briefError.message };
+  }
+
+  let allowedTypes: string[];
+  try {
+    allowedTypes = await loadAllowedWorkAreaTypes(supabase, orgId);
+  } catch {
+    return { error: BRIEF_ANALYSIS_ERROR };
+  }
+
+  let extraction;
+  try {
+    extraction = await extractFromBrief({
+      briefText: trimmed,
+      allowedTypes,
+      catalogueTypes: CATALOGUE_TYPES,
+    });
+  } catch (error) {
+    if (
+      error instanceof AIExtractionError &&
+      error.message.includes("No valid work areas")
+    ) {
+      return { error: NO_WORK_AREAS_ERROR };
+    }
+    return { error: BRIEF_ANALYSIS_ERROR };
   }
 
   const { data: existingWorkAreas } = await supabase
     .from("work_areas")
-    .select("type")
+    .select("id, type")
     .eq("project_id", projectId);
 
   const existingTypes = new Set(
     (existingWorkAreas ?? []).map((row) => row.type)
   );
 
-  const toInsert = STATIC_WORK_AREA_SEEDS.filter(
-    (seed) => !existingTypes.has(seed.type)
-  ).map((seed) => ({
-    org_id: orgId,
-    project_id: projectId,
-    type: seed.type,
-    name: seed.name,
-    status: seed.status,
-    ai_confidence: seed.ai_confidence,
-    sort_order: seed.sort_order,
-  }));
+  const workAreaRows = aiWorkAreasToRows({
+    output: extraction,
+    orgId,
+    projectId,
+    catalogueByType: CATALOGUE_BY_TYPE,
+  }).filter((row) => !existingTypes.has(row.type));
 
-  if (toInsert.length > 0) {
+  if (workAreaRows.length > 0) {
     const { error: insertError } = await supabase
       .from("work_areas")
-      .insert(toInsert);
+      .insert(workAreaRows);
 
     if (insertError) {
       return { error: insertError.message };
     }
+  }
+
+  const { data: allWorkAreas, error: workAreasError } = await supabase
+    .from("work_areas")
+    .select("id, type")
+    .eq("project_id", projectId);
+
+  if (workAreasError || !allWorkAreas || allWorkAreas.length === 0) {
+    return { error: NO_WORK_AREAS_ERROR };
+  }
+
+  const workAreaIdByType = new Map(
+    allWorkAreas.map((wa) => [wa.type, wa.id])
+  );
+
+  const factRows = aiFactsToRows({
+    output: extraction,
+    orgId,
+    projectId,
+    workAreaIdByType,
+  });
+
+  if (factRows.length > 0) {
+    const { data: existingFacts } = await supabase
+      .from("project_facts")
+      .select("id, key, work_area_id, source")
+      .eq("project_id", projectId);
+
+    const existingByKey = new Map(
+      (existingFacts ?? []).map((fact) => [
+        factDedupeKey(fact.work_area_id, fact.key),
+        fact,
+      ])
+    );
+
+    const factsToInsert: typeof factRows = [];
+
+    for (const row of factRows) {
+      const dedupeKey = factDedupeKey(row.work_area_id, row.key);
+      const existing = existingByKey.get(dedupeKey);
+
+      if (existing?.source === "user") {
+        continue;
+      }
+
+      if (existing) {
+        const { error: updateError } = await supabase
+          .from("project_facts")
+          .update({
+            label: row.label,
+            value: row.value,
+            unit: row.unit,
+            source: "ai_extracted",
+            confidence: row.confidence,
+          })
+          .eq("id", existing.id)
+          .eq("project_id", projectId);
+
+        if (updateError) {
+          return { error: updateError.message };
+        }
+        continue;
+      }
+
+      factsToInsert.push(row);
+    }
+
+    if (factsToInsert.length > 0) {
+      const { error: factsError } = await supabase
+        .from("project_facts")
+        .insert(factsToInsert);
+
+      if (factsError) {
+        return { error: factsError.message };
+      }
+    }
+  }
+
+  const { error: stageError } = await supabase
+    .from("projects")
+    .update({ stage: "confirm_work_areas" })
+    .eq("id", projectId);
+
+  if (stageError) {
+    return { error: stageError.message };
   }
 
   revalidateAssistantPaths(projectId);
@@ -200,11 +352,85 @@ export async function confirmWorkAreas(
   return { success: true };
 }
 
-async function seedQuestionBlockIfNeeded(
+type ProjectFactRow = {
+  key: string;
+  work_area_id: string | null;
+  value: unknown;
+  source?: string | null;
+};
+
+async function persistDerivedFacts(
   supabase: Awaited<ReturnType<typeof createClient>>,
   orgId: string,
-  projectId: string
-): Promise<AssistantActionState | { blockId: string }> {
+  projectId: string,
+  workAreas: { id: string; type: string; status: string }[],
+  projectFacts: ProjectFactRow[]
+): Promise<ProjectFactRow[]> {
+  const confirmed = workAreas.filter((workArea) => workArea.status === "confirmed");
+  const derivedFacts = deriveFactsForProject({
+    workAreas: confirmed.map((workArea) => ({
+      id: workArea.id,
+      type: workArea.type,
+    })),
+    projectFacts,
+  });
+
+  for (const derived of derivedFacts) {
+    let factQuery = supabase
+      .from("project_facts")
+      .select("id, source")
+      .eq("project_id", projectId)
+      .eq("key", derived.key);
+
+    if (derived.work_area_id) {
+      factQuery = factQuery.eq("work_area_id", derived.work_area_id);
+    } else {
+      factQuery = factQuery.is("work_area_id", null);
+    }
+
+    const { data: existingFact } = await factQuery.maybeSingle();
+
+    if (existingFact?.source === "user") {
+      continue;
+    }
+
+    const factPayload = {
+      label: derived.label,
+      value: derived.value,
+      unit: derived.unit,
+      source: "derived" as const,
+      confidence: 1,
+    };
+
+    if (existingFact) {
+      await supabase
+        .from("project_facts")
+        .update(factPayload)
+        .eq("id", existingFact.id)
+        .eq("project_id", projectId);
+    } else {
+      await supabase.from("project_facts").insert({
+        org_id: orgId,
+        project_id: projectId,
+        work_area_id: derived.work_area_id,
+        key: derived.key,
+        ...factPayload,
+      });
+    }
+  }
+
+  return mergeDerivedFactsIntoRecords(projectFacts, derivedFacts);
+}
+
+async function createDynamicQuestionBlockIfNeeded(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  orgId: string,
+  projectId: string,
+  qualityLevel: QualityLevel
+): Promise<
+  | { error: string }
+  | { blockId: string | null; nextStage: "work_area_questions" | "constraints" }
+> {
   const { data: existingBlocks } = await supabase
     .from("question_blocks")
     .select("id")
@@ -213,28 +439,50 @@ async function seedQuestionBlockIfNeeded(
     .in("status", ["active", "submitted"]);
 
   if (existingBlocks && existingBlocks.length > 0) {
-    return { blockId: existingBlocks[0].id };
+    return { blockId: existingBlocks[0].id, nextStage: "work_area_questions" };
   }
 
-  const { data: workAreas } = await supabase
-    .from("work_areas")
-    .select("id, type, name")
-    .eq("project_id", projectId);
+  const [{ data: workAreas }, { data: projectFactsRaw }] = await Promise.all([
+    supabase
+      .from("work_areas")
+      .select("id, type, name, status, sort_order")
+      .eq("project_id", projectId)
+      .eq("status", "confirmed")
+      .order("sort_order"),
+    supabase
+      .from("project_facts")
+      .select("key, work_area_id, value, source")
+      .eq("project_id", projectId),
+  ]);
 
-  const workAreaByType = new Map(
-    (workAreas ?? []).map((wa) => [wa.type, wa])
+  const projectFacts = await persistDerivedFacts(
+    supabase,
+    orgId,
+    projectId,
+    workAreas ?? [],
+    projectFactsRaw ?? []
   );
+
+  const built = buildQuestionBlockFromProjectState({
+    project: { quality_level: qualityLevel },
+    confirmedWorkAreas: workAreas ?? [],
+    projectFacts,
+  });
+
+  if (built.questions.length === 0) {
+    return { blockId: null, nextStage: "constraints" };
+  }
 
   const { data: block, error: blockError } = await supabase
     .from("question_blocks")
     .insert({
       org_id: orgId,
       project_id: projectId,
-      stage: STATIC_QUESTION_BLOCK.stage,
-      title: STATIC_QUESTION_BLOCK.title,
-      description: STATIC_QUESTION_BLOCK.description,
+      stage: "work_area_questions",
+      title: built.title,
+      description: built.description,
       status: "active",
-      sort_order: STATIC_QUESTION_BLOCK.sort_order,
+      sort_order: 1,
     })
     .select("id")
     .single();
@@ -243,26 +491,30 @@ async function seedQuestionBlockIfNeeded(
     return { error: blockError?.message ?? "Failed to create question block." };
   }
 
-  const questionRows = STATIC_QUESTION_SEEDS.map((seed) => {
-    const workArea = seed.work_area_type
-      ? workAreaByType.get(seed.work_area_type)
-      : undefined;
-
-    return {
-      org_id: orgId,
-      project_id: projectId,
-      question_block_id: block.id,
-      work_area_id: workArea?.id ?? null,
-      key: seed.key,
-      label: seed.label,
-      question_text: seed.question_text,
-      input_type: seed.input_type,
-      options: seed.options ?? null,
-      required: seed.required,
-      unit: seed.unit ?? null,
-      sort_order: seed.sort_order,
-    };
-  });
+  const questionRows = built.questions.map((question) => ({
+    org_id: orgId,
+    project_id: projectId,
+    question_block_id: block.id,
+    work_area_id: question.workAreaId,
+    key: question.key,
+    label: question.label,
+    question_text: question.questionText,
+    input_type: question.inputType,
+    options: question.options ?? null,
+    required: question.required,
+    unit: question.unit ?? null,
+    sort_order: question.sortOrder,
+    answer_value:
+      question.initialAnswerValue === null ||
+      question.initialAnswerValue === undefined ||
+      question.initialAnswerValue === ""
+        ? null
+        : normalizeAnswerForStorage(
+            question.initialAnswerValue,
+            question.inputType
+          ),
+    answer_source: question.initialAnswerSource ?? null,
+  }));
 
   const { error: questionsError } = await supabase
     .from("questions")
@@ -272,7 +524,7 @@ async function seedQuestionBlockIfNeeded(
     return { error: questionsError.message };
   }
 
-  return { blockId: block.id };
+  return { blockId: block.id, nextStage: "work_area_questions" };
 }
 
 export async function saveQuality(
@@ -299,20 +551,23 @@ export async function saveQuality(
     return { error: "This action is not available at the current stage." };
   }
 
-  const seedResult = await seedQuestionBlockIfNeeded(
+  const blockResult = await createDynamicQuestionBlockIfNeeded(
     supabase,
     orgId,
-    projectId
+    projectId,
+    parsed.data
   );
-  if ("error" in seedResult) {
-    return seedResult;
+  if ("error" in blockResult) {
+    return { error: blockResult.error };
   }
+
+  const nextStage = blockResult.nextStage;
 
   const { error: updateError } = await supabase
     .from("projects")
     .update({
       quality_level: parsed.data,
-      stage: "work_area_questions",
+      stage: nextStage,
     })
     .eq("id", projectId);
 
@@ -344,7 +599,7 @@ export async function saveQuestionBlockAnswers(
     return { error: loaded.error };
   }
 
-  const { supabase, stage } = loaded;
+  const { supabase, orgId, stage } = loaded;
 
   if (isStageAtOrBeyond(stage, "constraints")) {
     return { success: true };
@@ -365,11 +620,29 @@ export async function saveQuestionBlockAnswers(
     return { error: "Question block not found." };
   }
 
+  const { data: blockQuestions } = await supabase
+    .from("questions")
+    .select("id, key, label, unit, work_area_id, input_type")
+    .eq("question_block_id", questionBlockId)
+    .eq("project_id", projectId);
+
+  const questionById = new Map(
+    (blockQuestions ?? []).map((question) => [question.id, question])
+  );
+
   for (const answer of parsed.data) {
+    const question = questionById.get(answer.question_id);
+    const storedValue = question
+      ? normalizeAnswerForStorage(
+          answer.value,
+          question.input_type as "number" | "select" | "boolean" | "text"
+        )
+      : answer.value;
+
     const { error } = await supabase
       .from("questions")
       .update({
-        answer_value: answer.value,
+        answer_value: storedValue,
         answer_source: "user",
       })
       .eq("id", answer.question_id)
@@ -378,6 +651,56 @@ export async function saveQuestionBlockAnswers(
 
     if (error) {
       return { error: error.message };
+    }
+
+    if (!question) {
+      continue;
+    }
+
+    let factQuery = supabase
+      .from("project_facts")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("key", question.key);
+
+    if (question.work_area_id) {
+      factQuery = factQuery.eq("work_area_id", question.work_area_id);
+    } else {
+      factQuery = factQuery.is("work_area_id", null);
+    }
+
+    const { data: existingFact } = await factQuery.maybeSingle();
+
+    const factPayload = {
+      label: question.label,
+      value: storedValue,
+      unit: question.unit,
+      source: "user" as const,
+      confidence: 1,
+    };
+
+    if (existingFact) {
+      const { error: factError } = await supabase
+        .from("project_facts")
+        .update(factPayload)
+        .eq("id", existingFact.id)
+        .eq("project_id", projectId);
+
+      if (factError) {
+        return { error: factError.message };
+      }
+    } else {
+      const { error: factError } = await supabase.from("project_facts").insert({
+        org_id: orgId,
+        project_id: projectId,
+        work_area_id: question.work_area_id,
+        key: question.key,
+        ...factPayload,
+      });
+
+      if (factError) {
+        return { error: factError.message };
+      }
     }
   }
 
@@ -403,6 +726,24 @@ export async function saveQuestionBlockAnswers(
   if (stageError) {
     return { error: stageError.message };
   }
+
+  const { data: workAreas } = await supabase
+    .from("work_areas")
+    .select("id, type, status")
+    .eq("project_id", projectId);
+
+  const { data: projectFactsRaw } = await supabase
+    .from("project_facts")
+    .select("key, work_area_id, value, source")
+    .eq("project_id", projectId);
+
+  await persistDerivedFacts(
+    supabase,
+    orgId,
+    projectId,
+    workAreas ?? [],
+    projectFactsRaw ?? []
+  );
 
   revalidateAssistantPaths(projectId);
   return { success: true };
@@ -511,35 +852,65 @@ export async function generateStaticEstimate(
     return { error: "This action is not available at the current stage." };
   }
 
-  const { data: workAreas } = await supabase
-    .from("work_areas")
-    .select("id, type")
-    .eq("project_id", projectId);
+  const contextResult = await getEstimateContext(projectId);
+  if ("error" in contextResult) {
+    return { error: contextResult.error };
+  }
 
-  const workAreaIdByType = new Map(
-    (workAreas ?? []).map((wa) => [wa.type, wa.id])
-  );
+  let estimateResult;
+  try {
+    estimateResult = calculateEstimate(contextResult);
+  } catch (error) {
+    if (error instanceof EstimateEngineError) {
+      return { error: error.message };
+    }
+    return {
+      error:
+        error instanceof Error ? error.message : "Failed to generate estimate.",
+    };
+  }
 
   const estimatePayload = {
     org_id: orgId,
     project_id: projectId,
     status: "ready",
-    cost_low: STATIC_ESTIMATE_TOTALS.cost_low,
-    cost_high: STATIC_ESTIMATE_TOTALS.cost_high,
-    sell_low: STATIC_ESTIMATE_TOTALS.sell_low,
-    sell_high: STATIC_ESTIMATE_TOTALS.sell_high,
-    recommended_cost: STATIC_ESTIMATE_TOTALS.recommended_cost,
-    recommended_sell: STATIC_ESTIMATE_TOTALS.recommended_sell,
-    gross_profit: STATIC_ESTIMATE_TOTALS.gross_profit,
-    margin_percent: STATIC_ESTIMATE_TOTALS.margin_percent,
-    markup_percent: STATIC_ESTIMATE_TOTALS.markup_percent,
-    confidence: STATIC_ESTIMATE_TOTALS.confidence,
-    rate_source_summary: STATIC_ESTIMATE_TOTALS.rate_source_summary,
-    assumptions: STATIC_ESTIMATE_TOTALS.assumptions,
-    missing_info: STATIC_ESTIMATE_TOTALS.missing_info,
-    exclusions: STATIC_ESTIMATE_TOTALS.exclusions,
+    cost_low: estimateResult.costLow,
+    cost_high: estimateResult.costHigh,
+    sell_low: estimateResult.sellLow,
+    sell_high: estimateResult.sellHigh,
+    recommended_cost: estimateResult.recommendedCost,
+    recommended_sell: estimateResult.recommendedSell,
+    gross_profit: estimateResult.grossProfit,
+    margin_percent: estimateResult.marginPercent,
+    markup_percent: estimateResult.markupPercent,
+    confidence: estimateResult.confidence,
+    rate_source_summary: estimateResult.rateSourceSummary,
+    assumptions: estimateResult.assumptions,
+    missing_info: estimateResult.missingInfo,
+    exclusions: estimateResult.exclusions,
     generated_at: new Date().toISOString(),
   };
+
+  const lineItemRows = estimateResult.lineItems.map((item) => ({
+    org_id: orgId,
+    project_id: projectId,
+    work_area_id: item.workAreaId,
+    work_area_name: item.workAreaName,
+    label: item.label,
+    category: item.category,
+    cost_low: item.costLow,
+    cost_high: item.costHigh,
+    sell_low: item.sellLow,
+    sell_high: item.sellHigh,
+    recommended_cost: item.recommendedCost,
+    recommended_sell: item.recommendedSell,
+    gross_profit: item.grossProfit,
+    margin_percent: item.marginPercent,
+    markup_percent: item.markupPercent ?? null,
+    rate_source: item.rateSource,
+    notes: buildLineItemNotes(item),
+    sort_order: item.sortOrder,
+  }));
 
   const { data: existingEstimate } = await supabase
     .from("estimates")
@@ -581,30 +952,14 @@ export async function generateStaticEstimate(
     return { error: deleteError.message };
   }
 
-  const lineItemRows = STATIC_LINE_ITEM_SEEDS.map((seed) => ({
-    org_id: orgId,
-    project_id: projectId,
-    estimate_id: estimateId,
-    work_area_id: workAreaIdByType.get(seed.work_area_type) ?? null,
-    work_area_name: seed.work_area_name,
-    label: seed.label,
-    category: seed.category,
-    cost_low: seed.cost_low,
-    cost_high: seed.cost_high,
-    sell_low: seed.sell_low,
-    sell_high: seed.sell_high,
-    recommended_cost: seed.recommended_cost,
-    recommended_sell: seed.recommended_sell,
-    gross_profit: seed.gross_profit,
-    margin_percent: seed.margin_percent,
-    markup_percent: seed.markup_percent ?? null,
-    rate_source: seed.rate_source,
-    sort_order: seed.sort_order,
-  }));
-
   const { error: lineItemsError } = await supabase
     .from("estimate_line_items")
-    .insert(lineItemRows);
+    .insert(
+      lineItemRows.map((row) => ({
+        ...row,
+        estimate_id: estimateId,
+      }))
+    );
 
   if (lineItemsError) {
     return { error: lineItemsError.message };
@@ -622,3 +977,6 @@ export async function generateStaticEstimate(
   revalidateAssistantPaths(projectId);
   return { success: true };
 }
+
+/** Deterministic estimate engine entry point (Phase 5A). */
+export const generateEstimate = generateStaticEstimate;

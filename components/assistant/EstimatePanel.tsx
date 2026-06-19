@@ -7,7 +7,7 @@ import {
   formatPercent,
 } from "@/components/assistant/format";
 import type { Estimate } from "@/components/assistant/types";
-import type { PanelScopeSummary } from "@/lib/assistant/types";
+import type { PanelScopeSummary, ScopeReview } from "@/lib/assistant/types";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -22,6 +22,8 @@ type EstimatePanelProps = {
   estimate: Estimate | null;
   isGenerating?: boolean;
   panelScopeSummaries?: PanelScopeSummary[];
+  scopeReview?: ScopeReview;
+  questionsSubmitted?: boolean;
   onViewBreakdown?: () => void;
 };
 
@@ -60,14 +62,23 @@ export function EstimatePanel({
   estimate,
   isGenerating,
   panelScopeSummaries = [],
+  scopeReview,
+  questionsSubmitted = false,
   onViewBreakdown,
 }: EstimatePanelProps) {
   const assumptionPreview = estimate
     ? previewItems(estimate.assumptions)
-    : { shown: [], remaining: 0 };
+    : scopeReview
+      ? previewItems(scopeReview.generalAssumptions)
+      : { shown: [], remaining: 0 };
   const missingPreview = estimate
     ? previewItems(estimate.missingInfo)
-    : { shown: [], remaining: 0 };
+    : scopeReview
+      ? previewItems(
+          scopeReview.workAreas.flatMap((workArea) => workArea.missingItems)
+        )
+      : { shown: [], remaining: 0 };
+  const showScopePreview = questionsSubmitted && panelScopeSummaries.length > 0;
 
   return (
     <Card className="lg:sticky lg:top-6">
@@ -86,11 +97,71 @@ export function EstimatePanel({
             Generating quick estimate…
           </div>
         ) : !estimate ? (
-          <div className="rounded-2xl bg-muted/50 px-4 py-8 text-center">
-            <p className="text-sm font-medium">No estimate yet</p>
-            <p className="mt-1 text-xs text-muted-foreground">
-              Work through the assistant to unlock a draft range.
-            </p>
+          <div className="space-y-4">
+            <div className="rounded-2xl bg-muted/50 px-4 py-6 text-center">
+              <p className="text-sm font-medium">No estimate yet</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                {showScopePreview
+                  ? "Work through site constraints to generate a draft range."
+                  : "Work through the assistant to unlock a draft range."}
+              </p>
+            </div>
+
+            {showScopePreview ? (
+              <>
+                <div>
+                  <p className="text-xs font-medium text-muted-foreground">
+                    Included scope
+                  </p>
+                  <ul className="mt-1.5 space-y-1 text-xs">
+                    {panelScopeSummaries.map((entry) => (
+                      <li key={entry.workArea}>
+                        <span className="font-medium">{entry.workArea}:</span>{" "}
+                        <span className="text-muted-foreground">
+                          {entry.summary}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+
+                {assumptionPreview.shown.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Assumptions
+                    </p>
+                    <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs text-muted-foreground">
+                      {assumptionPreview.shown.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                    {assumptionPreview.remaining > 0 ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        +{assumptionPreview.remaining} more in scope review
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {missingPreview.shown.length > 0 ? (
+                  <div>
+                    <p className="text-xs font-medium text-muted-foreground">
+                      Missing info
+                    </p>
+                    <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs text-muted-foreground">
+                      {missingPreview.shown.map((item) => (
+                        <li key={item}>{item}</li>
+                      ))}
+                    </ul>
+                    {missingPreview.remaining > 0 ? (
+                      <p className="mt-1 text-xs text-muted-foreground">
+                        +{missingPreview.remaining} more in scope review
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+              </>
+            ) : null}
           </div>
         ) : (
           <>

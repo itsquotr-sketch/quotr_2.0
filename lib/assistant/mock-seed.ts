@@ -5,6 +5,10 @@ import type {
   QuestionBlockData,
   WorkArea,
 } from "@/components/assistant/types";
+import {
+  buildPanelScopeSummariesFromScopeReview,
+  buildScopeReview,
+} from "@/lib/scopes/scope-review";
 
 export type StaticWorkAreaSeed = {
   type: string;
@@ -539,6 +543,64 @@ export function buildDemoAssistantState(): import("@/lib/assistant/types").Assis
     })
   );
 
+  const demoWorkAreas = workAreas.map((workArea, index) => ({
+    id: workArea.id,
+    type: workArea.type,
+    name: workArea.name,
+    status: "confirmed" as const,
+    sort_order: index + 1,
+    summary:
+      STATIC_INCLUDED_WORK_AREAS.find((item) => item.name === workArea.name)
+        ?.summary ?? null,
+  }));
+
+  const demoFacts = [
+    {
+      key: "deck.length_m",
+      work_area_id: "demo_wa_0",
+      value: 6,
+      source: "user",
+    },
+    {
+      key: "deck.width_m",
+      work_area_id: "demo_wa_0",
+      value: 3,
+      source: "user",
+    },
+    {
+      key: "deck.material",
+      work_area_id: "demo_wa_0",
+      value: "Hardwood",
+      source: "user",
+    },
+    {
+      key: "deck.has_stairs",
+      work_area_id: "demo_wa_0",
+      value: true,
+      source: "user",
+    },
+    {
+      key: "deck.has_balustrade",
+      work_area_id: "demo_wa_0",
+      value: true,
+      source: "user",
+    },
+    {
+      key: "pergola.roofing_included",
+      work_area_id: "demo_wa_1",
+      value: true,
+      source: "ai_extracted",
+    },
+  ];
+
+  const scopeReview = buildScopeReview({
+    workAreas: demoWorkAreas,
+    projectFacts: demoFacts,
+    questions,
+    scopeAssumptions: STATIC_SCOPE_ASSUMPTIONS,
+    scopeExclusions: STATIC_SCOPE_EXCLUSIONS,
+  });
+
   return {
     project: {
       id: "demo",
@@ -579,6 +641,8 @@ export function buildDemoAssistantState(): import("@/lib/assistant/types").Assis
       scopeAssumptions: STATIC_SCOPE_ASSUMPTIONS,
       scopeExclusions: STATIC_SCOPE_EXCLUSIONS,
     },
-    panelScopeSummaries: STATIC_PANEL_SCOPE_SUMMARIES,
+    scopeReview,
+    panelScopeSummaries: buildPanelScopeSummariesFromScopeReview(scopeReview),
+    derivedFactDisplays: [],
   };
 }

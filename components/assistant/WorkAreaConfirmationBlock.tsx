@@ -13,9 +13,9 @@ type WorkAreaConfirmationBlockProps = {
 };
 
 export function confidenceLabel(confidence: number): string {
-  if (confidence >= 0.9) return "High confidence";
-  if (confidence >= 0.8) return "Likely";
-  return "Possible";
+  if (confidence >= 0.75) return "High confidence";
+  if (confidence >= 0.4) return "Possible";
+  return "Low confidence";
 }
 
 function ReadOnlySummary({ workAreas }: { workAreas: WorkArea[] }) {
@@ -91,7 +91,12 @@ export function WorkAreaConfirmationBlock({
               )}
             >
               <p className="text-sm font-medium">{wa.name}</p>
-              <p className="mt-1 text-xs text-muted-foreground">
+              <p
+                className={cn(
+                  "mt-1 text-xs text-muted-foreground",
+                  wa.aiConfidence < 0.4 && "italic opacity-80"
+                )}
+              >
                 {confidenceLabel(wa.aiConfidence)}
               </p>
             </button>

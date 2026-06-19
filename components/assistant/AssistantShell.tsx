@@ -88,11 +88,6 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
   const constraintsSubmitted = isStageAtOrBeyond(stage, "ready_to_estimate");
   const estimateReady = stage === "estimate_ready";
 
-  const submittedQuestionAnswers = useMemo(() => {
-    if (!questionBlock) return questionAnswers;
-    return initAnswersFromQuestions(questionBlock.questions);
-  }, [questionBlock, questionAnswers]);
-
   const submittedConstraintAnswers = useMemo(() => {
     if (initialState.submittedConstraints.length === 0) {
       return constraintAnswers;
@@ -314,50 +309,33 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
             </AssistantMessage>
           ) : null}
 
-          {qualitySubmitted && questionBlock ? (
+          {qualitySubmitted && questionBlock && !questionsSubmitted ? (
             <AssistantMessage
               title={questionBlock.title}
               subtitle={questionBlock.description}
               status={
-                questionsSubmitted
-                  ? "submitted"
-                  : stage === "work_area_questions"
-                    ? "active"
-                    : "submitted"
+                stage === "work_area_questions" ? "active" : "submitted"
               }
-              badge={questionsSubmitted ? "Complete" : undefined}
             >
               <QuestionBlock
                 questions={questionBlock.questions}
-                answers={
-                  questionsSubmitted
-                    ? submittedQuestionAnswers
-                    : questionAnswers
-                }
-                submitted={questionsSubmitted}
+                derivedFactDisplays={initialState.derivedFactDisplays}
+                answers={questionAnswers}
                 isSaving={pendingAction === "questions"}
-                onAnswerChange={
-                  questionsSubmitted ? undefined : handleQuestionAnswer
-                }
-                onSubmit={
-                  questionsSubmitted ? undefined : handleQuestionsSubmit
-                }
+                onAnswerChange={handleQuestionAnswer}
+                onSubmit={handleQuestionsSubmit}
               />
             </AssistantMessage>
           ) : null}
 
           {questionsSubmitted ? (
             <AssistantMessage
-              title="Scope understood so far"
-              subtitle="What Quotr will use for this estimate"
+              title="Scope review"
+              subtitle="Review what Quotr will use for this estimate."
               status="submitted"
               badge="Review"
             >
-              <ScopeSummaryBlock
-                includedWorkAreas={initialState.scopeSummary.includedWorkAreas}
-                scopeAssumptions={initialState.scopeSummary.scopeAssumptions}
-                scopeExclusions={initialState.scopeSummary.scopeExclusions}
-              />
+              <ScopeSummaryBlock scopeReview={initialState.scopeReview} />
             </AssistantMessage>
           ) : null}
 
@@ -440,6 +418,8 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
             estimate={estimate}
             isGenerating={isGenerating}
             panelScopeSummaries={initialState.panelScopeSummaries}
+            scopeReview={initialState.scopeReview}
+            questionsSubmitted={questionsSubmitted}
             onViewBreakdown={() => setBreakdownOpen(true)}
           />
         </div>

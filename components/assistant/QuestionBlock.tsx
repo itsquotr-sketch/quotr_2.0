@@ -1,17 +1,20 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import type { DerivedFactDisplay } from "@/lib/assistant/types";
 import type { Question } from "@/components/assistant/types";
+import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
 
 export type QuestionAnswers = Record<string, string | number | boolean | null>;
 
 type QuestionBlockProps = {
   questions: Question[];
   answers: QuestionAnswers;
+  derivedFactDisplays?: DerivedFactDisplay[];
   submitted?: boolean;
   isSaving?: boolean;
   submitLabel?: string;
@@ -19,15 +22,61 @@ type QuestionBlockProps = {
   onSubmit?: () => void;
 };
 
+type QuestionGroup = {
+  workAreaId?: string;
+  workAreaName: string;
+  questions: Question[];
+};
+
+function groupQuestionsByWorkArea(questions: Question[]): QuestionGroup[] {
+  const groups: QuestionGroup[] = [];
+  const groupIndex = new Map<string, number>();
+
+  for (const question of questions) {
+    const name = question.workAreaName ?? "General";
+    const existingIndex = groupIndex.get(name);
+
+    if (existingIndex === undefined) {
+      groupIndex.set(name, groups.length);
+      groups.push({
+        workAreaId: question.workAreaId,
+        workAreaName: name,
+        questions: [question],
+      });
+    } else {
+      groups[existingIndex].questions.push(question);
+    }
+  }
+
+  return groups;
+}
+
 function formatAnswer(question: Question, value: string | number | boolean | null | undefined) {
   if (value === null || value === undefined || value === "") return "—";
-  if (typeof value === "boolean") {
-    return value ? "Yes" : "No";
+  if (question.inputType === "boolean") {
+    return normalizeBooleanForUi(value) ?? String(value);
   }
   if (question.unit && typeof value === "number") {
     return `${value} ${question.unit}`;
   }
   return String(value);
+}
+
+function chipValueMatches(
+  option: string,
+  value: string | number | boolean | null | undefined
+): boolean {
+  if (value === option) return true;
+  if (option === "Yes") return value === true || value === "true";
+  if (option === "No") return value === false || value === "false";
+  if (option === "Not sure") {
+    return (
+      value === "Not sure" ||
+      value === "not sure" ||
+      value === "not_sure"
+    );
+  }
+  return false;
 }
 
 function BooleanChips({
@@ -53,7 +102,7 @@ function BooleanChips({
           onClick={() => onChange(option)}
           className={cn(
             "rounded-2xl border px-3 py-1.5 text-sm transition-colors",
-            value === option
+            chipValueMatches(option, value)
               ? "border-primary/30 bg-primary/5 font-medium text-primary ring-1 ring-primary/20"
               : "border-border hover:bg-muted/50",
             disabled && "pointer-events-none opacity-70"
@@ -89,7 +138,7 @@ function SelectChips({
           onClick={() => onChange(option)}
           className={cn(
             "rounded-2xl border px-3 py-1.5 text-sm transition-colors",
-            value === option
+            chipValueMatches(option, value)
               ? "border-primary/30 bg-primary/5 font-medium text-primary ring-1 ring-primary/20"
               : "border-border hover:bg-muted/50",
             disabled && "pointer-events-none opacity-70"
@@ -163,9 +212,79 @@ function QuestionField({
   }
 }
 
+function WorkAreaSection({
+  group,
+  derivedLines,
+  answers,
+  submitted,
+  onAnswerChange,
+}: {
+  group: QuestionGroup;
+  derivedLines: DerivedFactDisplay[];
+  answers: QuestionAnswers;
+  submitted?: boolean;
+  onAnswerChange?: (questionId: string, value: string | number | boolean) => void;
+}) {
+  return (
+    <section className="rounded-2xl border border-border/60 bg-muted/15 p-4 sm:p-5">
+      <div className="mb-4">
+        <h4 className="text-sm font-semibold text-foreground">
+          {group.workAreaName}
+        </h4>
+      </div>
+
+      {derivedLines.length > 0 ? (
+        <div className="mb-4 space-y-1.5">
+          {derivedLines.map((line) => (
+            <p
+              key={`${line.workAreaId}-${line.label}`}
+              className="text-sm text-muted-foreground"
+            >
+              <span className="font-medium text-foreground">{line.label}:</span>{" "}
+              {line.text}
+            </p>
+          ))}
+        </div>
+      ) : null}
+
+      {submitted ? (
+        <dl className="space-y-3">
+          {group.questions.map((question) => (
+            <div
+              key={question.id}
+              className="grid gap-1 sm:grid-cols-[1fr_1.2fr]"
+            >
+              <dt className="text-sm text-muted-foreground">{question.label}</dt>
+              <dd className="text-sm font-medium">
+                {formatAnswer(question, answers[question.id])}
+              </dd>
+            </div>
+          ))}
+        </dl>
+      ) : (
+        <div className="space-y-5">
+          {group.questions.map((question) => (
+            <div key={question.id} className="space-y-2">
+              <Label className="text-sm font-medium leading-snug">
+                {question.questionText}
+              </Label>
+              <QuestionField
+                question={question}
+                value={answers[question.id]}
+                onChange={(val) => onAnswerChange?.(question.id, val)}
+              />
+            </div>
+          ))}
+        </div>
+      )}
+    </section>
+  );
+}
+
 export function QuestionBlock({
   questions,
   answers,
+  derivedFactDisplays = [],
   submitted,
   isSaving,
   submitLabel = "Submit answers",
@@ -173,6 +292,17 @@ export function QuestionBlock({
   onSubmit,
 }: QuestionBlockProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
+  const groups = useMemo(() => groupQuestionsByWorkArea(questions), [questions]);
+
+  const derivedByWorkAreaId = useMemo(() => {
+    const map = new Map<string, DerivedFactDisplay[]>();
+    for (const display of derivedFactDisplays) {
+      const existing = map.get(display.workAreaId) ?? [];
+      existing.push(display);
+      map.set(display.workAreaId, existing);
+    }
+    return map;
+  }, [derivedFactDisplays]);
 
   const handleSubmit = () => {
     const missing = questions.filter(
@@ -192,39 +322,30 @@ export function QuestionBlock({
     onSubmit?.();
   };
 
-  if (submitted) {
-    return (
-      <dl className="space-y-3">
-        {questions.map((question) => (
-          <div key={question.id} className="grid gap-1 sm:grid-cols-[1fr_1.2fr]">
-            <dt className="text-sm text-muted-foreground">{question.label}</dt>
-            <dd className="text-sm font-medium">
-              {formatAnswer(question, answers[question.id])}
-            </dd>
-          </div>
-        ))}
-      </dl>
-    );
-  }
-
   return (
-    <div className="space-y-6">
-      {questions.map((question) => (
-        <div key={question.id} className="space-y-2">
-          <Label className="text-sm font-medium">{question.questionText}</Label>
-          <QuestionField
-            question={question}
-            value={answers[question.id]}
-            onChange={(val) => onAnswerChange?.(question.id, val)}
-          />
-        </div>
+    <div className="space-y-5">
+      {groups.map((group) => (
+        <WorkAreaSection
+          key={group.workAreaName}
+          group={group}
+          derivedLines={
+            group.workAreaId
+              ? (derivedByWorkAreaId.get(group.workAreaId) ?? [])
+              : []
+          }
+          answers={answers}
+          submitted={submitted}
+          onAnswerChange={onAnswerChange}
+        />
       ))}
       {validationError ? (
         <p className="text-sm text-destructive">{validationError}</p>
       ) : null}
-      <Button type="button" onClick={handleSubmit} disabled={isSaving}>
-        {isSaving ? "Saving…" : submitLabel}
-      </Button>
+      {!submitted ? (
+        <Button type="button" onClick={handleSubmit} disabled={isSaving}>
+          {isSaving ? "Saving…" : submitLabel}
+        </Button>
+      ) : null}
     </div>
   );
 }
