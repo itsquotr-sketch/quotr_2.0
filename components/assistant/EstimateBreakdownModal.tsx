@@ -13,6 +13,7 @@ import type {
   WorkArea,
 } from "@/components/assistant/types";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import {
   Dialog,
   DialogContent,
@@ -196,12 +197,16 @@ type EstimateBreakdownModalProps = {
   estimate: Estimate | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onRegenerate?: () => void;
+  isRegenerating?: boolean;
 };
 
 export function EstimateBreakdownModal({
   estimate,
   open,
   onOpenChange,
+  onRegenerate,
+  isRegenerating,
 }: EstimateBreakdownModalProps) {
   const grouped = useMemo(
     () => (estimate ? groupByWorkArea(estimate.lineItems) : {}),
@@ -230,6 +235,33 @@ export function EstimateBreakdownModal({
 
         <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-5 sm:px-8">
           <div className="space-y-6">
+            {estimate.isStale ? (
+              <div
+                className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-900/50 dark:bg-amber-950/30"
+                role="status"
+              >
+                <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
+                  Estimate outdated
+                </p>
+                <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">
+                  This estimate is based on older inputs. Regenerate to update
+                  the pricing.
+                </p>
+                {onRegenerate ? (
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="mt-3 border-amber-300 bg-white hover:bg-amber-50 dark:border-amber-800 dark:bg-transparent"
+                    onClick={onRegenerate}
+                    disabled={isRegenerating}
+                  >
+                    {isRegenerating ? "Regenerating…" : "Regenerate estimate"}
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
+
             <section className="space-y-3">
               <SectionHeading>Commercial summary</SectionHeading>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">

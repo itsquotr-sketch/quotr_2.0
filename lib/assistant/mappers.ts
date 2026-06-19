@@ -5,6 +5,7 @@ import type {
   Question,
   QuestionBlockData,
   WorkArea,
+  WorkAreaActiveQuestion,
   WorkAreaStatus,
 } from "@/components/assistant/types";
 import {
@@ -15,7 +16,9 @@ import {
 import type {
   AssistantState,
   ConstraintRow,
+  ScopeReview,
 } from "@/lib/assistant/types";
+import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import {
   buildDerivedFactDisplays,
@@ -23,6 +26,7 @@ import {
   deriveFactsForProject,
 } from "@/lib/scopes/derived-facts";
 import { normalizeAnswerForUi } from "@/lib/scopes/fact-values";
+import { getMissingLabelForKey } from "@/lib/scopes/questions";
 import {
   buildPanelScopeSummariesFromScopeReview,
   buildScopeReview,
@@ -80,6 +84,8 @@ type DbEstimate = {
   gross_profit: number | null;
   margin_percent: number | null;
   markup_percent: number | null;
+  is_stale?: boolean | null;
+  target_margin_percent?: number | null;
   confidence: number | null;
   rate_source_summary: string | null;
   assumptions: unknown;
@@ -219,6 +225,77 @@ export function mapQuestionBlock(
   };
 }
 
+function isQuestionUnanswered(question: Question): boolean {
+  const value = question.value;
+  return value === null || value === undefined || value === "";
+}
+
+function buildActiveQuestionsByWorkArea(params: {
+  additionalQuestionBlocks: QuestionBlockData[];
+  workAreaTypeById: Map<string, string>;
+  includeInlineQuestions: boolean;
+}): Map<string, WorkAreaActiveQuestion[]> {
+  const byWorkArea = new Map<string, WorkAreaActiveQuestion[]>();
+
+  if (!params.includeInlineQuestions) {
+    return byWorkArea;
+  }
+
+  for (const block of params.additionalQuestionBlocks) {
+    if (block.status !== "active") {
+      continue;
+    }
+
+    for (const question of block.questions) {
+      if (!question.workAreaId || !isQuestionUnanswered(question)) {
+        continue;
+      }
+
+      const workAreaType =
+        params.workAreaTypeById.get(question.workAreaId) ?? "";
+      const activeQuestion: WorkAreaActiveQuestion = {
+        ...question,
+        questionBlockId: block.id,
+        missingItemLabel: getMissingLabelForKey(workAreaType, question.key),
+      };
+
+      const existing = byWorkArea.get(question.workAreaId) ?? [];
+      if (existing.some((item) => item.key === question.key)) {
+        continue;
+      }
+
+      existing.push(activeQuestion);
+      byWorkArea.set(question.workAreaId, existing);
+    }
+  }
+
+  return byWorkArea;
+}
+
+function enrichScopeReviewWithActiveQuestions(
+  scopeReview: ReturnType<typeof buildScopeReview>,
+  activeQuestionsByWorkArea: Map<string, WorkAreaActiveQuestion[]>
+): ScopeReview {
+  return {
+    ...scopeReview,
+    workAreas: scopeReview.workAreas.map((workArea) => {
+      const activeQuestions =
+        activeQuestionsByWorkArea.get(workArea.workAreaId) ?? [];
+      const coveredLabels = new Set(
+        activeQuestions.map((question) => question.missingItemLabel)
+      );
+
+      return {
+        ...workArea,
+        activeQuestions,
+        missingItems: workArea.missingItems.filter(
+          (item) => !coveredLabels.has(item)
+        ),
+      };
+    }),
+  };
+}
+
 export function mapConstraintRow(row: DbConstraint): ConstraintRow {
   const value = parseAnswerValue(row.value);
   return {
@@ -291,6 +368,10 @@ export function mapEstimate(
     markupPercent: estimate.markup_percent
       ? Number(estimate.markup_percent)
       : base.markupPercent,
+    isStale: estimate.is_stale ?? false,
+    targetMarginPercent: estimate.target_margin_percent
+      ? Number(estimate.target_margin_percent)
+      : null,
     confidence: Number(estimate.confidence ?? base.confidence),
     rateSourceSummary:
       estimate.rate_source_summary ?? base.rateSourceSummary,
@@ -310,20 +391,25 @@ export function buildAssistantState(input: {
   estimate: DbEstimate | null;
   lineItems: DbLineItem[];
   projectFacts?: DbProjectFact[];
+  defaultMarginPercent?: number;
 }): AssistantState {
   const workAreas = input.workAreas.map(mapWorkArea);
   const workAreaNameById = new Map(
     workAreas.map((wa) => [wa.id, wa.name])
   );
 
-  const workAreaQuestionBlock = input.questionBlocks.find(
-    (block) => block.stage === "work_area_questions"
-  );
+  const workAreaQuestionBlocks = input.questionBlocks
+    .filter((block) => block.stage === "work_area_questions")
+    .sort((a, b) => a.sort_order - b.sort_order);
+
+  const projectStage = input.project.stage as AssistantState["project"]["stage"];
 
   let questionBlock: QuestionBlockData | null = null;
-  if (workAreaQuestionBlock) {
+  const additionalQuestionBlocks: QuestionBlockData[] = [];
+
+  for (const block of workAreaQuestionBlocks) {
     const blockQuestions = input.questions
-      .filter((q) => q.question_block_id === workAreaQuestionBlock.id)
+      .filter((q) => q.question_block_id === block.id)
       .sort((a, b) => a.sort_order - b.sort_order)
       .map((q) =>
         mapQuestion(
@@ -334,8 +420,40 @@ export function buildAssistantState(input: {
         )
       );
 
-    questionBlock = mapQuestionBlock(workAreaQuestionBlock, blockQuestions);
+    const mapped = mapQuestionBlock(block, blockQuestions);
+
+    if (
+      projectStage === "work_area_questions" &&
+      block.status === "active" &&
+      !questionBlock
+    ) {
+      questionBlock = mapped;
+      continue;
+    }
+
+    if (block.status === "active") {
+      additionalQuestionBlocks.push(mapped);
+      continue;
+    }
+
+    if (!questionBlock) {
+      questionBlock = mapped;
+    }
   }
+
+  const scopeReviewQuestions = input.questions
+    .filter((question) =>
+      workAreaQuestionBlocks.some(
+        (block) => block.id === question.question_block_id
+      )
+    )
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map((q) =>
+      mapQuestion(
+        q,
+        q.work_area_id ? workAreaNameById.get(q.work_area_id) : undefined
+      )
+    );
 
   const submittedConstraints = input.constraints
     .sort((a, b) => a.key.localeCompare(b.key))
@@ -375,13 +493,29 @@ export function buildAssistantState(input: {
     ? parseJsonStringArray(input.estimate.exclusions)
     : [];
 
-  const scopeReview = buildScopeReview({
+  const scopeReviewBase = buildScopeReview({
     workAreas: input.workAreas,
     projectFacts: input.projectFacts ?? [],
-    questions: questionBlock?.questions ?? [],
+    questions: scopeReviewQuestions,
+    qualityLevel: input.project.quality_level,
     scopeAssumptions,
     scopeExclusions,
   });
+
+  const workAreaTypeById = new Map(
+    input.workAreas.map((workArea) => [workArea.id, workArea.type])
+  );
+
+  const activeQuestionsByWorkArea = buildActiveQuestionsByWorkArea({
+    additionalQuestionBlocks,
+    workAreaTypeById,
+    includeInlineQuestions: isStageAtOrBeyond(projectStage, "constraints"),
+  });
+
+  const scopeReview = enrichScopeReviewWithActiveQuestions(
+    scopeReviewBase,
+    activeQuestionsByWorkArea
+  );
 
   return {
     project: {
@@ -392,6 +526,7 @@ export function buildAssistantState(input: {
     },
     workAreas,
     questionBlock,
+    additionalQuestionBlocks,
     constraintQuestions,
     submittedConstraints,
     estimate,
@@ -403,5 +538,6 @@ export function buildAssistantState(input: {
     scopeReview,
     panelScopeSummaries: buildPanelScopeSummariesFromScopeReview(scopeReview),
     derivedFactDisplays: buildDerivedFactDisplays(mergedFacts),
+    defaultMarginPercent: input.defaultMarginPercent ?? 33.33,
   };
 }

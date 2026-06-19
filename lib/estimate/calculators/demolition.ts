@@ -2,6 +2,7 @@ import {
   getLabourAdjustmentFactor,
   getQualityFactor,
 } from "@/lib/estimate/adjustments";
+import { DEMOLITION_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
   getBooleanFact,
@@ -86,8 +87,8 @@ export function calculateDemolition(
         category: "allowance",
         quantity: effectiveArea,
         unit: "m²",
-        costRate: 25,
-        sellRate: 40,
+        costRate: DEMOLITION_BENCHMARKS.wastePerM2.cost,
+        sellRate: DEMOLITION_BENCHMARKS.wastePerM2.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -103,8 +104,8 @@ export function calculateDemolition(
       workAreaId: workArea.id,
       workAreaName: workArea.name,
       label: "Demolition minimum allowance",
-      recommendedCost: 800,
-      recommendedSell: 1200,
+      recommendedCost: DEMOLITION_BENCHMARKS.minimum.cost,
+      recommendedSell: DEMOLITION_BENCHMARKS.minimum.sell,
       rateSource: "Benchmark allowance",
       notes: "Minimum strip-out allowance applied",
       sortOrder: sortOrder++,

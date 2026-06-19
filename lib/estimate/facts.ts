@@ -1,4 +1,6 @@
+import type { QualityLevel } from "@/components/assistant/types";
 import type { EstimateFact } from "@/lib/estimate/types";
+import { resolveFinishLevel } from "@/lib/scopes/finish-level";
 
 const NOT_SURE_VALUES = new Set([
   "not sure",
@@ -103,4 +105,19 @@ export function formatMissing(label: string): string {
 
 export function round2(value: number): number {
   return Math.round(value * 100) / 100;
+}
+
+export function getFinishLevel(
+  facts: EstimateFact[],
+  workAreaId: string,
+  workAreaType: string,
+  projectQualityLevel: QualityLevel | null
+): string {
+  return resolveFinishLevel({
+    workAreaType,
+    workAreaId,
+    projectQualityLevel,
+    getWorkAreaFinishLevel: (id, factKey) =>
+      getStringFact(facts, id, factKey),
+  });
 }

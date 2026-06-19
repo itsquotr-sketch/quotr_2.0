@@ -1,7 +1,9 @@
-import { getQualityFactor } from "@/lib/estimate/adjustments";
+import { getQualityFactor, getQualityFactorNote } from "@/lib/estimate/adjustments";
+import { BATHROOM_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
   getBooleanFact,
+  getFinishLevel,
   getNumberFact,
   getStringFact,
 } from "@/lib/estimate/facts";
@@ -41,6 +43,26 @@ export function calculateBathroom(
   const tileExtent = getStringFact(facts, workArea.id, "bathroom.tile_extent");
   if (!tileExtent) missingInfo.push(formatMissing("Tiling extent"));
 
+  const finishLevel = getFinishLevel(
+    facts,
+    workArea.id,
+    "bathroom",
+    context.project.qualityLevel
+  );
+
+  if (
+    !getStringFact(facts, workArea.id, "bathroom.finish_level") &&
+    context.project.qualityLevel &&
+    context.project.qualityLevel !== "unknown"
+  ) {
+    assumptions.push(`Finish level from project spec: ${finishLevel}.`);
+  }
+
+  const qualityNote = getQualityFactorNote(context.project);
+  if (qualityNote) {
+    assumptions.push(qualityNote);
+  }
+
   const effectiveArea = area ?? 5;
   if (!area) {
     assumptions.push("Using assumed bathroom area of 5 m² for rough estimate.");
@@ -50,6 +72,8 @@ export function calculateBathroom(
     context.project,
     context.organisationSettings
   );
+  // Quality factor applies once to material/allowance lines only (not labour).
+  // Benchmark allowances are calibrated at standard spec; premium/budget scales finishes/fixtures.
   const labourRate = resolveLabourRate({
     rates: context.rates,
     organisationSettings: context.organisationSettings,
@@ -71,8 +95,8 @@ export function calculateBathroom(
       productivityHoursPerUnit: packageProductivity.hoursPerUnit,
       labourCostRate: labourRate.costRate,
       labourSellRate: labourRate.sellRate,
-      qualityFactor,
       rateSource: labourRate.sourceLabel,
+      notes: `Finish level: ${finishLevel}`,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
     })
@@ -89,7 +113,7 @@ export function calculateBathroom(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Demolition/strip-out",
-        labourHours: demo.hoursPerUnit * qualityFactor,
+        labourHours: demo.hoursPerUnit,
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
         rateSource: demo.sourceLabel,
@@ -110,7 +134,7 @@ export function calculateBathroom(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Waterproofing labour",
-        labourHours: waterproofing.hoursPerUnit * qualityFactor,
+        labourHours: waterproofing.hoursPerUnit,
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
         rateSource: waterproofing.sourceLabel,
@@ -124,8 +148,8 @@ export function calculateBathroom(
         workAreaName: workArea.name,
         label: "Waterproofing allowance",
         category: "subcontractor",
-        recommendedCost: 1200,
-        recommendedSell: 1800,
+        recommendedCost: BATHROOM_BENCHMARKS.waterproofing.cost,
+        recommendedSell: BATHROOM_BENCHMARKS.waterproofing.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -148,8 +172,8 @@ export function calculateBathroom(
       category: "subcontractor",
       quantity: effectiveArea,
       unit: "m²",
-      costRate: 180,
-      sellRate: 280,
+      costRate: BATHROOM_BENCHMARKS.tilingPerM2.cost,
+      sellRate: BATHROOM_BENCHMARKS.tilingPerM2.sell,
       rateSource: "Benchmark allowance",
       notes: tileExtent ?? "Tiling extent allowance",
       sortOrder: sortOrder++,
@@ -165,20 +189,20 @@ export function calculateBathroom(
   let fixturesCost = 0;
   let fixturesSell = 0;
   if (getBooleanFact(facts, workArea.id, "bathroom.includes_vanity")) {
-    fixturesCost += 900;
-    fixturesSell += 1400;
+    fixturesCost += BATHROOM_BENCHMARKS.vanity.cost;
+    fixturesSell += BATHROOM_BENCHMARKS.vanity.sell;
   } else {
     missingInfo.push(formatMissing("Vanity scope"));
   }
   if (getBooleanFact(facts, workArea.id, "bathroom.includes_shower")) {
-    fixturesCost += 1200;
-    fixturesSell += 1800;
+    fixturesCost += BATHROOM_BENCHMARKS.shower.cost;
+    fixturesSell += BATHROOM_BENCHMARKS.shower.sell;
   } else {
     missingInfo.push(formatMissing("Shower scope"));
   }
   if (getBooleanFact(facts, workArea.id, "bathroom.includes_toilet")) {
-    fixturesCost += 700;
-    fixturesSell += 1100;
+    fixturesCost += BATHROOM_BENCHMARKS.toilet.cost;
+    fixturesSell += BATHROOM_BENCHMARKS.toilet.sell;
   } else {
     missingInfo.push(formatMissing("Toilet scope"));
   }
@@ -199,10 +223,18 @@ export function calculateBathroom(
     );
   }
 
-  let materialsCost = effectiveArea * 1800;
-  let materialsSell = effectiveArea * 2600;
-  materialsCost = Math.max(materialsCost, 18000);
-  materialsSell = Math.max(materialsSell, 25000);
+  let materialsCost =
+    effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.cost;
+  let materialsSell =
+    effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.sell;
+  materialsCost = Math.max(
+    materialsCost,
+    BATHROOM_BENCHMARKS.minimumPackage.cost
+  );
+  materialsSell = Math.max(
+    materialsSell,
+    BATHROOM_BENCHMARKS.minimumPackage.sell
+  );
 
   lineItems.push(
     createAllowanceLineItem({
@@ -213,7 +245,7 @@ export function calculateBathroom(
       recommendedCost: materialsCost,
       recommendedSell: materialsSell,
       rateSource: "Benchmark allowance",
-      notes: "Rough bathroom package allowance",
+      notes: `Rough bathroom package allowance · Finish level: ${finishLevel}`,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,

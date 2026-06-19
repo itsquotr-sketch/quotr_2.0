@@ -3,6 +3,7 @@ import {
   getLabourAdjustmentFactor,
   getQualityFactor,
 } from "@/lib/estimate/adjustments";
+import { DECK_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
   getBooleanFact,
@@ -27,12 +28,21 @@ import type {
 function getDeckMaterialRates(material: string | null) {
   const normalized = material?.toLowerCase() ?? "";
   if (normalized.includes("hardwood")) {
-    return { cost: 230, sell: 340, label: "Hardwood decking" };
+    return {
+      ...DECK_BENCHMARKS.hardwoodDecking,
+      label: "Hardwood decking",
+    };
   }
   if (normalized.includes("composite")) {
-    return { cost: 260, sell: 380, label: "Composite decking" };
+    return {
+      ...DECK_BENCHMARKS.compositeDecking,
+      label: "Composite decking",
+    };
   }
-  return { cost: 160, sell: 240, label: "Treated pine decking" };
+  return {
+    ...DECK_BENCHMARKS.treatedPineDecking,
+    label: "Treated pine decking",
+  };
 }
 
 export function calculateDeck(
@@ -142,8 +152,8 @@ export function calculateDeck(
       category: "materials",
       quantity: effectiveArea,
       unit: "m²",
-      costRate: 120,
-      sellRate: 180,
+      costRate: DECK_BENCHMARKS.framing.cost,
+      sellRate: DECK_BENCHMARKS.framing.sell,
       rateSource: "Benchmark allowance",
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
@@ -159,8 +169,8 @@ export function calculateDeck(
       category: "materials",
       quantity: effectiveArea,
       unit: "m²",
-      costRate: 25,
-      sellRate: 40,
+      costRate: DECK_BENCHMARKS.fixings.cost,
+      sellRate: DECK_BENCHMARKS.fixings.sell,
       rateSource: "Benchmark allowance",
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
@@ -206,8 +216,8 @@ export function calculateDeck(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Stairs allowance",
-        recommendedCost: 1000,
-        recommendedSell: 1500,
+        recommendedCost: DECK_BENCHMARKS.stairsAllowance.cost,
+        recommendedSell: DECK_BENCHMARKS.stairsAllowance.sell,
         rateSource: "Benchmark allowance",
         notes: "Basic external stair allowance included with deck.",
         sortOrder: sortOrder++,
@@ -223,8 +233,8 @@ export function calculateDeck(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Balustrade allowance",
-        recommendedCost: 900,
-        recommendedSell: 1400,
+        recommendedCost: DECK_BENCHMARKS.balustradeAllowance.cost,
+        recommendedSell: DECK_BENCHMARKS.balustradeAllowance.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,

@@ -14,16 +14,25 @@ import {
   type QuestionAnswers,
 } from "@/components/assistant/QuestionBlock";
 import { ScopeSummaryBlock } from "@/components/assistant/ScopeSummaryBlock";
-import type { QualityLevel, WorkArea } from "@/components/assistant/types";
+import type { QualityLevel, WorkArea, WorkAreaActiveQuestion } from "@/components/assistant/types";
+import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
 import { WorkAreaConfirmationBlock } from "@/components/assistant/WorkAreaConfirmationBlock";
 import {
   confirmWorkAreas,
   generateStaticEstimate,
+  regenerateStaticEstimate,
   saveBriefAndSeedWorkAreas,
   saveConstraints,
   saveQuality,
   saveQuestionBlockAnswers,
 } from "@/lib/assistant/actions";
+import { updateProjectConstraint } from "@/lib/assistant/constraint-actions";
+import { updateProjectFact } from "@/lib/assistant/fact-actions";
+import { updateEstimateMargin } from "@/lib/assistant/margin-actions";
+import {
+  addWorkAreaToProject,
+  excludeWorkAreaFromProject,
+} from "@/lib/assistant/work-area-actions";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import type { AssistantState } from "@/lib/assistant/types";
 import { Button } from "@/components/ui/button";
@@ -39,6 +48,9 @@ type PendingAction =
   | "questions"
   | "constraints"
   | "estimate"
+  | "regenerate"
+  | "add_work_area"
+  | "exclude_work_area"
   | null;
 
 function initAnswersFromQuestions(
@@ -79,6 +91,21 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
   );
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isRegenerating, setIsRegenerating] = useState(false);
+  const [isSavingMargin, setIsSavingMargin] = useState(false);
+  const [savingFactKey, setSavingFactKey] = useState<string | null>(null);
+  const [savingConstraintKey, setSavingConstraintKey] = useState<string | null>(
+    null
+  );
+  const [factError, setFactError] = useState<string | null>(null);
+  const [constraintError, setConstraintError] = useState<string | null>(null);
+  const [addWorkAreaError, setAddWorkAreaError] = useState<string | null>(null);
+  const [isAddingWorkArea, setIsAddingWorkArea] = useState(false);
+  const [isExcludingWorkArea, setIsExcludingWorkArea] = useState(false);
+  const [savingWorkAreaId, setSavingWorkAreaId] = useState<string | null>(null);
+  const [workAreaQuestionError, setWorkAreaQuestionError] = useState<string | null>(
+    null
+  );
   const [breakdownOpen, setBreakdownOpen] = useState(false);
 
   const briefSubmitted = isStageAtOrBeyond(stage, "confirm_work_areas");
@@ -117,6 +144,9 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
         if (action === "estimate") {
           setIsGenerating(false);
         }
+        if (action === "regenerate") {
+          setIsRegenerating(false);
+        }
         return;
       }
 
@@ -124,6 +154,9 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
       setPendingAction(null);
       if (action === "estimate") {
         setIsGenerating(false);
+      }
+      if (action === "regenerate") {
+        setIsRegenerating(false);
       }
     },
     [router]
@@ -212,6 +245,11 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
     void runAction("estimate", () => generateStaticEstimate(project.id));
   }, [project.id, runAction]);
 
+  const handleRegenerateEstimate = useCallback(() => {
+    setIsRegenerating(true);
+    void runAction("regenerate", () => regenerateStaticEstimate(project.id));
+  }, [project.id, runAction]);
+
   const handleQuestionAnswer = useCallback(
     (questionId: string, value: string | number | boolean) => {
       setQuestionAnswers((prev) => ({ ...prev, [questionId]: value }));
@@ -226,9 +264,194 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
     []
   );
 
+  const handleFactSave = useCallback(
+    async (input: {
+      workAreaId: string;
+      key: string;
+      label: string;
+      value: string | number | boolean;
+      unit?: string;
+      inputType?: "number" | "select" | "boolean" | "text";
+    }) => {
+      const factKey = `${input.workAreaId}:${input.key}`;
+      setSavingFactKey(factKey);
+      setFactError(null);
+
+      const result = await updateProjectFact({
+        projectId: project.id,
+        workAreaId: input.workAreaId,
+        key: input.key,
+        label: input.label,
+        value: input.value,
+        unit: input.unit,
+        valueType: input.inputType,
+      });
+
+      if (result.error) {
+        setFactError(result.error);
+        setSavingFactKey(null);
+        return;
+      }
+
+      router.refresh();
+      setSavingFactKey(null);
+    },
+    [project.id, router]
+  );
+
+  const handleConstraintSave = useCallback(
+    async (input: {
+      key: string;
+      label: string;
+      value: string | number | boolean;
+      inputType?: "select" | "boolean";
+    }) => {
+      setSavingConstraintKey(input.key);
+      setConstraintError(null);
+
+      const result = await updateProjectConstraint({
+        projectId: project.id,
+        key: input.key,
+        label: input.label,
+        value: input.value,
+        inputType: input.inputType,
+      });
+
+      if (result.error) {
+        setConstraintError(result.error);
+        setSavingConstraintKey(null);
+        return;
+      }
+
+      router.refresh();
+      setSavingConstraintKey(null);
+    },
+    [project.id, router]
+  );
+
+  const handleMarginSave = useCallback(
+    async (targetMarginPercent: number | null) => {
+      setIsSavingMargin(true);
+      setActionError(null);
+
+      const result = await updateEstimateMargin({
+        projectId: project.id,
+        targetMarginPercent,
+      });
+
+      if (result.error) {
+        setActionError(result.error);
+        setIsSavingMargin(false);
+        return;
+      }
+
+      router.refresh();
+      setIsSavingMargin(false);
+    },
+    [project.id, router]
+  );
+
+  const handleAddWorkArea = useCallback(
+    async (workAreaType: string) => {
+      setIsAddingWorkArea(true);
+      setAddWorkAreaError(null);
+
+      const result = await addWorkAreaToProject({
+        projectId: project.id,
+        workAreaType,
+      });
+
+      if (result.error) {
+        setAddWorkAreaError(result.error);
+        setIsAddingWorkArea(false);
+        return;
+      }
+
+      router.refresh();
+      setIsAddingWorkArea(false);
+    },
+    [project.id, router]
+  );
+
+  const handleExcludeWorkArea = useCallback(
+    async (workAreaId: string) => {
+      setIsExcludingWorkArea(true);
+      setActionError(null);
+
+      const result = await excludeWorkAreaFromProject({
+        projectId: project.id,
+        workAreaId,
+      });
+
+      if (result.error) {
+        setActionError(result.error);
+        setIsExcludingWorkArea(false);
+        return;
+      }
+
+      router.refresh();
+      setIsExcludingWorkArea(false);
+    },
+    [project.id, router]
+  );
+
+  const handleSaveWorkAreaQuestions = useCallback(
+    async (input: {
+      workAreaId: string;
+      workAreaName: string;
+      questions: WorkAreaActiveQuestion[];
+      answers: MissingQuestionAnswers;
+    }) => {
+      setSavingWorkAreaId(input.workAreaId);
+      setWorkAreaQuestionError(null);
+      setPendingAction("questions");
+
+      const questionsByBlock = new Map<string, WorkAreaActiveQuestion[]>();
+      for (const question of input.questions) {
+        const existing = questionsByBlock.get(question.questionBlockId) ?? [];
+        existing.push(question);
+        questionsByBlock.set(question.questionBlockId, existing);
+      }
+
+      for (const [blockId, blockQuestions] of questionsByBlock) {
+        const payload = blockQuestions.map((question) => ({
+          question_id: question.id,
+          value: input.answers[question.id] as string | number | boolean,
+        }));
+
+        const result = await saveQuestionBlockAnswers(
+          project.id,
+          blockId,
+          payload
+        );
+
+        if (result.error) {
+          setWorkAreaQuestionError(result.error);
+          setSavingWorkAreaId(null);
+          setPendingAction(null);
+          return;
+        }
+      }
+
+      router.refresh();
+      setSavingWorkAreaId(null);
+      setPendingAction(null);
+    },
+    [project.id, router]
+  );
+
   const estimate = estimateReady ? initialState.estimate : null;
   const displayWorkAreas =
     workAreas.length > 0 ? workAreas : initialState.workAreas;
+
+  const scopeReviewQuestionKey = useMemo(
+    () =>
+      initialState.scopeReview.workAreas
+        .flatMap((workArea) => workArea.activeQuestions)
+        .map((question) => `${question.id}:${question.value ?? ""}`)
+        .join("|"),
+    [initialState.scopeReview.workAreas]
+  );
 
   return (
     <div data-project-id={project.id} className="w-full">
@@ -335,7 +558,29 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
               status="submitted"
               badge="Review"
             >
-              <ScopeSummaryBlock scopeReview={initialState.scopeReview} />
+              <ScopeSummaryBlock
+                key={scopeReviewQuestionKey}
+                scopeReview={initialState.scopeReview}
+                workAreas={initialState.workAreas}
+                editable={questionsSubmitted}
+                manageWorkAreas={workAreasConfirmed}
+                estimateIsStale={estimate?.isStale}
+                savingFactKey={savingFactKey}
+                savingWorkAreaId={savingWorkAreaId}
+                workAreaQuestionError={workAreaQuestionError}
+                factError={factError}
+                isAddingWorkArea={isAddingWorkArea}
+                isExcludingWorkArea={isExcludingWorkArea}
+                addWorkAreaError={addWorkAreaError}
+                onFactSave={questionsSubmitted ? handleFactSave : undefined}
+                onSaveWorkAreaQuestions={
+                  questionsSubmitted ? handleSaveWorkAreaQuestions : undefined
+                }
+                onAddWorkArea={workAreasConfirmed ? handleAddWorkArea : undefined}
+                onExcludeWorkArea={
+                  workAreasConfirmed ? handleExcludeWorkArea : undefined
+                }
+              />
             </AssistantMessage>
           ) : null}
 
@@ -360,12 +605,18 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
                     : constraintAnswers
                 }
                 submitted={constraintsSubmitted}
+                editable={constraintsSubmitted}
                 isSaving={pendingAction === "constraints"}
+                savingConstraintKey={savingConstraintKey}
+                constraintError={constraintError}
                 onAnswerChange={
                   constraintsSubmitted ? undefined : handleConstraintAnswer
                 }
                 onSubmit={
                   constraintsSubmitted ? undefined : handleConstraintsSubmit
+                }
+                onConstraintSave={
+                  constraintsSubmitted ? handleConstraintSave : undefined
                 }
               />
             </AssistantMessage>
@@ -417,10 +668,15 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
           <EstimatePanel
             estimate={estimate}
             isGenerating={isGenerating}
+            isRegenerating={isRegenerating}
+            isSavingMargin={isSavingMargin}
+            defaultMarginPercent={initialState.defaultMarginPercent}
             panelScopeSummaries={initialState.panelScopeSummaries}
             scopeReview={initialState.scopeReview}
             questionsSubmitted={questionsSubmitted}
             onViewBreakdown={() => setBreakdownOpen(true)}
+            onRegenerate={handleRegenerateEstimate}
+            onMarginSave={estimateReady ? handleMarginSave : undefined}
           />
         </div>
       </div>
@@ -429,6 +685,8 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
         estimate={estimate}
         open={breakdownOpen}
         onOpenChange={setBreakdownOpen}
+        onRegenerate={handleRegenerateEstimate}
+        isRegenerating={isRegenerating}
       />
     </div>
   );

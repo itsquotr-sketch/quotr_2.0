@@ -3,6 +3,7 @@ import {
   getLabourAdjustmentFactor,
   getQualityFactor,
 } from "@/lib/estimate/adjustments";
+import { PERGOLA_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
   getBooleanFact,
@@ -110,8 +111,8 @@ export function calculatePergola(
       category: "materials",
       quantity: area,
       unit: "m²",
-      costRate: 180,
-      sellRate: 280,
+      costRate: PERGOLA_BENCHMARKS.frameMaterials.cost,
+      sellRate: PERGOLA_BENCHMARKS.frameMaterials.sell,
       rateSource: "Benchmark allowance",
       notes: material ? `${material} pergola allowance` : undefined,
       sortOrder: sortOrder++,
@@ -129,8 +130,8 @@ export function calculatePergola(
         category: "allowance",
         quantity: area,
         unit: "m²",
-        costRate: 120,
-        sellRate: 180,
+        costRate: PERGOLA_BENCHMARKS.roofing.cost,
+        sellRate: PERGOLA_BENCHMARKS.roofing.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,

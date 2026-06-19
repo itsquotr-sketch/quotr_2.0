@@ -593,13 +593,22 @@ export function buildDemoAssistantState(): import("@/lib/assistant/types").Assis
     },
   ];
 
-  const scopeReview = buildScopeReview({
+  const scopeReviewBase = buildScopeReview({
     workAreas: demoWorkAreas,
     projectFacts: demoFacts,
     questions,
+    qualityLevel: "standard",
     scopeAssumptions: STATIC_SCOPE_ASSUMPTIONS,
     scopeExclusions: STATIC_SCOPE_EXCLUSIONS,
   });
+
+  const scopeReview = {
+    ...scopeReviewBase,
+    workAreas: scopeReviewBase.workAreas.map((workArea) => ({
+      ...workArea,
+      activeQuestions: [],
+    })),
+  };
 
   return {
     project: {
@@ -611,6 +620,7 @@ export function buildDemoAssistantState(): import("@/lib/assistant/types").Assis
     },
     workAreas,
     questionBlock,
+    additionalQuestionBlocks: [],
     constraintQuestions: buildStaticConstraintQuestions().map((q) => ({
       ...q,
       value:
@@ -644,5 +654,6 @@ export function buildDemoAssistantState(): import("@/lib/assistant/types").Assis
     scopeReview,
     panelScopeSummaries: buildPanelScopeSummariesFromScopeReview(scopeReview),
     derivedFactDisplays: [],
+    defaultMarginPercent: 33.33,
   };
 }

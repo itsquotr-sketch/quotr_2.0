@@ -26,15 +26,14 @@ import {
   EstimateEngineError,
 } from "@/lib/estimate/calculate-estimate";
 import { getEstimateContext } from "@/lib/estimate/context";
-import { buildLineItemNotes } from "@/lib/estimate/line-items";
+import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
+import { markEstimateStale } from "@/lib/estimate/stale";
 import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
-import {
-  deriveFactsForProject,
-  mergeDerivedFactsIntoRecords,
-} from "@/lib/scopes/derived-facts";
+import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
+import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { buildQuestionBlockFromProjectState } from "@/lib/scopes/questions";
-import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
+import { normalizeAnswerForStorage, factHasValue } from "@/lib/scopes/fact-values";
 
 const BRIEF_MAX_LENGTH = 5000;
 
@@ -348,78 +347,9 @@ export async function confirmWorkAreas(
     return { error: stageError.message };
   }
 
+  await markEstimateStale(projectId);
   revalidateAssistantPaths(projectId);
   return { success: true };
-}
-
-type ProjectFactRow = {
-  key: string;
-  work_area_id: string | null;
-  value: unknown;
-  source?: string | null;
-};
-
-async function persistDerivedFacts(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  orgId: string,
-  projectId: string,
-  workAreas: { id: string; type: string; status: string }[],
-  projectFacts: ProjectFactRow[]
-): Promise<ProjectFactRow[]> {
-  const confirmed = workAreas.filter((workArea) => workArea.status === "confirmed");
-  const derivedFacts = deriveFactsForProject({
-    workAreas: confirmed.map((workArea) => ({
-      id: workArea.id,
-      type: workArea.type,
-    })),
-    projectFacts,
-  });
-
-  for (const derived of derivedFacts) {
-    let factQuery = supabase
-      .from("project_facts")
-      .select("id, source")
-      .eq("project_id", projectId)
-      .eq("key", derived.key);
-
-    if (derived.work_area_id) {
-      factQuery = factQuery.eq("work_area_id", derived.work_area_id);
-    } else {
-      factQuery = factQuery.is("work_area_id", null);
-    }
-
-    const { data: existingFact } = await factQuery.maybeSingle();
-
-    if (existingFact?.source === "user") {
-      continue;
-    }
-
-    const factPayload = {
-      label: derived.label,
-      value: derived.value,
-      unit: derived.unit,
-      source: "derived" as const,
-      confidence: 1,
-    };
-
-    if (existingFact) {
-      await supabase
-        .from("project_facts")
-        .update(factPayload)
-        .eq("id", existingFact.id)
-        .eq("project_id", projectId);
-    } else {
-      await supabase.from("project_facts").insert({
-        org_id: orgId,
-        project_id: projectId,
-        work_area_id: derived.work_area_id,
-        key: derived.key,
-        ...factPayload,
-      });
-    }
-  }
-
-  return mergeDerivedFactsIntoRecords(projectFacts, derivedFacts);
 }
 
 async function createDynamicQuestionBlockIfNeeded(
@@ -455,7 +385,7 @@ async function createDynamicQuestionBlockIfNeeded(
       .eq("project_id", projectId),
   ]);
 
-  const projectFacts = await persistDerivedFacts(
+  const projectFacts = await persistDerivedFactsForProject(
     supabase,
     orgId,
     projectId,
@@ -601,14 +531,6 @@ export async function saveQuestionBlockAnswers(
 
   const { supabase, orgId, stage } = loaded;
 
-  if (isStageAtOrBeyond(stage, "constraints")) {
-    return { success: true };
-  }
-
-  if (!canRunStageAction(stage, "save_question_answers")) {
-    return { error: "This action is not available at the current stage." };
-  }
-
   const { data: block } = await supabase
     .from("question_blocks")
     .select("id, status")
@@ -618,6 +540,19 @@ export async function saveQuestionBlockAnswers(
 
   if (!block) {
     return { error: "Question block not found." };
+  }
+
+  const isAdditionalBlock =
+    isStageAtOrBeyond(stage, "constraints") && block.status === "active";
+
+  if (!isAdditionalBlock) {
+    if (isStageAtOrBeyond(stage, "constraints")) {
+      return { success: true };
+    }
+
+    if (!canRunStageAction(stage, "save_question_answers")) {
+      return { error: "This action is not available at the current stage." };
+    }
   }
 
   const { data: blockQuestions } = await supabase
@@ -705,26 +640,40 @@ export async function saveQuestionBlockAnswers(
   }
 
   if (block.status !== "submitted") {
-    const { error: blockError } = await supabase
-      .from("question_blocks")
-      .update({
-        status: "submitted",
-        submitted_at: new Date().toISOString(),
-      })
-      .eq("id", questionBlockId);
+    const { data: updatedQuestions } = await supabase
+      .from("questions")
+      .select("answer_value")
+      .eq("question_block_id", questionBlockId)
+      .eq("project_id", projectId);
 
-    if (blockError) {
-      return { error: blockError.message };
+    const allAnswered = (updatedQuestions ?? []).every((question) =>
+      factHasValue(question.answer_value)
+    );
+
+    if (allAnswered || !isAdditionalBlock) {
+      const { error: blockError } = await supabase
+        .from("question_blocks")
+        .update({
+          status: "submitted",
+          submitted_at: new Date().toISOString(),
+        })
+        .eq("id", questionBlockId);
+
+      if (blockError) {
+        return { error: blockError.message };
+      }
     }
   }
 
-  const { error: stageError } = await supabase
-    .from("projects")
-    .update({ stage: "constraints" })
-    .eq("id", projectId);
+  if (!isAdditionalBlock) {
+    const { error: stageError } = await supabase
+      .from("projects")
+      .update({ stage: "constraints" })
+      .eq("id", projectId);
 
-  if (stageError) {
-    return { error: stageError.message };
+    if (stageError) {
+      return { error: stageError.message };
+    }
   }
 
   const { data: workAreas } = await supabase
@@ -737,7 +686,7 @@ export async function saveQuestionBlockAnswers(
     .select("key, work_area_id, value, source")
     .eq("project_id", projectId);
 
-  await persistDerivedFacts(
+  await persistDerivedFactsForProject(
     supabase,
     orgId,
     projectId,
@@ -745,6 +694,20 @@ export async function saveQuestionBlockAnswers(
     projectFactsRaw ?? []
   );
 
+  const ensureStage = isAdditionalBlock ? stage : "constraints";
+
+  const ensureResult = await ensureMissingDetailsQuestionBlock(
+    supabase,
+    orgId,
+    projectId,
+    { stage: ensureStage }
+  );
+
+  if (ensureResult.error) {
+    return { error: ensureResult.error };
+  }
+
+  await markEstimateStale(projectId);
   revalidateAssistantPaths(projectId);
   return { success: true };
 }
@@ -830,12 +793,14 @@ export async function saveConstraints(
     return { error: stageError.message };
   }
 
+  await markEstimateStale(projectId);
   revalidateAssistantPaths(projectId);
   return { success: true };
 }
 
-export async function generateStaticEstimate(
-  projectId: string
+async function runEstimateGeneration(
+  projectId: string,
+  options: { allowRegenerate: boolean }
 ): Promise<AssistantActionState> {
   const loaded = await loadProjectStage(projectId);
   if ("error" in loaded) {
@@ -845,10 +810,10 @@ export async function generateStaticEstimate(
   const { supabase, orgId, stage } = loaded;
 
   if (stage === "estimate_ready") {
-    return { success: true };
-  }
-
-  if (!canRunStageAction(stage, "generate_estimate")) {
+    if (!options.allowRegenerate) {
+      return { success: true };
+    }
+  } else if (!canRunStageAction(stage, "generate_estimate")) {
     return { error: "This action is not available at the current stage." };
   }
 
@@ -870,112 +835,51 @@ export async function generateStaticEstimate(
     };
   }
 
-  const estimatePayload = {
-    org_id: orgId,
-    project_id: projectId,
-    status: "ready",
-    cost_low: estimateResult.costLow,
-    cost_high: estimateResult.costHigh,
-    sell_low: estimateResult.sellLow,
-    sell_high: estimateResult.sellHigh,
-    recommended_cost: estimateResult.recommendedCost,
-    recommended_sell: estimateResult.recommendedSell,
-    gross_profit: estimateResult.grossProfit,
-    margin_percent: estimateResult.marginPercent,
-    markup_percent: estimateResult.markupPercent,
-    confidence: estimateResult.confidence,
-    rate_source_summary: estimateResult.rateSourceSummary,
-    assumptions: estimateResult.assumptions,
-    missing_info: estimateResult.missingInfo,
-    exclusions: estimateResult.exclusions,
-    generated_at: new Date().toISOString(),
-  };
+  const persistResult = await persistEstimateResult(
+    supabase,
+    orgId,
+    projectId,
+    estimateResult
+  );
 
-  const lineItemRows = estimateResult.lineItems.map((item) => ({
-    org_id: orgId,
-    project_id: projectId,
-    work_area_id: item.workAreaId,
-    work_area_name: item.workAreaName,
-    label: item.label,
-    category: item.category,
-    cost_low: item.costLow,
-    cost_high: item.costHigh,
-    sell_low: item.sellLow,
-    sell_high: item.sellHigh,
-    recommended_cost: item.recommendedCost,
-    recommended_sell: item.recommendedSell,
-    gross_profit: item.grossProfit,
-    margin_percent: item.marginPercent,
-    markup_percent: item.markupPercent ?? null,
-    rate_source: item.rateSource,
-    notes: buildLineItemNotes(item),
-    sort_order: item.sortOrder,
-  }));
+  if ("error" in persistResult) {
+    return { error: persistResult.error };
+  }
 
-  const { data: existingEstimate } = await supabase
-    .from("estimates")
-    .select("id")
-    .eq("project_id", projectId)
-    .maybeSingle();
+  if (stage !== "estimate_ready") {
+    const { error: stageError } = await supabase
+      .from("projects")
+      .update({ stage: "estimate_ready" })
+      .eq("id", projectId);
 
-  let estimateId: string;
-
-  if (existingEstimate) {
-    const { error: updateError } = await supabase
-      .from("estimates")
-      .update(estimatePayload)
-      .eq("id", existingEstimate.id);
-
-    if (updateError) {
-      return { error: updateError.message };
+    if (stageError) {
+      return { error: stageError.message };
     }
-    estimateId = existingEstimate.id;
-  } else {
-    const { data: inserted, error: insertError } = await supabase
-      .from("estimates")
-      .insert(estimatePayload)
-      .select("id")
-      .single();
-
-    if (insertError || !inserted) {
-      return { error: insertError?.message ?? "Failed to save estimate." };
-    }
-    estimateId = inserted.id;
-  }
-
-  const { error: deleteError } = await supabase
-    .from("estimate_line_items")
-    .delete()
-    .eq("estimate_id", estimateId);
-
-  if (deleteError) {
-    return { error: deleteError.message };
-  }
-
-  const { error: lineItemsError } = await supabase
-    .from("estimate_line_items")
-    .insert(
-      lineItemRows.map((row) => ({
-        ...row,
-        estimate_id: estimateId,
-      }))
-    );
-
-  if (lineItemsError) {
-    return { error: lineItemsError.message };
-  }
-
-  const { error: stageError } = await supabase
-    .from("projects")
-    .update({ stage: "estimate_ready" })
-    .eq("id", projectId);
-
-  if (stageError) {
-    return { error: stageError.message };
   }
 
   revalidateAssistantPaths(projectId);
   return { success: true };
+}
+
+export async function generateStaticEstimate(
+  projectId: string
+): Promise<AssistantActionState> {
+  return runEstimateGeneration(projectId, { allowRegenerate: false });
+}
+
+export async function regenerateStaticEstimate(
+  projectId: string
+): Promise<AssistantActionState> {
+  const loaded = await loadProjectStage(projectId);
+  if ("error" in loaded) {
+    return { error: loaded.error };
+  }
+
+  if (loaded.stage !== "estimate_ready") {
+    return { error: "Estimate can only be regenerated once a draft exists." };
+  }
+
+  return runEstimateGeneration(projectId, { allowRegenerate: true });
 }
 
 /** Deterministic estimate engine entry point (Phase 5A). */

@@ -2,6 +2,7 @@ import {
   getLabourAdjustmentFactor,
   getQualityFactor,
 } from "@/lib/estimate/adjustments";
+import { FENCE_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
   getBooleanFact,
@@ -28,9 +29,9 @@ function getFenceMaterialRates(material: string | null) {
     normalized.includes("metal") ||
     normalized.includes("composite")
   ) {
-    return { cost: 140, sell: 220 };
+    return FENCE_BENCHMARKS.metalPerLm;
   }
-  return { cost: 90, sell: 140 };
+  return FENCE_BENCHMARKS.timberPerLm;
 }
 
 export function calculateFence(
@@ -137,8 +138,8 @@ export function calculateFence(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Gate allowance",
-        recommendedCost: 450,
-        recommendedSell: 700,
+        recommendedCost: FENCE_BENCHMARKS.gate.cost,
+        recommendedSell: FENCE_BENCHMARKS.gate.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,

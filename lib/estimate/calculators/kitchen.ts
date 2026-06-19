@@ -1,8 +1,11 @@
-import { getQualityFactor } from "@/lib/estimate/adjustments";
+import { getQualityFactor, getQualityFactorNote } from "@/lib/estimate/adjustments";
+import { KITCHEN_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
   getBooleanFact,
+  getFinishLevel,
   getNumberFact,
+  getStringFact,
 } from "@/lib/estimate/facts";
 import {
   createAllowanceLineItem,
@@ -36,6 +39,26 @@ export function calculateKitchen(
   const area = getNumberFact(facts, workArea.id, "kitchen.area_m2");
   if (!area) missingInfo.push(formatMissing("Kitchen area"));
 
+  const finishLevel = getFinishLevel(
+    facts,
+    workArea.id,
+    "kitchen",
+    context.project.qualityLevel
+  );
+
+  if (
+    !getStringFact(facts, workArea.id, "kitchen.finish_level") &&
+    context.project.qualityLevel &&
+    context.project.qualityLevel !== "unknown"
+  ) {
+    assumptions.push(`Finish level from project spec: ${finishLevel}.`);
+  }
+
+  const qualityNote = getQualityFactorNote(context.project);
+  if (qualityNote) {
+    assumptions.push(qualityNote);
+  }
+
   const effectiveArea = area ?? 10;
   if (!area) {
     assumptions.push("Using assumed kitchen area of 10 m² for rough estimate.");
@@ -45,6 +68,8 @@ export function calculateKitchen(
     context.project,
     context.organisationSettings
   );
+  // Quality factor applies once to material/allowance lines only (not labour).
+  // Benchmark allowances are calibrated at standard spec; premium/budget scales cabinetry/finishes.
   const labourRate = resolveLabourRate({
     rates: context.rates,
     organisationSettings: context.organisationSettings,
@@ -66,8 +91,8 @@ export function calculateKitchen(
       productivityHoursPerUnit: packageProductivity.hoursPerUnit,
       labourCostRate: labourRate.costRate,
       labourSellRate: labourRate.sellRate,
-      qualityFactor,
       rateSource: labourRate.sourceLabel,
+      notes: `Finish level: ${finishLevel}`,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
     })
@@ -84,7 +109,7 @@ export function calculateKitchen(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Demolition/strip-out",
-        labourHours: demo.hoursPerUnit * qualityFactor,
+        labourHours: demo.hoursPerUnit,
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
         rateSource: demo.sourceLabel,
@@ -105,7 +130,7 @@ export function calculateKitchen(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Cabinetry labour allowance",
-        labourHours: cabinetry.hoursPerUnit * qualityFactor,
+        labourHours: cabinetry.hoursPerUnit,
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
         rateSource: cabinetry.sourceLabel,
@@ -118,8 +143,8 @@ export function calculateKitchen(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Cabinetry allowance",
-        recommendedCost: 8000,
-        recommendedSell: 12000,
+        recommendedCost: KITCHEN_BENCHMARKS.cabinetry.cost,
+        recommendedSell: KITCHEN_BENCHMARKS.cabinetry.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -141,7 +166,7 @@ export function calculateKitchen(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Benchtop labour allowance",
-        labourHours: benchtop.hoursPerUnit * qualityFactor,
+        labourHours: benchtop.hoursPerUnit,
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
         rateSource: benchtop.sourceLabel,
@@ -154,8 +179,8 @@ export function calculateKitchen(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Benchtop allowance",
-        recommendedCost: 3000,
-        recommendedSell: 4800,
+        recommendedCost: KITCHEN_BENCHMARKS.benchtop.cost,
+        recommendedSell: KITCHEN_BENCHMARKS.benchtop.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -173,8 +198,8 @@ export function calculateKitchen(
         workAreaName: workArea.name,
         label: "Plumbing allowance",
         category: "subcontractor",
-        recommendedCost: 2500,
-        recommendedSell: 3800,
+        recommendedCost: KITCHEN_BENCHMARKS.plumbing.cost,
+        recommendedSell: KITCHEN_BENCHMARKS.plumbing.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -192,8 +217,8 @@ export function calculateKitchen(
         workAreaName: workArea.name,
         label: "Electrical allowance",
         category: "subcontractor",
-        recommendedCost: 2200,
-        recommendedSell: 3400,
+        recommendedCost: KITCHEN_BENCHMARKS.electrical.cost,
+        recommendedSell: KITCHEN_BENCHMARKS.electrical.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -204,10 +229,16 @@ export function calculateKitchen(
     missingInfo.push(formatMissing("Electrical scope"));
   }
 
-  let materialsCost = effectiveArea * 1500;
-  let materialsSell = effectiveArea * 2300;
-  materialsCost = Math.max(materialsCost, 20000);
-  materialsSell = Math.max(materialsSell, 30000);
+  let materialsCost = effectiveArea * KITCHEN_BENCHMARKS.materialsPerM2.cost;
+  let materialsSell = effectiveArea * KITCHEN_BENCHMARKS.materialsPerM2.sell;
+  materialsCost = Math.max(
+    materialsCost,
+    KITCHEN_BENCHMARKS.minimumPackage.cost
+  );
+  materialsSell = Math.max(
+    materialsSell,
+    KITCHEN_BENCHMARKS.minimumPackage.sell
+  );
 
   lineItems.push(
     createAllowanceLineItem({
@@ -218,7 +249,7 @@ export function calculateKitchen(
       recommendedCost: materialsCost,
       recommendedSell: materialsSell,
       rateSource: "Benchmark allowance",
-      notes: "Rough kitchen package allowance",
+      notes: `Rough kitchen package allowance · Finish level: ${finishLevel}`,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,

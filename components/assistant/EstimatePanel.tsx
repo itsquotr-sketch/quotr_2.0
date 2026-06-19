@@ -6,6 +6,7 @@ import {
   formatCurrencyRange,
   formatPercent,
 } from "@/components/assistant/format";
+import { MarginEditControl } from "@/components/assistant/MarginEditControl";
 import type { Estimate } from "@/components/assistant/types";
 import type { PanelScopeSummary, ScopeReview } from "@/lib/assistant/types";
 import { Button } from "@/components/ui/button";
@@ -21,10 +22,15 @@ import { Separator } from "@/components/ui/separator";
 type EstimatePanelProps = {
   estimate: Estimate | null;
   isGenerating?: boolean;
+  isRegenerating?: boolean;
+  isSavingMargin?: boolean;
+  defaultMarginPercent?: number;
   panelScopeSummaries?: PanelScopeSummary[];
   scopeReview?: ScopeReview;
   questionsSubmitted?: boolean;
   onViewBreakdown?: () => void;
+  onRegenerate?: () => void;
+  onMarginSave?: (targetMarginPercent: number | null) => Promise<void>;
 };
 
 function MetricRow({
@@ -61,10 +67,15 @@ function previewItems(items: string[], limit = 2) {
 export function EstimatePanel({
   estimate,
   isGenerating,
+  isRegenerating,
+  isSavingMargin,
+  defaultMarginPercent = 33.33,
   panelScopeSummaries = [],
   scopeReview,
   questionsSubmitted = false,
   onViewBreakdown,
+  onRegenerate,
+  onMarginSave,
 }: EstimatePanelProps) {
   const assumptionPreview = estimate
     ? previewItems(estimate.assumptions)
@@ -91,6 +102,35 @@ export function EstimatePanel({
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {estimate?.isStale ? (
+          <div
+            className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/30"
+            role="status"
+          >
+            <p className="text-xs text-amber-950 dark:text-amber-100">
+              This estimate is based on older inputs. Regenerate to update the
+              pricing.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="mt-2 h-8 border-amber-300 bg-white text-xs hover:bg-amber-50 dark:border-amber-800 dark:bg-transparent"
+              onClick={onRegenerate}
+              disabled={isRegenerating || isGenerating}
+            >
+              {isRegenerating ? (
+                <>
+                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                  Regenerating…
+                </>
+              ) : (
+                "Regenerate estimate"
+              )}
+            </Button>
+          </div>
+        ) : null}
+
         {isGenerating ? (
           <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
             <Loader2 className="size-4 animate-spin" />
@@ -184,10 +224,21 @@ export function EstimatePanel({
                 label="Gross profit"
                 value={formatCurrency(estimate.grossProfit)}
               />
-              <MetricRow
-                label="Margin"
-                value={formatPercent(estimate.marginPercent)}
-              />
+              {onMarginSave ? (
+                <MarginEditControl
+                  marginPercent={estimate.marginPercent}
+                  targetMarginPercent={estimate.targetMarginPercent}
+                  defaultMarginPercent={defaultMarginPercent}
+                  disabled={estimate.isStale || isRegenerating || isGenerating}
+                  isSaving={isSavingMargin}
+                  onSave={onMarginSave}
+                />
+              ) : (
+                <MetricRow
+                  label="Margin"
+                  value={formatPercent(estimate.marginPercent)}
+                />
+              )}
             </div>
 
             <div className="grid grid-cols-2 gap-3">

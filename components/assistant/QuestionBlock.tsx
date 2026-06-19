@@ -151,7 +151,7 @@ function SelectChips({
   );
 }
 
-function QuestionField({
+export function QuestionField({
   question,
   value,
   disabled,

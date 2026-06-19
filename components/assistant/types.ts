@@ -50,6 +50,11 @@ export type Question = {
   value?: string | number | boolean | null;
 };
 
+export type WorkAreaActiveQuestion = Question & {
+  questionBlockId: string;
+  missingItemLabel: string;
+};
+
 export type QuestionBlockData = {
   id: string;
   title: string;
@@ -94,6 +99,8 @@ export type Estimate = {
   grossProfit: number;
   marginPercent: number;
   markupPercent?: number;
+  isStale?: boolean;
+  targetMarginPercent?: number | null;
   confidence: number;
   rateSourceSummary: string;
   contingencyAmount?: number;

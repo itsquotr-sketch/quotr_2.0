@@ -4,6 +4,7 @@ import {
   getQualityFactor,
   hasPoorAccess,
 } from "@/lib/estimate/adjustments";
+import { RETAINING_WALL_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
   getBooleanFact,
@@ -55,9 +56,9 @@ function getWallMaterialRates(material: string | null) {
     normalized.includes("concrete") ||
     normalized.includes("block")
   ) {
-    return { cost: 400, sell: 600 };
+    return RETAINING_WALL_BENCHMARKS.concreteFace;
   }
-  return { cost: 220, sell: 330 };
+  return RETAINING_WALL_BENCHMARKS.timberFace;
 }
 
 export function calculateRetainingWall(
@@ -188,8 +189,8 @@ export function calculateRetainingWall(
         category: "materials",
         quantity: effectiveLength,
         unit: "m",
-        costRate: 45,
-        sellRate: 75,
+        costRate: RETAINING_WALL_BENCHMARKS.drainagePerM.cost,
+        sellRate: RETAINING_WALL_BENCHMARKS.drainagePerM.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -207,8 +208,8 @@ export function calculateRetainingWall(
         category: "materials",
         quantity: faceArea,
         unit: "face m²",
-        costRate: 60,
-        sellRate: 95,
+        costRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.cost,
+        sellRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -232,8 +233,14 @@ export function calculateRetainingWall(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Carting/material handling allowance",
-        recommendedCost: cartingDistance && cartingDistance > 30 ? 1200 : 700,
-        recommendedSell: cartingDistance && cartingDistance > 30 ? 1800 : 1050,
+        recommendedCost:
+          cartingDistance && cartingDistance > 30
+            ? RETAINING_WALL_BENCHMARKS.cartingLong.cost
+            : RETAINING_WALL_BENCHMARKS.cartingModerate.cost,
+        recommendedSell:
+          cartingDistance && cartingDistance > 30
+            ? RETAINING_WALL_BENCHMARKS.cartingLong.sell
+            : RETAINING_WALL_BENCHMARKS.cartingModerate.sell,
         rateSource: "Benchmark allowance",
         notes: [
           cartingDistance ? `${cartingDistance} m carting distance` : null,

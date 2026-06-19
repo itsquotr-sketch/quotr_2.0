@@ -71,7 +71,8 @@ export function getLabourAdjustmentFactor(
     factor += 0.05;
   }
 
-  return factor;
+  // Cap compound site adjustment to avoid runaway labour loading in v1.
+  return Math.min(factor, 1.35);
 }
 
 export function getConstraintNotes(constraints: EstimateConstraint[]): string {
@@ -94,4 +95,19 @@ export function getConstraintNotes(constraints: EstimateConstraint[]): string {
 export function hasPoorAccess(constraints: EstimateConstraint[]): boolean {
   const access = getConstraintValue(constraints, "site_access")?.toLowerCase();
   return access === "difficult" || access === "moderate";
+}
+
+const QUALITY_LABELS: Record<QualityLevel, string> = {
+  budget: "Budget",
+  standard: "Standard",
+  premium: "Premium",
+  unknown: "Unknown",
+};
+
+export function getQualityFactorNote(
+  project: EstimateProject
+): string | null {
+  const level = project.qualityLevel;
+  if (!level || level === "unknown") return null;
+  return `Project quality/spec level applied: ${QUALITY_LABELS[level]}`;
 }

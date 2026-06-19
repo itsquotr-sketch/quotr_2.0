@@ -78,8 +78,8 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
   }
 
   if (lineItems.length === 0) {
-    throw new EstimateEngineError(
-      "Could not generate estimate from confirmed work areas."
+    missingInfo.push(
+      "No priced line items could be generated from confirmed work areas."
     );
   }
 

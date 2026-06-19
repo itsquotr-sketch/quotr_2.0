@@ -15,8 +15,18 @@ import {
   deriveFactsForProject,
   mergeDerivedFactsIntoRecords,
 } from "@/lib/scopes/derived-facts";
+import {
+  getInheritedFinishLevelForWorkArea,
+  isInheritedFinishLevelKey,
+} from "@/lib/scopes/finish-level";
+import { getDerivedFactNote, resolveFactEditMeta } from "@/lib/scopes/fact-edit-meta";
 import { getScopeQuestions } from "@/lib/scopes/registry";
-import type { ScopeQuestionTemplate } from "@/lib/scopes/types";
+import {
+  getMissingLabel,
+  isTemplateFactMissing,
+  type ProjectInput,
+  type WorkAreaInput as QuestionWorkAreaInput,
+} from "@/lib/scopes/questions";
 
 export type ScopeReviewSourceLabel =
   | "brief"
@@ -24,15 +34,21 @@ export type ScopeReviewSourceLabel =
   | "calculated"
   | "assumed"
   | "default"
-  | "system";
+  | "system"
+  | "project spec";
 
 export type ScopeReviewFact = {
   key: string;
   label: string;
   value: string;
+  rawValue?: unknown;
   unit?: string;
   sourceLabel: ScopeReviewSourceLabel;
   sourcePriority: number;
+  readOnly?: boolean;
+  derivedNote?: string;
+  inputType?: "number" | "select" | "boolean" | "text";
+  options?: string[];
 };
 
 export type ScopeReviewWorkArea = {
@@ -47,6 +63,7 @@ export type ScopeReviewWorkArea = {
 
 export type ScopeReview = {
   workAreas: ScopeReviewWorkArea[];
+  excludedWorkAreas: { workAreaId: string; workAreaName: string }[];
   generalAssumptions: string[];
   generalExclusions: string[];
 };
@@ -64,9 +81,11 @@ type FactCandidate = {
   canonicalKey: string;
   label: string;
   value: string;
+  rawValue: unknown;
   unit?: string;
   sourceLabel: ScopeReviewSourceLabel;
   sourcePriority: number;
+  source: string;
   sortOrder: number;
 };
 
@@ -76,6 +95,7 @@ const SOURCE_META: Record<
 > = {
   user: { label: "answered", priority: 1 },
   derived: { label: "calculated", priority: 2 },
+  project_quality: { label: "project spec", priority: 2 },
   ai_extracted: { label: "brief", priority: 3 },
   assumption: { label: "assumed", priority: 4 },
   default: { label: "default", priority: 5 },
@@ -186,36 +206,38 @@ function resolveDisplayLabel(params: {
 function buildMissingItems(params: {
   workArea: WorkAreaInput;
   lookup: Map<string, ProjectFactRecord>;
+  qualityLevel?: string | null;
+  confirmedTypes: Set<string>;
+  project: ProjectInput;
 }): string[] {
   const templates = getScopeQuestions(params.workArea.type);
   const missing: string[] = [];
+  const workAreaInput: QuestionWorkAreaInput = {
+    id: params.workArea.id,
+    type: params.workArea.type,
+    name: params.workArea.name,
+    sort_order: params.workArea.sort_order ?? 0,
+    status: params.workArea.status,
+  };
 
   for (const template of templates) {
-    const fact = params.lookup.get(
-      `${params.workArea.id}:${template.factKey}`
-    );
-    const value = fact?.value;
-
-    if (template.required) {
-      if (!factHasValue(value) || isNotSureValue(value)) {
-        missing.push(getMissingLabel(template));
-      }
+    if (
+      !isTemplateFactMissing({
+        template,
+        workArea: workAreaInput,
+        lookup: params.lookup,
+        qualityLevel: params.qualityLevel,
+        confirmedTypes: params.confirmedTypes,
+        project: params.project,
+      })
+    ) {
       continue;
     }
 
-    if (factHasValue(value) && isNotSureValue(value)) {
-      missing.push(template.label);
-    }
+    missing.push(getMissingLabel(template));
   }
 
   return [...new Set(missing)];
-}
-
-function getMissingLabel(template: ScopeQuestionTemplate): string {
-  if (template.factKey === "deck.area_m2") {
-    return "Deck area";
-  }
-  return template.label.replace(/\?$/, "").trim();
 }
 
 function factsFromQuestions(
@@ -264,9 +286,42 @@ function mergeFactsForWorkArea(params: {
   );
 }
 
+function injectInheritedFinishLevelFacts(params: {
+  workArea: WorkAreaInput;
+  candidates: Map<string, FactCandidate>;
+  qualityLevel?: string | null;
+}) {
+  const inherited = getInheritedFinishLevelForWorkArea(
+    params.workArea.type,
+    params.qualityLevel
+  );
+  if (!inherited) return;
+
+  const canonicalKey = getCanonicalFactKey(
+    inherited.factKey,
+    params.workArea.type
+  );
+
+  if (params.candidates.has(canonicalKey)) {
+    return;
+  }
+
+  params.candidates.set(canonicalKey, {
+    canonicalKey,
+    label: getFactDisplayLabel(canonicalKey),
+    value: inherited.value,
+    rawValue: inherited.value,
+    sourceLabel: "project spec",
+    sourcePriority: SOURCE_META.project_quality.priority,
+    source: "project_quality",
+    sortOrder: getTemplateSortOrder(params.workArea.type, canonicalKey),
+  });
+}
+
 function buildWorkAreaFacts(params: {
   workArea: WorkAreaInput;
   lookup: Map<string, ProjectFactRecord>;
+  qualityLevel?: string | null;
 }): { facts: ScopeReviewFact[]; assumptions: string[] } {
   const candidates = new Map<string, FactCandidate>();
   const assumptions: string[] = [];
@@ -318,28 +373,56 @@ function buildWorkAreaFacts(params: {
         workAreaId: params.workArea.id,
       }),
       value: formattedValue,
+      rawValue: fact.value,
       unit,
       sourceLabel: sourceMeta.label,
       sourcePriority: sourceMeta.priority,
+      source,
       sortOrder: getTemplateSortOrder(params.workArea.type, canonicalKey),
     };
 
     const existing = candidates.get(canonicalKey);
+    // One fact per canonical key: lower sourcePriority wins (user > derived > brief > …).
     if (!existing || candidate.sourcePriority < existing.sourcePriority) {
       candidates.set(canonicalKey, candidate);
     }
   }
 
+  injectInheritedFinishLevelFacts({
+    workArea: params.workArea,
+    candidates,
+    qualityLevel: params.qualityLevel,
+  });
+
   const facts = [...candidates.values()]
     .sort((a, b) => a.sortOrder - b.sortOrder)
-    .map((candidate) => ({
-      key: candidate.canonicalKey,
-      label: candidate.label,
-      value: candidate.value,
-      unit: candidate.unit,
-      sourceLabel: candidate.sourceLabel,
-      sourcePriority: candidate.sourcePriority,
-    }));
+    .map((candidate) => {
+      const editMeta = resolveFactEditMeta(
+        params.workArea.type,
+        candidate.canonicalKey,
+        candidate.rawValue
+      );
+      const readOnly =
+        candidate.sourceLabel === "calculated" ||
+        (candidate.source === "project_quality" &&
+          isInheritedFinishLevelKey(candidate.canonicalKey));
+
+      return {
+        key: candidate.canonicalKey,
+        label: candidate.label,
+        value: candidate.value,
+        rawValue: candidate.rawValue,
+        unit: candidate.unit ?? editMeta.unit,
+        sourceLabel: candidate.sourceLabel,
+        sourcePriority: candidate.sourcePriority,
+        readOnly,
+        derivedNote: readOnly
+          ? getDerivedFactNote(params.workArea.type, candidate.canonicalKey)
+          : undefined,
+        inputType: editMeta.inputType,
+        options: editMeta.options,
+      };
+    });
 
   return { facts, assumptions };
 }
@@ -348,12 +431,21 @@ export function buildScopeReview(params: {
   workAreas: WorkAreaInput[];
   projectFacts: ProjectFactRecord[];
   questions?: Question[];
+  qualityLevel?: string | null;
   scopeAssumptions?: string[];
   scopeExclusions?: string[];
 }): ScopeReview {
   const confirmed = params.workAreas
     .filter((workArea) => workArea.status === "confirmed")
     .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
+
+  const excludedWorkAreas = params.workAreas
+    .filter((workArea) => workArea.status === "excluded")
+    .sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0))
+    .map((workArea) => ({
+      workAreaId: workArea.id,
+      workAreaName: workArea.name,
+    }));
 
   const derivedFacts = deriveFactsForProject({
     workAreas: confirmed.map((workArea) => ({
@@ -373,8 +465,18 @@ export function buildScopeReview(params: {
       mergedFacts,
       questions: params.questions ?? [],
     });
-    const { facts, assumptions } = buildWorkAreaFacts({ workArea, lookup });
-    const missingItems = buildMissingItems({ workArea, lookup });
+    const { facts, assumptions } = buildWorkAreaFacts({
+      workArea,
+      lookup,
+      qualityLevel: params.qualityLevel,
+    });
+    const missingItems = buildMissingItems({
+      workArea,
+      lookup,
+      qualityLevel: params.qualityLevel,
+      confirmedTypes: new Set(confirmed.map((area) => area.type)),
+      project: { quality_level: params.qualityLevel ?? null },
+    });
 
     return {
       workAreaId: workArea.id,
@@ -399,6 +501,7 @@ export function buildScopeReview(params: {
 
   return {
     workAreas: workAreaReviews,
+    excludedWorkAreas,
     generalAssumptions,
     generalExclusions,
   };
