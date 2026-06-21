@@ -35,6 +35,31 @@ function valuesEqual(a: unknown, b: unknown): boolean {
   return JSON.stringify(a) === JSON.stringify(b);
 }
 
+function findExistingFact(
+  facts: ExistingFact[],
+  workAreas: ExistingWorkArea[],
+  key: string,
+  workAreaId: string | null,
+  workAreaType: string | null
+): ExistingFact | undefined {
+  if (workAreaId) {
+    const dedupeKey = factDedupeKey(workAreaId, key);
+    return facts.find(
+      (row) => factDedupeKey(row.work_area_id, row.key) === dedupeKey
+    );
+  }
+
+  if (workAreaType) {
+    return facts.find((row) => {
+      if (row.key !== key || !row.work_area_id) return false;
+      const workArea = workAreas.find((wa) => wa.id === row.work_area_id);
+      return workArea?.type === workAreaType;
+    });
+  }
+
+  return facts.find((row) => row.key === key && row.work_area_id === null);
+}
+
 function resolveWorkAreaAction(
   type: string,
   workAreas: ExistingWorkArea[],
@@ -114,9 +139,12 @@ export function mapExtractionToProposalItems(params: {
       // Work area may be added in the same proposal batch.
     }
 
-    const dedupeKey = factDedupeKey(workAreaId, fact.key);
-    const existing = params.facts.find(
-      (row) => factDedupeKey(row.work_area_id, row.key) === dedupeKey
+    const existing = findExistingFact(
+      params.facts,
+      params.workAreas,
+      fact.key,
+      workAreaId,
+      fact.work_area_type
     );
 
     let action: ProposedFact["action"] = fact.action ?? "add";
@@ -130,10 +158,7 @@ export function mapExtractionToProposalItems(params: {
     }
 
     const conflict =
-      Boolean(existing) &&
-      (existing!.source === "user" ||
-        (existing!.source !== "ai_extracted" &&
-          !valuesEqual(existing!.value, fact.value)));
+      existing !== undefined && !valuesEqual(existing.value, fact.value);
 
     proposedFacts.push({
       id: randomUUID(),

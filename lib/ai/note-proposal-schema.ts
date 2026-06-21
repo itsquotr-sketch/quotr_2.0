@@ -1,40 +1,44 @@
 import { z } from "zod";
 import { AIExtractionError } from "@/lib/ai/schema";
 
+export const NOTE_ANALYSIS_NO_UPDATES_MESSAGE =
+  "Quotr could not find clear updates in these notes.";
+
 const workAreaProposalSchema = z.object({
-  type: z.string(),
+  type: z.string().min(1),
   confidence: z.number().min(0).max(1),
-  rationale: z.string().optional().default(""),
+  rationale: z.string(),
   action: z.enum(["add", "restore", "no_change"]).optional(),
 });
 
 const factProposalSchema = z.object({
   work_area_type: z.string().nullable(),
-  key: z.string(),
-  label: z.string(),
+  key: z.string().min(1),
+  label: z.string().min(1),
   value: z.union([z.string(), z.number(), z.boolean()]),
   unit: z.string().optional(),
   confidence: z.number().min(0).max(1),
-  rationale: z.string().optional().default(""),
+  rationale: z.string(),
   action: z.enum(["add", "update", "no_change"]).optional(),
 });
 
 const constraintProposalSchema = z.object({
-  key: z.string(),
-  label: z.string(),
+  key: z.string().min(1),
+  label: z.string().min(1),
   value: z.union([z.string(), z.number(), z.boolean()]),
   confidence: z.number().min(0).max(1),
-  rationale: z.string().optional().default(""),
+  rationale: z.string(),
   action: z.enum(["add", "update", "no_change"]).optional(),
 });
 
+/** Strict internal schema for normalised note analysis output. */
 export const noteProposalExtractionSchema = z.object({
-  summary: z.string().optional().default(""),
-  confidence: z.number().min(0).max(1).optional().default(0.5),
-  workAreas: z.array(workAreaProposalSchema).default([]),
-  facts: z.array(factProposalSchema).default([]),
-  constraints: z.array(constraintProposalSchema).default([]),
-  warnings: z.array(z.string()).default([]),
+  summary: z.string(),
+  confidence: z.number().min(0).max(1),
+  workAreas: z.array(workAreaProposalSchema),
+  facts: z.array(factProposalSchema),
+  constraints: z.array(constraintProposalSchema),
+  warnings: z.array(z.string()),
 });
 
 export type NoteProposalExtractionOutput = z.infer<
@@ -48,30 +52,40 @@ const VALID_CONSTRAINT_KEYS = new Set([
   "working_hours",
 ]);
 
+export function validateNormalisedNoteAnalysis(
+  output: NoteProposalExtractionOutput
+): NoteProposalExtractionOutput {
+  const parsed = noteProposalExtractionSchema.safeParse(output);
+  if (!parsed.success) {
+    throw new AIExtractionError(
+      "Normalised note analysis failed internal validation.",
+      "NOTE_ANALYSIS_INTERNAL"
+    );
+  }
+  return parsed.data;
+}
+
 export function validateNoteProposalExtraction(
-  raw: unknown,
+  raw: NoteProposalExtractionOutput,
   allowedTypes: string[],
   catalogueTypes: string[]
 ): NoteProposalExtractionOutput {
-  const parsed = noteProposalExtractionSchema.safeParse(raw);
-  if (!parsed.success) {
-    throw new AIExtractionError("Note analysis failed schema validation.");
-  }
+  const parsed = validateNormalisedNoteAnalysis(raw);
 
   const allowedSet = new Set(allowedTypes);
   const catalogueSet = new Set(catalogueTypes);
 
-  const workAreas = parsed.data.workAreas.filter(
+  const workAreas = parsed.workAreas.filter(
     (wa) => allowedSet.has(wa.type) && catalogueSet.has(wa.type)
   );
 
-  const facts = parsed.data.facts.filter((fact) => {
+  const facts = parsed.facts.filter((fact) => {
     if (fact.work_area_type === null) return true;
     if (!catalogueSet.has(fact.work_area_type)) return false;
     return allowedSet.has(fact.work_area_type);
   });
 
-  const constraints = parsed.data.constraints.filter((row) =>
+  const constraints = parsed.constraints.filter((row) =>
     VALID_CONSTRAINT_KEYS.has(row.key)
   );
 
@@ -81,12 +95,13 @@ export function validateNoteProposalExtraction(
     constraints.length === 0
   ) {
     throw new AIExtractionError(
-      "No actionable updates were found in the site notes."
+      NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
+      "NOTE_ANALYSIS_NO_UPDATES"
     );
   }
 
   return {
-    ...parsed.data,
+    ...parsed,
     workAreas,
     facts,
     constraints,

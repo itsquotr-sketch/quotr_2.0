@@ -2,11 +2,15 @@ import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { DashboardProjectList } from "@/components/projects/DashboardProjectList";
+import { DashboardSummaryCards } from "@/components/projects/DashboardSummaryCards";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { SetupPromptCard } from "@/components/setup/SetupPromptCard";
 import type { SetupStep } from "@/components/setup/types";
-import { listProjects } from "@/lib/projects/actions";
-import type { ProjectListFilter } from "@/lib/projects/types";
+import {
+  getDashboardPipelineSummary,
+  listProjects,
+} from "@/lib/projects/actions";
+import { parseProjectListFilter } from "@/lib/projects/status";
 import { getSetupState, isSetupIncomplete } from "@/lib/setup/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,20 +19,13 @@ function getResumeStep(step: SetupStep | undefined): SetupStep {
   return step;
 }
 
-function parseFilter(value?: string): ProjectListFilter {
-  if (value === "archived" || value === "all") {
-    return value;
-  }
-  return "active";
-}
-
 type DashboardPageProps = {
   searchParams: Promise<{ filter?: string; q?: string }>;
 };
 
 export default async function DashboardPage({ searchParams }: DashboardPageProps) {
   const params = await searchParams;
-  const filter = parseFilter(params.filter);
+  const filter = parseProjectListFilter(params.filter);
   const search = params.q?.trim() ?? "";
 
   const supabase = await createClient();
@@ -43,8 +40,9 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .maybeSingle();
 
   const setupIncomplete = await isSetupIncomplete();
-  const [projects, setupState] = await Promise.all([
+  const [projects, summary, setupState] = await Promise.all([
     listProjects({ filter, search }),
+    getDashboardPipelineSummary(),
     setupIncomplete ? getSetupState() : Promise.resolve(null),
   ]);
 
@@ -68,13 +66,17 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <SetupPromptCard currentStep={resumeStep} />
           ) : null}
 
-          <Suspense fallback={null}>
-            <DashboardProjectList
-              projects={projects}
-              initialFilter={filter}
-              initialSearch={search}
-            />
-          </Suspense>
+          <div className="space-y-6">
+            <DashboardSummaryCards summary={summary} />
+
+            <Suspense fallback={null}>
+              <DashboardProjectList
+                projects={projects}
+                initialFilter={filter}
+                initialSearch={search}
+              />
+            </Suspense>
+          </div>
         </div>
       </div>
     </>

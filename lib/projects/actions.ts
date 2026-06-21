@@ -6,19 +6,42 @@ import { getAuthOrgContext } from "@/lib/assistant/state";
 import { projectDetailsSchema } from "@/lib/projects/schema";
 import {
   applyProjectListFilter,
+  hasBusinessStatusColumns,
   hasLifecycleColumns,
+  isMissingBusinessStatusColumnsError,
   isMissingLifecycleColumnsError,
+  markBusinessStatusColumnsUnavailable,
   markLifecycleColumnsUnavailable,
   PROJECT_SELECT,
   PROJECT_SELECT_BASE,
+  PROJECT_SELECT_WITHOUT_BUSINESS_STATUS,
   withLifecycleDefaults,
 } from "@/lib/projects/query-utils";
+import {
+  ACTIVE_PIPELINE_STATUSES,
+  isBusinessStatus,
+  isLifecycleArchiveFilter,
+} from "@/lib/projects/status";
 import type {
+  DashboardPipelineSummary,
   Project,
   ProjectActionState,
   ProjectListFilter,
   ProjectListItem,
 } from "@/lib/projects/types";
+
+function getProjectSelect(
+  lifecycleAvailable: boolean,
+  businessStatusAvailable: boolean
+): string {
+  if (!lifecycleAvailable) {
+    return PROJECT_SELECT_BASE;
+  }
+
+  return businessStatusAvailable
+    ? PROJECT_SELECT
+    : PROJECT_SELECT_WITHOUT_BUSINESS_STATUS;
+}
 
 export async function listProjects(
   options?: {
@@ -35,10 +58,15 @@ export async function listProjects(
   const filter = options?.filter ?? "active";
   const search = options?.search?.trim().toLowerCase() ?? "";
   const lifecycleAvailable = await hasLifecycleColumns(context.supabase);
+  const businessStatusAvailable = lifecycleAvailable
+    ? await hasBusinessStatusColumns(context.supabase)
+    : false;
 
   let query = context.supabase
     .from("projects")
-    .select(lifecycleAvailable ? PROJECT_SELECT : PROJECT_SELECT_BASE)
+    .select(
+      getProjectSelect(lifecycleAvailable, businessStatusAvailable)
+    )
     .order("created_at", { ascending: false });
 
   if (lifecycleAvailable) {
@@ -46,8 +74,17 @@ export async function listProjects(
 
     if (filter === "active") {
       query = query.is("archived_at", null);
-    } else if (filter === "archived") {
+      if (businessStatusAvailable) {
+        query = query.in("business_status", ACTIVE_PIPELINE_STATUSES);
+      }
+    } else if (isLifecycleArchiveFilter(filter)) {
       query = query.not("archived_at", "is", null);
+    } else if (
+      businessStatusAvailable &&
+      filter !== "all" &&
+      isBusinessStatus(filter)
+    ) {
+      query = query.eq("business_status", filter);
     }
   }
 
@@ -59,6 +96,11 @@ export async function listProjects(
       return listProjects(options, true);
     }
 
+    if (isMissingBusinessStatusColumnsError(error) && !retried) {
+      markBusinessStatusColumnsUnavailable();
+      return listProjects(options, true);
+    }
+
     console.error("[listProjects] query failed:", error.message);
     return [];
   }
@@ -67,8 +109,13 @@ export async function listProjects(
     withLifecycleDefaults(row as Record<string, unknown>)
   );
 
-  if (!lifecycleAvailable) {
-    projects = applyProjectListFilter(projects, filter, false);
+  if (!lifecycleAvailable || !businessStatusAvailable) {
+    projects = applyProjectListFilter(
+      projects,
+      filter,
+      lifecycleAvailable,
+      businessStatusAvailable
+    );
   }
 
   if (search) {
@@ -117,6 +164,98 @@ export async function listProjects(
   });
 }
 
+export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSummary> {
+  const context = await getAuthOrgContext();
+  if (!context) {
+    return {
+      activeCount: 0,
+      estimateReadyCount: 0,
+      quotesSentCount: 0,
+      wonCount: 0,
+      lostCount: 0,
+    };
+  }
+
+  const lifecycleAvailable = await hasLifecycleColumns(context.supabase);
+  const businessStatusAvailable = lifecycleAvailable
+    ? await hasBusinessStatusColumns(context.supabase)
+    : false;
+
+  if (!lifecycleAvailable || !businessStatusAvailable) {
+    const projects = await listProjects({ filter: "active" });
+    return {
+      activeCount: projects.length,
+      estimateReadyCount: projects.filter(
+        (project) => project.business_status === "estimate_ready"
+      ).length,
+      quotesSentCount: projects.filter(
+        (project) => project.business_status === "quote_sent"
+      ).length,
+      wonCount: 0,
+      lostCount: 0,
+    };
+  }
+
+  const query = context.supabase
+    .from("projects")
+    .select("business_status, archived_at")
+    .is("deleted_at", null);
+
+  const { data, error } = await query;
+
+  if (error) {
+    console.error("[getDashboardPipelineSummary] query failed:", error.message);
+    return {
+      activeCount: 0,
+      estimateReadyCount: 0,
+      quotesSentCount: 0,
+      wonCount: 0,
+      lostCount: 0,
+    };
+  }
+
+  const rows = data ?? [];
+  let activeCount = 0;
+  let estimateReadyCount = 0;
+  let quotesSentCount = 0;
+  let wonCount = 0;
+  let lostCount = 0;
+
+  for (const row of rows) {
+    const status = row.business_status as string;
+    const isArchived = Boolean(row.archived_at);
+
+    if (
+      !isArchived &&
+      ACTIVE_PIPELINE_STATUSES.includes(
+        status as (typeof ACTIVE_PIPELINE_STATUSES)[number]
+      )
+    ) {
+      activeCount += 1;
+    }
+    if (status === "estimate_ready") {
+      estimateReadyCount += 1;
+    }
+    if (status === "quote_sent") {
+      quotesSentCount += 1;
+    }
+    if (status === "won") {
+      wonCount += 1;
+    }
+    if (status === "lost") {
+      lostCount += 1;
+    }
+  }
+
+  return {
+    activeCount,
+    estimateReadyCount,
+    quotesSentCount,
+    wonCount,
+    lostCount,
+  };
+}
+
 export async function getProject(
   projectId: string,
   retried = false
@@ -127,10 +266,15 @@ export async function getProject(
   }
 
   const lifecycleAvailable = await hasLifecycleColumns(context.supabase);
+  const businessStatusAvailable = lifecycleAvailable
+    ? await hasBusinessStatusColumns(context.supabase)
+    : false;
 
   let query = context.supabase
     .from("projects")
-    .select(lifecycleAvailable ? PROJECT_SELECT : PROJECT_SELECT_BASE)
+    .select(
+      getProjectSelect(lifecycleAvailable, businessStatusAvailable)
+    )
     .eq("id", projectId);
 
   if (lifecycleAvailable) {
@@ -142,6 +286,11 @@ export async function getProject(
   if (error) {
     if (isMissingLifecycleColumnsError(error) && !retried) {
       markLifecycleColumnsUnavailable();
+      return getProject(projectId, true);
+    }
+
+    if (isMissingBusinessStatusColumnsError(error) && !retried) {
+      markBusinessStatusColumnsUnavailable();
       return getProject(projectId, true);
     }
 
@@ -205,11 +354,41 @@ export async function createProject(
       stage: "brief",
       quality_level: "unknown",
       status: "draft",
+      business_status: "lead",
     })
     .select("id")
     .single();
 
   if (error || !project) {
+    if (isMissingBusinessStatusColumnsError(error)) {
+      const { data: fallbackProject, error: fallbackError } = await supabase
+        .from("projects")
+        .insert({
+          org_id: orgId,
+          created_by: user.id,
+          title,
+          client_name: client_name || null,
+          site_address: site_address || null,
+          brief_text: brief_text || null,
+          priority,
+          due_date: due_date || null,
+          notes: notes || null,
+          stage: "brief",
+          quality_level: "unknown",
+          status: "draft",
+        })
+        .select("id")
+        .single();
+
+      if (fallbackError || !fallbackProject) {
+        console.error("[createProject] insert failed:", fallbackError?.message);
+        return { error: fallbackError?.message ?? "Failed to create project." };
+      }
+
+      revalidatePath("/app/dashboard");
+      redirect(`/app/projects/${fallbackProject.id}`);
+    }
+
     console.error("[createProject] insert failed:", error?.message);
     return { error: error?.message ?? "Failed to create project." };
   }

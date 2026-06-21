@@ -1,8 +1,9 @@
 import type { ProjectDetailsInput } from "@/lib/projects/schema";
+import type { BusinessStatus } from "@/lib/projects/status";
+
+export type { ProjectListFilter } from "@/lib/projects/status";
 
 export type ProjectPriority = "low" | "normal" | "high" | "urgent";
-
-export type ProjectListFilter = "active" | "archived" | "all";
 
 export type Project = {
   id: string;
@@ -16,6 +17,11 @@ export type Project = {
   stage: string;
   quality_level: string;
   status: string;
+  business_status: BusinessStatus;
+  status_updated_at: string | null;
+  lost_reason: string | null;
+  won_at: string | null;
+  lost_at: string | null;
   created_at: string;
   archived_at: string | null;
   deleted_at: string | null;
@@ -35,4 +41,18 @@ export type ProjectActionState = {
   error?: string;
   fieldErrors?: Record<string, string[]>;
   success?: boolean;
+};
+
+export type DashboardPipelineSummary = {
+  activeCount: number;
+  estimateReadyCount: number;
+  quotesSentCount: number;
+  wonCount: number;
+  lostCount: number;
+};
+
+export type UpdateProjectBusinessStatusInput = {
+  projectId: string;
+  businessStatus: BusinessStatus;
+  lostReason?: string;
 };

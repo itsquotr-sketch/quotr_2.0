@@ -18,7 +18,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
+import { cn } from "@/lib/utils";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 
 type EstimatePanelProps = {
@@ -30,7 +30,12 @@ type EstimatePanelProps = {
   panelScopeSummaries?: PanelScopeSummary[];
   scopeReview?: ScopeReview;
   questionsSubmitted?: boolean;
+  constraintsSubmitted?: boolean;
+  canGenerateEstimate?: boolean;
+  pendingProposalCount?: number;
+  constraintCount?: number;
   onViewBreakdown?: () => void;
+  onGenerate?: () => void;
   onRegenerate?: () => void;
   onMarginSave?: (targetMarginPercent: number | null) => Promise<void>;
 };
@@ -39,20 +44,23 @@ function MetricRow({
   label,
   value,
   prominent,
+  dimmed,
 }: {
   label: string;
   value: string;
   prominent?: boolean;
+  dimmed?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
       <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
       <span
-        className={
+        className={cn(
           prominent
-            ? "text-right text-lg font-semibold tracking-tight"
-            : "text-right text-sm font-medium"
-        }
+            ? "text-right text-2xl font-semibold tracking-tight"
+            : "text-right text-sm font-medium",
+          dimmed && "text-muted-foreground line-through decoration-muted-foreground/50"
+        )}
       >
         {value}
       </span>
@@ -60,10 +68,26 @@ function MetricRow({
   );
 }
 
-function previewItems(items: string[], limit = 2) {
-  const shown = items.slice(0, limit);
-  const remaining = items.length - shown.length;
-  return { shown, remaining };
+function buildScopeHealthSummary(input: {
+  workAreaCount: number;
+  missingCount: number;
+  constraintCount: number;
+  assumptionCount: number;
+  pendingProposalCount: number;
+}): string {
+  const parts = [
+    `${input.workAreaCount} work area${input.workAreaCount === 1 ? "" : "s"}`,
+    `${input.missingCount} missing`,
+    `${input.constraintCount} constraint${input.constraintCount === 1 ? "" : "s"}`,
+  ];
+  let summary = `Scope health: ${parts.join(" · ")}`;
+  if (input.assumptionCount > 0) {
+    summary += ` · ${input.assumptionCount} assumption${input.assumptionCount === 1 ? "" : "s"}`;
+  }
+  if (input.pendingProposalCount > 0) {
+    summary += ` · ${input.pendingProposalCount} proposal${input.pendingProposalCount === 1 ? "" : "s"} need review`;
+  }
+  return summary;
 }
 
 export function EstimatePanel({
@@ -75,23 +99,42 @@ export function EstimatePanel({
   panelScopeSummaries = [],
   scopeReview,
   questionsSubmitted = false,
+  constraintsSubmitted = false,
+  canGenerateEstimate = false,
+  pendingProposalCount = 0,
+  constraintCount = 0,
   onViewBreakdown,
+  onGenerate,
   onRegenerate,
   onMarginSave,
 }: EstimatePanelProps) {
-  const assumptionPreview = estimate
-    ? previewItems(estimate.assumptions)
-    : scopeReview
-      ? previewItems(scopeReview.generalAssumptions)
-      : { shown: [], remaining: 0 };
-  const missingPreview = estimate
-    ? previewItems(estimate.missingInfo)
-    : scopeReview
-      ? previewItems(
-          scopeReview.workAreas.flatMap((workArea) => workArea.missingItems)
-        )
-      : { shown: [], remaining: 0 };
+  const isStale = Boolean(estimate?.isStale);
   const showScopePreview = questionsSubmitted && panelScopeSummaries.length > 0;
+
+  const missingCount = estimate
+    ? estimate.missingInfo.length
+    : scopeReview
+      ? scopeReview.workAreas.reduce(
+          (sum, workArea) => sum + workArea.missingItems.length,
+          0
+        )
+      : 0;
+  const assumptionCount = estimate
+    ? estimate.assumptions.length
+    : scopeReview
+      ? scopeReview.generalAssumptions.length
+      : 0;
+  const workAreaCount = estimate
+    ? estimate.includedWorkAreas.length
+    : panelScopeSummaries.length;
+
+  const scopeHealthSummary = buildScopeHealthSummary({
+    workAreaCount,
+    missingCount,
+    constraintCount,
+    assumptionCount,
+    pendingProposalCount,
+  });
 
   return (
     <Card className="lg:sticky lg:top-6">
@@ -100,24 +143,31 @@ export function EstimatePanel({
         <CardDescription>
           {estimate
             ? "Draft estimate based on your inputs"
-            : "Complete the guided questions to generate a draft quick estimate."}
+            : canGenerateEstimate
+              ? "Ready to generate your draft estimate"
+              : constraintsSubmitted
+                ? "Complete remaining scope steps to generate"
+                : "Complete the guided questions to generate a draft quick estimate."}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        {estimate?.isStale ? (
+        {isStale ? (
           <div
-            className="rounded-xl border border-amber-200 bg-amber-50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/30"
-            role="status"
+            className="space-y-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-3 dark:border-amber-600 dark:bg-amber-950/40"
+            role="alert"
           >
-            <p className="text-xs text-amber-950 dark:text-amber-100">
-              This estimate is based on older inputs. Regenerate to update the
-              pricing.
-            </p>
+            <div>
+              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                This estimate is outdated
+              </p>
+              <p className="mt-0.5 text-xs text-amber-900/90 dark:text-amber-200/90">
+                Regenerate to update pricing from the latest scope.
+              </p>
+            </div>
             <Button
               type="button"
-              variant="outline"
               size="sm"
-              className="mt-2 h-8 border-amber-300 bg-white text-xs hover:bg-amber-50 dark:border-amber-800 dark:bg-transparent"
+              className="h-9 w-full bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500"
               onClick={onRegenerate}
               disabled={isRegenerating || isGenerating}
             >
@@ -140,193 +190,140 @@ export function EstimatePanel({
           </div>
         ) : !estimate ? (
           <div className="space-y-4">
-            <div className="rounded-2xl bg-muted/50 px-4 py-6 text-center">
-              <p className="text-sm font-medium">No estimate yet</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                {showScopePreview
-                  ? "Work through site constraints to generate a draft range."
-                  : "Work through the assistant to unlock a draft range."}
-              </p>
-            </div>
-
-            {showScopePreview ? (
+            {canGenerateEstimate ? (
               <>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground">
-                    Included scope
+                <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-5 text-center">
+                  <p className="text-sm font-medium">Ready to generate</p>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Scope and constraints are complete. Generate your draft
+                    estimate when you are ready.
                   </p>
-                  <ul className="mt-1.5 space-y-1 text-xs">
-                    {panelScopeSummaries.map((entry) => (
-                      <li key={entry.workArea}>
-                        <span className="font-medium">{entry.workArea}:</span>{" "}
-                        <span className="text-muted-foreground">
-                          {entry.summary}
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
                 </div>
-
-                {assumptionPreview.shown.length > 0 ? (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Assumptions
-                    </p>
-                    <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs text-muted-foreground">
-                      {assumptionPreview.shown.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                    {assumptionPreview.remaining > 0 ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        +{assumptionPreview.remaining} more in scope review
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
-
-                {missingPreview.shown.length > 0 ? (
-                  <div>
-                    <p className="text-xs font-medium text-muted-foreground">
-                      Missing info
-                    </p>
-                    <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs text-muted-foreground">
-                      {missingPreview.shown.map((item) => (
-                        <li key={item}>{item}</li>
-                      ))}
-                    </ul>
-                    {missingPreview.remaining > 0 ? (
-                      <p className="mt-1 text-xs text-muted-foreground">
-                        +{missingPreview.remaining} more in scope review
-                      </p>
-                    ) : null}
-                  </div>
-                ) : null}
+                <Button
+                  type="button"
+                  className="h-10 w-full"
+                  onClick={onGenerate}
+                  disabled={isGenerating || !onGenerate}
+                >
+                  {isGenerating ? (
+                    <>
+                      <Loader2 className="mr-1.5 size-4 animate-spin" />
+                      Generating estimate…
+                    </>
+                  ) : (
+                    "Generate estimate"
+                  )}
+                </Button>
               </>
+            ) : (
+              <div className="rounded-2xl bg-muted/50 px-4 py-6 text-center">
+                <p className="text-sm font-medium">No estimate yet</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {questionsSubmitted
+                    ? "Complete scope details and constraints to generate an estimate."
+                    : "Work through the assistant to unlock a draft range."}
+                </p>
+              </div>
+            )}
+
+            {showScopePreview && !canGenerateEstimate ? (
+              <div className="space-y-2 text-xs text-muted-foreground">
+                <p>
+                  {workAreaCount} work area{workAreaCount === 1 ? "" : "s"}{" "}
+                  included
+                </p>
+                {assumptionCount > 0 ? (
+                  <p>
+                    {assumptionCount} assumption
+                    {assumptionCount === 1 ? "" : "s"}
+                  </p>
+                ) : null}
+                {missingCount > 0 ? (
+                  <p>
+                    {missingCount} missing detail
+                    {missingCount === 1 ? "" : "s"}
+                  </p>
+                ) : null}
+              </div>
+            ) : null}
+
+            {questionsSubmitted ? (
+              <p className="text-xs text-muted-foreground">{scopeHealthSummary}</p>
             ) : null}
           </div>
         ) : (
           <>
-            <div className="space-y-3 rounded-2xl bg-muted/40 p-4">
+            <div
+              className={cn(
+                "space-y-3 rounded-2xl bg-muted/40 p-4",
+                isStale && "opacity-60"
+              )}
+            >
               <MetricRow
                 label="Recommended sell"
                 value={formatCurrency(estimate.recommendedSell)}
                 prominent
+                dimmed={isStale}
               />
-              <Separator />
               <MetricRow
                 label="Sell range"
                 value={formatCurrencyRange(estimate.sellLow, estimate.sellHigh)}
+                dimmed={isStale}
               />
-              <MetricRow
-                label="Estimated cost"
-                value={formatCurrency(estimate.recommendedCost)}
-              />
-              <MetricRow
-                label="Gross profit"
-                value={formatCurrency(estimate.grossProfit)}
-              />
-              {onMarginSave ? (
-                <MarginEditControl
-                  marginPercent={estimate.marginPercent}
-                  targetMarginPercent={estimate.targetMarginPercent}
-                  defaultMarginPercent={defaultMarginPercent}
-                  disabled={estimate.isStale || isRegenerating || isGenerating}
-                  isSaving={isSavingMargin}
-                  onSave={onMarginSave}
+
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-1">
+                <MetricRow
+                  label="Cost"
+                  value={formatCurrency(estimate.recommendedCost)}
+                  dimmed={isStale}
                 />
-              ) : (
+                <MetricRow
+                  label="Gross profit"
+                  value={formatCurrency(estimate.grossProfit)}
+                  dimmed={isStale}
+                />
                 <MetricRow
                   label="Margin"
                   value={formatPercent(estimate.marginPercent)}
+                  dimmed={isStale}
                 />
-              )}
+                <MetricRow
+                  label="Confidence"
+                  value={`${estimate.confidence}%`}
+                  dimmed={isStale}
+                />
+              </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
-              <div className="rounded-2xl border px-3 py-2">
-                <p className="text-xs text-muted-foreground">Confidence</p>
-                <p className="mt-0.5 text-sm font-medium">
-                  {estimate.confidence}%
-                </p>
-              </div>
-              <div className="rounded-2xl border px-3 py-2">
-                <p className="text-xs text-muted-foreground">Rate source</p>
-                <p className="mt-0.5 text-sm font-medium leading-snug">
-                  {estimate.rateSourceSummary}
-                </p>
-                {estimate.rateSourceSummary
-                  .toLowerCase()
-                  .includes("benchmark") ||
-                estimate.rateSourceSummary
-                  .toLowerCase()
-                  .includes("missing") ? (
-                  <Link
-                    href="/app/rates"
-                    className="mt-1 inline-block text-xs text-muted-foreground underline-offset-2 hover:underline"
-                  >
-                    Set your rates
-                  </Link>
-                ) : null}
-              </div>
+            {isStale && onMarginSave ? (
+              <p className="text-xs text-amber-800 dark:text-amber-200">
+                Regenerate before editing margin.
+              </p>
+            ) : null}
+
+            <div className="rounded-xl border px-3 py-2">
+              <p className="text-xs text-muted-foreground">Rate source</p>
+              <p className="mt-0.5 text-sm font-medium leading-snug">
+                {estimate.rateSourceSummary}
+              </p>
+              {estimate.rateSourceSummary
+                .toLowerCase()
+                .includes("benchmark") ||
+              estimate.rateSourceSummary.toLowerCase().includes("missing") ? (
+                <Link
+                  href="/app/rates"
+                  className="mt-1 inline-block text-xs text-muted-foreground underline-offset-2 hover:underline"
+                >
+                  Set your rates
+                </Link>
+              ) : null}
             </div>
+
+            <p className="text-xs text-muted-foreground">{scopeHealthSummary}</p>
 
             <p className="text-xs text-muted-foreground">
-              Internal working estimate — not a client quote.
+              Internal only — not a quote.
             </p>
-
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                Included scope
-              </p>
-              <ul className="mt-1.5 space-y-1 text-xs">
-                {estimate.includedWorkAreas.map((wa) => {
-                  const entry = panelScopeSummaries.find(
-                    (s) => s.workArea === wa.name
-                  );
-                  return (
-                    <li key={wa.id}>
-                      <span className="font-medium">{wa.name}:</span>{" "}
-                      <span className="text-muted-foreground">
-                        {entry?.summary ?? wa.summary}
-                      </span>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                Assumptions
-              </p>
-              <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs text-muted-foreground">
-                {assumptionPreview.shown.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              {assumptionPreview.remaining > 0 ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  +{assumptionPreview.remaining} more in full breakdown
-                </p>
-              ) : null}
-            </div>
-
-            <div>
-              <p className="text-xs font-medium text-muted-foreground">
-                Missing info
-              </p>
-              <ul className="mt-1.5 list-inside list-disc space-y-1 text-xs text-muted-foreground">
-                {missingPreview.shown.map((item) => (
-                  <li key={item}>{item}</li>
-                ))}
-              </ul>
-              {missingPreview.remaining > 0 ? (
-                <p className="mt-1 text-xs text-muted-foreground">
-                  +{missingPreview.remaining} more in full breakdown
-                </p>
-              ) : null}
-            </div>
 
             <Button
               type="button"
@@ -336,6 +333,17 @@ export function EstimatePanel({
             >
               View full breakdown
             </Button>
+
+            {!isStale && onMarginSave ? (
+              <MarginEditControl
+                marginPercent={estimate.marginPercent}
+                targetMarginPercent={estimate.targetMarginPercent}
+                defaultMarginPercent={defaultMarginPercent}
+                disabled={isRegenerating || isGenerating}
+                isSaving={isSavingMargin}
+                onSave={onMarginSave}
+              />
+            ) : null}
           </>
         )}
       </CardContent>

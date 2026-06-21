@@ -5,6 +5,7 @@ import { notFound, redirect } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import {
   isMissingLifecycleColumnsError,
+  isMissingBusinessStatusColumnsError,
   mapLifecycleActionError,
   markLifecycleColumnsUnavailable,
 } from "@/lib/projects/query-utils";
@@ -167,25 +168,38 @@ export async function duplicateProject(projectId: string): Promise<never> {
     notFound();
   }
 
-  const { data: newProject, error: insertError } = await supabase
+  const insertPayload = {
+    org_id: orgId,
+    created_by: user.id,
+    title: `${source.title} Copy`,
+    brief_text: source.brief_text,
+    client_name: source.client_name,
+    site_address: null,
+    priority: source.priority,
+    due_date: source.due_date,
+    notes: source.notes,
+    quality_level: source.quality_level,
+    status: source.status === "archived" ? "draft" : source.status,
+    stage: "confirm_work_areas" as const,
+    duplicated_from_project_id: source.id,
+    business_status: "lead" as const,
+  };
+
+  let { data: newProject, error: insertError } = await supabase
     .from("projects")
-    .insert({
-      org_id: orgId,
-      created_by: user.id,
-      title: `${source.title} Copy`,
-      brief_text: source.brief_text,
-      client_name: source.client_name,
-      site_address: null,
-      priority: source.priority,
-      due_date: source.due_date,
-      notes: source.notes,
-      quality_level: source.quality_level,
-      status: source.status === "archived" ? "draft" : source.status,
-      stage: "confirm_work_areas",
-      duplicated_from_project_id: source.id,
-    })
+    .insert(insertPayload)
     .select("id")
     .single();
+
+  if (insertError && isMissingBusinessStatusColumnsError(insertError)) {
+    const fallbackPayload = { ...insertPayload };
+    delete (fallbackPayload as { business_status?: string }).business_status;
+    ({ data: newProject, error: insertError } = await supabase
+      .from("projects")
+      .insert(fallbackPayload)
+      .select("id")
+      .single());
+  }
 
   if (insertError || !newProject) {
     if (insertError && isMissingLifecycleColumnsError(insertError)) {

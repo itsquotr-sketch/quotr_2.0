@@ -2,9 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import { extractFromSiteNotes } from "@/lib/ai/extract-notes";
+import {
+  extractFromSiteNotes,
+  NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
+  NOTE_ANALYSIS_PARSE_USER_MESSAGE,
+} from "@/lib/ai/extract-notes";
 import { AIExtractionError } from "@/lib/ai/schema";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
+import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { markEstimateStale } from "@/lib/estimate/stale";
@@ -19,6 +24,7 @@ import type {
 } from "@/lib/project-notes/proposals/types";
 import { STATIC_CONSTRAINT_SEEDS } from "@/lib/assistant/mock-seed";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
+import { normalizeCanonicalFactKey } from "@/lib/scopes/fact-keys";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { createClient } from "@/lib/supabase/server";
 
@@ -166,7 +172,7 @@ export async function analyseProjectNotes(
   }
 
   if (!noteRows?.length) {
-    return { error: "No new notes to analyse." };
+    return { error: "No new site notes to analyse." };
   }
 
   const [
@@ -217,6 +223,7 @@ export async function analyseProjectNotes(
   let extraction;
   try {
     extraction = await extractFromSiteNotes({
+      projectId,
       context: {
         briefText: project.brief_text,
         confirmedWorkAreas,
@@ -247,8 +254,29 @@ export async function analyseProjectNotes(
     });
   } catch (error) {
     if (error instanceof AIExtractionError) {
+      const friendlyCodes = new Set([
+        "NOTE_ANALYSIS_PARSE",
+        "NOTE_ANALYSIS_SCHEMA",
+        "NOTE_ANALYSIS_PARSE_RETRY",
+        "NOTE_ANALYSIS_SETUP",
+        "NOTE_ANALYSIS_NO_UPDATES",
+      ]);
+      if (error.code && friendlyCodes.has(error.code)) {
+        return { error: error.message };
+      }
+      if (
+        error.message.includes("JSON") ||
+        error.message.includes("schema validation")
+      ) {
+        return { error: NOTE_ANALYSIS_PARSE_USER_MESSAGE };
+      }
       return { error: error.message };
     }
+    console.error("[analyseProjectNotes]", {
+      projectId,
+      noteCount: noteRows.length,
+      reason: error instanceof Error ? error.message : "unknown",
+    });
     return { error: "We couldn't analyse your notes. Please try again." };
   }
 
@@ -270,7 +298,7 @@ export async function analyseProjectNotes(
     proposalItems.proposedConstraints.length === 0
   ) {
     return {
-      error: "No actionable updates were found in the site notes.",
+      error: NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
     };
   }
 
@@ -490,11 +518,16 @@ export async function applyNoteProposal(
     }
     if (factProposal.workAreaType && !workAreaId) continue;
 
+    const canonicalKey = normalizeCanonicalFactKey(
+      factProposal.key,
+      factProposal.workAreaType ?? null
+    );
+
     let factQuery = supabase
       .from("project_facts")
       .select("id, source")
       .eq("project_id", projectId)
-      .eq("key", factProposal.key);
+      .eq("key", canonicalKey);
 
     if (workAreaId) {
       factQuery = factQuery.eq("work_area_id", workAreaId);
@@ -524,10 +557,35 @@ export async function applyNoteProposal(
         org_id: orgId,
         project_id: projectId,
         work_area_id: workAreaId,
-        key: factProposal.key,
+        key: canonicalKey,
         ...factPayload,
       });
       if (!error) changesApplied += 1;
+    }
+
+    if (workAreaId) {
+      const { data: matchingQuestions } = await supabase
+        .from("questions")
+        .select("id, input_type")
+        .eq("project_id", projectId)
+        .eq("work_area_id", workAreaId)
+        .eq("key", canonicalKey);
+
+      for (const question of matchingQuestions ?? []) {
+        const storedValue = normalizeAnswerForStorage(
+          factProposal.proposedValue as string | number | boolean,
+          question.input_type as "number" | "select" | "boolean" | "text"
+        );
+
+        await supabase
+          .from("questions")
+          .update({
+            answer_value: storedValue,
+            answer_source: "user",
+          })
+          .eq("id", question.id)
+          .eq("project_id", projectId);
+      }
     }
   }
 
@@ -605,6 +663,24 @@ export async function applyNoteProposal(
     .eq("org_id", orgId);
 
   if (changesApplied > 0) {
+    const { data: workAreasForDerived } = await supabase
+      .from("work_areas")
+      .select("id, type, status")
+      .eq("project_id", projectId);
+
+    const { data: factsForDerived } = await supabase
+      .from("project_facts")
+      .select("key, work_area_id, value, source")
+      .eq("project_id", projectId);
+
+    await persistDerivedFactsForProject(
+      supabase,
+      orgId,
+      projectId,
+      workAreasForDerived ?? [],
+      factsForDerived ?? []
+    );
+
     await ensureMissingDetailsQuestionBlock(
       supabase,
       orgId,

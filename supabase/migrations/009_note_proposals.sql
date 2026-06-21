@@ -30,7 +30,7 @@ create index note_proposals_org_project_idx
 create index note_proposals_project_status_idx
   on public.note_proposals (project_id, status);
 
-create index note_proposals_created_idx
+create index note_proposals_project_created_idx
   on public.note_proposals (project_id, created_at desc);
 
 alter table public.note_proposals enable row level security;

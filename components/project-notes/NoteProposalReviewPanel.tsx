@@ -2,8 +2,8 @@
 
 import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
-import { useMemo, useState } from "react";
-import { AssistantMessage } from "@/components/assistant/AssistantMessage";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
+import { CollapsibleStageCard } from "@/components/assistant/CollapsibleStageCard";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -72,7 +72,7 @@ function ProposalItemRow({
             </Label>
             {conflict ? (
               <Badge variant="outline" className="text-[10px] text-amber-700">
-                Conflict
+                Conflicts with current answer
               </Badge>
             ) : null}
             <span className="text-[10px] text-muted-foreground">
@@ -90,8 +90,8 @@ function ProposalItemRow({
           <p className="text-xs text-muted-foreground">{reason}</p>
           {conflict ? (
             <p className="text-xs text-amber-800 dark:text-amber-200">
-              This will replace the current value and mark the estimate as
-              outdated.
+              Applying this will replace the current value and mark the estimate
+              as outdated.
             </p>
           ) : null}
         </div>
@@ -134,12 +134,23 @@ export function NoteProposalReviewPanel({
   const [error, setError] = useState<string | null>(null);
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  const conflictCount = useMemo(
-    () =>
-      proposal.proposedFacts.filter((item) => item.conflict).length +
-      proposal.proposedConstraints.filter((item) => item.conflict).length,
-    [proposal]
+  const nonConflictFacts = useMemo(
+    () => proposal.proposedFacts.filter((item) => !item.conflict),
+    [proposal.proposedFacts]
   );
+  const conflictFacts = useMemo(
+    () => proposal.proposedFacts.filter((item) => item.conflict),
+    [proposal.proposedFacts]
+  );
+  const nonConflictConstraints = useMemo(
+    () => proposal.proposedConstraints.filter((item) => !item.conflict),
+    [proposal.proposedConstraints]
+  );
+  const conflictConstraints = useMemo(
+    () => proposal.proposedConstraints.filter((item) => item.conflict),
+    [proposal.proposedConstraints]
+  );
+  const conflictCount = conflictFacts.length + conflictConstraints.length;
 
   async function handleApply() {
     setError(null);
@@ -184,6 +195,19 @@ export function NoteProposalReviewPanel({
     router.refresh();
   }
 
+  function toggleInSet(
+    setter: Dispatch<SetStateAction<Set<string>>>,
+    id: string,
+    checked: boolean
+  ) {
+    setter((current) => {
+      const next = new Set(current);
+      if (checked) next.add(id);
+      else next.delete(id);
+      return next;
+    });
+  }
+
   function renderWorkArea(item: ProposedWorkArea) {
     const actionLabel =
       item.action === "restore" ? "Restore work area" : "Add work area";
@@ -197,22 +221,17 @@ export function NoteProposalReviewPanel({
         conflict={false}
         proposedLabel={item.label}
         checked={selectedWorkAreas.has(item.id)}
-        onCheckedChange={(checked) => {
-          setSelectedWorkAreas((current) => {
-            const next = new Set(current);
-            if (checked) next.add(item.id);
-            else next.delete(item.id);
-            return next;
-          });
-        }}
+        onCheckedChange={(checked) =>
+          toggleInSet(setSelectedWorkAreas, item.id, checked)
+        }
       />
     );
   }
 
-  function renderFact(item: ProposedFact) {
+  function renderFact(item: ProposedFact, inConflictSection = false) {
     const current =
       item.existingValue !== undefined
-        ? `${formatProposalValue(item.existingValue)}${
+        ? `${formatProposalValue(item.existingValue, item.unit)}${
             item.existingSource
               ? ` — ${formatProposalSource(item.existingSource)}`
               : ""
@@ -221,28 +240,23 @@ export function NoteProposalReviewPanel({
 
     return (
       <ProposalItemRow
-        key={item.id}
+        key={`${inConflictSection ? "conflict-" : ""}fact-${item.id}`}
         id={`fact-${item.id}`}
         title={item.label}
         reason={item.reason}
         confidence={item.confidence}
         conflict={item.conflict}
         currentLabel={current}
-        proposedLabel={`${formatProposalValue(item.proposedValue)} — from site note`}
+        proposedLabel={`${formatProposalValue(item.proposedValue, item.unit)} — from site note`}
         checked={selectedFacts.has(item.id)}
-        onCheckedChange={(checked) => {
-          setSelectedFacts((current) => {
-            const next = new Set(current);
-            if (checked) next.add(item.id);
-            else next.delete(item.id);
-            return next;
-          });
-        }}
+        onCheckedChange={(checked) =>
+          toggleInSet(setSelectedFacts, item.id, checked)
+        }
       />
     );
   }
 
-  function renderConstraint(item: ProposedConstraint) {
+  function renderConstraint(item: ProposedConstraint, inConflictSection = false) {
     const current =
       item.existingValue !== undefined
         ? formatProposalValue(item.existingValue)
@@ -250,7 +264,7 @@ export function NoteProposalReviewPanel({
 
     return (
       <ProposalItemRow
-        key={item.id}
+        key={`${inConflictSection ? "conflict-" : ""}constraint-${item.id}`}
         id={`constraint-${item.id}`}
         title={item.label}
         reason={item.reason}
@@ -259,24 +273,21 @@ export function NoteProposalReviewPanel({
         currentLabel={current}
         proposedLabel={`${formatProposalValue(item.proposedValue)} — from site note`}
         checked={selectedConstraints.has(item.id)}
-        onCheckedChange={(checked) => {
-          setSelectedConstraints((current) => {
-            const next = new Set(current);
-            if (checked) next.add(item.id);
-            else next.delete(item.id);
-            return next;
-          });
-        }}
+        onCheckedChange={(checked) =>
+          toggleInSet(setSelectedConstraints, item.id, checked)
+        }
       />
     );
   }
 
   return (
-    <AssistantMessage
-      title="Proposed updates from site notes"
-      subtitle="Review what Quotr found in your notes. Choose what to apply."
-      status="active"
-      badge="Review"
+    <CollapsibleStageCard
+      title="Quotr found possible updates from your site notes"
+      subtitle="Review the suggestions and choose what to apply. These changes will not update your estimate automatically."
+      statusLabel="Review"
+      statusVariant="review"
+      defaultExpanded
+      canCollapse={false}
     >
       <div className="space-y-5">
         {proposal.summary ? (
@@ -299,27 +310,45 @@ export function NoteProposalReviewPanel({
 
         {proposal.proposedWorkAreas.length > 0 ? (
           <section className="space-y-2">
-            <h3 className="text-sm font-medium">Work areas</h3>
+            <h3 className="text-sm font-medium">New work areas</h3>
             <div className="space-y-2">
               {proposal.proposedWorkAreas.map(renderWorkArea)}
             </div>
           </section>
         ) : null}
 
-        {proposal.proposedFacts.length > 0 ? (
+        {nonConflictFacts.length > 0 ? (
           <section className="space-y-2">
             <h3 className="text-sm font-medium">Fact updates</h3>
             <div className="space-y-2">
-              {proposal.proposedFacts.map(renderFact)}
+              {nonConflictFacts.map((item) => renderFact(item))}
             </div>
           </section>
         ) : null}
 
-        {proposal.proposedConstraints.length > 0 ? (
+        {nonConflictConstraints.length > 0 ? (
           <section className="space-y-2">
-            <h3 className="text-sm font-medium">Constraint updates</h3>
+            <h3 className="text-sm font-medium">Site constraint updates</h3>
             <div className="space-y-2">
-              {proposal.proposedConstraints.map(renderConstraint)}
+              {nonConflictConstraints.map((item) => renderConstraint(item))}
+            </div>
+          </section>
+        ) : null}
+
+        {conflictCount > 0 ? (
+          <section className="space-y-2">
+            <h3 className="text-sm font-medium text-amber-800 dark:text-amber-200">
+              Conflicts — review carefully
+            </h3>
+            <p className="text-xs text-muted-foreground">
+              These proposals differ from current answers. They are unchecked by
+              default.
+            </p>
+            <div className="space-y-2">
+              {conflictFacts.map((item) => renderFact(item, true))}
+              {conflictConstraints.map((item) =>
+                renderConstraint(item, true)
+              )}
             </div>
           </section>
         ) : null}
@@ -363,11 +392,11 @@ export function NoteProposalReviewPanel({
                 Dismissing…
               </>
             ) : (
-              "Dismiss"
+              "Dismiss proposal"
             )}
           </Button>
         </div>
       </div>
-    </AssistantMessage>
+    </CollapsibleStageCard>
   );
 }

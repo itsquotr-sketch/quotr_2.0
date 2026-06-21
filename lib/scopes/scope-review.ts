@@ -270,12 +270,16 @@ function mergeFactsForWorkArea(params: {
   const questionFacts = factsFromQuestions(params.questions, params.workArea.id);
   const byKey = new Map<string, ProjectFactRecord>();
 
-  for (const fact of workAreaFacts) {
-    byKey.set(fact.key, fact);
+  // Question answers are the baseline; persisted project_facts win when both exist
+  // (e.g. after note proposal apply updates project_facts but not stale question rows).
+  for (const fact of questionFacts) {
+    const canonicalKey = getCanonicalFactKey(fact.key, params.workArea.type);
+    byKey.set(canonicalKey, { ...fact, key: canonicalKey });
   }
 
-  for (const fact of questionFacts) {
-    byKey.set(fact.key, fact);
+  for (const fact of workAreaFacts) {
+    const canonicalKey = getCanonicalFactKey(fact.key, params.workArea.type);
+    byKey.set(canonicalKey, { ...fact, key: canonicalKey });
   }
 
   return buildFactLookup(

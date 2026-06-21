@@ -39,7 +39,7 @@ export type ProjectStatusDisplay = {
   variant: "default" | "secondary" | "warning" | "outline";
 };
 
-export function formatProjectStatus(input: {
+export function formatEstimateStatus(input: {
   stage: string;
   hasEstimate: boolean;
   estimateIsStale: boolean;
@@ -75,3 +75,6 @@ export function formatProjectStatus(input: {
 
   return { label: formatStage(input.stage), variant: "secondary" };
 }
+
+/** @deprecated Use formatEstimateStatus for estimate workflow display */
+export const formatProjectStatus = formatEstimateStatus;

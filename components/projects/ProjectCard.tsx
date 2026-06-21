@@ -9,29 +9,38 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { BusinessStatusBadge } from "@/components/projects/BusinessStatusBadge";
 import { ProjectActionsMenu } from "@/components/projects/ProjectActionsMenu";
 import { PriorityBadge } from "@/components/projects/ProjectMeta";
 import {
   formatDueDate,
+  formatEstimateStatus,
   formatProjectDate,
-  formatProjectStatus,
-  formatStage,
 } from "@/lib/projects/format";
 import type { ProjectListItem } from "@/lib/projects/types";
+import { cn } from "@/lib/utils";
 
 type ProjectCardProps = {
   project: ProjectListItem;
 };
 
 export function ProjectCard({ project }: ProjectCardProps) {
-  const statusDisplay = formatProjectStatus({
+  const estimateDisplay = formatEstimateStatus({
     stage: project.stage,
     hasEstimate: project.has_estimate,
     estimateIsStale: project.estimate_is_stale,
   });
 
+  const isClosedStatus =
+    project.business_status === "won" || project.business_status === "lost";
+
   return (
-    <Card className="transition-colors hover:bg-muted/30">
+    <Card
+      className={cn(
+        "transition-colors hover:bg-muted/30",
+        isClosedStatus && "opacity-80"
+      )}
+    >
       <div className="flex items-start gap-1">
         <Link
           href={`/app/projects/${project.id}`}
@@ -41,6 +50,10 @@ export function ProjectCard({ project }: ProjectCardProps) {
             <div className="flex flex-wrap items-start justify-between gap-2">
               <CardTitle className="text-base">{project.title}</CardTitle>
               <div className="flex flex-wrap items-center gap-1.5">
+                <BusinessStatusBadge
+                  status={project.business_status}
+                  muted={isClosedStatus}
+                />
                 <PriorityBadge priority={project.priority} />
                 {project.archived_at ? (
                   <Badge variant="outline">Archived</Badge>
@@ -55,30 +68,24 @@ export function ProjectCard({ project }: ProjectCardProps) {
                 {project.site_address}
               </p>
             ) : null}
-            {project.brief_text ? (
-              <p className="line-clamp-2 text-sm text-muted-foreground">
-                {project.brief_text}
-              </p>
-            ) : null}
           </CardHeader>
           <CardContent className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
             <Badge
               variant={
-                statusDisplay.variant === "warning"
+                estimateDisplay.variant === "warning"
                   ? "outline"
-                  : statusDisplay.variant === "default"
+                  : estimateDisplay.variant === "default"
                     ? "default"
                     : "secondary"
               }
               className={
-                statusDisplay.variant === "warning"
+                estimateDisplay.variant === "warning"
                   ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
                   : undefined
               }
             >
-              {statusDisplay.label}
+              {estimateDisplay.label}
             </Badge>
-            <span className="capitalize">{formatStage(project.stage)}</span>
             {project.due_date ? (
               <>
                 <span aria-hidden>·</span>

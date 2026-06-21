@@ -1,6 +1,7 @@
 "use client";
 
 import { SiteNotesCaptureCard } from "@/components/project-notes/SiteNotesCaptureCard";
+import { AnalyseNotesSection } from "@/components/project-notes/AnalyseNotesSection";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -11,10 +12,25 @@ type ProjectCaptureBlockProps = {
   onBriefChange: (text: string) => void;
   projectId: string;
   initialNotes: ProjectNote[];
-  onAnalyse: () => void;
+  onAnalyse?: () => void;
   disabled?: boolean;
   isAnalysing?: boolean;
+  /** After initial analysis — view/edit notes only, no Analyse Job */
+  submitted?: boolean;
 };
+
+export function buildProjectCaptureSummary(
+  briefText: string,
+  noteCount: number
+): string {
+  const briefPart = briefText.trim()
+    ? briefText.trim().replace(/\s+/g, " ")
+    : "No written brief";
+  const truncated =
+    briefPart.length > 48 ? `${briefPart.slice(0, 48).trim()}…` : briefPart;
+  const notesPart = `${noteCount} site note${noteCount === 1 ? "" : "s"} included`;
+  return `${truncated} · ${notesPart}`;
+}
 
 export function ProjectCaptureBlock({
   briefText,
@@ -24,6 +40,7 @@ export function ProjectCaptureBlock({
   onAnalyse,
   disabled,
   isAnalysing,
+  submitted = false,
 }: ProjectCaptureBlockProps) {
   return (
     <div className="space-y-6">
@@ -35,7 +52,8 @@ export function ProjectCaptureBlock({
           onChange={(event) => onBriefChange(event.target.value)}
           placeholder="Describe the job… e.g. 3m wide by 6m long hardwood deck with stairs and a pergola"
           rows={4}
-          disabled={disabled}
+          disabled={disabled || submitted}
+          readOnly={submitted}
           className="min-h-24 text-base md:text-sm"
         />
       </div>
@@ -46,18 +64,26 @@ export function ProjectCaptureBlock({
         variant="compact"
       />
 
+      {submitted ? (
+        <AnalyseNotesSection projectId={projectId} notes={initialNotes} />
+      ) : null}
+
       <div className="space-y-3 border-t pt-4">
         <p className="text-xs text-muted-foreground">
-          Quotr will use the brief and saved site notes.
+          {submitted
+            ? "Brief and site notes are source material. Later notes can be analysed into proposed updates."
+            : "Quotr will use the brief and saved site notes."}
         </p>
-        <Button
-          type="button"
-          onClick={onAnalyse}
-          disabled={disabled || isAnalysing}
-          className="w-full sm:w-auto"
-        >
-          {isAnalysing ? "Analysing job…" : "Analyse job"}
-        </Button>
+        {!submitted && onAnalyse ? (
+          <Button
+            type="button"
+            onClick={onAnalyse}
+            disabled={disabled || isAnalysing}
+            className="w-full sm:w-auto"
+          >
+            {isAnalysing ? "Analysing job…" : "Analyse job"}
+          </Button>
+        ) : null}
       </div>
     </div>
   );

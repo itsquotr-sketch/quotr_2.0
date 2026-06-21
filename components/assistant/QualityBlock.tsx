@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { QualityLevel } from "@/components/assistant/types";
 
-const QUALITY_OPTIONS: {
+export const QUALITY_OPTIONS: {
   value: QualityLevel;
   title: string;
   description: string;
@@ -30,6 +30,10 @@ const QUALITY_OPTIONS: {
     description: "Use standard assumptions for now.",
   },
 ];
+
+export function qualityLabel(level: QualityLevel): string {
+  return QUALITY_OPTIONS.find((o) => o.value === level)?.title ?? level;
+}
 
 type QualityBlockProps = {
   selected?: QualityLevel | null;

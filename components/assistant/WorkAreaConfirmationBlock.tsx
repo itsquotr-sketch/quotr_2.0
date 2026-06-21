@@ -18,6 +18,21 @@ export function confidenceLabel(confidence: number): string {
   return "Low confidence";
 }
 
+export function buildWorkAreasSummary(workAreas: WorkArea[]): string {
+  const included = workAreas.filter((wa) => wa.status !== "excluded");
+  const excluded = workAreas.filter((wa) => wa.status === "excluded");
+  const names = included.map((wa) => wa.name).join(", ");
+  if (included.length === 0) {
+    return excluded.length > 0
+      ? `None included · ${excluded.length} excluded`
+      : "No work areas";
+  }
+  if (excluded.length > 0) {
+    return `${names} · ${included.length} included, ${excluded.length} excluded`;
+  }
+  return `${names} · ${included.length} included`;
+}
+
 function ReadOnlySummary({ workAreas }: { workAreas: WorkArea[] }) {
   const included = workAreas.filter((wa) => wa.status !== "excluded");
   const excluded = workAreas.filter((wa) => wa.status === "excluded");

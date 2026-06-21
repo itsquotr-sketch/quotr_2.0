@@ -2,14 +2,18 @@
 
 import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
-import { AssistantMessage } from "@/components/assistant/AssistantMessage";
 import { AssistantProgress } from "@/components/assistant/AssistantProgress";
-import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock";
-import { BriefInput } from "@/components/assistant/BriefInput";
+import {
+  CollapsibleStageCard,
+} from "@/components/assistant/CollapsibleStageCard";
+import {
+  ProjectCaptureBlock,
+  buildProjectCaptureSummary,
+} from "@/components/assistant/ProjectCaptureBlock";
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
-import { QualityBlock } from "@/components/assistant/QualityBlock";
+import { QualityBlock, qualityLabel } from "@/components/assistant/QualityBlock";
 import {
   QuestionBlock,
   type QuestionAnswers,
@@ -17,7 +21,10 @@ import {
 import { ScopeSummaryBlock } from "@/components/assistant/ScopeSummaryBlock";
 import type { QualityLevel, WorkArea, WorkAreaActiveQuestion } from "@/components/assistant/types";
 import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
-import { WorkAreaConfirmationBlock } from "@/components/assistant/WorkAreaConfirmationBlock";
+import {
+  WorkAreaConfirmationBlock,
+  buildWorkAreasSummary,
+} from "@/components/assistant/WorkAreaConfirmationBlock";
 import {
   confirmWorkAreas,
   generateStaticEstimate,
@@ -36,11 +43,9 @@ import {
 } from "@/lib/assistant/work-area-actions";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import type { AssistantState } from "@/lib/assistant/types";
-import { SiteNotesPanel } from "@/components/project-notes/SiteNotesPanel";
 import { NoteProposalReviewPanel } from "@/components/project-notes/NoteProposalReviewPanel";
 import type { ProjectNote } from "@/lib/project-notes/types";
 import type { NoteProposal } from "@/lib/project-notes/proposals/types";
-import { Button } from "@/components/ui/button";
 
 type AssistantShellProps = {
   initialState: AssistantState;
@@ -460,8 +465,26 @@ export function AssistantShell({
     [initialState.scopeReview.workAreas]
   );
 
+  const captureSummary = buildProjectCaptureSummary(
+    briefText,
+    initialNotes.length
+  );
+  const workAreasSummary = buildWorkAreasSummary(displayWorkAreas);
+  const qualitySummary = qualityLevel
+    ? qualityLabel(qualityLevel)
+    : "Not selected";
+  const answeredQuestionCount = questionBlock?.questions.length ?? 0;
+
+  const captureIsCurrent = !briefSubmitted;
+  const workAreasIsCurrent = briefSubmitted && !workAreasConfirmed;
+  const qualityIsCurrent = workAreasConfirmed && !qualitySubmitted;
+  const questionsIsCurrent =
+    qualitySubmitted && questionBlock !== null && !questionsSubmitted;
+  const constraintsIsCurrent = questionsSubmitted && !constraintsSubmitted;
+  const canGenerateEstimate = constraintsSubmitted && !estimateReady;
+
   return (
-    <div data-project-id={project.id} className="w-full">
+    <div data-project-id={project.id} className="w-full min-w-0">
       <AssistantProgress currentStage={stage} />
 
       {actionError ? (
@@ -470,53 +493,54 @@ export function AssistantShell({
         </p>
       ) : null}
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 space-y-4">
-          <AssistantMessage
-            title={briefSubmitted ? "Project brief" : "Project capture"}
+      <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start xl:grid-cols-[minmax(0,1fr)_360px]">
+        <div className="min-w-0 space-y-3">
+          {/* 1. Project Capture */}
+          <CollapsibleStageCard
+            title="Project Capture"
             subtitle={
               briefSubmitted
-                ? "Your job description and site notes used for analysis"
+                ? "Brief and site notes are source material. Later notes can be analysed into proposed updates."
                 : "Add a quick brief, site notes, measurements or client requests. Quotr will use this information to identify the work areas."
             }
-            status={briefSubmitted ? "submitted" : "active"}
-            badge={briefSubmitted ? "Complete" : "Current"}
+            statusLabel={
+              captureIsCurrent ? "Current" : briefSubmitted ? "Complete" : undefined
+            }
+            statusVariant={captureIsCurrent ? "current" : "complete"}
+            defaultExpanded={!briefSubmitted}
+            canCollapse={briefSubmitted}
+            summaryContent={captureSummary}
+            actionLabel={briefSubmitted ? "View" : undefined}
           >
-            {briefSubmitted ? (
-              <div className="space-y-3">
-                <BriefInput value={briefText} readOnly onSubmit={() => {}} />
-                {initialNotes.length > 0 ? (
-                  <p className="text-xs text-muted-foreground">
-                    {initialNotes.length} site note
-                    {initialNotes.length === 1 ? "" : "s"} included in analysis.
-                  </p>
-                ) : null}
-              </div>
-            ) : (
-              <ProjectCaptureBlock
-                briefText={briefText}
-                onBriefChange={setBriefText}
-                projectId={project.id}
-                initialNotes={initialNotes}
-                onAnalyse={handleAnalyseJob}
-                disabled={pendingAction === "brief"}
-                isAnalysing={pendingAction === "brief"}
-              />
-            )}
-          </AssistantMessage>
+            <ProjectCaptureBlock
+              briefText={briefText}
+              onBriefChange={setBriefText}
+              projectId={project.id}
+              initialNotes={initialNotes}
+              onAnalyse={briefSubmitted ? undefined : handleAnalyseJob}
+              disabled={pendingAction === "brief"}
+              isAnalysing={pendingAction === "brief"}
+              submitted={briefSubmitted}
+            />
+          </CollapsibleStageCard>
 
+          {/* 2. Work Area Confirmation */}
           {briefSubmitted ? (
-            <AssistantMessage
-              title="Confirm work areas"
+            <CollapsibleStageCard
+              title="Work Areas"
               subtitle="Review what we detected from your brief and site notes"
-              status={
-                workAreasConfirmed
-                  ? "submitted"
-                  : stage === "confirm_work_areas"
-                    ? "active"
-                    : "submitted"
+              statusLabel={
+                workAreasIsCurrent
+                  ? "Current"
+                  : workAreasConfirmed
+                    ? "Complete"
+                    : undefined
               }
-              badge={workAreasConfirmed ? "Complete" : undefined}
+              statusVariant={workAreasIsCurrent ? "current" : "complete"}
+              defaultExpanded={!workAreasConfirmed}
+              canCollapse={workAreasConfirmed}
+              summaryContent={workAreasSummary}
+              actionLabel={workAreasConfirmed ? "Change areas" : undefined}
             >
               <WorkAreaConfirmationBlock
                 workAreas={displayWorkAreas}
@@ -529,21 +553,26 @@ export function AssistantShell({
                   workAreasConfirmed ? undefined : handleWorkAreasConfirm
                 }
               />
-            </AssistantMessage>
+            </CollapsibleStageCard>
           ) : null}
 
+          {/* 3. Quality */}
           {workAreasConfirmed ? (
-            <AssistantMessage
-              title="Quality & spec level"
+            <CollapsibleStageCard
+              title="Quality"
               subtitle="Set the finish level for this estimate"
-              status={
-                qualitySubmitted
-                  ? "submitted"
-                  : stage === "quality"
-                    ? "active"
-                    : "submitted"
+              statusLabel={
+                qualityIsCurrent
+                  ? "Current"
+                  : qualitySubmitted
+                    ? "Complete"
+                    : undefined
               }
-              badge={qualitySubmitted ? "Complete" : undefined}
+              statusVariant={qualityIsCurrent ? "current" : "complete"}
+              defaultExpanded={!qualitySubmitted}
+              canCollapse={qualitySubmitted}
+              summaryContent={qualitySummary}
+              actionLabel={qualitySubmitted ? "Change spec" : undefined}
             >
               <QualityBlock
                 selected={qualityLevel}
@@ -554,16 +583,18 @@ export function AssistantShell({
                   qualitySubmitted ? undefined : handleQualityContinue
                 }
               />
-            </AssistantMessage>
+            </CollapsibleStageCard>
           ) : null}
 
-          {qualitySubmitted && questionBlock && !questionsSubmitted ? (
-            <AssistantMessage
+          {/* 4. Active Questions */}
+          {questionsIsCurrent && questionBlock ? (
+            <CollapsibleStageCard
               title={questionBlock.title}
               subtitle={questionBlock.description}
-              status={
-                stage === "work_area_questions" ? "active" : "submitted"
-              }
+              statusLabel="Current"
+              statusVariant="current"
+              defaultExpanded
+              canCollapse={false}
             >
               <QuestionBlock
                 questions={questionBlock.questions}
@@ -573,15 +604,48 @@ export function AssistantShell({
                 onAnswerChange={handleQuestionAnswer}
                 onSubmit={handleQuestionsSubmit}
               />
-            </AssistantMessage>
+            </CollapsibleStageCard>
           ) : null}
 
+          {/* 4b. Completed Questions summary */}
+          {questionsSubmitted && questionBlock ? (
+            <CollapsibleStageCard
+              title="Questions"
+              subtitle={questionBlock.description}
+              statusLabel="Complete"
+              statusVariant="complete"
+              defaultExpanded={false}
+              canCollapse
+              summaryContent={`Complete · ${answeredQuestionCount} answered`}
+              actionLabel="View answers"
+            >
+              <QuestionBlock
+                questions={questionBlock.questions}
+                derivedFactDisplays={initialState.derivedFactDisplays}
+                answers={questionAnswers}
+                submitted
+                isSaving={false}
+              />
+            </CollapsibleStageCard>
+          ) : null}
+
+          {/* 5. Pending Proposal Review — always above Scope Review */}
+          {pendingNoteProposal ? (
+            <NoteProposalReviewPanel
+              projectId={project.id}
+              proposal={pendingNoteProposal}
+            />
+          ) : null}
+
+          {/* 6. Scope Review — primary workspace */}
           {questionsSubmitted ? (
-            <AssistantMessage
-              title="Scope review"
+            <CollapsibleStageCard
+              title="Scope Review"
               subtitle="Review what Quotr will use for this estimate."
-              status="submitted"
-              badge="Review"
+              statusLabel="Review"
+              statusVariant="current"
+              defaultExpanded
+              canCollapse={false}
             >
               <ScopeSummaryBlock
                 key={scopeReviewQuestionKey}
@@ -606,37 +670,28 @@ export function AssistantShell({
                   workAreasConfirmed ? handleExcludeWorkArea : undefined
                 }
               />
-            </AssistantMessage>
+            </CollapsibleStageCard>
           ) : null}
 
-          {briefSubmitted ? (
-            <>
-              {pendingNoteProposal ? (
-                <NoteProposalReviewPanel
-                  projectId={project.id}
-                  proposal={pendingNoteProposal}
-                />
-              ) : null}
-              <SiteNotesPanel
-                projectId={project.id}
-                initialNotes={initialNotes}
-                showAnalyseNotes
-              />
-            </>
-          ) : null}
-
+          {/* 7. Site Constraints */}
           {questionsSubmitted ? (
-            <AssistantMessage
+            <CollapsibleStageCard
               title="Site constraints"
               subtitle="Access, slope, and site conditions"
-              status={
-                constraintsSubmitted
-                  ? "submitted"
-                  : stage === "constraints"
-                    ? "active"
-                    : "submitted"
+              statusLabel={
+                constraintsIsCurrent
+                  ? "Current"
+                  : constraintsSubmitted
+                    ? "Complete"
+                    : undefined
               }
-              badge={constraintsSubmitted ? "Complete" : undefined}
+              statusVariant={constraintsIsCurrent ? "current" : "complete"}
+              defaultExpanded={!constraintsSubmitted}
+              canCollapse={constraintsSubmitted}
+              summaryContent={
+                constraintsSubmitted ? "Complete" : "Answer site conditions"
+              }
+              actionLabel={constraintsSubmitted ? "View" : undefined}
             >
               <ConstraintBlock
                 questions={initialState.constraintQuestions}
@@ -660,48 +715,7 @@ export function AssistantShell({
                   constraintsSubmitted ? handleConstraintSave : undefined
                 }
               />
-            </AssistantMessage>
-          ) : null}
-
-          {constraintsSubmitted ? (
-            <AssistantMessage
-              title="Ready to prepare a quick estimate"
-              subtitle={
-                estimateReady
-                  ? "Your draft estimate is ready to review"
-                  : "Generate when you're happy with the inputs"
-              }
-              status={
-                estimateReady
-                  ? "submitted"
-                  : stage === "ready_to_estimate" || isGenerating
-                    ? "active"
-                    : "submitted"
-              }
-              badge={estimateReady ? "Complete" : undefined}
-            >
-              {estimateReady ? (
-                <p className="text-sm text-muted-foreground">
-                  Review the estimate panel for your draft range and breakdown.
-                </p>
-              ) : (
-                <div className="space-y-4">
-                  <p className="text-sm text-muted-foreground">
-                    I have enough information to prepare a draft quick estimate.
-                    You can refine it after reviewing the assumptions.
-                  </p>
-                  <Button
-                    type="button"
-                    onClick={handleGenerateEstimate}
-                    disabled={isGenerating || pendingAction === "estimate"}
-                  >
-                    {isGenerating
-                      ? "Generating quick estimate…"
-                      : "Generate quick estimate"}
-                  </Button>
-                </div>
-              )}
-            </AssistantMessage>
+            </CollapsibleStageCard>
           ) : null}
         </div>
 
@@ -715,7 +729,12 @@ export function AssistantShell({
             panelScopeSummaries={initialState.panelScopeSummaries}
             scopeReview={initialState.scopeReview}
             questionsSubmitted={questionsSubmitted}
+            constraintsSubmitted={constraintsSubmitted}
+            canGenerateEstimate={canGenerateEstimate}
+            pendingProposalCount={pendingNoteProposal ? 1 : 0}
+            constraintCount={initialState.submittedConstraints.length}
             onViewBreakdown={() => setBreakdownOpen(true)}
+            onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}
             onMarginSave={estimateReady ? handleMarginSave : undefined}
           />

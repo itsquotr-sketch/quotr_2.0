@@ -16,10 +16,35 @@ function stageIndex(stage: AssistantStage): number {
 
 export function AssistantProgress({ currentStage }: AssistantProgressProps) {
   const currentIdx = stageIndex(currentStage);
+  const totalSteps = PROGRESS_STAGES.length;
+  const progressPercent = Math.round(((currentIdx + 1) / totalSteps) * 100);
 
   return (
     <nav aria-label="Assistant progress" className="w-full">
-      <ol className="flex flex-wrap items-center gap-2 sm:gap-0">
+      <div className="sm:hidden">
+        <div className="flex items-center justify-between gap-3">
+          <p className="text-xs font-medium text-muted-foreground">
+            Step {currentIdx + 1} of {totalSteps}
+          </p>
+          <p className="truncate text-xs font-medium">
+            {PROGRESS_STAGES[currentIdx]?.label}
+          </p>
+        </div>
+        <div
+          className="mt-2 h-1 overflow-hidden rounded-full bg-muted"
+          role="progressbar"
+          aria-valuenow={currentIdx + 1}
+          aria-valuemin={1}
+          aria-valuemax={totalSteps}
+        >
+          <div
+            className="h-full rounded-full bg-primary transition-all"
+            style={{ width: `${progressPercent}%` }}
+          />
+        </div>
+      </div>
+
+      <ol className="hidden flex-wrap items-center gap-2 sm:flex sm:gap-0">
         {PROGRESS_STAGES.map((step, index) => {
           const isComplete = index < currentIdx;
           const isCurrent = index === currentIdx;
@@ -34,8 +59,11 @@ export function AssistantProgress({ currentStage }: AssistantProgressProps) {
                   className={cn(
                     "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
                     isComplete && "bg-primary text-primary-foreground",
-                    isCurrent && "bg-primary/10 text-primary ring-2 ring-primary/30",
-                    !isComplete && !isCurrent && "bg-muted text-muted-foreground"
+                    isCurrent &&
+                      "bg-primary/10 text-primary ring-2 ring-primary/30",
+                    !isComplete &&
+                      !isCurrent &&
+                      "bg-muted text-muted-foreground"
                   )}
                 >
                   {index + 1}

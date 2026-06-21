@@ -2,9 +2,12 @@ import { z } from "zod";
 import { filterEmbeddedDemolitionWorkAreas } from "@/lib/scopes/demolition-rules";
 
 export class AIExtractionError extends Error {
-  constructor(message: string) {
+  readonly code?: string;
+
+  constructor(message: string, code?: string) {
     super(message);
     this.name = "AIExtractionError";
+    this.code = code;
   }
 }
 

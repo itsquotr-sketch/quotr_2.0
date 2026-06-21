@@ -2,6 +2,7 @@
 
 import { Fragment } from "react";
 import { Badge } from "@/components/ui/badge";
+import { BusinessStatusControl } from "@/components/projects/BusinessStatusControl";
 import { PriorityBadge } from "@/components/projects/ProjectMeta";
 import { ProjectActionsMenu } from "@/components/projects/ProjectActionsMenu";
 import { formatDueDate } from "@/lib/projects/format";
@@ -43,6 +44,12 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
             <h1 className="min-w-0 text-xl font-semibold tracking-tight sm:text-2xl">
               {project.title}
             </h1>
+            {!isArchived ? (
+              <BusinessStatusControl
+                projectId={project.id}
+                currentStatus={project.business_status}
+              />
+            ) : null}
             {isArchived ? (
               <Badge variant="outline">Archived</Badge>
             ) : null}

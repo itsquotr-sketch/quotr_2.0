@@ -1,11 +1,19 @@
-export function formatProposalValue(value: unknown): string {
+export function formatProposalValue(
+  value: unknown,
+  unit?: string | null
+): string {
   if (value === null || value === undefined || value === "") {
     return "—";
   }
   if (typeof value === "boolean") {
     return value ? "Yes" : "No";
   }
-  return String(value);
+
+  const formatted = String(value);
+  if (unit) {
+    return `${formatted} ${unit}`;
+  }
+  return formatted;
 }
 
 export function formatProposalSource(source: string | null | undefined): string {

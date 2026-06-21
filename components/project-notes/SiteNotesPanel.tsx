@@ -1,19 +1,17 @@
 "use client";
 
-import { Loader2 } from "lucide-react";
-import { useRouter } from "next/navigation";
-import { useState } from "react";
 import { AssistantMessage } from "@/components/assistant/AssistantMessage";
+import { AnalyseNotesSection } from "@/components/project-notes/AnalyseNotesSection";
 import { SiteNotesCaptureCard } from "@/components/project-notes/SiteNotesCaptureCard";
-import { analyseProjectNotes } from "@/lib/project-notes/proposals/actions";
 import type { ProjectNote } from "@/lib/project-notes/types";
-import { Button } from "@/components/ui/button";
 
 type SiteNotesPanelProps = {
   projectId: string;
   initialNotes: ProjectNote[];
   showAnalyseNotes?: boolean;
   className?: string;
+  /** Render inner content only — parent supplies stage wrapper */
+  contentOnly?: boolean;
 };
 
 export function SiteNotesPanel({
@@ -21,29 +19,25 @@ export function SiteNotesPanel({
   initialNotes,
   showAnalyseNotes = false,
   className,
+  contentOnly = false,
 }: SiteNotesPanelProps) {
-  const router = useRouter();
-  const [isAnalysing, setIsAnalysing] = useState(false);
-  const [analyseError, setAnalyseError] = useState<string | null>(null);
+  const inner = (
+    <div className="space-y-4">
+      {showAnalyseNotes ? (
+        <AnalyseNotesSection projectId={projectId} notes={initialNotes} />
+      ) : null}
 
-  const pendingNoteCount = initialNotes.filter(
-    (note) => note.analysisStatus === "pending"
-  ).length;
+      <SiteNotesCaptureCard
+        projectId={projectId}
+        initialNotes={initialNotes}
+        variant="full"
+        showHeading={false}
+      />
+    </div>
+  );
 
-  async function handleAnalyseNotes() {
-    setAnalyseError(null);
-    setIsAnalysing(true);
-
-    const result = await analyseProjectNotes({ projectId });
-
-    setIsAnalysing(false);
-
-    if ("error" in result) {
-      setAnalyseError(result.error);
-      return;
-    }
-
-    router.refresh();
+  if (contentOnly) {
+    return <div className={className}>{inner}</div>;
   }
 
   return (
@@ -53,49 +47,7 @@ export function SiteNotesPanel({
       status="submitted"
       className={className}
     >
-      <div className="space-y-4">
-        {showAnalyseNotes ? (
-          <div className="space-y-2 rounded-xl border border-dashed bg-muted/10 p-4">
-            <p className="text-xs text-muted-foreground">
-              Quotr will look for new measurements, scope changes, access issues
-              and client requests. You choose what to apply.
-            </p>
-            {pendingNoteCount === 0 ? (
-              <p className="text-xs text-muted-foreground">
-                No new notes to analyse.
-              </p>
-            ) : (
-              <Button
-                type="button"
-                size="sm"
-                onClick={handleAnalyseNotes}
-                disabled={isAnalysing || pendingNoteCount === 0}
-              >
-                {isAnalysing ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Analysing notes…
-                  </>
-                ) : (
-                  "Analyse notes"
-                )}
-              </Button>
-            )}
-            {analyseError ? (
-              <p className="text-sm text-destructive" role="alert">
-                {analyseError}
-              </p>
-            ) : null}
-          </div>
-        ) : null}
-
-        <SiteNotesCaptureCard
-          projectId={projectId}
-          initialNotes={initialNotes}
-          variant="full"
-          showHeading={false}
-        />
-      </div>
+      {inner}
     </AssistantMessage>
   );
 }

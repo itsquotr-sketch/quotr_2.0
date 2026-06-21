@@ -78,5 +78,9 @@ export function isProposalItemSelectedByDefault(item: {
   if (item.action === "no_change") return false;
   if (item.conflict) return false;
   if (item.confidence < LOW_CONFIDENCE_THRESHOLD) return false;
-  return item.action === "add" || item.action === "restore";
+  return (
+    item.action === "add" ||
+    item.action === "restore" ||
+    item.action === "update"
+  );
 }

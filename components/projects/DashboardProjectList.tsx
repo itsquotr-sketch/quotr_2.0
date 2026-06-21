@@ -8,6 +8,10 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  DASHBOARD_FILTER_OPTIONS,
+  isLifecycleArchiveFilter,
+} from "@/lib/projects/status";
 import type { ProjectListFilter, ProjectListItem } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
 
@@ -16,12 +20,6 @@ type DashboardProjectListProps = {
   initialFilter: ProjectListFilter;
   initialSearch: string;
 };
-
-const FILTER_OPTIONS: { value: ProjectListFilter; label: string }[] = [
-  { value: "active", label: "Active" },
-  { value: "archived", label: "Archived" },
-  { value: "all", label: "All" },
-];
 
 export function DashboardProjectList({
   projects,
@@ -64,20 +62,26 @@ export function DashboardProjectList({
   const emptyTitle =
     initialSearch.trim().length > 0
       ? "No projects match your search."
-      : initialFilter === "archived"
+      : isLifecycleArchiveFilter(initialFilter)
         ? "No archived projects."
-        : "No active projects yet.";
+        : initialFilter === "all"
+          ? "No projects yet."
+          : initialFilter === "active"
+            ? "No active projects yet."
+            : `No ${DASHBOARD_FILTER_OPTIONS.find((option) => option.value === initialFilter)?.label.toLowerCase() ?? "matching"} projects.`;
 
   const emptyDescription =
     initialSearch.trim().length > 0
       ? "Try a different search term or clear the filter."
-      : initialFilter === "archived"
+      : isLifecycleArchiveFilter(initialFilter)
         ? "Archived projects will appear here."
-        : "Create your first project to start building a quick estimate.";
+        : initialFilter === "active"
+          ? "Create your first project to start building a quick estimate."
+          : "Try a different status filter or create a new project.";
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="flex flex-col gap-3">
         <form
           className="relative min-w-0 flex-1 sm:max-w-sm"
           onSubmit={(event) => {
@@ -96,23 +100,25 @@ export function DashboardProjectList({
             aria-label="Search projects"
           />
         </form>
-        <div className="flex flex-wrap gap-1 rounded-lg border border-border/60 bg-muted/20 p-1">
-          {FILTER_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              disabled={isPending}
-              onClick={() => updateParams({ filter: option.value })}
-              className={cn(
-                "rounded-md px-3 py-1.5 text-xs font-medium transition-colors",
-                initialFilter === option.value
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
-              )}
-            >
-              {option.label}
-            </button>
-          ))}
+        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+          <div className="flex w-max min-w-full gap-1 rounded-lg border border-border/60 bg-muted/20 p-1 sm:flex-wrap sm:w-auto">
+            {DASHBOARD_FILTER_OPTIONS.map((option) => (
+              <button
+                key={option.value}
+                type="button"
+                disabled={isPending}
+                onClick={() => updateParams({ filter: option.value })}
+                className={cn(
+                  "shrink-0 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+                  initialFilter === option.value
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {option.label}
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
