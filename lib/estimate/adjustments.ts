@@ -2,6 +2,16 @@ import type { QualityLevel } from "@/components/assistant/types";
 import type { OrganisationSettings } from "@/components/setup/types";
 import type { EstimateConstraint, EstimateProject } from "@/lib/estimate/types";
 
+/**
+ * Quality factor policy
+ * ---------------------
+ * - Applies to finish-sensitive or complexity-sensitive construction labour/materials.
+ * - Does NOT apply to demolition, carting, drainage, backfill, waste removal, or
+ *   other non-finish-dependent labour (use NO_FINISH_QUALITY_FACTOR).
+ * - Bathroom/kitchen package assumptions may embed finish level inside allowances
+ *   rather than multiplying all labour directly — avoid double-applying quality factors.
+ */
+
 const QUALITY_FACTORS: Record<QualityLevel, number> = {
   budget: 0.9,
   standard: 1.0,
@@ -36,6 +46,88 @@ export function getQualityFactor(
   return base;
 }
 
+export type CarryDistanceCategory = "short" | "moderate" | "long" | "unknown";
+
+function extractFirstNumber(value: string): number | null {
+  const match = value.match(/(\d+(?:\.\d+)?)/);
+  return match ? Number.parseFloat(match[1]) : null;
+}
+
+/**
+ * Parses material carry distance into a metre category for labour adjustment.
+ *
+ * Categories:
+ * - short (<=10 m): no carry adjustment
+ * - moderate (>10 m and <=30 m): +0.05 labour factor
+ * - long (>30 m): +0.10 labour factor
+ * - unknown / not sure: conservative moderate (+0.05)
+ *
+ * Expected inputs: "<10m", "10–30m", "10-30m", ">30m", "15–30m", "45m", "45 m",
+ * "Not sure", "unknown", or free text containing a number.
+ *
+ * Regression cases:
+ * - "10–30m" -> moderate (not long — old string match on "30" was wrong)
+ * - ">30m" / "45m" -> long
+ * - "Not sure" -> unknown (moderate allowance, no crash)
+ */
+export function parseCarryDistanceCategory(
+  value: string | null | undefined
+): CarryDistanceCategory {
+  if (!value) return "short";
+
+  const normalized = value.trim().toLowerCase();
+  if (
+    normalized === "not sure" ||
+    normalized === "unknown" ||
+    normalized === "unsure" ||
+    normalized === "n/a"
+  ) {
+    return "unknown";
+  }
+
+  if (
+    normalized.startsWith("<") ||
+    normalized.includes("under ") ||
+    normalized.includes("less than")
+  ) {
+    return "short";
+  }
+
+  if (
+    normalized.startsWith(">") ||
+    normalized.includes("over ") ||
+    normalized.includes("more than")
+  ) {
+    const threshold = extractFirstNumber(normalized);
+    if (threshold == null || threshold >= 30) {
+      return "long";
+    }
+    if (threshold > 10) {
+      return "moderate";
+    }
+    return "short";
+  }
+
+  const rangeMatch = normalized.match(
+    /(\d+(?:\.\d+)?)\s*[–-]\s*(\d+(?:\.\d+)?)/
+  );
+  if (rangeMatch) {
+    const upper = Number.parseFloat(rangeMatch[2]);
+    if (upper <= 10) return "short";
+    if (upper <= 30) return "moderate";
+    return "long";
+  }
+
+  const singleValue = extractFirstNumber(normalized);
+  if (singleValue != null) {
+    if (singleValue <= 10) return "short";
+    if (singleValue <= 30) return "moderate";
+    return "long";
+  }
+
+  return "unknown";
+}
+
 export function getLabourAdjustmentFactor(
   constraints: EstimateConstraint[]
 ): number {
@@ -53,14 +145,12 @@ export function getLabourAdjustmentFactor(
     factor += 0.05;
   }
 
-  const carry = getConstraintValue(
-    constraints,
-    "material_carry_distance"
-  )?.toLowerCase();
+  const carry = getConstraintValue(constraints, "material_carry_distance");
+  const carryCategory = parseCarryDistanceCategory(carry);
 
-  if (carry?.includes("30") || carry?.includes(">")) {
+  if (carryCategory === "long") {
     factor += 0.1;
-  } else if (carry?.includes("10") || carry?.includes("30")) {
+  } else if (carryCategory === "moderate" || carryCategory === "unknown") {
     factor += 0.05;
   }
 

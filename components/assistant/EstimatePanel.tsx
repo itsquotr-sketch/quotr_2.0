@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { Loader2 } from "lucide-react";
 import {
   formatCurrency,
@@ -18,6 +19,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 
 type EstimatePanelProps = {
   estimate: Estimate | null;
@@ -69,7 +71,7 @@ export function EstimatePanel({
   isGenerating,
   isRegenerating,
   isSavingMargin,
-  defaultMarginPercent = 33.33,
+  defaultMarginPercent = DEFAULT_MARGIN_PERCENT,
   panelScopeSummaries = [],
   scopeReview,
   questionsSubmitted = false,
@@ -253,6 +255,19 @@ export function EstimatePanel({
                 <p className="mt-0.5 text-sm font-medium leading-snug">
                   {estimate.rateSourceSummary}
                 </p>
+                {estimate.rateSourceSummary
+                  .toLowerCase()
+                  .includes("benchmark") ||
+                estimate.rateSourceSummary
+                  .toLowerCase()
+                  .includes("missing") ? (
+                  <Link
+                    href="/app/rates"
+                    className="mt-1 inline-block text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  >
+                    Set your rates
+                  </Link>
+                ) : null}
               </div>
             </div>
 

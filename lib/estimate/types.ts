@@ -1,5 +1,6 @@
 import type { QualityLevel } from "@/components/assistant/types";
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
+import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
 
 export type EstimateProject = {
   id: string;
@@ -63,6 +64,11 @@ export type EstimateLineItemInput = {
   productivityRate?: number;
   productivityUnit?: string;
   rateSource: string;
+  rateSourceType?: RateSourceType;
+  itemKey?: string;
+  costRate?: number;
+  sellRate?: number;
+  sellDerivedFromMargin?: boolean;
   notes?: string;
   sortOrder: number;
 };
@@ -110,12 +116,18 @@ export type ResolvedRate = {
   sellRateHigh: number;
   unit: string;
   sourceLabel: string;
+  sourceType: RateSourceType;
+  itemKey: string;
+  sellDerivedFromMargin: boolean;
 };
 
 export type ResolvedLabourRate = {
   costRate: number;
   sellRate: number;
   sourceLabel: string;
+  sourceType: RateSourceType;
+  itemKey?: string;
+  sellDerivedFromMargin: boolean;
 };
 
 export type WorkAreaCalculator = (

@@ -86,6 +86,15 @@ export type EstimateLineItem = {
   marginPercent: number;
   markupPercent?: number;
   rateSource: string;
+  quantity?: number;
+  unit?: string;
+  labourHours?: number;
+  productivityRate?: number;
+  productivityUnit?: string;
+  costRate?: number;
+  sellRate?: number;
+  itemKey?: string;
+  sellDerivedFromMargin?: boolean;
   notes?: string;
 };
 

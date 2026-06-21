@@ -28,6 +28,8 @@ import {
 import { getEstimateContext } from "@/lib/estimate/context";
 import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
 import { markEstimateStale } from "@/lib/estimate/stale";
+import { getAnthropicModel } from "@/lib/ai/anthropic";
+import { buildInitialAnalysisInput } from "@/lib/project-notes/build-analysis-source";
 import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
@@ -37,10 +39,60 @@ import { normalizeAnswerForStorage, factHasValue } from "@/lib/scopes/fact-value
 
 const BRIEF_MAX_LENGTH = 5000;
 
-const BRIEF_ANALYSIS_ERROR =
-  "We couldn't analyse your brief. Please try again or check your setup.";
+const UNKNOWN_ANALYSIS_ERROR =
+  "We couldn't analyse your job. Please try again.";
+const NO_CAPTURE_ERROR =
+  "Add a brief or at least one site note before analysing.";
+const AI_SETUP_ERROR =
+  "AI setup is missing. Check your Anthropic API key.";
+const AI_PARSE_ERROR =
+  "Quotr could not understand the analysis response. Please try again.";
 const NO_WORK_AREAS_ERROR =
   "No supported work areas were detected. Try adding more detail or check your enabled work areas in Setup.";
+
+function logBriefAnalysisFailure(
+  projectId: string,
+  context: {
+    briefLength: number;
+    noteCount: number;
+    combinedInputLength: number;
+    reason: string;
+  }
+) {
+  console.error("[saveBriefAndSeedWorkAreas]", {
+    projectId,
+    briefLength: context.briefLength,
+    noteCount: context.noteCount,
+    combinedInputLength: context.combinedInputLength,
+    model: getAnthropicModel(),
+    reason: context.reason,
+  });
+}
+
+function userMessageForAnalysisError(error: unknown): string {
+  if (error instanceof AIExtractionError) {
+    if (error.message.includes("No valid work areas")) {
+      return NO_WORK_AREAS_ERROR;
+    }
+    if (
+      error.message.includes("schema validation") ||
+      error.message.includes("parse AI response")
+    ) {
+      return AI_PARSE_ERROR;
+    }
+    if (error.message.includes("No allowed work area types")) {
+      return AI_SETUP_ERROR;
+    }
+  }
+
+  if (error instanceof Error) {
+    if (error.message.includes("ANTHROPIC_API_KEY")) {
+      return AI_SETUP_ERROR;
+    }
+  }
+
+  return UNKNOWN_ANALYSIS_ERROR;
+}
 
 const CATALOGUE_TYPES = SCOPE_CATALOGUE.map((item) => item.type);
 const CATALOGUE_BY_TYPE = new Map(
@@ -123,9 +175,6 @@ export async function saveBriefAndSeedWorkAreas(
   briefText: string
 ): Promise<AssistantActionState> {
   const trimmed = briefText.trim();
-  if (!trimmed) {
-    return { error: "Please enter a project brief." };
-  }
   if (trimmed.length > BRIEF_MAX_LENGTH) {
     return {
       error: `Brief must be ${BRIEF_MAX_LENGTH} characters or fewer.`,
@@ -147,9 +196,33 @@ export async function saveBriefAndSeedWorkAreas(
     return { error: "This action is not available at the current stage." };
   }
 
+  const { data: savedNoteRows, error: notesError } = await supabase
+    .from("project_notes")
+    .select("id, content, note_type, captured_at")
+    .eq("project_id", projectId)
+    .eq("org_id", orgId)
+    .is("deleted_at", null)
+    .order("captured_at", { ascending: true });
+
+  if (notesError) {
+    logBriefAnalysisFailure(projectId, {
+      briefLength: trimmed.length,
+      noteCount: 0,
+      combinedInputLength: 0,
+      reason: `notes query failed: ${notesError.message}`,
+    });
+    return { error: UNKNOWN_ANALYSIS_ERROR };
+  }
+
+  const noteRows = savedNoteRows ?? [];
+
+  if (!trimmed && noteRows.length === 0) {
+    return { error: NO_CAPTURE_ERROR };
+  }
+
   const { error: briefError } = await supabase
     .from("projects")
-    .update({ brief_text: trimmed })
+    .update({ brief_text: trimmed || null })
     .eq("id", projectId);
 
   if (briefError) {
@@ -159,25 +232,39 @@ export async function saveBriefAndSeedWorkAreas(
   let allowedTypes: string[];
   try {
     allowedTypes = await loadAllowedWorkAreaTypes(supabase, orgId);
-  } catch {
-    return { error: BRIEF_ANALYSIS_ERROR };
+  } catch (error) {
+    logBriefAnalysisFailure(projectId, {
+      briefLength: trimmed.length,
+      noteCount: noteRows.length,
+      combinedInputLength: 0,
+      reason:
+        error instanceof Error
+          ? `work area types: ${error.message}`
+          : "work area types load failed",
+    });
+    return { error: UNKNOWN_ANALYSIS_ERROR };
   }
+
+  const analysisSource = buildInitialAnalysisInput({
+    briefText: trimmed,
+    notes: noteRows,
+  });
 
   let extraction;
   try {
     extraction = await extractFromBrief({
-      briefText: trimmed,
+      briefText: analysisSource,
       allowedTypes,
       catalogueTypes: CATALOGUE_TYPES,
     });
   } catch (error) {
-    if (
-      error instanceof AIExtractionError &&
-      error.message.includes("No valid work areas")
-    ) {
-      return { error: NO_WORK_AREAS_ERROR };
-    }
-    return { error: BRIEF_ANALYSIS_ERROR };
+    logBriefAnalysisFailure(projectId, {
+      briefLength: trimmed.length,
+      noteCount: noteRows.length,
+      combinedInputLength: analysisSource.length,
+      reason: error instanceof Error ? error.message : "AI extraction failed",
+    });
+    return { error: userMessageForAnalysisError(error) };
   }
 
   const { data: existingWorkAreas } = await supabase

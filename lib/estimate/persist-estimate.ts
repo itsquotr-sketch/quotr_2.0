@@ -6,17 +6,18 @@ type PersistEstimateResult =
   | { success: true; estimateId: string }
   | { error: string };
 
-export async function persistEstimateResult(
-  supabase: SupabaseClient,
+function buildEstimatePayload(
   orgId: string,
   projectId: string,
-  estimateResult: EstimateResult
-): Promise<PersistEstimateResult> {
-  const estimatePayload = {
+  estimateResult: EstimateResult,
+  status: "draft" | "ready" | "failed",
+  isStale: boolean
+) {
+  return {
     org_id: orgId,
     project_id: projectId,
-    status: "ready",
-    is_stale: false,
+    status,
+    is_stale: isStale,
     cost_low: estimateResult.costLow,
     cost_high: estimateResult.costHigh,
     sell_low: estimateResult.sellLow,
@@ -33,7 +34,24 @@ export async function persistEstimateResult(
     exclusions: estimateResult.exclusions,
     generated_at: new Date().toISOString(),
   };
+}
 
+async function markEstimateFailed(
+  supabase: SupabaseClient,
+  estimateId: string
+): Promise<void> {
+  await supabase
+    .from("estimates")
+    .update({ status: "failed", is_stale: true })
+    .eq("id", estimateId);
+}
+
+export async function persistEstimateResult(
+  supabase: SupabaseClient,
+  orgId: string,
+  projectId: string,
+  estimateResult: EstimateResult
+): Promise<PersistEstimateResult> {
   const lineItemRows = estimateResult.lineItems.map((item) => ({
     org_id: orgId,
     project_id: projectId,
@@ -64,25 +82,31 @@ export async function persistEstimateResult(
   let estimateId: string;
 
   if (existingEstimate) {
-    const { error: updateError } = await supabase
-      .from("estimates")
-      .update(estimatePayload)
-      .eq("id", existingEstimate.id);
-
-    if (updateError) {
-      return { error: updateError.message };
-    }
     estimateId = existingEstimate.id;
+
+    const { error: stagingError } = await supabase
+      .from("estimates")
+      .update(
+        buildEstimatePayload(orgId, projectId, estimateResult, "draft", true)
+      )
+      .eq("id", estimateId);
+
+    if (stagingError) {
+      return { error: stagingError.message };
+    }
   } else {
     const { data: inserted, error: insertError } = await supabase
       .from("estimates")
-      .insert(estimatePayload)
+      .insert(
+        buildEstimatePayload(orgId, projectId, estimateResult, "draft", true)
+      )
       .select("id")
       .single();
 
     if (insertError || !inserted) {
       return { error: insertError?.message ?? "Failed to save estimate." };
     }
+
     estimateId = inserted.id;
   }
 
@@ -92,7 +116,10 @@ export async function persistEstimateResult(
     .eq("estimate_id", estimateId);
 
   if (deleteError) {
-    return { error: deleteError.message };
+    await markEstimateFailed(supabase, estimateId);
+    return {
+      error: `Failed to replace line items: ${deleteError.message}`,
+    };
   }
 
   if (lineItemRows.length > 0) {
@@ -106,8 +133,23 @@ export async function persistEstimateResult(
       );
 
     if (lineItemsError) {
-      return { error: lineItemsError.message };
+      await markEstimateFailed(supabase, estimateId);
+      return {
+        error: `Failed to save line items: ${lineItemsError.message}`,
+      };
     }
+  }
+
+  const { error: finalizeError } = await supabase
+    .from("estimates")
+    .update(
+      buildEstimatePayload(orgId, projectId, estimateResult, "ready", false)
+    )
+    .eq("id", estimateId);
+
+  if (finalizeError) {
+    await markEstimateFailed(supabase, estimateId);
+    return { error: finalizeError.message };
   }
 
   return { success: true, estimateId };

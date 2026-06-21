@@ -165,7 +165,7 @@ export async function excludeWorkAreaFromProject(input: {
     return { error: "Not authenticated." };
   }
 
-  const { supabase } = context;
+  const { supabase, orgId } = context;
   const { projectId, workAreaId } = parsed.data;
 
   const { data: workArea } = await supabase
@@ -204,6 +204,29 @@ export async function excludeWorkAreaFromProject(input: {
   }
 
   await markEstimateStale(projectId);
+
+  const { data: project } = await supabase
+    .from("projects")
+    .select("stage, quality_level")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (project) {
+    const ensureResult = await ensureMissingDetailsQuestionBlock(
+      supabase,
+      orgId,
+      projectId,
+      {
+        stage: project.stage,
+        qualityLevel: project.quality_level,
+      }
+    );
+
+    if (ensureResult.error) {
+      return { error: ensureResult.error };
+    }
+  }
+
   revalidateAssistantPaths(projectId);
   return { success: true };
 }

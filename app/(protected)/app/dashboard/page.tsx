@@ -1,12 +1,12 @@
+import { Suspense } from "react";
 import { PageHeader } from "@/components/layout/page-header";
-import { EmptyState } from "@/components/layout/empty-state";
 import { UserMenu } from "@/components/layout/user-menu";
+import { DashboardProjectList } from "@/components/projects/DashboardProjectList";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
-import { ProjectCard } from "@/components/projects/ProjectCard";
 import { SetupPromptCard } from "@/components/setup/SetupPromptCard";
 import type { SetupStep } from "@/components/setup/types";
-import { Button } from "@/components/ui/button";
 import { listProjects } from "@/lib/projects/actions";
+import type { ProjectListFilter } from "@/lib/projects/types";
 import { getSetupState, isSetupIncomplete } from "@/lib/setup/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -15,7 +15,22 @@ function getResumeStep(step: SetupStep | undefined): SetupStep {
   return step;
 }
 
-export default async function DashboardPage() {
+function parseFilter(value?: string): ProjectListFilter {
+  if (value === "archived" || value === "all") {
+    return value;
+  }
+  return "active";
+}
+
+type DashboardPageProps = {
+  searchParams: Promise<{ filter?: string; q?: string }>;
+};
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const params = await searchParams;
+  const filter = parseFilter(params.filter);
+  const search = params.q?.trim() ?? "";
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -29,7 +44,7 @@ export default async function DashboardPage() {
 
   const setupIncomplete = await isSetupIncomplete();
   const [projects, setupState] = await Promise.all([
-    listProjects(),
+    listProjects({ filter, search }),
     setupIncomplete ? getSetupState() : Promise.resolve(null),
   ]);
 
@@ -53,30 +68,13 @@ export default async function DashboardPage() {
             <SetupPromptCard currentStep={resumeStep} />
           ) : null}
 
-          {projects.length === 0 ? (
-            <EmptyState
-              title="No projects yet"
-              description="Create your first project to start building a quick estimate."
-              action={
-                <NewProjectDialog
-                  trigger={<Button>New project</Button>}
-                />
-              }
+          <Suspense fallback={null}>
+            <DashboardProjectList
+              projects={projects}
+              initialFilter={filter}
+              initialSearch={search}
             />
-          ) : (
-            <div className="space-y-4">
-              <div className="flex items-center justify-between gap-4">
-                <h2 className="text-sm font-medium text-muted-foreground">
-                  {projects.length} project{projects.length === 1 ? "" : "s"}
-                </h2>
-              </div>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {projects.map((project) => (
-                  <ProjectCard key={project.id} project={project} />
-                ))}
-              </div>
-            </div>
-          )}
+          </Suspense>
         </div>
       </div>
     </>

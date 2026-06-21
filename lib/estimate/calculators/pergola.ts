@@ -15,7 +15,7 @@ import {
   createRateLineItem,
 } from "@/lib/estimate/line-items";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
 import type {
   CalculatorResult,
@@ -103,6 +103,17 @@ export function calculatePergola(
     })
   );
 
+  const frameRates = resolveRate({
+    rates: context.rates,
+    rateType: "material",
+    itemKey: "pergola.material.m2",
+    workAreaType: "pergola",
+    unit: "m2",
+    fallbackCostRate: PERGOLA_BENCHMARKS.frameMaterials.cost,
+    fallbackSellRate: PERGOLA_BENCHMARKS.frameMaterials.sell,
+    organisationSettings: context.organisationSettings,
+  });
+
   lineItems.push(
     createRateLineItem({
       workAreaId: workArea.id,
@@ -111,9 +122,9 @@ export function calculatePergola(
       category: "materials",
       quantity: area,
       unit: "m²",
-      costRate: PERGOLA_BENCHMARKS.frameMaterials.cost,
-      sellRate: PERGOLA_BENCHMARKS.frameMaterials.sell,
-      rateSource: "Benchmark allowance",
+      costRate: frameRates.costRate,
+      sellRate: frameRates.sellRate,
+      rateSource: frameRates.sourceLabel,
       notes: material ? `${material} pergola allowance` : undefined,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
@@ -122,6 +133,17 @@ export function calculatePergola(
   );
 
   if (roofingIncluded) {
+    const roofingRates = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "pergola.roofing.m2",
+      workAreaType: "pergola",
+      unit: "m2",
+      fallbackCostRate: PERGOLA_BENCHMARKS.roofing.cost,
+      fallbackSellRate: PERGOLA_BENCHMARKS.roofing.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
     lineItems.push(
       createRateLineItem({
         workAreaId: workArea.id,
@@ -130,9 +152,9 @@ export function calculatePergola(
         category: "allowance",
         quantity: area,
         unit: "m²",
-        costRate: PERGOLA_BENCHMARKS.roofing.cost,
-        sellRate: PERGOLA_BENCHMARKS.roofing.sell,
-        rateSource: "Benchmark allowance",
+        costRate: roofingRates.costRate,
+        sellRate: roofingRates.sellRate,
+        rateSource: roofingRates.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,

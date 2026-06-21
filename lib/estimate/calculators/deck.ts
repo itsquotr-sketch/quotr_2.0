@@ -3,6 +3,7 @@ import {
   getLabourAdjustmentFactor,
   getQualityFactor,
 } from "@/lib/estimate/adjustments";
+import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
 import { DECK_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
@@ -16,8 +17,13 @@ import {
   createLabourLineItem,
   createRateLineItem,
 } from "@/lib/estimate/line-items";
+import {
+  benchmarkRateFields,
+  rateFieldsFromResolved,
+} from "@/lib/estimate/line-item-helpers";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import type { ResolvedRate } from "@/lib/estimate/types";
 import { baseConfidence } from "@/lib/estimate/summary";
 import type {
   CalculatorResult,
@@ -25,24 +31,48 @@ import type {
   EstimateWorkArea,
 } from "@/lib/estimate/types";
 
-function getDeckMaterialRates(material: string | null) {
+function getDeckMaterialRate(
+  material: string | null,
+  context: EstimateContext
+): ResolvedRate & { materialLabel: string } {
   const normalized = material?.toLowerCase() ?? "";
   if (normalized.includes("hardwood")) {
-    return {
-      ...DECK_BENCHMARKS.hardwoodDecking,
-      label: "Hardwood decking",
-    };
+    const resolved = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "deck.material.hardwood.m2",
+      workAreaType: "deck",
+      unit: "m2",
+      fallbackCostRate: DECK_BENCHMARKS.hardwoodDecking.cost,
+      fallbackSellRate: DECK_BENCHMARKS.hardwoodDecking.sell,
+      organisationSettings: context.organisationSettings,
+    });
+    return { ...resolved, materialLabel: "Hardwood decking" };
   }
   if (normalized.includes("composite")) {
-    return {
-      ...DECK_BENCHMARKS.compositeDecking,
-      label: "Composite decking",
-    };
+    const resolved = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "deck.material.composite.m2",
+      workAreaType: "deck",
+      unit: "m2",
+      fallbackCostRate: DECK_BENCHMARKS.compositeDecking.cost,
+      fallbackSellRate: DECK_BENCHMARKS.compositeDecking.sell,
+      organisationSettings: context.organisationSettings,
+    });
+    return { ...resolved, materialLabel: "Composite decking" };
   }
-  return {
-    ...DECK_BENCHMARKS.treatedPineDecking,
-    label: "Treated pine decking",
-  };
+  const resolved = resolveRate({
+    rates: context.rates,
+    rateType: "material",
+    itemKey: "deck.material.treated_pine.m2",
+    workAreaType: "deck",
+    unit: "m2",
+    fallbackCostRate: DECK_BENCHMARKS.treatedPineDecking.cost,
+    fallbackSellRate: DECK_BENCHMARKS.treatedPineDecking.sell,
+    organisationSettings: context.organisationSettings,
+  });
+  return { ...resolved, materialLabel: "Treated pine decking" };
 }
 
 export function calculateDeck(
@@ -118,14 +148,14 @@ export function calculateDeck(
       labourSellRate: labourRate.sellRate,
       adjustmentFactor: labourAdjustment,
       qualityFactor,
-      rateSource: labourRate.sourceLabel,
       notes: constraintNotes || undefined,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
+      ...rateFieldsFromResolved(labourRate),
     })
   );
 
-  const deckingRates = getDeckMaterialRates(material);
+  const deckingRates = getDeckMaterialRate(material, context);
   lineItems.push(
     createRateLineItem({
       workAreaId: workArea.id,
@@ -134,15 +164,24 @@ export function calculateDeck(
       category: "materials",
       quantity: effectiveArea,
       unit: "m²",
-      costRate: deckingRates.cost,
-      sellRate: deckingRates.sell,
-      rateSource: "Benchmark allowance",
-      notes: deckingRates.label,
+      notes: deckingRates.materialLabel,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
+      ...rateFieldsFromResolved(deckingRates),
     })
   );
+
+  const framingRates = resolveRate({
+    rates: context.rates,
+    rateType: "material",
+    itemKey: "deck.substructure.m2",
+    workAreaType: "deck",
+    unit: "m2",
+    fallbackCostRate: DECK_BENCHMARKS.framing.cost,
+    fallbackSellRate: DECK_BENCHMARKS.framing.sell,
+    organisationSettings: context.organisationSettings,
+  });
 
   lineItems.push(
     createRateLineItem({
@@ -152,14 +191,23 @@ export function calculateDeck(
       category: "materials",
       quantity: effectiveArea,
       unit: "m²",
-      costRate: DECK_BENCHMARKS.framing.cost,
-      sellRate: DECK_BENCHMARKS.framing.sell,
-      rateSource: "Benchmark allowance",
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
+      ...rateFieldsFromResolved(framingRates),
     })
   );
+
+  const fixingsRates = resolveRate({
+    rates: context.rates,
+    rateType: "material",
+    itemKey: "deck.fixings.m2",
+    workAreaType: "deck",
+    unit: "m2",
+    fallbackCostRate: DECK_BENCHMARKS.fixings.cost,
+    fallbackSellRate: DECK_BENCHMARKS.fixings.sell,
+    organisationSettings: context.organisationSettings,
+  });
 
   lineItems.push(
     createRateLineItem({
@@ -169,12 +217,10 @@ export function calculateDeck(
       category: "materials",
       quantity: effectiveArea,
       unit: "m²",
-      costRate: DECK_BENCHMARKS.fixings.cost,
-      sellRate: DECK_BENCHMARKS.fixings.sell,
-      rateSource: "Benchmark allowance",
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
+      ...rateFieldsFromResolved(fixingsRates),
     })
   );
 
@@ -195,10 +241,11 @@ export function calculateDeck(
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
         adjustmentFactor: labourAdjustment,
-        qualityFactor,
-        rateSource: demoProductivity.sourceLabel,
+        qualityFactor: NO_FINISH_QUALITY_FACTOR,
+        notes: `Productivity: ${demoProductivity.hoursPerUnit} hrs/m²`,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
+        ...rateFieldsFromResolved(labourRate),
       })
     );
   }
@@ -218,7 +265,7 @@ export function calculateDeck(
         label: "Stairs allowance",
         recommendedCost: DECK_BENCHMARKS.stairsAllowance.cost,
         recommendedSell: DECK_BENCHMARKS.stairsAllowance.sell,
-        rateSource: "Benchmark allowance",
+        ...benchmarkRateFields(),
         notes: "Basic external stair allowance included with deck.",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -235,7 +282,7 @@ export function calculateDeck(
         label: "Balustrade allowance",
         recommendedCost: DECK_BENCHMARKS.balustradeAllowance.cost,
         recommendedSell: DECK_BENCHMARKS.balustradeAllowance.sell,
-        rateSource: "Benchmark allowance",
+        ...benchmarkRateFields(),
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,

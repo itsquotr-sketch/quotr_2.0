@@ -33,3 +33,45 @@ export function formatStage(stage: string): string {
 export function priorityLabel(priority: ProjectPriority): string {
   return priority.charAt(0).toUpperCase() + priority.slice(1);
 }
+
+export type ProjectStatusDisplay = {
+  label: string;
+  variant: "default" | "secondary" | "warning" | "outline";
+};
+
+export function formatProjectStatus(input: {
+  stage: string;
+  hasEstimate: boolean;
+  estimateIsStale: boolean;
+}): ProjectStatusDisplay {
+  if (input.hasEstimate && input.estimateIsStale) {
+    return { label: "Estimate outdated", variant: "warning" };
+  }
+
+  if (input.stage === "estimate_ready" && input.hasEstimate) {
+    return { label: "Estimate ready", variant: "default" };
+  }
+
+  if (input.hasEstimate && !input.estimateIsStale) {
+    return { label: "Estimate ready", variant: "default" };
+  }
+
+  const stageLabels: Record<string, string> = {
+    brief: "Draft / Brief",
+    confirm_work_areas: "Work areas",
+    quality: "Work areas",
+    work_area_questions: "Questions",
+    constraints: "Constraints",
+    ready_to_estimate: "Constraints",
+  };
+
+  if (stageLabels[input.stage]) {
+    return { label: stageLabels[input.stage], variant: "secondary" };
+  }
+
+  if (!input.hasEstimate) {
+    return { label: "No estimate", variant: "outline" };
+  }
+
+  return { label: formatStage(input.stage), variant: "secondary" };
+}

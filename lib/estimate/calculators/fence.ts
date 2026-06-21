@@ -2,6 +2,7 @@ import {
   getLabourAdjustmentFactor,
   getQualityFactor,
 } from "@/lib/estimate/adjustments";
+import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
 import { FENCE_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
@@ -15,7 +16,7 @@ import {
   createRateLineItem,
 } from "@/lib/estimate/line-items";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
 import type {
   CalculatorResult,
@@ -23,15 +24,45 @@ import type {
   EstimateWorkArea,
 } from "@/lib/estimate/types";
 
-function getFenceMaterialRates(material: string | null) {
+function getFenceMaterialRates(material: string | null, context: EstimateContext) {
   const normalized = material?.toLowerCase() ?? "";
   if (
     normalized.includes("metal") ||
     normalized.includes("composite")
   ) {
-    return FENCE_BENCHMARKS.metalPerLm;
+    const resolved = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "fence.material.metal.lm",
+      workAreaType: "fence",
+      unit: "lm",
+      fallbackCostRate: FENCE_BENCHMARKS.metalPerLm.cost,
+      fallbackSellRate: FENCE_BENCHMARKS.metalPerLm.sell,
+      organisationSettings: context.organisationSettings,
+    });
+    return {
+      cost: resolved.costRate,
+      sell: resolved.sellRate,
+      rateSource: resolved.sourceLabel,
+    };
   }
-  return FENCE_BENCHMARKS.timberPerLm;
+
+  const resolved = resolveRate({
+    rates: context.rates,
+    rateType: "material",
+    itemKey: "fence.material.timber.lm",
+    workAreaType: "fence",
+    unit: "lm",
+    fallbackCostRate: FENCE_BENCHMARKS.timberPerLm.cost,
+    fallbackSellRate: FENCE_BENCHMARKS.timberPerLm.sell,
+    organisationSettings: context.organisationSettings,
+  });
+
+  return {
+    cost: resolved.costRate,
+    sell: resolved.sellRate,
+    rateSource: resolved.sourceLabel,
+  };
 }
 
 export function calculateFence(
@@ -91,7 +122,7 @@ export function calculateFence(
     })
   );
 
-  const materialRates = getFenceMaterialRates(material);
+  const materialRates = getFenceMaterialRates(material, context);
   lineItems.push(
     createRateLineItem({
       workAreaId: workArea.id,
@@ -102,7 +133,7 @@ export function calculateFence(
       unit: "lm",
       costRate: materialRates.cost,
       sellRate: materialRates.sell,
-      rateSource: "Benchmark allowance",
+      rateSource: materialRates.rateSource,
       notes: height ? `${height} m high fence` : undefined,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
@@ -115,6 +146,16 @@ export function calculateFence(
       productivityKey: "fence.gate_hours_allowance",
       unit: "allowance",
       fallbackHoursPerUnit: 2,
+    });
+    const gateRates = resolveRate({
+      rates: context.rates,
+      rateType: "allowance",
+      itemKey: "fence.gate.allowance",
+      workAreaType: "fence",
+      unit: "allowance",
+      fallbackCostRate: FENCE_BENCHMARKS.gate.cost,
+      fallbackSellRate: FENCE_BENCHMARKS.gate.sell,
+      organisationSettings: context.organisationSettings,
     });
     lineItems.push(
       createLabourLineItem({
@@ -138,9 +179,9 @@ export function calculateFence(
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Gate allowance",
-        recommendedCost: FENCE_BENCHMARKS.gate.cost,
-        recommendedSell: FENCE_BENCHMARKS.gate.sell,
-        rateSource: "Benchmark allowance",
+        recommendedCost: gateRates.costRate,
+        recommendedSell: gateRates.sellRate,
+        rateSource: gateRates.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -165,7 +206,7 @@ export function calculateFence(
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
         adjustmentFactor: labourAdjustment,
-        qualityFactor,
+        qualityFactor: NO_FINISH_QUALITY_FACTOR,
         rateSource: demoProductivity.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,

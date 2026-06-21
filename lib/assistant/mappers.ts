@@ -8,6 +8,8 @@ import type {
   WorkAreaActiveQuestion,
   WorkAreaStatus,
 } from "@/components/assistant/types";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { normalizeRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import {
   buildStaticConstraintQuestions,
   buildStaticEstimate,
@@ -19,6 +21,7 @@ import type {
   ScopeReview,
 } from "@/lib/assistant/types";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import {
   buildDerivedFactDisplays,
@@ -233,6 +236,7 @@ function isQuestionUnanswered(question: Question): boolean {
 function buildActiveQuestionsByWorkArea(params: {
   additionalQuestionBlocks: QuestionBlockData[];
   workAreaTypeById: Map<string, string>;
+  confirmedWorkAreaIds: Set<string>;
   includeInlineQuestions: boolean;
 }): Map<string, WorkAreaActiveQuestion[]> {
   const byWorkArea = new Map<string, WorkAreaActiveQuestion[]>();
@@ -247,7 +251,11 @@ function buildActiveQuestionsByWorkArea(params: {
     }
 
     for (const question of block.questions) {
-      if (!question.workAreaId || !isQuestionUnanswered(question)) {
+      if (
+        !question.workAreaId ||
+        !params.confirmedWorkAreaIds.has(question.workAreaId) ||
+        !isQuestionUnanswered(question)
+      ) {
         continue;
       }
 
@@ -327,6 +335,8 @@ export function constraintsToQuestions(rows: ConstraintRow[]): Question[] {
 }
 
 export function mapLineItem(row: DbLineItem): EstimateLineItem {
+  const { displayNotes, metadata } = parseLineItemNotes(row.notes);
+
   return {
     id: row.id,
     workAreaName: row.work_area_name,
@@ -343,8 +353,17 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
     markupPercent: row.markup_percent
       ? Number(row.markup_percent)
       : undefined,
-    rateSource: row.rate_source ?? "",
-    notes: row.notes ?? undefined,
+    rateSource: normalizeRateSourceLabel(row.rate_source ?? ""),
+    quantity: metadata.quantity,
+    unit: metadata.unit,
+    labourHours: metadata.labourHours,
+    productivityRate: metadata.productivityRate,
+    productivityUnit: metadata.productivityUnit,
+    costRate: metadata.costRate,
+    sellRate: metadata.sellRate,
+    itemKey: metadata.itemKey,
+    sellDerivedFromMargin: metadata.sellDerivedFromMargin,
+    notes: displayNotes,
   };
 }
 
@@ -506,9 +525,16 @@ export function buildAssistantState(input: {
     input.workAreas.map((workArea) => [workArea.id, workArea.type])
   );
 
+  const confirmedWorkAreaIds = new Set(
+    input.workAreas
+      .filter((workArea) => workArea.status === "confirmed")
+      .map((workArea) => workArea.id)
+  );
+
   const activeQuestionsByWorkArea = buildActiveQuestionsByWorkArea({
     additionalQuestionBlocks,
     workAreaTypeById,
+    confirmedWorkAreaIds,
     includeInlineQuestions: isStageAtOrBeyond(projectStage, "constraints"),
   });
 
@@ -538,6 +564,6 @@ export function buildAssistantState(input: {
     scopeReview,
     panelScopeSummaries: buildPanelScopeSummariesFromScopeReview(scopeReview),
     derivedFactDisplays: buildDerivedFactDisplays(mergedFacts),
-    defaultMarginPercent: input.defaultMarginPercent ?? 33.33,
+    defaultMarginPercent: input.defaultMarginPercent ?? DEFAULT_MARGIN_PERCENT,
   };
 }

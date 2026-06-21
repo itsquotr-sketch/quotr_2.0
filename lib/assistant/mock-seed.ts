@@ -9,6 +9,7 @@ import {
   buildPanelScopeSummariesFromScopeReview,
   buildScopeReview,
 } from "@/lib/scopes/scope-review";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 
 export type StaticWorkAreaSeed = {
   type: string;
@@ -654,6 +655,6 @@ export function buildDemoAssistantState(): import("@/lib/assistant/types").Assis
     scopeReview,
     panelScopeSummaries: buildPanelScopeSummariesFromScopeReview(scopeReview),
     derivedFactDisplays: [],
-    defaultMarginPercent: 33.33,
+    defaultMarginPercent: DEFAULT_MARGIN_PERCENT,
   };
 }

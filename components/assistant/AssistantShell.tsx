@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useState } from "react";
 import { AssistantMessage } from "@/components/assistant/AssistantMessage";
 import { AssistantProgress } from "@/components/assistant/AssistantProgress";
+import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock";
 import { BriefInput } from "@/components/assistant/BriefInput";
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
@@ -35,10 +36,16 @@ import {
 } from "@/lib/assistant/work-area-actions";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import type { AssistantState } from "@/lib/assistant/types";
+import { SiteNotesPanel } from "@/components/project-notes/SiteNotesPanel";
+import { NoteProposalReviewPanel } from "@/components/project-notes/NoteProposalReviewPanel";
+import type { ProjectNote } from "@/lib/project-notes/types";
+import type { NoteProposal } from "@/lib/project-notes/proposals/types";
 import { Button } from "@/components/ui/button";
 
 type AssistantShellProps = {
   initialState: AssistantState;
+  initialNotes?: ProjectNote[];
+  pendingNoteProposal?: NoteProposal | null;
 };
 
 type PendingAction =
@@ -61,7 +68,11 @@ function initAnswersFromQuestions(
   );
 }
 
-export function AssistantShell({ initialState }: AssistantShellProps) {
+export function AssistantShell({
+  initialState,
+  initialNotes = [],
+  pendingNoteProposal = null,
+}: AssistantShellProps) {
   const router = useRouter();
   const { project } = initialState;
   const stage = project.stage;
@@ -162,15 +173,11 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
     [router]
   );
 
-  const handleBriefSubmit = useCallback(
-    (text: string) => {
-      setBriefText(text);
-      void runAction("brief", () =>
-        saveBriefAndSeedWorkAreas(project.id, text)
-      );
-    },
-    [project.id, runAction]
-  );
+  const handleAnalyseJob = useCallback(() => {
+    void runAction("brief", () =>
+      saveBriefAndSeedWorkAreas(project.id, briefText)
+    );
+  }, [briefText, project.id, runAction]);
 
   const handleWorkAreaToggle = useCallback((id: string) => {
     setWorkAreas((prev) =>
@@ -466,24 +473,42 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
       <div className="mt-6 grid gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start xl:grid-cols-[minmax(0,1fr)_360px]">
         <div className="min-w-0 space-y-4">
           <AssistantMessage
-            title="Project brief"
-            subtitle="Describe the job in your own words"
+            title={briefSubmitted ? "Project brief" : "Project capture"}
+            subtitle={
+              briefSubmitted
+                ? "Your job description and site notes used for analysis"
+                : "Add a quick brief, site notes, measurements or client requests. Quotr will use this information to identify the work areas."
+            }
             status={briefSubmitted ? "submitted" : "active"}
             badge={briefSubmitted ? "Complete" : "Current"}
           >
-            <BriefInput
-              value={briefText}
-              readOnly={briefSubmitted}
-              onSubmit={handleBriefSubmit}
-              disabled={briefSubmitted || pendingAction === "brief"}
-              isSaving={pendingAction === "brief"}
-            />
+            {briefSubmitted ? (
+              <div className="space-y-3">
+                <BriefInput value={briefText} readOnly onSubmit={() => {}} />
+                {initialNotes.length > 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    {initialNotes.length} site note
+                    {initialNotes.length === 1 ? "" : "s"} included in analysis.
+                  </p>
+                ) : null}
+              </div>
+            ) : (
+              <ProjectCaptureBlock
+                briefText={briefText}
+                onBriefChange={setBriefText}
+                projectId={project.id}
+                initialNotes={initialNotes}
+                onAnalyse={handleAnalyseJob}
+                disabled={pendingAction === "brief"}
+                isAnalysing={pendingAction === "brief"}
+              />
+            )}
           </AssistantMessage>
 
           {briefSubmitted ? (
             <AssistantMessage
               title="Confirm work areas"
-              subtitle="Review what we detected from your brief"
+              subtitle="Review what we detected from your brief and site notes"
               status={
                 workAreasConfirmed
                   ? "submitted"
@@ -582,6 +607,22 @@ export function AssistantShell({ initialState }: AssistantShellProps) {
                 }
               />
             </AssistantMessage>
+          ) : null}
+
+          {briefSubmitted ? (
+            <>
+              {pendingNoteProposal ? (
+                <NoteProposalReviewPanel
+                  projectId={project.id}
+                  proposal={pendingNoteProposal}
+                />
+              ) : null}
+              <SiteNotesPanel
+                projectId={project.id}
+                initialNotes={initialNotes}
+                showAnalyseNotes
+              />
+            </>
           ) : null}
 
           {questionsSubmitted ? (

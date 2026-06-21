@@ -8,17 +8,26 @@ import {
   type AIExtractionOutput,
 } from "@/lib/ai/schema";
 
-const SYSTEM_PROMPT = `You are an AI estimating assistant for a building contractor. Given a project brief, extract structured scope information for estimating. Output only valid JSON matching the schema. Do not include prose.
+const SYSTEM_PROMPT = `You are an AI estimating assistant for a building contractor. Given a project brief and optional site notes, extract structured scope information for estimating. Output only valid JSON matching the schema. Do not include prose.
 
 Rules:
 - Only suggest work area types from the allowed list provided.
 - Do not invent unsupported work area types.
 - If a scope is mentioned but unsupported, include it in warnings.
-- Extract measurable facts only where clearly stated in the brief.
+- Extract measurable facts only where clearly stated in the brief or site notes.
 - Do not guess exact quantities if not provided.
-- Use null work_area_type for project-level facts.
-- Confidence should reflect certainty from the brief (0 to 1).
+- Do not price or estimate costs — extract scope only.
+- Use null work_area_type for project-level facts and access/site constraints.
+- Confidence should reflect certainty from the source text (0 to 1).
 - Return raw JSON only.
+
+Site notes handling:
+- Site notes may be short, disjoint snippets — each can describe a different work area or constraint.
+- Identify all distinct work areas mentioned across the brief and notes (e.g. deck, fence, pergola from separate notes).
+- Access or site-condition notes (e.g. poor access, long carry distance) should appear in possibleConstraints and/or as project-level facts where appropriate.
+- Material preferences and dimensions in notes should become facts on the relevant work area.
+- Subcontractor requirements may be listed in assumptions, not as priced facts.
+- If the project brief says "(none)" or "No separate project brief provided.", rely on site notes.
 
 Demolition handling:
 - If demolition/strip-out is part of a renovation scope (bathroom, kitchen, fence), do NOT suggest a separate demolition work area. Instead set the parent scope work area and a component fact such as bathroom.demolition_required, kitchen.demolition_required, or fence.demolition_required = true.
@@ -27,19 +36,22 @@ Demolition handling:
 - Deck rebuild scenarios may include both deck and demolition work areas only when rebuilding is clearly included; demolish-only deck work should use demolition work area only.
 
 Fact key rules:
-- Use canonical fact keys matching scope templates (e.g. deck.length_m, deck.width_m, deck.material, deck.has_stairs, retaining_wall.length_m, retaining_wall.height_m, retaining_wall.height_high_m, retaining_wall.height_low_m, bathroom.demolition_required).
+- Use canonical fact keys matching scope templates (e.g. deck.length_m, deck.width_m, deck.material, deck.has_stairs, deck.has_balustrade, deck.pile_count, fence.length_m, fence.height_m, fence.has_gate, pergola.material, pergola.has_roof, retaining_wall.length_m, retaining_wall.height_m, retaining_wall.height_high_m, retaining_wall.height_low_m, bathroom.demolition_required).
 - Do not create duplicate facts with different labels for the same information.
 - If length and width are provided, include both facts; do not also guess area — area will be calculated deterministically from length × width.
 - For retaining walls, use retaining_wall.length_m, retaining_wall.height_m for uniform walls; use retaining_wall.height_high_m and retaining_wall.height_low_m for raking walls.
 - Keep facts concise and canonical; one fact per measurable attribute.`;
 
 function buildUserPrompt(
-  briefText: string,
+  sourceText: string,
   allowedTypes: string[]
 ): string {
   return `Allowed work area types: ${JSON.stringify(allowedTypes)}
 
-Project brief: "${briefText}"
+Project brief and site notes:
+"""
+${sourceText}
+"""
 
 Return only valid JSON matching this shape:
 {
@@ -105,7 +117,7 @@ export async function extractFromBrief(params: {
 
     const message = await client.messages.create({
       model,
-      max_tokens: 1200,
+      max_tokens: 2048,
       temperature: 0,
       system: SYSTEM_PROMPT,
       messages: [{ role: "user", content: userPrompt }],

@@ -1,8 +1,12 @@
 import { notFound } from "next/navigation";
-import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { buildAssistantState } from "@/lib/assistant/mappers";
 import type { AssistantState } from "@/lib/assistant/types";
-import { isStageAtOrBeyond } from "@/lib/assistant/stage";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import {
+  hasLifecycleColumns,
+  isMissingLifecycleColumnsError,
+  markLifecycleColumnsUnavailable,
+} from "@/lib/projects/query-utils";
 import { createClient } from "@/lib/supabase/server";
 
 export {
@@ -36,7 +40,8 @@ async function getAuthOrgContext() {
 }
 
 export async function getAssistantState(
-  projectId: string
+  projectId: string,
+  retried = false
 ): Promise<AssistantState> {
   const context = await getAuthOrgContext();
   if (!context) {
@@ -44,6 +49,7 @@ export async function getAssistantState(
   }
 
   const { supabase } = context;
+  const lifecycleAvailable = await hasLifecycleColumns(supabase);
 
   const { data: project, error: projectError } = await supabase
     .from("projects")
@@ -51,8 +57,33 @@ export async function getAssistantState(
     .eq("id", projectId)
     .maybeSingle();
 
-  if (projectError || !project) {
+  if (projectError) {
+    console.error("[getAssistantState] project query failed:", projectError.message);
     notFound();
+  }
+
+  if (!project) {
+    notFound();
+  }
+
+  if (lifecycleAvailable) {
+    const { data: lifecycleRow, error: lifecycleError } = await supabase
+      .from("projects")
+      .select("deleted_at")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if (lifecycleError) {
+      if (isMissingLifecycleColumnsError(lifecycleError) && !retried) {
+        markLifecycleColumnsUnavailable();
+        return getAssistantState(projectId, true);
+      }
+      notFound();
+    }
+
+    if (lifecycleRow?.deleted_at) {
+      notFound();
+    }
   }
 
   const [
@@ -118,47 +149,6 @@ export async function getAssistantState(
         .order("sort_order", { ascending: true })
     : { data: [] };
 
-  if (isStageAtOrBeyond(project.stage, "constraints")) {
-    await ensureMissingDetailsQuestionBlock(
-      supabase,
-      context.orgId,
-      projectId,
-      {
-        stage: project.stage,
-        qualityLevel: project.quality_level,
-      }
-    );
-
-    const [{ data: refreshedBlocks }, { data: refreshedQuestions }] =
-      await Promise.all([
-        supabase
-          .from("question_blocks")
-          .select("id, stage, title, description, status, sort_order, created_at")
-          .eq("project_id", projectId)
-          .order("sort_order", { ascending: true })
-          .order("created_at", { ascending: true }),
-        supabase
-          .from("questions")
-          .select(
-            "id, question_block_id, work_area_id, key, label, question_text, input_type, options, required, unit, answer_value, sort_order"
-          )
-          .eq("project_id", projectId)
-          .order("sort_order", { ascending: true }),
-      ]);
-
-    return buildAssistantState({
-      project,
-      workAreas: workAreas ?? [],
-      questionBlocks: refreshedBlocks ?? questionBlocks ?? [],
-      questions: refreshedQuestions ?? questions ?? [],
-      constraints: constraints ?? [],
-      estimate: estimate ?? null,
-      lineItems: lineItems ?? [],
-      projectFacts: projectFacts ?? [],
-      defaultMarginPercent: organisationSettings?.default_margin_percent ?? 33.33,
-    });
-  }
-
   return buildAssistantState({
     project,
     workAreas: workAreas ?? [],
@@ -168,7 +158,8 @@ export async function getAssistantState(
     estimate: estimate ?? null,
     lineItems: lineItems ?? [],
     projectFacts: projectFacts ?? [],
-    defaultMarginPercent: organisationSettings?.default_margin_percent ?? 33.33,
+    defaultMarginPercent:
+      organisationSettings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT,
   });
 }
 

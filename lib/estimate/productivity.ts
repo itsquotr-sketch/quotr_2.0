@@ -1,167 +1,162 @@
+import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { ProductivityRate } from "@/lib/estimate/types";
 
+const PRODUCTIVITY_SOURCE = getRateSourceLabel("productivity");
+
+function productivityEntry(
+  key: string,
+  label: string,
+  hoursPerUnit: number,
+  unit: string
+): ProductivityRate {
+  return {
+    key,
+    label,
+    hoursPerUnit,
+    unit,
+    sourceLabel: PRODUCTIVITY_SOURCE,
+  };
+}
+
 const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
-  "deck.base_labour_hours_per_m2": {
-    key: "deck.base_labour_hours_per_m2",
-    label: "Deck base labour",
-    hoursPerUnit: 1.2,
-    unit: "m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "deck.elevated_extra_hours_per_m2": {
-    key: "deck.elevated_extra_hours_per_m2",
-    label: "Elevated deck extra labour",
-    hoursPerUnit: 0.25,
-    unit: "m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "deck.demolition_hours_per_m2": {
-    key: "deck.demolition_hours_per_m2",
-    label: "Existing deck removal",
-    hoursPerUnit: 0.35,
-    unit: "m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "deck.balustrade_hours_per_lm": {
-    key: "deck.balustrade_hours_per_lm",
-    label: "Balustrade labour",
-    hoursPerUnit: 0.8,
-    unit: "lm",
-    sourceLabel: "Benchmark productivity",
-  },
-  "pergola.base_labour_hours_per_m2": {
-    key: "pergola.base_labour_hours_per_m2",
-    label: "Pergola base labour",
-    hoursPerUnit: 0.9,
-    unit: "m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "pergola.roofing_hours_per_m2": {
-    key: "pergola.roofing_hours_per_m2",
-    label: "Pergola roofing labour",
-    hoursPerUnit: 0.35,
-    unit: "m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "retaining_wall.base_labour_hours_per_face_m2": {
-    key: "retaining_wall.base_labour_hours_per_face_m2",
-    label: "Retaining wall base labour",
-    hoursPerUnit: 2.0,
-    unit: "face m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "retaining_wall.excavation_hours_per_face_m2": {
-    key: "retaining_wall.excavation_hours_per_face_m2",
-    label: "Retaining wall excavation",
-    hoursPerUnit: 0.6,
-    unit: "face m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "retaining_wall.drainage_hours_per_m": {
-    key: "retaining_wall.drainage_hours_per_m",
-    label: "Retaining wall drainage",
-    hoursPerUnit: 0.4,
-    unit: "m",
-    sourceLabel: "Benchmark productivity",
-  },
-  "external_stairs.labour_hours_per_riser": {
-    key: "external_stairs.labour_hours_per_riser",
-    label: "External stair labour",
-    hoursPerUnit: 1.5,
-    unit: "riser",
-    sourceLabel: "Benchmark productivity",
-  },
-  "external_stairs.handrail_hours_allowance": {
-    key: "external_stairs.handrail_hours_allowance",
-    label: "Handrail labour allowance",
-    hoursPerUnit: 3,
-    unit: "allowance",
-    sourceLabel: "Benchmark productivity",
-  },
-  "fence.labour_hours_per_lm": {
-    key: "fence.labour_hours_per_lm",
-    label: "Fence labour",
-    hoursPerUnit: 0.6,
-    unit: "lm",
-    sourceLabel: "Benchmark productivity",
-  },
-  "fence.gate_hours_allowance": {
-    key: "fence.gate_hours_allowance",
-    label: "Gate labour allowance",
-    hoursPerUnit: 2,
-    unit: "allowance",
-    sourceLabel: "Benchmark productivity",
-  },
-  "fence.demolition_hours_per_lm": {
-    key: "fence.demolition_hours_per_lm",
-    label: "Fence removal labour",
-    hoursPerUnit: 0.25,
-    unit: "lm",
-    sourceLabel: "Benchmark productivity",
-  },
-  "demolition.labour_hours_per_m2": {
-    key: "demolition.labour_hours_per_m2",
-    label: "Demolition labour",
-    hoursPerUnit: 0.35,
-    unit: "m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "bathroom.labour_hours_per_m2": {
-    key: "bathroom.labour_hours_per_m2",
-    label: "Bathroom labour",
-    hoursPerUnit: 22,
-    unit: "m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "bathroom.demolition_hours_allowance": {
-    key: "bathroom.demolition_hours_allowance",
-    label: "Bathroom demolition",
-    hoursPerUnit: 8,
-    unit: "allowance",
-    sourceLabel: "Benchmark productivity",
-  },
-  "bathroom.waterproofing_hours_allowance": {
-    key: "bathroom.waterproofing_hours_allowance",
-    label: "Bathroom waterproofing",
-    hoursPerUnit: 6,
-    unit: "allowance",
-    sourceLabel: "Benchmark productivity",
-  },
-  "bathroom.tiling_hours_per_m2": {
-    key: "bathroom.tiling_hours_per_m2",
-    label: "Bathroom tiling",
-    hoursPerUnit: 2.0,
-    unit: "m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "kitchen.labour_hours_per_m2": {
-    key: "kitchen.labour_hours_per_m2",
-    label: "Kitchen labour",
-    hoursPerUnit: 16,
-    unit: "m²",
-    sourceLabel: "Benchmark productivity",
-  },
-  "kitchen.demolition_hours_allowance": {
-    key: "kitchen.demolition_hours_allowance",
-    label: "Kitchen demolition",
-    hoursPerUnit: 8,
-    unit: "allowance",
-    sourceLabel: "Benchmark productivity",
-  },
-  "kitchen.cabinetry_hours_allowance": {
-    key: "kitchen.cabinetry_hours_allowance",
-    label: "Kitchen cabinetry labour",
-    hoursPerUnit: 20,
-    unit: "allowance",
-    sourceLabel: "Benchmark productivity",
-  },
-  "kitchen.benchtop_hours_allowance": {
-    key: "kitchen.benchtop_hours_allowance",
-    label: "Kitchen benchtop labour",
-    hoursPerUnit: 6,
-    unit: "allowance",
-    sourceLabel: "Benchmark productivity",
-  },
+  "deck.base_labour_hours_per_m2": productivityEntry(
+    "deck.base_labour_hours_per_m2",
+    "Deck base labour",
+    1.2,
+    "m²"
+  ),
+  "deck.elevated_extra_hours_per_m2": productivityEntry(
+    "deck.elevated_extra_hours_per_m2",
+    "Elevated deck extra labour",
+    0.25,
+    "m²"
+  ),
+  "deck.demolition_hours_per_m2": productivityEntry(
+    "deck.demolition_hours_per_m2",
+    "Existing deck removal",
+    0.35,
+    "m²"
+  ),
+  "deck.balustrade_hours_per_lm": productivityEntry(
+    "deck.balustrade_hours_per_lm",
+    "Balustrade labour",
+    0.8,
+    "lm"
+  ),
+  "pergola.base_labour_hours_per_m2": productivityEntry(
+    "pergola.base_labour_hours_per_m2",
+    "Pergola base labour",
+    0.9,
+    "m²"
+  ),
+  "pergola.roofing_hours_per_m2": productivityEntry(
+    "pergola.roofing_hours_per_m2",
+    "Pergola roofing labour",
+    0.35,
+    "m²"
+  ),
+  "retaining_wall.base_labour_hours_per_face_m2": productivityEntry(
+    "retaining_wall.base_labour_hours_per_face_m2",
+    "Retaining wall base labour",
+    2.0,
+    "face m²"
+  ),
+  "retaining_wall.excavation_hours_per_face_m2": productivityEntry(
+    "retaining_wall.excavation_hours_per_face_m2",
+    "Retaining wall excavation",
+    0.6,
+    "face m²"
+  ),
+  "retaining_wall.drainage_hours_per_m": productivityEntry(
+    "retaining_wall.drainage_hours_per_m",
+    "Retaining wall drainage",
+    0.4,
+    "m"
+  ),
+  "external_stairs.labour_hours_per_riser": productivityEntry(
+    "external_stairs.labour_hours_per_riser",
+    "External stair labour",
+    1.5,
+    "riser"
+  ),
+  "external_stairs.handrail_hours_allowance": productivityEntry(
+    "external_stairs.handrail_hours_allowance",
+    "Handrail labour allowance",
+    3,
+    "allowance"
+  ),
+  "fence.labour_hours_per_lm": productivityEntry(
+    "fence.labour_hours_per_lm",
+    "Fence labour",
+    0.6,
+    "lm"
+  ),
+  "fence.gate_hours_allowance": productivityEntry(
+    "fence.gate_hours_allowance",
+    "Gate labour allowance",
+    2,
+    "allowance"
+  ),
+  "fence.demolition_hours_per_lm": productivityEntry(
+    "fence.demolition_hours_per_lm",
+    "Fence removal labour",
+    0.25,
+    "lm"
+  ),
+  "demolition.labour_hours_per_m2": productivityEntry(
+    "demolition.labour_hours_per_m2",
+    "Demolition labour",
+    0.35,
+    "m²"
+  ),
+  "bathroom.labour_hours_per_m2": productivityEntry(
+    "bathroom.labour_hours_per_m2",
+    "Bathroom labour",
+    22,
+    "m²"
+  ),
+  "bathroom.demolition_hours_allowance": productivityEntry(
+    "bathroom.demolition_hours_allowance",
+    "Bathroom demolition",
+    8,
+    "allowance"
+  ),
+  "bathroom.waterproofing_hours_allowance": productivityEntry(
+    "bathroom.waterproofing_hours_allowance",
+    "Bathroom waterproofing",
+    6,
+    "allowance"
+  ),
+  "bathroom.tiling_hours_per_m2": productivityEntry(
+    "bathroom.tiling_hours_per_m2",
+    "Bathroom tiling",
+    2.0,
+    "m²"
+  ),
+  "kitchen.labour_hours_per_m2": productivityEntry(
+    "kitchen.labour_hours_per_m2",
+    "Kitchen labour",
+    16,
+    "m²"
+  ),
+  "kitchen.demolition_hours_allowance": productivityEntry(
+    "kitchen.demolition_hours_allowance",
+    "Kitchen demolition",
+    8,
+    "allowance"
+  ),
+  "kitchen.cabinetry_hours_allowance": productivityEntry(
+    "kitchen.cabinetry_hours_allowance",
+    "Kitchen cabinetry labour",
+    20,
+    "allowance"
+  ),
+  "kitchen.benchtop_hours_allowance": productivityEntry(
+    "kitchen.benchtop_hours_allowance",
+    "Kitchen benchtop labour",
+    6,
+    "allowance"
+  ),
 };
 
 export function resolveProductivity(params: {
@@ -180,6 +175,6 @@ export function resolveProductivity(params: {
     label: params.productivityKey,
     hoursPerUnit: params.fallbackHoursPerUnit,
     unit: params.unit ?? "unit",
-    sourceLabel: "Benchmark productivity",
+    sourceLabel: PRODUCTIVITY_SOURCE,
   };
 }

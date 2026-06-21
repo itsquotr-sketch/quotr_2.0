@@ -5,6 +5,12 @@ import type {
 } from "@/components/setup/types";
 import type { EstimateContext } from "@/lib/estimate/types";
 import { getAuthOrgContext } from "@/lib/assistant/state";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import {
+  hasLifecycleColumns,
+  isMissingLifecycleColumnsError,
+  markLifecycleColumnsUnavailable,
+} from "@/lib/projects/query-utils";
 import {
   deriveFactsForProject,
   mergeDerivedFactsIntoRecords,
@@ -13,7 +19,7 @@ import {
 const DEFAULT_ORGANISATION_SETTINGS: OrganisationSettings = {
   id: "",
   org_id: "",
-  default_margin_percent: 33.33,
+  default_margin_percent: DEFAULT_MARGIN_PERCENT,
   default_contingency_percent: 10,
   budget_rate_factor: 0.9,
   premium_rate_factor: 1.15,
@@ -29,7 +35,8 @@ const DEFAULT_ORGANISATION_SETTINGS: OrganisationSettings = {
 };
 
 export async function getEstimateContext(
-  projectId: string
+  projectId: string,
+  retried = false
 ): Promise<EstimateContext | { error: string }> {
   const context = await getAuthOrgContext();
   if (!context) {
@@ -37,20 +44,49 @@ export async function getEstimateContext(
   }
 
   const { supabase, orgId } = context;
+  const lifecycleAvailable = await hasLifecycleColumns(supabase);
+
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("id, quality_level")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (projectError || !project) {
+    if (projectError && isMissingLifecycleColumnsError(projectError) && !retried) {
+      markLifecycleColumnsUnavailable();
+      return getEstimateContext(projectId, true);
+    }
+    return { error: "Project not found." };
+  }
+
+  if (lifecycleAvailable) {
+    const { data: lifecycleRow, error: lifecycleError } = await supabase
+      .from("projects")
+      .select("deleted_at")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if (lifecycleError) {
+      if (isMissingLifecycleColumnsError(lifecycleError) && !retried) {
+        markLifecycleColumnsUnavailable();
+        return getEstimateContext(projectId, true);
+      }
+      return { error: "Project not found." };
+    }
+
+    if (lifecycleRow?.deleted_at) {
+      return { error: "Project not found." };
+    }
+  }
 
   const [
-    { data: project, error: projectError },
     { data: workAreas },
     { data: projectFacts },
     { data: constraints },
     { data: organisationSettings },
     { data: rates },
   ] = await Promise.all([
-    supabase
-      .from("projects")
-      .select("id, quality_level")
-      .eq("id", projectId)
-      .maybeSingle(),
     supabase
       .from("work_areas")
       .select("id, type, name, summary, status, sort_order")
@@ -80,10 +116,6 @@ export async function getEstimateContext(
       .eq("org_id", orgId)
       .eq("active", true),
   ]);
-
-  if (projectError || !project) {
-    return { error: "Project not found." };
-  }
 
   const confirmedWorkAreas = (workAreas ?? []).map((workArea) => ({
     id: workArea.id,

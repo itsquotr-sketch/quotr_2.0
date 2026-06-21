@@ -1,4 +1,9 @@
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { round2 } from "@/lib/estimate/facts";
+import {
+  getRateSourceLabel,
+  type RateSourceType,
+} from "@/lib/estimate/rate-source-labels";
 import type {
   OrganisationRate,
   OrganisationSettings,
@@ -7,7 +12,12 @@ import type { ResolvedLabourRate, ResolvedRate } from "@/lib/estimate/types";
 
 const DEFAULT_LABOUR_COST_RATE = 60;
 const DEFAULT_LABOUR_SELL_RATE = 90;
-const DEFAULT_MARGIN_PERCENT = 33.33;
+
+/** Legacy onboarding keys mapped to current catalogue keys */
+const ITEM_KEY_ALIASES: Record<string, string[]> = {
+  "scope.retaining_wall.face_m2": ["scope.retaining_wall.m2"],
+  "scope.demolition.m2": ["scope.demolition.hour"],
+};
 
 function getDefaultMarginPercent(settings: OrganisationSettings | null): number {
   return settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT;
@@ -54,6 +64,39 @@ function findActiveRate(
   return rates.find((rate) => rate.active && predicate(rate));
 }
 
+function allowBenchmarkFallback(
+  settings: OrganisationSettings | null
+): boolean {
+  return settings?.allow_benchmark_rates !== false;
+}
+
+function buildResolvedRate(params: {
+  costRate: number;
+  sellRate: number;
+  unit: string;
+  sourceType: RateSourceType;
+  itemKey: string;
+  sellDerivedFromMargin: boolean;
+  organisationSettings: OrganisationSettings | null;
+}): ResolvedRate {
+  const range = applyRangeFactors(
+    params.costRate,
+    params.sellRate,
+    params.organisationSettings
+  );
+
+  return {
+    costRate: params.costRate,
+    sellRate: params.sellRate,
+    unit: params.unit,
+    sourceType: params.sourceType,
+    itemKey: params.itemKey,
+    sellDerivedFromMargin: params.sellDerivedFromMargin,
+    sourceLabel: getRateSourceLabel(params.sourceType),
+    ...range,
+  };
+}
+
 export function resolveRate(params: {
   rates: OrganisationRate[];
   rateType: string;
@@ -65,26 +108,34 @@ export function resolveRate(params: {
   organisationSettings: OrganisationSettings | null;
 }): ResolvedRate {
   const marginPercent = getDefaultMarginPercent(params.organisationSettings);
+  const benchmarkAllowed = allowBenchmarkFallback(params.organisationSettings);
   let costRate = params.fallbackCostRate;
   let sellRate =
     params.fallbackSellRate ?? deriveSellFromCost(costRate, marginPercent);
   let unit = params.unit ?? "unit";
-  let sourceLabel = "Benchmark allowance";
+  let sourceType: RateSourceType = benchmarkAllowed ? "benchmark" : "missing";
+  let sellDerivedFromMargin = params.fallbackSellRate == null;
 
-  const exactRate = findActiveRate(
-    params.rates,
-    (rate) =>
+  const exactRate = findActiveRate(params.rates, (rate) => {
+    if (
       rate.item_key === params.itemKey &&
       rate.rate_type === params.rateType
-  );
+    ) {
+      return true;
+    }
+    const aliases = ITEM_KEY_ALIASES[params.itemKey] ?? [];
+    return (
+      aliases.includes(rate.item_key) && rate.rate_type === params.rateType
+    );
+  });
 
   if (exactRate?.cost_rate != null) {
     costRate = exactRate.cost_rate;
+    sellDerivedFromMargin = exactRate.sell_rate == null;
     sellRate =
-      exactRate.sell_rate ??
-      deriveSellFromCost(costRate, marginPercent);
+      exactRate.sell_rate ?? deriveSellFromCost(costRate, marginPercent);
     unit = exactRate.unit || unit;
-    sourceLabel = "User rate";
+    sourceType = "user_rate";
   } else if (params.workAreaType) {
     const workAreaRate = findActiveRate(
       params.rates,
@@ -96,27 +147,26 @@ export function resolveRate(params: {
 
     if (workAreaRate?.cost_rate != null) {
       costRate = workAreaRate.cost_rate;
+      sellDerivedFromMargin = workAreaRate.sell_rate == null;
       sellRate =
         workAreaRate.sell_rate ??
         deriveSellFromCost(costRate, marginPercent);
       unit = workAreaRate.unit || unit;
-      sourceLabel = "Work area rate";
+      sourceType = "work_area_rate";
     }
+  } else if (!benchmarkAllowed) {
+    sourceType = "missing";
   }
 
-  const range = applyRangeFactors(
-    costRate,
-    sellRate,
-    params.organisationSettings
-  );
-
-  return {
+  return buildResolvedRate({
     costRate,
     sellRate,
     unit,
-    sourceLabel,
-    ...range,
-  };
+    sourceType,
+    itemKey: params.itemKey,
+    sellDerivedFromMargin,
+    organisationSettings: params.organisationSettings,
+  });
 }
 
 export function resolveLabourRate(params: {
@@ -125,30 +175,44 @@ export function resolveLabourRate(params: {
   trade?: string;
 }): ResolvedLabourRate {
   const marginPercent = getDefaultMarginPercent(params.organisationSettings);
-  const itemKey =
+
+  const labourKeys =
     params.trade === "labourer"
-      ? "labour.labourer.hour"
-      : "labour.carpenter.hour";
+      ? ["labour.labourer.hour", "labour.general.hour", "labour.carpenter.hour"]
+      : params.trade === "apprentice"
+        ? ["labour.apprentice.hour", "labour.general.hour", "labour.carpenter.hour"]
+        : ["labour.carpenter.hour", "labour.general.hour"];
 
-  const userRate = findActiveRate(
-    params.rates,
-    (rate) => rate.item_key === itemKey && rate.rate_type === "labour"
-  );
+  for (const key of labourKeys) {
+    const userRate = findActiveRate(
+      params.rates,
+      (rate) => rate.item_key === key && rate.rate_type === "labour"
+    );
 
-  if (userRate?.cost_rate != null) {
-    return {
-      costRate: userRate.cost_rate,
-      sellRate:
-        userRate.sell_rate ??
-        deriveSellFromCost(userRate.cost_rate, marginPercent),
-      sourceLabel: "User rate",
-    };
+    if (userRate?.cost_rate != null) {
+      const sellDerivedFromMargin = userRate.sell_rate == null;
+      return {
+        costRate: userRate.cost_rate,
+        sellRate:
+          userRate.sell_rate ??
+          deriveSellFromCost(userRate.cost_rate, marginPercent),
+        sourceLabel: getRateSourceLabel("user_rate"),
+        sourceType: "user_rate",
+        itemKey: key,
+        sellDerivedFromMargin,
+      };
+    }
   }
+
+  const benchmarkAllowed = allowBenchmarkFallback(params.organisationSettings);
+  const sourceType: RateSourceType = benchmarkAllowed ? "default" : "missing";
 
   return {
     costRate: DEFAULT_LABOUR_COST_RATE,
     sellRate: DEFAULT_LABOUR_SELL_RATE,
-    sourceLabel: "Benchmark allowance",
+    sourceLabel: getRateSourceLabel(sourceType),
+    sourceType,
+    sellDerivedFromMargin: false,
   };
 }
 
@@ -162,4 +226,4 @@ export function getRangeFactors(settings: OrganisationSettings | null): {
   };
 }
 
-export { deriveSellFromCost, getDefaultMarginPercent };
+export { deriveSellFromCost, getDefaultMarginPercent, DEFAULT_MARGIN_PERCENT };

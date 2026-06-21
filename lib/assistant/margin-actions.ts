@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import {
   applyMarginToAmounts,
   sumLineItemTotals,
@@ -20,7 +21,7 @@ const updateMarginSchema = z.object({
 const DEFAULT_ORGANISATION_SETTINGS: OrganisationSettings = {
   id: "",
   org_id: "",
-  default_margin_percent: 33.33,
+  default_margin_percent: DEFAULT_MARGIN_PERCENT,
   default_contingency_percent: 10,
   budget_rate_factor: 0.9,
   premium_rate_factor: 1.15,
@@ -66,7 +67,7 @@ export async function updateEstimateMargin(
   const [{ data: estimate }, { data: organisationSettings }] = await Promise.all([
     supabase
       .from("estimates")
-      .select("id")
+      .select("id, is_stale")
       .eq("project_id", projectId)
       .maybeSingle(),
     supabase
@@ -80,6 +81,10 @@ export async function updateEstimateMargin(
 
   if (!estimate) {
     return { error: "No estimate exists for this project yet." };
+  }
+
+  if (estimate.is_stale) {
+    return { error: "Regenerate the estimate before adjusting margin." };
   }
 
   const { data: lineItems } = await supabase

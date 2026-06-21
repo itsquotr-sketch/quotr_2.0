@@ -6,6 +6,10 @@ import {
   formatCurrencyRange,
   formatPercent,
 } from "@/components/assistant/format";
+import {
+  EstimateCalibrationPanel,
+  RateSourceBadge,
+} from "@/components/assistant/EstimateCalibrationPanel";
 import type {
   Estimate,
   EstimateLineItem,
@@ -144,9 +148,9 @@ function LineItemCard({ item }: { item: EstimateLineItem }) {
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="text-sm font-medium break-words">{item.label}</p>
-          <p className="mt-1 text-xs text-muted-foreground break-words">
-            {item.rateSource}
-          </p>
+          <div className="mt-1.5">
+            <RateSourceBadge source={item.rateSource} />
+          </div>
         </div>
         <Badge variant="secondary" className="w-fit shrink-0">
           {CATEGORY_LABELS[item.category]}
@@ -154,18 +158,47 @@ function LineItemCard({ item }: { item: EstimateLineItem }) {
       </div>
 
       <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-        <div>
-          <dt className="text-xs text-muted-foreground">Cost range</dt>
-          <dd className="font-medium">
-            {formatCurrencyRange(item.costLow, item.costHigh)}
-          </dd>
-        </div>
-        <div>
-          <dt className="text-xs text-muted-foreground">Sell range</dt>
-          <dd className="font-medium">
-            {formatCurrencyRange(item.sellLow, item.sellHigh)}
-          </dd>
-        </div>
+        {item.quantity != null && item.unit ? (
+          <div>
+            <dt className="text-xs text-muted-foreground">Quantity</dt>
+            <dd className="font-medium">
+              {item.quantity} {item.unit}
+            </dd>
+          </div>
+        ) : null}
+        {item.productivityRate != null && item.productivityUnit ? (
+          <div>
+            <dt className="text-xs text-muted-foreground">Productivity</dt>
+            <dd className="font-medium">
+              {item.productivityRate} hrs/{item.productivityUnit}
+            </dd>
+          </div>
+        ) : null}
+        {item.labourHours != null ? (
+          <div>
+            <dt className="text-xs text-muted-foreground">Labour hours</dt>
+            <dd className="font-medium">{item.labourHours} hrs</dd>
+          </div>
+        ) : null}
+        {item.costRate != null ? (
+          <div>
+            <dt className="text-xs text-muted-foreground">Cost rate</dt>
+            <dd className="font-medium">{formatCurrency(item.costRate)}</dd>
+          </div>
+        ) : null}
+        {item.sellRate != null ? (
+          <div>
+            <dt className="text-xs text-muted-foreground">Charge rate</dt>
+            <dd className="font-medium">
+              {formatCurrency(item.sellRate)}
+              {item.sellDerivedFromMargin ? (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  (from margin)
+                </span>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-xs text-muted-foreground">Recommended cost</dt>
           <dd className="font-medium">{formatCurrency(item.recommendedCost)}</dd>
@@ -245,7 +278,7 @@ export function EstimateBreakdownModal({
                 </p>
                 <p className="mt-1 text-sm text-amber-900 dark:text-amber-200">
                   This estimate is based on older inputs. Regenerate to update
-                  the pricing.
+                  pricing and apply any rate changes from Rates.
                 </p>
                 {onRegenerate ? (
                   <Button
@@ -308,6 +341,10 @@ export function EstimateBreakdownModal({
                 />
               </div>
             </section>
+
+            <Separator />
+
+            <EstimateCalibrationPanel lineItems={estimate.lineItems} />
 
             <Separator />
 

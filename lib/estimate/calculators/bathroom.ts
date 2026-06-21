@@ -13,8 +13,9 @@ import {
   createLabourLineItem,
   createRateLineItem,
 } from "@/lib/estimate/line-items";
+import { rateFieldsFromResolved } from "@/lib/estimate/line-item-helpers";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
 import type {
   CalculatorResult,
@@ -142,15 +143,26 @@ export function calculateBathroom(
         organisationSettings: context.organisationSettings,
       })
     );
+    const waterproofingRates = resolveRate({
+      rates: context.rates,
+      rateType: "allowance",
+      itemKey: "bathroom.waterproofing.allowance",
+      workAreaType: "bathroom",
+      unit: "allowance",
+      fallbackCostRate: BATHROOM_BENCHMARKS.waterproofing.cost,
+      fallbackSellRate: BATHROOM_BENCHMARKS.waterproofing.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Waterproofing allowance",
         category: "subcontractor",
-        recommendedCost: BATHROOM_BENCHMARKS.waterproofing.cost,
-        recommendedSell: BATHROOM_BENCHMARKS.waterproofing.sell,
-        rateSource: "Benchmark allowance",
+        recommendedCost: waterproofingRates.costRate,
+        recommendedSell: waterproofingRates.sellRate,
+        rateSource: waterproofingRates.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -164,6 +176,17 @@ export function calculateBathroom(
     fallbackHoursPerUnit: 2.0,
   });
 
+  const tilingRates = resolveRate({
+    rates: context.rates,
+    rateType: "material",
+    itemKey: "bathroom.tiling.m2",
+    workAreaType: "bathroom",
+    unit: "m2",
+    fallbackCostRate: BATHROOM_BENCHMARKS.tilingPerM2.cost,
+    fallbackSellRate: BATHROOM_BENCHMARKS.tilingPerM2.sell,
+    organisationSettings: context.organisationSettings,
+  });
+
   lineItems.push(
     createRateLineItem({
       workAreaId: workArea.id,
@@ -172,22 +195,21 @@ export function calculateBathroom(
       category: "subcontractor",
       quantity: effectiveArea,
       unit: "m²",
-      costRate: BATHROOM_BENCHMARKS.tilingPerM2.cost,
-      sellRate: BATHROOM_BENCHMARKS.tilingPerM2.sell,
-      rateSource: "Benchmark allowance",
-      notes: tileExtent ?? "Tiling extent allowance",
+      costRate: tilingRates.costRate,
+      sellRate: tilingRates.sellRate,
+      rateSource: tilingRates.sourceLabel,
+      notes: tileExtent
+        ? `${tileExtent} · productivity ${tilingProductivity.hoursPerUnit} hrs/m²`
+        : `Tiling extent allowance · productivity ${tilingProductivity.hoursPerUnit} hrs/m²`,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
     })
   );
 
-  assumptions.push(
-    `Tiling productivity benchmark: ${tilingProductivity.hoursPerUnit} hrs/m² where applicable.`
-  );
-
   let fixturesCost = 0;
   let fixturesSell = 0;
+
   if (getBooleanFact(facts, workArea.id, "bathroom.includes_vanity")) {
     fixturesCost += BATHROOM_BENCHMARKS.vanity.cost;
     fixturesSell += BATHROOM_BENCHMARKS.vanity.sell;
@@ -208,17 +230,28 @@ export function calculateBathroom(
   }
 
   if (fixturesCost > 0) {
+    const fixturesRates = resolveRate({
+      rates: context.rates,
+      rateType: "allowance",
+      itemKey: "bathroom.fixtures.allowance",
+      workAreaType: "bathroom",
+      unit: "allowance",
+      fallbackCostRate: fixturesCost,
+      fallbackSellRate: fixturesSell,
+      organisationSettings: context.organisationSettings,
+    });
+
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Fixtures allowance",
-        recommendedCost: fixturesCost,
-        recommendedSell: fixturesSell,
-        rateSource: "Benchmark allowance",
+        recommendedCost: fixturesRates.costRate,
+        recommendedSell: fixturesRates.sellRate,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
+        ...rateFieldsFromResolved(fixturesRates),
       })
     );
   }

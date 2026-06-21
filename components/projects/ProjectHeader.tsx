@@ -1,8 +1,9 @@
 "use client";
 
 import { Fragment } from "react";
+import { Badge } from "@/components/ui/badge";
 import { PriorityBadge } from "@/components/projects/ProjectMeta";
-import { EditProjectDialog } from "@/components/projects/EditProjectDialog";
+import { ProjectActionsMenu } from "@/components/projects/ProjectActionsMenu";
 import { formatDueDate } from "@/lib/projects/format";
 import type { Project } from "@/lib/projects/types";
 
@@ -32,14 +33,22 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
   }
 
   const hasDetails = detailItems.length > 0;
+  const isArchived = Boolean(project.archived_at);
 
   return (
     <div className="min-w-0 flex-1 space-y-3">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <h1 className="min-w-0 text-xl font-semibold tracking-tight sm:text-2xl">
-          {project.title}
-        </h1>
-        <EditProjectDialog project={project} />
+        <div className="min-w-0 space-y-2">
+          <div className="flex flex-wrap items-center gap-2">
+            <h1 className="min-w-0 text-xl font-semibold tracking-tight sm:text-2xl">
+              {project.title}
+            </h1>
+            {isArchived ? (
+              <Badge variant="outline">Archived</Badge>
+            ) : null}
+          </div>
+        </div>
+        <ProjectActionsMenu project={project} variant="header" showEdit />
       </div>
 
       <p className="text-sm text-muted-foreground">Project assistant</p>

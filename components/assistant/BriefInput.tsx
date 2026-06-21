@@ -22,6 +22,14 @@ export function BriefInput({
   const [text, setText] = useState(value);
 
   if (readOnly) {
+    if (!value.trim()) {
+      return (
+        <p className="rounded-2xl bg-muted/50 px-4 py-3 text-sm italic text-muted-foreground">
+          No written brief — analysis used site notes.
+        </p>
+      );
+    }
+
     return (
       <p className="rounded-2xl bg-muted/50 px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
         {value}

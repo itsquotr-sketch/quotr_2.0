@@ -13,7 +13,7 @@ import {
   createLabourLineItem,
 } from "@/lib/estimate/line-items";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
 import type {
   CalculatorResult,
@@ -138,14 +138,25 @@ export function calculateKitchen(
         organisationSettings: context.organisationSettings,
       })
     );
+    const cabinetryRates = resolveRate({
+      rates: context.rates,
+      rateType: "allowance",
+      itemKey: "kitchen.cabinetry.allowance",
+      workAreaType: "kitchen",
+      unit: "allowance",
+      fallbackCostRate: KITCHEN_BENCHMARKS.cabinetry.cost,
+      fallbackSellRate: KITCHEN_BENCHMARKS.cabinetry.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Cabinetry allowance",
-        recommendedCost: KITCHEN_BENCHMARKS.cabinetry.cost,
-        recommendedSell: KITCHEN_BENCHMARKS.cabinetry.sell,
-        rateSource: "Benchmark allowance",
+        recommendedCost: cabinetryRates.costRate,
+        recommendedSell: cabinetryRates.sellRate,
+        rateSource: cabinetryRates.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -174,14 +185,25 @@ export function calculateKitchen(
         organisationSettings: context.organisationSettings,
       })
     );
+    const benchtopRates = resolveRate({
+      rates: context.rates,
+      rateType: "allowance",
+      itemKey: "kitchen.benchtop.allowance",
+      workAreaType: "kitchen",
+      unit: "allowance",
+      fallbackCostRate: KITCHEN_BENCHMARKS.benchtop.cost,
+      fallbackSellRate: KITCHEN_BENCHMARKS.benchtop.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Benchtop allowance",
-        recommendedCost: KITCHEN_BENCHMARKS.benchtop.cost,
-        recommendedSell: KITCHEN_BENCHMARKS.benchtop.sell,
-        rateSource: "Benchmark allowance",
+        recommendedCost: benchtopRates.costRate,
+        recommendedSell: benchtopRates.sellRate,
+        rateSource: benchtopRates.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,

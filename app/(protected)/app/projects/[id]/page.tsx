@@ -1,7 +1,10 @@
 import { AssistantShell } from "@/components/assistant/AssistantShell";
 import { UserMenu } from "@/components/layout/user-menu";
+import { DuplicatedProjectBanner } from "@/components/projects/DuplicatedProjectBanner";
 import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { getAssistantState } from "@/lib/assistant/state";
+import { listProjectNotes } from "@/lib/project-notes/actions";
+import { getPendingNoteProposal } from "@/lib/project-notes/proposals/actions";
 import { getProject } from "@/lib/projects/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -11,10 +14,13 @@ type ProjectPageProps = {
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
   const { id } = await params;
-  const [project, assistantState] = await Promise.all([
-    getProject(id),
-    getAssistantState(id),
-  ]);
+  const [project, assistantState, projectNotes, pendingNoteProposal] =
+    await Promise.all([
+      getProject(id),
+      getAssistantState(id),
+      listProjectNotes(id),
+      getPendingNoteProposal(id),
+    ]);
 
   const supabase = await createClient();
   const {
@@ -40,9 +46,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
 
       <div className="flex-1 overflow-auto overflow-x-hidden">
         <div className="mx-auto mt-6 max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
+          <DuplicatedProjectBanner
+            show={Boolean(project.duplicated_from_project_id)}
+          />
           <AssistantShell
             key={assistantState.project.stage}
             initialState={assistantState}
+            initialNotes={projectNotes}
+            pendingNoteProposal={pendingNoteProposal}
           />
         </div>
       </div>

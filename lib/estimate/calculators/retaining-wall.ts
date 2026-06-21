@@ -4,6 +4,7 @@ import {
   getQualityFactor,
   hasPoorAccess,
 } from "@/lib/estimate/adjustments";
+import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
 import { RETAINING_WALL_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
@@ -18,7 +19,7 @@ import {
   createRateLineItem,
 } from "@/lib/estimate/line-items";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
 import type {
   CalculatorResult,
@@ -50,15 +51,45 @@ function resolveWallHeight(
   return { height: null, assumptions };
 }
 
-function getWallMaterialRates(material: string | null) {
+function getWallMaterialRates(material: string | null, context: EstimateContext) {
   const normalized = material?.toLowerCase() ?? "";
   if (
     normalized.includes("concrete") ||
     normalized.includes("block")
   ) {
-    return RETAINING_WALL_BENCHMARKS.concreteFace;
+    const resolved = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "retaining_wall.material.concrete.face_m2",
+      workAreaType: "retaining_wall",
+      unit: "m2",
+      fallbackCostRate: RETAINING_WALL_BENCHMARKS.concreteFace.cost,
+      fallbackSellRate: RETAINING_WALL_BENCHMARKS.concreteFace.sell,
+      organisationSettings: context.organisationSettings,
+    });
+    return {
+      cost: resolved.costRate,
+      sell: resolved.sellRate,
+      rateSource: resolved.sourceLabel,
+    };
   }
-  return RETAINING_WALL_BENCHMARKS.timberFace;
+
+  const resolved = resolveRate({
+    rates: context.rates,
+    rateType: "material",
+    itemKey: "retaining_wall.material.timber.face_m2",
+    workAreaType: "retaining_wall",
+    unit: "m2",
+    fallbackCostRate: RETAINING_WALL_BENCHMARKS.timberFace.cost,
+    fallbackSellRate: RETAINING_WALL_BENCHMARKS.timberFace.sell,
+    organisationSettings: context.organisationSettings,
+  });
+
+  return {
+    cost: resolved.costRate,
+    sell: resolved.sellRate,
+    rateSource: resolved.sourceLabel,
+  };
 }
 
 export function calculateRetainingWall(
@@ -152,8 +183,8 @@ export function calculateRetainingWall(
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
         adjustmentFactor: labourAdjustment,
-        qualityFactor,
-        rateSource: drainage.sourceLabel,
+        qualityFactor: NO_FINISH_QUALITY_FACTOR,
+        rateSource: labourRate.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
       })
@@ -162,7 +193,7 @@ export function calculateRetainingWall(
     missingInfo.push(formatMissing("Drainage scope"));
   }
 
-  const materialRates = getWallMaterialRates(material);
+  const materialRates = getWallMaterialRates(material, context);
   lineItems.push(
     createRateLineItem({
       workAreaId: workArea.id,
@@ -173,7 +204,7 @@ export function calculateRetainingWall(
       unit: "face m²",
       costRate: materialRates.cost,
       sellRate: materialRates.sell,
-      rateSource: "Benchmark allowance",
+      rateSource: materialRates.rateSource,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
@@ -181,6 +212,17 @@ export function calculateRetainingWall(
   );
 
   if (getBooleanFact(facts, workArea.id, "retaining_wall.drainage_required")) {
+    const drainageRates = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "retaining_wall.drainage.lm",
+      workAreaType: "retaining_wall",
+      unit: "lm",
+      fallbackCostRate: RETAINING_WALL_BENCHMARKS.drainagePerM.cost,
+      fallbackSellRate: RETAINING_WALL_BENCHMARKS.drainagePerM.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
     lineItems.push(
       createRateLineItem({
         workAreaId: workArea.id,
@@ -189,17 +231,28 @@ export function calculateRetainingWall(
         category: "materials",
         quantity: effectiveLength,
         unit: "m",
-        costRate: RETAINING_WALL_BENCHMARKS.drainagePerM.cost,
-        sellRate: RETAINING_WALL_BENCHMARKS.drainagePerM.sell,
-        rateSource: "Benchmark allowance",
+        costRate: drainageRates.costRate,
+        sellRate: drainageRates.sellRate,
+        rateSource: drainageRates.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
-        qualityFactor,
+        qualityFactor: NO_FINISH_QUALITY_FACTOR,
       })
     );
   }
 
   if (getBooleanFact(facts, workArea.id, "retaining_wall.backfill_included")) {
+    const backfillRates = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "retaining_wall.backfill.face_m2",
+      workAreaType: "retaining_wall",
+      unit: "m2",
+      fallbackCostRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.cost,
+      fallbackSellRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
     lineItems.push(
       createRateLineItem({
         workAreaId: workArea.id,
@@ -208,12 +261,12 @@ export function calculateRetainingWall(
         category: "materials",
         quantity: faceArea,
         unit: "face m²",
-        costRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.cost,
-        sellRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.sell,
-        rateSource: "Benchmark allowance",
+        costRate: backfillRates.costRate,
+        sellRate: backfillRates.sellRate,
+        rateSource: backfillRates.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
-        qualityFactor,
+        qualityFactor: NO_FINISH_QUALITY_FACTOR,
       })
     );
   } else {
@@ -250,7 +303,7 @@ export function calculateRetainingWall(
           .join(" · "),
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
-        qualityFactor,
+        qualityFactor: NO_FINISH_QUALITY_FACTOR,
       })
     );
   }

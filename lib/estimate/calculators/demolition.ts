@@ -14,7 +14,7 @@ import {
   createRateLineItem,
 } from "@/lib/estimate/line-items";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
 import type {
   CalculatorResult,
@@ -79,6 +79,17 @@ export function calculateDemolition(
     true;
 
   if (wasteRequired) {
+    const wasteRates = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "demolition.waste.m2",
+      workAreaType: "demolition",
+      unit: "m2",
+      fallbackCostRate: DEMOLITION_BENCHMARKS.wastePerM2.cost,
+      fallbackSellRate: DEMOLITION_BENCHMARKS.wastePerM2.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
     lineItems.push(
       createRateLineItem({
         workAreaId: workArea.id,
@@ -87,9 +98,9 @@ export function calculateDemolition(
         category: "allowance",
         quantity: effectiveArea,
         unit: "m²",
-        costRate: DEMOLITION_BENCHMARKS.wastePerM2.cost,
-        sellRate: DEMOLITION_BENCHMARKS.wastePerM2.sell,
-        rateSource: "Benchmark allowance",
+        costRate: wasteRates.costRate,
+        sellRate: wasteRates.sellRate,
+        rateSource: wasteRates.sourceLabel,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,

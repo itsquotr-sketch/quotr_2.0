@@ -1,4 +1,12 @@
 import { round2 } from "@/lib/estimate/facts";
+import {
+  countRateSources,
+  type EstimateCalibrationSummary,
+} from "@/lib/estimate/estimate-calibration";
+import {
+  classifyRateSource,
+  isUserRateSource,
+} from "@/lib/estimate/rate-source-labels";
 import type {
   CalculatorResult,
   EstimateLineItemInput,
@@ -38,46 +46,146 @@ export function sumLineItems(lineItems: EstimateLineItemInput[]) {
   );
 }
 
+function getLineItemSourceType(item: EstimateLineItemInput) {
+  return item.rateSourceType ?? classifyRateSource(item.rateSource);
+}
+
+function summarizeCategoryRateSource(
+  items: EstimateLineItemInput[],
+  categoryFilter: (item: EstimateLineItemInput) => boolean
+): string | null {
+  const categoryItems = items.filter(categoryFilter);
+  if (categoryItems.length === 0) return null;
+
+  const userCount = categoryItems.filter((item) =>
+    isUserRateSource(getLineItemSourceType(item))
+  ).length;
+  const missingCount = categoryItems.filter(
+    (item) => getLineItemSourceType(item) === "missing"
+  ).length;
+
+  if (missingCount > 0) {
+    return "some rates missing";
+  }
+
+  if (userCount === categoryItems.length) {
+    return "your rates";
+  }
+
+  if (userCount === 0) {
+    return "benchmark allowances";
+  }
+
+  return "mixed rates";
+}
+
 export function buildRateSourceSummary(
   lineItems: EstimateLineItemInput[]
 ): string {
-  let userCount = 0;
-  let benchmarkCount = 0;
+  if (lineItems.length === 0) return "No line items";
 
-  for (const item of lineItems) {
-    const source = item.rateSource.toLowerCase();
-    if (source.includes("user rate") || source.includes("work area rate")) {
-      userCount += 1;
-    } else {
-      benchmarkCount += 1;
-    }
+  const counts = countRateSources(lineItems);
+  const total = lineItems.length;
+
+  if (counts.missing > 0) {
+    return "Some rates missing — estimate confidence reduced";
   }
 
-  const total = lineItems.length;
-  if (userCount >= total * 0.6) return "Using your rates";
-  if (benchmarkCount >= total * 0.6) return "Using benchmark allowances";
+  const labourSummary = summarizeCategoryRateSource(
+    lineItems,
+    (item) => item.category === "labour"
+  );
+  const materialSummary = summarizeCategoryRateSource(
+    lineItems,
+    (item) =>
+      item.category === "materials" ||
+      item.category === "allowance" ||
+      item.category === "subcontractor"
+  );
+
+  if (labourSummary && materialSummary) {
+    if (
+      labourSummary === "your rates" &&
+      materialSummary === "benchmark allowances"
+    ) {
+      return "Using your labour rates with benchmark material allowances";
+    }
+
+    return `Labour: ${labourSummary} · Materials: ${materialSummary}`;
+  }
+
+  if (labourSummary) {
+    return labourSummary === "your rates"
+      ? "Using your labour rates"
+      : `Labour: ${labourSummary}`;
+  }
+
+  if (materialSummary) {
+    return materialSummary === "benchmark allowances"
+      ? "Using benchmark allowances"
+      : `Materials: ${materialSummary}`;
+  }
+
+  const userCount = counts.user_rate + counts.work_area_rate;
+  const benchmarkCount =
+    counts.benchmark +
+    counts.productivity +
+    counts.fallback +
+    counts.default;
+
+  if (userCount >= total * 0.7) {
+    return "Mostly using your rates";
+  }
+
+  if (benchmarkCount >= total * 0.6) {
+    return "Using benchmark allowances";
+  }
+
   return "Using mixed rates and benchmark allowances";
 }
 
+/**
+ * Deterministic confidence scoring for internal estimates.
+ * Base 75, adjusted for missing facts, user-rate coverage, and benchmark reliance.
+ */
 export function computeConfidence(params: {
-  calculatorResults: CalculatorResult[];
+  lineItems: EstimateLineItemInput[];
   totalMissingCount: number;
-  benchmarkHeavy: boolean;
 }): number {
-  if (params.calculatorResults.length === 0) return 0;
+  const counts = countRateSources(params.lineItems);
+  const total = Math.max(params.lineItems.length, 1);
+  const userCount = counts.user_rate + counts.work_area_rate;
+  const benchmarkCount =
+    counts.benchmark +
+    counts.productivity +
+    counts.fallback +
+    counts.default;
 
-  const average =
-    params.calculatorResults.reduce(
-      (sum, result) => sum + result.confidence,
-      0
-    ) / params.calculatorResults.length;
+  let confidence = 75;
 
-  let confidence = average - params.totalMissingCount * 3;
-  if (params.benchmarkHeavy) {
-    confidence = Math.min(confidence, 85);
+  if (params.totalMissingCount === 0) {
+    confidence += 10;
+  } else {
+    confidence -= 15;
   }
-  confidence = Math.max(35, Math.min(95, confidence));
-  return round2(confidence);
+
+  if (userCount / total >= 0.7) {
+    confidence += 5;
+  }
+
+  if (benchmarkCount / total >= 0.6) {
+    confidence -= 10;
+  }
+
+  if (counts.fallback + counts.default > 0) {
+    confidence -= 10;
+  }
+
+  if (counts.missing > 0) {
+    confidence -= 10;
+  }
+
+  return round2(Math.max(35, Math.min(95, confidence)));
 }
 
 export function mergeUnique(items: string[]): string[] {
@@ -104,17 +212,11 @@ export function finalizeEstimateResult(params: {
       ? round2((grossProfit / totals.recommendedCost) * 100)
       : 0;
 
-  const benchmarkHeavy =
-    params.lineItems.filter((item) =>
-      item.rateSource.toLowerCase().includes("benchmark")
-    ).length >=
-    params.lineItems.length * 0.6;
-
+  const missingInfo = mergeUnique(params.missingInfo);
   const assumptions = mergeUnique([
     ...GENERAL_ESTIMATE_ASSUMPTIONS,
     ...params.assumptions,
   ]);
-  const missingInfo = mergeUnique(params.missingInfo);
   const exclusions = mergeUnique([
     ...GENERAL_ESTIMATE_EXCLUSIONS,
     ...params.exclusions,
@@ -131,9 +233,8 @@ export function finalizeEstimateResult(params: {
     marginPercent,
     markupPercent,
     confidence: computeConfidence({
-      calculatorResults: params.calculatorResults,
+      lineItems: params.lineItems,
       totalMissingCount: missingInfo.length,
-      benchmarkHeavy,
     }),
     rateSourceSummary: buildRateSourceSummary(params.lineItems),
     assumptions,
@@ -146,3 +247,5 @@ export function finalizeEstimateResult(params: {
 export function baseConfidence(missingCount: number): number {
   return Math.max(45, 82 - missingCount * 5);
 }
+
+export type { EstimateCalibrationSummary };
