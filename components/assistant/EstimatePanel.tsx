@@ -8,7 +8,12 @@ import {
   formatPercent,
 } from "@/components/assistant/format";
 import { MarginEditControl } from "@/components/assistant/MarginEditControl";
+import {
+  OpenFinalPricingLink,
+  PrepareFinalPricingButton,
+} from "@/components/pricing/PrepareFinalPricingButton";
 import type { Estimate } from "@/components/assistant/types";
+import type { PricingSummary } from "@/lib/pricing/types";
 import type { PanelScopeSummary, ScopeReview } from "@/lib/assistant/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -22,7 +27,9 @@ import { cn } from "@/lib/utils";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 
 type EstimatePanelProps = {
+  projectId: string;
   estimate: Estimate | null;
+  pricingSummary?: PricingSummary | null;
   isGenerating?: boolean;
   isRegenerating?: boolean;
   isSavingMargin?: boolean;
@@ -91,7 +98,9 @@ function buildScopeHealthSummary(input: {
 }
 
 export function EstimatePanel({
+  projectId,
   estimate,
+  pricingSummary = null,
   isGenerating,
   isRegenerating,
   isSavingMargin,
@@ -333,6 +342,44 @@ export function EstimatePanel({
             >
               View full breakdown
             </Button>
+
+            {estimate && !isStale ? (
+              pricingSummary ? (
+                <div className="space-y-2">
+                  <OpenFinalPricingLink
+                    projectId={projectId}
+                    pricingDocumentId={pricingSummary.id}
+                    reviewed={pricingSummary.status === "reviewed"}
+                  />
+                  {pricingSummary.status === "reviewed" ? (
+                    <p className="text-center text-xs font-medium text-primary">
+                      Pricing reviewed
+                    </p>
+                  ) : (
+                    <p className="text-center text-xs text-muted-foreground">
+                      Final pricing draft in progress
+                    </p>
+                  )}
+                  <Button type="button" className="w-full" disabled>
+                    Create quote
+                  </Button>
+                  <p className="text-center text-xs text-muted-foreground">
+                    Quote creation coming in a future phase.
+                  </p>
+                </div>
+              ) : (
+                <PrepareFinalPricingButton
+                  projectId={projectId}
+                  className="w-full"
+                />
+              )
+            ) : null}
+
+            {estimate && isStale ? (
+              <p className="text-xs text-amber-800 dark:text-amber-200">
+                Regenerate estimate before preparing final pricing.
+              </p>
+            ) : null}
 
             {!isStale && onMarginSave ? (
               <MarginEditControl

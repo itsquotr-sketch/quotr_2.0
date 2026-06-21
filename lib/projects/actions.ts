@@ -22,6 +22,7 @@ import {
   isBusinessStatus,
   isLifecycleArchiveFilter,
 } from "@/lib/projects/status";
+import { getPricingSummariesForProjects } from "@/lib/pricing/actions";
 import type {
   DashboardPipelineSummary,
   Project,
@@ -154,12 +155,15 @@ export async function listProjects(
     ])
   );
 
+  const pricingByProject = await getPricingSummariesForProjects(projectIds);
+
   return projects.map((project) => {
     const estimate = estimateByProject.get(project.id);
     return {
       ...project,
       has_estimate: Boolean(estimate),
       estimate_is_stale: estimate?.is_stale ?? false,
+      pricing_summary: pricingByProject.get(project.id) ?? null,
     };
   });
 }

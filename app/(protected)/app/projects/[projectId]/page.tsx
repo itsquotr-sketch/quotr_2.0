@@ -5,21 +5,23 @@ import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { getAssistantState } from "@/lib/assistant/state";
 import { listProjectNotes } from "@/lib/project-notes/actions";
 import { getPendingNoteProposal } from "@/lib/project-notes/proposals/actions";
+import { getLatestPricingSummary } from "@/lib/pricing/actions";
 import { getProject } from "@/lib/projects/actions";
 import { createClient } from "@/lib/supabase/server";
 
 type ProjectPageProps = {
-  params: Promise<{ id: string }>;
+  params: Promise<{ projectId: string }>;
 };
 
 export default async function ProjectPage({ params }: ProjectPageProps) {
-  const { id } = await params;
-  const [project, assistantState, projectNotes, pendingNoteProposal] =
+  const { projectId } = await params;
+  const [project, assistantState, projectNotes, pendingNoteProposal, pricingSummary] =
     await Promise.all([
-      getProject(id),
-      getAssistantState(id),
-      listProjectNotes(id),
-      getPendingNoteProposal(id),
+      getProject(projectId),
+      getAssistantState(projectId),
+      listProjectNotes(projectId),
+      getPendingNoteProposal(projectId),
+      getLatestPricingSummary(projectId),
     ]);
 
   const supabase = await createClient();
@@ -54,6 +56,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
             initialState={assistantState}
             initialNotes={projectNotes}
             pendingNoteProposal={pendingNoteProposal}
+            pricingSummary={pricingSummary}
           />
         </div>
       </div>
