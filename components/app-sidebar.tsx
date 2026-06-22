@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { DollarSign, LayoutDashboard, Settings2 } from "lucide-react";
+import { Building2, DollarSign, LayoutDashboard, Settings2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -12,6 +12,7 @@ const navLinkClass =
 const NAV_ITEMS = [
   { href: "/app/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/app/rates", label: "Rates", icon: DollarSign },
+  { href: "/app/settings/company", label: "Company", icon: Building2 },
   { href: "/app/setup", label: "Setup", icon: Settings2, showIncomplete: true },
 ] as const;
 

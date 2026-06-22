@@ -1,12 +1,10 @@
 "use client";
 
-import { useTransition } from "react";
+import { useMemo, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { PricingItemRow } from "@/components/pricing/PricingItemRow";
 import { Button } from "@/components/ui/button";
-import {
-  calculateDocumentTotals,
-} from "@/lib/pricing/calculations";
+import { calculateDocumentTotals } from "@/lib/pricing/calculations";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
 import type {
   PricingItem,
@@ -17,8 +15,6 @@ import type {
 type PricingWorkAreaSectionProps = {
   workArea: PricingWorkArea | null;
   items: PricingItem[];
-  pricingDocumentId: string;
-  projectId: string;
   onSaveItem: (
     itemId: string,
     input: PricingItemInput
@@ -28,23 +24,28 @@ type PricingWorkAreaSectionProps = {
   onAddItem: (workAreaId: string | null) => Promise<{ error?: string }>;
 };
 
+const TABLE_HEADER_CLASS =
+  "hidden gap-2 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[minmax(0,1.5fr)_0.7fr_0.8fr_0.6fr_0.75fr_0.75fr_0.75fr_0.75fr_0.55fr_auto] md:items-center";
+
 export function PricingWorkAreaSection({
   workArea,
   items,
-  pricingDocumentId,
-  projectId,
   onSaveItem,
   onDuplicateItem,
   onDeleteItem,
   onAddItem,
 }: PricingWorkAreaSectionProps) {
   const [isPending, startTransition] = useTransition();
-  const sectionTotals = calculateDocumentTotals(
-    items.map((item) => ({
-      total_cost: item.total_cost,
-      total_sell: item.total_sell,
-    })),
-    0
+  const sectionTotals = useMemo(
+    () =>
+      calculateDocumentTotals(
+        items.map((item) => ({
+          total_cost: item.total_cost,
+          total_sell: item.total_sell,
+        })),
+        0
+      ),
+    [items]
   );
 
   const handleAdd = () => {
@@ -54,8 +55,8 @@ export function PricingWorkAreaSection({
   };
 
   return (
-    <section className="space-y-3">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+    <section className="rounded-xl border border-border/60 bg-muted/10">
+      <div className="flex flex-wrap items-end justify-between gap-3 border-b border-border/60 px-4 py-3">
         <div>
           <h3 className="text-sm font-semibold">
             {workArea?.name ?? "General"}
@@ -78,7 +79,20 @@ export function PricingWorkAreaSection({
         </Button>
       </div>
 
-      <div className="space-y-2">
+      <div className={TABLE_HEADER_CLASS}>
+        <span>Item</span>
+        <span>Type</span>
+        <span>Delivery</span>
+        <span className="text-right">Qty</span>
+        <span className="text-right">Unit cost</span>
+        <span className="text-right">Unit charge</span>
+        <span className="text-right">Total cost</span>
+        <span className="text-right">Total charge</span>
+        <span className="text-right">Margin</span>
+        <span />
+      </div>
+
+      <div className="divide-y divide-border/50">
         {items.map((item) => (
           <PricingItemRow
             key={item.id}
@@ -89,11 +103,6 @@ export function PricingWorkAreaSection({
           />
         ))}
       </div>
-
-      {/* Keep props referenced for future section-specific actions */}
-      <span className="sr-only">
-        {pricingDocumentId} {projectId}
-      </span>
     </section>
   );
 }

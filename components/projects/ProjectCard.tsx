@@ -18,6 +18,7 @@ import {
   formatProjectDate,
 } from "@/lib/projects/format";
 import { formatPricingBadgeLabel } from "@/lib/pricing/status";
+import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
 import type { ProjectListItem } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
 
@@ -90,6 +91,11 @@ export function ProjectCard({ project }: ProjectCardProps) {
             {project.pricing_summary ? (
               <Badge variant="outline">
                 {formatPricingBadgeLabel(project.pricing_summary.status)}
+              </Badge>
+            ) : null}
+            {project.quote_summary ? (
+              <Badge variant="outline">
+                {formatQuoteBadgeLabel(project.quote_summary.status)}
               </Badge>
             ) : null}
             {project.due_date ? (

@@ -3,6 +3,7 @@
 import {
   Card,
   CardContent,
+  CardDescription,
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
@@ -27,49 +28,59 @@ export function PricingTermsCard({
   onChange,
 }: PricingTermsCardProps) {
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="border-border/60 shadow-none">
+      <CardHeader className="pb-2">
         <CardTitle className="text-base">Terms, assumptions & notes</CardTitle>
+        <CardDescription className="text-xs">
+          Internal pricing notes for now. Future quote builder will use
+          client-facing versions of these fields.
+        </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4">
-        <div className="space-y-2">
-          <Label htmlFor="pricing-assumptions">Assumptions (one per line)</Label>
+      <CardContent className="grid gap-3">
+        <div className="space-y-1.5">
+          <Label htmlFor="pricing-assumptions" className="text-xs">
+            Assumptions (one per line)
+          </Label>
           <Textarea
             id="pricing-assumptions"
-            rows={4}
+            rows={3}
             defaultValue={arrayToTextList(assumptions)}
             onChange={(event) =>
               onChange({ assumptions: textListToArray(event.target.value) })
             }
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="pricing-exclusions">Exclusions (one per line)</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="pricing-exclusions" className="text-xs">
+            Exclusions (one per line)
+          </Label>
           <Textarea
             id="pricing-exclusions"
-            rows={4}
+            rows={3}
             defaultValue={arrayToTextList(exclusions)}
             onChange={(event) =>
               onChange({ exclusions: textListToArray(event.target.value) })
             }
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="pricing-terms">Terms</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="pricing-terms" className="text-xs">Terms</Label>
           <Textarea
             id="pricing-terms"
-            rows={5}
+            rows={4}
             defaultValue={terms ?? ""}
             onChange={(event) =>
               onChange({ terms: event.target.value || null })
             }
           />
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="pricing-internal-notes">Internal notes</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="pricing-internal-notes" className="text-xs">
+            Internal notes
+          </Label>
           <Textarea
             id="pricing-internal-notes"
-            rows={3}
+            rows={2}
             defaultValue={internalNotes ?? ""}
             onChange={(event) =>
               onChange({ internal_notes: event.target.value || null })

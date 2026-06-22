@@ -12,8 +12,7 @@ const CATALOGUE_BY_TYPE = new Map(
   SCOPE_CATALOGUE.map((item) => [item.type, item])
 );
 
-function revalidateAssistantPaths(projectId: string) {
-  revalidatePath("/app/dashboard");
+function revalidateProjectPath(projectId: string) {
   revalidatePath(`/app/projects/${projectId}`);
 }
 
@@ -141,7 +140,7 @@ export async function addWorkAreaToProject(input: {
   }
 
   await markEstimateStale(projectId);
-  revalidateAssistantPaths(projectId);
+  revalidateProjectPath(projectId);
   return { success: true };
 }
 
@@ -227,6 +226,6 @@ export async function excludeWorkAreaFromProject(input: {
     }
   }
 
-  revalidateAssistantPaths(projectId);
+  revalidateProjectPath(projectId);
   return { success: true };
 }

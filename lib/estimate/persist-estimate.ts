@@ -152,5 +152,10 @@ export async function persistEstimateResult(
     return { error: finalizeError.message };
   }
 
+  const { markPricingDocumentsNeedingRecalibration } = await import(
+    "@/lib/pricing/recalibration"
+  );
+  await markPricingDocumentsNeedingRecalibration(supabase, orgId, projectId);
+
   return { success: true, estimateId };
 }

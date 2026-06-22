@@ -1,13 +1,13 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { RecalibrationBanner } from "@/components/pricing/RecalibrationBanner";
 import { PricingDetailsCard } from "@/components/pricing/PricingDetailsCard";
 import { PricingHeader } from "@/components/pricing/PricingHeader";
+import { PricingReviewChecklist } from "@/components/pricing/PricingReviewChecklist";
 import { PricingSummaryPanel } from "@/components/pricing/PricingSummaryPanel";
 import { PricingTermsCard } from "@/components/pricing/PricingTermsCard";
 import { PricingWorkAreaSection } from "@/components/pricing/PricingWorkAreaSection";
-import { Checkbox } from "@/components/ui/checkbox";
 import {
   addPricingItem,
   deletePricingItem,
@@ -18,28 +18,35 @@ import {
 } from "@/lib/pricing/actions";
 import { groupItemsByWorkArea } from "@/lib/pricing/mappers";
 import type {
+  PricingDocument,
   PricingDocumentInput,
+  PricingItem,
   PricingItemInput,
   PricingWorkspaceData,
 } from "@/lib/pricing/types";
+import type { QuoteSummary } from "@/lib/quotes/types";
 
 type PricingWorkspaceProps = {
   initialData: PricingWorkspaceData;
+  quoteSummary?: QuoteSummary | null;
+  pricingChangedAfterQuote?: boolean;
 };
 
-export function PricingWorkspace({ initialData }: PricingWorkspaceProps) {
-  const router = useRouter();
+export function PricingWorkspace({
+  initialData,
+  quoteSummary = null,
+  pricingChangedAfterQuote = false,
+}: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
-  const [reviewChecks, setReviewChecks] = useState({
-    scope: false,
-    quantities: false,
-    subcontractors: false,
-    terms: false,
-  });
   const documentDraftRef = useRef<PricingDocumentInput>({});
-
-  const { document, items, workAreas, projectTitle } = initialData;
+  const [document, setDocument] = useState<PricingDocument>(initialData.document);
+  const [items, setItems] = useState<PricingItem[]>(initialData.items);
+  const {
+    workAreas,
+    projectTitle,
+    latestEstimateIsStale,
+  } = initialData;
   const projectId = document.project_id;
   const pricingDocumentId = document.id;
 
@@ -55,21 +62,26 @@ export function PricingWorkspace({ initialData }: PricingWorkspaceProps) {
     };
   }, []);
 
-  const refresh = () => router.refresh();
+  const applyDocumentUpdate = useCallback((updated: PricingDocument) => {
+    setDocument(updated);
+  }, []);
 
   const handleSaveDocument = () => {
     setSaveError(null);
     startSave(async () => {
-      const result = await updatePricingDocument(
-        pricingDocumentId,
-        documentDraftRef.current
-      );
+      const draft = documentDraftRef.current;
+      const result = await updatePricingDocument(pricingDocumentId, draft);
       if (result.error) {
         setSaveError(result.error);
         return;
       }
       documentDraftRef.current = {};
-      refresh();
+      setDocument((current) => ({
+        ...current,
+        ...draft,
+        status: "draft",
+        reviewed_at: null,
+      }));
     });
   };
 
@@ -77,24 +89,51 @@ export function PricingWorkspace({ initialData }: PricingWorkspaceProps) {
     const result = await markPricingReviewed(pricingDocumentId);
     if (result.error) {
       setSaveError(result.error);
+      return;
     }
+    setDocument((current) => ({
+      ...current,
+      status: "reviewed",
+      reviewed_at: new Date().toISOString(),
+    }));
   };
 
   const handleSaveItem = async (itemId: string, input: PricingItemInput) => {
     const result = await updatePricingItem(itemId, input);
-    if (!result.error) refresh();
+    if (!result.error && result.item && result.document) {
+      setItems((current) =>
+        current.map((item) => (item.id === itemId ? result.item! : item))
+      );
+      applyDocumentUpdate(result.document);
+    }
     return result;
   };
 
   const handleDuplicateItem = async (itemId: string) => {
     const result = await duplicatePricingItem(itemId);
-    if (!result.error) refresh();
+    if (!result.error && result.item && result.document) {
+      setItems((current) => {
+        const sourceIndex = current.findIndex((item) => item.id === itemId);
+        if (sourceIndex === -1) {
+          return [...current, result.item!];
+        }
+        const next = [...current];
+        next.splice(sourceIndex + 1, 0, result.item!);
+        return next;
+      });
+      applyDocumentUpdate(result.document);
+    }
     return result;
   };
 
   const handleDeleteItem = async (itemId: string) => {
     const result = await deletePricingItem(itemId);
-    if (!result.error) refresh();
+    if (!result.error && result.deletedItemId && result.document) {
+      setItems((current) =>
+        current.filter((item) => item.id !== result.deletedItemId)
+      );
+      applyDocumentUpdate(result.document);
+    }
     return result;
   };
 
@@ -104,61 +143,57 @@ export function PricingWorkspace({ initialData }: PricingWorkspaceProps) {
       projectId,
       workAreaId,
     });
-    if (!result.error) refresh();
+    if (!result.error && result.item && result.document) {
+      setItems((current) => [...current, result.item!]);
+      applyDocumentUpdate(result.document);
+    }
     return result;
   };
 
-  const allReviewChecksComplete = Object.values(reviewChecks).every(Boolean);
-
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <PricingHeader
-        projectId={projectId}
-        projectTitle={projectTitle}
         document={document}
+        projectTitle={projectTitle}
         isSaving={isSaving}
         onSaveDocument={handleSaveDocument}
-        onMarkReviewed={
-          document.status !== "reviewed" && allReviewChecksComplete
-            ? handleMarkReviewed
-            : undefined
-        }
       />
 
-      <div className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-950 dark:border-amber-900 dark:bg-amber-950/30 dark:text-amber-100">
+      <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-4 py-2.5 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100">
         Review all pricing before issuing a quote. Quotr has prepared this draft
         from your estimate, but you remain responsible for confirming scope,
         quantities, subcontractor allowances, terms and final pricing.
       </div>
 
+      <RecalibrationBanner
+        projectId={projectId}
+        pricingDocumentId={pricingDocumentId}
+        needsRecalibration={document.needs_recalibration}
+        quoteExists={quoteSummary != null}
+        latestEstimateIsStale={latestEstimateIsStale}
+        onApplied={({ document: updatedDocument, items: updatedItems }) => {
+          setDocument(updatedDocument);
+          setItems(updatedItems);
+        }}
+        onKeepCurrent={() => {
+          setDocument((current) => ({
+            ...current,
+            needs_recalibration: false,
+            recalibration_status: "manually_kept",
+          }));
+        }}
+      />
+
       {document.status !== "reviewed" ? (
-        <div className="rounded-xl border px-4 py-3">
-          <p className="mb-3 text-sm font-medium">Before marking reviewed</p>
-          <div className="grid gap-2 sm:grid-cols-2">
-            {(
-              [
-                ["scope", "Scope reviewed"],
-                ["quantities", "Quantities checked"],
-                ["subcontractors", "Subcontractor allowances checked"],
-                ["terms", "Terms/exclusions reviewed"],
-              ] as const
-            ).map(([key, label]) => (
-              <label key={key} className="flex items-center gap-2 text-sm">
-                <Checkbox
-                  checked={reviewChecks[key]}
-                  onCheckedChange={(checked) =>
-                    setReviewChecks((current) => ({
-                      ...current,
-                      [key]: checked === true,
-                    }))
-                  }
-                />
-                {label}
-              </label>
-            ))}
-          </div>
-        </div>
-      ) : null}
+        <PricingReviewChecklist
+          onMarkReviewed={handleMarkReviewed}
+          disabled={isSaving}
+        />
+      ) : (
+        <p className="text-sm text-muted-foreground">
+          Pricing reviewed. Further edits will revert status to draft.
+        </p>
+      )}
 
       {saveError ? (
         <p className="text-sm text-destructive" role="alert">
@@ -166,8 +201,8 @@ export function PricingWorkspace({ initialData }: PricingWorkspaceProps) {
         </p>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px]">
-        <div className="min-w-0 space-y-6">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+        <div className="min-w-0 space-y-5">
           <PricingDetailsCard
             title={document.title}
             clientName={document.client_name}
@@ -178,14 +213,12 @@ export function PricingWorkspace({ initialData }: PricingWorkspaceProps) {
             onChange={handleDocumentChange}
           />
 
-          <div className="space-y-6">
+          <div className="space-y-4">
             {groupedSections.map((section) => (
               <PricingWorkAreaSection
                 key={section.workArea?.id ?? "general"}
                 workArea={section.workArea}
                 items={section.items}
-                pricingDocumentId={pricingDocumentId}
-                projectId={projectId}
                 onSaveItem={handleSaveItem}
                 onDuplicateItem={handleDuplicateItem}
                 onDeleteItem={handleDeleteItem}
@@ -203,7 +236,12 @@ export function PricingWorkspace({ initialData }: PricingWorkspaceProps) {
           />
         </div>
 
-        <PricingSummaryPanel document={document} />
+        <PricingSummaryPanel
+          document={document}
+          projectId={projectId}
+          quoteSummary={quoteSummary}
+          pricingChangedAfterQuote={pricingChangedAfterQuote}
+        />
       </div>
     </div>
   );

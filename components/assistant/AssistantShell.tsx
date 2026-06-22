@@ -47,12 +47,14 @@ import { NoteProposalReviewPanel } from "@/components/project-notes/NoteProposal
 import type { ProjectNote } from "@/lib/project-notes/types";
 import type { NoteProposal } from "@/lib/project-notes/proposals/types";
 import type { PricingSummary } from "@/lib/pricing/types";
+import type { QuoteSummary } from "@/lib/quotes/types";
 
 type AssistantShellProps = {
   initialState: AssistantState;
   initialNotes?: ProjectNote[];
   pendingNoteProposal?: NoteProposal | null;
   pricingSummary?: PricingSummary | null;
+  quoteSummary?: QuoteSummary | null;
 };
 
 type PendingAction =
@@ -80,6 +82,7 @@ export function AssistantShell({
   initialNotes = [],
   pendingNoteProposal = null,
   pricingSummary = null,
+  quoteSummary = null,
 }: AssistantShellProps) {
   const router = useRouter();
   const { project } = initialState;
@@ -727,6 +730,7 @@ export function AssistantShell({
             projectId={initialState.project.id}
             estimate={estimate}
             pricingSummary={pricingSummary}
+            quoteSummary={quoteSummary}
             isGenerating={isGenerating}
             isRegenerating={isRegenerating}
             isSavingMargin={isSavingMargin}

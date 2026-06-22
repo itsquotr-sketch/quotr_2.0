@@ -33,50 +33,56 @@ export function PricingDetailsCard({
   onChange,
 }: PricingDetailsCardProps) {
   return (
-    <Card>
-      <CardHeader className="pb-3">
+    <Card className="border-border/60 shadow-none">
+      <CardHeader className="pb-2">
         <CardTitle className="text-base">Pricing details</CardTitle>
-        <CardDescription>
-          Internal pricing document — not yet a client quote.
+        <CardDescription className="text-xs">
+          Internal document metadata — not shown on a client quote yet.
         </CardDescription>
       </CardHeader>
-      <CardContent className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="pricing-title">Title</Label>
+      <CardContent className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="pricing-title" className="text-xs">Title</Label>
           <Input
             id="pricing-title"
+            className="h-8"
             defaultValue={title}
             onChange={(event) => onChange({ title: event.target.value })}
           />
         </div>
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <p className="text-xs text-muted-foreground">Client</p>
           <p className="text-sm">{clientName || "—"}</p>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <p className="text-xs text-muted-foreground">Site address</p>
           <p className="text-sm">{siteAddress || "—"}</p>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <p className="text-xs text-muted-foreground">Pricing date</p>
           <p className="text-sm">{formatPricingDate(pricingDate)}</p>
         </div>
-        <div className="space-y-2">
-          <Label htmlFor="pricing-valid-until">Valid until</Label>
+        <div className="space-y-1.5">
+          <Label htmlFor="pricing-valid-until" className="text-xs">
+            Valid until
+          </Label>
           <Input
             id="pricing-valid-until"
             type="date"
+            className="h-8"
             defaultValue={validUntil ?? ""}
             onChange={(event) =>
               onChange({ valid_until: event.target.value || null })
             }
           />
         </div>
-        <div className="space-y-2 sm:col-span-2">
-          <Label htmlFor="pricing-scope-summary">Scope summary</Label>
+        <div className="space-y-1.5 sm:col-span-2">
+          <Label htmlFor="pricing-scope-summary" className="text-xs">
+            Scope summary
+          </Label>
           <Textarea
             id="pricing-scope-summary"
-            rows={3}
+            rows={2}
             defaultValue={scopeSummary ?? ""}
             onChange={(event) =>
               onChange({ scope_summary: event.target.value || null })

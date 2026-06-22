@@ -36,8 +36,7 @@ const DEFAULT_ORGANISATION_SETTINGS: OrganisationSettings = {
   show_profit_in_estimates: true,
 };
 
-function revalidateAssistantPaths(projectId: string) {
-  revalidatePath("/app/dashboard");
+function revalidateProjectPath(projectId: string) {
   revalidatePath(`/app/projects/${projectId}`);
 }
 
@@ -89,10 +88,9 @@ export async function updateEstimateMargin(
 
   const { data: lineItems } = await supabase
     .from("estimate_line_items")
-    .select(
-      "id, recommended_cost, cost_low, cost_high, sell_low, sell_high, recommended_sell, gross_profit, margin_percent, markup_percent"
-    )
+    .select("*")
     .eq("estimate_id", estimate.id)
+    .eq("org_id", orgId)
     .order("sort_order", { ascending: true });
 
   if (!lineItems?.length) {
@@ -112,30 +110,47 @@ export async function updateEstimateMargin(
 
     return {
       id: item.id,
-      ...amounts,
+      org_id: item.org_id,
+      project_id: item.project_id,
+      estimate_id: item.estimate_id,
+      work_area_id: item.work_area_id,
+      work_area_name: item.work_area_name,
+      label: item.label,
+      category: item.category,
+      cost_low: amounts.costLow,
+      cost_high: amounts.costHigh,
+      recommended_cost: amounts.recommendedCost,
+      sell_low: amounts.sellLow,
+      sell_high: amounts.sellHigh,
+      recommended_sell: amounts.recommendedSell,
+      gross_profit: amounts.grossProfit,
+      margin_percent: amounts.marginPercent,
+      markup_percent: amounts.markupPercent,
+      rate_source: item.rate_source,
+      notes: item.notes,
+      sort_order: item.sort_order,
     };
   });
 
-  for (const item of updatedLineItems) {
-    const { error } = await supabase
-      .from("estimate_line_items")
-      .update({
-        recommended_sell: item.recommendedSell,
-        sell_low: item.sellLow,
-        sell_high: item.sellHigh,
-        gross_profit: item.grossProfit,
-        margin_percent: item.marginPercent,
-        markup_percent: item.markupPercent,
-      })
-      .eq("id", item.id)
-      .eq("estimate_id", estimate.id);
+  const { error: upsertError } = await supabase
+    .from("estimate_line_items")
+    .upsert(updatedLineItems, { onConflict: "id" });
 
-    if (error) {
-      return { error: error.message };
-    }
+  if (upsertError) {
+    return { error: upsertError.message };
   }
 
-  const totals = sumLineItemTotals(updatedLineItems);
+  const totals = sumLineItemTotals(
+    updatedLineItems.map((item) => ({
+      recommendedCost: item.recommended_cost,
+      recommendedSell: item.recommended_sell,
+      grossProfit: item.gross_profit,
+      costLow: item.cost_low,
+      costHigh: item.cost_high,
+      sellLow: item.sell_low,
+      sellHigh: item.sell_high,
+    }))
+  );
 
   const { error: estimateError } = await supabase
     .from("estimates")
@@ -155,6 +170,6 @@ export async function updateEstimateMargin(
     return { error: estimateError.message };
   }
 
-  revalidateAssistantPaths(projectId);
+  revalidateProjectPath(projectId);
   return { success: true };
 }

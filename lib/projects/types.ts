@@ -1,6 +1,7 @@
 import type { ProjectDetailsInput } from "@/lib/projects/schema";
 import type { BusinessStatus } from "@/lib/projects/status";
 import type { PricingSummary } from "@/lib/pricing/types";
+import type { QuoteSummary } from "@/lib/quotes/types";
 
 export type { ProjectListFilter } from "@/lib/projects/status";
 
@@ -33,6 +34,7 @@ export type ProjectListItem = Project & {
   has_estimate: boolean;
   estimate_is_stale: boolean;
   pricing_summary: PricingSummary | null;
+  quote_summary: QuoteSummary | null;
 };
 
 export type CreateProjectInput = ProjectDetailsInput;

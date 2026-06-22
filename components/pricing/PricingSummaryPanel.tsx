@@ -2,7 +2,8 @@
 
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
 import type { PricingDocument } from "@/lib/pricing/types";
-import { Button } from "@/components/ui/button";
+import type { QuoteSummary } from "@/lib/quotes/types";
+import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
 import {
   Card,
   CardContent,
@@ -12,6 +13,9 @@ import {
 
 type PricingSummaryPanelProps = {
   document: PricingDocument;
+  projectId: string;
+  quoteSummary?: QuoteSummary | null;
+  pricingChangedAfterQuote?: boolean;
 };
 
 function SummaryRow({
@@ -39,13 +43,21 @@ function SummaryRow({
   );
 }
 
-export function PricingSummaryPanel({ document }: PricingSummaryPanelProps) {
+export function PricingSummaryPanel({
+  document,
+  projectId,
+  quoteSummary = null,
+  pricingChangedAfterQuote = false,
+}: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
 
   return (
-    <Card className="lg:sticky lg:top-6">
-      <CardHeader className="pb-3">
+    <Card className="border-border/60 shadow-none lg:sticky lg:top-[4.5rem] lg:self-start">
+      <CardHeader className="pb-2">
         <CardTitle className="text-base">Pricing summary</CardTitle>
+        <p className="text-xs text-muted-foreground">
+          Internal pricing — not a client quote
+        </p>
       </CardHeader>
       <CardContent className="space-y-3">
         <SummaryRow
@@ -79,14 +91,25 @@ export function PricingSummaryPanel({ document }: PricingSummaryPanelProps) {
           </div>
         </div>
 
-        <Button type="button" className="mt-2 w-full" disabled>
-          Create quote
-        </Button>
+        <CreateQuoteButton
+          projectId={projectId}
+          pricingDocumentId={document.id}
+          isReviewed={isReviewed}
+          quoteSummary={quoteSummary}
+        />
         <p className="text-xs text-muted-foreground">
-          {isReviewed
-            ? "Pricing reviewed — quote creation coming in a future phase."
-            : "Mark pricing as reviewed before creating a client quote."}
+          {quoteSummary
+            ? "Open the client quote created from this pricing."
+            : isReviewed
+              ? "Create a client-facing quote from reviewed pricing."
+              : "Mark pricing as reviewed before creating a client quote."}
         </p>
+        {pricingChangedAfterQuote ? (
+          <p className="text-xs text-amber-800 dark:text-amber-200">
+            Existing quotes are not updated automatically. Revise or create a
+            new quote if needed.
+          </p>
+        ) : null}
       </CardContent>
     </Card>
   );

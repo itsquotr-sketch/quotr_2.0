@@ -10,9 +10,13 @@ import type { Project } from "@/lib/projects/types";
 
 type ProjectHeaderProps = {
   project: Project;
+  subtitle?: string | null;
 };
 
-export function ProjectHeader({ project }: ProjectHeaderProps) {
+export function ProjectHeader({
+  project,
+  subtitle = "Project assistant",
+}: ProjectHeaderProps) {
   const detailItems: React.ReactNode[] = [];
 
   if (project.client_name) {
@@ -58,7 +62,9 @@ export function ProjectHeader({ project }: ProjectHeaderProps) {
         <ProjectActionsMenu project={project} variant="header" showEdit />
       </div>
 
-      <p className="text-sm text-muted-foreground">Project assistant</p>
+      {subtitle ? (
+        <p className="text-sm text-muted-foreground">{subtitle}</p>
+      ) : null}
 
       {hasDetails || project.priority ? (
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">

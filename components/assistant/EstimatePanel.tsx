@@ -14,6 +14,7 @@ import {
 } from "@/components/pricing/PrepareFinalPricingButton";
 import type { Estimate } from "@/components/assistant/types";
 import type { PricingSummary } from "@/lib/pricing/types";
+import type { QuoteSummary } from "@/lib/quotes/types";
 import type { PanelScopeSummary, ScopeReview } from "@/lib/assistant/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -30,6 +31,7 @@ type EstimatePanelProps = {
   projectId: string;
   estimate: Estimate | null;
   pricingSummary?: PricingSummary | null;
+  quoteSummary?: QuoteSummary | null;
   isGenerating?: boolean;
   isRegenerating?: boolean;
   isSavingMargin?: boolean;
@@ -101,6 +103,7 @@ export function EstimatePanel({
   projectId,
   estimate,
   pricingSummary = null,
+  quoteSummary = null,
   isGenerating,
   isRegenerating,
   isSavingMargin,
@@ -346,10 +349,14 @@ export function EstimatePanel({
             {estimate && !isStale ? (
               pricingSummary ? (
                 <div className="space-y-2">
+                  {pricingSummary.needsRecalibration ? (
+                    <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-center text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/25 dark:text-amber-200">
+                      Final pricing may need updating.
+                    </p>
+                  ) : null}
                   <OpenFinalPricingLink
                     projectId={projectId}
                     pricingDocumentId={pricingSummary.id}
-                    reviewed={pricingSummary.status === "reviewed"}
                   />
                   {pricingSummary.status === "reviewed" ? (
                     <p className="text-center text-xs font-medium text-primary">
@@ -360,12 +367,35 @@ export function EstimatePanel({
                       Final pricing draft in progress
                     </p>
                   )}
-                  <Button type="button" className="w-full" disabled>
-                    Create quote
-                  </Button>
-                  <p className="text-center text-xs text-muted-foreground">
-                    Quote creation coming in a future phase.
-                  </p>
+                  {quoteSummary ? (
+                    <>
+                      <p className="text-center text-xs font-medium text-primary">
+                        Draft quote created
+                      </p>
+                      <Button
+                        type="button"
+                        className="w-full"
+                        render={
+                          <Link
+                            href={`/app/projects/${projectId}/quotes/${quoteSummary.id}`}
+                          />
+                        }
+                      >
+                        View quote
+                      </Button>
+                    </>
+                  ) : (
+                    <>
+                      <Button type="button" className="w-full" disabled>
+                        Create quote
+                      </Button>
+                      <p className="text-center text-xs text-muted-foreground">
+                        {pricingSummary.status === "reviewed"
+                          ? "Create a quote from reviewed final pricing."
+                          : "Mark final pricing as reviewed before creating a quote."}
+                      </p>
+                    </>
+                  )}
                 </div>
               ) : (
                 <PrepareFinalPricingButton

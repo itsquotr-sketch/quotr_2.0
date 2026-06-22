@@ -52,6 +52,10 @@ const dismissSchema = z.object({
 });
 
 function revalidateProjectPath(projectId: string) {
+  revalidatePath(`/app/projects/${projectId}`);
+}
+
+function revalidateProjectAndDashboard(projectId: string) {
   revalidatePath("/app/dashboard");
   revalidatePath(`/app/projects/${projectId}`);
 }
@@ -702,7 +706,7 @@ export async function applyNoteProposal(
     }
   }
 
-  revalidateProjectPath(projectId);
+  revalidateProjectAndDashboard(projectId);
 
   return {
     success: true,

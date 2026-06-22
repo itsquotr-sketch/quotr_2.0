@@ -12,6 +12,8 @@ import {
   mapEstimateCategoryToItemType,
   parseStringArray,
   todayIsoDate,
+  roundMoney,
+  roundPercent,
 } from "@/lib/pricing/calculations";
 import {
   buildScopeSummaryFromWorkAreas,
@@ -20,7 +22,13 @@ import {
   mapPricingItem,
   mapPricingWorkArea,
 } from "@/lib/pricing/mappers";
-import { DEFAULT_GST_RATE, DEFAULT_PRICING_TERMS } from "@/lib/pricing/status";
+import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
+import { getOrgQuoteDefaultsForOrg } from "@/lib/settings/company-actions";
+import {
+  resolveAssumptionsForSnapshot,
+  resolveExclusionsForSnapshot,
+  resolveTermsForSnapshot,
+} from "@/lib/settings/snapshot";
 import type {
   PricingActionState,
   PricingDocumentInput,
@@ -96,12 +104,43 @@ async function recalculateAndPersistDocumentTotals(
   }
 }
 
-function revalidatePricingPaths(projectId: string, pricingDocumentId?: string) {
-  revalidatePath("/app/dashboard");
+function revalidatePricingProjectPath(
+  projectId: string,
+  pricingDocumentId?: string
+) {
   revalidatePath(`/app/projects/${projectId}`);
   if (pricingDocumentId) {
     revalidatePath(`/app/projects/${projectId}/pricing/${pricingDocumentId}`);
   }
+}
+
+function revalidatePricingDashboard(
+  projectId: string,
+  pricingDocumentId?: string
+) {
+  revalidatePath("/app/dashboard");
+  revalidatePricingProjectPath(projectId, pricingDocumentId);
+}
+
+async function loadPricingDocumentById(
+  supabase: Awaited<
+    ReturnType<typeof import("@/lib/supabase/server").createClient>
+  >,
+  orgId: string,
+  pricingDocumentId: string
+) {
+  const { data, error } = await supabase
+    .from("pricing_documents")
+    .select("*")
+    .eq("id", pricingDocumentId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return null;
+  }
+
+  return mapPricingDocument(data);
 }
 
 export async function getLatestPricingSummary(
@@ -114,7 +153,7 @@ export async function getLatestPricingSummary(
 
   const { data, error } = await context.supabase
     .from("pricing_documents")
-    .select("id, status")
+    .select("id, status, needs_recalibration")
     .eq("project_id", projectId)
     .eq("org_id", context.orgId)
     .neq("status", "archived")
@@ -129,6 +168,7 @@ export async function getLatestPricingSummary(
   return {
     id: data.id,
     status: data.status as PricingSummary["status"],
+    needsRecalibration: Boolean(data.needs_recalibration),
   };
 }
 
@@ -143,7 +183,7 @@ export async function getPricingSummariesForProjects(
 
   const { data, error } = await context.supabase
     .from("pricing_documents")
-    .select("id, status, project_id, created_at")
+    .select("id, status, project_id, created_at, needs_recalibration")
     .eq("org_id", context.orgId)
     .in("project_id", projectIds)
     .neq("status", "archived")
@@ -158,11 +198,39 @@ export async function getPricingSummariesForProjects(
       result.set(row.project_id, {
         id: row.id,
         status: row.status as PricingSummary["status"],
+        needsRecalibration: Boolean(row.needs_recalibration),
       });
     }
   }
 
   return result;
+}
+
+export async function getProjectWorkspaceTabContext(projectId: string) {
+  const context = await getAuthOrgContext();
+  if (!context) {
+    return {
+      hasEstimate: false,
+      estimateIsStale: false,
+      pricingSummary: null,
+    };
+  }
+
+  const [pricingSummary, estimateResult] = await Promise.all([
+    getLatestPricingSummary(projectId),
+    context.supabase
+      .from("estimates")
+      .select("is_stale")
+      .eq("project_id", projectId)
+      .eq("org_id", context.orgId)
+      .maybeSingle(),
+  ]);
+
+  return {
+    hasEstimate: Boolean(estimateResult.data),
+    estimateIsStale: estimateResult.data?.is_stale ?? false,
+    pricingSummary,
+  };
 }
 
 export async function getPricingWorkspaceData(
@@ -176,7 +244,7 @@ export async function getPricingWorkspaceData(
 
   const { supabase, orgId } = context;
 
-  const [{ data: project }, { data: document }, { data: items }, { data: workAreas }] =
+  const [{ data: project }, { data: document }, { data: items }, { data: workAreas }, { data: estimate }] =
     await Promise.all([
       supabase
         .from("projects")
@@ -204,6 +272,12 @@ export async function getPricingWorkspaceData(
         .eq("org_id", orgId)
         .eq("status", "confirmed")
         .order("sort_order"),
+      supabase
+        .from("estimates")
+        .select("recommended_sell, is_stale")
+        .eq("project_id", projectId)
+        .eq("org_id", orgId)
+        .maybeSingle(),
     ]);
 
   if (!project || project.deleted_at || !document) {
@@ -215,6 +289,11 @@ export async function getPricingWorkspaceData(
     document: mapPricingDocument(document),
     items: (items ?? []).map((row) => mapPricingItem(row)),
     workAreas: (workAreas ?? []).map((row) => mapPricingWorkArea(row)),
+    latestEstimateRecommendedSell:
+      estimate?.recommended_sell != null
+        ? Number(estimate.recommended_sell)
+        : null,
+    latestEstimateIsStale: estimate?.is_stale ?? false,
   };
 }
 
@@ -288,8 +367,31 @@ export async function createPricingFromEstimate(input: {
     .eq("status", "confirmed");
 
   const workAreaNames = (workAreas ?? []).map((workArea) => workArea.name);
-  const assumptions = parseStringArray(estimate.assumptions);
-  const exclusions = parseStringArray(estimate.exclusions);
+  const estimateAssumptions = parseStringArray(estimate.assumptions);
+  const estimateExclusions = parseStringArray(estimate.exclusions);
+
+  const orgDefaults = await getOrgQuoteDefaultsForOrg(supabase, orgId);
+  const assumptions = resolveAssumptionsForSnapshot(
+    estimateAssumptions,
+    orgDefaults
+  );
+  const exclusions = resolveExclusionsForSnapshot(
+    estimateExclusions,
+    orgDefaults
+  );
+  const terms = resolveTermsForSnapshot(null, orgDefaults);
+  const gstRate = orgDefaults.defaultGstRate ?? DEFAULT_GST_RATE;
+  const validUntil = addDaysIsoDate(orgDefaults.defaultQuoteValidityDays);
+
+  const documentTotals = calculateDocumentTotals(
+    [
+      {
+        total_cost: Number(estimate.recommended_cost ?? 0),
+        total_sell: Number(estimate.recommended_sell ?? 0),
+      },
+    ],
+    gstRate
+  );
 
   const { data: pricingDocument, error: insertDocError } = await supabase
     .from("pricing_documents")
@@ -297,43 +399,30 @@ export async function createPricingFromEstimate(input: {
       org_id: orgId,
       project_id: projectId,
       estimate_id: estimate.id,
+      needs_recalibration: false,
+      recalibration_status: "current",
       title: `Final pricing — ${project.title}`,
       status: "draft",
       client_name: project.client_name,
       site_address: project.site_address,
       pricing_date: todayIsoDate(),
-      valid_until: addDaysIsoDate(30),
+      valid_until: validUntil,
+      // Document totals copy estimate recommended cost/sell — not recalculated from default margin.
       subtotal_cost: Number(estimate.recommended_cost ?? 0),
       subtotal_sell: Number(estimate.recommended_sell ?? 0),
       gross_profit: Number(estimate.gross_profit ?? 0),
       margin_percent: Number(estimate.margin_percent ?? 0),
       markup_percent: Number(estimate.markup_percent ?? 0),
-      gst_rate: DEFAULT_GST_RATE,
-      gst_amount: calculateDocumentTotals(
-        [
-          {
-            total_cost: Number(estimate.recommended_cost ?? 0),
-            total_sell: Number(estimate.recommended_sell ?? 0),
-          },
-        ],
-        DEFAULT_GST_RATE
-      ).gstAmount,
-      total_incl_gst: calculateDocumentTotals(
-        [
-          {
-            total_cost: Number(estimate.recommended_cost ?? 0),
-            total_sell: Number(estimate.recommended_sell ?? 0),
-          },
-        ],
-        DEFAULT_GST_RATE
-      ).totalInclGst,
+      gst_rate: gstRate,
+      gst_amount: documentTotals.gstAmount,
+      total_incl_gst: documentTotals.totalInclGst,
       scope_summary: buildScopeSummaryFromWorkAreas(
         workAreaNames,
         project.brief_text
       ),
       assumptions,
       exclusions,
-      terms: DEFAULT_PRICING_TERMS,
+      terms,
       created_by: user.id,
     })
     .select("id")
@@ -364,14 +453,15 @@ export async function createPricingFromEstimate(input: {
           ? recommendedSell / quantity
           : recommendedSell || null);
 
-      const totals = calculatePricingItemTotals({
-        quantity,
-        unitCost,
-        unitSell,
-        totalCost: recommendedCost,
-        totalSell: recommendedSell,
-        itemType,
-      });
+      // Copy estimate cost/sell totals directly — do not reapply default margin
+      // or re-derive sell from cost when the estimate line item already has sell.
+      const totalCost = roundMoney(recommendedCost);
+      const totalSell = roundMoney(recommendedSell);
+      const grossProfit = roundMoney(totalSell - totalCost);
+      const marginPercent =
+        totalSell > 0 ? roundPercent((grossProfit / totalSell) * 100) : 0;
+      const markupPercent =
+        totalCost > 0 ? roundPercent((grossProfit / totalCost) * 100) : 0;
 
       return {
         org_id: orgId,
@@ -385,15 +475,15 @@ export async function createPricingFromEstimate(input: {
         client_label: cleanClientLabel(lineItem.label),
         internal_description: details.internalDescription ?? null,
         client_description: details.internalDescription ?? null,
-        quantity: totals.quantity,
+        quantity,
         unit: details.unit ?? null,
-        unit_cost: totals.unitCost,
-        unit_sell: totals.unitSell,
-        total_cost: totals.totalCost,
-        total_sell: totals.totalSell,
-        gross_profit: totals.grossProfit,
-        margin_percent: totals.marginPercent,
-        markup_percent: totals.markupPercent,
+        unit_cost: unitCost != null ? roundMoney(unitCost) : null,
+        unit_sell: unitSell != null ? roundMoney(unitSell) : null,
+        total_cost: totalCost,
+        total_sell: totalSell,
+        gross_profit: grossProfit,
+        margin_percent: marginPercent,
+        markup_percent: markupPercent,
         visible_on_quote: true,
         optional: false,
         sort_order: lineItem.sort_order ?? index,
@@ -439,7 +529,7 @@ export async function createPricingFromEstimate(input: {
       .eq("org_id", orgId);
   }
 
-  revalidatePricingPaths(projectId, pricingDocumentId);
+  revalidatePricingDashboard(projectId, pricingDocumentId);
   redirect(`/app/projects/${projectId}/pricing/${pricingDocumentId}`);
 }
 
@@ -489,7 +579,7 @@ export async function updatePricingDocument(
     );
   }
 
-  revalidatePricingPaths(document.project_id, pricingDocumentId);
+  revalidatePricingDashboard(document.project_id, pricingDocumentId);
   return { success: true };
 }
 
@@ -547,6 +637,7 @@ export async function updatePricingItem(
       notes_internal: input.notes_internal ?? null,
       notes_client: input.notes_client ?? null,
       work_area_id: input.work_area_id ?? null,
+      manually_edited: true,
     })
     .eq("id", pricingItemId)
     .eq("org_id", orgId);
@@ -570,8 +661,25 @@ export async function updatePricingItem(
     true
   );
 
-  revalidatePricingPaths(existing.project_id, existing.pricing_document_id);
-  return { success: true };
+  const [updatedItem, updatedDocument] = await Promise.all([
+    supabase
+      .from("pricing_items")
+      .select("*")
+      .eq("id", pricingItemId)
+      .eq("org_id", orgId)
+      .maybeSingle(),
+    loadPricingDocumentById(supabase, orgId, existing.pricing_document_id),
+  ]);
+
+  if (!updatedItem.data || !updatedDocument) {
+    return { error: "Failed to load updated pricing item." };
+  }
+
+  return {
+    success: true,
+    item: mapPricingItem(updatedItem.data),
+    document: updatedDocument,
+  };
 }
 
 export async function addPricingItem(input: {
@@ -608,28 +716,32 @@ export async function addPricingItem(input: {
     itemType,
   });
 
-  const { error } = await supabase.from("pricing_items").insert({
-    org_id: orgId,
-    pricing_document_id: input.pricingDocumentId,
-    project_id: input.projectId,
-    work_area_id: input.workAreaId ?? null,
-    item_type: itemType,
-    delivery_method: deliveryMethod,
-    internal_label: "New item",
-    client_label: "New item",
-    quantity: totals.quantity,
-    total_cost: totals.totalCost,
-    total_sell: totals.totalSell,
-    gross_profit: totals.grossProfit,
-    margin_percent: totals.marginPercent,
-    markup_percent: totals.markupPercent,
-    visible_on_quote: true,
-    optional: false,
-    sort_order: sortOrder,
-  });
+  const { data: createdItem, error } = await supabase
+    .from("pricing_items")
+    .insert({
+      org_id: orgId,
+      pricing_document_id: input.pricingDocumentId,
+      project_id: input.projectId,
+      work_area_id: input.workAreaId ?? null,
+      item_type: itemType,
+      delivery_method: deliveryMethod,
+      internal_label: "New item",
+      client_label: "New item",
+      quantity: totals.quantity,
+      total_cost: totals.totalCost,
+      total_sell: totals.totalSell,
+      gross_profit: totals.grossProfit,
+      margin_percent: totals.marginPercent,
+      markup_percent: totals.markupPercent,
+      visible_on_quote: true,
+      optional: false,
+      sort_order: sortOrder,
+    })
+    .select("*")
+    .single();
 
-  if (error) {
-    return { error: error.message };
+  if (error || !createdItem) {
+    return { error: error?.message ?? "Failed to add pricing item." };
   }
 
   const { data: document } = await supabase
@@ -647,8 +759,21 @@ export async function addPricingItem(input: {
     true
   );
 
-  revalidatePricingPaths(input.projectId, input.pricingDocumentId);
-  return { success: true };
+  const updatedDocument = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    input.pricingDocumentId
+  );
+
+  if (!updatedDocument) {
+    return { error: "Failed to load updated pricing document." };
+  }
+
+  return {
+    success: true,
+    item: mapPricingItem(createdItem),
+    document: updatedDocument,
+  };
 }
 
 export async function duplicatePricingItem(
@@ -672,36 +797,40 @@ export async function duplicatePricingItem(
     return { error: "Pricing item not found." };
   }
 
-  const { error } = await supabase.from("pricing_items").insert({
-    org_id: orgId,
-    pricing_document_id: source.pricing_document_id,
-    project_id: source.project_id,
-    work_area_id: source.work_area_id,
-    source_estimate_line_item_id: source.source_estimate_line_item_id,
-    item_type: source.item_type,
-    delivery_method: source.delivery_method,
-    internal_label: `${source.internal_label} Copy`,
-    client_label: `${source.client_label} Copy`,
-    internal_description: source.internal_description,
-    client_description: source.client_description,
-    quantity: source.quantity,
-    unit: source.unit,
-    unit_cost: source.unit_cost,
-    unit_sell: source.unit_sell,
-    total_cost: source.total_cost,
-    total_sell: source.total_sell,
-    gross_profit: source.gross_profit,
-    margin_percent: source.margin_percent,
-    markup_percent: source.markup_percent,
-    visible_on_quote: source.visible_on_quote,
-    optional: source.optional,
-    sort_order: source.sort_order + 1,
-    notes_internal: source.notes_internal,
-    notes_client: source.notes_client,
-  });
+  const { data: createdItem, error } = await supabase
+    .from("pricing_items")
+    .insert({
+      org_id: orgId,
+      pricing_document_id: source.pricing_document_id,
+      project_id: source.project_id,
+      work_area_id: source.work_area_id,
+      source_estimate_line_item_id: source.source_estimate_line_item_id,
+      item_type: source.item_type,
+      delivery_method: source.delivery_method,
+      internal_label: `${source.internal_label} Copy`,
+      client_label: `${source.client_label} Copy`,
+      internal_description: source.internal_description,
+      client_description: source.client_description,
+      quantity: source.quantity,
+      unit: source.unit,
+      unit_cost: source.unit_cost,
+      unit_sell: source.unit_sell,
+      total_cost: source.total_cost,
+      total_sell: source.total_sell,
+      gross_profit: source.gross_profit,
+      margin_percent: source.margin_percent,
+      markup_percent: source.markup_percent,
+      visible_on_quote: source.visible_on_quote,
+      optional: source.optional,
+      sort_order: source.sort_order + 1,
+      notes_internal: source.notes_internal,
+      notes_client: source.notes_client,
+    })
+    .select("*")
+    .single();
 
-  if (error) {
-    return { error: error.message };
+  if (error || !createdItem) {
+    return { error: error?.message ?? "Failed to duplicate pricing item." };
   }
 
   const { data: document } = await supabase
@@ -719,8 +848,21 @@ export async function duplicatePricingItem(
     true
   );
 
-  revalidatePricingPaths(source.project_id, source.pricing_document_id);
-  return { success: true };
+  const updatedDocument = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    source.pricing_document_id
+  );
+
+  if (!updatedDocument) {
+    return { error: "Failed to load updated pricing document." };
+  }
+
+  return {
+    success: true,
+    item: mapPricingItem(createdItem),
+    document: updatedDocument,
+  };
 }
 
 export async function deletePricingItem(
@@ -769,8 +911,21 @@ export async function deletePricingItem(
     true
   );
 
-  revalidatePricingPaths(existing.project_id, existing.pricing_document_id);
-  return { success: true };
+  const updatedDocument = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    existing.pricing_document_id
+  );
+
+  if (!updatedDocument) {
+    return { error: "Failed to load updated pricing document." };
+  }
+
+  return {
+    success: true,
+    deletedItemId: pricingItemId,
+    document: updatedDocument,
+  };
 }
 
 export async function markPricingReviewed(
@@ -796,6 +951,6 @@ export async function markPricingReviewed(
     return { error: error.message };
   }
 
-  revalidatePricingPaths(document.project_id, pricingDocumentId);
+  revalidatePricingDashboard(document.project_id, pricingDocumentId);
   return { success: true };
 }

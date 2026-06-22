@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
 import {
   DELIVERY_METHODS,
   PRICING_ITEM_TYPES,
@@ -20,6 +21,9 @@ type PricingItemRowProps = {
   onDuplicate: () => Promise<{ error?: string }>;
   onDelete: () => Promise<{ error?: string }>;
 };
+
+const ROW_GRID =
+  "grid gap-2 px-3 py-2 md:grid-cols-[minmax(0,1.5fr)_0.7fr_0.8fr_0.6fr_0.75fr_0.75fr_0.75fr_0.75fr_0.55fr_auto] md:items-center";
 
 function PricingItemRowComponent({
   item,
@@ -63,35 +67,19 @@ function PricingItemRowComponent({
   };
 
   return (
-    <div className="rounded-xl border border-border/60 bg-background">
-      <div className="hidden gap-2 px-3 py-2 text-xs font-medium text-muted-foreground md:grid md:grid-cols-[minmax(0,1.4fr)_repeat(7,minmax(0,0.7fr))_auto] md:items-center">
-        <span>Item</span>
-        <span>Type</span>
-        <span>Delivery</span>
-        <span className="text-right">Qty</span>
-        <span className="text-right">Unit cost</span>
-        <span className="text-right">Unit charge</span>
-        <span className="text-right">Total cost</span>
-        <span className="text-right">Total charge</span>
-        <span className="text-right">Margin</span>
-        <span />
-      </div>
-
-      <div className="grid gap-3 p-3 md:grid-cols-[minmax(0,1.4fr)_repeat(7,minmax(0,0.7fr))_auto] md:items-center">
-        <div className="min-w-0 space-y-1">
+    <div className="bg-background">
+      <div className={ROW_GRID}>
+        <div className="min-w-0">
           <p className="text-sm font-medium leading-snug">{item.client_label}</p>
           {item.internal_label !== item.client_label ? (
-            <p className="text-xs text-muted-foreground">{item.internal_label}</p>
+            <p className="text-xs text-muted-foreground truncate">
+              {item.internal_label}
+            </p>
           ) : null}
-          <div className="flex flex-wrap gap-1 md:hidden">
+          <div className="mt-1 flex flex-wrap gap-1 md:hidden">
             <Badge variant="secondary" className="text-[10px]">
               {PRICING_ITEM_TYPES.find((type) => type.value === item.item_type)
                 ?.label ?? item.item_type}
-            </Badge>
-            <Badge variant="outline" className="text-[10px]">
-              {DELIVERY_METHODS.find(
-                (method) => method.value === item.delivery_method
-              )?.label ?? item.delivery_method}
             </Badge>
           </div>
         </div>
@@ -105,27 +93,27 @@ function PricingItemRowComponent({
             (method) => method.value === item.delivery_method
           )?.label ?? item.delivery_method}
         </div>
-        <div className="hidden text-right text-sm md:block">
+        <div className="hidden text-right text-xs md:block">
           {item.quantity ?? "—"}
           {item.unit ? ` ${item.unit}` : ""}
         </div>
-        <div className="hidden text-right text-sm md:block">
+        <div className="hidden text-right text-xs md:block">
           {item.unit_cost != null ? formatPricingMoney(item.unit_cost) : "—"}
         </div>
-        <div className="hidden text-right text-sm md:block">
+        <div className="hidden text-right text-xs md:block">
           {item.unit_sell != null ? formatPricingMoney(item.unit_sell) : "—"}
         </div>
-        <div className="hidden text-right text-sm md:block">
+        <div className="hidden text-right text-xs md:block">
           {formatPricingMoney(item.total_cost)}
         </div>
-        <div className="hidden text-right text-sm font-medium md:block">
+        <div className="hidden text-right text-xs font-medium md:block">
           {formatPricingMoney(item.total_sell)}
         </div>
-        <div className="hidden text-right text-sm md:block">
+        <div className="hidden text-right text-xs md:block">
           {formatPricingPercent(item.margin_percent)}
         </div>
 
-        <div className="flex items-center justify-end gap-1">
+        <div className="flex items-center justify-end gap-0.5">
           <Button
             type="button"
             variant="ghost"
@@ -134,7 +122,7 @@ function PricingItemRowComponent({
             disabled={isPending}
             onClick={() => setExpanded((value) => !value)}
           >
-            <Pencil className="size-4" />
+            <Pencil className="size-3.5" />
           </Button>
           <Button
             type="button"
@@ -144,7 +132,7 @@ function PricingItemRowComponent({
             disabled={isPending}
             onClick={() => runAction(onDuplicate)}
           >
-            <Copy className="size-4" />
+            <Copy className="size-3.5" />
           </Button>
           <Button
             type="button"
@@ -154,7 +142,7 @@ function PricingItemRowComponent({
             disabled={isPending}
             onClick={() => runAction(onDelete)}
           >
-            <Trash2 className="size-4" />
+            <Trash2 className="size-3.5" />
           </Button>
         </div>
 
@@ -171,7 +159,7 @@ function PricingItemRowComponent({
       </div>
 
       {expanded ? (
-        <div className="space-y-4 border-t px-3 py-4">
+        <div className="space-y-4 border-t bg-muted/20 px-3 py-4">
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Client label</Label>
@@ -320,6 +308,32 @@ function PricingItemRowComponent({
                   setForm((current) => ({
                     ...current,
                     total_sell: Number(event.target.value),
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Internal notes</Label>
+              <Textarea
+                rows={2}
+                value={form.notes_internal ?? ""}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    notes_internal: event.target.value || null,
+                  }))
+                }
+              />
+            </div>
+            <div className="space-y-2 sm:col-span-2">
+              <Label>Client notes</Label>
+              <Textarea
+                rows={2}
+                value={form.notes_client ?? ""}
+                onChange={(event) =>
+                  setForm((current) => ({
+                    ...current,
+                    notes_client: event.target.value || null,
                   }))
                 }
               />

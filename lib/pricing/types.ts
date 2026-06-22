@@ -48,6 +48,15 @@ export type PricingDocument = {
   updated_at: string;
   reviewed_at: string | null;
   converted_to_quote_at: string | null;
+  needs_recalibration: boolean;
+  recalibration_status:
+    | "current"
+    | "estimate_changed"
+    | "update_available"
+    | "manually_kept"
+    | "recalibrated";
+  recalibration_dismissed_at: string | null;
+  recalibrated_at: string | null;
 };
 
 export type PricingItem = {
@@ -79,6 +88,9 @@ export type PricingItem = {
   notes_client: string | null;
   created_at: string;
   updated_at: string;
+  manually_edited: boolean;
+  orphaned: boolean;
+  recalibration_note: string | null;
 };
 
 export type PricingWorkArea = {
@@ -91,12 +103,16 @@ export type PricingWorkArea = {
 export type PricingSummary = {
   id: string;
   status: PricingDocumentStatus;
+  needsRecalibration?: boolean;
 };
 
 export type PricingActionState = {
   error?: string;
   success?: boolean;
   pricingDocumentId?: string;
+  item?: PricingItem;
+  deletedItemId?: string;
+  document?: PricingDocument;
 };
 
 export type PricingItemInput = {
@@ -135,4 +151,6 @@ export type PricingWorkspaceData = {
   items: PricingItem[];
   workAreas: PricingWorkArea[];
   projectTitle: string;
+  latestEstimateRecommendedSell: number | null;
+  latestEstimateIsStale: boolean;
 };

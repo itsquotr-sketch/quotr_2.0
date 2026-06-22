@@ -19,8 +19,7 @@ const updateFactSchema = z.object({
   valueType: z.enum(["number", "select", "boolean", "text"]).optional(),
 });
 
-function revalidateAssistantPaths(projectId: string) {
-  revalidatePath("/app/dashboard");
+function revalidateProjectPath(projectId: string) {
   revalidatePath(`/app/projects/${projectId}`);
 }
 
@@ -174,6 +173,6 @@ export async function updateProjectFact(
   }
 
   await markEstimateStale(projectId);
-  revalidateAssistantPaths(projectId);
+  revalidateProjectPath(projectId);
   return { success: true };
 }

@@ -37,6 +37,13 @@ export function mapPricingDocument(row: Record<string, unknown>): PricingDocumen
     reviewed_at: (row.reviewed_at as string | null) ?? null,
     converted_to_quote_at:
       (row.converted_to_quote_at as string | null) ?? null,
+    needs_recalibration: Boolean(row.needs_recalibration ?? false),
+    recalibration_status:
+      (row.recalibration_status as PricingDocument["recalibration_status"]) ??
+      "current",
+    recalibration_dismissed_at:
+      (row.recalibration_dismissed_at as string | null) ?? null,
+    recalibrated_at: (row.recalibrated_at as string | null) ?? null,
   };
 }
 
@@ -71,6 +78,9 @@ export function mapPricingItem(row: Record<string, unknown>): PricingItem {
     notes_client: (row.notes_client as string | null) ?? null,
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
+    manually_edited: Boolean(row.manually_edited ?? false),
+    orphaned: Boolean(row.orphaned ?? false),
+    recalibration_note: (row.recalibration_note as string | null) ?? null,
   };
 }
 
