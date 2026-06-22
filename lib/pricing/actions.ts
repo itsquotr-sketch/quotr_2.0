@@ -267,7 +267,7 @@ export async function getPricingWorkspaceData(
         .order("sort_order"),
       supabase
         .from("work_areas")
-        .select("id, name, type, sort_order")
+        .select("id, name, type, sort_order, quote_description")
         .eq("project_id", projectId)
         .eq("org_id", orgId)
         .eq("status", "confirmed")

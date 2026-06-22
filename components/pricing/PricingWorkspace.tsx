@@ -42,8 +42,8 @@ export function PricingWorkspace({
   const documentDraftRef = useRef<PricingDocumentInput>({});
   const [document, setDocument] = useState<PricingDocument>(initialData.document);
   const [items, setItems] = useState<PricingItem[]>(initialData.items);
+  const [workAreas, setWorkAreas] = useState(initialData.workAreas);
   const {
-    workAreas,
     projectTitle,
     latestEstimateIsStale,
   } = initialData;
@@ -65,6 +65,19 @@ export function PricingWorkspace({
   const applyDocumentUpdate = useCallback((updated: PricingDocument) => {
     setDocument(updated);
   }, []);
+
+  const handleQuoteDescriptionSaved = useCallback(
+    (workAreaId: string, description: string | null) => {
+      setWorkAreas((current) =>
+        current.map((workArea) =>
+          workArea.id === workAreaId
+            ? { ...workArea, quote_description: description }
+            : workArea
+        )
+      );
+    },
+    []
+  );
 
   const handleSaveDocument = () => {
     setSaveError(null);
@@ -217,8 +230,11 @@ export function PricingWorkspace({
             {groupedSections.map((section) => (
               <PricingWorkAreaSection
                 key={section.workArea?.id ?? "general"}
+                projectId={projectId}
                 workArea={section.workArea}
                 items={section.items}
+                existingQuoteWarning={quoteSummary != null}
+                onQuoteDescriptionSaved={handleQuoteDescriptionSaved}
                 onSaveItem={handleSaveItem}
                 onDuplicateItem={handleDuplicateItem}
                 onDeleteItem={handleDeleteItem}

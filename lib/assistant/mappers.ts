@@ -42,6 +42,7 @@ type DbWorkArea = {
   status: string;
   ai_confidence: number | null;
   summary: string | null;
+  quote_description: string | null;
   sort_order: number;
 };
 
@@ -182,6 +183,7 @@ export function mapWorkArea(row: DbWorkArea): WorkArea {
     status: row.status as WorkAreaStatus,
     aiConfidence: row.ai_confidence ?? 0,
     summary: row.summary ?? undefined,
+    quoteDescription: row.quote_description ?? null,
   };
 }
 

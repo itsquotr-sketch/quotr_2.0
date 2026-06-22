@@ -3,6 +3,7 @@
 import { useMemo, useTransition } from "react";
 import { Plus } from "lucide-react";
 import { PricingItemRow } from "@/components/pricing/PricingItemRow";
+import { WorkAreaQuoteDescriptionEditor } from "@/components/work-areas/WorkAreaQuoteDescriptionEditor";
 import { Button } from "@/components/ui/button";
 import { calculateDocumentTotals } from "@/lib/pricing/calculations";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
@@ -13,8 +14,14 @@ import type {
 } from "@/lib/pricing/types";
 
 type PricingWorkAreaSectionProps = {
+  projectId: string;
   workArea: PricingWorkArea | null;
   items: PricingItem[];
+  existingQuoteWarning?: boolean;
+  onQuoteDescriptionSaved?: (
+    workAreaId: string,
+    description: string | null
+  ) => void;
   onSaveItem: (
     itemId: string,
     input: PricingItemInput
@@ -28,8 +35,11 @@ const TABLE_HEADER_CLASS =
   "hidden gap-2 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[minmax(0,1.5fr)_0.7fr_0.8fr_0.6fr_0.75fr_0.75fr_0.75fr_0.75fr_0.55fr_auto] md:items-center";
 
 export function PricingWorkAreaSection({
+  projectId,
   workArea,
   items,
+  existingQuoteWarning = false,
+  onQuoteDescriptionSaved,
   onSaveItem,
   onDuplicateItem,
   onDeleteItem,
@@ -78,6 +88,21 @@ export function PricingWorkAreaSection({
           Add item
         </Button>
       </div>
+
+      {workArea ? (
+        <div className="px-4">
+          <WorkAreaQuoteDescriptionEditor
+            projectId={projectId}
+            workAreaId={workArea.id}
+            workAreaName={workArea.name}
+            initialDescription={workArea.quote_description}
+            existingQuoteWarning={existingQuoteWarning}
+            onSaved={(description) =>
+              onQuoteDescriptionSaved?.(workArea.id, description)
+            }
+          />
+        </div>
+      ) : null}
 
       <div className={TABLE_HEADER_CLASS}>
         <span>Item</span>

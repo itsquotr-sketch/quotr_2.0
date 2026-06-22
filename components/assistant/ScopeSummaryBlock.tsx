@@ -8,6 +8,7 @@ import {
   type MissingQuestionAnswers,
 } from "@/components/assistant/ScopeReviewMissingSection";
 import { ScopeReviewFactRow } from "@/components/assistant/ScopeReviewFactRow";
+import { WorkAreaQuoteDescriptionEditor } from "@/components/work-areas/WorkAreaQuoteDescriptionEditor";
 import type { WorkArea, WorkAreaActiveQuestion } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/dialog";
 
 type ScopeSummaryBlockProps = {
+  projectId: string;
   scopeReview: ScopeReview;
   workAreas?: WorkArea[];
   editable?: boolean;
@@ -83,6 +85,7 @@ function initMissingAnswers(
 }
 
 export function ScopeSummaryBlock({
+  projectId,
   scopeReview,
   workAreas = [],
   editable = false,
@@ -108,6 +111,9 @@ export function ScopeSummaryBlock({
 
   const [editedAnswers, setEditedAnswers] = useState<
     Record<string, MissingQuestionAnswers>
+  >({});
+  const [descriptionOverrides, setDescriptionOverrides] = useState<
+    Record<string, string | null>
   >({});
 
   const missingAnswers = useMemo(() => {
@@ -191,6 +197,33 @@ export function ScopeSummaryBlock({
             <p className="mt-1 text-xs leading-relaxed text-muted-foreground break-words">
               {workArea.summary}
             </p>
+          ) : null}
+
+          {editable ? (
+            <WorkAreaQuoteDescriptionEditor
+              projectId={projectId}
+              workAreaId={workArea.workAreaId}
+              workAreaName={workArea.workAreaName}
+              initialDescription={
+                descriptionOverrides[workArea.workAreaId] ??
+                workArea.quoteDescription
+              }
+              onSaved={(description) =>
+                setDescriptionOverrides((prev) => ({
+                  ...prev,
+                  [workArea.workAreaId]: description,
+                }))
+              }
+            />
+          ) : workArea.quoteDescription ? (
+            <div className="mt-3 border-t border-border/50 pt-3">
+              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
+                Quote description
+              </h4>
+              <p className="mt-2 text-xs leading-relaxed text-muted-foreground break-words whitespace-pre-wrap">
+                {workArea.quoteDescription}
+              </p>
+            </div>
           ) : null}
 
           {workArea.facts.length > 0 ? (

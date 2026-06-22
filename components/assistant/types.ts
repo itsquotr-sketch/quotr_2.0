@@ -28,6 +28,7 @@ export type WorkArea = {
   aiConfidence: number;
   status: WorkAreaStatus;
   summary?: string;
+  quoteDescription?: string | null;
   includedScopeItems?: ScopeItem[];
   excludedScopeItems?: ScopeItem[];
   assumptions?: string[];

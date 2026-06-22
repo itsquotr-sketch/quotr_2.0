@@ -73,6 +73,7 @@ type WorkAreaInput = {
   type: string;
   name: string;
   summary?: string | null;
+  quote_description?: string | null;
   status: string;
   sort_order?: number;
 };
@@ -487,6 +488,7 @@ export function buildScopeReview(params: {
       workAreaType: workArea.type,
       workAreaName: workArea.name,
       summary: workArea.summary ?? undefined,
+      quoteDescription: workArea.quote_description ?? null,
       facts,
       missingItems,
       assumptions,

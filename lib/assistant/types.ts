@@ -77,6 +77,7 @@ export type ScopeReviewWorkArea = {
   workAreaType: string;
   workAreaName: string;
   summary?: string;
+  quoteDescription?: string | null;
   facts: ScopeReviewFact[];
   missingItems: string[];
   activeQuestions: WorkAreaActiveQuestion[];

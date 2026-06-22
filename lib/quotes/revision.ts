@@ -55,3 +55,9 @@ export const REVISABLE_QUOTE_STATUSES: QuoteStatus[] = [
   "expired",
   "revised",
 ];
+
+/** Quotes that can be refreshed into a new revision from reviewed Final Pricing. */
+export const REFRESH_FROM_PRICING_STATUSES: QuoteStatus[] = [
+  "draft",
+  ...REVISABLE_QUOTE_STATUSES,
+];

@@ -53,6 +53,7 @@ export type QuoteItem = {
   pricing_item_id: string | null;
   work_area_id: string | null;
   section_title: string | null;
+  section_description: string | null;
   label: string;
   description: string | null;
   quantity: number | null;
@@ -102,10 +103,13 @@ export type QuoteItemInput = {
   optional?: boolean;
 };
 
+import type { CompanySettings } from "@/lib/settings/types";
+
 export type QuoteWorkspaceData = {
   quote: Quote;
   items: QuoteItem[];
   projectTitle: string;
+  companySettings: CompanySettings | null;
   pricingDocumentUpdatedAt: string | null;
   latestRevisionQuoteId: string | null;
 };

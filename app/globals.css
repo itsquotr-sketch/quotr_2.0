@@ -128,3 +128,18 @@
     @apply font-sans;
   }
 }
+
+@media print {
+  body {
+    background: white !important;
+    color: black !important;
+  }
+
+  .quote-template {
+    color: black;
+  }
+
+  .quote-template .text-muted-foreground {
+    color: #525252 !important;
+  }
+}

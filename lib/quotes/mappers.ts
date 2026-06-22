@@ -51,6 +51,7 @@ export function mapQuoteItem(row: Record<string, unknown>): QuoteItem {
     pricing_item_id: (row.pricing_item_id as string | null) ?? null,
     work_area_id: (row.work_area_id as string | null) ?? null,
     section_title: (row.section_title as string | null) ?? null,
+    section_description: (row.section_description as string | null) ?? null,
     label: row.label as string,
     description: (row.description as string | null) ?? null,
     quantity: row.quantity != null ? Number(row.quantity) : null,
@@ -67,6 +68,7 @@ export function mapQuoteItem(row: Record<string, unknown>): QuoteItem {
 
 export type QuoteItemSection = {
   sectionTitle: string | null;
+  sectionDescription: string | null;
   items: QuoteItem[];
 };
 
@@ -84,8 +86,14 @@ export function groupQuoteItemsBySection(items: QuoteItem[]): QuoteItemSection[]
       sectionIndex.set(key, index);
       sections.push({
         sectionTitle: item.section_title,
+        sectionDescription: item.section_description,
         items: [],
       });
+    } else if (
+      !sections[index].sectionDescription &&
+      item.section_description
+    ) {
+      sections[index].sectionDescription = item.section_description;
     }
 
     sections[index].items.push(item);

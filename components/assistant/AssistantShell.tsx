@@ -655,6 +655,7 @@ export function AssistantShell({
             >
               <ScopeSummaryBlock
                 key={scopeReviewQuestionKey}
+                projectId={project.id}
                 scopeReview={initialState.scopeReview}
                 workAreas={initialState.workAreas}
                 editable={questionsSubmitted}

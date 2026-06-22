@@ -2,10 +2,8 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useRef, useState, useTransition, type ReactNode } from "react";
 import { QuoteHeader } from "@/components/quotes/QuoteHeader";
-import { QuoteItemsTable } from "@/components/quotes/QuoteItemsTable";
-import { QuotePreview } from "@/components/quotes/QuotePreview";
 import { QuoteSummaryPanel } from "@/components/quotes/QuoteSummaryPanel";
 import { QuoteTermsCard } from "@/components/quotes/QuoteTermsCard";
 import { Input } from "@/components/ui/input";
@@ -13,45 +11,43 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
 import {
-  deleteQuoteItem,
   markQuoteAccepted,
   markQuoteDeclined,
   markQuoteExpired,
   markQuoteSent,
-  reviseQuote,
-  setQuoteItemVisible,
+  reviseQuoteFromFinalPricing,
   updateQuote,
-  updateQuoteItem,
 } from "@/lib/quotes/actions";
-import { groupQuoteItemsBySection } from "@/lib/quotes/mappers";
-import { REVISABLE_QUOTE_STATUSES } from "@/lib/quotes/revision";
+import { REFRESH_FROM_PRICING_STATUSES } from "@/lib/quotes/revision";
 import type { QuoteInput, QuoteWorkspaceData } from "@/lib/quotes/types";
 
 type QuoteWorkspaceProps = {
   initialData: QuoteWorkspaceData;
+  template: ReactNode;
 };
 
-export function QuoteWorkspace({ initialData }: QuoteWorkspaceProps) {
+export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
   const router = useRouter();
   const [isSaving, startSave] = useTransition();
   const [isRevising, startRevise] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
   const quoteDraftRef = useRef<QuoteInput>({});
 
-  const { quote, items, projectTitle, pricingDocumentUpdatedAt, latestRevisionQuoteId } =
-    initialData;
+  const {
+    quote,
+    projectTitle,
+    pricingDocumentUpdatedAt,
+    latestRevisionQuoteId,
+  } = initialData;
   const quoteId = quote.id;
   const projectId = quote.project_id;
-
-  const sections = useMemo(
-    () => groupQuoteItemsBySection(items),
-    [items]
-  );
 
   const isEditable =
     quote.status === "draft" && quote.superseded_by_quote_id == null;
   const isSuperseded = quote.superseded_by_quote_id != null;
-  const canRevise = REVISABLE_QUOTE_STATUSES.includes(quote.status) && !isSuperseded;
+  const canRefreshFromPricing =
+    REFRESH_FROM_PRICING_STATUSES.includes(quote.status) && !isSuperseded;
+  const isDraftRefresh = quote.status === "draft";
 
   const pricingChangedAfterQuote =
     pricingDocumentUpdatedAt != null &&
@@ -79,36 +75,6 @@ export function QuoteWorkspace({ initialData }: QuoteWorkspaceProps) {
     });
   };
 
-  const handleSaveItem = async (
-    itemId: string,
-    input: Parameters<typeof updateQuoteItem>[1]
-  ) => {
-    if (!isEditable) {
-      return { error: "Only draft quotes can be edited." };
-    }
-    const result = await updateQuoteItem(itemId, input);
-    if (!result.error) router.refresh();
-    return result;
-  };
-
-  const handleToggleVisible = async (itemId: string, visible: boolean) => {
-    if (!isEditable) {
-      return { error: "Only draft quotes can be edited." };
-    }
-    const result = await setQuoteItemVisible(itemId, visible);
-    if (!result.error) router.refresh();
-    return result;
-  };
-
-  const handleDeleteItem = async (itemId: string) => {
-    if (!isEditable) {
-      return { error: "Only draft quotes can be edited." };
-    }
-    const result = await deleteQuoteItem(itemId);
-    if (!result.error) router.refresh();
-    return result;
-  };
-
   const handleMarkSent = async () => {
     const result = await markQuoteSent(quoteId);
     if (!result.error) router.refresh();
@@ -133,10 +99,10 @@ export function QuoteWorkspace({ initialData }: QuoteWorkspaceProps) {
     return result;
   };
 
-  const handleReviseQuote = () => {
+  const handleRefreshFromPricing = () => {
     setSaveError(null);
     startRevise(async () => {
-      const result = await reviseQuote({ projectId, quoteId });
+      const result = await reviseQuoteFromFinalPricing({ projectId, quoteId });
       if (result.error) {
         setSaveError(result.error);
       }
@@ -145,16 +111,18 @@ export function QuoteWorkspace({ initialData }: QuoteWorkspaceProps) {
 
   return (
     <div className="space-y-5">
-      <QuoteHeader
-        quote={quote}
-        projectTitle={projectTitle}
-        isSaving={isSaving}
-        onSave={isEditable ? handleSaveQuote : undefined}
-      />
+      <div className="print:hidden">
+        <QuoteHeader
+          quote={quote}
+          projectTitle={projectTitle}
+          isSaving={isSaving}
+          onSave={isEditable ? handleSaveQuote : undefined}
+        />
+      </div>
 
       {isSuperseded && latestRevisionQuoteId ? (
         <div
-          className="rounded-lg border border-amber-300/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
+          className="rounded-lg border border-amber-300/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 print:hidden dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
           role="status"
         >
           <p className="font-medium">This quote has been revised.</p>
@@ -171,28 +139,27 @@ export function QuoteWorkspace({ initialData }: QuoteWorkspaceProps) {
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-4 py-2.5 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100">
+      <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-4 py-2.5 text-sm text-amber-950 print:hidden dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100">
         Review this quote before sending. Quotr has prepared this draft from
         your reviewed pricing, but your business is responsible for the final
         scope, price, exclusions and terms.
       </div>
 
       {pricingChangedAfterQuote ? (
-        <p className="text-sm text-amber-800 dark:text-amber-200">
-          Final pricing has changed since this quote was created. Create a
-          revision to update the quote.
+        <p className="text-sm text-amber-800 print:hidden dark:text-amber-200">
+          Final pricing may have changed since this quote was created.
         </p>
       ) : null}
 
       {quote.revision_number > 1 || quote.revised_from_quote_id ? (
-        <p className="text-sm text-muted-foreground">
+        <p className="text-sm text-muted-foreground print:hidden">
           {quote.revision_number > 1 ? `Revision ${quote.revision_number}.` : null}
           {quote.revised_from_quote_id ? " Revised from a previous quote." : null}
         </p>
       ) : null}
 
       {saveError ? (
-        <p className="text-sm text-destructive" role="alert">
+        <p className="text-sm text-destructive print:hidden" role="alert">
           {saveError}
         </p>
       ) : null}
@@ -200,7 +167,7 @@ export function QuoteWorkspace({ initialData }: QuoteWorkspaceProps) {
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-5">
           {isEditable ? (
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 print:hidden sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="quote-title" className="text-xs">
                   Quote title
@@ -261,26 +228,11 @@ export function QuoteWorkspace({ initialData }: QuoteWorkspaceProps) {
             </div>
           ) : null}
 
-          <QuotePreview quote={quote} items={items} />
+          {template}
 
           {isEditable ? (
-            <div className="space-y-4">
-              <h2 className="text-base font-semibold">Edit line items</h2>
-              {sections.map((section) => (
-                <QuoteItemsTable
-                  key={section.sectionTitle ?? "general"}
-                  sectionTitle={section.sectionTitle}
-                  items={section.items}
-                  onSaveItem={handleSaveItem}
-                  onToggleVisible={handleToggleVisible}
-                  onDeleteItem={handleDeleteItem}
-                />
-              ))}
-            </div>
-          ) : null}
-
-          {isEditable ? (
-            <QuoteTermsCard
+            <div className="print:hidden">
+              <QuoteTermsCard
               assumptions={quote.assumptions}
               exclusions={quote.exclusions}
               inclusions={quote.inclusions}
@@ -288,20 +240,32 @@ export function QuoteWorkspace({ initialData }: QuoteWorkspaceProps) {
               notesToClient={quote.notes_to_client}
               onChange={handleQuoteChange}
             />
+            </div>
           ) : null}
         </div>
 
-        <div className="space-y-3">
-          {canRevise ? (
-            <Button
-              type="button"
-              className="w-full"
-              variant="outline"
-              disabled={isRevising}
-              onClick={handleReviseQuote}
-            >
-              {isRevising ? "Creating revision…" : "Revise quote"}
-            </Button>
+        <div className="space-y-3 print:hidden">
+          {canRefreshFromPricing ? (
+            <div className="space-y-2">
+              <Button
+                type="button"
+                className="w-full"
+                variant="outline"
+                disabled={isRevising}
+                onClick={handleRefreshFromPricing}
+              >
+                {isRevising
+                  ? "Creating revision…"
+                  : isDraftRefresh
+                    ? "Refresh from final pricing"
+                    : "Create revision"}
+              </Button>
+              <p className="text-xs leading-relaxed text-muted-foreground">
+                {isDraftRefresh
+                  ? "Create a new draft revision using the latest reviewed final pricing."
+                  : "Create a new draft revision without changing this quote."}
+              </p>
+            </div>
           ) : null}
 
           <QuoteSummaryPanel

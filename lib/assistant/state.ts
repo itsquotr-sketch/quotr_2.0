@@ -98,7 +98,7 @@ export async function getAssistantState(
     supabase
       .from("work_areas")
       .select(
-        "id, type, name, status, ai_confidence, summary, sort_order, created_at"
+        "id, type, name, status, ai_confidence, summary, quote_description, sort_order, created_at"
       )
       .eq("project_id", projectId)
       .order("sort_order", { ascending: true })

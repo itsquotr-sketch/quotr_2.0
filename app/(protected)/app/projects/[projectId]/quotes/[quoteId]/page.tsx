@@ -1,4 +1,5 @@
 import { QuoteWorkspace } from "@/components/quotes/QuoteWorkspace";
+import { QuoteTemplate } from "@/components/quotes/QuoteTemplate";
 import { UserMenu } from "@/components/layout/user-menu";
 import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
@@ -38,7 +39,7 @@ export default async function QuotePage({ params }: QuotePageProps) {
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="shrink-0 border-b bg-background">
+      <header className="shrink-0 border-b bg-background print:hidden">
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
           <ProjectHeader project={project} subtitle={null} />
           <div className="shrink-0 pt-1">
@@ -47,18 +48,29 @@ export default async function QuotePage({ params }: QuotePageProps) {
         </div>
       </header>
 
-      <ProjectWorkspaceNav
-        projectId={projectId}
-        activeTab="quote"
-        pricingSummary={tabContext.pricingSummary}
-        quoteSummary={quoteSummary}
-        hasEstimate={tabContext.hasEstimate}
-        estimateIsStale={tabContext.estimateIsStale}
-      />
+      <div className="print:hidden">
+        <ProjectWorkspaceNav
+          projectId={projectId}
+          activeTab="quote"
+          pricingSummary={tabContext.pricingSummary}
+          quoteSummary={quoteSummary}
+          hasEstimate={tabContext.hasEstimate}
+          estimateIsStale={tabContext.estimateIsStale}
+        />
+      </div>
 
-      <div className="flex-1 overflow-auto overflow-x-hidden">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <QuoteWorkspace initialData={data} />
+      <div className="flex-1 overflow-auto overflow-x-hidden print:overflow-visible">
+        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 print:max-w-none print:p-0">
+          <QuoteWorkspace
+            initialData={data}
+            template={
+              <QuoteTemplate
+                quote={data.quote}
+                quoteItems={data.items}
+                companySettings={data.companySettings}
+              />
+            }
+          />
         </div>
       </div>
     </div>

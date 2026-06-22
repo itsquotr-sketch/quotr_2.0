@@ -41,32 +41,52 @@ export type QuoteItemFromPricing = QuoteItemInput & {
   pricing_item_id: string;
   work_area_id: string | null;
   section_title: string | null;
+  section_description: string | null;
   sort_order: number;
 };
 
 export function mapPricingItemsToQuoteItems(
   pricingItems: PricingItem[],
-  workAreaNames: Map<string, string>
+  workAreaNames: Map<string, string>,
+  workAreaDescriptions: Map<string, string> = new Map()
 ): QuoteItemFromPricing[] {
+  const sectionDescriptionAssigned = new Set<string>();
+
   return pricingItems
     .filter((item) => item.visible_on_quote)
     .sort((a, b) => a.sort_order - b.sort_order)
-    .map((item) => ({
-      pricing_item_id: item.id,
-      work_area_id: item.work_area_id,
-      section_title: item.work_area_id
-        ? (workAreaNames.get(item.work_area_id) ?? null)
-        : null,
-      label: resolveQuoteItemLabel(item),
-      description: resolveQuoteItemDescription(item),
-      quantity: item.quantity,
-      unit: item.unit,
-      unit_price: item.unit_sell,
-      total: item.total_sell,
-      visible: true,
-      optional: item.optional,
-      sort_order: item.sort_order,
-    }));
+    .map((item) => {
+      let sectionDescription: string | null = null;
+
+      if (item.work_area_id) {
+        const description = workAreaDescriptions.get(item.work_area_id);
+        if (
+          description &&
+          !sectionDescriptionAssigned.has(item.work_area_id)
+        ) {
+          sectionDescription = description;
+          sectionDescriptionAssigned.add(item.work_area_id);
+        }
+      }
+
+      return {
+        pricing_item_id: item.id,
+        work_area_id: item.work_area_id,
+        section_title: item.work_area_id
+          ? (workAreaNames.get(item.work_area_id) ?? null)
+          : null,
+        section_description: sectionDescription,
+        label: resolveQuoteItemLabel(item),
+        description: resolveQuoteItemDescription(item),
+        quantity: item.quantity,
+        unit: item.unit,
+        unit_price: item.unit_sell,
+        total: item.total_sell,
+        visible: true,
+        optional: item.optional,
+        sort_order: item.sort_order,
+      };
+    });
 }
 
 export function buildInclusionsFromPricing(

@@ -98,6 +98,7 @@ export type PricingWorkArea = {
   name: string;
   type: string;
   sort_order: number;
+  quote_description: string | null;
 };
 
 export type PricingSummary = {

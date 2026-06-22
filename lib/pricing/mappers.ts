@@ -90,6 +90,7 @@ export function mapPricingWorkArea(row: Record<string, unknown>): PricingWorkAre
     name: row.name as string,
     type: row.type as string,
     sort_order: Number(row.sort_order ?? 0),
+    quote_description: (row.quote_description as string | null) ?? null,
   };
 }
 
