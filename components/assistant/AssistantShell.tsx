@@ -52,6 +52,8 @@ import type { QuoteSummary } from "@/lib/quotes/types";
 type AssistantShellProps = {
   initialState: AssistantState;
   initialNotes?: ProjectNote[];
+  totalNoteCount?: number;
+  pendingAnalysisCount?: number;
   pendingNoteProposal?: NoteProposal | null;
   pricingSummary?: PricingSummary | null;
   quoteSummary?: QuoteSummary | null;
@@ -80,6 +82,8 @@ function initAnswersFromQuestions(
 export function AssistantShell({
   initialState,
   initialNotes = [],
+  totalNoteCount,
+  pendingAnalysisCount = 0,
   pendingNoteProposal = null,
   pricingSummary = null,
   quoteSummary = null,
@@ -473,7 +477,7 @@ export function AssistantShell({
 
   const captureSummary = buildProjectCaptureSummary(
     briefText,
-    initialNotes.length
+    totalNoteCount ?? initialNotes.length
   );
   const workAreasSummary = buildWorkAreasSummary(displayWorkAreas);
   const qualitySummary = qualityLevel
@@ -507,7 +511,7 @@ export function AssistantShell({
             subtitle={
               briefSubmitted
                 ? "Brief and site notes are source material. Later notes can be analysed into proposed updates."
-                : "Add a quick brief, site notes, measurements or client requests. Quotr will use this information to identify the work areas."
+                : "Start with a brief, site notes or rough scope. Quotr will help identify work areas and questions."
             }
             statusLabel={
               captureIsCurrent ? "Current" : briefSubmitted ? "Complete" : undefined
@@ -523,6 +527,8 @@ export function AssistantShell({
               onBriefChange={setBriefText}
               projectId={project.id}
               initialNotes={initialNotes}
+              totalNoteCount={totalNoteCount}
+              pendingAnalysisCount={pendingAnalysisCount}
               onAnalyse={briefSubmitted ? undefined : handleAnalyseJob}
               disabled={pendingAction === "brief"}
               isAnalysing={pendingAction === "brief"}

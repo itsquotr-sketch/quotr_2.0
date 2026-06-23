@@ -76,32 +76,98 @@ async function assertProjectOwned(
   return { ok: true };
 }
 
-export async function listProjectNotes(
+const INITIAL_NOTES_LIMIT = 20;
+
+export type ProjectNoteListResult = {
+  notes: ProjectNote[];
+  totalCount: number;
+  pendingAnalysisCount: number;
+};
+
+async function fetchProjectNoteCounts(
+  supabase: Awaited<
+    ReturnType<typeof import("@/lib/supabase/server").createClient>
+  >,
+  orgId: string,
   projectId: string
-): Promise<ProjectNote[]> {
+): Promise<{ totalCount: number; pendingAnalysisCount: number }> {
+  const [{ count: totalCount, error: totalError }, { count: pendingCount, error: pendingError }] =
+    await Promise.all([
+      supabase
+        .from("project_notes")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId)
+        .eq("org_id", orgId)
+        .is("deleted_at", null),
+      supabase
+        .from("project_notes")
+        .select("id", { count: "exact", head: true })
+        .eq("project_id", projectId)
+        .eq("org_id", orgId)
+        .is("deleted_at", null)
+        .eq("analysis_status", "pending"),
+    ]);
+
+  if (totalError) {
+    console.error("[fetchProjectNoteCounts]", totalError.message);
+  }
+  if (pendingError) {
+    console.error("[fetchProjectNoteCounts]", pendingError.message);
+  }
+
+  return {
+    totalCount: totalCount ?? 0,
+    pendingAnalysisCount: pendingCount ?? 0,
+  };
+}
+
+export async function getProjectNoteCounts(
+  projectId: string
+): Promise<{ totalCount: number; pendingAnalysisCount: number }> {
   const context = await getAuthOrgContext();
   if (!context) {
-    return [];
+    return { totalCount: 0, pendingAnalysisCount: 0 };
+  }
+
+  return fetchProjectNoteCounts(context.supabase, context.orgId, projectId);
+}
+
+export async function listProjectNotes(
+  projectId: string,
+  options?: { limit?: number }
+): Promise<ProjectNoteListResult> {
+  const context = await getAuthOrgContext();
+  if (!context) {
+    return { notes: [], totalCount: 0, pendingAnalysisCount: 0 };
   }
 
   const { supabase, orgId } = context;
+  const limit = options?.limit ?? INITIAL_NOTES_LIMIT;
 
-  const { data, error } = await supabase
-    .from("project_notes")
-    .select(
-      "id, project_id, content, note_type, source, captured_by, captured_at, updated_at, analysis_status"
-    )
-    .eq("project_id", projectId)
-    .eq("org_id", orgId)
-    .is("deleted_at", null)
-    .order("captured_at", { ascending: false });
+  const [{ data, error }, counts] = await Promise.all([
+    supabase
+      .from("project_notes")
+      .select(
+        "id, project_id, content, note_type, source, captured_by, captured_at, updated_at, analysis_status"
+      )
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .is("deleted_at", null)
+      .order("captured_at", { ascending: false })
+      .limit(limit),
+    fetchProjectNoteCounts(supabase, orgId, projectId),
+  ]);
 
   if (error) {
     console.error("[listProjectNotes]", error.message);
-    return [];
+    return { notes: [], totalCount: 0, pendingAnalysisCount: 0 };
   }
 
-  return (data ?? []).map(mapProjectNote);
+  return {
+    notes: (data ?? []).map(mapProjectNote),
+    totalCount: counts.totalCount,
+    pendingAnalysisCount: counts.pendingAnalysisCount,
+  };
 }
 
 export async function createProjectNote(

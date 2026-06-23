@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { StatusMessage } from "@/components/layout/status-message";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -24,7 +25,9 @@ import {
   getCompanySettings,
   updateCompanySettings,
 } from "@/lib/settings/company-actions";
+import { sanitizeBrandColour } from "@/lib/settings/branding";
 import type { CompanySettings } from "@/lib/settings/types";
+import { cn } from "@/lib/utils";
 
 type CompanySettingsContentProps = {
   initialSettings: CompanySettings;
@@ -51,6 +54,51 @@ function SettingsSection({
       </CardHeader>
       <CardContent className="space-y-4">{children}</CardContent>
     </Card>
+  );
+}
+
+function ColourField({
+  id,
+  label,
+  value,
+  onChange,
+  placeholder,
+}: {
+  id: string;
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+}) {
+  const safeColour = sanitizeBrandColour(value);
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={id}>{label}</Label>
+      <div className="flex items-center gap-2">
+        <span
+          className={cn(
+            "size-9 shrink-0 rounded-md border border-border/60",
+            !safeColour && "bg-muted"
+          )}
+          style={safeColour ? { backgroundColor: safeColour } : undefined}
+          aria-hidden
+        />
+        <Input
+          id={id}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          placeholder={placeholder}
+          className="font-mono text-sm"
+        />
+      </div>
+      {value.trim() && !safeColour ? (
+        <p className="text-xs text-muted-foreground">
+          Enter a valid hex colour (e.g. #1a1a1a). Invalid values are ignored on
+          quotes.
+        </p>
+      ) : null}
+    </div>
   );
 }
 
@@ -162,12 +210,17 @@ export function CompanySettingsContent({
     }
   }
 
+  const displayName =
+    settings.tradingName?.trim() ||
+    settings.legalName?.trim() ||
+    settings.organisationName;
+
   return (
     <form className="space-y-6" onSubmit={handleSubmit}>
       <Card className="border-border/60 bg-muted/20 shadow-none">
         <CardContent className="flex flex-col gap-2 pt-6 sm:flex-row sm:items-center sm:justify-between">
           <div className="space-y-1">
-            <p className="text-sm font-medium">{settings.organisationName}</p>
+            <p className="text-sm font-medium">{displayName}</p>
             <p className="text-xs text-muted-foreground">
               Signed in as {userFullName ?? "User"}
               {userEmail ? ` · ${userEmail}` : ""}
@@ -191,20 +244,14 @@ export function CompanySettingsContent({
         </CardContent>
       </Card>
 
-      {error ? (
-        <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-          {error}
-        </p>
-      ) : null}
+      {error ? <StatusMessage variant="error">{error}</StatusMessage> : null}
       {savedMessage ? (
-        <p className="rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
-          {savedMessage}
-        </p>
+        <StatusMessage variant="success">{savedMessage}</StatusMessage>
       ) : null}
 
       <SettingsSection
-        title="Business details"
-        description="Company information copied into new pricing and quotes as a snapshot."
+        title="Business profile"
+        description="Company identity shown on quote previews and copied into new documents."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -228,7 +275,7 @@ export function CompanySettingsContent({
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label htmlFor="contact-email">Contact email</Label>
+            <Label htmlFor="contact-email">Email</Label>
             <Input
               id="contact-email"
               type="email"
@@ -259,9 +306,27 @@ export function CompanySettingsContent({
             placeholder="https://"
           />
         </div>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="gst-number">GST number</Label>
+            <Input
+              id="gst-number"
+              value={gstNumber}
+              onChange={(event) => setGstNumber(event.target.value)}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="nzbn">NZBN</Label>
+            <Input
+              id="nzbn"
+              value={nzbn}
+              onChange={(event) => setNzbn(event.target.value)}
+            />
+          </div>
+        </div>
       </SettingsSection>
 
-      <SettingsSection title="Address">
+      <SettingsSection title="Business address">
         <div className="space-y-2">
           <Label htmlFor="address-line-1">Address line 1</Label>
           <Input
@@ -319,27 +384,9 @@ export function CompanySettingsContent({
       </SettingsSection>
 
       <SettingsSection
-        title="Tax & quote defaults"
-        description="Applied when creating new final pricing and quotes."
+        title="Quote defaults"
+        description="Applied when creating new final pricing and quotes. Existing documents are not changed."
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="gst-number">GST number</Label>
-            <Input
-              id="gst-number"
-              value={gstNumber}
-              onChange={(event) => setGstNumber(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="nzbn">NZBN</Label>
-            <Input
-              id="nzbn"
-              value={nzbn}
-              onChange={(event) => setNzbn(event.target.value)}
-            />
-          </div>
-        </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="default-gst-rate">Default GST rate %</Label>
@@ -380,12 +427,6 @@ export function CompanySettingsContent({
             ) : null}
           </div>
         </div>
-      </SettingsSection>
-
-      <SettingsSection
-        title="Default quote content"
-        description="Copied into new documents. Existing quotes are not changed when you edit these."
-      >
         <div className="space-y-2">
           <Label htmlFor="default-payment-terms">Payment terms</Label>
           <Textarea
@@ -428,8 +469,8 @@ export function CompanySettingsContent({
       </SettingsSection>
 
       <SettingsSection
-        title="Branding placeholders"
-        description="For future PDF export. Logo upload is not enabled yet."
+        title="Brand appearance"
+        description="Brand settings apply to quote previews and future exports. Logo upload is not enabled yet — paste a logo URL."
       >
         <div className="space-y-2">
           <Label htmlFor="logo-url">Logo URL</Label>
@@ -439,27 +480,40 @@ export function CompanySettingsContent({
             onChange={(event) => setLogoUrl(event.target.value)}
             placeholder="https://example.com/logo.png"
           />
+          {logoUrl.trim() ? (
+            <div className="mt-2 rounded-md border border-border/60 bg-muted/20 p-3">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src={logoUrl}
+                alt="Logo preview"
+                className="max-h-12 w-auto max-w-[180px] object-contain"
+                onError={(event) => {
+                  event.currentTarget.style.display = "none";
+                }}
+              />
+            </div>
+          ) : null}
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="brand-primary">Primary colour</Label>
-            <Input
-              id="brand-primary"
-              value={brandPrimaryColour}
-              onChange={(event) => setBrandPrimaryColour(event.target.value)}
-              placeholder="#1a1a1a"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="brand-accent">Accent colour</Label>
-            <Input
-              id="brand-accent"
-              value={brandAccentColour}
-              onChange={(event) => setBrandAccentColour(event.target.value)}
-              placeholder="#2563eb"
-            />
-          </div>
+          <ColourField
+            id="brand-primary"
+            label="Primary colour"
+            value={brandPrimaryColour}
+            onChange={setBrandPrimaryColour}
+            placeholder="#1a1a1a"
+          />
+          <ColourField
+            id="brand-accent"
+            label="Accent colour"
+            value={brandAccentColour}
+            onChange={setBrandAccentColour}
+            placeholder="#2563eb"
+          />
         </div>
+        <p className="text-xs text-muted-foreground">
+          Colours are used subtly on quote headings and totals. Quotes remain
+          readable in black and white if colours are not set.
+        </p>
       </SettingsSection>
 
       <Card className="border-border/60 shadow-none">

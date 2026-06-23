@@ -4,8 +4,10 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState, useTransition, type ReactNode } from "react";
 import { QuoteHeader } from "@/components/quotes/QuoteHeader";
+import { QuotePrintActions } from "@/components/quotes/QuotePrintActions";
 import { QuoteSummaryPanel } from "@/components/quotes/QuoteSummaryPanel";
 import { QuoteTermsCard } from "@/components/quotes/QuoteTermsCard";
+import { WorkspaceBanner } from "@/components/layout/workspace-banner";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -139,11 +141,11 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </div>
       ) : null}
 
-      <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-4 py-2.5 text-sm text-amber-950 print:hidden dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100">
-        Review this quote before sending. Quotr has prepared this draft from
-        your reviewed pricing, but your business is responsible for the final
-        scope, price, exclusions and terms.
-      </div>
+      <WorkspaceBanner className="print:hidden">
+        Client-facing quote — review scope, pricing, exclusions and terms before
+        sending. Use Final Pricing to change line items, then refresh this quote
+        if needed.
+      </WorkspaceBanner>
 
       {pricingChangedAfterQuote ? (
         <p className="text-sm text-amber-800 print:hidden dark:text-amber-200">
@@ -164,7 +166,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </p>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px] print:block">
         <div className="min-w-0 space-y-5">
           {isEditable ? (
             <div className="grid gap-3 print:hidden sm:grid-cols-2">
@@ -245,6 +247,8 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </div>
 
         <div className="space-y-3 print:hidden">
+          <QuotePrintActions projectId={projectId} quoteId={quoteId} />
+
           {canRefreshFromPricing ? (
             <div className="space-y-2">
               <Button

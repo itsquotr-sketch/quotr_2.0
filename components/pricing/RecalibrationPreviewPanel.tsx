@@ -315,7 +315,8 @@ export function RecalibrationPreviewPanel({
                 </>
               ) : (
                 <p className="text-sm text-muted-foreground">
-                  No item-level changes detected.
+                  No pricing changes to apply. Your final pricing already matches
+                  the latest estimate.
                 </p>
               )}
             </div>

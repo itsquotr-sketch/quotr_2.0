@@ -12,6 +12,8 @@ type ProjectCaptureBlockProps = {
   onBriefChange: (text: string) => void;
   projectId: string;
   initialNotes: ProjectNote[];
+  totalNoteCount?: number;
+  pendingAnalysisCount?: number;
   onAnalyse?: () => void;
   disabled?: boolean;
   isAnalysing?: boolean;
@@ -37,6 +39,8 @@ export function ProjectCaptureBlock({
   onBriefChange,
   projectId,
   initialNotes,
+  totalNoteCount,
+  pendingAnalysisCount = 0,
   onAnalyse,
   disabled,
   isAnalysing,
@@ -61,11 +65,15 @@ export function ProjectCaptureBlock({
       <SiteNotesCaptureCard
         projectId={projectId}
         initialNotes={initialNotes}
+        totalNoteCount={totalNoteCount}
         variant="compact"
       />
 
       {submitted ? (
-        <AnalyseNotesSection projectId={projectId} notes={initialNotes} />
+        <AnalyseNotesSection
+          projectId={projectId}
+          pendingAnalysisCount={pendingAnalysisCount}
+        />
       ) : null}
 
       <div className="space-y-3 border-t pt-4">

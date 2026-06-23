@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { CompanySettingsContent } from "@/components/settings/CompanySettingsContent";
+import { measureServerLoad } from "@/lib/perf/timing";
 import { getCompanySettings } from "@/lib/settings/company-actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -17,7 +18,9 @@ export default async function CompanySettingsPage() {
     .eq("id", user!.id)
     .maybeSingle();
 
-  const settings = await getCompanySettings();
+  const settings = await measureServerLoad("company-settings", () =>
+    getCompanySettings()
+  );
   if (!settings) {
     notFound();
   }
@@ -26,7 +29,7 @@ export default async function CompanySettingsPage() {
     <>
       <PageHeader
         title="Company settings"
-        description="Organisation profile and default quote terms for new pricing and quotes."
+        description="Business profile, quote defaults and brand appearance for new pricing and quotes."
         actions={
           <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
         }

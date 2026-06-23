@@ -8,6 +8,8 @@ import type { ProjectNote } from "@/lib/project-notes/types";
 type SiteNotesPanelProps = {
   projectId: string;
   initialNotes: ProjectNote[];
+  totalNoteCount?: number;
+  pendingAnalysisCount?: number;
   showAnalyseNotes?: boolean;
   className?: string;
   /** Render inner content only — parent supplies stage wrapper */
@@ -17,6 +19,8 @@ type SiteNotesPanelProps = {
 export function SiteNotesPanel({
   projectId,
   initialNotes,
+  totalNoteCount,
+  pendingAnalysisCount = 0,
   showAnalyseNotes = false,
   className,
   contentOnly = false,
@@ -24,12 +28,16 @@ export function SiteNotesPanel({
   const inner = (
     <div className="space-y-4">
       {showAnalyseNotes ? (
-        <AnalyseNotesSection projectId={projectId} notes={initialNotes} />
+        <AnalyseNotesSection
+          projectId={projectId}
+          pendingAnalysisCount={pendingAnalysisCount}
+        />
       ) : null}
 
       <SiteNotesCaptureCard
         projectId={projectId}
         initialNotes={initialNotes}
+        totalNoteCount={totalNoteCount}
         variant="full"
         showHeading={false}
       />

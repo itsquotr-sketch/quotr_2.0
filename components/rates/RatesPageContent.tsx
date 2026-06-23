@@ -79,7 +79,7 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
 
       <RatesTableSection
         title="Labour rates"
-        description="If charge rate is blank, Quotr derives it from your default margin."
+        description="Used when Quotr estimates in-house labour. If charge rate is blank, Quotr derives it from your default margin."
         catalogue={LABOUR_RATE_CATALOGUE}
         rates={state.rates}
         onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
@@ -88,7 +88,7 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
 
       <RatesTableSection
         title="Scope / package rates"
-        description="Package rates for quick pricing. Items marked Planned are saved for future engine support."
+        description="Optional shortcut rates. Planned rates are stored for future estimation support."
         catalogue={SCOPE_RATE_CATALOGUE}
         rates={state.rates}
         onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
@@ -98,7 +98,7 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
 
       <RatesTableSection
         title="Materials and allowances"
-        description="Recommended rates that affect estimates today. Set these to replace benchmark allowances."
+        description="Recommended rates that replace benchmark assumptions when set."
         catalogue={MATERIAL_RATE_CATALOGUE.filter(
           (entry) =>
             entry.recommended || entry.calculatorSupport === "used_now"

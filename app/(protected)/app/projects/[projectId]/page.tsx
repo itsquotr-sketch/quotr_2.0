@@ -4,6 +4,7 @@ import { DuplicatedProjectBanner } from "@/components/projects/DuplicatedProject
 import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { getAssistantState } from "@/lib/assistant/state";
+import { measureServerLoad } from "@/lib/perf/timing";
 import { listProjectNotes } from "@/lib/project-notes/actions";
 import { getPendingNoteProposal } from "@/lib/project-notes/proposals/actions";
 import {
@@ -22,23 +23,46 @@ type ProjectPageProps = {
 export default async function ProjectPage({ params }: ProjectPageProps) {
   await connection();
   const { projectId } = await params;
-  const [
+
+  const pageData = await measureServerLoad("project", async () => {
+    const [
+      project,
+      assistantState,
+      noteList,
+      pendingNoteProposal,
+      pricingSummary,
+      tabContext,
+      quoteSummary,
+    ] = await Promise.all([
+      getProject(projectId),
+      getAssistantState(projectId),
+      listProjectNotes(projectId),
+      getPendingNoteProposal(projectId),
+      getLatestPricingSummary(projectId),
+      getProjectWorkspaceTabContext(projectId),
+      getLatestQuoteSummary(projectId),
+    ]);
+
+    return {
+      project,
+      assistantState,
+      noteList,
+      pendingNoteProposal,
+      pricingSummary,
+      tabContext,
+      quoteSummary,
+    };
+  });
+
+  const {
     project,
     assistantState,
-    projectNotes,
+    noteList,
     pendingNoteProposal,
     pricingSummary,
     tabContext,
     quoteSummary,
-  ] = await Promise.all([
-    getProject(projectId),
-    getAssistantState(projectId),
-    listProjectNotes(projectId),
-    getPendingNoteProposal(projectId),
-    getLatestPricingSummary(projectId),
-    getProjectWorkspaceTabContext(projectId),
-    getLatestQuoteSummary(projectId),
-  ]);
+  } = pageData;
 
   const supabase = await createClient();
   const {
@@ -83,7 +107,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
           <AssistantShell
             key={assistantState.project.stage}
             initialState={assistantState}
-            initialNotes={projectNotes}
+            initialNotes={noteList.notes}
+            pendingAnalysisCount={noteList.pendingAnalysisCount}
+            totalNoteCount={noteList.totalCount}
             pendingNoteProposal={pendingNoteProposal}
             pricingSummary={pricingSummary ?? tabContext.pricingSummary}
             quoteSummary={quoteSummary}

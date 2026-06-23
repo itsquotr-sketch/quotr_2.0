@@ -22,6 +22,7 @@ import {
 import {
   buildWorkAreaDescriptionsMap,
   type WorkAreaQuoteFact,
+  type WorkAreaQuotePricingItem,
 } from "@/lib/work-areas/quote-description";
 
 export type PricingQuoteSnapshot = {
@@ -131,9 +132,24 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     factsByWorkAreaId.set(fact.work_area_id, list);
   }
 
+  const pricingItemsByWorkAreaId = new Map<string, WorkAreaQuotePricingItem[]>();
+  for (const item of items) {
+    if (!item.work_area_id) {
+      continue;
+    }
+    const label = (item.client_label || item.internal_label || "").trim();
+    if (!label) {
+      continue;
+    }
+    const list = pricingItemsByWorkAreaId.get(item.work_area_id) ?? [];
+    list.push({ label });
+    pricingItemsByWorkAreaId.set(item.work_area_id, list);
+  }
+
   const workAreaDescriptions = buildWorkAreaDescriptionsMap(
     workAreas ?? [],
-    factsByWorkAreaId
+    factsByWorkAreaId,
+    pricingItemsByWorkAreaId
   );
 
   const orgDefaults = await getOrgQuoteDefaultsForOrg(supabase, orgId);

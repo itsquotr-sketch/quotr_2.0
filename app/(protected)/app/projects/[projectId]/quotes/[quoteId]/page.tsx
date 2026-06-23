@@ -4,6 +4,7 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { getProjectWorkspaceTabContext } from "@/lib/pricing/actions";
+import { measureServerLoad } from "@/lib/perf/timing";
 import {
   getLatestQuoteSummary,
   getQuoteWorkspaceData,
@@ -19,12 +20,19 @@ type QuotePageProps = {
 export default async function QuotePage({ params }: QuotePageProps) {
   await connection();
   const { projectId, quoteId } = await params;
-  const [data, project, tabContext, quoteSummary] = await Promise.all([
-    getQuoteWorkspaceData(projectId, quoteId),
-    getProject(projectId),
-    getProjectWorkspaceTabContext(projectId),
-    getLatestQuoteSummary(projectId),
-  ]);
+
+  const pageData = await measureServerLoad("quote", async () => {
+    const [data, project, tabContext, quoteSummary] = await Promise.all([
+      getQuoteWorkspaceData(projectId, quoteId),
+      getProject(projectId),
+      getProjectWorkspaceTabContext(projectId),
+      getLatestQuoteSummary(projectId),
+    ]);
+
+    return { data, project, tabContext, quoteSummary };
+  });
+
+  const { data, project, tabContext, quoteSummary } = pageData;
 
   const supabase = await createClient();
   const {
@@ -38,10 +46,10 @@ export default async function QuotePage({ params }: QuotePageProps) {
     .maybeSingle();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden print:bg-white">
       <header className="shrink-0 border-b bg-background print:hidden">
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
-          <ProjectHeader project={project} subtitle={null} />
+          <ProjectHeader project={project} subtitle="Client quote" />
           <div className="shrink-0 pt-1">
             <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
           </div>

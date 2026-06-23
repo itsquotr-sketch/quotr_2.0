@@ -24,23 +24,10 @@ export function BenchmarkFallbackSection({
       <CardHeader>
         <CardTitle>Benchmark fallbacks</CardTitle>
         <CardDescription>
-          When you do not have a user rate set, Quotr uses benchmark allowances
-          so estimates can still be produced. You can improve accuracy by adding
-          your own rates above.
+          Used when your own rate is missing.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">Fallback status:</span>
-          <Badge variant={benchmarkEnabled ? "secondary" : "outline"}>
-            {benchmarkEnabled ? "Enabled" : "Disabled"}
-          </Badge>
-        </div>
-        <p className="text-sm text-muted-foreground">
-          When you do not have a rate set, Quotr uses benchmark allowances so
-          estimates can still be produced. Add your own rates to improve
-          accuracy.
-        </p>
         <div className="flex flex-wrap items-center gap-2">
           <span className="text-sm text-muted-foreground">Status:</span>
           <Badge variant={benchmarkEnabled ? "secondary" : "outline"}>
@@ -49,6 +36,10 @@ export function BenchmarkFallbackSection({
               : "Benchmark fallbacks disabled"}
           </Badge>
         </div>
+        <p className="text-sm text-muted-foreground">
+          Add your own labour, scope and material rates above to reduce reliance
+          on benchmark assumptions.
+        </p>
         {!benchmarkEnabled ? (
           <p className="text-sm text-muted-foreground">
             With benchmarks disabled, missing rates may show as &ldquo;Rate

@@ -113,3 +113,9 @@ export type QuoteWorkspaceData = {
   pricingDocumentUpdatedAt: string | null;
   latestRevisionQuoteId: string | null;
 };
+
+export type QuotePrintData = {
+  quote: Quote;
+  items: QuoteItem[];
+  companySettings: CompanySettings | null;
+};

@@ -2,6 +2,8 @@
 
 import { useCallback, useMemo, useRef, useState, useTransition } from "react";
 import { RecalibrationBanner } from "@/components/pricing/RecalibrationBanner";
+import { EmptyState } from "@/components/layout/empty-state";
+import { WorkspaceBanner } from "@/components/layout/workspace-banner";
 import { PricingDetailsCard } from "@/components/pricing/PricingDetailsCard";
 import { PricingHeader } from "@/components/pricing/PricingHeader";
 import { PricingReviewChecklist } from "@/components/pricing/PricingReviewChecklist";
@@ -172,11 +174,11 @@ export function PricingWorkspace({
         onSaveDocument={handleSaveDocument}
       />
 
-      <div className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-4 py-2.5 text-sm text-amber-950 dark:border-amber-900/60 dark:bg-amber-950/25 dark:text-amber-100">
-        Review all pricing before issuing a quote. Quotr has prepared this draft
-        from your estimate, but you remain responsible for confirming scope,
-        quantities, subcontractor allowances, terms and final pricing.
-      </div>
+      <WorkspaceBanner>
+        Review and adjust pricing before creating a client quote. You remain
+        responsible for confirming scope, quantities, subcontractor allowances,
+        terms and final pricing.
+      </WorkspaceBanner>
 
       <RecalibrationBanner
         projectId={projectId}
@@ -227,6 +229,12 @@ export function PricingWorkspace({
           />
 
           <div className="space-y-4">
+            {items.length === 0 ? (
+              <EmptyState
+                title="No pricing items yet"
+                description="Line items appear here after you prepare final pricing from your estimate. Check each work area section below or add items manually."
+              />
+            ) : null}
             {groupedSections.map((section) => (
               <PricingWorkAreaSection
                 key={section.workArea?.id ?? "general"}

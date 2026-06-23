@@ -2,6 +2,7 @@ import { PricingWorkspace } from "@/components/pricing/PricingWorkspace";
 import { UserMenu } from "@/components/layout/user-menu";
 import { ProjectHeader } from "@/components/projects/ProjectHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
+import { measureServerLoad } from "@/lib/perf/timing";
 import {
   getPricingWorkspaceData,
   getProjectWorkspaceTabContext,
@@ -21,14 +22,27 @@ type PricingPageProps = {
 export default async function PricingPage({ params }: PricingPageProps) {
   await connection();
   const { projectId, pricingId } = await params;
-  const [data, project, tabContext, quoteSummaryForDoc, quoteSummary] =
-    await Promise.all([
+
+  const pageData = await measureServerLoad("pricing", async () => {
+    const [
+      data,
+      project,
+      tabContext,
+      quoteSummaryForDoc,
+      quoteSummary,
+    ] = await Promise.all([
       getPricingWorkspaceData(projectId, pricingId),
       getProject(projectId),
       getProjectWorkspaceTabContext(projectId),
       getQuoteSummaryForPricingDocument(pricingId),
       getLatestQuoteSummary(projectId),
     ]);
+
+    return { data, project, tabContext, quoteSummaryForDoc, quoteSummary };
+  });
+
+  const { data, project, tabContext, quoteSummaryForDoc, quoteSummary } =
+    pageData;
 
   const effectiveQuoteSummary = quoteSummaryForDoc ?? quoteSummary;
   const pricingChangedAfterQuote =
@@ -51,7 +65,7 @@ export default async function PricingPage({ params }: PricingPageProps) {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <header className="shrink-0 border-b bg-background">
         <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
-          <ProjectHeader project={project} subtitle={null} />
+          <ProjectHeader project={project} subtitle="Final pricing" />
           <div className="shrink-0 pt-1">
             <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
           </div>

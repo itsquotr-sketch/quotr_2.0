@@ -96,7 +96,7 @@ export function CompanyDefaultsSection({
       <CardHeader>
         <CardTitle>Company defaults</CardTitle>
         <CardDescription>
-          Default margin and estimating preferences used across Quotr.
+          Default margin and estimating preferences used across new estimates.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>

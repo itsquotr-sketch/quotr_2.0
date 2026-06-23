@@ -32,59 +32,46 @@ function isLumpSumType(itemType?: PricingItemType): boolean {
   return itemType === "allowance" || itemType === "contingency";
 }
 
-export function calculatePricingItemTotals(
-  input: PricingItemTotalsInput
-): PricingItemTotals {
-  const quantity =
-    input.quantity != null && !Number.isNaN(input.quantity)
-      ? input.quantity
-      : null;
-  const unitCost =
-    input.unitCost != null && !Number.isNaN(input.unitCost)
-      ? roundMoney(input.unitCost)
-      : null;
-  const unitSell =
-    input.unitSell != null && !Number.isNaN(input.unitSell)
-      ? roundMoney(input.unitSell)
-      : null;
+export type PricingItemEditField =
+  | "quantity"
+  | "unitCost"
+  | "unitSell"
+  | "totalCost"
+  | "totalSell";
 
-  let totalCost =
-    input.totalCost != null && !Number.isNaN(input.totalCost)
-      ? roundMoney(input.totalCost)
-      : 0;
-  let totalSell =
-    input.totalSell != null && !Number.isNaN(input.totalSell)
-      ? roundMoney(input.totalSell)
-      : 0;
+export type PricingItemEditInput = {
+  quantity?: number | null;
+  unitCost?: number | null;
+  unitSell?: number | null;
+  totalCost?: number | null;
+  totalSell?: number | null;
+  changedField: PricingItemEditField;
+  itemType?: PricingItemType;
+};
 
-  const canDeriveFromUnits =
-    quantity != null &&
-    quantity > 0 &&
-    unitCost != null &&
-    unitSell != null &&
-    !isLumpSumType(input.itemType);
-
-  if (canDeriveFromUnits) {
-    totalCost = roundMoney(quantity * unitCost);
-    totalSell = roundMoney(quantity * unitSell);
-  } else if (
-    quantity != null &&
-    quantity > 0 &&
-    unitCost != null &&
-    (totalSell === 0 || input.totalSell == null) &&
-    !isLumpSumType(input.itemType)
-  ) {
-    totalCost = roundMoney(quantity * unitCost);
-  } else if (
-    quantity != null &&
-    quantity > 0 &&
-    unitSell != null &&
-    (totalCost === 0 || input.totalCost == null) &&
-    !isLumpSumType(input.itemType)
-  ) {
-    totalSell = roundMoney(quantity * unitSell);
+function normalizeQuantity(value: number | null | undefined): number | null {
+  if (value == null || Number.isNaN(value)) {
+    return null;
   }
+  return value;
+}
 
+function normalizeMoneyNullable(
+  value: number | null | undefined
+): number | null {
+  if (value == null || Number.isNaN(value)) {
+    return null;
+  }
+  return roundMoney(value);
+}
+
+function computeProfitFields(
+  quantity: number | null,
+  unitCost: number | null,
+  unitSell: number | null,
+  totalCost: number,
+  totalSell: number
+): PricingItemTotals {
   const grossProfit = roundMoney(totalSell - totalCost);
   const marginPercent =
     totalSell > 0 ? roundPercent((grossProfit / totalSell) * 100) : 0;
@@ -101,6 +88,85 @@ export function calculatePricingItemTotals(
     marginPercent,
     markupPercent,
   };
+}
+
+export function calculatePricingItemEdit(
+  input: PricingItemEditInput
+): PricingItemTotals {
+  const isLumpSum = isLumpSumType(input.itemType);
+  const quantity = normalizeQuantity(input.quantity);
+  let unitCost = normalizeMoneyNullable(input.unitCost);
+  let unitSell = normalizeMoneyNullable(input.unitSell);
+  let totalCost = roundMoney(input.totalCost ?? 0);
+  let totalSell = roundMoney(input.totalSell ?? 0);
+
+  const hasQuantity = quantity != null && quantity > 0;
+
+  switch (input.changedField) {
+    case "quantity":
+      if (!isLumpSum && hasQuantity) {
+        if (unitCost != null) {
+          totalCost = roundMoney(quantity! * unitCost);
+        }
+        if (unitSell != null) {
+          totalSell = roundMoney(quantity! * unitSell);
+        }
+      }
+      break;
+    case "unitCost":
+      unitCost = normalizeMoneyNullable(input.unitCost);
+      if (!isLumpSum && hasQuantity && unitCost != null) {
+        totalCost = roundMoney(quantity! * unitCost);
+      }
+      break;
+    case "unitSell":
+      unitSell = normalizeMoneyNullable(input.unitSell);
+      if (!isLumpSum && hasQuantity && unitSell != null) {
+        totalSell = roundMoney(quantity! * unitSell);
+      }
+      break;
+    case "totalCost":
+      totalCost = roundMoney(input.totalCost ?? 0);
+      if (!isLumpSum && hasQuantity && quantity! > 0) {
+        unitCost = roundMoney(totalCost / quantity!);
+      }
+      break;
+    case "totalSell":
+      totalSell = roundMoney(input.totalSell ?? 0);
+      if (!isLumpSum && hasQuantity && quantity! > 0) {
+        unitSell = roundMoney(totalSell / quantity!);
+      }
+      break;
+  }
+
+  return computeProfitFields(quantity, unitCost, unitSell, totalCost, totalSell);
+}
+
+export function calculatePricingItemTotals(
+  input: PricingItemTotalsInput
+): PricingItemTotals {
+  const quantity = normalizeQuantity(input.quantity);
+  const isLumpSum = isLumpSumType(input.itemType);
+  const hasQuantity = quantity != null && quantity > 0;
+
+  if (!isLumpSum && hasQuantity) {
+    return calculatePricingItemEdit({
+      quantity: input.quantity,
+      unitCost: input.unitCost,
+      unitSell: input.unitSell,
+      totalCost: input.totalCost,
+      totalSell: input.totalSell,
+      changedField: "quantity",
+      itemType: input.itemType,
+    });
+  }
+
+  const unitCost = normalizeMoneyNullable(input.unitCost);
+  const unitSell = normalizeMoneyNullable(input.unitSell);
+  const totalCost = roundMoney(input.totalCost ?? 0);
+  const totalSell = roundMoney(input.totalSell ?? 0);
+
+  return computeProfitFields(quantity, unitCost, unitSell, totalCost, totalSell);
 }
 
 export type DocumentTotals = {

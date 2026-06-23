@@ -26,9 +26,11 @@ import type {
   QuoteItemInput,
   QuoteSummary,
   QuoteWorkspaceData,
+  QuotePrintData,
 } from "@/lib/quotes/types";
 import { ACTIVE_PIPELINE_STATUSES } from "@/lib/projects/status";
 import { getCompanySettings } from "@/lib/settings/company-actions";
+import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 
 function revalidateQuoteProjectPath(
   projectId: string,
@@ -201,7 +203,9 @@ async function insertQuoteItemRows(
   }));
 
   const { error } = await supabase.from("quote_items").insert(quoteItemRows);
-  return error?.message ?? null;
+  return error
+    ? toUserError(error, "insertQuoteItemRows", USER_ERRORS.quoteCreateFailed)
+    : null;
 }
 
 async function updateProjectBusinessStatusIfActive(
@@ -364,6 +368,45 @@ export async function getQuoteWorkspaceData(
   };
 }
 
+export async function getQuotePrintData(
+  projectId: string,
+  quoteId: string
+): Promise<QuotePrintData> {
+  const context = await getAuthOrgContext();
+  if (!context) {
+    notFound();
+  }
+
+  const { supabase, orgId } = context;
+
+  const [{ data: quote }, { data: items }, companySettings] = await Promise.all([
+    supabase
+      .from("quotes")
+      .select("*")
+      .eq("id", quoteId)
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .maybeSingle(),
+    supabase
+      .from("quote_items")
+      .select("*")
+      .eq("quote_id", quoteId)
+      .eq("org_id", orgId)
+      .order("sort_order"),
+    getCompanySettings(),
+  ]);
+
+  if (!quote) {
+    notFound();
+  }
+
+  return {
+    quote: mapQuote(quote),
+    items: (items ?? []).map((row) => mapQuoteItem(row)),
+    companySettings,
+  };
+}
+
 export async function createQuoteFromPricing(input: {
   projectId: string;
   pricingDocumentId: string;
@@ -445,7 +488,13 @@ export async function createQuoteFromPricing(input: {
     .single();
 
   if (quoteError || !quote) {
-    return { error: quoteError?.message ?? "Failed to create quote." };
+    return {
+      error: toUserError(
+        quoteError,
+        "createQuoteFromPricing",
+        USER_ERRORS.quoteCreateFailed
+      ),
+    };
   }
 
   const quoteId = quote.id;
@@ -515,7 +564,9 @@ export async function updateQuote(
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
+    };
   }
 
   revalidateQuoteProjectPath(quote.project_id, quoteId, quote.pricing_document_id);
@@ -583,7 +634,9 @@ export async function updateQuoteItem(
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
+    };
   }
 
   await recalculateAndPersistQuoteTotals(
@@ -646,7 +699,9 @@ export async function setQuoteItemVisible(
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
+    };
   }
 
   const { data: quote } = await supabase
@@ -715,7 +770,9 @@ export async function deleteQuoteItem(
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
+    };
   }
 
   const { data: quote } = await supabase
@@ -759,7 +816,9 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
+    };
   }
 
   if (quote.pricing_document_id) {
@@ -805,7 +864,9 @@ export async function markQuoteAccepted(
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
+    };
   }
 
   await updateProjectBusinessStatusIfActive(
@@ -841,7 +902,9 @@ export async function markQuoteDeclined(
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
+    };
   }
 
   await updateProjectBusinessStatusIfActive(
@@ -877,7 +940,9 @@ export async function markQuoteExpired(
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
+    };
   }
 
   revalidateQuoteDashboard(quote.project_id, quoteId, quote.pricing_document_id);
@@ -927,7 +992,13 @@ export async function reviseQuote(input: {
     .order("sort_order");
 
   if (itemsError) {
-    return { error: itemsError.message };
+    return {
+      error: toUserError(
+        itemsError,
+        "reviseQuote-load-items",
+        USER_ERRORS.quoteCreateFailed
+      ),
+    };
   }
 
   const rootId = quote.parent_quote_id ?? quote.id;
@@ -942,7 +1013,13 @@ export async function reviseQuote(input: {
     .limit(1);
 
   if (chainError) {
-    return { error: chainError.message };
+    return {
+      error: toUserError(
+        chainError,
+        "reviseQuote-chain",
+        USER_ERRORS.quoteRevisionFailed
+      ),
+    };
   }
 
   const nextRevision =
@@ -983,7 +1060,13 @@ export async function reviseQuote(input: {
     .single();
 
   if (insertError || !newQuote) {
-    return { error: insertError?.message ?? "Failed to create quote revision." };
+    return {
+      error: toUserError(
+        insertError,
+        "reviseQuote-insert",
+        USER_ERRORS.quoteRevisionFailed
+      ),
+    };
   }
 
   const newQuoteId = newQuote.id;
@@ -1014,7 +1097,13 @@ export async function reviseQuote(input: {
 
     if (copyItemsError) {
       await supabase.from("quotes").delete().eq("id", newQuoteId);
-      return { error: copyItemsError.message };
+      return {
+        error: toUserError(
+          copyItemsError,
+          "reviseQuote-copy-items",
+          USER_ERRORS.quoteRevisionFailed
+        ),
+      };
     }
   }
 
@@ -1030,7 +1119,13 @@ export async function reviseQuote(input: {
   if (supersedeError) {
     await supabase.from("quote_items").delete().eq("quote_id", newQuoteId);
     await supabase.from("quotes").delete().eq("id", newQuoteId);
-    return { error: supersedeError.message };
+    return {
+      error: toUserError(
+        supersedeError,
+        "reviseQuote-supersede",
+        USER_ERRORS.quoteRevisionFailed
+      ),
+    };
   }
 
   const { data: project } = await supabase
@@ -1150,7 +1245,13 @@ export async function reviseQuoteFromFinalPricing(input: {
     .limit(1);
 
   if (chainError) {
-    return { error: chainError.message };
+    return {
+      error: toUserError(
+        chainError,
+        "reviseQuote-chain",
+        USER_ERRORS.quoteRevisionFailed
+      ),
+    };
   }
 
   const nextRevision =
@@ -1192,7 +1293,13 @@ export async function reviseQuoteFromFinalPricing(input: {
     .single();
 
   if (insertError || !newQuote) {
-    return { error: insertError?.message ?? "Failed to create quote revision." };
+    return {
+      error: toUserError(
+        insertError,
+        "reviseQuote-insert",
+        USER_ERRORS.quoteRevisionFailed
+      ),
+    };
   }
 
   const newQuoteId = newQuote.id;
@@ -1221,7 +1328,13 @@ export async function reviseQuoteFromFinalPricing(input: {
   if (supersedeError) {
     await supabase.from("quote_items").delete().eq("quote_id", newQuoteId);
     await supabase.from("quotes").delete().eq("id", newQuoteId);
-    return { error: supersedeError.message };
+    return {
+      error: toUserError(
+        supersedeError,
+        "reviseQuote-supersede",
+        USER_ERRORS.quoteRevisionFailed
+      ),
+    };
   }
 
   const currentStatus = project.business_status as string;

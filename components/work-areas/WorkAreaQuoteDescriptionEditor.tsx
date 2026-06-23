@@ -105,13 +105,17 @@ export function WorkAreaQuoteDescriptionEditor({
           <div className="flex shrink-0 gap-1">
             <Button
               type="button"
-              variant="ghost"
+              variant={currentPreview ? "ghost" : "outline"}
               size="sm"
               className="h-7 px-2 text-xs"
               disabled={isGenerating}
               onClick={() => void handleGenerateDraft()}
             >
-              {isGenerating ? "Generating…" : "Generate draft"}
+              {isGenerating
+                ? "Generating…"
+                : currentPreview
+                  ? "Regenerate draft"
+                  : "Use suggested description"}
             </Button>
             <Button
               type="button"
@@ -180,7 +184,8 @@ export function WorkAreaQuoteDescriptionEditor({
         </p>
       ) : (
         <p className="mt-2 text-xs text-muted-foreground italic">
-          Add a client-facing description for this work area.
+          No description yet. Use suggested description to generate a
+          client-facing scope paragraph for this work area.
         </p>
       )}
     </div>

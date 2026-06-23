@@ -55,11 +55,6 @@ function revalidateProjectPath(projectId: string) {
   revalidatePath(`/app/projects/${projectId}`);
 }
 
-function revalidateProjectAndDashboard(projectId: string) {
-  revalidatePath("/app/dashboard");
-  revalidatePath(`/app/projects/${projectId}`);
-}
-
 async function loadAllowedWorkAreaTypes(
   supabase: Awaited<ReturnType<typeof createClient>>,
   orgId: string
@@ -706,7 +701,7 @@ export async function applyNoteProposal(
     }
   }
 
-  revalidateProjectAndDashboard(projectId);
+  revalidateProjectPath(projectId);
 
   return {
     success: true,

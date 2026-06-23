@@ -1,7 +1,7 @@
 "use client";
 
 import { Loader2 } from "lucide-react";
-import { useTransition } from "react";
+import { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -53,11 +53,16 @@ export function QuoteSummaryPanel({
   onMarkExpired,
 }: QuoteSummaryPanelProps) {
   const [isPending, startTransition] = useTransition();
+  const [statusError, setStatusError] = useState<string | null>(null);
 
   const runAction = (action?: () => Promise<{ error?: string }>) => {
     if (!action) return;
+    setStatusError(null);
     startTransition(async () => {
-      await action();
+      const result = await action();
+      if (result?.error) {
+        setStatusError(result.error);
+      }
     });
   };
 
@@ -94,6 +99,11 @@ export function QuoteSummaryPanel({
           <p className="text-xs font-medium text-muted-foreground">
             Status actions
           </p>
+          {statusError ? (
+            <p className="text-xs text-destructive" role="alert">
+              {statusError}
+            </p>
+          ) : null}
           {canMarkSent && onMarkSent ? (
             <Button
               type="button"

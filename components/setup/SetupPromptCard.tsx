@@ -21,7 +21,8 @@ export function SetupPromptCard({ currentStep = "company" }: SetupPromptCardProp
         <CardTitle>Finish setting up Quotr</CardTitle>
         <CardDescription>
           Add your work areas and starter rates so Quotr can prepare more
-          accurate estimates.
+          accurate estimates. Quotr is in testing — review all outputs before
+          issuing to clients.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

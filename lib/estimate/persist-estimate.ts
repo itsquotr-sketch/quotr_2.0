@@ -1,6 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { buildLineItemNotes } from "@/lib/estimate/line-items";
 import type { EstimateResult } from "@/lib/estimate/types";
+import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 
 type PersistEstimateResult =
   | { success: true; estimateId: string }
@@ -92,7 +93,13 @@ export async function persistEstimateResult(
       .eq("id", estimateId);
 
     if (stagingError) {
-      return { error: stagingError.message };
+      return {
+        error: toUserError(
+          stagingError,
+          "persistEstimate-staging",
+          USER_ERRORS.estimateSaveFailed
+        ),
+      };
     }
   } else {
     const { data: inserted, error: insertError } = await supabase
@@ -104,7 +111,13 @@ export async function persistEstimateResult(
       .single();
 
     if (insertError || !inserted) {
-      return { error: insertError?.message ?? "Failed to save estimate." };
+      return {
+        error: toUserError(
+          insertError,
+          "persistEstimate-insert",
+          USER_ERRORS.estimateSaveFailed
+        ),
+      };
     }
 
     estimateId = inserted.id;
@@ -118,7 +131,11 @@ export async function persistEstimateResult(
   if (deleteError) {
     await markEstimateFailed(supabase, estimateId);
     return {
-      error: `Failed to replace line items: ${deleteError.message}`,
+      error: toUserError(
+        deleteError,
+        "persistEstimate-delete-line-items",
+        USER_ERRORS.estimateSaveFailed
+      ),
     };
   }
 
@@ -135,7 +152,11 @@ export async function persistEstimateResult(
     if (lineItemsError) {
       await markEstimateFailed(supabase, estimateId);
       return {
-        error: `Failed to save line items: ${lineItemsError.message}`,
+        error: toUserError(
+          lineItemsError,
+          "persistEstimate-insert-line-items",
+          USER_ERRORS.estimateSaveFailed
+        ),
       };
     }
   }
@@ -149,7 +170,13 @@ export async function persistEstimateResult(
 
   if (finalizeError) {
     await markEstimateFailed(supabase, estimateId);
-    return { error: finalizeError.message };
+    return {
+      error: toUserError(
+        finalizeError,
+        "persistEstimate-finalize",
+        USER_ERRORS.estimateSaveFailed
+      ),
+    };
   }
 
   const { markPricingDocumentsNeedingRecalibration } = await import(

@@ -1,6 +1,7 @@
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { RatesPageContent } from "@/components/rates/RatesPageContent";
+import { measureServerLoad } from "@/lib/perf/timing";
 import { getRatesPageState } from "@/lib/rates/actions";
 import { createClient } from "@/lib/supabase/server";
 
@@ -16,7 +17,7 @@ export default async function RatesPage() {
     .eq("id", user!.id)
     .maybeSingle();
 
-  const state = await getRatesPageState();
+  const state = await measureServerLoad("rates", () => getRatesPageState());
 
   return (
     <>

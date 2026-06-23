@@ -30,6 +30,7 @@ import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
 import { markEstimateStale } from "@/lib/estimate/stale";
 import { getAnthropicModel } from "@/lib/ai/anthropic";
 import { buildInitialAnalysisInput } from "@/lib/project-notes/build-analysis-source";
+import { USER_ERRORS } from "@/lib/errors/user-message";
 import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
@@ -914,12 +915,9 @@ async function runEstimateGeneration(
     estimateResult = calculateEstimate(contextResult);
   } catch (error) {
     if (error instanceof EstimateEngineError) {
-      return { error: error.message };
+      return { error: USER_ERRORS.estimateGenerateFailed };
     }
-    return {
-      error:
-        error instanceof Error ? error.message : "Failed to generate estimate.",
-    };
+    return { error: USER_ERRORS.estimateGenerateFailed };
   }
 
   const persistResult = await persistEstimateResult(

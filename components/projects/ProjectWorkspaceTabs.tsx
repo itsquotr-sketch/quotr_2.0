@@ -47,6 +47,17 @@ export function ProjectWorkspaceTabs({
     setCreateDialogOpen(true);
   };
 
+  const tabClass = (isActive: boolean) =>
+    cn(
+      "shrink-0 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+      isActive
+        ? "bg-background text-foreground shadow-sm ring-1 ring-border shadow-[inset_0_-2px_0_0_var(--brand-orange)]"
+        : "text-muted-foreground hover:text-foreground"
+    );
+
+  const tabClassDisabled =
+    "inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap opacity-50 text-muted-foreground";
+
   return (
     <>
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
@@ -57,14 +68,10 @@ export function ProjectWorkspaceTabs({
         >
           <Link
             href={assistantHref}
+            prefetch
             role="tab"
             aria-selected={activeTab === "assistant"}
-            className={cn(
-              "shrink-0 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
-              activeTab === "assistant"
-                ? "bg-background text-foreground shadow-sm"
-                : "text-muted-foreground hover:text-foreground"
-            )}
+            className={tabClass(activeTab === "assistant")}
           >
             Project Assistant
           </Link>
@@ -72,13 +79,12 @@ export function ProjectWorkspaceTabs({
           {pricingHref ? (
             <Link
               href={pricingHref}
+              prefetch
               role="tab"
               aria-selected={activeTab === "pricing"}
               className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
-                activeTab === "pricing"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                tabClass(activeTab === "pricing"),
+                "inline-flex items-center gap-1.5"
               )}
             >
               Final Pricing
@@ -103,10 +109,8 @@ export function ProjectWorkspaceTabs({
               }
               onClick={handlePricingTabClick}
               className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors disabled:cursor-not-allowed disabled:opacity-50",
-                activeTab === "pricing"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                tabClass(activeTab === "pricing"),
+                "inline-flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
               )}
             >
               Final Pricing
@@ -121,13 +125,12 @@ export function ProjectWorkspaceTabs({
           {quoteHref ? (
             <Link
               href={quoteHref}
+              prefetch
               role="tab"
               aria-selected={activeTab === "quote"}
               className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
-                activeTab === "quote"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground hover:text-foreground"
+                tabClass(activeTab === "quote"),
+                "inline-flex items-center gap-1.5"
               )}
             >
               Quote
@@ -140,12 +143,11 @@ export function ProjectWorkspaceTabs({
               role="tab"
               aria-selected={activeTab === "quote"}
               aria-disabled="true"
-              title="Create a quote from reviewed final pricing"
+              title="Create a quote from reviewed final pricing on the Final Pricing tab."
               className={cn(
-                "inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap opacity-50",
-                activeTab === "quote"
-                  ? "bg-background text-foreground shadow-sm"
-                  : "text-muted-foreground"
+                tabClassDisabled,
+                activeTab === "quote" &&
+                  "bg-background text-foreground opacity-100 shadow-sm ring-1 ring-border shadow-[inset_0_-2px_0_0_var(--brand-orange)]"
               )}
             >
               Quote

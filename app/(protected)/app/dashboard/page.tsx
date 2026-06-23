@@ -10,6 +10,7 @@ import {
   getDashboardPipelineSummary,
   listProjects,
 } from "@/lib/projects/actions";
+import { measureServerLoad } from "@/lib/perf/timing";
 import { parseProjectListFilter } from "@/lib/projects/status";
 import { getSetupState, isSetupIncomplete } from "@/lib/setup/actions";
 import { createClient } from "@/lib/supabase/server";
@@ -40,11 +41,23 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .maybeSingle();
 
   const setupIncomplete = await isSetupIncomplete();
-  const [projects, summary, setupState] = await Promise.all([
-    listProjects({ filter, search }),
-    getDashboardPipelineSummary(),
-    setupIncomplete ? getSetupState() : Promise.resolve(null),
-  ]);
+  const { projects, summary, setupState } = await measureServerLoad(
+    "dashboard",
+    async () => {
+      const [projectsResult, summaryResult, setupStateResult] =
+        await Promise.all([
+          listProjects({ filter, search }),
+          getDashboardPipelineSummary(),
+          setupIncomplete ? getSetupState() : Promise.resolve(null),
+        ]);
+
+      return {
+        projects: projectsResult,
+        summary: summaryResult,
+        setupState: setupStateResult,
+      };
+    }
+  );
 
   const resumeStep = getResumeStep(setupState?.settings?.onboarding_step);
 
@@ -52,7 +65,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <>
       <PageHeader
         title="Dashboard"
-        description="Overview of your projects and estimates"
+        description="Create a project to start capturing scope and preparing an estimate."
         actions={
           <div className="flex items-center gap-2">
             <NewProjectDialog />

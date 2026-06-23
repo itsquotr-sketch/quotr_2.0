@@ -7,6 +7,7 @@ import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
 import {
   buildWorkAreaQuoteDescriptionDraft,
   type WorkAreaQuoteFact,
+  type WorkAreaQuotePricingItem,
 } from "@/lib/work-areas/quote-description";
 
 export type WorkAreaDescriptionActionState = {
@@ -133,6 +134,27 @@ export async function updateWorkAreaQuoteDescription(input: {
   };
 }
 
+async function loadWorkAreaPricingItemLabels(
+  supabase: Awaited<ReturnType<typeof import("@/lib/supabase/server").createClient>>,
+  projectId: string,
+  workAreaId: string,
+  orgId: string
+): Promise<WorkAreaQuotePricingItem[]> {
+  const { data: items } = await supabase
+    .from("pricing_items")
+    .select("client_label, internal_label")
+    .eq("project_id", projectId)
+    .eq("work_area_id", workAreaId)
+    .eq("org_id", orgId)
+    .order("sort_order");
+
+  return (items ?? [])
+    .map((item) => ({
+      label: (item.client_label || item.internal_label || "").trim(),
+    }))
+    .filter((item) => item.label.length > 0);
+}
+
 export async function generateWorkAreaQuoteDescriptionDraft(input: {
   projectId: string;
   workAreaId: string;
@@ -156,11 +178,18 @@ export async function generateWorkAreaQuoteDescriptionDraft(input: {
     parsed.data.projectId,
     workArea.id
   );
+  const pricingItems = await loadWorkAreaPricingItemLabels(
+    context.supabase,
+    parsed.data.projectId,
+    workArea.id,
+    context.orgId
+  );
 
   const draft = buildWorkAreaQuoteDescriptionDraft({
     type: workArea.type,
     name: workArea.name,
     facts,
+    pricingItems,
   });
 
   return { draft };

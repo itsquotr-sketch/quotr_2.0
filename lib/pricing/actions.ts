@@ -579,7 +579,7 @@ export async function updatePricingDocument(
     );
   }
 
-  revalidatePricingDashboard(document.project_id, pricingDocumentId);
+  revalidatePricingProjectPath(document.project_id, pricingDocumentId);
   return { success: true };
 }
 

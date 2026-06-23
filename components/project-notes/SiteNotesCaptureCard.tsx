@@ -25,6 +25,7 @@ const COMPACT_NOTE_LIMIT = 3;
 type SiteNotesCaptureCardProps = {
   projectId: string;
   initialNotes: ProjectNote[];
+  totalNoteCount?: number;
   variant?: "compact" | "full";
   showHeading?: boolean;
 };
@@ -32,6 +33,7 @@ type SiteNotesCaptureCardProps = {
 export function SiteNotesCaptureCard({
   projectId,
   initialNotes,
+  totalNoteCount,
   variant = "compact",
   showHeading = true,
 }: SiteNotesCaptureCardProps) {
@@ -49,7 +51,8 @@ export function SiteNotesCaptureCard({
     isCompact && !showAllNotes
       ? initialNotes.slice(0, COMPACT_NOTE_LIMIT)
       : initialNotes;
-  const hiddenCount = initialNotes.length - COMPACT_NOTE_LIMIT;
+  const noteTotal = totalNoteCount ?? initialNotes.length;
+  const hiddenCount = Math.max(0, noteTotal - COMPACT_NOTE_LIMIT);
 
   async function handleCreateNote() {
     const trimmed = content.trim();
@@ -233,8 +236,13 @@ export function SiteNotesCaptureCard({
               className="h-8 text-xs text-muted-foreground"
               onClick={() => setShowAllNotes(true)}
             >
-              View all {initialNotes.length} notes
+              View all {noteTotal} notes
             </Button>
+          ) : null}
+          {showAllNotes && noteTotal > initialNotes.length ? (
+            <p className="text-xs text-muted-foreground">
+              Showing the latest {initialNotes.length} of {noteTotal} notes.
+            </p>
           ) : null}
         </div>
       )}

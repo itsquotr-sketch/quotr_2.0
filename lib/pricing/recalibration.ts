@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { getAuthOrgContext } from "@/lib/assistant/state";
+import { USER_ERRORS, toUserError } from "@/lib/errors/user-message";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import {
   buildPricingItemRowFromEstimate,
@@ -292,7 +293,13 @@ export async function applyRecalibration(
       .insert(inserts);
 
     if (insertError) {
-      return { error: insertError.message };
+      return {
+        error: toUserError(
+          insertError,
+          "recalibration-insert",
+          USER_ERRORS.recalibrationFailed
+        ),
+      };
     }
   }
 
@@ -309,7 +316,13 @@ export async function applyRecalibration(
 
     const failed = results.find((result) => result.error);
     if (failed?.error) {
-      return { error: failed.error.message };
+      return {
+        error: toUserError(
+          failed.error,
+          "recalibration-update",
+          USER_ERRORS.recalibrationFailed
+        ),
+      };
     }
   }
 
@@ -336,7 +349,13 @@ export async function applyRecalibration(
     .eq("org_id", orgId);
 
   if (docError) {
-    return { error: docError.message };
+    return {
+      error: toUserError(
+        docError,
+        "recalibration-document",
+        USER_ERRORS.recalibrationFailed
+      ),
+    };
   }
 
   const [{ data: updatedItems }, { data: updatedDocument }] = await Promise.all([

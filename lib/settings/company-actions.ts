@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { USER_ERRORS, toUserError } from "@/lib/errors/user-message";
 import { createClient } from "@/lib/supabase/server";
 import type {
   CompanySettings,
@@ -299,7 +300,13 @@ export async function updateCompanySettings(
     .single();
 
   if (error || !updated) {
-    return { error: error?.message ?? "Failed to save company settings." };
+    return {
+      error: toUserError(
+        error,
+        "updateCompanySettings",
+        USER_ERRORS.companySettingsSaveFailed
+      ),
+    };
   }
 
   revalidatePath(COMPANY_SETTINGS_PATH);

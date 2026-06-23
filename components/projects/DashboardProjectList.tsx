@@ -76,7 +76,7 @@ export function DashboardProjectList({
       : isLifecycleArchiveFilter(initialFilter)
         ? "Archived projects will appear here."
         : initialFilter === "active"
-          ? "Create your first project to start building a quick estimate."
+          ? "Create your first project to start estimating."
           : "Try a different status filter or create a new project.";
 
   return (
@@ -111,7 +111,7 @@ export function DashboardProjectList({
                 className={cn(
                   "shrink-0 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
                   initialFilter === option.value
-                    ? "bg-background text-foreground shadow-sm"
+                    ? "bg-background text-foreground shadow-sm ring-1 ring-border shadow-[inset_0_-2px_0_0_var(--brand-orange)]"
                     : "text-muted-foreground hover:text-foreground"
                 )}
               >
@@ -140,8 +140,12 @@ export function DashboardProjectList({
             </h2>
           </div>
           <div className="grid gap-3 sm:grid-cols-2">
-            {projects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
+            {projects.map((project, index) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                prefetch={index < 20}
+              />
             ))}
           </div>
         </>

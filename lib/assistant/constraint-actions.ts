@@ -16,7 +16,6 @@ const updateConstraintSchema = z.object({
 });
 
 function revalidateAssistantPaths(projectId: string) {
-  revalidatePath("/app/dashboard");
   revalidatePath(`/app/projects/${projectId}`);
 }
 

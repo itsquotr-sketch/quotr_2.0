@@ -1,6 +1,6 @@
 "use client";
 
-import { memo, useState, useTransition } from "react";
+import { memo, useMemo, useState, useTransition } from "react";
 import { Copy, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -12,6 +12,10 @@ import {
   DELIVERY_METHODS,
   PRICING_ITEM_TYPES,
 } from "@/lib/pricing/status";
+import {
+  calculatePricingItemEdit,
+  type PricingItemEditField,
+} from "@/lib/pricing/calculations";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
 import type { PricingItem, PricingItemInput } from "@/lib/pricing/types";
 
@@ -25,16 +29,8 @@ type PricingItemRowProps = {
 const ROW_GRID =
   "grid gap-2 px-3 py-2 md:grid-cols-[minmax(0,1.5fr)_0.7fr_0.8fr_0.6fr_0.75fr_0.75fr_0.75fr_0.75fr_0.55fr_auto] md:items-center";
 
-function PricingItemRowComponent({
-  item,
-  onSave,
-  onDuplicate,
-  onDelete,
-}: PricingItemRowProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [isPending, startTransition] = useTransition();
-  const [form, setForm] = useState<PricingItemInput>({
+function itemToForm(item: PricingItem): PricingItemInput {
+  return {
     internal_label: item.internal_label,
     client_label: item.client_label,
     internal_description: item.internal_description,
@@ -52,7 +48,73 @@ function PricingItemRowComponent({
     notes_internal: item.notes_internal,
     notes_client: item.notes_client,
     work_area_id: item.work_area_id,
-  });
+  };
+}
+
+function parseNumericInput(value: string): number | null {
+  if (!value.trim()) {
+    return null;
+  }
+  const parsed = Number(value);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+function PricingItemRowComponent({
+  item,
+  onSave,
+  onDuplicate,
+  onDelete,
+}: PricingItemRowProps) {
+  const [expanded, setExpanded] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const [form, setForm] = useState<PricingItemInput>(() => itemToForm(item));
+
+  const calculated = useMemo(
+    () =>
+      calculatePricingItemEdit({
+        quantity: form.quantity,
+        unitCost: form.unit_cost,
+        unitSell: form.unit_sell,
+        totalCost: form.total_cost,
+        totalSell: form.total_sell,
+        changedField: "quantity",
+        itemType: form.item_type,
+      }),
+    [form]
+  );
+
+  const updateCalculatedField = (
+    field: PricingItemEditField,
+    value: number | null
+  ) => {
+    setForm((current) => {
+      const totals = calculatePricingItemEdit({
+        quantity: field === "quantity" ? value : current.quantity,
+        unitCost: field === "unitCost" ? value : current.unit_cost,
+        unitSell: field === "unitSell" ? value : current.unit_sell,
+        totalCost: field === "totalCost" ? value ?? 0 : current.total_cost,
+        totalSell: field === "totalSell" ? value ?? 0 : current.total_sell,
+        changedField: field,
+        itemType: current.item_type,
+      });
+
+      return {
+        ...current,
+        quantity: totals.quantity,
+        unit_cost: totals.unitCost,
+        unit_sell: totals.unitSell,
+        total_cost: totals.totalCost,
+        total_sell: totals.totalSell,
+      };
+    });
+  };
+
+  const openEditor = () => {
+    setForm(itemToForm(item));
+    setError(null);
+    setExpanded(true);
+  };
 
   const runAction = (action: () => Promise<{ error?: string }>) => {
     setError(null);
@@ -120,7 +182,7 @@ function PricingItemRowComponent({
             size="icon-sm"
             aria-label="Edit item"
             disabled={isPending}
-            onClick={() => setExpanded((value) => !value)}
+            onClick={() => (expanded ? setExpanded(false) : openEditor())}
           >
             <Pencil className="size-3.5" />
           </Button>
@@ -160,6 +222,9 @@ function PricingItemRowComponent({
 
       {expanded ? (
         <div className="space-y-4 border-t bg-muted/20 px-3 py-4">
+          <p className="text-xs text-muted-foreground">
+            Editing unit or total values will recalculate the related fields.
+          </p>
           <div className="grid gap-3 sm:grid-cols-2">
             <div className="space-y-2">
               <Label>Client label</Label>
@@ -225,18 +290,16 @@ function PricingItemRowComponent({
               </select>
             </div>
             <div className="space-y-2">
-              <Label>Quantity</Label>
+              <Label>Qty</Label>
               <Input
                 type="number"
                 step="0.01"
                 value={form.quantity ?? ""}
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    quantity: event.target.value
-                      ? Number(event.target.value)
-                      : null,
-                  }))
+                  updateCalculatedField(
+                    "quantity",
+                    parseNumericInput(event.target.value)
+                  )
                 }
               />
             </div>
@@ -259,12 +322,10 @@ function PricingItemRowComponent({
                 step="0.01"
                 value={form.unit_cost ?? ""}
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    unit_cost: event.target.value
-                      ? Number(event.target.value)
-                      : null,
-                  }))
+                  updateCalculatedField(
+                    "unitCost",
+                    parseNumericInput(event.target.value)
+                  )
                 }
               />
             </div>
@@ -275,12 +336,10 @@ function PricingItemRowComponent({
                 step="0.01"
                 value={form.unit_sell ?? ""}
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    unit_sell: event.target.value
-                      ? Number(event.target.value)
-                      : null,
-                  }))
+                  updateCalculatedField(
+                    "unitSell",
+                    parseNumericInput(event.target.value)
+                  )
                 }
               />
             </div>
@@ -291,10 +350,10 @@ function PricingItemRowComponent({
                 step="0.01"
                 value={form.total_cost ?? 0}
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    total_cost: Number(event.target.value),
-                  }))
+                  updateCalculatedField(
+                    "totalCost",
+                    parseNumericInput(event.target.value) ?? 0
+                  )
                 }
               />
             </div>
@@ -305,12 +364,34 @@ function PricingItemRowComponent({
                 step="0.01"
                 value={form.total_sell ?? 0}
                 onChange={(event) =>
-                  setForm((current) => ({
-                    ...current,
-                    total_sell: Number(event.target.value),
-                  }))
+                  updateCalculatedField(
+                    "totalSell",
+                    parseNumericInput(event.target.value) ?? 0
+                  )
                 }
               />
+            </div>
+            <div className="rounded-md border border-border/60 bg-background px-3 py-2 text-xs sm:col-span-2">
+              <div className="flex flex-wrap gap-x-4 gap-y-1">
+                <span>
+                  Gross profit:{" "}
+                  <span className="font-medium text-foreground">
+                    {formatPricingMoney(calculated.grossProfit)}
+                  </span>
+                </span>
+                <span>
+                  Margin:{" "}
+                  <span className="font-medium text-foreground">
+                    {formatPricingPercent(calculated.marginPercent)}
+                  </span>
+                </span>
+                <span>
+                  Markup:{" "}
+                  <span className="font-medium text-foreground">
+                    {formatPricingPercent(calculated.markupPercent)}
+                  </span>
+                </span>
+              </div>
             </div>
             <div className="space-y-2 sm:col-span-2">
               <Label>Internal notes</Label>

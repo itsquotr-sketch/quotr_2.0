@@ -4,25 +4,20 @@ import { Loader2 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { analyseProjectNotes } from "@/lib/project-notes/proposals/actions";
-import type { ProjectNote } from "@/lib/project-notes/types";
 import { Button } from "@/components/ui/button";
 
 type AnalyseNotesSectionProps = {
   projectId: string;
-  notes: ProjectNote[];
+  pendingAnalysisCount: number;
 };
 
 export function AnalyseNotesSection({
   projectId,
-  notes,
+  pendingAnalysisCount,
 }: AnalyseNotesSectionProps) {
   const router = useRouter();
   const [isAnalysing, setIsAnalysing] = useState(false);
   const [analyseError, setAnalyseError] = useState<string | null>(null);
-
-  const pendingNoteCount = notes.filter(
-    (note) => note.analysisStatus === "pending"
-  ).length;
 
   async function handleAnalyseNotes() {
     setAnalyseError(null);
@@ -46,14 +41,14 @@ export function AnalyseNotesSection({
         Quotr will look for measurements, scope changes, access issues and
         client requests. You choose what to apply.
       </p>
-      {pendingNoteCount === 0 ? (
+      {pendingAnalysisCount === 0 ? (
         <p className="text-xs text-muted-foreground">No new notes to analyse.</p>
       ) : (
         <Button
           type="button"
           size="sm"
           onClick={handleAnalyseNotes}
-          disabled={isAnalysing || pendingNoteCount === 0}
+          disabled={isAnalysing || pendingAnalysisCount === 0}
         >
           {isAnalysing ? (
             <>
@@ -61,7 +56,7 @@ export function AnalyseNotesSection({
               Analysing notes…
             </>
           ) : (
-            "Analyse notes"
+            `Analyse ${pendingAnalysisCount} note${pendingAnalysisCount === 1 ? "" : "s"}`
           )}
         </Button>
       )}

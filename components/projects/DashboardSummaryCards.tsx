@@ -26,12 +26,12 @@ export function DashboardSummaryCards({ summary }: DashboardSummaryCardsProps) {
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
       {SUMMARY_ITEMS.map((item) => (
         <Card key={item.key} className="border-border/60 shadow-none">
-          <CardHeader className="pb-1">
+          <CardHeader className="pb-1.5">
             <CardTitle className="text-xs font-medium text-muted-foreground">
               {item.label}
             </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             <p className="text-2xl font-semibold tabular-nums tracking-tight">
               {summary[item.key]}
             </p>

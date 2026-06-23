@@ -17,16 +17,16 @@ import {
   formatEstimateStatus,
   formatProjectDate,
 } from "@/lib/projects/format";
-import { formatPricingBadgeLabel } from "@/lib/pricing/status";
-import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
+import { getProjectNextAction } from "@/lib/projects/next-action";
 import type { ProjectListItem } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
 
 type ProjectCardProps = {
   project: ProjectListItem;
+  prefetch?: boolean;
 };
 
-export function ProjectCard({ project }: ProjectCardProps) {
+export function ProjectCard({ project, prefetch = true }: ProjectCardProps) {
   const estimateDisplay = formatEstimateStatus({
     stage: project.stage,
     hasEstimate: project.has_estimate,
@@ -35,22 +35,33 @@ export function ProjectCard({ project }: ProjectCardProps) {
 
   const isClosedStatus =
     project.business_status === "won" || project.business_status === "lost";
+  const nextAction = getProjectNextAction(project);
+
+  const showWorkflowBadge =
+    !project.quote_summary &&
+    !project.pricing_summary &&
+    (estimateDisplay.variant === "warning" ||
+      estimateDisplay.variant === "secondary" ||
+      estimateDisplay.variant === "outline");
 
   return (
     <Card
       className={cn(
-        "transition-colors hover:bg-muted/30",
-        isClosedStatus && "opacity-80"
+        "border-border/60 shadow-none transition-colors hover:border-border hover:bg-muted/20",
+        isClosedStatus && "opacity-85"
       )}
     >
       <div className="flex items-start gap-1">
         <Link
           href={`/app/projects/${project.id}`}
+          prefetch={prefetch}
           className="block min-w-0 flex-1"
         >
           <CardHeader className="pb-2">
             <div className="flex flex-wrap items-start justify-between gap-2">
-              <CardTitle className="text-base">{project.title}</CardTitle>
+              <CardTitle className="text-base leading-snug">
+                {project.title}
+              </CardTitle>
               <div className="flex flex-wrap items-center gap-1.5">
                 <BusinessStatusBadge
                   status={project.business_status}
@@ -71,41 +82,51 @@ export function ProjectCard({ project }: ProjectCardProps) {
               </p>
             ) : null}
           </CardHeader>
-          <CardContent className="flex flex-wrap items-center gap-x-3 gap-y-1.5 text-xs text-muted-foreground">
-            <Badge
-              variant={
-                estimateDisplay.variant === "warning"
-                  ? "outline"
-                  : estimateDisplay.variant === "default"
-                    ? "default"
-                    : "secondary"
-              }
-              className={
-                estimateDisplay.variant === "warning"
-                  ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
-                  : undefined
-              }
-            >
-              {estimateDisplay.label}
-            </Badge>
-            {project.pricing_summary ? (
-              <Badge variant="outline">
-                {formatPricingBadgeLabel(project.pricing_summary.status)}
-              </Badge>
-            ) : null}
-            {project.quote_summary ? (
-              <Badge variant="outline">
-                {formatQuoteBadgeLabel(project.quote_summary.status)}
-              </Badge>
-            ) : null}
-            {project.due_date ? (
-              <>
-                <span aria-hidden>·</span>
+          <CardContent className="space-y-2.5">
+            <div className="flex flex-wrap items-center gap-1.5">
+              {showWorkflowBadge ? (
+                <Badge
+                  variant={
+                    estimateDisplay.variant === "warning" ? "outline" : "secondary"
+                  }
+                  className={
+                    estimateDisplay.variant === "warning"
+                      ? "border-amber-300 bg-amber-50 text-amber-900 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100"
+                      : undefined
+                  }
+                >
+                  {estimateDisplay.label}
+                </Badge>
+              ) : null}
+              {project.pricing_summary ? (
+                <Badge variant="outline">
+                  Pricing{" "}
+                  {project.pricing_summary.status === "reviewed"
+                    ? "reviewed"
+                    : "draft"}
+                </Badge>
+              ) : null}
+              {project.quote_summary ? (
+                <Badge
+                  variant="outline"
+                  className="border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]"
+                >
+                  Quote {project.quote_summary.status}
+                </Badge>
+              ) : null}
+            </div>
+
+            <p className="text-sm font-medium text-foreground">
+              Next: {nextAction}
+            </p>
+
+            <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-muted-foreground">
+              {project.due_date ? (
                 <span>Due {formatDueDate(project.due_date)}</span>
-              </>
-            ) : null}
-            <span aria-hidden>·</span>
-            <span>Created {formatProjectDate(project.created_at)}</span>
+              ) : null}
+              {project.due_date ? <span aria-hidden>·</span> : null}
+              <span>Created {formatProjectDate(project.created_at)}</span>
+            </div>
           </CardContent>
         </Link>
         <div

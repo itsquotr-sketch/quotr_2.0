@@ -1,6 +1,7 @@
 import { cleanClientLabel } from "@/lib/pricing/calculations";
 import type { PricingItem } from "@/lib/pricing/types";
 import type { QuoteItemInput } from "@/lib/quotes/types";
+import { sanitizeClientQuoteDescription } from "@/lib/quotes/sanitize";
 
 const INTERNAL_PHRASES = [
   "benchmark",
@@ -34,7 +35,7 @@ export function resolveQuoteItemLabel(item: PricingItem): string {
 export function resolveQuoteItemDescription(item: PricingItem): string | null {
   const description =
     item.client_description?.trim() || item.notes_client?.trim() || null;
-  return description || null;
+  return sanitizeClientQuoteDescription(description);
 }
 
 export type QuoteItemFromPricing = QuoteItemInput & {
