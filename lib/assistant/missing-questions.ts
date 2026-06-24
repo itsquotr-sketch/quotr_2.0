@@ -148,6 +148,7 @@ export async function ensureMissingDetailsQuestionBlock(
     confirmedWorkAreas,
     projectFacts,
     existingQuestions,
+    includeOptional: true,
   });
 
   if (missingQuestions.length === 0) {

@@ -13,7 +13,7 @@ import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-f
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { markEstimateStale } from "@/lib/estimate/stale";
-import { getProjectNoteTypeLabel } from "@/lib/project-notes/types";
+import { getProjectNoteTypeLabel, isInternalProjectNote } from "@/lib/project-notes/types";
 import {
   mapExtractionToProposalItems,
   mapNoteProposalRow,
@@ -170,7 +170,11 @@ export async function analyseProjectNotes(
     return { error: notesError.message };
   }
 
-  if (!noteRows?.length) {
+  const analysableNotes = (noteRows ?? []).filter(
+    (note) => !isInternalProjectNote(note.note_type)
+  );
+
+  if (!analysableNotes.length) {
     return { error: "No new site notes to analyse." };
   }
 
@@ -240,7 +244,7 @@ export async function analyseProjectNotes(
             : null,
         })),
         constraints: constraints ?? [],
-        notes: noteRows.map((note) => ({
+        notes: analysableNotes.map((note) => ({
           id: note.id,
           noteTypeLabel: getProjectNoteTypeLabel(note.note_type),
           sourceLabel: note.source,
@@ -273,7 +277,7 @@ export async function analyseProjectNotes(
     }
     console.error("[analyseProjectNotes]", {
       projectId,
-      noteCount: noteRows.length,
+      noteCount: analysableNotes.length,
       reason: error instanceof Error ? error.message : "unknown",
     });
     return { error: "We couldn't analyse your notes. Please try again." };
@@ -301,7 +305,7 @@ export async function analyseProjectNotes(
     };
   }
 
-  const analysedNoteIds = noteRows.map((note) => note.id);
+  const analysedNoteIds = analysableNotes.map((note) => note.id);
 
   const { data: inserted, error: insertError } = await supabase
     .from("note_proposals")

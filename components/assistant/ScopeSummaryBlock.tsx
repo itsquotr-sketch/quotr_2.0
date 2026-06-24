@@ -39,7 +39,7 @@ type ScopeSummaryBlockProps = {
     label: string;
     value: string | number | boolean;
     unit?: string;
-    inputType?: "number" | "select" | "boolean" | "text";
+    inputType?: "number" | "select" | "boolean" | "text" | "multi_select";
   }) => Promise<void>;
   onSaveWorkAreaQuestions?: (input: {
     workAreaId: string;

@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 
 export type MissingQuestionAnswers = Record<
   string,
-  string | number | boolean | null
+  string | number | boolean | string[] | null
 >;
 
 type ScopeReviewMissingSectionProps = {
@@ -19,7 +19,7 @@ type ScopeReviewMissingSectionProps = {
   error?: string | null;
   onAnswerChange: (
     questionId: string,
-    value: string | number | boolean
+    value: string | number | boolean | string[]
   ) => void;
   onSave: () => void;
 };

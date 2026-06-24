@@ -5,7 +5,7 @@ import {
   roundMoney,
   roundPercent,
 } from "@/lib/pricing/calculations";
-import { extractEstimateLineItemDetails } from "@/lib/pricing/mappers";
+import { buildPricingItemFieldsFromEstimateLineItem } from "@/lib/pricing/pricing-item-calculation";
 import type { PricingItem } from "@/lib/pricing/types";
 
 export type EstimateLineItemRow = {
@@ -66,44 +66,38 @@ function labelKey(workAreaId: string | null, label: string): string {
 }
 
 export function valuesFromEstimateLineItem(lineItem: EstimateLineItemRow) {
-  const details = extractEstimateLineItemDetails(lineItem.notes);
-  const recommendedCost = Number(lineItem.recommended_cost ?? 0);
-  const recommendedSell = Number(lineItem.recommended_sell ?? 0);
-  const quantity = details.quantity ?? null;
-  const unitCost =
-    details.unitCost ??
-    (quantity && quantity > 0
-      ? recommendedCost / quantity
-      : recommendedCost || null);
-  const unitSell =
-    details.unitSell ??
-    (quantity && quantity > 0
-      ? recommendedSell / quantity
-      : recommendedSell || null);
-
-  const totalCost = roundMoney(recommendedCost);
-  const totalSell = roundMoney(recommendedSell);
-  const grossProfit = roundMoney(totalSell - totalCost);
-  const marginPercent =
-    totalSell > 0 ? roundPercent((grossProfit / totalSell) * 100) : 0;
-  const markupPercent =
-    totalCost > 0 ? roundPercent((grossProfit / totalCost) * 100) : 0;
+  const fields = buildPricingItemFieldsFromEstimateLineItem(lineItem);
+  const itemType = mapEstimateCategoryToItemType(lineItem.category);
 
   return {
-    itemType: mapEstimateCategoryToItemType(lineItem.category),
-    deliveryMethod: defaultDeliveryMethod(
-      mapEstimateCategoryToItemType(lineItem.category)
-    ),
-    details,
-    quantity,
-    unitCost: unitCost != null ? roundMoney(unitCost) : null,
-    unitSell: unitSell != null ? roundMoney(unitSell) : null,
-    totalCost,
-    totalSell,
-    grossProfit,
-    marginPercent,
-    markupPercent,
+    itemType,
+    deliveryMethod: defaultDeliveryMethod(itemType),
+    quantity: fields.quantity,
+    unit: fields.unit,
+    unitCost: fields.unitCost,
+    unitSell: fields.unitSell,
+    totalCost: fields.totalCost,
+    totalSell: fields.totalSell,
+    grossProfit: fields.grossProfit,
+    marginPercent: fields.marginPercent,
+    markupPercent: fields.markupPercent,
+    calculationMode: fields.calculationMode,
+    productivityRate: fields.productivityRate,
+    productivityUnit: fields.productivityUnit,
+    calculatedQuantity: fields.calculatedQuantity,
+    internalDescription: parseDisplayNotes(lineItem.notes),
   };
+}
+
+function parseDisplayNotes(notes: string | null | undefined): string | null {
+  if (!notes) {
+    return null;
+  }
+  const marker = "\n__quotr_meta__:";
+  const markerIndex = notes.indexOf(marker);
+  const displayNotes =
+    markerIndex === -1 ? notes : notes.slice(0, markerIndex).trim();
+  return displayNotes || null;
 }
 
 function valuesMateriallyMatch(
@@ -301,6 +295,26 @@ export function buildRecalibrationPreviewData(
   };
 }
 
+function pricingFieldsToRowValues(
+  values: ReturnType<typeof valuesFromEstimateLineItem>
+) {
+  return {
+    quantity: values.quantity,
+    unit: values.unit,
+    unit_cost: values.unitCost,
+    unit_sell: values.unitSell,
+    total_cost: values.totalCost,
+    total_sell: values.totalSell,
+    gross_profit: values.grossProfit,
+    margin_percent: values.marginPercent,
+    markup_percent: values.markupPercent,
+    calculation_mode: values.calculationMode,
+    productivity_rate: values.productivityRate,
+    productivity_unit: values.productivityUnit,
+    calculated_quantity: values.calculatedQuantity,
+  };
+}
+
 export function buildPricingItemRowFromEstimate(
   lineItem: EstimateLineItemRow,
   orgId: string,
@@ -320,24 +334,16 @@ export function buildPricingItemRowFromEstimate(
     delivery_method: values.deliveryMethod,
     internal_label: lineItem.label,
     client_label: cleanClientLabel(lineItem.label),
-    internal_description: values.details.internalDescription ?? null,
-    client_description: values.details.internalDescription ?? null,
-    quantity: values.quantity,
-    unit: values.details.unit ?? null,
-    unit_cost: values.unitCost,
-    unit_sell: values.unitSell,
-    total_cost: values.totalCost,
-    total_sell: values.totalSell,
-    gross_profit: values.grossProfit,
-    margin_percent: values.marginPercent,
-    markup_percent: values.markupPercent,
+    internal_description: values.internalDescription,
+    client_description: values.internalDescription,
+    ...pricingFieldsToRowValues(values),
     visible_on_quote: true,
     optional: false,
     sort_order: sortOrder,
     manually_edited: false,
     orphaned: false,
     recalibration_note: null,
-    notes_internal: values.details.internalDescription ?? null,
+    notes_internal: values.internalDescription,
   };
 }
 
@@ -354,17 +360,9 @@ export function buildPricingItemUpdateFromEstimate(
     delivery_method: values.deliveryMethod,
     internal_label: lineItem.label,
     client_label: cleanClientLabel(lineItem.label),
-    internal_description: values.details.internalDescription ?? null,
-    client_description: values.details.internalDescription ?? null,
-    quantity: values.quantity,
-    unit: values.details.unit ?? null,
-    unit_cost: values.unitCost,
-    unit_sell: values.unitSell,
-    total_cost: values.totalCost,
-    total_sell: values.totalSell,
-    gross_profit: values.grossProfit,
-    margin_percent: values.marginPercent,
-    markup_percent: values.markupPercent,
+    internal_description: values.internalDescription,
+    client_description: values.internalDescription,
+    ...pricingFieldsToRowValues(values),
     orphaned: false,
     recalibration_note: null,
     manually_edited: false,

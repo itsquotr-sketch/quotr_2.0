@@ -6,7 +6,9 @@ import { EXTERNAL_STAIRS_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
   getBooleanFact,
+  getBooleanFactAny,
   getNumberFact,
+  getNumberFactAny,
   getStringFact,
 } from "@/lib/estimate/facts";
 import {
@@ -33,17 +35,17 @@ export function calculateExternalStairs(
   const lineItems: CalculatorResult["lineItems"] = [];
   let sortOrder = 1;
 
-  const riserCount = getNumberFact(
-    facts,
-    workArea.id,
-    "external_stairs.riser_count"
-  );
+  const riserCount = getNumberFactAny(facts, workArea.id, [
+    "external_stairs.risers_count",
+    "external_stairs.riser_count",
+  ]);
+  const landingsCount =
+    getNumberFact(facts, workArea.id, "external_stairs.landings_count") ?? 0;
   const material = getStringFact(facts, workArea.id, "external_stairs.material");
-  const handrailRequired = getBooleanFact(
-    facts,
-    workArea.id,
-    "external_stairs.handrail_required"
-  );
+  const handrailRequired = getBooleanFactAny(facts, workArea.id, [
+    "external_stairs.handrail_included",
+    "external_stairs.handrail_required",
+  ]);
 
   if (!riserCount) missingInfo.push(formatMissing("Riser count"));
   if (!material) missingInfo.push(formatMissing("Stair material"));
@@ -106,6 +108,21 @@ export function calculateExternalStairs(
         qualityFactor,
       })
     );
+    if (landingsCount > 0) {
+      lineItems.push(
+        createAllowanceLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Landing allowance",
+          recommendedCost: landingsCount * EXTERNAL_STAIRS_BENCHMARKS.landing.cost,
+          recommendedSell: landingsCount * EXTERNAL_STAIRS_BENCHMARKS.landing.sell,
+          rateSource: "Benchmark allowance",
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor,
+        })
+      );
+    }
   } else {
     assumptions.push("Using rough external stair allowance due to missing riser count.");
     lineItems.push(

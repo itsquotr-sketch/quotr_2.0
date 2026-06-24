@@ -3,6 +3,14 @@ import { calculateDeck } from "@/lib/estimate/calculators/deck";
 import { calculateDemolition } from "@/lib/estimate/calculators/demolition";
 import { calculateExternalStairs } from "@/lib/estimate/calculators/external-stairs";
 import { calculateFence } from "@/lib/estimate/calculators/fence";
+import {
+  calculateCeilings,
+  calculateDoors,
+  calculateFlooring,
+  calculateInternalWalls,
+  calculatePainting,
+  calculatePlastering,
+} from "@/lib/estimate/calculators/fitout";
 import { calculateKitchen } from "@/lib/estimate/calculators/kitchen";
 import { calculatePergola } from "@/lib/estimate/calculators/pergola";
 import { calculateRetainingWall } from "@/lib/estimate/calculators/retaining-wall";
@@ -24,6 +32,12 @@ const CALCULATORS: Record<string, WorkAreaCalculator> = {
   kitchen: calculateKitchen,
   fence: calculateFence,
   demolition: calculateDemolition,
+  internal_walls: calculateInternalWalls,
+  ceilings: calculateCeilings,
+  doors: calculateDoors,
+  flooring: calculateFlooring,
+  painting: calculatePainting,
+  plastering: calculatePlastering,
 };
 
 export class EstimateEngineError extends Error {

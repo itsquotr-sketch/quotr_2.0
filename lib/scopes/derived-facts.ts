@@ -63,23 +63,54 @@ export function deriveFactsForProject(params: {
         `${workArea.id}:retaining_wall.height_m`
       );
       if (existingHeight?.source === "user" || factHasValue(existingHeight?.value)) {
-        continue;
+        // still derive backfill volume when dimensions exist
+      } else {
+        const heightHigh = toPositiveNumber(
+          getFactValue(lookup, workArea.id, "retaining_wall.height_high_m")
+        );
+        const heightLow = toPositiveNumber(
+          getFactValue(lookup, workArea.id, "retaining_wall.height_low_m")
+        );
+
+        if (heightHigh !== null && heightLow !== null) {
+          derived.push({
+            work_area_id: workArea.id,
+            key: "retaining_wall.height_m",
+            label: "Average retaining wall height",
+            value: roundToTwoDecimals((heightHigh + heightLow) / 2),
+            unit: "m",
+            source: "derived",
+          });
+        }
       }
 
-      const heightHigh = toPositiveNumber(
-        getFactValue(lookup, workArea.id, "retaining_wall.height_high_m")
-      );
-      const heightLow = toPositiveNumber(
-        getFactValue(lookup, workArea.id, "retaining_wall.height_low_m")
+      const backfillLength =
+        toPositiveNumber(
+          getFactValue(lookup, workArea.id, "retaining_wall.backfill_length_m")
+        ) ??
+        toPositiveNumber(
+          getFactValue(lookup, workArea.id, "retaining_wall.length_m")
+        );
+      const backfillHeight =
+        toPositiveNumber(
+          getFactValue(lookup, workArea.id, "retaining_wall.backfill_height_m")
+        ) ??
+        toPositiveNumber(
+          getFactValue(lookup, workArea.id, "retaining_wall.height_m")
+        );
+      const backfillDepth = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "retaining_wall.backfill_depth_m")
       );
 
-      if (heightHigh !== null && heightLow !== null) {
+      if (backfillLength && backfillHeight && backfillDepth) {
         derived.push({
           work_area_id: workArea.id,
-          key: "retaining_wall.height_m",
-          label: "Average retaining wall height",
-          value: roundToTwoDecimals((heightHigh + heightLow) / 2),
-          unit: "m",
+          key: "retaining_wall.backfill_volume_m3",
+          label: "Backfill volume",
+          value: roundToTwoDecimals(
+            backfillLength * backfillHeight * backfillDepth
+          ),
+          unit: "m³",
           source: "derived",
         });
       }
@@ -159,6 +190,18 @@ export function buildDerivedFactDisplays(
         workAreaId: fact.work_area_id,
         label: "Calculated average height",
         text: `${fact.value} m`,
+      });
+      continue;
+    }
+
+    if (
+      fact.key === "retaining_wall.backfill_volume_m3" &&
+      typeof fact.value === "number"
+    ) {
+      displays.push({
+        workAreaId: fact.work_area_id,
+        label: "Calculated backfill volume",
+        text: `${fact.value} m³`,
       });
     }
   }

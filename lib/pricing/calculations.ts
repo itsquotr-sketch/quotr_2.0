@@ -1,4 +1,9 @@
 import type { PricingItemType } from "@/lib/pricing/types";
+import {
+  calculatePricingItemEdit as calculateModeAwarePricingItemEdit,
+  calculatePricingItemTotalsForSave,
+  type PricingItemEditField,
+} from "@/lib/pricing/pricing-item-calculation";
 
 export function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
@@ -10,11 +15,16 @@ export function roundPercent(value: number): number {
 
 export type PricingItemTotalsInput = {
   quantity?: number | null;
+  unit?: string | null;
   unitCost?: number | null;
   unitSell?: number | null;
   totalCost?: number | null;
   totalSell?: number | null;
   itemType?: PricingItemType;
+  calculationMode?: import("@/lib/pricing/types").CalculationMode | null;
+  productivityRate?: number | null;
+  productivityUnit?: string | null;
+  calculatedQuantity?: number | null;
 };
 
 export type PricingItemTotals = {
@@ -26,147 +36,56 @@ export type PricingItemTotals = {
   grossProfit: number;
   marginPercent: number;
   markupPercent: number;
+  calculationMode?: import("@/lib/pricing/types").CalculationMode;
+  productivityRate?: number | null;
+  productivityUnit?: string | null;
+  calculatedQuantity?: number | null;
 };
 
-function isLumpSumType(itemType?: PricingItemType): boolean {
-  return itemType === "allowance" || itemType === "contingency";
-}
+export type { PricingItemEditField };
 
-export type PricingItemEditField =
-  | "quantity"
-  | "unitCost"
-  | "unitSell"
-  | "totalCost"
-  | "totalSell";
-
-export type PricingItemEditInput = {
-  quantity?: number | null;
-  unitCost?: number | null;
-  unitSell?: number | null;
-  totalCost?: number | null;
-  totalSell?: number | null;
+export type PricingItemEditInput = PricingItemTotalsInput & {
   changedField: PricingItemEditField;
-  itemType?: PricingItemType;
 };
-
-function normalizeQuantity(value: number | null | undefined): number | null {
-  if (value == null || Number.isNaN(value)) {
-    return null;
-  }
-  return value;
-}
-
-function normalizeMoneyNullable(
-  value: number | null | undefined
-): number | null {
-  if (value == null || Number.isNaN(value)) {
-    return null;
-  }
-  return roundMoney(value);
-}
-
-function computeProfitFields(
-  quantity: number | null,
-  unitCost: number | null,
-  unitSell: number | null,
-  totalCost: number,
-  totalSell: number
-): PricingItemTotals {
-  const grossProfit = roundMoney(totalSell - totalCost);
-  const marginPercent =
-    totalSell > 0 ? roundPercent((grossProfit / totalSell) * 100) : 0;
-  const markupPercent =
-    totalCost > 0 ? roundPercent((grossProfit / totalCost) * 100) : 0;
-
-  return {
-    quantity,
-    unitCost,
-    unitSell,
-    totalCost,
-    totalSell,
-    grossProfit,
-    marginPercent,
-    markupPercent,
-  };
-}
 
 export function calculatePricingItemEdit(
   input: PricingItemEditInput
 ): PricingItemTotals {
-  const isLumpSum = isLumpSumType(input.itemType);
-  const quantity = normalizeQuantity(input.quantity);
-  let unitCost = normalizeMoneyNullable(input.unitCost);
-  let unitSell = normalizeMoneyNullable(input.unitSell);
-  let totalCost = roundMoney(input.totalCost ?? 0);
-  let totalSell = roundMoney(input.totalSell ?? 0);
-
-  const hasQuantity = quantity != null && quantity > 0;
-
-  switch (input.changedField) {
-    case "quantity":
-      if (!isLumpSum && hasQuantity) {
-        if (unitCost != null) {
-          totalCost = roundMoney(quantity! * unitCost);
-        }
-        if (unitSell != null) {
-          totalSell = roundMoney(quantity! * unitSell);
-        }
-      }
-      break;
-    case "unitCost":
-      unitCost = normalizeMoneyNullable(input.unitCost);
-      if (!isLumpSum && hasQuantity && unitCost != null) {
-        totalCost = roundMoney(quantity! * unitCost);
-      }
-      break;
-    case "unitSell":
-      unitSell = normalizeMoneyNullable(input.unitSell);
-      if (!isLumpSum && hasQuantity && unitSell != null) {
-        totalSell = roundMoney(quantity! * unitSell);
-      }
-      break;
-    case "totalCost":
-      totalCost = roundMoney(input.totalCost ?? 0);
-      if (!isLumpSum && hasQuantity && quantity! > 0) {
-        unitCost = roundMoney(totalCost / quantity!);
-      }
-      break;
-    case "totalSell":
-      totalSell = roundMoney(input.totalSell ?? 0);
-      if (!isLumpSum && hasQuantity && quantity! > 0) {
-        unitSell = roundMoney(totalSell / quantity!);
-      }
-      break;
-  }
-
-  return computeProfitFields(quantity, unitCost, unitSell, totalCost, totalSell);
+  const result = calculateModeAwarePricingItemEdit(input);
+  return {
+    quantity: result.quantity,
+    unitCost: result.unitCost,
+    unitSell: result.unitSell,
+    totalCost: result.totalCost,
+    totalSell: result.totalSell,
+    grossProfit: result.grossProfit,
+    marginPercent: result.marginPercent,
+    markupPercent: result.markupPercent,
+    calculationMode: result.calculationMode,
+    productivityRate: result.productivityRate,
+    productivityUnit: result.productivityUnit,
+    calculatedQuantity: result.calculatedQuantity,
+  };
 }
 
 export function calculatePricingItemTotals(
   input: PricingItemTotalsInput
 ): PricingItemTotals {
-  const quantity = normalizeQuantity(input.quantity);
-  const isLumpSum = isLumpSumType(input.itemType);
-  const hasQuantity = quantity != null && quantity > 0;
-
-  if (!isLumpSum && hasQuantity) {
-    return calculatePricingItemEdit({
-      quantity: input.quantity,
-      unitCost: input.unitCost,
-      unitSell: input.unitSell,
-      totalCost: input.totalCost,
-      totalSell: input.totalSell,
-      changedField: "quantity",
-      itemType: input.itemType,
-    });
-  }
-
-  const unitCost = normalizeMoneyNullable(input.unitCost);
-  const unitSell = normalizeMoneyNullable(input.unitSell);
-  const totalCost = roundMoney(input.totalCost ?? 0);
-  const totalSell = roundMoney(input.totalSell ?? 0);
-
-  return computeProfitFields(quantity, unitCost, unitSell, totalCost, totalSell);
+  const result = calculatePricingItemTotalsForSave(input);
+  return {
+    quantity: result.quantity,
+    unitCost: result.unitCost,
+    unitSell: result.unitSell,
+    totalCost: result.totalCost,
+    totalSell: result.totalSell,
+    grossProfit: result.grossProfit,
+    marginPercent: result.marginPercent,
+    markupPercent: result.markupPercent,
+    calculationMode: result.calculationMode,
+    productivityRate: result.productivityRate,
+    productivityUnit: result.productivityUnit,
+    calculatedQuantity: result.calculatedQuantity,
+  };
 }
 
 export type DocumentTotals = {

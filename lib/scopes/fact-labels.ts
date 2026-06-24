@@ -9,10 +9,24 @@ const NOT_SURE_VALUES = new Set([
 
 /** Maps alternate fact keys to a canonical key for deduplication. */
 const FACT_KEY_ALIASES: Record<string, string> = {
-  "deck.decking_material": "deck.material",
-  "deck.stairs": "deck.has_stairs",
-  "deck.balustrade": "deck.has_balustrade",
+  "deck.decking_material": "deck.board_material",
+  "deck.material": "deck.board_material",
+  "deck.stairs": "deck.access_type",
+  "deck.has_stairs": "deck.access_type",
+  "deck.balustrade": "deck.balustrade_required",
+  "deck.has_balustrade": "deck.balustrade_required",
+  "deck.demolition_required": "deck.existing_deck_removal",
   "pergola.attachment": "pergola.attached",
+  "bathroom.waterproofing_required": "bathroom.waterproofing_included",
+  "demolition.waste_removal_required": "demolition.disposal_included",
+  "external_stairs.riser_count": "external_stairs.risers_count",
+  "external_stairs.handrail_required": "external_stairs.handrail_included",
+  "retaining_wall.high_height_m": "retaining_wall.height_high_m",
+  "retaining_wall.low_height_m": "retaining_wall.height_low_m",
+  "kitchen.plumbing_required": "kitchen.plumbing_changes",
+  "kitchen.electrical_required": "kitchen.electrical_changes",
+  "bathroom.plumbing_allowance": "bathroom.plumbing_changes",
+  "bathroom.electrical_allowance": "bathroom.electrical_changes",
 };
 
 /** Display labels for canonical fact keys. */

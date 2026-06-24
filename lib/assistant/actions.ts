@@ -30,6 +30,7 @@ import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
 import { markEstimateStale } from "@/lib/estimate/stale";
 import { getAnthropicModel } from "@/lib/ai/anthropic";
 import { buildInitialAnalysisInput } from "@/lib/project-notes/build-analysis-source";
+import { isInternalProjectNote } from "@/lib/project-notes/types";
 import { USER_ERRORS } from "@/lib/errors/user-message";
 import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
@@ -215,7 +216,9 @@ export async function saveBriefAndSeedWorkAreas(
     return { error: UNKNOWN_ANALYSIS_ERROR };
   }
 
-  const noteRows = savedNoteRows ?? [];
+  const noteRows = (savedNoteRows ?? []).filter(
+    (note) => !isInternalProjectNote(note.note_type)
+  );
 
   if (!trimmed && noteRows.length === 0) {
     return { error: NO_CAPTURE_ERROR };

@@ -10,6 +10,7 @@ import {
   formatMissing,
   getBooleanFact,
   getNumberFact,
+  getNumberFactAny,
   getStringFact,
   round2,
 } from "@/lib/estimate/facts";
@@ -41,8 +42,14 @@ function resolveWallHeight(
     return { height: directHeight, assumptions };
   }
 
-  const high = getNumberFact(facts, workAreaId, "retaining_wall.height_high_m");
-  const low = getNumberFact(facts, workAreaId, "retaining_wall.height_low_m");
+  const high = getNumberFactAny(facts, workAreaId, [
+    "retaining_wall.height_high_m",
+    "retaining_wall.high_height_m",
+  ]);
+  const low = getNumberFactAny(facts, workAreaId, [
+    "retaining_wall.height_low_m",
+    "retaining_wall.low_height_m",
+  ]);
   if (high != null && low != null) {
     assumptions.push("Average retaining wall height calculated from high/low points.");
     return { height: round2((high + low) / 2), assumptions };
@@ -138,6 +145,12 @@ export function calculateRetainingWall(
 
   let labourHoursPerFaceM2 = baseProductivity.hoursPerUnit;
 
+  const fixingType = getStringFact(facts, workArea.id, "retaining_wall.fixing_type");
+  if (fixingType?.toLowerCase().includes("face")) {
+    labourHoursPerFaceM2 *= 1.15;
+    assumptions.push("Face-fixed retaining wall adds labour complexity allowance.");
+  }
+
   if (getBooleanFact(facts, workArea.id, "retaining_wall.excavation_required")) {
     const excavation = resolveProductivity({
       productivityKey: "retaining_wall.excavation_hours_per_face_m2",
@@ -189,6 +202,67 @@ export function calculateRetainingWall(
         organisationSettings: context.organisationSettings,
       })
     );
+
+    const novacoilRates = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "retaining_wall.drainage.lm",
+      workAreaType: "retaining_wall",
+      unit: "lm",
+      fallbackCostRate: RETAINING_WALL_BENCHMARKS.novacoilPerM.cost,
+      fallbackSellRate: RETAINING_WALL_BENCHMARKS.novacoilPerM.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
+    lineItems.push(
+      createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Novacoil drainage with sock/sleeve",
+        category: "materials",
+        quantity: effectiveLength,
+        unit: "m",
+        costRate: novacoilRates.costRate,
+        sellRate: novacoilRates.sellRate,
+        rateSource: novacoilRates.sourceLabel,
+        notes: "Drainage aggregate allowance included",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor: NO_FINISH_QUALITY_FACTOR,
+      })
+    );
+
+    const drainConnection = getStringFact(
+      facts,
+      workArea.id,
+      "retaining_wall.drain_connection_required"
+    );
+    if (drainConnection) {
+      const lower = drainConnection.toLowerCase();
+      if (lower.includes("cesspit") || lower.includes("connect")) {
+        lineItems.push(
+          createAllowanceLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Drainage connection allowance",
+            category: "subcontractor",
+            recommendedCost: RETAINING_WALL_BENCHMARKS.drainConnection.cost,
+            recommendedSell: RETAINING_WALL_BENCHMARKS.drainConnection.sell,
+            rateSource: "Benchmark allowance",
+            notes: drainConnection,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            qualityFactor: NO_FINISH_QUALITY_FACTOR,
+          })
+        );
+      } else if (lower.includes("not sure")) {
+        exclusions.push("Final drainage connection excluded until confirmed.");
+      }
+    } else {
+      assumptions.push(
+        "Drainage design and outfall are subject to confirmation."
+      );
+    }
   } else {
     missingInfo.push(formatMissing("Drainage scope"));
   }
@@ -211,66 +285,80 @@ export function calculateRetainingWall(
     })
   );
 
-  if (getBooleanFact(facts, workArea.id, "retaining_wall.drainage_required")) {
-    const drainageRates = resolveRate({
-      rates: context.rates,
-      rateType: "material",
-      itemKey: "retaining_wall.drainage.lm",
-      workAreaType: "retaining_wall",
-      unit: "lm",
-      fallbackCostRate: RETAINING_WALL_BENCHMARKS.drainagePerM.cost,
-      fallbackSellRate: RETAINING_WALL_BENCHMARKS.drainagePerM.sell,
-      organisationSettings: context.organisationSettings,
-    });
-
-    lineItems.push(
-      createRateLineItem({
-        workAreaId: workArea.id,
-        workAreaName: workArea.name,
-        label: "Drainage allowance",
-        category: "materials",
-        quantity: effectiveLength,
-        unit: "m",
-        costRate: drainageRates.costRate,
-        sellRate: drainageRates.sellRate,
-        rateSource: drainageRates.sourceLabel,
-        sortOrder: sortOrder++,
-        organisationSettings: context.organisationSettings,
-        qualityFactor: NO_FINISH_QUALITY_FACTOR,
-      })
-    );
-  }
-
   if (getBooleanFact(facts, workArea.id, "retaining_wall.backfill_included")) {
-    const backfillRates = resolveRate({
-      rates: context.rates,
-      rateType: "material",
-      itemKey: "retaining_wall.backfill.face_m2",
-      workAreaType: "retaining_wall",
-      unit: "m2",
-      fallbackCostRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.cost,
-      fallbackSellRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.sell,
-      organisationSettings: context.organisationSettings,
-    });
-
-    lineItems.push(
-      createRateLineItem({
-        workAreaId: workArea.id,
-        workAreaName: workArea.name,
-        label: "Backfill allowance",
-        category: "materials",
-        quantity: faceArea,
-        unit: "face m²",
-        costRate: backfillRates.costRate,
-        sellRate: backfillRates.sellRate,
-        rateSource: backfillRates.sourceLabel,
-        sortOrder: sortOrder++,
-        organisationSettings: context.organisationSettings,
-        qualityFactor: NO_FINISH_QUALITY_FACTOR,
-      })
+    const backfillLength =
+      getNumberFact(facts, workArea.id, "retaining_wall.backfill_length_m") ??
+      effectiveLength;
+    const backfillHeight =
+      getNumberFact(facts, workArea.id, "retaining_wall.backfill_height_m") ??
+      effectiveHeight;
+    const backfillDepth = getNumberFact(
+      facts,
+      workArea.id,
+      "retaining_wall.backfill_depth_m"
     );
+
+    if (backfillDepth) {
+      const volume = round2(backfillLength * backfillHeight * backfillDepth);
+      assumptions.push(`Backfill volume calculated: ${volume} m³.`);
+      lineItems.push(
+        createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Backfill materials",
+          category: "materials",
+          quantity: volume,
+          unit: "m³",
+          costRate: RETAINING_WALL_BENCHMARKS.backfillPerM3.cost,
+          sellRate: RETAINING_WALL_BENCHMARKS.backfillPerM3.sell,
+          rateSource: "Benchmark allowance",
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor: NO_FINISH_QUALITY_FACTOR,
+        })
+      );
+    } else {
+      const backfillRates = resolveRate({
+        rates: context.rates,
+        rateType: "material",
+        itemKey: "retaining_wall.backfill.face_m2",
+        workAreaType: "retaining_wall",
+        unit: "m2",
+        fallbackCostRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.cost,
+        fallbackSellRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.sell,
+        organisationSettings: context.organisationSettings,
+      });
+
+      lineItems.push(
+        createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Backfill allowance",
+          category: "materials",
+          quantity: faceArea,
+          unit: "face m²",
+          costRate: backfillRates.costRate,
+          sellRate: backfillRates.sellRate,
+          rateSource: backfillRates.sourceLabel,
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor: NO_FINISH_QUALITY_FACTOR,
+        })
+      );
+    }
   } else {
     missingInfo.push(formatMissing("Backfill scope"));
+  }
+
+  const consentStatus = getStringFact(
+    facts,
+    workArea.id,
+    "retaining_wall.engineering_or_consent_status"
+  );
+  if (consentStatus?.toLowerCase().includes("required")) {
+    exclusions.push("Engineering and consent costs excluded unless confirmed.");
+  } else if (consentStatus?.toLowerCase().includes("not sure")) {
+    assumptions.push("Engineering/consent requirements are subject to confirmation.");
   }
 
   const cartingDistance = getNumberFact(

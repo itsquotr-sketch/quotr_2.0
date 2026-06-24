@@ -1,4 +1,9 @@
-export type ScopeQuestionInputType = "number" | "select" | "boolean" | "text";
+export type ScopeQuestionInputType =
+  | "number"
+  | "select"
+  | "boolean"
+  | "text"
+  | "multi_select";
 
 export type ScopeQuestionCategory =
   | "measurement"

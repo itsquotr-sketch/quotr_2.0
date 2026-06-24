@@ -12,12 +12,12 @@ import {
   mapEstimateCategoryToItemType,
   parseStringArray,
   todayIsoDate,
-  roundMoney,
-  roundPercent,
 } from "@/lib/pricing/calculations";
 import {
+  buildPricingItemFieldsFromEstimateLineItem,
+} from "@/lib/pricing/pricing-item-calculation";
+import {
   buildScopeSummaryFromWorkAreas,
-  extractEstimateLineItemDetails,
   mapPricingDocument,
   mapPricingItem,
   mapPricingWorkArea,
@@ -438,30 +438,8 @@ export async function createPricingFromEstimate(input: {
     const pricingItemRows = lineItems.map((lineItem, index) => {
       const itemType = mapEstimateCategoryToItemType(lineItem.category);
       const deliveryMethod = defaultDeliveryMethod(itemType);
-      const details = extractEstimateLineItemDetails(lineItem.notes);
-      const recommendedCost = Number(lineItem.recommended_cost ?? 0);
-      const recommendedSell = Number(lineItem.recommended_sell ?? 0);
-      const quantity = details.quantity ?? null;
-      const unitCost =
-        details.unitCost ??
-        (quantity && quantity > 0
-          ? recommendedCost / quantity
-          : recommendedCost || null);
-      const unitSell =
-        details.unitSell ??
-        (quantity && quantity > 0
-          ? recommendedSell / quantity
-          : recommendedSell || null);
-
-      // Copy estimate cost/sell totals directly — do not reapply default margin
-      // or re-derive sell from cost when the estimate line item already has sell.
-      const totalCost = roundMoney(recommendedCost);
-      const totalSell = roundMoney(recommendedSell);
-      const grossProfit = roundMoney(totalSell - totalCost);
-      const marginPercent =
-        totalSell > 0 ? roundPercent((grossProfit / totalSell) * 100) : 0;
-      const markupPercent =
-        totalCost > 0 ? roundPercent((grossProfit / totalCost) * 100) : 0;
+      const fields = buildPricingItemFieldsFromEstimateLineItem(lineItem);
+      const displayNotes = lineItem.notes?.split("\n__quotr_meta__:")[0]?.trim();
 
       return {
         org_id: orgId,
@@ -473,21 +451,25 @@ export async function createPricingFromEstimate(input: {
         delivery_method: deliveryMethod,
         internal_label: lineItem.label,
         client_label: cleanClientLabel(lineItem.label),
-        internal_description: details.internalDescription ?? null,
-        client_description: details.internalDescription ?? null,
-        quantity,
-        unit: details.unit ?? null,
-        unit_cost: unitCost != null ? roundMoney(unitCost) : null,
-        unit_sell: unitSell != null ? roundMoney(unitSell) : null,
-        total_cost: totalCost,
-        total_sell: totalSell,
-        gross_profit: grossProfit,
-        margin_percent: marginPercent,
-        markup_percent: markupPercent,
+        internal_description: displayNotes || null,
+        client_description: displayNotes || null,
+        quantity: fields.quantity,
+        unit: fields.unit,
+        unit_cost: fields.unitCost,
+        unit_sell: fields.unitSell,
+        total_cost: fields.totalCost,
+        total_sell: fields.totalSell,
+        gross_profit: fields.grossProfit,
+        margin_percent: fields.marginPercent,
+        markup_percent: fields.markupPercent,
+        calculation_mode: fields.calculationMode,
+        productivity_rate: fields.productivityRate,
+        productivity_unit: fields.productivityUnit,
+        calculated_quantity: fields.calculatedQuantity,
         visible_on_quote: true,
         optional: false,
         sort_order: lineItem.sort_order ?? index,
-        notes_internal: details.internalDescription ?? null,
+        notes_internal: displayNotes || null,
       };
     });
 
@@ -612,6 +594,10 @@ export async function updatePricingItem(
     totalCost: input.total_cost,
     totalSell: input.total_sell,
     itemType: input.item_type,
+    calculationMode: input.calculation_mode,
+    productivityRate: input.productivity_rate,
+    productivityUnit: input.productivity_unit,
+    calculatedQuantity: input.calculated_quantity,
   });
 
   const { error } = await supabase
@@ -630,6 +616,11 @@ export async function updatePricingItem(
       gross_profit: totals.grossProfit,
       margin_percent: totals.marginPercent,
       markup_percent: totals.markupPercent,
+      calculation_mode: totals.calculationMode ?? input.calculation_mode ?? null,
+      productivity_rate: totals.productivityRate ?? input.productivity_rate ?? null,
+      productivity_unit: totals.productivityUnit ?? input.productivity_unit ?? null,
+      calculated_quantity:
+        totals.calculatedQuantity ?? input.calculated_quantity ?? null,
       item_type: input.item_type,
       delivery_method: input.delivery_method,
       visible_on_quote: input.visible_on_quote ?? true,
@@ -820,6 +811,10 @@ export async function duplicatePricingItem(
       gross_profit: source.gross_profit,
       margin_percent: source.margin_percent,
       markup_percent: source.markup_percent,
+      calculation_mode: source.calculation_mode,
+      productivity_rate: source.productivity_rate,
+      productivity_unit: source.productivity_unit,
+      calculated_quantity: source.calculated_quantity,
       visible_on_quote: source.visible_on_quote,
       optional: source.optional,
       sort_order: source.sort_order + 1,

@@ -9,7 +9,7 @@ import type { DerivedFactDisplay } from "@/lib/assistant/types";
 import type { Question } from "@/components/assistant/types";
 import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
 
-export type QuestionAnswers = Record<string, string | number | boolean | null>;
+export type QuestionAnswers = Record<string, string | number | boolean | string[] | null>;
 
 type QuestionBlockProps = {
   questions: Question[];
@@ -18,7 +18,7 @@ type QuestionBlockProps = {
   submitted?: boolean;
   isSaving?: boolean;
   submitLabel?: string;
-  onAnswerChange?: (questionId: string, value: string | number | boolean) => void;
+  onAnswerChange?: (questionId: string, value: string | number | boolean | string[]) => void;
   onSubmit?: () => void;
 };
 
@@ -51,8 +51,14 @@ function groupQuestionsByWorkArea(questions: Question[]): QuestionGroup[] {
   return groups;
 }
 
-function formatAnswer(question: Question, value: string | number | boolean | null | undefined) {
+function formatAnswer(
+  question: Question,
+  value: string | number | boolean | string[] | null | undefined
+) {
   if (value === null || value === undefined || value === "") return "—";
+  if (Array.isArray(value)) {
+    return value.length > 0 ? value.join(", ") : "—";
+  }
   if (question.inputType === "boolean") {
     return normalizeBooleanForUi(value) ?? String(value);
   }
@@ -64,8 +70,11 @@ function formatAnswer(question: Question, value: string | number | boolean | nul
 
 function chipValueMatches(
   option: string,
-  value: string | number | boolean | null | undefined
+  value: string | number | boolean | string[] | null | undefined
 ): boolean {
+  if (Array.isArray(value)) {
+    return value.includes(option);
+  }
   if (value === option) return true;
   if (option === "Yes") return value === true || value === "true";
   if (option === "No") return value === false || value === "false";
@@ -86,7 +95,7 @@ function BooleanChips({
   onChange,
 }: {
   question: Question;
-  value: string | number | boolean | null | undefined;
+  value: string | number | boolean | string[] | null | undefined;
   disabled?: boolean;
   onChange: (val: string) => void;
 }) {
@@ -122,7 +131,7 @@ function SelectChips({
   onChange,
 }: {
   question: Question;
-  value: string | number | boolean | null | undefined;
+  value: string | number | boolean | string[] | null | undefined;
   disabled?: boolean;
   onChange: (val: string) => void;
 }) {
@@ -158,9 +167,9 @@ export function QuestionField({
   onChange,
 }: {
   question: Question;
-  value: string | number | boolean | null | undefined;
+  value: string | number | boolean | string[] | null | undefined;
   disabled?: boolean;
-  onChange: (val: string | number | boolean) => void;
+  onChange: (val: string | number | boolean | string[]) => void;
 }) {
   switch (question.inputType) {
     case "number":
@@ -191,6 +200,43 @@ export function QuestionField({
           onChange={onChange}
         />
       );
+    case "multi_select": {
+      const selected = Array.isArray(value)
+        ? value
+        : typeof value === "string" && value
+          ? value.split(",").map((item) => item.trim())
+          : [];
+      const options = question.options ?? [];
+      return (
+        <div className="flex flex-wrap gap-2">
+          {options.map((option) => {
+            const isSelected = selected.includes(option);
+            return (
+              <button
+                key={option}
+                type="button"
+                disabled={disabled}
+                onClick={() => {
+                  const next = isSelected
+                    ? selected.filter((item) => item !== option)
+                    : [...selected, option];
+                  onChange(next as unknown as string);
+                }}
+                className={cn(
+                  "rounded-2xl border px-3 py-1.5 text-sm transition-colors",
+                  isSelected
+                    ? "border-primary/30 bg-primary/5 font-medium text-primary ring-1 ring-primary/20"
+                    : "border-border hover:bg-muted/50",
+                  disabled && "pointer-events-none opacity-70"
+                )}
+              >
+                {option}
+              </button>
+            );
+          })}
+        </div>
+      );
+    }
     case "boolean":
       return (
         <BooleanChips
@@ -223,7 +269,7 @@ function WorkAreaSection({
   derivedLines: DerivedFactDisplay[];
   answers: QuestionAnswers;
   submitted?: boolean;
-  onAnswerChange?: (questionId: string, value: string | number | boolean) => void;
+  onAnswerChange?: (questionId: string, value: string | number | boolean | string[]) => void;
 }) {
   return (
     <section className="rounded-2xl border border-border/60 bg-muted/15 p-4 sm:p-5">

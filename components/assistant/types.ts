@@ -35,7 +35,12 @@ export type WorkArea = {
   missingInfo?: string[];
 };
 
-export type QuestionInputType = "number" | "select" | "boolean" | "text";
+export type QuestionInputType =
+  | "number"
+  | "select"
+  | "boolean"
+  | "text"
+  | "multi_select";
 
 export type Question = {
   id: string;
@@ -48,7 +53,7 @@ export type Question = {
   options?: string[];
   required: boolean;
   unit?: string;
-  value?: string | number | boolean | null;
+  value?: string | number | boolean | string[] | null;
 };
 
 export type WorkAreaActiveQuestion = Question & {

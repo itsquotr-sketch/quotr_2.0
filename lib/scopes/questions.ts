@@ -1,5 +1,9 @@
 import { isNotSureValue } from "@/lib/scopes/fact-labels";
 import {
+  isQuestionAnswered,
+  shouldHideConditionalQuestion,
+} from "@/lib/scopes/conditional-rules";
+import {
   isFinishLevelInheritedFromProject,
   isInheritedFinishLevelKey,
 } from "@/lib/scopes/finish-level";
@@ -30,6 +34,11 @@ const AREA_ONLY_SKIP_KEYS = new Set([
   "kitchen.area_m2",
   "pergola.area_m2",
   "demolition.area_m2",
+  "flooring.area_m2",
+  "painting.internal_area_m2",
+  "painting.external_area_m2",
+  "plastering.area_m2",
+  "ceilings.area_m2",
 ]);
 
 export type ProjectFactInput = ProjectFactRecord;
@@ -58,7 +67,7 @@ export type BuiltQuestion = {
   workAreaName: string;
   workAreaSortOrder: number;
   sortOrder: number;
-  initialAnswerValue?: string | number | boolean | null;
+  initialAnswerValue?: string | number | boolean | string[] | null;
   initialAnswerSource?: "user" | "ai_extracted" | "system" | null;
 };
 
@@ -127,6 +136,37 @@ export function isTemplateFactMissing(params: {
   return factHasValue(value) && isNotSureValue(value);
 }
 
+/** True when a question should still be asked (required gap or unanswered optional). */
+export function isTemplateQuestionUnanswered(params: {
+  template: ScopeQuestionTemplate;
+  workArea: WorkAreaInput;
+  lookup: ReturnType<typeof buildFactLookup>;
+  confirmedTypes: Set<string>;
+  project: ProjectInput;
+}): boolean {
+  if (
+    shouldSkipTemplateQuestion(
+      params.template,
+      params.workArea,
+      params.lookup,
+      params.confirmedTypes,
+      params.project
+    )
+  ) {
+    return false;
+  }
+
+  if (isQuestionAnswered(params.lookup, params.workArea.id, params.template.factKey)) {
+    return false;
+  }
+
+  if (params.template.required) {
+    return true;
+  }
+
+  return true;
+}
+
 function hasAnsweredExistingQuestion(
   existingQuestions: ExistingQuestionRecord[],
   workAreaId: string,
@@ -159,6 +199,7 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
   confirmedWorkAreas: WorkAreaInput[];
   projectFacts: ProjectFactInput[];
   existingQuestions?: ExistingQuestionRecord[];
+  includeOptional?: boolean;
 }): BuiltQuestion[] {
   const confirmed = params.confirmedWorkAreas
     .filter((workArea) => workArea.status === "confirmed")
@@ -176,16 +217,24 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
   for (const workArea of confirmed) {
     const templates = getScopeQuestions(workArea.type);
     for (const template of templates) {
-      if (
-        !isTemplateFactMissing({
-          template,
-          workArea,
-          lookup: factLookup,
-          qualityLevel: params.project.quality_level,
-          confirmedTypes,
-          project: params.project,
-        })
-      ) {
+      const unanswered = params.includeOptional
+        ? isTemplateQuestionUnanswered({
+            template,
+            workArea,
+            lookup: factLookup,
+            confirmedTypes,
+            project: params.project,
+          })
+        : isTemplateFactMissing({
+            template,
+            workArea,
+            lookup: factLookup,
+            qualityLevel: params.project.quality_level,
+            confirmedTypes,
+            project: params.project,
+          });
+
+      if (!unanswered) {
         continue;
       }
 
@@ -257,9 +306,14 @@ export function shouldSkipTemplateQuestion(
   }
 
   if (
-    template.factKey === "deck.has_stairs" &&
+    (template.factKey === "deck.has_stairs" ||
+      template.factKey === "deck.access_type") &&
     confirmedTypes.has("external_stairs")
   ) {
+    return true;
+  }
+
+  if (shouldHideConditionalQuestion(template, workArea.id, factLookup)) {
     return true;
   }
 
@@ -341,6 +395,10 @@ export function buildQuestionBlockFromProjectState(params: {
           params.project
         )
       ) {
+        continue;
+      }
+
+      if (isQuestionAnswered(factLookup, workArea.id, template.factKey)) {
         continue;
       }
 

@@ -7,7 +7,13 @@ export type ProjectNoteType =
   | "material_preference"
   | "exclusion"
   | "risk"
+  | "calibration_note"
   | "other";
+
+/** Internal note types excluded from AI brief/note analysis and client quotes. */
+export const INTERNAL_PROJECT_NOTE_TYPES: ProjectNoteType[] = [
+  "calibration_note",
+];
 
 export type ProjectNoteSource =
   | "site_walk"
@@ -28,6 +34,7 @@ export const PROJECT_NOTE_TYPE_LABELS: Record<ProjectNoteType, string> = {
   material_preference: "Material preference",
   exclusion: "Exclusion / not included",
   risk: "Risk / unknown",
+  calibration_note: "Calibration / testing note",
   other: "Other",
 };
 
@@ -50,7 +57,12 @@ export const PROJECT_NOTE_TYPE_OPTIONS: ProjectNoteType[] = [
   "material_preference",
   "exclusion",
   "risk",
+  "calibration_note",
 ];
+
+export function isInternalProjectNote(noteType: string): boolean {
+  return INTERNAL_PROJECT_NOTE_TYPES.includes(noteType as ProjectNoteType);
+}
 
 export type ProjectNote = {
   id: string;

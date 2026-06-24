@@ -6,6 +6,7 @@
 export const DERIVED_FACT_KEYS = new Set([
   "deck.area_m2",
   "retaining_wall.height_m",
+  "retaining_wall.backfill_volume_m3",
 ]);
 
 const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
@@ -22,6 +23,11 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
     "deck.width": "deck.width_m",
     area: "deck.area_m2",
     area_m2: "deck.area_m2",
+    material: "deck.board_material",
+    board_material: "deck.board_material",
+    demolition_required: "deck.existing_deck_removal",
+    has_balustrade: "deck.balustrade_required",
+    has_stairs: "deck.access_type",
   },
   fence: {
     length: "fence.length_m",
@@ -42,6 +48,26 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
     height_m: "retaining_wall.height_m",
     height_high_m: "retaining_wall.height_high_m",
     height_low_m: "retaining_wall.height_low_m",
+    high_height_m: "retaining_wall.height_high_m",
+    low_height_m: "retaining_wall.height_low_m",
+    is_raking: "retaining_wall.is_raking",
+  },
+  demolition: {
+    waste_removal_required: "demolition.disposal_included",
+    disposal_included: "demolition.disposal_included",
+  },
+  external_stairs: {
+    riser_count: "external_stairs.risers_count",
+    handrail_required: "external_stairs.handrail_included",
+  },
+  bathroom: {
+    waterproofing_required: "bathroom.waterproofing_included",
+    plumbing_allowance: "bathroom.plumbing_changes",
+    electrical_allowance: "bathroom.electrical_changes",
+  },
+  kitchen: {
+    plumbing_required: "kitchen.plumbing_changes",
+    electrical_required: "kitchen.electrical_changes",
   },
 };
 

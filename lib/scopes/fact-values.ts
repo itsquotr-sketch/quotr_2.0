@@ -23,6 +23,9 @@ const NOT_SURE_VALUES = new Set([
 ]);
 
 export function factHasValue(value: unknown): boolean {
+  if (Array.isArray(value)) {
+    return value.length > 0;
+  }
   return value !== null && value !== undefined && value !== "";
 }
 
@@ -63,7 +66,7 @@ export function normalizeAnswerForUi(
   value: unknown,
   inputType: ScopeQuestionTemplate["inputType"],
   options?: string[]
-): string | number | boolean | null {
+): string | number | boolean | string[] | null {
   if (!factHasValue(value)) {
     return null;
   }
@@ -75,6 +78,19 @@ export function normalizeAnswerForUi(
 
   if (inputType === "boolean") {
     return normalizeBooleanForUi(value);
+  }
+
+  if (inputType === "multi_select") {
+    if (Array.isArray(value)) {
+      return value.filter((item): item is string => typeof item === "string");
+    }
+    if (typeof value === "string" && value.trim()) {
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return [];
   }
 
   if (inputType === "select" && typeof value === "string" && options?.length) {
@@ -96,9 +112,20 @@ export function normalizeAnswerForUi(
 }
 
 export function normalizeAnswerForStorage(
-  value: string | number | boolean,
+  value: string | number | boolean | string[],
   inputType: ScopeQuestionTemplate["inputType"]
-): string | number | boolean {
+): string | number | boolean | string[] {
+  if (inputType === "multi_select") {
+    if (Array.isArray(value)) return value;
+    if (typeof value === "string" && value.trim()) {
+      return value
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+    }
+    return [];
+  }
+
   if (inputType === "number") {
     if (typeof value === "number") return value;
     if (typeof value === "string" && value.trim() !== "") {
@@ -143,7 +170,7 @@ export function getPrepopulationForQuestion(params: {
   inputType: ScopeQuestionTemplate["inputType"];
   options?: string[];
 }): {
-  value: string | number | boolean | null;
+  value: string | number | boolean | string[] | null;
   source: "user" | "ai_extracted" | "system" | null;
 } | null {
   const fact = getFactForQuestion(

@@ -15,7 +15,7 @@ type ConstraintBlockProps = {
   isSaving?: boolean;
   savingConstraintKey?: string | null;
   constraintError?: string | null;
-  onAnswerChange?: (questionId: string, value: string | number | boolean) => void;
+  onAnswerChange?: (questionId: string, value: string | number | boolean | string[]) => void;
   onSubmit?: () => void;
   onConstraintSave?: (input: {
     key: string;
@@ -44,7 +44,9 @@ export function ConstraintBlock({
           <EditableConstraintRow
             key={question.id}
             question={question}
-            value={answers[question.id]}
+            value={
+              answers[question.id] as string | number | boolean | null | undefined
+            }
             editable
             isSaving={savingConstraintKey === question.key}
             error={

@@ -14,9 +14,11 @@ const updateFactSchema = z.object({
   workAreaId: z.string().uuid().nullable(),
   key: z.string().min(1),
   label: z.string().min(1),
-  value: z.union([z.string(), z.number(), z.boolean()]),
+  value: z.union([z.string(), z.number(), z.boolean(), z.array(z.string())]),
   unit: z.string().optional(),
-  valueType: z.enum(["number", "select", "boolean", "text"]).optional(),
+  valueType: z
+    .enum(["number", "select", "boolean", "text", "multi_select"])
+    .optional(),
 });
 
 function revalidateProjectPath(projectId: string) {

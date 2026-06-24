@@ -4,11 +4,12 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { mapProjectNote } from "@/lib/project-notes/mappers";
-import type {
-  ProjectNote,
-  ProjectNoteActionState,
-  ProjectNoteSource,
-  ProjectNoteType,
+import {
+  isInternalProjectNote,
+  type ProjectNote,
+  type ProjectNoteActionState,
+  type ProjectNoteSource,
+  type ProjectNoteType,
 } from "@/lib/project-notes/types";
 
 const noteTypeSchema = z.enum([
@@ -20,6 +21,7 @@ const noteTypeSchema = z.enum([
   "material_preference",
   "exclusion",
   "risk",
+  "calibration_note",
   "other",
 ]);
 
@@ -203,6 +205,7 @@ export async function createProjectNote(
       note_type: noteType as ProjectNoteType,
       source: (source ?? "site_walk") as ProjectNoteSource,
       captured_by: user.id,
+      analysis_status: isInternalProjectNote(noteType) ? "dismissed" : "pending",
     })
     .select(
       "id, project_id, content, note_type, source, captured_by, captured_at, updated_at, analysis_status"
@@ -244,10 +247,11 @@ export async function updateProjectNote(
   const updatePayload: {
     content: string;
     note_type?: ProjectNoteType;
-    analysis_status: "pending";
+    analysis_status: "pending" | "dismissed";
   } = {
     content,
-    analysis_status: "pending",
+    analysis_status:
+      noteType && isInternalProjectNote(noteType) ? "dismissed" : "pending",
   };
 
   if (noteType) {

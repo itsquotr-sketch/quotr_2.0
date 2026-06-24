@@ -99,6 +99,75 @@ export function getBooleanFact(
   return null;
 }
 
+export function getBooleanFactAny(
+  facts: EstimateFact[],
+  workAreaId: string,
+  keys: string[]
+): boolean | null {
+  for (const key of keys) {
+    const value = getBooleanFact(facts, workAreaId, key);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+export function getStringFactAny(
+  facts: EstimateFact[],
+  workAreaId: string,
+  keys: string[]
+): string | null {
+  for (const key of keys) {
+    const value = getStringFact(facts, workAreaId, key);
+    if (value) return value;
+  }
+  return null;
+}
+
+export function getNumberFactAny(
+  facts: EstimateFact[],
+  workAreaId: string,
+  keys: string[]
+): number | null {
+  for (const key of keys) {
+    const value = getNumberFact(facts, workAreaId, key);
+    if (value !== null) return value;
+  }
+  return null;
+}
+
+export function getArrayFact(
+  facts: EstimateFact[],
+  workAreaId: string,
+  key: string
+): string[] {
+  const value = getFact(facts, workAreaId, key)?.value;
+  if (!hasFactValue(value) || isNotSureValue(value)) return [];
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
+  if (typeof value === "string") {
+    return value
+      .split(",")
+      .map((item) => item.trim())
+      .filter(Boolean);
+  }
+  return [];
+}
+
+/** True when a select-style changes field indicates work is included. */
+export function getTradeChangesIncluded(
+  facts: EstimateFact[],
+  workAreaId: string,
+  key: string
+): boolean | null {
+  const value = getStringFact(facts, workAreaId, key);
+  if (!value) return null;
+  const lower = value.toLowerCase();
+  if (lower === "none" || lower === "no") return false;
+  if (lower.includes("minor") || lower.includes("major")) return true;
+  return null;
+}
+
 export function formatMissing(label: string): string {
   return `${label} not confirmed`;
 }

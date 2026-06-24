@@ -133,6 +133,15 @@ export const SCOPE_CATALOGUE: ScopeCatalogueItem[] = [
     defaultEnabled: false,
     suggestedRateTypes: ["scope", "labour", "material"],
   },
+  {
+    type: "plastering",
+    label: "Plastering",
+    category: "Finishes",
+    description: "Plastering, stopping and sanding allowances.",
+    estimateSupport: "rough_allowance",
+    defaultEnabled: false,
+    suggestedRateTypes: ["scope", "labour", "subcontractor", "allowance"],
+  },
 ];
 
 export const SCOPE_CATEGORIES = [

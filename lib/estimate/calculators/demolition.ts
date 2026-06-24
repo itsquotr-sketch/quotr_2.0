@@ -5,8 +5,11 @@ import {
 import { DEMOLITION_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
+  getArrayFact,
   getBooleanFact,
+  getBooleanFactAny,
   getNumberFact,
+  round2,
 } from "@/lib/estimate/facts";
 import {
   createAllowanceLineItem,
@@ -74,9 +77,22 @@ export function calculateDemolition(
     })
   );
 
+  const scopeItems = getArrayFact(facts, workArea.id, "demolition.scope_items");
+  if (scopeItems.length > 0) {
+    assumptions.push(`Demolition scope: ${scopeItems.join(", ")}.`);
+    const itemFactor = Math.min(scopeItems.length * 0.15 + 0.85, 1.6);
+    lineItems[0] = {
+      ...lineItems[0],
+      quantity: round2(effectiveArea * itemFactor),
+      notes: scopeItems.join(", "),
+    };
+  }
+
   const wasteRequired =
-    getBooleanFact(facts, workArea.id, "demolition.waste_removal_required") ??
-    true;
+    getBooleanFactAny(facts, workArea.id, [
+      "demolition.disposal_included",
+      "demolition.waste_removal_required",
+    ]) ?? true;
 
   if (wasteRequired) {
     const wasteRates = resolveRate({

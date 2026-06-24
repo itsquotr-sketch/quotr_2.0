@@ -31,8 +31,7 @@ type PricingWorkAreaSectionProps = {
   onAddItem: (workAreaId: string | null) => Promise<{ error?: string }>;
 };
 
-const TABLE_HEADER_CLASS =
-  "hidden gap-2 px-3 py-2 text-[11px] font-medium uppercase tracking-wide text-muted-foreground md:grid md:grid-cols-[minmax(0,1.5fr)_0.7fr_0.8fr_0.6fr_0.75fr_0.75fr_0.75fr_0.75fr_0.55fr_auto] md:items-center";
+import { PRICING_TABLE_HEADER_CLASS } from "@/lib/pricing/table-layout";
 
 export function PricingWorkAreaSection({
   projectId,
@@ -104,17 +103,17 @@ export function PricingWorkAreaSection({
         </div>
       ) : null}
 
-      <div className={TABLE_HEADER_CLASS}>
-        <span>Item</span>
-        <span>Type</span>
-        <span>Delivery</span>
+      <div className={PRICING_TABLE_HEADER_CLASS}>
+        <span className="min-w-0">Item</span>
+        <span className="min-w-0">Type</span>
+        <span className="min-w-0">Delivery</span>
         <span className="text-right">Qty</span>
         <span className="text-right">Unit cost</span>
         <span className="text-right">Unit charge</span>
         <span className="text-right">Total cost</span>
         <span className="text-right">Total charge</span>
         <span className="text-right">Margin</span>
-        <span />
+        <span className="text-right">Actions</span>
       </div>
 
       <div className="divide-y divide-border/50">

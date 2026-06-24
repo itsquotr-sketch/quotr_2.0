@@ -1,3 +1,8 @@
+export type CalculationMode =
+  | "quantity_rate"
+  | "productivity_labour"
+  | "lump_sum";
+
 export type PricingDocumentStatus =
   | "draft"
   | "reviewed"
@@ -91,6 +96,10 @@ export type PricingItem = {
   manually_edited: boolean;
   orphaned: boolean;
   recalibration_note: string | null;
+  calculation_mode: CalculationMode | null;
+  productivity_rate: number | null;
+  productivity_unit: string | null;
+  calculated_quantity: number | null;
 };
 
 export type PricingWorkArea = {
@@ -134,6 +143,10 @@ export type PricingItemInput = {
   notes_internal?: string | null;
   notes_client?: string | null;
   work_area_id?: string | null;
+  calculation_mode?: CalculationMode | null;
+  productivity_rate?: number | null;
+  productivity_unit?: string | null;
+  calculated_quantity?: number | null;
 };
 
 export type PricingDocumentInput = {

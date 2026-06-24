@@ -81,6 +81,15 @@ export function mapPricingItem(row: Record<string, unknown>): PricingItem {
     manually_edited: Boolean(row.manually_edited ?? false),
     orphaned: Boolean(row.orphaned ?? false),
     recalibration_note: (row.recalibration_note as string | null) ?? null,
+    calculation_mode:
+      (row.calculation_mode as PricingItem["calculation_mode"]) ?? null,
+    productivity_rate:
+      row.productivity_rate != null ? Number(row.productivity_rate) : null,
+    productivity_unit: (row.productivity_unit as string | null) ?? null,
+    calculated_quantity:
+      row.calculated_quantity != null
+        ? Number(row.calculated_quantity)
+        : null,
   };
 }
 
@@ -113,15 +122,14 @@ export function extractEstimateLineItemDetails(notes: string | null | undefined)
   unit?: string;
   unitCost?: number;
   unitSell?: number;
+  labourHours?: number;
+  productivityRate?: number;
+  productivityUnit?: string;
 } {
   const parsed = parseLineItemNotes(notes);
   const metadata = parsed.metadata;
   const quantity = metadata.quantity;
-  const unitCost =
-    metadata.costRate ??
-    (metadata.quantity && metadata.quantity > 0
-      ? undefined
-      : undefined);
+  const unitCost = metadata.costRate;
   const unitSell = metadata.sellRate;
 
   return {
@@ -130,6 +138,9 @@ export function extractEstimateLineItemDetails(notes: string | null | undefined)
     unit: metadata.unit,
     unitCost,
     unitSell,
+    labourHours: metadata.labourHours,
+    productivityRate: metadata.productivityRate,
+    productivityUnit: metadata.productivityUnit,
   };
 }
 

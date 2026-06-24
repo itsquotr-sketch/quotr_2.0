@@ -6,6 +6,7 @@ import {
   getFinishLevel,
   getNumberFact,
   getStringFact,
+  getTradeChangesIncluded,
 } from "@/lib/estimate/facts";
 import {
   createAllowanceLineItem,
@@ -213,15 +214,64 @@ export function calculateKitchen(
     missingInfo.push(formatMissing("Benchtop scope"));
   }
 
-  if (getBooleanFact(facts, workArea.id, "kitchen.plumbing_required")) {
+  if (getBooleanFact(facts, workArea.id, "kitchen.appliances_included")) {
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Appliances allowance",
+        recommendedCost: KITCHEN_BENCHMARKS.appliances.cost,
+        recommendedSell: KITCHEN_BENCHMARKS.appliances.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "kitchen.flooring_included")) {
+    const flooringArea =
+      getNumberFact(facts, workArea.id, "kitchen.flooring_area_m2") ??
+      effectiveArea;
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Kitchen flooring allowance",
+        recommendedCost: flooringArea * KITCHEN_BENCHMARKS.flooring.cost,
+        recommendedSell: flooringArea * KITCHEN_BENCHMARKS.flooring.sell,
+        rateSource: "Benchmark allowance",
+        notes: getStringFact(facts, workArea.id, "kitchen.flooring_type") ?? undefined,
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  const plumbingIncluded =
+    getTradeChangesIncluded(facts, workArea.id, "kitchen.plumbing_changes") ??
+    getBooleanFact(facts, workArea.id, "kitchen.plumbing_required");
+  if (plumbingIncluded) {
+    const plumbingLevel = getStringFact(facts, workArea.id, "kitchen.plumbing_changes");
+    const isMajor = plumbingLevel?.toLowerCase().includes("major");
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Plumbing allowance",
         category: "subcontractor",
-        recommendedCost: KITCHEN_BENCHMARKS.plumbing.cost,
-        recommendedSell: KITCHEN_BENCHMARKS.plumbing.sell,
+        recommendedCost: isMajor
+          ? KITCHEN_BENCHMARKS.plumbingMajor.cost
+          : plumbingLevel?.toLowerCase().includes("minor")
+            ? KITCHEN_BENCHMARKS.plumbingMinor.cost
+            : KITCHEN_BENCHMARKS.plumbing.cost,
+        recommendedSell: isMajor
+          ? KITCHEN_BENCHMARKS.plumbingMajor.sell
+          : plumbingLevel?.toLowerCase().includes("minor")
+            ? KITCHEN_BENCHMARKS.plumbingMinor.sell
+            : KITCHEN_BENCHMARKS.plumbing.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -232,15 +282,32 @@ export function calculateKitchen(
     missingInfo.push(formatMissing("Plumbing scope"));
   }
 
-  if (getBooleanFact(facts, workArea.id, "kitchen.electrical_required")) {
+  const electricalIncluded =
+    getTradeChangesIncluded(facts, workArea.id, "kitchen.electrical_changes") ??
+    getBooleanFact(facts, workArea.id, "kitchen.electrical_required");
+  if (electricalIncluded) {
+    const electricalLevel = getStringFact(
+      facts,
+      workArea.id,
+      "kitchen.electrical_changes"
+    );
+    const isMajor = electricalLevel?.toLowerCase().includes("major");
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Electrical allowance",
         category: "subcontractor",
-        recommendedCost: KITCHEN_BENCHMARKS.electrical.cost,
-        recommendedSell: KITCHEN_BENCHMARKS.electrical.sell,
+        recommendedCost: isMajor
+          ? KITCHEN_BENCHMARKS.electricalMajor.cost
+          : electricalLevel?.toLowerCase().includes("minor")
+            ? KITCHEN_BENCHMARKS.electricalMinor.cost
+            : KITCHEN_BENCHMARKS.electrical.cost,
+        recommendedSell: isMajor
+          ? KITCHEN_BENCHMARKS.electricalMajor.sell
+          : electricalLevel?.toLowerCase().includes("minor")
+            ? KITCHEN_BENCHMARKS.electricalMinor.sell
+            : KITCHEN_BENCHMARKS.electrical.sell,
         rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,

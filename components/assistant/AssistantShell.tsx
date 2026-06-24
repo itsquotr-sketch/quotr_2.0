@@ -72,7 +72,7 @@ type PendingAction =
   | null;
 
 function initAnswersFromQuestions(
-  questions: { id: string; value?: string | number | boolean | null }[]
+  questions: { id: string; value?: string | number | boolean | string[] | null }[]
 ): QuestionAnswers {
   return Object.fromEntries(
     questions.map((q) => [q.id, q.value ?? null])
@@ -273,14 +273,14 @@ export function AssistantShell({
   }, [project.id, runAction]);
 
   const handleQuestionAnswer = useCallback(
-    (questionId: string, value: string | number | boolean) => {
+    (questionId: string, value: string | number | boolean | string[]) => {
       setQuestionAnswers((prev) => ({ ...prev, [questionId]: value }));
     },
     []
   );
 
   const handleConstraintAnswer = useCallback(
-    (questionId: string, value: string | number | boolean) => {
+    (questionId: string, value: string | number | boolean | string[]) => {
       setConstraintAnswers((prev) => ({ ...prev, [questionId]: value }));
     },
     []
@@ -291,9 +291,9 @@ export function AssistantShell({
       workAreaId: string;
       key: string;
       label: string;
-      value: string | number | boolean;
+      value: string | number | boolean | string[];
       unit?: string;
-      inputType?: "number" | "select" | "boolean" | "text";
+      inputType?: "number" | "select" | "boolean" | "text" | "multi_select";
     }) => {
       const factKey = `${input.workAreaId}:${input.key}`;
       setSavingFactKey(factKey);

@@ -1,4 +1,5 @@
-import { cleanClientLabel } from "@/lib/pricing/calculations";
+import { cleanClientLabel, roundMoney } from "@/lib/pricing/calculations";
+import { inferCalculationMode } from "@/lib/pricing/pricing-item-calculation";
 import type { PricingItem } from "@/lib/pricing/types";
 import type { QuoteItemInput } from "@/lib/quotes/types";
 import { sanitizeClientQuoteDescription } from "@/lib/quotes/sanitize";
@@ -36,6 +37,29 @@ export function resolveQuoteItemDescription(item: PricingItem): string | null {
   const description =
     item.client_description?.trim() || item.notes_client?.trim() || null;
   return sanitizeClientQuoteDescription(description);
+}
+
+function resolveQuoteUnitPrice(item: PricingItem): number | null {
+  const mode = inferCalculationMode({
+    calculationMode: item.calculation_mode,
+    quantity: item.quantity,
+    unitCost: item.unit_cost,
+    unitSell: item.unit_sell,
+    totalCost: item.total_cost,
+    totalSell: item.total_sell,
+    productivityRate: item.productivity_rate,
+    calculatedQuantity: item.calculated_quantity,
+    itemType: item.item_type,
+  });
+
+  if (mode === "productivity_labour") {
+    if (item.quantity != null && item.quantity > 0) {
+      return roundMoney(item.total_sell / item.quantity);
+    }
+    return null;
+  }
+
+  return item.unit_sell;
 }
 
 export type QuoteItemFromPricing = QuoteItemInput & {
@@ -81,7 +105,7 @@ export function mapPricingItemsToQuoteItems(
         description: resolveQuoteItemDescription(item),
         quantity: item.quantity,
         unit: item.unit,
-        unit_price: item.unit_sell,
+        unit_price: resolveQuoteUnitPrice(item),
         total: item.total_sell,
         visible: true,
         optional: item.optional,

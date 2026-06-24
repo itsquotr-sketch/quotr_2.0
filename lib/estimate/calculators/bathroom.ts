@@ -2,10 +2,13 @@ import { getQualityFactor, getQualityFactorNote } from "@/lib/estimate/adjustmen
 import { BATHROOM_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
+  getArrayFact,
   getBooleanFact,
+  getBooleanFactAny,
   getFinishLevel,
   getNumberFact,
   getStringFact,
+  getTradeChangesIncluded,
 } from "@/lib/estimate/facts";
 import {
   createAllowanceLineItem,
@@ -124,7 +127,12 @@ export function calculateBathroom(
     );
   }
 
-  if (getBooleanFact(facts, workArea.id, "bathroom.waterproofing_required")) {
+  if (
+    getBooleanFactAny(facts, workArea.id, [
+      "bathroom.waterproofing_included",
+      "bathroom.waterproofing_required",
+    ])
+  ) {
     const waterproofing = resolveProductivity({
       productivityKey: "bathroom.waterproofing_hours_allowance",
       unit: "allowance",
@@ -187,46 +195,99 @@ export function calculateBathroom(
     organisationSettings: context.organisationSettings,
   });
 
-  lineItems.push(
-    createRateLineItem({
-      workAreaId: workArea.id,
-      workAreaName: workArea.name,
-      label: "Tiling allowance",
-      category: "subcontractor",
-      quantity: effectiveArea,
-      unit: "m²",
-      costRate: tilingRates.costRate,
-      sellRate: tilingRates.sellRate,
-      rateSource: tilingRates.sourceLabel,
-      notes: tileExtent
-        ? `${tileExtent} · productivity ${tilingProductivity.hoursPerUnit} hrs/m²`
-        : `Tiling extent allowance · productivity ${tilingProductivity.hoursPerUnit} hrs/m²`,
-      sortOrder: sortOrder++,
-      organisationSettings: context.organisationSettings,
-      qualityFactor,
-    })
+  const tilingIncluded = getBooleanFact(facts, workArea.id, "bathroom.tiling_included");
+  const tilingArea =
+    getNumberFact(facts, workArea.id, "bathroom.floor_tiling_area_m2") ??
+    getNumberFact(facts, workArea.id, "bathroom.wall_tiling_area_m2") ??
+    (tilingIncluded === false ? null : effectiveArea);
+
+  if (tilingIncluded !== false) {
+    lineItems.push(
+      createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Tiling allowance",
+        category: "subcontractor",
+        quantity: tilingArea ?? effectiveArea,
+        unit: "m²",
+        costRate: tilingRates.costRate,
+        sellRate: tilingRates.sellRate,
+        rateSource: tilingRates.sourceLabel,
+        notes: tileExtent
+          ? `${tileExtent} · productivity ${tilingProductivity.hoursPerUnit} hrs/m²`
+          : `Tiling extent allowance · productivity ${tilingProductivity.hoursPerUnit} hrs/m²`,
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  const clientSuppliedFixtures = getBooleanFact(
+    facts,
+    workArea.id,
+    "bathroom.fixtures_client_supplied"
   );
 
   let fixturesCost = 0;
   let fixturesSell = 0;
 
-  if (getBooleanFact(facts, workArea.id, "bathroom.includes_vanity")) {
-    fixturesCost += BATHROOM_BENCHMARKS.vanity.cost;
-    fixturesSell += BATHROOM_BENCHMARKS.vanity.sell;
+  if (clientSuppliedFixtures) {
+    assumptions.push("Bathroom fixtures client supplied — install/coordination only.");
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Fixture installation/coordination",
+        category: "subcontractor",
+        recommendedCost: BATHROOM_BENCHMARKS.fixtureInstall.cost,
+        recommendedSell: BATHROOM_BENCHMARKS.fixtureInstall.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
   } else {
-    missingInfo.push(formatMissing("Vanity scope"));
-  }
-  if (getBooleanFact(facts, workArea.id, "bathroom.includes_shower")) {
-    fixturesCost += BATHROOM_BENCHMARKS.shower.cost;
-    fixturesSell += BATHROOM_BENCHMARKS.shower.sell;
-  } else {
-    missingInfo.push(formatMissing("Shower scope"));
-  }
-  if (getBooleanFact(facts, workArea.id, "bathroom.includes_toilet")) {
-    fixturesCost += BATHROOM_BENCHMARKS.toilet.cost;
-    fixturesSell += BATHROOM_BENCHMARKS.toilet.sell;
-  } else {
-    missingInfo.push(formatMissing("Toilet scope"));
+    const includedFixtures = getArrayFact(
+      facts,
+      workArea.id,
+      "bathroom.fixtures_included"
+    );
+    const fixtureMap: Record<string, { cost: number; sell: number }> = {
+      Vanity: BATHROOM_BENCHMARKS.vanity,
+      Shower: BATHROOM_BENCHMARKS.shower,
+      Toilet: BATHROOM_BENCHMARKS.toilet,
+    };
+
+    if (includedFixtures.length > 0) {
+      for (const fixture of includedFixtures) {
+        const rates = fixtureMap[fixture];
+        if (rates) {
+          fixturesCost += rates.cost;
+          fixturesSell += rates.sell;
+        }
+      }
+    } else {
+      if (getBooleanFact(facts, workArea.id, "bathroom.includes_vanity")) {
+        fixturesCost += BATHROOM_BENCHMARKS.vanity.cost;
+        fixturesSell += BATHROOM_BENCHMARKS.vanity.sell;
+      } else {
+        missingInfo.push(formatMissing("Vanity scope"));
+      }
+      if (getBooleanFact(facts, workArea.id, "bathroom.includes_shower")) {
+        fixturesCost += BATHROOM_BENCHMARKS.shower.cost;
+        fixturesSell += BATHROOM_BENCHMARKS.shower.sell;
+      } else {
+        missingInfo.push(formatMissing("Shower scope"));
+      }
+      if (getBooleanFact(facts, workArea.id, "bathroom.includes_toilet")) {
+        fixturesCost += BATHROOM_BENCHMARKS.toilet.cost;
+        fixturesSell += BATHROOM_BENCHMARKS.toilet.sell;
+      } else {
+        missingInfo.push(formatMissing("Toilet scope"));
+      }
+    }
   }
 
   if (fixturesCost > 0) {
@@ -252,6 +313,79 @@ export function calculateBathroom(
         organisationSettings: context.organisationSettings,
         qualityFactor,
         ...rateFieldsFromResolved(fixturesRates),
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "bathroom.underfloor_heating_included")) {
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Underfloor heating allowance",
+        category: "subcontractor",
+        recommendedCost: BATHROOM_BENCHMARKS.underfloorHeating.cost,
+        recommendedSell: BATHROOM_BENCHMARKS.underfloorHeating.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  const plumbingChanges =
+    getTradeChangesIncluded(facts, workArea.id, "bathroom.plumbing_changes") ??
+    getBooleanFact(facts, workArea.id, "bathroom.plumbing_allowance");
+  if (plumbingChanges) {
+    const plumbingLevel = getStringFact(facts, workArea.id, "bathroom.plumbing_changes");
+    const isMajor = plumbingLevel?.toLowerCase().includes("major");
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Plumbing allowance",
+        category: "subcontractor",
+        recommendedCost: isMajor
+          ? BATHROOM_BENCHMARKS.plumbingMajor.cost
+          : BATHROOM_BENCHMARKS.plumbingMinor.cost,
+        recommendedSell: isMajor
+          ? BATHROOM_BENCHMARKS.plumbingMajor.sell
+          : BATHROOM_BENCHMARKS.plumbingMinor.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  const electricalChanges =
+    getTradeChangesIncluded(facts, workArea.id, "bathroom.electrical_changes") ??
+    getBooleanFact(facts, workArea.id, "bathroom.electrical_allowance");
+  if (electricalChanges) {
+    const electricalLevel = getStringFact(
+      facts,
+      workArea.id,
+      "bathroom.electrical_changes"
+    );
+    const isMajor = electricalLevel?.toLowerCase().includes("major");
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Electrical allowance",
+        category: "subcontractor",
+        recommendedCost: isMajor
+          ? BATHROOM_BENCHMARKS.electricalMajor.cost
+          : BATHROOM_BENCHMARKS.electricalMinor.cost,
+        recommendedSell: isMajor
+          ? BATHROOM_BENCHMARKS.electricalMajor.sell
+          : BATHROOM_BENCHMARKS.electricalMinor.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
       })
     );
   }
