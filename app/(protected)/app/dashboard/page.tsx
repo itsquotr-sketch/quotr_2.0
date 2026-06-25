@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { PageContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { DashboardProjectList } from "@/components/projects/DashboardProjectList";
@@ -11,6 +12,7 @@ import {
   listProjects,
 } from "@/lib/projects/actions";
 import { measureServerLoad } from "@/lib/perf/timing";
+import { getProjectNextAction } from "@/lib/projects/next-action";
 import { parseProjectListFilter } from "@/lib/projects/status";
 import { getSetupState, isSetupIncomplete } from "@/lib/setup/actions";
 import { createClient } from "@/lib/supabase/server";
@@ -62,36 +64,39 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const resumeStep = getResumeStep(setupState?.settings?.onboarding_step);
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Dashboard"
-        description="Create a project to start capturing scope and preparing an estimate."
+        description="Quote faster. Miss less. Track projects from brief to quote."
         actions={
           <div className="flex items-center gap-2">
-            <NewProjectDialog />
+            <div className="hidden md:block">
+              <NewProjectDialog />
+            </div>
             <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
           </div>
         }
       />
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
+      <PageContainer>
+        <div className="space-y-6">
           {setupIncomplete ? (
             <SetupPromptCard currentStep={resumeStep} />
           ) : null}
 
-          <div className="space-y-6">
-            <DashboardSummaryCards summary={summary} />
+          <DashboardSummaryCards summary={summary} activeFilter={filter} />
 
-            <Suspense fallback={null}>
-              <DashboardProjectList
-                projects={projects}
-                initialFilter={filter}
-                initialSearch={search}
-              />
-            </Suspense>
-          </div>
+          <Suspense fallback={null}>
+            <DashboardProjectList
+              projects={projects.map((project) => ({
+                ...project,
+                nextAction: getProjectNextAction(project),
+              }))}
+              initialFilter={filter}
+              initialSearch={search}
+            />
+          </Suspense>
         </div>
-      </div>
-    </>
+      </PageContainer>
+    </div>
   );
 }

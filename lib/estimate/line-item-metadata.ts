@@ -1,4 +1,6 @@
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
+import type { MaterialBuildUpEntry } from "@/lib/estimate/material-buildup-meta";
+import type { MaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 
 const META_MARKER = "\n__quotr_meta__:";
@@ -14,6 +16,9 @@ export type LineItemMetadata = {
   sellRate?: number;
   rateSourceType?: RateSourceType;
   sellDerivedFromMargin?: boolean;
+  materialBuildUp?: MaterialBuildUpEntry;
+  materialBuildUps?: MaterialBuildUpEntry[];
+  materialRateResolution?: MaterialRateResolution;
 };
 
 export function serializeLineItemMetadata(meta: LineItemMetadata): string {
@@ -59,6 +64,91 @@ export function buildPersistedLineItemNotes(params: {
   const parts = [params.notes?.trim(), metaSuffix].filter(Boolean);
   const joined = parts.join("");
   return joined || null;
+}
+
+export function getMaterialBuildUps(
+  notes: string | null | undefined
+): MaterialBuildUpEntry[] {
+  const { metadata } = parseLineItemNotes(notes);
+  if (metadata.materialBuildUps?.length) {
+    return metadata.materialBuildUps;
+  }
+  if (metadata.materialBuildUp) {
+    return [metadata.materialBuildUp];
+  }
+  return [];
+}
+
+export function getMaterialBuildUpDetailLines(
+  notes: string | null | undefined
+): string[] {
+  const lines: string[] = [];
+  for (const buildUp of getMaterialBuildUps(notes)) {
+    lines.push(buildUp.display);
+    if (buildUp.basis) {
+      lines.push(buildUp.basis);
+    }
+    const boardWidthMm = buildUp.inputs?.boardWidthMm;
+    if (typeof boardWidthMm === "number") {
+      lines.push(`Board width: ${boardWidthMm}mm`);
+    }
+    const areaM2 = buildUp.inputs?.areaM2;
+    if (
+      typeof areaM2 === "number" &&
+      buildUp.buildUpType === "decking_boards_lm"
+    ) {
+      lines.push(`Deck area: ${areaM2}m²`);
+    }
+    if (
+      buildUp.wastagePercent != null &&
+      !buildUp.display.toLowerCase().includes("wastage")
+    ) {
+      lines.push(`Wastage: ${buildUp.wastagePercent}%`);
+    }
+  }
+  return lines;
+}
+
+export function getMaterialBuildUpDisplay(
+  notes: string | null | undefined
+): string | null {
+  const buildUps = getMaterialBuildUps(notes);
+  if (buildUps.length === 0) {
+    return null;
+  }
+  return buildUps.map((buildUp) => buildUp.display).join(" · ");
+}
+
+export function getMaterialRateSourceDisplay(
+  notes: string | null | undefined
+): string | null {
+  return parseLineItemNotes(notes).metadata.materialRateResolution?.display ?? null;
+}
+
+export function buildPricingNotesFromEstimateLineItem(
+  notes: string | null | undefined
+): string | null {
+  const { displayNotes, metadata } = parseLineItemNotes(notes);
+  const metaToStore: LineItemMetadata = {};
+  if (metadata.materialBuildUp) {
+    metaToStore.materialBuildUp = metadata.materialBuildUp;
+  }
+  if (metadata.materialBuildUps?.length) {
+    metaToStore.materialBuildUps = metadata.materialBuildUps;
+  } else if (metadata.materialBuildUp) {
+    metaToStore.materialBuildUps = [metadata.materialBuildUp];
+  }
+  if (metadata.materialRateResolution) {
+    metaToStore.materialRateResolution = metadata.materialRateResolution;
+  }
+  if (Object.keys(metaToStore).length === 0) {
+    return displayNotes || null;
+  }
+
+  return buildPersistedLineItemNotes({
+    notes: displayNotes,
+    metadata: metaToStore,
+  });
 }
 
 export function resolveLineItemRateSource(params: {

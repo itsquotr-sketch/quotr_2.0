@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { Loader2 } from "lucide-react";
+import { useState } from "react";
+import { ChevronDown, Loader2 } from "lucide-react";
 import {
   formatCurrency,
   formatCurrencyRange,
@@ -13,6 +14,8 @@ import {
   PrepareFinalPricingButton,
 } from "@/components/pricing/PrepareFinalPricingButton";
 import type { Estimate } from "@/components/assistant/types";
+import { qualityLabel } from "@/components/assistant/QualityBlock";
+import type { QualityLevel } from "@/components/assistant/types";
 import type { PricingSummary } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import type { PanelScopeSummary, ScopeReview } from "@/lib/assistant/types";
@@ -26,10 +29,12 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import { needsCalibrationRefresh } from "@/lib/estimate/calibration-version";
 
 type EstimatePanelProps = {
   projectId: string;
   estimate: Estimate | null;
+  qualityLevel?: QualityLevel | null;
   pricingSummary?: PricingSummary | null;
   quoteSummary?: QuoteSummary | null;
   isGenerating?: boolean;
@@ -47,6 +52,7 @@ type EstimatePanelProps = {
   onGenerate?: () => void;
   onRegenerate?: () => void;
   onMarginSave?: (targetMarginPercent: number | null) => Promise<void>;
+  onEditQuality?: () => void;
 };
 
 function MetricRow({
@@ -77,31 +83,68 @@ function MetricRow({
   );
 }
 
-function buildScopeHealthSummary(input: {
+function ScopeHealthChips({
+  workAreaCount,
+  missingCount,
+  constraintCount,
+  assumptionCount,
+  pendingProposalCount,
+}: {
   workAreaCount: number;
   missingCount: number;
   constraintCount: number;
   assumptionCount: number;
   pendingProposalCount: number;
-}): string {
-  const parts = [
-    `${input.workAreaCount} work area${input.workAreaCount === 1 ? "" : "s"}`,
-    `${input.missingCount} missing`,
-    `${input.constraintCount} constraint${input.constraintCount === 1 ? "" : "s"}`,
+}) {
+  const chips = [
+    { label: `${workAreaCount} work area${workAreaCount === 1 ? "" : "s"}`, tone: "neutral" as const },
+    {
+      label: `${missingCount} missing`,
+      tone: missingCount > 0 ? ("attention" as const) : ("neutral" as const),
+    },
+    {
+      label: `${constraintCount} constraint${constraintCount === 1 ? "" : "s"}`,
+      tone: "neutral" as const,
+    },
   ];
-  let summary = `Scope health: ${parts.join(" · ")}`;
-  if (input.assumptionCount > 0) {
-    summary += ` · ${input.assumptionCount} assumption${input.assumptionCount === 1 ? "" : "s"}`;
+
+  if (assumptionCount > 0) {
+    chips.push({
+      label: `${assumptionCount} assumption${assumptionCount === 1 ? "" : "s"}`,
+      tone: "neutral",
+    });
   }
-  if (input.pendingProposalCount > 0) {
-    summary += ` · ${input.pendingProposalCount} proposal${input.pendingProposalCount === 1 ? "" : "s"} need review`;
+
+  if (pendingProposalCount > 0) {
+    chips.push({
+      label: `${pendingProposalCount} to review`,
+      tone: "attention",
+    });
   }
-  return summary;
+
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {chips.map((chip) => (
+        <span
+          key={chip.label}
+          className={cn(
+            "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+            chip.tone === "attention"
+              ? "border-amber-300/80 bg-amber-50 text-amber-900"
+              : "border-border/60 bg-muted/40 text-muted-foreground"
+          )}
+        >
+          {chip.label}
+        </span>
+      ))}
+    </div>
+  );
 }
 
 export function EstimatePanel({
   projectId,
   estimate,
+  qualityLevel = null,
   pricingSummary = null,
   quoteSummary = null,
   isGenerating,
@@ -119,8 +162,13 @@ export function EstimatePanel({
   onGenerate,
   onRegenerate,
   onMarginSave,
+  onEditQuality,
 }: EstimatePanelProps) {
   const isStale = Boolean(estimate?.isStale);
+  const needsCalibrationUpdate =
+    Boolean(estimate) &&
+    !isStale &&
+    needsCalibrationRefresh(estimate?.calibrationVersion);
   const showScopePreview = questionsSubmitted && panelScopeSummaries.length > 0;
 
   const missingCount = estimate
@@ -140,29 +188,56 @@ export function EstimatePanel({
     ? estimate.includedWorkAreas.length
     : panelScopeSummaries.length;
 
-  const scopeHealthSummary = buildScopeHealthSummary({
+  const scopeHealthChips = {
     workAreaCount,
     missingCount,
     constraintCount,
     assumptionCount,
     pendingProposalCount,
-  });
+  };
 
-  return (
-    <Card className="lg:sticky lg:top-6">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">Quick estimate</CardTitle>
-        <CardDescription>
-          {estimate
-            ? "Draft estimate based on your inputs"
-            : canGenerateEstimate
-              ? "Ready to generate your draft estimate"
-              : constraintsSubmitted
-                ? "Complete remaining scope steps to generate"
-                : "Complete the guided questions to generate a draft quick estimate."}
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
+  const [mobileExpanded, setMobileExpanded] = useState(false);
+
+  const summaryValue = estimate
+    ? formatCurrency(estimate.recommendedSell)
+    : canGenerateEstimate
+      ? "Ready to generate"
+      : "Not ready";
+
+  const panelBody = (
+    <>
+        {qualityLevel ? (
+          <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
+            <div className="min-w-0">
+              <p className="text-xs text-muted-foreground">Spec level</p>
+              <p className="text-sm font-medium">{qualityLabel(qualityLevel)}</p>
+            </div>
+            {onEditQuality ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 shrink-0 px-2 text-xs"
+                onClick={onEditQuality}
+              >
+                Edit
+              </Button>
+            ) : null}
+          </div>
+        ) : null}
+
+        {needsCalibrationUpdate ? (
+          <div
+            className="rounded-lg border border-sky-300/80 bg-sky-50 px-3 py-2 dark:border-sky-700 dark:bg-sky-950/40"
+            role="status"
+          >
+            <p className="text-xs text-sky-950 dark:text-sky-100">
+              This estimate was created before the latest calibration updates.
+              Regenerate to apply updated questions and calculations.
+            </p>
+          </div>
+        ) : null}
+
         {isStale ? (
           <div
             className="space-y-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-3 dark:border-amber-600 dark:bg-amber-950/40"
@@ -204,7 +279,7 @@ export function EstimatePanel({
           <div className="space-y-4">
             {canGenerateEstimate ? (
               <>
-                <div className="rounded-2xl border border-primary/20 bg-primary/5 px-4 py-5 text-center">
+                <div className="rounded-xl border border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]/40 px-4 py-5 text-center">
                   <p className="text-sm font-medium">Ready to generate</p>
                   <p className="mt-1 text-xs text-muted-foreground">
                     Scope and constraints are complete. Generate your draft
@@ -213,7 +288,7 @@ export function EstimatePanel({
                 </div>
                 <Button
                   type="button"
-                  className="h-10 w-full"
+                  className="h-10 w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
                   onClick={onGenerate}
                   disabled={isGenerating || !onGenerate}
                 >
@@ -260,14 +335,14 @@ export function EstimatePanel({
             ) : null}
 
             {questionsSubmitted ? (
-              <p className="text-xs text-muted-foreground">{scopeHealthSummary}</p>
+              <ScopeHealthChips {...scopeHealthChips} />
             ) : null}
           </div>
         ) : (
           <>
             <div
               className={cn(
-                "space-y-3 rounded-2xl bg-muted/40 p-4",
+                "space-y-3 rounded-xl border border-border/60 bg-muted/30 p-4",
                 isStale && "opacity-60"
               )}
             >
@@ -331,7 +406,7 @@ export function EstimatePanel({
               ) : null}
             </div>
 
-            <p className="text-xs text-muted-foreground">{scopeHealthSummary}</p>
+            <ScopeHealthChips {...scopeHealthChips} />
 
             <p className="text-xs text-muted-foreground">
               Internal only — not a quote.
@@ -340,7 +415,7 @@ export function EstimatePanel({
             <Button
               type="button"
               variant="outline"
-              className="w-full"
+              className="w-full border-border bg-background hover:bg-muted/50"
               onClick={onViewBreakdown}
             >
               View full breakdown
@@ -359,7 +434,7 @@ export function EstimatePanel({
                     pricingDocumentId={pricingSummary.id}
                   />
                   {pricingSummary.status === "reviewed" ? (
-                    <p className="text-center text-xs font-medium text-primary">
+                    <p className="text-center text-xs font-medium text-[var(--brand-orange)]">
                       Pricing reviewed
                     </p>
                   ) : (
@@ -369,12 +444,12 @@ export function EstimatePanel({
                   )}
                   {quoteSummary ? (
                     <>
-                      <p className="text-center text-xs font-medium text-primary">
+                      <p className="text-center text-xs font-medium text-[var(--brand-orange)]">
                         Draft quote created
                       </p>
                       <Button
                         type="button"
-                        className="w-full"
+                        className="w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
                         render={
                           <Link
                             href={`/app/projects/${projectId}/quotes/${quoteSummary.id}`}
@@ -423,6 +498,53 @@ export function EstimatePanel({
             ) : null}
           </>
         )}
+    </>
+  );
+
+  return (
+    <Card
+      className={cn(
+        "overflow-hidden border-border/60 bg-card shadow-sm lg:sticky lg:top-6"
+      )}
+    >
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-3 border-b border-border/60 px-4 py-3 text-left lg:hidden"
+        onClick={() => setMobileExpanded((prev) => !prev)}
+        aria-expanded={mobileExpanded}
+      >
+        <div className="min-w-0">
+          <p className="text-sm font-semibold">Quick estimate</p>
+          <p className="truncate text-xs text-muted-foreground">{summaryValue}</p>
+        </div>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            mobileExpanded && "rotate-180"
+          )}
+        />
+      </button>
+
+      <CardHeader className="hidden pb-3 lg:block">
+        <CardTitle className="text-base">Quick estimate</CardTitle>
+        <CardDescription>
+          {estimate
+            ? "Draft estimate based on your inputs"
+            : canGenerateEstimate
+              ? "Ready to generate your draft estimate"
+              : constraintsSubmitted
+                ? "Complete remaining scope steps to generate"
+                : "Complete the guided questions to generate a draft quick estimate."}
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent
+        className={cn(
+          "space-y-4",
+          !mobileExpanded && "hidden lg:block"
+        )}
+      >
+        {panelBody}
       </CardContent>
     </Card>
   );

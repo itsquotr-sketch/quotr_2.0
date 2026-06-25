@@ -3,7 +3,8 @@
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
 import { Search } from "lucide-react";
-import { ProjectCard } from "@/components/projects/ProjectCard";
+import { ProjectMobileCard } from "@/components/projects/ProjectMobileCard";
+import { ProjectRow } from "@/components/projects/ProjectRow";
 import { EmptyState } from "@/components/layout/empty-state";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { Button } from "@/components/ui/button";
@@ -12,11 +13,11 @@ import {
   DASHBOARD_FILTER_OPTIONS,
   isLifecycleArchiveFilter,
 } from "@/lib/projects/status";
-import type { ProjectListFilter, ProjectListItem } from "@/lib/projects/types";
+import type { DashboardProjectListItem, ProjectListFilter } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
 
 type DashboardProjectListProps = {
-  projects: ProjectListItem[];
+  projects: DashboardProjectListItem[];
   initialFilter: ProjectListFilter;
   initialSearch: string;
 };
@@ -81,7 +82,7 @@ export function DashboardProjectList({
 
   return (
     <div className="space-y-4">
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <form
           className="relative min-w-0 flex-1 sm:max-w-sm"
           onSubmit={(event) => {
@@ -96,29 +97,33 @@ export function DashboardProjectList({
             name="q"
             placeholder="Search by title, client, or address…"
             defaultValue={initialSearch}
-            className="pl-9"
+            className="h-10 pl-9"
             aria-label="Search projects"
           />
         </form>
-        <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-          <div className="flex w-max min-w-full gap-1 rounded-lg border border-border/60 bg-muted/20 p-1 sm:flex-wrap sm:w-auto">
-            {DASHBOARD_FILTER_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                disabled={isPending}
-                onClick={() => updateParams({ filter: option.value })}
-                className={cn(
-                  "shrink-0 rounded-md px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
-                  initialFilter === option.value
-                    ? "bg-background text-foreground shadow-sm ring-1 ring-border shadow-[inset_0_-2px_0_0_var(--brand-orange)]"
-                    : "text-muted-foreground hover:text-foreground"
-                )}
-              >
-                {option.label}
-              </button>
-            ))}
-          </div>
+        <div className="md:hidden">
+          <NewProjectDialog trigger={<Button className="h-10 w-full">New project</Button>} />
+        </div>
+      </div>
+
+      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
+        <div className="flex w-max min-w-full gap-1.5 pb-1 sm:flex-wrap sm:w-auto">
+          {DASHBOARD_FILTER_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              disabled={isPending}
+              onClick={() => updateParams({ filter: option.value })}
+              className={cn(
+                "shrink-0 rounded-full border px-3 py-1.5 text-xs font-medium whitespace-nowrap transition-colors",
+                initialFilter === option.value
+                  ? "border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)] text-foreground"
+                  : "border-border/60 bg-card text-muted-foreground hover:border-border hover:text-foreground"
+              )}
+            >
+              {option.label}
+            </button>
+          ))}
         </div>
       </div>
 
@@ -134,14 +139,21 @@ export function DashboardProjectList({
         />
       ) : (
         <>
-          <div className="flex items-center justify-between gap-4">
-            <h2 className="text-sm font-medium text-muted-foreground">
-              {projects.length} project{projects.length === 1 ? "" : "s"}
-            </h2>
-          </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <p className="text-xs font-medium text-muted-foreground">
+            {projects.length} project{projects.length === 1 ? "" : "s"}
+          </p>
+          <div className="hidden space-y-2 md:block">
             {projects.map((project, index) => (
-              <ProjectCard
+              <ProjectRow
+                key={project.id}
+                project={project}
+                prefetch={index < 20}
+              />
+            ))}
+          </div>
+          <div className="space-y-2 md:hidden">
+            {projects.map((project, index) => (
+              <ProjectMobileCard
                 key={project.id}
                 project={project}
                 prefetch={index < 20}

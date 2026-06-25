@@ -334,6 +334,12 @@ export function shouldSkipTemplateQuestion(
     return hasLength && hasWidth;
   }
 
+  if (template.factKey === "pergola.area_m2") {
+    const hasLength = hasFactValue(factLookup, workArea.id, "pergola.length_m");
+    const hasWidth = hasFactValue(factLookup, workArea.id, "pergola.width_m");
+    return hasLength && hasWidth;
+  }
+
   if (template.factKey === "retaining_wall.height_m") {
     const heightFact = factLookup.get(
       `${workArea.id}:retaining_wall.height_m`

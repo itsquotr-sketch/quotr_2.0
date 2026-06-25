@@ -8,16 +8,34 @@ export const DECK_BENCHMARKS = {
   framing: { cost: 120, sell: 180 },
   fixings: { cost: 25, sell: 40 },
   boardLm: { cost: 18, sell: 28 },
+  treatedPineLm: { cost: 14, sell: 22 },
+  hardwoodLm: { cost: 22, sell: 34 },
+  kwilaLm: { cost: 28, sell: 42 },
+  compositeLm: { cost: 24, sell: 36 },
   faceBoardLm: { cost: 22, sell: 35 },
   stepAllowance: { cost: 350, sell: 550 },
   stairsAllowance: { cost: 1000, sell: 1500 },
   multiSideStairsAllowance: { cost: 1800, sell: 2600 },
   balustradeAllowance: { cost: 900, sell: 1400 },
+  handrailAllowance: { cost: 400, sell: 650 },
+  postReplacementEach: { cost: 180, sell: 280 },
+  substructureReplacementAllowance: { cost: 1200, sell: 1800 },
+  substructurePartialAllowance: { cost: 650, sell: 1000 },
 } as const;
 
 export const PERGOLA_BENCHMARKS = {
   frameMaterials: { cost: 180, sell: 280 },
+  timberFrame: { cost: 180, sell: 280 },
+  steelFrame: { cost: 220, sell: 340 },
+  aluminiumFrame: { cost: 200, sell: 310 },
   roofing: { cost: 120, sell: 180 },
+  colorsteelRoofing: { cost: 140, sell: 210 },
+  polycarbonateRoofing: { cost: 95, sell: 145 },
+  footingsAllowance: { cost: 450, sell: 700 },
+  gutterAllowance: { cost: 350, sell: 550 },
+  finishAllowance: { cost: 450, sell: 700 },
+  gutterPerLm: { cost: 45, sell: 70 },
+  footingsEach: { cost: 220, sell: 340 },
 } as const;
 
 export const RETAINING_WALL_BENCHMARKS = {
@@ -30,6 +48,8 @@ export const RETAINING_WALL_BENCHMARKS = {
   backfillPerFaceM2: { cost: 60, sell: 95 },
   cartingModerate: { cost: 700, sell: 1050 },
   cartingLong: { cost: 1200, sell: 1800 },
+  disposalAllowance: { cost: 850, sell: 1300 },
+  disposalPerLm: { cost: 35, sell: 55 },
 } as const;
 
 export const BATHROOM_BENCHMARKS = {
@@ -67,6 +87,10 @@ export const FENCE_BENCHMARKS = {
   timberPerLm: { cost: 90, sell: 140 },
   metalPerLm: { cost: 140, sell: 220 },
   gate: { cost: 450, sell: 700 },
+  disposalAllowance: { cost: 280, sell: 420 },
+  handrailAllowance: { cost: 350, sell: 550 },
+  finishAllowanceLm: { cost: 28, sell: 42 },
+  finishAllowanceFlat: { cost: 650, sell: 1000 },
 } as const;
 
 export const DEMOLITION_BENCHMARKS = {
@@ -86,7 +110,18 @@ export const FITOUT_BENCHMARKS = {
   ceilingsPerM2: { cost: 75, sell: 115 },
   doorsEach: { cost: 280, sell: 420 },
   flooringPerM2: { cost: 120, sell: 185 },
+  vinylPerM2: { cost: 85, sell: 130 },
+  carpetPerM2: { cost: 95, sell: 145 },
+  hardwoodFlooringPerM2: { cost: 160, sell: 240 },
+  laminateFlooringPerM2: { cost: 110, sell: 165 },
   paintingPerM2: { cost: 18, sell: 28 },
+  paintPerLitre: { cost: 8, sell: 12 },
+  plasterboardSheet: { cost: 18, sell: 28 },
+  fyrelineSheet: { cost: 24, sell: 36 },
+  aqualineSheet: { cost: 26, sell: 38 },
+  bracelineSheet: { cost: 22, sell: 32 },
+  plywoodSheet: { cost: 45, sell: 68 },
+  ceilingTilePerM2: { cost: 35, sell: 52 },
   plasteringPerM2: { cost: 35, sell: 55 },
   skirtingLm: { cost: 28, sell: 42 },
   removalPerM2: { cost: 22, sell: 35 },

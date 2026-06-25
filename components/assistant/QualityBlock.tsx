@@ -38,19 +38,25 @@ export function qualityLabel(level: QualityLevel): string {
 type QualityBlockProps = {
   selected?: QualityLevel | null;
   submitted?: boolean;
+  editing?: boolean;
   isSaving?: boolean;
   onSelect?: (value: QualityLevel) => void;
   onContinue?: () => void;
+  onSave?: () => void;
+  onCancelEdit?: () => void;
 };
 
 export function QualityBlock({
   selected,
   submitted,
+  editing,
   isSaving,
   onSelect,
   onContinue,
+  onSave,
+  onCancelEdit,
 }: QualityBlockProps) {
-  if (submitted && selected) {
+  if (submitted && selected && !editing) {
     const option = QUALITY_OPTIONS.find((o) => o.value === selected);
     return (
       <p className="text-sm">
@@ -62,8 +68,16 @@ export function QualityBlock({
     );
   }
 
+  const isEditMode = submitted && editing;
+
   return (
     <div className="space-y-4">
+      {isEditMode ? (
+        <p className="text-sm text-muted-foreground">
+          Choose a new spec level. Regenerate the quick estimate when you are
+          ready — final pricing is not changed automatically.
+        </p>
+      ) : null}
       <div className="grid gap-3 sm:grid-cols-2">
         {QUALITY_OPTIONS.map((option) => (
           <button
@@ -84,9 +98,29 @@ export function QualityBlock({
           </button>
         ))}
       </div>
-      <Button type="button" onClick={onContinue} disabled={!selected || isSaving}>
-        {isSaving ? "Saving…" : "Continue"}
-      </Button>
+      {isEditMode ? (
+        <div className="flex flex-wrap gap-2">
+          <Button
+            type="button"
+            onClick={onSave}
+            disabled={!selected || isSaving}
+          >
+            {isSaving ? "Saving…" : "Save spec level"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={onCancelEdit}
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
+        </div>
+      ) : (
+        <Button type="button" onClick={onContinue} disabled={!selected || isSaving}>
+          {isSaving ? "Saving…" : "Continue"}
+        </Button>
+      )}
     </div>
   );
 }

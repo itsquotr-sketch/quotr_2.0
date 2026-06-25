@@ -179,6 +179,18 @@ export const retainingWallScope: ScopeDefinition = {
       category: "scope",
     },
     {
+      key: "retaining_wall.disposal_included",
+      label: "Disposal included",
+      questionText: "Is spoil/disposal included?",
+      inputType: "boolean",
+      options: ["Yes", "No", "Not sure"],
+      required: false,
+      priority: 56,
+      factKey: "retaining_wall.disposal_included",
+      workAreaType: "retaining_wall",
+      category: "scope",
+    },
+    {
       key: "retaining_wall.carting_distance_m",
       label: "Carting distance",
       questionText: "Approximate carting distance for spoil/materials?",

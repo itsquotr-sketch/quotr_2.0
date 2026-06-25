@@ -2,6 +2,7 @@ import {
   getConstraintNotes,
   getLabourAdjustmentFactor,
   getQualityFactor,
+  getWorkAreaAccessFactor,
 } from "@/lib/estimate/adjustments";
 import { PERGOLA_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
@@ -9,11 +10,22 @@ import {
   getBooleanFact,
   getNumberFact,
   getStringFact,
+  round2,
 } from "@/lib/estimate/facts";
 import {
+  createAllowanceLineItem,
   createLabourLineItem,
   createRateLineItem,
 } from "@/lib/estimate/line-items";
+import {
+  createPergolaAreaBuildUp,
+  withMaterialBuildUp,
+} from "@/lib/estimate/material-buildup-meta";
+import {
+  PERGOLA_ALLOWANCE_RATE_KEYS,
+  resolvePergolaFrameRate,
+  resolvePergolaRoofRate,
+} from "@/lib/estimate/pergola-rates";
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
@@ -30,10 +42,19 @@ export function calculatePergola(
   const { facts } = context;
   const missingInfo: string[] = [];
   const assumptions: string[] = [];
+  const exclusions: string[] = [];
   const lineItems: CalculatorResult["lineItems"] = [];
   let sortOrder = 1;
 
   let area = getNumberFact(facts, workArea.id, "pergola.area_m2");
+  const length = getNumberFact(facts, workArea.id, "pergola.length_m");
+  const width = getNumberFact(facts, workArea.id, "pergola.width_m");
+
+  if (!area && length && width) {
+    area = round2(length * width);
+    assumptions.push("Pergola area calculated from length × width.");
+  }
+
   if (!area) {
     const deckArea = context.confirmedWorkAreas
       .filter((item) => item.type === "deck")
@@ -55,14 +76,22 @@ export function calculatePergola(
   const material = getStringFact(facts, workArea.id, "pergola.material");
   if (!material) missingInfo.push(formatMissing("Pergola material"));
 
-  const roofingIncluded =
-    getBooleanFact(facts, workArea.id, "pergola.roofing_included") ?? true;
+  const attached = getStringFact(facts, workArea.id, "pergola.attached");
+  const roofingIncluded = getBooleanFact(
+    facts,
+    workArea.id,
+    "pergola.roofing_included"
+  );
+  const roofingType = getStringFact(facts, workArea.id, "pergola.roofing_type");
 
   const qualityFactor = getQualityFactor(
     context.project,
     context.organisationSettings
   );
-  const labourAdjustment = getLabourAdjustmentFactor(context.constraints);
+  const labourAdjustment =
+    getLabourAdjustmentFactor(context.constraints) *
+    getWorkAreaAccessFactor(getStringFact(facts, workArea.id, "pergola.access"));
+
   const labourRate = resolveLabourRate({
     rates: context.rates,
     organisationSettings: context.organisationSettings,
@@ -75,7 +104,19 @@ export function calculatePergola(
   });
 
   let totalHoursPerM2 = baseProductivity.hoursPerUnit;
-  if (roofingIncluded) {
+
+  const attachedLower = attached?.toLowerCase() ?? "";
+  if (attachedLower.includes("attach")) {
+    totalHoursPerM2 *= 1.1;
+    assumptions.push("Attached pergola adds tie-in complexity allowance.");
+  }
+
+  if (getBooleanFact(facts, workArea.id, "pergola.tie_in_existing")) {
+    totalHoursPerM2 *= 1.05;
+    assumptions.push("Tie-in to existing structure adds labour allowance.");
+  }
+
+  if (roofingIncluded === true) {
     const roofingProductivity = resolveProductivity({
       productivityKey: "pergola.roofing_hours_per_m2",
       unit: "m²",
@@ -103,44 +144,43 @@ export function calculatePergola(
     })
   );
 
-  const frameRates = resolveRate({
+  const frameRates = resolvePergolaFrameRate({
+    material,
     rates: context.rates,
-    rateType: "material",
-    itemKey: "pergola.material.m2",
-    workAreaType: "pergola",
-    unit: "m2",
-    fallbackCostRate: PERGOLA_BENCHMARKS.frameMaterials.cost,
-    fallbackSellRate: PERGOLA_BENCHMARKS.frameMaterials.sell,
     organisationSettings: context.organisationSettings,
   });
 
+  const pergolaBuildUp = createPergolaAreaBuildUp({
+    areaM2: area,
+    materialLabel: material ?? "pergola",
+    attached,
+  });
+
   lineItems.push(
-    createRateLineItem({
-      workAreaId: workArea.id,
-      workAreaName: workArea.name,
-      label: "Pergola frame/materials",
-      category: "materials",
-      quantity: area,
-      unit: "m²",
-      costRate: frameRates.costRate,
-      sellRate: frameRates.sellRate,
-      rateSource: frameRates.sourceLabel,
-      notes: material ? `${material} pergola allowance` : undefined,
-      sortOrder: sortOrder++,
-      organisationSettings: context.organisationSettings,
-      qualityFactor,
-    })
+    withMaterialBuildUp(
+      createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Pergola frame/materials",
+        category: "materials",
+        quantity: area,
+        unit: "m²",
+        costRate: frameRates.costRate,
+        sellRate: frameRates.sellRate,
+        rateSource: frameRates.sourceLabel,
+        notes: material ? `${material} pergola allowance` : undefined,
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      }),
+      pergolaBuildUp
+    )
   );
 
-  if (roofingIncluded) {
-    const roofingRates = resolveRate({
+  if (roofingIncluded === true) {
+    const roofingRates = resolvePergolaRoofRate({
+      roofingType,
       rates: context.rates,
-      rateType: "material",
-      itemKey: "pergola.roofing.m2",
-      workAreaType: "pergola",
-      unit: "m2",
-      fallbackCostRate: PERGOLA_BENCHMARKS.roofing.cost,
-      fallbackSellRate: PERGOLA_BENCHMARKS.roofing.sell,
       organisationSettings: context.organisationSettings,
     });
 
@@ -155,20 +195,143 @@ export function calculatePergola(
         costRate: roofingRates.costRate,
         sellRate: roofingRates.sellRate,
         rateSource: roofingRates.sourceLabel,
+        notes: roofingType ?? undefined,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
       })
     );
-  } else {
-    missingInfo.push(formatMissing("Roofing/covering scope"));
+  } else if (roofingIncluded === null) {
+    assumptions.push("Roofing/covering scope is subject to confirmation.");
+  }
+
+  const isFreestanding =
+    attachedLower.includes("free") || attachedLower.includes("stand");
+  const footingsRequired =
+    getBooleanFact(facts, workArea.id, "pergola.footings_required") ??
+    isFreestanding;
+
+  if (footingsRequired) {
+    const footingRates = resolveRate({
+      rates: context.rates,
+      rateType: "allowance",
+      itemKey: PERGOLA_ALLOWANCE_RATE_KEYS.footingsEach,
+      workAreaType: "pergola",
+      unit: "each",
+      fallbackCostRate: PERGOLA_BENCHMARKS.footingsEach.cost,
+      fallbackSellRate: PERGOLA_BENCHMARKS.footingsEach.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Footings/posts allowance",
+        recommendedCost: footingRates.costRate,
+        recommendedSell: footingRates.sellRate,
+        rateSource: footingRates.sourceLabel,
+        notes: isFreestanding ? "Freestanding pergola footings" : undefined,
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "pergola.gutters_included")) {
+    const gutterLength =
+      length && width ? round2(length * 2 + width) : round2(Math.sqrt(area) * 4);
+    const gutterRates = resolveRate({
+      rates: context.rates,
+      rateType: "allowance",
+      itemKey: PERGOLA_ALLOWANCE_RATE_KEYS.guttersLm,
+      workAreaType: "pergola",
+      unit: "lm",
+      fallbackCostRate: PERGOLA_BENCHMARKS.gutterPerLm.cost,
+      fallbackSellRate: PERGOLA_BENCHMARKS.gutterPerLm.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Gutter/drainage allowance",
+        recommendedCost: round2(gutterRates.costRate * gutterLength),
+        recommendedSell: round2(gutterRates.sellRate * gutterLength),
+        rateSource: gutterRates.sourceLabel,
+        notes: `${gutterLength} lm gutter allowance`,
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  const finishRequired = getBooleanFact(facts, workArea.id, "pergola.finish_required");
+  const materialLower = material?.toLowerCase() ?? "";
+  const isPowdercoated =
+    materialLower.includes("aluminium") ||
+    materialLower.includes("aluminum") ||
+    materialLower.includes("steel");
+  const finishType = getStringFact(facts, workArea.id, "pergola.finish_type")?.toLowerCase();
+
+  if (finishRequired === true) {
+    const skipSeparateFinish =
+      isPowdercoated &&
+      (finishType?.includes("powder") || finishType == null || finishType === "unknown");
+
+    if (!skipSeparateFinish) {
+      const finishRates = resolveRate({
+        rates: context.rates,
+        rateType: "allowance",
+        itemKey: "pergola.finish.allowance",
+        workAreaType: "pergola",
+        unit: "allowance",
+        fallbackCostRate: PERGOLA_BENCHMARKS.finishAllowance.cost,
+        fallbackSellRate: PERGOLA_BENCHMARKS.finishAllowance.sell,
+        organisationSettings: context.organisationSettings,
+      });
+
+      lineItems.push(
+        createAllowanceLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Pergola painting/staining allowance",
+          category: "allowance",
+          recommendedCost: finishRates.costRate,
+          recommendedSell: finishRates.sellRate,
+          rateSource: finishRates.sourceLabel,
+          notes: finishType ?? "Finish allowance",
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor,
+        })
+      );
+    }
+  } else if (finishRequired === false) {
+    exclusions.push("Final painting or staining of the pergola is excluded.");
+  } else if (finishRequired === null && materialLower.includes("timber")) {
+    exclusions.push("Final painting or staining excluded unless stated.");
+  }
+
+  const consentStatus = getStringFact(
+    facts,
+    workArea.id,
+    "pergola.engineering_or_consent_status"
+  );
+  if (consentStatus?.toLowerCase().includes("required")) {
+    exclusions.push("Engineering and consent costs excluded unless confirmed.");
+  } else if (consentStatus?.toLowerCase().includes("not sure")) {
+    assumptions.push("Engineering/consent requirements are subject to confirmation.");
   }
 
   return {
     lineItems,
     assumptions,
     missingInfo,
-    exclusions: [],
+    exclusions,
     confidence: baseConfidence(missingInfo.length),
   };
 }

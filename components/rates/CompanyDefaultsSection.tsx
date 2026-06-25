@@ -92,7 +92,7 @@ export function CompanyDefaultsSection({
   }
 
   return (
-    <Card>
+    <Card className="border-border/60 shadow-none">
       <CardHeader>
         <CardTitle>Company defaults</CardTitle>
         <CardDescription>

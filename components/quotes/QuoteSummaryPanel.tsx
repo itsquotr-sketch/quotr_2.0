@@ -2,6 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -10,6 +11,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { formatPricingMoney } from "@/lib/pricing/format";
+import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
 import type { Quote } from "@/lib/quotes/types";
 
 type QuoteSummaryPanelProps = {
@@ -76,7 +78,17 @@ export function QuoteSummaryPanel({
   return (
     <Card className="border-border/60 shadow-none lg:sticky lg:top-[4.5rem] lg:self-start">
       <CardHeader className="pb-2">
-        <CardTitle className="text-base">Quote summary</CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-base">Quote summary</CardTitle>
+          <Badge variant="outline" className="text-[10px] font-normal">
+            {formatQuoteBadgeLabel(quote.status)}
+          </Badge>
+        </div>
+        {quote.revision_number > 1 ? (
+          <p className="text-xs text-muted-foreground">
+            Revision {quote.revision_number}
+          </p>
+        ) : null}
         <p className="text-xs text-muted-foreground">
           Client-facing totals (GST exclusive subtotal)
         </p>

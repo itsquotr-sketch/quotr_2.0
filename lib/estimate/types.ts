@@ -1,6 +1,9 @@
 import type { QualityLevel } from "@/components/assistant/types";
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
+import type { MaterialBuildUpEntry } from "@/lib/estimate/material-buildup-meta";
+import type { MaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
+import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 
 export type EstimateProject = {
   id: string;
@@ -34,6 +37,7 @@ export type EstimateContext = {
   facts: EstimateFact[];
   constraints: EstimateConstraint[];
   organisationSettings: OrganisationSettings | null;
+  materialWastageSettings: MaterialWastageSettings | null;
   rates: OrganisationRate[];
 };
 
@@ -70,6 +74,9 @@ export type EstimateLineItemInput = {
   sellRate?: number;
   sellDerivedFromMargin?: boolean;
   notes?: string;
+  materialBuildUp?: MaterialBuildUpEntry;
+  materialBuildUps?: MaterialBuildUpEntry[];
+  materialRateResolution?: MaterialRateResolution;
   sortOrder: number;
 };
 

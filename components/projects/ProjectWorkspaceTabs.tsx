@@ -49,20 +49,20 @@ export function ProjectWorkspaceTabs({
 
   const tabClass = (isActive: boolean) =>
     cn(
-      "shrink-0 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors",
+      "shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
       isActive
-        ? "bg-background text-foreground shadow-sm ring-1 ring-border shadow-[inset_0_-2px_0_0_var(--brand-orange)]"
-        : "text-muted-foreground hover:text-foreground"
+        ? "border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)] text-foreground"
+        : "border-transparent text-muted-foreground hover:border-border/60 hover:bg-card hover:text-foreground"
     );
 
   const tabClassDisabled =
-    "inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium whitespace-nowrap opacity-50 text-muted-foreground";
+    "inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-full border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap opacity-50 text-muted-foreground";
 
   return (
     <>
       <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
         <div
-          className="flex w-max min-w-full gap-1 rounded-lg border border-border/60 bg-muted/20 p-1 sm:w-auto"
+          className="flex w-max min-w-full gap-1.5 pb-0.5 sm:w-auto"
           role="tablist"
           aria-label="Project workspace"
         >
@@ -73,7 +73,7 @@ export function ProjectWorkspaceTabs({
             aria-selected={activeTab === "assistant"}
             className={tabClass(activeTab === "assistant")}
           >
-            Project Assistant
+            Assistant
           </Link>
 
           {pricingHref ? (
@@ -87,7 +87,7 @@ export function ProjectWorkspaceTabs({
                 "inline-flex items-center gap-1.5"
               )}
             >
-              Final Pricing
+              Pricing
               {pricingSummary?.status === "reviewed" ? (
                 <Badge variant="outline" className="text-[10px]">
                   Reviewed
@@ -113,7 +113,7 @@ export function ProjectWorkspaceTabs({
                 "inline-flex items-center gap-1.5 disabled:cursor-not-allowed disabled:opacity-50"
               )}
             >
-              Final Pricing
+              Pricing
               {pricingNotStarted ? (
                 <Badge variant="outline" className="text-[10px]">
                   Not started
@@ -147,7 +147,7 @@ export function ProjectWorkspaceTabs({
               className={cn(
                 tabClassDisabled,
                 activeTab === "quote" &&
-                  "bg-background text-foreground opacity-100 shadow-sm ring-1 ring-border shadow-[inset_0_-2px_0_0_var(--brand-orange)]"
+                  "border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)] text-foreground opacity-100"
               )}
             >
               Quote

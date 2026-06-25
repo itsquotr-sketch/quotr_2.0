@@ -15,6 +15,7 @@ import { calculateKitchen } from "@/lib/estimate/calculators/kitchen";
 import { calculatePergola } from "@/lib/estimate/calculators/pergola";
 import { calculateRetainingWall } from "@/lib/estimate/calculators/retaining-wall";
 import { finalizeEstimateResult, mergeUnique } from "@/lib/estimate/summary";
+import { mergeDuplicateMaterialBuildUpLineItems } from "@/lib/estimate/material-buildup-dedupe";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -98,7 +99,7 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
   }
 
   return finalizeEstimateResult({
-    lineItems,
+    lineItems: mergeDuplicateMaterialBuildUpLineItems(lineItems),
     assumptions: mergeUnique(assumptions),
     missingInfo: mergeUnique(missingInfo),
     exclusions: mergeUnique(exclusions),

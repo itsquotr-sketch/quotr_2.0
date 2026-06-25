@@ -187,6 +187,42 @@ export function hasPoorAccess(constraints: EstimateConstraint[]): boolean {
   return access === "difficult" || access === "moderate";
 }
 
+/** Work-area access fact (deck.access, fence.access, etc.) as a labour multiplier. */
+export function getWorkAreaAccessFactor(
+  accessValue: string | null | undefined
+): number {
+  if (!accessValue) return 1;
+  const lower = accessValue.toLowerCase();
+  if (lower.includes("difficult") || lower.includes("poor")) return 1.1;
+  if (lower.includes("moderate")) return 1.05;
+  return 1;
+}
+
+/** Fence/pergola slope or ground condition labour multiplier. */
+export function getSlopeLabourFactor(
+  slopeValue: string | null | undefined
+): number {
+  if (!slopeValue) return 1;
+  const lower = slopeValue.toLowerCase();
+  if (
+    lower.includes("steep") ||
+    lower.includes("slop") ||
+    lower.includes("difficult")
+  ) {
+    return 1.1;
+  }
+  if (lower.includes("moderate") || lower.includes("undulating")) {
+    return 1.05;
+  }
+  return 1;
+}
+
+/** Fence height relative to 1.8 m standard — scales material allowance. */
+export function getFenceHeightMaterialFactor(heightM: number | null): number {
+  if (heightM == null || heightM <= 0) return 1;
+  return Math.max(0.75, Math.min(1.5, heightM / 1.8));
+}
+
 const QUALITY_LABELS: Record<QualityLevel, string> = {
   budget: "Budget",
   standard: "Standard",

@@ -2,6 +2,7 @@
 
 import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { FormContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { getSetupState } from "@/lib/setup/actions";
@@ -51,14 +52,13 @@ export function SetupShell({
   }
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Setup"
         description="Configure your business so Quotr can produce better estimates"
         actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
       />
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
+      <FormContainer>
           <div className="mb-8 space-y-4">
             <p className="text-sm text-muted-foreground">
               Complete setup to improve estimate accuracy. You can explore the
@@ -99,8 +99,7 @@ export function SetupShell({
               }}
             />
           ) : null}
-        </div>
-      </div>
-    </>
+      </FormContainer>
+    </div>
   );
 }

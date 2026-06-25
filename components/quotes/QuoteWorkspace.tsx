@@ -3,8 +3,8 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState, useTransition, type ReactNode } from "react";
+import { Loader2, Printer } from "lucide-react";
 import { QuoteHeader } from "@/components/quotes/QuoteHeader";
-import { QuotePrintActions } from "@/components/quotes/QuotePrintActions";
 import { QuoteSummaryPanel } from "@/components/quotes/QuoteSummaryPanel";
 import { QuoteTermsCard } from "@/components/quotes/QuoteTermsCard";
 import { WorkspaceBanner } from "@/components/layout/workspace-banner";
@@ -12,6 +12,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import {
   markQuoteAccepted,
   markQuoteDeclined,
@@ -111,8 +118,68 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
     });
   };
 
+  const handlePrint = () => {
+    const printUrl = `/app/projects/${projectId}/quotes/${quoteId}/print`;
+    window.open(printUrl, "_blank", "noopener,noreferrer");
+  };
+
+  const actionPanel = (
+    <div className="space-y-3">
+      <Button
+        type="button"
+        variant="outline"
+        className="w-full"
+        onClick={handlePrint}
+      >
+        <Printer className="mr-2 size-4" />
+        Print / Save as PDF
+      </Button>
+
+      {canRefreshFromPricing ? (
+        <div className="space-y-2">
+          <Button
+            type="button"
+            className="w-full"
+            variant="outline"
+            disabled={isRevising}
+            onClick={handleRefreshFromPricing}
+          >
+            {isRevising
+              ? "Creating revision…"
+              : isDraftRefresh
+                ? "Refresh from final pricing"
+                : "Create revision"}
+          </Button>
+          <p className="text-xs leading-relaxed text-muted-foreground">
+            {isDraftRefresh
+              ? "Update this draft from the latest reviewed final pricing."
+              : "Create a new draft revision without changing this quote."}
+          </p>
+        </div>
+      ) : null}
+
+      <QuoteSummaryPanel
+        quote={quote}
+        onMarkSent={isEditable ? handleMarkSent : undefined}
+        onMarkAccepted={
+          quote.status === "sent" || isEditable
+            ? handleMarkAccepted
+            : undefined
+        }
+        onMarkDeclined={
+          quote.status === "sent" || isEditable
+            ? handleMarkDeclined
+            : undefined
+        }
+        onMarkExpired={
+          quote.status === "sent" ? handleMarkExpired : undefined
+        }
+      />
+    </div>
+  );
+
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-4">
       <div className="print:hidden">
         <QuoteHeader
           quote={quote}
@@ -139,19 +206,17 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             .
           </p>
         </div>
-      ) : null}
-
-      <WorkspaceBanner className="print:hidden">
-        Client-facing quote — review scope, pricing, exclusions and terms before
-        sending. Use Final Pricing to change line items, then refresh this quote
-        if needed.
-      </WorkspaceBanner>
-
-      {pricingChangedAfterQuote ? (
-        <p className="text-sm text-amber-800 print:hidden dark:text-amber-200">
-          Final pricing may have changed since this quote was created.
+      ) : pricingChangedAfterQuote ? (
+        <p className="rounded-lg border border-amber-200/80 bg-amber-50/60 px-4 py-2.5 text-sm text-amber-950 print:hidden dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+          Final pricing may have changed since this quote was created. Refresh
+          from final pricing if totals should match.
         </p>
-      ) : null}
+      ) : (
+        <WorkspaceBanner className="print:hidden">
+          Client-facing quote — review scope, pricing, exclusions and terms before
+          sending.
+        </WorkspaceBanner>
+      )}
 
       {quote.revision_number > 1 || quote.revised_from_quote_id ? (
         <p className="text-sm text-muted-foreground print:hidden">
@@ -166,10 +231,19 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </p>
       ) : null}
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px] print:block">
+      <div className="xl:hidden print:hidden">{actionPanel}</div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] print:block">
         <div className="min-w-0 space-y-5">
           {isEditable ? (
-            <div className="grid gap-3 print:hidden sm:grid-cols-2">
+            <Card className="border-border/60 shadow-none print:hidden">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base">Quote settings</CardTitle>
+                <CardDescription className="text-xs">
+                  Title, dates and scope summary shown on the client preview
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="grid gap-3 sm:grid-cols-2">
               <div className="space-y-1.5">
                 <Label htmlFor="quote-title" className="text-xs">
                   Quote title
@@ -227,70 +301,67 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
                   }
                 />
               </div>
-            </div>
+              </CardContent>
+            </Card>
           ) : null}
 
-          {template}
+          <div className="space-y-2 print:hidden">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+              Client preview
+            </p>
+            <div className="mx-auto w-full max-w-[1040px]">{template}</div>
+          </div>
+          <div className="hidden print:block">{template}</div>
 
           {isEditable ? (
-            <div className="print:hidden">
-              <QuoteTermsCard
-              assumptions={quote.assumptions}
-              exclusions={quote.exclusions}
-              inclusions={quote.inclusions}
-              terms={quote.terms}
-              notesToClient={quote.notes_to_client}
-              onChange={handleQuoteChange}
-            />
-            </div>
+            <details className="group rounded-lg border border-border/60 bg-card print:hidden">
+              <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+                <span className="flex items-center justify-between gap-2">
+                  Terms & client notes
+                  <span className="text-xs font-normal text-muted-foreground group-open:hidden">
+                    Expand to edit
+                  </span>
+                </span>
+              </summary>
+              <div className="border-t border-border/60 px-1 pb-1">
+                <QuoteTermsCard
+                  assumptions={quote.assumptions}
+                  exclusions={quote.exclusions}
+                  inclusions={quote.inclusions}
+                  terms={quote.terms}
+                  notesToClient={quote.notes_to_client}
+                  onChange={handleQuoteChange}
+                  bare
+                />
+              </div>
+            </details>
           ) : null}
         </div>
 
-        <div className="space-y-3 print:hidden">
-          <QuotePrintActions projectId={projectId} quoteId={quoteId} />
-
-          {canRefreshFromPricing ? (
-            <div className="space-y-2">
-              <Button
-                type="button"
-                className="w-full"
-                variant="outline"
-                disabled={isRevising}
-                onClick={handleRefreshFromPricing}
-              >
-                {isRevising
-                  ? "Creating revision…"
-                  : isDraftRefresh
-                    ? "Refresh from final pricing"
-                    : "Create revision"}
-              </Button>
-              <p className="text-xs leading-relaxed text-muted-foreground">
-                {isDraftRefresh
-                  ? "Create a new draft revision using the latest reviewed final pricing."
-                  : "Create a new draft revision without changing this quote."}
-              </p>
-            </div>
-          ) : null}
-
-          <QuoteSummaryPanel
-            quote={quote}
-            onMarkSent={isEditable ? handleMarkSent : undefined}
-            onMarkAccepted={
-              quote.status === "sent" || isEditable
-                ? handleMarkAccepted
-                : undefined
-            }
-            onMarkDeclined={
-              quote.status === "sent" || isEditable
-                ? handleMarkDeclined
-                : undefined
-            }
-            onMarkExpired={
-              quote.status === "sent" ? handleMarkExpired : undefined
-            }
-          />
+        <div className="hidden space-y-3 print:hidden xl:block">
+          {actionPanel}
         </div>
       </div>
+
+      {isEditable ? (
+        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur-sm xl:hidden print:hidden">
+          <Button
+            type="button"
+            className="h-11 w-full"
+            disabled={isSaving}
+            onClick={handleSaveQuote}
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="mr-2 size-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              "Save quote"
+            )}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }

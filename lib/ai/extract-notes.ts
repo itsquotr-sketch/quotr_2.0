@@ -32,8 +32,12 @@ CRITICAL OUTPUT RULES:
 
 Scope rules:
 - Propose only work area types from the allowed list.
-- Use canonical fact keys: deck.length_m, deck.width_m, deck.material, fence.length_m, fence.height_m, retaining_wall.length_m, retaining_wall.height_m.
-- Never propose deck.area_m2 — area is calculated from length × width.
+- Use canonical fact keys for all outdoor scopes.
+- Deck: deck.length_m, deck.width_m, deck.board_material, deck.board_width_mm, deck.height_m, deck.level, deck.access_type, deck.balustrade_required, deck.vertical_face_boards_required, deck.existing_deck_removal, deck.access.
+- Fence: fence.length_m, fence.height_m, fence.material, fence.gate_included, fence.gate_count, fence.demolition_required, fence.disposal_required, fence.access, fence.slope_condition.
+- Pergola: pergola.length_m, pergola.width_m, pergola.material, pergola.attached, pergola.roofing_included, pergola.roofing_type, pergola.footings_required, pergola.gutters_included, pergola.access.
+- Retaining wall: retaining_wall.length_m, retaining_wall.height_m, retaining_wall.is_raking, retaining_wall.height_high_m, retaining_wall.height_low_m, retaining_wall.fixing_type, retaining_wall.material, retaining_wall.drainage_required, retaining_wall.drain_connection_required, retaining_wall.backfill_included, retaining_wall.backfill_depth_m, retaining_wall.carting_distance_m, retaining_wall.access.
+- Never propose deck.area_m2 or pergola.area_m2 — area is calculated from length × width.
 - When a note updates dimensions, propose separate length and width facts, not a combined dimension string.
 - material_carry_distance is a constraint key, not a fact.
 - Do not invent precise measurements from vague notes ("might be bigger" → no dimension facts).

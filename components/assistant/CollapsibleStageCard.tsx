@@ -29,17 +29,18 @@ type CollapsibleStageCardProps = {
 };
 
 const cardVariantStyles: Record<StageStatusVariant, string> = {
-  current: "ring-1 ring-primary/10",
-  complete: "",
+  current: "border-[var(--brand-orange-muted)] ring-1 ring-[var(--brand-orange)]/15",
+  complete: "border-border/60",
   review:
     "border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20",
   stale:
     "border-amber-300 bg-amber-50/50 dark:border-amber-900/50 dark:bg-amber-950/30",
-  needs_input: "ring-1 ring-primary/10",
+  needs_input: "border-[var(--brand-orange-muted)] ring-1 ring-[var(--brand-orange)]/15",
 };
 
 const badgeVariantStyles: Record<StageStatusVariant, string> = {
-  current: "border-transparent bg-primary/10 text-primary",
+  current:
+    "border-transparent bg-[var(--brand-orange-muted)] text-[var(--brand-orange)]",
   complete: "border-transparent bg-muted/60 text-muted-foreground",
   review: "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
   stale: "border-transparent bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-200",
@@ -73,7 +74,7 @@ export function CollapsibleStageCard({
     return (
       <div
         className={cn(
-          "rounded-xl border bg-card text-card-foreground shadow-sm",
+          "rounded-lg border border-border/60 bg-card text-card-foreground shadow-none",
           cardVariantStyles[statusVariant],
           className
         )}

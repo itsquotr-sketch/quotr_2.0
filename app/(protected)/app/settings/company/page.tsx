@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import { SettingsContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { CompanySettingsContent } from "@/components/settings/CompanySettingsContent";
@@ -26,23 +27,21 @@ export default async function CompanySettingsPage() {
   }
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
-        title="Company settings"
-        description="Business profile, quote defaults and brand appearance for new pricing and quotes."
+        title="Company"
+        description="Business profile, quote defaults, and branding for new pricing and quotes."
         actions={
           <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
         }
       />
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto w-full max-w-3xl px-4 py-6 sm:px-6 lg:px-8">
-          <CompanySettingsContent
-            initialSettings={settings}
-            userEmail={user?.email}
-            userFullName={profile?.full_name}
-          />
-        </div>
-      </div>
-    </>
+      <SettingsContainer>
+        <CompanySettingsContent
+          initialSettings={settings}
+          userEmail={user?.email}
+          userFullName={profile?.full_name}
+        />
+      </SettingsContainer>
+    </div>
   );
 }

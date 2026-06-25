@@ -600,6 +600,54 @@ export async function saveQuality(
   return { success: true };
 }
 
+export async function updateProjectQualityLevel(
+  projectId: string,
+  qualityLevel: QualityLevel
+): Promise<AssistantActionState> {
+  const parsed = qualityLevelSchema.safeParse(qualityLevel);
+  if (!parsed.success) {
+    return { error: "Invalid quality level." };
+  }
+
+  const loaded = await loadProjectStage(projectId);
+  if ("error" in loaded) {
+    return { error: loaded.error };
+  }
+
+  const { supabase, stage } = loaded;
+
+  if (!isStageAtOrBeyond(stage, "work_area_questions")) {
+    return { error: "Quality can only be changed after the initial quality step." };
+  }
+
+  const { data: project, error: projectError } = await supabase
+    .from("projects")
+    .select("quality_level")
+    .eq("id", projectId)
+    .maybeSingle();
+
+  if (projectError || !project) {
+    return { error: "Project not found." };
+  }
+
+  if (project.quality_level === parsed.data) {
+    return { success: true };
+  }
+
+  const { error: updateError } = await supabase
+    .from("projects")
+    .update({ quality_level: parsed.data })
+    .eq("id", projectId);
+
+  if (updateError) {
+    return { error: updateError.message };
+  }
+
+  await markEstimateStale(projectId);
+  revalidateAssistantPaths(projectId);
+  return { success: true };
+}
+
 export async function saveQuestionBlockAnswers(
   projectId: string,
   questionBlockId: string,

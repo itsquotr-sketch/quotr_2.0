@@ -61,6 +61,41 @@ const companySettingsSchema = z.object({
   logoUrl: optionalText,
   brandPrimaryColour: optionalText,
   brandAccentColour: optionalText,
+  defaultMaterialWastagePercent: z
+    .number()
+    .min(0, "Wastage must be at least 0%.")
+    .max(50, "Wastage cannot exceed 50%.")
+    .optional(),
+  deckingWastagePercent: z
+    .number()
+    .min(0, "Wastage must be at least 0%.")
+    .max(50, "Wastage cannot exceed 50%.")
+    .nullable()
+    .optional(),
+  sheetMaterialWastagePercent: z
+    .number()
+    .min(0, "Wastage must be at least 0%.")
+    .max(50, "Wastage cannot exceed 50%.")
+    .nullable()
+    .optional(),
+  flooringWastagePercent: z
+    .number()
+    .min(0, "Wastage must be at least 0%.")
+    .max(50, "Wastage cannot exceed 50%.")
+    .nullable()
+    .optional(),
+  paintWastagePercent: z
+    .number()
+    .min(0, "Wastage must be at least 0%.")
+    .max(50, "Wastage cannot exceed 50%.")
+    .nullable()
+    .optional(),
+  timberFramingWastagePercent: z
+    .number()
+    .min(0, "Wastage must be at least 0%.")
+    .max(50, "Wastage cannot exceed 50%.")
+    .nullable()
+    .optional(),
 });
 
 type AuthOrgContext = {
@@ -159,6 +194,29 @@ function mapSettingsRow(
     logoUrl: (row.logo_url as string | null) ?? null,
     brandPrimaryColour: (row.brand_primary_colour as string | null) ?? null,
     brandAccentColour: (row.brand_accent_colour as string | null) ?? null,
+    defaultMaterialWastagePercent: Number(
+      row.default_material_wastage_percent ?? 10
+    ),
+    deckingWastagePercent:
+      row.decking_wastage_percent != null
+        ? Number(row.decking_wastage_percent)
+        : null,
+    sheetMaterialWastagePercent:
+      row.sheet_material_wastage_percent != null
+        ? Number(row.sheet_material_wastage_percent)
+        : null,
+    flooringWastagePercent:
+      row.flooring_wastage_percent != null
+        ? Number(row.flooring_wastage_percent)
+        : null,
+    paintWastagePercent:
+      row.paint_wastage_percent != null
+        ? Number(row.paint_wastage_percent)
+        : null,
+    timberFramingWastagePercent:
+      row.timber_framing_wastage_percent != null
+        ? Number(row.timber_framing_wastage_percent)
+        : null,
   };
 }
 
@@ -195,6 +253,9 @@ export async function getOrgQuoteDefaultsForOrg(
   return mapQuoteDefaultsRow(row);
 }
 
+const COMPANY_SETTINGS_SELECT =
+  "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
+
 export async function getCompanySettings(): Promise<CompanySettings | null> {
   const context = await getAuthOrgContext();
   if (!context) {
@@ -205,9 +266,7 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
 
   const { data: row, error } = await context.supabase
     .from("organisation_settings")
-    .select(
-      "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour"
-    )
+    .select(COMPANY_SETTINGS_SELECT)
     .eq("org_id", context.orgId)
     .maybeSingle();
 
@@ -284,6 +343,24 @@ export async function updateCompanySettings(
   if (data.brandAccentColour !== undefined) {
     update.brand_accent_colour = data.brandAccentColour;
   }
+  if (data.defaultMaterialWastagePercent !== undefined) {
+    update.default_material_wastage_percent = data.defaultMaterialWastagePercent;
+  }
+  if (data.deckingWastagePercent !== undefined) {
+    update.decking_wastage_percent = data.deckingWastagePercent;
+  }
+  if (data.sheetMaterialWastagePercent !== undefined) {
+    update.sheet_material_wastage_percent = data.sheetMaterialWastagePercent;
+  }
+  if (data.flooringWastagePercent !== undefined) {
+    update.flooring_wastage_percent = data.flooringWastagePercent;
+  }
+  if (data.paintWastagePercent !== undefined) {
+    update.paint_wastage_percent = data.paintWastagePercent;
+  }
+  if (data.timberFramingWastagePercent !== undefined) {
+    update.timber_framing_wastage_percent = data.timberFramingWastagePercent;
+  }
 
   if (Object.keys(update).length === 0) {
     const settings = await getCompanySettings();
@@ -294,9 +371,7 @@ export async function updateCompanySettings(
     .from("organisation_settings")
     .update(update)
     .eq("org_id", context.orgId)
-    .select(
-      "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour"
-    )
+    .select(COMPANY_SETTINGS_SELECT)
     .single();
 
   if (error || !updated) {

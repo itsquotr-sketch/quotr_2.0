@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
+import { CURRENT_CALIBRATION_VERSION } from "@/lib/estimate/calibration-version";
 import { buildLineItemNotes } from "@/lib/estimate/line-items";
 import type { EstimateResult } from "@/lib/estimate/types";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
@@ -34,6 +35,7 @@ function buildEstimatePayload(
     missing_info: estimateResult.missingInfo,
     exclusions: estimateResult.exclusions,
     generated_at: new Date().toISOString(),
+    calibration_version: CURRENT_CALIBRATION_VERSION,
   };
 }
 

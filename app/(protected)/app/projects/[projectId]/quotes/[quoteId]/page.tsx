@@ -1,7 +1,11 @@
 import { QuoteWorkspace } from "@/components/quotes/QuoteWorkspace";
 import { QuoteTemplate } from "@/components/quotes/QuoteTemplate";
+import { WorkspaceContainer } from "@/components/layout/page-containers";
+import {
+  WorkspaceHeaderBar,
+} from "@/components/layout/workspace-page";
 import { UserMenu } from "@/components/layout/user-menu";
-import { ProjectHeader } from "@/components/projects/ProjectHeader";
+import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { getProjectWorkspaceTabContext } from "@/lib/pricing/actions";
 import { measureServerLoad } from "@/lib/perf/timing";
@@ -48,12 +52,13 @@ export default async function QuotePage({ params }: QuotePageProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden print:bg-white">
       <header className="shrink-0 border-b bg-background print:hidden">
-        <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
-          <ProjectHeader project={project} subtitle="Client quote" />
-          <div className="shrink-0 pt-1">
+        <WorkspaceHeaderBar
+          actions={
             <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
-          </div>
-        </div>
+          }
+        >
+          <ProjectWorkspaceHeader project={project} subtitle="Client quote" />
+        </WorkspaceHeaderBar>
       </header>
 
       <div className="print:hidden">
@@ -67,20 +72,18 @@ export default async function QuotePage({ params }: QuotePageProps) {
         />
       </div>
 
-      <div className="flex-1 overflow-auto overflow-x-hidden print:overflow-visible">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8 print:max-w-none print:p-0">
-          <QuoteWorkspace
-            initialData={data}
-            template={
-              <QuoteTemplate
-                quote={data.quote}
-                quoteItems={data.items}
-                companySettings={data.companySettings}
-              />
-            }
-          />
-        </div>
-      </div>
+      <WorkspaceContainer innerClassName="py-6 print:max-w-none print:p-0">
+        <QuoteWorkspace
+          initialData={data}
+          template={
+            <QuoteTemplate
+              quote={data.quote}
+              quoteItems={data.items}
+              companySettings={data.companySettings}
+            />
+          }
+        />
+      </WorkspaceContainer>
     </div>
   );
 }

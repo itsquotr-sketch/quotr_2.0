@@ -15,7 +15,7 @@ type ProjectHeaderProps = {
 
 export function ProjectHeader({
   project,
-  subtitle = "Project assistant",
+  subtitle = null,
 }: ProjectHeaderProps) {
   const detailItems: React.ReactNode[] = [];
 
@@ -31,21 +31,14 @@ export function ProjectHeader({
     );
   }
 
-  if (project.due_date) {
-    detailItems.push(
-      <span key="due">Due {formatDueDate(project.due_date)}</span>
-    );
-  }
-
-  const hasDetails = detailItems.length > 0;
   const isArchived = Boolean(project.archived_at);
 
   return (
-    <div className="min-w-0 flex-1 space-y-3">
+    <div className="min-w-0 flex-1 space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0 space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="min-w-0 text-xl font-semibold tracking-tight sm:text-2xl">
+            <h1 className="min-w-0 text-lg font-semibold tracking-tight sm:text-xl">
               {project.title}
             </h1>
             {!isArchived ? (
@@ -53,20 +46,21 @@ export function ProjectHeader({
                 projectId={project.id}
                 currentStatus={project.business_status}
               />
-            ) : null}
-            {isArchived ? (
+            ) : (
               <Badge variant="outline">Archived</Badge>
-            ) : null}
+            )}
+            <PriorityBadge priority={project.priority} />
           </div>
+          {subtitle ? (
+            <p className="text-sm text-muted-foreground">{subtitle}</p>
+          ) : null}
         </div>
-        <ProjectActionsMenu project={project} variant="header" showEdit />
+        <div className="flex shrink-0 items-center gap-2">
+          <ProjectActionsMenu project={project} variant="header" showEdit />
+        </div>
       </div>
 
-      {subtitle ? (
-        <p className="text-sm text-muted-foreground">{subtitle}</p>
-      ) : null}
-
-      {hasDetails || project.priority ? (
+      {detailItems.length > 0 || project.due_date ? (
         <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
           {detailItems.map((item, index) => (
             <Fragment key={index}>
@@ -78,12 +72,14 @@ export function ProjectHeader({
               {item}
             </Fragment>
           ))}
-          {hasDetails && project.priority ? (
+          {detailItems.length > 0 && project.due_date ? (
             <span aria-hidden className="text-muted-foreground/40">
               ·
             </span>
           ) : null}
-          <PriorityBadge priority={project.priority} />
+          {project.due_date ? (
+            <span>Due {formatDueDate(project.due_date)}</span>
+          ) : null}
         </div>
       ) : null}
     </div>

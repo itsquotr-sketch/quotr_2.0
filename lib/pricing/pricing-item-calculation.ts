@@ -203,7 +203,7 @@ export function resolvePricingItemCalculation(
   const totalSell = roundMoney(input.totalSell ?? 0);
 
   let productivityRate = normalizeMoneyNullable(input.productivityRate);
-  let productivityUnit = input.productivityUnit ?? input.unit ?? null;
+  const productivityUnit = input.productivityUnit ?? input.unit ?? null;
   let calculatedQuantity = normalizeMoneyNullable(input.calculatedQuantity);
 
   if (calculationMode === "productivity_labour") {

@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { EmptyState } from "@/components/layout/empty-state";
+import { SettingsSectionNav } from "@/components/layout/section-nav";
 import {
   LABOUR_RATE_CATALOGUE,
   MATERIAL_RATE_CATALOGUE,
@@ -14,13 +15,30 @@ import { BenchmarkFallbackSection } from "./BenchmarkFallbackSection";
 import { CalibrationSummaryCard } from "./CalibrationSummaryCard";
 import { CompanyDefaultsSection } from "./CompanyDefaultsSection";
 import { RatesTableSection } from "./RatesTableSection";
+import { SpecificMaterialRatesSection } from "./SpecificMaterialRatesSection";
 
 type RatesPageContentProps = {
   initialState: RatesPageState;
 };
 
+const RATES_SECTIONS = [
+  { id: "defaults", label: "Defaults" },
+  { id: "labour", label: "Labour" },
+  { id: "materials", label: "Materials" },
+  { id: "scope", label: "Scope rates" },
+  { id: "allowances", label: "Allowances" },
+  { id: "benchmarks", label: "Benchmarks" },
+] as const;
+
+type RatesSectionId = (typeof RATES_SECTIONS)[number]["id"];
+
+const ALLOWANCE_CATALOGUE = MATERIAL_RATE_CATALOGUE.filter(
+  (entry) => entry.recommended || entry.calculatorSupport === "used_now"
+);
+
 export function RatesPageContent({ initialState }: RatesPageContentProps) {
   const [state, setState] = useState(initialState);
+  const [activeSection, setActiveSection] = useState<RatesSectionId>("defaults");
   const [creatingStarter, setCreatingStarter] = useState(false);
   const [starterError, setStarterError] = useState<string | null>(null);
 
@@ -70,46 +88,68 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
         />
       ) : null}
 
-      <CompanyDefaultsSection
-        settings={state.settings}
-        onSettingsChange={(settings) =>
-          setState((prev) => ({ ...prev, settings }))
-        }
+      <SettingsSectionNav
+        items={[...RATES_SECTIONS]}
+        activeId={activeSection}
+        onChange={(id) => setActiveSection(id as RatesSectionId)}
       />
 
-      <RatesTableSection
-        title="Labour rates"
-        description="Used when Quotr estimates in-house labour. If charge rate is blank, Quotr derives it from your default margin."
-        catalogue={LABOUR_RATE_CATALOGUE}
-        rates={state.rates}
-        onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-        variant="labour"
-      />
+      <div className="min-w-0">
+        {activeSection === "defaults" ? (
+          <CompanyDefaultsSection
+            settings={state.settings}
+            onSettingsChange={(settings) =>
+              setState((prev) => ({ ...prev, settings }))
+            }
+          />
+        ) : null}
 
-      <RatesTableSection
-        title="Scope / package rates"
-        description="Optional shortcut rates. Planned rates are stored for future estimation support."
-        catalogue={SCOPE_RATE_CATALOGUE}
-        rates={state.rates}
-        onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-        variant="grouped"
-        showEngineColumn
-      />
+        {activeSection === "labour" ? (
+          <RatesTableSection
+            title="Labour rates"
+            description="Used when Quotr estimates in-house labour. If charge rate is blank, Quotr derives it from your default margin."
+            catalogue={LABOUR_RATE_CATALOGUE}
+            rates={state.rates}
+            onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+            variant="labour"
+          />
+        ) : null}
 
-      <RatesTableSection
-        title="Materials and allowances"
-        description="Recommended rates that replace benchmark assumptions when set."
-        catalogue={MATERIAL_RATE_CATALOGUE.filter(
-          (entry) =>
-            entry.recommended || entry.calculatorSupport === "used_now"
-        )}
-        rates={state.rates}
-        onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-        variant="grouped"
-        showEngineColumn
-      />
+        {activeSection === "materials" ? (
+          <SpecificMaterialRatesSection
+            rates={state.rates}
+            onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+          />
+        ) : null}
 
-      <BenchmarkFallbackSection settings={state.settings} />
+        {activeSection === "scope" ? (
+          <RatesTableSection
+            title="Scope / package rates"
+            description="Optional shortcut rates by work area. Planned rates are stored for future estimation support."
+            catalogue={SCOPE_RATE_CATALOGUE}
+            rates={state.rates}
+            onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+            variant="grouped"
+            showEngineColumn
+          />
+        ) : null}
+
+        {activeSection === "allowances" ? (
+          <RatesTableSection
+            title="Allowances"
+            description="Package and area-based material rates used when specific unit rates are not set."
+            catalogue={ALLOWANCE_CATALOGUE}
+            rates={state.rates}
+            onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+            variant="grouped"
+            showEngineColumn
+          />
+        ) : null}
+
+        {activeSection === "benchmarks" ? (
+          <BenchmarkFallbackSection settings={state.settings} />
+        ) : null}
+      </div>
     </div>
   );
 }

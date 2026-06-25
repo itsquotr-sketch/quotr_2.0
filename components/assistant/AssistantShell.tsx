@@ -6,6 +6,7 @@ import { AssistantProgress } from "@/components/assistant/AssistantProgress";
 import {
   CollapsibleStageCard,
 } from "@/components/assistant/CollapsibleStageCard";
+import { StepperNav } from "@/components/assistant/StepperNav";
 import {
   ProjectCaptureBlock,
   buildProjectCaptureSummary,
@@ -33,6 +34,7 @@ import {
   saveConstraints,
   saveQuality,
   saveQuestionBlockAnswers,
+  updateProjectQualityLevel,
 } from "@/lib/assistant/actions";
 import { updateProjectConstraint } from "@/lib/assistant/constraint-actions";
 import { updateProjectFact } from "@/lib/assistant/fact-actions";
@@ -133,6 +135,10 @@ export function AssistantShell({
     null
   );
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [isEditingQuality, setIsEditingQuality] = useState(false);
+  const [savedQualityLevel, setSavedQualityLevel] = useState<QualityLevel | null>(
+    project.qualityLevel
+  );
 
   const briefSubmitted = isStageAtOrBeyond(stage, "confirm_work_areas");
   const workAreasConfirmed = isStageAtOrBeyond(stage, "quality");
@@ -231,6 +237,28 @@ export function AssistantShell({
       saveQuality(project.id, qualityLevel)
     );
   }, [project.id, qualityLevel, runAction]);
+
+  const handleQualitySave = useCallback(() => {
+    if (!qualityLevel) return;
+
+    void runAction("quality", async () => {
+      const result = await updateProjectQualityLevel(project.id, qualityLevel);
+      if (!result.error) {
+        setSavedQualityLevel(qualityLevel);
+        setIsEditingQuality(false);
+      }
+      return result;
+    });
+  }, [project.id, qualityLevel, runAction]);
+
+  const handleQualityCancelEdit = useCallback(() => {
+    setQualityLevel(savedQualityLevel);
+    setIsEditingQuality(false);
+  }, [savedQualityLevel]);
+
+  const handleQualityEdit = useCallback(() => {
+    setIsEditingQuality(true);
+  }, []);
 
   const handleQuestionsSubmit = useCallback(() => {
     if (!questionBlock) return;
@@ -493,6 +521,16 @@ export function AssistantShell({
   const constraintsIsCurrent = questionsSubmitted && !constraintsSubmitted;
   const canGenerateEstimate = constraintsSubmitted && !estimateReady;
 
+  const stepperAttention = {
+    constraints:
+      questionsSubmitted &&
+      !constraintsSubmitted &&
+      initialState.scopeReview.workAreas.some(
+        (workArea) => workArea.missingItems.length > 0
+      ),
+    estimate_ready: estimate?.isStale,
+  };
+
   return (
     <div data-project-id={project.id} className="w-full min-w-0">
       <AssistantProgress currentStage={stage} />
@@ -503,8 +541,17 @@ export function AssistantShell({
         </p>
       ) : null}
 
-      <div className="mt-6 grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_320px] lg:items-start xl:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="min-w-0 space-y-3">
+      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start xl:grid-cols-[220px_minmax(0,1fr)_340px]">
+        <aside className="hidden xl:block">
+          <div className="sticky top-6">
+            <StepperNav
+              currentStage={stage}
+              needsAttention={stepperAttention}
+            />
+          </div>
+        </aside>
+
+        <div className="min-w-0 order-2 space-y-3 lg:order-none">
           {/* 1. Project Capture */}
           <CollapsibleStageCard
             title="Project Capture"
@@ -585,14 +632,20 @@ export function AssistantShell({
               canCollapse={qualitySubmitted}
               summaryContent={qualitySummary}
               actionLabel={qualitySubmitted ? "Change spec" : undefined}
+              onAction={qualitySubmitted ? handleQualityEdit : undefined}
             >
               <QualityBlock
                 selected={qualityLevel}
                 submitted={qualitySubmitted}
+                editing={isEditingQuality}
                 isSaving={pendingAction === "quality"}
-                onSelect={qualitySubmitted ? undefined : setQualityLevel}
+                onSelect={setQualityLevel}
                 onContinue={
                   qualitySubmitted ? undefined : handleQualityContinue
+                }
+                onSave={qualitySubmitted ? handleQualitySave : undefined}
+                onCancelEdit={
+                  qualitySubmitted ? handleQualityCancelEdit : undefined
                 }
               />
             </CollapsibleStageCard>
@@ -732,10 +785,11 @@ export function AssistantShell({
           ) : null}
         </div>
 
-        <div className="min-w-0">
+        <div className="min-w-0 order-1 lg:order-none">
           <EstimatePanel
             projectId={initialState.project.id}
             estimate={estimate}
+            qualityLevel={qualitySubmitted ? qualityLevel : null}
             pricingSummary={pricingSummary}
             quoteSummary={quoteSummary}
             isGenerating={isGenerating}
@@ -753,6 +807,7 @@ export function AssistantShell({
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}
             onMarginSave={estimateReady ? handleMarginSave : undefined}
+            onEditQuality={qualitySubmitted ? handleQualityEdit : undefined}
           />
         </div>
       </div>

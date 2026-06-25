@@ -8,7 +8,7 @@ import type {
   WorkAreaActiveQuestion,
   WorkAreaStatus,
 } from "@/components/assistant/types";
-import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { parseLineItemNotes, getMaterialBuildUps } from "@/lib/estimate/line-item-metadata";
 import { normalizeRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import {
   buildStaticConstraintQuestions,
@@ -89,6 +89,7 @@ type DbEstimate = {
   margin_percent: number | null;
   markup_percent: number | null;
   is_stale?: boolean | null;
+  calibration_version?: string | null;
   target_margin_percent?: number | null;
   confidence: number | null;
   rate_source_summary: string | null;
@@ -366,6 +367,7 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
     itemKey: metadata.itemKey,
     sellDerivedFromMargin: metadata.sellDerivedFromMargin,
     notes: displayNotes,
+    materialBuildUps: getMaterialBuildUps(row.notes),
   };
 }
 
@@ -390,6 +392,7 @@ export function mapEstimate(
       ? Number(estimate.markup_percent)
       : base.markupPercent,
     isStale: estimate.is_stale ?? false,
+    calibrationVersion: estimate.calibration_version ?? null,
     targetMarginPercent: estimate.target_margin_percent
       ? Number(estimate.target_margin_percent)
       : null,

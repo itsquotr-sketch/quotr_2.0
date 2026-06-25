@@ -1,6 +1,10 @@
 import { PricingWorkspace } from "@/components/pricing/PricingWorkspace";
+import {
+  WorkspaceHeaderBar,
+  WorkspacePage,
+} from "@/components/layout/workspace-page";
 import { UserMenu } from "@/components/layout/user-menu";
-import { ProjectHeader } from "@/components/projects/ProjectHeader";
+import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { measureServerLoad } from "@/lib/perf/timing";
 import {
@@ -62,37 +66,36 @@ export default async function PricingPage({ params }: PricingPageProps) {
     .maybeSingle();
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="shrink-0 border-b bg-background">
-        <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
-          <ProjectHeader project={project} subtitle="Final pricing" />
-          <div className="shrink-0 pt-1">
+    <WorkspacePage
+      header={
+        <WorkspaceHeaderBar
+          actions={
             <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
-          </div>
-        </div>
-      </header>
-
-      <ProjectWorkspaceNav
-        projectId={projectId}
-        activeTab="pricing"
-        pricingSummary={{
-          id: pricingId,
-          status: data.document.status,
-        }}
+          }
+        >
+          <ProjectWorkspaceHeader project={project} subtitle="Final pricing" />
+        </WorkspaceHeaderBar>
+      }
+      nav={
+        <ProjectWorkspaceNav
+          projectId={projectId}
+          activeTab="pricing"
+          pricingSummary={{
+            id: pricingId,
+            status: data.document.status,
+          }}
+          quoteSummary={effectiveQuoteSummary}
+          hasEstimate={tabContext.hasEstimate}
+          estimateIsStale={tabContext.estimateIsStale}
+        />
+      }
+      contentClassName="py-6"
+    >
+      <PricingWorkspace
+        initialData={data}
         quoteSummary={effectiveQuoteSummary}
-        hasEstimate={tabContext.hasEstimate}
-        estimateIsStale={tabContext.estimateIsStale}
+        pricingChangedAfterQuote={pricingChangedAfterQuote}
       />
-
-      <div className="flex-1 overflow-auto overflow-x-hidden">
-        <div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 lg:px-8">
-          <PricingWorkspace
-            initialData={data}
-            quoteSummary={effectiveQuoteSummary}
-            pricingChangedAfterQuote={pricingChangedAfterQuote}
-          />
-        </div>
-      </div>
-    </div>
+    </WorkspacePage>
   );
 }

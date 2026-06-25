@@ -21,6 +21,14 @@ import {
 } from "@/lib/estimate/line-items";
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import { calculateBackfillVolume, calculateDrainageLm } from "@/lib/estimate/material-buildups";
+import {
+  createBackfillVolumeBuildUp,
+  createDrainageBuildUp,
+  withMaterialBuildUp,
+} from "@/lib/estimate/material-buildup-meta";
+import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
+import { MATERIAL_RATE_KEYS } from "@/lib/estimate/material-rate-keys";
 import { baseConfidence } from "@/lib/estimate/summary";
 import type {
   CalculatorResult,
@@ -206,7 +214,7 @@ export function calculateRetainingWall(
     const novacoilRates = resolveRate({
       rates: context.rates,
       rateType: "material",
-      itemKey: "retaining_wall.drainage.lm",
+      itemKey: MATERIAL_RATE_KEYS.drainageNovacoilLm,
       workAreaType: "retaining_wall",
       unit: "lm",
       fallbackCostRate: RETAINING_WALL_BENCHMARKS.novacoilPerM.cost,
@@ -214,22 +222,42 @@ export function calculateRetainingWall(
       organisationSettings: context.organisationSettings,
     });
 
+    const drainageWastagePercent = resolveMaterialWastage(
+      context.materialWastageSettings,
+      "default"
+    );
+    const drainageLength = length ?? effectiveLength;
+    const drainageBuildUp = calculateDrainageLm({
+      wallLengthM: drainageLength,
+      wastagePercent: drainageWastagePercent,
+    });
+    const drainageMetadata = drainageBuildUp
+      ? createDrainageBuildUp({
+          result: drainageBuildUp,
+          wallLengthM: drainageLength,
+          wastagePercent: drainageWastagePercent,
+        })
+      : null;
+
     lineItems.push(
-      createRateLineItem({
-        workAreaId: workArea.id,
-        workAreaName: workArea.name,
-        label: "Novacoil drainage with sock/sleeve",
-        category: "materials",
-        quantity: effectiveLength,
-        unit: "m",
-        costRate: novacoilRates.costRate,
-        sellRate: novacoilRates.sellRate,
-        rateSource: novacoilRates.sourceLabel,
-        notes: "Drainage aggregate allowance included",
-        sortOrder: sortOrder++,
-        organisationSettings: context.organisationSettings,
-        qualityFactor: NO_FINISH_QUALITY_FACTOR,
-      })
+      withMaterialBuildUp(
+        createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Novacoil drainage with sock/sleeve",
+          category: "materials",
+          quantity: drainageBuildUp?.novacoilLm ?? effectiveLength,
+          unit: "lm",
+          notes: "Drainage aggregate allowance included",
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor: NO_FINISH_QUALITY_FACTOR,
+          costRate: novacoilRates.costRate,
+          sellRate: novacoilRates.sellRate,
+          rateSource: novacoilRates.sourceLabel,
+        }),
+        drainageMetadata
+      )
     );
 
     const drainConnection = getStringFact(
@@ -299,24 +327,67 @@ export function calculateRetainingWall(
     );
 
     if (backfillDepth) {
-      const volume = round2(backfillLength * backfillHeight * backfillDepth);
-      assumptions.push(`Backfill volume calculated: ${volume} m³.`);
-      lineItems.push(
-        createRateLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Backfill materials",
-          category: "materials",
-          quantity: volume,
-          unit: "m³",
-          costRate: RETAINING_WALL_BENCHMARKS.backfillPerM3.cost,
-          sellRate: RETAINING_WALL_BENCHMARKS.backfillPerM3.sell,
-          rateSource: "Benchmark allowance",
-          sortOrder: sortOrder++,
+      const backfillLengthValue =
+        getNumberFact(facts, workArea.id, "retaining_wall.backfill_length_m") ??
+        length ??
+        effectiveLength;
+      const backfillHeightValue =
+        getNumberFact(facts, workArea.id, "retaining_wall.backfill_height_m") ??
+        heightResult.height ??
+        effectiveHeight;
+
+      const volume =
+        backfillLengthValue && backfillHeightValue
+          ? calculateBackfillVolume({
+              lengthM: backfillLengthValue,
+              heightM: backfillHeightValue,
+              depthM: backfillDepth,
+            })
+          : round2(backfillLength * backfillHeight * backfillDepth);
+
+      if (volume != null) {
+        assumptions.push(`Backfill volume calculated: ${volume} m³.`);
+        const backfillBuildUp =
+          backfillLengthValue && backfillHeightValue
+            ? createBackfillVolumeBuildUp({
+                volumeM3: volume,
+                lengthM: backfillLengthValue,
+                heightM: backfillHeightValue,
+                depthM: backfillDepth,
+              })
+            : null;
+
+        const backfillRates = resolveRate({
+          rates: context.rates,
+          rateType: "material",
+          itemKey: "retaining_wall.backfill.face_m2",
+          workAreaType: "retaining_wall",
+          unit: "m2",
+          fallbackCostRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.cost,
+          fallbackSellRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.sell,
           organisationSettings: context.organisationSettings,
-          qualityFactor: NO_FINISH_QUALITY_FACTOR,
-        })
-      );
+        });
+
+        lineItems.push(
+          withMaterialBuildUp(
+            createRateLineItem({
+              workAreaId: workArea.id,
+              workAreaName: workArea.name,
+              label: "Backfill allowance",
+              category: "materials",
+              quantity: faceArea,
+              unit: "face m²",
+              costRate: backfillRates.costRate,
+              sellRate: backfillRates.sellRate,
+              rateSource: backfillRates.sourceLabel,
+              sortOrder: sortOrder++,
+              organisationSettings: context.organisationSettings,
+              qualityFactor: NO_FINISH_QUALITY_FACTOR,
+            }),
+            backfillBuildUp
+          )
+        );
+      }
     } else {
       const backfillRates = resolveRate({
         rates: context.rates,
@@ -393,6 +464,55 @@ export function calculateRetainingWall(
         organisationSettings: context.organisationSettings,
         qualityFactor: NO_FINISH_QUALITY_FACTOR,
       })
+    );
+  }
+
+  const disposalIncluded = getBooleanFact(
+    facts,
+    workArea.id,
+    "retaining_wall.disposal_included"
+  );
+  const hasDisposalLine = lineItems.some((item) =>
+    /disposal|cartage allowance/i.test(item.label)
+  );
+
+  if (disposalIncluded === true && !hasDisposalLine) {
+    const disposalRates = resolveRate({
+      rates: context.rates,
+      rateType: "allowance",
+      itemKey: "retaining_wall.disposal.allowance",
+      workAreaType: "retaining_wall",
+      unit: "allowance",
+      fallbackCostRate: RETAINING_WALL_BENCHMARKS.disposalAllowance.cost,
+      fallbackSellRate: RETAINING_WALL_BENCHMARKS.disposalAllowance.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Disposal / cartage allowance",
+        category: "allowance",
+        recommendedCost: disposalRates.costRate,
+        recommendedSell: disposalRates.sellRate,
+        rateSource: disposalRates.sourceLabel,
+        notes: [
+          `${effectiveLength} m wall length allowance basis`,
+          cartingDistance ? `${cartingDistance} m carting distance` : null,
+        ]
+          .filter(Boolean)
+          .join(" · "),
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor: NO_FINISH_QUALITY_FACTOR,
+      })
+    );
+  } else if (disposalIncluded === false) {
+    exclusions.push("Spoil disposal and cartage excluded unless stated otherwise.");
+  } else if (disposalIncluded === null) {
+    assumptions.push(
+      "Disposal/cartage is subject to confirmation unless stated otherwise."
     );
   }
 

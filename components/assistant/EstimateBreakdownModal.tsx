@@ -197,6 +197,31 @@ function LineItemCard({
   compact?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const materialBuildUpLines =
+    item.materialBuildUps?.flatMap((buildUp) => {
+      const lines = [buildUp.display];
+      if (buildUp.basis) {
+        lines.push(buildUp.basis);
+      }
+      const boardWidthMm = buildUp.inputs?.boardWidthMm;
+      if (typeof boardWidthMm === "number") {
+        lines.push(`Board width: ${boardWidthMm}mm`);
+      }
+      const areaM2 = buildUp.inputs?.areaM2;
+      if (
+        typeof areaM2 === "number" &&
+        buildUp.buildUpType === "decking_boards_lm"
+      ) {
+        lines.push(`Deck area: ${areaM2}m²`);
+      }
+      if (
+        buildUp.wastagePercent != null &&
+        !buildUp.display.toLowerCase().includes("wastage")
+      ) {
+        lines.push(`Wastage: ${buildUp.wastagePercent}%`);
+      }
+      return lines;
+    }) ?? [];
 
   if (compact && !expanded) {
     return (
@@ -297,6 +322,19 @@ function LineItemCard({
         <p className="mt-2 break-words text-xs text-muted-foreground">
           {item.notes}
         </p>
+      ) : null}
+
+      {materialBuildUpLines.length > 0 ? (
+        <div className="mt-3 space-y-1 rounded-xl border border-dashed bg-background/60 px-3 py-2.5">
+          <p className="text-xs font-medium text-muted-foreground">
+            Material quantities
+          </p>
+          <ul className="space-y-0.5 text-xs text-muted-foreground">
+            {materialBuildUpLines.map((line, index) => (
+              <li key={`${line}-${index}`}>{line}</li>
+            ))}
+          </ul>
+        </div>
       ) : null}
 
       {compact ? (

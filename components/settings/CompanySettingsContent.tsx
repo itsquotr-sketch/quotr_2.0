@@ -2,16 +2,11 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { SectionCard } from "@/components/layout/section-card";
+import { SettingsSectionNav } from "@/components/layout/section-nav";
 import { StatusMessage } from "@/components/layout/status-message";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
@@ -35,27 +30,15 @@ type CompanySettingsContentProps = {
   userFullName?: string | null;
 };
 
-function SettingsSection({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Card className="border-border/60 shadow-none">
-      <CardHeader>
-        <CardTitle className="text-base">{title}</CardTitle>
-        {description ? (
-          <CardDescription>{description}</CardDescription>
-        ) : null}
-      </CardHeader>
-      <CardContent className="space-y-4">{children}</CardContent>
-    </Card>
-  );
-}
+const COMPANY_SECTIONS = [
+  { id: "profile", label: "Business profile" },
+  { id: "quote-defaults", label: "Quote defaults" },
+  { id: "terms", label: "Terms & exclusions" },
+  { id: "materials", label: "Material defaults" },
+  { id: "branding", label: "Branding" },
+] as const;
+
+type CompanySectionId = (typeof COMPANY_SECTIONS)[number]["id"];
 
 function ColourField({
   id,
@@ -148,11 +131,40 @@ export function CompanySettingsContent({
   const [brandAccentColour, setBrandAccentColour] = useState(
     settings.brandAccentColour ?? ""
   );
+  const [defaultMaterialWastagePercent, setDefaultMaterialWastagePercent] =
+    useState(String(settings.defaultMaterialWastagePercent));
+  const [deckingWastagePercent, setDeckingWastagePercent] = useState(
+    settings.deckingWastagePercent != null
+      ? String(settings.deckingWastagePercent)
+      : ""
+  );
+  const [sheetMaterialWastagePercent, setSheetMaterialWastagePercent] =
+    useState(
+      settings.sheetMaterialWastagePercent != null
+        ? String(settings.sheetMaterialWastagePercent)
+        : ""
+    );
+  const [flooringWastagePercent, setFlooringWastagePercent] = useState(
+    settings.flooringWastagePercent != null
+      ? String(settings.flooringWastagePercent)
+      : ""
+  );
+  const [paintWastagePercent, setPaintWastagePercent] = useState(
+    settings.paintWastagePercent != null ? String(settings.paintWastagePercent) : ""
+  );
+  const [timberFramingWastagePercent, setTimberFramingWastagePercent] =
+    useState(
+      settings.timberFramingWastagePercent != null
+        ? String(settings.timberFramingWastagePercent)
+        : ""
+    );
 
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
+  const [activeSection, setActiveSection] =
+    useState<CompanySectionId>("profile");
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -184,6 +196,25 @@ export function CompanySettingsContent({
       logoUrl,
       brandPrimaryColour,
       brandAccentColour,
+      defaultMaterialWastagePercent: Number(defaultMaterialWastagePercent),
+      deckingWastagePercent:
+        deckingWastagePercent.trim() === ""
+          ? null
+          : Number(deckingWastagePercent),
+      sheetMaterialWastagePercent:
+        sheetMaterialWastagePercent.trim() === ""
+          ? null
+          : Number(sheetMaterialWastagePercent),
+      flooringWastagePercent:
+        flooringWastagePercent.trim() === ""
+          ? null
+          : Number(flooringWastagePercent),
+      paintWastagePercent:
+        paintWastagePercent.trim() === "" ? null : Number(paintWastagePercent),
+      timberFramingWastagePercent:
+        timberFramingWastagePercent.trim() === ""
+          ? null
+          : Number(timberFramingWastagePercent),
     });
 
     setSaving(false);
@@ -249,9 +280,16 @@ export function CompanySettingsContent({
         <StatusMessage variant="success">{savedMessage}</StatusMessage>
       ) : null}
 
-      <SettingsSection
+      <SettingsSectionNav
+        items={[...COMPANY_SECTIONS]}
+        activeId={activeSection}
+        onChange={(id) => setActiveSection(id as CompanySectionId)}
+      />
+
+      {activeSection === "profile" ? (
+      <SectionCard
         title="Business profile"
-        description="Company identity shown on quote previews and copied into new documents."
+        description="Company identity and address shown on quote previews and copied into new documents."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -324,9 +362,9 @@ export function CompanySettingsContent({
             />
           </div>
         </div>
-      </SettingsSection>
 
-      <SettingsSection title="Business address">
+        <div className="border-t border-border/60 pt-4">
+          <p className="mb-4 text-sm font-medium">Business address</p>
         <div className="space-y-2">
           <Label htmlFor="address-line-1">Address line 1</Label>
           <Input
@@ -381,11 +419,14 @@ export function CompanySettingsContent({
             />
           </div>
         </div>
-      </SettingsSection>
+        </div>
+      </SectionCard>
+      ) : null}
 
-      <SettingsSection
+      {activeSection === "quote-defaults" ? (
+      <SectionCard
         title="Quote defaults"
-        description="Applied when creating new final pricing and quotes. Existing documents are not changed."
+        description="Numeric defaults applied when creating new final pricing and quotes. Existing documents are not changed."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -427,6 +468,14 @@ export function CompanySettingsContent({
             ) : null}
           </div>
         </div>
+      </SectionCard>
+      ) : null}
+
+      {activeSection === "terms" ? (
+      <SectionCard
+        title="Terms & exclusions"
+        description="Default wording copied into new pricing and quotes. One item per line for lists."
+      >
         <div className="space-y-2">
           <Label htmlFor="default-payment-terms">Payment terms</Label>
           <Textarea
@@ -447,29 +496,164 @@ export function CompanySettingsContent({
         </div>
         <div className="space-y-2">
           <Label htmlFor="default-exclusions">Default exclusions</Label>
+          <p className="text-[11px] text-muted-foreground">
+            One item per line when copied into pricing and quotes.
+          </p>
           <Textarea
             id="default-exclusions"
             value={defaultQuoteExclusions}
             onChange={(event) => setDefaultQuoteExclusions(event.target.value)}
-            rows={4}
+            rows={5}
           />
-          <p className="text-xs text-muted-foreground">
-            One item per line when copied into pricing and quotes.
-          </p>
         </div>
         <div className="space-y-2">
           <Label htmlFor="default-assumptions">Default assumptions</Label>
+          <p className="text-[11px] text-muted-foreground">
+            One item per line when copied into new documents.
+          </p>
           <Textarea
             id="default-assumptions"
             value={defaultQuoteAssumptions}
             onChange={(event) => setDefaultQuoteAssumptions(event.target.value)}
-            rows={4}
+            rows={5}
           />
         </div>
-      </SettingsSection>
+      </SectionCard>
+      ) : null}
 
-      <SettingsSection
-        title="Brand appearance"
+      {activeSection === "materials" ? (
+      <SectionCard
+        title="Material wastage defaults"
+        description="Used to calculate internal material quantities before pricing. You can still adjust pricing in Final Pricing."
+      >
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div className="space-y-2">
+            <Label htmlFor="default-material-wastage">
+              Default material wastage %
+            </Label>
+            <Input
+              id="default-material-wastage"
+              type="number"
+              min="0"
+              max="50"
+              step="0.1"
+              value={defaultMaterialWastagePercent}
+              onChange={(event) =>
+                setDefaultMaterialWastagePercent(event.target.value)
+              }
+              required
+            />
+            {fieldErrors.defaultMaterialWastagePercent?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.defaultMaterialWastagePercent[0]}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="decking-wastage">Decking board wastage %</Label>
+            <Input
+              id="decking-wastage"
+              type="number"
+              min="0"
+              max="50"
+              step="0.1"
+              value={deckingWastagePercent}
+              onChange={(event) => setDeckingWastagePercent(event.target.value)}
+              placeholder="Uses default"
+            />
+            {fieldErrors.deckingWastagePercent?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.deckingWastagePercent[0]}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="sheet-material-wastage">
+              Sheet material wastage %
+            </Label>
+            <Input
+              id="sheet-material-wastage"
+              type="number"
+              min="0"
+              max="50"
+              step="0.1"
+              value={sheetMaterialWastagePercent}
+              onChange={(event) =>
+                setSheetMaterialWastagePercent(event.target.value)
+              }
+              placeholder="Uses default"
+            />
+            {fieldErrors.sheetMaterialWastagePercent?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.sheetMaterialWastagePercent[0]}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="flooring-wastage">Flooring wastage %</Label>
+            <Input
+              id="flooring-wastage"
+              type="number"
+              min="0"
+              max="50"
+              step="0.1"
+              value={flooringWastagePercent}
+              onChange={(event) => setFlooringWastagePercent(event.target.value)}
+              placeholder="Uses default"
+            />
+            {fieldErrors.flooringWastagePercent?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.flooringWastagePercent[0]}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="paint-wastage">Paint wastage %</Label>
+            <Input
+              id="paint-wastage"
+              type="number"
+              min="0"
+              max="50"
+              step="0.1"
+              value={paintWastagePercent}
+              onChange={(event) => setPaintWastagePercent(event.target.value)}
+              placeholder="Uses default"
+            />
+            {fieldErrors.paintWastagePercent?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.paintWastagePercent[0]}
+              </p>
+            ) : null}
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="timber-framing-wastage">
+              Timber/framing wastage %
+            </Label>
+            <Input
+              id="timber-framing-wastage"
+              type="number"
+              min="0"
+              max="50"
+              step="0.1"
+              value={timberFramingWastagePercent}
+              onChange={(event) =>
+                setTimberFramingWastagePercent(event.target.value)
+              }
+              placeholder="Uses default"
+            />
+            {fieldErrors.timberFramingWastagePercent?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.timberFramingWastagePercent[0]}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      </SectionCard>
+      ) : null}
+
+      {activeSection === "branding" ? (
+      <SectionCard
+        title="Branding"
         description="Brand settings apply to quote previews and future exports. Logo upload is not enabled yet — paste a logo URL."
       >
         <div className="space-y-2">
@@ -514,14 +698,18 @@ export function CompanySettingsContent({
           Colours are used subtly on quote headings and totals. Quotes remain
           readable in black and white if colours are not set.
         </p>
-      </SettingsSection>
+      </SectionCard>
+      ) : null}
 
-      <Card className="border-border/60 shadow-none">
-        <CardFooter className="justify-end border-t py-4">
-          <Button type="submit" disabled={saving}>
+      <Card className="sticky bottom-0 z-10 border-border/60 bg-background/95 shadow-none backdrop-blur-sm">
+        <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+          <p className="text-xs text-muted-foreground">
+            {savedMessage ?? "Changes apply to new pricing and quotes."}
+          </p>
+          <Button type="submit" disabled={saving} className="w-full sm:w-auto">
             {saving ? "Saving…" : "Save company settings"}
           </Button>
-        </CardFooter>
+        </CardContent>
       </Card>
     </form>
   );

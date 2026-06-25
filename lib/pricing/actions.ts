@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
+import { buildPricingNotesFromEstimateLineItem } from "@/lib/estimate/line-item-metadata";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import {
   addDaysIsoDate,
@@ -469,7 +470,7 @@ export async function createPricingFromEstimate(input: {
         visible_on_quote: true,
         optional: false,
         sort_order: lineItem.sort_order ?? index,
-        notes_internal: displayNotes || null,
+        notes_internal: buildPricingNotesFromEstimateLineItem(lineItem.notes),
       };
     });
 

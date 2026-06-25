@@ -1,94 +1,74 @@
-import { cn } from "@/lib/utils";
-import { PROGRESS_STAGES } from "@/lib/assistant/mock-seed";
+import { STEPPER_STAGES } from "@/components/assistant/StepperNav";
 import type { AssistantStage } from "@/components/assistant/types";
 
 type AssistantProgressProps = {
   currentStage: AssistantStage;
 };
 
-function stageIndex(stage: AssistantStage): number {
+const STAGE_ORDER = [
+  "brief",
+  "confirm_work_areas",
+  "quality",
+  "work_area_questions",
+  "constraints",
+  "ready_to_estimate",
+  "estimate_ready",
+] as const;
+
+function resolveStageIndex(stage: AssistantStage): number {
   if (stage === "ready_to_estimate") {
-    return PROGRESS_STAGES.findIndex((s) => s.key === "estimate_ready") - 1;
+    return STAGE_ORDER.indexOf("constraints") + 1;
   }
-  const idx = PROGRESS_STAGES.findIndex((s) => s.key === stage);
+
+  const idx = STAGE_ORDER.indexOf(stage as (typeof STAGE_ORDER)[number]);
   return idx === -1 ? 0 : idx;
 }
 
+function getMobileStepLabel(stage: AssistantStage): string {
+  const idx = resolveStageIndex(stage);
+  if (stage === "estimate_ready" || stage === "ready_to_estimate") {
+    return "Estimate";
+  }
+  if (stage === "constraints") {
+    return "Scope Review";
+  }
+
+  const step = STEPPER_STAGES.find((item) => {
+    const stepIdx = STAGE_ORDER.indexOf(
+      item.key === "estimate_ready" ? "estimate_ready" : item.key
+    );
+    return stepIdx === idx;
+  });
+
+  return step?.label ?? "Brief";
+}
+
 export function AssistantProgress({ currentStage }: AssistantProgressProps) {
-  const currentIdx = stageIndex(currentStage);
-  const totalSteps = PROGRESS_STAGES.length;
+  const currentIdx = resolveStageIndex(currentStage);
+  const totalSteps = STEPPER_STAGES.length;
   const progressPercent = Math.round(((currentIdx + 1) / totalSteps) * 100);
+  const stepLabel = getMobileStepLabel(currentStage);
 
   return (
-    <nav aria-label="Assistant progress" className="w-full">
-      <div className="sm:hidden">
-        <div className="flex items-center justify-between gap-3">
-          <p className="text-xs font-medium text-muted-foreground">
-            Step {currentIdx + 1} of {totalSteps}
-          </p>
-          <p className="truncate text-xs font-medium">
-            {PROGRESS_STAGES[currentIdx]?.label}
-          </p>
-        </div>
-        <div
-          className="mt-2 h-1 overflow-hidden rounded-full bg-muted"
-          role="progressbar"
-          aria-valuenow={currentIdx + 1}
-          aria-valuemin={1}
-          aria-valuemax={totalSteps}
-        >
-          <div
-            className="h-full rounded-full bg-primary transition-all"
-            style={{ width: `${progressPercent}%` }}
-          />
-        </div>
+    <nav aria-label="Assistant progress" className="w-full lg:hidden">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-medium text-muted-foreground">
+          Step {Math.min(currentIdx + 1, totalSteps)} of {totalSteps}
+        </p>
+        <p className="truncate text-xs font-semibold">{stepLabel}</p>
       </div>
-
-      <ol className="hidden flex-wrap items-center gap-2 sm:flex sm:gap-0">
-        {PROGRESS_STAGES.map((step, index) => {
-          const isComplete = index < currentIdx;
-          const isCurrent = index === currentIdx;
-
-          return (
-            <li
-              key={step.key}
-              className="flex items-center gap-2 sm:flex-1 sm:last:flex-none"
-            >
-              <div className="flex items-center gap-2">
-                <span
-                  className={cn(
-                    "flex size-6 shrink-0 items-center justify-center rounded-full text-xs font-medium",
-                    isComplete && "bg-primary text-primary-foreground",
-                    isCurrent &&
-                      "bg-primary/10 text-primary ring-2 ring-primary/30",
-                    !isComplete &&
-                      !isCurrent &&
-                      "bg-muted text-muted-foreground"
-                  )}
-                >
-                  {index + 1}
-                </span>
-                <span
-                  className={cn(
-                    "text-xs font-medium sm:text-sm",
-                    isCurrent ? "text-foreground" : "text-muted-foreground"
-                  )}
-                >
-                  {step.label}
-                </span>
-              </div>
-              {index < PROGRESS_STAGES.length - 1 ? (
-                <div
-                  className={cn(
-                    "mx-2 hidden h-px flex-1 sm:block",
-                    isComplete ? "bg-primary/40" : "bg-border"
-                  )}
-                />
-              ) : null}
-            </li>
-          );
-        })}
-      </ol>
+      <div
+        className="mt-2 h-1 overflow-hidden rounded-full bg-muted"
+        role="progressbar"
+        aria-valuenow={Math.min(currentIdx + 1, totalSteps)}
+        aria-valuemin={1}
+        aria-valuemax={totalSteps}
+      >
+        <div
+          className="h-full rounded-full bg-[var(--brand-orange)] transition-all"
+          style={{ width: `${progressPercent}%` }}
+        />
+      </div>
     </nav>
   );
 }

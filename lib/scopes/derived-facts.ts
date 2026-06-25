@@ -58,6 +58,34 @@ export function deriveFactsForProject(params: {
       }
     }
 
+    if (workArea.type === "pergola") {
+      const length = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "pergola.length_m")
+      );
+      const width = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "pergola.width_m")
+      );
+
+      if (length && width) {
+        const existing = lookup.get(`${workArea.id}:pergola.area_m2`);
+        const canDerive =
+          !existing ||
+          existing.source === "ai_extracted" ||
+          existing.source === "derived";
+
+        if (canDerive && existing?.source !== "user") {
+          derived.push({
+            work_area_id: workArea.id,
+            key: "pergola.area_m2",
+            label: "Pergola area",
+            value: roundToTwoDecimals(length * width),
+            unit: "m²",
+            source: "derived",
+          });
+        }
+      }
+    }
+
     if (workArea.type === "retaining_wall") {
       const existingHeight = lookup.get(
         `${workArea.id}:retaining_wall.height_m`
@@ -177,6 +205,15 @@ export function buildDerivedFactDisplays(
       displays.push({
         workAreaId: fact.work_area_id,
         label: "Calculated deck area",
+        text: `${fact.value} m²`,
+      });
+      continue;
+    }
+
+    if (fact.key === "pergola.area_m2" && typeof fact.value === "number") {
+      displays.push({
+        workAreaId: fact.work_area_id,
+        label: "Calculated pergola area",
         text: `${fact.value} m²`,
       });
       continue;

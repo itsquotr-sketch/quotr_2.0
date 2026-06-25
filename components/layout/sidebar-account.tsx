@@ -6,6 +6,7 @@ import {
   useAppUser,
 } from "@/components/layout/app-user-context";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { cn } from "@/lib/utils";
 
 function getInitials(fullName?: string | null, email?: string) {
   const display = getDisplayUserName(fullName, email);
@@ -21,29 +22,58 @@ function getInitials(fullName?: string | null, email?: string) {
   return (parts[0]?.[0] ?? "U").toUpperCase();
 }
 
-export function SidebarAccount() {
+type SidebarAccountProps = {
+  variant?: "sidebar" | "default";
+};
+
+export function SidebarAccount({ variant = "default" }: SidebarAccountProps) {
   const { userEmail, fullName, organisationName, tradingName } = useAppUser();
   const companyName = getDisplayCompanyName(tradingName, organisationName);
   const userName = getDisplayUserName(fullName, userEmail);
   const initials = getInitials(fullName, userEmail);
+  const isSidebar = variant === "sidebar";
 
   return (
     <div className="flex items-center gap-2.5">
       <Avatar size="sm">
-        <AvatarFallback className="text-[10px] font-medium">
+        <AvatarFallback
+          className={cn(
+            "text-[10px] font-medium",
+            isSidebar && "bg-sidebar-accent text-sidebar-accent-foreground"
+          )}
+        >
           {initials}
         </AvatarFallback>
       </Avatar>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-medium leading-tight">{userName}</p>
         <p
-          className="truncate text-xs text-muted-foreground"
+          className={cn(
+            "truncate text-sm font-medium leading-tight",
+            isSidebar && "text-sidebar-foreground"
+          )}
+        >
+          {userName}
+        </p>
+        <p
+          className={cn(
+            "truncate text-xs",
+            isSidebar
+              ? "text-sidebar-foreground/70"
+              : "text-muted-foreground"
+          )}
           title={companyName}
         >
           {companyName}
         </p>
-        {userEmail ? (
-          <p className="truncate text-[11px] text-muted-foreground/80">
+        {userEmail && !isSidebar ? (
+          <p
+            className={cn(
+              "truncate text-[11px]",
+              isSidebar
+                ? "hidden"
+                : "text-muted-foreground/80"
+            )}
+          >
             {userEmail}
           </p>
         ) : null}

@@ -196,6 +196,29 @@ function buildDeckDraft(
     );
   }
 
+  if (isAffirmative(factValue(facts, "deck.pile_or_post_replacement_required"))) {
+    draft = appendScopeClause(
+      draft,
+      "Pile, post or substructure replacement is included where applicable."
+    );
+  }
+
+  const boardWidth = factValue(facts, "deck.board_width_mm");
+  if (boardWidth) {
+    draft = appendScopeClause(
+      draft,
+      `${boardWidth} mm decking boards are allowed for within the agreed scope.`
+    );
+  }
+
+  const consentStatus = factValue(facts, "deck.engineering_or_consent_status");
+  if (consentStatus?.toLowerCase().includes("required")) {
+    draft = appendScopeClause(
+      draft,
+      "Engineering and consent requirements are subject to separate confirmation."
+    );
+  }
+
   draft = enrichFromPricingItems(draft, pricingItems);
 
   return finalizeDraft(
@@ -231,6 +254,38 @@ function buildPergolaDraft(
     draft = appendScopeClause(
       draft,
       `Pergola is intended as ${attachment.toLowerCase()} construction within the agreed scope.`
+    );
+  }
+
+  const roofingType = factValue(facts, "pergola.roofing_type");
+  if (roofingType && isAffirmative(factValue(facts, "pergola.roofing_included"))) {
+    draft = appendScopeClause(
+      draft,
+      `${roofingType} roof or covering is included where applicable.`
+    );
+  }
+
+  if (isAffirmative(factValue(facts, "pergola.gutters_included"))) {
+    draft = appendScopeClause(
+      draft,
+      "Gutter or drainage allowance is included where applicable."
+    );
+  }
+
+  if (isAffirmative(factValue(facts, "pergola.footings_required"))) {
+    draft = appendScopeClause(
+      draft,
+      "Post footings or concrete pads are included where applicable."
+    );
+  }
+
+  const finishType = factValue(facts, "pergola.finish_type");
+  if (isAffirmative(factValue(facts, "pergola.finish_required"))) {
+    draft = appendScopeClause(
+      draft,
+      finishType
+        ? `${finishType.replace(/_/g, " ")} finish is included where applicable.`
+        : "Painting or staining finish is included where applicable."
     );
   }
 
@@ -272,6 +327,53 @@ function buildFenceDraft(
     draft = appendScopeClause(
       draft,
       "Gate allowance is included where applicable."
+    );
+  }
+
+  if (isAffirmative(factValue(facts, "fence.disposal_required"))) {
+    draft = appendScopeClause(
+      draft,
+      "Disposal of removed fencing is included where applicable."
+    );
+  }
+
+  const finishRequired = factValue(facts, "fence.finish_required");
+  const finishType = factValue(facts, "fence.finish_type");
+  if (isAffirmative(finishRequired)) {
+    draft = appendScopeClause(
+      draft,
+      finishType
+        ? `${finishType.replace(/_/g, " ")} finish is included where applicable.`
+        : "Painting or staining finish is included where applicable."
+    );
+  } else if (
+    finishRequired?.toLowerCase() === "false" ||
+    finishRequired?.toLowerCase() === "no"
+  ) {
+    draft = appendScopeClause(
+      draft,
+      "Final painting or staining of the fence is excluded."
+    );
+  }
+
+  const slope = factValue(facts, "fence.slope_condition");
+  if (slope && !slope.toLowerCase().includes("flat")) {
+    draft = appendScopeClause(
+      draft,
+      "Sloping or uneven ground conditions are allowed for within the agreed scope."
+    );
+  }
+
+  const boundary = factValue(facts, "fence.boundary_approval_status");
+  if (boundary?.toLowerCase().includes("pending")) {
+    draft = appendScopeClause(
+      draft,
+      "Boundary/neighbour approval is pending confirmation."
+    );
+  } else if (boundary?.toLowerCase().includes("not sure")) {
+    draft = appendScopeClause(
+      draft,
+      "Boundary survey and neighbour approvals are excluded unless specifically confirmed."
     );
   }
 
@@ -381,6 +483,7 @@ function buildRetainingWallDraft(facts?: WorkAreaQuoteFact[]): string {
   const height =
     factValue(facts, "retaining_wall.height_m") ??
     factValue(facts, "retaining_wall.average_height_m");
+  const material = factValue(facts, "retaining_wall.material");
 
   let draft =
     "Construct retaining wall works to the agreed project scope, including wall materials, installation, drainage and backfill allowance where included and associated site works.";
@@ -391,16 +494,85 @@ function buildRetainingWallDraft(facts?: WorkAreaQuoteFact[]): string {
     draft = `Construct retaining wall works to the agreed project scope for an approximately ${length} m long wall, including wall materials, installation, drainage and backfill allowance where included and associated site works.`;
   }
 
-  if (isAffirmative(factValue(facts, "retaining_wall.is_raking"))) {
+  if (material) {
     draft = appendScopeClause(
       draft,
-      "Raking/pitched retaining wall construction is included where applicable."
+      `${material.toLowerCase()} retaining wall construction is allowed for within the agreed scope.`
     );
+  }
+
+  if (isAffirmative(factValue(facts, "retaining_wall.is_raking"))) {
+    const high = factValue(facts, "retaining_wall.height_high_m");
+    const low = factValue(facts, "retaining_wall.height_low_m");
+    if (high && low) {
+      draft = appendScopeClause(
+        draft,
+        `Raking wall from approximately ${high} m down to ${low} m is included where applicable.`
+      );
+    } else {
+      draft = appendScopeClause(
+        draft,
+        "Raking/pitched retaining wall construction is included where applicable."
+      );
+    }
   }
 
   const fixingType = factValue(facts, "retaining_wall.fixing_type");
   if (fixingType?.toLowerCase().includes("face")) {
     draft = appendScopeClause(draft, "Face-fixed wall construction is included.");
+  }
+
+  if (isAffirmative(factValue(facts, "retaining_wall.drainage_required"))) {
+    draft = appendScopeClause(
+      draft,
+      "Drainage allowance including novacoil with sleeve/sock is included where applicable."
+    );
+  }
+
+  if (isAffirmative(factValue(facts, "retaining_wall.backfill_included"))) {
+    draft = appendScopeClause(
+      draft,
+      "Backfill allowance is included where applicable."
+    );
+  }
+
+  const drainConnection = factValue(facts, "retaining_wall.drain_connection_required");
+  if (
+    drainConnection &&
+    !drainConnection.toLowerCase().startsWith("no")
+  ) {
+    draft = appendScopeClause(
+      draft,
+      "Drainage connection or cesspit allowance is included where applicable."
+    );
+  } else if (drainConnection?.toLowerCase().includes("not sure")) {
+    draft = appendScopeClause(
+      draft,
+      "Unknown drainage connections are excluded unless specifically confirmed."
+    );
+  }
+
+  const carting = factValue(facts, "retaining_wall.carting_distance_m");
+  if (carting) {
+    draft = appendScopeClause(
+      draft,
+      `Carting/material handling for approximately ${carting} m is allowed for within the agreed scope.`
+    );
+  }
+
+  if (isAffirmative(factValue(facts, "retaining_wall.disposal_included"))) {
+    draft = appendScopeClause(
+      draft,
+      "Spoil disposal and cartage is included where applicable."
+    );
+  } else {
+    const disposal = factValue(facts, "retaining_wall.disposal_included");
+    if (disposal?.toLowerCase() === "false" || disposal?.toLowerCase() === "no") {
+      draft = appendScopeClause(
+        draft,
+        "Spoil disposal and cartage is excluded unless specifically confirmed."
+      );
+    }
   }
 
   return finalizeDraft(

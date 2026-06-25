@@ -49,10 +49,15 @@ export type ProjectActionState = {
 
 export type DashboardPipelineSummary = {
   activeCount: number;
-  estimateReadyCount: number;
+  estimatingPricingCount: number;
+  quoteDraftCount: number;
   quotesSentCount: number;
   wonCount: number;
   lostCount: number;
+};
+
+export type DashboardProjectListItem = ProjectListItem & {
+  nextAction: string;
 };
 
 export type UpdateProjectBusinessStatusInput = {

@@ -5,6 +5,7 @@
 
 export const DERIVED_FACT_KEYS = new Set([
   "deck.area_m2",
+  "pergola.area_m2",
   "retaining_wall.height_m",
   "retaining_wall.backfill_volume_m3",
 ]);
@@ -28,6 +29,9 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
     demolition_required: "deck.existing_deck_removal",
     has_balustrade: "deck.balustrade_required",
     has_stairs: "deck.access_type",
+    handrail: "deck.handrail_required",
+    has_handrail: "deck.handrail_required",
+    access_difficulty: "deck.access",
   },
   fence: {
     length: "fence.length_m",
@@ -38,6 +42,21 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
     height_m: "fence.height_m",
     fence_height: "fence.height_m",
     "fence.height": "fence.height_m",
+    has_gate: "fence.gate_included",
+    gate_included: "fence.gate_included",
+    demolition_required: "fence.demolition_required",
+    existing_fence_removal: "fence.demolition_required",
+  },
+  pergola: {
+    length: "pergola.length_m",
+    length_m: "pergola.length_m",
+    width: "pergola.width_m",
+    width_m: "pergola.width_m",
+    area: "pergola.area_m2",
+    area_m2: "pergola.area_m2",
+    attachment: "pergola.attached",
+    roofing: "pergola.roofing_included",
+    freestanding: "pergola.attached",
   },
   retaining_wall: {
     length: "retaining_wall.length_m",

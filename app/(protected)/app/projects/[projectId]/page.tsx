@@ -1,7 +1,11 @@
 import { AssistantShell } from "@/components/assistant/AssistantShell";
+import {
+  WorkspaceHeaderBar,
+  WorkspacePage,
+} from "@/components/layout/workspace-page";
 import { UserMenu } from "@/components/layout/user-menu";
 import { DuplicatedProjectBanner } from "@/components/projects/DuplicatedProjectBanner";
-import { ProjectHeader } from "@/components/projects/ProjectHeader";
+import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { getAssistantState } from "@/lib/assistant/state";
 import { measureServerLoad } from "@/lib/perf/timing";
@@ -80,42 +84,40 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     assistantState.estimate?.isStale ?? tabContext.estimateIsStale;
 
   return (
-    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-      <header className="shrink-0 border-b bg-background">
-        <div className="mx-auto flex max-w-7xl items-start justify-between gap-4 px-4 py-6 sm:px-6 lg:px-8">
-          <ProjectHeader project={project} />
-          <div className="shrink-0 pt-1">
+    <WorkspacePage
+      header={
+        <WorkspaceHeaderBar
+          actions={
             <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
-          </div>
-        </div>
-      </header>
-
-      <ProjectWorkspaceNav
-        projectId={projectId}
-        activeTab="assistant"
+          }
+        >
+          <ProjectWorkspaceHeader project={project} subtitle="Project assistant" />
+        </WorkspaceHeaderBar>
+      }
+      nav={
+        <ProjectWorkspaceNav
+          projectId={projectId}
+          activeTab="assistant"
+          pricingSummary={pricingSummary ?? tabContext.pricingSummary}
+          quoteSummary={quoteSummary}
+          hasEstimate={hasEstimate || tabContext.hasEstimate}
+          estimateIsStale={estimateIsStale}
+        />
+      }
+    >
+      <DuplicatedProjectBanner
+        show={Boolean(project.duplicated_from_project_id)}
+      />
+      <AssistantShell
+        key={assistantState.project.stage}
+        initialState={assistantState}
+        initialNotes={noteList.notes}
+        pendingAnalysisCount={noteList.pendingAnalysisCount}
+        totalNoteCount={noteList.totalCount}
+        pendingNoteProposal={pendingNoteProposal}
         pricingSummary={pricingSummary ?? tabContext.pricingSummary}
         quoteSummary={quoteSummary}
-        hasEstimate={hasEstimate || tabContext.hasEstimate}
-        estimateIsStale={estimateIsStale}
       />
-
-      <div className="flex-1 overflow-auto overflow-x-hidden">
-        <div className="mx-auto mt-6 max-w-7xl px-4 pb-6 sm:px-6 lg:px-8">
-          <DuplicatedProjectBanner
-            show={Boolean(project.duplicated_from_project_id)}
-          />
-          <AssistantShell
-            key={assistantState.project.stage}
-            initialState={assistantState}
-            initialNotes={noteList.notes}
-            pendingAnalysisCount={noteList.pendingAnalysisCount}
-            totalNoteCount={noteList.totalCount}
-            pendingNoteProposal={pendingNoteProposal}
-            pricingSummary={pricingSummary ?? tabContext.pricingSummary}
-            quoteSummary={quoteSummary}
-          />
-        </div>
-      </div>
-    </div>
+    </WorkspacePage>
   );
 }

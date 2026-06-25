@@ -22,6 +22,12 @@ export type CompanySettings = {
   logoUrl: string | null;
   brandPrimaryColour: string | null;
   brandAccentColour: string | null;
+  defaultMaterialWastagePercent: number;
+  deckingWastagePercent: number | null;
+  sheetMaterialWastagePercent: number | null;
+  flooringWastagePercent: number | null;
+  paintWastagePercent: number | null;
+  timberFramingWastagePercent: number | null;
 };
 
 export type CompanySettingsInput = {
@@ -47,6 +53,12 @@ export type CompanySettingsInput = {
   logoUrl?: string;
   brandPrimaryColour?: string;
   brandAccentColour?: string;
+  defaultMaterialWastagePercent?: number;
+  deckingWastagePercent?: number | null;
+  sheetMaterialWastagePercent?: number | null;
+  flooringWastagePercent?: number | null;
+  paintWastagePercent?: number | null;
+  timberFramingWastagePercent?: number | null;
 };
 
 export type CompanySettingsActionResult = {

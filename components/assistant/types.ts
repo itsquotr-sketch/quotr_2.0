@@ -1,3 +1,5 @@
+import type { MaterialBuildUpEntry } from "@/lib/estimate/material-buildup-meta";
+
 export type AssistantStage =
   | "brief"
   | "confirm_work_areas"
@@ -102,6 +104,7 @@ export type EstimateLineItem = {
   itemKey?: string;
   sellDerivedFromMargin?: boolean;
   notes?: string;
+  materialBuildUps?: MaterialBuildUpEntry[];
 };
 
 export type Estimate = {
@@ -115,6 +118,7 @@ export type Estimate = {
   marginPercent: number;
   markupPercent?: number;
   isStale?: boolean;
+  calibrationVersion?: string | null;
   targetMarginPercent?: number | null;
   confidence: number;
   rateSourceSummary: string;

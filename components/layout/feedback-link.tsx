@@ -36,9 +36,9 @@ export function FeedbackLink({
       onClick={handleClick}
       className={cn(
         variant === "sidebar-footer"
-          ? "flex items-center gap-1.5 rounded-md px-1 py-1 text-xs text-muted-foreground transition-colors hover:text-foreground"
+          ? "flex items-center gap-1.5 rounded-md px-1.5 py-1.5 text-xs text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent/60 hover:text-sidebar-foreground print:hidden"
           : variant === "sidebar"
-            ? "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-muted-foreground transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+            ? "flex items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/60 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
             : "flex items-center gap-2",
         className
       )}

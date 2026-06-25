@@ -20,11 +20,17 @@ export function BenchmarkFallbackSection({
   const benchmarkEnabled = settings?.allow_benchmark_rates ?? true;
 
   return (
-    <Card>
+    <Card className="border-dashed border-border/80 bg-muted/10 shadow-none">
       <CardHeader>
-        <CardTitle>Benchmark fallbacks</CardTitle>
+        <div className="flex flex-wrap items-center gap-2">
+          <CardTitle className="text-base">Benchmark fallback rates</CardTitle>
+          <Badge variant="outline" className="text-[10px] font-normal">
+            Reference only
+          </Badge>
+        </div>
         <CardDescription>
-          Used when your own rate is missing.
+          Industry benchmark rates used only when your own rate is missing. These
+          are separate from your company rates above.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -37,8 +43,9 @@ export function BenchmarkFallbackSection({
           </Badge>
         </div>
         <p className="text-sm text-muted-foreground">
-          Add your own labour, scope and material rates above to reduce reliance
-          on benchmark assumptions.
+          When enabled, Quotr uses benchmark allowances during estimating if a
+          matching company rate is not set. Add your own labour, scope and
+          material rates to reduce reliance on benchmarks.
         </p>
         {!benchmarkEnabled ? (
           <p className="text-sm text-muted-foreground">
@@ -46,10 +53,10 @@ export function BenchmarkFallbackSection({
             missing&rdquo; in regenerated estimates.
           </p>
         ) : null}
-        <p className="text-sm text-muted-foreground">
-          Toggle benchmark fallbacks in Company defaults above. Estimates that
-          show &ldquo;Using benchmark allowances&rdquo; can be improved by
-          setting rates here, then regenerating.
+        <p className="text-xs text-muted-foreground">
+          Toggle benchmark fallbacks in Company defaults. Estimates that show
+          &ldquo;Using benchmark allowances&rdquo; can be improved by setting
+          rates here, then regenerating.
         </p>
       </CardContent>
     </Card>

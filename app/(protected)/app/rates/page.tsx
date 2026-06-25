@@ -1,3 +1,4 @@
+import { PageContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { RatesPageContent } from "@/components/rates/RatesPageContent";
@@ -20,19 +21,17 @@ export default async function RatesPage() {
   const state = await measureServerLoad("rates", () => getRatesPageState());
 
   return (
-    <>
+    <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Rates"
-        description="Set the rates Quotr uses to prepare quick estimates."
+        description="Set the rates Quotr uses to prepare estimates."
         actions={
           <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
         }
       />
-      <div className="flex-1 overflow-auto">
-        <div className="mx-auto w-full max-w-5xl px-4 py-6 sm:px-6 lg:px-8">
-          <RatesPageContent initialState={state} />
-        </div>
-      </div>
-    </>
+      <PageContainer>
+        <RatesPageContent initialState={state} />
+      </PageContainer>
+    </div>
   );
 }

@@ -1,3 +1,4 @@
+import { buildPricingNotesFromEstimateLineItem } from "@/lib/estimate/line-item-metadata";
 import {
   cleanClientLabel,
   defaultDeliveryMethod,
@@ -86,6 +87,7 @@ export function valuesFromEstimateLineItem(lineItem: EstimateLineItemRow) {
     productivityUnit: fields.productivityUnit,
     calculatedQuantity: fields.calculatedQuantity,
     internalDescription: parseDisplayNotes(lineItem.notes),
+    notesInternal: buildPricingNotesFromEstimateLineItem(lineItem.notes),
   };
 }
 
@@ -343,7 +345,7 @@ export function buildPricingItemRowFromEstimate(
     manually_edited: false,
     orphaned: false,
     recalibration_note: null,
-    notes_internal: values.internalDescription,
+    notes_internal: values.notesInternal,
   };
 }
 
@@ -370,5 +372,6 @@ export function buildPricingItemUpdateFromEstimate(
     visible_on_quote: existing.visible_on_quote,
     optional: existing.optional,
     notes_client: existing.notes_client,
+    notes_internal: values.notesInternal,
   };
 }

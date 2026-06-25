@@ -124,7 +124,7 @@ export async function getAssistantState(
     supabase
       .from("estimates")
       .select(
-        "id, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, is_stale, target_margin_percent, confidence, rate_source_summary, assumptions, missing_info, exclusions"
+        "id, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, is_stale, calibration_version, target_margin_percent, confidence, rate_source_summary, assumptions, missing_info, exclusions"
       )
       .eq("project_id", projectId)
       .maybeSingle(),

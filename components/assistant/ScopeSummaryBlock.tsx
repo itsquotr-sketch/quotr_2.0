@@ -10,6 +10,8 @@ import {
 import { ScopeReviewFactRow } from "@/components/assistant/ScopeReviewFactRow";
 import { WorkAreaQuoteDescriptionEditor } from "@/components/work-areas/WorkAreaQuoteDescriptionEditor";
 import type { WorkArea, WorkAreaActiveQuestion } from "@/components/assistant/types";
+import { cn } from "@/lib/utils";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -166,15 +168,39 @@ export function ScopeSummaryBlock({
         </div>
       ) : null}
 
-      {scopeReview.workAreas.map((workArea) => (
+      {scopeReview.workAreas.map((workArea) => {
+        const hasMissing = workArea.missingItems.length > 0;
+
+        return (
         <article
           key={workArea.workAreaId}
-          className="rounded-xl border border-border/60 bg-muted/20 px-3 py-3 sm:px-4 sm:py-3.5"
+          className={cn(
+            "rounded-xl border bg-card px-3 py-3 sm:px-4 sm:py-3.5",
+            hasMissing
+              ? "border-amber-200/80 bg-amber-50/30"
+              : "border-border/60"
+          )}
         >
           <div className="flex items-start justify-between gap-2">
-            <h4 className="text-sm font-semibold text-foreground">
-              {workArea.workAreaName}
-            </h4>
+            <div className="min-w-0 space-y-1">
+              <h4 className="text-sm font-semibold text-foreground">
+                {workArea.workAreaName}
+              </h4>
+              {workArea.summary ? (
+                <p className="text-xs leading-relaxed text-muted-foreground break-words">
+                  {workArea.summary}
+                </p>
+              ) : null}
+            </div>
+            <div className="flex shrink-0 items-center gap-2">
+              {hasMissing ? (
+                <Badge
+                  variant="outline"
+                  className="border-amber-300/80 bg-amber-50 text-[10px] font-medium text-amber-900"
+                >
+                  {workArea.missingItems.length} missing
+                </Badge>
+              ) : null}
             {manageWorkAreas && onExcludeWorkArea ? (
               <Button
                 type="button"
@@ -192,11 +218,22 @@ export function ScopeSummaryBlock({
                 Remove from estimate
               </Button>
             ) : null}
+            </div>
           </div>
-          {workArea.summary ? (
-            <p className="mt-1 text-xs leading-relaxed text-muted-foreground break-words">
-              {workArea.summary}
-            </p>
+
+          {workArea.missingItems.length > 0 ? (
+            <div className="mt-3 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5">
+              <h4 className="text-xs font-medium text-amber-900">
+                Missing details
+              </h4>
+              <ul className="mt-1.5 space-y-1 text-sm text-amber-950">
+                {workArea.missingItems.map((item) => (
+                  <li key={item} className="leading-relaxed break-words">
+                    {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
           ) : null}
 
           {editable ? (
@@ -227,7 +264,7 @@ export function ScopeSummaryBlock({
           ) : null}
 
           {workArea.facts.length > 0 ? (
-            <div className="mt-3 grid gap-x-6 gap-y-2 sm:grid-cols-2">
+            <div className="mt-3 grid gap-2 sm:grid-cols-2">
               {workArea.facts.map((fact) => {
                 const factKey = `${workArea.workAreaId}:${fact.key}`;
                 return (
@@ -292,22 +329,9 @@ export function ScopeSummaryBlock({
             />
           ) : null}
 
-          {workArea.missingItems.length > 0 ? (
-            <div className="mt-3 border-t border-border/50 pt-3">
-              <h4 className="text-xs font-medium text-amber-700 dark:text-amber-400">
-                Missing
-              </h4>
-              <ul className="mt-1.5 list-inside list-disc space-y-1 text-sm text-amber-800 dark:text-amber-300">
-                {workArea.missingItems.map((item) => (
-                  <li key={item} className="leading-relaxed break-words">
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-          ) : null}
         </article>
-      ))}
+        );
+      })}
 
       {scopeReview.excludedWorkAreas.length > 0 ? (
         <p className="text-xs text-muted-foreground">

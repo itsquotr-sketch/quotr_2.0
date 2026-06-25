@@ -6,6 +6,7 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { WorkspaceBanner } from "@/components/layout/workspace-banner";
 import { PricingDetailsCard } from "@/components/pricing/PricingDetailsCard";
 import { PricingHeader } from "@/components/pricing/PricingHeader";
+import { PricingMobileActionBar } from "@/components/pricing/PricingMobileActionBar";
 import { PricingReviewChecklist } from "@/components/pricing/PricingReviewChecklist";
 import { PricingSummaryPanel } from "@/components/pricing/PricingSummaryPanel";
 import { PricingTermsCard } from "@/components/pricing/PricingTermsCard";
@@ -45,10 +46,7 @@ export function PricingWorkspace({
   const [document, setDocument] = useState<PricingDocument>(initialData.document);
   const [items, setItems] = useState<PricingItem[]>(initialData.items);
   const [workAreas, setWorkAreas] = useState(initialData.workAreas);
-  const {
-    projectTitle,
-    latestEstimateIsStale,
-  } = initialData;
+  const { projectTitle, latestEstimateIsStale } = initialData;
   const projectId = document.project_id;
   const pricingDocumentId = document.id;
 
@@ -166,7 +164,7 @@ export function PricingWorkspace({
   };
 
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
       <PricingHeader
         document={document}
         projectTitle={projectTitle}
@@ -174,30 +172,49 @@ export function PricingWorkspace({
         onSaveDocument={handleSaveDocument}
       />
 
+      <div className="md:hidden">
+        <PricingSummaryPanel
+          document={document}
+          projectId={projectId}
+          quoteSummary={quoteSummary}
+          pricingChangedAfterQuote={pricingChangedAfterQuote}
+          compact
+        />
+      </div>
+
       <WorkspaceBanner>
         Review and adjust pricing before creating a client quote. You remain
         responsible for confirming scope, quantities, subcontractor allowances,
         terms and final pricing.
       </WorkspaceBanner>
 
-      <RecalibrationBanner
-        projectId={projectId}
-        pricingDocumentId={pricingDocumentId}
-        needsRecalibration={document.needs_recalibration}
-        quoteExists={quoteSummary != null}
-        latestEstimateIsStale={latestEstimateIsStale}
-        onApplied={({ document: updatedDocument, items: updatedItems }) => {
-          setDocument(updatedDocument);
-          setItems(updatedItems);
-        }}
-        onKeepCurrent={() => {
-          setDocument((current) => ({
-            ...current,
-            needs_recalibration: false,
-            recalibration_status: "manually_kept",
-          }));
-        }}
-      />
+      {quoteSummary != null ? (
+        <p className="text-xs leading-relaxed text-muted-foreground">
+          A quote exists for this project. Work area description or pricing
+          changes may require a quote revision.
+        </p>
+      ) : null}
+
+      <div id="recalibration-banner">
+        <RecalibrationBanner
+          projectId={projectId}
+          pricingDocumentId={pricingDocumentId}
+          needsRecalibration={document.needs_recalibration}
+          quoteExists={quoteSummary != null}
+          latestEstimateIsStale={latestEstimateIsStale}
+          onApplied={({ document: updatedDocument, items: updatedItems }) => {
+            setDocument(updatedDocument);
+            setItems(updatedItems);
+          }}
+          onKeepCurrent={() => {
+            setDocument((current) => ({
+              ...current,
+              needs_recalibration: false,
+              recalibration_status: "manually_kept",
+            }));
+          }}
+        />
+      </div>
 
       {document.status !== "reviewed" ? (
         <PricingReviewChecklist
@@ -241,7 +258,6 @@ export function PricingWorkspace({
                 projectId={projectId}
                 workArea={section.workArea}
                 items={section.items}
-                existingQuoteWarning={quoteSummary != null}
                 onQuoteDescriptionSaved={handleQuoteDescriptionSaved}
                 onSaveItem={handleSaveItem}
                 onDuplicateItem={handleDuplicateItem}
@@ -261,12 +277,27 @@ export function PricingWorkspace({
         </div>
 
         <PricingSummaryPanel
+          className="hidden md:block"
           document={document}
           projectId={projectId}
           quoteSummary={quoteSummary}
           pricingChangedAfterQuote={pricingChangedAfterQuote}
         />
       </div>
+
+      <PricingMobileActionBar
+        document={document}
+        projectId={projectId}
+        quoteSummary={quoteSummary}
+        isSaving={isSaving}
+        needsRecalibration={document.needs_recalibration}
+        onSaveDocument={handleSaveDocument}
+        onRecalibrate={() => {
+          globalThis.document
+            .getElementById("recalibration-banner")
+            ?.scrollIntoView({ behavior: "smooth", block: "start" });
+        }}
+      />
     </div>
   );
 }

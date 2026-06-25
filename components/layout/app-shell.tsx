@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { AppSidebarNav } from "@/components/app-sidebar";
 import { AppUserProvider } from "@/components/layout/app-user-context";
 import { BetaNotice } from "@/components/layout/beta-notice";
+import { MobileNav } from "@/components/layout/mobile-nav";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 
 type AppShellProps = {
@@ -18,6 +18,10 @@ type AppShellProps = {
 
 function isQuotePrintRoute(pathname: string | null): boolean {
   return Boolean(pathname?.match(/\/quotes\/[^/]+\/print$/));
+}
+
+function isProjectRoute(pathname: string | null): boolean {
+  return Boolean(pathname?.startsWith("/app/projects/"));
 }
 
 export function AppShell({
@@ -38,6 +42,8 @@ export function AppShell({
     );
   }
 
+  const showMobileNav = !isProjectRoute(pathname);
+
   return (
     <AppUserProvider
       value={{
@@ -48,14 +54,23 @@ export function AppShell({
         setupIncomplete,
       }}
     >
-      <div className="flex min-h-svh w-full overflow-x-hidden">
+      <div className="flex h-dvh w-full overflow-hidden">
         <AppSidebarNav setupIncomplete={setupIncomplete} />
-        <div className="flex min-w-0 flex-1 flex-col bg-background print:bg-white">
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background print:bg-white">
           <BetaNotice />
-          <div className="flex h-14 items-center border-b px-4 md:hidden print:hidden">
-            <QuotrLogo height={28} />
+          <div className="flex h-12 shrink-0 items-center border-b px-4 md:hidden print:hidden">
+            <QuotrLogo height={26} />
           </div>
-          {children}
+          <div
+            className={
+              showMobileNav
+                ? "flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+                : "flex min-h-0 flex-1 flex-col overflow-hidden"
+            }
+          >
+            {children}
+          </div>
+          {showMobileNav ? <MobileNav /> : null}
         </div>
       </div>
     </AppUserProvider>

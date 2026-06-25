@@ -176,7 +176,8 @@ export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSu
   if (!context) {
     return {
       activeCount: 0,
-      estimateReadyCount: 0,
+      estimatingPricingCount: 0,
+      quoteDraftCount: 0,
       quotesSentCount: 0,
       wonCount: 0,
       lostCount: 0,
@@ -192,8 +193,13 @@ export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSu
     const projects = await listProjects({ filter: "active" });
     return {
       activeCount: projects.length,
-      estimateReadyCount: projects.filter(
-        (project) => project.business_status === "estimate_ready"
+      estimatingPricingCount: projects.filter(
+        (project) =>
+          project.business_status === "estimating" ||
+          project.business_status === "estimate_ready"
+      ).length,
+      quoteDraftCount: projects.filter(
+        (project) => project.business_status === "quote_draft"
       ).length,
       quotesSentCount: projects.filter(
         (project) => project.business_status === "quote_sent"
@@ -214,7 +220,8 @@ export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSu
     console.error("[getDashboardPipelineSummary] query failed:", error.message);
     return {
       activeCount: 0,
-      estimateReadyCount: 0,
+      estimatingPricingCount: 0,
+      quoteDraftCount: 0,
       quotesSentCount: 0,
       wonCount: 0,
       lostCount: 0,
@@ -223,7 +230,8 @@ export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSu
 
   const rows = data ?? [];
   let activeCount = 0;
-  let estimateReadyCount = 0;
+  let estimatingPricingCount = 0;
+  let quoteDraftCount = 0;
   let quotesSentCount = 0;
   let wonCount = 0;
   let lostCount = 0;
@@ -240,8 +248,11 @@ export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSu
     ) {
       activeCount += 1;
     }
-    if (status === "estimate_ready") {
-      estimateReadyCount += 1;
+    if (status === "estimating" || status === "estimate_ready") {
+      estimatingPricingCount += 1;
+    }
+    if (status === "quote_draft") {
+      quoteDraftCount += 1;
     }
     if (status === "quote_sent") {
       quotesSentCount += 1;
@@ -256,7 +267,8 @@ export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSu
 
   return {
     activeCount,
-    estimateReadyCount,
+    estimatingPricingCount,
+    quoteDraftCount,
     quotesSentCount,
     wonCount,
     lostCount,

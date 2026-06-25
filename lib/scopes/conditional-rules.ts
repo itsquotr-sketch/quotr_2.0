@@ -127,6 +127,94 @@ export function shouldHideConditionalQuestion(
     return false;
   }
 
+  if (key === "deck.handrail_required") {
+    const balustrade = boolFact(lookup, workAreaId, "deck.balustrade_required");
+    if (balustrade === true) return true;
+    return false;
+  }
+
+  if (key === "deck.pile_or_post_replacement_required") {
+    const height = deckHeightM(lookup, workAreaId);
+    const level = strFact(lookup, workAreaId, "deck.level");
+    const elevated =
+      (height !== null && height > 0.3) ||
+      Boolean(level?.toLowerCase().includes("elevated"));
+    const removal = boolFact(lookup, workAreaId, "deck.existing_deck_removal");
+    const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
+    const shouldAsk =
+      elevated ||
+      removal === true ||
+      substructure === true ||
+      substructure === null;
+    if (!shouldAsk) return true;
+    return false;
+  }
+
+  if (key === "deck.pile_or_post_count") {
+    const replacement = boolFact(
+      lookup,
+      workAreaId,
+      "deck.pile_or_post_replacement_required"
+    );
+    if (replacement !== true) return true;
+    return false;
+  }
+
+  if (key === "deck.substructure_condition") {
+    const replacement = boolFact(
+      lookup,
+      workAreaId,
+      "deck.pile_or_post_replacement_required"
+    );
+    const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
+    if (replacement !== true && substructure !== true && substructure !== null) {
+      return true;
+    }
+    return false;
+  }
+
+  if (key === "fence.gate_count") {
+    const gate = boolFact(lookup, workAreaId, "fence.gate_included");
+    if (gate !== true) return true;
+    return false;
+  }
+
+  if (key === "fence.disposal_required") {
+    const demo = boolFact(lookup, workAreaId, "fence.demolition_required");
+    if (demo !== true) return true;
+    return false;
+  }
+
+  if (key === "fence.finish_type" || key === "fence.finish_sides") {
+    const finish = boolFact(lookup, workAreaId, "fence.finish_required");
+    if (finish !== true) return true;
+    return false;
+  }
+
+  if (key === "pergola.roofing_type") {
+    const roofing = boolFact(lookup, workAreaId, "pergola.roofing_included");
+    if (roofing !== true) return true;
+    return false;
+  }
+
+  if (key === "pergola.footings_required") {
+    const attached = strFact(lookup, workAreaId, "pergola.attached");
+    if (attached?.toLowerCase().includes("attach")) return true;
+    return false;
+  }
+
+  if (key === "pergola.finish_type") {
+    const finish = boolFact(lookup, workAreaId, "pergola.finish_required");
+    if (finish !== true) return true;
+    return false;
+  }
+
+  if (key === "pergola.length_m" || key === "pergola.width_m") {
+    const area = numFact(lookup, workAreaId, "pergola.area_m2");
+    if (area !== null) return true;
+    return false;
+  }
+
   if (key === "retaining_wall.height_m") {
     const heightFact = lookup.get(`${workAreaId}:retaining_wall.height_m`);
     if (heightFact?.source === "derived") return true;

@@ -310,6 +310,11 @@ export function buildLineItemNotes(item: EstimateLineItemInput): string | null {
       sellRate: item.sellRate,
       rateSourceType: item.rateSourceType,
       sellDerivedFromMargin: item.sellDerivedFromMargin,
+      materialBuildUp: item.materialBuildUp,
+      materialBuildUps:
+        item.materialBuildUps ??
+        (item.materialBuildUp ? [item.materialBuildUp] : undefined),
+      materialRateResolution: item.materialRateResolution,
     },
   });
 }

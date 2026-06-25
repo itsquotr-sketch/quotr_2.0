@@ -17,6 +17,14 @@ const DEFAULT_LABOUR_SELL_RATE = 90;
 const ITEM_KEY_ALIASES: Record<string, string[]> = {
   "scope.retaining_wall.face_m2": ["scope.retaining_wall.m2"],
   "scope.demolition.m2": ["scope.demolition.hour"],
+  "pergola.frame.timber.m2": ["pergola_timber_frame_m2"],
+  "pergola.frame.aluminium.m2": ["pergola_aluminium_frame_m2"],
+  "pergola.frame.steel.m2": ["pergola_steel_frame_m2"],
+  "pergola.roof.polycarbonate.m2": ["pergola_roof_polycarbonate_m2"],
+  "pergola.roof.colorsteel.m2": ["pergola_roof_colorsteel_m2"],
+  "pergola.roof.timber_batten.m2": ["pergola_roof_timber_batten_m2"],
+  "pergola.footings.each": ["pergola_footings_each"],
+  "pergola.gutters.lm": ["pergola_gutters_lm"],
 };
 
 function getDefaultMarginPercent(settings: OrganisationSettings | null): number {

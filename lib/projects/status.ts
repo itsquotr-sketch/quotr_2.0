@@ -157,18 +157,16 @@ export const DASHBOARD_FILTER_OPTIONS: {
   value: ProjectListFilter;
   label: string;
 }[] = [
+  { value: "all", label: "All" },
   { value: "active", label: "Active" },
   { value: "lead", label: "Lead" },
-  { value: "site_visit", label: "Site visit" },
-  { value: "scoping", label: "Scoping" },
   { value: "estimating", label: "Estimating" },
-  { value: "estimate_ready", label: "Estimate ready" },
-  { value: "quote_draft", label: "Quote draft" },
-  { value: "quote_sent", label: "Quote sent" },
+  { value: "estimate_ready", label: "Pricing" },
+  { value: "quote_draft", label: "Quote Draft" },
+  { value: "quote_sent", label: "Quote Sent" },
   { value: "won", label: "Won" },
   { value: "lost", label: "Lost" },
   { value: "archived", label: "Archived" },
-  { value: "all", label: "All" },
 ];
 
 export function parseProjectListFilter(value?: string): ProjectListFilter {

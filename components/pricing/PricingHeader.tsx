@@ -49,7 +49,7 @@ export function PricingHeader({
             variant="outline"
             disabled={isSaving}
             onClick={onSaveDocument}
-            className="shrink-0"
+            className="hidden shrink-0 md:inline-flex"
           >
             {isSaving ? (
               <>

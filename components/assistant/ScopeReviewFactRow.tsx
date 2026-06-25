@@ -85,12 +85,12 @@ export function ScopeReviewFactRow({
 
   if (!isEditing) {
     return (
-      <div className="group text-sm leading-relaxed">
+      <div className="group rounded-md border border-transparent px-2 py-1.5 text-sm leading-snug transition-colors hover:border-border/50 hover:bg-muted/30">
         <div className="flex items-start justify-between gap-2">
           <div className="min-w-0">
-            <span className="text-muted-foreground">{fact.label}:</span>{" "}
-            <span className="text-foreground">{fact.value}</span>{" "}
-            <span className="text-muted-foreground">({sourceText})</span>
+            <p className="text-xs text-muted-foreground">{fact.label}</p>
+            <p className="mt-0.5 font-medium text-foreground">{fact.value}</p>
+            <p className="mt-0.5 text-[11px] text-muted-foreground">{sourceText}</p>
             {fact.derivedNote ? (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {fact.derivedNote}
@@ -102,7 +102,7 @@ export function ScopeReviewFactRow({
               type="button"
               variant="ghost"
               size="sm"
-              className="h-7 shrink-0 px-2 text-xs opacity-70 group-hover:opacity-100"
+              className="h-7 shrink-0 px-2 text-xs opacity-100 sm:opacity-0 sm:group-hover:opacity-100"
               onClick={() => {
                 setDraftValue(fact.rawValue as string | number | boolean);
                 setIsEditing(true);
@@ -133,7 +133,7 @@ export function ScopeReviewFactRow({
                 className={cn(
                   "rounded-2xl border px-2.5 py-1 text-xs transition-colors",
                   chipValueMatches(option, draftValue)
-                    ? "border-primary/30 bg-primary/5 font-medium text-primary"
+                    ? "border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]/50 font-medium text-foreground"
                     : "border-border hover:bg-muted/50"
                 )}
               >

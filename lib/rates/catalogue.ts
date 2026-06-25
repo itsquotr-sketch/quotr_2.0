@@ -8,6 +8,7 @@ import {
   RETAINING_WALL_BENCHMARKS,
 } from "@/lib/estimate/benchmark-rates";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
+import { SPECIFIC_MATERIAL_RATE_CATALOGUE } from "@/lib/rates/specific-material-catalogue";
 
 function entry(
   partial: Omit<RateCatalogueEntry, "recommended"> & {
@@ -239,7 +240,7 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   // Pergola
   entry({
     item_key: "pergola.material.m2",
-    label: "Pergola frame materials",
+    label: "Pergola frame materials (generic)",
     rate_type: "material",
     category: "material",
     work_area_type: "pergola",
@@ -252,8 +253,47 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
     section: "material",
   }),
   entry({
+    item_key: "pergola.frame.timber.m2",
+    label: "Pergola timber frame",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "pergola",
+    workAreaLabel: "Pergola",
+    unit: "m2",
+    defaultCostRate: PERGOLA_BENCHMARKS.timberFrame.cost,
+    defaultSellRate: PERGOLA_BENCHMARKS.timberFrame.sell,
+    calculatorSupport: "used_now",
+    section: "material",
+  }),
+  entry({
+    item_key: "pergola.frame.aluminium.m2",
+    label: "Pergola aluminium frame",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "pergola",
+    workAreaLabel: "Pergola",
+    unit: "m2",
+    defaultCostRate: PERGOLA_BENCHMARKS.aluminiumFrame.cost,
+    defaultSellRate: PERGOLA_BENCHMARKS.aluminiumFrame.sell,
+    calculatorSupport: "used_now",
+    section: "material",
+  }),
+  entry({
+    item_key: "pergola.frame.steel.m2",
+    label: "Pergola steel frame",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "pergola",
+    workAreaLabel: "Pergola",
+    unit: "m2",
+    defaultCostRate: PERGOLA_BENCHMARKS.steelFrame.cost,
+    defaultSellRate: PERGOLA_BENCHMARKS.steelFrame.sell,
+    calculatorSupport: "used_now",
+    section: "material",
+  }),
+  entry({
     item_key: "pergola.roofing.m2",
-    label: "Pergola roofing",
+    label: "Pergola roofing (generic)",
     rate_type: "material",
     category: "material",
     work_area_type: "pergola",
@@ -261,6 +301,71 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     defaultCostRate: PERGOLA_BENCHMARKS.roofing.cost,
     defaultSellRate: PERGOLA_BENCHMARKS.roofing.sell,
+    calculatorSupport: "used_now",
+    section: "material",
+  }),
+  entry({
+    item_key: "pergola.roof.colorsteel.m2",
+    label: "Pergola Colorsteel roofing",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "pergola",
+    workAreaLabel: "Pergola",
+    unit: "m2",
+    defaultCostRate: PERGOLA_BENCHMARKS.colorsteelRoofing.cost,
+    defaultSellRate: PERGOLA_BENCHMARKS.colorsteelRoofing.sell,
+    calculatorSupport: "used_now",
+    section: "material",
+  }),
+  entry({
+    item_key: "pergola.roof.polycarbonate.m2",
+    label: "Pergola polycarbonate roofing",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "pergola",
+    workAreaLabel: "Pergola",
+    unit: "m2",
+    defaultCostRate: PERGOLA_BENCHMARKS.polycarbonateRoofing.cost,
+    defaultSellRate: PERGOLA_BENCHMARKS.polycarbonateRoofing.sell,
+    calculatorSupport: "used_now",
+    section: "material",
+  }),
+  entry({
+    item_key: "pergola.roof.timber_batten.m2",
+    label: "Pergola timber batten roofing",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "pergola",
+    workAreaLabel: "Pergola",
+    unit: "m2",
+    defaultCostRate: PERGOLA_BENCHMARKS.roofing.cost,
+    defaultSellRate: PERGOLA_BENCHMARKS.roofing.sell,
+    calculatorSupport: "used_now",
+    section: "material",
+  }),
+  entry({
+    item_key: "pergola.footings.each",
+    label: "Pergola footings/posts",
+    rate_type: "allowance",
+    category: "allowance",
+    work_area_type: "pergola",
+    workAreaLabel: "Pergola",
+    unit: "each",
+    defaultCostRate: PERGOLA_BENCHMARKS.footingsEach.cost,
+    defaultSellRate: PERGOLA_BENCHMARKS.footingsEach.sell,
+    calculatorSupport: "used_now",
+    section: "material",
+  }),
+  entry({
+    item_key: "pergola.gutters.lm",
+    label: "Pergola gutters",
+    rate_type: "allowance",
+    category: "allowance",
+    work_area_type: "pergola",
+    workAreaLabel: "Pergola",
+    unit: "lm",
+    defaultCostRate: PERGOLA_BENCHMARKS.gutterPerLm.cost,
+    defaultSellRate: PERGOLA_BENCHMARKS.gutterPerLm.sell,
     calculatorSupport: "used_now",
     section: "material",
   }),
@@ -466,6 +571,11 @@ export const ALL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...MATERIAL_RATE_CATALOGUE,
 ];
 
+export const FULL_RATE_CATALOGUE: RateCatalogueEntry[] = [
+  ...ALL_RATE_CATALOGUE,
+  ...SPECIFIC_MATERIAL_RATE_CATALOGUE,
+];
+
 export const RECOMMENDED_RATE_CATALOGUE = ALL_RATE_CATALOGUE.filter(
   (entry) => entry.recommended
 );
@@ -473,7 +583,7 @@ export const RECOMMENDED_RATE_CATALOGUE = ALL_RATE_CATALOGUE.filter(
 export function getCatalogueEntry(
   itemKey: string
 ): RateCatalogueEntry | undefined {
-  return ALL_RATE_CATALOGUE.find((entry) => entry.item_key === itemKey);
+  return FULL_RATE_CATALOGUE.find((entry) => entry.item_key === itemKey);
 }
 
 export function formatRateUnit(unit: string): string {
