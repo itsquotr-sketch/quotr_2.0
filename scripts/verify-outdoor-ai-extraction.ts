@@ -6,6 +6,10 @@
  * Requires ANTHROPIC_API_KEY in the environment. If unavailable, the script
  * documents expected assertions and exits with code 0 after printing instructions.
  */
+import { config } from "dotenv";
+
+config({ path: ".env.local" });
+
 import Anthropic from "@anthropic-ai/sdk";
 import {
   BRIEF_EXTRACTION_SYSTEM_PROMPT,
@@ -17,6 +21,7 @@ import {
   deriveFactsForProject,
   mergeDerivedFactsIntoRecords,
 } from "../lib/scopes/derived-facts";
+import { normaliseAIExtraction } from "../lib/scopes/normalise-extracted-facts";
 import type { ProjectFactRecord } from "../lib/scopes/fact-values";
 import { toPositiveNumber } from "../lib/scopes/fact-values";
 
@@ -501,12 +506,12 @@ async function runCase(client: Anthropic, model: string, testCase: BriefCase) {
   const rawResponseText = textBlock.text;
   const rawParsedJson = extractJsonFromText(rawResponseText);
 
-  const result = validateAndFilterExtraction(
+  const validated = validateAndFilterExtraction(
     rawParsedJson,
     OUTDOOR_TYPES,
     catalogueTypes
   );
-
+  const result = normaliseAIExtraction(validated);
   const normalized = applyDerivedFactsPipeline(result);
 
   const assertionContext: AssertionDebugContext = {

@@ -14,8 +14,10 @@ import {
 import { calculateKitchen } from "@/lib/estimate/calculators/kitchen";
 import { calculatePergola } from "@/lib/estimate/calculators/pergola";
 import { calculateRetainingWall } from "@/lib/estimate/calculators/retaining-wall";
+import { createAssumptionMetadata, mergeAssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import { finalizeEstimateResult, mergeUnique } from "@/lib/estimate/summary";
 import { mergeDuplicateMaterialBuildUpLineItems } from "@/lib/estimate/material-buildup-dedupe";
+import { dedupePricedItemsByScopeOwnership } from "@/lib/estimate/pricing-ownership";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -60,6 +62,7 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
   const missingInfo: string[] = [];
   const exclusions: string[] = [];
   const calculatorResults: CalculatorResult[] = [];
+  const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
   for (const workArea of confirmed) {
@@ -80,6 +83,15 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
     const result = calculator(context, workArea);
     calculatorResults.push(result);
 
+    if (result.assumptionMetadata) {
+      const merged = mergeAssumptionMetadata([
+        assumptionMetadata,
+        result.assumptionMetadata,
+      ]);
+      assumptionMetadata.defaultedFacts = merged.defaultedFacts;
+      assumptionMetadata.assumptionSeverity = merged.assumptionSeverity;
+    }
+
     for (const item of result.lineItems) {
       lineItems.push({
         ...item,
@@ -99,10 +111,13 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
   }
 
   return finalizeEstimateResult({
-    lineItems: mergeDuplicateMaterialBuildUpLineItems(lineItems),
+    lineItems: dedupePricedItemsByScopeOwnership(
+      mergeDuplicateMaterialBuildUpLineItems(lineItems)
+    ),
     assumptions: mergeUnique(assumptions),
     missingInfo: mergeUnique(missingInfo),
     exclusions: mergeUnique(exclusions),
     calculatorResults,
+    assumptionMetadata,
   });
 }

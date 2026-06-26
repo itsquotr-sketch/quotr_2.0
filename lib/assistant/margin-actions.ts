@@ -11,6 +11,7 @@ import {
   validateTargetMarginPercent,
 } from "@/lib/estimate/margin-override";
 import { getDefaultMarginPercent } from "@/lib/estimate/rates";
+import { assertOrgOwnsProject } from "@/lib/security/org-ownership";
 import type { OrganisationSettings } from "@/components/setup/types";
 
 const updateMarginSchema = z.object({
@@ -55,6 +56,11 @@ export async function updateEstimateMargin(
 
   const { supabase, orgId } = context;
   const { projectId, targetMarginPercent } = parsed.data;
+
+  const ownedProject = await assertOrgOwnsProject(context, projectId);
+  if ("error" in ownedProject) {
+    return { error: ownedProject.error };
+  }
 
   if (targetMarginPercent != null) {
     const validationError = validateTargetMarginPercent(targetMarginPercent);

@@ -18,7 +18,7 @@ export type ProjectFactInsertRow = {
   work_area_id: string | null;
   key: string;
   label: string;
-  value: string | number | boolean;
+  value: string | number | boolean | string[];
   unit: string | null;
   source: "ai_extracted";
   confidence: number;

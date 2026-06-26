@@ -111,57 +111,69 @@ export function PricingWorkspace({
     }));
   };
 
-  const handleSaveItem = async (itemId: string, input: PricingItemInput) => {
-    const result = await updatePricingItem(itemId, input);
-    if (!result.error && result.item && result.document) {
-      setItems((current) =>
-        current.map((item) => (item.id === itemId ? result.item! : item))
-      );
-      applyDocumentUpdate(result.document);
-    }
-    return result;
-  };
+  const handleSaveItem = useCallback(
+    async (itemId: string, input: PricingItemInput) => {
+      const result = await updatePricingItem(itemId, input);
+      if (!result.error && result.item && result.document) {
+        setItems((current) =>
+          current.map((item) => (item.id === itemId ? result.item! : item))
+        );
+        applyDocumentUpdate(result.document);
+      }
+      return result;
+    },
+    [applyDocumentUpdate]
+  );
 
-  const handleDuplicateItem = async (itemId: string) => {
-    const result = await duplicatePricingItem(itemId);
-    if (!result.error && result.item && result.document) {
-      setItems((current) => {
-        const sourceIndex = current.findIndex((item) => item.id === itemId);
-        if (sourceIndex === -1) {
-          return [...current, result.item!];
-        }
-        const next = [...current];
-        next.splice(sourceIndex + 1, 0, result.item!);
-        return next;
+  const handleDuplicateItem = useCallback(
+    async (itemId: string) => {
+      const result = await duplicatePricingItem(itemId);
+      if (!result.error && result.item && result.document) {
+        setItems((current) => {
+          const sourceIndex = current.findIndex((item) => item.id === itemId);
+          if (sourceIndex === -1) {
+            return [...current, result.item!];
+          }
+          const next = [...current];
+          next.splice(sourceIndex + 1, 0, result.item!);
+          return next;
+        });
+        applyDocumentUpdate(result.document);
+      }
+      return result;
+    },
+    [applyDocumentUpdate]
+  );
+
+  const handleDeleteItem = useCallback(
+    async (itemId: string) => {
+      const result = await deletePricingItem(itemId);
+      if (!result.error && result.deletedItemId && result.document) {
+        setItems((current) =>
+          current.filter((item) => item.id !== result.deletedItemId)
+        );
+        applyDocumentUpdate(result.document);
+      }
+      return result;
+    },
+    [applyDocumentUpdate]
+  );
+
+  const handleAddItem = useCallback(
+    async (workAreaId: string | null) => {
+      const result = await addPricingItem({
+        pricingDocumentId,
+        projectId,
+        workAreaId,
       });
-      applyDocumentUpdate(result.document);
-    }
-    return result;
-  };
-
-  const handleDeleteItem = async (itemId: string) => {
-    const result = await deletePricingItem(itemId);
-    if (!result.error && result.deletedItemId && result.document) {
-      setItems((current) =>
-        current.filter((item) => item.id !== result.deletedItemId)
-      );
-      applyDocumentUpdate(result.document);
-    }
-    return result;
-  };
-
-  const handleAddItem = async (workAreaId: string | null) => {
-    const result = await addPricingItem({
-      pricingDocumentId,
-      projectId,
-      workAreaId,
-    });
-    if (!result.error && result.item && result.document) {
-      setItems((current) => [...current, result.item!]);
-      applyDocumentUpdate(result.document);
-    }
-    return result;
-  };
+      if (!result.error && result.item && result.document) {
+        setItems((current) => [...current, result.item!]);
+        applyDocumentUpdate(result.document);
+      }
+      return result;
+    },
+    [applyDocumentUpdate, pricingDocumentId, projectId]
+  );
 
   return (
     <div className="space-y-5 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">

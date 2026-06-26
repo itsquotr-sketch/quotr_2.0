@@ -16,6 +16,10 @@ import {
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
+import {
+  createAssumptionMetadata,
+  recordDefaultedNumber,
+} from "@/lib/estimate/assumption-metadata";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -35,6 +39,7 @@ export function calculateKitchen(
     "Final finish selections beyond allowance",
   ];
   const lineItems: CalculatorResult["lineItems"] = [];
+  const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
   const area = getNumberFact(facts, workArea.id, "kitchen.area_m2");
@@ -60,8 +65,16 @@ export function calculateKitchen(
     assumptions.push(qualityNote);
   }
 
-  const effectiveArea = area ?? 10;
-  if (!area) {
+  let effectiveArea = area;
+  if (!effectiveArea) {
+    effectiveArea = recordDefaultedNumber(assumptionMetadata, {
+      key: "kitchen.area_m2",
+      label: "Kitchen area",
+      workAreaId: workArea.id,
+      assumedValue: 10,
+      unit: "m²",
+      reason: "No kitchen area provided",
+    });
     assumptions.push("Using assumed kitchen area of 10 m² for rough estimate.");
   }
 
@@ -121,6 +134,11 @@ export function calculateKitchen(
   }
 
   if (getBooleanFact(facts, workArea.id, "kitchen.cabinetry_included")) {
+    const clientSupplied = getBooleanFact(
+      facts,
+      workArea.id,
+      "kitchen.cabinetry_client_supplied"
+    );
     const cabinetry = resolveProductivity({
       productivityKey: "kitchen.cabinetry_hours_allowance",
       unit: "allowance",
@@ -130,7 +148,9 @@ export function calculateKitchen(
       createFixedLabourLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
-        label: "Cabinetry labour allowance",
+        label: clientSupplied
+          ? "Cabinetry installation labour"
+          : "Cabinetry labour allowance",
         labourHours: cabinetry.hoursPerUnit,
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
@@ -139,30 +159,52 @@ export function calculateKitchen(
         organisationSettings: context.organisationSettings,
       })
     );
-    const cabinetryRates = resolveRate({
-      rates: context.rates,
-      rateType: "allowance",
-      itemKey: "kitchen.cabinetry.allowance",
-      workAreaType: "kitchen",
-      unit: "allowance",
-      fallbackCostRate: KITCHEN_BENCHMARKS.cabinetry.cost,
-      fallbackSellRate: KITCHEN_BENCHMARKS.cabinetry.sell,
-      organisationSettings: context.organisationSettings,
-    });
 
-    lineItems.push(
-      createAllowanceLineItem({
-        workAreaId: workArea.id,
-        workAreaName: workArea.name,
-        label: "Cabinetry allowance",
-        recommendedCost: cabinetryRates.costRate,
-        recommendedSell: cabinetryRates.sellRate,
-        rateSource: cabinetryRates.sourceLabel,
-        sortOrder: sortOrder++,
+    if (clientSupplied) {
+      assumptions.push(
+        "Cabinetry client supplied — install and coordination only."
+      );
+      lineItems.push(
+        createAllowanceLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Cabinetry installation allowance",
+          recommendedCost: KITCHEN_BENCHMARKS.cabinetryInstallOnly.cost,
+          recommendedSell: KITCHEN_BENCHMARKS.cabinetryInstallOnly.sell,
+          rateSource: "Benchmark allowance",
+          notes: getStringFact(facts, workArea.id, "kitchen.cabinetry_type") ?? undefined,
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor,
+        })
+      );
+    } else {
+      const cabinetryRates = resolveRate({
+        rates: context.rates,
+        rateType: "allowance",
+        itemKey: "kitchen.cabinetry.allowance",
+        workAreaType: "kitchen",
+        unit: "allowance",
+        fallbackCostRate: KITCHEN_BENCHMARKS.cabinetry.cost,
+        fallbackSellRate: KITCHEN_BENCHMARKS.cabinetry.sell,
         organisationSettings: context.organisationSettings,
-        qualityFactor,
-      })
-    );
+      });
+
+      lineItems.push(
+        createAllowanceLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Cabinetry allowance",
+          recommendedCost: cabinetryRates.costRate,
+          recommendedSell: cabinetryRates.sellRate,
+          rateSource: cabinetryRates.sourceLabel,
+          notes: getStringFact(facts, workArea.id, "kitchen.cabinetry_type") ?? undefined,
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor,
+        })
+      );
+    }
   } else {
     missingInfo.push(formatMissing("Cabinetry scope"));
   }
@@ -228,6 +270,57 @@ export function calculateKitchen(
         qualityFactor,
       })
     );
+  } else if (getBooleanFact(facts, workArea.id, "kitchen.appliances_client_supplied")) {
+    assumptions.push("Appliances client supplied — installation allowance only.");
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Appliance installation allowance",
+        recommendedCost: KITCHEN_BENCHMARKS.applianceInstall.cost,
+        recommendedSell: KITCHEN_BENCHMARKS.applianceInstall.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "kitchen.splashback_included")) {
+    const splashArea =
+      getNumberFact(facts, workArea.id, "kitchen.splashback_area_m2") ?? 3;
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Splashback allowance",
+        recommendedCost: KITCHEN_BENCHMARKS.splashback.cost,
+        recommendedSell: KITCHEN_BENCHMARKS.splashback.sell,
+        rateSource: "Benchmark allowance",
+        notes: splashArea ? `Approx. ${splashArea} m²` : undefined,
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "kitchen.rangehood_included")) {
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Rangehood/venting allowance",
+        category: "subcontractor",
+        recommendedCost: KITCHEN_BENCHMARKS.rangehood.cost,
+        recommendedSell: KITCHEN_BENCHMARKS.rangehood.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
   }
 
   if (getBooleanFact(facts, workArea.id, "kitchen.flooring_included")) {
@@ -278,7 +371,7 @@ export function calculateKitchen(
         qualityFactor,
       })
     );
-  } else {
+  } else if (plumbingIncluded !== false) {
     missingInfo.push(formatMissing("Plumbing scope"));
   }
 
@@ -314,8 +407,15 @@ export function calculateKitchen(
         qualityFactor,
       })
     );
-  } else {
+  } else if (electricalIncluded !== false) {
     missingInfo.push(formatMissing("Electrical scope"));
+  }
+
+  const renovationType = getStringFact(facts, workArea.id, "kitchen.renovation_type");
+  if (renovationType?.toLowerCase().includes("install only")) {
+    assumptions.push("Install-only scope — no demolition or supply allowances unless confirmed.");
+  } else if (renovationType?.toLowerCase().includes("full")) {
+    assumptions.push("Full kitchen renovation — conservative trade and finish allowances applied.");
   }
 
   let materialsCost = effectiveArea * KITCHEN_BENCHMARKS.materialsPerM2.cost;
@@ -351,5 +451,6 @@ export function calculateKitchen(
     missingInfo,
     exclusions,
     confidence: baseConfidence(missingInfo.length),
+    assumptionMetadata,
   };
 }

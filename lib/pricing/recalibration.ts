@@ -3,6 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { USER_ERRORS, toUserError } from "@/lib/errors/user-message";
+import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
+import { assertOrgOwnsPricingDocument } from "@/lib/security/org-ownership";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import {
   buildPricingItemRowFromEstimate,
@@ -44,6 +46,15 @@ async function loadRecalibrationContext(input: RecalibrationInput) {
 
   const { supabase, orgId } = context;
   const { projectId, pricingDocumentId } = input;
+
+  const ownedDocument = await assertOrgOwnsPricingDocument(
+    context,
+    pricingDocumentId,
+    projectId
+  );
+  if ("error" in ownedDocument) {
+    return { error: ownedDocument.error };
+  }
 
   const [{ data: documentRow }, { data: estimate }] = await Promise.all([
     supabase
@@ -379,6 +390,23 @@ export async function applyRecalibration(
 
   revalidatePricingProjectPath(projectId, pricingDocumentId);
 
+  const authContext = await getAuthOrgContext();
+  if (authContext) {
+    await logPricingAuditEvent({
+      supabase,
+      organisationId: orgId,
+      projectId,
+      pricingDocumentId,
+      userId: authContext.user.id,
+      action: "pricing_recalibration",
+      newValues: {
+        itemsChanged,
+        insertCount: inserts.length,
+        updateCount: updates.length,
+      },
+    });
+  }
+
   return {
     success: true,
     document: mapPricingDocument(updatedDocument),
@@ -396,6 +424,15 @@ export async function keepCurrentPricing(
 
   const { supabase, orgId } = context;
   const { projectId, pricingDocumentId } = input;
+
+  const ownedDocument = await assertOrgOwnsPricingDocument(
+    context,
+    pricingDocumentId,
+    projectId
+  );
+  if ("error" in ownedDocument) {
+    return { error: ownedDocument.error };
+  }
 
   const { data: document, error: loadError } = await supabase
     .from("pricing_documents")
@@ -422,6 +459,15 @@ export async function keepCurrentPricing(
   if (error) {
     return { error: error.message };
   }
+
+  await logPricingAuditEvent({
+    supabase,
+    organisationId: orgId,
+    projectId,
+    pricingDocumentId,
+    userId: context.user.id,
+    action: "pricing_recalibration_dismissed",
+  });
 
   revalidatePricingProjectPath(projectId, pricingDocumentId);
 

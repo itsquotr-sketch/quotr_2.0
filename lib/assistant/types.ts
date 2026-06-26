@@ -68,6 +68,7 @@ export type ScopeReviewFact = {
   sourcePriority: number;
   readOnly?: boolean;
   derivedNote?: string;
+  conflictWarning?: string;
   inputType?: "number" | "select" | "boolean" | "text" | "multi_select";
   options?: string[];
 };

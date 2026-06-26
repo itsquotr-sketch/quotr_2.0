@@ -66,6 +66,13 @@ export const BATHROOM_BENCHMARKS = {
   plumbingMajor: { cost: 3500, sell: 5200 },
   electricalMinor: { cost: 900, sell: 1400 },
   electricalMajor: { cost: 2800, sell: 4200 },
+  extractorFan: { cost: 350, sell: 520 },
+  wallLiningPerM2: { cost: 45, sell: 68 },
+  floorPrepMinor: { cost: 400, sell: 600 },
+  waterproofingPerM2: { cost: 90, sell: 140 },
+  waterproofingMinimum: { cost: 1200, sell: 1800 },
+  tilingMinimum: { cost: 2200, sell: 3400 },
+  coordinationAllowance: { cost: 800, sell: 1200 },
 } as const;
 
 export const KITCHEN_BENCHMARKS = {
@@ -81,6 +88,12 @@ export const KITCHEN_BENCHMARKS = {
   electrical: { cost: 2200, sell: 3400 },
   electricalMinor: { cost: 900, sell: 1400 },
   electricalMajor: { cost: 3200, sell: 4800 },
+  splashback: { cost: 800, sell: 1200 },
+  splashbackMinimum: { cost: 650, sell: 980 },
+  coordinationAllowance: { cost: 900, sell: 1350 },
+  rangehood: { cost: 600, sell: 900 },
+  cabinetryInstallOnly: { cost: 2200, sell: 3400 },
+  applianceInstall: { cost: 800, sell: 1200 },
 } as const;
 
 export const FENCE_BENCHMARKS = {
@@ -94,16 +107,35 @@ export const FENCE_BENCHMARKS = {
 } as const;
 
 export const DEMOLITION_BENCHMARKS = {
+  generalPerM2: { cost: 35, sell: 55 },
+  wallPerLm: { cost: 45, sell: 70 },
+  flooringPerM2: { cost: 28, sell: 42 },
+  ceilingPerM2: { cost: 22, sell: 35 },
+  kitchenEach: { cost: 1200, sell: 1800 },
+  bathroomEach: { cost: 1500, sell: 2300 },
+  fixtureJoineryEach: { cost: 200, sell: 320 },
   wastePerM2: { cost: 25, sell: 40 },
+  disposalAllowance: { cost: 450, sell: 680 },
+  skipBinEach: { cost: 350, sell: 520 },
+  cartingAllowance: { cost: 280, sell: 420 },
   minimum: { cost: 800, sell: 1200 },
 } as const;
 
 export const EXTERNAL_STAIRS_BENCHMARKS = {
   materialPerRiser: { cost: 90, sell: 140 },
   landing: { cost: 450, sell: 700 },
+  landingPerM2: { cost: 180, sell: 280 },
   handrail: { cost: 350, sell: 550 },
+  handrailPerLm: { cost: 85, sell: 130 },
+  balustradePerLm: { cost: 120, sell: 185 },
+  removalEach: { cost: 400, sell: 600 },
+  finishAllowance: { cost: 350, sell: 520 },
+  footingAllowance: { cost: 280, sell: 420 },
   roughAllowance: { cost: 1200, sell: 1800 },
 } as const;
+
+/** Default riser height (m) for derived stair quantities. */
+export const EXTERNAL_STAIRS_DEFAULT_RISER_M = 0.175;
 
 export const FITOUT_BENCHMARKS = {
   internalWallsPerM2: { cost: 95, sell: 145 },
@@ -125,6 +157,14 @@ export const FITOUT_BENCHMARKS = {
   plasteringPerM2: { cost: 35, sell: 55 },
   skirtingLm: { cost: 28, sell: 42 },
   removalPerM2: { cost: 22, sell: 35 },
+  floorPrepMinor: { cost: 18, sell: 28 },
+  floorPrepMajor: { cost: 45, sell: 68 },
+  underlayPerM2: { cost: 8, sell: 12 },
+  architraveLm: { cost: 22, sell: 34 },
+  doorPaintingEach: { cost: 85, sell: 130 },
+  insulationPerM2: { cost: 12, sell: 18 },
+  stoppingPerM2: { cost: 28, sell: 42 },
+  ceilingBattensPerM2: { cost: 15, sell: 22 },
 } as const;
 
 export const BENCHMARK_RATES = {
@@ -137,3 +177,16 @@ export const BENCHMARK_RATES = {
   demolition: DEMOLITION_BENCHMARKS,
   externalStairs: EXTERNAL_STAIRS_BENCHMARKS,
 } as const;
+
+/** Last human review date for benchmark placeholder rates (not company rates). */
+export const RATES_LAST_REVIEWED = "2026-06-26";
+
+/** Region these benchmark placeholders were calibrated for. */
+export const RATES_REGION = "NZ";
+
+/**
+ * Benchmark rates are fallbacks only when a matching company rate is missing.
+ * Company rates in Rates always override these values. Review periodically.
+ */
+export const RATES_NOTES =
+  "Benchmark placeholders for early testing; contractors must review company rates before relying on outputs.";

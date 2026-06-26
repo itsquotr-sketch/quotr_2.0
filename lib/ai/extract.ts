@@ -6,11 +6,13 @@ import {
   buildBriefExtractionUserPrompt,
 } from "@/lib/ai/brief-extraction-prompt";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/ai/anthropic";
+import { withAnthropicRetry } from "@/lib/ai/retry";
 import {
   AIExtractionError,
   validateAndFilterExtraction,
   type AIExtractionOutput,
 } from "@/lib/ai/schema";
+import { normaliseAIExtraction } from "@/lib/scopes/normalise-extracted-facts";
 
 function extractJsonFromText(text: string): unknown {
   const trimmed = text.trim();
@@ -55,21 +57,27 @@ export async function extractFromBrief(params: {
       params.allowedTypes
     );
 
-    const message = await client.messages.create({
-      model,
-      max_tokens: 2048,
-      temperature: 0,
-      system: BRIEF_EXTRACTION_SYSTEM_PROMPT,
-      messages: [{ role: "user", content: userPrompt }],
-    });
+    const message = await withAnthropicRetry(
+      () =>
+        client.messages.create({
+          model,
+          max_tokens: 2048,
+          temperature: 0,
+          system: BRIEF_EXTRACTION_SYSTEM_PROMPT,
+          messages: [{ role: "user", content: userPrompt }],
+        }),
+      { label: "extractFromBrief" }
+    );
 
     const rawText = getTextFromResponse(message.content);
     const rawJson = extractJsonFromText(rawText);
 
-    return validateAndFilterExtraction(
-      rawJson,
-      params.allowedTypes,
-      params.catalogueTypes
+    return normaliseAIExtraction(
+      validateAndFilterExtraction(
+        rawJson,
+        params.allowedTypes,
+        params.catalogueTypes
+      )
     );
   } catch (error) {
     if (error instanceof AIExtractionError) {

@@ -163,8 +163,26 @@ export function getTradeChangesIncluded(
   const value = getStringFact(facts, workAreaId, key);
   if (!value) return null;
   const lower = value.toLowerCase();
-  if (lower === "none" || lower === "no") return false;
-  if (lower.includes("minor") || lower.includes("major")) return true;
+  if (
+    lower === "none" ||
+    lower === "no" ||
+    lower.includes("by others") ||
+    lower.includes("by other") ||
+    lower.includes("excluded") ||
+    lower.includes("not included") ||
+    lower.includes("not in scope")
+  ) {
+    return false;
+  }
+  if (
+    lower === "yes" ||
+    lower === "included" ||
+    lower === "in scope" ||
+    lower.includes("minor") ||
+    lower.includes("major")
+  ) {
+    return true;
+  }
   return null;
 }
 
@@ -189,4 +207,32 @@ export function getFinishLevel(
     getWorkAreaFinishLevel: (id, factKey) =>
       getStringFact(facts, id, factKey),
   });
+}
+
+export function isFlooringRemovalOnly(
+  facts: EstimateFact[],
+  workAreaId: string
+): boolean {
+  const supplyScope = getStringFact(facts, workAreaId, "flooring.supply_scope");
+  if (supplyScope?.toLowerCase().includes("removal")) {
+    return true;
+  }
+  const newFlooringType = getStringFact(facts, workAreaId, "flooring.type");
+  const removalRequested = getBooleanFact(
+    facts,
+    workAreaId,
+    "flooring.existing_flooring_removal"
+  );
+  const newFlooringIncluded = getBooleanFact(
+    facts,
+    workAreaId,
+    "flooring.new_flooring_included"
+  );
+  if (removalRequested && newFlooringIncluded === false) {
+    return true;
+  }
+  if (removalRequested && !newFlooringType && newFlooringIncluded !== true) {
+    return true;
+  }
+  return false;
 }

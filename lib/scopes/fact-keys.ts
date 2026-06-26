@@ -8,6 +8,10 @@ export const DERIVED_FACT_KEYS = new Set([
   "pergola.area_m2",
   "retaining_wall.height_m",
   "retaining_wall.backfill_volume_m3",
+  "internal_walls.area_m2",
+  "bathroom.total_tiling_area_m2",
+  "external_stairs.approximate_riser_count",
+  "external_stairs.approximate_total_rise_m",
 ]);
 
 const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
@@ -74,19 +78,73 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
   demolition: {
     waste_removal_required: "demolition.disposal_included",
     disposal_included: "demolition.disposal_included",
+    wall_length_m: "demolition.wall_length_m",
+    floor_area_m2: "demolition.floor_area_m2",
+    ceiling_area_m2: "demolition.ceiling_area_m2",
+    skip_bin_included: "demolition.skip_bin_included",
+    carting_distance_m: "demolition.carting_distance_m",
+    hazardous_materials_suspected: "demolition.hazardous_materials_risk",
+    services_isolation_required: "demolition.services_isolated",
+    floor_level: "demolition.floor_level",
   },
   external_stairs: {
     riser_count: "external_stairs.risers_count",
+    risers_count: "external_stairs.risers_count",
     handrail_required: "external_stairs.handrail_included",
+    total_rise_m: "external_stairs.total_rise_m",
+    landing_included: "external_stairs.landing_included",
+    balustrade_included: "external_stairs.balustrade_included",
+    existing_removal: "external_stairs.existing_removal",
+    ground_condition: "external_stairs.ground_condition",
+    finish_type: "external_stairs.finish_type",
+  },
+  kitchen: {
+    plumbing_required: "kitchen.plumbing_changes",
+    electrical_required: "kitchen.electrical_changes",
+    fixtures_client_supplied: "kitchen.cabinetry_client_supplied",
+  },
+  internal_walls: {
+    length: "internal_walls.length_lm",
+    length_m: "internal_walls.length_lm",
+    length_lm: "internal_walls.length_lm",
+    height: "internal_walls.height_m",
+    height_m: "internal_walls.height_m",
+    area: "internal_walls.area_m2",
+    area_m2: "internal_walls.area_m2",
+    lining_sides: "internal_walls.lining_sides",
+    gib: "internal_walls.wall_lining_type",
+    plasterboard: "internal_walls.wall_lining_type",
+    demolition_included: "internal_walls.demolition_included",
+    strip_out: "internal_walls.demolition_included",
   },
   bathroom: {
     waterproofing_required: "bathroom.waterproofing_included",
     plumbing_allowance: "bathroom.plumbing_changes",
     electrical_allowance: "bathroom.electrical_changes",
+    demolition_included: "bathroom.demolition_required",
+    strip_out: "bathroom.demolition_required",
   },
-  kitchen: {
-    plumbing_required: "kitchen.plumbing_changes",
-    electrical_required: "kitchen.electrical_changes",
+  doors: {
+    supply_by: "doors.supply_scope",
+    install_only: "doors.supply_scope",
+    door_count: "doors.count",
+    count: "doors.count",
+  },
+  flooring: {
+    supply_by: "flooring.supply_scope",
+    client_supplied: "flooring.client_supplied",
+    removal: "flooring.existing_flooring_removal",
+  },
+  painting: {
+    coats: "painting.coats_required",
+    client_supplied: "painting.paint_client_supplied",
+    area_m2: "painting.internal_area_m2",
+    internal_area_m2: "painting.internal_area_m2",
+    trim_length_lm: "painting.joinery_surround_length_lm",
+  },
+  plastering: {
+    finish_level: "plastering.level",
+    level: "plastering.level",
   },
 };
 

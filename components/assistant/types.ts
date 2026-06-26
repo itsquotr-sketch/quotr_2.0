@@ -1,4 +1,10 @@
 import type { MaterialBuildUpEntry } from "@/lib/estimate/material-buildup-meta";
+import type {
+  AllowanceMinimumMeta,
+  LabourMinimumMeta,
+  QuantityBasis,
+} from "@/lib/estimate/line-item-metadata";
+import type { PricingOwner } from "@/lib/estimate/pricing-ownership";
 
 export type AssistantStage =
   | "brief"
@@ -105,6 +111,14 @@ export type EstimateLineItem = {
   sellDerivedFromMargin?: boolean;
   notes?: string;
   materialBuildUps?: MaterialBuildUpEntry[];
+  pricingOwner?: PricingOwner;
+  scopeKey?: string;
+  overlapGroup?: string;
+  includedInTotal?: boolean;
+  clientVisible?: boolean;
+  quantityBasis?: QuantityBasis;
+  labourMinimum?: LabourMinimumMeta;
+  allowanceMinimum?: AllowanceMinimumMeta;
 };
 
 export type Estimate = {
@@ -129,6 +143,7 @@ export type Estimate = {
   excludedWorkAreas: WorkArea[];
   scopeAssumptions: string[];
   scopeExclusions: string[];
+  assumptionMetadata?: import("@/lib/estimate/assumption-metadata").AssumptionMetadata;
   missingInfoByWorkArea?: Record<string, string[]>;
   lineItems: EstimateLineItem[];
 };

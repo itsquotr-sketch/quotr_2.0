@@ -2,7 +2,8 @@
 
 import { useMemo, useState, useTransition } from "react";
 import { ChevronDown, Plus } from "lucide-react";
-import { PricingItemRow } from "@/components/pricing/PricingItemRow";
+import { PricingItemListItem } from "@/components/pricing/PricingItemListItem";
+import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { WorkAreaQuoteDescriptionEditor } from "@/components/work-areas/WorkAreaQuoteDescriptionEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,8 @@ export function PricingWorkAreaSection({
 }: PricingWorkAreaSectionProps) {
   const [expanded, setExpanded] = useState(true);
   const [isPending, startTransition] = useTransition();
+  const isDesktop = useIsDesktop();
+  const itemLayout = isDesktop ? "table" : "card";
 
   const sectionTotals = useMemo(
     () =>
@@ -138,28 +141,21 @@ export function PricingWorkAreaSection({
             <span className="text-right">Actions</span>
           </div>
 
-          <div className="hidden divide-y divide-border/50 md:block">
+          <div
+            className={
+              itemLayout === "table"
+                ? "divide-y divide-border/50"
+                : "space-y-2 p-3"
+            }
+          >
             {items.map((item) => (
-              <PricingItemRow
+              <PricingItemListItem
                 key={item.id}
                 item={item}
-                layout="table"
-                onSave={(input) => onSaveItem(item.id, input)}
-                onDuplicate={() => onDuplicateItem(item.id)}
-                onDelete={() => onDeleteItem(item.id)}
-              />
-            ))}
-          </div>
-
-          <div className="space-y-2 p-3 md:hidden">
-            {items.map((item) => (
-              <PricingItemRow
-                key={item.id}
-                item={item}
-                layout="card"
-                onSave={(input) => onSaveItem(item.id, input)}
-                onDuplicate={() => onDuplicateItem(item.id)}
-                onDelete={() => onDeleteItem(item.id)}
+                layout={itemLayout}
+                onSaveItem={onSaveItem}
+                onDuplicateItem={onDuplicateItem}
+                onDeleteItem={onDeleteItem}
               />
             ))}
           </div>

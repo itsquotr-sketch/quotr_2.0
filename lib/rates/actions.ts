@@ -2,6 +2,11 @@
 
 import { z } from "zod";
 import {
+  MAX_MARGIN_PERCENT,
+  MIN_MARGIN_PERCENT,
+  validateMarginPercent,
+} from "@/lib/security/margin-validation";
+import {
   ALL_RATE_CATALOGUE,
   STARTER_RATE_ITEM_KEYS,
 } from "@/lib/rates/catalogue";
@@ -145,8 +150,15 @@ export async function getRatesPageState(): Promise<RatesPageState> {
 const rateSettingsSchema = z.object({
   default_margin_percent: z
     .number()
-    .min(1, "Margin must be at least 1%")
-    .max(70, "Margin must be at most 70%"),
+    .min(MIN_MARGIN_PERCENT, `Margin must be at least ${MIN_MARGIN_PERCENT}%`)
+    .max(
+      MAX_MARGIN_PERCENT,
+      `Margin must be at most ${MAX_MARGIN_PERCENT}%`
+    )
+    .refine(
+      (value) => validateMarginPercent(value).ok,
+      "Margin must be less than 100%."
+    ),
   default_contingency_percent: z
     .number()
     .min(0, "Contingency must be at least 0%")

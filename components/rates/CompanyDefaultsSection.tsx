@@ -119,8 +119,8 @@ export function CompanyDefaultsSection({
               <Input
                 id="default-margin"
                 type="number"
-                min="1"
-                max="70"
+                min="0"
+                max="80"
                 step="0.1"
                 value={margin}
                 onChange={(event) => setMargin(event.target.value)}

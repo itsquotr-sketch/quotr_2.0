@@ -1,7 +1,7 @@
 "use client";
 
-import { memo, useState, useTransition } from "react";
-import { Copy, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
+import { memo, useMemo, useState, useTransition } from "react";
+import { ChevronDown, Copy, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -16,6 +16,12 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { PRICING_ITEM_TYPES } from "@/lib/pricing/status";
+import { PricingOwnershipBadge } from "@/components/pricing/PricingOwnershipBadge";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import {
+  formatQuantityBasisDisplay,
+  getCommercialTrustDetailLinesFromNotes,
+} from "@/lib/estimate/commercial-realism";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
 import {
   getMaterialBuildUpDisplay,
@@ -45,21 +51,43 @@ function PricingItemRowComponent({
   onDelete,
 }: PricingItemRowProps) {
   const [expanded, setExpanded] = useState(false);
+  const [detailExpanded, setDetailExpanded] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState<PricingItemInput>(() => itemToForm(item));
 
-  const resolvedItem = resolvePricingItemCalculation(
-    pricingItemToCalculationInput(item)
+  const resolvedItem = useMemo(
+    () =>
+      resolvePricingItemCalculation(pricingItemToCalculationInput(item)),
+    [item]
   );
-  const materialBuildUpDisplay = getMaterialBuildUpDisplay(item.notes_internal);
-  const materialRateSourceDisplay = getMaterialRateSourceDisplay(
-    item.notes_internal
+  const materialBuildUpDisplay = useMemo(
+    () => getMaterialBuildUpDisplay(item.notes_internal),
+    [item.notes_internal]
   );
-  const categoryLabel =
-    PRICING_ITEM_TYPES.find((type) => type.value === item.item_type)?.label ??
-    item.item_type;
+  const materialRateSourceDisplay = useMemo(
+    () => getMaterialRateSourceDisplay(item.notes_internal),
+    [item.notes_internal]
+  );
+  const { metadata: pricingMetadata } = useMemo(
+    () => parseLineItemNotes(item.notes_internal),
+    [item.notes_internal]
+  );
+  const trustDetailLines = useMemo(
+    () =>
+      getCommercialTrustDetailLinesFromNotes(
+        item.notes_internal,
+        pricingMetadata.pricingOwner
+      ),
+    [item.notes_internal, pricingMetadata.pricingOwner]
+  );
+  const categoryLabel = useMemo(
+    () =>
+      PRICING_ITEM_TYPES.find((type) => type.value === item.item_type)?.label ??
+      item.item_type,
+    [item.item_type]
+  );
 
   const openEditor = () => {
     setForm(itemToForm(item));
@@ -129,6 +157,10 @@ function PricingItemRowComponent({
                 <Badge variant="secondary" className="text-[10px] font-normal">
                   {categoryLabel}
                 </Badge>
+                <PricingOwnershipBadge
+                  owner={pricingMetadata.pricingOwner}
+                  includedInTotal={pricingMetadata.includedInTotal}
+                />
                 <span className="text-xs text-muted-foreground">{qtyLabel}</span>
               </div>
               <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -152,17 +184,72 @@ function PricingItemRowComponent({
                   </>
                 )}
               </div>
+              {detailExpanded ? (
+                <div className="space-y-1 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground">
+                  {pricingMetadata.quantityBasis ? (
+                    <p>
+                      <span className="font-medium text-foreground/80">
+                        Qty basis:
+                      </span>{" "}
+                      {formatQuantityBasisDisplay(pricingMetadata.quantityBasis)}
+                    </p>
+                  ) : null}
+                  {materialBuildUpDisplay ? (
+                    <p>
+                      <span className="font-medium text-foreground/80">
+                        Build-up:
+                      </span>{" "}
+                      {materialBuildUpDisplay}
+                    </p>
+                  ) : null}
+                  {materialRateSourceDisplay ? (
+                    <p>
+                      <span className="font-medium text-foreground/80">
+                        Rate source:
+                      </span>{" "}
+                      {materialRateSourceDisplay}
+                    </p>
+                  ) : null}
+                  {trustDetailLines.length > 0 ? (
+                    <p>{trustDetailLines.join(" · ")}</p>
+                  ) : null}
+                  {item.notes_internal && !materialBuildUpDisplay ? (
+                    <p className="italic">{item.notes_internal}</p>
+                  ) : null}
+                </div>
+              ) : trustDetailLines.length > 0 ? (
+                <p className="text-[11px] leading-snug text-muted-foreground">
+                  {trustDetailLines.join(" · ")}
+                </p>
+              ) : null}
             </div>
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8 shrink-0"
-              disabled={isPending}
-              onClick={openEditor}
-            >
-              Edit
-            </Button>
+            <div className="flex shrink-0 flex-col gap-1">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8"
+                disabled={isPending}
+                onClick={openEditor}
+              >
+                Edit
+              </Button>
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-7 px-2 text-[11px] text-muted-foreground"
+                onClick={() => setDetailExpanded((prev) => !prev)}
+              >
+                {detailExpanded ? "Less" : "Details"}
+                <ChevronDown
+                  className={cn(
+                    "ml-0.5 size-3 transition-transform",
+                    detailExpanded && "rotate-180"
+                  )}
+                />
+              </Button>
+            </div>
           </div>
         </div>
 
@@ -200,6 +287,11 @@ function PricingItemRowComponent({
           {materialRateSourceDisplay ? (
             <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground/60">
               {materialRateSourceDisplay}
+            </p>
+          ) : null}
+          {trustDetailLines.length > 0 ? (
+            <p className="mt-1 text-[11px] leading-snug text-muted-foreground/90">
+              {trustDetailLines.join(" · ")}
             </p>
           ) : null}
         </div>

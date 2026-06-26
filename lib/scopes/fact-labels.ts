@@ -29,6 +29,14 @@ const FACT_KEY_ALIASES: Record<string, string> = {
   "kitchen.electrical_required": "kitchen.electrical_changes",
   "bathroom.plumbing_allowance": "bathroom.plumbing_changes",
   "bathroom.electrical_allowance": "bathroom.electrical_changes",
+  "doors.door_count": "doors.count",
+  "internal_walls.length_m": "internal_walls.length_lm",
+  "painting.coats": "painting.coats_required",
+  "painting.client_supplied": "painting.paint_client_supplied",
+  "flooring.supply_by": "flooring.supply_scope",
+  "plastering.finish_level": "plastering.level",
+  "demolition.hazardous_materials_suspected": "demolition.hazardous_materials_risk",
+  "demolition.services_isolation_required": "demolition.services_isolated",
 };
 
 /** Display labels for canonical fact keys. */

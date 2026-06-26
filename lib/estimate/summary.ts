@@ -7,6 +7,12 @@ import {
   classifyRateSource,
   isUserRateSource,
 } from "@/lib/estimate/rate-source-labels";
+import {
+  confidencePenaltyForAssumptions,
+  defaultedFactWarnings,
+  mergeAssumptionMetadata,
+  type AssumptionMetadata,
+} from "@/lib/estimate/assumption-metadata";
 import type {
   CalculatorResult,
   EstimateLineItemInput,
@@ -26,7 +32,8 @@ export const GENERAL_ESTIMATE_EXCLUSIONS = [
 ];
 
 export function sumLineItems(lineItems: EstimateLineItemInput[]) {
-  return lineItems.reduce(
+  const included = lineItems.filter((item) => item.includedInTotal !== false);
+  return included.reduce(
     (totals, item) => ({
       costLow: totals.costLow + item.costLow,
       costHigh: totals.costHigh + item.costHigh,
@@ -151,6 +158,7 @@ export function buildRateSourceSummary(
 export function computeConfidence(params: {
   lineItems: EstimateLineItemInput[];
   totalMissingCount: number;
+  assumptionMetadata?: AssumptionMetadata;
 }): number {
   const counts = countRateSources(params.lineItems);
   const total = Math.max(params.lineItems.length, 1);
@@ -185,6 +193,10 @@ export function computeConfidence(params: {
     confidence -= 10;
   }
 
+  if (params.assumptionMetadata) {
+    confidence -= confidencePenaltyForAssumptions(params.assumptionMetadata);
+  }
+
   return round2(Math.max(35, Math.min(95, confidence)));
 }
 
@@ -198,6 +210,7 @@ export function finalizeEstimateResult(params: {
   missingInfo: string[];
   exclusions: string[];
   calculatorResults: CalculatorResult[];
+  assumptionMetadata?: AssumptionMetadata;
 }): EstimateResult {
   const totals = sumLineItems(params.lineItems);
   const grossProfit = round2(
@@ -213,9 +226,18 @@ export function finalizeEstimateResult(params: {
       : 0;
 
   const missingInfo = mergeUnique(params.missingInfo);
+  const assumptionMetadata =
+    params.assumptionMetadata ??
+    mergeAssumptionMetadata(
+      params.calculatorResults
+        .map((result) => result.assumptionMetadata)
+        .filter((item): item is AssumptionMetadata => item != null)
+    );
+  const defaultedWarnings = defaultedFactWarnings(assumptionMetadata);
   const assumptions = mergeUnique([
     ...GENERAL_ESTIMATE_ASSUMPTIONS,
     ...params.assumptions,
+    ...defaultedWarnings,
   ]);
   const exclusions = mergeUnique([
     ...GENERAL_ESTIMATE_EXCLUSIONS,
@@ -235,7 +257,9 @@ export function finalizeEstimateResult(params: {
     confidence: computeConfidence({
       lineItems: params.lineItems,
       totalMissingCount: missingInfo.length,
+      assumptionMetadata,
     }),
+    assumptionMetadata,
     rateSourceSummary: buildRateSourceSummary(params.lineItems),
     assumptions,
     missingInfo,

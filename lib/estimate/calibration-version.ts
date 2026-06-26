@@ -1,5 +1,5 @@
 /** Bump when outdoor/scope calibration changes affect questions or calculations. */
-export const CURRENT_CALIBRATION_VERSION = "outdoor-1.1";
+export const CURRENT_CALIBRATION_VERSION = "internal-1.0";
 
 export function isCalibrationVersionCurrent(
   version: string | null | undefined

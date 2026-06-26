@@ -30,6 +30,10 @@ import {
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
 import { MATERIAL_RATE_KEYS } from "@/lib/estimate/material-rate-keys";
 import { baseConfidence } from "@/lib/estimate/summary";
+import {
+  createAssumptionMetadata,
+  recordDefaultedNumber,
+} from "@/lib/estimate/assumption-metadata";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -116,6 +120,7 @@ export function calculateRetainingWall(
   const assumptions: string[] = [];
   const exclusions = ["Engineering/consent unless confirmed"];
   const lineItems: CalculatorResult["lineItems"] = [];
+  const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
   const length = getNumberFact(facts, workArea.id, "retaining_wall.length_m");
@@ -128,8 +133,30 @@ export function calculateRetainingWall(
   const material = getStringFact(facts, workArea.id, "retaining_wall.material");
   if (!material) missingInfo.push(formatMissing("Wall material"));
 
-  const effectiveLength = length ?? 10;
-  const effectiveHeight = heightResult.height ?? 1.5;
+  let effectiveLength = length;
+  if (!effectiveLength) {
+    effectiveLength = recordDefaultedNumber(assumptionMetadata, {
+      key: "retaining_wall.length_m",
+      label: "Retaining wall length",
+      workAreaId: workArea.id,
+      assumedValue: 10,
+      unit: "m",
+      reason: "No wall length provided",
+    });
+  }
+
+  let effectiveHeight = heightResult.height;
+  if (!effectiveHeight) {
+    effectiveHeight = recordDefaultedNumber(assumptionMetadata, {
+      key: "retaining_wall.height_m",
+      label: "Retaining wall height",
+      workAreaId: workArea.id,
+      assumedValue: 1.5,
+      unit: "m",
+      reason: "No wall height provided",
+    });
+  }
+
   if (!length || !heightResult.height) {
     assumptions.push("Using assumed retaining wall dimensions for rough estimate.");
   }
@@ -522,5 +549,6 @@ export function calculateRetainingWall(
     missingInfo,
     exclusions,
     confidence: baseConfidence(missingInfo.length),
+    assumptionMetadata,
   };
 }

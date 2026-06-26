@@ -2,7 +2,11 @@ import { cleanClientLabel, roundMoney } from "@/lib/pricing/calculations";
 import { inferCalculationMode } from "@/lib/pricing/pricing-item-calculation";
 import type { PricingItem } from "@/lib/pricing/types";
 import type { QuoteItemInput } from "@/lib/quotes/types";
-import { sanitizeClientQuoteDescription } from "@/lib/quotes/sanitize";
+import {
+  containsSuspiciousQuoteText,
+  sanitizeClientQuoteDescription,
+  sanitizeClientQuoteLabel,
+} from "@/lib/quotes/sanitize";
 
 const INTERNAL_PHRASES = [
   "benchmark",
@@ -22,7 +26,51 @@ export function sanitizeClientLabel(label: string): string {
     result = result.replace(pattern, "");
   }
 
-  return result.replace(/\s+/g, " ").replace(/^[-–—:\s]+|[-–—:\s]+$/g, "").trim();
+  const sanitised = result
+    .replace(/\s+/g, " ")
+    .replace(/^[-–—:\s]+|[-–—:\s]+$/g, "")
+    .trim();
+
+  return sanitizeClientQuoteLabel(sanitised);
+}
+
+export type QuoteSanitisationWarning = {
+  pricingItemId: string;
+  field: "label" | "description";
+  message: string;
+};
+
+export function collectQuoteSanitisationWarnings(
+  items: PricingItem[]
+): QuoteSanitisationWarning[] {
+  const warnings: QuoteSanitisationWarning[] = [];
+
+  for (const item of items) {
+    if (!item.visible_on_quote) {
+      continue;
+    }
+
+    const label = resolveQuoteItemLabel(item);
+    const description = resolveQuoteItemDescription(item);
+
+    if (containsSuspiciousQuoteText(label)) {
+      warnings.push({
+        pricingItemId: item.id,
+        field: "label",
+        message: `Quote label may still contain internal wording: "${label}"`,
+      });
+    }
+
+    if (containsSuspiciousQuoteText(description)) {
+      warnings.push({
+        pricingItemId: item.id,
+        field: "description",
+        message: `Quote description may still contain internal wording.`,
+      });
+    }
+  }
+
+  return warnings;
 }
 
 export function resolveQuoteItemLabel(item: PricingItem): string {

@@ -150,7 +150,7 @@ export function CompanyDefaultsStep({ state, onComplete }: CompanyDefaultsStepPr
                 id="margin"
                 type="number"
                 min="0"
-                max="100"
+                max="80"
                 step="0.01"
                 value={margin}
                 onChange={(event) => setMargin(event.target.value)}

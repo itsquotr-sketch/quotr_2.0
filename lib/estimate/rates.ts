@@ -1,6 +1,10 @@
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { round2 } from "@/lib/estimate/facts";
 import {
+  assertMarginPercentForEstimating,
+  InvalidMarginPercentError,
+} from "@/lib/security/margin-validation";
+import {
   getRateSourceLabel,
   type RateSourceType,
 } from "@/lib/estimate/rate-source-labels";
@@ -25,6 +29,49 @@ const ITEM_KEY_ALIASES: Record<string, string[]> = {
   "pergola.roof.timber_batten.m2": ["pergola_roof_timber_batten_m2"],
   "pergola.footings.each": ["pergola_footings_each"],
   "pergola.gutters.lm": ["pergola_gutters_lm"],
+  "bathroom.waterproofing.m2": ["bathroom_waterproofing_m2"],
+  "bathroom.waterproofing.allowance": ["bathroom_waterproofing_m2"],
+  "bathroom.tiling.m2": ["bathroom_tiling_m2"],
+  "bathroom.plumbing.allowance": ["bathroom_plumbing_allowance"],
+  "bathroom.electrical.allowance": ["bathroom_electrical_allowance"],
+  "kitchen.cabinetry.install": ["kitchen_install_lm", "kitchen_install_each"],
+  "internal_walls.framing.lm": ["internal_wall_framing_lm"],
+  "sheet.plasterboard.standard.each": [
+    "plasterboard_standard_sheet",
+    "sheet.plasterboard.standard.each",
+  ],
+  "sheet.plasterboard.aqualine.each": ["plasterboard_aqualine_sheet"],
+  "sheet.plasterboard.fyreline.each": ["plasterboard_fyreline_sheet"],
+  "ceilings.plasterboard.m2": ["ceiling_plasterboard_m2"],
+  "doors.install.each": ["door_install_each"],
+  "doors.solid_core.each": ["door_supply_solid_core_each"],
+  "flooring.material.m2": ["flooring_vinyl_m2"],
+  "flooring.vinyl.m2": ["flooring_vinyl_m2"],
+  "flooring.prep.m2": ["flooring_prep_m2"],
+  "painting.material.m2": ["painting_internal_m2"],
+  "painting.door.each": ["painting_door_each"],
+  "painting.trim.lm": ["painting_trim_lm"],
+  "plastering.level4.m2": ["plastering_level4_m2"],
+  "plastering.level5.m2": ["plastering_level5_m2"],
+  "demolition.general.m2": ["demolition_general_m2"],
+  "demolition.wall.lm": ["demolition_wall_lm"],
+  "demolition.flooring.m2": ["demolition_flooring_m2"],
+  "demolition.ceiling.m2": ["demolition_ceiling_m2"],
+  "demolition.kitchen.each": ["demolition_kitchen_each"],
+  "demolition.bathroom.each": ["demolition_bathroom_each"],
+  "demolition.disposal.allowance": ["demolition_disposal_allowance"],
+  "demolition.skip_bin.each": ["demolition_skip_bin_each"],
+  "demolition.carting.allowance": ["demolition_carting_allowance"],
+  "demolition.fixture.removal": ["demolition_fixture_removal_allowance"],
+  "external_stairs.material.riser": [
+    "external_stairs_riser_each",
+    "external_stairs_material_riser_each",
+  ],
+  "external_stairs.landing.m2": ["external_stairs_landing_m2"],
+  "external_stairs.handrail.lm": ["external_stairs_handrail_lm"],
+  "external_stairs.balustrade.lm": ["external_stairs_balustrade_lm"],
+  "external_stairs.removal.each": ["external_stairs_removal_each"],
+  "external_stairs.finish.allowance": ["external_stairs_finish_allowance"],
 };
 
 function getDefaultMarginPercent(settings: OrganisationSettings | null): number {
@@ -39,12 +86,13 @@ function getHighFactor(settings: OrganisationSettings | null): number {
   return settings?.premium_rate_factor ?? 1.15;
 }
 
-function deriveSellFromCost(
-  costRate: number,
-  marginPercent: number
-): number {
-  if (marginPercent >= 100) return costRate * 1.5;
-  return round2(costRate / (1 - marginPercent / 100));
+function deriveSellFromCost(costRate: number, marginPercent: number): number {
+  assertMarginPercentForEstimating(marginPercent);
+  const divisor = 1 - marginPercent / 100;
+  if (divisor <= 0) {
+    throw new InvalidMarginPercentError(marginPercent);
+  }
+  return round2(costRate / divisor);
 }
 
 function applyRangeFactors(
@@ -234,4 +282,9 @@ export function getRangeFactors(settings: OrganisationSettings | null): {
   };
 }
 
-export { deriveSellFromCost, getDefaultMarginPercent, DEFAULT_MARGIN_PERCENT };
+export {
+  deriveSellFromCost,
+  getDefaultMarginPercent,
+  DEFAULT_MARGIN_PERCENT,
+  InvalidMarginPercentError,
+};

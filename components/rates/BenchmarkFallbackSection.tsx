@@ -9,6 +9,11 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import type { OrganisationSettings } from "@/components/setup/types";
+import {
+  RATES_LAST_REVIEWED,
+  RATES_NOTES,
+  RATES_REGION,
+} from "@/lib/estimate/benchmark-rates";
 
 type BenchmarkFallbackSectionProps = {
   settings: OrganisationSettings | null;
@@ -29,8 +34,8 @@ export function BenchmarkFallbackSection({
           </Badge>
         </div>
         <CardDescription>
-          Industry benchmark rates used only when your own rate is missing. These
-          are separate from your company rates above.
+          Benchmark rates are fallback estimates. Add your own rates for better
+          accuracy. These are separate from your company rates above.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">
@@ -53,6 +58,9 @@ export function BenchmarkFallbackSection({
             missing&rdquo; in regenerated estimates.
           </p>
         ) : null}
+        <p className="text-xs text-muted-foreground">
+          Last reviewed: {RATES_LAST_REVIEWED} ({RATES_REGION}). {RATES_NOTES}
+        </p>
         <p className="text-xs text-muted-foreground">
           Toggle benchmark fallbacks in Company defaults. Estimates that show
           &ldquo;Using benchmark allowances&rdquo; can be improved by setting

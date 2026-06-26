@@ -27,6 +27,10 @@ import {
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
+import {
+  createAssumptionMetadata,
+  recordDefaultedNumber,
+} from "@/lib/estimate/assumption-metadata";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -85,6 +89,7 @@ export function calculateFence(
   const assumptions: string[] = [];
   const exclusions: string[] = [];
   const lineItems: CalculatorResult["lineItems"] = [];
+  const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
   const length = getNumberFact(facts, workArea.id, "fence.length_m");
@@ -95,8 +100,16 @@ export function calculateFence(
   if (!height) missingInfo.push(formatMissing("Fence height"));
   if (!material) missingInfo.push(formatMissing("Fence material"));
 
-  const effectiveLength = length ?? 18;
-  if (!length) {
+  let effectiveLength = length;
+  if (!effectiveLength) {
+    effectiveLength = recordDefaultedNumber(assumptionMetadata, {
+      key: "fence.length_m",
+      label: "Fence length",
+      workAreaId: workArea.id,
+      assumedValue: 18,
+      unit: "m",
+      reason: "No fence length provided",
+    });
     assumptions.push("Using assumed fence length of 18 m for rough estimate.");
   }
 
@@ -350,5 +363,6 @@ export function calculateFence(
     missingInfo,
     exclusions,
     confidence: baseConfidence(missingInfo.length),
+    assumptionMetadata,
   };
 }

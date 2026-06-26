@@ -319,4 +319,45 @@ assert(
   "Retaining wall has single backfill allowance row"
 );
 
+// Test — two separate deck work areas keep separate decking board build-ups
+const twoDeckContext = {
+  ...baseContext,
+  confirmedWorkAreas: [
+    workArea("deck-a", "deck", "Deck A"),
+    workArea("deck-b", "deck", "Deck B"),
+  ],
+  facts: [
+    { key: "deck.area_m2", work_area_id: "deck-a", value: 24 },
+    { key: "deck.board_width_mm", work_area_id: "deck-a", value: 140 },
+    { key: "deck.board_material", work_area_id: "deck-a", value: "Hardwood" },
+    { key: "deck.height_m", work_area_id: "deck-a", value: 0.2 },
+    { key: "deck.area_m2", work_area_id: "deck-b", value: 18 },
+    { key: "deck.board_width_mm", work_area_id: "deck-b", value: 140 },
+    { key: "deck.board_material", work_area_id: "deck-b", value: "Hardwood" },
+    { key: "deck.height_m", work_area_id: "deck-b", value: 0.2 },
+  ],
+} as EstimateContext;
+
+const twoDeckEstimate = calculateEstimate(twoDeckContext);
+const deckAPackage = twoDeckEstimate.lineItems.find(
+  (item) =>
+    item.workAreaId === "deck-a" && item.label === "Decking materials package"
+);
+const deckBPackage = twoDeckEstimate.lineItems.find(
+  (item) =>
+    item.workAreaId === "deck-b" && item.label === "Decking materials package"
+);
+assert(deckAPackage != null, "Deck A keeps decking materials package");
+assert(deckBPackage != null, "Deck B keeps decking materials package");
+assert(
+  deckAPackage?.workAreaId !== deckBPackage?.workAreaId,
+  "Two deck work areas remain separate"
+);
+assert(
+  twoDeckEstimate.lineItems.filter(
+    (item) => item.label === "Decking materials package"
+  ).length === 2,
+  "Two deck work areas each keep their own package row"
+);
+
 console.log("\nAll material build-up safety checks passed.");

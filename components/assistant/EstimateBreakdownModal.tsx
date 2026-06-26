@@ -10,6 +10,7 @@ import {
 } from "@/components/assistant/format";
 import { Badge } from "@/components/ui/badge";
 import { RateSourceBadge } from "@/components/assistant/EstimateCalibrationPanel";
+import { PricingOwnershipBadge } from "@/components/pricing/PricingOwnershipBadge";
 import type {
   Estimate,
   EstimateLineItem,
@@ -25,7 +26,12 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
+import { defaultedFactWarnings } from "@/lib/estimate/assumption-metadata";
 import { buildEstimateCalibrationSummary } from "@/lib/estimate/estimate-calibration";
+import {
+  getCommercialTrustDetailLines,
+  lineItemRenderKey,
+} from "@/lib/estimate/commercial-realism";
 
 const CATEGORY_LABELS: Record<EstimateLineItemCategory, string> = {
   labour: "Labour",
@@ -91,21 +97,30 @@ function sumByCategory(items: EstimateLineItem[]) {
 
 function sumWorkAreaTotals(items: EstimateLineItem[]) {
   const byArea = groupByWorkArea(items);
-  return Object.entries(byArea).map(([name, areaItems]) => ({
-    name,
-    cost: areaItems.reduce((sum, item) => sum + item.recommendedCost, 0),
-    sell: areaItems.reduce((sum, item) => sum + item.recommendedSell, 0),
-    profit: areaItems.reduce((sum, item) => sum + item.grossProfit, 0),
-    hours: areaItems.reduce((sum, item) => sum + (item.labourHours ?? 0), 0),
-    lineItemCount: areaItems.length,
-    marginPercent:
-      areaItems.reduce((sum, item) => sum + item.recommendedSell, 0) > 0
-        ? (areaItems.reduce((sum, item) => sum + item.grossProfit, 0) /
-            areaItems.reduce((sum, item) => sum + item.recommendedSell, 0)) *
-          100
-        : 0,
-    items: areaItems,
-  }));
+  return Object.entries(byArea).map(([name, areaItems]) => {
+    let cost = 0;
+    let sell = 0;
+    let profit = 0;
+    let hours = 0;
+
+    for (const item of areaItems) {
+      cost += item.recommendedCost;
+      sell += item.recommendedSell;
+      profit += item.grossProfit;
+      hours += item.labourHours ?? 0;
+    }
+
+    return {
+      name,
+      cost,
+      sell,
+      profit,
+      hours,
+      lineItemCount: areaItems.length,
+      marginPercent: sell > 0 ? (profit / sell) * 100 : 0,
+      items: areaItems,
+    };
+  });
 }
 
 function ProportionalBar({
@@ -197,6 +212,13 @@ function LineItemCard({
   compact?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const trustDetailLines = getCommercialTrustDetailLines({
+    quantityBasis: item.quantityBasis,
+    labourMinimum: item.labourMinimum,
+    allowanceMinimum: item.allowanceMinimum,
+    pricingOwner: item.pricingOwner,
+    notes: item.notes,
+  });
   const materialBuildUpLines =
     item.materialBuildUps?.flatMap((buildUp) => {
       const lines = [buildUp.display];
@@ -249,13 +271,19 @@ function LineItemCard({
       <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
         <div className="min-w-0">
           <p className="break-words text-sm font-medium">{item.label}</p>
-          <div className="mt-1.5">
+          <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <RateSourceBadge source={item.rateSource} />
+            <PricingOwnershipBadge
+              owner={item.pricingOwner}
+              includedInTotal={item.includedInTotal}
+            />
           </div>
         </div>
-        <Badge variant="secondary" className="w-fit shrink-0">
-          {CATEGORY_LABELS[item.category]}
-        </Badge>
+        <div className="flex flex-wrap items-center gap-1.5">
+          <Badge variant="secondary" className="w-fit shrink-0">
+            {CATEGORY_LABELS[item.category]}
+          </Badge>
+        </div>
       </div>
 
       <dl className="mt-3 grid gap-3 text-sm sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -337,6 +365,19 @@ function LineItemCard({
         </div>
       ) : null}
 
+      {trustDetailLines.length > 0 ? (
+        <div className="mt-3 space-y-1 rounded-xl border border-dashed bg-background/60 px-3 py-2.5">
+          <p className="text-xs font-medium text-muted-foreground">
+            Commercial detail
+          </p>
+          <ul className="space-y-0.5 text-xs text-muted-foreground">
+            {trustDetailLines.map((line) => (
+              <li key={line}>{line}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
       {compact ? (
         <Button
           type="button"
@@ -370,8 +411,11 @@ export function EstimateBreakdownModal({
   const [activeTab, setActiveTab] = useState<BreakdownTab>("summary");
   const [expandedWorkArea, setExpandedWorkArea] = useState<string | null>(null);
 
-  const grouped = useMemo(
-    () => (estimate ? groupByWorkArea(estimate.lineItems) : {}),
+  const groupedLineItems = useMemo(
+    () =>
+      estimate
+        ? Object.entries(groupByWorkArea(estimate.lineItems))
+        : [],
     [estimate]
   );
 
@@ -586,6 +630,23 @@ export function EstimateBreakdownModal({
                 <h3 className="text-sm font-semibold tracking-tight">
                   Assumptions
                 </h3>
+                {estimate.assumptionMetadata?.assumptionSeverity === "critical" ? (
+                  <div
+                    className="rounded-md border border-amber-300/80 bg-amber-50/90 px-3 py-2 text-sm text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
+                    role="alert"
+                  >
+                    <p className="font-medium">
+                      Critical dimensions were assumed — confirm before pricing.
+                    </p>
+                    <ul className="mt-2 list-inside list-disc space-y-1 text-xs">
+                      {defaultedFactWarnings(estimate.assumptionMetadata).map(
+                        (item) => (
+                          <li key={item}>{item}</li>
+                        )
+                      )}
+                    </ul>
+                  </div>
+                ) : null}
                 <ul className="list-inside list-disc space-y-1 break-words text-sm text-muted-foreground">
                   {estimate.assumptions.map((item) => (
                     <li key={item}>{item}</li>
@@ -679,8 +740,12 @@ export function EstimateBreakdownModal({
 
                     {isExpanded ? (
                       <ul className="space-y-2 border-t px-4 py-3">
-                        {area.items.map((item) => (
-                          <LineItemCard key={item.id} item={item} compact />
+                        {area.items.map((item, index) => (
+                          <LineItemCard
+                            key={lineItemRenderKey(item, index)}
+                            item={item}
+                            compact
+                          />
                         ))}
                       </ul>
                     ) : null}
@@ -754,14 +819,17 @@ export function EstimateBreakdownModal({
 
           {activeTab === "line_items" ? (
             <div className="space-y-6">
-              {Object.entries(grouped).map(([workAreaName, items]) => (
+              {groupedLineItems.map(([workAreaName, items]) => (
                 <section key={workAreaName} className="space-y-3">
                   <h3 className="text-sm font-semibold tracking-tight">
                     {workAreaName}
                   </h3>
                   <ul className="space-y-3">
-                    {items.map((item) => (
-                      <LineItemCard key={item.id} item={item} />
+                    {items.map((item, index) => (
+                      <LineItemCard
+                        key={lineItemRenderKey(item, index)}
+                        item={item}
+                      />
                     ))}
                   </ul>
                 </section>

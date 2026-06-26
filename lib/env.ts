@@ -72,4 +72,22 @@ export function getEnvSummary(): {
   };
 }
 
+const FORBIDDEN_PUBLIC_ENV_NAMES = [
+  "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE",
+  "NEXT_PUBLIC_SUPABASE_SERVICE",
+  "NEXT_PUBLIC_SERVICE_ROLE_KEY",
+  "NEXT_PUBLIC_SUPABASE_SERVICE_ROLE_KEY",
+];
+
+export function assertEnvSafety(): void {
+  for (const name of FORBIDDEN_PUBLIC_ENV_NAMES) {
+    if (process.env[name]) {
+      throw new Error(
+        `Forbidden environment variable ${name}. Service role keys must never be exposed to the browser.`
+      );
+    }
+  }
+}
+
+assertEnvSafety();
 assertRequiredEnv();

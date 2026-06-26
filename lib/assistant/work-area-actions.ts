@@ -6,6 +6,7 @@ import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-quest
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStale } from "@/lib/estimate/stale";
+import { assertOrgOwnsProject, assertOrgOwnsWorkArea } from "@/lib/security/org-ownership";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 
 const CATALOGUE_BY_TYPE = new Map(
@@ -44,10 +45,16 @@ export async function addWorkAreaToProject(input: {
   const { supabase, orgId } = context;
   const { projectId, workAreaType } = parsed.data;
 
+  const ownedProject = await assertOrgOwnsProject(context, projectId);
+  if ("error" in ownedProject) {
+    return { error: ownedProject.error };
+  }
+
   const { data: project } = await supabase
     .from("projects")
     .select("id, quality_level, stage")
     .eq("id", projectId)
+    .eq("org_id", orgId)
     .maybeSingle();
 
   if (!project) {
@@ -167,11 +174,22 @@ export async function excludeWorkAreaFromProject(input: {
   const { supabase, orgId } = context;
   const { projectId, workAreaId } = parsed.data;
 
+  const ownedProject = await assertOrgOwnsProject(context, projectId);
+  if ("error" in ownedProject) {
+    return { error: ownedProject.error };
+  }
+
+  const ownedWorkArea = await assertOrgOwnsWorkArea(context, workAreaId, projectId);
+  if ("error" in ownedWorkArea) {
+    return { error: ownedWorkArea.error };
+  }
+
   const { data: workArea } = await supabase
     .from("work_areas")
     .select("id, status, name")
     .eq("id", workAreaId)
     .eq("project_id", projectId)
+    .eq("org_id", orgId)
     .maybeSingle();
 
   if (!workArea) {

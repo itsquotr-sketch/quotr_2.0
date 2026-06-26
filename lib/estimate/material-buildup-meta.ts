@@ -62,6 +62,10 @@ export function isSheetMaterialLining(
     lower.includes("plasterboard") ||
     lower.includes("plywood") ||
     lower.includes("fibre cement") ||
+    lower.includes("gib") ||
+    lower.includes("aqualine") ||
+    lower.includes("fyreline") ||
+    lower.includes("braceline") ||
     lower.includes("sheet")
   );
 }
@@ -73,7 +77,16 @@ export function sheetMaterialLabel(
     return "sheet material";
   }
   const lower = liningType.toLowerCase();
-  if (lower.includes("plasterboard")) {
+  if (lower.includes("aqualine")) {
+    return "Aqualine";
+  }
+  if (lower.includes("fyreline")) {
+    return "Fyreline";
+  }
+  if (lower.includes("braceline")) {
+    return "Braceline";
+  }
+  if (lower.includes("gib") || lower.includes("plasterboard")) {
     return "plasterboard";
   }
   if (lower.includes("plywood")) {
@@ -158,14 +171,16 @@ export function createSheetCountBuildUp(params: {
 export function createFlooringAreaBuildUp(params: {
   result: FlooringAreaResult;
   wastagePercent: number;
+  materialLabel?: string;
 }): MaterialBuildUpEntry {
+  const label = params.materialLabel ?? "Flooring";
   return {
     key: "flooring_area",
-    label: "Flooring",
+    label,
     quantity: params.result.totalAreaM2,
     unit: "m2",
     wastagePercent: params.wastagePercent,
-    display: `Approx. ${params.result.totalAreaM2} m² flooring incl. ${params.wastagePercent}% wastage`,
+    display: `Approx. ${params.result.totalAreaM2} m² ${label.toLowerCase()} incl. ${params.wastagePercent}% wastage`,
     priced: false,
     buildUpType: "flooring_area",
     inputs: {
@@ -270,7 +285,7 @@ export function createPaintLitresBuildUp(params: {
     unit: "l",
     wastagePercent: params.wastagePercent,
     basis: `${params.areaM2}m² · ${params.coats} coat(s)`,
-    display: `Paint: approx. ${params.result.totalLitres}L incl. wastage`,
+    display: `Approx. ${params.result.totalLitres} L paint allowance incl. ${params.coats} coat(s)`,
     priced: false,
     buildUpType: "paint_litres",
     inputs: {

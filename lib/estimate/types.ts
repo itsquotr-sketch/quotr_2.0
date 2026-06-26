@@ -2,7 +2,17 @@ import type { QualityLevel } from "@/components/assistant/types";
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
 import type { MaterialBuildUpEntry } from "@/lib/estimate/material-buildup-meta";
 import type { MaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
+import type {
+  PricingOwner,
+  PricingSource,
+} from "@/lib/estimate/pricing-ownership";
+import type {
+  AllowanceMinimumMeta,
+  LabourMinimumMeta,
+  QuantityBasis,
+} from "@/lib/estimate/line-item-metadata";
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
+import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 
 export type EstimateProject = {
@@ -78,6 +88,15 @@ export type EstimateLineItemInput = {
   materialBuildUps?: MaterialBuildUpEntry[];
   materialRateResolution?: MaterialRateResolution;
   sortOrder: number;
+  pricingOwner?: PricingOwner;
+  scopeKey?: string;
+  overlapGroup?: string;
+  includedInTotal?: boolean;
+  clientVisible?: boolean;
+  pricingSource?: PricingSource;
+  quantityBasis?: QuantityBasis;
+  labourMinimum?: LabourMinimumMeta;
+  allowanceMinimum?: AllowanceMinimumMeta;
 };
 
 export type CalculatorResult = {
@@ -86,6 +105,7 @@ export type CalculatorResult = {
   missingInfo: string[];
   exclusions: string[];
   confidence: number;
+  assumptionMetadata?: AssumptionMetadata;
 };
 
 export type EstimateResult = {
@@ -103,6 +123,7 @@ export type EstimateResult = {
   assumptions: string[];
   missingInfo: string[];
   exclusions: string[];
+  assumptionMetadata?: AssumptionMetadata;
   lineItems: EstimateLineItemInput[];
 };
 

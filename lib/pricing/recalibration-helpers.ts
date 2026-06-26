@@ -1,7 +1,7 @@
-import { buildPricingNotesFromEstimateLineItem } from "@/lib/estimate/line-item-metadata";
+import { buildPricingNotesFromEstimateLineItem, parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { pricingOwnerToDeliveryMethod } from "@/lib/estimate/pricing-ownership";
 import {
   cleanClientLabel,
-  defaultDeliveryMethod,
   mapEstimateCategoryToItemType,
   roundMoney,
   roundPercent,
@@ -69,10 +69,20 @@ function labelKey(workAreaId: string | null, label: string): string {
 export function valuesFromEstimateLineItem(lineItem: EstimateLineItemRow) {
   const fields = buildPricingItemFieldsFromEstimateLineItem(lineItem);
   const itemType = mapEstimateCategoryToItemType(lineItem.category);
+  const { metadata } = parseLineItemNotes(lineItem.notes);
+  const deliveryMethod = pricingOwnerToDeliveryMethod(
+    metadata.pricingOwner,
+    itemType
+  );
 
   return {
     itemType,
-    deliveryMethod: defaultDeliveryMethod(itemType),
+    deliveryMethod,
+    pricingOwner: metadata.pricingOwner,
+    scopeKey: metadata.scopeKey,
+    overlapGroup: metadata.overlapGroup,
+    includedInTotal: metadata.includedInTotal,
+    clientVisible: metadata.clientVisible,
     quantity: fields.quantity,
     unit: fields.unit,
     unitCost: fields.unitCost,

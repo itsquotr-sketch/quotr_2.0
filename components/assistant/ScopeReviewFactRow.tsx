@@ -91,6 +91,11 @@ export function ScopeReviewFactRow({
             <p className="text-xs text-muted-foreground">{fact.label}</p>
             <p className="mt-0.5 font-medium text-foreground">{fact.value}</p>
             <p className="mt-0.5 text-[11px] text-muted-foreground">{sourceText}</p>
+            {fact.conflictWarning ? (
+              <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200">
+                {fact.conflictWarning}
+              </p>
+            ) : null}
             {fact.derivedNote ? (
               <p className="mt-0.5 text-xs text-muted-foreground">
                 {fact.derivedNote}

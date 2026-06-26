@@ -3,6 +3,7 @@ import {
   deriveFactsForProject,
   mergeDerivedFactsIntoRecords,
 } from "@/lib/scopes/derived-facts";
+import { detectDerivedFactConflicts } from "@/lib/scopes/derived-fact-conflicts";
 
 type ProjectFactRow = {
   key: string;
@@ -29,6 +30,14 @@ export async function persistDerivedFactsForProject(
     projectFacts,
   });
 
+  const conflicts = detectDerivedFactConflicts(projectFacts, derivedFacts);
+  const conflictByKey = new Map(
+    conflicts.map((conflict) => [
+      `${conflict.workAreaId}:${conflict.key}`,
+      conflict.warning,
+    ])
+  );
+
   for (const derived of derivedFacts) {
     let factQuery = supabase
       .from("project_facts")
@@ -48,12 +57,16 @@ export async function persistDerivedFactsForProject(
       continue;
     }
 
+    const conflictWarning =
+      conflictByKey.get(`${derived.work_area_id}:${derived.key}`) ?? null;
+
     const factPayload = {
       label: derived.label,
       value: derived.value,
       unit: derived.unit,
       source: "derived" as const,
       confidence: 1,
+      conflict_warning: conflictWarning,
     };
 
     if (existingFact) {

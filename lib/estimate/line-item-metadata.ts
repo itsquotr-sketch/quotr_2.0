@@ -1,9 +1,46 @@
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
 import type { MaterialBuildUpEntry } from "@/lib/estimate/material-buildup-meta";
 import type { MaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
+import type {
+  PricingOwner,
+  PricingSource,
+} from "@/lib/estimate/pricing-ownership";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 
 const META_MARKER = "\n__quotr_meta__:";
+
+export type QuantityBasisConfidence = "confirmed" | "derived" | "assumed";
+
+export type QuantityBasis = {
+  sourceFact: string;
+  sourceLabel: string;
+  quantity: number;
+  unit: string;
+  formula?: string;
+  confidence?: QuantityBasisConfidence;
+};
+
+export type LabourMinimumMeta = {
+  calculatedHours: number;
+  finalHours: number;
+  minimumApplied: boolean;
+  minCrewSize?: number;
+  minDurationHours?: number;
+  minTotalHours?: number;
+  accessFactor?: number;
+  accessLabel?: string;
+  smallJobFactor?: number;
+};
+
+export type AllowanceMinimumMeta = {
+  minimumApplied: boolean;
+  reason: string;
+  scopeKey?: string;
+  calculatedCost?: number;
+  calculatedSell?: number;
+  minimumCost?: number;
+  minimumSell?: number;
+};
 
 export type LineItemMetadata = {
   quantity?: number;
@@ -19,6 +56,15 @@ export type LineItemMetadata = {
   materialBuildUp?: MaterialBuildUpEntry;
   materialBuildUps?: MaterialBuildUpEntry[];
   materialRateResolution?: MaterialRateResolution;
+  pricingOwner?: PricingOwner;
+  scopeKey?: string;
+  overlapGroup?: string;
+  includedInTotal?: boolean;
+  clientVisible?: boolean;
+  pricingSource?: PricingSource;
+  quantityBasis?: QuantityBasis;
+  labourMinimum?: LabourMinimumMeta;
+  allowanceMinimum?: AllowanceMinimumMeta;
 };
 
 export function serializeLineItemMetadata(meta: LineItemMetadata): string {
@@ -140,6 +186,33 @@ export function buildPricingNotesFromEstimateLineItem(
   }
   if (metadata.materialRateResolution) {
     metaToStore.materialRateResolution = metadata.materialRateResolution;
+  }
+  if (metadata.pricingOwner) {
+    metaToStore.pricingOwner = metadata.pricingOwner;
+  }
+  if (metadata.scopeKey) {
+    metaToStore.scopeKey = metadata.scopeKey;
+  }
+  if (metadata.overlapGroup) {
+    metaToStore.overlapGroup = metadata.overlapGroup;
+  }
+  if (metadata.includedInTotal != null) {
+    metaToStore.includedInTotal = metadata.includedInTotal;
+  }
+  if (metadata.clientVisible != null) {
+    metaToStore.clientVisible = metadata.clientVisible;
+  }
+  if (metadata.pricingSource) {
+    metaToStore.pricingSource = metadata.pricingSource;
+  }
+  if (metadata.quantityBasis) {
+    metaToStore.quantityBasis = metadata.quantityBasis;
+  }
+  if (metadata.labourMinimum) {
+    metaToStore.labourMinimum = metadata.labourMinimum;
+  }
+  if (metadata.allowanceMinimum) {
+    metaToStore.allowanceMinimum = metadata.allowanceMinimum;
   }
   if (Object.keys(metaToStore).length === 0) {
     return displayNotes || null;

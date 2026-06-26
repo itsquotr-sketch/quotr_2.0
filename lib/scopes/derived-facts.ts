@@ -143,6 +143,96 @@ export function deriveFactsForProject(params: {
         });
       }
     }
+
+    if (workArea.type === "internal_walls") {
+      const length = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "internal_walls.length_lm")
+      );
+      const height = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "internal_walls.height_m")
+      );
+      const sides = getFactValue(lookup, workArea.id, "internal_walls.lining_sides");
+      const sideFactor =
+        typeof sides === "string" && sides.toLowerCase().includes("both") ? 2 : 1;
+
+      if (length && height) {
+        const existing = lookup.get(`${workArea.id}:internal_walls.area_m2`);
+        if (!existing || existing.source !== "user") {
+          derived.push({
+            work_area_id: workArea.id,
+            key: "internal_walls.area_m2",
+            label: "Wall lining area",
+            value: roundToTwoDecimals(length * height * sideFactor),
+            unit: "m²",
+            source: "derived",
+          });
+        }
+      }
+    }
+
+    if (workArea.type === "bathroom") {
+      const floorArea = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "bathroom.floor_tiling_area_m2")
+      );
+      const wallArea = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "bathroom.wall_tiling_area_m2")
+      );
+      if (floorArea && wallArea) {
+        const existing = lookup.get(`${workArea.id}:bathroom.total_tiling_area_m2`);
+        if (!existing || existing.source !== "user") {
+          derived.push({
+            work_area_id: workArea.id,
+            key: "bathroom.total_tiling_area_m2",
+            label: "Total tiling area",
+            value: roundToTwoDecimals(floorArea + wallArea),
+            unit: "m²",
+            source: "derived",
+          });
+        }
+      }
+    }
+
+    if (workArea.type === "external_stairs") {
+      const DEFAULT_RISER_M = 0.175;
+      const riserCount = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "external_stairs.risers_count")
+      );
+      const totalRise = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "external_stairs.total_rise_m")
+      );
+
+      if (!riserCount && totalRise) {
+        const existing = lookup.get(
+          `${workArea.id}:external_stairs.approximate_riser_count`
+        );
+        if (!existing || existing.source !== "user") {
+          derived.push({
+            work_area_id: workArea.id,
+            key: "external_stairs.approximate_riser_count",
+            label: "Approximate riser count",
+            value: Math.ceil(totalRise / DEFAULT_RISER_M),
+            unit: "risers",
+            source: "derived",
+          });
+        }
+      }
+
+      if (riserCount && !totalRise) {
+        const existing = lookup.get(
+          `${workArea.id}:external_stairs.approximate_total_rise_m`
+        );
+        if (!existing || existing.source !== "user") {
+          derived.push({
+            work_area_id: workArea.id,
+            key: "external_stairs.approximate_total_rise_m",
+            label: "Approximate total rise",
+            value: roundToTwoDecimals(riserCount * DEFAULT_RISER_M),
+            unit: "m",
+            source: "derived",
+          });
+        }
+      }
+    }
   }
 
   return derived;
@@ -239,6 +329,51 @@ export function buildDerivedFactDisplays(
         workAreaId: fact.work_area_id,
         label: "Calculated backfill volume",
         text: `${fact.value} m³`,
+      });
+      continue;
+    }
+
+    if (fact.key === "internal_walls.area_m2" && typeof fact.value === "number") {
+      displays.push({
+        workAreaId: fact.work_area_id,
+        label: "Calculated wall lining area",
+        text: `${fact.value} m²`,
+      });
+      continue;
+    }
+
+    if (
+      fact.key === "bathroom.total_tiling_area_m2" &&
+      typeof fact.value === "number"
+    ) {
+      displays.push({
+        workAreaId: fact.work_area_id,
+        label: "Calculated total tiling area",
+        text: `${fact.value} m²`,
+      });
+      continue;
+    }
+
+    if (
+      fact.key === "external_stairs.approximate_riser_count" &&
+      typeof fact.value === "number"
+    ) {
+      displays.push({
+        workAreaId: fact.work_area_id,
+        label: "Approximate riser count",
+        text: `${fact.value} risers`,
+      });
+      continue;
+    }
+
+    if (
+      fact.key === "external_stairs.approximate_total_rise_m" &&
+      typeof fact.value === "number"
+    ) {
+      displays.push({
+        workAreaId: fact.work_area_id,
+        label: "Approximate total rise",
+        text: `${fact.value} m`,
       });
     }
   }

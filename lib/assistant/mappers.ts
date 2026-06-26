@@ -22,6 +22,7 @@ import type {
 } from "@/lib/assistant/types";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import {
   buildDerivedFactDisplays,
@@ -96,6 +97,7 @@ type DbEstimate = {
   assumptions: unknown;
   missing_info: unknown;
   exclusions: unknown;
+  assumption_metadata?: unknown;
 };
 
 type DbLineItem = {
@@ -368,6 +370,14 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
     sellDerivedFromMargin: metadata.sellDerivedFromMargin,
     notes: displayNotes,
     materialBuildUps: getMaterialBuildUps(row.notes),
+    pricingOwner: metadata.pricingOwner,
+    scopeKey: metadata.scopeKey,
+    overlapGroup: metadata.overlapGroup,
+    includedInTotal: metadata.includedInTotal,
+    clientVisible: metadata.clientVisible,
+    quantityBasis: metadata.quantityBasis,
+    labourMinimum: metadata.labourMinimum,
+    allowanceMinimum: metadata.allowanceMinimum,
   };
 }
 
@@ -402,8 +412,16 @@ export function mapEstimate(
     assumptions: parseJsonStringArray(estimate.assumptions),
     missingInfo: parseJsonStringArray(estimate.missing_info),
     scopeExclusions: parseJsonStringArray(estimate.exclusions),
+    assumptionMetadata: parseAssumptionMetadata(estimate.assumption_metadata),
     lineItems: mappedLineItems,
   };
+}
+
+function parseAssumptionMetadata(value: unknown): AssumptionMetadata | undefined {
+  if (!value || typeof value !== "object") return undefined;
+  const record = value as AssumptionMetadata;
+  if (!Array.isArray(record.defaultedFacts)) return undefined;
+  return record;
 }
 
 export function buildAssistantState(input: {

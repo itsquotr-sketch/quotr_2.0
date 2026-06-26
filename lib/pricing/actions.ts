@@ -4,19 +4,24 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { buildPricingNotesFromEstimateLineItem } from "@/lib/estimate/line-item-metadata";
 import { getAuthOrgContext } from "@/lib/assistant/state";
+import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
+import {
+  assertOrgOwnsPricingDocument,
+  assertOrgOwnsPricingItem,
+} from "@/lib/security/org-ownership";
 import {
   addDaysIsoDate,
   calculateDocumentTotals,
   calculatePricingItemTotals,
   cleanClientLabel,
   defaultDeliveryMethod,
-  mapEstimateCategoryToItemType,
   parseStringArray,
   todayIsoDate,
 } from "@/lib/pricing/calculations";
 import {
   buildPricingItemFieldsFromEstimateLineItem,
 } from "@/lib/pricing/pricing-item-calculation";
+import { valuesFromEstimateLineItem } from "@/lib/pricing/recalibration-helpers";
 import {
   buildScopeSummaryFromWorkAreas,
   mapPricingDocument,
@@ -437,9 +442,8 @@ export async function createPricingFromEstimate(input: {
 
   if (lineItems && lineItems.length > 0) {
     const pricingItemRows = lineItems.map((lineItem, index) => {
-      const itemType = mapEstimateCategoryToItemType(lineItem.category);
-      const deliveryMethod = defaultDeliveryMethod(itemType);
       const fields = buildPricingItemFieldsFromEstimateLineItem(lineItem);
+      const values = valuesFromEstimateLineItem(lineItem);
       const displayNotes = lineItem.notes?.split("\n__quotr_meta__:")[0]?.trim();
 
       return {
@@ -448,8 +452,8 @@ export async function createPricingFromEstimate(input: {
         project_id: projectId,
         work_area_id: lineItem.work_area_id,
         source_estimate_line_item_id: lineItem.id,
-        item_type: itemType,
-        delivery_method: deliveryMethod,
+        item_type: values.itemType,
+        delivery_method: values.deliveryMethod,
         internal_label: lineItem.label,
         client_label: cleanClientLabel(lineItem.label),
         internal_description: displayNotes || null,
@@ -577,9 +581,14 @@ export async function updatePricingItem(
 
   const { supabase, orgId } = context;
 
+  const ownedItem = await assertOrgOwnsPricingItem(context, pricingItemId);
+  if ("error" in ownedItem) {
+    return { error: ownedItem.error };
+  }
+
   const { data: existing, error: loadError } = await supabase
     .from("pricing_items")
-    .select("id, pricing_document_id, project_id")
+    .select("id, pricing_document_id, project_id, total_sell, client_label")
     .eq("id", pricingItemId)
     .eq("org_id", orgId)
     .maybeSingle();
@@ -638,6 +647,25 @@ export async function updatePricingItem(
     return { error: error.message };
   }
 
+  await logPricingAuditEvent({
+    supabase,
+    organisationId: orgId,
+    projectId: existing.project_id,
+    pricingDocumentId: existing.pricing_document_id,
+    itemId: pricingItemId,
+    userId: context.user.id,
+    action: "pricing_item_update",
+    oldValues: {
+      total_sell: existing.total_sell,
+      client_label: existing.client_label,
+    },
+    newValues: {
+      total_sell: totals.totalSell,
+      client_label: input.client_label,
+      manually_edited: true,
+    },
+  });
+
   const { data: document } = await supabase
     .from("pricing_documents")
     .select("gst_rate")
@@ -690,6 +718,15 @@ export async function addPricingItem(input: {
   const itemType = input.itemType ?? "other";
   const deliveryMethod =
     input.deliveryMethod ?? defaultDeliveryMethod(itemType);
+
+  const ownedDocument = await assertOrgOwnsPricingDocument(
+    context,
+    input.pricingDocumentId,
+    input.projectId
+  );
+  if ("error" in ownedDocument) {
+    return { error: ownedDocument.error };
+  }
 
   const { data: maxSort } = await supabase
     .from("pricing_items")
@@ -871,9 +908,14 @@ export async function deletePricingItem(
 
   const { supabase, orgId } = context;
 
+  const ownedItem = await assertOrgOwnsPricingItem(context, pricingItemId);
+  if ("error" in ownedItem) {
+    return { error: ownedItem.error };
+  }
+
   const { data: existing, error: loadError } = await supabase
     .from("pricing_items")
-    .select("id, pricing_document_id, project_id")
+    .select("id, pricing_document_id, project_id, client_label")
     .eq("id", pricingItemId)
     .eq("org_id", orgId)
     .maybeSingle();
@@ -891,6 +933,17 @@ export async function deletePricingItem(
   if (error) {
     return { error: error.message };
   }
+
+  await logPricingAuditEvent({
+    supabase,
+    organisationId: orgId,
+    projectId: existing.project_id,
+    pricingDocumentId: existing.pricing_document_id,
+    itemId: pricingItemId,
+    userId: context.user.id,
+    action: "pricing_item_delete",
+    oldValues: { client_label: existing.client_label },
+  });
 
   const { data: document } = await supabase
     .from("pricing_documents")

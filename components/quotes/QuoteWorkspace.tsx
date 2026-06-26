@@ -3,8 +3,9 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useRef, useState, useTransition, type ReactNode } from "react";
-import { Loader2, Printer } from "lucide-react";
+import { Printer } from "lucide-react";
 import { QuoteHeader } from "@/components/quotes/QuoteHeader";
+import { QuoteMobileActionBar } from "@/components/quotes/QuoteMobileActionBar";
 import { QuoteSummaryPanel } from "@/components/quotes/QuoteSummaryPanel";
 import { QuoteTermsCard } from "@/components/quotes/QuoteTermsCard";
 import { WorkspaceBanner } from "@/components/layout/workspace-banner";
@@ -39,6 +40,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
   const router = useRouter();
   const [isSaving, startSave] = useTransition();
   const [isRevising, startRevise] = useTransition();
+  const [isStatusPending, startStatus] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
   const quoteDraftRef = useRef<QuoteInput>({});
 
@@ -179,7 +181,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
   );
 
   return (
-    <div className="space-y-5 pb-4">
+    <div className="space-y-5 pb-[calc(5rem+env(safe-area-inset-bottom))] xl:pb-4">
       <div className="print:hidden">
         <QuoteHeader
           quote={quote}
@@ -343,25 +345,34 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </div>
       </div>
 
-      {isEditable ? (
-        <div className="fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 p-3 backdrop-blur-sm xl:hidden print:hidden">
-          <Button
-            type="button"
-            className="h-11 w-full"
-            disabled={isSaving}
-            onClick={handleSaveQuote}
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="mr-2 size-4 animate-spin" />
-                Saving…
-              </>
-            ) : (
-              "Save quote"
-            )}
-          </Button>
-        </div>
-      ) : null}
+      <QuoteMobileActionBar
+        quote={quote}
+        canSave={isEditable}
+        isSaving={isSaving}
+        isRevising={isRevising}
+        isStatusPending={isStatusPending}
+        onSave={handleSaveQuote}
+        onPrint={handlePrint}
+        onMarkSent={
+          !isEditable &&
+          (quote.status === "draft" || quote.status === "revised")
+            ? () => {
+                startStatus(async () => {
+                  await handleMarkSent();
+                });
+              }
+            : undefined
+        }
+        onMarkAccepted={
+          quote.status === "sent"
+            ? () => {
+                startStatus(async () => {
+                  await handleMarkAccepted();
+                });
+              }
+            : undefined
+        }
+      />
     </div>
   );
 }

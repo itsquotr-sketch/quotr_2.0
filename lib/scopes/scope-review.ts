@@ -47,6 +47,7 @@ export type ScopeReviewFact = {
   sourcePriority: number;
   readOnly?: boolean;
   derivedNote?: string;
+  conflictWarning?: string;
   inputType?: "number" | "select" | "boolean" | "text" | "multi_select";
   options?: string[];
 };
@@ -88,6 +89,7 @@ type FactCandidate = {
   sourcePriority: number;
   source: string;
   sortOrder: number;
+  conflictWarning?: string;
 };
 
 const SOURCE_META: Record<
@@ -384,6 +386,7 @@ function buildWorkAreaFacts(params: {
       sourcePriority: sourceMeta.priority,
       source,
       sortOrder: getTemplateSortOrder(params.workArea.type, canonicalKey),
+      conflictWarning: fact.conflict_warning ?? undefined,
     };
 
     const existing = candidates.get(canonicalKey);
@@ -424,6 +427,7 @@ function buildWorkAreaFacts(params: {
         derivedNote: readOnly
           ? getDerivedFactNote(params.workArea.type, candidate.canonicalKey)
           : undefined,
+        conflictWarning: candidate.conflictWarning,
         inputType: editMeta.inputType,
         options: editMeta.options,
       };

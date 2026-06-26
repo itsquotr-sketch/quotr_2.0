@@ -2,13 +2,14 @@
 
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useTransition } from "react";
-import { Search } from "lucide-react";
+import { Loader2, Search } from "lucide-react";
 import { ProjectMobileCard } from "@/components/projects/ProjectMobileCard";
 import { ProjectRow } from "@/components/projects/ProjectRow";
 import { EmptyState } from "@/components/layout/empty-state";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import {
   DASHBOARD_FILTER_OPTIONS,
   isLifecycleArchiveFilter,
@@ -30,6 +31,7 @@ export function DashboardProjectList({
   const router = useRouter();
   const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
+  const isDesktop = useIsDesktop();
 
   const updateParams = useCallback(
     (updates: { filter?: ProjectListFilter; q?: string }) => {
@@ -139,26 +141,33 @@ export function DashboardProjectList({
         />
       ) : (
         <>
-          <p className="text-xs font-medium text-muted-foreground">
-            {projects.length} project{projects.length === 1 ? "" : "s"}
-          </p>
-          <div className="hidden space-y-2 md:block">
-            {projects.map((project, index) => (
-              <ProjectRow
-                key={project.id}
-                project={project}
-                prefetch={index < 20}
-              />
-            ))}
+          <div className="flex items-center gap-2">
+            <p className="text-xs font-medium text-muted-foreground">
+              {projects.length} project{projects.length === 1 ? "" : "s"}
+            </p>
+            {isPending ? (
+              <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                <Loader2 className="size-3 animate-spin" />
+                Updating…
+              </span>
+            ) : null}
           </div>
-          <div className="space-y-2 md:hidden">
-            {projects.map((project, index) => (
-              <ProjectMobileCard
-                key={project.id}
-                project={project}
-                prefetch={index < 20}
-              />
-            ))}
+          <div className="space-y-2">
+            {projects.map((project, index) =>
+              isDesktop ? (
+                <ProjectRow
+                  key={project.id}
+                  project={project}
+                  prefetch={index < 20}
+                />
+              ) : (
+                <ProjectMobileCard
+                  key={project.id}
+                  project={project}
+                  prefetch={index < 20}
+                />
+              )
+            )}
           </div>
         </>
       )}

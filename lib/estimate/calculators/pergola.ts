@@ -29,6 +29,10 @@ import {
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
+import {
+  createAssumptionMetadata,
+  recordDefaultedNumber,
+} from "@/lib/estimate/assumption-metadata";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -44,6 +48,7 @@ export function calculatePergola(
   const assumptions: string[] = [];
   const exclusions: string[] = [];
   const lineItems: CalculatorResult["lineItems"] = [];
+  const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
   let area = getNumberFact(facts, workArea.id, "pergola.area_m2");
@@ -69,7 +74,14 @@ export function calculatePergola(
 
   if (!area) {
     missingInfo.push(formatMissing("Pergola area"));
-    area = 15;
+    area = recordDefaultedNumber(assumptionMetadata, {
+      key: "pergola.area_m2",
+      label: "Pergola area",
+      workAreaId: workArea.id,
+      assumedValue: 15,
+      unit: "m²",
+      reason: "No pergola area or dimensions provided",
+    });
     assumptions.push("Using assumed pergola area of 15 m² for rough estimate.");
   }
 
@@ -333,5 +345,6 @@ export function calculatePergola(
     missingInfo,
     exclusions,
     confidence: baseConfidence(missingInfo.length),
+    assumptionMetadata,
   };
 }

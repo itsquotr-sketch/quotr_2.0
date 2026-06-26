@@ -387,12 +387,24 @@ function buildFenceDraft(
 function buildBathroomDraft(facts?: WorkAreaQuoteFact[]): string {
   const area = factValue(facts, "bathroom.area_m2");
   const tiling = factValue(facts, "bathroom.tile_extent");
+  const renovationType = factValue(facts, "bathroom.renovation_type");
 
   let draft =
     "Carry out bathroom renovation works to the agreed scope, including selected fixtures, linings, waterproofing, tiling and associated trade coordination where included.";
 
+  if (renovationType) {
+    draft = `Carry out ${renovationType.toLowerCase()} bathroom works to the agreed scope, including selected fixtures, linings, waterproofing, tiling and associated trade coordination where included.`;
+  }
+
   if (area) {
-    draft = `Carry out bathroom renovation works to the agreed scope for an approximately ${area} m² bathroom, including selected fixtures, linings, waterproofing, tiling and associated trade coordination where included.`;
+    draft = `${draft.replace(/\.$/, "")} for an approximately ${area} m² bathroom.`;
+  }
+
+  if (isAffirmative(factValue(facts, "bathroom.demolition_required"))) {
+    draft = appendScopeClause(
+      draft,
+      "Demolition/strip-out of existing bathroom works is included where applicable."
+    );
   }
 
   if (isAffirmative(factValue(facts, "bathroom.fixtures_client_supplied"))) {
@@ -420,6 +432,20 @@ function buildBathroomDraft(facts?: WorkAreaQuoteFact[]): string {
     );
   }
 
+  const showerType = factValue(facts, "bathroom.shower_type");
+  if (showerType) {
+    draft = appendScopeClause(draft, `${showerType} shower allowance is included where applicable.`);
+  }
+
+  if (isAffirmative(factValue(facts, "bathroom.ventilation_included"))) {
+    draft = appendScopeClause(draft, "Extractor fan/ventilation is included where applicable.");
+  }
+
+  draft = appendScopeClause(
+    draft,
+    "Unknown plumbing/electrical changes, consent, asbestos, rot and substrate repairs are excluded unless specifically included."
+  );
+
   return finalizeDraft(
     `${draft} Final selections, consenting, hidden conditions and subcontractor pricing are subject to confirmation.`
   );
@@ -427,11 +453,44 @@ function buildBathroomDraft(facts?: WorkAreaQuoteFact[]): string {
 
 function buildKitchenDraft(facts?: WorkAreaQuoteFact[]): string {
   const area = factValue(facts, "kitchen.area_m2");
+  const renovationType = factValue(facts, "kitchen.renovation_type");
   let draft =
     "Carry out kitchen renovation works to the agreed scope, including cabinetry, benchtop, appliance and associated installation works where included.";
 
+  if (renovationType) {
+    draft = `Carry out ${renovationType.toLowerCase()} kitchen works to the agreed scope, including cabinetry, benchtop, appliance and associated installation works where included.`;
+  }
+
   if (area) {
-    draft = `Carry out kitchen renovation works to the agreed scope for an approximately ${area} m² kitchen, including cabinetry, benchtop, appliance and associated installation works where included.`;
+    draft = `${draft.replace(/\.$/, "")} for an approximately ${area} m² kitchen.`;
+  }
+
+  if (isAffirmative(factValue(facts, "kitchen.demolition_required"))) {
+    draft = appendScopeClause(draft, "Removal of the existing kitchen is included where applicable.");
+  }
+
+  if (isAffirmative(factValue(facts, "kitchen.cabinetry_client_supplied"))) {
+    draft = appendScopeClause(
+      draft,
+      "Cabinetry is client supplied; contractor install and coordination included where applicable."
+    );
+  }
+
+  if (isAffirmative(factValue(facts, "kitchen.splashback_included"))) {
+    draft = appendScopeClause(draft, "Splashback allowance is included where applicable.");
+  }
+
+  if (isAffirmative(factValue(facts, "kitchen.rangehood_included"))) {
+    draft = appendScopeClause(draft, "Rangehood/venting allowance is included where applicable.");
+  }
+
+  const plumbing = factValue(facts, "kitchen.plumbing_changes");
+  const electrical = factValue(facts, "kitchen.electrical_changes");
+  if (plumbing?.toLowerCase() === "none") {
+    draft = appendScopeClause(draft, "Plumbing changes are excluded unless specifically confirmed.");
+  }
+  if (electrical?.toLowerCase() === "none") {
+    draft = appendScopeClause(draft, "Electrical changes are excluded unless specifically confirmed.");
   }
 
   if (isAffirmative(factValue(facts, "kitchen.flooring_included"))) {
@@ -445,13 +504,106 @@ function buildKitchenDraft(facts?: WorkAreaQuoteFact[]): string {
   }
 
   return finalizeDraft(
-    `${draft} Final selections, services changes, hidden conditions and subcontractor pricing are subject to confirmation.`
+    `${draft} Design, engineering, consent and final selections are subject to confirmation unless specifically included.`
   );
+}
+
+function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
+  const length = factValue(facts, "internal_walls.length_lm");
+  const height = factValue(facts, "internal_walls.height_m");
+  const lining = factValue(facts, "internal_walls.wall_lining_type");
+  const sides = factValue(facts, "internal_walls.lining_sides");
+
+  let draft =
+    "Construct internal wall works to the agreed scope, including framing, lining and associated finishing where included.";
+
+  if (length && height) {
+    draft = `Construct approximately ${length} lm of ${height} m high internal wall to the agreed scope, including framing, lining and associated finishing where included.`;
+  }
+
+  if (lining) {
+    draft = appendScopeClause(draft, `${lining} lining is included where applicable.`);
+  }
+  if (sides) {
+    draft = appendScopeClause(draft, `Lining on ${sides.toLowerCase()} is included where applicable.`);
+  }
+  if (isAffirmative(factValue(facts, "internal_walls.insulation_included"))) {
+    draft = appendScopeClause(draft, "Wall insulation is included where applicable.");
+  }
+  if (isAffirmative(factValue(facts, "internal_walls.skirtings_included"))) {
+    draft = appendScopeClause(draft, "Skirting is included where applicable.");
+  }
+
+  draft = appendScopeClause(
+    draft,
+    "Services relocation and fire/acoustic certification are excluded unless specifically included."
+  );
+
+  return finalizeDraft(draft);
+}
+
+function buildCeilingsDraft(facts?: WorkAreaQuoteFact[]): string {
+  const area = factValue(facts, "ceilings.area_m2");
+  const ceilingType = factValue(facts, "ceilings.ceiling_type");
+
+  let draft =
+    "Carry out ceiling works to the agreed scope, including lining, stopping and finishing where included.";
+
+  if (area && ceilingType) {
+    draft = `Install approximately ${area} m² of ${ceilingType.toLowerCase()} ceiling to the agreed scope, including lining, stopping and finishing where included.`;
+  } else if (area) {
+    draft = `Carry out ceiling works to the agreed scope for approximately ${area} m², including lining, stopping and finishing where included.`;
+  }
+
+  if (isAffirmative(factValue(facts, "ceilings.battens_included"))) {
+    draft = appendScopeClause(draft, "Ceiling battens/framing are included where applicable.");
+  }
+  if (isAffirmative(factValue(facts, "ceilings.insulation_included"))) {
+    draft = appendScopeClause(draft, "Ceiling insulation is included where applicable.");
+  }
+  if (isAffirmative(factValue(facts, "ceilings.stopping_included"))) {
+    draft = appendScopeClause(draft, "Stopping/plastering is included where applicable.");
+  }
+  if (isAffirmative(factValue(facts, "ceilings.painting_included"))) {
+    draft = appendScopeClause(draft, "Ceiling painting is included where applicable.");
+  }
+
+  draft = appendScopeClause(
+    draft,
+    "Electrical/light relocation is excluded unless specifically included."
+  );
+
+  return finalizeDraft(draft);
+}
+
+function buildDoorsDraft(facts?: WorkAreaQuoteFact[]): string {
+  const count = factValue(facts, "doors.count");
+  const doorType = factValue(facts, "doors.door_type");
+  const supplyScope = factValue(facts, "doors.supply_scope");
+
+  let draft = "Supply and install internal door works to the agreed scope, including frames, hardware and associated finishing where included.";
+
+  if (count && doorType) {
+    draft = `${supplyScope?.toLowerCase().includes("install only") ? "Install" : "Supply and install"} ${count} ${doorType.toLowerCase()} internal door(s) to the agreed scope, including frames, hardware and associated finishing where included.`;
+  } else if (count) {
+    draft = `Supply and install ${count} internal door(s) to the agreed scope, including frames, hardware and associated finishing where included.`;
+  }
+
+  if (isAffirmative(factValue(facts, "doors.architraves_included"))) {
+    draft = appendScopeClause(draft, "Architraves are included where applicable.");
+  }
+
+  draft = appendScopeClause(
+    draft,
+    "Specialist hardware and fire certification are excluded unless specifically included."
+  );
+
+  return finalizeDraft(draft);
 }
 
 function buildDemolitionDraft(name: string, facts?: WorkAreaQuoteFact[]): string {
   const label = name.trim() || "demolition";
-  let draft = `Carry out demolition and removal works for ${label.toLowerCase()} to the agreed scope, including reasonable site protection, removal of specified materials and tidy-up of affected areas.`;
+  let draft = `Carry out demolition and strip-out works for ${label.toLowerCase()} to the agreed scope, including removal of specified materials and tidy-up of affected areas.`;
 
   const scopeItems = facts?.find((fact) => fact.key === "demolition.scope_items")?.value;
   if (scopeItems) {
@@ -462,20 +614,114 @@ function buildDemolitionDraft(name: string, facts?: WorkAreaQuoteFact[]): string
   }
 
   if (isAffirmative(factValue(facts, "demolition.disposal_included"))) {
-    draft = appendScopeClause(draft, "Disposal is included where applicable.");
+    draft = appendScopeClause(draft, "Disposal and waste removal are included where applicable.");
   }
 
-  const hazardous = factValue(facts, "demolition.hazardous_materials_suspected");
-  if (hazardous && !hazardous.toLowerCase().startsWith("no")) {
+  if (isAffirmative(factValue(facts, "demolition.skip_bin_included"))) {
+    draft = appendScopeClause(draft, "Skip bin allowance is included where applicable.");
+  }
+
+  const carting = factValue(facts, "demolition.carting_distance_m");
+  if (carting) {
     draft = appendScopeClause(
       draft,
-      "Hazardous materials are excluded unless specifically confirmed and included."
+      `Carting/disposal access allowance included for approximately ${carting} m carry distance.`
+    );
+  }
+
+  const floorLevel = factValue(facts, "demolition.floor_level");
+  if (floorLevel?.toLowerCase().includes("upper")) {
+    draft = appendScopeClause(
+      draft,
+      "Upper-floor strip-out and carting allowances are included where applicable."
+    );
+  }
+
+  const services = factValue(facts, "demolition.services_isolated");
+  if (services?.toLowerCase().includes("by others")) {
+    draft = appendScopeClause(
+      draft,
+      "Services isolation is by others and excluded from this scope."
+    );
+  }
+
+  const hazardous =
+    factValue(facts, "demolition.hazardous_materials_risk") ??
+    factValue(facts, "demolition.hazardous_materials_suspected");
+  if (hazardous && !hazardous.toLowerCase().includes("none")) {
+    draft = appendScopeClause(
+      draft,
+      "Hazardous materials testing/removal is excluded unless specifically confirmed and included."
     );
   }
 
   return finalizeDraft(
-    `${draft} Disposal, access, hidden conditions and hazardous materials are subject to confirmation unless specifically included.`
+    `${draft} Structural demolition, consent, services isolation (unless included), hidden conditions and hazardous materials are subject to confirmation unless specifically included.`
   );
+}
+
+function buildExternalStairsDraft(facts?: WorkAreaQuoteFact[]): string {
+  const risers =
+    factValue(facts, "external_stairs.risers_count") ??
+    factValue(facts, "external_stairs.approximate_riser_count");
+  const totalRise = factValue(facts, "external_stairs.total_rise_m");
+  const material = factValue(facts, "external_stairs.material");
+  const width = factValue(facts, "external_stairs.width_m");
+
+  let draft =
+    "Supply and install external stair works to the agreed project scope, including framing, treads and associated installation where included.";
+
+  if (risers && material) {
+    draft = `Supply and install approximately ${risers} riser ${material.toLowerCase()} external stair works to the agreed project scope, including treads, stringers and associated installation where included.`;
+  } else if (risers) {
+    draft = `Supply and install approximately ${risers} riser external stair works to the agreed project scope, including treads, stringers and associated installation where included.`;
+  } else if (totalRise) {
+    draft = `Supply and install external stair works for approximately ${totalRise} m total rise to the agreed project scope, including treads, stringers and associated installation where included.`;
+  }
+
+  if (width) {
+    draft = appendScopeClause(
+      draft,
+      `Stair width allowance of approximately ${width} m is included.`
+    );
+  }
+
+  if (isAffirmative(factValue(facts, "external_stairs.landing_included"))) {
+    draft = appendScopeClause(draft, "Landing allowance is included where applicable.");
+  }
+
+  if (isAffirmative(factValue(facts, "external_stairs.handrail_included"))) {
+    draft = appendScopeClause(draft, "Handrail is included where applicable.");
+  }
+
+  if (isAffirmative(factValue(facts, "external_stairs.balustrade_included"))) {
+    draft = appendScopeClause(draft, "Balustrade is included where applicable.");
+  }
+
+  if (isAffirmative(factValue(facts, "external_stairs.existing_removal"))) {
+    draft = appendScopeClause(
+      draft,
+      "Removal of existing stairs is included where applicable."
+    );
+  }
+
+  const finishType = factValue(facts, "external_stairs.finish_type");
+  if (
+    isAffirmative(factValue(facts, "external_stairs.finish_required")) ||
+    (finishType && !finishType.toLowerCase().includes("none"))
+  ) {
+    draft = appendScopeClause(
+      draft,
+      `${finishType ?? "Finish"} allowance is included where applicable.`
+    );
+  }
+
+  draft = appendScopeClause(
+    draft,
+    "Consent, engineering, ground remediation and hidden conditions are excluded unless specifically included."
+  );
+
+  return finalizeDraft(draft);
 }
 
 function buildRetainingWallDraft(facts?: WorkAreaQuoteFact[]): string {
@@ -583,12 +829,26 @@ function buildRetainingWallDraft(facts?: WorkAreaQuoteFact[]): string {
 function buildFlooringDraft(name: string, facts?: WorkAreaQuoteFact[]): string {
   const label = name.trim() || "flooring";
   const flooringType = factValue(facts, "flooring.type");
+  const area = factValue(facts, "flooring.area_m2");
+  const supplyScope = factValue(facts, "flooring.supply_scope");
   let draft = `Carry out ${label.toLowerCase()} works to the agreed scope, including surface preparation, installation and associated finishing where included.`;
-  if (flooringType) {
+  if (flooringType && area) {
+    draft = `Carry out ${flooringType.toLowerCase()} ${label.toLowerCase()} works for approximately ${area} m² to the agreed scope, including surface preparation, installation and associated finishing where included.`;
+  } else if (flooringType) {
     draft = `Carry out ${flooringType.toLowerCase()} ${label.toLowerCase()} works to the agreed scope, including surface preparation, installation and associated finishing where included.`;
+  }
+  if (supplyScope?.toLowerCase().includes("install only")) {
+    draft = appendScopeClause(draft, "Flooring is client supplied; install labour only.");
   }
   if (isAffirmative(factValue(facts, "flooring.existing_flooring_removal"))) {
     draft = appendScopeClause(draft, "Removal of existing flooring is included where applicable.");
+  }
+  const prep = factValue(facts, "flooring.floor_prep_level");
+  if (prep && !prep.toLowerCase().includes("none")) {
+    draft = appendScopeClause(draft, `${prep} floor preparation is included where applicable.`);
+  }
+  if (isAffirmative(factValue(facts, "flooring.scotia_included"))) {
+    draft = appendScopeClause(draft, "Scotia/skirting is included where applicable.");
   }
   return finalizeDraft(
     `${draft} Final floor selections, substrate conditions and moisture requirements are subject to confirmation.`
@@ -598,13 +858,31 @@ function buildFlooringDraft(name: string, facts?: WorkAreaQuoteFact[]): string {
 function buildPaintingDraft(name: string, facts?: WorkAreaQuoteFact[]): string {
   const label = name.trim() || "painting";
   const location = factValue(facts, "painting.location");
+  const coats = factValue(facts, "painting.coats_required");
+  const prep = factValue(facts, "painting.prep_level");
+  const area =
+    factValue(facts, "painting.internal_area_m2") ??
+    factValue(facts, "painting.external_area_m2");
   let draft = `Carry out ${label.toLowerCase()} works to the agreed scope, including surface preparation, priming and finishing coats where included.`;
   if (location) {
     draft = `Carry out ${location.toLowerCase()} ${label.toLowerCase()} works to the agreed scope, including surface preparation, priming and finishing coats where included.`;
   }
+  if (area) {
+    draft = appendScopeClause(draft, `Approximately ${area} m² total painting area allowed for within the agreed scope.`);
+  }
+  if (coats) {
+    draft = appendScopeClause(draft, `${coats} coat(s) are included where applicable.`);
+  }
+  if (prep) {
+    draft = appendScopeClause(draft, `${prep} surface preparation is included where applicable.`);
+  }
   if (isAffirmative(factValue(facts, "painting.paint_client_supplied"))) {
     draft = appendScopeClause(draft, "Paint is client supplied; labour only.");
   }
+  draft = appendScopeClause(
+    draft,
+    "Major repairs and scaffold/high access are excluded unless specifically included."
+  );
   return finalizeDraft(
     `${draft} Final paint selections, substrate condition and access requirements are subject to confirmation.`
   );
@@ -616,10 +894,21 @@ function buildPlasteringDraft(
 ): string {
   const label = name.trim() || "plastering";
   const level = factValue(facts, "plastering.level");
+  const area = factValue(facts, "plastering.area_m2");
+  const surface = factValue(facts, "plastering.surface_type");
   let draft = `Carry out ${label.toLowerCase()} works to the agreed scope, including stopping, sanding and finishing where included.`;
-  if (level) {
+  if (level && area) {
+    draft = `Carry out ${level.toLowerCase()} ${label.toLowerCase()} to approximately ${area} m² to the agreed scope, including stopping, sanding and finishing where included.`;
+  } else if (level) {
     draft = `Carry out ${level.toLowerCase()} ${label.toLowerCase()} works to the agreed scope, including stopping, sanding and finishing where included.`;
   }
+  if (surface) {
+    draft = appendScopeClause(draft, `${surface} surface type is allowed for within the agreed scope.`);
+  }
+  if (isAffirmative(factValue(facts, "plastering.sanding_included"))) {
+    draft = appendScopeClause(draft, "Sanding ready for paint is included where applicable.");
+  }
+  draft = appendScopeClause(draft, "Painting is excluded unless specifically included.");
   return finalizeDraft(
     `${draft} Final substrate condition and finish requirements are subject to confirmation.`
   );
@@ -658,13 +947,14 @@ export function buildWorkAreaQuoteDescriptionDraft(
       return buildPaintingDraft(name, facts);
     case "plastering":
       return buildPlasteringDraft(facts, name);
+    case "internal_walls":
+      return buildInternalWallsDraft(facts);
+    case "ceilings":
+      return buildCeilingsDraft(facts);
+    case "doors":
+      return buildDoorsDraft(facts);
     case "external_stairs":
-      return finalizeDraft(
-        enrichFromPricingItems(
-          "Supply and install external stair works to the agreed project scope, including framing, treads, handrails and associated installation works where included.",
-          pricingItems
-        )
-      );
+      return buildExternalStairsDraft(facts);
     default:
       return enrichFromPricingItems(buildGenericDraft(name), pricingItems);
   }

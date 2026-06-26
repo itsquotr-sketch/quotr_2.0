@@ -2,6 +2,7 @@ import "server-only";
 
 import type Anthropic from "@anthropic-ai/sdk";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/ai/anthropic";
+import { withAnthropicRetry } from "@/lib/ai/retry";
 import {
   NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
   validateNoteProposalExtraction,
@@ -193,13 +194,17 @@ async function requestNoteAnalysis(
   const client = getAnthropicClient();
   const model = getAnthropicModel();
 
-  const message = await client.messages.create({
-    model,
-    max_tokens: 4096,
-    temperature: 0,
-    system: SYSTEM_PROMPT,
-    messages: [{ role: "user", content: userPrompt }],
-  });
+  const message = await withAnthropicRetry(
+    () =>
+      client.messages.create({
+        model,
+        max_tokens: 4096,
+        temperature: 0,
+        system: SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userPrompt }],
+      }),
+    { label: "extractFromSiteNotes" }
+  );
 
   const rawText = getTextFromResponse(message.content);
   const jsonResult = parseJsonObject(rawText);

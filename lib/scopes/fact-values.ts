@@ -13,6 +13,7 @@ export type ProjectFactRecord = {
   work_area_id: string | null;
   value: unknown;
   source?: string | null;
+  conflict_warning?: string | null;
 };
 
 const NOT_SURE_VALUES = new Set([

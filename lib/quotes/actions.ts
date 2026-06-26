@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
+import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
+import { assertOrgOwnsPricingDocument, assertOrgOwnsProject, assertOrgOwnsQuote } from "@/lib/security/org-ownership";
 import { buildQuoteSnapshotFromReviewedPricing } from "@/lib/quotes/build-from-pricing";
 import {
   calculateQuoteItemTotal,
@@ -61,6 +63,11 @@ async function loadOwnedQuote(quoteId: string) {
   const context = await getAuthOrgContext();
   if (!context) {
     return { error: "Not authenticated." as const };
+  }
+
+  const owned = await assertOrgOwnsQuote(context, quoteId);
+  if ("error" in owned) {
+    return { error: owned.error };
   }
 
   const { data: quote, error } = await context.supabase
@@ -422,6 +429,20 @@ export async function createQuoteFromPricing(input: {
   const { supabase, user, orgId } = context;
   const { projectId, pricingDocumentId } = input;
 
+  const ownedProject = await assertOrgOwnsProject(context, projectId);
+  if ("error" in ownedProject) {
+    return { error: ownedProject.error };
+  }
+
+  const ownedDocument = await assertOrgOwnsPricingDocument(
+    context,
+    pricingDocumentId,
+    projectId
+  );
+  if ("error" in ownedDocument) {
+    return { error: ownedDocument.error };
+  }
+
   const { data: project, error: projectError } = await supabase
     .from("projects")
     .select("id, title, client_name, site_address, business_status, deleted_at")
@@ -528,6 +549,18 @@ export async function createQuoteFromPricing(input: {
   }
 
   revalidateQuoteDashboard(projectId, quoteId, pricingDocumentId);
+
+  await logPricingAuditEvent({
+    supabase,
+    organisationId: orgId,
+    projectId,
+    pricingDocumentId,
+    quoteId,
+    userId: user.id,
+    action: "quote_create",
+    newValues: { status: "draft", title: quoteFields.title },
+  });
+
   redirect(`/app/projects/${projectId}/quotes/${quoteId}`);
 }
 
@@ -803,7 +836,7 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, quote } = loaded;
+  const { supabase, orgId, quote, user } = loaded;
   const now = new Date().toISOString();
 
   const { error } = await supabase
@@ -840,6 +873,19 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
   );
 
   revalidateQuoteDashboard(quote.project_id, quoteId, quote.pricing_document_id);
+
+  await logPricingAuditEvent({
+    supabase,
+    organisationId: orgId,
+    projectId: quote.project_id,
+    pricingDocumentId: quote.pricing_document_id,
+    quoteId,
+    userId: user.id,
+    action: "quote_status_change",
+    oldValues: { status: quote.status },
+    newValues: { status: "sent" },
+  });
+
   return { success: true };
 }
 

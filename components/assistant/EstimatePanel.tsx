@@ -29,6 +29,7 @@ import {
 } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import { defaultedFactWarnings } from "@/lib/estimate/assumption-metadata";
 import { needsCalibrationRefresh } from "@/lib/estimate/calibration-version";
 
 type EstimatePanelProps = {
@@ -381,6 +382,24 @@ export function EstimatePanel({
                 />
               </div>
             </div>
+
+            {estimate.assumptionMetadata?.assumptionSeverity === "critical" ? (
+              <div
+                className="rounded-md border border-amber-300/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
+                role="alert"
+              >
+                <p className="font-medium">
+                  Assumed dimensions affect this estimate — confirm before pricing.
+                </p>
+                <ul className="mt-1.5 list-inside list-disc space-y-0.5">
+                  {defaultedFactWarnings(estimate.assumptionMetadata)
+                    .slice(0, 3)
+                    .map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                </ul>
+              </div>
+            ) : null}
 
             {isStale && onMarginSave ? (
               <p className="text-xs text-amber-800 dark:text-amber-200">

@@ -34,6 +34,7 @@ function buildEstimatePayload(
     assumptions: estimateResult.assumptions,
     missing_info: estimateResult.missingInfo,
     exclusions: estimateResult.exclusions,
+    assumption_metadata: estimateResult.assumptionMetadata ?? {},
     generated_at: new Date().toISOString(),
     calibration_version: CURRENT_CALIBRATION_VERSION,
   };

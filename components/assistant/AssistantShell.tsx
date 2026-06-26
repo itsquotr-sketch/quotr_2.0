@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { AssistantProgress } from "@/components/assistant/AssistantProgress";
 import {
   CollapsibleStageCard,
@@ -91,6 +91,7 @@ export function AssistantShell({
   quoteSummary = null,
 }: AssistantShellProps) {
   const router = useRouter();
+  const actionLockRef = useRef(false);
   const { project } = initialState;
   const stage = project.stage;
 
@@ -165,13 +166,30 @@ export function AssistantShell({
 
   const runAction = useCallback(
     async (action: PendingAction, fn: () => Promise<{ error?: string }>) => {
+      if (actionLockRef.current) {
+        return;
+      }
+
+      actionLockRef.current = true;
       setPendingAction(action);
       setActionError(null);
 
-      const result = await fn();
+      try {
+        const result = await fn();
 
-      if (result.error) {
-        setActionError(result.error);
+        if (result.error) {
+          setActionError(result.error);
+          setPendingAction(null);
+          if (action === "estimate") {
+            setIsGenerating(false);
+          }
+          if (action === "regenerate") {
+            setIsRegenerating(false);
+          }
+          return;
+        }
+
+        router.refresh();
         setPendingAction(null);
         if (action === "estimate") {
           setIsGenerating(false);
@@ -179,26 +197,21 @@ export function AssistantShell({
         if (action === "regenerate") {
           setIsRegenerating(false);
         }
-        return;
-      }
-
-      router.refresh();
-      setPendingAction(null);
-      if (action === "estimate") {
-        setIsGenerating(false);
-      }
-      if (action === "regenerate") {
-        setIsRegenerating(false);
+      } finally {
+        actionLockRef.current = false;
       }
     },
     [router]
   );
 
   const handleAnalyseJob = useCallback(() => {
+    if (pendingAction != null || actionLockRef.current) {
+      return;
+    }
     void runAction("brief", () =>
       saveBriefAndSeedWorkAreas(project.id, briefText)
     );
-  }, [briefText, project.id, runAction]);
+  }, [briefText, pendingAction, project.id, runAction]);
 
   const handleWorkAreaToggle = useCallback((id: string) => {
     setWorkAreas((prev) =>
@@ -291,14 +304,20 @@ export function AssistantShell({
   ]);
 
   const handleGenerateEstimate = useCallback(() => {
+    if (isGenerating || pendingAction != null || actionLockRef.current) {
+      return;
+    }
     setIsGenerating(true);
     void runAction("estimate", () => generateStaticEstimate(project.id));
-  }, [project.id, runAction]);
+  }, [isGenerating, pendingAction, project.id, runAction]);
 
   const handleRegenerateEstimate = useCallback(() => {
+    if (isRegenerating || pendingAction != null || actionLockRef.current) {
+      return;
+    }
     setIsRegenerating(true);
     void runAction("regenerate", () => regenerateStaticEstimate(project.id));
-  }, [project.id, runAction]);
+  }, [isRegenerating, pendingAction, project.id, runAction]);
 
   const handleQuestionAnswer = useCallback(
     (questionId: string, value: string | number | boolean | string[]) => {
@@ -577,7 +596,7 @@ export function AssistantShell({
               totalNoteCount={totalNoteCount}
               pendingAnalysisCount={pendingAnalysisCount}
               onAnalyse={briefSubmitted ? undefined : handleAnalyseJob}
-              disabled={pendingAction === "brief"}
+              disabled={pendingAction != null}
               isAnalysing={pendingAction === "brief"}
               submitted={briefSubmitted}
             />

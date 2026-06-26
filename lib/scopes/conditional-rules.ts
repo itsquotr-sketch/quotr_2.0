@@ -30,6 +30,9 @@ function boolFact(
   if (value === false || value === "false" || value === "No" || value === "no") {
     return false;
   }
+  if (typeof value === "string" && (value === "None" || value === "none")) {
+    return false;
+  }
   return null;
 }
 
@@ -53,11 +56,6 @@ function strFact(
     return String(value);
   }
   return null;
-}
-
-function hasAnswer(lookup: FactLookup, workAreaId: string, key: string): boolean {
-  const value = lookupValue(lookup, workAreaId, key);
-  return factHasValue(value) && !isNotSureValue(value);
 }
 
 function deckHeightM(lookup: FactLookup, workAreaId: string): number | null {
@@ -283,6 +281,24 @@ export function shouldHideConditionalQuestion(
     return false;
   }
 
+  if (key === "kitchen.splashback_area_m2") {
+    const included = boolFact(lookup, workAreaId, "kitchen.splashback_included");
+    if (included !== true) return true;
+    return false;
+  }
+
+  if (key === "kitchen.cabinetry_type") {
+    const clientSupplied = boolFact(
+      lookup,
+      workAreaId,
+      "kitchen.cabinetry_client_supplied"
+    );
+    if (clientSupplied === true) return true;
+    const cabinetry = boolFact(lookup, workAreaId, "kitchen.cabinetry_included");
+    if (cabinetry === false) return true;
+    return false;
+  }
+
   if (key === "doors.frames_included" || key === "doors.hardware_install_included") {
     const prehung = boolFact(lookup, workAreaId, "doors.prehung");
     if (prehung === true) return true;
@@ -361,6 +377,93 @@ export function shouldHideConditionalQuestion(
     return false;
   }
 
+  if (key === "bathroom.shower_type") {
+    const fixtures = lookupValue(lookup, workAreaId, "bathroom.fixtures_included");
+    if (Array.isArray(fixtures) && !fixtures.some((f) => String(f).toLowerCase().includes("shower"))) {
+      return true;
+    }
+    return false;
+  }
+
+  if (key === "flooring.disposal_included") {
+    const removal = boolFact(lookup, workAreaId, "flooring.existing_flooring_removal");
+    if (removal !== true) return true;
+    return false;
+  }
+
+  if (key === "demolition.skip_bin_included" || key === "demolition.carting_distance_m") {
+    const disposal = boolFact(lookup, workAreaId, "demolition.disposal_included");
+    if (disposal !== true) return true;
+    return false;
+  }
+
+  if (key === "demolition.services_isolated") {
+    const scope = lookupValue(lookup, workAreaId, "demolition.scope_items");
+    const items = Array.isArray(scope) ? scope.map(String) : [];
+    const joined = items.join(" ").toLowerCase();
+    const needsServices =
+      joined.includes("kitchen") ||
+      joined.includes("bathroom") ||
+      joined.includes("wall") ||
+      joined.includes("ceiling");
+    if (!needsServices) return true;
+    return false;
+  }
+
+  if (key === "demolition.hazardous_materials_risk") {
+    const scope = lookupValue(lookup, workAreaId, "demolition.scope_items");
+    const items = Array.isArray(scope) ? scope.map(String) : [];
+    const joined = items.join(" ").toLowerCase();
+    const riskScope =
+      joined.includes("bathroom") ||
+      joined.includes("kitchen") ||
+      joined.includes("ceiling") ||
+      joined.includes("floor");
+    if (!riskScope) return true;
+    return false;
+  }
+
+  if (key === "demolition.floor_level") {
+    const access = strFact(lookup, workAreaId, "demolition.access");
+    if (!access) return true;
+    if (access.toLowerCase().includes("easy")) return true;
+    return false;
+  }
+
+  if (key === "external_stairs.total_rise_m") {
+    const risers = numFact(lookup, workAreaId, "external_stairs.risers_count");
+    if (risers !== null) return true;
+    return false;
+  }
+
+  if (key === "external_stairs.width_m") {
+    const risers = numFact(lookup, workAreaId, "external_stairs.risers_count");
+    const rise = numFact(lookup, workAreaId, "external_stairs.total_rise_m");
+    if (risers === null && rise === null) return true;
+    return false;
+  }
+
+  if (key === "external_stairs.landing_area_m2" || key === "external_stairs.landings_count") {
+    const landing = boolFact(lookup, workAreaId, "external_stairs.landing_included");
+    if (landing !== true) return true;
+    return false;
+  }
+
+  if (key === "external_stairs.finish_type") {
+    const finish = boolFact(lookup, workAreaId, "external_stairs.finish_required");
+    if (finish !== true) return true;
+    const finishType = strFact(lookup, workAreaId, "external_stairs.finish_type");
+    if (finishType && finishType.toLowerCase() !== "none") return true;
+    return false;
+  }
+
+  if (key === "external_stairs.consent_or_engineering_status") {
+    const risers = numFact(lookup, workAreaId, "external_stairs.risers_count");
+    const rise = numFact(lookup, workAreaId, "external_stairs.total_rise_m");
+    if ((risers ?? 0) < 5 && (rise ?? 0) < 1) return true;
+    return false;
+  }
+
   return false;
 }
 
@@ -370,8 +473,15 @@ export function isQuestionAnswered(
   factKey: string
 ): boolean {
   const value = lookupValue(lookup, workAreaId, factKey);
+  if (value === false || value === 0) return true;
   if (!factHasValue(value)) return false;
   if (isNotSureValue(value)) return false;
   if (Array.isArray(value) && value.length === 0) return false;
+  if (typeof value === "string") {
+    const lower = value.trim().toLowerCase();
+    if (lower === "none" || lower === "by others" || lower === "not required") {
+      return true;
+    }
+  }
   return true;
 }

@@ -17,11 +17,18 @@ const workAreaSchema = z.object({
   rationale: z.string().optional().default(""),
 });
 
+const factValueSchema = z.union([
+  z.string(),
+  z.number(),
+  z.boolean(),
+  z.array(z.string()),
+]);
+
 const factSchema = z.object({
   work_area_type: z.string().nullable(),
   key: z.string(),
   label: z.string(),
-  value: z.union([z.string(), z.number(), z.boolean()]),
+  value: factValueSchema,
   unit: z.string().optional(),
   confidence: z.number().min(0).max(1),
 });

@@ -315,6 +315,15 @@ export function buildLineItemNotes(item: EstimateLineItemInput): string | null {
         item.materialBuildUps ??
         (item.materialBuildUp ? [item.materialBuildUp] : undefined),
       materialRateResolution: item.materialRateResolution,
+      pricingOwner: item.pricingOwner,
+      scopeKey: item.scopeKey,
+      overlapGroup: item.overlapGroup,
+      includedInTotal: item.includedInTotal,
+      clientVisible: item.clientVisible,
+      pricingSource: item.pricingSource,
+      quantityBasis: item.quantityBasis,
+      labourMinimum: item.labourMinimum,
+      allowanceMinimum: item.allowanceMinimum,
     },
   });
 }

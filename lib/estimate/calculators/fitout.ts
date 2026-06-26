@@ -2,9 +2,11 @@ import { getQualityFactor } from "@/lib/estimate/adjustments";
 import { FITOUT_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
+  getArrayFact,
   getBooleanFact,
   getNumberFact,
   getStringFact,
+  isFlooringRemovalOnly,
   round2,
 } from "@/lib/estimate/facts";
 import {
@@ -12,8 +14,9 @@ import {
   createLabourLineItem,
   createRateLineItem,
 } from "@/lib/estimate/line-items";
+import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import {
   calculateFlooringAreaWithWastage,
   calculateLinealMetresWithWastage,
@@ -31,6 +34,10 @@ import {
 } from "@/lib/estimate/material-buildup-meta";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
 import { baseConfidence } from "@/lib/estimate/summary";
+import {
+  createAssumptionMetadata,
+  recordDefaultedNumber,
+} from "@/lib/estimate/assumption-metadata";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -54,13 +61,22 @@ function calculateAreaBasedFitout(
   const missingInfo: string[] = [];
   const assumptions: string[] = [];
   const lineItems: CalculatorResult["lineItems"] = [];
+  const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
   const area = getNumberFact(facts, workArea.id, config.areaKey);
   if (!area) missingInfo.push(formatMissing("Area"));
 
-  const effectiveArea = area ?? 20;
-  if (!area) {
+  let effectiveArea = area;
+  if (!effectiveArea) {
+    effectiveArea = recordDefaultedNumber(assumptionMetadata, {
+      key: config.areaKey,
+      label: "Area",
+      workAreaId: workArea.id,
+      assumedValue: 20,
+      unit: "m²",
+      reason: "No area provided",
+    });
     assumptions.push(`Using assumed area of 20 m² for rough ${workArea.name} estimate.`);
   }
 
@@ -117,6 +133,7 @@ function calculateAreaBasedFitout(
     missingInfo,
     exclusions: [],
     confidence: baseConfidence(missingInfo.length),
+    assumptionMetadata,
   };
 }
 
@@ -128,6 +145,7 @@ export function calculateInternalWalls(
   const missingInfo: string[] = [];
   const assumptions: string[] = [];
   const lineItems: CalculatorResult["lineItems"] = [];
+  const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
   const length = getNumberFact(facts, workArea.id, "internal_walls.length_lm");
@@ -138,12 +156,44 @@ export function calculateInternalWalls(
   if (!length) missingInfo.push(formatMissing("Wall length"));
   if (!height) missingInfo.push(formatMissing("Wall height"));
 
-  const effectiveArea =
-    length && height ? round2(length * height * sideFactor) : 20;
-  if (!length || !height) {
+  const derivedArea =
+    length && height ? round2(length * height * sideFactor) : null;
+  let effectiveArea =
+    getNumberFact(facts, workArea.id, "internal_walls.area_m2") ?? derivedArea;
+  if (!effectiveArea) {
+    effectiveArea = recordDefaultedNumber(assumptionMetadata, {
+      key: "internal_walls.area_m2",
+      label: "Wall lining area",
+      workAreaId: workArea.id,
+      assumedValue: 20,
+      unit: "m²",
+      reason: "No wall length/height or area provided",
+    });
     assumptions.push("Using assumed internal wall area of 20 m².");
-  } else {
+  } else if (derivedArea) {
     assumptions.push(`Calculated lining area: ${effectiveArea} m².`);
+  }
+
+  if (getBooleanFact(facts, workArea.id, "internal_walls.demolition_included")) {
+    lineItems.push(
+      createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Existing wall removal",
+        category: "labour",
+        quantity: length ?? 10,
+        unit: "lm",
+        costRate: FITOUT_BENCHMARKS.removalPerM2.cost * 2,
+        sellRate: FITOUT_BENCHMARKS.removalPerM2.sell * 2,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor: getQualityFactor(
+          context.project,
+          context.organisationSettings
+        ),
+      })
+    );
   }
 
   const qualityFactor = getQualityFactor(
@@ -164,7 +214,23 @@ export function calculateInternalWalls(
     createLabourLineItem({
       workAreaId: workArea.id,
       workAreaName: workArea.name,
-      label: "Internal wall labour",
+      label: "Wall framing labour",
+      quantity: length ?? effectiveArea / (height ?? 2.4),
+      unit: "lm",
+      productivityHoursPerUnit: 0.8,
+      labourCostRate: labourRate.costRate,
+      labourSellRate: labourRate.sellRate,
+      rateSource: labourRate.sourceLabel,
+      sortOrder: sortOrder++,
+      organisationSettings: context.organisationSettings,
+    })
+  );
+
+  lineItems.push(
+    createLabourLineItem({
+      workAreaId: workArea.id,
+      workAreaName: workArea.name,
+      label: "Internal wall lining labour",
       quantity: effectiveArea,
       unit: "m²",
       productivityHoursPerUnit: productivity.hoursPerUnit,
@@ -181,8 +247,13 @@ export function calculateInternalWalls(
     workArea.id,
     "internal_walls.wall_lining_type"
   );
+  const plasterboardType = getStringFact(
+    facts,
+    workArea.id,
+    "internal_walls.plasterboard_type"
+  );
   let sheetBuildUp = null;
-  if (length && height && isSheetMaterialLining(liningType)) {
+  if (length && height && (liningType || plasterboardType)) {
     const wastagePercent = resolveMaterialWastage(
       context.materialWastageSettings,
       "sheet_material"
@@ -196,7 +267,7 @@ export function calculateInternalWalls(
         result: sheetResult,
         areaM2: effectiveArea,
         wastagePercent,
-        materialLabel: sheetMaterialLabel(liningType),
+        materialLabel: sheetMaterialLabel(plasterboardType ?? liningType),
       });
     }
   }
@@ -265,12 +336,65 @@ export function calculateInternalWalls(
     }
   }
 
+  if (getBooleanFact(facts, workArea.id, "internal_walls.insulation_included")) {
+    lineItems.push(
+      createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Wall insulation",
+        category: "materials",
+        quantity: effectiveArea,
+        unit: "m²",
+        costRate: FITOUT_BENCHMARKS.insulationPerM2.cost,
+        sellRate: FITOUT_BENCHMARKS.insulationPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "internal_walls.stopping_included")) {
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Stopping/plastering allowance",
+        category: "subcontractor",
+        recommendedCost: effectiveArea * FITOUT_BENCHMARKS.stoppingPerM2.cost,
+        recommendedSell: effectiveArea * FITOUT_BENCHMARKS.stoppingPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "internal_walls.painting_included")) {
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Painting allowance",
+        recommendedCost: effectiveArea * FITOUT_BENCHMARKS.paintingPerM2.cost,
+        recommendedSell: effectiveArea * FITOUT_BENCHMARKS.paintingPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
   return {
     lineItems,
     assumptions,
     missingInfo,
     exclusions: [],
     confidence: baseConfidence(missingInfo.length),
+    assumptionMetadata,
   };
 }
 
@@ -360,6 +484,102 @@ export function calculateCeilings(
     );
   }
 
+  const effectiveCeilingArea = ceilingArea ?? 20;
+  const qualityFactor = getQualityFactor(
+    context.project,
+    context.organisationSettings
+  );
+
+  if (getBooleanFact(facts, workArea.id, "ceilings.demolition_included")) {
+    result.lineItems.push(
+      createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Existing ceiling removal",
+        category: "labour",
+        quantity: effectiveCeilingArea,
+        unit: "m²",
+        costRate: FITOUT_BENCHMARKS.removalPerM2.cost,
+        sellRate: FITOUT_BENCHMARKS.removalPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "ceilings.battens_included")) {
+    result.lineItems.push(
+      createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Ceiling battens/framing",
+        category: "materials",
+        quantity: effectiveCeilingArea,
+        unit: "m²",
+        costRate: FITOUT_BENCHMARKS.ceilingBattensPerM2.cost,
+        sellRate: FITOUT_BENCHMARKS.ceilingBattensPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "ceilings.insulation_included")) {
+    result.lineItems.push(
+      createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Ceiling insulation",
+        category: "materials",
+        quantity: effectiveCeilingArea,
+        unit: "m²",
+        costRate: FITOUT_BENCHMARKS.insulationPerM2.cost,
+        sellRate: FITOUT_BENCHMARKS.insulationPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "ceilings.stopping_included")) {
+    result.lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Ceiling stopping/plastering allowance",
+        category: "subcontractor",
+        recommendedCost: effectiveCeilingArea * FITOUT_BENCHMARKS.stoppingPerM2.cost,
+        recommendedSell: effectiveCeilingArea * FITOUT_BENCHMARKS.stoppingPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "ceilings.painting_included")) {
+    result.lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Ceiling painting allowance",
+        recommendedCost: effectiveCeilingArea * FITOUT_BENCHMARKS.paintingPerM2.cost,
+        recommendedSell: effectiveCeilingArea * FITOUT_BENCHMARKS.paintingPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
   return result;
 }
 
@@ -381,24 +601,77 @@ export function calculateDoors(
     context.project,
     context.organisationSettings
   );
-  const labourRate = resolveLabourRate({
-    rates: context.rates,
-    organisationSettings: context.organisationSettings,
-  });
+
+  const supplyScope = getStringFact(facts, workArea.id, "doors.supply_scope");
+  const installOnly = supplyScope?.toLowerCase().includes("install only");
 
   lineItems.push(
     createAllowanceLineItem({
       workAreaId: workArea.id,
       workAreaName: workArea.name,
-      label: "Door supply/install allowance",
+      label: installOnly ? "Door installation allowance" : "Door supply/install allowance",
       recommendedCost: effectiveCount * FITOUT_BENCHMARKS.doorsEach.cost,
       recommendedSell: effectiveCount * FITOUT_BENCHMARKS.doorsEach.sell,
       rateSource: "Benchmark allowance",
+      notes: getStringFact(facts, workArea.id, "doors.door_type") ?? undefined,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
     })
   );
+
+  if (installOnly) {
+    assumptions.push("Doors client supplied — install labour and hardware only.");
+  }
+
+  if (getBooleanFact(facts, workArea.id, "doors.existing_removal")) {
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Existing door removal/disposal",
+        recommendedCost: effectiveCount * 60,
+        recommendedSell: effectiveCount * 90,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "doors.architraves_included")) {
+    const archLm = effectiveCount * 5;
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Architraves allowance",
+        recommendedCost: archLm * FITOUT_BENCHMARKS.architraveLm.cost,
+        recommendedSell: archLm * FITOUT_BENCHMARKS.architraveLm.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "doors.painting_included")) {
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Door painting/staining allowance",
+        recommendedCost: effectiveCount * FITOUT_BENCHMARKS.doorPaintingEach.cost,
+        recommendedSell: effectiveCount * FITOUT_BENCHMARKS.doorPaintingEach.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
 
   const prehung = getBooleanFact(facts, workArea.id, "doors.prehung");
   if (prehung === false) {
@@ -448,6 +721,92 @@ export function calculateFlooring(
   workArea: EstimateWorkArea
 ): CalculatorResult {
   const { facts } = context;
+  const removalOnly = isFlooringRemovalOnly(facts, workArea.id);
+
+  if (removalOnly) {
+    const missingInfo: string[] = [];
+    const assumptions = [
+      "Flooring removal only — new flooring supply/install excluded.",
+    ];
+    const lineItems: CalculatorResult["lineItems"] = [];
+    const assumptionMetadata = createAssumptionMetadata();
+    let sortOrder = 1;
+    const rawArea = getNumberFact(facts, workArea.id, "flooring.area_m2");
+    let area = rawArea;
+    if (!area) {
+      area = recordDefaultedNumber(assumptionMetadata, {
+        key: "flooring.area_m2",
+        label: "Flooring area",
+        workAreaId: workArea.id,
+        assumedValue: 20,
+        unit: "m²",
+        reason: "No flooring area provided",
+      });
+      missingInfo.push(formatMissing("Flooring area"));
+      assumptions.push("Using assumed removal area of 20 m².");
+    }
+    const qualityFactor = getQualityFactor(
+      context.project,
+      context.organisationSettings
+    );
+
+    lineItems.push(
+      withPricingOwnership(
+        createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Existing flooring removal",
+          category: "labour",
+          quantity: area,
+          unit: "m²",
+          costRate: FITOUT_BENCHMARKS.removalPerM2.cost,
+          sellRate: FITOUT_BENCHMARKS.removalPerM2.sell,
+          rateSource: "Benchmark allowance",
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor,
+        }),
+        {
+          pricingOwner: "in_house_labour",
+          scopeKey: "flooring.removal",
+          overlapGroup: "flooring_removal",
+        }
+      )
+    );
+
+    if (getBooleanFact(facts, workArea.id, "flooring.disposal_included")) {
+      lineItems.push(
+        withPricingOwnership(
+          createAllowanceLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Flooring disposal allowance",
+            recommendedCost: area * FITOUT_BENCHMARKS.removalPerM2.cost,
+            recommendedSell: area * FITOUT_BENCHMARKS.removalPerM2.sell,
+            rateSource: "Benchmark allowance",
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            qualityFactor,
+          }),
+          {
+            pricingOwner: "subcontractor_allowance",
+            scopeKey: "flooring.disposal",
+            overlapGroup: "flooring_disposal",
+          }
+        )
+      );
+    }
+
+    return {
+      lineItems,
+      assumptions,
+      missingInfo,
+      exclusions: [],
+      confidence: baseConfidence(missingInfo.length),
+      assumptionMetadata,
+    };
+  }
+
   const result = calculateAreaBasedFitout(context, workArea, {
     areaKey: "flooring.area_m2",
     rate: FITOUT_BENCHMARKS.flooringPerM2,
@@ -507,6 +866,117 @@ export function calculateFlooring(
     );
   }
 
+  const floorArea = getNumberFact(facts, workArea.id, "flooring.area_m2") ?? 20;
+  const qualityFactor = getQualityFactor(
+    context.project,
+    context.organisationSettings
+  );
+  const prepLevel = getStringFact(facts, workArea.id, "flooring.floor_prep_level");
+  if (prepLevel && !prepLevel.toLowerCase().includes("none")) {
+    const isMajor = prepLevel.toLowerCase().includes("major");
+    result.lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Floor prep/levelling allowance",
+        recommendedCost:
+          floorArea *
+          (isMajor
+            ? FITOUT_BENCHMARKS.floorPrepMajor.cost
+            : FITOUT_BENCHMARKS.floorPrepMinor.cost),
+        recommendedSell:
+          floorArea *
+          (isMajor
+            ? FITOUT_BENCHMARKS.floorPrepMajor.sell
+            : FITOUT_BENCHMARKS.floorPrepMinor.sell),
+        rateSource: "Benchmark allowance",
+        notes: prepLevel,
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "flooring.underlay_included")) {
+    result.lineItems.push(
+      createRateLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Underlay",
+        category: "materials",
+        quantity: floorArea,
+        unit: "m²",
+        costRate: FITOUT_BENCHMARKS.underlayPerM2.cost,
+        sellRate: FITOUT_BENCHMARKS.underlayPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "flooring.scotia_included")) {
+    const perimeterLm = Math.sqrt(floorArea) * 4;
+    result.lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Scotia/skirting allowance",
+        recommendedCost: perimeterLm * FITOUT_BENCHMARKS.skirtingLm.cost,
+        recommendedSell: perimeterLm * FITOUT_BENCHMARKS.skirtingLm.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "flooring.disposal_included")) {
+    result.lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Flooring disposal allowance",
+        recommendedCost: floorArea * FITOUT_BENCHMARKS.removalPerM2.cost,
+        recommendedSell: floorArea * FITOUT_BENCHMARKS.removalPerM2.sell,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "flooring.client_supplied")) {
+    result.assumptions.push("Flooring client supplied — install labour only.");
+    const materialsIndex = result.lineItems.findIndex((item) =>
+      item.label.includes("materials allowance")
+    );
+    if (materialsIndex >= 0) {
+      result.lineItems.splice(materialsIndex, 1);
+    }
+  }
+
+  if (getBooleanFact(facts, workArea.id, "flooring.stairs_or_landings_included")) {
+    const stairCount = getNumberFact(facts, workArea.id, "flooring.stair_count") ?? 12;
+    result.lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Stairs/landing flooring allowance",
+        recommendedCost: stairCount * 45,
+        recommendedSell: stairCount * 68,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
   return result;
 }
 
@@ -518,9 +988,11 @@ export function calculatePainting(
   const missingInfo: string[] = [];
   const assumptions: string[] = [];
   const lineItems: CalculatorResult["lineItems"] = [];
+  const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
   const location = getStringFact(facts, workArea.id, "painting.location");
+  const surfaces = getArrayFact(facts, workArea.id, "painting.surfaces");
   const internalArea = getNumberFact(facts, workArea.id, "painting.internal_area_m2");
   const externalArea = getNumberFact(facts, workArea.id, "painting.external_area_m2");
   const coats = getStringFact(facts, workArea.id, "painting.coats_required");
@@ -533,6 +1005,18 @@ export function calculatePainting(
         ? 0.85
         : 1;
 
+  const surfacesLower = surfaces.map((surface) => surface.toLowerCase());
+  const includesWallsOrCeilings =
+    surfacesLower.some((surface) => surface.includes("wall")) ||
+    surfacesLower.some((surface) => surface.includes("ceiling"));
+  const includesDoors =
+    surfacesLower.some((surface) => surface.includes("door")) ||
+    getBooleanFact(facts, workArea.id, "painting.door_painting_included") === true;
+  const includesTrims =
+    surfacesLower.some((surface) => surface.includes("trim")) ||
+    getBooleanFact(facts, workArea.id, "painting.joinery_surround_painting_required") ===
+      true;
+
   let totalArea = 0;
   if (location?.toLowerCase().includes("internal") || location === "Both") {
     totalArea += internalArea ?? 0;
@@ -540,9 +1024,19 @@ export function calculatePainting(
   if (location?.toLowerCase().includes("external") || location === "Both") {
     totalArea += externalArea ?? 0;
   }
+  if (!totalArea && includesWallsOrCeilings) {
+    totalArea = internalArea ?? externalArea ?? 0;
+  }
   if (!totalArea) {
     missingInfo.push(formatMissing("Painting area"));
-    totalArea = 50;
+    totalArea = recordDefaultedNumber(assumptionMetadata, {
+      key: "painting.internal_area_m2",
+      label: "Painting area",
+      workAreaId: workArea.id,
+      assumedValue: 50,
+      unit: "m²",
+      reason: "No internal/external painting area provided",
+    });
     assumptions.push("Using assumed painting area of 50 m².");
   }
 
@@ -561,26 +1055,51 @@ export function calculatePainting(
     fallbackHoursPerUnit: 0.12,
   });
 
-  lineItems.push(
-    createLabourLineItem({
-      workAreaId: workArea.id,
-      workAreaName: workArea.name,
-      label: "Painting labour",
-      quantity: adjustedArea,
-      unit: "m²",
-      productivityHoursPerUnit: productivity.hoursPerUnit,
-      labourCostRate: labourRate.costRate,
-      labourSellRate: labourRate.sellRate,
-      rateSource: labourRate.sourceLabel,
-      notes: [coats ? `${coats} coats` : null, prep ? `${prep} prep` : null]
-        .filter(Boolean)
-        .join(" · "),
-      sortOrder: sortOrder++,
-      organisationSettings: context.organisationSettings,
-    })
+  if (includesWallsOrCeilings || !includesDoors) {
+    lineItems.push(
+      createLabourLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Painting labour",
+        quantity: adjustedArea,
+        unit: "m²",
+        productivityHoursPerUnit: productivity.hoursPerUnit,
+        labourCostRate: labourRate.costRate,
+        labourSellRate: labourRate.sellRate,
+        rateSource: labourRate.sourceLabel,
+        notes: [coats ? `${coats} coats` : null, prep ? `${prep} prep` : null]
+          .filter(Boolean)
+          .join(" · "),
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+      })
+    );
+  } else {
+    lineItems.push(
+      createLabourLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Painting labour",
+        quantity: adjustedArea,
+        unit: "m²",
+        productivityHoursPerUnit: productivity.hoursPerUnit,
+        labourCostRate: labourRate.costRate,
+        labourSellRate: labourRate.sellRate,
+        rateSource: labourRate.sourceLabel,
+        notes: "Doors/trims scope — area allowance applied conservatively.",
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+      })
+    );
+  }
+
+  const paintClientSupplied = getBooleanFact(
+    facts,
+    workArea.id,
+    "painting.paint_client_supplied"
   );
 
-  if (!getBooleanFact(facts, workArea.id, "painting.paint_client_supplied")) {
+  if (!paintClientSupplied) {
     const coatCount =
       coats === "3" ? 3 : coats === "1" ? 1 : coats === "2" ? 2 : 2;
     const paintWastage = resolveMaterialWastage(
@@ -593,6 +1112,9 @@ export function calculatePainting(
     }
     if (location?.toLowerCase().includes("external") || location === "Both") {
       paintAreaForBuildUp += externalArea ?? 0;
+    }
+    if (!paintAreaForBuildUp) {
+      paintAreaForBuildUp = totalArea;
     }
     const paintLitresResult =
       paintAreaForBuildUp > 0
@@ -611,6 +1133,17 @@ export function calculatePainting(
         })
       : null;
 
+    const paintingRates = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "painting.material.m2",
+      workAreaType: "painting",
+      unit: "m2",
+      fallbackCostRate: FITOUT_BENCHMARKS.paintingPerM2.cost,
+      fallbackSellRate: FITOUT_BENCHMARKS.paintingPerM2.sell,
+      organisationSettings: context.organisationSettings,
+    });
+
     lineItems.push(
       withMaterialBuildUp(
         createRateLineItem({
@@ -620,9 +1153,9 @@ export function calculatePainting(
           category: "materials",
           quantity: adjustedArea,
           unit: "m²",
-          costRate: FITOUT_BENCHMARKS.paintingPerM2.cost,
-          sellRate: FITOUT_BENCHMARKS.paintingPerM2.sell,
-          rateSource: "Benchmark allowance",
+          costRate: paintingRates.costRate,
+          sellRate: paintingRates.sellRate,
+          rateSource: paintingRates.sourceLabel,
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -634,12 +1167,80 @@ export function calculatePainting(
     assumptions.push("Paint supplied by client — labour/coordination only.");
   }
 
+  if (includesDoors) {
+    const doorCount =
+      getNumberFact(facts, workArea.id, "painting.door_count") ?? 2;
+    const doorRates = resolveRate({
+      rates: context.rates,
+      rateType: "allowance",
+      itemKey: "painting.door.each",
+      workAreaType: "painting",
+      unit: "each",
+      fallbackCostRate: FITOUT_BENCHMARKS.doorPaintingEach.cost,
+      fallbackSellRate: FITOUT_BENCHMARKS.doorPaintingEach.sell,
+      organisationSettings: context.organisationSettings,
+    });
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Door painting allowance",
+        recommendedCost: doorCount * doorRates.costRate,
+        recommendedSell: doorCount * doorRates.sellRate,
+        rateSource: doorRates.sourceLabel,
+        notes: `${doorCount} door(s)`,
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (includesTrims) {
+    const trimLm =
+      getNumberFact(facts, workArea.id, "painting.joinery_surround_length_lm") ??
+      Math.max(Math.sqrt(totalArea) * 4, 10);
+    const trimRates = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: "painting.trim.lm",
+      workAreaType: "painting",
+      unit: "lm",
+      fallbackCostRate: FITOUT_BENCHMARKS.skirtingLm.cost * 0.6,
+      fallbackSellRate: FITOUT_BENCHMARKS.skirtingLm.sell * 0.6,
+      organisationSettings: context.organisationSettings,
+    });
+    lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Trim painting allowance",
+        recommendedCost: trimLm * trimRates.costRate,
+        recommendedSell: trimLm * trimRates.sellRate,
+        rateSource: trimRates.sourceLabel,
+        notes:
+          getNumberFact(facts, workArea.id, "painting.joinery_surround_length_lm") ==
+          null
+            ? "Conservative trim allowance — length not confirmed"
+            : `${trimLm} lm trims`,
+        sortOrder: sortOrder++,
+        organisationSettings: context.organisationSettings,
+        qualityFactor,
+      })
+    );
+  }
+
+  if (surfaces.length > 0) {
+    assumptions.push(`Painting surfaces: ${surfaces.join(", ")}.`);
+  }
+
   return {
     lineItems,
     assumptions,
     missingInfo,
     exclusions: [],
     confidence: baseConfidence(missingInfo.length),
+    assumptionMetadata,
   };
 }
 
@@ -686,6 +1287,31 @@ export function calculatePlastering(
         ),
       })
     );
+  }
+
+  if (getBooleanFact(facts, workArea.id, "plastering.sanding_included")) {
+    const sandArea = getNumberFact(facts, workArea.id, "plastering.area_m2") ?? 20;
+    result.lineItems.push(
+      createAllowanceLineItem({
+        workAreaId: workArea.id,
+        workAreaName: workArea.name,
+        label: "Sanding/prep allowance",
+        recommendedCost: sandArea * 8,
+        recommendedSell: sandArea * 12,
+        rateSource: "Benchmark allowance",
+        sortOrder: result.lineItems.length + 1,
+        organisationSettings: context.organisationSettings,
+        qualityFactor: getQualityFactor(
+          context.project,
+          context.organisationSettings
+        ),
+      })
+    );
+  }
+
+  const surfaceType = getStringFact(facts, workArea.id, "plastering.surface_type");
+  if (surfaceType?.toLowerCase().includes("patch")) {
+    result.assumptions.push("Patch repair scope — conservative area allowance applied.");
   }
 
   return result;

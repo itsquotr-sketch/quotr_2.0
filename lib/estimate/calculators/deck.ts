@@ -34,6 +34,10 @@ import {
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
 import type { ResolvedRate } from "@/lib/estimate/types";
 import { baseConfidence } from "@/lib/estimate/summary";
+import {
+  createAssumptionMetadata,
+  recordDefaultedNumber,
+} from "@/lib/estimate/assumption-metadata";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -105,6 +109,7 @@ export function calculateDeck(
   const missingInfo: string[] = [];
   const assumptions: string[] = [];
   const exclusions: string[] = [];
+  const assumptionMetadata = createAssumptionMetadata();
   const lineItems: CalculatorResult["lineItems"] = [];
   let sortOrder = 1;
 
@@ -137,8 +142,16 @@ export function calculateDeck(
     missingInfo.push(formatMissing("Deck height or level"));
   }
 
-  const effectiveArea = area ?? 20;
-  if (!area) {
+  let effectiveArea = area;
+  if (!effectiveArea) {
+    effectiveArea = recordDefaultedNumber(assumptionMetadata, {
+      key: "deck.area_m2",
+      label: "Deck area",
+      workAreaId: workArea.id,
+      assumedValue: 20,
+      unit: "m²",
+      reason: "No area or length/width provided",
+    });
     assumptions.push("Using assumed deck area of 20 m² for rough estimate.");
   }
 
@@ -598,5 +611,6 @@ export function calculateDeck(
     missingInfo,
     exclusions,
     confidence: baseConfidence(missingInfo.length),
+    assumptionMetadata,
   };
 }
