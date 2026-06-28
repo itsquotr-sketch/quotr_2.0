@@ -7,29 +7,30 @@ import {
 } from "@/lib/ai/brief-extraction-prompt";
 import { getAnthropicClient, getAnthropicModel } from "@/lib/ai/anthropic";
 import { withAnthropicRetry } from "@/lib/ai/retry";
+import { enrichExtractionFromBrief } from "@/lib/ai/enrich-extraction";
+import { parseJsonObject, previewAiResponse } from "@/lib/ai/parse-json";
 import {
   AIExtractionError,
+  coerceExtractionPayload,
   validateAndFilterExtraction,
   type AIExtractionOutput,
 } from "@/lib/ai/schema";
 import { normaliseAIExtraction } from "@/lib/scopes/normalise-extracted-facts";
 
+export type BriefExtractionResult = {
+  output: AIExtractionOutput;
+  qualityLevel: ReturnType<typeof enrichExtractionFromBrief>["qualityLevel"];
+  constraints: ReturnType<typeof enrichExtractionFromBrief>["constraints"];
+};
+
 function extractJsonFromText(text: string): unknown {
-  const trimmed = text.trim();
-  try {
-    return JSON.parse(trimmed);
-  } catch {
-    const start = trimmed.indexOf("{");
-    const end = trimmed.lastIndexOf("}");
-    if (start !== -1 && end > start) {
-      try {
-        return JSON.parse(trimmed.slice(start, end + 1));
-      } catch {
-        throw new AIExtractionError("Failed to parse AI response as JSON.");
-      }
-    }
-    throw new AIExtractionError("Failed to parse AI response as JSON.");
+  const parsed = parseJsonObject(text);
+  if (!parsed.success) {
+    throw new AIExtractionError(
+      `Failed to parse AI response as JSON. Preview: ${previewAiResponse(text, 120)}`
+    );
   }
+  return parsed.data;
 }
 
 function getTextFromResponse(content: Anthropic.Message["content"]): string {
@@ -44,7 +45,7 @@ export async function extractFromBrief(params: {
   briefText: string;
   allowedTypes: string[];
   catalogueTypes: string[];
-}): Promise<AIExtractionOutput> {
+}): Promise<BriefExtractionResult> {
   if (params.allowedTypes.length === 0) {
     throw new AIExtractionError("No allowed work area types configured.");
   }
@@ -61,7 +62,7 @@ export async function extractFromBrief(params: {
       () =>
         client.messages.create({
           model,
-          max_tokens: 2048,
+          max_tokens: 4096,
           temperature: 0,
           system: BRIEF_EXTRACTION_SYSTEM_PROMPT,
           messages: [{ role: "user", content: userPrompt }],
@@ -71,14 +72,26 @@ export async function extractFromBrief(params: {
 
     const rawText = getTextFromResponse(message.content);
     const rawJson = extractJsonFromText(rawText);
+    const coerced = coerceExtractionPayload(rawJson);
+    const enriched = enrichExtractionFromBrief({
+      briefText: params.briefText,
+      extraction: coerced,
+      allowedTypes: params.allowedTypes,
+    });
 
-    return normaliseAIExtraction(
+    const output = normaliseAIExtraction(
       validateAndFilterExtraction(
-        rawJson,
+        enriched.extraction,
         params.allowedTypes,
         params.catalogueTypes
       )
     );
+
+    return {
+      output,
+      qualityLevel: enriched.qualityLevel,
+      constraints: enriched.constraints,
+    };
   } catch (error) {
     if (error instanceof AIExtractionError) {
       throw error;

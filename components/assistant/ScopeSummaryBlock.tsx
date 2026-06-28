@@ -49,6 +49,7 @@ type ScopeSummaryBlockProps = {
     questions: WorkAreaActiveQuestion[];
     answers: MissingQuestionAnswers;
   }) => Promise<void>;
+  workAreaSaveStatus?: Record<string, "idle" | "saving" | "saved" | "error">;
   onAddWorkArea?: (workAreaType: string) => Promise<void>;
   onExcludeWorkArea?: (workAreaId: string) => Promise<void>;
 };
@@ -102,6 +103,7 @@ export function ScopeSummaryBlock({
   addWorkAreaError,
   onFactSave,
   onSaveWorkAreaQuestions,
+  workAreaSaveStatus,
   onAddWorkArea,
   onExcludeWorkArea,
 }: ScopeSummaryBlockProps) {
@@ -302,6 +304,7 @@ export function ScopeSummaryBlock({
                 initMissingAnswers(workArea.activeQuestions)
               }
               isSaving={savingWorkAreaId === workArea.workAreaId}
+              saveStatus={workAreaSaveStatus?.[workArea.workAreaId] ?? "idle"}
               error={
                 savingWorkAreaId === workArea.workAreaId
                   ? workAreaQuestionError

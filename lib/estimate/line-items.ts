@@ -167,6 +167,8 @@ export function createFixedLabourLineItem(params: {
       workAreaName: params.workAreaName,
       label: params.label,
       category: "labour",
+      quantity: params.labourHours,
+      unit: "hrs",
       labourHours: params.labourHours,
       rateSource: params.rateSource,
       notes:
@@ -276,6 +278,8 @@ export function createAllowanceLineItem(params: {
       workAreaName: params.workAreaName,
       label: params.label,
       category: params.category ?? "allowance",
+      quantity: 1,
+      unit: "allow",
       rateSource: params.rateSource,
       notes: params.notes,
       sortOrder: params.sortOrder,

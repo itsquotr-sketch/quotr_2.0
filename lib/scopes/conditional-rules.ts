@@ -98,7 +98,8 @@ function isPlasterboardLining(value: string | null): boolean {
 export function shouldHideConditionalQuestion(
   template: ScopeQuestionTemplate,
   workAreaId: string,
-  lookup: FactLookup
+  lookup: FactLookup,
+  confirmedTypes?: Set<string>
 ): boolean {
   const key = template.factKey;
 
@@ -266,12 +267,65 @@ export function shouldHideConditionalQuestion(
 
   if (
     key === "bathroom.floor_tiling_area_m2" ||
-    key === "bathroom.wall_tiling_area_m2"
+    key === "bathroom.wall_tiling_area_m2" ||
+    key === "bathroom.tile_extent" ||
+    key === "bathroom.wall_tile_height"
   ) {
     const tiling = boolFact(lookup, workAreaId, "bathroom.tiling_included");
     if (tiling === false) return true;
     if (tiling === null) return true;
     return false;
+  }
+
+  if (key === "kitchen.appliances_client_supplied") {
+    const included = boolFact(lookup, workAreaId, "kitchen.appliances_included");
+    if (included !== true) return true;
+    return false;
+  }
+
+  if (key === "flooring.underlay_included") {
+    const flooringType = strFact(lookup, workAreaId, "flooring.type");
+    const supplyScope = strFact(lookup, workAreaId, "flooring.supply_scope");
+    if (supplyScope?.toLowerCase().includes("removal")) return true;
+    if (flooringType?.toLowerCase().includes("vinyl")) return true;
+    if (flooringType?.toLowerCase().includes("carpet")) return false;
+    if (flooringType?.toLowerCase().includes("laminate")) return false;
+    if (flooringType === null) return true;
+    return false;
+  }
+
+  if (
+    key === "flooring.type" ||
+    key === "flooring.client_supplied" ||
+    key === "flooring.underlay_included" ||
+    key === "flooring.scotia_included" ||
+    key === "flooring.stairs_or_landings_included" ||
+    key === "flooring.stair_count" ||
+    key === "flooring.landing_area_m2" ||
+    key === "flooring.floor_prep_level" ||
+    key === "flooring.subfloor_replacement_required"
+  ) {
+    const supplyScope = strFact(lookup, workAreaId, "flooring.supply_scope");
+    if (supplyScope?.toLowerCase().includes("removal")) return true;
+  }
+
+  if (key === "deck.pergola_included") {
+    return true;
+  }
+
+  if (
+    key === "internal_walls.painting_included" &&
+    confirmedTypes?.has("painting")
+  ) {
+    return true;
+  }
+
+  if (key === "doors.painting_included" && confirmedTypes?.has("painting")) {
+    return true;
+  }
+
+  if (key === "ceilings.painting_included" && confirmedTypes?.has("painting")) {
+    return true;
   }
 
   if (key === "kitchen.flooring_area_m2" || key === "kitchen.flooring_type") {

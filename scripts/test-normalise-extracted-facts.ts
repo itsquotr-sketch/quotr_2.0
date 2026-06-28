@@ -248,3 +248,43 @@ assert(
 );
 
 console.log("\nNormalisation checks complete.");
+
+import {
+  enrichExtractionFromBrief,
+  extractQualityFromBrief,
+} from "../lib/ai/enrich-extraction";
+import { coerceExtractionPayload } from "../lib/ai/schema";
+
+const stairsBrief =
+  "Build 8-step treated timber external stairs to an existing deck, 1m wide, with handrail.";
+const stairsEnriched = enrichExtractionFromBrief({
+  briefText: stairsBrief,
+  extraction: coerceExtractionPayload({ workAreas: [], facts: [] }),
+  allowedTypes: ["deck", "external_stairs", "demolition", "plastering"],
+});
+assert(
+  "enrichment recognises external_stairs",
+  stairsEnriched.extraction.workAreas.some((wa) => wa.type === "external_stairs")
+);
+
+const plasterBrief = "Level 4 stop 80m² of new plasterboard walls, sand ready for paint.";
+const plasterEnriched = enrichExtractionFromBrief({
+  briefText: plasterBrief,
+  extraction: coerceExtractionPayload({ workAreas: [], facts: [] }),
+  allowedTypes: ["plastering", "painting"],
+});
+assert(
+  "enrichment recognises plastering",
+  plasterEnriched.extraction.workAreas.some((wa) => wa.type === "plastering")
+);
+
+assert(
+  "quality extraction maps average to standard",
+  extractQualityFromBrief("Average quality bathroom reno") === "standard"
+);
+assert(
+  "quality extraction maps premium finish",
+  extractQualityFromBrief("Premium finish kitchen") === "premium"
+);
+
+console.log("\nEnrichment checks complete.");

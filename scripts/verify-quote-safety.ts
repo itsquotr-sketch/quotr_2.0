@@ -82,6 +82,7 @@ try {
 assert("validateMarginPercent rejects 95%", validateMarginPercent(95).ok === false);
 assert("validateMarginPercent rejects 100%", validateMarginPercent(100).ok === false);
 assert("validateMarginPercent accepts 25%", validateMarginPercent(25).ok === true);
+assert("validateMarginPercent accepts 0%", validateMarginPercent(0).ok === true);
 assert(
   "deriveSellFromCost(100, 25) returns finite sell",
   Number.isFinite(deriveSellFromCost(100, 25))

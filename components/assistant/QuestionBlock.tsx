@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import type { DerivedFactDisplay } from "@/lib/assistant/types";
 import type { Question } from "@/components/assistant/types";
 import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
+import { formatSelectAnswerValue } from "@/lib/scopes/fact-labels";
 
 export type QuestionAnswers = Record<string, string | number | boolean | string[] | null>;
 
@@ -61,6 +62,9 @@ function formatAnswer(
   }
   if (question.inputType === "boolean") {
     return normalizeBooleanForUi(value) ?? String(value);
+  }
+  if (question.inputType === "select") {
+    return formatSelectAnswerValue(value);
   }
   if (question.unit && typeof value === "number") {
     return `${value} ${question.unit}`;

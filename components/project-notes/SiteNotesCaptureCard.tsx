@@ -186,7 +186,8 @@ export function SiteNotesCaptureCard({
           onClick={handleCreateNote}
           disabled={isSaving}
           size={isCompact ? "sm" : "default"}
-          className="w-full sm:w-auto"
+          variant="secondary"
+          className="w-full bg-foreground text-background hover:bg-foreground/90 sm:w-auto"
         >
           {isSaving ? (
             <>

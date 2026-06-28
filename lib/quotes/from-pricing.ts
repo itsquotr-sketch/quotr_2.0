@@ -1,5 +1,6 @@
 import { cleanClientLabel, roundMoney } from "@/lib/pricing/calculations";
 import { inferCalculationMode } from "@/lib/pricing/pricing-item-calculation";
+import { ensureQuoteItemQuantityUnit } from "@/lib/pricing/quantity-defaults";
 import type { PricingItem } from "@/lib/pricing/types";
 import type { QuoteItemInput } from "@/lib/quotes/types";
 import {
@@ -151,8 +152,12 @@ export function mapPricingItemsToQuoteItems(
         section_description: sectionDescription,
         label: resolveQuoteItemLabel(item),
         description: resolveQuoteItemDescription(item),
-        quantity: item.quantity,
-        unit: item.unit,
+        ...ensureQuoteItemQuantityUnit({
+          quantity: item.quantity,
+          unit: item.unit,
+          itemType: item.item_type,
+          calculationMode: item.calculation_mode ?? undefined,
+        }),
         unit_price: resolveQuoteUnitPrice(item),
         total: item.total_sell,
         visible: true,

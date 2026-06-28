@@ -603,15 +603,27 @@ export function calculateDoors(
   );
 
   const supplyScope = getStringFact(facts, workArea.id, "doors.supply_scope");
-  const installOnly = supplyScope?.toLowerCase().includes("install only");
+  const clientSupplied =
+    getBooleanFact(facts, workArea.id, "doors.client_supplied") ||
+    supplyScope?.toLowerCase().includes("client");
+  const installOnly =
+    clientSupplied || supplyScope?.toLowerCase().includes("install only");
+
+  if (clientSupplied) {
+    assumptions.push("Doors client supplied — installation allowance only.");
+  }
 
   lineItems.push(
     createAllowanceLineItem({
       workAreaId: workArea.id,
       workAreaName: workArea.name,
       label: installOnly ? "Door installation allowance" : "Door supply/install allowance",
-      recommendedCost: effectiveCount * FITOUT_BENCHMARKS.doorsEach.cost,
-      recommendedSell: effectiveCount * FITOUT_BENCHMARKS.doorsEach.sell,
+      recommendedCost: installOnly
+        ? effectiveCount * FITOUT_BENCHMARKS.doorInstallEach.cost
+        : effectiveCount * FITOUT_BENCHMARKS.doorsEach.cost,
+      recommendedSell: installOnly
+        ? effectiveCount * FITOUT_BENCHMARKS.doorInstallEach.sell
+        : effectiveCount * FITOUT_BENCHMARKS.doorsEach.sell,
       rateSource: "Benchmark allowance",
       notes: getStringFact(facts, workArea.id, "doors.door_type") ?? undefined,
       sortOrder: sortOrder++,
@@ -620,7 +632,7 @@ export function calculateDoors(
     })
   );
 
-  if (installOnly) {
+  if (installOnly && !clientSupplied) {
     assumptions.push("Doors client supplied — install labour and hardware only.");
   }
 

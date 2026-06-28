@@ -16,6 +16,7 @@ import {
   deriveFactsForProject,
   mergeDerivedFactsIntoRecords,
 } from "@/lib/scopes/derived-facts";
+import { applyScopeCrossoverResolution } from "@/lib/scopes/scope-crossover";
 
 const DEFAULT_ORGANISATION_SETTINGS: OrganisationSettings = {
   id: "",
@@ -169,10 +170,16 @@ export async function getEstimateContext(
     projectFacts: projectFacts ?? [],
   });
 
-  const mergedFacts = mergeDerivedFactsIntoRecords(
-    projectFacts ?? [],
-    derivedFacts
-  );
+  const mergedFacts = applyScopeCrossoverResolution({
+    workAreas: confirmedWorkAreas.map((workArea) => ({
+      id: workArea.id,
+      type: workArea.type,
+    })),
+    projectFacts: mergeDerivedFactsIntoRecords(
+      projectFacts ?? [],
+      derivedFacts
+    ),
+  });
 
   return {
     project: {

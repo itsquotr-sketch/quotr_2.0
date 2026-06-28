@@ -83,8 +83,43 @@ export function sumLineItemTotals(
   };
 }
 
-export const MARGIN_MIN_PERCENT = 1;
-export const MARGIN_MAX_PERCENT = 70;
+export function applyTargetMarginToLineItems<T extends {
+  recommendedCost: number;
+  recommendedSell?: number;
+  costLow?: number;
+  costHigh?: number;
+  sellLow?: number;
+  sellHigh?: number;
+  grossProfit?: number;
+  marginPercent?: number;
+  markupPercent?: number;
+}>(
+  lineItems: T[],
+  targetMarginPercent: number,
+  organisationSettings: OrganisationSettings | null
+): T[] {
+  return lineItems.map((item) => {
+    const amounts = applyMarginToAmounts(
+      item.recommendedCost,
+      targetMarginPercent,
+      organisationSettings
+    );
+    return {
+      ...item,
+      costLow: amounts.costLow,
+      costHigh: amounts.costHigh,
+      sellLow: amounts.sellLow,
+      sellHigh: amounts.sellHigh,
+      recommendedSell: amounts.recommendedSell,
+      grossProfit: amounts.grossProfit,
+      marginPercent: amounts.marginPercent,
+      markupPercent: amounts.markupPercent,
+    };
+  });
+}
+
+export const MARGIN_MIN_PERCENT = 0;
+export const MARGIN_MAX_PERCENT = 80;
 
 export function validateTargetMarginPercent(value: number): string | null {
   if (!Number.isFinite(value)) {

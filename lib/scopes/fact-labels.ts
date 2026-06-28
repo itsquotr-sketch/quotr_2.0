@@ -169,6 +169,19 @@ export function isNotSureValue(value: unknown): boolean {
   return NOT_SURE_VALUES.has(value.trim().toLowerCase()) || value === "Not sure";
 }
 
+const ENUM_ANSWER_LABELS: Record<string, string> = {
+  good_existing: "Good existing",
+  partial_replacement: "Partial replacement",
+  full_replacement: "Full replacement",
+  unknown: "Unknown",
+};
+
+export function formatSelectAnswerValue(value: unknown): string {
+  if (value === null || value === undefined || value === "") return "—";
+  const raw = String(value);
+  return ENUM_ANSWER_LABELS[raw] ?? ENUM_ANSWER_LABELS[raw.toLowerCase()] ?? raw;
+}
+
 export function formatFactValueForDisplay(
   value: unknown,
   unit?: string | null

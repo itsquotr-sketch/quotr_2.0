@@ -254,9 +254,9 @@ export async function saveBriefAndSeedWorkAreas(
     notes: noteRows,
   });
 
-  let extraction;
+  let extractionResult;
   try {
-    extraction = await extractFromBrief({
+    extractionResult = await extractFromBrief({
       briefText: analysisSource,
       allowedTypes,
       catalogueTypes: CATALOGUE_TYPES,
@@ -270,6 +270,8 @@ export async function saveBriefAndSeedWorkAreas(
     });
     return { error: userMessageForAnalysisError(error) };
   }
+
+  const extraction = extractionResult.output;
 
   const { data: existingWorkAreas } = await supabase
     .from("work_areas")
@@ -375,11 +377,51 @@ export async function saveBriefAndSeedWorkAreas(
 
   const { error: stageError } = await supabase
     .from("projects")
-    .update({ stage: "confirm_work_areas" })
+    .update({
+      stage: "confirm_work_areas",
+      ...(extractionResult.qualityLevel
+        ? { quality_level: extractionResult.qualityLevel }
+        : {}),
+    })
     .eq("id", projectId);
 
   if (stageError) {
     return { error: stageError.message };
+  }
+
+  if (extractionResult.constraints.length > 0) {
+    const { data: existingConstraints } = await supabase
+      .from("constraints")
+      .select("id, key")
+      .eq("project_id", projectId);
+
+    const existingByKey = new Map(
+      (existingConstraints ?? []).map((row) => [row.key, row.id])
+    );
+
+    for (const constraint of extractionResult.constraints) {
+      const existingId = existingByKey.get(constraint.key);
+      if (existingId) {
+        await supabase
+          .from("constraints")
+          .update({
+            label: constraint.label,
+            value: constraint.value,
+            source: "ai_extracted",
+          })
+          .eq("id", existingId)
+          .eq("project_id", projectId);
+      } else {
+        await supabase.from("constraints").insert({
+          org_id: orgId,
+          project_id: projectId,
+          key: constraint.key,
+          label: constraint.label,
+          value: constraint.value,
+          source: "ai_extracted",
+        });
+      }
+    }
   }
 
   revalidateAssistantPaths(projectId);
@@ -956,7 +998,15 @@ async function runEstimateGeneration(
     return { error: "This action is not available at the current stage." };
   }
 
-  const contextResult = await getEstimateContext(projectId);
+  const [{ data: existingEstimate }, contextResult] = await Promise.all([
+    supabase
+      .from("estimates")
+      .select("id, target_margin_percent")
+      .eq("project_id", projectId)
+      .maybeSingle(),
+    getEstimateContext(projectId),
+  ]);
+
   if ("error" in contextResult) {
     return { error: contextResult.error };
   }
@@ -969,6 +1019,33 @@ async function runEstimateGeneration(
       return { error: USER_ERRORS.estimateGenerateFailed };
     }
     return { error: USER_ERRORS.estimateGenerateFailed };
+  }
+
+  const targetMargin =
+    existingEstimate?.target_margin_percent != null
+      ? Number(existingEstimate.target_margin_percent)
+      : null;
+
+  if (targetMargin != null) {
+    const { applyTargetMarginToLineItems, sumLineItemTotals } = await import(
+      "@/lib/estimate/margin-override"
+    );
+    const adjustedItems = applyTargetMarginToLineItems(
+      estimateResult.lineItems,
+      targetMargin,
+      contextResult.organisationSettings
+    );
+    const totals = sumLineItemTotals(adjustedItems);
+    estimateResult = {
+      ...estimateResult,
+      lineItems: adjustedItems,
+      recommendedSell: totals.recommendedSell,
+      sellLow: totals.sellLow,
+      sellHigh: totals.sellHigh,
+      grossProfit: totals.grossProfit,
+      marginPercent: totals.marginPercent,
+      markupPercent: totals.markupPercent,
+    };
   }
 
   const persistResult = await persistEstimateResult(

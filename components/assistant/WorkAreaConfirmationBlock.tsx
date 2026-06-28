@@ -1,5 +1,7 @@
 "use client";
 
+import { useState } from "react";
+import { AddWorkAreaDialog } from "@/components/assistant/AddWorkAreaDialog";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { WorkArea } from "@/components/assistant/types";
@@ -8,8 +10,11 @@ type WorkAreaConfirmationBlockProps = {
   workAreas: WorkArea[];
   submitted?: boolean;
   isSaving?: boolean;
+  isAddingWorkArea?: boolean;
+  addWorkAreaError?: string | null;
   onConfirm?: (workAreas: WorkArea[]) => void;
   onToggle?: (id: string) => void;
+  onAddWorkArea?: (workAreaType: string) => Promise<void>;
 };
 
 export function confidenceLabel(confidence: number): string {
@@ -78,9 +83,13 @@ export function WorkAreaConfirmationBlock({
   workAreas,
   submitted,
   isSaving,
+  isAddingWorkArea,
+  addWorkAreaError,
   onConfirm,
   onToggle,
+  onAddWorkArea,
 }: WorkAreaConfirmationBlockProps) {
+  const [addDialogOpen, setAddDialogOpen] = useState(false);
   const included = workAreas.filter((wa) => wa.status !== "excluded");
 
   if (submitted) {
@@ -118,13 +127,46 @@ export function WorkAreaConfirmationBlock({
           );
         })}
       </div>
-      <Button
-        type="button"
-        onClick={() => onConfirm?.(workAreas)}
-        disabled={included.length === 0 || isSaving}
-      >
-        {isSaving ? "Saving…" : "Confirm work areas"}
-      </Button>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          type="button"
+          onClick={() => onConfirm?.(workAreas)}
+          disabled={included.length === 0 || isSaving}
+        >
+          {isSaving ? "Saving…" : "Confirm work areas"}
+        </Button>
+        {onAddWorkArea ? (
+          <Button
+            type="button"
+            variant="outline"
+            disabled={isSaving || isAddingWorkArea}
+            onClick={() => setAddDialogOpen(true)}
+          >
+            Add work area
+          </Button>
+        ) : null}
+      </div>
+
+      {addWorkAreaError ? (
+        <p className="text-sm text-destructive" role="alert">
+          {addWorkAreaError}
+        </p>
+      ) : null}
+
+      {onAddWorkArea ? (
+        <AddWorkAreaDialog
+          open={addDialogOpen}
+          onOpenChange={setAddDialogOpen}
+          workAreas={workAreas}
+          isSaving={isAddingWorkArea}
+          error={addWorkAreaError}
+          onAdd={async (workAreaType) => {
+            await onAddWorkArea(workAreaType);
+            setAddDialogOpen(false);
+          }}
+        />
+      ) : null}
     </div>
   );
 }

@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useCallback, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useMemo, useRef, useState } from "react";
 import { AssistantProgress } from "@/components/assistant/AssistantProgress";
 import {
   CollapsibleStageCard,
@@ -132,6 +132,9 @@ export function AssistantShell({
   const [isAddingWorkArea, setIsAddingWorkArea] = useState(false);
   const [isExcludingWorkArea, setIsExcludingWorkArea] = useState(false);
   const [savingWorkAreaId, setSavingWorkAreaId] = useState<string | null>(null);
+  const [workAreaSaveStatus, setWorkAreaSaveStatus] = useState<
+    Record<string, "idle" | "saving" | "saved" | "error">
+  >({});
   const [workAreaQuestionError, setWorkAreaQuestionError] = useState<string | null>(
     null
   );
@@ -472,8 +475,11 @@ export function AssistantShell({
       answers: MissingQuestionAnswers;
     }) => {
       setSavingWorkAreaId(input.workAreaId);
+      setWorkAreaSaveStatus((prev) => ({
+        ...prev,
+        [input.workAreaId]: "saving",
+      }));
       setWorkAreaQuestionError(null);
-      setPendingAction("questions");
 
       const questionsByBlock = new Map<string, WorkAreaActiveQuestion[]>();
       for (const question of input.questions) {
@@ -497,14 +503,22 @@ export function AssistantShell({
         if (result.error) {
           setWorkAreaQuestionError(result.error);
           setSavingWorkAreaId(null);
-          setPendingAction(null);
+          setWorkAreaSaveStatus((prev) => ({
+            ...prev,
+            [input.workAreaId]: "error",
+          }));
           return;
         }
       }
 
-      router.refresh();
+      setWorkAreaSaveStatus((prev) => ({
+        ...prev,
+        [input.workAreaId]: "saved",
+      }));
+      startTransition(() => {
+        router.refresh();
+      });
       setSavingWorkAreaId(null);
-      setPendingAction(null);
     },
     [project.id, router]
   );
@@ -624,11 +638,16 @@ export function AssistantShell({
                 workAreas={displayWorkAreas}
                 submitted={workAreasConfirmed}
                 isSaving={pendingAction === "work_areas"}
+                isAddingWorkArea={isAddingWorkArea}
+                addWorkAreaError={addWorkAreaError}
                 onToggle={
                   workAreasConfirmed ? undefined : handleWorkAreaToggle
                 }
                 onConfirm={
                   workAreasConfirmed ? undefined : handleWorkAreasConfirm
+                }
+                onAddWorkArea={
+                  workAreasConfirmed ? undefined : handleAddWorkArea
                 }
               />
             </CollapsibleStageCard>
@@ -741,6 +760,7 @@ export function AssistantShell({
                 estimateIsStale={estimate?.isStale}
                 savingFactKey={savingFactKey}
                 savingWorkAreaId={savingWorkAreaId}
+                workAreaSaveStatus={workAreaSaveStatus}
                 workAreaQuestionError={workAreaQuestionError}
                 factError={factError}
                 isAddingWorkArea={isAddingWorkArea}

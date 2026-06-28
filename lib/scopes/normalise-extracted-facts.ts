@@ -1043,6 +1043,10 @@ export function normaliseAIExtraction(
   const withDeckDimensions = expandDeckAreaFactsToDimensions(extraction);
   const facts = withDeckDimensions.facts
     .map((fact) => {
+      if (fact.value === null) {
+        return null;
+      }
+
       const key = normaliseExtractedFactKey(fact.key, fact.work_area_type);
       if (DERIVED_FACT_KEYS.has(key)) {
         return null;

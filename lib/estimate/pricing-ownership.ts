@@ -101,6 +101,30 @@ function isDisposalLine(item: EstimateLineItemInput): boolean {
   return DISPOSAL_LABEL_PATTERNS.some((pattern) => pattern.test(item.label));
 }
 
+const SINGLE_OWNER_OVERLAP_GROUPS = new Set([
+  "kitchen_cabinetry_install",
+  "kitchen_cabinetry_supply",
+  "kitchen_benchtop",
+  "kitchen_demolition",
+]);
+
+function isAllowanceStyleItem(item: EstimateLineItemInput): boolean {
+  return (
+    item.category === "allowance" ||
+    item.category === "subcontractor" ||
+    item.pricingOwner === "subcontractor_allowance" ||
+    item.pricingOwner === "contractor_material"
+  );
+}
+
+function isLabourStyleItem(item: EstimateLineItemInput): boolean {
+  return (
+    item.category === "labour" ||
+    item.pricingOwner === "in_house_labour" ||
+    (item.labourHours ?? 0) > 0
+  );
+}
+
 function isBroadPackageLabour(item: EstimateLineItemInput): boolean {
   return BROAD_LABOUR_LABELS.has(item.label.trim().toLowerCase());
 }
@@ -213,8 +237,15 @@ export function dedupePricedItemsByScopeOwnership(
     const item = next[i]!;
     const group = item.overlapGroup;
     const scopeKey = item.scopeKey;
-    if (!group || !scopeKey || item.includedInTotal === false) continue;
-    const winnerKey = `${group}|${scopeKey}`;
+    if (!group || item.includedInTotal === false) continue;
+
+    const winnerKey =
+      scopeKey != null
+        ? `${group}|${scopeKey}`
+        : SINGLE_OWNER_OVERLAP_GROUPS.has(group)
+          ? group
+          : null;
+    if (!winnerKey) continue;
     if (!overlapWinners.has(winnerKey)) {
       overlapWinners.set(winnerKey, i);
       continue;
@@ -223,6 +254,36 @@ export function dedupePricedItemsByScopeOwnership(
     const winner = next[winnerIndex]!;
     const winnerIsGeneric = isBroadPackageLabour(winner);
     const currentIsGeneric = isBroadPackageLabour(item);
+    const groupIsSingleOwner = SINGLE_OWNER_OVERLAP_GROUPS.has(group);
+    const winnerIsAllowance = isAllowanceStyleItem(winner);
+    const currentIsAllowance = isAllowanceStyleItem(item);
+    const winnerIsLabour = isLabourStyleItem(winner);
+    const currentIsLabour = isLabourStyleItem(item);
+
+    if (groupIsSingleOwner && winnerIsLabour && currentIsAllowance) {
+      next[i] = zeroPricedItem({
+        ...item,
+        pricingOwner: "excluded",
+        includedInTotal: false,
+        notes: [item.notes, `Overlap with ${winner.label} — excluded from total.`]
+          .filter(Boolean)
+          .join(" · "),
+      });
+      continue;
+    }
+    if (groupIsSingleOwner && winnerIsAllowance && currentIsLabour) {
+      next[winnerIndex] = zeroPricedItem({
+        ...winner,
+        pricingOwner: "excluded",
+        includedInTotal: false,
+        notes: [winner.notes, `Overlap with ${item.label} — excluded from total.`]
+          .filter(Boolean)
+          .join(" · "),
+      });
+      overlapWinners.set(winnerKey, i);
+      continue;
+    }
+
     if (currentIsGeneric && !winnerIsGeneric) {
       next[winnerIndex] = zeroPricedItem({
         ...winner,

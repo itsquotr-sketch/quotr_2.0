@@ -151,10 +151,17 @@ const kitchen = calculateKitchen(
 );
 assert(labels(kitchen.lineItems).includes("Demolition/strip-out"), "Kitchen: demolition");
 assert(
-  labels(kitchen.lineItems).includes("Cabinetry installation allowance"),
-  "Kitchen: client-supplied cabinetry install"
+  labels(kitchen.lineItems).includes("Cabinetry installation labour"),
+  "Kitchen: client-supplied cabinetry install labour"
 );
-assert(labels(kitchen.lineItems).includes("Benchtop allowance"), "Kitchen: benchtop");
+assert(
+  !labels(kitchen.lineItems).includes("Cabinetry installation allowance"),
+  "Kitchen: no duplicate cabinetry install allowance"
+);
+assert(
+  labels(kitchen.lineItems).includes("Benchtop supply/install allowance"),
+  "Kitchen: benchtop"
+);
 assert(labels(kitchen.lineItems).includes("Splashback allowance"), "Kitchen: splashback");
 assert(labels(kitchen.lineItems).includes("Rangehood/venting allowance"), "Kitchen: rangehood");
 assert(

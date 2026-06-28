@@ -223,8 +223,26 @@ const kitchen = calculateKitchen(
 );
 assert(!labels(kitchen.lineItems).includes("Cabinetry allowance"), "No cabinetry supply");
 assert(
-  labels(kitchen.lineItems).some((l) => l.toLowerCase().includes("cabinetry")),
-  "Cabinetry install priced"
+  !labels(kitchen.lineItems).includes("Cabinetry installation allowance"),
+  "No duplicate cabinetry install allowance"
+);
+assert(
+  countOverlapGroups(kitchen.lineItems, "kitchen_cabinetry_install") <= 1,
+  "Cabinetry install priced once"
+);
+assert(
+  !labels(kitchen.lineItems).includes("Kitchen materials/finishes allowance"),
+  "No broad kitchen package when components priced"
+);
+assert(
+  !labels(kitchen.lineItems).some((l) => /benchtop labour/i.test(l)),
+  "Benchtop not priced as labour allowance"
+);
+assert(
+  labels(kitchen.lineItems).some((l) =>
+    /benchtop supply\/install allowance/i.test(l)
+  ),
+  "Benchtop as supply/install allowance"
 );
 assert(!labels(kitchen.lineItems).includes("Plumbing allowance"), "Plumbing not priced");
 assert(!labels(kitchen.lineItems).includes("Electrical allowance"), "Electrical not priced");

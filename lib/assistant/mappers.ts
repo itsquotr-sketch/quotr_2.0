@@ -355,9 +355,8 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
     recommendedSell: Number(row.recommended_sell ?? 0),
     grossProfit: Number(row.gross_profit ?? 0),
     marginPercent: Number(row.margin_percent ?? 0),
-    markupPercent: row.markup_percent
-      ? Number(row.markup_percent)
-      : undefined,
+    markupPercent:
+      row.markup_percent != null ? Number(row.markup_percent) : undefined,
     rateSource: normalizeRateSourceLabel(row.rate_source ?? ""),
     quantity: metadata.quantity,
     unit: metadata.unit,
@@ -398,14 +397,16 @@ export function mapEstimate(
     recommendedSell: Number(estimate.recommended_sell ?? base.recommendedSell),
     grossProfit: Number(estimate.gross_profit ?? base.grossProfit),
     marginPercent: Number(estimate.margin_percent ?? base.marginPercent),
-    markupPercent: estimate.markup_percent
-      ? Number(estimate.markup_percent)
-      : base.markupPercent,
+    markupPercent:
+      estimate.markup_percent != null
+        ? Number(estimate.markup_percent)
+        : base.markupPercent,
     isStale: estimate.is_stale ?? false,
     calibrationVersion: estimate.calibration_version ?? null,
-    targetMarginPercent: estimate.target_margin_percent
-      ? Number(estimate.target_margin_percent)
-      : null,
+    targetMarginPercent:
+      estimate.target_margin_percent != null
+        ? Number(estimate.target_margin_percent)
+        : null,
     confidence: Number(estimate.confidence ?? base.confidence),
     rateSourceSummary:
       estimate.rate_source_summary ?? base.rateSourceSummary,

@@ -298,9 +298,27 @@ export function shouldSkipTemplateQuestion(
   confirmedTypes: Set<string>,
   project: ProjectInput
 ): boolean {
+  if (template.factKey === "deck.pergola_included") {
+    return true;
+  }
+
   if (
-    template.factKey === "deck.pergola_included" &&
-    confirmedTypes.has("pergola")
+    template.factKey === "internal_walls.painting_included" &&
+    confirmedTypes.has("painting")
+  ) {
+    return true;
+  }
+
+  if (
+    template.factKey === "doors.painting_included" &&
+    confirmedTypes.has("painting")
+  ) {
+    return true;
+  }
+
+  if (
+    template.factKey === "ceilings.painting_included" &&
+    confirmedTypes.has("painting")
   ) {
     return true;
   }
@@ -313,7 +331,7 @@ export function shouldSkipTemplateQuestion(
     return true;
   }
 
-  if (shouldHideConditionalQuestion(template, workArea.id, factLookup)) {
+  if (shouldHideConditionalQuestion(template, workArea.id, factLookup, confirmedTypes)) {
     return true;
   }
 

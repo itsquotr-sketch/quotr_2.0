@@ -141,6 +141,7 @@ export const FITOUT_BENCHMARKS = {
   internalWallsPerM2: { cost: 95, sell: 145 },
   ceilingsPerM2: { cost: 75, sell: 115 },
   doorsEach: { cost: 280, sell: 420 },
+  doorInstallEach: { cost: 110, sell: 165 },
   flooringPerM2: { cost: 120, sell: 185 },
   vinylPerM2: { cost: 85, sell: 130 },
   carpetPerM2: { cost: 95, sell: 145 },

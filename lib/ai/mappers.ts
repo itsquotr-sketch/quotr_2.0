@@ -68,6 +68,8 @@ export function aiFactsToRows(params: {
   const rows: ProjectFactInsertRow[] = [];
 
   for (const fact of params.output.facts) {
+    if (fact.value === null) continue;
+
     let workAreaId: string | null = null;
 
     if (fact.work_area_type !== null) {

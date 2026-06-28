@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { defaultedFactWarnings } from "@/lib/estimate/assumption-metadata";
+import { sumByCategoryWithSplits } from "@/lib/estimate/category-breakdown";
 import { buildEstimateCalibrationSummary } from "@/lib/estimate/estimate-calibration";
 import {
   getCommercialTrustDetailLines,
@@ -66,8 +67,12 @@ const TABS: { id: BreakdownTab; label: string }[] = [
   { id: "line_items", label: "Line items" },
 ];
 
+function includedItems(items: EstimateLineItem[]) {
+  return items.filter((item) => item.includedInTotal !== false);
+}
+
 function groupByWorkArea(items: EstimateLineItem[]) {
-  return items.reduce<Record<string, EstimateLineItem[]>>((acc, item) => {
+  return includedItems(items).reduce<Record<string, EstimateLineItem[]>>((acc, item) => {
     if (!acc[item.workAreaName]) acc[item.workAreaName] = [];
     acc[item.workAreaName].push(item);
     return acc;
@@ -75,6 +80,28 @@ function groupByWorkArea(items: EstimateLineItem[]) {
 }
 
 function sumByCategory(items: EstimateLineItem[]) {
+  const splitTotals = sumByCategoryWithSplits(
+    includedItems(items).map((item) => ({
+      workAreaId: item.id,
+      workAreaName: item.workAreaName,
+      label: item.label,
+      category: item.category,
+      recommendedCost: item.recommendedCost,
+      recommendedSell: item.recommendedSell,
+      grossProfit: item.grossProfit,
+      marginPercent: item.marginPercent,
+      markupPercent: item.markupPercent ?? 0,
+      costLow: item.costLow,
+      costHigh: item.costHigh,
+      sellLow: item.sellLow,
+      sellHigh: item.sellHigh,
+      rateSource: item.rateSource,
+      sortOrder: 0,
+      includedInTotal: item.includedInTotal,
+      costComponents: undefined,
+    }))
+  );
+
   const totals: Partial<
     Record<
       EstimateLineItemCategory,
@@ -82,14 +109,24 @@ function sumByCategory(items: EstimateLineItem[]) {
     >
   > = {};
 
-  for (const item of items) {
-    if (!totals[item.category]) {
-      totals[item.category] = { cost: 0, sell: 0, profit: 0, hours: 0 };
+  for (const [category, value] of Object.entries(splitTotals)) {
+    if (!value) continue;
+    const mapped =
+      category === "mixed"
+        ? ("allowance" as EstimateLineItemCategory)
+        : (category as EstimateLineItemCategory);
+    if (!totals[mapped]) {
+      totals[mapped] = { cost: 0, sell: 0, profit: 0, hours: 0 };
     }
-    totals[item.category]!.cost += item.recommendedCost;
-    totals[item.category]!.sell += item.recommendedSell;
-    totals[item.category]!.profit += item.grossProfit;
-    totals[item.category]!.hours += item.labourHours ?? 0;
+    totals[mapped]!.cost += value.cost;
+    totals[mapped]!.sell += value.sell;
+    totals[mapped]!.profit += value.profit;
+  }
+
+  for (const item of includedItems(items)) {
+    if (item.category !== "labour") continue;
+    totals.labour ??= { cost: 0, sell: 0, profit: 0, hours: 0 };
+    totals.labour.hours += item.labourHours ?? 0;
   }
 
   return totals;

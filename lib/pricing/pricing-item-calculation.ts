@@ -1,4 +1,5 @@
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { ensurePricingItemQuantityUnit } from "@/lib/pricing/quantity-defaults";
 import type { PricingItem, PricingItemType } from "@/lib/pricing/types";
 
 function roundMoney(value: number): number {
@@ -255,6 +256,24 @@ export function resolvePricingItemCalculation(
   });
 }
 
+function withQuantityDefaults(
+  fields: PricingItemCalculationFields,
+  itemType: PricingItemType
+): PricingItemCalculationFields {
+  const resolved = ensurePricingItemQuantityUnit({
+    quantity: fields.quantity,
+    unit: fields.unit,
+    itemType,
+    calculationMode: fields.calculationMode,
+  });
+
+  return {
+    ...fields,
+    quantity: resolved.quantity,
+    unit: resolved.unit,
+  };
+}
+
 export function buildPricingItemFieldsFromEstimateLineItem(lineItem: {
   category: string;
   recommended_cost: number | null;
@@ -271,24 +290,27 @@ export function buildPricingItemFieldsFromEstimateLineItem(lineItem: {
   const totalSell = roundMoney(recommendedSell);
 
   if (isLumpSumType(itemType)) {
-    return computeProfitFields({
-      calculationMode: "lump_sum",
-      quantity,
-      unit,
-      unitCost:
-        quantity && quantity > 0
-          ? roundMoney(totalCost / quantity)
-          : totalCost || null,
-      unitSell:
-        quantity && quantity > 0
-          ? roundMoney(totalSell / quantity)
-          : totalSell || null,
-      productivityRate: null,
-      productivityUnit: null,
-      calculatedQuantity: null,
-      totalCost,
-      totalSell,
-    });
+    return withQuantityDefaults(
+      computeProfitFields({
+        calculationMode: "lump_sum",
+        quantity,
+        unit,
+        unitCost:
+          quantity && quantity > 0
+            ? roundMoney(totalCost / quantity)
+            : totalCost || null,
+        unitSell:
+          quantity && quantity > 0
+            ? roundMoney(totalSell / quantity)
+            : totalSell || null,
+        productivityRate: null,
+        productivityUnit: null,
+        calculatedQuantity: null,
+        totalCost,
+        totalSell,
+      }),
+      itemType
+    );
   }
 
   const hasProductivity =
@@ -314,18 +336,21 @@ export function buildPricingItemFieldsFromEstimateLineItem(lineItem: {
         ? roundMoney(totalSell / calculatedQuantity)
         : null);
 
-    return computeProfitFields({
-      calculationMode: "productivity_labour",
-      quantity,
-      unit,
-      unitCost,
-      unitSell,
-      productivityRate,
-      productivityUnit: metadata.productivityUnit ?? unit,
-      calculatedQuantity,
-      totalCost,
-      totalSell,
-    });
+    return withQuantityDefaults(
+      computeProfitFields({
+        calculationMode: "productivity_labour",
+        quantity,
+        unit,
+        unitCost,
+        unitSell,
+        productivityRate,
+        productivityUnit: metadata.productivityUnit ?? unit,
+        calculatedQuantity,
+        totalCost,
+        totalSell,
+      }),
+      itemType
+    );
   }
 
   const unitCost =
@@ -336,32 +361,38 @@ export function buildPricingItemFieldsFromEstimateLineItem(lineItem: {
     (quantity && quantity > 0 ? roundMoney(totalSell / quantity) : null);
 
   if (quantity == null || quantity <= 0) {
-    return computeProfitFields({
-      calculationMode: "lump_sum",
+    return withQuantityDefaults(
+      computeProfitFields({
+        calculationMode: "lump_sum",
+        quantity,
+        unit,
+        unitCost: unitCost ?? (totalCost || null),
+        unitSell: unitSell ?? (totalSell || null),
+        productivityRate: null,
+        productivityUnit: null,
+        calculatedQuantity: null,
+        totalCost,
+        totalSell,
+      }),
+      itemType
+    );
+  }
+
+  return withQuantityDefaults(
+    computeProfitFields({
+      calculationMode: "quantity_rate",
       quantity,
       unit,
-      unitCost: unitCost ?? (totalCost || null),
-      unitSell: unitSell ?? (totalSell || null),
+      unitCost,
+      unitSell,
       productivityRate: null,
       productivityUnit: null,
       calculatedQuantity: null,
       totalCost,
       totalSell,
-    });
-  }
-
-  return computeProfitFields({
-    calculationMode: "quantity_rate",
-    quantity,
-    unit,
-    unitCost,
-    unitSell,
-    productivityRate: null,
-    productivityUnit: null,
-    calculatedQuantity: null,
-    totalCost,
-    totalSell,
-  });
+    }),
+    itemType
+  );
 }
 
 function mapEstimateCategoryToCalculationItemType(

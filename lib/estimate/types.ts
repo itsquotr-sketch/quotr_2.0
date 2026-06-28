@@ -56,7 +56,15 @@ export type LineItemCategory =
   | "materials"
   | "subcontractor"
   | "allowance"
-  | "contingency";
+  | "contingency"
+  | "mixed";
+
+export type LineItemCostComponents = {
+  labourCost?: number;
+  materialCost?: number;
+  subcontractorCost?: number;
+  allowanceCost?: number;
+};
 
 export type EstimateLineItemInput = {
   workAreaId: string;
@@ -97,6 +105,7 @@ export type EstimateLineItemInput = {
   quantityBasis?: QuantityBasis;
   labourMinimum?: LabourMinimumMeta;
   allowanceMinimum?: AllowanceMinimumMeta;
+  costComponents?: LineItemCostComponents;
 };
 
 export type CalculatorResult = {
