@@ -1,13 +1,15 @@
+import type { AuthOrgUser } from "@/lib/security/auth-org-evaluation";
 import type { createClient } from "@/lib/supabase/server";
 
 export type AuthOrgContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
   orgId: string;
-  user: { id: string; email?: string };
+  user: AuthOrgUser;
 };
 
 type OwnershipError = { error: string };
 
+/** Generic not-found — used for both missing and cross-organisation resources. */
 function notFound(resource: string): OwnershipError {
   return { error: `${resource} not found.` };
 }

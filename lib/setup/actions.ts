@@ -5,8 +5,9 @@ import {
   MAX_MARGIN_PERCENT,
   MIN_MARGIN_PERCENT,
 } from "@/lib/security/margin-validation";
+import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
-import { createClient } from "@/lib/supabase/server";
+import type { createClient } from "@/lib/supabase/server";
 import type {
   ActionResult,
   CompanyDefaultsInput,
@@ -15,7 +16,7 @@ import type {
   WorkAreaSelection,
 } from "@/components/setup/types";
 
-type AuthOrgContext = {
+type SetupAuthContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
   user: { id: string; email?: string };
   orgId: string;
@@ -27,36 +28,20 @@ const MISSING_ORG_ERROR: ActionResult = {
     "Your organisation profile could not be loaded. Try signing out and back in, or contact support.",
 };
 
-async function getAuthOrgContext(): Promise<AuthOrgContext | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+async function getSetupAuthContext(): Promise<SetupAuthContext | null> {
+  const context = await getAuthOrgContext();
+  if (!context) {
     return null;
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("org_id, full_name")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile?.org_id) {
-    return null;
-  }
-
-  const { data: organisation } = await supabase
+  const { data: organisation } = await context.supabase
     .from("organisations")
     .select("name")
-    .eq("id", profile.org_id)
+    .eq("id", context.orgId)
     .maybeSingle();
 
   return {
-    supabase,
-    user,
-    orgId: profile.org_id,
+    ...context,
     organisationName: organisation?.name ?? "Your company",
   };
 }
@@ -74,7 +59,7 @@ function normalizeSettings(
 }
 
 async function ensureDefaultSettings(
-  supabase: AuthOrgContext["supabase"],
+  supabase: SetupAuthContext["supabase"],
   orgId: string
 ) {
   const { data: existing } = await supabase
@@ -101,7 +86,7 @@ async function ensureDefaultSettings(
 }
 
 export async function isSetupIncomplete(): Promise<boolean> {
-  const context = await getAuthOrgContext();
+  const context = await getSetupAuthContext();
   if (!context) {
     return true;
   }
@@ -116,7 +101,7 @@ export async function isSetupIncomplete(): Promise<boolean> {
 }
 
 export async function getSetupState(): Promise<SetupState> {
-  const context = await getAuthOrgContext();
+  const context = await getSetupAuthContext();
 
   if (!context) {
     return {
@@ -195,7 +180,7 @@ export async function saveCompanyDefaults(
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const context = await getAuthOrgContext();
+  const context = await getSetupAuthContext();
   if (!context) {
     return MISSING_ORG_ERROR;
   }
@@ -269,7 +254,7 @@ export async function saveOrganisationWorkAreas(input: {
     };
   }
 
-  const context = await getAuthOrgContext();
+  const context = await getSetupAuthContext();
   if (!context) {
     return MISSING_ORG_ERROR;
   }
@@ -352,7 +337,7 @@ export async function saveStarterRates(input: {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const context = await getAuthOrgContext();
+  const context = await getSetupAuthContext();
   if (!context) {
     return MISSING_ORG_ERROR;
   }
@@ -414,7 +399,7 @@ export async function saveStarterRates(input: {
 }
 
 export async function completeSetup(): Promise<ActionResult> {
-  const context = await getAuthOrgContext();
+  const context = await getSetupAuthContext();
   if (!context) {
     return MISSING_ORG_ERROR;
   }

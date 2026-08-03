@@ -194,13 +194,25 @@ Map the existing application against the frozen journey and MVP scope. Inventory
 
 ### Stage 2 — Data integrity, authentication and organisation isolation
 
+*(Historical stage name retained in the tracker. Scope has been split into Stage 2A and Stage 2B below.)*
+
 Harden sign-in, organisation create/join, membership, organisation scoping on owned records, and RLS coverage/testing for customer data. Ensure save/reopen paths cannot leak or orphan organisation data.
+
+### Stage 2A — Security, Validation and Data Integrity
+
+Harden authentication reliability, organisation ownership verification, multi-tenant isolation, row-level security, server-action authorisation, runtime input validation (including money-bearing actions), safe database writes, migration verification, data-integrity constraints, and safe deletion behaviour. Do **not** consolidate pricing-engine arithmetic in this stage.
+
+### Stage 2B — Authoritative Pricing Engine
+
+Establish a single authoritative pricing implementation. Consolidate duplicated margin, gross-profit, markup, tax and estimate-total arithmetic. Verify labour, materials, subcontractors, allowances, and currently supported margin/markup/overhead/tax behaviour. Ensure totals, ranges and confidence indicators (where supported) are correct and deterministic.
 
 ### Stage 3 — Core project workflow
 
 Harden project create/edit/delete, client and site information, notes/photos/documents, work-area CRUD and confirmation, work-area questions and constraint capture along the frozen journey.
 
 ### Stage 4 — Estimating engine and pricing correctness
+
+*(Historical stage name retained. Pricing-engine consolidation work is now owned by Stage 2B; Stage 4 remains available for residual estimating-path hardening discovered after 2B.)*
 
 Establish or reinforce a single authoritative pricing implementation. Verify labour, materials, subcontractors, allowances, and currently supported margin/markup/overhead/tax behaviour. Ensure totals, ranges and confidence indicators (where supported) are correct and deterministic.
 
@@ -242,9 +254,11 @@ Update this table as stages progress. Status values must be one of: **Not Starte
 | ---: | --- | --- | --- | --- | --- | --- | --- |
 | 0 | Governance | Complete | 2026-07-24 | 2026-07-24 | Guidance document created and adopted as governing source for MVP hardening. | None for Stage 0. Project-specific inventory fields below remain TBD pending Stage 1. | This file exists at `docs/MVP_HARDENING_GUIDE.md` and defines scope, principles, process, tracker and DoD. |
 | 1 | Current-state audit | Auditing | 2026-08-03 | — | — | — | — |
-| 2 | Data integrity, authentication and organisation isolation | Not Started | — | — | — | — | — |
+| 2 | Data integrity, authentication and organisation isolation | Not Started | — | — | Historical tracker entry retained. Scope split into Stage 2A and Stage 2B. | Superseded by 2A/2B split — do not implement under this row. | — |
+| 2A | Security, Validation and Data Integrity | In Progress | 2026-08-03 | 2026-08-03 (Batch 2A.1) | Batch 2A.1 complete: authoritative auth-org helper, assistant ownership checks, setup-required recovery. | Remaining Stage 2A batches 2A.2–2A.6. Issues still open: S1-002, S1-003, S1-006, S1-007, S1-015 (residual duplicates), S1-016, S1-017. | `docs/implementation/STAGE_2A_BATCH_2A1_COMPLETION.md`; plan: `docs/plans/STAGE_2A_SECURITY_VALIDATION_PLAN.md` |
+| 2B | Authoritative Pricing Engine | Not Started | — | — | — | — | — |
 | 3 | Core project workflow | Not Started | — | — | — | — | — |
-| 4 | Estimating engine and pricing correctness | Not Started | — | — | — | — | — |
+| 4 | Estimating engine and pricing correctness | Not Started | — | — | Historical tracker entry retained. Pricing consolidation owned by Stage 2B. | — | — |
 | 5 | AI reliability and fallback handling | Not Started | — | — | — | — | — |
 | 6 | Estimate editing, packages and quote progression | Not Started | — | — | — | — | — |
 | 7 | Company setup and commercial configuration | Not Started | — | — | — | — | — |
@@ -394,6 +408,6 @@ The following fields are intentionally incomplete until the current-state audit.
 | --- | --- |
 | Path | `docs/MVP_HARDENING_GUIDE.md` |
 | Created | 2026-07-24 |
-| Last updated | 2026-07-24 |
+| Last updated | 2026-08-03 |
 | Stage 0 status | Complete |
-| Next stage | Stage 1 — Current-state audit (not started) |
+| Next stage | Stage 2A — Security, Validation and Data Integrity (In Progress; Batch 2A.1 complete) |

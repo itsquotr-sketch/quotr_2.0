@@ -7,7 +7,11 @@ import {
   isMissingLifecycleColumnsError,
   markLifecycleColumnsUnavailable,
 } from "@/lib/projects/query-utils";
-import { createClient } from "@/lib/supabase/server";
+import {
+  getAuthOrgContext,
+  requireAuthOrgContext,
+} from "@/lib/security/auth-org-context";
+import { assertOrgOwnsProject } from "@/lib/security/org-ownership";
 
 export {
   assertStage,
@@ -16,45 +20,34 @@ export {
   stageIndex,
 } from "@/lib/assistant/stage";
 
-async function getAuthOrgContext() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return null;
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("org_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile?.org_id) {
-    return null;
-  }
-
-  return { supabase, user, orgId: profile.org_id };
-}
+/**
+ * Compatibility re-export of the authoritative auth-org helper.
+ * Implementation lives in `lib/security/auth-org-context.ts`.
+ */
+export { getAuthOrgContext, requireAuthOrgContext };
 
 export async function getAssistantState(
   projectId: string,
   retried = false
 ): Promise<AssistantState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
+  const auth = await requireAuthOrgContext();
+  if (!auth.ok) {
     notFound();
   }
 
-  const { supabase } = context;
+  const owned = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in owned) {
+    notFound();
+  }
+
+  const { supabase, orgId } = auth;
   const lifecycleAvailable = await hasLifecycleColumns(supabase);
 
   const { data: project, error: projectError } = await supabase
     .from("projects")
     .select("id, stage, brief_text, quality_level")
     .eq("id", projectId)
+    .eq("org_id", orgId)
     .maybeSingle();
 
   if (projectError) {
@@ -71,6 +64,7 @@ export async function getAssistantState(
       .from("projects")
       .select("deleted_at")
       .eq("id", projectId)
+      .eq("org_id", orgId)
       .maybeSingle();
 
     if (lifecycleError) {
@@ -101,12 +95,14 @@ export async function getAssistantState(
         "id, type, name, status, ai_confidence, summary, quote_description, sort_order, created_at"
       )
       .eq("project_id", projectId)
+      .eq("org_id", orgId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase
       .from("question_blocks")
       .select("id, stage, title, description, status, sort_order, created_at")
       .eq("project_id", projectId)
+      .eq("org_id", orgId)
       .order("sort_order", { ascending: true })
       .order("created_at", { ascending: true }),
     supabase
@@ -115,11 +111,13 @@ export async function getAssistantState(
         "id, question_block_id, work_area_id, key, label, question_text, input_type, options, required, unit, answer_value, sort_order"
       )
       .eq("project_id", projectId)
+      .eq("org_id", orgId)
       .order("sort_order", { ascending: true }),
     supabase
       .from("constraints")
       .select("id, key, label, value, created_at")
       .eq("project_id", projectId)
+      .eq("org_id", orgId)
       .order("created_at", { ascending: true }),
     supabase
       .from("estimates")
@@ -127,15 +125,17 @@ export async function getAssistantState(
         "id, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, is_stale, calibration_version, target_margin_percent, confidence, rate_source_summary, assumptions, missing_info, exclusions"
       )
       .eq("project_id", projectId)
+      .eq("org_id", orgId)
       .maybeSingle(),
     supabase
       .from("project_facts")
       .select("key, work_area_id, value, source")
-      .eq("project_id", projectId),
+      .eq("project_id", projectId)
+      .eq("org_id", orgId),
     supabase
       .from("organisation_settings")
       .select("default_margin_percent")
-      .eq("org_id", context.orgId)
+      .eq("org_id", orgId)
       .maybeSingle(),
   ]);
 
@@ -146,6 +146,7 @@ export async function getAssistantState(
           "id, work_area_name, label, category, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, rate_source, notes, sort_order"
         )
         .eq("estimate_id", estimate.id)
+        .eq("org_id", orgId)
         .order("sort_order", { ascending: true })
     : { data: [] };
 
@@ -162,5 +163,3 @@ export async function getAssistantState(
       organisationSettings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT,
   });
 }
-
-export { getAuthOrgContext };

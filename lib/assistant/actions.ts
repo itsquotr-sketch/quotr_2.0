@@ -10,10 +10,7 @@ import {
   factDedupeKey,
 } from "@/lib/ai/mappers";
 import { AIExtractionError } from "@/lib/ai/schema";
-import {
-  canRunStageAction,
-  getAuthOrgContext,
-} from "@/lib/assistant/state";
+import { canRunStageAction } from "@/lib/assistant/state";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import type {
   AssistantActionState,
@@ -38,6 +35,8 @@ import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-f
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { buildQuestionBlockFromProjectState } from "@/lib/scopes/questions";
 import { normalizeAnswerForStorage, factHasValue } from "@/lib/scopes/fact-values";
+import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
+import { assertOrgOwnsProject } from "@/lib/security/org-ownership";
 
 const BRIEF_MAX_LENGTH = 5000;
 
@@ -119,17 +118,28 @@ function revalidateAssistantPaths(projectId: string) {
 }
 
 async function loadProjectStage(projectId: string) {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." as const };
+  const auth = await requireAuthOrgContext();
+  if (!auth.ok) {
+    return {
+      error:
+        auth.code === "organisation_required"
+          ? auth.error
+          : ("Not authenticated." as const),
+    };
   }
 
-  const { supabase, orgId } = context;
+  const owned = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in owned) {
+    return { error: "Project not found." as const };
+  }
+
+  const { supabase, orgId } = auth;
 
   const { data: project, error } = await supabase
     .from("projects")
-    .select("id, stage, org_id")
+    .select("id, stage")
     .eq("id", projectId)
+    .eq("org_id", orgId)
     .maybeSingle();
 
   if (error || !project) {

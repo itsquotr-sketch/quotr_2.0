@@ -18,13 +18,8 @@ import type {
   RatesPageState,
   SetRateActiveInput,
 } from "@/lib/rates/types";
-import { createClient } from "@/lib/supabase/server";
-
-type AuthOrgContext = {
-  supabase: Awaited<ReturnType<typeof createClient>>;
-  user: { id: string; email?: string };
-  orgId: string;
-};
+import { getAuthOrgContext } from "@/lib/security/auth-org-context";
+import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 
 const MISSING_ORG_ERROR: RatesActionResult = {
   error:
@@ -39,29 +34,6 @@ const VALID_RATE_TYPES = [
   "package",
   "allowance",
 ] as const;
-
-async function getAuthOrgContext(): Promise<AuthOrgContext | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
-    return null;
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("org_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile?.org_id) {
-    return null;
-  }
-
-  return { supabase, user, orgId: profile.org_id };
-}
 
 function normalizeRate(rate: Record<string, unknown>): RatesPageRate {
   return {

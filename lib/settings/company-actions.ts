@@ -3,7 +3,8 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { USER_ERRORS, toUserError } from "@/lib/errors/user-message";
-import { createClient } from "@/lib/supabase/server";
+import { getAuthOrgContext } from "@/lib/security/auth-org-context";
+import type { createClient } from "@/lib/supabase/server";
 import type {
   CompanySettings,
   CompanySettingsActionResult,
@@ -98,47 +99,33 @@ const companySettingsSchema = z.object({
     .optional(),
 });
 
-type AuthOrgContext = {
+type SettingsAuthContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
   orgId: string;
   organisationName: string;
 };
 
-async function getAuthOrgContext(): Promise<AuthOrgContext | null> {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  if (!user) {
+async function getSettingsAuthContext(): Promise<SettingsAuthContext | null> {
+  const context = await getAuthOrgContext();
+  if (!context) {
     return null;
   }
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("org_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (!profile?.org_id) {
-    return null;
-  }
-
-  const { data: organisation } = await supabase
+  const { data: organisation } = await context.supabase
     .from("organisations")
     .select("name")
-    .eq("id", profile.org_id)
+    .eq("id", context.orgId)
     .maybeSingle();
 
   return {
-    supabase,
-    orgId: profile.org_id,
+    supabase: context.supabase,
+    orgId: context.orgId,
     organisationName: organisation?.name ?? "Your company",
   };
 }
 
 async function ensureSettingsRow(
-  supabase: AuthOrgContext["supabase"],
+  supabase: SettingsAuthContext["supabase"],
   orgId: string
 ) {
   const { data: existing } = await supabase
@@ -237,7 +224,7 @@ const QUOTE_DEFAULTS_SELECT =
   "default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions";
 
 export async function getOrgQuoteDefaultsForOrg(
-  supabase: AuthOrgContext["supabase"],
+  supabase: SettingsAuthContext["supabase"],
   orgId: string
 ): Promise<OrgQuoteDefaults> {
   const { data: row } = await supabase
@@ -257,7 +244,7 @@ const COMPANY_SETTINGS_SELECT =
   "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
 
 export async function getCompanySettings(): Promise<CompanySettings | null> {
-  const context = await getAuthOrgContext();
+  const context = await getSettingsAuthContext();
   if (!context) {
     return null;
   }
@@ -280,7 +267,7 @@ export async function getCompanySettings(): Promise<CompanySettings | null> {
 export async function updateCompanySettings(
   input: CompanySettingsInput
 ): Promise<CompanySettingsActionResult> {
-  const context = await getAuthOrgContext();
+  const context = await getSettingsAuthContext();
   if (!context) {
     return {
       error:
