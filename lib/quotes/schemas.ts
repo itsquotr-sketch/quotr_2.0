@@ -94,8 +94,8 @@ export const reviseQuoteInputSchema = z.object({
 
 export const reviseQuoteFromFinalPricingInputSchema = z.object({
   projectId: uuidSchema,
-  pricingDocumentId: uuidSchema,
-  quoteId: uuidSchema.optional(),
+  quoteId: uuidSchema,
+  pricingDocumentId: uuidSchema.optional(),
   revisionNote: trimmedStringSchema(2000).optional(),
 });
 

@@ -117,7 +117,9 @@ Define, test and document authoritative runtime-validation schemas and shared he
 * Default margin constant / UI fallbacks → 20%.
 * `scripts/verify-quote-safety.ts` margin assertions updated.
 
-**Not wired:** `lib/pricing/actions.ts` and `lib/quotes/actions.ts` still do not call the new schemas (Batch 2A.3).
+**Not wired (at Batch 2A.2 close):** `lib/pricing/actions.ts` and `lib/quotes/actions.ts` did not yet call the new schemas (Batch 2A.3).
+
+**Post-batch note (2026-08-03):** Schemas were wired in Batches 2A.3A (pricing) and 2A.3B (quotes). In 2A.3B, `reviseQuoteFromFinalPricingInputSchema` was corrected so `quoteId` is required and `pricingDocumentId` is optional — matching the real action payload without weakening validation.
 
 ## 14. Known limitations
 

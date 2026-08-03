@@ -1,6 +1,6 @@
 # Stage 2A — Security, Validation and Data Integrity Plan
 
-**Status:** Batches 2A.1–2A.3A implemented — Stage 2A remains In Progress  
+**Status:** Batches 2A.1–2A.3B implemented — Stage 2A remains In Progress  
 **Plan date:** 2026-08-03  
 **Owner decisions incorporated:** 2026-08-03  
 **Batch 2A.1 completed:** 2026-08-03  
@@ -432,13 +432,13 @@ Split for reviewability:
 
 #### Batch 2A.3B — Secure quote server actions
 
-* **Status:** Not started
-* **Issue IDs:** S1-002 / S1-003 quote-action portions; remaining inventory gaps for quotes
-* **Files expected:** `lib/quotes/actions.ts` (and related ownership loaders as needed)
+* **Status:** Complete (2026-08-03) — see `docs/implementation/STAGE_2A_BATCH_2A3B_COMPLETION.md`
+* **Issue IDs:** S1-003 (quote-action portion), S1-015 (quote auth/ownership resolution)
+* **Delivered:** `requireAuthOrgContext` + shared ownership on all quote actions; Batch 2A.2 quote schemas wired; revise-from-pricing schema aligned to real payload; compensating org-scoped cleanup retained; focused verification script
+* **Not done here:** Full status state machine; DB default margin migration (still 25%); formula consolidation; Batch 2A.4 migrations
 * **Migrations:** None
-* **Acceptance:** Quote mutations auth + ownership + Batch 2A.2 quote schemas; no pricing formula changes
-* **Dependencies:** 2A.1, 2A.2, 2A.3A
-* **Stop condition:** Pulling Stage 2B pricing consolidation into quote hardening
+* **Atomicity note:** Create/revise use compensating deletes of newly created quote rows only; no broad transaction/RPC
+* **Stop condition obeyed:** No formula changes, no pricing-action reopen beyond shared ownership helper tweak, no UI/PDF redesign
 
 ### Batch 2A.3 (historical combined note)
 
@@ -575,5 +575,5 @@ Stage 2A is **not Complete** until:
 | Owner decisions incorporated | 2026-08-03 |
 | Governing audit | `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md` |
 | Application code / schema / config / tests changed while planning | **None** |
-| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.3A complete |
-| Next step | Batch 2A.3B only (secure quote server actions) |
+| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.3B complete |
+| Next step | Owner decisions as needed, then Batch 2A.4 only (DB/RLS corrections) |

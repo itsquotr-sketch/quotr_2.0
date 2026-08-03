@@ -157,7 +157,8 @@ export async function assertOrgOwnsPricingItem(
 
 export async function assertOrgOwnsQuoteItem(
   ctx: AuthOrgContext,
-  quoteItemId: string
+  quoteItemId: string,
+  quoteId?: string
 ): Promise<
   OwnershipError | { quoteItemId: string; quoteId: string; projectId: string }
 > {
@@ -169,6 +170,10 @@ export async function assertOrgOwnsQuoteItem(
     .maybeSingle();
 
   if (error || !data) {
+    return notFound("Quote item");
+  }
+
+  if (quoteId && data.quote_id !== quoteId) {
     return notFound("Quote item");
   }
 

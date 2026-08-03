@@ -2,10 +2,32 @@
 
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
-import { getAuthOrgContext } from "@/lib/assistant/state";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
-import { assertOrgOwnsPricingDocument, assertOrgOwnsProject, assertOrgOwnsQuote } from "@/lib/security/org-ownership";
+import {
+  parseQuoteInput,
+  validateQuoteItemTotalForPersistence,
+} from "@/lib/quotes/action-guards";
+import {
+  createQuoteFromPricingInputSchema,
+  deleteQuoteItemInputSchema,
+  quoteIdInputSchema,
+  reviseQuoteFromFinalPricingInputSchema,
+  reviseQuoteInputSchema,
+  setQuoteItemVisibleInputSchema,
+  updateQuoteInputSchema,
+  updateQuoteItemInputSchema,
+} from "@/lib/quotes/schemas";
+import {
+  isAuthOrgSuccess,
+  requireAuthOrgContext,
+} from "@/lib/security/auth-org-context";
+import {
+  assertOrgOwnsPricingDocument,
+  assertOrgOwnsProject,
+  assertOrgOwnsQuote,
+  assertOrgOwnsQuoteItem,
+} from "@/lib/security/org-ownership";
 import { buildQuoteSnapshotFromReviewedPricing } from "@/lib/quotes/build-from-pricing";
 import {
   calculateQuoteItemTotal,
@@ -34,6 +56,8 @@ import { ACTIVE_PIPELINE_STATUSES } from "@/lib/projects/status";
 import { getCompanySettings } from "@/lib/settings/company-actions";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 
+const QUOTE_SAVE_FAILED = USER_ERRORS.quoteUpdateFailed;
+
 function revalidateQuoteProjectPath(
   projectId: string,
   quoteId?: string,
@@ -60,28 +84,28 @@ function revalidateQuoteDashboard(
 }
 
 async function loadOwnedQuote(quoteId: string) {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." as const };
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
   }
 
-  const owned = await assertOrgOwnsQuote(context, quoteId);
+  const owned = await assertOrgOwnsQuote(auth, quoteId);
   if ("error" in owned) {
     return { error: owned.error };
   }
 
-  const { data: quote, error } = await context.supabase
+  const { data: quote, error } = await auth.supabase
     .from("quotes")
     .select("*")
     .eq("id", quoteId)
-    .eq("org_id", context.orgId)
+    .eq("org_id", auth.orgId)
     .maybeSingle();
 
   if (error || !quote) {
     return { error: "Quote not found." as const };
   }
 
-  return { ...context, quote: mapQuote(quote) };
+  return { ...auth, quote: mapQuote(quote) };
 }
 
 function assertQuoteEditable(quote: ReturnType<typeof mapQuote>) {
@@ -109,7 +133,10 @@ async function recalculateAndPersistQuoteTotals(
     .eq("org_id", orgId);
 
   if (error) {
-    throw new Error(error.message);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[quote-recalc-load]", error.message);
+    }
+    throw new Error(QUOTE_SAVE_FAILED);
   }
 
   const totals = calculateQuoteTotals(items ?? [], gstRate);
@@ -125,7 +152,10 @@ async function recalculateAndPersistQuoteTotals(
     .eq("org_id", orgId);
 
   if (updateError) {
-    throw new Error(updateError.message);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[quote-recalc-update]", updateError.message);
+    }
+    throw new Error(QUOTE_SAVE_FAILED);
   }
 }
 
@@ -252,16 +282,19 @@ async function updateProjectBusinessStatusIfActive(
 export async function getLatestQuoteSummary(
   projectId: string
 ): Promise<QuoteSummary | null> {
-  const context = await getAuthOrgContext();
-  if (!context) {
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
     return null;
   }
 
-  const rows = await fetchQuoteSummaries(
-    context.supabase,
-    context.orgId,
-    { projectId }
-  );
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
+    return null;
+  }
+
+  const rows = await fetchQuoteSummaries(auth.supabase, auth.orgId, {
+    projectId,
+  });
 
   return pickLatestQuoteSummary(rows);
 }
@@ -269,14 +302,14 @@ export async function getLatestQuoteSummary(
 export async function getQuoteSummariesForProjects(
   projectIds: string[]
 ): Promise<Map<string, QuoteSummary>> {
-  const context = await getAuthOrgContext();
-  if (!context || projectIds.length === 0) {
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth) || projectIds.length === 0) {
     return new Map();
   }
 
   return fetchQuoteSummariesForProjects(
-    context.supabase,
-    context.orgId,
+    auth.supabase,
+    auth.orgId,
     projectIds
   );
 }
@@ -284,16 +317,22 @@ export async function getQuoteSummariesForProjects(
 export async function getQuoteSummaryForPricingDocument(
   pricingDocumentId: string
 ): Promise<QuoteSummary | null> {
-  const context = await getAuthOrgContext();
-  if (!context) {
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
     return null;
   }
 
-  const rows = await fetchQuoteSummaries(
-    context.supabase,
-    context.orgId,
-    { pricingDocumentId }
+  const ownedDocument = await assertOrgOwnsPricingDocument(
+    auth,
+    pricingDocumentId
   );
+  if ("error" in ownedDocument) {
+    return null;
+  }
+
+  const rows = await fetchQuoteSummaries(auth.supabase, auth.orgId, {
+    pricingDocumentId,
+  });
 
   return pickLatestQuoteSummary(rows);
 }
@@ -302,12 +341,22 @@ export async function getQuoteWorkspaceData(
   projectId: string,
   quoteId: string
 ): Promise<QuoteWorkspaceData> {
-  const context = await getAuthOrgContext();
-  if (!context) {
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
     notFound();
   }
 
-  const { supabase, orgId } = context;
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
+    notFound();
+  }
+
+  const ownedQuote = await assertOrgOwnsQuote(auth, quoteId, projectId);
+  if ("error" in ownedQuote) {
+    notFound();
+  }
+
+  const { supabase, orgId } = auth;
 
   const [{ data: project }, { data: quote }, { data: items }, companySettings] =
     await Promise.all([
@@ -379,12 +428,22 @@ export async function getQuotePrintData(
   projectId: string,
   quoteId: string
 ): Promise<QuotePrintData> {
-  const context = await getAuthOrgContext();
-  if (!context) {
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
     notFound();
   }
 
-  const { supabase, orgId } = context;
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
+    notFound();
+  }
+
+  const ownedQuote = await assertOrgOwnsQuote(auth, quoteId, projectId);
+  if ("error" in ownedQuote) {
+    notFound();
+  }
+
+  const { supabase, orgId } = auth;
 
   const [{ data: quote }, { data: items }, companySettings] = await Promise.all([
     supabase
@@ -418,24 +477,26 @@ export async function createQuoteFromPricing(input: {
   projectId: string;
   pricingDocumentId: string;
 }): Promise<QuoteActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return {
-      error:
-        "Your organisation profile could not be loaded. Try signing out and back in.",
-    };
+  const parsed = parseQuoteInput(createQuoteFromPricingInputSchema, input);
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, user, orgId } = context;
-  const { projectId, pricingDocumentId } = input;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
 
-  const ownedProject = await assertOrgOwnsProject(context, projectId);
+  const { supabase, user, orgId } = auth;
+  const { projectId, pricingDocumentId } = parsed.data;
+
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }
 
   const ownedDocument = await assertOrgOwnsPricingDocument(
-    context,
+    auth,
     pricingDocumentId,
     projectId
   );
@@ -528,7 +589,11 @@ export async function createQuoteFromPricing(input: {
   );
 
   if (itemsError) {
-    await supabase.from("quotes").delete().eq("id", quoteId);
+    await supabase
+      .from("quotes")
+      .delete()
+      .eq("id", quoteId)
+      .eq("org_id", orgId);
     return { error: itemsError };
   }
 
@@ -568,7 +633,15 @@ export async function updateQuote(
   quoteId: string,
   input: QuoteInput
 ): Promise<QuoteActionState> {
-  const loaded = await loadOwnedQuote(quoteId);
+  const parsed = parseQuoteInput(updateQuoteInputSchema, {
+    quoteId,
+    quote: input,
+  });
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedQuote(parsed.data.quoteId);
   if ("error" in loaded) {
     return { error: loaded.error };
   }
@@ -579,21 +652,34 @@ export async function updateQuote(
     return { error: editableError };
   }
 
+  const quoteInput = parsed.data.quote;
   const update: Record<string, unknown> = {};
 
-  if (input.title !== undefined) update.title = input.title;
-  if (input.issue_date !== undefined) update.issue_date = input.issue_date;
-  if (input.valid_until !== undefined) update.valid_until = input.valid_until;
-  if (input.scope_summary !== undefined) update.scope_summary = input.scope_summary;
-  if (input.notes_to_client !== undefined) update.notes_to_client = input.notes_to_client;
-  if (input.assumptions !== undefined) update.assumptions = input.assumptions;
-  if (input.exclusions !== undefined) update.exclusions = input.exclusions;
-  if (input.terms !== undefined) update.terms = input.terms;
+  if (quoteInput.title !== undefined) update.title = quoteInput.title;
+  if (quoteInput.issue_date !== undefined) {
+    update.issue_date = quoteInput.issue_date;
+  }
+  if (quoteInput.valid_until !== undefined) {
+    update.valid_until = quoteInput.valid_until;
+  }
+  if (quoteInput.scope_summary !== undefined) {
+    update.scope_summary = quoteInput.scope_summary;
+  }
+  if (quoteInput.notes_to_client !== undefined) {
+    update.notes_to_client = quoteInput.notes_to_client;
+  }
+  if (quoteInput.assumptions !== undefined) {
+    update.assumptions = quoteInput.assumptions;
+  }
+  if (quoteInput.exclusions !== undefined) {
+    update.exclusions = quoteInput.exclusions;
+  }
+  if (quoteInput.terms !== undefined) update.terms = quoteInput.terms;
 
   const { error } = await supabase
     .from("quotes")
     .update(update)
-    .eq("id", quoteId)
+    .eq("id", parsed.data.quoteId)
     .eq("org_id", orgId);
 
   if (error) {
@@ -602,7 +688,11 @@ export async function updateQuote(
     };
   }
 
-  revalidateQuoteProjectPath(quote.project_id, quoteId, quote.pricing_document_id);
+  revalidateQuoteProjectPath(
+    quote.project_id,
+    parsed.data.quoteId,
+    quote.pricing_document_id
+  );
   return { success: true };
 }
 
@@ -610,28 +700,43 @@ export async function updateQuoteItem(
   quoteItemId: string,
   input: QuoteItemInput
 ): Promise<QuoteActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const parsed = parseQuoteInput(updateQuoteItemInputSchema, {
+    quoteItemId,
+    item: input,
+  });
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, orgId } = context;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
 
-  const { data: existing, error: loadError } = await supabase
-    .from("quote_items")
-    .select("id, quote_id, project_id")
-    .eq("id", quoteItemId)
-    .eq("org_id", orgId)
-    .maybeSingle();
+  const { supabase, orgId } = auth;
+  const item = parsed.data.item;
 
-  if (loadError || !existing) {
-    return { error: "Quote item not found." };
+  const ownedItem = await assertOrgOwnsQuoteItem(
+    auth,
+    parsed.data.quoteItemId
+  );
+  if ("error" in ownedItem) {
+    return { error: ownedItem.error };
+  }
+
+  const ownedQuote = await assertOrgOwnsQuote(
+    auth,
+    ownedItem.quoteId,
+    ownedItem.projectId
+  );
+  if ("error" in ownedQuote) {
+    return { error: ownedQuote.error };
   }
 
   const { data: quoteRow } = await supabase
     .from("quotes")
     .select("*")
-    .eq("id", existing.quote_id)
+    .eq("id", ownedItem.quoteId)
     .eq("org_id", orgId)
     .maybeSingle();
 
@@ -646,24 +751,29 @@ export async function updateQuoteItem(
   }
 
   const total = calculateQuoteItemTotal({
-    quantity: input.quantity,
-    unitPrice: input.unit_price,
-    total: input.total,
+    quantity: item.quantity,
+    unitPrice: item.unit_price,
+    total: item.total,
   });
+
+  const totalGuard = validateQuoteItemTotalForPersistence(total);
+  if (!totalGuard.ok) {
+    return { error: totalGuard.error };
+  }
 
   const { error } = await supabase
     .from("quote_items")
     .update({
-      label: input.label,
-      description: input.description ?? null,
-      quantity: input.quantity ?? null,
-      unit: input.unit ?? null,
-      unit_price: input.unit_price ?? null,
+      label: item.label,
+      description: item.description ?? null,
+      quantity: item.quantity ?? null,
+      unit: item.unit ?? null,
+      unit_price: item.unit_price ?? null,
       total,
-      visible: input.visible ?? true,
-      optional: input.optional ?? false,
+      visible: item.visible ?? true,
+      optional: item.optional ?? false,
     })
-    .eq("id", quoteItemId)
+    .eq("id", parsed.data.quoteItemId)
     .eq("org_id", orgId);
 
   if (error) {
@@ -675,13 +785,13 @@ export async function updateQuoteItem(
   await recalculateAndPersistQuoteTotals(
     supabase,
     orgId,
-    existing.quote_id,
+    ownedItem.quoteId,
     quote.gst_rate
   );
 
   revalidateQuoteProjectPath(
-    existing.project_id,
-    existing.quote_id,
+    ownedItem.projectId,
+    ownedItem.quoteId,
     quote.pricing_document_id
   );
   return { success: true };
@@ -691,28 +801,42 @@ export async function setQuoteItemVisible(
   quoteItemId: string,
   visible: boolean
 ): Promise<QuoteActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const parsed = parseQuoteInput(setQuoteItemVisibleInputSchema, {
+    quoteItemId,
+    visible,
+  });
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, orgId } = context;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
 
-  const { data: existing, error: loadError } = await supabase
-    .from("quote_items")
-    .select("id, quote_id, project_id")
-    .eq("id", quoteItemId)
-    .eq("org_id", orgId)
-    .maybeSingle();
+  const { supabase, orgId } = auth;
 
-  if (loadError || !existing) {
-    return { error: "Quote item not found." };
+  const ownedItem = await assertOrgOwnsQuoteItem(
+    auth,
+    parsed.data.quoteItemId
+  );
+  if ("error" in ownedItem) {
+    return { error: ownedItem.error };
+  }
+
+  const ownedQuote = await assertOrgOwnsQuote(
+    auth,
+    ownedItem.quoteId,
+    ownedItem.projectId
+  );
+  if ("error" in ownedQuote) {
+    return { error: ownedQuote.error };
   }
 
   const { data: quoteRow } = await supabase
     .from("quotes")
     .select("*")
-    .eq("id", existing.quote_id)
+    .eq("id", ownedItem.quoteId)
     .eq("org_id", orgId)
     .maybeSingle();
 
@@ -727,8 +851,8 @@ export async function setQuoteItemVisible(
 
   const { error } = await supabase
     .from("quote_items")
-    .update({ visible })
-    .eq("id", quoteItemId)
+    .update({ visible: parsed.data.visible })
+    .eq("id", parsed.data.quoteItemId)
     .eq("org_id", orgId);
 
   if (error) {
@@ -740,20 +864,20 @@ export async function setQuoteItemVisible(
   const { data: quote } = await supabase
     .from("quotes")
     .select("gst_rate, pricing_document_id")
-    .eq("id", existing.quote_id)
+    .eq("id", ownedItem.quoteId)
     .eq("org_id", orgId)
     .maybeSingle();
 
   await recalculateAndPersistQuoteTotals(
     supabase,
     orgId,
-    existing.quote_id,
+    ownedItem.quoteId,
     Number(quote?.gst_rate ?? DEFAULT_GST_RATE)
   );
 
   revalidateQuoteProjectPath(
-    existing.project_id,
-    existing.quote_id,
+    ownedItem.projectId,
+    ownedItem.quoteId,
     quote?.pricing_document_id
   );
   return { success: true };
@@ -762,28 +886,39 @@ export async function setQuoteItemVisible(
 export async function deleteQuoteItem(
   quoteItemId: string
 ): Promise<QuoteActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const parsed = parseQuoteInput(deleteQuoteItemInputSchema, { quoteItemId });
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, orgId } = context;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
 
-  const { data: existing, error: loadError } = await supabase
-    .from("quote_items")
-    .select("id, quote_id, project_id")
-    .eq("id", quoteItemId)
-    .eq("org_id", orgId)
-    .maybeSingle();
+  const { supabase, orgId } = auth;
 
-  if (loadError || !existing) {
-    return { error: "Quote item not found." };
+  const ownedItem = await assertOrgOwnsQuoteItem(
+    auth,
+    parsed.data.quoteItemId
+  );
+  if ("error" in ownedItem) {
+    return { error: ownedItem.error };
+  }
+
+  const ownedQuote = await assertOrgOwnsQuote(
+    auth,
+    ownedItem.quoteId,
+    ownedItem.projectId
+  );
+  if ("error" in ownedQuote) {
+    return { error: ownedQuote.error };
   }
 
   const { data: quoteRow } = await supabase
     .from("quotes")
     .select("*")
-    .eq("id", existing.quote_id)
+    .eq("id", ownedItem.quoteId)
     .eq("org_id", orgId)
     .maybeSingle();
 
@@ -799,7 +934,7 @@ export async function deleteQuoteItem(
   const { error } = await supabase
     .from("quote_items")
     .delete()
-    .eq("id", quoteItemId)
+    .eq("id", parsed.data.quoteItemId)
     .eq("org_id", orgId);
 
   if (error) {
@@ -811,27 +946,32 @@ export async function deleteQuoteItem(
   const { data: quote } = await supabase
     .from("quotes")
     .select("gst_rate, pricing_document_id")
-    .eq("id", existing.quote_id)
+    .eq("id", ownedItem.quoteId)
     .eq("org_id", orgId)
     .maybeSingle();
 
   await recalculateAndPersistQuoteTotals(
     supabase,
     orgId,
-    existing.quote_id,
+    ownedItem.quoteId,
     Number(quote?.gst_rate ?? DEFAULT_GST_RATE)
   );
 
   revalidateQuoteProjectPath(
-    existing.project_id,
-    existing.quote_id,
+    ownedItem.projectId,
+    ownedItem.quoteId,
     quote?.pricing_document_id
   );
   return { success: true };
 }
 
 export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> {
-  const loaded = await loadOwnedQuote(quoteId);
+  const parsed = parseQuoteInput(quoteIdInputSchema, { quoteId });
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedQuote(parsed.data.quoteId);
   if ("error" in loaded) {
     return { error: loaded.error };
   }
@@ -845,7 +985,7 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
       status: "sent",
       sent_at: now,
     })
-    .eq("id", quoteId)
+    .eq("id", parsed.data.quoteId)
     .eq("org_id", orgId);
 
   if (error) {
@@ -872,14 +1012,18 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
     "quote_sent"
   );
 
-  revalidateQuoteDashboard(quote.project_id, quoteId, quote.pricing_document_id);
+  revalidateQuoteDashboard(
+    quote.project_id,
+    parsed.data.quoteId,
+    quote.pricing_document_id
+  );
 
   await logPricingAuditEvent({
     supabase,
     organisationId: orgId,
     projectId: quote.project_id,
     pricingDocumentId: quote.pricing_document_id,
-    quoteId,
+    quoteId: parsed.data.quoteId,
     userId: user.id,
     action: "quote_status_change",
     oldValues: { status: quote.status },
@@ -892,7 +1036,12 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
 export async function markQuoteAccepted(
   quoteId: string
 ): Promise<QuoteActionState> {
-  const loaded = await loadOwnedQuote(quoteId);
+  const parsed = parseQuoteInput(quoteIdInputSchema, { quoteId });
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedQuote(parsed.data.quoteId);
   if ("error" in loaded) {
     return { error: loaded.error };
   }
@@ -906,7 +1055,7 @@ export async function markQuoteAccepted(
       status: "accepted",
       accepted_at: now,
     })
-    .eq("id", quoteId)
+    .eq("id", parsed.data.quoteId)
     .eq("org_id", orgId);
 
   if (error) {
@@ -923,14 +1072,23 @@ export async function markQuoteAccepted(
     { won_at: now }
   );
 
-  revalidateQuoteDashboard(quote.project_id, quoteId, quote.pricing_document_id);
+  revalidateQuoteDashboard(
+    quote.project_id,
+    parsed.data.quoteId,
+    quote.pricing_document_id
+  );
   return { success: true };
 }
 
 export async function markQuoteDeclined(
   quoteId: string
 ): Promise<QuoteActionState> {
-  const loaded = await loadOwnedQuote(quoteId);
+  const parsed = parseQuoteInput(quoteIdInputSchema, { quoteId });
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedQuote(parsed.data.quoteId);
   if ("error" in loaded) {
     return { error: loaded.error };
   }
@@ -944,7 +1102,7 @@ export async function markQuoteDeclined(
       status: "declined",
       declined_at: now,
     })
-    .eq("id", quoteId)
+    .eq("id", parsed.data.quoteId)
     .eq("org_id", orgId);
 
   if (error) {
@@ -961,14 +1119,23 @@ export async function markQuoteDeclined(
     { lost_at: now }
   );
 
-  revalidateQuoteDashboard(quote.project_id, quoteId, quote.pricing_document_id);
+  revalidateQuoteDashboard(
+    quote.project_id,
+    parsed.data.quoteId,
+    quote.pricing_document_id
+  );
   return { success: true };
 }
 
 export async function markQuoteExpired(
   quoteId: string
 ): Promise<QuoteActionState> {
-  const loaded = await loadOwnedQuote(quoteId);
+  const parsed = parseQuoteInput(quoteIdInputSchema, { quoteId });
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedQuote(parsed.data.quoteId);
   if ("error" in loaded) {
     return { error: loaded.error };
   }
@@ -982,7 +1149,7 @@ export async function markQuoteExpired(
       status: "expired",
       expired_at: now,
     })
-    .eq("id", quoteId)
+    .eq("id", parsed.data.quoteId)
     .eq("org_id", orgId);
 
   if (error) {
@@ -991,7 +1158,11 @@ export async function markQuoteExpired(
     };
   }
 
-  revalidateQuoteDashboard(quote.project_id, quoteId, quote.pricing_document_id);
+  revalidateQuoteDashboard(
+    quote.project_id,
+    parsed.data.quoteId,
+    quote.pricing_document_id
+  );
   return { success: true };
 }
 
@@ -1000,13 +1171,28 @@ export async function reviseQuote(input: {
   quoteId: string;
   revisionNote?: string;
 }): Promise<QuoteActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const parsed = parseQuoteInput(reviseQuoteInputSchema, input);
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, user, orgId } = context;
-  const { projectId, quoteId, revisionNote } = input;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
+
+  const { supabase, user, orgId } = auth;
+  const { projectId, quoteId, revisionNote } = parsed.data;
+
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
+    return { error: ownedProject.error };
+  }
+
+  const ownedQuote = await assertOrgOwnsQuote(auth, quoteId, projectId);
+  if ("error" in ownedQuote) {
+    return { error: ownedQuote.error };
+  }
 
   const { data: sourceQuote, error: quoteError } = await supabase
     .from("quotes")
@@ -1142,7 +1328,11 @@ export async function reviseQuote(input: {
       .insert(copiedItems);
 
     if (copyItemsError) {
-      await supabase.from("quotes").delete().eq("id", newQuoteId);
+      await supabase
+        .from("quotes")
+        .delete()
+        .eq("id", newQuoteId)
+        .eq("org_id", orgId);
       return {
         error: toUserError(
           copyItemsError,
@@ -1163,8 +1353,16 @@ export async function reviseQuote(input: {
     .eq("org_id", orgId);
 
   if (supersedeError) {
-    await supabase.from("quote_items").delete().eq("quote_id", newQuoteId);
-    await supabase.from("quotes").delete().eq("id", newQuoteId);
+    await supabase
+      .from("quote_items")
+      .delete()
+      .eq("quote_id", newQuoteId)
+      .eq("org_id", orgId);
+    await supabase
+      .from("quotes")
+      .delete()
+      .eq("id", newQuoteId)
+      .eq("org_id", orgId);
     return {
       error: toUserError(
         supersedeError,
@@ -1208,13 +1406,39 @@ export async function reviseQuoteFromFinalPricing(input: {
   pricingDocumentId?: string;
   revisionNote?: string;
 }): Promise<QuoteActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const parsed = parseQuoteInput(reviseQuoteFromFinalPricingInputSchema, input);
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, user, orgId } = context;
-  const { projectId, quoteId, pricingDocumentId, revisionNote } = input;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
+
+  const { supabase, user, orgId } = auth;
+  const { projectId, quoteId, pricingDocumentId, revisionNote } = parsed.data;
+
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
+    return { error: ownedProject.error };
+  }
+
+  const ownedQuote = await assertOrgOwnsQuote(auth, quoteId, projectId);
+  if ("error" in ownedQuote) {
+    return { error: ownedQuote.error };
+  }
+
+  if (pricingDocumentId) {
+    const ownedDocument = await assertOrgOwnsPricingDocument(
+      auth,
+      pricingDocumentId,
+      projectId
+    );
+    if ("error" in ownedDocument) {
+      return { error: ownedDocument.error };
+    }
+  }
 
   const { data: sourceQuoteRow, error: quoteError } = await supabase
     .from("quotes")
@@ -1263,6 +1487,15 @@ export async function reviseQuoteFromFinalPricing(input: {
     return {
       error: "Mark final pricing as reviewed before refreshing the quote.",
     };
+  }
+
+  const ownedResolvedDocument = await assertOrgOwnsPricingDocument(
+    auth,
+    resolvedPricingDocumentId,
+    projectId
+  );
+  if ("error" in ownedResolvedDocument) {
+    return { error: ownedResolvedDocument.error };
   }
 
   const snapshot = await buildQuoteSnapshotFromReviewedPricing({
@@ -1358,7 +1591,11 @@ export async function reviseQuoteFromFinalPricing(input: {
   );
 
   if (itemsError) {
-    await supabase.from("quotes").delete().eq("id", newQuoteId);
+    await supabase
+      .from("quotes")
+      .delete()
+      .eq("id", newQuoteId)
+      .eq("org_id", orgId);
     return { error: itemsError };
   }
 
@@ -1372,8 +1609,16 @@ export async function reviseQuoteFromFinalPricing(input: {
     .eq("org_id", orgId);
 
   if (supersedeError) {
-    await supabase.from("quote_items").delete().eq("quote_id", newQuoteId);
-    await supabase.from("quotes").delete().eq("id", newQuoteId);
+    await supabase
+      .from("quote_items")
+      .delete()
+      .eq("quote_id", newQuoteId)
+      .eq("org_id", orgId);
+    await supabase
+      .from("quotes")
+      .delete()
+      .eq("id", newQuoteId)
+      .eq("org_id", orgId);
     return {
       error: toUserError(
         supersedeError,
