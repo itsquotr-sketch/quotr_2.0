@@ -1,11 +1,11 @@
 import { getAuthOrgContext } from "@/lib/assistant/state";
-import { assertOrgOwnsProject } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 
 export async function markEstimateStale(projectId: string): Promise<void> {
   const context = await getAuthOrgContext();
   if (!context) return;
 
-  const owned = await assertOrgOwnsProject(context, projectId);
+  const owned = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in owned) return;
 
   const { supabase, orgId } = context;

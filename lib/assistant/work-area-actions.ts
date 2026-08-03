@@ -6,7 +6,7 @@ import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-quest
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStale } from "@/lib/estimate/stale";
-import { assertOrgOwnsProject, assertOrgOwnsWorkArea } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProject, assertOrgOwnsWorkArea } from "@/lib/security/org-ownership";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 
 const CATALOGUE_BY_TYPE = new Map(
@@ -45,7 +45,7 @@ export async function addWorkAreaToProject(input: {
   const { supabase, orgId } = context;
   const { projectId, workAreaType } = parsed.data;
 
-  const ownedProject = await assertOrgOwnsProject(context, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }
@@ -174,7 +174,7 @@ export async function excludeWorkAreaFromProject(input: {
   const { supabase, orgId } = context;
   const { projectId, workAreaId } = parsed.data;
 
-  const ownedProject = await assertOrgOwnsProject(context, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }

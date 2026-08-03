@@ -32,6 +32,31 @@ export async function assertOrgOwnsProject(
   return { projectId: data.id };
 }
 
+/**
+ * Ownership for normal active application queries/mutations.
+ * Soft-deleted projects are treated as not found so their children are hidden
+ * from active flows without hard-deleting stored child rows (S1-017 / 2A.4).
+ * Lifecycle paths that must see deleted projects should use assertOrgOwnsProject.
+ */
+export async function assertOrgOwnsActiveProject(
+  ctx: AuthOrgContext,
+  projectId: string
+): Promise<OwnershipError | { projectId: string }> {
+  const { data, error } = await ctx.supabase
+    .from("projects")
+    .select("id")
+    .eq("id", projectId)
+    .eq("org_id", ctx.orgId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !data) {
+    return notFound("Project");
+  }
+
+  return { projectId: data.id };
+}
+
 export async function assertOrgOwnsEstimate(
   ctx: AuthOrgContext,
   estimateId: string,

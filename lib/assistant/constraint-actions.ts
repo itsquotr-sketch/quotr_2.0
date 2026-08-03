@@ -5,7 +5,7 @@ import { z } from "zod";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStale } from "@/lib/estimate/stale";
-import { assertOrgOwnsProject } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 
 const updateConstraintSchema = z.object({
@@ -36,7 +36,7 @@ export async function updateProjectConstraint(
   const { supabase, orgId } = context;
   const { projectId, key, label, value, inputType } = parsed.data;
 
-  const ownedProject = await assertOrgOwnsProject(context, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }

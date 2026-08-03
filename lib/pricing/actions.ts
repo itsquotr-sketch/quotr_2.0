@@ -26,7 +26,7 @@ import {
   assertOrgOwnsEstimate,
   assertOrgOwnsPricingDocument,
   assertOrgOwnsPricingItem,
-  assertOrgOwnsProject,
+  assertOrgOwnsActiveProject,
   assertOrgOwnsWorkArea,
 } from "@/lib/security/org-ownership";
 import {
@@ -191,7 +191,7 @@ export async function getLatestPricingSummary(
     return null;
   }
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     return null;
   }
@@ -261,7 +261,7 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
     };
   }
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     return {
       hasEstimate: false,
@@ -296,7 +296,7 @@ export async function getPricingWorkspaceData(
     notFound();
   }
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     notFound();
   }
@@ -382,7 +382,7 @@ export async function createPricingFromEstimate(input: {
   const { supabase, user, orgId } = auth;
   const { projectId, estimateId } = parsed.data;
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }
@@ -896,7 +896,7 @@ export async function addPricingItem(input: {
     return { error: ownedDocument.error };
   }
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }

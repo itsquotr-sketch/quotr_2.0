@@ -7,7 +7,7 @@ import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-quest
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStale } from "@/lib/estimate/stale";
-import { assertOrgOwnsProject } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 
 const updateFactSchema = z.object({
@@ -43,7 +43,7 @@ export async function updateProjectFact(
   const { projectId, workAreaId, key, label, value, unit, valueType } =
     parsed.data;
 
-  const ownedProject = await assertOrgOwnsProject(context, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }

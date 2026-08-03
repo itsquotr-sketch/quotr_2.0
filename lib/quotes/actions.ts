@@ -24,7 +24,7 @@ import {
 } from "@/lib/security/auth-org-context";
 import {
   assertOrgOwnsPricingDocument,
-  assertOrgOwnsProject,
+  assertOrgOwnsActiveProject,
   assertOrgOwnsQuote,
   assertOrgOwnsQuoteItem,
 } from "@/lib/security/org-ownership";
@@ -287,7 +287,7 @@ export async function getLatestQuoteSummary(
     return null;
   }
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     return null;
   }
@@ -346,7 +346,7 @@ export async function getQuoteWorkspaceData(
     notFound();
   }
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     notFound();
   }
@@ -433,7 +433,7 @@ export async function getQuotePrintData(
     notFound();
   }
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     notFound();
   }
@@ -490,7 +490,7 @@ export async function createQuoteFromPricing(input: {
   const { supabase, user, orgId } = auth;
   const { projectId, pricingDocumentId } = parsed.data;
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }
@@ -1184,7 +1184,7 @@ export async function reviseQuote(input: {
   const { supabase, user, orgId } = auth;
   const { projectId, quoteId, revisionNote } = parsed.data;
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }
@@ -1419,7 +1419,7 @@ export async function reviseQuoteFromFinalPricing(input: {
   const { supabase, user, orgId } = auth;
   const { projectId, quoteId, pricingDocumentId, revisionNote } = parsed.data;
 
-  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in ownedProject) {
     return { error: ownedProject.error };
   }

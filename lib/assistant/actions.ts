@@ -36,7 +36,7 @@ import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-quest
 import { buildQuestionBlockFromProjectState } from "@/lib/scopes/questions";
 import { normalizeAnswerForStorage, factHasValue } from "@/lib/scopes/fact-values";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
-import { assertOrgOwnsProject } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 
 const BRIEF_MAX_LENGTH = 5000;
 
@@ -128,7 +128,7 @@ async function loadProjectStage(projectId: string) {
     };
   }
 
-  const owned = await assertOrgOwnsProject(auth, projectId);
+  const owned = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in owned) {
     return { error: "Project not found." as const };
   }

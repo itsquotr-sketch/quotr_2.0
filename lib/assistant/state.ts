@@ -3,15 +3,10 @@ import { buildAssistantState } from "@/lib/assistant/mappers";
 import type { AssistantState } from "@/lib/assistant/types";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import {
-  hasLifecycleColumns,
-  isMissingLifecycleColumnsError,
-  markLifecycleColumnsUnavailable,
-} from "@/lib/projects/query-utils";
-import {
   getAuthOrgContext,
   requireAuthOrgContext,
 } from "@/lib/security/auth-org-context";
-import { assertOrgOwnsProject } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 
 export {
   assertStage,
@@ -27,21 +22,21 @@ export {
 export { getAuthOrgContext, requireAuthOrgContext };
 
 export async function getAssistantState(
-  projectId: string,
-  retried = false
+  projectId: string
 ): Promise<AssistantState> {
   const auth = await requireAuthOrgContext();
   if (!auth.ok) {
     notFound();
   }
 
-  const owned = await assertOrgOwnsProject(auth, projectId);
+  // Soft-deleted projects are not found — children stay stored but hidden from
+  // normal active assistant queries (Batch 2A.4 / S1-017).
+  const owned = await assertOrgOwnsActiveProject(auth, projectId);
   if ("error" in owned) {
     notFound();
   }
 
   const { supabase, orgId } = auth;
-  const lifecycleAvailable = await hasLifecycleColumns(supabase);
 
   const { data: project, error: projectError } = await supabase
     .from("projects")
@@ -57,27 +52,6 @@ export async function getAssistantState(
 
   if (!project) {
     notFound();
-  }
-
-  if (lifecycleAvailable) {
-    const { data: lifecycleRow, error: lifecycleError } = await supabase
-      .from("projects")
-      .select("deleted_at")
-      .eq("id", projectId)
-      .eq("org_id", orgId)
-      .maybeSingle();
-
-    if (lifecycleError) {
-      if (isMissingLifecycleColumnsError(lifecycleError) && !retried) {
-        markLifecycleColumnsUnavailable();
-        return getAssistantState(projectId, true);
-      }
-      notFound();
-    }
-
-    if (lifecycleRow?.deleted_at) {
-      notFound();
-    }
   }
 
   const [

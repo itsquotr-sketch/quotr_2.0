@@ -87,29 +87,93 @@ function assert(label: string, ok: boolean) {
 }
 
 async function auditLiveDatabase(): Promise<void> {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  console.log("\n=== Live catalogue checks (local Docker) ===\n");
 
-  if (!url || !serviceKey) {
-    console.log("\nLive DB audit skipped (set SUPABASE_SERVICE_ROLE_KEY to query database).");
-    return;
+  try {
+    const { execFileSync } = await import("node:child_process");
+    const container = "supabase_db_quotr_2.0-main";
+    const query = `
+      SELECT string_agg(tablename, ',' ORDER BY tablename)
+      FROM (
+        WITH expected(tablename) AS (
+          VALUES
+            ('organisations'),('profiles'),('projects'),('work_areas'),
+            ('project_facts'),('question_blocks'),('questions'),('constraints'),
+            ('estimates'),('estimate_line_items'),('rates'),('organisation_settings'),
+            ('organisation_work_areas'),('project_notes'),('note_proposals'),
+            ('pricing_documents'),('pricing_items'),('quotes'),('quote_items'),
+            ('pricing_audit_log')
+        )
+        SELECT e.tablename
+        FROM expected e
+        LEFT JOIN pg_class c ON c.relname = e.tablename AND c.relkind = 'r'
+        LEFT JOIN pg_namespace n ON n.oid = c.relnamespace AND n.nspname = 'public'
+        WHERE COALESCE(c.relrowsecurity, false) = false
+      ) missing;
+    `;
+    const missing = execFileSync(
+      "docker",
+      ["exec", "-i", container, "psql", "-U", "postgres", "-t", "-A", "-c", query],
+      { encoding: "utf8" }
+    ).trim();
+
+    assert(
+      "Live: no expected org tables missing RLS (incl. pricing_audit_log)",
+      missing.length === 0
+    );
+
+    const triggerGaps = execFileSync(
+      "docker",
+      [
+        "exec",
+        "-i",
+        container,
+        "psql",
+        "-U",
+        "postgres",
+        "-t",
+        "-A",
+        "-c",
+        `
+        WITH expected(tablename, trigger_name) AS (
+          VALUES
+            ('pricing_items', 'pricing_items_org_match'),
+            ('quote_items', 'quote_items_org_match'),
+            ('work_areas', 'work_areas_project_org_match'),
+            ('project_facts', 'project_facts_project_org_match'),
+            ('question_blocks', 'question_blocks_project_org_match'),
+            ('questions', 'questions_project_org_match'),
+            ('constraints', 'constraints_project_org_match'),
+            ('estimates', 'estimates_project_org_match'),
+            ('estimate_line_items', 'estimate_line_items_project_org_match')
+        )
+        SELECT COUNT(*)::text
+        FROM expected e
+        WHERE NOT EXISTS (
+          SELECT 1 FROM pg_trigger t
+          JOIN pg_class c ON c.oid = t.tgrelid
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public' AND NOT t.tgisinternal
+            AND c.relname = e.tablename AND t.tgname = e.trigger_name
+        );
+        `,
+      ],
+      { encoding: "utf8" }
+    ).trim();
+
+    assert(
+      "Live: expected parent-child org-match triggers present",
+      triggerGaps === "0"
+    );
+  } catch (error) {
+    console.log(
+      "Live Docker catalogue check skipped:",
+      error instanceof Error ? error.message : String(error)
+    );
+    console.log(
+      "Run supabase/sql/verify_rls_coverage.sql against local Postgres for live checks."
+    );
   }
-
-  const { createClient } = await import("@supabase/supabase-js");
-  const admin = createClient(url, serviceKey, {
-    auth: { autoRefreshToken: false, persistSession: false },
-  });
-
-  const { data, error } = await admin.rpc("verify_rls_status" as never);
-
-  if (error) {
-    // Fallback: query pg_tables via REST is not available; migration audit is authoritative.
-    console.log("\nLive DB RPC not available — migration audit used as source of truth.");
-    console.log("Run supabase/sql/verify_rls_coverage.sql in SQL editor for live check.");
-    return;
-  }
-
-  console.log("\nLive database RLS status:", data);
 }
 
 async function main() {

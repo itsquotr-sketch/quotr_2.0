@@ -1,6 +1,6 @@
 # Stage 2A — Security, Validation and Data Integrity Plan
 
-**Status:** Batches 2A.1–2A.3B implemented — Stage 2A remains In Progress  
+**Status:** Batches 2A.1–2A.4 implemented locally — Stage 2A remains In Progress (remote 025 not applied)  
 **Plan date:** 2026-08-03  
 **Owner decisions incorporated:** 2026-08-03  
 **Batch 2A.1 completed:** 2026-08-03  
@@ -103,8 +103,8 @@ Re-verified against current code on 2026-08-03. Only findings that belong in Sta
 | **S1-013** | Medium | No | `profiles.role` exists; almost never enforced in app; no invite model | Role set `"owner"` at signup; only org UPDATE RLS checks owner/admin | Multi-user companies are in MVP model; role is vestigial for most writes | Do **not** add multi-company UX. Ownership remains org-scoped for all company users. Document that any future invite/role hardening is out of Stage 2A unless a verified cross-user write defect is found; no org-switcher | Optional: same-org second user can access org records; other-org cannot | Unknown | No |
 | **S1-014** | Medium | No | Zero-org / missing-profile state renders empty shell | `app/(protected)/app/layout.tsx` continues with `organisationName: null` | Auth reliability | Detect missing profile/org and redirect to controlled recovery; do not silently operate | Signup-partial-failure simulation (local) | No | Optional if orphaned auth users exist remotely |
 | **S1-015** | Medium | No | Org-resolution logic duplicated in four places | Canonical: `lib/assistant/state.ts`; copies in setup/settings/rates actions | Future security fix may miss copies | Collapse to one authoritative helper under one-user→one-company / multi-user→one-company model | Import-path / behaviour checks | No | No |
-| **S1-016** | Medium | No | Author-tracking FKs to `profiles` default RESTRICT | Five author FKs with no `ON DELETE` clause | Safe deletion / referential integrity | Still awaiting owner decision on account deletion (see Section N remaining). Until then: document as accepted limitation; do not migrate FKs | Only if deletion supported | Yes if deletion supported | Only if deletion flow exists |
-| **S1-017** | Medium | No | Soft-deleted projects leave child rows live | `deleteProject` sets `deleted_at` only | Safe deletion / data integrity | Soft-delete child visibility still awaiting owner confirmation (Section N). Do not hard-delete data. Prefer query filters over destructive cleanup | Soft-delete then attempt child reads | Possibly | Treat production carefully even without external customers |
+| **S1-016** | Medium | No | Author-tracking FKs to `profiles` default RESTRICT | Five author FKs with no `ON DELETE` clause | Safe deletion / referential integrity | **Accepted MVP limitation (2A.4):** account deletion not required; do not migrate FKs | N/A | No | Documented in 2A.4 completion |
+| **S1-017** | Medium | No | Soft-deleted projects leave child rows live | `deleteProject` sets `deleted_at` only | Safe deletion / data integrity | **Addressed in 2A.4** via active ownership helper (hide from normal active queries; no hard-delete) | Soft-delete then active ownership fails | No | Children remain stored |
 
 **Storage isolation:** Not applicable — confirmed zero upload/storage code. Revisit only if Stage 3 introduces uploads.
 
@@ -453,6 +453,15 @@ Split for reviewability:
 
 ### Batch 2A.4 — Database and RLS corrections
 
+* **Status:** Complete locally (2026-08-03) — see `docs/implementation/STAGE_2A_BATCH_2A4_COMPLETION.md`
+* **Issue IDs:** S1-007 fixed; S1-016 accepted MVP limitation (no account deletion); S1-017 active-query hide without hard-delete; DB margin default aligned to 20%
+* **Migration:** `supabase/migrations/025_stage_2a4_database_integrity.sql`
+* **Local reset:** `supabase db reset` succeeded through 025 (023/024 applied first)
+* **Remote:** **Not applied** — runbook at `docs/runbooks/STAGE_2A4_REMOTE_MIGRATION_RUNBOOK.md`
+* **Stop condition obeyed:** No formula changes; no remote apply; no account-deletion FK rewrite
+
+### Batch 2A.4 (historical planning note)
+
 * **Issue IDs:** S1-007; S1-016 only if account deletion approved; S1-017 only for non-destructive support if visibility policy confirmed
 * **Files expected:** New local migration `025_*.sql` (name TBD), update `supabase/sql/verify_rls_coverage.sql`
 * **Migrations:** Yes — parent-org-match triggers for seven tables
@@ -536,9 +545,9 @@ Stage 2A is **not Complete** until:
 | R1 | Are migrations **023** and **024** already applied on the remote Supabase project? | Remote verification and any remote apply of Batch 2A.4 | Does not block local 2A.1–2A.3 or local 2A.4 validation |
 | R2 | Do database backups (or snapshot/export) exist for the remote project, and is restore understood? | Any owner-approved remote migration | Even without external customers |
 | R3 | Local two-user / two-org test credentials (or approval to create disposable local users) | Batch 2A.5 | Preferred path for isolation proof |
-| R4 | Soft-delete child visibility policy (S1-017): hide children of soft-deleted projects from all active queries? | Completeness of S1-017 in 2A | Recommend **yes** (conservative); do not implement until confirmed |
+| R4 | Soft-delete child visibility policy (S1-017): hide children of soft-deleted projects from all active queries? | Completeness of S1-017 in 2A | **Resolved in Batch 2A.4:** active paths use `assertOrgOwnsActiveProject`; children remain stored (no hard-delete) |
 | R5 | Zero-org recovery UX copy/route (S1-014) | ~~Batch 2A.1~~ | **Resolved in Batch 2A.1:** `/app/setup-required` with sign-out-to-retry-setup CTA |
-| R6 | Is account / user deletion required for MVP (S1-016)? | Whether to migrate RESTRICT FKs | If **no**, document accepted limitation and skip FK migration in 2A |
+| R6 | Is account / user deletion required for MVP (S1-016)? | Whether to migrate RESTRICT FKs | **Resolved in Batch 2A.4:** account deletion not required for MVP; RESTRICT author FKs retained as accepted limitation |
 | R7 | Explicit approval to apply any Stage 2A migration to **remote** Supabase | Production/remote schema change | Local apply does not imply remote apply |
 | R8 | GST / tax rate explicit bounds (not specified in owner financial decisions) | Pricing document GST validation detail | Recommend finite `0–100` pending confirmation |
 
@@ -575,5 +584,5 @@ Stage 2A is **not Complete** until:
 | Owner decisions incorporated | 2026-08-03 |
 | Governing audit | `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md` |
 | Application code / schema / config / tests changed while planning | **None** |
-| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.3B complete |
-| Next step | Owner decisions as needed, then Batch 2A.4 only (DB/RLS corrections) |
+| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.4 complete locally; remote 025 not applied |
+| Next step | Batch 2A.5 only (tenant-isolation verification) |
