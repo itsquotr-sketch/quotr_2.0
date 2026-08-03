@@ -119,14 +119,14 @@ export function applyTargetMarginToLineItems<T extends {
 }
 
 export const MARGIN_MIN_PERCENT = 0;
-export const MARGIN_MAX_PERCENT = 80;
+export const MARGIN_MAX_PERCENT = 95;
 
 export function validateTargetMarginPercent(value: number): string | null {
   if (!Number.isFinite(value)) {
-    return "Enter a valid margin percentage.";
+    return "Enter a valid gross margin percentage.";
   }
   if (value < MARGIN_MIN_PERCENT || value > MARGIN_MAX_PERCENT) {
-    return `Margin must be between ${MARGIN_MIN_PERCENT}% and ${MARGIN_MAX_PERCENT}%.`;
+    return `Gross margin must be between ${MARGIN_MIN_PERCENT}% and ${MARGIN_MAX_PERCENT}%.`;
   }
   return null;
 }

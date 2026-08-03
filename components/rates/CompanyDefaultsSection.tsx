@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveRateSettings } from "@/lib/rates/actions";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import type { RateSettingsInput } from "@/lib/rates/types";
 import type { OrganisationSettings } from "@/components/setup/types";
 
@@ -27,7 +28,7 @@ export function CompanyDefaultsSection({
   onSettingsChange,
 }: CompanyDefaultsSectionProps) {
   const [margin, setMargin] = useState(
-    String(settings?.default_margin_percent ?? 25)
+    String(settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT)
   );
   const [contingency, setContingency] = useState(
     String(settings?.default_contingency_percent ?? 10)

@@ -1,11 +1,14 @@
 "use server";
 
-import { z } from "zod";
 import {
   MAX_MARGIN_PERCENT,
   MIN_MARGIN_PERCENT,
   validateMarginPercent,
 } from "@/lib/security/margin-validation";
+import {
+  MAX_MARKUP_PERCENT,
+  validateMarkupPercent,
+} from "@/lib/security/markup-validation";
 import {
   ALL_RATE_CATALOGUE,
   STARTER_RATE_ITEM_KEYS,
@@ -20,6 +23,7 @@ import type {
 } from "@/lib/rates/types";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
+import { z } from "zod";
 
 const MISSING_ORG_ERROR: RatesActionResult = {
   error:
@@ -122,14 +126,14 @@ export async function getRatesPageState(): Promise<RatesPageState> {
 const rateSettingsSchema = z.object({
   default_margin_percent: z
     .number()
-    .min(MIN_MARGIN_PERCENT, `Margin must be at least ${MIN_MARGIN_PERCENT}%`)
+    .min(MIN_MARGIN_PERCENT, `Gross margin must be at least ${MIN_MARGIN_PERCENT}%`)
     .max(
       MAX_MARGIN_PERCENT,
-      `Margin must be at most ${MAX_MARGIN_PERCENT}%`
+      `Gross margin must be at most ${MAX_MARGIN_PERCENT}%`
     )
     .refine(
       (value) => validateMarginPercent(value).ok,
-      "Margin must be less than 100%."
+      "Gross margin must be a finite value between 0% and 95%."
     ),
   default_contingency_percent: z
     .number()
@@ -191,6 +195,11 @@ const rateInputSchema = z.object({
   markup_percent: z
     .number()
     .min(0, "Markup must be non-negative")
+    .max(MAX_MARKUP_PERCENT, `Markup must be at most ${MAX_MARKUP_PERCENT}%`)
+    .refine(
+      (value) => validateMarkupPercent(value).ok,
+      "Markup must be a finite value between 0% and 1000%."
+    )
     .nullable()
     .optional(),
   active: z.boolean().optional(),

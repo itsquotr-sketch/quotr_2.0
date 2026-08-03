@@ -14,6 +14,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveCompanyDefaults } from "@/lib/setup/actions";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import type { CompanyDefaultsInput, SetupState } from "./types";
 
 type CompanyDefaultsStepProps = {
@@ -28,7 +29,7 @@ export function CompanyDefaultsStep({ state, onComplete }: CompanyDefaultsStepPr
   const [country, setCountry] = useState(settings?.country ?? "NZ");
   const [region, setRegion] = useState(settings?.region ?? "");
   const [margin, setMargin] = useState(
-    String(settings?.default_margin_percent ?? 25)
+    String(settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT)
   );
   const [contingency, setContingency] = useState(
     String(settings?.default_contingency_percent ?? 10)

@@ -4,6 +4,7 @@ import { z } from "zod";
 import {
   MAX_MARGIN_PERCENT,
   MIN_MARGIN_PERCENT,
+  validateMarginPercent,
 } from "@/lib/security/margin-validation";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
@@ -151,9 +152,12 @@ const companyDefaultsSchema = z.object({
   region: z.string().trim().optional(),
   default_margin_percent: z
     .number()
-    .min(MIN_MARGIN_PERCENT, `Margin must be at least ${MIN_MARGIN_PERCENT}%`)
-    .max(MAX_MARGIN_PERCENT, `Margin must be at most ${MAX_MARGIN_PERCENT}%`)
-    .refine((value) => value < 100, "Margin must be less than 100%."),
+    .min(MIN_MARGIN_PERCENT, `Gross margin must be at least ${MIN_MARGIN_PERCENT}%`)
+    .max(MAX_MARGIN_PERCENT, `Gross margin must be at most ${MAX_MARGIN_PERCENT}%`)
+    .refine(
+      (value) => validateMarginPercent(value).ok,
+      "Gross margin must be a finite value between 0% and 95%."
+    ),
   default_contingency_percent: z
     .number()
     .min(0, "Contingency must be at least 0")

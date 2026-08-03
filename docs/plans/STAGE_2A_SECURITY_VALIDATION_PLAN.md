@@ -1,11 +1,12 @@
 # Stage 2A — Security, Validation and Data Integrity Plan
 
-**Status:** Batch 2A.1 implemented — Stage 2A remains In Progress  
+**Status:** Batches 2A.1–2A.2 implemented — Stage 2A remains In Progress  
 **Plan date:** 2026-08-03  
 **Owner decisions incorporated:** 2026-08-03  
 **Batch 2A.1 completed:** 2026-08-03  
+**Batch 2A.2 completed:** 2026-08-03  
 **Governing documents read:** `docs/MVP_HARDENING_GUIDE.md`, `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md`  
-**Method:** Re-verification of Stage 1 findings against current source, migrations and scripts, then incorporation of official owner decisions. Batch 2A.1 implementation recorded in `docs/implementation/STAGE_2A_BATCH_2A1_COMPLETION.md`.
+**Method:** Re-verification of Stage 1 findings against current source, migrations and scripts, then incorporation of official owner decisions. Batch completion reports live under `docs/implementation/`.
 
 ---
 
@@ -408,14 +409,12 @@ Unchanged technical findings: soft-delete projects; hard-delete pricing/quote it
 
 ### Batch 2A.2 — Runtime validation schemas
 
-* **Issue IDs:** S1-003 (schemas), S1-002 (financial rules)
-* **Files expected:** `lib/pricing/schemas.ts`, `lib/quotes/schemas.ts`, `lib/security/margin-validation.ts` (align to 0–95), new markup validator, shared finite/non-negative helpers
+* **Status:** Complete (2026-08-03) — see `docs/implementation/STAGE_2A_BATCH_2A2_COMPLETION.md`
+* **Issue IDs:** S1-002 / S1-003 **partially** addressed (schemas + helpers only; action wiring is 2A.3)
+* **Delivered:** `lib/pricing/schemas.ts`, `lib/quotes/schemas.ts`, shared numeric primitives, gross-margin 0–95% + default 20%, separate markup 0–1000% validator, focused verification script
+* **Not done here:** Applying schemas to `lib/pricing/actions.ts` / `lib/quotes/actions.ts` broadly (Batch 2A.3)
 * **Migrations:** None
-* **Tests:** Schema unit tests for NaN/Infinity/negatives/margin>95/markup>1000/lump_sum
-* **Acceptance:** Schemas encode owner rules; margin ≠ markup documented in code comments/docs; default gross margin **20%** constant aligned if needed
-* **Dependencies:** Owner financial decisions — **resolved**
-* **Rollback:** Revert commit
-* **Stop condition:** Converting markup↔margin or consolidating deriveMargins copies
+* **Stop condition obeyed:** No formula consolidation or lump-sum redesign
 
 ### Batch 2A.3 — Secure server actions
 
@@ -552,5 +551,5 @@ Stage 2A is **not Complete** until:
 | Owner decisions incorporated | 2026-08-03 |
 | Governing audit | `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md` |
 | Application code / schema / config / tests changed while planning | **None** |
-| Tracker update | Stage 2A set to `In Progress`; Batch 2A.1 complete |
-| Next step | Owner authorisation for Batch 2A.2 |
+| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.2 complete |
+| Next step | Owner authorisation for Batch 2A.3A (secure pricing/quote actions with schemas) |

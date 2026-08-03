@@ -1,3 +1,4 @@
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { RECOMMENDED_RATE_CATALOGUE } from "@/lib/rates/catalogue";
 import type {
   CalibrationSummary,
@@ -71,7 +72,7 @@ export function buildCalibrationSummary(
   );
 
   return {
-    defaultMarginPercent: state.settings?.default_margin_percent ?? 25,
+    defaultMarginPercent: state.settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT,
     activeRateCount,
     recommendedMissingCount: recommendedMissing.length,
     benchmarkFallbackEnabled: state.settings?.allow_benchmark_rates ?? true,

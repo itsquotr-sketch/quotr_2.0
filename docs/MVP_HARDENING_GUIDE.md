@@ -255,7 +255,7 @@ Update this table as stages progress. Status values must be one of: **Not Starte
 | 0 | Governance | Complete | 2026-07-24 | 2026-07-24 | Guidance document created and adopted as governing source for MVP hardening. | None for Stage 0. Project-specific inventory fields below remain TBD pending Stage 1. | This file exists at `docs/MVP_HARDENING_GUIDE.md` and defines scope, principles, process, tracker and DoD. |
 | 1 | Current-state audit | Auditing | 2026-08-03 | — | — | — | — |
 | 2 | Data integrity, authentication and organisation isolation | Not Started | — | — | Historical tracker entry retained. Scope split into Stage 2A and Stage 2B. | Superseded by 2A/2B split — do not implement under this row. | — |
-| 2A | Security, Validation and Data Integrity | In Progress | 2026-08-03 | 2026-08-03 (Batch 2A.1) | Batch 2A.1 complete: authoritative auth-org helper, assistant ownership checks, setup-required recovery. | Remaining Stage 2A batches 2A.2–2A.6. Issues still open: S1-002, S1-003, S1-006, S1-007, S1-015 (residual duplicates), S1-016, S1-017. | `docs/implementation/STAGE_2A_BATCH_2A1_COMPLETION.md`; plan: `docs/plans/STAGE_2A_SECURITY_VALIDATION_PLAN.md` |
+| 2A | Security, Validation and Data Integrity | In Progress | 2026-08-03 | 2026-08-03 (Batches 2A.1, 2A.2) | Batch 2A.1 auth-org guard complete. Batch 2A.2 runtime validation schemas/helpers complete (margin 0–95%, markup 0–1000%). | Remaining: 2A.3+ action wiring, RLS/isolation. S1-002/S1-003 partially addressed (schemas only). | `docs/implementation/STAGE_2A_BATCH_2A1_COMPLETION.md`; `docs/implementation/STAGE_2A_BATCH_2A2_COMPLETION.md` |
 | 2B | Authoritative Pricing Engine | Not Started | — | — | — | — | — |
 | 3 | Core project workflow | Not Started | — | — | — | — | — |
 | 4 | Estimating engine and pricing correctness | Not Started | — | — | Historical tracker entry retained. Pricing consolidation owned by Stage 2B. | — | — |
@@ -410,4 +410,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-03 |
 | Stage 0 status | Complete |
-| Next stage | Stage 2A — Security, Validation and Data Integrity (In Progress; Batch 2A.1 complete) |
+| Next stage | Stage 2A — Security, Validation and Data Integrity (In Progress; Batches 2A.1–2A.2 complete) |
