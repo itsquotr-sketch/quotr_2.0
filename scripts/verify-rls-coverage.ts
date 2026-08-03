@@ -3,13 +3,29 @@
  *
  * Run: npx tsx scripts/verify-rls-coverage.ts
  *
- * With SUPABASE_SERVICE_ROLE_KEY in .env.local, also queries live database.
+ * Live catalogue checks use local Docker Postgres only (never remote .env URLs).
  */
 import { config } from "dotenv";
 import { readFileSync, readdirSync } from "fs";
 import { join } from "path";
 
 config({ path: ".env.local" });
+
+function isLocalSupabaseUrl(url: string): boolean {
+  try {
+    const host = new URL(url).hostname;
+    return host === "localhost" || host === "127.0.0.1" || host === "::1";
+  } catch {
+    return false;
+  }
+}
+
+const envUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+if (envUrl && !isLocalSupabaseUrl(envUrl)) {
+  console.log(
+    "NOTE: NEXT_PUBLIC_SUPABASE_URL is non-local; live checks use Docker only and never open that URL."
+  );
+}
 
 const EXPECTED_APP_TABLES = [
   "organisations",

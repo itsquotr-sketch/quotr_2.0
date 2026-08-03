@@ -1,6 +1,6 @@
 # Stage 2A — Security, Validation and Data Integrity Plan
 
-**Status:** Batches 2A.1–2A.4 implemented locally — Stage 2A remains In Progress (remote 025 not applied)  
+**Status:** Batches 2A.1–2A.5 implemented locally — Stage 2A remains In Progress (remote 025/026 not applied)  
 **Plan date:** 2026-08-03  
 **Owner decisions incorporated:** 2026-08-03  
 **Batch 2A.1 completed:** 2026-08-03  
@@ -98,7 +98,7 @@ Re-verified against current code on 2026-08-03. Only findings that belong in Sta
 | **S1-002** | Critical | Yes | `calculation_mode: "lump_sum"` bypasses the only server-side total cross-check; no margin bound on pricing items | `lib/pricing/pricing-item-calculation.ts` `forwardTotalsMatchStored` (lines 613–618 returns `true` for lump_sum); `lib/pricing/actions.ts` `updatePricingItem` / `addPricingItem`; `lib/security/margin-validation.ts` never called from `lib/pricing/*` | Money-bearing write can persist arbitrary/negative-margin totals | Keep lump-sum as a supported mode; require finite non-negative totals; enforce gross-margin bounds **0–95%** and markup bounds **0–1000%** on persisted profit fields; reject negatives/non-finite; **do not** redesign lump-sum or change formula implementations | Crafted lump-sum and quantity_rate payloads; negative/NaN/Infinity/out-of-bounds cases | No (app-layer first) | Prefer local; remote only with owner approval |
 | **S1-003** | Critical | Yes | `lib/pricing/actions.ts` and `lib/quotes/actions.ts` have zero Zod/runtime input validation | Confirmed: neither file imports `zod`; 11 pricing + 16 quote exported actions accept typed-but-unchecked inputs (`PricingItemInput`, `QuoteItemInput`, etc.) | Malformed input reaches money-bearing and quote mutations | Add server-side Zod schemas for all mutation inputs; reject unknown enums; validate IDs as UUIDs; encode owner financial rules | Malformed ID/enum/array/number payloads per mutation action | No | Prefer local smoke; remote optional with approval |
 | **S1-005** | High | Yes | `lib/assistant/actions.ts` omits org-ownership check used by sibling assistant files | `loadProjectStage` selects `org_id` but never compares to caller `orgId` (lines 121–145); no `assertOrgOwnsProject` import; siblings call `assertOrgOwnsProject` | Central estimate/brief/question/constraint write path relies on RLS alone | Route `loadProjectStage` through shared ownership assert; fail closed with generic “not found” | Two-org cross-ID server-action attempts (local preferred) | No | Prefer local two-user proof |
-| **S1-006** | High | Yes | RLS live-isolation proof has never succeeded | `scripts/verify-org-isolation.ts` live branch bails on `created_by` FK; `scripts/verify-rls-coverage.ts` calls missing RPC `verify_rls_status` | Cannot claim tenancy proven end-to-end | Repair/replace isolation test for **local** Supabase/dev DB with two authenticated users in two orgs; do not require a separate staging project | Executable two-org isolation suite against local env | No | Remote proof only with explicit owner approval |
+| **S1-006** | High | Yes | ~~RLS live-isolation proof has never succeeded~~ **Verified locally in Batch 2A.5** | Prior live branch bailed; replaced by `scripts/verify-batch-2a5-tenant-isolation.ts` | Cannot claim tenancy proven end-to-end without local proof | Local two-org suite (RLS + ownership helpers); refuse non-local URLs | Executable two-org isolation suite against local env — **PASS 2026-08-03** | No (026 grants fix local only) | Remote proof / remote 026 apply only with explicit owner approval |
 | **S1-007** | High | Yes | Seven parent/child tables lack parent-org-consistency triggers | Triggers exist only in `023_security_hardening.sql` for `pricing_items` / `quote_items` | DB backstop missing for child-row org mismatch | Additive migration modelled on 023; **validate on local DB first**; remote apply only after explicit owner approval | Insert mismatched `org_id` child rows as service role → reject (local) | Yes | Confirm whether 023 already applied remotely before any remote apply |
 | **S1-013** | Medium | No | `profiles.role` exists; almost never enforced in app; no invite model | Role set `"owner"` at signup; only org UPDATE RLS checks owner/admin | Multi-user companies are in MVP model; role is vestigial for most writes | Do **not** add multi-company UX. Ownership remains org-scoped for all company users. Document that any future invite/role hardening is out of Stage 2A unless a verified cross-user write defect is found; no org-switcher | Optional: same-org second user can access org records; other-org cannot | Unknown | No |
 | **S1-014** | Medium | No | Zero-org / missing-profile state renders empty shell | `app/(protected)/app/layout.tsx` continues with `organisationName: null` | Auth reliability | Detect missing profile/org and redirect to controlled recovery; do not silently operate | Signup-partial-failure simulation (local) | No | Optional if orphaned auth users exist remotely |
@@ -471,11 +471,28 @@ Split for reviewability:
 * **Rollback:** Drop new triggers/functions locally; never silent remote apply
 * **Stop condition:** Applying migration to remote Supabase without explicit owner approval; bulk data rewrites
 
-### Batch 2A.5 — Tenant-isolation verification
+### Batch 2A.5 — Tenant-isolation verification — **COMPLETE (local, 2026-08-03)**
+
+* **Issue IDs:** S1-006 verified; S1-005 / S1-007 / 2A.3A–2A.3B ownership re-verified
+* **Implementation date:** 2026-08-03
+* **Local environment:** Supabase Docker (`127.0.0.1`); `supabase db reset` through migrations **001–026**
+* **Entry script:** `scripts/verify-batch-2a5-tenant-isolation.ts` (refuses non-local URLs)
+* **Supporting:** `scripts/verify-org-isolation.ts` (static helpers + pointer to 2A.5); `scripts/verify-rls-coverage.ts` (Docker-only live checks)
+* **Same-org control:** PASS (A1 + same-company A2)
+* **Cross-org RLS reads/writes:** PASS (A↛B and representative B↛A)
+* **Application ownership guards:** PASS (project/pricing/quote/work-area; soft-deleted active reject)
+* **Parent-child triggers:** PASS (025 seven + 023 pricing/quote items)
+* **Soft-delete:** PASS (active hide; children stored; foreign org empty; no hard delete)
+* **Error disclosure:** PASS (missing ≡ foreign controlled not-found)
+* **Defect fixed:** Migration `026_stage_2a5_restore_api_table_grants.sql` — postgres default privileges had omitted SELECT/INSERT/UPDATE for API roles (blocking PostgREST). **Remote not applied.**
+* **Evidence:** `docs/implementation/STAGE_2A_BATCH_2A5_COMPLETION.md`
+* **Stop condition obeyed:** No production/remote data; no Batch 2A.6; no formula/UI/AI changes
+
+### Batch 2A.5 (historical planning note)
 
 * **Issue IDs:** S1-006; verifies S1-005/007
 * **Files expected:** Repaired isolation/RLS scripts; local run instructions
-* **Migrations:** None
+* **Migrations:** None planned originally; **026** added only as verified defect fix for API grants
 * **Tests:** Two-user / two-org proof on **local** environment
 * **Acceptance:** Local proof recorded for app + RLS isolation; remote proof optional and owner-gated
 * **Dependencies:** Local Supabase (or equivalent) + two disposable users/orgs; batches 2A.1–2A.4 preferred first
@@ -584,5 +601,5 @@ Stage 2A is **not Complete** until:
 | Owner decisions incorporated | 2026-08-03 |
 | Governing audit | `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md` |
 | Application code / schema / config / tests changed while planning | **None** |
-| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.4 complete locally; remote 025 not applied |
-| Next step | Batch 2A.5 only (tenant-isolation verification) |
+| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.5 complete locally; remote 025/026 not applied |
+| Next step | Batch 2A.6 only (final regression and completion report) |
