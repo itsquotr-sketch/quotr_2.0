@@ -32,6 +32,29 @@ export async function assertOrgOwnsProject(
   return { projectId: data.id };
 }
 
+export async function assertOrgOwnsEstimate(
+  ctx: AuthOrgContext,
+  estimateId: string,
+  projectId?: string
+): Promise<OwnershipError | { estimateId: string; projectId: string }> {
+  const { data, error } = await ctx.supabase
+    .from("estimates")
+    .select("id, project_id")
+    .eq("id", estimateId)
+    .eq("org_id", ctx.orgId)
+    .maybeSingle();
+
+  if (error || !data) {
+    return notFound("Estimate");
+  }
+
+  if (projectId && data.project_id !== projectId) {
+    return notFound("Estimate");
+  }
+
+  return { estimateId: data.id, projectId: data.project_id };
+}
+
 export async function assertOrgOwnsPricingDocument(
   ctx: AuthOrgContext,
   pricingDocumentId: string,

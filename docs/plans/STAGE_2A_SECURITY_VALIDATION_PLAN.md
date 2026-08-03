@@ -1,6 +1,6 @@
 # Stage 2A — Security, Validation and Data Integrity Plan
 
-**Status:** Batches 2A.1–2A.2 implemented — Stage 2A remains In Progress  
+**Status:** Batches 2A.1–2A.3A implemented — Stage 2A remains In Progress  
 **Plan date:** 2026-08-03  
 **Owner decisions incorporated:** 2026-08-03  
 **Batch 2A.1 completed:** 2026-08-03  
@@ -418,6 +418,30 @@ Unchanged technical findings: soft-delete projects; hard-delete pricing/quote it
 
 ### Batch 2A.3 — Secure server actions
 
+Split for reviewability:
+
+#### Batch 2A.3A — Secure pricing server actions
+
+* **Status:** Complete (2026-08-03) — see `docs/implementation/STAGE_2A_BATCH_2A3A_COMPLETION.md`
+* **Issue IDs:** S1-002 (pricing-action portion), S1-003 (pricing-action portion), S1-015 (pricing ownership/auth resolution)
+* **Delivered:** `requireAuthOrgContext` + shared ownership asserts on all pricing actions; Batch 2A.2 schemas wired; lump-sum validated before persistence; `assertOrgOwnsEstimate`; focused verification script
+* **Not done here:** Quote-action enforcement (2A.3B); DB default margin migration (still 25%); formula consolidation
+* **Migrations:** None
+* **Atomicity note:** `createPricingFromEstimate` uses compensating document delete on item-insert failure; no broad transaction/RPC added
+* **Stop condition obeyed:** No formula changes, no quote-action rollout, no lump-sum redesign
+
+#### Batch 2A.3B — Secure quote server actions
+
+* **Status:** Not started
+* **Issue IDs:** S1-002 / S1-003 quote-action portions; remaining inventory gaps for quotes
+* **Files expected:** `lib/quotes/actions.ts` (and related ownership loaders as needed)
+* **Migrations:** None
+* **Acceptance:** Quote mutations auth + ownership + Batch 2A.2 quote schemas; no pricing formula changes
+* **Dependencies:** 2A.1, 2A.2, 2A.3A
+* **Stop condition:** Pulling Stage 2B pricing consolidation into quote hardening
+
+### Batch 2A.3 (historical combined note)
+
 * **Issue IDs:** S1-002, S1-003, S1-005 (completion), inventory gaps
 * **Files expected:** `lib/pricing/actions.ts`, `lib/quotes/actions.ts`, `lib/assistant/actions.ts`, rate/settings margin call sites for bound alignment; **not** calculator formula modules except validation call sites
 * **Migrations:** None
@@ -551,5 +575,5 @@ Stage 2A is **not Complete** until:
 | Owner decisions incorporated | 2026-08-03 |
 | Governing audit | `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md` |
 | Application code / schema / config / tests changed while planning | **None** |
-| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.2 complete |
-| Next step | Owner authorisation for Batch 2A.3A (secure pricing/quote actions with schemas) |
+| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.3A complete |
+| Next step | Batch 2A.3B only (secure quote server actions) |

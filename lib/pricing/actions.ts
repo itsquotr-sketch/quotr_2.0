@@ -3,11 +3,31 @@
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { buildPricingNotesFromEstimateLineItem } from "@/lib/estimate/line-item-metadata";
-import { getAuthOrgContext } from "@/lib/assistant/state";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
+import { toUserError } from "@/lib/errors/user-message";
 import {
+  parsePricingInput,
+  validateComputedItemForPersistence,
+} from "@/lib/pricing/action-guards";
+import {
+  addPricingItemInputSchema,
+  createPricingFromEstimateInputSchema,
+  deletePricingItemInputSchema,
+  duplicatePricingItemInputSchema,
+  markPricingReviewedInputSchema,
+  updatePricingDocumentInputSchema,
+  updatePricingItemInputSchema,
+} from "@/lib/pricing/schemas";
+import {
+  isAuthOrgSuccess,
+  requireAuthOrgContext,
+} from "@/lib/security/auth-org-context";
+import {
+  assertOrgOwnsEstimate,
   assertOrgOwnsPricingDocument,
   assertOrgOwnsPricingItem,
+  assertOrgOwnsProject,
+  assertOrgOwnsWorkArea,
 } from "@/lib/security/org-ownership";
 import {
   addDaysIsoDate,
@@ -44,24 +64,32 @@ import type {
 } from "@/lib/pricing/types";
 import { ACTIVE_PIPELINE_STATUSES } from "@/lib/projects/status";
 
+const PRICING_SAVE_FAILED =
+  "Could not save pricing changes. Please try again.";
+
 async function loadOwnedPricingDocument(pricingDocumentId: string) {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." as const };
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
   }
 
-  const { data: document, error } = await context.supabase
+  const owned = await assertOrgOwnsPricingDocument(auth, pricingDocumentId);
+  if ("error" in owned) {
+    return { error: owned.error };
+  }
+
+  const { data: document, error } = await auth.supabase
     .from("pricing_documents")
     .select("*")
     .eq("id", pricingDocumentId)
-    .eq("org_id", context.orgId)
+    .eq("org_id", auth.orgId)
     .maybeSingle();
 
   if (error || !document) {
     return { error: "Pricing document not found." as const };
   }
 
-  return { ...context, document: mapPricingDocument(document) };
+  return { ...auth, document: mapPricingDocument(document) };
 }
 
 async function recalculateAndPersistDocumentTotals(
@@ -80,7 +108,10 @@ async function recalculateAndPersistDocumentTotals(
     .eq("org_id", orgId);
 
   if (error) {
-    throw new Error(error.message);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[pricing-recalc-load]", error.message);
+    }
+    throw new Error(PRICING_SAVE_FAILED);
   }
 
   const totals = calculateDocumentTotals(items ?? [], gstRate);
@@ -106,7 +137,10 @@ async function recalculateAndPersistDocumentTotals(
     .eq("org_id", orgId);
 
   if (updateError) {
-    throw new Error(updateError.message);
+    if (process.env.NODE_ENV === "development") {
+      console.error("[pricing-recalc-update]", updateError.message);
+    }
+    throw new Error(PRICING_SAVE_FAILED);
   }
 }
 
@@ -152,16 +186,21 @@ async function loadPricingDocumentById(
 export async function getLatestPricingSummary(
   projectId: string
 ): Promise<PricingSummary | null> {
-  const context = await getAuthOrgContext();
-  if (!context) {
+  const auth = await requireAuthOrgContext();
+  if (!auth.ok) {
     return null;
   }
 
-  const { data, error } = await context.supabase
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
+    return null;
+  }
+
+  const { data, error } = await auth.supabase
     .from("pricing_documents")
     .select("id, status, needs_recalibration")
     .eq("project_id", projectId)
-    .eq("org_id", context.orgId)
+    .eq("org_id", auth.orgId)
     .neq("status", "archived")
     .order("created_at", { ascending: false })
     .limit(1)
@@ -181,16 +220,16 @@ export async function getLatestPricingSummary(
 export async function getPricingSummariesForProjects(
   projectIds: string[]
 ): Promise<Map<string, PricingSummary>> {
-  const context = await getAuthOrgContext();
+  const auth = await requireAuthOrgContext();
   const result = new Map<string, PricingSummary>();
-  if (!context || projectIds.length === 0) {
+  if (!auth.ok || projectIds.length === 0) {
     return result;
   }
 
-  const { data, error } = await context.supabase
+  const { data, error } = await auth.supabase
     .from("pricing_documents")
     .select("id, status, project_id, created_at, needs_recalibration")
-    .eq("org_id", context.orgId)
+    .eq("org_id", auth.orgId)
     .in("project_id", projectIds)
     .neq("status", "archived")
     .order("created_at", { ascending: false });
@@ -213,8 +252,17 @@ export async function getPricingSummariesForProjects(
 }
 
 export async function getProjectWorkspaceTabContext(projectId: string) {
-  const context = await getAuthOrgContext();
-  if (!context) {
+  const auth = await requireAuthOrgContext();
+  if (!auth.ok) {
+    return {
+      hasEstimate: false,
+      estimateIsStale: false,
+      pricingSummary: null,
+    };
+  }
+
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
     return {
       hasEstimate: false,
       estimateIsStale: false,
@@ -224,11 +272,11 @@ export async function getProjectWorkspaceTabContext(projectId: string) {
 
   const [pricingSummary, estimateResult] = await Promise.all([
     getLatestPricingSummary(projectId),
-    context.supabase
+    auth.supabase
       .from("estimates")
       .select("is_stale")
       .eq("project_id", projectId)
-      .eq("org_id", context.orgId)
+      .eq("org_id", auth.orgId)
       .maybeSingle(),
   ]);
 
@@ -243,12 +291,26 @@ export async function getPricingWorkspaceData(
   projectId: string,
   pricingDocumentId: string
 ): Promise<PricingWorkspaceData> {
-  const context = await getAuthOrgContext();
-  if (!context) {
+  const auth = await requireAuthOrgContext();
+  if (!auth.ok) {
     notFound();
   }
 
-  const { supabase, orgId } = context;
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
+    notFound();
+  }
+
+  const ownedDocument = await assertOrgOwnsPricingDocument(
+    auth,
+    pricingDocumentId,
+    projectId
+  );
+  if ("error" in ownedDocument) {
+    notFound();
+  }
+
+  const { supabase, orgId } = auth;
 
   const [{ data: project }, { data: document }, { data: items }, { data: workAreas }, { data: estimate }] =
     await Promise.all([
@@ -307,16 +369,34 @@ export async function createPricingFromEstimate(input: {
   projectId: string;
   estimateId?: string;
 }): Promise<PricingActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return {
-      error:
-        "Your organisation profile could not be loaded. Try signing out and back in.",
-    };
+  const parsed = parsePricingInput(createPricingFromEstimateInputSchema, input);
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, user, orgId } = context;
-  const { projectId, estimateId } = input;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
+
+  const { supabase, user, orgId } = auth;
+  const { projectId, estimateId } = parsed.data;
+
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
+    return { error: ownedProject.error };
+  }
+
+  if (estimateId) {
+    const ownedEstimate = await assertOrgOwnsEstimate(
+      auth,
+      estimateId,
+      projectId
+    );
+    if ("error" in ownedEstimate) {
+      return { error: ownedEstimate.error };
+    }
+  }
 
   const { data: project, error: projectError } = await supabase
     .from("projects")
@@ -362,7 +442,9 @@ export async function createPricingFromEstimate(input: {
     .order("sort_order");
 
   if (lineItemsError) {
-    return { error: lineItemsError.message };
+    return {
+      error: toUserError(lineItemsError, "pricing-create-line-items", PRICING_SAVE_FAILED),
+    };
   }
 
   const { data: workAreas } = await supabase
@@ -435,7 +517,13 @@ export async function createPricingFromEstimate(input: {
     .single();
 
   if (insertDocError || !pricingDocument) {
-    return { error: insertDocError?.message ?? "Failed to create pricing." };
+    return {
+      error: toUserError(
+        insertDocError,
+        "pricing-create-document",
+        "Failed to create pricing."
+      ),
+    };
   }
 
   const pricingDocumentId = pricingDocument.id;
@@ -486,8 +574,15 @@ export async function createPricingFromEstimate(input: {
       await supabase
         .from("pricing_documents")
         .delete()
-        .eq("id", pricingDocumentId);
-      return { error: itemsInsertError.message };
+        .eq("id", pricingDocumentId)
+        .eq("org_id", orgId);
+      return {
+        error: toUserError(
+          itemsInsertError,
+          "pricing-create-items",
+          PRICING_SAVE_FAILED
+        ),
+      };
     }
   }
 
@@ -524,49 +619,75 @@ export async function updatePricingDocument(
   pricingDocumentId: string,
   input: PricingDocumentInput
 ): Promise<PricingActionState> {
-  const loaded = await loadOwnedPricingDocument(pricingDocumentId);
+  const parsed = parsePricingInput(updatePricingDocumentInputSchema, {
+    pricingDocumentId,
+    document: input,
+  });
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
   if ("error" in loaded) {
     return { error: loaded.error };
   }
 
   const { supabase, orgId, document } = loaded;
-  const gstRate = input.gst_rate ?? document.gst_rate;
+  const documentInput = parsed.data.document;
+  const gstRate = documentInput.gst_rate ?? document.gst_rate;
 
   const update: Record<string, unknown> = {
     status: "draft",
     reviewed_at: null,
   };
 
-  if (input.title !== undefined) update.title = input.title;
-  if (input.valid_until !== undefined) update.valid_until = input.valid_until;
-  if (input.scope_summary !== undefined) update.scope_summary = input.scope_summary;
-  if (input.assumptions !== undefined) update.assumptions = input.assumptions;
-  if (input.exclusions !== undefined) update.exclusions = input.exclusions;
-  if (input.terms !== undefined) update.terms = input.terms;
-  if (input.internal_notes !== undefined) update.internal_notes = input.internal_notes;
-  if (input.gst_rate !== undefined) update.gst_rate = input.gst_rate;
+  if (documentInput.title !== undefined) update.title = documentInput.title;
+  if (documentInput.valid_until !== undefined) {
+    update.valid_until = documentInput.valid_until;
+  }
+  if (documentInput.scope_summary !== undefined) {
+    update.scope_summary = documentInput.scope_summary;
+  }
+  if (documentInput.assumptions !== undefined) {
+    update.assumptions = documentInput.assumptions;
+  }
+  if (documentInput.exclusions !== undefined) {
+    update.exclusions = documentInput.exclusions;
+  }
+  if (documentInput.terms !== undefined) update.terms = documentInput.terms;
+  if (documentInput.internal_notes !== undefined) {
+    update.internal_notes = documentInput.internal_notes;
+  }
+  if (documentInput.gst_rate !== undefined) {
+    update.gst_rate = documentInput.gst_rate;
+  }
 
   const { error } = await supabase
     .from("pricing_documents")
     .update(update)
-    .eq("id", pricingDocumentId)
+    .eq("id", parsed.data.pricingDocumentId)
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "pricing-update-document", PRICING_SAVE_FAILED),
+    };
   }
 
-  if (input.gst_rate !== undefined) {
+  if (documentInput.gst_rate !== undefined) {
     await recalculateAndPersistDocumentTotals(
       supabase,
       orgId,
-      pricingDocumentId,
+      parsed.data.pricingDocumentId,
       gstRate,
       false
     );
   }
 
-  revalidatePricingProjectPath(document.project_id, pricingDocumentId);
+  revalidatePricingProjectPath(
+    document.project_id,
+    parsed.data.pricingDocumentId
+  );
   return { success: true };
 }
 
@@ -574,22 +695,45 @@ export async function updatePricingItem(
   pricingItemId: string,
   input: PricingItemInput
 ): Promise<PricingActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const parsed = parsePricingInput(updatePricingItemInputSchema, {
+    pricingItemId,
+    item: input,
+  });
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, orgId } = context;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
 
-  const ownedItem = await assertOrgOwnsPricingItem(context, pricingItemId);
+  const { supabase, orgId } = auth;
+  const item = parsed.data.item;
+
+  const ownedItem = await assertOrgOwnsPricingItem(
+    auth,
+    parsed.data.pricingItemId
+  );
   if ("error" in ownedItem) {
     return { error: ownedItem.error };
+  }
+
+  if (item.work_area_id) {
+    const ownedWorkArea = await assertOrgOwnsWorkArea(
+      auth,
+      item.work_area_id,
+      ownedItem.projectId
+    );
+    if ("error" in ownedWorkArea) {
+      return { error: ownedWorkArea.error };
+    }
   }
 
   const { data: existing, error: loadError } = await supabase
     .from("pricing_items")
     .select("id, pricing_document_id, project_id, total_sell, client_label")
-    .eq("id", pricingItemId)
+    .eq("id", parsed.data.pricingItemId)
     .eq("org_id", orgId)
     .maybeSingle();
 
@@ -598,27 +742,37 @@ export async function updatePricingItem(
   }
 
   const totals = calculatePricingItemTotals({
-    quantity: input.quantity,
-    unitCost: input.unit_cost,
-    unitSell: input.unit_sell,
-    totalCost: input.total_cost,
-    totalSell: input.total_sell,
-    itemType: input.item_type,
-    calculationMode: input.calculation_mode,
-    productivityRate: input.productivity_rate,
-    productivityUnit: input.productivity_unit,
-    calculatedQuantity: input.calculated_quantity,
+    quantity: item.quantity,
+    unitCost: item.unit_cost,
+    unitSell: item.unit_sell,
+    totalCost: item.total_cost,
+    totalSell: item.total_sell,
+    itemType: item.item_type,
+    calculationMode: item.calculation_mode,
+    productivityRate: item.productivity_rate,
+    productivityUnit: item.productivity_unit,
+    calculatedQuantity: item.calculated_quantity,
   });
+
+  const commercial = validateComputedItemForPersistence({
+    totalCost: totals.totalCost,
+    totalSell: totals.totalSell,
+    marginPercent: totals.marginPercent,
+    markupPercent: totals.markupPercent,
+  });
+  if (!commercial.ok) {
+    return { error: commercial.error };
+  }
 
   const { error } = await supabase
     .from("pricing_items")
     .update({
-      internal_label: input.internal_label,
-      client_label: input.client_label,
-      internal_description: input.internal_description ?? null,
-      client_description: input.client_description ?? null,
+      internal_label: item.internal_label,
+      client_label: item.client_label,
+      internal_description: item.internal_description ?? null,
+      client_description: item.client_description ?? null,
       quantity: totals.quantity,
-      unit: input.unit ?? null,
+      unit: item.unit ?? null,
       unit_cost: totals.unitCost,
       unit_sell: totals.unitSell,
       total_cost: totals.totalCost,
@@ -626,25 +780,27 @@ export async function updatePricingItem(
       gross_profit: totals.grossProfit,
       margin_percent: totals.marginPercent,
       markup_percent: totals.markupPercent,
-      calculation_mode: totals.calculationMode ?? input.calculation_mode ?? null,
-      productivity_rate: totals.productivityRate ?? input.productivity_rate ?? null,
-      productivity_unit: totals.productivityUnit ?? input.productivity_unit ?? null,
+      calculation_mode: totals.calculationMode ?? item.calculation_mode ?? null,
+      productivity_rate: totals.productivityRate ?? item.productivity_rate ?? null,
+      productivity_unit: totals.productivityUnit ?? item.productivity_unit ?? null,
       calculated_quantity:
-        totals.calculatedQuantity ?? input.calculated_quantity ?? null,
-      item_type: input.item_type,
-      delivery_method: input.delivery_method,
-      visible_on_quote: input.visible_on_quote ?? true,
-      optional: input.optional ?? false,
-      notes_internal: input.notes_internal ?? null,
-      notes_client: input.notes_client ?? null,
-      work_area_id: input.work_area_id ?? null,
+        totals.calculatedQuantity ?? item.calculated_quantity ?? null,
+      item_type: item.item_type,
+      delivery_method: item.delivery_method,
+      visible_on_quote: item.visible_on_quote ?? true,
+      optional: item.optional ?? false,
+      notes_internal: item.notes_internal ?? null,
+      notes_client: item.notes_client ?? null,
+      work_area_id: item.work_area_id ?? null,
       manually_edited: true,
     })
-    .eq("id", pricingItemId)
+    .eq("id", parsed.data.pricingItemId)
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "pricing-update-item", PRICING_SAVE_FAILED),
+    };
   }
 
   await logPricingAuditEvent({
@@ -652,8 +808,8 @@ export async function updatePricingItem(
     organisationId: orgId,
     projectId: existing.project_id,
     pricingDocumentId: existing.pricing_document_id,
-    itemId: pricingItemId,
-    userId: context.user.id,
+    itemId: parsed.data.pricingItemId,
+    userId: auth.user.id,
     action: "pricing_item_update",
     oldValues: {
       total_sell: existing.total_sell,
@@ -661,7 +817,7 @@ export async function updatePricingItem(
     },
     newValues: {
       total_sell: totals.totalSell,
-      client_label: input.client_label,
+      client_label: item.client_label,
       manually_edited: true,
     },
   });
@@ -685,7 +841,7 @@ export async function updatePricingItem(
     supabase
       .from("pricing_items")
       .select("*")
-      .eq("id", pricingItemId)
+      .eq("id", parsed.data.pricingItemId)
       .eq("org_id", orgId)
       .maybeSingle(),
     loadPricingDocumentById(supabase, orgId, existing.pricing_document_id),
@@ -709,29 +865,57 @@ export async function addPricingItem(input: {
   itemType?: PricingItemInput["item_type"];
   deliveryMethod?: PricingItemInput["delivery_method"];
 }): Promise<PricingActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const parsed = parsePricingInput(addPricingItemInputSchema, input);
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, orgId } = context;
-  const itemType = input.itemType ?? "other";
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
+
+  const { supabase, orgId } = auth;
+  const {
+    pricingDocumentId,
+    projectId,
+    workAreaId,
+    itemType: rawItemType,
+    deliveryMethod: rawDeliveryMethod,
+  } = parsed.data;
+  const itemType = rawItemType ?? "other";
   const deliveryMethod =
-    input.deliveryMethod ?? defaultDeliveryMethod(itemType);
+    rawDeliveryMethod ?? defaultDeliveryMethod(itemType);
 
   const ownedDocument = await assertOrgOwnsPricingDocument(
-    context,
-    input.pricingDocumentId,
-    input.projectId
+    auth,
+    pricingDocumentId,
+    projectId
   );
   if ("error" in ownedDocument) {
     return { error: ownedDocument.error };
   }
 
+  const ownedProject = await assertOrgOwnsProject(auth, projectId);
+  if ("error" in ownedProject) {
+    return { error: ownedProject.error };
+  }
+
+  if (workAreaId) {
+    const ownedWorkArea = await assertOrgOwnsWorkArea(
+      auth,
+      workAreaId,
+      projectId
+    );
+    if ("error" in ownedWorkArea) {
+      return { error: ownedWorkArea.error };
+    }
+  }
+
   const { data: maxSort } = await supabase
     .from("pricing_items")
     .select("sort_order")
-    .eq("pricing_document_id", input.pricingDocumentId)
+    .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", orgId)
     .order("sort_order", { ascending: false })
     .limit(1)
@@ -745,13 +929,23 @@ export async function addPricingItem(input: {
     itemType,
   });
 
+  const commercial = validateComputedItemForPersistence({
+    totalCost: totals.totalCost,
+    totalSell: totals.totalSell,
+    marginPercent: totals.marginPercent,
+    markupPercent: totals.markupPercent,
+  });
+  if (!commercial.ok) {
+    return { error: commercial.error };
+  }
+
   const { data: createdItem, error } = await supabase
     .from("pricing_items")
     .insert({
       org_id: orgId,
-      pricing_document_id: input.pricingDocumentId,
-      project_id: input.projectId,
-      work_area_id: input.workAreaId ?? null,
+      pricing_document_id: pricingDocumentId,
+      project_id: projectId,
+      work_area_id: workAreaId ?? null,
       item_type: itemType,
       delivery_method: deliveryMethod,
       internal_label: "New item",
@@ -770,20 +964,26 @@ export async function addPricingItem(input: {
     .single();
 
   if (error || !createdItem) {
-    return { error: error?.message ?? "Failed to add pricing item." };
+    return {
+      error: toUserError(
+        error,
+        "pricing-add-item",
+        "Failed to add pricing item."
+      ),
+    };
   }
 
   const { data: document } = await supabase
     .from("pricing_documents")
     .select("gst_rate")
-    .eq("id", input.pricingDocumentId)
+    .eq("id", pricingDocumentId)
     .eq("org_id", orgId)
     .maybeSingle();
 
   await recalculateAndPersistDocumentTotals(
     supabase,
     orgId,
-    input.pricingDocumentId,
+    pricingDocumentId,
     Number(document?.gst_rate ?? DEFAULT_GST_RATE),
     true
   );
@@ -791,7 +991,7 @@ export async function addPricingItem(input: {
   const updatedDocument = await loadPricingDocumentById(
     supabase,
     orgId,
-    input.pricingDocumentId
+    pricingDocumentId
   );
 
   if (!updatedDocument) {
@@ -808,17 +1008,41 @@ export async function addPricingItem(input: {
 export async function duplicatePricingItem(
   pricingItemId: string
 ): Promise<PricingActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const parsed = parsePricingInput(duplicatePricingItemInputSchema, {
+    pricingItemId,
+  });
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, orgId } = context;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
+
+  const { supabase, orgId } = auth;
+
+  const ownedItem = await assertOrgOwnsPricingItem(
+    auth,
+    parsed.data.pricingItemId
+  );
+  if ("error" in ownedItem) {
+    return { error: ownedItem.error };
+  }
+
+  const ownedDocument = await assertOrgOwnsPricingDocument(
+    auth,
+    ownedItem.pricingDocumentId,
+    ownedItem.projectId
+  );
+  if ("error" in ownedDocument) {
+    return { error: ownedDocument.error };
+  }
 
   const { data: source, error: loadError } = await supabase
     .from("pricing_items")
     .select("*")
-    .eq("id", pricingItemId)
+    .eq("id", parsed.data.pricingItemId)
     .eq("org_id", orgId)
     .maybeSingle();
 
@@ -863,7 +1087,13 @@ export async function duplicatePricingItem(
     .single();
 
   if (error || !createdItem) {
-    return { error: error?.message ?? "Failed to duplicate pricing item." };
+    return {
+      error: toUserError(
+        error,
+        "pricing-duplicate-item",
+        "Failed to duplicate pricing item."
+      ),
+    };
   }
 
   const { data: document } = await supabase
@@ -901,14 +1131,24 @@ export async function duplicatePricingItem(
 export async function deletePricingItem(
   pricingItemId: string
 ): Promise<PricingActionState> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const parsed = parsePricingInput(deletePricingItemInputSchema, {
+    pricingItemId,
+  });
+  if (!parsed.ok) {
+    return { error: parsed.error };
   }
 
-  const { supabase, orgId } = context;
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
 
-  const ownedItem = await assertOrgOwnsPricingItem(context, pricingItemId);
+  const { supabase, orgId } = auth;
+
+  const ownedItem = await assertOrgOwnsPricingItem(
+    auth,
+    parsed.data.pricingItemId
+  );
   if ("error" in ownedItem) {
     return { error: ownedItem.error };
   }
@@ -916,7 +1156,7 @@ export async function deletePricingItem(
   const { data: existing, error: loadError } = await supabase
     .from("pricing_items")
     .select("id, pricing_document_id, project_id, client_label")
-    .eq("id", pricingItemId)
+    .eq("id", parsed.data.pricingItemId)
     .eq("org_id", orgId)
     .maybeSingle();
 
@@ -927,11 +1167,13 @@ export async function deletePricingItem(
   const { error } = await supabase
     .from("pricing_items")
     .delete()
-    .eq("id", pricingItemId)
+    .eq("id", parsed.data.pricingItemId)
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "pricing-delete-item", PRICING_SAVE_FAILED),
+    };
   }
 
   await logPricingAuditEvent({
@@ -939,8 +1181,8 @@ export async function deletePricingItem(
     organisationId: orgId,
     projectId: existing.project_id,
     pricingDocumentId: existing.pricing_document_id,
-    itemId: pricingItemId,
-    userId: context.user.id,
+    itemId: parsed.data.pricingItemId,
+    userId: auth.user.id,
     action: "pricing_item_delete",
     oldValues: { client_label: existing.client_label },
   });
@@ -972,7 +1214,7 @@ export async function deletePricingItem(
 
   return {
     success: true,
-    deletedItemId: pricingItemId,
+    deletedItemId: parsed.data.pricingItemId,
     document: updatedDocument,
   };
 }
@@ -980,7 +1222,14 @@ export async function deletePricingItem(
 export async function markPricingReviewed(
   pricingDocumentId: string
 ): Promise<PricingActionState> {
-  const loaded = await loadOwnedPricingDocument(pricingDocumentId);
+  const parsed = parsePricingInput(markPricingReviewedInputSchema, {
+    pricingDocumentId,
+  });
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
   if ("error" in loaded) {
     return { error: loaded.error };
   }
@@ -993,13 +1242,18 @@ export async function markPricingReviewed(
       status: "reviewed",
       reviewed_at: new Date().toISOString(),
     })
-    .eq("id", pricingDocumentId)
+    .eq("id", parsed.data.pricingDocumentId)
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return {
+      error: toUserError(error, "pricing-mark-reviewed", PRICING_SAVE_FAILED),
+    };
   }
 
-  revalidatePricingDashboard(document.project_id, pricingDocumentId);
+  revalidatePricingDashboard(
+    document.project_id,
+    parsed.data.pricingDocumentId
+  );
   return { success: true };
 }
