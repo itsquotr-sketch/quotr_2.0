@@ -1,8 +1,8 @@
 # Stage 2A — Remote Baseline Reconciliation Plan
 
 **Date:** 2026-08-04  
-**Status:** Local artefacts prepared; remote **unchanged**  
-**Stage 2A remote:** **Not complete**  
+**Status:** Superseded by successful remote deployment — see `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`  
+**Stage 2A remote:** **Complete** (migrations 025–027 applied; histories aligned through 027)  
 **Stage 2B:** **Not started**
 
 ---
@@ -186,16 +186,18 @@ Do **not** mark Stage 2A remotely complete until:
 
 ---
 
-## 10. Confirmation — nothing remote was modified
+## 10. Confirmation — planning batch did not modify remote
 
-During this reconciliation planning/implementation batch:
+During the reconciliation **planning/implementation** batch that created migration 027:
 
 * **No** `supabase migration repair`
 * **No** `supabase db push`
 * **No** remote SQL mutations
 * **No** remote migration application
 
-Only read-only linked inspection (`migration list --linked`, `db diff --linked`, `db query --linked` SELECTs) and local Docker work were performed.
+Only read-only linked inspection and local Docker work were performed at that time.
+
+**Update (2026-08-04):** The owner subsequently completed remote deployment successfully. Formal record: `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`.
 
 ---
 

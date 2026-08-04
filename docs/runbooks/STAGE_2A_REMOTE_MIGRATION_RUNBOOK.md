@@ -337,9 +337,10 @@ Manual SQL does not automatically repair `supabase_migrations.schema_migrations`
 
 ---
 
-## Confirmation — not executed
+## Confirmation — planning status vs deployment
 
-**This runbook was not executed.**  
-No `migration repair`, `db push`, remote SQL mutation, or remote migration application was performed while preparing migration 027 and this sequence.
+This runbook documented the owner-gated remote sequence. Owner-confirmed deployment of history repair + migrations **025 → 026 → 027** completed successfully on **2026-08-04**. Formal record: `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`.
+
+Stage 2A is **Complete**. Stage 2B has **not** started.
 
 No secrets are included in this document.

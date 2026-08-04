@@ -1,12 +1,13 @@
 # Stage 2A — Security, Validation and Data Integrity Plan
 
-**Status:** Complete — Local (remote migrations 025/026 remain unapplied)  
+**Status:** Complete (local and remote; migrations 025/026/027 applied)  
 **Plan date:** 2026-08-03  
 **Owner decisions incorporated:** 2026-08-03  
 **Batch 2A.1 completed:** 2026-08-03  
 **Batch 2A.2 completed:** 2026-08-03  
 **Batch 2A.6 completed (local):** 2026-08-04  
-**Final evidence:** `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`  
+**Remote deployment completed:** 2026-08-04  
+**Final evidence:** `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`; `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`  
 **Governing documents read:** `docs/MVP_HARDENING_GUIDE.md`, `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md`  
 **Method:** Re-verification of Stage 1 findings against current source, migrations and scripts, then incorporation of official owner decisions. Batch completion reports live under `docs/implementation/`.
 
@@ -486,7 +487,7 @@ Split for reviewability:
 * **Parent-child triggers:** PASS (025 seven + 023 pricing/quote items)
 * **Soft-delete:** PASS (active hide; children stored; foreign org empty; no hard delete)
 * **Error disclosure:** PASS (missing ≡ foreign controlled not-found)
-* **Defect fixed:** Migration `026_stage_2a5_restore_api_table_grants.sql` — postgres default privileges had omitted SELECT/INSERT/UPDATE/DELETE for API roles (blocking PostgREST). Initially restored via `GRANT ALL`; **narrowed in Batch 2A.6** to least-privilege SIDU for `authenticated`/`service_role` only (`anon` has no customer-table DML). **Remote not applied.**
+* **Defect fixed:** Migration `026_stage_2a5_restore_api_table_grants.sql` — postgres default privileges had omitted SELECT/INSERT/UPDATE/DELETE for API roles (blocking PostgREST). Initially restored via `GRANT ALL`; **narrowed in Batch 2A.6** to least-privilege SIDU for `authenticated`/`service_role` only (`anon` has no customer-table DML). **Later applied remotely** (owner-confirmed 2026-08-04; see `STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`).
 * **Evidence:** `docs/implementation/STAGE_2A_BATCH_2A5_COMPLETION.md`
 * **Stop condition obeyed:** No production/remote data; no Batch 2A.6; no formula/UI/AI changes
 
@@ -505,7 +506,7 @@ Split for reviewability:
 
 * **Issue IDs:** Closure evidence for Stage 2A in-scope IDs
 * **Files:** Docs / tracker; Windows local DB container resolution for verification scripts (`scripts/local-db-container.ts`)
-* **Migrations:** None new; 025 reviewed; **026 narrowed in-place** (still unapplied remotely) from `GRANT ALL` to least-privilege SIDU; remote apply still owner-gated
+* **Migrations:** None new at 2A.6 close; 025 reviewed; **026 narrowed in-place** from `GRANT ALL` to least-privilege SIDU; **025/026/027 later applied remotely** (owner-confirmed 2026-08-04)
 * **Tests:** Full suite re-run after 026 narrowing — `tsc`, lint, build, 2A.1–2A.5 scripts, RLS coverage — all PASS on local Windows Supabase (includes anon-denial + no TRUNCATE/REFERENCES/TRIGGER proofs)
 * **Acceptance:** Section M criteria all Pass (or Pass with documented limitation); no Critical/High failures
 * **Evidence:** `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`; remote runbook `docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md` (025+026; **not executed**)
@@ -549,7 +550,7 @@ Stage 2A local completion checklist (evaluated in Batch 2A.6 — see `docs/imple
 17. Focused automated tests pass. — **Pass**
 18. No pricing-engine consolidation, margin-formula refactoring, UI redesign, performance work, Quotr DNA, uploads, package redesign, or unrelated feature work has been introduced. — **Pass**
 
-**Local status:** All criteria Pass. Stage 2A marked **Complete — Local**. Remote migrations 025/026 remain unapplied.
+**Local status:** All criteria Pass. Stage 2A marked **Complete** after owner-confirmed remote deployment of 025–027 and production smoke test (`docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`). Local and remote migration histories aligned through 027.
 
 ---
 
@@ -615,5 +616,5 @@ Stage 2A local completion checklist (evaluated in Batch 2A.6 — see `docs/imple
 | Owner decisions incorporated | 2026-08-03 |
 | Governing audit | `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md` |
 | Application code / schema / config / tests changed while planning | **None** |
-| Tracker update | Stage 2A **Complete — Local**; remote 025/026 not applied |
-| Next step | Owner-gated remote migration decision (025 then 026), then Stage 2B with explicit authorisation |
+| Tracker update | Stage 2A **Complete** (local and remote); migrations 001–027 aligned |
+| Next step | Stage 2B — Authoritative Pricing Engine (Not Started); begin with controlled audit and calculation specification before any refactoring |

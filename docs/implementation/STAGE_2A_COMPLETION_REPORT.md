@@ -2,21 +2,19 @@
 
 **Batch:** 2A.6  
 **Date:** 2026-08-04  
-**Status:** Complete — Local  
-**Stage 2A overall:** Complete — Local (remote migrations 025/026/027 still unapplied; history repair not run)  
-**Remote apply / production:** **Not touched**
+**Status:** Complete (superseded remote status by deployment report)  
+**Stage 2A overall:** **Complete** — see `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`  
+**Remote apply / production:** Migrations **025**, **026**, and **027** applied remotely (owner-confirmed 2026-08-04); local and remote histories aligned through 027; production smoke test passed.
 
 ---
 
 ## 1. Executive summary
 
-Stage 2A (Security, Validation and Data Integrity) is **complete locally**. Batches 2A.1–2A.5 delivered authentication/organisation guards, runtime validation schemas, secured pricing and quote server actions, database integrity migration 025, and local two-organisation tenant-isolation proof (plus grant-restore migration 026). Batch 2A.6 re-ran the full verification suite on Windows after the macOS → Windows move, confirmed Section M acceptance criteria, reviewed migrations 025/026, reconciled in-scope Stage 1 issues, and published this completion report plus an owner-gated remote migration runbook covering both 025 and 026.
+Stage 2A (Security, Validation and Data Integrity) was **completed locally** in Batch 2A.6, then **completed remotely** after owner-gated deployment. Batches 2A.1–2A.5 delivered authentication/organisation guards, runtime validation schemas, secured pricing and quote server actions, database integrity migration 025, and local two-organisation tenant-isolation proof (plus grant-restore migration 026). Batch 2A.6 re-ran the full verification suite on Windows after the macOS → Windows move, confirmed Section M acceptance criteria, reviewed migrations 025/026, reconciled in-scope Stage 1 issues, and published this completion report plus an owner-gated remote migration runbook.
 
 **Two Stage 2A corrections were required during 2A.6:** (1) local Docker Postgres container names hard-coded to `supabase_db_quotr_2.0-main` failed on Windows (`supabase_db_quotr_2.0`) — scripts now resolve the container dynamically; (2) migration 026 was narrowed from `GRANT ALL` to least-privilege SIDU for `authenticated`/`service_role` with no anon customer-table DML. After both fixes, all verification commands passed.
 
-Remote production schema and data were **not** modified. Stage 2B was **not** started.
-
-**Remote baseline note (2026-08-04):** Linked inspection found empty CLI migration history plus two historical drifts (019 missing `calibration_note`; 009 index name `note_proposals_created_idx`). Additive local migration `027_remote_baseline_reconciliation.sql` and plan `docs/implementation/STAGE_2A_REMOTE_BASELINE_RECONCILIATION_PLAN.md` prepare owner-gated history repair + push of 025→026→027. Stage 2A is **not** marked remotely complete.
+**Remote baseline and deployment (2026-08-04):** Linked inspection found empty CLI migration history plus two historical drifts (019 missing `calibration_note`; 009 index name `note_proposals_created_idx`). Migration `027_remote_baseline_reconciliation.sql` reconciled that drift. Owner then completed history repair for 001–024 and applied **025 → 026 → 027** remotely. Formal record: `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`. Stage 2B has **not** started.
 
 ---
 
@@ -216,29 +214,18 @@ See §5 reconciliation table. In-scope IDs: S1-002, S1-003, S1-005, S1-006, S1-0
 
 ---
 
-## 18. Remote state explicitly unchanged
+## 18. Remote state
 
-* No `supabase db push` / remote migration apply
-* No production credentials used for live checks
-* No production data read or modified
-* Migrations **025** and **026** remain local-only until owner approval
+* Owner-confirmed (2026-08-04): remote history repair for 001–024 completed; migrations **025**, **026**, and **027** applied in order.
+* Local and remote migration histories aligned through **027**.
+* Production smoke test passed.
+* Formal record: `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`.
 
 ---
 
-## 19. Remote migration approval still required
+## 19. Remote migration deployment
 
-Owner-gated checklist (see `docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md`):
-
-1. Explicit owner approval for remote 025 then 026  
-2. Backup / export  
-3. Read-only ledger confirms 023 + 024 present; 025/026 absent  
-4. Invalid parent-child / GST data counts = 0  
-5. Apply **025**, verify triggers/default/GST/RLS  
-6. Apply **026**, verify grants + RLS still enabled  
-7. Optional two-org remote smoke  
-8. Record ops notes (no secrets in repo)
-
-**This checklist was not executed during Stage 2A.**
+Owner-gated remote deployment of 025–027 completed successfully. See `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`.
 
 ---
 
@@ -257,7 +244,7 @@ Owner-gated checklist (see `docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md`)
 | 9 | Two real users / two orgs cannot access each other’s records (local) | **Pass** |
 | 10 | Direct DB requests and server-action ownership both enforce isolation | **Pass** |
 | 11 | Destructive ops cannot delete other-org records | **Pass** |
-| 12 | Migrations apply safely to clean local DB; remote apply documented and owner-gated | **Pass** |
+| 12 | Migrations apply safely to clean local DB; remote apply documented and owner-gated | **Pass** (remote applied 2026-08-04) |
 | 13 | Existing data preserved; production not modified unnecessarily | **Pass** |
 | 14 | Type checking passes | **Pass** |
 | 15 | Linting passes | **Pass** |
@@ -269,20 +256,17 @@ No Critical or High Stage 2A acceptance criterion remains failed.
 
 ---
 
-## 21. Recommendation — Stage 2A local completion
+## 21. Recommendation — Stage 2A completion
 
-**Mark Stage 2A `Complete — Local`.**
-
-Do **not** mark production deployment complete. Remote 025/026 remain owner-gated.
+**Stage 2A is Complete** (local and remote).
 
 ---
 
 ## 22. Recommended next step
 
-1. **Owner decision:** apply remote migrations 025 then 026 using `docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md` (or defer).  
-2. After remote decision is settled, begin **Stage 2B — Authoritative Pricing Engine** only with explicit authorisation.
+**Proceed to Stage 2B — Authoritative Pricing Engine, beginning with a controlled audit and calculation specification before any refactoring.**
 
-**Stop:** Stage 2B was not started in this batch.
+Stage 2B has **not** started.
 
 ---
 
@@ -294,3 +278,5 @@ Do **not** mark production deployment complete. Remote 025/026 remain owner-gate
 | Date | 2026-08-04 |
 | Governing plan | `docs/plans/STAGE_2A_SECURITY_VALIDATION_PLAN.md` |
 | Remote runbook | `docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md` |
+| Remote deployment | `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md` |
+| Stage 2A status | **Complete** |
