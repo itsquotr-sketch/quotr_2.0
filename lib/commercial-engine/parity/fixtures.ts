@@ -517,6 +517,51 @@ export const PARITY_FIXTURES: readonly ParityFixture[] = Object.freeze([
       };
     },
   }),
+  freezeFixture({
+    fixtureId: "PAR-E-TO-P-001",
+    legacyId: "LEG-E-21",
+    kind: "estimate",
+    description: "estimate labour → pricing item (no double margin)",
+    scenarioRef: "CCS-002",
+    expectedClassification: null,
+    commercialAuthority: "canonical_golden_results",
+    blockingAdoption: false,
+    futureAdoptionBatch: "2B.7",
+    legacyInputs: {
+      labourHours: 5,
+      labourCostRate: 60,
+      labourSellRate: 80,
+    },
+    run: () => {
+      const legacy = legacyCalculatePricingItem({
+        calculationMode: "productivity_labour",
+        quantity: 5,
+        calculatedQuantity: 5,
+        productivityRate: 1,
+        unitCost: 60,
+        unitSell: 80,
+      });
+      // Engine path mirrors createPricingFromEstimate rate-based conversion.
+      const engineRequest = adaptPricingItemToEngineRequest({
+        requestId: "par-e-to-p",
+        mode: "productivity_labour",
+        quantity: 5,
+        calculatedQuantity: 5,
+        productivityRate: 1,
+        unitCost: 60,
+        unitSell: 80,
+      });
+      return {
+        legacyOutputs: legacy,
+        engineRequest,
+        engineOutputs: normalizeEngineOutputsFromRequest(engineRequest),
+        notes: [
+          "estimate recommended 300/400 from 5h×60/80",
+          "pricing conversion must use rates — not re-apply margin on totals",
+        ],
+      };
+    },
+  }),
 
   // --- Quotes ---
   freezeFixture({

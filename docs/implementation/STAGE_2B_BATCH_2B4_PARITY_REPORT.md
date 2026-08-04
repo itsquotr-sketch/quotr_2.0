@@ -6,8 +6,8 @@ Generated: 2026-08-04
 
 | Metric | Count |
 | --- | ---: |
-| Fixtures run | 19 |
-| Exact matches | 14 |
+| Fixtures run | 20 |
+| Exact matches | 15 |
 | Rounding / normalisation | 0 |
 | Approved engine corrections | 1 |
 | Legacy inconsistencies | 0 |
@@ -34,6 +34,7 @@ Generated: 2026-08-04
 | PAR-P-GST-BUG-C28 | LEG-P-05 | EXACT_MATCH | no | owner_commercial_decisions |
 | PAR-E-SFM-001 | LEG-E-01 | EXACT_MATCH | no | canonical_golden_results |
 | PAR-E-AGG-001 | LEG-E-16 | EXACT_MATCH | no | canonical_golden_results |
+| PAR-E-TO-P-001 | LEG-E-21 | EXACT_MATCH | no | canonical_golden_results |
 | PAR-Q-DOC-001 | LEG-Q-01 | EXACT_MATCH | no | canonical_golden_results |
 | PAR-Q-ITEM-001 | LEG-Q-02 | DEFERRED_WORKFLOW_DIFFERENCE | no | live_legacy_behaviour |
 | PAR-PQ-DIVERGENCE-001 | LEG-P-03 | DEFERRED_WORKFLOW_DIFFERENCE | no | mixed_documented_disagreement |
@@ -83,6 +84,9 @@ Legacy and engine financial outputs match within tolerance. Notes: deriveSell=26
 
 ### PAR-E-AGG-001
 Legacy and engine financial outputs match within tolerance. Notes: estimate excl GST — compared with engine gstRate 0
+
+### PAR-E-TO-P-001
+Legacy and engine financial outputs match within tolerance. Notes: estimate recommended 300/400 from 5h×60/80; pricing conversion must use rates — not re-apply margin on totals
 
 ### PAR-Q-DOC-001
 Legacy and engine financial outputs match within tolerance. Notes: KM-PRICING-QUOTE-DIVERGENCE; cost fields copied from engine for sell/GST-focused compare

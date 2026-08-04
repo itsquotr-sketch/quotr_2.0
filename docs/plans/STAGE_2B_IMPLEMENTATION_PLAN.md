@@ -1,6 +1,6 @@
 # Stage 2B — Authoritative Pricing Engine Implementation Plan
 
-**Status:** In Progress (Batches **2B.3A–2B.6B**; pricing-domain server mutations **adopted**; estimates/quotes/UI still legacy)  
+**Status:** In Progress (Batches **2B.3A–2B.7**; pricing + estimate server money **adopted**; quotes/UI still legacy)  
 **Plan date:** 2026-08-04  
 **Governing architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
@@ -14,18 +14,21 @@
 **Execution map (2B.3B):** `docs/specifications/GOLDEN_SCENARIO_EXECUTION_MAP.md`  
 **Engine contract (2B.3C):** `docs/specifications/COMMERCIAL_ENGINE_CONTRACT.md`  
 **Compatibility matrix (2B.4):** `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md`  
+**Estimate commercial boundary (2B.7):** `docs/specifications/ESTIMATE_COMMERCIAL_BOUNDARY.md`  
 **Pricing adoption gate:** `docs/specifications/PRICING_ACTION_ADOPTION_GATE.md`  
 **Commercial engine (2B.3A–C):** `lib/commercial-engine/`  
 **Parity harness (2B.4):** `lib/commercial-engine/parity/` (comparison-only; not public API)  
 **GST source helpers (2B.5):** `lib/pricing/gst-source.ts`  
 **Item adoption (2B.6A):** `lib/pricing/commercial-engine-adapter.ts`, `lib/pricing/authoritative-document-totals.ts`  
 **Pricing-domain completion (2B.6B):** `lib/pricing/estimate-to-pricing-adapter.ts`  
+**Estimate adoption (2B.7):** `lib/estimate/estimate-commercial-engine-adapter.ts`  
 **2B.3B completion:** `docs/implementation/STAGE_2B_BATCH_2B3B_COMPLETION.md`  
 **2B.3C completion:** `docs/implementation/STAGE_2B_BATCH_2B3C_COMPLETION.md`  
 **2B.4 completion:** `docs/implementation/STAGE_2B_BATCH_2B4_COMPLETION.md`  
 **2B.5 completion:** `docs/implementation/STAGE_2B_BATCH_2B5_COMPLETION.md`  
 **2B.6A completion:** `docs/implementation/STAGE_2B_BATCH_2B6A_COMPLETION.md`  
 **2B.6B completion:** `docs/implementation/STAGE_2B_BATCH_2B6B_COMPLETION.md`  
+**2B.7 completion:** `docs/implementation/STAGE_2B_BATCH_2B7_COMPLETION.md`  
 
 **Hard constraint:** No pricing-formula consolidation, caller migration, UI redesign, migration changes, or Company DNA implementation begins until the relevant batch is authorised and (for behaviour-changing batches) Batch **2B.2** commercial decisions and golden tests exist.
 
@@ -56,7 +59,7 @@ Establish **one authoritative commercial arithmetic meaning** for cost, sell, gr
 | **2B.6A** | Pricing item CRUD + aggregate adoption | Code — **complete** |
 | **2B.6B** | createPricingFromEstimate + document update + recalibration | Code — **complete** |
 | **2B.6** | Pricing-action adoption (umbrella) | **Complete for pricing-domain server paths** |
-| **2B.7** | Estimate adoption | Code |
+| **2B.7** | Estimate adoption | Code — **complete** |
 | **2B.8** | Quote adoption | Code; preserve snapshots |
 | **2B.9** | Client/UI calculation removal | Code |
 | **2B.10** | Final regression, documentation and deployment | Docs + verification |
@@ -451,6 +454,8 @@ Revert adopt commits; set authority to legacy.
 
 ## Batch 2B.7 — Estimate adoption
 
+**Status:** Complete — see `docs/implementation/STAGE_2B_BATCH_2B7_COMPLETION.md`
+
 ### Customer outcome
 
 Quick estimates and margin edits stay correct; org margin behaviour coherent.
@@ -461,22 +466,26 @@ Estimate finalize / margin-override / sell-from-cost use engine; reduce C-08/C-1
 
 ### Exact scope
 
-* Route profit metrics + sell-from-cost + estimate aggregates through engine.  
-* Calculators still produce domain qty/rates; money metrics via engine.  
-* Address **S1-012** only if 2B.2 directs (otherwise document residual → Stage 4).  
+* Route profit metrics + sell-from-cost + estimate aggregates through engine.
+* Calculators still produce domain qty/rates; money metrics via engine.
+* Address **S1-012** only if 2B.2 directs (otherwise document residual → Stage 4).
 
 ### Files expected
 
-* `lib/estimate/summary.ts`, `margin-override.ts`, `line-items.ts`, `commercial-realism.ts` (profit paths), assistant generate/margin actions  
+* `lib/estimate/estimate-commercial-engine-adapter.ts`, `adoption-authority.ts`
+* `lib/estimate/summary.ts`, `margin-override.ts`, `line-items.ts`, `commercial-realism.ts`
+* assistant generate/margin actions
+* `docs/specifications/ESTIMATE_COMMERCIAL_BOUNDARY.md`
 
 ### Tests required
 
-Golden estimate totals; margin update; regenerate with target margin.
+`scripts/verify-batch-2b7-estimate-adoption.ts` plus Stage 2A/2B regression chain.
 
 ### Acceptance criteria
 
-* Single GP triad implementation on estimate path.  
-* Persist fields unchanged in meaning.  
+* Single GP triad implementation on estimate production path.
+* Persist fields unchanged in meaning.
+* Ranges/confidence outside money engine.
 
 ### Stop conditions
 
@@ -484,17 +493,17 @@ Rewriting all calculator domain heuristics; AI prompt changes; constraint wiring
 
 ### Rollback
 
-Revert estimate adopt commits.
+`ESTIMATE_CALCULATION_AUTHORITY = "legacy"` or revert estimate adopt commits.
 
 ### Future Learning Compatibility Check
 
-1. Yes.  
-2. Yes — rate provenance retained.  
-3. Yes.  
-4. Yes.  
-5. Yes — target_margin as correction.  
-6. Yes.  
-7. Yes.  
+1. Yes.
+2. Yes — rate provenance retained.
+3. Yes.
+4. Yes.
+5. Yes — target_margin as correction.
+6. Yes.
+7. Yes.
 8. Yes.
 
 ---

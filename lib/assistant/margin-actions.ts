@@ -7,7 +7,7 @@ import type { AssistantActionState } from "@/lib/assistant/types";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import {
   applyMarginToAmounts,
-  sumLineItemTotals,
+  aggregateEstimateLineTotals,
   validateTargetMarginPercent,
 } from "@/lib/estimate/margin-override";
 import { getDefaultMarginPercent } from "@/lib/estimate/rates";
@@ -146,11 +146,10 @@ export async function updateEstimateMargin(
     return { error: upsertError.message };
   }
 
-  const totals = sumLineItemTotals(
+  const totals = aggregateEstimateLineTotals(
     updatedLineItems.map((item) => ({
       recommendedCost: item.recommended_cost,
       recommendedSell: item.recommended_sell,
-      grossProfit: item.gross_profit,
       costLow: item.cost_low,
       costHigh: item.cost_high,
       sellLow: item.sell_low,

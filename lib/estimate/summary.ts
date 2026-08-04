@@ -13,6 +13,7 @@ import {
   mergeAssumptionMetadata,
   type AssumptionMetadata,
 } from "@/lib/estimate/assumption-metadata";
+import { aggregateEstimateLines } from "@/lib/estimate/estimate-commercial-engine-adapter";
 import type {
   CalculatorResult,
   EstimateLineItemInput,
@@ -31,26 +32,24 @@ export const GENERAL_ESTIMATE_EXCLUSIONS = [
   "Final finish selections beyond allowance",
 ];
 
+/**
+ * Sum included estimate lines via commercial-engine aggregate (no GST).
+ * Ranges remain sum of line low/high (domain uncertainty).
+ */
 export function sumLineItems(lineItems: EstimateLineItemInput[]) {
-  const included = lineItems.filter((item) => item.includedInTotal !== false);
-  return included.reduce(
-    (totals, item) => ({
-      costLow: totals.costLow + item.costLow,
-      costHigh: totals.costHigh + item.costHigh,
-      sellLow: totals.sellLow + item.sellLow,
-      sellHigh: totals.sellHigh + item.sellHigh,
-      recommendedCost: totals.recommendedCost + item.recommendedCost,
-      recommendedSell: totals.recommendedSell + item.recommendedSell,
-    }),
-    {
-      costLow: 0,
-      costHigh: 0,
-      sellLow: 0,
-      sellHigh: 0,
-      recommendedCost: 0,
-      recommendedSell: 0,
-    }
-  );
+  const totals = aggregateEstimateLines(lineItems);
+  return {
+    costLow: totals.costLow,
+    costHigh: totals.costHigh,
+    sellLow: totals.sellLow,
+    sellHigh: totals.sellHigh,
+    recommendedCost: totals.recommendedCost,
+    recommendedSell: totals.recommendedSell,
+    grossProfit: totals.grossProfit,
+    marginPercent: totals.marginPercent,
+    markupPercent: totals.markupPercent,
+    costKnown: totals.costKnown,
+  };
 }
 
 function getLineItemSourceType(item: EstimateLineItemInput) {
@@ -213,17 +212,10 @@ export function finalizeEstimateResult(params: {
   assumptionMetadata?: AssumptionMetadata;
 }): EstimateResult {
   const totals = sumLineItems(params.lineItems);
-  const grossProfit = round2(
-    totals.recommendedSell - totals.recommendedCost
-  );
-  const marginPercent =
-    totals.recommendedSell > 0
-      ? round2((grossProfit / totals.recommendedSell) * 100)
-      : 0;
-  const markupPercent =
-    totals.recommendedCost > 0
-      ? round2((grossProfit / totals.recommendedCost) * 100)
-      : 0;
+  // GP / margin / markup already authoritative from aggregateEstimateLines.
+  const grossProfit = totals.grossProfit;
+  const marginPercent = totals.marginPercent;
+  const markupPercent = totals.markupPercent;
 
   const missingInfo = mergeUnique(params.missingInfo);
   const assumptionMetadata =

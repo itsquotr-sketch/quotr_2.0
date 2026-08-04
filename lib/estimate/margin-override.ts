@@ -1,7 +1,15 @@
 import type { OrganisationSettings } from "@/components/setup/types";
 import { round2 } from "@/lib/estimate/facts";
-import { deriveSellFromCost, getRangeFactors } from "@/lib/estimate/rates";
+import {
+  aggregateEstimateLines,
+  applyAuthoritativeMarginToAmounts,
+} from "@/lib/estimate/estimate-commercial-engine-adapter";
+import { deriveSellFromCost } from "@/lib/estimate/rates";
 
+/**
+ * Pure legacy sell-from-cost triad — retained for parity (LEG-E-01 / LEG-E-15).
+ * Production margin paths use applyMarginToAmounts → commercial engine.
+ */
 export function recalculateSellFromCost(
   recommendedCost: number,
   marginPercent: number
@@ -25,24 +33,23 @@ export function recalculateSellFromCost(
   };
 }
 
+/** Production: engine sell-from-margin + domain range factors. */
 export function applyMarginToAmounts(
   recommendedCost: number,
   marginPercent: number,
   organisationSettings: OrganisationSettings | null
 ) {
-  const sells = recalculateSellFromCost(recommendedCost, marginPercent);
-  const { low, high } = getRangeFactors(organisationSettings);
-
-  return {
-    recommendedCost: round2(recommendedCost),
-    ...sells,
-    sellLow: round2(sells.recommendedSell * low),
-    sellHigh: round2(sells.recommendedSell * high),
-    costLow: round2(recommendedCost * low),
-    costHigh: round2(recommendedCost * high),
-  };
+  return applyAuthoritativeMarginToAmounts(
+    recommendedCost,
+    marginPercent,
+    organisationSettings
+  );
 }
 
+/**
+ * Pure legacy sum — retained for parity (LEG-E-16).
+ * Does not filter includedInTotal. Production uses aggregateEstimateLineTotals.
+ */
 export function sumLineItemTotals(
   lineItems: {
     recommendedCost: number;
@@ -81,6 +88,25 @@ export function sumLineItemTotals(
     sellLow: round2(lineItems.reduce((sum, item) => sum + item.sellLow, 0)),
     sellHigh: round2(lineItems.reduce((sum, item) => sum + item.sellHigh, 0)),
   };
+}
+
+/**
+ * Authoritative estimate aggregation (filters includedInTotal !== false, no GST).
+ * Prefer this over sumLineItemTotals for production paths.
+ */
+export function aggregateEstimateLineTotals(
+  lineItems: {
+    recommendedCost: number;
+    recommendedSell: number;
+    costLow: number;
+    costHigh: number;
+    sellLow: number;
+    sellHigh: number;
+    includedInTotal?: boolean;
+    costKnown?: boolean;
+  }[]
+) {
+  return aggregateEstimateLines(lineItems);
 }
 
 export function applyTargetMarginToLineItems<T extends {

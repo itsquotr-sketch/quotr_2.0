@@ -1037,18 +1037,20 @@ async function runEstimateGeneration(
       : null;
 
   if (targetMargin != null) {
-    const { applyTargetMarginToLineItems, sumLineItemTotals } = await import(
-      "@/lib/estimate/margin-override"
-    );
+    const { applyTargetMarginToLineItems, aggregateEstimateLineTotals } =
+      await import("@/lib/estimate/margin-override");
     const adjustedItems = applyTargetMarginToLineItems(
       estimateResult.lineItems,
       targetMargin,
       contextResult.organisationSettings
     );
-    const totals = sumLineItemTotals(adjustedItems);
+    const totals = aggregateEstimateLineTotals(adjustedItems);
     estimateResult = {
       ...estimateResult,
       lineItems: adjustedItems,
+      recommendedCost: totals.recommendedCost,
+      costLow: totals.costLow,
+      costHigh: totals.costHigh,
       recommendedSell: totals.recommendedSell,
       sellLow: totals.sellLow,
       sellHigh: totals.sellHigh,

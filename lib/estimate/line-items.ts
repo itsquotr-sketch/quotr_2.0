@@ -1,7 +1,12 @@
 import { round2 } from "@/lib/estimate/facts";
 import { buildPersistedLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { normalizeRateSourceLabel } from "@/lib/estimate/rate-source-labels";
-import { getRangeFactors } from "@/lib/estimate/rates";
+import {
+  buildAuthoritativeEstimateAmounts,
+  requireEstimateLabourMoney,
+  requireEstimateLumpMoney,
+  requireEstimateQuantityRateMoney,
+} from "@/lib/estimate/estimate-commercial-engine-adapter";
 import type { OrganisationSettings } from "@/components/setup/types";
 import type {
   EstimateLineItemInput,
@@ -9,21 +14,11 @@ import type {
 } from "@/lib/estimate/types";
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
 
-function deriveMargins(recommendedCost: number, recommendedSell: number) {
-  const grossProfit = round2(recommendedSell - recommendedCost);
-  const marginPercent =
-    recommendedSell > 0
-      ? round2((grossProfit / recommendedSell) * 100)
-      : 0;
-  const markupPercent =
-    recommendedCost > 0
-      ? round2((grossProfit / recommendedCost) * 100)
-      : 0;
-
-  return { grossProfit, marginPercent, markupPercent };
-}
-
-function buildAmounts(
+/**
+ * Expected money via commercial engine; low/high via org range factors (domain).
+ * Batch 2B.7.
+ */
+export function buildAmounts(
   recommendedCost: number,
   recommendedSell: number,
   organisationSettings: OrganisationSettings | null
@@ -39,17 +34,21 @@ function buildAmounts(
   | "marginPercent"
   | "markupPercent"
 > {
-  const { low, high } = getRangeFactors(organisationSettings);
-  const margins = deriveMargins(recommendedCost, recommendedSell);
-
+  const amounts = buildAuthoritativeEstimateAmounts(
+    recommendedCost,
+    recommendedSell,
+    organisationSettings
+  );
   return {
-    recommendedCost: round2(recommendedCost),
-    recommendedSell: round2(recommendedSell),
-    costLow: round2(recommendedCost * low),
-    costHigh: round2(recommendedCost * high),
-    sellLow: round2(recommendedSell * low),
-    sellHigh: round2(recommendedSell * high),
-    ...margins,
+    recommendedCost: amounts.recommendedCost,
+    recommendedSell: amounts.recommendedSell,
+    costLow: amounts.costLow,
+    costHigh: amounts.costHigh,
+    sellLow: amounts.sellLow,
+    sellHigh: amounts.sellHigh,
+    grossProfit: amounts.grossProfit,
+    marginPercent: amounts.marginPercent,
+    markupPercent: amounts.markupPercent,
   };
 }
 
@@ -101,11 +100,18 @@ export function createLabourLineItem(params: {
 }): EstimateLineItemInput {
   const adjustmentFactor = params.adjustmentFactor ?? 1;
   const qualityFactor = params.qualityFactor ?? 1;
+  // Domain owns hours shaping (qty × productivity × factors). Engine owns money.
   const labourHours = round2(
-    params.quantity * params.productivityHoursPerUnit * adjustmentFactor * qualityFactor
+    params.quantity *
+      params.productivityHoursPerUnit *
+      adjustmentFactor *
+      qualityFactor
   );
-  const recommendedCost = round2(labourHours * params.labourCostRate);
-  const recommendedSell = round2(labourHours * params.labourSellRate);
+  const money = requireEstimateLabourMoney({
+    labourHours,
+    labourCostRate: params.labourCostRate,
+    labourSellRate: params.labourSellRate,
+  });
 
   const noteParts = [
     `${params.quantity} ${params.unit} × ${params.productivityHoursPerUnit} hrs/${params.unit} = ${labourHours} hrs`,
@@ -127,8 +133,8 @@ export function createLabourLineItem(params: {
       notes: noteParts.join(" · "),
       sortOrder: params.sortOrder,
       ...buildAmounts(
-        recommendedCost,
-        recommendedSell,
+        money.recommendedCost,
+        money.recommendedSell,
         params.organisationSettings
       ),
     },
@@ -158,8 +164,11 @@ export function createFixedLabourLineItem(params: {
   sortOrder: number;
   organisationSettings: OrganisationSettings | null;
 }): EstimateLineItemInput {
-  const recommendedCost = round2(params.labourHours * params.labourCostRate);
-  const recommendedSell = round2(params.labourHours * params.labourSellRate);
+  const money = requireEstimateLabourMoney({
+    labourHours: params.labourHours,
+    labourCostRate: params.labourCostRate,
+    labourSellRate: params.labourSellRate,
+  });
 
   return withRateMetadata(
     {
@@ -176,8 +185,8 @@ export function createFixedLabourLineItem(params: {
         `${params.labourHours} hrs @ $${params.labourCostRate}/hr cost`,
       sortOrder: params.sortOrder,
       ...buildAmounts(
-        recommendedCost,
-        recommendedSell,
+        money.recommendedCost,
+        money.recommendedSell,
         params.organisationSettings
       ),
     },
@@ -215,12 +224,13 @@ export function createRateLineItem(params: {
   qualityFactor?: number;
 }): EstimateLineItemInput {
   const qualityFactor = params.qualityFactor ?? 1;
-  const recommendedCost = round2(
-    params.quantity * params.costRate * qualityFactor
-  );
-  const recommendedSell = round2(
-    params.quantity * params.sellRate * qualityFactor
-  );
+  // Domain applies quality to quantity; engine multiplies qty × rates.
+  const effectiveQuantity = round2(params.quantity * qualityFactor);
+  const money = requireEstimateQuantityRateMoney({
+    quantity: effectiveQuantity,
+    unitCost: params.costRate,
+    unitSell: params.sellRate,
+  });
 
   return withRateMetadata(
     {
@@ -236,8 +246,8 @@ export function createRateLineItem(params: {
         `${params.quantity} ${params.unit} × $${params.costRate}/${params.unit} cost`,
       sortOrder: params.sortOrder,
       ...buildAmounts(
-        recommendedCost,
-        recommendedSell,
+        money.recommendedCost,
+        money.recommendedSell,
         params.organisationSettings
       ),
     },
@@ -271,6 +281,10 @@ export function createAllowanceLineItem(params: {
   const qualityFactor = params.qualityFactor ?? 1;
   const recommendedCost = round2(params.recommendedCost * qualityFactor);
   const recommendedSell = round2(params.recommendedSell * qualityFactor);
+  const money = requireEstimateLumpMoney({
+    totalCost: recommendedCost,
+    totalSell: recommendedSell,
+  });
 
   return withRateMetadata(
     {
@@ -284,8 +298,8 @@ export function createAllowanceLineItem(params: {
       notes: params.notes,
       sortOrder: params.sortOrder,
       ...buildAmounts(
-        recommendedCost,
-        recommendedSell,
+        money.recommendedCost,
+        money.recommendedSell,
         params.organisationSettings
       ),
     },

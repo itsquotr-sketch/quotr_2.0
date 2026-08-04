@@ -21,7 +21,9 @@ Quotr already has a working deterministic estimate → final pricing → quote p
 
 **Batch 2B.4 update (2026-08-04):** Legacy implementations remapped to stable **LEG-*** IDs with shadow-parity fixtures under `lib/commercial-engine/parity/`. C-28 was recorded as **BLOCKING_ADOPTION_MISMATCH** (fixture `PAR-P-GST-BUG-C28`); **not fixed** in 2B.4. Compatibility matrix: `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md`. Engine still unwired.
 
-**Batch 2B.6B update (2026-08-04):** Pricing-domain server mutations adopted: create-from-estimate, document GST aggregate, recalibration (manual preserve), read `cost_known` derivation. Engine still unwired from estimates/quotes/UI. No migrations.
+**Batch 2B.7 update (2026-08-04):** Estimate-domain line money, margin override, and GST-exclusive aggregates adopted via `lib/estimate/estimate-commercial-engine-adapter.ts`. Confidence/ranges remain domain metadata. Quotes/UI still legacy. No migrations.
+
+**Batch 2B.6B update (2026-08-04):** Pricing-domain server mutations adopted: create-from-estimate, document GST aggregate, recalibration (manual preserve), read `cost_known` derivation. Quotes/UI still legacy at that time. No migrations.
 
 **Batch 2B.6A update (2026-08-04):** Item CRUD + document aggregate after mutations adopted via production adapter.
 

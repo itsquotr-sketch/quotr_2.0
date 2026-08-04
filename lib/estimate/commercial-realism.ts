@@ -1,4 +1,3 @@
-import { getRangeFactors } from "@/lib/estimate/rates";
 import { round2 } from "@/lib/estimate/facts";
 import type { OrganisationSettings } from "@/components/setup/types";
 import type { PricingOwner } from "@/lib/estimate/pricing-ownership";
@@ -8,6 +7,7 @@ import {
   type LabourMinimumMeta,
   type QuantityBasis,
 } from "@/lib/estimate/line-item-metadata";
+import { buildAmounts } from "@/lib/estimate/line-items";
 import type { EstimateLineItemInput } from "@/lib/estimate/types";
 import { getNumberFact } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
@@ -106,20 +106,7 @@ export function applyAllowanceMinimum(
   };
 }
 
-function deriveMargins(recommendedCost: number, recommendedSell: number) {
-  const grossProfit = round2(recommendedSell - recommendedCost);
-  const marginPercent =
-    recommendedSell > 0
-      ? round2((grossProfit / recommendedSell) * 100)
-      : 0;
-  const markupPercent =
-    recommendedCost > 0
-      ? round2((grossProfit / recommendedCost) * 100)
-      : 0;
-
-  return { grossProfit, marginPercent, markupPercent };
-}
-
+/** Rebuild expected money via commercial engine; ranges via org factors. */
 export function rebuildLineItemAmounts(
   recommendedCost: number,
   recommendedSell: number,
@@ -136,18 +123,11 @@ export function rebuildLineItemAmounts(
   | "marginPercent"
   | "markupPercent"
 > {
-  const { low, high } = getRangeFactors(organisationSettings);
-  const margins = deriveMargins(recommendedCost, recommendedSell);
-
-  return {
-    recommendedCost: round2(recommendedCost),
-    recommendedSell: round2(recommendedSell),
-    costLow: round2(recommendedCost * low),
-    costHigh: round2(recommendedCost * high),
-    sellLow: round2(recommendedSell * low),
-    sellHigh: round2(recommendedSell * high),
-    ...margins,
-  };
+  return buildAmounts(
+    recommendedCost,
+    recommendedSell,
+    organisationSettings
+  );
 }
 
 export function applyAllowanceMinimumToLineItem(

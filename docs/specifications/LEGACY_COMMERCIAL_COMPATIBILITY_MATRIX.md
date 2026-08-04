@@ -30,13 +30,13 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 
 | Legacy ID | Audit | File / function | Responsibility | Parity coverage | Typical result | Approved authority | Adoption risk | Remediation | Target batch | Rollback | Historical impact |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| LEG-E-01 | C-01 | `rates.ts` `deriveSellFromCost` | Sell from gross margin | PAR-E-SFM-001 | EXACT_MATCH | golden / OCD | Low | Adopt engine F-SFM | 2B.7 | Keep export wrapper | None |
-| LEG-E-08 | C-08 | `line-items.ts` `deriveMargins` | GP triad | Deferred (via item fixtures) | EXACT when inputs match | golden | Low | Delete after engine | 2B.7 | Restore local triad | None |
-| LEG-E-13 | C-13 | `summary.ts` finalize | Estimate aggregate | Deferred (≈ LEG-E-16) | EXACT | golden | Low | Engine aggregate no GST | 2B.7 | Keep finalize | None |
-| LEG-E-15 | C-15 | `margin-override.ts` recalculateSellFromCost | Target margin | PAR-E-MARGIN-001 | EXACT_MATCH | golden | Low | Engine line + margin | 2B.7 | Keep helper | None |
-| LEG-E-16 | C-16 | `sumLineItemTotals` | Estimate sum | PAR-E-AGG-001 | EXACT_MATCH | golden | Low | Engine aggregate | 2B.7 | Keep helper | None |
-| LEG-E-19 | C-19 | calculators/* | Domain qty/rates | Deferred workflow | Domain | mixed | Med | Feed lines to engine | 2B.7 | Keep calculators | None |
-| LEG-E-21 | C-21 | `runEstimateGeneration` | Persist orchestrator | Deferred | N/A | live | Med | Call engine inside | 2B.7 | Feature flag later | Snapshot new rows |
+| LEG-E-01 | C-01 | `rates.ts` `deriveSellFromCost` | Sell from gross margin | PAR-E-SFM-001 | EXACT_MATCH | golden / OCD | Low | **Adopted 2B.7** (prod margin via engine; pure export for parity) | 2B.7 | Keep export wrapper | None |
+| LEG-E-08 | C-08 | `line-items.ts` `deriveMargins` | GP triad | Deferred (via item fixtures) | EXACT when inputs match | golden | Low | **Adopted 2B.7** (`buildAmounts` → engine) | 2B.7 | Restore local triad | None |
+| LEG-E-13 | C-13 | `summary.ts` finalize | Estimate aggregate | Deferred (≈ LEG-E-16) | EXACT | golden | Low | **Adopted 2B.7** (engine aggregate no GST) | 2B.7 | Keep finalize | None |
+| LEG-E-15 | C-15 | `margin-override.ts` recalculateSellFromCost | Target margin | PAR-E-MARGIN-001 | EXACT_MATCH | golden | Low | **Adopted 2B.7** (`applyMarginToAmounts` → engine; pure helper for parity) | 2B.7 | Keep helper | None |
+| LEG-E-16 | C-16 | `sumLineItemTotals` | Estimate sum | PAR-E-AGG-001 | EXACT_MATCH | golden | Low | **Adopted 2B.7** (`aggregateEstimateLineTotals`; pure sum for parity) | 2B.7 | Keep helper | None |
+| LEG-E-19 | C-19 | calculators/* | Domain qty/rates | Deferred workflow | Domain | mixed | Med | Feed lines to engine (unchanged) | 2B.7 | Keep calculators | None |
+| LEG-E-21 | C-21 | `runEstimateGeneration` | Persist orchestrator | Deferred | N/A | live | Med | **Adopted 2B.7** (money via factories/finalize) | 2B.7 | Estimate authority switch | Snapshot new rows |
 | LEG-E-24 | C-42 | category-breakdown | Partial profit display | Deferred | PRESENTATION | golden | Low | Display engine | 2B.9 | Keep UI helper | N/A |
 | LEG-P-01 | C-24 | `computeProfitFields` | Item GP triad | PAR-P-GP-001 | EXACT_MATCH | golden | Low | **Adopted 2B.6A** via engine | **2B.6A** | Authority switch / revert | None |
 | LEG-P-02 | C-25 | pricing-item-calculation | Line modes | Multiple PAR-P-* | EXACT / APPROVED corr. | golden / OCD | Med | **Adopted 2B.6A** item CRUD | **2B.6A** | Authority switch / revert | Preserve edits |
@@ -91,7 +91,7 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 | Batch | Additional gates |
 | --- | --- |
 | **2B.6 Pricing adoption** | **2B.6A+2B.6B complete** for pricing-domain server paths; estimates/quotes/UI remain |
-| **2B.7 Estimate adoption** | LEG-E-01/15/16 EXACT; confidence/ranges stay out of money engine |
+| **2B.7 Estimate adoption** | **Complete** — production estimate money via adapter; confidence/ranges out of money engine; LEG-E parity helpers retained |
 | **2B.8 Quote adoption** | LEG-Q-01 EXACT with `visible_only`; revision immutability; prefer-total policy decided |
 | **2B.9 UI removal** | No client GP/aggregate authority; display server/engine only |
 
@@ -120,5 +120,5 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 | Field | Value |
 | --- | --- |
 | Path | `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md` |
-| Live adoption | **None** |
+| Live adoption | Pricing-domain (2B.6) + estimate-domain (2B.7); quotes/UI still legacy |
 | Parity package | `lib/commercial-engine/parity/` (not public engine API) |
