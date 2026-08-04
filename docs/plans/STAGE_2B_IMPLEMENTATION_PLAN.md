@@ -1,12 +1,17 @@
 # Stage 2B — Authoritative Pricing Engine Implementation Plan
 
-**Status:** Auditing (Batch 2B.1 complete; Batch **2B.2A** owner commercial decision register prepared — awaiting owner confirmation; implementation not started)  
+**Status:** Auditing (Batch **2B.3A** commercial calculation kernel created as standalone library — not wired to app; Batches 2B.1–2B.2B docs complete; implementation adoption not started)  
 **Plan date:** 2026-08-04  
 **Governing architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
 **Audit:** `docs/audits/STAGE_2B_PRICING_ENGINE_AUDIT.md`  
 **Specification:** `docs/specifications/AUTHORITATIVE_PRICING_ENGINE_SPEC.md`  
 **Owner decisions (2B.2A):** `docs/decisions/STAGE_2B_OWNER_COMMERCIAL_DECISIONS.md`  
+**Canonical scenarios (2B.2B):** `docs/specifications/CANONICAL_COMMERCIAL_SCENARIOS.md`  
+**Golden results (2B.2B):** `docs/specifications/GOLDEN_PRICING_EXPECTED_RESULTS.md`  
+**Regression standard (2B.2B):** `docs/specifications/CALCULATION_REGRESSION_STANDARD.md`  
+**Coverage matrix (2B.2B):** `docs/specifications/SCENARIO_COVERAGE_MATRIX.md`  
+**Commercial engine (2B.3A):** `lib/commercial-engine/` (standalone; no app callers)  
 
 **Hard constraint:** No pricing-formula consolidation, caller migration, UI redesign, migration changes, or Company DNA implementation begins until the relevant batch is authorised and (for behaviour-changing batches) Batch **2B.2** commercial decisions and golden tests exist.
 
@@ -26,9 +31,11 @@ Establish **one authoritative commercial arithmetic meaning** for cost, sell, gr
 | --- | --- | --- |
 | **2B.1** | Audit and specification | Docs only — **this batch** |
 | **2B.2** | Owner commercial decisions and golden test cases | Docs + test fixtures only |
-| **2B.2A** | Owner commercial decision register | Docs only — **in progress / register issued** |
-| **2B.2B** | Golden pricing test cases (after owner confirmations) | Docs + fixtures only |
+| **2B.2A** | Owner commercial decision register | Docs only — **issued; awaiting owner confirmation** |
+| **2B.2B** | Canonical commercial scenarios + goldens + regression standard | Docs only — **issued 2026-08-04** |
 | **2B.3** | Pure authoritative line-item calculation module | Code; no persistence change |
+| **2B.3A** | Commercial calculation kernel (standalone) | Code — **issued; not wired to app** |
+| **2B.3B** | Kernel hardening / golden fixture migration (next) | Code; still no app adoption |
 | **2B.4** | Document aggregation engine | Code; no caller migration |
 | **2B.5** | Shadow parity verification | Code/scripts; no user-visible change |
 | **2B.6** | Pricing-action adoption | Code |
@@ -105,7 +112,18 @@ Split for reviewability:
 * **Not done:** Owner Confirmed/Deferred marks; golden fixtures (2B.2B)  
 * **Stop condition obeyed:** No application/formula/migration/UI/prompt changes  
 
-### Batch 2B.2B — Golden pricing test cases (after owner confirmations)
+### Batch 2B.2B — Canonical commercial scenarios and golden results
+
+* **Status:** Issued 2026-08-04  
+* **Delivered:**  
+  * `docs/specifications/CANONICAL_COMMERCIAL_SCENARIOS.md` (52 scenarios)  
+  * `docs/specifications/GOLDEN_PRICING_EXPECTED_RESULTS.md`  
+  * `docs/specifications/CALCULATION_REGRESSION_STANDARD.md`  
+  * `docs/specifications/SCENARIO_COVERAGE_MATRIX.md`  
+* **Gate to 2B.3:** Blocking OCDs in 2B.2A must be Confirmed or explicitly Deferred with safe defaults aligned to goldens.  
+* **Stop condition obeyed:** No application/formula/migration/UI/prompt changes; Batch 2B.3 not started  
+
+### Batch 2B.2 (parent) — remaining acceptance
 
 ### Customer outcome
 
@@ -113,27 +131,31 @@ No behaviour change yet; decisions prevent later surprise price changes.
 
 ### Strategic outcome
 
-Lock commercial meaning before consolidation (audit Part 2 + owner register OCD-01…OCD-56 / OCD-GST).
+Lock commercial meaning before consolidation (audit Part 2 + owner register OCD-01…OCD-56 / OCD-GST + canonical scenarios).
 
 ### Exact scope
 
 * Owner answers each unresolved commercial decision in the 2B.2A register.  
-* Author golden numeric cases covering: quantity_rate, productivity_labour, lump_sum, sell-from-margin, document aggregate, quote visible aggregate, GST, ranges, waste-adjusted qty (given), minimums (given).  
+* Canonical scenarios + golden expected results + regression standard authored (2B.2B).  
+* Optional later: machine-readable fixtures under `scripts/fixtures/pricing-engine/` when 2B.5 needs them.  
 * **No refactor.**  
 
 ### Files expected
 
 * `docs/decisions/STAGE_2B_OWNER_COMMERCIAL_DECISIONS.md` (2B.2A — issued)  
-* `docs/specifications/PRICING_ENGINE_GOLDEN_CASES.md` and/or `scripts/fixtures/pricing-engine/*.json` (2B.2B)  
+* `docs/specifications/CANONICAL_COMMERCIAL_SCENARIOS.md` (2B.2B — issued)  
+* `docs/specifications/GOLDEN_PRICING_EXPECTED_RESULTS.md` (2B.2B — issued)  
+* `docs/specifications/CALCULATION_REGRESSION_STANDARD.md` (2B.2B — issued)  
+* `docs/specifications/SCENARIO_COVERAGE_MATRIX.md` (2B.2B — issued)  
 
 ### Tests required
 
-Fixture schema validation only (optional script); no production path change.
+Non-destructive compile/lint/build for doc batches; fixture runners deferred to 2B.5.
 
 ### Acceptance criteria
 
 * Every **blocks Batch 2B.3** decision resolved or explicitly deferred with safe default.  
-* Golden cases cover duplicate-formula scenarios from audit D.1.  
+* Golden cases cover duplicate-formula scenarios from audit D.1 and categories A–Z.  
 * Spec updated only where decisions amend “recommended change” rows.  
 
 ### Stop conditions
@@ -159,6 +181,21 @@ Docs only.
 
 ## Batch 2B.3 — Pure authoritative line-item calculation module
 
+Split for reviewability:
+
+### Batch 2B.3A — Commercial calculation kernel (standalone)
+
+* **Status:** Issued 2026-08-04  
+* **Delivered:** `lib/commercial-engine/` — core, calculations, validation, explanation, versioning, fixtures  
+* **Public API:** `calculateLineItem`, `calculateDocumentAggregate`, `deriveSellFromCost`, `deriveProfitMetrics`, `compareLineResultToGolden`, version constants  
+* **Modes:** `quantity_rate`, `productivity_labour`, `lump_sum`  
+* **Not done:** App wiring; scenario fixture migration; shadow parity (2B.5); adoption (2B.6+)  
+* **Stop condition obeyed:** No pricing/estimate/quote action changes; no UI; no DB; no callers outside the new package  
+
+### Batch 2B.3B — (next) Kernel hardening / golden migration
+
+Not started. Do not begin until 2B.3A accepted.
+
 ### Customer outcome
 
 None visible (module unused by actions yet).
@@ -169,32 +206,32 @@ One module implements Spec modes + profit metrics + sell-from-cost.
 
 ### Exact scope
 
-* Add pure functions implementing Spec §§5–8, 12–13 for **lines**.  
+* Add pure functions implementing Spec §§5–8, 12–13 for **lines** (+ document aggregate helper).  
 * No DB writes; no action wiring.  
-* Prefer extracting/wrapping existing `pricing-item-calculation` / `deriveSellFromCost` behaviour to match golden cases **without intentional numeric change**.  
+* Align to Stage 2B recommended MVP commercial model / goldens.  
 
 ### Files expected
 
-* New module under a stable lib path (exact path chosen at implement time; e.g. `lib/pricing-engine/` or consolidation under `lib/pricing/engine/`)  
-* Unit tests against golden fixtures  
+* `lib/commercial-engine/**` (2B.3A — issued)  
 
 ### Tests required
 
-Golden line-item vectors; margin bound failures; lump_sum; productivity.
+`tsc` / lint / build; golden fixture runners deferred to later 2B.3B/2B.5.
 
 ### Acceptance criteria
 
-* Parity with today’s C-25/C-01/C-08 metrics on fixtures.  
 * No imports from React or Supabase.  
-* Explanation hooks present (may be minimal).  
+* Explanation hooks present.  
+* Immutable `CalculationResult`.  
+* Nothing in app imports the engine yet.  
 
 ### Stop conditions
 
-Wiring into `actions.ts`; changing calculator domain logic; schema migrations.
+Wiring into `actions.ts`; changing calculator domain logic; schema migrations; beginning 2B.3B without acceptance.
 
 ### Rollback
 
-Remove module; tests unused.
+Remove `lib/commercial-engine/`.
 
 ### Future Learning Compatibility Check
 
@@ -583,6 +620,6 @@ Estimate (2B.7) and Quote (2B.8) both depend on 2B.5 parity; they may be seriali
 | Path | `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md` |
 | Created | 2026-08-04 |
 | Batch 2B.1 / 2B.2A application changes | **None** |
-| Next batch | Owner confirmation of `docs/decisions/STAGE_2B_OWNER_COMMERCIAL_DECISIONS.md`, then **2B.2B** golden cases |
-| Stage 2B implementation started? | **No** |
-| Stage 2B tracker status | **Auditing** |
+| Next batch | **2B.3B** kernel hardening / golden fixture migration (not started). Then 2B.4–2B.5 before any action adoption. |
+| Stage 2B implementation started? | **Kernel only (2B.3A)** — no app adoption |
+| Stage 2B tracker status | **Auditing** (kernel infrastructure in progress/complete for 2B.3A) |
