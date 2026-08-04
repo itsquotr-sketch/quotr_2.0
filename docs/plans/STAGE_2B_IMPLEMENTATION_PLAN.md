@@ -1,11 +1,12 @@
 # Stage 2B — Authoritative Pricing Engine Implementation Plan
 
-**Status:** Auditing (Batch 2B.1 complete — plan issued; implementation not started)  
+**Status:** Auditing (Batch 2B.1 complete; Batch **2B.2A** owner commercial decision register prepared — awaiting owner confirmation; implementation not started)  
 **Plan date:** 2026-08-04  
 **Governing architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
 **Audit:** `docs/audits/STAGE_2B_PRICING_ENGINE_AUDIT.md`  
 **Specification:** `docs/specifications/AUTHORITATIVE_PRICING_ENGINE_SPEC.md`  
+**Owner decisions (2B.2A):** `docs/decisions/STAGE_2B_OWNER_COMMERCIAL_DECISIONS.md`  
 
 **Hard constraint:** No pricing-formula consolidation, caller migration, UI redesign, migration changes, or Company DNA implementation begins until the relevant batch is authorised and (for behaviour-changing batches) Batch **2B.2** commercial decisions and golden tests exist.
 
@@ -25,6 +26,8 @@ Establish **one authoritative commercial arithmetic meaning** for cost, sell, gr
 | --- | --- | --- |
 | **2B.1** | Audit and specification | Docs only — **this batch** |
 | **2B.2** | Owner commercial decisions and golden test cases | Docs + test fixtures only |
+| **2B.2A** | Owner commercial decision register | Docs only — **in progress / register issued** |
+| **2B.2B** | Golden pricing test cases (after owner confirmations) | Docs + fixtures only |
 | **2B.3** | Pure authoritative line-item calculation module | Code; no persistence change |
 | **2B.4** | Document aggregation engine | Code; no caller migration |
 | **2B.5** | Shadow parity verification | Code/scripts; no user-visible change |
@@ -93,25 +96,35 @@ Delete/revert docs only.
 
 ## Batch 2B.2 — Owner commercial decisions and golden test cases
 
+Split for reviewability:
+
+### Batch 2B.2A — Owner commercial decision register
+
+* **Status:** Register issued 2026-08-04 — awaiting owner confirmation on each item  
+* **Delivered:** `docs/decisions/STAGE_2B_OWNER_COMMERCIAL_DECISIONS.md` (57 decision items including OCD-GST)  
+* **Not done:** Owner Confirmed/Deferred marks; golden fixtures (2B.2B)  
+* **Stop condition obeyed:** No application/formula/migration/UI/prompt changes  
+
+### Batch 2B.2B — Golden pricing test cases (after owner confirmations)
+
 ### Customer outcome
 
 No behaviour change yet; decisions prevent later surprise price changes.
 
 ### Strategic outcome
 
-Lock commercial meaning before consolidation (audit Part 2 CD-01…CD-23).
+Lock commercial meaning before consolidation (audit Part 2 + owner register OCD-01…OCD-56 / OCD-GST).
 
 ### Exact scope
 
-* Owner answers each unresolved commercial decision.  
-* Record decisions in a decisions register (doc).  
+* Owner answers each unresolved commercial decision in the 2B.2A register.  
 * Author golden numeric cases covering: quantity_rate, productivity_labour, lump_sum, sell-from-margin, document aggregate, quote visible aggregate, GST, ranges, waste-adjusted qty (given), minimums (given).  
 * **No refactor.**  
 
 ### Files expected
 
-* `docs/plans/STAGE_2B_COMMERCIAL_DECISIONS.md` (or equivalent)  
-* `docs/specifications/PRICING_ENGINE_GOLDEN_CASES.md` and/or `scripts/fixtures/pricing-engine/*.json`  
+* `docs/decisions/STAGE_2B_OWNER_COMMERCIAL_DECISIONS.md` (2B.2A — issued)  
+* `docs/specifications/PRICING_ENGINE_GOLDEN_CASES.md` and/or `scripts/fixtures/pricing-engine/*.json` (2B.2B)  
 
 ### Tests required
 
@@ -119,7 +132,7 @@ Fixture schema validation only (optional script); no production path change.
 
 ### Acceptance criteria
 
-* Every **blocks implementation = Yes** decision resolved or explicitly deferred with safe default.  
+* Every **blocks Batch 2B.3** decision resolved or explicitly deferred with safe default.  
 * Golden cases cover duplicate-formula scenarios from audit D.1.  
 * Spec updated only where decisions amend “recommended change” rows.  
 
@@ -569,6 +582,7 @@ Estimate (2B.7) and Quote (2B.8) both depend on 2B.5 parity; they may be seriali
 | --- | --- |
 | Path | `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md` |
 | Created | 2026-08-04 |
-| Batch 2B.1 application changes | **None** |
-| Next batch | **2B.2** Owner commercial decisions and golden test cases |
+| Batch 2B.1 / 2B.2A application changes | **None** |
+| Next batch | Owner confirmation of `docs/decisions/STAGE_2B_OWNER_COMMERCIAL_DECISIONS.md`, then **2B.2B** golden cases |
 | Stage 2B implementation started? | **No** |
+| Stage 2B tracker status | **Auditing** |
