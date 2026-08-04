@@ -48,7 +48,12 @@ import {
   mapPricingItem,
   mapPricingWorkArea,
 } from "@/lib/pricing/mappers";
-import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
+import {
+  coercePersistedGstRate,
+  resolveCreatePricingFromEstimateGstRates,
+  resolvePricingGstForUpdate,
+  resolveStoredPricingDocumentGstRate,
+} from "@/lib/pricing/gst-source";
 import { getOrgQuoteDefaultsForOrg } from "@/lib/settings/company-actions";
 import {
   resolveAssumptionsForSnapshot,
@@ -468,7 +473,12 @@ export async function createPricingFromEstimate(input: {
     orgDefaults
   );
   const terms = resolveTermsForSnapshot(null, orgDefaults);
-  const gstRate = orgDefaults.defaultGstRate ?? DEFAULT_GST_RATE;
+  // C-28 / CD-09: organisation GST seeds the document; the same rate must
+  // drive insert totals and the post-item recalculation (never hardcoded 15).
+  const createGst = resolveCreatePricingFromEstimateGstRates(
+    orgDefaults.defaultGstRate
+  );
+  const gstRate = createGst.documentGstRate;
   const validUntil = addDaysIsoDate(orgDefaults.defaultQuoteValidityDays);
 
   const documentTotals = calculateDocumentTotals(
@@ -590,7 +600,7 @@ export async function createPricingFromEstimate(input: {
     supabase,
     orgId,
     pricingDocumentId,
-    DEFAULT_GST_RATE,
+    createGst.recalculationGstRate,
     false
   );
 
@@ -634,7 +644,10 @@ export async function updatePricingDocument(
 
   const { supabase, orgId, document } = loaded;
   const documentInput = parsed.data.document;
-  const gstRate = documentInput.gst_rate ?? document.gst_rate;
+  const gstRate = resolvePricingGstForUpdate({
+    mutationGstRate: documentInput.gst_rate,
+    storedDocumentGstRate: document.gst_rate,
+  }).rate;
 
   const update: Record<string, unknown> = {
     status: "draft",
@@ -833,7 +846,9 @@ export async function updatePricingItem(
     supabase,
     orgId,
     existing.pricing_document_id,
-    Number(document?.gst_rate ?? DEFAULT_GST_RATE),
+    resolveStoredPricingDocumentGstRate(
+      coercePersistedGstRate(document?.gst_rate)
+    ).rate,
     true
   );
 
@@ -984,7 +999,9 @@ export async function addPricingItem(input: {
     supabase,
     orgId,
     pricingDocumentId,
-    Number(document?.gst_rate ?? DEFAULT_GST_RATE),
+    resolveStoredPricingDocumentGstRate(
+      coercePersistedGstRate(document?.gst_rate)
+    ).rate,
     true
   );
 
@@ -1107,7 +1124,9 @@ export async function duplicatePricingItem(
     supabase,
     orgId,
     source.pricing_document_id,
-    Number(document?.gst_rate ?? DEFAULT_GST_RATE),
+    resolveStoredPricingDocumentGstRate(
+      coercePersistedGstRate(document?.gst_rate)
+    ).rate,
     true
   );
 
@@ -1198,7 +1217,9 @@ export async function deletePricingItem(
     supabase,
     orgId,
     existing.pricing_document_id,
-    Number(document?.gst_rate ?? DEFAULT_GST_RATE),
+    resolveStoredPricingDocumentGstRate(
+      coercePersistedGstRate(document?.gst_rate)
+    ).rate,
     true
   );
 

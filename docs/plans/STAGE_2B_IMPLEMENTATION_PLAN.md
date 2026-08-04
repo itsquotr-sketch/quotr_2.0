@@ -1,6 +1,6 @@
 # Stage 2B — Authoritative Pricing Engine Implementation Plan
 
-**Status:** In Progress (Batches **2B.3A** + **2B.3B** + **2B.3C** complete — kernel, goldens, contract/replay; **no application adoption**)  
+**Status:** In Progress (Batches **2B.3A–2B.5** complete for kernel/goldens/contract/parity + **C-28 GST fix** + adoption gate; **no commercial-engine adoption**)  
 **Plan date:** 2026-08-04  
 **Governing architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
@@ -13,9 +13,15 @@
 **Coverage matrix (2B.2B):** `docs/specifications/SCENARIO_COVERAGE_MATRIX.md`  
 **Execution map (2B.3B):** `docs/specifications/GOLDEN_SCENARIO_EXECUTION_MAP.md`  
 **Engine contract (2B.3C):** `docs/specifications/COMMERCIAL_ENGINE_CONTRACT.md`  
+**Compatibility matrix (2B.4):** `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md`  
+**Pricing adoption gate (2B.5):** `docs/specifications/PRICING_ACTION_ADOPTION_GATE.md`  
 **Commercial engine (2B.3A–C):** `lib/commercial-engine/` (standalone; no app callers)  
+**Parity harness (2B.4):** `lib/commercial-engine/parity/` (comparison-only; not public API)  
+**GST source helpers (2B.5):** `lib/pricing/gst-source.ts` (live pricing; not commercial engine)  
 **2B.3B completion:** `docs/implementation/STAGE_2B_BATCH_2B3B_COMPLETION.md`  
 **2B.3C completion:** `docs/implementation/STAGE_2B_BATCH_2B3C_COMPLETION.md`  
+**2B.4 completion:** `docs/implementation/STAGE_2B_BATCH_2B4_COMPLETION.md`  
+**2B.5 completion:** `docs/implementation/STAGE_2B_BATCH_2B5_COMPLETION.md`  
 
 **Hard constraint:** No pricing-formula consolidation, caller migration, UI redesign, migration changes, or Company DNA implementation begins until the relevant batch is authorised and (for behaviour-changing batches) Batch **2B.2** commercial decisions and golden tests exist.
 
@@ -41,9 +47,9 @@ Establish **one authoritative commercial arithmetic meaning** for cost, sell, gr
 | **2B.3A** | Commercial calculation kernel (standalone) | Code — **complete; not wired to app** |
 | **2B.3B** | Golden scenario regression suite + kernel hardening | Code — **complete; not wired to app** |
 | **2B.3C** | Contract, replay, explainability, snapshot hardening | Code — **complete; not wired to app** |
-| **2B.4** | Document aggregation engine | Code; no caller migration |
-| **2B.5** | Shadow parity verification | Code/scripts; no user-visible change |
-| **2B.6** | Pricing-action adoption | Code |
+| **2B.4** | Legacy mapping + shadow parity harness | Code/scripts — **complete; no live totals change** |
+| **2B.5** | Pricing adoption gate + C-28 GST correction | Code/docs — **complete; engine still unwired** |
+| **2B.6** | Pricing-action adoption | Code — **gate open (C-28 cleared); not started** |
 | **2B.7** | Estimate adoption | Code |
 | **2B.8** | Quote adoption | Code; preserve snapshots |
 | **2B.9** | Client/UI calculation removal | Code |
@@ -268,92 +274,97 @@ Remove `lib/commercial-engine/`.
 
 ---
 
-## Batch 2B.4 — Document aggregation engine
+## Batch 2B.4 — Legacy calculation mapping and shadow parity harness
+
+### Status
+
+**Complete 2026-08-04** — comparison-only; no live totals changed.
 
 ### Customer outcome
 
-None visible yet.
+None visible.
 
 ### Strategic outcome
 
-One aggregate implementation for pricing (`all`) and quote (`visible_only`) + GST.
+Every legacy money path has a stable LEG-* ID; differences vs the commercial engine are classified against owner decisions and goldens before any adoption.
 
 ### Exact scope
 
-* Implement Spec aggregate + GST + optional ranges.  
-* No caller migration.  
+* Legacy registry + known mismatch register  
+* Pure adapters + comparison-only legacy calculators  
+* Parity fixtures + `scripts/verify-batch-2b4-shadow-parity.ts`  
+* Compatibility matrix + adoption gates  
+* **Do not** fix C-28, change actions, or wire the engine  
 
 ### Files expected
 
-* Aggregation module beside line engine  
-* Golden aggregate fixtures (incl. S1-010 visibility case documenting current behaviour)  
+* `lib/commercial-engine/parity/**`  
+* `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md`  
+* `docs/implementation/STAGE_2B_BATCH_2B4_COMPLETION.md`  
 
 ### Tests required
 
-All-items vs visible-only; GST; empty sets; rounding order.
+Golden + contract suites remain 100%; shadow parity runner passes with registered blockers only.
 
 ### Acceptance criteria
 
-* Matches today’s `calculateDocumentTotals` / `calculateQuoteTotals` on fixtures.  
-* Inclusion rule explicit in API.  
+* 25 LEG-* IDs; 19 fixtures; C-28 blocking mismatch documented  
+* No production imports of parity  
+* No migrations / UI / AI / live calc changes  
 
 ### Stop conditions
 
-Adopting in actions; changing visibility semantics without CD-21 decision.
+Pricing-action adoption; fixing C-28 in this batch; production telemetry.
 
 ### Rollback
 
-Remove unused module.
+Remove `lib/commercial-engine/parity/` and 2B.4 scripts/docs.
+
+### Evidence
+
+`docs/implementation/STAGE_2B_BATCH_2B4_COMPLETION.md`; generated parity reports.
+
+### Note on prior plan label
+
+Earlier plan text called 2B.4 “Document aggregation engine.” Aggregate APIs already shipped in **2B.3A** (`calculateDocumentAggregate`). Batch **2B.4** as executed is the **shadow parity harness**. Batch **2B.5** executed the C-28 GST fix + adoption gate (not a second shadow harness).
+
+---
+
+## Batch 2B.5 — Pricing adoption gate and C-28 GST correction
+
+### Customer outcome
+
+Pricing documents created from estimates keep the organisation GST rate (including 0% and non-15% rates); totals agree with stored `gst_rate`.
+
+### Strategic outcome
+
+Clear the last known GST adoption blocker; publish formal readiness gate before engine wiring.
+
+### Exact scope
+
+* Fix `createPricingFromEstimate` post-item recalc to use the same validated organisation GST as insert.
+* Add `lib/pricing/gst-source.ts`; audit other pricing recalcs for nullish 0% handling.
+* Update parity fixture / mismatch register so C-28 is no longer blocking.
+* Publish `PRICING_ACTION_ADOPTION_GATE.md` and 2B.6 adoption order.
+* **Do not** wire commercial engine; **do not** change estimate/quote/UI/migrations.
+
+### Evidence
+
+`docs/implementation/STAGE_2B_BATCH_2B5_COMPLETION.md`; `scripts/verify-batch-2b5-gst-source-and-adoption-gate.ts`.
+
+### Stop conditions
+
+Beginning 2B.6 adoption in the same change set; bulk-rewriting historic pricing GST amounts.
+
+---
+
+## Batch 2B.4-AGG — (superseded note)
+
+Document aggregation for pricing `all` vs quote `visible_only` + GST is already available in the commercial engine kernel (2B.3A). Caller migration remains **2B.6 / 2B.8**.
 
 ### Future Learning Compatibility Check
 
 (Same pattern as 2B.3 — structured, replayable, no DNA coupling, history untouched.)
-
----
-
-## Batch 2B.5 — Shadow parity verification
-
-### Customer outcome
-
-None (user-visible results unchanged).
-
-### Strategic outcome
-
-Prove old vs new equivalence before cutover.
-
-### Exact scope
-
-* Behind flag or dev-only path, run engine beside existing helpers on pricing/estimate/quote calculations.  
-* Record mismatches (safe logging).  
-* Fix engine bugs until parity green on golden + sampled fixtures.  
-* **Do not switch authority.**  
-
-### Files expected
-
-* Shadow helper / scripts `verify-batch-2b5-pricing-parity.ts`  
-* Optional flag default **off**  
-
-### Tests required
-
-Parity script PASS; existing 2A scripts still PASS.
-
-### Acceptance criteria
-
-* Zero unexplained mismatches on golden set.  
-* Any intentional difference tied to a 2B.2 decision and documented.  
-
-### Stop conditions
-
-Shipping user-visible changes; production log spam of PII.
-
-### Rollback
-
-Disable flag; remove shadow calls.
-
-### Future Learning Compatibility Check
-
-1. Today CX? Unchanged — preserves usefulness.  
-2–8. Yes — comparison evidence strengthens replay confidence without coupling DNA.
 
 ---
 
@@ -369,28 +380,47 @@ Pricing mutations use authoritative engine (Architecture one commercial truth).
 
 ### Exact scope
 
-* Wire `lib/pricing/actions.ts` + recalibration totals through engine.  
-* Keep Stage 2A auth/Zod/ownership.  
-* Preserve lump-sum behaviour.  
-* **Fix confirmed GST bug:** `createPricingFromEstimate` must recalc document totals with the document’s / organisation GST rate, not hardcoded `DEFAULT_GST_RATE` when org GST was already applied on insert (audit C-28 / CD-09).  
+* Wire `lib/pricing/actions.ts` + recalibration totals through engine per ordered map below.
+* Keep Stage 2A auth/Zod/ownership.
+* Preserve lump-sum behaviour and GST source rule from 2B.5.
+* C-28 already fixed in 2B.5 — do not re-introduce hardcoded GST.
+
+### Adoption order (exact)
+
+| Step | Target | Request mapping | Authoritative outputs | Persisted fields | Legacy fallback | Rollback | Verification | Stop if |
+| ---: | --- | --- | --- | --- | --- | --- | --- | --- |
+| 1 | Read-only transform helpers | Map pricing item/doc rows → `CommercialCalculationRequest` | Preview-only outputs | None | Keep mappers | Remove helpers | Golden + contract | Outputs disagree with stored totals unexpectedly |
+| 2 | `addPricingItem` | Line request from input | cost/sell/GP/margin/markup | Item money columns | Keep `calculatePricingItemTotals` behind flag/commit | Revert action | Item parity + 2B.5 GST | Persist fails / parity regress |
+| 3 | `updatePricingItem` | Same + manual sell modes | Same; unknown-cost → null metrics | Item money + `manually_edited` | Legacy triad | Revert | Sell-only mapping | Fabricated 100% persisted as truth |
+| 4 | `duplicatePricingItem` | Copy via engine recompute or copy authoritative fields | Same | New item row | Copy-as-is then engine | Delete item | GST unchanged | GST reset |
+| 5 | `deletePricingItem` + aggregate | Document aggregate `all` + doc GST | Doc subtotals + GST once | Document totals | `calculateDocumentTotals` | Revert | DOC fixtures | Aggregate wrong set |
+| 6 | `updatePricingDocument` | GST mutation + aggregate | GST amount / incl. GST | `gst_rate` + totals | Current helper | Revert | 0%/15%/non-15% | GST overwrite |
+| 7 | `createPricingFromEstimate` | Lines + aggregate; org GST seed | Item + doc totals | pricing_* insert | Current create path | Revert | C-28 + create GST script | Partial docs / GST drift |
+| 8 | `markPricingReviewed` + reads | Status only; reads display engine or stored | No money change on review | status timestamps | Current | Revert | Read smoke | Recalc on review |
+| 9 | Remove unused pricing-action formulas | N/A | N/A | N/A | Only after all callers migrated + parity green | Restore modules | Full 2B.3B/C + 2B.4/5 | Any live caller still depends on helper |
+
+### Feature flag / rollback approach
+
+Prefer small commits per step with immediate revert; optional env flag only if multi-step deploy requires it. Never leave half-migrated money authority without fallback.
 
 ### Files expected
 
-* `lib/pricing/actions.ts`, recalibration modules, possibly thin wrappers deleting duplicate GP helpers once unused  
+* `lib/pricing/actions.ts`, recalibration modules, thin wrappers; delete duplicate GP helpers only after unused
 
 ### Tests required
 
-Extend/re-run 2A.3A style tests; golden pricing edit cases; recalibration smoke.
+Extend/re-run 2A.3A style tests; golden pricing edit cases; recalibration smoke; `verify-batch-2b5-gst-source-and-adoption-gate.ts`; shadow parity.
 
 ### Acceptance criteria
 
-* Server persists engine outputs.  
-* Document totals from engine.  
-* No client-only authority for saved money.  
+* Server persists engine outputs for adopted actions.
+* Document totals from engine with stored document GST.
+* No client-only authority for saved money.
+* Historical quotes untouched; no bulk historic pricing rewrite.
 
 ### Stop conditions
 
-Estimate/quote adoption in same batch; UI redesign; DNA features.
+Estimate/quote adoption in same batch; UI redesign; DNA features; removing legacy formulas before parity.
 
 ### Rollback
 
@@ -642,6 +672,6 @@ Estimate (2B.7) and Quote (2B.8) both depend on 2B.5 parity; they may be seriali
 | Path | `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md` |
 | Created | 2026-08-04 |
 | Batch 2B.1 / 2B.2A application changes | **None** |
-| Next batch | **2B.4** or **2B.5** shadow parity when authorised — before any action adoption. |
-| Stage 2B implementation started? | **Kernel + goldens + contract (2B.3A/B/C)** — no app adoption |
-| Stage 2B tracker status | **In Progress** (Batches 2B.3A–2B.3C complete; adoption not started) |
+| Next batch | **2B.6** pricing-action adoption when authorised — C-28 cleared in **2B.5**; gate: `PRICING_ACTION_ADOPTION_GATE.md` |
+| Stage 2B implementation started? | **Kernel + goldens + contract + shadow parity + GST fix/gate (2B.3A–2B.5)** — no engine adoption |
+| Stage 2B tracker status | **In Progress** (Batches 2B.3A–2B.5 complete; commercial-engine adoption not started) |

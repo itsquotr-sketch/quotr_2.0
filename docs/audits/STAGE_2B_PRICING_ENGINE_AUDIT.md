@@ -17,11 +17,15 @@
 
 Quotr already has a working deterministic estimate → final pricing → quote progression. **Monetary arithmetic is not singly authoritative.** The same gross-profit / gross-margin / markup pattern is independently implemented in **at least ten places** (seven core server modules + client profit preview + estimate breakdown area rollup + category-breakdown partial profit). Sell-from-cost uses a shared `deriveSellFromCost` path for rate resolution, but line/document profit fields are re-derived repeatedly. Quote totals use a **different aggregation set** than pricing-document totals (`visible` / `visible_on_quote` vs all items), which can diverge silently (Stage 1 **S1-010**, deferred to Stage 6 for UX/progression, still relevant to Stage 2B commercial truth).
 
-**Confirmed defect (re-verified 2026-08-04):** `createPricingFromEstimate` inserts `gst_rate` from organisation defaults, then calls `recalculateAndPersistDocumentTotals(..., DEFAULT_GST_RATE, …)` with the hardcoded default **15**. If the organisation GST rate differs from 15, GST amount / total incl. GST are rewritten incorrectly after item insert.
+**Confirmed defect (re-verified 2026-08-04; corrected Batch 2B.5):** `createPricingFromEstimate` previously inserted `gst_rate` from organisation defaults, then called `recalculateAndPersistDocumentTotals(..., DEFAULT_GST_RATE, …)` with the hardcoded default **15**. If the organisation GST rate differed from 15, GST amount / total incl. GST were rewritten incorrectly after item insert.
+
+**Batch 2B.4 update (2026-08-04):** Legacy implementations remapped to stable **LEG-*** IDs with shadow-parity fixtures under `lib/commercial-engine/parity/`. C-28 was recorded as **BLOCKING_ADOPTION_MISMATCH** (fixture `PAR-P-GST-BUG-C28`); **not fixed** in 2B.4. Compatibility matrix: `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md`. Engine still unwired.
+
+**Batch 2B.5 update (2026-08-04):** Live C-28/CD-09 corrected via `lib/pricing/gst-source.ts` and `createPricingFromEstimate` (same org/document GST for insert and post-item recalc). Parity fixture now **EXACT_MATCH**; KM-GST-C28 no longer blocks adoption. Historic 2B.4 blocker evidence retained. Adoption gate: `docs/specifications/PRICING_ACTION_ADOPTION_GATE.md`. Commercial engine still unwired.
 
 Stage 2A secured auth, ownership and input validation around money-bearing actions **without** consolidating formulas. Stage 2B must now specify and (in later batches) adopt one authoritative engine while preserving current MVP behaviour until owner commercial decisions and golden tests land.
 
-**Verdict:** Safe to proceed to Batch 2B.2 (owner commercial decisions + golden cases). **Do not refactor formulas until decisions are confirmed.** The org-GST overwrite defect should be fixed during Batch **2B.6** (or earlier as a narrowly scoped bugfix if owner authorises) using the document’s stored / org GST rate — not a new commercial rule.
+**Verdict:** Safe to proceed to Batch 2B.2 (owner commercial decisions + golden cases). **Do not refactor formulas until decisions are confirmed.** The org-GST overwrite defect was fixed in Batch **2B.5** using the document’s stored / org GST rate — not a new commercial rule. Engine adoption remains Batch **2B.6**.
 
 ---
 
@@ -76,7 +80,7 @@ Legend for **Authoritative / duplicated:**
 | **C-25** | `lib/pricing/pricing-item-calculation.ts` | `calculatePricingItemEdit` / `calculatePricingItemTotalsForSave` / modes | quantity_rate, productivity_labour, lump_sum edits + cross-check | mode, qty, rates, totals, changedField | full item fields | pricing actions, UI | pricing_items | Server (+ imported by client) | **Canonical candidate** for line modes | Stage 2A Zod on actions; lump_sum skips forward cross-check by design | `roundMoney` | None | Derived after totals | **High** | Core of authoritative line engine |
 | **C-26** | `lib/pricing/calculations.ts` | wrappers + `calculateDocumentTotals` | Re-export line calcs; document aggregate + GST | items, gstRate | document totals | pricing actions, recalibration | pricing_documents | Server | **Duplicated** GP (#7) for doc; GST canonical-ish | None | `roundMoney` | **GST = sell × rate/100** | Doc triad + GST | **High** | Engine document aggregate |
 | **C-27** | `lib/pricing/actions.ts` | `recalculatePricingDocumentTotals` / mutations | Persist item + recalc doc | item edits, gst | DB | UI | pricing_* | Server | Uses C-25/C-26 | Zod (2A) | Via C-25/26 | Via C-26 | Stores derived | Med | Shadow then adopt engine |
-| **C-28** | `lib/pricing/actions.ts` | `createPricingFromEstimate` | Copy estimate → pricing doc/items | estimate | pricing snapshot | UI | pricing_* | Server | Copies estimate money; GST via C-26 on estimate totals; **post-insert recalc hardcodes `DEFAULT_GST_RATE` (15)** despite insert using org GST | Zod (2A) | Mixed | **Inconsistent:** org GST on insert, then forced 15 on recalc | Copies estimate triad; GST amounts may disagree with `gst_rate` column when org ≠ 15 | **High** | Fix GST source on recalc in 2B.6; engine snapshot from estimate + item build via C-25 |
+| **C-28** | `lib/pricing/actions.ts` | `createPricingFromEstimate` | Copy estimate → pricing doc/items | estimate | pricing snapshot | UI | pricing_* | Server | Copies estimate money; GST via org settings on insert **and** post-item recalc (**fixed 2B.5**; previously hardcoded `DEFAULT_GST_RATE` 15) | Zod (2A) | Mixed | Org/document GST consistent after 2B.5 | Copies estimate triad; GST amounts agree with `gst_rate` for new creates | **Resolved (2B.5)** | Engine snapshot from estimate + item build via C-25 in 2B.6 |
 | **C-29** | `lib/pricing/recalibration.ts` | recalibration apply/preview | Diff estimate vs pricing; recalc docs | estimate + pricing items | preview / updates | UI Recalibration | pricing_* | Server | Uses C-26 | Ownership | Via C-26 | Via C-26 | Reuses doc totals | Med | Must use same engine as live pricing |
 | **C-30** | `lib/quotes/calculations.ts` | `calculateQuoteTotals` | Sum **visible** quote items + GST | items.visible, gstRate | subtotal, gst, incl | quote actions/build | quotes | Server | GST similar to C-26; **different item filter** | Default gst 15 if NaN | `roundMoney` | Same GST pattern | **No cost/GP on quote header** | **High** (divergence) | Engine quote aggregate with explicit visibility rule |
 | **C-31** | `lib/quotes/calculations.ts` | `calculateQuoteItemTotal` | Prefer client `total`, else qty×unitPrice | qty, unitPrice, total | total | quote item updates | quote_items | Server | Domain-specific | 2A schemas on actions | `roundMoney` | None | Sell-side only | Med | Engine quote line; **no client-trusted total without recompute policy** (owner decision) |
@@ -261,7 +265,7 @@ Found at: C-08, C-10, C-13, C-15, C-16, C-24, C-26, C-35, C-36 (unrounded margin
 | **S1-010** quote vs pricing subtotal sets | visible filter | Customer total may be lower than reviewed pricing |
 | **S1-012** hardcoded cost/sell bypassing org margin | fitout/deck literals | Company margin setting does not apply |
 | Access-factor near-duplicates | adjustments vs demolition vs stairs | Same constraint language → different labour $ |
-| **`createPricingFromEstimate` GST overwrite** | Insert uses `orgDefaults.defaultGstRate`; post-item `recalculateAndPersistDocumentTotals` passes `DEFAULT_GST_RATE` (15) — `lib/pricing/actions.ts` ~471–504 vs ~589–594 | Org GST ≠ 15 → `gst_amount` / `total_incl_gst` disagree with stored `gst_rate` |
+| **`createPricingFromEstimate` GST overwrite** | **Corrected 2B.5:** insert and post-item recalc use the same organisation/document GST via `lib/pricing/gst-source.ts`. Historic defect: `recalculateAndPersistDocumentTotals` previously passed `DEFAULT_GST_RATE` (15) | Pre-2B.5 docs may still disagree; not bulk-rewritten |
 | Estimate breakdown margin unrounded | C-36 `sumWorkAreaTotals` | Display-only drift vs 2-dp everywhere else |
 | Confidence heuristic vs money | Not inconsistent formulas but must not be treated as priced confidence | Trust presentation |
 
@@ -290,7 +294,7 @@ Found at: C-08, C-10, C-13, C-15, C-16, C-24, C-26, C-35, C-36 (unrounded margin
 | **CD-06** | Overhead recovery | Assumption text says overhead included in margin | No separate overhead engine | Opacity | MVP: overhead inside gross margin; no separate overhead calc | Later overhead DNA | No |
 | **CD-07** | Contingency | Category + org default %; not clearly auto-applied | Settings vs engine gap | Contingency % may do nothing | Confirm: manual contingency lines only **or** auto % of sell | Scenario learning | Soft |
 | **CD-08** | Waste | Applied in material buildups via settings | Not all materials/work areas | Qty under/over | Keep category wastage; engine accepts waste-adjusted qty | Productivity/waste DNA | No |
-| **CD-09** | GST | Default 15%; applied on pricing/quote sell subtotals; estimates typically excl GST | Estimate vs quote tax presentation; **createPricing post-recalc hardcodes 15** | Wrong tax totals when org GST ≠ 15 | Estimates excl GST; pricing/quotes use **document/org gst_rate consistently** (never overwrite with hardcoded 15) | N/A | Soft for presentation; **fix overwrite is a bug for 2B.6** (does not need new commercial invention) |
+| **CD-09** | GST | Default 15%; applied on pricing/quote sell subtotals; estimates typically excl GST | Estimate vs quote tax presentation; **createPricing post-recalc hardcodes 15 (fixed 2B.5)** | Wrong tax totals when org GST ≠ 15 (pre-2B.5) | Estimates excl GST; pricing/quotes use **document/org gst_rate consistently** (never overwrite with hardcoded 15) | N/A | Soft for presentation; **overwrite bug corrected in 2B.5** |
 | **CD-10** | Rounding | 2 dp money/percent throughout | Parallel helpers | Usually fine | Single round-half-up 2 dp for currency; define aggregation order | Replay | **Yes** for golden tests |
 | **CD-11** | Minimum charges | Labour/allowance minimums in commercial-realism | Not universal | Small jobs | Keep existing minimum helpers; document as modifiers | Learning from minimums | No |
 | **CD-12** | Zero-value items | Allowed intentional | Risk of silent zeros mitigated in 2A | Edge cases | Keep 2A rule | N/A | No |
@@ -353,7 +357,9 @@ Independent repository exploration ([Audit pricing calculations](f7c96631-7e40-4
 | --- | --- |
 | Path | `docs/audits/STAGE_2B_PRICING_ENGINE_AUDIT.md` |
 | Created | 2026-08-04 |
-| Batch | 2B.1 |
+| Batch | 2B.1 (+ 2B.4 LEG-* remapping note) |
 | Application / migration / UI / prompt changes | **None** |
 | Companion spec | `docs/specifications/AUTHORITATIVE_PRICING_ENGINE_SPEC.md` |
 | Companion plan | `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md` |
+| Legacy ID registry (2B.4) | `lib/commercial-engine/parity/registry.ts` |
+| Compatibility matrix (2B.4) | `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md` |

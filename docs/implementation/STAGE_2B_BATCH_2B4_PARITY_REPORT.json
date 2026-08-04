@@ -1,0 +1,748 @@
+{
+  "batch": "2B.4",
+  "totals": {
+    "fixturesRun": 19,
+    "exactMatches": 14,
+    "roundingOrNormalisation": 0,
+    "approvedEngineCorrections": 1,
+    "legacyInconsistencies": 0,
+    "adoptionBlockers": 0,
+    "deferredDifferences": 2,
+    "presentationOnly": 2,
+    "other": 0,
+    "failed": 0
+  },
+  "results": [
+    {
+      "fixtureId": "PAR-P-GP-001",
+      "legacyId": "LEG-P-01",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance. Notes: LEG-P-01 triad",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 2310,
+        "totalSell": 2887.5,
+        "grossProfit": 577.5,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 2310,
+        "totalSell": 2887.5,
+        "grossProfit": 577.5,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-E-MARGIN-001",
+      "legacyId": "LEG-E-15",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.7",
+      "explanation": "Legacy and engine financial outputs match within tolerance.",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 2310,
+        "totalSell": 2887.5,
+        "grossProfit": 577.5,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 2310,
+        "totalSell": 2887.5,
+        "grossProfit": 577.5,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-P-QTY-001",
+      "legacyId": "LEG-P-02",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance.",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 2310,
+        "totalSell": 2887.5,
+        "grossProfit": 577.5,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 2310,
+        "totalSell": 2887.5,
+        "grossProfit": 577.5,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-P-PROD-001",
+      "legacyId": "LEG-P-02",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance.",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 3120,
+        "totalSell": 3900,
+        "grossProfit": 780,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 3120,
+        "totalSell": 3900,
+        "grossProfit": 780,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-P-LUMP-001",
+      "legacyId": "LEG-P-02",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance.",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 2800,
+        "totalSell": 3500,
+        "grossProfit": 700,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 2800,
+        "totalSell": 3500,
+        "grossProfit": 700,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-P-SELLONLY-001",
+      "legacyId": "LEG-P-02",
+      "classification": "APPROVED_ENGINE_CORRECTION",
+      "commercialAuthority": "owner_commercial_decisions",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Fixture declares APPROVED_ENGINE_CORRECTION: sell-only lump — legacy 100% margin vs engine null Notes: KM-SELL-ONLY-MARGIN",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": null,
+        "grossMarginPercent": null,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 0,
+        "totalSell": 5000,
+        "grossProfit": 5000,
+        "grossMarginPercent": 100,
+        "markupPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": false
+      },
+      "engineOutputs": {
+        "totalCost": 0,
+        "totalSell": 5000,
+        "grossProfit": null,
+        "grossMarginPercent": null,
+        "markupPercent": null,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": false
+      }
+    },
+    {
+      "fixtureId": "PAR-P-ZERO-001",
+      "legacyId": "LEG-P-02",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance.",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "markupPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "markupPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-P-MANUAL-SELL-001",
+      "legacyId": "LEG-P-02",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance. Notes: manual sell preserved as unit_sell input",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 3000,
+        "totalSell": 3300,
+        "grossProfit": 300,
+        "grossMarginPercent": 9.09,
+        "markupPercent": 10,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 3000,
+        "totalSell": 3300,
+        "grossProfit": 300,
+        "grossMarginPercent": 9.09,
+        "markupPercent": 10,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-P-DOC-001",
+      "legacyId": "LEG-P-03",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance.",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": 0,
+        "totalInclGst": 0
+      },
+      "legacyOutputs": {
+        "totalCost": 2340,
+        "totalSell": 2925,
+        "grossProfit": 585,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 438.75,
+        "totalInclGst": 3363.75,
+        "gstRatePercent": 15,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 2340,
+        "totalSell": 2925,
+        "grossProfit": 585,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 438.75,
+        "totalInclGst": 3363.75,
+        "gstRatePercent": 15,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-P-DOC-MIXED-001",
+      "legacyId": "LEG-P-03",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance. Notes: KM-AVERAGED-MARGINS guard",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": 0,
+        "totalInclGst": 0
+      },
+      "legacyOutputs": {
+        "totalCost": 7000,
+        "totalSell": 8300,
+        "grossProfit": 1300,
+        "grossMarginPercent": 15.66,
+        "markupPercent": 18.57,
+        "gstAmount": 1245,
+        "totalInclGst": 9545,
+        "gstRatePercent": 15,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 7000,
+        "totalSell": 8300,
+        "grossProfit": 1300,
+        "grossMarginPercent": 15.66,
+        "markupPercent": 18.57,
+        "gstAmount": 1245,
+        "totalInclGst": 9545,
+        "gstRatePercent": 15,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-P-DOC-GST0-001",
+      "legacyId": "LEG-P-03",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "owner_commercial_decisions",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance.",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": 0,
+        "totalInclGst": 0
+      },
+      "legacyOutputs": {
+        "totalCost": 8000,
+        "totalSell": 10000,
+        "grossProfit": 2000,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 0,
+        "totalInclGst": 10000,
+        "gstRatePercent": 0,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 8000,
+        "totalSell": 10000,
+        "grossProfit": 2000,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 0,
+        "totalInclGst": 10000,
+        "gstRatePercent": 0,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-P-GST-BUG-C28",
+      "legacyId": "LEG-P-05",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "owner_commercial_decisions",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.6",
+      "explanation": "Legacy and engine financial outputs match within tolerance. Notes: KM-GST-C28; corrected_2B.5; labelled=0; recalcWith=0; historicBugRecalcWith=15; historicPostGst=1200; correctedPostGst=0",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": 0,
+        "totalInclGst": 0
+      },
+      "legacyOutputs": {
+        "totalCost": 6400,
+        "totalSell": 8000,
+        "grossProfit": 1600,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 0,
+        "totalInclGst": 8000,
+        "gstRatePercent": 0,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 6400,
+        "totalSell": 8000,
+        "grossProfit": 1600,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 0,
+        "totalInclGst": 8000,
+        "gstRatePercent": 0,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-E-SFM-001",
+      "legacyId": "LEG-E-01",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.7",
+      "explanation": "Legacy and engine financial outputs match within tolerance. Notes: deriveSell=26666.67",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 20000,
+        "totalSell": 26666.67,
+        "grossProfit": 6666.67,
+        "grossMarginPercent": 25,
+        "markupPercent": 33.33,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 20000,
+        "totalSell": 26666.67,
+        "grossProfit": 6666.67,
+        "grossMarginPercent": 25,
+        "markupPercent": 33.33,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-E-AGG-001",
+      "legacyId": "LEG-E-16",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.7",
+      "explanation": "Legacy and engine financial outputs match within tolerance. Notes: estimate excl GST — compared with engine gstRate 0",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": 0,
+        "totalInclGst": 0
+      },
+      "legacyOutputs": {
+        "totalCost": 2340,
+        "totalSell": 2925,
+        "grossProfit": 585,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 0,
+        "totalInclGst": 2925,
+        "gstRatePercent": 0,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 2340,
+        "totalSell": 2925,
+        "grossProfit": 585,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 0,
+        "totalInclGst": 2925,
+        "gstRatePercent": 0,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-Q-DOC-001",
+      "legacyId": "LEG-Q-01",
+      "classification": "EXACT_MATCH",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.8",
+      "explanation": "Legacy and engine financial outputs match within tolerance. Notes: KM-PRICING-QUOTE-DIVERGENCE; cost fields copied from engine for sell/GST-focused compare",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": 0,
+        "totalInclGst": 0
+      },
+      "legacyOutputs": {
+        "totalCost": 16000,
+        "totalSell": 20000,
+        "grossProfit": 4000,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 3000,
+        "totalInclGst": 23000,
+        "gstRatePercent": 15,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 16000,
+        "totalSell": 20000,
+        "grossProfit": 4000,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 3000,
+        "totalInclGst": 23000,
+        "gstRatePercent": 15,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-Q-ITEM-001",
+      "legacyId": "LEG-Q-02",
+      "classification": "DEFERRED_WORKFLOW_DIFFERENCE",
+      "commercialAuthority": "live_legacy_behaviour",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.8",
+      "explanation": "Fixture declares DEFERRED_WORKFLOW_DIFFERENCE: quote item prefers supplied total over qty×price Notes: Engine line modes do not prefer client total over qty×rate; CD-22 policy deferred to quote adoption",
+      "numericDeltas": {
+        "totalCost": null,
+        "totalSell": null,
+        "grossProfit": null,
+        "grossMarginPercent": null,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": null,
+        "totalSell": 600,
+        "grossProfit": null,
+        "grossMarginPercent": null,
+        "markupPercent": null,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": null
+      },
+      "engineOutputs": null
+    },
+    {
+      "fixtureId": "PAR-PQ-DIVERGENCE-001",
+      "legacyId": "LEG-P-03",
+      "classification": "DEFERRED_WORKFLOW_DIFFERENCE",
+      "commercialAuthority": "mixed_documented_disagreement",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.8",
+      "explanation": "Fixture declares DEFERRED_WORKFLOW_DIFFERENCE: pricing all vs quote visible on same basket Notes: KM-PRICING-QUOTE-DIVERGENCE; pricingSell=22000; quoteSell=20000",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": -2000,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": -300,
+        "totalInclGst": -2300
+      },
+      "legacyOutputs": {
+        "totalCost": 17600,
+        "totalSell": 22000,
+        "grossProfit": 4400,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 3300,
+        "totalInclGst": 25300,
+        "gstRatePercent": 15,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 17600,
+        "totalSell": 20000,
+        "grossProfit": 4400,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": 3000,
+        "totalInclGst": 23000,
+        "gstRatePercent": 15,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-UI-PROFIT-001",
+      "legacyId": "LEG-UI-01",
+      "classification": "PRESENTATION_ONLY_DIFFERENCE",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.9",
+      "explanation": "Fixture declares PRESENTATION_ONLY_DIFFERENCE: client profit preview matches rounded triad Notes: KM-CLIENT-DUP — numbers match; classification presentation",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 2310,
+        "totalSell": 2887.5,
+        "grossProfit": 577.5,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 2310,
+        "totalSell": 2887.5,
+        "grossProfit": 577.5,
+        "grossMarginPercent": 20,
+        "markupPercent": 25,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      }
+    },
+    {
+      "fixtureId": "PAR-UI-UNROUNDED-001",
+      "legacyId": "LEG-UI-02",
+      "classification": "PRESENTATION_ONLY_DIFFERENCE",
+      "commercialAuthority": "canonical_golden_results",
+      "blockingStatus": false,
+      "futureAdoptionBatch": "2B.9",
+      "explanation": "Fixture declares PRESENTATION_ONLY_DIFFERENCE: unrounded work-area margin vs 2dp engine Notes: unrounded margin% vs roundPercent",
+      "numericDeltas": {
+        "totalCost": 0,
+        "totalSell": 0,
+        "grossProfit": 0,
+        "grossMarginPercent": 0,
+        "gstAmount": null,
+        "totalInclGst": null
+      },
+      "legacyOutputs": {
+        "totalCost": 7000,
+        "totalSell": 8300,
+        "grossProfit": 1300,
+        "grossMarginPercent": 15.66265060240964,
+        "markupPercent": null,
+        "gstAmount": null,
+        "totalInclGst": null,
+        "gstRatePercent": null,
+        "costKnown": true
+      },
+      "engineOutputs": {
+        "totalCost": 7000,
+        "totalSell": 8300,
+        "grossProfit": 1300,
+        "grossMarginPercent": 15.66,
+        "markupPercent": 18.57,
+        "gstAmount": 0,
+        "totalInclGst": 8300,
+        "gstRatePercent": 0,
+        "costKnown": true
+      }
+    }
+  ]
+}

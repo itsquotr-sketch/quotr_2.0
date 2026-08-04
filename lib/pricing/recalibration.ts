@@ -7,6 +7,9 @@ import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { assertOrgOwnsPricingDocument } from "@/lib/security/org-ownership";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import {
+  resolveStoredPricingDocumentGstRate,
+} from "@/lib/pricing/gst-source";
+import {
   buildPricingItemRowFromEstimate,
   buildPricingItemUpdateFromEstimate,
   buildRecalibrationPreviewData,
@@ -342,7 +345,7 @@ export async function applyRecalibration(
     supabase,
     orgId,
     pricingDocumentId,
-    document.gst_rate,
+    resolveStoredPricingDocumentGstRate(document.gst_rate).rate,
     resetReview
   );
 
