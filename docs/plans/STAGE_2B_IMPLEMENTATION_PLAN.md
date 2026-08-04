@@ -1,6 +1,6 @@
 # Stage 2B — Authoritative Pricing Engine Implementation Plan
 
-**Status:** In Progress (Batches **2B.3A** + **2B.3B** complete — standalone kernel + golden regression suite; **no application adoption**)  
+**Status:** In Progress (Batches **2B.3A** + **2B.3B** + **2B.3C** complete — kernel, goldens, contract/replay; **no application adoption**)  
 **Plan date:** 2026-08-04  
 **Governing architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
@@ -12,8 +12,10 @@
 **Regression standard (2B.2B):** `docs/specifications/CALCULATION_REGRESSION_STANDARD.md`  
 **Coverage matrix (2B.2B):** `docs/specifications/SCENARIO_COVERAGE_MATRIX.md`  
 **Execution map (2B.3B):** `docs/specifications/GOLDEN_SCENARIO_EXECUTION_MAP.md`  
-**Commercial engine (2B.3A/B):** `lib/commercial-engine/` (standalone; no app callers)  
+**Engine contract (2B.3C):** `docs/specifications/COMMERCIAL_ENGINE_CONTRACT.md`  
+**Commercial engine (2B.3A–C):** `lib/commercial-engine/` (standalone; no app callers)  
 **2B.3B completion:** `docs/implementation/STAGE_2B_BATCH_2B3B_COMPLETION.md`  
+**2B.3C completion:** `docs/implementation/STAGE_2B_BATCH_2B3C_COMPLETION.md`  
 
 **Hard constraint:** No pricing-formula consolidation, caller migration, UI redesign, migration changes, or Company DNA implementation begins until the relevant batch is authorised and (for behaviour-changing batches) Batch **2B.2** commercial decisions and golden tests exist.
 
@@ -38,6 +40,7 @@ Establish **one authoritative commercial arithmetic meaning** for cost, sell, gr
 | **2B.3** | Pure authoritative line-item calculation module | Code; no persistence change |
 | **2B.3A** | Commercial calculation kernel (standalone) | Code — **complete; not wired to app** |
 | **2B.3B** | Golden scenario regression suite + kernel hardening | Code — **complete; not wired to app** |
+| **2B.3C** | Contract, replay, explainability, snapshot hardening | Code — **complete; not wired to app** |
 | **2B.4** | Document aggregation engine | Code; no caller migration |
 | **2B.5** | Shadow parity verification | Code/scripts; no user-visible change |
 | **2B.6** | Pricing-action adoption | Code |
@@ -203,13 +206,18 @@ Split for reviewability:
 * **Evidence:** `docs/implementation/STAGE_2B_BATCH_2B3B_COMPLETION.md`  
 * **Stop condition obeyed:** No pricing/estimate/quote/UI/DB/migration changes; engine still unused by app  
 
+### Batch 2B.3C — Contract, replay, explainability, snapshot hardening
+
+* **Status:** Complete 2026-08-04  
+* **Delivered:** `CommercialCalculationRequest` / `CommercialCalculationRecord`; normalize/serialize; deep freeze; stable step/warning codes; `executeCommercialCalculation`; `verifyCalculationReplay`; contract docs + verify script  
+* **Versions:** Engine `2B.3C.0`; Formula `2B.mvp.1` (unchanged arithmetic)  
+* **Evidence:** `docs/implementation/STAGE_2B_BATCH_2B3C_COMPLETION.md`; `docs/specifications/COMMERCIAL_ENGINE_CONTRACT.md`  
+* **Not done:** App wiring; shadow parity (2B.5); adoption (2B.6+)  
+* **Stop condition obeyed:** No pricing/estimate/quote/UI/DB/migration changes; engine still unused by app  
+
 ### Customer outcome
 
 None visible (module unused by actions yet).
-
-### Strategic outcome
-
-One module implements Spec modes + profit metrics + sell-from-cost; goldens enforce approved commercial truth.
 
 ### Exact scope
 
@@ -220,20 +228,23 @@ One module implements Spec modes + profit metrics + sell-from-cost; goldens enfo
 
 ### Files expected
 
-* `lib/commercial-engine/**` (2B.3A + 2B.3B fixtures)  
+* `lib/commercial-engine/**` (2B.3A–2B.3C)  
 * `scripts/verify-batch-2b3b-golden-commercial-engine.ts`  
+* `scripts/verify-batch-2b3c-engine-contract.ts`  
 * `docs/specifications/GOLDEN_SCENARIO_EXECUTION_MAP.md`  
+* `docs/specifications/COMMERCIAL_ENGINE_CONTRACT.md`  
 
 ### Tests required
 
-`tsc` / lint / build; `npx tsx scripts/verify-batch-2b3b-golden-commercial-engine.ts`.
+`tsc` / lint / build; golden + contract verify scripts.
 
 ### Acceptance criteria
 
 * No imports from React or Supabase.  
 * Explanation hooks present.  
-* Immutable `CalculationResult`.  
+* Immutable calculation records (deep freeze).  
 * Nothing in app imports the engine yet.  
+* Same-version replay exact; version mismatches controlled.  
 * All executable golden fixtures pass.  
 
 ### Stop conditions
@@ -631,6 +642,6 @@ Estimate (2B.7) and Quote (2B.8) both depend on 2B.5 parity; they may be seriali
 | Path | `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md` |
 | Created | 2026-08-04 |
 | Batch 2B.1 / 2B.2A application changes | **None** |
-| Next batch | **2B.4** document aggregation (or authorised next step). Then 2B.5 shadow parity before any action adoption. |
-| Stage 2B implementation started? | **Kernel + goldens (2B.3A/B)** — no app adoption |
-| Stage 2B tracker status | **In Progress** (Batches 2B.3A and 2B.3B complete; adoption not started) |
+| Next batch | **2B.4** or **2B.5** shadow parity when authorised — before any action adoption. |
+| Stage 2B implementation started? | **Kernel + goldens + contract (2B.3A/B/C)** — no app adoption |
+| Stage 2B tracker status | **In Progress** (Batches 2B.3A–2B.3C complete; adoption not started) |

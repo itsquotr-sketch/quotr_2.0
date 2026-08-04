@@ -1,8 +1,9 @@
 /**
  * Quotr Authoritative Commercial Calculation Engine — public API.
  *
- * Batch 2B.3A: standalone kernel only. No React, Supabase, persistence,
- * or server-action imports. Nothing in the application should call this yet.
+ * Batch 2B.3C: standalone kernel + canonical contract/replay.
+ * No React, Supabase, persistence, or server-action imports.
+ * Nothing in the application should call this yet.
  */
 
 export {
@@ -12,6 +13,8 @@ export {
   MIN_GROSS_MARGIN_PERCENT,
   MAX_GROSS_MARGIN_PERCENT,
   DEFAULT_GST_RATE_PERCENT,
+  SUPPORTED_ENGINE_VERSIONS,
+  SUPPORTED_FORMULA_VERSIONS,
 } from "./versioning";
 
 export type {
@@ -56,3 +59,33 @@ export {
   CANONICAL_AGGREGATE_FIXTURES,
   SCENARIO_EXECUTION_MAP,
 } from "./fixtures";
+
+/** Canonical contract / replay (Batch 2B.3C) */
+export {
+  executeCommercialCalculation,
+  verifyCalculationReplay,
+  replayCalculation,
+  buildLineRequest,
+  buildAggregateRequest,
+  normalizeRequestFingerprint,
+  serializeCanonical,
+  parseCanonicalJson,
+  roundTripCanonical,
+  deepFreeze,
+  BLOCKING_ERROR_CODES,
+  WARNING_CODES,
+  STEP_CODES,
+  EXPLANATION_KEYS,
+} from "./contract";
+
+export type {
+  CommercialCalculationRequest,
+  CommercialCalculationRecord,
+  CommercialFinancialOutputs,
+  CommercialSettingsSnapshot,
+  ManualOverrideCapture,
+  FutureLearningHook,
+  StructuredCalculationStep,
+  ReplayVerificationResult,
+  ContractIssue,
+} from "./contract";
