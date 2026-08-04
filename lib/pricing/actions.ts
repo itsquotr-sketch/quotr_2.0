@@ -38,6 +38,13 @@ import {
   parseStringArray,
   todayIsoDate,
 } from "@/lib/pricing/calculations";
+import { isAuthoritativePricingItemCalculation } from "@/lib/pricing/adoption-authority";
+import {
+  calculateAuthoritativePricingItem,
+  calculateBlankPricingItem,
+  type PersistedPricingItemMoneyFields,
+} from "@/lib/pricing/commercial-engine-adapter";
+import { calculateAuthoritativeDocumentTotals } from "@/lib/pricing/authoritative-document-totals";
 import {
   buildPricingItemFieldsFromEstimateLineItem,
 } from "@/lib/pricing/pricing-item-calculation";
@@ -108,7 +115,7 @@ async function recalculateAndPersistDocumentTotals(
 ) {
   const { data: items, error } = await supabase
     .from("pricing_items")
-    .select("total_cost, total_sell")
+    .select("total_cost, total_sell, visible_on_quote")
     .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", orgId);
 
@@ -119,7 +126,39 @@ async function recalculateAndPersistDocumentTotals(
     throw new Error(PRICING_SAVE_FAILED);
   }
 
-  const totals = calculateDocumentTotals(items ?? [], gstRate);
+  const mappedItems = (items ?? []).map((item) => ({
+    total_cost: Number(item.total_cost ?? 0),
+    total_sell: Number(item.total_sell ?? 0),
+    visible: item.visible_on_quote !== false,
+  }));
+
+  let totals: {
+    subtotalCost: number;
+    subtotalSell: number;
+    grossProfit: number;
+    marginPercent: number;
+    markupPercent: number;
+    gstAmount: number;
+    totalInclGst: number;
+  };
+
+  if (isAuthoritativePricingItemCalculation()) {
+    const authoritative = calculateAuthoritativeDocumentTotals(
+      mappedItems,
+      gstRate,
+      `pricing-doc-${pricingDocumentId}`
+    );
+    if (!authoritative.ok) {
+      if (process.env.NODE_ENV === "development") {
+        console.error("[pricing-recalc-engine]", authoritative.error);
+      }
+      throw new Error(PRICING_SAVE_FAILED);
+    }
+    totals = authoritative.totals;
+  } else {
+    totals = calculateDocumentTotals(mappedItems, gstRate);
+  }
+
   const update: Record<string, string | number | null> = {
     subtotal_cost: totals.subtotalCost,
     subtotal_sell: totals.subtotalSell,
@@ -147,6 +186,82 @@ async function recalculateAndPersistDocumentTotals(
     }
     throw new Error(PRICING_SAVE_FAILED);
   }
+}
+
+function computePricingItemMoneyFields(input: {
+  quantity?: number | null;
+  unit?: string | null;
+  unitCost?: number | null;
+  unitSell?: number | null;
+  totalCost?: number | null;
+  totalSell?: number | null;
+  itemType?: import("@/lib/pricing/types").PricingItemType;
+  calculationMode?: import("@/lib/pricing/types").CalculationMode | null;
+  productivityRate?: number | null;
+  productivityUnit?: string | null;
+  calculatedQuantity?: number | null;
+  manualSellOverride?: boolean;
+  requestId?: string;
+  sourceReferences?: readonly string[];
+}):
+  | { ok: true; fields: PersistedPricingItemMoneyFields }
+  | { ok: false; error: string } {
+  if (isAuthoritativePricingItemCalculation()) {
+    const result = calculateAuthoritativePricingItem({
+      quantity: input.quantity,
+      unit: input.unit,
+      unitCost: input.unitCost,
+      unitSell: input.unitSell,
+      totalCost: input.totalCost,
+      totalSell: input.totalSell,
+      itemType: input.itemType,
+      calculationMode: input.calculationMode,
+      productivityRate: input.productivityRate,
+      productivityUnit: input.productivityUnit,
+      calculatedQuantity: input.calculatedQuantity,
+      manualSellOverride: input.manualSellOverride,
+      requestId: input.requestId,
+      sourceReferences: input.sourceReferences,
+    });
+    if (!result.ok) {
+      return { ok: false, error: result.error };
+    }
+    return { ok: true, fields: result.fields };
+  }
+
+  const legacy = calculatePricingItemTotals({
+    quantity: input.quantity,
+    unit: input.unit,
+    unitCost: input.unitCost,
+    unitSell: input.unitSell,
+    totalCost: input.totalCost,
+    totalSell: input.totalSell,
+    itemType: input.itemType,
+    calculationMode: input.calculationMode,
+    productivityRate: input.productivityRate,
+    productivityUnit: input.productivityUnit,
+    calculatedQuantity: input.calculatedQuantity,
+  });
+  return {
+    ok: true,
+    fields: {
+      quantity: legacy.quantity,
+      unit: input.unit ?? null,
+      unitCost: legacy.unitCost,
+      unitSell: legacy.unitSell,
+      totalCost: legacy.totalCost,
+      totalSell: legacy.totalSell,
+      grossProfit: legacy.grossProfit,
+      marginPercent: legacy.marginPercent,
+      markupPercent: legacy.markupPercent,
+      calculationMode:
+        legacy.calculationMode ?? input.calculationMode ?? "quantity_rate",
+      productivityRate: legacy.productivityRate ?? null,
+      productivityUnit: legacy.productivityUnit ?? null,
+      calculatedQuantity: legacy.calculatedQuantity ?? null,
+      costKnown: !(legacy.totalCost === 0 && legacy.totalSell > 0),
+    },
+  };
 }
 
 function revalidatePricingProjectPath(
@@ -754,8 +869,12 @@ export async function updatePricingItem(
     return { error: "Pricing item not found." };
   }
 
-  const totals = calculatePricingItemTotals({
+  // Omitted optional fields arrive as undefined from Zod; explicit null and 0
+  // are preserved. Client total_cost/total_sell are ignored for qty/productivity
+  // modes inside the adapter (not trusted as derived authority).
+  const computed = computePricingItemMoneyFields({
     quantity: item.quantity,
+    unit: item.unit,
     unitCost: item.unit_cost,
     unitSell: item.unit_sell,
     totalCost: item.total_cost,
@@ -765,13 +884,21 @@ export async function updatePricingItem(
     productivityRate: item.productivity_rate,
     productivityUnit: item.productivity_unit,
     calculatedQuantity: item.calculated_quantity,
+    manualSellOverride: true,
+    requestId: `pricing-update-${parsed.data.pricingItemId}`,
+    sourceReferences: ["pricing:update_item"],
   });
+  if (!computed.ok) {
+    return { error: computed.error };
+  }
+  const totals = computed.fields;
 
   const commercial = validateComputedItemForPersistence({
     totalCost: totals.totalCost,
     totalSell: totals.totalSell,
     marginPercent: totals.marginPercent,
     markupPercent: totals.markupPercent,
+    costKnown: totals.costKnown,
   });
   if (!commercial.ok) {
     return { error: commercial.error };
@@ -785,7 +912,7 @@ export async function updatePricingItem(
       internal_description: item.internal_description ?? null,
       client_description: item.client_description ?? null,
       quantity: totals.quantity,
-      unit: item.unit ?? null,
+      unit: item.unit ?? totals.unit ?? null,
       unit_cost: totals.unitCost,
       unit_sell: totals.unitSell,
       total_cost: totals.totalCost,
@@ -793,11 +920,11 @@ export async function updatePricingItem(
       gross_profit: totals.grossProfit,
       margin_percent: totals.marginPercent,
       markup_percent: totals.markupPercent,
-      calculation_mode: totals.calculationMode ?? item.calculation_mode ?? null,
-      productivity_rate: totals.productivityRate ?? item.productivity_rate ?? null,
-      productivity_unit: totals.productivityUnit ?? item.productivity_unit ?? null,
-      calculated_quantity:
-        totals.calculatedQuantity ?? item.calculated_quantity ?? null,
+      calculation_mode: totals.calculationMode,
+      productivity_rate: totals.productivityRate,
+      productivity_unit:
+        totals.productivityUnit ?? item.productivity_unit ?? null,
+      calculated_quantity: totals.calculatedQuantity,
       item_type: item.item_type,
       delivery_method: item.delivery_method,
       visible_on_quote: item.visible_on_quote ?? true,
@@ -937,18 +1064,48 @@ export async function addPricingItem(input: {
     .maybeSingle();
 
   const sortOrder = (maxSort?.sort_order ?? -1) + 1;
-  const totals = calculatePricingItemTotals({
-    quantity: 1,
-    totalCost: 0,
-    totalSell: 0,
-    itemType,
-  });
+
+  let totals: PersistedPricingItemMoneyFields;
+  if (isAuthoritativePricingItemCalculation()) {
+    const blank = calculateBlankPricingItem({
+      requestId: `pricing-add-${pricingDocumentId}`,
+      itemType,
+    });
+    if (!blank.ok) {
+      return { error: blank.error };
+    }
+    totals = blank.fields;
+  } else {
+    const legacy = calculatePricingItemTotals({
+      quantity: 1,
+      totalCost: 0,
+      totalSell: 0,
+      itemType,
+    });
+    totals = {
+      quantity: legacy.quantity,
+      unit: null,
+      unitCost: legacy.unitCost,
+      unitSell: legacy.unitSell,
+      totalCost: legacy.totalCost,
+      totalSell: legacy.totalSell,
+      grossProfit: legacy.grossProfit,
+      marginPercent: legacy.marginPercent,
+      markupPercent: legacy.markupPercent,
+      calculationMode: legacy.calculationMode ?? "lump_sum",
+      productivityRate: null,
+      productivityUnit: null,
+      calculatedQuantity: null,
+      costKnown: true,
+    };
+  }
 
   const commercial = validateComputedItemForPersistence({
     totalCost: totals.totalCost,
     totalSell: totals.totalSell,
     marginPercent: totals.marginPercent,
     markupPercent: totals.markupPercent,
+    costKnown: totals.costKnown,
   });
   if (!commercial.ok) {
     return { error: commercial.error };
@@ -965,12 +1122,15 @@ export async function addPricingItem(input: {
       delivery_method: deliveryMethod,
       internal_label: "New item",
       client_label: "New item",
-      quantity: totals.quantity,
+      quantity: totals.quantity ?? 1,
+      unit_cost: totals.unitCost,
+      unit_sell: totals.unitSell,
       total_cost: totals.totalCost,
       total_sell: totals.totalSell,
       gross_profit: totals.grossProfit,
       margin_percent: totals.marginPercent,
       markup_percent: totals.markupPercent,
+      calculation_mode: totals.calculationMode,
       visible_on_quote: true,
       optional: false,
       sort_order: sortOrder,
@@ -1067,6 +1227,50 @@ export async function duplicatePricingItem(
     return { error: "Pricing item not found." };
   }
 
+  // Recalculate from source commercial inputs — do not blindly trust stored totals.
+  // manually_edited is intentionally not copied (DB default false), matching prior
+  // duplicate behaviour: copied rates/mode are inputs; override flag resets.
+  const computed = computePricingItemMoneyFields({
+    quantity: source.quantity == null ? null : Number(source.quantity),
+    unit: (source.unit as string | null) ?? null,
+    unitCost: source.unit_cost == null ? null : Number(source.unit_cost),
+    unitSell: source.unit_sell == null ? null : Number(source.unit_sell),
+    totalCost: source.total_cost == null ? null : Number(source.total_cost),
+    totalSell: source.total_sell == null ? null : Number(source.total_sell),
+    itemType: source.item_type as import("@/lib/pricing/types").PricingItemType,
+    calculationMode:
+      (source.calculation_mode as
+        | import("@/lib/pricing/types").CalculationMode
+        | null) ?? null,
+    productivityRate:
+      source.productivity_rate == null
+        ? null
+        : Number(source.productivity_rate),
+    productivityUnit: (source.productivity_unit as string | null) ?? null,
+    calculatedQuantity:
+      source.calculated_quantity == null
+        ? null
+        : Number(source.calculated_quantity),
+    manualSellOverride: Boolean(source.manually_edited),
+    requestId: `pricing-duplicate-${parsed.data.pricingItemId}`,
+    sourceReferences: ["pricing:duplicate_item", parsed.data.pricingItemId],
+  });
+  if (!computed.ok) {
+    return { error: computed.error };
+  }
+  const totals = computed.fields;
+
+  const commercial = validateComputedItemForPersistence({
+    totalCost: totals.totalCost,
+    totalSell: totals.totalSell,
+    marginPercent: totals.marginPercent,
+    markupPercent: totals.markupPercent,
+    costKnown: totals.costKnown,
+  });
+  if (!commercial.ok) {
+    return { error: commercial.error };
+  }
+
   const { data: createdItem, error } = await supabase
     .from("pricing_items")
     .insert({
@@ -1081,19 +1285,19 @@ export async function duplicatePricingItem(
       client_label: `${source.client_label} Copy`,
       internal_description: source.internal_description,
       client_description: source.client_description,
-      quantity: source.quantity,
-      unit: source.unit,
-      unit_cost: source.unit_cost,
-      unit_sell: source.unit_sell,
-      total_cost: source.total_cost,
-      total_sell: source.total_sell,
-      gross_profit: source.gross_profit,
-      margin_percent: source.margin_percent,
-      markup_percent: source.markup_percent,
-      calculation_mode: source.calculation_mode,
-      productivity_rate: source.productivity_rate,
-      productivity_unit: source.productivity_unit,
-      calculated_quantity: source.calculated_quantity,
+      quantity: totals.quantity,
+      unit: totals.unit ?? source.unit,
+      unit_cost: totals.unitCost,
+      unit_sell: totals.unitSell,
+      total_cost: totals.totalCost,
+      total_sell: totals.totalSell,
+      gross_profit: totals.grossProfit,
+      margin_percent: totals.marginPercent,
+      markup_percent: totals.markupPercent,
+      calculation_mode: totals.calculationMode,
+      productivity_rate: totals.productivityRate,
+      productivity_unit: totals.productivityUnit ?? source.productivity_unit,
+      calculated_quantity: totals.calculatedQuantity,
       visible_on_quote: source.visible_on_quote,
       optional: source.optional,
       sort_order: source.sort_order + 1,

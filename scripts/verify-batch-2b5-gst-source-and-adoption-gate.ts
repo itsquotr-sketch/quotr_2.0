@@ -277,12 +277,14 @@ function main(): void {
     )
   );
 
-  // No commercial-engine import from pricing actions (static string check)
+  // Static wiring: GST fix retained; parity never imported into production actions.
+  // Batch 2B.6A may import lib/pricing/commercial-engine-adapter (contains substring
+  // "commercial-engine") — that is allowed. Direct parity imports are not.
   const actionsSrc = readFileSync("lib/pricing/actions.ts", "utf8");
   checks.push(
     assert(
-      "pricing actions do not import commercial-engine",
-      !actionsSrc.includes("commercial-engine")
+      "pricing actions do not import commercial-engine/parity",
+      !actionsSrc.includes("commercial-engine/parity")
     )
   );
   checks.push(

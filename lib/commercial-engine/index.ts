@@ -2,8 +2,9 @@
  * Quotr Authoritative Commercial Calculation Engine — public API.
  *
  * Batch 2B.3C: standalone kernel + canonical contract/replay.
- * No React, Supabase, persistence, or server-action imports.
- * Nothing in the application should call this yet.
+ * Batch 2B.6A: first live callers are pricing item CRUD + document aggregate
+ * via `lib/pricing/commercial-engine-adapter.ts` (not parity).
+ * No React or Supabase imports inside this package.
  */
 
 export {

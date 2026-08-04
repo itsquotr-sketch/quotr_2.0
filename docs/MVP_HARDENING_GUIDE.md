@@ -256,7 +256,7 @@ Update this table as stages progress. Status values must be one of: **Not Starte
 | 1 | Current-state audit | Auditing | 2026-08-03 | — | — | — | — |
 | 2 | Data integrity, authentication and organisation isolation | Not Started | — | — | Historical tracker entry retained. Scope split into Stage 2A and Stage 2B. | Superseded by 2A/2B split — do not implement under this row. | — |
 | 2A | Security, Validation and Data Integrity | Complete | 2026-08-03 | 2026-08-03–2026-08-04 | Stage 2A complete locally and remotely: auth-org, validation, pricing/quote security, DB integrity (025), least-privilege API grants (026), baseline reconciliation (027), two-org isolation proof, production smoke test. | Accepted limitations: soft-delete app-path visibility; S1-016 no account deletion; S1-013 roles/invites deferred; pricing formula duplication → 2B. | `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`; `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`; migrations 001–027 aligned local/remote |
-| 2B | Authoritative Pricing Engine | In Progress | 2026-08-04 | 2026-08-04 (kernel) | Batches 2B.3A–2B.5: kernel, goldens, contract/replay, shadow parity, C-28 GST fix, pricing adoption gate. Commercial engine still unwired. | Next: Batch 2B.6 pricing-action adoption per gate. | `lib/commercial-engine/`; `lib/pricing/gst-source.ts`; `docs/specifications/PRICING_ACTION_ADOPTION_GATE.md`; `docs/implementation/STAGE_2B_BATCH_2B5_COMPLETION.md` |
+| 2B | Authoritative Pricing Engine | In Progress | 2026-08-04 | 2026-08-04 (kernel) | Batches 2B.3A–2B.6A: kernel through GST fix/gate; **item CRUD + aggregate adopted** on commercial engine. Create/recalibration/estimate/quote still legacy. | Next: Batch 2B.6B (createPricingFromEstimate, document update, recalibration). | `lib/pricing/commercial-engine-adapter.ts`; `docs/implementation/STAGE_2B_BATCH_2B6A_COMPLETION.md` |
 | 3 | Core project workflow | Not Started | — | — | — | — | — |
 | 4 | Estimating engine and pricing correctness | Not Started | — | — | Historical tracker entry retained. Pricing consolidation owned by Stage 2B. | — | — |
 | 5 | AI reliability and fallback handling | Not Started | — | — | — | — | — |
@@ -410,4 +410,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-04 |
 | Stage 0 status | Complete |
-| Next stage | Stage 2B — Authoritative Pricing Engine (**In Progress**). Batches **2B.3A–2B.5** complete (kernel, goldens, contract, shadow parity, C-28 GST correction, adoption gate). **No commercial-engine adoption.** Live GST source corrected for new pricing creates; no migrations/UI/AI changes. |
+| Next stage | Stage 2B — Authoritative Pricing Engine (**In Progress**). Batches **2B.3A–2B.6A** complete. **Item CRUD + document aggregate adopted.** Create-from-estimate, recalibration, estimates, quotes, UI still legacy. No migrations/AI/DNA. |

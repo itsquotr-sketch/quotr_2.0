@@ -38,10 +38,10 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 | LEG-E-19 | C-19 | calculators/* | Domain qty/rates | Deferred workflow | Domain | mixed | Med | Feed lines to engine | 2B.7 | Keep calculators | None |
 | LEG-E-21 | C-21 | `runEstimateGeneration` | Persist orchestrator | Deferred | N/A | live | Med | Call engine inside | 2B.7 | Feature flag later | Snapshot new rows |
 | LEG-E-24 | C-42 | category-breakdown | Partial profit display | Deferred | PRESENTATION | golden | Low | Display engine | 2B.9 | Keep UI helper | N/A |
-| LEG-P-01 | C-24 | `computeProfitFields` | Item GP triad | PAR-P-GP-001 | EXACT_MATCH | golden | Low | Engine profit | 2B.6 | Keep | None |
-| LEG-P-02 | C-25 | pricing-item-calculation | Line modes | Multiple PAR-P-* | EXACT / APPROVED corr. | golden / OCD | Med | Engine line modes | 2B.6 | Keep C-25 | Preserve edits |
-| LEG-P-03 | C-26 | `calculateDocumentTotals` | Doc aggregate + GST | PAR-P-DOC-* | EXACT_MATCH | golden | Med | Engine aggregate all | 2B.6 | Keep C-26 | None |
-| LEG-P-04 | C-27 | pricing actions recalc | Persist | Deferred | Uses C-26 | live | Med | Pass engine + doc GST | 2B.6 | Keep actions | Careful |
+| LEG-P-01 | C-24 | `computeProfitFields` | Item GP triad | PAR-P-GP-001 | EXACT_MATCH | golden | Low | **Adopted 2B.6A** via engine | **2B.6A** | Authority switch / revert | None |
+| LEG-P-02 | C-25 | pricing-item-calculation | Line modes | Multiple PAR-P-* | EXACT / APPROVED corr. | golden / OCD | Med | **Adopted 2B.6A** item CRUD | **2B.6A** | Authority switch / revert | Preserve edits |
+| LEG-P-03 | C-26 | `calculateDocumentTotals` | Doc aggregate + GST | PAR-P-DOC-* | EXACT_MATCH | golden | Med | **Adopted 2B.6A** after item mutations | **2B.6A** | Authority switch / revert | None |
+| LEG-P-04 | C-27 | pricing actions recalc | Persist | Via 2B.6A helper | Engine aggregate | live | Med | Authoritative helper | **2B.6A** | Keep actions | Careful |
 | LEG-P-05 | C-28 | `createPricingFromEstimate` | Estimate→pricing GST source | PAR-P-GST-BUG-C28 | **EXACT_MATCH** (corrected 2B.5) | OCD / CD-09 | Low | Done: org/doc GST for insert+recalc | **2B.5** fix; adopt engine **2B.6** | Revert GST helper wiring | Pre-2B.5 anomalies not bulk-rewritten |
 | LEG-P-06 | C-29 | recalibration | Sync estimate→pricing | Deferred | Uses C-26 | live | Med | Engine + preserve manual | 2B.6 | Keep | Preserve flags |
 | LEG-P-07 | C-41 | PricingWorkAreaSection | Section display GST=0 | Deferred | PRESENTATION | golden | Low | Display aggregate | 2B.9 | Keep | N/A |
@@ -90,7 +90,7 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 
 | Batch | Additional gates |
 | --- | --- |
-| **2B.6 Pricing adoption** | KM-GST-C28 already fixed in 2B.5; gate doc `PRICING_ACTION_ADOPTION_GATE.md`; LEG-P-02/03 fixtures EXACT or approved; actions use engine for totals; shadow report archived |
+| **2B.6 Pricing adoption** | **2B.6A complete** (item CRUD + aggregate). Remaining: createFromEstimate, document update, recalibration (2B.6B+); LEG-P-02/03 fixtures still EXACT or approved |
 | **2B.7 Estimate adoption** | LEG-E-01/15/16 EXACT; confidence/ranges stay out of money engine |
 | **2B.8 Quote adoption** | LEG-Q-01 EXACT with `visible_only`; revision immutability; prefer-total policy decided |
 | **2B.9 UI removal** | No client GP/aggregate authority; display server/engine only |

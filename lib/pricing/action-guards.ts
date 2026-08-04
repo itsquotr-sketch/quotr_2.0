@@ -97,12 +97,15 @@ export function isFiniteNonNegativeMoney(value: number): boolean {
 
 /**
  * Post-calculation check before persistence (all modes, including lump_sum).
+ * When costKnown is false, null margins are allowed (unknown-cost honesty);
+ * callers persist the approved DB sentinel via persistCommercialMetric.
  */
 export function validateComputedItemForPersistence(input: {
   totalCost: number;
   totalSell: number;
-  marginPercent: number;
-  markupPercent: number;
+  marginPercent: number | null;
+  markupPercent: number | null;
+  costKnown?: boolean;
 }): { ok: true } | { ok: false; error: string } {
   if (!isFiniteNonNegativeMoney(input.totalCost)) {
     return {
@@ -114,6 +117,15 @@ export function validateComputedItemForPersistence(input: {
     return {
       ok: false,
       error: "Total sell must be a finite number zero or greater.",
+    };
+  }
+  if (input.costKnown === false) {
+    return { ok: true };
+  }
+  if (input.marginPercent == null || input.markupPercent == null) {
+    return {
+      ok: false,
+      error: "Margin and markup are required when cost is known.",
     };
   }
   return validateDerivedCommercialPercents({
