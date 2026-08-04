@@ -644,7 +644,8 @@ export const PARITY_FIXTURES: readonly ParityFixture[] = Object.freeze([
         engineRequest: null,
         engineOutputs: null,
         notes: [
-          "Engine line modes do not prefer client total over qty×rate; CD-22 policy deferred to quote adoption",
+          "CD-22 decided 2B.8: retain prefer supplied total as quote-domain policy",
+          "Engine line modes do not implement prefer-total; production uses domain policy + engine for qty×price / aggregates",
         ],
       };
     },

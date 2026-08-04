@@ -30,9 +30,9 @@ import {
 } from "@/lib/security/org-ownership";
 import { buildQuoteSnapshotFromReviewedPricing } from "@/lib/quotes/build-from-pricing";
 import {
-  calculateQuoteItemTotal,
-  calculateQuoteTotals,
-} from "@/lib/quotes/calculations";
+  calculateAuthoritativeQuoteTotals,
+  resolveAuthoritativeQuoteItemTotal,
+} from "@/lib/quotes/quote-commercial-engine-adapter";
 import type { QuoteItemFromPricing } from "@/lib/quotes/from-pricing";
 import { mapQuote, mapQuoteItem } from "@/lib/quotes/mappers";
 import {
@@ -139,7 +139,18 @@ async function recalculateAndPersistQuoteTotals(
     throw new Error(QUOTE_SAVE_FAILED);
   }
 
-  const totals = calculateQuoteTotals(items ?? [], gstRate);
+  const totalsResult = calculateAuthoritativeQuoteTotals(
+    items ?? [],
+    gstRate,
+    "quote-draft-recalc"
+  );
+  if (!totalsResult.ok) {
+    if (process.env.NODE_ENV === "development") {
+      console.error("[quote-recalc-engine]", totalsResult.error);
+    }
+    throw new Error(QUOTE_SAVE_FAILED);
+  }
+  const totals = totalsResult.totals;
 
   const { error: updateError } = await supabase
     .from("quotes")
@@ -750,12 +761,15 @@ export async function updateQuoteItem(
     return { error: editableError };
   }
 
-  const total = calculateQuoteItemTotal({
+  const totalResult = resolveAuthoritativeQuoteItemTotal({
     quantity: item.quantity,
     unitPrice: item.unit_price,
     total: item.total,
   });
-
+  if (!totalResult.ok) {
+    return { error: totalResult.error };
+  }
+  const total = totalResult.total;
   const totalGuard = validateQuoteItemTotalForPersistence(total);
   if (!totalGuard.ok) {
     return { error: totalGuard.error };

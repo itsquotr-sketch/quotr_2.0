@@ -1,5 +1,13 @@
 import { roundMoney } from "@/lib/pricing/calculations";
 
+/**
+ * Legacy quote money helpers — retained for parity (LEG-Q-01 / LEG-Q-02)
+ * and `QUOTE_CALCULATION_AUTHORITY = "legacy"` rollback.
+ *
+ * Production create/recalc paths use
+ * `lib/quotes/quote-commercial-engine-adapter.ts` (Batch 2B.8).
+ */
+
 export type QuoteTotals = {
   subtotal: number;
   gstAmount: number;
@@ -22,6 +30,9 @@ export function calculateQuoteTotals(
   return { subtotal, gstAmount, totalInclGst };
 }
 
+/**
+ * CD-22: prefer supplied total over qty × unit_price (approved quote-domain policy).
+ */
 export function calculateQuoteItemTotal(input: {
   quantity?: number | null;
   unitPrice?: number | null;

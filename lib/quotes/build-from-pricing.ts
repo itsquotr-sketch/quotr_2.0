@@ -13,7 +13,7 @@ import {
   resolveExclusionsForSnapshot,
   resolveTermsForSnapshot,
 } from "@/lib/settings/snapshot";
-import { calculateQuoteTotals } from "@/lib/quotes/calculations";
+import { calculateAuthoritativeQuoteTotals } from "@/lib/quotes/quote-commercial-engine-adapter";
 import {
   buildInclusionsFromPricing,
   mapPricingItemsToQuoteItems,
@@ -172,10 +172,15 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     workAreaNames,
     workAreaDescriptions
   );
-  const totals = calculateQuoteTotals(
+  const totalsResult = calculateAuthoritativeQuoteTotals(
     quoteItems.map((item) => ({ total: item.total ?? 0, visible: true })),
-    quoteGstRate
+    quoteGstRate,
+    "quote-snapshot-from-pricing"
   );
+  if (!totalsResult.ok) {
+    return { error: totalsResult.error };
+  }
+  const totals = totalsResult.totals;
 
   const inclusions = buildInclusionsFromPricing(items, workAreaNames);
 

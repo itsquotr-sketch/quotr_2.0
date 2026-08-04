@@ -1,6 +1,6 @@
 # Stage 2B — Authoritative Pricing Engine Implementation Plan
 
-**Status:** In Progress (Batches **2B.3A–2B.7**; pricing + estimate server money **adopted**; quotes/UI still legacy)  
+**Status:** In Progress (Batches **2B.3A–2B.8**; pricing + estimate + quote server money **adopted**; UI still legacy)  
 **Plan date:** 2026-08-04  
 **Governing architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
@@ -22,6 +22,7 @@
 **Item adoption (2B.6A):** `lib/pricing/commercial-engine-adapter.ts`, `lib/pricing/authoritative-document-totals.ts`  
 **Pricing-domain completion (2B.6B):** `lib/pricing/estimate-to-pricing-adapter.ts`  
 **Estimate adoption (2B.7):** `lib/estimate/estimate-commercial-engine-adapter.ts`  
+**Quote adoption (2B.8):** `lib/quotes/quote-commercial-engine-adapter.ts`  
 **2B.3B completion:** `docs/implementation/STAGE_2B_BATCH_2B3B_COMPLETION.md`  
 **2B.3C completion:** `docs/implementation/STAGE_2B_BATCH_2B3C_COMPLETION.md`  
 **2B.4 completion:** `docs/implementation/STAGE_2B_BATCH_2B4_COMPLETION.md`  
@@ -29,6 +30,7 @@
 **2B.6A completion:** `docs/implementation/STAGE_2B_BATCH_2B6A_COMPLETION.md`  
 **2B.6B completion:** `docs/implementation/STAGE_2B_BATCH_2B6B_COMPLETION.md`  
 **2B.7 completion:** `docs/implementation/STAGE_2B_BATCH_2B7_COMPLETION.md`  
+**2B.8 completion:** `docs/implementation/STAGE_2B_BATCH_2B8_COMPLETION.md`  
 
 **Hard constraint:** No pricing-formula consolidation, caller migration, UI redesign, migration changes, or Company DNA implementation begins until the relevant batch is authorised and (for behaviour-changing batches) Batch **2B.2** commercial decisions and golden tests exist.
 
@@ -60,7 +62,7 @@ Establish **one authoritative commercial arithmetic meaning** for cost, sell, gr
 | **2B.6B** | createPricingFromEstimate + document update + recalibration | Code — **complete** |
 | **2B.6** | Pricing-action adoption (umbrella) | **Complete for pricing-domain server paths** |
 | **2B.7** | Estimate adoption | Code — **complete** |
-| **2B.8** | Quote adoption | Code; preserve snapshots |
+| **2B.8** | Quote adoption | Code — **complete** |
 | **2B.9** | Client/UI calculation removal | Code |
 | **2B.10** | Final regression, documentation and deployment | Docs + verification |
 
@@ -510,6 +512,8 @@ Rewriting all calculator domain heuristics; AI prompt changes; constraint wiring
 
 ## Batch 2B.8 — Quote adoption
 
+**Status:** Complete — see `docs/implementation/STAGE_2B_BATCH_2B8_COMPLETION.md`
+
 ### Customer outcome
 
 Quote totals remain trustworthy; revisions stay historically accurate.
@@ -520,23 +524,26 @@ Quote aggregates/item totals via engine; **old revisions immutable**.
 
 ### Exact scope
 
-* Adopt engine in quote build/actions.  
-* Preserve snapshot semantics (CD-20).  
-* Implement CD-21 warning/invariant only if decided in 2B.2; else leave S1-010 to Stage 6 with documented residual.  
+* Adopt engine in quote build/actions.
+* Preserve snapshot semantics (CD-20 / OCD-45).
+* CD-22 prefer-total retained as quote-domain policy.
+* Implement CD-21 warning/invariant only if decided in 2B.2; else leave S1-010 to Stage 6 with documented residual.
 
 ### Files expected
 
-* `lib/quotes/calculations.ts`, `build-from-pricing.ts`, `actions.ts`  
+* `lib/quotes/quote-commercial-engine-adapter.ts`, `adoption-authority.ts`
+* `lib/quotes/calculations.ts`, `build-from-pricing.ts`, `actions.ts`
+* `scripts/verify-batch-2b8-quote-adoption.ts`
 
 ### Tests required
 
-Create/revise quote totals; visibility fixture; print reads stored totals.
+`scripts/verify-batch-2b8-quote-adoption.ts` plus Stage 2A/2B regression chain.
 
 ### Acceptance criteria
 
-* New quotes use engine.  
-* Superseded quotes untouched.  
-* Stage 2A quote validation retained.  
+* New quotes use engine.
+* Superseded quotes untouched.
+* Stage 2A quote validation retained.
 
 ### Stop conditions
 
@@ -544,17 +551,17 @@ Rewriting historical rows; PDF redesign; email sending.
 
 ### Rollback
 
-Revert quote adopt commits.
+`QUOTE_CALCULATION_AUTHORITY = "legacy"` or revert quote adopt commits.
 
 ### Future Learning Compatibility Check
 
-1. Yes.  
-2. Yes — snapshots structured.  
-3. Yes.  
-4. Yes — revision ids stable.  
-5. Yes — revise-from-pricing as evidence trail.  
-6. **Critical yes** — immutability.  
-7. Yes.  
+1. Yes.
+2. Yes — snapshots structured.
+3. Yes.
+4. Yes — revision ids stable.
+5. Yes — revise-from-pricing as evidence trail.
+6. **Critical yes** — immutability.
+7. Yes.
 8. Yes.
 
 ---
@@ -691,6 +698,6 @@ Estimate (2B.7) and Quote (2B.8) both depend on 2B.5 parity; they may be seriali
 | Path | `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md` |
 | Created | 2026-08-04 |
 | Batch 2B.1 / 2B.2A application changes | **None** |
-| Next batch | **2B.7** estimate adoption (or **2B.9** UI calculation removal) |
+| Next batch | **2B.9** UI calculation removal |
 | Stage 2B implementation started? | **Yes** — pricing-domain server authority through **2B.6B** |
 | Stage 2B tracker status | **In Progress** (2B.6B complete; estimates/quotes/UI not adopted) |

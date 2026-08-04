@@ -92,7 +92,7 @@ Legacy and engine financial outputs match within tolerance. Notes: estimate reco
 Legacy and engine financial outputs match within tolerance. Notes: KM-PRICING-QUOTE-DIVERGENCE; cost fields copied from engine for sell/GST-focused compare
 
 ### PAR-Q-ITEM-001
-Fixture declares DEFERRED_WORKFLOW_DIFFERENCE: quote item prefers supplied total over qty×price Notes: Engine line modes do not prefer client total over qty×rate; CD-22 policy deferred to quote adoption
+Fixture declares DEFERRED_WORKFLOW_DIFFERENCE: quote item prefers supplied total over qty×price Notes: CD-22 decided 2B.8: retain prefer supplied total as quote-domain policy; Engine line modes do not implement prefer-total; production uses domain policy + engine for qty×price / aggregates
 
 ### PAR-PQ-DIVERGENCE-001
 Fixture declares DEFERRED_WORKFLOW_DIFFERENCE: pricing all vs quote visible on same basket Notes: KM-PRICING-QUOTE-DIVERGENCE; pricingSell=22000; quoteSell=20000

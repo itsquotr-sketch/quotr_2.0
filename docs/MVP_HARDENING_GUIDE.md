@@ -256,7 +256,7 @@ Update this table as stages progress. Status values must be one of: **Not Starte
 | 1 | Current-state audit | Auditing | 2026-08-03 | — | — | — | — |
 | 2 | Data integrity, authentication and organisation isolation | Not Started | — | — | Historical tracker entry retained. Scope split into Stage 2A and Stage 2B. | Superseded by 2A/2B split — do not implement under this row. | — |
 | 2A | Security, Validation and Data Integrity | Complete | 2026-08-03 | 2026-08-03–2026-08-04 | Stage 2A complete locally and remotely: auth-org, validation, pricing/quote security, DB integrity (025), least-privilege API grants (026), baseline reconciliation (027), two-org isolation proof, production smoke test. | Accepted limitations: soft-delete app-path visibility; S1-016 no account deletion; S1-013 roles/invites deferred; pricing formula duplication → 2B. | `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`; `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`; migrations 001–027 aligned local/remote |
-| 2B | Authoritative Pricing Engine | In Progress | 2026-08-04 | 2026-08-04 (kernel) | Batches 2B.3A–2B.7: commercial engine authoritative for **pricing + estimate** server money. Quotes/UI still legacy. | Next: 2B.8 quote adoption or 2B.9 UI calculation removal. | `docs/implementation/STAGE_2B_BATCH_2B7_COMPLETION.md`; `lib/estimate/estimate-commercial-engine-adapter.ts` |
+| 2B | Authoritative Pricing Engine | In Progress | 2026-08-04 | 2026-08-04 (kernel) | Batches 2B.3A–2B.8: commercial engine authoritative for **pricing + estimate + quote** server money. UI still legacy. | Next: 2B.9 UI calculation removal. | `docs/implementation/STAGE_2B_BATCH_2B8_COMPLETION.md`; `lib/quotes/quote-commercial-engine-adapter.ts` |
 | 3 | Core project workflow | Not Started | — | — | — | — | — |
 | 4 | Estimating engine and pricing correctness | Not Started | — | — | Historical tracker entry retained. Pricing consolidation owned by Stage 2B. | — | — |
 | 5 | AI reliability and fallback handling | Not Started | — | — | — | — | — |
@@ -410,4 +410,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-04 |
 | Stage 0 status | Complete |
-| Next stage | Stage 2B — Authoritative Pricing Engine (**In Progress**). Batches **2B.3A–2B.7** complete for pricing + estimate server authority. Quotes and UI calculations remain legacy. No migrations/AI/DNA. |
+| Next stage | Stage 2B — Authoritative Pricing Engine (**In Progress**). Batches **2B.3A–2B.8** complete for pricing + estimate + quote server authority. UI calculations remain legacy. No migrations/AI/DNA. |

@@ -644,7 +644,7 @@
       "commercialAuthority": "live_legacy_behaviour",
       "blockingStatus": false,
       "futureAdoptionBatch": "2B.8",
-      "explanation": "Fixture declares DEFERRED_WORKFLOW_DIFFERENCE: quote item prefers supplied total over qty×price Notes: Engine line modes do not prefer client total over qty×rate; CD-22 policy deferred to quote adoption",
+      "explanation": "Fixture declares DEFERRED_WORKFLOW_DIFFERENCE: quote item prefers supplied total over qty×price Notes: CD-22 decided 2B.8: retain prefer supplied total as quote-domain policy; Engine line modes do not implement prefer-total; production uses domain policy + engine for qty×price / aggregates",
       "numericDeltas": {
         "totalCost": null,
         "totalSell": null,
