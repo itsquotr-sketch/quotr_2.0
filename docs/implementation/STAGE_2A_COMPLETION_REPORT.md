@@ -3,7 +3,7 @@
 **Batch:** 2A.6  
 **Date:** 2026-08-04  
 **Status:** Complete — Local  
-**Stage 2A overall:** Complete — Local (remote migrations 025/026 still unapplied)  
+**Stage 2A overall:** Complete — Local (remote migrations 025/026/027 still unapplied; history repair not run)  
 **Remote apply / production:** **Not touched**
 
 ---
@@ -15,6 +15,8 @@ Stage 2A (Security, Validation and Data Integrity) is **complete locally**. Batc
 **Two Stage 2A corrections were required during 2A.6:** (1) local Docker Postgres container names hard-coded to `supabase_db_quotr_2.0-main` failed on Windows (`supabase_db_quotr_2.0`) — scripts now resolve the container dynamically; (2) migration 026 was narrowed from `GRANT ALL` to least-privilege SIDU for `authenticated`/`service_role` with no anon customer-table DML. After both fixes, all verification commands passed.
 
 Remote production schema and data were **not** modified. Stage 2B was **not** started.
+
+**Remote baseline note (2026-08-04):** Linked inspection found empty CLI migration history plus two historical drifts (019 missing `calibration_note`; 009 index name `note_proposals_created_idx`). Additive local migration `027_remote_baseline_reconciliation.sql` and plan `docs/implementation/STAGE_2A_REMOTE_BASELINE_RECONCILIATION_PLAN.md` prepare owner-gated history repair + push of 025→026→027. Stage 2A is **not** marked remotely complete.
 
 ---
 

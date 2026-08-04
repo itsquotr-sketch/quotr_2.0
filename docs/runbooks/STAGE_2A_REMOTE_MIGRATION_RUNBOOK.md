@@ -1,86 +1,203 @@
-# Stage 2A — Remote Migration Runbook (025 + 026)
+# Stage 2A — Remote Migration Runbook (history baseline + 025 + 026 + 027)
 
-**Status:** Documentation only. **Not executed** during Stage 2A (Batches 2A.4–2A.6).  
-**Migrations (apply in order):**
+**Status:** Documentation only. **Not executed.**  
+**Companion plan:** `docs/implementation/STAGE_2A_REMOTE_BASELINE_RECONCILIATION_PLAN.md`
+
+**Migrations to apply after history repair (in order):**
 
 1. `supabase/migrations/025_stage_2a4_database_integrity.sql`
 2. `supabase/migrations/026_stage_2a5_restore_api_table_grants.sql`
+3. `supabase/migrations/027_remote_baseline_reconciliation.sql`
 
-**Environment note:** There is no separate Supabase staging project. Remote apply requires **explicit owner approval** for each remote step.  
-**Supersedes:** `docs/runbooks/STAGE_2A4_REMOTE_MIGRATION_RUNBOOK.md` (025-only draft).
+**Environment note:** There is no separate Supabase staging project. Remote apply requires **explicit owner approval** for each remote write step.  
+**Supersedes:** prior 025/026-only draft of this runbook.
 
 ---
 
-## 1. Explicit owner-approval gate
+## Owner-approval gate
 
 **Do not execute this runbook against remote Supabase without explicit owner approval.**
 
-Before any remote write:
+Before any remote write (including `migration repair` or `db push`):
 
-* Owner has approved applying **both** migration 025 and migration 026 to the linked remote project (or has approved them as two separately gated steps in this order).
-* Operator records the approval date, approver, and target project ref in ops notes (outside the application repo; do not commit secrets).
-* Local Stage 2A verification has passed after `supabase db reset` through **026**, including Batch 2A.4, RLS coverage, and Batch 2A.5 tenant isolation.
+* Owner has approved the full sequence below.
+* Local Stage 2A verification has passed after `supabase db reset` through **027**.
+* Backup / export is complete and restore is understood.
+* Ops notes record approver, date, and target project ref (**outside** the repo; no secrets committed).
 
 Local apply does **not** imply remote apply.
 
 ---
 
-## 2. Backup / export requirement
+## Revised remote sequence (do not execute)
 
-Before remote apply:
+### 1. Back up the remote project
 
-1. Export a logical backup of the remote database (Supabase dashboard backup and/or `pg_dump` of the linked project).
-2. Record the current remote migration list (Dashboard → Database → Migrations, or linked CLI `supabase migration list`).
-3. Confirm a restore path is understood.
-4. Store the backup **outside** the application repository. Do not commit dumps, connection strings, or credentials.
+1. Export a logical backup (Supabase dashboard backup and/or `pg_dump` of the linked project).
+2. Record the current remote migration list (`npx supabase migration list --linked`).
+3. Store the backup **outside** the application repository.
 
-Even when there is currently no real external customer data, treat the remote database carefully.
+### 2. Complete read-only preflight
 
----
+Run the read-only queries in sections **Preflight A–C** below. Stop on any unexpected mismatch.
 
-## 3. Read-only remote migration-ledger check
+### 3. Verify the remote schema substantially represents migrations 001–024
 
-Confirm applied migrations without writing:
+Confirmed by prior read-only inspection (2026-08-04):
 
-* Supabase Dashboard → Database → Migrations, or
-* Linked CLI: `supabase migration list` (against the linked remote project).
+* `023` schema objects present (`enforce_pricing_item_org_match`, pricing/quote org-match triggers, `note_proposals` DELETE policy).
+* `024` `pricing_audit_log` present.
+* Remote CLI migration history is **empty** (`supabase_migrations` schema absent; `migration list --linked` shows no remote versions).
 
-Record whether these appear as applied:
+Schema was applied historically outside the CLI ledger (dashboard SQL / non-CLI path).
 
-* `023_security_hardening`
-* `024_sprint2_trust_hardening`
-* `025_stage_2a4_database_integrity` (must be absent before this runbook’s apply step)
-* `026_stage_2a5_restore_api_table_grants` (must be absent before this runbook’s apply step)
+### 4. Record known historical drift reconciled by migration 027
 
----
+| Drift | Remote fact | Local intent | Reconciled by |
+| --- | --- | --- | --- |
+| Migration **019** constraint | `project_notes_note_type_check` lacks `calibration_note` | 019 full value set including `calibration_note` | **027** |
+| Migration **009** index name | `note_proposals_created_idx` on `(project_id, created_at DESC)` | `note_proposals_project_created_idx` same definition | **027** (rename; semantically equivalent) |
 
-## 4. Verification that migrations 023 and 024 are already applied
+No other unexplained material 001–024 public-schema drift was identified in the SQL inventory.  
+`npx supabase db diff --linked --schema public` returned an empty migra diff despite these verified differences — treat SQL inventory as authoritative for these objects.
 
-If **023** or **024** are **missing** remotely:
+### 5. Mark migrations 001–024 as applied in remote migration history (owner-gated only)
 
-* Do **not** apply 025 or 026 alone.
-* First plan/apply 023 then 024 (or the full chain through 024) under a **separate** explicit owner approval.
-* Re-run the remote ledger confirmation.
+**Only after** backup + preflight + owner approval. This updates the CLI ledger to match the already-present remote schema; it does **not** re-run SQL for 001–024.
 
-If **023** and **024** are **present**:
+Proposed PowerShell command (example — **not run** during this documentation batch):
 
-* Proceed to pre-apply queries below.
+```powershell
+# OWNER APPROVAL REQUIRED — marks history only; does not apply SQL for 001-024
+npx supabase migration repair --status applied 001 002 003 004 005 006 007 008 009 010 011 012 013 014 015 016 017 018 019 020 021 022 023 024
+```
 
----
+If the installed CLI requires one version per invocation, run the same flag once per version `001` … `024`.
 
-## 5. Queries — current defaults, constraints, grants, and RLS
+**Stop point:** confirm `npx supabase migration list --linked` before proceeding.
 
-Run in the remote SQL editor (read-only):
+### 6. Confirm migration list shows only 025, 026, and 027 pending
+
+Expected after successful repair of 001–024:
+
+| Version | Local | Remote |
+| --- | --- | --- |
+| 001–024 | present | marked applied |
+| 025 | present | pending |
+| 026 | present | pending |
+| 027 | present | pending |
+
+If any of 001–024 remain pending, or if 025–027 are unexpectedly marked applied, **stop**.
+
+### 7. Run db push dry-run
+
+```powershell
+# OWNER APPROVAL REQUIRED — dry-run only if supported by CLI version
+npx supabase db push --dry-run
+```
+
+If `--dry-run` is unavailable, re-check `migration list --linked` and review the three pending migration files manually. Do not push yet.
+
+### 8. Apply migrations 025, 026, and 027 in order
+
+```powershell
+# OWNER APPROVAL REQUIRED
+npx supabase db push
+```
+
+Apply order must be **025 → 026 → 027**. Do not skip 027 (it closes verified 009/019 remote drift).
+
+### 9. Run post-migration verification
+
+Use **Post-apply verification** queries below (025 triggers/defaults/GST, 026 privileges, 027 constraint + canonical index).
+
+### 10. Confirm historical drift is closed
 
 ```sql
--- Margin default (expect 25.00 before 025; 20.00 after 025)
+-- 019 / 027: calibration_note present
+SELECT pg_get_constraintdef(oid) LIKE '%calibration_note%' AS has_calibration
+FROM pg_constraint
+WHERE conname = 'project_notes_note_type_check'
+  AND conrelid = 'public.project_notes'::regclass;
+
+-- 009 / 027: canonical index only
+SELECT
+  to_regclass('public.note_proposals_project_created_idx') IS NOT NULL AS has_canonical,
+  to_regclass('public.note_proposals_created_idx') IS NOT NULL AS has_alternate;
+```
+
+Expect `has_calibration = true`, `has_canonical = true`, `has_alternate = false`.
+
+Optionally re-run `npx supabase db diff --linked --schema public` and confirm no unexplained remaining public drift. Remember migra may still miss some objects — prefer SQL checks for 027 artefacts.
+
+---
+
+## Preflight A — ledger and baseline objects
+
+```sql
+-- History schema may be absent before repair
+SELECT nspname FROM pg_namespace
+WHERE nspname LIKE '%migration%' OR nspname = 'supabase_migrations';
+
+-- 023 / 024 presence
+SELECT
+  to_regprocedure('public.enforce_pricing_item_org_match()') IS NOT NULL AS has_023_fn,
+  to_regclass('public.pricing_audit_log') IS NOT NULL AS has_024_table,
+  to_regprocedure('public.enforce_child_project_org_match()') IS NOT NULL AS has_025_fn_before;
+-- Expect: has_023_fn true, has_024_table true, has_025_fn_before false
+```
+
+```powershell
+npx supabase migration list --linked
+# Expect: all remote version cells empty before repair
+```
+
+---
+
+## Preflight B — known 009 / 019 drift (027 targets)
+
+```sql
+SELECT conname, pg_get_constraintdef(oid) AS def
+FROM pg_constraint
+WHERE conname = 'project_notes_note_type_check'
+  AND conrelid = 'public.project_notes'::regclass;
+-- Expect: ARRAY without calibration_note
+
+SELECT c.relname AS index_name, pg_get_indexdef(i.indexrelid) AS index_def
+FROM pg_index i
+JOIN pg_class c ON c.oid = i.indexrelid
+JOIN pg_class t ON t.oid = i.indrelid
+JOIN pg_namespace n ON n.oid = t.relnamespace
+WHERE n.nspname = 'public'
+  AND t.relname = 'note_proposals'
+  AND c.relname IN (
+    'note_proposals_project_created_idx',
+    'note_proposals_created_idx'
+  );
+-- Expect: only note_proposals_created_idx with (project_id, created_at DESC)
+
+-- No rows outside the intended post-027 set (broadening; should be empty)
+SELECT note_type, COUNT(*)
+FROM public.project_notes
+WHERE note_type NOT IN (
+  'general','measurement','access','client_request','existing_condition',
+  'material_preference','exclusion','risk','calibration_note','other'
+)
+GROUP BY 1;
+```
+
+---
+
+## Preflight C — expected pending 025 / 026 state
+
+```sql
 SELECT column_default
 FROM information_schema.columns
 WHERE table_schema = 'public'
   AND table_name = 'organisation_settings'
   AND column_name = 'default_margin_percent';
+-- Expect 25.00 before 025
 
--- Existing org-match triggers (023 only until 025)
 SELECT c.relname, t.tgname
 FROM pg_trigger t
 JOIN pg_class c ON c.oid = t.tgrelid
@@ -89,47 +206,25 @@ WHERE n.nspname = 'public'
   AND NOT t.tgisinternal
   AND t.tgname LIKE '%org_match%'
 ORDER BY 1, 2;
+-- Expect only pricing_items_org_match + quote_items_org_match before 025
 
--- GST constraints (absent until 025)
-SELECT conname, conrelid::regclass::text, pg_get_constraintdef(oid)
-FROM pg_constraint
+SELECT conname FROM pg_constraint
 WHERE conname IN (
   'pricing_documents_gst_rate_check',
   'quotes_gst_rate_check'
 );
+-- Expect 0 rows before 025
 
--- RLS enabled on organisation-owned tables
-SELECT c.relname, c.relrowsecurity
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relkind = 'r'
-  AND c.relname IN (
-    'organisations','profiles','projects','work_areas','project_facts',
-    'question_blocks','questions','constraints','estimates','estimate_line_items',
-    'rates','organisation_settings','organisation_work_areas','project_notes',
-    'note_proposals','pricing_documents','pricing_items','quotes','quote_items',
-    'pricing_audit_log'
-  )
-ORDER BY 1;
-
--- Sample API-role table privileges (informational before 026)
 SELECT
   has_table_privilege('authenticated', 'public.projects', 'SELECT') AS auth_select,
-  has_table_privilege('authenticated', 'public.projects', 'INSERT') AS auth_insert,
-  has_table_privilege('authenticated', 'public.projects', 'UPDATE') AS auth_update,
-  has_table_privilege('service_role', 'public.projects', 'SELECT') AS service_select,
+  has_table_privilege('authenticated', 'public.projects', 'TRUNCATE') AS auth_truncate,
   has_table_privilege('anon', 'public.projects', 'SELECT') AS anon_select;
+-- Before 026: typically broader grants (anon SELECT / TRUNCATE possible)
 ```
 
----
-
-## 6. Queries detecting invalid existing data
-
-Stop and remediate if any mismatch or bad GST count is non-zero **before** applying 025:
+Invalid parent-child / GST data checks (must be 0 before 025):
 
 ```sql
--- Parent-child org mismatches against projects (should be 0)
 SELECT 'work_areas' AS table_name, COUNT(*) AS mismatches
 FROM public.work_areas c
 JOIN public.projects p ON p.id = c.project_id
@@ -153,7 +248,6 @@ UNION ALL
 SELECT 'estimate_line_items', COUNT(*) FROM public.estimate_line_items c
 JOIN public.projects p ON p.id = c.project_id WHERE c.org_id IS DISTINCT FROM p.org_id;
 
--- GST rows that would block check constraints
 SELECT COUNT(*) AS bad_pricing_gst
 FROM public.pricing_documents
 WHERE gst_rate IS NULL OR gst_rate < 0 OR gst_rate > 100;
@@ -165,42 +259,11 @@ WHERE gst_rate IS NULL OR gst_rate < 0 OR gst_rate > 100;
 
 ---
 
-## 7. Application order
+## Post-apply verification
 
-Apply **exactly** in this order:
-
-1. **025** — parent-child org triggers, margin default 20%, GST checks, idempotent RLS enable  
-2. **026** — restore least-privilege PostgREST DML grants (`SELECT/INSERT/UPDATE/DELETE` for `authenticated`/`service_role`; schema `USAGE`; no anon table DML; no TRUNCATE/REFERENCES/TRIGGER) + default privileges for future objects  
-
-Do not apply 026 before 025. Do not skip 025 if both are approved as a Stage 2A pair.
-
----
-
-## 8. Exact remote application method
-
-Dashboard:
-
-* Database → Migrations → apply pending local migrations `025_stage_2a4_database_integrity.sql` then `026_stage_2a5_restore_api_table_grants.sql`.
-
-Or linked CLI (example only — **do not run without approval**):
-
-```powershell
-# ONLY after explicit owner approval and successful pre-checks
-# Prefer reviewing the pending list first:
-npx supabase migration list
-
-# Then push pending migrations to the linked remote project:
-npx supabase db push
-```
-
-Prefer applying the two reviewed migrations rather than an unreviewed bulk push when the tooling allows. Record the CLI output (without secrets) in ops notes.
-
----
-
-## 9. Post-025 verification
+### After 025
 
 ```sql
--- Seven 025 project-child triggers + retained 023 pricing/quote triggers
 SELECT c.relname, t.tgname
 FROM pg_trigger t
 JOIN pg_class c ON c.oid = t.tgrelid
@@ -209,143 +272,74 @@ WHERE n.nspname = 'public'
   AND NOT t.tgisinternal
   AND t.tgname LIKE '%org_match%'
 ORDER BY 1, 2;
--- Expect 9 rows: seven *_project_org_match + pricing_items_org_match + quote_items_org_match
+-- Expect 9 org_match triggers
 
--- Margin default now 20.00
 SELECT column_default
 FROM information_schema.columns
 WHERE table_schema = 'public'
   AND table_name = 'organisation_settings'
   AND column_name = 'default_margin_percent';
-
--- GST constraints present
-SELECT conname, conrelid::regclass::text, pg_get_constraintdef(oid)
-FROM pg_constraint
-WHERE conname IN (
-  'pricing_documents_gst_rate_check',
-  'quotes_gst_rate_check'
-);
-
--- RLS still enabled on pricing_audit_log
-SELECT c.relname, c.relrowsecurity
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public' AND c.relname = 'pricing_audit_log';
+-- Expect 20.00
 ```
 
-Confirm existing `organisation_settings.default_margin_percent` **values** were not bulk-rewritten (default change only).
-
----
-
-## 10. Post-026 privilege and RLS verification
+### After 026
 
 ```sql
--- API roles can exercise required table DML (PostgREST + RLS)
--- Expect: authenticated/service_role SIDU = true; anon SELECT/INSERT = false;
---         TRUNCATE/REFERENCES/TRIGGER = false for authenticated/service_role/anon
 SELECT
   has_table_privilege('authenticated', 'public.projects', 'SELECT') AS auth_select,
   has_table_privilege('authenticated', 'public.projects', 'INSERT') AS auth_insert,
   has_table_privilege('authenticated', 'public.projects', 'UPDATE') AS auth_update,
   has_table_privilege('authenticated', 'public.projects', 'DELETE') AS auth_delete,
   has_table_privilege('authenticated', 'public.projects', 'TRUNCATE') AS auth_truncate,
-  has_table_privilege('service_role', 'public.organisations', 'SELECT') AS service_org_select,
-  has_table_privilege('service_role', 'public.organisations', 'INSERT') AS service_org_insert,
-  has_table_privilege('anon', 'public.projects', 'SELECT') AS anon_select,
-  has_table_privilege('anon', 'public.projects', 'INSERT') AS anon_insert;
-
--- Privilege summary (expect SELECT/INSERT/UPDATE/DELETE for authenticated + service_role only)
-SELECT grantee, privilege_type, COUNT(*) AS table_count
-FROM information_schema.role_table_grants
-WHERE table_schema = 'public'
-  AND grantee IN ('anon', 'authenticated', 'service_role')
-GROUP BY grantee, privilege_type
-ORDER BY grantee, privilege_type;
--- Expect 8 rows: authenticated×4 + service_role×4. No anon table rows. No TRUNCATE/REFERENCES/TRIGGER.
-
--- RLS remains enabled (026 must not disable RLS)
-SELECT COUNT(*) FILTER (WHERE c.relrowsecurity) AS rls_on, COUNT(*) AS total
-FROM pg_class c
-JOIN pg_namespace n ON n.oid = c.relnamespace
-WHERE n.nspname = 'public'
-  AND c.relkind = 'r'
-  AND c.relname IN (
-    'organisations','profiles','projects','work_areas','project_facts',
-    'question_blocks','questions','constraints','estimates','estimate_line_items',
-    'rates','organisation_settings','organisation_work_areas','project_notes',
-    'note_proposals','pricing_documents','pricing_items','quotes','quote_items',
-    'pricing_audit_log'
-  );
--- Expect rls_on = 20, total = 20
+  has_table_privilege('anon', 'public.projects', 'SELECT') AS anon_select;
+-- Expect SIDU true for authenticated; TRUNCATE false; anon SELECT false
 ```
 
-**Important:** Migration 026 restores **least-privilege** table privileges (`SELECT/INSERT/UPDATE/DELETE`) for `authenticated` and `service_role` so RLS policies can be exercised through PostgREST. It does **not** grant table DML to `anon`, does **not** grant `TRUNCATE`/`REFERENCES`/`TRIGGER`, does **not** disable RLS, add unrestricted policies, or grant table ownership.
-
-Optionally re-run read-only sections of `supabase/sql/verify_rls_coverage.sql` against remote.
-
----
-
-## 11. Two-organisation smoke test
-
-After both migrations:
-
-1. Create (or use disposable) User A / Organisation A and User B / Organisation B on remote **only if owner approves** disposable test data.
-2. Confirm User A can read/update Organisation A project records.
-3. Confirm User A cannot read or update Organisation B project / pricing / quote IDs.
-4. Confirm missing and foreign IDs return equivalent generic not-found behaviour in the app.
-5. Clean up disposable remote test orgs if created.
-
-If owner does not approve remote disposable users, defer the live remote isolation proof and rely on local Batch 2A.5 evidence plus post-apply SQL checks above.
-
----
-
-## 12. Rollback options
-
-Both migrations are additive. Preferred rollback: **restore from the pre-apply backup**.
-
-### Compensating SQL — reverse 026 first, then 025 (only if backup restore unavailable)
-
-**026 reverse (narrow — use with care):** Re-applying restricted grants is environment-specific. Prefer backup restore. If privileges must be tightened manually, do so only under owner/DBA guidance; do not invent destructive `REVOKE` scripts without verifying which grants existed pre-026 on that remote.
-
-**025 reverse:**
+### After 027
 
 ```sql
--- Drop 025 project-child triggers (retain 023 pricing/quote triggers)
-DROP TRIGGER IF EXISTS work_areas_project_org_match ON public.work_areas;
-DROP TRIGGER IF EXISTS project_facts_project_org_match ON public.project_facts;
-DROP TRIGGER IF EXISTS question_blocks_project_org_match ON public.question_blocks;
-DROP TRIGGER IF EXISTS questions_project_org_match ON public.questions;
-DROP TRIGGER IF EXISTS constraints_project_org_match ON public.constraints;
-DROP TRIGGER IF EXISTS estimates_project_org_match ON public.estimates;
-DROP TRIGGER IF EXISTS estimate_line_items_project_org_match ON public.estimate_line_items;
-DROP FUNCTION IF EXISTS public.enforce_child_project_org_match();
+SELECT pg_get_constraintdef(oid)
+FROM pg_constraint
+WHERE conname = 'project_notes_note_type_check'
+  AND conrelid = 'public.project_notes'::regclass;
+-- Must include calibration_note
 
-ALTER TABLE public.organisation_settings
-  ALTER COLUMN default_margin_percent SET DEFAULT 25.00;
-
-ALTER TABLE public.pricing_documents
-  DROP CONSTRAINT IF EXISTS pricing_documents_gst_rate_check;
-ALTER TABLE public.quotes
-  DROP CONSTRAINT IF EXISTS quotes_gst_rate_check;
+SELECT
+  to_regclass('public.note_proposals_project_created_idx') IS NOT NULL AS has_canonical,
+  to_regclass('public.note_proposals_created_idx') IS NOT NULL AS has_alternate,
+  pg_get_indexdef('public.note_proposals_project_created_idx'::regclass) AS canonical_def;
 ```
 
-Record any rollback in the migration ledger / ops notes. Manual compensating SQL does not automatically remove rows from `supabase_migrations.schema_migrations` — coordinate ledger repair with Supabase tooling if needed.
+### Two-organisation smoke (optional, owner-gated)
+
+Same as prior runbook: disposable User A / Org A vs User B / Org B; cross-org deny; generic not-found.
 
 ---
 
-## 13. Expected application downtime
+## Rollback
 
-* **Expected downtime:** none / negligible for additive DDL (triggers, default change, check constraints, `GRANT`).
-* Brief PostgREST schema reload may occur (`NOTIFY pgrst, 'reload schema'`).
-* Prefer a short maintenance window anyway so operators can run post-checks without concurrent schema confusion.
-* No data rewrite of historical margins is performed by 025; 026 does not modify row data.
+Preferred: restore from the pre-apply backup.
+
+Manual compensating notes (only if backup restore unavailable):
+
+* **027:** drop/recreate note-type check without `calibration_note` only if product requires reverting; rename index back to `note_proposals_created_idx` if required for ops consistency (usually unnecessary).
+* **026 / 025:** see prior compensating SQL in ops notes / Stage 2A completion report; prefer backup restore.
+
+Manual SQL does not automatically repair `supabase_migrations.schema_migrations` — coordinate ledger changes with Supabase tooling.
 
 ---
 
-## 14. Confirmation — runbook not executed during Stage 2A
+## Expected downtime
 
-**This runbook was not executed during Stage 2A.**  
-Batches 2A.4, 2A.5, and 2A.6 validated migrations **locally only**.  
-Remote migrations **025** and **026** remain **unapplied** until explicit owner approval.
+* Negligible for additive DDL (triggers, defaults, checks, grants, index rename, constraint swap).
+* Brief PostgREST reload may occur.
+* Prefer a short maintenance window for pre/post checks.
+
+---
+
+## Confirmation — not executed
+
+**This runbook was not executed.**  
+No `migration repair`, `db push`, remote SQL mutation, or remote migration application was performed while preparing migration 027 and this sequence.
 
 No secrets are included in this document.
