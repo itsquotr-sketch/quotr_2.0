@@ -6,7 +6,7 @@ import {
   roundMoney,
   roundPercent,
 } from "@/lib/pricing/calculations";
-import { buildPricingItemFieldsFromEstimateLineItem } from "@/lib/pricing/pricing-item-calculation";
+import { calculateAuthoritativeFieldsFromEstimateLine } from "@/lib/pricing/estimate-to-pricing-adapter";
 import type { PricingItem } from "@/lib/pricing/types";
 
 export type EstimateLineItemRow = {
@@ -67,13 +67,21 @@ function labelKey(workAreaId: string | null, label: string): string {
 }
 
 export function valuesFromEstimateLineItem(lineItem: EstimateLineItemRow) {
-  const fields = buildPricingItemFieldsFromEstimateLineItem(lineItem);
   const itemType = mapEstimateCategoryToItemType(lineItem.category);
   const { metadata } = parseLineItemNotes(lineItem.notes);
   const deliveryMethod = pricingOwnerToDeliveryMethod(
     metadata.pricingOwner,
     itemType
   );
+
+  const authoritative = calculateAuthoritativeFieldsFromEstimateLine(
+    lineItem,
+    `estimate-line-${lineItem.id}`
+  );
+  if (!authoritative.ok) {
+    throw new Error(authoritative.error);
+  }
+  const fields = authoritative.fields;
 
   return {
     itemType,
@@ -96,6 +104,7 @@ export function valuesFromEstimateLineItem(lineItem: EstimateLineItemRow) {
     productivityRate: fields.productivityRate,
     productivityUnit: fields.productivityUnit,
     calculatedQuantity: fields.calculatedQuantity,
+    costKnown: fields.costKnown,
     internalDescription: parseDisplayNotes(lineItem.notes),
     notesInternal: buildPricingNotesFromEstimateLineItem(lineItem.notes),
   };

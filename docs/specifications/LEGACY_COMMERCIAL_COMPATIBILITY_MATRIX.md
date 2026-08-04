@@ -90,7 +90,7 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 
 | Batch | Additional gates |
 | --- | --- |
-| **2B.6 Pricing adoption** | **2B.6A complete** (item CRUD + aggregate). Remaining: createFromEstimate, document update, recalibration (2B.6B+); LEG-P-02/03 fixtures still EXACT or approved |
+| **2B.6 Pricing adoption** | **2B.6A+2B.6B complete** for pricing-domain server paths; estimates/quotes/UI remain |
 | **2B.7 Estimate adoption** | LEG-E-01/15/16 EXACT; confidence/ranges stay out of money engine |
 | **2B.8 Quote adoption** | LEG-Q-01 EXACT with `visible_only`; revision immutability; prefer-total policy decided |
 | **2B.9 UI removal** | No client GP/aggregate authority; display server/engine only |

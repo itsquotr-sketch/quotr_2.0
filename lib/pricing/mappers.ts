@@ -1,5 +1,6 @@
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { parseStringArray } from "@/lib/pricing/calculations";
+import { inferPersistedLineCostKnown } from "@/lib/pricing/authoritative-document-totals";
 import type {
   PricingDocument,
   PricingItem,
@@ -18,6 +19,7 @@ export function mapPricingDocument(row: Record<string, unknown>): PricingDocumen
     site_address: (row.site_address as string | null) ?? null,
     pricing_date: (row.pricing_date as string | null) ?? null,
     valid_until: (row.valid_until as string | null) ?? null,
+    // Persisted authoritative totals — do not recalculate here.
     subtotal_cost: Number(row.subtotal_cost ?? 0),
     subtotal_sell: Number(row.subtotal_sell ?? 0),
     gross_profit: Number(row.gross_profit ?? 0),
@@ -48,6 +50,18 @@ export function mapPricingDocument(row: Record<string, unknown>): PricingDocumen
 }
 
 export function mapPricingItem(row: Record<string, unknown>): PricingItem {
+  const totalCost = Number(row.total_cost ?? 0);
+  const totalSell = Number(row.total_sell ?? 0);
+  const costKnown = inferPersistedLineCostKnown({
+    total_cost: totalCost,
+    total_sell: totalSell,
+  });
+  // Stored margin/profit may be the unknown-cost sentinel (0). cost_known tells
+  // consumers not to treat that as a real 0% gross margin.
+  const storedMargin = Number(row.margin_percent ?? 0);
+  const storedMarkup = Number(row.markup_percent ?? 0);
+  const storedProfit = Number(row.gross_profit ?? 0);
+
   return {
     id: row.id as string,
     org_id: row.org_id as string,
@@ -66,11 +80,11 @@ export function mapPricingItem(row: Record<string, unknown>): PricingItem {
     unit: (row.unit as string | null) ?? null,
     unit_cost: row.unit_cost != null ? Number(row.unit_cost) : null,
     unit_sell: row.unit_sell != null ? Number(row.unit_sell) : null,
-    total_cost: Number(row.total_cost ?? 0),
-    total_sell: Number(row.total_sell ?? 0),
-    gross_profit: Number(row.gross_profit ?? 0),
-    margin_percent: Number(row.margin_percent ?? 0),
-    markup_percent: Number(row.markup_percent ?? 0),
+    total_cost: totalCost,
+    total_sell: totalSell,
+    gross_profit: costKnown ? storedProfit : 0,
+    margin_percent: costKnown ? storedMargin : 0,
+    markup_percent: costKnown ? storedMarkup : 0,
     visible_on_quote: Boolean(row.visible_on_quote ?? true),
     optional: Boolean(row.optional ?? false),
     sort_order: Number(row.sort_order ?? 0),
@@ -90,6 +104,7 @@ export function mapPricingItem(row: Record<string, unknown>): PricingItem {
       row.calculated_quantity != null
         ? Number(row.calculated_quantity)
         : null,
+    cost_known: costKnown,
   };
 }
 

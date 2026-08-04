@@ -21,7 +21,9 @@ Quotr already has a working deterministic estimate → final pricing → quote p
 
 **Batch 2B.4 update (2026-08-04):** Legacy implementations remapped to stable **LEG-*** IDs with shadow-parity fixtures under `lib/commercial-engine/parity/`. C-28 was recorded as **BLOCKING_ADOPTION_MISMATCH** (fixture `PAR-P-GST-BUG-C28`); **not fixed** in 2B.4. Compatibility matrix: `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md`. Engine still unwired.
 
-**Batch 2B.5 update (2026-08-04):** Live C-28/CD-09 corrected via `lib/pricing/gst-source.ts` and `createPricingFromEstimate` (same org/document GST for insert and post-item recalc). Parity fixture now **EXACT_MATCH**; KM-GST-C28 no longer blocks adoption. Historic 2B.4 blocker evidence retained. Adoption gate: `docs/specifications/PRICING_ACTION_ADOPTION_GATE.md`. Commercial engine still unwired.
+**Batch 2B.6B update (2026-08-04):** Pricing-domain server mutations adopted: create-from-estimate, document GST aggregate, recalibration (manual preserve), read `cost_known` derivation. Engine still unwired from estimates/quotes/UI. No migrations.
+
+**Batch 2B.6A update (2026-08-04):** Item CRUD + document aggregate after mutations adopted via production adapter.
 
 Stage 2A secured auth, ownership and input validation around money-bearing actions **without** consolidating formulas. Stage 2B must now specify and (in later batches) adopt one authoritative engine while preserving current MVP behaviour until owner commercial decisions and golden tests land.
 

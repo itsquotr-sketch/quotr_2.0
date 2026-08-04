@@ -170,11 +170,17 @@ async function recalculateDocumentTotals(
   gstRate: number,
   resetReview: boolean
 ) {
+  const { isAuthoritativePricingItemCalculation } = await import(
+    "@/lib/pricing/adoption-authority"
+  );
+  const { calculateAuthoritativeDocumentTotals } = await import(
+    "@/lib/pricing/authoritative-document-totals"
+  );
   const { calculateDocumentTotals } = await import("@/lib/pricing/calculations");
 
   const { data: items, error } = await supabase
     .from("pricing_items")
-    .select("total_cost, total_sell")
+    .select("total_cost, total_sell, visible_on_quote")
     .eq("pricing_document_id", pricingDocumentId)
     .eq("org_id", orgId);
 
@@ -182,7 +188,36 @@ async function recalculateDocumentTotals(
     throw new Error(error.message);
   }
 
-  const totals = calculateDocumentTotals(items ?? [], gstRate);
+  const mapped = (items ?? []).map((item) => ({
+    total_cost: Number(item.total_cost ?? 0),
+    total_sell: Number(item.total_sell ?? 0),
+    visible: item.visible_on_quote !== false,
+  }));
+
+  let totals: {
+    subtotalCost: number;
+    subtotalSell: number;
+    grossProfit: number;
+    marginPercent: number;
+    markupPercent: number;
+    gstAmount: number;
+    totalInclGst: number;
+  };
+
+  if (isAuthoritativePricingItemCalculation()) {
+    const authoritative = calculateAuthoritativeDocumentTotals(
+      mapped,
+      gstRate,
+      `recalibration-doc-${pricingDocumentId}`
+    );
+    if (!authoritative.ok) {
+      throw new Error(authoritative.error);
+    }
+    totals = authoritative.totals;
+  } else {
+    totals = calculateDocumentTotals(mapped, gstRate);
+  }
+
   const update: Record<string, string | number | null | boolean> = {
     subtotal_cost: totals.subtotalCost,
     subtotal_sell: totals.subtotalSell,
@@ -246,39 +281,48 @@ export async function applyRecalibration(
   let itemsChanged = false;
   let nextSort = maxSort;
 
-  for (const lineItem of estimateLineItems) {
-    const existing = matches.get(lineItem.id);
-    if (existing) {
-      if (existing.manually_edited) {
+  try {
+    for (const lineItem of estimateLineItems) {
+      const existing = matches.get(lineItem.id);
+      if (existing) {
+        if (existing.manually_edited) {
+          updates.push({
+            id: existing.id,
+            patch: {
+              source_estimate_line_item_id: lineItem.id,
+              recalibration_note: MANUAL_PRESERVED_NOTE,
+            },
+          });
+          itemsChanged = true;
+          continue;
+        }
+
         updates.push({
           id: existing.id,
-          patch: {
-            source_estimate_line_item_id: lineItem.id,
-            recalibration_note: MANUAL_PRESERVED_NOTE,
-          },
+          patch: buildPricingItemUpdateFromEstimate(lineItem, existing),
         });
         itemsChanged = true;
         continue;
       }
 
-      updates.push({
-        id: existing.id,
-        patch: buildPricingItemUpdateFromEstimate(lineItem, existing),
-      });
+      inserts.push(
+        buildPricingItemRowFromEstimate(
+          lineItem,
+          orgId,
+          pricingDocumentId,
+          projectId,
+          nextSort++
+        )
+      );
       itemsChanged = true;
-      continue;
     }
-
-    inserts.push(
-      buildPricingItemRowFromEstimate(
-        lineItem,
-        orgId,
-        pricingDocumentId,
-        projectId,
-        nextSort++
-      )
-    );
-    itemsChanged = true;
+  } catch (err) {
+    return {
+      error:
+        err instanceof Error
+          ? err.message
+          : USER_ERRORS.recalibrationFailed,
+    };
   }
 
   for (const item of pricingItems) {

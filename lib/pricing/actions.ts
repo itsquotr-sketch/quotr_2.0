@@ -45,9 +45,6 @@ import {
   type PersistedPricingItemMoneyFields,
 } from "@/lib/pricing/commercial-engine-adapter";
 import { calculateAuthoritativeDocumentTotals } from "@/lib/pricing/authoritative-document-totals";
-import {
-  buildPricingItemFieldsFromEstimateLineItem,
-} from "@/lib/pricing/pricing-item-calculation";
 import { valuesFromEstimateLineItem } from "@/lib/pricing/recalibration-helpers";
 import {
   buildScopeSummaryFromWorkAreas,
@@ -596,15 +593,92 @@ export async function createPricingFromEstimate(input: {
   const gstRate = createGst.documentGstRate;
   const validUntil = addDaysIsoDate(orgDefaults.defaultQuoteValidityDays);
 
-  const documentTotals = calculateDocumentTotals(
-    [
-      {
-        total_cost: Number(estimate.recommended_cost ?? 0),
-        total_sell: Number(estimate.recommended_sell ?? 0),
-      },
-    ],
-    gstRate
-  );
+  // Map all estimate lines through the authoritative engine BEFORE any insert.
+  // Fail closed without creating a partial document.
+  type MappedPricingItemRow = Record<string, unknown>;
+  const pricingItemRows: MappedPricingItemRow[] = [];
+  const aggregateLines: Array<{
+    total_cost: number;
+    total_sell: number;
+    cost_known: boolean;
+  }> = [];
+
+  if (lineItems && lineItems.length > 0) {
+    for (let index = 0; index < lineItems.length; index += 1) {
+      const lineItem = lineItems[index];
+      let values: ReturnType<typeof valuesFromEstimateLineItem>;
+      try {
+        values = valuesFromEstimateLineItem(lineItem);
+      } catch (err) {
+        return {
+          error:
+            err instanceof Error
+              ? err.message
+              : "Failed to calculate pricing from estimate line.",
+        };
+      }
+      const displayNotes = lineItem.notes?.split("\n__quotr_meta__:")[0]?.trim();
+
+      aggregateLines.push({
+        total_cost: values.totalCost,
+        total_sell: values.totalSell,
+        cost_known: values.costKnown,
+      });
+
+      pricingItemRows.push({
+        org_id: orgId,
+        pricing_document_id: null, // filled after document insert
+        project_id: projectId,
+        work_area_id: lineItem.work_area_id,
+        source_estimate_line_item_id: lineItem.id,
+        item_type: values.itemType,
+        delivery_method: values.deliveryMethod,
+        internal_label: lineItem.label,
+        client_label: cleanClientLabel(lineItem.label),
+        internal_description: displayNotes || null,
+        client_description: displayNotes || null,
+        quantity: values.quantity,
+        unit: values.unit,
+        unit_cost: values.unitCost,
+        unit_sell: values.unitSell,
+        total_cost: values.totalCost,
+        total_sell: values.totalSell,
+        gross_profit: values.grossProfit,
+        margin_percent: values.marginPercent,
+        markup_percent: values.markupPercent,
+        calculation_mode: values.calculationMode,
+        productivity_rate: values.productivityRate,
+        productivity_unit: values.productivityUnit,
+        calculated_quantity: values.calculatedQuantity,
+        visible_on_quote: true,
+        optional: false,
+        sort_order: lineItem.sort_order ?? index,
+        notes_internal: buildPricingNotesFromEstimateLineItem(lineItem.notes),
+      });
+    }
+  }
+
+  const documentTotalsResult = isAuthoritativePricingItemCalculation()
+    ? calculateAuthoritativeDocumentTotals(
+        aggregateLines,
+        gstRate,
+        `create-from-estimate-${estimate.id}`
+      )
+    : (() => {
+        const legacy = calculateDocumentTotals(aggregateLines, gstRate);
+        return {
+          ok: true as const,
+          totals: {
+            ...legacy,
+            costKnown: true,
+            record: null,
+          },
+        };
+      })();
+  if (!documentTotalsResult.ok) {
+    return { error: documentTotalsResult.error };
+  }
+  const documentTotals = documentTotalsResult.totals;
 
   const { data: pricingDocument, error: insertDocError } = await supabase
     .from("pricing_documents")
@@ -620,12 +694,12 @@ export async function createPricingFromEstimate(input: {
       site_address: project.site_address,
       pricing_date: todayIsoDate(),
       valid_until: validUntil,
-      // Document totals copy estimate recommended cost/sell — not recalculated from default margin.
-      subtotal_cost: Number(estimate.recommended_cost ?? 0),
-      subtotal_sell: Number(estimate.recommended_sell ?? 0),
-      gross_profit: Number(estimate.gross_profit ?? 0),
-      margin_percent: Number(estimate.margin_percent ?? 0),
-      markup_percent: Number(estimate.markup_percent ?? 0),
+      // Authoritative aggregate from mapped items — not estimate snapshot GP triad.
+      subtotal_cost: documentTotals.subtotalCost,
+      subtotal_sell: documentTotals.subtotalSell,
+      gross_profit: documentTotals.grossProfit,
+      margin_percent: documentTotals.marginPercent,
+      markup_percent: documentTotals.markupPercent,
       gst_rate: gstRate,
       gst_amount: documentTotals.gstAmount,
       total_incl_gst: documentTotals.totalInclGst,
@@ -653,43 +727,10 @@ export async function createPricingFromEstimate(input: {
 
   const pricingDocumentId = pricingDocument.id;
 
-  if (lineItems && lineItems.length > 0) {
-    const pricingItemRows = lineItems.map((lineItem, index) => {
-      const fields = buildPricingItemFieldsFromEstimateLineItem(lineItem);
-      const values = valuesFromEstimateLineItem(lineItem);
-      const displayNotes = lineItem.notes?.split("\n__quotr_meta__:")[0]?.trim();
-
-      return {
-        org_id: orgId,
-        pricing_document_id: pricingDocumentId,
-        project_id: projectId,
-        work_area_id: lineItem.work_area_id,
-        source_estimate_line_item_id: lineItem.id,
-        item_type: values.itemType,
-        delivery_method: values.deliveryMethod,
-        internal_label: lineItem.label,
-        client_label: cleanClientLabel(lineItem.label),
-        internal_description: displayNotes || null,
-        client_description: displayNotes || null,
-        quantity: fields.quantity,
-        unit: fields.unit,
-        unit_cost: fields.unitCost,
-        unit_sell: fields.unitSell,
-        total_cost: fields.totalCost,
-        total_sell: fields.totalSell,
-        gross_profit: fields.grossProfit,
-        margin_percent: fields.marginPercent,
-        markup_percent: fields.markupPercent,
-        calculation_mode: fields.calculationMode,
-        productivity_rate: fields.productivityRate,
-        productivity_unit: fields.productivityUnit,
-        calculated_quantity: fields.calculatedQuantity,
-        visible_on_quote: true,
-        optional: false,
-        sort_order: lineItem.sort_order ?? index,
-        notes_internal: buildPricingNotesFromEstimateLineItem(lineItem.notes),
-      };
-    });
+  if (pricingItemRows.length > 0) {
+    for (const row of pricingItemRows) {
+      row.pricing_document_id = pricingDocumentId;
+    }
 
     const { error: itemsInsertError } = await supabase
       .from("pricing_items")
@@ -802,6 +843,9 @@ export async function updatePricingDocument(
     };
   }
 
+  // Product intent: updatePricingDocument accepts metadata + optional GST only.
+  // There is no document-level margin field; GST-only changes do not recalculate
+  // GST-exclusive line cost/sell — only document GST amount / inclusive total.
   if (documentInput.gst_rate !== undefined) {
     await recalculateAndPersistDocumentTotals(
       supabase,

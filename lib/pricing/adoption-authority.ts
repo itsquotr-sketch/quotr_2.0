@@ -1,16 +1,19 @@
 /**
- * Batch 2B.6A — temporary calculation authority switch for pricing item mutations.
+ * Batch 2B.6A/B — temporary calculation authority switch for pricing-domain paths.
  *
  * Default: authoritative commercial engine.
- * Rollback: set to "legacy" (or revert this commit) — never dual-write.
+ * Rollback: set to "legacy" (or revert the adoption commit) — never dual-write.
  * Not a public UI feature flag.
+ *
+ * Covers item CRUD (2B.6A), create-from-estimate, document GST aggregate,
+ * and recalibration money fields (2B.6B).
  */
 
 export type PricingItemCalculationAuthority = "authoritative" | "legacy";
 
 /**
- * Internal rollback constant. Change to `"legacy"` only for emergency rollback
- * of Batch 2B.6A item CRUD paths. Prefer `git revert` of the 2B.6A commit.
+ * Internal rollback constant. Change to `"legacy"` only for emergency rollback.
+ * Prefer `git revert` of the adoption commit(s).
  */
 export const PRICING_ITEM_CALCULATION_AUTHORITY: PricingItemCalculationAuthority =
   "authoritative";

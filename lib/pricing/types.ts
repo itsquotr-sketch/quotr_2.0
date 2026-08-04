@@ -100,6 +100,11 @@ export type PricingItem = {
   productivity_rate: number | null;
   productivity_unit: string | null;
   calculated_quantity: number | null;
+  /**
+   * Derived at map time (no DB column). False when cost=0 and sell>0
+   * (unknown-cost sentinel). Not a persisted engine field.
+   */
+  cost_known: boolean;
 };
 
 export type PricingWorkArea = {
