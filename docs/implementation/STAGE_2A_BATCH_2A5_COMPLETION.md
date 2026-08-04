@@ -32,7 +32,7 @@ Prove, on the local Supabase stack only, that Quotr enforces organisation isolat
 * Local Supabase Docker stack (`API_URL` host `127.0.0.1`)
 * `supabase db reset` applied migrations **001 through 026**
 * Migration **025** project-child triggers present
-* Migration **026** restores PostgREST DML grants for `anon` / `authenticated` / `service_role`
+* Migration **026** restores PostgREST DML grants for `authenticated` / `service_role` (least privilege; `anon` has no customer-table DML)
 * Verification refuses non-local Supabase URLs
 * Credentials loaded from `supabase status -o env` when available (never printed); demo keys only as local fallback
 * `.env.local` remote URL (if present) is ignored for live isolation checks
@@ -160,7 +160,7 @@ Missing UUID and foreign UUID produce equivalent public errors for projects, pri
 | `scripts/verify-batch-2a5-tenant-isolation.ts` | New Batch 2A.5 entry script (local-only guard, seed, RLS, ownership, triggers, soft-delete, disclosure) |
 | `scripts/verify-org-isolation.ts` | Local-only guard; points to Batch 2A.5 for live proof; retains static helper smoke tests |
 | `scripts/verify-rls-coverage.ts` | Notes non-local `.env` is ignored; live checks remain Docker-only |
-| `supabase/migrations/026_stage_2a5_restore_api_table_grants.sql` | Defect fix — restore API role DML grants + default privileges |
+| `supabase/migrations/026_stage_2a5_restore_api_table_grants.sql` | Defect fix — restore least-privilege API role DML grants + default privileges (narrowed in Batch 2A.6) |
 | `docs/implementation/STAGE_2A_BATCH_2A5_COMPLETION.md` | This report |
 | `docs/plans/STAGE_2A_SECURITY_VALIDATION_PLAN.md` | Batch 2A.5 recorded; Stage 2A still In Progress |
 | `docs/MVP_HARDENING_GUIDE.md` | Tracker updated |
@@ -172,10 +172,20 @@ Missing UUID and foreign UUID produce equivalent public errors for projects, pri
 ### Defect: missing PostgREST DML grants (blocking isolation proof)
 
 * **Symptom:** service-role / authenticated PostgREST calls returned `permission denied for table organisations` (and lacked SELECT/INSERT/UPDATE on public tables).
-* **Cause:** `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public` granted only DELETE/TRUNCATE/REFERENCES/TRIGGER/MAINTAIN to `anon`, `authenticated`, and `service_role`, omitting SELECT/INSERT/UPDATE. Migration-created tables inherited that ACL. RLS policies existed but could not be exercised through the API.
-* **Fix:** local migration `026_stage_2a5_restore_api_table_grants.sql` restores `GRANT ALL` on existing public tables/sequences and corrects default privileges for future objects.
+* **Cause:** `ALTER DEFAULT PRIVILEGES FOR ROLE postgres IN SCHEMA public` granted only TRUNCATE/REFERENCES/TRIGGER (and similar non-DML rights) to `anon`, `authenticated`, and `service_role`, omitting SELECT/INSERT/UPDATE/DELETE. Migration-created tables inherited that ACL. RLS policies existed but could not be exercised through the API.
+* **Initial fix (2A.5):** local migration `026_stage_2a5_restore_api_table_grants.sql` restored DML via `GRANT ALL`.
+* **Corrective narrowing (2A.6):** migration 026 (still unapplied remotely) was edited in place to least privilege:
+  * **Previous scope:** `GRANT ALL` on tables/sequences to `anon`, `authenticated`, `service_role` (included TRUNCATE/REFERENCES/TRIGGER; also granted anon table DML).
+  * **Final scope:**
+    * Schema `public` `USAGE` → `anon`, `authenticated`, `service_role`
+    * Tables (all 20 public org-owned tables): `SELECT`, `INSERT`, `UPDATE`, `DELETE` → `authenticated`, `service_role` only
+    * Sequences: `USAGE`, `SELECT` → `authenticated`, `service_role` (none exist today; UUID PKs)
+    * Functions: `EXECUTE` → `authenticated`, `service_role`
+    * `anon`: **no** public table/sequence/function grants (Auth API + service-role signup bootstrap only)
+    * Explicit revoke of residual TRUNCATE/REFERENCES/TRIGGER (and any other) grants before re-grant
+  * **Why sufficient:** authenticated session clients perform all customer CRUD under RLS; signup org/profile inserts use `service_role`; Quotr has no anonymous customer-table access; no public sequences; no app RPCs on public functions.
 * **Remote:** **not applied**; requires explicit owner approval (same gate as 025).
-* **Evidence:** after reset through 026, `has_table_privilege('authenticated', 'public.projects', 'SELECT')` is true; Batch 2A.5 suite passes.
+* **Evidence:** after reset through narrowed 026, SIDU privileges present for authenticated/service_role; anon lacks SELECT/INSERT; no TRUNCATE/REFERENCES/TRIGGER; Batch 2A.5 suite passes including anonymous-denial checks.
 
 No pricing formulas, quote formulas, AI prompts, UI, or unrelated features were changed.
 
@@ -221,7 +231,7 @@ npx tsx scripts/verify-batch-2a5-tenant-isolation.ts
 
 * Soft-delete is an **application active-visibility** control, not an RLS rewrite; same-org users may still SELECT child rows of soft-deleted projects at the DB layer if they bypass active helpers.
 * Child ownership helpers (`assertOrgOwnsWorkArea`, pricing/quote item helpers) do not independently re-check parent `projects.deleted_at`; active product paths are expected to gate via `assertOrgOwnsActiveProject` first.
-* Migration **026** (and **025**) are local-only until explicit remote approval.
+* Migration **026** (and **025**) are local-only until explicit remote approval; 026 is least-privilege SIDU (narrowed in 2A.6), not `GRANT ALL`.
 * No separate staging project; remote isolation proof remains owner-gated.
 * Server actions were verified via exported ownership helpers with real authenticated local clients where Next.js server-action runtime could not be invoked directly from the script.
 

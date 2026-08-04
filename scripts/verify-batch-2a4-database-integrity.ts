@@ -14,8 +14,9 @@ import {
   assertOrgOwnsProject,
   type AuthOrgContext,
 } from "../lib/security/org-ownership";
+import { resolveLocalDbContainer } from "./local-db-container";
 
-const DB_CONTAINER = "supabase_db_quotr_2.0-main";
+let DB_CONTAINER = "";
 
 function assert(label: string, ok: boolean) {
   console.log(ok ? "PASS" : "FAIL", label);
@@ -523,9 +524,15 @@ async function main() {
   console.log("=== Batch 2A.4 database integrity verification (local only) ===");
 
   try {
+    DB_CONTAINER = resolveLocalDbContainer();
     psql("SELECT 1");
-  } catch {
-    console.error("FAIL local Postgres container not reachable:", DB_CONTAINER);
+  } catch (error) {
+    const detail =
+      error instanceof Error ? error.message : String(error);
+    console.error(
+      "FAIL local Postgres container not reachable:",
+      DB_CONTAINER || detail
+    );
     process.exit(1);
   }
 

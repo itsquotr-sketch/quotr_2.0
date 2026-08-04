@@ -21,6 +21,7 @@ import {
   assertOrgOwnsWorkArea,
   type AuthOrgContext,
 } from "../lib/security/org-ownership";
+import { resolveLocalDbContainer } from "./local-db-container";
 
 /**
  * Local credentials — loaded from `supabase status -o env` when available.
@@ -36,7 +37,7 @@ let LOCAL_URL = DEMO_LOCAL_URL;
 let LOCAL_ANON_KEY = DEMO_LOCAL_ANON_KEY;
 let LOCAL_SERVICE_ROLE_KEY = DEMO_LOCAL_SERVICE_ROLE_KEY;
 
-const DB_CONTAINER = "supabase_db_quotr_2.0-main";
+let DB_CONTAINER = "";
 const PASSWORD = "local-2a5-test-password";
 
 function assert(label: string, ok: boolean) {
@@ -134,6 +135,7 @@ function guardEnvironment() {
   assert("verification target is local", isLocalSupabaseUrl(LOCAL_URL));
 
   try {
+    DB_CONTAINER = resolveLocalDbContainer();
     execFileSync(
       "docker",
       ["exec", "-i", DB_CONTAINER, "psql", "-U", "postgres", "-t", "-A", "-c", "SELECT 1"],
@@ -178,16 +180,65 @@ function guardEnvironment() {
       "-A",
       "-c",
       `SELECT (
+         -- authenticated / service_role have required DML
          has_table_privilege('authenticated', 'public.projects', 'SELECT')
          AND has_table_privilege('authenticated', 'public.projects', 'INSERT')
+         AND has_table_privilege('authenticated', 'public.projects', 'UPDATE')
+         AND has_table_privilege('authenticated', 'public.projects', 'DELETE')
+         AND has_table_privilege('service_role', 'public.organisations', 'SELECT')
          AND has_table_privilege('service_role', 'public.organisations', 'INSERT')
+         AND has_table_privilege('service_role', 'public.organisations', 'UPDATE')
+         AND has_table_privilege('service_role', 'public.organisations', 'DELETE')
+         -- no unnecessary privileges
+         AND NOT has_table_privilege('authenticated', 'public.projects', 'TRUNCATE')
+         AND NOT has_table_privilege('authenticated', 'public.projects', 'REFERENCES')
+         AND NOT has_table_privilege('authenticated', 'public.projects', 'TRIGGER')
+         AND NOT has_table_privilege('service_role', 'public.projects', 'TRUNCATE')
+         AND NOT has_table_privilege('anon', 'public.projects', 'SELECT')
+         AND NOT has_table_privilege('anon', 'public.projects', 'INSERT')
+         AND NOT has_table_privilege('anon', 'public.projects', 'UPDATE')
+         AND NOT has_table_privilege('anon', 'public.projects', 'DELETE')
+         AND NOT has_table_privilege('anon', 'public.projects', 'TRUNCATE')
        )::text`,
     ],
     { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }
   ).trim();
   assert(
-    "migration 026 API table grants present (authenticated/service_role DML)",
+    "migration 026 least-privilege grants (authenticated/service_role SIDU; anon none; no TRUNCATE/REFERENCES/TRIGGER)",
     grantsOk === "t" || grantsOk === "true"
+  );
+
+  const rlsStillOn = execFileSync(
+    "docker",
+    [
+      "exec",
+      "-i",
+      DB_CONTAINER,
+      "psql",
+      "-U",
+      "postgres",
+      "-t",
+      "-A",
+      "-c",
+      `SELECT (
+         (SELECT COUNT(*) FROM pg_class c
+          JOIN pg_namespace n ON n.oid = c.relnamespace
+          WHERE n.nspname = 'public' AND c.relkind = 'r'
+            AND c.relname IN (
+              'organisations','profiles','projects','work_areas','project_facts',
+              'question_blocks','questions','constraints','estimates','estimate_line_items',
+              'rates','organisation_settings','organisation_work_areas','project_notes',
+              'note_proposals','pricing_documents','pricing_items','quotes','quote_items',
+              'pricing_audit_log'
+            )
+            AND c.relrowsecurity) = 20
+       )::text`,
+    ],
+    { encoding: "utf8", stdio: ["pipe", "pipe", "pipe"] }
+  ).trim();
+  assert(
+    "RLS remains enabled on all 20 organisation-owned tables after 026",
+    rlsStillOn === "t" || rlsStillOn === "true"
   );
 }
 
@@ -640,6 +691,40 @@ async function testSameOrgAccess(orgA: OrgBundle) {
   }
 
   await a1.auth.signOut();
+}
+
+async function testAnonymousDeniedAccess(orgA: OrgBundle) {
+  console.log("\n--- Anonymous access to customer-owned tables ---\n");
+
+  const anon = createClient(LOCAL_URL, LOCAL_ANON_KEY, {
+    auth: { persistSession: false, autoRefreshToken: false },
+  });
+
+  const { data: projects, error: projectError } = await anon
+    .from("projects")
+    .select("id")
+    .eq("id", orgA.projectId);
+  assert(
+    "anonymous client cannot read customer project rows",
+    (projects == null || projects.length === 0) && Boolean(projectError)
+  );
+
+  const { data: orgs, error: orgError } = await anon
+    .from("organisations")
+    .select("id")
+    .eq("id", orgA.orgId);
+  assert(
+    "anonymous client cannot read organisation rows",
+    (orgs == null || orgs.length === 0) && Boolean(orgError)
+  );
+
+  const { error: insertError } = await anon.from("projects").insert({
+    id: randomUUID(),
+    org_id: orgA.orgId,
+    title: "anon should fail",
+    created_by: orgA.user1Id,
+  });
+  assert("anonymous client cannot insert customer project rows", Boolean(insertError));
 }
 
 async function testCrossOrgReads(orgA: OrgBundle, orgB: OrgBundle) {
@@ -1284,6 +1369,7 @@ async function main() {
     assert("Organisation B seed completed", Boolean(orgB.orgId));
 
     await testSameOrgAccess(orgA);
+    await testAnonymousDeniedAccess(orgA);
     await testCrossOrgReads(orgA, orgB);
     await testCrossOrgWrites(orgA, orgB);
     await testApplicationOwnership(orgA, orgB);

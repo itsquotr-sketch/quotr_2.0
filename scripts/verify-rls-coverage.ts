@@ -107,7 +107,8 @@ async function auditLiveDatabase(): Promise<void> {
 
   try {
     const { execFileSync } = await import("node:child_process");
-    const container = "supabase_db_quotr_2.0-main";
+    const { resolveLocalDbContainer } = await import("./local-db-container");
+    const container = resolveLocalDbContainer();
     const query = `
       SELECT string_agg(tablename, ',' ORDER BY tablename)
       FROM (

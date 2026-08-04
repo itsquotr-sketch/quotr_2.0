@@ -102,7 +102,7 @@ Not duplicated: `pricing_items` / `quote_items` (023).
 
 * `scripts/verify-batch-2a4-database-integrity.ts` *(new)*
 * `scripts/verify-rls-coverage.ts`
-* `docs/runbooks/STAGE_2A4_REMOTE_MIGRATION_RUNBOOK.md` *(new)*
+* `docs/runbooks/STAGE_2A4_REMOTE_MIGRATION_RUNBOOK.md` *(new in 2A.4; superseded in 2A.6 by `docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md` covering 025+026)*
 * `docs/plans/STAGE_2A_SECURITY_VALIDATION_PLAN.md`
 * `docs/MVP_HARDENING_GUIDE.md`
 * `docs/implementation/STAGE_2A_BATCH_2A4_COMPLETION.md` *(this file)*
@@ -139,7 +139,7 @@ Uses `create or replace function`, `drop trigger if exists` + create, guarded co
 
 ## 15. Remote runbook created
 
-`docs/runbooks/STAGE_2A4_REMOTE_MIGRATION_RUNBOOK.md` — preconditions, backup, ledger checks, invalid-data queries, apply method, post-checks, rollback, owner-approval warning. **Not executed.**
+`docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md` (supersedes the 2A.4 025-only draft) — preconditions, backup, ledger checks, invalid-data queries, apply method for 025 then 026, post-checks, rollback, owner-approval warning. **Not executed.**
 
 ## 16. Known limitations
 

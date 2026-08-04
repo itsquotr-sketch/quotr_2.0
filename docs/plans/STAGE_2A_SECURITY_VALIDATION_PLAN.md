@@ -1,10 +1,12 @@
 # Stage 2A — Security, Validation and Data Integrity Plan
 
-**Status:** Batches 2A.1–2A.5 implemented locally — Stage 2A remains In Progress (remote 025/026 not applied)  
+**Status:** Complete — Local (remote migrations 025/026 remain unapplied)  
 **Plan date:** 2026-08-03  
 **Owner decisions incorporated:** 2026-08-03  
 **Batch 2A.1 completed:** 2026-08-03  
 **Batch 2A.2 completed:** 2026-08-03  
+**Batch 2A.6 completed (local):** 2026-08-04  
+**Final evidence:** `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`  
 **Governing documents read:** `docs/MVP_HARDENING_GUIDE.md`, `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md`  
 **Method:** Re-verification of Stage 1 findings against current source, migrations and scripts, then incorporation of official owner decisions. Batch completion reports live under `docs/implementation/`.
 
@@ -457,7 +459,7 @@ Split for reviewability:
 * **Issue IDs:** S1-007 fixed; S1-016 accepted MVP limitation (no account deletion); S1-017 active-query hide without hard-delete; DB margin default aligned to 20%
 * **Migration:** `supabase/migrations/025_stage_2a4_database_integrity.sql`
 * **Local reset:** `supabase db reset` succeeded through 025 (023/024 applied first)
-* **Remote:** **Not applied** — runbook at `docs/runbooks/STAGE_2A4_REMOTE_MIGRATION_RUNBOOK.md`
+* **Remote:** **Not applied** — runbook at `docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md` (covers 025 + 026)
 * **Stop condition obeyed:** No formula changes; no remote apply; no account-deletion FK rewrite
 
 ### Batch 2A.4 (historical planning note)
@@ -484,7 +486,7 @@ Split for reviewability:
 * **Parent-child triggers:** PASS (025 seven + 023 pricing/quote items)
 * **Soft-delete:** PASS (active hide; children stored; foreign org empty; no hard delete)
 * **Error disclosure:** PASS (missing ≡ foreign controlled not-found)
-* **Defect fixed:** Migration `026_stage_2a5_restore_api_table_grants.sql` — postgres default privileges had omitted SELECT/INSERT/UPDATE for API roles (blocking PostgREST). **Remote not applied.**
+* **Defect fixed:** Migration `026_stage_2a5_restore_api_table_grants.sql` — postgres default privileges had omitted SELECT/INSERT/UPDATE/DELETE for API roles (blocking PostgREST). Initially restored via `GRANT ALL`; **narrowed in Batch 2A.6** to least-privilege SIDU for `authenticated`/`service_role` only (`anon` has no customer-table DML). **Remote not applied.**
 * **Evidence:** `docs/implementation/STAGE_2A_BATCH_2A5_COMPLETION.md`
 * **Stop condition obeyed:** No production/remote data; no Batch 2A.6; no formula/UI/AI changes
 
@@ -499,7 +501,17 @@ Split for reviewability:
 * **Rollback:** N/A
 * **Stop condition:** Destructive tests against production; assuming a staging project exists
 
-### Batch 2A.6 — Final regression and completion report
+### Batch 2A.6 — Final regression and completion report — **COMPLETE (local, 2026-08-04)**
+
+* **Issue IDs:** Closure evidence for Stage 2A in-scope IDs
+* **Files:** Docs / tracker; Windows local DB container resolution for verification scripts (`scripts/local-db-container.ts`)
+* **Migrations:** None new; 025 reviewed; **026 narrowed in-place** (still unapplied remotely) from `GRANT ALL` to least-privilege SIDU; remote apply still owner-gated
+* **Tests:** Full suite re-run after 026 narrowing — `tsc`, lint, build, 2A.1–2A.5 scripts, RLS coverage — all PASS on local Windows Supabase (includes anon-denial + no TRUNCATE/REFERENCES/TRIGGER proofs)
+* **Acceptance:** Section M criteria all Pass (or Pass with documented limitation); no Critical/High failures
+* **Evidence:** `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`; remote runbook `docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md` (025+026; **not executed**)
+* **Stop condition obeyed:** No Stage 2B pricing consolidation; no remote migration apply
+
+### Batch 2A.6 (historical planning note)
 
 * **Issue IDs:** Closure evidence for Stage 2A in-scope IDs
 * **Files expected:** Docs / tracker only
@@ -516,26 +528,28 @@ Split for reviewability:
 
 ## M. Stage-level acceptance criteria
 
-Stage 2A is **not Complete** until:
+Stage 2A local completion checklist (evaluated in Batch 2A.6 — see `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`):
 
-1. Every protected server action requires a valid authenticated user.
-2. Every organisation-owned action independently verifies ownership under the one-user→one-company / multi-user→one-company model.
-3. No action trusts a client-provided organisation ID without verification; no org-switcher introduced.
-4. Runtime schemas validate all audited mutation inputs.
-5. All audited monetary inputs reject invalid, non-finite and negative values (no credits).
-6. Gross margin bounds **0–95%** (default **20%**) and markup bounds **0–1000%** are documented and enforced separately.
-7. Lump-sum calculation mode remains available and cannot bypass server-side validation.
-8. RLS is enabled and verified for every organisation-owned table (including `pricing_audit_log`) on the **local** verification environment.
-9. Two real users in two real organisations cannot access one another’s records (**local proof required**).
-10. Direct database requests and server actions both enforce isolation in that proof.
-11. Destructive operations cannot delete records belonging to another organisation.
-12. Relevant migrations can be applied safely to a **clean local development database**; remote apply is documented and **owner-gated**.
-13. Existing data is preserved; production is not modified unnecessarily (no external customer data today, still careful).
-14. Type checking passes.
-15. Linting passes.
-16. Production build passes.
-17. Focused automated tests pass.
-18. No pricing-engine consolidation, margin-formula refactoring, UI redesign, performance work, Quotr DNA, uploads, package redesign, or unrelated feature work has been introduced.
+1. Every protected server action requires a valid authenticated user. — **Pass**
+2. Every organisation-owned action independently verifies ownership under the one-user→one-company / multi-user→one-company model. — **Pass**
+3. No action trusts a client-provided organisation ID without verification; no org-switcher introduced. — **Pass**
+4. Runtime schemas validate all audited mutation inputs. — **Pass**
+5. All audited monetary inputs reject invalid, non-finite and negative values (no credits). — **Pass**
+6. Gross margin bounds **0–95%** (default **20%**) and markup bounds **0–1000%** are documented and enforced separately. — **Pass**
+7. Lump-sum calculation mode remains available and cannot bypass server-side validation. — **Pass**
+8. RLS is enabled and verified for every organisation-owned table (including `pricing_audit_log`) on the **local** verification environment. — **Pass**
+9. Two real users in two real organisations cannot access one another’s records (**local proof required**). — **Pass**
+10. Direct database requests and server actions both enforce isolation in that proof. — **Pass**
+11. Destructive operations cannot delete records belonging to another organisation. — **Pass**
+12. Relevant migrations can be applied safely to a **clean local development database**; remote apply is documented and **owner-gated**. — **Pass**
+13. Existing data is preserved; production is not modified unnecessarily (no external customer data today, still careful). — **Pass**
+14. Type checking passes. — **Pass**
+15. Linting passes. — **Pass**
+16. Production build passes. — **Pass**
+17. Focused automated tests pass. — **Pass**
+18. No pricing-engine consolidation, margin-formula refactoring, UI redesign, performance work, Quotr DNA, uploads, package redesign, or unrelated feature work has been introduced. — **Pass**
+
+**Local status:** All criteria Pass. Stage 2A marked **Complete — Local**. Remote migrations 025/026 remain unapplied.
 
 ---
 
@@ -601,5 +615,5 @@ Stage 2A is **not Complete** until:
 | Owner decisions incorporated | 2026-08-03 |
 | Governing audit | `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md` |
 | Application code / schema / config / tests changed while planning | **None** |
-| Tracker update | Stage 2A `In Progress`; Batches 2A.1–2A.5 complete locally; remote 025/026 not applied |
-| Next step | Batch 2A.6 only (final regression and completion report) |
+| Tracker update | Stage 2A **Complete — Local**; remote 025/026 not applied |
+| Next step | Owner-gated remote migration decision (025 then 026), then Stage 2B with explicit authorisation |

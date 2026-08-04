@@ -255,7 +255,7 @@ Update this table as stages progress. Status values must be one of: **Not Starte
 | 0 | Governance | Complete | 2026-07-24 | 2026-07-24 | Guidance document created and adopted as governing source for MVP hardening. | None for Stage 0. Project-specific inventory fields below remain TBD pending Stage 1. | This file exists at `docs/MVP_HARDENING_GUIDE.md` and defines scope, principles, process, tracker and DoD. |
 | 1 | Current-state audit | Auditing | 2026-08-03 | — | — | — | — |
 | 2 | Data integrity, authentication and organisation isolation | Not Started | — | — | Historical tracker entry retained. Scope split into Stage 2A and Stage 2B. | Superseded by 2A/2B split — do not implement under this row. | — |
-| 2A | Security, Validation and Data Integrity | In Progress | 2026-08-03 | 2026-08-03 (Batches 2A.1–2A.5 local) | Batches 2A.1–2A.5 complete locally: auth-org, schemas, pricing/quote security, parent-org triggers, local two-org isolation proof (RLS + ownership), API grant restore (026). | Remaining: 2A.6 final regression/report; remote 025/026 apply owner-gated. S1-016 accepted (no account deletion). | `docs/implementation/STAGE_2A_BATCH_2A1_COMPLETION.md` … `STAGE_2A_BATCH_2A5_COMPLETION.md`; `docs/runbooks/STAGE_2A4_REMOTE_MIGRATION_RUNBOOK.md` |
+| 2A | Security, Validation and Data Integrity | Complete — Local | 2026-08-03 | 2026-08-03–2026-08-04 | Local Stage 2A complete: auth-org, validation, pricing/quote security, DB integrity (025), least-privilege API grants (026), two-org isolation proof, final regression. | Remote 025/026 apply still owner-gated. S1-016 accepted (no account deletion). Soft-delete hide is app-path based. | `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`; batch reports 2A.1–2A.5; `docs/runbooks/STAGE_2A_REMOTE_MIGRATION_RUNBOOK.md` (not executed) |
 | 2B | Authoritative Pricing Engine | Not Started | — | — | — | — | — |
 | 3 | Core project workflow | Not Started | — | — | — | — | — |
 | 4 | Estimating engine and pricing correctness | Not Started | — | — | Historical tracker entry retained. Pricing consolidation owned by Stage 2B. | — | — |
@@ -408,6 +408,6 @@ The following fields are intentionally incomplete until the current-state audit.
 | --- | --- |
 | Path | `docs/MVP_HARDENING_GUIDE.md` |
 | Created | 2026-07-24 |
-| Last updated | 2026-08-03 |
+| Last updated | 2026-08-04 |
 | Stage 0 status | Complete |
-| Next stage | Stage 2A — Security, Validation and Data Integrity (In Progress; Batches 2A.1–2A.5 local complete; next 2A.6; remote 025/026 not applied) |
+| Next stage | Stage 2B — Authoritative Pricing Engine (Not Started). Stage 2A is Complete — Local; remote migrations 025/026 remain unapplied pending owner approval. |

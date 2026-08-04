@@ -24,6 +24,10 @@
 .DS_Store
 *.pem
 
+# Local Supabase generated / machine-specific (do not commit)
+supabase/.temp/
+supabase/.branches/
+
 # debug
 npm-debug.log*
 yarn-debug.log*
