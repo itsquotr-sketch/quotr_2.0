@@ -87,9 +87,11 @@ export type CalculationOutputs = {
   readonly calculated_quantity: number | null;
   readonly total_cost: number;
   readonly total_sell: number;
-  readonly gross_profit: number;
-  readonly gross_margin_percent: number;
-  readonly markup_percent: number;
+  readonly gross_profit: number | null;
+  readonly gross_margin_percent: number | null;
+  readonly markup_percent: number | null;
+  /** False when cost unknown (sell-only lump); margin must not be fabricated. */
+  readonly cost_known: boolean;
 };
 
 export type CalculationResult = {
@@ -112,6 +114,8 @@ export type AggregateLineInput = {
   readonly total_sell: number;
   readonly visible?: boolean;
   readonly included_in_total?: boolean;
+  /** Defaults true. Set false for sell-only lines so aggregate does not fabricate margin. */
+  readonly cost_known?: boolean;
 };
 
 export type AggregateInput = {
@@ -129,9 +133,10 @@ export type AggregateResult = {
   readonly inclusion_rule: AggregateInclusionRule;
   readonly subtotal_cost: number;
   readonly subtotal_sell: number;
-  readonly gross_profit: number;
-  readonly gross_margin_percent: number;
-  readonly markup_percent: number;
+  readonly gross_profit: number | null;
+  readonly gross_margin_percent: number | null;
+  readonly markup_percent: number | null;
+  readonly cost_known: boolean;
   readonly gst_rate_percent: number | null;
   readonly gst_amount: number | null;
   readonly total_incl_gst: number | null;

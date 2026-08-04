@@ -42,5 +42,17 @@ export { validateLineInput } from "./validation/validate-line-input";
 export type {
   GoldenLineExpectation,
   GoldenCompareReport,
-} from "./fixtures/types";
-export { compareLineResultToGolden } from "./fixtures/compare";
+  GoldenLineScenario,
+  GoldenAggregateScenario,
+  GoldenValidationScenario,
+  ScenarioMapEntry,
+} from "./fixtures";
+export {
+  compareLineResultToGolden,
+  compareLineScenario,
+  compareAggregateScenario,
+  compareValidationScenario,
+  CANONICAL_LINE_FIXTURES,
+  CANONICAL_AGGREGATE_FIXTURES,
+  SCENARIO_EXECUTION_MAP,
+} from "./fixtures";

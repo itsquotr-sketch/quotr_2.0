@@ -1,17 +1,19 @@
 # Stage 2B — Authoritative Pricing Engine Implementation Plan
 
-**Status:** Auditing (Batch **2B.3A** commercial calculation kernel created as standalone library — not wired to app; Batches 2B.1–2B.2B docs complete; implementation adoption not started)  
+**Status:** In Progress (Batches **2B.3A** + **2B.3B** complete — standalone kernel + golden regression suite; **no application adoption**)  
 **Plan date:** 2026-08-04  
 **Governing architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
 **Audit:** `docs/audits/STAGE_2B_PRICING_ENGINE_AUDIT.md`  
 **Specification:** `docs/specifications/AUTHORITATIVE_PRICING_ENGINE_SPEC.md`  
-**Owner decisions (2B.2A):** `docs/decisions/STAGE_2B_OWNER_COMMERCIAL_DECISIONS.md`  
+**Owner decisions (2B.2A):** `docs/decisions/STAGE_2B_OWNER_COMMERCIAL_DECISIONS.md` (blocking decisions **Confirmed** 2026-08-04)  
 **Canonical scenarios (2B.2B):** `docs/specifications/CANONICAL_COMMERCIAL_SCENARIOS.md`  
 **Golden results (2B.2B):** `docs/specifications/GOLDEN_PRICING_EXPECTED_RESULTS.md`  
 **Regression standard (2B.2B):** `docs/specifications/CALCULATION_REGRESSION_STANDARD.md`  
 **Coverage matrix (2B.2B):** `docs/specifications/SCENARIO_COVERAGE_MATRIX.md`  
-**Commercial engine (2B.3A):** `lib/commercial-engine/` (standalone; no app callers)  
+**Execution map (2B.3B):** `docs/specifications/GOLDEN_SCENARIO_EXECUTION_MAP.md`  
+**Commercial engine (2B.3A/B):** `lib/commercial-engine/` (standalone; no app callers)  
+**2B.3B completion:** `docs/implementation/STAGE_2B_BATCH_2B3B_COMPLETION.md`  
 
 **Hard constraint:** No pricing-formula consolidation, caller migration, UI redesign, migration changes, or Company DNA implementation begins until the relevant batch is authorised and (for behaviour-changing batches) Batch **2B.2** commercial decisions and golden tests exist.
 
@@ -31,11 +33,11 @@ Establish **one authoritative commercial arithmetic meaning** for cost, sell, gr
 | --- | --- | --- |
 | **2B.1** | Audit and specification | Docs only — **this batch** |
 | **2B.2** | Owner commercial decisions and golden test cases | Docs + test fixtures only |
-| **2B.2A** | Owner commercial decision register | Docs only — **issued; awaiting owner confirmation** |
+| **2B.2A** | Owner commercial decision register | Docs only — **Confirmed** (blocking) / **Deferred** (intentional) as of 2B.3B |
 | **2B.2B** | Canonical commercial scenarios + goldens + regression standard | Docs only — **issued 2026-08-04** |
 | **2B.3** | Pure authoritative line-item calculation module | Code; no persistence change |
-| **2B.3A** | Commercial calculation kernel (standalone) | Code — **issued; not wired to app** |
-| **2B.3B** | Kernel hardening / golden fixture migration (next) | Code; still no app adoption |
+| **2B.3A** | Commercial calculation kernel (standalone) | Code — **complete; not wired to app** |
+| **2B.3B** | Golden scenario regression suite + kernel hardening | Code — **complete; not wired to app** |
 | **2B.4** | Document aggregation engine | Code; no caller migration |
 | **2B.5** | Shadow parity verification | Code/scripts; no user-visible change |
 | **2B.6** | Pricing-action adoption | Code |
@@ -192,9 +194,14 @@ Split for reviewability:
 * **Not done:** App wiring; scenario fixture migration; shadow parity (2B.5); adoption (2B.6+)  
 * **Stop condition obeyed:** No pricing/estimate/quote action changes; no UI; no DB; no callers outside the new package  
 
-### Batch 2B.3B — (next) Kernel hardening / golden migration
+### Batch 2B.3B — Golden scenario regression suite and kernel hardening
 
-Not started. Do not begin until 2B.3A accepted.
+* **Status:** Complete 2026-08-04  
+* **Delivered:** Executable golden fixtures; expanded comparator; `scripts/verify-batch-2b3b-golden-commercial-engine.ts`; execution map; sell-only null-margin hardening  
+* **Results:** 60 fixtures pass; 47/52 CCS executable (90.4%); 5 deferred/doc-only  
+* **Not done:** App wiring; shadow parity (2B.5); adoption (2B.6+)  
+* **Evidence:** `docs/implementation/STAGE_2B_BATCH_2B3B_COMPLETION.md`  
+* **Stop condition obeyed:** No pricing/estimate/quote/UI/DB/migration changes; engine still unused by app  
 
 ### Customer outcome
 
@@ -202,21 +209,24 @@ None visible (module unused by actions yet).
 
 ### Strategic outcome
 
-One module implements Spec modes + profit metrics + sell-from-cost.
+One module implements Spec modes + profit metrics + sell-from-cost; goldens enforce approved commercial truth.
 
 ### Exact scope
 
 * Add pure functions implementing Spec §§5–8, 12–13 for **lines** (+ document aggregate helper).  
 * No DB writes; no action wiring.  
 * Align to Stage 2B recommended MVP commercial model / goldens.  
+* 2B.3B: migrate canonical scenarios to executable fixtures and harden kernel only as required.  
 
 ### Files expected
 
-* `lib/commercial-engine/**` (2B.3A — issued)  
+* `lib/commercial-engine/**` (2B.3A + 2B.3B fixtures)  
+* `scripts/verify-batch-2b3b-golden-commercial-engine.ts`  
+* `docs/specifications/GOLDEN_SCENARIO_EXECUTION_MAP.md`  
 
 ### Tests required
 
-`tsc` / lint / build; golden fixture runners deferred to later 2B.3B/2B.5.
+`tsc` / lint / build; `npx tsx scripts/verify-batch-2b3b-golden-commercial-engine.ts`.
 
 ### Acceptance criteria
 
@@ -224,10 +234,11 @@ One module implements Spec modes + profit metrics + sell-from-cost.
 * Explanation hooks present.  
 * Immutable `CalculationResult`.  
 * Nothing in app imports the engine yet.  
+* All executable golden fixtures pass.  
 
 ### Stop conditions
 
-Wiring into `actions.ts`; changing calculator domain logic; schema migrations; beginning 2B.3B without acceptance.
+Wiring into `actions.ts`; changing live calculator domain logic; schema migrations; beginning 2B.4+ without acceptance.
 
 ### Rollback
 
@@ -620,6 +631,6 @@ Estimate (2B.7) and Quote (2B.8) both depend on 2B.5 parity; they may be seriali
 | Path | `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md` |
 | Created | 2026-08-04 |
 | Batch 2B.1 / 2B.2A application changes | **None** |
-| Next batch | **2B.3B** kernel hardening / golden fixture migration (not started). Then 2B.4–2B.5 before any action adoption. |
-| Stage 2B implementation started? | **Kernel only (2B.3A)** — no app adoption |
-| Stage 2B tracker status | **Auditing** (kernel infrastructure in progress/complete for 2B.3A) |
+| Next batch | **2B.4** document aggregation (or authorised next step). Then 2B.5 shadow parity before any action adoption. |
+| Stage 2B implementation started? | **Kernel + goldens (2B.3A/B)** — no app adoption |
+| Stage 2B tracker status | **In Progress** (Batches 2B.3A and 2B.3B complete; adoption not started) |

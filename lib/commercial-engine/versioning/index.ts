@@ -1,6 +1,6 @@
-/** Calculation engine and formula pack versions (Batch 2B.3A). */
+/** Calculation engine and formula pack versions (Batch 2B.3B). */
 
-export const ENGINE_VERSION = "2B.3A.0";
+export const ENGINE_VERSION = "2B.3B.0";
 
 /** Formula pack aligned to Stage 2B recommended MVP commercial model + goldens. */
 export const FORMULA_VERSION = "2B.mvp.1";

@@ -124,14 +124,29 @@ export function calculateQuantityRate(
     output: totalSell,
   });
 
-  const profit = deriveProfitMetrics(totalCost, totalSell);
+  const costKnown = unitCost != null;
+  const profit = deriveProfitMetrics(totalCost, totalSell, { costKnown });
   steps.push({
     id: "profit_metrics",
     formula_id: "F-GP",
-    description: "Derive gross profit, margin %, markup %",
-    inputs: { total_cost: totalCost, total_sell: totalSell },
+    description: costKnown
+      ? "Derive gross profit, margin %, markup %"
+      : "Cost unknown — profit metrics null (not fabricated)",
+    inputs: {
+      total_cost: costKnown ? totalCost : null,
+      total_sell: totalSell,
+    },
     output: profit.gross_profit,
   });
+
+  if (!costKnown && totalSell > 0) {
+    warnings.push({
+      code: "cost_unknown",
+      message:
+        "Unit cost is unknown while sell is positive. Do not fabricate margin or cost.",
+      field: "unit_cost",
+    });
+  }
 
   const outputs: CalculationOutputs = {
     mode: "quantity_rate",
@@ -144,7 +159,10 @@ export function calculateQuantityRate(
     calculated_quantity: null,
     total_cost: totalCost,
     total_sell: totalSell,
-    ...profit,
+    gross_profit: profit.gross_profit,
+    gross_margin_percent: profit.gross_margin_percent,
+    markup_percent: profit.markup_percent,
+    cost_known: profit.cost_known,
   };
 
   return {

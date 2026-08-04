@@ -79,6 +79,15 @@ export function calculateLineItem(
     learningSignals.push("manual_override");
   }
 
+  const warnings = [...computed.warnings];
+  for (const assumption of input.assumptions ?? []) {
+    warnings.push({
+      code: assumption,
+      message: assumption,
+      field: "assumptions",
+    });
+  }
+
   return freezeResult({
     ok: true,
     engine_version: ENGINE_VERSION,
@@ -87,7 +96,7 @@ export function calculateLineItem(
     inputs: input,
     outputs: Object.freeze({ ...computed.outputs }),
     steps: Object.freeze([...computed.steps]),
-    warnings: Object.freeze([...computed.warnings]),
+    warnings: Object.freeze(warnings),
     validation_errors: Object.freeze([]),
     manual_override: input.manual_override ?? null,
     explanation: buildLineExplanation({

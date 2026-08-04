@@ -1,12 +1,12 @@
 # Stage 2B — Owner Commercial Decision Register
 
 **Batch:** 2B.2A — Owner Commercial Decision Register  
-**Status:** Pending owner confirmation  
+**Status:** Confirmed for Batch 2B.3 blocking decisions (owner-approved 2026-08-04); deferred items marked Deferred  
 **Date:** 2026-08-04  
 **Audience:** Quotr product owner / construction business owner  
 **Purpose:** Confirm commercial rules before golden pricing test cases and the authoritative pricing engine are built  
 
-**This document does not change Quotr.** Recommendations are proposals only until you mark them **Confirmed**.
+**Owner approval note (Batch 2B.3B — 2026-08-04):** The product owner has approved the recommended MVP commercial model recorded in this register. Blocking decisions required for Batch 2B.3 are **Confirmed**. Intentionally deferred items are **Deferred**. Substance of recommendations is unchanged.
 
 **Related docs:** Architecture Foundation · Pricing Engine Audit · Authoritative Pricing Engine Spec · Stage 2B Implementation Plan · MVP Hardening Guide  
 
@@ -90,8 +90,8 @@ These lock the pure line-item calculation engine and golden tests:
 | **Customer impact** | Wrong tax on Final Pricing (and quotes derived from it) when org GST ≠ 15. |
 | **Future Company DNA impact** | Tax must stay a clear, inspectable company setting — not a hidden constant. |
 | **Blocks engine implementation?** | Does **not** block Batch 2B.3 line engine. **Must be fixed in Batch 2B.6.** |
-| **Owner decision** | _Pending — recommend: agree with MVP rule_ |
-| **Status** | Pending |
+ with recommended MVP rule (owner-approved 2026-08-04). Application bug fix remains Batch 2B.6. |
+| **Status** | Confirmed |
 
 **Batch 2B.2A authorisation:** No application code change in this task. Fix scheduled for **Batch 2B.6**.
 
@@ -135,8 +135,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Clearer profit; fewer “why didn’t my margin apply?” surprises. |
 | **Future Company DNA impact** | Learning needs real cost vs charge-out history. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ### OCD-02 — Productivity labour cost and sell
 
@@ -151,8 +151,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Matches how most builders think about labour. |
 | **Future Company DNA impact** | Productivity and margin become learnable separately. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ### OCD-03 — Mixed crews
 
@@ -167,8 +167,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Slightly more manual editing on mixed crews. |
 | **Future Company DNA impact** | Strong DNA candidate later. |
 | **Blocks Batch 2B.3?** | No — **after beta** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ### OCD-04 — Overtime, nightshift, weekend
 
@@ -183,8 +183,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Manual for uncommon cases. |
 | **Future Company DNA impact** | High — company-specific loadings later. |
 | **Blocks Batch 2B.3?** | No — **after beta** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ---
 
@@ -203,8 +203,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Accurate material GP. |
 | **Future Company DNA impact** | Supplier vs sell provenance. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ### OCD-06 — When waste is applied
 
@@ -219,8 +219,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Matches site ordering practice. |
 | **Future Company DNA impact** | Company wastage profiles. |
 | **Blocks Batch 2B.3?** | **Yes** (calculation sequence) |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ### OCD-07 — Delivery and handling
 
@@ -235,8 +235,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Explicit lines stay clear on quotes. |
 | **Future Company DNA impact** | Configurable later. |
 | **Blocks Batch 2B.3?** | No — **after beta** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ### OCD-08 — Material markup vs gross margin
 
@@ -251,8 +251,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | One commercial language across the job. |
 | **Future Company DNA impact** | Some companies prefer markup — learn later without rewriting MVP. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ---
 
@@ -271,8 +271,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Visible subcontractor GP. |
 | **Future Company DNA impact** | Trade-specific DNA. |
 | **Blocks Batch 2B.3?** | Soft — confirm with OCD-01/05 model; details can wait |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ### OCD-10 — Subcontractor uplift method
 
@@ -287,8 +287,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Manual uplift lines if needed. |
 | **Future Company DNA impact** | High-value DNA later. |
 | **Blocks Batch 2B.3?** | No — later Stage 2B / after beta |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ### OCD-11 — Provisional subcontractor ranges
 
@@ -303,8 +303,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Clear labelling in notes/assumptions matters. |
 | **Future Company DNA impact** | Scenario learning later. |
 | **Blocks Batch 2B.3?** | No |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ---
 
@@ -323,8 +323,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Stable commercial language. |
 | **Future Company DNA impact** | DNA learns the company’s margin culture. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ### OCD-13 — Sell-from-cost formula
 
@@ -339,8 +339,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Correct profit targets. |
 | **Future Company DNA impact** | Replayable commercial math. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ### OCD-14 — Margin bounds 0%–95%
 
@@ -355,8 +355,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Prevents broken sell calculations. |
 | **Future Company DNA impact** | Safe bounds for learning. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ### OCD-15 — Markup remains separate
 
@@ -371,8 +371,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Less false expectation. |
 | **Future Company DNA impact** | Some firms think in markup — optional later. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ### OCD-16 — Line margin vs company/document margin
 
@@ -387,8 +387,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Matches real negotiating. |
 | **Future Company DNA impact** | Per-line effective margins become learning signals. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ### OCD-17 — Manual margin overrides
 
@@ -403,8 +403,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Predictable control. |
 | **Future Company DNA impact** | Overrides = correction evidence. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 
 ---
 
@@ -423,8 +423,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Simpler estimating. |
 | **Future Company DNA impact** | Optional overhead DNA later. |
 | **Blocks Batch 2B.3?** | No — **defer after beta** unless you insist now |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ### OCD-19 — If overhead exists, how applied?
 
@@ -435,8 +435,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Recommended MVP rule** | **Defer.** If ever added: prefer explicit % or allowance with explanation — not hidden. |
 | **Alternative options** | Inside margin; separate %; fixed allowance; scope-specific. |
 | **Blocks Batch 2B.3?** | No |
-| **Owner decision** | _Pending — recommend Deferred with OCD-18_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ### OCD-20 — Separate contingency field required?
 
@@ -451,8 +451,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Explicit contingency stays visible to the builder. |
 | **Future Company DNA impact** | How often contingency is used/consumed. |
 | **Blocks Batch 2B.3?** | Soft — line mode already supports contingency-like lump sums |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ### OCD-21 — Contingency application order
 
@@ -463,8 +463,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Recommended MVP rule** | **Separate allowance line** (cost and/or sell). No automatic before/after margin cascade in Stage 2B. |
 | **Alternative options** | % of cost before margin; % of sell after margin. |
 | **Blocks Batch 2B.3?** | No — **defer** auto behaviour |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ---
 
@@ -478,8 +478,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Default **15%**. |
 | **Recommended MVP rule** | **Confirm 15%** NZ default. |
 | **Blocks Batch 2B.3?** | No (needed before 2B.6) |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | $10,000 excl GST + 15% = $1,500 GST → $11,500 incl. |
 | **Alternative options** | Other defaults (not for NZ MVP). |
 | **Customer impact** | Matches NZ quoting norms. |
@@ -494,8 +494,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Line and document money fields are GST-exclusive; GST added at document/quote total. Estimates generally show excl GST. |
 | **Recommended MVP rule** | **Confirm:** store and calculate **GST-exclusive**; show GST and incl totals on pricing/quotes. |
 | **Blocks Batch 2B.3?** | Preferred before 2B.3 aggregates; soft |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Line sell $1,000 means $1,000 before GST. |
 | **Alternative options** | Tax-inclusive line pricing (not current design). |
 | **Inconsistency or risk** | Mixing incl/excl confuses totals. |
@@ -510,8 +510,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Yes — GST on sell subtotal, not per-line tax accumulation. |
 | **Recommended MVP rule** | **Confirm.** |
 | **Blocks Batch 2B.3?** | Soft (document engine 2B.4) |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Ten lines sum to $10,000 excl; one GST calculation. |
 | **Alternative options** | Per-line GST (rejected for MVP). |
 | **Inconsistency or risk** | Rounding differs if taxed per line. |
@@ -526,8 +526,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Client quote lines use exclusive amounts; totals show GST and incl. |
 | **Recommended MVP rule** | **Confirm** item prices GST-exclusive on quotes; totals show GST + incl. |
 | **Blocks Batch 2B.3?** | No |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Quote line “Decking labour $3,900” + GST in totals section. |
 | **Alternative options** | Show incl GST per line (clutter). |
 | **Inconsistency or risk** | Client assumes incl GST. |
@@ -542,8 +542,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | See **OCD-GST** defect. |
 | **Recommended MVP rule** | Pricing calculations must use the **pricing document’s validated GST rate**, initially from company settings. |
 | **Blocks Batch 2B.3?** | No — blocks clean **2B.6** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Company GST 15% → document 15% → all recalcs use 15%. |
 | **Alternative options** | Hardcode 15% always (rejects company setting). |
 | **Inconsistency or risk** | Hardcoded recalc today. |
@@ -562,8 +562,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Supported calculation mode; required for many allowances/contingencies. |
 | **Recommended MVP rule** | **Confirm — keep.** |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | “Scaffold hire $2,500” as a single total. |
 | **Alternative options** | Force everything to qty×rate (rejects real quoting). |
 | **Inconsistency or risk** | None if preserved. |
@@ -578,8 +578,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Stores **both** total cost and total sell when provided. |
 | **Recommended MVP rule** | Store **cost and sell separately** when known; allow sell with optional/estimated cost. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Allowance sell $1,000; estimated cost $700 → GP visible. |
 | **Alternative options** | Sell-only (hides profit). |
 | **Inconsistency or risk** | Sell-only lines show 100% margin if cost left at 0. |
@@ -594,8 +594,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Yes — GP/margin/markup derived from cost and sell totals. |
 | **Recommended MVP rule** | **Confirm** — calculate margin metrics whenever cost and sell are present. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Lump cost $700 / sell $1,000 → 30% margin. |
 | **Alternative options** | Hide margin on lump sums. |
 | **Inconsistency or risk** | Low. |
@@ -610,8 +610,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Cost may be zero; sell holds the commercial figure; margin metrics may look extreme. |
 | **Recommended MVP rule** | Allow sell-only lump sums. Treat cost **0** as “cost unknown / not entered,” not as a true zero-cost job, in explanations where possible. Do not invent a cost. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Client allowance $5,000 entered as sell before supplier quotes arrive. |
 | **Alternative options** | Require cost always (too strict). |
 | **Inconsistency or risk** | Misleading 100% margin display. |
@@ -626,8 +626,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Manual totals preserved on save; visibility of “override” labelling is limited. |
 | **Recommended MVP rule** | Preserve manual lump sums; AI must not overwrite. Improve visible identification in later UI batch. |
 | **Blocks Batch 2B.3?** | Soft — full visibility in **2B.9** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | You override scaffold to $2,200; regenerate elsewhere must not silently revert it without recalibration choice. |
 | **Alternative options** | Silent accept without labels. |
 | **Inconsistency or risk** | Trust. |
@@ -646,8 +646,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Allowed when intentional (informational / included at no charge). Negatives rejected. |
 | **Recommended MVP rule** | **Confirm** Stage 2A rule: zeros only when intentional; never silent coercion of bad input to zero. |
 | **Blocks Batch 2B.3?** | **Yes** (validation) |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | “Existing deck removal by owner — $0 included.” |
 | **Alternative options** | Forbid all zeros (too strict). |
 | **Inconsistency or risk** | Accidental zero rates. |
@@ -662,8 +662,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Categories and visibility flags exist; naming is not a full product taxonomy. |
 | **Recommended MVP rule (definitions)** | **Informational:** shows scope, $0, may be hidden from quote. **Included-at-no-charge:** $0 sell, intentionally given. **Allowance:** sum set aside for undefined selection. **Provisional sum:** similar commercial intent — for MVP treat via allowance/lump until a distinct type is authorised. **Excluded:** listed in exclusions, not in priced total. |
 | **Blocks Batch 2B.3?** | Soft |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | Tile supply allowance $80/m² vs “client supply tiles — $0”. |
 | **Alternative options** | New DB types before beta. |
 | **Inconsistency or risk** | Terminology confusion. |
@@ -678,8 +678,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | If entered as a priced line, they affect the totals of the document they sit on. |
 | **Recommended MVP rule** | If included and visible, they affect **that document’s total**. Estimate ranges remain separate budget/premium factors unless you later define provisional-specific range rules. |
 | **Blocks Batch 2B.3?** | Soft |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | $4,000 electrical provisional inside Final Pricing → in quote if visible. |
 | **Alternative options** | Exclude provisionals from quote until firm. |
 | **Inconsistency or risk** | Client treats provisional as fixed. |
@@ -694,8 +694,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Lump-sum mode allows totals without relying on qty×rate. |
 | **Recommended MVP rule** | **Yes — lump sums only.** Quantity×rate and productivity modes require meaningful quantity/hours. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | “Preliminaries $1,500” with qty blank/0. |
 | **Alternative options** | Always require qty=1. |
 | **Inconsistency or risk** | Mode confusion. |
@@ -714,8 +714,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Built from organisation **budget** and **premium** factors (defaults about 0.9× and 1.15×) applied to recommended cost/sell — not a full uncertainty model. |
 | **Recommended MVP rule** | **Low** ≈ budget scenario; **Expected** ≈ recommended; **High** ≈ premium scenario. Label as guidance, not a guarantee. |
 | **Blocks Batch 2B.3?** | Soft (estimate path) |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | Recommended sell $50k → low ~$45k, high ~$57.5k with default factors. |
 | **Alternative options** | Statistical uncertainty bands (future). |
 | **Inconsistency or risk** | Users may read as firm quotes. |
@@ -730,8 +730,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Primarily **document-level factors** applied through line amounts, then summed. |
 | **Recommended MVP rule** | Keep **document-level factors** for MVP. Deeper uncertainty models later. |
 | **Blocks Batch 2B.3?** | Soft |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | One company sets budget factor 0.85 for competitive tendering. |
 | **Alternative options** | Per-line confidence widths. |
 | **Inconsistency or risk** | Same factor on all trades. |
@@ -746,8 +746,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Confidence is a separate heuristic score (rate coverage, missing facts). Range is dollar bands. |
 | **Recommended MVP rule** | **Confirm** they are related but **not** the same. Never invent confidence inside the money engine. |
 | **Blocks Batch 2B.3?** | Soft |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | High confidence with still a ±15% commercial range. |
 | **Alternative options** | Merge into one score (rejected). |
 | **Inconsistency or risk** | Misreading confidence as price accuracy. |
@@ -762,8 +762,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Quotes show a single total path (subtotal + GST + incl), not low/high bands. |
 | **Recommended MVP rule** | **Confirm** — customer quotes use **final/expected** figures only. Ranges stay internal to estimates. |
 | **Blocks Batch 2B.3?** | No |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | Client PDF shows one price, not a $45–57k band. |
 | **Alternative options** | Publish ranges on quotes (usually undesirable). |
 | **Inconsistency or risk** | Low. |
@@ -782,8 +782,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Money generally rounded to **2 decimals** when committed. |
 | **Recommended MVP rule** | Compute with normal numeric precision; **commit/display money to 2 decimals**. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | $12.345 → $12.35 stored. |
 | **Alternative options** | Whole dollars only (too coarse for materials). |
 | **Inconsistency or risk** | Parallel round helpers today. |
@@ -798,8 +798,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Lines rounded, then summed, then document GST rounded (effectively line-first). |
 | **Recommended MVP rule** | **Round each line first; then sum; then calculate and round GST; then incl total.** |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Avoids “mystery cent” drift between screens. |
 | **Alternative options** | Sum raw then round once (can diverge from line display). |
 | **Inconsistency or risk** | Display vs total mismatch. |
@@ -814,8 +814,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Generally 2 dp for money-affecting qty/hours; some sheet counts use whole sheets (ceil). |
 | **Recommended MVP rule** | **2 decimal places** for general qty/hours; allow domain exceptions (whole sheets) where build-ups already do. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | 12.5 m²; 18 sheets (ceil). |
 | **Alternative options** | 3 dp everywhere. |
 | **Inconsistency or risk** | Low. |
@@ -830,8 +830,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Stored/displayed to **2 decimal places**. |
 | **Recommended MVP rule** | **Confirm 2 dp** for margin/markup metrics. |
 | **Blocks Batch 2B.3?** | **Yes** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | 20.00%, 23.53%. |
 | **Alternative options** | Whole percents only. |
 | **Inconsistency or risk** | Breakdown modal sometimes unrounded today (display-only). |
@@ -846,8 +846,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Cent precision (2 dp). |
 | **Recommended MVP rule** | **MVP: cents (2 dp).** Defer company-configurable presentation rounding until after beta. |
 | **Blocks Batch 2B.3?** | No |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | Quote total $11,487.50 not forced to $11,490. |
 | **Alternative options** | Round sell to nearest $10 for client friendliness. |
 | **Inconsistency or risk** | Presentation vs cost tracking. |
@@ -866,8 +866,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Quote revisions keep old rows; company setting changes do not rewrite existing quotes. |
 | **Recommended MVP rule** | **Confirm binding:** accepted/sent (and historical) quotes are **immutable snapshots**. |
 | **Blocks Batch 2B.3?** | Soft for 2B.3; **hard before 2B.8** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Quote sent Monday remains Monday’s price after you raise rates Tuesday. |
 | **Alternative options** | Live-linked quotes (dangerous — reject). |
 | **Inconsistency or risk** | Client disputes. |
@@ -882,8 +882,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Editing pricing items recalculates document totals. Estimates can be marked stale and need regenerate. Recalibration is explicit for pricing vs estimate drift. |
 | **Recommended MVP rule** | **Draft Final Pricing:** recalc on item edit. **Estimates:** regenerate explicitly (or margin update path). **Do not** auto-mutate sent quotes. |
 | **Blocks Batch 2B.3?** | Soft |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | Change a labour rate on a draft pricing line → totals update immediately. |
 | **Alternative options** | Fully live estimates always (heavier). |
 | **Inconsistency or risk** | Stale banners must stay clear. |
@@ -898,8 +898,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Revising creates a new quote version; old marked superseded. |
 | **Recommended MVP rule** | New revision when commercial offer to the client changes (price, GST, scope on quote). Draft internal pricing edits before send do not need a client revision until a quote is created/updated for the client. |
 | **Blocks Batch 2B.3?** | No — before 2B.8 |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | Client asks to remove pergola → new quote revision, not silent edit of sent PDF numbers. |
 | **Alternative options** | Overwrite same quote row (rejects history). |
 | **Inconsistency or risk** | Lost history. |
@@ -918,8 +918,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | User confirms work areas; edits pricing; reviews before quote. |
 | **Recommended MVP rule** | **Confirm.** |
 | **Blocks Batch 2B.3?** | Soft (architecture already binds) |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | AI suggests three work areas; you delete one before estimating. |
 | **Alternative options** | Auto-accept AI (rejected). |
 | **Inconsistency or risk** | Over-trusting AI. |
@@ -934,8 +934,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | AI assists structure/facts; money is deterministic; proposals generally require confirmation patterns. |
 | **Recommended MVP rule** | **Confirm:** AI never silently overwrites manual commercial values. |
 | **Blocks Batch 2B.3?** | Soft |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | You set sell $12,000; AI must not change it on reopen. |
 | **Alternative options** | Soft AI nudges only with accept. |
 | **Inconsistency or risk** | Trust collapse. |
@@ -950,8 +950,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Partial audit logging exists for some pricing/quote mutations; not a full override reason product. |
 | **Recommended MVP rule** | **MVP minimum hooks:** previous value, new value, user, timestamp, source (manual/AI/recalc). **Reason** and **reuse scope** can start optional and deepen later for DNA. |
 | **Blocks Batch 2B.3?** | Soft — deepen in 2B.9 / post-beta |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | “Reduced glass balustrade sell — client budget” stored as reason later. |
 | **Alternative options** | Capture nothing (hurts DNA). |
 | **Inconsistency or risk** | Incomplete learning substrate. |
@@ -966,8 +966,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | No DNA auto-update exists (correct for now). |
 | **Recommended MVP rule** | **Confirm:** future DNA may **suggest** from edits; never silently rewrite company rules without explicit accept. |
 | **Blocks Batch 2B.3?** | No |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | You often uplift fencing 8% — DNA later suggests updating the rate card; you approve. |
 | **Alternative options** | Auto-write rates (rejected). |
 | **Inconsistency or risk** | Silent commercial drift. |
@@ -986,8 +986,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Negatives rejected; no credit line type. |
 | **Recommended MVP rule** | **Confirm excluded** from current MVP / Stage 2B. |
 | **Blocks Batch 2B.3?** | **Yes** (confirm exclusion so engine does not invent credits) |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Client credit for materials supplied — handle outside Quotr or future credit type. |
 | **Alternative options** | Build credits now (out of scope). |
 | **Inconsistency or risk** | Using negatives as fake credits. |
@@ -1002,8 +1002,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Not supported as discount arithmetic. |
 | **Recommended MVP rule** | **Not required before beta.** Adjust sell prices or allowances manually. |
 | **Blocks Batch 2B.3?** | No — **after beta** |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | 5% goodwill — lower a lump-sum sell manually. |
 | **Alternative options** | Discount % field before beta. |
 | **Inconsistency or risk** | Extra formula complexity. |
@@ -1018,8 +1018,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | No discount engine. |
 | **Recommended MVP rule** | **Confirm:** Stage 2B authoritative engine **excludes** discount arithmetic. |
 | **Blocks Batch 2B.3?** | **Yes** (scope lock) |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Confirmed |
 | **Practical construction example** | Engine calculates cost/sell/margin/GST only. |
 | **Alternative options** | Pull discounts into 2B (reject). |
 | **Inconsistency or risk** | Scope creep. |
@@ -1038,8 +1038,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Current Quotr behaviour** | Some **labour/allowance minimum helpers** exist inside estimating for certain scopes; not a general company minimum-charge product. |
 | **Recommended MVP rule** | Keep existing limited helpers. **Do not** build a full minimum-charge system before beta unless you require it now. |
 | **Blocks Batch 2B.3?** | No — engine can accept pre-adjusted hours/amounts |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 | **Practical construction example** | Small bathroom still gets a minimum crew-day in some calculators. |
 | **Alternative options** | Company-wide minimum fee product now. |
 | **Inconsistency or risk** | Uneven coverage across trades. |
@@ -1059,8 +1059,8 @@ Legend for **Status:** Pending · Confirmed · Deferred
 | **Customer impact** | Honesty about what affects price. |
 | **Future Company DNA impact** | **High** — company loading rules are core DNA later. |
 | **Blocks Batch 2B.3?** | No — **after beta** for full system |
-| **Owner decision** | _Pending_ |
-| **Status** | Pending |
+| **Owner decision** | Agree with recommended MVP rule (owner-approved 2026-08-04)
+| **Status** | Deferred |
 
 ---
 

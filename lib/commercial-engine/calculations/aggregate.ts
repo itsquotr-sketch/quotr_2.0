@@ -11,7 +11,7 @@ import { buildLearningMetadata } from "../explanation/build-explanation";
 
 /**
  * Document / quote aggregation with explicit inclusion rule and optional GST.
- * Pure; not wired to app callers in 2B.3A.
+ * Pure; not wired to app callers in 2B.3B.
  *
  * Pass `gst_rate_percent` to compute GST from the **document** rate
  * (authoritative — never invent a hardcoded competing rate inside callers).
@@ -56,9 +56,10 @@ export function calculateDocumentAggregate(
       inclusion_rule: input.inclusion_rule,
       subtotal_cost: 0,
       subtotal_sell: 0,
-      gross_profit: 0,
-      gross_margin_percent: 0,
-      markup_percent: 0,
+      gross_profit: null,
+      gross_margin_percent: null,
+      markup_percent: null,
+      cost_known: false,
       gst_rate_percent: null,
       gst_amount: null,
       total_incl_gst: null,
@@ -96,6 +97,8 @@ export function calculateDocumentAggregate(
     included.reduce((sum, line) => sum + (line.total_sell ?? 0), 0)
   );
 
+  const costKnown = included.every((line) => line.cost_known !== false);
+
   steps.push({
     id: "sum_lines",
     formula_id: "F-AGG",
@@ -108,7 +111,9 @@ export function calculateDocumentAggregate(
     output: subtotal_sell,
   });
 
-  const profit = deriveProfitMetrics(subtotal_cost, subtotal_sell);
+  const profit = deriveProfitMetrics(subtotal_cost, subtotal_sell, {
+    costKnown,
+  });
 
   let gst_amount: number | null = null;
   let total_incl_gst: number | null = null;
@@ -150,6 +155,7 @@ export function calculateDocumentAggregate(
     gross_profit: profit.gross_profit,
     gross_margin_percent: profit.gross_margin_percent,
     markup_percent: profit.markup_percent,
+    cost_known: profit.cost_known,
     gst_rate_percent,
     gst_amount,
     total_incl_gst,
