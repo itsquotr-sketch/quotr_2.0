@@ -256,7 +256,7 @@ Update this table as stages progress. Status values must be one of: **Not Starte
 | 1 | Current-state audit | Auditing | 2026-08-03 | — | — | — | — |
 | 2 | Data integrity, authentication and organisation isolation | Not Started | — | — | Historical tracker entry retained. Scope split into Stage 2A and Stage 2B. | Superseded by 2A/2B split — do not implement under this row. | — |
 | 2A | Security, Validation and Data Integrity | Complete | 2026-08-03 | 2026-08-03–2026-08-04 | Stage 2A complete locally and remotely: auth-org, validation, pricing/quote security, DB integrity (025), least-privilege API grants (026), baseline reconciliation (027), two-org isolation proof, production smoke test. | Accepted limitations: soft-delete app-path visibility; S1-016 no account deletion; S1-013 roles/invites deferred; pricing formula duplication → 2B. | `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`; `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`; migrations 001–027 aligned local/remote |
-| 2B | Authoritative Pricing Engine | Not Started | — | — | — | — | — |
+| 2B | Authoritative Pricing Engine | Auditing | 2026-08-04 | — | Batch 2B.1 audit + authoritative engine specification + implementation plan issued. No formula consolidation or caller adoption yet. | Owner commercial decisions (Batch 2B.2) and golden cases required before refactor. | `docs/audits/STAGE_2B_PRICING_ENGINE_AUDIT.md`; `docs/specifications/AUTHORITATIVE_PRICING_ENGINE_SPEC.md`; `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md`; architecture `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md` |
 | 3 | Core project workflow | Not Started | — | — | — | — | — |
 | 4 | Estimating engine and pricing correctness | Not Started | — | — | Historical tracker entry retained. Pricing consolidation owned by Stage 2B. | — | — |
 | 5 | AI reliability and fallback handling | Not Started | — | — | — | — | — |
@@ -410,4 +410,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-04 |
 | Stage 0 status | Complete |
-| Next stage | Stage 2B — Authoritative Pricing Engine (Not Started). Stage 2A is Complete (local and remote; migrations 001–027 aligned). |
+| Next stage | Stage 2B — Authoritative Pricing Engine (Auditing; Batch 2B.1 complete). Stage 2A is Complete (local and remote; migrations 001–027 aligned). Next implementation gate: Batch 2B.2 owner commercial decisions + golden cases. |
