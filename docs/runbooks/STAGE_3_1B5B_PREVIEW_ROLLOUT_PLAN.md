@@ -1,12 +1,14 @@
 # Stage 3.1B.5B — Preview Rollout Plan
 
-**Status:** Planned — not executed  
+**Status:** In progress — migrations applied; server actions **Complete — Local** (3.1B.5C)  
 **Date:** 2026-08-06  
 **Depends on:** Remote migration runbook + owner approvals  
 **Related:**  
 - `docs/runbooks/STAGE_3_1B_REMOTE_MIGRATION_028_029_RUNBOOK.md`  
 - `docs/architecture/STAGE_3_1B5B_PRODUCTION_WIRING_DESIGN.md`  
 - `docs/decisions/STAGE_3_1B5B_REMOTE_AND_WIRING_APPROVAL.md`  
+- `docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`  
+- `docs/runbooks/STAGE_3_1B5C_PREVIEW_SERVER_INTEGRATION_TEST.md`  
 
 ---
 
@@ -15,6 +17,30 @@
 Ordered Preview rollout so migrations land safely, existing product stays unchanged, server wiring ships behind a flag, and only then is discovery exercised on test projects.
 
 Do not skip steps. Do not enable production until the Production gate passes.
+
+---
+
+## Vercel feature flag configuration
+
+Configure in the Vercel dashboard (do not change automatically from this runbook). Redeploy after env changes.
+
+**Preview**
+
+```
+SCOPE_DISCOVERY_ENABLED=true
+```
+
+**Production**
+
+```
+SCOPE_DISCOVERY_ENABLED=
+```
+
+or explicitly `false` — must remain **Disabled**.
+
+Also confirm Preview has `ANTHROPIC_API_KEY` (and model env as used by the app). Do **not** add `NEXT_PUBLIC_SCOPE_DISCOVERY_ENABLED`.
+
+Full Preview server integration checklist: `docs/runbooks/STAGE_3_1B5C_PREVIEW_SERVER_INTEGRATION_TEST.md`.
 
 ---
 
@@ -47,11 +73,12 @@ Preview smoke:
 - Answer questions; estimate; pricing path smoke as per 3.1A sign-off.
 - Confirm no discovery tables required for happy path.
 
-### 5. Implement server actions in next batch
+### 5. Implement server actions in next batch — **Complete — Local** (3.1B.5C)
 
-- Implement actions per `STAGE_3_1B5B_PRODUCTION_WIRING_DESIGN.md`.
-- Still behind flag; still no UI (or UI hidden).
-- Local + Preview verification of actions via scripted/authenticated calls.
+- Implemented actions per `STAGE_3_1B5B_PRODUCTION_WIRING_DESIGN.md` in `lib/scope-discovery/actions.ts` and application layer.
+- Still behind flag; still no UI (Assistant UI not wired).
+- Local verification via `scripts/verify-stage-3-1b5c-gated-server-integration.ts`.
+- Preview verification: `docs/runbooks/STAGE_3_1B5C_PREVIEW_SERVER_INTEGRATION_TEST.md`.
 
 ### 6. Enable only in Preview
 
@@ -129,4 +156,8 @@ Production enable of the flag is a **separate** owner decision after Preview pro
 | --- | --- |
 | Path | `docs/runbooks/STAGE_3_1B5B_PREVIEW_ROLLOUT_PLAN.md` |
 | Created | 2026-08-06 |
-| Executed | **No** |
+| Last updated | 2026-08-06 |
+| Migrations 028/029 | **Applied and Verified** |
+| Server actions (step 5) | **Complete — Local** (3.1B.5C) |
+| Preview flag enablement | **Ready Pending Owner Test** |
+| Production enablement | **Not Approved** |

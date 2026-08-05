@@ -77,3 +77,70 @@ export async function listDecisionsForSuggestion(
 
   return (data as ScopeDiscoveryDecisionRow[]) ?? [];
 }
+
+export interface DiscoveryDecisionDetailRow extends ScopeDiscoveryDecisionRow {
+  readonly created_work_area_id: string | null;
+  readonly reason_code: string | null;
+  readonly user_note: string | null;
+  readonly modified_title: string | null;
+  readonly modified_description: string | null;
+  readonly modified_work_area_type: string | null;
+  readonly source_revision: string;
+  readonly run_id: string;
+}
+
+export async function listDecisionsForProject(
+  ctx: PersistenceAuthContext,
+  projectId: string,
+  limit = 200
+): Promise<readonly DiscoveryDecisionDetailRow[]> {
+  await assertProjectOwnedByOrg(ctx, projectId);
+
+  const { data, error } = await ctx.supabase
+    .from("scope_discovery_decisions")
+    .select(
+      "id, org_id, project_id, suggestion_id, decision_type, decided_by, decided_at, created_work_area_id, reason_code, user_note, modified_title, modified_description, modified_work_area_type, source_revision, run_id"
+    )
+    .eq("project_id", projectId)
+    .eq("org_id", ctx.orgId)
+    .order("decided_at", { ascending: true })
+    .limit(limit);
+
+  if (error) {
+    throw mapDbError(
+      error,
+      new ScopeDiscoveryPersistenceError(
+        PERSISTENCE_ERROR_CODES.PERSISTENCE_FAILED,
+        "Failed to list discovery decisions."
+      )
+    );
+  }
+
+  return (data as DiscoveryDecisionDetailRow[]) ?? [];
+}
+
+export async function listDecisionsForRun(
+  ctx: PersistenceAuthContext,
+  runId: string
+): Promise<readonly DiscoveryDecisionDetailRow[]> {
+  const { data, error } = await ctx.supabase
+    .from("scope_discovery_decisions")
+    .select(
+      "id, org_id, project_id, suggestion_id, decision_type, decided_by, decided_at, created_work_area_id, reason_code, user_note, modified_title, modified_description, modified_work_area_type, source_revision, run_id"
+    )
+    .eq("run_id", runId)
+    .eq("org_id", ctx.orgId)
+    .order("decided_at", { ascending: true });
+
+  if (error) {
+    throw mapDbError(
+      error,
+      new ScopeDiscoveryPersistenceError(
+        PERSISTENCE_ERROR_CODES.PERSISTENCE_FAILED,
+        "Failed to list discovery decisions."
+      )
+    );
+  }
+
+  return (data as DiscoveryDecisionDetailRow[]) ?? [];
+}

@@ -36,15 +36,24 @@ export {
   completeDiscoveryRun,
   archiveDiscoveryRun,
   getDiscoveryRunById,
+  getDiscoveryRunDetail,
+  listRecentDiscoveryRuns,
+  getLatestTerminalDiscoveryRun,
+  type DiscoveryRunDetailRow,
 } from "./run-repository";
 
 export {
   insertDiscoverySuggestions,
   markSuggestionStaleOrSuperseded,
   listSuggestionsForRun,
+  listSuggestionDetailsForRun,
+  type DiscoverySuggestionDetailRow,
 } from "./suggestion-repository";
 
 export {
   insertDiscoveryDecision,
   listDecisionsForSuggestion,
+  listDecisionsForProject,
+  listDecisionsForRun,
+  type DiscoveryDecisionDetailRow,
 } from "./decision-repository";

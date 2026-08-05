@@ -1,10 +1,11 @@
 # Stage 3.1B.5B — Production Wiring Design
 
-**Status:** Complete — Planning  
+**Status:** Complete — Local (3.1B.5C); UI **Not Started**  
 **Date:** 2026-08-06  
-**Batch:** Stage 3.1B.5B (design only — no implementation)  
-**Depends on:** Migrations 028/029 (local complete; remote Ready Pending Owner Approval)  
-**Does not implement:** Server actions, UI, Analyse Job changes, feature flag code, DNA, Builder Interview  
+**Batch:** Stage 3.1B.5B (design) + 3.1B.5C (implementation)  
+**Depends on:** Migrations 028/029 — **Applied and Verified**  
+**Implements:** Server actions, application services, feature flag (`lib/scope-discovery/configuration/`, `lib/scope-discovery/application/`, `lib/scope-discovery/actions.ts`)  
+**Does not implement:** UI, Analyse Job changes, DNA, Builder Interview  
 
 ---
 
@@ -141,9 +142,9 @@ No client-side AI. No client-side persistence authority. No Fact fabrication on 
 
 ---
 
-## 5. Future server actions (design only)
+## 5. Server actions (implemented — 3.1B.5C)
 
-Proposed module: `lib/scope-discovery/actions.ts` (or `lib/assistant/scope-discovery-actions.ts`) with `"use server"`.
+Module: `lib/scope-discovery/actions.ts` with `"use server"`. Application layer in `lib/scope-discovery/application/`. **Not imported by Assistant UI.**
 
 Shared helpers:
 
@@ -315,5 +316,7 @@ When flag off: Analyse Job behaviour identical to today.
 | --- | --- |
 | Path | `docs/architecture/STAGE_3_1B5B_PRODUCTION_WIRING_DESIGN.md` |
 | Created | 2026-08-06 |
-| Implementation | **Not Started** |
-| Status | Complete — Planning |
+| Last updated | 2026-08-06 |
+| Implementation | **Complete — Local** (3.1B.5C) |
+| UI | **Not Started** |
+| Status | Complete — Local (server integration); UI Not Started |

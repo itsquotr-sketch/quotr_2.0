@@ -5,11 +5,13 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.5B — **Complete — Planning** (`docs/implementation/STAGE_3_1B5B_READINESS_COMPLETION.md`)  
-**Next batch:** Owner-gated remote apply of 028/029, then server-action implementation  
-**Migrations:** `028`/`029` Complete — Local; remote apply **Ready Pending Owner Approval**  
-**Production server wiring:** Ready Pending Remote Migration  
-**Feature flag:** Planned (`SCOPE_DISCOVERY_ENABLED`)  
+**Current batch:** 3.1B.5C — **Complete — Local** (`docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`)  
+**Next batch:** 3.1B.6 — **Ready Pending Preview Server Test**  
+**Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**  
+**Server integration:** **Complete — Local**, UI Unwired  
+**Preview feature enablement:** **Ready Pending Owner Test**  
+**Production feature:** **Disabled**  
+**Feature flag:** **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off)  
 **AI provider adapter:** Implemented but unused  
 **UI integration:** Not Started  
 **Production catalogue adoption:** Not Started  
@@ -33,6 +35,8 @@
 - `docs/decisions/STAGE_3_1B5B_REMOTE_AND_WIRING_APPROVAL.md`
 - `docs/runbooks/STAGE_3_1B_REMOTE_MIGRATION_028_029_RUNBOOK.md`
 - `docs/runbooks/STAGE_3_1B5B_PREVIEW_ROLLOUT_PLAN.md`
+- `docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`
+- `docs/runbooks/STAGE_3_1B5C_PREVIEW_SERVER_INTEGRATION_TEST.md`
 
 ---
 
@@ -133,7 +137,7 @@ Split for delivery:
 | **Readiness** | **Complete — Local** (2026-08-05) |
 | **Evidence** | `028_scope_discovery_persistence.sql`; `lib/scope-discovery/persistence/*`; verify script; completion doc |
 | **Customer value** | Durable runs/suggestions/decisions with RLS (unused by production) |
-| **Schema** | Migration 028 — **Local only, Not Applied Remotely** |
+| **Schema** | Migration 028 — **Applied and Verified** remotely |
 | **Security** | RLS + integrity + immutability triggers + least-privilege grants |
 | **Rollback** | Pre-adoption drop; post-data preserve + flag off |
 | **Acceptance** | Local verify + full regression; Analyse Job unchanged |
@@ -145,7 +149,7 @@ Split for delivery:
 | **Readiness** | **Complete — Local** (2026-08-05) |
 | **Evidence** | `029_scope_discovery_acceptance_rpc.sql`; `lib/scope-discovery/decisions/*`; verify + completion docs |
 | **Customer value** | Explicit decisions; provenance; Fact SoT protection (unused by production) |
-| **Schema** | Migration 029 — **Local only, Not Applied Remotely** |
+| **Schema** | Migration 029 — **Applied and Verified** remotely |
 | **Security** | SECURITY INVOKER RPCs; org from auth; anon EXECUTE denied |
 | **Rollback** | Drop 029 objects pre-adoption; preserve post-data |
 | **Acceptance** | Accept/modify create WA; reject append-only; no Facts; Analyse Job unchanged |
@@ -157,31 +161,36 @@ Split for delivery:
 | **Readiness** | **Complete — Planning** (2026-08-06) |
 | **Evidence** | Remote history inspection; 028/029 safety audit; remote runbook; wiring design; Preview rollout; approval register; readiness completion |
 | **Customer value** | Owner-ready remote apply + future server-action contract without premature production exposure |
-| **Schema** | 028/029 remote apply **Ready Pending Owner Approval** — not applied this batch |
-| **Wiring** | Production server wiring **Ready Pending Remote Migration** — design only |
-| **Feature flag** | **Planned** — `SCOPE_DISCOVERY_ENABLED` server-side, off by default |
+| **Schema** | 028/029 remote apply **Applied and Verified** (owner confirmed entering 3.1B.5C) |
+| **Wiring** | Production wiring design **Complete — Planning**; server-action implementation deferred to 3.1B.5C |
+| **Feature flag** | **Approved** (strategy) — implementation in 3.1B.5C |
 | **UI** | **Not Started** |
 | **Analyse Job** | **Unchanged** |
 | **Rollback** | Pre-data drop; post-data flag off + preserve |
 | **Acceptance** | Docs + verification only; no remote push; no production code/UI |
 
-### 3.1B.5C — Server-action implementation (gated; next)
+### 3.1B.5C — Server-action implementation (gated)
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **READY PENDING OWNER GATE** (remote 028/029 + approvals #1–#10) |
-| **Customer value** | Authenticated Analyse Scope + accept/reject/modify without UI yet (or minimal) |
-| **Likely files** | Thin server actions per wiring design; optional missing-details seed |
+| **Readiness** | **Complete — Local** (2026-08-06) |
+| **Evidence** | `lib/scope-discovery/configuration/*`; `lib/scope-discovery/application/*`; `lib/scope-discovery/actions.ts`; `scripts/verify-stage-3-1b5c-gated-server-integration.ts`; `docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`; `docs/runbooks/STAGE_3_1B5C_PREVIEW_SERVER_INTEGRATION_TEST.md` |
+| **Customer value** | Authenticated run + accept/reject/modify without UI yet |
 | **Schema** | Uses remotely applied 028/029 |
-| **Security** | Flag gate; no new public routes without review |
-| **Rollback** | Feature flag off |
-| **Acceptance** | Still no Analyse Job rewire until separately gated |
+| **Server integration** | **Complete — Local**, UI Unwired |
+| **Preview enablement** | **Ready Pending Owner Test** |
+| **Production feature** | **Disabled** |
+| **Feature flag** | **Implemented** — `SCOPE_DISCOVERY_ENABLED`, default off |
+| **Security** | Flag gate; no Assistant UI imports; no new public routes |
+| **Analyse Job** | **Unchanged** |
+| **Rollback** | Feature flag off; preserve data |
+| **Acceptance** | Local verify + full regression; no Analyse Job rewire; no UI |
 
 ### 3.1B.6 — Assistant UI integration
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **READY PENDING DESIGN DELIVERABLE** (suggestion list UX) + owner gates; intersects **FEAT-001** |
+| **Readiness** | **Ready Pending Preview Server Test** (suggestion list UX + owner gates; intersects **FEAT-001**) |
 | **Customer value** | See evidence, confidence band, accept/reject/edit on mobile |
 | **Likely files** | `components/assistant/*`, a11y live regions |
 | **Schema** | None |
@@ -217,7 +226,7 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.5B** — Complete — Planning. **Owner:** approve remote apply of 028/029 (Preview first) via `STAGE_3_1B5B_REMOTE_AND_WIRING_APPROVAL.md`, execute remote runbook, then implement gated server actions (3.1B.5C). Preserve Fact SoT; no DNA; do not rewire Analyse Job until approval #5. UI remains 3.1B.6.
+**3.1B.5C** — Complete — Local. **Next:** Owner Preview server test per `STAGE_3_1B5C_PREVIEW_SERVER_INTEGRATION_TEST.md`, then Assistant UI integration (3.1B.6). Preserve Fact SoT; no DNA; Analyse Job unchanged; production flag remains disabled until separate gate.
 
 ---
 
@@ -225,8 +234,8 @@ Split for delivery:
 
 | Item | Implication |
 | --- | --- |
-| Suggestion/run persistence | Migration 028 — local complete; remote **Ready Pending Owner Approval** |
-| Acceptance RPCs | Migration 029 — local complete; remote **Ready Pending Owner Approval** |
+| Suggestion/run persistence | Migration 028 — local complete; remote **Applied and Verified** |
+| Acceptance RPCs | Migration 029 — local complete; remote **Applied and Verified** |
 | D-S6 attachments | Separate; needs DB + Storage RLS |
 | D-S4 evidence events | Beneficial later; not required to start 3.1B.1–2 |
 | Catalogue in DB | Optional; code modules preferred first |
@@ -250,4 +259,5 @@ Split for delivery:
 | --- | --- |
 | Path | `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md` |
 | Created | 2026-08-05 |
-| Stage status | Planning |
+| Stage status | In Progress — 3.1B.5C Complete — Local |
+| Last updated | 2026-08-06 |

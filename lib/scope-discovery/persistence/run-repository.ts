@@ -132,3 +132,117 @@ export async function getDiscoveryRunById(
 
   return (data as ScopeDiscoveryRunRow | null) ?? null;
 }
+
+export interface DiscoveryRunDetailRow extends ScopeDiscoveryRunRow {
+  readonly trigger: string;
+  readonly analysis_objective: string;
+  readonly source_snapshot: Record<string, unknown>;
+  readonly warnings: unknown;
+  readonly errors: unknown;
+  readonly latency_ms: number | null;
+  readonly input_tokens: number | null;
+  readonly output_tokens: number | null;
+  readonly provider_called: boolean;
+  readonly repair_attempted: boolean;
+  readonly reused_run_id: string | null;
+  readonly superseded_run_id: string | null;
+  readonly started_at: string;
+  readonly completed_at: string | null;
+  readonly archived_at: string | null;
+  readonly provider: string | null;
+  readonly model: string | null;
+}
+
+const RUN_DETAIL_SELECT =
+  "id, org_id, project_id, status, idempotency_key, source_fingerprint, contract_version, catalogue_version, prompt_version, trigger, analysis_objective, source_snapshot, warnings, errors, latency_ms, input_tokens, output_tokens, provider_called, repair_attempted, reused_run_id, superseded_run_id, started_at, completed_at, archived_at, provider, model";
+
+export async function getDiscoveryRunDetail(
+  ctx: PersistenceAuthContext,
+  runId: string
+): Promise<DiscoveryRunDetailRow | null> {
+  const { data, error } = await ctx.supabase
+    .from("scope_discovery_runs")
+    .select(RUN_DETAIL_SELECT)
+    .eq("id", runId)
+    .eq("org_id", ctx.orgId)
+    .maybeSingle();
+
+  if (error) {
+    throw mapDbError(
+      error,
+      new ScopeDiscoveryPersistenceError(
+        PERSISTENCE_ERROR_CODES.PERSISTENCE_FAILED,
+        "Failed to load discovery run."
+      )
+    );
+  }
+
+  return (data as DiscoveryRunDetailRow | null) ?? null;
+}
+
+export async function listRecentDiscoveryRuns(
+  ctx: PersistenceAuthContext,
+  projectId: string,
+  limit = 20
+): Promise<readonly DiscoveryRunDetailRow[]> {
+  await assertProjectOwnedByOrg(ctx, projectId);
+
+  const { data, error } = await ctx.supabase
+    .from("scope_discovery_runs")
+    .select(RUN_DETAIL_SELECT)
+    .eq("project_id", projectId)
+    .eq("org_id", ctx.orgId)
+    .is("archived_at", null)
+    .order("created_at", { ascending: false })
+    .limit(limit);
+
+  if (error) {
+    throw mapDbError(
+      error,
+      new ScopeDiscoveryPersistenceError(
+        PERSISTENCE_ERROR_CODES.PERSISTENCE_FAILED,
+        "Failed to list discovery runs."
+      )
+    );
+  }
+
+  return (data as DiscoveryRunDetailRow[]) ?? [];
+}
+
+export async function getLatestTerminalDiscoveryRun(
+  ctx: PersistenceAuthContext,
+  projectId: string
+): Promise<DiscoveryRunDetailRow | null> {
+  await assertProjectOwnedByOrg(ctx, projectId);
+
+  const { data, error } = await ctx.supabase
+    .from("scope_discovery_runs")
+    .select(RUN_DETAIL_SELECT)
+    .eq("project_id", projectId)
+    .eq("org_id", ctx.orgId)
+    .is("archived_at", null)
+    .in("status", [
+      "COMPLETED",
+      "COMPLETED_WITH_WARNINGS",
+      "REUSED",
+      "FAILED_VALIDATION",
+      "FAILED_DETERMINISTIC",
+      "FAILED_PROVIDER",
+      "FAILED_MERGE",
+    ])
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw mapDbError(
+      error,
+      new ScopeDiscoveryPersistenceError(
+        PERSISTENCE_ERROR_CODES.PERSISTENCE_FAILED,
+        "Failed to load latest discovery run."
+      )
+    );
+  }
+
+  return (data as DiscoveryRunDetailRow | null) ?? null;
+}

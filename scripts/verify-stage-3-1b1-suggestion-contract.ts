@@ -696,7 +696,10 @@ function main(): void {
   // --- Boundaries ---
   const root = process.cwd();
   const moduleDir = join(root, "lib", "scope-discovery");
-  const moduleFiles = readdirSync(moduleDir).filter((f) => f.endsWith(".ts"));
+  // Pure contract files only — exclude 3.1B.5C gated server actions entrypoint.
+  const moduleFiles = readdirSync(moduleDir).filter(
+    (f) => f.endsWith(".ts") && f !== "actions.ts"
+  );
   let moduleSrc = "";
   for (const f of moduleFiles) {
     moduleSrc += read(join(moduleDir, f));
