@@ -5,12 +5,13 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.2 — **Complete — Local** (`docs/implementation/STAGE_3_1B2_SCOPE_RELATIONSHIP_CATALOGUE_COMPLETION.md`)  
-**Next batch:** 3.1B.3 — **Ready Pending Owner Gate** (AI discovery provider)  
+**Current batch:** 3.1B.3 — **Complete — Local** (`docs/implementation/STAGE_3_1B3_AI_DISCOVERY_PROVIDER_COMPLETION.md`)  
+**Next batch:** 3.1B.4 — **Ready Pending Persistence Owner Gate** (discovery-run orchestration)  
 **Migrations:** Not Approved  
-**AI provider integration:** Not Started  
+**AI provider adapter:** Implemented but unused  
 **UI integration:** Not Started  
 **Production catalogue adoption:** Not Started  
+**Analyse Job:** Unchanged  
 
 **Specs:**
 
@@ -18,6 +19,7 @@
 - `docs/specifications/INTELLIGENT_SCOPE_DISCOVERY_BOUNDARY.md`
 - `docs/specifications/SCOPE_DISCOVERY_SUGGESTION_CONTRACT.md`
 - `docs/specifications/SCOPE_RELATIONSHIP_CATALOGUE_SPEC.md`
+- `docs/specifications/SCOPE_DISCOVERY_PROVIDER_CONTRACT.md`
 - `docs/performance/STAGE_3_1B_SCOPE_DISCOVERY_LATENCY_AND_COST_BUDGET.md`
 - `docs/decisions/STAGE_3_1B_SCOPE_DISCOVERY_OWNER_DECISIONS.md`
 
@@ -80,19 +82,18 @@ Improve likely-scope, missing-scope, dependency, and clarification discovery fro
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **READY PENDING OWNER GATE** (fallback behaviour; prompt/version governance; when to change Analyse Job) |
+| **Readiness** | **Complete — Local** (2026-08-05) |
+| **Evidence** | `lib/scope-discovery/provider/*`; `scripts/verify-stage-3-1b3-ai-discovery-provider.ts`; completion + provider contract docs |
 | **Customer value** | Structured, validated discovery output with evidence refs |
-| **Likely files** | `lib/ai/*` new discovery extract (separate from changing current prompts until gated); schema validators |
-| **Schema** | None |
-| **Security** | Input caps; output validation; no secret logging; OCD-ISD-17 data minimisation |
-| **Rollback** | Feature flag / unused module |
-| **Acceptance** | Zod contract tests; no persistence adoption yet; **do not change current Analyse Job** until later orchestration batch |
+| **Schema** | None — code-only; migrations **Not Approved** |
+| **Production adoption** | None — Analyse Job unchanged |
+| **Acceptance** | Mock transport verification; one repair only; no live key required; no production imports |
 
 ### 3.1B.4 — Discovery-run and proposal orchestration
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **READY PENDING OWNER GATE** + possibly **READY PENDING DESIGN DELIVERABLE** if migration required |
+| **Readiness** | **Ready Pending Persistence Owner Gate** (+ design deliverable if migration required) |
 | **Customer value** | Idempotent runs; stale/supersede; merge deterministic+AI |
 | **Likely files** | Orchestrator server actions; optional tables |
 | **Schema** | May need `scope_discovery_runs` / `scope_discovery_suggestions` — **Not Approved** until owner decides |
@@ -152,7 +153,7 @@ Improve likely-scope, missing-scope, dependency, and clarification discovery fro
 
 ## 5. Recommended next implementation batch
 
-**3.1B.3** — AI discovery provider (structured output + validation + evidence refs), without persistence adoption or Analyse Job behaviour change until separately gated.
+**3.1B.4** — Discovery-run and proposal orchestration (explicit trigger; merge deterministic + contextual; stale without auto paid calls). Persistence only if owner approves migrations. Do not rewire Analyse Job or begin accept/reject UI until separately gated.
 
 ---
 
