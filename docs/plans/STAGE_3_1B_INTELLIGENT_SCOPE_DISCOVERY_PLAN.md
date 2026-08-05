@@ -5,9 +5,9 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.4B — **Complete — Local** (`docs/implementation/STAGE_3_1B4B_PERSISTENCE_COMPLETION.md`)  
-**Next batch:** 3.1B.5 — **Ready Pending Acceptance Lifecycle Gate**  
-**Migrations:** `028` Complete — Local, **Not Applied Remotely**  
+**Current batch:** 3.1B.5A — **Complete — Local** (`docs/implementation/STAGE_3_1B5A_DECISION_LIFECYCLE_COMPLETION.md`)  
+**Next batch:** 3.1B.5B — **Not Started** (production wiring)  
+**Migrations:** `028`/`029` Complete — Local, **Not Applied Remotely**  
 **AI provider adapter:** Implemented but unused  
 **UI integration:** Not Started  
 **Production catalogue adoption:** Not Started  
@@ -132,17 +132,29 @@ Split for delivery:
 | **Rollback** | Pre-adoption drop; post-data preserve + flag off |
 | **Acceptance** | Local verify + full regression; Analyse Job unchanged |
 
-### 3.1B.5 — Accept / reject / modify lifecycle
+### 3.1B.5A — Accept / reject / modify lifecycle (local)
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **Ready Pending Acceptance Lifecycle Gate** |
-| **Customer value** | Explicit decisions; provenance; Fact SoT protection |
-| **Likely files** | Application actions; optional accept RPC; reuse `work-area-actions` |
-| **Schema** | Uses 028 tables; no new migration expected unless RPC requires it |
-| **Security** | Ownership asserts on apply; transactional accept |
-| **Rollback** | Disable apply path |
-| **Acceptance** | Accept creates WA per OCD-ISD-01; reject suppresses; modify preserves original; no user Fact overwrite by AI |
+| **Readiness** | **Complete — Local** (2026-08-05) |
+| **Evidence** | `029_scope_discovery_acceptance_rpc.sql`; `lib/scope-discovery/decisions/*`; verify + completion docs |
+| **Customer value** | Explicit decisions; provenance; Fact SoT protection (unused by production) |
+| **Schema** | Migration 029 — **Local only, Not Applied Remotely** |
+| **Security** | SECURITY INVOKER RPCs; org from auth; anon EXECUTE denied |
+| **Rollback** | Drop 029 objects pre-adoption; preserve post-data |
+| **Acceptance** | Accept/modify create WA; reject append-only; no Facts; Analyse Job unchanged |
+
+### 3.1B.5B — Production wiring (gated)
+
+| Field | Value |
+| --- | --- |
+| **Readiness** | **Not Started** |
+| **Customer value** | Surface decisions in Assistant / server actions |
+| **Likely files** | Thin server actions; optional missing-details seed |
+| **Schema** | Uses 028/029; remote apply still owner-gated |
+| **Security** | No new public routes without review |
+| **Rollback** | Feature flag off |
+| **Acceptance** | Still no Analyse Job rewire until separately gated |
 
 ### 3.1B.6 — Assistant UI integration
 
@@ -184,7 +196,7 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.5** — Acceptance lifecycle (Ready Pending Acceptance Lifecycle Gate): transactional accept/reject/modify with Work Area creation via existing lifecycle; preserve Fact SoT; no DNA; do not rewire Analyse Job until separately gated. Remote apply of 028 remains owner-gated.
+**3.1B.5A** — Complete — Local (RPCs + unused service). **3.1B.5B** — production wiring Not Started. Preserve Fact SoT; no DNA; do not rewire Analyse Job until separately gated. Remote apply of 028/029 remains owner-gated.
 
 ---
 
