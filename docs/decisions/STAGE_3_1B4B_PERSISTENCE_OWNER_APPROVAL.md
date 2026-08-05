@@ -1,34 +1,38 @@
 # Stage 3.1B.4B — Persistence Owner Approval Register
 
-**Status:** Awaiting owner decisions — **Nothing approved**  
+**Status:** Approved for local implementation — **Remote apply still Not Approved**  
 **Date:** 2026-08-05  
 **Architecture:** `docs/architecture/STAGE_3_1B4B_PERSISTENCE_ARCHITECTURE.md`  
-**Security:** `docs/security/STAGE_3_1B4B_PERSISTENCE_SECURITY_REVIEW.md`  
-**Verification plan:** `docs/runbooks/STAGE_3_1B4B_PERSISTENCE_VERIFICATION_PLAN.md`
-
-Do **not** create migration `028` or wire production until this register is signed.
+**Implementation:** `docs/implementation/STAGE_3_1B4B_PERSISTENCE_COMPLETION.md`  
+**Migration:** `028_scope_discovery_persistence.sql` (local only)
 
 ---
 
 ## Decision register
 
-| # | Decision | Recommended MVP | Owner status | Approved date |
+| # | Decision | Approved rule | Status | Approved date |
 | ---: | --- | --- | --- | --- |
-| 1 | **Final table count** | **3 tables:** `scope_discovery_runs`, `scope_discovery_suggestions`, `scope_discovery_decisions` | Pending | — |
-| 2 | **Evidence storage** | **JSONB** on immutable suggestion payload; **no** `scope_discovery_evidence` table in MVP | Pending | — |
-| 3 | **Decisions model** | **Append-only** event rows; corrections = new rows; no UPDATE of decision body | Pending | — |
-| 4 | **Soft-deletable runs/suggestions** | **Optional `archived_at`** on runs only; suggestions follow run; **no** hard delete in normal use | Pending | — |
-| 5 | **Raw provider output** | **Do not persist** by default; store validated canonical result + metadata only | Pending | — |
-| 6 | **Idempotency uniqueness** | **Partial unique** `(project_id, idempotency_key) WHERE status = 'RUNNING'`; completed reuse is application-level read of latest success | Pending | — |
-| 7 | **Completed-run immutability** | **Yes** — freeze snapshot, fingerprint, versions, trigger, objective after terminal status (trigger-enforced) | Pending | — |
-| 8 | **Suggestion immutability** | **Yes** — freeze original payload/evidence; status/stale/supersede pointers only may change | Pending | — |
-| 9 | **Acceptance RPC / transaction** | **Yes, recommended** — single transaction (or SECURITY DEFINER RPC) for decision insert + Work Area create + status update | Pending | — |
-| 10 | **Retention period** | **Retain while project exists**; soft-archive policy TBD; no account-deletion automation in this stage | Pending | — |
-| 11 | **RLS policy model** | Org isolation via `auth_org_id()`; SELECT/INSERT; limited UPDATE; **no** client DELETE on discovery tables; **no** decision UPDATE | Pending | — |
-| 12 | **Restricted grants** | Align with migration **026**: authenticated + service_role DML; **anon none** | Pending | — |
-| 13 | **Migration number and remote gate** | File **`028_…sql`** after `027`; **local Docker first**; remote/Preview only with explicit owner command | Pending | — |
-| 14 | **Local-only until Preview adoption** | **Yes** — same Stage 2A discipline | Pending | — |
-| 15 | **Rollback strategy** | **Pre-adoption:** drop empty tables. **Post-data:** disable feature flag; **preserve** rows; no destructive production drop | Pending | — |
+| 1 | Final table count | Three MVP tables: `scope_discovery_runs`, `scope_discovery_suggestions`, `scope_discovery_decisions` | **Approved** | 2026-08-05 |
+| 2 | Evidence storage | Validated capped JSONB on suggestions; no evidence table in MVP | **Approved** | 2026-08-05 |
+| 3 | Decisions model | Append-only events; corrections = new rows | **Approved** | 2026-08-05 |
+| 4 | Soft-delete | Runs may soft-archive (`archived_at`); suggestions/decisions not normally hard-deleted | **Approved** | 2026-08-05 |
+| 5 | Raw provider output | Not persisted | **Approved** | 2026-08-05 |
+| 6 | Idempotency | DB prevents duplicate active (`RUNNING`) runs; completed reuse application-controlled | **Approved** | 2026-08-05 |
+| 7 | Completed-run immutability | Snapshot, fingerprints, versions, provider/model identity immutable after terminal | **Approved** | 2026-08-05 |
+| 8 | Suggestion immutability | Original payload and evidence immutable | **Approved** | 2026-08-05 |
+| 9 | Acceptance RPC | Future accept must use DB transaction/RPC (decision + WA + linkage). **Not implemented in 3.1B.4B** | **Approved** (design) | 2026-08-05 |
+| 10 | Retention | Indefinite for MVP; account deletion deferred | **Approved** | 2026-08-05 |
+| 11 | RLS | Existing org ownership + `auth_org_id()` | **Approved** | 2026-08-05 |
+| 12 | Grants | No anon DML; least privilege; service_role server-only | **Approved** | 2026-08-05 |
+| 13 | Migration number | `028_scope_discovery_persistence.sql` | **Approved** | 2026-08-05 |
+| 14 | Local-only until Preview | Yes — local Docker only until later owner approval | **Approved** | 2026-08-05 |
+| 15 | Rollback | Pre-adoption drop OK; after production data preserve + disable feature | **Approved** | 2026-08-05 |
+
+### Additional approval
+
+| ID | Decision | Status | Approved date |
+| --- | --- | --- | --- |
+| ORCH-POL-01 | Deterministic success + provider failure → `COMPLETED_WITH_WARNINGS` with deterministic suggestions preserved | **Approved** | 2026-08-05 |
 
 ---
 
@@ -36,28 +40,12 @@ Do **not** create migration `028` or wire production until this register is sign
 
 | Item | Status |
 | --- | --- |
-| Creating migration 028 | **Not Approved** |
-| Applying persistence schema remotely | **Not Approved** |
+| Remote / Preview apply of migration 028 | **Not Approved** |
 | Production Analyse Job adoption | **Not Started** |
 | Accept/reject UI | **Not Started** |
-| Company DNA writes from decisions | **Forbidden** |
-| Commercial columns on discovery tables | **Forbidden** |
-| Separate evidence table | **Not in MVP** (unless #2 overturned) |
-
----
-
-## Owner sign-off block
-
-When approving, copy and complete:
-
-```text
-I approve Stage 3.1B.4B persistence decisions #1–#15 as recommended / with amendments:
-Amendments: _______________
-Migration 028 authorisation: Local only / Local + Preview / Denied
-Signed: _______________  Date: _______________
-```
-
-Until signed, implementation batch **3.1B.4B** remains **Ready Pending Owner Approval**.
+| Acceptance RPC implementation | **Not Started** (design approved) |
+| Company DNA writes | **Forbidden** |
+| Commercial columns | **Forbidden** |
 
 ---
 
@@ -67,4 +55,6 @@ Until signed, implementation batch **3.1B.4B** remains **Ready Pending Owner App
 | --- | --- |
 | Path | `docs/decisions/STAGE_3_1B4B_PERSISTENCE_OWNER_APPROVAL.md` |
 | Created | 2026-08-05 |
-| Approvals | **None** |
+| Last updated | 2026-08-05 |
+| Local implementation | Authorised |
+| Remote apply | **Not Approved** |

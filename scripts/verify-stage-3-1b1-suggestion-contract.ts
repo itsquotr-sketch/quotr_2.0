@@ -728,13 +728,21 @@ function main(): void {
     !/commercial-engine\/parity/.test(moduleSrc)
   );
 
+  // 3.1B.1 was contract-only. Persistence begins at 028 (3.1B.4B).
+  // Allow that file; reject 3.1B.1-named or any earlier accidental scope-discovery SQL.
   const migrationsDir = join(root, "supabase", "migrations");
-  let newMigration = false;
+  let disallowedMigration = false;
   if (statSync(migrationsDir, { throwIfNoEntry: false })?.isDirectory()) {
     const files = readdirSync(migrationsDir);
-    newMigration = files.some((f) => /scope.?discovery|3_1b1|3\.1b\.1/i.test(f));
+    disallowedMigration = files.some((f) => {
+      if (/3_1b1|3\.1b\.1|suggestion.?contract/i.test(f)) return true;
+      const m = f.match(/^(\d{3})_.*scope.?discovery/i);
+      if (!m) return false;
+      const n = Number(m[1]);
+      return n < 28 || (n === 28 && f !== "028_scope_discovery_persistence.sql");
+    });
   }
-  check("no migrations added for 3.1B.1", !newMigration);
+  check("no migrations added for 3.1B.1", !disallowedMigration);
 
   const productionTouch = [
     "lib/assistant/actions.ts",

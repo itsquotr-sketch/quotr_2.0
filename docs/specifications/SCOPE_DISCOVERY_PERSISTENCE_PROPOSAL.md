@@ -1,13 +1,12 @@
 # Scope Discovery Persistence Proposal
 
-**Status:** Refined by Stage 3.1B.4B-0 — **Migration Still Not Approved**  
+**Status:** Implemented locally (3.1B.4B) — **Remote apply Still Not Approved**  
 **Date:** 2026-08-05  
 **Batch origin:** Stage 3.1B.4A (initial proposal)  
 **Architecture gate:** Stage 3.1B.4B-0 — `docs/architecture/STAGE_3_1B4B_PERSISTENCE_ARCHITECTURE.md`  
-**Owner approval:** `docs/decisions/STAGE_3_1B4B_PERSISTENCE_OWNER_APPROVAL.md` (all Pending)  
-**SQL / migrations:** **Do not write** until owner approval  
-
-This document remains the product-facing summary. The **authoritative design** for implementation is the 3.1B.4B architecture + security review. Do not treat this file alone as approval to create SQL.
+**Owner approval:** `docs/decisions/STAGE_3_1B4B_PERSISTENCE_OWNER_APPROVAL.md` (local authorised; remote pending)  
+**Migration:** `supabase/migrations/028_scope_discovery_persistence.sql` — **Local only**  
+**Completion:** `docs/implementation/STAGE_3_1B4B_PERSISTENCE_COMPLETION.md`
 
 ---
 
@@ -46,9 +45,9 @@ Non-goals:
 
 **Evidence:** validated JSONB on suggestions — **not** a fourth table in MVP.
 
-**Reserved migration number:** `028` (after `027_remote_baseline_reconciliation.sql`) — **Not created**.
+**Reserved migration number:** `028` — **Created locally; Not Applied Remotely.**
 
-See architecture doc for full column, RLS, trigger, and immutability detail.
+See architecture + completion docs for full column, RLS, trigger, and immutability detail.
 
 ---
 
@@ -71,9 +70,9 @@ See architecture doc for full column, RLS, trigger, and immutability detail.
 | Item | Status |
 | --- | --- |
 | Architecture / security gate (3.1B.4B-0) | **Complete — Planning** |
-| Owner decisions #1–#15 | **Pending** |
-| Persistence migration `028` | **Not Approved** |
-| Table creation | **Not Approved** |
+| Owner decisions #1–#15 + ORCH-POL-01 | **Approved** (local) |
+| Persistence migration `028` | **Complete — Local; Not Applied Remotely** |
+| Table creation (local) | **Complete** |
 | Production wiring | **Not Started** |
 | Analyse Job | **Unchanged** |
 
@@ -95,5 +94,5 @@ See architecture doc for full column, RLS, trigger, and immutability detail.
 | --- | --- |
 | Path | `docs/specifications/SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md` |
 | Created | 2026-08-05 |
-| Last updated | 2026-08-05 (3.1B.4B-0 gate) |
-| SQL written | **No** |
+| Last updated | 2026-08-05 (3.1B.4B local implementation) |
+| SQL written | **Yes — local only** (`028_scope_discovery_persistence.sql`; remote apply Not Approved) |

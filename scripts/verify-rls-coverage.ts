@@ -48,6 +48,9 @@ const EXPECTED_APP_TABLES = [
   "quotes",
   "quote_items",
   "pricing_audit_log",
+  "scope_discovery_runs",
+  "scope_discovery_suggestions",
+  "scope_discovery_decisions",
 ] as const;
 
 const TABLES_WITHOUT_RLS_OK: string[] = [];
@@ -60,6 +63,10 @@ const POLICY_EXCEPTIONS: Record<
   organisations: { insert: true, delete: true },
   profiles: { insert: true, delete: true },
   pricing_audit_log: { update: true, delete: true },
+  // Discovery: no authenticated DELETE; decisions are append-only (no UPDATE/DELETE policies).
+  scope_discovery_runs: { delete: true },
+  scope_discovery_suggestions: { delete: true },
+  scope_discovery_decisions: { update: true, delete: true },
 };
 
 function auditMigrations(): {
@@ -119,7 +126,9 @@ async function auditLiveDatabase(): Promise<void> {
             ('estimates'),('estimate_line_items'),('rates'),('organisation_settings'),
             ('organisation_work_areas'),('project_notes'),('note_proposals'),
             ('pricing_documents'),('pricing_items'),('quotes'),('quote_items'),
-            ('pricing_audit_log')
+            ('pricing_audit_log'),
+            ('scope_discovery_runs'),('scope_discovery_suggestions'),
+            ('scope_discovery_decisions')
         )
         SELECT e.tablename
         FROM expected e

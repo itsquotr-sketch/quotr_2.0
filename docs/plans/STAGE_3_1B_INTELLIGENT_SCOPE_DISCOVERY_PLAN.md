@@ -5,9 +5,9 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.4B-0 — **Complete — Planning** (`docs/implementation/STAGE_3_1B4B0_PERSISTENCE_GATE_COMPLETION.md`)  
-**Next batch:** 3.1B.4B implementation — **Ready Pending Owner Approval** (`docs/decisions/STAGE_3_1B4B_PERSISTENCE_OWNER_APPROVAL.md`)  
-**Migrations:** Not Approved (reserved `028`; architecture refined — no SQL)  
+**Current batch:** 3.1B.4B — **Complete — Local** (`docs/implementation/STAGE_3_1B4B_PERSISTENCE_COMPLETION.md`)  
+**Next batch:** 3.1B.5 — **Ready Pending Acceptance Lifecycle Gate**  
+**Migrations:** `028` Complete — Local, **Not Applied Remotely**  
 **AI provider adapter:** Implemented but unused  
 **UI integration:** Not Started  
 **Production catalogue adoption:** Not Started  
@@ -116,33 +116,33 @@ Split for delivery:
 | **Readiness** | **Complete — Planning** (2026-08-05) |
 | **Evidence** | Architecture, security review, verification plan, owner approval register, gate completion |
 | **Customer value** | Owner-ready persistence design before any SQL |
-| **Schema** | Designed only — **Not Approved** |
+| **Schema** | Designed in gate; implemented in 3.1B.4B |
 | **Production adoption** | None |
-| **Acceptance** | Docs only; no migration file; no code change |
+| **Acceptance** | Docs only at gate time; SQL deferred to 3.1B.4B after owner approval |
 
 #### 3.1B.4B — Persistence implementation (owner-gated)
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **Ready Pending Owner Approval** |
-| **Customer value** | Durable runs/suggestions/decisions with RLS |
-| **Likely files** | `supabase/migrations/028_…sql` + verify script (not created yet) |
-| **Schema** | See architecture + approval register — **Not Approved** |
-| **Security** | RLS + integrity triggers + grants per 026 |
+| **Readiness** | **Complete — Local** (2026-08-05) |
+| **Evidence** | `028_scope_discovery_persistence.sql`; `lib/scope-discovery/persistence/*`; verify script; completion doc |
+| **Customer value** | Durable runs/suggestions/decisions with RLS (unused by production) |
+| **Schema** | Migration 028 — **Local only, Not Applied Remotely** |
+| **Security** | RLS + integrity + immutability triggers + least-privilege grants |
 | **Rollback** | Pre-adoption drop; post-data preserve + flag off |
-| **Acceptance** | Verification plan V-* checks; local Docker only first |
+| **Acceptance** | Local verify + full regression; Analyse Job unchanged |
 
 ### 3.1B.5 — Accept / reject / modify lifecycle
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **READY PENDING OWNER GATE** |
+| **Readiness** | **Ready Pending Acceptance Lifecycle Gate** |
 | **Customer value** | Explicit decisions; provenance; Fact SoT protection |
-| **Likely files** | Application actions; reuse `work-area-actions`, `scope-persistence` |
-| **Schema** | Depends on 3.1B.4 |
-| **Security** | Ownership asserts on apply |
+| **Likely files** | Application actions; optional accept RPC; reuse `work-area-actions` |
+| **Schema** | Uses 028 tables; no new migration expected unless RPC requires it |
+| **Security** | Ownership asserts on apply; transactional accept |
 | **Rollback** | Disable apply path |
-| **Acceptance** | Accept creates WA per rules; reject suppresses; modify preserves original; no user Fact overwrite by AI |
+| **Acceptance** | Accept creates WA per OCD-ISD-01; reject suppresses; modify preserves original; no user Fact overwrite by AI |
 
 ### 3.1B.6 — Assistant UI integration
 
@@ -184,7 +184,7 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.4B** — Persistence implementation only after owner signs `STAGE_3_1B4B_PERSISTENCE_OWNER_APPROVAL.md`. Then create migration `028`, apply local Docker-only, run verification plan. Do not rewire Analyse Job or begin accept/reject UI until separately gated.
+**3.1B.5** — Acceptance lifecycle (Ready Pending Acceptance Lifecycle Gate): transactional accept/reject/modify with Work Area creation via existing lifecycle; preserve Fact SoT; no DNA; do not rewire Analyse Job until separately gated. Remote apply of 028 remains owner-gated.
 
 ---
 
