@@ -5,13 +5,14 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.3 — **Complete — Local** (`docs/implementation/STAGE_3_1B3_AI_DISCOVERY_PROVIDER_COMPLETION.md`)  
-**Next batch:** 3.1B.4 — **Ready Pending Persistence Owner Gate** (discovery-run orchestration)  
-**Migrations:** Not Approved  
+**Current batch:** 3.1B.4A — **Complete — Local** (`docs/implementation/STAGE_3_1B4A_DISCOVERY_ORCHESTRATION_COMPLETION.md`)  
+**Next batch:** 3.1B.4B — **Ready Pending Persistence Owner Approval**  
+**Migrations:** Proposed, Not Approved (`docs/specifications/SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md`)  
 **AI provider adapter:** Implemented but unused  
 **UI integration:** Not Started  
 **Production catalogue adoption:** Not Started  
 **Analyse Job:** Unchanged  
+**Production adoption:** Not Started  
 
 **Specs:**
 
@@ -20,6 +21,7 @@
 - `docs/specifications/SCOPE_DISCOVERY_SUGGESTION_CONTRACT.md`
 - `docs/specifications/SCOPE_RELATIONSHIP_CATALOGUE_SPEC.md`
 - `docs/specifications/SCOPE_DISCOVERY_PROVIDER_CONTRACT.md`
+- `docs/specifications/SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md`
 - `docs/performance/STAGE_3_1B_SCOPE_DISCOVERY_LATENCY_AND_COST_BUDGET.md`
 - `docs/decisions/STAGE_3_1B_SCOPE_DISCOVERY_OWNER_DECISIONS.md`
 
@@ -91,12 +93,27 @@ Improve likely-scope, missing-scope, dependency, and clarification discovery fro
 
 ### 3.1B.4 — Discovery-run and proposal orchestration
 
+Split for delivery:
+
+#### 3.1B.4A — Pure orchestration and run semantics
+
 | Field | Value |
 | --- | --- |
-| **Readiness** | **Ready Pending Persistence Owner Gate** (+ design deliverable if migration required) |
-| **Customer value** | Idempotent runs; stale/supersede; merge deterministic+AI |
-| **Likely files** | Orchestrator server actions; optional tables |
-| **Schema** | May need `scope_discovery_runs` / `scope_discovery_suggestions` — **Not Approved** until owner decides |
+| **Readiness** | **Complete — Local** (2026-08-05) |
+| **Evidence** | `lib/scope-discovery/orchestration/*`; verify script; completion doc; persistence proposal (not approved) |
+| **Customer value** | Idempotent pure runs; merge; stale comparison; no persistence yet |
+| **Schema** | None — migrations **Proposed, Not Approved** |
+| **Production adoption** | None — Analyse Job unchanged |
+| **Acceptance** | Pure orchestration tests; provider injected; no DB/UI |
+
+#### 3.1B.4B — Persistence (owner-gated)
+
+| Field | Value |
+| --- | --- |
+| **Readiness** | **Ready Pending Persistence Owner Approval** |
+| **Customer value** | Durable runs/suggestions/decisions with RLS |
+| **Likely files** | Migrations + RLS; optional server wiring later |
+| **Schema** | See `SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md` — **Not Approved** |
 | **Security** | RLS on any new tables; org isolation verification |
 | **Rollback** | Feature flag; leave legacy Analyse Job |
 | **Acceptance** | Same snapshot → no duplicate provider call; source change stales proposals |
@@ -153,7 +170,7 @@ Improve likely-scope, missing-scope, dependency, and clarification discovery fro
 
 ## 5. Recommended next implementation batch
 
-**3.1B.4** — Discovery-run and proposal orchestration (explicit trigger; merge deterministic + contextual; stale without auto paid calls). Persistence only if owner approves migrations. Do not rewire Analyse Job or begin accept/reject UI until separately gated.
+**3.1B.4B** — Persistence owner approval gate. Review `SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md`. Do not write SQL until approved. Do not rewire Analyse Job or begin accept/reject UI until separately gated.
 
 ---
 

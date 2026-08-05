@@ -42,8 +42,9 @@ Do **not** treat Pending/Deferred rows as authorised.
 | Item | Status |
 | --- | --- |
 | Deferred schema proposals (3.1D D-S*) | **Not Approved** |
-| Migrations for ISD persistence | **Not Approved** |
+| Migrations for ISD persistence | **Proposed, Not Approved** |
 | AI provider adapter | **Implemented but unused** (3.1B.3 Complete — Local) |
+| Pure orchestration | **Implemented but unused** (3.1B.4A Complete — Local) |
 | UI integration | **Not Started** |
 | Company DNA implementation | **Not started / forbidden** |
 | Commercial formula changes | **Forbidden** |
