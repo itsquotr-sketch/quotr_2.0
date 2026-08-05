@@ -64,7 +64,7 @@ export function sumByCategoryWithSplits(
     }
     totals[category]!.cost += cost;
     totals[category]!.sell += sell;
-    totals[category]!.profit += sell - cost;
+    totals[category]!.profit += Math.round((sell - cost) * 100) / 100;
   };
 
   for (const item of items) {

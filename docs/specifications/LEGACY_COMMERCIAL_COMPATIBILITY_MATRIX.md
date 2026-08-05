@@ -37,22 +37,22 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 | LEG-E-16 | C-16 | `sumLineItemTotals` | Estimate sum | PAR-E-AGG-001 | EXACT_MATCH | golden | Low | **Adopted 2B.7** (`aggregateEstimateLineTotals`; pure sum for parity) | 2B.7 | Keep helper | None |
 | LEG-E-19 | C-19 | calculators/* | Domain qty/rates | Deferred workflow | Domain | mixed | Med | Feed lines to engine (unchanged) | 2B.7 | Keep calculators | None |
 | LEG-E-21 | C-21 | `runEstimateGeneration` | Persist orchestrator | Deferred | N/A | live | Med | **Adopted 2B.7** (money via factories/finalize) | 2B.7 | Estimate authority switch | Snapshot new rows |
-| LEG-E-24 | C-42 | category-breakdown | Partial profit display | Deferred | PRESENTATION | golden | Low | Display engine | 2B.9 | Keep UI helper | N/A |
+| LEG-E-24 | C-42 | category-breakdown | Partial profit display | Deferred | PRESENTATION | golden | Low | **Adopted 2B.9** — rounded presentation helper | 2B.9 | Keep UI helper | N/A |
 | LEG-P-01 | C-24 | `computeProfitFields` | Item GP triad | PAR-P-GP-001 | EXACT_MATCH | golden | Low | **Adopted 2B.6A** via engine | **2B.6A** | Authority switch / revert | None |
 | LEG-P-02 | C-25 | pricing-item-calculation | Line modes | Multiple PAR-P-* | EXACT / APPROVED corr. | golden / OCD | Med | **Adopted 2B.6A** item CRUD | **2B.6A** | Authority switch / revert | Preserve edits |
 | LEG-P-03 | C-26 | `calculateDocumentTotals` | Doc aggregate + GST | PAR-P-DOC-* | EXACT_MATCH | golden | Med | **Adopted 2B.6A** after item mutations | **2B.6A** | Authority switch / revert | None |
 | LEG-P-04 | C-27 | pricing actions recalc | Persist | Via 2B.6A helper | Engine aggregate | live | Med | Authoritative helper | **2B.6A** | Keep actions | Careful |
 | LEG-P-05 | C-28 | `createPricingFromEstimate` | Estimate→pricing GST source | PAR-P-GST-BUG-C28 | **EXACT_MATCH** (corrected 2B.5) | OCD / CD-09 | Low | Done: org/doc GST for insert+recalc | **2B.5** fix; adopt engine **2B.6** | Revert GST helper wiring | Pre-2B.5 anomalies not bulk-rewritten |
 | LEG-P-06 | C-29 | recalibration | Sync estimate→pricing | Deferred | Uses C-26 | live | Med | Engine + preserve manual | 2B.6 | Keep | Preserve flags |
-| LEG-P-07 | C-41 | PricingWorkAreaSection | Section display GST=0 | Deferred | PRESENTATION | golden | Low | Display aggregate | 2B.9 | Keep | N/A |
+| LEG-P-07 | C-41 | PricingWorkAreaSection | Section display GST=0 | Deferred | PRESENTATION | golden | Low | **Adopted 2B.9** — authoritative section totals | 2B.9 | Keep | N/A |
 | LEG-Q-01 | C-30 | `calculateQuoteTotals` | Visible + GST | PAR-Q-DOC-001 | EXACT_MATCH | golden | Med | **Adopted 2B.8** (prod adapter; pure helper for parity) | 2B.8 | Keep | Quotes immutable |
 | LEG-Q-02 | C-31 | `calculateQuoteItemTotal` | Prefer client total | PAR-Q-ITEM-001 | DEFERRED | CD-22 retain | Med | **CD-22 confirmed prefer-total**; qty×price via engine | 2B.8 | Keep | Edits |
 | LEG-Q-03 | C-32 | from-pricing map | Transform | Deferred | Transform | live | Low | Keep transform | 2B.8 | Keep | None |
 | LEG-Q-04 | C-33 | build-from-pricing | Payload | Deferred | Uses Q-01 | live | Low | **Adopted 2B.8** engine totals | 2B.8 | Keep | Snapshot |
 | LEG-Q-05 | C-34 | quotes/actions | Persist/revise | Deferred | Side-effect | live | Med | **Adopted 2B.8** aggregates; revise-copy immutable | 2B.8 | Authority switch | **Immutable** |
-| LEG-Q-06 | C-38 | QuoteSummary/print | Display stored | Deferred | Snapshot | live | Low | Never recompute (2B.9 UI sweep) | 2B.9 | Keep | Protected |
-| LEG-UI-01 | C-35 | PricingItemEditForm | Client GP preview | PAR-UI-PROFIT-001 | PRESENTATION | golden | Low | Remove authority | 2B.9 | Keep | N/A |
-| LEG-UI-02 | C-36 | EstimateBreakdownModal | Unrounded margin | PAR-UI-UNROUNDED-001 | PRESENTATION | golden | Low | Round or use engine | 2B.9 | Keep | N/A |
+| LEG-Q-06 | C-38 | QuoteSummary/print | Display stored | Deferred | Snapshot | live | Low | **Confirmed 2B.9** — stored snapshot only | 2B.9 | Keep | Protected |
+| LEG-UI-01 | C-35 | PricingItemEditForm | Client GP preview | PAR-UI-PROFIT-001 | PRESENTATION | golden | Low | **Adopted 2B.9** — engine preview helper | 2B.9 | Keep | N/A |
+| LEG-UI-02 | C-36 | EstimateBreakdownModal | Unrounded margin | PAR-UI-UNROUNDED-001 | PRESENTATION | golden | Low | **Adopted 2B.9** — estimate aggregate adapter | 2B.9 | Keep | N/A |
 | LEG-CONST-01 | — | `DEFAULT_GST_RATE` | Constant 15 | Via C-28 | Fallback only when unset | OCD | Low | Never override valid doc/org rate | 2B.5 clarified | Keep constant | — |
 | LEG-DB-01 | C-39 | migrations | Schema only | Deferred | N/A | n/a | None | No formula change | n/a | — | — |
 
@@ -93,7 +93,7 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 | **2B.6 Pricing adoption** | **2B.6A+2B.6B complete** for pricing-domain server paths; estimates/quotes/UI remain |
 | **2B.7 Estimate adoption** | **Complete** — production estimate money via adapter; confidence/ranges out of money engine; LEG-E parity helpers retained |
 | **2B.8 Quote adoption** | **Complete** — LEG-Q-01 EXACT `visible_only`; revise-copy immutable; CD-22 prefer-total retained |
-| **2B.9 UI removal** | No client GP/aggregate authority; display server/engine only |
+| **2B.9 UI removal** | **Complete** — no client GP/aggregate authority; display server/engine/preview-adapter only |
 
 ---
 
@@ -120,5 +120,5 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 | Field | Value |
 | --- | --- |
 | Path | `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md` |
-| Live adoption | Pricing (2B.6) + estimate (2B.7) + quote (2B.8); UI still legacy |
+| Live adoption | Pricing + estimate + quote server (2B.6–2B.8) + UI presentation (2B.9) |
 | Parity package | `lib/commercial-engine/parity/` (not public engine API) |

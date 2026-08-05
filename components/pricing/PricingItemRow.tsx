@@ -22,15 +22,11 @@ import {
   formatQuantityBasisDisplay,
   getCommercialTrustDetailLinesFromNotes,
 } from "@/lib/estimate/commercial-realism";
-import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
+import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
 import {
   getMaterialBuildUpDisplay,
   getMaterialRateSourceDisplay,
 } from "@/lib/estimate/line-item-metadata";
-import {
-  pricingItemToCalculationInput,
-  resolvePricingItemCalculation,
-} from "@/lib/pricing/pricing-item-calculation";
 import { PRICING_TABLE_GRID } from "@/lib/pricing/table-layout";
 import type { PricingItem, PricingItemInput } from "@/lib/pricing/types";
 import { cn } from "@/lib/utils";
@@ -57,11 +53,7 @@ function PricingItemRowComponent({
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState<PricingItemInput>(() => itemToForm(item));
 
-  const resolvedItem = useMemo(
-    () =>
-      resolvePricingItemCalculation(pricingItemToCalculationInput(item)),
-    [item]
-  );
+  const moneyView = useMemo(() => pricingItemViewModel(item), [item]);
   const materialBuildUpDisplay = useMemo(
     () => getMaterialBuildUpDisplay(item.notes_internal),
     [item.notes_internal]
@@ -127,8 +119,8 @@ function PricingItemRowComponent({
   };
 
   const qtyLabel =
-    resolvedItem.quantity != null
-      ? `${resolvedItem.quantity}${resolvedItem.unit ? ` ${resolvedItem.unit}` : ""}`
+    item.quantity != null
+      ? `${item.quantity}${item.unit ? ` ${item.unit}` : ""}`
       : "—";
 
   const editForm = (
@@ -165,10 +157,10 @@ function PricingItemRowComponent({
               </div>
               <div className="flex flex-wrap items-center gap-3 text-sm">
                 <span className="font-semibold tabular-nums">
-                  {formatPricingMoney(item.total_sell)}
+                  {moneyView.totalSellFormatted}
                 </span>
                 <span className="text-xs text-muted-foreground">
-                  Margin {formatPricingPercent(item.margin_percent)}
+                  Margin {moneyView.marginLabel}
                 </span>
               </div>
               <div className="flex items-center gap-1 text-xs text-muted-foreground">
@@ -303,10 +295,10 @@ function PricingItemRowComponent({
           {qtyLabel}
         </div>
         <div className="hidden text-right text-sm font-medium tabular-nums md:block">
-          {formatPricingMoney(item.total_sell)}
+          {moneyView.totalSellFormatted}
         </div>
         <div className="hidden text-right text-xs tabular-nums md:block">
-          {formatPricingPercent(item.margin_percent)}
+          {moneyView.marginLabel}
         </div>
         <div className="hidden md:block">
           {item.visible_on_quote ? (

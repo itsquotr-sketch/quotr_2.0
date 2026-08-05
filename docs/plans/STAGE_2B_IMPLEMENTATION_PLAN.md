@@ -1,6 +1,6 @@
 # Stage 2B — Authoritative Pricing Engine Implementation Plan
 
-**Status:** In Progress (Batches **2B.3A–2B.8**; pricing + estimate + quote server money **adopted**; UI still legacy)  
+**Status:** In Progress (Batches **2B.3A–2B.9**; server money + UI presentation **adopted**; 2B.10 finalisation pending)  
 **Plan date:** 2026-08-04  
 **Governing architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
@@ -15,6 +15,7 @@
 **Engine contract (2B.3C):** `docs/specifications/COMMERCIAL_ENGINE_CONTRACT.md`  
 **Compatibility matrix (2B.4):** `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md`  
 **Estimate commercial boundary (2B.7):** `docs/specifications/ESTIMATE_COMMERCIAL_BOUNDARY.md`  
+**Financial presentation boundary (2B.9):** `docs/specifications/FINANCIAL_PRESENTATION_BOUNDARY.md`  
 **Pricing adoption gate:** `docs/specifications/PRICING_ACTION_ADOPTION_GATE.md`  
 **Commercial engine (2B.3A–C):** `lib/commercial-engine/`  
 **Parity harness (2B.4):** `lib/commercial-engine/parity/` (comparison-only; not public API)  
@@ -23,6 +24,7 @@
 **Pricing-domain completion (2B.6B):** `lib/pricing/estimate-to-pricing-adapter.ts`  
 **Estimate adoption (2B.7):** `lib/estimate/estimate-commercial-engine-adapter.ts`  
 **Quote adoption (2B.8):** `lib/quotes/quote-commercial-engine-adapter.ts`  
+**UI presentation (2B.9):** `lib/pricing/presentation-item-preview.ts`, `lib/financial-presentation/format.ts`  
 **2B.3B completion:** `docs/implementation/STAGE_2B_BATCH_2B3B_COMPLETION.md`  
 **2B.3C completion:** `docs/implementation/STAGE_2B_BATCH_2B3C_COMPLETION.md`  
 **2B.4 completion:** `docs/implementation/STAGE_2B_BATCH_2B4_COMPLETION.md`  
@@ -31,6 +33,7 @@
 **2B.6B completion:** `docs/implementation/STAGE_2B_BATCH_2B6B_COMPLETION.md`  
 **2B.7 completion:** `docs/implementation/STAGE_2B_BATCH_2B7_COMPLETION.md`  
 **2B.8 completion:** `docs/implementation/STAGE_2B_BATCH_2B8_COMPLETION.md`  
+**2B.9 completion:** `docs/implementation/STAGE_2B_BATCH_2B9_COMPLETION.md`  
 
 **Hard constraint:** No pricing-formula consolidation, caller migration, UI redesign, migration changes, or Company DNA implementation begins until the relevant batch is authorised and (for behaviour-changing batches) Batch **2B.2** commercial decisions and golden tests exist.
 
@@ -63,7 +66,7 @@ Establish **one authoritative commercial arithmetic meaning** for cost, sell, gr
 | **2B.6** | Pricing-action adoption (umbrella) | **Complete for pricing-domain server paths** |
 | **2B.7** | Estimate adoption | Code — **complete** |
 | **2B.8** | Quote adoption | Code — **complete** |
-| **2B.9** | Client/UI calculation removal | Code |
+| **2B.9** | Client/UI calculation removal | Code — **complete** |
 | **2B.10** | Final regression, documentation and deployment | Docs + verification |
 
 ---
@@ -568,6 +571,8 @@ Rewriting historical rows; PDF redesign; email sending.
 
 ## Batch 2B.9 — Client/UI calculation removal
 
+**Status:** Complete — see `docs/implementation/STAGE_2B_BATCH_2B9_COMPLETION.md`
+
 ### Customer outcome
 
 UI shows the same numbers the server will save; less preview drift.
@@ -578,21 +583,27 @@ Remove client financial **authority** (Architecture deterministic server money).
 
 ### Exact scope
 
-* Replace inline GP preview duplicates with shared engine import **or** display server-returned fields only.  
-* Ensure save path does not trust client totals without server recompute (already mostly true for pricing).  
+* Replace inline GP preview duplicates with production engine preview adapter.  
+* Section / work-area rollups via authoritative aggregates.  
+* Unknown-cost honest labels.  
+* Quote snapshot display only.  
 
 ### Files expected
 
-* `components/pricing/PricingItemEditForm.tsx`  
-* Possibly estimate breakdown display helpers  
+* `docs/specifications/FINANCIAL_PRESENTATION_BOUNDARY.md`
+* `lib/pricing/presentation-item-preview.ts`, `presentation-section-totals.ts`
+* `lib/estimate/presentation-breakdown.ts`, financial view models
+* `lib/financial-presentation/format.ts`
+* Pricing/estimate/quote UI components
+* `scripts/verify-batch-2b9-client-financial-authority.ts`
 
 ### Tests required
 
-Manual acceptance: edit → save → reopen parity; lint/tsc/build.
+`scripts/verify-batch-2b9-client-financial-authority.ts` + full Stage 2A/2B chain.
 
 ### Acceptance criteria
 
-* No independent client GP formula.  
+* No independent client GP/GST/document-total formula.  
 * Preview matches server within rounding policy.  
 
 ### Stop conditions
@@ -601,7 +612,7 @@ Visual redesign; new pricing UX features.
 
 ### Rollback
 
-Restore previous component commits.
+Restore previous component commits / git revert 2B.9.
 
 ### Future Learning Compatibility Check
 
@@ -698,6 +709,6 @@ Estimate (2B.7) and Quote (2B.8) both depend on 2B.5 parity; they may be seriali
 | Path | `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md` |
 | Created | 2026-08-04 |
 | Batch 2B.1 / 2B.2A application changes | **None** |
-| Next batch | **2B.9** UI calculation removal |
+| Next batch | **2B.10** final regression, documentation and deployment readiness |
 | Stage 2B implementation started? | **Yes** — pricing-domain server authority through **2B.6B** |
 | Stage 2B tracker status | **In Progress** (2B.6B complete; estimates/quotes/UI not adopted) |

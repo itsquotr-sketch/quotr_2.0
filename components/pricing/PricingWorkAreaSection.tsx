@@ -7,8 +7,11 @@ import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import { WorkAreaQuoteDescriptionEditor } from "@/components/work-areas/WorkAreaQuoteDescriptionEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { calculateDocumentTotals } from "@/lib/pricing/calculations";
-import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
+import { presentPricingSectionTotals } from "@/lib/pricing/presentation-section-totals";
+import { formatPricingMoney } from "@/lib/pricing/format";
+import {
+  formatProfitabilityDisplay,
+} from "@/lib/financial-presentation/format";
 import { PRICING_TABLE_HEADER_CLASS } from "@/lib/pricing/table-layout";
 import type {
   PricingItem,
@@ -50,16 +53,14 @@ export function PricingWorkAreaSection({
   const itemLayout = isDesktop ? "table" : "card";
 
   const sectionTotals = useMemo(
-    () =>
-      calculateDocumentTotals(
-        items.map((item) => ({
-          total_cost: item.total_cost,
-          total_sell: item.total_sell,
-        })),
-        0
-      ),
+    () => presentPricingSectionTotals(items),
     [items]
   );
+  const sectionProfitability = formatProfitabilityDisplay({
+    costKnown: sectionTotals.costKnown,
+    grossProfit: sectionTotals.grossProfit,
+    marginPercent: sectionTotals.marginPercent,
+  });
 
   const handleAdd = () => {
     startTransition(async () => {
@@ -96,7 +97,7 @@ export function PricingWorkAreaSection({
                 {formatPricingMoney(sectionTotals.subtotalSell)}
               </span>
               <span className="text-muted-foreground">
-                charge · {formatPricingPercent(sectionTotals.marginPercent)} margin
+                charge · {sectionProfitability.marginLabel} margin
               </span>
             </div>
           </div>

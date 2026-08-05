@@ -27,7 +27,12 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { defaultedFactWarnings } from "@/lib/estimate/assumption-metadata";
-import { sumByCategoryWithSplits } from "@/lib/estimate/category-breakdown";
+import {
+  presentEstimateCategoryTotals,
+  presentEstimateWorkAreaTotals,
+} from "@/lib/estimate/presentation-breakdown";
+import { estimateDocumentViewModel, estimateLineViewModel } from "@/lib/estimate/financial-view-model";
+import { formatProfitabilityDisplay } from "@/lib/financial-presentation/format";
 import { buildEstimateCalibrationSummary } from "@/lib/estimate/estimate-calibration";
 import {
   getCommercialTrustDetailLines,
@@ -80,27 +85,7 @@ function groupByWorkArea(items: EstimateLineItem[]) {
 }
 
 function sumByCategory(items: EstimateLineItem[]) {
-  const splitTotals = sumByCategoryWithSplits(
-    includedItems(items).map((item) => ({
-      workAreaId: item.id,
-      workAreaName: item.workAreaName,
-      label: item.label,
-      category: item.category,
-      recommendedCost: item.recommendedCost,
-      recommendedSell: item.recommendedSell,
-      grossProfit: item.grossProfit,
-      marginPercent: item.marginPercent,
-      markupPercent: item.markupPercent ?? 0,
-      costLow: item.costLow,
-      costHigh: item.costHigh,
-      sellLow: item.sellLow,
-      sellHigh: item.sellHigh,
-      rateSource: item.rateSource,
-      sortOrder: 0,
-      includedInTotal: item.includedInTotal,
-      costComponents: undefined,
-    }))
-  );
+  const splitTotals = presentEstimateCategoryTotals(includedItems(items));
 
   const totals: Partial<
     Record<
@@ -133,31 +118,7 @@ function sumByCategory(items: EstimateLineItem[]) {
 }
 
 function sumWorkAreaTotals(items: EstimateLineItem[]) {
-  const byArea = groupByWorkArea(items);
-  return Object.entries(byArea).map(([name, areaItems]) => {
-    let cost = 0;
-    let sell = 0;
-    let profit = 0;
-    let hours = 0;
-
-    for (const item of areaItems) {
-      cost += item.recommendedCost;
-      sell += item.recommendedSell;
-      profit += item.grossProfit;
-      hours += item.labourHours ?? 0;
-    }
-
-    return {
-      name,
-      cost,
-      sell,
-      profit,
-      hours,
-      lineItemCount: areaItems.length,
-      marginPercent: sell > 0 ? (profit / sell) * 100 : 0,
-      items: areaItems,
-    };
-  });
+  return presentEstimateWorkAreaTotals(includedItems(items));
 }
 
 function ProportionalBar({
@@ -375,11 +336,15 @@ function LineItemCard({
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">Gross profit</dt>
-          <dd className="font-medium">{formatCurrency(item.grossProfit)}</dd>
+          <dd className="font-medium">
+            {estimateLineViewModel(item).profitLabel}
+          </dd>
         </div>
         <div>
           <dt className="text-xs text-muted-foreground">Margin</dt>
-          <dd className="font-medium">{formatPercent(item.marginPercent)}</dd>
+          <dd className="font-medium">
+            {estimateLineViewModel(item).marginLabel}
+          </dd>
         </div>
       </dl>
 
@@ -590,16 +555,19 @@ export function EstimateBreakdownModal({
                   />
                   <SummaryMetric
                     label="Gross profit"
-                    value={formatCurrency(estimate.grossProfit)}
+                    value={estimateDocumentViewModel(estimate).profitLabel}
                   />
                   <SummaryMetric
                     label="Margin"
-                    value={formatPercent(estimate.marginPercent)}
+                    value={estimateDocumentViewModel(estimate).marginLabel}
                   />
                   {estimate.markupPercent != null ? (
                     <SummaryMetric
                       label="Markup"
-                      value={formatPercent(estimate.markupPercent)}
+                      value={
+                        estimateDocumentViewModel(estimate).markupLabel ??
+                        formatPercent(estimate.markupPercent)
+                      }
                     />
                   ) : null}
                   <SummaryMetric
@@ -753,11 +721,27 @@ export function EstimateBreakdownModal({
                           </span>
                           <span>
                             Profit:{" "}
-                            <strong>{formatCurrency(area.profit)}</strong>
+                            <strong>
+                              {
+                                formatProfitabilityDisplay({
+                                  costKnown: area.costKnown,
+                                  grossProfit: area.profit,
+                                  marginPercent: area.marginPercent,
+                                }).profitLabel
+                              }
+                            </strong>
                           </span>
                           <span>
                             Margin:{" "}
-                            <strong>{formatPercent(area.marginPercent)}</strong>
+                            <strong>
+                              {
+                                formatProfitabilityDisplay({
+                                  costKnown: area.costKnown,
+                                  grossProfit: area.profit,
+                                  marginPercent: area.marginPercent,
+                                }).marginLabel
+                              }
+                            </strong>
                           </span>
                         </div>
                         <p className="mt-1 text-xs text-muted-foreground">

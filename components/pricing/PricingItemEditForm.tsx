@@ -11,16 +11,16 @@ import {
   PRICING_ITEM_TYPES,
 } from "@/lib/pricing/status";
 import {
-  calculatePricingItemEdit,
-  type PricingItemEditField,
-} from "@/lib/pricing/calculations";
-import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
-import {
   formatProductivityLabel,
   inferCalculationMode,
   pricingItemToCalculationInput,
   resolvePricingItemCalculation,
 } from "@/lib/pricing/pricing-item-calculation";
+import {
+  previewPricingItemEdit,
+  type PricingItemEditField,
+} from "@/lib/pricing/presentation-item-preview";
+import { formatProfitabilityDisplay } from "@/lib/financial-presentation/format";
 import type {
   CalculationMode,
   PricingItem,
@@ -116,27 +116,33 @@ export function PricingItemEditForm({
   );
 
   const profitPreview = useMemo(() => {
-    const totalCost = form.total_cost ?? 0;
-    const totalSell = form.total_sell ?? 0;
-    const grossProfit = Math.round((totalSell - totalCost) * 100) / 100;
-    const marginPercent =
-      totalSell > 0
-        ? Math.round((grossProfit / totalSell) * 100 * 100) / 100
-        : 0;
-    const markupPercent =
-      totalCost > 0
-        ? Math.round((grossProfit / totalCost) * 100 * 100) / 100
-        : 0;
-
-    return { grossProfit, marginPercent, markupPercent };
-  }, [form.total_cost, form.total_sell]);
+    const preview = previewPricingItemEdit({
+      calculationMode: form.calculation_mode ?? calculationMode,
+      quantity: form.quantity,
+      unit: form.unit,
+      unitCost: form.unit_cost,
+      unitSell: form.unit_sell,
+      totalCost: form.total_cost,
+      totalSell: form.total_sell,
+      productivityRate: form.productivity_rate,
+      productivityUnit: form.productivity_unit,
+      calculatedQuantity: form.calculated_quantity,
+      itemType: form.item_type,
+    });
+    return formatProfitabilityDisplay({
+      costKnown: preview.costKnown,
+      grossProfit: preview.grossProfit,
+      marginPercent: preview.marginPercent,
+      markupPercent: preview.markupPercent,
+    });
+  }, [form, calculationMode]);
 
   const updateCalculatedField = (
     field: PricingItemEditField,
     value: number | null
   ) => {
     setForm((current) => {
-      const totals = calculatePricingItemEdit({
+      const totals = previewPricingItemEdit({
         calculationMode: current.calculation_mode ?? calculationMode,
         quantity: field === "quantity" ? value : current.quantity,
         unitCost: field === "unitCost" ? value : current.unit_cost,
@@ -446,23 +452,26 @@ export function PricingItemEditForm({
         ) : null}
 
         <div className="rounded-md border border-border/60 bg-muted/30 px-3 py-2 text-xs sm:col-span-2">
+          <p className="mb-1 text-[10px] uppercase tracking-wide text-muted-foreground">
+            Preview until saved
+          </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1">
             <span>
               Gross profit:{" "}
               <span className="font-medium text-foreground">
-                {formatPricingMoney(profitPreview.grossProfit)}
+                {profitPreview.profitLabel}
               </span>
             </span>
             <span>
               Margin:{" "}
               <span className="font-medium text-foreground">
-                {formatPricingPercent(profitPreview.marginPercent)}
+                {profitPreview.marginLabel}
               </span>
             </span>
             <span>
               Markup:{" "}
               <span className="font-medium text-foreground">
-                {formatPricingPercent(profitPreview.markupPercent)}
+                {profitPreview.markupLabel}
               </span>
             </span>
           </div>

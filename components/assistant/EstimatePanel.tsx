@@ -6,8 +6,8 @@ import { ChevronDown, Loader2 } from "lucide-react";
 import {
   formatCurrency,
   formatCurrencyRange,
-  formatPercent,
 } from "@/components/assistant/format";
+import { estimateDocumentViewModel } from "@/lib/estimate/financial-view-model";
 import { MarginEditControl } from "@/components/assistant/MarginEditControl";
 import {
   OpenFinalPricingLink,
@@ -367,12 +367,12 @@ export function EstimatePanel({
                 />
                 <MetricRow
                   label="Gross profit"
-                  value={formatCurrency(estimate.grossProfit)}
+                  value={estimateDocumentViewModel(estimate).profitLabel}
                   dimmed={isStale}
                 />
                 <MetricRow
                   label="Margin"
-                  value={formatPercent(estimate.marginPercent)}
+                  value={estimateDocumentViewModel(estimate).marginLabel}
                   dimmed={isStale}
                 />
                 <MetricRow

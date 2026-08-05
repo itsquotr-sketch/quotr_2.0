@@ -1,6 +1,6 @@
 "use client";
 
-import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
+import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
 import type { PricingDocument } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
@@ -55,6 +55,7 @@ export function PricingSummaryPanel({
   compact = false,
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
+  const view = pricingDocumentViewModel(document);
 
   return (
     <Card
@@ -75,25 +76,25 @@ export function PricingSummaryPanel({
             <>
               <SummaryRow
                 label="Total cost"
-                value={formatPricingMoney(document.subtotal_cost)}
+                value={view.subtotalCostFormatted}
               />
               <SummaryRow
                 label="Total charge"
-                value={formatPricingMoney(document.subtotal_sell)}
+                value={view.subtotalSellFormatted}
               />
               <SummaryRow
                 label="Gross profit"
-                value={formatPricingMoney(document.gross_profit)}
+                value={view.profitLabel}
               />
               <SummaryRow
                 label="Margin"
-                value={formatPricingPercent(document.margin_percent)}
+                value={view.marginLabel}
               />
             </>
           ) : (
             <SummaryRow
               label="Total charge"
-              value={formatPricingMoney(document.subtotal_sell)}
+              value={view.subtotalSellFormatted}
               prominent
             />
           )}
@@ -101,14 +102,14 @@ export function PricingSummaryPanel({
         <div className={cn("rounded-lg border border-border/60 bg-card px-3 py-3", !compact && "border-[var(--brand-orange-muted)]/60")}>
           {!compact ? (
             <SummaryRow
-              label={`GST (${document.gst_rate}%)`}
-              value={formatPricingMoney(document.gst_amount)}
+              label={view.gstLabel}
+              value={view.gstAmountFormatted}
             />
           ) : null}
           <div className={cn(!compact && "mt-2 border-t border-border/60 pt-2")}>
             <SummaryRow
               label="Total incl. GST"
-              value={formatPricingMoney(document.total_incl_gst)}
+              value={view.totalInclGstFormatted}
               prominent
             />
           </div>

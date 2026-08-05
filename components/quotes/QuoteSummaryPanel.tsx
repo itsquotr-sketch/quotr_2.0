@@ -10,7 +10,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { formatPricingMoney } from "@/lib/pricing/format";
+import { quoteDocumentViewModel } from "@/lib/quotes/financial-view-model";
 import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
 import type { Quote } from "@/lib/quotes/types";
 
@@ -56,6 +56,7 @@ export function QuoteSummaryPanel({
 }: QuoteSummaryPanelProps) {
   const [isPending, startTransition] = useTransition();
   const [statusError, setStatusError] = useState<string | null>(null);
+  const view = quoteDocumentViewModel(quote);
 
   const runAction = (action?: () => Promise<{ error?: string }>) => {
     if (!action) return;
@@ -94,15 +95,15 @@ export function QuoteSummaryPanel({
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        <SummaryRow label="Subtotal" value={formatPricingMoney(quote.subtotal)} />
+        <SummaryRow label="Subtotal" value={view.subtotalFormatted} />
         <SummaryRow
-          label={`GST (${quote.gst_rate}%)`}
-          value={formatPricingMoney(quote.gst_amount)}
+          label={view.gstLabel}
+          value={view.gstAmountFormatted}
         />
         <div className="border-t pt-3">
           <SummaryRow
             label="Total incl. GST"
-            value={formatPricingMoney(quote.total_incl_gst)}
+            value={view.totalInclGstFormatted}
             prominent
           />
         </div>
