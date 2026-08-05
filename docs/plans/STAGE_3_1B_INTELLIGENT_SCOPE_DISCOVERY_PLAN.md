@@ -5,9 +5,9 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.4A — **Complete — Local** (`docs/implementation/STAGE_3_1B4A_DISCOVERY_ORCHESTRATION_COMPLETION.md`)  
-**Next batch:** 3.1B.4B — **Ready Pending Persistence Owner Approval**  
-**Migrations:** Proposed, Not Approved (`docs/specifications/SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md`)  
+**Current batch:** 3.1B.4B-0 — **Complete — Planning** (`docs/implementation/STAGE_3_1B4B0_PERSISTENCE_GATE_COMPLETION.md`)  
+**Next batch:** 3.1B.4B implementation — **Ready Pending Owner Approval** (`docs/decisions/STAGE_3_1B4B_PERSISTENCE_OWNER_APPROVAL.md`)  
+**Migrations:** Not Approved (reserved `028`; architecture refined — no SQL)  
 **AI provider adapter:** Implemented but unused  
 **UI integration:** Not Started  
 **Production catalogue adoption:** Not Started  
@@ -22,8 +22,11 @@
 - `docs/specifications/SCOPE_RELATIONSHIP_CATALOGUE_SPEC.md`
 - `docs/specifications/SCOPE_DISCOVERY_PROVIDER_CONTRACT.md`
 - `docs/specifications/SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md`
+- `docs/architecture/STAGE_3_1B4B_PERSISTENCE_ARCHITECTURE.md`
+- `docs/security/STAGE_3_1B4B_PERSISTENCE_SECURITY_REVIEW.md`
 - `docs/performance/STAGE_3_1B_SCOPE_DISCOVERY_LATENCY_AND_COST_BUDGET.md`
 - `docs/decisions/STAGE_3_1B_SCOPE_DISCOVERY_OWNER_DECISIONS.md`
+- `docs/decisions/STAGE_3_1B4B_PERSISTENCE_OWNER_APPROVAL.md`
 
 ---
 
@@ -102,21 +105,32 @@ Split for delivery:
 | **Readiness** | **Complete — Local** (2026-08-05) |
 | **Evidence** | `lib/scope-discovery/orchestration/*`; verify script; completion doc; persistence proposal (not approved) |
 | **Customer value** | Idempotent pure runs; merge; stale comparison; no persistence yet |
-| **Schema** | None — migrations **Proposed, Not Approved** |
+| **Schema** | None — migrations **Not Approved** |
 | **Production adoption** | None — Analyse Job unchanged |
 | **Acceptance** | Pure orchestration tests; provider injected; no DB/UI |
 
-#### 3.1B.4B — Persistence (owner-gated)
+#### 3.1B.4B-0 — Persistence architecture and security gate
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **Ready Pending Persistence Owner Approval** |
+| **Readiness** | **Complete — Planning** (2026-08-05) |
+| **Evidence** | Architecture, security review, verification plan, owner approval register, gate completion |
+| **Customer value** | Owner-ready persistence design before any SQL |
+| **Schema** | Designed only — **Not Approved** |
+| **Production adoption** | None |
+| **Acceptance** | Docs only; no migration file; no code change |
+
+#### 3.1B.4B — Persistence implementation (owner-gated)
+
+| Field | Value |
+| --- | --- |
+| **Readiness** | **Ready Pending Owner Approval** |
 | **Customer value** | Durable runs/suggestions/decisions with RLS |
-| **Likely files** | Migrations + RLS; optional server wiring later |
-| **Schema** | See `SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md` — **Not Approved** |
-| **Security** | RLS on any new tables; org isolation verification |
-| **Rollback** | Feature flag; leave legacy Analyse Job |
-| **Acceptance** | Same snapshot → no duplicate provider call; source change stales proposals |
+| **Likely files** | `supabase/migrations/028_…sql` + verify script (not created yet) |
+| **Schema** | See architecture + approval register — **Not Approved** |
+| **Security** | RLS + integrity triggers + grants per 026 |
+| **Rollback** | Pre-adoption drop; post-data preserve + flag off |
+| **Acceptance** | Verification plan V-* checks; local Docker only first |
 
 ### 3.1B.5 — Accept / reject / modify lifecycle
 
@@ -170,7 +184,7 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.4B** — Persistence owner approval gate. Review `SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md`. Do not write SQL until approved. Do not rewire Analyse Job or begin accept/reject UI until separately gated.
+**3.1B.4B** — Persistence implementation only after owner signs `STAGE_3_1B4B_PERSISTENCE_OWNER_APPROVAL.md`. Then create migration `028`, apply local Docker-only, run verification plan. Do not rewire Analyse Job or begin accept/reject UI until separately gated.
 
 ---
 

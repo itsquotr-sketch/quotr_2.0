@@ -2,10 +2,10 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.4A Complete — Local; 3.1B.4B Ready Pending Persistence Owner Approval)  
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.4A Complete — Local; 3.1B.4B-0 Complete — Planning; 3.1B.4B Ready Pending Owner Approval)  
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
-**Constraint:** Items marked Deferred must not be implemented until authorised; deferred schema proposals remain **Not Approved**; persistence migration Proposed, Not Approved; AI provider adapter Implemented but unused; UI / production catalogue adoption Not Started  
+**Constraint:** Items marked Deferred must not be implemented until authorised; deferred schema proposals remain **Not Approved**; persistence migration **Not Approved** (architecture gate done); AI provider adapter Implemented but unused; UI / production catalogue adoption Not Started  
 
 
 ---
@@ -50,7 +50,7 @@
 | ISD-003 | Scope relationship catalogue | Feature | P1 | No data-driven deck/bathroom/fitout relationship model | Ad hoc enrichment + templates | Versioned catalogue edges (required/likely/conditional) with trigger/suppress facts | Stage 3.1B.2 | Domain model 3.1D | Complete — Local (samples; production adoption Not Started) | Catalogue integrity + sample evaluation tests | Assembly link reserved for 3.3 | Code modules; no money formulas |
 | ISD-004 | AI discovery provider | Feature | P0 | Brief/notes extraction not governed as ISD contract | Anthropic extractFromBrief / extractFromSiteNotes | Structured discovery output, evidence refs, validation, prompt/contract versioning | Stage 3.1B.3 | Owner gates OCD-ISD-06/07/14/15/16/17 | Complete — Local (adapter unused by production; Analyse Job unchanged) | `verify-stage-3-1b3-ai-discovery-provider.ts` | Model metadata for audit | Do not change current Analyse Job prompts |
 | ISD-005 | Evidence display | Feature | P1 | Users see little provenance for why a scope was suggested | Confidence labels; limited evidence | Show evidence band + excerpts/rule ids per contract | Stage 3.1B.6 | Suggestion contract evidence model | Ready | Preview: evidence visible; no commercial certainty language | Evidence Engine substrate | |
-| ISD-006 | Discovery rerun / idempotency | Feature | P0 | Analyse Job one-shot; no stale/supersede; duplicate risk on notes | Brief locked; note analyse blocked while pending | ScopeDiscoveryRun idempotency; stale/supersede; no duplicate provider calls | Stage 3.1B.4A / 3.1B.4B | OCD-ISD-06/07/08 | Complete — Local (pure orchestration); persistence Ready Pending Owner Approval | `verify-stage-3-1b4a-discovery-orchestration.ts` | Run history for learning later | Explicit user trigger; no SQL until approved |
+| ISD-006 | Discovery rerun / idempotency | Feature | P0 | Analyse Job one-shot; no stale/supersede; duplicate risk on notes | Brief locked; note analyse blocked while pending | ScopeDiscoveryRun idempotency; stale/supersede; no duplicate provider calls | Stage 3.1B.4A / 3.1B.4B | OCD-ISD-06/07/08; persistence owner approval | Complete — Local (pure orchestration); 3.1B.4B-0 Planning complete; SQL Ready Pending Owner Approval | `verify-stage-3-1b4a-discovery-orchestration.ts`; persistence verification plan | Run history for learning later | Explicit user trigger; no SQL until approved |
 | ISD-007 | Discovery latency / progress | Performance | P1 | Only basic Analysing state; no budgets | Unmeasured provider wait | Progress states + latency/cost budgets; cancellation where practical | Stage 3.1B.8 | Latency budget doc | Ready | Measure vs budget in Preview | — | Do not claim SLOs until measured |
 | ISD-008 | Attachment security design | Security | P1 | Photos/documents missing; future media is high-risk | No project attachments | Design DB ownership/RLS **and** Storage bucket policies before media ISD | Pre-media / D-S6 | Deferred schema D-S6 | Deferred | Design review + RLS/storage checklist | Visual evidence for DNA | Architecture-review: both DB and bucket policies required |
 
@@ -69,7 +69,8 @@
 - Stage 3.1B.2 catalogue: **Complete — Local** — `lib/scope-discovery/catalogue/*`; production catalogue adoption **Not Started**.
 - Stage 3.1B.3 AI provider: **Complete — Local** — `lib/scope-discovery/provider/*`; **Implemented but unused**; Analyse Job unchanged.
 - Stage 3.1B.4A orchestration: **Complete — Local** — `lib/scope-discovery/orchestration/*`; persistence-free.
-- Stage 3.1B.4B persistence: **Ready Pending Persistence Owner Approval** — proposal at `docs/specifications/SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md` (**Proposed, Not Approved**).
-- Migrations **Proposed, Not Approved**; UI **Not Started**; production adoption **Not Started**.
+- Stage 3.1B.4B-0 persistence gate: **Complete — Planning** — architecture, security, verification plan, owner approval register (unsigned).
+- Stage 3.1B.4B persistence implementation: **Ready Pending Owner Approval** — migration `028` **Not Approved** / not created.
+- Migrations **Not Approved**; UI **Not Started**; production adoption **Not Started**.
 - FEAT-001 Deferred (intersects 3.1B.6); FEAT-002 Deferred; FEAT-003 Deferred until Builder Interview.
 - Do not change Analyse Job behaviour, commercial formulas, or Company DNA without explicit authorisation.

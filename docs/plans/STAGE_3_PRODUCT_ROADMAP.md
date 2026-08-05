@@ -16,13 +16,14 @@
 | **3.1A-R1** | Preview Remediation | Fix Preview failures: enums, answer reconcile, Quick Estimate Edit, client propagation, capture hierarchy | **Complete** — included in Preview sign-off 2026-08-05 |
 | **3.1C** | Domain Model Audit | Documentation-only architectural audit of all major domain objects | **Complete** |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
-| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.1–3.1B.4A Complete — Local; 3.1B.4B Ready Pending Persistence Owner Approval; persistence migration Proposed, Not Approved; AI provider adapter Implemented but unused; UI Not Started; production adoption Not Started; Analyse Job Unchanged |
+| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.1–3.1B.4A Complete — Local; 3.1B.4B-0 Complete — Planning; 3.1B.4B Ready Pending Owner Approval; migration Not Approved; AI provider adapter Implemented but unused; UI Not Started; production adoption Not Started; Analyse Job Unchanged |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
 | **3.1B.1** | Suggestion contract and deterministic lifecycle | Pure types, validation, lifecycle, staleness, identity, merge | **Complete — Local** (`docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md`) |
 | **3.1B.2** | Scope relationship catalogue foundation | Data-driven edges + deterministic missing-scope samples | **Complete — Local** (`docs/implementation/STAGE_3_1B2_SCOPE_RELATIONSHIP_CATALOGUE_COMPLETION.md`) |
 | **3.1B.3** | AI discovery provider | Structured provider output, validation, evidence refs | **Complete — Local** (`docs/implementation/STAGE_3_1B3_AI_DISCOVERY_PROVIDER_COMPLETION.md`) |
 | **3.1B.4A** | Pure discovery orchestration | Request, snapshot, idempotency, merge, run result | **Complete — Local** (`docs/implementation/STAGE_3_1B4A_DISCOVERY_ORCHESTRATION_COMPLETION.md`) |
-| **3.1B.4B** | Discovery persistence | Runs/suggestions/decisions tables + RLS | **Ready Pending Persistence Owner Approval** (`docs/specifications/SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md`) |
+| **3.1B.4B-0** | Persistence architecture / security gate | Tables, RLS, threats, verification plan, owner register | **Complete — Planning** (`docs/implementation/STAGE_3_1B4B0_PERSISTENCE_GATE_COMPLETION.md`) |
+| **3.1B.4B** | Discovery persistence implementation | Migration 028 + RLS + local verify | **Ready Pending Owner Approval** |
 | **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | Not started |
 | **3.3** | Commercial Assemblies | Reusable commercial assemblies / packages | Not started |
 | **3.4** | Explicit Company Defaults / Manual Learning | Manual company defaults and correction capture without automatic rule mutation | Not started |
