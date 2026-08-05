@@ -133,18 +133,3 @@ export function presentEstimateCategoryTotals(
   }
   return rounded;
 }
-
-export function presentEstimateCategoryMargin(
-  cost: number,
-  sell: number,
-  profit: number
-): { marginPercent: number; costKnown: boolean } {
-  const costKnown = inferDisplayCostKnown(cost, sell);
-  if (!costKnown || sell <= 0) {
-    return { marginPercent: 0, costKnown };
-  }
-  return {
-    marginPercent: round2((profit / sell) * 100),
-    costKnown: true,
-  };
-}

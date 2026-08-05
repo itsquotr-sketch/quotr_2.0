@@ -1,8 +1,10 @@
 /**
  * Batch 2B.8 — temporary calculation authority switch for quote-domain paths.
+ * Batch 2B.10 decision: **RETAIN** (documented rollback knob; default authoritative).
  *
  * Default: authoritative commercial engine.
- * Rollback: set to "legacy" or git revert. Does not affect pricing/estimate switches.
+ * Rollback: set to "legacy" or prefer `git revert`. Does not affect pricing/estimate switches.
+ * Not a public UI feature flag. Not environment-driven.
  *
  * Covers: create/refresh snapshot aggregates, draft item recalculation,
  * visibility/delete aggregates. Does not rewrite historical quote rows.

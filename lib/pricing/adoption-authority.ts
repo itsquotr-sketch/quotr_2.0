@@ -1,9 +1,10 @@
 /**
  * Batch 2B.6A/B — temporary calculation authority switch for pricing-domain paths.
+ * Batch 2B.10 decision: **RETAIN** (documented rollback knob; default authoritative).
  *
  * Default: authoritative commercial engine.
- * Rollback: set to "legacy" (or revert the adoption commit) — never dual-write.
- * Not a public UI feature flag.
+ * Rollback: set to "legacy" (or prefer `git revert` of adoption commits) — never dual-write.
+ * Not a public UI feature flag. Not environment-driven.
  *
  * Covers item CRUD (2B.6A), create-from-estimate, document GST aggregate,
  * and recalibration money fields (2B.6B).

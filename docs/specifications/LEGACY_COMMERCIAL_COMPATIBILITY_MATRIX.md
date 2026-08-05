@@ -1,13 +1,13 @@
 # Legacy Commercial Compatibility Matrix
 
-**Batch:** 2B.4 (issued) · **Updated:** 2B.5 (C-28 corrected)  
-**Date:** 2026-08-04  
-**Authority:** Owner commercial decisions · Canonical goldens · Live legacy behaviour (classified)  
-**Engine:** `lib/commercial-engine/` remains non-authoritative for live totals  
+**Batch:** 2B.4 (issued) · **Updated:** 2B.10 (stage close)  
+**Date:** 2026-08-05  
+**Authority:** Owner commercial decisions · Canonical goldens · Live production adapters  
+**Engine:** `lib/commercial-engine/` is authoritative for estimate/pricing/quote money via production adapters  
 
 ---
 
-## 1. Totals (after Batch 2B.5 parity refresh)
+## 1. Totals (after Batch 2B.5 parity refresh; confirmed 2B.10)
 
 | Metric | Count |
 | --- | ---: |
@@ -94,6 +94,7 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 | **2B.7 Estimate adoption** | **Complete** — production estimate money via adapter; confidence/ranges out of money engine; LEG-E parity helpers retained |
 | **2B.8 Quote adoption** | **Complete** — LEG-Q-01 EXACT `visible_only`; revise-copy immutable; CD-22 prefer-total retained |
 | **2B.9 UI removal** | **Complete** — no client GP/aggregate authority; display server/engine/preview-adapter only |
+| **2B.10 Stage close** | **Complete — Local** — dead wrappers removed; switches retained; full regression green; deploy owner-gated |
 
 ---
 
@@ -120,5 +121,6 @@ Historic 2B.4 blocker evidence: `STAGE_2B_BATCH_2B4_PARITY_REPORT_HISTORIC_PRE_2
 | Field | Value |
 | --- | --- |
 | Path | `docs/specifications/LEGACY_COMMERCIAL_COMPATIBILITY_MATRIX.md` |
-| Live adoption | Pricing + estimate + quote server (2B.6–2B.8) + UI presentation (2B.9) |
+| Live adoption | Pricing + estimate + quote server (2B.6–2B.8) + UI presentation (2B.9); stage closed 2B.10 Complete — Local |
 | Parity package | `lib/commercial-engine/parity/` (not public engine API) |
+| Retained legacy | Documented in `STAGE_2B_COMPLETION_REPORT.md` §18 |

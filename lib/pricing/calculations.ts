@@ -1,9 +1,19 @@
 import type { PricingItemType } from "@/lib/pricing/types";
-import {
-  calculatePricingItemEdit as calculateModeAwarePricingItemEdit,
-  calculatePricingItemTotalsForSave,
-  type PricingItemEditField,
-} from "@/lib/pricing/pricing-item-calculation";
+import { calculatePricingItemTotalsForSave } from "@/lib/pricing/pricing-item-calculation";
+
+/**
+ * Legacy pricing helpers retained for:
+ * - emergency rollback (`PRICING_ITEM_CALCULATION_AUTHORITY = "legacy"`)
+ * - shadow parity comparison (`lib/commercial-engine/parity/`)
+ * - non-money utilities (dates, text lists, labels)
+ *
+ * Production authoritative money uses `lib/pricing/commercial-engine-adapter.ts`
+ * and `lib/pricing/authoritative-document-totals.ts`.
+ * Edit preview uses `lib/pricing/presentation-item-preview.ts`
+ * (via `pricing-item-calculation.calculatePricingItemEdit`, not this module).
+ *
+ * Batch 2B.10: removed unused `calculatePricingItemEdit` re-export wrapper.
+ */
 
 export function roundMoney(value: number): number {
   return Math.round(value * 100) / 100;
@@ -41,32 +51,6 @@ export type PricingItemTotals = {
   productivityUnit?: string | null;
   calculatedQuantity?: number | null;
 };
-
-export type { PricingItemEditField };
-
-export type PricingItemEditInput = PricingItemTotalsInput & {
-  changedField: PricingItemEditField;
-};
-
-export function calculatePricingItemEdit(
-  input: PricingItemEditInput
-): PricingItemTotals {
-  const result = calculateModeAwarePricingItemEdit(input);
-  return {
-    quantity: result.quantity,
-    unitCost: result.unitCost,
-    unitSell: result.unitSell,
-    totalCost: result.totalCost,
-    totalSell: result.totalSell,
-    grossProfit: result.grossProfit,
-    marginPercent: result.marginPercent,
-    markupPercent: result.markupPercent,
-    calculationMode: result.calculationMode,
-    productivityRate: result.productivityRate,
-    productivityUnit: result.productivityUnit,
-    calculatedQuantity: result.calculatedQuantity,
-  };
-}
 
 export function calculatePricingItemTotals(
   input: PricingItemTotalsInput

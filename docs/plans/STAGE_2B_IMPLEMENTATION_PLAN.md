@@ -1,6 +1,6 @@
 # Stage 2B — Authoritative Pricing Engine Implementation Plan
 
-**Status:** In Progress (Batches **2B.3A–2B.9**; server money + UI presentation **adopted**; 2B.10 finalisation pending)  
+**Status:** Complete — Local (Batches **2B.3A–2B.10**; deployment/smoke owner-gated; Stage 2C not started)  
 **Plan date:** 2026-08-04  
 **Governing architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
@@ -709,6 +709,6 @@ Estimate (2B.7) and Quote (2B.8) both depend on 2B.5 parity; they may be seriali
 | Path | `docs/plans/STAGE_2B_IMPLEMENTATION_PLAN.md` |
 | Created | 2026-08-04 |
 | Batch 2B.1 / 2B.2A application changes | **None** |
-| Next batch | **2B.10** final regression, documentation and deployment readiness |
-| Stage 2B implementation started? | **Yes** — pricing-domain server authority through **2B.6B** |
-| Stage 2B tracker status | **In Progress** (2B.6B complete; estimates/quotes/UI not adopted) |
+| Next batch | None — Stage 2B closed locally; next is owner-gated deploy then authorised subsequent stage |
+| Stage 2B implementation started? | **Yes** — complete through **2B.10** |
+| Stage 2B tracker status | **Complete — Local** (`docs/implementation/STAGE_2B_COMPLETION_REPORT.md`) |

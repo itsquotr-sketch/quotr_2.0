@@ -1,6 +1,6 @@
 # Shadow Parity Report — Batch 2B.4
 
-Generated: 2026-08-04
+Generated: 2026-08-05
 
 ## Totals
 

@@ -256,7 +256,7 @@ Update this table as stages progress. Status values must be one of: **Not Starte
 | 1 | Current-state audit | Auditing | 2026-08-03 | — | — | — | — |
 | 2 | Data integrity, authentication and organisation isolation | Not Started | — | — | Historical tracker entry retained. Scope split into Stage 2A and Stage 2B. | Superseded by 2A/2B split — do not implement under this row. | — |
 | 2A | Security, Validation and Data Integrity | Complete | 2026-08-03 | 2026-08-03–2026-08-04 | Stage 2A complete locally and remotely: auth-org, validation, pricing/quote security, DB integrity (025), least-privilege API grants (026), baseline reconciliation (027), two-org isolation proof, production smoke test. | Accepted limitations: soft-delete app-path visibility; S1-016 no account deletion; S1-013 roles/invites deferred; pricing formula duplication → 2B. | `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`; `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`; migrations 001–027 aligned local/remote |
-| 2B | Authoritative Pricing Engine | In Progress | 2026-08-04 | 2026-08-04 (kernel) | Batches 2B.3A–2B.9: commercial engine authoritative for pricing + estimate + quote server money; UI presentation no longer financially authoritative. | Next: 2B.10 final regression and documentation freeze. | `docs/implementation/STAGE_2B_BATCH_2B9_COMPLETION.md`; `docs/specifications/FINANCIAL_PRESENTATION_BOUNDARY.md` |
+| 2B | Authoritative Pricing Engine | Complete | 2026-08-04 | 2026-08-04–2026-08-05 | One commercial engine under `lib/commercial-engine/`; estimate/pricing/quote adapters + presentation-only UI. Complete — Local; deploy/smoke owner-gated. | Accepted limitations: no `cost_known` column; engine metadata not fully persisted; S1-010 UX → Stage 6; authority switches retained for rollback. Deployment not yet done. | `docs/implementation/STAGE_2B_COMPLETION_REPORT.md`; `docs/runbooks/STAGE_2B_DEPLOYMENT_AND_SMOKE_TEST.md`; verify `scripts/verify-batch-2b10-final-commercial-authority.ts` |
 | 3 | Core project workflow | Not Started | — | — | — | — | — |
 | 4 | Estimating engine and pricing correctness | Not Started | — | — | Historical tracker entry retained. Pricing consolidation owned by Stage 2B. | — | — |
 | 5 | AI reliability and fallback handling | Not Started | — | — | — | — | — |
@@ -410,4 +410,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-04 |
 | Stage 0 status | Complete |
-| Next stage | Stage 2B — Authoritative Pricing Engine (**In Progress**). Batches **2B.3A–2B.9** complete. Next: **2B.10** final regression/documentation. No migrations/AI/DNA. |
+| Next stage | Stage 2B **Complete — Local**. Owner-gated deploy/smoke via `docs/runbooks/STAGE_2B_DEPLOYMENT_AND_SMOKE_TEST.md`. Do not start Stage 2C until authorised. No migrations/AI/DNA in 2B. |
