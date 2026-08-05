@@ -4,11 +4,11 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
+import { commitUserFactEdit } from "@/lib/assistant/scope-persistence";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStale } from "@/lib/estimate/stale";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
-import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 
 const updateFactSchema = z.object({
   projectId: z.string().uuid(),
@@ -72,81 +72,20 @@ export async function updateProjectFact(
     }
   }
 
-  const storedValue = valueType
-    ? normalizeAnswerForStorage(value, valueType)
-    : value;
-
-  let factQuery = supabase
-    .from("project_facts")
-    .select("id, source")
-    .eq("project_id", projectId)
-    .eq("key", key);
-
-  if (workAreaId) {
-    factQuery = factQuery.eq("work_area_id", workAreaId);
-  } else {
-    factQuery = factQuery.is("work_area_id", null);
-  }
-
-  const { data: existingFact } = await factQuery.maybeSingle();
-
-  if (existingFact?.source === "derived") {
-    return { error: "Calculated values cannot be edited directly." };
-  }
-
-  const factPayload = {
+  // Stage 3.1D: Fact SoT commit, then question mirror.
+  const commit = await commitUserFactEdit(supabase, {
+    orgId,
+    projectId,
+    workAreaId,
+    key,
     label,
-    value: storedValue,
-    unit: unit ?? null,
-    source: "user" as const,
-    confidence: 1,
-  };
+    value,
+    unit,
+    valueType,
+  });
 
-  if (existingFact) {
-    const { error } = await supabase
-      .from("project_facts")
-      .update(factPayload)
-      .eq("id", existingFact.id)
-      .eq("project_id", projectId);
-
-    if (error) {
-      return { error: error.message };
-    }
-  } else {
-    const { error } = await supabase.from("project_facts").insert({
-      org_id: orgId,
-      project_id: projectId,
-      work_area_id: workAreaId,
-      key,
-      ...factPayload,
-    });
-
-    if (error) {
-      return { error: error.message };
-    }
-  }
-
-  let questionQuery = supabase
-    .from("questions")
-    .select("id, input_type")
-    .eq("project_id", projectId)
-    .eq("key", key);
-
-  if (workAreaId) {
-    questionQuery = questionQuery.eq("work_area_id", workAreaId);
-  }
-
-  const { data: question } = await questionQuery.maybeSingle();
-
-  if (question) {
-    await supabase
-      .from("questions")
-      .update({
-        answer_value: storedValue,
-        answer_source: "user",
-      })
-      .eq("id", question.id)
-      .eq("project_id", projectId);
+  if (!commit.ok) {
+    return { error: commit.error };
   }
 
   const { data: workAreas } = await supabase

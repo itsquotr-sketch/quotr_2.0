@@ -257,7 +257,7 @@ Update this table as stages progress. Status values must be one of: **Not Starte
 | 2 | Data integrity, authentication and organisation isolation | Not Started | — | — | Historical tracker entry retained. Scope split into Stage 2A and Stage 2B. | Superseded by 2A/2B split — do not implement under this row. | — |
 | 2A | Security, Validation and Data Integrity | Complete | 2026-08-03 | 2026-08-03–2026-08-04 | Stage 2A complete locally and remotely: auth-org, validation, pricing/quote security, DB integrity (025), least-privilege API grants (026), baseline reconciliation (027), two-org isolation proof, production smoke test. | Accepted limitations: soft-delete app-path visibility; S1-016 no account deletion; S1-013 roles/invites deferred; pricing formula duplication → 2B. | `docs/implementation/STAGE_2A_COMPLETION_REPORT.md`; `docs/implementation/STAGE_2A_REMOTE_DEPLOYMENT_REPORT.md`; migrations 001–027 aligned local/remote |
 | 2B | Authoritative Pricing Engine | Complete | 2026-08-04 | 2026-08-04–2026-08-05 | One commercial engine under `lib/commercial-engine/`; estimate/pricing/quote adapters + presentation-only UI. Complete — Local; deploy/smoke owner-gated. | Accepted limitations: no `cost_known` column; engine metadata not fully persisted; S1-010 UX → Stage 6; authority switches retained for rollback. Deployment not yet done. | `docs/implementation/STAGE_2B_COMPLETION_REPORT.md`; `docs/runbooks/STAGE_2B_DEPLOYMENT_AND_SMOKE_TEST.md`; verify `scripts/verify-batch-2b10-final-commercial-authority.ts` |
-| 3 | Core project workflow | Not Started | — | — | — | — | — |
+| 3 | Core project workflow | In Progress | 2026-08-05 | 2026-08-05 | Stage 3.1A Complete — Local (Preview pending). Stage 3.1C audit Complete. Stage 3.1D domain refinement Complete — Local. Intelligent Scope Discovery not started. | Preview smoke for 3.1A; then 3.1B when authorised. | `docs/implementation/STAGE_3_1A_PRODUCT_STABILISATION_COMPLETION.md`; `docs/architecture/STAGE_3_1C_DOMAIN_MODEL_AUDIT.md`; `docs/architecture/STAGE_3_1D_DOMAIN_MODEL_REFINED.md`; `docs/implementation/STAGE_3_1D_DOMAIN_MODEL_REFINEMENT_COMPLETION.md`; `docs/plans/STAGE_3_PRODUCT_ROADMAP.md` |
 | 4 | Estimating engine and pricing correctness | Not Started | — | — | Historical tracker entry retained. Pricing consolidation owned by Stage 2B. | — | — |
 | 5 | AI reliability and fallback handling | Not Started | — | — | — | — | — |
 | 6 | Estimate editing, packages and quote progression | Not Started | — | — | — | — | — |
@@ -408,6 +408,6 @@ The following fields are intentionally incomplete until the current-state audit.
 | --- | --- |
 | Path | `docs/MVP_HARDENING_GUIDE.md` |
 | Created | 2026-07-24 |
-| Last updated | 2026-08-04 |
+| Last updated | 2026-08-05 |
 | Stage 0 status | Complete |
-| Next stage | Stage 2B **Complete — Local**. Owner-gated deploy/smoke via `docs/runbooks/STAGE_2B_DEPLOYMENT_AND_SMOKE_TEST.md`. Do not start Stage 2C until authorised. No migrations/AI/DNA in 2B. |
+| Next stage | Stage 3.1D **Complete — Local**. Stage 3.1A Preview still owner-gated via `docs/runbooks/STAGE_3_1A_PREVIEW_SMOKE_TEST.md`. Do not start Stage 3.1B (Intelligent Scope Discovery) until authorised. Stage 2B deploy/smoke remains owner-gated separately. |

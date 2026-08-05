@@ -273,8 +273,8 @@ function mergeFactsForWorkArea(params: {
   const questionFacts = factsFromQuestions(params.questions, params.workArea.id);
   const byKey = new Map<string, ProjectFactRecord>();
 
-  // Question answers are the baseline; persisted project_facts win when both exist
-  // (e.g. after note proposal apply updates project_facts but not stale question rows).
+  // Stage 3.1D: Question answers are a capture baseline for display only.
+  // Persisted project_facts always win (sole estimating / readiness authority).
   for (const fact of questionFacts) {
     const canonicalKey = getCanonicalFactKey(fact.key, params.workArea.type);
     byKey.set(canonicalKey, { ...fact, key: canonicalKey });

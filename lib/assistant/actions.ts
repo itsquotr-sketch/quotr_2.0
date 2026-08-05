@@ -33,6 +33,11 @@ import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
+import { filterPersistableAnswers } from "@/lib/assistant/answer-persistence";
+import {
+  commitUserAnswerToScope,
+  upsertProjectConstraintRecord,
+} from "@/lib/assistant/scope-persistence";
 import { buildQuestionBlockFromProjectState } from "@/lib/scopes/questions";
 import { normalizeAnswerForStorage, factHasValue } from "@/lib/scopes/fact-values";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
@@ -115,6 +120,15 @@ const workAreaSelectionSchema = z.object({
 function revalidateAssistantPaths(projectId: string) {
   revalidatePath("/app/dashboard");
   revalidatePath(`/app/projects/${projectId}`);
+}
+
+/** Targeted revalidation for answer saves — avoid dashboard reload every edit. */
+function revalidateProjectAssistantPath(projectId: string) {
+  revalidatePath(`/app/projects/${projectId}`);
+}
+
+function toSafeAssistantError(fallback: string): string {
+  return fallback;
 }
 
 async function loadProjectStage(projectId: string) {
@@ -705,14 +719,26 @@ export async function saveQuestionBlockAnswers(
   questionBlockId: string,
   answers: QuestionAnswerInput[]
 ): Promise<AssistantActionState> {
+  const ANSWER_SAVE_FAILED = "Could not save answers. Please try again.";
+
   const answerSchema = z.object({
     question_id: z.string().uuid(),
-    value: z.union([z.string(), z.number(), z.boolean()]),
+    value: z.union([
+      z.string(),
+      z.number(),
+      z.boolean(),
+      z.array(z.string()),
+    ]),
   });
 
-  const parsed = z.array(answerSchema).safeParse(answers);
+  const filtered = filterPersistableAnswers(answers);
+  const parsed = z.array(answerSchema).safeParse(filtered);
   if (!parsed.success) {
     return { error: "Invalid answers." };
+  }
+
+  if (parsed.data.length === 0) {
+    return { success: true };
   }
 
   const loaded = await loadProjectStage(projectId);
@@ -758,75 +784,31 @@ export async function saveQuestionBlockAnswers(
 
   for (const answer of parsed.data) {
     const question = questionById.get(answer.question_id);
-    const storedValue = question
-      ? normalizeAnswerForStorage(
-          answer.value,
-          question.input_type as "number" | "select" | "boolean" | "text"
-        )
-      : answer.value;
-
-    const { error } = await supabase
-      .from("questions")
-      .update({
-        answer_value: storedValue,
-        answer_source: "user",
-      })
-      .eq("id", answer.question_id)
-      .eq("question_block_id", questionBlockId)
-      .eq("project_id", projectId);
-
-    if (error) {
-      return { error: error.message };
-    }
-
     if (!question) {
       continue;
     }
 
-    let factQuery = supabase
-      .from("project_facts")
-      .select("id")
-      .eq("project_id", projectId)
-      .eq("key", question.key);
-
-    if (question.work_area_id) {
-      factQuery = factQuery.eq("work_area_id", question.work_area_id);
-    } else {
-      factQuery = factQuery.is("work_area_id", null);
-    }
-
-    const { data: existingFact } = await factQuery.maybeSingle();
-
-    const factPayload = {
+    // Stage 3.1D: Fact SoT first, then question capture mirror.
+    const commit = await commitUserAnswerToScope(supabase, {
+      orgId,
+      projectId,
+      questionId: answer.question_id,
+      questionBlockId,
+      workAreaId: question.work_area_id,
+      key: question.key,
       label: question.label,
-      value: storedValue,
       unit: question.unit,
-      source: "user" as const,
-      confidence: 1,
-    };
+      inputType: question.input_type as
+        | "number"
+        | "select"
+        | "boolean"
+        | "text"
+        | "multi_select",
+      value: answer.value,
+    });
 
-    if (existingFact) {
-      const { error: factError } = await supabase
-        .from("project_facts")
-        .update(factPayload)
-        .eq("id", existingFact.id)
-        .eq("project_id", projectId);
-
-      if (factError) {
-        return { error: factError.message };
-      }
-    } else {
-      const { error: factError } = await supabase.from("project_facts").insert({
-        org_id: orgId,
-        project_id: projectId,
-        work_area_id: question.work_area_id,
-        key: question.key,
-        ...factPayload,
-      });
-
-      if (factError) {
-        return { error: factError.message };
-      }
+    if (!commit.ok) {
+      return { error: toSafeAssistantError(ANSWER_SAVE_FAILED) };
     }
   }
 
@@ -851,7 +833,7 @@ export async function saveQuestionBlockAnswers(
         .eq("id", questionBlockId);
 
       if (blockError) {
-        return { error: blockError.message };
+        return { error: toSafeAssistantError(ANSWER_SAVE_FAILED) };
       }
     }
   }
@@ -863,7 +845,7 @@ export async function saveQuestionBlockAnswers(
       .eq("id", projectId);
 
     if (stageError) {
-      return { error: stageError.message };
+      return { error: toSafeAssistantError(ANSWER_SAVE_FAILED) };
     }
   }
 
@@ -891,15 +873,15 @@ export async function saveQuestionBlockAnswers(
     supabase,
     orgId,
     projectId,
-    { stage: ensureStage }
+    { stage: ensureStage, skipDerivedPersist: true }
   );
 
   if (ensureResult.error) {
-    return { error: ensureResult.error };
+    return { error: toSafeAssistantError(ANSWER_SAVE_FAILED) };
   }
 
   await markEstimateStale(projectId);
-  revalidateAssistantPaths(projectId);
+  revalidateProjectAssistantPath(projectId);
   return { success: true };
 }
 
@@ -933,45 +915,18 @@ export async function saveConstraints(
     return { error: "This action is not available at the current stage." };
   }
 
-  const { data: existing } = await supabase
-    .from("constraints")
-    .select("id, key")
-    .eq("project_id", projectId);
-
-  const existingByKey = new Map(
-    (existing ?? []).map((row) => [row.key, row.id])
-  );
-
   for (const constraint of parsed.data) {
-    const existingId = existingByKey.get(constraint.key);
+    const result = await upsertProjectConstraintRecord(supabase, {
+      orgId,
+      projectId,
+      key: constraint.key,
+      label: constraint.label,
+      value: constraint.value,
+      source: "user",
+    });
 
-    if (existingId) {
-      const { error } = await supabase
-        .from("constraints")
-        .update({
-          label: constraint.label,
-          value: constraint.value,
-          source: "user",
-        })
-        .eq("id", existingId)
-        .eq("project_id", projectId);
-
-      if (error) {
-        return { error: error.message };
-      }
-    } else {
-      const { error } = await supabase.from("constraints").insert({
-        org_id: orgId,
-        project_id: projectId,
-        key: constraint.key,
-        label: constraint.label,
-        value: constraint.value,
-        source: "user",
-      });
-
-      if (error) {
-        return { error: error.message };
-      }
+    if (!result.ok) {
+      return { error: result.error };
     }
   }
 

@@ -119,7 +119,7 @@ export type WorkAreaSelection = {
 
 export type QuestionAnswerInput = {
   question_id: string;
-  value: string | number | boolean;
+  value: string | number | boolean | string[];
 };
 
 export type ConstraintInput = {

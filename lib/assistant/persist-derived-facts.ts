@@ -4,6 +4,7 @@ import {
   mergeDerivedFactsIntoRecords,
 } from "@/lib/scopes/derived-facts";
 import { detectDerivedFactConflicts } from "@/lib/scopes/derived-fact-conflicts";
+import { shouldWriteDerivedFact } from "@/lib/scopes/domain-ownership";
 
 type ProjectFactRow = {
   key: string;
@@ -53,7 +54,8 @@ export async function persistDerivedFactsForProject(
 
     const { data: existingFact } = await factQuery.maybeSingle();
 
-    if (existingFact?.source === "user") {
+    // Stage 3.1D: user-owned facts are never overwritten by derivation.
+    if (!shouldWriteDerivedFact(existingFact?.source)) {
       continue;
     }
 

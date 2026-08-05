@@ -1,9 +1,17 @@
 import { factHasValue, normalizeBooleanForUi } from "@/lib/scopes/fact-values";
 
+/** Free-text / boolean tokens that mean “not answered with certainty”. */
 const NOT_SURE_VALUES = new Set([
   "not sure",
   "not_sure",
   "unknown",
+  "unsure",
+]);
+
+/** Tokens that remain “not sure” even when listed as select options. */
+const EXPLICIT_NOT_SURE_OPTIONS = new Set([
+  "not sure",
+  "not_sure",
   "unsure",
 ]);
 
@@ -146,9 +154,9 @@ function formatSnakeCase(value: string): string {
       if (lower === "m2") return "m²";
       return lower.charAt(0).toUpperCase() + lower.slice(1);
     })
-    .join("-")
-    .replace(/-m²/g, " m²")
-    .replace(/-m/g, " m");
+    .join(" ")
+    .replace(/ m²/g, " m²")
+    .replace(/\s+m$/g, " m");
 }
 
 function titleCaseSafe(value: string): string {
@@ -164,27 +172,74 @@ function titleCaseSafe(value: string): string {
     .join(" ");
 }
 
-export function isNotSureValue(value: unknown): boolean {
+/**
+ * Whether a stored value means “not sure / unanswered with certainty”.
+ *
+ * When `selectOptions` is provided, a value that is an explicit listed option
+ * is treated as a deliberate answer unless it is an explicit not-sure token
+ * (`Not sure`, `not_sure`, `unsure`). Listed `"unknown"` / `"none"` therefore
+ * count as answered for select questions (BUG-001 / UX-002).
+ */
+export function isNotSureValue(
+  value: unknown,
+  selectOptions?: string[]
+): boolean {
   if (typeof value !== "string") return false;
-  return NOT_SURE_VALUES.has(value.trim().toLowerCase()) || value === "Not sure";
+  const trimmed = value.trim();
+  const lower = trimmed.toLowerCase();
+
+  if (selectOptions && selectOptions.length > 0) {
+    const isListed = selectOptions.some(
+      (option) => option.trim().toLowerCase() === lower
+    );
+    if (isListed) {
+      return (
+        EXPLICIT_NOT_SURE_OPTIONS.has(lower) || trimmed === "Not sure"
+      );
+    }
+  }
+
+  return NOT_SURE_VALUES.has(lower) || trimmed === "Not sure";
 }
 
 const ENUM_ANSWER_LABELS: Record<string, string> = {
   good_existing: "Good existing",
+  good_condition: "Good condition",
   partial_replacement: "Partial replacement",
   full_replacement: "Full replacement",
   unknown: "Unknown",
+  none: "None",
+  not_required: "Not required",
+  required: "Required",
+  one_side: "One side",
+  both_sides: "Both sides",
+  clear_coat: "Clear coat",
+  paint: "Paint",
+  stain: "Stain",
 };
 
-export function formatSelectAnswerValue(value: unknown): string {
+/**
+ * Presentation-only label for stored enum / select option values.
+ * Does not mutate persisted values.
+ */
+export function formatAnswerOptionLabel(value: unknown): string {
   if (value === null || value === undefined || value === "") return "—";
   const raw = String(value);
-  return ENUM_ANSWER_LABELS[raw] ?? ENUM_ANSWER_LABELS[raw.toLowerCase()] ?? raw;
+  const mapped =
+    ENUM_ANSWER_LABELS[raw] ?? ENUM_ANSWER_LABELS[raw.toLowerCase()];
+  if (mapped) return mapped;
+  if (raw.includes("_")) return formatSnakeCase(raw);
+  return raw;
+}
+
+export function formatSelectAnswerValue(value: unknown): string {
+  return formatAnswerOptionLabel(value);
 }
 
 export function formatFactValueForDisplay(
   value: unknown,
-  unit?: string | null
+  unit?: string | null,
+  selectOptions?: string[]
 ): string | null {
   if (!factHasValue(value)) return null;
 
@@ -197,7 +252,10 @@ export function formatFactValueForDisplay(
   }
 
   if (typeof value === "string") {
-    if (isNotSureValue(value)) return "Not sure";
+    if (isNotSureValue(value, selectOptions)) return "Not sure";
+    const enumLabel =
+      ENUM_ANSWER_LABELS[value] ?? ENUM_ANSWER_LABELS[value.toLowerCase()];
+    if (enumLabel) return enumLabel;
     if (value.includes("_")) return formatSnakeCase(value);
     return titleCaseSafe(value);
   }

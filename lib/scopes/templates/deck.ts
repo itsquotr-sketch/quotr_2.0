@@ -233,6 +233,7 @@ export const deckScope: ScopeDefinition = {
         "good_existing",
         "partial_replacement",
         "full_replacement",
+        "none",
         "unknown",
       ],
       required: false,

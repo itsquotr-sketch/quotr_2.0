@@ -144,9 +144,9 @@ These objects define the Quotr domain. Names describe product concepts, not requ
 | **Client / site information** | Who and where the project is for. |
 | **Project note** | Captured site or job information (text today; richer media later along the frozen journey). |
 | **Work area** | A scoped portion of the job (suggested, confirmed, edited or excluded by the user). |
-| **Project fact** | Structured fact derived from brief, questions or user input and consumed by estimating. |
-| **Question / question block** | Work-area-specific questions that refine scope and quantities. |
-| **Constraint** | Project limitation or condition recorded by the user. |
+| **Project fact** | Structured fact derived from brief, questions or user input and consumed by estimating. **Sole estimating / readiness authority** (Stage 3.1D). |
+| **Question / question block** | Work-area-specific questions that refine scope and quantities. **Capture journal only** — not estimating authority (Stage 3.1D). |
+| **Constraint** | Project limitation or condition recorded by the user. **Exclusive namespace** for reserved project-level keys (Stage 3.1D). |
 | **Estimate** | Internal quick estimate for a project, including commercial summary fields. |
 | **Estimate line item** | Labour, material, subcontractor, allowance or related line within an estimate. |
 | **Pricing document (Final Pricing)** | Company-controlled commercial refinement derived from an estimate. |
@@ -155,6 +155,8 @@ These objects define the Quotr domain. Names describe product concepts, not requ
 | **Quote item** | Line on a customer-facing quote. |
 | **Assumptions / inclusions / exclusions / terms** | Commercial narrative attached to pricing and quotes. |
 | **Audit / commercial event record** | Organisation-scoped record of significant pricing or quote mutations (for integrity today; learning later). |
+
+Ownership, freeze points, and the Question → Fact → Estimate pipeline are refined in `docs/architecture/STAGE_3_1D_DOMAIN_MODEL_REFINED.md`.
 
 Supporting concepts that belong to the domain language without being standalone product surfaces in MVP:
 
@@ -322,6 +324,8 @@ Excluded items may become future programme tracks. Until authorised, architectur
 | Document | Role |
 | --- | --- |
 | `docs/MVP_HARDENING_GUIDE.md` | Hardening programme governance, principles, stages, tracker, definition of done |
+| `docs/architecture/STAGE_3_1D_DOMAIN_MODEL_REFINED.md` | Stage 3.1D refined ownership, lifecycles, freeze points (Fact SoT) |
+| `docs/architecture/STAGE_3_1C_DOMAIN_MODEL_AUDIT.md` | Stage 3.1C domain model audit |
 | `docs/plans/STAGE_2A_SECURITY_VALIDATION_PLAN.md` | Completed Stage 2A security/validation plan |
 | `docs/implementation/STAGE_2A_COMPLETION_REPORT.md` | Stage 2A completion evidence |
 | `docs/audits/STAGE_1_CURRENT_STATE_AUDIT.md` | Current-state audit baseline |

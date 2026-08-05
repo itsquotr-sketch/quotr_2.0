@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { upsertProjectConstraintRecord } from "@/lib/assistant/scope-persistence";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStale } from "@/lib/estimate/stale";
@@ -56,40 +57,18 @@ export async function updateProjectConstraint(
     ? normalizeAnswerForStorage(value, inputType)
     : value;
 
-  const { data: existing } = await supabase
-    .from("constraints")
-    .select("id")
-    .eq("project_id", projectId)
-    .eq("key", key)
-    .maybeSingle();
+  // Stage 3.1D: constraints own project-level keys; reject scoped fact keys.
+  const result = await upsertProjectConstraintRecord(supabase, {
+    orgId,
+    projectId,
+    key,
+    label,
+    value: storedValue,
+    source: "user",
+  });
 
-  if (existing) {
-    const { error } = await supabase
-      .from("constraints")
-      .update({
-        label,
-        value: storedValue,
-        source: "user",
-      })
-      .eq("id", existing.id)
-      .eq("project_id", projectId);
-
-    if (error) {
-      return { error: error.message };
-    }
-  } else {
-    const { error } = await supabase.from("constraints").insert({
-      org_id: orgId,
-      project_id: projectId,
-      key,
-      label,
-      value: storedValue,
-      source: "user",
-    });
-
-    if (error) {
-      return { error: error.message };
-    }
+  if (!result.ok) {
+    return { error: result.error };
   }
 
   await markEstimateStale(projectId);

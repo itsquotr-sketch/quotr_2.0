@@ -23,6 +23,18 @@ const NOT_SURE_VALUES = new Set([
   "unsure",
 ]);
 
+const EXPLICIT_NOT_SURE_OPTIONS = new Set([
+  "not sure",
+  "not_sure",
+  "unsure",
+]);
+
+/** Local mirror for boolean UI normalisation — prefer fact-labels.isNotSureValue for selects. */
+function isLocalNotSureToken(value: string): boolean {
+  const lower = value.trim().toLowerCase();
+  return NOT_SURE_VALUES.has(lower) || value === "Not sure";
+}
+
 export function factHasValue(value: unknown): boolean {
   if (Array.isArray(value)) {
     return value.length > 0;
@@ -56,7 +68,11 @@ export function normalizeBooleanForUi(value: unknown): string | null {
   }
   if (typeof value === "string") {
     const lower = value.trim().toLowerCase();
-    if (NOT_SURE_VALUES.has(lower) || value === "Not sure") {
+    if (
+      EXPLICIT_NOT_SURE_OPTIONS.has(lower) ||
+      value === "Not sure" ||
+      isLocalNotSureToken(value)
+    ) {
       return "Not sure";
     }
   }

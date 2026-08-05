@@ -524,12 +524,13 @@ export function shouldHideConditionalQuestion(
 export function isQuestionAnswered(
   lookup: FactLookup,
   workAreaId: string,
-  factKey: string
+  factKey: string,
+  selectOptions?: string[]
 ): boolean {
   const value = lookupValue(lookup, workAreaId, factKey);
   if (value === false || value === 0) return true;
   if (!factHasValue(value)) return false;
-  if (isNotSureValue(value)) return false;
+  if (isNotSureValue(value, selectOptions)) return false;
   if (Array.isArray(value) && value.length === 0) return false;
   if (typeof value === "string") {
     const lower = value.trim().toLowerCase();

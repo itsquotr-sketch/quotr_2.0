@@ -1,4 +1,5 @@
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
+import { healQuestionAnswersIntoFacts } from "@/lib/assistant/scope-persistence";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import type { AssistantStage } from "@/components/assistant/types";
 import {
@@ -74,6 +75,8 @@ export async function ensureMissingDetailsQuestionBlock(
   options?: {
     stage?: AssistantStage;
     qualityLevel?: string | null;
+    /** When true, reuse provided facts without a second derived-facts write. */
+    skipDerivedPersist?: boolean;
   }
 ): Promise<{ error?: string; created?: boolean }> {
   const stage = options?.stage;
@@ -99,7 +102,7 @@ export async function ensureMissingDetailsQuestionBlock(
       .eq("project_id", projectId),
     supabase
       .from("questions")
-      .select("work_area_id, key, answer_value, question_block_id")
+      .select("work_area_id, key, label, unit, answer_value, question_block_id")
       .eq("project_id", projectId),
     supabase
       .from("question_blocks")
@@ -121,13 +124,39 @@ export async function ensureMissingDetailsQuestionBlock(
     return {};
   }
 
-  const projectFacts = await persistDerivedFactsForProject(
-    supabase,
+  // Stage 3.1D: heal question→fact drift before readiness evaluation.
+  const healResult = await healQuestionAnswersIntoFacts(supabase, {
     orgId,
     projectId,
-    confirmedWorkAreas,
-    projectFactsRaw ?? []
-  );
+    questionRows: scopedQuestionRows,
+    factRows: projectFactsRaw ?? [],
+  });
+  if (healResult.error) {
+    return { error: healResult.error };
+  }
+
+  const { data: factsAfterHeal } =
+    healResult.healed > 0
+      ? await supabase
+          .from("project_facts")
+          .select("key, work_area_id, value, source")
+          .eq("project_id", projectId)
+      : { data: projectFactsRaw };
+
+  const projectFacts = options?.skipDerivedPersist
+    ? (factsAfterHeal ?? []).map((fact) => ({
+        key: fact.key,
+        work_area_id: fact.work_area_id,
+        value: fact.value,
+        source: fact.source,
+      }))
+    : await persistDerivedFactsForProject(
+        supabase,
+        orgId,
+        projectId,
+        confirmedWorkAreas,
+        factsAfterHeal ?? []
+      );
 
   let qualityLevel = options?.qualityLevel ?? null;
   if (qualityLevel === undefined) {

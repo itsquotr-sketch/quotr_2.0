@@ -128,12 +128,18 @@ export function isTemplateFactMissing(params: {
     `${params.workArea.id}:${params.template.factKey}`
   );
   const value = fact?.value;
+  const selectOptions =
+    params.template.inputType === "select" ||
+    params.template.inputType === "boolean" ||
+    params.template.inputType === "multi_select"
+      ? params.template.options
+      : undefined;
 
   if (params.template.required) {
-    return !factHasValue(value) || isNotSureValue(value);
+    return !factHasValue(value) || isNotSureValue(value, selectOptions);
   }
 
-  return factHasValue(value) && isNotSureValue(value);
+  return factHasValue(value) && isNotSureValue(value, selectOptions);
 }
 
 /** True when a question should still be asked (required gap or unanswered optional). */
@@ -156,7 +162,14 @@ export function isTemplateQuestionUnanswered(params: {
     return false;
   }
 
-  if (isQuestionAnswered(params.lookup, params.workArea.id, params.template.factKey)) {
+  if (
+    isQuestionAnswered(
+      params.lookup,
+      params.workArea.id,
+      params.template.factKey,
+      params.template.options
+    )
+  ) {
     return false;
   }
 
@@ -167,18 +180,13 @@ export function isTemplateQuestionUnanswered(params: {
   return true;
 }
 
-function hasAnsweredExistingQuestion(
-  existingQuestions: ExistingQuestionRecord[],
-  workAreaId: string,
-  key: string
-): boolean {
-  const match = existingQuestions.find(
-    (question) => question.workAreaId === workAreaId && question.key === key
-  );
-  if (!match) {
-    return false;
-  }
-  return factHasValue(match.answerValue) && !isNotSureValue(match.answerValue);
+/**
+ * Stage 3.1D: Question answers alone never satisfy missing-fact readiness.
+ * Facts are the sole authority; heal paths materialize answers into facts.
+ * Kept exported for regression tests / call-site clarity.
+ */
+export function questionAnswerSatisfiesMissingFact(): boolean {
+  return false;
 }
 
 function hasActiveExistingQuestion(
@@ -238,11 +246,9 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
         continue;
       }
 
-      if (
-        hasAnsweredExistingQuestion(existingQuestions, workArea.id, template.key)
-      ) {
-        continue;
-      }
+      // Stage 3.1D: do not treat question-only answers as satisfying fact readiness.
+      // If a fact is missing, keep generating / retaining editors until the fact exists
+      // (healQuestionAnswersIntoFacts runs before this in ensureMissingDetails).
 
       if (hasActiveExistingQuestion(existingQuestions, workArea.id, template.key)) {
         continue;
