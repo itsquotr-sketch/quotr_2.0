@@ -12,11 +12,11 @@
 
 | Stage | Name | Intent | Status |
 | --- | --- | --- | --- |
-| **3.1A** | Product Stabilisation, Workflow Reliability and UX Baseline | Fix Preview workflow defects; answer save reliability; client/spec UX; governed backlog | **Complete — Local; Preview remediation pending** (3.1A-R1 local complete; owner retest required) |
-| **3.1A-R1** | Preview Remediation | Fix Preview failures: enums, answer reconcile, Quick Estimate Edit, client propagation, capture hierarchy | **Complete — Local** (Preview retest pending) |
+| **3.1A** | Product Stabilisation, Workflow Reliability and UX Baseline | Fix Preview workflow defects; answer save reliability; client/spec UX; governed backlog | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
+| **3.1A-R1** | Preview Remediation | Fix Preview failures: enums, answer reconcile, Quick Estimate Edit, client propagation, capture hierarchy | **Complete** — included in Preview sign-off 2026-08-05 |
 | **3.1C** | Domain Model Audit | Documentation-only architectural audit of all major domain objects | **Complete** |
-| **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete — Local** (not closed) |
-| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | Not started — do not begin until 3.1A Preview signed off; prefer after 3.1D |
+| **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
+| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **Ready to Plan** — do not implement until explicitly authorised; deferred schema proposals remain Not Approved; FEAT-001–003 remain Deferred |
 | **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | Not started |
 | **3.3** | Commercial Assemblies | Reusable commercial assemblies / packages | Not started |
 | **3.4** | Explicit Company Defaults / Manual Learning | Manual company defaults and correction capture without automatic rule mutation | Not started |

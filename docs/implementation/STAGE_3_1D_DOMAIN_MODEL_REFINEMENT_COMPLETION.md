@@ -1,7 +1,9 @@
 # Stage 3.1D — Domain Model Refinement Completion
 
-**Status:** Complete — Local  
+**Status:** Complete  
 **Date:** 2026-08-05  
+**Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
+**Deferred schema proposals:** **Not Approved**  
 **Constraint compliance:** No migrations; no commercial formula changes; no UI redesign; no AI prompt redesign; no ISD; no Company DNA  
 
 ---
@@ -83,16 +85,17 @@
 4. **Photos / file documents / evidence store still missing** — documented; not in 3.1D scope.  
 5. **Constraint consumption still partial** — taxonomy unused keys remain (FEAT-003 / 3.2); ownership separation does not add estimate consumers.  
 6. **Assemblies still absent** — Stage 3.3 still NOT READY.  
-7. **3.1A Preview smoke still pending** — product gate before 3.1B.
+7. **3.1A / 3.1D Preview smoke** — **Passed** 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`).
 
 ---
 
 ## 6. Recommended next stage
 
-1. Complete **Stage 3.1A Preview smoke** sign-off (still owner-gated).  
-2. Then authorise **Stage 3.1B — Intelligent Scope Discovery**, citing Fact SoT and proposal accept/reject patterns from this refinement.  
-3. Do **not** implement deferred schema proposals until separately approved.  
-4. Keep Company DNA / Evidence Engine blocked until 3.4–3.5 substrate exists.
+1. Stage 3.1A and Stage 3.1D are **Complete** (Preview signed off 2026-08-05).  
+2. **Stage 3.1B — Intelligent Scope Discovery** is **Ready to Plan** — authorise explicitly before implementation; cite Fact SoT and proposal accept/reject patterns from this refinement.  
+3. Do **not** implement deferred schema proposals until separately approved (**Not Approved**).  
+4. Keep Company DNA / Evidence Engine blocked until 3.4–3.5 substrate exists.  
+5. FEAT-001–003 remain **Deferred**.
 
 ---
 

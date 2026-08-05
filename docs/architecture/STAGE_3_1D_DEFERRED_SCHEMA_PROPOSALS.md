@@ -1,6 +1,6 @@
 # Stage 3.1D — Deferred Schema Proposals
 
-**Status:** Proposals only — **not implemented**  
+**Status:** Proposals only — **Not Approved**; not implemented  
 **Date:** 2026-08-05  
 **Constraint:** Stage 3.1D forbids migrations without owner approval  
 
