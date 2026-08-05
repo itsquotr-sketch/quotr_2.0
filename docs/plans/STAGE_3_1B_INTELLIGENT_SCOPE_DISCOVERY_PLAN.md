@@ -1,10 +1,15 @@
 # Stage 3.1B — Intelligent Scope Discovery Plan
 
-**Status:** Planning  
+**Status:** In Progress  
 **Date:** 2026-08-05  
-**Parent stage status:** Stage 3.1B — **Planning** (not In Progress)  
+**Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
-**Planning batch:** 3.1B.0 (this document set)
+**Planning batch:** 3.1B.0 Complete  
+**Current batch:** 3.1B.1 — **Complete — Local** (`docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md`)  
+**Next batch:** 3.1B.2 — **Ready** (scope relationship catalogue foundation)  
+**Migrations:** Not Approved  
+**AI provider integration:** Not Started  
+**UI integration:** Not Started  
 
 **Specs:**
 
@@ -52,21 +57,20 @@ Improve likely-scope, missing-scope, dependency, and clarification discovery fro
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **READY PENDING OWNER GATE** (accept-creates-WA, rejection suppression, low-confidence display) |
+| **Readiness** | **Complete — Local** (2026-08-05) |
+| **Evidence** | `lib/scope-discovery/*`; `scripts/verify-stage-3-1b1-suggestion-contract.ts`; `docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md` |
 | **Customer value** | Stable proposal language; no silent accept |
-| **Likely files** | `lib/scopes/scope-discovery/*` (new), verification scripts |
-| **Schema** | Types in code first; DB table **optional** — owner gate |
-| **Security** | Org/project ids on all types |
-| **Rollback** | Delete new modules; no production behaviour change if not wired |
-| **Acceptance** | Pure transition tests; forbidden transitions fail; contract version set |
+| **Schema** | None — code-only; migrations **Not Approved** |
+| **Production adoption** | None |
+| **Acceptance** | Pure transition / staleness / merge tests pass; no production imports |
 
 ### 3.1B.2 — Scope relationship catalogue foundation
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **READY PENDING OWNER GATE** (which categories first) |
+| **Readiness** | **READY** (owner category choice #9 still Pending — use recommended deck/bathroom/fitout samples) |
 | **Customer value** | Deterministic missing-scope for deck/bathroom/fitout samples |
-| **Likely files** | Catalogue modules under `lib/scopes/catalogue/` (new); missing-scope evaluator |
+| **Likely files** | Catalogue modules under `lib/scopes/catalogue/` or `lib/scope-discovery/catalogue/` (new); missing-scope evaluator emitting contract suggestions |
 | **Schema** | Code data modules; no migration required |
 | **Security** | None beyond existing project reads |
 | **Rollback** | Remove modules |
@@ -146,10 +150,9 @@ Improve likely-scope, missing-scope, dependency, and clarification discovery fro
 
 ---
 
-## 5. Recommended first implementation batch
+## 5. Recommended next implementation batch
 
-**3.1B.1** after owner answers decisions 1–5, 8, 12, 17 in the owner-decisions doc (minimum set).  
-Then **3.1B.2** with deck/bathroom/fitout samples — value without provider risk.
+**3.1B.2** — Scope relationship catalogue foundation (samples + deterministic missing-scope), consuming `lib/scope-discovery` types without AI or Analyse Job rewiring.
 
 ---
 

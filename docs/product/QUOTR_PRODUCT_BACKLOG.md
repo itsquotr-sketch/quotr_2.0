@@ -2,10 +2,10 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **Planning** (3.1B.0 audit/spec only — not In Progress)  
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1 Complete — Local; 3.1B.2 Ready)  
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
-**Constraint:** Items marked Deferred must not be implemented until authorised; deferred schema proposals remain **Not Approved**; ISD implementation must not start until owner gates cleared  
+**Constraint:** Items marked Deferred must not be implemented until authorised; deferred schema proposals remain **Not Approved**; migrations Not Approved; AI provider / UI integration Not Started  
 
 
 ---
@@ -45,7 +45,7 @@
 | FEAT-001 | Collapsible work-area cards | Feature | P2 | Dense Scope Review / future suggestion lists hard to scan | Work-area cards always expanded in detail | Collapse/expand per card; consider Expand all / Collapse all; Summary vs Detailed | Stage 3.1B.6 (UI) or later assistant UX | Assistant Scope Review + ISD suggestion list density | Deferred | Design + Preview interaction tests | Supports denser scope discovery UX | Intersects ISD UI; do not implement in 3.1B.0 |
 | FEAT-002 | Optional quote items | Feature | P2 | Optional lines cannot be presented correctly under base total | Optional flag exists; commercial presentation of optional totals not productised | Optional section below base subtotal/GST/total; base excludes unselected optionals; own ex/incl GST; future included/optional/alt/excluded model | Future commercial release (post Stage 2B) | Commercial engine goldens; quote presentation | Deferred | Golden scenarios + regression before ship | Commercial learning must not invent optional arithmetic | Separate from ISD scope-optional catalogue flags |
 | FEAT-003 | Additional site constraints | Feature | P2 | Limited structured constraint taxonomy | Current constraint templates only | Expand structured site constraints aligned with Builder Interview, scope discovery, productivity modifiers, Company DNA | Stage 3.2 Builder Interview | Constraint taxonomy design | Deferred | Taxonomy design review before implementation | Direct DNA / interview evidence path | Defer expanded taxonomy until Builder Interview; ISD may only reference existing constraint keys |
-| ISD-001 | Scope suggestion lifecycle | Feature | P0 | No canonical propose→decide→apply contract across Analyse Job vs notes | Suggested WAs written immediately on Analyse Job; notes use `note_proposals` | Canonical `ScopeDiscoverySuggestion` statuses/transitions; AI proposes; user decides | Stage 3.1B.1 / 3.1B.5 | Boundary + suggestion contract; Fact SoT | Ready | Pure transition tests + Preview accept/reject/modify | Rejection/modification provenance for Evidence Engine | Do not implement in 3.1B.0 |
+| ISD-001 | Scope suggestion lifecycle | Feature | P0 | No canonical propose→decide→apply contract across Analyse Job vs notes | Suggested WAs written immediately on Analyse Job; notes use `note_proposals` | Canonical `ScopeDiscoverySuggestion` statuses/transitions; AI proposes; user decides | Stage 3.1B.1 / 3.1B.5 | Boundary + suggestion contract; Fact SoT | Complete — Local (contract/lifecycle only; no production adoption) | `verify-stage-3-1b1-suggestion-contract.ts` | Rejection/modification provenance for Evidence Engine | Production accept/reject wiring remains 3.1B.5 |
 | ISD-002 | Missing-scope detection | Feature | P0 | Omissions only via question templates; no relationship-driven warnings | Missing details questions after constraints; no parent→child catalogue | Deterministic catalogue checks + AI contextual merge; never auto-accept | Stage 3.1B.2 / 3.1B.7 | Scope relationship catalogue | Ready | Fixture edges + merge tests | Structured omission evidence for DNA later | Deterministic must not be bypassed by AI |
 | ISD-003 | Scope relationship catalogue | Feature | P1 | No data-driven deck/bathroom/fitout relationship model | Ad hoc enrichment + templates | Versioned catalogue edges (required/likely/conditional) with trigger/suppress facts | Stage 3.1B.2 | Domain model 3.1D | Ready | Sample catalogue evaluation tests | Assembly link reserved for 3.3 | Code modules first; no money formulas |
 | ISD-004 | AI discovery provider | Feature | P0 | Brief/notes extraction not governed as ISD contract | Anthropic extractFromBrief / extractFromSiteNotes | Structured discovery output, evidence refs, validation, prompt/contract versioning | Stage 3.1B.3 | Owner gate on provider data | Ready | Schema validation tests; no silent domain writes | Model metadata for audit | Do not change current Analyse Job prompts in planning batch |
@@ -63,9 +63,10 @@
 
 ## Batch notes (Stage 3.1B)
 
-- Stage 3.1B status: **Planning** (3.1B.0 audit/specification complete). **Not In Progress.**
-- Planning docs: audit, boundary, suggestion contract, catalogue spec, latency budget, implementation plan, owner decisions.
-- Backlog ISD-001–ISD-008 recorded as Ready/Deferred — **not Complete**.
+- Stage 3.1B status: **In Progress**.
+- Stage 3.1B.0 Planning docs: Complete.
+- Stage 3.1B.1 suggestion contract: **Complete — Local** — `lib/scope-discovery/*`; no production adoption.
+- Stage 3.1B.2 catalogue: **Ready** — do not start until authorised in the next batch.
+- Migrations **Not Approved**; AI provider **Not Started**; UI **Not Started**.
 - FEAT-001 Deferred (intersects 3.1B.6); FEAT-002 Deferred; FEAT-003 Deferred until Builder Interview.
-- Deferred schema proposals remain **Not Approved**.
-- Do not implement Intelligent Scope Discovery, change Analyse Job behaviour, AI prompts, migrations, commercial formulas, or Company DNA until explicitly authorised.
+- Do not change Analyse Job behaviour, AI prompts, commercial formulas, or Company DNA without explicit authorisation.

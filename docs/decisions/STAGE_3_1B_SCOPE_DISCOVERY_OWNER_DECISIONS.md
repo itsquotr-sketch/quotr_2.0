@@ -1,43 +1,38 @@
 # Stage 3.1B — Scope Discovery Owner Decisions
 
-**Status:** Open — recommended MVP defaults only; **not approved**  
+**Status:** Partially approved — 3.1B.1 gates cleared  
 **Date:** 2026-08-05  
-**Plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`
+**Plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
+**3.1B.1 completion:** `docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md`
 
-Do **not** treat recommendations as authorised. Owner must mark Approve / Reject / Defer per item.
+Do **not** treat Pending/Deferred rows as authorised.
 
 ---
 
 ## Decision register
 
-| # | Decision | Recommended MVP default | Options | Status |
-| ---: | --- | --- | --- | --- |
-| 1 | Should accepted suggestions create Work Areas immediately? | **Yes** — create `confirmed` WA on Accept (skip redundant confirm if already in post-confirm stages); initial Analyse Job migration may keep suggested→confirm for one release | Immediate confirmed / suggested then confirm / defer create until questions answered | **Open** |
-| 2 | Should low-confidence suggestions be hidden, grouped, or displayed? | **Grouped** under “Possible / low confidence” — visible but de-emphasised | Hide / group / display inline | **Open** |
-| 3 | Should rejected suggestions remain suppressed permanently or until source change? | **Until source snapshot changes** (new evidence hash) | Permanent / until source change / session-only | **Open** |
-| 4 | Should modified suggestions become learning evidence? | **Retain provenance only** — do **not** update Company Defaults / DNA | Retain only / feed defaults later / ignore | **Open** |
-| 5 | Should deterministic missing-scope warnings appear before AI results? | **Yes** — deterministic first | Deterministic first / interleaved / AI only | **Open** |
-| 6 | Should analysis rerun automatically after Project Brief changes? | **No** — require explicit trigger (cost + control) | Auto / prompt user / manual only | **Open** |
-| 7 | Should analysis rerun automatically after new Site Notes? | **No** — keep explicit Analyse Notes (current pattern) | Auto / manual | **Open** |
-| 8 | Should the user explicitly trigger analysis to control API cost? | **Yes** | Explicit only / auto on idle / hybrid | **Open** |
-| 9 | What scope categories should be supported first? | **Deck, bathroom, commercial fitout** samples + existing org-enabled WA types | Deck-only / outdoor set / all catalogue | **Open** |
-| 10 | How should exclusions be represented? | `POSSIBLE_EXCLUSION` suggestion + existing `excluded` WA status; not commercial optional lines | WA excluded / suggestion kind only / quote optional (FEAT-002) | **Open** |
-| 11 | How should optional scope be represented? | **Defer commercial optional presentation** (FEAT-002); scope-level optional = `requirementLevel=optional` in catalogue + suggestion flag | Scope-optional / quote-optional / defer | **Open** |
-| 12 | When should a suggestion become stale? | When source snapshot hash changes **or** related accepted/excluded WA set changes **or** newer run supersedes | Hash-only / time-based / manual | **Open** |
-| 13 | What evidence should be shown to users? | Primary excerpts + rule id + related WA/fact labels; not raw prompts | Minimal / excerpts / full provenance | **Open** |
-| 14 | What latency is acceptable? | Per budget doc: feedback ≤200 ms; complete p95 design ≤20 s | Stricter / looser | **Open** |
-| 15 | What provider fallback behaviour is acceptable? | **Fail closed** with safe message after retries; no silent secondary provider in MVP | Fail closed / secondary provider / deterministic-only fallback | **Open** |
-| 16 | Should analysis results persist across model/provider upgrades? | **Yes** — persist suggestions/runs with `promptContractVersion` + model; do not auto-rewrite history | Persist / ephemeral / regenerate on upgrade | **Open** |
-| 17 | What data may be sent to the AI provider? | Brief + selected pending notes + allowed WA type list + **non-secret** existing WA types/titles + **non-PII** fact keys needed for context; **exclude** client phone/email unless owner approves | Minimal / include client fields / include all facts | **Open** |
-| 18 | How should future photos/documents be included? | **Deferred** until D-S6: DB ownership/RLS **and** Storage bucket policies; then evidence types `PHOTO_REFERENCE` / `DOCUMENT_REFERENCE` | Defer / metadata-only first / full vision | **Open** |
-| 19 | What requires a migration? | Durable `ScopeDiscoveryRun` + `ScopeDiscoverySuggestion` persistence if not fitting `note_proposals`; attachments (D-S6); optional evidence events (D-S4) | Code-only first / migrate early | **Open** |
-| 20 | What should remain deferred until Builder Interview? | Expanded constraint taxonomy (FEAT-003); deep clarification interview flows; productivity-modifier interview coupling | List above / more / less | **Open** |
-
----
-
-## Minimum gates before 3.1B.1 coding
-
-Owner should decide at least: **1, 2, 3, 5, 8, 12, 17**.
+| # | ID | Decision | Approved / recommended rule | Status | Approved date |
+| ---: | --- | --- | --- | --- | --- |
+| 1 | OCD-ISD-01 | Accept behaviour | Accepting a Work Area suggestion creates a Work Area immediately through the application lifecycle, but never fabricates authoritative Facts. May supply title/type, retain provenance/evidence, seed questions, preserve source refs. Must not invent measurements, create unanswered Facts as confirmed, apply commercial values, or overwrite existing WAs/Facts. No production acceptance wiring in 3.1B.1. | **Approved** | 2026-08-05 |
+| 2 | OCD-ISD-02 | Low-confidence display | Low-confidence suggestions remain available but are grouped separately as “Other possibilities”. Must not auto-create scope, mix indistinguishably with high-confidence, or be silently hidden. UI deferred. | **Approved** | 2026-08-05 |
+| 3 | OCD-ISD-03 | Rejection suppression | Rejected suggestion suppressed until material source change (brief, relevant notes, facts, constraints, accepted WA, later catalogue version). Provider/model upgrade alone must not re-present rejected scope. | **Approved** | 2026-08-05 |
+| 4 | — | Modified suggestions as learning evidence | Retain provenance only — do **not** update Company Defaults / DNA | Pending | — |
+| 5 | OCD-ISD-05 | Deterministic-first authority | Deterministic relationship checks run before AI. On conflict: deterministic required/suppress/conflict wins; conflict recorded; AI cannot bypass suppress; AI may propose clarification when evidence incomplete. | **Approved** | 2026-08-05 |
+| 6 | — | Auto-rerun after Brief change | No — require explicit trigger | Pending | — |
+| 7 | — | Auto-rerun after new Site Notes | No — keep explicit Analyse Notes | Pending | — |
+| 8 | OCD-ISD-08 | Explicit analysis trigger | User explicitly triggers scope analysis. Changes may mark prior analysis stale and present “Analyse again”, but must not automatically trigger paid provider calls. | **Approved** | 2026-08-05 |
+| 9 | — | First scope categories | Deck, bathroom, commercial fitout samples + org-enabled types | Pending | — |
+| 10 | — | Exclusions representation | `POSSIBLE_EXCLUSION` + excluded WA status | Pending | — |
+| 11 | — | Optional scope representation | Defer commercial optional (FEAT-002); catalogue optional level later | Deferred | — |
+| 12 | OCD-ISD-12 | Staleness | Suggestion becomes stale when a material source it relied upon changes. Accepted Work Areas and user-authored Facts never become stale or revert merely because a later analysis differs. | **Approved** | 2026-08-05 |
+| 13 | — | Evidence shown to users | Primary excerpts + rule id + labels | Pending | — |
+| 14 | — | Acceptable latency | Per latency budget doc | Pending | — |
+| 15 | — | Provider fallback | Fail closed after retries | Pending | — |
+| 16 | — | Persist across model upgrades | Persist with versions; do not rewrite history | Pending | — |
+| 17 | OCD-ISD-17 | Provider data minimisation | Only minimum relevant: Project Brief; selected/relevant Site Notes; relevant accepted Work Areas; relevant Facts; relevant Constraints. Do not send secrets, unrelated org/customer data, full DB records, attachments until approved, or historical commercial records unless later approved. | **Approved** | 2026-08-05 |
+| 18 | — | Future photos/documents | Deferred until D-S6 (DB RLS + Storage policies) | Deferred | — |
+| 19 | — | What requires migration | Runs/suggestions tables if needed — **Not Approved** | Pending | — |
+| 20 | — | Defer to Builder Interview | FEAT-003 taxonomy; deep interview flows | Deferred | — |
 
 ---
 
@@ -46,9 +41,12 @@ Owner should decide at least: **1, 2, 3, 5, 8, 12, 17**.
 | Item | Status |
 | --- | --- |
 | Deferred schema proposals (3.1D D-S*) | **Not Approved** |
+| Migrations for ISD persistence | **Not Approved** |
+| AI provider integration | **Not Started** |
+| UI integration | **Not Started** |
 | Company DNA implementation | **Not started / forbidden** |
 | Commercial formula changes | **Forbidden** |
-| FEAT-001 collapsible cards | **Deferred** (design intersects 3.1B.6) |
+| FEAT-001 collapsible cards | **Deferred** |
 | FEAT-002 optional quote items | **Deferred** |
 | FEAT-003 constraint taxonomy | **Deferred** → Builder Interview |
 
@@ -60,4 +58,5 @@ Owner should decide at least: **1, 2, 3, 5, 8, 12, 17**.
 | --- | --- |
 | Path | `docs/decisions/STAGE_3_1B_SCOPE_DISCOVERY_OWNER_DECISIONS.md` |
 | Created | 2026-08-05 |
-| Approvals | None yet |
+| Last updated | 2026-08-05 |
+| Approvals | OCD-ISD-01, 02, 03, 05, 08, 12, 17 |

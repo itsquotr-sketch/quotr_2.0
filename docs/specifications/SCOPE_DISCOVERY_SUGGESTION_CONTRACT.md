@@ -1,8 +1,9 @@
 # Scope Discovery Suggestion Contract
 
-**Status:** Specification (Stage 3.1B.0) — not implemented  
+**Status:** Specification — implemented as pure code in Stage 3.1B.1 (`lib/scope-discovery/`); **not** wired to production  
 **Date:** 2026-08-05  
-**Contract version (conceptual):** `scope-discovery-suggestion/v1`  
+**Contract version:** `scope-discovery-suggestion/v1`  
+**Completion:** `docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md`  
 **Boundary:** `docs/specifications/INTELLIGENT_SCOPE_DISCOVERY_BOUNDARY.md`
 
 ---
@@ -276,4 +277,4 @@ Persistence **not** implemented in 3.1B.0. Conceptual fields:
 | --- | --- |
 | Path | `docs/specifications/SCOPE_DISCOVERY_SUGGESTION_CONTRACT.md` |
 | Created | 2026-08-05 |
-| Implementation | Deferred to Stage 3.1B.1+ |
+| Implementation | Stage 3.1B.1 — pure module `lib/scope-discovery/` (no production adoption) |
