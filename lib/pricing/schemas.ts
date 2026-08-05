@@ -160,6 +160,8 @@ export const pricingItemInputSchema = pricingItemBaseSchema.superRefine(
 
 export const pricingDocumentInputSchema = z.object({
   title: trimmedStringSchema(200).optional(),
+  client_name: z.union([trimmedStringSchema(200), z.null()]).optional(),
+  site_address: z.union([trimmedStringSchema(500), z.null()]).optional(),
   valid_until: z.union([trimmedStringSchema(40), z.null()]).optional(),
   scope_summary: z.union([trimmedStringSchema(10000), z.null()]).optional(),
   assumptions: z.array(trimmedStringSchema(2000)).optional(),

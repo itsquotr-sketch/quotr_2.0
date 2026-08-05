@@ -46,10 +46,34 @@ export function ProjectCaptureBlock({
   isAnalysing,
   submitted = false,
 }: ProjectCaptureBlockProps) {
+  const briefIncluded = briefText.trim().length > 0;
+
   return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <Label htmlFor="project-brief">Project brief</Label>
+    <div className="space-y-4">
+      <section
+        aria-labelledby="project-brief-heading"
+        className="space-y-3 rounded-lg border border-border/60 bg-muted/25 px-3 py-3 sm:px-4"
+      >
+        <div className="space-y-1">
+          <div className="flex flex-wrap items-center gap-2">
+            <Label
+              id="project-brief-heading"
+              htmlFor="project-brief"
+              className="text-sm font-semibold text-foreground"
+            >
+              Project Brief — Job overview
+            </Label>
+            {briefIncluded ? (
+              <span className="rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
+                Included in analysis
+              </span>
+            ) : null}
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Describe the overall job. Quotr uses this when analysing the
+            project.
+          </p>
+        </div>
         <Textarea
           id="project-brief"
           value={briefText}
@@ -58,16 +82,36 @@ export function ProjectCaptureBlock({
           rows={4}
           disabled={disabled || submitted}
           readOnly={submitted}
-          className="min-h-24 text-base md:text-sm"
+          className="min-h-24 bg-background text-base md:text-sm"
         />
-      </div>
+      </section>
 
-      <SiteNotesCaptureCard
-        projectId={projectId}
-        initialNotes={initialNotes}
-        totalNoteCount={totalNoteCount}
-        variant="compact"
-      />
+      <section
+        aria-labelledby="site-notes-heading"
+        className="space-y-3 rounded-lg border border-border/60 bg-background px-3 py-3 sm:px-4"
+      >
+        <div className="space-y-1">
+          <h4
+            id="site-notes-heading"
+            className="text-sm font-semibold text-foreground"
+          >
+            Site Notes — Ongoing observations
+          </h4>
+          <p className="text-xs text-muted-foreground">
+            Add individual measurements, access issues, client requests and site
+            conditions as you inspect the job.
+          </p>
+        </div>
+        <div className="rounded-md border border-dashed border-border/70 bg-muted/10 px-2.5 py-2.5 sm:px-3">
+          <SiteNotesCaptureCard
+            projectId={projectId}
+            initialNotes={initialNotes}
+            totalNoteCount={totalNoteCount}
+            variant="compact"
+            showHeading={false}
+          />
+        </div>
+      </section>
 
       {submitted ? (
         <AnalyseNotesSection
@@ -76,13 +120,8 @@ export function ProjectCaptureBlock({
         />
       ) : null}
 
-      <div className="space-y-3 border-t pt-4">
-        <p className="text-xs text-muted-foreground">
-          {submitted
-            ? "Brief and site notes are source material. Later notes can be analysed into proposed updates."
-            : "Quotr will use the brief and saved site notes."}
-        </p>
-        {!submitted && onAnalyse ? (
+      {!submitted && onAnalyse ? (
+        <div className="pt-1">
           <Button
             type="button"
             onClick={onAnalyse}
@@ -91,8 +130,8 @@ export function ProjectCaptureBlock({
           >
             {isAnalysing ? "Analysing job…" : "Analyse job"}
           </Button>
-        ) : null}
-      </div>
+        </div>
+      ) : null}
     </div>
   );
 }

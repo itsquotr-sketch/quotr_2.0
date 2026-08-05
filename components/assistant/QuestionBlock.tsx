@@ -58,16 +58,20 @@ function formatAnswer(
 ) {
   if (value === null || value === undefined || value === "") return "—";
   if (Array.isArray(value)) {
-    return value.length > 0 ? value.join(", ") : "—";
+    if (value.length === 0) return "—";
+    return value.map((item) => formatSelectAnswerValue(item)).join(", ");
   }
   if (question.inputType === "boolean") {
     return normalizeBooleanForUi(value) ?? String(value);
   }
-  if (question.inputType === "select") {
+  if (question.inputType === "select" || question.inputType === "multi_select") {
     return formatSelectAnswerValue(value);
   }
   if (question.unit && typeof value === "number") {
     return `${value} ${question.unit}`;
+  }
+  if (typeof value === "string") {
+    return formatSelectAnswerValue(value);
   }
   return String(value);
 }
@@ -157,7 +161,7 @@ function SelectChips({
             disabled && "pointer-events-none opacity-70"
           )}
         >
-          {option}
+          {formatSelectAnswerValue(option)}
         </button>
       ))}
     </div>
@@ -234,7 +238,7 @@ export function QuestionField({
                   disabled && "pointer-events-none opacity-70"
                 )}
               >
-                {option}
+                {formatSelectAnswerValue(option)}
               </button>
             );
           })}

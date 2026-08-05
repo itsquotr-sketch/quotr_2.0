@@ -229,7 +229,7 @@ export function formatAnswerOptionLabel(value: unknown): string {
     ENUM_ANSWER_LABELS[raw] ?? ENUM_ANSWER_LABELS[raw.toLowerCase()];
   if (mapped) return mapped;
   if (raw.includes("_")) return formatSnakeCase(raw);
-  return raw;
+  return titleCaseSafe(raw);
 }
 
 export function formatSelectAnswerValue(value: unknown): string {
@@ -243,6 +243,13 @@ export function formatFactValueForDisplay(
 ): string | null {
   if (!factHasValue(value)) return null;
 
+  if (Array.isArray(value)) {
+    const parts = value
+      .map((item) => formatAnswerOptionLabel(item))
+      .filter((item) => item && item !== "—");
+    return parts.length > 0 ? parts.join(", ") : null;
+  }
+
   const boolLabel = normalizeBooleanForUi(value);
   if (boolLabel) return boolLabel;
 
@@ -253,11 +260,7 @@ export function formatFactValueForDisplay(
 
   if (typeof value === "string") {
     if (isNotSureValue(value, selectOptions)) return "Not sure";
-    const enumLabel =
-      ENUM_ANSWER_LABELS[value] ?? ENUM_ANSWER_LABELS[value.toLowerCase()];
-    if (enumLabel) return enumLabel;
-    if (value.includes("_")) return formatSnakeCase(value);
-    return titleCaseSafe(value);
+    return formatAnswerOptionLabel(value);
   }
 
   return String(value);

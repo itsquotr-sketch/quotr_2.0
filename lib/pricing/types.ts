@@ -156,6 +156,8 @@ export type PricingItemInput = {
 
 export type PricingDocumentInput = {
   title?: string;
+  client_name?: string | null;
+  site_address?: string | null;
   valid_until?: string | null;
   scope_summary?: string | null;
   assumptions?: string[];

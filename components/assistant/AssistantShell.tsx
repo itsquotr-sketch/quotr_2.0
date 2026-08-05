@@ -36,8 +36,14 @@ import {
   saveQuestionBlockAnswers,
   updateProjectQualityLevel,
 } from "@/lib/assistant/actions";
+import {
+  createLatestWriteGuard,
+  filterPersistableAnswers,
+  resolveAnswerSaveStatus,
+} from "@/lib/assistant/answer-persistence";
 import { updateProjectConstraint } from "@/lib/assistant/constraint-actions";
 import { updateProjectFact } from "@/lib/assistant/fact-actions";
+import { beginQualitySpecEdit } from "@/lib/assistant/quality-edit";
 import { updateEstimateMargin } from "@/lib/assistant/margin-actions";
 import {
   addWorkAreaToProject,
@@ -138,8 +144,10 @@ export function AssistantShell({
   const [workAreaQuestionError, setWorkAreaQuestionError] = useState<string | null>(
     null
   );
+  const workAreaSaveGuardRef = useRef(createLatestWriteGuard());
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [isEditingQuality, setIsEditingQuality] = useState(false);
+  const qualityCardRef = useRef<HTMLDivElement | null>(null);
   const [savedQualityLevel, setSavedQualityLevel] = useState<QualityLevel | null>(
     project.qualityLevel
   );
@@ -273,7 +281,10 @@ export function AssistantShell({
   }, [savedQualityLevel]);
 
   const handleQualityEdit = useCallback(() => {
-    setIsEditingQuality(true);
+    beginQualitySpecEdit({
+      setEditing: setIsEditingQuality,
+      scrollTarget: qualityCardRef,
+    });
   }, []);
 
   const handleQuestionsSubmit = useCallback(() => {
@@ -474,6 +485,7 @@ export function AssistantShell({
       questions: WorkAreaActiveQuestion[];
       answers: MissingQuestionAnswers;
     }) => {
+      const saveToken = workAreaSaveGuardRef.current.next();
       setSavingWorkAreaId(input.workAreaId);
       setWorkAreaSaveStatus((prev) => ({
         ...prev,
@@ -489,10 +501,16 @@ export function AssistantShell({
       }
 
       for (const [blockId, blockQuestions] of questionsByBlock) {
-        const payload = blockQuestions.map((question) => ({
-          question_id: question.id,
-          value: input.answers[question.id] as string | number | boolean,
-        }));
+        const payload = filterPersistableAnswers(
+          blockQuestions.map((question) => ({
+            question_id: question.id,
+            value: input.answers[question.id],
+          }))
+        );
+
+        if (payload.length === 0) {
+          continue;
+        }
 
         const result = await saveQuestionBlockAnswers(
           project.id,
@@ -500,15 +518,27 @@ export function AssistantShell({
           payload
         );
 
+        if (!workAreaSaveGuardRef.current.isCurrent(saveToken)) {
+          return;
+        }
+
         if (result.error) {
-          setWorkAreaQuestionError(result.error);
+          const resolved = resolveAnswerSaveStatus({
+            success: false,
+            error: result.error,
+          });
+          setWorkAreaQuestionError(resolved.error);
           setSavingWorkAreaId(null);
           setWorkAreaSaveStatus((prev) => ({
             ...prev,
-            [input.workAreaId]: "error",
+            [input.workAreaId]: resolved.status,
           }));
           return;
         }
+      }
+
+      if (!workAreaSaveGuardRef.current.isCurrent(saveToken)) {
+        return;
       }
 
       setWorkAreaSaveStatus((prev) => ({
@@ -527,14 +557,8 @@ export function AssistantShell({
   const displayWorkAreas =
     workAreas.length > 0 ? workAreas : initialState.workAreas;
 
-  const scopeReviewQuestionKey = useMemo(
-    () =>
-      initialState.scopeReview.workAreas
-        .flatMap((workArea) => workArea.activeQuestions)
-        .map((question) => `${question.id}:${question.value ?? ""}`)
-        .join("|"),
-    [initialState.scopeReview.workAreas]
-  );
+  // Stage 3.1A-R1: do not remount Scope Review on answer value changes —
+  // remounting wiped optimistic local answers and caused temporary reversion.
 
   const captureSummary = buildProjectCaptureSummary(
     briefText,
@@ -667,10 +691,12 @@ export function AssistantShell({
               }
               statusVariant={qualityIsCurrent ? "current" : "complete"}
               defaultExpanded={!qualitySubmitted}
-              canCollapse={qualitySubmitted}
+              forceExpanded={isEditingQuality}
+              canCollapse={qualitySubmitted && !isEditingQuality}
               summaryContent={qualitySummary}
               actionLabel={qualitySubmitted ? "Change spec" : undefined}
               onAction={qualitySubmitted ? handleQualityEdit : undefined}
+              cardRef={qualityCardRef}
             >
               <QualityBlock
                 selected={qualityLevel}
@@ -751,7 +777,6 @@ export function AssistantShell({
               canCollapse={false}
             >
               <ScopeSummaryBlock
-                key={scopeReviewQuestionKey}
                 projectId={project.id}
                 scopeReview={initialState.scopeReview}
                 workAreas={initialState.workAreas}

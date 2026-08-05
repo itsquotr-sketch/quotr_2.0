@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { formatConstraintDisplayValue } from "@/components/assistant/ScopeReviewFactRow";
+import { formatAnswerOptionLabel } from "@/lib/scopes/fact-labels";
 
 type EditableConstraintRowProps = {
   question: Question;
@@ -105,7 +106,7 @@ export function EditableConstraintRow({
                     : "border-border hover:bg-muted/50"
                 )}
               >
-                {option}
+                {formatAnswerOptionLabel(option)}
               </button>
             ))}
           </div>

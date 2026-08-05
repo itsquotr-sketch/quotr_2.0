@@ -10,6 +10,11 @@ import {
 import { AIExtractionError } from "@/lib/ai/schema";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
+import {
+  mirrorFactOntoQuestions,
+  upsertProjectConstraintRecord,
+  upsertScopedFact,
+} from "@/lib/assistant/scope-persistence";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { markEstimateStale } from "@/lib/estimate/stale";
@@ -526,69 +531,26 @@ export async function applyNoteProposal(
       factProposal.workAreaType ?? null
     );
 
-    let factQuery = supabase
-      .from("project_facts")
-      .select("id, source")
-      .eq("project_id", projectId)
-      .eq("key", canonicalKey);
-
-    if (workAreaId) {
-      factQuery = factQuery.eq("work_area_id", workAreaId);
-    } else {
-      factQuery = factQuery.is("work_area_id", null);
-    }
-
-    const { data: existingFact } = await factQuery.maybeSingle();
-
-    const factPayload = {
+    // Stage 3.1D: Fact SoT first, then question mirror.
+    const factResult = await upsertScopedFact(supabase, {
+      orgId,
+      projectId,
+      workAreaId,
+      key: canonicalKey,
       label: factProposal.label,
       value: factProposal.proposedValue,
       unit: factProposal.unit ?? null,
-      source: "user" as const,
-      confidence: 1,
-    };
+      source: "user",
+    });
 
-    if (existingFact) {
-      const { error } = await supabase
-        .from("project_facts")
-        .update(factPayload)
-        .eq("id", existingFact.id)
-        .eq("project_id", projectId);
-      if (!error) changesApplied += 1;
-    } else {
-      const { error } = await supabase.from("project_facts").insert({
-        org_id: orgId,
-        project_id: projectId,
-        work_area_id: workAreaId,
+    if (factResult.ok) {
+      changesApplied += 1;
+      await mirrorFactOntoQuestions(supabase, {
+        projectId,
+        workAreaId,
         key: canonicalKey,
-        ...factPayload,
+        value: factProposal.proposedValue,
       });
-      if (!error) changesApplied += 1;
-    }
-
-    if (workAreaId) {
-      const { data: matchingQuestions } = await supabase
-        .from("questions")
-        .select("id, input_type")
-        .eq("project_id", projectId)
-        .eq("work_area_id", workAreaId)
-        .eq("key", canonicalKey);
-
-      for (const question of matchingQuestions ?? []) {
-        const storedValue = normalizeAnswerForStorage(
-          factProposal.proposedValue as string | number | boolean,
-          question.input_type as "number" | "select" | "boolean" | "text"
-        );
-
-        await supabase
-          .from("questions")
-          .update({
-            answer_value: storedValue,
-            answer_source: "user",
-          })
-          .eq("id", question.id)
-          .eq("project_id", projectId);
-      }
     }
   }
 
@@ -608,34 +570,17 @@ export async function applyNoteProposal(
       inputType
     );
 
-    const { data: existing } = await supabase
-      .from("constraints")
-      .select("id")
-      .eq("project_id", projectId)
-      .eq("key", constraintProposal.key)
-      .maybeSingle();
+    const result = await upsertProjectConstraintRecord(supabase, {
+      orgId,
+      projectId,
+      key: constraintProposal.key,
+      label: constraintProposal.label,
+      value: storedValue,
+      source: "user",
+    });
 
-    if (existing) {
-      const { error } = await supabase
-        .from("constraints")
-        .update({
-          label: constraintProposal.label,
-          value: storedValue,
-          source: "user",
-        })
-        .eq("id", existing.id)
-        .eq("project_id", projectId);
-      if (!error) changesApplied += 1;
-    } else {
-      const { error } = await supabase.from("constraints").insert({
-        org_id: orgId,
-        project_id: projectId,
-        key: constraintProposal.key,
-        label: constraintProposal.label,
-        value: storedValue,
-        source: "user",
-      });
-      if (!error) changesApplied += 1;
+    if (result.ok) {
+      changesApplied += 1;
     }
   }
 

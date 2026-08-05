@@ -244,8 +244,9 @@ function main(): void {
   const capture = read("components/assistant/ProjectCaptureBlock.tsx");
   check(
     "UX-005: Project brief and Site notes are separated",
-    capture.includes("Project brief") &&
-      capture.includes("Site notes") &&
+    (capture.includes("Project brief") ||
+      capture.includes("Project Brief")) &&
+      (capture.includes("Site notes") || capture.includes("Site Notes")) &&
       capture.includes("project-brief-heading") &&
       capture.includes("site-notes-heading")
   );

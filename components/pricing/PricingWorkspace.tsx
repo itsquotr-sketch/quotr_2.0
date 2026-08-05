@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useMemo, useRef, useState, useTransition } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { RecalibrationBanner } from "@/components/pricing/RecalibrationBanner";
 import { EmptyState } from "@/components/layout/empty-state";
 import { WorkspaceBanner } from "@/components/layout/workspace-banner";
@@ -50,6 +50,34 @@ export function PricingWorkspace({
   const projectId = document.project_id;
   const pricingDocumentId = document.id;
 
+  // Adopt refreshed project-authoritative client/site when those fields are not dirty.
+  useEffect(() => {
+    const draft = documentDraftRef.current;
+    setDocument((prev) => ({
+      ...initialData.document,
+      client_name:
+        draft.client_name !== undefined
+          ? draft.client_name
+          : initialData.document.client_name,
+      site_address:
+        draft.site_address !== undefined
+          ? draft.site_address
+          : initialData.document.site_address,
+      // Preserve in-progress non-client draft overlays already applied to prev where useful
+      title: draft.title !== undefined ? prev.title : initialData.document.title,
+      scope_summary:
+        draft.scope_summary !== undefined
+          ? prev.scope_summary
+          : initialData.document.scope_summary,
+      valid_until:
+        draft.valid_until !== undefined
+          ? prev.valid_until
+          : initialData.document.valid_until,
+    }));
+    setItems(initialData.items);
+    setWorkAreas(initialData.workAreas);
+  }, [initialData]);
+
   const groupedSections = useMemo(
     () => groupItemsByWorkArea(items, workAreas),
     [items, workAreas]
@@ -60,6 +88,15 @@ export function PricingWorkspace({
       ...documentDraftRef.current,
       ...updates,
     };
+    setDocument((prev) => ({
+      ...prev,
+      ...(updates.client_name !== undefined
+        ? { client_name: updates.client_name }
+        : {}),
+      ...(updates.site_address !== undefined
+        ? { site_address: updates.site_address }
+        : {}),
+    }));
   }, []);
 
   const applyDocumentUpdate = useCallback((updated: PricingDocument) => {

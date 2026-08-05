@@ -433,7 +433,7 @@ export async function getPricingWorkspaceData(
     await Promise.all([
       supabase
         .from("projects")
-        .select("id, title, deleted_at")
+        .select("id, title, client_name, site_address, deleted_at")
         .eq("id", projectId)
         .eq("org_id", orgId)
         .maybeSingle(),
@@ -469,9 +469,28 @@ export async function getPricingWorkspaceData(
     notFound();
   }
 
+  const mappedDocument = mapPricingDocument(document);
+  // Stage 3.1A-R1: Project client/site are authoritative for live draft/reviewed
+  // pricing. Converted/archived pricing keeps its stored snapshot (quotes remain
+  // separately immutable).
+  if (
+    mappedDocument.status === "draft" ||
+    mappedDocument.status === "reviewed"
+  ) {
+    mappedDocument.client_name = project.client_name;
+    mappedDocument.site_address = project.site_address;
+  } else {
+    if (!mappedDocument.client_name && project.client_name) {
+      mappedDocument.client_name = project.client_name;
+    }
+    if (!mappedDocument.site_address && project.site_address) {
+      mappedDocument.site_address = project.site_address;
+    }
+  }
+
   return {
     projectTitle: project.title,
-    document: mapPricingDocument(document),
+    document: mappedDocument,
     items: (items ?? []).map((row) => mapPricingItem(row)),
     workAreas: (workAreas ?? []).map((row) => mapPricingWorkArea(row)),
     latestEstimateRecommendedSell:
@@ -811,6 +830,12 @@ export async function updatePricingDocument(
   };
 
   if (documentInput.title !== undefined) update.title = documentInput.title;
+  if (documentInput.client_name !== undefined) {
+    update.client_name = documentInput.client_name;
+  }
+  if (documentInput.site_address !== undefined) {
+    update.site_address = documentInput.site_address;
+  }
   if (documentInput.valid_until !== undefined) {
     update.valid_until = documentInput.valid_until;
   }
@@ -841,6 +866,35 @@ export async function updatePricingDocument(
     return {
       error: toUserError(error, "pricing-update-document", PRICING_SAVE_FAILED),
     };
+  }
+
+  // Keep project client details as the authoritative pre-quote source of truth.
+  if (
+    documentInput.client_name !== undefined ||
+    documentInput.site_address !== undefined
+  ) {
+    const projectUpdate: Record<string, unknown> = {};
+    if (documentInput.client_name !== undefined) {
+      projectUpdate.client_name = documentInput.client_name;
+    }
+    if (documentInput.site_address !== undefined) {
+      projectUpdate.site_address = documentInput.site_address;
+    }
+    const { error: projectError } = await supabase
+      .from("projects")
+      .update(projectUpdate)
+      .eq("id", document.project_id)
+      .eq("org_id", orgId);
+
+    if (projectError) {
+      return {
+        error: toUserError(
+          projectError,
+          "pricing-update-project-client",
+          PRICING_SAVE_FAILED
+        ),
+      };
+    }
   }
 
   // Product intent: updatePricingDocument accepts metadata + optional GST only.

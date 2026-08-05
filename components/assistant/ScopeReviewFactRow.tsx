@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
+import { formatAnswerOptionLabel } from "@/lib/scopes/fact-labels";
 
 const SOURCE_DISPLAY: Record<ScopeReviewSourceLabel, string> = {
   brief: "Recognised from brief",
@@ -142,7 +143,9 @@ export function ScopeReviewFactRow({
                     : "border-border hover:bg-muted/50"
                 )}
               >
-                {option}
+                {fact.inputType === "select"
+                  ? formatAnswerOptionLabel(option)
+                  : option}
               </button>
             ))}
           </div>
@@ -211,5 +214,8 @@ export function formatConstraintDisplayValue(value: unknown): string {
   const bool = normalizeBooleanForUi(value);
   if (bool) return bool;
   if (value === null || value === undefined || value === "") return "—";
-  return String(value);
+  if (Array.isArray(value)) {
+    return value.map((item) => formatAnswerOptionLabel(item)).join(", ");
+  }
+  return formatAnswerOptionLabel(value);
 }

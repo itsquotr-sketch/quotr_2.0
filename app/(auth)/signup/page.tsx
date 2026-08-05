@@ -33,7 +33,7 @@ export default function SignupPage() {
           Set up your organisation and start building structured estimates.
         </CardDescription>
       </CardHeader>
-      <form action={formAction}>
+      <form action={formAction} className="flex flex-col gap-(--card-spacing)">
         <CardContent className="space-y-4">
           {state.error ? (
             <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">

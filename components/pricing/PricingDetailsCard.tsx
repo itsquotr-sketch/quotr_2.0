@@ -23,6 +23,11 @@ type PricingDetailsCardProps = {
   onChange: (updates: PricingDocumentInput) => void;
 };
 
+/**
+ * Client/site inputs are controlled from parent document state.
+ * PricingWorkspace keeps draft overlays so unsaved local edits are not
+ * silently overwritten by refreshed project props.
+ */
 export function PricingDetailsCard({
   title,
   clientName,
@@ -37,7 +42,8 @@ export function PricingDetailsCard({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Pricing details</CardTitle>
         <CardDescription className="text-xs">
-          Internal document metadata — not shown on a client quote yet.
+          Client and site details update the project record. Draft pricing keeps
+          a matching snapshot; issued quotes retain their own snapshot.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 sm:grid-cols-2">
@@ -50,13 +56,33 @@ export function PricingDetailsCard({
             onChange={(event) => onChange({ title: event.target.value })}
           />
         </div>
-        <div className="space-y-0.5">
-          <p className="text-xs text-muted-foreground">Client</p>
-          <p className="text-sm">{clientName || "—"}</p>
+        <div className="space-y-1.5">
+          <Label htmlFor="pricing-client-name" className="text-xs">
+            Client
+          </Label>
+          <Input
+            id="pricing-client-name"
+            className="h-8"
+            value={clientName ?? ""}
+            placeholder="Client name"
+            onChange={(event) =>
+              onChange({ client_name: event.target.value || null })
+            }
+          />
         </div>
-        <div className="space-y-0.5">
-          <p className="text-xs text-muted-foreground">Site address</p>
-          <p className="text-sm">{siteAddress || "—"}</p>
+        <div className="space-y-1.5">
+          <Label htmlFor="pricing-site-address" className="text-xs">
+            Site address
+          </Label>
+          <Input
+            id="pricing-site-address"
+            className="h-8"
+            value={siteAddress ?? ""}
+            placeholder="Site address"
+            onChange={(event) =>
+              onChange({ site_address: event.target.value || null })
+            }
+          />
         </div>
         <div className="space-y-0.5">
           <p className="text-xs text-muted-foreground">Pricing date</p>

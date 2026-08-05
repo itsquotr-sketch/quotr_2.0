@@ -470,8 +470,23 @@ export async function updateProject(
     return { error: error.message };
   }
 
+  // Stage 3.1A-R1: Project client/site are authoritative before quote.
+  // Keep draft/reviewed pricing snapshots aligned so Pricing UI does not stay stale.
+  const nextClientName = client_name || null;
+  const nextSiteAddress = site_address || null;
+  await supabase
+    .from("pricing_documents")
+    .update({
+      client_name: nextClientName,
+      site_address: nextSiteAddress,
+    })
+    .eq("project_id", projectId)
+    .eq("org_id", orgId)
+    .in("status", ["draft", "reviewed"]);
+
   revalidatePath("/app/dashboard");
   revalidatePath(`/app/projects/${projectId}`);
+  revalidatePath(`/app/projects/${projectId}`, "layout");
 
   return { success: true };
 }

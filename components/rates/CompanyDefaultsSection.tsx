@@ -100,7 +100,7 @@ export function CompanyDefaultsSection({
           Default margin and estimating preferences used across new estimates.
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleSubmit}>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-(--card-spacing)">
         <CardContent className="space-y-6">
           {error ? (
             <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">

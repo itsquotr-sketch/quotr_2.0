@@ -33,7 +33,7 @@ export default function LoginPage() {
           Sign in to your account to continue to your dashboard.
         </CardDescription>
       </CardHeader>
-      <form action={formAction}>
+      <form action={formAction} className="flex flex-col gap-(--card-spacing)">
         <CardContent className="space-y-4">
           {state.error ? (
             <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">

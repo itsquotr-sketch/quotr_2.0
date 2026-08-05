@@ -19,6 +19,8 @@ type CollapsibleStageCardProps = {
   statusLabel?: string;
   statusVariant?: StageStatusVariant;
   defaultExpanded?: boolean;
+  /** When true, the card expands and stays expanded regardless of default. */
+  forceExpanded?: boolean;
   canCollapse?: boolean;
   summaryContent?: ReactNode;
   children: ReactNode;
@@ -26,6 +28,7 @@ type CollapsibleStageCardProps = {
   onAction?: () => void;
   renderAction?: () => ReactNode;
   className?: string;
+  cardRef?: React.RefObject<HTMLDivElement | null>;
 };
 
 const cardVariantStyles: Record<StageStatusVariant, string> = {
@@ -53,6 +56,7 @@ export function CollapsibleStageCard({
   statusLabel,
   statusVariant = "current",
   defaultExpanded = true,
+  forceExpanded = false,
   canCollapse = true,
   summaryContent,
   children,
@@ -60,9 +64,13 @@ export function CollapsibleStageCard({
   onAction,
   renderAction,
   className,
+  cardRef,
 }: CollapsibleStageCardProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
-  const isCollapsed = canCollapse && !expanded;
+  // forceExpanded alone is enough while editing; Quality card onAction also
+  // sets expanded=true. Avoid syncing via effect (cascading render lint).
+  const isExpanded = forceExpanded || expanded;
+  const isCollapsed = canCollapse && !isExpanded;
 
   const toggle = () => {
     if (canCollapse) {
@@ -73,6 +81,7 @@ export function CollapsibleStageCard({
   if (isCollapsed) {
     return (
       <div
+        ref={cardRef}
         className={cn(
           "rounded-lg border border-border/60 bg-card text-card-foreground shadow-none",
           cardVariantStyles[statusVariant],
@@ -143,6 +152,7 @@ export function CollapsibleStageCard({
 
   return (
     <div
+      ref={cardRef}
       className={cn(
         "rounded-xl border bg-card text-card-foreground shadow-sm",
         cardVariantStyles[statusVariant],

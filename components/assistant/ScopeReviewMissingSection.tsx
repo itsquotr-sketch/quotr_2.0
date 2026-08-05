@@ -5,6 +5,10 @@ import { QuestionField } from "@/components/assistant/QuestionBlock";
 import type { WorkAreaActiveQuestion } from "@/components/assistant/types";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
+import {
+  isEmptyAnswerValue,
+  shouldAutosaveAnswers,
+} from "@/lib/assistant/answer-persistence";
 
 export type MissingQuestionAnswers = Record<
   string,
@@ -39,31 +43,44 @@ export function ScopeReviewMissingSection({
 }: ScopeReviewMissingSectionProps) {
   const [validationError, setValidationError] = useState<string | null>(null);
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const lastSavedRef = useRef<string>("");
+  const lastSuccessfulSaveRef = useRef<string>("");
+  const pendingSaveKeyRef = useRef<string | null>(null);
 
   const answersKey = questions
     .map((question) => `${question.id}:${String(answers[question.id] ?? "")}`)
     .join("|");
 
   useEffect(() => {
+    if (saveStatus === "saved") {
+      lastSuccessfulSaveRef.current =
+        pendingSaveKeyRef.current ?? answersKey;
+      pendingSaveKeyRef.current = null;
+    }
+    if (saveStatus === "error") {
+      pendingSaveKeyRef.current = null;
+    }
+  }, [saveStatus, answersKey]);
+
+  useEffect(() => {
     if (!autoSave || isSaving) return;
 
-    const missingRequired = questions.filter(
-      (question) =>
-        question.required &&
-        (answers[question.id] === null ||
-          answers[question.id] === undefined ||
-          answers[question.id] === "")
-    );
-    if (missingRequired.length > 0) return;
-    if (answersKey === lastSavedRef.current) return;
+    if (
+      !shouldAutosaveAnswers({
+        questions,
+        answers,
+      })
+    ) {
+      return;
+    }
+    if (answersKey === lastSuccessfulSaveRef.current) return;
+    if (answersKey === pendingSaveKeyRef.current) return;
 
     if (saveTimerRef.current) {
       clearTimeout(saveTimerRef.current);
     }
 
     saveTimerRef.current = setTimeout(() => {
-      lastSavedRef.current = answersKey;
+      pendingSaveKeyRef.current = answersKey;
       onSave();
     }, 700);
 
@@ -77,10 +94,7 @@ export function ScopeReviewMissingSection({
   const handleSave = () => {
     const missingRequired = questions.filter(
       (question) =>
-        question.required &&
-        (answers[question.id] === null ||
-          answers[question.id] === undefined ||
-          answers[question.id] === "")
+        question.required && isEmptyAnswerValue(answers[question.id])
     );
 
     if (missingRequired.length > 0) {
@@ -89,6 +103,7 @@ export function ScopeReviewMissingSection({
     }
 
     setValidationError(null);
+    pendingSaveKeyRef.current = answersKey;
     onSave();
   };
 
@@ -115,9 +130,9 @@ export function ScopeReviewMissingSection({
           </div>
         ))}
       </div>
-      {validationError || error ? (
+      {validationError || error || saveStatus === "error" ? (
         <p className="mt-3 text-xs text-destructive" role="alert">
-          {validationError ?? error}
+          {validationError ?? error ?? "Could not save. Please try again."}
         </p>
       ) : null}
       <div className="mt-3 flex items-center gap-2">
@@ -131,9 +146,17 @@ export function ScopeReviewMissingSection({
           {isSaving ? "Saving…" : `Save ${workAreaName.toLowerCase()} details`}
         </Button>
         {saveStatus === "saving" || isSaving ? (
-          <span className="text-xs text-muted-foreground">Saving…</span>
+          <span className="text-xs text-muted-foreground" aria-live="polite">
+            Saving…
+          </span>
         ) : saveStatus === "saved" ? (
-          <span className="text-xs text-muted-foreground">Saved</span>
+          <span className="text-xs text-muted-foreground" aria-live="polite">
+            Saved
+          </span>
+        ) : saveStatus === "error" ? (
+          <span className="text-xs text-destructive" aria-live="polite">
+            Error — retry
+          </span>
         ) : null}
       </div>
     </div>

@@ -113,6 +113,8 @@ export function ScopeSummaryBlock({
     name: string;
   } | null>(null);
 
+  // Optimistic local answers. Do not remount this block on server value changes —
+  // local values stay visible over lagging props (Stage 3.1A-R1).
   const [editedAnswers, setEditedAnswers] = useState<
     Record<string, MissingQuestionAnswers>
   >({});
@@ -128,14 +130,29 @@ export function ScopeSummaryBlock({
         continue;
       }
 
+      const serverAnswers = initMissingAnswers(workArea.activeQuestions);
+      const local = editedAnswers[workArea.workAreaId] ?? {};
+      const activeIds = new Set(
+        workArea.activeQuestions.map((question) => question.id)
+      );
+      const filteredLocal: MissingQuestionAnswers = {};
+      for (const [questionId, value] of Object.entries(local)) {
+        if (
+          activeIds.has(questionId) ||
+          savingWorkAreaId === workArea.workAreaId
+        ) {
+          filteredLocal[questionId] = value;
+        }
+      }
+
       merged[workArea.workAreaId] = {
-        ...initMissingAnswers(workArea.activeQuestions),
-        ...(editedAnswers[workArea.workAreaId] ?? {}),
+        ...serverAnswers,
+        ...filteredLocal,
       };
     }
 
     return merged;
-  }, [scopeReview.workAreas, editedAnswers]);
+  }, [scopeReview.workAreas, editedAnswers, savingWorkAreaId]);
 
   return (
     <div className="space-y-4">

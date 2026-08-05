@@ -563,6 +563,8 @@ export function calculateDeck(
     assumptions.push(
       "Existing substructure condition is subject to confirmation."
     );
+  } else if (substructureCondition === "none") {
+    assumptions.push("No existing substructure — new construction assumed.");
   }
 
   if (

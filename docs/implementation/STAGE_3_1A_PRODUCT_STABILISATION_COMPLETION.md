@@ -1,9 +1,12 @@
 # Stage 3.1A — Product Stabilisation Completion
 
-**Status:** Complete — Local  
+**Status:** Complete — Local; Preview remediation pending  
 **Date:** 2026-08-05  
-**Preview / deploy:** Not executed (owner-gated)  
+**Preview / deploy:** Owner Preview executed; defects remediating in **Stage 3.1A-R1** (`docs/implementation/STAGE_3_1A_R1_PREVIEW_REMEDIATION.md`)  
 **Intelligent Scope Discovery:** Not started  
+
+> Do **not** mark Stage 3.1A fully Complete until Preview retest of R1 passes.  
+> Do **not** close Stage 3.1D on this remediation.
 
 ---
 
@@ -123,7 +126,7 @@ See `docs/performance/STAGE_3_1A_ANSWER_SAVE_LATENCY.md`. Reliability fixes prim
 | Stage 2A.1–2A.3B scripts | Pass |
 | Stage 2B.3B–2B.10 scripts | Pass |
 | `npm run build` | Pass (recorded in session) |
-| Preview smoke | **Pending** — `docs/runbooks/STAGE_3_1A_PREVIEW_SMOKE_TEST.md` |
+| Preview smoke | **Pending retest** — R1 remediation Complete — Local; see `docs/runbooks/STAGE_3_1A_PREVIEW_SMOKE_TEST.md` and `docs/implementation/STAGE_3_1A_R1_PREVIEW_REMEDIATION.md` |
 
 ## 16. Manual Preview tests still required
 
@@ -146,9 +149,10 @@ Revert the Stage 3.1A commit. No migrations to roll back. Commercial authority s
 
 ## 20. Recommendation for next release
 
-1. Execute Preview smoke test and sign off 3.1A.
-2. Then begin **Stage 3.1B — Intelligent Scope Discovery** only with explicit authorisation.
-3. Keep commercial engine and Stage 2B goldens frozen unless a separate commercial batch is approved.
+1. Retest Preview using the R1 checklist in `docs/runbooks/STAGE_3_1A_PREVIEW_SMOKE_TEST.md` and sign off 3.1A.
+2. Keep Stage 3.1D Complete — Local (not closed) until product decides otherwise.
+3. Then begin **Stage 3.1B — Intelligent Scope Discovery** only with explicit authorisation.
+4. Keep commercial engine and Stage 2B goldens frozen unless a separate commercial batch is approved.
 
 ---
 

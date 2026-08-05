@@ -181,6 +181,8 @@ export async function getEstimateContext(
     ),
   });
 
+  // Stage 3.1D: Estimate context reads project_facts (+ derived merge) only.
+  // Question answers are never estimate inputs.
   return {
     project: {
       id: project.id,
