@@ -1,13 +1,15 @@
 # Stage 3.1B — Intelligent Scope Discovery Plan
 
 **Status:** In Progress  
-**Date:** 2026-08-05  
+**Date:** 2026-08-06  
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.5A — **Complete — Local** (`docs/implementation/STAGE_3_1B5A_DECISION_LIFECYCLE_COMPLETION.md`)  
-**Next batch:** 3.1B.5B — **Not Started** (production wiring)  
-**Migrations:** `028`/`029` Complete — Local, **Not Applied Remotely**  
+**Current batch:** 3.1B.5B — **Complete — Planning** (`docs/implementation/STAGE_3_1B5B_READINESS_COMPLETION.md`)  
+**Next batch:** Owner-gated remote apply of 028/029, then server-action implementation  
+**Migrations:** `028`/`029` Complete — Local; remote apply **Ready Pending Owner Approval**  
+**Production server wiring:** Ready Pending Remote Migration  
+**Feature flag:** Planned (`SCOPE_DISCOVERY_ENABLED`)  
 **AI provider adapter:** Implemented but unused  
 **UI integration:** Not Started  
 **Production catalogue adoption:** Not Started  
@@ -23,10 +25,14 @@
 - `docs/specifications/SCOPE_DISCOVERY_PROVIDER_CONTRACT.md`
 - `docs/specifications/SCOPE_DISCOVERY_PERSISTENCE_PROPOSAL.md`
 - `docs/architecture/STAGE_3_1B4B_PERSISTENCE_ARCHITECTURE.md`
+- `docs/architecture/STAGE_3_1B5B_PRODUCTION_WIRING_DESIGN.md`
 - `docs/security/STAGE_3_1B4B_PERSISTENCE_SECURITY_REVIEW.md`
 - `docs/performance/STAGE_3_1B_SCOPE_DISCOVERY_LATENCY_AND_COST_BUDGET.md`
 - `docs/decisions/STAGE_3_1B_SCOPE_DISCOVERY_OWNER_DECISIONS.md`
 - `docs/decisions/STAGE_3_1B4B_PERSISTENCE_OWNER_APPROVAL.md`
+- `docs/decisions/STAGE_3_1B5B_REMOTE_AND_WIRING_APPROVAL.md`
+- `docs/runbooks/STAGE_3_1B_REMOTE_MIGRATION_028_029_RUNBOOK.md`
+- `docs/runbooks/STAGE_3_1B5B_PREVIEW_ROLLOUT_PLAN.md`
 
 ---
 
@@ -144,15 +150,30 @@ Split for delivery:
 | **Rollback** | Drop 029 objects pre-adoption; preserve post-data |
 | **Acceptance** | Accept/modify create WA; reject append-only; no Facts; Analyse Job unchanged |
 
-### 3.1B.5B — Production wiring (gated)
+### 3.1B.5B — Remote migration readiness and production wiring design
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **Not Started** |
-| **Customer value** | Surface decisions in Assistant / server actions |
-| **Likely files** | Thin server actions; optional missing-details seed |
-| **Schema** | Uses 028/029; remote apply still owner-gated |
-| **Security** | No new public routes without review |
+| **Readiness** | **Complete — Planning** (2026-08-06) |
+| **Evidence** | Remote history inspection; 028/029 safety audit; remote runbook; wiring design; Preview rollout; approval register; readiness completion |
+| **Customer value** | Owner-ready remote apply + future server-action contract without premature production exposure |
+| **Schema** | 028/029 remote apply **Ready Pending Owner Approval** — not applied this batch |
+| **Wiring** | Production server wiring **Ready Pending Remote Migration** — design only |
+| **Feature flag** | **Planned** — `SCOPE_DISCOVERY_ENABLED` server-side, off by default |
+| **UI** | **Not Started** |
+| **Analyse Job** | **Unchanged** |
+| **Rollback** | Pre-data drop; post-data flag off + preserve |
+| **Acceptance** | Docs + verification only; no remote push; no production code/UI |
+
+### 3.1B.5C — Server-action implementation (gated; next)
+
+| Field | Value |
+| --- | --- |
+| **Readiness** | **READY PENDING OWNER GATE** (remote 028/029 + approvals #1–#10) |
+| **Customer value** | Authenticated Analyse Scope + accept/reject/modify without UI yet (or minimal) |
+| **Likely files** | Thin server actions per wiring design; optional missing-details seed |
+| **Schema** | Uses remotely applied 028/029 |
+| **Security** | Flag gate; no new public routes without review |
 | **Rollback** | Feature flag off |
 | **Acceptance** | Still no Analyse Job rewire until separately gated |
 
@@ -196,7 +217,7 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.5A** — Complete — Local (RPCs + unused service). **3.1B.5B** — production wiring Not Started. Preserve Fact SoT; no DNA; do not rewire Analyse Job until separately gated. Remote apply of 028/029 remains owner-gated.
+**3.1B.5B** — Complete — Planning. **Owner:** approve remote apply of 028/029 (Preview first) via `STAGE_3_1B5B_REMOTE_AND_WIRING_APPROVAL.md`, execute remote runbook, then implement gated server actions (3.1B.5C). Preserve Fact SoT; no DNA; do not rewire Analyse Job until approval #5. UI remains 3.1B.6.
 
 ---
 
@@ -204,7 +225,8 @@ Split for delivery:
 
 | Item | Implication |
 | --- | --- |
-| Suggestion/run persistence | Likely new tables + RLS — owner gate; currently **Not Approved** |
+| Suggestion/run persistence | Migration 028 — local complete; remote **Ready Pending Owner Approval** |
+| Acceptance RPCs | Migration 029 — local complete; remote **Ready Pending Owner Approval** |
 | D-S6 attachments | Separate; needs DB + Storage RLS |
 | D-S4 evidence events | Beneficial later; not required to start 3.1B.1–2 |
 | Catalogue in DB | Optional; code modules preferred first |

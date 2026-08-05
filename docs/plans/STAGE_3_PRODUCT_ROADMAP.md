@@ -16,7 +16,7 @@
 | **3.1A-R1** | Preview Remediation | Fix Preview failures: enums, answer reconcile, Quick Estimate Edit, client propagation, capture hierarchy | **Complete** — included in Preview sign-off 2026-08-05 |
 | **3.1C** | Domain Model Audit | Documentation-only architectural audit of all major domain objects | **Complete** |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
-| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.1–3.1B.5A Complete — Local; 3.1B.5B Not Started; migrations 028/029 Local Not Applied Remotely; AI provider adapter Implemented but unused; UI Not Started; production adoption Not Started; Analyse Job Unchanged |
+| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.1–3.1B.5A Complete — Local; 3.1B.5B Complete — Planning; migrations 028/029 Ready Pending Owner Approval; wiring Ready Pending Remote Migration; feature flag Planned; UI Not Started; Analyse Job Unchanged |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
 | **3.1B.1** | Suggestion contract and deterministic lifecycle | Pure types, validation, lifecycle, staleness, identity, merge | **Complete — Local** (`docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md`) |
 | **3.1B.2** | Scope relationship catalogue foundation | Data-driven edges + deterministic missing-scope samples | **Complete — Local** (`docs/implementation/STAGE_3_1B2_SCOPE_RELATIONSHIP_CATALOGUE_COMPLETION.md`) |
@@ -25,7 +25,7 @@
 | **3.1B.4B-0** | Persistence architecture / security gate | Tables, RLS, threats, verification plan, owner register | **Complete — Planning** (`docs/implementation/STAGE_3_1B4B0_PERSISTENCE_GATE_COMPLETION.md`) |
 | **3.1B.4B** | Discovery persistence implementation | Migration 028 + RLS + local verify | **Complete — Local** (`docs/implementation/STAGE_3_1B4B_PERSISTENCE_COMPLETION.md`) — **Not Applied Remotely** |
 | **3.1B.5A** | Accept / reject / modify lifecycle (local) | RPCs + unused service; WA create + append-only decisions | **Complete — Local** (`docs/implementation/STAGE_3_1B5A_DECISION_LIFECYCLE_COMPLETION.md`) — **Not Applied Remotely** |
-| **3.1B.5B** | Decision lifecycle production wiring | Server actions / UI gate | **Not Started** |
+| **3.1B.5B** | Remote migration readiness + production wiring design | Runbook, wiring design, Preview rollout, owner approvals | **Complete — Planning** (`docs/implementation/STAGE_3_1B5B_READINESS_COMPLETION.md`) — remote apply Not Approved |
 | **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | Not started |
 | **3.3** | Commercial Assemblies | Reusable commercial assemblies / packages | Not started |
 | **3.4** | Explicit Company Defaults / Manual Learning | Manual company defaults and correction capture without automatic rule mutation | Not started |
@@ -74,3 +74,7 @@ Every Stage 3 release should track:
 - Latency/cost: `docs/performance/STAGE_3_1B_SCOPE_DISCOVERY_LATENCY_AND_COST_BUDGET.md`
 - Plan: `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`
 - Owner decisions: `docs/decisions/STAGE_3_1B_SCOPE_DISCOVERY_OWNER_DECISIONS.md`
+- Remote + wiring approvals: `docs/decisions/STAGE_3_1B5B_REMOTE_AND_WIRING_APPROVAL.md`
+- Production wiring design: `docs/architecture/STAGE_3_1B5B_PRODUCTION_WIRING_DESIGN.md`
+- Remote migration runbook: `docs/runbooks/STAGE_3_1B_REMOTE_MIGRATION_028_029_RUNBOOK.md`
+- Preview rollout: `docs/runbooks/STAGE_3_1B5B_PREVIEW_ROLLOUT_PLAN.md`
