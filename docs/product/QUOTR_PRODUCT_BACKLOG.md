@@ -2,9 +2,11 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **Ready to Plan**  
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **Planning** (3.1B.0 audit/spec only — not In Progress)  
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
-**Constraint:** Items marked Deferred must not be implemented until authorised; deferred schema proposals remain **Not Approved**  
+**3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
+**Constraint:** Items marked Deferred must not be implemented until authorised; deferred schema proposals remain **Not Approved**; ISD implementation must not start until owner gates cleared  
+
 
 ---
 
@@ -40,9 +42,17 @@
 | R1-003 | Quick Estimate Spec Edit broken | Bug | P0 | Estimate panel Edit does not open Quality editor | Edit flag without scroll/expand path reliability | Shared `beginQualitySpecEdit` + forceExpand + scroll | Stage 3.1A-R1 | BUG-003 | Complete | Static contract both entry points share flow | | |
 | R1-004 | Project client details do not reach Pricing | Bug | P0 | Pricing shows stale client after project edit | updateProject did not sync pricing; uncontrolled inputs | Project→draft pricing sync; controlled fields; quotes untouched | Stage 3.1A-R1 | BUG-004 | Complete | Propagation + dirty overlay checks | | |
 | R1-005 | Project Capture hierarchy weak | UX | P1 | Brief vs notes still hard to distinguish | Shared headings / footer copy | Two distinct panels + purpose copy; no data change | Stage 3.1A-R1 | UX-005 | Complete | Capture layout static checks | | |
-| FEAT-001 | Collapsible work-area cards | Feature | P2 | Dense Scope Review hard to scan on large jobs | Work-area cards always expanded in detail | Collapse/expand per card; consider Expand all / Collapse all; Summary vs Detailed | Upcoming assistant UX or Intelligent Scope Discovery | Assistant Scope Review layout | Deferred | Design + Preview interaction tests | Supports denser scope discovery UX | Do not build in 3.1A |
-| FEAT-002 | Optional quote items | Feature | P2 | Optional lines cannot be presented correctly under base total | Optional flag exists; commercial presentation of optional totals not productised | Optional section below base subtotal/GST/total; base excludes unselected optionals; own ex/incl GST; future included/optional/alt/excluded model | Future commercial release (post Stage 2B) | Commercial engine goldens; quote presentation | Deferred | Golden scenarios + regression before ship | Commercial learning must not invent optional arithmetic | Separate design — do not patch totals informally |
-| FEAT-003 | Additional site constraints | Feature | P2 | Limited structured constraint taxonomy | Current constraint templates only | Expand structured site constraints aligned with Builder Interview, scope discovery, productivity modifiers, Company DNA | Stage 3 planning (Builder Interview / DNA prep) | Constraint taxonomy design | Deferred | Taxonomy design review before implementation | Direct DNA / interview evidence path | No arbitrary unconstrained list |
+| FEAT-001 | Collapsible work-area cards | Feature | P2 | Dense Scope Review / future suggestion lists hard to scan | Work-area cards always expanded in detail | Collapse/expand per card; consider Expand all / Collapse all; Summary vs Detailed | Stage 3.1B.6 (UI) or later assistant UX | Assistant Scope Review + ISD suggestion list density | Deferred | Design + Preview interaction tests | Supports denser scope discovery UX | Intersects ISD UI; do not implement in 3.1B.0 |
+| FEAT-002 | Optional quote items | Feature | P2 | Optional lines cannot be presented correctly under base total | Optional flag exists; commercial presentation of optional totals not productised | Optional section below base subtotal/GST/total; base excludes unselected optionals; own ex/incl GST; future included/optional/alt/excluded model | Future commercial release (post Stage 2B) | Commercial engine goldens; quote presentation | Deferred | Golden scenarios + regression before ship | Commercial learning must not invent optional arithmetic | Separate from ISD scope-optional catalogue flags |
+| FEAT-003 | Additional site constraints | Feature | P2 | Limited structured constraint taxonomy | Current constraint templates only | Expand structured site constraints aligned with Builder Interview, scope discovery, productivity modifiers, Company DNA | Stage 3.2 Builder Interview | Constraint taxonomy design | Deferred | Taxonomy design review before implementation | Direct DNA / interview evidence path | Defer expanded taxonomy until Builder Interview; ISD may only reference existing constraint keys |
+| ISD-001 | Scope suggestion lifecycle | Feature | P0 | No canonical propose→decide→apply contract across Analyse Job vs notes | Suggested WAs written immediately on Analyse Job; notes use `note_proposals` | Canonical `ScopeDiscoverySuggestion` statuses/transitions; AI proposes; user decides | Stage 3.1B.1 / 3.1B.5 | Boundary + suggestion contract; Fact SoT | Ready | Pure transition tests + Preview accept/reject/modify | Rejection/modification provenance for Evidence Engine | Do not implement in 3.1B.0 |
+| ISD-002 | Missing-scope detection | Feature | P0 | Omissions only via question templates; no relationship-driven warnings | Missing details questions after constraints; no parent→child catalogue | Deterministic catalogue checks + AI contextual merge; never auto-accept | Stage 3.1B.2 / 3.1B.7 | Scope relationship catalogue | Ready | Fixture edges + merge tests | Structured omission evidence for DNA later | Deterministic must not be bypassed by AI |
+| ISD-003 | Scope relationship catalogue | Feature | P1 | No data-driven deck/bathroom/fitout relationship model | Ad hoc enrichment + templates | Versioned catalogue edges (required/likely/conditional) with trigger/suppress facts | Stage 3.1B.2 | Domain model 3.1D | Ready | Sample catalogue evaluation tests | Assembly link reserved for 3.3 | Code modules first; no money formulas |
+| ISD-004 | AI discovery provider | Feature | P0 | Brief/notes extraction not governed as ISD contract | Anthropic extractFromBrief / extractFromSiteNotes | Structured discovery output, evidence refs, validation, prompt/contract versioning | Stage 3.1B.3 | Owner gate on provider data | Ready | Schema validation tests; no silent domain writes | Model metadata for audit | Do not change current Analyse Job prompts in planning batch |
+| ISD-005 | Evidence display | Feature | P1 | Users see little provenance for why a scope was suggested | Confidence labels; limited evidence | Show evidence band + excerpts/rule ids per contract | Stage 3.1B.6 | Suggestion contract evidence model | Ready | Preview: evidence visible; no commercial certainty language | Evidence Engine substrate | |
+| ISD-006 | Discovery rerun / idempotency | Feature | P0 | Analyse Job one-shot; no stale/supersede; duplicate risk on notes | Brief locked; note analyse blocked while pending | ScopeDiscoveryRun idempotency; stale/supersede; no duplicate provider calls | Stage 3.1B.4 | Owner gates on auto-rerun | Ready | Same snapshot → reuse run | Run history for learning later | Explicit user trigger recommended |
+| ISD-007 | Discovery latency / progress | Performance | P1 | Only basic Analysing state; no budgets | Unmeasured provider wait | Progress states + latency/cost budgets; cancellation where practical | Stage 3.1B.8 | Latency budget doc | Ready | Measure vs budget in Preview | — | Do not claim SLOs until measured |
+| ISD-008 | Attachment security design | Security | P1 | Photos/documents missing; future media is high-risk | No project attachments | Design DB ownership/RLS **and** Storage bucket policies before media ISD | Pre-media / D-S6 | Deferred schema D-S6 | Deferred | Design review + RLS/storage checklist | Visual evidence for DNA | Architecture-review: both DB and bucket policies required |
 
 ---
 
@@ -50,7 +60,12 @@
 
 - Implemented and Preview-signed: BUG-001–004, UX-001–005, R1-001–R1-005.
 - Stage 3.1A **Complete**; Stage 3.1D **Complete** — see `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md` (2026-08-05).
-- Stage 3.1B **Ready to Plan** — Intelligent Scope Discovery has **not** started.
-- FEAT-001–003 remain **Deferred**.
+
+## Batch notes (Stage 3.1B)
+
+- Stage 3.1B status: **Planning** (3.1B.0 audit/specification complete). **Not In Progress.**
+- Planning docs: audit, boundary, suggestion contract, catalogue spec, latency budget, implementation plan, owner decisions.
+- Backlog ISD-001–ISD-008 recorded as Ready/Deferred — **not Complete**.
+- FEAT-001 Deferred (intersects 3.1B.6); FEAT-002 Deferred; FEAT-003 Deferred until Builder Interview.
 - Deferred schema proposals remain **Not Approved**.
-- Do not begin Intelligent Scope Discovery, Company DNA, or commercial formula changes without explicit authorisation.
+- Do not implement Intelligent Scope Discovery, change Analyse Job behaviour, AI prompts, migrations, commercial formulas, or Company DNA until explicitly authorised.

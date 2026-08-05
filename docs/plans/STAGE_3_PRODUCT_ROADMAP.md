@@ -16,7 +16,8 @@
 | **3.1A-R1** | Preview Remediation | Fix Preview failures: enums, answer reconcile, Quick Estimate Edit, client propagation, capture hierarchy | **Complete** — included in Preview sign-off 2026-08-05 |
 | **3.1C** | Domain Model Audit | Documentation-only architectural audit of all major domain objects | **Complete** |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
-| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **Ready to Plan** — do not implement until explicitly authorised; deferred schema proposals remain Not Approved; FEAT-001–003 remain Deferred |
+| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **Planning** — 3.1B.0 audit/spec complete (`docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`); not In Progress; owner decisions open; deferred schema Not Approved; FEAT-001–003 Deferred |
+| **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
 | **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | Not started |
 | **3.3** | Commercial Assemblies | Reusable commercial assemblies / packages | Not started |
 | **3.4** | Explicit Company Defaults / Manual Learning | Manual company defaults and correction capture without automatic rule mutation | Not started |
@@ -50,8 +51,18 @@ Every Stage 3 release should track:
 
 ---
 
-## Deferred product features (recorded, not scheduled for 3.1A)
+## Deferred product features (recorded, not scheduled for implementation in 3.1B.0)
 
-- FEAT-001 Collapsible work-area cards
+- FEAT-001 Collapsible work-area cards (intersects future 3.1B.6 UI)
 - FEAT-002 Optional quote items (requires commercial design + goldens)
-- FEAT-003 Additional site constraints taxonomy
+- FEAT-003 Additional site constraints taxonomy (Builder Interview)
+
+## Stage 3.1B planning pointers
+
+- Audit: `docs/audits/STAGE_3_1B_SCOPE_DISCOVERY_CURRENT_STATE_AUDIT.md`
+- Boundary: `docs/specifications/INTELLIGENT_SCOPE_DISCOVERY_BOUNDARY.md`
+- Suggestion contract: `docs/specifications/SCOPE_DISCOVERY_SUGGESTION_CONTRACT.md`
+- Catalogue: `docs/specifications/SCOPE_RELATIONSHIP_CATALOGUE_SPEC.md`
+- Latency/cost: `docs/performance/STAGE_3_1B_SCOPE_DISCOVERY_LATENCY_AND_COST_BUDGET.md`
+- Plan: `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`
+- Owner decisions: `docs/decisions/STAGE_3_1B_SCOPE_DISCOVERY_OWNER_DECISIONS.md`
