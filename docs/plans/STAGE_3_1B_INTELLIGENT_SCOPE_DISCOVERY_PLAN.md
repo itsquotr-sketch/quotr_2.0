@@ -5,11 +5,12 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.1 — **Complete — Local** (`docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md`)  
-**Next batch:** 3.1B.2 — **Ready** (scope relationship catalogue foundation)  
+**Current batch:** 3.1B.2 — **Complete — Local** (`docs/implementation/STAGE_3_1B2_SCOPE_RELATIONSHIP_CATALOGUE_COMPLETION.md`)  
+**Next batch:** 3.1B.3 — **Ready Pending Owner Gate** (AI discovery provider)  
 **Migrations:** Not Approved  
 **AI provider integration:** Not Started  
 **UI integration:** Not Started  
+**Production catalogue adoption:** Not Started  
 
 **Specs:**
 
@@ -68,23 +69,22 @@ Improve likely-scope, missing-scope, dependency, and clarification discovery fro
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **READY** (owner category choice #9 still Pending — use recommended deck/bathroom/fitout samples) |
+| **Readiness** | **Complete — Local** (2026-08-05) |
+| **Evidence** | `lib/scope-discovery/catalogue/*`; `scripts/verify-stage-3-1b2-scope-relationship-catalogue.ts`; completion doc |
 | **Customer value** | Deterministic missing-scope for deck/bathroom/fitout samples |
-| **Likely files** | Catalogue modules under `lib/scopes/catalogue/` or `lib/scope-discovery/catalogue/` (new); missing-scope evaluator emitting contract suggestions |
-| **Schema** | Code data modules; no migration required |
-| **Security** | None beyond existing project reads |
-| **Rollback** | Remove modules |
-| **Acceptance** | Sample edges evaluate against fixture Facts; no AI; no money |
+| **Schema** | None — code data modules; migrations **Not Approved** |
+| **Production adoption** | None |
+| **Acceptance** | Sample edges evaluate against fixture Facts; suggestions validate under 3.1B.1; no AI; no money |
 
 ### 3.1B.3 — AI discovery provider
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **READY PENDING OWNER GATE** (what data may be sent; fallback) |
+| **Readiness** | **READY PENDING OWNER GATE** (fallback behaviour; prompt/version governance; when to change Analyse Job) |
 | **Customer value** | Structured, validated discovery output with evidence refs |
 | **Likely files** | `lib/ai/*` new discovery extract (separate from changing current prompts until gated); schema validators |
 | **Schema** | None |
-| **Security** | Input caps; output validation; no secret logging; injection-aware sanitisation |
+| **Security** | Input caps; output validation; no secret logging; OCD-ISD-17 data minimisation |
 | **Rollback** | Feature flag / unused module |
 | **Acceptance** | Zod contract tests; no persistence adoption yet; **do not change current Analyse Job** until later orchestration batch |
 
@@ -152,7 +152,7 @@ Improve likely-scope, missing-scope, dependency, and clarification discovery fro
 
 ## 5. Recommended next implementation batch
 
-**3.1B.2** — Scope relationship catalogue foundation (samples + deterministic missing-scope), consuming `lib/scope-discovery` types without AI or Analyse Job rewiring.
+**3.1B.3** — AI discovery provider (structured output + validation + evidence refs), without persistence adoption or Analyse Job behaviour change until separately gated.
 
 ---
 

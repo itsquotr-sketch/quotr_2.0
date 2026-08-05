@@ -1,9 +1,12 @@
 # Scope Relationship Catalogue — Specification
 
-**Status:** Specification (Stage 3.1B.0) — sample only; full catalogue not built  
+**Status:** Specification + Stage 3.1B.2 implementation (`lib/scope-discovery/catalogue/`) — **production adoption Not Started**  
 **Date:** 2026-08-05  
+**Catalogue version:** `scope-relationship-catalogue/v1`  
+**Completion:** `docs/implementation/STAGE_3_1B2_SCOPE_RELATIONSHIP_CATALOGUE_COMPLETION.md`  
 **Nature:** Domain catalogue of scope relationships — **not** commercial formulas  
-**Boundary:** `INTELLIGENT_SCOPE_DISCOVERY_BOUNDARY.md`
+**Boundary:** `INTELLIGENT_SCOPE_DISCOVERY_BOUNDARY.md`  
+**Emits:** Stage 3.1B.1 `ScopeDiscoverySuggestion` via `evaluateScopeRelationships`
 
 ---
 
@@ -162,4 +165,5 @@ This catalogue powers deterministic missing-scope detection and constrains AI pr
 | --- | --- |
 | Path | `docs/specifications/SCOPE_RELATIONSHIP_CATALOGUE_SPEC.md` |
 | Created | 2026-08-05 |
-| Full catalogue | Not built in 3.1B.0 |
+| Implementation | Stage 3.1B.2 — `lib/scope-discovery/catalogue/` (samples; production adoption Not Started) |
+| Full encyclopaedia | Not built — samples only |
