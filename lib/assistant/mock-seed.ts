@@ -481,7 +481,7 @@ export const PROGRESS_STAGES = [
   { key: "brief", label: "Brief" },
   { key: "confirm_work_areas", label: "Work areas" },
   { key: "quality", label: "Quality" },
-  { key: "work_area_questions", label: "Questions" },
+  { key: "work_area_questions", label: "Scope Details" },
   { key: "constraints", label: "Constraints" },
   { key: "estimate_ready", label: "Estimate" },
 ] as const;

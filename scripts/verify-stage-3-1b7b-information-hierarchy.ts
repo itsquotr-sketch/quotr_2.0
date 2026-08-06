@@ -257,7 +257,9 @@ check(
   qe.estimatedWorkAreas.includes("Deck") &&
     qe.includedScopeItems.includes("6") &&
     qe.outstandingClarifications.includes("1") &&
-    qe.confidenceDrivers.length > 0
+    qe.confidenceDrivers.length > 0 &&
+    typeof qe.unansweredRequiredDetails === "string" &&
+    Array.isArray(qe.confidenceComplete)
 );
 
 const stepper = buildStepperStepSummaries({

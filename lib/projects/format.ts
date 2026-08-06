@@ -20,9 +20,9 @@ export function formatStage(stage: string): string {
   const labels: Record<string, string> = {
     brief: "Brief",
     confirm_work_areas: "Work areas",
-    quality: "Quality",
-    work_area_questions: "Questions",
-    constraints: "Constraints",
+    quality: "Specification",
+    work_area_questions: "Scope Details",
+    constraints: "Site Constraints",
     ready_to_estimate: "Ready to estimate",
     estimate_ready: "Estimate ready",
   };
@@ -60,8 +60,8 @@ export function formatEstimateStatus(input: {
     brief: "Draft / Brief",
     confirm_work_areas: "Work areas",
     quality: "Work areas",
-    work_area_questions: "Questions",
-    constraints: "Constraints",
+    work_area_questions: "Scope Details",
+    constraints: "Site Constraints",
     ready_to_estimate: "Constraints",
   };
 

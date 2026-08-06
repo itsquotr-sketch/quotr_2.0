@@ -219,7 +219,9 @@ check(
 );
 check(
   "Quality still after work areas (and discovery when enabled)",
-  shell.includes("{/* 3. Quality */}") || shell.includes('title="Quality"')
+  shell.includes("{/* 3. Specification") ||
+    shell.includes('title="Specification"') ||
+    shell.includes('title="Quality"')
 );
 check(
   "Analyse Job still present",
