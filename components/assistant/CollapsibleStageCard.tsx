@@ -18,10 +18,19 @@ type CollapsibleStageCardProps = {
   subtitle?: string;
   statusLabel?: string;
   statusVariant?: StageStatusVariant;
+  /** Initial expand when preferredExpanded is not provided. */
   defaultExpanded?: boolean;
-  /** When true, the card expands and stays expanded regardless of default. */
+  /**
+   * Progressive disclosure preference for this stage.
+   * When this value changes (stage advances), manual expand overrides reset
+   * so only the active incomplete stage stays open by default.
+   * Manual toggle never changes completion or triggers AI.
+   */
+  preferredExpanded?: boolean;
+  /** When true, the card expands and stays expanded regardless of preference. */
   forceExpanded?: boolean;
   canCollapse?: boolean;
+  /** Collapsed at-a-glance content (string or rich summary). */
   summaryContent?: ReactNode;
   children: ReactNode;
   actionLabel?: string;
@@ -29,11 +38,13 @@ type CollapsibleStageCardProps = {
   renderAction?: () => ReactNode;
   className?: string;
   cardRef?: React.RefObject<HTMLDivElement | null>;
+  /** Stronger elevation for the single active incomplete stage. */
+  isActive?: boolean;
 };
 
 const cardVariantStyles: Record<StageStatusVariant, string> = {
   current: "border-[var(--brand-orange-muted)] ring-1 ring-[var(--brand-orange)]/15",
-  complete: "border-border/60",
+  complete: "border-border/50 bg-card/80",
   review:
     "border-amber-200 bg-amber-50/40 dark:border-amber-900/50 dark:bg-amber-950/20",
   stale:
@@ -56,6 +67,7 @@ export function CollapsibleStageCard({
   statusLabel,
   statusVariant = "current",
   defaultExpanded = true,
+  preferredExpanded,
   forceExpanded = false,
   canCollapse = true,
   summaryContent,
@@ -65,134 +77,155 @@ export function CollapsibleStageCard({
   renderAction,
   className,
   cardRef,
+  isActive = false,
 }: CollapsibleStageCardProps) {
-  const [expanded, setExpanded] = useState(defaultExpanded);
-  // forceExpanded alone is enough while editing; Quality card onAction also
-  // sets expanded=true. Avoid syncing via effect (cascading render lint).
-  const isExpanded = forceExpanded || expanded;
-  const isCollapsed = canCollapse && !isExpanded;
+  const preferred = preferredExpanded ?? defaultExpanded;
+  const [expansion, setExpansion] = useState<{
+    preferred: boolean;
+    userExpanded: boolean | null;
+  }>(() => ({ preferred, userExpanded: null }));
+
+  // When progressive-disclosure preference changes, drop manual override
+  // (React-supported adjust-state-during-render pattern — no effect).
+  if (expansion.preferred !== preferred) {
+    setExpansion({ preferred, userExpanded: null });
+  }
+
+  const isExpanded =
+    forceExpanded || (expansion.userExpanded ?? expansion.preferred);
+  const showCollapsedChrome = canCollapse && !isExpanded;
 
   const toggle = () => {
-    if (canCollapse) {
-      setExpanded((prev) => !prev);
-    }
+    if (!canCollapse) return;
+    const next = !isExpanded;
+    setExpansion({ preferred, userExpanded: next });
   };
 
-  if (isCollapsed) {
-    return (
-      <div
-        ref={cardRef}
-        className={cn(
-          "rounded-lg border border-border/60 bg-card text-card-foreground shadow-none",
-          cardVariantStyles[statusVariant],
-          className
-        )}
-      >
-        <div className="flex min-h-11 items-center gap-2 px-3 py-2 sm:min-h-12 sm:px-4">
-          <button
-            type="button"
-            onClick={toggle}
-            aria-expanded={false}
-            className="flex min-h-11 min-w-0 flex-1 items-center gap-2 rounded-md text-left sm:min-h-12"
-          >
-            <ChevronDown className="size-4 shrink-0 -rotate-90 text-muted-foreground" />
-            <div className="min-w-0 flex-1">
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-sm font-medium">{title}</span>
-                {statusLabel ? (
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      "shrink-0 text-[10px] font-normal",
-                      badgeVariantStyles[statusVariant]
-                    )}
-                  >
-                    {statusLabel}
-                  </Badge>
-                ) : null}
-              </div>
-              {summaryContent ? (
-                <p className="truncate text-xs text-muted-foreground">
-                  {summaryContent}
-                </p>
-              ) : null}
-            </div>
-          </button>
-          {renderAction ? (
-            renderAction()
-          ) : actionLabel && onAction ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 shrink-0 px-2 text-xs sm:h-10"
-              onClick={(event) => {
-                event.stopPropagation();
-                onAction();
-                setExpanded(true);
-              }}
-            >
-              {actionLabel}
-            </Button>
-          ) : actionLabel ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              className="h-9 shrink-0 px-2 text-xs sm:h-10"
-              onClick={toggle}
-            >
-              {actionLabel}
-            </Button>
-          ) : null}
-        </div>
-      </div>
-    );
-  }
+  const openAndAct = () => {
+    onAction?.();
+    if (canCollapse) setExpansion({ preferred, userExpanded: true });
+  };
 
   return (
     <div
       ref={cardRef}
+      data-stage-active={isActive ? "true" : "false"}
+      data-stage-expanded={isExpanded ? "true" : "false"}
       className={cn(
-        "rounded-xl border bg-card text-card-foreground shadow-sm",
+        "rounded-lg border bg-card text-card-foreground transition-[box-shadow,border-color,background-color] duration-200 ease-out",
         cardVariantStyles[statusVariant],
+        isActive
+          ? "border-[var(--brand-orange-muted)] shadow-md ring-1 ring-[var(--brand-orange)]/25"
+          : "shadow-none",
+        !isActive && !isExpanded && "opacity-[0.94]",
         className
       )}
     >
-      <div className="flex items-start justify-between gap-3 border-b px-4 py-3">
-        <div className="min-w-0 flex-1 space-y-0.5">
-          <div className="flex flex-wrap items-center gap-2">
-            {canCollapse ? (
-              <button
-                type="button"
-                onClick={toggle}
-                aria-expanded
-                className="flex min-h-11 items-center gap-2 rounded-md text-left sm:min-h-12"
-              >
-                <ChevronDown className="size-4 shrink-0 text-muted-foreground" />
-                <span className="text-base font-semibold">{title}</span>
-              </button>
-            ) : (
-              <h3 className="text-base font-semibold">{title}</h3>
-            )}
-            {statusLabel ? (
-              <Badge
-                variant="outline"
+      <div
+        className={cn(
+          "flex items-start gap-2 px-3 py-1.5 sm:px-3.5",
+          isExpanded && "border-b border-border/50 py-2.5"
+        )}
+      >
+        <button
+          type="button"
+          onClick={toggle}
+          aria-expanded={isExpanded}
+          disabled={!canCollapse}
+          className={cn(
+            "flex min-h-11 min-w-0 flex-1 items-start gap-2 rounded-md text-left sm:min-h-12",
+            !canCollapse && "cursor-default"
+          )}
+        >
+          {canCollapse ? (
+            <ChevronDown
+              className={cn(
+                "mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out",
+                !isExpanded && "-rotate-90"
+              )}
+              aria-hidden
+            />
+          ) : null}
+          <div className="min-w-0 flex-1 space-y-1">
+            <div className="flex flex-wrap items-center gap-2">
+              <span
                 className={cn(
-                  "shrink-0 text-[10px] font-normal",
-                  badgeVariantStyles[statusVariant]
+                  isExpanded
+                    ? "text-sm font-semibold text-foreground"
+                    : "text-sm font-medium text-foreground/90"
                 )}
               >
-                {statusLabel}
-              </Badge>
+                {title}
+              </span>
+              {statusLabel ? (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    "shrink-0 text-[10px] font-normal",
+                    badgeVariantStyles[statusVariant]
+                  )}
+                >
+                  {statusLabel}
+                </Badge>
+              ) : null}
+            </div>
+            {isExpanded && subtitle ? (
+              <p className="text-xs text-muted-foreground">{subtitle}</p>
+            ) : null}
+            {showCollapsedChrome && summaryContent ? (
+              <div className="pt-0.5">{summaryContent}</div>
             ) : null}
           </div>
-          {subtitle ? (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
-          ) : null}
+        </button>
+        {renderAction ? (
+          renderAction()
+        ) : actionLabel && onAction ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9 shrink-0 px-2 text-xs sm:h-10"
+            onClick={(event) => {
+              event.stopPropagation();
+              openAndAct();
+            }}
+          >
+            {actionLabel}
+          </Button>
+        ) : actionLabel ? (
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="h-9 shrink-0 px-2 text-xs sm:h-10"
+            onClick={(event) => {
+              event.stopPropagation();
+              toggle();
+            }}
+          >
+            {actionLabel}
+          </Button>
+        ) : null}
+      </div>
+
+      <div
+        className={cn(
+          "grid transition-[grid-template-rows] duration-200 ease-out",
+          isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
+        )}
+        aria-hidden={!isExpanded}
+      >
+        <div className="min-h-0 overflow-hidden">
+          <div
+            className={cn(
+              "px-3.5 py-3 transition-opacity duration-200 ease-out sm:px-4",
+              isExpanded ? "opacity-100" : "opacity-0"
+            )}
+          >
+            {children}
+          </div>
         </div>
       </div>
-      <div className="px-4 py-4">{children}</div>
     </div>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
+import { ChevronDown } from "lucide-react";
 import type { ScopeReview } from "@/lib/assistant/types";
 import { AddWorkAreaDialog } from "@/components/assistant/AddWorkAreaDialog";
 import {
@@ -20,6 +21,51 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+
+function CollapsedQuotePreview({
+  description,
+  children,
+}: {
+  description: string | null | undefined;
+  children: ReactNode;
+}) {
+  const [open, setOpen] = useState(false);
+  const text = description?.trim() ?? "";
+  if (!text && !children) return null;
+
+  const preview =
+    text.length > 120 ? `${text.slice(0, 120).trim()}…` : text || "Add a quote description";
+
+  return (
+    <div className="mt-2.5 border-t border-border/50 pt-2.5">
+      <button
+        type="button"
+        className="flex w-full items-start justify-between gap-2 text-left"
+        aria-expanded={open}
+        onClick={() => setOpen((v) => !v)}
+      >
+        <div className="min-w-0">
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Quote description
+          </p>
+          {!open ? (
+            <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
+              {preview}
+            </p>
+          ) : null}
+        </div>
+        <ChevronDown
+          className={cn(
+            "mt-0.5 size-4 shrink-0 text-muted-foreground transition-transform duration-200",
+            open && "rotate-180"
+          )}
+          aria-hidden
+        />
+      </button>
+      {open ? <div className="mt-2">{children}</div> : null}
+    </div>
+  );
+}
 
 type ScopeSummaryBlockProps = {
   projectId: string;
@@ -257,30 +303,34 @@ export function ScopeSummaryBlock({
           ) : null}
 
           {editable ? (
-            <WorkAreaQuoteDescriptionEditor
-              projectId={projectId}
-              workAreaId={workArea.workAreaId}
-              workAreaName={workArea.workAreaName}
-              initialDescription={
+            <CollapsedQuotePreview
+              description={
                 descriptionOverrides[workArea.workAreaId] ??
                 workArea.quoteDescription
               }
-              onSaved={(description) =>
-                setDescriptionOverrides((prev) => ({
-                  ...prev,
-                  [workArea.workAreaId]: description,
-                }))
-              }
-            />
+            >
+              <WorkAreaQuoteDescriptionEditor
+                projectId={projectId}
+                workAreaId={workArea.workAreaId}
+                workAreaName={workArea.workAreaName}
+                initialDescription={
+                  descriptionOverrides[workArea.workAreaId] ??
+                  workArea.quoteDescription
+                }
+                onSaved={(description) =>
+                  setDescriptionOverrides((prev) => ({
+                    ...prev,
+                    [workArea.workAreaId]: description,
+                  }))
+                }
+              />
+            </CollapsedQuotePreview>
           ) : workArea.quoteDescription ? (
-            <div className="mt-3 border-t border-border/50 pt-3">
-              <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-                Quote description
-              </h4>
-              <p className="mt-2 text-xs leading-relaxed text-muted-foreground break-words whitespace-pre-wrap">
+            <CollapsedQuotePreview description={workArea.quoteDescription}>
+              <p className="text-xs leading-relaxed text-muted-foreground break-words whitespace-pre-wrap">
                 {workArea.quoteDescription}
               </p>
-            </div>
+            </CollapsedQuotePreview>
           ) : null}
 
           {workArea.facts.length > 0 ? (

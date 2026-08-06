@@ -1,10 +1,11 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
+import type { StepperStepSummary } from "@/lib/assistant/stage-completion-summaries";
 
 export const STEPPER_STAGES = [
   { key: "brief", label: "Brief" },
   { key: "confirm_work_areas", label: "Work Areas" },
-  { key: "quality", label: "Quality" },
+  { key: "quality", label: "Specification" },
   { key: "work_area_questions", label: "Questions" },
   { key: "constraints", label: "Site Constraints" },
   { key: "estimate_ready", label: "Estimate" },
@@ -17,6 +18,8 @@ export type StepperStepState = "complete" | "active" | "pending" | "attention";
 type StepperNavProps = {
   currentStage: string;
   needsAttention?: Partial<Record<StepperStageKey, boolean>>;
+  /** Compact secondary lines — presentation only (3.1B.7B). */
+  stepSummaries?: Partial<Record<StepperStageKey, StepperStepSummary>>;
   className?: string;
 };
 
@@ -71,7 +74,7 @@ function getStepState(
 }
 
 const stateStyles: Record<StepperStepState, string> = {
-  complete: "text-muted-foreground",
+  complete: "text-foreground/80",
   active: "font-medium text-foreground",
   pending: "text-muted-foreground/60",
   attention: "font-medium text-amber-700 dark:text-amber-300",
@@ -89,29 +92,31 @@ const dotStyles: Record<StepperStepState, string> = {
 export function StepperNav({
   currentStage,
   needsAttention = {},
+  stepSummaries = {},
   className,
 }: StepperNavProps) {
   return (
     <nav aria-label="Assistant stages" className={cn("w-full", className)}>
-      <ol className="space-y-1">
+      <ol className="space-y-0.5">
         {STEPPER_STAGES.map((step, index) => {
           const state = getStepState(
             step.key,
             currentStage,
             needsAttention[step.key]
           );
+          const summary = stepSummaries[step.key];
 
           return (
             <li key={step.key}>
               <div
                 className={cn(
-                  "flex items-center gap-2.5 rounded-lg px-2 py-2 text-sm",
+                  "flex items-start gap-2.5 rounded-lg px-2 py-1.5 text-sm",
                   state === "active" && "bg-muted/50"
                 )}
               >
                 <span
                   className={cn(
-                    "flex size-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold",
+                    "mt-0.5 flex size-6 shrink-0 items-center justify-center rounded-full border text-[11px] font-semibold",
                     dotStyles[state]
                   )}
                 >
@@ -121,9 +126,22 @@ export function StepperNav({
                     index + 1
                   )}
                 </span>
-                <span className={cn("leading-tight", stateStyles[state])}>
-                  {step.label}
-                </span>
+                <div className="min-w-0 flex-1 leading-tight">
+                  <span className={cn("block", stateStyles[state])}>
+                    {step.label}
+                  </span>
+                  {summary?.primary ? (
+                    <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                      {summary.primary}
+                      {summary.secondary ? (
+                        <span className="text-muted-foreground/80">
+                          {" "}
+                          · {summary.secondary}
+                        </span>
+                      ) : null}
+                    </span>
+                  ) : null}
+                </div>
               </div>
             </li>
           );

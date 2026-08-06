@@ -50,7 +50,9 @@ import {
   ScopeImpactRecommendationsPanel,
   type ScopeImpactRecommendationRowStatus,
 } from "@/components/assistant/ScopeImpactRecommendationsPanel";
+import { ScopeReviewCollapsedSummary } from "@/components/assistant/StageCollapsedSummaries";
 import type { ScopeReview } from "@/lib/assistant/types";
+import { buildScopeItemSummaryLists } from "@/lib/assistant/stage-completion-summaries";
 import { cn } from "@/lib/utils";
 
 type ScopeDiscoveryReviewBlockProps = {
@@ -64,6 +66,10 @@ type ScopeDiscoveryReviewBlockProps = {
   onCompletionChange?: (complete: boolean) => void;
   /** Soft warning before estimate when high-priority recommendations remain. */
   onUnresolvedRecommendationsChange?: (count: number) => void;
+  /** Progressive disclosure — prefer expanded when this stage is active. */
+  preferredExpanded?: boolean;
+  /** Stronger elevation when this is the active incomplete stage. */
+  isActiveStage?: boolean;
 };
 
 type PendingSuggestionAction = {
@@ -232,6 +238,8 @@ export function ScopeDiscoveryReviewBlock({
   scopeReview = null,
   onCompletionChange,
   onUnresolvedRecommendationsChange,
+  preferredExpanded,
+  isActiveStage = false,
 }: ScopeDiscoveryReviewBlockProps) {
   const router = useRouter();
   const resultsGuard = useRef(createLatestWriteGuard());
@@ -759,6 +767,19 @@ export function ScopeDiscoveryReviewBlock({
             ? "complete"
             : "review";
 
+  const scopeItemLists = buildScopeItemSummaryLists({
+    suggestions: batchEligible,
+  });
+
+  const disclosureExpanded =
+    preferredExpanded !== undefined
+      ? preferredExpanded ||
+        isAnalysing ||
+        isEditingScope ||
+        Boolean(isStale) ||
+        (!hasRun && !analyseError)
+      : true;
+
   return (
     <>
       <CollapsibleStageCard
@@ -766,9 +787,22 @@ export function ScopeDiscoveryReviewBlock({
         subtitle={SCOPE_DISCOVERY_UI_COPY.cardSubtitle}
         statusLabel={cardStatusLabel}
         statusVariant={cardStatusVariant}
-        defaultExpanded
+        preferredExpanded={disclosureExpanded}
         canCollapse={hasRun && !isAnalysing && !isEditingScope}
-        summaryContent={summaryBits.join(" · ")}
+        forceExpanded={isEditingScope || Boolean(isStale)}
+        isActive={isActiveStage}
+        summaryContent={
+          completion.complete && !isEditingScope ? (
+            <ScopeReviewCollapsedSummary lists={scopeItemLists} />
+          ) : (
+            <p className="text-xs text-muted-foreground">
+              {summaryBits.join(" · ")}
+            </p>
+          )
+        }
+        actionLabel={
+          completion.complete && !isEditingScope ? "View" : undefined
+        }
       >
         <div className="space-y-4" aria-live="polite">
           {isStale ? (

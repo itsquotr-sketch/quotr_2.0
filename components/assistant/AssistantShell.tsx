@@ -3,30 +3,34 @@
 import { useRouter } from "next/navigation";
 import { startTransition, useCallback, useMemo, useRef, useState } from "react";
 import { AssistantProgress } from "@/components/assistant/AssistantProgress";
-import {
-  CollapsibleStageCard,
-} from "@/components/assistant/CollapsibleStageCard";
+import { CollapsibleStageCard } from "@/components/assistant/CollapsibleStageCard";
 import { StepperNav } from "@/components/assistant/StepperNav";
-import {
-  ProjectCaptureBlock,
-  buildProjectCaptureSummary,
-} from "@/components/assistant/ProjectCaptureBlock";
+import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock";
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
-import { QualityBlock, qualityLabel } from "@/components/assistant/QualityBlock";
+import { QualityBlock, QUALITY_OPTIONS } from "@/components/assistant/QualityBlock";
 import {
   QuestionBlock,
   type QuestionAnswers,
 } from "@/components/assistant/QuestionBlock";
 import { ScopeSummaryBlock } from "@/components/assistant/ScopeSummaryBlock";
-import type { QualityLevel, WorkArea, WorkAreaActiveQuestion } from "@/components/assistant/types";
+import type {
+  QualityLevel,
+  WorkArea,
+  WorkAreaActiveQuestion,
+} from "@/components/assistant/types";
 import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
-import {
-  WorkAreaConfirmationBlock,
-  buildWorkAreasSummary,
-} from "@/components/assistant/WorkAreaConfirmationBlock";
+import { WorkAreaConfirmationBlock } from "@/components/assistant/WorkAreaConfirmationBlock";
 import { ScopeDiscoveryReviewBlock } from "@/components/assistant/ScopeDiscoveryReviewBlock";
+import {
+  ProjectCaptureCollapsedSummary,
+  WorkAreasCollapsedSummary,
+  QualityCollapsedSummary,
+  QuestionsCollapsedSummary,
+  EstimateReviewCollapsedSummary,
+  ConstraintsCollapsedSummary,
+} from "@/components/assistant/StageCollapsedSummaries";
 import {
   confirmWorkAreas,
   generateStaticEstimate,
@@ -51,6 +55,22 @@ import {
   excludeWorkAreaFromProject,
 } from "@/lib/assistant/work-area-actions";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
+import {
+  resolveActiveDisclosureStage,
+  stagePrefersExpanded,
+} from "@/lib/assistant/progressive-disclosure";
+import {
+  buildConstraintChipLabels,
+  buildEstimateReviewSummaryModel,
+  buildProjectCaptureSummaryModel,
+  buildQualitySummaryModel,
+  buildQuestionGroupSummaries,
+  buildQuickEstimatePresentationModel,
+  buildStepperStepSummaries,
+  buildWorkAreaFactHighlights,
+  buildWorkAreaSummaryLists,
+  countAnsweredQuestions,
+} from "@/lib/assistant/stage-completion-summaries";
 import type { AssistantState } from "@/lib/assistant/types";
 import { NoteProposalReviewPanel } from "@/components/project-notes/NoteProposalReviewPanel";
 import type { ProjectNote } from "@/lib/project-notes/types";
@@ -614,16 +634,6 @@ export function AssistantShell({
   // Stage 3.1A-R1: do not remount Scope Review on answer value changes —
   // remounting wiped optimistic local answers and caused temporary reversion.
 
-  const captureSummary = buildProjectCaptureSummary(
-    briefText,
-    totalNoteCount ?? initialNotes.length
-  );
-  const workAreasSummary = buildWorkAreasSummary(displayWorkAreas);
-  const qualitySummary = qualityLevel
-    ? qualityLabel(qualityLevel)
-    : "Not selected";
-  const answeredQuestionCount = questionBlock?.questions.length ?? 0;
-
   const captureIsCurrent = !briefSubmitted;
   const workAreasIsCurrent = briefSubmitted && !workAreasConfirmed;
   const qualityIsCurrent =
@@ -632,6 +642,121 @@ export function AssistantShell({
     qualitySubmitted && questionBlock !== null && !questionsSubmitted;
   const constraintsIsCurrent = questionsSubmitted && !constraintsSubmitted;
   const canGenerateEstimate = constraintsSubmitted && !estimateReady;
+
+  const activeDisclosureStage = resolveActiveDisclosureStage({
+    briefSubmitted,
+    workAreasConfirmed,
+    scopeDiscoveryEnabled,
+    scopeReviewComplete,
+    qualityUnlocked,
+    qualitySubmitted,
+    questionsSubmitted,
+    constraintsSubmitted,
+    estimateReady,
+    estimateStale: Boolean(estimate?.isStale),
+  });
+
+  const captureSummaryModel = buildProjectCaptureSummaryModel({
+    briefText,
+    noteCount: totalNoteCount ?? initialNotes.length,
+    lastUpdatedAt:
+      initialNotes.length > 0
+        ? [...initialNotes].sort((a, b) =>
+            b.updatedAt.localeCompare(a.updatedAt)
+          )[0]?.updatedAt ?? null
+        : null,
+  });
+  const workAreaLists = buildWorkAreaSummaryLists(displayWorkAreas);
+  const workAreaHighlights = buildWorkAreaFactHighlights({
+    workAreas: displayWorkAreas,
+    scopeReview: initialState.scopeReview,
+    qualityLevel: qualitySubmitted ? qualityLevel : null,
+  });
+  const qualitySummaryModel = buildQualitySummaryModel(qualityLevel);
+  const questionGroups = questionBlock
+    ? buildQuestionGroupSummaries({
+        questions: questionBlock.questions,
+        answers: questionAnswers,
+      })
+    : [];
+  const answeredQuestionCount = questionBlock
+    ? countAnsweredQuestions({
+        questions: questionBlock.questions,
+        answers: questionAnswers,
+      })
+    : 0;
+  const scopeDiscoverySuggestions =
+    scopeDiscoveryInitialResults?.allSuggestions ?? [];
+  const includedScopeFromDiscovery = scopeDiscoverySuggestions.filter((s) => {
+    const cls = String(s.proposalClass ?? "");
+    if (
+      cls !== "SCOPE_ITEM" &&
+      cls !== "CLARIFICATION" &&
+      cls !== "EXCLUSION"
+    ) {
+      return false;
+    }
+    const state = String(s.decisionState).toUpperCase();
+    return state === "ACCEPTED" || state === "MODIFIED";
+  }).length;
+  const needsDetailFromDiscovery = scopeDiscoverySuggestions.filter((s) =>
+    String(s.latestReasonCode ?? "").includes("pending") ||
+    String(s.latestReasonCode ?? "").includes("routed")
+  ).length;
+  const estimateReviewSummaryModel = buildEstimateReviewSummaryModel({
+    scopeReview: initialState.scopeReview,
+    estimateReady,
+    estimateStale: Boolean(estimate?.isStale),
+    constraintCount: initialState.submittedConstraints.length,
+    includedScopeItemCount:
+      includedScopeFromDiscovery ||
+      initialState.scopeReview.workAreas.length,
+  });
+  const constraintChips = buildConstraintChipLabels({
+    questions: initialState.constraintQuestions,
+    answers: constraintsSubmitted
+      ? submittedConstraintAnswers
+      : constraintAnswers,
+    submittedRows: constraintsSubmitted
+      ? initialState.submittedConstraints
+      : undefined,
+  });
+  const quickEstimatePresentation = buildQuickEstimatePresentationModel({
+    workAreaNames: workAreaLists.included,
+    includedScopeItemCount:
+      includedScopeFromDiscovery || workAreaLists.included.length,
+    outstandingClarificationCount:
+      needsDetailFromDiscovery +
+      initialState.scopeReview.workAreas.reduce(
+        (n, wa) => n + wa.missingItems.length,
+        0
+      ),
+    assumptionCount:
+      initialState.scopeReview.generalAssumptions.length +
+      initialState.scopeReview.workAreas.reduce(
+        (n, wa) => n + wa.assumptions.length,
+        0
+      ),
+    missingCount: initialState.scopeReview.workAreas.reduce(
+      (n, wa) => n + wa.missingItems.length,
+      0
+    ),
+    constraintCount: initialState.submittedConstraints.length,
+  });
+  const stepperSummaries = buildStepperStepSummaries({
+    answeredQuestionCount,
+    estimateReady,
+    estimateStale: Boolean(estimate?.isStale),
+    constraintCount: initialState.submittedConstraints.length,
+    includedScopeItemCount:
+      includedScopeFromDiscovery || workAreaLists.included.length,
+    needsDetailCount: needsDetailFromDiscovery,
+    includedWorkAreaCount: workAreaLists.included.length,
+    qualityTitle: qualityLevel
+      ? QUALITY_OPTIONS.find((o) => o.value === qualityLevel)?.title ?? null
+      : null,
+    briefSubmitted,
+  });
 
   const stepperAttention = {
     constraints:
@@ -653,17 +778,18 @@ export function AssistantShell({
         </p>
       ) : null}
 
-      <div className="grid min-w-0 gap-6 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start xl:grid-cols-[220px_minmax(0,1fr)_340px]">
+      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start xl:grid-cols-[220px_minmax(0,1fr)_340px]">
         <aside className="hidden xl:block">
           <div className="sticky top-6">
             <StepperNav
               currentStage={stage}
               needsAttention={stepperAttention}
+              stepSummaries={stepperSummaries}
             />
           </div>
         </aside>
 
-        <div className="min-w-0 order-2 space-y-3 lg:order-none">
+        <div className="min-w-0 order-2 space-y-2.5 lg:order-none">
           {/* 1. Project Capture */}
           <CollapsibleStageCard
             title="Project Capture"
@@ -673,12 +799,22 @@ export function AssistantShell({
                 : "Start with a brief, site notes or rough scope. Quotr will help identify work areas and questions."
             }
             statusLabel={
-              captureIsCurrent ? "Current" : briefSubmitted ? "Complete" : undefined
+              captureIsCurrent
+                ? "Current"
+                : briefSubmitted
+                  ? captureSummaryModel.outcomeLabel
+                  : undefined
             }
             statusVariant={captureIsCurrent ? "current" : "complete"}
-            defaultExpanded={!briefSubmitted}
+            preferredExpanded={stagePrefersExpanded(
+              "capture",
+              activeDisclosureStage
+            )}
             canCollapse={briefSubmitted}
-            summaryContent={captureSummary}
+            isActive={activeDisclosureStage === "capture"}
+            summaryContent={
+              <ProjectCaptureCollapsedSummary model={captureSummaryModel} />
+            }
             actionLabel={briefSubmitted ? "View" : undefined}
           >
             <ProjectCaptureBlock
@@ -704,13 +840,22 @@ export function AssistantShell({
                 workAreasIsCurrent
                   ? "Current"
                   : workAreasConfirmed
-                    ? "Complete"
+                    ? `${workAreaLists.included.length} included`
                     : undefined
               }
               statusVariant={workAreasIsCurrent ? "current" : "complete"}
-              defaultExpanded={!workAreasConfirmed}
+              preferredExpanded={stagePrefersExpanded(
+                "workAreas",
+                activeDisclosureStage
+              )}
               canCollapse={workAreasConfirmed}
-              summaryContent={workAreasSummary}
+              isActive={activeDisclosureStage === "workAreas"}
+              summaryContent={
+                <WorkAreasCollapsedSummary
+                  lists={workAreaLists}
+                  highlights={workAreaHighlights}
+                />
+              }
               actionLabel={workAreasConfirmed ? "Change areas" : undefined}
             >
               <WorkAreaConfirmationBlock
@@ -749,14 +894,19 @@ export function AssistantShell({
                 onUnresolvedRecommendationsChange={
                   setUnresolvedScopeImpactCount
                 }
+                preferredExpanded={stagePrefersExpanded(
+                  "scopeReview",
+                  activeDisclosureStage
+                )}
+                isActiveStage={activeDisclosureStage === "scopeReview"}
               />
             </div>
           ) : null}
 
-          {/* 3. Quality */}
+          {/* 3. Specification (Quality level — UX label only) */}
           {workAreasConfirmed ? (
             <CollapsibleStageCard
-              title="Quality"
+              title="Specification"
               subtitle="Set the finish level for this estimate"
               statusLabel={
                 !qualityUnlocked && !qualitySubmitted
@@ -764,7 +914,7 @@ export function AssistantShell({
                   : qualityIsCurrent
                     ? "Current"
                     : qualitySubmitted
-                      ? "Complete"
+                      ? qualitySummaryModel.outcomeLabel
                       : undefined
               }
               statusVariant={
@@ -774,13 +924,21 @@ export function AssistantShell({
                     ? "current"
                     : "complete"
               }
-              defaultExpanded={qualityUnlocked && !qualitySubmitted}
+              preferredExpanded={stagePrefersExpanded(
+                "quality",
+                activeDisclosureStage
+              )}
               forceExpanded={isEditingQuality}
               canCollapse={qualitySubmitted && !isEditingQuality}
+              isActive={activeDisclosureStage === "quality"}
               summaryContent={
-                !qualityUnlocked && !qualitySubmitted
-                  ? "Confirm scope first"
-                  : qualitySummary
+                !qualityUnlocked && !qualitySubmitted ? (
+                  <p className="text-xs text-muted-foreground">
+                    Confirm scope first
+                  </p>
+                ) : (
+                  <QualityCollapsedSummary model={qualitySummaryModel} />
+                )
               }
               actionLabel={qualitySubmitted ? "Change spec" : undefined}
               onAction={qualitySubmitted ? handleQualityEdit : undefined}
@@ -817,8 +975,12 @@ export function AssistantShell({
               subtitle={questionBlock.description}
               statusLabel="Current"
               statusVariant="current"
-              defaultExpanded
+              preferredExpanded={stagePrefersExpanded(
+                "questions",
+                activeDisclosureStage
+              )}
               canCollapse={false}
+              isActive={activeDisclosureStage === "questions"}
             >
               <QuestionBlock
                 questions={questionBlock.questions}
@@ -836,11 +998,18 @@ export function AssistantShell({
             <CollapsibleStageCard
               title="Questions"
               subtitle={questionBlock.description}
-              statusLabel="Complete"
+              statusLabel={
+                answeredQuestionCount === 1
+                  ? "1 answer collected"
+                  : `${answeredQuestionCount} answers collected`
+              }
               statusVariant="complete"
-              defaultExpanded={false}
+              preferredExpanded={false}
               canCollapse
-              summaryContent={`Complete · ${answeredQuestionCount} answered`}
+              isActive={false}
+              summaryContent={
+                <QuestionsCollapsedSummary groups={questionGroups} />
+              }
               actionLabel="View answers"
             >
               <QuestionBlock
@@ -861,7 +1030,7 @@ export function AssistantShell({
             />
           ) : null}
 
-          {/* 6. Scope Review — primary workspace */}
+          {/* 6. Estimate Review */}
           {questionsSubmitted ? (
             <CollapsibleStageCard
               title="Estimate Review"
@@ -870,7 +1039,7 @@ export function AssistantShell({
                 estimate?.isStale
                   ? "Needs refresh"
                   : estimateReady
-                    ? "Ready"
+                    ? estimateReviewSummaryModel.outcomeLabel
                     : "Review"
               }
               statusVariant={
@@ -880,17 +1049,21 @@ export function AssistantShell({
                     ? "complete"
                     : "review"
               }
-              defaultExpanded={!estimateReady}
+              preferredExpanded={stagePrefersExpanded(
+                "estimateReview",
+                activeDisclosureStage
+              )}
               canCollapse={questionsSubmitted}
               forceExpanded={Boolean(estimate?.isStale)}
+              isActive={activeDisclosureStage === "estimateReview"}
               summaryContent={
-                estimate?.isStale
-                  ? "Estimate inputs changed — review before generating"
-                  : estimateReady
-                    ? "Estimate inputs confirmed"
-                    : "Review work-area facts and missing details"
+                <EstimateReviewCollapsedSummary
+                  model={estimateReviewSummaryModel}
+                />
               }
-              actionLabel={estimateReady || questionsSubmitted ? "View" : undefined}
+              actionLabel={
+                estimateReady || questionsSubmitted ? "View" : undefined
+              }
             >
               <ScopeSummaryBlock
                 projectId={project.id}
@@ -928,14 +1101,20 @@ export function AssistantShell({
                 constraintsIsCurrent
                   ? "Current"
                   : constraintsSubmitted
-                    ? "Complete"
+                    ? constraintChips.length === 0
+                      ? "No additional constraints"
+                      : `${constraintChips.length} applied`
                     : undefined
               }
               statusVariant={constraintsIsCurrent ? "current" : "complete"}
-              defaultExpanded={!constraintsSubmitted}
+              preferredExpanded={stagePrefersExpanded(
+                "constraints",
+                activeDisclosureStage
+              )}
               canCollapse={constraintsSubmitted}
+              isActive={activeDisclosureStage === "constraints"}
               summaryContent={
-                constraintsSubmitted ? "Complete" : "Answer site conditions"
+                <ConstraintsCollapsedSummary chips={constraintChips} />
               }
               actionLabel={constraintsSubmitted ? "View" : undefined}
             >
@@ -984,6 +1163,12 @@ export function AssistantShell({
             pendingProposalCount={pendingNoteProposal ? 1 : 0}
             unresolvedScopeImpactCount={unresolvedScopeImpactCount}
             constraintCount={initialState.submittedConstraints.length}
+            isActiveStage={
+              activeDisclosureStage === null && canGenerateEstimate
+            }
+            quickEstimatePresentation={
+              questionsSubmitted ? quickEstimatePresentation : null
+            }
             onViewBreakdown={() => setBreakdownOpen(true)}
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}

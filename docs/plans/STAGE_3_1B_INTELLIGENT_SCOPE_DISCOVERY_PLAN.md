@@ -5,11 +5,13 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.6R3.1 — **Complete — Local, Preview Retest Pending**  
-**Next batch:** 3.1B.7 — **Not Started** (blocked on Preview UI sign-off after 3.1B.6)  
+**Current batch:** 3.1B.7B — **Complete — Local**  
+**Next batch:** 3.1B.7C — **Not Started**; 3.1B.7 missing-scope — **Not Started**  
 **Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **no 030**  
 **Server integration:** **Complete — Local**  
-**Scope Discovery UI:** **Complete — Local, Preview Retest Pending** (3.1B.6R3.1 recommendation Apply/Keep)  
+**Scope Discovery UI:** **Complete — Local, Preview Retest Pending**  
+**Assistant progressive disclosure (7A):** **Complete — Local**  
+**Assistant information hierarchy (7B):** **Complete — Local**  
 **UI/UX Overhaul:** **Planned** (`docs/plans/QUOTR_UI_UX_OVERHAUL_PLAN.md`)  
 **Preview feature:** **Enabled only by owner configuration**  
 **Production feature:** **Disabled**  
@@ -231,10 +233,10 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.6R3.1** — Complete — Local, Preview Retest Pending. **Next:** Owner Preview
-retest per `STAGE_3_1B6R31_PREVIEW_RETEST.md` (and broader 3.1B.6 smoke), then
-Stage 3.1B.7 missing-scope hardening. Preserve Fact SoT; no DNA; Analyse Job
-unchanged; production flag remains disabled until separate gate. **No migration 030.**
+**3.1B.7B** — Complete — Local (information hierarchy). **Next:** Preview
+validation of Assistant UX, then either 3.1B.7C or Stage 3.1B.7 missing-scope
+hardening per owner gate. Preserve Fact SoT; no DNA; Analyse Job unchanged;
+production flag remains disabled. **No migration 030.**
 
 ---
 

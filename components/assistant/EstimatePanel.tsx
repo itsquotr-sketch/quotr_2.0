@@ -50,6 +50,15 @@ type EstimatePanelProps = {
   pendingProposalCount?: number;
   /** Soft warning only — does not block generation (3.1B.6R3.1). */
   unresolvedScopeImpactCount?: number;
+  /** Align visual weight with active workflow stage (3.1B.7A). */
+  isActiveStage?: boolean;
+  /** Presentation-only scope hierarchy (3.1B.7B). */
+  quickEstimatePresentation?: {
+    estimatedWorkAreas: string;
+    includedScopeItems: string;
+    outstandingClarifications: string;
+    confidenceDrivers: readonly string[];
+  } | null;
   constraintCount?: number;
   onViewBreakdown?: () => void;
   onGenerate?: () => void;
@@ -131,7 +140,7 @@ function ScopeHealthChips({
         <span
           key={chip.label}
           className={cn(
-            "rounded-full border px-2 py-0.5 text-[11px] font-medium",
+            "rounded-md border px-2 py-0.5 text-[11px] font-medium",
             chip.tone === "attention"
               ? "border-amber-300/80 bg-amber-50 text-amber-900"
               : "border-border/60 bg-muted/40 text-muted-foreground"
@@ -140,6 +149,58 @@ function ScopeHealthChips({
           {chip.label}
         </span>
       ))}
+    </div>
+  );
+}
+
+function QuickEstimateHierarchy({
+  model,
+}: {
+  model: {
+    estimatedWorkAreas: string;
+    includedScopeItems: string;
+    outstandingClarifications: string;
+    confidenceDrivers: readonly string[];
+  };
+}) {
+  const rows = [
+    { label: "Estimated work areas", value: model.estimatedWorkAreas },
+    { label: "Included scope items", value: model.includedScopeItems },
+    {
+      label: "Outstanding clarifications",
+      value: model.outstandingClarifications,
+    },
+  ];
+  return (
+    <div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
+      <ul className="space-y-1.5">
+        {rows.map((row) => (
+          <li key={row.label} className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {row.label}
+            </p>
+            <p className="truncate text-xs font-medium text-foreground/90">
+              {row.value}
+            </p>
+          </li>
+        ))}
+      </ul>
+      <div>
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          Confidence drivers
+        </p>
+        <ul className="mt-0.5 space-y-0.5">
+          {model.confidenceDrivers.map((driver) => (
+            <li
+              key={driver}
+              className="flex gap-1.5 text-[11px] text-muted-foreground"
+            >
+              <span aria-hidden>•</span>
+              <span>{driver}</span>
+            </li>
+          ))}
+        </ul>
+      </div>
     </div>
   );
 }
@@ -161,6 +222,8 @@ export function EstimatePanel({
   canGenerateEstimate = false,
   pendingProposalCount = 0,
   unresolvedScopeImpactCount = 0,
+  isActiveStage = false,
+  quickEstimatePresentation = null,
   constraintCount = 0,
   onViewBreakdown,
   onGenerate,
@@ -213,7 +276,9 @@ export function EstimatePanel({
         {qualityLevel ? (
           <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
             <div className="min-w-0">
-              <p className="text-xs text-muted-foreground">Spec level</p>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Spec level
+              </p>
               <p className="text-sm font-medium">{qualityLabel(qualityLevel)}</p>
             </div>
             {onEditQuality ? (
@@ -228,6 +293,10 @@ export function EstimatePanel({
               </Button>
             ) : null}
           </div>
+        ) : null}
+
+        {quickEstimatePresentation ? (
+          <QuickEstimateHierarchy model={quickEstimatePresentation} />
         ) : null}
 
         {needsCalibrationUpdate ? (
@@ -536,8 +605,12 @@ export function EstimatePanel({
   return (
     <Card
       className={cn(
-        "overflow-hidden border-border/60 bg-card shadow-sm lg:sticky lg:top-6"
+        "overflow-hidden border-border/60 bg-card transition-[box-shadow,border-color] duration-200 ease-out lg:sticky lg:top-6",
+        isActiveStage
+          ? "border-[var(--brand-orange-muted)] shadow-md ring-1 ring-[var(--brand-orange)]/25"
+          : "shadow-sm"
       )}
+      data-estimate-panel-active={isActiveStage ? "true" : "false"}
     >
       <button
         type="button"

@@ -40,12 +40,16 @@ work into Intelligent Scope Discovery delivery batches.
 
 | Batch | Focus | Depends on |
 | --- | --- | --- |
-| UX-A | Assistant stage chrome + mobile stepper | 3.1B Preview signed off |
-| UX-B | Capture / Work Areas / Scope Review density | UX-A |
-| UX-C | Scope Details + Fact editing clarity | UX-B + Fact linkage |
-| UX-D | Estimate Review + Quick Estimate presentation | UX-C |
+| UX-A | Assistant stage chrome + mobile stepper | Delivered as **3.1B.7A** |
+| UX-B | Capture / Work Areas / Scope Review density | Partially delivered as **3.1B.7B** |
+| UX-C | Scope Details + Fact editing clarity | UX-B / 3.1B.7B |
+| UX-D | Estimate Review + Quick Estimate presentation | Partially delivered as **3.1B.7B** |
 | UX-E | Pricing + Quote surfaces | Commercial authority stable |
 | UX-F | Accessibility + design tokens pass | UX-A–E |
+
+**3.1B.7A/7B** delivered progressive disclosure and information hierarchy.
+Remaining UX-C–F items stay Planned.
+
 
 Each batch must ship with its own verify script and Preview checklist.
 
