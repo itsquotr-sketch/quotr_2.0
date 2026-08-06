@@ -33,6 +33,8 @@ export type ComposedDecisionState =
 export interface SafeEvidenceSummary {
   readonly count: number;
   readonly primarySourceTypes: readonly string[];
+  /** Human-readable evidence lines for UI — never raw JSON. */
+  readonly summaries: readonly string[];
 }
 
 export interface SafeSuggestionView {
@@ -45,11 +47,15 @@ export interface SafeSuggestionView {
   readonly proposedDescription: string | null;
   readonly confidence: number | null;
   readonly confidenceBand: ConfidenceBand | string;
+  /** Internal rationale code — UI must map via whySuggested, not show raw. */
   readonly rationaleCode: string;
+  /** Human-facing explanation for the suggestion. */
+  readonly whySuggested: string;
   readonly decisionState: ComposedDecisionState;
   readonly decisionId: string | null;
   readonly createdWorkAreaId: string | null;
   readonly evidence: SafeEvidenceSummary;
+  readonly missingInformationSummaries: readonly string[];
   readonly staleReason: string | null;
   readonly supersededBySuggestionId: string | null;
   readonly originHint: "deterministic" | "ai" | "unknown";
@@ -106,11 +112,17 @@ export interface SafeResultsRead {
   readonly status: string | null;
   readonly stale: boolean;
   readonly staleReasons: readonly string[];
+  /** Revision token for decision RPCs (from run source snapshot). */
+  readonly sourceRevision: string | null;
   readonly primarySuggestions: readonly SafeSuggestionView[];
   readonly otherPossibilities: readonly SafeSuggestionView[];
   readonly conflicts: readonly SafeSuggestionView[];
+  /** All non-suppressed suggestions for richer UI grouping. */
+  readonly allSuggestions: readonly SafeSuggestionView[];
+  readonly dismissedCount: number;
   readonly suppressedCount: number;
   readonly warnings: readonly string[];
+  readonly providerPartialFailure: boolean;
   readonly message: string;
 }
 

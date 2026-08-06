@@ -8,7 +8,7 @@
 **Preview feature enablement:** Ready Pending Owner Test  
 **Production feature:** Disabled  
 **Analyse Job:** Unchanged  
-**UI:** Not Started  
+**UI:** Complete — Local (3.1B.6)  
 
 ---
 

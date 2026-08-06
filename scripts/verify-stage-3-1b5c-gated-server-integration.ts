@@ -324,12 +324,17 @@ async function main(): Promise<void> {
   });
   check("availability reports FEATURE_DISABLED", availOff.disableReason === "FEATURE_DISABLED");
 
-  // --- Boundary: no UI / Analyse Job imports ---
+  // --- Boundary: Analyse Job unchanged; Assistant UI may import actions only via ScopeDiscovery* ---
   const assistantFiles = walkFiles("components/assistant");
-  const assistantImportsDiscoveryActions = assistantFiles.some((f) =>
-    readFileSync(f, "utf8").includes("scope-discovery/actions")
+  const nonDiscoveryAssistantImportsActions = assistantFiles.some((f) => {
+    const normalised = f.replace(/\\/g, "/");
+    if (normalised.includes("ScopeDiscovery")) return false;
+    return readFileSync(f, "utf8").includes("scope-discovery/actions");
+  });
+  check(
+    "only ScopeDiscovery Assistant components import discovery actions",
+    !nonDiscoveryAssistantImportsActions
   );
-  check("no Assistant UI imports discovery actions", !assistantImportsDiscoveryActions);
 
   const analyseJob = readFileSync("lib/assistant/actions.ts", "utf8");
   check(

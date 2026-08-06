@@ -17,6 +17,9 @@ import {
 } from "@/lib/pricing/actions";
 import { getLatestQuoteSummary } from "@/lib/quotes/actions";
 import { getProject } from "@/lib/projects/actions";
+import { getScopeDiscoveryResultsAction } from "@/lib/scope-discovery/actions";
+import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
+import type { SafeResultsRead } from "@/lib/scope-discovery/application/types";
 import { createClient } from "@/lib/supabase/server";
 import { connection } from "next/server";
 
@@ -82,6 +85,15 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const hasEstimate = Boolean(assistantState.estimate);
   const estimateIsStale =
     assistantState.estimate?.isStale ?? tabContext.estimateIsStale;
+  const scopeDiscoveryEnabled = isScopeDiscoveryEnabled();
+
+  let scopeDiscoveryInitialResults: SafeResultsRead | null = null;
+  if (scopeDiscoveryEnabled) {
+    const discoveryRead = await getScopeDiscoveryResultsAction({ projectId });
+    if (discoveryRead.ok) {
+      scopeDiscoveryInitialResults = discoveryRead;
+    }
+  }
 
   return (
     <WorkspacePage
@@ -117,6 +129,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         pendingNoteProposal={pendingNoteProposal}
         pricingSummary={pricingSummary ?? tabContext.pricingSummary}
         quoteSummary={quoteSummary}
+        scopeDiscoveryEnabled={scopeDiscoveryEnabled}
+        scopeDiscoveryInitialResults={scopeDiscoveryInitialResults}
       />
     </WorkspacePage>
   );

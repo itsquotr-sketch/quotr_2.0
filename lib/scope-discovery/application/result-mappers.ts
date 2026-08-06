@@ -7,6 +7,11 @@ import { identityKeyForSuggestion } from "../identity";
 import type { ScopeDiscoveryRunResult } from "../orchestration/types";
 import type { DiscoverySuggestionDetailRow } from "../persistence/suggestion-repository";
 import type { DiscoveryDecisionDetailRow } from "../persistence/decision-repository";
+import {
+  formatEvidenceSummaries,
+  formatMissingInformationSummaries,
+  whySuggestedText,
+} from "../ui";
 import type {
   ComposedDecisionState,
   SafeEvidenceSummary,
@@ -16,7 +21,7 @@ import type {
 
 export function summariseEvidence(evidence: unknown): SafeEvidenceSummary {
   if (!Array.isArray(evidence)) {
-    return { count: 0, primarySourceTypes: [] };
+    return { count: 0, primarySourceTypes: [], summaries: [] };
   }
   const types = new Set<string>();
   for (const item of evidence) {
@@ -32,6 +37,7 @@ export function summariseEvidence(evidence: unknown): SafeEvidenceSummary {
   return {
     count: evidence.length,
     primarySourceTypes: [...types].slice(0, 8),
+    summaries: formatEvidenceSummaries(evidence),
   };
 }
 
@@ -62,6 +68,7 @@ export function mapDbSuggestionToSafeView(
   row: DiscoverySuggestionDetailRow,
   decision: DiscoveryDecisionDetailRow | null
 ): SafeSuggestionView {
+  const originHint = originHintFromMetadata(row.provider_metadata);
   return {
     suggestionId: row.id,
     runId: row.run_id,
@@ -73,6 +80,11 @@ export function mapDbSuggestionToSafeView(
     confidence: row.confidence,
     confidenceBand: row.confidence_band,
     rationaleCode: row.rationale_code,
+    whySuggested: whySuggestedText({
+      rationaleCode: row.rationale_code,
+      suggestionKind: row.suggestion_kind,
+      originHint,
+    }),
     decisionState: composeDecisionState({
       staleReason: row.stale_reason,
       supersededBySuggestionId: row.superseded_by_suggestion_id,
@@ -81,9 +93,12 @@ export function mapDbSuggestionToSafeView(
     decisionId: decision?.id ?? null,
     createdWorkAreaId: decision?.created_work_area_id ?? null,
     evidence: summariseEvidence(row.evidence),
+    missingInformationSummaries: formatMissingInformationSummaries(
+      row.missing_information ?? []
+    ),
     staleReason: row.stale_reason,
     supersededBySuggestionId: row.superseded_by_suggestion_id,
-    originHint: originHintFromMetadata(row.provider_metadata),
+    originHint,
   };
 }
 

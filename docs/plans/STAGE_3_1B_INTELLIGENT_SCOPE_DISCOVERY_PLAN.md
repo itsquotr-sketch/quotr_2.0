@@ -5,17 +5,18 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.5C — **Complete — Local** (`docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`)  
-**Next batch:** 3.1B.6 — **Ready Pending Preview Server Test**  
+**Current batch:** 3.1B.6 — **Complete — Local** (`docs/implementation/STAGE_3_1B6_ASSISTANT_UI_COMPLETION.md`)  
+**Next batch:** 3.1B.7 — **Ready Pending Preview UI Sign-off**  
 **Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**  
-**Server integration:** **Complete — Local**, UI Unwired  
-**Preview feature enablement:** **Ready Pending Owner Test**  
+**Server integration:** **Complete — Local**  
+**Scope Discovery UI:** **Complete — Local, Preview Test Pending**  
+**Preview feature:** **Enabled only by owner configuration**  
 **Production feature:** **Disabled**  
 **Feature flag:** **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off)  
-**AI provider adapter:** Implemented but unused  
-**UI integration:** Not Started  
+**AI provider adapter:** Implemented (gated)  
+**UI integration:** Complete — Local  
 **Production catalogue adoption:** Not Started  
-**Analyse Job:** Unchanged  
+**Analyse Job:** Preserved / Unchanged  
 **Production adoption:** Not Started  
 
 **Specs:**
@@ -37,6 +38,8 @@
 - `docs/runbooks/STAGE_3_1B5B_PREVIEW_ROLLOUT_PLAN.md`
 - `docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`
 - `docs/runbooks/STAGE_3_1B5C_PREVIEW_SERVER_INTEGRATION_TEST.md`
+- `docs/implementation/STAGE_3_1B6_ASSISTANT_UI_COMPLETION.md`
+- `docs/runbooks/STAGE_3_1B6_SCOPE_DISCOVERY_PREVIEW_SMOKE_TEST.md`
 
 ---
 
@@ -190,13 +193,14 @@ Split for delivery:
 
 | Field | Value |
 | --- | --- |
-| **Readiness** | **Ready Pending Preview Server Test** (suggestion list UX + owner gates; intersects **FEAT-001**) |
+| **Readiness** | **Complete — Local** (2026-08-06) |
+| **Evidence** | `components/assistant/ScopeDiscovery*`; `lib/scope-discovery/ui/*`; `scripts/verify-stage-3-1b6-assistant-ui.ts`; completion + Preview smoke runbook |
 | **Customer value** | See evidence, confidence band, accept/reject/edit on mobile |
-| **Likely files** | `components/assistant/*`, a11y live regions |
 | **Schema** | None |
-| **Security** | No raw provider errors |
+| **Security** | No raw provider errors; server-authoritative flag |
 | **Rollback** | Hide UI behind flag |
-| **Acceptance** | Keyboard/accessible decisions; low-confidence presentation per owner gate |
+| **Acceptance** | Local verify + full regression; Preview UI smoke pending; Analyse Job preserved |
+| **FEAT-001** | Partial — ISD groups/suggestion detail collapsible; broader WA cards still Deferred |
 
 ### 3.1B.7 — Missing-scope recommendations
 
@@ -226,7 +230,7 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.5C** — Complete — Local. **Next:** Owner Preview server test per `STAGE_3_1B5C_PREVIEW_SERVER_INTEGRATION_TEST.md`, then Assistant UI integration (3.1B.6). Preserve Fact SoT; no DNA; Analyse Job unchanged; production flag remains disabled until separate gate.
+**3.1B.6** — Complete — Local. **Next:** Owner Preview UI smoke per `STAGE_3_1B6_SCOPE_DISCOVERY_PREVIEW_SMOKE_TEST.md`, then Stage 3.1B.7 missing-scope hardening. Preserve Fact SoT; no DNA; Analyse Job unchanged; production flag remains disabled until separate gate.
 
 ---
 
@@ -259,5 +263,5 @@ Split for delivery:
 | --- | --- |
 | Path | `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md` |
 | Created | 2026-08-05 |
-| Stage status | In Progress — 3.1B.5C Complete — Local |
+| Stage status | In Progress — 3.1B.6 Complete — Local |
 | Last updated | 2026-08-06 |

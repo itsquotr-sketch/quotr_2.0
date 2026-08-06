@@ -26,6 +26,7 @@ import {
   WorkAreaConfirmationBlock,
   buildWorkAreasSummary,
 } from "@/components/assistant/WorkAreaConfirmationBlock";
+import { ScopeDiscoveryReviewBlock } from "@/components/assistant/ScopeDiscoveryReviewBlock";
 import {
   confirmWorkAreas,
   generateStaticEstimate,
@@ -54,6 +55,7 @@ import type { AssistantState } from "@/lib/assistant/types";
 import { NoteProposalReviewPanel } from "@/components/project-notes/NoteProposalReviewPanel";
 import type { ProjectNote } from "@/lib/project-notes/types";
 import type { NoteProposal } from "@/lib/project-notes/proposals/types";
+import type { SafeResultsRead } from "@/lib/scope-discovery/application/types";
 import type { PricingSummary } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 
@@ -65,6 +67,9 @@ type AssistantShellProps = {
   pendingNoteProposal?: NoteProposal | null;
   pricingSummary?: PricingSummary | null;
   quoteSummary?: QuoteSummary | null;
+  /** Server-authoritative Scope Discovery flag — never from client env. */
+  scopeDiscoveryEnabled?: boolean;
+  scopeDiscoveryInitialResults?: SafeResultsRead | null;
 };
 
 type PendingAction =
@@ -95,6 +100,8 @@ export function AssistantShell({
   pendingNoteProposal = null,
   pricingSummary = null,
   quoteSummary = null,
+  scopeDiscoveryEnabled = false,
+  scopeDiscoveryInitialResults = null,
 }: AssistantShellProps) {
   const router = useRouter();
   const actionLockRef = useRef(false);
@@ -675,6 +682,15 @@ export function AssistantShell({
                 }
               />
             </CollapsibleStageCard>
+          ) : null}
+
+          {/* 2b. Intelligent Scope Discovery — Preview flag only */}
+          {scopeDiscoveryEnabled && workAreasConfirmed ? (
+            <ScopeDiscoveryReviewBlock
+              projectId={project.id}
+              enabled={scopeDiscoveryEnabled}
+              initialResults={scopeDiscoveryInitialResults}
+            />
           ) : null}
 
           {/* 3. Quality */}

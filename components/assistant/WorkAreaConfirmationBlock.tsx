@@ -49,8 +49,11 @@ function ReadOnlySummary({ workAreas }: { workAreas: WorkArea[] }) {
         {included.length > 0 ? (
           <ul className="mt-1.5 space-y-1">
             {included.map((wa) => (
-              <li key={wa.id} className="flex items-baseline justify-between gap-2 text-sm">
-                <span className="font-medium">{wa.name}</span>
+              <li
+                key={wa.id}
+                data-work-area-id={wa.id}
+                className="flex items-baseline justify-between gap-2 text-sm"
+              >                <span className="font-medium">{wa.name}</span>
                 <span className="text-xs text-muted-foreground">
                   {confidenceLabel(wa.aiConfidence)}
                 </span>
@@ -106,6 +109,7 @@ export function WorkAreaConfirmationBlock({
             <button
               key={wa.id}
               type="button"
+              data-work-area-id={wa.id}
               onClick={() => onToggle?.(wa.id)}
               className={cn(
                 "rounded-2xl border px-4 py-3 text-left transition-colors",

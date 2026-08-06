@@ -193,6 +193,7 @@ export function ScopeSummaryBlock({
         return (
         <article
           key={workArea.workAreaId}
+          data-work-area-id={workArea.workAreaId}
           className={cn(
             "rounded-xl border bg-card px-3 py-3 sm:px-4 sm:py-3.5",
             hasMissing

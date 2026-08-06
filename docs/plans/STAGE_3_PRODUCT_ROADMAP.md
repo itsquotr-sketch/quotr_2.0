@@ -16,7 +16,7 @@
 | **3.1A-R1** | Preview Remediation | Fix Preview failures: enums, answer reconcile, Quick Estimate Edit, client propagation, capture hierarchy | **Complete** — included in Preview sign-off 2026-08-05 |
 | **3.1C** | Domain Model Audit | Documentation-only architectural audit of all major domain objects | **Complete** |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
-| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.1–3.1B.5C Complete — Local; 3.1B.6 Ready Pending Preview Server Test; migrations 028/029 Applied and Verified; server integration Complete — Local, UI Unwired; Preview enablement Ready Pending Owner Test; production Disabled; feature flag Implemented; Analyse Job Unchanged |
+| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.1–3.1B.6 Complete — Local; 3.1B.7 Ready Pending Preview UI Sign-off; migrations 028/029 Applied and Verified; Scope Discovery UI Complete — Local, Preview Test Pending; Preview feature owner-configured only; production Disabled; Analyse Job Preserved |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
 | **3.1B.1** | Suggestion contract and deterministic lifecycle | Pure types, validation, lifecycle, staleness, identity, merge | **Complete — Local** (`docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md`) |
 | **3.1B.2** | Scope relationship catalogue foundation | Data-driven edges + deterministic missing-scope samples | **Complete — Local** (`docs/implementation/STAGE_3_1B2_SCOPE_RELATIONSHIP_CATALOGUE_COMPLETION.md`) |
@@ -27,7 +27,7 @@
 | **3.1B.5A** | Accept / reject / modify lifecycle (local) | RPCs + unused service; WA create + append-only decisions | **Complete — Local** (`docs/implementation/STAGE_3_1B5A_DECISION_LIFECYCLE_COMPLETION.md`) — **Applied and Verified** |
 | **3.1B.5B** | Remote migration readiness + production wiring design | Runbook, wiring design, Preview rollout, owner approvals | **Complete — Planning** (`docs/implementation/STAGE_3_1B5B_READINESS_COMPLETION.md`) — remote apply Applied and Verified |
 | **3.1B.5C** | Gated server-action integration | Feature flag, application services, thin server actions | **Complete — Local** (`docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`) — UI Unwired; Preview enablement Ready Pending Owner Test; production Disabled |
-| **3.1B.6** | Assistant UI integration | Analyse Scope trigger, evidence display, accept/reject/modify controls | **Ready Pending Preview Server Test** — intersects FEAT-001 |
+| **3.1B.6** | Assistant UI integration | Analyse Scope trigger, evidence display, accept/reject/modify controls | **Complete — Local** (`docs/implementation/STAGE_3_1B6_ASSISTANT_UI_COMPLETION.md`) — Preview Test Pending; production Disabled; Analyse Job Preserved; FEAT-001 partial |
 | **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | Not started |
 | **3.3** | Commercial Assemblies | Reusable commercial assemblies / packages | Not started |
 | **3.4** | Explicit Company Defaults / Manual Learning | Manual company defaults and correction capture without automatic rule mutation | Not started |
@@ -63,7 +63,7 @@ Every Stage 3 release should track:
 
 ## Deferred product features (recorded, not scheduled for implementation in 3.1B.0)
 
-- FEAT-001 Collapsible work-area cards (intersects future 3.1B.6 UI)
+- FEAT-001 Collapsible work-area cards (partial in 3.1B.6 ISD UI; broader WA cards Deferred)
 - FEAT-002 Optional quote items (requires commercial design + goldens)
 - FEAT-003 Additional site constraints taxonomy (Builder Interview)
 
@@ -82,3 +82,5 @@ Every Stage 3 release should track:
 - Preview rollout: `docs/runbooks/STAGE_3_1B5B_PREVIEW_ROLLOUT_PLAN.md`
 - Preview server integration test: `docs/runbooks/STAGE_3_1B5C_PREVIEW_SERVER_INTEGRATION_TEST.md`
 - 3.1B.5C completion: `docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`
+- 3.1B.6 completion: `docs/implementation/STAGE_3_1B6_ASSISTANT_UI_COMPLETION.md`
+- 3.1B.6 Preview smoke: `docs/runbooks/STAGE_3_1B6_SCOPE_DISCOVERY_PREVIEW_SMOKE_TEST.md`

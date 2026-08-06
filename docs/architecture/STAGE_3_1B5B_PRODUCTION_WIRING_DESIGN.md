@@ -1,11 +1,11 @@
 # Stage 3.1B.5B — Production Wiring Design
 
-**Status:** Complete — Local (3.1B.5C); UI **Not Started**  
+**Status:** Complete — Local (3.1B.5C + 3.1B.6 UI)  
 **Date:** 2026-08-06  
-**Batch:** Stage 3.1B.5B (design) + 3.1B.5C (implementation)  
+**Batch:** Stage 3.1B.5B (design) + 3.1B.5C (implementation) + 3.1B.6 (UI)  
 **Depends on:** Migrations 028/029 — **Applied and Verified**  
-**Implements:** Server actions, application services, feature flag (`lib/scope-discovery/configuration/`, `lib/scope-discovery/application/`, `lib/scope-discovery/actions.ts`)  
-**Does not implement:** UI, Analyse Job changes, DNA, Builder Interview  
+**Implements:** Server actions, application services, feature flag, Assistant Scope Review UI  
+**Does not implement:** Analyse Job changes, DNA, Builder Interview  
 
 ---
 
@@ -318,5 +318,5 @@ When flag off: Analyse Job behaviour identical to today.
 | Created | 2026-08-06 |
 | Last updated | 2026-08-06 |
 | Implementation | **Complete — Local** (3.1B.5C) |
-| UI | **Not Started** |
-| Status | Complete — Local (server integration); UI Not Started |
+| UI | **Complete — Local** (3.1B.6) |
+| Status | Complete — Local (server integration + Assistant UI); Preview Test Pending; Production Disabled |

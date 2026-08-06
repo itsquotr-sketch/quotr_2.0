@@ -1,7 +1,8 @@
 /**
- * Stage 3.1B.5C — Gated scope discovery application layer.
+ * Stage 3.1B.5C / 3.1B.6 — Gated scope discovery application layer.
  *
- * Not imported by Assistant UI or Analyse Job.
+ * Used by server actions and Assistant UI behind the feature flag.
+ * Does not alter Analyse Job.
  */
 
 export {

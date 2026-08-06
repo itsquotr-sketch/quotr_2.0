@@ -45,10 +45,10 @@ Do **not** treat Pending/Deferred rows as authorised.
 | Migrations for ISD persistence | **Proposed, Not Approved** |
 | AI provider adapter | **Implemented but unused** (3.1B.3 Complete — Local) |
 | Pure orchestration | **Implemented but unused** (3.1B.4A Complete — Local) |
-| UI integration | **Not Started** |
+| UI integration | **Complete — Local** (3.1B.6); Preview Test Pending |
 | Company DNA implementation | **Not started / forbidden** |
 | Commercial formula changes | **Forbidden** |
-| FEAT-001 collapsible cards | **Deferred** |
+| FEAT-001 collapsible cards | **Partial** — ISD suggestion groups/detail in 3.1B.6; broader WA cards **Deferred** |
 | FEAT-002 optional quote items | **Deferred** |
 | FEAT-003 constraint taxonomy | **Deferred** → Builder Interview |
 

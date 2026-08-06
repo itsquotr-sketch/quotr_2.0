@@ -747,16 +747,17 @@ function main(): void {
   }
   check("no migrations added for 3.1B.1", !disallowedMigration);
 
-  const productionTouch = [
+  // Analyse Job / brief extraction must not adopt the contract module.
+  // Assistant Scope Review UI (3.1B.6) may import gated helpers — excluded here.
+  const analyseJobTouch = [
     "lib/assistant/actions.ts",
     "lib/project-notes/proposals/actions.ts",
     "lib/ai/extract.ts",
     "lib/ai/extract-notes.ts",
     "lib/ai/brief-extraction-prompt.ts",
-    "components/assistant/AssistantShell.tsx",
   ];
   let imported = false;
-  for (const rel of productionTouch) {
+  for (const rel of analyseJobTouch) {
     const src = read(join(root, rel));
     if (/scope-discovery|lib\/scope-discovery/.test(src)) {
       imported = true;

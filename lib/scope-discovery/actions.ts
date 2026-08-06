@@ -1,9 +1,10 @@
 "use server";
 
 /**
- * Stage 3.1B.5C — Thin authenticated server actions for gated scope discovery.
+ * Stage 3.1B.5C / 3.1B.6 — Thin authenticated server actions for gated scope discovery.
  *
- * Not imported by Assistant UI. Does not alter Analyse Job.
+ * Assistant UI may import these only when SCOPE_DISCOVERY_ENABLED is true
+ * (server-passed prop). Does not alter Analyse Job.
  * Delegates to application services — no repository/provider logic here.
  */
 
