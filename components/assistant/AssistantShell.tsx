@@ -158,6 +158,28 @@ export function AssistantShell({
   const [savedQualityLevel, setSavedQualityLevel] = useState<QualityLevel | null>(
     project.qualityLevel
   );
+  const [scopeReviewComplete, setScopeReviewComplete] = useState(() => {
+    if (!scopeDiscoveryEnabled) return true;
+    const suggestions = scopeDiscoveryInitialResults?.allSuggestions ?? [];
+    const hasRun = Boolean(scopeDiscoveryInitialResults?.runId);
+    // Inline light check — full helper imported below via effect from child
+    if (!hasRun) return false;
+    return suggestions
+      .filter(
+        (s) =>
+          s.proposalClass === "SCOPE_ITEM" ||
+          s.proposalClass === "CLARIFICATION" ||
+          s.proposalClass === "EXCLUSION"
+      )
+      .filter((s) => {
+        const band = String(s.confidenceBand ?? "").toUpperCase();
+        const kind = String(s.suggestionKind ?? "").toUpperCase();
+        if (band === "LOW" && kind !== "CLARIFICATION_REQUIRED") return false;
+        return true;
+      })
+      .every((s) => s.decisionState !== "PROPOSED");
+  });
+  const scopeReviewCardRef = useRef<HTMLDivElement | null>(null);
 
   const briefSubmitted = isStageAtOrBeyond(stage, "confirm_work_areas");
   const workAreasConfirmed = isStageAtOrBeyond(stage, "quality");
@@ -263,11 +285,24 @@ export function AssistantShell({
 
   const handleQualityContinue = useCallback(() => {
     if (!qualityLevel) return;
+    if (scopeDiscoveryEnabled && !scopeReviewComplete) {
+      scopeReviewCardRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      return;
+    }
 
     void runAction("quality", () =>
       saveQuality(project.id, qualityLevel)
     );
-  }, [project.id, qualityLevel, runAction]);
+  }, [
+    project.id,
+    qualityLevel,
+    runAction,
+    scopeDiscoveryEnabled,
+    scopeReviewComplete,
+  ]);
 
   const handleQualitySave = useCallback(() => {
     if (!qualityLevel) return;
@@ -288,11 +323,21 @@ export function AssistantShell({
   }, [savedQualityLevel]);
 
   const handleQualityEdit = useCallback(() => {
+    if (scopeDiscoveryEnabled && !scopeReviewComplete) {
+      scopeReviewCardRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+      return;
+    }
     beginQualitySpecEdit({
       setEditing: setIsEditingQuality,
       scrollTarget: qualityCardRef,
     });
-  }, []);
+  }, [scopeDiscoveryEnabled, scopeReviewComplete]);
+
+  const qualityUnlocked =
+    !scopeDiscoveryEnabled || scopeReviewComplete || qualitySubmitted;
 
   const handleQuestionsSubmit = useCallback(() => {
     if (!questionBlock) return;
@@ -579,7 +624,8 @@ export function AssistantShell({
 
   const captureIsCurrent = !briefSubmitted;
   const workAreasIsCurrent = briefSubmitted && !workAreasConfirmed;
-  const qualityIsCurrent = workAreasConfirmed && !qualitySubmitted;
+  const qualityIsCurrent =
+    workAreasConfirmed && qualityUnlocked && !qualitySubmitted;
   const questionsIsCurrent =
     qualitySubmitted && questionBlock !== null && !questionsSubmitted;
   const constraintsIsCurrent = questionsSubmitted && !constraintsSubmitted;
@@ -686,16 +732,19 @@ export function AssistantShell({
 
           {/* 2b. Intelligent Scope Discovery — Preview flag only */}
           {scopeDiscoveryEnabled && workAreasConfirmed ? (
-            <ScopeDiscoveryReviewBlock
-              projectId={project.id}
-              enabled={scopeDiscoveryEnabled}
-              initialResults={scopeDiscoveryInitialResults}
-              workAreaLabels={Object.fromEntries(
-                displayWorkAreas
-                  .filter((wa) => wa.status !== "excluded")
-                  .map((wa) => [wa.id, wa.name])
-              )}
-            />
+            <div ref={scopeReviewCardRef}>
+              <ScopeDiscoveryReviewBlock
+                projectId={project.id}
+                enabled={scopeDiscoveryEnabled}
+                initialResults={scopeDiscoveryInitialResults}
+                workAreaLabels={Object.fromEntries(
+                  displayWorkAreas
+                    .filter((wa) => wa.status !== "excluded")
+                    .map((wa) => [wa.id, wa.name])
+                )}
+                onCompletionChange={setScopeReviewComplete}
+              />
+            </div>
           ) : null}
 
           {/* 3. Quality */}
@@ -704,35 +753,54 @@ export function AssistantShell({
               title="Quality"
               subtitle="Set the finish level for this estimate"
               statusLabel={
-                qualityIsCurrent
-                  ? "Current"
-                  : qualitySubmitted
-                    ? "Complete"
-                    : undefined
+                !qualityUnlocked && !qualitySubmitted
+                  ? "Locked"
+                  : qualityIsCurrent
+                    ? "Current"
+                    : qualitySubmitted
+                      ? "Complete"
+                      : undefined
               }
-              statusVariant={qualityIsCurrent ? "current" : "complete"}
-              defaultExpanded={!qualitySubmitted}
+              statusVariant={
+                !qualityUnlocked && !qualitySubmitted
+                  ? "stale"
+                  : qualityIsCurrent
+                    ? "current"
+                    : "complete"
+              }
+              defaultExpanded={qualityUnlocked && !qualitySubmitted}
               forceExpanded={isEditingQuality}
               canCollapse={qualitySubmitted && !isEditingQuality}
-              summaryContent={qualitySummary}
+              summaryContent={
+                !qualityUnlocked && !qualitySubmitted
+                  ? "Confirm scope first"
+                  : qualitySummary
+              }
               actionLabel={qualitySubmitted ? "Change spec" : undefined}
               onAction={qualitySubmitted ? handleQualityEdit : undefined}
               cardRef={qualityCardRef}
             >
-              <QualityBlock
-                selected={qualityLevel}
-                submitted={qualitySubmitted}
-                editing={isEditingQuality}
-                isSaving={pendingAction === "quality"}
-                onSelect={setQualityLevel}
-                onContinue={
-                  qualitySubmitted ? undefined : handleQualityContinue
-                }
-                onSave={qualitySubmitted ? handleQualitySave : undefined}
-                onCancelEdit={
-                  qualitySubmitted ? handleQualityCancelEdit : undefined
-                }
-              />
+              {!qualityUnlocked && !qualitySubmitted ? (
+                <p className="text-sm text-muted-foreground" role="status">
+                  Confirm the scope items above before selecting the
+                  specification level.
+                </p>
+              ) : (
+                <QualityBlock
+                  selected={qualityLevel}
+                  submitted={qualitySubmitted}
+                  editing={isEditingQuality}
+                  isSaving={pendingAction === "quality"}
+                  onSelect={setQualityLevel}
+                  onContinue={
+                    qualitySubmitted ? undefined : handleQualityContinue
+                  }
+                  onSave={qualitySubmitted ? handleQualitySave : undefined}
+                  onCancelEdit={
+                    qualitySubmitted ? handleQualityCancelEdit : undefined
+                  }
+                />
+              )}
             </CollapsibleStageCard>
           ) : null}
 

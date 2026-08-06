@@ -766,11 +766,14 @@ function main(): void {
   const forbiddenAssistantImport =
     /scope-discovery\/(orchestration|provider|catalogue|merge|lifecycle)/.test(
       assistantActions
-    ) ||
-    /runScopeDiscovery|acceptScopeSuggestionAction/.test(assistantActions);
+    ) || /acceptScopeSuggestionAction/.test(assistantActions);
+  const analyseJobCallsDiscovery =
+    /saveBriefAndSeedWorkAreas[\s\S]{0,5000}runScopeDiscovery/.test(
+      assistantActions
+    );
   check(
     "Analyse Job / production path does not import module",
-    !imported && !forbiddenAssistantImport
+    !imported && !forbiddenAssistantImport && !analyseJobCallsDiscovery
   );
 
   check(

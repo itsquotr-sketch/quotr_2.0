@@ -5,6 +5,7 @@ import {
   useCallback,
   useEffect,
   useId,
+  useMemo,
   useRef,
   useState,
   type ReactNode,
@@ -19,6 +20,7 @@ import { ScopeDiscoverySuggestionCard } from "@/components/assistant/ScopeDiscov
 import { createLatestWriteGuard } from "@/lib/assistant/answer-persistence";
 import {
   acceptScopeSuggestionAction,
+  batchConfirmScopeItemsAction,
   getScopeDiscoveryResultsAction,
   modifyScopeSuggestionAction,
   rejectScopeSuggestionAction,
@@ -28,33 +30,34 @@ import type {
   SafeResultsRead,
   SafeSuggestionView,
 } from "@/lib/scope-discovery/application/types";
+import type { BatchScopeItemState } from "@/lib/scope-discovery/application/batch-confirm-scope";
 import {
   SCOPE_DISCOVERY_UI_COPY,
   analysisProgressLabel,
-  allSuggestionsDecided,
+  defaultBatchSelection,
+  evaluateScopeReviewCompletion,
   groupSuggestionsByWorkAreaSections,
-  groupSuggestionsForUi,
-  summariseGroupCounts,
+  isScopeItemBatchEligible,
+  routeClarificationToScopeDetails,
   type DismissReasonCode,
-  type ScopeDiscoveryGroupedSuggestions,
-  type WorkAreaSuggestionSection,
 } from "@/lib/scope-discovery/ui";
 import { cn } from "@/lib/utils";
 
 type ScopeDiscoveryReviewBlockProps = {
   projectId: string;
-  /** When false, render nothing (server is authority). */
   enabled: boolean;
-  /** Server-loaded results — avoids client auto-provider calls; read-only. */
   initialResults?: SafeResultsRead | null;
-  /** Confirmed work area id → display name for hierarchy. */
   workAreaLabels?: ReadonlyMap<string, string> | Record<string, string>;
+  /** Notify parent when completion changes (Quality gating). */
+  onCompletionChange?: (complete: boolean) => void;
 };
 
 type PendingSuggestionAction = {
   suggestionId: string;
   kind: "accept" | "modify" | "reject";
 };
+
+type LocalBatchState = Record<string, BatchScopeItemState>;
 
 type CollapsibleGroupProps = {
   title: string;
@@ -101,15 +104,123 @@ function SuggestionGroup({
   );
 }
 
+function buildInitialBatchState(
+  suggestions: readonly SafeSuggestionView[]
+): LocalBatchState {
+  const next: LocalBatchState = {};
+  for (const s of suggestions) {
+    if (!isScopeItemBatchEligible(s)) continue;
+    next[s.suggestionId] = defaultBatchSelection(s);
+  }
+  return next;
+}
+
+function ChecklistRow({
+  suggestion,
+  included,
+  disabled,
+  editing,
+  onToggle,
+  onRouteClarification,
+}: {
+  suggestion: SafeSuggestionView;
+  included: boolean;
+  disabled: boolean;
+  editing: boolean;
+  onToggle: (included: boolean) => void;
+  onRouteClarification?: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const isClarification = suggestion.proposalClass === "CLARIFICATION";
+  const route = isClarification
+    ? routeClarificationToScopeDetails({
+        rationaleCode: suggestion.rationaleCode,
+        suggestionKind: suggestion.suggestionKind,
+        proposalClass: suggestion.proposalClass,
+        title: suggestion.proposedTitle,
+      })
+    : null;
+  const routed = !included && suggestion.latestReasonCode
+    ? String(suggestion.latestReasonCode).includes("routed")
+    : false;
+
+  return (
+    <div className="rounded-md border border-border/50 bg-background/60 px-3 py-2">
+      <div className="flex items-start gap-3">
+        <input
+          id={`scope-item-${suggestion.suggestionId}`}
+          type="checkbox"
+          className="mt-1 size-4 shrink-0 accent-[var(--brand-orange)]"
+          checked={included}
+          disabled={disabled}
+          aria-label={suggestion.proposedTitle}
+          onChange={(e) => onToggle(e.target.checked)}
+        />
+        <div className="min-w-0 flex-1 space-y-1">
+          <label
+            htmlFor={`scope-item-${suggestion.suggestionId}`}
+            className="block text-sm font-medium leading-snug"
+          >
+            {suggestion.proposedTitle}
+          </label>
+          {isClarification && route?.kind === "SCOPE_DETAIL" ? (
+            <p className="text-xs text-muted-foreground">
+              {SCOPE_DISCOVERY_UI_COPY.detailRequired}
+            </p>
+          ) : null}
+          {routed ? (
+            <p className="text-xs text-muted-foreground">
+              {SCOPE_DISCOVERY_UI_COPY.answerInScopeDetails}
+            </p>
+          ) : null}
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+              onClick={() => setExpanded((v) => !v)}
+            >
+              {expanded ? "Hide details" : "Why suggested"}
+            </button>
+            {editing && isClarification && onRouteClarification ? (
+              <button
+                type="button"
+                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                disabled={disabled}
+                onClick={onRouteClarification}
+              >
+                {SCOPE_DISCOVERY_UI_COPY.answerInScopeDetails}
+              </button>
+            ) : null}
+          </div>
+          {expanded ? (
+            <div className="space-y-1 border-t border-border/40 pt-2 text-xs text-muted-foreground">
+              <p>{suggestion.whySuggested}</p>
+              {suggestion.evidence.summaries.length > 0 ? (
+                <ul className="list-disc pl-4">
+                  {suggestion.evidence.summaries.slice(0, 4).map((line) => (
+                    <li key={line}>{line}</li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export function ScopeDiscoveryReviewBlock({
   projectId,
   enabled,
   initialResults = null,
   workAreaLabels = {},
+  onCompletionChange,
 }: ScopeDiscoveryReviewBlockProps) {
   const router = useRouter();
   const resultsGuard = useRef(createLatestWriteGuard());
   const analysingLock = useRef(false);
+  const autoRunStarted = useRef(false);
   const [results, setResults] = useState<SafeResultsRead | null>(
     initialResults
   );
@@ -126,7 +237,12 @@ export function ScopeDiscoveryReviewBlock({
     useState<SafeSuggestionView | null>(null);
   const [editError, setEditError] = useState<string | null>(null);
   const [dismissError, setDismissError] = useState<string | null>(null);
-  const [showDismissed, setShowDismissed] = useState(false);
+  const [isEditingScope, setIsEditingScope] = useState(false);
+  const [isSavingBatch, setIsSavingBatch] = useState(false);
+  const [batchError, setBatchError] = useState<string | null>(null);
+  const [localBatch, setLocalBatch] = useState<LocalBatchState>(() =>
+    buildInitialBatchState(initialResults?.allSuggestions ?? [])
+  );
 
   const refreshResults = useCallback(async () => {
     if (!enabled) return;
@@ -141,6 +257,9 @@ export function ScopeDiscoveryReviewBlock({
       }
       setResults(outcome);
       setLoadError(null);
+      if (!isEditingScope) {
+        setLocalBatch(buildInitialBatchState(outcome.allSuggestions));
+      }
     } catch {
       if (!resultsGuard.current.isCurrent(token)) return;
       setLoadError("Scope review results could not be loaded.");
@@ -149,7 +268,7 @@ export function ScopeDiscoveryReviewBlock({
         setIsLoadingResults(false);
       }
     }
-  }, [enabled, projectId]);
+  }, [enabled, projectId, isEditingScope]);
 
   useEffect(() => {
     if (!isAnalysing) return;
@@ -160,41 +279,106 @@ export function ScopeDiscoveryReviewBlock({
     return () => window.clearInterval(timer);
   }, [isAnalysing]);
 
-  const handleAnalyse = async (forceNewRun: boolean) => {
-    if (!enabled || analysingLock.current || pendingSuggestion) return;
-    analysingLock.current = true;
-    setProgressElapsedMs(0);
-    setIsAnalysing(true);
-    setAnalyseError(null);
-    setStatusMessage(null);
-
-    try {
-      const outcome = await runScopeDiscoveryAction({
-        projectId,
-        forceNewRun,
-      });
-      if (!outcome.ok) {
-        setAnalyseError(outcome.message);
+  const handleAnalyse = useCallback(
+    async (forceNewRun: boolean) => {
+      if (!enabled || analysingLock.current || pendingSuggestion || isSavingBatch)
         return;
+      analysingLock.current = true;
+      setProgressElapsedMs(0);
+      setIsAnalysing(true);
+      setAnalyseError(null);
+      setStatusMessage(null);
+
+      try {
+        const outcome = await runScopeDiscoveryAction({
+          projectId,
+          forceNewRun,
+        });
+        if (!outcome.ok) {
+          setAnalyseError(outcome.message);
+          return;
+        }
+        setStatusMessage(
+          outcome.reused
+            ? "Previous scope review results were reused."
+            : outcome.message
+        );
+        await refreshResults();
+        startTransition(() => {
+          router.refresh();
+        });
+      } catch {
+        setAnalyseError("Scope analysis could not be completed. Try again.");
+      } finally {
+        analysingLock.current = false;
+        setIsAnalysing(false);
       }
-      setStatusMessage(
-        outcome.reused
-          ? "Previous scope review results were reused."
-          : outcome.message
-      );
-      await refreshResults();
-      startTransition(() => {
-        router.refresh();
-      });
-    } catch {
-      setAnalyseError("Scope analysis could not be completed. Try again.");
-    } finally {
-      analysingLock.current = false;
-      setIsAnalysing(false);
-    }
-  };
+    },
+    [
+      enabled,
+      pendingSuggestion,
+      isSavingBatch,
+      projectId,
+      refreshResults,
+      router,
+    ]
+  );
+
+  // Auto-start analysis when Work Areas were confirmed and no run exists yet.
+  useEffect(() => {
+    if (!enabled) return;
+    if (results?.runId) return;
+    if (autoRunStarted.current || analysingLock.current) return;
+    autoRunStarted.current = true;
+    void handleAnalyse(false);
+  }, [enabled, results?.runId, handleAnalyse]);
+
+  const suggestions = useMemo(
+    () => results?.allSuggestions ?? [],
+    [results?.allSuggestions]
+  );
+  const batchEligible = useMemo(
+    () => suggestions.filter(isScopeItemBatchEligible),
+    [suggestions]
+  );
+  const workAreaSuggestions = useMemo(
+    () =>
+      suggestions.filter(
+        (s) =>
+          s.proposalClass === "HIGH_LEVEL_WORK_AREA" &&
+          s.decisionState === "PROPOSED"
+      ),
+    [suggestions]
+  );
+  const conflictSuggestions = useMemo(
+    () =>
+      suggestions.filter(
+        (s) =>
+          s.proposalClass === "WARNING" && s.decisionState === "PROPOSED"
+      ),
+    [suggestions]
+  );
+
+  const completion = evaluateScopeReviewCompletion(suggestions, {
+    hasRun: Boolean(results?.runId),
+    batchPending: isSavingBatch,
+  });
+
+  useEffect(() => {
+    onCompletionChange?.(completion.complete);
+  }, [completion.complete, onCompletionChange]);
+
+  const showChecklistEditor = !completion.complete || isEditingScope;
 
   const sourceRevision = results?.sourceRevision ?? `project:${projectId}`;
+  const hasRun = Boolean(results?.runId);
+  const isStale = Boolean(results?.stale);
+  const providerPartialFailure = Boolean(results?.providerPartialFailure);
+
+  const workAreaSections = groupSuggestionsByWorkAreaSections(
+    batchEligible,
+    workAreaLabels
+  );
 
   const runDecision = async (
     suggestionId: string,
@@ -205,7 +389,7 @@ export function ScopeDiscoveryReviewBlock({
       createdWorkAreaId?: string | null;
     }>
   ) => {
-    if (pendingSuggestion || isAnalysing) return;
+    if (pendingSuggestion || isAnalysing || isSavingBatch) return;
     setPendingSuggestion({ suggestionId, kind });
     setStatusMessage(null);
     try {
@@ -231,16 +415,6 @@ export function ScopeDiscoveryReviewBlock({
       startTransition(() => {
         router.refresh();
       });
-      if (
-        (kind === "accept" || kind === "modify") &&
-        outcome.createdWorkAreaId
-      ) {
-        window.requestAnimationFrame(() => {
-          document
-            .querySelector(`[data-work-area-id="${outcome.createdWorkAreaId}"]`)
-            ?.scrollIntoView({ behavior: "smooth", block: "center" });
-        });
-      }
     } catch {
       const message = "That action could not be completed. Try again.";
       if (kind === "modify") setEditError(message);
@@ -312,167 +486,81 @@ export function ScopeDiscoveryReviewBlock({
     });
   };
 
+  const handleConfirmScope = async () => {
+    if (!results?.runId || isSavingBatch || isAnalysing) return;
+    setIsSavingBatch(true);
+    setBatchError(null);
+    setStatusMessage(SCOPE_DISCOVERY_UI_COPY.savingScope);
+    try {
+      const items = batchEligible.map((s) => ({
+        suggestionId: s.suggestionId,
+        intendedState: (localBatch[s.suggestionId] ??
+          defaultBatchSelection(s)) as BatchScopeItemState,
+      }));
+      const outcome = await batchConfirmScopeItemsAction({
+        projectId,
+        runId: results.runId,
+        sourceRevision,
+        items,
+      });
+      if (!outcome.ok) {
+        setBatchError(outcome.message);
+        setStatusMessage(null);
+        return;
+      }
+      setIsEditingScope(false);
+      setStatusMessage(SCOPE_DISCOVERY_UI_COPY.scopeConfirmed);
+      await refreshResults();
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setBatchError("Scope could not be confirmed. Try again.");
+      setStatusMessage(null);
+    } finally {
+      setIsSavingBatch(false);
+    }
+  };
+
+  const setItemIncluded = (suggestionId: string, included: boolean) => {
+    setLocalBatch((prev) => ({
+      ...prev,
+      [suggestionId]: included ? "INCLUDED" : "NOT_REQUIRED",
+    }));
+  };
+
+  const routeClarification = (suggestionId: string) => {
+    setLocalBatch((prev) => ({
+      ...prev,
+      [suggestionId]: "UNRESOLVED_CLARIFICATION",
+    }));
+  };
+
   if (!enabled) return null;
 
-  const suggestions = results?.allSuggestions ?? [];
-  const grouped = groupSuggestionsForUi(suggestions);
-  const counts = summariseGroupCounts(grouped);
-  const workAreaSections = groupSuggestionsByWorkAreaSections(
-    suggestions,
-    workAreaLabels
-  );
-  const useWorkAreaHierarchy =
-    workAreaSections.length > 1 ||
-    (workAreaSections.length === 1 && workAreaSections[0]?.workAreaId != null);
-  const hasRun = Boolean(results?.runId);
-  const decidedComplete = allSuggestionsDecided(suggestions);
-  const isStale = Boolean(results?.stale);
-  const providerPartialFailure = Boolean(results?.providerPartialFailure);
+  const includedCount = batchEligible.filter(
+    (s) => (localBatch[s.suggestionId] ?? defaultBatchSelection(s)) === "INCLUDED"
+  ).length;
+  const excludedCount = batchEligible.length - includedCount;
 
   const summaryBits: string[] = [];
-  if (!hasRun) summaryBits.push("Not analysed");
-  else {
-    if (counts.important) summaryBits.push(`${counts.important} important`);
-    if (counts.worthChecking)
-      summaryBits.push(`${counts.worthChecking} worth checking`);
-    if (counts.clarifications)
-      summaryBits.push(`${counts.clarifications} clarifications`);
-    if (counts.other) summaryBits.push(`${counts.other} other`);
-    if (counts.conflicts) summaryBits.push(`${counts.conflicts} conflicts`);
-    if (counts.dismissed) summaryBits.push(`${counts.dismissed} dismissed`);
-    if (summaryBits.length === 0) summaryBits.push("No open suggestions");
+  if (!hasRun) summaryBits.push("Preparing");
+  else if (completion.complete && !isEditingScope) {
+    summaryBits.push("Confirmed");
+    if (completion.optionalOpen)
+      summaryBits.push(`${completion.optionalOpen} optional open`);
+  } else {
+    summaryBits.push(`${includedCount} included`);
+    if (excludedCount) summaryBits.push(`${excludedCount} not required`);
   }
 
-  const renderCards = (
-    list: readonly SafeSuggestionView[],
-    defaultExpanded: boolean
-  ) =>
-    list.map((suggestion) => (
-      <ScopeDiscoverySuggestionCard
-        key={suggestion.suggestionId}
-        suggestion={suggestion}
-        defaultExpanded={defaultExpanded && list.length <= 3}
-        disabled={isAnalysing || pendingSuggestion != null}
-        pendingAction={
-          pendingSuggestion?.suggestionId === suggestion.suggestionId
-            ? pendingSuggestion.kind
-            : null
-        }
-        onAccept={() => handleAccept(suggestion)}
-        onEdit={() => {
-          setEditError(null);
-          setEditTarget(suggestion);
-        }}
-        onDismiss={() => {
-          setDismissError(null);
-          setDismissTarget(suggestion);
-        }}
-        onScrollToWorkArea={(workAreaId) => {
-          document
-            .querySelector(`[data-work-area-id="${workAreaId}"]`)
-            ?.scrollIntoView({ behavior: "smooth", block: "center" });
-        }}
-      />
-    ));
+  const showAnalyseAgain =
+    isStale ||
+    (hasRun && Boolean(analyseError)) ||
+    (!hasRun && Boolean(analyseError));
 
-  const renderGroupedBuckets = (
-    sectionGrouped: ScopeDiscoveryGroupedSuggestions,
-    opts: { showDismissed: boolean; defaultImportantOpen: boolean }
-  ) => (
-    <>
-      <SuggestionGroup
-        title={SCOPE_DISCOVERY_UI_COPY.groupImportant}
-        count={sectionGrouped.important.length}
-        defaultOpen={opts.defaultImportantOpen}
-      >
-        {renderCards(sectionGrouped.important, true)}
-      </SuggestionGroup>
-
-      <SuggestionGroup
-        title={SCOPE_DISCOVERY_UI_COPY.groupWorthChecking}
-        count={sectionGrouped.worthChecking.length}
-        defaultOpen={sectionGrouped.important.length === 0}
-      >
-        {renderCards(sectionGrouped.worthChecking, false)}
-      </SuggestionGroup>
-
-      <SuggestionGroup
-        title={SCOPE_DISCOVERY_UI_COPY.groupClarifications}
-        count={sectionGrouped.clarifications.length}
-        defaultOpen
-      >
-        {renderCards(sectionGrouped.clarifications, true)}
-      </SuggestionGroup>
-
-      <SuggestionGroup
-        title={SCOPE_DISCOVERY_UI_COPY.groupOther}
-        count={sectionGrouped.other.length}
-        defaultOpen={false}
-      >
-        {renderCards(sectionGrouped.other, false)}
-      </SuggestionGroup>
-
-      <SuggestionGroup
-        title={SCOPE_DISCOVERY_UI_COPY.groupConflicts}
-        count={sectionGrouped.conflicts.length}
-        defaultOpen
-      >
-        {renderCards(sectionGrouped.conflicts, true)}
-      </SuggestionGroup>
-
-      {sectionGrouped.added.length > 0 ? (
-        <SuggestionGroup
-          title="Included"
-          count={sectionGrouped.added.length}
-          defaultOpen={false}
-        >
-          {renderCards(sectionGrouped.added, false)}
-        </SuggestionGroup>
-      ) : null}
-
-      {opts.showDismissed && sectionGrouped.dismissed.length > 0 ? (
-        <SuggestionGroup
-          title={SCOPE_DISCOVERY_UI_COPY.groupExcluded}
-          count={sectionGrouped.dismissed.length}
-          defaultOpen={false}
-        >
-          {renderCards(sectionGrouped.dismissed, false)}
-        </SuggestionGroup>
-      ) : null}
-    </>
-  );
-
-  const renderWorkAreaSection = (section: WorkAreaSuggestionSection) => {
-    const complete =
-      section.openCount === 0 &&
-      (section.decidedCount > 0 ||
-        section.grouped.inactive.length > 0 ||
-        section.grouped.added.length + section.grouped.dismissed.length > 0);
-    return (
-      <section
-        key={section.workAreaId ?? "project-wide"}
-        className="space-y-3 rounded-md border border-border/60 bg-muted/20 p-3"
-        data-scope-review-work-area={section.workAreaId ?? "project-wide"}
-      >
-        <div className="flex flex-wrap items-baseline justify-between gap-2">
-          <h3 className="text-sm font-semibold tracking-tight">
-            {section.workAreaLabel}
-          </h3>
-          <p className="text-xs text-muted-foreground">
-            {complete
-              ? "Complete"
-              : section.openCount > 0
-                ? `${section.openCount} to review`
-                : "No open items"}
-          </p>
-        </div>
-        {renderGroupedBuckets(section.grouped, {
-          showDismissed: true,
-          defaultImportantOpen: true,
-        })}
-      </section>
-    );
-  };
+  const showManualAnalyse =
+    !hasRun && !isAnalysing && Boolean(analyseError || loadError);
 
   return (
     <>
@@ -480,29 +568,27 @@ export function ScopeDiscoveryReviewBlock({
         title={SCOPE_DISCOVERY_UI_COPY.cardTitle}
         subtitle={SCOPE_DISCOVERY_UI_COPY.cardSubtitle}
         statusLabel={
-          isAnalysing
+          isAnalysing || (!hasRun && !analyseError)
             ? "Analysing"
             : isStale
               ? "Out of date"
-              : hasRun
-                ? counts.openTotal > 0
+              : completion.complete && !isEditingScope
+                ? "Complete"
+                : hasRun
                   ? "Review"
-                  : "Complete"
-                : "Ready"
+                  : "Ready"
         }
         statusVariant={
-          isAnalysing
+          isAnalysing || (!hasRun && !analyseError)
             ? "current"
             : isStale
               ? "stale"
-              : hasRun
-                ? counts.openTotal > 0
-                  ? "review"
-                  : "complete"
-                : "current"
+              : completion.complete && !isEditingScope
+                ? "complete"
+                : "review"
         }
         defaultExpanded
-        canCollapse={hasRun && !isAnalysing}
+        canCollapse={hasRun && !isAnalysing && !isEditingScope}
         summaryContent={summaryBits.join(" · ")}
       >
         <div className="space-y-4" aria-live="polite">
@@ -516,7 +602,7 @@ export function ScopeDiscoveryReviewBlock({
                 type="button"
                 size="sm"
                 className="mt-2 min-h-10"
-                disabled={isAnalysing || pendingSuggestion != null}
+                disabled={isAnalysing || pendingSuggestion != null || isSavingBatch}
                 onClick={() => void handleAnalyse(true)}
               >
                 {SCOPE_DISCOVERY_UI_COPY.analyseAgainButton}
@@ -538,31 +624,38 @@ export function ScopeDiscoveryReviewBlock({
               {analyseError}
             </p>
           ) : null}
-
           {loadError ? (
             <p className="text-sm text-destructive" role="alert">
               {loadError}
             </p>
           ) : null}
-
+          {batchError ? (
+            <p className="text-sm text-destructive" role="alert">
+              {batchError}
+            </p>
+          ) : null}
           {statusMessage ? (
             <p className="text-sm text-muted-foreground" role="status">
               {statusMessage}
             </p>
           ) : null}
 
-          {isAnalysing ? (
+          {(isAnalysing || (!hasRun && !analyseError)) && !showManualAnalyse ? (
             <div
               className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-3 text-sm"
               role="status"
               aria-live="assertive"
             >
               <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-              <span>{analysisProgressLabel(progressElapsedMs)}</span>
+              <span>
+                {isAnalysing
+                  ? analysisProgressLabel(progressElapsedMs)
+                  : SCOPE_DISCOVERY_UI_COPY.preparingAnalysis}
+              </span>
             </div>
           ) : null}
 
-          {!hasRun && !isAnalysing ? (
+          {showManualAnalyse ? (
             <div className="space-y-3">
               <p className="text-sm text-muted-foreground">
                 {SCOPE_DISCOVERY_UI_COPY.emptyPurpose}
@@ -570,7 +663,7 @@ export function ScopeDiscoveryReviewBlock({
               <Button
                 type="button"
                 className="min-h-10 w-full sm:w-auto"
-                disabled={isLoadingResults}
+                disabled={isLoadingResults || isAnalysing}
                 onClick={() => void handleAnalyse(false)}
               >
                 {SCOPE_DISCOVERY_UI_COPY.analyseButton}
@@ -580,92 +673,241 @@ export function ScopeDiscoveryReviewBlock({
 
           {hasRun && !isAnalysing ? (
             <div className="space-y-4">
-              {counts.openTotal === 0 && !decidedComplete ? (
-                <div className="space-y-3">
-                  <p className="text-sm text-muted-foreground">
-                    {SCOPE_DISCOVERY_UI_COPY.noSuggestions}
-                  </p>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    className="min-h-10"
-                    onClick={() => void handleAnalyse(true)}
-                  >
-                    {SCOPE_DISCOVERY_UI_COPY.analyseAgainButton}
-                  </Button>
-                </div>
-              ) : null}
-
-              {decidedComplete ? (
-                <p className="text-sm text-muted-foreground">
-                  {SCOPE_DISCOVERY_UI_COPY.allDecided}
-                </p>
-              ) : null}
-
-              {(counts.important > 0 ||
-                counts.worthChecking > 0 ||
-                counts.clarifications > 0 ||
-                counts.other > 0 ||
-                counts.conflicts > 0) && (
-                <p className="text-xs text-muted-foreground">
-                  {[
-                    counts.important ? `${counts.important} important` : null,
-                    counts.worthChecking
-                      ? `${counts.worthChecking} worth checking`
-                      : null,
-                    counts.clarifications
-                      ? `${counts.clarifications} clarifications`
-                      : null,
-                    counts.other ? `${counts.other} other` : null,
-                    counts.conflicts
-                      ? `${counts.conflicts} conflicts`
-                      : null,
-                  ]
-                    .filter(Boolean)
-                    .join(" · ")}
-                </p>
-              )}
-
-              {useWorkAreaHierarchy ? (
-                <div className="space-y-4">
-                  {workAreaSections.map((section) =>
-                    renderWorkAreaSection(section)
-                  )}
-                </div>
-              ) : (
+              {showChecklistEditor ? (
                 <>
-                  {renderGroupedBuckets(grouped, {
-                    showDismissed: false,
-                    defaultImportantOpen: true,
+                  <p className="text-sm text-muted-foreground">
+                    {SCOPE_DISCOVERY_UI_COPY.batchIntro}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {includedCount} selected · {excludedCount} not required
+                    {completion.clarificationOpen
+                      ? ` · clarifications pending save`
+                      : ""}
+                  </p>
+
+                  {workAreaSections.map((section) => {
+                    const items = [
+                      ...section.grouped.important,
+                      ...section.grouped.worthChecking,
+                      ...section.grouped.clarifications,
+                      ...section.grouped.other,
+                      ...section.grouped.added,
+                      ...section.grouped.dismissed,
+                    ].filter(isScopeItemBatchEligible);
+                    if (items.length === 0) return null;
+                    const selected = items.filter(
+                      (s) =>
+                        (localBatch[s.suggestionId] ??
+                          defaultBatchSelection(s)) === "INCLUDED"
+                    ).length;
+                    return (
+                      <section
+                        key={section.workAreaId ?? "project-wide"}
+                        className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3"
+                      >
+                        <div className="flex flex-wrap items-baseline justify-between gap-2">
+                          <h3 className="text-sm font-semibold">
+                            {section.workAreaLabel}
+                          </h3>
+                          <p className="text-xs text-muted-foreground">
+                            {selected} of {items.length} included by default
+                          </p>
+                        </div>
+                        <div className="space-y-2">
+                          {items.map((suggestion) => {
+                            const state =
+                              localBatch[suggestion.suggestionId] ??
+                              defaultBatchSelection(suggestion);
+                            return (
+                              <div key={suggestion.suggestionId}>
+                                <ChecklistRow
+                                  suggestion={suggestion}
+                                  included={state === "INCLUDED"}
+                                  disabled={isSavingBatch}
+                                  editing={showChecklistEditor}
+                                  onToggle={(inc) =>
+                                    setItemIncluded(
+                                      suggestion.suggestionId,
+                                      inc
+                                    )
+                                  }
+                                  onRouteClarification={() =>
+                                    routeClarification(suggestion.suggestionId)
+                                  }
+                                />
+                                {state === "UNRESOLVED_CLARIFICATION" ? (
+                                  <p className="px-3 text-xs text-muted-foreground">
+                                    Will be answered in Scope Details.
+                                  </p>
+                                ) : null}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </section>
+                    );
                   })}
 
-                  {counts.dismissed > 0 ? (
-                    <div className="space-y-2">
-                      <button
-                        type="button"
-                        className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                        onClick={() => setShowDismissed((prev) => !prev)}
-                      >
-                        {showDismissed
-                          ? "Hide dismissed"
-                          : `Show dismissed (${counts.dismissed})`}
-                      </button>
-                      {showDismissed
-                        ? renderCards(grouped.dismissed, false)
-                        : null}
-                    </div>
-                  ) : null}
+                  <Button
+                    type="button"
+                    className="min-h-10 w-full sm:w-auto"
+                    disabled={isSavingBatch || batchEligible.length === 0}
+                    onClick={() => void handleConfirmScope()}
+                  >
+                    {isSavingBatch ? (
+                      <>
+                        <Loader2
+                          className="mr-2 size-4 animate-spin"
+                          aria-hidden
+                        />
+                        {SCOPE_DISCOVERY_UI_COPY.savingScope}
+                      </>
+                    ) : (
+                      SCOPE_DISCOVERY_UI_COPY.confirmScopeButton
+                    )}
+                  </Button>
+                </>
+              ) : (
+                <>
+                  <div className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3 text-sm">
+                    <p className="font-medium">
+                      {SCOPE_DISCOVERY_UI_COPY.scopeConfirmed}
+                    </p>
+                    <ul className="space-y-1 text-muted-foreground">
+                      <li>
+                        {SCOPE_DISCOVERY_UI_COPY.included}:{" "}
+                        {
+                          batchEligible.filter(
+                            (s) =>
+                              s.decisionState === "ACCEPTED" ||
+                              s.decisionState === "MODIFIED"
+                          ).length
+                        }
+                      </li>
+                      <li>
+                        {SCOPE_DISCOVERY_UI_COPY.dismissed}:{" "}
+                        {
+                          batchEligible.filter(
+                            (s) => s.decisionState === "REJECTED"
+                          ).length
+                        }
+                      </li>
+                      <li>
+                        {SCOPE_DISCOVERY_UI_COPY.needsDetail}:{" "}
+                        {
+                          batchEligible.filter((s) =>
+                            String(s.latestReasonCode ?? "").includes("pending")
+                          ).length
+                        }
+                      </li>
+                    </ul>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="mt-2 min-h-10"
+                      onClick={() => {
+                        setIsEditingScope(true);
+                        setLocalBatch(buildInitialBatchState(suggestions));
+                      }}
+                    >
+                      {SCOPE_DISCOVERY_UI_COPY.editScopeButton}
+                    </Button>
+                  </div>
                 </>
               )}
 
-              {!isStale ? (
+              {workAreaSuggestions.length > 0 ? (
+                <SuggestionGroup
+                  title="Additional work areas"
+                  count={workAreaSuggestions.length}
+                  defaultOpen
+                >
+                  {workAreaSuggestions.map((suggestion) => (
+                    <ScopeDiscoverySuggestionCard
+                      key={suggestion.suggestionId}
+                      suggestion={suggestion}
+                      defaultExpanded={false}
+                      disabled={
+                        isAnalysing ||
+                        pendingSuggestion != null ||
+                        isSavingBatch
+                      }
+                      pendingAction={
+                        pendingSuggestion?.suggestionId ===
+                        suggestion.suggestionId
+                          ? pendingSuggestion.kind
+                          : null
+                      }
+                      onAccept={() => handleAccept(suggestion)}
+                      onEdit={() => {
+                        setEditError(null);
+                        setEditTarget(suggestion);
+                      }}
+                      onDismiss={() => {
+                        setDismissError(null);
+                        setDismissTarget(suggestion);
+                      }}
+                      onScrollToWorkArea={(workAreaId) => {
+                        document
+                          .querySelector(
+                            `[data-work-area-id="${workAreaId}"]`
+                          )
+                          ?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "center",
+                          });
+                      }}
+                    />
+                  ))}
+                </SuggestionGroup>
+              ) : null}
+
+              {conflictSuggestions.length > 0 ? (
+                <SuggestionGroup
+                  title={SCOPE_DISCOVERY_UI_COPY.groupConflicts}
+                  count={conflictSuggestions.length}
+                  defaultOpen
+                >
+                  {conflictSuggestions.map((suggestion) => (
+                    <ScopeDiscoverySuggestionCard
+                      key={suggestion.suggestionId}
+                      suggestion={suggestion}
+                      defaultExpanded
+                      disabled={
+                        isAnalysing ||
+                        pendingSuggestion != null ||
+                        isSavingBatch
+                      }
+                      pendingAction={
+                        pendingSuggestion?.suggestionId ===
+                        suggestion.suggestionId
+                          ? pendingSuggestion.kind
+                          : null
+                      }
+                      onAccept={() => handleAccept(suggestion)}
+                      onEdit={() => {
+                        setEditError(null);
+                        setEditTarget(suggestion);
+                      }}
+                      onDismiss={() => {
+                        setDismissError(null);
+                        setDismissTarget(suggestion);
+                      }}
+                      onScrollToWorkArea={() => undefined}
+                    />
+                  ))}
+                </SuggestionGroup>
+              ) : null}
+
+              {showAnalyseAgain && !isStale ? (
                 <div className="pt-1">
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
                     className="min-h-10"
-                    disabled={pendingSuggestion != null}
+                    disabled={pendingSuggestion != null || isSavingBatch}
                     onClick={() => void handleAnalyse(true)}
                   >
                     {SCOPE_DISCOVERY_UI_COPY.analyseAgainButton}

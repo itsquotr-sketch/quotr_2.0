@@ -115,6 +115,7 @@ export function mapDbSuggestionToSafeView(
     canCreateWorkArea: decidability.canCreateWorkArea,
     canIncludeInScope: decidability.canIncludeInScope,
     decidabilityReason: decidability.reason,
+    latestReasonCode: decision?.reason_code ?? null,
   };
 }
 

@@ -70,6 +70,8 @@ export interface SafeSuggestionView {
   readonly canCreateWorkArea: boolean;
   readonly canIncludeInScope: boolean;
   readonly decidabilityReason: string | null;
+  /** Latest decision reason code — for clarification disposition / routing. */
+  readonly latestReasonCode: string | null;
 }
 
 export interface SafeRunResult {

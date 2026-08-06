@@ -78,9 +78,16 @@ export const SCOPE_DISCOVERY_UI_COPY = Object.freeze({
   cardSubtitle:
     "Review related work items within your confirmed work areas — inclusions, omissions and clarifications.",
   emptyPurpose:
-    "Analyse scope to review work items inside your confirmed work areas. Quotr proposes inclusions and clarifications only — nothing is added until you decide.",
+    "Quotr analyses scope after you confirm work areas. Review the checklist, then confirm the scope.",
+  batchIntro:
+    "Quotr has selected the scope items it believes are likely to apply. Untick anything that is not part of this job, then confirm the scope.",
   analyseButton: "Analyse scope",
   analyseAgainButton: "Analyse again",
+  confirmScopeButton: "Confirm scope",
+  editScopeButton: "Edit scope",
+  savingScope: "Saving scope decisions…",
+  scopeConfirmed: "Scope confirmed.",
+  preparingAnalysis: "Preparing scope review…",
   staleNotice:
     "Your project information has changed since this scope review.",
   noSuggestions:
@@ -90,6 +97,8 @@ export const SCOPE_DISCOVERY_UI_COPY = Object.freeze({
   providerPartialFailure:
     "Quotr completed the structured scope checks, but additional contextual suggestions were unavailable.",
   featureUnavailable: "Scope review is unavailable for this project.",
+  qualityLocked:
+    "Confirm the scope items above before selecting the specification level.",
   addWorkArea: "Add work area",
   editAndAdd: "Edit and add",
   includeInScope: "Include in scope",
@@ -97,9 +106,13 @@ export const SCOPE_DISCOVERY_UI_COPY = Object.freeze({
   notRequired: "Not required",
   dismiss: "Dismiss",
   review: "Review",
+  answerInScopeDetails: "Answer in Scope Details",
+  includePendingDetail: "Include pending detail",
+  detailRequired: "Detail required",
   added: "Added",
   included: "Included",
   dismissed: "Dismissed",
+  needsDetail: "Needs detail",
   groupImportant: "Important inclusions",
   groupWorthChecking: "Worth checking",
   groupClarifications: "Clarifications",

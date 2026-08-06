@@ -43,6 +43,14 @@ export {
   type DecisionServiceDeps,
 } from "./decision-services";
 export {
+  batchConfirmScopeItemsApp,
+  deriveBatchStateFromDecisions,
+  type BatchConfirmScopeInput,
+  type BatchConfirmScopeOutcome,
+  type BatchScopeItemState,
+  type BatchScopeItemInput,
+} from "./batch-confirm-scope";
+export {
   evaluateScopeDiscoveryStale,
   type EvaluateStaleDeps,
 } from "./stale-evaluation";

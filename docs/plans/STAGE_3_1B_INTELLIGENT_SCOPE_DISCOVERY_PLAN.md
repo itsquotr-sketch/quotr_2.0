@@ -5,11 +5,11 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.6R1 — **Complete — Local, Preview Retest Pending**  
-**Next batch:** 3.1B.7 — **Not Started** (blocked on Preview UI sign-off after 3.1B.6R1)  
+**Current batch:** 3.1B.6R2 — **Complete — Local, Preview Retest Pending**  
+**Next batch:** 3.1B.7 — **Not Started** (blocked on Preview UI sign-off after 3.1B.6R2)  
 **Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **no 030**  
 **Server integration:** **Complete — Local**  
-**Scope Discovery UI:** **Complete — Local, Preview Retest Pending** (3.1B.6R1 remediation)  
+**Scope Discovery UI:** **Complete — Local, Preview Retest Pending** (3.1B.6R2 batch confirmation)  
 **Preview feature:** **Enabled only by owner configuration**  
 **Production feature:** **Disabled**  
 **Feature flag:** **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off)  

@@ -14,6 +14,7 @@ import {
   acceptScopeSuggestionApp,
   rejectScopeSuggestionApp,
   modifyScopeSuggestionApp,
+  batchConfirmScopeItemsApp,
   getScopeDiscoveryResults,
   runScopeDiscovery,
   evaluateScopeDiscoveryStale,
@@ -24,9 +25,11 @@ import {
   type ResultsReadOutcome,
   type RunDiscoveryOutcome,
   type StaleOutcome,
+  type BatchConfirmScopeOutcome,
 } from "./application";
 import { revalidateScopeDiscoveryPaths } from "./application/revalidate";
 import type { PersistenceAuthContext } from "./persistence/context";
+import { BATCH_SCOPE_STATES } from "./application/batch-confirm-scope";
 
 const uuidSchema = z.string().uuid();
 
@@ -60,6 +63,23 @@ const modifyInputSchema = z.object({
   modifiedWorkAreaType: z.string().min(1).max(80),
   reasonCode: z.string().max(120).nullable().optional(),
   userNote: z.string().max(2000).nullable().optional(),
+});
+
+const batchConfirmInputSchema = z.object({
+  projectId: uuidSchema,
+  runId: uuidSchema,
+  sourceRevision: z.string().min(1).max(500),
+  items: z
+    .array(
+      z.object({
+        suggestionId: uuidSchema,
+        intendedState: z.enum(BATCH_SCOPE_STATES),
+        modifiedTitle: z.string().max(200).nullable().optional(),
+        modifiedDescription: z.string().max(2000).nullable().optional(),
+      })
+    )
+    .min(1)
+    .max(200),
 });
 
 async function authContext(): Promise<
@@ -182,6 +202,31 @@ export async function modifyScopeSuggestionAction(input: {
   if (!auth.ok) return auth.failure;
 
   return modifyScopeSuggestionApp(parsed.data, {
+    ctx: auth.ctx,
+    revalidate: revalidateScopeDiscoveryPaths,
+  });
+}
+
+export async function batchConfirmScopeItemsAction(input: {
+  projectId: string;
+  runId: string;
+  sourceRevision: string;
+  items: {
+    suggestionId: string;
+    intendedState: "INCLUDED" | "NOT_REQUIRED" | "UNRESOLVED_CLARIFICATION";
+    modifiedTitle?: string | null;
+    modifiedDescription?: string | null;
+  }[];
+}): Promise<BatchConfirmScopeOutcome> {
+  const parsed = batchConfirmInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return applicationFailure(APPLICATION_ERROR_CODES.VALIDATION_FAILED);
+  }
+
+  const auth = await authContext();
+  if (!auth.ok) return auth.failure;
+
+  return batchConfirmScopeItemsApp(parsed.data, {
     ctx: auth.ctx,
     revalidate: revalidateScopeDiscoveryPaths,
   });

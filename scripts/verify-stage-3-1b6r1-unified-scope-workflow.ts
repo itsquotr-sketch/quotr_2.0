@@ -206,8 +206,7 @@ check(
 check(
   "Review block nests by work area sections",
   reviewBlock.includes("groupSuggestionsByWorkAreaSections") &&
-    reviewBlock.includes("groupClarifications") &&
-    reviewBlock.includes("groupExcluded")
+    reviewBlock.includes("workAreaLabel")
 );
 check(
   "Stepper constraints label is Site Constraints (not Scope Review)",

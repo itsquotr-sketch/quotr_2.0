@@ -102,22 +102,21 @@ export async function includeScopeItemApp(
       deps.ctx,
       input.suggestionId
     );
-    if (decisions.some((d) => d.decision_type === "ACCEPT")) {
+    const latest = latestDecisionType(decisions);
+    if (latest === "ACCEPT" || latest === "MODIFY") {
+      // Idempotent when already included (latest wins).
+      const last = decisions[decisions.length - 1]!;
       return {
-        ok: false,
-        success: false,
-        code: APPLICATION_ERROR_CODES.DECISION_FAILED,
-        message: safeDecisionFailureMessage(DECISION_ERROR_CODES.ALREADY_ACCEPTED),
+        ok: true,
+        success: true,
+        decisionId: last.id,
+        suggestionId: input.suggestionId,
+        projectId: input.projectId,
+        decisionType: "ACCEPT",
+        createdWorkAreaId: null,
+        idempotentReuse: true,
+        message: "Scope item already included.",
       };
-    }
-    if (
-      decisions.some(
-        (d) =>
-          d.decision_type === "MODIFY" ||
-          (d as { created_work_area_id?: string | null }).created_work_area_id
-      )
-    ) {
-      // MODIFY without WA is allowed only via modifyScopeItem; block if WA created
     }
     const hasScopeCreate = decisions.some((d) => {
       const detail = d as { created_work_area_id?: string | null };
@@ -268,12 +267,19 @@ export async function modifyIncludeScopeItemApp(
       deps.ctx,
       input.suggestionId
     );
-    if (decisions.some((d) => d.decision_type === "ACCEPT")) {
+    const latest = latestDecisionType(decisions);
+    if (latest === "ACCEPT" || latest === "MODIFY") {
+      const last = decisions[decisions.length - 1]!;
       return {
-        ok: false,
-        success: false,
-        code: APPLICATION_ERROR_CODES.DECISION_FAILED,
-        message: safeDecisionFailureMessage(DECISION_ERROR_CODES.ALREADY_ACCEPTED),
+        ok: true,
+        success: true,
+        decisionId: last.id,
+        suggestionId: input.suggestionId,
+        projectId: input.projectId,
+        decisionType: "MODIFY",
+        createdWorkAreaId: null,
+        idempotentReuse: true,
+        message: "Scope item already included.",
       };
     }
     if (sug.stale_reason) {

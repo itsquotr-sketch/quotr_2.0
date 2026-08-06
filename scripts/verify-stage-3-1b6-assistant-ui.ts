@@ -97,6 +97,7 @@ function fixtureSuggestion(
     canCreateWorkArea: overrides.canCreateWorkArea ?? false,
     canIncludeInScope: overrides.canIncludeInScope ?? true,
     decidabilityReason: overrides.decidabilityReason ?? null,
+    latestReasonCode: overrides.latestReasonCode ?? null,
   };
 }
 
@@ -155,9 +156,9 @@ check(
 // Empty / copy / progress
 // ---------------------------------------------------------------------------
 check(
-  "empty purpose states proposals only",
-  SCOPE_DISCOVERY_UI_COPY.emptyPurpose.toLowerCase().includes("propose") ||
-    SCOPE_DISCOVERY_UI_COPY.emptyPurpose.toLowerCase().includes("suggestions only")
+  "empty purpose / batch intro explain confirm flow",
+  SCOPE_DISCOVERY_UI_COPY.batchIntro.toLowerCase().includes("untick") &&
+    SCOPE_DISCOVERY_UI_COPY.emptyPurpose.toLowerCase().includes("work areas")
 );
 check(
   "analyse button label is Analyse scope",
@@ -352,18 +353,22 @@ check(
   reviewBlock.includes("runScopeDiscoveryAction")
 );
 check(
-  "review block does not auto-run on mount without user click",
-  reviewBlock.includes("handleAnalyse") &&
-    !reviewBlock.includes("void handleAnalyse(false);\n  },")
+  "review block auto-runs once when no run exists after WA confirm",
+  reviewBlock.includes("autoRunStarted") &&
+    reviewBlock.includes("void handleAnalyse(false)")
+);
+check(
+  "review block uses batch confirm for scope items",
+  reviewBlock.includes("batchConfirmScopeItemsAction") &&
+    reviewBlock.includes("confirmScopeButton")
 );
 check(
   "review block refreshes via getScopeDiscoveryResultsAction after actions",
   reviewBlock.includes("getScopeDiscoveryResultsAction")
 );
 check(
-  "review block accepts server initialResults (no mount auto-analyse)",
-  reviewBlock.includes("initialResults") &&
-    !reviewBlock.includes("useEffect(() => {\n    if (!enabled) return;\n    void refreshResults")
+  "review block accepts server initialResults",
+  reviewBlock.includes("initialResults")
 );
 check(
   "duplicate analyse prevented via analysingLock",
@@ -453,9 +458,12 @@ check(
     !reviewBlock.toLowerCase().includes("builder interview")
 );
 
+const assistantActionsSrc = read("lib/assistant/actions.ts");
 const analyseJobUnchanged =
-  read("lib/assistant/actions.ts").includes("saveBriefAndSeedWorkAreas") &&
-  !read("lib/assistant/actions.ts").includes("runScopeDiscovery");
+  assistantActionsSrc.includes("saveBriefAndSeedWorkAreas") &&
+  !/saveBriefAndSeedWorkAreas[\s\S]{0,5000}runScopeDiscovery/.test(
+    assistantActionsSrc
+  );
 check(
   "Analyse Job action module not replaced by discovery",
   analyseJobUnchanged

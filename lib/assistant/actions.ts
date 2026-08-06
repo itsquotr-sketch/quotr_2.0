@@ -506,6 +506,39 @@ export async function confirmWorkAreas(
   }
 
   await markEstimateStale(projectId);
+
+  // Stage 3.1B.6R2 — Work Area confirmation authorises the initial Scope Review run.
+  // Failures must not undo confirmation. Feature-off leaves behaviour unchanged.
+  if (isScopeDiscoveryEnabled()) {
+    try {
+      const auth = await requireAuthOrgContext();
+      if (auth.ok) {
+        const { runScopeDiscovery } = await import(
+          "@/lib/scope-discovery/application/run-scope-discovery"
+        );
+        const { revalidateScopeDiscoveryPaths } = await import(
+          "@/lib/scope-discovery/application/revalidate"
+        );
+        await runScopeDiscovery(
+          { projectId, forceNewRun: false },
+          {
+            ctx: {
+              supabase: auth.supabase,
+              orgId: auth.orgId,
+              userId: auth.user.id,
+            },
+            revalidate: revalidateScopeDiscoveryPaths,
+          }
+        );
+      }
+    } catch (error) {
+      console.error("[confirmWorkAreas] scope discovery auto-run failed", {
+        projectId,
+        reason: error instanceof Error ? error.message : "unknown",
+      });
+    }
+  }
+
   revalidateAssistantPaths(projectId);
   return { success: true };
 }
@@ -649,6 +682,52 @@ export async function saveQuality(
 
   if (!canRunStageAction(stage, "save_quality")) {
     return { error: "This action is not available at the current stage." };
+  }
+
+  if (isScopeDiscoveryEnabled()) {
+    try {
+      const auth = await requireAuthOrgContext();
+      if (auth.ok) {
+        const { getScopeDiscoveryResults } = await import(
+          "@/lib/scope-discovery/application/get-results"
+        );
+        const { evaluateScopeReviewCompletion } = await import(
+          "@/lib/scope-discovery/ui/scope-review-completion"
+        );
+        const results = await getScopeDiscoveryResults(
+          { projectId },
+          {
+            ctx: {
+              supabase: auth.supabase,
+              orgId: auth.orgId,
+              userId: auth.user.id,
+            },
+          }
+        );
+        if (results.ok) {
+          const completion = evaluateScopeReviewCompletion(
+            results.allSuggestions,
+            { hasRun: Boolean(results.runId) }
+          );
+          if (!completion.complete) {
+            return {
+              error:
+                "Confirm the scope items above before selecting the specification level.",
+            };
+          }
+        } else {
+          return {
+            error:
+              "Confirm the scope items above before selecting the specification level.",
+          };
+        }
+      }
+    } catch {
+      return {
+        error:
+          "Confirm the scope items above before selecting the specification level.",
+      };
+    }
   }
 
   const blockResult = await createDynamicQuestionBlockIfNeeded(

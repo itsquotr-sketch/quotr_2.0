@@ -1,11 +1,7 @@
 # Stage 3.1B.6R1 — Unified Scope Workflow Completion
 
-**Status:** Complete — Local, Preview Retest Pending  
-**Date:** 2026-08-06  
-**Verify:** `scripts/verify-stage-3-1b6r1-unified-scope-workflow.ts`  
-**Parent:** Stage 3.1B.6 — Preview sign-off **not** complete  
-**Stage 3.1B.7:** Not Started  
-**Production:** Disabled  
+**Status:** Complete — Local, Preview Retest Pending (superseded for workflow by **3.1B.6R2**)  
+**Follow-on:** `docs/implementation/STAGE_3_1B6R2_BATCH_SCOPE_CONFIRMATION_COMPLETION.md`  
 
 ---
 

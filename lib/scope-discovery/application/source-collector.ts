@@ -11,7 +11,7 @@ import {
   PERSISTENCE_ERROR_CODES,
   ScopeDiscoveryPersistenceError,
 } from "../persistence/errors";
-import { fingerprintDigest } from "../orchestration/source-snapshot";
+import { fingerprintDigest, normaliseFormatting } from "../orchestration/source-snapshot";
 import type {
   OrchestrationConstraint,
   OrchestrationFact,
@@ -111,9 +111,10 @@ export async function collectProjectSources(
     0,
     SOURCE_BOUNDS.maxBriefChars
   );
+  // Content-only, formatting-normalised revision — stage / metadata updates and
+  // whitespace-only brief edits must not falsely stale a fresh Scope Review run.
   const briefRevision = contentRevision([
-    String(project.updated_at ?? ""),
-    shaShort(briefText),
+    shaShort(normaliseFormatting(briefText)),
   ]);
 
   const { data: orgSettings } = await ctx.supabase
@@ -143,10 +144,8 @@ export async function collectProjectSources(
       const content = String(n.content ?? "").slice(0, SOURCE_BOUNDS.maxNoteChars);
       return {
         noteId: String(n.id),
-        revision: contentRevision([
-          String(n.updated_at ?? n.captured_at ?? ""),
-          shaShort(content),
-        ]),
+        // Content-only — note row touch without content change must not stale.
+        revision: contentRevision([shaShort(content)]),
         content,
       };
     });
@@ -164,8 +163,8 @@ export async function collectProjectSources(
     workAreaId: String(w.id),
     type: String(w.type),
     title: w.name ? String(w.name) : null,
+    // Domain meaning only — ignore updated_at so incidental row touches do not stale.
     revision: contentRevision([
-      String(w.updated_at ?? ""),
       String(w.type),
       String(w.name ?? ""),
       String(w.status),
@@ -186,7 +185,6 @@ export async function collectProjectSources(
       key: String(f.key),
       value,
       revision: contentRevision([
-        String(f.updated_at ?? ""),
         String(f.key),
         shaShort(JSON.stringify(value)),
       ]),
@@ -208,7 +206,6 @@ export async function collectProjectSources(
         key: String(c.key),
         value,
         revision: contentRevision([
-          String(c.updated_at ?? ""),
           String(c.key),
           shaShort(JSON.stringify(value)),
         ]),

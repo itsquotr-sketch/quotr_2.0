@@ -338,15 +338,22 @@ async function main(): Promise<void> {
 
   const analyseJob = readFileSync("lib/assistant/actions.ts", "utf8");
   check(
-    "Analyse Job does not import discovery run/decision actions",
-    !analyseJob.includes("scope-discovery/actions") &&
-      !analyseJob.includes("runScopeDiscovery") &&
-      !analyseJob.includes("acceptScopeSuggestionApp")
+    "Analyse Job seed path does not call discovery run",
+    !/saveBriefAndSeedWorkAreas[\s\S]{0,4000}runScopeDiscovery/.test(analyseJob)
   );
   check(
-    "Analyse Job may load gated exclusions only",
+    "Work Area confirm may auto-run discovery when enabled",
+    analyseJob.includes("confirmWorkAreas") &&
+      analyseJob.includes("runScopeDiscovery")
+  );
+  check(
+    "Analyse Job does not import discovery decision actions module",
+    !analyseJob.includes("scope-discovery/actions")
+  );
+  check(
+    "Analyse Job may load gated exclusions only for questions",
     analyseJob.includes("loadExcludedScopeItemTypes") ||
-      !analyseJob.includes("scope-discovery")
+      analyseJob.includes("isScopeDiscoveryEnabled")
   );
 
   check(
