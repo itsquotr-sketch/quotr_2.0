@@ -1,11 +1,14 @@
 "use client";
 
+import { useEffect, useRef, useState } from "react";
 import { SiteNotesCaptureCard } from "@/components/project-notes/SiteNotesCaptureCard";
 import { AnalyseNotesSection } from "@/components/project-notes/AnalyseNotesSection";
+import { AnalysisProgressBanner } from "@/components/assistant/AnalysisProgressBanner";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import type { ProjectNote } from "@/lib/project-notes/types";
+import { analyseJobProgressLabel } from "@/lib/assistant/analyse-job-progress";
 
 type ProjectCaptureBlockProps = {
   briefText: string;
@@ -47,6 +50,25 @@ export function ProjectCaptureBlock({
   submitted = false,
 }: ProjectCaptureBlockProps) {
   const briefIncluded = briefText.trim().length > 0;
+  const [progressElapsedMs, setProgressElapsedMs] = useState(0);
+  const analyseStartedAt = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isAnalysing) {
+      analyseStartedAt.current = null;
+      return;
+    }
+    analyseStartedAt.current = Date.now();
+    const timer = window.setInterval(() => {
+      const started = analyseStartedAt.current ?? Date.now();
+      setProgressElapsedMs(Date.now() - started);
+    }, 400);
+    return () => window.clearInterval(timer);
+  }, [isAnalysing]);
+
+  const progressLabel = isAnalysing
+    ? analyseJobProgressLabel(progressElapsedMs)
+    : "";
 
   return (
     <div className="space-y-4">
@@ -121,7 +143,10 @@ export function ProjectCaptureBlock({
       ) : null}
 
       {!submitted && onAnalyse ? (
-        <div className="pt-1">
+        <div className="space-y-3 pt-1">
+          {isAnalysing ? (
+            <AnalysisProgressBanner label={progressLabel} />
+          ) : null}
           <Button
             type="button"
             onClick={onAnalyse}

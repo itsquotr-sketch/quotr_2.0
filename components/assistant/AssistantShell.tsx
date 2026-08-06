@@ -860,10 +860,31 @@ export function AssistantShell({
             <CollapsibleStageCard
               title="Estimate Review"
               subtitle="Review what Quotr will use for this estimate."
-              statusLabel="Review"
-              statusVariant="current"
-              defaultExpanded
-              canCollapse={false}
+              statusLabel={
+                estimate?.isStale
+                  ? "Needs refresh"
+                  : estimateReady
+                    ? "Ready"
+                    : "Review"
+              }
+              statusVariant={
+                estimate?.isStale
+                  ? "stale"
+                  : estimateReady
+                    ? "complete"
+                    : "review"
+              }
+              defaultExpanded={!estimateReady}
+              canCollapse={questionsSubmitted}
+              forceExpanded={Boolean(estimate?.isStale)}
+              summaryContent={
+                estimate?.isStale
+                  ? "Estimate inputs changed — review before generating"
+                  : estimateReady
+                    ? "Estimate inputs confirmed"
+                    : "Review work-area facts and missing details"
+              }
+              actionLabel={estimateReady || questionsSubmitted ? "View" : undefined}
             >
               <ScopeSummaryBlock
                 projectId={project.id}

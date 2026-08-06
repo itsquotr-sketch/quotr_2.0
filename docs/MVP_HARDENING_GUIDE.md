@@ -410,4 +410,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-06 |
 | Stage 0 status | Complete |
-| Next stage | Stage 3.1B **In Progress**. 3.1B.6R2 **Complete — Local, Preview Retest Pending**. Production **Disabled**. Analyse Job **Preserved**. 3.1B.7 **Not Started**. |
+| Next stage | Stage 3.1B **In Progress**. 3.1B.6R3 **Complete — Local, Preview Retest Pending**. UI/UX Overhaul **Planned**. Production **Disabled**. Analyse Job **Preserved**. 3.1B.7 **Not Started**. |

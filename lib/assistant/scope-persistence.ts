@@ -16,6 +16,7 @@ import {
 } from "@/lib/scopes/scope-value-resolution";
 import { shouldWriteDerivedFact } from "@/lib/scopes/domain-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
+import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -260,7 +261,11 @@ export async function commitUserFactEdit(
   }
 
   const { data: existingFact } = await factQuery.maybeSingle();
-  if (existingFact?.source === "derived") {
+  // Derived dimension results may be deliberately overridden by the user (3.1B.6R3).
+  const allowDerivedOverride =
+    existingFact?.source === "derived" &&
+    DERIVABLE_RESULT_FACT_KEYS.has(params.key);
+  if (existingFact?.source === "derived" && !allowDerivedOverride) {
     return {
       ok: false,
       error: "Calculated values cannot be edited directly.",

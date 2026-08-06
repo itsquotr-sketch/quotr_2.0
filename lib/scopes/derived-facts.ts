@@ -292,10 +292,26 @@ export function buildDerivedFactDisplays(
     }
 
     if (fact.key === "deck.area_m2" && typeof fact.value === "number") {
+      const length = getFactValue(
+        buildFactLookup(projectFacts),
+        fact.work_area_id,
+        "deck.length_m"
+      );
+      const width = getFactValue(
+        buildFactLookup(projectFacts),
+        fact.work_area_id,
+        "deck.width_m"
+      );
+      const lengthN = toPositiveNumber(length);
+      const widthN = toPositiveNumber(width);
+      const formula =
+        lengthN && widthN
+          ? `${lengthN} m × ${widthN} m = ${fact.value} m²`
+          : `${fact.value} m²`;
       displays.push({
         workAreaId: fact.work_area_id,
         label: "Calculated deck area",
-        text: `${fact.value} m²`,
+        text: formula,
       });
       continue;
     }

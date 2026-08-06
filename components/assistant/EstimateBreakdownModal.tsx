@@ -631,6 +631,62 @@ export function EstimateBreakdownModal({
                 </div>
               </section>
 
+              <section className="space-y-3">
+                <h3 className="text-sm font-semibold tracking-tight">
+                  Scope and quantity drivers
+                </h3>
+                <p className="text-xs text-muted-foreground">
+                  Values below come from confirmed work areas, user answers,
+                  and deterministic calculations. Money totals use server
+                  commercial results — nothing is recalculated in this dialog.
+                </p>
+                <div className="space-y-3">
+                  {estimate.includedWorkAreas.map((wa) => (
+                    <div
+                      key={wa.id}
+                      className="rounded-lg border border-border/60 bg-muted/20 px-3 py-2.5"
+                    >
+                      <p className="text-sm font-medium">{wa.name}</p>
+                      {wa.includedScopeItems &&
+                      wa.includedScopeItems.length > 0 ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Included:{" "}
+                          {wa.includedScopeItems
+                            .map((item) => item.label)
+                            .join(", ")}
+                        </p>
+                      ) : null}
+                      {wa.excludedScopeItems &&
+                      wa.excludedScopeItems.length > 0 ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Not required:{" "}
+                          {wa.excludedScopeItems
+                            .map((item) => item.label)
+                            .join(", ")}
+                        </p>
+                      ) : null}
+                      {wa.assumptions && wa.assumptions.length > 0 ? (
+                        <p className="mt-1 text-xs text-muted-foreground">
+                          Assumptions: {wa.assumptions.join("; ")}
+                        </p>
+                      ) : null}
+                      {wa.missingInfo && wa.missingInfo.length > 0 ? (
+                        <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">
+                          Unresolved: {wa.missingInfo.join("; ")}
+                        </p>
+                      ) : null}
+                    </div>
+                  ))}
+                </div>
+                {estimate.scopeAssumptions.length > 0 ? (
+                  <ul className="list-inside list-disc space-y-1 text-xs text-muted-foreground">
+                    {estimate.scopeAssumptions.map((item) => (
+                      <li key={item}>{item}</li>
+                    ))}
+                  </ul>
+                ) : null}
+              </section>
+
               <section className="space-y-2">
                 <h3 className="text-sm font-semibold tracking-tight">
                   Assumptions

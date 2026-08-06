@@ -13,6 +13,7 @@ import {
 import { useRouter } from "next/navigation";
 import { ChevronDown, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { AnalysisProgressBanner } from "@/components/assistant/AnalysisProgressBanner";
 import { CollapsibleStageCard } from "@/components/assistant/CollapsibleStageCard";
 import { ScopeDiscoveryDismissDialog } from "@/components/assistant/ScopeDiscoveryDismissDialog";
 import { ScopeDiscoveryEditDialog } from "@/components/assistant/ScopeDiscoveryEditDialog";
@@ -641,18 +642,13 @@ export function ScopeDiscoveryReviewBlock({
           ) : null}
 
           {(isAnalysing || (!hasRun && !analyseError)) && !showManualAnalyse ? (
-            <div
-              className="flex items-center gap-2 rounded-md border border-border/60 bg-muted/30 px-3 py-3 text-sm"
-              role="status"
-              aria-live="assertive"
-            >
-              <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
-              <span>
-                {isAnalysing
+            <AnalysisProgressBanner
+              label={
+                isAnalysing
                   ? analysisProgressLabel(progressElapsedMs)
-                  : SCOPE_DISCOVERY_UI_COPY.preparingAnalysis}
-              </span>
-            </div>
+                  : SCOPE_DISCOVERY_UI_COPY.preparingAnalysis
+              }
+            />
           ) : null}
 
           {showManualAnalyse ? (
