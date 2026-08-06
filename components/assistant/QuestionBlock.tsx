@@ -20,6 +20,8 @@ import {
   whyThisMattersForKey,
   type QuestionPresentationCategory,
 } from "@/lib/assistant/presentation";
+import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 
 export type QuestionAnswers = Record<string, string | number | boolean | string[] | null>;
 
@@ -603,7 +605,7 @@ export function QuestionBlock({
   derivedFactDisplays = [],
   submitted,
   isSaving,
-  submitLabel = "Submit answers",
+  submitLabel = "Save",
   disableCategoryGrouping,
   hideSubmit,
   onAnswerChange,
@@ -640,6 +642,14 @@ export function QuestionBlock({
     onSubmit?.();
   };
 
+  if (questions.length === 0) {
+    return (
+      <div className="space-y-5">
+        <AssistantEmptyState stage="scope_details" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-5">
       {groups.map((group) => (
@@ -664,7 +674,7 @@ export function QuestionBlock({
       ) : null}
       {!submitted && !hideSubmit ? (
         <Button type="button" onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? "Saving…" : submitLabel}
+          {isSaving ? ASSISTANT_ACTION_LABELS.saving : submitLabel}
         </Button>
       ) : null}
     </div>

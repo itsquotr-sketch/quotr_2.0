@@ -16,6 +16,8 @@ import {
   groupConstraintsByPresentationCategory,
   provenanceLabelForQuestionSource,
 } from "@/lib/assistant/presentation";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState";
 
 type ConstraintBlockProps = {
   questions: Question[];
@@ -113,6 +115,10 @@ export function ConstraintBlock({
     setValidationError(null);
     onSubmit?.();
   };
+
+  if (questions.length === 0) {
+    return <AssistantEmptyState stage="site_constraints" />;
+  }
 
   if (submitted && editable) {
     return (
@@ -221,7 +227,9 @@ export function ConstraintBlock({
           </p>
         ) : null}
         <Button type="button" onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? "Saving…" : "Submit constraints"}
+          {isSaving
+            ? ASSISTANT_ACTION_LABELS.saving
+            : ASSISTANT_ACTION_LABELS.save}
         </Button>
       </div>
     );
@@ -233,7 +241,7 @@ export function ConstraintBlock({
       answers={answers}
       submitted={submitted}
       isSaving={isSaving}
-      submitLabel="Submit constraints"
+      submitLabel={ASSISTANT_ACTION_LABELS.save}
       onAnswerChange={onAnswerChange}
       onSubmit={onSubmit}
     />

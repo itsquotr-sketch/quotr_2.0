@@ -1,25 +1,23 @@
-/**
- * Shared non-blocking analysis progress banner (3.1B.6R3 / 3.1B.7D).
- * Task-specific copy is passed in — no provider/model details.
- */
-
 "use client";
 
 import { Loader2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-type AnalysisProgressBannerProps = {
+type AssistantLoadingBannerProps = {
   readonly label: string;
   readonly className?: string;
-  /** assertive while actively analysing; polite for preparatory copy */
   readonly assertiveness?: "assertive" | "polite";
 };
 
-export function AnalysisProgressBanner({
+/**
+ * Shared non-blocking loading presentation (3.1B.7D).
+ * No fake percentages, provider names, or technical config text.
+ */
+export function AssistantLoadingBanner({
   label,
   className,
-  assertiveness = "assertive",
-}: AnalysisProgressBannerProps) {
+  assertiveness = "polite",
+}: AssistantLoadingBannerProps) {
   return (
     <div
       className={cn(
@@ -29,10 +27,7 @@ export function AnalysisProgressBanner({
       role="status"
       aria-live={assertiveness}
     >
-      <Loader2
-        className="size-4 shrink-0 motion-safe:animate-spin motion-reduce:animate-none"
-        aria-hidden
-      />
+      <Loader2 className="size-4 shrink-0 animate-spin" aria-hidden />
       <span>{label}</span>
     </div>
   );

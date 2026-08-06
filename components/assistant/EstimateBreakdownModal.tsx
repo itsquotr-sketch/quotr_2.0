@@ -38,6 +38,7 @@ import {
   getCommercialTrustDetailLines,
   lineItemRenderKey,
 } from "@/lib/estimate/commercial-realism";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 
 const CATEGORY_LABELS: Record<EstimateLineItemCategory, string> = {
   labour: "Labour",
@@ -667,7 +668,7 @@ export function EstimateBreakdownModal({
                   onClick={onRegenerate}
                   disabled={isRegenerating}
                 >
-                  {isRegenerating ? "Regenerating…" : "Regenerate estimate"}
+                  {isRegenerating ? "Recalculating…" : ASSISTANT_ACTION_LABELS.recalculateEstimate}
                 </Button>
               ) : null}
             </div>

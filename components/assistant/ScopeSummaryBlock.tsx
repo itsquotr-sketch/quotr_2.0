@@ -22,6 +22,8 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { buildEstimateReviewWorkAreaSummary } from "@/lib/assistant/presentation";
+import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 
 function SummaryMetricLine({
   label,
@@ -233,7 +235,7 @@ export function ScopeSummaryBlock({
       {manageWorkAreas ? (
         <div className="rounded-xl border border-border/60 bg-muted/15 px-3 py-3">
           <p className="text-xs text-muted-foreground">
-            Changing work areas will mark the estimate as outdated. Regenerate
+            Changing work areas will mark the estimate as outdated. Recalculate
             when you are ready.
           </p>
           <Button
@@ -256,9 +258,13 @@ export function ScopeSummaryBlock({
         >
           <p className="font-medium">Estimate outdated</p>
           <p className="mt-0.5">
-            Regenerate to reflect these changes in the pricing.
+            Recalculate to reflect these changes in the pricing.
           </p>
         </div>
+      ) : null}
+
+      {scopeReview.workAreas.length === 0 ? (
+        <AssistantEmptyState stage="estimate_review" />
       ) : null}
 
       {scopeReview.workAreas.map((workArea) => {
@@ -361,7 +367,7 @@ export function ScopeSummaryBlock({
                 }))
               }
             >
-              {expanded ? "Hide details" : "Review details"}
+              {expanded ? "Hide details" : ASSISTANT_ACTION_LABELS.reviewDetails}
               <ChevronDown
                 className={cn(
                   "size-3.5 transition-transform",

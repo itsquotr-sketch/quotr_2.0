@@ -112,7 +112,7 @@ export function CollapsibleStageCard({
       data-stage-active={isActive ? "true" : "false"}
       data-stage-expanded={isExpanded ? "true" : "false"}
       className={cn(
-        "rounded-lg border bg-card text-card-foreground transition-[box-shadow,border-color,background-color] duration-200 ease-out",
+        "rounded-lg border bg-card text-card-foreground motion-safe:transition-[box-shadow,border-color,background-color,opacity] motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none",
         cardVariantStyles[statusVariant],
         isActive
           ? "border-[var(--brand-orange-muted)] shadow-md ring-1 ring-[var(--brand-orange)]/25"
@@ -133,14 +133,14 @@ export function CollapsibleStageCard({
           aria-expanded={isExpanded}
           disabled={!canCollapse}
           className={cn(
-            "flex min-h-11 min-w-0 flex-1 items-start gap-2 rounded-md text-left sm:min-h-12",
+            "flex min-h-11 min-w-0 flex-1 items-start gap-2 rounded-md text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 sm:min-h-12",
             !canCollapse && "cursor-default"
           )}
         >
           {canCollapse ? (
             <ChevronDown
               className={cn(
-                "mt-1 size-4 shrink-0 text-muted-foreground transition-transform duration-200 ease-out",
+                "mt-1 size-4 shrink-0 text-muted-foreground motion-safe:transition-transform motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none",
                 !isExpanded && "-rotate-90"
               )}
               aria-hidden
@@ -210,7 +210,7 @@ export function CollapsibleStageCard({
 
       <div
         className={cn(
-          "grid transition-[grid-template-rows] duration-200 ease-out",
+          "grid motion-safe:transition-[grid-template-rows] motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none",
           isExpanded ? "grid-rows-[1fr]" : "grid-rows-[0fr]"
         )}
         aria-hidden={!isExpanded}
@@ -218,7 +218,7 @@ export function CollapsibleStageCard({
         <div className="min-h-0 overflow-hidden">
           <div
             className={cn(
-              "px-3.5 py-3 transition-opacity duration-200 ease-out sm:px-4",
+              "px-3.5 py-3 motion-safe:transition-opacity motion-safe:duration-200 motion-safe:ease-out motion-reduce:transition-none sm:px-4",
               isExpanded ? "opacity-100" : "opacity-0"
             )}
           >

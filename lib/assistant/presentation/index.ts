@@ -1,5 +1,5 @@
 /**
- * Stage 3.1B.7C — Presentation helpers (no engine / persistence).
+ * Stage 3.1B presentation helpers (no engine / persistence).
  */
 
 export * from "./question-categories";
@@ -9,3 +9,7 @@ export * from "./used-for";
 export * from "./constraint-categories";
 export * from "./confidence-drivers";
 export * from "./estimate-review-summary";
+export * from "./ui-states";
+export * from "./action-labels";
+export * from "./error-messages";
+export * from "./save-status";

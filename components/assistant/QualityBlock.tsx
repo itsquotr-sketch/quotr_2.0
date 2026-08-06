@@ -3,6 +3,7 @@
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { QualityLevel } from "@/components/assistant/types";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 
 export const QUALITY_OPTIONS: {
   value: QualityLevel;
@@ -74,7 +75,7 @@ export function QualityBlock({
     <div className="space-y-4">
       {isEditMode ? (
         <p className="text-sm text-muted-foreground">
-          Choose a new spec level. Regenerate the quick estimate when you are
+          Choose a new specification. Recalculate the Quick Estimate when you are
           ready — final pricing is not changed automatically.
         </p>
       ) : null}
@@ -85,11 +86,12 @@ export function QualityBlock({
             type="button"
             onClick={() => onSelect?.(option.value)}
             className={cn(
-              "rounded-2xl border px-4 py-3 text-left transition-colors",
+              "min-h-11 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               selected === option.value
                 ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
                 : "border-border hover:bg-muted/50"
             )}
+            aria-pressed={selected === option.value}
           >
             <p className="text-sm font-medium">{option.title}</p>
             <p className="mt-1 text-xs text-muted-foreground">
@@ -105,7 +107,9 @@ export function QualityBlock({
             onClick={onSave}
             disabled={!selected || isSaving}
           >
-            {isSaving ? "Saving…" : "Save spec level"}
+            {isSaving
+              ? ASSISTANT_ACTION_LABELS.saving
+              : ASSISTANT_ACTION_LABELS.save}
           </Button>
           <Button
             type="button"
@@ -113,12 +117,14 @@ export function QualityBlock({
             onClick={onCancelEdit}
             disabled={isSaving}
           >
-            Cancel
+            {ASSISTANT_ACTION_LABELS.cancel}
           </Button>
         </div>
       ) : (
         <Button type="button" onClick={onContinue} disabled={!selected || isSaving}>
-          {isSaving ? "Saving…" : "Continue"}
+          {isSaving
+            ? ASSISTANT_ACTION_LABELS.saving
+            : ASSISTANT_ACTION_LABELS.selectSpecification}
         </Button>
       )}
     </div>

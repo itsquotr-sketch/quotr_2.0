@@ -31,6 +31,9 @@ import { cn } from "@/lib/utils";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { defaultedFactWarnings } from "@/lib/estimate/assumption-metadata";
 import { needsCalibrationRefresh } from "@/lib/estimate/calibration-version";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState";
+import { presentAssistantError } from "@/lib/assistant/presentation/error-messages";
 
 type EstimatePanelProps = {
   projectId: string;
@@ -393,7 +396,7 @@ export function EstimatePanel({
                 This estimate is outdated
               </p>
               <p className="mt-0.5 text-xs text-amber-900/90 dark:text-amber-200/90">
-                Regenerate to update pricing from the latest scope.
+                {presentAssistantError("stale")}
               </p>
             </div>
             <Button
@@ -409,16 +412,20 @@ export function EstimatePanel({
                   Regenerating…
                 </>
               ) : (
-                "Regenerate estimate"
+                ASSISTANT_ACTION_LABELS.recalculateEstimate
               )}
             </Button>
           </div>
         ) : null}
 
         {isGenerating ? (
-          <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-            <Loader2 className="size-4 animate-spin" />
-            Generating quick estimate…
+          <div
+            className="flex items-center gap-2 py-8 text-sm text-muted-foreground"
+            role="status"
+            aria-live="polite"
+          >
+            <Loader2 className="size-4 animate-spin" aria-hidden />
+            Generating Quick Estimate…
           </div>
         ) : !estimate ? (
           <div className="space-y-4">
@@ -453,19 +460,12 @@ export function EstimatePanel({
                       Generating estimate…
                     </>
                   ) : (
-                    "Generate estimate"
+                    ASSISTANT_ACTION_LABELS.generateEstimate
                   )}
                 </Button>
               </>
             ) : (
-              <div className="rounded-2xl bg-muted/50 px-4 py-6 text-center">
-                <p className="text-sm font-medium">No estimate yet</p>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  {questionsSubmitted
-                    ? "Complete scope details and constraints to generate an estimate."
-                    : "Work through the assistant to unlock a draft range."}
-                </p>
-              </div>
+              <AssistantEmptyState stage="quick_estimate" />
             )}
 
             {showScopePreview && !canGenerateEstimate ? (
@@ -591,7 +591,7 @@ export function EstimatePanel({
               className="w-full border-border bg-background hover:bg-muted/50"
               onClick={onViewBreakdown}
             >
-              View full breakdown
+              {ASSISTANT_ACTION_LABELS.viewFullBreakdown}
             </Button>
 
             {estimate && !isStale ? (
@@ -655,7 +655,7 @@ export function EstimatePanel({
 
             {estimate && isStale ? (
               <p className="text-xs text-amber-800 dark:text-amber-200">
-                Regenerate estimate before preparing final pricing.
+                Recalculate estimate before preparing final pricing.
               </p>
             ) : null}
 
@@ -711,7 +711,7 @@ export function EstimatePanel({
               ? "Ready to generate your draft estimate"
               : constraintsSubmitted
                 ? "Complete remaining scope steps to generate"
-                : "Complete the guided questions to generate a draft quick estimate."}
+                : "Complete the required project details to generate an estimate."}
         </CardDescription>
       </CardHeader>
 

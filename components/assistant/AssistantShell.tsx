@@ -55,6 +55,7 @@ import {
   excludeWorkAreaFromProject,
 } from "@/lib/assistant/work-area-actions";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
+import { startPreviewPerf } from "@/lib/assistant/preview-performance";
 import {
   resolveActiveDisclosureStage,
   stagePrefersExpanded,
@@ -396,7 +397,14 @@ export function AssistantShell({
       return;
     }
     setIsGenerating(true);
-    void runAction("estimate", () => generateStaticEstimate(project.id));
+    const endPerf = startPreviewPerf("estimate_generate");
+    void runAction("estimate", async () => {
+      try {
+        return await generateStaticEstimate(project.id);
+      } finally {
+        endPerf();
+      }
+    });
   }, [isGenerating, pendingAction, project.id, runAction]);
 
   const handleRegenerateEstimate = useCallback(() => {
@@ -404,7 +412,14 @@ export function AssistantShell({
       return;
     }
     setIsRegenerating(true);
-    void runAction("regenerate", () => regenerateStaticEstimate(project.id));
+    const endPerf = startPreviewPerf("estimate_generate");
+    void runAction("regenerate", async () => {
+      try {
+        return await regenerateStaticEstimate(project.id);
+      } finally {
+        endPerf();
+      }
+    });
   }, [isRegenerating, pendingAction, project.id, runAction]);
 
   const handleQuestionAnswer = useCallback(

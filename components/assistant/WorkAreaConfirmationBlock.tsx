@@ -82,6 +82,9 @@ function ReadOnlySummary({ workAreas }: { workAreas: WorkArea[] }) {
   );
 }
 
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState";
+
 export function WorkAreaConfirmationBlock({
   workAreas,
   submitted,
@@ -99,6 +102,15 @@ export function WorkAreaConfirmationBlock({
     return <ReadOnlySummary workAreas={workAreas} />;
   }
 
+  if (workAreas.length === 0) {
+    return (
+      <AssistantEmptyState
+        stage="work_areas"
+        nextActionLabel="Analyse Job from Project Capture, then confirm Work Areas."
+      />
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -111,8 +123,9 @@ export function WorkAreaConfirmationBlock({
               type="button"
               data-work-area-id={wa.id}
               onClick={() => onToggle?.(wa.id)}
+              aria-pressed={isIncluded}
               className={cn(
-                "rounded-2xl border px-4 py-3 text-left transition-colors",
+                "min-h-11 rounded-xl border px-4 py-3 text-left transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
                 isIncluded
                   ? "border-primary/30 bg-primary/5 ring-1 ring-primary/20"
                   : "border-border bg-muted/30 opacity-60"
@@ -138,7 +151,9 @@ export function WorkAreaConfirmationBlock({
           onClick={() => onConfirm?.(workAreas)}
           disabled={included.length === 0 || isSaving}
         >
-          {isSaving ? "Saving…" : "Confirm work areas"}
+          {isSaving
+            ? ASSISTANT_ACTION_LABELS.saving
+            : ASSISTANT_ACTION_LABELS.confirmWorkAreas}
         </Button>
         {onAddWorkArea ? (
           <Button

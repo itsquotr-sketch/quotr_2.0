@@ -5,16 +5,19 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.7C — **Complete — Local**  
-**Next batch:** 3.1B.7D — **Not Started**; 3.1B.7 missing-scope — **Not Started**  
+**Current batch:** 3.1B.7D — **Complete — Local**  
+**Next batch:** Stage 3.1B release hardening / Preview owner sign-off; 3.1B.7 missing-scope — **Not Started**  
 **Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **no 030**  
 **Server integration:** **Complete — Local**  
 **Scope Discovery UI:** **Complete — Local, Preview Retest Pending**  
 **Assistant progressive disclosure (7A):** **Complete — Local**  
 **Assistant information hierarchy (7B):** **Complete — Local**  
 **Question / estimate presentation (7C):** **Complete — Local**  
-**UI/UX Overhaul:** **In Progress** (`docs/plans/QUOTR_UI_UX_OVERHAUL_PLAN.md`)  
-**Scope Discovery Preview sign-off:** **Pending**  
+**Final Assistant UX polish (7D):** **Complete — Local**  
+**Assistant UX refinement programme:** **Complete — Local**  
+**UI/UX Overhaul (Pricing/Quote):** **Planned separately**  
+**Scope Discovery Preview sign-off:** **Pending Owner Test**  
+**Stage 3.1B release hardening:** **Ready Pending Preview Sign-off**  
 **Preview feature:** **Enabled only by owner configuration**  
 **Production feature:** **Disabled**  
 **Feature flag:** **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off)  
@@ -235,11 +238,12 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.7C** — Complete — Local (question organisation, estimate presentation,
-confidence explanation). **Next:** Preview validation of Assistant UX, then
-either 3.1B.7D or Stage 3.1B.7 missing-scope (do not start 7D until authorised).
+**3.1B.7D** — Complete — Local (final Assistant UX polish, accessibility,
+Preview readiness). **Next:** Owner Preview sign-off matrix
+(`docs/runbooks/STAGE_3_1B7D_PREVIEW_RELEASE_SIGNOFF.md`), then either
+Stage 3.1B.7 missing-scope or release hardening per owner gate.
 Production remains **Disabled**. Preserve Fact SoT; no DNA; Analyse Job unchanged;
-production flag remains disabled. **No migration 030.**
+production flag remains disabled. **No migration 030.** Do not begin Stage 3.2.
 
 ---
 

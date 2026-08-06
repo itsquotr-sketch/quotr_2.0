@@ -43,7 +43,7 @@ export function suggestionKindLabel(kind: string | null | undefined): string {
 export const DECISION_STATE_LABELS = Object.freeze({
   PROPOSED: "Open",
   ACCEPTED: "Added",
-  REJECTED: "Dismissed",
+  REJECTED: "Not required",
   MODIFIED: "Added (edited)",
   STALE: "Out of date",
   SUPERSEDED: "Superseded",
@@ -111,7 +111,7 @@ export const SCOPE_DISCOVERY_UI_COPY = Object.freeze({
   detailRequired: "Detail required",
   added: "Added",
   included: "Included",
-  dismissed: "Dismissed",
+  dismissed: "Not required",
   needsDetail: "Needs detail",
   groupImportant: "Important inclusions",
   groupWorthChecking: "Worth checking",

@@ -9,6 +9,10 @@ import {
   isEmptyAnswerValue,
   shouldAutosaveAnswers,
 } from "@/lib/assistant/answer-persistence";
+import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { saveFailureMessage } from "@/lib/assistant/presentation/error-messages";
+import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
 
 export type MissingQuestionAnswers = Record<
   string,
@@ -20,7 +24,7 @@ type ScopeReviewMissingSectionProps = {
   questions: WorkAreaActiveQuestion[];
   answers: MissingQuestionAnswers;
   isSaving?: boolean;
-  saveStatus?: "idle" | "saving" | "saved" | "error";
+  saveStatus?: SaveStatus;
   error?: string | null;
   autoSave?: boolean;
   onAnswerChange: (
@@ -132,10 +136,12 @@ export function ScopeReviewMissingSection({
       </div>
       {validationError || error || saveStatus === "error" ? (
         <p className="mt-3 text-xs text-destructive" role="alert">
-          {validationError ?? error ?? "Could not save. Please try again."}
+          {validationError ??
+            (error ? saveFailureMessage(error) : null) ??
+            ASSISTANT_ACTION_LABELS.couldNotSave}
         </p>
       ) : null}
-      <div className="mt-3 flex items-center gap-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         <Button
           type="button"
           size="sm"
@@ -143,21 +149,16 @@ export function ScopeReviewMissingSection({
           disabled={isSaving}
           onClick={handleSave}
         >
-          {isSaving ? "Saving…" : `Save ${workAreaName.toLowerCase()} details`}
+          {isSaving
+            ? ASSISTANT_ACTION_LABELS.saving
+            : `${ASSISTANT_ACTION_LABELS.save} ${workAreaName.toLowerCase()} details`}
         </Button>
-        {saveStatus === "saving" || isSaving ? (
-          <span className="text-xs text-muted-foreground" aria-live="polite">
-            Saving…
-          </span>
-        ) : saveStatus === "saved" ? (
-          <span className="text-xs text-muted-foreground" aria-live="polite">
-            Saved
-          </span>
-        ) : saveStatus === "error" ? (
-          <span className="text-xs text-destructive" aria-live="polite">
-            Error — retry
-          </span>
-        ) : null}
+        <SaveStatusIndicator
+          status={saveStatus}
+          isSaving={isSaving}
+          hasError={saveStatus === "error" || Boolean(error)}
+          onRetry={saveStatus === "error" ? handleSave : undefined}
+        />
       </div>
     </div>
   );

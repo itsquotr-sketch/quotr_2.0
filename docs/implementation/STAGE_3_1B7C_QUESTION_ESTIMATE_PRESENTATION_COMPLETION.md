@@ -2,9 +2,9 @@
  * Stage 3.1B.7C — Question Organisation, Estimate Presentation and Confidence Explanation.
  *
  * **Status:** Complete — Local  
- * **Stage 3.1B.7D:** Not Started  
- * **Scope Discovery Preview sign-off:** Pending  
- * **UI/UX Overhaul:** In Progress  
+ * **Stage 3.1B.7D:** Complete — Local  
+ * **Scope Discovery Preview sign-off:** Pending Owner Test  
+ * **UI/UX Overhaul (Assistant):** Complete — Local  
  * **Production:** Disabled  
  */
 
