@@ -21,8 +21,10 @@ import { ScopeDiscoverySuggestionCard } from "@/components/assistant/ScopeDiscov
 import { createLatestWriteGuard } from "@/lib/assistant/answer-persistence";
 import {
   acceptScopeSuggestionAction,
+  applyScopeImpactRecommendationAction,
   batchConfirmScopeItemsAction,
   getScopeDiscoveryResultsAction,
+  keepScopeImpactRecommendationAction,
   modifyScopeSuggestionAction,
   rejectScopeSuggestionAction,
   runScopeDiscoveryAction,
@@ -32,6 +34,8 @@ import type {
   SafeSuggestionView,
 } from "@/lib/scope-discovery/application/types";
 import type { BatchScopeItemState } from "@/lib/scope-discovery/application/batch-confirm-scope";
+import { buildScopeChangeRecommendations } from "@/lib/scope-discovery/scope-impact";
+import type { ScopeChangeRecommendation } from "@/lib/scope-discovery/scope-impact";
 import {
   SCOPE_DISCOVERY_UI_COPY,
   analysisProgressLabel,
@@ -42,6 +46,11 @@ import {
   routeClarificationToScopeDetails,
   type DismissReasonCode,
 } from "@/lib/scope-discovery/ui";
+import {
+  ScopeImpactRecommendationsPanel,
+  type ScopeImpactRecommendationRowStatus,
+} from "@/components/assistant/ScopeImpactRecommendationsPanel";
+import type { ScopeReview } from "@/lib/assistant/types";
 import { cn } from "@/lib/utils";
 
 type ScopeDiscoveryReviewBlockProps = {
@@ -49,8 +58,12 @@ type ScopeDiscoveryReviewBlockProps = {
   enabled: boolean;
   initialResults?: SafeResultsRead | null;
   workAreaLabels?: ReadonlyMap<string, string> | Record<string, string>;
+  /** Authoritative Facts for scope-impact recommendations (labels already safe). */
+  scopeReview?: ScopeReview | null;
   /** Notify parent when completion changes (Quality gating). */
   onCompletionChange?: (complete: boolean) => void;
+  /** Soft warning before estimate when high-priority recommendations remain. */
+  onUnresolvedRecommendationsChange?: (count: number) => void;
 };
 
 type PendingSuggestionAction = {
@@ -216,7 +229,9 @@ export function ScopeDiscoveryReviewBlock({
   enabled,
   initialResults = null,
   workAreaLabels = {},
+  scopeReview = null,
   onCompletionChange,
+  onUnresolvedRecommendationsChange,
 }: ScopeDiscoveryReviewBlockProps) {
   const router = useRouter();
   const resultsGuard = useRef(createLatestWriteGuard());
@@ -244,6 +259,13 @@ export function ScopeDiscoveryReviewBlock({
   const [localBatch, setLocalBatch] = useState<LocalBatchState>(() =>
     buildInitialBatchState(initialResults?.allSuggestions ?? [])
   );
+  const [impactRowStatus, setImpactRowStatus] = useState<
+    Map<string, ScopeImpactRecommendationRowStatus>
+  >(() => new Map());
+  const [impactRowError, setImpactRowError] = useState<Map<string, string>>(
+    () => new Map()
+  );
+  const [impactActionId, setImpactActionId] = useState<string | null>(null);
 
   const refreshResults = useCallback(async () => {
     if (!enabled) return;
@@ -368,6 +390,43 @@ export function ScopeDiscoveryReviewBlock({
   useEffect(() => {
     onCompletionChange?.(completion.complete);
   }, [completion.complete, onCompletionChange]);
+
+  const dismissedScopeImpactIds = results?.dismissedScopeImpactIds;
+  const scopeImpactRunId = results?.runId;
+
+  const scopeImpactRecommendations = useMemo(() => {
+    if (!scopeReview || !scopeImpactRunId) return [] as ScopeChangeRecommendation[];
+    const facts = scopeReview.workAreas.flatMap((wa) =>
+      wa.facts.map((f) => ({
+        key: f.key,
+        value: f.rawValue ?? f.value,
+        work_area_id: wa.workAreaId,
+      }))
+    );
+    const workAreas = scopeReview.workAreas.map((wa) => ({
+      id: wa.workAreaId,
+      type: wa.workAreaType,
+      name: wa.workAreaName,
+    }));
+    const scopeItemStates = batchEligible.map((s) => ({
+      suggestionId: s.suggestionId,
+      proposedWorkAreaType: s.proposedWorkAreaType,
+      proposedTitle: s.proposedTitle,
+      decisionState: s.decisionState,
+      relatedWorkAreaId: s.relatedWorkAreaId,
+    }));
+    const dismissed = new Set(dismissedScopeImpactIds ?? []);
+    return buildScopeChangeRecommendations({
+      facts,
+      workAreas,
+      scopeItemStates,
+      dismissedIds: dismissed,
+    });
+  }, [scopeReview, scopeImpactRunId, dismissedScopeImpactIds, batchEligible]);
+
+  useEffect(() => {
+    onUnresolvedRecommendationsChange?.(scopeImpactRecommendations.length);
+  }, [scopeImpactRecommendations.length, onUnresolvedRecommendationsChange]);
 
   const showChecklistEditor = !completion.complete || isEditingScope;
 
@@ -537,6 +596,112 @@ export function ScopeDiscoveryReviewBlock({
     }));
   };
 
+  const setImpactStatus = (
+    id: string,
+    status: ScopeImpactRecommendationRowStatus
+  ) => {
+    setImpactRowStatus((prev) => {
+      const next = new Map(prev);
+      next.set(id, status);
+      return next;
+    });
+  };
+
+  const setImpactError = (id: string, message: string | null) => {
+    setImpactRowError((prev) => {
+      const next = new Map(prev);
+      if (message) next.set(id, message);
+      else next.delete(id);
+      return next;
+    });
+  };
+
+  const handleApplyScopeImpact = async (rec: ScopeChangeRecommendation) => {
+    if (
+      !results?.runId ||
+      !rec.suggestionId ||
+      impactActionId ||
+      isAnalysing ||
+      isSavingBatch ||
+      pendingSuggestion
+    ) {
+      return;
+    }
+    setImpactActionId(rec.id);
+    setImpactError(rec.id, null);
+    setImpactStatus(rec.id, "applying");
+    setStatusMessage(null);
+    try {
+      const outcome = await applyScopeImpactRecommendationAction({
+        projectId,
+        runId: results.runId,
+        sourceRevision,
+        suggestionId: rec.suggestionId,
+        recommendationId: rec.id,
+        intendedState: rec.suggestedState,
+      });
+      if (!outcome.ok) {
+        setImpactStatus(rec.id, "failed");
+        setImpactError(rec.id, outcome.message);
+        return;
+      }
+      setImpactStatus(rec.id, "applied");
+      setStatusMessage(outcome.message);
+      await refreshResults();
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setImpactStatus(rec.id, "failed");
+      setImpactError(rec.id, "That scope change could not be applied. Try again.");
+    } finally {
+      setImpactActionId(null);
+    }
+  };
+
+  const handleKeepScopeImpact = async (rec: ScopeChangeRecommendation) => {
+    if (
+      !results?.runId ||
+      !rec.suggestionId ||
+      impactActionId ||
+      isAnalysing ||
+      isSavingBatch ||
+      pendingSuggestion
+    ) {
+      return;
+    }
+    setImpactActionId(rec.id);
+    setImpactError(rec.id, null);
+    setImpactStatus(rec.id, "keeping");
+    setStatusMessage(null);
+    try {
+      const outcome = await keepScopeImpactRecommendationAction({
+        projectId,
+        runId: results.runId,
+        sourceRevision,
+        suggestionId: rec.suggestionId,
+        recommendationId: rec.id,
+        intendedState: rec.previousState === "NOT_REQUIRED" ? "NOT_REQUIRED" : "INCLUDED",
+      });
+      if (!outcome.ok) {
+        setImpactStatus(rec.id, "failed");
+        setImpactError(rec.id, outcome.message);
+        return;
+      }
+      setImpactStatus(rec.id, "kept");
+      setStatusMessage(outcome.message);
+      await refreshResults();
+      startTransition(() => {
+        router.refresh();
+      });
+    } catch {
+      setImpactStatus(rec.id, "failed");
+      setImpactError(rec.id, "Could not keep current scope. Try again.");
+    } finally {
+      setImpactActionId(null);
+    }
+  };
+
   if (!enabled) return null;
 
   const includedCount = batchEligible.filter(
@@ -546,7 +711,14 @@ export function ScopeDiscoveryReviewBlock({
 
   const summaryBits: string[] = [];
   if (!hasRun) summaryBits.push("Preparing");
-  else if (completion.complete && !isEditingScope) {
+  else if (scopeImpactRecommendations.length > 0) {
+    summaryBits.push("Review needed");
+    summaryBits.push(
+      `${scopeImpactRecommendations.length} scope change${
+        scopeImpactRecommendations.length === 1 ? "" : "s"
+      }`
+    );
+  } else if (completion.complete && !isEditingScope) {
     summaryBits.push("Confirmed");
     if (completion.optionalOpen)
       summaryBits.push(`${completion.optionalOpen} optional open`);
@@ -563,31 +735,37 @@ export function ScopeDiscoveryReviewBlock({
   const showManualAnalyse =
     !hasRun && !isAnalysing && Boolean(analyseError || loadError);
 
+  const cardStatusLabel =
+    isAnalysing || (!hasRun && !analyseError)
+      ? "Analysing"
+      : isStale
+        ? "Out of date"
+        : scopeImpactRecommendations.length > 0
+          ? "Review needed"
+          : completion.complete && !isEditingScope
+            ? "Complete"
+            : hasRun
+              ? "Review"
+              : "Ready";
+
+  const cardStatusVariant =
+    isAnalysing || (!hasRun && !analyseError)
+      ? "current"
+      : isStale
+        ? "stale"
+        : scopeImpactRecommendations.length > 0
+          ? "review"
+          : completion.complete && !isEditingScope
+            ? "complete"
+            : "review";
+
   return (
     <>
       <CollapsibleStageCard
         title={SCOPE_DISCOVERY_UI_COPY.cardTitle}
         subtitle={SCOPE_DISCOVERY_UI_COPY.cardSubtitle}
-        statusLabel={
-          isAnalysing || (!hasRun && !analyseError)
-            ? "Analysing"
-            : isStale
-              ? "Out of date"
-              : completion.complete && !isEditingScope
-                ? "Complete"
-                : hasRun
-                  ? "Review"
-                  : "Ready"
-        }
-        statusVariant={
-          isAnalysing || (!hasRun && !analyseError)
-            ? "current"
-            : isStale
-              ? "stale"
-              : completion.complete && !isEditingScope
-                ? "complete"
-                : "review"
-        }
+        statusLabel={cardStatusLabel}
+        statusVariant={cardStatusVariant}
         defaultExpanded
         canCollapse={hasRun && !isAnalysing && !isEditingScope}
         summaryContent={summaryBits.join(" · ")}
@@ -669,6 +847,20 @@ export function ScopeDiscoveryReviewBlock({
 
           {hasRun && !isAnalysing ? (
             <div className="space-y-4">
+              <ScopeImpactRecommendationsPanel
+                recommendations={scopeImpactRecommendations}
+                rowStatus={impactRowStatus}
+                rowError={impactRowError}
+                busy={
+                  impactActionId != null ||
+                  isSavingBatch ||
+                  pendingSuggestion != null ||
+                  isAnalysing
+                }
+                onApply={(rec) => void handleApplyScopeImpact(rec)}
+                onKeep={(rec) => void handleKeepScopeImpact(rec)}
+              />
+
               {showChecklistEditor ? (
                 <>
                   <p className="text-sm text-muted-foreground">

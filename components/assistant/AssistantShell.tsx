@@ -179,6 +179,8 @@ export function AssistantShell({
       })
       .every((s) => s.decisionState !== "PROPOSED");
   });
+  const [unresolvedScopeImpactCount, setUnresolvedScopeImpactCount] =
+    useState(0);
   const scopeReviewCardRef = useRef<HTMLDivElement | null>(null);
 
   const briefSubmitted = isStageAtOrBeyond(stage, "confirm_work_areas");
@@ -737,12 +739,16 @@ export function AssistantShell({
                 projectId={project.id}
                 enabled={scopeDiscoveryEnabled}
                 initialResults={scopeDiscoveryInitialResults}
+                scopeReview={initialState.scopeReview}
                 workAreaLabels={Object.fromEntries(
                   displayWorkAreas
                     .filter((wa) => wa.status !== "excluded")
                     .map((wa) => [wa.id, wa.name])
                 )}
                 onCompletionChange={setScopeReviewComplete}
+                onUnresolvedRecommendationsChange={
+                  setUnresolvedScopeImpactCount
+                }
               />
             </div>
           ) : null}
@@ -976,6 +982,7 @@ export function AssistantShell({
             constraintsSubmitted={constraintsSubmitted}
             canGenerateEstimate={canGenerateEstimate}
             pendingProposalCount={pendingNoteProposal ? 1 : 0}
+            unresolvedScopeImpactCount={unresolvedScopeImpactCount}
             constraintCount={initialState.submittedConstraints.length}
             onViewBreakdown={() => setBreakdownOpen(true)}
             onGenerate={handleGenerateEstimate}

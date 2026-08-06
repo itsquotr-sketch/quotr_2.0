@@ -48,6 +48,8 @@ type EstimatePanelProps = {
   constraintsSubmitted?: boolean;
   canGenerateEstimate?: boolean;
   pendingProposalCount?: number;
+  /** Soft warning only — does not block generation (3.1B.6R3.1). */
+  unresolvedScopeImpactCount?: number;
   constraintCount?: number;
   onViewBreakdown?: () => void;
   onGenerate?: () => void;
@@ -158,6 +160,7 @@ export function EstimatePanel({
   constraintsSubmitted = false,
   canGenerateEstimate = false,
   pendingProposalCount = 0,
+  unresolvedScopeImpactCount = 0,
   constraintCount = 0,
   onViewBreakdown,
   onGenerate,
@@ -287,6 +290,16 @@ export function EstimatePanel({
                     estimate when you are ready.
                   </p>
                 </div>
+                {unresolvedScopeImpactCount > 0 ? (
+                  <p
+                    className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+                    role="status"
+                  >
+                    {unresolvedScopeImpactCount === 1
+                      ? "1 suggested scope change is still open in Scope Review. You can generate now, or review it first."
+                      : `${unresolvedScopeImpactCount} suggested scope changes are still open in Scope Review. You can generate now, or review them first.`}
+                  </p>
+                ) : null}
                 <Button
                   type="button"
                   className="h-10 w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"

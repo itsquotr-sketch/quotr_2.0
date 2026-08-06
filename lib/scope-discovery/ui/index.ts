@@ -12,3 +12,4 @@ export * from "./scope-item-question-gates";
 export * from "./constraint-relevance";
 export * from "./clarification-routing";
 export * from "./scope-review-completion";
+export * from "./scope-impact-identity";

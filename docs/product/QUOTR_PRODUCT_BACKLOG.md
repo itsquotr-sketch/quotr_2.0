@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.6 Complete — Local; **3.1B.6R3 Complete — Local, Preview Retest Pending**; 3.1B.7 Not Started; **UI/UX Overhaul Planned**)   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.6 Complete — Local; **3.1B.6R3.1 Complete — Local, Preview Retest Pending**; 3.1B.7 Not Started; **UI/UX Overhaul Planned**)   
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -78,6 +78,7 @@
 - Migrations: `028`/`029` **Applied and Verified**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Scope Discovery UI **Complete — Local, Preview Test Pending**; Analyse Job **Preserved**.
 - FEAT-001 Partial (ISD groups/cards); broader WA collapse Deferred; FEAT-002 Deferred; FEAT-003 Deferred until Builder Interview.
 - Stage 3.1B.6R3 workflow coherence: **Complete — Local** — Analyse Job progress, dimension derivation, Fact scope-impact, Estimate Review collapse, Quick Estimate scope drivers; `verify-stage-3-1b6r3-workflow-coherence.ts`; Preview retest pending; production **Disabled**.
+- Stage 3.1B.6R3.1 scope-impact recommendations: **Complete — Local, Preview Retest Pending** — Scope Review Apply/Keep UI; durable keep via `scope_impact_kept` decisions; no migration 030; `verify-stage-3-1b6r31-scope-impact-recommendations.ts`; production **Disabled**.
 - UI/UX Overhaul programme: **Planned** — `docs/plans/QUOTR_UI_UX_OVERHAUL_PLAN.md` (FEAT-UX-001).
 - Do not change Analyse Job behaviour, commercial formulas, or Company DNA without explicit authorisation.
 - Stage 3.1B.7 — Ready Pending Preview UI Sign-off.

@@ -5,11 +5,11 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.6R3 — **Complete — Local, Preview Retest Pending**  
-**Next batch:** 3.1B.7 — **Not Started** (blocked on Preview UI sign-off after 3.1B.6R3)  
+**Current batch:** 3.1B.6R3.1 — **Complete — Local, Preview Retest Pending**  
+**Next batch:** 3.1B.7 — **Not Started** (blocked on Preview UI sign-off after 3.1B.6)  
 **Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **no 030**  
 **Server integration:** **Complete — Local**  
-**Scope Discovery UI:** **Complete — Local, Preview Retest Pending** (3.1B.6R3 workflow coherence)  
+**Scope Discovery UI:** **Complete — Local, Preview Retest Pending** (3.1B.6R3.1 recommendation Apply/Keep)  
 **UI/UX Overhaul:** **Planned** (`docs/plans/QUOTR_UI_UX_OVERHAUL_PLAN.md`)  
 **Preview feature:** **Enabled only by owner configuration**  
 **Production feature:** **Disabled**  
@@ -231,7 +231,10 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.6** — Complete — Local. **Next:** Owner Preview UI smoke per `STAGE_3_1B6_SCOPE_DISCOVERY_PREVIEW_SMOKE_TEST.md`, then Stage 3.1B.7 missing-scope hardening. Preserve Fact SoT; no DNA; Analyse Job unchanged; production flag remains disabled until separate gate.
+**3.1B.6R3.1** — Complete — Local, Preview Retest Pending. **Next:** Owner Preview
+retest per `STAGE_3_1B6R31_PREVIEW_RETEST.md` (and broader 3.1B.6 smoke), then
+Stage 3.1B.7 missing-scope hardening. Preserve Fact SoT; no DNA; Analyse Job
+unchanged; production flag remains disabled until separate gate. **No migration 030.**
 
 ---
 

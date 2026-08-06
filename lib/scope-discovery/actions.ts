@@ -15,6 +15,8 @@ import {
   rejectScopeSuggestionApp,
   modifyScopeSuggestionApp,
   batchConfirmScopeItemsApp,
+  applyScopeImpactRecommendationApp,
+  keepScopeImpactRecommendationApp,
   getScopeDiscoveryResults,
   runScopeDiscovery,
   evaluateScopeDiscoveryStale,
@@ -26,6 +28,7 @@ import {
   type RunDiscoveryOutcome,
   type StaleOutcome,
   type BatchConfirmScopeOutcome,
+  type ScopeImpactRecommendationActionOutcome,
 } from "./application";
 import { revalidateScopeDiscoveryPaths } from "./application/revalidate";
 import type { PersistenceAuthContext } from "./persistence/context";
@@ -80,6 +83,15 @@ const batchConfirmInputSchema = z.object({
     )
     .min(1)
     .max(200),
+});
+
+const scopeImpactActionInputSchema = z.object({
+  projectId: uuidSchema,
+  runId: uuidSchema,
+  sourceRevision: z.string().min(1).max(500),
+  suggestionId: uuidSchema,
+  recommendationId: z.string().min(1).max(500),
+  intendedState: z.enum(["INCLUDED", "NOT_REQUIRED"]),
 });
 
 async function authContext(): Promise<
@@ -227,6 +239,50 @@ export async function batchConfirmScopeItemsAction(input: {
   if (!auth.ok) return auth.failure;
 
   return batchConfirmScopeItemsApp(parsed.data, {
+    ctx: auth.ctx,
+    revalidate: revalidateScopeDiscoveryPaths,
+  });
+}
+
+export async function applyScopeImpactRecommendationAction(input: {
+  projectId: string;
+  runId: string;
+  sourceRevision: string;
+  suggestionId: string;
+  recommendationId: string;
+  intendedState: "INCLUDED" | "NOT_REQUIRED";
+}): Promise<ScopeImpactRecommendationActionOutcome> {
+  const parsed = scopeImpactActionInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return applicationFailure(APPLICATION_ERROR_CODES.VALIDATION_FAILED);
+  }
+
+  const auth = await authContext();
+  if (!auth.ok) return auth.failure;
+
+  return applyScopeImpactRecommendationApp(parsed.data, {
+    ctx: auth.ctx,
+    revalidate: revalidateScopeDiscoveryPaths,
+  });
+}
+
+export async function keepScopeImpactRecommendationAction(input: {
+  projectId: string;
+  runId: string;
+  sourceRevision: string;
+  suggestionId: string;
+  recommendationId: string;
+  intendedState: "INCLUDED" | "NOT_REQUIRED";
+}): Promise<ScopeImpactRecommendationActionOutcome> {
+  const parsed = scopeImpactActionInputSchema.safeParse(input);
+  if (!parsed.success) {
+    return applicationFailure(APPLICATION_ERROR_CODES.VALIDATION_FAILED);
+  }
+
+  const auth = await authContext();
+  if (!auth.ok) return auth.failure;
+
+  return keepScopeImpactRecommendationApp(parsed.data, {
     ctx: auth.ctx,
     revalidate: revalidateScopeDiscoveryPaths,
   });

@@ -2,6 +2,8 @@
  * Stage 3.1B.6R3 — Workflow coherence completion.
  *
  * **Status:** Complete — Local, Preview Retest Pending
+ * **Follow-on:** Stage 3.1B.6R3.1 — Scope Impact Recommendation UI
+ *   (`docs/implementation/STAGE_3_1B6R31_SCOPE_IMPACT_RECOMMENDATIONS_COMPLETION.md`)
  * **Stage 3.1B.7:** Not Started
  * **UI/UX Overhaul:** Planned (`docs/plans/QUOTR_UI_UX_OVERHAUL_PLAN.md`)
  * **Production:** Disabled
@@ -42,6 +44,10 @@ detail and scope-signal Facts are **excluded** from discovery-run fingerprints.
 Full reanalysis only for unclassified project-level signals, brief/notes/WA
 changes. Scope-adding/excluding produce recommendation helpers
 (`buildScopeChangeRecommendations`) without provider calls.
+
+**R3 limitation (addressed in R3.1):** recommendation engine existed, but
+Apply / Keep current were not mounted in Scope Review UI. See
+`STAGE_3_1B6R31_SCOPE_IMPACT_RECOMMENDATIONS_COMPLETION.md`.
 
 ## 7. Project Capture → Site Constraints
 

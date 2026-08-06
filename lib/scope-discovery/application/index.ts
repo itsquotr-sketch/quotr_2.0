@@ -51,6 +51,12 @@ export {
   type BatchScopeItemInput,
 } from "./batch-confirm-scope";
 export {
+  applyScopeImpactRecommendationApp,
+  keepScopeImpactRecommendationApp,
+  type ScopeImpactRecommendationActionInput,
+  type ScopeImpactRecommendationActionOutcome,
+} from "./scope-impact-recommendation-actions";
+export {
   evaluateScopeDiscoveryStale,
   type EvaluateStaleDeps,
 } from "./stale-evaluation";

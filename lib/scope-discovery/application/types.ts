@@ -134,6 +134,11 @@ export interface SafeResultsRead {
   readonly allSuggestions: readonly SafeSuggestionView[];
   readonly dismissedCount: number;
   readonly suppressedCount: number;
+  /**
+   * Scope-impact recommendation ids dismissed via Keep current scope
+   * (durable across refresh; keyed by Fact value revision identity).
+   */
+  readonly dismissedScopeImpactIds: readonly string[];
   readonly warnings: readonly string[];
   readonly providerPartialFailure: boolean;
   readonly message: string;

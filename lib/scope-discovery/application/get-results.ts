@@ -23,6 +23,7 @@ import { SCOPE_DISCOVERY_CONTRACT_VERSION } from "../version";
 import { SCOPE_RELATIONSHIP_CATALOGUE_VERSION } from "../catalogue/version";
 import { SCOPE_DISCOVERY_PROMPT_VERSION } from "../provider/version";
 import { detectProviderPartialFailure } from "../ui/warnings";
+import { collectDismissedRecommendationIds } from "../ui/scope-impact-identity";
 import { APPLICATION_ERROR_CODES, applicationFailure } from "./errors";
 import { logDiscoveryEvent } from "./logging";
 import {
@@ -71,6 +72,7 @@ function emptyResults(
     allSuggestions: [],
     dismissedCount: 0,
     suppressedCount: 0,
+    dismissedScopeImpactIds: [],
     warnings: [],
     providerPartialFailure: false,
     message,
@@ -141,6 +143,9 @@ export async function getScopeDiscoveryResults(
   const dismissedCount = views.filter(
     (v) => v.decisionState === "REJECTED"
   ).length;
+  const dismissedScopeImpactIds = [
+    ...collectDismissedRecommendationIds(decisions),
+  ];
 
   let stale = false;
   let staleReasons: string[] = [];
@@ -221,6 +226,7 @@ export async function getScopeDiscoveryResults(
     allSuggestions: views,
     dismissedCount,
     suppressedCount: 0,
+    dismissedScopeImpactIds,
     warnings,
     providerPartialFailure: detectProviderPartialFailure(warnings, run.status),
     message: stale

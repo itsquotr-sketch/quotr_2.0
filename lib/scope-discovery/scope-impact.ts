@@ -1,9 +1,14 @@
 /**
- * Scope-impact classification for Fact/Question changes (3.1B.6R3).
+ * Scope-impact classification for Fact/Question changes (3.1B.6R3 / R3.1).
  *
  * Detail-only answers must not stale the Scope Review run.
  * Scope-adding / excluding produce recommendations, not full reanalysis.
  */
+
+import {
+  humanTriggeringAnswerSummary,
+  scopeImpactRecommendationId,
+} from "./ui/scope-impact-identity";
 
 export type ScopeImpactClass =
   | "DETAIL_ONLY"
@@ -220,12 +225,14 @@ export type ScopeChangeRecommendation = {
   readonly workAreaLabel: string;
   readonly scopeItemType: string;
   readonly scopeItemTitle: string;
+  /** Internal Fact key — never render in UI. */
   readonly factKey: string;
   readonly triggeringSummary: string;
   readonly previousState: "INCLUDED" | "NOT_REQUIRED" | "UNDECIDED";
   readonly suggestedState: "INCLUDED" | "NOT_REQUIRED";
   readonly explanation: string;
   readonly suggestionId: string | null;
+  readonly classification: "SCOPE_EXCLUDING" | "SCOPE_ADDING";
 };
 
 /**
@@ -268,6 +275,13 @@ export function buildScopeChangeRecommendations(params: {
       newValue: fact.value,
     });
 
+    if (
+      impact.classification !== "SCOPE_EXCLUDING" &&
+      impact.classification !== "SCOPE_ADDING"
+    ) {
+      continue;
+    }
+
     let suggested: "INCLUDED" | "NOT_REQUIRED" | null = null;
     if (truthy(fact.value) && signal.yesMeans === "ADDING") {
       suggested = "INCLUDED";
@@ -294,9 +308,8 @@ export function buildScopeChangeRecommendations(params: {
 
     if (suggested === "INCLUDED" && currentState === "INCLUDED") continue;
     if (suggested === "NOT_REQUIRED" && currentState === "NOT_REQUIRED") continue;
-    // Only recommend when there's a mismatch with decided or undecided that should change
+    // Only recommend when there's a mismatch with decided items
     if (suggested === "INCLUDED" && currentState === "UNDECIDED") {
-      // optional — skip if never decided; batch confirm handles open items
       continue;
     }
     if (suggested === "NOT_REQUIRED" && currentState === "UNDECIDED") {
@@ -307,30 +320,36 @@ export function buildScopeChangeRecommendations(params: {
       (fact.work_area_id && waById.get(fact.work_area_id)) ||
       params.workAreas.find((w) => w.type === "deck") ||
       null;
-    const id = `${fact.key}:${signal.scopeItemType}:${suggested}:${fact.work_area_id ?? "project"}`;
+    const workAreaId = wa?.id ?? fact.work_area_id;
+    const id = scopeImpactRecommendationId({
+      workAreaId,
+      scopeItemType: signal.scopeItemType,
+      factKey: fact.key,
+      factValue: fact.value,
+      suggestedState: suggested,
+    });
     if (seen.has(id) || dismissed.has(id)) continue;
     seen.add(id);
 
     results.push({
       id,
-      workAreaId: wa?.id ?? fact.work_area_id,
+      workAreaId,
       workAreaLabel: wa?.name ?? wa?.type ?? "Work area",
       scopeItemType: signal.scopeItemType,
       scopeItemTitle:
         match?.proposedTitle ?? humanScopeItem(signal.scopeItemType),
       factKey: fact.key,
-      triggeringSummary: formatTrigger(fact.key, fact.value),
+      triggeringSummary: humanTriggeringAnswerSummary({
+        factKey: fact.key,
+        value: fact.value,
+      }),
       previousState: currentState,
       suggestedState: suggested,
       explanation: impact.explanation,
       suggestionId: match?.suggestionId ?? null,
+      classification: impact.classification,
     });
   }
 
   return results;
-}
-
-function formatTrigger(factKey: string, value: unknown): string {
-  const label = factKey.split(".").pop()?.replace(/_/g, " ") ?? factKey;
-  return `${label}: ${String(value)}`;
 }
