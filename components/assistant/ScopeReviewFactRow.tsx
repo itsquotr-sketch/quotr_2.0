@@ -2,22 +2,20 @@
 
 import { Loader2, Pencil } from "lucide-react";
 import { useState } from "react";
-import type { ScopeReviewFact, ScopeReviewSourceLabel } from "@/lib/assistant/types";
+import type { ScopeReviewFact } from "@/lib/assistant/types";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { cn } from "@/lib/utils";
 import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
 import { formatAnswerOptionLabel } from "@/lib/scopes/fact-labels";
-
-const SOURCE_DISPLAY: Record<ScopeReviewSourceLabel, string> = {
-  brief: "Recognised from brief",
-  answered: "Answered",
-  calculated: "Calculated",
-  assumed: "Assumed",
-  default: "Default",
-  system: "System",
-  "project spec": "Project spec",
-};
+import {
+  provenanceLabelForScopeSource,
+  relatedScopeItemLabel,
+  shouldShowWhyThisMatters,
+  usedForLabelsForFactKey,
+  whyThisMattersForKey,
+} from "@/lib/assistant/presentation";
+import { ChevronDown } from "lucide-react";
 
 function chipValueMatches(
   option: string,
@@ -56,9 +54,21 @@ export function ScopeReviewFactRow({
     fact.rawValue as string | number | boolean
   );
   const [localError, setLocalError] = useState<string | null>(null);
+  const [whyOpen, setWhyOpen] = useState(false);
 
   const canEdit = editable && !fact.readOnly && Boolean(onSave);
-  const sourceText = SOURCE_DISPLAY[fact.sourceLabel] ?? fact.sourceLabel;
+  const sourceText = provenanceLabelForScopeSource(fact.sourceLabel, {
+    hasManualOverride: fact.sourceLabel === "answered" && Boolean(fact.derivedNote),
+  });
+  const why = whyThisMattersForKey(fact.key);
+  const usedFor = usedForLabelsForFactKey(fact.key);
+  const scopeItem = relatedScopeItemLabel(fact.key);
+  const showProvenance =
+    fact.sourceLabel === "brief" ||
+    fact.sourceLabel === "calculated" ||
+    fact.sourceLabel === "assumed" ||
+    fact.sourceLabel === "default" ||
+    fact.sourceLabel === "system";
 
   const handleSave = async () => {
     if (!onSave) return;
@@ -91,7 +101,48 @@ export function ScopeReviewFactRow({
           <div className="min-w-0">
             <p className="text-xs text-muted-foreground">{fact.label}</p>
             <p className="mt-0.5 font-medium text-foreground">{fact.value}</p>
-            <p className="mt-0.5 text-[11px] text-muted-foreground">{sourceText}</p>
+            {showProvenance || fact.sourceLabel === "answered" ? (
+              <p
+                className="mt-0.5 text-[11px] text-muted-foreground"
+                aria-label={`Answer source: ${sourceText}`}
+              >
+                {sourceText}
+              </p>
+            ) : null}
+            {scopeItem ? (
+              <p className="mt-0.5 text-[11px] text-muted-foreground">
+                Scope: {scopeItem}
+              </p>
+            ) : null}
+            {usedFor.length > 0 ? (
+              <ul className="mt-0.5 list-inside list-disc text-[11px] text-muted-foreground">
+                {usedFor.map((item) => (
+                  <li key={item}>{item}</li>
+                ))}
+              </ul>
+            ) : null}
+            {why && shouldShowWhyThisMatters(fact.key) ? (
+              <div className="mt-1">
+                <button
+                  type="button"
+                  className="inline-flex items-center gap-1 text-[11px] font-medium text-foreground/80 underline-offset-2 hover:underline"
+                  aria-expanded={whyOpen}
+                  onClick={() => setWhyOpen((v) => !v)}
+                >
+                  Why this matters
+                  <ChevronDown
+                    className={cn(
+                      "size-3 transition-transform",
+                      whyOpen && "rotate-180"
+                    )}
+                    aria-hidden
+                  />
+                </button>
+                {whyOpen ? (
+                  <p className="mt-0.5 text-[11px] text-muted-foreground">{why}</p>
+                ) : null}
+              </div>
+            ) : null}
             {fact.conflictWarning ? (
               <p className="mt-1 text-xs font-medium text-amber-800 dark:text-amber-200">
                 {fact.conflictWarning}

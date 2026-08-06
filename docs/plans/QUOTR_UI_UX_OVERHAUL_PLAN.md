@@ -1,6 +1,6 @@
 # Quotr UI/UX Overhaul Plan
 
-**Status:** Planned  
+**Status:** In Progress  
 **Date:** 2026-08-06  
 **Owner programme:** Product + Design  
 **Not in scope of Stage 3.1B.6R3 implementation**
@@ -42,14 +42,14 @@ work into Intelligent Scope Discovery delivery batches.
 | --- | --- | --- |
 | UX-A | Assistant stage chrome + mobile stepper | Delivered as **3.1B.7A** |
 | UX-B | Capture / Work Areas / Scope Review density | Partially delivered as **3.1B.7B** |
-| UX-C | Scope Details + Fact editing clarity | UX-B / 3.1B.7B |
-| UX-D | Estimate Review + Quick Estimate presentation | Partially delivered as **3.1B.7B** |
+| UX-C | Scope Details + Fact editing clarity | Delivered as **3.1B.7C** |
+| UX-D | Estimate Review + Quick Estimate presentation | Delivered as **3.1B.7C** (with 7B) |
 | UX-E | Pricing + Quote surfaces | Commercial authority stable |
 | UX-F | Accessibility + design tokens pass | UX-A–E |
 
-**3.1B.7A/7B** delivered progressive disclosure and information hierarchy.
-Remaining UX-C–F items stay Planned.
-
+**3.1B.7A/7B/7C** delivered progressive disclosure, information hierarchy, and
+question/estimate presentation. Remaining UX-E–F (and residual polish) stay
+Planned. Stage 3.1B.7D — Not Started.
 
 Each batch must ship with its own verify script and Preview checklist.
 
@@ -67,8 +67,12 @@ Each batch must ship with its own verify script and Preview checklist.
 ## Tracking
 
 - Product Backlog: FEAT-UX-001 programme  
-- Stage 3 Product Roadmap: UI/UX Overhaul — Planned  
-- Governing status: **Planned** (not Started)
+- Stage 3 Product Roadmap: UI/UX Overhaul — In Progress  
+- Governing status: **In Progress**  
+- Stage 3.1B.7C — Complete — Local  
+- Stage 3.1B.7D — Not Started  
+- Scope Discovery Preview sign-off — Pending  
+- Production — Disabled  
 
 ---
 
@@ -78,3 +82,4 @@ Each batch must ship with its own verify script and Preview checklist.
 | --- | --- |
 | Path | `docs/plans/QUOTR_UI_UX_OVERHAUL_PLAN.md` |
 | Created | 2026-08-06 |
+| Updated | 2026-08-06 |

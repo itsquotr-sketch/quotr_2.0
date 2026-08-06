@@ -21,6 +21,31 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { buildEstimateReviewWorkAreaSummary } from "@/lib/assistant/presentation";
+
+function SummaryMetricLine({
+  label,
+  value,
+  attention,
+}: {
+  label: string;
+  value: string;
+  attention?: boolean;
+}) {
+  return (
+    <div className="flex min-w-0 items-baseline justify-between gap-3 text-xs">
+      <span className="shrink-0 text-muted-foreground">{label}</span>
+      <span
+        className={cn(
+          "min-w-0 truncate text-right font-medium",
+          attention && "text-amber-900 dark:text-amber-200"
+        )}
+      >
+        {value}
+      </span>
+    </div>
+  );
+}
 
 function CollapsedQuotePreview({
   description,
@@ -81,6 +106,7 @@ type ScopeSummaryBlockProps = {
   isAddingWorkArea?: boolean;
   isExcludingWorkArea?: boolean;
   addWorkAreaError?: string | null;
+  constraintPreview?: string;
   onFactSave?: (input: {
     workAreaId: string;
     key: string;
@@ -147,6 +173,7 @@ export function ScopeSummaryBlock({
   isAddingWorkArea,
   isExcludingWorkArea,
   addWorkAreaError,
+  constraintPreview,
   onFactSave,
   onSaveWorkAreaQuestions,
   workAreaSaveStatus,
@@ -158,6 +185,7 @@ export function ScopeSummaryBlock({
     id: string;
     name: string;
   } | null>(null);
+  const [detailsOpen, setDetailsOpen] = useState<Record<string, boolean>>({});
 
   // Optimistic local answers. Do not remount this block on server value changes —
   // local values stay visible over lagging props (Stage 3.1A-R1).
@@ -235,6 +263,10 @@ export function ScopeSummaryBlock({
 
       {scopeReview.workAreas.map((workArea) => {
         const hasMissing = workArea.missingItems.length > 0;
+        const summary = buildEstimateReviewWorkAreaSummary(workArea, {
+          constraintPreview,
+        });
+        const expanded = detailsOpen[workArea.workAreaId] ?? hasMissing;
 
         return (
         <article
@@ -252,7 +284,7 @@ export function ScopeSummaryBlock({
               <h4 className="text-sm font-semibold text-foreground">
                 {workArea.workAreaName}
               </h4>
-              {workArea.summary ? (
+              {workArea.summary && expanded ? (
                 <p className="text-xs leading-relaxed text-muted-foreground break-words">
                   {workArea.summary}
                 </p>
@@ -264,7 +296,7 @@ export function ScopeSummaryBlock({
                   variant="outline"
                   className="border-amber-300/80 bg-amber-50 text-[10px] font-medium text-amber-900"
                 >
-                  {workArea.missingItems.length} missing
+                  {workArea.missingItems.length} outstanding
                 </Badge>
               ) : null}
             {manageWorkAreas && onExcludeWorkArea ? (
@@ -287,10 +319,65 @@ export function ScopeSummaryBlock({
             </div>
           </div>
 
+          <div className="mt-3 space-y-1.5 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
+            <SummaryMetricLine
+              label="Description"
+              value={summary.descriptionLabel}
+            />
+            <SummaryMetricLine
+              label="Measurements"
+              value={summary.measurementsLabel}
+            />
+            <SummaryMetricLine label="Scope" value={summary.scopeLabel} />
+            <SummaryMetricLine
+              label="Assumptions"
+              value={summary.assumptionsLabel}
+            />
+            <SummaryMetricLine
+              label="Site constraints"
+              value={summary.constraintsLabel}
+            />
+            <SummaryMetricLine
+              label="Outstanding"
+              value={summary.outstandingLabel}
+              attention={summary.hasOutstanding}
+            />
+            <SummaryMetricLine
+              label="Estimate readiness"
+              value={summary.estimateReadinessLabel}
+              attention={summary.hasOutstanding}
+            />
+          </div>
+
+          <div className="mt-2">
+            <button
+              type="button"
+              className="inline-flex items-center gap-1.5 text-xs font-medium text-foreground underline-offset-2 hover:underline"
+              aria-expanded={expanded}
+              onClick={() =>
+                setDetailsOpen((prev) => ({
+                  ...prev,
+                  [workArea.workAreaId]: !expanded,
+                }))
+              }
+            >
+              {expanded ? "Hide details" : "Review details"}
+              <ChevronDown
+                className={cn(
+                  "size-3.5 transition-transform",
+                  expanded && "rotate-180"
+                )}
+                aria-hidden
+              />
+            </button>
+          </div>
+
+          {expanded ? (
+            <div className="mt-3 space-y-3 border-t border-border/50 pt-3">
           {workArea.missingItems.length > 0 ? (
-            <div className="mt-3 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5">
+            <div className="rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5">
               <h4 className="text-xs font-medium text-amber-900">
-                Missing details
+                Outstanding information
               </h4>
               <ul className="mt-1.5 space-y-1 text-sm text-amber-950">
                 {workArea.missingItems.map((item) => (
@@ -334,7 +421,7 @@ export function ScopeSummaryBlock({
           ) : null}
 
           {workArea.facts.length > 0 ? (
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
+            <div className="grid gap-2 sm:grid-cols-2">
               {workArea.facts.map((fact) => {
                 const factKey = `${workArea.workAreaId}:${fact.key}`;
                 return (
@@ -398,6 +485,8 @@ export function ScopeSummaryBlock({
                 })
               }
             />
+          ) : null}
+            </div>
           ) : null}
 
         </article>

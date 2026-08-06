@@ -52,12 +52,17 @@ type EstimatePanelProps = {
   unresolvedScopeImpactCount?: number;
   /** Align visual weight with active workflow stage (3.1B.7A). */
   isActiveStage?: boolean;
-  /** Presentation-only scope hierarchy (3.1B.7B). */
+  /** Presentation-only scope hierarchy (3.1B.7B / 3.1B.7C). */
   quickEstimatePresentation?: {
     estimatedWorkAreas: string;
     includedScopeItems: string;
     outstandingClarifications: string;
+    unansweredRequiredDetails: string;
+    assumptionsLabel: string;
+    estimateReadinessLabel: string;
     confidenceDrivers: readonly string[];
+    confidenceComplete: readonly string[];
+    confidenceOutstanding: readonly string[];
   } | null;
   constraintCount?: number;
   onViewBreakdown?: () => void;
@@ -155,26 +160,45 @@ function ScopeHealthChips({
 
 function QuickEstimateHierarchy({
   model,
+  confidencePercent,
 }: {
   model: {
     estimatedWorkAreas: string;
     includedScopeItems: string;
     outstandingClarifications: string;
+    unansweredRequiredDetails: string;
+    assumptionsLabel: string;
+    estimateReadinessLabel: string;
     confidenceDrivers: readonly string[];
+    confidenceComplete: readonly string[];
+    confidenceOutstanding: readonly string[];
   };
+  confidencePercent?: number | null;
 }) {
-  const rows = [
-    { label: "Estimated work areas", value: model.estimatedWorkAreas },
-    { label: "Included scope items", value: model.includedScopeItems },
+  const healthRows = [
+    { label: "Work Areas", value: model.estimatedWorkAreas },
+    { label: "Included scope", value: model.includedScopeItems },
     {
-      label: "Outstanding clarifications",
+      label: "Unresolved clarifications",
       value: model.outstandingClarifications,
+    },
+    {
+      label: "Unanswered required details",
+      value: model.unansweredRequiredDetails,
+    },
+    { label: "Assumptions", value: model.assumptionsLabel },
+    {
+      label: "Estimate readiness",
+      value: model.estimateReadinessLabel,
     },
   ];
   return (
-    <div className="space-y-2 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
+    <div className="space-y-2.5 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
+      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+        Project health
+      </p>
       <ul className="space-y-1.5">
-        {rows.map((row) => (
+        {healthRows.map((row) => (
           <li key={row.label} className="min-w-0">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {row.label}
@@ -185,21 +209,66 @@ function QuickEstimateHierarchy({
           </li>
         ))}
       </ul>
+      {confidencePercent != null ? (
+        <p className="text-xs font-medium text-foreground">
+          Estimate confidence: {confidencePercent}%
+        </p>
+      ) : null}
       <div>
         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Confidence drivers
         </p>
-        <ul className="mt-0.5 space-y-0.5">
-          {model.confidenceDrivers.map((driver) => (
-            <li
-              key={driver}
-              className="flex gap-1.5 text-[11px] text-muted-foreground"
+        {model.confidenceComplete.length > 0 ? (
+          <div className="mt-1">
+            <p className="text-[11px] font-medium text-foreground/80">Complete</p>
+            <ul className="mt-0.5 space-y-0.5" aria-label="Complete confidence drivers">
+              {model.confidenceComplete.map((driver) => (
+                <li
+                  key={driver}
+                  className="flex gap-1.5 text-[11px] text-muted-foreground"
+                >
+                  <span aria-hidden>•</span>
+                  <span>{driver}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {model.confidenceOutstanding.length > 0 ? (
+          <div className="mt-1.5">
+            <p className="text-[11px] font-medium text-foreground/80">
+              Outstanding
+            </p>
+            <ul
+              className="mt-0.5 space-y-0.5"
+              aria-label="Outstanding confidence drivers"
             >
-              <span aria-hidden>•</span>
-              <span>{driver}</span>
-            </li>
-          ))}
-        </ul>
+              {model.confidenceOutstanding.map((driver) => (
+                <li
+                  key={driver}
+                  className="flex gap-1.5 text-[11px] text-amber-900 dark:text-amber-200"
+                >
+                  <span aria-hidden>•</span>
+                  <span>{driver}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        ) : null}
+        {model.confidenceComplete.length === 0 &&
+        model.confidenceOutstanding.length === 0 ? (
+          <ul className="mt-0.5 space-y-0.5">
+            {model.confidenceDrivers.map((driver) => (
+              <li
+                key={driver}
+                className="flex gap-1.5 text-[11px] text-muted-foreground"
+              >
+                <span aria-hidden>•</span>
+                <span>{driver}</span>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </div>
     </div>
   );
@@ -277,7 +346,7 @@ export function EstimatePanel({
           <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
             <div className="min-w-0">
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Spec level
+                Specification
               </p>
               <p className="text-sm font-medium">{qualityLabel(qualityLevel)}</p>
             </div>
@@ -296,7 +365,10 @@ export function EstimatePanel({
         ) : null}
 
         {quickEstimatePresentation ? (
-          <QuickEstimateHierarchy model={quickEstimatePresentation} />
+          <QuickEstimateHierarchy
+            model={quickEstimatePresentation}
+            confidencePercent={estimate?.confidence ?? null}
+          />
         ) : null}
 
         {needsCalibrationUpdate ? (
@@ -458,7 +530,7 @@ export function EstimatePanel({
                   dimmed={isStale}
                 />
                 <MetricRow
-                  label="Confidence"
+                  label="Estimate confidence"
                   value={`${estimate.confidence}%`}
                   dimmed={isStale}
                 />
@@ -619,7 +691,7 @@ export function EstimatePanel({
         aria-expanded={mobileExpanded}
       >
         <div className="min-w-0">
-          <p className="text-sm font-semibold">Quick estimate</p>
+          <p className="text-sm font-semibold">Quick Estimate</p>
           <p className="truncate text-xs text-muted-foreground">{summaryValue}</p>
         </div>
         <ChevronDown
@@ -631,7 +703,7 @@ export function EstimatePanel({
       </button>
 
       <CardHeader className="hidden pb-3 lg:block">
-        <CardTitle className="text-base">Quick estimate</CardTitle>
+        <CardTitle className="text-base">Quick Estimate</CardTitle>
         <CardDescription>
           {estimate
             ? "Draft estimate based on your inputs"

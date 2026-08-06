@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import {
@@ -190,14 +190,158 @@ function SummaryMetric({
 }
 
 function WorkAreaScopeSection({ workArea }: { workArea: WorkArea }) {
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>({
+    overview: true,
+    confirmed: true,
+    commercial: true,
+  });
+
+  const toggle = (key: string) =>
+    setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
+
+  const sections: {
+    key: string;
+    title: string;
+    defaultOpen: boolean;
+    empty?: boolean;
+    body: ReactNode;
+  }[] = [
+    {
+      key: "overview",
+      title: "Overview",
+      defaultOpen: true,
+      body: (
+        <>
+          {workArea.summary ? (
+            <p className="break-words text-sm text-muted-foreground">
+              {workArea.summary}
+            </p>
+          ) : (
+            <p className="text-sm text-muted-foreground">No overview text.</p>
+          )}
+        </>
+      ),
+    },
+    {
+      key: "confirmed",
+      title: "Confirmed scope",
+      defaultOpen: true,
+      empty: !(workArea.includedScopeItems && workArea.includedScopeItems.length),
+      body: (
+        <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+          {(workArea.includedScopeItems ?? []).map((item) => (
+            <li key={item.id}>{item.label}</li>
+          ))}
+        </ul>
+      ),
+    },
+    {
+      key: "quantities",
+      title: "Quantities and measurements",
+      defaultOpen: false,
+      empty: !workArea.summary,
+      body: (
+        <p className="text-sm text-muted-foreground">
+          Measurement drivers appear in Scope Details and Estimate Review. Line
+          quantities are listed under Commercial breakdown.
+        </p>
+      ),
+    },
+    {
+      key: "assumptions",
+      title: "Assumptions",
+      defaultOpen: false,
+      empty: !(workArea.assumptions && workArea.assumptions.length),
+      body: (
+        <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+          {(workArea.assumptions ?? []).map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ),
+    },
+    {
+      key: "optional",
+      title: "Optional items",
+      defaultOpen: false,
+      empty: !(
+        workArea.includedScopeItems &&
+        workArea.includedScopeItems.some((i) => i.status === "assumption")
+      ),
+      body: (
+        <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+          {(workArea.includedScopeItems ?? [])
+            .filter((i) => i.status === "assumption")
+            .map((item) => (
+              <li key={item.id}>{item.label}</li>
+            ))}
+        </ul>
+      ),
+    },
+    {
+      key: "not_required",
+      title: "Not required",
+      defaultOpen: false,
+      empty: !(workArea.excludedScopeItems && workArea.excludedScopeItems.length),
+      body: (
+        <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
+          {(workArea.excludedScopeItems ?? []).map((item) => (
+            <li key={item.id}>{item.label}</li>
+          ))}
+        </ul>
+      ),
+    },
+    {
+      key: "outstanding",
+      title: "Outstanding information",
+      defaultOpen: false,
+      empty: !(workArea.missingInfo && workArea.missingInfo.length),
+      body: (
+        <ul className="list-inside list-disc space-y-1 text-sm text-amber-900 dark:text-amber-200">
+          {(workArea.missingInfo ?? []).map((item) => (
+            <li key={item}>{item}</li>
+          ))}
+        </ul>
+      ),
+    },
+  ];
+
   return (
     <div className="rounded-2xl border bg-muted/20 px-4 py-3">
       <p className="text-sm font-semibold">{workArea.name}</p>
-      {workArea.summary ? (
-        <p className="mt-1 break-words text-sm text-muted-foreground">
-          {workArea.summary}
-        </p>
-      ) : null}
+      <div className="mt-3 space-y-2">
+        {sections.map((section) => {
+          if (section.empty) return null;
+          const open = openSections[section.key] ?? section.defaultOpen;
+          return (
+            <div
+              key={section.key}
+              className="rounded-lg border border-border/50 bg-background/50"
+            >
+              <button
+                type="button"
+                className="flex w-full items-center justify-between gap-2 px-3 py-2 text-left"
+                aria-expanded={open}
+                onClick={() => toggle(section.key)}
+              >
+                <span className="text-xs font-semibold">{section.title}</span>
+                <ChevronDown
+                  className={cn(
+                    "size-3.5 text-muted-foreground transition-transform",
+                    open && "rotate-180"
+                  )}
+                  aria-hidden
+                />
+              </button>
+              {open ? (
+                <div className="border-t border-border/40 px-3 py-2">
+                  {section.body}
+                </div>
+              ) : null}
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 }
@@ -571,7 +715,7 @@ export function EstimateBreakdownModal({
                     />
                   ) : null}
                   <SummaryMetric
-                    label="Confidence"
+                    label="Estimate confidence"
                     value={`${estimate.confidence}%`}
                   />
                 </div>
@@ -816,15 +960,34 @@ export function EstimateBreakdownModal({
                     </button>
 
                     {isExpanded ? (
-                      <ul className="space-y-2 border-t px-4 py-3">
-                        {area.items.map((item, index) => (
-                          <LineItemCard
-                            key={lineItemRenderKey(item, index)}
-                            item={item}
-                            compact
-                          />
-                        ))}
-                      </ul>
+                      <div className="space-y-3 border-t px-4 py-3">
+                        {(() => {
+                          const wa = estimate.includedWorkAreas.find(
+                            (w) => w.name === area.name
+                          );
+                          return wa ? <WorkAreaScopeSection workArea={wa} /> : null;
+                        })()}
+                        <div className="rounded-lg border border-border/50">
+                          <p className="border-b border-border/40 px-3 py-2 text-xs font-semibold">
+                            Commercial breakdown
+                          </p>
+                          <ul className="space-y-2 px-3 py-3">
+                            {area.items.map((item, index) => (
+                              <LineItemCard
+                                key={lineItemRenderKey(item, index)}
+                                item={item}
+                                compact
+                              />
+                            ))}
+                          </ul>
+                        </div>
+                        {area.items.some((i) => i.category === "allowance") ? (
+                          <p className="text-xs text-muted-foreground">
+                            Allowances are labelled in each line item category
+                            badge.
+                          </p>
+                        ) : null}
+                      </div>
                     ) : null}
                   </section>
                 );

@@ -5,14 +5,16 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.7B — **Complete — Local**  
-**Next batch:** 3.1B.7C — **Not Started**; 3.1B.7 missing-scope — **Not Started**  
+**Current batch:** 3.1B.7C — **Complete — Local**  
+**Next batch:** 3.1B.7D — **Not Started**; 3.1B.7 missing-scope — **Not Started**  
 **Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **no 030**  
 **Server integration:** **Complete — Local**  
 **Scope Discovery UI:** **Complete — Local, Preview Retest Pending**  
 **Assistant progressive disclosure (7A):** **Complete — Local**  
 **Assistant information hierarchy (7B):** **Complete — Local**  
-**UI/UX Overhaul:** **Planned** (`docs/plans/QUOTR_UI_UX_OVERHAUL_PLAN.md`)  
+**Question / estimate presentation (7C):** **Complete — Local**  
+**UI/UX Overhaul:** **In Progress** (`docs/plans/QUOTR_UI_UX_OVERHAUL_PLAN.md`)  
+**Scope Discovery Preview sign-off:** **Pending**  
 **Preview feature:** **Enabled only by owner configuration**  
 **Production feature:** **Disabled**  
 **Feature flag:** **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off)  
@@ -233,9 +235,10 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.7B** — Complete — Local (information hierarchy). **Next:** Preview
-validation of Assistant UX, then either 3.1B.7C or Stage 3.1B.7 missing-scope
-hardening per owner gate. Preserve Fact SoT; no DNA; Analyse Job unchanged;
+**3.1B.7C** — Complete — Local (question organisation, estimate presentation,
+confidence explanation). **Next:** Preview validation of Assistant UX, then
+either 3.1B.7D or Stage 3.1B.7 missing-scope (do not start 7D until authorised).
+Production remains **Disabled**. Preserve Fact SoT; no DNA; Analyse Job unchanged;
 production flag remains disabled. **No migration 030.**
 
 ---

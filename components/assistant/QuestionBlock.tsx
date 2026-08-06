@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useState } from "react";
+import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +10,16 @@ import type { DerivedFactDisplay } from "@/lib/assistant/types";
 import type { Question } from "@/components/assistant/types";
 import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
 import { formatSelectAnswerValue } from "@/lib/scopes/fact-labels";
+import {
+  defaultExpandedQuestionCategory,
+  groupQuestionsByPresentationCategory,
+  provenanceLabelForQuestionSource,
+  relatedScopeItemLabel,
+  shouldShowWhyThisMatters,
+  usedForLabelsForFactKey,
+  whyThisMattersForKey,
+  type QuestionPresentationCategory,
+} from "@/lib/assistant/presentation";
 
 export type QuestionAnswers = Record<string, string | number | boolean | string[] | null>;
 
@@ -19,6 +30,10 @@ type QuestionBlockProps = {
   submitted?: boolean;
   isSaving?: boolean;
   submitLabel?: string;
+  /** When true, skip presentation categories (rare). */
+  disableCategoryGrouping?: boolean;
+  /** Hide the block submit control (parent owns save). */
+  hideSubmit?: boolean;
   onAnswerChange?: (questionId: string, value: string | number | boolean | string[]) => void;
   onSubmit?: () => void;
 };
@@ -266,19 +281,250 @@ export function QuestionField({
   }
 }
 
+function QuestionContextMeta({
+  question,
+  value,
+  sourceLabel,
+}: {
+  question: Question;
+  value: string | number | boolean | string[] | null | undefined;
+  sourceLabel: string | null;
+}) {
+  const [whyOpen, setWhyOpen] = useState(false);
+  const why = whyThisMattersForKey(question.key);
+  const usedFor = usedForLabelsForFactKey(question.key);
+  const scopeItem = relatedScopeItemLabel(question.key);
+  const hasValue =
+    value !== null && value !== undefined && value !== "";
+  const showSource = Boolean(sourceLabel && hasValue);
+
+  if (!showSource && !scopeItem && usedFor.length === 0 && !why) {
+    return null;
+  }
+
+  return (
+    <div className="space-y-1.5 text-[11px] leading-relaxed text-muted-foreground">
+      <div className="flex flex-wrap gap-x-3 gap-y-1">
+        {question.workAreaName ? (
+          <span>
+            <span className="sr-only">Work area: </span>
+            {question.workAreaName}
+          </span>
+        ) : null}
+        {scopeItem ? (
+          <span>
+            Scope: {scopeItem}
+          </span>
+        ) : null}
+        {showSource ? (
+          <span aria-label={`Answer source: ${sourceLabel}`}>
+            {sourceLabel}
+          </span>
+        ) : null}
+      </div>
+      {usedFor.length > 0 ? (
+        <div>
+          <p className="font-medium text-muted-foreground/90">Used for</p>
+          <ul className="mt-0.5 list-inside list-disc">
+            {usedFor.map((item) => (
+              <li key={item}>{item}</li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+      {why && shouldShowWhyThisMatters(question.key) ? (
+        <div>
+          <button
+            type="button"
+            className="inline-flex items-center gap-1 font-medium text-foreground/80 underline-offset-2 hover:underline"
+            aria-expanded={whyOpen}
+            onClick={() => setWhyOpen((v) => !v)}
+          >
+            Why this matters
+            <ChevronDown
+              className={cn(
+                "size-3.5 transition-transform",
+                whyOpen && "rotate-180"
+              )}
+              aria-hidden
+            />
+          </button>
+          {whyOpen ? <p className="mt-1 max-w-prose">{why}</p> : null}
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+function CategorySection({
+  label,
+  category,
+  expanded,
+  hasUnresolvedRequired,
+  completed,
+  onToggle,
+  children,
+}: {
+  label: string;
+  category: QuestionPresentationCategory;
+  expanded: boolean;
+  hasUnresolvedRequired: boolean;
+  completed: boolean;
+  onToggle: () => void;
+  children: React.ReactNode;
+}) {
+  const headingId = `question-cat-${category}`;
+  return (
+    <section
+      className={cn(
+        "rounded-xl border",
+        hasUnresolvedRequired
+          ? "border-amber-300/80 bg-amber-50/40 dark:border-amber-800/50 dark:bg-amber-950/20"
+          : "border-border/50 bg-background/60"
+      )}
+      aria-labelledby={headingId}
+    >
+      <h5 className="sr-only" id={headingId}>
+        {label}
+        {hasUnresolvedRequired ? " — required details remaining" : ""}
+      </h5>
+      <button
+        type="button"
+        className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left"
+        aria-expanded={expanded}
+        aria-controls={`question-cat-panel-${category}`}
+        onClick={onToggle}
+      >
+        <span className="flex min-w-0 flex-wrap items-center gap-2">
+          <span className="text-xs font-semibold text-foreground">{label}</span>
+          {hasUnresolvedRequired ? (
+            <span className="rounded-md border border-amber-300/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
+              Required
+            </span>
+          ) : completed ? (
+            <span className="text-[10px] text-muted-foreground">Complete</span>
+          ) : null}
+        </span>
+        <ChevronDown
+          className={cn(
+            "size-4 shrink-0 text-muted-foreground transition-transform",
+            expanded && "rotate-180"
+          )}
+          aria-hidden
+        />
+      </button>
+      {expanded ? (
+        <div
+          id={`question-cat-panel-${category}`}
+          className="space-y-4 border-t border-border/40 px-3 py-3"
+        >
+          {children}
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
 function WorkAreaSection({
   group,
   derivedLines,
   answers,
   submitted,
+  disableCategoryGrouping,
   onAnswerChange,
 }: {
   group: QuestionGroup;
   derivedLines: DerivedFactDisplay[];
   answers: QuestionAnswers;
   submitted?: boolean;
+  disableCategoryGrouping?: boolean;
   onAnswerChange?: (questionId: string, value: string | number | boolean | string[]) => void;
 }) {
+  const categoryGroups = useMemo(
+    () =>
+      groupQuestionsByPresentationCategory({
+        questions: group.questions,
+        answers: Object.fromEntries(
+          group.questions.map((q) => [q.id, answers[q.id]])
+        ),
+      }),
+    [group.questions, answers]
+  );
+
+  const preferred = useMemo(
+    () => defaultExpandedQuestionCategory(categoryGroups),
+    [categoryGroups]
+  );
+
+  const [manualExpanded, setManualExpanded] = useState<
+    Partial<Record<QuestionPresentationCategory, boolean>>
+  >({});
+
+  const isCategoryExpanded = (category: QuestionPresentationCategory) => {
+    if (category in manualExpanded) return manualExpanded[category]!;
+    return category === preferred;
+  };
+
+  const renderQuestion = (question: Question) => {
+    const value = answers[question.id];
+    const derivedMatch = derivedLines.find((d) =>
+      d.label.toLowerCase().includes(question.label.toLowerCase().slice(0, 12))
+    );
+    const sourceLabel = derivedMatch
+      ? "Calculated"
+      : provenanceLabelForQuestionSource(
+          value === null || value === undefined || value === ""
+            ? null
+            : "user"
+        );
+
+    if (submitted) {
+      return (
+        <div
+          key={question.id}
+          className="grid gap-1 sm:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]"
+        >
+          <dt className="text-sm text-muted-foreground">{question.label}</dt>
+          <dd className="space-y-1.5">
+            <p className="text-sm font-medium">
+              {formatAnswer(question, value)}
+            </p>
+            <QuestionContextMeta
+              question={question}
+              value={value}
+              sourceLabel={sourceLabel}
+            />
+          </dd>
+        </div>
+      );
+    }
+
+    return (
+      <div key={question.id} className="space-y-2">
+        <Label className="text-sm font-medium leading-snug">
+          {question.questionText}
+          {question.required ? (
+            <span className="sr-only"> (required)</span>
+          ) : null}
+        </Label>
+        <QuestionField
+          question={question}
+          value={value}
+          onChange={(val) => onAnswerChange?.(question.id, val)}
+        />
+        <QuestionContextMeta
+          question={question}
+          value={value}
+          sourceLabel={
+            value === null || value === undefined || value === ""
+              ? null
+              : provenanceLabelForQuestionSource("user")
+          }
+        />
+      </div>
+    );
+  };
+
   return (
     <section className="rounded-2xl border border-border/60 bg-muted/15 p-4 sm:p-5">
       <div className="mb-4">
@@ -296,39 +542,55 @@ function WorkAreaSection({
             >
               <span className="font-medium text-foreground">{line.label}:</span>{" "}
               {line.text}
+              <span className="ml-2 text-[11px]">Calculated</span>
             </p>
           ))}
         </div>
       ) : null}
 
-      {submitted ? (
-        <dl className="space-y-3">
-          {group.questions.map((question) => (
-            <div
-              key={question.id}
-              className="grid gap-1 sm:grid-cols-[1fr_1.2fr]"
-            >
-              <dt className="text-sm text-muted-foreground">{question.label}</dt>
-              <dd className="text-sm font-medium">
-                {formatAnswer(question, answers[question.id])}
-              </dd>
-            </div>
-          ))}
-        </dl>
+      {disableCategoryGrouping ? (
+        submitted ? (
+          <dl className="space-y-3">{group.questions.map(renderQuestion)}</dl>
+        ) : (
+          <div className="space-y-5">{group.questions.map(renderQuestion)}</div>
+        )
       ) : (
-        <div className="space-y-5">
-          {group.questions.map((question) => (
-            <div key={question.id} className="space-y-2">
-              <Label className="text-sm font-medium leading-snug">
-                {question.questionText}
-              </Label>
-              <QuestionField
-                question={question}
-                value={answers[question.id]}
-                onChange={(val) => onAnswerChange?.(question.id, val)}
-              />
-            </div>
-          ))}
+        <div className="space-y-3">
+          {categoryGroups.map((cat) => {
+            const completed =
+              !cat.hasUnresolvedRequired &&
+              cat.questions.every((q) => {
+                const v = answers[q.id];
+                return v !== null && v !== undefined && v !== "";
+              });
+            const expanded = isCategoryExpanded(cat.category);
+            return (
+              <CategorySection
+                key={cat.category}
+                category={cat.category}
+                label={cat.label}
+                expanded={expanded}
+                hasUnresolvedRequired={cat.hasUnresolvedRequired}
+                completed={completed}
+                onToggle={() =>
+                  setManualExpanded((prev) => ({
+                    ...prev,
+                    [cat.category]: !isCategoryExpanded(cat.category),
+                  }))
+                }
+              >
+                {submitted ? (
+                  <dl className="space-y-3">
+                    {cat.questions.map(renderQuestion)}
+                  </dl>
+                ) : (
+                  <div className="space-y-5">
+                    {cat.questions.map(renderQuestion)}
+                  </div>
+                )}
+              </CategorySection>
+            );
+          })}
         </div>
       )}
     </section>
@@ -342,6 +604,8 @@ export function QuestionBlock({
   submitted,
   isSaving,
   submitLabel = "Submit answers",
+  disableCategoryGrouping,
+  hideSubmit,
   onAnswerChange,
   onSubmit,
 }: QuestionBlockProps) {
@@ -389,13 +653,16 @@ export function QuestionBlock({
           }
           answers={answers}
           submitted={submitted}
+          disableCategoryGrouping={disableCategoryGrouping}
           onAnswerChange={onAnswerChange}
         />
       ))}
       {validationError ? (
-        <p className="text-sm text-destructive">{validationError}</p>
+        <p className="text-sm text-destructive" role="alert">
+          {validationError}
+        </p>
       ) : null}
-      {!submitted ? (
+      {!submitted && !hideSubmit ? (
         <Button type="button" onClick={handleSubmit} disabled={isSaving}>
           {isSaving ? "Saving…" : submitLabel}
         </Button>

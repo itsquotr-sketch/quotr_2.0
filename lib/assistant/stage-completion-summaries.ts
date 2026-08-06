@@ -550,7 +550,12 @@ export type QuickEstimatePresentationModel = {
   readonly estimatedWorkAreas: string;
   readonly includedScopeItems: string;
   readonly outstandingClarifications: string;
+  readonly unansweredRequiredDetails: string;
+  readonly assumptionsLabel: string;
+  readonly estimateReadinessLabel: string;
   readonly confidenceDrivers: readonly string[];
+  readonly confidenceComplete: readonly string[];
+  readonly confidenceOutstanding: readonly string[];
 };
 
 export function buildQuickEstimatePresentationModel(params: {
@@ -560,6 +565,9 @@ export function buildQuickEstimatePresentationModel(params: {
   readonly assumptionCount: number;
   readonly missingCount: number;
   readonly constraintCount: number;
+  readonly specificationSelected?: boolean;
+  readonly questionsSubmitted?: boolean;
+  readonly constraintsSubmitted?: boolean;
 }): QuickEstimatePresentationModel {
   const wa =
     params.workAreaNames.length === 0
@@ -568,26 +576,34 @@ export function buildQuickEstimatePresentationModel(params: {
         ? params.workAreaNames.join(", ")
         : `${params.workAreaNames.slice(0, 2).join(", ")} +${params.workAreaNames.length - 2} more`;
 
-  const drivers: string[] = [];
-  if (params.workAreaNames.length > 0) {
-    drivers.push(
-      `${params.workAreaNames.length} work area${params.workAreaNames.length === 1 ? "" : "s"} confirmed`
-    );
-  }
-  if (params.constraintCount > 0) {
-    drivers.push(
-      `${params.constraintCount} site constraint${params.constraintCount === 1 ? "" : "s"}`
-    );
-  }
-  if (params.assumptionCount > 0) {
-    drivers.push(
-      `${params.assumptionCount} assumption${params.assumptionCount === 1 ? "" : "s"}`
-    );
-  }
+  const measurementsConfirmed =
+    Boolean(params.questionsSubmitted) && params.missingCount === 0;
+  const scopeConfirmed = params.workAreaNames.length > 0;
+  const specificationSelected = Boolean(params.specificationSelected);
+  const siteConstraintsCaptured =
+    Boolean(params.constraintsSubmitted) || params.constraintCount > 0;
+
+  const outstandingLabels: string[] = [];
   if (params.missingCount > 0) {
-    drivers.push(
-      `${params.missingCount} detail${params.missingCount === 1 ? "" : "s"} still open`
+    outstandingLabels.push(
+      `${params.missingCount} unanswered required detail${params.missingCount === 1 ? "" : "s"}`
     );
+  }
+  if (params.outstandingClarificationCount > 0) {
+    outstandingLabels.push(
+      `${params.outstandingClarificationCount} open clarification${params.outstandingClarificationCount === 1 ? "" : "s"}`
+    );
+  }
+
+  const complete: string[] = [];
+  if (measurementsConfirmed) complete.push("Measurements confirmed");
+  if (scopeConfirmed) complete.push("Scope confirmed");
+  if (specificationSelected) complete.push("Specification selected");
+  if (siteConstraintsCaptured) complete.push("Site constraints captured");
+
+  const drivers: string[] = [...complete];
+  if (outstandingLabels.length > 0) {
+    drivers.push(...outstandingLabels.slice(0, 2));
   }
   if (drivers.length === 0) {
     drivers.push("Waiting for scope inputs");
@@ -603,7 +619,23 @@ export function buildQuickEstimatePresentationModel(params: {
       params.outstandingClarificationCount === 0
         ? "None"
         : `${params.outstandingClarificationCount} open`,
+    unansweredRequiredDetails:
+      params.missingCount === 0
+        ? "None"
+        : `${params.missingCount} remaining`,
+    assumptionsLabel:
+      params.assumptionCount === 0
+        ? "None"
+        : `${params.assumptionCount} assumption${params.assumptionCount === 1 ? "" : "s"}`,
+    estimateReadinessLabel:
+      params.missingCount === 0 && params.workAreaNames.length > 0
+        ? "Ready"
+        : params.workAreaNames.length === 0
+          ? "Waiting for Work Areas"
+          : "Details outstanding",
     confidenceDrivers: drivers.slice(0, 4),
+    confidenceComplete: complete,
+    confidenceOutstanding: outstandingLabels.slice(0, 6),
   };
 }
 

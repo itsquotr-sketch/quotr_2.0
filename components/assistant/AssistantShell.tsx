@@ -725,12 +725,7 @@ export function AssistantShell({
     workAreaNames: workAreaLists.included,
     includedScopeItemCount:
       includedScopeFromDiscovery || workAreaLists.included.length,
-    outstandingClarificationCount:
-      needsDetailFromDiscovery +
-      initialState.scopeReview.workAreas.reduce(
-        (n, wa) => n + wa.missingItems.length,
-        0
-      ),
+    outstandingClarificationCount: needsDetailFromDiscovery,
     assumptionCount:
       initialState.scopeReview.generalAssumptions.length +
       initialState.scopeReview.workAreas.reduce(
@@ -742,6 +737,9 @@ export function AssistantShell({
       0
     ),
     constraintCount: initialState.submittedConstraints.length,
+    specificationSelected: qualitySubmitted && Boolean(qualityLevel),
+    questionsSubmitted,
+    constraintsSubmitted,
   });
   const stepperSummaries = buildStepperStepSummaries({
     answeredQuestionCount,
@@ -968,10 +966,10 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 4. Active Questions */}
+          {/* 4. Scope Details */}
           {questionsIsCurrent && questionBlock ? (
             <CollapsibleStageCard
-              title={questionBlock.title}
+              title="Scope Details"
               subtitle={questionBlock.description}
               statusLabel="Current"
               statusVariant="current"
@@ -993,10 +991,10 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 4b. Completed Questions summary */}
+          {/* 4b. Completed Scope Details summary */}
           {questionsSubmitted && questionBlock ? (
             <CollapsibleStageCard
-              title="Questions"
+              title="Scope Details"
               subtitle={questionBlock.description}
               statusLabel={
                 answeredQuestionCount === 1
@@ -1080,6 +1078,11 @@ export function AssistantShell({
                 isAddingWorkArea={isAddingWorkArea}
                 isExcludingWorkArea={isExcludingWorkArea}
                 addWorkAreaError={addWorkAreaError}
+                constraintPreview={
+                  constraintChips.length === 0
+                    ? "None captured"
+                    : constraintChips.slice(0, 2).join(" · ")
+                }
                 onFactSave={questionsSubmitted ? handleFactSave : undefined}
                 onSaveWorkAreaQuestions={
                   questionsSubmitted ? handleSaveWorkAreaQuestions : undefined
@@ -1095,7 +1098,7 @@ export function AssistantShell({
           {/* 7. Site Constraints */}
           {questionsSubmitted ? (
             <CollapsibleStageCard
-              title="Site constraints"
+              title="Site Constraints"
               subtitle="Access, slope, and site conditions"
               statusLabel={
                 constraintsIsCurrent
