@@ -55,11 +55,11 @@ export async function insertDiscoveryDecision(
 export async function listDecisionsForSuggestion(
   ctx: PersistenceAuthContext,
   suggestionId: string
-): Promise<readonly ScopeDiscoveryDecisionRow[]> {
+): Promise<readonly DiscoveryDecisionDetailRow[]> {
   const { data, error } = await ctx.supabase
     .from("scope_discovery_decisions")
     .select(
-      "id, org_id, project_id, suggestion_id, decision_type, decided_by, decided_at"
+      "id, org_id, project_id, suggestion_id, decision_type, decided_by, decided_at, created_work_area_id, reason_code, user_note, modified_title, modified_description, modified_work_area_type, source_revision, run_id"
     )
     .eq("suggestion_id", suggestionId)
     .eq("org_id", ctx.orgId)
@@ -75,7 +75,7 @@ export async function listDecisionsForSuggestion(
     );
   }
 
-  return (data as ScopeDiscoveryDecisionRow[]) ?? [];
+  return (data as DiscoveryDecisionDetailRow[]) ?? [];
 }
 
 export interface DiscoveryDecisionDetailRow extends ScopeDiscoveryDecisionRow {

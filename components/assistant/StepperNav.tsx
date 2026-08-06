@@ -6,7 +6,7 @@ export const STEPPER_STAGES = [
   { key: "confirm_work_areas", label: "Work Areas" },
   { key: "quality", label: "Quality" },
   { key: "work_area_questions", label: "Questions" },
-  { key: "constraints", label: "Scope Review" },
+  { key: "constraints", label: "Site Constraints" },
   { key: "estimate_ready", label: "Estimate" },
 ] as const;
 

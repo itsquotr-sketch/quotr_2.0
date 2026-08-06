@@ -35,14 +35,19 @@ type EditDraft = {
 };
 
 function buildDraft(suggestion: SafeSuggestionView): EditDraft {
+  const isScopeItem =
+    suggestion.actionFamily === "scope_item" ||
+    suggestion.proposalClass === "SCOPE_ITEM";
   const supportedTypes = SCOPE_CATALOGUE.map((item) => item.type);
   const initialType = suggestion.proposedWorkAreaType ?? "";
   return {
     title: suggestion.proposedTitle,
     description: suggestion.proposedDescription ?? "",
-    workAreaType: supportedTypes.includes(initialType)
-      ? initialType
-      : (supportedTypes[0] ?? ""),
+    workAreaType: isScopeItem
+      ? initialType || "scope_item"
+      : supportedTypes.includes(initialType)
+        ? initialType
+        : (supportedTypes[0] ?? ""),
     sourceSuggestionId: suggestion.suggestionId,
   };
 }
@@ -81,11 +86,16 @@ export function ScopeDiscoveryEditDialog({
     });
   };
 
+  const isScopeItem =
+    suggestion?.actionFamily === "scope_item" ||
+    suggestion?.proposalClass === "SCOPE_ITEM";
+
   const canSubmit =
     Boolean(draft) &&
     draft!.title.trim().length > 0 &&
-    draft!.workAreaType.length > 0 &&
-    SCOPE_CATALOGUE.some((item) => item.type === draft!.workAreaType) &&
+    draft!.workAreaType.trim().length > 0 &&
+    (isScopeItem ||
+      SCOPE_CATALOGUE.some((item) => item.type === draft!.workAreaType)) &&
     !isSaving;
 
   return (
@@ -98,10 +108,13 @@ export function ScopeDiscoveryEditDialog({
     >
       <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Edit and add work area</DialogTitle>
+          <DialogTitle>
+            {isScopeItem ? "Edit and include in scope" : "Edit and add work area"}
+          </DialogTitle>
           <DialogDescription>
-            Adjust the title, type and description, then add one corrected work
-            area. The original suggestion is kept for history.
+            {isScopeItem
+              ? "Adjust the title and description, then include this scope item. No work area is created."
+              : "Adjust the title, type and description, then add one corrected work area. The original suggestion is kept for history."}
           </DialogDescription>
         </DialogHeader>
 
@@ -133,23 +146,35 @@ export function ScopeDiscoveryEditDialog({
 
             <label className="block space-y-1.5">
               <span className="text-xs font-medium text-muted-foreground">
-                Work area type
+                {isScopeItem ? "Scope item type" : "Work area type"}
               </span>
-              <select
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
-                value={draft.workAreaType}
-                disabled={isSaving}
-                onChange={(event) =>
-                  updateDraft({ workAreaType: event.target.value })
-                }
-                aria-required
-              >
-                {SCOPE_CATALOGUE.map((item) => (
-                  <option key={item.type} value={item.type}>
-                    {item.label}
-                  </option>
-                ))}
-              </select>
+              {isScopeItem ? (
+                <Input
+                  value={draft.workAreaType}
+                  onChange={(event) =>
+                    updateDraft({ workAreaType: event.target.value })
+                  }
+                  disabled={isSaving}
+                  maxLength={80}
+                  aria-required
+                />
+              ) : (
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={draft.workAreaType}
+                  disabled={isSaving}
+                  onChange={(event) =>
+                    updateDraft({ workAreaType: event.target.value })
+                  }
+                  aria-required
+                >
+                  {SCOPE_CATALOGUE.map((item) => (
+                    <option key={item.type} value={item.type}>
+                      {item.label}
+                    </option>
+                  ))}
+                </select>
+              )}
             </label>
 
             <label className="block space-y-1.5">
@@ -199,8 +224,10 @@ export function ScopeDiscoveryEditDialog({
             {isSaving ? (
               <>
                 <Loader2 className="mr-1.5 size-4 animate-spin" aria-hidden />
-                Adding…
+                Saving…
               </>
+            ) : isScopeItem ? (
+              "Include corrected item"
             ) : (
               "Add corrected work area"
             )}

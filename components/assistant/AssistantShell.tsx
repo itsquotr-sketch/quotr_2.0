@@ -690,6 +690,11 @@ export function AssistantShell({
               projectId={project.id}
               enabled={scopeDiscoveryEnabled}
               initialResults={scopeDiscoveryInitialResults}
+              workAreaLabels={Object.fromEntries(
+                displayWorkAreas
+                  .filter((wa) => wa.status !== "excluded")
+                  .map((wa) => [wa.id, wa.name])
+              )}
             />
           ) : null}
 
@@ -785,7 +790,7 @@ export function AssistantShell({
           {/* 6. Scope Review — primary workspace */}
           {questionsSubmitted ? (
             <CollapsibleStageCard
-              title="Scope Review"
+              title="Estimate Review"
               subtitle="Review what Quotr will use for this estimate."
               statusLabel="Review"
               statusVariant="current"

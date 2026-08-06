@@ -1,13 +1,14 @@
 # Stage 3.1B.6 — Assistant UI Completion
 
-**Status:** Complete — Local  
+**Status:** Complete — Local; Preview sign-off **not** complete (see 3.1B.6R1 remediation)  
 **Date:** 2026-08-06  
 **Verify:** `scripts/verify-stage-3-1b6-assistant-ui.ts`  
-**Scope Discovery UI:** Complete — Local, Preview Test Pending  
+**Remediation:** Stage 3.1B.6R1 — `docs/implementation/STAGE_3_1B6R1_UNIFIED_SCOPE_WORKFLOW_COMPLETION.md`  
+**Scope Discovery UI:** Complete — Local, Preview Retest Pending (after 3.1B.6R1)  
 **Preview feature:** Enabled only by owner configuration (`SCOPE_DISCOVERY_ENABLED=true`)  
 **Production feature:** Disabled  
 **Existing Analyse Job:** Preserved  
-**Stage 3.1B.7:** Ready Pending Preview UI Sign-off  
+**Stage 3.1B.7:** Not Started  
 
 ---
 

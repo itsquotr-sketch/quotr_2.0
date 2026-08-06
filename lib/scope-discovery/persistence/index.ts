@@ -47,6 +47,7 @@ export {
   markSuggestionStaleOrSuperseded,
   listSuggestionsForRun,
   listSuggestionDetailsForRun,
+  getSuggestionDetailById,
   type DiscoverySuggestionDetailRow,
 } from "./suggestion-repository";
 

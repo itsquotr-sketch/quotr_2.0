@@ -11,18 +11,28 @@ import type {
 export type ScopeDiscoveryUiGroupId =
   | "important"
   | "worthChecking"
+  | "clarifications"
   | "other"
   | "conflicts";
 
 export interface ScopeDiscoveryGroupedSuggestions {
   readonly important: readonly SafeSuggestionView[];
   readonly worthChecking: readonly SafeSuggestionView[];
+  readonly clarifications: readonly SafeSuggestionView[];
   readonly other: readonly SafeSuggestionView[];
   readonly conflicts: readonly SafeSuggestionView[];
   readonly dismissed: readonly SafeSuggestionView[];
   readonly added: readonly SafeSuggestionView[];
   readonly inactive: readonly SafeSuggestionView[];
 }
+
+export type WorkAreaSuggestionSection = {
+  readonly workAreaId: string | null;
+  readonly workAreaLabel: string;
+  readonly grouped: ScopeDiscoveryGroupedSuggestions;
+  readonly openCount: number;
+  readonly decidedCount: number;
+};
 
 function bandOf(s: SafeSuggestionView): string {
   return String(s.confidenceBand ?? "").toUpperCase();
@@ -53,11 +63,20 @@ export function assignUiGroup(
 
   const kind = kindOf(s);
   const band = bandOf(s);
+  const proposalClass = String(
+    (s as SafeSuggestionView).proposalClass ?? ""
+  ).toUpperCase();
+
+  if (
+    proposalClass === "CLARIFICATION" ||
+    kind === "CLARIFICATION_REQUIRED"
+  ) {
+    return "clarifications";
+  }
 
   if (
     band === "HIGH" ||
     kind === "MISSING_SCOPE" ||
-    kind === "CLARIFICATION_REQUIRED" ||
     (s.originHint === "deterministic" && band !== "LOW" && band !== "MEDIUM")
   ) {
     return "important";
@@ -67,8 +86,63 @@ export function assignUiGroup(
     return "other";
   }
 
-  // MEDIUM and likely/conditional defaults
   return "worthChecking";
+}
+
+export function groupSuggestionsByRelatedWorkArea(
+  suggestions: readonly SafeSuggestionView[]
+): ReadonlyMap<string | null, SafeSuggestionView[]> {
+  const map = new Map<string | null, SafeSuggestionView[]>();
+  for (const s of suggestions) {
+    const key = s.relatedWorkAreaId ?? null;
+    const list = map.get(key) ?? [];
+    list.push(s);
+    map.set(key, list);
+  }
+  return map;
+}
+
+/**
+ * Nest suggestions under confirmed Work Areas when relatedWorkAreaId is present.
+ * Unlinked suggestions appear under a project-level section.
+ */
+export function groupSuggestionsByWorkAreaSections(
+  suggestions: readonly SafeSuggestionView[],
+  workAreaLabels: ReadonlyMap<string, string> | Record<string, string> = {}
+): readonly WorkAreaSuggestionSection[] {
+  const labelLookup =
+    workAreaLabels instanceof Map
+      ? workAreaLabels
+      : new Map(Object.entries(workAreaLabels));
+
+  const byParent = groupSuggestionsByRelatedWorkArea(suggestions);
+  const sections: WorkAreaSuggestionSection[] = [];
+
+  const keys = [...byParent.keys()].sort((a, b) => {
+    if (a === null) return 1;
+    if (b === null) return -1;
+    const la = labelLookup.get(a) ?? a;
+    const lb = labelLookup.get(b) ?? b;
+    return la.localeCompare(lb);
+  });
+
+  for (const key of keys) {
+    const list = byParent.get(key) ?? [];
+    const grouped = groupSuggestionsForUi(list);
+    const counts = summariseGroupCounts(grouped);
+    sections.push({
+      workAreaId: key,
+      workAreaLabel:
+        key === null
+          ? "Project-wide"
+          : (labelLookup.get(key) ?? "Related work area"),
+      grouped,
+      openCount: counts.openTotal,
+      decidedCount: counts.added + counts.dismissed,
+    });
+  }
+
+  return sections;
 }
 
 /**
@@ -81,6 +155,7 @@ export function groupSuggestionsForUi(
 ): ScopeDiscoveryGroupedSuggestions {
   const important: SafeSuggestionView[] = [];
   const worthChecking: SafeSuggestionView[] = [];
+  const clarifications: SafeSuggestionView[] = [];
   const other: SafeSuggestionView[] = [];
   const conflicts: SafeSuggestionView[] = [];
   const dismissed: SafeSuggestionView[] = [];
@@ -106,6 +181,7 @@ export function groupSuggestionsForUi(
     const group = assignUiGroup(s);
     if (group === "important") important.push(s);
     else if (group === "worthChecking") worthChecking.push(s);
+    else if (group === "clarifications") clarifications.push(s);
     else if (group === "other") other.push(s);
     else conflicts.push(s);
   }
@@ -113,6 +189,7 @@ export function groupSuggestionsForUi(
   return {
     important,
     worthChecking,
+    clarifications,
     other,
     conflicts,
     dismissed,
@@ -126,6 +203,7 @@ export function summariseGroupCounts(
 ): {
   readonly important: number;
   readonly worthChecking: number;
+  readonly clarifications: number;
   readonly other: number;
   readonly conflicts: number;
   readonly dismissed: number;
@@ -134,16 +212,19 @@ export function summariseGroupCounts(
 } {
   const important = grouped.important.length;
   const worthChecking = grouped.worthChecking.length;
+  const clarifications = grouped.clarifications.length;
   const other = grouped.other.length;
   const conflicts = grouped.conflicts.length;
   return {
     important,
     worthChecking,
+    clarifications,
     other,
     conflicts,
     dismissed: grouped.dismissed.length,
     added: grouped.added.length,
-    openTotal: important + worthChecking + other + conflicts,
+    openTotal:
+      important + worthChecking + clarifications + other + conflicts,
   };
 }
 

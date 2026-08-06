@@ -76,15 +76,15 @@ export type DismissReasonCode =
 export const SCOPE_DISCOVERY_UI_COPY = Object.freeze({
   cardTitle: "Scope Review",
   cardSubtitle:
-    "Quotr has reviewed your project information for related work, missing scope and items that may need clarification.",
+    "Review related work items within your confirmed work areas — inclusions, omissions and clarifications.",
   emptyPurpose:
-    "Analyse scope to review your brief, notes, accepted work areas, facts and constraints for related or missing work. Quotr will propose suggestions only — nothing is added until you accept.",
+    "Analyse scope to review work items inside your confirmed work areas. Quotr proposes inclusions and clarifications only — nothing is added until you decide.",
   analyseButton: "Analyse scope",
   analyseAgainButton: "Analyse again",
   staleNotice:
     "Your project information has changed since this scope review.",
   noSuggestions:
-    "Quotr did not identify additional scope from the current project information.",
+    "Quotr did not identify additional scope items from the current project information.",
   allDecided:
     "You have reviewed the current scope suggestions. Analyse again if project information changes.",
   providerPartialFailure:
@@ -92,13 +92,20 @@ export const SCOPE_DISCOVERY_UI_COPY = Object.freeze({
   featureUnavailable: "Scope review is unavailable for this project.",
   addWorkArea: "Add work area",
   editAndAdd: "Edit and add",
+  includeInScope: "Include in scope",
+  editAndInclude: "Edit and include",
+  notRequired: "Not required",
   dismiss: "Dismiss",
+  review: "Review",
   added: "Added",
+  included: "Included",
   dismissed: "Dismissed",
-  groupImportant: "Important considerations",
+  groupImportant: "Important inclusions",
   groupWorthChecking: "Worth checking",
+  groupClarifications: "Clarifications",
   groupOther: "Other possibilities",
   groupConflicts: "Conflicts or issues",
+  groupExcluded: "Not required",
 } as const);
 
 export const ANALYSIS_PROGRESS_STEPS = Object.freeze([

@@ -6,6 +6,10 @@
 import type { ConfidenceBand, ScopeDiscoverySuggestionKind } from "../types";
 import type { ScopeDiscoveryRunStatus } from "../orchestration/types";
 import type { ApplicationErrorCode } from "./errors";
+import type {
+  DecisionActionFamily,
+  ScopeProposalClass,
+} from "../classification";
 
 export const DEFAULT_ANALYSIS_OBJECTIVE =
   "Discover likely missing and related work areas for this project." as const;
@@ -59,6 +63,13 @@ export interface SafeSuggestionView {
   readonly staleReason: string | null;
   readonly supersededBySuggestionId: string | null;
   readonly originHint: "deterministic" | "ai" | "unknown";
+  readonly relatedWorkAreaId: string | null;
+  readonly proposalClass: ScopeProposalClass;
+  readonly actionFamily: DecisionActionFamily;
+  readonly canDecide: boolean;
+  readonly canCreateWorkArea: boolean;
+  readonly canIncludeInScope: boolean;
+  readonly decidabilityReason: string | null;
 }
 
 export interface SafeRunResult {

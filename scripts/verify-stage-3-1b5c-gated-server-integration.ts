@@ -338,9 +338,15 @@ async function main(): Promise<void> {
 
   const analyseJob = readFileSync("lib/assistant/actions.ts", "utf8");
   check(
-    "Analyse Job does not import scope-discovery application",
-    !analyseJob.includes("scope-discovery/application") &&
-      !analyseJob.includes("scope-discovery/actions")
+    "Analyse Job does not import discovery run/decision actions",
+    !analyseJob.includes("scope-discovery/actions") &&
+      !analyseJob.includes("runScopeDiscovery") &&
+      !analyseJob.includes("acceptScopeSuggestionApp")
+  );
+  check(
+    "Analyse Job may load gated exclusions only",
+    analyseJob.includes("loadExcludedScopeItemTypes") ||
+      !analyseJob.includes("scope-discovery")
   );
 
   check(

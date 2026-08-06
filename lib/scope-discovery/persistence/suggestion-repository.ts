@@ -119,10 +119,11 @@ export interface DiscoverySuggestionDetailRow extends ScopeDiscoverySuggestionRo
   readonly prompt_version: string | null;
   readonly source_snapshot: Record<string, unknown>;
   readonly missing_information: unknown[] | null;
+  readonly related_work_area_id: string | null;
 }
 
 const SUGGESTION_DETAIL_SELECT =
-  "id, org_id, project_id, run_id, suggestion_identity, suggestion_kind, original_status, evidence, proposed_work_area_type, proposed_title, proposed_description, confidence, confidence_band, rationale_code, stale_reason, superseded_by_suggestion_id, provider_metadata, catalogue_version, prompt_version, source_snapshot, missing_information";
+  "id, org_id, project_id, run_id, suggestion_identity, suggestion_kind, original_status, evidence, proposed_work_area_type, proposed_title, proposed_description, confidence, confidence_band, rationale_code, stale_reason, superseded_by_suggestion_id, provider_metadata, catalogue_version, prompt_version, source_snapshot, missing_information, related_work_area_id";
 
 export async function listSuggestionDetailsForRun(
   ctx: PersistenceAuthContext,
@@ -145,4 +146,28 @@ export async function listSuggestionDetailsForRun(
   }
 
   return (data as DiscoverySuggestionDetailRow[]) ?? [];
+}
+
+export async function getSuggestionDetailById(
+  ctx: PersistenceAuthContext,
+  suggestionId: string
+): Promise<DiscoverySuggestionDetailRow | null> {
+  const { data, error } = await ctx.supabase
+    .from("scope_discovery_suggestions")
+    .select(SUGGESTION_DETAIL_SELECT)
+    .eq("id", suggestionId)
+    .eq("org_id", ctx.orgId)
+    .maybeSingle();
+
+  if (error) {
+    throw mapDbError(
+      error,
+      new ScopeDiscoveryPersistenceError(
+        PERSISTENCE_ERROR_CODES.PERSISTENCE_FAILED,
+        "Failed to load discovery suggestion."
+      )
+    );
+  }
+
+  return (data as DiscoverySuggestionDetailRow | null) ?? null;
 }

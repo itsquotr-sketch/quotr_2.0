@@ -8,3 +8,5 @@ export * from "./evidence-display";
 export * from "./rationale-display";
 export * from "./grouping";
 export * from "./warnings";
+export * from "./scope-item-question-gates";
+export * from "./constraint-relevance";

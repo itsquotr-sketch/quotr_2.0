@@ -90,6 +90,13 @@ function fixtureSuggestion(
     staleReason: overrides.staleReason ?? null,
     supersededBySuggestionId: overrides.supersededBySuggestionId ?? null,
     originHint: overrides.originHint ?? "deterministic",
+    relatedWorkAreaId: overrides.relatedWorkAreaId ?? "wa-deck",
+    proposalClass: overrides.proposalClass ?? "SCOPE_ITEM",
+    actionFamily: overrides.actionFamily ?? "scope_item",
+    canDecide: overrides.canDecide ?? true,
+    canCreateWorkArea: overrides.canCreateWorkArea ?? false,
+    canIncludeInScope: overrides.canIncludeInScope ?? true,
+    decidabilityReason: overrides.decidabilityReason ?? null,
   };
 }
 
@@ -263,6 +270,18 @@ check("HIGH missing scope → important", assignUiGroup(high) === "important");
 check("MEDIUM → worth checking", assignUiGroup(medium) === "worthChecking");
 check("LOW → other possibilities", assignUiGroup(low) === "other");
 check("conflict kind → conflicts", assignUiGroup(conflict) === "conflicts");
+
+const clarification = fixtureSuggestion({
+  suggestionId: "clar",
+  suggestionKind: "CLARIFICATION_REQUIRED",
+  confidenceBand: "HIGH",
+  proposalClass: "CLARIFICATION",
+  actionFamily: "clarification",
+});
+check(
+  "clarification → clarifications group",
+  assignUiGroup(clarification) === "clarifications"
+);
 
 const grouped = groupSuggestionsForUi([
   high,

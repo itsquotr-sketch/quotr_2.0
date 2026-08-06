@@ -12,6 +12,7 @@ import {
   formatMissingInformationSummaries,
   whySuggestedText,
 } from "../ui";
+import { evaluateDecidability } from "../classification";
 import type {
   ComposedDecisionState,
   SafeEvidenceSummary,
@@ -69,6 +70,18 @@ export function mapDbSuggestionToSafeView(
   decision: DiscoveryDecisionDetailRow | null
 ): SafeSuggestionView {
   const originHint = originHintFromMetadata(row.provider_metadata);
+  const decisionState = composeDecisionState({
+    staleReason: row.stale_reason,
+    supersededBySuggestionId: row.superseded_by_suggestion_id,
+    latestDecisionType: decision?.decision_type ?? null,
+  });
+  const decidability = evaluateDecidability({
+    suggestionKind: row.suggestion_kind,
+    proposedWorkAreaType: row.proposed_work_area_type,
+    relatedWorkAreaId: row.related_work_area_id,
+    decisionState,
+    proposedTitle: row.proposed_title,
+  });
   return {
     suggestionId: row.id,
     runId: row.run_id,
@@ -85,11 +98,7 @@ export function mapDbSuggestionToSafeView(
       suggestionKind: row.suggestion_kind,
       originHint,
     }),
-    decisionState: composeDecisionState({
-      staleReason: row.stale_reason,
-      supersededBySuggestionId: row.superseded_by_suggestion_id,
-      latestDecisionType: decision?.decision_type ?? null,
-    }),
+    decisionState,
     decisionId: decision?.id ?? null,
     createdWorkAreaId: decision?.created_work_area_id ?? null,
     evidence: summariseEvidence(row.evidence),
@@ -99,6 +108,13 @@ export function mapDbSuggestionToSafeView(
     staleReason: row.stale_reason,
     supersededBySuggestionId: row.superseded_by_suggestion_id,
     originHint,
+    relatedWorkAreaId: row.related_work_area_id,
+    proposalClass: decidability.proposalClass,
+    actionFamily: decidability.actionFamily,
+    canDecide: decidability.canDecide,
+    canCreateWorkArea: decidability.canCreateWorkArea,
+    canIncludeInScope: decidability.canIncludeInScope,
+    decidabilityReason: decidability.reason,
   };
 }
 

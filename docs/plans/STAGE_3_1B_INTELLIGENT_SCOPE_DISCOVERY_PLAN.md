@@ -5,18 +5,18 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.6 — **Complete — Local** (`docs/implementation/STAGE_3_1B6_ASSISTANT_UI_COMPLETION.md`)  
-**Next batch:** 3.1B.7 — **Ready Pending Preview UI Sign-off**  
-**Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**  
+**Current batch:** 3.1B.6R1 — **Complete — Local, Preview Retest Pending**  
+**Next batch:** 3.1B.7 — **Not Started** (blocked on Preview UI sign-off after 3.1B.6R1)  
+**Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **no 030**  
 **Server integration:** **Complete — Local**  
-**Scope Discovery UI:** **Complete — Local, Preview Test Pending**  
+**Scope Discovery UI:** **Complete — Local, Preview Retest Pending** (3.1B.6R1 remediation)  
 **Preview feature:** **Enabled only by owner configuration**  
 **Production feature:** **Disabled**  
 **Feature flag:** **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off)  
 **AI provider adapter:** Implemented (gated)  
-**UI integration:** Complete — Local  
+**UI integration:** Complete — Local (unified Work Area / Scope Item)  
 **Production catalogue adoption:** Not Started  
-**Analyse Job:** Preserved / Unchanged  
+**Analyse Job:** Preserved / Unchanged (high-level Work Areas)  
 **Production adoption:** Not Started  
 
 **Specs:**

@@ -747,10 +747,9 @@ function main(): void {
   }
   check("no migrations added for 3.1B.1", !disallowedMigration);
 
-  // Analyse Job / brief extraction must not adopt the contract module.
-  // Assistant Scope Review UI (3.1B.6) may import gated helpers — excluded here.
+  // Analyse Job / brief extraction must not adopt the suggestion contract module.
+  // Allowed: feature-flag check + scope-item exclusion loader for question gating (3.1B.6R1).
   const analyseJobTouch = [
-    "lib/assistant/actions.ts",
     "lib/project-notes/proposals/actions.ts",
     "lib/ai/extract.ts",
     "lib/ai/extract-notes.ts",
@@ -763,7 +762,16 @@ function main(): void {
       imported = true;
     }
   }
-  check("Analyse Job / production path does not import module", !imported);
+  const assistantActions = read(join(root, "lib/assistant/actions.ts"));
+  const forbiddenAssistantImport =
+    /scope-discovery\/(orchestration|provider|catalogue|merge|lifecycle)/.test(
+      assistantActions
+    ) ||
+    /runScopeDiscovery|acceptScopeSuggestionAction/.test(assistantActions);
+  check(
+    "Analyse Job / production path does not import module",
+    !imported && !forbiddenAssistantImport
+  );
 
   check(
     "contract version constant set",

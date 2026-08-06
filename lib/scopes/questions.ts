@@ -22,6 +22,7 @@ import {
   type DerivedFactDisplay,
 } from "@/lib/scopes/derived-facts";
 import type { ScopeQuestionTemplate } from "@/lib/scopes/types";
+import { isQuestionSuppressedByScopeItemExclusion } from "@/lib/scope-discovery/ui/scope-item-question-gates";
 
 const MAX_QUESTIONS = 12;
 
@@ -76,6 +77,10 @@ export type BuiltQuestionBlock = {
   description: string;
   questions: BuiltQuestion[];
   derivedDisplays: DerivedFactDisplay[];
+};
+
+export type ScopeItemExclusionInput = {
+  readonly excludedScopeItemTypes?: ReadonlySet<string>;
 };
 
 export type ExistingQuestionRecord = {
@@ -302,8 +307,20 @@ export function shouldSkipTemplateQuestion(
   workArea: WorkAreaInput,
   factLookup: ReturnType<typeof buildFactLookup>,
   confirmedTypes: Set<string>,
-  project: ProjectInput
+  project: ProjectInput,
+  excludedScopeItemTypes?: ReadonlySet<string>
 ): boolean {
+  if (
+    excludedScopeItemTypes &&
+    excludedScopeItemTypes.size > 0 &&
+    isQuestionSuppressedByScopeItemExclusion({
+      factKey: template.factKey,
+      excludedTypes: excludedScopeItemTypes,
+    })
+  ) {
+    return true;
+  }
+
   if (template.factKey === "deck.pergola_included") {
     return true;
   }
@@ -396,6 +413,7 @@ export function buildQuestionBlockFromProjectState(params: {
   project: ProjectInput;
   confirmedWorkAreas: WorkAreaInput[];
   projectFacts: ProjectFactInput[];
+  excludedScopeItemTypes?: ReadonlySet<string>;
 }): BuiltQuestionBlock {
   const confirmed = params.confirmedWorkAreas
     .filter((workArea) => workArea.status === "confirmed")
@@ -407,6 +425,7 @@ export function buildQuestionBlockFromProjectState(params: {
   });
   const factLookup = buildFactLookup(mergedFacts);
   const confirmedTypes = new Set(confirmed.map((workArea) => workArea.type));
+  const excluded = params.excludedScopeItemTypes;
   const candidates: CandidateQuestion[] = [];
 
   for (const workArea of confirmed) {
@@ -422,7 +441,8 @@ export function buildQuestionBlockFromProjectState(params: {
           workArea,
           factLookup,
           confirmedTypes,
-          params.project
+          params.project,
+          excluded
         )
       ) {
         continue;

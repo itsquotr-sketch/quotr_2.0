@@ -32,9 +32,12 @@ import {
   SCOPE_DISCOVERY_UI_COPY,
   analysisProgressLabel,
   allSuggestionsDecided,
+  groupSuggestionsByWorkAreaSections,
   groupSuggestionsForUi,
   summariseGroupCounts,
   type DismissReasonCode,
+  type ScopeDiscoveryGroupedSuggestions,
+  type WorkAreaSuggestionSection,
 } from "@/lib/scope-discovery/ui";
 import { cn } from "@/lib/utils";
 
@@ -44,6 +47,8 @@ type ScopeDiscoveryReviewBlockProps = {
   enabled: boolean;
   /** Server-loaded results — avoids client auto-provider calls; read-only. */
   initialResults?: SafeResultsRead | null;
+  /** Confirmed work area id → display name for hierarchy. */
+  workAreaLabels?: ReadonlyMap<string, string> | Record<string, string>;
 };
 
 type PendingSuggestionAction = {
@@ -100,6 +105,7 @@ export function ScopeDiscoveryReviewBlock({
   projectId,
   enabled,
   initialResults = null,
+  workAreaLabels = {},
 }: ScopeDiscoveryReviewBlockProps) {
   const router = useRouter();
   const resultsGuard = useRef(createLatestWriteGuard());
@@ -216,8 +222,10 @@ export function ScopeDiscoveryReviewBlock({
       setDismissError(null);
       setStatusMessage(
         kind === "reject"
-          ? "Suggestion dismissed."
-          : "Work area added from scope review."
+          ? "Marked as not required."
+          : outcome.createdWorkAreaId
+            ? "Work area added from scope review."
+            : "Scope item included."
       );
       await refreshResults();
       startTransition(() => {
@@ -309,6 +317,13 @@ export function ScopeDiscoveryReviewBlock({
   const suggestions = results?.allSuggestions ?? [];
   const grouped = groupSuggestionsForUi(suggestions);
   const counts = summariseGroupCounts(grouped);
+  const workAreaSections = groupSuggestionsByWorkAreaSections(
+    suggestions,
+    workAreaLabels
+  );
+  const useWorkAreaHierarchy =
+    workAreaSections.length > 1 ||
+    (workAreaSections.length === 1 && workAreaSections[0]?.workAreaId != null);
   const hasRun = Boolean(results?.runId);
   const decidedComplete = allSuggestionsDecided(suggestions);
   const isStale = Boolean(results?.stale);
@@ -320,6 +335,8 @@ export function ScopeDiscoveryReviewBlock({
     if (counts.important) summaryBits.push(`${counts.important} important`);
     if (counts.worthChecking)
       summaryBits.push(`${counts.worthChecking} worth checking`);
+    if (counts.clarifications)
+      summaryBits.push(`${counts.clarifications} clarifications`);
     if (counts.other) summaryBits.push(`${counts.other} other`);
     if (counts.conflicts) summaryBits.push(`${counts.conflicts} conflicts`);
     if (counts.dismissed) summaryBits.push(`${counts.dismissed} dismissed`);
@@ -357,6 +374,105 @@ export function ScopeDiscoveryReviewBlock({
         }}
       />
     ));
+
+  const renderGroupedBuckets = (
+    sectionGrouped: ScopeDiscoveryGroupedSuggestions,
+    opts: { showDismissed: boolean; defaultImportantOpen: boolean }
+  ) => (
+    <>
+      <SuggestionGroup
+        title={SCOPE_DISCOVERY_UI_COPY.groupImportant}
+        count={sectionGrouped.important.length}
+        defaultOpen={opts.defaultImportantOpen}
+      >
+        {renderCards(sectionGrouped.important, true)}
+      </SuggestionGroup>
+
+      <SuggestionGroup
+        title={SCOPE_DISCOVERY_UI_COPY.groupWorthChecking}
+        count={sectionGrouped.worthChecking.length}
+        defaultOpen={sectionGrouped.important.length === 0}
+      >
+        {renderCards(sectionGrouped.worthChecking, false)}
+      </SuggestionGroup>
+
+      <SuggestionGroup
+        title={SCOPE_DISCOVERY_UI_COPY.groupClarifications}
+        count={sectionGrouped.clarifications.length}
+        defaultOpen
+      >
+        {renderCards(sectionGrouped.clarifications, true)}
+      </SuggestionGroup>
+
+      <SuggestionGroup
+        title={SCOPE_DISCOVERY_UI_COPY.groupOther}
+        count={sectionGrouped.other.length}
+        defaultOpen={false}
+      >
+        {renderCards(sectionGrouped.other, false)}
+      </SuggestionGroup>
+
+      <SuggestionGroup
+        title={SCOPE_DISCOVERY_UI_COPY.groupConflicts}
+        count={sectionGrouped.conflicts.length}
+        defaultOpen
+      >
+        {renderCards(sectionGrouped.conflicts, true)}
+      </SuggestionGroup>
+
+      {sectionGrouped.added.length > 0 ? (
+        <SuggestionGroup
+          title="Included"
+          count={sectionGrouped.added.length}
+          defaultOpen={false}
+        >
+          {renderCards(sectionGrouped.added, false)}
+        </SuggestionGroup>
+      ) : null}
+
+      {opts.showDismissed && sectionGrouped.dismissed.length > 0 ? (
+        <SuggestionGroup
+          title={SCOPE_DISCOVERY_UI_COPY.groupExcluded}
+          count={sectionGrouped.dismissed.length}
+          defaultOpen={false}
+        >
+          {renderCards(sectionGrouped.dismissed, false)}
+        </SuggestionGroup>
+      ) : null}
+    </>
+  );
+
+  const renderWorkAreaSection = (section: WorkAreaSuggestionSection) => {
+    const complete =
+      section.openCount === 0 &&
+      (section.decidedCount > 0 ||
+        section.grouped.inactive.length > 0 ||
+        section.grouped.added.length + section.grouped.dismissed.length > 0);
+    return (
+      <section
+        key={section.workAreaId ?? "project-wide"}
+        className="space-y-3 rounded-md border border-border/60 bg-muted/20 p-3"
+        data-scope-review-work-area={section.workAreaId ?? "project-wide"}
+      >
+        <div className="flex flex-wrap items-baseline justify-between gap-2">
+          <h3 className="text-sm font-semibold tracking-tight">
+            {section.workAreaLabel}
+          </h3>
+          <p className="text-xs text-muted-foreground">
+            {complete
+              ? "Complete"
+              : section.openCount > 0
+                ? `${section.openCount} to review`
+                : "No open items"}
+          </p>
+        </div>
+        {renderGroupedBuckets(section.grouped, {
+          showDismissed: true,
+          defaultImportantOpen: true,
+        })}
+      </section>
+    );
+  };
 
   return (
     <>
@@ -488,6 +604,7 @@ export function ScopeDiscoveryReviewBlock({
 
               {(counts.important > 0 ||
                 counts.worthChecking > 0 ||
+                counts.clarifications > 0 ||
                 counts.other > 0 ||
                 counts.conflicts > 0) && (
                 <p className="text-xs text-muted-foreground">
@@ -495,6 +612,9 @@ export function ScopeDiscoveryReviewBlock({
                     counts.important ? `${counts.important} important` : null,
                     counts.worthChecking
                       ? `${counts.worthChecking} worth checking`
+                      : null,
+                    counts.clarifications
+                      ? `${counts.clarifications} clarifications`
                       : null,
                     counts.other ? `${counts.other} other` : null,
                     counts.conflicts
@@ -506,64 +626,37 @@ export function ScopeDiscoveryReviewBlock({
                 </p>
               )}
 
-              <SuggestionGroup
-                title={SCOPE_DISCOVERY_UI_COPY.groupImportant}
-                count={counts.important}
-                defaultOpen
-              >
-                {renderCards(grouped.important, true)}
-              </SuggestionGroup>
-
-              <SuggestionGroup
-                title={SCOPE_DISCOVERY_UI_COPY.groupWorthChecking}
-                count={counts.worthChecking}
-                defaultOpen={counts.important === 0}
-              >
-                {renderCards(grouped.worthChecking, false)}
-              </SuggestionGroup>
-
-              <SuggestionGroup
-                title={SCOPE_DISCOVERY_UI_COPY.groupOther}
-                count={counts.other}
-                defaultOpen={false}
-              >
-                {renderCards(grouped.other, false)}
-              </SuggestionGroup>
-
-              <SuggestionGroup
-                title={SCOPE_DISCOVERY_UI_COPY.groupConflicts}
-                count={counts.conflicts}
-                defaultOpen
-              >
-                {renderCards(grouped.conflicts, true)}
-              </SuggestionGroup>
-
-              {grouped.added.length > 0 ? (
-                <SuggestionGroup
-                  title="Added"
-                  count={grouped.added.length}
-                  defaultOpen={false}
-                >
-                  {renderCards(grouped.added, false)}
-                </SuggestionGroup>
-              ) : null}
-
-              {counts.dismissed > 0 ? (
-                <div className="space-y-2">
-                  <button
-                    type="button"
-                    className="text-xs text-muted-foreground underline-offset-2 hover:underline"
-                    onClick={() => setShowDismissed((prev) => !prev)}
-                  >
-                    {showDismissed
-                      ? "Hide dismissed"
-                      : `Show dismissed (${counts.dismissed})`}
-                  </button>
-                  {showDismissed
-                    ? renderCards(grouped.dismissed, false)
-                    : null}
+              {useWorkAreaHierarchy ? (
+                <div className="space-y-4">
+                  {workAreaSections.map((section) =>
+                    renderWorkAreaSection(section)
+                  )}
                 </div>
-              ) : null}
+              ) : (
+                <>
+                  {renderGroupedBuckets(grouped, {
+                    showDismissed: false,
+                    defaultImportantOpen: true,
+                  })}
+
+                  {counts.dismissed > 0 ? (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                        onClick={() => setShowDismissed((prev) => !prev)}
+                      >
+                        {showDismissed
+                          ? "Hide dismissed"
+                          : `Show dismissed (${counts.dismissed})`}
+                      </button>
+                      {showDismissed
+                        ? renderCards(grouped.dismissed, false)
+                        : null}
+                    </div>
+                  ) : null}
+                </>
+              )}
 
               {!isStale ? (
                 <div className="pt-1">

@@ -30,7 +30,7 @@ function getMobileStepLabel(stage: AssistantStage): string {
     return "Estimate";
   }
   if (stage === "constraints") {
-    return "Scope Review";
+    return "Site Constraints";
   }
 
   const step = STEPPER_STAGES.find((item) => {

@@ -42,6 +42,7 @@ import { buildQuestionBlockFromProjectState } from "@/lib/scopes/questions";
 import { normalizeAnswerForStorage, factHasValue } from "@/lib/scopes/fact-values";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
+import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
 
 const BRIEF_MAX_LENGTH = 5000;
 
@@ -550,10 +551,22 @@ async function createDynamicQuestionBlockIfNeeded(
     projectFactsRaw ?? []
   );
 
+  let excludedScopeItemTypes: ReadonlySet<string> | undefined;
+  if (isScopeDiscoveryEnabled()) {
+    const { loadExcludedScopeItemTypes } = await import(
+      "@/lib/scope-discovery/application/load-scope-item-exclusions"
+    );
+    excludedScopeItemTypes = await loadExcludedScopeItemTypes(
+      { supabase, orgId, userId: "" },
+      projectId
+    );
+  }
+
   const built = buildQuestionBlockFromProjectState({
     project: { quality_level: qualityLevel },
     confirmedWorkAreas: workAreas ?? [],
     projectFacts,
+    excludedScopeItemTypes,
   });
 
   if (built.questions.length === 0) {
