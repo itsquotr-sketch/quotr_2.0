@@ -2,13 +2,33 @@
 
 **Status:** Pending owner Preview retest  
 **Prerequisite:** Local 7F-R2 complete; Preview deploy of app code  
-**Migration 030:** Apply on Preview DB only via separate deployment approval  
-  (not automatic from this batch).
+**Migration 030:** **Applied and Verified** on linked remote Preview DB  
+  (`quotr_2.0` / `lxvnylhsbvudzzupxeqr`) — see  
+  `docs/implementation/STAGE_3_1B7FR21_REMOTE_030_APPLY_COMPLETION.md`  
+**Remote history:** Local and remote aligned **001–030**  
+**Production Scope Discovery:** Disabled (unchanged)
 
 ## Goal
 
 Confirm Scope Review / Scope Details mental model, manual scope add, QE
 attention clarity, latency polish, layout, and mobile header on Deck.
+
+## Remote 030 readiness (7F-R2.1)
+
+| Check | Status |
+| --- | --- |
+| Linked project is Preview `quotr_2.0` | Pass |
+| History through 029 before apply | Pass |
+| 030 absent before apply | Pass |
+| No table/function name collision | Pass |
+| Dry-run additive (030 only) | Pass |
+| Applied via `db push --linked` | Pass |
+| Tables + RLS + policies verified | Pass |
+| anon grants | None |
+| Existing WA / discovery / pricing counts | Unaffected |
+
+Manual **Add scope item** can now persist on Preview against remote tables.
+If add fails soft-empty, confirm the Preview deployment includes 7F-R2 app code.
 
 ## Checklist
 

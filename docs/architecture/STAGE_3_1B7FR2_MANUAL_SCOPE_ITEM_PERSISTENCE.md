@@ -1,8 +1,9 @@
 # Stage 3.1B.7F-R2 — Manual Scope Item Persistence Decision
 
-**Status:** Approved for local migration 030  
+**Status:** Approved — Local applied; **Remote Applied and Verified** (7F-R2.1)  
 **Date:** 2026-08-08  
-**Remote apply:** Not in this task  
+**Remote apply:** Complete on linked `quotr_2.0` (`lxvnylhsbvudzzupxeqr`) —  
+  `docs/implementation/STAGE_3_1B7FR21_REMOTE_030_APPLY_COMPLETION.md`  
 
 ## Decision
 
@@ -58,4 +59,11 @@ for the builder to price.
 ## Local vs remote
 
 - Local Docker: apply via migration reset through 030  
-- Remote / Preview DB: **not** applied in this task — separate deployment step  
+- Remote / Preview DB: **Applied and Verified** (7F-R2.1) on the same linked
+  project that already carried 028/029  
+- **service_role:** full DML (parity with other app tables); app paths use
+  authenticated + RLS  
+- **Grant-layer follow-up:** 026 default privileges still grant DELETE on new
+  tables until revoked; 030 RLS denies DELETE (and decisions UPDATE). Optional
+  future **031** revoke/regrant for 028 parity — not required for Preview
+  retest  

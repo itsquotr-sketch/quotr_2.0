@@ -37,7 +37,8 @@ changes. No Company DNA / Builder Interview. No Production enablement.
 - **Decision:** Option B — `work_area_scope_items` + decisions (see architecture
   doc).
 - **Local:** apply via Docker reset through 030.
-- **Remote / Preview:** **not** applied in this task — separate deploy step.
+- **Remote / Preview:** **Applied and Verified** (Stage 3.1B.7F-R2.1) on linked
+  `quotr_2.0` — `docs/implementation/STAGE_3_1B7FR21_REMOTE_030_APPLY_COMPLETION.md`.
 
 ## Verification
 
@@ -51,7 +52,12 @@ Plus regression suite (3.1A → 7G, 7F-R1, RLS, 2B.10) and `tsc` / `lint` / `bui
 
 - `supabase db reset` applied through **030_work_area_scope_items.sql** successfully.
 - `scripts/verify-rls-coverage.ts` passed against local Docker (RLS + org-match triggers).
-- **Remote / Preview DB:** migration 030 **not** applied.
+
+### Remote migration / RLS (7F-R2.1)
+
+- `npx supabase migration list --linked` → **001–030** aligned.
+- Remote tables + RLS + `auth_org_id()` policies verified via `db query --linked`.
+- anon grants: none. Existing discovery / WA / pricing row counts unaffected.
 
 ## Preview retests required
 
