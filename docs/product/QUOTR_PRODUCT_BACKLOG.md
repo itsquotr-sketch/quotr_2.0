@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.6 Complete — Local; **3.1B.7A–7D Complete — Local**; Stage 3.1B release hardening **Ready Pending Preview Sign-off**; **Assistant UX refinement Complete — Local**; Pricing/Quote UX **Planned**; Scope Discovery Preview sign-off **Pending Owner Test**)   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.7D Complete — Local; **3.1B.7E Complete — Local / BLOCKED BY PREVIEW DEFECTS** — Owner E2E Pending; Production **Disabled**)   
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -83,10 +83,11 @@
 - Stage 3.1B.7B information hierarchy: **Complete — Local** — Fact-based WA dashboards, stepper counts, Quick Estimate hierarchy strip, denser cards; `verify-stage-3-1b7b-information-hierarchy.ts`; pure UX; production **Disabled**.
 - Stage 3.1B.7C question / estimate presentation: **Complete — Local** — question category grouping, provenance/why-matters, constraint groups, Estimate Review summary-first, Quick Estimate confidence drivers + project health, breakdown structure; `verify-stage-3-1b7c-question-estimate-presentation.ts`; Preview retest pending; production **Disabled**.
 - Stage 3.1B.7D final Assistant UX polish: **Complete — Local** — state inventory, loading/saving/error consistency, empty states, reduced-motion transitions, action language, Preview instrumentation + sign-off matrix; `verify-stage-3-1b7d-final-assistant-ux.ts`; Scope Discovery Preview sign-off **Pending Owner Test**; production **Disabled**.
+- Stage 3.1B.7E Preview release hardening: **Complete — Local / BLOCKED BY PREVIEW DEFECTS** — Preview flag empty defect fixed (`SCOPE_DISCOVERY_ENABLED=true` on Preview branch); Production flag absent confirmed; defect register + enablement runbook; `verify-stage-3-1b7e-preview-release-hardening.ts`; Owner Deck/Bathroom/Fitout E2E **Pending** (DEF-7E-003); production **Disabled**.
 - Assistant UX refinement programme: **Complete — Local** (7A–7D). Broader Pricing/Quote UX: **Planned separately**.
-- Stage 3.1B release hardening: **Ready Pending Preview Sign-off**.
+- Stage 3.1B release status: **BLOCKED BY PREVIEW DEFECTS** (owner E2E).
 - Scope Discovery Preview sign-off: **Pending Owner Test**.
 - Do not change Analyse Job behaviour, commercial formulas, or Company DNA without explicit authorisation.
-- Stage 3.1B.7 missing-scope — Ready Pending Preview UI Sign-off.
+- Stage 3.1B.7 missing-scope — Deferred until Preview gate clears.
 - Production: **Disabled**.
 - Stage 3.2: **Not Started**.
