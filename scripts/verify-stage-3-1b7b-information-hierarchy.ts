@@ -288,15 +288,21 @@ check(
     summariesUi.includes("Check")
 );
 check(
-  "scope overflow uses +N more at limit 5",
-  summariesUi.includes("SUMMARY_VISIBLE_ITEM_LIMIT") &&
-    summariesUi.includes("+{overflow} more")
+  "scope overflow / density: compact collapsed + limit constant retained",
+  // 7G: collapsed Scope Review is one line; SUMMARY_VISIBLE_ITEM_LIMIT remains
+  // for presentation helpers / expanded surfaces.
+  SUMMARY_VISIBLE_ITEM_LIMIT === 5 &&
+    (summariesUi.includes("CompactLine") ||
+      summariesUi.includes("SUMMARY_VISIBLE_ITEM_LIMIT")) &&
+    summariesUi.includes("need detail")
 );
 check(
-  "constraint empty state improved",
-  summariesUi.includes(
-    "No additional site constraints identified from the project."
-  )
+  "constraint empty / applied compact state",
+  // 7G: collapsed constraints use "None applied" one-liner (detail on expand).
+  summariesUi.includes("None applied") ||
+    summariesUi.includes(
+      "No additional site constraints identified from the project."
+    )
 );
 
 const stepperUi = read("components/assistant/StepperNav.tsx");
@@ -327,7 +333,8 @@ check(
 check(
   "shell wires stepper summaries and outcome status labels",
   shell.includes("stepSummaries={stepperSummaries}") &&
-    shell.includes("answers collected")
+    (shell.includes("answers collected") ||
+      shell.includes("answered · complete"))
 );
 check(
   "shell passes quick estimate presentation",

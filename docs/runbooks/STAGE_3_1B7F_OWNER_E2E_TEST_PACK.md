@@ -39,6 +39,26 @@ wording. Use PASS / FAIL / PARTIAL in the results file.
 Also deliberately trigger **one scope-impact** change (edit a Fact that should
 suggest a scope-item state change) and exercise Apply or Keep.
 
+### Stage 3.1B.7G presentation checks (every project)
+
+On Desktop (1024+):
+
+- [ ] Quick Estimate **sticks** while scrolling the centre column (not a floating overlay)
+- [ ] Commercial hierarchy: Recommended sell → range → confidence → Cost / Margin / GP
+- [ ] Concise status (“Ready for pricing” or “N items need attention”)
+- [ ] **Prepare final pricing** above secondary disclosures
+- [ ] Project readiness / Scope / Assumptions / Rate sources collapse/expand
+- [ ] **View full breakdown** remains available and secondary to the CTA
+- [ ] Centre completed stages are one–two lines; expand restores full detail
+- [ ] Active stage is visually dominant vs completed/locked stages
+
+On Tablet / Mobile (&lt;1024):
+
+- [ ] No sticky side rail
+- [ ] Compact Quick Estimate summary (sell · confidence / ready) + View estimate
+- [ ] Full estimate content accessible without overlapping primary actions
+- [ ] No duplicated desktop + mobile estimate chrome at once
+
 ---
 
 ## Quality rubric (1–5)

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useState, type ReactNode } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import {
   formatCurrency,
@@ -34,6 +34,12 @@ import { needsCalibrationRefresh } from "@/lib/estimate/calibration-version";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState";
 import { presentAssistantError } from "@/lib/assistant/presentation/error-messages";
+import {
+  QUICK_ESTIMATE_STICKY_CLASS,
+  buildQuickEstimateMobileSummary,
+  buildQuickEstimateScopeSummaryLines,
+  buildQuickEstimateStatusPresentation,
+} from "@/lib/assistant/presentation/quick-estimate-view-model";
 
 type EstimatePanelProps = {
   projectId: string;
@@ -80,21 +86,34 @@ function MetricRow({
   value,
   prominent,
   dimmed,
+  tertiary,
 }: {
   label: string;
   value: string;
   prominent?: boolean;
   dimmed?: boolean;
+  tertiary?: boolean;
 }) {
   return (
     <div className="flex items-baseline justify-between gap-3">
-      <span className="shrink-0 text-xs text-muted-foreground">{label}</span>
       <span
         className={cn(
+          "shrink-0 text-muted-foreground",
+          tertiary ? "text-[11px]" : "text-xs"
+        )}
+      >
+        {label}
+      </span>
+      <span
+        className={cn(
+          "text-right",
           prominent
-            ? "text-right text-2xl font-semibold tracking-tight"
-            : "text-right text-sm font-medium",
-          dimmed && "text-muted-foreground line-through decoration-muted-foreground/50"
+            ? "text-3xl font-semibold tracking-tight text-foreground"
+            : tertiary
+              ? "text-sm font-medium text-foreground/90"
+              : "text-sm font-medium",
+          dimmed &&
+            "text-muted-foreground line-through decoration-muted-foreground/50"
         )}
       >
         {value}
@@ -103,84 +122,76 @@ function MetricRow({
   );
 }
 
-function ScopeHealthChips({
-  workAreaCount,
-  missingCount,
-  constraintCount,
-  assumptionCount,
-  pendingProposalCount,
+/** Collapsible secondary section — presentation local state only. */
+function QuickEstimateDisclosure({
+  title,
+  collapsedHint,
+  children,
+  defaultOpen = false,
 }: {
-  workAreaCount: number;
-  missingCount: number;
-  constraintCount: number;
-  assumptionCount: number;
-  pendingProposalCount: number;
+  title: string;
+  collapsedHint: string;
+  children: ReactNode;
+  defaultOpen?: boolean;
 }) {
-  const chips = [
-    { label: `${workAreaCount} work area${workAreaCount === 1 ? "" : "s"}`, tone: "neutral" as const },
-    {
-      label: `${missingCount} missing`,
-      tone: missingCount > 0 ? ("attention" as const) : ("neutral" as const),
-    },
-    {
-      label: `${constraintCount} constraint${constraintCount === 1 ? "" : "s"}`,
-      tone: "neutral" as const,
-    },
-  ];
-
-  if (assumptionCount > 0) {
-    chips.push({
-      label: `${assumptionCount} assumption${assumptionCount === 1 ? "" : "s"}`,
-      tone: "neutral",
-    });
-  }
-
-  if (pendingProposalCount > 0) {
-    chips.push({
-      label: `${pendingProposalCount} to review`,
-      tone: "attention",
-    });
-  }
-
+  const [open, setOpen] = useState(defaultOpen);
+  const panelId = useId();
   return (
-    <div className="flex flex-wrap gap-1.5">
-      {chips.map((chip) => (
-        <span
-          key={chip.label}
-          className={cn(
-            "rounded-md border px-2 py-0.5 text-[11px] font-medium",
-            chip.tone === "attention"
-              ? "border-amber-300/80 bg-amber-50 text-amber-900"
-              : "border-border/60 bg-muted/40 text-muted-foreground"
-          )}
-        >
-          {chip.label}
+    <div className="rounded-md border border-border/50">
+      <button
+        type="button"
+        className="flex w-full items-start justify-between gap-2 px-3 py-2 text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+        aria-expanded={open}
+        aria-controls={panelId}
+        onClick={() => setOpen((prev) => !prev)}
+      >
+        <span className="min-w-0">
+          <span className="block text-xs font-medium text-foreground">
+            {title}
+          </span>
+          {!open ? (
+            <span className="mt-0.5 block truncate text-[11px] text-muted-foreground">
+              {collapsedHint}
+            </span>
+          ) : null}
         </span>
-      ))}
+        <ChevronDown
+          className={cn(
+            "mt-0.5 size-3.5 shrink-0 text-muted-foreground motion-safe:transition-transform",
+            open && "rotate-180"
+          )}
+          aria-hidden
+        />
+      </button>
+      <div
+        id={panelId}
+        hidden={!open}
+        className={cn(!open && "hidden")}
+        aria-hidden={!open}
+      >
+        <div className="border-t border-border/40 px-3 py-2">{children}</div>
+      </div>
     </div>
   );
 }
 
+/**
+ * Project readiness detail (was always-visible Project health).
+ * Scope / assumptions live in sibling disclosures — avoid duplicating them here.
+ */
 function QuickEstimateHierarchy({
   model,
-  confidencePercent,
 }: {
   model: {
-    estimatedWorkAreas: string;
-    includedScopeItems: string;
     outstandingClarifications: string;
     unansweredRequiredDetails: string;
-    assumptionsLabel: string;
     estimateReadinessLabel: string;
     confidenceDrivers: readonly string[];
     confidenceComplete: readonly string[];
     confidenceOutstanding: readonly string[];
   };
-  confidencePercent?: number | null;
 }) {
   const healthRows = [
-    { label: "Work Areas", value: model.estimatedWorkAreas },
-    { label: "Included scope", value: model.includedScopeItems },
     {
       label: "Unresolved clarifications",
       value: model.outstandingClarifications,
@@ -189,17 +200,14 @@ function QuickEstimateHierarchy({
       label: "Unanswered required details",
       value: model.unansweredRequiredDetails,
     },
-    { label: "Assumptions", value: model.assumptionsLabel },
     {
       label: "Estimate readiness",
       value: model.estimateReadinessLabel,
     },
   ];
   return (
-    <div className="space-y-2.5 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
-      <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-        Project health
-      </p>
+    <div className="space-y-2.5">
+      <p className="sr-only">Project health</p>
       <ul className="space-y-1.5">
         {healthRows.map((row) => (
           <li key={row.label} className="min-w-0">
@@ -212,11 +220,6 @@ function QuickEstimateHierarchy({
           </li>
         ))}
       </ul>
-      {confidencePercent != null ? (
-        <p className="text-xs font-medium text-foreground">
-          Estimate confidence: {confidencePercent}%
-        </p>
-      ) : null}
       <div>
         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
           Confidence drivers
@@ -224,7 +227,10 @@ function QuickEstimateHierarchy({
         {model.confidenceComplete.length > 0 ? (
           <div className="mt-1">
             <p className="text-[11px] font-medium text-foreground/80">Complete</p>
-            <ul className="mt-0.5 space-y-0.5" aria-label="Complete confidence drivers">
+            <ul
+              className="mt-0.5 space-y-0.5"
+              aria-label="Complete confidence drivers"
+            >
               {model.confidenceComplete.map((driver) => (
                 <li
                   key={driver}
@@ -277,6 +283,13 @@ function QuickEstimateHierarchy({
   );
 }
 
+function parseOpenCountLabel(label: string): number {
+  const trimmed = label.trim();
+  if (!trimmed || /^none$/i.test(trimmed)) return 0;
+  const match = trimmed.match(/(\d+)/);
+  return match ? Number(match[1]) : 0;
+}
+
 export function EstimatePanel({
   projectId,
   estimate,
@@ -289,14 +302,12 @@ export function EstimatePanel({
   defaultMarginPercent = DEFAULT_MARGIN_PERCENT,
   panelScopeSummaries = [],
   scopeReview,
-  questionsSubmitted = false,
   constraintsSubmitted = false,
   canGenerateEstimate = false,
   pendingProposalCount = 0,
   unresolvedScopeImpactCount = 0,
   isActiveStage = false,
   quickEstimatePresentation = null,
-  constraintCount = 0,
   onViewBreakdown,
   onGenerate,
   onRegenerate,
@@ -308,7 +319,6 @@ export function EstimatePanel({
     Boolean(estimate) &&
     !isStale &&
     needsCalibrationRefresh(estimate?.calibrationVersion);
-  const showScopePreview = questionsSubmitted && panelScopeSummaries.length > 0;
 
   const missingCount = estimate
     ? estimate.missingInfo.length
@@ -327,248 +337,431 @@ export function EstimatePanel({
     ? estimate.includedWorkAreas.length
     : panelScopeSummaries.length;
 
-  const scopeHealthChips = {
-    workAreaCount,
+  const clarificationCount = quickEstimatePresentation
+    ? parseOpenCountLabel(
+        quickEstimatePresentation.outstandingClarifications
+      )
+    : 0;
+
+  const status = buildQuickEstimateStatusPresentation({
+    hasEstimate: Boolean(estimate),
+    isStale,
+    canGenerateEstimate,
     missingCount,
-    constraintCount,
-    assumptionCount,
+    outstandingClarificationCount: clarificationCount,
     pendingProposalCount,
-  };
+    unresolvedScopeImpactCount,
+    assumptionCritical:
+      estimate?.assumptionMetadata?.assumptionSeverity === "critical",
+    readinessLabel: quickEstimatePresentation?.estimateReadinessLabel,
+  });
+
+  const mobileSummary = buildQuickEstimateMobileSummary({
+    hasEstimate: Boolean(estimate),
+    sellDisplay: estimate ? formatCurrency(estimate.recommendedSell) : null,
+    confidencePercent: estimate?.confidence ?? null,
+    statusLabel: status.statusLabel,
+    canGenerateEstimate,
+  });
+
+  const scopeLines = quickEstimatePresentation
+    ? buildQuickEstimateScopeSummaryLines({
+        estimatedWorkAreas: quickEstimatePresentation.estimatedWorkAreas,
+        includedScopeItems: quickEstimatePresentation.includedScopeItems,
+        outstandingClarifications:
+          quickEstimatePresentation.outstandingClarifications,
+        unansweredRequiredDetails:
+          quickEstimatePresentation.unansweredRequiredDetails,
+        workAreaCount,
+        includedScopeItemCountLabel:
+          quickEstimatePresentation.includedScopeItems,
+      })
+    : null;
+
+  const readinessCollapsedHint =
+    status.kind === "attention" || status.kind === "stale"
+      ? status.statusLabel
+      : status.kind === "ready"
+        ? "Ready for pricing"
+        : status.statusLabel;
 
   const [mobileExpanded, setMobileExpanded] = useState(false);
 
-  const summaryValue = estimate
-    ? formatCurrency(estimate.recommendedSell)
-    : canGenerateEstimate
-      ? "Ready to generate"
-      : "Not ready";
+  const financialView = estimate
+    ? estimateDocumentViewModel(estimate)
+    : null;
+
+  const pricingActions =
+    estimate && !isStale ? (
+      pricingSummary ? (
+        <div className="space-y-2">
+          {pricingSummary.needsRecalibration ? (
+            <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-center text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/25 dark:text-amber-200">
+              Final pricing may need updating.
+            </p>
+          ) : null}
+          <OpenFinalPricingLink
+            projectId={projectId}
+            pricingDocumentId={pricingSummary.id}
+          />
+          {pricingSummary.status === "reviewed" ? (
+            <p className="text-center text-xs font-medium text-[var(--brand-orange)]">
+              Pricing reviewed
+            </p>
+          ) : (
+            <p className="text-center text-xs text-muted-foreground">
+              Final pricing draft in progress
+            </p>
+          )}
+          {quoteSummary ? (
+            <>
+              <p className="text-center text-xs font-medium text-[var(--brand-orange)]">
+                Draft quote created
+              </p>
+              <Button
+                type="button"
+                className="w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
+                render={
+                  <Link
+                    href={`/app/projects/${projectId}/quotes/${quoteSummary.id}`}
+                  />
+                }
+              >
+                View quote
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button type="button" className="w-full" disabled>
+                Create quote
+              </Button>
+              <p className="text-center text-xs text-muted-foreground">
+                {pricingSummary.status === "reviewed"
+                  ? "Create a quote from reviewed final pricing."
+                  : "Mark final pricing as reviewed before creating a quote."}
+              </p>
+            </>
+          )}
+        </div>
+      ) : (
+        <PrepareFinalPricingButton projectId={projectId} className="w-full" />
+      )
+    ) : null;
 
   const panelBody = (
     <>
-        {qualityLevel ? (
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-border/60 bg-muted/30 px-3 py-2">
-            <div className="min-w-0">
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Specification
-              </p>
-              <p className="text-sm font-medium">{qualityLabel(qualityLevel)}</p>
-            </div>
-            {onEditQuality ? (
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-8 shrink-0 px-2 text-xs"
-                onClick={onEditQuality}
-              >
-                Edit
-              </Button>
-            ) : null}
-          </div>
-        ) : null}
-
-        {quickEstimatePresentation ? (
-          <QuickEstimateHierarchy
-            model={quickEstimatePresentation}
-            confidencePercent={estimate?.confidence ?? null}
-          />
-        ) : null}
-
-        {needsCalibrationUpdate ? (
-          <div
-            className="rounded-lg border border-sky-300/80 bg-sky-50 px-3 py-2 dark:border-sky-700 dark:bg-sky-950/40"
-            role="status"
-          >
-            <p className="text-xs text-sky-950 dark:text-sky-100">
-              This estimate was created before the latest calibration updates.
-              Regenerate to apply updated questions and calculations.
+      {qualityLevel ? (
+        <div className="flex items-center justify-between gap-3">
+          <div className="min-w-0">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              Specification
             </p>
+            <p className="text-sm font-medium">{qualityLabel(qualityLevel)}</p>
           </div>
-        ) : null}
-
-        {isStale ? (
-          <div
-            className="space-y-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-3 dark:border-amber-600 dark:bg-amber-950/40"
-            role="alert"
-          >
-            <div>
-              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
-                This estimate is outdated
-              </p>
-              <p className="mt-0.5 text-xs text-amber-900/90 dark:text-amber-200/90">
-                {presentAssistantError("stale")}
-              </p>
-            </div>
+          {onEditQuality ? (
             <Button
               type="button"
+              variant="ghost"
               size="sm"
-              className="h-9 w-full bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500"
-              onClick={onRegenerate}
-              disabled={isRegenerating || isGenerating}
+              className="h-8 shrink-0 px-2 text-xs"
+              onClick={onEditQuality}
             >
-              {isRegenerating ? (
-                <>
-                  <Loader2 className="mr-1.5 size-3.5 animate-spin" />
-                  Regenerating…
-                </>
-              ) : (
-                ASSISTANT_ACTION_LABELS.recalculateEstimate
-              )}
+              Edit
             </Button>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
+      ) : null}
 
-        {isGenerating ? (
-          <div
-            className="flex items-center gap-2 py-8 text-sm text-muted-foreground"
-            role="status"
-            aria-live="polite"
-          >
-            <Loader2 className="size-4 animate-spin" aria-hidden />
-            Generating Quick Estimate…
+      {needsCalibrationUpdate ? (
+        <div
+          className="rounded-lg border border-sky-300/80 bg-sky-50 px-3 py-2 dark:border-sky-700 dark:bg-sky-950/40"
+          role="status"
+        >
+          <p className="text-xs text-sky-950 dark:text-sky-100">
+            This estimate was created before the latest calibration updates.
+            Regenerate to apply updated questions and calculations.
+          </p>
+        </div>
+      ) : null}
+
+      {isStale ? (
+        <div
+          className="space-y-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-3 dark:border-amber-600 dark:bg-amber-950/40"
+          role="alert"
+        >
+          <div>
+            <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+              This estimate is outdated
+            </p>
+            <p className="mt-0.5 text-xs text-amber-900/90 dark:text-amber-200/90">
+              {presentAssistantError("stale")}
+            </p>
           </div>
-        ) : !estimate ? (
-          <div className="space-y-4">
-            {canGenerateEstimate ? (
+          <Button
+            type="button"
+            size="sm"
+            className="h-9 w-full bg-amber-600 text-white hover:bg-amber-700 dark:bg-amber-600 dark:hover:bg-amber-500"
+            onClick={onRegenerate}
+            disabled={isRegenerating || isGenerating}
+          >
+            {isRegenerating ? (
               <>
-                <div className="rounded-xl border border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]/40 px-4 py-5 text-center">
-                  <p className="text-sm font-medium">Ready to generate</p>
-                  <p className="mt-1 text-xs text-muted-foreground">
-                    Scope and constraints are complete. Generate your draft
-                    estimate when you are ready.
-                  </p>
-                </div>
-                {unresolvedScopeImpactCount > 0 ? (
-                  <p
-                    className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
-                    role="status"
-                  >
-                    {unresolvedScopeImpactCount === 1
-                      ? "1 suggested scope change is still open in Scope Review. You can generate now, or review it first."
-                      : `${unresolvedScopeImpactCount} suggested scope changes are still open in Scope Review. You can generate now, or review them first.`}
-                  </p>
-                ) : null}
-                <Button
-                  type="button"
-                  className="h-10 w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
-                  onClick={onGenerate}
-                  disabled={isGenerating || !onGenerate}
-                >
-                  {isGenerating ? (
-                    <>
-                      <Loader2 className="mr-1.5 size-4 animate-spin" />
-                      Generating estimate…
-                    </>
-                  ) : (
-                    ASSISTANT_ACTION_LABELS.generateEstimate
-                  )}
-                </Button>
+                <Loader2 className="mr-1.5 size-3.5 animate-spin" />
+                Regenerating…
               </>
             ) : (
-              <AssistantEmptyState stage="quick_estimate" />
+              ASSISTANT_ACTION_LABELS.recalculateEstimate
             )}
+          </Button>
+        </div>
+      ) : null}
 
-            {showScopePreview && !canGenerateEstimate ? (
-              <div className="space-y-2 text-xs text-muted-foreground">
-                <p>
-                  {workAreaCount} work area{workAreaCount === 1 ? "" : "s"}{" "}
-                  included
+      {isGenerating ? (
+        <div
+          className="flex items-center gap-2 py-8 text-sm text-muted-foreground"
+          role="status"
+          aria-live="polite"
+        >
+          <Loader2 className="size-4 animate-spin" aria-hidden />
+          Generating Quick Estimate…
+        </div>
+      ) : !estimate ? (
+        <div className="space-y-4">
+          {canGenerateEstimate ? (
+            <>
+              <div className="rounded-xl border border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]/40 px-4 py-5 text-center">
+                <p className="text-sm font-medium">Ready to generate</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Scope and constraints are complete. Generate your draft
+                  estimate when you are ready.
                 </p>
-                {assumptionCount > 0 ? (
-                  <p>
-                    {assumptionCount} assumption
-                    {assumptionCount === 1 ? "" : "s"}
-                  </p>
-                ) : null}
-                {missingCount > 0 ? (
-                  <p>
-                    {missingCount} missing detail
-                    {missingCount === 1 ? "" : "s"}
-                  </p>
-                ) : null}
               </div>
-            ) : null}
+              {unresolvedScopeImpactCount > 0 ? (
+                <p
+                  className="rounded-md border border-amber-200 bg-amber-50/80 px-3 py-2 text-xs text-amber-950 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-100"
+                  role="status"
+                >
+                  {unresolvedScopeImpactCount === 1
+                    ? "1 suggested scope change is still open in Scope Review. You can generate now, or review it first."
+                    : `${unresolvedScopeImpactCount} suggested scope changes are still open in Scope Review. You can generate now, or review them first.`}
+                </p>
+              ) : null}
+              <Button
+                type="button"
+                className="h-10 w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
+                onClick={onGenerate}
+                disabled={isGenerating || !onGenerate}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="mr-1.5 size-4 animate-spin" />
+                    Generating estimate…
+                  </>
+                ) : (
+                  ASSISTANT_ACTION_LABELS.generateEstimate
+                )}
+              </Button>
+            </>
+          ) : (
+            <AssistantEmptyState stage="quick_estimate" />
+          )}
 
-            {questionsSubmitted ? (
-              <ScopeHealthChips {...scopeHealthChips} />
-            ) : null}
-          </div>
-        ) : (
-          <>
-            <div
-              className={cn(
-                "space-y-3 rounded-xl border border-border/60 bg-muted/30 p-4",
-                isStale && "opacity-60"
-              )}
+          {quickEstimatePresentation ? (
+            <QuickEstimateDisclosure
+              title="Project readiness"
+              collapsedHint={readinessCollapsedHint}
             >
-              <MetricRow
-                label="Recommended sell"
-                value={formatCurrency(estimate.recommendedSell)}
-                prominent
-                dimmed={isStale}
-              />
-              <MetricRow
-                label="Sell range"
-                value={formatCurrencyRange(estimate.sellLow, estimate.sellHigh)}
-                dimmed={isStale}
-              />
-
-              <div className="grid grid-cols-2 gap-x-3 gap-y-2 pt-1">
-                <MetricRow
-                  label="Cost"
-                  value={formatCurrency(estimate.recommendedCost)}
-                  dimmed={isStale}
-                />
-                <MetricRow
-                  label="Gross profit"
-                  value={estimateDocumentViewModel(estimate).profitLabel}
-                  dimmed={isStale}
-                />
-                <MetricRow
-                  label="Margin"
-                  value={estimateDocumentViewModel(estimate).marginLabel}
-                  dimmed={isStale}
-                />
-                <MetricRow
-                  label="Estimate confidence"
-                  value={`${estimate.confidence}%`}
-                  dimmed={isStale}
-                />
-              </div>
+              <QuickEstimateHierarchy model={quickEstimatePresentation} />
+            </QuickEstimateDisclosure>
+          ) : null}
+        </div>
+      ) : (
+        <>
+          {/* —— Commercial hierarchy (dominant) —— */}
+          <div className={cn("space-y-3", isStale && "opacity-60")}>
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Recommended sell
+              </p>
+              <p
+                className={cn(
+                  "mt-0.5 text-3xl font-semibold tracking-tight text-foreground",
+                  isStale &&
+                    "text-muted-foreground line-through decoration-muted-foreground/50"
+                )}
+              >
+                {formatCurrency(estimate.recommendedSell)}
+              </p>
             </div>
 
-            {estimate.assumptionMetadata?.assumptionSeverity === "critical" ? (
-              <div
-                className="rounded-md border border-amber-300/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
-                role="alert"
-              >
-                <p className="font-medium">
-                  Assumed dimensions affect this estimate — confirm before pricing.
-                </p>
-                <ul className="mt-1.5 list-inside list-disc space-y-0.5">
-                  {defaultedFactWarnings(estimate.assumptionMetadata)
-                    .slice(0, 3)
-                    .map((item) => (
-                      <li key={item}>{item}</li>
-                    ))}
-                </ul>
-              </div>
-            ) : null}
-
-            {isStale && onMarginSave ? (
-              <p className="text-xs text-amber-800 dark:text-amber-200">
-                Regenerate before editing margin.
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Estimate range
               </p>
+              <p
+                className={cn(
+                  "mt-0.5 text-sm font-medium text-foreground/90",
+                  isStale && "text-muted-foreground line-through"
+                )}
+              >
+                {formatCurrencyRange(estimate.sellLow, estimate.sellHigh)}
+              </p>
+            </div>
+
+            <MetricRow
+              label="Estimate confidence"
+              value={`${estimate.confidence}%`}
+              dimmed={isStale}
+            />
+
+            <div className="space-y-1.5 border-t border-border/40 pt-2.5">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Commercial metrics
+              </p>
+              <MetricRow
+                label="Cost"
+                value={formatCurrency(estimate.recommendedCost)}
+                dimmed={isStale}
+                tertiary
+              />
+              <MetricRow
+                label="Margin"
+                value={financialView?.marginLabel ?? "—"}
+                dimmed={isStale}
+                tertiary
+              />
+              <MetricRow
+                label="Gross profit"
+                value={financialView?.profitLabel ?? "—"}
+                dimmed={isStale}
+                tertiary
+              />
+            </div>
+          </div>
+
+          {/* Concise status — always visible */}
+          <p
+            className={cn(
+              "text-xs font-medium",
+              status.kind === "ready" && "text-foreground",
+              status.kind === "attention" &&
+                "text-amber-900 dark:text-amber-200",
+              status.kind === "stale" && "text-amber-900 dark:text-amber-200",
+              status.kind === "pending" && "text-muted-foreground"
+            )}
+            role="status"
+          >
+            {status.statusLabel}
+          </p>
+
+          {/* True blockers stay outside collapsed sections */}
+          {estimate.assumptionMetadata?.assumptionSeverity === "critical" ? (
+            <div
+              className="rounded-md border border-amber-300/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
+              role="alert"
+            >
+              <p className="font-medium">
+                Assumed dimensions affect this estimate — confirm before
+                pricing.
+              </p>
+              <ul className="mt-1.5 list-inside list-disc space-y-0.5">
+                {defaultedFactWarnings(estimate.assumptionMetadata)
+                  .slice(0, 3)
+                  .map((item) => (
+                    <li key={item}>{item}</li>
+                  ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {isStale && onMarginSave ? (
+            <p className="text-xs text-amber-800 dark:text-amber-200">
+              Regenerate before editing margin.
+            </p>
+          ) : null}
+
+          {estimate && isStale ? (
+            <p className="text-xs text-amber-800 dark:text-amber-200">
+              Recalculate estimate before preparing final pricing.
+            </p>
+          ) : null}
+
+          {/* Primary CTA — commercial decision */}
+          {pricingActions}
+
+          <p className="text-[11px] text-muted-foreground">
+            Internal only — not a quote.
+          </p>
+
+          {/* Secondary expandable information */}
+          <div className="space-y-1.5">
+            {quickEstimatePresentation ? (
+              <QuickEstimateDisclosure
+                title="Project readiness"
+                collapsedHint={readinessCollapsedHint}
+              >
+                <QuickEstimateHierarchy model={quickEstimatePresentation} />
+              </QuickEstimateDisclosure>
             ) : null}
 
-            <div className="rounded-xl border px-3 py-2">
-              <p className="text-xs text-muted-foreground">Rate source</p>
-              <p className="mt-0.5 text-sm font-medium leading-snug">
+            {scopeLines ? (
+              <QuickEstimateDisclosure
+                title="Scope"
+                collapsedHint={scopeLines.collapsed}
+              >
+                <ul className="space-y-1.5 text-xs">
+                  <li>
+                    <span className="text-muted-foreground">Work Areas — </span>
+                    {scopeLines.workAreas}
+                  </li>
+                  <li>
+                    <span className="text-muted-foreground">
+                      Included scope —{" "}
+                    </span>
+                    {scopeLines.includedScope}
+                  </li>
+                </ul>
+              </QuickEstimateDisclosure>
+            ) : null}
+
+            <QuickEstimateDisclosure
+              title="Assumptions"
+              collapsedHint={
+                assumptionCount === 0
+                  ? "None listed"
+                  : `${assumptionCount} assumption${assumptionCount === 1 ? "" : "s"}`
+              }
+            >
+              {estimate.assumptions.length === 0 ? (
+                <p className="text-xs text-muted-foreground">
+                  No assumptions listed for this estimate.
+                </p>
+              ) : (
+                <ul className="space-y-1 text-xs text-foreground/90">
+                  {estimate.assumptions.slice(0, 8).map((item) => (
+                    <li key={item} className="flex gap-1.5">
+                      <span aria-hidden>•</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                  {estimate.assumptions.length > 8 ? (
+                    <li className="text-muted-foreground">
+                      +{estimate.assumptions.length - 8} more — use full
+                      breakdown
+                    </li>
+                  ) : null}
+                </ul>
+              )}
+            </QuickEstimateDisclosure>
+
+            <QuickEstimateDisclosure
+              title="Rate sources"
+              collapsedHint={estimate.rateSourceSummary}
+            >
+              <p className="text-sm font-medium leading-snug">
                 {estimate.rateSourceSummary}
               </p>
-              {estimate.rateSourceSummary
-                .toLowerCase()
-                .includes("benchmark") ||
+              {estimate.rateSourceSummary.toLowerCase().includes("benchmark") ||
               estimate.rateSourceSummary.toLowerCase().includes("missing") ? (
                 <Link
                   href="/app/rates"
@@ -577,113 +770,47 @@ export function EstimatePanel({
                   Set your rates
                 </Link>
               ) : null}
-            </div>
+            </QuickEstimateDisclosure>
+          </div>
 
-            <ScopeHealthChips {...scopeHealthChips} />
+          {/* Secondary action — full transparency */}
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full border-border bg-background hover:bg-muted/50"
+            onClick={onViewBreakdown}
+          >
+            {ASSISTANT_ACTION_LABELS.viewFullBreakdown}
+          </Button>
 
-            <p className="text-xs text-muted-foreground">
-              Internal only — not a quote.
-            </p>
-
-            <Button
-              type="button"
-              variant="outline"
-              className="w-full border-border bg-background hover:bg-muted/50"
-              onClick={onViewBreakdown}
-            >
-              {ASSISTANT_ACTION_LABELS.viewFullBreakdown}
-            </Button>
-
-            {estimate && !isStale ? (
-              pricingSummary ? (
-                <div className="space-y-2">
-                  {pricingSummary.needsRecalibration ? (
-                    <p className="rounded-lg border border-amber-200/80 bg-amber-50/80 px-3 py-2 text-center text-xs text-amber-900 dark:border-amber-900/50 dark:bg-amber-950/25 dark:text-amber-200">
-                      Final pricing may need updating.
-                    </p>
-                  ) : null}
-                  <OpenFinalPricingLink
-                    projectId={projectId}
-                    pricingDocumentId={pricingSummary.id}
-                  />
-                  {pricingSummary.status === "reviewed" ? (
-                    <p className="text-center text-xs font-medium text-[var(--brand-orange)]">
-                      Pricing reviewed
-                    </p>
-                  ) : (
-                    <p className="text-center text-xs text-muted-foreground">
-                      Final pricing draft in progress
-                    </p>
-                  )}
-                  {quoteSummary ? (
-                    <>
-                      <p className="text-center text-xs font-medium text-[var(--brand-orange)]">
-                        Draft quote created
-                      </p>
-                      <Button
-                        type="button"
-                        className="w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
-                        render={
-                          <Link
-                            href={`/app/projects/${projectId}/quotes/${quoteSummary.id}`}
-                          />
-                        }
-                      >
-                        View quote
-                      </Button>
-                    </>
-                  ) : (
-                    <>
-                      <Button type="button" className="w-full" disabled>
-                        Create quote
-                      </Button>
-                      <p className="text-center text-xs text-muted-foreground">
-                        {pricingSummary.status === "reviewed"
-                          ? "Create a quote from reviewed final pricing."
-                          : "Mark final pricing as reviewed before creating a quote."}
-                      </p>
-                    </>
-                  )}
-                </div>
-              ) : (
-                <PrepareFinalPricingButton
-                  projectId={projectId}
-                  className="w-full"
-                />
-              )
-            ) : null}
-
-            {estimate && isStale ? (
-              <p className="text-xs text-amber-800 dark:text-amber-200">
-                Recalculate estimate before preparing final pricing.
-              </p>
-            ) : null}
-
-            {!isStale && onMarginSave ? (
-              <MarginEditControl
-                marginPercent={estimate.marginPercent}
-                targetMarginPercent={estimate.targetMarginPercent}
-                defaultMarginPercent={defaultMarginPercent}
-                disabled={isRegenerating || isGenerating}
-                isSaving={isSavingMargin}
-                onSave={onMarginSave}
-              />
-            ) : null}
-          </>
-        )}
+          {!isStale && onMarginSave ? (
+            <MarginEditControl
+              marginPercent={estimate.marginPercent}
+              targetMarginPercent={estimate.targetMarginPercent}
+              defaultMarginPercent={defaultMarginPercent}
+              disabled={isRegenerating || isGenerating}
+              isSaving={isSavingMargin}
+              onSave={onMarginSave}
+            />
+          ) : null}
+        </>
+      )}
     </>
   );
 
   return (
     <Card
       className={cn(
-        "overflow-hidden border-border/60 bg-card transition-[box-shadow,border-color] duration-200 ease-out lg:sticky lg:top-6",
+        "overflow-hidden border-border/60 bg-card transition-[box-shadow,border-color] duration-200 ease-out",
+        QUICK_ESTIMATE_STICKY_CLASS,
         isActiveStage
           ? "border-[var(--brand-orange-muted)] shadow-md ring-1 ring-[var(--brand-orange)]/25"
           : "shadow-sm"
       )}
       data-estimate-panel-active={isActiveStage ? "true" : "false"}
+      data-quick-estimate-sticky="lg"
     >
+      {/* Mobile compact summary — only below lg (desktop rail uses CardHeader) */}
       <button
         type="button"
         className="flex w-full items-center justify-between gap-3 border-b border-border/60 px-4 py-3 text-left lg:hidden"
@@ -692,13 +819,19 @@ export function EstimatePanel({
       >
         <div className="min-w-0">
           <p className="text-sm font-semibold">Quick Estimate</p>
-          <p className="truncate text-xs text-muted-foreground">{summaryValue}</p>
+          <p className="truncate text-xs text-muted-foreground">
+            {mobileSummary.primaryLine}
+          </p>
+          <p className="mt-0.5 text-[11px] font-medium text-foreground/80">
+            {mobileSummary.secondaryActionLabel}
+          </p>
         </div>
         <ChevronDown
           className={cn(
             "size-4 shrink-0 text-muted-foreground transition-transform",
             mobileExpanded && "rotate-180"
           )}
+          aria-hidden
         />
       </button>
 
@@ -716,10 +849,7 @@ export function EstimatePanel({
       </CardHeader>
 
       <CardContent
-        className={cn(
-          "space-y-4",
-          !mobileExpanded && "hidden lg:block"
-        )}
+        className={cn("space-y-4", !mobileExpanded && "hidden lg:block")}
       >
         {panelBody}
       </CardContent>

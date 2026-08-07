@@ -13,3 +13,4 @@ export * from "./ui-states";
 export * from "./action-labels";
 export * from "./error-messages";
 export * from "./save-status";
+export * from "./quick-estimate-view-model";

@@ -117,14 +117,17 @@ export function CollapsibleStageCard({
         isActive
           ? "border-[var(--brand-orange-muted)] shadow-md ring-1 ring-[var(--brand-orange)]/25"
           : "shadow-none",
-        !isActive && !isExpanded && "opacity-[0.94]",
+        !isActive && !isExpanded && "opacity-[0.88]",
+        isActive && isExpanded && "pb-0.5",
         className
       )}
     >
       <div
         className={cn(
-          "flex items-start gap-2 px-3 py-1.5 sm:px-3.5",
-          isExpanded && "border-b border-border/50 py-2.5"
+          "flex items-start gap-2 px-3 sm:px-3.5",
+          isActive && isExpanded ? "py-3" : "py-1.5",
+          isExpanded && "border-b border-border/50",
+          !isActive && !isExpanded && "py-1"
         )}
       >
         <button
@@ -150,9 +153,9 @@ export function CollapsibleStageCard({
             <div className="flex flex-wrap items-center gap-2">
               <span
                 className={cn(
-                  isExpanded
+                  isActive || isExpanded
                     ? "text-sm font-semibold text-foreground"
-                    : "text-sm font-medium text-foreground/90"
+                    : "text-sm font-medium text-muted-foreground"
                 )}
               >
                 {title}

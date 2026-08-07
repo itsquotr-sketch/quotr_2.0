@@ -5,7 +5,7 @@
 **Parent stage status:** Stage 3.1B — **In Progress**  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.7F — **Complete — Local (gate pack); Owner E2E Pending**  
+**Current batch:** 3.1B.7G — **Complete — Local**  
 **Next batch:** Owner fills 7F results → A READY FOR OWNER PRODUCTION GATE or B BLOCKED (Production still off); 3.1B.7 missing-scope — **Not Started**  
 **Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **no 030**  
 **Server integration:** **Complete — Local**  
@@ -16,7 +16,8 @@
 **Final Assistant UX polish (7D):** **Complete — Local**  
 **Preview release hardening (7E):** **Complete — Local / BLOCKED BY PREVIEW DEFECTS**  
 **Owner E2E gate (7F):** **Complete — Local (pack + template); Owner results Pending**  
-**Assistant UX refinement programme:** **Complete — Local**  
+**Assistant density / sticky Quick Estimate (7G):** **Complete — Local**  
+**Assistant UX refinement programme:** **Complete — Local** (7A–7D + 7G density)  
 **UI/UX Overhaul (Pricing/Quote):** **Planned separately**  
 **Scope Discovery Preview sign-off:** **Pending Owner Test**  
 **Stage 3.1B release status:** **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E)  
@@ -241,13 +242,14 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.7F** — Complete — Local (owner E2E test pack + results template + gate
-verify). Production remains **Disabled**. Stage 3.1B remains **BLOCKED BY
-PREVIEW DEFECTS** until owner supplies Deck / Bathroom / Fitout results in
-`docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md` (closes DEF-7E-003). Then
-re-evaluate for **READY FOR OWNER PRODUCTION GATE** without enabling
-Production. Preserve Fact SoT; no DNA; Analyse Job unchanged. **No migration 030.**
-Do not begin Stage 3.2.
+**3.1B.7G** — Complete — Local (Assistant density, sticky Quick Estimate,
+mobile presentation architecture). Production remains **Disabled**. Stage 3.1B
+remains **BLOCKED BY PREVIEW DEFECTS** until owner supplies Deck / Bathroom /
+Fitout results in `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md` (closes
+DEF-7E-003). 7F pack now includes 7G sticky/density checks. Then re-evaluate
+for **READY FOR OWNER PRODUCTION GATE** without enabling Production. Preserve
+Fact SoT; no DNA; Analyse Job unchanged. **No migration 030.** Do not begin
+Stage 3.2.
 
 ---
 

@@ -502,7 +502,7 @@ export function buildEstimateReviewSummaryModel(params: {
     outcomeLabel: params.estimateStale
       ? "Needs refresh"
       : ready
-        ? "Ready for estimate"
+        ? "Ready"
         : "Inputs under review",
   };
 }

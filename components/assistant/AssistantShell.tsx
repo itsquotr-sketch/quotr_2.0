@@ -1013,15 +1013,18 @@ export function AssistantShell({
               subtitle={questionBlock.description}
               statusLabel={
                 answeredQuestionCount === 1
-                  ? "1 answer collected"
-                  : `${answeredQuestionCount} answers collected`
+                  ? "1 answered · complete"
+                  : `${answeredQuestionCount} answered · complete`
               }
               statusVariant="complete"
               preferredExpanded={false}
               canCollapse
               isActive={false}
               summaryContent={
-                <QuestionsCollapsedSummary groups={questionGroups} />
+                <QuestionsCollapsedSummary
+                  groups={questionGroups}
+                  answeredCount={answeredQuestionCount}
+                />
               }
               actionLabel="View answers"
             >
@@ -1162,7 +1165,7 @@ export function AssistantShell({
           ) : null}
         </div>
 
-        <div className="min-w-0 order-1 lg:order-none">
+        <div className="min-w-0 order-1 lg:order-none lg:self-start">
           <EstimatePanel
             projectId={initialState.project.id}
             estimate={estimate}
