@@ -36,9 +36,11 @@ import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState"
 import { presentAssistantError } from "@/lib/assistant/presentation/error-messages";
 import {
   QUICK_ESTIMATE_STICKY_CLASS,
+  buildQuickEstimateAttentionItems,
   buildQuickEstimateMobileSummary,
   buildQuickEstimateScopeSummaryLines,
   buildQuickEstimateStatusPresentation,
+  type QuickEstimateAttentionItem,
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
 
 type EstimatePanelProps = {
@@ -59,6 +61,7 @@ type EstimatePanelProps = {
   pendingProposalCount?: number;
   /** Soft warning only — does not block generation (3.1B.6R3.1). */
   unresolvedScopeImpactCount?: number;
+  unresolvedScopeImpactLabels?: readonly string[];
   /** Align visual weight with active workflow stage (3.1B.7A). */
   isActiveStage?: boolean;
   /** Presentation-only scope hierarchy (3.1B.7B / 3.1B.7C). */
@@ -79,6 +82,7 @@ type EstimatePanelProps = {
   onRegenerate?: () => void;
   onMarginSave?: (targetMarginPercent: number | null) => Promise<void>;
   onEditQuality?: () => void;
+  onReviewAttention?: (item: QuickEstimateAttentionItem) => void;
 };
 
 function MetricRow({
@@ -306,6 +310,7 @@ export function EstimatePanel({
   canGenerateEstimate = false,
   pendingProposalCount = 0,
   unresolvedScopeImpactCount = 0,
+  unresolvedScopeImpactLabels = [],
   isActiveStage = false,
   quickEstimatePresentation = null,
   onViewBreakdown,
@@ -313,6 +318,7 @@ export function EstimatePanel({
   onRegenerate,
   onMarginSave,
   onEditQuality,
+  onReviewAttention,
 }: EstimatePanelProps) {
   const isStale = Boolean(estimate?.isStale);
   const needsCalibrationUpdate =
@@ -320,14 +326,11 @@ export function EstimatePanel({
     !isStale &&
     needsCalibrationRefresh(estimate?.calibrationVersion);
 
-  const missingCount = estimate
-    ? estimate.missingInfo.length
+  const missingLabels: string[] = estimate
+    ? estimate.missingInfo.filter((item) => item.trim())
     : scopeReview
-      ? scopeReview.workAreas.reduce(
-          (sum, workArea) => sum + workArea.missingItems.length,
-          0
-        )
-      : 0;
+      ? scopeReview.workAreas.flatMap((workArea) => workArea.missingItems)
+      : [];
   const assumptionCount = estimate
     ? estimate.assumptions.length
     : scopeReview
@@ -337,20 +340,34 @@ export function EstimatePanel({
     ? estimate.includedWorkAreas.length
     : panelScopeSummaries.length;
 
-  const clarificationCount = quickEstimatePresentation
-    ? parseOpenCountLabel(
-        quickEstimatePresentation.outstandingClarifications
-      )
-    : 0;
+  const clarificationLabels =
+    quickEstimatePresentation &&
+    parseOpenCountLabel(
+      quickEstimatePresentation.outstandingClarifications
+    ) > 0
+      ? [quickEstimatePresentation.outstandingClarifications]
+      : [];
+
+  const attentionItems = buildQuickEstimateAttentionItems({
+    missingLabels,
+    clarificationLabels,
+    pendingProposalCount,
+    unresolvedScopeImpactLabels:
+      unresolvedScopeImpactLabels.length > 0
+        ? unresolvedScopeImpactLabels
+        : unresolvedScopeImpactCount > 0
+          ? Array.from(
+              { length: unresolvedScopeImpactCount },
+              () => "Suggested scope change"
+            )
+          : [],
+  });
 
   const status = buildQuickEstimateStatusPresentation({
     hasEstimate: Boolean(estimate),
     isStale,
     canGenerateEstimate,
-    missingCount,
-    outstandingClarificationCount: clarificationCount,
-    pendingProposalCount,
-    unresolvedScopeImpactCount,
+    attentionItems,
     assumptionCritical:
       estimate?.assumptionMetadata?.assumptionSeverity === "critical",
     readinessLabel: quickEstimatePresentation?.estimateReadinessLabel,
@@ -653,6 +670,37 @@ export function EstimatePanel({
           >
             {status.statusLabel}
           </p>
+
+          {status.kind === "attention" && status.attentionItems.length > 0 ? (
+            <ul className="space-y-2 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/20">
+              {status.attentionItems.map((item) => (
+                <li
+                  key={item.id}
+                  className="flex items-start justify-between gap-2 text-xs"
+                >
+                  <div className="min-w-0">
+                    <p className="font-medium text-amber-950 dark:text-amber-100">
+                      {item.label}
+                    </p>
+                    <p className="text-amber-900/80 dark:text-amber-200/80">
+                      {item.detail}
+                    </p>
+                  </div>
+                  {onReviewAttention ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="h-7 shrink-0 px-2 text-xs"
+                      onClick={() => onReviewAttention(item)}
+                    >
+                      Review
+                    </Button>
+                  ) : null}
+                </li>
+              ))}
+            </ul>
+          ) : null}
 
           {/* True blockers stay outside collapsed sections */}
           {estimate.assumptionMetadata?.assumptionSeverity === "critical" ? (

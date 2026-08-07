@@ -58,10 +58,10 @@ function CollapsedQuotePreview({
 }) {
   const [open, setOpen] = useState(false);
   const text = description?.trim() ?? "";
-  if (!text && !children) return null;
+  if (!text) return null;
 
   const preview =
-    text.length > 120 ? `${text.slice(0, 120).trim()}…` : text || "Add a quote description";
+    text.length > 120 ? `${text.slice(0, 120).trim()}…` : text;
 
   return (
     <div className="mt-2.5 border-t border-border/50 pt-2.5">
@@ -73,7 +73,7 @@ function CollapsedQuotePreview({
       >
         <div className="min-w-0">
           <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Quote description
+            Full quote description
           </p>
           {!open ? (
             <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">
@@ -326,10 +326,29 @@ export function ScopeSummaryBlock({
           </div>
 
           <div className="mt-3 space-y-1.5 rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
-            <SummaryMetricLine
-              label="Description"
-              value={summary.descriptionLabel}
-            />
+            {editable ? (
+              <WorkAreaQuoteDescriptionEditor
+                variant="compact"
+                projectId={projectId}
+                workAreaId={workArea.workAreaId}
+                workAreaName={workArea.workAreaName}
+                initialDescription={
+                  descriptionOverrides[workArea.workAreaId] ??
+                  workArea.quoteDescription
+                }
+                onSaved={(description) =>
+                  setDescriptionOverrides((prev) => ({
+                    ...prev,
+                    [workArea.workAreaId]: description,
+                  }))
+                }
+              />
+            ) : (
+              <SummaryMetricLine
+                label="Description"
+                value={summary.descriptionLabel}
+              />
+            )}
             <SummaryMetricLine
               label="Measurements"
               value={summary.measurementsLabel}
@@ -395,30 +414,7 @@ export function ScopeSummaryBlock({
             </div>
           ) : null}
 
-          {editable ? (
-            <CollapsedQuotePreview
-              description={
-                descriptionOverrides[workArea.workAreaId] ??
-                workArea.quoteDescription
-              }
-            >
-              <WorkAreaQuoteDescriptionEditor
-                projectId={projectId}
-                workAreaId={workArea.workAreaId}
-                workAreaName={workArea.workAreaName}
-                initialDescription={
-                  descriptionOverrides[workArea.workAreaId] ??
-                  workArea.quoteDescription
-                }
-                onSaved={(description) =>
-                  setDescriptionOverrides((prev) => ({
-                    ...prev,
-                    [workArea.workAreaId]: description,
-                  }))
-                }
-              />
-            </CollapsedQuotePreview>
-          ) : workArea.quoteDescription ? (
+          {editable ? null : workArea.quoteDescription ? (
             <CollapsedQuotePreview description={workArea.quoteDescription}>
               <p className="text-xs leading-relaxed text-muted-foreground break-words whitespace-pre-wrap">
                 {workArea.quoteDescription}

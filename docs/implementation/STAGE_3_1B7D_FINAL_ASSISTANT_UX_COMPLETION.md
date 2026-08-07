@@ -3,8 +3,8 @@
  *
  * **Status:** Complete — Local  
  * **Assistant UX refinement programme:** Complete — Local  
- * **Scope Discovery Preview sign-off:** Pending Owner Test  
- * **Stage 3.1B release hardening:** Ready Pending Preview Sign-off  
+ * **Scope Discovery Preview sign-off:** Pending Owner Test (see 3.1B.7E)  
+ * **Stage 3.1B release status:** BLOCKED BY PREVIEW DEFECTS  
  * **Broader Pricing/Quote UX programme:** Planned separately  
  * **Production:** Disabled  
  */

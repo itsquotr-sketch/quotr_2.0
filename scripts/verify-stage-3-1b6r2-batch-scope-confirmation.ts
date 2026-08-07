@@ -338,10 +338,27 @@ const snapFact = buildSourceSnapshot(
   })
 );
 check(
-  "relevant Fact change → STALE",
+  "DETAIL_ONLY Fact change → CURRENT (not false stale)",
   evaluateStaleRun({
     priorSnapshot: snap1,
     currentSnapshot: snapFact,
+    priorRunId: "run1",
+    priorOrchestrationVersion: SCOPE_DISCOVERY_ORCHESTRATION_VERSION,
+  }).comparison === "CURRENT"
+);
+
+const snapMaterialFact = buildSourceSnapshot(
+  baseRequest({
+    authoritativeFacts: [
+      { key: "project_scope_class", value: "commercial", revision: "fact_mat" },
+    ],
+  })
+);
+check(
+  "FULL_REANALYSIS Fact change → STALE",
+  evaluateStaleRun({
+    priorSnapshot: snap1,
+    currentSnapshot: snapMaterialFact,
     priorRunId: "run1",
     priorOrchestrationVersion: SCOPE_DISCOVERY_ORCHESTRATION_VERSION,
   }).comparison === "STALE_MATERIAL_CHANGE"

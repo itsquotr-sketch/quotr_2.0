@@ -45,16 +45,30 @@ function matchCartingDistanceM(text: string): number | null {
   const patterns = [
     /cart(?:ed|ing)?\s*(?:distance\s*)?(?:of\s*)?(\d+)\s*m/i,
     /carried\s*(\d+)\s*m/i,
+    /hand[-\s]?carried?\s*(?:approximately\s*|approx\.?\s*|about\s*)?(\d+)\s*(?:–|-|to)\s*(\d+)\s*m/i,
+    /hand[-\s]?carried?\s*(?:approximately\s*|approx\.?\s*|about\s*)?(\d+)\s*m/i,
+    /(?:waste|materials?).*?(?:hand[-\s]?carried?|carried).*?(\d+)\s*(?:–|-|to)\s*(\d+)\s*m/i,
+    /(?:waste|materials?).*?(?:hand[-\s]?carried?|carried).*?(\d+)\s*m/i,
     /waste\s+(?:to\s+be\s+)?cart(?:ed)?\s*(\d+)\s*m/i,
+    /(\d+)\s*(?:–|-|to)\s*(\d+)\s*m\s+(?:hand[-\s]?carry|carry|carting)/i,
     /(\d+)\s*m\s+(?:to\s+)?(?:skip|bin)/i,
     /(\d+)\s*m\s+carting/i,
     /carting\s+distance\s+(\d+)\s*m/i,
+    // Intentionally NO bare "approximately N–M m" pattern — that over-maps
+    // deck dimensions / other distances into material_carry_distance.
   ];
   for (const pattern of patterns) {
     const match = text.match(pattern);
     if (match) {
-      const value = Number(match[1]);
-      if (Number.isFinite(value) && value > 0) return value;
+      const a = Number(match[1]);
+      const b = match[2] != null ? Number(match[2]) : null;
+      if (Number.isFinite(a) && a > 0) {
+        // Prefer upper bound of a range for band mapping (25–30 → 30 → 10–30m).
+        if (b != null && Number.isFinite(b) && b > 0) {
+          return Math.max(a, b);
+        }
+        return a;
+      }
     }
   }
   return null;
@@ -1199,7 +1213,19 @@ function mapAccessConstraint(brief: string): string | null {
   if (includesAny(brief, ["very poor access", "very_poor access"])) {
     return "Difficult";
   }
-  if (includesAny(brief, ["poor access", "difficult access", "access is poor"])) {
+  if (
+    includesAny(brief, [
+      "poor access",
+      "difficult access",
+      "access is poor",
+      "narrow access",
+      "narrow side access",
+      "restricted access",
+      "restricted site access",
+      "difficult/restricted access",
+      "difficult / restricted access",
+    ])
+  ) {
     return "Difficult";
   }
   if (includesAny(brief, ["moderate access"])) {
@@ -1285,6 +1311,40 @@ export function extractConstraintsFromBrief(
       key: "by_others_trades",
       label: "By-others trades",
       value: "Yes",
+    });
+  }
+
+  if (
+    includesAny(brief, [
+      "occupied site",
+      "occupied dwelling",
+      "site occupied",
+      "house occupied",
+      "occupied during",
+      "client living on site",
+    ])
+  ) {
+    constraints.push({
+      key: "occupied_site",
+      label: "Occupied site",
+      value: "Yes",
+    });
+  }
+
+  if (
+    includesAny(brief, [
+      "upper floor",
+      "upper-floor",
+      "first floor",
+      "second floor",
+      "upstairs",
+      "above ground floor",
+    ])
+  ) {
+    constraints.push({
+      key: "floor_level",
+      label: "Floor level",
+      value: "Upper floor",
     });
   }
 

@@ -43,14 +43,40 @@ export type WorkAreaPresentationTotals<T extends EstimatePresentationLine = Esti
 /**
  * Work-area rollup: sum persisted line money via commercial-engine aggregate.
  * Margin is derived from aggregate totals (not unrounded client division).
+ *
+ * Headings: empty/orphan names → "Unallocated" (never invent Work Area labels
+ * from calculator categories). Pass `confirmedWorkAreaNames` to keep only real
+ * project Work Areas as named groups.
  */
 export function presentEstimateWorkAreaTotals<T extends EstimatePresentationLine>(
-  items: readonly T[]
+  items: readonly T[],
+  opts?: {
+    readonly confirmedWorkAreaNames?: readonly string[];
+  }
 ): WorkAreaPresentationTotals<T>[] {
+  const confirmed = opts?.confirmedWorkAreaNames
+    ? new Set(
+        opts.confirmedWorkAreaNames
+          .map((n) => n.trim().toLowerCase())
+          .filter(Boolean)
+      )
+    : null;
   const included = items.filter((item) => item.includedInTotal !== false);
   const byArea = new Map<string, T[]>();
   for (const item of included) {
-    const name = item.workAreaName || "General";
+    const raw = item.workAreaName?.trim() || "";
+    let name: string;
+    if (!raw) {
+      name = "Unallocated";
+    } else if (
+      confirmed &&
+      confirmed.size > 0 &&
+      !confirmed.has(raw.toLowerCase())
+    ) {
+      name = "Unallocated";
+    } else {
+      name = raw;
+    }
     const list = byArea.get(name) ?? [];
     list.push(item);
     byArea.set(name, list);

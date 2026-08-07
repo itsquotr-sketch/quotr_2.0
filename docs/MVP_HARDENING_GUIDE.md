@@ -410,4 +410,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-06 |
 | Stage 0 status | Complete |
-| Next stage | Stage 3.1B **BLOCKED BY PREVIEW DEFECTS** (Owner E2E DEF-7E-003). 3.1B.7G Complete — Local; 7F owner results Pending. Production **Disabled**. Stage 3.2 **Not Started**. |
+| Next stage | Stage 3.1B **BLOCKED BY PREVIEW DEFECTS** (Owner E2E DEF-7E-003). 3.1B.7G Complete — Local; 7F-R1 Complete — Local / Preview Retest Pending; 7F owner results Pending. Production **Disabled**. Stage 3.2 **Not Started**. |

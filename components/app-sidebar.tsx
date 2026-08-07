@@ -32,7 +32,7 @@ export function AppSidebarNav({
   const pathname = usePathname();
 
   return (
-    <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground print:hidden md:flex">
+    <aside className="hidden h-dvh w-[248px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground print:hidden md:flex">
       <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-4">
         <div className="rounded-md border border-white/10 bg-white/[0.97] px-2.5 py-1">
           <QuotrLogo height={28} />

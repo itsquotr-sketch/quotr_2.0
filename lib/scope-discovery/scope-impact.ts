@@ -219,6 +219,47 @@ export function isFactMaterialForDiscoveryStale(factKey: string): boolean {
   return impact.classification === "FULL_REANALYSIS_REQUIRED";
 }
 
+/**
+ * Ordinary Site Constraint template keys — refine pricing/logistics detail.
+ * They must not stale Scope Review (FULL_REANALYSIS is reserved for high-level
+ * brief / Work Area / unclassified project-level changes).
+ */
+export const ORDINARY_CONSTRAINT_KEYS = Object.freeze(
+  new Set([
+    "site_access",
+    "floor_level",
+    "material_carry_distance",
+    "waste_bin_access",
+    "services_isolated",
+    "occupied_site",
+    "working_hours",
+    "client_supplied_items",
+    "by_others_trades",
+    "site_slope",
+    "consent_engineering",
+    "parking",
+    "noise_restrictions",
+    "dust_control",
+    "protection_required",
+  ])
+);
+
+/**
+ * Constraints that participate in discovery-run stale fingerprints.
+ * Ordinary templates are non-material. Unknown keys default to non-material
+ * so Site Constraints edits cannot falsely stale a confirmed Scope Review.
+ */
+export function isConstraintMaterialForDiscoveryStale(
+  constraintKey: string
+): boolean {
+  const key = constraintKey.trim().toLowerCase();
+  if (!key) return false;
+  if (ORDINARY_CONSTRAINT_KEYS.has(key)) return false;
+  // Dotted / WA-scoped constraint-like keys behave as detail.
+  if (key.includes(".")) return false;
+  return false;
+}
+
 export type ScopeChangeRecommendation = {
   readonly id: string;
   readonly workAreaId: string | null;

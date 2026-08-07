@@ -25,6 +25,7 @@ import type {
   WorkAreaFactHighlight,
   WorkAreaSummaryLists,
 } from "@/lib/assistant/stage-completion-summaries";
+import { compactSummaryOverflow } from "@/lib/assistant/stage-completion-summaries";
 import { cn } from "@/lib/utils";
 
 function CompactLine({ children }: { children: ReactNode }) {
@@ -106,9 +107,92 @@ export function ScopeReviewCollapsedSummary({
   const parts = [
     `${lists.included.length} included`,
     `${lists.notRequired.length} not required`,
-    `${lists.needsDetail.length} need detail`,
   ];
+  if (lists.needsDetail.length > 0) {
+    parts.push(`${lists.needsDetail.length} need detail`);
+  }
   return <CompactLine>{parts.join(" · ")}</CompactLine>;
+}
+
+/** Named Included / Not required / Needs detail lists with compact overflow. */
+export function ScopeReviewConfirmedSummaryLists({
+  lists,
+  workAreaLabel,
+}: {
+  lists: ScopeItemSummaryLists;
+  workAreaLabel?: string;
+}) {
+  return (
+    <div className="space-y-3 text-sm">
+      {workAreaLabel ? (
+        <p className="font-medium text-foreground">{workAreaLabel}</p>
+      ) : null}
+      <SummaryCategory
+        title="Included"
+        marker="✓"
+        items={lists.included}
+        emptyLabel="None included"
+      />
+      <SummaryCategory
+        title="Not required"
+        marker="×"
+        items={lists.notRequired}
+        emptyLabel="None marked not required"
+      />
+      {lists.needsDetail.length > 0 ? (
+        <SummaryCategory
+          title="Needs detail"
+          marker="△"
+          items={lists.needsDetail}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+function SummaryCategory({
+  title,
+  marker,
+  items,
+  emptyLabel,
+}: {
+  title: string;
+  marker: string;
+  items: readonly string[];
+  emptyLabel?: string;
+}) {
+  const { visible, overflow } = compactSummaryOverflow(items);
+  return (
+    <div>
+      <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+        {title}
+        {items.length > 0 ? (
+          <span className="ml-1 font-normal normal-case text-muted-foreground/80">
+            ({items.length})
+          </span>
+        ) : null}
+      </p>
+      {items.length === 0 ? (
+        emptyLabel ? (
+          <p className="mt-1 text-xs text-muted-foreground">{emptyLabel}</p>
+        ) : null
+      ) : (
+        <ul className="mt-1 space-y-0.5">
+          {visible.map((item) => (
+            <li key={item} className="text-sm leading-snug">
+              <span className="mr-1.5 text-muted-foreground" aria-hidden>
+                {marker}
+              </span>
+              {item}
+            </li>
+          ))}
+          {overflow > 0 ? (
+            <li className="text-xs text-muted-foreground">+{overflow} more</li>
+          ) : null}
+        </ul>
+      )}
+    </div>
+  );
 }
 
 export function QualityCollapsedSummary({

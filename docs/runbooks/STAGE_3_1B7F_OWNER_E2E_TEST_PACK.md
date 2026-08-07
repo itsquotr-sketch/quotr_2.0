@@ -1,8 +1,9 @@
 # Stage 3.1B.7F — Owner Preview E2E Test Pack
 
-**Status:** Ready for Owner Execution  
+**Status:** Ready for Owner Execution (after 7F-R1 Preview retest for Deck defects)  
 **Date:** 2026-08-07  
 **Closes:** DEF-7E-003 (when all three journeys PASS)  
+**7F-R1 Deck retest first:** `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`  
 **Preview flag:** `SCOPE_DISCOVERY_ENABLED=true` on Preview branch  
 **Production:** Remains **Disabled**  
 **Results capture:** `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md`  

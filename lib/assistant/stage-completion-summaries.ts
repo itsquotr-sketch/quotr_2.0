@@ -398,6 +398,22 @@ export type ScopeItemSummaryLists = {
   readonly needsDetail: readonly string[];
 };
 
+/** Compact visible items + overflow count for Scope Review confirmed summaries. */
+export const SCOPE_SUMMARY_VISIBLE_LIMIT = 3;
+
+export function compactSummaryOverflow(
+  items: readonly string[],
+  limit: number = SCOPE_SUMMARY_VISIBLE_LIMIT
+): { readonly visible: readonly string[]; readonly overflow: number } {
+  if (items.length <= limit) {
+    return { visible: items, overflow: 0 };
+  }
+  return {
+    visible: items.slice(0, limit),
+    overflow: items.length - limit,
+  };
+}
+
 export function buildScopeItemSummaryLists(params: {
   readonly suggestions: readonly {
     readonly proposedTitle: string;

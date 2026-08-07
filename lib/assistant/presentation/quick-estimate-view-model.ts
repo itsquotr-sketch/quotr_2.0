@@ -7,12 +7,27 @@
 
 export type QuickEstimateStatusKind = "ready" | "attention" | "pending" | "stale";
 
+export type QuickEstimateAttentionItem = {
+  readonly id: string;
+  readonly label: string;
+  readonly detail: string;
+  /** Stage / section id for Review navigation when practical. */
+  readonly reviewTarget?:
+    | "questions"
+    | "scopeReview"
+    | "constraints"
+    | "estimateReview"
+    | "quality";
+};
+
 export type QuickEstimateStatusPresentation = {
   readonly kind: QuickEstimateStatusKind;
   /** Concise one-line status, e.g. "Ready for pricing" / "2 items need attention". */
   readonly statusLabel: string;
-  /** Count of attention items when kind === "attention". */
+  /** Count of attention items when kind === "attention" — equals attentionItems.length. */
   readonly attentionCount: number;
+  /** Exact named items behind the attention count (single authoritative list). */
+  readonly attentionItems: readonly QuickEstimateAttentionItem[];
   /** True blockers that must stay visible outside collapsed sections. */
   readonly blockerLabels: readonly string[];
 };
@@ -32,15 +47,81 @@ export type QuickEstimateScopeSummaryLines = {
 };
 
 /**
+ * Build one authoritative attention-item list from readiness inputs.
+ * Count must equal items.length — no phantom category inflation.
+ */
+export function buildQuickEstimateAttentionItems(params: {
+  readonly missingLabels?: readonly string[];
+  readonly clarificationLabels?: readonly string[];
+  readonly pendingProposalCount?: number;
+  readonly unresolvedScopeImpactLabels?: readonly string[];
+}): readonly QuickEstimateAttentionItem[] {
+  const items: QuickEstimateAttentionItem[] = [];
+
+  for (const [index, label] of (params.missingLabels ?? []).entries()) {
+    const trimmed = label.trim();
+    if (!trimmed) continue;
+    items.push({
+      id: `missing:${index}:${trimmed}`,
+      label: trimmed,
+      detail: "Needs confirmation",
+      reviewTarget: "questions",
+    });
+  }
+
+  for (const [index, label] of (params.clarificationLabels ?? []).entries()) {
+    const trimmed = label.trim();
+    if (!trimmed) continue;
+    items.push({
+      id: `clarification:${index}:${trimmed}`,
+      label: trimmed,
+      detail: "Open clarification",
+      reviewTarget: "scopeReview",
+    });
+  }
+
+  const pending = params.pendingProposalCount ?? 0;
+  if (pending > 0) {
+    items.push({
+      id: `pending-proposals:${pending}`,
+      label:
+        pending === 1
+          ? "Scope item to review"
+          : `${pending} scope items to review`,
+      detail: "Awaiting confirmation",
+      reviewTarget: "scopeReview",
+    });
+  }
+
+  for (const [index, label] of (
+    params.unresolvedScopeImpactLabels ?? []
+  ).entries()) {
+    const trimmed = label.trim();
+    if (!trimmed) continue;
+    items.push({
+      id: `scope-impact:${index}:${trimmed}`,
+      label: trimmed,
+      detail: "Suggested scope change",
+      reviewTarget: "scopeReview",
+    });
+  }
+
+  return items;
+}
+
+/**
  * Build concise project-status for the Quick Estimate rail.
- * Does not compute confidence or money — only labels from counts.
+ * Does not compute confidence or money — only labels from exact items.
  */
 export function buildQuickEstimateStatusPresentation(params: {
   readonly hasEstimate: boolean;
   readonly isStale?: boolean;
   readonly canGenerateEstimate?: boolean;
-  readonly missingCount: number;
-  readonly outstandingClarificationCount: number;
+  /** Prefer exact items; when provided, attentionCount === attentionItems.length. */
+  readonly attentionItems?: readonly QuickEstimateAttentionItem[];
+  /** @deprecated Prefer attentionItems — kept for callers that only have counts. */
+  readonly missingCount?: number;
+  readonly outstandingClarificationCount?: number;
   readonly pendingProposalCount?: number;
   readonly unresolvedScopeImpactCount?: number;
   readonly assumptionCritical?: boolean;
@@ -54,35 +135,37 @@ export function buildQuickEstimateStatusPresentation(params: {
     blockers.push("Assumed dimensions affect this estimate — confirm before pricing.");
   }
 
-  const attentionParts: string[] = [];
-  if (params.missingCount > 0) {
-    attentionParts.push(
-      `${params.missingCount} unanswered detail${params.missingCount === 1 ? "" : "s"}`
-    );
-  }
-  if (params.outstandingClarificationCount > 0) {
-    attentionParts.push(
-      `${params.outstandingClarificationCount} open clarification${params.outstandingClarificationCount === 1 ? "" : "s"}`
-    );
-  }
-  if ((params.pendingProposalCount ?? 0) > 0) {
-    attentionParts.push(
-      `${params.pendingProposalCount} item${params.pendingProposalCount === 1 ? "" : "s"} to review`
-    );
-  }
-  if ((params.unresolvedScopeImpactCount ?? 0) > 0) {
-    attentionParts.push(
-      `${params.unresolvedScopeImpactCount} suggested scope change${params.unresolvedScopeImpactCount === 1 ? "" : "s"} open`
-    );
-  }
+  const attentionItems = params.attentionItems
+    ? [...params.attentionItems]
+    : buildQuickEstimateAttentionItems({
+        missingLabels: (params.missingCount ?? 0) > 0
+          ? Array.from({ length: params.missingCount ?? 0 }, () => "Unanswered detail")
+          : [],
+        clarificationLabels:
+          (params.outstandingClarificationCount ?? 0) > 0
+            ? Array.from(
+                { length: params.outstandingClarificationCount ?? 0 },
+                () => "Open clarification"
+              )
+            : [],
+        pendingProposalCount: params.pendingProposalCount,
+        unresolvedScopeImpactLabels:
+          (params.unresolvedScopeImpactCount ?? 0) > 0
+            ? Array.from(
+                { length: params.unresolvedScopeImpactCount ?? 0 },
+                () => "Suggested scope change"
+              )
+            : [],
+      });
 
-  const attentionCount = attentionParts.length;
+  const attentionCount = attentionItems.length;
 
   if (params.isStale) {
     return {
       kind: "stale",
       statusLabel: "Needs recalculation",
       attentionCount,
+      attentionItems,
       blockerLabels: blockers,
     };
   }
@@ -92,6 +175,7 @@ export function buildQuickEstimateStatusPresentation(params: {
       kind: "ready",
       statusLabel: "Ready for pricing",
       attentionCount: 0,
+      attentionItems: [],
       blockerLabels: blockers,
     };
   }
@@ -104,6 +188,7 @@ export function buildQuickEstimateStatusPresentation(params: {
           ? "1 item needs attention"
           : `${attentionCount} items need attention`,
       attentionCount,
+      attentionItems,
       blockerLabels: blockers,
     };
   }
@@ -113,6 +198,7 @@ export function buildQuickEstimateStatusPresentation(params: {
       kind: "pending",
       statusLabel: "Ready to generate",
       attentionCount,
+      attentionItems,
       blockerLabels: blockers,
     };
   }
@@ -121,6 +207,7 @@ export function buildQuickEstimateStatusPresentation(params: {
     kind: "pending",
     statusLabel: params.readinessLabel?.trim() || "Waiting for inputs",
     attentionCount,
+    attentionItems,
     blockerLabels: blockers,
   };
 }

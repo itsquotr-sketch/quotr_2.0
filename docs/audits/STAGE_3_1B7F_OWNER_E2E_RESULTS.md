@@ -1,8 +1,10 @@
 # Stage 3.1B.7F — Owner Preview E2E Results
 
-**Status:** Pending Owner Capture  
+**Status:** Pending Owner Capture (7F-R1 remediations Complete — Local; Preview Retest Pending)  
 **Date opened:** 2026-08-07  
 **Test pack:** `docs/runbooks/STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`  
+**7F-R1 retest:** `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`  
+**Remediation:** `docs/implementation/STAGE_3_1B7FR1_DECK_E2E_REMEDIATION_COMPLETION.md`  
 **Defect register:** `docs/audits/STAGE_3_1B7E_PREVIEW_DEFECT_REGISTER.md`  
 **Performance:** `docs/performance/STAGE_3_1B_PREVIEW_PERFORMANCE_RESULTS.md`  
 

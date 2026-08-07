@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.7E Complete — Local; **3.1B.7F Complete — Local (gate pack)** — Owner E2E results Pending; **3.1B.7G Complete — Local**; **BLOCKED BY PREVIEW DEFECTS**; Production **Disabled**)   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.7E Complete — Local; **3.1B.7F Complete — Local (gate pack)** — Owner E2E results Pending; **3.1B.7F-R1 Complete — Local, Preview Retest Pending**; **3.1B.7G Complete — Local**; **BLOCKED BY PREVIEW DEFECTS**; Production **Disabled**)   
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -85,9 +85,10 @@
 - Stage 3.1B.7D final Assistant UX polish: **Complete — Local** — state inventory, loading/saving/error consistency, empty states, reduced-motion transitions, action language, Preview instrumentation + sign-off matrix; `verify-stage-3-1b7d-final-assistant-ux.ts`; Scope Discovery Preview sign-off **Pending Owner Test**; production **Disabled**.
 - Stage 3.1B.7E Preview release hardening: **Complete — Local / BLOCKED BY PREVIEW DEFECTS** — Preview flag empty defect fixed (`SCOPE_DISCOVERY_ENABLED=true` on Preview branch); Production flag absent confirmed; defect register + enablement runbook; `verify-stage-3-1b7e-preview-release-hardening.ts`; Owner Deck/Bathroom/Fitout E2E **Pending** (DEF-7E-003); production **Disabled**.
 - Stage 3.1B.7F Owner Preview E2E gate: **Complete — Local (pack prepared)** — `STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md` + `STAGE_3_1B7F_OWNER_E2E_RESULTS.md` + quality rubric + latency/provider/log/commercial capture; `verify-stage-3-1b7f-owner-e2e-gate.ts`; live owner results **Pending**; Stage 3.1B **not** marked complete; production **Disabled**.
+- Stage 3.1B.7F-R1 Deck E2E remediation: **Complete — Local, Preview Retest Pending** — false stale normalise; breakdown WA authority; description compact surface; scope summary lists; attention items; constraint heuristics (DEF-7E-006); shell scroll; Scope Review remount trim; manual Add scope **BLOCKED** (no migration 030); `verify-stage-3-1b7fr1-deck-e2e-remediation.ts`.
 - Stage 3.1B.7G Assistant density / sticky Quick Estimate: **Complete — Local** — commercial-first hierarchy, collapsible secondary sections, CSS sticky desktop rail, mobile compact summary view-model, centre one-line completed summaries; `verify-stage-3-1b7g-assistant-density-sticky-estimate.ts`; responsive architecture documented; 7F E2E pack updated; production **Disabled**.
 - Assistant UX refinement programme: **Complete — Local** (7A–7D + 7G density). Broader Pricing/Quote UX: **Planned separately**.
-- Stage 3.1B release status: **BLOCKED BY PREVIEW DEFECTS** (owner E2E DEF-7E-003).
+- Stage 3.1B release status: **BLOCKED BY PREVIEW DEFECTS** (owner E2E DEF-7E-003 + Preview retest of DEF-7F-001…003).
 - Scope Discovery Preview sign-off: **Pending Owner Test**.
 - Do not change Analyse Job behaviour, commercial formulas, or Company DNA without explicit authorisation.
 - Stage 3.1B.7 missing-scope — Deferred until Preview gate clears.

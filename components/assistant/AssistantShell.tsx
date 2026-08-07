@@ -176,6 +176,9 @@ export function AssistantShell({
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [isEditingQuality, setIsEditingQuality] = useState(false);
   const qualityCardRef = useRef<HTMLDivElement | null>(null);
+  const questionsCardRef = useRef<HTMLDivElement | null>(null);
+  const estimateReviewCardRef = useRef<HTMLDivElement | null>(null);
+  const constraintsCardRef = useRef<HTMLDivElement | null>(null);
   const [savedQualityLevel, setSavedQualityLevel] = useState<QualityLevel | null>(
     project.qualityLevel
   );
@@ -358,6 +361,24 @@ export function AssistantShell({
       scrollTarget: qualityCardRef,
     });
   }, [scopeDiscoveryEnabled, scopeReviewComplete]);
+
+  const handleReviewAttention = useCallback(
+    (item: { reviewTarget?: string }) => {
+      const target = item.reviewTarget;
+      const el =
+        target === "scopeReview"
+          ? scopeReviewCardRef.current
+          : target === "quality"
+            ? qualityCardRef.current
+            : target === "constraints"
+              ? constraintsCardRef.current
+              : target === "estimateReview"
+                ? estimateReviewCardRef.current
+                : questionsCardRef.current ?? estimateReviewCardRef.current;
+      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+    },
+    []
+  );
 
   const qualityUnlocked =
     !scopeDiscoveryEnabled || scopeReviewComplete || qualitySubmitted;
@@ -994,6 +1015,7 @@ export function AssistantShell({
               )}
               canCollapse={false}
               isActive={activeDisclosureStage === "questions"}
+              cardRef={questionsCardRef}
             >
               <QuestionBlock
                 questions={questionBlock.questions}
@@ -1072,6 +1094,7 @@ export function AssistantShell({
               canCollapse={questionsSubmitted}
               forceExpanded={Boolean(estimate?.isStale)}
               isActive={activeDisclosureStage === "estimateReview"}
+              cardRef={estimateReviewCardRef}
               summaryContent={
                 <EstimateReviewCollapsedSummary
                   model={estimateReviewSummaryModel}
@@ -1134,6 +1157,7 @@ export function AssistantShell({
               )}
               canCollapse={constraintsSubmitted}
               isActive={activeDisclosureStage === "constraints"}
+              cardRef={constraintsCardRef}
               summaryContent={
                 <ConstraintsCollapsedSummary chips={constraintChips} />
               }
@@ -1195,6 +1219,7 @@ export function AssistantShell({
             onRegenerate={handleRegenerateEstimate}
             onMarginSave={estimateReady ? handleMarginSave : undefined}
             onEditQuality={qualitySubmitted ? handleQualityEdit : undefined}
+            onReviewAttention={handleReviewAttention}
           />
         </div>
       </div>

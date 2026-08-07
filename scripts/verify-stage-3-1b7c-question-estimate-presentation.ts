@@ -235,14 +235,36 @@ const erSummary = buildEstimateReviewWorkAreaSummary({
 });
 check(
   "estimate review summary-first fields",
-  erSummary.descriptionLabel === "Ready" &&
+  erSummary.descriptionReady &&
+    erSummary.descriptionLabel.includes("Supply and install") &&
     erSummary.measurementsLabel.includes("5") &&
     erSummary.outstandingLabel.includes("pile") &&
     erSummary.hasOutstanding
 );
 check(
+  "estimate review missing description shows Not added",
+  buildEstimateReviewWorkAreaSummary({
+    workAreaId: "wa2",
+    workAreaType: "deck",
+    workAreaName: "Deck",
+    summary: "Timber deck",
+    quoteDescription: null,
+    facts: [],
+    missingItems: [],
+    activeQuestions: [],
+    assumptions: [],
+  }).descriptionLabel === "Not added"
+);
+check(
   "ScopeSummaryBlock has Review details",
-  fileHas("components/assistant/ScopeSummaryBlock.tsx", "Review details")
+  fileHas(
+    "components/assistant/ScopeSummaryBlock.tsx",
+    "ASSISTANT_ACTION_LABELS.reviewDetails"
+  ) &&
+    fileHas(
+      "lib/assistant/presentation/action-labels.ts",
+      'reviewDetails: "Review details"'
+    )
 );
 check(
   "ScopeSummaryBlock retains fact rows / missing section",

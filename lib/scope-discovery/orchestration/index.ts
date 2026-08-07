@@ -66,7 +66,11 @@ export {
   decideIdempotencyAction,
 } from "./idempotency";
 
-export { evaluateStaleRun } from "./stale-analysis";
+export {
+  evaluateStaleRun,
+  normaliseSnapshotForStaleCompare,
+  diffMaterialSourceFields,
+} from "./stale-analysis";
 
 export {
   buildPriorDecisionInputs,

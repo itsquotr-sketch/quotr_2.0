@@ -50,7 +50,7 @@ import {
   ScopeImpactRecommendationsPanel,
   type ScopeImpactRecommendationRowStatus,
 } from "@/components/assistant/ScopeImpactRecommendationsPanel";
-import { ScopeReviewCollapsedSummary } from "@/components/assistant/StageCollapsedSummaries";
+import { ScopeReviewCollapsedSummary, ScopeReviewConfirmedSummaryLists } from "@/components/assistant/StageCollapsedSummaries";
 import type { ScopeReview } from "@/lib/assistant/types";
 import { buildScopeItemSummaryLists } from "@/lib/assistant/stage-completion-summaries";
 import { cn } from "@/lib/utils";
@@ -335,9 +335,7 @@ export function ScopeDiscoveryReviewBlock({
             : outcome.message
         );
         await refreshResults();
-        startTransition(() => {
-          router.refresh();
-        });
+        // Results are already refreshed client-side — avoid full Assistant remount.
       } catch {
         setAnalyseError("Scope analysis could not be completed. Try again.");
       } finally {
@@ -351,7 +349,6 @@ export function ScopeDiscoveryReviewBlock({
       isSavingBatch,
       projectId,
       refreshResults,
-      router,
     ]
   );
 
@@ -480,9 +477,11 @@ export function ScopeDiscoveryReviewBlock({
             : "Scope item included."
       );
       await refreshResults();
-      startTransition(() => {
-        router.refresh();
-      });
+      if (outcome.createdWorkAreaId) {
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     } catch {
       const message = "That action could not be completed. Try again.";
       if (kind === "modify") setEditError(message);
@@ -579,9 +578,7 @@ export function ScopeDiscoveryReviewBlock({
       setIsEditingScope(false);
       setStatusMessage(SCOPE_DISCOVERY_UI_COPY.scopeConfirmed);
       await refreshResults();
-      startTransition(() => {
-        router.refresh();
-      });
+      // Batch confirm does not create Work Areas / Facts — skip full remount.
     } catch {
       setBatchError("Scope could not be confirmed. Try again.");
       setStatusMessage(null);
@@ -656,9 +653,6 @@ export function ScopeDiscoveryReviewBlock({
       setImpactStatus(rec.id, "applied");
       setStatusMessage(outcome.message);
       await refreshResults();
-      startTransition(() => {
-        router.refresh();
-      });
     } catch {
       setImpactStatus(rec.id, "failed");
       setImpactError(rec.id, "That scope change could not be applied. Try again.");
@@ -699,9 +693,6 @@ export function ScopeDiscoveryReviewBlock({
       setImpactStatus(rec.id, "kept");
       setStatusMessage(outcome.message);
       await refreshResults();
-      startTransition(() => {
-        router.refresh();
-      });
     } catch {
       setImpactStatus(rec.id, "failed");
       setImpactError(rec.id, "Could not keep current scope. Try again.");
@@ -995,34 +986,7 @@ export function ScopeDiscoveryReviewBlock({
                     <p className="font-medium">
                       {SCOPE_DISCOVERY_UI_COPY.scopeConfirmed}
                     </p>
-                    <ul className="space-y-1 text-muted-foreground">
-                      <li>
-                        {SCOPE_DISCOVERY_UI_COPY.included}:{" "}
-                        {
-                          batchEligible.filter(
-                            (s) =>
-                              s.decisionState === "ACCEPTED" ||
-                              s.decisionState === "MODIFIED"
-                          ).length
-                        }
-                      </li>
-                      <li>
-                        {SCOPE_DISCOVERY_UI_COPY.dismissed}:{" "}
-                        {
-                          batchEligible.filter(
-                            (s) => s.decisionState === "REJECTED"
-                          ).length
-                        }
-                      </li>
-                      <li>
-                        {SCOPE_DISCOVERY_UI_COPY.needsDetail}:{" "}
-                        {
-                          batchEligible.filter((s) =>
-                            String(s.latestReasonCode ?? "").includes("pending")
-                          ).length
-                        }
-                      </li>
-                    </ul>
+                    <ScopeReviewConfirmedSummaryLists lists={scopeItemLists} />
                     <Button
                       type="button"
                       variant="outline"

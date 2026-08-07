@@ -20,7 +20,9 @@
 **Assistant UX refinement programme:** **Complete — Local** (7A–7D + 7G density)  
 **UI/UX Overhaul (Pricing/Quote):** **Planned separately**  
 **Scope Discovery Preview sign-off:** **Pending Owner Test**  
-**Stage 3.1B release status:** **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E)  
+**Stage 3.1B release status:** **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E; 7F-R1 Preview retest Pending)
+
+**3.1B.7F-R1:** Complete — Local — `docs/implementation/STAGE_3_1B7FR1_DECK_E2E_REMEDIATION_COMPLETION.md`  
 **Preview feature:** **Enabled on Preview branch** (`SCOPE_DISCOVERY_ENABLED=true` for `hardening/stage-2a-security`)  
 **Production feature:** **Disabled**  
 **Feature flag:** **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off)  

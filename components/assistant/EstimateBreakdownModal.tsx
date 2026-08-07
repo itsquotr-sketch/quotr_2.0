@@ -77,12 +77,36 @@ function includedItems(items: EstimateLineItem[]) {
   return items.filter((item) => item.includedInTotal !== false);
 }
 
-function groupByWorkArea(items: EstimateLineItem[]) {
-  return includedItems(items).reduce<Record<string, EstimateLineItem[]>>((acc, item) => {
-    if (!acc[item.workAreaName]) acc[item.workAreaName] = [];
-    acc[item.workAreaName].push(item);
-    return acc;
-  }, {});
+function groupByWorkArea(
+  items: EstimateLineItem[],
+  confirmedNames?: readonly string[]
+) {
+  const confirmed = confirmedNames
+    ? new Set(
+        confirmedNames.map((n) => n.trim().toLowerCase()).filter(Boolean)
+      )
+    : null;
+  return includedItems(items).reduce<Record<string, EstimateLineItem[]>>(
+    (acc, item) => {
+      const raw = item.workAreaName?.trim() || "";
+      let name: string;
+      if (!raw) {
+        name = "Unallocated";
+      } else if (
+        confirmed &&
+        confirmed.size > 0 &&
+        !confirmed.has(raw.toLowerCase())
+      ) {
+        name = "Unallocated";
+      } else {
+        name = raw;
+      }
+      if (!acc[name]) acc[name] = [];
+      acc[name].push(item);
+      return acc;
+    },
+    {}
+  );
 }
 
 function sumByCategory(items: EstimateLineItem[]) {
@@ -118,8 +142,13 @@ function sumByCategory(items: EstimateLineItem[]) {
   return totals;
 }
 
-function sumWorkAreaTotals(items: EstimateLineItem[]) {
-  return presentEstimateWorkAreaTotals(includedItems(items));
+function sumWorkAreaTotals(
+  items: EstimateLineItem[],
+  confirmedNames?: readonly string[]
+) {
+  return presentEstimateWorkAreaTotals(includedItems(items), {
+    confirmedWorkAreaNames: confirmedNames,
+  });
 }
 
 function ProportionalBar({
@@ -558,12 +587,19 @@ export function EstimateBreakdownModal({
   const [activeTab, setActiveTab] = useState<BreakdownTab>("summary");
   const [expandedWorkArea, setExpandedWorkArea] = useState<string | null>(null);
 
+  const confirmedWorkAreaNames = useMemo(
+    () => estimate?.includedWorkAreas.map((wa) => wa.name) ?? [],
+    [estimate]
+  );
+
   const groupedLineItems = useMemo(
     () =>
       estimate
-        ? Object.entries(groupByWorkArea(estimate.lineItems))
+        ? Object.entries(
+            groupByWorkArea(estimate.lineItems, confirmedWorkAreaNames)
+          )
         : [],
-    [estimate]
+    [estimate, confirmedWorkAreaNames]
   );
 
   const categoryTotals = useMemo(
@@ -572,8 +608,11 @@ export function EstimateBreakdownModal({
   );
 
   const workAreaTotals = useMemo(
-    () => (estimate ? sumWorkAreaTotals(estimate.lineItems) : []),
-    [estimate]
+    () =>
+      estimate
+        ? sumWorkAreaTotals(estimate.lineItems, confirmedWorkAreaNames)
+        : [],
+    [estimate, confirmedWorkAreaNames]
   );
 
   const calibrationSummary = useMemo(

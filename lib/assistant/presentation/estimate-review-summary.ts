@@ -34,6 +34,16 @@ function measurementFactLabels(
     .join(" · ") || "Captured";
 }
 
+function conciseDescriptionPreview(
+  description: string | null | undefined,
+  max = 80
+): string {
+  const text = description?.trim() ?? "";
+  if (!text) return "Not added";
+  if (text.length <= max) return text;
+  return `${text.slice(0, max).trim()}…`;
+}
+
 export function buildEstimateReviewWorkAreaSummary(
   workArea: ScopeReviewWorkArea,
   opts?: {
@@ -56,7 +66,9 @@ export function buildEstimateReviewWorkAreaSummary(
     workAreaId: workArea.workAreaId,
     workAreaName: workArea.workAreaName,
     descriptionReady,
-    descriptionLabel: descriptionReady ? "Ready" : "Add description",
+    descriptionLabel: descriptionReady
+      ? conciseDescriptionPreview(workArea.quoteDescription)
+      : "Not added",
     measurementsLabel: measurementFactLabels(workArea),
     scopeLabel:
       factCount === 0

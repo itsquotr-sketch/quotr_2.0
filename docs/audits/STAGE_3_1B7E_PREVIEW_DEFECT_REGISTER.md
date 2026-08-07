@@ -101,26 +101,35 @@
 | DEF-7E-003 | High | Owner Pending | **Yes** |
 | DEF-7E-004 | Low | Deferred Stage 3.2 | No |
 | DEF-7E-005 | Medium | Owner Pending | No |
-| DEF-7E-006 | Medium | Open — observe in 7F E2E | No |
+| DEF-7E-006 | Medium | Fixed — Local (7F-R1); Preview retest Pending | No |
 
 \* Escalate if Preview auth/admin fails.
 
 ---
 
-## E2E findings (Stage 3.1B.7F)
+## E2E findings (Stage 3.1B.7F / 7F-R1)
 
-No live owner E2E findings were supplied during gate-pack preparation.
-Add new DEF IDs below as journeys are executed.
-
-| ID | Project | Severity | Observed | Expected | Root cause | Release blocker | Fix status | Verification |
-| --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| _(none yet)_ | | | | | | | | |
-
-### Known local verify gap (not live E2E)
+Owner Deck E2E defects remediated locally in **3.1B.7F-R1**. Preview retest
+pending — see `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`.
 
 | ID | Project | Severity | Observed | Expected | Root cause | Release blocker | Fix status | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| DEF-7E-006 | Constraint brief heuristics | Medium | `verify-stage-3-1b6r3` fails: sample “Narrow restricted access… occupied upper floor” does not emit `site_access` / `occupied_site` / `floor_level` via `extractConstraintsFromBrief` | Brief phrases map to supported templates where product intends pre-population | Heuristic phrases narrower than verify sample (`difficult access` works; `narrow`/`restricted access`/`occupied` not in brief extractor) | No until owner E2E shows missing constraints on Preview | **Open — observe in 7F E2E**; narrow fix only if live defect confirmed | Owner Site Constraints check on Deck/Bathroom/Fitout |
+| DEF-7F-001 | Deck | Critical | False Scope Review stale after Scope Details | CURRENT for DETAIL_ONLY / ordinary constraints | Snapshot asymmetry + ordinary constraints in fingerprint | Yes until Preview retest | Fixed — Local (7F-R1) | `verify-stage-3-1b7fr1` FALSE STALE |
+| DEF-7F-002 | Deck | High | Breakdown showed Pergola / External Stairs on Deck-only | Deck (+ Unallocated) only | `mapEstimate` seeded `STATIC_INCLUDED_WORK_AREAS` | Yes until Preview retest | Fixed — Local (7F-R1) | `verify-stage-3-1b7fr1` BREAKDOWN |
+| DEF-7F-003 | Deck | High | Description Add buried under Review details | Immediate Add / Use suggested / Edit | Progressive disclosure nesting | Yes until Preview retest | Fixed — Local (7F-R1) | `verify-stage-3-1b7fr1` DESCRIPTION |
+| DEF-7F-004 | Deck | Medium | Scope Review counts only | Named lists + overflow | Presentation gap | No | Fixed — Local (7F-R1) | SCOPE SUMMARY |
+| DEF-7F-005 | Deck | Medium | Edit scope friction | Checklist immediately | Already present; confirmed + summary UX | No | Complete — Local | EDIT SCOPE |
+| DEF-7F-006 | Deck | Medium | Manual Add scope item missing | Honest manual provenance | Schema/contract cannot represent user origin | No (owner decision for 030) | **BLOCKED** — no unsafe fake | MANUAL SCOPE gate |
+| DEF-7F-007 | Deck | Medium | “N items need attention” without names | Exact item list + Review | Category-count view model | No | Fixed — Local (7F-R1) | ATTENTION |
+| DEF-7F-008 | Deck | Medium | Narrow access / hand-carry not in Site Constraints | Mapped templates | Brief heuristic coverage | No | Fixed — Local (7F-R1) | CONSTRAINTS / DEF-7E-006 |
+| DEF-7F-009 | Deck | Medium | Page scrolls at menu-bar level | Sidebar stable; content scrollport | body / sticky sidebar | No | Fixed — Local (7F-R1) | SCROLL |
+| DEF-7F-010 | Deck | Low | Scope Review felt slow | No avoidable duplicate remount | `refreshResults` + `router.refresh` pairing | No | Fixed — Local (7F-R1) | PERFORMANCE |
+
+### Known local verify gap (DEF-7E-006)
+
+| ID | Project | Severity | Observed | Expected | Root cause | Release blocker | Fix status | Verification |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| DEF-7E-006 | Constraint brief heuristics | Medium | Sample “Narrow restricted access… occupied upper floor” / Deck hand-carry phrases | Brief phrases map to supported templates | Heuristics expanded in 7F-R1 (`mapAccessConstraint`, `matchCartingDistanceM`, occupied/floor) | No | **Fixed — Local (7F-R1)**; Preview retest Pending | `verify-stage-3-1b7fr1` + `verify-stage-3-1b6r3` |
 
 ---
 

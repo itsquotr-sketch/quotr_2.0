@@ -95,6 +95,8 @@ Every Stage 3 release should track:
 - 3.1B.7F completion: `docs/implementation/STAGE_3_1B7F_OWNER_E2E_GATE_COMPLETION.md`
 - 3.1B.7F owner E2E test pack: `docs/runbooks/STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`
 - 3.1B.7F owner E2E results: `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md`
+- 3.1B.7F-R1 remediation: `docs/implementation/STAGE_3_1B7FR1_DECK_E2E_REMEDIATION_COMPLETION.md`
+- 3.1B.7F-R1 Preview retest: `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`
 - 3.1B.7G completion: `docs/implementation/STAGE_3_1B7G_ASSISTANT_DENSITY_STICKY_ESTIMATE_COMPLETION.md`
 - 3.1B.7G preview retest: `docs/runbooks/STAGE_3_1B7G_PREVIEW_RETEST.md`
 - Assistant responsive/mobile architecture: `docs/architecture/QUOTR_ASSISTANT_RESPONSIVE_AND_MOBILE_PRESENTATION.md`

@@ -352,7 +352,7 @@ check(
 );
 check(
   "quick estimate not redesigned (title retained)",
-  estimatePanel.includes("Quick estimate")
+  estimatePanel.includes("Quick Estimate")
 );
 
 // —— No engine / persistence / commercial changes ——

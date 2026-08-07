@@ -382,10 +382,16 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
 
 export function mapEstimate(
   estimate: DbEstimate,
-  lineItems: DbLineItem[]
+  lineItems: DbLineItem[],
+  workAreas: DbWorkArea[] = []
 ): Estimate {
   const mappedLineItems = lineItems.map(mapLineItem);
   const base = buildStaticEstimate(mappedLineItems);
+  const confirmedIncluded = buildIncludedWorkAreasFromDb(workAreas);
+  const excludedFromDb = workAreas
+    .filter((wa) => wa.status === "excluded")
+    .sort((a, b) => a.sort_order - b.sort_order)
+    .map(mapWorkArea);
 
   return {
     ...base,
@@ -415,6 +421,10 @@ export function mapEstimate(
     scopeExclusions: parseJsonStringArray(estimate.exclusions),
     assumptionMetadata: parseAssumptionMetadata(estimate.assumption_metadata),
     lineItems: mappedLineItems,
+    // Authority: only real confirmed project Work Areas — never static mock seed.
+    includedWorkAreas: confirmedIncluded,
+    excludedWorkAreas: excludedFromDb,
+    missingInfoByWorkArea: {},
   };
 }
 
@@ -509,9 +519,9 @@ export function buildAssistantState(input: {
 
   const estimate =
     input.estimate && input.lineItems.length > 0
-      ? mapEstimate(input.estimate, input.lineItems)
+      ? mapEstimate(input.estimate, input.lineItems, input.workAreas)
       : input.estimate
-        ? mapEstimate(input.estimate, input.lineItems)
+        ? mapEstimate(input.estimate, input.lineItems, input.workAreas)
         : null;
 
   const confirmedWorkAreas = input.workAreas.filter(

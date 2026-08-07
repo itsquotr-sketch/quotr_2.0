@@ -29,7 +29,10 @@ import type {
   ScopeDiscoverySuggestionStatus,
 } from "../types";
 import { SOURCE_BOUNDS } from "./types";
-import { isFactMaterialForDiscoveryStale } from "../scope-impact";
+import {
+  isConstraintMaterialForDiscoveryStale,
+  isFactMaterialForDiscoveryStale,
+} from "../scope-impact";
 
 export interface CollectedProjectSources {
   readonly projectId: string;
@@ -202,8 +205,9 @@ export async function collectProjectSources(
     .order("updated_at", { ascending: true })
     .limit(SOURCE_BOUNDS.maxConstraints);
 
-  const constraints: OrchestrationConstraint[] = (constraintRows ?? []).map(
-    (c) => {
+  const constraints: OrchestrationConstraint[] = (constraintRows ?? [])
+    .filter((c) => isConstraintMaterialForDiscoveryStale(String(c.key)))
+    .map((c) => {
       const value = jsonFactValue(c.value);
       return {
         key: String(c.key),
@@ -213,8 +217,7 @@ export async function collectProjectSources(
           shaShort(JSON.stringify(value)),
         ]),
       };
-    }
-  );
+    });
 
   const { data: runRows } = await ctx.supabase
     .from("scope_discovery_runs")
