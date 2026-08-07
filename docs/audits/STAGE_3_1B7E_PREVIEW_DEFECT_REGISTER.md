@@ -107,10 +107,11 @@
 
 ---
 
-## E2E findings (Stage 3.1B.7F / 7F-R1)
+## E2E findings (Stage 3.1B.7F / 7F-R1 / 7F-R2)
 
-Owner Deck E2E defects remediated locally in **3.1B.7F-R1**. Preview retest
-pending — see `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`.
+Owner Deck E2E defects remediated locally in **3.1B.7F-R1**, with final polish in
+**3.1B.7F-R2**. Preview retest pending — see
+`docs/runbooks/STAGE_3_1B7FR2_DECK_PREVIEW_RETEST.md`.
 
 | ID | Project | Severity | Observed | Expected | Root cause | Release blocker | Fix status | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -119,11 +120,16 @@ pending — see `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`.
 | DEF-7F-003 | Deck | High | Description Add buried under Review details | Immediate Add / Use suggested / Edit | Progressive disclosure nesting | Yes until Preview retest | Fixed — Local (7F-R1) | `verify-stage-3-1b7fr1` DESCRIPTION |
 | DEF-7F-004 | Deck | Medium | Scope Review counts only | Named lists + overflow | Presentation gap | No | Fixed — Local (7F-R1) | SCOPE SUMMARY |
 | DEF-7F-005 | Deck | Medium | Edit scope friction | Checklist immediately | Already present; confirmed + summary UX | No | Complete — Local | EDIT SCOPE |
-| DEF-7F-006 | Deck | Medium | Manual Add scope item missing | Honest manual provenance | Schema/contract cannot represent user origin | No (owner decision for 030) | **BLOCKED** — no unsafe fake | MANUAL SCOPE gate |
+| DEF-7F-006 | Deck | Medium | Manual Add scope item missing | Honest manual provenance | Schema/contract cannot represent user origin | No (owner decision for 030) | **Fixed — Local (7F-R2)** — migration 030 + Add UI; Preview DB apply Pending | `verify-stage-3-1b7fr2` MANUAL |
 | DEF-7F-007 | Deck | Medium | “N items need attention” without names | Exact item list + Review | Category-count view model | No | Fixed — Local (7F-R1) | ATTENTION |
 | DEF-7F-008 | Deck | Medium | Narrow access / hand-carry not in Site Constraints | Mapped templates | Brief heuristic coverage | No | Fixed — Local (7F-R1) | CONSTRAINTS / DEF-7E-006 |
 | DEF-7F-009 | Deck | Medium | Page scrolls at menu-bar level | Sidebar stable; content scrollport | body / sticky sidebar | No | Fixed — Local (7F-R1) | SCROLL |
 | DEF-7F-010 | Deck | Low | Scope Review felt slow | No avoidable duplicate remount | `refreshResults` + `router.refresh` pairing | No | Fixed — Local (7F-R1) | PERFORMANCE |
+| DEF-7F-011 | Deck | Medium | “Needs detail” implies fix in Scope Review | To confirm in Scope Details + Review action | Mental model / copy | No | Fixed — Local (7F-R2) | `verify-stage-3-1b7fr2` SCOPE DETAILS |
+| DEF-7F-012 | Deck | Medium | QE attention lacked WA / resolve path | Exact item + WA + Review in Scope Details | Presentation | No | Fixed — Local (7F-R2) | QE ATTENTION |
+| DEF-7F-013 | Deck | Low | Generate / answer save felt delayed | Immediate ack + Saved before refresh | UX / remount | No | Fixed — Local (7F-R2) | PERF marks |
+| DEF-7F-014 | Deck | Medium | Top clipped / bottom whitespace; testing banner | Intentional shell height; banner removed | AppShell / BetaNotice | No | Fixed — Local (7F-R2) | LAYOUT |
+| DEF-7F-015 | Deck | Medium | Mobile header too tall | Compact Back / title / Actions | ProjectHeader | No | Fixed — Local (7F-R2) | MOBILE HEADER |
 
 ### Known local verify gap (DEF-7E-006)
 

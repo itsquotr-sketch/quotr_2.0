@@ -10,18 +10,22 @@ type ProjectWorkspaceHeaderProps = {
   subtitle?: string | null;
 };
 
+/**
+ * Desktop: back + full ProjectHeader metadata.
+ * Mobile: compact Back / title / actions only (3.1B.7F-R2).
+ */
 export function ProjectWorkspaceHeader({
   project,
   subtitle,
 }: ProjectWorkspaceHeaderProps) {
   return (
-    <div className="space-y-3">
+    <div className="space-y-1.5 sm:space-y-3">
       <Link
         href="/app/dashboard"
-        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" />
-        Dashboard
+        <span className="sm:inline">Dashboard</span>
       </Link>
       <ProjectHeader project={project} subtitle={subtitle} />
     </div>

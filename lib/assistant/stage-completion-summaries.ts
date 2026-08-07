@@ -395,6 +395,12 @@ function summariseQuestionGroup(
 export type ScopeItemSummaryLists = {
   readonly included: readonly string[];
   readonly notRequired: readonly string[];
+  /** Downstream Scope Details confirmations — not Scope Review failures. */
+  readonly pendingScopeDetails: readonly {
+    readonly title: string;
+    readonly reason: string;
+  }[];
+  /** @deprecated Use pendingScopeDetails — kept for compact count helpers. */
   readonly needsDetail: readonly string[];
 };
 
@@ -424,7 +430,7 @@ export function buildScopeItemSummaryLists(params: {
 }): ScopeItemSummaryLists {
   const included: string[] = [];
   const notRequired: string[] = [];
-  const needsDetail: string[] = [];
+  const pendingScopeDetails: { title: string; reason: string }[] = [];
 
   for (const s of params.suggestions) {
     const cls = String(s.proposalClass ?? "");
@@ -436,19 +442,36 @@ export function buildScopeItemSummaryLists(params: {
       continue;
     }
     const reason = String(s.latestReasonCode ?? "");
+    const title = s.proposedTitle;
     if (reason.includes("pending") || reason.includes("routed")) {
-      needsDetail.push(s.proposedTitle);
+      const state = String(s.decisionState).toUpperCase();
+      const includedPending =
+        state === "ACCEPTED" ||
+        state === "MODIFIED" ||
+        reason.includes("included_pending") ||
+        reason.includes("pending");
+      pendingScopeDetails.push({
+        title,
+        reason: includedPending
+          ? "Included — detail still needs confirmation"
+          : "Included — condition still needs confirmation",
+      });
       continue;
     }
     const state = String(s.decisionState).toUpperCase();
     if (state === "ACCEPTED" || state === "MODIFIED") {
-      included.push(s.proposedTitle);
+      included.push(title);
     } else if (state === "REJECTED") {
-      notRequired.push(s.proposedTitle);
+      notRequired.push(title);
     }
   }
 
-  return { included, notRequired, needsDetail };
+  return {
+    included,
+    notRequired,
+    pendingScopeDetails,
+    needsDetail: pendingScopeDetails.map((p) => p.title),
+  };
 }
 
 export type EstimateReviewSummaryModel = {

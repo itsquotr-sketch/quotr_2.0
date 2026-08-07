@@ -51,8 +51,14 @@ import {
   type ScopeImpactRecommendationRowStatus,
 } from "@/components/assistant/ScopeImpactRecommendationsPanel";
 import { ScopeReviewCollapsedSummary, ScopeReviewConfirmedSummaryLists } from "@/components/assistant/StageCollapsedSummaries";
+import {
+  AddManualScopeItemForm,
+  ManualScopeItemRow,
+} from "@/components/assistant/AddManualScopeItemForm";
 import type { ScopeReview } from "@/lib/assistant/types";
 import { buildScopeItemSummaryLists } from "@/lib/assistant/stage-completion-summaries";
+import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
+import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
 import { cn } from "@/lib/utils";
 
 type ScopeDiscoveryReviewBlockProps = {
@@ -70,6 +76,8 @@ type ScopeDiscoveryReviewBlockProps = {
   preferredExpanded?: boolean;
   /** Stronger elevation when this is the active incomplete stage. */
   isActiveStage?: boolean;
+  /** Open/scroll to Scope Details for pending confirmation items. */
+  onReviewScopeDetails?: () => void;
 };
 
 type PendingSuggestionAction = {
@@ -165,7 +173,7 @@ function ChecklistRow({
     : false;
 
   return (
-    <div className="rounded-md border border-border/50 bg-background/60 px-3 py-2">
+    <div className="border-b border-border/40 py-2.5 last:border-b-0">
       <div className="flex items-start gap-3">
         <input
           id={`scope-item-${suggestion.suggestionId}`}
@@ -176,7 +184,7 @@ function ChecklistRow({
           aria-label={suggestion.proposedTitle}
           onChange={(e) => onToggle(e.target.checked)}
         />
-        <div className="min-w-0 flex-1 space-y-1">
+        <div className="min-w-0 flex-1">
           <label
             htmlFor={`scope-item-${suggestion.suggestionId}`}
             className="block text-sm font-medium leading-snug"
@@ -184,36 +192,36 @@ function ChecklistRow({
             {suggestion.proposedTitle}
           </label>
           {isClarification && route?.kind === "SCOPE_DETAIL" ? (
-            <p className="text-xs text-muted-foreground">
+            <p className="mt-0.5 text-xs text-muted-foreground">
               {SCOPE_DISCOVERY_UI_COPY.detailRequired}
             </p>
           ) : null}
           {routed ? (
-            <p className="text-xs text-muted-foreground">
-              {SCOPE_DISCOVERY_UI_COPY.answerInScopeDetails}
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              {SCOPE_DISCOVERY_UI_COPY.reviewInScopeDetails}
             </p>
           ) : null}
-          <div className="flex flex-wrap gap-2">
+          <div className="mt-1 flex flex-wrap gap-x-3 gap-y-1">
             <button
               type="button"
-              className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+              className="text-[11px] text-muted-foreground/90 underline-offset-2 hover:underline"
               onClick={() => setExpanded((v) => !v)}
             >
-              {expanded ? "Hide details" : "Why suggested"}
+              {expanded ? "Hide why" : "Why suggested"}
             </button>
             {editing && isClarification && onRouteClarification ? (
               <button
                 type="button"
-                className="text-xs text-muted-foreground underline-offset-2 hover:underline"
+                className="text-[11px] text-muted-foreground/90 underline-offset-2 hover:underline"
                 disabled={disabled}
                 onClick={onRouteClarification}
               >
-                {SCOPE_DISCOVERY_UI_COPY.answerInScopeDetails}
+                {SCOPE_DISCOVERY_UI_COPY.reviewInScopeDetails}
               </button>
             ) : null}
           </div>
           {expanded ? (
-            <div className="space-y-1 border-t border-border/40 pt-2 text-xs text-muted-foreground">
+            <div className="mt-1.5 space-y-1 text-xs text-muted-foreground">
               <p>{suggestion.whySuggested}</p>
               {suggestion.evidence.summaries.length > 0 ? (
                 <ul className="list-disc pl-4">
@@ -240,6 +248,7 @@ export function ScopeDiscoveryReviewBlock({
   onUnresolvedRecommendationsChange,
   preferredExpanded,
   isActiveStage = false,
+  onReviewScopeDetails,
 }: ScopeDiscoveryReviewBlockProps) {
   const router = useRouter();
   const resultsGuard = useRef(createLatestWriteGuard());
@@ -248,6 +257,7 @@ export function ScopeDiscoveryReviewBlock({
   const [results, setResults] = useState<SafeResultsRead | null>(
     initialResults
   );
+  const [manualItems, setManualItems] = useState<ManualScopeItemView[]>([]);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [isAnalysing, setIsAnalysing] = useState(false);
@@ -300,6 +310,18 @@ export function ScopeDiscoveryReviewBlock({
       }
     }
   }, [enabled, projectId, isEditingScope]);
+
+  useEffect(() => {
+    if (!enabled) return;
+    let cancelled = false;
+    void listManualScopeItemsForProject(projectId).then((outcome) => {
+      if (cancelled || !outcome.ok) return;
+      setManualItems([...outcome.items]);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [enabled, projectId]);
 
   useEffect(() => {
     if (!isAnalysing) return;
@@ -761,6 +783,17 @@ export function ScopeDiscoveryReviewBlock({
   const scopeItemLists = buildScopeItemSummaryLists({
     suggestions: batchEligible,
   });
+  const manualIncludedTitles = manualItems
+    .filter((item) => item.state === "INCLUDED")
+    .map((item) => item.title);
+  const manualNotRequiredTitles = manualItems
+    .filter((item) => item.state === "NOT_REQUIRED")
+    .map((item) => item.title);
+  const mergedScopeLists = {
+    ...scopeItemLists,
+    included: [...scopeItemLists.included, ...manualIncludedTitles],
+    notRequired: [...scopeItemLists.notRequired, ...manualNotRequiredTitles],
+  };
 
   const disclosureExpanded =
     preferredExpanded !== undefined
@@ -784,7 +817,7 @@ export function ScopeDiscoveryReviewBlock({
         isActive={isActiveStage}
         summaryContent={
           completion.complete && !isEditingScope ? (
-            <ScopeReviewCollapsedSummary lists={scopeItemLists} />
+            <ScopeReviewCollapsedSummary lists={mergedScopeLists} />
           ) : (
             <p className="text-xs text-muted-foreground">
               {summaryBits.join(" · ")}
@@ -907,11 +940,21 @@ export function ScopeDiscoveryReviewBlock({
                       ...section.grouped.added,
                       ...section.grouped.dismissed,
                     ].filter(isScopeItemBatchEligible);
-                    if (items.length === 0) return null;
+                    const manualForSection = section.workAreaId
+                      ? manualItems.filter(
+                          (item) => item.workAreaId === section.workAreaId
+                        )
+                      : [];
+                    if (items.length === 0 && manualForSection.length === 0 && !section.workAreaId)
+                      return null;
+                    if (items.length === 0 && !section.workAreaId) return null;
                     const selected = items.filter(
                       (s) =>
                         (localBatch[s.suggestionId] ??
                           defaultBatchSelection(s)) === "INCLUDED"
+                    ).length;
+                    const manualIncluded = manualForSection.filter(
+                      (item) => item.state === "INCLUDED"
                     ).length;
                     return (
                       <section
@@ -923,10 +966,11 @@ export function ScopeDiscoveryReviewBlock({
                             {section.workAreaLabel}
                           </h3>
                           <p className="text-xs text-muted-foreground">
-                            {selected} of {items.length} included by default
+                            {selected + manualIncluded} of{" "}
+                            {items.length + manualForSection.length} included
                           </p>
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-0 divide-y-0">
                           {items.map((suggestion) => {
                             const state =
                               localBatch[suggestion.suggestionId] ??
@@ -949,17 +993,102 @@ export function ScopeDiscoveryReviewBlock({
                                   }
                                 />
                                 {state === "UNRESOLVED_CLARIFICATION" ? (
-                                  <p className="px-3 text-xs text-muted-foreground">
+                                  <p className="px-3 pb-2 text-xs text-muted-foreground">
                                     Will be answered in Scope Details.
                                   </p>
                                 ) : null}
                               </div>
                             );
                           })}
+                          {section.workAreaId
+                            ? manualItems
+                                .filter(
+                                  (item) =>
+                                    item.workAreaId === section.workAreaId
+                                )
+                                .map((item) => (
+                                  <ManualScopeItemRow
+                                    key={item.id}
+                                    projectId={projectId}
+                                    item={item}
+                                    disabled={isSavingBatch}
+                                    onChanged={(next) =>
+                                      setManualItems((prev) =>
+                                        prev.map((row) =>
+                                          row.id === next.id ? next : row
+                                        )
+                                      )
+                                    }
+                                  />
+                                ))
+                            : null}
+                          {section.workAreaId ? (
+                            <AddManualScopeItemForm
+                              projectId={projectId}
+                              workAreaId={section.workAreaId}
+                              workAreaName={section.workAreaLabel}
+                              disabled={isSavingBatch || isAnalysing}
+                              onAdded={(item) =>
+                                setManualItems((prev) => [...prev, item])
+                              }
+                            />
+                          ) : null}
                         </div>
                       </section>
                     );
                   })}
+
+                  {(() => {
+                    const covered = new Set(
+                      workAreaSections
+                        .map((s) => s.workAreaId)
+                        .filter(Boolean) as string[]
+                    );
+                    const labelEntries =
+                      workAreaLabels instanceof Map
+                        ? [...workAreaLabels.entries()]
+                        : Object.entries(workAreaLabels);
+                    return labelEntries
+                      .filter(([id]) => id && !covered.has(id))
+                      .map(([workAreaId, workAreaLabel]) => (
+                        <section
+                          key={workAreaId}
+                          className="space-y-2 rounded-md border border-border/60 bg-muted/20 p-3"
+                        >
+                          <h3 className="text-sm font-semibold">
+                            {workAreaLabel}
+                          </h3>
+                          <div>
+                            {manualItems
+                              .filter((item) => item.workAreaId === workAreaId)
+                              .map((item) => (
+                                <ManualScopeItemRow
+                                  key={item.id}
+                                  projectId={projectId}
+                                  item={item}
+                                  disabled={isSavingBatch}
+                                  onChanged={(next) =>
+                                    setManualItems((prev) =>
+                                      prev.map((row) =>
+                                        row.id === next.id ? next : row
+                                      )
+                                    )
+                                  }
+                                />
+                              ))}
+                            <AddManualScopeItemForm
+                              projectId={projectId}
+                              workAreaId={workAreaId}
+                              workAreaName={workAreaLabel}
+                              disabled={isSavingBatch || isAnalysing}
+                              onAdded={(item) =>
+                                setManualItems((prev) => [...prev, item])
+                              }
+                            />
+                          </div>
+                        </section>
+                      ));
+                  })()}
 
                   <Button
                     type="button"
@@ -986,7 +1115,46 @@ export function ScopeDiscoveryReviewBlock({
                     <p className="font-medium">
                       {SCOPE_DISCOVERY_UI_COPY.scopeConfirmed}
                     </p>
-                    <ScopeReviewConfirmedSummaryLists lists={scopeItemLists} />
+                    <ScopeReviewConfirmedSummaryLists
+                      lists={mergedScopeLists}
+                      onReviewScopeDetails={onReviewScopeDetails}
+                    />
+                    <div className="mt-3 space-y-2">
+                      {(workAreaLabels instanceof Map
+                        ? [...workAreaLabels.entries()]
+                        : Object.entries(workAreaLabels)
+                      ).map(([workAreaId, workAreaLabel]) => (
+                        <div key={`add-${workAreaId}`}>
+                          <p className="text-xs font-medium text-muted-foreground">
+                            {workAreaLabel}
+                          </p>
+                          {manualItems
+                            .filter((item) => item.workAreaId === workAreaId)
+                            .map((item) => (
+                              <ManualScopeItemRow
+                                key={item.id}
+                                projectId={projectId}
+                                item={item}
+                                onChanged={(next) =>
+                                  setManualItems((prev) =>
+                                    prev.map((row) =>
+                                      row.id === next.id ? next : row
+                                    )
+                                  )
+                                }
+                              />
+                            ))}
+                          <AddManualScopeItemForm
+                            projectId={projectId}
+                            workAreaId={workAreaId}
+                            workAreaName={workAreaLabel}
+                            onAdded={(item) =>
+                              setManualItems((prev) => [...prev, item])
+                            }
+                          />
+                        </div>
+                      ))}
+                    </div>
                     <Button
                       type="button"
                       variant="outline"

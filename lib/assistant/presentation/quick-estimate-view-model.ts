@@ -11,6 +11,7 @@ export type QuickEstimateAttentionItem = {
   readonly id: string;
   readonly label: string;
   readonly detail: string;
+  readonly workAreaName?: string;
   /** Stage / section id for Review navigation when practical. */
   readonly reviewTarget?:
     | "questions"
@@ -52,21 +53,39 @@ export type QuickEstimateScopeSummaryLines = {
  */
 export function buildQuickEstimateAttentionItems(params: {
   readonly missingLabels?: readonly string[];
+  readonly missingByWorkArea?: readonly {
+    readonly workAreaName: string;
+    readonly label: string;
+  }[];
   readonly clarificationLabels?: readonly string[];
   readonly pendingProposalCount?: number;
   readonly unresolvedScopeImpactLabels?: readonly string[];
 }): readonly QuickEstimateAttentionItem[] {
   const items: QuickEstimateAttentionItem[] = [];
 
-  for (const [index, label] of (params.missingLabels ?? []).entries()) {
-    const trimmed = label.trim();
+  for (const [index, entry] of (params.missingByWorkArea ?? []).entries()) {
+    const trimmed = entry.label.trim();
     if (!trimmed) continue;
     items.push({
-      id: `missing:${index}:${trimmed}`,
+      id: `missing-wa:${index}:${trimmed}`,
       label: trimmed,
-      detail: "Needs confirmation",
+      detail: "Review in Scope Details",
+      workAreaName: entry.workAreaName,
       reviewTarget: "questions",
     });
+  }
+
+  if ((params.missingByWorkArea ?? []).length === 0) {
+    for (const [index, label] of (params.missingLabels ?? []).entries()) {
+      const trimmed = label.trim();
+      if (!trimmed) continue;
+      items.push({
+        id: `missing:${index}:${trimmed}`,
+        label: trimmed,
+        detail: "Review in Scope Details",
+        reviewTarget: "questions",
+      });
+    }
   }
 
   for (const [index, label] of (params.clarificationLabels ?? []).entries()) {

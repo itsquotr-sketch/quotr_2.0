@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { ChevronDown } from "lucide-react";
 import {
@@ -39,6 +39,8 @@ import {
   lineItemRenderKey,
 } from "@/lib/estimate/commercial-realism";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
+import { SCOPE_DISCOVERY_UI_COPY } from "@/lib/scope-discovery/ui/labels";
 
 const CATEGORY_LABELS: Record<EstimateLineItemCategory, string> = {
   labour: "Labour",
@@ -575,6 +577,7 @@ type EstimateBreakdownModalProps = {
   onOpenChange: (open: boolean) => void;
   onRegenerate?: () => void;
   isRegenerating?: boolean;
+  projectId?: string;
 };
 
 export function EstimateBreakdownModal({
@@ -583,9 +586,32 @@ export function EstimateBreakdownModal({
   onOpenChange,
   onRegenerate,
   isRegenerating,
+  projectId,
 }: EstimateBreakdownModalProps) {
   const [activeTab, setActiveTab] = useState<BreakdownTab>("summary");
   const [expandedWorkArea, setExpandedWorkArea] = useState<string | null>(null);
+  const [manualScopeByWa, setManualScopeByWa] = useState<
+    Record<string, { title: string }[]>
+  >({});
+
+  useEffect(() => {
+    if (!open || !projectId) return;
+    let cancelled = false;
+    void listManualScopeItemsForProject(projectId).then((result) => {
+      if (cancelled || !result.ok) return;
+      const next: Record<string, { title: string }[]> = {};
+      for (const item of result.items) {
+        if (item.state !== "INCLUDED") continue;
+        const list = next[item.workAreaId] ?? [];
+        list.push({ title: item.title });
+        next[item.workAreaId] = list;
+      }
+      setManualScopeByWa(next);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [open, projectId]);
 
   const confirmedWorkAreaNames = useMemo(
     () => estimate?.includedWorkAreas.map((wa) => wa.name) ?? [],
@@ -846,6 +872,15 @@ export function EstimateBreakdownModal({
                           Not required:{" "}
                           {wa.excludedScopeItems
                             .map((item) => item.label)
+                            .join(", ")}
+                        </p>
+                      ) : null}
+                      {(manualScopeByWa[wa.id] ?? []).length > 0 ? (
+                        <p className="mt-1 text-xs text-amber-900 dark:text-amber-200">
+                          Added by you ({SCOPE_DISCOVERY_UI_COPY.pricingRequired}
+                          ):{" "}
+                          {(manualScopeByWa[wa.id] ?? [])
+                            .map((item) => item.title)
                             .join(", ")}
                         </p>
                       ) : null}

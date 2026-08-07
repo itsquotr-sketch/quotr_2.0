@@ -13,6 +13,9 @@ type ProjectHeaderProps = {
   subtitle?: string | null;
 };
 
+/**
+ * Desktop: full metadata. Mobile: title + actions only (3.1B.7F-R2).
+ */
 export function ProjectHeader({
   project,
   subtitle = null,
@@ -36,23 +39,27 @@ export function ProjectHeader({
   return (
     <div className="min-w-0 flex-1 space-y-2">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div className="min-w-0 space-y-2">
+        <div className="min-w-0 space-y-1 sm:space-y-2">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="min-w-0 text-lg font-semibold tracking-tight sm:text-xl">
+            <h1 className="min-w-0 text-base font-semibold tracking-tight break-words sm:text-lg md:text-xl">
               {project.title}
             </h1>
-            {!isArchived ? (
-              <BusinessStatusControl
-                projectId={project.id}
-                currentStatus={project.business_status}
-              />
-            ) : (
-              <Badge variant="outline">Archived</Badge>
-            )}
-            <PriorityBadge priority={project.priority} />
+            <div className="hidden items-center gap-2 sm:flex">
+              {!isArchived ? (
+                <BusinessStatusControl
+                  projectId={project.id}
+                  currentStatus={project.business_status}
+                />
+              ) : (
+                <Badge variant="outline">Archived</Badge>
+              )}
+              <PriorityBadge priority={project.priority} />
+            </div>
           </div>
           {subtitle ? (
-            <p className="text-sm text-muted-foreground">{subtitle}</p>
+            <p className="hidden text-sm text-muted-foreground sm:block">
+              {subtitle}
+            </p>
           ) : null}
         </div>
         <div className="flex shrink-0 items-center gap-2">
@@ -61,7 +68,7 @@ export function ProjectHeader({
       </div>
 
       {detailItems.length > 0 || project.due_date ? (
-        <div className="flex flex-wrap items-center gap-2 text-sm text-muted-foreground">
+        <div className="hidden flex-wrap items-center gap-2 text-sm text-muted-foreground sm:flex">
           {detailItems.map((item, index) => (
             <Fragment key={index}>
               {index > 0 ? (

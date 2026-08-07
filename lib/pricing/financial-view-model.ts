@@ -10,10 +10,14 @@ import {
   formatProfitabilityDisplay,
 } from "@/lib/financial-presentation/format";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
+import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 
 export function pricingItemViewModel(item: PricingItem) {
+  const pricingRequired = isManualScopePricingRequiredNote(
+    item.notes_internal
+  );
   const profitability = formatProfitabilityDisplay({
-    costKnown: item.cost_known,
+    costKnown: pricingRequired ? false : item.cost_known,
     grossProfit: item.gross_profit,
     marginPercent: item.margin_percent,
     markupPercent: item.markup_percent,
@@ -22,10 +26,15 @@ export function pricingItemViewModel(item: PricingItem) {
   return {
     totalCost: item.total_cost,
     totalSell: item.total_sell,
-    costKnown: item.cost_known,
+    costKnown: pricingRequired ? false : item.cost_known,
+    pricingRequired,
     manuallyEdited: item.manually_edited,
-    totalSellFormatted: formatPricingMoney(item.total_sell),
-    totalCostFormatted: formatPricingMoney(item.total_cost),
+    totalSellFormatted: pricingRequired
+      ? "Pricing required"
+      : formatPricingMoney(item.total_sell),
+    totalCostFormatted: pricingRequired
+      ? "—"
+      : formatPricingMoney(item.total_cost),
     profitLabel: profitability.profitLabel,
     marginLabel: profitability.marginLabel,
     markupLabel: profitability.markupLabel,

@@ -3,7 +3,6 @@
 import { usePathname } from "next/navigation";
 import { AppSidebarNav } from "@/components/app-sidebar";
 import { AppUserProvider } from "@/components/layout/app-user-context";
-import { BetaNotice } from "@/components/layout/beta-notice";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 
@@ -54,18 +53,17 @@ export function AppShell({
         setupIncomplete,
       }}
     >
-      <div className="flex h-dvh w-full overflow-hidden">
+      <div className="flex min-h-dvh w-full md:h-dvh md:overflow-hidden">
         <AppSidebarNav setupIncomplete={setupIncomplete} />
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden bg-background print:bg-white">
-          <BetaNotice />
+        <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background md:overflow-hidden print:bg-white">
           <div className="flex h-12 shrink-0 items-center border-b px-4 md:hidden print:hidden">
             <QuotrLogo height={26} />
           </div>
           <div
             className={
               showMobileNav
-                ? "flex min-h-0 flex-1 flex-col overflow-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
-                : "flex min-h-0 flex-1 flex-col overflow-hidden"
+                ? "flex min-h-0 flex-1 flex-col md:overflow-hidden pb-[calc(3.5rem+env(safe-area-inset-bottom))] md:pb-0"
+                : "flex min-h-0 flex-1 flex-col md:overflow-hidden"
             }
           >
             {children}

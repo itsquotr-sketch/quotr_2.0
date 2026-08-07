@@ -382,8 +382,9 @@ check(
   "SCOPE SUMMARY: counts match lists",
   lists.included.length === 4 &&
     lists.notRequired.length === 1 &&
-    lists.needsDetail.length === 1 &&
-    lists.needsDetail[0] === "Existing pile condition"
+    lists.pendingScopeDetails.length === 1 &&
+    lists.pendingScopeDetails[0]?.title === "Existing pile condition" &&
+    lists.needsDetail.length === 1
 );
 const overflow = compactSummaryOverflow(lists.included, 3);
 check(
@@ -391,13 +392,16 @@ check(
   overflow.visible.length === 3 && overflow.overflow === 1
 );
 check(
-  "SCOPE SUMMARY: confirmed lists UI present; needs detail omitted when empty",
+  "SCOPE SUMMARY: confirmed lists UI uses Scope Details pending bucket",
   read("components/assistant/StageCollapsedSummaries.tsx").includes(
     "ScopeReviewConfirmedSummaryLists"
   ) &&
-    read("components/assistant/StageCollapsedSummaries.tsx").includes(
-      "lists.needsDetail.length > 0"
-    )
+    (read("components/assistant/StageCollapsedSummaries.tsx").includes(
+      "pendingScopeDetails"
+    ) ||
+      read("components/assistant/StageCollapsedSummaries.tsx").includes(
+        "To confirm in Scope Details"
+      ))
 );
 
 // ─── EDIT SCOPE ──────────────────────────────────────────────
@@ -414,24 +418,26 @@ check(
     !reviewBlock.includes("runScopeDiscoveryAction({\n          projectId,\n          forceNewRun,\n          // batch")
 );
 
-// ─── MANUAL SCOPE ────────────────────────────────────────────
+// ─── MANUAL SCOPE (superseded gate — 7F-R2 delivers migration 030) ──
 const migration028 = read("supabase/migrations/028_scope_discovery_persistence.sql");
 check(
-  "MANUAL SCOPE: blocked — no USER_ADDED suggestion kind (honest gate)",
+  "MANUAL SCOPE: suggestions table still has no USER_ADDED kind",
   !migration028.includes("USER_ADDED") &&
     migration028.includes("suggestion_kind") &&
-    !read("lib/scope-discovery/types.ts").includes('"user_manual"') &&
-    !reviewBlock.includes("Add scope item")
+    !read("lib/scope-discovery/types.ts").includes('"user_manual"')
 );
 const has030 = (() => {
   try {
-    read("supabase/migrations/030_manual_scope_items.sql");
+    read("supabase/migrations/030_work_area_scope_items.sql");
     return true;
   } catch {
     return false;
   }
 })();
-check("MANUAL SCOPE: migration 030 absent", !has030);
+check(
+  "MANUAL SCOPE: migration 030 present (dedicated user-authored table)",
+  has030 && reviewBlock.includes("AddManualScopeItemForm")
+);
 
 // ─── ATTENTION ───────────────────────────────────────────────
 const attentionItems = buildQuickEstimateAttentionItems({
@@ -465,7 +471,8 @@ check(
     read("components/assistant/AssistantShell.tsx").includes(
       "handleReviewAttention"
     ) &&
-    attentionItems.every((i) => i.reviewTarget === "questions")
+    attentionItems.every((i) => i.reviewTarget === "questions") &&
+    attentionItems.every((i) => i.detail === "Review in Scope Details")
 );
 
 // ─── CONSTRAINTS ─────────────────────────────────────────────
@@ -527,8 +534,8 @@ const layout = read("app/layout.tsx");
 const sidebar = read("components/app-sidebar.tsx");
 const shell = read("components/layout/app-shell.tsx");
 check(
-  "SCROLL: body uses h-dvh overflow-hidden (print override)",
-  layout.includes("h-dvh overflow-hidden") &&
+  "SCROLL: body uses intentional dvh height (print override)",
+  (layout.includes("h-dvh") || layout.includes("min-h-dvh")) &&
     layout.includes("print:overflow-visible")
 );
 check(
@@ -536,13 +543,17 @@ check(
   sidebar.includes("h-dvh") && !sidebar.includes("sticky top-0")
 );
 check(
-  "SCROLL: AppShell locks viewport overflow",
-  shell.includes("h-dvh") && shell.includes("overflow-hidden")
+  "SCROLL: AppShell uses dvh chrome without trapping mobile body",
+  shell.includes("h-dvh") || shell.includes("min-h-dvh")
 );
 check(
   "SCROLL: no JS scroll listener for shell lock",
   !shell.includes("addEventListener(\"scroll\"") &&
     !sidebar.includes("addEventListener(\"scroll\"")
+);
+check(
+  "SCROLL: testing banner removed from AppShell",
+  !shell.includes("BetaNotice")
 );
 
 // ─── PERFORMANCE ─────────────────────────────────────────────

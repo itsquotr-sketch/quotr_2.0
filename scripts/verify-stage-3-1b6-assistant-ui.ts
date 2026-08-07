@@ -437,13 +437,16 @@ check(
 // Boundaries
 // ---------------------------------------------------------------------------
 const migrationFiles = walkFiles(join(process.cwd(), "supabase/migrations"));
-const newMigrations = migrationFiles.filter((f) =>
-  /03[0-9]_/.test(f.replace(/\\/g, "/"))
-);
+const unexpected030 = migrationFiles.filter((f) => {
+  const norm = f.replace(/\\/g, "/");
+  if (!/03[0-9]_/.test(norm)) return false;
+  // 7F-R2 owns 030_work_area_scope_items — allowed after 3.1B.6.
+  return !norm.endsWith("030_work_area_scope_items.sql");
+});
 check(
-  "no new migration added in 3.1B.6 batch (030+)",
-  newMigrations.length === 0,
-  newMigrations.join(", ")
+  "no unexpected migration beyond 3.1B.6 (030+ except 7F-R2 work_area_scope_items)",
+  unexpected030.length === 0,
+  unexpected030.join(", ")
 );
 
 const commercialTouched =

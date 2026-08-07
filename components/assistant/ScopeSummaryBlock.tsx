@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import type { ScopeReview } from "@/lib/assistant/types";
 import { AddWorkAreaDialog } from "@/components/assistant/AddWorkAreaDialog";
@@ -24,6 +24,9 @@ import {
 import { buildEstimateReviewWorkAreaSummary } from "@/lib/assistant/presentation";
 import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
+import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
+import { SCOPE_DISCOVERY_UI_COPY } from "@/lib/scope-discovery/ui/labels";
 
 function SummaryMetricLine({
   label,
@@ -188,6 +191,20 @@ export function ScopeSummaryBlock({
     name: string;
   } | null>(null);
   const [detailsOpen, setDetailsOpen] = useState<Record<string, boolean>>({});
+  const [manualScopeItems, setManualScopeItems] = useState<
+    readonly ManualScopeItemView[]
+  >([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    void listManualScopeItemsForProject(projectId).then((result) => {
+      if (cancelled || !result.ok) return;
+      setManualScopeItems(result.items);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [projectId]);
 
   // Optimistic local answers. Do not remount this block on server value changes —
   // local values stay visible over lagging props (Stage 3.1A-R1).
@@ -273,6 +290,11 @@ export function ScopeSummaryBlock({
           constraintPreview,
         });
         const expanded = detailsOpen[workArea.workAreaId] ?? hasMissing;
+        const waManualIncluded = manualScopeItems.filter(
+          (item) =>
+            item.workAreaId === workArea.workAreaId &&
+            item.state === "INCLUDED"
+        );
 
         return (
         <article
@@ -354,6 +376,13 @@ export function ScopeSummaryBlock({
               value={summary.measurementsLabel}
             />
             <SummaryMetricLine label="Scope" value={summary.scopeLabel} />
+            {waManualIncluded.length > 0 ? (
+              <SummaryMetricLine
+                label="Added by you"
+                value={`${waManualIncluded.length} · ${SCOPE_DISCOVERY_UI_COPY.pricingRequired}`}
+                attention
+              />
+            ) : null}
             <SummaryMetricLine
               label="Assumptions"
               value={summary.assumptionsLabel}
@@ -408,6 +437,24 @@ export function ScopeSummaryBlock({
                 {workArea.missingItems.map((item) => (
                   <li key={item} className="leading-relaxed break-words">
                     {item}
+                  </li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
+
+          {waManualIncluded.length > 0 ? (
+            <div className="rounded-lg border border-border/60 px-3 py-2.5">
+              <h4 className="text-xs font-medium text-muted-foreground">
+                Scope added by you
+              </h4>
+              <ul className="mt-1.5 space-y-1.5 text-sm">
+                {waManualIncluded.map((item) => (
+                  <li key={item.id} className="leading-relaxed break-words">
+                    <span className="font-medium">{item.title}</span>
+                    <span className="ml-2 text-xs text-amber-900 dark:text-amber-200">
+                      {SCOPE_DISCOVERY_UI_COPY.pricingRequired}
+                    </span>
                   </li>
                 ))}
               </ul>

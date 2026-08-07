@@ -49,11 +49,36 @@ Completed stages compress to one–two line outcomes; expand for full detail.
 | Full estimate | Dedicated sheet / screen (web: expand accordion for now) |
 | Completed stages | Via project / stage navigator |
 
-Current web implementation (3.1B.7G):
+Current web implementation (3.1B.7G / 3.1B.7F-R2):
 
 - Below `lg`: compact summary accordion (`buildQuickEstimateMobileSummary`)  
 - No sticky rail  
 - No complex app navigation shell in this batch  
+
+### Mobile project header (3.1B.7F-R2)
+
+Desktop and mobile intentionally differ.
+
+At `sm` and below, the project workspace header shows approximately:
+
+- Back (Dashboard)
+- Project name (wraps safely)
+- Actions (project menu / user control)
+
+Do **not** permanently display full desktop metadata on mobile:
+
+- client name
+- full address
+- lead / business-status / priority chrome (desktop-only)
+- due date row
+- long subtitle
+
+Those remain available via Edit project, Actions, or project information views.
+Desktop (`sm+`) retains the richer metadata row.
+
+Header chrome must stay mutually exclusive (one responsive presentation), keep
+tap targets usable, and leave the Assistant stage reachable without excessive
+vertical consumption.
 
 Future native / PWA may bind the same view-model to a bottom sheet without
 recomputing money.

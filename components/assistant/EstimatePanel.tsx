@@ -326,11 +326,21 @@ export function EstimatePanel({
     !isStale &&
     needsCalibrationRefresh(estimate?.calibrationVersion);
 
-  const missingLabels: string[] = estimate
-    ? estimate.missingInfo.filter((item) => item.trim())
-    : scopeReview
-      ? scopeReview.workAreas.flatMap((workArea) => workArea.missingItems)
-      : [];
+  const missingByWorkArea =
+    scopeReview?.workAreas.flatMap((workArea) =>
+      workArea.missingItems
+        .filter((item) => item.trim())
+        .map((label) => ({
+          workAreaName: workArea.workAreaName,
+          label,
+        }))
+    ) ?? [];
+  const missingLabels: string[] =
+    missingByWorkArea.length > 0
+      ? missingByWorkArea.map((entry) => entry.label)
+      : estimate
+        ? estimate.missingInfo.filter((item) => item.trim())
+        : [];
   const assumptionCount = estimate
     ? estimate.assumptions.length
     : scopeReview
@@ -350,6 +360,7 @@ export function EstimatePanel({
 
   const attentionItems = buildQuickEstimateAttentionItems({
     missingLabels,
+    missingByWorkArea,
     clarificationLabels,
     pendingProposalCount,
     unresolvedScopeImpactLabels:
@@ -672,13 +683,18 @@ export function EstimatePanel({
           </p>
 
           {status.kind === "attention" && status.attentionItems.length > 0 ? (
-            <ul className="space-y-2 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/20">
+            <ul className="space-y-2.5 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/20">
               {status.attentionItems.map((item) => (
                 <li
                   key={item.id}
                   className="flex items-start justify-between gap-2 text-xs"
                 >
                   <div className="min-w-0">
+                    {item.workAreaName ? (
+                      <p className="text-[10px] font-medium uppercase tracking-wide text-amber-900/70 dark:text-amber-200/70">
+                        {item.workAreaName}
+                      </p>
+                    ) : null}
                     <p className="font-medium text-amber-950 dark:text-amber-100">
                       {item.label}
                     </p>

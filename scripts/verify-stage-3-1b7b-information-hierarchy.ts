@@ -291,10 +291,12 @@ check(
   "scope overflow / density: compact collapsed + limit constant retained",
   // 7G: collapsed Scope Review is one line; SUMMARY_VISIBLE_ITEM_LIMIT remains
   // for presentation helpers / expanded surfaces.
+  // 7F-R2: pending copy is "to confirm in Scope Details" (not bare "need detail").
   SUMMARY_VISIBLE_ITEM_LIMIT === 5 &&
     (summariesUi.includes("CompactLine") ||
       summariesUi.includes("SUMMARY_VISIBLE_ITEM_LIMIT")) &&
-    summariesUi.includes("need detail")
+    (summariesUi.includes("to confirm in Scope Details") ||
+      summariesUi.includes("need detail"))
 );
 check(
   "constraint empty / applied compact state",

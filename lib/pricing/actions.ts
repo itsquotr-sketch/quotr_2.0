@@ -46,6 +46,7 @@ import {
 } from "@/lib/pricing/commercial-engine-adapter";
 import { calculateAuthoritativeDocumentTotals } from "@/lib/pricing/authoritative-document-totals";
 import { valuesFromEstimateLineItem } from "@/lib/pricing/recalibration-helpers";
+import { buildManualScopePricingNotes } from "@/lib/work-areas/scope-items/pricing-bridge";
 import {
   buildScopeSummaryFromWorkAreas,
   mapPricingDocument,
@@ -674,6 +675,89 @@ export async function createPricingFromEstimate(input: {
         sort_order: lineItem.sort_order ?? index,
         notes_internal: buildPricingNotesFromEstimateLineItem(lineItem.notes),
       });
+    }
+  }
+
+  // User-authored scope without calculator support → editable stubs, not $0
+  // calculated money. Presentation shows "Pricing required" until the builder
+  // enters a rate/lump sum. Does not change Stage 2B commercial formulas.
+  {
+    const { data: manualItems, error: manualError } = await supabase
+      .from("work_area_scope_items")
+      .select("id, work_area_id, title, description")
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .eq("origin", "user");
+
+    // Soft-skip when migration 030 is not yet applied on this environment.
+    if (!manualError && manualItems && manualItems.length > 0) {
+      const ids = manualItems.map((row) => String(row.id));
+      const { data: decisions } = await supabase
+        .from("work_area_scope_item_decisions")
+        .select("scope_item_id, decision_type, decided_at")
+        .eq("project_id", projectId)
+        .eq("org_id", orgId)
+        .in("scope_item_id", ids);
+
+      const latestByItem = new Map<string, string>();
+      for (const d of [...(decisions ?? [])].sort((a, b) =>
+        String(a.decided_at).localeCompare(String(b.decided_at))
+      )) {
+        latestByItem.set(String(d.scope_item_id), String(d.decision_type));
+      }
+
+      let sortBase = pricingItemRows.length;
+      for (const row of manualItems) {
+        const decision = latestByItem.get(String(row.id)) ?? "INCLUDE";
+        if (decision === "EXCLUDE") continue;
+
+        const title = String(row.title).trim();
+        if (!title) continue;
+
+        // Stub: 0/0 with explicit cost_known=false so document honesty
+        // reflects unpriced coverage — not a fabricated free line.
+        aggregateLines.push({
+          total_cost: 0,
+          total_sell: 0,
+          cost_known: false,
+        });
+
+        pricingItemRows.push({
+          org_id: orgId,
+          pricing_document_id: null,
+          project_id: projectId,
+          work_area_id: row.work_area_id,
+          source_estimate_line_item_id: null,
+          item_type: "allowance",
+          delivery_method: "allowance",
+          internal_label: title,
+          client_label: cleanClientLabel(title),
+          internal_description:
+            row.description != null ? String(row.description) : null,
+          client_description: null,
+          quantity: 1,
+          unit: "item",
+          unit_cost: null,
+          unit_sell: null,
+          total_cost: 0,
+          total_sell: 0,
+          gross_profit: 0,
+          margin_percent: 0,
+          markup_percent: 0,
+          calculation_mode: "lump_sum",
+          productivity_rate: null,
+          productivity_unit: null,
+          calculated_quantity: null,
+          visible_on_quote: true,
+          optional: false,
+          sort_order: sortBase++,
+          notes_internal: buildManualScopePricingNotes({
+            title,
+            description:
+              row.description != null ? String(row.description) : null,
+          }),
+        });
+      }
     }
   }
 

@@ -192,7 +192,10 @@ check(
   fileHas(SUMMARIES, "CompactLine") &&
     fileHas(SUMMARIES, "outcomeLabel") &&
     fileHas(SUMMARIES, "included") &&
-    (fileHas(SUMMARIES, "need detail") || fileHas(SUMMARIES, "Needs detail"))
+    (fileHas(SUMMARIES, "to confirm in Scope Details") ||
+      fileHas(SUMMARIES, "To confirm in Scope Details") ||
+      fileHas(SUMMARIES, "need detail") ||
+      fileHas(SUMMARIES, "Needs detail"))
 );
 check(
   "questions collapsed accepts answeredCount",

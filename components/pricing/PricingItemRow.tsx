@@ -153,6 +153,14 @@ function PricingItemRowComponent({
                   owner={pricingMetadata.pricingOwner}
                   includedInTotal={pricingMetadata.includedInTotal}
                 />
+                {moneyView.pricingRequired ? (
+                  <Badge
+                    variant="outline"
+                    className="border-amber-300/80 bg-amber-50 text-[10px] font-medium text-amber-900"
+                  >
+                    Pricing required
+                  </Badge>
+                ) : null}
                 <span className="text-xs text-muted-foreground">{qtyLabel}</span>
               </div>
               <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -266,6 +274,14 @@ function PricingItemRowComponent({
       <div className={PRICING_TABLE_GRID}>
         <div className="min-w-0 md:col-span-1">
           <p className="text-sm font-medium leading-snug">{item.client_label}</p>
+          {moneyView.pricingRequired ? (
+            <Badge
+              variant="outline"
+              className="mt-1 border-amber-300/80 bg-amber-50 text-[10px] font-medium text-amber-900"
+            >
+              Pricing required
+            </Badge>
+          ) : null}
           {item.internal_label !== item.client_label ? (
             <p className="truncate text-xs text-muted-foreground">
               {item.internal_label}

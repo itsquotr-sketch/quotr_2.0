@@ -1,0 +1,61 @@
+# Stage 3.1B.7F-R2 — Manual Scope Item Persistence Decision
+
+**Status:** Approved for local migration 030  
+**Date:** 2026-08-08  
+**Remote apply:** Not in this task  
+
+## Decision
+
+**Option B — dedicated tables** under confirmed Work Areas:
+
+- `work_area_scope_items` — user-authored scope definitions  
+- `work_area_scope_item_decisions` — append-only INCLUDE / EXCLUDE  
+
+**Not chosen:** extending `scope_discovery_suggestions` with `origin=user`.
+
+## Why not extend suggestions (Option A)
+
+| Constraint | Problem for user items |
+| --- | --- |
+| `run_id NOT NULL` | Forces attaching to a discovery run or inventing one |
+| `original_status = 'PROPOSED'` only | User items are not model proposals |
+| Immutable suggestion payload | User title/description edits fight immutability |
+| Origin type `deterministic \| ai \| merged` | Cannot honestly say `user` |
+| Decision ACCEPT creates Work Areas for some kinds | Risk of accidental WA creation |
+
+Pretending a builder-authored item is a discovery suggestion would violate
+“do not fabricate an AI suggestion” and confuse provenance forever.
+
+## Model
+
+```
+confirmed work_areas
+  └── work_area_scope_items (origin='user' only)
+        └── work_area_scope_item_decisions (INCLUDE | EXCLUDE, append-only)
+```
+
+System-proposed scope remains on `scope_discovery_suggestions` +
+`scope_discovery_decisions`. UI merges both for Scope Review.
+
+## Rules
+
+- Parent `work_area_id` required; same org/project as WA  
+- No Fact creation  
+- No catalogue mutation  
+- No Company DNA  
+- No commercial money on these rows  
+- Default decision on create: INCLUDE  
+- Latest decision wins for Included / Not required  
+- Optional `scope_item_type` for future canonical mapping only when explicit  
+
+## Pricing boundary
+
+Unsupported manual items appear as **Pricing required** in Estimate Review /
+breakdown listings. They must not look calculated at $0. When Final Pricing is
+created, they may be carried as allowance stubs with null rates and clear notes
+for the builder to price.
+
+## Local vs remote
+
+- Local Docker: apply via migration reset through 030  
+- Remote / Preview DB: **not** applied in this task — separate deployment step  

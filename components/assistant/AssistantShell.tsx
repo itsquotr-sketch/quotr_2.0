@@ -55,7 +55,7 @@ import {
   excludeWorkAreaFromProject,
 } from "@/lib/assistant/work-area-actions";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
-import { startPreviewPerf } from "@/lib/assistant/preview-performance";
+import { startPreviewPerf, recordPreviewPerf } from "@/lib/assistant/preview-performance";
 import {
   resolveActiveDisclosureStage,
   stagePrefersExpanded,
@@ -418,7 +418,8 @@ export function AssistantShell({
       return;
     }
     setIsGenerating(true);
-    const endPerf = startPreviewPerf("estimate_generate");
+    recordPreviewPerf("estimate_generate_ack", 0);
+    const endPerf = startPreviewPerf("estimate_generate_complete");
     void runAction("estimate", async () => {
       try {
         return await generateStaticEstimate(project.id);
@@ -433,7 +434,8 @@ export function AssistantShell({
       return;
     }
     setIsRegenerating(true);
-    const endPerf = startPreviewPerf("estimate_generate");
+    recordPreviewPerf("estimate_generate_ack", 0);
+    const endPerf = startPreviewPerf("estimate_generate_complete");
     void runAction("regenerate", async () => {
       try {
         return await regenerateStaticEstimate(project.id);
@@ -467,6 +469,8 @@ export function AssistantShell({
       inputType?: "number" | "select" | "boolean" | "text" | "multi_select";
     }) => {
       const factKey = `${input.workAreaId}:${input.key}`;
+      recordPreviewPerf("question_save_ack", 0);
+      const endSavePerf = startPreviewPerf("question_save_complete");
       setSavingFactKey(factKey);
       setFactError(null);
 
@@ -483,11 +487,15 @@ export function AssistantShell({
       if (result.error) {
         setFactError(result.error);
         setSavingFactKey(null);
+        endSavePerf();
         return;
       }
 
-      router.refresh();
       setSavingFactKey(null);
+      endSavePerf();
+      startTransition(() => {
+        router.refresh();
+      });
     },
     [project.id, router]
   );
@@ -596,6 +604,8 @@ export function AssistantShell({
       answers: MissingQuestionAnswers;
     }) => {
       const saveToken = workAreaSaveGuardRef.current.next();
+      recordPreviewPerf("question_save_ack", 0);
+      const endSavePerf = startPreviewPerf("question_save_complete");
       setSavingWorkAreaId(input.workAreaId);
       setWorkAreaSaveStatus((prev) => ({
         ...prev,
@@ -629,6 +639,7 @@ export function AssistantShell({
         );
 
         if (!workAreaSaveGuardRef.current.isCurrent(saveToken)) {
+          endSavePerf();
           return;
         }
 
@@ -643,11 +654,13 @@ export function AssistantShell({
             ...prev,
             [input.workAreaId]: resolved.status,
           }));
+          endSavePerf();
           return;
         }
       }
 
       if (!workAreaSaveGuardRef.current.isCurrent(saveToken)) {
+        endSavePerf();
         return;
       }
 
@@ -655,10 +668,12 @@ export function AssistantShell({
         ...prev,
         [input.workAreaId]: "saved",
       }));
+      setSavingWorkAreaId(null);
+      endSavePerf();
+      // Optimistic local answers already show Saved — refresh in background.
       startTransition(() => {
         router.refresh();
       });
-      setSavingWorkAreaId(null);
     },
     [project.id, router]
   );
@@ -928,6 +943,12 @@ export function AssistantShell({
                 onUnresolvedRecommendationsChange={
                   setUnresolvedScopeImpactCount
                 }
+                onReviewScopeDetails={() => {
+                  questionsCardRef.current?.scrollIntoView({
+                    behavior: "smooth",
+                    block: "start",
+                  });
+                }}
                 preferredExpanded={stagePrefersExpanded(
                   "scopeReview",
                   activeDisclosureStage
@@ -1230,6 +1251,7 @@ export function AssistantShell({
         onOpenChange={setBreakdownOpen}
         onRegenerate={handleRegenerateEstimate}
         isRegenerating={isRegenerating}
+        projectId={project.id}
       />
     </div>
   );

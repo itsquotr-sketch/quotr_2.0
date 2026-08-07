@@ -303,11 +303,11 @@ check(
 clearPreviewPerfSamples();
 const end = startPreviewPerf("question_save_ack");
 end();
-recordPreviewPerf("estimate_generate", 120);
+recordPreviewPerf("estimate_generate_complete", 120);
 check(
   "preview perf records samples",
   getPreviewPerfSamples().length >= 1 &&
-    getPreviewPerfSamples().some((s) => s.mark === "estimate_generate")
+    getPreviewPerfSamples().some((s) => s.mark === "estimate_generate_complete")
 );
 check(
   "preview perf helper has no sensitive field logging",
@@ -323,8 +323,12 @@ check(
   "AssistantShell records estimate generate timing",
   fileHas(
     "components/assistant/AssistantShell.tsx",
-    'startPreviewPerf("estimate_generate")'
-  )
+    'startPreviewPerf("estimate_generate_complete")'
+  ) &&
+    fileHas(
+      "components/assistant/AssistantShell.tsx",
+      "estimate_generate_ack"
+    )
 );
 
 // —— Boundaries ——

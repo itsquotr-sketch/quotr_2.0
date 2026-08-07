@@ -1,24 +1,27 @@
 # Stage 3.1B — Preview Performance Results
 
-**Status:** Template ready — Owner samples Pending (capture during Stage 3.1B.7F E2E / 7F-R1 retest)  
+**Status:** Template ready — Owner samples Pending (capture during Stage 3.1B.7F E2E / 7F-R2 retest)  
 **Date:** 2026-08-07  
 **Related:** `docs/performance/STAGE_3_1B7D_PREVIEW_PERFORMANCE_BASELINE.md`  
 **Helper:** `lib/assistant/preview-performance.ts`  
 **E2E pack:** `docs/runbooks/STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`  
 **7F-R1 retest:** `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`  
+**7F-R2 retest:** `docs/runbooks/STAGE_3_1B7FR2_DECK_PREVIEW_RETEST.md`  
 **Per-project capture:** `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md`  
 
 Observational only — **not** production SLOs.
 
-### Local remediation notes (7F-R1)
+### Local remediation notes (7F-R1 / 7F-R2)
 
 | Observation | Change |
 | --- | --- |
 | Analyse / batch confirm paired `refreshResults` + `router.refresh` | After analyse and batch confirm: `refreshResults` only |
 | Accept that creates a Work Area | Still calls `router.refresh` (required for WA remount) |
 | Checklist toggles | Remain local state — no network |
+| Generate Estimate ack vs complete | `estimate_generate_ack` + `estimate_generate_complete` |
+| Answer / fact save ack vs complete | `question_save_ack` + `question_save_complete`; Saved before background refresh |
 
-Capture Preview timings during Deck retest for Automatic Scope Review, Edit scope open, toggle, Confirm scope.
+Capture Preview timings during Deck retest for Automatic Scope Review, Edit scope open, toggle, Confirm scope, Generate Estimate, and Scope Details answer save.
 
 ---
 

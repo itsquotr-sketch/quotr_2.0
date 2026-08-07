@@ -104,24 +104,28 @@ export function ScopeReviewCollapsedSummary({
 }: {
   lists: ScopeItemSummaryLists;
 }) {
+  const pending = lists.pendingScopeDetails?.length ?? lists.needsDetail.length;
   const parts = [
     `${lists.included.length} included`,
     `${lists.notRequired.length} not required`,
   ];
-  if (lists.needsDetail.length > 0) {
-    parts.push(`${lists.needsDetail.length} need detail`);
+  if (pending > 0) {
+    parts.push(`${pending} to confirm in Scope Details`);
   }
   return <CompactLine>{parts.join(" · ")}</CompactLine>;
 }
 
-/** Named Included / Not required / Needs detail lists with compact overflow. */
+/** Named Included / Not required / To confirm in Scope Details lists. */
 export function ScopeReviewConfirmedSummaryLists({
   lists,
   workAreaLabel,
+  onReviewScopeDetails,
 }: {
   lists: ScopeItemSummaryLists;
   workAreaLabel?: string;
+  onReviewScopeDetails?: () => void;
 }) {
+  const pending = lists.pendingScopeDetails ?? [];
   return (
     <div className="space-y-3 text-sm">
       {workAreaLabel ? (
@@ -139,12 +143,46 @@ export function ScopeReviewConfirmedSummaryLists({
         items={lists.notRequired}
         emptyLabel="None marked not required"
       />
-      {lists.needsDetail.length > 0 ? (
-        <SummaryCategory
-          title="Needs detail"
-          marker="△"
-          items={lists.needsDetail}
-        />
+      {pending.length > 0 ? (
+        <div>
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            To confirm in Scope Details
+            <span className="ml-1 font-normal normal-case text-muted-foreground/80">
+              ({pending.length})
+            </span>
+          </p>
+          <ul className="mt-1 space-y-2">
+            {pending.slice(0, 3).map((item) => (
+              <li key={item.title} className="text-sm leading-snug">
+                <span className="mr-1.5 text-muted-foreground" aria-hidden>
+                  △
+                </span>
+                <span className="font-medium">{item.title}</span>
+                <p className="mt-0.5 pl-4 text-xs text-muted-foreground">
+                  {item.reason}
+                </p>
+              </li>
+            ))}
+            {pending.length > 3 ? (
+              <li className="text-xs text-muted-foreground">
+                +{pending.length - 3} more
+              </li>
+            ) : null}
+          </ul>
+          <p className="mt-2 text-xs text-muted-foreground">
+            These items are included in scope. Quotr will ask for the missing
+            information in Scope Details.
+          </p>
+          {onReviewScopeDetails ? (
+            <button
+              type="button"
+              className="mt-2 text-xs font-medium text-foreground underline-offset-2 hover:underline"
+              onClick={onReviewScopeDetails}
+            >
+              Review Scope Details
+            </button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
