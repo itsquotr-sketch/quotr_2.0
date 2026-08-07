@@ -2,7 +2,7 @@
 
 **Status:** Prepared — Production remains disabled  
 **Date:** 2026-08-07  
-**Prerequisite:** Stage 3.1B.7E Preview hardening; owner Preview E2E sign-off  
+**Prerequisite:** Stage 3.1B.7E Preview hardening; Stage 3.1B.7F owner E2E results signed (decision A)  
 
 ---
 
@@ -22,13 +22,14 @@ Do not:
 ## Preconditions (all required)
 
 1. Stage 3.1B.7E completion reviewed  
-2. Defect register has **no Critical** open items  
-3. Defect register has **no High** security/data-integrity items  
-4. Owner Preview E2E: Deck + Bathroom + Fitout signed  
-5. Stage 2B.10 commercial regression green  
-6. RLS coverage green  
-7. Migrations 028/029 Applied and Verified; **no unapproved 030**  
-8. Analyse Job behaviour confirmed unchanged with flag off  
+2. Stage 3.1B.7F owner E2E results reviewed (`STAGE_3_1B7F_OWNER_E2E_RESULTS.md` decision **A**)  
+3. Defect register has **no Critical** open items  
+4. Defect register has **no High** security/data-integrity items  
+5. Owner Preview E2E: Deck + Bathroom + Fitout signed  
+6. Stage 2B.10 commercial regression green  
+7. RLS coverage green  
+8. Migrations 028/029 Applied and Verified; **no unapproved 030**  
+9. Analyse Job behaviour confirmed unchanged with flag off  
 
 ---
 

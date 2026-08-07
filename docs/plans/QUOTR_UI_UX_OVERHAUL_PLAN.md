@@ -11,7 +11,7 @@
 | Batch | Focus | Status |
 | --- | --- | --- |
 | UX-A–F (Assistant) | Disclosure, hierarchy, presentation, polish | **3.1B.7A–7D** Complete — Local |
-| Preview validation | Release hardening / E2E | **3.1B.7E** Complete — Local / BLOCKED (Owner E2E) |
+| Preview validation | Owner E2E gate | **3.1B.7F** Complete — Local (pack); Owner results Pending / BLOCKED |
 | UX-E | Pricing + Quote surfaces | **Planned separately** |
 
 **Production:** Disabled  

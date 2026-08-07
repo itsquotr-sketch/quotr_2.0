@@ -1,9 +1,11 @@
 # Stage 3.1B — Preview Performance Results
 
-**Status:** Template + config audit — Owner samples Pending  
+**Status:** Template ready — Owner samples Pending (capture during Stage 3.1B.7F E2E)  
 **Date:** 2026-08-07  
 **Related:** `docs/performance/STAGE_3_1B7D_PREVIEW_PERFORMANCE_BASELINE.md`  
 **Helper:** `lib/assistant/preview-performance.ts`  
+**E2E pack:** `docs/runbooks/STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`  
+**Per-project capture:** `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md`  
 
 Observational only — **not** production SLOs.
 
@@ -21,40 +23,49 @@ Observational only — **not** production SLOs.
 
 ---
 
-## Timing table (owner fill during E2E)
+## Timing table (owner fill during 7F E2E)
+
+Capture ≥3 observations where practical. Roll up medians here; keep per-project
+detail in the 7F results file.
 
 | Action | n | Median (ms) | Slowest (ms) | Notes |
 | --- | ---: | ---: | ---: | --- |
-| Initial Assistant render | | | | |
+| Initial Assistant load / render | | | | |
 | Analyse Job | | | | |
-| Scope Review run | | | | |
+| Automatic Scope Review | | | | |
 | Confirm scope | | | | |
 | Question save acknowledgement | | | | |
 | Question save completion | | | | |
 | Estimate generation | | | | |
-| Scope decision action | | | | |
+| Scope decision Apply/Keep | | | | |
 
-### Latency flags
+### Latency UX flags
 
-| Condition | Severity |
-| --- | --- |
-| UI acknowledgement > 1s with no feedback | Critical UX |
-| Analyse Job / Scope Review materially above prior design target | Review |
+| Condition | Observed? | Severity |
+| --- | --- | --- |
+| >1s with no visible acknowledgement | | Critical UX |
+| Long Analyse Job / Scope Review without clear progress | | High UX |
+| Long answer saves | | Medium / High |
+| UI flicker or remount | | Medium |
+
+Do not claim SLOs from these observations.
 
 ---
 
 ## Provider cost / token review (safe metadata only)
 
 Do not log briefs, notes, client data, evidence, or raw provider bodies.
+Capture during 7F E2E where metadata is visible.
 
 | Metric | Observed | Notes |
 | --- | --- | --- |
 | Primary provider calls per discovery run | | |
-| Repair frequency | | |
+| Repair frequency / attempts | | |
 | Avg input tokens | | |
 | Avg output tokens | | |
 | Observed range | | |
-| Rerun behaviour | | Idempotency reuse expected for identical sources |
+| Duplicate-run reuse | | Idempotency reuse expected for identical sources |
+| Stale rerun behaviour | | |
 | Duplicate-call prevention | | `analysingLock` + in-flight reject |
 
 ### Cost waste checklist
@@ -64,10 +75,11 @@ Do not log briefs, notes, client data, evidence, or raw provider bodies.
 - [ ] Unnecessary reruns  
 - [ ] Repeated identical runs  
 
-Model/provider changes require owner approval — not part of 7E.
+Model/provider changes require owner approval — not part of 7F.
 
 ---
 
 ## Local automation note
 
-Stage 3.1B.7E verify script confirms instrumentation and idempotency invariants exist; it does not measure Preview wall-clock times.
+Stage 3.1B.7E / 7F verify scripts confirm instrumentation and gate docs exist;
+they do not measure Preview wall-clock times.
