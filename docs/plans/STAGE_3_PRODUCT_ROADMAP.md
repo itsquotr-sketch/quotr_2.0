@@ -15,6 +15,10 @@
 | **3.1A** | Product Stabilisation, Workflow Reliability and UX Baseline | Fix Preview workflow defects; answer save reliability; client/spec UX; governed backlog | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
 | **3.1A-R1** | Preview Remediation | Fix Preview failures: enums, answer reconcile, Quick Estimate Edit, client propagation, capture hierarchy | **Complete** — included in Preview sign-off 2026-08-05 |
 | **3.1C** | Domain Model Audit | Documentation-only architectural audit of all major domain objects | **Complete** |
+| **3.1C.0** | Auth audit cross-check | Verify independent Claude auth claims against HEAD | **Complete** (`docs/audits/STAGE_3_1C_AUTH_AUDIT_CROSSCHECK.md`) |
+| **3.1C.1A** | Auth safety / config / diagnostics | Safe auth errors, signup runtime config assert, structured logging; no transactional RPC | **Complete — Local** (`docs/implementation/STAGE_3_1C1A_AUTH_SAFETY_COMPLETION.md`) |
+| **3.1C.1B** | Transactional signup provisioning | Idempotent org+profile RPC; setup-required finish-setup; drop service-role from normal signup | **Ready** (design only; migration 032 not created) |
+| **3.1C.2** | Auth callback / password reset / routing | Callback route, reset flow, redirect-back | **Planned** (confirmed absent) |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
 | **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.7F-R3 Complete — Local (Final Deck Retest Pending); **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E); 7A–7G Complete — Local; Production Disabled; Analyse Job Preserved |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
@@ -111,3 +115,7 @@ Every Stage 3 release should track:
 - 3.1B.6R3 Preview retest: `docs/runbooks/STAGE_3_1B6R3_PREVIEW_RETEST.md`
 - 3.1B.6R3.1 Preview retest: `docs/runbooks/STAGE_3_1B6R31_PREVIEW_RETEST.md`
 - UI/UX Overhaul plan: `docs/plans/QUOTR_UI_UX_OVERHAUL_PLAN.md`
+- 3.1C.0 auth audit cross-check: `docs/audits/STAGE_3_1C_AUTH_AUDIT_CROSSCHECK.md`
+- 3.1C.1A auth safety completion: `docs/implementation/STAGE_3_1C1A_AUTH_SAFETY_COMPLETION.md`
+- 3.1C.1A Preview auth smoke: `docs/runbooks/STAGE_3_1C1A_PREVIEW_AUTH_SMOKE.md`
+- 3.1C transactional signup design (1B): `docs/architecture/STAGE_3_1C_TRANSACTIONAL_SIGNUP_PROVISIONING_DESIGN.md`

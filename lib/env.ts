@@ -13,6 +13,13 @@ const PUBLIC_ENV_CHECKS: EnvCheck[] = [
   },
 ];
 
+/**
+ * Server env remains optional at build/boot so Vercel Preview can compile
+ * without every secret present. Signup still fails closed at runtime via
+ * `assertSignupServerConfiguration()` in `lib/auth/config.ts` before any
+ * service-role provisioning. Do NOT mark SUPABASE_SERVICE_ROLE_KEY required
+ * here (would break Preview builds); do NOT expose it as NEXT_PUBLIC_*.
+ */
 const SERVER_ENV_CHECKS: EnvCheck[] = [
   { name: "SUPABASE_SERVICE_ROLE_KEY", value: process.env.SUPABASE_SERVICE_ROLE_KEY, required: false },
   { name: "ANTHROPIC_API_KEY", value: process.env.ANTHROPIC_API_KEY, required: false },

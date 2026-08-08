@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.7E Complete — Local; **3.1B.7F Complete — Local (gate pack)** — Owner E2E results Pending; **3.1B.7F-R1 Complete — Local, Preview Retest Pending**; **3.1B.7F-R3 Complete — Local, Final Deck Retest Pending**; **3.1B.7G Complete — Local**; **BLOCKED BY PREVIEW DEFECTS**; Production **Disabled**)   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.7E Complete — Local; **3.1B.7F Complete — Local (gate pack)** — Owner E2E results Pending; **3.1B.7F-R1 Complete — Local, Preview Retest Pending**; **3.1B.7F-R3 Complete — Local, Final Deck Retest Pending**; **3.1B.7G Complete — Local**; **BLOCKED BY PREVIEW DEFECTS**; Production **Disabled**); **Stage 3.1C.1A Auth Safety Complete — Local** (transactional signup **3.1C.1B Ready**; password reset/callback **3.1C.2 Planned**)   
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -98,3 +98,11 @@
 - Stage 3.1B.7 missing-scope — Deferred until Preview gate clears.
 - Production: **Disabled**.
 - Stage 3.2: **Not Started**.
+
+## Batch notes (Stage 3.1C auth)
+
+- Stage 3.1C.0 auth audit cross-check: **Complete** — `docs/audits/STAGE_3_1C_AUTH_AUDIT_CROSSCHECK.md` (Claude claims verified; AUTH-001 still open for 1B).
+- Stage 3.1C.1A auth safety: **Complete — Local** — safe error taxonomy, signup runtime config assert, structured auth logging, login normalisation; `verify-stage-3-1c1a-auth-safety.ts`; Preview smoke `docs/runbooks/STAGE_3_1C1A_PREVIEW_AUTH_SMOKE.md`.
+- Stage 3.1C.1B transactional signup provisioning: **Ready** — design `docs/architecture/STAGE_3_1C_TRANSACTIONAL_SIGNUP_PROVISIONING_DESIGN.md`; migration **032 not created**.
+- Stage 3.1C.2 password reset / auth callback / routing: **Planned** — confirmed absent; do not implement in 1A/1B unless authorised.
+- Production Scope Discovery: **Disabled**. Stage 3.2: **Not Started**.
