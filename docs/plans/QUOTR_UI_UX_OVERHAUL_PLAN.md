@@ -11,7 +11,7 @@
 | Batch | Focus | Status |
 | --- | --- | --- |
 | UX-A–F (Assistant) | Disclosure, hierarchy, presentation, polish | **3.1B.7A–7D** Complete — Local |
-| Preview validation | Owner E2E gate | **3.1B.7F** Complete — Local (pack); **7F-R1/R2** Complete — Local / Preview Retest Pending; Owner results Pending / BLOCKED |
+| Preview validation | Owner E2E gate | **3.1B.7F** Complete — Local (pack); **7F-R1/R2/R3** Complete — Local / Final Deck Retest Pending; Owner results Pending / BLOCKED |
 | Density / sticky QE | Commercial hierarchy, sticky rail, mobile compact, centre density | **3.1B.7G** Complete — Local |
 | UX-E | Pricing + Quote surfaces | **Planned separately** |
 

@@ -46,6 +46,18 @@ export const CLARIFICATION_FACT_ROUTES: Readonly<
     kind: "SCOPE_EXISTENCE",
     factKey: "deck.fascia_included",
   },
+  "deck.finish.fascia": {
+    kind: "SCOPE_DETAIL",
+    factKey: "deck.vertical_face_boards_required",
+  },
+  "deck.fascia": {
+    kind: "SCOPE_DETAIL",
+    factKey: "deck.vertical_face_boards_required",
+  },
+  "deck.fascia.clarify": {
+    kind: "SCOPE_DETAIL",
+    factKey: "deck.vertical_face_boards_required",
+  },
   "bathroom.framing.clarify": {
     kind: "SCOPE_DETAIL",
     factKey: "bathroom.framing_required",
@@ -108,6 +120,41 @@ export function classifyClarificationKind(params: {
   return "SCOPE_DETAIL";
 }
 
+/**
+ * Deterministic title → Fact key fallbacks when rationale is missing.
+ * Only catalogue-aligned Deck / bathroom patterns — never invents keys.
+ */
+function routeByTitleHeuristic(title: string | null | undefined): {
+  readonly kind: ClarificationKind;
+  readonly factKey: string;
+} | null {
+  const t = String(title ?? "").toLowerCase();
+  if (!t) return null;
+  if (t.includes("substructure") && t.includes("condition")) {
+    return {
+      kind: "SCOPE_DETAIL",
+      factKey: "deck.substructure_condition",
+    };
+  }
+  if (
+    t.includes("fascia") ||
+    t.includes("face board") ||
+    t.includes("faceboards")
+  ) {
+    return {
+      kind: "SCOPE_DETAIL",
+      factKey: "deck.vertical_face_boards_required",
+    };
+  }
+  if (t.includes("balustrade") && (t.includes("height") || t.includes("include"))) {
+    return {
+      kind: "SCOPE_EXISTENCE",
+      factKey: "deck.balustrade_required",
+    };
+  }
+  return null;
+}
+
 export function routeClarificationToScopeDetails(params: {
   readonly rationaleCode: string | null | undefined;
   readonly suggestionKind: string;
@@ -120,6 +167,14 @@ export function routeClarificationToScopeDetails(params: {
     return {
       kind: mapped.kind,
       factKey: mapped.factKey,
+      mapped: true,
+    };
+  }
+  const byTitle = routeByTitleHeuristic(params.title);
+  if (byTitle) {
+    return {
+      kind: byTitle.kind,
+      factKey: byTitle.factKey,
       mapped: true,
     };
   }

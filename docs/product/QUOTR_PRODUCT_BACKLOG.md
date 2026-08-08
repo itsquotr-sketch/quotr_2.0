@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.7E Complete — Local; **3.1B.7F Complete — Local (gate pack)** — Owner E2E results Pending; **3.1B.7F-R1 Complete — Local, Preview Retest Pending**; **3.1B.7G Complete — Local**; **BLOCKED BY PREVIEW DEFECTS**; Production **Disabled**)   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.7E Complete — Local; **3.1B.7F Complete — Local (gate pack)** — Owner E2E results Pending; **3.1B.7F-R1 Complete — Local, Preview Retest Pending**; **3.1B.7F-R3 Complete — Local, Final Deck Retest Pending**; **3.1B.7G Complete — Local**; **BLOCKED BY PREVIEW DEFECTS**; Production **Disabled**)   
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -88,9 +88,11 @@
 - Stage 3.1B.7F-R1 Deck E2E remediation: **Complete — Local, Preview Retest Pending** — false stale normalise; breakdown WA authority; description compact surface; scope summary lists; attention items; constraint heuristics (DEF-7E-006); shell scroll; Scope Review remount trim; `verify-stage-3-1b7fr1-deck-e2e-remediation.ts`.
 - Stage 3.1B.7F-R2 final Preview polish: **Complete — Local, Preview Retest Pending** — Scope Details semantics; manual scope items (migration 030); Pricing required stubs; QE attention WA path; generate/answer ack marks; testing banner removed; mobile compact header; `verify-stage-3-1b7fr2-final-preview-polish.ts`.
 - Stage 3.1B.7F-R2.1 migration 030 remote: **Applied and Verified** on linked Preview `quotr_2.0` (`lxvnylhsbvudzzupxeqr`); history **001–030** aligned; Production Scope Discovery still **Disabled**; `STAGE_3_1B7FR21_REMOTE_030_APPLY_COMPLETION.md`.
+- Stage 3.1B.7F-R2.2 manual scope ACL: **Applied and Verified Remote** — migration **031** revoke/regrant least privilege (auth SELECT/INSERT only); history **001–031**; `STAGE_3_1B7FR22_MANUAL_SCOPE_ACL_HARDENING_COMPLETION.md`; Deck Preview Retest **Ready**.
+- Stage 3.1B.7F-R3 unified scope state: **Complete — Local, Final Deck Retest Pending** — `CurrentWorkAreaScopeState` composer; Fact-aware “To confirm in Scope Details”; QE included count includes manuals; unified Edit scope checklist; `verify-stage-3-1b7fr3-unified-scope-state.ts`; no migration 032.
 - Stage 3.1B.7G Assistant density / sticky Quick Estimate: **Complete — Local** — commercial-first hierarchy, collapsible secondary sections, CSS sticky desktop rail, mobile compact summary view-model, centre one-line completed summaries; `verify-stage-3-1b7g-assistant-density-sticky-estimate.ts`; responsive architecture documented; 7F E2E pack updated; production **Disabled**.
 - Assistant UX refinement programme: **Complete — Local** (7A–7D + 7G density). Broader Pricing/Quote UX: **Planned separately**.
-- Stage 3.1B release status: **BLOCKED BY PREVIEW DEFECTS** (owner E2E DEF-7E-003 + Preview retest of 7F-R2).
+- Stage 3.1B release status: **BLOCKED BY PREVIEW DEFECTS** (owner E2E DEF-7E-003 + Final Deck retest of 7F-R3).
 - Scope Discovery Preview sign-off: **Pending Owner Test**.
 - Do not change Analyse Job behaviour, commercial formulas, or Company DNA without explicit authorisation.
 - Stage 3.1B.7 missing-scope — Deferred until Preview gate clears.

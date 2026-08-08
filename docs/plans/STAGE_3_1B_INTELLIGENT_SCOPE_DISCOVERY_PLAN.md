@@ -7,7 +7,7 @@
 **Planning batch:** 3.1B.0 Complete  
 **Current batch:** 3.1B.7G — **Complete — Local**  
 **Next batch:** Owner fills 7F results → A READY FOR OWNER PRODUCTION GATE or B BLOCKED (Production still off); 3.1B.7 missing-scope — **Not Started**  
-**Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **no 030**  
+**Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **030**/**031** Applied and Verified (manual scope + ACL); **no 032**  
 **Server integration:** **Complete — Local**  
 **Scope Discovery UI:** **Complete — Local, Preview Retest Pending**  
 **Assistant progressive disclosure (7A):** **Complete — Local**  
@@ -20,11 +20,12 @@
 **Assistant UX refinement programme:** **Complete — Local** (7A–7D + 7G density)  
 **UI/UX Overhaul (Pricing/Quote):** **Planned separately**  
 **Scope Discovery Preview sign-off:** **Pending Owner Test**  
-**Stage 3.1B release status:** **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E; 7F-R2 Preview retest Pending)
+**Stage 3.1B release status:** **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E; 7F-R3 Final Deck Retest Pending)
 
 **3.1B.7F-R1:** Complete — Local — `docs/implementation/STAGE_3_1B7FR1_DECK_E2E_REMEDIATION_COMPLETION.md`
 
 **3.1B.7F-R2:** Complete — Local, Preview Retest Pending — `docs/implementation/STAGE_3_1B7FR2_FINAL_PREVIEW_POLISH_COMPLETION.md`  
+**3.1B.7F-R3:** Complete — Local, Final Deck Retest Pending — `docs/implementation/STAGE_3_1B7FR3_UNIFIED_SCOPE_STATE_COMPLETION.md`  
 **Preview feature:** **Enabled on Preview branch** (`SCOPE_DISCOVERY_ENABLED=true` for `hardening/stage-2a-security`)  
 **Production feature:** **Disabled**  
 **Feature flag:** **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off)  

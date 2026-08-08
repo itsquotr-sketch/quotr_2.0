@@ -49,7 +49,8 @@ Completed stages compress to one–two line outcomes; expand for full detail.
 | Full estimate | Dedicated sheet / screen (web: expand accordion for now) |
 | Completed stages | Via project / stage navigator |
 
-Current web implementation (3.1B.7G / 3.1B.7F-R2):
+Current web implementation (3.1B.7G / 3.1B.7F-R3):
+- Unified current scope state drives Scope Review buckets + Quick Estimate included counts.
 
 - Below `lg`: compact summary accordion (`buildQuickEstimateMobileSummary`)  
 - No sticky rail  

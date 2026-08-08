@@ -440,11 +440,14 @@ const migrationFiles = walkFiles(join(process.cwd(), "supabase/migrations"));
 const unexpected030 = migrationFiles.filter((f) => {
   const norm = f.replace(/\\/g, "/");
   if (!/03[0-9]_/.test(norm)) return false;
-  // 7F-R2 owns 030_work_area_scope_items — allowed after 3.1B.6.
-  return !norm.endsWith("030_work_area_scope_items.sql");
+  // 7F-R2 owns 030_work_area_scope_items; 7F-R2.2 owns 031 ACL hardening.
+  return !(
+    norm.endsWith("030_work_area_scope_items.sql") ||
+    norm.endsWith("031_work_area_scope_items_acl_hardening.sql")
+  );
 });
 check(
-  "no unexpected migration beyond 3.1B.6 (030+ except 7F-R2 work_area_scope_items)",
+  "no unexpected migration beyond 3.1B.6 (030/031 manual scope allowed)",
   unexpected030.length === 0,
   unexpected030.join(", ")
 );

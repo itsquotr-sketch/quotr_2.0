@@ -107,11 +107,11 @@
 
 ---
 
-## E2E findings (Stage 3.1B.7F / 7F-R1 / 7F-R2)
+## E2E findings (Stage 3.1B.7F / 7F-R1 / 7F-R2 / 7F-R3)
 
-Owner Deck E2E defects remediated locally in **3.1B.7F-R1**, with final polish in
-**3.1B.7F-R2**. Preview retest pending — see
-`docs/runbooks/STAGE_3_1B7FR2_DECK_PREVIEW_RETEST.md`.
+Owner Deck E2E defects remediated locally in **3.1B.7F-R1**, polished in **3.1B.7F-R2**,
+with unified scope-state reconciliation in **3.1B.7F-R3**. Final Deck retest pending — see
+`docs/runbooks/STAGE_3_1B7FR3_DECK_FINAL_RETEST.md`.
 
 | ID | Project | Severity | Observed | Expected | Root cause | Release blocker | Fix status | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -129,7 +129,10 @@ Owner Deck E2E defects remediated locally in **3.1B.7F-R1**, with final polish i
 | DEF-7F-012 | Deck | Medium | QE attention lacked WA / resolve path | Exact item + WA + Review in Scope Details | Presentation | No | Fixed — Local (7F-R2) | QE ATTENTION |
 | DEF-7F-013 | Deck | Low | Generate / answer save felt delayed | Immediate ack + Saved before refresh | UX / remount | No | Fixed — Local (7F-R2) | PERF marks |
 | DEF-7F-014 | Deck | Medium | Top clipped / bottom whitespace; testing banner | Intentional shell height; banner removed | AppShell / BetaNotice | No | Fixed — Local (7F-R2) | LAYOUT |
-| DEF-7F-015 | Deck | Medium | Mobile header too tall | Compact Back / title / Actions | ProjectHeader | No | Fixed — Local (7F-R2) | MOBILE HEADER |
+| DEF-7F-015 | Deck | High | Pending Scope Details bucket frozen after Facts answered | Move to Included when mapped Facts known | Summary used frozen `latestReasonCode` | Yes until Final Deck retest | **Fixed — Local (7F-R3)** | `verify-stage-3-1b7fr3` DETAIL |
+| DEF-7F-017 | Deck | Medium | QE included count ignored manuals | Count all INCLUDED (system + user) | QE used discovery-only filter | Yes until Final Deck retest | **Fixed — Local (7F-R3)** | `verify-stage-3-1b7fr3` QE |
+| DEF-7F-018 | Deck | Medium | Manual items had inline checkboxes in confirmed summary | Readable summary; edit via Edit scope | Dual editing paradigms | No | **Fixed — Local (7F-R3)** | `verify-stage-3-1b7fr3` EDIT |
+| DEF-7F-016 | Deck / Security | Low | 030 authenticated UPDATE/DELETE table grants via 026 defaults | Least-privilege grants + RLS | 030 omitted 028-style revoke | No | **Fixed — Remote (7F-R2.2 / 031)** | `STAGE_3_1B7FR22_MANUAL_SCOPE_ACL_HARDENING_COMPLETION.md` |
 
 ### Known local verify gap (DEF-7E-006)
 

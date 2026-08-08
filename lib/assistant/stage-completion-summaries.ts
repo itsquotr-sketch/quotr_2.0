@@ -6,6 +6,8 @@
 import type { QualityLevel, Question, WorkArea } from "@/components/assistant/types";
 import { QUALITY_OPTIONS } from "@/components/assistant/QualityBlock";
 import type { ScopeReview, ScopeReviewFact } from "@/lib/assistant/types";
+import { composeCurrentWorkAreaScopeState } from "@/lib/assistant/current-work-area-scope-state";
+import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
 import {
   formatAnswerOptionLabel,
   formatFactValueForDisplay,
@@ -420,58 +422,44 @@ export function compactSummaryOverflow(
   };
 }
 
+/**
+ * Scope Review summary lists — Fact-aware via unified current scope state (7F-R3).
+ * Pending/routed discovery reasons clear when mapped Facts are known.
+ */
 export function buildScopeItemSummaryLists(params: {
   readonly suggestions: readonly {
+    readonly suggestionId?: string;
     readonly proposedTitle: string;
+    readonly proposedDescription?: string | null;
     readonly decisionState: string;
     readonly latestReasonCode?: string | null;
     readonly proposalClass?: string;
+    readonly suggestionKind?: string;
+    readonly rationaleCode?: string | null;
+    readonly relatedWorkAreaId?: string | null;
+    readonly proposedWorkAreaType?: string | null;
+    readonly supersededBySuggestionId?: string | null;
   }[];
+  readonly scopeReview?: ScopeReview | null;
+  readonly manualItems?: readonly ManualScopeItemView[];
 }): ScopeItemSummaryLists {
-  const included: string[] = [];
-  const notRequired: string[] = [];
-  const pendingScopeDetails: { title: string; reason: string }[] = [];
-
-  for (const s of params.suggestions) {
-    const cls = String(s.proposalClass ?? "");
-    if (
-      cls !== "SCOPE_ITEM" &&
-      cls !== "CLARIFICATION" &&
-      cls !== "EXCLUSION"
-    ) {
-      continue;
-    }
-    const reason = String(s.latestReasonCode ?? "");
-    const title = s.proposedTitle;
-    if (reason.includes("pending") || reason.includes("routed")) {
-      const state = String(s.decisionState).toUpperCase();
-      const includedPending =
-        state === "ACCEPTED" ||
-        state === "MODIFIED" ||
-        reason.includes("included_pending") ||
-        reason.includes("pending");
-      pendingScopeDetails.push({
-        title,
-        reason: includedPending
-          ? "Included — detail still needs confirmation"
-          : "Included — condition still needs confirmation",
-      });
-      continue;
-    }
-    const state = String(s.decisionState).toUpperCase();
-    if (state === "ACCEPTED" || state === "MODIFIED") {
-      included.push(title);
-    } else if (state === "REJECTED") {
-      notRequired.push(title);
-    }
-  }
-
-  return {
-    included,
-    notRequired,
-    pendingScopeDetails,
-    needsDetail: pendingScopeDetails.map((p) => p.title),
-  };
+  return composeCurrentWorkAreaScopeState({
+    suggestions: params.suggestions.map((s, index) => ({
+      suggestionId: s.suggestionId ?? `anon:${index}:${s.proposedTitle}`,
+      proposedTitle: s.proposedTitle,
+      proposedDescription: s.proposedDescription,
+      decisionState: s.decisionState,
+      latestReasonCode: s.latestReasonCode,
+      proposalClass: s.proposalClass,
+      suggestionKind: s.suggestionKind,
+      rationaleCode: s.rationaleCode,
+      relatedWorkAreaId: s.relatedWorkAreaId,
+      proposedWorkAreaType: s.proposedWorkAreaType,
+      supersededBySuggestionId: s.supersededBySuggestionId,
+    })),
+    manualItems: params.manualItems,
+    scopeReview: params.scopeReview,
+  }).summaryLists;
 }
 
 export type EstimateReviewSummaryModel = {

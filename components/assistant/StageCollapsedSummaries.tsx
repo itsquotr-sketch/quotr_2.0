@@ -118,10 +118,16 @@ export function ScopeReviewCollapsedSummary({
 /** Named Included / Not required / To confirm in Scope Details lists. */
 export function ScopeReviewConfirmedSummaryLists({
   lists,
+  includedRows,
   workAreaLabel,
   onReviewScopeDetails,
 }: {
   lists: ScopeItemSummaryLists;
+  /** Optional provenance rows (Added by you · Pricing required). */
+  includedRows?: readonly {
+    readonly title: string;
+    readonly secondary: string | null;
+  }[];
   workAreaLabel?: string;
   onReviewScopeDetails?: () => void;
 }) {
@@ -135,6 +141,7 @@ export function ScopeReviewConfirmedSummaryLists({
         title="Included"
         marker="✓"
         items={lists.included}
+        rows={includedRows}
         emptyLabel="None included"
       />
       <SummaryCategory
@@ -192,36 +199,56 @@ function SummaryCategory({
   title,
   marker,
   items,
+  rows,
   emptyLabel,
 }: {
   title: string;
   marker: string;
   items: readonly string[];
+  rows?: readonly {
+    readonly title: string;
+    readonly secondary: string | null;
+  }[];
   emptyLabel?: string;
 }) {
-  const { visible, overflow } = compactSummaryOverflow(items);
+  const displayRows =
+    rows && rows.length > 0
+      ? rows
+      : items.map((itemTitle) => ({
+          title: itemTitle,
+          secondary: null as string | null,
+        }));
+  const { visible, overflow } = compactSummaryOverflow(
+    displayRows.map((r) => r.title)
+  );
+  const visibleRows = displayRows.slice(0, visible.length);
   return (
     <div>
       <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
         {title}
-        {items.length > 0 ? (
+        {displayRows.length > 0 ? (
           <span className="ml-1 font-normal normal-case text-muted-foreground/80">
-            ({items.length})
+            ({displayRows.length})
           </span>
         ) : null}
       </p>
-      {items.length === 0 ? (
+      {displayRows.length === 0 ? (
         emptyLabel ? (
           <p className="mt-1 text-xs text-muted-foreground">{emptyLabel}</p>
         ) : null
       ) : (
         <ul className="mt-1 space-y-0.5">
-          {visible.map((item) => (
-            <li key={item} className="text-sm leading-snug">
+          {visibleRows.map((row) => (
+            <li key={row.title} className="text-sm leading-snug">
               <span className="mr-1.5 text-muted-foreground" aria-hidden>
                 {marker}
               </span>
-              {item}
+              <span className="font-medium">{row.title}</span>
+              {row.secondary ? (
+                <p className="mt-0.5 pl-4 text-[11px] text-muted-foreground">
+                  {row.secondary}
+                </p>
+              ) : null}
             </li>
           ))}
           {overflow > 0 ? (

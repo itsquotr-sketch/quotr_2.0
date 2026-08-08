@@ -1,7 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { startTransition, useCallback, useMemo, useRef, useState } from "react";
+import { startTransition, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { AssistantProgress } from "@/components/assistant/AssistantProgress";
 import { CollapsibleStageCard } from "@/components/assistant/CollapsibleStageCard";
 import { StepperNav } from "@/components/assistant/StepperNav";
@@ -73,6 +73,9 @@ import {
   countAnsweredQuestions,
 } from "@/lib/assistant/stage-completion-summaries";
 import type { AssistantState } from "@/lib/assistant/types";
+import { composeCurrentWorkAreaScopeState } from "@/lib/assistant/current-work-area-scope-state";
+import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
+import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
 import { NoteProposalReviewPanel } from "@/components/project-notes/NoteProposalReviewPanel";
 import type { ProjectNote } from "@/lib/project-notes/types";
 import type { NoteProposal } from "@/lib/project-notes/proposals/types";
@@ -205,7 +208,25 @@ export function AssistantShell({
   });
   const [unresolvedScopeImpactCount, setUnresolvedScopeImpactCount] =
     useState(0);
+  const [manualScopeItems, setManualScopeItems] = useState<
+    readonly ManualScopeItemView[]
+  >([]);
+  const [liveScopeCounts, setLiveScopeCounts] = useState<{
+    includedCount: number;
+    needsDetailCount: number;
+  } | null>(null);
   const scopeReviewCardRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void listManualScopeItemsForProject(project.id).then((outcome) => {
+      if (cancelled || !outcome.ok) return;
+      setManualScopeItems(outcome.items);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [project.id, initialState.scopeReview]);
 
   const briefSubmitted = isStageAtOrBeyond(stage, "confirm_work_areas");
   const workAreasConfirmed = isStageAtOrBeyond(stage, "quality");
@@ -736,32 +757,26 @@ export function AssistantShell({
         answers: questionAnswers,
       })
     : 0;
-  const scopeDiscoverySuggestions =
-    scopeDiscoveryInitialResults?.allSuggestions ?? [];
-  const includedScopeFromDiscovery = scopeDiscoverySuggestions.filter((s) => {
-    const cls = String(s.proposalClass ?? "");
-    if (
-      cls !== "SCOPE_ITEM" &&
-      cls !== "CLARIFICATION" &&
-      cls !== "EXCLUSION"
-    ) {
-      return false;
-    }
-    const state = String(s.decisionState).toUpperCase();
-    return state === "ACCEPTED" || state === "MODIFIED";
-  }).length;
-  const needsDetailFromDiscovery = scopeDiscoverySuggestions.filter((s) =>
-    String(s.latestReasonCode ?? "").includes("pending") ||
-    String(s.latestReasonCode ?? "").includes("routed")
-  ).length;
+  const composedScopeState = useMemo(
+    () =>
+      composeCurrentWorkAreaScopeState({
+        suggestions: scopeDiscoveryInitialResults?.allSuggestions ?? [],
+        manualItems: manualScopeItems,
+        scopeReview: initialState.scopeReview,
+      }),
+    [scopeDiscoveryInitialResults, manualScopeItems, initialState.scopeReview]
+  );
+  const includedScopeItemCount =
+    liveScopeCounts?.includedCount ?? composedScopeState.includedCount;
+  const needsDetailScopeCount =
+    liveScopeCounts?.needsDetailCount ?? composedScopeState.needsDetailCount;
   const estimateReviewSummaryModel = buildEstimateReviewSummaryModel({
     scopeReview: initialState.scopeReview,
     estimateReady,
     estimateStale: Boolean(estimate?.isStale),
     constraintCount: initialState.submittedConstraints.length,
     includedScopeItemCount:
-      includedScopeFromDiscovery ||
-      initialState.scopeReview.workAreas.length,
+      includedScopeItemCount || initialState.scopeReview.workAreas.length,
   });
   const constraintChips = buildConstraintChipLabels({
     questions: initialState.constraintQuestions,
@@ -775,8 +790,8 @@ export function AssistantShell({
   const quickEstimatePresentation = buildQuickEstimatePresentationModel({
     workAreaNames: workAreaLists.included,
     includedScopeItemCount:
-      includedScopeFromDiscovery || workAreaLists.included.length,
-    outstandingClarificationCount: needsDetailFromDiscovery,
+      includedScopeItemCount || workAreaLists.included.length,
+    outstandingClarificationCount: needsDetailScopeCount,
     assumptionCount:
       initialState.scopeReview.generalAssumptions.length +
       initialState.scopeReview.workAreas.reduce(
@@ -798,8 +813,8 @@ export function AssistantShell({
     estimateStale: Boolean(estimate?.isStale),
     constraintCount: initialState.submittedConstraints.length,
     includedScopeItemCount:
-      includedScopeFromDiscovery || workAreaLists.included.length,
-    needsDetailCount: needsDetailFromDiscovery,
+      includedScopeItemCount || workAreaLists.included.length,
+    needsDetailCount: needsDetailScopeCount,
     includedWorkAreaCount: workAreaLists.included.length,
     qualityTitle: qualityLevel
       ? QUALITY_OPTIONS.find((o) => o.value === qualityLevel)?.title ?? null
@@ -943,6 +958,7 @@ export function AssistantShell({
                 onUnresolvedRecommendationsChange={
                   setUnresolvedScopeImpactCount
                 }
+                onScopeStateChange={setLiveScopeCounts}
                 onReviewScopeDetails={() => {
                   questionsCardRef.current?.scrollIntoView({
                     behavior: "smooth",

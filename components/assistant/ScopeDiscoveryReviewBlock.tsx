@@ -56,8 +56,14 @@ import {
   ManualScopeItemRow,
 } from "@/components/assistant/AddManualScopeItemForm";
 import type { ScopeReview } from "@/lib/assistant/types";
-import { buildScopeItemSummaryLists } from "@/lib/assistant/stage-completion-summaries";
-import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
+import {
+  composeCurrentWorkAreaScopeState,
+  includedSummaryRows,
+} from "@/lib/assistant/current-work-area-scope-state";
+import {
+  decideManualScopeItemAction,
+  listManualScopeItemsForProject,
+} from "@/lib/work-areas/scope-items/actions";
 import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
 import { cn } from "@/lib/utils";
 
@@ -72,6 +78,11 @@ type ScopeDiscoveryReviewBlockProps = {
   onCompletionChange?: (complete: boolean) => void;
   /** Soft warning before estimate when high-priority recommendations remain. */
   onUnresolvedRecommendationsChange?: (count: number) => void;
+  /** Live unified scope counts for Quick Estimate / stepper. */
+  onScopeStateChange?: (counts: {
+    readonly includedCount: number;
+    readonly needsDetailCount: number;
+  }) => void;
   /** Progressive disclosure — prefer expanded when this stage is active. */
   preferredExpanded?: boolean;
   /** Stronger elevation when this is the active incomplete stage. */
@@ -238,6 +249,16 @@ function ChecklistRow({
   );
 }
 
+function buildInitialManualBatch(
+  items: readonly ManualScopeItemView[]
+): Record<string, boolean> {
+  const next: Record<string, boolean> = {};
+  for (const item of items) {
+    next[item.id] = item.state === "INCLUDED";
+  }
+  return next;
+}
+
 export function ScopeDiscoveryReviewBlock({
   projectId,
   enabled,
@@ -246,6 +267,7 @@ export function ScopeDiscoveryReviewBlock({
   scopeReview = null,
   onCompletionChange,
   onUnresolvedRecommendationsChange,
+  onScopeStateChange,
   preferredExpanded,
   isActiveStage = false,
   onReviewScopeDetails,
@@ -258,6 +280,9 @@ export function ScopeDiscoveryReviewBlock({
     initialResults
   );
   const [manualItems, setManualItems] = useState<ManualScopeItemView[]>([]);
+  const [localManualBatch, setLocalManualBatch] = useState<
+    Record<string, boolean>
+  >({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [isLoadingResults, setIsLoadingResults] = useState(false);
   const [isAnalysing, setIsAnalysing] = useState(false);
@@ -316,12 +341,16 @@ export function ScopeDiscoveryReviewBlock({
     let cancelled = false;
     void listManualScopeItemsForProject(projectId).then((outcome) => {
       if (cancelled || !outcome.ok) return;
-      setManualItems([...outcome.items]);
+      const items = [...outcome.items];
+      setManualItems(items);
+      if (!isEditingScope) {
+        setLocalManualBatch(buildInitialManualBatch(items));
+      }
     });
     return () => {
       cancelled = true;
     };
-  }, [enabled, projectId]);
+  }, [enabled, projectId, isEditingScope, scopeReview]);
 
   useEffect(() => {
     if (!isAnalysing) return;
@@ -576,31 +605,109 @@ export function ScopeDiscoveryReviewBlock({
   };
 
   const handleConfirmScope = async () => {
-    if (!results?.runId || isSavingBatch || isAnalysing) return;
+    if (isSavingBatch || isAnalysing) return;
+    const hasDiscoveryBatch = Boolean(results?.runId) && batchEligible.length > 0;
+    const hasManualChanges = manualItems.some((item) => {
+      const local =
+        localManualBatch[item.id] ?? item.state === "INCLUDED";
+      const persisted = item.state === "INCLUDED";
+      return local !== persisted;
+    });
+    if (!hasDiscoveryBatch && !hasManualChanges && manualItems.length === 0) {
+      // Nothing to persist — still allow closing edit mode when unchanged.
+      if (isEditingScope) {
+        setIsEditingScope(false);
+        setStatusMessage(SCOPE_DISCOVERY_UI_COPY.scopeConfirmed);
+      }
+      return;
+    }
+
     setIsSavingBatch(true);
     setBatchError(null);
     setStatusMessage(SCOPE_DISCOVERY_UI_COPY.savingScope);
+
+    let discoveryOk = true;
+    let discoveryMessage: string | null = null;
+    let manualsFailed = 0;
+    let manualsSaved = 0;
+
     try {
-      const items = batchEligible.map((s) => ({
-        suggestionId: s.suggestionId,
-        intendedState: (localBatch[s.suggestionId] ??
-          defaultBatchSelection(s)) as BatchScopeItemState,
-      }));
-      const outcome = await batchConfirmScopeItemsAction({
-        projectId,
-        runId: results.runId,
-        sourceRevision,
-        items,
-      });
-      if (!outcome.ok) {
-        setBatchError(outcome.message);
+      if (hasDiscoveryBatch && results?.runId) {
+        const items = batchEligible.map((s) => ({
+          suggestionId: s.suggestionId,
+          intendedState: (localBatch[s.suggestionId] ??
+            defaultBatchSelection(s)) as BatchScopeItemState,
+        }));
+        const outcome = await batchConfirmScopeItemsAction({
+          projectId,
+          runId: results.runId,
+          sourceRevision,
+          items,
+        });
+        if (!outcome.ok) {
+          discoveryOk = false;
+          discoveryMessage = outcome.message;
+        }
+      }
+
+      for (const item of manualItems) {
+        const localIncluded =
+          localManualBatch[item.id] ?? item.state === "INCLUDED";
+        const persistedIncluded = item.state === "INCLUDED";
+        if (localIncluded === persistedIncluded) continue;
+        const result = await decideManualScopeItemAction({
+          projectId,
+          scopeItemId: item.id,
+          intendedState: localIncluded ? "INCLUDED" : "NOT_REQUIRED",
+        });
+        if (result.ok) {
+          manualsSaved += 1;
+          setManualItems((prev) =>
+            prev.map((row) =>
+              row.id === item.id ? { ...row, state: result.state } : row
+            )
+          );
+        } else {
+          manualsFailed += 1;
+        }
+      }
+
+      if (!discoveryOk && manualsSaved === 0) {
+        setBatchError(
+          discoveryMessage ?? "Scope could not be confirmed. Try again."
+        );
         setStatusMessage(null);
         return;
       }
+
+      if (!discoveryOk || manualsFailed > 0) {
+        const parts: string[] = [];
+        if (!discoveryOk) {
+          parts.push(
+            discoveryMessage ?? "System scope decisions could not be saved."
+          );
+        }
+        if (manualsFailed > 0) {
+          parts.push(
+            `${manualsFailed} manual scope decision${manualsFailed === 1 ? "" : "s"} failed.`
+          );
+        }
+        setBatchError(parts.join(" "));
+        setStatusMessage(null);
+        if (discoveryOk) {
+          await refreshResults();
+        }
+        return;
+      }
+
       setIsEditingScope(false);
       setStatusMessage(SCOPE_DISCOVERY_UI_COPY.scopeConfirmed);
       await refreshResults();
       // Batch confirm does not create Work Areas / Facts — skip full remount.
+      // Manual decisions may affect QE counts — light refresh is enough via state.
+      startTransition(() => {
+        router.refresh();
+      });
     } catch {
       setBatchError("Scope could not be confirmed. Try again.");
       setStatusMessage(null);
@@ -613,6 +720,13 @@ export function ScopeDiscoveryReviewBlock({
     setLocalBatch((prev) => ({
       ...prev,
       [suggestionId]: included ? "INCLUDED" : "NOT_REQUIRED",
+    }));
+  };
+
+  const setManualIncluded = (itemId: string, included: boolean) => {
+    setLocalManualBatch((prev) => ({
+      ...prev,
+      [itemId]: included,
     }));
   };
 
@@ -723,12 +837,43 @@ export function ScopeDiscoveryReviewBlock({
     }
   };
 
+  const currentScopeState = useMemo(
+    () =>
+      composeCurrentWorkAreaScopeState({
+        suggestions: batchEligible,
+        manualItems,
+        scopeReview,
+      }),
+    [batchEligible, manualItems, scopeReview]
+  );
+  const mergedScopeLists = currentScopeState.summaryLists;
+  const includedProvenanceRows = includedSummaryRows(currentScopeState);
+
+  useEffect(() => {
+    onScopeStateChange?.({
+      includedCount: currentScopeState.includedCount,
+      needsDetailCount: currentScopeState.needsDetailCount,
+    });
+  }, [
+    currentScopeState.includedCount,
+    currentScopeState.needsDetailCount,
+    onScopeStateChange,
+  ]);
+
   if (!enabled) return null;
 
-  const includedCount = batchEligible.filter(
-    (s) => (localBatch[s.suggestionId] ?? defaultBatchSelection(s)) === "INCLUDED"
+  const discoveryIncludedCount = batchEligible.filter(
+    (s) =>
+      (localBatch[s.suggestionId] ?? defaultBatchSelection(s)) === "INCLUDED"
   ).length;
-  const excludedCount = batchEligible.length - includedCount;
+  const manualIncludedLocal = manualItems.filter(
+    (item) => localManualBatch[item.id] ?? item.state === "INCLUDED"
+  ).length;
+  const includedCount = discoveryIncludedCount + manualIncludedLocal;
+  const excludedCount =
+    batchEligible.length +
+    manualItems.length -
+    includedCount;
 
   const summaryBits: string[] = [];
   if (!hasRun) summaryBits.push("Preparing");
@@ -779,21 +924,6 @@ export function ScopeDiscoveryReviewBlock({
           : completion.complete && !isEditingScope
             ? "complete"
             : "review";
-
-  const scopeItemLists = buildScopeItemSummaryLists({
-    suggestions: batchEligible,
-  });
-  const manualIncludedTitles = manualItems
-    .filter((item) => item.state === "INCLUDED")
-    .map((item) => item.title);
-  const manualNotRequiredTitles = manualItems
-    .filter((item) => item.state === "NOT_REQUIRED")
-    .map((item) => item.title);
-  const mergedScopeLists = {
-    ...scopeItemLists,
-    included: [...scopeItemLists.included, ...manualIncludedTitles],
-    notRequired: [...scopeItemLists.notRequired, ...manualNotRequiredTitles],
-  };
 
   const disclosureExpanded =
     preferredExpanded !== undefined
@@ -954,7 +1084,8 @@ export function ScopeDiscoveryReviewBlock({
                           defaultBatchSelection(s)) === "INCLUDED"
                     ).length;
                     const manualIncluded = manualForSection.filter(
-                      (item) => item.state === "INCLUDED"
+                      (item) =>
+                        localManualBatch[item.id] ?? item.state === "INCLUDED"
                     ).length;
                     return (
                       <section
@@ -1012,12 +1143,12 @@ export function ScopeDiscoveryReviewBlock({
                                     projectId={projectId}
                                     item={item}
                                     disabled={isSavingBatch}
-                                    onChanged={(next) =>
-                                      setManualItems((prev) =>
-                                        prev.map((row) =>
-                                          row.id === next.id ? next : row
-                                        )
-                                      )
+                                    localIncluded={
+                                      localManualBatch[item.id] ??
+                                      item.state === "INCLUDED"
+                                    }
+                                    onLocalToggle={(inc) =>
+                                      setManualIncluded(item.id, inc)
                                     }
                                   />
                                 ))
@@ -1028,9 +1159,13 @@ export function ScopeDiscoveryReviewBlock({
                               workAreaId={section.workAreaId}
                               workAreaName={section.workAreaLabel}
                               disabled={isSavingBatch || isAnalysing}
-                              onAdded={(item) =>
-                                setManualItems((prev) => [...prev, item])
-                              }
+                              onAdded={(item) => {
+                                setManualItems((prev) => [...prev, item]);
+                                setLocalManualBatch((prev) => ({
+                                  ...prev,
+                                  [item.id]: true,
+                                }));
+                              }}
                             />
                           ) : null}
                         </div>
@@ -1067,12 +1202,12 @@ export function ScopeDiscoveryReviewBlock({
                                   projectId={projectId}
                                   item={item}
                                   disabled={isSavingBatch}
-                                  onChanged={(next) =>
-                                    setManualItems((prev) =>
-                                      prev.map((row) =>
-                                        row.id === next.id ? next : row
-                                      )
-                                    )
+                                  localIncluded={
+                                    localManualBatch[item.id] ??
+                                    item.state === "INCLUDED"
+                                  }
+                                  onLocalToggle={(inc) =>
+                                    setManualIncluded(item.id, inc)
                                   }
                                 />
                               ))}
@@ -1081,9 +1216,13 @@ export function ScopeDiscoveryReviewBlock({
                               workAreaId={workAreaId}
                               workAreaName={workAreaLabel}
                               disabled={isSavingBatch || isAnalysing}
-                              onAdded={(item) =>
-                                setManualItems((prev) => [...prev, item])
-                              }
+                              onAdded={(item) => {
+                                setManualItems((prev) => [...prev, item]);
+                                setLocalManualBatch((prev) => ({
+                                  ...prev,
+                                  [item.id]: true,
+                                }));
+                              }}
                             />
                           </div>
                         </section>
@@ -1093,7 +1232,10 @@ export function ScopeDiscoveryReviewBlock({
                   <Button
                     type="button"
                     className="min-h-10 w-full sm:w-auto"
-                    disabled={isSavingBatch || batchEligible.length === 0}
+                    disabled={
+                      isSavingBatch ||
+                      (batchEligible.length === 0 && manualItems.length === 0)
+                    }
                     onClick={() => void handleConfirmScope()}
                   >
                     {isSavingBatch ? (
@@ -1117,56 +1259,29 @@ export function ScopeDiscoveryReviewBlock({
                     </p>
                     <ScopeReviewConfirmedSummaryLists
                       lists={mergedScopeLists}
+                      includedRows={includedProvenanceRows}
                       onReviewScopeDetails={onReviewScopeDetails}
                     />
-                    <div className="mt-3 space-y-2">
-                      {(workAreaLabels instanceof Map
-                        ? [...workAreaLabels.entries()]
-                        : Object.entries(workAreaLabels)
-                      ).map(([workAreaId, workAreaLabel]) => (
-                        <div key={`add-${workAreaId}`}>
-                          <p className="text-xs font-medium text-muted-foreground">
-                            {workAreaLabel}
-                          </p>
-                          {manualItems
-                            .filter((item) => item.workAreaId === workAreaId)
-                            .map((item) => (
-                              <ManualScopeItemRow
-                                key={item.id}
-                                projectId={projectId}
-                                item={item}
-                                onChanged={(next) =>
-                                  setManualItems((prev) =>
-                                    prev.map((row) =>
-                                      row.id === next.id ? next : row
-                                    )
-                                  )
-                                }
-                              />
-                            ))}
-                          <AddManualScopeItemForm
-                            projectId={projectId}
-                            workAreaId={workAreaId}
-                            workAreaName={workAreaLabel}
-                            onAdded={(item) =>
-                              setManualItems((prev) => [...prev, item])
-                            }
-                          />
-                        </div>
-                      ))}
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="min-h-10"
+                        onClick={() => {
+                          setIsEditingScope(true);
+                          setLocalBatch(buildInitialBatchState(suggestions));
+                          setLocalManualBatch(
+                            buildInitialManualBatch(manualItems)
+                          );
+                        }}
+                      >
+                        {SCOPE_DISCOVERY_UI_COPY.editScopeButton}
+                      </Button>
                     </div>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="mt-2 min-h-10"
-                      onClick={() => {
-                        setIsEditingScope(true);
-                        setLocalBatch(buildInitialBatchState(suggestions));
-                      }}
-                    >
-                      {SCOPE_DISCOVERY_UI_COPY.editScopeButton}
-                    </Button>
+                    <p className="mt-2 text-[11px] text-muted-foreground">
+                      Use Edit scope to include, exclude, or add scope items.
+                    </p>
                   </div>
                 </>
               )}

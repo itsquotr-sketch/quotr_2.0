@@ -16,14 +16,20 @@ export function ManualScopeItemRow({
   item,
   disabled,
   onChanged,
+  /** When set, checkbox is local-only (Edit scope batch). */
+  localIncluded,
+  onLocalToggle,
 }: {
   projectId: string;
   item: ManualScopeItemView;
   disabled?: boolean;
-  onChanged: (next: ManualScopeItemView) => void;
+  onChanged?: (next: ManualScopeItemView) => void;
+  localIncluded?: boolean;
+  onLocalToggle?: (included: boolean) => void;
 }) {
   const [pending, setPending] = useState(false);
-  const included = item.state === "INCLUDED";
+  const controlled = typeof localIncluded === "boolean";
+  const included = controlled ? localIncluded : item.state === "INCLUDED";
 
   return (
     <div className="border-b border-border/40 py-2.5 last:border-b-0">
@@ -36,6 +42,10 @@ export function ManualScopeItemRow({
           aria-label={item.title}
           onChange={(e) => {
             const next = e.target.checked;
+            if (controlled) {
+              onLocalToggle?.(next);
+              return;
+            }
             setPending(true);
             void decideManualScopeItemAction({
               projectId,
@@ -44,7 +54,7 @@ export function ManualScopeItemRow({
             }).then((result) => {
               setPending(false);
               if (result.ok) {
-                onChanged({ ...item, state: result.state });
+                onChanged?.({ ...item, state: result.state });
               }
             });
           }}

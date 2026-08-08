@@ -1,16 +1,18 @@
 # Stage 3.1B.7F — Owner Preview E2E Results
 
-**Status:** Pending Owner Capture (7F-R2 Local Complete; Preview Retest Pending)  
+**Status:** Pending Owner Capture (7F-R3 Local Complete; Final Deck Retest Pending)  
 **Date opened:** 2026-08-07  
 **Test pack:** `docs/runbooks/STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`  
 **7F-R1 retest:** `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`  
 **7F-R2 retest:** `docs/runbooks/STAGE_3_1B7FR2_DECK_PREVIEW_RETEST.md`  
+**7F-R3 final retest:** `docs/runbooks/STAGE_3_1B7FR3_DECK_FINAL_RETEST.md`  
 **Remediation:** `docs/implementation/STAGE_3_1B7FR1_DECK_E2E_REMEDIATION_COMPLETION.md`  
 **7F-R2 polish:** `docs/implementation/STAGE_3_1B7FR2_FINAL_PREVIEW_POLISH_COMPLETION.md`  
+**7F-R3 unified scope:** `docs/implementation/STAGE_3_1B7FR3_UNIFIED_SCOPE_STATE_COMPLETION.md`  
 **Defect register:** `docs/audits/STAGE_3_1B7E_PREVIEW_DEFECT_REGISTER.md`  
 **Performance:** `docs/performance/STAGE_3_1B_PREVIEW_PERFORMANCE_RESULTS.md`  
 
-**Overall release decision:** _Pending — enter A or B after Preview retest of 7F-R2_
+**Overall release decision:** _Pending — enter A or B after Final Deck Retest of 7F-R3_
 
 | Option | Criteria |
 | --- | --- |
