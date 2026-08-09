@@ -80,7 +80,7 @@ See `docs/KNOWN_LIMITATIONS.md`.
 - Personal Profile (`/app/profile`) is distinct from Company Settings (`/app/settings/company`).
 - Auth callback: `/auth/callback` (PKCE). Configure Supabase redirect allow-list for Preview/Production hosts.
 - Forgot password: `/forgot-password`. Reset: `/reset-password`.
-- Optional `NEXT_PUBLIC_SITE_URL` for email redirect origins.
+- Optional `NEXT_PUBLIC_SITE_URL` for email redirect origins — **required on Preview** as the stable branch origin. See `docs/runbooks/STAGE_3_1C2B_AUTH_URL_CONFIGURATION.md`.
 - Email change: **not** in 2B (Profile email read-only).
 - Preview E2E: `docs/runbooks/STAGE_3_1C2B_ACCOUNT_RECOVERY_PREVIEW_TEST.md`.
 - Architecture: `docs/architecture/QUOTR_AUTH_CALLBACK_AND_RECOVERY_ARCHITECTURE.md`.

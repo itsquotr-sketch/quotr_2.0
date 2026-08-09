@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense, useActionState } from "react";
+import { useSearchParams } from "next/navigation";
 import { login, type AuthActionState } from "@/app/(auth)/actions";
 import { Button } from "@/components/ui/button";
 import {
@@ -14,6 +15,8 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { AUTH_USER_MESSAGES } from "@/lib/auth/errors";
+import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 
 const initialState: AuthActionState = {};
 
@@ -22,22 +25,37 @@ function FieldError({ messages }: { messages?: string[] }) {
   return <p className="text-sm text-destructive">{messages[0]}</p>;
 }
 
-export default function LoginPage() {
+function LoginForm() {
+  const searchParams = useSearchParams();
+  const next = getSafeInternalPath(searchParams.get("next"));
+  const linkError = searchParams.get("error");
   const [state, formAction, pending] = useActionState(login, initialState);
+
+  const bannerError =
+    state.error ??
+    (linkError === "confirmation_invalid"
+      ? AUTH_USER_MESSAGES.CONFIRMATION_LINK_INVALID
+      : linkError === "reset_invalid"
+        ? AUTH_USER_MESSAGES.RESET_LINK_INVALID
+        : null);
 
   return (
     <Card>
-      <CardHeader>
+      <CardHeader className="pb-4 sm:pb-6">
         <CardTitle className="text-xl">Welcome back</CardTitle>
         <CardDescription>
           Sign in to your account to continue to your dashboard.
         </CardDescription>
       </CardHeader>
       <form action={formAction} className="flex flex-col gap-(--card-spacing)">
+        <input type="hidden" name="next" value={next} />
         <CardContent className="space-y-4">
-          {state.error ? (
-            <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-              {state.error}
+          {bannerError ? (
+            <p
+              role="alert"
+              className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive"
+            >
+              {bannerError}
             </p>
           ) : null}
 
@@ -47,27 +65,38 @@ export default function LoginPage() {
               id="email"
               name="email"
               type="email"
+              inputMode="email"
               autoComplete="email"
               placeholder="you@company.com"
               required
+              className="h-11"
             />
             <FieldError messages={state.fieldErrors?.email} />
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="password">Password</Label>
+            <div className="flex items-center justify-between gap-3">
+              <Label htmlFor="password">Password</Label>
+              <Link
+                href="/forgot-password"
+                className="inline-flex min-h-9 shrink-0 items-center text-xs font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
+              >
+                Forgot password?
+              </Link>
+            </div>
             <Input
               id="password"
               name="password"
               type="password"
               autoComplete="current-password"
               required
+              className="h-11"
             />
             <FieldError messages={state.fieldErrors?.password} />
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={pending}>
+          <Button type="submit" className="h-11 w-full" disabled={pending}>
             {pending ? "Signing in…" : "Sign in"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
@@ -82,5 +111,13 @@ export default function LoginPage() {
         </CardFooter>
       </form>
     </Card>
+  );
+}
+
+export default function LoginPage() {
+  return (
+    <Suspense fallback={<Card className="min-h-48 animate-pulse" />}>
+      <LoginForm />
+    </Suspense>
   );
 }

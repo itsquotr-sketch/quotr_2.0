@@ -1,7 +1,7 @@
 # Stage 3.1C.2B — Account Recovery Preview E2E
 
 **Status:** Pending owner after Preview deploy  
-**Depends on:** Supabase Auth redirect URLs include `/auth/callback` for the Preview host; optional `NEXT_PUBLIC_SITE_URL`.
+**Depends on:** Owner completes `docs/runbooks/STAGE_3_1C2B_AUTH_URL_CONFIGURATION.md` (Preview `NEXT_PUBLIC_SITE_URL` = stable branch origin; Supabase redirect allow-list includes local + stable Preview callbacks).
 
 ## A. NEW ACCOUNT
 

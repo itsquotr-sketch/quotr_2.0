@@ -45,12 +45,25 @@ Primary protection is Supabase Auth provider rate limits. Map to `RATE_LIMITED` 
 
 ## Redirect URL configuration
 
+See owner runbook: `docs/runbooks/STAGE_3_1C2B_AUTH_URL_CONFIGURATION.md` (3.1C.2B-R1).
+
+### `NEXT_PUBLIC_SITE_URL` (canonical email origin)
+
+| Environment | Value |
+| --- | --- |
+| Local | `http://localhost:3000` |
+| Preview | Stable branch alias `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` |
+| Production | Set only when live domain approved — do not invent |
+
+Resolution order in `lib/auth/site-url.ts`: validated env → request origin fallback → localhost.
+
+**Prefer env on Preview** so confirmation/reset emails do not bake commit-specific Vercel hosts.
+
 Supabase Auth redirect allow-list must include:
 
 - `http://localhost:3000/auth/callback`
-- `https://<preview-or-prod-host>/auth/callback`
-
-Optional app env: `NEXT_PUBLIC_SITE_URL` for email `redirectTo` origin when request Origin is unavailable.
+- `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/auth/callback`
+- Production callback when the live domain exists
 
 ## Password policy
 

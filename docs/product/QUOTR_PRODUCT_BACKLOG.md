@@ -107,6 +107,7 @@
 - Stage 3.1C.2A account menu / Profile / logout / logged-in password: **Complete — Preview-passed**.
 - Stage 3.1C.2A-R1/R2: Preview-passed (route + menu trigger).
 - Stage 3.1C.2B email confirmation / Forgot Password / reset / redirect-back: **Complete — Local**; Preview Auth E2E Pending — `STAGE_3_1C2B_ACCOUNT_RECOVERY_COMPLETION.md`.
-- Stage 3.1C.3 first-run & Company Setup UX: **Ready Next**.
+- Stage 3.1C.2B-R1 auth entry + URL env contract: **Complete — Local**; Owner Vercel/Supabase URL config Pending — `STAGE_3_1C2B_AUTH_URL_CONFIGURATION.md`.
+- Stage 3.1C.3 first-run & Company Setup UX: **NOT STARTED**.
 - Production Scope Discovery: **Disabled**. Stage 3.2: **Not Started**.
 - Stage 3.1C overall: **not complete** until Preview E2E + 3.1C.3.

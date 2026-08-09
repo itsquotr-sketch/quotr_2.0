@@ -22,7 +22,8 @@
 | **3.1C.2A-R1** | Profile route runtime remediation | Commit/track missing `/app/profile` page; harden loader states; Preview retest | **Complete — Local**; route confirmed on Preview |
 | **3.1C.2A-R2** | Account menu trigger interaction | Fix Base UI GroupLabel-without-Group crash on open | **Complete — Preview-passed** |
 | **3.1C.2B** | Auth callback / Forgot Password / redirect-back | Email confirmation callback, reset email flow, return-path routing | **Complete — Local**; Preview Auth E2E Pending |
-| **3.1C.3** | First-run & Company Setup UX | Setup wizard / first-run clarity | **Ready Next** |
+| **3.1C.2B-R1** | Auth entry links & URL env contract | Login Forgot password UX; canonical Local/Preview/Production origins | **Complete — Local**; Owner URL config Pending |
+| **3.1C.3** | First-run & Company Setup UX | Setup wizard / first-run clarity | **NOT STARTED** |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
 | **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.7F-R3 Complete — Local (Final Deck Retest Pending); **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E); 7A–7G Complete — Local; Production Disabled; Analyse Job Preserved |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
@@ -137,4 +138,6 @@ Every Stage 3 release should track:
 - 3.1C.2B account recovery architecture: `docs/architecture/QUOTR_AUTH_CALLBACK_AND_RECOVERY_ARCHITECTURE.md`
 - 3.1C.2B completion: `docs/implementation/STAGE_3_1C2B_ACCOUNT_RECOVERY_COMPLETION.md`
 - 3.1C.2B Preview E2E: `docs/runbooks/STAGE_3_1C2B_ACCOUNT_RECOVERY_PREVIEW_TEST.md`
+- 3.1C.2B-R1 auth URL configuration: `docs/runbooks/STAGE_3_1C2B_AUTH_URL_CONFIGURATION.md`
+- 3.1C.2B-R1 completion: `docs/implementation/STAGE_3_1C2B_R1_AUTH_ENTRY_AND_URLS.md`
 - Profile vs Company boundary: `docs/architecture/QUOTR_ACCOUNT_PROFILE_AND_COMPANY_BOUNDARY.md`
