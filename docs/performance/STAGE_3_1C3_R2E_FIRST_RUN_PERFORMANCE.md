@@ -32,4 +32,20 @@ No formal timing harness in R2E. Owner Preview should capture:
 | `npm run lint` | ~17s |
 | `npm run build` | ~24s |
 
+## R2E-R1 first-run transition
+
+| Step | Observation |
+| --- | --- |
+| Signup soft redirect | Root cause of blank Basics (R2E-R1-01) |
+| Fix | Document `location.assign` to `/app/setup?mode=basics` after cookie mutation |
+| Expected | One hard navigation; setup `loading.tsx` skeleton may flash briefly — not a blank white page |
+
 Owner Preview should still record Basics/Rates/Calibrate UX timings separately.
+
+## Follow-ups if Owner sees lag
+
+1. Duplicate readiness fetches on Dashboard  
+2. Unnecessary `router.refresh()` storms after optional Setup saves  
+3. Over-fetching rates on Compare  
+
+Fix only meaningful causes; no architecture rewrite in R2E.

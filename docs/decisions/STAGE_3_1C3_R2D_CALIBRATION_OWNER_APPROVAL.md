@@ -1,7 +1,7 @@
 # Stage 3.1C.3-R2D — Calibration Owner Approval
 
-**Status:** Approved in principle (2026-08-10) — Local 033 implemented; **remote apply still gated**  
-**Batch:** Calibration Scenario MVP + R2D.1 persistence
+**Status:** Approved — Local 033 implemented; **remote applied in R2D.2**  
+**Batch:** Calibration Scenario MVP + R2D.1 persistence + R2D.2 remote apply
 
 ## Approved defaults (A–J)
 
@@ -25,17 +25,14 @@
 - [x] Append/supersede history accepted
 - [x] Confirm: calibration must never auto-write company rates
 - [x] Approve creating migration **033** (local)
-- [ ] Approve **remote** apply of migration **033** (see remote readiness runbook)
+- [x] Approve **remote** apply of migration **033** (R2D.2)
 
-## Local unlock completed
+## Completed
 
 1. `supabase/migrations/033_calibration_responses.sql` created  
 2. `saveCalibrationResponse` enabled via RPC  
 3. Dashboard tip detects active calibration  
-
-## Still gated
-
-Remote Preview/Production apply — `docs/runbooks/STAGE_3_1C3_R2D1_REMOTE_033_READINESS.md`
+4. Remote apply + verification: `docs/implementation/STAGE_3_1C3_R2D2_REMOTE_033_APPLY_COMPLETION.md`
 
 **Owner sign-off (local create):** Approved in principle **Date:** 2026-08-10  
-**Owner sign-off (remote apply):** _________________ **Date:** ________
+**Owner sign-off (remote apply):** Approved (R2D.2) **Date:** 2026-08-10

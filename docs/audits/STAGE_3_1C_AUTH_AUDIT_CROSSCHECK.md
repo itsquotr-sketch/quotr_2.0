@@ -30,7 +30,7 @@ Each Claude claim was verified against repository HEAD before remediation, then 
 
 | ID | Claude claim | Verdict | Evidence |
 | --- | --- | --- | --- |
-| **AUTH-001** | Signup provisioning is non-transactional: `auth.signUp` → service-role org insert → service-role profile insert | **Confirmed** | Pre-1A `actions.ts` sequential inserts; unchanged architecture in 1A (safety only). Design for transactional RPC deferred to 3.1C.1B. |
+| **AUTH-001** | Signup provisioning is non-transactional: `auth.signUp` → service-role org insert → service-role profile insert | **Confirmed (pre-1B)** | Remains true through 3.1C.1A. **Remediated in 3.1C.1B** via `provision_organisation_for_new_user` (migration 032, local). |
 | **AUTH-002** | Catch-all turns unrelated failures into “Ensure SUPABASE_SERVICE_ROLE_KEY is set.” | **Confirmed (pre-1A)** | Catch returned that literal string. **Remediated in 1A** — safe `CONFIGURATION` / provision categories; literal removed. |
 | **AUTH-005** | Raw Postgres/PostgREST errors can reach anonymous signup users | **Confirmed (pre-1A)** | `orgError?.message` and `profileError.message` returned. **Remediated in 1A**. |
 | **AUTH-006** | Signup/login provisioning has effectively no useful structured logging | **Confirmed (pre-1A)** | No auth event logger. **Remediated in 1A** via `lib/auth/logging.ts`. |
@@ -55,19 +55,19 @@ None of the numbered AUTH-001 / 002 / 005 / 006 / 007 / 009 / 016 claims were fa
 
 ## Post-1A status
 
-| Claim | After 3.1C.1A |
-| --- | --- |
-| AUTH-001 | Still true (by design this batch) — tracked for 3.1C.1B |
-| AUTH-002 | Fixed |
-| AUTH-005 | Fixed |
-| AUTH-006 | Fixed |
-| AUTH-007 | Runtime fail-closed on signup; boot still optional |
-| AUTH-009 | Fixed (login normalized) |
-| AUTH-016 | Fixed (verify script added) |
+| Claim | After 3.1C.1A | After 3.1C.1B |
+| --- | --- | --- |
+| AUTH-001 | Still true (by design this batch) | **Fixed locally** (RPC + migration 032; remote pending) |
+| AUTH-002 | Fixed | Fixed |
+| AUTH-005 | Fixed | Fixed |
+| AUTH-006 | Fixed | Extended with provisioning/repair events |
+| AUTH-007 | Runtime fail-closed on signup; boot still optional | Signup no longer requires service-role; admin tooling may still use it |
+| AUTH-009 | Fixed (login normalized) | Fixed |
+| AUTH-016 | Fixed (verify script added) | Extended (`verify-stage-3-1c1b-…`) |
 
 ## Out of scope for 1A (documented only)
 
-- Transactional provisioning RPC / migration 032 → **3.1C.1B**
-- Setup-required finish-setup action → **3.1C.1B** (needs RPC)
+- Transactional provisioning RPC / migration 032 → **3.1C.1B** (**Complete — Local**; remote pending)
+- Setup-required finish-setup action → **3.1C.1B** (**Complete — Local**)
 - Password reset + auth callback + redirect-back → **3.1C.2**
 - Stage 3.2 / Production Scope Discovery enablement / commercial formula changes — not started / not enabled

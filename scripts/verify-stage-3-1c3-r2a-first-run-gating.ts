@@ -180,6 +180,7 @@ function main() {
     defaultGstRate: 15,
     defaultMarginPercent: 20,
     hasLabourRate: false,
+    hasWorkTypePreferences: false,
     tradingName: null,
     legalName: null,
     contactEmail: null,
@@ -200,6 +201,7 @@ function main() {
     defaultGstRate: 15,
     defaultMarginPercent: 20,
     hasLabourRate: false,
+    hasWorkTypePreferences: false,
     tradingName: null,
     legalName: null,
     contactEmail: null,
@@ -222,6 +224,7 @@ function main() {
     defaultGstRate: 15,
     defaultMarginPercent: 20,
     hasLabourRate: true,
+    hasWorkTypePreferences: false,
     tradingName: "Legacy",
     legalName: null,
     contactEmail: "a@b.c",
@@ -247,8 +250,15 @@ function main() {
     /scope\.deck\.m2/.test(read("lib/setup/starter-rates.ts"))
   );
   assert(
-    "loadAllowedWorkAreaTypes still present (R2B owns unlock)",
-    /loadAllowedWorkAreaTypes/.test(read("lib/assistant/actions.ts"))
+    "Analyse Job uses capability catalogue not org preferences",
+    /getAnalysisCapableWorkAreaTypes/.test(read("lib/assistant/actions.ts")) &&
+      !/from\("organisation_work_areas"\)/.test(
+        read("lib/assistant/actions.ts").slice(
+          read("lib/assistant/actions.ts").indexOf("saveBriefAndSeedWorkAreas"),
+          read("lib/assistant/actions.ts").indexOf("saveBriefAndSeedWorkAreas") +
+            2500
+        )
+      )
   );
   assert(
     "no Company DNA module",

@@ -176,7 +176,8 @@ function main() {
   );
   assert(
     "min 8 char new password + confirm match validation",
-    /min\(8/.test(profileActions) && /confirm_password/.test(profileActions)
+    (/min\(8/.test(profileActions) || /passwordSchema/.test(profileActions)) &&
+      /confirm_password/.test(profileActions)
   );
 
   section("SECURITY / BOUNDARIES");
@@ -190,8 +191,8 @@ function main() {
     !/resetPasswordForEmail/.test(profileActions)
   );
   assert(
-    "no auth callback route",
-    !existsSync(join(process.cwd(), "app/auth/callback/route.ts"))
+    "auth callback exists (3.1C.2B)",
+    existsSync(join(process.cwd(), "app/auth/callback/route.ts"))
   );
   assert(
     "no migration 033 for this batch",

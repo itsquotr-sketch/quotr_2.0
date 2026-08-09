@@ -8,7 +8,7 @@
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { execFileSync } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { randomUUID } from "node:crypto";
 import {
@@ -243,12 +243,8 @@ function testStaticSecurity() {
       actions.includes("confirmation_pending")
   );
   assert(
-    "no password reset",
+    "signup actions do not embed resetPasswordForEmail (2B recovery-actions)",
     !/resetPasswordForEmail/.test(actions)
-  );
-  assert(
-    "no auth callback route",
-    !existsSync(join(process.cwd(), "app/auth/callback/route.ts"))
   );
 
   const setupPage = read("app/(protected)/app/setup-required/page.tsx");
@@ -552,19 +548,16 @@ async function testLiveDb() {
 function testBoundaries() {
   section("BATCH BOUNDARIES");
 
+  const actions = read("app/(auth)/actions.ts");
   assert(
-    "no password reset UI/route",
-    !existsSync(join(process.cwd(), "app/(auth)/reset/page.tsx")) &&
-      !existsSync(join(process.cwd(), "app/(auth)/forgot-password/page.tsx"))
-  );
-  assert(
-    "no auth callback implementation",
-    !existsSync(join(process.cwd(), "app/auth/callback/route.ts")) &&
-      !existsSync(join(process.cwd(), "app/(auth)/callback/route.ts"))
+    "signup path still uses authenticated provisioning helper",
+    actions.includes("provisionOrganisationForCurrentUser")
   );
   assert(
     "SCOPE_DISCOVERY not force-enabled in example",
-    !/^SCOPE_DISCOVERY_ENABLED=true/m.test(read(".env.local.example"))
+    !/^SCOPE_DISCOVERY_ENABLED=true\s*$/m.test(
+      read(".env.local.example")
+    )
   );
 }
 

@@ -340,19 +340,13 @@ function testSecurityBoundary() {
 }
 
 function testBoundaries() {
-  section("BATCH BOUNDARIES (1A safety retained; 1B owns migration 032)");
+  section("BATCH BOUNDARIES (1A safety retained; recovery lives in 3.1C.2B)");
 
   const actions = read("app/(auth)/actions.ts");
   assert(
-    "no password reset implementation in auth actions",
+    "signup/login actions do not embed resetPasswordForEmail",
     !/resetPasswordForEmail|recoverSession/.test(actions)
   );
-  assert(
-    "no auth callback route",
-    !existsSync(join(process.cwd(), "app/auth/callback/route.ts")) &&
-      !existsSync(join(process.cwd(), "app/(auth)/callback/route.ts"))
-  );
-
   assert(
     "transactional design doc exists",
     existsSync(

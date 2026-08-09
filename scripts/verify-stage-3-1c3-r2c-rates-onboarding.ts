@@ -178,14 +178,30 @@ assert(
   "rates actions use getAuthOrgContext",
   /getAuthOrgContext/.test(read("lib/rates/actions.ts"))
 );
-assert("no migration 033", !migrationsHave033());
+assert(
+  "migration 033 is calibration evidence only",
+  migrationsHave033() &&
+    read("supabase/migrations/033_calibration_responses.sql").includes(
+      "calibration_responses"
+    ) &&
+    !read("supabase/migrations/033_calibration_responses.sql").includes(
+      "alter table public.rates"
+    )
+);
 assert(
   "no Company DNA module",
   !existsSync(join(process.cwd(), "lib/company-dna"))
 );
 assert(
-  "no calibration scenarios module",
-  !existsSync(join(process.cwd(), "lib/calibration"))
+  "calibration does not write company rates",
+  !existsSync(join(process.cwd(), "lib/calibration/actions.ts")) ||
+    (!read("lib/calibration/actions.ts").includes('.from("rates").insert') &&
+      !read("lib/calibration/actions.ts").includes('.from("rates").update') &&
+      !read("lib/calibration/actions.ts").includes('.from("rates").upsert'))
+);
+assert(
+  "estimate rate resolution does not import calibration",
+  !read("lib/estimate/rates.ts").includes("lib/calibration")
 );
 assert(
   "SCOPE_DISCOVERY not force-enabled",

@@ -3,7 +3,7 @@
 **Status:** Approved (2026-08-09)  
 **Context:** Preview findings + R1 architecture audit  
 **Related:** `docs/audits/STAGE_3_1C3R1_SETUP_RATE_ENGINE_AUDIT.md`  
-**Implementation:** R2A–R2D Complete — Local; R2D.1 Complete Local (remote pending); R2E Planned
+**Implementation:** R2A–R2E-R1 Complete — Preview Validated; Stage 3.1C Closed (`docs/implementation/STAGE_3_1C_CLOSURE.md`)
 
 ---
 

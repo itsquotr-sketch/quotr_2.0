@@ -357,9 +357,9 @@ async function main(): Promise<void> {
   );
 
   check(
-    "no new migration after 029",
+    "no further scope-discovery migrations after 029",
     !readdirSync("supabase/migrations").some((n) =>
-      /^030_/.test(n)
+      /^(0[3-9]\d|[1-9]\d{2,})_.*scope_discovery/i.test(n)
     )
   );
 

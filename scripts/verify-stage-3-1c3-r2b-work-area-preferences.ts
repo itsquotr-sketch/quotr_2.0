@@ -286,16 +286,23 @@ section("RATES / CALIBRATION BOUNDARY");
 const ratesStep = read("components/setup/RatesStep.tsx");
 assert(
   "Rates uses preferences for display personalisation only",
-  /Preferences personalise starter rate sections only/.test(ratesStep)
+  /personalise|preferred work types/i.test(read("components/rates/RatesPageContent.tsx")) &&
+    /preferredWorkTypes|enabledWorkAreas/.test(read("components/setup/RatesStep.tsx"))
 );
 assert(
   "Rates does not invent defaultEnabled preferences",
   !/enabled: item\.defaultEnabled/.test(ratesStep)
 );
 assert(
-  "no calibration scenario implementation",
-  !existsSync(join(process.cwd(), "lib/calibration")) &&
-    !existsSync(join(process.cwd(), "lib/company-dna"))
+  "no Company DNA module",
+  !existsSync(join(process.cwd(), "lib/company-dna"))
+);
+assert(
+  "calibration MVP does not mutate rates actions",
+  !existsSync(join(process.cwd(), "lib/calibration/actions.ts")) ||
+    (!read("lib/calibration/actions.ts").includes('.from("rates").insert') &&
+      !read("lib/calibration/actions.ts").includes('.from("rates").update') &&
+      !read("lib/calibration/actions.ts").includes('.from("rates").upsert'))
 );
 
 section("SECURITY");
@@ -313,7 +320,16 @@ assert(
 );
 
 section("BOUNDARIES");
-assert("no migration 033", !migrationsHave033());
+assert(
+  "migration 033 is calibration evidence only",
+  migrationsHave033() &&
+    read("supabase/migrations/033_calibration_responses.sql").includes(
+      "calibration_responses"
+    ) &&
+    !read("supabase/migrations/033_calibration_responses.sql").includes(
+      "alter table public.rates"
+    )
+);
 assert(
   "generic scope starters retained",
   /scope\.deck\.m2/.test(read("lib/setup/starter-rates.ts"))
