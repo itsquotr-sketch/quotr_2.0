@@ -22,22 +22,32 @@ import {
 } from "@/lib/settings/company-actions";
 import { sanitizeBrandColour } from "@/lib/settings/branding";
 import type { CompanySettings } from "@/lib/settings/types";
+import {
+  COMPANY_SECTION_IDS,
+  parseCompanySettingsSection,
+  type CompanySettingsSectionId,
+} from "@/lib/setup/recommendation-destinations";
 import { cn } from "@/lib/utils";
 
 type CompanySettingsContentProps = {
   initialSettings: CompanySettings;
   userEmail?: string;
   userFullName?: string | null;
+  /** Deep-link from Setup recommendations (`?section=`). */
+  initialSection?: CompanySettingsSectionId;
 };
 
-const COMPANY_SECTIONS = [
-  { id: "general", label: "General" },
-  { id: "pricing", label: "Pricing defaults" },
-  { id: "quotes", label: "Quotes" },
-  { id: "advanced", label: "Advanced" },
-] as const;
+const COMPANY_SECTION_LABELS: Record<CompanySettingsSectionId, string> = {
+  general: "General",
+  pricing: "Pricing defaults",
+  quotes: "Quotes",
+  advanced: "Advanced",
+};
 
-type CompanySectionId = (typeof COMPANY_SECTIONS)[number]["id"];
+const COMPANY_SECTIONS = COMPANY_SECTION_IDS.map((id) => ({
+  id,
+  label: COMPANY_SECTION_LABELS[id],
+}));
 
 function ColourField({
   id,
@@ -88,6 +98,7 @@ export function CompanySettingsContent({
   initialSettings,
   userEmail,
   userFullName,
+  initialSection = "general",
 }: CompanySettingsContentProps) {
   const [settings, setSettings] = useState(initialSettings);
   const [tradingName, setTradingName] = useState(settings.tradingName ?? "");
@@ -162,8 +173,19 @@ export function CompanySettingsContent({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
   const [savedMessage, setSavedMessage] = useState<string | null>(null);
-  const [activeSection, setActiveSection] =
-    useState<CompanySectionId>("general");
+  const [activeSection, setActiveSection] = useState<CompanySettingsSectionId>(
+    () => parseCompanySettingsSection(initialSection) ?? "general"
+  );
+
+  function selectSection(id: string) {
+    const next = parseCompanySettingsSection(id) ?? "general";
+    setActiveSection(next);
+    if (typeof window !== "undefined") {
+      const url = new URL(window.location.href);
+      url.searchParams.set("section", next);
+      window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+    }
+  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -282,7 +304,7 @@ export function CompanySettingsContent({
       <SettingsSectionNav
         items={[...COMPANY_SECTIONS]}
         activeId={activeSection}
-        onChange={(id) => setActiveSection(id as CompanySectionId)}
+        onChange={selectSection}
       />
 
       {activeSection === "general" ? (

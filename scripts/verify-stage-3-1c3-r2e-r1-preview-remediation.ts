@@ -153,6 +153,20 @@ assert(
   "RatesPageContent honours initialSection",
   ratesContent.includes("initialSection")
 );
+const companyContent = read("components/settings/CompanySettingsContent.tsx");
+assert(
+  "CompanySettingsContentProps accepts initialSection",
+  /initialSection\?:\s*CompanySettingsSectionId/.test(companyContent)
+);
+assert(
+  "CompanySettingsContent consumes initialSection for active section",
+  companyContent.includes("parseCompanySettingsSection(initialSection)")
+);
+const companyPage = read("app/(protected)/app/settings/company/page.tsx");
+assert(
+  "Company settings page passes initialSection",
+  companyPage.includes("initialSection={initialSection}")
+);
 
 section("CALIBRATION UX");
 const flow = read("components/calibration/CalibrationFlow.tsx");
