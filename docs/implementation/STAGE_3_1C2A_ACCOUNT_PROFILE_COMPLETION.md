@@ -1,8 +1,10 @@
 # Stage 3.1C.2A — Account Menu, Logout, Profile — Completion
 
-**Status:** Complete — Local; Preview Test Pending  
+**Status:** Complete — Local; **not Preview-passed** (see 3.1C.2A-R1)  
 **Date:** 2026-08-09  
 **Verify:** `npx --yes tsx scripts/verify-stage-3-1c2a-account-profile.ts`
+
+> **Preview defect (3.1C.2A-R1):** Commit `59bc1f7` shipped AccountMenu + Profile UI/actions but **omitted** `app/(protected)/app/profile/page.tsx` from git. Preview therefore had no `/app/profile` route. Remediation: `docs/implementation/STAGE_3_1C2A_R1_PROFILE_ROUTE_REMEDIATION.md`.
 
 ## Root cause
 

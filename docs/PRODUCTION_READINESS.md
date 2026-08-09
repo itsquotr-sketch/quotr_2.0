@@ -73,11 +73,12 @@ See `docs/KNOWN_LIMITATIONS.md`.
 - [ ] Quote PDF does not show internal cost/margin fields
 - [ ] `/app/health` shows signed-in user and Supabase connected
 
-## Account / Profile (Stage 3.1C.2A)
+## Account / Profile (Stage 3.1C.2A / 2A-R1)
 
 - Personal Profile (`/app/profile`) is distinct from Company Settings (`/app/settings/company`). See `docs/architecture/QUOTR_ACCOUNT_PROFILE_AND_COMPANY_BOUNDARY.md`.
-- Email change and Forgot Password remain **3.1C.2B** (do not ship partial email-change).
-- Preview test: `docs/runbooks/STAGE_3_1C2A_ACCOUNT_PROFILE_PREVIEW_TEST.md`.
+- **3.1C.2A-R1:** Preview deploy of `59bc1f7` omitted `app/(protected)/app/profile/page.tsx` — AccountMenu linked to a missing route. Do not treat 2A as Preview-passed until R1 retest passes after the page is committed and deployed. See `docs/runbooks/STAGE_3_1C2A_R1_PROFILE_ROUTE_PREVIEW_RETEST.md`.
+- Email change and Forgot Password remain **3.1C.2B** (not started).
+- Preview test (original): `docs/runbooks/STAGE_3_1C2A_ACCOUNT_PROFILE_PREVIEW_TEST.md`.
 
 ## Security notes
 

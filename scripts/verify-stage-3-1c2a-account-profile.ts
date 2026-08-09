@@ -3,6 +3,7 @@
  *
  * Run: npx --yes tsx scripts/verify-stage-3-1c2a-account-profile.ts
  */
+import { execSync } from "child_process";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import {
@@ -22,6 +23,18 @@ function read(rel: string): string {
 
 function section(title: string) {
   console.log(`\n=== ${title} ===\n`);
+}
+
+function gitTracked(rel: string): boolean {
+  try {
+    const out = execSync(`git ls-files -- "${rel}"`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    return out.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function main() {
@@ -75,11 +88,16 @@ function main() {
   );
 
   section("PROFILE");
+  const profileRel = "app/(protected)/app/profile/page.tsx";
   assert(
     "profile route exists",
-    existsSync(join(process.cwd(), "app/(protected)/app/profile/page.tsx"))
+    existsSync(join(process.cwd(), profileRel))
   );
-  const profilePage = read("app/(protected)/app/profile/page.tsx");
+  assert(
+    "profile route is git-tracked (Preview deploy guard — 3.1C.2A-R1)",
+    gitTracked(profileRel)
+  );
+  const profilePage = read(profileRel);
   assert("profile requires auth user", /getUser\(/.test(profilePage));
   assert(
     "profile loads full_name/role/org from profiles",
@@ -88,6 +106,10 @@ function main() {
   assert(
     "email from auth user, not client trust",
     /user\.email/.test(profilePage)
+  );
+  assert(
+    "missing profile routes to setup-required",
+    /setup-required/.test(profilePage)
   );
 
   const profileActions = read("lib/auth/profile-actions.ts");
