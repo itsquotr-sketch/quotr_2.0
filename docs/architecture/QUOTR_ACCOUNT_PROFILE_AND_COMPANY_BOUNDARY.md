@@ -14,12 +14,14 @@ Personal user / account / security:
 | Field | Authority | Editable in Profile |
 | --- | --- | --- |
 | Full name | `profiles.full_name` | Yes |
-| Email | `auth.users` via session `user.email` | No (3.1C.2B+) |
+| Email | `auth.users` via session `user.email` | No — email change deferred (dual-confirm; see 3.1C.2B architecture) |
 | Role | `profiles.role` | No |
 | Organisation name | `organisations.name` via `profiles.org_id` | No (link to Company settings) |
-| Password | Supabase Auth | Yes (logged-in change with current password) |
+| Password | Supabase Auth | Yes (logged-in change); recovery via Forgot Password (3.1C.2B) |
 
 Account menu entry point: reusable `AccountMenu` (header + sidebar + mobile).
+
+Auth recovery: `/auth/callback`, `/forgot-password`, `/reset-password` — see `QUOTR_AUTH_CALLBACK_AND_RECOVERY_ARCHITECTURE.md`.
 
 ## COMPANY SETTINGS (`/app/settings/company`)
 
@@ -38,8 +40,9 @@ Profile must **not** duplicate these.
 | Batch | Scope |
 | --- | --- |
 | **3.1C.2A** | Account menu, logout, Profile, logged-in password change |
-| **3.1C.2B** | Email confirmation callback, Forgot Password / reset, redirect-back |
-| **3.1C.3** | First-run & Company Setup UX refinement |
+| **3.1C.2B** | Email confirmation callback, Forgot Password / reset, redirect-back (**Complete — Local**) |
+| **3.1C.3** | First-run & Company Setup UX refinement (**Ready Next**) |
+| Later | Profile email change (deferred from 2B) |
 
 ## Security rules
 

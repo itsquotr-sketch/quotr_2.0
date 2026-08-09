@@ -1,8 +1,8 @@
 /**
- * Minimal structured auth logging (Stage 3.1C.1A / 3.1C.1B).
+ * Minimal structured auth logging (Stage 3.1C.1A–2B).
  *
- * Never logs passwords, tokens, service-role keys, raw form payloads,
- * or raw provider responses. Logging must never throw into auth flows.
+ * Never logs passwords, tokens, auth codes, service-role keys, raw form
+ * payloads, or raw provider responses. Logging must never throw into auth flows.
  */
 
 import type { AuthErrorCategory } from "@/lib/auth/errors";
@@ -22,6 +22,14 @@ export type AuthLogEvent =
   | "account_repair_failed"
   | "login_failed"
   | "confirmation_pending"
+  | "confirmation_callback_started"
+  | "confirmation_callback_completed"
+  | "confirmation_callback_failed"
+  | "confirmation_resend_requested"
+  | "confirmation_resend_failed"
+  | "password_reset_requested"
+  | "password_reset_completed"
+  | "password_reset_failed"
   | "profile_update_started"
   | "profile_update_completed"
   | "profile_update_failed"
@@ -43,10 +51,13 @@ export type AuthLogFields = {
 const FORBIDDEN_KEYS = new Set([
   "password",
   "token",
+  "code",
+  "auth_code",
   "access_token",
   "refresh_token",
   "confirmation_token",
   "recovery_token",
+  "code_verifier",
   "service_role",
   "serviceRoleKey",
   "SUPABASE_SERVICE_ROLE_KEY",
@@ -54,6 +65,21 @@ const FORBIDDEN_KEYS = new Set([
   "raw",
   "formData",
   "payload",
+  "link",
+  "url",
+  "redirectTo",
+]);
+
+const ERROR_EVENTS = new Set<AuthLogEvent>([
+  "signup_failed",
+  "login_failed",
+  "provisioning_failed",
+  "account_repair_failed",
+  "profile_update_failed",
+  "password_change_failed",
+  "confirmation_callback_failed",
+  "confirmation_resend_failed",
+  "password_reset_failed",
 ]);
 
 function sanitizeFields(fields: AuthLogFields): Record<string, unknown> {
@@ -87,20 +113,13 @@ function sanitizeFields(fields: AuthLogFields): Record<string, unknown> {
 export function logAuthEvent(fields: AuthLogFields): void {
   try {
     const payload = sanitizeFields(fields);
-    if (
-      fields.event === "signup_failed" ||
-      fields.event === "login_failed" ||
-      fields.event === "provisioning_failed" ||
-      fields.event === "account_repair_failed" ||
-      fields.event === "profile_update_failed" ||
-      fields.event === "password_change_failed"
-    ) {
+    if (ERROR_EVENTS.has(fields.event)) {
       console.error("[auth]", payload);
       return;
     }
     console.info("[auth]", payload);
   } catch {
-    // Observability must not break signup/login/repair.
+    // Observability must not break auth flows.
   }
 }
 

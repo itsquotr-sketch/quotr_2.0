@@ -1,5 +1,5 @@
 /**
- * Auth-specific error taxonomy (Stage 3.1C.1A / 3.1C.1B).
+ * Auth-specific error taxonomy (Stage 3.1C.1A / 1B / 2A / 2B).
  *
  * Categories are INTERNAL. User-visible strings must come from
  * {@link AUTH_USER_MESSAGES} / {@link presentAuthError} only.
@@ -19,6 +19,11 @@ export type AuthErrorCategory =
   | "ACCOUNT_REPAIR_FAILED"
   | "ACCOUNT_ALREADY_PROVISIONED"
   | "CONFIRMATION_PENDING"
+  | "CONFIRMATION_FAILED"
+  | "CONFIRMATION_LINK_INVALID"
+  | "RESET_REQUEST_FAILED"
+  | "RESET_LINK_INVALID"
+  | "PASSWORD_RESET_FAILED"
   | "PROFILE_UPDATE_FAILED"
   | "PASSWORD_CHANGE_FAILED"
   | "LOGOUT_FAILED"
@@ -33,6 +38,9 @@ export type AuthErrorCategory =
  *
  * CONFIRMATION_PENDING (3.1C.1B): signup created an auth user but no session
  * exists yet, so transactional provisioning did not run. Honest usability copy.
+ *
+ * Forgot-password (3.1C.2B): success copy is always non-enumerating and is
+ * handled in the action UI — not via this map for success.
  */
 export const AUTH_USER_MESSAGES: Record<AuthErrorCategory, string> = {
   CONFIGURATION:
@@ -54,13 +62,27 @@ export const AUTH_USER_MESSAGES: Record<AuthErrorCategory, string> = {
   ACCOUNT_ALREADY_PROVISIONED:
     "Your company account is already set up. Continue to the dashboard.",
   CONFIRMATION_PENDING:
-    "Account created. Please check your email to confirm, then sign in to finish company setup.",
+    "We've sent a confirmation link to your email address. Open the link to finish creating your Quotr account.",
+  CONFIRMATION_FAILED:
+    "We couldn’t confirm your email right now. Please try again shortly.",
+  CONFIRMATION_LINK_INVALID:
+    "This confirmation link is invalid or has expired.",
+  RESET_REQUEST_FAILED:
+    "We couldn’t send a reset link right now. Please try again shortly.",
+  RESET_LINK_INVALID:
+    "This password reset link is invalid or has expired.",
+  PASSWORD_RESET_FAILED:
+    "Could not update your password. Please try again.",
   PROFILE_UPDATE_FAILED: "Could not save your profile. Please try again.",
   PASSWORD_CHANGE_FAILED:
     "Could not change your password. Check your current password and try again.",
   LOGOUT_FAILED: "Could not sign out. Please try again.",
   UNKNOWN: "Something went wrong. Please try again.",
 };
+
+/** Non-enumerating confirmation after forgot-password request. */
+export const PASSWORD_RESET_REQUEST_ACK =
+  "If an account exists for this email, we've sent password reset instructions.";
 
 export function presentAuthError(category: AuthErrorCategory): string {
   return AUTH_USER_MESSAGES[category] ?? AUTH_USER_MESSAGES.UNKNOWN;
@@ -94,10 +116,21 @@ function lower(message: string): string {
  */
 export function classifyAuthProviderError(
   message: string | null | undefined,
-  context: "signup" | "login"
+  context:
+    | "signup"
+    | "login"
+    | "callback"
+    | "reset_request"
+    | "password_reset"
+    | "resend"
 ): AuthErrorCategory {
   if (!message?.trim()) {
-    return context === "login" ? "INVALID_CREDENTIALS" : "SIGNUP_FAILED";
+    if (context === "login") return "INVALID_CREDENTIALS";
+    if (context === "callback") return "CONFIRMATION_LINK_INVALID";
+    if (context === "reset_request") return "RESET_REQUEST_FAILED";
+    if (context === "password_reset") return "PASSWORD_RESET_FAILED";
+    if (context === "resend") return "CONFIRMATION_FAILED";
+    return "SIGNUP_FAILED";
   }
 
   const m = lower(message);
@@ -135,7 +168,39 @@ export function classifyAuthProviderError(
     return "INVALID_CREDENTIALS";
   }
 
-  return context === "login" ? "INVALID_CREDENTIALS" : "SIGNUP_FAILED";
+  if (
+    context === "callback" ||
+    context === "password_reset" ||
+    context === "resend" ||
+    context === "reset_request"
+  ) {
+    if (
+      m.includes("flow state") ||
+      m.includes("pkce") ||
+      m.includes("code verifier") ||
+      m.includes("otp_expired") ||
+      m.includes("expired") ||
+      m.includes("invalid token") ||
+      m.includes("token has expired") ||
+      m.includes("email link is invalid") ||
+      context === "callback"
+    ) {
+      if (
+        context === "password_reset" ||
+        context === "reset_request" ||
+        m.includes("recovery")
+      ) {
+        return "RESET_LINK_INVALID";
+      }
+      return "CONFIRMATION_LINK_INVALID";
+    }
+  }
+
+  if (context === "login") return "INVALID_CREDENTIALS";
+  if (context === "reset_request") return "RESET_REQUEST_FAILED";
+  if (context === "password_reset") return "PASSWORD_RESET_FAILED";
+  if (context === "resend") return "CONFIRMATION_FAILED";
+  return "SIGNUP_FAILED";
 }
 
 /**
@@ -196,6 +261,9 @@ export function containsUnsafeAuthDiagnostic(text: string): boolean {
     m.includes("provision_organisation") ||
     m.includes("security definer") ||
     m.includes("sqlstate") ||
-    m.includes("auth.uid")
+    m.includes("auth.uid") ||
+    m.includes("exchangeCodeForSession") ||
+    m.includes("code_verifier") ||
+    m.includes("access_token")
   );
 }

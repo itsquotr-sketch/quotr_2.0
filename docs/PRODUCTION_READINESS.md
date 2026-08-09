@@ -26,9 +26,11 @@ Runtime validation:
 - Apply all migrations in `supabase/migrations/` to the target project.
 - Confirm Row Level Security (RLS) is enabled on all tenant tables.
 - Auth redirect URLs must include:
-  - Local: `http://localhost:3000/**`
-  - Production: `https://<your-domain>/**`
+  - Local: `http://localhost:3000/auth/callback`
+  - Preview/Production: `https://<your-domain>/auth/callback`
+  - Also allow the site origin patterns required by Supabase for email links
 - Email auth provider enabled for signup/login.
+- Optional app env: `NEXT_PUBLIC_SITE_URL` (see `.env.local.example`).
 
 ## Deployment (e.g. Vercel)
 
@@ -73,12 +75,15 @@ See `docs/KNOWN_LIMITATIONS.md`.
 - [ ] Quote PDF does not show internal cost/margin fields
 - [ ] `/app/health` shows signed-in user and Supabase connected
 
-## Account / Profile (Stage 3.1C.2A / 2A-R1)
+## Account / Profile / Recovery (Stage 3.1C.2A–2B)
 
-- Personal Profile (`/app/profile`) is distinct from Company Settings (`/app/settings/company`). See `docs/architecture/QUOTR_ACCOUNT_PROFILE_AND_COMPANY_BOUNDARY.md`.
-- **3.1C.2A-R1:** Preview deploy of `59bc1f7` omitted `app/(protected)/app/profile/page.tsx` — AccountMenu linked to a missing route. Do not treat 2A as Preview-passed until R1 retest passes after the page is committed and deployed. See `docs/runbooks/STAGE_3_1C2A_R1_PROFILE_ROUTE_PREVIEW_RETEST.md`.
-- Email change and Forgot Password remain **3.1C.2B** (not started).
-- Preview test (original): `docs/runbooks/STAGE_3_1C2A_ACCOUNT_PROFILE_PREVIEW_TEST.md`.
+- Personal Profile (`/app/profile`) is distinct from Company Settings (`/app/settings/company`).
+- Auth callback: `/auth/callback` (PKCE). Configure Supabase redirect allow-list for Preview/Production hosts.
+- Forgot password: `/forgot-password`. Reset: `/reset-password`.
+- Optional `NEXT_PUBLIC_SITE_URL` for email redirect origins.
+- Email change: **not** in 2B (Profile email read-only).
+- Preview E2E: `docs/runbooks/STAGE_3_1C2B_ACCOUNT_RECOVERY_PREVIEW_TEST.md`.
+- Architecture: `docs/architecture/QUOTR_AUTH_CALLBACK_AND_RECOVERY_ARCHITECTURE.md`.
 
 ## Security notes
 

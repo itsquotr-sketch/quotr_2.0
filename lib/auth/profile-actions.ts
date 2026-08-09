@@ -10,6 +10,7 @@ import {
   createAuthCorrelationId,
   logAuthEvent,
 } from "@/lib/auth/logging";
+import { newPasswordPairSchema, passwordSchema } from "@/lib/auth/password";
 import { createClient } from "@/lib/supabase/server";
 
 export type ProfileActionState = {
@@ -29,9 +30,7 @@ const fullNameSchema = z.object({
 const changePasswordSchema = z
   .object({
     current_password: z.string().min(1, "Current password is required"),
-    new_password: z
-      .string()
-      .min(8, "Password must be at least 8 characters"),
+    new_password: passwordSchema,
     confirm_password: z.string().min(1, "Confirm your new password"),
   })
   .refine((data) => data.new_password === data.confirm_password, {
@@ -42,6 +41,9 @@ const changePasswordSchema = z
     message: "New password must be different from your current password",
     path: ["new_password"],
   });
+
+// Ensure shared pair schema stays the recovery/reset authority.
+export const profilePasswordPairSchema = newPasswordPairSchema;
 
 /**
  * Update the signed-in user's full name only.

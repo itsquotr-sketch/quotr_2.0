@@ -1,23 +1,43 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 import { updateSession } from "@/lib/supabase/middleware";
 
 export async function middleware(request: NextRequest) {
   const { supabaseResponse, user } = await updateSession(request);
-  const { pathname } = request.nextUrl;
+  const { pathname, search } = request.nextUrl;
 
-  const isAuthRoute = pathname === "/login" || pathname === "/signup";
+  const isPublicAuthRoute =
+    pathname === "/login" ||
+    pathname === "/signup" ||
+    pathname === "/forgot-password";
   const isProtectedRoute = pathname.startsWith("/app");
 
   if (isProtectedRoute && !user) {
     const url = request.nextUrl.clone();
     url.pathname = "/login";
-    return NextResponse.redirect(url);
+    url.search = "";
+    url.searchParams.set(
+      "next",
+      getSafeInternalPath(`${pathname}${search}`)
+    );
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
   }
 
-  if (isAuthRoute && user) {
+  // Logged-in users on login/signup/forgot → app (layout → setup-required if needed).
+  // /reset-password is intentionally excluded so recovery sessions can set a password.
+  if (isPublicAuthRoute && user) {
     const url = request.nextUrl.clone();
     url.pathname = "/app/dashboard";
-    return NextResponse.redirect(url);
+    url.search = "";
+    const redirectResponse = NextResponse.redirect(url);
+    supabaseResponse.cookies.getAll().forEach((cookie) => {
+      redirectResponse.cookies.set(cookie);
+    });
+    return redirectResponse;
   }
 
   const requestHeaders = new Headers(request.headers);
