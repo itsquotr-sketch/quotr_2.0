@@ -97,7 +97,9 @@ export function CompanyDefaultsSection({
       <CardHeader>
         <CardTitle>Company defaults</CardTitle>
         <CardDescription>
-          Default margin and estimating preferences used across new estimates.
+          Default gross margin (0–95%, default 20%) and estimating preferences.
+          GST and quote contact details live in Company settings — not duplicated
+          here as rate authority.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit} className="flex flex-col gap-(--card-spacing)">

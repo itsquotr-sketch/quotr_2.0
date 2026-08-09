@@ -105,6 +105,10 @@ Do not implement this order in R1 unless aligning an existing path. Document con
 (`getAnalysisCapableWorkAreaTypes`). Preferences personalise Rates/tips only.
 See `docs/architecture/QUOTR_WORK_AREA_CAPABILITY_AND_PREFERENCE_MODEL.md`.
 
+**R2C complete:** Setup/Rates primary UX = labour + consumed component rates;
+generic `scope.*` package rates demoted to Legacy benchmarks. Authority labels in
+`docs/architecture/QUOTR_RATE_AUTHORITY_AND_PROVENANCE_MODEL.md`.
+
 Uses of preferences:
 
 - Setup personalisation  

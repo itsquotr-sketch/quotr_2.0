@@ -1,16 +1,26 @@
 "use client";
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/layout/empty-state";
+import Link from "next/link";
+import { useMemo, useState } from "react";
+import { Button, buttonVariants } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
 import { SettingsSectionNav } from "@/components/layout/section-nav";
 import {
   LABOUR_RATE_CATALOGUE,
   MATERIAL_RATE_CATALOGUE,
   SCOPE_RATE_CATALOGUE,
 } from "@/lib/rates/catalogue";
-import { createStarterRates, getRatesPageState } from "@/lib/rates/actions";
+import { getRatesPageState } from "@/lib/rates/actions";
+import type { RateCatalogueEntry } from "@/lib/rates/types";
 import type { RatesPageState } from "@/lib/rates/types";
+import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
+import { cn } from "@/lib/utils";
 import { BenchmarkFallbackSection } from "./BenchmarkFallbackSection";
 import { CalibrationSummaryCard } from "./CalibrationSummaryCard";
 import { CompanyDefaultsSection } from "./CompanyDefaultsSection";
@@ -22,71 +32,130 @@ type RatesPageContentProps = {
 };
 
 const RATES_SECTIONS = [
+  { id: "core", label: "Core labour" },
+  { id: "work_types", label: "Work types" },
+  { id: "materials", label: "All materials" },
+  { id: "legacy", label: "Legacy benchmarks" },
   { id: "defaults", label: "Defaults" },
-  { id: "labour", label: "Labour" },
-  { id: "materials", label: "Materials" },
-  { id: "scope", label: "Scope rates" },
-  { id: "allowances", label: "Allowances" },
-  { id: "benchmarks", label: "Benchmarks" },
+  { id: "benchmarks", label: "Fallbacks" },
 ] as const;
 
 type RatesSectionId = (typeof RATES_SECTIONS)[number]["id"];
 
-const ALLOWANCE_CATALOGUE = MATERIAL_RATE_CATALOGUE.filter(
-  (entry) => entry.recommended || entry.calculatorSupport === "used_now"
-);
+function sortWorkTypesByPreference(
+  types: string[],
+  preferred: string[]
+): string[] {
+  const preferredSet = new Set(preferred);
+  const preferredOrdered = preferred.filter((type) => types.includes(type));
+  const rest = types.filter((type) => !preferredSet.has(type)).sort();
+  return [...preferredOrdered, ...rest];
+}
 
 export function RatesPageContent({ initialState }: RatesPageContentProps) {
   const [state, setState] = useState(initialState);
-  const [activeSection, setActiveSection] = useState<RatesSectionId>("defaults");
-  const [creatingStarter, setCreatingStarter] = useState(false);
-  const [starterError, setStarterError] = useState<string | null>(null);
+  const [activeSection, setActiveSection] = useState<RatesSectionId>("core");
+  const [showAllWorkTypes, setShowAllWorkTypes] = useState(false);
 
-  const hasRates = state.rates.some(
+  const preferred = useMemo(
+    () => state.preferredWorkAreaTypes ?? [],
+    [state.preferredWorkAreaTypes]
+  );
+
+  const workTypeCatalogue = useMemo(() => {
+    const used = MATERIAL_RATE_CATALOGUE.filter(
+      (entry) =>
+        entry.calculatorSupport === "used_now" &&
+        entry.work_area_type &&
+        (entry.recommended || preferred.includes(entry.work_area_type))
+    );
+
+    const types = Array.from(
+      new Set(
+        used
+          .map((entry) => entry.work_area_type)
+          .filter((type): type is string => Boolean(type))
+      )
+    );
+
+    const orderedTypes = sortWorkTypesByPreference(types, preferred);
+    const visibleTypes =
+      showAllWorkTypes || preferred.length === 0
+        ? orderedTypes
+        : orderedTypes.filter(
+            (type) => preferred.includes(type) || orderedTypes.indexOf(type) < 3
+          );
+
+    const byType = new Map<string, RateCatalogueEntry[]>();
+    for (const entry of used) {
+      if (!entry.work_area_type || !visibleTypes.includes(entry.work_area_type)) {
+        continue;
+      }
+      const list = byType.get(entry.work_area_type) ?? [];
+      list.push(entry);
+      byType.set(entry.work_area_type, list);
+    }
+
+    return visibleTypes
+      .map((type) => ({
+        type,
+        label:
+          SCOPE_CATALOGUE.find((item) => item.type === type)?.label ?? type,
+        preferred: preferred.includes(type),
+        entries: byType.get(type) ?? [],
+      }))
+      .filter((group) => group.entries.length > 0);
+  }, [preferred, showAllWorkTypes]);
+
+  const hasCompanyRates = state.rates.some(
     (rate) => rate.active && rate.cost_rate != null
   );
 
-  async function handleCreateStarterRates() {
-    setCreatingStarter(true);
-    setStarterError(null);
-
-    const result = await createStarterRates();
-
-    if (result.error) {
-      setStarterError(result.error);
-      setCreatingStarter(false);
-      return;
-    }
-
+  async function refresh() {
     const refreshed = await getRatesPageState();
     setState(refreshed);
-    setCreatingStarter(false);
   }
 
   return (
     <div className="space-y-6">
       <CalibrationSummaryCard state={state} />
 
-      {!hasRates ? (
-        <EmptyState
-          title="No rates set yet"
-          description="Start with your builder/carpenter hourly rate — Quotr needs that most for labour estimates. Materials and trade rates can wait. You can also skip and use disclosed benchmark assumptions where allowed."
-          action={
-            <div className="space-y-2">
-              {starterError ? (
-                <p className="text-sm text-destructive">{starterError}</p>
-              ) : null}
-              <Button
-                type="button"
-                onClick={handleCreateStarterRates}
-                disabled={creatingStarter}
-              >
-                {creatingStarter ? "Creating…" : "Create starter rates"}
-              </Button>
-            </div>
-          }
-        />
-      ) : null}
+      <Card className="border-border/60 bg-muted/15 shadow-none">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Your company rates</CardTitle>
+          <CardDescription>
+            Explicit rates you enter become company authority. Quotr benchmarks
+            stay labelled as benchmarks until you adopt or replace them. Default
+            gross margin lives under Defaults; GST under{" "}
+            <Link
+              href="/app/settings/company"
+              className="font-medium underline-offset-4 hover:underline"
+            >
+              Company settings
+            </Link>
+            .
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-2 text-sm text-muted-foreground">
+          {!hasCompanyRates ? (
+            <p>
+              No company rates yet — start with carpenter / builder under Core
+              labour. You can add more rates as you use Quotr.
+            </p>
+          ) : (
+            <p>
+              Preferred work types personalise the Work types section order.
+              Show all remains available — preferences never hide capability.
+            </p>
+          )}
+          <Link
+            href="/app/setup?mode=improve"
+            className={cn(buttonVariants({ variant: "outline", size: "sm" }))}
+          >
+            Improve setup
+          </Link>
+        </CardContent>
+      </Card>
 
       <SettingsSectionNav
         items={[...RATES_SECTIONS]}
@@ -95,24 +164,68 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
       />
 
       <div className="min-w-0">
-        {activeSection === "defaults" ? (
-          <CompanyDefaultsSection
-            settings={state.settings}
-            onSettingsChange={(settings) =>
-              setState((prev) => ({ ...prev, settings }))
-            }
-          />
-        ) : null}
-
-        {activeSection === "labour" ? (
+        {activeSection === "core" ? (
           <RatesTableSection
-            title="Labour rates"
-            description="Used when Quotr estimates in-house labour. If charge rate is blank, Quotr derives it from your default margin."
-            catalogue={LABOUR_RATE_CATALOGUE}
+            title="Core labour"
+            description="Cost = what labour costs your business. Sell = what you charge. If sell is blank, Quotr derives it from your default margin."
+            catalogue={LABOUR_RATE_CATALOGUE.filter(
+              (entry) =>
+                entry.item_key === "labour.carpenter.hour" ||
+                entry.item_key === "labour.labourer.hour" ||
+                entry.item_key === "labour.general.hour"
+            )}
             rates={state.rates}
             onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
             variant="labour"
+            showEngineColumn
           />
+        ) : null}
+
+        {activeSection === "work_types" ? (
+          <div className="space-y-4">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <p className="text-sm text-muted-foreground">
+                Component rates calculators actually use
+                {preferred.length > 0
+                  ? " — preferred work types listed first."
+                  : "."}
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setShowAllWorkTypes((prev) => !prev)}
+              >
+                {showAllWorkTypes ? "Show preferred first" : "Show all work types"}
+              </Button>
+            </div>
+            {workTypeCatalogue.length === 0 ? (
+              <p className="rounded-lg border border-dashed px-3 py-4 text-sm text-muted-foreground">
+                No component rate groups to show. Choose work types in Setup or
+                open All materials.
+              </p>
+            ) : (
+              workTypeCatalogue.map((group) => (
+                <RatesTableSection
+                  key={group.type}
+                  title={
+                    group.preferred
+                      ? `${group.label} (common for your company)`
+                      : group.label
+                  }
+                  description="Used-now component rates. Overall $/m² package rates are under Legacy benchmarks."
+                  catalogue={group.entries}
+                  rates={state.rates}
+                  onRatesChange={(rates) =>
+                    setState((prev) => ({ ...prev, rates }))
+                  }
+                  variant="grouped"
+                  showEngineColumn
+                  showAddButton={false}
+                />
+              ))
+            )}
+          </div>
         ) : null}
 
         {activeSection === "materials" ? (
@@ -122,10 +235,10 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
           />
         ) : null}
 
-        {activeSection === "scope" ? (
+        {activeSection === "legacy" ? (
           <RatesTableSection
-            title="Scope / package rates"
-            description="Optional shortcut rates by work area. Planned rates are stored for future estimation support."
+            title="Legacy overall benchmarks"
+            description="Generic package $/m² (or $/lm) rates are not Quotr’s primary pricing model. Kept for compatibility — not detailed calculator authority. Prefer component rates above."
             catalogue={SCOPE_RATE_CATALOGUE}
             rates={state.rates}
             onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
@@ -134,15 +247,12 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
           />
         ) : null}
 
-        {activeSection === "allowances" ? (
-          <RatesTableSection
-            title="Allowances"
-            description="Package and area-based material rates used when specific unit rates are not set."
-            catalogue={ALLOWANCE_CATALOGUE}
-            rates={state.rates}
-            onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-            variant="grouped"
-            showEngineColumn
+        {activeSection === "defaults" ? (
+          <CompanyDefaultsSection
+            settings={state.settings}
+            onSettingsChange={(settings) =>
+              setState((prev) => ({ ...prev, settings }))
+            }
           />
         ) : null}
 
@@ -150,6 +260,18 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
           <BenchmarkFallbackSection settings={state.settings} />
         ) : null}
       </div>
+
+      <p className="text-xs text-muted-foreground">
+        <button
+          type="button"
+          className="underline-offset-4 hover:underline"
+          onClick={() => {
+            void refresh();
+          }}
+        >
+          Refresh rates
+        </button>
+      </p>
     </div>
   );
 }

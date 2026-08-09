@@ -40,11 +40,11 @@ export const LABOUR_RATE_CATALOGUE: RateCatalogueEntry[] = [
     category: "labour",
     trade: "labourer",
     unit: "hour",
-    description: "General labour and helper work.",
+    description: "Optional helper rate — not selected by current calculators (they use carpenter/builder).",
     defaultCostRate: 40,
     defaultSellRate: 65,
     recommended: true,
-    calculatorSupport: "used_now",
+    calculatorSupport: "planned",
     section: "labour",
   }),
   entry({

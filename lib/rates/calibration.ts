@@ -1,9 +1,21 @@
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
-import { RECOMMENDED_RATE_CATALOGUE } from "@/lib/rates/catalogue";
+import { companyRateAuthorityLabel } from "@/lib/rates/authority";
+import {
+  RECOMMENDED_RATE_CATALOGUE,
+  SCOPE_RATE_CATALOGUE,
+  getCatalogueEntry,
+} from "@/lib/rates/catalogue";
 import type {
   CalibrationSummary,
   RatesPageState,
 } from "@/lib/rates/types";
+
+function isLegacyScopePackageKey(itemKey: string): boolean {
+  return (
+    itemKey.startsWith("scope.") ||
+    SCOPE_RATE_CATALOGUE.some((entry) => entry.item_key === itemKey)
+  );
+}
 
 function isRateConfigured(
   rates: RatesPageState["rates"],
@@ -83,10 +95,16 @@ export function buildCalibrationSummary(
 }
 
 export function getRateSourceLabel(
-  rate: RatesPageState["rates"][number] | undefined
+  rate: RatesPageState["rates"][number] | undefined,
+  itemKey?: string
 ): string {
-  if (!rate) return "Not set";
-  if (!rate.active) return "Inactive";
-  if (rate.cost_rate != null) return "Your rate";
-  return "Not set";
+  const key = itemKey ?? rate?.item_key;
+  const catalogue = key ? getCatalogueEntry(key) : undefined;
+  const hasActiveCost = Boolean(rate?.active && rate.cost_rate != null);
+
+  return companyRateAuthorityLabel({
+    hasActiveCostRate: hasActiveCost,
+    isLegacyScopePackage: key ? isLegacyScopePackageKey(key) : false,
+    hasCatalogueBenchmark: catalogue?.defaultCostRate != null,
+  });
 }

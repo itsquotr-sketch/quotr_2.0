@@ -19,18 +19,19 @@
 
 ### 3.1C.3-R2B — Setup navigation / Work Area preferences
 
-**Status: Ready Next**
+**Status: Complete — Local**
 
-- Reinterpret work areas as preferences (not capability lock)  
-- Fix `loadAllowedWorkAreaTypes`  
+- Capability vs preference authority model  
+- Analyse Job / notes unlocked from org preferences  
+- Setup Work Types UX + defaults + Improve tips  
 
 ### 3.1C.3-R2C — Core rates onboarding redesign
 
-**Status: Planned**
+**Status: Complete — Local**
 
 ### 3.1C.3-R2D — Calibration scenario MVP
 
-**Status: Planned**
+**Status: Ready Next**
 
 ### 3.1C.3-R2E — Preview E2E / polish
 

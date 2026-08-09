@@ -11,7 +11,6 @@ import {
 } from "@/lib/security/markup-validation";
 import {
   ALL_RATE_CATALOGUE,
-  STARTER_RATE_ITEM_KEYS,
 } from "@/lib/rates/catalogue";
 import type {
   RateInput,
@@ -102,24 +101,34 @@ export async function getRatesPageState(): Promise<RatesPageState> {
   const context = await getAuthOrgContext();
 
   if (!context) {
-    return { settings: null, rates: [] };
+    return { settings: null, rates: [], preferredWorkAreaTypes: [] };
   }
 
   const { supabase, orgId } = context;
   const settingsRow = await ensureDefaultSettings(supabase, orgId);
 
-  const { data: rates } = await supabase
-    .from("rates")
-    .select(
-      "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active, updated_at"
-    )
-    .eq("org_id", orgId)
-    .order("rate_type")
-    .order("label");
+  const [{ data: rates }, { data: preferredRows }] = await Promise.all([
+    supabase
+      .from("rates")
+      .select(
+        "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active, updated_at"
+      )
+      .eq("org_id", orgId)
+      .order("rate_type")
+      .order("label"),
+    supabase
+      .from("organisation_work_areas")
+      .select("work_area_type")
+      .eq("org_id", orgId)
+      .eq("enabled", true),
+  ]);
 
   return {
     settings: settingsRow ? normalizeSettings(settingsRow) : null,
     rates: (rates ?? []).map((rate) => normalizeRate(rate)),
+    preferredWorkAreaTypes: (preferredRows ?? []).map(
+      (row) => row.work_area_type as string
+    ),
   };
 }
 
@@ -439,6 +448,11 @@ export async function setRateActive(
   return deactivateRate(input.rateId);
 }
 
+/**
+ * Create empty company rate shells for core labour keys only.
+ * Does NOT copy catalogue benchmarks into cost/sell — that would falsely
+ * present Quotr benchmarks as "Your company rate" (R2C).
+ */
 export async function createStarterRates(): Promise<RatesActionResult> {
   const context = await getAuthOrgContext();
   if (!context) {
@@ -447,10 +461,13 @@ export async function createStarterRates(): Promise<RatesActionResult> {
 
   const { supabase, orgId } = context;
 
+  const coreKeys = [
+    "labour.carpenter.hour",
+    "labour.labourer.hour",
+  ] as const;
+
   const rows = ALL_RATE_CATALOGUE.filter((entry) =>
-    STARTER_RATE_ITEM_KEYS.includes(
-      entry.item_key as (typeof STARTER_RATE_ITEM_KEYS)[number]
-    )
+    coreKeys.includes(entry.item_key as (typeof coreKeys)[number])
   ).map((entry) => ({
     org_id: orgId,
     item_key: entry.item_key,
@@ -459,8 +476,8 @@ export async function createStarterRates(): Promise<RatesActionResult> {
     work_area_type: entry.work_area_type ?? null,
     label: entry.label,
     unit: entry.unit,
-    cost_rate: entry.defaultCostRate ?? null,
-    sell_rate: entry.defaultSellRate ?? null,
+    cost_rate: null,
+    sell_rate: null,
     markup_percent: null,
     active: true,
   }));

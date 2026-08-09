@@ -139,10 +139,12 @@ export function SetupShell({
         {section === "rates" ? (
           <RatesStep
             state={state}
-            onComplete={() => {
+            onSaved={() => {
               void refreshState();
             }}
-            onBack={() => setSection("work_areas")}
+            onSkip={() => {
+              void refreshState();
+            }}
           />
         ) : null}
       </FormContainer>

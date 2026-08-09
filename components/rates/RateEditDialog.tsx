@@ -138,7 +138,9 @@ export function RateEditDialog({
           ) : (
             <>
               <div className="space-y-2">
-                <Label htmlFor="rate-cost">Cost rate</Label>
+                <Label htmlFor="rate-cost">
+                  Cost rate — what it costs your business
+                </Label>
                 <Input
                   id="rate-cost"
                   type="number"
@@ -156,7 +158,9 @@ export function RateEditDialog({
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="rate-sell">Charge rate</Label>
+                <Label htmlFor="rate-sell">
+                  Sell rate — what you charge
+                </Label>
                 <Input
                   id="rate-sell"
                   type="number"

@@ -10,6 +10,8 @@ export type RatesPageRate = OrganisationRate & {
 export type RatesPageState = {
   settings: OrganisationSettings | null;
   rates: RatesPageRate[];
+  /** Preferred work-area types for section ordering (personalisation only). */
+  preferredWorkAreaTypes: string[];
 };
 
 export type RateSettingsInput = {

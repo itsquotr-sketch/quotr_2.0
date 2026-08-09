@@ -65,12 +65,20 @@ function RateMobileCard({
   rate,
   labelColumn,
   onEdit,
+  onAdoptBenchmark,
 }: {
   entry: RateCatalogueEntry;
   rate: RatesPageRate | undefined;
   labelColumn: string;
   onEdit: () => void;
+  onAdoptBenchmark?: () => void;
 }) {
+  const hasCompanyRate = Boolean(rate?.active && rate.cost_rate != null);
+  const canAdopt =
+    !hasCompanyRate &&
+    entry.defaultCostRate != null &&
+    typeof onAdoptBenchmark === "function";
+
   return (
     <div className="rounded-lg border border-border/60 bg-card p-3">
       <div className="flex items-start justify-between gap-2">
@@ -82,7 +90,7 @@ function RateMobileCard({
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>{formatRateUnit(entry.unit)}</span>
             <span>·</span>
-            <span>{getRateSourceLabel(rate)}</span>
+            <span>{getRateSourceLabel(rate, entry.item_key)}</span>
           </div>
           <div className="flex flex-wrap gap-3 text-sm tabular-nums">
             <span>
@@ -94,30 +102,39 @@ function RateMobileCard({
               <span className="font-medium">{formatCurrency(rate?.sell_rate)}</span>
             </span>
           </div>
-          {!rate ? (
-            <Badge variant="outline" className="text-[10px]">
-              Not set
-            </Badge>
-          ) : rate.active ? (
-            <Badge variant="secondary" className="text-[10px]">
-              Active
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="text-[10px]">
-              Inactive
-            </Badge>
-          )}
+          {!hasCompanyRate && entry.defaultCostRate != null ? (
+            <p className="text-xs text-muted-foreground">
+              Quotr benchmark: ${entry.defaultCostRate.toFixed(0)}
+              {entry.defaultSellRate != null
+                ? ` / $${entry.defaultSellRate.toFixed(0)} sell`
+                : ""}{" "}
+              {formatRateUnit(entry.unit)}
+            </p>
+          ) : null}
         </div>
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          className="h-8 shrink-0"
-          onClick={onEdit}
-        >
-          <Pencil className="mr-1 size-3.5" />
-          {rate ? "Edit" : "Set"}
-        </Button>
+        <div className="flex shrink-0 flex-col gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="h-8"
+            onClick={onEdit}
+          >
+            <Pencil className="mr-1 size-3.5" />
+            {hasCompanyRate ? "Edit" : "Add your rate"}
+          </Button>
+          {canAdopt ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={onAdoptBenchmark}
+            >
+              Use benchmark
+            </Button>
+          ) : null}
+        </div>
       </div>
     </div>
   );
@@ -129,13 +146,21 @@ function RateRow({
   showEngineColumn,
   labelColumn,
   onEdit,
+  onAdoptBenchmark,
 }: {
   entry: RateCatalogueEntry;
   rate: RatesPageRate | undefined;
   showEngineColumn: boolean;
   labelColumn: string;
   onEdit: () => void;
+  onAdoptBenchmark?: () => void;
 }) {
+  const hasCompanyRate = Boolean(rate?.active && rate.cost_rate != null);
+  const canAdopt =
+    !hasCompanyRate &&
+    entry.defaultCostRate != null &&
+    typeof onAdoptBenchmark === "function";
+
   return (
     <tr className="border-b border-border/50 last:border-0">
       <td className="px-3 py-2.5">
@@ -145,6 +170,14 @@ function RateRow({
         ) : null}
         {entry.description ? (
           <div className="text-xs text-muted-foreground">{entry.description}</div>
+        ) : null}
+        {!hasCompanyRate && entry.defaultCostRate != null ? (
+          <div className="text-xs text-muted-foreground">
+            Quotr benchmark: ${entry.defaultCostRate.toFixed(0)}
+            {entry.defaultSellRate != null
+              ? ` / $${entry.defaultSellRate.toFixed(0)} sell`
+              : ""}
+          </div>
         ) : null}
       </td>
       <td className="hidden px-3 py-2.5 text-muted-foreground sm:table-cell">
@@ -157,20 +190,16 @@ function RateRow({
         {formatCurrency(rate?.sell_rate)}
       </td>
       <td className="hidden px-3 py-2.5 text-xs text-muted-foreground md:table-cell">
-        {getRateSourceLabel(rate)}
+        {getRateSourceLabel(rate, entry.item_key)}
       </td>
       <td className="px-3 py-2.5">
-        {!rate ? (
-          <Badge variant="outline" className="text-[10px]">
-            Not set
-          </Badge>
-        ) : rate.active ? (
+        {hasCompanyRate ? (
           <Badge variant="secondary" className="text-[10px]">
             Active
           </Badge>
         ) : (
           <Badge variant="outline" className="text-[10px]">
-            Inactive
+            {entry.defaultCostRate != null ? "Benchmark" : "Pricing required"}
           </Badge>
         )}
       </td>
@@ -180,10 +209,22 @@ function RateRow({
         </td>
       ) : null}
       <td className="px-3 py-2.5 text-right">
-        <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
-          <Pencil className="mr-1 size-3.5" />
-          {rate ? "Edit" : "Set"}
-        </Button>
+        <div className="flex flex-wrap items-center justify-end gap-1">
+          {canAdopt ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onAdoptBenchmark}
+            >
+              Use benchmark
+            </Button>
+          ) : null}
+          <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
+            <Pencil className="mr-1 size-3.5" />
+            {hasCompanyRate ? "Edit" : "Add your rate"}
+          </Button>
+        </div>
       </td>
     </tr>
   );
@@ -260,6 +301,46 @@ export function RatesTableSection({
     return true;
   }
 
+  async function handleAdoptBenchmark(entry: RateCatalogueEntry) {
+    if (entry.defaultCostRate == null) return;
+
+    setSaving(true);
+    setNotice(null);
+
+    const existing = rateMap.get(entry.item_key);
+    const result = await upsertRate({
+      id: existing?.id,
+      item_key: entry.item_key,
+      rate_type: entry.rate_type,
+      trade: entry.trade,
+      work_area_type: entry.work_area_type,
+      label: entry.label,
+      unit: entry.unit,
+      cost_rate: entry.defaultCostRate,
+      sell_rate: entry.defaultSellRate ?? null,
+      markup_percent: null,
+      active: true,
+    });
+
+    setSaving(false);
+
+    if (result.error) {
+      setNotice(result.error);
+      return;
+    }
+
+    if (result.rate) {
+      const nextRates = existing
+        ? rates.map((rate) =>
+            rate.id === result.rate!.id ? result.rate! : rate
+          )
+        : [...rates, result.rate];
+      onRatesChange(nextRates);
+      setNotice(
+        "Benchmark adopted as your company rate. Regenerate an estimate to apply."
+      );
+    }
+  }
 
   return (
     <>
@@ -335,6 +416,9 @@ export function RatesTableSection({
                             setEditingEntry(entry);
                             setNotice(null);
                           }}
+                          onAdoptBenchmark={() => {
+                            void handleAdoptBenchmark(entry);
+                          }}
                         />
                       ))}
                     </tbody>
@@ -351,6 +435,9 @@ export function RatesTableSection({
                       onEdit={() => {
                         setEditingEntry(entry);
                         setNotice(null);
+                      }}
+                      onAdoptBenchmark={() => {
+                        void handleAdoptBenchmark(entry);
                       }}
                     />
                   ))}
