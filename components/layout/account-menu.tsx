@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
+  DropdownMenuGroup,
   DropdownMenuItem,
   DropdownMenuLabel,
   DropdownMenuSeparator,
@@ -47,7 +48,10 @@ function getInitials(fullName?: string | null, email?: string) {
 
 /**
  * Consistent personal-account entry point for authenticated Quotr surfaces.
- * Uses Base UI Menu via existing dropdown primitives (`onClick`, not `onSelect`).
+ *
+ * Uses Base UI Menu via existing dropdown primitives (`onClick` on items).
+ * Identity header MUST wrap DropdownMenuLabel in DropdownMenuGroup — Base UI
+ * GroupLabel throws without Menu.Group context (3.1C.2A-R2 root cause).
  */
 export function AccountMenu({
   userEmail: userEmailProp,
@@ -78,17 +82,23 @@ export function AccountMenu({
         type="button"
         disabled={pending}
         className={cn(
-          "inline-flex items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2 disabled:opacity-60",
-          showIdentity && "w-full rounded-lg px-1 py-1 text-left",
+          "inline-flex cursor-pointer items-center gap-2.5 outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-60",
+          // Header: adequate tap target around avatar
+          variant === "header" &&
+            "size-9 shrink-0 items-center justify-center rounded-full hover:bg-muted/70",
+          // Sidebar / panel: entire account row is the hit target
+          showIdentity && "min-h-11 w-full rounded-lg px-2 py-1.5 text-left",
           isSidebar && "hover:bg-sidebar-accent",
           variant === "panel" && "hover:bg-muted",
-          variant === "header" && "rounded-full",
           className
         )}
         aria-label="Open account menu"
-        aria-haspopup="menu"
       >
-        <Avatar size="sm">
+        <Avatar
+          size="sm"
+          className="pointer-events-none after:pointer-events-none"
+          aria-hidden
+        >
           <AvatarFallback
             className={cn(
               "text-xs font-medium",
@@ -99,7 +109,7 @@ export function AccountMenu({
           </AvatarFallback>
         </Avatar>
         {showIdentity ? (
-          <span className="min-w-0 flex-1">
+          <span className="min-w-0 flex-1 pointer-events-none">
             <span
               className={cn(
                 "block truncate text-sm font-medium leading-tight",
@@ -126,18 +136,23 @@ export function AccountMenu({
       <DropdownMenuContent
         align={showIdentity ? "start" : "end"}
         side={isSidebar ? "top" : "bottom"}
-        className="w-[min(18rem,calc(100vw-1.5rem))]"
+        sideOffset={isSidebar ? 8 : 4}
+        className="z-50 w-[min(18rem,calc(100vw-1.5rem))] min-w-56"
       >
-        <DropdownMenuLabel className="font-normal">
-          <div className="flex flex-col gap-0.5 px-0.5 py-0.5">
-            <p className="truncate text-sm font-medium leading-none">
-              {displayName}
-            </p>
-            {userEmail ? (
-              <p className="truncate text-xs text-muted-foreground">{userEmail}</p>
-            ) : null}
-          </div>
-        </DropdownMenuLabel>
+        <DropdownMenuGroup>
+          <DropdownMenuLabel className="font-normal">
+            <div className="flex flex-col gap-0.5 px-0.5 py-0.5">
+              <p className="truncate text-sm font-medium leading-none">
+                {displayName}
+              </p>
+              {userEmail ? (
+                <p className="truncate text-xs text-muted-foreground">
+                  {userEmail}
+                </p>
+              ) : null}
+            </div>
+          </DropdownMenuLabel>
+        </DropdownMenuGroup>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           className="min-h-10 cursor-pointer sm:min-h-8"
@@ -169,6 +184,10 @@ export function AccountMenu({
 }
 
 /** @deprecated Prefer AccountMenu — retained for existing imports. */
-export function UserMenu(props: Omit<AccountMenuProps, "variant"> & { variant?: AccountMenuProps["variant"] }) {
+export function UserMenu(
+  props: Omit<AccountMenuProps, "variant"> & {
+    variant?: AccountMenuProps["variant"];
+  }
+) {
   return <AccountMenu {...props} variant={props.variant ?? "header"} />;
 }

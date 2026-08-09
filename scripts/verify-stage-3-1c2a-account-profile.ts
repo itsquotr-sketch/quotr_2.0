@@ -54,7 +54,13 @@ function main() {
     /onClick=\{/.test(menu) && !/onSelect=\{/.test(menu)
   );
   assert("aria-label on trigger", /aria-label=["']Open account menu["']/.test(menu));
-  assert("aria-haspopup on trigger", /aria-haspopup=["']menu["']/.test(menu));
+  assert(
+    "menu trigger uses Base UI DropdownMenuTrigger (sets aria-haspopup)",
+    /<DropdownMenuTrigger/.test(menu) &&
+      /function DropdownMenuTrigger/.test(
+        read("components/ui/dropdown-menu.tsx")
+      )
+  );
 
   const sidebar = read("components/layout/sidebar-account.tsx");
   assert(

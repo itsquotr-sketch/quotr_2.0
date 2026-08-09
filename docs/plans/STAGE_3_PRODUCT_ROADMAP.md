@@ -19,7 +19,8 @@
 | **3.1C.1A** | Auth safety / config / diagnostics | Safe auth errors, signup runtime config assert, structured logging; no transactional RPC | **Complete — Local** (`docs/implementation/STAGE_3_1C1A_AUTH_SAFETY_COMPLETION.md`) |
 | **3.1C.1B** | Transactional signup provisioning | Idempotent org+profile RPC; setup-required finish-setup; drop service-role from normal signup | **Complete — Local**; **032 Remote Applied**; app wiring Ready to Commit/Deploy (1B.2); Preview test Pending |
 | **3.1C.2A** | Account menu / logout / Profile / logged-in password | Fix dead account control; `/app/profile`; secure password change | **Complete — Local**; **not Preview-passed** (route page omitted from 59bc1f7) |
-| **3.1C.2A-R1** | Profile route runtime remediation | Commit/track missing `/app/profile` page; harden loader states; Preview retest | **Complete — Local**; Preview Retest Pending |
+| **3.1C.2A-R1** | Profile route runtime remediation | Commit/track missing `/app/profile` page; harden loader states; Preview retest | **Complete — Local**; route confirmed on Preview |
+| **3.1C.2A-R2** | Account menu trigger interaction | Fix Base UI GroupLabel-without-Group crash on open | **Complete — Local**; Preview Retest Pending |
 | **3.1C.2B** | Auth callback / Forgot Password / redirect-back | Email confirmation callback, reset email flow, return-path routing | **NOT STARTED** |
 | **3.1C.3** | First-run & Company Setup UX | Setup wizard / first-run clarity | **NOT STARTED** |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
@@ -131,4 +132,6 @@ Every Stage 3 release should track:
 - 3.1C.2A Preview test: `docs/runbooks/STAGE_3_1C2A_ACCOUNT_PROFILE_PREVIEW_TEST.md`
 - 3.1C.2A-R1 profile route remediation: `docs/implementation/STAGE_3_1C2A_R1_PROFILE_ROUTE_REMEDIATION.md`
 - 3.1C.2A-R1 Preview retest: `docs/runbooks/STAGE_3_1C2A_R1_PROFILE_ROUTE_PREVIEW_RETEST.md`
+- 3.1C.2A-R2 account menu trigger remediation: `docs/implementation/STAGE_3_1C2A_R2_ACCOUNT_MENU_TRIGGER_REMEDIATION.md`
+- 3.1C.2A-R2 Preview retest: `docs/runbooks/STAGE_3_1C2A_R2_ACCOUNT_MENU_TRIGGER_PREVIEW_RETEST.md`
 - Profile vs Company boundary: `docs/architecture/QUOTR_ACCOUNT_PROFILE_AND_COMPANY_BOUNDARY.md`

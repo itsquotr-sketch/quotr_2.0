@@ -8,10 +8,13 @@ type SidebarAccountProps = {
 
 /**
  * Sidebar / mobile account entry — opens the shared AccountMenu.
- * Previously a non-interactive display stub (root cause of “profile does nothing”).
+ * Entire row is the DropdownMenuTrigger (see AccountMenu sidebar/panel variants).
  */
 export function SidebarAccount({ variant = "default" }: SidebarAccountProps) {
   return (
-    <AccountMenu variant={variant === "sidebar" ? "sidebar" : "panel"} />
+    <AccountMenu
+      variant={variant === "sidebar" ? "sidebar" : "panel"}
+      className="w-full"
+    />
   );
 }

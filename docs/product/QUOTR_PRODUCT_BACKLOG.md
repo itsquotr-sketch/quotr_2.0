@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (**BLOCKED BY PREVIEW DEFECTS**); **Stage 3.1C.1A/1B Auth Complete — Local** (032 Applied Remote); **Stage 3.1C.2A Complete — Local (not Preview-passed)**; **Stage 3.1C.2A-R1 Complete — Local** (Preview Retest Pending — missing `/app/profile` page omitted from `59bc1f7`); **3.1C.2B NOT STARTED**; Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (**BLOCKED BY PREVIEW DEFECTS**); **Stage 3.1C.1A/1B Auth Complete — Local** (032 Applied Remote); **Stage 3.1C.2A Complete — Local (not Preview-passed)**; **3.1C.2A-R1** route fixed on Preview; **3.1C.2A-R2** menu trigger fix Complete — Local (Preview Retest Pending); **3.1C.2B NOT STARTED**; Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**   
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -105,7 +105,8 @@
 - Stage 3.1C.1A auth safety: **Complete — Local** — safe error taxonomy, structured auth logging, login normalisation; `verify-stage-3-1c1a-auth-safety.ts`.
 - Stage 3.1C.1B transactional signup provisioning: **Complete — Local**; migration **032 Applied and Verified Remote**; application wiring **Ready to Commit/Deploy** (3.1C.1B.2) — `STAGE_3_1C1B2_APP_WIRING_COMMIT_GATE.md`; Preview auth test **Pending** — `STAGE_3_1C1B_PREVIEW_AUTH_RETEST.md`.
 - Stage 3.1C.2A account menu / Profile / logout / logged-in password: **Complete — Local**; **not Preview-passed** — Profile page omitted from deploy commit `59bc1f7` (see R1).
-- Stage 3.1C.2A-R1 profile route remediation: **Complete — Local**; Preview Retest Pending — `STAGE_3_1C2A_R1_PROFILE_ROUTE_REMEDIATION.md`.
+- Stage 3.1C.2A-R1 profile route remediation: **Complete — Local**; route works on Preview when entered directly.
+- Stage 3.1C.2A-R2 account menu trigger remediation: **Complete — Local**; Preview Retest Pending — `STAGE_3_1C2A_R2_ACCOUNT_MENU_TRIGGER_REMEDIATION.md` (GroupLabel-without-Group crash on open).
 - Stage 3.1C.2B email confirmation callback / Forgot Password / redirect-back: **NOT STARTED**.
 - Stage 3.1C.3 first-run & Company Setup UX: **NOT STARTED**.
 - Production Scope Discovery: **Disabled**. Stage 3.2: **Not Started**.
