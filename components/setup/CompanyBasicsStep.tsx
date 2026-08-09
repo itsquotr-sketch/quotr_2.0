@@ -14,32 +14,70 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { saveCompanyBasics } from "@/lib/setup/actions";
+import {
+  COMPANY_COUNTRIES,
+  COMPANY_CURRENCIES,
+  getCountryOption,
+  resolveCountryForForm,
+  resolveCurrencyForForm,
+} from "@/lib/setup/locale-catalogue";
 import type { CompanyBasicsInput, SetupState } from "./types";
+
+export type CompanyBasicsMode = "basics" | "optional";
 
 type CompanyBasicsStepProps = {
   state: SetupState;
-  /** After save: go to dashboard (first-run) or continue wizard. */
-  mode?: "first-run" | "wizard";
-  onContinueWizard?: () => void;
+  /**
+   * basics — first-run gate: save → Dashboard
+   * optional — Setup improve: save stays in Setup (parent callback)
+   */
+  mode?: CompanyBasicsMode;
+  /** Called after successful save in optional mode (no Dashboard redirect). */
+  onSaved?: () => void;
 };
+
+const selectClassName =
+  "flex h-11 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30";
 
 export function CompanyBasicsStep({
   state,
-  mode = "first-run",
-  onContinueWizard,
+  mode = "basics",
+  onSaved,
 }: CompanyBasicsStepProps) {
   const router = useRouter();
   const settings = state.settings;
 
-  const [currency, setCurrency] = useState(settings?.currency ?? "NZD");
-  const [country, setCountry] = useState(settings?.country ?? "NZ");
-  const [region, setRegion] = useState(settings?.region ?? "");
-  const [gstRate, setGstRate] = useState(
-    String(settings?.default_gst_rate ?? 15)
+  const initialCountry = resolveCountryForForm(settings?.country);
+  const initialCurrency = resolveCurrencyForForm(
+    settings?.currency,
+    getCountryOption(initialCountry)?.suggestedCurrency ?? "NZD"
   );
+  const initialGst =
+    settings?.default_gst_rate != null
+      ? String(settings.default_gst_rate)
+      : String(getCountryOption(initialCountry)?.suggestedGstPercent ?? 15);
+
+  const [country, setCountry] = useState(initialCountry);
+  const [currency, setCurrency] = useState(initialCurrency);
+  const [currencyTouched, setCurrencyTouched] = useState(false);
+  const [gstTouched, setGstTouched] = useState(false);
+  const [region, setRegion] = useState(settings?.region ?? "");
+  const [gstRate, setGstRate] = useState(initialGst);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
+
+  function handleCountryChange(nextCountry: string) {
+    setCountry(nextCountry);
+    const option = getCountryOption(nextCountry);
+    if (!option) return;
+    if (!currencyTouched) {
+      setCurrency(option.suggestedCurrency);
+    }
+    if (!gstTouched) {
+      setGstRate(String(option.suggestedGstPercent));
+    }
+  }
 
   async function persistBasics(): Promise<boolean> {
     setError(null);
@@ -67,31 +105,36 @@ export function CompanyBasicsStep({
     return true;
   }
 
-  async function handleContinueToQuotr(event: React.FormEvent) {
+  async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     const ok = await persistBasics();
     if (!ok) return;
-    router.push("/app/dashboard");
+
+    if (mode === "basics") {
+      router.push("/app/dashboard");
+      router.refresh();
+      return;
+    }
+
+    onSaved?.();
     router.refresh();
   }
 
-  async function handleContinueWizard(event: React.MouseEvent) {
-    event.preventDefault();
-    const ok = await persistBasics();
-    if (!ok) return;
-    onContinueWizard?.();
-  }
+  const isBasicsGate = mode === "basics";
 
   return (
     <Card>
       <CardHeader className="pb-4">
-        <CardTitle className="text-xl">Set up your company</CardTitle>
+        <CardTitle className="text-xl">
+          {isBasicsGate ? "Welcome to Quotr" : "Company basics"}
+        </CardTitle>
         <CardDescription>
-          Quotr uses these details to tailor estimates and quotes. You can change
-          them later in Company settings.
+          {isBasicsGate
+            ? "Set up your company — we just need a few basics so Quotr uses the right currency and tax settings."
+            : "Update country, currency, and tax. Changes apply to new pricing and quotes."}
         </CardDescription>
       </CardHeader>
-      <form onSubmit={handleContinueToQuotr} className="flex flex-col">
+      <form onSubmit={handleSubmit} className="flex flex-col">
         <CardContent className="space-y-5">
           {error ? (
             <p
@@ -111,50 +154,63 @@ export function CompanyBasicsStep({
               className="h-11 bg-muted/40"
             />
             <p className="text-xs text-muted-foreground">
-              From your account signup. Update trading/legal names anytime in
-              Company settings.
+              From your account signup. Update trading/legal names in Company
+              settings.
             </p>
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="basics-currency">Currency</Label>
-              <Input
-                id="basics-currency"
-                value={currency}
-                onChange={(event) => setCurrency(event.target.value)}
-                placeholder="NZD"
-                required
-                className="h-11"
-                autoComplete="off"
-              />
-              {fieldErrors.currency?.[0] ? (
-                <p className="text-sm text-destructive">
-                  {fieldErrors.currency[0]}
-                </p>
-              ) : null}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="basics-country">Country</Label>
-              <Input
-                id="basics-country"
-                value={country}
-                onChange={(event) => setCountry(event.target.value)}
-                placeholder="NZ"
-                required
-                className="h-11"
-                autoComplete="country"
-              />
-              {fieldErrors.country?.[0] ? (
-                <p className="text-sm text-destructive">
-                  {fieldErrors.country[0]}
-                </p>
-              ) : null}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="basics-country">Country</Label>
+            <select
+              id="basics-country"
+              value={country}
+              onChange={(event) => handleCountryChange(event.target.value)}
+              required
+              className={selectClassName}
+            >
+              {COMPANY_COUNTRIES.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.country?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.country[0]}
+              </p>
+            ) : null}
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="basics-region">Region</Label>
+            <Label htmlFor="basics-currency">Currency</Label>
+            <select
+              id="basics-currency"
+              value={currency}
+              onChange={(event) => {
+                setCurrencyTouched(true);
+                setCurrency(event.target.value);
+              }}
+              required
+              className={selectClassName}
+            >
+              {COMPANY_CURRENCIES.map((option) => (
+                <option key={option.code} value={option.code}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.currency?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.currency[0]}
+              </p>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              Suggested from country — you can override if needed.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="basics-region">Region (optional)</Label>
             <Input
               id="basics-region"
               value={region}
@@ -162,13 +218,10 @@ export function CompanyBasicsStep({
               placeholder="e.g. Auckland"
               className="h-11"
             />
-            <p className="text-xs text-muted-foreground">
-              Optional — helps local context for estimates.
-            </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="basics-gst">Default GST rate (%)</Label>
+            <Label htmlFor="basics-gst">GST / tax rate (%)</Label>
             <Input
               id="basics-gst"
               type="number"
@@ -177,7 +230,10 @@ export function CompanyBasicsStep({
               max="100"
               step="0.01"
               value={gstRate}
-              onChange={(event) => setGstRate(event.target.value)}
+              onChange={(event) => {
+                setGstTouched(true);
+                setGstRate(event.target.value);
+              }}
               required
               className="h-11"
             />
@@ -187,24 +243,17 @@ export function CompanyBasicsStep({
               </p>
             ) : null}
             <p className="text-xs text-muted-foreground">
-              New Zealand default is 15%. Use 0 if you do not charge GST.
+              Suggested from country. Use 0 if you do not charge GST/tax.
             </p>
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-3 border-t sm:flex-row sm:justify-end">
-          {mode === "wizard" && onContinueWizard ? (
-            <Button
-              type="button"
-              variant="outline"
-              className="h-11 w-full sm:w-auto"
-              disabled={saving}
-              onClick={handleContinueWizard}
-            >
-              {saving ? "Saving…" : "Save and continue setup"}
-            </Button>
-          ) : null}
           <Button type="submit" className="h-11 w-full sm:w-auto" disabled={saving}>
-            {saving ? "Saving…" : "Continue to Quotr"}
+            {saving
+              ? "Saving…"
+              : isBasicsGate
+                ? "Continue to Quotr"
+                : "Save company basics"}
           </Button>
         </CardFooter>
       </form>

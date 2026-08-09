@@ -1,10 +1,11 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
-import { isSetupIncomplete } from "@/lib/setup/actions";
+import { needsCompanyBasics } from "@/lib/setup/actions";
 import { createClient } from "@/lib/supabase/server";
 
 const SETUP_REQUIRED_PATH = "/app/setup-required";
+const SETUP_BASICS_PATH = "/app/setup?mode=basics";
 
 function isSetupRequiredPath(pathname: string | null): boolean {
   if (!pathname) {
@@ -14,6 +15,14 @@ function isSetupRequiredPath(pathname: string | null): boolean {
     pathname === SETUP_REQUIRED_PATH ||
     pathname.startsWith(`${SETUP_REQUIRED_PATH}/`)
   );
+}
+
+/** Routes allowed while company basics are not yet confirmed. */
+function isCompanyBasicsAllowedPath(pathname: string | null): boolean {
+  if (!pathname) {
+    return false;
+  }
+  return pathname === "/app/setup" || pathname.startsWith("/app/setup/");
 }
 
 export default async function AppLayout({
@@ -70,8 +79,6 @@ export default async function AppLayout({
       redirect(SETUP_REQUIRED_PATH);
     }
 
-    // Controlled recovery surface only — do not render the normal app shell,
-    // and do not write organisations/profiles during render.
     return (
       <div className="flex min-h-svh flex-col items-center justify-center bg-muted px-4 py-8">
         <div className="mb-8 w-full max-w-sm text-center">
@@ -86,7 +93,15 @@ export default async function AppLayout({
     redirect("/app/dashboard");
   }
 
-  const setupIncomplete = await isSetupIncomplete();
+  // Stage 3.1C.3-R2A: hard gate basics before Dashboard / app surfaces.
+  // Single status read via needsCompanyBasics (no rates catalogue).
+  const basicsNeeded = await needsCompanyBasics();
+  if (basicsNeeded && !isCompanyBasicsAllowedPath(pathname)) {
+    redirect(SETUP_BASICS_PATH);
+  }
+
+  // Incomplete badge = basics missing only (not full wizard).
+  const setupIncomplete = basicsNeeded;
 
   return (
     <AppShell

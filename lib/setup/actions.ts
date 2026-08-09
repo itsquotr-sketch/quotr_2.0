@@ -18,6 +18,12 @@ import type {
   StarterRateInput,
   WorkAreaSelection,
 } from "@/components/setup/types";
+import {
+  isSupportedCountryCode,
+  isSupportedCurrencyCode,
+  normalizeCountryCode,
+  normalizeCurrencyCode,
+} from "@/lib/setup/locale-catalogue";
 
 type SetupAuthContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -90,27 +96,18 @@ async function ensureDefaultSettings(
 }
 
 /**
- * Soft advanced wizard incomplete (work areas / rates / review).
- * Does not block Dashboard or project creation.
+ * Sidebar "Incomplete" badge authority (R2A).
+ * True only while company basics are not confirmed.
+ * Does NOT use onboarding_status === completed (Review/Mark complete).
  */
 export async function isSetupIncomplete(): Promise<boolean> {
-  const context = await getSetupAuthContext();
-  if (!context) {
-    return true;
-  }
-
-  const { data: settings } = await context.supabase
-    .from("organisation_settings")
-    .select("onboarding_status")
-    .eq("org_id", context.orgId)
-    .maybeSingle();
-
-  return !settings || settings.onboarding_status !== "completed";
+  return needsCompanyBasics();
 }
 
 /**
- * First-run company basics still need confirmation (Stage 3.1C.3).
- * Soft gate: Dashboard shows basics card; does not hard-lock the app shell.
+ * First-run company basics still need confirmation (Stage 3.1C.3-R2A).
+ * Authority: onboarding_status is null or not_started.
+ * Leaving not_started via saveCompanyBasics unlocks Dashboard.
  */
 export async function needsCompanyBasics(): Promise<boolean> {
   const context = await getSetupAuthContext();
@@ -128,8 +125,16 @@ export async function needsCompanyBasics(): Promise<boolean> {
 }
 
 const companyBasicsSchema = z.object({
-  currency: z.string().trim().min(1, "Currency is required").max(8),
-  country: z.string().trim().min(1, "Country is required").max(8),
+  currency: z
+    .string()
+    .trim()
+    .min(1, "Currency is required")
+    .max(16, "Currency code is too long"),
+  country: z
+    .string()
+    .trim()
+    .min(1, "Country is required")
+    .max(64, "Country is too long"),
   region: z.string().trim().max(120).optional(),
   default_gst_rate: z
     .number()
@@ -138,8 +143,9 @@ const companyBasicsSchema = z.object({
 });
 
 /**
- * Confirm minimum company basics and unlock Dashboard first-run.
+ * Confirm minimum company basics and unlock Dashboard.
  * Does not require rates, margins, work areas, or branding.
+ * Persists canonical ISO country/currency codes into existing text columns.
  */
 export async function saveCompanyBasics(
   input: CompanyBasicsInput
@@ -147,6 +153,24 @@ export async function saveCompanyBasics(
   const parsed = companyBasicsSchema.safeParse(input);
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  const countryCode = normalizeCountryCode(parsed.data.country);
+  const currencyCode = normalizeCurrencyCode(parsed.data.currency);
+
+  if (!countryCode || !isSupportedCountryCode(countryCode)) {
+    return {
+      fieldErrors: {
+        country: ["Select a supported country."],
+      },
+    };
+  }
+  if (!currencyCode || !isSupportedCurrencyCode(currencyCode)) {
+    return {
+      fieldErrors: {
+        currency: ["Select a supported currency."],
+      },
+    };
   }
 
   const context = await getSetupAuthContext();
@@ -164,14 +188,15 @@ export async function saveCompanyBasics(
     .maybeSingle();
 
   const alreadyCompleted = existing?.onboarding_status === "completed";
+  const alreadyInProgress = existing?.onboarding_status === "in_progress";
 
   const payload = {
     org_id: orgId,
-    currency: data.currency.toUpperCase(),
-    country: data.country.toUpperCase(),
+    currency: currencyCode,
+    country: countryCode,
     region: data.region?.trim() || null,
     default_gst_rate: data.default_gst_rate,
-    ...(alreadyCompleted
+    ...(alreadyCompleted || alreadyInProgress
       ? {}
       : {
           onboarding_status: "in_progress" as const,

@@ -1,9 +1,18 @@
 /**
- * Deterministic company setup readiness (Stage 3.1C.3).
+ * Deterministic company setup readiness (Stage 3.1C.3 / R2A).
  * Presentation/readiness authority only — does not change commercial formulas.
+ *
+ * onboarding_status narrow meaning (R2A):
+ * - not_started / null → company basics not confirmed (first-run gate)
+ * - in_progress | completed → basics confirmed; completed is legacy wizard flag only
+ *   and is NOT product authority for Dashboard / projects / Incomplete badge
  */
 
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import {
+  normalizeCountryCode,
+  normalizeCurrencyCode,
+} from "@/lib/setup/locale-catalogue";
 
 export type SetupSuggestion = {
   id: string;
@@ -26,7 +35,10 @@ export type CompanySetupReadiness = {
   recommendedSetup: SetupSuggestion[];
   /** True when first-run company basics still need confirmation. */
   needsFirstRunBasics: boolean;
-  /** Soft onboarding wizard not fully completed (work areas/rates/review). */
+  /**
+   * Legacy: advanced wizard not marked completed.
+   * Must not drive Incomplete badge or Dashboard access after R2A.
+   */
   advancedSetupIncomplete: boolean;
   usingDefaultMargin: boolean;
   hasLabourRate: boolean;
@@ -67,8 +79,18 @@ export function computeCompanySetupReadiness(
   input: CompanySetupReadinessInput
 ): CompanySetupReadiness {
   const organisationName = input.organisationName.trim() || "Your company";
-  const currency = (input.currency ?? "NZD").trim() || "NZD";
-  const country = (input.country ?? "NZ").trim() || "NZ";
+
+  const normalizedCountry = normalizeCountryCode(input.country);
+  const normalizedCurrency = normalizeCurrencyCode(input.currency);
+
+  // Display codes: prefer normalised; fall back to trimmed persisted for legacy orgs.
+  const country =
+    normalizedCountry ??
+    (input.country?.trim().toUpperCase() || "NZ");
+  const currency =
+    normalizedCurrency ??
+    (input.currency?.trim().toUpperCase() || "NZD");
+
   const defaultGstRate =
     input.defaultGstRate != null && Number.isFinite(input.defaultGstRate)
       ? Number(input.defaultGstRate)
@@ -84,12 +106,12 @@ export function computeCompanySetupReadiness(
     input.onboardingStatus == null ||
     input.onboardingStatus === "not_started";
 
+  // Basics confirmed once user left not_started. Do not re-gate established
+  // orgs whose legacy country/currency strings are outside the MVP catalogue.
   const companyBasicsReady =
     input.accountReady &&
     nonEmpty(organisationName) &&
-    !needsFirstRunBasics &&
-    nonEmpty(currency) &&
-    nonEmpty(country);
+    !needsFirstRunBasics;
 
   const usingDefaultMargin =
     Math.abs(defaultMarginPercent - DEFAULT_MARGIN_PERCENT) < 0.0001;
@@ -112,6 +134,15 @@ export function computeCompanySetupReadiness(
     missingEstimateSetup.push(labour);
     recommendedSetup.push(labour);
   }
+
+  recommendedSetup.push({
+    id: "work_types",
+    title: "Choose common work types",
+    reason: "Personalise suggestions for the jobs you usually price.",
+    href: "/app/setup?mode=improve",
+    severity: "optional",
+    dimension: "estimate",
+  });
 
   if (!nonEmpty(input.region)) {
     recommendedSetup.push({
@@ -165,9 +196,9 @@ export function computeCompanySetupReadiness(
   if (!hasContact) {
     const contact: SetupSuggestion = {
       id: "company_contact",
-      title: "Add company contact details",
+      title: "Complete quote details",
       reason:
-        "Complete an email or phone number before sending this quote to a client.",
+        "Add a company email or phone before sending a quote to a client.",
       href: "/app/settings/company",
       severity: "required",
       dimension: "quote",
@@ -186,6 +217,15 @@ export function computeCompanySetupReadiness(
       dimension: "quote",
     });
   }
+
+  recommendedSetup.push({
+    id: "calibrate",
+    title: "Calibrate Quotr",
+    reason: "Coming soon — price a sample job so Quotr learns your business.",
+    href: "/app/setup?mode=improve",
+    severity: "optional",
+    dimension: "pricing",
+  });
 
   const estimateReady = companyBasicsReady;
   const pricingReady = companyBasicsReady && input.hasLabourRate;

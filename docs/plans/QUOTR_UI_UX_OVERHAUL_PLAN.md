@@ -13,6 +13,7 @@
 | UX-A–F (Assistant) | Disclosure, hierarchy, presentation, polish | **3.1B.7A–7D** Complete — Local |
 | Preview validation | Owner E2E gate | **3.1B.7F** Complete — Local (pack); **7F-R1/R2/R3** Complete — Local / Final Deck Retest Pending; Owner results Pending / BLOCKED |
 | Density / sticky QE | Commercial hierarchy, sticky rail, mobile compact, centre density | **3.1B.7G** Complete — Local |
+| First-run / company basics | Hard basics gate, country/currency selects, Dashboard coherence | **3.1C.3-R2A** Complete — Local |
 | UX-E | Pricing + Quote surfaces | **Planned separately** |
 
 **Production:** Disabled  

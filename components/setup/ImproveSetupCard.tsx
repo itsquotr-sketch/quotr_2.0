@@ -17,19 +17,26 @@ type ImproveSetupCardProps = {
   readiness: CompanySetupReadiness;
 };
 
+const SECONDARY_IDS = new Set([
+  "labour_rate",
+  "work_types",
+  "company_contact",
+  "calibrate",
+  "default_margin",
+]);
+
 export function ImproveSetupCard({ readiness }: ImproveSetupCardProps) {
   const [dismissed, setDismissed] = useState(false);
 
-  if (dismissed) {
+  if (dismissed || readiness.needsFirstRunBasics) {
     return null;
   }
 
-  if (readiness.needsFirstRunBasics) {
-    return null;
-  }
+  const items = readiness.recommendedSetup
+    .filter((item) => SECONDARY_IDS.has(item.id))
+    .slice(0, 4);
 
-  const items = readiness.recommendedSetup.slice(0, 4);
-  if (items.length === 0 && !readiness.advancedSetupIncomplete) {
+  if (items.length === 0) {
     return null;
   }
 
@@ -38,10 +45,12 @@ export function ImproveSetupCard({ readiness }: ImproveSetupCardProps) {
       <CardHeader className="pb-3">
         <div className="flex items-start justify-between gap-3">
           <div className="space-y-1">
-            <CardTitle className="text-base">Improve your estimates</CardTitle>
+            <CardTitle className="text-base">
+              Improve Quotr for your business
+            </CardTitle>
             <CardDescription>
-              Optional setup that improves accuracy. Creating a project comes
-              first.
+              Optional. Creating a project comes first — these tips improve
+              accuracy when you are ready.
             </CardDescription>
           </div>
           <Button
@@ -97,16 +106,6 @@ export function ImproveSetupCard({ readiness }: ImproveSetupCardProps) {
             </li>
           ))}
         </ul>
-        {readiness.advancedSetupIncomplete ? (
-          <Button
-            variant="outline"
-            size="sm"
-            className="h-9"
-            render={<Link href="/app/setup" />}
-          >
-            Open setup wizard
-          </Button>
-        ) : null}
       </CardContent>
     </Card>
   );

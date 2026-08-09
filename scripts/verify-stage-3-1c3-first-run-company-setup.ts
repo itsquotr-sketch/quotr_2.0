@@ -86,9 +86,13 @@ function main() {
     !/labour rate|carpenter/i.test(basics)
   );
   assert(
-    "dashboard hosts first-run basics",
-    /needsFirstRunBasics/.test(read("app/(protected)/app/dashboard/page.tsx")) &&
-      /CompanyBasicsStep/.test(read("app/(protected)/app/dashboard/page.tsx"))
+    "layout gates basics before Dashboard (R2A)",
+    /needsCompanyBasics/.test(read("app/(protected)/app/layout.tsx")) &&
+      /mode=basics/.test(read("app/(protected)/app/layout.tsx"))
+  );
+  assert(
+    "dashboard does not soft-render basics gate",
+    !/CompanyBasicsStep/.test(read("app/(protected)/app/dashboard/page.tsx"))
   );
 
   section("READINESS");

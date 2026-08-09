@@ -1,45 +1,55 @@
 "use client";
 
+import Link from "next/link";
 import { useCallback, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { FormContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
+import { Button } from "@/components/ui/button";
 import { getSetupState } from "@/lib/setup/actions";
 import { CompanyBasicsStep } from "./CompanyBasicsStep";
-import { CompanyDefaultsStep } from "./CompanyDefaultsStep";
 import { RatesStep } from "./RatesStep";
-import { ReviewStep } from "./ReviewStep";
-import { SetupProgress } from "./SetupProgress";
 import type { SetupState, SetupStep } from "./types";
 import { WorkAreasStep } from "./WorkAreasStep";
 
+export type SetupShellMode = "basics" | "improve";
+
 type SetupShellProps = {
   initialState: SetupState;
+  mode: SetupShellMode;
   userEmail?: string;
   fullName?: string | null;
 };
 
-function getInitialStep(settings: SetupState["settings"]): SetupStep {
-  if (!settings) return "company";
-  if (settings.onboarding_status === "completed") return "review";
-  if (settings.onboarding_step === "completed") return "review";
-  if (settings.onboarding_status === "not_started") return "company";
-  return settings.onboarding_step;
+type ImproveSection = "company" | "work_areas" | "rates";
+
+function getInitialImproveSection(
+  settings: SetupState["settings"]
+): ImproveSection {
+  if (!settings || settings.onboarding_status === "not_started") {
+    return "company";
+  }
+  const step: SetupStep = settings.onboarding_step;
+  if (step === "rates" || step === "review" || step === "completed") {
+    return "rates";
+  }
+  if (step === "work_areas") return "work_areas";
+  return "company";
 }
 
 export function SetupShell({
   initialState,
+  mode,
   userEmail,
   fullName,
 }: SetupShellProps) {
   const router = useRouter();
   const [, startTransition] = useTransition();
   const [state, setState] = useState(initialState);
-  const [step, setStep] = useState<SetupStep>(() =>
-    getInitialStep(initialState.settings)
+  const [section, setSection] = useState<ImproveSection>(() =>
+    getInitialImproveSection(initialState.settings)
   );
-  const [showPricingDefaults, setShowPricingDefaults] = useState(false);
 
   const refreshState = useCallback(async () => {
     const nextState = await getSetupState();
@@ -47,89 +57,104 @@ export function SetupShell({
     router.refresh();
   }, [router]);
 
-  function goToStep(nextStep: SetupStep) {
-    setStep(nextStep);
-    setShowPricingDefaults(false);
+  function goToSection(next: ImproveSection) {
+    setSection(next);
     startTransition(() => {
       void refreshState();
     });
   }
 
-  const isFirstRun =
-    !state.settings || state.settings.onboarding_status === "not_started";
+  if (mode === "basics") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <PageHeader
+          title="Welcome to Quotr"
+          description="Confirm a few company basics, then start quoting."
+          actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
+        />
+        <FormContainer>
+          <div className="mx-auto w-full max-w-lg">
+            <CompanyBasicsStep state={state} mode="basics" />
+          </div>
+        </FormContainer>
+      </div>
+    );
+  }
 
+  // Optional improve mode — no mandatory Review / Mark complete.
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
-        title={isFirstRun ? "Welcome to Quotr" : "Setup"}
-        description={
-          isFirstRun
-            ? "Confirm a few company basics, then start quoting."
-            : "Optional setup to improve estimate and quote quality."
-        }
+        title="Improve Quotr"
+        description="Optional setup to personalise estimates. You can create projects anytime."
         actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
       />
       <FormContainer>
-        {!isFirstRun || step !== "company" ? (
-          <div className="mb-8 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Complete optional steps when you are ready. You can create projects
-              after company basics.
-            </p>
-            <SetupProgress currentStep={step} />
+        <div className="mb-6 space-y-3">
+          <p className="text-sm text-muted-foreground">
+            Choose a section below. Nothing here blocks creating a project.
+          </p>
+          <div className="flex flex-wrap gap-2">
+            {(
+              [
+                ["company", "Company basics"],
+                ["work_areas", "Work types"],
+                ["rates", "Rates"],
+              ] as const
+            ).map(([id, label]) => (
+              <Button
+                key={id}
+                type="button"
+                size="sm"
+                variant={section === id ? "default" : "outline"}
+                className="h-9"
+                onClick={() => setSection(id)}
+              >
+                {label}
+              </Button>
+            ))}
           </div>
-        ) : null}
+          <p className="text-sm">
+            <Link
+              href="/app/dashboard"
+              className="font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+            >
+              Back to Dashboard
+            </Link>
+          </p>
+        </div>
 
-        {step === "company" && !showPricingDefaults ? (
+        {section === "company" ? (
           <CompanyBasicsStep
             state={state}
-            mode={isFirstRun ? "first-run" : "wizard"}
-            onContinueWizard={() => {
-              setShowPricingDefaults(true);
+            mode="optional"
+            onSaved={() => {
               void refreshState();
             }}
           />
         ) : null}
 
-        {step === "company" && showPricingDefaults ? (
-          <div className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Pricing defaults are optional. Safe defaults already apply (20%
-              margin).
-            </p>
-            <CompanyDefaultsStep
-              state={state}
-              onComplete={() => goToStep("work_areas")}
-            />
-          </div>
-        ) : null}
-
-        {step === "work_areas" ? (
+        {section === "work_areas" ? (
           <WorkAreasStep
             state={state}
-            onComplete={() => goToStep("rates")}
-            onBack={() => setStep("company")}
+            onComplete={() => goToSection("rates")}
+            onBack={() => setSection("company")}
           />
         ) : null}
 
-        {step === "rates" ? (
+        {section === "rates" ? (
           <RatesStep
             state={state}
-            onComplete={() => goToStep("review")}
-            onBack={() => setStep("work_areas")}
-          />
-        ) : null}
-
-        {step === "review" || step === "completed" ? (
-          <ReviewStep
-            state={state}
-            onBack={() => setStep("rates")}
             onComplete={() => {
               void refreshState();
             }}
+            onBack={() => setSection("work_areas")}
           />
         ) : null}
       </FormContainer>
     </div>
   );
 }
+
+/** Re-export step type for callers that imported it from SetupShell. */
+export type { SetupStep };

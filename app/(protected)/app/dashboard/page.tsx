@@ -1,12 +1,12 @@
 import { Suspense } from "react";
+import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { DashboardProjectList } from "@/components/projects/DashboardProjectList";
 import { DashboardSummaryCards } from "@/components/projects/DashboardSummaryCards";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
-import { SetupPromptCard } from "@/components/setup/SetupPromptCard";
-import type { SetupStep } from "@/components/setup/types";
+import { ImproveSetupCard } from "@/components/setup/ImproveSetupCard";
 import {
   getDashboardPipelineSummary,
   listProjects,
@@ -14,13 +14,8 @@ import {
 import { measureServerLoad } from "@/lib/perf/timing";
 import { getProjectNextAction } from "@/lib/projects/next-action";
 import { parseProjectListFilter } from "@/lib/projects/status";
-import { getSetupState, isSetupIncomplete } from "@/lib/setup/actions";
+import { getCompanySetupReadiness } from "@/lib/setup/readiness-actions";
 import { createClient } from "@/lib/supabase/server";
-
-function getResumeStep(step: SetupStep | undefined): SetupStep {
-  if (!step || step === "completed") return "company";
-  return step;
-}
 
 type DashboardPageProps = {
   searchParams: Promise<{ filter?: string; q?: string }>;
@@ -42,26 +37,26 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     .eq("id", user!.id)
     .maybeSingle();
 
-  const setupIncomplete = await isSetupIncomplete();
-  const { projects, summary, setupState } = await measureServerLoad(
+  // Layout already redirected if basics missing — no Dashboard flash / soft gate.
+  const { projects, summary, readiness } = await measureServerLoad(
     "dashboard",
     async () => {
-      const [projectsResult, summaryResult, setupStateResult] =
+      const [projectsResult, summaryResult, readinessResult] =
         await Promise.all([
           listProjects({ filter, search }),
           getDashboardPipelineSummary(),
-          setupIncomplete ? getSetupState() : Promise.resolve(null),
+          getCompanySetupReadiness(),
         ]);
 
       return {
         projects: projectsResult,
         summary: summaryResult,
-        setupState: setupStateResult,
+        readiness: readinessResult,
       };
     }
   );
 
-  const resumeStep = getResumeStep(setupState?.settings?.onboarding_step);
+  const isEmpty = projects.length === 0;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -79,9 +74,28 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       />
       <PageContainer>
         <div className="space-y-6">
-          {setupIncomplete ? (
-            <SetupPromptCard currentStep={resumeStep} />
+          {isEmpty ? (
+            <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-8 text-center sm:px-6">
+              <h2 className="text-lg font-semibold tracking-tight">
+                Create your first project
+              </h2>
+              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                Capture the job, build scope, and generate a quick estimate.
+                Optional company setup can improve accuracy as you go.
+              </p>
+              <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                <NewProjectDialog />
+                <Link
+                  href="/app/setup?mode=improve"
+                  className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                >
+                  Improve Quotr for your business
+                </Link>
+              </div>
+            </div>
           ) : null}
+
+          <ImproveSetupCard readiness={readiness} />
 
           <DashboardSummaryCards summary={summary} activeFilter={filter} />
 

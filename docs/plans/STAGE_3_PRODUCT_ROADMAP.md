@@ -23,7 +23,10 @@
 | **3.1C.2A-R2** | Account menu trigger interaction | Fix Base UI GroupLabel-without-Group crash on open | **Complete — Preview-passed** |
 | **3.1C.2B** | Auth callback / Forgot Password / redirect-back | Email confirmation callback, reset email flow, return-path routing | **Complete — Local**; Preview Auth E2E Pending |
 | **3.1C.2B-R1** | Auth entry links & URL env contract | Login Forgot password UX; canonical Local/Preview/Production origins | **Complete — Local**; Owner URL config Pending |
-| **3.1C.3** | First-run & Company Setup UX | Minimum company basics; readiness composer; progressive prompts | **Complete — Local**; Preview first-run E2E Pending |
+| **3.1C.3** | First-run & Company Setup UX | Minimum company basics; readiness composer; progressive prompts | **Complete — Local**; Preview findings → **3.1C.3-R1 audit** |
+| **3.1C.3-R1** | First-run / rates / calibration architecture | Audit state machine, rate authorities, gating & calibration design | **Complete — Planning** |
+| **3.1C.3-R2A** | First-run gating + country/currency + Dashboard | Hard basics route; controlled locale; badge/Dashboard coherence | **Complete — Local**; Preview Pending |
+| **3.1C.3-R2B** | Work Area preferences | Preferences only; remove capability lock | **Ready Next** |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
 | **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.7F-R3 Complete — Local (Final Deck Retest Pending); **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E); 7A–7G Complete — Local; Production Disabled; Analyse Job Preserved |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
@@ -143,4 +146,10 @@ Every Stage 3 release should track:
 - 3.1C.3 first-run architecture: `docs/architecture/QUOTR_FIRST_RUN_AND_COMPANY_SETUP_ARCHITECTURE.md`
 - 3.1C.3 completion: `docs/implementation/STAGE_3_1C3_FIRST_RUN_COMPANY_SETUP_COMPLETION.md`
 - 3.1C.3 Preview E2E: `docs/runbooks/STAGE_3_1C3_FIRST_RUN_PREVIEW_TEST.md`
+- 3.1C.3-R1 setup/rate audit: `docs/audits/STAGE_3_1C3R1_SETUP_RATE_ENGINE_AUDIT.md`
+- 3.1C.3-R1 gating model: `docs/architecture/QUOTR_FIRST_RUN_GATING_MODEL.md`
+- 3.1C.3-R1 rate/calibration architecture: `docs/architecture/QUOTR_RATE_AND_CALIBRATION_ARCHITECTURE.md`
+- 3.1C.3-R1 calibration contract: `docs/specifications/QUOTR_CALIBRATION_SCENARIO_CONTRACT.md`
+- 3.1C.3-R1 redesign plan: `docs/plans/STAGE_3_1C3_SETUP_REDESIGN_PLAN.md`
+- 3.1C.3-R1 owner decisions: `docs/decisions/STAGE_3_1C3_SETUP_OWNER_DECISIONS.md`
 - Profile vs Company boundary: `docs/architecture/QUOTR_ACCOUNT_PROFILE_AND_COMPANY_BOUNDARY.md`
