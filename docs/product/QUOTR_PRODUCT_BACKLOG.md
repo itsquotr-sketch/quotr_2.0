@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (**BLOCKED BY PREVIEW DEFECTS** / Owner E2E Open); **Stage 3.1C.1A/1B Auth Complete**; **Stage 3.1C.2A Preview-passed**; **Stage 3.1C.2B Complete — Local** (Preview Auth E2E Pending); **Stage 3.1C.3 Ready Next**; Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**. Stage 3.1C **not** marked complete.   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (**BLOCKED BY PREVIEW DEFECTS** / Owner E2E Open); **Stage 3.1C.1A/1B Auth Complete**; **Stage 3.1C.2A Preview-passed**; **Stage 3.1C.2B Preview-passed**; **Stage 3.1C.3 Complete — Local** (Preview first-run E2E Pending); Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**. Stage 3.1C **not** marked complete until Preview first-run test.   
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -108,6 +108,6 @@
 - Stage 3.1C.2A-R1/R2: Preview-passed (route + menu trigger).
 - Stage 3.1C.2B email confirmation / Forgot Password / reset / redirect-back: **Complete — Local**; Preview Auth E2E Pending — `STAGE_3_1C2B_ACCOUNT_RECOVERY_COMPLETION.md`.
 - Stage 3.1C.2B-R1 auth entry + URL env contract: **Complete — Local**; Owner Vercel/Supabase URL config Pending — `STAGE_3_1C2B_AUTH_URL_CONFIGURATION.md`.
-- Stage 3.1C.3 first-run & Company Setup UX: **NOT STARTED**.
+- Stage 3.1C.3 first-run & Company Setup UX: **Complete — Local**; Preview first-run E2E Pending.
 - Production Scope Discovery: **Disabled**. Stage 3.2: **Not Started**.
-- Stage 3.1C overall: **not complete** until Preview E2E + 3.1C.3.
+- Stage 3.1C overall: **not complete** until Preview first-run E2E.

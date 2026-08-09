@@ -40,8 +40,8 @@ Profile must **not** duplicate these.
 | Batch | Scope |
 | --- | --- |
 | **3.1C.2A** | Account menu, logout, Profile, logged-in password change |
-| **3.1C.2B** | Email confirmation callback, Forgot Password / reset, redirect-back (**Complete — Local**) |
-| **3.1C.3** | First-run & Company Setup UX refinement (**Ready Next**) |
+| **3.1C.2B** | Email confirmation callback, Forgot Password / reset, redirect-back (**Preview-passed**) |
+| **3.1C.3** | First-run company basics + Company Settings IA + readiness (**Complete — Local**) |
 | Later | Profile email change (deferred from 2B) |
 
 ## Security rules

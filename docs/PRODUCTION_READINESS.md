@@ -85,6 +85,14 @@ See `docs/KNOWN_LIMITATIONS.md`.
 - Preview E2E: `docs/runbooks/STAGE_3_1C2B_ACCOUNT_RECOVERY_PREVIEW_TEST.md`.
 - Architecture: `docs/architecture/QUOTR_AUTH_CALLBACK_AND_RECOVERY_ARCHITECTURE.md`.
 
+## First-run / Company setup (Stage 3.1C.3)
+
+- Minimum company basics on Dashboard when `onboarding_status = not_started` (currency/country/GST; name from signup).
+- Readiness is computed (`getCompanySetupReadiness`) — no `setup_complete` migration.
+- Quote Mark sent requires company contact email or phone.
+- Preview E2E: `docs/runbooks/STAGE_3_1C3_FIRST_RUN_PREVIEW_TEST.md`.
+- Architecture: `docs/architecture/QUOTR_FIRST_RUN_AND_COMPANY_SETUP_ARCHITECTURE.md`.
+
 ## Security notes
 
 - Never expose `SUPABASE_SERVICE_ROLE_KEY` or `ANTHROPIC_API_KEY` to the client.

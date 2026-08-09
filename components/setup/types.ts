@@ -14,6 +14,8 @@ export type OrganisationSettings = {
   org_id: string;
   default_margin_percent: number;
   default_contingency_percent: number;
+  /** Present when loaded for setup/company basics; estimate context may omit. */
+  default_gst_rate?: number;
   budget_rate_factor: number;
   premium_rate_factor: number;
   currency: string;
@@ -57,6 +59,14 @@ export type SetupState = {
   settings: OrganisationSettings | null;
   workAreas: OrganisationWorkArea[];
   rates: OrganisationRate[];
+};
+
+/** Minimum first-run company basics (Stage 3.1C.3). */
+export type CompanyBasicsInput = {
+  currency: string;
+  country: string;
+  region?: string;
+  default_gst_rate: number;
 };
 
 export type CompanyDefaultsInput = {

@@ -70,7 +70,7 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
       {!hasRates ? (
         <EmptyState
           title="No rates set yet"
-          description="Create starter rates to begin calibrating Quotr to your business. You can refine scope and material rates afterwards."
+          description="Start with your builder/carpenter hourly rate — Quotr needs that most for labour estimates. Materials and trade rates can wait. You can also skip and use disclosed benchmark assumptions where allowed."
           action={
             <div className="space-y-2">
               {starterError ? (

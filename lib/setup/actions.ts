@@ -9,8 +9,10 @@ import {
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import type { createClient } from "@/lib/supabase/server";
+import { revalidatePath } from "next/cache";
 import type {
   ActionResult,
+  CompanyBasicsInput,
   CompanyDefaultsInput,
   SetupState,
   StarterRateInput,
@@ -54,6 +56,7 @@ function normalizeSettings(
     ...(settings as SetupState["settings"] & Record<string, unknown>),
     default_margin_percent: Number(settings.default_margin_percent),
     default_contingency_percent: Number(settings.default_contingency_percent),
+    default_gst_rate: Number(settings.default_gst_rate ?? 15),
     budget_rate_factor: Number(settings.budget_rate_factor ?? 0.9),
     premium_rate_factor: Number(settings.premium_rate_factor ?? 1.15),
   };
@@ -86,6 +89,10 @@ async function ensureDefaultSettings(
   return created;
 }
 
+/**
+ * Soft advanced wizard incomplete (work areas / rates / review).
+ * Does not block Dashboard or project creation.
+ */
 export async function isSetupIncomplete(): Promise<boolean> {
   const context = await getSetupAuthContext();
   if (!context) {
@@ -99,6 +106,93 @@ export async function isSetupIncomplete(): Promise<boolean> {
     .maybeSingle();
 
   return !settings || settings.onboarding_status !== "completed";
+}
+
+/**
+ * First-run company basics still need confirmation (Stage 3.1C.3).
+ * Soft gate: Dashboard shows basics card; does not hard-lock the app shell.
+ */
+export async function needsCompanyBasics(): Promise<boolean> {
+  const context = await getSetupAuthContext();
+  if (!context) {
+    return true;
+  }
+
+  const { data: settings } = await context.supabase
+    .from("organisation_settings")
+    .select("onboarding_status")
+    .eq("org_id", context.orgId)
+    .maybeSingle();
+
+  return !settings || settings.onboarding_status === "not_started";
+}
+
+const companyBasicsSchema = z.object({
+  currency: z.string().trim().min(1, "Currency is required").max(8),
+  country: z.string().trim().min(1, "Country is required").max(8),
+  region: z.string().trim().max(120).optional(),
+  default_gst_rate: z
+    .number()
+    .min(0, "GST rate must be at least 0")
+    .max(100, "GST rate cannot exceed 100"),
+});
+
+/**
+ * Confirm minimum company basics and unlock Dashboard first-run.
+ * Does not require rates, margins, work areas, or branding.
+ */
+export async function saveCompanyBasics(
+  input: CompanyBasicsInput
+): Promise<ActionResult> {
+  const parsed = companyBasicsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { fieldErrors: parsed.error.flatten().fieldErrors };
+  }
+
+  const context = await getSetupAuthContext();
+  if (!context) {
+    return MISSING_ORG_ERROR;
+  }
+
+  const { supabase, orgId } = context;
+  const data = parsed.data;
+
+  const { data: existing } = await supabase
+    .from("organisation_settings")
+    .select("id, onboarding_status")
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  const alreadyCompleted = existing?.onboarding_status === "completed";
+
+  const payload = {
+    org_id: orgId,
+    currency: data.currency.toUpperCase(),
+    country: data.country.toUpperCase(),
+    region: data.region?.trim() || null,
+    default_gst_rate: data.default_gst_rate,
+    ...(alreadyCompleted
+      ? {}
+      : {
+          onboarding_status: "in_progress" as const,
+          onboarding_step: "work_areas" as const,
+        }),
+  };
+
+  const { error } = await supabase
+    .from("organisation_settings")
+    .upsert(payload, { onConflict: "org_id" });
+
+  if (error) {
+    return { error: "Could not save company basics. Please try again." };
+  }
+
+  revalidatePath("/app/dashboard");
+  revalidatePath("/app/setup");
+  revalidatePath("/app/settings/company");
+  revalidatePath("/app/rates");
+
+  return { success: true };
 }
 
 export async function getSetupState(): Promise<SetupState> {
