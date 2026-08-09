@@ -21,7 +21,8 @@ Runtime validation:
 - Admin tooling: `assertAdminServerConfiguration()` when using `createAdminClient()`.
 - Migration **032** must be applied on the target database before Preview signup works with the new transactional RPC flow. **Preview remote `quotr_2.0` (`lxvnylhsbvudzzupxeqr`): Applied and Verified** (2026-08-09) — see `docs/implementation/STAGE_3_1C1B1_REMOTE_032_APPLY_COMPLETION.md`.
 - Migration **033** (`calibration_responses`) **Applied and Verified Remote** (2026-08-10) — see `docs/implementation/STAGE_3_1C3_R2D2_REMOTE_033_APPLY_COMPLETION.md`. Calibration evidence only — not rate authority.
-- Stage **3.1C.3-R2E-R1** Complete Local — Owner Preview Retest Pending (`docs/runbooks/STAGE_3_1C3_R2E_R1_OWNER_RETEST.md`). Stage 3.1C remains open.
+- Stage **3.1C Complete — Preview Validated** (2026-08-10) — `docs/implementation/STAGE_3_1C_CLOSURE.md`.
+- Next active: **Stage 3.1B Owner Preview E2E** (Deck / Bathroom / Commercial Fitout).
 - Production Scope Discovery remains **Disabled**. Company DNA / Stage 3.2 **Not Started**.
 
 ## Supabase
@@ -90,10 +91,11 @@ See `docs/KNOWN_LIMITATIONS.md`.
 
 ## First-run / Company setup (Stage 3.1C.3)
 
-- Minimum company basics on Dashboard when `onboarding_status = not_started` (currency/country/GST; name from signup).
+- **Complete — Preview Validated** with Stage 3.1C closure (2026-08-10).
+- Minimum company basics hard-gated until confirmed (currency/country/GST; name from signup).
 - Readiness is computed (`getCompanySetupReadiness`) — no `setup_complete` migration.
 - Quote Mark sent requires company contact email or phone.
-- Preview E2E: `docs/runbooks/STAGE_3_1C3_FIRST_RUN_PREVIEW_TEST.md`.
+- Closure: `docs/implementation/STAGE_3_1C_CLOSURE.md`.
 - Architecture: `docs/architecture/QUOTR_FIRST_RUN_AND_COMPANY_SETUP_ARCHITECTURE.md`.
 
 ## Security notes

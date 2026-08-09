@@ -1,7 +1,8 @@
 # Quotr Auth Callback & Account Recovery Architecture
 
-**Status:** Active (Stage 3.1C.2B)  
-**Packages:** `@supabase/ssr` 0.12.0 (PKCE), `@supabase/supabase-js` 2.108.2, Next.js 16.2.9
+**Status:** Complete — Preview Validated as part of Stage 3.1C (2026-08-10)  
+**Packages:** `@supabase/ssr` 0.12.0 (PKCE), `@supabase/supabase-js` 2.108.2, Next.js 16.2.9  
+**Closure:** `docs/implementation/STAGE_3_1C_CLOSURE.md`
 
 ## Flows
 

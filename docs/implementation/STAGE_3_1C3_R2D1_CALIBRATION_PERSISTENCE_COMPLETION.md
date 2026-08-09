@@ -1,8 +1,7 @@
 # Stage 3.1C.3-R2D.1 — Calibration Persistence Completion
 
-**Status:** Complete Local — Remote Pending Owner Gate  
-**Date:** 2026-08-10  
-**Migration:** `033_calibration_responses.sql` (created; not remote-applied)
+**Status:** Complete — Local + Remote (033 Applied and Verified Remote via R2D.2)  
+**Date:** 2026-08-10
 
 ## Delivered
 
@@ -14,6 +13,7 @@
 - Setup Calibrated / Not calibrated + View / Recalibrate
 - Dashboard tip removes after first active calibration
 - Verify: `scripts/verify-stage-3-1c3-r2d1-calibration-persistence.ts`
+- Remote: `docs/implementation/STAGE_3_1C3_R2D2_REMOTE_033_APPLY_COMPLETION.md`
 
 ## Authority held
 
@@ -21,14 +21,15 @@ Calibration remains evidence only — never writes rates, projects, facts, estim
 
 ## Remote
 
-Do **not** apply 033 remotely until owner signs remote readiness:
+**Migration 033 — Applied and Verified Remote** (R2D.2).
 
-`docs/runbooks/STAGE_3_1C3_R2D1_REMOTE_033_READINESS.md`
+**Calibration Preview E2E — Pending Owner Test.**
 
 ## Batch status
 
 | Batch | Status |
 | --- | --- |
-| R2D | Complete Local (observational MVP) |
-| R2D.1 | Complete Local — Remote Pending |
-| R2E | Planned |
+| R2D | Complete — Local |
+| R2D.1 | **Complete** (persistence) |
+| R2D.2 | **Complete** (remote 033) |
+| R2E | Ready Next after Preview evidence |

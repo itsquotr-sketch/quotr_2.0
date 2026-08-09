@@ -1,6 +1,6 @@
 # Stage 3.1C.3-R2D.1 — Calibration Persistence Preview Test
 
-**Prerequisite:** Local/Preview has migration **033** applied; company basics complete.
+**Prerequisite:** Preview DB has migration **033** applied (R2D.2 complete); company basics complete; Preview app build includes R2D.1 Save wiring.
 
 ## A — Save
 
@@ -33,3 +33,7 @@
 ## Pass criteria
 
 Save works · status works · recalibrate appends · no rate/project mutation · no DNA.
+
+## Remote note
+
+DB objects verified empty at apply (`calibration_responses=0`). First Preview save should create the first remote evidence row.

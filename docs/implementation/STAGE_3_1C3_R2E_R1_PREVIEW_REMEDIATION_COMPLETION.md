@@ -1,11 +1,15 @@
 # Stage 3.1C.3-R2E-R1 — Preview Remediation Completion
 
-**Status:** Complete Local — Owner Preview Retest Pending  
+**Status:** Complete — Preview Validated (2026-08-10)  
 **Date:** 2026-08-10
 
 ## Objective
 
 Targeted Preview remediation after Owner R2E testing. No Setup redesign, no DNA, no Stage 3.2, no Scope Discovery enablement, no formula changes, no migration 034.
+
+## Outcome
+
+Owner retest passed. Stage 3.1C.3 and Stage 3.1C closed — `docs/implementation/STAGE_3_1C_CLOSURE.md`.
 
 ## 1. Blank first-run Basics (R2E-R1-01)
 
@@ -39,9 +43,10 @@ npx --yes tsx scripts/verify-stage-3-1c3-r2e-r1-preview-remediation.ts
 
 | Item | Status |
 | --- | --- |
-| Stage 3.1C.3-R2E-R1 | **Complete Local** |
-| Owner Preview Retest | **Pending** |
-| Stage 3.1C | **Open** until retest passes |
+| Stage 3.1C.3-R2E-R1 | **Complete — Preview Validated** |
+| Stage 3.1C.3-R2E-R1.1 | **Complete** |
+| Stage 3.1C.3 | **Complete** |
+| Stage 3.1C | **Complete — Preview Validated** |
 | Stage 3.2 / Company DNA | Not Started |
 | Production Scope Discovery | Disabled |
 

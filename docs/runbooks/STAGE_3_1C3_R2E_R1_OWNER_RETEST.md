@@ -1,50 +1,52 @@
 # Stage 3.1C.3-R2E-R1 — Owner Preview Retest
 
-**Status:** Pending Owner  
-**Prerequisite:** Preview deploy includes R2E-R1 remediation (blank Basics fix, deep links, calibration UX).
+**Status:** Passed — Owner Preview Validated (2026-08-10)  
+**Prerequisite met:** Preview deploy included R2E-R1 remediation (+ R1.1 Company Settings prop fix)
 
 ## A — Fresh signup (critical)
 
-- [ ] New account → provision → **Company Basics visible immediately**
-- [ ] No manual refresh
-- [ ] No blank white page
-- [ ] No Dashboard flash before Basics
+- [x] New account → provision → **Company Basics visible immediately**
+- [x] No manual refresh
+- [x] No blank white page
+- [x] No Dashboard flash before Basics
 
 ## B — Company Basics
 
-- [ ] NZ/AU suggestions still correct
-- [ ] Save → Dashboard
+- [x] NZ/AU suggestions still correct
+- [x] Save → Dashboard
 
 ## C — Dashboard disclosure
 
-- [ ] Expand/Collapse (not Hide)
-- [ ] Collapsed state persists after navigate away/back
-- [ ] With ≥1 project, card defaults collapsed (unless previously expanded)
+- [x] Expand/Collapse (not Hide)
+- [x] Collapsed state persists after navigate away/back
+- [x] With ≥1 project, card defaults collapsed (unless previously expanded)
 
 ## D — Deep links
 
-- [ ] Confirm default margin → Rates **Defaults**
-- [ ] Add labour rate → Rates **Core labour**
-- [ ] Choose work types → Setup **Work types**
-- [ ] Complete quote details → Company **Quotes**
-- [ ] Calibrate → Setup **Calibrate**
+- [x] Confirm default margin → Rates **Defaults**
+- [x] Add labour rate → Rates **Core labour**
+- [x] Choose work types → Setup **Work types**
+- [x] Complete quote details → Company **Quotes**
+- [x] Calibrate → Setup **Calibrate**
 
 ## E — Calibration
 
-- [ ] Desktop: Example job remains visible while answering (sticky)
-- [ ] Mobile ~390px: Show/Hide details disclosure (not two-column)
-- [ ] Purpose copy: no automatic rate changes
-- [ ] Hours-only: Labour hours row; no “You —” monetary labour
-- [ ] Save → Hub Calibrated; Recalibrate supersedes prior row; no rate mutation
+- [x] Desktop: Example job remains visible while answering (sticky)
+- [x] Mobile ~390px: Show/Hide details disclosure (not two-column)
+- [x] Purpose copy: no automatic rate changes
+- [x] Hours-only: Labour hours row; no “You —” monetary labour
+- [x] Save → Hub Calibrated; Recalibrate supersedes prior row; no rate mutation
 
 ## Sign-off
 
 | Item | Owner |
 | --- | --- |
-| R2E-R1 Critical/High cleared | ☐ |
-| Stage 3.1C.3 ready to close | ☐ |
-| Stage 3.1C remains open until this passes | ☐ |
-| Production Scope Discovery remains Disabled | ☐ |
-| Stage 3.2 remains Not Started | ☐ |
+| R2E-R1 Critical/High cleared | ☑ |
+| Stage 3.1C.3 Complete | ☑ |
+| Stage 3.1C Complete — Preview Validated | ☑ |
+| Production Scope Discovery remains Disabled | ☑ |
+| Stage 3.2 remains Not Started | ☑ |
 
-**Signed:** _________________ **Date:** ________
+**Signed:** Owner Preview (satisfactory retest) **Date:** 2026-08-10  
+
+See: `docs/implementation/STAGE_3_1C_CLOSURE.md`

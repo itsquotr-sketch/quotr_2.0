@@ -1,7 +1,7 @@
 # Quotr Calibration MVP Architecture
 
 **Stage:** 3.1C.3-R2D  
-**Status:** Complete Local — R2D.1 persistence Complete Local, Remote Pending  
+**Status:** Complete — Local + Remote (033 Applied and Verified Remote)  
 **Authority:** Evidence only — not rate resolution
 
 ---
@@ -57,10 +57,10 @@ Performance: no per-keystroke regeneration.
 
 ## Persistence
 
-Table `calibration_responses` (migration **033**).
+Table `calibration_responses` (migration **033** — **Applied and Verified Remote**).
 
-- Compare + Save work locally after 033.
-- Remote apply still owner-gated: `docs/runbooks/STAGE_3_1C3_R2D1_REMOTE_033_READINESS.md`
+- Compare + Save work when Preview app includes R2D.1 wiring.
+- Apply record: `docs/implementation/STAGE_3_1C3_R2D2_REMOTE_033_APPLY_COMPLETION.md`
 
 ### History semantics
 

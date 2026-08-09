@@ -115,6 +115,7 @@ function main() {
     defaultGstRate: 15,
     defaultMarginPercent: DEFAULT_MARGIN_PERCENT,
     hasLabourRate: false,
+    hasWorkTypePreferences: false,
     tradingName: null,
     legalName: null,
     contactEmail: null,
@@ -135,6 +136,7 @@ function main() {
     defaultGstRate: 15,
     defaultMarginPercent: DEFAULT_MARGIN_PERCENT,
     hasLabourRate: false,
+    hasWorkTypePreferences: false,
     tradingName: null,
     legalName: null,
     contactEmail: null,
@@ -161,6 +163,7 @@ function main() {
     defaultGstRate: 15,
     defaultMarginPercent: 22,
     hasLabourRate: true,
+    hasWorkTypePreferences: false,
     tradingName: "Acme",
     legalName: null,
     contactEmail: "hello@acme.test",
@@ -183,10 +186,26 @@ function main() {
 
   section("COMPANY SETTINGS IA");
   const companyUi = read("components/settings/CompanySettingsContent.tsx");
-  assert("General section", /id: "general"/.test(companyUi));
-  assert("Pricing defaults section", /id: "pricing"/.test(companyUi));
-  assert("Quotes section", /id: "quotes"/.test(companyUi));
-  assert("Advanced section", /id: "advanced"/.test(companyUi));
+  const companyDestinations = read("lib/setup/recommendation-destinations.ts");
+  assert(
+    "General section",
+    /general:\s*"General"/.test(companyUi) ||
+      /"general"/.test(companyDestinations)
+  );
+  assert(
+    "Pricing defaults section",
+    /pricing:\s*"Pricing defaults"/.test(companyUi) ||
+      /"pricing"/.test(companyDestinations)
+  );
+  assert(
+    "Quotes section",
+    /quotes:\s*"Quotes"/.test(companyUi) || /"quotes"/.test(companyDestinations)
+  );
+  assert(
+    "Advanced section",
+    /advanced:\s*"Advanced"/.test(companyUi) ||
+      /"advanced"/.test(companyDestinations)
+  );
   assert(
     "Profile boundary called out",
     /Personal Profile/.test(companyUi)

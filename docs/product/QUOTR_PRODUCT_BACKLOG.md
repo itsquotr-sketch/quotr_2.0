@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress**; Auth **3.1C.2A/2B Preview-passed**; **3.1C.3 Local**; **R2A–R2D.2 Complete**; **R2E Complete Local**; **R2E-R1 Complete Local — Owner Retest Pending**; Stage 3.1C **Open** until R2E-R1 retest; Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**; Company DNA **Not Started**.
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated** (2026-08-10); Stage **3.1B In Progress** — next active: Owner Preview E2E (Deck / Bathroom / Commercial Fitout); Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**; Company DNA **Not Started**.
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -99,25 +99,12 @@
 - Production: **Disabled**.
 - Stage 3.2: **Not Started**.
 
-## Batch notes (Stage 3.1C auth)
+## Batch notes (Stage 3.1C auth / setup) — CLOSED
 
-- Stage 3.1C.0 auth audit cross-check: **Complete** — `docs/audits/STAGE_3_1C_AUTH_AUDIT_CROSSCHECK.md` (AUTH-001 fixed locally in 1B).
-- Stage 3.1C.1A auth safety: **Complete — Local** — safe error taxonomy, structured auth logging, login normalisation; `verify-stage-3-1c1a-auth-safety.ts`.
-- Stage 3.1C.1B transactional signup provisioning: **Complete — Local**; migration **032 Applied and Verified Remote**; application wiring **Ready to Commit/Deploy** (3.1C.1B.2) — `STAGE_3_1C1B2_APP_WIRING_COMMIT_GATE.md`; Preview auth test **Pending** — `STAGE_3_1C1B_PREVIEW_AUTH_RETEST.md`.
-- Stage 3.1C.2A account menu / Profile / logout / logged-in password: **Complete — Preview-passed**.
-- Stage 3.1C.2A-R1/R2: Preview-passed (route + menu trigger).
-- Stage 3.1C.2B email confirmation / Forgot Password / reset / redirect-back: **Complete — Local**; Preview Auth E2E Pending — `STAGE_3_1C2B_ACCOUNT_RECOVERY_COMPLETION.md`.
-- Stage 3.1C.2B-R1 auth entry + URL env contract: **Complete — Local**; Owner Vercel/Supabase URL config Pending — `STAGE_3_1C2B_AUTH_URL_CONFIGURATION.md`.
-- Stage 3.1C.3-R1: **Complete — Planning**.
-- Stage 3.1C.3-R2A: **Complete — Local**; Preview Pending.
-- Stage 3.1C.3-R2B: **Complete — Local**; Preview Pending.
-- Stage 3.1C.3-R2C: **Complete — Local**; Preview Pending.
-- Stage 3.1C.3-R2D: **Complete — Local**.
-- Stage 3.1C.3-R2D.1: **Complete**.
-- Stage 3.1C.3-R2D.2: **Complete** (Migration 033 Applied and Verified Remote).
-- Stage 3.1C.3-R2E: **Complete Local** (Owner Preview defects → R2E-R1).
-- Stage 3.1C.3-R2E-R1: **Complete Local — Owner Retest Pending**.
-- Stage 3.1C.3: **Ready to Close after R2E-R1 retest**.
+- Stage **3.1C overall:** **Complete — Preview Validated** (2026-08-10) — `docs/implementation/STAGE_3_1C_CLOSURE.md`.
+- Stage 3.1C.0–3.1C.2B: **Complete — Preview Validated**.
+- Stage 3.1C.3 + R1 + R2A–R2E + R2E-R1 + R2E-R1.1: **Complete — Preview Validated**.
+- Migrations **032** and **033**: Applied and Verified Remote.
+- Deferred (not complete): email change; Company DNA; calibration→rate auto-apply; additional scenarios; Stage 3.2; Production Scope Discovery enablement.
+- Stage 3.1B: **not** auto-closed by 3.1C — next active Owner Preview E2E (Deck / Bathroom / Fitout).
 - Production Scope Discovery: **Disabled**. Stage 3.2: **Not Started**. Company DNA: **Not Started**.
-- Stage 3.1C overall: **open** until R2E-R1 Preview Retest.
-- Stage 3.1B: **not** auto-closed by 3.1C.3.

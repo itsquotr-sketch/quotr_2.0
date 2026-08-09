@@ -1,37 +1,26 @@
 # Stage 3.1C.3 Setup Redesign Plan
 
-**Status:** Planning approved for sequencing — R1 audit complete  
+**Status:** Complete — Preview Validated (Stage 3.1C closed 2026-08-10)  
+**Closure:** `docs/implementation/STAGE_3_1C_CLOSURE.md`  
 **Implements after owner decisions in** `docs/decisions/STAGE_3_1C3_SETUP_OWNER_DECISIONS.md`
 
 ## Batch order (recommended)
 
 ### 3.1C.3-R2A — First-run routing + country/currency + Dashboard coherence
 
-**Status: Complete — Local**
-
-- Hard gate: `/app/setup?mode=basics` until basics confirmed  
-- Controlled country + currency (NZ/AU, NZD/AUD)  
-- Country → suggested currency + GST (user confirms)  
-- Saving basics → Dashboard; optional Setup save stays in Setup  
-- Sidebar Incomplete cleared after basics  
-- Dashboard: Create project primary; Improve secondary  
-- Review/Mark complete removed from required navigation  
+**Status: Complete — Preview Validated**
 
 ### 3.1C.3-R2B — Setup navigation / Work Area preferences
 
-**Status: Complete — Local**
-
-- Capability vs preference authority model  
-- Analyse Job / notes unlocked from org preferences  
-- Setup Work Types UX + defaults + Improve tips  
+**Status: Complete — Preview Validated**
 
 ### 3.1C.3-R2C — Core rates onboarding redesign
 
-**Status: Complete — Local**
+**Status: Complete — Preview Validated**
 
 ### 3.1C.3-R2D — Calibration scenario MVP
 
-**Status: Complete — Local**
+**Status: Complete — Preview Validated**
 
 ### 3.1C.3-R2D.1 — Calibration persistence (033)
 
@@ -41,20 +30,19 @@
 
 **Status: Complete**
 
-- Linked `quotr_2.0` only  
-- Dry-run 033 only → push → verified remote objects/grants  
-- Calibration Preview E2E still Pending Owner Test  
-
 ### 3.1C.3-R2E — Preview E2E / polish
 
-**Status: Complete Local — Owner Preview Sign-off Pending**
+**Status: Complete — Preview Validated**
 
-- First-run coherence polish  
-- Estimate label alignment with R2C  
-- Calibration hub / tip polish  
-- Defect register + sign-off runbook  
+### 3.1C.3-R2E-R1 — Preview remediation
 
-**Stage 3.1C.3** ready to close after Owner Preview Sign-off.
+**Status: Complete — Preview Validated**
+
+### 3.1C.3-R2E-R1.1 — Company Settings section prop build fix
+
+**Status: Complete**
+
+**Stage 3.1C.3** and **Stage 3.1C** are closed. Next active work: Stage 3.1B Owner Preview E2E — not Stage 3.2.
 
 ---
 
