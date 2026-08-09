@@ -22,7 +22,8 @@ Runtime validation:
 - Migration **032** must be applied on the target database before Preview signup works with the new transactional RPC flow. **Preview remote `quotr_2.0` (`lxvnylhsbvudzzupxeqr`): Applied and Verified** (2026-08-09) — see `docs/implementation/STAGE_3_1C1B1_REMOTE_032_APPLY_COMPLETION.md`.
 - Migration **033** (`calibration_responses`) **Applied and Verified Remote** (2026-08-10) — see `docs/implementation/STAGE_3_1C3_R2D2_REMOTE_033_APPLY_COMPLETION.md`. Calibration evidence only — not rate authority.
 - Stage **3.1C Complete — Preview Validated** (2026-08-10) — `docs/implementation/STAGE_3_1C_CLOSURE.md`.
-- Next active: **Stage 3.1B Owner Preview E2E** (Deck / Bathroom / Commercial Fitout).
+- Stage **3.1B** In Progress — Owner Preview E2E Ready (`docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`). Not closed until Deck + Bathroom + Fitout PASS.
+- Next active: Owner 3.1B Preview E2E (Deck / Bathroom / Commercial Fitout).
 - Production Scope Discovery remains **Disabled**. Company DNA / Stage 3.2 **Not Started**.
 
 ## Supabase

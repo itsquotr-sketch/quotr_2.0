@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated** (2026-08-10); Stage **3.1B In Progress** — next active: Owner Preview E2E (Deck / Bathroom / Commercial Fitout); Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**; Company DNA **Not Started**.
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated**; Stage **3.1B In Progress — Owner Preview E2E Ready** (Deck / Bathroom / Fitout Pending); Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**; Company DNA **Not Started**.
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -92,7 +92,7 @@
 - Stage 3.1B.7F-R3 unified scope state: **Complete — Local, Final Deck Retest Pending** — `CurrentWorkAreaScopeState` composer; Fact-aware “To confirm in Scope Details”; QE included count includes manuals; unified Edit scope checklist; `verify-stage-3-1b7fr3-unified-scope-state.ts`; no migration 032.
 - Stage 3.1B.7G Assistant density / sticky Quick Estimate: **Complete — Local** — commercial-first hierarchy, collapsible secondary sections, CSS sticky desktop rail, mobile compact summary view-model, centre one-line completed summaries; `verify-stage-3-1b7g-assistant-density-sticky-estimate.ts`; responsive architecture documented; 7F E2E pack updated; production **Disabled**.
 - Assistant UX refinement programme: **Complete — Local** (7A–7D + 7G density). Broader Pricing/Quote UX: **Planned separately**.
-- Stage 3.1B release status: **BLOCKED BY PREVIEW DEFECTS** (owner E2E DEF-7E-003 + Final Deck retest of 7F-R3).
+- Stage 3.1B release status: **Owner Preview E2E Ready** — blocker **DEF-7E-003** until Deck/Bathroom/Fitout PASS. Readiness: `STAGE_3_1B_OWNER_PREVIEW_E2E_READINESS.md`. Final sign-off: `STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`. Production **Disabled**.
 - Scope Discovery Preview sign-off: **Pending Owner Test**.
 - Do not change Analyse Job behaviour, commercial formulas, or Company DNA without explicit authorisation.
 - Stage 3.1B.7 missing-scope — Deferred until Preview gate clears.

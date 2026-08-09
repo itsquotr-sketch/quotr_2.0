@@ -1,7 +1,9 @@
 # Stage 3.1B.7F — Owner Preview E2E Results
 
-**Status:** Pending Owner Capture (7F-R3 Local Complete; Final Deck Retest Pending)  
+**Status:** Pending Owner Capture — Preview ready after Stage 3.1C close (2026-08-10)  
 **Date opened:** 2026-08-07  
+**Readiness:** `docs/implementation/STAGE_3_1B_OWNER_PREVIEW_E2E_READINESS.md`  
+**Final sign-off:** `docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`  
 **Test pack:** `docs/runbooks/STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`  
 **7F-R1 retest:** `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`  
 **7F-R2 retest:** `docs/runbooks/STAGE_3_1B7FR2_DECK_PREVIEW_RETEST.md`  
@@ -12,14 +14,14 @@
 **Defect register:** `docs/audits/STAGE_3_1B7E_PREVIEW_DEFECT_REGISTER.md`  
 **Performance:** `docs/performance/STAGE_3_1B_PREVIEW_PERFORMANCE_RESULTS.md`  
 
-**Overall release decision:** _Pending — enter A or B after Final Deck Retest of 7F-R3_
+**Overall release decision:** _Pending — enter A or B after Deck + Bathroom + Fitout PASS_
 
 | Option | Criteria |
 | --- | --- |
 | **A. READY FOR OWNER PRODUCTION GATE** | Deck + Bathroom + Fitout PASS; no Critical; no High blocker; no commercial regression; no Fact fabrication; no duplicate WA/scope; no false stale loop; no cross-org issue; provider usage controlled; UX acceptable |
 | **B. BLOCKED BY PREVIEW DEFECTS** | List DEF IDs below |
 
-**Production enablement:** Not authorised by this document alone.
+**Production enablement:** Not authorised by this document alone. Stage 3.1B closure ≠ Production Scope Discovery enablement.
 
 ---
 

@@ -1,6 +1,9 @@
 # Stage 3.1B.7E — Preview Defect Register
 
-**Status:** Open — Owner E2E Pending (Stage 3.1B.7F gate pack ready)  
+**Status:** Open — Owner E2E Pending (Preview ready post–Stage 3.1C; 7F pack + Final Sign-off ready)  
+**Updated:** 2026-08-10  
+**Readiness:** `docs/implementation/STAGE_3_1B_OWNER_PREVIEW_E2E_READINESS.md`  
+**Final sign-off:** `docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`
 **Date:** 2026-08-07  
 **Branch:** `hardening/stage-2a-security`  
 **Local HEAD (at audit):** `1b17804f3d036e414a1617f370ef09cd7ae99511`  
@@ -60,7 +63,7 @@
 | Observed | Automated local invariants + config audit completed; interactive Preview journey not executed by agent (auth + real projects). Stage 3.1B.7F prepared owner test pack + results template |
 | Expected | Three representative Preview projects pass full journey checklist with scores, latency, provider, logs, commercial checks |
 | Root cause | Requires authenticated Preview session and owner content |
-| Fix status | **Open — Owner Pending** — execute `docs/runbooks/STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`; capture in `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md` (also see 7D sign-off matrix) |
+| Fix status | **Open — Owner Pending** — execute `docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md` + `STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`; capture in `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md`. Preview ready after Stage 3.1C close (migrations 001–033; 7F-R3 + 7G local green). |
 | Verification | Owner fills results; no Critical/High blockers; journeys PASS |
 | Release-blocking | **Yes** until Owner Preview E2E complete |
 
