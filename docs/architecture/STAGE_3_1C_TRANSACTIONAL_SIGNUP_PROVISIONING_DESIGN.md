@@ -152,5 +152,5 @@ Do **not** implement in 1A without the transactional RPC (would still risk orpha
 | Artifact | Status |
 | --- | --- |
 | This design doc | Created in 3.1C.1A |
-| Migration 032 | **Not created** |
-| RPC implementation | **Not started** — Stage 3.1C.1B |
+| Migration 032 | **Implemented locally** in 3.1C.1B — Remote Pending Owner Gate |
+| RPC implementation | **Complete — Local** — see `STAGE_3_1C_TRANSACTIONAL_PROVISIONING_IMPLEMENTATION.md` |

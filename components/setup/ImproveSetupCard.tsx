@@ -32,8 +32,10 @@ export function ImproveSetupCard({ readiness }: ImproveSetupCardProps) {
     return null;
   }
 
+  // Prefer "Choose common work types" over "Change work types" in the card.
   const items = readiness.recommendedSetup
     .filter((item) => SECONDARY_IDS.has(item.id))
+    .filter((item) => item.id !== "work_types" || item.title.startsWith("Choose"))
     .slice(0, 4);
 
   if (items.length === 0) {

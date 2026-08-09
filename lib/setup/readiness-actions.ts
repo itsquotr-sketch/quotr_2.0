@@ -22,6 +22,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       defaultGstRate: null,
       defaultMarginPercent: null,
       hasLabourRate: false,
+      hasWorkTypePreferences: false,
       tradingName: null,
       legalName: null,
       contactEmail: null,
@@ -33,7 +34,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
 
   const { supabase, orgId } = context;
 
-  const [{ data: organisation }, { data: settings }, { data: labourRates }] =
+  const [{ data: organisation }, { data: settings }, { data: labourRates }, { data: preferredWorkAreas }] =
     await Promise.all([
       supabase.from("organisations").select("name").eq("id", orgId).maybeSingle(),
       supabase
@@ -50,6 +51,12 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
         .eq("active", true)
         .eq("rate_type", "labour")
         .not("cost_rate", "is", null)
+        .limit(1),
+      supabase
+        .from("organisation_work_areas")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("enabled", true)
         .limit(1),
     ]);
 
@@ -76,6 +83,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
         ? Number(settings.default_margin_percent)
         : null,
     hasLabourRate: (labourRates?.length ?? 0) > 0,
+    hasWorkTypePreferences: (preferredWorkAreas?.length ?? 0) > 0,
     tradingName: (settings?.trading_name as string | null) ?? null,
     legalName: (settings?.legal_name as string | null) ?? null,
     contactEmail: (settings?.contact_email as string | null) ?? null,

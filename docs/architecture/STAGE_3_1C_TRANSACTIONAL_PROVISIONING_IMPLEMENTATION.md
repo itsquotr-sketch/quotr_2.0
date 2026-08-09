@@ -1,8 +1,9 @@
 # Stage 3.1C.1B — Transactional Provisioning Implementation
 
-**Status:** Complete — Local  
+**Status:** Complete — Local; Migration **032 Applied and Verified Remote** (2026-08-09)  
 **Date:** 2026-08-09  
-**Migration:** `032_transactional_signup_provisioning.sql` — Local Only, Remote Pending Owner Gate
+**Migration:** `032_transactional_signup_provisioning.sql` — **Applied and Verified Remote** on `quotr_2.0` (`lxvnylhsbvudzzupxeqr`)  
+**Remote apply record:** `docs/implementation/STAGE_3_1C1B1_REMOTE_032_APPLY_COMPLETION.md`
 
 ## Before → After
 

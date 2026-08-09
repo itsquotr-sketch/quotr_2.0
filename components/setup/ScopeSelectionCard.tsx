@@ -1,13 +1,9 @@
 "use client";
 
-import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
-import {
-  getEstimateSupportLabel,
-  type ScopeCatalogueItem,
-} from "@/lib/scopes/catalogue";
+import type { ScopeCatalogueItem } from "@/lib/scopes/catalogue";
 import { cn } from "@/lib/utils";
 
 type ScopeSelectionCardProps = {
@@ -16,13 +12,16 @@ type ScopeSelectionCardProps = {
   onToggle: (enabled: boolean) => void;
 };
 
+/**
+ * Preference checkbox for Setup Work Types.
+ * No support-level badge here — catalogue items currently share equal
+ * calculator support, so repeating that label was noise (R2B).
+ */
 export function ScopeSelectionCard({
   scope,
   enabled,
   onToggle,
 }: ScopeSelectionCardProps) {
-  const supportLabel = getEstimateSupportLabel(scope.estimateSupport);
-
   return (
     <Card
       size="sm"
@@ -37,21 +36,12 @@ export function ScopeSelectionCard({
           checked={enabled}
           onCheckedChange={(checked) => onToggle(checked === true)}
           onClick={(event) => event.stopPropagation()}
-          aria-label={`Enable ${scope.label}`}
+          aria-label={`Prefer ${scope.label}`}
         />
         <div className="min-w-0 flex-1 space-y-1.5">
-          <div className="flex flex-wrap items-center gap-2">
-            <Label className="cursor-pointer text-sm font-medium">
-              {scope.label}
-            </Label>
-            <Badge
-              variant={
-                scope.estimateSupport === "calculator" ? "default" : "secondary"
-              }
-            >
-              {supportLabel}
-            </Badge>
-          </div>
+          <Label className="cursor-pointer text-sm font-medium">
+            {scope.label}
+          </Label>
           <p className="text-sm text-muted-foreground">{scope.description}</p>
         </div>
       </CardContent>

@@ -17,10 +17,16 @@ import type { SetupState } from "./types";
 
 type WorkAreasStepProps = {
   state: SetupState;
-  onComplete: () => void;
-  onBack: () => void;
+  /** Called after a successful save — stay in Setup (do not force Dashboard). */
+  onSaved?: () => void;
+  /** Skip without writing preferences. */
+  onSkip?: () => void;
 };
 
+/**
+ * Initial selections: only persisted user choices count as preferences.
+ * Catalogue defaultEnabled must not silently claim company preference.
+ */
 function getInitialSelections(state: SetupState): Record<string, boolean> {
   const saved = new Map(
     state.workAreas.map((area) => [area.work_area_type, area.enabled])
@@ -29,16 +35,17 @@ function getInitialSelections(state: SetupState): Record<string, boolean> {
   return Object.fromEntries(
     SCOPE_CATALOGUE.map((item) => [
       item.type,
-      saved.has(item.type) ? saved.get(item.type)! : item.defaultEnabled,
+      saved.has(item.type) ? Boolean(saved.get(item.type)) : false,
     ])
   );
 }
 
-export function WorkAreasStep({ state, onComplete, onBack }: WorkAreasStepProps) {
+export function WorkAreasStep({ state, onSaved, onSkip }: WorkAreasStepProps) {
   const [selections, setSelections] = useState<Record<string, boolean>>(() =>
     getInitialSelections(state)
   );
   const [error, setError] = useState<string | null>(null);
+  const [success, setSuccess] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
 
   const scopesByCategory = useMemo(() => {
@@ -48,9 +55,15 @@ export function WorkAreasStep({ state, onComplete, onBack }: WorkAreasStepProps)
     })).filter((group) => group.scopes.length > 0);
   }, []);
 
+  const selectedCount = useMemo(
+    () => Object.values(selections).filter(Boolean).length,
+    [selections]
+  );
+
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    setSuccess(null);
     setSaving(true);
 
     const result = await saveOrganisationWorkAreas({
@@ -67,16 +80,22 @@ export function WorkAreasStep({ state, onComplete, onBack }: WorkAreasStepProps)
       return;
     }
 
-    onComplete();
+    setSuccess(
+      selectedCount > 0
+        ? "Work type preferences saved."
+        : "Preferences cleared. Quotr can still estimate any supported work type."
+    );
+    onSaved?.();
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Work areas</CardTitle>
+        <CardTitle>What kind of work do you usually price?</CardTitle>
         <CardDescription>
-          Choose the types of work your business commonly prices. You can change
-          this later.
+          Choose the work your business commonly does. Quotr will use this to
+          tailor rates, setup recommendations and calibration. You can still
+          estimate other work at any time.
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>
@@ -84,6 +103,11 @@ export function WorkAreasStep({ state, onComplete, onBack }: WorkAreasStepProps)
           {error ? (
             <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
+            </p>
+          ) : null}
+          {success ? (
+            <p className="rounded-lg border border-emerald-500/20 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-800 dark:text-emerald-200">
+              {success}
             </p>
           ) : null}
 
@@ -108,12 +132,17 @@ export function WorkAreasStep({ state, onComplete, onBack }: WorkAreasStepProps)
             </section>
           ))}
         </CardContent>
-        <CardFooter className="justify-between border-t">
-          <Button type="button" variant="outline" onClick={onBack} disabled={saving}>
-            Back
+        <CardFooter className="flex flex-wrap justify-between gap-2 border-t">
+          <Button
+            type="button"
+            variant="ghost"
+            onClick={() => onSkip?.()}
+            disabled={saving}
+          >
+            Skip for now
           </Button>
           <Button type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Save and continue"}
+            {saving ? "Saving…" : "Save preferences"}
           </Button>
         </CardFooter>
       </form>

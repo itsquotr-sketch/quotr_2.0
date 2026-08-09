@@ -77,8 +77,9 @@ export function AddWorkAreaDialog({
         <DialogHeader>
           <DialogTitle>Add work area</DialogTitle>
           <DialogDescription>
-            Choose a scope item to include in this estimate. Changing work
-            areas will mark the estimate as outdated.
+            Choose any supported work area for this project. Company work-type
+            preferences do not limit what you can add. Changing work areas will
+            mark the estimate as outdated.
           </DialogDescription>
         </DialogHeader>
 

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useCallback, useState, useTransition } from "react";
+import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
 import { FormContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
@@ -45,7 +45,6 @@ export function SetupShell({
   fullName,
 }: SetupShellProps) {
   const router = useRouter();
-  const [, startTransition] = useTransition();
   const [state, setState] = useState(initialState);
   const [section, setSection] = useState<ImproveSection>(() =>
     getInitialImproveSection(initialState.settings)
@@ -56,13 +55,6 @@ export function SetupShell({
     setState(nextState);
     router.refresh();
   }, [router]);
-
-  function goToSection(next: ImproveSection) {
-    setSection(next);
-    startTransition(() => {
-      void refreshState();
-    });
-  }
 
   if (mode === "basics") {
     return (
@@ -137,8 +129,10 @@ export function SetupShell({
         {section === "work_areas" ? (
           <WorkAreasStep
             state={state}
-            onComplete={() => goToSection("rates")}
-            onBack={() => setSection("company")}
+            onSaved={() => {
+              void refreshState();
+            }}
+            onSkip={() => setSection("rates")}
           />
         ) : null}
 

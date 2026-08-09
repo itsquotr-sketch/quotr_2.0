@@ -29,6 +29,7 @@ import type {
 } from "@/lib/project-notes/proposals/types";
 import { STATIC_CONSTRAINT_SEEDS } from "@/lib/assistant/mock-seed";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
+import { getAnalysisCapableWorkAreaTypes } from "@/lib/scopes/capability";
 import { normalizeCanonicalFactKey } from "@/lib/scopes/fact-keys";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { createClient } from "@/lib/supabase/server";
@@ -60,28 +61,11 @@ function revalidateProjectPath(projectId: string) {
   revalidatePath(`/app/projects/${projectId}`);
 }
 
-async function loadAllowedWorkAreaTypes(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  orgId: string
-): Promise<string[]> {
-  const { data: orgWorkAreas, error } = await supabase
-    .from("organisation_work_areas")
-    .select("work_area_type")
-    .eq("org_id", orgId)
-    .eq("enabled", true);
-
-  if (error) throw new Error(error.message);
-
-  const catalogueSet = new Set(CATALOGUE_TYPES);
-  const enabled = (orgWorkAreas ?? [])
-    .map((row) => row.work_area_type)
-    .filter((type) => catalogueSet.has(type));
-
-  if (enabled.length > 0) return enabled;
-
-  return SCOPE_CATALOGUE.filter((item) => item.defaultEnabled).map(
-    (item) => item.type
-  );
+/**
+ * Note analysis capability — full Quotr catalogue (not company preferences).
+ */
+function loadAnalysisCapableWorkAreaTypes(): string[] {
+  return getAnalysisCapableWorkAreaTypes();
 }
 
 export async function getPendingNoteProposal(
@@ -221,12 +205,7 @@ export async function analyseProjectNotes(
     }
   }
 
-  let allowedTypes: string[];
-  try {
-    allowedTypes = await loadAllowedWorkAreaTypes(supabase, orgId);
-  } catch {
-    return { error: "We couldn't analyse your notes. Please try again." };
-  }
+  const allowedTypes = loadAnalysisCapableWorkAreaTypes();
 
   let extraction;
   try {

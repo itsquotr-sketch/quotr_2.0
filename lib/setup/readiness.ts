@@ -42,6 +42,7 @@ export type CompanySetupReadiness = {
   advancedSetupIncomplete: boolean;
   usingDefaultMargin: boolean;
   hasLabourRate: boolean;
+  hasWorkTypePreferences: boolean;
   organisationName: string;
   currency: string;
   country: string;
@@ -60,6 +61,8 @@ export type CompanySetupReadinessInput = {
   defaultMarginPercent: number | null;
   /** True when org has at least one active labour rate with a cost_rate. */
   hasLabourRate: boolean;
+  /** True when org has at least one preferred (enabled) work type. */
+  hasWorkTypePreferences: boolean;
   tradingName: string | null;
   legalName: string | null;
   contactEmail: string | null;
@@ -135,14 +138,26 @@ export function computeCompanySetupReadiness(
     recommendedSetup.push(labour);
   }
 
-  recommendedSetup.push({
-    id: "work_types",
-    title: "Choose common work types",
-    reason: "Personalise suggestions for the jobs you usually price.",
-    href: "/app/setup?mode=improve",
-    severity: "optional",
-    dimension: "estimate",
-  });
+  if (!input.hasWorkTypePreferences) {
+    recommendedSetup.push({
+      id: "work_types",
+      title: "Choose common work types",
+      reason:
+        "Personalise rates and recommendations for the jobs you usually price. Quotr can still estimate other work.",
+      href: "/app/setup?mode=improve",
+      severity: "optional",
+      dimension: "estimate",
+    });
+  } else {
+    recommendedSetup.push({
+      id: "work_types",
+      title: "Change work types",
+      reason: "Update which work types Quotr prioritises for your business.",
+      href: "/app/setup?mode=improve",
+      severity: "optional",
+      dimension: "estimate",
+    });
+  }
 
   if (!nonEmpty(input.region)) {
     recommendedSetup.push({
@@ -249,6 +264,7 @@ export function computeCompanySetupReadiness(
     advancedSetupIncomplete,
     usingDefaultMargin,
     hasLabourRate: input.hasLabourRate,
+    hasWorkTypePreferences: input.hasWorkTypePreferences,
     organisationName,
     currency,
     country,

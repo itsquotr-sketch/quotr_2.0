@@ -3,10 +3,13 @@
 **Status:** Pending owner Preview retest  
 **Prerequisite:** Local 7F-R2 complete; Preview deploy of app code  
 **Migration 030:** **Applied and Verified** on linked remote Preview DB  
-  (`quotr_2.0` / `lxvnylhsbvudzzupxeqr`) — see  
-  `docs/implementation/STAGE_3_1B7FR21_REMOTE_030_APPLY_COMPLETION.md`  
-**Remote history:** Local and remote aligned **001–030**  
+  (`quotr_2.0` / `lxvnylhsbvudzzupxeqr`)  
+**Migration 031:** **Applied and Verified** — ACL hardening (least-privilege
+  grants; 028-style revoke/regrant) —  
+  `docs/implementation/STAGE_3_1B7FR22_MANUAL_SCOPE_ACL_HARDENING_COMPLETION.md`  
+**Remote history:** Local and remote aligned **001–031**  
 **Production Scope Discovery:** Disabled (unchanged)
+**Deck Preview Retest:** Ready (manual scope ACL hardened before owner data)
 
 ## Goal
 
@@ -22,8 +25,10 @@ attention clarity, latency polish, layout, and mobile header on Deck.
 | 030 absent before apply | Pass |
 | No table/function name collision | Pass |
 | Dry-run additive (030 only) | Pass |
-| Applied via `db push --linked` | Pass |
+| Applied via `db push --linked` | Pass (030) |
+| ACL hardening 031 applied | Pass |
 | Tables + RLS + policies verified | Pass |
+| Grants least-privilege (auth SELECT/INSERT only) | Pass (031) |
 | anon grants | None |
 | Existing WA / discovery / pricing counts | Unaffected |
 

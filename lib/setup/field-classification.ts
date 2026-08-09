@@ -100,10 +100,11 @@ export const COMPANY_SETUP_FIELD_CLASSIFICATION: readonly ClassifiedSetupField[]
     },
     {
       id: "organisation_work_areas",
-      label: "Enabled work areas",
+      label: "Preferred work types",
       source: "organisation_work_areas",
       classification: "OPTIONAL_LATER",
-      notes: "Catalogue scopes still available; enabling org work areas is recommended later.",
+      notes:
+        "Company preference for personalisation only. Full SCOPE_CATALOGUE remains Analyse Job / confirmation capability.",
     },
     {
       id: "organisation_settings.trading_name",

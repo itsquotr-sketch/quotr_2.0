@@ -31,6 +31,7 @@ import { isInternalProjectNote } from "@/lib/project-notes/types";
 import { USER_ERRORS } from "@/lib/errors/user-message";
 import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
+import { getAnalysisCapableWorkAreaTypes } from "@/lib/scopes/capability";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { filterPersistableAnswers } from "@/lib/assistant/answer-persistence";
@@ -55,7 +56,7 @@ const AI_SETUP_ERROR =
 const AI_PARSE_ERROR =
   "Quotr could not understand the analysis response. Please try again.";
 const NO_WORK_AREAS_ERROR =
-  "No supported work areas were detected. Try adding more detail or check your enabled work areas in Setup.";
+  "No supported work areas were detected. Try adding more detail about the job, or add a work area manually.";
 
 function logBriefAnalysisFailure(
   projectId: string,
@@ -169,32 +170,12 @@ async function loadProjectStage(projectId: string) {
   };
 }
 
-async function loadAllowedWorkAreaTypes(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  orgId: string
-): Promise<string[]> {
-  const { data: orgWorkAreas, error } = await supabase
-    .from("organisation_work_areas")
-    .select("work_area_type")
-    .eq("org_id", orgId)
-    .eq("enabled", true);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  const catalogueSet = new Set(CATALOGUE_TYPES);
-  const enabled = (orgWorkAreas ?? [])
-    .map((row) => row.work_area_type)
-    .filter((type) => catalogueSet.has(type));
-
-  if (enabled.length > 0) {
-    return enabled;
-  }
-
-  return SCOPE_CATALOGUE.filter((item) => item.defaultEnabled).map(
-    (item) => item.type
-  );
+/**
+ * Analyse Job capability types — full Quotr catalogue.
+ * Company Setup preferences must not restrict extraction (3.1C.3-R2B).
+ */
+function loadAnalysisCapableWorkAreaTypes(): string[] {
+  return getAnalysisCapableWorkAreaTypes();
 }
 
 export async function saveBriefAndSeedWorkAreas(
@@ -258,21 +239,8 @@ export async function saveBriefAndSeedWorkAreas(
     return { error: briefError.message };
   }
 
-  let allowedTypes: string[];
-  try {
-    allowedTypes = await loadAllowedWorkAreaTypes(supabase, orgId);
-  } catch (error) {
-    logBriefAnalysisFailure(projectId, {
-      briefLength: trimmed.length,
-      noteCount: noteRows.length,
-      combinedInputLength: 0,
-      reason:
-        error instanceof Error
-          ? `work area types: ${error.message}`
-          : "work area types load failed",
-    });
-    return { error: UNKNOWN_ANALYSIS_ERROR };
-  }
+  // Capability catalogue — not organisation_work_areas preferences.
+  const allowedTypes = loadAnalysisCapableWorkAreaTypes();
 
   const analysisSource = buildInitialAnalysisInput({
     briefText: trimmed,

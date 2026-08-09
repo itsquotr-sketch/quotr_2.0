@@ -49,4 +49,5 @@ See `docs/security/STAGE_3_1C1B_PROVISIONING_SECURITY_REVIEW.md`.
 
 ## Marking
 
-**Migration 032 — Complete — Local, Remote Pending Owner Gate**
+**Migration 032 — Applied and Verified Remote** (2026-08-09)  
+See `docs/implementation/STAGE_3_1C1B1_REMOTE_032_APPLY_COMPLETION.md`.

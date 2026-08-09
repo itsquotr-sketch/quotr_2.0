@@ -90,6 +90,8 @@ function rowToPayload(
 
 export function RatesStep({ state, onComplete, onBack }: RatesStepProps) {
   const enabledWorkAreas = useMemo(() => {
+    // Preferences personalise starter rate sections only.
+    // No preferences → labour base rates only (do not invent selections).
     if (state.workAreas.length > 0) {
       return state.workAreas.map((area) => ({
         work_area_type: area.work_area_type,
@@ -99,7 +101,7 @@ export function RatesStep({ state, onComplete, onBack }: RatesStepProps) {
 
     return SCOPE_CATALOGUE.map((item) => ({
       work_area_type: item.type,
-      enabled: item.defaultEnabled,
+      enabled: false,
     }));
   }, [state.workAreas]);
 

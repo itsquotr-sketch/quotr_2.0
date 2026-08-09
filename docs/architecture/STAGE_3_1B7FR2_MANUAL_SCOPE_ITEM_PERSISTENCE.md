@@ -1,9 +1,11 @@
 # Stage 3.1B.7F-R2 — Manual Scope Item Persistence Decision
 
-**Status:** Approved — Local applied; **Remote Applied and Verified** (7F-R2.1)  
+**Status:** Approved — Local + Remote **030/031 Applied and Verified**  
 **Date:** 2026-08-08  
 **Remote apply:** Complete on linked `quotr_2.0` (`lxvnylhsbvudzzupxeqr`) —  
-  `docs/implementation/STAGE_3_1B7FR21_REMOTE_030_APPLY_COMPLETION.md`  
+  030 schema + 031 ACL hardening  
+  (`STAGE_3_1B7FR21_REMOTE_030_APPLY_COMPLETION.md`,  
+  `STAGE_3_1B7FR22_MANUAL_SCOPE_ACL_HARDENING_COMPLETION.md`)  
 
 ## Decision
 
@@ -58,12 +60,17 @@ for the builder to price.
 
 ## Local vs remote
 
-- Local Docker: apply via migration reset through 030  
-- Remote / Preview DB: **Applied and Verified** (7F-R2.1) on the same linked
-  project that already carried 028/029  
-- **service_role:** full DML (parity with other app tables); app paths use
-  authenticated + RLS  
-- **Grant-layer follow-up:** 026 default privileges still grant DELETE on new
-  tables until revoked; 030 RLS denies DELETE (and decisions UPDATE). Optional
-  future **031** revoke/regrant for 028 parity — not required for Preview
-  retest  
+- Local Docker: apply via migration reset through **031**  
+- Remote / Preview DB: **030 + 031 Applied and Verified** on linked `quotr_2.0`
+  (`lxvnylhsbvudzzupxeqr`) — see  
+  `STAGE_3_1B7FR21_REMOTE_030_APPLY_COMPLETION.md` and  
+  `STAGE_3_1B7FR22_MANUAL_SCOPE_ACL_HARDENING_COMPLETION.md`  
+- **service_role:** SELECT/INSERT/UPDATE/DELETE (admin DML; not GRANT ALL)  
+- **authenticated:** SELECT/INSERT only on both tables (031; 028-style revoke)  
+- **anon:** no DML  
+- RLS from 030 unchanged; grants + RLS defence in depth  
+
+## ACL note (7F-R2.2)
+
+026 default privileges previously left UPDATE/DELETE on authenticated for 030
+tables. 031 revoked and regranted least privilege matching live server actions.

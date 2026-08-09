@@ -351,19 +351,19 @@ export async function saveCompanyDefaults(
 }
 
 const workAreasSchema = z.object({
-  selections: z
-    .array(
-      z.object({
-        work_area_type: z.string(),
-        enabled: z.boolean(),
-      })
-    )
-    .refine((items) => items.some((item) => item.enabled), {
-      message: "Select at least one work area",
-      path: ["selections"],
-    }),
+  selections: z.array(
+    z.object({
+      work_area_type: z.string(),
+      enabled: z.boolean(),
+    })
+  ),
 });
 
+/**
+ * Persist company work-type preferences (organisation_work_areas.enabled).
+ * Preference only — does not restrict Analyse Job / Scope Discovery capability.
+ * Empty selection is valid (no claimed preferences).
+ */
 export async function saveOrganisationWorkAreas(input: {
   selections: WorkAreaSelection[];
 }): Promise<ActionResult> {
@@ -372,7 +372,7 @@ export async function saveOrganisationWorkAreas(input: {
   if (!parsed.success) {
     const fieldErrors = parsed.error.flatten().fieldErrors;
     return {
-      error: fieldErrors.selections?.[0],
+      error: fieldErrors.selections?.[0] ?? "Invalid work type selections.",
       fieldErrors,
     };
   }
@@ -394,7 +394,8 @@ export async function saveOrganisationWorkAreas(input: {
     category: item.category,
     description: item.description,
     estimate_support: item.estimateSupport,
-    enabled: selectionMap.get(item.type) ?? item.defaultEnabled,
+    // Preference = explicit user choice only (never catalogue defaultEnabled).
+    enabled: selectionMap.get(item.type) === true,
     sort_order: index,
   }));
 
@@ -412,6 +413,7 @@ export async function saveOrganisationWorkAreas(input: {
     .eq("org_id", orgId)
     .maybeSingle();
 
+  // Soft progress marker only — not product authority.
   if (settings?.onboarding_status !== "completed") {
     const { error: settingsError } = await supabase
       .from("organisation_settings")
@@ -425,6 +427,10 @@ export async function saveOrganisationWorkAreas(input: {
       return { error: settingsError.message };
     }
   }
+
+  revalidatePath("/app/setup");
+  revalidatePath("/app/dashboard");
+  revalidatePath("/app/rates");
 
   return {};
 }

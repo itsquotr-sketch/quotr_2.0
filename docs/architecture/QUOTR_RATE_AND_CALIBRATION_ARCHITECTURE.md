@@ -101,13 +101,15 @@ Do not implement this order in R1 unless aligning an existing path. Document con
 **Should mean:** “Work types my business commonly prices.”  
 **Must not mean:** “Quotr cannot estimate other scopes.”
 
-Today `loadAllowedWorkAreaTypes` restricts when any enabled rows exist — **change in R2B**.
+**R2B complete:** Analyse Job / note analysis use full capability catalogue
+(`getAnalysisCapableWorkAreaTypes`). Preferences personalise Rates/tips only.
+See `docs/architecture/QUOTR_WORK_AREA_CAPABILITY_AND_PREFERENCE_MODEL.md`.
 
 Uses of preferences:
 
 - Setup personalisation  
-- Calibration suggestions  
-- Rates UI filtering  
+- Calibration suggestions (R2D)  
+- Rates UI filtering (R2C)  
 - Dashboard tips  
 - Future DNA priors  
 

@@ -28,7 +28,7 @@ Do not:
 5. Owner Preview E2E: Deck + Bathroom + Fitout signed  
 6. Stage 2B.10 commercial regression green  
 7. RLS coverage green  
-8. Migrations 028/029/030 Applied and Verified on Preview remote; Production
+8. Migrations 028–031 Applied and Verified on Preview remote; Production
    Scope Discovery remains off until owner gate  
 9. Analyse Job behaviour confirmed unchanged with flag off  
 
