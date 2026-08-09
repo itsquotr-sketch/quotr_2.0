@@ -3,7 +3,7 @@
 **Status:** Approved (2026-08-09)  
 **Context:** Preview findings + R1 architecture audit  
 **Related:** `docs/audits/STAGE_3_1C3R1_SETUP_RATE_ENGINE_AUDIT.md`  
-**Implementation:** R2A Complete — Local; R2B Ready Next; R2C–R2E Planned
+**Implementation:** R2A–R2D Complete — Local; R2D.1 Complete Local (remote pending); R2E Planned
 
 ---
 
@@ -39,7 +39,7 @@ Rates and Work Area preferences are **NOT** required before creating a Project.
 Selected Work Areas are business preferences/personalisation only.  
 They must **NOT** restrict Quotr’s ability to analyse or estimate another Work Area.
 
-*(Capability unlock implemented in R2B; R2A must not worsen restriction.)*
+*(Capability unlock Complete — Local in R2B.)*
 
 ---
 
@@ -48,7 +48,7 @@ They must **NOT** restrict Quotr’s ability to analyse or estimate another Work
 Removed from primary onboarding.  
 Do not delete data/schema yet. Treat as legacy/fallback/calibration candidates.
 
-*(UX removal in R2C.)*
+*(UX removal in R2C — Complete Local; data retained as legacy.)*
 
 ---
 

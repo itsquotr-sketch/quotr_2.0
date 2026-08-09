@@ -1,8 +1,8 @@
 # Quotr Rate & Calibration Architecture
 
-**Stage:** 3.1C.3-R1  
-**Status:** Proposed architecture (forward-compatible with Company DNA)  
-**Does not change commercial formulas in R1**
+**Stage:** 3.1C.3-R2D  
+**Status:** R2C rates complete; R2D calibration MVP Complete Local (persistence gated)  
+**Does not change commercial formulas in R1–R2D**
 
 ---
 
@@ -52,6 +52,10 @@ Representative jobs: “How would your business resource/price this?”
 Outputs are **evidence**, not blindly authoritative unit rates.
 
 **Authority:** Calibration adjustment — below explicit rates, above or beside curated benchmarks depending on confidence.
+
+**R2D implementation:** static Deck + Bathroom catalogue; observational compare via existing calculators; persistence proposed as migration 033 (owner gate). See `docs/architecture/QUOTR_CALIBRATION_MVP_ARCHITECTURE.md`.
+
+**Live estimate resolution in R2D does not consume calibration.**
 
 ---
 

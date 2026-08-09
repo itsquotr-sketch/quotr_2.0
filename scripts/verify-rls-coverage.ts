@@ -51,6 +51,7 @@ const EXPECTED_APP_TABLES = [
   "scope_discovery_runs",
   "scope_discovery_suggestions",
   "scope_discovery_decisions",
+  "calibration_responses",
 ] as const;
 
 const TABLES_WITHOUT_RLS_OK: string[] = [];
@@ -67,6 +68,8 @@ const POLICY_EXCEPTIONS: Record<
   scope_discovery_runs: { delete: true },
   scope_discovery_suggestions: { delete: true },
   scope_discovery_decisions: { update: true, delete: true },
+  // Calibration: append/supersede — no authenticated DELETE policy.
+  calibration_responses: { delete: true },
 };
 
 function auditMigrations(): {

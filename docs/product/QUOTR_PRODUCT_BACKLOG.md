@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress**; Auth **3.1C.2A/2B Preview-passed**; **3.1C.3 Local**; **3.1C.3-R1 Planning Complete**; **3.1C.3-R2A/R2B/R2C Complete — Local** (Preview Pending); **R2D Ready Next**; Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**. Stage 3.1C **not** closed until R2E Preview.   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress**; Auth **3.1C.2A/2B Preview-passed**; **3.1C.3 Local**; **3.1C.3-R1 Planning Complete**; **3.1C.3-R2A/R2B/R2C/R2D Complete — Local** (Preview Pending); **R2D.1 Complete Local — Remote Pending**; **R2E Planned**; Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**. Stage 3.1C **not** closed until R2E Preview.   
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -112,6 +112,7 @@
 - Stage 3.1C.3-R2A: **Complete — Local**; Preview Pending.
 - Stage 3.1C.3-R2B: **Complete — Local**; Preview Pending.
 - Stage 3.1C.3-R2C: **Complete — Local**; Preview Pending.
-- Stage 3.1C.3-R2D: **Ready Next**.
+- Stage 3.1C.3-R2D: **Complete — Local**.
+- Stage 3.1C.3-R2D.1: **Complete Local — Remote Pending**.
 - Production Scope Discovery: **Disabled**. Stage 3.2: **Not Started**.
 - Stage 3.1C overall: **not complete** until R2E Preview first-run E2E.

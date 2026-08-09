@@ -1,8 +1,8 @@
 # Quotr Calibration Scenario Contract
 
-**Stage:** 3.1C.3-R1 specification  
-**Status:** Contract only — no schema / no implementation  
-**Purpose:** Deterministic, versioned calibration jobs that produce evidence for company rates / future DNA
+**Stage:** 3.1C.3-R2D implementation  
+**Status:** Contract implemented for MVP catalogue + observational compare; persistence owner-gated  
+**Purpose:** Deterministic, versioned calibration jobs that produce evidence for future DNA / recommendations — never silent rate authority
 
 ---
 
@@ -21,107 +21,90 @@
 
 | Field | Type | Notes |
 | --- | --- | --- |
-| `id` | string | Stable id e.g. `deck.raised_simple.v1` |
+| `id` | string | Stable id e.g. `deck.standard_pine.v1` |
 | `workAreaType` | string | Catalogue type (`deck`, `bathroom`, …) |
 | `title` | string | Short label |
+| `summary` | string | One-line list summary |
 | `jobBrief` | string | Natural language brief |
 | `facts` | Fact[] | Deterministic facts the engine would use |
 | `constraints` | Constraint[] | Access, height, exclusions |
-| `scopeItems` | ScopeItem[] | Expected included scopes |
-| `expectedInputTypes` | enum[] | Which response fields are prompted |
+| `scopeItems` | string[] | Expected included scopes (display) |
+| `questions` | QuestionSpec[] | Ordered UI prompts |
 | `version` | string | Bumps when facts/questions change |
-| `minQuestions` | QuestionSpec[] | Ordered UI prompts |
+
+Implemented in `lib/calibration/scenarios/*` + `lib/calibration/catalogue.ts` (static; not DB).
 
 ### CalibrationResponse (org-owned)
 
 | Field | Type | Value? |
 | --- | --- | --- |
-| `orgId` | uuid | Yes |
+| `orgId` | uuid | Yes — server-derived |
 | `scenarioId` | string | Yes |
 | `scenarioVersion` | string | Yes — bind to scenario version |
 | `labourHours` / `labourCost` | number? | Useful — primary signal |
-| `materialAllowance` | number? | Useful |
-| `subcontractAllowance` | number? | Useful when applicable |
-| `plantOrWasteAllowance` | number? | Optional |
-| `totalExpectedCost` | number? | High value; may make component totals redundant |
+| `materialsCost` | number? | Useful |
+| `subcontractorsCost` | number? | Useful when applicable |
+| `otherCost` | number? | Optional |
+| `expectedTotalCost` | number? | High value; optional override of component sum |
 | `expectedSell` | number? | High value for margin calibration |
 | `notes` | string? | Free text |
-| `confidence` | enum? | `high` \| `medium` \| `low` / “guess” |
+| `confidence` | enum? | `high` \| `medium` \| `low` |
+| `engineSnapshot` | jsonb | Frozen observational compare |
+| `status` | active \| superseded | Append/supersede history |
 | `createdAt` | timestamptz | Yes |
 
-**Redundant if total cost given:** many component splits — keep optional for builders who think that way.  
-**Most useful minimal set:** labour + materials + total cost + expected sell + confidence.
+**Persistence:** proposed table `calibration_responses` (migration **033**) — **not applied** until owner approval.  
+Compare runs without persistence; save returns `CALIBRATION_PERSISTENCE_GATED`.
+
+**Deck minimal set:** labour hours + materials + optional other/total + sell + confidence.  
+**Bathroom minimal set:** labour hours + subcontract trades + materials + optional other/total + sell + confidence.
 
 ---
 
-## Example A — Deck calibration
+## Example A — Deck calibration (implemented)
 
 ### Brief
 
-> Build a new **5 m × 3 m** deck approximately **0.5 m** above ground, **new timber substructure**, standard access, **pine decking**, **no balustrade**, **no stairs**.
+> Build a new **5 m × 3 m** deck approximately **0.5 m** above ground, **new timber substructure**, standard access, **H3.2 treated pine decking**, **no balustrade**, **no stairs**, no demolition.
 
-### Engine facts (illustrative)
+### Engine facts
 
-- Area ≈ 15 m²  
-- Height ~0.5 m  
-- Decking: treated pine  
-- Substructure: new timber  
-- Exclude balustrade, stairs  
-
-### Minimal questions (prefer ≤6)
-
-1. Rough **carpenter hours** (or crew days) for this deck?  
-2. **Material allowance** for substructure + decking (cost)?  
-3. Any **other costs** (plant, waste, fasteners) lump sum?  
-4. **Total cost** you would expect?  
-5. **Typical sell** to the client?  
-6. How sure are you? (high / medium / guess)
+- Area 15 m²; height 0.5 m; treated pine; substructure included; exclude balustrade/stairs/demo
 
 ### Comparison
 
-Run Quotr deck calculator on the same facts → compare labour hours, material $, total cost, implied margin vs user sell.  
-Gaps become calibration evidence (e.g. “your labour runs ~20% above benchmark”).
+`calculateEstimate` on synthetic context → Your vs Quotr cost/sell + comparable categories.
 
 ---
 
-## Example B — Bathroom calibration
+## Example B — Bathroom calibration (implemented)
 
 ### Brief
 
-> Standard **full bathroom renovation** (~6–8 m²), gut-out and rebuild, mid-range fittings, tiled wet areas, standard access, no structural wall moves.
-
-### Minimal questions
-
-1. Own **labour hours** (or labour $)?  
-2. **Demolition** allowance?  
-3. **Plumbing** (trade) allowance?  
-4. **Electrical** allowance?  
-5. **Waterproofing + tiling** allowance (or combined finishes)?  
-6. **Total cost** + **typical sell** + confidence?
-
-Avoid asking every fixture SKU. Allow “Later” on any line.
+> Renovate ~**8 m²** bathroom: soft strip, waterproofing, tiled wet areas, client-supplied vanity/toilet, plumbing + electrical modifications, standard access.
 
 ### Comparison
 
-Bathroom calculator / package path vs user totals — especially labour and wet-trade packages.
+Same protocol via bathroom calculator path.
 
 ---
 
-## Engine comparison protocol (future)
+## Engine comparison protocol (R2D)
 
-1. Freeze scenario version + facts.  
-2. Run deterministic estimate (no user rates preferred for baseline, or with Layer 1 only).  
-3. Diff: labour, materials, total cost, sell.  
-4. Store deltas + confidence as CalibrationEvidence.  
-5. Suggest Layer 2 rate updates for user confirmation — never silent overwrite.
+1. Freeze scenario version + facts in catalogue.  
+2. Run deterministic estimate (org rates read-only for Quotr side personalisation).  
+3. Diff: labour, materials, subcontractors (when user provided), total cost, sell.  
+4. Persist deltas + confidence when migration approved.  
+5. **Do not** suggest or apply Layer 2 rate updates in R2D.
 
 ---
 
-## Out of scope for R1 / R2D MVP
+## Out of scope for R2D MVP
 
 - Full DNA training loop  
-- Automatic rate mutation  
+- Automatic rate mutation / recommendations  
 - Multi-currency calibration  
 - Photo uploads  
+- Broad ML  
 
-R2D MVP: one deck scenario + response capture + side-by-side vs engine (read-only).
+**R2D shipped:** Deck + Bathroom scenarios, response capture UX, side-by-side vs engine (read-only), persistence gated.

@@ -28,8 +28,9 @@
 | **3.1C.3-R2A** | First-run gating + country/currency + Dashboard | Hard basics route; controlled locale; badge/Dashboard coherence | **Complete — Local**; Preview Pending |
 | **3.1C.3-R2B** | Work Area preferences | Preferences only; remove capability lock | **Complete — Local**; Preview Pending |
 | **3.1C.3-R2C** | Core rates onboarding redesign | Deprecate generic scope $/m² from primary UX | **Complete — Local**; Preview Pending |
-| **3.1C.3-R2D** | Calibration scenario MVP | Explicit calibration evidence; never silent overwrite | **Ready Next** |
-| **3.1C.3-R2E** | Setup Preview E2E / polish | Owner Preview across R2A–R2D | **Planned** |
+| **3.1C.3-R2D** | Calibration scenario MVP | Explicit calibration evidence; never silent overwrite | **Complete — Local** |
+| **3.1C.3-R2D.1** | Calibration persistence 033 | `calibration_responses` append/supersede | **Complete Local — Remote Pending** |
+| **3.1C.3-R2E** | Setup Preview E2E / polish | Owner Preview across R2A–R2D.1; remote 033 | **Planned** |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
 | **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.7F-R3 Complete — Local (Final Deck Retest Pending); **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E); 7A–7G Complete — Local; Production Disabled; Analyse Job Preserved |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |

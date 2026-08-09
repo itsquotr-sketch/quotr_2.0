@@ -31,11 +31,23 @@
 
 ### 3.1C.3-R2D — Calibration scenario MVP
 
-**Status: Ready Next**
+**Status: Complete — Local**
+
+### 3.1C.3-R2D.1 — Calibration persistence (033)
+
+**Status: Complete Local — Remote Pending Owner Gate**
+
+- `calibration_responses` + RPC + Save UX  
+- Append/supersede history  
+- Remote apply still gated  
 
 ### 3.1C.3-R2E — Preview E2E / polish
 
 **Status: Planned**
+
+- Owner Preview across R2A–R2D.1  
+- Remote 033 after readiness sign-off  
+- Polish view/history if needed  
 
 ---
 
@@ -56,10 +68,10 @@
 | Change | Notes |
 | --- | --- |
 | `calibration_scenarios` | Product catalogue (could be code-first initially) |
-| `calibration_responses` | Org evidence rows + scenario_version |
+| `calibration_responses` | Org evidence — **033 Complete Local; Remote Pending** |
 | DNA suggestion tables | Later stage — never overwrite explicit rates silently |
 
-**Do not create migration 033 in R1.** Owner must approve before any remote apply.
+**Do not create migration 033 until owner signs** `docs/decisions/STAGE_3_1C3_R2D_CALIBRATION_OWNER_APPROVAL.md`.
 
 ---
 
