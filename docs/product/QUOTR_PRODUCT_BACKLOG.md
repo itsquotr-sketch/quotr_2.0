@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.7E Complete — Local; **3.1B.7F Complete — Local (gate pack)** — Owner E2E results Pending; **3.1B.7F-R1 Complete — Local, Preview Retest Pending**; **3.1B.7F-R3 Complete — Local, Final Deck Retest Pending**; **3.1B.7G Complete — Local**; **BLOCKED BY PREVIEW DEFECTS**; Production **Disabled**); **Stage 3.1C.1A Auth Safety Complete — Local**; **Stage 3.1C.1B Transactional Provisioning Complete — Local** (migration **032** Remote Pending; password reset/callback **3.1C.2 Ready Next**)   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress** (3.1B.1–3.1B.7E Complete — Local; **3.1B.7F Complete — Local (gate pack)** — Owner E2E results Pending; **3.1B.7F-R1 Complete — Local, Preview Retest Pending**; **3.1B.7F-R3 Complete — Local, Final Deck Retest Pending**; **3.1B.7G Complete — Local**; **BLOCKED BY PREVIEW DEFECTS**; Production **Disabled**); **Stage 3.1C.1A/1B Auth Complete — Local** (032 Applied Remote); **Stage 3.1C.2A Account/Profile Complete — Local** (Preview Test Pending); **3.1C.2B** callback/Forgot Password **Ready Next**; Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**   
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -103,6 +103,8 @@
 
 - Stage 3.1C.0 auth audit cross-check: **Complete** — `docs/audits/STAGE_3_1C_AUTH_AUDIT_CROSSCHECK.md` (AUTH-001 fixed locally in 1B).
 - Stage 3.1C.1A auth safety: **Complete — Local** — safe error taxonomy, structured auth logging, login normalisation; `verify-stage-3-1c1a-auth-safety.ts`.
-- Stage 3.1C.1B transactional signup provisioning: **Complete — Local** — migration **032** local; authenticated RPC; setup-required Finish account setup; `verify-stage-3-1c1b-transactional-provisioning.ts`; Preview retest **Blocked** until remote 032 + deploy; remote readiness `STAGE_3_1C1B_REMOTE_MIGRATION_032_READINESS.md`.
-- Stage 3.1C.2 password reset / auth callback / routing: **Ready Next** — confirmed still absent.
+- Stage 3.1C.1B transactional signup provisioning: **Complete — Local**; migration **032 Applied and Verified Remote**; application wiring **Ready to Commit/Deploy** (3.1C.1B.2) — `STAGE_3_1C1B2_APP_WIRING_COMMIT_GATE.md`; Preview auth test **Pending** — `STAGE_3_1C1B_PREVIEW_AUTH_RETEST.md`.
+- Stage 3.1C.2A account menu / Profile / logout / logged-in password: **Complete — Local**; Preview Test Pending — `STAGE_3_1C2A_ACCOUNT_PROFILE_COMPLETION.md`.
+- Stage 3.1C.2B email confirmation callback / Forgot Password / redirect-back: **Ready Next**.
+- Stage 3.1C.3 first-run & Company Setup UX: **Planned**.
 - Production Scope Discovery: **Disabled**. Stage 3.2: **Not Started**.

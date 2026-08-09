@@ -19,7 +19,7 @@ Runtime validation:
 - `lib/env.ts` warns in development and throws in production if public Supabase vars are missing. Service-role remains optional at boot.
 - Signup path (3.1C.1B): authenticated RPC provisioning — no service-role assert on signup.
 - Admin tooling: `assertAdminServerConfiguration()` when using `createAdminClient()`.
-- Migration **032** must be applied on the target database before Preview signup works with the new flow.
+- Migration **032** must be applied on the target database before Preview signup works with the new transactional RPC flow. **Preview remote `quotr_2.0` (`lxvnylhsbvudzzupxeqr`): Applied and Verified** (2026-08-09) — see `docs/implementation/STAGE_3_1C1B1_REMOTE_032_APPLY_COMPLETION.md`.
 
 ## Supabase
 
@@ -63,12 +63,21 @@ See `docs/KNOWN_LIMITATIONS.md`.
 ## Pre-launch smoke checklist
 
 - [ ] Sign up / login
+- [ ] Account menu opens; Profile / Company settings / Log out work
+- [ ] `/app/profile` shows personal details; full name save; password change
+- [ ] Log out clears session and returns to `/login` (Back does not restore app)
 - [ ] Company settings save
 - [ ] Create project → analyse → estimate → final pricing → quote → print
 - [ ] Report issue link opens mail client with page URL
 - [ ] No raw database errors on common failure paths
 - [ ] Quote PDF does not show internal cost/margin fields
 - [ ] `/app/health` shows signed-in user and Supabase connected
+
+## Account / Profile (Stage 3.1C.2A)
+
+- Personal Profile (`/app/profile`) is distinct from Company Settings (`/app/settings/company`). See `docs/architecture/QUOTR_ACCOUNT_PROFILE_AND_COMPANY_BOUNDARY.md`.
+- Email change and Forgot Password remain **3.1C.2B** (do not ship partial email-change).
+- Preview test: `docs/runbooks/STAGE_3_1C2A_ACCOUNT_PROFILE_PREVIEW_TEST.md`.
 
 ## Security notes
 

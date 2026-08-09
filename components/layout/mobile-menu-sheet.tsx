@@ -7,6 +7,7 @@ import {
   Building2,
   Menu,
   Settings2,
+  UserRound,
 } from "lucide-react";
 import { FeedbackLink } from "@/components/layout/feedback-link";
 import { SidebarAccount } from "@/components/layout/sidebar-account";
@@ -52,6 +53,19 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
         <div className="space-y-4 pt-4">
           <SidebarAccount />
           <nav className="flex flex-col gap-1">
+            <Button
+              variant="ghost"
+              className={cn(
+                "h-11 w-full justify-start gap-2 px-3",
+                pathname === "/app/profile" && "bg-muted"
+              )}
+              render={
+                <Link href="/app/profile" onClick={() => setOpen(false)} />
+              }
+            >
+              <UserRound className="size-4" />
+              <span className="flex-1 text-left">Profile</span>
+            </Button>
             {MENU_LINKS.map(({ href, label, icon: Icon, ...item }) => {
               const isActive =
                 pathname === href || pathname.startsWith(`${href}/`);

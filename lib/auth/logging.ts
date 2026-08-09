@@ -21,7 +21,14 @@ export type AuthLogEvent =
   | "account_repair_completed"
   | "account_repair_failed"
   | "login_failed"
-  | "confirmation_pending";
+  | "confirmation_pending"
+  | "profile_update_started"
+  | "profile_update_completed"
+  | "profile_update_failed"
+  | "password_change_started"
+  | "password_change_completed"
+  | "password_change_failed"
+  | "logout";
 
 export type AuthLogFields = {
   readonly event: AuthLogEvent;
@@ -84,7 +91,9 @@ export function logAuthEvent(fields: AuthLogFields): void {
       fields.event === "signup_failed" ||
       fields.event === "login_failed" ||
       fields.event === "provisioning_failed" ||
-      fields.event === "account_repair_failed"
+      fields.event === "account_repair_failed" ||
+      fields.event === "profile_update_failed" ||
+      fields.event === "password_change_failed"
     ) {
       console.error("[auth]", payload);
       return;

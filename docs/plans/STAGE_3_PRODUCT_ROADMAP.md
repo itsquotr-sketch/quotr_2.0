@@ -17,8 +17,10 @@
 | **3.1C** | Domain Model Audit | Documentation-only architectural audit of all major domain objects | **Complete** |
 | **3.1C.0** | Auth audit cross-check | Verify independent Claude auth claims against HEAD | **Complete** (`docs/audits/STAGE_3_1C_AUTH_AUDIT_CROSSCHECK.md`) |
 | **3.1C.1A** | Auth safety / config / diagnostics | Safe auth errors, signup runtime config assert, structured logging; no transactional RPC | **Complete — Local** (`docs/implementation/STAGE_3_1C1A_AUTH_SAFETY_COMPLETION.md`) |
-| **3.1C.1B** | Transactional signup provisioning | Idempotent org+profile RPC; setup-required finish-setup; drop service-role from normal signup | **Complete — Local** — migration **032** Remote Pending Owner Gate |
-| **3.1C.2** | Auth callback / password reset / routing | Callback route, reset flow, redirect-back | **Ready Next** (confirmed absent) |
+| **3.1C.1B** | Transactional signup provisioning | Idempotent org+profile RPC; setup-required finish-setup; drop service-role from normal signup | **Complete — Local**; **032 Remote Applied**; app wiring Ready to Commit/Deploy (1B.2); Preview test Pending |
+| **3.1C.2A** | Account menu / logout / Profile / logged-in password | Fix dead account control; `/app/profile`; secure password change | **Complete — Local**; Preview Test Pending |
+| **3.1C.2B** | Auth callback / Forgot Password / redirect-back | Email confirmation callback, reset email flow, return-path routing | **Ready Next** |
+| **3.1C.3** | First-run & Company Setup UX | Setup wizard / first-run clarity | Planned |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
 | **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.7F-R3 Complete — Local (Final Deck Retest Pending); **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E); 7A–7G Complete — Local; Production Disabled; Analyse Job Preserved |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
@@ -124,3 +126,6 @@ Every Stage 3 release should track:
 - 3.1C.1B Preview retest: `docs/runbooks/STAGE_3_1C1B_PREVIEW_AUTH_RETEST.md`
 - 3.1C.1B security review: `docs/security/STAGE_3_1C1B_PROVISIONING_SECURITY_REVIEW.md`
 - 3.1C.1B remote 032 readiness: `docs/runbooks/STAGE_3_1C1B_REMOTE_MIGRATION_032_READINESS.md`
+- 3.1C.2A account/profile completion: `docs/implementation/STAGE_3_1C2A_ACCOUNT_PROFILE_COMPLETION.md`
+- 3.1C.2A Preview test: `docs/runbooks/STAGE_3_1C2A_ACCOUNT_PROFILE_PREVIEW_TEST.md`
+- Profile vs Company boundary: `docs/architecture/QUOTR_ACCOUNT_PROFILE_AND_COMPANY_BOUNDARY.md`

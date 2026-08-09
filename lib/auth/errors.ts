@@ -19,6 +19,9 @@ export type AuthErrorCategory =
   | "ACCOUNT_REPAIR_FAILED"
   | "ACCOUNT_ALREADY_PROVISIONED"
   | "CONFIRMATION_PENDING"
+  | "PROFILE_UPDATE_FAILED"
+  | "PASSWORD_CHANGE_FAILED"
+  | "LOGOUT_FAILED"
   | "UNKNOWN";
 
 /**
@@ -52,6 +55,10 @@ export const AUTH_USER_MESSAGES: Record<AuthErrorCategory, string> = {
     "Your company account is already set up. Continue to the dashboard.",
   CONFIRMATION_PENDING:
     "Account created. Please check your email to confirm, then sign in to finish company setup.",
+  PROFILE_UPDATE_FAILED: "Could not save your profile. Please try again.",
+  PASSWORD_CHANGE_FAILED:
+    "Could not change your password. Check your current password and try again.",
+  LOGOUT_FAILED: "Could not sign out. Please try again.",
   UNKNOWN: "Something went wrong. Please try again.",
 };
 
