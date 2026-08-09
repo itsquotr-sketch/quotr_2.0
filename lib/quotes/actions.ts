@@ -991,6 +991,21 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
   }
 
   const { supabase, orgId, quote, user } = loaded;
+
+  // Stage 3.1C.3 — hard-block issue when company identity/contact missing.
+  const { getCompanySetupReadiness } = await import(
+    "@/lib/setup/readiness-actions"
+  );
+  const readiness = await getCompanySetupReadiness();
+  if (!readiness.quoteReady) {
+    const detail =
+      readiness.missingQuoteSetup[0]?.reason ??
+      "Complete company contact details before sending this quote.";
+    return {
+      error: detail,
+    };
+  }
+
   const now = new Date().toISOString();
 
   const { error } = await supabase

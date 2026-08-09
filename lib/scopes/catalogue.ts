@@ -6,7 +6,7 @@ export type ScopeCatalogueItem = {
   category: string;
   description: string;
   estimateSupport: EstimateSupport;
-  defaultEnabled: boolean;
+  defaultEnabled: boolean; // Historical UI hint only — NOT company preference (R2B)
   suggestedRateTypes: string[];
 };
 

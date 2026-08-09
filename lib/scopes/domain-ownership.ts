@@ -212,8 +212,9 @@ export const DOMAIN_ENTITY_CONTRACTS: readonly DomainEntityContract[] = [
   {
     id: "work_area",
     purpose: "Scoped portion of the job",
-    owner: "Project (instance); Organisation enables types",
-    sourceOfTruth: "work_areas (+ organisation_work_areas for enablement)",
+    owner: "Project (instance); Organisation may prefer types for personalisation only",
+    sourceOfTruth:
+      "work_areas (project). organisation_work_areas.enabled = company preference, NOT capability",
     lifecycle: "suggested → confirmed | excluded; hard delete allowed",
     freezePoint: "Confirmed set freezes for a given estimate generation",
     downstreamConsumers: ["Questions", "Facts", "Estimate", "Pricing", "Quote"],

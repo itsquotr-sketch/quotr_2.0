@@ -8,6 +8,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Button } from "@/components/ui/button";
 import { getSetupState } from "@/lib/setup/actions";
+import { CalibrationHub } from "@/components/calibration/CalibrationHub";
+import type { CalibrationScenarioStatus } from "@/lib/calibration/persistence-types";
 import { CompanyBasicsStep } from "./CompanyBasicsStep";
 import { RatesStep } from "./RatesStep";
 import type { SetupState, SetupStep } from "./types";
@@ -15,14 +17,17 @@ import { WorkAreasStep } from "./WorkAreasStep";
 
 export type SetupShellMode = "basics" | "improve";
 
+type ImproveSection = "company" | "work_areas" | "rates" | "calibrate";
+
 type SetupShellProps = {
   initialState: SetupState;
   mode: SetupShellMode;
   userEmail?: string;
   fullName?: string | null;
+  /** Deep-link Improve section (e.g. calibrate from Dashboard tip). */
+  initialImproveSection?: ImproveSection;
+  calibrationStatuses?: CalibrationScenarioStatus[];
 };
-
-type ImproveSection = "company" | "work_areas" | "rates";
 
 function getInitialImproveSection(
   settings: SetupState["settings"]
@@ -43,11 +48,15 @@ export function SetupShell({
   mode,
   userEmail,
   fullName,
+  initialImproveSection,
+  calibrationStatuses = [],
 }: SetupShellProps) {
   const router = useRouter();
   const [state, setState] = useState(initialState);
-  const [section, setSection] = useState<ImproveSection>(() =>
-    getInitialImproveSection(initialState.settings)
+  const [section, setSection] = useState<ImproveSection>(
+    () =>
+      initialImproveSection ??
+      getInitialImproveSection(initialState.settings)
   );
 
   const refreshState = useCallback(async () => {
@@ -92,6 +101,7 @@ export function SetupShell({
                 ["company", "Company basics"],
                 ["work_areas", "Work types"],
                 ["rates", "Rates"],
+                ["calibrate", "Calibrate"],
               ] as const
             ).map(([id, label]) => (
               <Button
@@ -141,9 +151,23 @@ export function SetupShell({
             state={state}
             onSaved={() => {
               void refreshState();
+              setSection("calibrate");
             }}
             onSkip={() => {
               void refreshState();
+              setSection("calibrate");
+            }}
+          />
+        ) : null}
+
+        {section === "calibrate" ? (
+          <CalibrationHub
+            preferredWorkAreaTypes={state.workAreas
+              .filter((area) => area.enabled)
+              .map((area) => area.work_area_type)}
+            statuses={calibrationStatuses}
+            onSkip={() => {
+              router.push("/app/dashboard");
             }}
           />
         ) : null}

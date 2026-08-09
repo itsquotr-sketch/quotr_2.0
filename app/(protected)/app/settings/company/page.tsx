@@ -30,7 +30,7 @@ export default async function CompanySettingsPage() {
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Company"
-        description="Business profile, quote defaults, and branding for new pricing and quotes."
+        description="General company details, pricing defaults, quote identity, and advanced options."
         actions={
           <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
         }

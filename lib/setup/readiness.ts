@@ -63,6 +63,12 @@ export type CompanySetupReadinessInput = {
   hasLabourRate: boolean;
   /** True when org has at least one preferred (enabled) work type. */
   hasWorkTypePreferences: boolean;
+  /** True when org has at least one active calibration response. */
+  hasCalibration?: boolean;
+  /** Distinct active calibrated scenarios (for subtle “another” tip). */
+  calibratedScenarioCount?: number;
+  /** MVP catalogue size used for “another” tip (default 2). */
+  calibrationScenarioTotal?: number;
   tradingName: string | null;
   legalName: string | null;
   contactEmail: string | null;
@@ -233,14 +239,32 @@ export function computeCompanySetupReadiness(
     });
   }
 
-  recommendedSetup.push({
-    id: "calibrate",
-    title: "Calibrate Quotr",
-    reason: "Coming soon — price a sample job so Quotr learns your business.",
-    href: "/app/setup?mode=improve",
-    severity: "optional",
-    dimension: "pricing",
-  });
+  // After first calibration, drop the "first work type" tip (no nag).
+  if (companyBasicsReady && !input.hasCalibration) {
+    recommendedSetup.push({
+      id: "calibrate",
+      title: "Calibrate your first work type",
+      reason:
+        "~3 min. Tell Quotr how you would price an example job — evidence only, not automatic rate changes.",
+      href: "/app/setup?mode=improve&section=calibrate",
+      severity: "optional",
+      dimension: "pricing",
+    });
+  } else if (
+    companyBasicsReady &&
+    input.hasCalibration &&
+    (input.calibratedScenarioCount ?? 0) > 0 &&
+    (input.calibratedScenarioCount ?? 0) < (input.calibrationScenarioTotal ?? 2)
+  ) {
+    recommendedSetup.push({
+      id: "calibrate_another",
+      title: "Calibrate another work type",
+      reason: "Optional — only if useful for the work you price most.",
+      href: "/app/setup?mode=improve&section=calibrate",
+      severity: "optional",
+      dimension: "pricing",
+    });
+  }
 
   const estimateReady = companyBasicsReady;
   const pricingReady = companyBasicsReady && input.hasLabourRate;

@@ -89,14 +89,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                   href="/app/setup?mode=improve"
                   className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
-                  Improve Quotr for your business
+                  Optional company setup
                 </Link>
               </div>
             </div>
           ) : null}
 
           <ImproveSetupCard readiness={readiness} />
-
           <DashboardSummaryCards summary={summary} activeFilter={filter} />
 
           <Suspense fallback={null}>

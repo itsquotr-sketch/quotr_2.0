@@ -524,6 +524,10 @@ export async function saveStarterRates(input: {
     }
   }
 
+  revalidatePath("/app/setup");
+  revalidatePath("/app/rates");
+  revalidatePath("/app/dashboard");
+
   return {};
 }
 

@@ -35,19 +35,26 @@
 
 ### 3.1C.3-R2D.1 — Calibration persistence (033)
 
-**Status: Complete Local — Remote Pending Owner Gate**
+**Status: Complete** (Local + Remote Applied)
 
-- `calibration_responses` + RPC + Save UX  
-- Append/supersede history  
-- Remote apply still gated  
+### 3.1C.3-R2D.2 — Remote 033 safety gate & apply
+
+**Status: Complete**
+
+- Linked `quotr_2.0` only  
+- Dry-run 033 only → push → verified remote objects/grants  
+- Calibration Preview E2E still Pending Owner Test  
 
 ### 3.1C.3-R2E — Preview E2E / polish
 
-**Status: Planned**
+**Status: Complete Local — Owner Preview Sign-off Pending**
 
-- Owner Preview across R2A–R2D.1  
-- Remote 033 after readiness sign-off  
-- Polish view/history if needed  
+- First-run coherence polish  
+- Estimate label alignment with R2C  
+- Calibration hub / tip polish  
+- Defect register + sign-off runbook  
+
+**Stage 3.1C.3** ready to close after Owner Preview Sign-off.
 
 ---
 
@@ -68,7 +75,7 @@
 | Change | Notes |
 | --- | --- |
 | `calibration_scenarios` | Product catalogue (could be code-first initially) |
-| `calibration_responses` | Org evidence — **033 Complete Local; Remote Pending** |
+| `calibration_responses` | Org evidence — **033 Applied and Verified Remote** |
 | DNA suggestion tables | Later stage — never overwrite explicit rates silently |
 
 **Do not create migration 033 until owner signs** `docs/decisions/STAGE_3_1C3_R2D_CALIBRATION_OWNER_APPROVAL.md`.

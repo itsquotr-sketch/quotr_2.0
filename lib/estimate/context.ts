@@ -23,6 +23,7 @@ const DEFAULT_ORGANISATION_SETTINGS: OrganisationSettings = {
   org_id: "",
   default_margin_percent: DEFAULT_MARGIN_PERCENT,
   default_contingency_percent: 10,
+  default_gst_rate: 15,
   budget_rate_factor: 0.9,
   premium_rate_factor: 1.15,
   currency: "NZD",

@@ -53,6 +53,19 @@ export function CalibrationHub({
     return preferred.length > 0 ? preferred : ordered;
   }, [preferredWorkAreaTypes, showAll]);
 
+  const preferredHaveScenarios = useMemo(
+    () =>
+      preferredWorkAreaTypes.some((type) =>
+        scenarios.some((scenario) => scenario.workAreaType === type)
+      ),
+    [preferredWorkAreaTypes, scenarios]
+  );
+
+  const showingFallbackCatalogue =
+    preferredWorkAreaTypes.length > 0 &&
+    !showAll &&
+    !preferredHaveScenarios;
+
   return (
     <Card>
       <CardHeader>
@@ -79,6 +92,14 @@ export function CalibrationHub({
           </Button>
         </div>
 
+        {showingFallbackCatalogue ? (
+          <p className="rounded-lg border border-dashed px-3 py-2 text-sm text-muted-foreground">
+            No calibration examples yet for your preferred work types — showing
+            Deck and Bathroom so you can still give Quotr a feel for how you
+            price.
+          </p>
+        ) : null}
+
         <ul className="space-y-3">
           {scenarios.map((scenario) => {
             const preferred = preferredWorkAreaTypes.includes(
@@ -86,8 +107,6 @@ export function CalibrationHub({
             );
             const status = statusById.get(scenario.id);
             const calibrated = Boolean(status?.calibrated && status.latest);
-            const label =
-              scenario.workAreaType === "deck" ? "Deck" : "Bathroom";
             return (
               <li
                 key={scenario.id}
@@ -121,7 +140,9 @@ export function CalibrationHub({
                       })
                     )}
                   >
-                    {calibrated ? "View / Recalibrate" : `Calibrate ${label}`}
+                    {calibrated
+                      ? "View / Recalibrate"
+                      : `Calibrate ${scenario.title}`}
                   </Link>
                 </div>
               </li>

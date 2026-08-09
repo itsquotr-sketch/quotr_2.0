@@ -22,6 +22,7 @@ const SECONDARY_IDS = new Set([
   "work_types",
   "company_contact",
   "calibrate",
+  "calibrate_another",
   "default_margin",
 ]);
 

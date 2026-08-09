@@ -1,4 +1,26 @@
+/**
+ * Setup / onboarding starter rate rows (Stage 3.1C.3-R2C).
+ *
+ * Primary onboarding:
+ * - Core labour (carpenter required commercially; labourer optional)
+ * - Component rates actually consumed by calculators for preferred work types
+ *
+ * Generic scope.* package rates are LEGACY — retained for data compatibility
+ * but excluded from primary buildStarterRateRows.
+ */
+
+import {
+  MATERIAL_RATE_CATALOGUE,
+  SCOPE_RATE_CATALOGUE,
+} from "@/lib/rates/catalogue";
+import type { RateCatalogueEntry } from "@/lib/rates/types";
+
 export type StarterRateField = "cost_rate" | "sell_rate" | "markup_percent";
+
+export type StarterRateSection =
+  | "labour"
+  | "component"
+  | "legacy_scope";
 
 export type StarterRateRowDefinition = {
   item_key: string;
@@ -8,7 +30,12 @@ export type StarterRateRowDefinition = {
   label: string;
   unit: string;
   fields: StarterRateField[];
-  section: "labour" | "scope";
+  section: StarterRateSection;
+  description?: string;
+  /** Catalogue benchmark hint — display only until user adopts. */
+  benchmarkCost?: number;
+  benchmarkSell?: number;
+  authorityHint?: "explicit" | "benchmark" | "legacy";
 };
 
 export type EnabledWorkAreaInput = {
@@ -16,170 +43,243 @@ export type EnabledWorkAreaInput = {
   enabled: boolean;
 };
 
-const BASE_STARTER_RATES: StarterRateRowDefinition[] = [
+/** Core labour — primary onboarding. */
+export const CORE_LABOUR_STARTER_RATES: StarterRateRowDefinition[] = [
   {
     item_key: "labour.carpenter.hour",
     rate_type: "labour",
     trade: "carpenter",
-    label: "Carpenter / builder hourly rate",
+    label: "Carpenter / builder",
     unit: "hour",
     fields: ["cost_rate", "sell_rate"],
     section: "labour",
+    description:
+      "Primary trade rate Quotr uses for most in-house labour estimates.",
+    benchmarkCost: 60,
+    benchmarkSell: 90,
+    authorityHint: "explicit",
   },
   {
     item_key: "labour.labourer.hour",
     rate_type: "labour",
     trade: "labourer",
-    label: "Labourer hourly rate",
+    label: "Labourer",
     unit: "hour",
     fields: ["cost_rate", "sell_rate"],
     section: "labour",
-  },
-  {
-    item_key: "allowance.subcontractor.default",
-    rate_type: "allowance",
-    label: "Default subcontractor allowance",
-    unit: "allowance",
-    fields: ["markup_percent"],
-    section: "labour",
+    description:
+      "Optional. Current calculators use carpenter/builder labour; this is for your records and future use.",
+    benchmarkCost: 40,
+    benchmarkSell: 65,
+    authorityHint: "explicit",
   },
 ];
 
-const SCOPE_STARTER_RATES: Record<string, StarterRateRowDefinition> = {
+/**
+ * Legacy generic package rates — NOT primary onboarding.
+ * Preserved for existing data / Advanced Rates UI.
+ */
+export const LEGACY_SCOPE_STARTER_RATES: Record<
+  string,
+  StarterRateRowDefinition
+> = {
   deck: {
     item_key: "scope.deck.m2",
     rate_type: "scope",
     work_area_type: "deck",
-    label: "Deck rate per m²",
+    label: "Deck overall benchmark ($/m²)",
     unit: "m2",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
+    description:
+      "Overall package benchmark — not used by detailed Deck calculators today.",
   },
   retaining_wall: {
     item_key: "scope.retaining_wall.m2",
     rate_type: "scope",
     work_area_type: "retaining_wall",
-    label: "Retaining wall rate per m² face area",
+    label: "Retaining wall overall benchmark ($/m² face)",
     unit: "m2",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   bathroom: {
     item_key: "scope.bathroom.m2",
     rate_type: "scope",
     work_area_type: "bathroom",
-    label: "Bathroom renovation rate per m²",
+    label: "Bathroom overall benchmark ($/m²)",
     unit: "m2",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   kitchen: {
     item_key: "scope.kitchen.m2",
     rate_type: "scope",
     work_area_type: "kitchen",
-    label: "Kitchen renovation rough rate per m²",
+    label: "Kitchen overall benchmark ($/m²)",
     unit: "m2",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   fence: {
     item_key: "scope.fence.lm",
     rate_type: "scope",
     work_area_type: "fence",
-    label: "Fence rate per lineal metre",
+    label: "Fence overall benchmark ($/lm)",
     unit: "lm",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   pergola: {
     item_key: "scope.pergola.m2",
     rate_type: "scope",
     work_area_type: "pergola",
-    label: "Pergola rough rate per m²",
+    label: "Pergola overall benchmark ($/m²)",
     unit: "m2",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   demolition: {
     item_key: "scope.demolition.hour",
     rate_type: "scope",
     work_area_type: "demolition",
-    label: "Demolition / strip-out hourly allowance",
+    label: "Demolition overall benchmark ($/hr)",
     unit: "hour",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   internal_walls: {
     item_key: "scope.internal_walls.m2",
     rate_type: "scope",
     work_area_type: "internal_walls",
-    label: "Internal walls rate per m²",
+    label: "Internal walls overall benchmark ($/m²)",
     unit: "m2",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   ceilings: {
     item_key: "scope.ceilings.m2",
     rate_type: "scope",
     work_area_type: "ceilings",
-    label: "Ceilings rate per m²",
+    label: "Ceilings overall benchmark ($/m²)",
     unit: "m2",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   doors: {
     item_key: "scope.doors.each",
     rate_type: "scope",
     work_area_type: "doors",
-    label: "Door supply/install allowance per door",
+    label: "Doors overall benchmark (each)",
     unit: "each",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   flooring: {
     item_key: "scope.flooring.m2",
     rate_type: "scope",
     work_area_type: "flooring",
-    label: "Flooring rate per m²",
+    label: "Flooring overall benchmark ($/m²)",
     unit: "m2",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
   painting: {
     item_key: "scope.painting.m2",
     rate_type: "scope",
     work_area_type: "painting",
-    label: "Painting rate per m²",
+    label: "Painting overall benchmark ($/m²)",
     unit: "m2",
     fields: ["cost_rate", "sell_rate"],
-    section: "scope",
+    section: "legacy_scope",
+    authorityHint: "legacy",
   },
 };
 
+/** @deprecated Use LEGACY_SCOPE_STARTER_RATES — kept for verify/compat imports. */
+export const SCOPE_STARTER_RATES = LEGACY_SCOPE_STARTER_RATES;
+
+function catalogueToComponentRow(
+  entry: RateCatalogueEntry
+): StarterRateRowDefinition {
+  return {
+    item_key: entry.item_key,
+    rate_type: entry.rate_type,
+    trade: entry.trade,
+    work_area_type: entry.work_area_type,
+    label: entry.label,
+    unit: entry.unit,
+    fields: ["cost_rate", "sell_rate"],
+    section: "component",
+    description: entry.description,
+    benchmarkCost: entry.defaultCostRate,
+    benchmarkSell: entry.defaultSellRate,
+    authorityHint: "benchmark",
+  };
+}
+
+/**
+ * Component rates Quotr calculators actually consume for a work type.
+ * Prefer recommended + used_now; cap per work type for Setup brevity.
+ */
+export function getComponentStarterRatesForWorkType(
+  workAreaType: string,
+  limit = 3
+): StarterRateRowDefinition[] {
+  return MATERIAL_RATE_CATALOGUE.filter(
+    (entry) =>
+      entry.work_area_type === workAreaType &&
+      entry.calculatorSupport === "used_now" &&
+      entry.recommended
+  )
+    .slice(0, limit)
+    .map(catalogueToComponentRow);
+}
+
 export function buildStarterRateRows(enabledWorkAreas: EnabledWorkAreaInput[]): {
   rows: StarterRateRowDefinition[];
+  preferredWorkTypes: string[];
   unsupportedTypes: string[];
 } {
-  const enabledTypes = enabledWorkAreas
+  const preferredWorkTypes = enabledWorkAreas
     .filter((area) => area.enabled)
     .map((area) => area.work_area_type);
 
-  const scopeRows: StarterRateRowDefinition[] = [];
+  const componentRows: StarterRateRowDefinition[] = [];
   const unsupportedTypes: string[] = [];
 
-  for (const workAreaType of enabledTypes) {
-    const definition = SCOPE_STARTER_RATES[workAreaType];
-    if (definition) {
-      scopeRows.push(definition);
-    } else {
+  for (const workAreaType of preferredWorkTypes) {
+    const components = getComponentStarterRatesForWorkType(workAreaType);
+    if (components.length === 0) {
       unsupportedTypes.push(workAreaType);
+    } else {
+      componentRows.push(...components);
     }
   }
 
   return {
-    rows: [...BASE_STARTER_RATES, ...scopeRows],
+    rows: [...CORE_LABOUR_STARTER_RATES, ...componentRows],
+    preferredWorkTypes,
     unsupportedTypes,
   };
+}
+
+export function isLegacyScopePackageKey(itemKey: string): boolean {
+  return (
+    itemKey.startsWith("scope.") ||
+    SCOPE_RATE_CATALOGUE.some((entry) => entry.item_key === itemKey)
+  );
 }
 
 export function formatRateUnit(unit: string): string {
@@ -191,9 +291,11 @@ export function formatRateUnit(unit: string): string {
     case "hour":
       return "per hour";
     case "each":
-      return "per door";
+      return "each";
     case "allowance":
-      return "markup %";
+      return "allowance";
+    case "riser":
+      return "per riser";
     default:
       return `per ${unit}`;
   }

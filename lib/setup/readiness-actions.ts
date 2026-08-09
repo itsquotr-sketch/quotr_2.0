@@ -23,6 +23,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       defaultMarginPercent: null,
       hasLabourRate: false,
       hasWorkTypePreferences: false,
+      hasCalibration: false,
       tradingName: null,
       legalName: null,
       contactEmail: null,
@@ -34,7 +35,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
 
   const { supabase, orgId } = context;
 
-  const [{ data: organisation }, { data: settings }, { data: labourRates }, { data: preferredWorkAreas }] =
+  const [{ data: organisation }, { data: settings }, { data: labourRates }, { data: preferredWorkAreas }, { data: calibrations }] =
     await Promise.all([
       supabase.from("organisations").select("name").eq("id", orgId).maybeSingle(),
       supabase
@@ -58,6 +59,11 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
         .eq("org_id", orgId)
         .eq("enabled", true)
         .limit(1),
+      supabase
+        .from("calibration_responses")
+        .select("id, scenario_id")
+        .eq("org_id", orgId)
+        .eq("status", "active"),
     ]);
 
   const onboardingStatus = settings?.onboarding_status as
@@ -66,6 +72,10 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     | "completed"
     | null
     | undefined;
+
+  const calibratedScenarioIds = new Set(
+    (calibrations ?? []).map((row) => String(row.scenario_id))
+  );
 
   return computeCompanySetupReadiness({
     accountReady: true,
@@ -84,6 +94,9 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
         : null,
     hasLabourRate: (labourRates?.length ?? 0) > 0,
     hasWorkTypePreferences: (preferredWorkAreas?.length ?? 0) > 0,
+    hasCalibration: calibratedScenarioIds.size > 0,
+    calibratedScenarioCount: calibratedScenarioIds.size,
+    calibrationScenarioTotal: 2,
     tradingName: (settings?.trading_name as string | null) ?? null,
     legalName: (settings?.legal_name as string | null) ?? null,
     contactEmail: (settings?.contact_email as string | null) ?? null,

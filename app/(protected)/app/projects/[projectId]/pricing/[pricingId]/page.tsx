@@ -6,6 +6,7 @@ import {
 import { UserMenu } from "@/components/layout/user-menu";
 import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
+import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
 import { measureServerLoad } from "@/lib/perf/timing";
 import {
   getPricingWorkspaceData,
@@ -91,6 +92,7 @@ export default async function PricingPage({ params }: PricingPageProps) {
       }
       contentClassName="py-6"
     >
+      <SetupGuidanceServerBanner dimension="pricing" />
       <PricingWorkspace
         initialData={data}
         quoteSummary={effectiveQuoteSummary}

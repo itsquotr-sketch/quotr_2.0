@@ -11,13 +11,13 @@ export type RateSourceType =
   | "default";
 
 export const RATE_SOURCE_FRIENDLY_LABELS: Record<RateSourceType, string> = {
-  user_rate: "Your rate",
+  user_rate: "Your company rate",
   work_area_rate: "Your work area rate",
   derived_from_margin: "Derived from margin",
-  benchmark: "Benchmark allowance",
+  benchmark: "Quotr benchmark",
   productivity: "Benchmark productivity",
   fallback: "Fallback allowance",
-  missing: "Missing rate",
+  missing: "Pricing required",
   default: "Default allowance",
 };
 
@@ -32,6 +32,7 @@ export function classifyRateSource(raw: string): RateSourceType {
   if (!source) return "default";
 
   if (
+    source.includes("your company rate") ||
     source.includes("your rate") ||
     source.includes("user rate") ||
     source === "org_rate"
@@ -54,7 +55,7 @@ export function classifyRateSource(raw: string): RateSourceType {
     return "productivity";
   }
 
-  if (source.includes("missing rate") || source === "rate missing") {
+  if (source.includes("missing rate") || source.includes("pricing required") || source === "rate missing") {
     return "missing";
   }
 
@@ -66,7 +67,10 @@ export function classifyRateSource(raw: string): RateSourceType {
     return "default";
   }
 
-  if (source.includes("benchmark")) {
+  if (
+    source.includes("quotr benchmark") ||
+    source.includes("benchmark")
+  ) {
     return "benchmark";
   }
 

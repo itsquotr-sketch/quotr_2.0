@@ -7,6 +7,7 @@ import {
 import { UserMenu } from "@/components/layout/user-menu";
 import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
+import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
 import { getProjectWorkspaceTabContext } from "@/lib/pricing/actions";
 import { measureServerLoad } from "@/lib/perf/timing";
 import {
@@ -73,6 +74,9 @@ export default async function QuotePage({ params }: QuotePageProps) {
       </div>
 
       <WorkspaceContainer innerClassName="py-6 print:max-w-none print:p-0">
+        <div className="print:hidden">
+          <SetupGuidanceServerBanner dimension="quote" />
+        </div>
         <QuoteWorkspace
           initialData={data}
           template={

@@ -7,6 +7,7 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { DuplicatedProjectBanner } from "@/components/projects/DuplicatedProjectBanner";
 import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
+import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
 import { getAssistantState } from "@/lib/assistant/state";
 import { measureServerLoad } from "@/lib/perf/timing";
 import { listProjectNotes } from "@/lib/project-notes/actions";
@@ -120,6 +121,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       <DuplicatedProjectBanner
         show={Boolean(project.duplicated_from_project_id)}
       />
+      <SetupGuidanceServerBanner dimension="estimate" />
       <AssistantShell
         key={assistantState.project.stage}
         initialState={assistantState}

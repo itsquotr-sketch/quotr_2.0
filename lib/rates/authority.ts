@@ -67,9 +67,9 @@ export function companyRateAuthorityLabel(input: {
 
 /** Future DNA / calibration — documentation contract only. */
 export const FUTURE_RATE_AUTHORITY_STACK = [
-  "PROJECT_OVERRIDE",
-  "EXPLICIT_COMPANY",
-  "FUTURE_CALIBRATION (evidence — never silent overwrite)",
-  "BENCHMARK",
-  "FALLBACK / MISSING",
+  "PROJECT_EXPLICIT_OVERRIDE",
+  "COMPANY_EXPLICIT_RATE",
+  "COMPANY_DNA_OR_CALIBRATION_RECOMMENDATION (future — never silent)",
+  "QUOTR_BENCHMARK",
+  "MISSING",
 ] as const;

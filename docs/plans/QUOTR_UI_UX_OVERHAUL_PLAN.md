@@ -16,10 +16,13 @@
 | First-run / company basics | Hard basics gate, country/currency selects, Dashboard coherence | **3.1C.3-R2A** Complete — Local |
 | Work types preferences | Preference ≠ capability; Setup Work types UX | **3.1C.3-R2B** Complete — Local |
 | Rates onboarding | Contractor-native labour/components; legacy scope demoted | **3.1C.3-R2C** Complete — Local |
+| Calibration | Deck/Bathroom evidence MVP + remote 033 | **3.1C.3-R2D–R2D.2** Complete |
+| First-run Preview polish | Coherent Basics→Dashboard→optional Setup E2E | **3.1C.3-R2E** Complete Local — Owner Sign-off Pending |
 | UX-E | Pricing + Quote surfaces | **Planned separately** |
 
-**Production:** Disabled  
+**Production Scope Discovery:** Disabled  
 **Stage 3.2:** Not Started  
+**Company DNA:** Not Started  
 **Architecture:** `docs/architecture/QUOTR_ASSISTANT_RESPONSIVE_AND_MOBILE_PRESENTATION.md`
 
 ---
