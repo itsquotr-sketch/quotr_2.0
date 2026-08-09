@@ -6,12 +6,12 @@ export default function AuthLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex min-h-svh flex-col items-center justify-center bg-muted px-4 py-8">
-      <div className="mb-8 w-full max-w-sm text-center">
+    <div className="flex min-h-dvh flex-col items-center justify-start bg-muted px-4 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-6 sm:justify-center sm:py-8">
+      <div className="mb-5 w-full max-w-sm text-center sm:mb-8">
         <Link href="/login" className="text-lg font-semibold tracking-tight">
           Quotr
         </Link>
-        <p className="mt-2 text-sm text-muted-foreground">
+        <p className="mt-1.5 text-sm text-muted-foreground sm:mt-2">
           Estimate faster with structured project information.
         </p>
       </div>

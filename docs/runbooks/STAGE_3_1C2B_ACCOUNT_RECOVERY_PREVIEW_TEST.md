@@ -1,7 +1,17 @@
 # Stage 3.1C.2B — Account Recovery Preview E2E
 
-**Status:** Pending owner after Preview deploy  
-**Depends on:** Owner completes `docs/runbooks/STAGE_3_1C2B_AUTH_URL_CONFIGURATION.md` (Preview `NEXT_PUBLIC_SITE_URL` = stable branch origin; Supabase redirect allow-list includes local + stable Preview callbacks).
+**Status:** Pending owner after Preview deploy of **3.1C.2B-R2** (forgot/reset route pages committed)  
+**Depends on:**
+1. Commit+push of `app/(auth)/forgot-password/page.tsx` and `app/(auth)/reset-password/page.tsx` (R2) — **gate:** `/forgot-password` must not 404 before any Supabase callback debugging.
+2. Owner completes `docs/runbooks/STAGE_3_1C2B_AUTH_URL_CONFIGURATION.md` (Preview `NEXT_PUBLIC_SITE_URL` = stable branch origin; Supabase redirect allow-list includes local + stable Preview callbacks).
+
+## R2 smoke (do first)
+
+1. Open `/login`
+2. Click **Forgot password?**
+3. `/forgot-password` renders — **no 404**
+4. Direct navigation to `/forgot-password` also works
+5. Only then continue sections A–F below
 
 ## A. NEW ACCOUNT
 

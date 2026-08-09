@@ -3,6 +3,7 @@
  *
  * Run: npx --yes tsx scripts/verify-stage-3-1c2b-account-recovery.ts
  */
+import { execSync } from "child_process";
 import { existsSync, readFileSync } from "fs";
 import { join } from "path";
 import {
@@ -31,12 +32,26 @@ function section(title: string) {
   console.log(`\n=== ${title} ===\n`);
 }
 
+/** Fail if a local route exists but is untracked (Preview would 404). */
+function gitTracked(rel: string): boolean {
+  try {
+    const out = execSync(`git ls-files -- "${rel}"`, {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "pipe"],
+    }).trim();
+    return out.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 function main() {
   console.log("=== Stage 3.1C.2B account recovery verification ===");
 
   section("CALLBACK");
   const callbackRel = "app/auth/callback/route.ts";
   assert("callback route exists", existsSync(join(process.cwd(), callbackRel)));
+  assert("callback route is git-tracked", gitTracked(callbackRel));
   const callback = read(callbackRel);
   assert(
     "server-side exchangeCodeForSession",
@@ -129,9 +144,14 @@ function main() {
   );
 
   section("FORGOT PASSWORD");
+  const forgotRel = "app/(auth)/forgot-password/page.tsx";
   assert(
     "forgot-password page exists",
-    existsSync(join(process.cwd(), "app/(auth)/forgot-password/page.tsx"))
+    existsSync(join(process.cwd(), forgotRel))
+  );
+  assert(
+    "forgot-password page is git-tracked (Preview deploy guard — 3.1C.2B-R2)",
+    gitTracked(forgotRel)
   );
   const recovery = read("lib/auth/recovery-actions.ts");
   assert("uses resetPasswordForEmail", /resetPasswordForEmail/.test(recovery));
@@ -146,11 +166,20 @@ function main() {
   );
   const loginPage = read("app/(auth)/login/page.tsx");
   assert("login links Forgot password", /forgot-password/.test(loginPage));
+  assert(
+    "login Forgot href is /forgot-password",
+    /href=["']\/forgot-password["']/.test(loginPage)
+  );
 
   section("RESET PASSWORD");
+  const resetRel = "app/(auth)/reset-password/page.tsx";
   assert(
     "reset-password page exists",
-    existsSync(join(process.cwd(), "app/(auth)/reset-password/page.tsx"))
+    existsSync(join(process.cwd(), resetRel))
+  );
+  assert(
+    "reset-password page is git-tracked (Preview deploy guard — 3.1C.2B-R2)",
+    gitTracked(resetRel)
   );
   assert(
     "recovery session required (getUser)",

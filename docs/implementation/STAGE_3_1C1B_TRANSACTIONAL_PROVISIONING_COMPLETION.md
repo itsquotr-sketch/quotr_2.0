@@ -1,9 +1,11 @@
 # Stage 3.1C.1B — Transactional Signup Provisioning — Completion
 
-**Status:** Complete — Local  
+**Status:** Complete — Local; Migration **032 Applied and Verified Remote**; Application wiring **Ready to Commit/Deploy** (3.1C.1B.2)  
 **Date:** 2026-08-09  
-**Migration 032:** Complete — Local, Remote Pending Owner Gate  
-**Verify:** `npx --yes tsx scripts/verify-stage-3-1c1b-transactional-provisioning.ts`
+**Migration 032:** Applied and Verified Remote on `quotr_2.0` (`lxvnylhsbvudzzupxeqr`) — `docs/implementation/STAGE_3_1C1B1_REMOTE_032_APPLY_COMPLETION.md`  
+**Preview authentication test:** Pending owner (`docs/runbooks/STAGE_3_1C1B_PREVIEW_AUTH_RETEST.md`)  
+**Verify:** `npx --yes tsx scripts/verify-stage-3-1c1b-transactional-provisioning.ts`  
+**Do not mark Preview-verified until owner retest is signed off.**
 
 ## Summary
 
@@ -33,20 +35,30 @@ Retained (`server-only`). Signup no longer calls it. Service-role optional for s
 
 ## Remote
 
-Do **not** apply 032 remotely until owner gate. See remote readiness in completion appendix / security review.
+Migration **032 Applied and Verified Remote** (2026-08-09). See `STAGE_3_1C1B1_REMOTE_032_APPLY_COMPLETION.md`.
+
+## Application wiring (3.1C.1B.2)
+
+Uncommitted-at-gate app surfaces that must ship with Preview:
+
+- `app/(auth)/actions.ts` — RPC signup + `finishAccountSetup` (no `createAdminClient` inserts)
+- `app/(auth)/signup/page.tsx`, `login/page.tsx`
+- `app/(protected)/app/setup-required/page.tsx` — Finish account setup
+
+Committed already (HEAD `3ba35ff`): migration 032, `lib/auth/provisioning.ts`, verify scripts, architecture docs.
 
 ## Status board
 
 | Item | Status |
 | --- | --- |
-| Stage 3.1C.1B | Complete — Local |
-| Migration 032 | Local Only, Remote Pending Owner Gate |
-| Account repair | Complete — Local |
-| Preview external signup testing | Blocked until 032 remote apply + deploy |
-| Stage 3.1C.2 | Ready Next |
+| Migration 032 | **Remote Applied** |
+| Application wiring | **Ready to Commit/Deploy** |
+| Preview authentication test | **Pending** |
+| Stage 3.1C.1B | Complete — Local; Preview Retest Pending |
+| Stage 3.1C.2 | **Not Started** |
 | Stage 3.1B Owner E2E | Open |
-| Production Scope Discovery | Disabled |
-| Stage 3.2 | Not Started |
+| Production Scope Discovery | **Disabled** |
+| Stage 3.2 | **Not Started** |
 
 ## Files created
 
