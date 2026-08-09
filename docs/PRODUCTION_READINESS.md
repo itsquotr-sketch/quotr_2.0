@@ -8,7 +8,7 @@ Internal checklist for deploying Quotr to test users. Do not commit secrets.
 |----------|----------|---------|
 | `NEXT_PUBLIC_SUPABASE_URL` | Yes | Supabase project URL |
 | `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Yes | Supabase anon key (client + server) |
-| `SUPABASE_SERVICE_ROLE_KEY` | Yes at runtime (signup/admin) | Server-only admin operations (signup org/profile creation). Not required at build time — `lib/env.ts` keeps it optional so Preview can compile — but signup asserts it via `assertSignupServerConfiguration()` before privileged provisioning. Never use `NEXT_PUBLIC_*`. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Optional for signup (post 3.1C.1B); Yes for admin/ops tooling | Server-only. **Signup** provisions via authenticated RPC `provision_organisation_for_new_user` (migration 032) — service-role is **not** required on that path. Still used by `lib/supabase/admin.ts` for local verification / privileged tooling. Never use `NEXT_PUBLIC_*`. |
 | `ANTHROPIC_API_KEY` | Yes (AI features) | Project analysis, note extraction, scope assistance |
 | `ANTHROPIC_MODEL` | No | Defaults to `claude-sonnet-4-6` |
 | `NEXT_PUBLIC_FEEDBACK_EMAIL` | No | Recipient for Report issue mailto links |
@@ -17,7 +17,9 @@ Copy `.env.local.example` to `.env.local` for local development.
 
 Runtime validation:
 - `lib/env.ts` warns in development and throws in production if public Supabase vars are missing. Service-role remains optional at boot.
-- Signup path: `lib/auth/config.ts` `assertSignupServerConfiguration()` fails closed with internal category `CONFIGURATION` (safe UI message; no env var names to the client) when `SUPABASE_SERVICE_ROLE_KEY` or the Supabase URL is missing.
+- Signup path (3.1C.1B): authenticated RPC provisioning — no service-role assert on signup.
+- Admin tooling: `assertAdminServerConfiguration()` when using `createAdminClient()`.
+- Migration **032** must be applied on the target database before Preview signup works with the new flow.
 
 ## Supabase
 

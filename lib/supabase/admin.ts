@@ -2,7 +2,13 @@ import "server-only";
 import { createClient } from "@supabase/supabase-js";
 
 /**
- * Service-role client for trusted server-side operations only (e.g. signup org/profile creation).
+ * Service-role client for trusted server-side operations only
+ * (local verification scripts, privileged admin tooling).
+ *
+ * After Stage 3.1C.1B, normal signup/org provisioning does **not** use this
+ * client — it calls `provision_organisation_for_new_user` via the authenticated
+ * session client instead.
+ *
  * Never import this from client components.
  */
 export function createAdminClient() {

@@ -120,10 +120,9 @@ function testConfigFailure() {
 
   const actions = read("app/(auth)/actions.ts");
   assert(
-    "signup calls assertSignupServerConfiguration before admin provision",
-    /assertSignupServerConfiguration\(\)/.test(actions) &&
-      actions.indexOf("assertSignupServerConfiguration") <
-        actions.indexOf("createAdminClient()")
+    "signup does not use service-role admin client (superseded by 3.1C.1B RPC)",
+    !actions.includes("createAdminClient") &&
+      !actions.includes("@/lib/supabase/admin")
   );
   assert(
     "signup does not retain old SERVICE_ROLE UI string",
@@ -224,8 +223,6 @@ function testObservability() {
   const events = [
     "signup_started",
     "auth_user_created",
-    "organisation_provisioned",
-    "profile_linked",
     "signup_completed",
     "signup_failed",
     "login_failed",
@@ -275,8 +272,6 @@ function testObservability() {
   for (const event of [
     "signup_started",
     "auth_user_created",
-    "organisation_provisioned",
-    "profile_linked",
     "signup_completed",
     "signup_failed",
   ] as const) {
@@ -308,9 +303,8 @@ function testSecurityBoundary() {
 
   const example = read(".env.local.example");
   assert(
-    ".env.local.example documents service-role runtime need",
-    /SUPABASE_SERVICE_ROLE_KEY/.test(example) &&
-      /runtime/i.test(example)
+    ".env.local.example documents SUPABASE_SERVICE_ROLE_KEY",
+    /SUPABASE_SERVICE_ROLE_KEY/.test(example)
   );
   assert(
     "no NEXT_PUBLIC service-role in example",
@@ -340,24 +334,13 @@ function testSecurityBoundary() {
 
   const actions = read("app/(auth)/actions.ts");
   assert(
-    "profile insert uses auth user id (server), not client-supplied id field alone",
-    /id:\s*userId|id:\s*authData\.user\.id/.test(actions)
+    "signup uses shared provisioning helper (no client-supplied org/user ids)",
+    actions.includes("provisionOrganisationForCurrentUser")
   );
 }
 
 function testBoundaries() {
-  section("BATCH BOUNDARIES");
-
-  assert(
-    "no migration 032",
-    !existsSync(join(process.cwd(), "supabase/migrations/032_transactional_signup.sql")) &&
-      !existsSync(
-        join(
-          process.cwd(),
-          "supabase/migrations/032_provision_organisation_for_new_user.sql"
-        )
-      )
-  );
+  section("BATCH BOUNDARIES (1A safety retained; 1B owns migration 032)");
 
   const actions = read("app/(auth)/actions.ts");
   assert(
@@ -368,13 +351,6 @@ function testBoundaries() {
     "no auth callback route",
     !existsSync(join(process.cwd(), "app/auth/callback/route.ts")) &&
       !existsSync(join(process.cwd(), "app/(auth)/callback/route.ts"))
-  );
-
-  // Architecture still non-transactional in this batch (documented).
-  assert(
-    "signup still uses sequential org then profile (1A does not replace architecture)",
-    /\.from\(["']organisations["']\)/.test(actions) &&
-      /\.from\(["']profiles["']\)/.test(actions)
   );
 
   assert(

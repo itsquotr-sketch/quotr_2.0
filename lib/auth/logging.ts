@@ -1,5 +1,5 @@
 /**
- * Minimal structured auth logging (Stage 3.1C.1A).
+ * Minimal structured auth logging (Stage 3.1C.1A / 3.1C.1B).
  *
  * Never logs passwords, tokens, service-role keys, raw form payloads,
  * or raw provider responses. Logging must never throw into auth flows.
@@ -10,11 +10,18 @@ import type { AuthErrorCategory } from "@/lib/auth/errors";
 export type AuthLogEvent =
   | "signup_started"
   | "auth_user_created"
+  | "provisioning_started"
+  | "organisation_profile_provisioned"
   | "organisation_provisioned"
   | "profile_linked"
   | "signup_completed"
   | "signup_failed"
-  | "login_failed";
+  | "provisioning_failed"
+  | "account_repair_started"
+  | "account_repair_completed"
+  | "account_repair_failed"
+  | "login_failed"
+  | "confirmation_pending";
 
 export type AuthLogFields = {
   readonly event: AuthLogEvent;
@@ -23,6 +30,7 @@ export type AuthLogFields = {
   readonly orgId?: string;
   readonly elapsedMs?: number;
   readonly correlationId?: string;
+  readonly alreadyProvisioned?: boolean;
 };
 
 const FORBIDDEN_KEYS = new Set([
@@ -52,6 +60,9 @@ function sanitizeFields(fields: AuthLogFields): Record<string, unknown> {
   if (fields.orgId) payload.orgId = fields.orgId;
   if (fields.elapsedMs != null) payload.elapsedMs = fields.elapsedMs;
   if (fields.correlationId) payload.correlationId = fields.correlationId;
+  if (fields.alreadyProvisioned != null) {
+    payload.alreadyProvisioned = fields.alreadyProvisioned;
+  }
 
   for (const key of Object.keys(payload)) {
     if (FORBIDDEN_KEYS.has(key)) {
@@ -69,13 +80,18 @@ function sanitizeFields(fields: AuthLogFields): Record<string, unknown> {
 export function logAuthEvent(fields: AuthLogFields): void {
   try {
     const payload = sanitizeFields(fields);
-    if (fields.event === "signup_failed" || fields.event === "login_failed") {
+    if (
+      fields.event === "signup_failed" ||
+      fields.event === "login_failed" ||
+      fields.event === "provisioning_failed" ||
+      fields.event === "account_repair_failed"
+    ) {
       console.error("[auth]", payload);
       return;
     }
     console.info("[auth]", payload);
   } catch {
-    // Observability must not break signup/login.
+    // Observability must not break signup/login/repair.
   }
 }
 

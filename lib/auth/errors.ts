@@ -1,5 +1,5 @@
 /**
- * Auth-specific error taxonomy (Stage 3.1C.1A).
+ * Auth-specific error taxonomy (Stage 3.1C.1A / 3.1C.1B).
  *
  * Categories are INTERNAL. User-visible strings must come from
  * {@link AUTH_USER_MESSAGES} / {@link presentAuthError} only.
@@ -15,6 +15,10 @@ export type AuthErrorCategory =
   | "SIGNUP_FAILED"
   | "ORG_PROVISION_FAILED"
   | "PROFILE_PROVISION_FAILED"
+  | "PROVISIONING_FAILED"
+  | "ACCOUNT_REPAIR_FAILED"
+  | "ACCOUNT_ALREADY_PROVISIONED"
+  | "CONFIRMATION_PENDING"
   | "UNKNOWN";
 
 /**
@@ -22,14 +26,16 @@ export type AuthErrorCategory =
  *
  * Login policy (3.1C.1A): EMAIL_NOT_CONFIRMED is classified internally for
  * logging, but user-facing login collapses it to INVALID_CREDENTIALS so we
- * do not leak account existence / confirmation state. See completion doc.
+ * do not leak account existence / confirmation state.
+ *
+ * CONFIRMATION_PENDING (3.1C.1B): signup created an auth user but no session
+ * exists yet, so transactional provisioning did not run. Honest usability copy.
  */
 export const AUTH_USER_MESSAGES: Record<AuthErrorCategory, string> = {
   CONFIGURATION:
     "We couldn’t create your account right now. Please try again shortly.",
   INVALID_CREDENTIALS: "Email or password is incorrect.",
-  EMAIL_NOT_CONFIRMED:
-    "Email or password is incorrect.",
+  EMAIL_NOT_CONFIRMED: "Email or password is incorrect.",
   RATE_LIMITED: "Too many attempts. Please wait a moment and try again.",
   EMAIL_ALREADY_REGISTERED:
     "An account with this email already exists. Try signing in instead.",
@@ -38,6 +44,14 @@ export const AUTH_USER_MESSAGES: Record<AuthErrorCategory, string> = {
     "We couldn’t finish setting up your company. Please try again shortly.",
   PROFILE_PROVISION_FAILED:
     "We couldn’t finish setting up your account. Please try again shortly.",
+  PROVISIONING_FAILED:
+    "We couldn’t finish setting up your company. Please try again shortly.",
+  ACCOUNT_REPAIR_FAILED:
+    "We couldn’t finish setting up your company. Please try again shortly.",
+  ACCOUNT_ALREADY_PROVISIONED:
+    "Your company account is already set up. Continue to the dashboard.",
+  CONFIRMATION_PENDING:
+    "Account created. Please check your email to confirm, then sign in to finish company setup.",
   UNKNOWN: "Something went wrong. Please try again.",
 };
 
@@ -118,8 +132,36 @@ export function classifyAuthProviderError(
 }
 
 /**
+ * Map RPC / PostgREST error text to internal categories without exposing it.
+ */
+export function classifyProvisioningError(
+  message: string | null | undefined,
+  context: "signup" | "repair" = "signup"
+): AuthErrorCategory {
+  if (!message?.trim()) {
+    return context === "repair" ? "ACCOUNT_REPAIR_FAILED" : "PROVISIONING_FAILED";
+  }
+
+  const m = lower(message);
+
+  if (m.includes("not_authenticated") || m.includes("jwt")) {
+    return "INVALID_CREDENTIALS";
+  }
+  if (m.includes("invalid_organisation_name")) {
+    return context === "repair" ? "ACCOUNT_REPAIR_FAILED" : "ORG_PROVISION_FAILED";
+  }
+  if (m.includes("invalid_full_name")) {
+    return context === "repair" ? "ACCOUNT_REPAIR_FAILED" : "PROFILE_PROVISION_FAILED";
+  }
+  if (m.includes("profile_inconsistent")) {
+    return context === "repair" ? "ACCOUNT_REPAIR_FAILED" : "PROVISIONING_FAILED";
+  }
+
+  return context === "repair" ? "ACCOUNT_REPAIR_FAILED" : "PROVISIONING_FAILED";
+}
+
+/**
  * Detect unsafe diagnostic strings that must never reach the client.
- * Used by verification and as a defence-in-depth check.
  */
 export function containsUnsafeAuthDiagnostic(text: string): boolean {
   const m = lower(text);
@@ -143,6 +185,10 @@ export function containsUnsafeAuthDiagnostic(text: string): boolean {
     m.includes("postgrest") ||
     m.includes("stack trace") ||
     m.includes("at object.") ||
-    m.includes("ensure supabase")
+    m.includes("ensure supabase") ||
+    m.includes("provision_organisation") ||
+    m.includes("security definer") ||
+    m.includes("sqlstate") ||
+    m.includes("auth.uid")
   );
 }
