@@ -9,6 +9,16 @@ export const DECK_STANDARD_PINE_V1: CalibrationScenario = {
   summary: "New 5×3 m timber deck, ~0.5 m up, pine decking, no balustrade or stairs.",
   jobBrief:
     "Build a new 5 m × 3 m timber deck approximately 0.5 m above ground. New timber substructure, standard access, H3.2 treated pine decking. No balustrade. No stairs. No existing deck demolition.",
+  referenceHighlights: [
+    "5m × 3m",
+    "~0.5m high",
+    "new substructure",
+    "H3.2 pine",
+    "standard access",
+    "no balustrade",
+    "no stairs",
+    "no demolition",
+  ],
   facts: [
     { key: "deck.length_m", value: 5 },
     { key: "deck.width_m", value: 3 },

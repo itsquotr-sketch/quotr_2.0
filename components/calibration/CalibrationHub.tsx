@@ -12,7 +12,6 @@ import {
 } from "@/components/ui/card";
 import { orderCalibrationScenarios } from "@/lib/calibration/catalogue";
 import type { CalibrationScenarioStatus } from "@/lib/calibration/persistence-types";
-import { CALIBRATION_EVIDENCE_LABEL } from "@/lib/calibration/types";
 import { cn } from "@/lib/utils";
 
 type CalibrationHubProps = {
@@ -71,10 +70,9 @@ export function CalibrationHub({
       <CardHeader>
         <CardTitle>Calibrate Quotr</CardTitle>
         <CardDescription>
-          Give Quotr a feel for how your business prices real jobs. Choose an
-          example below and tell us how you would price it. This creates{" "}
-          {CALIBRATION_EVIDENCE_LABEL.toLowerCase()} — it does not automatically
-          change your company rates.
+          Calibration helps Quotr understand how your business prices this type
+          of work. It won’t automatically change your company rates. Choose an
+          example below — about 3 minutes.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

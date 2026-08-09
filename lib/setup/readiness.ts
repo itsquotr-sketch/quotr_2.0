@@ -13,6 +13,7 @@ import {
   normalizeCountryCode,
   normalizeCurrencyCode,
 } from "@/lib/setup/locale-catalogue";
+import { getSetupRecommendationHref } from "@/lib/setup/recommendation-destinations";
 
 export type SetupSuggestion = {
   id: string;
@@ -136,7 +137,7 @@ export function computeCompanySetupReadiness(
       title: "Add your labour rate",
       reason:
         "Quotr will use it when estimating your own labour. Until then, benchmark or project-specific rates may apply.",
-      href: "/app/rates",
+      href: getSetupRecommendationHref("labour_rate"),
       severity: "recommended",
       dimension: "estimate",
     };
@@ -150,7 +151,7 @@ export function computeCompanySetupReadiness(
       title: "Choose common work types",
       reason:
         "Personalise rates and recommendations for the jobs you usually price. Quotr can still estimate other work.",
-      href: "/app/setup?mode=improve",
+      href: getSetupRecommendationHref("work_types"),
       severity: "optional",
       dimension: "estimate",
     });
@@ -159,7 +160,7 @@ export function computeCompanySetupReadiness(
       id: "work_types",
       title: "Change work types",
       reason: "Update which work types Quotr prioritises for your business.",
-      href: "/app/setup?mode=improve",
+      href: getSetupRecommendationHref("work_types"),
       severity: "optional",
       dimension: "estimate",
     });
@@ -170,7 +171,7 @@ export function computeCompanySetupReadiness(
       id: "region",
       title: "Add your region",
       reason: "Helps Quotr tailor local commercial context for estimates.",
-      href: "/app/settings/company",
+      href: getSetupRecommendationHref("region"),
       severity: "optional",
       dimension: "estimate",
     });
@@ -184,7 +185,7 @@ export function computeCompanySetupReadiness(
     reason: usingDefaultMargin
       ? `Quotr is using the standard ${DEFAULT_MARGIN_PERCENT}% gross margin. Adjust it if your business runs differently.`
       : "Keep margin and contingency aligned with how you price work.",
-    href: "/app/rates",
+    href: getSetupRecommendationHref("default_margin"),
     severity: "recommended",
     dimension: "pricing",
   };
@@ -208,7 +209,7 @@ export function computeCompanySetupReadiness(
       id: "company_name",
       title: "Add a company name for quotes",
       reason: "Clients need to see who is issuing the quote.",
-      href: "/app/settings/company",
+      href: getSetupRecommendationHref("company_name"),
       severity: "required",
       dimension: "quote",
     });
@@ -220,7 +221,7 @@ export function computeCompanySetupReadiness(
       title: "Complete quote details",
       reason:
         "Add a company email or phone before sending a quote to a client.",
-      href: "/app/settings/company",
+      href: getSetupRecommendationHref("company_contact"),
       severity: "required",
       dimension: "quote",
     };
@@ -233,7 +234,7 @@ export function computeCompanySetupReadiness(
       id: "company_address",
       title: "Complete company address",
       reason: "Professional quotes usually include your business address.",
-      href: "/app/settings/company",
+      href: getSetupRecommendationHref("company_address"),
       severity: "recommended",
       dimension: "quote",
     });
@@ -246,7 +247,7 @@ export function computeCompanySetupReadiness(
       title: "Calibrate your first work type",
       reason:
         "~3 min. Tell Quotr how you would price an example job — evidence only, not automatic rate changes.",
-      href: "/app/setup?mode=improve&section=calibrate",
+      href: getSetupRecommendationHref("calibrate"),
       severity: "optional",
       dimension: "pricing",
     });
@@ -260,7 +261,7 @@ export function computeCompanySetupReadiness(
       id: "calibrate_another",
       title: "Calibrate another work type",
       reason: "Optional — only if useful for the work you price most.",
-      href: "/app/setup?mode=improve&section=calibrate",
+      href: getSetupRecommendationHref("calibrate_another"),
       severity: "optional",
       dimension: "pricing",
     });

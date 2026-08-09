@@ -6,6 +6,7 @@ import {
   logout,
   type AuthActionState,
 } from "@/app/(auth)/actions";
+import { AuthContinue } from "@/components/auth/AuthContinue";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -34,6 +35,25 @@ export default function SetupRequiredPage() {
     finishAccountSetup,
     initialState
   );
+
+  if (state.continueTo) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-xl">Company linked</CardTitle>
+          <CardDescription>
+            Taking you to company basics to finish getting started.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AuthContinue
+            continueTo={state.continueTo}
+            label="Opening company basics…"
+          />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

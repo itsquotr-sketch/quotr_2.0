@@ -4,6 +4,7 @@ import Link from "next/link";
 import { Suspense, useActionState } from "react";
 import { useSearchParams } from "next/navigation";
 import { login, type AuthActionState } from "@/app/(auth)/actions";
+import { AuthContinue } from "@/components/auth/AuthContinue";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -38,6 +39,20 @@ function LoginForm() {
       : linkError === "reset_invalid"
         ? AUTH_USER_MESSAGES.RESET_LINK_INVALID
         : null);
+
+  if (state.continueTo) {
+    return (
+      <Card>
+        <CardHeader className="pb-4 sm:pb-6">
+          <CardTitle className="text-xl">Signed in</CardTitle>
+          <CardDescription>Continuing to Quotr…</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AuthContinue continueTo={state.continueTo} label="Opening Quotr…" />
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card>

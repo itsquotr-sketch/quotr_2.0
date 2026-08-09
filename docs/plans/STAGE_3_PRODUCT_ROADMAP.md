@@ -31,7 +31,8 @@
 | **3.1C.3-R2D** | Calibration scenario MVP | Explicit calibration evidence; never silent overwrite | **Complete — Local** |
 | **3.1C.3-R2D.1** | Calibration persistence 033 | `calibration_responses` append/supersede | **Complete** |
 | **3.1C.3-R2D.2** | Remote 033 safety gate & apply | Linked quotr_2.0 only; dry-run then push | **Complete** |
-| **3.1C.3-R2E** | Setup Preview E2E / polish | Owner Preview after deploy of R2E polish | **Complete Local — Preview Sign-off Pending** |
+| **3.1C.3-R2E** | Setup Preview E2E / polish | Owner Preview after deploy of R2E polish | **Complete Local** — Preview findings → R2E-R1 |
+| **3.1C.3-R2E-R1** | Preview first-run / calibration UX remediation | Blank Basics fix; deep links; disclosure; calibration sticky | **Complete Local — Owner Retest Pending** |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
 | **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress** — 3.1B.7F-R3 Complete — Local (Final Deck Retest Pending); **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E); 7A–7G Complete — Local; Production Disabled; Analyse Job Preserved |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |

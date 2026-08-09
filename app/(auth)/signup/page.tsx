@@ -7,6 +7,7 @@ import {
   type RecoveryActionState,
 } from "@/lib/auth/recovery-actions";
 import { signup, type AuthActionState } from "@/app/(auth)/actions";
+import { AuthContinue } from "@/components/auth/AuthContinue";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -99,6 +100,25 @@ export default function SignupPage() {
 
   if (state.confirmationPending) {
     return <ConfirmationPending email={state.confirmationEmail} />;
+  }
+
+  if (state.continueTo) {
+    return (
+      <Card>
+        <CardHeader className="pb-4 sm:pb-6">
+          <CardTitle className="text-xl">Account created</CardTitle>
+          <CardDescription>
+            Taking you to company basics to finish getting started.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <AuthContinue
+            continueTo={state.continueTo}
+            label="Opening company basics…"
+          />
+        </CardContent>
+      </Card>
+    );
   }
 
   return (

@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress**; Auth **3.1C.2A/2B Preview-passed**; **3.1C.3 Local**; **R2A–R2D.2 Complete**; **R2E Complete Local — Owner Preview Sign-off Pending**; Stage 3.1C.3 **Ready to Close after Sign-off**; Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**; Company DNA **Not Started**. Stage 3.1C **not** closed until R2E Preview Sign-off.   
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage 3.1B **In Progress**; Auth **3.1C.2A/2B Preview-passed**; **3.1C.3 Local**; **R2A–R2D.2 Complete**; **R2E Complete Local**; **R2E-R1 Complete Local — Owner Retest Pending**; Stage 3.1C **Open** until R2E-R1 retest; Production Scope Discovery **Disabled**; Stage 3.2 **Not Started**; Company DNA **Not Started**.
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -115,8 +115,9 @@
 - Stage 3.1C.3-R2D: **Complete — Local**.
 - Stage 3.1C.3-R2D.1: **Complete**.
 - Stage 3.1C.3-R2D.2: **Complete** (Migration 033 Applied and Verified Remote).
-- Stage 3.1C.3-R2E: **Complete Local — Owner Preview Sign-off Pending**.
-- Stage 3.1C.3: **Ready to Close after Owner Preview Sign-off**.
+- Stage 3.1C.3-R2E: **Complete Local** (Owner Preview defects → R2E-R1).
+- Stage 3.1C.3-R2E-R1: **Complete Local — Owner Retest Pending**.
+- Stage 3.1C.3: **Ready to Close after R2E-R1 retest**.
 - Production Scope Discovery: **Disabled**. Stage 3.2: **Not Started**. Company DNA: **Not Started**.
-- Stage 3.1C overall: **not complete** until R2E Preview Sign-off.
+- Stage 3.1C overall: **open** until R2E-R1 Preview Retest.
 - Stage 3.1B: **not** auto-closed by 3.1C.3.

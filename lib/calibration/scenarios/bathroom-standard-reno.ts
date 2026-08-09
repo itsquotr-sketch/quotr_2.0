@@ -10,6 +10,15 @@ export const BATHROOM_STANDARD_RENO_V1: CalibrationScenario = {
     "~8 m² bathroom soft strip, waterproofing, tiled wet areas, client-supplied vanity/toilet.",
   jobBrief:
     "Renovate an existing approximately 8 m² bathroom. Soft strip existing finishes and fittings. New tiled floor and wall wet areas. New waterproofing. Client supplies vanity and toilet. Plumbing and electrical modifications required. Standard residential access.",
+  referenceHighlights: [
+    "~8 m²",
+    "soft strip",
+    "waterproofing",
+    "tiled wet areas",
+    "client vanity/toilet",
+    "plumbing + electrical mods",
+    "standard access",
+  ],
   facts: [
     { key: "bathroom.area_m2", value: 8 },
     { key: "bathroom.renovation_type", value: "full renovation" },

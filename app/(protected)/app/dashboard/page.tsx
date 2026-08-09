@@ -95,7 +95,10 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             </div>
           ) : null}
 
-          <ImproveSetupCard readiness={readiness} />
+          <ImproveSetupCard
+            readiness={readiness}
+            hasProjects={!isEmpty}
+          />
           <DashboardSummaryCards summary={summary} activeFilter={filter} />
 
           <Suspense fallback={null}>

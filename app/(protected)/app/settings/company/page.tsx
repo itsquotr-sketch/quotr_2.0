@@ -5,9 +5,20 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { CompanySettingsContent } from "@/components/settings/CompanySettingsContent";
 import { measureServerLoad } from "@/lib/perf/timing";
 import { getCompanySettings } from "@/lib/settings/company-actions";
+import { parseCompanySettingsSection } from "@/lib/setup/recommendation-destinations";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function CompanySettingsPage() {
+type CompanySettingsPageProps = {
+  searchParams: Promise<{ section?: string }>;
+};
+
+export default async function CompanySettingsPage({
+  searchParams,
+}: CompanySettingsPageProps) {
+  const params = await searchParams;
+  const initialSection =
+    parseCompanySettingsSection(params.section) ?? "general";
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -40,6 +51,7 @@ export default async function CompanySettingsPage() {
           initialSettings={settings}
           userEmail={user?.email}
           userFullName={profile?.full_name}
+          initialSection={initialSection}
         />
       </SettingsContainer>
     </div>

@@ -43,6 +43,8 @@ export type CalibrationScenario = {
   title: string;
   summary: string;
   jobBrief: string;
+  /** Compact bullets for sticky / mobile reference while answering. */
+  referenceHighlights: string[];
   facts: CalibrationScenarioFact[];
   constraints: CalibrationScenarioConstraint[];
   scopeItems: string[];

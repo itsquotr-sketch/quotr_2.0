@@ -159,9 +159,11 @@ export function compareCalibrationAnswers(input: {
           ? input.answers.labour_cost
           : null,
       quotrCost: byCategory.labour?.cost ?? 0,
+      // Monetary labour compare only when the user supplied labour $.
+      // Hours-only is shown separately — do not invent labour dollars.
       comparable:
-        input.answers.labour_cost != null ||
-        input.answers.labour_hours != null,
+        input.answers.labour_cost != null &&
+        Number.isFinite(input.answers.labour_cost),
     },
     {
       category: "materials",
@@ -188,15 +190,15 @@ export function compareCalibrationAnswers(input: {
   ];
 
   let narrative =
-    "This is observational evidence only — Quotr will not change your company rates from this calibration.";
+    "Quotr will use saved calibration as evidence about how your business prices work. It does not automatically alter this estimate or your saved rates.";
   if (costDeltaPercent != null) {
     const abs = Math.abs(costDeltaPercent).toFixed(0);
     if (Math.abs(costDeltaPercent) < 5) {
-      narrative = `Your expected cost is close to Quotr’s current estimate for this example (±${abs}%). ${narrative}`;
+      narrative = `Your expected business cost is close to Quotr’s current calculation for this example (±${abs}%). ${narrative}`;
     } else if (costDeltaPercent > 0) {
-      narrative = `Your business prices this higher than Quotr’s current estimate (~${abs}% on cost). ${narrative}`;
+      narrative = `Your expected business cost is about ${abs}% above Quotr’s current calculation for this example. ${narrative}`;
     } else {
-      narrative = `Your business prices this lower than Quotr’s current estimate (~${abs}% on cost). ${narrative}`;
+      narrative = `Your expected business cost is about ${abs}% below Quotr’s current calculation for this example. ${narrative}`;
     }
   }
 

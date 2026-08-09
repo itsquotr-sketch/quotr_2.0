@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -19,6 +19,10 @@ import {
 import { getRatesPageState } from "@/lib/rates/actions";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 import type { RatesPageState } from "@/lib/rates/types";
+import {
+  parseRatesSection,
+  type RatesSectionId,
+} from "@/lib/setup/recommendation-destinations";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { cn } from "@/lib/utils";
 import { BenchmarkFallbackSection } from "./BenchmarkFallbackSection";
@@ -29,6 +33,7 @@ import { SpecificMaterialRatesSection } from "./SpecificMaterialRatesSection";
 
 type RatesPageContentProps = {
   initialState: RatesPageState;
+  initialSection?: RatesSectionId;
 };
 
 const RATES_SECTIONS = [
@@ -40,8 +45,6 @@ const RATES_SECTIONS = [
   { id: "benchmarks", label: "Fallbacks" },
 ] as const;
 
-type RatesSectionId = (typeof RATES_SECTIONS)[number]["id"];
-
 function sortWorkTypesByPreference(
   types: string[],
   preferred: string[]
@@ -52,10 +55,27 @@ function sortWorkTypesByPreference(
   return [...preferredOrdered, ...rest];
 }
 
-export function RatesPageContent({ initialState }: RatesPageContentProps) {
+function replaceRatesSectionInUrl(section: RatesSectionId) {
+  if (typeof window === "undefined") return;
+  const url = new URL(window.location.href);
+  url.searchParams.set("section", section);
+  window.history.replaceState(null, "", `${url.pathname}${url.search}`);
+}
+
+export function RatesPageContent({
+  initialState,
+  initialSection = "core",
+}: RatesPageContentProps) {
   const [state, setState] = useState(initialState);
-  const [activeSection, setActiveSection] = useState<RatesSectionId>("core");
+  const [activeSection, setActiveSection] = useState<RatesSectionId>(
+    parseRatesSection(initialSection) ?? "core"
+  );
   const [showAllWorkTypes, setShowAllWorkTypes] = useState(false);
+  const sectionHeadingRef = useRef<HTMLHeadingElement>(null);
+
+  useEffect(() => {
+    sectionHeadingRef.current?.focus();
+  }, [activeSection]);
 
   const preferred = useMemo(
     () => state.preferredWorkAreaTypes ?? [],
@@ -116,8 +136,31 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
     setState(refreshed);
   }
 
+  function selectSection(id: string) {
+    const next = parseRatesSection(id) ?? "core";
+    setActiveSection(next);
+    replaceRatesSectionInUrl(next);
+  }
+
+  const activeLabel =
+    RATES_SECTIONS.find((section) => section.id === activeSection)?.label ??
+    "Rates";
+
   return (
     <div className="space-y-6">
+      <SettingsSectionNav
+        items={[...RATES_SECTIONS]}
+        activeId={activeSection}
+        onChange={selectSection}
+      />
+
+      <h2
+        ref={sectionHeadingRef}
+        tabIndex={-1}
+        className="sr-only focus:not-sr-only focus:rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--brand-orange)]"
+      >
+        {activeLabel}
+      </h2>
       <CalibrationSummaryCard state={state} />
 
       <Card className="border-border/60 bg-muted/15 shadow-none">
@@ -156,12 +199,6 @@ export function RatesPageContent({ initialState }: RatesPageContentProps) {
           </Link>
         </CardContent>
       </Card>
-
-      <SettingsSectionNav
-        items={[...RATES_SECTIONS]}
-        activeId={activeSection}
-        onChange={(id) => setActiveSection(id as RatesSectionId)}
-      />
 
       <div className="min-w-0">
         {activeSection === "core" ? (

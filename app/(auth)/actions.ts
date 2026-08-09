@@ -13,6 +13,7 @@ import {
   logAuthEvent,
 } from "@/lib/auth/logging";
 import { passwordSchema } from "@/lib/auth/password";
+import { POST_SIGNUP_DESTINATION } from "@/lib/auth/post-auth-navigation";
 import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
 import { readSafeNext } from "@/lib/auth/safe-redirect";
 import {
@@ -33,6 +34,11 @@ export type AuthActionState = {
    * Email the confirmation was sent to (user-provided; for confirmation UX only).
    */
   confirmationEmail?: string;
+  /**
+   * After session cookie mutation, client must hard-navigate here
+   * (document assign). Soft Server Action redirect can blank protected RSC.
+   */
+  continueTo?: string;
 };
 
 const signupSchema = z.object({
@@ -210,7 +216,9 @@ export async function signup(
     alreadyProvisioned: provisioned.alreadyProvisioned,
   });
 
-  redirect("/app/dashboard");
+  // Hard document navigation on the client — soft redirect after Set-Cookie
+  // can leave /app/setup?mode=basics blank until manual refresh (R2E-R1).
+  return { continueTo: POST_SIGNUP_DESTINATION };
 }
 
 export async function login(
@@ -249,8 +257,8 @@ export async function login(
     return { error: presentLoginError(category) };
   }
 
-  // Layout routes authenticated users without a valid org to setup-required.
-  redirect(next);
+  // Hard document navigation — cookies must be visible to the next RSC load.
+  return { continueTo: next };
 }
 
 /**
@@ -303,7 +311,15 @@ export async function finishAccountSetup(
     return { error: presentAuthError(provisioned.category) };
   }
 
-  redirect("/app/dashboard");
+  logAuthEvent({
+    event: "account_repair_completed",
+    correlationId,
+    userId: user.id,
+    orgId: provisioned.orgId,
+    elapsedMs: Date.now() - startedAt,
+  });
+
+  return { continueTo: POST_SIGNUP_DESTINATION };
 }
 
 export async function logout() {

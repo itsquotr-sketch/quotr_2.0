@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useId, useSyncExternalStore } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -15,6 +15,8 @@ import { cn } from "@/lib/utils";
 
 type ImproveSetupCardProps = {
   readiness: CompanySetupReadiness;
+  /** When true, default to collapsed unless the user expanded previously. */
+  hasProjects?: boolean;
 };
 
 const SECONDARY_IDS = new Set([
@@ -26,10 +28,61 @@ const SECONDARY_IDS = new Set([
   "default_margin",
 ]);
 
-export function ImproveSetupCard({ readiness }: ImproveSetupCardProps) {
-  const [dismissed, setDismissed] = useState(false);
+const STORAGE_KEY = "quotr.setupGuidance.collapsed";
 
-  if (dismissed || readiness.needsFirstRunBasics) {
+const listeners = new Set<() => void>();
+
+function emitCollapsedChange() {
+  for (const listener of listeners) listener();
+}
+
+function subscribeCollapsed(listener: () => void) {
+  listeners.add(listener);
+  if (typeof window !== "undefined") {
+    window.addEventListener("storage", listener);
+  }
+  return () => {
+    listeners.delete(listener);
+    if (typeof window !== "undefined") {
+      window.removeEventListener("storage", listener);
+    }
+  };
+}
+
+function readStoredCollapsed(defaultCollapsed: boolean): boolean {
+  if (typeof window === "undefined") return defaultCollapsed;
+  try {
+    const raw = window.localStorage.getItem(STORAGE_KEY);
+    if (raw === "1") return true;
+    if (raw === "0") return false;
+  } catch {
+    // Presentation-only preference — ignore storage failures.
+  }
+  return defaultCollapsed;
+}
+
+function writeStoredCollapsed(collapsed: boolean) {
+  try {
+    window.localStorage.setItem(STORAGE_KEY, collapsed ? "1" : "0");
+  } catch {
+    // ignore
+  }
+  emitCollapsedChange();
+}
+
+export function ImproveSetupCard({
+  readiness,
+  hasProjects = false,
+}: ImproveSetupCardProps) {
+  const panelId = useId();
+  const defaultCollapsed = hasProjects;
+  const collapsed = useSyncExternalStore(
+    subscribeCollapsed,
+    () => readStoredCollapsed(defaultCollapsed),
+    () => defaultCollapsed
+  );
+
+  if (readiness.needsFirstRunBasics) {
     return null;
   }
 
@@ -41,6 +94,43 @@ export function ImproveSetupCard({ readiness }: ImproveSetupCardProps) {
 
   if (items.length === 0) {
     return null;
+  }
+
+  const countLabel =
+    items.length === 1
+      ? "1 recommendation to improve estimate accuracy"
+      : `${items.length} recommendations to improve estimate accuracy`;
+
+  function toggleCollapsed() {
+    writeStoredCollapsed(!collapsed);
+  }
+
+  if (collapsed) {
+    return (
+      <Card className="border-border/70 bg-muted/15 shadow-none">
+        <CardContent className="flex items-center justify-between gap-3 py-3">
+          <p className="min-w-0 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">
+              Improve Quotr for your business
+            </span>
+            <span className="mt-0.5 block sm:mt-0 sm:ml-2 sm:inline">
+              {countLabel}
+            </span>
+          </p>
+          <Button
+            type="button"
+            variant="ghost"
+            size="sm"
+            className="shrink-0 text-muted-foreground"
+            aria-expanded={false}
+            aria-controls={panelId}
+            onClick={toggleCollapsed}
+          >
+            Expand
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
@@ -61,13 +151,15 @@ export function ImproveSetupCard({ readiness }: ImproveSetupCardProps) {
             variant="ghost"
             size="sm"
             className="shrink-0 text-muted-foreground"
-            onClick={() => setDismissed(true)}
+            aria-expanded={true}
+            aria-controls={panelId}
+            onClick={toggleCollapsed}
           >
-            Hide
+            Collapse
           </Button>
         </div>
       </CardHeader>
-      <CardContent className="space-y-3">
+      <CardContent id={panelId} className="space-y-3">
         <ul className="space-y-2">
           <li className="flex items-start gap-2 text-sm">
             <span className="mt-0.5 text-emerald-600" aria-hidden>
@@ -98,7 +190,7 @@ export function ImproveSetupCard({ readiness }: ImproveSetupCardProps) {
               <span className="min-w-0">
                 <Link
                   href={item.href}
-                  className="font-medium text-foreground underline-offset-4 hover:underline"
+                  className="font-medium text-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--brand-orange)] focus-visible:ring-offset-2"
                 >
                   {item.title}
                 </Link>

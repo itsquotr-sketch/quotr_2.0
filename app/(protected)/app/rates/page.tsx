@@ -4,9 +4,17 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { RatesPageContent } from "@/components/rates/RatesPageContent";
 import { measureServerLoad } from "@/lib/perf/timing";
 import { getRatesPageState } from "@/lib/rates/actions";
+import { parseRatesSection } from "@/lib/setup/recommendation-destinations";
 import { createClient } from "@/lib/supabase/server";
 
-export default async function RatesPage() {
+type RatesPageProps = {
+  searchParams: Promise<{ section?: string }>;
+};
+
+export default async function RatesPage({ searchParams }: RatesPageProps) {
+  const params = await searchParams;
+  const initialSection = parseRatesSection(params.section) ?? "core";
+
   const supabase = await createClient();
   const {
     data: { user },
@@ -30,7 +38,10 @@ export default async function RatesPage() {
         }
       />
       <PageContainer>
-        <RatesPageContent initialState={state} />
+        <RatesPageContent
+          initialState={state}
+          initialSection={initialSection}
+        />
       </PageContainer>
     </div>
   );
