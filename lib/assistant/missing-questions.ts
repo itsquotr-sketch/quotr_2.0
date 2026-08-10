@@ -9,6 +9,12 @@ import {
   type BuiltQuestion,
 } from "@/lib/scopes/questions";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
+import {
+  logQuestionInputTypeFailure,
+  toPersistedQuestionInputType,
+  toQuestionBlockUserError,
+  validateQuestionInputTypes,
+} from "@/lib/scopes/question-input-types";
 
 type SupabaseClient = Awaited<
   ReturnType<typeof import("@/lib/supabase/server").createClient>
@@ -39,6 +45,17 @@ async function insertQuestionsIntoBlock(
   questions: BuiltQuestion[],
   startSortOrder: number
 ) {
+  const inputTypeCheck = validateQuestionInputTypes(questions);
+  if (!inputTypeCheck.ok) {
+    logQuestionInputTypeFailure({
+      category: "unsupported_input_type",
+      questionKey: inputTypeCheck.key,
+      inputType: inputTypeCheck.inputType,
+      detail: inputTypeCheck.message,
+    });
+    return toQuestionBlockUserError(inputTypeCheck.message);
+  }
+
   const questionRows = questions.map((question, index) => ({
     org_id: orgId,
     project_id: projectId,
@@ -47,7 +64,7 @@ async function insertQuestionsIntoBlock(
     key: question.key,
     label: question.label,
     question_text: question.questionText,
-    input_type: question.inputType,
+    input_type: toPersistedQuestionInputType(question.inputType),
     options: question.options ?? null,
     required: question.required,
     unit: question.unit ?? null,
@@ -65,7 +82,14 @@ async function insertQuestionsIntoBlock(
   }));
 
   const { error } = await supabase.from("questions").insert(questionRows);
-  return error?.message;
+  if (error) {
+    logQuestionInputTypeFailure({
+      category: "question_insert_failed",
+      detail: error.message,
+    });
+    return toQuestionBlockUserError(error.message);
+  }
+  return undefined;
 }
 
 export async function ensureMissingDetailsQuestionBlock(

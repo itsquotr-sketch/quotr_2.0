@@ -28,6 +28,7 @@ These schema changes would strengthen the refined domain model. They are documen
 | **Why required** | Runtime/TS vs DB check divergence can cause silent insert failures |
 | **Why not in 3.1D** | Needs decision which side is canonical; opportunistic migration |
 | **Recommended stage** | Next authorised migration window |
+| **3.1B.7F-R6-R2 note** | `multi_select` is an **app presentation** type persisted as DB `text` + options; UI rehydration uses template identity by question key (not options-alone). Migration 034 **not** required for Fitout Preview. `estimate_line_items.category = 'mixed'` remains deferred. |
 
 ---
 

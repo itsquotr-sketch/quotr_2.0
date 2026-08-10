@@ -1,9 +1,7 @@
-export type ScopeQuestionInputType =
-  | "number"
-  | "select"
-  | "boolean"
-  | "text"
-  | "multi_select";
+import type { AppQuestionInputType } from "@/lib/scopes/question-input-types";
+
+/** App/presentation input types. DB persists a subset — see question-input-types. */
+export type ScopeQuestionInputType = AppQuestionInputType;
 
 export type ScopeQuestionCategory =
   | "measurement"

@@ -41,6 +41,15 @@ import {
 } from "@/lib/assistant/scope-persistence";
 import { buildQuestionBlockFromProjectState } from "@/lib/scopes/questions";
 import { normalizeAnswerForStorage, factHasValue } from "@/lib/scopes/fact-values";
+import {
+  logQuestionInputTypeFailure,
+  resolveUiQuestionInputType,
+  toPersistedQuestionInputType,
+  toQuestionBlockUserError,
+  validateQuestionInputTypes,
+  type AppQuestionInputType,
+} from "@/lib/scopes/question-input-types";
+import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
@@ -599,6 +608,17 @@ async function createDynamicQuestionBlockIfNeeded(
     };
   }
 
+  const inputTypeCheck = validateQuestionInputTypes(built.questions);
+  if (!inputTypeCheck.ok) {
+    logQuestionInputTypeFailure({
+      category: "unsupported_input_type",
+      questionKey: inputTypeCheck.key,
+      inputType: inputTypeCheck.inputType,
+      detail: inputTypeCheck.message,
+    });
+    return { error: toQuestionBlockUserError(inputTypeCheck.message) };
+  }
+
   const { data: block, error: blockError } = await supabase
     .from("question_blocks")
     .insert({
@@ -614,7 +634,11 @@ async function createDynamicQuestionBlockIfNeeded(
     .single();
 
   if (blockError || !block) {
-    return { error: blockError?.message ?? "Failed to create question block." };
+    return {
+      error: toQuestionBlockUserError(
+        blockError?.message ?? "Failed to create question block."
+      ),
+    };
   }
 
   const questionRows = built.questions.map((question) => ({
@@ -625,7 +649,7 @@ async function createDynamicQuestionBlockIfNeeded(
     key: question.key,
     label: question.label,
     question_text: question.questionText,
-    input_type: question.inputType,
+    input_type: toPersistedQuestionInputType(question.inputType),
     options: question.options ?? null,
     required: question.required,
     unit: question.unit ?? null,
@@ -651,6 +675,10 @@ async function createDynamicQuestionBlockIfNeeded(
       .from("questions")
       .insert(chunk);
     if (questionsError) {
+      logQuestionInputTypeFailure({
+        category: "question_insert_failed",
+        detail: questionsError.message,
+      });
       await supabase
         .from("questions")
         .delete()
@@ -661,7 +689,7 @@ async function createDynamicQuestionBlockIfNeeded(
         .delete()
         .eq("id", block.id)
         .eq("project_id", projectId);
-      return { error: questionsError.message };
+      return { error: toQuestionBlockUserError(questionsError.message) };
     }
   }
 
@@ -909,7 +937,7 @@ export async function saveQuestionBlockAnswers(
 
   const { data: blockQuestions } = await supabase
     .from("questions")
-    .select("id, key, label, unit, work_area_id, input_type")
+    .select("id, key, label, unit, work_area_id, input_type, options")
     .eq("question_block_id", questionBlockId)
     .eq("project_id", projectId);
 
@@ -927,6 +955,14 @@ export async function saveQuestionBlockAnswers(
       continue;
     }
 
+    const template = getQuestionTemplateByKey(question.key);
+    const inputType = resolveUiQuestionInputType({
+      persistedInputType: question.input_type,
+      options: question.options,
+      key: question.key,
+      templateInputType: template?.inputType,
+    }) as AppQuestionInputType;
+
     // Stage 3.1D: Fact SoT first, then question capture mirror.
     commits.push(
       commitUserAnswerToScope(supabase, {
@@ -938,12 +974,7 @@ export async function saveQuestionBlockAnswers(
         key: question.key,
         label: question.label,
         unit: question.unit,
-        inputType: question.input_type as
-          | "number"
-          | "select"
-          | "boolean"
-          | "text"
-          | "multi_select",
+        inputType,
         value: answer.value,
       })
     );

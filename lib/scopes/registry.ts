@@ -61,3 +61,18 @@ export function getScopeDefinition(type: string): ScopeDefinition | undefined {
 export function getScopeQuestions(type: string): ScopeQuestionTemplate[] {
   return getScopeDefinition(type)?.questions ?? [];
 }
+
+/** Lookup a question template by `key` or `factKey` across all scopes. */
+export function getQuestionTemplateByKey(
+  key: string
+): ScopeQuestionTemplate | undefined {
+  for (const definition of SCOPE_DEFINITIONS) {
+    const match = definition.questions.find(
+      (question) => question.key === key || question.factKey === key
+    );
+    if (match) {
+      return match;
+    }
+  }
+  return undefined;
+}

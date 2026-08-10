@@ -30,6 +30,8 @@ import {
   deriveFactsForProject,
 } from "@/lib/scopes/derived-facts";
 import { normalizeAnswerForUi } from "@/lib/scopes/fact-values";
+import { resolveUiQuestionInputType } from "@/lib/scopes/question-input-types";
+import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { getMissingLabelForKey } from "@/lib/scopes/questions";
 import {
   buildPanelScopeSummariesFromScopeReview,
@@ -138,8 +140,13 @@ function parseJsonStringArray(value: unknown): string[] {
   return value.filter((item): item is string => typeof item === "string");
 }
 
-function parseAnswerValue(value: unknown): string | number | boolean | null {
+function parseAnswerValue(
+  value: unknown
+): string | number | boolean | string[] | null {
   if (value === null || value === undefined) return null;
+  if (Array.isArray(value)) {
+    return value.filter((item): item is string => typeof item === "string");
+  }
   if (
     typeof value === "string" ||
     typeof value === "number" ||
@@ -196,6 +203,13 @@ export function mapQuestion(
 ): Question {
   const options = parseOptions(row.options);
   const rawValue = parseAnswerValue(row.answer_value);
+  const template = getQuestionTemplateByKey(row.key);
+  const inputType = resolveUiQuestionInputType({
+    persistedInputType: row.input_type,
+    options,
+    key: row.key,
+    templateInputType: template?.inputType,
+  }) as Question["inputType"];
 
   return {
     id: row.id,
@@ -204,18 +218,14 @@ export function mapQuestion(
     key: row.key,
     label: row.label,
     questionText: row.question_text,
-    inputType: row.input_type as Question["inputType"],
+    inputType,
     options,
     required: row.required,
     unit: row.unit ?? undefined,
     value:
       rawValue === null
         ? null
-        : normalizeAnswerForUi(
-            rawValue,
-            row.input_type as Question["inputType"],
-            options
-          ),
+        : normalizeAnswerForUi(rawValue, inputType, options),
   };
 }
 
@@ -310,12 +320,14 @@ function enrichScopeReviewWithActiveQuestions(
 }
 
 export function mapConstraintRow(row: DbConstraint): ConstraintRow {
-  const value = parseAnswerValue(row.value);
+  const raw = parseAnswerValue(row.value);
+  const value =
+    raw === null || Array.isArray(raw) ? "" : raw;
   return {
     id: row.id,
     key: row.key,
     label: row.label,
-    value: value ?? "",
+    value,
   };
 }
 

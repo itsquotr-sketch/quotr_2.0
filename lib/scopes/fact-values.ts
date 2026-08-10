@@ -98,16 +98,25 @@ export function normalizeAnswerForUi(
   }
 
   if (inputType === "multi_select") {
+    let selected: string[];
     if (Array.isArray(value)) {
-      return value.filter((item): item is string => typeof item === "string");
-    }
-    if (typeof value === "string" && value.trim()) {
-      return value
+      selected = value.filter((item): item is string => typeof item === "string");
+    } else if (typeof value === "string" && value.trim()) {
+      // Back-compat: historically some UIs may have joined with commas.
+      selected = value
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
+    } else {
+      return [];
     }
-    return [];
+    if (options?.length) {
+      const selectedSet = new Set(selected);
+      const ordered = options.filter((option) => selectedSet.has(option));
+      const extras = selected.filter((item) => !options.includes(item));
+      return [...ordered, ...extras];
+    }
+    return selected;
   }
 
   if (inputType === "select" && typeof value === "string" && options?.length) {
@@ -133,14 +142,19 @@ export function normalizeAnswerForStorage(
   inputType: ScopeQuestionTemplate["inputType"]
 ): string | number | boolean | string[] {
   if (inputType === "multi_select") {
-    if (Array.isArray(value)) return value;
-    if (typeof value === "string" && value.trim()) {
-      return value
+    let selected: string[];
+    if (Array.isArray(value)) {
+      selected = value.filter((item): item is string => typeof item === "string");
+    } else if (typeof value === "string" && value.trim()) {
+      selected = value
         .split(",")
         .map((item) => item.trim())
         .filter(Boolean);
+    } else {
+      return [];
     }
-    return [];
+    // Persist as a JSON array (jsonb). Do not join to a comma string.
+    return selected;
   }
 
   if (inputType === "number") {

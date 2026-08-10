@@ -16,6 +16,8 @@ import {
 } from "@/lib/scopes/scope-value-resolution";
 import { shouldWriteDerivedFact } from "@/lib/scopes/domain-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
+import { resolveUiQuestionInputType } from "@/lib/scopes/question-input-types";
+import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -125,7 +127,7 @@ export async function mirrorFactOntoQuestions(
 ): Promise<ScopePersistResult> {
   let questionQuery = supabase
     .from("questions")
-    .select("id, input_type")
+    .select("id, input_type, options")
     .eq("project_id", params.projectId)
     .eq("key", params.key);
 
@@ -139,8 +141,15 @@ export async function mirrorFactOntoQuestions(
   }
 
   for (const question of questions ?? []) {
-    const inputType = (params.inputType ??
-      question.input_type) as
+    const template = getQuestionTemplateByKey(params.key);
+    const inputType = (params.inputType
+      ? params.inputType
+      : resolveUiQuestionInputType({
+          persistedInputType: question.input_type,
+          options: question.options,
+          key: params.key,
+          templateInputType: template?.inputType,
+        })) as
       | "number"
       | "select"
       | "boolean"
