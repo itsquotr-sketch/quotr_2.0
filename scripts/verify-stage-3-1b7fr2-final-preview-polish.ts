@@ -235,8 +235,18 @@ check(
 // ─── QUICK ESTIMATE ATTENTION ────────────────────────────────
 const attention = buildQuickEstimateAttentionItems({
   missingByWorkArea: [
-    { workAreaName: "Deck", label: "Existing substructure condition" },
-    { workAreaName: "Deck", label: "Fascia finish" },
+    {
+      workAreaName: "Deck",
+      label: "Existing substructure condition",
+      questionId: "q-sub",
+      workAreaId: "wa-deck",
+    },
+    {
+      workAreaName: "Deck",
+      label: "Fascia finish",
+      questionId: "q-fascia",
+      workAreaId: "wa-deck",
+    },
   ],
 });
 check(
@@ -244,7 +254,8 @@ check(
   attention.length === 2 &&
     attention.every((i) => i.workAreaName === "Deck") &&
     attention.every((i) => i.detail === "Review in Scope Details") &&
-    attention.every((i) => i.reviewTarget === "questions")
+    attention.every((i) => i.reviewTarget === "estimateReview") &&
+    attention.every((i) => Boolean(i.questionId))
 );
 check(
   "QE ATTENTION: EstimatePanel prefers missingByWorkArea",

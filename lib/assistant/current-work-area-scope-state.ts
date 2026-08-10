@@ -14,6 +14,7 @@ import {
   type ScopeSignalFactRef,
 } from "@/lib/scope-discovery/scope-impact";
 import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
+import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
 export type ScopeItemOrigin = "system" | "user";
 export type ScopeDecisionState = "INCLUDED" | "NOT_REQUIRED";
@@ -171,12 +172,12 @@ function detailStateForDiscoveryItem(params: {
     title: params.suggestion.proposedTitle,
     latestReasonCode: params.suggestion.latestReasonCode,
     requiredDetailFactKeys: params.suggestion.requiredDetailFactKeys,
-  });
+  }).filter((key) => Boolean(getQuestionTemplateByKey(key)));
 
   if (factKeys.length === 0) {
-    // Unmapped pending reason with no Fact route — do not keep a sticky
-    // NEEDS_DETAIL badge that invents false Quick Estimate clarifications.
-    // Mapped items still clear via Fact satisfaction below.
+    // Unmapped pending, OR mapped Fact with no answerable Scope Details
+    // question (e.g. fitout.ceiling_seismic) — do not invent NEEDS_DETAIL /
+    // "Review in Scope Details" without a destination (7F-R5 / 7F-R6-R4).
     return {
       detailState: "COMPLETE",
       detailReason: null,

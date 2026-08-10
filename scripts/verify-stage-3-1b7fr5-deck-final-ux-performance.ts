@@ -220,15 +220,21 @@ check(
 
 const namedAttention = buildQuickEstimateAttentionItems({
   missingByWorkArea: [
-    { workAreaName: "Deck", label: "Confirm existing substructure condition" },
+    {
+      workAreaName: "Deck",
+      label: "Confirm existing substructure condition",
+      questionId: "q-sub",
+      workAreaId: "wa-deck",
+    },
   ],
   clarificationLabels: [],
 });
 check(
   "named attention item for Scope Details",
   namedAttention.length === 1 &&
-    namedAttention[0]?.reviewTarget === "questions" &&
-    namedAttention[0]?.detail === "Review in Scope Details"
+    namedAttention[0]?.reviewTarget === "estimateReview" &&
+    namedAttention[0]?.detail === "Review in Scope Details" &&
+    Boolean(namedAttention[0]?.questionId)
 );
 
 const manualAttention = buildQuickEstimateAttentionItems({
@@ -288,8 +294,11 @@ check(
 check(
   "EstimatePanel only shows Review for attention items",
   read("components/assistant/EstimatePanel.tsx").includes(
-    "status.attentionItems.length > 0"
-  )
+    "attentionShowsReviewButton"
+  ) &&
+    read("components/assistant/EstimatePanel.tsx").includes(
+      "status.attentionItems.length > 0"
+    )
 );
 check(
   "zero clarificationLabels when presentation says open",

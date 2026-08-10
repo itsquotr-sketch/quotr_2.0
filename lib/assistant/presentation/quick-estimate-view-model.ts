@@ -1,16 +1,28 @@
 /**
- * Stage 3.1B.7G — Quick Estimate presentation view-model (no commercial math).
+ * Stage 3.1B.7G / 7F-R6-R4 — Quick Estimate presentation view-model (no commercial math).
  *
  * Formats display strings from authoritative estimate / readiness inputs.
  * Desktop rail, mobile compact summary, and future sheets share this shape.
+ *
+ * R6-R4: attention copy and CTAs must agree — never promise "Review in Scope Details"
+ * without a question target.
  */
 
 export type QuickEstimateStatusKind = "ready" | "attention" | "pending" | "stale";
+
+/** Attention classification — presentation only (7F-R6-R4). */
+export type QuickEstimateAttentionKind =
+  | "QUESTION"
+  | "SCOPE"
+  | "PRICING_REQUIRED"
+  | "ASSUMPTION"
+  | "NON_ACTIONABLE_INFORMATION";
 
 export type QuickEstimateAttentionItem = {
   readonly id: string;
   readonly label: string;
   readonly detail: string;
+  readonly attentionKind: QuickEstimateAttentionKind;
   readonly workAreaName?: string;
   readonly workAreaId?: string;
   readonly factKey?: string;
@@ -50,6 +62,49 @@ export type QuickEstimateScopeSummaryLines = {
   readonly unanswered: string;
 };
 
+export const SCOPE_DETAILS_REVIEW_COPY = "Review in Scope Details";
+
+export function attentionPromisesScopeDetailsReview(
+  item: Pick<QuickEstimateAttentionItem, "detail">
+): boolean {
+  return item.detail === SCOPE_DETAILS_REVIEW_COPY;
+}
+
+/** Invariant: Scope Details Review copy requires questionId + reviewTarget. */
+export function attentionHasValidScopeDetailsReviewTarget(
+  item: Pick<
+    QuickEstimateAttentionItem,
+    "detail" | "questionId" | "reviewTarget"
+  >
+): boolean {
+  if (!attentionPromisesScopeDetailsReview(item)) return true;
+  return Boolean(item.questionId && item.reviewTarget);
+}
+
+/** Whether EstimatePanel should render the Review CTA. */
+export function attentionShowsReviewButton(
+  item: Pick<
+    QuickEstimateAttentionItem,
+    "reviewTarget" | "questionId" | "workAreaId" | "detail"
+  >
+): boolean {
+  if (!item.reviewTarget) return false;
+  if (attentionPromisesScopeDetailsReview(item)) {
+    return Boolean(item.questionId);
+  }
+  if (item.reviewTarget === "questions") {
+    return Boolean(item.questionId);
+  }
+  if (item.reviewTarget === "estimateReview") {
+    return Boolean(item.questionId || item.workAreaId);
+  }
+  return (
+    item.reviewTarget === "scopeReview" ||
+    item.reviewTarget === "constraints" ||
+    item.reviewTarget === "quality"
+  );
+}
+
 /**
  * Build one authoritative attention-item list from readiness inputs.
  * Count must equal items.length — no phantom category inflation.
@@ -62,10 +117,15 @@ export function buildQuickEstimateAttentionItems(params: {
     readonly workAreaId?: string;
     readonly factKey?: string;
     readonly questionId?: string;
-    /** False when no mapped question/editors exist — show without Review. */
+    /**
+     * True only with a mapped Scope Details question id.
+     * Defaults to Boolean(questionId). Explicit true without questionId is ignored.
+     */
     readonly actionable?: boolean;
     /** Prefer estimateReview when Scope Details editors live there. */
     readonly reviewTarget?: QuickEstimateAttentionItem["reviewTarget"];
+    readonly attentionKind?: QuickEstimateAttentionKind;
+    readonly detailOverride?: string;
   }[];
   readonly clarificationLabels?: readonly string[];
   readonly pendingProposalCount?: number;
@@ -76,23 +136,29 @@ export function buildQuickEstimateAttentionItems(params: {
   for (const [index, entry] of (params.missingByWorkArea ?? []).entries()) {
     const trimmed = entry.label.trim();
     if (!trimmed) continue;
-    // Default actionable unless EstimatePanel (or caller) marks otherwise.
-    // Legacy named rows without ids still route to Scope Details ("questions").
-    const actionable = entry.actionable !== false;
+    const hasQuestionTarget = Boolean(entry.questionId);
+    // R6-R4: never actionable for Scope Details without a concrete question id.
+    const actionable = hasQuestionTarget && entry.actionable !== false;
     const reviewTarget = actionable
       ? (entry.reviewTarget ??
-        (entry.questionId || entry.workAreaId
-          ? "estimateReview"
-          : "questions"))
+        (entry.workAreaId ? "estimateReview" : "questions"))
       : undefined;
+    const attentionKind: QuickEstimateAttentionKind = actionable
+      ? "QUESTION"
+      : (entry.attentionKind ?? "NON_ACTIONABLE_INFORMATION");
     items.push({
       id: `missing-wa:${entry.workAreaId ?? index}:${trimmed}`,
       label: trimmed,
       detail: actionable
-        ? "Review in Scope Details"
-        : "More information required",
-      workAreaName: entry.workAreaName,
-      workAreaId: actionable ? entry.workAreaId : undefined,
+        ? SCOPE_DETAILS_REVIEW_COPY
+        : (entry.detailOverride ??
+          (attentionKind === "ASSUMPTION" ||
+          attentionKind === "PRICING_REQUIRED"
+            ? "Allowance / confirmation required"
+            : "More information required")),
+      attentionKind,
+      workAreaName: entry.workAreaName || undefined,
+      workAreaId: entry.workAreaId,
       factKey: entry.factKey,
       questionId: actionable ? entry.questionId : undefined,
       reviewTarget,
@@ -103,11 +169,12 @@ export function buildQuickEstimateAttentionItems(params: {
     for (const [index, label] of (params.missingLabels ?? []).entries()) {
       const trimmed = label.trim();
       if (!trimmed) continue;
+      // Labels alone cannot promise Scope Details Review (no question id).
       items.push({
         id: `missing:${index}:${trimmed}`,
         label: trimmed,
-        detail: "Review in Scope Details",
-        reviewTarget: "questions",
+        detail: "More information required",
+        attentionKind: "NON_ACTIONABLE_INFORMATION",
       });
     }
   }
@@ -119,6 +186,7 @@ export function buildQuickEstimateAttentionItems(params: {
       id: `clarification:${index}:${trimmed}`,
       label: trimmed,
       detail: "Open clarification",
+      attentionKind: "SCOPE",
       reviewTarget: "scopeReview",
     });
   }
@@ -132,6 +200,7 @@ export function buildQuickEstimateAttentionItems(params: {
           ? "Scope item to review"
           : `${pending} scope items to review`,
       detail: "Awaiting confirmation",
+      attentionKind: "SCOPE",
       reviewTarget: "scopeReview",
     });
   }
@@ -145,6 +214,7 @@ export function buildQuickEstimateAttentionItems(params: {
       id: `scope-impact:${index}:${trimmed}`,
       label: trimmed,
       detail: "Suggested scope change",
+      attentionKind: "SCOPE",
       reviewTarget: "scopeReview",
     });
   }

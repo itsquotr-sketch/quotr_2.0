@@ -36,6 +36,7 @@ import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState"
 import { presentAssistantError } from "@/lib/assistant/presentation/error-messages";
 import {
   QUICK_ESTIMATE_STICKY_CLASS,
+  attentionShowsReviewButton,
   buildQuickEstimateAttentionItems,
   buildQuickEstimateMobileSummary,
   buildQuickEstimateScopeSummaryLines,
@@ -333,8 +334,9 @@ export function EstimatePanel({
               q.label === label ||
               q.key.endsWith(label.toLowerCase().replace(/\s+/g, "_"))
           );
-          const hasEditors = workArea.activeQuestions.length > 0;
-          const actionable = Boolean(matched?.id) || hasEditors;
+          // R6-R4: actionable only with a concrete matched question — never
+          // because the Work Area merely has other editors.
+          const actionable = Boolean(matched?.id);
           return {
             workAreaName: workArea.workAreaName,
             workAreaId: workArea.workAreaId,
@@ -345,6 +347,9 @@ export function EstimatePanel({
             reviewTarget: actionable
               ? ("estimateReview" as const)
               : undefined,
+            attentionKind: actionable
+              ? ("QUESTION" as const)
+              : ("NON_ACTIONABLE_INFORMATION" as const),
           };
         })
     ) ?? [];
@@ -353,7 +358,13 @@ export function EstimatePanel({
       ? pendingScopeDetailTitles
           .map((label) => label.trim())
           .filter(Boolean)
-          .map((label) => ({ workAreaName: "", label }))
+          .map((label) => ({
+            workAreaName: "",
+            label,
+            actionable: false as const,
+            attentionKind: "ASSUMPTION" as const,
+            detailOverride: "Allowance / confirmation required",
+          }))
       : [];
   const effectiveMissingByWorkArea =
     missingByWorkArea.length > 0
@@ -722,12 +733,7 @@ export function EstimatePanel({
                     </p>
                   </div>
                   {onReviewAttention &&
-                  item.reviewTarget &&
-                  (item.questionId ||
-                    item.reviewTarget === "estimateReview" ||
-                    item.reviewTarget === "scopeReview" ||
-                    item.reviewTarget === "constraints" ||
-                    item.reviewTarget === "quality") ? (
+                  attentionShowsReviewButton(item) ? (
                     <Button
                       type="button"
                       variant="outline"

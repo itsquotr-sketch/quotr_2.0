@@ -473,8 +473,8 @@ check(
     read("components/assistant/AssistantShell.tsx").includes(
       "handleReviewAttention"
     ) &&
-    attentionItems.every((i) => i.reviewTarget === "questions") &&
-    attentionItems.every((i) => i.detail === "Review in Scope Details")
+    attentionItems.every((i) => i.reviewTarget === undefined) &&
+    attentionItems.every((i) => i.detail !== "Review in Scope Details")
 );
 
 // ─── CONSTRAINTS ─────────────────────────────────────────────

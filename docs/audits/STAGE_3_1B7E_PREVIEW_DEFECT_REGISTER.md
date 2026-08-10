@@ -1,7 +1,7 @@
 # Stage 3.1B.7E — Preview Defect Register
 
-**Status:** Open — Owner E2E Pending (Deck R4 PASS; R5 final UX/perf retest required; Bathroom FUNCTIONAL PASS; Fitout R6-R3 Local Complete / Owner retest Pending)  
-**Updated:** 2026-08-10  
+**Status:** Open — Owner E2E Pending (Deck R4 PASS; R5 final UX/perf retest required; Bathroom FUNCTIONAL PASS; Fitout R6-R4 Local Complete / Owner retest Pending)  
+**Updated:** 2026-08-11  
 **7F-R6 Fitout retest:** `docs/runbooks/STAGE_3_1B7FR6_COMMERCIAL_FITOUT_RETEST.md`  
 **7F-R6 completion:** `docs/implementation/STAGE_3_1B7FR6_MULTI_WORK_AREA_DATA_COLLECTION_COMPLETION.md`  
 **7F-R6-R1 Fitout retest:** `docs/runbooks/STAGE_3_1B7FR6R1_COMMERCIAL_FITOUT_RETEST.md`  
@@ -10,6 +10,9 @@
 **7F-R6-R2 completion:** `docs/implementation/STAGE_3_1B7FR6R2_QUESTION_INPUT_CONTRACT_COMPLETION.md`  
 **7F-R6-R3 Fitout retest:** `docs/runbooks/STAGE_3_1B7FR6R3_QUESTION_FLOW_RETEST.md`  
 **7F-R6-R3 completion:** `docs/implementation/STAGE_3_1B7FR6R3_QUESTION_FLOW_COMPLETION.md`  
+**7F-R6-R4 Fitout retest:** `docs/runbooks/STAGE_3_1B7FR6R4_FINAL_FITOUT_RETEST.md`  
+**7F-R6-R4 completion:** `docs/implementation/STAGE_3_1B7FR6R4_ATTENTION_ROUTING_COMPLETION.md`  
+**PERF-FUTURE-01:** `docs/performance/ASSISTANT_RESPONSIVENESS_LATENCY_OPTIMISATION_PASS.md` (Planned; not a 3.1B blocker)  
 **Readiness:** `docs/implementation/STAGE_3_1B_OWNER_PREVIEW_E2E_READINESS.md`  
 **Final sign-off:** `docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`  
 **7F-R4 retest:** `docs/runbooks/STAGE_3_1B7FR4_DECK_RETEST.md`  
@@ -169,6 +172,8 @@ constraint remediation in **3.1B.7F-R4**. Owner Deck retest:
 | FITOUT-R6R1-02 | Fitout | Medium/High | Budget Specification does not function | Select/save/retain Budget | Silent Scope Review gate + past-stage saveQuality no-op | Yes until Owner Fitout retest | **Fixed — Local (7F-R6-R1)** | `verify-stage-3-1b7fr6r1` + Owner |
 | FITOUT-R6R2-01 | Fitout | Critical/High | Question-block creation fails (`questions_input_type_check`) | Spec → Scope Details with legal input types | App `multi_select` persisted verbatim; DB allows only number/select/boolean/text | Yes until Owner Fitout retest | **Fixed — Local (7F-R6-R2)** Open until Owner Preview retest | `verify-stage-3-1b7fr6r2` + Owner |
 | FITOUT-R6R3-01 | Fitout | Medium | Incomplete Scope Details groups auto-collapse after individual answer saves | Stable form; groups stay open while working | Live completeness drove accordion each render | No (UX) | **Fixed — Local (7F-R6-R3)** Owner Preview retest pending | `verify-stage-3-1b7fr6r3` + Owner |
+| FITOUT-R6R4-01 | Fitout | Medium/High | Seismic attention says Review in Scope Details with no Review action | Honest CTA/target contract | Mapped Fact with no question + actionable default | Yes until Owner Fitout retest | **Fixed — Local (7F-R6-R4)** Owner retest Pending | `verify-stage-3-1b7fr6r4` + Owner |
+| PERF-FUTURE-01 | Platform | Planned | Assistant responsiveness / latency optimisation pass | Measured pass after 3.1B close | R5/R6 architectural leftovers | **No** (not a 3.1B blocker) | **Planned** | `docs/performance/ASSISTANT_RESPONSIVENESS_LATENCY_OPTIMISATION_PASS.md` |
 
 ### Known local verify gap (DEF-7E-006)
 
