@@ -494,17 +494,51 @@ async function createDynamicQuestionBlockIfNeeded(
   qualityLevel: QualityLevel
 ): Promise<
   | { error: string }
-  | { blockId: string | null; nextStage: "work_area_questions" | "constraints" }
+  | {
+      blockId: string | null;
+      nextStage: "work_area_questions" | "constraints";
+      /** True only when a new question block was inserted in this call. */
+      didCreateBlock: boolean;
+    }
 > {
   const { data: existingBlocks } = await supabase
     .from("question_blocks")
-    .select("id")
+    .select("id, status")
     .eq("project_id", projectId)
     .eq("stage", "work_area_questions")
     .in("status", ["active", "submitted"]);
 
+  // 7F-R6-R1: never reuse an orphan empty block (failed question insert after
+  // R6 multi-WA expansion left Scope Details with zero questions).
+  // Only delete blocks with zero questions for THIS project_id.
   if (existingBlocks && existingBlocks.length > 0) {
-    return { blockId: existingBlocks[0].id, nextStage: "work_area_questions" };
+    const usable: string[] = [];
+    for (const block of existingBlocks) {
+      const { count, error: countError } = await supabase
+        .from("questions")
+        .select("id", { count: "exact", head: true })
+        .eq("question_block_id", block.id)
+        .eq("project_id", projectId);
+      if (countError) {
+        return { error: countError.message };
+      }
+      if ((count ?? 0) > 0) {
+        usable.push(block.id);
+      } else {
+        await supabase
+          .from("question_blocks")
+          .delete()
+          .eq("id", block.id)
+          .eq("project_id", projectId);
+      }
+    }
+    if (usable.length > 0) {
+      return {
+        blockId: usable[0],
+        nextStage: "work_area_questions",
+        didCreateBlock: false,
+      };
+    }
   }
 
   const [{ data: workAreas }, { data: projectFactsRaw }, { data: constraintRows }] =
@@ -558,7 +592,11 @@ async function createDynamicQuestionBlockIfNeeded(
   });
 
   if (built.questions.length === 0) {
-    return { blockId: null, nextStage: "constraints" };
+    return {
+      blockId: null,
+      nextStage: "constraints",
+      didCreateBlock: false,
+    };
   }
 
   const { data: block, error: blockError } = await supabase
@@ -604,15 +642,34 @@ async function createDynamicQuestionBlockIfNeeded(
     answer_source: question.initialAnswerSource ?? null,
   }));
 
-  const { error: questionsError } = await supabase
-    .from("questions")
-    .insert(questionRows);
-
-  if (questionsError) {
-    return { error: questionsError.message };
+  // Chunk inserts — multi-WA Fitout can exceed a comfortable single payload.
+  // On failure, roll back ONLY this newly created block (not other blocks).
+  const QUESTION_INSERT_CHUNK = 25;
+  for (let i = 0; i < questionRows.length; i += QUESTION_INSERT_CHUNK) {
+    const chunk = questionRows.slice(i, i + QUESTION_INSERT_CHUNK);
+    const { error: questionsError } = await supabase
+      .from("questions")
+      .insert(chunk);
+    if (questionsError) {
+      await supabase
+        .from("questions")
+        .delete()
+        .eq("question_block_id", block.id)
+        .eq("project_id", projectId);
+      await supabase
+        .from("question_blocks")
+        .delete()
+        .eq("id", block.id)
+        .eq("project_id", projectId);
+      return { error: questionsError.message };
+    }
   }
 
-  return { blockId: block.id, nextStage: "work_area_questions" };
+  return {
+    blockId: block.id,
+    nextStage: "work_area_questions",
+    didCreateBlock: true,
+  };
 }
 
 export async function saveQuality(
@@ -631,7 +688,38 @@ export async function saveQuality(
 
   const { supabase, orgId, stage } = loaded;
 
+  // 7F-R6-R1: if already past Specification, still persist the selected tier and
+  // heal orphan/empty Scope Details blocks so Budget/Standard/Premium all work.
+  // Only reopen work_area_questions when a block was newly created (heal).
+  // Do not regress a complete project that already has populated questions.
+  // Does not run Scope Discovery.
   if (isStageAtOrBeyond(stage, "work_area_questions")) {
+    const heal = await createDynamicQuestionBlockIfNeeded(
+      supabase,
+      orgId,
+      projectId,
+      parsed.data
+    );
+    if ("error" in heal) {
+      return { error: heal.error };
+    }
+
+    const reopenQuestions =
+      heal.didCreateBlock && Boolean(heal.blockId);
+
+    const { error: updateError } = await supabase
+      .from("projects")
+      .update({
+        quality_level: parsed.data,
+        ...(reopenQuestions ? { stage: "work_area_questions" as const } : {}),
+      })
+      .eq("id", projectId);
+
+    if (updateError) {
+      return { error: updateError.message };
+    }
+
+    revalidateAssistantPaths(projectId);
     return { success: true };
   }
 

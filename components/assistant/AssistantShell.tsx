@@ -335,6 +335,9 @@ export function AssistantShell({
   const handleQualityContinue = useCallback(() => {
     if (!qualityLevel) return;
     if (scopeDiscoveryEnabled && !scopeReviewComplete) {
+      setActionError(
+        "Confirm the scope items above before selecting the specification level."
+      );
       scopeReviewCardRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",
@@ -373,6 +376,9 @@ export function AssistantShell({
 
   const handleQualityEdit = useCallback(() => {
     if (scopeDiscoveryEnabled && !scopeReviewComplete) {
+      setActionError(
+        "Confirm the scope items above before changing the specification level."
+      );
       scopeReviewCardRef.current?.scrollIntoView({
         behavior: "smooth",
         block: "start",

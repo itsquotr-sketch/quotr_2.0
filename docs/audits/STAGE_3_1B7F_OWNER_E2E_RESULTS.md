@@ -67,6 +67,19 @@ Audit: `docs/audits/STAGE_3_1B7FR6_MULTI_WORK_AREA_QUESTION_COVERAGE_AUDIT.md`
 
 **Fitout PASS status:** Pending R6 Owner retest.
 
+## 7F-R6-R1 Scope Details eligibility + Budget Specification
+
+| ID | Severity | Observed | Expected | Fix status |
+| --- | --- | --- | --- | --- |
+| FITOUT-R6R1-01 | High | Scope Details: no questions / empty state | Multi-WA questions for confirmed Fitout WAs | Fixed — Local; Owner retest Pending |
+| FITOUT-R6R1-02 | Medium/High | Budget selection appears broken | Persist Budget; clear error if Scope Review incomplete | Fixed — Local; Owner retest Pending |
+
+Retest: `docs/runbooks/STAGE_3_1B7FR6R1_COMMERCIAL_FITOUT_RETEST.md`  
+Verify: `scripts/verify-stage-3-1b7fr6r1-scope-details-specification.ts`  
+Completion: `docs/implementation/STAGE_3_1B7FR6R1_SCOPE_DETAILS_SPECIFICATION_COMPLETION.md`
+
+**Fitout PASS status:** Pending R6-R1 Owner retest (do not sign off Fitout).
+
 Do **not** close Stage 3.1B until Owner Deck (R5) + Bathroom + Fitout PASS.
 
 ---

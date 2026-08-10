@@ -35,8 +35,27 @@ const scopeByType = new Map(
   SCOPE_DEFINITIONS.map((definition) => [definition.type, definition])
 );
 
+/**
+ * Catalogue / discovery canonical ids → question-template Work Area types.
+ * Stored WA `type` is not renamed; question lookup must resolve aliases so
+ * baseline/catalogue identities still drive Scope Details (7F-R6-R1).
+ */
+export const QUESTION_TEMPLATE_TYPE_ALIASES: Readonly<Record<string, string>> =
+  Object.freeze({
+    partitions: "internal_walls",
+    linings: "plastering",
+    wall_linings: "plastering",
+    strip_out: "demolition",
+    soft_strip: "demolition",
+  });
+
+export function resolveQuestionTemplateType(type: string): string {
+  const normalized = type.trim().toLowerCase().replace(/[\s-]+/g, "_");
+  return QUESTION_TEMPLATE_TYPE_ALIASES[normalized] ?? normalized;
+}
+
 export function getScopeDefinition(type: string): ScopeDefinition | undefined {
-  return scopeByType.get(type);
+  return scopeByType.get(resolveQuestionTemplateType(type));
 }
 
 export function getScopeQuestions(type: string): ScopeQuestionTemplate[] {
