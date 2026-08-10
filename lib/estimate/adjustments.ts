@@ -187,13 +187,20 @@ export function hasPoorAccess(constraints: EstimateConstraint[]): boolean {
   return access === "difficult" || access === "moderate";
 }
 
-/** Work-area access fact (deck.access, fence.access, etc.) as a labour multiplier. */
+/** Work-area access fact (deck.access, fence.access, bathroom.access, etc.) as a labour multiplier. */
 export function getWorkAreaAccessFactor(
   accessValue: string | null | undefined
 ): number {
   if (!accessValue) return 1;
   const lower = accessValue.toLowerCase();
-  if (lower.includes("difficult") || lower.includes("poor")) return 1.1;
+  // "Restricted" is a common AI/owner phrasing for difficult site access.
+  if (
+    lower.includes("difficult") ||
+    lower.includes("poor") ||
+    lower.includes("restrict")
+  ) {
+    return 1.1;
+  }
   if (lower.includes("moderate")) return 1.05;
   return 1;
 }

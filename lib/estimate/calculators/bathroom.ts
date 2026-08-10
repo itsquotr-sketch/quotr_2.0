@@ -153,6 +153,7 @@ export function calculateBathroom(
       accessFactor,
       smallJobFactor,
       accessLabel,
+      accessLabourKind: "removal",
     });
     lineItems.push(
       withPricingOwnership(
@@ -190,6 +191,7 @@ export function calculateBathroom(
     accessFactor,
     smallJobFactor,
     accessLabel,
+    accessLabourKind: "installation",
   });
   lineItems.push(
     withPricingOwnership(
@@ -754,6 +756,7 @@ export function calculateBathroom(
       accessFactor,
       smallJobFactor,
       accessLabel,
+      accessLabourKind: "installation",
     });
     lineItems.push(
       withPricingOwnership(

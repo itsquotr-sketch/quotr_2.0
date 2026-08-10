@@ -69,7 +69,13 @@ function accessFactor(access: string | null): number {
   if (!access) return 1;
   const lower = access.toLowerCase();
   if (lower.includes("very poor")) return 1.4;
-  if (lower.includes("poor") || lower.includes("difficult")) return 1.25;
+  if (
+    lower.includes("poor") ||
+    lower.includes("difficult") ||
+    lower.includes("restrict")
+  ) {
+    return 1.25;
+  }
   if (lower.includes("moderate")) return 1.1;
   return 1;
 }
@@ -646,11 +652,14 @@ export function calculateDemolition(
           scopeKey: "demolition.access",
           basis: quantityBasisFrom({
             sourceFact: "demolition.access",
-            sourceLabel: "Site access",
-            quantity: accessMult,
-            unit: "factor",
+            sourceLabel: "Site access conditions",
+            quantity: 1,
+            unit: "allowance",
             confidence: "confirmed",
-            formula: `Access factor: ${access}`,
+            formula:
+              accessMult > 1
+                ? `Restricted/poor site access: access/carting allowance included (${access})`
+                : `Site access allowance included (${access})`,
           }),
         }
       )

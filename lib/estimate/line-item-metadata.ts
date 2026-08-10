@@ -29,6 +29,11 @@ export type LabourMinimumMeta = {
   minTotalHours?: number;
   accessFactor?: number;
   accessLabel?: string;
+  /**
+   * Optional labour-role cue for contractor-facing access wording.
+   * Does not change calculation — presentation only.
+   */
+  accessLabourKind?: "removal" | "installation" | "general";
   smallJobFactor?: number;
 };
 

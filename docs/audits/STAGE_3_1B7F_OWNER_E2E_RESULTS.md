@@ -179,28 +179,42 @@ UX flags (ack &gt;1s missing, long progress, flicker):
 
 ## Project B — Bathroom
 
+### Owner result (2026-08-10)
+
+**Journey overall: FUNCTIONAL PASS**
+
+Confirmed working:
+- Work Area: Bathroom renovation
+- Scope: fit-off, plumbing, waste, waterproofing, demolition, electrical, fixtures, linings, tiling, ventilation, painting
+- Scope Details concise/relevant; Quick Estimate + Breakdown good
+
+Presentation polish (not a calculation redesign):
+- **BATH-CD-01** — Commercial detail `Access factor: Restricted` → contractor-facing uplift wording; Restricted recognised as +10% labour hours (same as Difficult). No double-count with carry on Bathroom lines. See `docs/implementation/STAGE_3_1B_BATHROOM_COMMERCIAL_DETAIL_COMPLETION.md`.
+
+Full Bathroom journey retest **not required** for functional PASS; optional spot-check of Demolition + Carpentry Commercial detail after deploy.
+
 ### Meta
 
 | Field | Value |
 | --- | --- |
-| Project ID / name | |
-| Timestamp | |
-| Browser / device | |
-| Analyse Job | PASS / FAIL / PARTIAL — notes: |
-| Scope Review | PASS / FAIL / PARTIAL — notes: |
-| Scope quality | PASS / FAIL / PARTIAL — notes: |
-| Irrelevant suggestions | |
-| Missing suggestions | |
-| Clarification usefulness | PASS / FAIL / PARTIAL |
-| Question relevance | PASS / FAIL / PARTIAL |
-| Fact pre-completion | PASS / FAIL / PARTIAL |
-| Constraint population | PASS / FAIL / PARTIAL |
-| Scope-impact behaviour | PASS / FAIL / PARTIAL |
-| Estimate result | PASS / FAIL / PARTIAL |
-| Pricing result | PASS / FAIL / PARTIAL |
-| Quote result | PASS / FAIL / PARTIAL / N/A |
-| UX notes | |
-| Journey overall | PASS / FAIL / PARTIAL |
+| Project ID / name | Owner Bathroom Preview |
+| Timestamp | 2026-08-10 |
+| Browser / device | Owner Preview |
+| Analyse Job | PASS |
+| Scope Review | PASS |
+| Scope quality | PASS |
+| Irrelevant suggestions | None material |
+| Missing suggestions | None material |
+| Clarification usefulness | PASS |
+| Question relevance | PASS |
+| Fact pre-completion | PASS |
+| Constraint population | PASS (access noted) |
+| Scope-impact behaviour | PASS |
+| Estimate result | PASS |
+| Pricing result | PASS |
+| Quote result | N/A |
+| UX notes | Commercial detail access wording remediated (BATH-CD-01) |
+| Journey overall | **FUNCTIONAL PASS** |
 
 ### Quality scores (1–5)
 

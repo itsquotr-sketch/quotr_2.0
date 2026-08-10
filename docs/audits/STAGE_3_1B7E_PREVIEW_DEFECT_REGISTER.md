@@ -1,6 +1,6 @@
 # Stage 3.1B.7E — Preview Defect Register
 
-**Status:** Open — Owner E2E Pending (Deck R4 PASS; R5 final UX/perf retest required)  
+**Status:** Open — Owner E2E Pending (Deck R4 PASS; R5 final UX/perf retest required; Bathroom FUNCTIONAL PASS; Fitout Pending)  
 **Updated:** 2026-08-10  
 **Readiness:** `docs/implementation/STAGE_3_1B_OWNER_PREVIEW_E2E_READINESS.md`  
 **Final sign-off:** `docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`  
@@ -149,6 +149,7 @@ constraint remediation in **3.1B.7F-R4**. Owner Deck retest:
 | DECK-R5-04 | Deck | Medium | No fallback confirmation when zero constraints detected | Intro + existing taxonomy questions | Dead-end empty state | Yes until R5 Owner retest | **Fixed — Local (7F-R5)** | `verify-stage-3-1b7fr5` |
 | DECK-R5-05 | Deck | Medium | False open clarification in Quick Estimate | Named current Scope Details attention only | needsDetail mapped to clarification channel | Yes until R5 Owner retest | **Fixed — Local (7F-R5)** | `verify-stage-3-1b7fr5` |
 | DECK-R5-06 | Deck | Low | Review action causes unstable scroll jump | Expand target + `block: nearest` | `block: start` + missing completed ref | Yes until R5 Owner retest | **Fixed — Local (7F-R5)** | `verify-stage-3-1b7fr5` |
+| BATH-CD-01 | Bathroom | Low | Commercial detail showed `Access factor: Restricted` | Contractor-facing access uplift wording with actual % | `formatLabourMinimumDisplay` emitted internal label; Restricted not recognised as 1.1 | No | **Fixed — Local** | `verify-stage-3-1b-bathroom-commercial-detail` |
 
 ### Known local verify gap (DEF-7E-006)
 

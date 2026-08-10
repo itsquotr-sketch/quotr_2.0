@@ -61,7 +61,13 @@ function withOwner(
 function accessFactor(access: string | null): number {
   if (!access) return 1;
   const lower = access.toLowerCase();
-  if (lower.includes("poor") || lower.includes("difficult")) return 1.25;
+  if (
+    lower.includes("poor") ||
+    lower.includes("difficult") ||
+    lower.includes("restrict")
+  ) {
+    return 1.25;
+  }
   if (lower.includes("moderate")) return 1.1;
   return 1;
 }
@@ -313,7 +319,12 @@ export function calculateExternalStairs(
             quantity: round2(riserCount * widthMult),
             unit: "riser",
             confidence: approximateRisers ? "derived" : "confirmed",
-            formula: widthMult > 1 ? `Width factor ×${widthMult}` : undefined,
+            formula:
+              widthMult > 1
+                ? `Wider stair flight: material allowance increased by ${Math.round(
+                    (widthMult - 1) * 100
+                  )}%`
+                : undefined,
           }),
         }
       )

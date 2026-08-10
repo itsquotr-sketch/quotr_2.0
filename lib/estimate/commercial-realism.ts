@@ -20,6 +20,8 @@ export type ApplyLabourMinimumsParams = {
   smallJobFactor?: number;
   accessFactor?: number;
   accessLabel?: string;
+  /** Presentation-only cue for access commercial detail wording. */
+  accessLabourKind?: "removal" | "installation" | "general";
 };
 
 export type ApplyLabourMinimumsResult = {
@@ -53,7 +55,11 @@ export function applyLabourMinimums(
       minDurationHours: minDurationHours > 0 ? minDurationHours : undefined,
       minTotalHours: minTotalHours > 0 ? minTotalHours : undefined,
       accessFactor: accessFactor !== 1 ? accessFactor : undefined,
-      accessLabel: params.accessLabel,
+      // Keep label only when the factor actually applied — avoids bare enum display.
+      accessLabel:
+        accessFactor !== 1 ? params.accessLabel : undefined,
+      accessLabourKind:
+        accessFactor !== 1 ? params.accessLabourKind : undefined,
       smallJobFactor: smallJobFactor !== 1 ? smallJobFactor : undefined,
     },
   };
@@ -480,17 +486,57 @@ export function formatLabourMinimumDisplay(meta: LabourMinimumMeta): string[] {
   } else if (meta.minimumApplied && meta.minTotalHours) {
     lines.push(`Minimum applied: ${meta.minTotalHours} hrs`);
   }
-  if (meta.accessLabel) {
-    lines.push(`Access factor: ${meta.accessLabel}`);
-  } else if (meta.accessFactor && meta.accessFactor !== 1) {
-    lines.push(`Access factor: ×${meta.accessFactor}`);
-  }
+
+  const accessLine = formatAccessAdjustmentDisplay(meta);
+  if (accessLine) lines.push(accessLine);
+
   if (meta.calculatedHours !== meta.finalHours) {
     lines.push(
       `Calculated ${meta.calculatedHours} hrs → ${meta.finalHours} hrs after minimums`
     );
   }
   return lines;
+}
+
+/** Contractor-facing access wording from actual labour minimum metadata. */
+export function formatAccessAdjustmentDisplay(
+  meta: Pick<
+    LabourMinimumMeta,
+    "accessFactor" | "accessLabel" | "accessLabourKind"
+  >
+): string | null {
+  const factor = meta.accessFactor;
+  if (factor == null || factor === 1) return null;
+
+  const pct = Math.round((factor - 1) * 100);
+  if (pct <= 0) return null;
+
+  const condition = describeAccessCondition(meta.accessLabel);
+  const kind = meta.accessLabourKind ?? "general";
+
+  if (kind === "removal") {
+    return `${condition}: Additional handling/removal labour included (+${pct}%).`;
+  }
+  if (kind === "installation") {
+    return `${condition}: Additional installation labour included (+${pct}%).`;
+  }
+
+  return `${condition}: Labour allowance increased by ${pct}%.`;
+}
+
+function describeAccessCondition(label: string | undefined): string {
+  const lower = String(label ?? "").toLowerCase();
+  if (
+    lower.includes("restrict") ||
+    lower.includes("difficult") ||
+    lower.includes("poor")
+  ) {
+    return "Restricted site access";
+  }
+  if (lower.includes("moderate")) {
+    return "Moderate site access";
+  }
+  return "Site access conditions";
 }
 
 export function formatAllowanceMinimumDisplay(meta: AllowanceMinimumMeta): string {
