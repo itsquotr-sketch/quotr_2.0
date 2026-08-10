@@ -50,7 +50,12 @@ function matchCartingDistanceM(text: string): number | null {
     /(?:waste|materials?).*?(?:hand[-\s]?carried?|carried).*?(\d+)\s*(?:–|-|to)\s*(\d+)\s*m/i,
     /(?:waste|materials?).*?(?:hand[-\s]?carried?|carried).*?(\d+)\s*m/i,
     /waste\s+(?:to\s+be\s+)?cart(?:ed)?\s*(\d+)\s*m/i,
-    /(\d+)\s*(?:–|-|to)\s*(\d+)\s*m\s+(?:hand[-\s]?carry|carry|carting)/i,
+    /(?:waste\s+)?carting\s+(?:(?:about|approximately|approx\.?)\s+)?(\d+)\s*(?:–|-|to)\s*(\d+)\s*m/i,
+    /(?:waste\s+)?carting\s+(?:(?:about|approximately|approx\.?)\s+)?(\d+)\s*m/i,
+    /(?:approximately|approx\.?|about)\s*(\d+)\s*(?:–|-|to)\s*(\d+)\s*m\s+(?:manual\s+)?(?:hand[-\s]?carry|carry|carting)/i,
+    /(\d+)\s*(?:–|-|to)\s*(\d+)\s*m\s+(?:manual\s+)?(?:hand[-\s]?carry|carry|carting)/i,
+    /(\d+)\s*m\s+(?:manual\s+)?(?:hand[-\s]?carry|carry|carting)/i,
+    /manual\s+carry(?:\s+for\s+(?:materials?|waste|materials?\s+and\s+waste))?\s*(?:of\s*|for\s*)?(?:approximately\s*|approx\.?\s*|about\s*)?(\d+)\s*(?:–|-|to)\s*(\d+)\s*m/i,
     /(\d+)\s*m\s+(?:to\s+)?(?:skip|bin)/i,
     /(\d+)\s*m\s+carting/i,
     /carting\s+distance\s+(\d+)\s*m/i,
@@ -129,6 +134,32 @@ function addFact(
     unit: params.unit,
     confidence: params.confidence ?? 0.85,
   });
+}
+
+/** Insert or overwrite — used for polarity corrections (explicit no/yes). */
+function upsertFact(
+  extraction: AIExtractionOutput,
+  params: {
+    workAreaType: string | null;
+    key: string;
+    label: string;
+    value: string | number | boolean | string[];
+    unit?: string;
+    confidence?: number;
+  }
+): void {
+  const existing = extraction.facts.find(
+    (fact) =>
+      fact.key === params.key && fact.work_area_type === params.workAreaType
+  );
+  if (existing) {
+    existing.value = params.value;
+    existing.label = params.label;
+    if (params.unit !== undefined) existing.unit = params.unit;
+    if (params.confidence !== undefined) existing.confidence = params.confidence;
+    return;
+  }
+  addFact(extraction, params);
 }
 
 function inferPainting(
@@ -588,7 +619,14 @@ function inferDeck(
     });
   }
 
-  if (includesAny(brief, ["vertical face", "face boards"])) {
+  if (
+    includesAny(brief, [
+      "vertical face",
+      "face boards",
+      "fascia",
+      "include fascia",
+    ])
+  ) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.vertical_face_boards_required",
@@ -597,7 +635,14 @@ function inferDeck(
     });
   }
 
-  if (includesAny(brief, ["remove existing deck", "remove existing timber deck"])) {
+  if (
+    includesAny(brief, [
+      "remove existing deck",
+      "remove existing timber deck",
+      "replace an existing",
+      "replace existing deck",
+    ])
+  ) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.existing_deck_removal",
@@ -606,7 +651,46 @@ function inferDeck(
     });
   }
 
-  if (includesAny(brief, ["balustrade"])) {
+  // Explicit negatives / unknown must win over bare substring "balustrade".
+  const balustradeExplicitNo = includesAny(brief, [
+    "no balustrade",
+    "without balustrade",
+    "no new balustrade",
+    "balustrade not required",
+    "balustrade not needed",
+    "balustrades not required",
+    "not requiring a balustrade",
+    "not requiring balustrade",
+    "no railing required",
+    "no railings required",
+  ]);
+  const balustradeUnknown = includesAny(brief, [
+    "balustrade condition unknown",
+    "balustrade unknown",
+    "unknown if balustrade",
+    "not sure about balustrade",
+    "unsure about balustrade",
+    "balustrade not sure",
+  ]);
+  if (balustradeExplicitNo) {
+    upsertFact(extraction, {
+      workAreaType: "deck",
+      key: "deck.balustrade_required",
+      label: "Balustrade required",
+      value: false,
+    });
+  } else if (balustradeUnknown) {
+    // Leave unknown — do not invent a boolean from the word "balustrade".
+  } else if (
+    includesAny(brief, [
+      "new balustrade",
+      "balustrade required",
+      "include balustrade",
+      "with balustrade",
+      "balustrade",
+      "railing required",
+    ])
+  ) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.balustrade_required",
@@ -624,7 +708,7 @@ function inferDeck(
         value: "Stair set",
       });
     }
-  } else if (includesAny(brief, ["no stairs", "without stairs", "no balustrade"])) {
+  } else if (includesAny(brief, ["no stairs", "without stairs"])) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.access_type",
@@ -1218,13 +1302,21 @@ function mapAccessConstraint(brief: string): string | null {
       "poor access",
       "difficult access",
       "access is poor",
+      "access is restricted",
+      "site access is restricted",
       "narrow access",
       "narrow side access",
+      "narrow side path",
       "restricted access",
+      "restricted rear access",
       "restricted site access",
+      "restricted side access",
       "difficult/restricted access",
       "difficult / restricted access",
-    ])
+    ]) ||
+    /restricted(?:\s+\w+){0,3}\s+access/.test(brief) ||
+    /access(?:\s+\w+){0,3}\s+restricted/.test(brief) ||
+    /narrow(?:\s+\w+){0,2}\s+(?:access|path)/.test(brief)
   ) {
     return "Difficult";
   }

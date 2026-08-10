@@ -35,7 +35,10 @@ import type {
 } from "@/lib/scope-discovery/application/types";
 import type { BatchScopeItemState } from "@/lib/scope-discovery/application/batch-confirm-scope";
 import { buildScopeChangeRecommendations } from "@/lib/scope-discovery/scope-impact";
-import type { ScopeChangeRecommendation } from "@/lib/scope-discovery/scope-impact";
+import type {
+  ScopeChangeRecommendation,
+  ScopeSignalFactRef,
+} from "@/lib/scope-discovery/scope-impact";
 import {
   SCOPE_DISCOVERY_UI_COPY,
   analysisProgressLabel,
@@ -143,15 +146,24 @@ function SuggestionGroup({
   );
 }
 
-function buildInitialBatchState(
-  suggestions: readonly SafeSuggestionView[]
-): LocalBatchState {
-  const next: LocalBatchState = {};
-  for (const s of suggestions) {
-    if (!isScopeItemBatchEligible(s)) continue;
-    next[s.suggestionId] = defaultBatchSelection(s);
-  }
-  return next;
+function factsFromScopeReview(
+  scopeReview: ScopeReview | null | undefined
+): ScopeSignalFactRef[] {
+  if (!scopeReview) return [];
+  return scopeReview.workAreas.flatMap((wa) =>
+    wa.facts.map((f) => ({
+      key: f.key,
+      value: f.value,
+      work_area_id: wa.workAreaId,
+    }))
+  );
+}
+
+function clearLocalBatchState(): LocalBatchState {
+  // Do not pre-seed checklist overrides. Undecided items derive from
+  // defaultBatchSelection(suggestion, facts) so explicit Fact polarity
+  // stays live without a setState-in-effect reseed.
+  return {};
 }
 
 function ChecklistRow({
@@ -300,7 +312,7 @@ export function ScopeDiscoveryReviewBlock({
   const [isSavingBatch, setIsSavingBatch] = useState(false);
   const [batchError, setBatchError] = useState<string | null>(null);
   const [localBatch, setLocalBatch] = useState<LocalBatchState>(() =>
-    buildInitialBatchState(initialResults?.allSuggestions ?? [])
+    clearLocalBatchState()
   );
   const [impactRowStatus, setImpactRowStatus] = useState<
     Map<string, ScopeImpactRecommendationRowStatus>
@@ -309,6 +321,11 @@ export function ScopeDiscoveryReviewBlock({
     () => new Map()
   );
   const [impactActionId, setImpactActionId] = useState<string | null>(null);
+
+  const signalFacts = useMemo(
+    () => factsFromScopeReview(scopeReview),
+    [scopeReview]
+  );
 
   const refreshResults = useCallback(async () => {
     if (!enabled) return;
@@ -324,7 +341,7 @@ export function ScopeDiscoveryReviewBlock({
       setResults(outcome);
       setLoadError(null);
       if (!isEditingScope) {
-        setLocalBatch(buildInitialBatchState(outcome.allSuggestions));
+        setLocalBatch(clearLocalBatchState());
       }
     } catch {
       if (!resultsGuard.current.isCurrent(token)) return;
@@ -636,7 +653,7 @@ export function ScopeDiscoveryReviewBlock({
         const items = batchEligible.map((s) => ({
           suggestionId: s.suggestionId,
           intendedState: (localBatch[s.suggestionId] ??
-            defaultBatchSelection(s)) as BatchScopeItemState,
+            defaultBatchSelection(s, signalFacts)) as BatchScopeItemState,
         }));
         const outcome = await batchConfirmScopeItemsAction({
           projectId,
@@ -864,7 +881,8 @@ export function ScopeDiscoveryReviewBlock({
 
   const discoveryIncludedCount = batchEligible.filter(
     (s) =>
-      (localBatch[s.suggestionId] ?? defaultBatchSelection(s)) === "INCLUDED"
+      (localBatch[s.suggestionId] ??
+        defaultBatchSelection(s, signalFacts)) === "INCLUDED"
   ).length;
   const manualIncludedLocal = manualItems.filter(
     (item) => localManualBatch[item.id] ?? item.state === "INCLUDED"
@@ -1081,7 +1099,7 @@ export function ScopeDiscoveryReviewBlock({
                     const selected = items.filter(
                       (s) =>
                         (localBatch[s.suggestionId] ??
-                          defaultBatchSelection(s)) === "INCLUDED"
+                          defaultBatchSelection(s, signalFacts)) === "INCLUDED"
                     ).length;
                     const manualIncluded = manualForSection.filter(
                       (item) =>
@@ -1105,7 +1123,7 @@ export function ScopeDiscoveryReviewBlock({
                           {items.map((suggestion) => {
                             const state =
                               localBatch[suggestion.suggestionId] ??
-                              defaultBatchSelection(suggestion);
+                              defaultBatchSelection(suggestion, signalFacts);
                             return (
                               <div key={suggestion.suggestionId}>
                                 <ChecklistRow
@@ -1270,7 +1288,7 @@ export function ScopeDiscoveryReviewBlock({
                         className="min-h-10"
                         onClick={() => {
                           setIsEditingScope(true);
-                          setLocalBatch(buildInitialBatchState(suggestions));
+                          setLocalBatch(clearLocalBatchState());
                           setLocalManualBatch(
                             buildInitialManualBatch(manualItems)
                           );

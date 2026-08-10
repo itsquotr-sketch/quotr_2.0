@@ -14,6 +14,7 @@ import type {
   ScopeDiscoverySourceSnapshot,
 } from "./types";
 import { SCOPE_DISCOVERY_ORCHESTRATION_VERSION } from "./version";
+import { isFactMaterialForDiscoveryStale } from "../scope-impact";
 
 /** Collapse whitespace for formatting-only normalisation of brief text used in hashing content when revision absent. */
 export function normaliseFormatting(text: string): string {
@@ -56,6 +57,7 @@ export function buildSourceSnapshot(
     .sort((a, b) => a.noteId.localeCompare(b.noteId));
 
   const facts = [...request.authoritativeFacts]
+    .filter((f) => isFactMaterialForDiscoveryStale(f.key))
     .map((f) => ({ key: f.key, revision: f.revision }))
     .sort((a, b) => a.key.localeCompare(b.key));
 

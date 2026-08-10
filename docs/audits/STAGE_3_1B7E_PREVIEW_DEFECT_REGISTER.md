@@ -1,9 +1,10 @@
 # Stage 3.1B.7E — Preview Defect Register
 
-**Status:** Open — Owner E2E Pending (Preview ready post–Stage 3.1C; 7F pack + Final Sign-off ready)  
+**Status:** Open — Owner E2E Pending (7F-R4 Deck retest required after live Preview defects)  
 **Updated:** 2026-08-10  
 **Readiness:** `docs/implementation/STAGE_3_1B_OWNER_PREVIEW_E2E_READINESS.md`  
-**Final sign-off:** `docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`
+**Final sign-off:** `docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`  
+**7F-R4 retest:** `docs/runbooks/STAGE_3_1B7FR4_DECK_RETEST.md`  
 **Date:** 2026-08-07  
 **Branch:** `hardening/stage-2a-security`  
 **Local HEAD (at audit):** `1b17804f3d036e414a1617f370ef09cd7ae99511`  
@@ -105,6 +106,8 @@
 | DEF-7E-004 | Low | Deferred Stage 3.2 | No |
 | DEF-7E-005 | Medium | Owner Pending | No |
 | DEF-7E-006 | Medium | Fixed — Local (7F-R1); Preview retest Pending | No |
+| DECK-R4-01 | Medium | Fixed — Local (7F-R4); Owner Preview retest Pending | **Yes** until retest |
+| DECK-R4-02 | High | Fixed — Local (7F-R4); Owner Preview retest Pending | **Yes** until retest |
 
 \* Escalate if Preview auth/admin fails.
 
@@ -113,8 +116,9 @@
 ## E2E findings (Stage 3.1B.7F / 7F-R1 / 7F-R2 / 7F-R3)
 
 Owner Deck E2E defects remediated locally in **3.1B.7F-R1**, polished in **3.1B.7F-R2**,
-with unified scope-state reconciliation in **3.1B.7F-R3**. Final Deck retest pending — see
-`docs/runbooks/STAGE_3_1B7FR3_DECK_FINAL_RETEST.md`.
+with unified scope-state reconciliation in **3.1B.7F-R3**, and explicit-negative /
+constraint remediation in **3.1B.7F-R4**. Owner Deck retest:
+`docs/runbooks/STAGE_3_1B7FR4_DECK_RETEST.md`.
 
 | ID | Project | Severity | Observed | Expected | Root cause | Release blocker | Fix status | Verification |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -136,6 +140,8 @@ with unified scope-state reconciliation in **3.1B.7F-R3**. Final Deck retest pen
 | DEF-7F-017 | Deck | Medium | QE included count ignored manuals | Count all INCLUDED (system + user) | QE used discovery-only filter | Yes until Final Deck retest | **Fixed — Local (7F-R3)** | `verify-stage-3-1b7fr3` QE |
 | DEF-7F-018 | Deck | Medium | Manual items had inline checkboxes in confirmed summary | Readable summary; edit via Edit scope | Dual editing paradigms | No | **Fixed — Local (7F-R3)** | `verify-stage-3-1b7fr3` EDIT |
 | DEF-7F-016 | Deck / Security | Low | 030 authenticated UPDATE/DELETE table grants via 026 defaults | Least-privilege grants + RLS | 030 omitted 028-style revoke | No | **Fixed — Remote (7F-R2.2 / 031)** | `STAGE_3_1B7FR22_MANUAL_SCOPE_ACL_HARDENING_COMPLETION.md` |
+| DECK-R4-01 | Deck | Medium | Explicit “No balustrade required” still preselected Balustrade in Scope Review | Unchecked / Not required by default; still manually includable | Enrich polarity + Fact-aware checklist/composer defaults | Yes until Owner Preview retest | **Fixed — Local (7F-R4)** | `verify-stage-3-1b7fr4` + `STAGE_3_1B7FR4_DECK_RETEST.md` |
+| DECK-R4-02 | Deck | High | Supported access/carry constraints not populated from explicit Deck brief | Difficult access + 10–30m carry from Owner wording | R1 heuristics missed Owner/pack phrases (`restricted rear access`, `manual carry`, `carting about`) | Yes until Owner Preview retest | **Fixed — Local (7F-R4)** | `verify-stage-3-1b7fr4` + Owner retest |
 
 ### Known local verify gap (DEF-7E-006)
 

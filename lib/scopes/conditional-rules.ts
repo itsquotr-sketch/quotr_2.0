@@ -114,6 +114,9 @@ export function shouldHideConditionalQuestion(
   }
 
   if (key === "deck.balustrade_required" || key === "deck.has_balustrade") {
+    const known = boolFact(lookup, workAreaId, "deck.balustrade_required");
+    // Explicit no already answered — do not re-ask unless user later includes scope.
+    if (known === false) return true;
     const height = deckHeightM(lookup, workAreaId);
     if (height !== null && height <= 1) return true;
     return false;

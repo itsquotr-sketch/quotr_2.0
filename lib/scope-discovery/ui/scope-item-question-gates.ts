@@ -11,6 +11,7 @@ export const SCOPE_ITEM_EXCLUSION_SUPPRESSIONS: Readonly<
   balustrade: ["deck.balustrade_required"],
   handrail: ["deck.handrail_required"],
   stairs: ["deck.has_stairs", "deck.access_type"],
+  fascia: ["deck.vertical_face_boards_required", "deck.vertical_face_board_length_lm"],
   coatings: [],
   waste_removal: [],
   waterproofing: [],

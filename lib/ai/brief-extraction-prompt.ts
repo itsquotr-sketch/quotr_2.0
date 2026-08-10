@@ -50,6 +50,7 @@ Fact key rules:
 - "step down" → deck.access_type="Single step or step-down".
 - "stairs" / "stair set" → deck.access_type="Stair set".
 - "balustrade" → deck.balustrade_required=true.
+- "no balustrade" / "balustrade not required" → deck.balustrade_required=false.
 - "vertical boards down the side" → deck.vertical_face_boards_required=true.
 - "remove existing deck" → deck.existing_deck_removal=true.
 - "8 piles" / "piles need redoing" → deck.pile_or_post_replacement_required=true, deck.pile_or_post_count=8 when stated.

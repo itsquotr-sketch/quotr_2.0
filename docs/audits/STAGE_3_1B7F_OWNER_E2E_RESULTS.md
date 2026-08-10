@@ -1,6 +1,6 @@
 # Stage 3.1B.7F — Owner Preview E2E Results
 
-**Status:** Pending Owner Capture — Preview ready after Stage 3.1C close (2026-08-10)  
+**Status:** Pending Owner Capture — 7F-R4 Deck retest required (balustrade negatives + constraints)  
 **Date opened:** 2026-08-07  
 **Readiness:** `docs/implementation/STAGE_3_1B_OWNER_PREVIEW_E2E_READINESS.md`  
 **Final sign-off:** `docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`  
@@ -8,6 +8,7 @@
 **7F-R1 retest:** `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`  
 **7F-R2 retest:** `docs/runbooks/STAGE_3_1B7FR2_DECK_PREVIEW_RETEST.md`  
 **7F-R3 final retest:** `docs/runbooks/STAGE_3_1B7FR3_DECK_FINAL_RETEST.md`  
+**7F-R4 Deck retest:** `docs/runbooks/STAGE_3_1B7FR4_DECK_RETEST.md`  
 **Remediation:** `docs/implementation/STAGE_3_1B7FR1_DECK_E2E_REMEDIATION_COMPLETION.md`  
 **7F-R2 polish:** `docs/implementation/STAGE_3_1B7FR2_FINAL_PREVIEW_POLISH_COMPLETION.md`  
 **7F-R3 unified scope:** `docs/implementation/STAGE_3_1B7FR3_UNIFIED_SCOPE_STATE_COMPLETION.md`  
@@ -22,6 +23,20 @@
 | **B. BLOCKED BY PREVIEW DEFECTS** | List DEF IDs below |
 
 **Production enablement:** Not authorised by this document alone. Stage 3.1B closure ≠ Production Scope Discovery enablement.
+
+---
+
+## 7F-R4 live Preview findings (Owner Deck)
+
+| ID | Severity | Observed | Expected | Fix status |
+| --- | --- | --- | --- | --- |
+| DECK-R4-01 | Medium | “No balustrade required” still preselected Balustrade | Unchecked by default; manually includable | Fixed — Local; Owner retest Pending |
+| DECK-R4-02 | High | Restricted access / 25–30m manual carry missing from Site Constraints | Supported `site_access` + `material_carry_distance` populated | Fixed — Local; Owner retest Pending |
+
+Retest: `docs/runbooks/STAGE_3_1B7FR4_DECK_RETEST.md`  
+Verify: `scripts/verify-stage-3-1b7fr4-scope-negatives-constraints.ts`
+
+Do **not** close Stage 3.1B until Owner Deck + Bathroom + Fitout PASS.
 
 ---
 

@@ -148,12 +148,27 @@ export function isScopeItemBatchEligible(
   );
 }
 
+import {
+  explicitScopeDecisionFromFacts,
+  type ScopeSignalFactRef,
+} from "@/lib/scope-discovery/scope-impact";
+
 export function defaultBatchSelection(
-  s: SafeSuggestionView
+  s: SafeSuggestionView,
+  facts?: readonly ScopeSignalFactRef[]
 ): "INCLUDED" | "NOT_REQUIRED" {
   if (s.decisionState === "REJECTED") return "NOT_REQUIRED";
   if (s.decisionState === "ACCEPTED" || s.decisionState === "MODIFIED") {
     return "INCLUDED";
+  }
+  // Explicit Fact polarity seeds checklist defaults (unknown ≠ false).
+  if (facts && facts.length > 0) {
+    const fromFact = explicitScopeDecisionFromFacts({
+      proposedWorkAreaType: s.proposedWorkAreaType,
+      relatedWorkAreaId: s.relatedWorkAreaId,
+      facts,
+    });
+    if (fromFact) return fromFact;
   }
   // Unsaved defaults: recommended on, low-confidence off
   const group = assignUiGroup(s);

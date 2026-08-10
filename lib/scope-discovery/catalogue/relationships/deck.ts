@@ -374,7 +374,8 @@ export const DECK_RELATIONSHIPS: readonly ScopeRelationship[] = Object.freeze([
       )
     ),
     suppressConditions: anyOf(
-      { op: "fact_is_explicit_no", factKey: "deck.balustrade_required" },
+      // Explicit no does not hide the checklist row — presentation defaults to
+      // Not required while keeping Edit scope available (7F-R4).
       { op: "accepted_wa_exists", scopeType: "balustrade" }
     ),
     clarifyWhenEvidenceMissing: true,

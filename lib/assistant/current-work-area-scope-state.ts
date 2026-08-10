@@ -9,6 +9,10 @@
 import type { ScopeReview } from "@/lib/assistant/types";
 import type { ScopeItemSummaryLists } from "@/lib/assistant/stage-completion-summaries";
 import { routeClarificationToScopeDetails } from "@/lib/scope-discovery/ui/clarification-routing";
+import {
+  explicitScopeDecisionFromFacts,
+  type ScopeSignalFactRef,
+} from "@/lib/scope-discovery/scope-impact";
 import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
 
 export type ScopeItemOrigin = "system" | "user";
@@ -207,6 +211,30 @@ function decisionFromDiscovery(state: string): ScopeDecisionState | null {
   return null;
 }
 
+function isUserConfirmedDiscoveryState(state: string): boolean {
+  const upper = String(state).toUpperCase();
+  return (
+    upper === "ACCEPTED" || upper === "MODIFIED" || upper === "REJECTED"
+  );
+}
+
+function factsFromScopeReview(
+  scopeReview: ScopeReview | null | undefined
+): ScopeSignalFactRef[] {
+  if (!scopeReview) return [];
+  const out: ScopeSignalFactRef[] = [];
+  for (const wa of scopeReview.workAreas) {
+    for (const fact of wa.facts) {
+      out.push({
+        key: fact.key,
+        value: fact.value,
+        work_area_id: wa.workAreaId,
+      });
+    }
+  }
+  return out;
+}
+
 /**
  * Compose current scope state from discovery + manual rows + Facts.
  */
@@ -217,6 +245,7 @@ export function composeCurrentWorkAreaScopeState(params: {
 }): CurrentWorkAreaScopeState {
   const items: CurrentScopeItem[] = [];
   const seenTitlesByWa = new Set<string>();
+  const facts = factsFromScopeReview(params.scopeReview);
 
   for (const s of params.suggestions) {
     const cls = String(s.proposalClass ?? "");
@@ -232,6 +261,22 @@ export function composeCurrentWorkAreaScopeState(params: {
       // pending reason code — still treat as included for Scope Details bucket.
       decision = "INCLUDED";
     }
+
+    const confirmed = isUserConfirmedDiscoveryState(s.decisionState);
+    const factDecision = explicitScopeDecisionFromFacts({
+      proposedWorkAreaType: s.proposedWorkAreaType,
+      relatedWorkAreaId: s.relatedWorkAreaId,
+      facts,
+    });
+
+    // Explicit Fact polarity seeds defaults for undecided suggestions.
+    // Confirmed ACCEPT/REJECT/MODIFIED remain user-authoritative.
+    if (!confirmed && factDecision) {
+      decision = factDecision;
+    } else if (!decision && factDecision) {
+      decision = factDecision;
+    }
+
     if (!decision) continue;
 
     const detail =

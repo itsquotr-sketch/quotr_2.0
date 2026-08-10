@@ -385,16 +385,20 @@ export async function saveBriefAndSeedWorkAreas(
   if (extractionResult.constraints.length > 0) {
     const { data: existingConstraints } = await supabase
       .from("constraints")
-      .select("id, key")
+      .select("id, key, source")
       .eq("project_id", projectId);
 
     const existingByKey = new Map(
-      (existingConstraints ?? []).map((row) => [row.key, row.id])
+      (existingConstraints ?? []).map((row) => [row.key, row])
     );
 
     for (const constraint of extractionResult.constraints) {
-      const existingId = existingByKey.get(constraint.key);
-      if (existingId) {
+      const existing = existingByKey.get(constraint.key);
+      if (existing?.source === "user") {
+        // User-confirmed constraints remain authoritative.
+        continue;
+      }
+      if (existing) {
         await supabase
           .from("constraints")
           .update({
@@ -402,7 +406,7 @@ export async function saveBriefAndSeedWorkAreas(
             value: constraint.value,
             source: "ai_extracted",
           })
-          .eq("id", existingId)
+          .eq("id", existing.id)
           .eq("project_id", projectId);
       } else {
         await supabase.from("constraints").insert({

@@ -47,6 +47,16 @@ function falsy(value: unknown): boolean {
   return false;
 }
 
+/** Explicit yes — unknown/empty is not yes. */
+export function isExplicitYesFact(value: unknown): boolean {
+  return truthy(value);
+}
+
+/** Explicit no — unknown/empty is not no. */
+export function isExplicitNoFact(value: unknown): boolean {
+  return falsy(value);
+}
+
 /** Fact keys that only refine quantities / finishes — never full reanalysis. */
 export const DETAIL_ONLY_FACT_KEYS = Object.freeze(
   new Set([
@@ -114,6 +124,11 @@ export const SCOPE_SIGNAL_FACT_KEYS: Readonly<
   },
   "deck.waste_removal_required": {
     scopeItemType: "waste_removal",
+    yesMeans: "ADDING",
+    noMeans: "EXCLUDING",
+  },
+  "deck.vertical_face_boards_required": {
+    scopeItemType: "fascia",
     yesMeans: "ADDING",
     noMeans: "EXCLUDING",
   },
@@ -393,4 +408,71 @@ export function buildScopeChangeRecommendations(params: {
   }
 
   return results;
+}
+
+/**
+ * Resolve scope-item type → mapped SCOPE_SIGNAL fact key (first match).
+ */
+export function scopeSignalFactKeyForItemType(
+  scopeItemType: string | null | undefined
+): string | null {
+  if (!scopeItemType) return null;
+  for (const [factKey, signal] of Object.entries(SCOPE_SIGNAL_FACT_KEYS)) {
+    if (signal.scopeItemType === scopeItemType) return factKey;
+  }
+  return null;
+}
+
+/**
+ * Fact-first default for undecided scope items.
+ * UNKNOWN → null (caller keeps catalogue recommendation).
+ * EXPLICIT NO → NOT_REQUIRED.
+ * EXPLICIT YES → INCLUDED.
+ */
+export function explicitScopeDecisionFromFactValue(params: {
+  readonly factKey: string;
+  readonly value: unknown;
+}): "INCLUDED" | "NOT_REQUIRED" | null {
+  const signal = SCOPE_SIGNAL_FACT_KEYS[params.factKey];
+  if (!signal) return null;
+  if (truthy(params.value) && signal.yesMeans === "ADDING") return "INCLUDED";
+  if (falsy(params.value) && signal.noMeans === "EXCLUDING") {
+    return "NOT_REQUIRED";
+  }
+  return null;
+}
+
+export type ScopeSignalFactRef = {
+  readonly key: string;
+  readonly value: unknown;
+  readonly work_area_id?: string | null;
+};
+
+/**
+ * Look up an explicit scope decision for a suggestion from current Facts.
+ * Does not treat absence as false.
+ */
+export function explicitScopeDecisionFromFacts(params: {
+  readonly proposedWorkAreaType: string | null | undefined;
+  readonly relatedWorkAreaId?: string | null;
+  readonly facts: readonly ScopeSignalFactRef[];
+}): "INCLUDED" | "NOT_REQUIRED" | null {
+  const factKey = scopeSignalFactKeyForItemType(params.proposedWorkAreaType);
+  if (!factKey) return null;
+  const matches = params.facts.filter((f) => f.key === factKey);
+  if (matches.length === 0) return null;
+  const scoped =
+    params.relatedWorkAreaId != null
+      ? matches.find(
+          (f) =>
+            f.work_area_id == null ||
+            f.work_area_id === params.relatedWorkAreaId
+        )
+      : matches[0];
+  const fact = scoped ?? matches[0];
+  if (!fact) return null;
+  return explicitScopeDecisionFromFactValue({
+    factKey,
+    value: fact.value,
+  });
 }

@@ -29,10 +29,7 @@ import type {
   ScopeDiscoverySuggestionStatus,
 } from "../types";
 import { SOURCE_BOUNDS } from "./types";
-import {
-  isConstraintMaterialForDiscoveryStale,
-  isFactMaterialForDiscoveryStale,
-} from "../scope-impact";
+import { isConstraintMaterialForDiscoveryStale } from "../scope-impact";
 
 export interface CollectedProjectSources {
   readonly projectId: string;
@@ -183,19 +180,20 @@ export async function collectProjectSources(
     .order("updated_at", { ascending: true })
     .limit(SOURCE_BOUNDS.maxFacts);
 
-  const facts: OrchestrationFact[] = (factRows ?? [])
-    .filter((f) => isFactMaterialForDiscoveryStale(String(f.key)))
-    .map((f) => {
-      const value = jsonFactValue(f.value);
-      return {
-        key: String(f.key),
-        value,
-        revision: contentRevision([
-          String(f.key),
-          shaShort(JSON.stringify(value)),
-        ]),
-      };
-    });
+  const facts: OrchestrationFact[] = (factRows ?? []).map((f) => {
+    const value = jsonFactValue(f.value);
+    return {
+      key: String(f.key),
+      value,
+      revision: contentRevision([
+        String(f.key),
+        shaShort(JSON.stringify(value)),
+      ]),
+    };
+  });
+  // Scope-signal / detail Facts are included for catalogue evaluation.
+  // Stale fingerprints still exclude them via buildSourceSnapshot /
+  // normaliseSnapshotForStaleCompare (isFactMaterialForDiscoveryStale).
 
   const { data: constraintRows } = await ctx.supabase
     .from("constraints")
