@@ -191,6 +191,10 @@ export function ScopeSummaryBlock({
     name: string;
   } | null>(null);
   const [detailsOpen, setDetailsOpen] = useState<Record<string, boolean>>({});
+  /** Once a WA has outstanding details, keep it open until manual collapse (7F-R6-R3). */
+  const [stickyDetailsOpen, setStickyDetailsOpen] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
   const [manualScopeItems, setManualScopeItems] = useState<
     readonly ManualScopeItemView[]
   >([]);
@@ -289,7 +293,15 @@ export function ScopeSummaryBlock({
         const summary = buildEstimateReviewWorkAreaSummary(workArea, {
           constraintPreview,
         });
-        const expanded = detailsOpen[workArea.workAreaId] ?? hasMissing;
+        // Sticky-open incomplete WAs; completion updates badge without forced collapse.
+        if (hasMissing && !stickyDetailsOpen.has(workArea.workAreaId)) {
+          const next = new Set(stickyDetailsOpen);
+          next.add(workArea.workAreaId);
+          setStickyDetailsOpen(next);
+        }
+        const expanded =
+          detailsOpen[workArea.workAreaId] ??
+          (stickyDetailsOpen.has(workArea.workAreaId) || hasMissing);
         const waManualIncluded = manualScopeItems.filter(
           (item) =>
             item.workAreaId === workArea.workAreaId &&

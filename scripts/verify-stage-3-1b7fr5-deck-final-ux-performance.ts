@@ -75,13 +75,14 @@ check(
   defaultExpandedQuestionCategory(groups) != null
 );
 check(
-  "QuestionBlock uses plural expanded set",
+  "QuestionBlock uses sticky disclosure over live preferred set",
   read("components/assistant/QuestionBlock.tsx").includes(
     "defaultExpandedQuestionCategories"
   ) &&
     read("components/assistant/QuestionBlock.tsx").includes(
-      "preferredExpandedSet.has"
-    )
+      "resolveQuestionCategoryExpanded"
+    ) &&
+    read("components/assistant/QuestionBlock.tsx").includes("stickyOpen")
 );
 
 const completeGroups = groupQuestionsByPresentationCategory({

@@ -349,8 +349,14 @@ console.log("\nDISCLOSURE");
 check(
   "multi-WA incomplete Work Areas default open (hasMissing)",
   read("components/assistant/ScopeSummaryBlock.tsx").includes(
-    "detailsOpen[workArea.workAreaId] ?? hasMissing"
-  )
+    "hasMissing"
+  ) &&
+    (read("components/assistant/ScopeSummaryBlock.tsx").includes(
+      "stickyDetailsOpen"
+    ) ||
+      read("components/assistant/ScopeSummaryBlock.tsx").includes(
+        "detailsOpen[workArea.workAreaId] ?? hasMissing"
+      ))
 );
 check(
   "Scope Details groups still use plural unresolved expand",

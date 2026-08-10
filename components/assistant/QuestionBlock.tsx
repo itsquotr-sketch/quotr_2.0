@@ -11,11 +11,14 @@ import type { Question } from "@/components/assistant/types";
 import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
 import { formatSelectAnswerValue } from "@/lib/scopes/fact-labels";
 import {
-  defaultExpandedQuestionCategory,
+  classifyQuestionPresentationCategory,
   defaultExpandedQuestionCategories,
   groupQuestionsByPresentationCategory,
+  mergeStickyOpenCategories,
   provenanceLabelForQuestionSource,
+  questionDisclosureKey,
   relatedScopeItemLabel,
+  resolveQuestionCategoryExpanded,
   shouldShowWhyThisMatters,
   usedForLabelsForFactKey,
   whyThisMattersForKey,
@@ -37,6 +40,9 @@ type QuestionBlockProps = {
   disableCategoryGrouping?: boolean;
   /** Hide the block submit control (parent owns save). */
   hideSubmit?: boolean;
+  /** Review / attention: keep this question's category sticky-open. */
+  focusQuestionId?: string | null;
+  focusQuestionKey?: string | null;
   onAnswerChange?: (questionId: string, value: string | number | boolean | string[]) => void;
   onSubmit?: () => void;
 };
@@ -45,6 +51,12 @@ type QuestionGroup = {
   workAreaId?: string;
   workAreaName: string;
   questions: Question[];
+};
+
+type CategoryDisclosureState = {
+  stickyOpen: ReadonlySet<string>;
+  manualExpanded: Readonly<Partial<Record<string, boolean>>>;
+  reviewPinnedKeys: ReadonlySet<string>;
 };
 
 function groupQuestionsByWorkArea(questions: Question[]): QuestionGroup[] {
@@ -440,6 +452,8 @@ function WorkAreaSection({
   answers,
   submitted,
   disableCategoryGrouping,
+  disclosure,
+  onToggleCategory,
   onAnswerChange,
 }: {
   group: QuestionGroup;
@@ -447,8 +461,14 @@ function WorkAreaSection({
   answers: QuestionAnswers;
   submitted?: boolean;
   disableCategoryGrouping?: boolean;
+  disclosure: CategoryDisclosureState;
+  onToggleCategory: (
+    disclosureKey: string,
+    currentlyExpanded: boolean
+  ) => void;
   onAnswerChange?: (questionId: string, value: string | number | boolean | string[]) => void;
 }) {
+  const workAreaKey = group.workAreaId ?? group.workAreaName;
   const categoryGroups = useMemo(
     () =>
       groupQuestionsByPresentationCategory({
@@ -460,26 +480,20 @@ function WorkAreaSection({
     [group.questions, answers]
   );
 
-  const preferred = useMemo(
-    () => defaultExpandedQuestionCategory(categoryGroups),
-    [categoryGroups]
-  );
   const preferredExpandedSet = useMemo(
     () => defaultExpandedQuestionCategories(categoryGroups),
     [categoryGroups]
   );
 
-  const [manualExpanded, setManualExpanded] = useState<
-    Partial<Record<QuestionPresentationCategory, boolean>>
-  >({});
-
   const isCategoryExpanded = (category: QuestionPresentationCategory) => {
-    if (category in manualExpanded) return manualExpanded[category]!;
-    // 7F-R5: every group with unresolved required questions starts open.
-    if (preferredExpandedSet.has(category)) return true;
-    // When all required groups are complete, keep preferred (first) open.
-    if (preferredExpandedSet.size === 0) return category === preferred;
-    return false;
+    const key = questionDisclosureKey(workAreaKey, category);
+    return resolveQuestionCategoryExpanded({
+      disclosureKey: key,
+      preferredOpen: preferredExpandedSet.has(category),
+      stickyOpen: disclosure.stickyOpen,
+      manualExpanded: disclosure.manualExpanded,
+      reviewPinnedKeys: disclosure.reviewPinnedKeys,
+    });
   };
 
   const renderQuestion = (question: Question) => {
@@ -547,12 +561,29 @@ function WorkAreaSection({
     );
   };
 
+  const remainingInWorkArea = group.questions.filter((q) => {
+    if (!q.required) return false;
+    const v = answers[q.id];
+    return v === null || v === undefined || v === "";
+  }).length;
+
   return (
-    <section className="rounded-2xl border border-border/60 bg-muted/15 p-4 sm:p-5">
-      <div className="mb-4">
+    <section
+      className="rounded-2xl border border-border/60 bg-muted/15 p-4 sm:p-5"
+      data-work-area-id={group.workAreaId}
+      data-work-area-key={workAreaKey}
+    >
+      <div className="mb-4 flex flex-wrap items-baseline justify-between gap-2">
         <h4 className="text-sm font-semibold text-foreground">
           {group.workAreaName}
         </h4>
+        {remainingInWorkArea > 0 ? (
+          <p className="text-xs text-muted-foreground">
+            {remainingInWorkArea} remaining
+          </p>
+        ) : (
+          <p className="text-xs text-muted-foreground">Complete</p>
+        )}
       </div>
 
       {derivedLines.length > 0 ? (
@@ -590,22 +621,21 @@ function WorkAreaSection({
                 const v = answers[q.id];
                 return v !== null && v !== undefined && v !== "";
               });
+            const disclosureKey = questionDisclosureKey(
+              workAreaKey,
+              cat.category
+            );
             const expanded = isCategoryExpanded(cat.category);
             return (
               <CategorySection
-                key={cat.category}
+                key={disclosureKey}
                 category={cat.category}
                 label={cat.label}
                 expanded={expanded}
                 hasUnresolvedRequired={remainingRequiredCount > 0}
                 remainingRequiredCount={remainingRequiredCount}
                 completed={completed}
-                onToggle={() =>
-                  setManualExpanded((prev) => ({
-                    ...prev,
-                    [cat.category]: !isCategoryExpanded(cat.category),
-                  }))
-                }
+                onToggle={() => onToggleCategory(disclosureKey, expanded)}
               >
                 {submitted ? (
                   <dl className="space-y-3">
@@ -634,6 +664,8 @@ export function QuestionBlock({
   submitLabel = "Save",
   disableCategoryGrouping,
   hideSubmit,
+  focusQuestionId,
+  focusQuestionKey,
   onAnswerChange,
   onSubmit,
 }: QuestionBlockProps) {
@@ -649,6 +681,80 @@ export function QuestionBlock({
     }
     return map;
   }, [derivedFactDisplays]);
+
+  // Lifted disclosure — survives WorkAreaSection remounts across answer saves.
+  const [manualExpanded, setManualExpanded] = useState<
+    Partial<Record<string, boolean>>
+  >({});
+  const [stickyOpen, setStickyOpen] = useState<ReadonlySet<string>>(
+    () => new Set()
+  );
+
+  const preferredDisclosureKeys = useMemo(() => {
+    const keys = new Set<string>();
+    for (const group of groups) {
+      const workAreaKey = group.workAreaId ?? group.workAreaName;
+      const categoryGroups = groupQuestionsByPresentationCategory({
+        questions: group.questions,
+        answers: Object.fromEntries(
+          group.questions.map((q) => [q.id, answers[q.id]])
+        ),
+      });
+      for (const cat of defaultExpandedQuestionCategories(categoryGroups)) {
+        keys.add(questionDisclosureKey(workAreaKey, cat));
+      }
+    }
+    return keys;
+  }, [groups, answers]);
+
+  const reviewPinnedKeys = useMemo(() => {
+    const keys = new Set<string>();
+    const focusQuestion = questions.find(
+      (q) =>
+        (focusQuestionId && q.id === focusQuestionId) ||
+        (focusQuestionKey && q.key === focusQuestionKey)
+    );
+    if (focusQuestion) {
+      const workAreaKey =
+        focusQuestion.workAreaId ??
+        focusQuestion.workAreaName ??
+        "project";
+      const category = classifyQuestionPresentationCategory({
+        key: focusQuestion.key,
+        label: focusQuestion.label,
+      });
+      keys.add(questionDisclosureKey(workAreaKey, category));
+    }
+    return keys;
+  }, [questions, focusQuestionId, focusQuestionKey]);
+
+  // Adjust sticky set during render when preferred gains keys (new incomplete /
+  // conditional groups / Review pin). Never drop keys on completion (7F-R6-R3).
+  let nextSticky = stickyOpen;
+  const mergedSticky = mergeStickyOpenCategories(
+    stickyOpen,
+    new Set([...preferredDisclosureKeys, ...reviewPinnedKeys])
+  );
+  if (mergedSticky.size !== stickyOpen.size) {
+    nextSticky = mergedSticky;
+    setStickyOpen(mergedSticky);
+  }
+
+  const disclosure: CategoryDisclosureState = {
+    stickyOpen: nextSticky,
+    manualExpanded,
+    reviewPinnedKeys,
+  };
+
+  const handleToggleCategory = (
+    disclosureKey: string,
+    currentlyExpanded: boolean
+  ) => {
+    setManualExpanded((prev) => ({
+      ...prev,
+      [disclosureKey]: !currentlyExpanded,
+    }));
+  };
 
   const handleSubmit = () => {
     const missing = questions.filter(
@@ -680,7 +786,7 @@ export function QuestionBlock({
     <div className="space-y-5">
       {groups.map((group) => (
         <WorkAreaSection
-          key={group.workAreaName}
+          key={group.workAreaId ?? group.workAreaName}
           group={group}
           derivedLines={
             group.workAreaId
@@ -690,6 +796,8 @@ export function QuestionBlock({
           answers={answers}
           submitted={submitted}
           disableCategoryGrouping={disableCategoryGrouping}
+          disclosure={disclosure}
+          onToggleCategory={handleToggleCategory}
           onAnswerChange={onAnswerChange}
         />
       ))}

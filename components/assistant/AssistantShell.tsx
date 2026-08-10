@@ -217,6 +217,12 @@ export function AssistantShell({
     pendingDetailTitles: readonly string[];
   } | null>(null);
   const [forceExpandQuestions, setForceExpandQuestions] = useState(false);
+  const [reviewFocusQuestionId, setReviewFocusQuestionId] = useState<
+    string | null
+  >(null);
+  const [reviewFocusQuestionKey, setReviewFocusQuestionKey] = useState<
+    string | null
+  >(null);
   const scopeReviewCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -406,6 +412,8 @@ export function AssistantShell({
         // Ensure Estimate Review / Scope Details editors are visible.
         setForceExpandQuestions(true);
       }
+      setReviewFocusQuestionId(item.questionId ?? null);
+      setReviewFocusQuestionKey(item.factKey ?? null);
 
       window.requestAnimationFrame(() => {
         const stageEl =
@@ -1119,6 +1127,8 @@ export function AssistantShell({
                 derivedFactDisplays={initialState.derivedFactDisplays}
                 answers={questionAnswers}
                 isSaving={pendingAction === "questions"}
+                focusQuestionId={reviewFocusQuestionId}
+                focusQuestionKey={reviewFocusQuestionKey}
                 onAnswerChange={handleQuestionAnswer}
                 onSubmit={handleQuestionsSubmit}
               />

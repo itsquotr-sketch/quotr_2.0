@@ -3,6 +3,7 @@
  */
 
 export * from "./question-categories";
+export * from "./question-disclosure";
 export * from "./why-this-matters";
 export * from "./provenance-labels";
 export * from "./used-for";
