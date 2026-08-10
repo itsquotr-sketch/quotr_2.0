@@ -386,14 +386,23 @@ export function AssistantShell({
   }, [scopeDiscoveryEnabled, scopeReviewComplete]);
 
   const handleReviewAttention = useCallback(
-    (item: { reviewTarget?: string }) => {
+    (item: {
+      reviewTarget?: string;
+      workAreaId?: string;
+      factKey?: string;
+      questionId?: string;
+    }) => {
       const target = item.reviewTarget;
       if (target === "questions" || !target) {
         setForceExpandQuestions(true);
       }
-      // Expand + scroll after paint so collapsed cards have layout height.
+      if (target === "estimateReview" || item.workAreaId || item.questionId) {
+        // Ensure Estimate Review / Scope Details editors are visible.
+        setForceExpandQuestions(true);
+      }
+
       window.requestAnimationFrame(() => {
-        const el =
+        const stageEl =
           target === "scopeReview"
             ? scopeReviewCardRef.current
             : target === "quality"
@@ -403,7 +412,33 @@ export function AssistantShell({
                 : target === "estimateReview"
                   ? estimateReviewCardRef.current
                   : questionsCardRef.current ?? estimateReviewCardRef.current;
+
+        // Prefer precise question / work-area target when available (7F-R6).
+        const precise =
+          (item.questionId
+            ? document.querySelector<HTMLElement>(
+                `[data-question-id="${item.questionId}"]`
+              )
+            : null) ??
+          (item.factKey
+            ? document.querySelector<HTMLElement>(
+                `[data-question-key="${item.factKey}"]`
+              )
+            : null) ??
+          (item.workAreaId
+            ? document.querySelector<HTMLElement>(
+                `[data-work-area-id="${item.workAreaId}"]`
+              )
+            : null);
+
+        const el = precise ?? stageEl;
         el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+        if (precise) {
+          const focusable = precise.querySelector<HTMLElement>(
+            "input, select, textarea, button"
+          );
+          focusable?.focus({ preventScroll: true });
+        }
       });
     },
     []
@@ -553,8 +588,10 @@ export function AssistantShell({
         return;
       }
 
-      router.refresh();
       setSavingConstraintKey(null);
+      startTransition(() => {
+        router.refresh();
+      });
     },
     [project.id, router]
   );

@@ -89,6 +89,7 @@ export async function ensureMissingDetailsQuestionBlock(
     { data: projectFactsRaw },
     { data: questionRows },
     { data: workAreaQuestionBlocks },
+    { data: constraintRows },
   ] = await Promise.all([
     supabase
       .from("work_areas")
@@ -109,6 +110,10 @@ export async function ensureMissingDetailsQuestionBlock(
       .select("id, status, stage")
       .eq("project_id", projectId)
       .eq("stage", "work_area_questions"),
+    supabase
+      .from("project_constraints")
+      .select("key, value")
+      .eq("project_id", projectId),
   ]);
 
   const blockStatusById = new Map(
@@ -173,7 +178,13 @@ export async function ensureMissingDetailsQuestionBlock(
     blockStatusById
   );
   const missingQuestions = buildMissingRequiredQuestionsForWorkAreas({
-    project: { quality_level: qualityLevel },
+    project: {
+      quality_level: qualityLevel,
+      constraints: (constraintRows ?? []).map((row) => ({
+        key: row.key,
+        value: row.value,
+      })),
+    },
     confirmedWorkAreas,
     projectFacts,
     existingQuestions,

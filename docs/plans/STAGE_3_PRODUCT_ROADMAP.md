@@ -125,6 +125,9 @@ Every Stage 3 release should track:
 - 3.1B.7F-R4 Deck retest: `docs/runbooks/STAGE_3_1B7FR4_DECK_RETEST.md`
 - 3.1B.7F-R5 Deck final UX/perf: `docs/implementation/STAGE_3_1B7FR5_DECK_FINAL_UX_PERFORMANCE_COMPLETION.md`
 - 3.1B.7F-R5 Deck final retest: `docs/runbooks/STAGE_3_1B7FR5_DECK_FINAL_RETEST.md`
+- 3.1B.7F-R6 multi-WA data collection: `docs/implementation/STAGE_3_1B7FR6_MULTI_WORK_AREA_DATA_COLLECTION_COMPLETION.md`
+- 3.1B.7F-R6 question coverage audit: `docs/audits/STAGE_3_1B7FR6_MULTI_WORK_AREA_QUESTION_COVERAGE_AUDIT.md`
+- 3.1B.7F-R6 Fitout retest: `docs/runbooks/STAGE_3_1B7FR6_COMMERCIAL_FITOUT_RETEST.md`
 - 3.1B.7G completion: `docs/implementation/STAGE_3_1B7G_ASSISTANT_DENSITY_STICKY_ESTIMATE_COMPLETION.md`
 - 3.1B.7G preview retest: `docs/runbooks/STAGE_3_1B7G_PREVIEW_RETEST.md`
 - Assistant responsive/mobile architecture: `docs/architecture/QUOTR_ASSISTANT_RESPONSIVE_AND_MOBILE_PRESENTATION.md`

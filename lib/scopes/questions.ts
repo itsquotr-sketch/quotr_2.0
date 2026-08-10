@@ -24,7 +24,12 @@ import {
 import type { ScopeQuestionTemplate } from "@/lib/scopes/types";
 import { isQuestionSuppressedByScopeItemExclusion } from "@/lib/scope-discovery/ui/scope-item-question-gates";
 
-const MAX_QUESTIONS = 12;
+/**
+ * Stage 3.1B.7F-R6: do not silently drop applicable questions on multi-WA jobs.
+ * Progressive disclosure lives in the UI; question generation includes all
+ * currently-applicable unanswered templates (required + optional).
+ */
+const MAX_OPTIONAL_QUESTIONS_SOFT = 40;
 
 export const MISSING_DETAILS_BLOCK_TITLE = "Missing scope details";
 export const MISSING_DETAILS_BLOCK_DESCRIPTION =
@@ -54,6 +59,11 @@ export type WorkAreaInput = {
 
 export type ProjectInput = {
   quality_level: string | null;
+  /** Project-wide constraints used for Fact-first question dedupe (7F-R6). */
+  constraints?: readonly {
+    readonly key: string;
+    readonly value: unknown;
+  }[];
 };
 
 export type BuiltQuestion = {
@@ -302,6 +312,85 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
   }));
 }
 
+function constraintValue(
+  project: ProjectInput,
+  key: string
+): string | null {
+  const row = project.constraints?.find((c) => c.key === key);
+  if (!row || row.value === null || row.value === undefined || row.value === "") {
+    return null;
+  }
+  return String(row.value).trim();
+}
+
+/**
+ * When project-wide Site Constraints / scope already answer a WA question,
+ * do not ask again (7F-R6 Fact-first / dedupe).
+ */
+function isSuppressedByProjectWideKnowledge(
+  factKey: string,
+  project: ProjectInput,
+  factLookup: ReturnType<typeof buildFactLookup>,
+  workAreaId: string,
+  confirmedTypes: Set<string>
+): boolean {
+  const siteAccess = constraintValue(project, "site_access");
+  const carry = constraintValue(project, "material_carry_distance");
+  const workingHours = constraintValue(project, "working_hours");
+  const occupied = constraintValue(project, "site_occupied");
+
+  if (
+    (factKey === "demolition.access" ||
+      factKey === "internal_walls.access" ||
+      factKey === "ceilings.access" ||
+      factKey.endsWith(".access")) &&
+    siteAccess &&
+    siteAccess.toLowerCase() !== "easy" &&
+    siteAccess.toLowerCase() !== "not sure"
+  ) {
+    return true;
+  }
+
+  if (
+    (factKey === "demolition.carting_distance_m" ||
+      factKey === "demolition.skip_bin_included") &&
+    carry &&
+    !carry.startsWith("<")
+  ) {
+    return true;
+  }
+
+  if (
+    factKey === "demolition.noise_hours_restriction" &&
+    workingHours &&
+    workingHours.toLowerCase() !== "no" &&
+    workingHours.toLowerCase() !== "false"
+  ) {
+    return true;
+  }
+
+  if (factKey === "demolition.disposal_included") {
+    if (confirmedTypes.has("waste_removal")) return true;
+    const knownYes = [...factLookup.values()].some(
+      (f) =>
+        (f.key === "fitout.waste_required" ||
+          f.key === "demolition.waste_removal_required") &&
+        (f.value === true ||
+          f.value === "Yes" ||
+          f.value === "yes" ||
+          f.value === "true")
+    );
+    if (knownYes) return true;
+  }
+
+  // Occupied building is project-wide — do not re-ask per WA if captured.
+  if (factKey.includes("occupied") && occupied) {
+    return true;
+  }
+
+  return false;
+}
+
 export function shouldSkipTemplateQuestion(
   template: ScopeQuestionTemplate,
   workArea: WorkAreaInput,
@@ -322,6 +411,11 @@ export function shouldSkipTemplateQuestion(
   }
 
   if (template.factKey === "deck.pergola_included") {
+    return true;
+  }
+
+  // 7F-R6: project-wide constraints / known scope suppress WA duplicates.
+  if (isSuppressedByProjectWideKnowledge(template.factKey, project, factLookup, workArea.id, confirmedTypes)) {
     return true;
   }
 
@@ -489,7 +583,13 @@ export function buildQuestionBlockFromProjectState(params: {
     return a.priority - b.priority;
   });
 
-  const selected = candidates.slice(0, MAX_QUESTIONS).map((question, index) => ({
+  // All required first; soft-cap only excess optionals (never drop required).
+  const required = candidates.filter((q) => q.required);
+  const optional = candidates.filter((q) => !q.required);
+  const selected = [
+    ...required,
+    ...optional.slice(0, MAX_OPTIONAL_QUESTIONS_SOFT),
+  ].map((question, index) => ({
     ...question,
     sortOrder: index + 1,
   }));
@@ -577,7 +677,12 @@ export function buildQuestionBlockForWorkArea(params: {
     return a.priority - b.priority;
   });
 
-  const selected = candidates.slice(0, MAX_QUESTIONS).map((question, index) => ({
+  const required = candidates.filter((q) => q.required);
+  const optional = candidates.filter((q) => !q.required);
+  const selected = [
+    ...required,
+    ...optional.slice(0, MAX_OPTIONAL_QUESTIONS_SOFT),
+  ].map((question, index) => ({
     ...question,
     sortOrder: index + 1,
   }));

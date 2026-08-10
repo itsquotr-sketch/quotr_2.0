@@ -9,11 +9,13 @@
 **7F-R2 retest:** `docs/runbooks/STAGE_3_1B7FR2_DECK_PREVIEW_RETEST.md`  
 **7F-R5 retest:** `docs/runbooks/STAGE_3_1B7FR5_DECK_FINAL_RETEST.md`  
 **R5 completion:** `docs/implementation/STAGE_3_1B7FR5_DECK_FINAL_UX_PERFORMANCE_COMPLETION.md`  
+**7F-R6 Fitout retest:** `docs/runbooks/STAGE_3_1B7FR6_COMMERCIAL_FITOUT_RETEST.md`  
+**R6 completion:** `docs/implementation/STAGE_3_1B7FR6_MULTI_WORK_AREA_DATA_COLLECTION_COMPLETION.md`  
 **Per-project capture:** `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md`  
 
 Observational only — **not** production SLOs.
 
-### Local remediation notes (7F-R1 / 7F-R2 / 7F-R5)
+### Local remediation notes (7F-R1 / 7F-R2 / 7F-R5 / 7F-R6)
 
 | Observation | Change |
 | --- | --- |
@@ -25,8 +27,11 @@ Observational only — **not** production SLOs.
 | Confirm Work Areas blocked on discovery provider (R5) | `confirmWorkAreas` returns after WA persist; UI Scope Review auto-run owns discovery |
 | Estimate / WA revalidate dashboard+project (R5) | Project-only revalidate on confirm WA + estimate generate |
 | Stage-keyed Assistant remount | Residual contributor on Analyse / Confirm / Generate — documented, not redesigned in R5 |
+| Question answer sequential Fact commits (R6) | `Promise.all` parallel commits in `saveQuestionBlockAnswers` |
+| Constraint single-edit blocking refresh (R6) | `startTransition(() => router.refresh())` |
+| Section/batch save | Deferred — document only; avoid silent data-loss risk |
 
-Capture Preview timings during Deck R5 retest for Analyse Job, Confirm Work Areas, Automatic Scope Review, Generate Estimate, and Scope Details answer save. Categorise: provider / DB / server compute / client refresh-render.
+Capture Preview timings during Deck R5 and Fitout R6 retests for Analyse Job, Confirm Work Areas, Automatic Scope Review, Generate Estimate, Scope Details answer save, and Site Constraint save. Categorise: provider / DB / server compute / client refresh-render.
 
 ---
 

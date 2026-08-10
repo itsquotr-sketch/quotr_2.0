@@ -155,7 +155,7 @@ export const demolitionScope: ScopeDefinition = {
       questionText: "Is there a hazardous materials risk?",
       inputType: "select",
       options: [
-        "None known",
+        "No known hazardous material risk",
         "Possible asbestos",
         "Possible lead paint",
         "Possible mould",

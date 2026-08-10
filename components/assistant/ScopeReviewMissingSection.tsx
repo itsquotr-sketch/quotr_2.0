@@ -118,7 +118,12 @@ export function ScopeReviewMissingSection({
       </h5>
       <div className="mt-3 space-y-4">
         {questions.map((question) => (
-          <div key={question.id} className="space-y-1.5">
+          <div
+            key={question.id}
+            className="space-y-1.5"
+            data-question-id={question.id}
+            data-question-key={question.key}
+          >
             <Label className="text-sm font-medium leading-snug text-foreground">
               {question.label}
               {question.required ? (

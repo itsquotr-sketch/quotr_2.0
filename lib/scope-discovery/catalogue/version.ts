@@ -6,4 +6,4 @@
  * Do not couple to AI model versions.
  */
 export const SCOPE_RELATIONSHIP_CATALOGUE_VERSION =
-  "scope-relationship-catalogue/v1" as const;
+  "scope-relationship-catalogue/v2" as const;

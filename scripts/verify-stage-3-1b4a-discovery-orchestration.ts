@@ -300,8 +300,25 @@ async function main(): Promise<void> {
     })
   );
   check(
-    "Fact change changes fingerprint",
-    computeSourceFingerprint(factChanged) !== fp1
+    "DETAIL_ONLY Fact revision does not change discovery fingerprint (7F-R1)",
+    computeSourceFingerprint(factChanged) === fp1
+  );
+
+  const materialFactChanged = buildSourceSnapshot(
+    baseRequest({
+      authoritativeFacts: [
+        ...baseRequest().authoritativeFacts,
+        {
+          key: "unclassified_project_change",
+          value: "yes",
+          revision: "scope-material-1",
+        },
+      ],
+    })
+  );
+  check(
+    "FULL_REANALYSIS Fact change changes fingerprint",
+    computeSourceFingerprint(materialFactChanged) !== fp1
   );
 
   const providerMetaOnly = buildSourceSnapshot(baseRequest(), {

@@ -205,6 +205,17 @@ export function getWorkAreaAccessFactor(
   return 1;
 }
 
+/** Prefer WA Fact; fall back to project site_access constraint (7F-R6). */
+export function resolveWorkAreaAccessValue(params: {
+  readonly workAreaAccess: string | null | undefined;
+  readonly constraints: EstimateConstraint[];
+}): string | null {
+  if (params.workAreaAccess && String(params.workAreaAccess).trim()) {
+    return String(params.workAreaAccess).trim();
+  }
+  return getConstraintValue(params.constraints, "site_access");
+}
+
 /** Fence/pergola slope or ground condition labour multiplier. */
 export function getSlopeLabourFactor(
   slopeValue: string | null | undefined

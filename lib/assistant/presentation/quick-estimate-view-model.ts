@@ -12,6 +12,9 @@ export type QuickEstimateAttentionItem = {
   readonly label: string;
   readonly detail: string;
   readonly workAreaName?: string;
+  readonly workAreaId?: string;
+  readonly factKey?: string;
+  readonly questionId?: string;
   /** Stage / section id for Review navigation when practical. */
   readonly reviewTarget?:
     | "questions"
@@ -56,6 +59,13 @@ export function buildQuickEstimateAttentionItems(params: {
   readonly missingByWorkArea?: readonly {
     readonly workAreaName: string;
     readonly label: string;
+    readonly workAreaId?: string;
+    readonly factKey?: string;
+    readonly questionId?: string;
+    /** False when no mapped question/editors exist — show without Review. */
+    readonly actionable?: boolean;
+    /** Prefer estimateReview when Scope Details editors live there. */
+    readonly reviewTarget?: QuickEstimateAttentionItem["reviewTarget"];
   }[];
   readonly clarificationLabels?: readonly string[];
   readonly pendingProposalCount?: number;
@@ -66,12 +76,26 @@ export function buildQuickEstimateAttentionItems(params: {
   for (const [index, entry] of (params.missingByWorkArea ?? []).entries()) {
     const trimmed = entry.label.trim();
     if (!trimmed) continue;
+    // Default actionable unless EstimatePanel (or caller) marks otherwise.
+    // Legacy named rows without ids still route to Scope Details ("questions").
+    const actionable = entry.actionable !== false;
+    const reviewTarget = actionable
+      ? (entry.reviewTarget ??
+        (entry.questionId || entry.workAreaId
+          ? "estimateReview"
+          : "questions"))
+      : undefined;
     items.push({
-      id: `missing-wa:${index}:${trimmed}`,
+      id: `missing-wa:${entry.workAreaId ?? index}:${trimmed}`,
       label: trimmed,
-      detail: "Review in Scope Details",
+      detail: actionable
+        ? "Review in Scope Details"
+        : "More information required",
       workAreaName: entry.workAreaName,
-      reviewTarget: "questions",
+      workAreaId: actionable ? entry.workAreaId : undefined,
+      factKey: entry.factKey,
+      questionId: actionable ? entry.questionId : undefined,
+      reviewTarget,
     });
   }
 

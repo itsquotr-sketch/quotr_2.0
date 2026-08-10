@@ -49,6 +49,24 @@ Verify: `scripts/verify-stage-3-1b7fr5-deck-final-ux-performance.ts`
 
 **Deck PASS status:** Pending R5 Owner retest (engine/scope already strong after R4).
 
+## 7F-R6 Commercial Fitout multi-WA data collection
+
+| ID | Severity | Observed | Expected | Fix status |
+| --- | --- | --- | --- | --- |
+| FITOUT-R6-01 | High | Sparse Scope Review baselines | Concise CORE per WA | Fixed — Local; Owner retest Pending |
+| FITOUT-R6-02 | High | Incomplete questions (12-cap) | All required together | Fixed — Local; Owner retest Pending |
+| FITOUT-R6-03 | Medium | Duplicate project-wide asks | Fact-first suppress | Fixed — Local; Owner retest Pending |
+| FITOUT-R6-04 | Medium | Hazmat None known ambiguous | Explicit No ≠ Not sure | Fixed — Local; Owner retest Pending |
+| FITOUT-R6-05 | High | Non-actionable QE Review | Target control or no button | Fixed — Local; Owner retest Pending |
+| FITOUT-R6-06 | Medium | Answer save latency | Parallel commits | Fixed — Local; Owner timing Pending |
+| FITOUT-R6-07 | Medium | Constraint save latency | startTransition refresh | Fixed — Local; Owner timing Pending |
+
+Retest: `docs/runbooks/STAGE_3_1B7FR6_COMMERCIAL_FITOUT_RETEST.md`  
+Verify: `scripts/verify-stage-3-1b7fr6-multi-work-area-data-collection.ts`  
+Audit: `docs/audits/STAGE_3_1B7FR6_MULTI_WORK_AREA_QUESTION_COVERAGE_AUDIT.md`
+
+**Fitout PASS status:** Pending R6 Owner retest.
+
 Do **not** close Stage 3.1B until Owner Deck (R5) + Bathroom + Fitout PASS.
 
 ---

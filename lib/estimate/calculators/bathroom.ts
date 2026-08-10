@@ -1,4 +1,4 @@
-import { getQualityFactor, getQualityFactorNote, getWorkAreaAccessFactor } from "@/lib/estimate/adjustments";
+import { getQualityFactor, getQualityFactorNote, getWorkAreaAccessFactor, resolveWorkAreaAccessValue } from "@/lib/estimate/adjustments";
 import { BATHROOM_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   applyAllowanceMinimum,
@@ -134,7 +134,10 @@ export function calculateBathroom(
     workArea.id,
     "bathroom.demolition_required"
   );
-  const accessValue = getStringFact(facts, workArea.id, "bathroom.access");
+  const accessValue = resolveWorkAreaAccessValue({
+    workAreaAccess: getStringFact(facts, workArea.id, "bathroom.access"),
+    constraints: context.constraints,
+  });
   const accessFactor = getWorkAreaAccessFactor(accessValue);
   const accessLabel = accessValue ?? undefined;
   const smallJobFactor = smallBathroomFactor(effectiveArea);

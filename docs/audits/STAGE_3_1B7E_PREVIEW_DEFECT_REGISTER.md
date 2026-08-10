@@ -1,7 +1,9 @@
 # Stage 3.1B.7E — Preview Defect Register
 
-**Status:** Open — Owner E2E Pending (Deck R4 PASS; R5 final UX/perf retest required; Bathroom FUNCTIONAL PASS; Fitout Pending)  
+**Status:** Open — Owner E2E Pending (Deck R4 PASS; R5 final UX/perf retest required; Bathroom FUNCTIONAL PASS; Fitout R6 Local Complete / Owner retest Pending)  
 **Updated:** 2026-08-10  
+**7F-R6 Fitout retest:** `docs/runbooks/STAGE_3_1B7FR6_COMMERCIAL_FITOUT_RETEST.md`  
+**7F-R6 completion:** `docs/implementation/STAGE_3_1B7FR6_MULTI_WORK_AREA_DATA_COLLECTION_COMPLETION.md`  
 **Readiness:** `docs/implementation/STAGE_3_1B_OWNER_PREVIEW_E2E_READINESS.md`  
 **Final sign-off:** `docs/runbooks/STAGE_3_1B_OWNER_PREVIEW_FINAL_SIGNOFF.md`  
 **7F-R4 retest:** `docs/runbooks/STAGE_3_1B7FR4_DECK_RETEST.md`  
@@ -150,6 +152,13 @@ constraint remediation in **3.1B.7F-R4**. Owner Deck retest:
 | DECK-R5-05 | Deck | Medium | False open clarification in Quick Estimate | Named current Scope Details attention only | needsDetail mapped to clarification channel | Yes until R5 Owner retest | **Fixed — Local (7F-R5)** | `verify-stage-3-1b7fr5` |
 | DECK-R5-06 | Deck | Low | Review action causes unstable scroll jump | Expand target + `block: nearest` | `block: start` + missing completed ref | Yes until R5 Owner retest | **Fixed — Local (7F-R5)** | `verify-stage-3-1b7fr5` |
 | BATH-CD-01 | Bathroom | Low | Commercial detail showed `Access factor: Restricted` | Contractor-facing access uplift wording with actual % | `formatLabourMinimumDisplay` emitted internal label; Restricted not recognised as 1.1 | No | **Fixed — Local** | `verify-stage-3-1b-bathroom-commercial-detail` |
+| FITOUT-R6-01 | Fitout | High | Scope Review too sparse (deps only) | Concise CORE baselines per supported WA | Catalogue missing CORE under confirmed WAs | Yes until Owner Fitout retest | **Fixed — Local (7F-R6)** | `verify-stage-3-1b7fr6` + Owner |
+| FITOUT-R6-02 | Fitout | High | Incomplete question coverage / only some questions | All applicable required questions together | `MAX_QUESTIONS = 12` hard cap | Yes until Owner Fitout retest | **Fixed — Local (7F-R6)** | `verify-stage-3-1b7fr6` |
+| FITOUT-R6-03 | Fitout | Medium | Duplicate project-wide vs WA questions | Fact-first suppress WA duplicates | No project constraint suppression | No | **Fixed — Local (7F-R6)** | `verify-stage-3-1b7fr6` |
+| FITOUT-R6-04 | Fitout | Medium | Hazmat “None known” ambiguous | Explicit No known risk ≠ Not sure | Wording | No | **Fixed — Local (7F-R6)** | `verify-stage-3-1b7fr6` |
+| FITOUT-R6-05 | Fitout | High | QE Review non-actionable | Review targets real control or no button | Wrong stage / no DOM target | Yes until Owner Fitout retest | **Fixed — Local (7F-R6)** | `verify-stage-3-1b7fr6` |
+| FITOUT-R6-06 | Fitout | Medium | Question-answer save latency | Parallel commits + Saved ack | Sequential Fact writes | No | **Fixed — Local (7F-R6)** (partial) | Owner timing |
+| FITOUT-R6-07 | Fitout | Medium | Site Constraint save latency | startTransition refresh | Blocking refresh remount | No | **Fixed — Local (7F-R6)** (partial) | Owner timing |
 
 ### Known local verify gap (DEF-7E-006)
 

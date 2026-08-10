@@ -507,7 +507,8 @@ async function createDynamicQuestionBlockIfNeeded(
     return { blockId: existingBlocks[0].id, nextStage: "work_area_questions" };
   }
 
-  const [{ data: workAreas }, { data: projectFactsRaw }] = await Promise.all([
+  const [{ data: workAreas }, { data: projectFactsRaw }, { data: constraintRows }] =
+    await Promise.all([
     supabase
       .from("work_areas")
       .select("id, type, name, status, sort_order")
@@ -517,6 +518,10 @@ async function createDynamicQuestionBlockIfNeeded(
     supabase
       .from("project_facts")
       .select("key, work_area_id, value, source")
+      .eq("project_id", projectId),
+    supabase
+      .from("project_constraints")
+      .select("key, value")
       .eq("project_id", projectId),
   ]);
 
@@ -540,7 +545,13 @@ async function createDynamicQuestionBlockIfNeeded(
   }
 
   const built = buildQuestionBlockFromProjectState({
-    project: { quality_level: qualityLevel },
+    project: {
+      quality_level: qualityLevel,
+      constraints: (constraintRows ?? []).map((row) => ({
+        key: row.key,
+        value: row.value,
+      })),
+    },
     confirmedWorkAreas: workAreas ?? [],
     projectFacts,
     excludedScopeItemTypes,
@@ -818,6 +829,10 @@ export async function saveQuestionBlockAnswers(
     (blockQuestions ?? []).map((question) => [question.id, question])
   );
 
+  const commits: Array<
+    Promise<{ ok: true } | { ok: false; error: string }>
+  > = [];
+
   for (const answer of parsed.data) {
     const question = questionById.get(answer.question_id);
     if (!question) {
@@ -825,27 +840,30 @@ export async function saveQuestionBlockAnswers(
     }
 
     // Stage 3.1D: Fact SoT first, then question capture mirror.
-    const commit = await commitUserAnswerToScope(supabase, {
-      orgId,
-      projectId,
-      questionId: answer.question_id,
-      questionBlockId,
-      workAreaId: question.work_area_id,
-      key: question.key,
-      label: question.label,
-      unit: question.unit,
-      inputType: question.input_type as
-        | "number"
-        | "select"
-        | "boolean"
-        | "text"
-        | "multi_select",
-      value: answer.value,
-    });
+    commits.push(
+      commitUserAnswerToScope(supabase, {
+        orgId,
+        projectId,
+        questionId: answer.question_id,
+        questionBlockId,
+        workAreaId: question.work_area_id,
+        key: question.key,
+        label: question.label,
+        unit: question.unit,
+        inputType: question.input_type as
+          | "number"
+          | "select"
+          | "boolean"
+          | "text"
+          | "multi_select",
+        value: answer.value,
+      })
+    );
+  }
 
-    if (!commit.ok) {
-      return { error: toSafeAssistantError(ANSWER_SAVE_FAILED) };
-    }
+  const commitResults = await Promise.all(commits);
+  if (commitResults.some((commit) => !commit.ok)) {
+    return { error: toSafeAssistantError(ANSWER_SAVE_FAILED) };
   }
 
   if (block.status !== "submitted") {

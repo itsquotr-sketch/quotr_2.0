@@ -40,7 +40,7 @@ export const internalWallsScope: ScopeDefinition = {
         "Other",
         "Not sure",
       ],
-      required: false,
+      required: true,
       priority: 30,
       factKey: "internal_walls.framing_type",
       workAreaType: "internal_walls",

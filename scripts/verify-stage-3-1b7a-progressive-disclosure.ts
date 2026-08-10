@@ -233,10 +233,30 @@ const scopeLists = buildScopeItemSummaryLists({
   ],
 });
 check(
-  "scope review summary lists included / not required / needs detail",
+  "scope review summary lists included / not required; unmapped pending not sticky (7F-R5)",
   scopeLists.included.includes("Deck surface") &&
     scopeLists.notRequired.includes("Existing demolition") &&
-    scopeLists.needsDetail.includes("Engineering")
+    scopeLists.included.includes("Engineering") &&
+    !scopeLists.needsDetail.includes("Engineering")
+);
+
+const mappedPendingLists = buildScopeItemSummaryLists({
+  suggestions: [
+    {
+      proposedTitle: "Substructure condition",
+      decisionState: "ACCEPTED",
+      proposalClass: "SCOPE_ITEM",
+      latestReasonCode: "included_pending_detail",
+      requiredDetailFactKeys: ["deck.substructure_condition"],
+    },
+  ],
+});
+check(
+  "mapped pending detail remains in needsDetail until Facts known",
+  mappedPendingLists.needsDetail.includes("Substructure condition") ||
+    mappedPendingLists.pendingScopeDetails.some((p) =>
+      p.title.includes("Substructure")
+    )
 );
 
 const er = buildEstimateReviewSummaryModel({

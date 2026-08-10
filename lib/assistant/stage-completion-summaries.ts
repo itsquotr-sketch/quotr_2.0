@@ -439,6 +439,7 @@ export function buildScopeItemSummaryLists(params: {
     readonly relatedWorkAreaId?: string | null;
     readonly proposedWorkAreaType?: string | null;
     readonly supersededBySuggestionId?: string | null;
+    readonly requiredDetailFactKeys?: readonly string[];
   }[];
   readonly scopeReview?: ScopeReview | null;
   readonly manualItems?: readonly ManualScopeItemView[];
@@ -456,6 +457,7 @@ export function buildScopeItemSummaryLists(params: {
       relatedWorkAreaId: s.relatedWorkAreaId,
       proposedWorkAreaType: s.proposedWorkAreaType,
       supersededBySuggestionId: s.supersededBySuggestionId,
+      requiredDetailFactKeys: s.requiredDetailFactKeys,
     })),
     manualItems: params.manualItems,
     scopeReview: params.scopeReview,

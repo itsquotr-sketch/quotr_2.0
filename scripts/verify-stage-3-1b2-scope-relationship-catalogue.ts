@@ -120,7 +120,7 @@ function main(): void {
   );
   check(
     "version exists",
-    SCOPE_RELATIONSHIP_CATALOGUE_VERSION === "scope-relationship-catalogue/v1"
+    SCOPE_RELATIONSHIP_CATALOGUE_VERSION === "scope-relationship-catalogue/v2"
   );
   check(
     "aliases resolve deterministically",
@@ -370,6 +370,30 @@ function main(): void {
   check(
     "partitions consider services coordination",
     hasEdge(partitions, "fitout.partitions.services")
+  );
+  check(
+    "partitions baseline includes framing + wall linings",
+    hasEdge(partitions, "fitout.partitions.framing") &&
+      hasEdge(partitions, "fitout.partitions.wall_linings")
+  );
+
+  const paintingWa = evaluate({
+    accepted: [{ workAreaId: IDS.partWa, type: "painting" }],
+    facts: [],
+  });
+  check(
+    "painting baseline includes prep + finish coats",
+    hasEdge(paintingWa, "fitout.painting.prep") &&
+      hasEdge(paintingWa, "fitout.painting.finish_coats")
+  );
+
+  const doorsWa = evaluate({
+    accepted: [{ workAreaId: IDS.partWa, type: "doors" }],
+    facts: [],
+  });
+  check(
+    "doors baseline includes hardware",
+    hasEdge(doorsWa, "fitout.doors.hardware")
   );
 
   const penetrations = evaluate({

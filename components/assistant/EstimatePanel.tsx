@@ -326,10 +326,27 @@ export function EstimatePanel({
     scopeReview?.workAreas.flatMap((workArea) =>
       workArea.missingItems
         .filter((item) => item.trim())
-        .map((label) => ({
-          workAreaName: workArea.workAreaName,
-          label,
-        }))
+        .map((label) => {
+          const matched = workArea.activeQuestions.find(
+            (q) =>
+              q.missingItemLabel === label ||
+              q.label === label ||
+              q.key.endsWith(label.toLowerCase().replace(/\s+/g, "_"))
+          );
+          const hasEditors = workArea.activeQuestions.length > 0;
+          const actionable = Boolean(matched?.id) || hasEditors;
+          return {
+            workAreaName: workArea.workAreaName,
+            workAreaId: workArea.workAreaId,
+            label,
+            factKey: matched?.key,
+            questionId: matched?.id,
+            actionable,
+            reviewTarget: actionable
+              ? ("estimateReview" as const)
+              : undefined,
+          };
+        })
     ) ?? [];
   const pendingDetailMissing =
     missingByWorkArea.length === 0 && pendingScopeDetailTitles.length > 0
@@ -704,7 +721,13 @@ export function EstimatePanel({
                       {item.detail}
                     </p>
                   </div>
-                  {onReviewAttention ? (
+                  {onReviewAttention &&
+                  item.reviewTarget &&
+                  (item.questionId ||
+                    item.reviewTarget === "estimateReview" ||
+                    item.reviewTarget === "scopeReview" ||
+                    item.reviewTarget === "constraints" ||
+                    item.reviewTarget === "quality") ? (
                     <Button
                       type="button"
                       variant="outline"

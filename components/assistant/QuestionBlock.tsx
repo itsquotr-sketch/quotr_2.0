@@ -517,7 +517,12 @@ function WorkAreaSection({
     }
 
     return (
-      <div key={question.id} className="space-y-2">
+      <div
+        key={question.id}
+        className="space-y-2"
+        data-question-id={question.id}
+        data-question-key={question.key}
+      >
         <Label className="text-sm font-medium leading-snug">
           {question.questionText}
           {question.required ? (

@@ -134,10 +134,11 @@ const scopeLists = buildScopeItemSummaryLists({
   ],
 });
 check(
-  "scope summary lists included / not required / needs detail",
+  "scope summary lists included / not required; unmapped pending not sticky (7F-R5)",
   scopeLists.included.includes("Decking") &&
     scopeLists.notRequired.includes("Demolition") &&
-    scopeLists.needsDetail.includes("Engineering")
+    scopeLists.included.includes("Engineering") &&
+    !scopeLists.needsDetail.includes("Engineering")
 );
 check("visible item limit is 4–5", SUMMARY_VISIBLE_ITEM_LIMIT === 5);
 
