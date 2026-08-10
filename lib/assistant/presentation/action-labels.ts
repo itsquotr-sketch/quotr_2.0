@@ -5,6 +5,8 @@
 export const ASSISTANT_ACTION_LABELS = Object.freeze({
   analyseJob: "Analyse Job",
   confirmWorkAreas: "Confirm Work Areas",
+  savingWorkAreas: "Saving Work Areas…",
+  workAreasSaved: "Work Areas saved",
   confirmScope: "Confirm scope",
   editScope: "Edit scope",
   includeInScope: "Include in scope",
@@ -38,10 +40,11 @@ export const ASSISTANT_LOADING_COPY = Object.freeze({
   scopeReview: "Reviewing scope…",
   analyseAgain: "Updating scope review…",
   confirmScope: "Saving scope decisions…",
+  confirmWorkAreas: "Saving Work Areas…",
   questionSave: "Saving details…",
   specificationSave: "Saving specification…",
   constraintSave: "Saving site constraints…",
-  estimateGenerate: "Generating estimate…",
+  estimateGenerate: "Generating Quick Estimate…",
   estimateRecalculate: "Recalculating estimate…",
   includeExclude: "Updating scope…",
 } as const);

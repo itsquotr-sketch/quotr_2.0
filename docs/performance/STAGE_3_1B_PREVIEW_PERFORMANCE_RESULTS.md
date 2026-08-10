@@ -1,17 +1,19 @@
 # Stage 3.1B — Preview Performance Results
 
-**Status:** Template ready — Owner samples Pending (capture during Stage 3.1B.7F E2E / 7F-R2 retest)  
+**Status:** Template ready — Owner samples Pending (capture during Stage 3.1B.7F-R5 Deck final retest)  
 **Date:** 2026-08-07  
 **Related:** `docs/performance/STAGE_3_1B7D_PREVIEW_PERFORMANCE_BASELINE.md`  
 **Helper:** `lib/assistant/preview-performance.ts`  
 **E2E pack:** `docs/runbooks/STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`  
 **7F-R1 retest:** `docs/runbooks/STAGE_3_1B7FR1_DECK_PREVIEW_RETEST.md`  
 **7F-R2 retest:** `docs/runbooks/STAGE_3_1B7FR2_DECK_PREVIEW_RETEST.md`  
+**7F-R5 retest:** `docs/runbooks/STAGE_3_1B7FR5_DECK_FINAL_RETEST.md`  
+**R5 completion:** `docs/implementation/STAGE_3_1B7FR5_DECK_FINAL_UX_PERFORMANCE_COMPLETION.md`  
 **Per-project capture:** `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md`  
 
 Observational only — **not** production SLOs.
 
-### Local remediation notes (7F-R1 / 7F-R2)
+### Local remediation notes (7F-R1 / 7F-R2 / 7F-R5)
 
 | Observation | Change |
 | --- | --- |
@@ -20,8 +22,11 @@ Observational only — **not** production SLOs.
 | Checklist toggles | Remain local state — no network |
 | Generate Estimate ack vs complete | `estimate_generate_ack` + `estimate_generate_complete` |
 | Answer / fact save ack vs complete | `question_save_ack` + `question_save_complete`; Saved before background refresh |
+| Confirm Work Areas blocked on discovery provider (R5) | `confirmWorkAreas` returns after WA persist; UI Scope Review auto-run owns discovery |
+| Estimate / WA revalidate dashboard+project (R5) | Project-only revalidate on confirm WA + estimate generate |
+| Stage-keyed Assistant remount | Residual contributor on Analyse / Confirm / Generate — documented, not redesigned in R5 |
 
-Capture Preview timings during Deck retest for Automatic Scope Review, Edit scope open, toggle, Confirm scope, Generate Estimate, and Scope Details answer save.
+Capture Preview timings during Deck R5 retest for Analyse Job, Confirm Work Areas, Automatic Scope Review, Generate Estimate, and Scope Details answer save. Categorise: provider / DB / server compute / client refresh-render.
 
 ---
 

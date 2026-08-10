@@ -118,8 +118,8 @@ function isDetailFactSatisfied(
 
 /**
  * Fact keys that still need confirmation for a discovery-pending item.
- * Unmapped pending items return [] — caller preserves NEEDS_DETAIL without
- * fabricating completion.
+ * Unmapped pending items return [] — detailState becomes COMPLETE (7F-R5)
+ * so stale reason codes cannot invent Quick Estimate clarifications.
  */
 export function resolvePendingDetailFactKeys(params: {
   readonly rationaleCode?: string | null;
@@ -174,10 +174,12 @@ function detailStateForDiscoveryItem(params: {
   });
 
   if (factKeys.length === 0) {
-    // Unmapped — preserve unresolved semantics; do not fabricate completion.
+    // Unmapped pending reason with no Fact route — do not keep a sticky
+    // NEEDS_DETAIL badge that invents false Quick Estimate clarifications.
+    // Mapped items still clear via Fact satisfaction below.
     return {
-      detailState: "NEEDS_DETAIL",
-      detailReason: "Included — detail still needs confirmation",
+      detailState: "COMPLETE",
+      detailReason: null,
       requiredFactKeys: [],
     };
   }

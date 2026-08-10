@@ -36,7 +36,7 @@
 | **3.1C.3-R2E-R1.1** | Company Settings section prop build fix | `initialSection` on CompanySettingsContent | **Complete** |
 | **3.1C (overall)** | Auth + first-run Setup | See `docs/implementation/STAGE_3_1C_CLOSURE.md` | **Complete — Preview Validated** (2026-08-10) |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
-| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress — Owner Preview E2E Ready** (Deck / Bathroom / Fitout Pending; DEF-7E-003); Production Disabled; Analyse Job Preserved |
+| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **In Progress — Owner Preview E2E** (Deck R4 PASS; 7F-R5 local complete / Owner retest Pending; Bathroom/Fitout Pending; DEF-7E-003); Production Disabled; Analyse Job Preserved |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
 | **3.1B.1** | Suggestion contract and deterministic lifecycle | Pure types, validation, lifecycle, staleness, identity, merge | **Complete — Local** (`docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md`) |
 | **3.1B.2** | Scope relationship catalogue foundation | Data-driven edges + deterministic missing-scope samples | **Complete — Local** (`docs/implementation/STAGE_3_1B2_SCOPE_RELATIONSHIP_CATALOGUE_COMPLETION.md`) |
@@ -122,6 +122,9 @@ Every Stage 3 release should track:
 - 3.1B.7F-R2 manual scope persistence: `docs/architecture/STAGE_3_1B7FR2_MANUAL_SCOPE_ITEM_PERSISTENCE.md`
 - 3.1B.7F-R3 unified scope state: `docs/implementation/STAGE_3_1B7FR3_UNIFIED_SCOPE_STATE_COMPLETION.md`
 - 3.1B.7F-R3 Deck final retest: `docs/runbooks/STAGE_3_1B7FR3_DECK_FINAL_RETEST.md`
+- 3.1B.7F-R4 Deck retest: `docs/runbooks/STAGE_3_1B7FR4_DECK_RETEST.md`
+- 3.1B.7F-R5 Deck final UX/perf: `docs/implementation/STAGE_3_1B7FR5_DECK_FINAL_UX_PERFORMANCE_COMPLETION.md`
+- 3.1B.7F-R5 Deck final retest: `docs/runbooks/STAGE_3_1B7FR5_DECK_FINAL_RETEST.md`
 - 3.1B.7G completion: `docs/implementation/STAGE_3_1B7G_ASSISTANT_DENSITY_STICKY_ESTIMATE_COMPLETION.md`
 - 3.1B.7G preview retest: `docs/runbooks/STAGE_3_1B7G_PREVIEW_RETEST.md`
 - Assistant responsive/mobile architecture: `docs/architecture/QUOTR_ASSISTANT_RESPONSIVE_AND_MOBILE_PRESENTATION.md`

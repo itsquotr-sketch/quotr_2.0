@@ -371,10 +371,12 @@ const lists = buildScopeItemSummaryLists({
       proposalClass: "SCOPE_ITEM",
     },
     {
-      proposedTitle: "Existing pile condition",
+      // Mapped clarification (7F-R5): unmapped pending no longer sticky NEEDS_DETAIL.
+      proposedTitle: "Existing substructure condition",
       decisionState: "PROPOSED",
       proposalClass: "CLARIFICATION",
       latestReasonCode: "pending_detail",
+      rationaleCode: "deck.substructure.missing_condition",
     },
   ],
 });
@@ -383,7 +385,7 @@ check(
   lists.included.length === 4 &&
     lists.notRequired.length === 1 &&
     lists.pendingScopeDetails.length === 1 &&
-    lists.pendingScopeDetails[0]?.title === "Existing pile condition" &&
+    lists.pendingScopeDetails[0]?.title === "Existing substructure condition" &&
     lists.needsDetail.length === 1
 );
 const overflow = compactSummaryOverflow(lists.included, 3);

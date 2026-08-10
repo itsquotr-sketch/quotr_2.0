@@ -30,13 +30,26 @@
 
 | ID | Severity | Observed | Expected | Fix status |
 | --- | --- | --- | --- | --- |
-| DECK-R4-01 | Medium | “No balustrade required” still preselected Balustrade | Unchecked by default; manually includable | Fixed — Local; Owner retest Pending |
-| DECK-R4-02 | High | Restricted access / 25–30m manual carry missing from Site Constraints | Supported `site_access` + `material_carry_distance` populated | Fixed — Local; Owner retest Pending |
+| DECK-R4-01 | Medium | “No balustrade required” still preselected Balustrade | Unchecked by default; manually includable | **Owner PASS** after R4 |
+| DECK-R4-02 | High | Restricted access / 25–30m manual carry missing from Site Constraints | Supported `site_access` + `material_carry_distance` populated | **Owner PASS** after R4 |
 
-Retest: `docs/runbooks/STAGE_3_1B7FR4_DECK_RETEST.md`  
-Verify: `scripts/verify-stage-3-1b7fr4-scope-negatives-constraints.ts`
+## 7F-R5 Deck final UX / performance
 
-Do **not** close Stage 3.1B until Owner Deck + Bathroom + Fitout PASS.
+| ID | Severity | Observed | Expected | Fix status |
+| --- | --- | --- | --- | --- |
+| DECK-R5-01 | Medium | WA confirm felt blocked | Immediate save ack; discovery next | Fixed — Local; Owner retest Pending |
+| DECK-R5-02 | Medium | QE generate delay | Immediate Generating; honest remount note | Fixed — Local; Owner retest Pending |
+| DECK-R5-03 | Low/Medium | Incomplete Scope Detail groups collapsed | Required incomplete groups open | Fixed — Local; Owner retest Pending |
+| DECK-R5-04 | Medium | Zero constraints → dead end | Intro + taxonomy confirmation | Fixed — Local; Owner retest Pending |
+| DECK-R5-05 | Medium | False open clarification on QE | Named current attention only | Fixed — Local; Owner retest Pending |
+| DECK-R5-06 | Low | Review scroll jump | Expand + nearest; no Review if empty | Fixed — Local; Owner retest Pending |
+
+Retest: `docs/runbooks/STAGE_3_1B7FR5_DECK_FINAL_RETEST.md`  
+Verify: `scripts/verify-stage-3-1b7fr5-deck-final-ux-performance.ts`
+
+**Deck PASS status:** Pending R5 Owner retest (engine/scope already strong after R4).
+
+Do **not** close Stage 3.1B until Owner Deck (R5) + Bathroom + Fitout PASS.
 
 ---
 

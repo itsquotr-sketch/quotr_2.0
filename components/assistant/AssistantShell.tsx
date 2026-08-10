@@ -214,7 +214,9 @@ export function AssistantShell({
   const [liveScopeCounts, setLiveScopeCounts] = useState<{
     includedCount: number;
     needsDetailCount: number;
+    pendingDetailTitles: readonly string[];
   } | null>(null);
+  const [forceExpandQuestions, setForceExpandQuestions] = useState(false);
   const scopeReviewCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -386,17 +388,23 @@ export function AssistantShell({
   const handleReviewAttention = useCallback(
     (item: { reviewTarget?: string }) => {
       const target = item.reviewTarget;
-      const el =
-        target === "scopeReview"
-          ? scopeReviewCardRef.current
-          : target === "quality"
-            ? qualityCardRef.current
-            : target === "constraints"
-              ? constraintsCardRef.current
-              : target === "estimateReview"
-                ? estimateReviewCardRef.current
-                : questionsCardRef.current ?? estimateReviewCardRef.current;
-      el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      if (target === "questions" || !target) {
+        setForceExpandQuestions(true);
+      }
+      // Expand + scroll after paint so collapsed cards have layout height.
+      window.requestAnimationFrame(() => {
+        const el =
+          target === "scopeReview"
+            ? scopeReviewCardRef.current
+            : target === "quality"
+              ? qualityCardRef.current
+              : target === "constraints"
+                ? constraintsCardRef.current
+                : target === "estimateReview"
+                  ? estimateReviewCardRef.current
+                  : questionsCardRef.current ?? estimateReviewCardRef.current;
+        el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
     },
     []
   );
@@ -770,6 +778,9 @@ export function AssistantShell({
     liveScopeCounts?.includedCount ?? composedScopeState.includedCount;
   const needsDetailScopeCount =
     liveScopeCounts?.needsDetailCount ?? composedScopeState.needsDetailCount;
+  const pendingScopeDetailTitles =
+    liveScopeCounts?.pendingDetailTitles ??
+    composedScopeState.summaryLists.pendingScopeDetails.map((p) => p.title);
   const estimateReviewSummaryModel = buildEstimateReviewSummaryModel({
     scopeReview: initialState.scopeReview,
     estimateReady,
@@ -787,20 +798,25 @@ export function AssistantShell({
       ? initialState.submittedConstraints
       : undefined,
   });
+  // 7F-R5: do not map needs-detail into "open clarification".
+  // Named Scope Details pending titles drive attention via EstimatePanel.
   const quickEstimatePresentation = buildQuickEstimatePresentationModel({
     workAreaNames: workAreaLists.included,
     includedScopeItemCount:
       includedScopeItemCount || workAreaLists.included.length,
-    outstandingClarificationCount: needsDetailScopeCount,
+    outstandingClarificationCount: 0,
     assumptionCount:
       initialState.scopeReview.generalAssumptions.length +
       initialState.scopeReview.workAreas.reduce(
         (n, wa) => n + wa.assumptions.length,
         0
       ),
-    missingCount: initialState.scopeReview.workAreas.reduce(
-      (n, wa) => n + wa.missingItems.length,
-      0
+    missingCount: Math.max(
+      initialState.scopeReview.workAreas.reduce(
+        (n, wa) => n + wa.missingItems.length,
+        0
+      ),
+      pendingScopeDetailTitles.length
     ),
     constraintCount: initialState.submittedConstraints.length,
     specificationSelected: qualitySubmitted && Boolean(qualityLevel),
@@ -1050,6 +1066,7 @@ export function AssistantShell({
                 "questions",
                 activeDisclosureStage
               )}
+              forceExpanded={forceExpandQuestions}
               canCollapse={false}
               isActive={activeDisclosureStage === "questions"}
               cardRef={questionsCardRef}
@@ -1077,8 +1094,10 @@ export function AssistantShell({
               }
               statusVariant="complete"
               preferredExpanded={false}
+              forceExpanded={forceExpandQuestions}
               canCollapse
               isActive={false}
+              cardRef={questionsCardRef}
               summaryContent={
                 <QuestionsCollapsedSummary
                   groups={questionGroups}
@@ -1212,6 +1231,9 @@ export function AssistantShell({
                 isSaving={pendingAction === "constraints"}
                 savingConstraintKey={savingConstraintKey}
                 constraintError={constraintError}
+                workAreaTypes={workAreas
+                  .filter((wa) => wa.status !== "excluded")
+                  .map((wa) => wa.type)}
                 onAnswerChange={
                   constraintsSubmitted ? undefined : handleConstraintAnswer
                 }
@@ -1251,6 +1273,7 @@ export function AssistantShell({
             quickEstimatePresentation={
               questionsSubmitted ? quickEstimatePresentation : null
             }
+            pendingScopeDetailTitles={pendingScopeDetailTitles}
             onViewBreakdown={() => setBreakdownOpen(true)}
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}

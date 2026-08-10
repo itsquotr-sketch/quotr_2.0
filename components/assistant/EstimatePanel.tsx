@@ -77,6 +77,8 @@ type EstimatePanelProps = {
     confidenceOutstanding: readonly string[];
   } | null;
   constraintCount?: number;
+  /** Named Scope Details items still needing confirmation (7F-R5). */
+  pendingScopeDetailTitles?: readonly string[];
   onViewBreakdown?: () => void;
   onGenerate?: () => void;
   onRegenerate?: () => void;
@@ -287,13 +289,6 @@ function QuickEstimateHierarchy({
   );
 }
 
-function parseOpenCountLabel(label: string): number {
-  const trimmed = label.trim();
-  if (!trimmed || /^none$/i.test(trimmed)) return 0;
-  const match = trimmed.match(/(\d+)/);
-  return match ? Number(match[1]) : 0;
-}
-
 export function EstimatePanel({
   projectId,
   estimate,
@@ -313,6 +308,7 @@ export function EstimatePanel({
   unresolvedScopeImpactLabels = [],
   isActiveStage = false,
   quickEstimatePresentation = null,
+  pendingScopeDetailTitles = [],
   onViewBreakdown,
   onGenerate,
   onRegenerate,
@@ -335,9 +331,20 @@ export function EstimatePanel({
           label,
         }))
     ) ?? [];
-  const missingLabels: string[] =
+  const pendingDetailMissing =
+    missingByWorkArea.length === 0 && pendingScopeDetailTitles.length > 0
+      ? pendingScopeDetailTitles
+          .map((label) => label.trim())
+          .filter(Boolean)
+          .map((label) => ({ workAreaName: "", label }))
+      : [];
+  const effectiveMissingByWorkArea =
     missingByWorkArea.length > 0
-      ? missingByWorkArea.map((entry) => entry.label)
+      ? missingByWorkArea
+      : pendingDetailMissing;
+  const missingLabels: string[] =
+    effectiveMissingByWorkArea.length > 0
+      ? effectiveMissingByWorkArea.map((entry) => entry.label)
       : estimate
         ? estimate.missingInfo.filter((item) => item.trim())
         : [];
@@ -350,17 +357,12 @@ export function EstimatePanel({
     ? estimate.includedWorkAreas.length
     : panelScopeSummaries.length;
 
-  const clarificationLabels =
-    quickEstimatePresentation &&
-    parseOpenCountLabel(
-      quickEstimatePresentation.outstandingClarifications
-    ) > 0
-      ? [quickEstimatePresentation.outstandingClarifications]
-      : [];
+  // 7F-R5: never invent "open clarification" from needs-detail counts.
+  const clarificationLabels: string[] = [];
 
   const attentionItems = buildQuickEstimateAttentionItems({
     missingLabels,
-    missingByWorkArea,
+    missingByWorkArea: effectiveMissingByWorkArea,
     clarificationLabels,
     pendingProposalCount,
     unresolvedScopeImpactLabels:

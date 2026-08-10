@@ -276,9 +276,10 @@ check(
   assistantActions.includes("Confirm the scope items above before selecting")
 );
 check(
-  "confirmWorkAreas auto-runs discovery when enabled",
+  "confirmWorkAreas returns before discovery; UI owns auto-run",
   assistantActions.includes("confirmWorkAreas") &&
-    /confirmWorkAreas[\s\S]*runScopeDiscovery/.test(assistantActions)
+    assistantActions.includes("ScopeDiscoveryReviewBlock auto-run") &&
+    !/confirmWorkAreas[\s\S]*await runScopeDiscovery/.test(assistantActions)
 );
 check(
   "Analyse Job seed does not call discovery",

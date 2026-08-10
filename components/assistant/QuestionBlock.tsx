@@ -12,6 +12,7 @@ import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
 import { formatSelectAnswerValue } from "@/lib/scopes/fact-labels";
 import {
   defaultExpandedQuestionCategory,
+  defaultExpandedQuestionCategories,
   groupQuestionsByPresentationCategory,
   provenanceLabelForQuestionSource,
   relatedScopeItemLabel,
@@ -363,6 +364,7 @@ function CategorySection({
   category,
   expanded,
   hasUnresolvedRequired,
+  remainingRequiredCount,
   completed,
   onToggle,
   children,
@@ -371,11 +373,16 @@ function CategorySection({
   category: QuestionPresentationCategory;
   expanded: boolean;
   hasUnresolvedRequired: boolean;
+  remainingRequiredCount: number;
   completed: boolean;
   onToggle: () => void;
   children: React.ReactNode;
 }) {
   const headingId = `question-cat-${category}`;
+  const remainingLabel =
+    remainingRequiredCount === 1
+      ? "1 question remaining"
+      : `${remainingRequiredCount} questions remaining`;
   return (
     <section
       className={cn(
@@ -388,7 +395,7 @@ function CategorySection({
     >
       <h5 className="sr-only" id={headingId}>
         {label}
-        {hasUnresolvedRequired ? " — required details remaining" : ""}
+        {hasUnresolvedRequired ? ` — ${remainingLabel}` : ""}
       </h5>
       <button
         type="button"
@@ -401,10 +408,10 @@ function CategorySection({
           <span className="text-xs font-semibold text-foreground">{label}</span>
           {hasUnresolvedRequired ? (
             <span className="rounded-md border border-amber-300/80 bg-amber-50 px-1.5 py-0.5 text-[10px] font-medium text-amber-950 dark:border-amber-800 dark:bg-amber-950/40 dark:text-amber-100">
-              Required
+              {remainingLabel}
             </span>
           ) : completed ? (
-            <span className="text-[10px] text-muted-foreground">Complete</span>
+            <span className="text-[10px] text-muted-foreground">✓ Complete</span>
           ) : null}
         </span>
         <ChevronDown
@@ -457,6 +464,10 @@ function WorkAreaSection({
     () => defaultExpandedQuestionCategory(categoryGroups),
     [categoryGroups]
   );
+  const preferredExpandedSet = useMemo(
+    () => defaultExpandedQuestionCategories(categoryGroups),
+    [categoryGroups]
+  );
 
   const [manualExpanded, setManualExpanded] = useState<
     Partial<Record<QuestionPresentationCategory, boolean>>
@@ -464,7 +475,11 @@ function WorkAreaSection({
 
   const isCategoryExpanded = (category: QuestionPresentationCategory) => {
     if (category in manualExpanded) return manualExpanded[category]!;
-    return category === preferred;
+    // 7F-R5: every group with unresolved required questions starts open.
+    if (preferredExpandedSet.has(category)) return true;
+    // When all required groups are complete, keep preferred (first) open.
+    if (preferredExpandedSet.size === 0) return category === preferred;
+    return false;
   };
 
   const renderQuestion = (question: Question) => {
@@ -559,8 +574,13 @@ function WorkAreaSection({
       ) : (
         <div className="space-y-3">
           {categoryGroups.map((cat) => {
+            const remainingRequiredCount = cat.questions.filter((q) => {
+              if (!q.required) return false;
+              const v = answers[q.id];
+              return v === null || v === undefined || v === "";
+            }).length;
             const completed =
-              !cat.hasUnresolvedRequired &&
+              remainingRequiredCount === 0 &&
               cat.questions.every((q) => {
                 const v = answers[q.id];
                 return v !== null && v !== undefined && v !== "";
@@ -572,7 +592,8 @@ function WorkAreaSection({
                 category={cat.category}
                 label={cat.label}
                 expanded={expanded}
-                hasUnresolvedRequired={cat.hasUnresolvedRequired}
+                hasUnresolvedRequired={remainingRequiredCount > 0}
+                remainingRequiredCount={remainingRequiredCount}
                 completed={completed}
                 onToggle={() =>
                   setManualExpanded((prev) => ({

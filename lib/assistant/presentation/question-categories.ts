@@ -154,3 +154,15 @@ export function defaultExpandedQuestionCategory(
   if (unresolved) return unresolved.category;
   return groups[0]?.category ?? null;
 }
+
+/**
+ * All categories that contain unanswered required questions.
+ * Used so Scope Details opens every incomplete group by default (7F-R5).
+ */
+export function defaultExpandedQuestionCategories(
+  groups: readonly CategorisedQuestionGroup<{ key: string; label: string }>[]
+): ReadonlySet<QuestionPresentationCategory> {
+  return new Set(
+    groups.filter((g) => g.hasUnresolvedRequired).map((g) => g.category)
+  );
+}

@@ -152,7 +152,7 @@ export function WorkAreaConfirmationBlock({
           disabled={included.length === 0 || isSaving}
         >
           {isSaving
-            ? ASSISTANT_ACTION_LABELS.saving
+            ? ASSISTANT_ACTION_LABELS.savingWorkAreas
             : ASSISTANT_ACTION_LABELS.confirmWorkAreas}
         </Button>
         {onAddWorkArea ? (

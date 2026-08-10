@@ -62,8 +62,9 @@ export const ASSISTANT_EMPTY_STATES = Object.freeze({
     nextAction: null,
   },
   site_constraints: {
-    title: "No additional site constraints were identified.",
-    nextAction: null,
+    title:
+      "No site constraints have been identified yet. Confirm anything that may affect how the work is carried out.",
+    nextAction: "Review common site constraints below.",
   },
   estimate_review: {
     title:

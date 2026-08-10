@@ -85,6 +85,7 @@ type ScopeDiscoveryReviewBlockProps = {
   onScopeStateChange?: (counts: {
     readonly includedCount: number;
     readonly needsDetailCount: number;
+    readonly pendingDetailTitles: readonly string[];
   }) => void;
   /** Progressive disclosure — prefer expanded when this stage is active. */
   preferredExpanded?: boolean;
@@ -870,10 +871,14 @@ export function ScopeDiscoveryReviewBlock({
     onScopeStateChange?.({
       includedCount: currentScopeState.includedCount,
       needsDetailCount: currentScopeState.needsDetailCount,
+      pendingDetailTitles: currentScopeState.summaryLists.pendingScopeDetails.map(
+        (p) => p.title
+      ),
     });
   }, [
     currentScopeState.includedCount,
     currentScopeState.needsDetailCount,
+    currentScopeState.summaryLists.pendingScopeDetails,
     onScopeStateChange,
   ]);
 

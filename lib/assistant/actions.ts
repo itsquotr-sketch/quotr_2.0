@@ -479,39 +479,11 @@ export async function confirmWorkAreas(
 
   await markEstimateStale(projectId);
 
-  // Stage 3.1B.6R2 — Work Area confirmation authorises the initial Scope Review run.
-  // Failures must not undo confirmation. Feature-off leaves behaviour unchanged.
-  if (isScopeDiscoveryEnabled()) {
-    try {
-      const auth = await requireAuthOrgContext();
-      if (auth.ok) {
-        const { runScopeDiscovery } = await import(
-          "@/lib/scope-discovery/application/run-scope-discovery"
-        );
-        const { revalidateScopeDiscoveryPaths } = await import(
-          "@/lib/scope-discovery/application/revalidate"
-        );
-        await runScopeDiscovery(
-          { projectId, forceNewRun: false },
-          {
-            ctx: {
-              supabase: auth.supabase,
-              orgId: auth.orgId,
-              userId: auth.user.id,
-            },
-            revalidate: revalidateScopeDiscoveryPaths,
-          }
-        );
-      }
-    } catch (error) {
-      console.error("[confirmWorkAreas] scope discovery auto-run failed", {
-        projectId,
-        reason: error instanceof Error ? error.message : "unknown",
-      });
-    }
-  }
-
-  revalidateAssistantPaths(projectId);
+  // Stage 3.1B.7F-R5 — Acknowledge WA confirmation immediately.
+  // Automatic Scope Review is owned by ScopeDiscoveryReviewBlock auto-run
+  // after stage advances (preserves approved auto-analysis without blocking
+  // Confirm on provider latency). Server no longer awaits runScopeDiscovery.
+  revalidateProjectAssistantPath(projectId);
   return { success: true };
 }
 
@@ -1101,7 +1073,7 @@ async function runEstimateGeneration(
     }
   }
 
-  revalidateAssistantPaths(projectId);
+  revalidateProjectAssistantPath(projectId);
   return { success: true };
 }
 
