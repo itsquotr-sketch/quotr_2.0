@@ -1,8 +1,8 @@
-# Stage 3.1B.7F-R6-R4 — Final Commercial Fitout Owner Retest
+# Stage 3.1B.7F-R6-R4.1 — Final Commercial Fitout Owner Retest
 
-**Purpose:** Confirm Seismic interfaces attention is honest and actionable copy matches Review CTA.  
+**Purpose:** Confirm Seismic interfaces (and similar scope-level items) have a useful Review action to Scope Review — never a fake Scope Details CTA without a question.  
 **Preview:** `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`  
-**Defect:** FITOUT-R6R4-01  
+**Defects:** FITOUT-R6R4-01 / FITOUT-R6R41-01  
 **Completion:** `docs/implementation/STAGE_3_1B7FR6R4_ATTENTION_ROUTING_COMPLETION.md`
 
 Do **not** enable Production Scope Discovery. Do **not** start Stage 3.2.
@@ -13,14 +13,14 @@ Do **not** enable Production Scope Discovery. Do **not** start Stage 3.2.
 
 | # | Check | Pass? | Notes |
 | --- | --- | --- | --- |
-| 1 | Open existing Commercial Fitout project | | |
-| 2 | Find Seismic interfaces (or confirm it no longer falsely claims Scope Details Review) | | |
-| 3A | If Review appears → lands on exact answerable question | | |
-| 3B | Or attention reclassified honestly (e.g. allowance / more info) with **no** fake “Review in Scope Details” | | |
-| 4 | Resolve if actionable; confirm attention disappears | | |
-| 5 | Quick Estimate count updates (0 if nothing else remains) | | |
-| 6 | Scope Details groups remain stable while answering (R6-R3) | | |
-| 7 | No Analyse-again / Scope Discovery stale from ordinary detail | | |
+| 1 | Open existing Commercial Fitout project on latest Preview | | |
+| 2 | Find **Seismic interfaces** while still undecided (or re-open Edit scope so it is visible) | | |
+| 3 | Quick Estimate shows **Review scope** (not “Review in Scope Details”) + **Review** button | | |
+| 4 | Review → Scope Review expands / Edit scope → lands on Seismic row (Ceilings) | | |
+| 5 | Mark **Not required** → attention disappears | | |
+| 6 | Or **Include** with no further detail needed → attention does **not** remain an endless warning | | |
+| 7 | Real question items (e.g. ceiling area) still Review → Scope Details question | | |
+| 8 | Scope Details groups stay stable while answering (R6-R3) | | |
 
 ---
 
@@ -34,4 +34,4 @@ Do **not** enable Production Scope Discovery. Do **not** start Stage 3.2.
 | Date | |
 | Commit SHA | |
 
-If this retest PASSes, Commercial Fitout may be marked PASS. Stage 3.1B remains open until Owner final sign-off (Deck R5 + Fitout).
+If this retest PASSes, Commercial Fitout may be marked PASS. Stage 3.1B remains open until Owner final sign-off.

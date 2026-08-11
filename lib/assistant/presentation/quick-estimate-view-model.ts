@@ -1,16 +1,16 @@
 /**
- * Stage 3.1B.7G / 7F-R6-R4 — Quick Estimate presentation view-model (no commercial math).
+ * Stage 3.1B.7G / 7F-R6-R4 / R4.1 — Quick Estimate presentation view-model.
  *
  * Formats display strings from authoritative estimate / readiness inputs.
  * Desktop rail, mobile compact summary, and future sheets share this shape.
  *
- * R6-R4: attention copy and CTAs must agree — never promise "Review in Scope Details"
- * without a question target.
+ * R6-R4: never promise "Review in Scope Details" without a question target.
+ * R6-R4.1: scope-level items without questions route to Scope Review with Review.
  */
 
 export type QuickEstimateStatusKind = "ready" | "attention" | "pending" | "stale";
 
-/** Attention classification — presentation only (7F-R6-R4). */
+/** Attention classification — presentation only (7F-R6-R4 / R4.1). */
 export type QuickEstimateAttentionKind =
   | "QUESTION"
   | "SCOPE"
@@ -27,6 +27,9 @@ export type QuickEstimateAttentionItem = {
   readonly workAreaId?: string;
   readonly factKey?: string;
   readonly questionId?: string;
+  /** Discovery suggestion / scope row identity for Scope Review focus. */
+  readonly suggestionId?: string;
+  readonly scopeItemId?: string;
   /** Stage / section id for Review navigation when practical. */
   readonly reviewTarget?:
     | "questions"
@@ -63,11 +66,22 @@ export type QuickEstimateScopeSummaryLines = {
 };
 
 export const SCOPE_DETAILS_REVIEW_COPY = "Review in Scope Details";
+export const SCOPE_REVIEW_COPY = "Review scope";
 
 export function attentionPromisesScopeDetailsReview(
   item: Pick<QuickEstimateAttentionItem, "detail">
 ): boolean {
   return item.detail === SCOPE_DETAILS_REVIEW_COPY;
+}
+
+export function attentionPromisesScopeReview(
+  item: Pick<QuickEstimateAttentionItem, "detail" | "reviewTarget">
+): boolean {
+  return (
+    item.reviewTarget === "scopeReview" ||
+    item.detail === SCOPE_REVIEW_COPY ||
+    item.detail === "Confirm in Scope Review"
+  );
 }
 
 /** Invariant: Scope Details Review copy requires questionId + reviewTarget. */
@@ -81,11 +95,28 @@ export function attentionHasValidScopeDetailsReviewTarget(
   return Boolean(item.questionId && item.reviewTarget);
 }
 
+/** Invariant: Scope Review copy requires a Scope Review target. */
+export function attentionHasValidScopeReviewTarget(
+  item: Pick<
+    QuickEstimateAttentionItem,
+    "detail" | "reviewTarget" | "suggestionId" | "workAreaId" | "scopeItemId"
+  >
+): boolean {
+  if (!attentionPromisesScopeReview(item)) return true;
+  if (item.reviewTarget !== "scopeReview") return false;
+  return Boolean(item.suggestionId || item.scopeItemId || item.workAreaId);
+}
+
 /** Whether EstimatePanel should render the Review CTA. */
 export function attentionShowsReviewButton(
   item: Pick<
     QuickEstimateAttentionItem,
-    "reviewTarget" | "questionId" | "workAreaId" | "detail"
+    | "reviewTarget"
+    | "questionId"
+    | "workAreaId"
+    | "detail"
+    | "suggestionId"
+    | "scopeItemId"
   >
 ): boolean {
   if (!item.reviewTarget) return false;
@@ -98,10 +129,12 @@ export function attentionShowsReviewButton(
   if (item.reviewTarget === "estimateReview") {
     return Boolean(item.questionId || item.workAreaId);
   }
+  if (item.reviewTarget === "scopeReview") {
+    // Scope-level Review does not require a question.
+    return true;
+  }
   return (
-    item.reviewTarget === "scopeReview" ||
-    item.reviewTarget === "constraints" ||
-    item.reviewTarget === "quality"
+    item.reviewTarget === "constraints" || item.reviewTarget === "quality"
   );
 }
 
@@ -117,9 +150,11 @@ export function buildQuickEstimateAttentionItems(params: {
     readonly workAreaId?: string;
     readonly factKey?: string;
     readonly questionId?: string;
+    readonly suggestionId?: string;
+    readonly scopeItemId?: string;
     /**
-     * True only with a mapped Scope Details question id.
-     * Defaults to Boolean(questionId). Explicit true without questionId is ignored.
+     * True only with a mapped Scope Details question id for QUESTION kind.
+     * SCOPE kind may be actionable via scopeReview without questionId.
      */
     readonly actionable?: boolean;
     /** Prefer estimateReview when Scope Details editors live there. */
@@ -130,38 +165,93 @@ export function buildQuickEstimateAttentionItems(params: {
   readonly clarificationLabels?: readonly string[];
   readonly pendingProposalCount?: number;
   readonly unresolvedScopeImpactLabels?: readonly string[];
+  /** Undecided scope rows — Scope Review (7F-R6-R4.1). */
+  readonly scopeReviewAttention?: readonly {
+    readonly label: string;
+    readonly workAreaName?: string;
+    readonly workAreaId?: string | null;
+    readonly suggestionId: string;
+  }[];
 }): readonly QuickEstimateAttentionItem[] {
   const items: QuickEstimateAttentionItem[] = [];
+  const seenScopeKeys = new Set<string>();
 
   for (const [index, entry] of (params.missingByWorkArea ?? []).entries()) {
     const trimmed = entry.label.trim();
     if (!trimmed) continue;
+    const kind = entry.attentionKind;
+    const isScopeKind = kind === "SCOPE";
     const hasQuestionTarget = Boolean(entry.questionId);
-    // R6-R4: never actionable for Scope Details without a concrete question id.
-    const actionable = hasQuestionTarget && entry.actionable !== false;
+    // QUESTION: require question id. SCOPE: actionable via Scope Review target.
+    const actionable = isScopeKind
+      ? entry.actionable !== false &&
+        (entry.reviewTarget === "scopeReview" ||
+          Boolean(entry.suggestionId || entry.workAreaId))
+      : hasQuestionTarget && entry.actionable !== false;
     const reviewTarget = actionable
       ? (entry.reviewTarget ??
-        (entry.workAreaId ? "estimateReview" : "questions"))
+        (isScopeKind
+          ? "scopeReview"
+          : entry.workAreaId
+            ? "estimateReview"
+            : "questions"))
       : undefined;
     const attentionKind: QuickEstimateAttentionKind = actionable
-      ? "QUESTION"
-      : (entry.attentionKind ?? "NON_ACTIONABLE_INFORMATION");
+      ? isScopeKind
+        ? "SCOPE"
+        : "QUESTION"
+      : (kind ?? "NON_ACTIONABLE_INFORMATION");
+    const detail = actionable
+      ? attentionKind === "SCOPE"
+        ? (entry.detailOverride ?? SCOPE_REVIEW_COPY)
+        : SCOPE_DETAILS_REVIEW_COPY
+      : (entry.detailOverride ??
+        (attentionKind === "ASSUMPTION" ||
+        attentionKind === "PRICING_REQUIRED"
+          ? "Allowance / confirmation required"
+          : "More information required"));
+    if (attentionKind === "SCOPE" && entry.suggestionId) {
+      seenScopeKeys.add(entry.suggestionId);
+    }
     items.push({
       id: `missing-wa:${entry.workAreaId ?? index}:${trimmed}`,
       label: trimmed,
-      detail: actionable
-        ? SCOPE_DETAILS_REVIEW_COPY
-        : (entry.detailOverride ??
-          (attentionKind === "ASSUMPTION" ||
-          attentionKind === "PRICING_REQUIRED"
-            ? "Allowance / confirmation required"
-            : "More information required")),
+      detail,
       attentionKind,
       workAreaName: entry.workAreaName || undefined,
       workAreaId: entry.workAreaId,
       factKey: entry.factKey,
-      questionId: actionable ? entry.questionId : undefined,
+      questionId:
+        attentionKind === "QUESTION" ? entry.questionId : undefined,
+      suggestionId: entry.suggestionId,
+      scopeItemId: entry.scopeItemId ?? entry.suggestionId,
       reviewTarget,
+    });
+  }
+
+  for (const [index, entry] of (params.scopeReviewAttention ?? []).entries()) {
+    const trimmed = entry.label.trim();
+    if (!trimmed) continue;
+    if (entry.suggestionId && seenScopeKeys.has(entry.suggestionId)) continue;
+    if (
+      items.some(
+        (i) =>
+          i.label.toLowerCase() === trimmed.toLowerCase() &&
+          i.attentionKind === "SCOPE"
+      )
+    ) {
+      continue;
+    }
+    items.push({
+      id: `scope-review:${entry.suggestionId || index}:${trimmed}`,
+      label: trimmed,
+      detail: SCOPE_REVIEW_COPY,
+      attentionKind: "SCOPE",
+      workAreaName: entry.workAreaName || undefined,
+      workAreaId: entry.workAreaId ?? undefined,
+      suggestionId: entry.suggestionId,
+      scopeItemId: entry.suggestionId,
+      reviewTarget: "scopeReview",
     });
   }
 

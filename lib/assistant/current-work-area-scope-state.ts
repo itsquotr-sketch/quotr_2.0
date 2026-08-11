@@ -40,11 +40,22 @@ export type CurrentScopeItem = {
   readonly manualItemId: string | null;
 };
 
+/** Scope-level Quick Estimate attention (no Scope Details question). */
+export type ScopeReviewAttentionItem = {
+  readonly suggestionId: string;
+  readonly title: string;
+  readonly workAreaId: string | null;
+  readonly workAreaName?: string;
+  readonly rationaleCode?: string | null;
+};
+
 export type CurrentWorkAreaScopeState = {
   readonly items: readonly CurrentScopeItem[];
   readonly includedCount: number;
   readonly notRequiredCount: number;
   readonly needsDetailCount: number;
+  /** PROPOSED / unresolved scope rows that need Scope Review (7F-R6-R4.1). */
+  readonly scopeReviewAttention: readonly ScopeReviewAttentionItem[];
   readonly summaryLists: ScopeItemSummaryLists;
 };
 
@@ -165,6 +176,22 @@ function detailStateForDiscoveryItem(params: {
     return { detailState: "COMPLETE", detailReason: null, requiredFactKeys: [] };
   }
 
+  const route = routeClarificationToScopeDetails({
+    rationaleCode: params.suggestion.rationaleCode,
+    suggestionKind: String(params.suggestion.suggestionKind ?? ""),
+    proposalClass: params.suggestion.proposalClass,
+    title: params.suggestion.proposedTitle,
+  });
+  // Existence / include clarifications never invent Scope Details NEEDS_DETAIL
+  // (7F-R6-R4.1 — e.g. fitout.ceilings.seismic).
+  if (route.kind === "SCOPE_EXISTENCE") {
+    return {
+      detailState: "COMPLETE",
+      detailReason: null,
+      requiredFactKeys: [],
+    };
+  }
+
   const factKeys = resolvePendingDetailFactKeys({
     rationaleCode: params.suggestion.rationaleCode,
     suggestionKind: params.suggestion.suggestionKind,
@@ -176,8 +203,9 @@ function detailStateForDiscoveryItem(params: {
 
   if (factKeys.length === 0) {
     // Unmapped pending, OR mapped Fact with no answerable Scope Details
-    // question (e.g. fitout.ceiling_seismic) — do not invent NEEDS_DETAIL /
-    // "Review in Scope Details" without a destination (7F-R5 / 7F-R6-R4).
+    // question — do not invent NEEDS_DETAIL / "Review in Scope Details"
+    // without a destination (7F-R5 / 7F-R6-R4 / R4.1). Explicit INCLUDE
+    // without an answerable question is treated as resolved.
     return {
       detailState: "COMPLETE",
       detailReason: null,
@@ -359,11 +387,35 @@ export function composeCurrentWorkAreaScopeState(params: {
     reason: i.detailReason ?? "Included — detail still needs confirmation",
   }));
 
+  // Undecided suggestions still need Scope Review (not Scope Details).
+  const scopeReviewAttention: ScopeReviewAttentionItem[] = [];
+  for (const s of params.suggestions) {
+    const cls = String(s.proposalClass ?? "");
+    if (!isScopeEligibleClass(cls)) continue;
+    if (s.supersededBySuggestionId) continue;
+    const state = String(s.decisionState ?? "").toUpperCase();
+    if (state !== "PROPOSED") continue;
+    const waId = s.relatedWorkAreaId ?? null;
+    const waName =
+      waId && params.scopeReview
+        ? params.scopeReview.workAreas.find((w) => w.workAreaId === waId)
+            ?.workAreaName
+        : undefined;
+    scopeReviewAttention.push({
+      suggestionId: s.suggestionId,
+      title: s.proposedTitle,
+      workAreaId: waId,
+      workAreaName: waName,
+      rationaleCode: s.rationaleCode ?? null,
+    });
+  }
+
   return {
     items,
     includedCount: included.length,
     notRequiredCount: notRequired.length,
     needsDetailCount: needsDetail.length,
+    scopeReviewAttention,
     summaryLists: {
       included: includedTitles,
       notRequired: notRequired.map((i) => i.title),

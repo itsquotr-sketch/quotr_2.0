@@ -70,12 +70,13 @@ export const CLARIFICATION_FACT_ROUTES: Readonly<
     kind: "SCOPE_DETAIL",
     factKey: "bathroom.ventilation_required",
   },
+  // Existence / include decisions — no Scope Details questionnaire (7F-R6-R4.1).
   "fitout.ceilings.seismic": {
-    kind: "SCOPE_DETAIL",
+    kind: "SCOPE_EXISTENCE",
     factKey: "fitout.ceiling_seismic",
   },
   "fitout.ceilings.services": {
-    kind: "SCOPE_DETAIL",
+    kind: "SCOPE_EXISTENCE",
     factKey: "fitout.ceiling_services",
   },
 });

@@ -32,10 +32,26 @@ import {
   type DiscoverySuggestionDetailRow,
 } from "../persistence";
 import { getScopeDiscoveryAvailability } from "../configuration";
+import { routeClarificationToScopeDetails } from "../ui/clarification-routing";
+import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { APPLICATION_ERROR_CODES, applicationFailure } from "./errors";
 import { logDiscoveryEvent } from "./logging";
 import type { DecisionServiceDeps } from "./decision-services";
 import type { ApplicationFailure } from "./types";
+
+/** Clarifications without an answerable Scope Details question include cleanly. */
+function clarificationNeedsPendingDetail(
+  sug: DiscoverySuggestionDetailRow
+): boolean {
+  const route = routeClarificationToScopeDetails({
+    rationaleCode: sug.rationale_code,
+    suggestionKind: String(sug.suggestion_kind ?? ""),
+    title: sug.proposed_title,
+  });
+  if (route.kind !== "SCOPE_DETAIL") return false;
+  if (!route.mapped || !route.factKey) return false;
+  return Boolean(getQuestionTemplateByKey(route.factKey));
+}
 
 export const BATCH_SCOPE_STATES = [
   "INCLUDED",
@@ -321,7 +337,8 @@ export async function batchConfirmScopeItemsApp(
             suggestionKind: row.sug.suggestion_kind,
             proposedWorkAreaType: row.sug.proposed_work_area_type,
             relatedWorkAreaId: row.sug.related_work_area_id,
-          }) === "CLARIFICATION"
+          }) === "CLARIFICATION" &&
+          clarificationNeedsPendingDetail(row.sug)
             ? REASON.INCLUDED_PENDING
             : REASON.INCLUDED;
       }

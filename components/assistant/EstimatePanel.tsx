@@ -80,6 +80,13 @@ type EstimatePanelProps = {
   constraintCount?: number;
   /** Named Scope Details items still needing confirmation (7F-R5). */
   pendingScopeDetailTitles?: readonly string[];
+  /** Undecided scope rows for Scope Review attention (7F-R6-R4.1). */
+  scopeReviewAttention?: readonly {
+    readonly label: string;
+    readonly workAreaName?: string;
+    readonly workAreaId?: string | null;
+    readonly suggestionId: string;
+  }[];
   onViewBreakdown?: () => void;
   onGenerate?: () => void;
   onRegenerate?: () => void;
@@ -310,6 +317,7 @@ export function EstimatePanel({
   isActiveStage = false,
   quickEstimatePresentation = null,
   pendingScopeDetailTitles = [],
+  scopeReviewAttention = [],
   onViewBreakdown,
   onGenerate,
   onRegenerate,
@@ -323,6 +331,10 @@ export function EstimatePanel({
     !isStale &&
     needsCalibrationRefresh(estimate?.calibrationVersion);
 
+  const scopeByTitle = new Map(
+    scopeReviewAttention.map((s) => [s.label.trim().toLowerCase(), s])
+  );
+
   const missingByWorkArea =
     scopeReview?.workAreas.flatMap((workArea) =>
       workArea.missingItems
@@ -334,22 +346,41 @@ export function EstimatePanel({
               q.label === label ||
               q.key.endsWith(label.toLowerCase().replace(/\s+/g, "_"))
           );
-          // R6-R4: actionable only with a concrete matched question — never
-          // because the Work Area merely has other editors.
-          const actionable = Boolean(matched?.id);
+          // R6-R4: actionable QUESTION only with a concrete matched question.
+          const actionableQuestion = Boolean(matched?.id);
+          if (actionableQuestion) {
+            return {
+              workAreaName: workArea.workAreaName,
+              workAreaId: workArea.workAreaId,
+              label,
+              factKey: matched?.key,
+              questionId: matched?.id,
+              actionable: true as const,
+              reviewTarget: "estimateReview" as const,
+              attentionKind: "QUESTION" as const,
+            };
+          }
+          // R6-R4.1: unmatched label that maps to a scope row → Scope Review.
+          const scopeHit = scopeByTitle.get(label.trim().toLowerCase());
+          if (scopeHit) {
+            return {
+              workAreaName: scopeHit.workAreaName ?? workArea.workAreaName,
+              workAreaId: scopeHit.workAreaId ?? workArea.workAreaId,
+              label,
+              suggestionId: scopeHit.suggestionId,
+              scopeItemId: scopeHit.suggestionId,
+              actionable: true as const,
+              reviewTarget: "scopeReview" as const,
+              attentionKind: "SCOPE" as const,
+              detailOverride: "Review scope",
+            };
+          }
           return {
             workAreaName: workArea.workAreaName,
             workAreaId: workArea.workAreaId,
             label,
-            factKey: matched?.key,
-            questionId: matched?.id,
-            actionable,
-            reviewTarget: actionable
-              ? ("estimateReview" as const)
-              : undefined,
-            attentionKind: actionable
-              ? ("QUESTION" as const)
-              : ("NON_ACTIONABLE_INFORMATION" as const),
+            actionable: false as const,
+            attentionKind: "NON_ACTIONABLE_INFORMATION" as const,
           };
         })
     ) ?? [];
@@ -358,13 +389,31 @@ export function EstimatePanel({
       ? pendingScopeDetailTitles
           .map((label) => label.trim())
           .filter(Boolean)
-          .map((label) => ({
-            workAreaName: "",
-            label,
-            actionable: false as const,
-            attentionKind: "ASSUMPTION" as const,
-            detailOverride: "Allowance / confirmation required",
-          }))
+          .map((label) => {
+            const scopeHit = scopeByTitle.get(label.toLowerCase());
+            if (scopeHit) {
+              return {
+                workAreaName: scopeHit.workAreaName ?? "",
+                workAreaId: scopeHit.workAreaId ?? undefined,
+                label,
+                suggestionId: scopeHit.suggestionId,
+                scopeItemId: scopeHit.suggestionId,
+                actionable: true as const,
+                attentionKind: "SCOPE" as const,
+                reviewTarget: "scopeReview" as const,
+                detailOverride: "Review scope",
+              };
+            }
+            // Remaining pending titles are question-backed NEEDS_DETAIL that
+            // lack activeEditors in scopeReview — do not fake Scope Details CTA.
+            return {
+              workAreaName: "",
+              label,
+              actionable: false as const,
+              attentionKind: "ASSUMPTION" as const,
+              detailOverride: "Allowance / confirmation required",
+            };
+          })
       : [];
   const effectiveMissingByWorkArea =
     missingByWorkArea.length > 0
@@ -393,6 +442,12 @@ export function EstimatePanel({
     missingByWorkArea: effectiveMissingByWorkArea,
     clarificationLabels,
     pendingProposalCount,
+    scopeReviewAttention: scopeReviewAttention.map((s) => ({
+      label: s.label,
+      workAreaName: s.workAreaName,
+      workAreaId: s.workAreaId,
+      suggestionId: s.suggestionId,
+    })),
     unresolvedScopeImpactLabels:
       unresolvedScopeImpactLabels.length > 0
         ? unresolvedScopeImpactLabels

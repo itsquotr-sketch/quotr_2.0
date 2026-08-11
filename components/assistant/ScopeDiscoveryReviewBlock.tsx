@@ -86,6 +86,12 @@ type ScopeDiscoveryReviewBlockProps = {
     readonly includedCount: number;
     readonly needsDetailCount: number;
     readonly pendingDetailTitles: readonly string[];
+    readonly scopeReviewAttention: readonly {
+      readonly label: string;
+      readonly workAreaName?: string;
+      readonly workAreaId?: string | null;
+      readonly suggestionId: string;
+    }[];
   }) => void;
   /** Progressive disclosure — prefer expanded when this stage is active. */
   preferredExpanded?: boolean;
@@ -93,6 +99,11 @@ type ScopeDiscoveryReviewBlockProps = {
   isActiveStage?: boolean;
   /** Open/scroll to Scope Details for pending confirmation items. */
   onReviewScopeDetails?: () => void;
+  /** Focus a scope checklist row from Quick Estimate Review (7F-R6-R4.1). */
+  focusSuggestionId?: string | null;
+  /** Increment to force Edit scope + scroll to focusSuggestionId. */
+  requestEditToken?: number;
+  onFocusSuggestionHandled?: () => void;
 };
 
 type PendingSuggestionAction = {
@@ -197,7 +208,7 @@ function ChecklistRow({
     : false;
 
   return (
-    <div className="border-b border-border/40 py-2.5 last:border-b-0">
+    <div className="border-b border-border/40 py-2.5 last:border-b-0" data-suggestion-id={suggestion.suggestionId}>
       <div className="flex items-start gap-3">
         <input
           id={`scope-item-${suggestion.suggestionId}`}
@@ -215,7 +226,7 @@ function ChecklistRow({
           >
             {suggestion.proposedTitle}
           </label>
-          {isClarification && route?.kind === "SCOPE_DETAIL" ? (
+          {isClarification && route?.kind === "SCOPE_DETAIL" && route.mapped ? (
             <p className="mt-0.5 text-xs text-muted-foreground">
               {SCOPE_DISCOVERY_UI_COPY.detailRequired}
             </p>
@@ -233,7 +244,11 @@ function ChecklistRow({
             >
               {expanded ? "Hide why" : "Why suggested"}
             </button>
-            {editing && isClarification && onRouteClarification ? (
+            {editing &&
+            isClarification &&
+            onRouteClarification &&
+            route?.kind === "SCOPE_DETAIL" &&
+            route.mapped ? (
               <button
                 type="button"
                 className="text-[11px] text-muted-foreground/90 underline-offset-2 hover:underline"
@@ -284,6 +299,9 @@ export function ScopeDiscoveryReviewBlock({
   preferredExpanded,
   isActiveStage = false,
   onReviewScopeDetails,
+  focusSuggestionId = null,
+  requestEditToken = 0,
+  onFocusSuggestionHandled,
 }: ScopeDiscoveryReviewBlockProps) {
   const router = useRouter();
   const resultsGuard = useRef(createLatestWriteGuard());
@@ -502,7 +520,12 @@ export function ScopeDiscoveryReviewBlock({
     onUnresolvedRecommendationsChange?.(scopeImpactRecommendations.length);
   }, [scopeImpactRecommendations.length, onUnresolvedRecommendationsChange]);
 
-  const showChecklistEditor = !completion.complete || isEditingScope;
+  // 7F-R6-R4.1 — Quick Estimate Review opens Edit scope via props (no setState-in-effect).
+  const forceEditFromReview =
+    Boolean(focusSuggestionId) || requestEditToken > 0;
+
+  const showChecklistEditor =
+    !completion.complete || isEditingScope || forceEditFromReview;
 
   const sourceRevision = results?.sourceRevision ?? `project:${projectId}`;
   const hasRun = Boolean(results?.runId);
@@ -874,13 +897,43 @@ export function ScopeDiscoveryReviewBlock({
       pendingDetailTitles: currentScopeState.summaryLists.pendingScopeDetails.map(
         (p) => p.title
       ),
+      scopeReviewAttention: currentScopeState.scopeReviewAttention.map((s) => ({
+        label: s.title,
+        workAreaName: s.workAreaName,
+        workAreaId: s.workAreaId,
+        suggestionId: s.suggestionId,
+      })),
     });
   }, [
     currentScopeState.includedCount,
     currentScopeState.needsDetailCount,
     currentScopeState.summaryLists.pendingScopeDetails,
+    currentScopeState.scopeReviewAttention,
     onScopeStateChange,
   ]);
+
+  useEffect(() => {
+    if (!focusSuggestionId) return;
+    const id = focusSuggestionId;
+    const timer = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(
+        `#scope-item-${id}, [data-suggestion-id="${id}"]`
+      );
+      el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      const focusable = el?.querySelector<HTMLElement>(
+        "input, select, textarea, button"
+      );
+      focusable?.focus({ preventScroll: true });
+      if (el) {
+        el.classList.add("ring-2", "ring-[var(--brand-orange)]/60");
+        window.setTimeout(() => {
+          el.classList.remove("ring-2", "ring-[var(--brand-orange)]/60");
+        }, 1600);
+      }
+      onFocusSuggestionHandled?.();
+    }, 80);
+    return () => window.clearTimeout(timer);
+  }, [focusSuggestionId, requestEditToken, onFocusSuggestionHandled]);
 
   if (!enabled) return null;
 
@@ -965,11 +1018,15 @@ export function ScopeDiscoveryReviewBlock({
         statusLabel={cardStatusLabel}
         statusVariant={cardStatusVariant}
         preferredExpanded={disclosureExpanded}
-        canCollapse={hasRun && !isAnalysing && !isEditingScope}
-        forceExpanded={isEditingScope || Boolean(isStale)}
+        canCollapse={
+          hasRun && !isAnalysing && !isEditingScope && !forceEditFromReview
+        }
+        forceExpanded={
+          isEditingScope || forceEditFromReview || Boolean(isStale)
+        }
         isActive={isActiveStage}
         summaryContent={
-          completion.complete && !isEditingScope ? (
+          completion.complete && !isEditingScope && !forceEditFromReview ? (
             <ScopeReviewCollapsedSummary lists={mergedScopeLists} />
           ) : (
             <p className="text-xs text-muted-foreground">
@@ -978,7 +1035,9 @@ export function ScopeDiscoveryReviewBlock({
           )
         }
         actionLabel={
-          completion.complete && !isEditingScope ? "View" : undefined
+          completion.complete && !isEditingScope && !forceEditFromReview
+            ? "View"
+            : undefined
         }
       >
         <div className="space-y-4" aria-live="polite">

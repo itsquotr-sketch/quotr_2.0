@@ -215,6 +215,12 @@ export function AssistantShell({
     includedCount: number;
     needsDetailCount: number;
     pendingDetailTitles: readonly string[];
+    scopeReviewAttention?: readonly {
+      label: string;
+      workAreaName?: string;
+      workAreaId?: string | null;
+      suggestionId: string;
+    }[];
   } | null>(null);
   const [forceExpandQuestions, setForceExpandQuestions] = useState(false);
   const [reviewFocusQuestionId, setReviewFocusQuestionId] = useState<
@@ -223,6 +229,10 @@ export function AssistantShell({
   const [reviewFocusQuestionKey, setReviewFocusQuestionKey] = useState<
     string | null
   >(null);
+  const [reviewFocusSuggestionId, setReviewFocusSuggestionId] = useState<
+    string | null
+  >(null);
+  const [requestScopeEdit, setRequestScopeEdit] = useState(0);
   const scopeReviewCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -403,8 +413,46 @@ export function AssistantShell({
       workAreaId?: string;
       factKey?: string;
       questionId?: string;
+      suggestionId?: string;
+      scopeItemId?: string;
     }) => {
       const target = item.reviewTarget;
+      const suggestionId = item.suggestionId ?? item.scopeItemId ?? null;
+
+      if (target === "scopeReview") {
+        if (suggestionId) {
+          setReviewFocusSuggestionId(suggestionId);
+        }
+        setRequestScopeEdit((n) => n + 1);
+        window.requestAnimationFrame(() => {
+          const precise = suggestionId
+            ? document.querySelector<HTMLElement>(
+                `#scope-item-${suggestionId}, [data-suggestion-id="${suggestionId}"]`
+              )
+            : item.workAreaId
+              ? document.querySelector<HTMLElement>(
+                  `[data-work-area-id="${item.workAreaId}"]`
+                )
+              : null;
+          const el = precise ?? scopeReviewCardRef.current;
+          el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          if (precise) {
+            const focusable = precise.querySelector<HTMLElement>(
+              "input, select, textarea, button"
+            );
+            focusable?.focus({ preventScroll: true });
+            precise.classList.add("ring-2", "ring-[var(--brand-orange)]/60");
+            window.setTimeout(() => {
+              precise.classList.remove(
+                "ring-2",
+                "ring-[var(--brand-orange)]/60"
+              );
+            }, 1600);
+          }
+        });
+        return;
+      }
+
       if (target === "questions" || !target) {
         setForceExpandQuestions(true);
       }
@@ -417,15 +465,13 @@ export function AssistantShell({
 
       window.requestAnimationFrame(() => {
         const stageEl =
-          target === "scopeReview"
-            ? scopeReviewCardRef.current
-            : target === "quality"
-              ? qualityCardRef.current
-              : target === "constraints"
-                ? constraintsCardRef.current
-                : target === "estimateReview"
-                  ? estimateReviewCardRef.current
-                  : questionsCardRef.current ?? estimateReviewCardRef.current;
+          target === "quality"
+            ? qualityCardRef.current
+            : target === "constraints"
+              ? constraintsCardRef.current
+              : target === "estimateReview"
+                ? estimateReviewCardRef.current
+                : questionsCardRef.current ?? estimateReviewCardRef.current;
 
         // Prefer precise question / work-area target when available (7F-R6).
         const precise =
@@ -832,6 +878,14 @@ export function AssistantShell({
   const pendingScopeDetailTitles =
     liveScopeCounts?.pendingDetailTitles ??
     composedScopeState.summaryLists.pendingScopeDetails.map((p) => p.title);
+  const scopeReviewAttentionItems =
+    liveScopeCounts?.scopeReviewAttention ??
+    composedScopeState.scopeReviewAttention.map((s) => ({
+      label: s.title,
+      workAreaName: s.workAreaName,
+      workAreaId: s.workAreaId,
+      suggestionId: s.suggestionId,
+    }));
   const estimateReviewSummaryModel = buildEstimateReviewSummaryModel({
     scopeReview: initialState.scopeReview,
     estimateReady,
@@ -1026,6 +1080,9 @@ export function AssistantShell({
                   setUnresolvedScopeImpactCount
                 }
                 onScopeStateChange={setLiveScopeCounts}
+                focusSuggestionId={reviewFocusSuggestionId}
+                requestEditToken={requestScopeEdit}
+                onFocusSuggestionHandled={() => setReviewFocusSuggestionId(null)}
                 onReviewScopeDetails={() => {
                   questionsCardRef.current?.scrollIntoView({
                     behavior: "smooth",
@@ -1327,6 +1384,7 @@ export function AssistantShell({
               questionsSubmitted ? quickEstimatePresentation : null
             }
             pendingScopeDetailTitles={pendingScopeDetailTitles}
+            scopeReviewAttention={scopeReviewAttentionItems}
             onViewBreakdown={() => setBreakdownOpen(true)}
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}

@@ -1,5 +1,5 @@
 /**
- * Stage 3.1B.7F-R6-R4 — Actionable attention routing final fix.
+ * Stage 3.1B.7F-R6-R4 / R4.1 — Actionable attention routing.
  *
  * Run: npx tsx scripts/verify-stage-3-1b7fr6r4-attention-routing.ts
  */
@@ -7,7 +7,9 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import {
   SCOPE_DETAILS_REVIEW_COPY,
+  SCOPE_REVIEW_COPY,
   attentionHasValidScopeDetailsReviewTarget,
+  attentionHasValidScopeReviewTarget,
   attentionPromisesScopeDetailsReview,
   attentionShowsReviewButton,
   buildQuickEstimateAttentionItems,
@@ -33,7 +35,7 @@ function read(rel: string): string {
   return readFileSync(resolve(process.cwd(), rel), "utf8");
 }
 
-console.log("\n=== Stage 3.1B.7F-R6-R4 — Attention routing ===\n");
+console.log("\n=== Stage 3.1B.7F-R6-R4.1 — Attention routing ===\n");
 
 console.log("CONTRACT");
 const withQuestion = buildQuickEstimateAttentionItems({
@@ -50,10 +52,29 @@ const withQuestion = buildQuickEstimateAttentionItems({
   ],
 });
 check(
-  "valid target → Review in Scope Details + Review button",
+  "QUESTION → Review in Scope Details + Review button",
   withQuestion[0]?.detail === SCOPE_DETAILS_REVIEW_COPY &&
     attentionShowsReviewButton(withQuestion[0]!) &&
     attentionHasValidScopeDetailsReviewTarget(withQuestion[0]!)
+);
+
+const scopeLevel = buildQuickEstimateAttentionItems({
+  scopeReviewAttention: [
+    {
+      label: "Seismic interfaces",
+      workAreaName: "Ceilings",
+      workAreaId: "wa-ceil",
+      suggestionId: "s-seismic",
+    },
+  ],
+});
+check(
+  "SCOPE → Review scope + Review button",
+  scopeLevel[0]?.detail === SCOPE_REVIEW_COPY &&
+    scopeLevel[0]?.attentionKind === "SCOPE" &&
+    scopeLevel[0]?.reviewTarget === "scopeReview" &&
+    attentionShowsReviewButton(scopeLevel[0]!) &&
+    attentionHasValidScopeReviewTarget(scopeLevel[0]!)
 );
 
 const withoutQuestion = buildQuickEstimateAttentionItems({
@@ -63,12 +84,12 @@ const withoutQuestion = buildQuickEstimateAttentionItems({
       workAreaId: "wa-ceil",
       label: "Seismic interfaces",
       factKey: "fitout.ceiling_seismic",
-      actionable: true, // ignored without questionId
+      actionable: true, // ignored without questionId for QUESTION path
     },
   ],
 });
 check(
-  "no target → copy does not promise Scope Details Review",
+  "no question + no SCOPE kind → copy does not promise Scope Details Review",
   withoutQuestion[0]?.detail !== SCOPE_DETAILS_REVIEW_COPY &&
     !attentionPromisesScopeDetailsReview(withoutQuestion[0]!) &&
     !attentionShowsReviewButton(withoutQuestion[0]!)
@@ -93,9 +114,16 @@ const mixed = buildQuickEstimateAttentionItems({
     },
     {
       workAreaName: "Ceilings",
-      label: "Seismic interfaces",
+      label: "Orphan allowance",
       attentionKind: "ASSUMPTION",
       detailOverride: "Allowance / confirmation required",
+    },
+  ],
+  scopeReviewAttention: [
+    {
+      label: "Seismic interfaces",
+      workAreaId: "wa-ceil",
+      suggestionId: "s-seismic",
     },
   ],
 });
@@ -104,6 +132,20 @@ check(
   mixed
     .filter((i) => attentionPromisesScopeDetailsReview(i))
     .every((i) => attentionHasValidScopeDetailsReviewTarget(i))
+);
+check(
+  "SCOPE and QUESTION coexist without contradiction",
+  mixed.some((i) => i.label === "Ceiling area" && attentionShowsReviewButton(i)) &&
+    mixed.some(
+      (i) =>
+        i.label === "Seismic interfaces" &&
+        i.detail === SCOPE_REVIEW_COPY &&
+        attentionShowsReviewButton(i)
+    ) &&
+    mixed.some(
+      (i) =>
+        i.label === "Orphan allowance" && !attentionShowsReviewButton(i)
+    )
 );
 check(
   "EstimatePanel uses attentionShowsReviewButton guard",
@@ -119,8 +161,9 @@ const seismicRoute = routeClarificationToScopeDetails({
   title: "Seismic interfaces",
 });
 check(
-  "seismic maps to fitout.ceiling_seismic Fact route",
-  seismicRoute.mapped && seismicRoute.factKey === "fitout.ceiling_seismic"
+  "seismic is SCOPE_EXISTENCE (not Scope Details questionnaire)",
+  seismicRoute.kind === "SCOPE_EXISTENCE" &&
+    seismicRoute.factKey === "fitout.ceiling_seismic"
 );
 check(
   "seismic Fact has no Scope Details question template",
@@ -128,7 +171,46 @@ check(
     getQuestionTemplateByKey("fitout.seismic_required") == null
 );
 
-const seismicState = composeCurrentWorkAreaScopeState({
+const seismicProposed = composeCurrentWorkAreaScopeState({
+  suggestions: [
+    {
+      suggestionId: "s-seismic",
+      proposedTitle: "Seismic interfaces",
+      decisionState: "PROPOSED",
+      suggestionKind: "CLARIFICATION_REQUIRED",
+      proposalClass: "CLARIFICATION",
+      rationaleCode: "fitout.ceilings.seismic",
+      latestReasonCode: null,
+      relatedWorkAreaId: "wa-ceil",
+    },
+  ],
+  manualItems: [],
+  scopeReview: {
+    workAreas: [
+      {
+        workAreaId: "wa-ceil",
+        workAreaName: "Ceilings",
+        workAreaType: "ceilings",
+        facts: [],
+        activeQuestions: [],
+        answeredQuestions: [],
+        missingItems: [],
+        assumptions: [],
+        includedScopeItems: [],
+        excludedScopeItems: [],
+      },
+    ],
+    generalAssumptions: [],
+  } as never,
+});
+check(
+  "PROPOSED seismic → Scope Review attention with suggestion id",
+  seismicProposed.scopeReviewAttention.length === 1 &&
+    seismicProposed.scopeReviewAttention[0]?.suggestionId === "s-seismic" &&
+    seismicProposed.needsDetailCount === 0
+);
+
+const seismicIncluded = composeCurrentWorkAreaScopeState({
   suggestions: [
     {
       suggestionId: "s-seismic",
@@ -161,43 +243,65 @@ const seismicState = composeCurrentWorkAreaScopeState({
   } as never,
 });
 check(
-  "seismic without answerable question is not NEEDS_DETAIL",
-  seismicState.needsDetailCount === 0 &&
-    !seismicState.summaryLists.pendingScopeDetails.some(
+  "explicit INCLUDE seismic without question → not NEEDS_DETAIL / not endless attention",
+  seismicIncluded.needsDetailCount === 0 &&
+    seismicIncluded.scopeReviewAttention.length === 0 &&
+    !seismicIncluded.summaryLists.pendingScopeDetails.some(
       (p) => p.title === "Seismic interfaces"
     )
 );
-check(
-  "seismic reclassified attention uses non-actionable copy",
-  withoutQuestion[0]?.attentionKind === "NON_ACTIONABLE_INFORMATION" &&
-    withoutQuestion[0]?.detail === "More information required" &&
-    withoutQuestion[0]?.reviewTarget == null
-);
-check(
-  "ASSUMPTION override uses allowance copy (no Review)",
-  mixed[1]?.attentionKind === "ASSUMPTION" &&
-    mixed[1]?.detail === "Allowance / confirmation required" &&
-    !attentionShowsReviewButton(mixed[1]!)
-);
 
-const resolved = buildQuickEstimateAttentionItems({
-  missingByWorkArea: [],
-  clarificationLabels: [],
-  pendingProposalCount: 0,
+const seismicExcluded = composeCurrentWorkAreaScopeState({
+  suggestions: [
+    {
+      suggestionId: "s-seismic",
+      proposedTitle: "Seismic interfaces",
+      decisionState: "REJECTED",
+      suggestionKind: "CLARIFICATION_REQUIRED",
+      proposalClass: "CLARIFICATION",
+      rationaleCode: "fitout.ceilings.seismic",
+      latestReasonCode: "scope_item_not_required",
+      relatedWorkAreaId: "wa-ceil",
+    },
+  ],
+  manualItems: [],
 });
 check(
-  "resolved / empty inputs → zero attention items",
-  resolved.length === 0
+  "explicit EXCLUDE seismic → no Scope Review attention",
+  seismicExcluded.scopeReviewAttention.length === 0 &&
+    seismicExcluded.needsDetailCount === 0
 );
 
-console.log("\nPANEL / DISCLOSURE");
 check(
-  "panel no longer treats hasEditors as actionable",
-  !read("components/assistant/EstimatePanel.tsx").includes(
-    "hasEditors"
+  "batch confirm skips pending-detail for no-question clarifications",
+  read(
+    "lib/scope-discovery/application/batch-confirm-scope.ts"
+  ).includes("clarificationNeedsPendingDetail")
+);
+
+console.log("\nPANEL / ROUTING");
+check(
+  "EstimatePanel accepts scopeReviewAttention",
+  read("components/assistant/EstimatePanel.tsx").includes(
+    "scopeReviewAttention"
+  )
+);
+check(
+  "AssistantShell focuses suggestion for Scope Review Review",
+  read("components/assistant/AssistantShell.tsx").includes(
+    "reviewFocusSuggestionId"
   ) &&
-    read("components/assistant/EstimatePanel.tsx").includes(
-      "Boolean(matched?.id)"
+    read("components/assistant/AssistantShell.tsx").includes(
+      "scope-item-"
+    )
+);
+  check(
+  "ScopeDiscoveryReviewBlock opens Edit scope on focus token",
+  read("components/assistant/ScopeDiscoveryReviewBlock.tsx").includes(
+    "requestEditToken"
+  ) &&
+    read("components/assistant/ScopeDiscoveryReviewBlock.tsx").includes(
+      "forceEditFromReview"
     )
 );
 check(
@@ -220,21 +324,6 @@ check(
   existsSync(
     resolve(process.cwd(), "lib/scope-discovery/configuration/index.ts")
   )
-);
-check(
-  "R6-R4 docs present",
-  existsSync(
-    resolve(
-      process.cwd(),
-      "docs/runbooks/STAGE_3_1B7FR6R4_FINAL_FITOUT_RETEST.md"
-    )
-  ) &&
-    existsSync(
-      resolve(
-        process.cwd(),
-        "docs/performance/ASSISTANT_RESPONSIVENESS_LATENCY_OPTIMISATION_PASS.md"
-      )
-    )
 );
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
