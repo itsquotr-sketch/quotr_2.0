@@ -2,7 +2,8 @@
  * Stage 3.1B.7G — Assistant density, sticky Quick Estimate, responsive presentation.
  * Run: npx tsx scripts/verify-stage-3-1b7g-assistant-density-sticky-estimate.ts
  *
- * Presentation-only. Does not enable Production or close 7F owner E2E.
+ * Presentation-only batch. Production remains Disabled.
+ * Stage 3.1B Owner E2E closed separately (see STAGE_3_1B_CLOSURE.md).
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -284,19 +285,19 @@ check(
   )
 );
 check(
-  "7F owner E2E remains open (DEF-7E-003)",
+  "DEF-7E-003 closed / Owner-validated with Stage 3.1B closure",
   fileHas(
     "docs/audits/STAGE_3_1B7E_PREVIEW_DEFECT_REGISTER.md",
     "DEF-7E-003"
   ) &&
-    (fileHas(
+    fileHas(
       "docs/audits/STAGE_3_1B7E_PREVIEW_DEFECT_REGISTER.md",
-      "Owner Pending"
-    ) ||
-      fileHas(
-        "docs/audits/STAGE_3_1B7E_PREVIEW_DEFECT_REGISTER.md",
-        "BLOCKED BY PREVIEW DEFECTS"
-      ))
+      "Complete / Owner validated"
+    ) &&
+    fileHas(
+      "docs/implementation/STAGE_3_1B_CLOSURE.md",
+      "Complete — Preview Validated"
+    )
 );
 check(
   "7F pack mentions sticky / density checks",
@@ -321,14 +322,18 @@ check(
     )
 );
 check(
-  "7G does not close Stage 3.1B or begin 3.2",
+  "7G batch remains Production-disabled; 3.2 planning Not Started",
   fileHas(
     "docs/implementation/STAGE_3_1B7G_ASSISTANT_DENSITY_STICKY_ESTIMATE_COMPLETION.md",
-    "BLOCKED BY PREVIEW DEFECTS"
+    "Disabled"
   ) &&
     fileHas(
-      "docs/implementation/STAGE_3_1B7G_ASSISTANT_DENSITY_STICKY_ESTIMATE_COMPLETION.md",
+      "docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md",
       "Not Started"
+    ) &&
+    !fileHas(
+      "docs/implementation/STAGE_3_1B_CLOSURE.md",
+      "Production — Enabled"
     )
 );
 

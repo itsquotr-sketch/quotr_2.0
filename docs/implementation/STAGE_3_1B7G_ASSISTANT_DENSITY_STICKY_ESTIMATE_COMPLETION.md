@@ -1,20 +1,22 @@
 /**
  * Stage 3.1B.7G — Assistant Density, Sticky Quick Estimate and Mobile Architecture.
  *
- * **Status:** Complete — Local  
- * **Stage 3.1B.7F Owner E2E:** Pending (DEF-7E-003 open)  
- * **Stage 3.1B release status:** BLOCKED BY PREVIEW DEFECTS  
+ * Historical write-time note: Owner E2E was still open (DEF-7E-003).
+ * Stage 3.1B later closed Complete — Preview Validated (2026-08-11).
  * **Production:** Disabled  
- * **Stage 3.2:** Not Started  
+ * **Stage 3.2:** Not Started (planning handoff only)  
+ * **Closure:** docs/implementation/STAGE_3_1B_CLOSURE.md  
  */
 
 # Stage 3.1B.7G — Assistant Density / Sticky Estimate Completion
 
-**Status:** Complete — Local  
+**Status:** Complete — Local (superseded administratively by Stage 3.1B closure)  
 **Date:** 2026-08-07  
 **Verify:** `scripts/verify-stage-3-1b7g-assistant-density-sticky-estimate.ts`  
 **Preview retest:** `docs/runbooks/STAGE_3_1B7G_PREVIEW_RETEST.md`  
-**Architecture:** `docs/architecture/QUOTR_ASSISTANT_RESPONSIVE_AND_MOBILE_PRESENTATION.md`
+**Architecture:** `docs/architecture/QUOTR_ASSISTANT_RESPONSIVE_AND_MOBILE_PRESENTATION.md`  
+**Stage 3.1B closure:** `docs/implementation/STAGE_3_1B_CLOSURE.md`  
+**Production:** Disabled
 
 ---
 

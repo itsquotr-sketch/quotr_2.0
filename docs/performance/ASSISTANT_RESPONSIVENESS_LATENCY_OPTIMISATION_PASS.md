@@ -1,9 +1,10 @@
 # Assistant Responsiveness & Latency Optimisation Pass
 
+**Status:** Planned — dedicated measured optimisation stage after Stage 3.1B closure  
 **ID:** PERF-FUTURE-01  
-**Status:** Planned  
 **Severity:** Not a Stage 3.1B release blocker  
-**Created:** 2026-08-11 (Owner Fitout feedback during 7F-R6-R4)
+**Created:** 2026-08-11 (Owner Fitout feedback during 7F-R6-R4)  
+**3.1B status:** Closed 2026-08-11 — this pass remains **Planned only** (not started)
 
 ---
 

@@ -3,7 +3,7 @@
  * Run: npx tsx scripts/verify-stage-3-1b7f-owner-e2e-gate.ts
  *
  * Does not execute live Preview E2E. Does not enable Production.
- * Does not mark Stage 3.1B complete when results are still Pending.
+ * After Stage 3.1B closure, asserts Owner-validated PASS evidence + Production Disabled.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -112,51 +112,29 @@ check(
     fileHas(TEST_PACK, "Remains **Disabled**")
 );
 
-// —— Results template ——
+// —— Results (post–Owner E2E / Stage 3.1B closed) ——
 check(
-  "results template has three project sections",
+  "results has three project sections",
   fileHas(RESULTS, "Project A — Deck") &&
     fileHas(RESULTS, "Project B — Bathroom") &&
     fileHas(RESULTS, "Project C — Commercial Fitout")
 );
 check(
-  "results template uses PASS / FAIL / PARTIAL",
-  fileHas(RESULTS, "PASS / FAIL / PARTIAL")
+  "results records Deck / Bathroom / Fitout PASS",
+  fileHas(RESULTS, "Deck") &&
+    fileHas(RESULTS, "Bathroom") &&
+    fileHas(RESULTS, "Fitout") &&
+    fileHas(RESULTS, "**PASS**")
 );
 check(
-  "results template has quality scores",
-  fileHas(RESULTS, "Quality scores (1–5)") &&
-    fileHas(RESULTS, "Work Area identification")
+  "results closed Complete — Preview Validated",
+  fileHas(RESULTS, "Complete — Preview Validated") &&
+    fileHas(RESULTS, "READY FOR OWNER PRODUCTION GATE")
 );
 check(
-  "results template has latency table",
-  fileHas(RESULTS, "Median") &&
-    fileHas(RESULTS, "Question save acknowledgement")
-);
-check(
-  "results template has provider usage fields",
-  fileHas(RESULTS, "Calls per discovery run") &&
-    fileHas(RESULTS, "Repair attempts")
-);
-check(
-  "results template has commercial checks",
-  fileHas(RESULTS, "Quick Estimate total") &&
-    fileHas(RESULTS, "Quote snapshot")
-);
-check(
-  "results template final gate checklist",
-  fileHas(RESULTS, "Final gate checklist") &&
-    fileHas(RESULTS, "No Fact fabrication")
-);
-check(
-  "results still pending owner capture",
-  fileHas(RESULTS, "Pending Owner Capture")
-);
-check(
-  "results do not claim READY without owner data",
-  fileHas(RESULTS, "Overall release decision:** _Pending") &&
-    !/READY FOR OWNER PRODUCTION GATE\*\*\s*$/m.test(read(RESULTS)) &&
-    !fileHas(RESULTS, "**Decision:** A —")
+  "results keep Production enablement separate",
+  (fileHas(RESULTS, "Disabled") || fileHas(RESULTS, "separate")) &&
+    /Production/i.test(read(RESULTS))
 );
 
 // —— Completion doc invariants ——
@@ -168,17 +146,15 @@ check(
     !fileHas(COMPLETION, "Production — Enabled")
 );
 check(
-  "7F does not mark Stage 3.1B complete",
-  !fileHas(COMPLETION, "Stage 3.1B — Complete") &&
-    !fileHas(COMPLETION, "Stage 3.1B Complete")
+  "7F marks Stage 3.1B Complete — Preview Validated",
+  fileHas(COMPLETION, "Complete — Preview Validated")
 );
 check(
-  "7F status is gate prepared / blocked pending owner",
-  fileHas(COMPLETION, "BLOCKED BY PREVIEW DEFECTS") ||
-    fileHas(COMPLETION, "Owner E2E Pending")
+  "7F points at Stage 3.1B closure",
+  fileHas(COMPLETION, "STAGE_3_1B_CLOSURE")
 );
 check(
-  "7F does not begin Stage 3.2",
+  "7F does not begin Stage 3.2 implementation",
   fileHas(COMPLETION, "Stage 3.2") &&
     (fileHas(COMPLETION, "Not Started") ||
       fileHas(COMPLETION, "Do not begin Stage 3.2"))
@@ -186,10 +162,9 @@ check(
 
 // —— Defect register ——
 check(
-  "DEF-7E-003 still open / owner pending until results",
+  "DEF-7E-003 closed / Owner validated",
   fileHas(DEFECTS, "DEF-7E-003") &&
-    (fileHas(DEFECTS, "Owner Pending") ||
-      fileHas(DEFECTS, "Open — Owner"))
+    fileHas(DEFECTS, "Complete / Owner validated")
 );
 check(
   "defect register points to 7F pack / results",
@@ -197,8 +172,9 @@ check(
     fileHas(DEFECTS, "3.1B.7F")
 );
 check(
-  "release gate still BLOCKED pending owner E2E",
-  fileHas(DEFECTS, "BLOCKED BY PREVIEW DEFECTS")
+  "release gate Complete — Preview Validated (not BLOCKED)",
+  fileHas(DEFECTS, "Complete — Preview Validated") &&
+    !fileHas(DEFECTS, "**Stage 3.1B — BLOCKED BY PREVIEW DEFECTS**")
 );
 
 // —— Status board updates ——

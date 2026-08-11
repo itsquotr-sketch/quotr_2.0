@@ -1,20 +1,21 @@
 /**
  * Stage 3.1B.7E — Preview Release Validation and Scope Discovery Hardening.
  *
- * **Final Stage 3.1B status:** BLOCKED BY PREVIEW DEFECTS  
- * **Blocker:** Owner Preview E2E (DEF-7E-003)  
- * **Production:** Disabled  
- * **Stage 3.2:** Not Started  
+ * Historical batch note: at write-time Stage 3.1B was blocked on Owner E2E.
+ * Stage 3.1B later closed Complete — Preview Validated (2026-08-11).
+ * **Production:** Disabled
+ * **Closure:** docs/implementation/STAGE_3_1B_CLOSURE.md
  */
 
 # Stage 3.1B.7E — Preview Release Hardening Completion
 
-**Status:** Complete — Local (hardening + config fix); Preview E2E Owner Pending  
+**Status:** Complete — superseded by Stage 3.1B closure (2026-08-11)  
 **Date:** 2026-08-07  
 **Verify:** `scripts/verify-stage-3-1b7e-preview-release-hardening.ts`  
 **Defect register:** `docs/audits/STAGE_3_1B7E_PREVIEW_DEFECT_REGISTER.md`  
 **Enablement runbook:** `docs/runbooks/STAGE_3_1B_PRODUCTION_ENABLEMENT_RUNBOOK.md`  
 **Performance results:** `docs/performance/STAGE_3_1B_PREVIEW_PERFORMANCE_RESULTS.md`
+**Stage 3.1B closure:** `docs/implementation/STAGE_3_1B_CLOSURE.md`
 
 ---
 
@@ -62,12 +63,10 @@ verified release-blocking defects, and document remaining owner Preview work.
 
 ## Release decision
 
-**Stage 3.1B — BLOCKED BY PREVIEW DEFECTS**
+**Historical (at 7E write-time):** Stage 3.1B — BLOCKED BY PREVIEW DEFECTS (DEF-7E-003).
 
-Remaining release blocker: **DEF-7E-003** (Owner Preview E2E).
-
-After owner sign-off with no Critical/High findings, promote status to  
-**READY FOR OWNER PRODUCTION GATE** (still without enabling Production).
+**Current (2026-08-11):** Stage 3.1B — **Complete — Preview Validated** — see `docs/implementation/STAGE_3_1B_CLOSURE.md`.  
+Production Scope Discovery remains **Disabled**.
 
 ---
 

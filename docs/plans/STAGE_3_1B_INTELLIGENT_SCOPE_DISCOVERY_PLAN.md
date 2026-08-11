@@ -1,26 +1,22 @@
 # Stage 3.1B — Intelligent Scope Discovery Plan
 
-**Status:** In Progress  
+**Status:** Complete — Preview Validated (2026-08-11)  
 **Date:** 2026-08-06  
-**Parent stage status:** Stage 3.1B — **In Progress**  
+**Parent stage status:** Stage 3.1B — **Complete — Preview Validated**  
+**Closure:** `docs/implementation/STAGE_3_1B_CLOSURE.md`  
+**Commit baseline:** `79afb4ebdb472729afbb03ea07e561ed1dc68fb5`  
 **Prerequisite:** Stage 3.1A + 3.1D Complete (Preview signed off)  
 **Planning batch:** 3.1B.0 Complete  
-**Current batch:** 3.1B.7G — **Complete — Local**  
-**Next batch:** Owner fills 7F results → A READY FOR OWNER PRODUCTION GATE or B BLOCKED (Production still off); 3.1B.7 missing-scope — **Not Started**  
-**Migrations:** `028`/`029` Complete — Local; remote apply **Applied and Verified**; **030**/**031** Applied and Verified (manual scope + ACL); **no 032**  
-**Server integration:** **Complete — Local**  
-**Scope Discovery UI:** **Complete — Local, Preview Retest Pending**  
-**Assistant progressive disclosure (7A):** **Complete — Local**  
-**Assistant information hierarchy (7B):** **Complete — Local**  
-**Question / estimate presentation (7C):** **Complete — Local**  
-**Final Assistant UX polish (7D):** **Complete — Local**  
-**Preview release hardening (7E):** **Complete — Local / BLOCKED BY PREVIEW DEFECTS**  
-**Owner E2E gate (7F):** **Complete — Local (pack + template); Owner results Pending**  
-**Assistant density / sticky Quick Estimate (7G):** **Complete — Local**  
-**Assistant UX refinement programme:** **Complete — Local** (7A–7D + 7G density)  
-**UI/UX Overhaul (Pricing/Quote):** **Planned separately**  
-**Scope Discovery Preview sign-off:** **Pending Owner Test**  
-**Stage 3.1B release status:** **BLOCKED BY PREVIEW DEFECTS** (DEF-7E-003 Owner E2E; 7F-R3 Final Deck Retest Pending)
+**Final remediation:** 7F-R6-R4.1 attention routing Complete — Preview Ready  
+**Migrations:** `028`/`029`/`030`/`031` Applied and Verified; **no 034**  
+**Server integration:** Complete  
+**Scope Discovery UI:** Complete — Preview Validated  
+**Assistant UX (7A–7G):** Complete with Stage 3.1B closure  
+**Owner E2E (7F):** Complete — Deck / Bathroom / Fitout PASS  
+**Stage 3.1B release status:** **Complete — Preview Validated**  
+**Production feature:** **Disabled**  
+**Next product stage:** Stage **3.2 Builder Interview** — planning handoff `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`  
+**PERF-FUTURE-01:** Planned (non-blocking)
 
 **3.1B.7F-R1:** Complete — Local — `docs/implementation/STAGE_3_1B7FR1_DECK_E2E_REMEDIATION_COMPLETION.md`
 
@@ -247,14 +243,17 @@ Split for delivery:
 
 ## 5. Recommended next implementation batch
 
-**3.1B.7G** — Complete — Local (Assistant density, sticky Quick Estimate,
-mobile presentation architecture). Production remains **Disabled**. Stage 3.1B
-remains **BLOCKED BY PREVIEW DEFECTS** until owner supplies Deck / Bathroom /
-Fitout results in `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md` (closes
-DEF-7E-003). 7F pack now includes 7G sticky/density checks. Then re-evaluate
-for **READY FOR OWNER PRODUCTION GATE** without enabling Production. Preserve
-Fact SoT; no DNA; Analyse Job unchanged. **No migration 030.** Do not begin
-Stage 3.2.
+**Historical note:** At plan write-time, next batch after 3.1B.7G was Owner E2E.
+
+**Current (2026-08-11):** Stage 3.1B is **Complete — Preview Validated**.  
+See `docs/implementation/STAGE_3_1B_CLOSURE.md`.
+
+**Next product stage:** Stage **3.2 Builder Interview** — planning first  
+(`docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`). Do not begin 3.2
+implementation until the Owner approves the planning batch.
+
+Production Scope Discovery remains **Disabled**. Preserve Fact SoT; no DNA.
+PERF-FUTURE-01 remains a separate measured track.
 
 ---
 

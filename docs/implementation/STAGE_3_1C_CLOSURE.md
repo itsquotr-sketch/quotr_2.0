@@ -78,18 +78,13 @@ Do **not** interpret this as:
 
 ## Next development focus
 
-**Stage 3.1B Owner Preview E2E completion** (not Stage 3.2).
+**Stage 3.2 Builder Interview** — planning first (`docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`).
 
-Owner tests remaining for 3.1B:
+Stage **3.1B** is **Complete — Preview Validated** (2026-08-11).
 
-1. Deck  
-2. Bathroom  
-3. Commercial Fitout  
-
-Production Scope Discovery remains **Disabled**.
-
-After those pass → Stage 3.1B closure/release gate.  
-Only after **both** 3.1B and 3.1C are closed should the owner choose Stage 3.2.
+Production Scope Discovery remains **Disabled**.  
+PERF-FUTURE-01 remains **Planned** (parallel optimisation track).  
+Company DNA **Not Started**.
 
 ## Closure references
 

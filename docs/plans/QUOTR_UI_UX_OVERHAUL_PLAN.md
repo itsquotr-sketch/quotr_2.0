@@ -1,7 +1,7 @@
 # Quotr UI/UX Overhaul Plan
 
-**Status:** Assistant UX density (7G) — Complete — Local; Preview E2E Owner Pending; Pricing/Quote UX — Planned  
-**Date:** 2026-08-07  
+**Status:** Assistant UX density (7G) — Complete with Stage 3.1B Preview Validated; Pricing/Quote UX — Planned  
+**Date:** 2026-08-11  
 **Owner programme:** Product + Design  
 
 ---
@@ -10,9 +10,9 @@
 
 | Batch | Focus | Status |
 | --- | --- | --- |
-| UX-A–F (Assistant) | Disclosure, hierarchy, presentation, polish | **3.1B.7A–7D** Complete — Local |
-| Preview validation | Owner E2E gate | **3.1B.7F** Complete — Local (pack); **7F-R1/R2/R3** Complete — Local / Final Deck Retest Pending; Owner results Pending / BLOCKED |
-| Density / sticky QE | Commercial hierarchy, sticky rail, mobile compact, centre density | **3.1B.7G** Complete — Local |
+| UX-A–F (Assistant) | Disclosure, hierarchy, presentation, polish | **3.1B.7A–7D** Complete |
+| Preview validation | Owner E2E gate | **3.1B Complete — Preview Validated** (2026-08-11) |
+| Density / sticky QE | Commercial hierarchy, sticky rail, mobile compact, centre density | **3.1B.7G** Complete |
 | First-run / company basics | Hard basics gate, country/currency selects, Dashboard coherence | **3.1C.3-R2A** Complete — Preview Validated |
 | Work types preferences | Preference ≠ capability; Setup Work types UX | **3.1C.3-R2B** Complete — Preview Validated |
 | Rates onboarding | Contractor-native labour/components; legacy scope demoted | **3.1C.3-R2C** Complete — Preview Validated |
@@ -23,8 +23,9 @@
 | UX-E | Pricing + Quote surfaces | **Planned separately** |
 
 **Production Scope Discovery:** Disabled  
-**Stage 3.2:** Not Started  
+**Stage 3.2:** Not Started — planning handoff `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`  
 **Company DNA:** Not Started  
+**PERF-FUTURE-01:** Planned  
 **Architecture:** `docs/architecture/QUOTR_ASSISTANT_RESPONSIVE_AND_MOBILE_PRESENTATION.md`
 
 ---

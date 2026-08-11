@@ -1,21 +1,23 @@
 /**
  * Stage 3.1B.7F — Owner Preview E2E Validation Support and Final Release Gate.
  *
- * **Final Stage 3.1B status:** BLOCKED BY PREVIEW DEFECTS  
- * **Blocker:** DEF-7E-003 (Owner Deck / Bathroom / Fitout E2E results not yet supplied)  
- * **Production:** Disabled  
- * **Stage 3.2:** Not Started  
- *
- * Do not mark Stage 3.1B complete until owner E2E results are supplied.
+ * **Final Stage 3.1B status:** Complete — Preview Validated (2026-08-11)
+ * **Closure:** docs/implementation/STAGE_3_1B_CLOSURE.md
+ * **Production:** Disabled
+ * **Stage 3.2:** Not Started (planning handoff ready)
  */
 
 # Stage 3.1B.7F — Owner E2E Gate Completion
 
-**Status:** Complete — Local (gate pack prepared); Owner E2E Pending  
-**Date:** 2026-08-07  
+**Status:** Complete — Preview Validated with Stage 3.1B closure (2026-08-11)  
+**Final Stage 3.1B status:** Complete — Preview Validated  
+**Closure:** `docs/implementation/STAGE_3_1B_CLOSURE.md`  
+**Stage 3.2:** Not Started — planning handoff `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`  
+**Production Scope Discovery:** Disabled  
+**Date:** 2026-08-07 (pack); closed 2026-08-11  
 **Verify:** `scripts/verify-stage-3-1b7f-owner-e2e-gate.ts`  
 **Test pack:** `docs/runbooks/STAGE_3_1B7F_OWNER_E2E_TEST_PACK.md`  
-**Results template:** `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md`  
+**Results:** `docs/audits/STAGE_3_1B7F_OWNER_E2E_RESULTS.md`  
 **Defect register:** `docs/audits/STAGE_3_1B7E_PREVIEW_DEFECT_REGISTER.md`  
 
 ---
@@ -70,22 +72,19 @@ supplied during gate preparation.
 
 ## Release status
 
-**Stage 3.1B — BLOCKED BY PREVIEW DEFECTS**
+**Stage 3.1B — Complete — Preview Validated** (2026-08-11)
 
 | Gate | Status |
 | --- | --- |
 | Preview flag (DEF-7E-001) | Cleared |
 | Owner E2E pack | Ready |
-| Owner E2E results | **Pending** |
-| DEF-7E-003 | **Open — Owner Pending** |
+| Owner E2E results | **Complete** — Deck / Bathroom / Fitout PASS |
+| DEF-7E-003 | **Closed** |
 | Production | **Disabled** |
-| Stage 3.2 | **Not Started** |
+| Stage 3.2 | **Not Started** (planning handoff ready) |
+| PERF-FUTURE-01 | **Planned** |
 
-After the owner fills `STAGE_3_1B7F_OWNER_E2E_RESULTS.md` for all three
-projects, re-evaluate:
-
-- **A. READY FOR OWNER PRODUCTION GATE** — only if all pass criteria met  
-- **B. BLOCKED BY PREVIEW DEFECTS** — list exact DEF IDs  
+Closure: `docs/implementation/STAGE_3_1B_CLOSURE.md`.
 
 Production enablement remains a separate owner-approved step
 (`docs/runbooks/STAGE_3_1B_PRODUCTION_ENABLEMENT_RUNBOOK.md`).
