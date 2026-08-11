@@ -1,11 +1,13 @@
 # Quotr Constraint Taxonomy
 
-**Status:** Stage 3.2.0 specification (conceptual)  
-**Date:** 2026-08-11  
+**Status:** Stage 3.2.0-R1 specification (conceptual)  
+**Date:** 2026-08-12  
 **Resolves planning for:** DEF-7E-004 / FEAT-003  
 **Does not:** add migrations or change estimate formulas in this stage  
 
 Current implementation: `lib/assistant/constraint-templates.ts` + `RESERVED_CONSTRAINT_KEYS` in `lib/scopes/domain-ownership.ts`.
+
+**Schema verdict (R1):** `constraints.key` is free `text` in DB. Expanding taxonomy is an **application allowlist** change (`RESERVED_CONSTRAINT_KEYS` + templates). **No migration required** unless Owner later wants a DB CHECK enum.
 
 ---
 
@@ -57,7 +59,7 @@ Add only if they materially change labour/logistics and are commonly answerable 
 | `storage_on_site` | Materials staging limits | Logistics labour |
 | `live_services` | Risk distinct from “isolated?” | Especially fitout/reno |
 
-**Phasing recommendation:** implement interview ask-layer on **existing 14** first (3.2.2); add CORE MVP expansions in same or immediately following batch only after Owner approves D4.
+**Phasing recommendation:** implement interview ask-layer on **existing 14** first (3.2.2); add CORE MVP expansions only after Owner re-approves phased keys. **3.2.1 did not expand taxonomy** (D4).
 
 ### 3.2 WORK-AREA-SPECIFIC (Facts, not new constraints)
 
@@ -98,6 +100,8 @@ Add only if they materially change labour/logistics and are commonly answerable 
 2. Do not ask the same semantic question in Scope Details **and** Constraints **and** Interview.  
 3. WA Facts for access/carting become **overrides**, not primary capture, once interview is live.  
 4. Expanding taxonomy does **not** automatically create estimate modifiers — consumption is a separate, formula-safe batch (must not ship silent commercial changes).
+5. **Direction:** interview/site topics → **constraints** persistence; do not reverse-sync constraints into Fact SoT. Optional Facts→constraint **seed helpers** (e.g. unused `inferConstraintsFromFacts`) are not SoT.
+6. **Known suppress defects (fix in implementation, not R1):** some loaders query `project_constraints` (table does not exist; live table is `constraints`); occupied suppress looks up `site_occupied` vs canonical `occupied_site`.
 
 ---
 

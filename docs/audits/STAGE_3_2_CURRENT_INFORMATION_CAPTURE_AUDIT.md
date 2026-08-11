@@ -293,4 +293,4 @@ Owned by rates, calibration, pricing, quote — **out of Builder Interview write
 | --- | --- |
 | Path | `docs/audits/STAGE_3_2_CURRENT_INFORMATION_CAPTURE_AUDIT.md` |
 | Stage | 3.2.0 Planning |
-| Next | Owner decisions → 3.2.1 contract + candidate engine |
+| Next | 3.2.0-R1 reconciliation (`docs/audits/STAGE_3_2_0_R1_ARCHITECTURE_RECONCILIATION.md`) → Owner decisions D1–D16 → 3.2.1 |

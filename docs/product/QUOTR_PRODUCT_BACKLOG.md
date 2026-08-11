@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated**; Stage **3.1B Complete — Preview Validated** (2026-08-11; baseline `441f36c`); Production Scope Discovery **Disabled**; Stage **3.2.0 Complete Planning**; Stage **3.2.1 Awaiting Owner Decisions**; Stage 3.2 **not** In Progress beyond planning; Company DNA **Not Started**; **PERF-FUTURE-01 Planned**.
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated**; Stage **3.1B Complete — Preview Validated** (2026-08-11; baseline `441f36c`); Production Scope Discovery **Disabled**; Stage **3.2.0 Complete Planning**; Stage **3.2.0-R1 Complete**; Stage **3.2.1 Complete Local**; Stage **3.2.2 Not Started**; Stage 3.2 **not** globally Complete; Company DNA **Not Started**; **PERF-FUTURE-01 Planned**.
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -69,7 +69,7 @@
 - Attention routing final: R6-R4.1 (`79afb4e`) Preview Ready.
 - Residual responsiveness: **PERF-FUTURE-01** Planned (non-blocking).
 - FEAT-001 Partial (ISD groups/cards); broader WA collapse Deferred; FEAT-002 Deferred; FEAT-003 taxonomy designed in 3.2.0; implementation gated on owner D4.
-- Stage **3.2.0 Complete Planning** — `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`. Stage **3.2.1 Awaiting Owner Decisions** — `docs/decisions/STAGE_3_2_BUILDER_INTERVIEW_OWNER_DECISIONS.md`. Do not implement UI/migrations until decisions approved.
+- Stage **3.2.0 Complete Planning** — `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`. Stage **3.2.0-R1 Complete** — `docs/audits/STAGE_3_2_0_R1_ARCHITECTURE_RECONCILIATION.md`. Stage **3.2.1 Complete Local** — `docs/implementation/STAGE_3_2_1_CANDIDATE_ENGINE_COMPLETION.md` (D1–D16 OWNER APPROVED). Stage **3.2.2 Not Started**.
 
 ## Batch notes (Stage 3.1B — historical implementation)
 
@@ -90,15 +90,15 @@
 - Do not change Analyse Job behaviour, commercial formulas, or Company DNA without explicit authorisation.
 - Stage 3.1B.7 missing-scope — Deferred until Preview gate clears.
 - Production: **Disabled**.
-- Stage 3.2: **3.2.0 Complete Planning**; **3.2.1 Awaiting Owner Decisions** (not In Progress beyond planning).
+- Stage 3.2: **3.2.0 Complete Planning**; **3.2.0-R1 Complete**; **3.2.1 Complete Local**; **3.2.2 Not Started** (stage not globally Complete).
 
 ## Batch notes (Stage 3.2 Builder Interview)
 
 - **3.2.0** Audit & Specification: **Complete Planning** (2026-08-11).
-- Docs: capture audit; architecture; question contract; constraint taxonomy; estimate readiness; plan; owner decisions.
-- **3.2.1** blocked on Owner approval of D1–D10.
+- **3.2.0-R1** Architecture reconciliation: **Complete — Docs only** (2026-08-12).
+- **3.2.1** Deterministic candidate engine: **Complete — Local** (2026-08-12); D1–D16 **OWNER APPROVED**; pure `lib/builder-interview/`; no UI/writes/migrations.
+- **3.2.2** Not Started.
 - Production Scope Discovery: **Disabled**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned** (parallel).
-- No UI, migrations, Fact changes, or formula changes in 3.2.0.
 
 ## Batch notes (Stage 3.1C auth / setup) — CLOSED
 
@@ -107,5 +107,5 @@
 - Stage 3.1C.3 + R1 + R2A–R2E + R2E-R1 + R2E-R1.1: **Complete — Preview Validated**.
 - Migrations **032** and **033**: Applied and Verified Remote.
 - Deferred (not complete): email change; Company DNA; calibration→rate auto-apply; additional scenarios; Stage 3.2 implementation; Production Scope Discovery enablement.
-- Stage 3.1B: **Complete — Preview Validated** (2026-08-11). Next: Owner approve 3.2 decisions → 3.2.1.
-- Production Scope Discovery: **Disabled**. Stage 3.2: **3.2.0 Complete Planning** / **3.2.1 Awaiting Owner Decisions**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned**.
+- Stage 3.1B: **Complete — Preview Validated** (2026-08-11). Next: Stage **3.2.2** ask-layer wiring (after Owner start).
+- Production Scope Discovery: **Disabled**. Stage 3.2: **3.2.1 Complete Local** / **3.2.2 Not Started**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned**.

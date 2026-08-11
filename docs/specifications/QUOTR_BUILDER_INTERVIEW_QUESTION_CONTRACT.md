@@ -1,13 +1,15 @@
 # Quotr Builder Interview — Question Contract
 
-**Status:** Conceptual contract (Stage 3.2.0) — **not implemented**  
-**Date:** 2026-08-11  
+**Status:** Conceptual contract (Stage 3.2.0-R1); **encoded in 3.2.1 registry** (`lib/builder-interview/registry.ts`) — UI not implemented  
+**Date:** 2026-08-12  
 **Authority companions:**  
 - `docs/architecture/QUOTR_BUILDER_INTERVIEW_ARCHITECTURE.md`  
+- `docs/architecture/STAGE_3_2_1_CANDIDATE_ENGINE_ARCHITECTURE.md`  
 - `docs/specifications/QUOTR_CONSTRAINT_TAXONOMY.md`  
 - `docs/architecture/STAGE_3_1D_DOMAIN_MODEL_REFINED.md`  
+- `docs/audits/STAGE_3_2_0_R1_ARCHITECTURE_RECONCILIATION.md`  
 
-Do not treat this as a migration or TypeScript schema yet. 3.2.1 will encode a minimal deterministic registry from this contract.
+3.2.1 encodes a minimal deterministic registry from this contract in **application code** (no DB migration). Priority, estimate/scope/confidence impact, and answerability are **separate fields**.
 
 ---
 
@@ -33,6 +35,7 @@ Every Builder Interview question must have a durable identity, a canonical write
 | `requiredness` | `critical` \| `recommended` \| `optional` |
 | `priority_class` | `P0` \| `P1` \| `P2` \| `P3` (static default; runtime may elevate/demote) |
 | `trigger` | Rules for candidacy (WA types, scope flags, missing keys, calculator missingInfo) |
+| `depends_on` | Optional parent question_key / fact conditions (generation-time; no DB parent_id required) |
 | `suppress_if_known` | Keys / semantic aliases that hide this question |
 | `suppresses` | Other question_keys or Fact aliases this answer closes |
 | `commercial_impact` | none \| low \| medium \| high (must not imply formula ownership) |
@@ -142,8 +145,14 @@ Interview `suppresses` lists must close Scope Details clones for the same topic 
 | Intro copy | “Quotr has N quick questions that will improve this estimate.” |
 | Per-question actions | Answer / Not sure / Use reasonable assumption / Skip for now |
 | Why line | Optional ≤1 short sentence |
-| After save | Recompute remaining; do not remount Assistant |
+| After save | Recompute remaining on **batch save** / presentation boundaries (Owner D15); do not remount Assistant |
 | Empty state | “No important interview questions right now.” |
+
+### Persistence note (3.2.0-R1)
+
+- Candidates are **ephemeral** in 3.2.1 (pure engine output).
+- Existing `questions` / `question_blocks` tables are **not** required to store the interview contract fields (`priority_class`, `write_target`, etc.).
+- Answers (later batches) write Facts/Constraints; provenance minimum = `source` + registry `question_key` (Owner D16).
 
 ---
 

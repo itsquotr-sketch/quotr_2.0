@@ -1,10 +1,14 @@
 # Quotr Estimate Readiness Model
 
-**Status:** Stage 3.2.0 conceptual model — **not implemented**  
-**Date:** 2026-08-11  
+**Status:** Stage 3.2.0-R1 conceptual model; **derived in 3.2.1 pure engine** (`lib/builder-interview/readiness.ts`) — **not wired to Generate Estimate UI**  
+**Date:** 2026-08-12  
 **Complements:** Builder Interview architecture; existing Quick Estimate attention routing (3.1B R6-R4.1)  
+**Reconciliation:** `docs/audits/STAGE_3_2_0_R1_ARCHITECTURE_RECONCILIATION.md`  
+**Engine:** `docs/architecture/STAGE_3_2_1_CANDIDATE_ENGINE_ARCHITECTURE.md`  
 
-Do not create another giant blocking gate.
+Do not create another giant blocking gate.  
+Do not create another competing readiness **source of truth**.  
+Soft-block applies to **Quick Estimate readiness only** (D3) — not Pricing/Quote.
 
 ---
 
@@ -16,7 +20,7 @@ Separate:
 - what **reduces confidence** but still allows pricing;
 - what is merely **nice to know**.
 
-Builder Interview feeds this model; it does not replace Scope Details completeness or Scope Review decisions.
+Builder Interview feeds this model as a **derived projection** over interview candidates, calculator `missingInfo`, and existing gates. It does not replace Scope Details completeness, Scope Review decisions, company setup readiness, or the assistant stage machine.
 
 ---
 
@@ -80,7 +84,18 @@ Examples:
 | Quick Estimate attention | Routes QUESTION → Scope Details; SCOPE → Scope Review; future SITE → Interview |
 | Constraints required flags | Feed interview candidates; not a second readiness SoT |
 | Estimate `assumptions[]` / `missing_info[]` | Presentation + confidence |
-| Company setup readiness | Independent gate for quote |
+| Company setup readiness (`lib/setup/readiness.ts`) | Independent gate for quote / org setup — **do not merge** |
+| Assistant stage (`ready_to_estimate`) | Wizard progression; generate stage gate today — readiness triad **overlays** UX, does not rename stages |
+| Progressive disclosure | UI accordion only — not readiness |
+
+### Authority rule (3.2.0-R1)
+
+```
+READY triad = derived view(open P0/P1 interview candidates, explicit assumptions,
+                           mapped calculator missingInfo, ISD Scope Review blockers when enabled)
+```
+
+No new readiness table. Soft-block (Owner D3) may prevent/warn on generate without changing Fact SoT.
 
 ---
 
@@ -125,4 +140,4 @@ Project-wide answered site topics do not re-open per WA.
 | Field | Value |
 | --- | --- |
 | Path | `docs/specifications/QUOTR_ESTIMATE_READINESS_MODEL.md` |
-| Owner decision | D3, D5 |
+| Owner decision | D3, D5, D14 (invalidation), D15 (recompute) |

@@ -1,8 +1,10 @@
 # Quotr Builder Interview — Architecture
 
-**Status:** Stage 3.2.0 Complete Planning (conceptual; not implemented)  
-**Date:** 2026-08-11  
-**Baseline:** Stage 3.1B Complete — Preview Validated (`441f36c`)  
+**Status:** Stage 3.2.0-R1 Reconciled Planning; **3.2.1 engine Complete Local** (conceptual UI still not implemented)  
+**Date:** 2026-08-12  
+**Baseline:** Stage 3.1B Complete — Preview Validated (`441f36c`); Stage 3.2.0 planning 2026-08-11  
+**Reconciliation:** `docs/audits/STAGE_3_2_0_R1_ARCHITECTURE_RECONCILIATION.md`  
+**Engine:** `docs/architecture/STAGE_3_2_1_CANDIDATE_ENGINE_ARCHITECTURE.md`  
 **Related:**  
 - `docs/audits/STAGE_3_2_CURRENT_INFORMATION_CAPTURE_AUDIT.md`  
 - `docs/specifications/QUOTR_BUILDER_INTERVIEW_QUESTION_CONTRACT.md`  
@@ -11,7 +13,7 @@
 - `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`  
 - `docs/decisions/STAGE_3_2_BUILDER_INTERVIEW_OWNER_DECISIONS.md`  
 
-**Hard non-goals for 3.2 implementation:** UI in this doc; migrations here; Fact schema rewrites; estimate formula changes; Production Scope Discovery enablement; Company DNA.
+**Hard non-goals still:** Interview UI (→ 3.2.2); migrations; Fact schema rewrites; estimate formula changes; Production Scope Discovery enablement; Company DNA.
 
 ---
 
@@ -81,13 +83,42 @@ Builder Interview is the **intelligent ask layer** that:
 - suppresses duplicates;
 - ranks impact;
 - batches concise asks;
-- records assumptions when skipped.
+- records assumptions when skipped via explicit assume.
 
-MVP should **reuse / extend** the constraint taxonomy rather than inventing a parallel store.
+MVP **reuses / extends** the constraint taxonomy rather than inventing a parallel store.
 
 ---
 
-## 3. Placement recommendation
+## 3. Fact ↔ Constraint direction (reconciled)
+
+### Live repository
+
+```
+project_facts     = estimating Fact SoT (WA or project-wide dotted keys)
+constraints       = sibling project-level site namespace (flat reserved keys)
+questions         = capture journal only (not estimating authority)
+
+Analyse Job / user UI write both namespaces directly.
+```
+
+`inferConstraintsFromFacts()` in `lib/assistant/constraint-templates.ts` can derive **constraint seed candidates** from WA Facts (client-supplied, by-others, carting bands). It is called only from `buildScopeDrivenConstraints`, which currently has **no production callers** (dead helper). Direction if revived: **Facts → constraint seeds**, never Constraints → Fact SoT.
+
+### Interview authority direction (adopted for 3.2)
+
+| Topic class | Write target | Notes |
+| --- | --- | --- |
+| Project site / logistics / occupied / hours / carry / access bands | **Constraint** | Canonical flat keys |
+| WA override or WA-owned detail | **Fact** | Dotted keys; only when trigger justifies |
+| Granular components / finishes / counts | **Not interview** | Scope Details |
+| Scope existence | **Not interview** | Scope Discovery / Review |
+
+**No bidirectional sync engine.** Semantic duplication is handled by **suppression and WA-override rules**, not by copying values between tables as SoT.
+
+Owner decision: **D11**.
+
+---
+
+## 4. Placement recommendation
 
 ### Options assessed
 
@@ -105,13 +136,11 @@ MVP should **reuse / extend** the constraint taxonomy rather than inventing a pa
 3. **Pre-estimate nudge** when readiness is `NEEDS IMPORTANT INFORMATION` or `READY WITH ASSUMPTIONS` with P0/P1 open — never a hard wall for P2/P3.
 4. Site Constraints UI remains editable for explicit review; interview answers write the same keys so Constraints do not re-ask.
 
-Rationale: Commercial Fitout showed multi-WA Detail burden is already high; another mandatory wizard is unjustified. Progressive + pre-estimate nudge matches estimator behaviour.
-
-Owner decision: **D1** in owner register.
+Owner decision: **D1**.
 
 ---
 
-## 4. Dynamic question generation (MVP)
+## 5. Dynamic question generation (MVP)
 
 Prefer **deterministic templates + rules**. AI may rank/phrase/interpret later; AI must **not** invent commercial questions without a canonical Fact/Constraint target.
 
@@ -128,7 +157,7 @@ Candidate questions (from versioned registry)
         ↓
 remove already-known (suppress_if_known)
 remove duplicates (project answer suppresses WA clones)
-evaluate relevance (WA type, scope flags, triggers)
+evaluate relevance (WA type, scope flags, triggers, depends_on)
 rank by priority × commercial/estimate impact
         ↓
 present small batch (typically 3–6)
@@ -138,13 +167,15 @@ present small batch (typically 3–6)
 
 - Deterministic candidate set for MVP (3.2.1).
 - No AI call per answer.
-- Recompute candidates incrementally after batch save.
-- Every candidate has `fact_key` or constraint key + `question_key`.
+- Recompute on **batch save** and **presentation / stage boundaries** (not every keystroke). Local UI may filter before save.
+- Every candidate has constraint key or `fact_key` + `question_key`.
 - Clarification-only / free-text AI prompts are out of scope unless mapped.
+
+Owner decisions: **D6**, **D14**.
 
 ---
 
-## 5. Multi–Work Area behaviour
+## 6. Multi–Work Area behaviour
 
 Commercial Fitout demonstrated 7+ WAs with repeated access questions.
 
@@ -156,54 +187,48 @@ Rules:
    - no project answer; **or**
    - user marked “differs by area”; **or**
    - scope flags extreme conditions (e.g. demolition upper-floor stripout).
-3. Group presentation by domain, not by every WA:
-
-```
-SITE (project)
-  2 questions
-
-DEMOLITION (WA)
-  1 question
-
-INTERNAL WALLS (WA)
-  1 question
-```
-
+3. Group presentation by domain, not by every WA.
 4. Never ask “What is access like?” separately for Demolition, Flooring, and Walls when project access is known.
+
+**Implementation note (not fixed in R1):** existing `isSuppressedByProjectWideKnowledge` is the right pattern, but constraint loading currently queries wrong table name `project_constraints` in some paths, and occupied suppression looks up `site_occupied` instead of `occupied_site`. Fix in a later implementation batch before relying on suppression.
+
+Owner decision: **D8**.
 
 ---
 
-## 6. Fact / Constraint write authority
+## 7. Authority hierarchy & write operations
 
-### Precedence (adopted for interview; compatible with 3.1D)
+### Precedence (aligned with `FACT_SOURCE_PRECEDENCE` in `domain-ownership.ts`)
 
 ```
-explicit user interview answer  (source=user)
-> confirmed existing user Fact/Constraint
-> extracted Fact (ai_extracted)
-> inferred / default
-> assumption (source=assumption)
-> derived
+explicit user interview / UI answer     (source=user)           100
+> ai_extracted                                                    60
+> default                                                         40
+> assumption                                                      30
+> system                                                          20
+> derived                                                         10
 ```
+
+`system` is a reserved tier used mainly for display/prepopulation mapping today; interview must not invent a tier above user.
 
 ### Operations
 
 | Op | When |
 | --- | --- |
 | **create** | Key unknown; interview answer provided |
-| **update** | Existing non-user or user explicitly re-answers |
+| **update** | Existing non-user source; or user confirms replace |
 | **conflict** | Interview answer differs from existing `source=user` → surface conflict; do not silent overwrite |
-| **supersede** | User confirms new answer replaces prior user value (provenance retained conceptually) |
+| **supersede** | User confirms new answer replaces prior user value |
 | **preserve** | Skip / Not sure without assumption → leave unknown |
-| **assume** | “Use reasonable assumption” → write assumption value + assumption record |
+| **assume** | “Use reasonable assumption” → write assumption value + assumption record linkage |
 
 Interview never writes rates, quality formulas, or quote money.
 
-Provenance fields (conceptual — migration only if later approved): source, question_key, answered_at, assumption_reason, confidence impact.
+Owner decisions: **D7**, **D12**, **D13**.
 
 ---
 
-## 7. Assumption model (conceptual)
+## 8. Assumption model (reconciled)
 
 When user selects **Use reasonable assumption**:
 
@@ -215,15 +240,21 @@ When user selects **Use reasonable assumption**:
 | impact | estimate confidence / readiness class |
 | reversible | User can later answer and supersede |
 
-Assumptions feed:
+### Invalidation triggers
 
-- estimate `assumptions[]` presentation;
-- readiness `READY WITH ASSUMPTIONS`;
-- future DNA **project evidence** (not company defaults).
+1. User answers same semantic key (`source=user`).
+2. Parent / trigger condition becomes false (conditional child irrelevant).
+3. Owning WA excluded or removed from confirmed set.
+4. Project-wide answer now suppresses the WA-scoped assumption topic.
+5. Scope item exclusion removes the trigger for the question.
+
+Invalidation marks estimate stale and removes the assumption from readiness “cleared by assumption” sets. Prefer MVP storage via `source=assumption` on Fact/Constraint + estimate assumption presentation; dedicated table only if Owner approves later.
+
+Owner decisions: **D5**, **D13** (conflict), **D16** (provenance store).
 
 ---
 
-## 8. Estimate readiness (summary)
+## 9. Estimate readiness (summary)
 
 See `QUOTR_ESTIMATE_READINESS_MODEL.md`.
 
@@ -233,11 +264,13 @@ See `QUOTR_ESTIMATE_READINESS_MODEL.md`.
 | READY WITH ASSUMPTIONS | P0 cleared by explicit assumptions or safe defaults |
 | NEEDS IMPORTANT INFORMATION | Open P0 (or critical P1 per owner policy) |
 
-Not a giant blocking gate: user may still generate with clear confidence penalty when policy allows.
+**Derived view only** — does not replace stage machine, company setup readiness, calculator `missingInfo`, or QE attention. Soft-block may overlay generate UX while stage remains `ready_to_estimate`.
+
+Owner decisions: **D3**, and readiness authority notes in reconciliation audit.
 
 ---
 
-## 9. Company DNA boundary
+## 10. Company DNA boundary
 
 | Layer | Example |
 | --- | --- |
@@ -245,17 +278,13 @@ Not a giant blocking gate: user may still generate with clear confidence penalty
 | Company DNA (company) | “This contractor prices carpenter labour at X / uses Y productivity.” |
 | Calibration (company evidence) | “This contractor expected a 15m² deck to cost Z.” |
 
-3.2 prepares DNA by:
+3.2 prepares DNA by structured keys + provenance + assumption records + clear project vs company namespaces.
 
-- structured keys + provenance;
-- assumption records;
-- clear project vs company namespaces;
-
-3.2 does **not** implement DNA consumption or silent rate mutation.
+3.2 does **not** implement DNA consumption or silent rate mutation. **Company DNA remains Not Started.**
 
 ---
 
-## 10. Performance architecture
+## 11. Performance architecture
 
 Coordinate with **PERF-FUTURE-01** (parallel track; not a blocker for starting 3.2.1 after owner decisions).
 
@@ -266,13 +295,37 @@ Coordinate with **PERF-FUTURE-01** (parallel track; not a blocker for starting 3
 | Writes | Batch Fact/Constraint upserts per answer batch |
 | UI | Optimistic local question list update; no full Assistant remount |
 | Refresh | Avoid unnecessary `router.refresh`; targeted revalidation only |
-| Recompute | Incremental suppress/rank after batch |
+| Recompute | After batch save + presentation boundaries |
 
-Interview must not worsen known Assistant latency.
+Owner decision: **D9**.
 
 ---
 
-## 11. Mobile architecture
+## 12. Conditional-child handling
+
+- Registry `depends_on` / triggers evaluated at candidate generation (same spirit as `shouldHideConditionalQuestion`).
+- No DB `parent_id` required for MVP.
+- Irrelevant children omitted from active batches.
+- Prior answers under invalidated parents: suppress for candidacy; do not history-wipe in MVP.
+
+---
+
+## 13. Provenance / schema stance
+
+| Layer | MVP approach |
+| --- | --- |
+| Candidate engine (3.2.1) | Pure functions; ephemeral candidates; versioned code registry |
+| Answer persistence (later) | Existing `constraints` / `project_facts` + `source` |
+| Assumptions | Prefer `source=assumption` + estimate assumption fields |
+| New tables / migrations | Default **none**; Owner-gated only |
+
+Constraint taxonomy expansions update `RESERVED_CONSTRAINT_KEYS` + templates — **no DB migration** required (`constraints.key` is free text).
+
+Owner decision: **D4**, **D16**.
+
+---
+
+## 14. Mobile architecture
 
 Builders stand on site.
 
@@ -290,7 +343,7 @@ Align with `docs/architecture/QUOTR_ASSISTANT_RESPONSIVE_AND_MOBILE_PRESENTATION
 
 ---
 
-## 12. UX sketch (contractor-native)
+## 15. UX sketch (contractor-native)
 
 Copy pattern:
 
@@ -318,7 +371,7 @@ Why line (only when useful, short):
 
 ---
 
-## 13. Worked examples (summary)
+## 16. Worked examples (summary)
 
 Full detail lives in the plan doc §Examples. Sketch:
 
@@ -343,13 +396,14 @@ WA-only: demolition services/hazmat if unknown.
 
 ---
 
-## 14. Security implications (planning)
+## 17. Security implications (planning)
 
 - Org-scoped writes only (existing RLS patterns).
 - No client-side authority for Fact writes.
 - Do not send secrets / unrelated org data to any future AI ranking.
 - Interview answers are project evidence — treat like Facts for access control.
 - No new public endpoints without authz review in implementation batches.
+- Allowlist question → fact/constraint keys (no arbitrary key writes).
 
 ---
 
@@ -358,4 +412,6 @@ WA-only: demolition services/hazmat if unknown.
 | Field | Value |
 | --- | --- |
 | Path | `docs/architecture/QUOTR_BUILDER_INTERVIEW_ARCHITECTURE.md` |
-| Implementation | Not started (await 3.2.1 after owner decisions) |
+| Implementation | **3.2.1 candidate engine Complete Local**; UI/wiring **Not Started** (3.2.2) |
+| Reconciliation | Stage 3.2.0-R1 |
+| Owner decisions | D1–D16 OWNER APPROVED |

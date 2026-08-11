@@ -48,9 +48,11 @@
 | **3.1B.5B** | Remote migration readiness + production wiring design | Runbook, wiring design, Preview rollout, owner approvals | **Complete — Planning** (`docs/implementation/STAGE_3_1B5B_READINESS_COMPLETION.md`) — remote apply Applied and Verified |
 | **3.1B.5C** | Gated server-action integration | Feature flag, application services, thin server actions | **Complete — Local** (`docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`) — UI Unwired; Preview enablement Ready Pending Owner Test; production Disabled |
 | **3.1B.6** | Assistant UI integration | Analyse Scope trigger, evidence display, accept/reject/modify controls | **Complete — Local** (`docs/implementation/STAGE_3_1B6_ASSISTANT_UI_COMPLETION.md`) — Preview Test Pending; production Disabled; Analyse Job Preserved; FEAT-001 partial |
-| **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | **Planning only** — **3.2.0 Complete Planning**; **3.2.1 Awaiting Owner Decisions**; stage not In Progress beyond planning |
+| **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | **In Progress** — **3.2.0 Complete Planning**; **3.2.0-R1 Complete**; **3.2.1 Complete Local**; **3.2.2 Not Started**; stage not globally Complete |
 | **3.2.0** | Builder Interview Audit & Specification | Docs-only audit, architecture, contracts, taxonomy, readiness, plan, owner decisions | **Complete Planning** (2026-08-11) |
-| **3.2.1** | Question/Fact contract + deterministic candidate engine | Versioned registry + pure candidate generation; no UI | **Awaiting Owner Decisions** |
+| **3.2.0-R1** | Architecture reconciliation & owner decision gate | Repo audit vs Claude findings; reconcile direction/authority/conflict/invalidation/recompute/provenance; expand D11–D16; lock 3.2.1 contract on paper | **Complete — Docs only** (2026-08-12) |
+| **3.2.1** | Deterministic candidate engine | Versioned registry + pure candidate/readiness engine; no UI/writes/migrations | **Complete — Local** (2026-08-12); D1–D16 OWNER APPROVED |
+| **3.2.2** | Core project/site constraint interview | Ask-layer wiring into Assistant; Constraint writes | **Not Started** |
 | **3.3** | Commercial Assemblies | Reusable commercial assemblies / packages | Not started |
 | **3.4** | Explicit Company Defaults / Manual Learning | Manual company defaults and correction capture without automatic rule mutation | Not started |
 | Later | Company DNA | Company-specific intelligence consuming structured evidence | Not started |
@@ -92,14 +94,17 @@ Every Stage 3 release should track:
 ## Stage 3.2 planning pointers
 
 - Audit: `docs/audits/STAGE_3_2_CURRENT_INFORMATION_CAPTURE_AUDIT.md`
+- Reconciliation (3.2.0-R1): `docs/audits/STAGE_3_2_0_R1_ARCHITECTURE_RECONCILIATION.md`
 - Architecture: `docs/architecture/QUOTR_BUILDER_INTERVIEW_ARCHITECTURE.md`
 - Question contract: `docs/specifications/QUOTR_BUILDER_INTERVIEW_QUESTION_CONTRACT.md`
 - Constraint taxonomy: `docs/specifications/QUOTR_CONSTRAINT_TAXONOMY.md`
 - Estimate readiness: `docs/specifications/QUOTR_ESTIMATE_READINESS_MODEL.md`
 - Plan: `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`
-- Owner decisions: `docs/decisions/STAGE_3_2_BUILDER_INTERVIEW_OWNER_DECISIONS.md`
+- Owner decisions: `docs/decisions/STAGE_3_2_BUILDER_INTERVIEW_OWNER_DECISIONS.md` (D1–D16 **OWNER APPROVED**)
+- 3.2.1 architecture: `docs/architecture/STAGE_3_2_1_CANDIDATE_ENGINE_ARCHITECTURE.md`
+- 3.2.1 completion: `docs/implementation/STAGE_3_2_1_CANDIDATE_ENGINE_COMPLETION.md`
 - Handoff (historical pointer): `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`
-- Status: **3.2.0 Complete Planning**; **3.2.1 Awaiting Owner Decisions**; do not implement UI/migrations until decisions approved
+- Status: **3.2.1 Complete Local**; **3.2.2 Not Started**; Production Scope Discovery **Disabled**; Company DNA **Not Started**
 
 ## Stage 3.1B planning pointers
 
