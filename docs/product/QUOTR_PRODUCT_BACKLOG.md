@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated**; Stage **3.1B Complete — Preview Validated** (2026-08-11); Production Scope Discovery **Disabled**; Stage **3.2 Not Started** (planning handoff ready); Company DNA **Not Started**; **PERF-FUTURE-01 Planned**.
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated**; Stage **3.1B Complete — Preview Validated** (2026-08-11; baseline `441f36c`); Production Scope Discovery **Disabled**; Stage **3.2.0 Complete Planning**; Stage **3.2.1 Awaiting Owner Decisions**; Stage 3.2 **not** In Progress beyond planning; Company DNA **Not Started**; **PERF-FUTURE-01 Planned**.
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -44,7 +44,7 @@
 | R1-005 | Project Capture hierarchy weak | UX | P1 | Brief vs notes still hard to distinguish | Shared headings / footer copy | Two distinct panels + purpose copy; no data change | Stage 3.1A-R1 | UX-005 | Complete | Capture layout static checks | | |
 | FEAT-001 | Collapsible work-area cards | Feature | P2 | Dense Scope Review / future suggestion lists hard to scan | Work-area cards always expanded in detail | Collapse/expand per card; consider Expand all / Collapse all; Summary vs Detailed | Stage 3.1B.6 (UI) or later assistant UX | Assistant Scope Review + ISD suggestion list density | Partial — Complete — Local (ISD groups + suggestion detail only); broader WA cards Deferred | Design + Preview interaction tests | Supports denser scope discovery UX | Broader estimate work-area collapse still deferred |
 | FEAT-002 | Optional quote items | Feature | P2 | Optional lines cannot be presented correctly under base total | Optional flag exists; commercial presentation of optional totals not productised | Optional section below base subtotal/GST/total; base excludes unselected optionals; own ex/incl GST; future included/optional/alt/excluded model | Future commercial release (post Stage 2B) | Commercial engine goldens; quote presentation | Deferred | Golden scenarios + regression before ship | Commercial learning must not invent optional arithmetic | Separate from ISD scope-optional catalogue flags |
-| FEAT-003 | Additional site constraints | Feature | P2 | Limited structured constraint taxonomy | Current constraint templates only | Expand structured site constraints aligned with Builder Interview, scope discovery, productivity modifiers, Company DNA | Stage 3.2 Builder Interview | Constraint taxonomy design | Deferred | Taxonomy design review before implementation | Direct DNA / interview evidence path | Defer expanded taxonomy until Builder Interview; ISD may only reference existing constraint keys |
+| FEAT-003 | Additional site constraints | Feature | P2 | Limited structured constraint taxonomy | Current constraint templates only | Expand structured site constraints aligned with Builder Interview, scope discovery, productivity modifiers, Company DNA | Stage 3.2 Builder Interview | Constraint taxonomy design (3.2.0) | Deferred — taxonomy designed; implementation gated on owner D4 | Owner approve D4 + implement in 3.2.2+ | Direct DNA / interview evidence path | See `docs/specifications/QUOTR_CONSTRAINT_TAXONOMY.md`; ISD may only reference existing keys until expansion ships |
 | ISD-001 | Scope suggestion lifecycle | Feature | P0 | No canonical propose→decide→apply contract across Analyse Job vs notes | Suggested WAs written immediately on Analyse Job; notes use `note_proposals` | Canonical `ScopeDiscoverySuggestion` statuses/transitions; AI proposes; user decides | Stage 3.1B.1 / 3.1B.5A / 3.1B.5C / 3.1B.6 | Boundary + suggestion contract; Fact SoT | Complete — Local (contract + RPCs + server actions + Assistant UI); Preview Test Pending; production Disabled | `verify-stage-3-1b1` … `verify-stage-3-1b6-assistant-ui.ts`; completion docs | Rejection/modification provenance for Evidence Engine | Preview UI smoke owner-gated; production disabled |
 | ISD-002 | Missing-scope detection | Feature | P0 | Omissions only via question templates; no relationship-driven warnings | Missing details questions after constraints; no parent→child catalogue | Deterministic catalogue checks + AI contextual merge; never auto-accept | Stage 3.1B.2 / 3.1B.7 | Scope relationship catalogue | Complete — Local (deterministic evaluator only; no production adoption) | `verify-stage-3-1b2-scope-relationship-catalogue.ts` | Structured omission evidence for DNA later | Production wiring remains later batches |
 | ISD-003 | Scope relationship catalogue | Feature | P1 | No data-driven deck/bathroom/fitout relationship model | Ad hoc enrichment + templates | Versioned catalogue edges (required/likely/conditional) with trigger/suppress facts | Stage 3.1B.2 | Domain model 3.1D | Complete — Local (samples; production adoption Not Started) | Catalogue integrity + sample evaluation tests | Assembly link reserved for 3.3 | Code modules; no money formulas |
@@ -68,8 +68,8 @@
 - Production Scope Discovery: **Disabled**. Analyse Job **Preserved**.
 - Attention routing final: R6-R4.1 (`79afb4e`) Preview Ready.
 - Residual responsiveness: **PERF-FUTURE-01** Planned (non-blocking).
-- FEAT-001 Partial (ISD groups/cards); broader WA collapse Deferred; FEAT-002 Deferred; FEAT-003 Deferred until Builder Interview (Stage 3.2).
-- Next product stage: **3.2 Builder Interview** — planning handoff `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`. Do not implement until 3.2.0 audit approved.
+- FEAT-001 Partial (ISD groups/cards); broader WA collapse Deferred; FEAT-002 Deferred; FEAT-003 taxonomy designed in 3.2.0; implementation gated on owner D4.
+- Stage **3.2.0 Complete Planning** — `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`. Stage **3.2.1 Awaiting Owner Decisions** — `docs/decisions/STAGE_3_2_BUILDER_INTERVIEW_OWNER_DECISIONS.md`. Do not implement UI/migrations until decisions approved.
 
 ## Batch notes (Stage 3.1B — historical implementation)
 
@@ -90,7 +90,15 @@
 - Do not change Analyse Job behaviour, commercial formulas, or Company DNA without explicit authorisation.
 - Stage 3.1B.7 missing-scope — Deferred until Preview gate clears.
 - Production: **Disabled**.
-- Stage 3.2: **Not Started**.
+- Stage 3.2: **3.2.0 Complete Planning**; **3.2.1 Awaiting Owner Decisions** (not In Progress beyond planning).
+
+## Batch notes (Stage 3.2 Builder Interview)
+
+- **3.2.0** Audit & Specification: **Complete Planning** (2026-08-11).
+- Docs: capture audit; architecture; question contract; constraint taxonomy; estimate readiness; plan; owner decisions.
+- **3.2.1** blocked on Owner approval of D1–D10.
+- Production Scope Discovery: **Disabled**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned** (parallel).
+- No UI, migrations, Fact changes, or formula changes in 3.2.0.
 
 ## Batch notes (Stage 3.1C auth / setup) — CLOSED
 
@@ -99,5 +107,5 @@
 - Stage 3.1C.3 + R1 + R2A–R2E + R2E-R1 + R2E-R1.1: **Complete — Preview Validated**.
 - Migrations **032** and **033**: Applied and Verified Remote.
 - Deferred (not complete): email change; Company DNA; calibration→rate auto-apply; additional scenarios; Stage 3.2 implementation; Production Scope Discovery enablement.
-- Stage 3.1B: **Complete — Preview Validated** (2026-08-11). Next: Stage 3.2 planning handoff.
-- Production Scope Discovery: **Disabled**. Stage 3.2: **Not Started**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned**.
+- Stage 3.1B: **Complete — Preview Validated** (2026-08-11). Next: Owner approve 3.2 decisions → 3.2.1.
+- Production Scope Discovery: **Disabled**. Stage 3.2: **3.2.0 Complete Planning** / **3.2.1 Awaiting Owner Decisions**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned**.

@@ -36,7 +36,7 @@
 | **3.1C.3-R2E-R1.1** | Company Settings section prop build fix | `initialSection` on CompanySettingsContent | **Complete** |
 | **3.1C (overall)** | Auth + first-run Setup | See `docs/implementation/STAGE_3_1C_CLOSURE.md` | **Complete — Preview Validated** (2026-08-10) |
 | **3.1D** | Domain Model Refinement | Single authoritative owners; Fact SoT; deterministic Question→Fact→Estimate pipeline | **Complete** — Preview signed off 2026-08-05 (`docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`) |
-| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **Complete — Preview Validated** (2026-08-11; baseline `79afb4e`; Production Disabled) |
+| **3.1B** | Intelligent Scope Discovery | Smarter work-area / question discovery without redesigning commercial arithmetic | **Complete — Preview Validated** (2026-08-11; closure baseline `441f36c`; code baseline `79afb4e`; Production Disabled) |
 | **3.1B.0** | ISD Audit and Specification | Architecture, boundary, contracts, catalogue spec, latency budget, owner decisions | **Complete** (docs only) |
 | **3.1B.1** | Suggestion contract and deterministic lifecycle | Pure types, validation, lifecycle, staleness, identity, merge | **Complete — Local** (`docs/implementation/STAGE_3_1B1_SUGGESTION_CONTRACT_COMPLETION.md`) |
 | **3.1B.2** | Scope relationship catalogue foundation | Data-driven edges + deterministic missing-scope samples | **Complete — Local** (`docs/implementation/STAGE_3_1B2_SCOPE_RELATIONSHIP_CATALOGUE_COMPLETION.md`) |
@@ -48,7 +48,9 @@
 | **3.1B.5B** | Remote migration readiness + production wiring design | Runbook, wiring design, Preview rollout, owner approvals | **Complete — Planning** (`docs/implementation/STAGE_3_1B5B_READINESS_COMPLETION.md`) — remote apply Applied and Verified |
 | **3.1B.5C** | Gated server-action integration | Feature flag, application services, thin server actions | **Complete — Local** (`docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`) — UI Unwired; Preview enablement Ready Pending Owner Test; production Disabled |
 | **3.1B.6** | Assistant UI integration | Analyse Scope trigger, evidence display, accept/reject/modify controls | **Complete — Local** (`docs/implementation/STAGE_3_1B6_ASSISTANT_UI_COMPLETION.md`) — Preview Test Pending; production Disabled; Analyse Job Preserved; FEAT-001 partial |
-| **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | **Not started** — planning handoff: `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md` |
+| **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | **Planning only** — **3.2.0 Complete Planning**; **3.2.1 Awaiting Owner Decisions**; stage not In Progress beyond planning |
+| **3.2.0** | Builder Interview Audit & Specification | Docs-only audit, architecture, contracts, taxonomy, readiness, plan, owner decisions | **Complete Planning** (2026-08-11) |
+| **3.2.1** | Question/Fact contract + deterministic candidate engine | Versioned registry + pure candidate generation; no UI | **Awaiting Owner Decisions** |
 | **3.3** | Commercial Assemblies | Reusable commercial assemblies / packages | Not started |
 | **3.4** | Explicit Company Defaults / Manual Learning | Manual company defaults and correction capture without automatic rule mutation | Not started |
 | Later | Company DNA | Company-specific intelligence consuming structured evidence | Not started |
@@ -85,7 +87,19 @@ Every Stage 3 release should track:
 
 - FEAT-001 Collapsible work-area cards (partial in 3.1B.6 ISD UI; broader WA cards Deferred)
 - FEAT-002 Optional quote items (requires commercial design + goldens)
-- FEAT-003 Additional site constraints taxonomy (Builder Interview)
+- FEAT-003 Additional site constraints taxonomy (Builder Interview) — taxonomy design in 3.2.0; implementation gated on owner D4
+
+## Stage 3.2 planning pointers
+
+- Audit: `docs/audits/STAGE_3_2_CURRENT_INFORMATION_CAPTURE_AUDIT.md`
+- Architecture: `docs/architecture/QUOTR_BUILDER_INTERVIEW_ARCHITECTURE.md`
+- Question contract: `docs/specifications/QUOTR_BUILDER_INTERVIEW_QUESTION_CONTRACT.md`
+- Constraint taxonomy: `docs/specifications/QUOTR_CONSTRAINT_TAXONOMY.md`
+- Estimate readiness: `docs/specifications/QUOTR_ESTIMATE_READINESS_MODEL.md`
+- Plan: `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`
+- Owner decisions: `docs/decisions/STAGE_3_2_BUILDER_INTERVIEW_OWNER_DECISIONS.md`
+- Handoff (historical pointer): `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`
+- Status: **3.2.0 Complete Planning**; **3.2.1 Awaiting Owner Decisions**; do not implement UI/migrations until decisions approved
 
 ## Stage 3.1B planning pointers
 
@@ -137,7 +151,8 @@ Every Stage 3 release should track:
 - 3.1B.7F-R6-R4 attention routing: `docs/implementation/STAGE_3_1B7FR6R4_ATTENTION_ROUTING_COMPLETION.md`
 - 3.1B.7F-R6-R4 Fitout retest: `docs/runbooks/STAGE_3_1B7FR6R4_FINAL_FITOUT_RETEST.md`
 - 3.1B closure: `docs/implementation/STAGE_3_1B_CLOSURE.md`
-- 3.2 Builder Interview handoff: `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`
+- 3.2 Builder Interview plan: `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`
+- 3.2 Builder Interview handoff (pointer): `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`
 - PERF-FUTURE-01 latency pass (planned): `docs/performance/ASSISTANT_RESPONSIVENESS_LATENCY_OPTIMISATION_PASS.md`
 - 3.1B.7G completion: `docs/implementation/STAGE_3_1B7G_ASSISTANT_DENSITY_STICKY_ESTIMATE_COMPLETION.md`
 - 3.1B.7G preview retest: `docs/runbooks/STAGE_3_1B7G_PREVIEW_RETEST.md`
