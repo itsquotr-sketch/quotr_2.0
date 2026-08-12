@@ -1,6 +1,6 @@
 # Stage 3.2.2 — Core Project/Site Interview Completion
 
-**Status:** Complete Local — Owner Preview Test Pending  
+**Status:** Complete Local — Owner Preview (R2 Complete Local / Owner Preview Pending)  
 **Date:** 2026-08-12  
 **Branch:** `hardening/stage-2a-security`
 

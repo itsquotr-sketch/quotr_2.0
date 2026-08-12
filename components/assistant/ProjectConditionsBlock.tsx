@@ -401,7 +401,7 @@ export function ProjectConditionsBlock({
           return (
             <li
               key={candidate.questionKey}
-              className="space-y-3"
+              className="space-y-3 rounded-lg border border-border/40 bg-muted/25 px-3 py-3 sm:px-3.5"
               data-project-condition-key={candidate.questionKey}
               data-question-key={candidate.targetKey}
             >
@@ -422,42 +422,54 @@ export function ProjectConditionsBlock({
                 onChange={(value) => setAnswer(candidate.questionKey, value)}
               />
 
-              <div className="flex flex-wrap gap-x-3 gap-y-1">
-                <button
+              <div
+                className="flex flex-wrap gap-2 pt-0.5"
+                data-secondary-actions="true"
+              >
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   className={cn(
-                    "h-11 min-w-[4.5rem] rounded-md px-2 text-left text-xs text-muted-foreground underline-offset-2 hover:underline",
-                    draft?.kind === "not_sure" && "font-medium text-foreground"
+                    "h-10 min-h-10 border-border/70 bg-background px-3 text-xs font-normal text-muted-foreground shadow-none",
+                    draft?.kind === "not_sure" &&
+                      "border-foreground/30 font-medium text-foreground"
                   )}
                   onClick={() => setKind(candidate.questionKey, "not_sure")}
                   disabled={saving}
                 >
                   Not sure
-                </button>
+                </Button>
                 {candidate.priority !== "P0" ? (
-                  <button
+                  <Button
                     type="button"
+                    variant="outline"
+                    size="sm"
                     className={cn(
-                      "h-11 min-w-[4.5rem] rounded-md px-2 text-left text-xs text-muted-foreground underline-offset-2 hover:underline",
-                      draft?.kind === "assume" && "font-medium text-foreground"
+                      "h-10 min-h-10 border-border/70 bg-background px-3 text-xs font-normal text-muted-foreground shadow-none",
+                      draft?.kind === "assume" &&
+                        "border-foreground/30 font-medium text-foreground"
                     )}
                     onClick={() => setKind(candidate.questionKey, "assume")}
                     disabled={saving}
                   >
                     Use reasonable assumption
-                  </button>
+                  </Button>
                 ) : null}
-                <button
+                <Button
                   type="button"
+                  variant="outline"
+                  size="sm"
                   className={cn(
-                    "h-11 min-w-[4.5rem] rounded-md px-2 text-left text-xs text-muted-foreground underline-offset-2 hover:underline",
-                    draft?.kind === "skip" && "font-medium text-foreground"
+                    "h-10 min-h-10 border-border/70 bg-background px-3 text-xs font-normal text-muted-foreground shadow-none",
+                    draft?.kind === "skip" &&
+                      "border-foreground/30 font-medium text-foreground"
                   )}
                   onClick={() => setKind(candidate.questionKey, "skip")}
                   disabled={saving}
                 >
                   Skip for now
-                </button>
+                </Button>
               </div>
 
               {draft?.kind === "not_sure" ? (

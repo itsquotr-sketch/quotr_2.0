@@ -526,7 +526,7 @@ export function buildEstimateReviewSummaryModel(params: {
     siteConstraintsLabel:
       constraintCount === 0
         ? "None applied"
-        : `${constraintCount} applied`,
+        : `${constraintCount} condition${constraintCount === 1 ? "" : "s"}`,
     ready,
     outcomeLabel: params.estimateStale
       ? "Needs refresh"
@@ -628,7 +628,7 @@ export function buildQuickEstimatePresentationModel(params: {
   if (measurementsConfirmed) complete.push("Measurements confirmed");
   if (scopeConfirmed) complete.push("Scope confirmed");
   if (specificationSelected) complete.push("Specification selected");
-  if (siteConstraintsCaptured) complete.push("Site constraints captured");
+  if (siteConstraintsCaptured) complete.push("Project conditions captured");
 
   const drivers: string[] = [...complete];
   if (outstandingLabels.length > 0) {
@@ -683,6 +683,9 @@ export function buildStepperStepSummaries(params: {
   readonly includedWorkAreaCount: number;
   readonly qualityTitle: string | null;
   readonly briefSubmitted: boolean;
+  /** When set, prefer remaining/complete wording for Project Conditions. */
+  readonly projectConditionsRemaining?: number | null;
+  readonly projectConditionsComplete?: boolean;
 }): Partial<
   Record<
     | "brief"
@@ -694,6 +697,19 @@ export function buildStepperStepSummaries(params: {
     StepperStepSummary
   >
 > {
+  const constraintsPrimary =
+    params.projectConditionsComplete === true
+      ? params.constraintCount === 0
+        ? "Complete"
+        : `${params.constraintCount} applied`
+      : typeof params.projectConditionsRemaining === "number"
+        ? params.projectConditionsRemaining === 0
+          ? "Complete"
+          : `${params.projectConditionsRemaining} remaining`
+        : params.constraintCount === 0
+          ? "None applied"
+          : `${params.constraintCount} applied`;
+
   return {
     brief: params.briefSubmitted
       ? { primary: "Captured" }
@@ -714,10 +730,7 @@ export function buildStepperStepSummaries(params: {
           : `${params.answeredQuestionCount} answered`,
     },
     constraints: {
-      primary:
-        params.constraintCount === 0
-          ? "None applied"
-          : `${params.constraintCount} applied`,
+      primary: constraintsPrimary,
     },
     estimate_ready: {
       primary: params.estimateStale

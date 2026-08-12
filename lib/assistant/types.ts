@@ -119,9 +119,21 @@ export type AssistantState = {
   defaultMarginPercent: number;
 };
 
+/** Authoritative margin totals returned after persist (3.2.2-R2). */
+export type MarginUpdateTotals = {
+  recommendedSell: number;
+  sellLow: number;
+  sellHigh: number;
+  grossProfit: number;
+  marginPercent: number;
+  targetMarginPercent: number | null;
+};
+
 export type AssistantActionState = {
   error?: string;
   success?: boolean;
+  /** Present on successful updateEstimateMargin — server-authoritative. */
+  marginTotals?: MarginUpdateTotals;
 };
 
 export type WorkAreaSelection = {

@@ -412,6 +412,6 @@ WA-only: demolition services/hazmat if unknown.
 | Field | Value |
 | --- | --- |
 | Path | `docs/architecture/QUOTR_BUILDER_INTERVIEW_ARCHITECTURE.md` |
-| Implementation | **3.2.2 Complete Local** (Project Conditions ASK); **3.2.3 Not Started** |
+| Implementation | **3.2.2 In Owner Preview / R2 Complete Local**; **3.2.3 Not Started** |
 | Reconciliation | Stage 3.2.0-R1 |
 | Owner decisions | D1–D16 OWNER APPROVED |

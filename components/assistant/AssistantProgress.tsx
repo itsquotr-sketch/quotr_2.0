@@ -1,8 +1,13 @@
-import { STEPPER_STAGES } from "@/components/assistant/StepperNav";
+import {
+  PROJECT_CONDITIONS_STEPPER_LABEL,
+  STEPPER_STAGES,
+} from "@/components/assistant/StepperNav";
 import type { AssistantStage } from "@/components/assistant/types";
 
 type AssistantProgressProps = {
   currentStage: AssistantStage;
+  /** When true, constraints step shows as Project Conditions (3.2.2-R2). */
+  preferProjectConditionsLabel?: boolean;
 };
 
 const STAGE_ORDER = [
@@ -24,13 +29,18 @@ function resolveStageIndex(stage: AssistantStage): number {
   return idx === -1 ? 0 : idx;
 }
 
-function getMobileStepLabel(stage: AssistantStage): string {
+function getMobileStepLabel(
+  stage: AssistantStage,
+  preferProjectConditionsLabel: boolean
+): string {
   const idx = resolveStageIndex(stage);
   if (stage === "estimate_ready" || stage === "ready_to_estimate") {
     return "Estimate";
   }
   if (stage === "constraints") {
-    return "Site Constraints";
+    return preferProjectConditionsLabel
+      ? PROJECT_CONDITIONS_STEPPER_LABEL
+      : "Site Constraints";
   }
 
   const step = STEPPER_STAGES.find((item) => {
@@ -43,11 +53,17 @@ function getMobileStepLabel(stage: AssistantStage): string {
   return step?.label ?? "Brief";
 }
 
-export function AssistantProgress({ currentStage }: AssistantProgressProps) {
+export function AssistantProgress({
+  currentStage,
+  preferProjectConditionsLabel = false,
+}: AssistantProgressProps) {
   const currentIdx = resolveStageIndex(currentStage);
   const totalSteps = STEPPER_STAGES.length;
   const progressPercent = Math.round(((currentIdx + 1) / totalSteps) * 100);
-  const stepLabel = getMobileStepLabel(currentStage);
+  const stepLabel = getMobileStepLabel(
+    currentStage,
+    preferProjectConditionsLabel
+  );
 
   return (
     <nav aria-label="Assistant progress" className="w-full lg:hidden">

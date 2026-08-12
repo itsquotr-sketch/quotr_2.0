@@ -69,7 +69,7 @@ export const ASSISTANT_EMPTY_STATES = Object.freeze({
   estimate_review: {
     title:
       "The estimate review will appear once the required project details are complete.",
-    nextAction: "Complete Scope Details and Site Constraints to continue.",
+    nextAction: "Complete Scope Details and Project Conditions to continue.",
   },
   quick_estimate: {
     title: "Complete the required project details to generate an estimate.",

@@ -38,6 +38,7 @@ export function MarginEditControl({
   const effectiveDefault = defaultMarginPercent;
 
   const handleSave = async () => {
+    if (isSaving) return;
     const parsed = Number(draftValue);
     const validationError = validateTargetMarginPercent(parsed);
     if (validationError) {
@@ -51,6 +52,7 @@ export function MarginEditControl({
   };
 
   const handleReset = async () => {
+    if (isSaving) return;
     setError(null);
     await onSave(null);
     setDraftValue(String(effectiveDefault));

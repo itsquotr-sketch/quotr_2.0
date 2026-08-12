@@ -78,11 +78,28 @@ See `docs/performance/STAGE_3_2_2_CORE_SITE_INTERVIEW_PERFORMANCE.md`.
 
 Batch Project Conditions save is one server round-trip; candidate recompute once per batch. PERF-FUTURE-01 remains **Planned**.
 
+### Stage 3.2.2-R2 Owner evidence (margin + completed-setup UX)
+
+Owner Deck R1 retest: margin change showed large delay before sell/GP updated.
+
+| Segment | Notes |
+| --- | --- |
+| Client | Spinner-only until refresh completed |
+| Server action | `updateEstimateMargin` (DB write + `revalidatePath`) |
+| Primary delay | Waiting on `router.refresh` / RSC remount before figures painted |
+| R2 low-risk | Pending overlay from shared triad + authoritative `marginTotals` return; refresh in `startTransition`; Saving→Saved |
+
+Marks: `margin_save_ack`, `margin_save_complete`.
+
+Deeper remount elimination / Analyse Job work remains **PERF-FUTURE-01**.
+
+See `docs/audits/STAGE_3_2_2_R2_UX_MARGIN_AUDIT.md`.
+
 ---
 
 ## Out of scope for Stage 3.1B
 
 - Commercial formula changes
 - Production Scope Discovery enablement
-- Stage 3.2 (except observational BI marks above)
+- Stage 3.2 (except observational BI / margin marks above)
 - Company DNA

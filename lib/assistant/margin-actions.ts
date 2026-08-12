@@ -177,5 +177,15 @@ export async function updateEstimateMargin(
   }
 
   revalidateProjectPath(projectId);
-  return { success: true };
+  return {
+    success: true,
+    marginTotals: {
+      recommendedSell: totals.recommendedSell,
+      sellLow: totals.sellLow,
+      sellHigh: totals.sellHigh,
+      grossProfit: totals.grossProfit,
+      marginPercent: totals.marginPercent,
+      targetMarginPercent,
+    },
+  };
 }

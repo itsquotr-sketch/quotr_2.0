@@ -48,11 +48,11 @@
 | **3.1B.5B** | Remote migration readiness + production wiring design | Runbook, wiring design, Preview rollout, owner approvals | **Complete — Planning** (`docs/implementation/STAGE_3_1B5B_READINESS_COMPLETION.md`) — remote apply Applied and Verified |
 | **3.1B.5C** | Gated server-action integration | Feature flag, application services, thin server actions | **Complete — Local** (`docs/implementation/STAGE_3_1B5C_GATED_SERVER_INTEGRATION_COMPLETION.md`) — UI Unwired; Preview enablement Ready Pending Owner Test; production Disabled |
 | **3.1B.6** | Assistant UI integration | Analyse Scope trigger, evidence display, accept/reject/modify controls | **Complete — Local** (`docs/implementation/STAGE_3_1B6_ASSISTANT_UI_COMPLETION.md`) — Preview Test Pending; production Disabled; Analyse Job Preserved; FEAT-001 partial |
-| **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | **In Progress** — **3.2.2 In Owner Preview / R1**; **3.2.3 Not Started**; stage not globally Complete |
+| **3.2** | Builder Interview | Structured interview capture aligned with constraints and DNA evidence | **In Progress** — **3.2.2 In Owner Preview / R2 Complete Local**; **3.2.3 Not Started**; stage not globally Complete |
 | **3.2.0** | Builder Interview Audit & Specification | Docs-only audit, architecture, contracts, taxonomy, readiness, plan, owner decisions | **Complete Planning** (2026-08-11) |
 | **3.2.0-R1** | Architecture reconciliation & owner decision gate | Repo audit vs Claude findings; reconcile direction/authority/conflict/invalidation/recompute/provenance; expand D11–D16; lock 3.2.1 contract on paper | **Complete — Docs only** (2026-08-12) |
 | **3.2.1** | Deterministic candidate engine | Versioned registry + pure candidate/readiness engine; no UI/writes/migrations | **Complete** (2026-08-12); D1–D16 OWNER APPROVED |
-| **3.2.2** | Core project/site constraint interview | Ask-layer wiring into Assistant; Constraint writes | **In Owner Preview / R1** (2026-08-12) — Deck remediation Complete Local |
+| **3.2.2** | Core project/site constraint interview | Ask-layer wiring into Assistant; Constraint writes | **In Owner Preview / R2 Complete Local** (2026-08-12) — Owner Preview Pending |
 | **3.3** | Commercial Assemblies | Reusable commercial assemblies / packages | Not started |
 | **3.4** | Explicit Company Defaults / Manual Learning | Manual company defaults and correction capture without automatic rule mutation | Not started |
 | Later | Company DNA | Company-specific intelligence consuming structured evidence | Not started |
@@ -104,10 +104,12 @@ Every Stage 3 release should track:
 - 3.2.1 architecture: `docs/architecture/STAGE_3_2_1_CANDIDATE_ENGINE_ARCHITECTURE.md`
 - 3.2.1 completion: `docs/implementation/STAGE_3_2_1_CANDIDATE_ENGINE_COMPLETION.md`
 - Handoff (historical pointer): `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`
-- Status: **3.2.2 In Owner Preview / R1**; **3.2.3 Not Started**; Production Scope Discovery **Disabled**; Company DNA **Not Started**
+- Status: **3.2.2 In Owner Preview / R2 Complete Local**; **3.2.3 Not Started**; Production Scope Discovery **Disabled**; Company DNA **Not Started**
 - 3.2.2-R1 audit: `docs/audits/STAGE_3_2_2_R1_DECK_OWNER_PREVIEW_AUDIT.md`
 - 3.2.2-R1 remediation: `docs/implementation/STAGE_3_2_2_R1_PROJECT_CONDITIONS_REMEDIATION.md`
 - 3.2.2-R1 Deck retest: `docs/runbooks/STAGE_3_2_2_R1_DECK_PREVIEW_RETEST.md`
+- 3.2.2-R2 implementation: `docs/implementation/STAGE_3_2_2_R2_UX_MARGIN_RESPONSIVENESS.md`
+- 3.2.2-R2 Owner retest: `docs/runbooks/STAGE_3_2_2_R2_OWNER_PREVIEW_RETEST.md`
 ## Stage 3.1B planning pointers
 
 - Audit: `docs/audits/STAGE_3_1B_SCOPE_DISCOVERY_CURRENT_STATE_AUDIT.md`

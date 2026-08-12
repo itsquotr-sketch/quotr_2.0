@@ -1,8 +1,10 @@
 # Stage 3.2.2-R1 — Deck Preview Retest
 
 **Owner:** Quotr product owner  
+**Status:** Owner Deck findings received (PASS) — follow-up UX in **3.2.2-R2**  
 **Prereq:** R1 Complete Local on Preview (`hardening/stage-2a-security`)  
-**Brief:** Same Owner Deck scenario as first Preview test
+**Brief:** Same Owner Deck scenario as first Preview test  
+**Next:** `docs/runbooks/STAGE_3_2_2_R2_OWNER_PREVIEW_RETEST.md`
 
 ---
 

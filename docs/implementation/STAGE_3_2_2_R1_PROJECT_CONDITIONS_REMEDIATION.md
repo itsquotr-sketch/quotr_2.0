@@ -1,6 +1,6 @@
 # Stage 3.2.2-R1 — Project Conditions Remediation
 
-**Status:** Complete Local — Deck Owner Retest Pending  
+**Status:** Complete Local — Owner Deck findings received (retest PASS); superseded for UX by R2  
 **Date:** 2026-08-12  
 **Baseline:** `8a45ef4`
 

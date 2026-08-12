@@ -11,6 +11,9 @@ export const STEPPER_STAGES = [
   { key: "estimate_ready", label: "Estimate" },
 ] as const;
 
+/** Builder Interview path — single user-facing conditions concept (3.2.2-R2). */
+export const PROJECT_CONDITIONS_STEPPER_LABEL = "Project Conditions";
+
 export type StepperStageKey = (typeof STEPPER_STAGES)[number]["key"];
 
 export type StepperStepState = "complete" | "active" | "pending" | "attention";
@@ -20,6 +23,11 @@ type StepperNavProps = {
   needsAttention?: Partial<Record<StepperStageKey, boolean>>;
   /** Compact secondary lines — presentation only (3.1B.7B). */
   stepSummaries?: Partial<Record<StepperStageKey, StepperStepSummary>>;
+  /**
+   * When true, label the constraints step as Project Conditions
+   * (presentation only — domain key remains `constraints`).
+   */
+  preferProjectConditionsLabel?: boolean;
   className?: string;
 };
 
@@ -93,6 +101,7 @@ export function StepperNav({
   currentStage,
   needsAttention = {},
   stepSummaries = {},
+  preferProjectConditionsLabel = false,
   className,
 }: StepperNavProps) {
   return (
@@ -105,6 +114,10 @@ export function StepperNav({
             needsAttention[step.key]
           );
           const summary = stepSummaries[step.key];
+          const label =
+            step.key === "constraints" && preferProjectConditionsLabel
+              ? PROJECT_CONDITIONS_STEPPER_LABEL
+              : step.label;
 
           return (
             <li key={step.key}>
@@ -128,7 +141,7 @@ export function StepperNav({
                 </span>
                 <div className="min-w-0 flex-1 leading-tight">
                   <span className={cn("block", stateStyles[state])}>
-                    {step.label}
+                    {label}
                   </span>
                   {summary?.primary ? (
                     <span className="mt-0.5 block text-[11px] text-muted-foreground">

@@ -9,6 +9,7 @@ import {
 } from "@/components/assistant/format";
 import { estimateDocumentViewModel } from "@/lib/estimate/financial-view-model";
 import { MarginEditControl } from "@/components/assistant/MarginEditControl";
+import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import {
   OpenFinalPricingLink,
   PrepareFinalPricingButton,
@@ -53,6 +54,7 @@ type EstimatePanelProps = {
   isGenerating?: boolean;
   isRegenerating?: boolean;
   isSavingMargin?: boolean;
+  marginSaveLabel?: string | null;
   defaultMarginPercent?: number;
   panelScopeSummaries?: PanelScopeSummary[];
   scopeReview?: ScopeReview;
@@ -314,6 +316,7 @@ export function EstimatePanel({
   isGenerating,
   isRegenerating,
   isSavingMargin,
+  marginSaveLabel = null,
   defaultMarginPercent = DEFAULT_MARGIN_PERCENT,
   panelScopeSummaries = [],
   scopeReview,
@@ -956,14 +959,26 @@ export function EstimatePanel({
           </Button>
 
           {!isStale && onMarginSave ? (
-            <MarginEditControl
-              marginPercent={estimate.marginPercent}
-              targetMarginPercent={estimate.targetMarginPercent}
-              defaultMarginPercent={defaultMarginPercent}
-              disabled={isRegenerating || isGenerating}
-              isSaving={isSavingMargin}
-              onSave={onMarginSave}
-            />
+            <div className="space-y-1.5">
+              <MarginEditControl
+                marginPercent={estimate.marginPercent}
+                targetMarginPercent={estimate.targetMarginPercent}
+                defaultMarginPercent={defaultMarginPercent}
+                disabled={isRegenerating || isGenerating}
+                isSaving={isSavingMargin}
+                onSave={onMarginSave}
+              />
+              {isSavingMargin ? (
+                <SaveStatusIndicator status="saving" isSaving />
+              ) : marginSaveLabel ? (
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-margin-save-label
+                >
+                  {marginSaveLabel}
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </>
       )}
@@ -977,7 +992,9 @@ export function EstimatePanel({
         QUICK_ESTIMATE_STICKY_CLASS,
         isActiveStage
           ? "border-[var(--brand-orange-muted)] shadow-md ring-1 ring-[var(--brand-orange)]/25"
-          : "shadow-sm"
+          : estimate
+            ? "border-[var(--brand-orange-muted)]/60 shadow-md ring-1 ring-[var(--brand-orange)]/15"
+            : "shadow-sm"
       )}
       data-estimate-panel-active={isActiveStage ? "true" : "false"}
       data-quick-estimate-sticky="lg"

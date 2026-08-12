@@ -80,7 +80,7 @@ export function buildEstimateReviewWorkAreaSummary(
       opts?.constraintPreview?.trim() ||
       (opts?.constraintChipCount
         ? `${opts.constraintChipCount} applied`
-        : "See Site Constraints"),
+        : "See Project Conditions"),
     outstandingLabel,
     estimateReadinessLabel:
       missing.length === 0 ? "Ready" : `${missing.length} outstanding`,

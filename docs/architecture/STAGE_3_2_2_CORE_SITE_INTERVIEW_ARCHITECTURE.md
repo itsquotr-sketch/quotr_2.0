@@ -1,6 +1,6 @@
 # Stage 3.2.2 — Core Project/Site Interview Architecture
 
-**Status:** Complete Local  
+**Status:** Complete Local — Owner Deck R1 findings received; R2 Complete Local / Owner Preview Pending  
 **Date:** 2026-08-12  
 **Depends on:** Stage 3.2.1 candidate engine (`e00624f`)
 

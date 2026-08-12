@@ -400,7 +400,7 @@ export function ScopeSummaryBlock({
               value={summary.assumptionsLabel}
             />
             <SummaryMetricLine
-              label="Site constraints"
+              label="Conditions"
               value={summary.constraintsLabel}
             />
             <SummaryMetricLine

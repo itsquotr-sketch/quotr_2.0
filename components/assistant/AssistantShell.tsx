@@ -8,6 +8,7 @@ import { StepperNav } from "@/components/assistant/StepperNav";
 import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock";
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
+import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
 import { QualityBlock, QUALITY_OPTIONS } from "@/components/assistant/QualityBlock";
@@ -51,6 +52,13 @@ import { updateProjectConstraint } from "@/lib/assistant/constraint-actions";
 import { updateProjectFact } from "@/lib/assistant/fact-actions";
 import { beginQualitySpecEdit } from "@/lib/assistant/quality-edit";
 import { updateEstimateMargin } from "@/lib/assistant/margin-actions";
+import {
+  buildPendingMarginTotals,
+  marginTotalsMatchEstimate,
+  type MarginTotalsOverlay,
+} from "@/lib/assistant/margin-optimistic";
+import type { Estimate } from "@/components/assistant/types";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import {
   addWorkAreaToProject,
   excludeWorkAreaFromProject,
@@ -161,6 +169,12 @@ export function AssistantShell({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSavingMargin, setIsSavingMargin] = useState(false);
+  const [marginSaveLabel, setMarginSaveLabel] = useState<string | null>(null);
+  const [marginOverlay, setMarginOverlay] = useState<MarginTotalsOverlay | null>(
+    null
+  );
+  const [setupReviewOpen, setSetupReviewOpen] = useState(false);
+  const marginSaveLockRef = useRef(false);
   const [savingFactKey, setSavingFactKey] = useState<string | null>(null);
   const [savingConstraintKey, setSavingConstraintKey] = useState<string | null>(
     null
@@ -782,24 +796,77 @@ export function AssistantShell({
 
   const handleMarginSave = useCallback(
     async (targetMarginPercent: number | null) => {
+      if (marginSaveLockRef.current) return;
+      const baseEstimate = initialState.estimate;
+      if (!baseEstimate || baseEstimate.isStale) return;
+
+      marginSaveLockRef.current = true;
       setIsSavingMargin(true);
       setActionError(null);
+      setMarginSaveLabel(null);
 
-      const result = await updateEstimateMargin({
-        projectId: project.id,
+      const effectiveMargin =
+        targetMarginPercent ??
+        initialState.defaultMarginPercent ??
+        DEFAULT_MARGIN_PERCENT;
+
+      const pending = buildPendingMarginTotals({
+        recommendedCost: baseEstimate.recommendedCost,
+        marginPercent: effectiveMargin,
+        previousSell: baseEstimate.recommendedSell,
+        previousSellLow: baseEstimate.sellLow,
+        previousSellHigh: baseEstimate.sellHigh,
         targetMarginPercent,
       });
+      setMarginOverlay(pending);
 
-      if (result.error) {
-        setActionError(result.error);
+      const endAck = startPreviewPerf("margin_save_ack");
+      const endComplete = startPreviewPerf("margin_save_complete");
+
+      try {
+        const result = await updateEstimateMargin({
+          projectId: project.id,
+          targetMarginPercent,
+        });
+        endAck();
+
+        if (result.error || !result.success) {
+          setMarginOverlay(null);
+          setActionError(result.error ?? "Could not update margin.");
+          setMarginSaveLabel(null);
+          setIsSavingMargin(false);
+          marginSaveLockRef.current = false;
+          endComplete();
+          return;
+        }
+
+        if (result.marginTotals) {
+          setMarginOverlay(result.marginTotals);
+        }
+        setMarginSaveLabel("Saved");
         setIsSavingMargin(false);
-        return;
-      }
+        endComplete();
 
-      router.refresh();
-      setIsSavingMargin(false);
+        startTransition(() => {
+          router.refresh();
+        });
+        marginSaveLockRef.current = false;
+      } catch {
+        endAck();
+        endComplete();
+        setMarginOverlay(null);
+        setActionError("Could not update margin.");
+        setMarginSaveLabel(null);
+        setIsSavingMargin(false);
+        marginSaveLockRef.current = false;
+      }
     },
-    [project.id, router]
+    [
+      initialState.defaultMarginPercent,
+      initialState.estimate,
+      project.id,
+      router,
+    ]
   );
 
   const handleAddWorkArea = useCallback(
@@ -928,7 +995,31 @@ export function AssistantShell({
     [project.id, router]
   );
 
-  const estimate = estimateReady ? initialState.estimate : null;
+  const estimateBase = estimateReady ? initialState.estimate : null;
+  if (
+    marginOverlay &&
+    estimateBase &&
+    marginTotalsMatchEstimate(estimateBase, marginOverlay)
+  ) {
+    setMarginOverlay(null);
+  }
+  const estimate: Estimate | null = useMemo(() => {
+    if (!estimateBase) return null;
+    if (!marginOverlay) return estimateBase;
+    if (marginTotalsMatchEstimate(estimateBase, marginOverlay)) {
+      return estimateBase;
+    }
+    return {
+      ...estimateBase,
+      recommendedSell: marginOverlay.recommendedSell,
+      sellLow: marginOverlay.sellLow,
+      sellHigh: marginOverlay.sellHigh,
+      grossProfit: marginOverlay.grossProfit,
+      marginPercent: marginOverlay.marginPercent,
+      targetMarginPercent: marginOverlay.targetMarginPercent,
+    };
+  }, [estimateBase, marginOverlay]);
+
   const displayWorkAreas =
     workAreas.length > 0 ? workAreas : initialState.workAreas;
 
@@ -1033,7 +1124,9 @@ export function AssistantShell({
         } remaining`
     : null;
   const projectConditionsAttention =
-    preferProjectConditionsAsk && projectConditionsSnapshot
+    preferProjectConditionsAsk &&
+    projectConditionsSnapshot &&
+    !projectConditionsSnapshot.complete
       ? projectConditionsSnapshot.candidates
           .filter((c) => c.priority === "P0" || c.priority === "P1")
           .slice(0, 3)
@@ -1073,7 +1166,7 @@ export function AssistantShell({
     answeredQuestionCount,
     estimateReady,
     estimateStale: Boolean(estimate?.isStale),
-    constraintCount: initialState.submittedConstraints.length,
+    constraintCount: liveConstraints.length,
     includedScopeItemCount:
       includedScopeItemCount || workAreaLists.included.length,
     needsDetailCount: needsDetailScopeCount,
@@ -1082,7 +1175,53 @@ export function AssistantShell({
       ? QUALITY_OPTIONS.find((o) => o.value === qualityLevel)?.title ?? null
       : null,
     briefSubmitted,
+    projectConditionsRemaining: preferProjectConditionsAsk
+      ? projectConditionsSnapshot?.remainingCount ?? null
+      : null,
+    projectConditionsComplete: preferProjectConditionsAsk
+      ? Boolean(projectConditionsSnapshot?.complete)
+      : undefined,
   });
+
+  const compressCompletedSetup =
+    estimateReady && !Boolean(estimate?.isStale);
+  const estimateReviewActionable =
+    Boolean(estimate?.isStale) ||
+    (!estimateReady && questionsSubmitted) ||
+    initialState.scopeReview.workAreas.some(
+      (workArea) => workArea.missingItems.length > 0
+    );
+  const projectConditionsNeedsAsk =
+    preferProjectConditionsAsk && !projectConditionsSnapshot?.complete;
+  const showCompletedDetailCards =
+    !compressCompletedSetup || setupReviewOpen;
+  const qualityTitleLabel =
+    qualityLevel
+      ? QUALITY_OPTIONS.find((o) => o.value === qualityLevel)?.title ?? null
+      : null;
+  const setupSummaryLine = [
+    workAreaLists.included[0] ?? "Project",
+    qualityTitleLabel,
+    includedScopeItemCount > 0
+      ? `${includedScopeItemCount} scope item${includedScopeItemCount === 1 ? "" : "s"}`
+      : null,
+    answeredQuestionCount > 0
+      ? `${answeredQuestionCount} details answered`
+      : null,
+    liveConstraints.length > 0
+      ? `${liveConstraints.length} condition${liveConstraints.length === 1 ? "" : "s"}`
+      : preferProjectConditionsAsk
+        ? "Conditions complete"
+        : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
+  const setupChips = [
+    workAreaLists.included.length > 1
+      ? `${workAreaLists.included.length} work areas`
+      : null,
+    estimateReviewSummaryModel.ready ? "Estimate review clear" : null,
+  ].filter((v): v is string => Boolean(v));
 
   const stepperAttention = {
     constraints:
@@ -1096,7 +1235,10 @@ export function AssistantShell({
 
   return (
     <div data-project-id={project.id} className="w-full min-w-0">
-      <AssistantProgress currentStage={stage} />
+      <AssistantProgress
+        currentStage={stage}
+        preferProjectConditionsLabel={preferProjectConditionsAsk}
+      />
 
       {actionError ? (
         <p className="mt-4 text-sm text-destructive" role="alert">
@@ -1111,12 +1253,25 @@ export function AssistantShell({
               currentStage={stage}
               needsAttention={stepperAttention}
               stepSummaries={stepperSummaries}
+              preferProjectConditionsLabel={preferProjectConditionsAsk}
             />
           </div>
         </aside>
 
         <div className="min-w-0 order-2 space-y-2.5 lg:order-none">
+          {compressCompletedSetup ? (
+            <CompletedSetupDisclosure
+              summaryLine={setupSummaryLine}
+              chips={setupChips}
+              expanded={setupReviewOpen}
+              onExpandedChange={setSetupReviewOpen}
+            />
+          ) : null}
+
           {/* 1. Project Capture */}
+          {(!compressCompletedSetup ||
+            setupReviewOpen ||
+            captureIsCurrent) && (
           <CollapsibleStageCard
             title="Project Capture"
             subtitle={
@@ -1156,9 +1311,13 @@ export function AssistantShell({
               submitted={briefSubmitted}
             />
           </CollapsibleStageCard>
+          )}
 
           {/* 2. Work Area Confirmation */}
-          {briefSubmitted ? (
+          {briefSubmitted &&
+          (!compressCompletedSetup ||
+            setupReviewOpen ||
+            workAreasIsCurrent) ? (
             <CollapsibleStageCard
               title="Work Areas"
               subtitle="Review what we detected from your brief and site notes"
@@ -1204,7 +1363,12 @@ export function AssistantShell({
           ) : null}
 
           {/* 2b. Intelligent Scope Discovery — Preview flag only */}
-          {scopeDiscoveryEnabled && workAreasConfirmed ? (
+          {scopeDiscoveryEnabled &&
+          workAreasConfirmed &&
+          (!compressCompletedSetup ||
+            setupReviewOpen ||
+            unresolvedScopeImpactCount > 0 ||
+            !scopeReviewComplete) ? (
             <div ref={scopeReviewCardRef}>
               <ScopeDiscoveryReviewBlock
                 projectId={project.id}
@@ -1240,7 +1404,11 @@ export function AssistantShell({
           ) : null}
 
           {/* 3. Specification (Quality level — UX label only) */}
-          {workAreasConfirmed ? (
+          {workAreasConfirmed &&
+          (!compressCompletedSetup ||
+            setupReviewOpen ||
+            qualityIsCurrent ||
+            isEditingQuality) ? (
             <CollapsibleStageCard
               title="Specification"
               subtitle="Set the finish level for this estimate"
@@ -1334,7 +1502,9 @@ export function AssistantShell({
           ) : null}
 
           {/* 4b. Completed Scope Details summary */}
-          {questionsSubmitted && questionBlock ? (
+          {questionsSubmitted &&
+          questionBlock &&
+          showCompletedDetailCards ? (
             <CollapsibleStageCard
               title="Scope Details"
               subtitle={questionBlock.description}
@@ -1375,8 +1545,11 @@ export function AssistantShell({
             />
           ) : null}
 
-          {/* 6. Estimate Review */}
-          {questionsSubmitted ? (
+          {/* 6. Estimate Review — compress when ready with no actionable items */}
+          {questionsSubmitted &&
+          (estimateReviewActionable ||
+            showCompletedDetailCards ||
+            !compressCompletedSetup) ? (
             <CollapsibleStageCard
               title="Estimate Review"
               subtitle="Review what Quotr will use for this estimate."
@@ -1394,13 +1567,20 @@ export function AssistantShell({
                     ? "complete"
                     : "review"
               }
-              preferredExpanded={stagePrefersExpanded(
-                "estimateReview",
-                activeDisclosureStage
-              )}
+              preferredExpanded={
+                estimateReviewActionable
+                  ? stagePrefersExpanded(
+                      "estimateReview",
+                      activeDisclosureStage
+                    )
+                  : false
+              }
               canCollapse={questionsSubmitted}
               forceExpanded={Boolean(estimate?.isStale)}
-              isActive={activeDisclosureStage === "estimateReview"}
+              isActive={
+                estimateReviewActionable &&
+                activeDisclosureStage === "estimateReview"
+              }
               cardRef={estimateReviewCardRef}
               summaryContent={
                 <EstimateReviewCollapsedSummary
@@ -1409,6 +1589,13 @@ export function AssistantShell({
               }
               actionLabel={
                 estimateReady || questionsSubmitted ? "View" : undefined
+              }
+              className={
+                compressCompletedSetup &&
+                !estimateReviewActionable &&
+                setupReviewOpen
+                  ? "opacity-95"
+                  : undefined
               }
             >
               <ScopeSummaryBlock
@@ -1443,8 +1630,12 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 7. Project Conditions (ASK + known review — 3.2.2-R1) */}
-          {questionsSubmitted && preferProjectConditionsAsk ? (
+          {/* 7. Project Conditions (ASK + known review — 3.2.2-R1/R2) */}
+          {questionsSubmitted &&
+          preferProjectConditionsAsk &&
+          (projectConditionsNeedsAsk ||
+            showCompletedDetailCards ||
+            !compressCompletedSetup) ? (
             <CollapsibleStageCard
               title="Project Conditions"
               subtitle={
@@ -1460,10 +1651,10 @@ export function AssistantShell({
               statusVariant={
                 projectConditionsSnapshot?.complete ? "complete" : "current"
               }
-              preferredExpanded
+              preferredExpanded={projectConditionsNeedsAsk}
               forceExpanded={forceExpandProjectConditions}
               canCollapse
-              isActive={!projectConditionsSnapshot?.complete}
+              isActive={projectConditionsNeedsAsk}
               cardRef={projectConditionsCardRef}
               summaryContent={
                 <p className="text-sm text-muted-foreground">
@@ -1509,7 +1700,11 @@ export function AssistantShell({
           ) : null}
 
           {/* 8. Site Constraints — legacy path only when Project Conditions unavailable */}
-          {questionsSubmitted && !preferProjectConditionsAsk ? (
+          {questionsSubmitted &&
+          !preferProjectConditionsAsk &&
+          (constraintsIsCurrent ||
+            showCompletedDetailCards ||
+            !compressCompletedSetup) ? (
             <CollapsibleStageCard
               title="Site Constraints"
               subtitle="Access, slope, and site conditions"
@@ -1576,17 +1771,21 @@ export function AssistantShell({
             isGenerating={isGenerating}
             isRegenerating={isRegenerating}
             isSavingMargin={isSavingMargin}
+            marginSaveLabel={marginSaveLabel}
             defaultMarginPercent={initialState.defaultMarginPercent}
             panelScopeSummaries={initialState.panelScopeSummaries}
             scopeReview={initialState.scopeReview}
             questionsSubmitted={questionsSubmitted}
-            constraintsSubmitted={constraintsSubmitted}
+            constraintsSubmitted={
+              constraintsSubmitted || preferProjectConditionsAsk
+            }
             canGenerateEstimate={canGenerateEstimate}
             pendingProposalCount={pendingNoteProposal ? 1 : 0}
             unresolvedScopeImpactCount={unresolvedScopeImpactCount}
-            constraintCount={initialState.submittedConstraints.length}
+            constraintCount={liveConstraints.length}
             isActiveStage={
-              activeDisclosureStage === null && canGenerateEstimate
+              estimateReady ||
+              (activeDisclosureStage === null && canGenerateEstimate)
             }
             quickEstimatePresentation={
               questionsSubmitted ? quickEstimatePresentation : null

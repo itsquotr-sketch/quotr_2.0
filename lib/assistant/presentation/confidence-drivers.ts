@@ -23,7 +23,7 @@ export function buildQualitativeConfidenceDrivers(params: {
   if (params.measurementsConfirmed) complete.push("Measurements confirmed");
   if (params.scopeConfirmed) complete.push("Scope confirmed");
   if (params.specificationSelected) complete.push("Specification selected");
-  if (params.siteConstraintsCaptured) complete.push("Site constraints captured");
+  if (params.siteConstraintsCaptured) complete.push("Project conditions captured");
 
   const outstanding = params.outstandingLabels
     .map((label) => label.trim())
