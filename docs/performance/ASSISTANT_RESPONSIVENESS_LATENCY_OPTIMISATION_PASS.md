@@ -99,6 +99,10 @@ See `docs/audits/STAGE_3_2_2_R2_UX_MARGIN_AUDIT.md`.
 
 Completed-estimate layout derives from already-loaded Assistant state (attention items, setup summaries). No additional DB queries or estimate reloads introduced for the disclosure/strip. Residual Analyse Job / RSC remount work remains **PERF-FUTURE-01**.
 
+### Stage 3.2.2-R4 presentation findings
+
+Richer Estimate Review overview + ready-to-generate one-shot scroll/expand reuse already-loaded Assistant state (`buildEstimateReviewCompactOverview`). No extra estimate fetch or DB query for the summary. One-shot readiness latch prevents scroll loops. Residual Analyse Job / RSC remount work remains **PERF-FUTURE-01**.
+
 ---
 
 ## Out of scope for Stage 3.1B

@@ -28,6 +28,11 @@ type SiteNotesCaptureCardProps = {
   totalNoteCount?: number;
   variant?: "compact" | "full";
   showHeading?: boolean;
+  /**
+   * Stage 3.2.2-R4 — on mobile, start with a compact add/edit disclosure
+   * instead of a large empty textarea. Desktop remains expanded.
+   */
+  mobileProgressive?: boolean;
 };
 
 export function SiteNotesCaptureCard({
@@ -36,6 +41,7 @@ export function SiteNotesCaptureCard({
   totalNoteCount,
   variant = "compact",
   showHeading = true,
+  mobileProgressive = true,
 }: SiteNotesCaptureCardProps) {
   const router = useRouter();
   const [content, setContent] = useState("");
@@ -45,6 +51,7 @@ export function SiteNotesCaptureCard({
   const [savingNoteId, setSavingNoteId] = useState<string | null>(null);
   const [deletingNoteId, setDeletingNoteId] = useState<string | null>(null);
   const [showAllNotes, setShowAllNotes] = useState(false);
+  const [composerOpen, setComposerOpen] = useState(false);
 
   const isCompact = variant === "compact";
   const visibleNotes =
@@ -53,6 +60,9 @@ export function SiteNotesCaptureCard({
       : initialNotes;
   const noteTotal = totalNoteCount ?? initialNotes.length;
   const hiddenCount = Math.max(0, noteTotal - COMPACT_NOTE_LIMIT);
+  const hasDraft = content.trim().length > 0;
+  const showComposer =
+    !mobileProgressive || composerOpen || hasDraft;
 
   async function handleCreateNote() {
     const trimmed = content.trim();
@@ -80,6 +90,7 @@ export function SiteNotesCaptureCard({
 
     setContent("");
     setNoteType("general");
+    setComposerOpen(false);
     router.refresh();
   }
 
@@ -122,7 +133,7 @@ export function SiteNotesCaptureCard({
   }
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4" data-site-notes-progressive={mobileProgressive ? "true" : "false"}>
       {showHeading ? (
         <div className="space-y-1">
           <h3 className="text-sm font-medium">Site notes</h3>
@@ -133,11 +144,37 @@ export function SiteNotesCaptureCard({
         </div>
       ) : null}
 
+      {/* Mobile compact entry — desktop always shows composer */}
+      {mobileProgressive && !showComposer ? (
+        <div
+          className="rounded-xl border border-dashed bg-muted/20 p-3 md:hidden"
+          data-site-notes-composer="collapsed"
+        >
+          <p className="text-sm font-medium text-foreground">Site notes</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            {noteTotal > 0
+              ? `${noteTotal} site note${noteTotal === 1 ? "" : "s"} added`
+              : "Add site notes for more information"}
+          </p>
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="mt-2.5 h-9 w-full"
+            onClick={() => setComposerOpen(true)}
+          >
+            {noteTotal > 0 ? "Add another note" : "+ Add site notes"}
+          </Button>
+        </div>
+      ) : null}
+
       <div
         className={cn(
           "space-y-3 rounded-xl border border-dashed bg-muted/20 p-4",
-          isCompact && "p-3"
+          isCompact && "p-3",
+          mobileProgressive && !showComposer && "hidden md:block"
         )}
+        data-site-notes-composer={showComposer ? "open" : "desktop"}
       >
         <div className="space-y-2">
           <Label htmlFor={`site-note-type-${projectId}`}>Note type</Label>
@@ -181,31 +218,50 @@ export function SiteNotesCaptureCard({
           </p>
         ) : null}
 
-        <Button
-          type="button"
-          onClick={handleCreateNote}
-          disabled={isSaving}
-          size={isCompact ? "sm" : "default"}
-          variant="secondary"
-          className="w-full bg-foreground text-background hover:bg-foreground/90 sm:w-auto"
-        >
-          {isSaving ? (
-            <>
-              <Loader2 className="size-4 animate-spin" />
-              Saving note…
-            </>
-          ) : (
-            "Save note"
-          )}
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {mobileProgressive && showComposer ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size={isCompact ? "sm" : "default"}
+              className="h-9 md:hidden"
+              onClick={() => {
+                if (!hasDraft) {
+                  setComposerOpen(false);
+                  setSaveError(null);
+                }
+              }}
+              disabled={isSaving || hasDraft}
+            >
+              {hasDraft ? "Draft kept" : "Cancel"}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            onClick={handleCreateNote}
+            disabled={isSaving}
+            size={isCompact ? "sm" : "default"}
+            variant="secondary"
+            className="w-full bg-foreground text-background hover:bg-foreground/90 sm:w-auto"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Saving note…
+              </>
+            ) : (
+              "Save note"
+            )}
+          </Button>
+        </div>
       </div>
 
       {initialNotes.length === 0 ? (
-        isCompact ? (
-          <p className="text-xs text-muted-foreground">
+        isCompact && !(mobileProgressive && !showComposer) ? (
+          <p className="hidden text-xs text-muted-foreground md:block">
             No site notes yet. Add measurements or observations above.
           </p>
-        ) : (
+        ) : !isCompact ? (
           <div className="rounded-xl border border-dashed bg-muted/10 px-4 py-8 text-center">
             <p className="text-sm font-medium">No site notes yet.</p>
             <p className="mt-1 text-sm text-muted-foreground">
@@ -213,9 +269,14 @@ export function SiteNotesCaptureCard({
               you inspect the job.
             </p>
           </div>
-        )
+        ) : null
       ) : (
         <div className="space-y-3">
+          {mobileProgressive && !showComposer ? (
+            <p className="text-xs font-medium text-muted-foreground md:hidden">
+              Site notes added
+            </p>
+          ) : null}
           <ul className="space-y-2">
             {visibleNotes.map((note) => (
               <li key={note.id}>

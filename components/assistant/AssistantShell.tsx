@@ -82,6 +82,7 @@ import {
   buildWorkAreaSummaryLists,
   countAnsweredQuestions,
 } from "@/lib/assistant/stage-completion-summaries";
+import { buildEstimateReviewCompactOverview } from "@/lib/assistant/presentation/estimate-review-compact-overview";
 import type { AssistantState, ConstraintRow } from "@/lib/assistant/types";
 import { buildLiveProjectConditionsSnapshot } from "@/lib/assistant/builder-interview-live";
 import {
@@ -205,6 +206,7 @@ export function AssistantShell({
   const qualityCardRef = useRef<HTMLDivElement | null>(null);
   const questionsCardRef = useRef<HTMLDivElement | null>(null);
   const estimateReviewCardRef = useRef<HTMLDivElement | null>(null);
+  const estimatePanelAnchorRef = useRef<HTMLDivElement | null>(null);
   const constraintsCardRef = useRef<HTMLDivElement | null>(null);
   const projectConditionsCardRef = useRef<HTMLDivElement | null>(null);
   const [liveConstraints, setLiveConstraints] = useState<ConstraintRow[]>(
@@ -1128,7 +1130,7 @@ export function AssistantShell({
     scopeReview: initialState.scopeReview,
     estimateReady,
     estimateStale: Boolean(estimate?.isStale),
-    constraintCount: initialState.submittedConstraints.length,
+    constraintCount: liveConstraints.length,
     includedScopeItemCount:
       includedScopeItemCount || initialState.scopeReview.workAreas.length,
   });
@@ -1136,6 +1138,25 @@ export function AssistantShell({
     questions: initialState.constraintQuestions,
     answers: submittedConstraintAnswers,
     submittedRows: liveConstraints,
+  });
+  const detailsConfirmedCount = initialState.scopeReview.workAreas.reduce(
+    (n, wa) => n + wa.facts.length,
+    0
+  );
+  const assumptionCountForReview =
+    initialState.scopeReview.generalAssumptions.length +
+    initialState.scopeReview.workAreas.reduce(
+      (n, wa) => n + wa.assumptions.length,
+      0
+    );
+  const estimateReviewCompactOverview = buildEstimateReviewCompactOverview({
+    workAreaNames: workAreaLists.included,
+    includedScopeTitles: composedScopeState.summaryLists.included,
+    includedScopeCount:
+      includedScopeItemCount || composedScopeState.summaryLists.included.length,
+    detailsConfirmedCount,
+    conditionLabels: constraintChips,
+    assumptionCount: assumptionCountForReview,
   });
   const projectInformationLabel = preferProjectConditionsAsk
     ? projectConditionsSnapshot?.complete
@@ -1166,12 +1187,7 @@ export function AssistantShell({
     includedScopeItemCount:
       includedScopeItemCount || workAreaLists.included.length,
     outstandingClarificationCount: 0,
-    assumptionCount:
-      initialState.scopeReview.generalAssumptions.length +
-      initialState.scopeReview.workAreas.reduce(
-        (n, wa) => n + wa.assumptions.length,
-        0
-      ),
+    assumptionCount: assumptionCountForReview,
     missingCount: Math.max(
       initialState.scopeReview.workAreas.reduce(
         (n, wa) => n + wa.missingItems.length,
@@ -1298,12 +1314,15 @@ export function AssistantShell({
       />
 
       {actionError ? (
-        <p className="mt-4 text-sm text-destructive" role="alert">
+        <p className="mt-3 text-sm text-destructive lg:mt-4" role="alert">
           {actionError}
         </p>
       ) : null}
 
-      <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start xl:grid-cols-[220px_minmax(0,1fr)_340px]">
+      <div
+        className="mt-3 grid min-w-0 gap-5 lg:mt-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start xl:grid-cols-[220px_minmax(0,1fr)_340px]"
+        data-assistant-main-grid
+      >
         <aside className="hidden xl:block">
           <div
             className={cn(
@@ -1323,26 +1342,23 @@ export function AssistantShell({
           </div>
         </aside>
 
-        <div className="min-w-0 order-2 space-y-2.5 lg:order-none">
+        <div className="order-2 min-w-0 space-y-3 lg:order-none lg:space-y-2.5">
           {compressCompletedSetup ? (
             <>
               <EstimateReviewSummaryStrip
                 items={completedEstimateAttentionItems}
+                overview={estimateReviewCompactOverview}
                 isStale={Boolean(estimate?.isStale)}
                 onReviewAttention={handleReviewAttention}
-                onViewDetails={
-                  estimateReviewActionable
-                    ? () => {
-                        setEstimateReviewDetailsOpen(true);
-                        window.requestAnimationFrame(() => {
-                          estimateReviewCardRef.current?.scrollIntoView({
-                            behavior: "smooth",
-                            block: "nearest",
-                          });
-                        });
-                      }
-                    : undefined
-                }
+                onViewDetails={() => {
+                  setEstimateReviewDetailsOpen(true);
+                  window.requestAnimationFrame(() => {
+                    estimateReviewCardRef.current?.scrollIntoView({
+                      behavior: "smooth",
+                      block: "nearest",
+                    });
+                  });
+                }}
               />
               <CompletedSetupDisclosure
                 summaryLine={setupSummaryLine}
@@ -1838,7 +1854,11 @@ export function AssistantShell({
           ) : null}
         </div>
 
-        <div className="min-w-0 order-1 lg:order-none lg:self-start">
+        <div
+          ref={estimatePanelAnchorRef}
+          className="order-1 min-w-0 lg:order-none lg:self-start"
+          data-quick-estimate-anchor
+        >
           <EstimatePanel
             projectId={initialState.project.id}
             estimate={estimate}

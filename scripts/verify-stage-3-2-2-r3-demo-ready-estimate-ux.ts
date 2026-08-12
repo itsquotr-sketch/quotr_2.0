@@ -63,7 +63,10 @@ function main(): void {
     "2 Empty Estimate Review is compact Clear state",
     strip.includes('data-estimate-review-summary="clear"') &&
       strip.includes("Estimate review") &&
-      strip.includes("No outstanding items")
+      strip.includes("Clear") &&
+      (strip.includes("No outstanding items") ||
+        strip.includes("data-estimate-review-overview") ||
+        strip.includes("View estimate review"))
   );
 
   check(

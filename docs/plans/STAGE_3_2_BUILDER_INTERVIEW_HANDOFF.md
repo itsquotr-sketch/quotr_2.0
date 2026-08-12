@@ -3,7 +3,7 @@
 **3.2.0:** Complete Planning  
 **3.2.0-R1:** Complete  
 **3.2.1:** Complete  
-**3.2.2:** In Owner Preview / R3 Complete Local (Owner Demo Preview Pending)  
+**3.2.2:** In Owner Preview / R4 Complete Local (Owner Demo Preview Pending)  
 **3.2.3:** Not Started  
 
 Canonical plan: `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`  

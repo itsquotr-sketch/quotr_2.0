@@ -66,7 +66,11 @@ export function AssistantProgress({
   );
 
   return (
-    <nav aria-label="Assistant progress" className="w-full lg:hidden">
+    <nav
+      aria-label="Assistant progress"
+      className="mb-1 w-full lg:mb-0 lg:hidden"
+      data-assistant-progress
+    >
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-medium text-muted-foreground">
           Step {Math.min(currentIdx + 1, totalSteps)} of {totalSteps}

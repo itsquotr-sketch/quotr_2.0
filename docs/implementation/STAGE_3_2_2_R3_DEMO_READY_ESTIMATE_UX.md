@@ -1,6 +1,6 @@
 # Stage 3.2.2-R3 — Demo-Ready Final Estimate UX
 
-**Status:** Complete Local / Owner Demo Preview Pending  
+**Status:** Complete Local (superseded for final-state UX by R4; hierarchy retained)  
 **Date:** 2026-08-13  
 **Branch:** `hardening/stage-2a-security`  
 **Baseline:** Stage 3.2.2-R2 (`b6fb90e`)

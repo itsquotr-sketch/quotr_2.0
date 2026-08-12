@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useId, useState, type ReactNode } from "react";
+import { useEffect, useId, useRef, useState, type ReactNode } from "react";
 import { ChevronDown, Loader2 } from "lucide-react";
 import {
   formatCurrency,
@@ -103,6 +103,11 @@ type EstimatePanelProps = {
   onMarginSave?: (targetMarginPercent: number | null) => Promise<void>;
   onEditQuality?: () => void;
   onReviewAttention?: (item: QuickEstimateAttentionItem) => void;
+  /**
+   * Stage 3.2.2-R4 — fired once when the panel auto-presents Ready to generate
+   * (mobile expand + optional parent scroll).
+   */
+  onReadyToGeneratePresented?: () => void;
 };
 
 function MetricRow({
@@ -337,6 +342,7 @@ export function EstimatePanel({
   onMarginSave,
   onEditQuality,
   onReviewAttention,
+  onReadyToGeneratePresented,
 }: EstimatePanelProps) {
   const isStale = Boolean(estimate?.isStale);
   const needsCalibrationUpdate =
@@ -513,6 +519,38 @@ export function EstimatePanel({
         : status.statusLabel;
 
   const [mobileExpanded, setMobileExpanded] = useState(() => Boolean(estimate));
+  const prevCanGenerateRef = useRef(false);
+  const readyPresentedRef = useRef(false);
+  const panelRootRef = useRef<HTMLDivElement | null>(null);
+
+  // Stage 3.2.2-R4: one-shot expand + scroll when becoming ready to generate.
+  useEffect(() => {
+    if (!canGenerateEstimate || estimate) {
+      if (!canGenerateEstimate) {
+        readyPresentedRef.current = false;
+      }
+      prevCanGenerateRef.current = Boolean(canGenerateEstimate);
+      return;
+    }
+
+    const shouldPresent =
+      !prevCanGenerateRef.current && !readyPresentedRef.current;
+    prevCanGenerateRef.current = true;
+
+    if (!shouldPresent) {
+      return;
+    }
+
+    readyPresentedRef.current = true;
+    setMobileExpanded(true);
+    window.requestAnimationFrame(() => {
+      panelRootRef.current?.scrollIntoView({
+        behavior: "smooth",
+        block: "nearest",
+      });
+      onReadyToGeneratePresented?.();
+    });
+  }, [canGenerateEstimate, estimate, onReadyToGeneratePresented]);
 
   const financialView = estimate
     ? estimateDocumentViewModel(estimate)
@@ -991,6 +1029,7 @@ export function EstimatePanel({
 
   return (
     <Card
+      ref={panelRootRef}
       className={cn(
         "overflow-hidden border-border/60 bg-card transition-[box-shadow,border-color] duration-200 ease-out",
         QUICK_ESTIMATE_STICKY_CLASS,
@@ -1002,6 +1041,8 @@ export function EstimatePanel({
       )}
       data-estimate-panel-active={isActiveStage ? "true" : "false"}
       data-quick-estimate-sticky="lg"
+      data-ready-to-generate={canGenerateEstimate && !estimate ? "true" : "false"}
+      data-mobile-qe-expanded={mobileExpanded ? "true" : "false"}
     >
       {/* Mobile header — pre-estimate: compact toggle; post-estimate: title only */}
       {estimate ? (

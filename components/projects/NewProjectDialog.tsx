@@ -42,6 +42,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
   const [priority, setPriority] = useState<ProjectPriority>("normal");
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
+  const [notesOpen, setNotesOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [pending, setPending] = useState(false);
@@ -54,6 +55,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
     setPriority("normal");
     setDueDate("");
     setNotes("");
+    setNotesOpen(false);
     setError(null);
     setFieldErrors({});
   }
@@ -254,13 +256,23 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
                   ) : null}
                 </div>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2" data-create-project-notes>
                 <Label htmlFor="notes">
                   Notes{" "}
                   <span className="font-normal text-muted-foreground">
                     (optional)
                   </span>
                 </Label>
+                {!notesOpen && !notes.trim() ? (
+                  <button
+                    type="button"
+                    className="flex h-10 w-full items-center justify-start rounded-xl border border-dashed border-border/70 bg-muted/15 px-3 text-left text-sm text-muted-foreground md:hidden"
+                    onClick={() => setNotesOpen(true)}
+                    data-create-notes-collapsed
+                  >
+                    + Add notes
+                  </button>
+                ) : null}
                 <Textarea
                   id="notes"
                   value={notes}
@@ -268,6 +280,10 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
                   placeholder="Internal notes for your team…"
                   rows={2}
                   maxLength={5000}
+                  className={cn(
+                    !notesOpen && !notes.trim() && "hidden md:flex"
+                  )}
+                  data-create-notes-composer
                 />
                 {fieldErrors.notes?.[0] ? (
                   <p className="text-sm text-destructive">
