@@ -1443,11 +1443,15 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 7. Project Conditions (Builder Interview ASK — 3.2.2) */}
+          {/* 7. Project Conditions (ASK + known review — 3.2.2-R1) */}
           {questionsSubmitted && preferProjectConditionsAsk ? (
             <CollapsibleStageCard
               title="Project Conditions"
-              subtitle="Answer a few quick questions to improve this estimate."
+              subtitle={
+                projectConditionsSnapshot?.complete
+                  ? "Site and project conditions for this estimate"
+                  : "Known conditions and a few remaining questions"
+              }
               statusLabel={
                 projectConditionsSnapshot?.complete
                   ? "Complete"
@@ -1464,7 +1468,9 @@ export function AssistantShell({
               summaryContent={
                 <p className="text-sm text-muted-foreground">
                   {projectConditionsSnapshot?.complete
-                    ? "✓ Complete"
+                    ? liveConstraints.length > 0
+                      ? `✓ Complete · ${liveConstraints.length} condition${liveConstraints.length === 1 ? "" : "s"}`
+                      : "✓ Complete"
                     : `${projectConditionsSnapshot?.remainingCount ?? 0} questions remaining`}
                 </p>
               }
@@ -1477,6 +1483,10 @@ export function AssistantShell({
                 candidates={projectConditionsSnapshot?.candidates ?? []}
                 remainingCount={projectConditionsSnapshot?.remainingCount ?? 0}
                 complete={Boolean(projectConditionsSnapshot?.complete)}
+                knownConstraints={liveConstraints}
+                onConstraintSave={handleConstraintSave}
+                savingConstraintKey={savingConstraintKey}
+                constraintError={constraintError}
                 readiness={
                   projectConditionsSnapshot?.readiness ?? {
                     state: "READY",
@@ -1498,15 +1508,11 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 8. Site Constraints */}
-          {questionsSubmitted ? (
+          {/* 8. Site Constraints — legacy path only when Project Conditions unavailable */}
+          {questionsSubmitted && !preferProjectConditionsAsk ? (
             <CollapsibleStageCard
               title="Site Constraints"
-              subtitle={
-                preferProjectConditionsAsk
-                  ? "Review captured project conditions"
-                  : "Access, slope, and site conditions"
-              }
+              subtitle="Access, slope, and site conditions"
               statusLabel={
                 constraintsIsCurrent
                   ? "Current"
@@ -1517,45 +1523,29 @@ export function AssistantShell({
                     : undefined
               }
               statusVariant={constraintsIsCurrent ? "current" : "complete"}
-              preferredExpanded={
-                preferProjectConditionsAsk
-                  ? false
-                  : stagePrefersExpanded("constraints", activeDisclosureStage)
-              }
-              canCollapse={constraintsSubmitted || preferProjectConditionsAsk}
-              isActive={
-                preferProjectConditionsAsk
-                  ? false
-                  : activeDisclosureStage === "constraints"
-              }
+              preferredExpanded={stagePrefersExpanded(
+                "constraints",
+                activeDisclosureStage
+              )}
+              canCollapse={constraintsSubmitted}
+              isActive={activeDisclosureStage === "constraints"}
               cardRef={constraintsCardRef}
               summaryContent={
                 <ConstraintsCollapsedSummary chips={constraintChips} />
               }
-              actionLabel={
-                constraintsSubmitted || preferProjectConditionsAsk
-                  ? "View"
-                  : undefined
-              }
+              actionLabel={constraintsSubmitted ? "View" : undefined}
             >
               <ConstraintBlock
                 questions={initialState.constraintQuestions}
                 answers={
-                  constraintsSubmitted || preferProjectConditionsAsk
+                  constraintsSubmitted
                     ? submittedConstraintAnswers
                     : constraintAnswers
                 }
                 submitted={constraintsSubmitted}
-                editable={constraintsSubmitted || preferProjectConditionsAsk}
-                presentation={
-                  preferProjectConditionsAsk ? "summary" : "questionnaire"
-                }
-                suppressFallbackQuestionnaire={preferProjectConditionsAsk}
-                knownConstraintRows={liveConstraints.map((r) => ({
-                  key: r.key,
-                  label: r.label,
-                  value: r.value,
-                }))}
+                editable={constraintsSubmitted}
+                presentation="questionnaire"
+                suppressFallbackQuestionnaire={false}
                 isSaving={pendingAction === "constraints"}
                 savingConstraintKey={savingConstraintKey}
                 constraintError={constraintError}
@@ -1563,19 +1553,13 @@ export function AssistantShell({
                   .filter((wa) => wa.status !== "excluded")
                   .map((wa) => wa.type)}
                 onAnswerChange={
-                  constraintsSubmitted || preferProjectConditionsAsk
-                    ? undefined
-                    : handleConstraintAnswer
+                  constraintsSubmitted ? undefined : handleConstraintAnswer
                 }
                 onSubmit={
-                  constraintsSubmitted || preferProjectConditionsAsk
-                    ? undefined
-                    : handleConstraintsSubmit
+                  constraintsSubmitted ? undefined : handleConstraintsSubmit
                 }
                 onConstraintSave={
-                  constraintsSubmitted || preferProjectConditionsAsk
-                    ? handleConstraintSave
-                    : undefined
+                  constraintsSubmitted ? handleConstraintSave : undefined
                 }
               />
             </CollapsibleStageCard>

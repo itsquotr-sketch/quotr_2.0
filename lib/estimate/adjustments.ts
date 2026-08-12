@@ -134,7 +134,12 @@ export function getLabourAdjustmentFactor(
   let factor = 1;
 
   const access = getConstraintValue(constraints, "site_access")?.toLowerCase();
-  if (access === "difficult") {
+  if (
+    access === "difficult" ||
+    access === "very poor" ||
+    access === "verypoor" ||
+    access === "restricted"
+  ) {
     factor += 0.1;
   } else if (access === "moderate") {
     factor += 0.05;
@@ -163,6 +168,45 @@ export function getLabourAdjustmentFactor(
 
   // Cap compound site adjustment to avoid runaway labour loading in v1.
   return Math.min(factor, 1.35);
+}
+
+/**
+ * Stage 3.2.2-R1 — One real-world site-access condition → one labour effect.
+ *
+ * When project `site_access` already contributes via getLabourAdjustmentFactor,
+ * do NOT also multiply by a WA access Fact (deck.access / fence.access / …).
+ * WA access only applies when project site_access is absent or Easy / Not sure.
+ *
+ * Carry remains a separate legitimate multiplier inside getLabourAdjustmentFactor.
+ * Demolition carting *allowance* line items remain separate (discrete haulage cost).
+ */
+export function projectSiteAccessAlreadyApplied(
+  constraints: EstimateConstraint[]
+): boolean {
+  const access = getConstraintValue(constraints, "site_access")?.toLowerCase();
+  if (!access) return false;
+  if (
+    access === "easy" ||
+    access === "not sure" ||
+    access === "unknown" ||
+    access === "unsure"
+  ) {
+    return false;
+  }
+  return true;
+}
+
+export function getCombinedLabourAccessFactor(params: {
+  readonly constraints: EstimateConstraint[];
+  readonly workAreaAccess?: string | null;
+}): number {
+  const constraintFactor = getLabourAdjustmentFactor(params.constraints);
+  if (projectSiteAccessAlreadyApplied(params.constraints)) {
+    return constraintFactor;
+  }
+  return (
+    constraintFactor * getWorkAreaAccessFactor(params.workAreaAccess)
+  );
 }
 
 export function getConstraintNotes(constraints: EstimateConstraint[]): string {

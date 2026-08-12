@@ -295,14 +295,18 @@ function main(): void {
       shell.includes("forceExpanded={forceExpandProjectConditions}")
   );
   check(
-    "UI Site Constraints summary presentation",
-    constraintBlock.includes('presentation === "summary"') &&
-      shell.includes('presentation={') &&
-      shell.includes('"summary"')
+    "UI Site Constraints card suppressed when Project Conditions owns ASK",
+    shell.includes("!preferProjectConditionsAsk") &&
+      pcBlock.includes("data-project-conditions-known")
   );
   check(
-    "UI suppress fallback questionnaire when BI active",
-    shell.includes("suppressFallbackQuestionnaire={preferProjectConditionsAsk}")
+    "UI Project Conditions includes known + edit surfaces",
+    pcBlock.includes("Known from your project") &&
+      pcBlock.includes("Edit conditions")
+  );
+  check(
+    "UI suppress fallback questionnaire capability retained",
+    constraintBlock.includes("suppressFallbackQuestionnaire")
   );
   check(
     "UI no Builder Interview Engine title",

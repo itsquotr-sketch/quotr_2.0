@@ -70,7 +70,7 @@ check(
   "incomplete groups preferred open by default",
   preferred.size >= 1 &&
     [...preferred].every((c) =>
-      unanswered.some((g) => g.category === c && g.hasUnresolvedRequired)
+      unanswered.some((g) => g.category === c && g.hasUnresolvedQuestions)
     )
 );
 

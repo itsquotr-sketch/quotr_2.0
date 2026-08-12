@@ -1,8 +1,7 @@
 import {
+  getCombinedLabourAccessFactor,
   getConstraintNotes,
-  getLabourAdjustmentFactor,
   getQualityFactor,
-  getWorkAreaAccessFactor,
 } from "@/lib/estimate/adjustments";
 import { PERGOLA_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
@@ -100,9 +99,10 @@ export function calculatePergola(
     context.project,
     context.organisationSettings
   );
-  const labourAdjustment =
-    getLabourAdjustmentFactor(context.constraints) *
-    getWorkAreaAccessFactor(getStringFact(facts, workArea.id, "pergola.access"));
+  const labourAdjustment = getCombinedLabourAccessFactor({
+    constraints: context.constraints,
+    workAreaAccess: getStringFact(facts, workArea.id, "pergola.access"),
+  });
 
   const labourRate = resolveLabourRate({
     rates: context.rates,

@@ -96,6 +96,8 @@ export type CategorisedQuestionGroup<T extends { key: string; label: string }> =
     readonly label: string;
     readonly questions: readonly T[];
     readonly hasUnresolvedRequired: boolean;
+    /** Stage 3.2.2-R1 — any unanswered question in the category (required or optional). */
+    readonly hasUnresolvedQuestions: boolean;
   };
 
 export function groupQuestionsByPresentationCategory<
@@ -136,11 +138,17 @@ export function groupQuestionsByPresentationCategory<
       const value = params.answers?.[id];
       return value === null || value === undefined || value === "";
     });
+    const hasUnresolvedQuestions = questions.some((q) => {
+      const id = q.id ?? q.key;
+      const value = params.answers?.[id];
+      return value === null || value === undefined || value === "";
+    });
     results.push({
       category,
       label: QUESTION_CATEGORY_LABELS[category],
       questions,
       hasUnresolvedRequired,
+      hasUnresolvedQuestions,
     });
   }
   return results;
@@ -156,12 +164,19 @@ export function defaultExpandedQuestionCategory(
 }
 
 /**
- * All categories that contain unanswered required questions.
- * Used so Scope Details opens every incomplete group by default (7F-R5).
+ * Categories that should start open in Scope Details.
+ *
+ * Stage 3.2.2-R1 (Owner Deck): any category with unanswered questions starts open.
+ * Fully answered categories may start collapsed. Sticky-open on save is unchanged.
  */
 export function defaultExpandedQuestionCategories(
   groups: readonly CategorisedQuestionGroup<{ key: string; label: string }>[]
 ): ReadonlySet<QuestionPresentationCategory> {
+  const withUnresolved = groups.filter((g) => g.hasUnresolvedQuestions);
+  if (withUnresolved.length > 0) {
+    return new Set(withUnresolved.map((g) => g.category));
+  }
+  // Fallback: keep required-incomplete behaviour if callers omit the new flag.
   return new Set(
     groups.filter((g) => g.hasUnresolvedRequired).map((g) => g.category)
   );

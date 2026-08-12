@@ -1,9 +1,8 @@
 import {
+  getCombinedLabourAccessFactor,
   getFenceHeightMaterialFactor,
-  getLabourAdjustmentFactor,
   getQualityFactor,
   getSlopeLabourFactor,
-  getWorkAreaAccessFactor,
 } from "@/lib/estimate/adjustments";
 import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
 import { FENCE_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
@@ -118,8 +117,10 @@ export function calculateFence(
     context.organisationSettings
   );
   const labourAdjustment =
-    getLabourAdjustmentFactor(context.constraints) *
-    getWorkAreaAccessFactor(getStringFact(facts, workArea.id, "fence.access")) *
+    getCombinedLabourAccessFactor({
+      constraints: context.constraints,
+      workAreaAccess: getStringFact(facts, workArea.id, "fence.access"),
+    }) *
     getSlopeLabourFactor(
       getStringFact(facts, workArea.id, "fence.slope_condition")
     );

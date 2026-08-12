@@ -3,12 +3,12 @@
 **3.2.0:** Complete Planning  
 **3.2.0-R1:** Complete  
 **3.2.1:** Complete  
-**3.2.2:** Complete Local — Owner Preview Pending  
+**3.2.2:** In Owner Preview / R1 remediation (Deck)  
 **3.2.3:** Not Started  
 
 Canonical plan: `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`  
-3.2.2 architecture: `docs/architecture/STAGE_3_2_2_CORE_SITE_INTERVIEW_ARCHITECTURE.md`  
-3.2.2 completion: `docs/implementation/STAGE_3_2_2_CORE_SITE_INTERVIEW_COMPLETION.md`  
-Preview: `docs/runbooks/STAGE_3_2_2_CORE_SITE_INTERVIEW_PREVIEW_TEST.md`
+R1 audit: `docs/audits/STAGE_3_2_2_R1_DECK_OWNER_PREVIEW_AUDIT.md`  
+R1 remediation: `docs/implementation/STAGE_3_2_2_R1_PROJECT_CONDITIONS_REMEDIATION.md`  
+R1 Deck retest: `docs/runbooks/STAGE_3_2_2_R1_DECK_PREVIEW_RETEST.md`
 
-Begin **3.2.3** only when Owner authorises: Work Area–aware interview via Facts; continue project-suppresses-WA-clone behaviour.
+Do **not** begin **3.2.3** until Owner authorises after R1 Deck Preview retest.

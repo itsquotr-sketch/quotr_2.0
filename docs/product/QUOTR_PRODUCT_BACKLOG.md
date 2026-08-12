@@ -2,7 +2,7 @@
 
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated**; Stage **3.1B Complete — Preview Validated** (2026-08-11; baseline `441f36c`); Production Scope Discovery **Disabled**; Stage **3.2.0 Complete Planning**; Stage **3.2.0-R1 Complete**; Stage **3.2.1 Complete**; Stage **3.2.2 Complete Local** (Owner Preview Pending); Stage **3.2.3 Not Started**; Stage 3.2 **not** globally Complete; Company DNA **Not Started**; **PERF-FUTURE-01 Planned**.
+**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated**; Stage **3.1B Complete — Preview Validated** (2026-08-11; baseline `441f36c`); Production Scope Discovery **Disabled**; Stage **3.2.0 Complete Planning**; Stage **3.2.0-R1 Complete**; Stage **3.2.1 Complete**; Stage **3.2.2 In Owner Preview / R1**; Stage **3.2.3 Not Started**; Stage 3.2 **not** globally Complete; Company DNA **Not Started**; **PERF-FUTURE-01 Planned**.
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -97,7 +97,7 @@
 - **3.2.0** Audit & Specification: **Complete Planning** (2026-08-11).
 - **3.2.0-R1** Architecture reconciliation: **Complete — Docs only** (2026-08-12).
 - **3.2.1** Deterministic candidate engine: **Complete** (2026-08-12); D1–D16 **OWNER APPROVED**; pure `lib/builder-interview/`; no UI/writes/migrations.
-- **3.2.2** Core project/site interview: **Complete Local** (2026-08-12); Project Conditions ASK → `constraints`; Owner Preview Pending.
+- **3.2.2** Core project/site interview: **In Owner Preview / R1** (Deck remediation Complete Local — retest pending).
 - **3.2.3** Not Started.
 - Production Scope Discovery: **Disabled**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned** (parallel).
 

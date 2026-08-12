@@ -401,6 +401,10 @@ export async function saveBriefAndSeedWorkAreas(
       (existingConstraints ?? []).map((row) => [row.key, row])
     );
 
+    // Stage 3.2.2-R1: parallelise independent constraint upserts (serial awaits
+    // previously extended the Analyse → Work Areas gap).
+    const constraintWrites: PromiseLike<{ error: { message: string } | null }>[] =
+      [];
     for (const constraint of extractionResult.constraints) {
       const existing = existingByKey.get(constraint.key);
       if (existing?.source === "user") {
@@ -408,29 +412,42 @@ export async function saveBriefAndSeedWorkAreas(
         continue;
       }
       if (existing) {
-        await supabase
-          .from("constraints")
-          .update({
+        constraintWrites.push(
+          supabase
+            .from("constraints")
+            .update({
+              label: constraint.label,
+              value: constraint.value,
+              source: "ai_extracted",
+            })
+            .eq("id", existing.id)
+            .eq("project_id", projectId)
+        );
+      } else {
+        constraintWrites.push(
+          supabase.from("constraints").insert({
+            org_id: orgId,
+            project_id: projectId,
+            key: constraint.key,
             label: constraint.label,
             value: constraint.value,
             source: "ai_extracted",
           })
-          .eq("id", existing.id)
-          .eq("project_id", projectId);
-      } else {
-        await supabase.from("constraints").insert({
-          org_id: orgId,
-          project_id: projectId,
-          key: constraint.key,
-          label: constraint.label,
-          value: constraint.value,
-          source: "ai_extracted",
-        });
+        );
+      }
+    }
+    if (constraintWrites.length > 0) {
+      const results = await Promise.all(constraintWrites);
+      const failed = results.find((r) => r.error);
+      if (failed?.error) {
+        return { error: failed.error.message };
       }
     }
   }
 
-  revalidateAssistantPaths(projectId);
+  // Stage 3.2.2-R1: project-scoped revalidate only — avoid dashboard remount
+  // extending the Analyse → Work Areas UI gap (PERF-FUTURE-01 still owns deeper work).
+  revalidateProjectAssistantPath(projectId);
   return { success: true };
 }
 

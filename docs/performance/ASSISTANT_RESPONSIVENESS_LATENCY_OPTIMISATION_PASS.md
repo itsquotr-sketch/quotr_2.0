@@ -47,6 +47,23 @@ No SLO claims yet.
 
 Use these as the starting measurement backlog — not as unfinished 3.1B blockers.
 
+### Stage 3.2.2 / R1 Owner evidence (Analyse → Work Areas)
+
+Owner Deck Preview: Analyse Job feels slow; additional delay before Work Areas appear after analysis completes.
+
+Likely split:
+
+| Segment | Notes |
+| --- | --- |
+| Provider | Anthropic Analyse Job wall time |
+| Persistence | Fact inserts + constraint upserts (R1: constraint writes parallelised) |
+| Revalidation | RSC remount (R1: brief seed uses project-scoped revalidate) |
+| UI transition | Client stage unlock / Work Area card paint |
+
+R1 low-risk only. Full measured pass remains **PERF-FUTURE-01**.
+
+See `docs/audits/STAGE_3_2_2_R1_DECK_OWNER_PREVIEW_AUDIT.md`.
+
 ### Stage 3.2.2 instrumentation (observational)
 
 Preview marks added (metadata only — no answer payloads):

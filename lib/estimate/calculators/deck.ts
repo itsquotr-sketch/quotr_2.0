@@ -1,8 +1,7 @@
 import {
+  getCombinedLabourAccessFactor,
   getConstraintNotes,
-  getLabourAdjustmentFactor,
   getQualityFactor,
-  getWorkAreaAccessFactor,
 } from "@/lib/estimate/adjustments";
 import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
 import { DECK_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
@@ -159,9 +158,10 @@ export function calculateDeck(
     context.project,
     context.organisationSettings
   );
-  const labourAdjustment =
-    getLabourAdjustmentFactor(context.constraints) *
-    getWorkAreaAccessFactor(getStringFact(facts, workArea.id, "deck.access"));
+  const labourAdjustment = getCombinedLabourAccessFactor({
+    constraints: context.constraints,
+    workAreaAccess: getStringFact(facts, workArea.id, "deck.access"),
+  });
   const constraintNotes = getConstraintNotes(context.constraints);
   const labourRate = resolveLabourRate({
     rates: context.rates,

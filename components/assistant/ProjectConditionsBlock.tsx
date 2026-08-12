@@ -1,14 +1,15 @@
 "use client";
 
 /**
- * Stage 3.2.2 — Project Conditions card (Builder Interview ASK layer).
+ * Stage 3.2.2-R1 — Project Conditions (ASK + known review).
+ * Canonical persistence remains the `constraints` table.
  */
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import { QuestionField } from "@/components/assistant/QuestionBlock";
+import { EditableConstraintRow } from "@/components/assistant/EditableConstraintRow";
 import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import type { InterviewCandidate } from "@/lib/builder-interview/types";
 import type { InterviewReadiness } from "@/lib/builder-interview/types";
@@ -19,6 +20,7 @@ import {
 } from "@/lib/assistant/builder-interview-actions";
 import { startPreviewPerf } from "@/lib/assistant/preview-performance";
 import type { ConstraintRow } from "@/lib/assistant/types";
+import type { Question } from "@/components/assistant/types";
 
 export type ProjectConditionsLocalAnswer = {
   kind: "answer" | "not_sure" | "assume" | "skip";
@@ -37,6 +39,16 @@ type ProjectConditionsBlockProps = {
   remainingCount: number;
   complete: boolean;
   readiness: InterviewReadiness;
+  /** Canonical known constraints (same records Site Constraints used). */
+  knownConstraints?: readonly ConstraintRow[];
+  onConstraintSave?: (input: {
+    key: string;
+    label: string;
+    value: string | number | boolean;
+    inputType?: "select" | "boolean";
+  }) => Promise<void>;
+  savingConstraintKey?: string | null;
+  constraintError?: string | null;
   onSnapshotUpdate: (next: {
     candidates: InterviewCandidate[];
     remainingCount: number;
@@ -47,16 +59,39 @@ type ProjectConditionsBlockProps = {
   focusQuestionKey?: string | null;
 };
 
-function candidateToQuestion(c: InterviewCandidate) {
+function isNotSureOption(value: string): boolean {
+  const lower = value.trim().toLowerCase();
+  return (
+    lower === "not sure" ||
+    lower === "unknown" ||
+    lower === "unsure" ||
+    lower === "n/a"
+  );
+}
+
+function primaryOptions(
+  options: readonly string[] | undefined
+): string[] | undefined {
+  if (!options) return undefined;
+  const filtered = options.filter((o) => !isNotSureOption(o));
+  return filtered.length > 0 ? filtered : undefined;
+}
+
+function candidateToQuestion(c: InterviewCandidate): Question {
   return {
     id: c.questionKey,
     key: c.targetKey,
     label: c.question,
     questionText: c.question,
-    inputType: c.inputType === "multi_select" ? ("text" as const) : c.inputType,
-    options: c.options ? [...c.options] : undefined,
+    inputType: c.inputType === "multi_select" ? "text" : c.inputType,
+    options: primaryOptions(c.options),
     required: c.priority === "P0" || c.priority === "P1",
   };
+}
+
+function formatKnownValue(value: string | number | boolean): string {
+  if (typeof value === "boolean") return value ? "Yes" : "No";
+  return String(value);
 }
 
 export function ProjectConditionsBlock({
@@ -65,6 +100,10 @@ export function ProjectConditionsBlock({
   remainingCount,
   complete,
   readiness,
+  knownConstraints = [],
+  onConstraintSave,
+  savingConstraintKey = null,
+  constraintError = null,
   onSnapshotUpdate,
   focusQuestionKey,
 }: ProjectConditionsBlockProps) {
@@ -75,6 +114,7 @@ export function ProjectConditionsBlock({
   const [saveLabel, setSaveLabel] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [conflicts, setConflicts] = useState<ConflictState[]>([]);
+  const [editOpen, setEditOpen] = useState(false);
 
   useEffect(() => {
     if (!focusQuestionKey) return;
@@ -88,20 +128,29 @@ export function ProjectConditionsBlock({
     focusable?.focus({ preventScroll: true });
   }, [focusQuestionKey]);
 
-  const intro =
-    remainingCount === 0
-      ? "No important project conditions remaining."
-      : remainingCount === 1
-        ? "1 quick question will improve this estimate."
-        : `${Math.min(remainingCount, candidates.length)} quick questions will improve this estimate.`;
+  const knownRows = useMemo(() => {
+    return knownConstraints.filter((r) => {
+      if (r.value === null || r.value === undefined || r.value === "") {
+        return false;
+      }
+      return !isNotSureOption(String(r.value));
+    });
+  }, [knownConstraints]);
 
   const setAnswer = useCallback(
     (questionKey: string, value: string | number | boolean | string[]) => {
       const scalar = Array.isArray(value) ? value.join(", ") : value;
-      setDrafts((prev) => ({
-        ...prev,
-        [questionKey]: { kind: "answer", value: scalar },
-      }));
+      if (typeof scalar === "string" && isNotSureOption(scalar)) {
+        setDrafts((prev) => ({
+          ...prev,
+          [questionKey]: { kind: "not_sure" },
+        }));
+      } else {
+        setDrafts((prev) => ({
+          ...prev,
+          [questionKey]: { kind: "answer", value: scalar },
+        }));
+      }
       setConflicts((prev) => prev.filter((c) => c.questionKey !== questionKey));
       setError(null);
     },
@@ -124,8 +173,6 @@ export function ProjectConditionsBlock({
       setSaving(true);
       setError(null);
       setSaveLabel(null);
-      const t0 =
-        typeof performance !== "undefined" ? performance.now() : Date.now();
 
       const answers: BuilderInterviewAnswerItem[] = candidates.map((c) => {
         const draft = drafts[c.questionKey];
@@ -140,7 +187,6 @@ export function ProjectConditionsBlock({
         };
       });
 
-      // Only send items the user touched (or conflicts being confirmed)
       const touched = answers.filter((a) => {
         const d = drafts[a.questionKey];
         return Boolean(d) || opts?.confirmKeys?.has(a.questionKey);
@@ -213,15 +259,6 @@ export function ProjectConditionsBlock({
               : "Saved"
           );
         }
-
-        if (typeof console !== "undefined" && process.env.NODE_ENV !== "production") {
-          const elapsed =
-            (typeof performance !== "undefined" ? performance.now() : Date.now()) -
-            t0;
-          console.info(
-            `[quotr-preview-perf] builder_interview_batch_save_complete=${Math.round(elapsed)}ms candidates=${result.remainingCount} saved=${result.savedCount}`
-          );
-        }
       } catch {
         setError("Could not save answers");
         setSaveLabel(null);
@@ -240,7 +277,9 @@ export function ProjectConditionsBlock({
           delete next[questionKey];
           return next;
         });
-        setConflicts((prev) => prev.filter((c) => c.questionKey !== questionKey));
+        setConflicts((prev) =>
+          prev.filter((c) => c.questionKey !== questionKey)
+        );
         return;
       }
       void handleSave({ confirmKeys: new Set([questionKey]) });
@@ -248,38 +287,106 @@ export function ProjectConditionsBlock({
     [handleSave]
   );
 
-  const readinessHint = useMemo(() => {
-    if (readiness.state === "NEEDS_IMPORTANT_INFORMATION") {
-      return `${readiness.openP0Keys.length} important question${readiness.openP0Keys.length === 1 ? "" : "s"} remaining`;
-    }
-    if (readiness.state === "READY_WITH_ASSUMPTIONS") {
-      return "Ready with assumptions";
-    }
-    return "Ready";
-  }, [readiness]);
+  const knownSection =
+    knownRows.length > 0 ? (
+      <div className="space-y-2" data-project-conditions-known="true">
+        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          Known from your project
+        </p>
+        <ul className="space-y-1.5">
+          {knownRows.map((row) => (
+            <li
+              key={row.key}
+              className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+            >
+              <span className="font-medium text-foreground">{row.label}</span>
+              <span className="text-muted-foreground">
+                {formatKnownValue(row.value)}
+              </span>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+
+  const editSection =
+    knownRows.length > 0 && onConstraintSave ? (
+      <div className="space-y-2 border-t border-border/40 pt-3">
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-9 px-2 text-xs text-muted-foreground"
+          onClick={() => setEditOpen((v) => !v)}
+        >
+          {editOpen ? "Hide edit" : "Edit conditions"}
+        </Button>
+        {editOpen ? (
+          <div className="space-y-2" data-project-conditions-edit="true">
+            {knownRows.map((row) => (
+              <EditableConstraintRow
+                key={row.key}
+                question={{
+                  id: row.key,
+                  key: row.key,
+                  label: row.label,
+                  questionText: row.label,
+                  inputType: "select",
+                  required: false,
+                  value: row.value,
+                }}
+                value={row.value}
+                isSaving={savingConstraintKey === row.key}
+                editable
+                onSave={async (value) => {
+                  await onConstraintSave({
+                    key: row.key,
+                    label: row.label,
+                    value,
+                    inputType: "select",
+                  });
+                }}
+              />
+            ))}
+            {constraintError ? (
+              <p className="text-sm text-destructive" role="alert">
+                {constraintError}
+              </p>
+            ) : null}
+          </div>
+        ) : null}
+      </div>
+    ) : null;
 
   if (complete && candidates.length === 0) {
     return (
-      <div className="space-y-3" data-project-conditions-complete="true">
+      <div className="space-y-4" data-project-conditions-complete="true">
+        {knownSection}
         <p className="text-sm text-muted-foreground">
-          Project Conditions complete — no currently applicable project/site
-          questions remain.
+          Project Conditions complete — no further project/site questions in the
+          current set.
         </p>
-        <p className="text-xs text-muted-foreground">{readinessHint}</p>
+        {editSection}
       </div>
     );
   }
 
   return (
-    <div className="space-y-4" data-project-conditions-card="true">
+    <div className="space-y-5" data-project-conditions-card="true">
+      {knownSection}
+
       <div className="space-y-1">
-        <p className="text-sm text-foreground">{intro}</p>
+        <p className="text-sm font-medium text-foreground">
+          {remainingCount === 1
+            ? "1 quick question remaining"
+            : `${Math.min(remainingCount, candidates.length)} quick questions remaining`}
+        </p>
         <p className="text-xs text-muted-foreground">
           Answer a few quick questions to improve this estimate.
         </p>
       </div>
 
-      <ul className="space-y-4">
+      <ul className="space-y-5">
         {candidates.map((candidate) => {
           const q = candidateToQuestion(candidate);
           const draft = drafts[candidate.questionKey];
@@ -294,76 +401,86 @@ export function ProjectConditionsBlock({
           return (
             <li
               key={candidate.questionKey}
-              className="space-y-2 rounded-xl border border-border/50 bg-muted/10 p-3"
+              className="space-y-3"
               data-project-condition-key={candidate.questionKey}
               data-question-key={candidate.targetKey}
             >
+              <div className="space-y-1">
+                <p className="text-sm font-semibold leading-snug text-foreground">
+                  {candidate.question}
+                </p>
+                {candidate.reasonForAsking ? (
+                  <p className="text-xs text-muted-foreground">
+                    {candidate.reasonForAsking}
+                  </p>
+                ) : null}
+              </div>
+
               <QuestionField
                 question={q}
                 value={fieldValue}
                 onChange={(value) => setAnswer(candidate.questionKey, value)}
               />
-              {candidate.reasonForAsking ? (
-                <p className="text-xs text-muted-foreground">
-                  {candidate.reasonForAsking}
-                </p>
-              ) : null}
 
-              <div className="flex flex-wrap gap-2">
-                <Button
+              <div className="flex flex-wrap gap-x-3 gap-y-1">
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-11 min-w-[5.5rem]"
+                  className={cn(
+                    "h-11 min-w-[4.5rem] rounded-md px-2 text-left text-xs text-muted-foreground underline-offset-2 hover:underline",
+                    draft?.kind === "not_sure" && "font-medium text-foreground"
+                  )}
                   onClick={() => setKind(candidate.questionKey, "not_sure")}
                   disabled={saving}
                 >
                   Not sure
-                </Button>
-                <Button
+                </button>
+                {candidate.priority !== "P0" ? (
+                  <button
+                    type="button"
+                    className={cn(
+                      "h-11 min-w-[4.5rem] rounded-md px-2 text-left text-xs text-muted-foreground underline-offset-2 hover:underline",
+                      draft?.kind === "assume" && "font-medium text-foreground"
+                    )}
+                    onClick={() => setKind(candidate.questionKey, "assume")}
+                    disabled={saving}
+                  >
+                    Use reasonable assumption
+                  </button>
+                ) : null}
+                <button
                   type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-11 min-w-[5.5rem]"
+                  className={cn(
+                    "h-11 min-w-[4.5rem] rounded-md px-2 text-left text-xs text-muted-foreground underline-offset-2 hover:underline",
+                    draft?.kind === "skip" && "font-medium text-foreground"
+                  )}
                   onClick={() => setKind(candidate.questionKey, "skip")}
                   disabled={saving}
                 >
                   Skip for now
-                </Button>
-                {candidate.askPolicy === "ASK" &&
-                candidate.priority !== "P0" ? (
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-11 text-muted-foreground"
-                    onClick={() => setKind(candidate.questionKey, "assume")}
-                    disabled={saving}
-                    title="Assumption recording comes in a later update"
-                  >
-                    Use reasonable assumption
-                  </Button>
-                ) : null}
+                </button>
               </div>
 
               {draft?.kind === "not_sure" ? (
-                <p className="text-xs text-amber-700 dark:text-amber-400">
-                  Marked not sure — Quotr will not invent a value.
+                <p className="text-xs text-muted-foreground">
+                  Marked as not sure. Quotr will flag this where it materially
+                  affects the estimate.
                 </p>
               ) : null}
               {draft?.kind === "assume" ? (
                 <p className="text-xs text-muted-foreground">
-                  Assumption noted for later — not saved as a confirmed condition
-                  yet.
+                  Assumption noted for later — not saved as a confirmed
+                  condition yet.
                 </p>
               ) : null}
               {draft?.kind === "skip" ? (
-                <p className="text-xs text-muted-foreground">Skipped for now.</p>
+                <p className="text-xs text-muted-foreground">
+                  Skipped for now — you can return to this later.
+                </p>
               ) : null}
 
               {conflict ? (
-                <div className="space-y-2 rounded-md border border-amber-500/40 bg-amber-500/10 p-3">
-                  <p className="text-sm font-medium text-foreground">
+                <div className="space-y-2 rounded-lg border border-amber-200/80 bg-amber-50/50 p-3 dark:border-amber-900/50 dark:bg-amber-950/20">
+                  <p className="text-sm text-foreground">
                     This project already has {conflict.existingDisplayValue}{" "}
                     recorded.
                   </p>
@@ -429,18 +546,16 @@ export function ProjectConditionsBlock({
         </p>
       ) : null}
 
-      <p className="text-xs text-muted-foreground sr-only">
-        Readiness: {readiness.state}. {readinessHint}
-      </p>
-      <Label className="sr-only">Project conditions answers</Label>
-      <div
-        className={cn(
-          "text-xs text-muted-foreground",
-          readiness.state === "NEEDS_IMPORTANT_INFORMATION" && "text-amber-700"
-        )}
-      >
-        Project information · {readinessHint}
-      </div>
+      {editSection}
+
+      {readiness.state === "NEEDS_IMPORTANT_INFORMATION" &&
+      readiness.openP0Keys.length > 0 ? (
+        <p className="text-xs text-muted-foreground">
+          {readiness.openP0Keys.length} important question
+          {readiness.openP0Keys.length === 1 ? "" : "s"} still open for this
+          estimate.
+        </p>
+      ) : null}
     </div>
   );
 }

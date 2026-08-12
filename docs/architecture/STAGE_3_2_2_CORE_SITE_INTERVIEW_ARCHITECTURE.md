@@ -57,10 +57,10 @@ Not a mandatory wizard. Generate Estimate continues to work as before (stage unl
 
 | Surface | Role |
 | --- | --- |
-| **Project Conditions** | Intelligent ASK for missing project/site candidates |
-| **Site Constraints** | Compact review/edit of known canonical conditions |
+| **Project Conditions** | Primary ASK + known review/edit (3.2.2-R1) |
+| **Site Constraints** | Legacy questionnaire only when Project Conditions engine is unavailable |
 
-When the candidate engine is usable, the R5 Site Constraint **fallback questionnaire is suppressed**. If the engine fails, the old questionnaire path remains as graceful fallback.
+When the candidate engine is usable, the separate Site Constraints primary stage is **suppressed**. Canonical persistence remains `constraints`.
 
 ---
 
