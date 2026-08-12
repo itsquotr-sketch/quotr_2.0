@@ -337,7 +337,8 @@ function isSuppressedByProjectWideKnowledge(
   const siteAccess = constraintValue(project, "site_access");
   const carry = constraintValue(project, "material_carry_distance");
   const workingHours = constraintValue(project, "working_hours");
-  const occupied = constraintValue(project, "site_occupied");
+  // Canonical key is occupied_site (never site_occupied — 3.2.2 naming fix).
+  const occupied = constraintValue(project, "occupied_site");
 
   if (
     (factKey === "demolition.access" ||

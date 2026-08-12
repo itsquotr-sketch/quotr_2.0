@@ -7,6 +7,7 @@ import { CollapsibleStageCard } from "@/components/assistant/CollapsibleStageCar
 import { StepperNav } from "@/components/assistant/StepperNav";
 import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock";
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
+import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
 import { QualityBlock, QUALITY_OPTIONS } from "@/components/assistant/QualityBlock";
@@ -72,7 +73,8 @@ import {
   buildWorkAreaSummaryLists,
   countAnsweredQuestions,
 } from "@/lib/assistant/stage-completion-summaries";
-import type { AssistantState } from "@/lib/assistant/types";
+import type { AssistantState, ConstraintRow } from "@/lib/assistant/types";
+import { buildLiveProjectConditionsSnapshot } from "@/lib/assistant/builder-interview-live";
 import { composeCurrentWorkAreaScopeState } from "@/lib/assistant/current-work-area-scope-state";
 import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
 import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
@@ -182,6 +184,15 @@ export function AssistantShell({
   const questionsCardRef = useRef<HTMLDivElement | null>(null);
   const estimateReviewCardRef = useRef<HTMLDivElement | null>(null);
   const constraintsCardRef = useRef<HTMLDivElement | null>(null);
+  const projectConditionsCardRef = useRef<HTMLDivElement | null>(null);
+  const [liveConstraints, setLiveConstraints] = useState<ConstraintRow[]>(
+    () => initialState.submittedConstraints
+  );
+  const [projectConditionsFocusKey, setProjectConditionsFocusKey] = useState<
+    string | null
+  >(null);
+  const [forceExpandProjectConditions, setForceExpandProjectConditions] =
+    useState(false);
   const [savedQualityLevel, setSavedQualityLevel] = useState<QualityLevel | null>(
     project.qualityLevel
   );
@@ -253,20 +264,95 @@ export function AssistantShell({
   const constraintsSubmitted = isStageAtOrBeyond(stage, "ready_to_estimate");
   const estimateReady = stage === "estimate_ready";
 
+  const projectConditionsSnapshot = useMemo(() => {
+    try {
+      return buildLiveProjectConditionsSnapshot({
+        projectId: project.id,
+        qualityLevel: project.qualityLevel,
+        workAreas,
+        facts: initialState.interviewFacts,
+        constraints: liveConstraints,
+      });
+    } catch {
+      return null;
+    }
+  }, [
+    project.id,
+    project.qualityLevel,
+    workAreas,
+    initialState.interviewFacts,
+    liveConstraints,
+  ]);
+
+  useEffect(() => {
+    if (!projectConditionsSnapshot) {
+      recordPreviewPerf("builder_interview_candidate_build", 0, { ok: false });
+      return;
+    }
+    // Pure engine is sub-ms; mark build completion after commit (observational).
+    recordPreviewPerf("builder_interview_candidate_build", 0, {
+      candidateCount: projectConditionsSnapshot.remainingCount,
+      ok: true,
+    });
+    recordPreviewPerf("builder_interview_load", 0, {
+      candidateCount: projectConditionsSnapshot.remainingCount,
+      ok: true,
+    });
+  }, [projectConditionsSnapshot]);
+  const projectConditionsUsable = projectConditionsSnapshot !== null;
+  const preferProjectConditionsAsk =
+    questionsSubmitted && projectConditionsUsable;
+
+  // When Project Conditions replaces the Site Constraints questionnaire,
+  // unlock ready_to_estimate so Generate Estimate works without a duplicate form.
+  const estimateStageUnlockRef = useRef(false);
+  useEffect(() => {
+    if (
+      !preferProjectConditionsAsk ||
+      constraintsSubmitted ||
+      estimateStageUnlockRef.current
+    ) {
+      return;
+    }
+    estimateStageUnlockRef.current = true;
+    void (async () => {
+      const result = await saveConstraints(project.id, []);
+      if (result.error) {
+        estimateStageUnlockRef.current = false;
+        return;
+      }
+      startTransition(() => {
+        router.refresh();
+      });
+    })();
+  }, [
+    preferProjectConditionsAsk,
+    constraintsSubmitted,
+    project.id,
+    router,
+  ]);
+
   const submittedConstraintAnswers = useMemo(() => {
-    if (initialState.submittedConstraints.length === 0) {
+    if (liveConstraints.length === 0 && initialState.submittedConstraints.length === 0) {
       return constraintAnswers;
     }
+    const rows =
+      liveConstraints.length > 0
+        ? liveConstraints
+        : initialState.submittedConstraints;
+    // Map by constraint question id when present, else by key-as-id.
+    const byKey = new Map(rows.map((r) => [r.key, r.value]));
     return Object.fromEntries(
       initialState.constraintQuestions.map((q) => [
         q.id,
-        q.value ?? null,
+        byKey.get(q.key) ?? q.value ?? null,
       ])
     );
   }, [
     constraintAnswers,
     initialState.constraintQuestions,
-    initialState.submittedConstraints.length,
+    initialState.submittedConstraints,
+    liveConstraints,
   ]);
 
   const runAction = useCallback(
@@ -419,6 +505,31 @@ export function AssistantShell({
       const target = item.reviewTarget;
       const suggestionId = item.suggestionId ?? item.scopeItemId ?? null;
 
+      if (target === "projectConditions") {
+        setForceExpandProjectConditions(true);
+        setProjectConditionsFocusKey(
+          item.questionId ?? item.factKey ?? null
+        );
+        window.requestAnimationFrame(() => {
+          const key = item.questionId ?? item.factKey;
+          const precise = key
+            ? document.querySelector<HTMLElement>(
+                `[data-project-condition-key="${key}"], [data-question-key="${key}"]`
+              )
+            : null;
+          const el = precise ?? projectConditionsCardRef.current;
+          el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
+          const focusable = precise?.querySelector<HTMLElement>(
+            "input, select, textarea, button"
+          );
+          focusable?.focus({ preventScroll: true });
+          window.setTimeout(() => {
+            setForceExpandProjectConditions(false);
+          }, 600);
+        });
+        return;
+      }
+
       if (target === "scopeReview") {
         if (suggestionId) {
           setReviewFocusSuggestionId(suggestionId);
@@ -469,6 +580,8 @@ export function AssistantShell({
             ? qualityCardRef.current
             : target === "constraints"
               ? constraintsCardRef.current
+              : target === "projectConditions"
+                ? projectConditionsCardRef.current
               : target === "estimateReview"
                 ? estimateReviewCardRef.current
                 : questionsCardRef.current ?? estimateReviewCardRef.current;
@@ -648,6 +761,17 @@ export function AssistantShell({
         return;
       }
 
+      setLiveConstraints((prev) => {
+        const next = prev.filter((r) => r.key !== input.key);
+        next.push({
+          id: prev.find((r) => r.key === input.key)?.id ?? input.key,
+          key: input.key,
+          label: input.label,
+          value: input.value,
+          source: "user",
+        });
+        return next;
+      });
       setSavingConstraintKey(null);
       startTransition(() => {
         router.refresh();
@@ -896,13 +1020,29 @@ export function AssistantShell({
   });
   const constraintChips = buildConstraintChipLabels({
     questions: initialState.constraintQuestions,
-    answers: constraintsSubmitted
-      ? submittedConstraintAnswers
-      : constraintAnswers,
-    submittedRows: constraintsSubmitted
-      ? initialState.submittedConstraints
-      : undefined,
+    answers: submittedConstraintAnswers,
+    submittedRows: liveConstraints,
   });
+  const projectInformationLabel = preferProjectConditionsAsk
+    ? projectConditionsSnapshot?.complete
+      ? projectConditionsSnapshot.readiness.state === "READY_WITH_ASSUMPTIONS"
+        ? "Ready with assumptions"
+        : "Ready"
+      : `${projectConditionsSnapshot?.remainingCount ?? 0} important question${
+          (projectConditionsSnapshot?.remainingCount ?? 0) === 1 ? "" : "s"
+        } remaining`
+    : null;
+  const projectConditionsAttention =
+    preferProjectConditionsAsk && projectConditionsSnapshot
+      ? projectConditionsSnapshot.candidates
+          .filter((c) => c.priority === "P0" || c.priority === "P1")
+          .slice(0, 3)
+          .map((c) => ({
+            label: c.question,
+            questionKey: c.questionKey,
+            factKey: c.targetKey,
+          }))
+      : [];
   // 7F-R5: do not map needs-detail into "open clarification".
   // Named Scope Details pending titles drive attention via EstimatePanel.
   const quickEstimatePresentation = buildQuickEstimatePresentationModel({
@@ -923,10 +1063,11 @@ export function AssistantShell({
       ),
       pendingScopeDetailTitles.length
     ),
-    constraintCount: initialState.submittedConstraints.length,
+    constraintCount: liveConstraints.length,
     specificationSelected: qualitySubmitted && Boolean(qualityLevel),
     questionsSubmitted,
-    constraintsSubmitted,
+    constraintsSubmitted:
+      constraintsSubmitted || preferProjectConditionsAsk,
   });
   const stepperSummaries = buildStepperStepSummaries({
     answeredQuestionCount,
@@ -1302,11 +1443,70 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 7. Site Constraints */}
+          {/* 7. Project Conditions (Builder Interview ASK — 3.2.2) */}
+          {questionsSubmitted && preferProjectConditionsAsk ? (
+            <CollapsibleStageCard
+              title="Project Conditions"
+              subtitle="Answer a few quick questions to improve this estimate."
+              statusLabel={
+                projectConditionsSnapshot?.complete
+                  ? "Complete"
+                  : `${projectConditionsSnapshot?.remainingCount ?? 0} remaining`
+              }
+              statusVariant={
+                projectConditionsSnapshot?.complete ? "complete" : "current"
+              }
+              preferredExpanded
+              forceExpanded={forceExpandProjectConditions}
+              canCollapse
+              isActive={!projectConditionsSnapshot?.complete}
+              cardRef={projectConditionsCardRef}
+              summaryContent={
+                <p className="text-sm text-muted-foreground">
+                  {projectConditionsSnapshot?.complete
+                    ? "✓ Complete"
+                    : `${projectConditionsSnapshot?.remainingCount ?? 0} questions remaining`}
+                </p>
+              }
+              actionLabel={
+                projectConditionsSnapshot?.complete ? "View" : undefined
+              }
+            >
+              <ProjectConditionsBlock
+                projectId={project.id}
+                candidates={projectConditionsSnapshot?.candidates ?? []}
+                remainingCount={projectConditionsSnapshot?.remainingCount ?? 0}
+                complete={Boolean(projectConditionsSnapshot?.complete)}
+                readiness={
+                  projectConditionsSnapshot?.readiness ?? {
+                    state: "READY",
+                    reasons: [],
+                    blockingCandidateKeys: [],
+                    assumptionCandidateKeys: [],
+                    openP0Keys: [],
+                    openP1Keys: [],
+                    canGenerateQuickEstimate: true,
+                    softBlockQuickEstimate: false,
+                  }
+                }
+                focusQuestionKey={projectConditionsFocusKey}
+                onSnapshotUpdate={(next) => {
+                  setLiveConstraints(next.constraints);
+                  setProjectConditionsFocusKey(null);
+                }}
+              />
+            </CollapsibleStageCard>
+          ) : null}
+
+          {/* 8. Site Constraints */}
           {questionsSubmitted ? (
             <CollapsibleStageCard
               title="Site Constraints"
-              subtitle="Access, slope, and site conditions"
+              subtitle={
+                preferProjectConditionsAsk
+                  ? "Review captured project conditions"
+                  : "Access, slope, and site conditions"
+              }
               statusLabel={
                 constraintsIsCurrent
                   ? "Current"
@@ -1317,27 +1517,45 @@ export function AssistantShell({
                     : undefined
               }
               statusVariant={constraintsIsCurrent ? "current" : "complete"}
-              preferredExpanded={stagePrefersExpanded(
-                "constraints",
-                activeDisclosureStage
-              )}
-              canCollapse={constraintsSubmitted}
-              isActive={activeDisclosureStage === "constraints"}
+              preferredExpanded={
+                preferProjectConditionsAsk
+                  ? false
+                  : stagePrefersExpanded("constraints", activeDisclosureStage)
+              }
+              canCollapse={constraintsSubmitted || preferProjectConditionsAsk}
+              isActive={
+                preferProjectConditionsAsk
+                  ? false
+                  : activeDisclosureStage === "constraints"
+              }
               cardRef={constraintsCardRef}
               summaryContent={
                 <ConstraintsCollapsedSummary chips={constraintChips} />
               }
-              actionLabel={constraintsSubmitted ? "View" : undefined}
+              actionLabel={
+                constraintsSubmitted || preferProjectConditionsAsk
+                  ? "View"
+                  : undefined
+              }
             >
               <ConstraintBlock
                 questions={initialState.constraintQuestions}
                 answers={
-                  constraintsSubmitted
+                  constraintsSubmitted || preferProjectConditionsAsk
                     ? submittedConstraintAnswers
                     : constraintAnswers
                 }
                 submitted={constraintsSubmitted}
-                editable={constraintsSubmitted}
+                editable={constraintsSubmitted || preferProjectConditionsAsk}
+                presentation={
+                  preferProjectConditionsAsk ? "summary" : "questionnaire"
+                }
+                suppressFallbackQuestionnaire={preferProjectConditionsAsk}
+                knownConstraintRows={liveConstraints.map((r) => ({
+                  key: r.key,
+                  label: r.label,
+                  value: r.value,
+                }))}
                 isSaving={pendingAction === "constraints"}
                 savingConstraintKey={savingConstraintKey}
                 constraintError={constraintError}
@@ -1345,13 +1563,19 @@ export function AssistantShell({
                   .filter((wa) => wa.status !== "excluded")
                   .map((wa) => wa.type)}
                 onAnswerChange={
-                  constraintsSubmitted ? undefined : handleConstraintAnswer
+                  constraintsSubmitted || preferProjectConditionsAsk
+                    ? undefined
+                    : handleConstraintAnswer
                 }
                 onSubmit={
-                  constraintsSubmitted ? undefined : handleConstraintsSubmit
+                  constraintsSubmitted || preferProjectConditionsAsk
+                    ? undefined
+                    : handleConstraintsSubmit
                 }
                 onConstraintSave={
-                  constraintsSubmitted ? handleConstraintSave : undefined
+                  constraintsSubmitted || preferProjectConditionsAsk
+                    ? handleConstraintSave
+                    : undefined
                 }
               />
             </CollapsibleStageCard>
@@ -1385,6 +1609,8 @@ export function AssistantShell({
             }
             pendingScopeDetailTitles={pendingScopeDetailTitles}
             scopeReviewAttention={scopeReviewAttentionItems}
+            projectInformationLabel={projectInformationLabel}
+            projectConditionsAttention={projectConditionsAttention}
             onViewBreakdown={() => setBreakdownOpen(true)}
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}

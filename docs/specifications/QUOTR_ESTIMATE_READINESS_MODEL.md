@@ -1,6 +1,6 @@
 # Quotr Estimate Readiness Model
 
-**Status:** Stage 3.2.0-R1 conceptual model; **derived in 3.2.1 pure engine** (`lib/builder-interview/readiness.ts`) — **not wired to Generate Estimate UI**  
+**Status:** Stage 3.2.0-R1 conceptual model; **derived in 3.2.1 pure engine**; **presented near Quick Estimate in 3.2.2** (label + attention only) — **Generate soft-block deferred to 3.2.4**  
 **Date:** 2026-08-12  
 **Complements:** Builder Interview architecture; existing Quick Estimate attention routing (3.1B R6-R4.1)  
 **Reconciliation:** `docs/audits/STAGE_3_2_0_R1_ARCHITECTURE_RECONCILIATION.md`  

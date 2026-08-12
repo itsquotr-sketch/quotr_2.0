@@ -35,6 +35,7 @@ export type QuickEstimateAttentionItem = {
     | "questions"
     | "scopeReview"
     | "constraints"
+    | "projectConditions"
     | "estimateReview"
     | "quality";
 };
@@ -134,7 +135,9 @@ export function attentionShowsReviewButton(
     return true;
   }
   return (
-    item.reviewTarget === "constraints" || item.reviewTarget === "quality"
+    item.reviewTarget === "constraints" ||
+    item.reviewTarget === "quality" ||
+    item.reviewTarget === "projectConditions"
   );
 }
 
@@ -172,9 +175,31 @@ export function buildQuickEstimateAttentionItems(params: {
     readonly workAreaId?: string | null;
     readonly suggestionId: string;
   }[];
+  /** Stage 3.2.2 — Project Conditions unresolved ASK candidates (presentation). */
+  readonly projectConditionsAttention?: readonly {
+    readonly label: string;
+    readonly questionKey: string;
+    readonly factKey?: string;
+  }[];
 }): readonly QuickEstimateAttentionItem[] {
   const items: QuickEstimateAttentionItem[] = [];
   const seenScopeKeys = new Set<string>();
+
+  for (const [index, entry] of (
+    params.projectConditionsAttention ?? []
+  ).entries()) {
+    const trimmed = entry.label.trim();
+    if (!trimmed) continue;
+    items.push({
+      id: `project-conditions-${entry.questionKey}-${index}`,
+      label: trimmed,
+      detail: "Review Project Conditions",
+      attentionKind: "QUESTION",
+      factKey: entry.factKey ?? entry.questionKey,
+      questionId: entry.questionKey,
+      reviewTarget: "projectConditions",
+    });
+  }
 
   for (const [index, entry] of (params.missingByWorkArea ?? []).entries()) {
     const trimmed = entry.label.trim();

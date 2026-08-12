@@ -563,7 +563,7 @@ async function createDynamicQuestionBlockIfNeeded(
       .select("key, work_area_id, value, source")
       .eq("project_id", projectId),
     supabase
-      .from("project_constraints")
+      .from("constraints")
       .select("key, value")
       .eq("project_id", projectId),
   ]);

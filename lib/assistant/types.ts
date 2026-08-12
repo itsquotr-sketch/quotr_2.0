@@ -30,6 +30,16 @@ export type ConstraintRow = {
   key: string;
   label: string;
   value: string | number | boolean;
+  /** Present when loaded from constraints.source (3.2.2). */
+  source?: string | null;
+};
+
+/** Narrow fact rows for Builder Interview live input (3.2.2). */
+export type AssistantInterviewFact = {
+  key: string;
+  workAreaId: string | null;
+  value: unknown;
+  source?: string | null;
 };
 
 export type ScopeSummary = {
@@ -99,6 +109,8 @@ export type AssistantState = {
   additionalQuestionBlocks: QuestionBlockData[];
   constraintQuestions: Question[];
   submittedConstraints: ConstraintRow[];
+  /** Narrow facts for Builder Interview candidate engine (3.2.2). */
+  interviewFacts: AssistantInterviewFact[];
   estimate: Estimate | null;
   scopeSummary: ScopeSummary;
   scopeReview: ScopeReview;

@@ -13,7 +13,7 @@
 - `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`  
 - `docs/decisions/STAGE_3_2_BUILDER_INTERVIEW_OWNER_DECISIONS.md`  
 
-**Hard non-goals still:** Interview UI (→ 3.2.2); migrations; Fact schema rewrites; estimate formula changes; Production Scope Discovery enablement; Company DNA.
+**Hard non-goals still:** Work Area interview UI (→ 3.2.3); soft-block Generate (→ 3.2.4); Fact schema rewrites; estimate formula changes; Production Scope Discovery enablement; Company DNA.
 
 ---
 
@@ -190,7 +190,7 @@ Rules:
 3. Group presentation by domain, not by every WA.
 4. Never ask “What is access like?” separately for Demolition, Flooring, and Walls when project access is known.
 
-**Implementation note (not fixed in R1):** existing `isSuppressedByProjectWideKnowledge` is the right pattern, but constraint loading currently queries wrong table name `project_constraints` in some paths, and occupied suppression looks up `site_occupied` instead of `occupied_site`. Fix in a later implementation batch before relying on suppression.
+**Implementation note (fixed in 3.2.2):** live loaders use `constraints`; occupied suppression uses `occupied_site`. See `docs/architecture/STAGE_3_2_2_CORE_SITE_INTERVIEW_ARCHITECTURE.md`.
 
 Owner decision: **D8**.
 
@@ -412,6 +412,6 @@ WA-only: demolition services/hazmat if unknown.
 | Field | Value |
 | --- | --- |
 | Path | `docs/architecture/QUOTR_BUILDER_INTERVIEW_ARCHITECTURE.md` |
-| Implementation | **3.2.1 candidate engine Complete Local**; UI/wiring **Not Started** (3.2.2) |
+| Implementation | **3.2.2 Complete Local** (Project Conditions ASK); **3.2.3 Not Started** |
 | Reconciliation | Stage 3.2.0-R1 |
 | Owner decisions | D1–D16 OWNER APPROVED |

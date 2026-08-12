@@ -87,6 +87,14 @@ type EstimatePanelProps = {
     readonly workAreaId?: string | null;
     readonly suggestionId: string;
   }[];
+  /** Stage 3.2.2 — presentation-only project information readiness. */
+  projectInformationLabel?: string | null;
+  /** Stage 3.2.2 — Project Conditions attention routing. */
+  projectConditionsAttention?: readonly {
+    readonly label: string;
+    readonly questionKey: string;
+    readonly factKey?: string;
+  }[];
   onViewBreakdown?: () => void;
   onGenerate?: () => void;
   onRegenerate?: () => void;
@@ -318,6 +326,8 @@ export function EstimatePanel({
   quickEstimatePresentation = null,
   pendingScopeDetailTitles = [],
   scopeReviewAttention = [],
+  projectInformationLabel = null,
+  projectConditionsAttention = [],
   onViewBreakdown,
   onGenerate,
   onRegenerate,
@@ -448,6 +458,7 @@ export function EstimatePanel({
       workAreaId: s.workAreaId,
       suggestionId: s.suggestionId,
     })),
+    projectConditionsAttention,
     unresolvedScopeImpactLabels:
       unresolvedScopeImpactLabels.length > 0
         ? unresolvedScopeImpactLabels
@@ -766,6 +777,17 @@ export function EstimatePanel({
           >
             {status.statusLabel}
           </p>
+
+          {projectInformationLabel ? (
+            <p
+              className="text-[11px] text-muted-foreground"
+              data-project-information-readiness="true"
+            >
+              Project information
+              <span className="mx-1 text-border">·</span>
+              {projectInformationLabel}
+            </p>
+          ) : null}
 
           {status.kind === "attention" && status.attentionItems.length > 0 ? (
             <ul className="space-y-2.5 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/20">

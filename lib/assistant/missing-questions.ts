@@ -135,7 +135,7 @@ export async function ensureMissingDetailsQuestionBlock(
       .eq("project_id", projectId)
       .eq("stage", "work_area_questions"),
     supabase
-      .from("project_constraints")
+      .from("constraints")
       .select("key, value")
       .eq("project_id", projectId),
   ]);

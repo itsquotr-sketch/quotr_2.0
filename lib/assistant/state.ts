@@ -89,7 +89,7 @@ export async function getAssistantState(
       .order("sort_order", { ascending: true }),
     supabase
       .from("constraints")
-      .select("id, key, label, value, created_at")
+      .select("id, key, label, value, source, created_at")
       .eq("project_id", projectId)
       .eq("org_id", orgId)
       .order("created_at", { ascending: true }),

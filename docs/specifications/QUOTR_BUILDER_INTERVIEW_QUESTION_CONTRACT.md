@@ -1,6 +1,6 @@
 # Quotr Builder Interview — Question Contract
 
-**Status:** Conceptual contract (Stage 3.2.0-R1); **encoded in 3.2.1 registry** (`lib/builder-interview/registry.ts`) — UI not implemented  
+**Status:** Conceptual contract (Stage 3.2.0-R1); encoded in 3.2.1 registry; **PROJECT ask-layer live in 3.2.2** (Project Conditions) — WA UI deferred to 3.2.3  
 **Date:** 2026-08-12  
 **Authority companions:**  
 - `docs/architecture/QUOTR_BUILDER_INTERVIEW_ARCHITECTURE.md`  

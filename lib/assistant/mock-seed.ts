@@ -645,7 +645,9 @@ export function buildDemoAssistantState(): import("@/lib/assistant/types").Assis
             : seed.key === "material_carry_distance"
               ? "< 10m"
               : "No",
+      source: "user" as const,
     })),
+    interviewFacts: [],
     estimate: buildStaticEstimate(lineItems),
     scopeSummary: {
       includedWorkAreas: STATIC_INCLUDED_WORK_AREAS,

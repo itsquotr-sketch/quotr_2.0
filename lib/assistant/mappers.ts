@@ -78,6 +78,7 @@ type DbConstraint = {
   key: string;
   label: string;
   value: unknown;
+  source?: string | null;
 };
 
 type DbEstimate = {
@@ -328,6 +329,7 @@ export function mapConstraintRow(row: DbConstraint): ConstraintRow {
     key: row.key,
     label: row.label,
     value,
+    source: row.source ?? null,
   };
 }
 
@@ -601,6 +603,12 @@ export function buildAssistantState(input: {
     additionalQuestionBlocks,
     constraintQuestions,
     submittedConstraints,
+    interviewFacts: (input.projectFacts ?? []).map((fact) => ({
+      key: fact.key,
+      workAreaId: fact.work_area_id,
+      value: fact.value,
+      source: fact.source ?? null,
+    })),
     estimate,
     scopeSummary: {
       includedWorkAreas: buildIncludedWorkAreasFromDb(input.workAreas),

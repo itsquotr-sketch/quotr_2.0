@@ -47,11 +47,25 @@ No SLO claims yet.
 
 Use these as the starting measurement backlog — not as unfinished 3.1B blockers.
 
+### Stage 3.2.2 instrumentation (observational)
+
+Preview marks added (metadata only — no answer payloads):
+
+- `builder_interview_load`
+- `builder_interview_candidate_build`
+- `builder_interview_batch_save_ack`
+- `builder_interview_batch_save_complete`
+- `builder_interview_recompute`
+
+See `docs/performance/STAGE_3_2_2_CORE_SITE_INTERVIEW_PERFORMANCE.md`.
+
+Batch Project Conditions save is one server round-trip; candidate recompute once per batch. PERF-FUTURE-01 remains **Planned**.
+
 ---
 
 ## Out of scope for Stage 3.1B
 
 - Commercial formula changes
 - Production Scope Discovery enablement
-- Stage 3.2
+- Stage 3.2 (except observational BI marks above)
 - Company DNA

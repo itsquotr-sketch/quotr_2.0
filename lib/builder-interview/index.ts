@@ -27,6 +27,14 @@ export {
   FACT_SOURCE_PRECEDENCE,
   evaluateProposedUserAnswer,
   resolveTargetEvidence,
+  resolveConstraintEvidence,
 } from "@/lib/builder-interview/authority";
 export { classifyAssumption, classifyAssumptions } from "@/lib/builder-interview/assumptions";
 export { deriveInterviewReadiness } from "@/lib/builder-interview/readiness";
+export {
+  buildProjectConditionsSnapshot,
+  filterProjectSiteAskCandidates,
+  PROJECT_CONDITIONS_BATCH_SIZE,
+  shouldPreferProjectConditionsAsk,
+  type ProjectConditionsSnapshot,
+} from "@/lib/builder-interview/project-filter";

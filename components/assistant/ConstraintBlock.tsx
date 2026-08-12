@@ -34,6 +34,19 @@ type ConstraintBlockProps = {
   constraintError?: string | null;
   /** Confirmed work-area types for context-aware fallback filtering. */
   workAreaTypes?: readonly string[];
+  /**
+   * Stage 3.2.2: when Project Conditions owns the ASK layer, show compact
+   * review/edit summary instead of a duplicate questionnaire.
+   */
+  presentation?: "questionnaire" | "summary";
+  /** Suppress R5 fallback questionnaire when Builder Interview is active. */
+  suppressFallbackQuestionnaire?: boolean;
+  /** Known constraint rows for summary when question templates are empty. */
+  knownConstraintRows?: readonly {
+    key: string;
+    label: string;
+    value: string | number | boolean;
+  }[];
   onAnswerChange?: (questionId: string, value: string | number | boolean | string[]) => void;
   onSubmit?: () => void;
   onConstraintSave?: (input: {
@@ -88,15 +101,53 @@ export function ConstraintBlock({
   savingConstraintKey,
   constraintError,
   workAreaTypes,
+  presentation = "questionnaire",
+  suppressFallbackQuestionnaire = false,
+  knownConstraintRows = [],
   onAnswerChange,
   onSubmit,
   onConstraintSave,
 }: ConstraintBlockProps) {
   const effectiveQuestions = useMemo(() => {
     if (questions.length > 0) return questions;
-    // Zero detected — surface existing taxonomy confirmation questions.
+    if (suppressFallbackQuestionnaire || presentation === "summary") {
+      return [];
+    }
     return buildSiteConstraintFallbackQuestions({ workAreaTypes });
-  }, [questions, workAreaTypes]);
+  }, [questions, workAreaTypes, suppressFallbackQuestionnaire, presentation]);
+
+  const knownSummaryRows = useMemo(() => {
+    const fromQuestions = effectiveQuestions.filter((q) => {
+      const v = answers[q.id] ?? q.value;
+      return (
+        v !== null &&
+        v !== undefined &&
+        v !== "" &&
+        String(v).toLowerCase() !== "not sure"
+      );
+    });
+    if (fromQuestions.length > 0) return fromQuestions;
+    // Summary fallback: live constraint rows when templates are empty.
+    return knownConstraintRows
+      .filter(
+        (r) =>
+          r.value !== null &&
+          r.value !== undefined &&
+          r.value !== "" &&
+          String(r.value).toLowerCase() !== "not sure"
+      )
+      .map(
+        (r): Question => ({
+          id: r.key,
+          key: r.key,
+          label: r.label,
+          questionText: r.label,
+          inputType: "select",
+          value: r.value,
+          required: false,
+        })
+      );
+  }, [effectiveQuestions, answers, knownConstraintRows]);
 
   const grouped = useMemo(
     () => groupConstraintsByPresentationCategory(effectiveQuestions),
@@ -105,6 +156,7 @@ export function ConstraintBlock({
 
   const showFallbackIntro =
     !submitted &&
+    presentation !== "summary" &&
     hasNoKnownConstraintValues({
       questions: effectiveQuestions,
       answers,
@@ -136,6 +188,78 @@ export function ConstraintBlock({
     setValidationError(null);
     onSubmit?.();
   };
+
+  if (presentation === "summary") {
+    return (
+      <div className="space-y-3" data-site-constraints-summary="true">
+        {knownSummaryRows.length === 0 ? (
+          <p className="text-sm text-muted-foreground">
+            No project conditions captured yet. Use Project Conditions above to
+            answer what matters, or edit below when values appear.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {knownSummaryRows.map((q) => {
+              const v = answers[q.id] ?? q.value;
+              return (
+                <li
+                  key={q.id}
+                  className="flex flex-wrap items-baseline justify-between gap-2 text-sm"
+                >
+                  <span className="font-medium text-foreground">{q.label}</span>
+                  <span className="text-muted-foreground">{String(v)}</span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+        {editable && knownSummaryRows.length > 0 ? (
+          <div className="space-y-2 border-t border-border/40 pt-3">
+            <p className="text-xs font-medium text-muted-foreground">
+              Review / Edit
+            </p>
+            {knownSummaryRows.map((question) => (
+              <EditableConstraintRow
+                key={question.id}
+                question={question}
+                value={
+                  (answers[question.id] as string | number | boolean | null) ??
+                  (question.value as string | number | boolean | null) ??
+                  null
+                }
+                isSaving={savingConstraintKey === question.key}
+                editable
+                onSave={async (value) => {
+                  await onConstraintSave?.({
+                    key: question.key,
+                    label: question.label,
+                    value,
+                    inputType:
+                      question.inputType === "boolean" ? "boolean" : "select",
+                  });
+                }}
+              />
+            ))}
+          </div>
+        ) : null}
+        {!submitted && onSubmit ? (
+          <Button
+            type="button"
+            className="h-11 w-full sm:w-auto"
+            disabled={isSaving}
+            onClick={onSubmit}
+          >
+            {isSaving ? "Saving…" : "Continue to estimate"}
+          </Button>
+        ) : null}
+        {constraintError ? (
+          <p className="text-sm text-destructive" role="alert">
+            {constraintError}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
 
   if (effectiveQuestions.length === 0) {
     return <AssistantEmptyState stage="site_constraints" />;

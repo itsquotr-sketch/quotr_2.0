@@ -176,7 +176,8 @@
 | 3.2.0-R1 reconciliation | Complete |
 | Owner decisions D1–D16 | **OWNER APPROVED** |
 | 3.2.1 Deterministic candidate engine | Unblocked for implementation |
-| 3.2.2 | Not started until 3.2.1 Complete Local |
+| 3.2.2 | **Complete Local** — Owner Preview Pending |
+| 3.2.3 | Not started until Owner authorises |
 
 ---
 

@@ -101,7 +101,7 @@ Add only if they materially change labour/logistics and are commonly answerable 
 3. WA Facts for access/carting become **overrides**, not primary capture, once interview is live.  
 4. Expanding taxonomy does **not** automatically create estimate modifiers — consumption is a separate, formula-safe batch (must not ship silent commercial changes).
 5. **Direction:** interview/site topics → **constraints** persistence; do not reverse-sync constraints into Fact SoT. Optional Facts→constraint **seed helpers** (e.g. unused `inferConstraintsFromFacts`) are not SoT.
-6. **Known suppress defects (fix in implementation, not R1):** some loaders query `project_constraints` (table does not exist; live table is `constraints`); occupied suppress looks up `site_occupied` vs canonical `occupied_site`.
+6. **Suppress naming (fixed in 3.2.2):** live loaders use `constraints`; occupied suppress uses canonical `occupied_site`.
 
 ---
 

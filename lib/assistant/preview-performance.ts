@@ -13,7 +13,12 @@ export type PreviewPerfMark =
   | "estimate_generate"
   | "estimate_generate_ack"
   | "estimate_generate_complete"
-  | "decision_action";
+  | "decision_action"
+  | "builder_interview_load"
+  | "builder_interview_candidate_build"
+  | "builder_interview_batch_save_ack"
+  | "builder_interview_batch_save_complete"
+  | "builder_interview_recompute";
 
 type PerfSample = {
   readonly mark: PreviewPerfMark;
@@ -46,7 +51,8 @@ export function previewPerfNow(): number {
  */
 export function recordPreviewPerf(
   mark: PreviewPerfMark,
-  durationMs: number
+  durationMs: number,
+  meta?: { candidateCount?: number; writeCount?: number; ok?: boolean }
 ): void {
   if (!isPreviewInstrumentationEnabled()) return;
   if (!Number.isFinite(durationMs) || durationMs < 0) return;
@@ -61,7 +67,12 @@ export function recordPreviewPerf(
   }
 
   if (typeof console !== "undefined" && typeof console.info === "function") {
-    console.info(`[quotr-preview-perf] ${mark}=${Math.round(durationMs)}ms`);
+    const extras = meta
+      ? ` candidates=${meta.candidateCount ?? "-"} writes=${meta.writeCount ?? "-"} ok=${meta.ok ?? "-"}`
+      : "";
+    console.info(
+      `[quotr-preview-perf] ${mark}=${Math.round(durationMs)}ms${extras}`
+    );
   }
 }
 
