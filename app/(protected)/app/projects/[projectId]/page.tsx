@@ -121,7 +121,9 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       <DuplicatedProjectBanner
         show={Boolean(project.duplicated_from_project_id)}
       />
-      <SetupGuidanceServerBanner dimension="estimate" />
+      {!(hasEstimate || tabContext.hasEstimate) ? (
+        <SetupGuidanceServerBanner dimension="estimate" />
+      ) : null}
       <AssistantShell
         key={assistantState.project.stage}
         initialState={assistantState}
@@ -134,6 +136,14 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         scopeDiscoveryEnabled={scopeDiscoveryEnabled}
         scopeDiscoveryInitialResults={scopeDiscoveryInitialResults}
       />
+      {hasEstimate || tabContext.hasEstimate ? (
+        <div className="mt-3" data-post-estimate-guidance="true">
+          <SetupGuidanceServerBanner
+            dimension="estimate"
+            hasEstimate
+          />
+        </div>
+      ) : null}
     </WorkspacePage>
   );
 }

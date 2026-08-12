@@ -9,6 +9,7 @@ import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock"
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
 import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
+import { EstimateReviewSummaryStrip } from "@/components/assistant/EstimateReviewSummaryStrip";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
 import { QualityBlock, QUALITY_OPTIONS } from "@/components/assistant/QualityBlock";
@@ -83,6 +84,10 @@ import {
 } from "@/lib/assistant/stage-completion-summaries";
 import type { AssistantState, ConstraintRow } from "@/lib/assistant/types";
 import { buildLiveProjectConditionsSnapshot } from "@/lib/assistant/builder-interview-live";
+import {
+  buildQuickEstimateAttentionItems,
+  type QuickEstimateAttentionItem,
+} from "@/lib/assistant/presentation/quick-estimate-view-model";
 import { composeCurrentWorkAreaScopeState } from "@/lib/assistant/current-work-area-scope-state";
 import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
 import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
@@ -92,6 +97,7 @@ import type { NoteProposal } from "@/lib/project-notes/proposals/types";
 import type { SafeResultsRead } from "@/lib/scope-discovery/application/types";
 import type { PricingSummary } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
+import { cn } from "@/lib/utils";
 
 type AssistantShellProps = {
   initialState: AssistantState;
@@ -174,6 +180,8 @@ export function AssistantShell({
     null
   );
   const [setupReviewOpen, setSetupReviewOpen] = useState(false);
+  const [estimateReviewDetailsOpen, setEstimateReviewDetailsOpen] =
+    useState(false);
   const marginSaveLockRef = useRef(false);
   const [savingFactKey, setSavingFactKey] = useState<string | null>(null);
   const [savingConstraintKey, setSavingConstraintKey] = useState<string | null>(
@@ -518,6 +526,21 @@ export function AssistantShell({
     }) => {
       const target = item.reviewTarget;
       const suggestionId = item.suggestionId ?? item.scopeItemId ?? null;
+
+      // R3: reveal completed setup when Review targets stages behind disclosure.
+      if (
+        target === "questions" ||
+        target === "quality" ||
+        target === "estimateReview" ||
+        target === "scopeReview" ||
+        target === "projectConditions" ||
+        target === "constraints"
+      ) {
+        setSetupReviewOpen(true);
+        if (target === "estimateReview") {
+          setEstimateReviewDetailsOpen(true);
+        }
+      }
 
       if (target === "projectConditions") {
         setForceExpandProjectConditions(true);
@@ -1185,9 +1208,38 @@ export function AssistantShell({
 
   const compressCompletedSetup =
     estimateReady && !Boolean(estimate?.isStale);
+
+  const completedEstimateAttentionItems: readonly QuickEstimateAttentionItem[] =
+    compressCompletedSetup
+      ? buildQuickEstimateAttentionItems({
+          pendingProposalCount: pendingNoteProposal ? 1 : 0,
+          unresolvedScopeImpactLabels:
+            unresolvedScopeImpactCount > 0
+              ? Array.from(
+                  { length: unresolvedScopeImpactCount },
+                  () => "Suggested scope change"
+                )
+              : [],
+          scopeReviewAttention: scopeReviewAttentionItems,
+          projectConditionsAttention,
+          missingByWorkArea: initialState.scopeReview.workAreas.flatMap(
+            (wa) =>
+              wa.missingItems.map((label) => ({
+                workAreaName: wa.workAreaName,
+                workAreaId: wa.workAreaId,
+                label,
+                reviewTarget: "estimateReview" as const,
+                actionable: false,
+              }))
+          ),
+          clarificationLabels: pendingScopeDetailTitles,
+        })
+      : [];
+
   const estimateReviewActionable =
     Boolean(estimate?.isStale) ||
     (!estimateReady && questionsSubmitted) ||
+    completedEstimateAttentionItems.length > 0 ||
     initialState.scopeReview.workAreas.some(
       (workArea) => workArea.missingItems.length > 0
     );
@@ -1220,8 +1272,13 @@ export function AssistantShell({
     workAreaLists.included.length > 1
       ? `${workAreaLists.included.length} work areas`
       : null,
-    estimateReviewSummaryModel.ready ? "Estimate review clear" : null,
   ].filter((v): v is string => Boolean(v));
+
+  const showEstimateReviewFullCard =
+    questionsSubmitted &&
+    (!compressCompletedSetup
+      ? true
+      : estimateReviewActionable || estimateReviewDetailsOpen);
 
   const stepperAttention = {
     constraints:
@@ -1248,7 +1305,15 @@ export function AssistantShell({
 
       <div className="grid min-w-0 gap-5 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start xl:grid-cols-[220px_minmax(0,1fr)_340px]">
         <aside className="hidden xl:block">
-          <div className="sticky top-6">
+          <div
+            className={cn(
+              "sticky top-6",
+              compressCompletedSetup && "opacity-70"
+            )}
+            data-stepper-deemphasised={
+              compressCompletedSetup ? "true" : "false"
+            }
+          >
             <StepperNav
               currentStage={stage}
               needsAttention={stepperAttention}
@@ -1260,12 +1325,32 @@ export function AssistantShell({
 
         <div className="min-w-0 order-2 space-y-2.5 lg:order-none">
           {compressCompletedSetup ? (
-            <CompletedSetupDisclosure
-              summaryLine={setupSummaryLine}
-              chips={setupChips}
-              expanded={setupReviewOpen}
-              onExpandedChange={setSetupReviewOpen}
-            />
+            <>
+              <EstimateReviewSummaryStrip
+                items={completedEstimateAttentionItems}
+                isStale={Boolean(estimate?.isStale)}
+                onReviewAttention={handleReviewAttention}
+                onViewDetails={
+                  estimateReviewActionable
+                    ? () => {
+                        setEstimateReviewDetailsOpen(true);
+                        window.requestAnimationFrame(() => {
+                          estimateReviewCardRef.current?.scrollIntoView({
+                            behavior: "smooth",
+                            block: "nearest",
+                          });
+                        });
+                      }
+                    : undefined
+                }
+              />
+              <CompletedSetupDisclosure
+                summaryLine={setupSummaryLine}
+                chips={setupChips}
+                expanded={setupReviewOpen}
+                onExpandedChange={setSetupReviewOpen}
+              />
+            </>
           ) : null}
 
           {/* 1. Project Capture */}
@@ -1545,11 +1630,8 @@ export function AssistantShell({
             />
           ) : null}
 
-          {/* 6. Estimate Review — compress when ready with no actionable items */}
-          {questionsSubmitted &&
-          (estimateReviewActionable ||
-            showCompletedDetailCards ||
-            !compressCompletedSetup) ? (
+          {/* 6. Estimate Review — full card only when needed (R3) */}
+          {showEstimateReviewFullCard ? (
             <CollapsibleStageCard
               title="Estimate Review"
               subtitle="Review what Quotr will use for this estimate."
@@ -1568,15 +1650,17 @@ export function AssistantShell({
                     : "review"
               }
               preferredExpanded={
-                estimateReviewActionable
+                estimateReviewActionable || estimateReviewDetailsOpen
                   ? stagePrefersExpanded(
                       "estimateReview",
                       activeDisclosureStage
-                    )
+                    ) || estimateReviewDetailsOpen
                   : false
               }
               canCollapse={questionsSubmitted}
-              forceExpanded={Boolean(estimate?.isStale)}
+              forceExpanded={
+                Boolean(estimate?.isStale) || estimateReviewDetailsOpen
+              }
               isActive={
                 estimateReviewActionable &&
                 activeDisclosureStage === "estimateReview"
@@ -1589,13 +1673,6 @@ export function AssistantShell({
               }
               actionLabel={
                 estimateReady || questionsSubmitted ? "View" : undefined
-              }
-              className={
-                compressCompletedSetup &&
-                !estimateReviewActionable &&
-                setupReviewOpen
-                  ? "opacity-95"
-                  : undefined
               }
             >
               <ScopeSummaryBlock

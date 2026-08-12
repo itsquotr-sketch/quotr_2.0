@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Stage 3.2.2-R2 — Compress completed Assistant stages into one contractor-first summary.
+ * Stage 3.2.2-R2/R3 — Compress completed Assistant stages into one contractor-first summary.
  * Presentation only — does not change the underlying stage machine.
  */
 
@@ -26,7 +26,7 @@ export function CompletedSetupDisclosure({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border/50 bg-muted/20",
+        "rounded-xl border border-border/40 bg-muted/10",
         className
       )}
       data-completed-setup-disclosure="true"
@@ -34,7 +34,7 @@ export function CompletedSetupDisclosure({
     >
       <button
         type="button"
-        className="flex w-full items-start gap-3 px-3.5 py-3 text-left"
+        className="flex w-full min-h-11 items-start gap-3 px-3.5 py-3 text-left"
         onClick={() => onExpandedChange(!expanded)}
         aria-expanded={expanded}
         data-completed-setup-toggle="true"
@@ -52,8 +52,8 @@ export function CompletedSetupDisclosure({
               {chips.filter(Boolean).join(" · ")}
             </p>
           ) : null}
-          <p className="text-[11px] text-muted-foreground">
-            {expanded ? "Hide completed steps" : "Review or edit completed steps"}
+          <p className="text-[11px] font-medium text-muted-foreground">
+            {expanded ? "Hide setup" : "View setup"}
           </p>
         </div>
         <ChevronDown

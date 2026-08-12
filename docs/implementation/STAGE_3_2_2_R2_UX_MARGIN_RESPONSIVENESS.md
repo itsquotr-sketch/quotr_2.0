@@ -1,6 +1,6 @@
 # Stage 3.2.2-R2 — Assistant UX Consolidation & Margin Responsiveness
 
-**Status:** Complete Local / Owner Preview Pending  
+**Status:** Complete Local / Owner Preview (superseded for final-state UX by R3; margin path retained)  
 **Date:** 2026-08-12  
 **Branch:** `hardening/stage-2a-security`  
 **Baseline:** Stage 3.2.2-R1 (`0f8344d`) after successful Owner Deck R1 Preview retest  

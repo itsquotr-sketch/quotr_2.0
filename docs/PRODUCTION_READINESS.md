@@ -23,7 +23,7 @@ Runtime validation:
 - Migration **033** (`calibration_responses`) **Applied and Verified Remote** (2026-08-10) — see `docs/implementation/STAGE_3_1C3_R2D2_REMOTE_033_APPLY_COMPLETION.md`. Calibration evidence only — not rate authority.
 - Stage **3.1C Complete — Preview Validated** (2026-08-10) — `docs/implementation/STAGE_3_1C_CLOSURE.md`.
 - Stage **3.1B Complete — Preview Validated** (2026-08-11) — `docs/implementation/STAGE_3_1B_CLOSURE.md`. Deck / Bathroom / Fitout PASS.
-- Stage **3.2.2 In Owner Preview / R2 Complete Local** (2026-08-12) — Owner Preview Pending; **3.2.3 Not Started**. Stage 3.2 not globally Complete.
+- Stage **3.2.2 In Owner Preview / R3 Complete Local** (2026-08-13) — Owner Demo Preview Pending; **3.2.3 Not Started**. Stage 3.2 not globally Complete.
 - Production Scope Discovery remains **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**.
 
 ## Supabase

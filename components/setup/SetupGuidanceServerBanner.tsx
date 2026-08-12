@@ -3,10 +3,13 @@ import { getCompanySetupReadiness } from "@/lib/setup/readiness-actions";
 
 type SetupGuidanceServerBannerProps = {
   dimension: "estimate" | "pricing" | "quote";
+  /** When true, render compact post-estimate guidance (3.2.2-R3). */
+  hasEstimate?: boolean;
 };
 
 export async function SetupGuidanceServerBanner({
   dimension,
+  hasEstimate = false,
 }: SetupGuidanceServerBannerProps) {
   const readiness = await getCompanySetupReadiness();
 
@@ -27,7 +30,8 @@ export async function SetupGuidanceServerBanner({
       tone={
         dimension === "quote" && !readiness.quoteReady ? "warning" : "info"
       }
-      className="mb-4"
+      compact={hasEstimate && dimension === "estimate"}
+      className={hasEstimate && dimension === "estimate" ? "mb-3" : "mb-4"}
     />
   );
 }

@@ -512,7 +512,7 @@ export function EstimatePanel({
         ? "Ready for pricing"
         : status.statusLabel;
 
-  const [mobileExpanded, setMobileExpanded] = useState(false);
+  const [mobileExpanded, setMobileExpanded] = useState(() => Boolean(estimate));
 
   const financialView = estimate
     ? estimateDocumentViewModel(estimate)
@@ -547,7 +547,8 @@ export function EstimatePanel({
               </p>
               <Button
                 type="button"
-                className="w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
+                variant="outline"
+                className="w-full"
                 render={
                   <Link
                     href={`/app/projects/${projectId}/quotes/${quoteSummary.id}`}
@@ -559,7 +560,7 @@ export function EstimatePanel({
             </>
           ) : (
             <>
-              <Button type="button" className="w-full" disabled>
+              <Button type="button" variant="outline" className="w-full" disabled>
                 Create quote
               </Button>
               <p className="text-center text-xs text-muted-foreground">
@@ -571,7 +572,10 @@ export function EstimatePanel({
           )}
         </div>
       ) : (
-        <PrepareFinalPricingButton projectId={projectId} className="w-full" />
+        <PrepareFinalPricingButton
+          projectId={projectId}
+          className="w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
+        />
       )
     ) : null;
 
@@ -999,30 +1003,43 @@ export function EstimatePanel({
       data-estimate-panel-active={isActiveStage ? "true" : "false"}
       data-quick-estimate-sticky="lg"
     >
-      {/* Mobile compact summary — only below lg (desktop rail uses CardHeader) */}
-      <button
-        type="button"
-        className="flex w-full items-center justify-between gap-3 border-b border-border/60 px-4 py-3 text-left lg:hidden"
-        onClick={() => setMobileExpanded((prev) => !prev)}
-        aria-expanded={mobileExpanded}
-      >
-        <div className="min-w-0">
+      {/* Mobile header — pre-estimate: compact toggle; post-estimate: title only */}
+      {estimate ? (
+        <div
+          className="border-b border-border/60 px-4 py-3 lg:hidden"
+          data-mobile-qe-header="estimate"
+        >
           <p className="text-sm font-semibold">Quick Estimate</p>
-          <p className="truncate text-xs text-muted-foreground">
-            {mobileSummary.primaryLine}
-          </p>
-          <p className="mt-0.5 text-[11px] font-medium text-foreground/80">
-            {mobileSummary.secondaryActionLabel}
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Draft estimate based on your inputs
           </p>
         </div>
-        <ChevronDown
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform",
-            mobileExpanded && "rotate-180"
-          )}
-          aria-hidden
-        />
-      </button>
+      ) : (
+        <button
+          type="button"
+          className="flex w-full items-center justify-between gap-3 border-b border-border/60 px-4 py-3 text-left lg:hidden"
+          onClick={() => setMobileExpanded((prev) => !prev)}
+          aria-expanded={mobileExpanded}
+          data-mobile-qe-header="pending"
+        >
+          <div className="min-w-0">
+            <p className="text-sm font-semibold">Quick Estimate</p>
+            <p className="truncate text-xs text-muted-foreground">
+              {mobileSummary.primaryLine}
+            </p>
+            <p className="mt-0.5 text-[11px] font-medium text-foreground/80">
+              {mobileSummary.secondaryActionLabel}
+            </p>
+          </div>
+          <ChevronDown
+            className={cn(
+              "size-4 shrink-0 text-muted-foreground transition-transform",
+              mobileExpanded && "rotate-180"
+            )}
+            aria-hidden
+          />
+        </button>
+      )}
 
       <CardHeader className="hidden pb-3 lg:block">
         <CardTitle className="text-base">Quick Estimate</CardTitle>
@@ -1038,7 +1055,11 @@ export function EstimatePanel({
       </CardHeader>
 
       <CardContent
-        className={cn("space-y-4", !mobileExpanded && "hidden lg:block")}
+        className={cn(
+          "space-y-4",
+          !estimate && !mobileExpanded && "hidden lg:block"
+        )}
+        data-mobile-qe-body={estimate ? "always" : mobileExpanded ? "open" : "closed"}
       >
         {panelBody}
       </CardContent>

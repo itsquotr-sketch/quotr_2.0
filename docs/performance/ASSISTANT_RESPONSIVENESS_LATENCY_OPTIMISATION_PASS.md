@@ -95,6 +95,10 @@ Deeper remount elimination / Analyse Job work remains **PERF-FUTURE-01**.
 
 See `docs/audits/STAGE_3_2_2_R2_UX_MARGIN_AUDIT.md`.
 
+### Stage 3.2.2-R3 presentation findings
+
+Completed-estimate layout derives from already-loaded Assistant state (attention items, setup summaries). No additional DB queries or estimate reloads introduced for the disclosure/strip. Residual Analyse Job / RSC remount work remains **PERF-FUTURE-01**.
+
 ---
 
 ## Out of scope for Stage 3.1B

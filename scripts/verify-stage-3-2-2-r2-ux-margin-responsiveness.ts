@@ -109,7 +109,8 @@ function main(): void {
   check(
     "8 completed workflow compression present with expand/revisit",
     completedSetup.includes("Project setup") &&
-      completedSetup.includes("Review or edit completed steps") &&
+      (completedSetup.includes("View setup") ||
+        completedSetup.includes("Review or edit completed steps")) &&
       shell.includes("CompletedSetupDisclosure") &&
       shell.includes("compressCompletedSetup") &&
       shell.includes("setupReviewOpen")

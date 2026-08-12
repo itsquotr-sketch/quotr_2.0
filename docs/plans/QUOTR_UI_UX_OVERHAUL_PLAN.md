@@ -23,7 +23,7 @@
 | UX-E | Pricing + Quote surfaces | **Planned separately** |
 
 **Production Scope Discovery:** Disabled  
-**Stage 3.2:** Not Started — planning handoff `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`  
+**Stage 3.2:** In Owner Preview — **3.2.2-R3 Complete Local / Owner Demo Preview Pending** (`STAGE_3_2_2_R3_DEMO_READY_ESTIMATE_UX.md`); **3.2.3 Not Started**  
 **Company DNA:** Not Started  
 **PERF-FUTURE-01:** Planned  
 **Architecture:** `docs/architecture/QUOTR_ASSISTANT_RESPONSIVE_AND_MOBILE_PRESENTATION.md`
