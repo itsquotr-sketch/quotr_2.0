@@ -11,6 +11,8 @@
 
 **Hard stops:** D1–D16 OWNER APPROVED; 3.2.1 Complete; **3.2.2 In Owner Preview / R5 Complete Local**. Still: no Work Area interview until 3.2.3; no soft-block Generate until 3.2.4; Production Scope Discovery remains Disabled; Company DNA remains Not Started; **do not start 3.2.3 until authorised.**
 
+**Related (outside 3.2.3):** Post–3.2.2 commercial + materials planning — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md` (Implementation Not Started).
+
 ---
 
 ## 1. Stage goal
@@ -305,3 +307,4 @@ Return stable sort: P0 → P1 → P2 → P3, then domain, then registry order.
 | 3.2.1 | **Complete — Local** |
 | 3.2.2 | **In Owner Preview / R5 Complete Local** (Owner Demo Preview Pending) |
 | 3.2.3 | **Not Started** |
+| Post–3.2.2 commercial/materials | **Planning Complete / Impl Not Started** — see `POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md` |

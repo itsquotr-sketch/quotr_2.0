@@ -99,6 +99,7 @@
 - **3.2.1** Deterministic candidate engine: **Complete** (2026-08-12); D1–D16 **OWNER APPROVED**; pure `lib/builder-interview/`; no UI/writes/migrations.
 - **3.2.2** Core project/site interview: **In Owner Preview / R5 Complete Local** (Owner Demo Preview Pending). R2 UX/margin Complete Local; R3 demo-ready Estimate UX Complete Local; R4 demo UX completion Complete Local; **R5 demo UI polish Complete Local**.
 - **3.2.3** Not Started.
+- Post–3.2.2 commercial/materials: **Planning Complete / Implementation Not Started** — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md` (may be sequenced before 3.2.3 per Owner).
 - Production Scope Discovery: **Disabled**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned** (parallel; R2–R5 evidence recorded).
 
 ## Batch notes (Stage 3.1C auth / setup) — CLOSED
@@ -108,5 +109,5 @@
 - Stage 3.1C.3 + R1 + R2A–R2E + R2E-R1 + R2E-R1.1: **Complete — Preview Validated**.
 - Migrations **032** and **033**: Applied and Verified Remote.
 - Deferred (not complete): email change; Company DNA; calibration→rate auto-apply; additional scenarios; Stage 3.2 implementation; Production Scope Discovery enablement.
-- Stage 3.1B: **Complete — Preview Validated** (2026-08-11). Next: Stage **3.2.2-R5 Owner Demo Preview**, then **3.2.3** when authorised.
-- Production Scope Discovery: **Disabled**. Stage 3.2: **3.2.2 In Owner Preview / R5 Complete Local** / **3.2.3 Not Started**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned**.
+- Stage 3.1B: **Complete — Preview Validated** (2026-08-11). Next: Stage **3.2.2-R5 Owner Demo Preview**; then Owner-gated commercial P0 and/or **3.2.3**.
+- Production Scope Discovery: **Disabled**. Stage 3.2: **3.2.2 In Owner Preview / R5 Complete Local** / **3.2.3 Not Started**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned**. Commercial/materials planning: **Not Started (impl)**.

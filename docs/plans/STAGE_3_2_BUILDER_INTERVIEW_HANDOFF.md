@@ -11,4 +11,6 @@ R2 implementation: `docs/implementation/STAGE_3_2_2_R2_UX_MARGIN_RESPONSIVENESS.
 R3 implementation: `docs/implementation/STAGE_3_2_2_R3_DEMO_READY_ESTIMATE_UX.md`  
 R3 Owner demo retest: `docs/runbooks/STAGE_3_2_2_R3_OWNER_DEMO_READINESS_RETEST.md`
 
-Do **not** begin **3.2.3** until Owner authorises after R3 Owner Demo Preview.
+Do **not** begin **3.2.3** until Owner authorises after R5 Owner Demo Preview.
+
+**Parallel planning (not 3.2.3):** Post–3.2.2 commercial margin/rate + materials takeoff audit — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`. Implementation Not Started; may be sequenced before or interleaved with 3.2.3 per Owner CF-D7.

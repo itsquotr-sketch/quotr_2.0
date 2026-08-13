@@ -116,6 +116,18 @@ Every Stage 3 release should track:
 - 3.2.2-R4 Owner demo retest: `docs/runbooks/STAGE_3_2_2_R4_OWNER_DEMO_RETEST.md`
 - 3.2.2-R5 implementation: `docs/implementation/STAGE_3_2_2_R5_DEMO_UI_POLISH_COMPLETION.md`
 - 3.2.2-R5 Owner demo retest: `docs/runbooks/STAGE_3_2_2_R5_OWNER_DEMO_RETEST.md`
+
+## Post–3.2.2 commercial / materials (planning — not started)
+
+Audit + architecture only (2026-08-13). Does **not** start Stage 3.2.3, Company DNA, PERF-FUTURE-01, or Production Scope Discovery.
+
+- Commercial margin/rate authority audit: `docs/audits/COMMERCIAL_MARGIN_RATE_AUTHORITY_AUDIT.md`
+- Materials / takeoff current state: `docs/audits/MATERIAL_PRICING_TAKEOFF_CURRENT_STATE_AUDIT.md`
+- Cost-first commercial model (proposed): `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`
+- Material takeoff architecture (proposed): `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md`
+- Sequencing plan: `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
+- Status: **Planning Complete / Implementation Not Started**; recommended P0 commercial authority before or carefully interleaved with **3.2.3 Not Started**
+
 ## Stage 3.1B planning pointers
 
 - Audit: `docs/audits/STAGE_3_1B_SCOPE_DISCOVERY_CURRENT_STATE_AUDIT.md`

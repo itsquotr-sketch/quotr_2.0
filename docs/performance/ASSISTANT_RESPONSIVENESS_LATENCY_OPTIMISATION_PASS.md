@@ -107,6 +107,10 @@ Richer Estimate Review overview + ready-to-generate one-shot scroll/expand reuse
 
 Disclosure toggle / mobile density / Scope Review copy / Estimate details collapse are presentation-only. No additional DB queries or estimate fetches. Residual Analyse Job / RSC remount work remains **PERF-FUTURE-01**.
 
+### Post–3.2.2 commercial/materials planning (2026-08-13)
+
+Audit/specification only — no implementation. Cost-first / takeoff work must not introduce per-answer writes or estimate fetch loops. **PERF-FUTURE-01 remains Planned.**
+
 ---
 
 ## Out of scope for Stage 3.1B
