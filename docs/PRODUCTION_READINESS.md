@@ -24,7 +24,7 @@ Runtime validation:
 - Stage **3.1C Complete — Preview Validated** (2026-08-10) — `docs/implementation/STAGE_3_1C_CLOSURE.md`.
 - Stage **3.1B Complete — Preview Validated** (2026-08-11) — `docs/implementation/STAGE_3_1B_CLOSURE.md`. Deck / Bathroom / Fitout PASS.
 - Stage **3.2.2 In Owner Preview / R5 Complete Local** (2026-08-13) — Owner Demo Preview Pending; **3.2.3 Not Started**. Stage 3.2 not globally Complete.
-- Post–3.2.2 commercial/materials: **COMMERCIAL-P0 Complete Local** — `docs/implementation/COMMERCIAL_P0_AUTHORITY_LOCK_COMPLETION.md`. Cost-first Rates / MaterialRequirement / Deck Takeoff **Not Started**.
+- Post–3.2.2 commercial/materials: **COMMERCIAL-P0 Complete**; **Cost-first Rates Complete Local / Owner Preview Pending** — `docs/implementation/COST_FIRST_RATES_COMPLETION.md`. MaterialRequirement / Deck Takeoff **Not Started**.
 - Production Scope Discovery remains **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**.
 
 ## Supabase

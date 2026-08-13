@@ -1,8 +1,15 @@
 "use client";
 
+import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import {
+  formatMoney,
+  tryRecommendedChargeOutFromCostString,
+} from "@/lib/rates/cost-first-presentation";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 
 type RateInputRowProps = {
   label: string;
@@ -18,6 +25,7 @@ type RateInputRowProps = {
   onMarkupPercentChange?: (value: string) => void;
   showMarkup?: boolean;
   optional?: boolean;
+  companyGrossMarginPercent?: number;
 };
 
 export function RateInputRow({
@@ -34,7 +42,21 @@ export function RateInputRow({
   onMarkupPercentChange,
   showMarkup = false,
   optional = false,
+  companyGrossMarginPercent = DEFAULT_MARGIN_PERCENT,
 }: RateInputRowProps) {
+  const [customOpen, setCustomOpen] = useState(Boolean(sellRate?.trim()));
+
+  const recommended = useMemo(
+    () =>
+      tryRecommendedChargeOutFromCostString(
+        costRate ?? "",
+        companyGrossMarginPercent
+      ),
+    [costRate, companyGrossMarginPercent]
+  );
+
+  const hasCustomSell = Boolean(sellRate?.trim());
+
   return (
     <div className="space-y-3 rounded-xl border bg-card p-4">
       <div>
@@ -82,15 +104,15 @@ export function RateInputRow({
           />
         </div>
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="space-y-3">
           <div className="space-y-2">
             <Label
               htmlFor={`${label}-cost`}
               className="text-xs text-muted-foreground"
             >
-              Cost — what it costs your business
+              Your cost
             </Label>
-            <div className="relative">
+            <div className="relative max-w-[200px]">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                 $
               </span>
@@ -107,29 +129,70 @@ export function RateInputRow({
               />
             </div>
           </div>
+
+          <div className="rounded-lg border border-border/50 bg-muted/20 px-3 py-2.5">
+            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+              Recommended charge-out
+            </p>
+            <p className="mt-0.5 text-base font-semibold tabular-nums">
+              {formatMoney(recommended)}
+              {unit ? (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  / {unit}
+                </span>
+              ) : null}
+            </p>
+            <p className="mt-0.5 text-xs text-muted-foreground">
+              Using {companyGrossMarginPercent}% company gross margin
+              {hasCustomSell ? " · custom charge-out set below" : ""}
+            </p>
+          </div>
+
           <div className="space-y-2">
-            <Label
-              htmlFor={`${label}-sell`}
-              className="text-xs text-muted-foreground"
+            <button
+              type="button"
+              className="text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"
+              onClick={() => setCustomOpen((open) => !open)}
             >
-              Sell — what you charge
-            </Label>
-            <div className="relative">
-              <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                $
-              </span>
-              <Input
-                id={`${label}-sell`}
-                type="number"
-                min="0"
-                step="0.01"
-                inputMode="decimal"
-                placeholder="Blank = from margin"
-                value={sellRate ?? ""}
-                onChange={(event) => onSellRateChange?.(event.target.value)}
-                className={cn("pl-7")}
-              />
-            </div>
+              {customOpen ? "Hide custom charge-out" : "Custom charge-out"}
+            </button>
+            {customOpen ? (
+              <div className="space-y-2">
+                <Label
+                  htmlFor={`${label}-sell`}
+                  className="text-xs text-muted-foreground"
+                >
+                  Custom charge-out
+                </Label>
+                <div className="relative max-w-[200px]">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
+                    $
+                  </span>
+                  <Input
+                    id={`${label}-sell`}
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    placeholder="Leave blank for recommended"
+                    value={sellRate ?? ""}
+                    onChange={(event) => onSellRateChange?.(event.target.value)}
+                    className={cn("pl-7")}
+                  />
+                </div>
+                {hasCustomSell ? (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-0"
+                    onClick={() => onSellRateChange?.("")}
+                  >
+                    Clear — use recommended
+                  </Button>
+                ) : null}
+              </div>
+            ) : null}
           </div>
         </div>
       )}

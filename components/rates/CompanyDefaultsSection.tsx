@@ -118,17 +118,20 @@ export function CompanyDefaultsSection({
 
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="space-y-2">
-              <Label htmlFor="default-margin">Default margin %</Label>
+              <Label htmlFor="default-margin">Company gross margin %</Label>
               <Input
                 id="default-margin"
                 type="number"
                 min="0"
-                max="80"
+                max="95"
                 step="0.1"
                 value={margin}
                 onChange={(event) => setMargin(event.target.value)}
                 required
               />
+              <p className="text-xs text-muted-foreground">
+                Used to recommend charge-out from your cost rates (0–95%).
+              </p>
               {fieldErrors.default_margin_percent?.[0] ? (
                 <p className="text-sm text-destructive">
                   {fieldErrors.default_margin_percent[0]}

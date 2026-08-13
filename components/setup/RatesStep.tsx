@@ -23,6 +23,8 @@ import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { cn } from "@/lib/utils";
 import { RateInputRow } from "./RateInputRow";
 import type { OrganisationRate, SetupState, StarterRateInput } from "./types";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import { resolveCompanyGrossMarginPercent } from "@/lib/rates/cost-first-presentation";
 
 type RatesStepProps = {
   state: SetupState;
@@ -167,6 +169,10 @@ export function RatesStep({ state, onSaved, onSkip }: RatesStepProps) {
     onSaved?.();
   }
 
+  const companyGrossMarginPercent = resolveCompanyGrossMarginPercent(
+    state.settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT
+  );
+
   function updateValue(key: string, value: string) {
     setValues((prev) => ({ ...prev, [key]: value }));
   }
@@ -184,11 +190,7 @@ export function RatesStep({ state, onSaved, onSkip }: RatesStepProps) {
 
     const benchmarkHint =
       !costFilled && row.benchmarkCost != null
-        ? `Quotr benchmark: $${row.benchmarkCost.toFixed(0)}${
-            row.benchmarkSell != null
-              ? ` cost / $${row.benchmarkSell.toFixed(0)} sell`
-              : ""
-          } ${formatRateUnit(row.unit)} — enter your figures to make them company rates.`
+        ? `Quotr benchmark cost: $${row.benchmarkCost.toFixed(0)} ${formatRateUnit(row.unit)} — enter your cost to make it a company rate.`
         : undefined;
 
     return (
@@ -200,6 +202,7 @@ export function RatesStep({ state, onSaved, onSkip }: RatesStepProps) {
         authorityLabel={authorityLabel}
         benchmarkHint={benchmarkHint}
         optional={optional}
+        companyGrossMarginPercent={companyGrossMarginPercent}
         showMarkup={row.fields.includes("markup_percent")}
         costRate={
           row.fields.includes("cost_rate")
@@ -246,10 +249,10 @@ export function RatesStep({ state, onSaved, onSkip }: RatesStepProps) {
       <CardHeader>
         <CardTitle>Set your key rates</CardTitle>
         <CardDescription>
-          Start with the rates Quotr uses most often. Blank is fine — Quotr can
-          use disclosed benchmarks until you add your own. Default gross margin
-          and GST live under Company settings / Rates defaults — not duplicated
-          here.
+          Enter what labour and materials cost your business. Quotr recommends
+          charge-out from your company gross margin (
+          {companyGrossMarginPercent}%). Blank cost is fine — Quotr can use
+          disclosed benchmarks until you add your own.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
@@ -268,8 +271,9 @@ export function RatesStep({ state, onSaved, onSkip }: RatesStepProps) {
           <div>
             <h3 className="text-sm font-medium">1. Your labour</h3>
             <p className="mt-1 text-sm text-muted-foreground">
-              Cost is what the person costs your business. Sell is what you
-              charge for their time.
+              Your cost is what the person costs your business. Recommended
+              charge-out uses your {companyGrossMarginPercent}% company gross
+              margin.
             </p>
           </div>
           <div className="space-y-3">

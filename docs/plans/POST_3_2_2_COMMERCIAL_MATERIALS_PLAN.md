@@ -1,6 +1,6 @@
 # Post–3.2.2 Commercial Authority + Materials Plan
 
-**Status:** COMMERCIAL-P0 **Complete Local**; Cost-first Rates / MaterialRequirement / Deck Takeoff **Not Started**  
+**Status:** COMMERCIAL-P0 **Complete**; Cost-first Rates **Complete Local / Owner Preview Pending**; MaterialRequirement / Deck Takeoff **Not Started**  
 **Date:** 2026-08-13  
 **Checkpoint:** After Stage 3.2.2-R5 (demo baseline); **before** Stage 3.2.3  
 **Owner decisions:** `docs/decisions/COMMERCIAL_P0_OWNER_DECISIONS.md` (CF-D1–D7 **OWNER APPROVED**)  
@@ -62,7 +62,7 @@ Stage 3.2.3 status remains **Not Started**. This plan does **not** start it.
 5. Migration/backfill strategy per Owner CF-D2 (grandfather vs convert)  
 6. **Avoid** multiple competing commercial authorities
 
-**→ Next implementation batch. Spec:** `docs/plans/COST_FIRST_RATES_UI_NEXT_BATCH.md` (**Not Started**).
+**→ Cost-first Rates Complete Local / Owner Preview Pending (2026-08-14).** Spec + completion: `docs/plans/COST_FIRST_RATES_UI_NEXT_BATCH.md`, `docs/implementation/COST_FIRST_RATES_COMPLETION.md`.
 
 ### Phase M1 — MaterialRequirement / takeoff foundation
 1. Calculator emit `MaterialRequirement[]` (contract in takeoff architecture)  
@@ -119,17 +119,17 @@ Stage 3.2.3 status remains **Not Started**. This plan does **not** start it.
 
 ## 7. Exact next implementation batch (recommended)
 
-**Batch name:** Cost-first Rates implementation  
+**Batch name:** MaterialRequirement / takeoff foundation  
 
 **In scope when Owner starts:**
-- Rates UI cost-primary + derived sell (see `COST_FIRST_RATES_UI_NEXT_BATCH.md`)
-- Explicit sell override minimal control if needed
-- Benchmark presentation as cost-authoritative with legacy paired hints
+- Calculator emit `MaterialRequirement[]`
+- Consume cost-first material cost rates
+- Derive takeoff from calculator outputs
 
 **Out of scope:**
 - Stage 3.2.3 UI  
-- Material catalogue rows / MaterialRequirement  
-- Takeoff UI / Deck face-board Facts  
+- Large catalogue authoring  
+- Deck face-board Facts (follows takeoff foundation)  
 - PERF-FUTURE-01 / Company DNA / Production SD / Production deploy  
 
 ---

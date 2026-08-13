@@ -20,6 +20,12 @@ import { upsertRate } from "@/lib/rates/actions";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 import type { RatesPageRate } from "@/lib/rates/types";
 import {
+  displayChargeOut,
+  formatMoney,
+  resolveCompanyGrossMarginPercent,
+} from "@/lib/rates/cost-first-presentation";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import {
   RateEditDialog,
   parseOptionalNumber,
   type RateEditValues,
@@ -31,15 +37,11 @@ type RatesTableSectionProps = {
   catalogue: RateCatalogueEntry[];
   rates: RatesPageRate[];
   onRatesChange: (rates: RatesPageRate[]) => void;
+  companyGrossMarginPercent?: number;
   variant?: "labour" | "grouped";
   showEngineColumn?: boolean;
   showAddButton?: boolean;
 };
-
-function formatCurrency(value: number | null | undefined): string {
-  if (value == null) return "—";
-  return `$${value.toFixed(2)}`;
-}
 
 function EngineBadge({
   support,
@@ -60,16 +62,49 @@ function EngineBadge({
   );
 }
 
+function ChargeOutCell({
+  rate,
+  companyGrossMarginPercent,
+}: {
+  rate: RatesPageRate | undefined;
+  companyGrossMarginPercent: number;
+}) {
+  const charge = displayChargeOut({
+    costRate: rate?.cost_rate,
+    sellRate: rate?.sell_rate,
+    companyGrossMarginPercent,
+  });
+  if (charge.value == null) {
+    return <span className="text-muted-foreground">—</span>;
+  }
+  return (
+    <span className="tabular-nums">
+      {formatMoney(charge.value)}
+      {charge.isCustom ? (
+        <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+          custom
+        </span>
+      ) : charge.isRecommended && rate?.cost_rate != null ? (
+        <span className="ml-1 text-[10px] font-normal text-muted-foreground">
+          recommended
+        </span>
+      ) : null}
+    </span>
+  );
+}
+
 function RateMobileCard({
   entry,
   rate,
   labelColumn,
+  companyGrossMarginPercent,
   onEdit,
   onAdoptBenchmark,
 }: {
   entry: RateCatalogueEntry;
   rate: RatesPageRate | undefined;
   labelColumn: string;
+  companyGrossMarginPercent: number;
   onEdit: () => void;
   onAdoptBenchmark?: () => void;
 }) {
@@ -78,6 +113,11 @@ function RateMobileCard({
     !hasCompanyRate &&
     entry.defaultCostRate != null &&
     typeof onAdoptBenchmark === "function";
+  const charge = displayChargeOut({
+    costRate: rate?.cost_rate,
+    sellRate: rate?.sell_rate,
+    companyGrossMarginPercent,
+  });
 
   return (
     <div className="rounded-lg border border-border/60 bg-card p-3">
@@ -92,22 +132,24 @@ function RateMobileCard({
             <span>·</span>
             <span>{getRateSourceLabel(rate, entry.item_key)}</span>
           </div>
-          <div className="flex flex-wrap gap-3 text-sm tabular-nums">
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm tabular-nums">
             <span>
-              Cost{" "}
-              <span className="font-medium">{formatCurrency(rate?.cost_rate)}</span>
+              Your cost{" "}
+              <span className="font-medium">{formatMoney(rate?.cost_rate)}</span>
             </span>
             <span>
-              Sell{" "}
-              <span className="font-medium">{formatCurrency(rate?.sell_rate)}</span>
+              Charge-out{" "}
+              <span className="font-medium">{formatMoney(charge.value)}</span>
+              {charge.isCustom ? (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  (custom)
+                </span>
+              ) : null}
             </span>
           </div>
           {!hasCompanyRate && entry.defaultCostRate != null ? (
             <p className="text-xs text-muted-foreground">
-              Quotr benchmark: ${entry.defaultCostRate.toFixed(0)}
-              {entry.defaultSellRate != null
-                ? ` / $${entry.defaultSellRate.toFixed(0)} sell`
-                : ""}{" "}
+              Quotr benchmark cost: ${entry.defaultCostRate.toFixed(0)}{" "}
               {formatRateUnit(entry.unit)}
             </p>
           ) : null}
@@ -131,7 +173,7 @@ function RateMobileCard({
               className="h-8 text-xs"
               onClick={onAdoptBenchmark}
             >
-              Use benchmark
+              Use benchmark cost
             </Button>
           ) : null}
         </div>
@@ -145,6 +187,7 @@ function RateRow({
   rate,
   showEngineColumn,
   labelColumn,
+  companyGrossMarginPercent,
   onEdit,
   onAdoptBenchmark,
 }: {
@@ -152,6 +195,7 @@ function RateRow({
   rate: RatesPageRate | undefined;
   showEngineColumn: boolean;
   labelColumn: string;
+  companyGrossMarginPercent: number;
   onEdit: () => void;
   onAdoptBenchmark?: () => void;
 }) {
@@ -173,10 +217,7 @@ function RateRow({
         ) : null}
         {!hasCompanyRate && entry.defaultCostRate != null ? (
           <div className="text-xs text-muted-foreground">
-            Quotr benchmark: ${entry.defaultCostRate.toFixed(0)}
-            {entry.defaultSellRate != null
-              ? ` / $${entry.defaultSellRate.toFixed(0)} sell`
-              : ""}
+            Quotr benchmark cost: ${entry.defaultCostRate.toFixed(0)}
           </div>
         ) : null}
       </td>
@@ -184,10 +225,13 @@ function RateRow({
         {formatRateUnit(entry.unit)}
       </td>
       <td className="px-3 py-2.5 tabular-nums">
-        {formatCurrency(rate?.cost_rate)}
+        {formatMoney(rate?.cost_rate)}
       </td>
-      <td className="px-3 py-2.5 tabular-nums">
-        {formatCurrency(rate?.sell_rate)}
+      <td className="px-3 py-2.5">
+        <ChargeOutCell
+          rate={rate}
+          companyGrossMarginPercent={companyGrossMarginPercent}
+        />
       </td>
       <td className="hidden px-3 py-2.5 text-xs text-muted-foreground md:table-cell">
         {getRateSourceLabel(rate, entry.item_key)}
@@ -217,7 +261,7 @@ function RateRow({
               size="sm"
               onClick={onAdoptBenchmark}
             >
-              Use benchmark
+              Use benchmark cost
             </Button>
           ) : null}
           <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
@@ -236,10 +280,12 @@ export function RatesTableSection({
   catalogue,
   rates,
   onRatesChange,
+  companyGrossMarginPercent = DEFAULT_MARGIN_PERCENT,
   variant = "labour",
   showEngineColumn = false,
   showAddButton = true,
 }: RatesTableSectionProps) {
+  const margin = resolveCompanyGrossMarginPercent(companyGrossMarginPercent);
   const rateMap = useMemo(
     () => new Map(rates.map((rate) => [rate.item_key, rate])),
     [rates]
@@ -267,6 +313,12 @@ export function RatesTableSection({
     setNotice(null);
 
     const existing = rateMap.get(editingEntry.item_key);
+    const cost = parseOptionalNumber(values.cost_rate);
+    const sell =
+      values.sellMode === "derived"
+        ? null
+        : parseOptionalNumber(values.sell_rate);
+
     const result = await upsertRate({
       id: existing?.id,
       item_key: editingEntry.item_key,
@@ -275,8 +327,8 @@ export function RatesTableSection({
       work_area_type: editingEntry.work_area_type,
       label: editingEntry.label,
       unit: editingEntry.unit,
-      cost_rate: parseOptionalNumber(values.cost_rate),
-      sell_rate: parseOptionalNumber(values.sell_rate),
+      cost_rate: cost,
+      sell_rate: sell,
       markup_percent: parseOptionalNumber(values.markup_percent),
       active: values.active,
     });
@@ -308,6 +360,7 @@ export function RatesTableSection({
     setNotice(null);
 
     const existing = rateMap.get(entry.item_key);
+    // Cost-first adopt: store benchmark COST only; charge-out derives from company GM.
     const result = await upsertRate({
       id: existing?.id,
       item_key: entry.item_key,
@@ -317,7 +370,7 @@ export function RatesTableSection({
       label: entry.label,
       unit: entry.unit,
       cost_rate: entry.defaultCostRate,
-      sell_rate: entry.defaultSellRate ?? null,
+      sell_rate: null,
       markup_percent: null,
       active: true,
     });
@@ -337,7 +390,7 @@ export function RatesTableSection({
         : [...rates, result.rate];
       onRatesChange(nextRates);
       setNotice(
-        "Benchmark adopted as your company rate. Regenerate an estimate to apply."
+        `Benchmark cost adopted. Charge-out will use your ${margin}% company gross margin. Regenerate an estimate to apply.`
       );
     }
   }
@@ -390,8 +443,8 @@ export function RatesTableSection({
                       <tr className="border-b border-border/60 bg-muted/30 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         <th className="px-3 py-2">Item</th>
                         <th className="hidden px-3 py-2 sm:table-cell">Unit</th>
-                        <th className="px-3 py-2">Cost rate</th>
-                        <th className="px-3 py-2">Sell rate</th>
+                        <th className="px-3 py-2">Your cost</th>
+                        <th className="px-3 py-2">Charge-out</th>
                         <th className="hidden px-3 py-2 md:table-cell">
                           Source
                         </th>
@@ -412,6 +465,7 @@ export function RatesTableSection({
                           rate={rateMap.get(entry.item_key)}
                           showEngineColumn={showEngineColumn}
                           labelColumn={entry.label}
+                          companyGrossMarginPercent={margin}
                           onEdit={() => {
                             setEditingEntry(entry);
                             setNotice(null);
@@ -432,6 +486,7 @@ export function RatesTableSection({
                       entry={entry}
                       rate={rateMap.get(entry.item_key)}
                       labelColumn={entry.label}
+                      companyGrossMarginPercent={margin}
                       onEdit={() => {
                         setEditingEntry(entry);
                         setNotice(null);
@@ -457,6 +512,7 @@ export function RatesTableSection({
           }}
           catalogueEntry={editingEntry}
           existingRate={rateMap.get(editingEntry.item_key) ?? null}
+          companyGrossMarginPercent={margin}
           onSave={handleSave}
           saving={saving}
         />

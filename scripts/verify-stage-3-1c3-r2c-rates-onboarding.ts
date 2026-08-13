@@ -162,15 +162,22 @@ assert(
 
 section("COST/SELL / MISSING");
 const rateInput = read("components/setup/RateInputRow.tsx");
-assert("Cost label clear", /Cost — what it costs/.test(rateInput));
-assert("Sell label clear", /Sell — what you charge/.test(rateInput));
+assert("Cost label clear", /Your cost/.test(rateInput));
+assert(
+  "Recommended charge-out shown",
+  /Recommended charge-out/.test(rateInput)
+);
+assert(
+  "Custom charge-out secondary",
+  /Custom charge-out/.test(rateInput)
+);
 assert(
   "placeholder not fake zero authority",
   /Blank = later/.test(rateInput)
 );
 assert(
   "Use benchmark adopt on rates table",
-  /Use benchmark/.test(read("components/rates/RatesTableSection.tsx"))
+  /Use benchmark cost/.test(read("components/rates/RatesTableSection.tsx"))
 );
 
 section("SECURITY / BOUNDARIES");

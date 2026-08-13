@@ -7,11 +7,13 @@ import type { RatesPageRate } from "@/lib/rates/types";
 type SpecificMaterialRatesSectionProps = {
   rates: RatesPageRate[];
   onRatesChange: (rates: RatesPageRate[]) => void;
+  companyGrossMarginPercent?: number;
 };
 
 export function SpecificMaterialRatesSection({
   rates,
   onRatesChange,
+  companyGrossMarginPercent,
 }: SpecificMaterialRatesSectionProps) {
   return (
     <div className="space-y-4">
@@ -20,8 +22,8 @@ export function SpecificMaterialRatesSection({
           Specific material rates
         </h2>
         <p className="text-sm text-muted-foreground">
-          Per-unit rates used when Quotr calculates material quantities (boards,
-          sheets, litres, m³). Leave blank to use benchmark fallbacks.
+          Enter what materials cost you. Quotr recommends charge-out from your
+          company gross margin. Leave blank to use Quotr benchmark cost.
         </p>
       </div>
       {SPECIFIC_MATERIAL_RATE_GROUPS.map((group) => (
@@ -32,6 +34,7 @@ export function SpecificMaterialRatesSection({
           catalogue={group.entries}
           rates={rates}
           onRatesChange={onRatesChange}
+          companyGrossMarginPercent={companyGrossMarginPercent}
           variant="grouped"
           showEngineColumn
         />

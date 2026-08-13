@@ -135,7 +135,7 @@ Project facts / constraints / scope
 | CF-D7 | Commercial sequence before 3.2.3 resume |
 
 **COMMERCIAL-P0 Complete Local** — `docs/implementation/COMMERCIAL_P0_AUTHORITY_LOCK_COMPLETION.md`.  
-**Cost-first Rates UI:** Not Started — `docs/plans/COST_FIRST_RATES_UI_NEXT_BATCH.md`.
+**Cost-first Rates:** Complete Local / Owner Preview Pending — `docs/implementation/COST_FIRST_RATES_COMPLETION.md`.
 
 ---
 

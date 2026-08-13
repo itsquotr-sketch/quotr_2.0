@@ -123,7 +123,7 @@ Every Stage 3 release should track:
 - Owner decisions CF-D1–D7: **OWNER APPROVED** — `docs/decisions/COMMERCIAL_P0_OWNER_DECISIONS.md`
 - **COMMERCIAL-P0 Complete Local** — `docs/implementation/COMMERCIAL_P0_AUTHORITY_LOCK_COMPLETION.md`
 - Snapshot safety: `docs/architecture/COMMERCIAL_SNAPSHOT_SAFETY.md`
-- Cost-first Rates UI: **Not Started** — `docs/plans/COST_FIRST_RATES_UI_NEXT_BATCH.md`
+- Cost-first Rates: **Complete Local / Owner Preview Pending** — `docs/implementation/COST_FIRST_RATES_COMPLETION.md`
 - MaterialRequirement / Deck Takeoff / Stage 3.2.3: **Not Started**
 - Production Scope Discovery **Disabled**; Company DNA **Not Started**; PERF-FUTURE-01 **Planned**
 - Plan: `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`

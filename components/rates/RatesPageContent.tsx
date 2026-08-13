@@ -30,6 +30,8 @@ import { CalibrationSummaryCard } from "./CalibrationSummaryCard";
 import { CompanyDefaultsSection } from "./CompanyDefaultsSection";
 import { RatesTableSection } from "./RatesTableSection";
 import { SpecificMaterialRatesSection } from "./SpecificMaterialRatesSection";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import { resolveCompanyGrossMarginPercent } from "@/lib/rates/cost-first-presentation";
 
 type RatesPageContentProps = {
   initialState: RatesPageState;
@@ -146,6 +148,10 @@ export function RatesPageContent({
     RATES_SECTIONS.find((section) => section.id === activeSection)?.label ??
     "Rates";
 
+  const companyGrossMarginPercent = resolveCompanyGrossMarginPercent(
+    state.settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT
+  );
+
   return (
     <div className="space-y-6">
       <SettingsSectionNav
@@ -167,9 +173,10 @@ export function RatesPageContent({
         <CardHeader className="pb-3">
           <CardTitle className="text-base">Your company rates</CardTitle>
           <CardDescription>
-            Explicit rates you enter become company authority. Quotr benchmarks
-            stay labelled as benchmarks until you adopt or replace them. Default
-            gross margin lives under Defaults; GST under{" "}
+            Enter what work costs your business. Quotr recommends charge-out
+            from your company gross margin ({companyGrossMarginPercent}%).
+            Existing custom charge-outs are kept until you choose the
+            recommended rate. Gross margin is under Defaults; GST under{" "}
             <Link
               href="/app/settings/company"
               className="font-medium underline-offset-4 hover:underline"
@@ -204,7 +211,7 @@ export function RatesPageContent({
         {activeSection === "core" ? (
           <RatesTableSection
             title="Core labour"
-            description="Cost = what labour costs your business. Sell = what you charge. If sell is blank, Quotr derives it from your default margin."
+            description={`Enter your cost per hour. Recommended charge-out uses your ${companyGrossMarginPercent}% company gross margin. Custom charge-outs stay until you switch to recommended.`}
             catalogue={LABOUR_RATE_CATALOGUE.filter(
               (entry) =>
                 entry.item_key === "labour.carpenter.hour" ||
@@ -213,6 +220,7 @@ export function RatesPageContent({
             )}
             rates={state.rates}
             onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+            companyGrossMarginPercent={companyGrossMarginPercent}
             variant="labour"
             showEngineColumn
           />
@@ -250,12 +258,13 @@ export function RatesPageContent({
                       ? `${group.label} (common for your company)`
                       : group.label
                   }
-                  description="Used-now component rates. Overall $/m² package rates are under Legacy benchmarks."
+                  description="Enter your cost. Charge-out follows company gross margin unless you keep a custom charge-out."
                   catalogue={group.entries}
                   rates={state.rates}
                   onRatesChange={(rates) =>
                     setState((prev) => ({ ...prev, rates }))
                   }
+                  companyGrossMarginPercent={companyGrossMarginPercent}
                   variant="grouped"
                   showEngineColumn
                   showAddButton={false}
@@ -269,16 +278,18 @@ export function RatesPageContent({
           <SpecificMaterialRatesSection
             rates={state.rates}
             onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+            companyGrossMarginPercent={companyGrossMarginPercent}
           />
         ) : null}
 
         {activeSection === "legacy" ? (
           <RatesTableSection
             title="Legacy overall benchmarks"
-            description="Generic package $/m² (or $/lm) rates are not Quotr’s primary pricing model. Kept for compatibility — not detailed calculator authority. Prefer component rates above."
+            description="Generic package rates kept for compatibility. Prefer component rates above. Cost-first still applies when you set a company cost."
             catalogue={SCOPE_RATE_CATALOGUE}
             rates={state.rates}
             onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+            companyGrossMarginPercent={companyGrossMarginPercent}
             variant="grouped"
             showEngineColumn
           />
