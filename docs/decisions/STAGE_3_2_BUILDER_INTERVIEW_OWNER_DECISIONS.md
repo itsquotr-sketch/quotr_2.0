@@ -178,7 +178,7 @@
 | 3.2.1 Deterministic candidate engine | Unblocked for implementation |
 | 3.2.2 | **In Owner Preview / R5 Complete Local** (Owner Demo Preview Pending) |
 | 3.2.3 | Not started until Owner authorises |
-| Post–3.2.2 commercial CF-D1…D7 | **Awaiting Owner** — `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md` §8; plan `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md` |
+| Post–3.2.2 commercial CF-D1…D7 | **OWNER APPROVED** — `docs/decisions/COMMERCIAL_P0_OWNER_DECISIONS.md`; P0 Complete Local |
 
 ---
 

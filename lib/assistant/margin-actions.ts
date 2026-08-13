@@ -176,6 +176,13 @@ export async function updateEstimateMargin(
     return { error: estimateError.message };
   }
 
+  // CM-02 / CF-D4: mark recalibratable Pricing snapshots stale. Does not rewrite
+  // quotes (sent/accepted remain historical_immutable; draft refresh is explicit).
+  const { markPricingDocumentsNeedingRecalibration } = await import(
+    "@/lib/pricing/recalibration"
+  );
+  await markPricingDocumentsNeedingRecalibration(supabase, orgId, projectId);
+
   revalidateProjectPath(projectId);
   return {
     success: true,

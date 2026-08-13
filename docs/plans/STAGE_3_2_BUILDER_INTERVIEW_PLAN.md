@@ -11,7 +11,7 @@
 
 **Hard stops:** D1–D16 OWNER APPROVED; 3.2.1 Complete; **3.2.2 In Owner Preview / R5 Complete Local**. Still: no Work Area interview until 3.2.3; no soft-block Generate until 3.2.4; Production Scope Discovery remains Disabled; Company DNA remains Not Started; **do not start 3.2.3 until authorised.**
 
-**Related (outside 3.2.3):** Post–3.2.2 commercial + materials planning — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md` (Implementation Not Started).
+**Related (outside 3.2.3):** Post–3.2.2 commercial — **COMMERCIAL-P0 Complete Local**; Cost-first Rates / MaterialRequirement **Not Started** — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`.
 
 ---
 

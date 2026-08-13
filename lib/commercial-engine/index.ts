@@ -37,6 +37,19 @@ export type {
 export { roundMoney, roundPercent, isFiniteNumber } from "./core/money";
 export { deriveSellFromCost } from "./core/sell-from-margin";
 export { deriveProfitMetrics } from "./core/profit";
+export {
+  classifyResolvedSell,
+  deriveSellFromGrossMargin,
+  applyProjectGrossMarginToCost,
+  commercialSnapshotKindForPricingDocument,
+  commercialSnapshotKindForQuote,
+} from "./core/cost-first-authority";
+export type {
+  SellAuthority,
+  EstimateSellAuthority,
+  CommercialSnapshotKind,
+  ResolvedSellSemantics,
+} from "./core/cost-first-authority";
 
 export { calculateLineItem } from "./calculations/calculate-line";
 export { calculateDocumentAggregate } from "./calculations/aggregate";

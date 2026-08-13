@@ -41,7 +41,7 @@ Project information
 | Takeoff view | Projection of calculator material requirements |
 | Pricing / Quote | Consume estimate money authority (not a separate BOM invent) |
 
-**Prefer one authority:** calculators emit `MaterialRequirement[]`; takeoff and priced material lines both consume that list.
+**Rate resolution:** `lib/estimate/rates.ts` / `resolve-material-rate.ts` consume the same cost-first sell classification (`sellAuthority`). MaterialRequirement must use **costRate** as money input and never invent a second pricing engine.
 
 ---
 

@@ -13,6 +13,7 @@ import type {
   OrganisationSettings,
 } from "@/components/setup/types";
 import type { ResolvedLabourRate, ResolvedRate } from "@/lib/estimate/types";
+import { classifyResolvedSell } from "@/lib/commercial-engine/core/cost-first-authority";
 
 const DEFAULT_LABOUR_COST_RATE = 60;
 const DEFAULT_LABOUR_SELL_RATE = 90;
@@ -128,26 +129,38 @@ function allowBenchmarkFallback(
 
 function buildResolvedRate(params: {
   costRate: number;
-  sellRate: number;
+  /** Explicit or legacy paired sell; null → derive from margin */
+  sellRate: number | null;
   unit: string;
   sourceType: RateSourceType;
   itemKey: string;
-  sellDerivedFromMargin: boolean;
   organisationSettings: OrganisationSettings | null;
+  explicitSellOverride?: boolean;
 }): ResolvedRate {
+  const marginPercent = getDefaultMarginPercent(params.organisationSettings);
+  const classified = classifyResolvedSell({
+    costRate: params.costRate,
+    sellRate: params.sellRate,
+    applicableGrossMarginPercent: marginPercent,
+    explicitSellOverride: params.explicitSellOverride,
+  });
   const range = applyRangeFactors(
     params.costRate,
-    params.sellRate,
+    classified.sellRate,
     params.organisationSettings
   );
 
   return {
     costRate: params.costRate,
-    sellRate: params.sellRate,
+    sellRate: classified.sellRate,
     unit: params.unit,
     sourceType: params.sourceType,
     itemKey: params.itemKey,
-    sellDerivedFromMargin: params.sellDerivedFromMargin,
+    sellDerivedFromMargin: classified.sellDerivedFromMargin,
+    sellAuthority: classified.sellAuthority,
+    grossMarginPercent: classified.grossMarginPercent,
+    isLegacyPairedRate: classified.isLegacyPairedRate,
+    isExplicitSellOverride: classified.isExplicitSellOverride,
     sourceLabel: getRateSourceLabel(params.sourceType),
     ...range,
   };
@@ -163,14 +176,12 @@ export function resolveRate(params: {
   fallbackSellRate?: number;
   organisationSettings: OrganisationSettings | null;
 }): ResolvedRate {
-  const marginPercent = getDefaultMarginPercent(params.organisationSettings);
   const benchmarkAllowed = allowBenchmarkFallback(params.organisationSettings);
   let costRate = params.fallbackCostRate;
-  let sellRate =
-    params.fallbackSellRate ?? deriveSellFromCost(costRate, marginPercent);
+  let sellRate: number | null =
+    params.fallbackSellRate !== undefined ? params.fallbackSellRate : null;
   let unit = params.unit ?? "unit";
   let sourceType: RateSourceType = benchmarkAllowed ? "benchmark" : "missing";
-  let sellDerivedFromMargin = params.fallbackSellRate == null;
 
   const exactRate = findActiveRate(params.rates, (rate) => {
     if (
@@ -187,9 +198,7 @@ export function resolveRate(params: {
 
   if (exactRate?.cost_rate != null) {
     costRate = exactRate.cost_rate;
-    sellDerivedFromMargin = exactRate.sell_rate == null;
-    sellRate =
-      exactRate.sell_rate ?? deriveSellFromCost(costRate, marginPercent);
+    sellRate = exactRate.sell_rate;
     unit = exactRate.unit || unit;
     sourceType = "user_rate";
   } else if (params.workAreaType) {
@@ -203,10 +212,7 @@ export function resolveRate(params: {
 
     if (workAreaRate?.cost_rate != null) {
       costRate = workAreaRate.cost_rate;
-      sellDerivedFromMargin = workAreaRate.sell_rate == null;
-      sellRate =
-        workAreaRate.sell_rate ??
-        deriveSellFromCost(costRate, marginPercent);
+      sellRate = workAreaRate.sell_rate;
       unit = workAreaRate.unit || unit;
       sourceType = "work_area_rate";
     }
@@ -220,7 +226,6 @@ export function resolveRate(params: {
     unit,
     sourceType,
     itemKey: params.itemKey,
-    sellDerivedFromMargin,
     organisationSettings: params.organisationSettings,
   });
 }
@@ -246,29 +251,45 @@ export function resolveLabourRate(params: {
     );
 
     if (userRate?.cost_rate != null) {
-      const sellDerivedFromMargin = userRate.sell_rate == null;
+      const classified = classifyResolvedSell({
+        costRate: userRate.cost_rate,
+        sellRate: userRate.sell_rate,
+        applicableGrossMarginPercent: marginPercent,
+      });
       return {
         costRate: userRate.cost_rate,
-        sellRate:
-          userRate.sell_rate ??
-          deriveSellFromCost(userRate.cost_rate, marginPercent),
+        sellRate: classified.sellRate,
         sourceLabel: getRateSourceLabel("user_rate"),
         sourceType: "user_rate",
         itemKey: key,
-        sellDerivedFromMargin,
+        sellDerivedFromMargin: classified.sellDerivedFromMargin,
+        sellAuthority: classified.sellAuthority,
+        grossMarginPercent: classified.grossMarginPercent,
+        isLegacyPairedRate: classified.isLegacyPairedRate,
+        isExplicitSellOverride: classified.isExplicitSellOverride,
       };
     }
   }
 
   const benchmarkAllowed = allowBenchmarkFallback(params.organisationSettings);
   const sourceType: RateSourceType = benchmarkAllowed ? "default" : "missing";
+  // Hardcoded DEFAULT_LABOUR cost/sell pair — grandfathered legacy paired (CF-D2)
+  const classified = classifyResolvedSell({
+    costRate: DEFAULT_LABOUR_COST_RATE,
+    sellRate: DEFAULT_LABOUR_SELL_RATE,
+    applicableGrossMarginPercent: marginPercent,
+  });
 
   return {
     costRate: DEFAULT_LABOUR_COST_RATE,
-    sellRate: DEFAULT_LABOUR_SELL_RATE,
+    sellRate: classified.sellRate,
     sourceLabel: getRateSourceLabel(sourceType),
     sourceType,
-    sellDerivedFromMargin: false,
+    sellDerivedFromMargin: classified.sellDerivedFromMargin,
+    sellAuthority: classified.sellAuthority,
+    grossMarginPercent: classified.grossMarginPercent,
+    isLegacyPairedRate: classified.isLegacyPairedRate,
+    isExplicitSellOverride: classified.isExplicitSellOverride,
   };
 }
 

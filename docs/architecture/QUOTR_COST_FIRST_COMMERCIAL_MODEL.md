@@ -120,17 +120,22 @@ Project facts / constraints / scope
 
 ---
 
-## 8. Owner decisions required (before implementation)
+## 8. Owner decisions (CF-D1–D7)
 
-| ID | Decision |
+**OWNER APPROVED** — 2026-08-13 — see `docs/decisions/COMMERCIAL_P0_OWNER_DECISIONS.md`.
+
+| ID | Settlement |
 | --- | --- |
-| CF-D1 | Adopt cost-first as product SoT for labour + materials + subbies? |
-| CF-D2 | Grandfather vs convert existing `sell_rate` rows? |
-| CF-D3 | Persist derived sell, derive-only, or hybrid+provenance? |
-| CF-D4 | On margin edit: must Pricing/Quote invalidate/recalibrate immediately? |
-| CF-D5 | Benchmarks: cost-only publication vs keep paired sell as display hint? |
-| CF-D6 | Allow rare explicit sell override / premium? |
-| CF-D7 | Sequence relative to Stage 3.2.3 (WA interview) — commercial first? |
+| CF-D1 | Cost-first + F-SFM canonical |
+| CF-D2 | Grandfather existing pairs (no silent convert in P0) |
+| CF-D3 | Hybrid persist + provenance; cost is rate SoT |
+| CF-D4 | Margin edit marks Pricing needing recalibration |
+| CF-D5 | Benchmark cost long-term; paired legacy in P0 |
+| CF-D6 | Explicit override allowed; no large P0 UX |
+| CF-D7 | Commercial sequence before 3.2.3 resume |
+
+**COMMERCIAL-P0 Complete Local** — `docs/implementation/COMMERCIAL_P0_AUTHORITY_LOCK_COMPLETION.md`.  
+**Cost-first Rates UI:** Not Started — `docs/plans/COST_FIRST_RATES_UI_NEXT_BATCH.md`.
 
 ---
 

@@ -33,6 +33,7 @@ AI-generated monetary suggestions are **inputs** to be validated or replaced by 
 - Deterministic rounding (`roundMoney` / `round2` via engine)
 - Aggregate totals from included lines (GST omitted for estimates)
 - Sell-from-margin (F-SFM): `sell = cost ÷ (1 − gross margin)`
+- Cost-first sell authority classification (COMMERCIAL-P0): derived / legacy paired / explicit override — see `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`
 - Honest unknown-cost treatment (null margin/profit → persistence sentinel `0`, never 100%)
 
 ---

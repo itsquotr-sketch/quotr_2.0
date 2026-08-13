@@ -1,14 +1,17 @@
 # Post–3.2.2 Commercial Authority + Materials Plan
 
-**Status:** Planning / Audit complete — Implementation **Not Started**  
+**Status:** COMMERCIAL-P0 **Complete Local**; Cost-first Rates / MaterialRequirement / Deck Takeoff **Not Started**  
 **Date:** 2026-08-13  
 **Checkpoint:** After Stage 3.2.2-R5 (demo baseline); **before** Stage 3.2.3  
+**Owner decisions:** `docs/decisions/COMMERCIAL_P0_OWNER_DECISIONS.md` (CF-D1–D7 **OWNER APPROVED**)  
 **Audits:**  
 - `docs/audits/COMMERCIAL_MARGIN_RATE_AUTHORITY_AUDIT.md`  
 - `docs/audits/MATERIAL_PRICING_TAKEOFF_CURRENT_STATE_AUDIT.md`  
 **Architecture:**  
 - `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
-- `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md`
+- `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md`  
+- `docs/architecture/COMMERCIAL_SNAPSHOT_SAFETY.md`  
+**P0 completion:** `docs/implementation/COMMERCIAL_P0_AUTHORITY_LOCK_COMPLETION.md`
 
 ---
 
@@ -49,6 +52,8 @@ Stage 3.2.3 status remains **Not Started**. This plan does **not** start it.
 3. Golden / verify: generation + target margin = single F-SFM consume from **cost**; no stacked uplift  
 4. **Do not** change F-SFM formula
 
+**→ COMMERCIAL-P0 Complete Local (2026-08-13).** CM-02 fixed; authority contract + rate sellAuthority lock shipped.
+
 ### Phase P0b — Cost-first rate architecture
 1. Rates UX: cost primary; sell derived (gross margin)  
 2. Provenance for any persisted sell  
@@ -56,6 +61,8 @@ Stage 3.2.3 status remains **Not Started**. This plan does **not** start it.
 4. Retire reliance on mismatched charge-out for estimate totals  
 5. Migration/backfill strategy per Owner CF-D2 (grandfather vs convert)  
 6. **Avoid** multiple competing commercial authorities
+
+**→ Next implementation batch. Spec:** `docs/plans/COST_FIRST_RATES_UI_NEXT_BATCH.md` (**Not Started**).
 
 ### Phase M1 — MaterialRequirement / takeoff foundation
 1. Calculator emit `MaterialRequirement[]` (contract in takeoff architecture)  
@@ -112,25 +119,18 @@ Stage 3.2.3 status remains **Not Started**. This plan does **not** start it.
 
 ## 7. Exact next implementation batch (recommended)
 
-**Batch name (suggested):** `COMMERCIAL-P0 — Cost-first authority lock + margin→pricing sync`
+**Batch name:** Cost-first Rates implementation  
 
-**In scope (when Owner starts implementation):**
-- Owner decision capture for CF-D1…D7  
-- Cost-first architecture implementation plan → code for rates/estimate sell authority  
-- Targeted margin→pricing invalidation if CF-D4 = yes  
-- Verifies proving single consume from **cost** under target margin  
+**In scope when Owner starts:**
+- Rates UI cost-primary + derived sell (see `COST_FIRST_RATES_UI_NEXT_BATCH.md`)
+- Explicit sell override minimal control if needed
+- Benchmark presentation as cost-authoritative with legacy paired hints
 
-**Out of scope for that batch:**
+**Out of scope:**
 - Stage 3.2.3 UI  
-- Material catalogue rows  
-- Takeoff UI  
-- Deck face-board questions  
-- PERF-FUTURE-01  
-- Company DNA  
-- Production SD enablement  
-- Production deploy  
-
-**Immediate next after this audit (no code):** Owner review of audits + CF decisions; continue R5 Owner Demo as scheduled.
+- Material catalogue rows / MaterialRequirement  
+- Takeoff UI / Deck face-board Facts  
+- PERF-FUTURE-01 / Company DNA / Production SD / Production deploy  
 
 ---
 

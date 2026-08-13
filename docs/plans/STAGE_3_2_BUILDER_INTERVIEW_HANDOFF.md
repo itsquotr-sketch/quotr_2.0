@@ -13,4 +13,4 @@ R3 Owner demo retest: `docs/runbooks/STAGE_3_2_2_R3_OWNER_DEMO_READINESS_RETEST.
 
 Do **not** begin **3.2.3** until Owner authorises after R5 Owner Demo Preview.
 
-**Parallel planning (not 3.2.3):** Post–3.2.2 commercial margin/rate + materials takeoff audit — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`. Implementation Not Started; may be sequenced before or interleaved with 3.2.3 per Owner CF-D7.
+**Parallel workstream:** **COMMERCIAL-P0 Complete Local** (cost-first authority lock). Next commercial batch: Cost-first Rates UI — **Not Started**. Do **not** begin MaterialRequirement / Deck Takeoff / **3.2.3** until Owner authorises.

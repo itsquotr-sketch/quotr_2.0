@@ -1,9 +1,7 @@
 import { round2 } from "@/lib/estimate/facts";
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
-import {
-  deriveSellFromCost,
-  getDefaultMarginPercent,
-} from "@/lib/estimate/rates";
+import { getDefaultMarginPercent } from "@/lib/estimate/rates";
+import { classifyResolvedSell } from "@/lib/commercial-engine/core/cost-first-authority";
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
 import type {
   OrganisationRate,
@@ -107,25 +105,30 @@ export function formatMaterialRateResolutionDisplay(params: {
 
 function buildResolvedMaterialRate(params: {
   costRate: number;
-  sellRate: number;
+  sellRate: number | null | undefined;
   unit: string;
   materialRateSource: MaterialRateSource;
   itemKey: string;
   label: string;
-  sellDerivedFromMargin: boolean;
   organisationSettings: OrganisationSettings | null;
 }): ResolvedMaterialRate {
   const low = params.organisationSettings?.budget_rate_factor ?? 0.9;
   const high = params.organisationSettings?.premium_rate_factor ?? 1.15;
   const sourceType = mapMaterialSourceToRateSourceType(params.materialRateSource);
+  const marginPercent = getDefaultMarginPercent(params.organisationSettings);
+  const classified = classifyResolvedSell({
+    costRate: params.costRate,
+    sellRate: params.sellRate,
+    applicableGrossMarginPercent: marginPercent,
+  });
 
   return {
     costRate: params.costRate,
-    sellRate: params.sellRate,
+    sellRate: classified.sellRate,
     costRateLow: round2(params.costRate * low),
     costRateHigh: round2(params.costRate * high),
-    sellRateLow: round2(params.sellRate * low),
-    sellRateHigh: round2(params.sellRate * high),
+    sellRateLow: round2(classified.sellRate * low),
+    sellRateHigh: round2(classified.sellRate * high),
     unit: params.unit,
     sourceType,
     sourceLabel: formatMaterialRateResolutionDisplay({
@@ -135,7 +138,11 @@ function buildResolvedMaterialRate(params: {
       materialKey: params.itemKey,
     }),
     itemKey: params.itemKey,
-    sellDerivedFromMargin: params.sellDerivedFromMargin,
+    sellDerivedFromMargin: classified.sellDerivedFromMargin,
+    sellAuthority: classified.sellAuthority,
+    grossMarginPercent: classified.grossMarginPercent,
+    isLegacyPairedRate: classified.isLegacyPairedRate,
+    isExplicitSellOverride: classified.isExplicitSellOverride,
     materialRateSource: params.materialRateSource,
     confidence: confidenceForSource(params.materialRateSource),
     rateResolutionDisplay: formatMaterialRateResolutionDisplay({
@@ -162,7 +169,6 @@ export function resolveMaterialRate(params: {
   categoryBenchmarkSellRate?: number;
   organisationSettings: OrganisationSettings | null;
 }): ResolvedMaterialRate {
-  const marginPercent = getDefaultMarginPercent(params.organisationSettings);
   const benchmarkAllowed =
     params.organisationSettings?.allow_benchmark_rates !== false;
   const catalogueEntry = getCatalogueEntry(params.materialKey);
@@ -179,17 +185,13 @@ export function resolveMaterialRate(params: {
   );
 
   if (exactRate?.cost_rate != null) {
-    const sellDerived = exactRate.sell_rate == null;
     return buildResolvedMaterialRate({
       costRate: exactRate.cost_rate,
-      sellRate:
-        exactRate.sell_rate ??
-        deriveSellFromCost(exactRate.cost_rate, marginPercent),
+      sellRate: exactRate.sell_rate,
       unit: exactRate.unit || params.unit,
       materialRateSource: "company_specific",
       itemKey: params.materialKey,
       label,
-      sellDerivedFromMargin: sellDerived,
       organisationSettings: params.organisationSettings,
     });
   }
@@ -203,17 +205,13 @@ export function resolveMaterialRate(params: {
         rate.cost_rate != null
     );
     if (categoryRate?.cost_rate != null) {
-      const sellDerived = categoryRate.sell_rate == null;
       return buildResolvedMaterialRate({
         costRate: categoryRate.cost_rate,
-        sellRate:
-          categoryRate.sell_rate ??
-          deriveSellFromCost(categoryRate.cost_rate, marginPercent),
+        sellRate: categoryRate.sell_rate,
         unit: categoryRate.unit || params.unit,
         materialRateSource: "company_category",
         itemKey: params.categoryKey,
         label,
-        sellDerivedFromMargin: sellDerived,
         organisationSettings: params.organisationSettings,
       });
     }
@@ -228,17 +226,13 @@ export function resolveMaterialRate(params: {
         rate.cost_rate != null
     );
     if (workAreaRate?.cost_rate != null) {
-      const sellDerived = workAreaRate.sell_rate == null;
       return buildResolvedMaterialRate({
         costRate: workAreaRate.cost_rate,
-        sellRate:
-          workAreaRate.sell_rate ??
-          deriveSellFromCost(workAreaRate.cost_rate, marginPercent),
+        sellRate: workAreaRate.sell_rate,
         unit: workAreaRate.unit || params.unit,
         materialRateSource: "company_category",
         itemKey: workAreaRate.item_key,
         label,
-        sellDerivedFromMargin: sellDerived,
         organisationSettings: params.organisationSettings,
       });
     }
@@ -253,34 +247,26 @@ export function resolveMaterialRate(params: {
         rate.cost_rate != null
     );
     if (scopeRate?.cost_rate != null) {
-      const sellDerived = scopeRate.sell_rate == null;
       return buildResolvedMaterialRate({
         costRate: scopeRate.cost_rate,
-        sellRate:
-          scopeRate.sell_rate ??
-          deriveSellFromCost(scopeRate.cost_rate, marginPercent),
+        sellRate: scopeRate.sell_rate,
         unit: scopeRate.unit || params.unit,
         materialRateSource: "company_scope",
         itemKey: params.scopeKey,
         label,
-        sellDerivedFromMargin: sellDerived,
         organisationSettings: params.organisationSettings,
       });
     }
   }
 
   if (benchmarkAllowed) {
-    const sellDerived = params.benchmarkSellRate == null;
     return buildResolvedMaterialRate({
       costRate: params.benchmarkCostRate,
-      sellRate:
-        params.benchmarkSellRate ??
-        deriveSellFromCost(params.benchmarkCostRate, marginPercent),
+      sellRate: params.benchmarkSellRate,
       unit: params.unit,
       materialRateSource: "benchmark_specific",
       itemKey: params.materialKey,
       label,
-      sellDerivedFromMargin: sellDerived,
       organisationSettings: params.organisationSettings,
     });
   }
@@ -289,26 +275,19 @@ export function resolveMaterialRate(params: {
     benchmarkAllowed &&
     params.categoryBenchmarkCostRate != null
   ) {
-    const sellDerived = params.categoryBenchmarkSellRate == null;
     return buildResolvedMaterialRate({
       costRate: params.categoryBenchmarkCostRate,
-      sellRate:
-        params.categoryBenchmarkSellRate ??
-        deriveSellFromCost(params.categoryBenchmarkCostRate, marginPercent),
+      sellRate: params.categoryBenchmarkSellRate,
       unit: params.unit,
       materialRateSource: "benchmark_category",
       itemKey: params.categoryKey ?? params.materialKey,
       label,
-      sellDerivedFromMargin: sellDerived,
       organisationSettings: params.organisationSettings,
     });
   }
 
   const fallbackCost = benchmarkAllowed ? params.benchmarkCostRate : 0;
-  const fallbackSell = benchmarkAllowed
-    ? (params.benchmarkSellRate ??
-      deriveSellFromCost(params.benchmarkCostRate, marginPercent))
-    : 0;
+  const fallbackSell = benchmarkAllowed ? params.benchmarkSellRate : null;
 
   return buildResolvedMaterialRate({
     costRate: fallbackCost,
@@ -317,7 +296,6 @@ export function resolveMaterialRate(params: {
     materialRateSource: benchmarkAllowed ? "benchmark_specific" : "missing",
     itemKey: params.materialKey,
     label,
-    sellDerivedFromMargin: params.benchmarkSellRate == null,
     organisationSettings: params.organisationSettings,
   });
 }

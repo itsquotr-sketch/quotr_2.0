@@ -25,9 +25,10 @@
 
 ## Cost vs sell
 
-- **Cost:** what it costs the business.  
-- **Sell:** what is charged. If sell blank and cost present → derive via default margin.  
-- Both columns exist; cost is required for company-authority resolution.
+- **Cost:** canonical rate authority (COMMERCIAL-P0 / CF-D1) — what it costs the business.  
+- **Sell:** charge-out. Paths: derived from cost + GM; **legacy paired** (grandfathered); or **explicit override** (provenanced).  
+- Markup is display-only — never a sell authority.  
+- See `lib/commercial-engine/core/cost-first-authority.ts` and `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`.
 
 ## Persistence gap (R2C)
 

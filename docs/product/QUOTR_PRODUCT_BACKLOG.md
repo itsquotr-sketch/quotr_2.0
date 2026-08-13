@@ -99,7 +99,7 @@
 - **3.2.1** Deterministic candidate engine: **Complete** (2026-08-12); D1–D16 **OWNER APPROVED**; pure `lib/builder-interview/`; no UI/writes/migrations.
 - **3.2.2** Core project/site interview: **In Owner Preview / R5 Complete Local** (Owner Demo Preview Pending). R2 UX/margin Complete Local; R3 demo-ready Estimate UX Complete Local; R4 demo UX completion Complete Local; **R5 demo UI polish Complete Local**.
 - **3.2.3** Not Started.
-- Post–3.2.2 commercial/materials: **Planning Complete / Implementation Not Started** — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md` (may be sequenced before 3.2.3 per Owner).
+- Post–3.2.2 commercial/materials: **COMMERCIAL-P0 Complete Local**; Cost-first Rates / MaterialRequirement / Deck Takeoff **Not Started** — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`.
 - Production Scope Discovery: **Disabled**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned** (parallel; R2–R5 evidence recorded).
 
 ## Batch notes (Stage 3.1C auth / setup) — CLOSED

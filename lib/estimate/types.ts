@@ -14,6 +14,7 @@ import type {
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
 import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
+import type { SellAuthority } from "@/lib/commercial-engine/core/cost-first-authority";
 
 export type EstimateProject = {
   id: string;
@@ -155,7 +156,14 @@ export type ResolvedRate = {
   sourceLabel: string;
   sourceType: RateSourceType;
   itemKey: string;
+  /** @deprecated Prefer sellAuthority === "derived_from_gross_margin" */
   sellDerivedFromMargin: boolean;
+  /** COMMERCIAL-P0 — how unit sell was obtained */
+  sellAuthority: SellAuthority;
+  /** Org/default GM when sell was derived; null for legacy/explicit */
+  grossMarginPercent: number | null;
+  isLegacyPairedRate: boolean;
+  isExplicitSellOverride: boolean;
 };
 
 export type ResolvedLabourRate = {
@@ -164,7 +172,12 @@ export type ResolvedLabourRate = {
   sourceLabel: string;
   sourceType: RateSourceType;
   itemKey?: string;
+  /** @deprecated Prefer sellAuthority === "derived_from_gross_margin" */
   sellDerivedFromMargin: boolean;
+  sellAuthority: SellAuthority;
+  grossMarginPercent: number | null;
+  isLegacyPairedRate: boolean;
+  isExplicitSellOverride: boolean;
 };
 
 export type WorkAreaCalculator = (

@@ -117,16 +117,16 @@ Every Stage 3 release should track:
 - 3.2.2-R5 implementation: `docs/implementation/STAGE_3_2_2_R5_DEMO_UI_POLISH_COMPLETION.md`
 - 3.2.2-R5 Owner demo retest: `docs/runbooks/STAGE_3_2_2_R5_OWNER_DEMO_RETEST.md`
 
-## Post–3.2.2 commercial / materials (planning — not started)
+## Post–3.2.2 commercial / materials
 
-Audit + architecture only (2026-08-13). Does **not** start Stage 3.2.3, Company DNA, PERF-FUTURE-01, or Production Scope Discovery.
-
-- Commercial margin/rate authority audit: `docs/audits/COMMERCIAL_MARGIN_RATE_AUTHORITY_AUDIT.md`
-- Materials / takeoff current state: `docs/audits/MATERIAL_PRICING_TAKEOFF_CURRENT_STATE_AUDIT.md`
-- Cost-first commercial model (proposed): `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`
-- Material takeoff architecture (proposed): `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md`
-- Sequencing plan: `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
-- Status: **Planning Complete / Implementation Not Started**; recommended P0 commercial authority before or carefully interleaved with **3.2.3 Not Started**
+- Audits + architecture: Complete (2026-08-13)
+- Owner decisions CF-D1–D7: **OWNER APPROVED** — `docs/decisions/COMMERCIAL_P0_OWNER_DECISIONS.md`
+- **COMMERCIAL-P0 Complete Local** — `docs/implementation/COMMERCIAL_P0_AUTHORITY_LOCK_COMPLETION.md`
+- Snapshot safety: `docs/architecture/COMMERCIAL_SNAPSHOT_SAFETY.md`
+- Cost-first Rates UI: **Not Started** — `docs/plans/COST_FIRST_RATES_UI_NEXT_BATCH.md`
+- MaterialRequirement / Deck Takeoff / Stage 3.2.3: **Not Started**
+- Production Scope Discovery **Disabled**; Company DNA **Not Started**; PERF-FUTURE-01 **Planned**
+- Plan: `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
 
 ## Stage 3.1B planning pointers
 

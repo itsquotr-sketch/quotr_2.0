@@ -151,7 +151,7 @@ Estimate lines carry both (allowance/rate factories). Schema allows `rate_type=s
 | ID | Severity | Finding | Demo blocker? |
 | --- | --- | --- | --- |
 | CM-01 | **High — Commercial correctness** | Dual sell authorities: charge-out/benchmark sell ≠ org GM; default labour 60/90 (~33% GM) vs product 20% | **No** (demo) |
-| CM-02 | **High — Commercial correctness** | Margin edit does not invalidate/sync Pricing/Quote (`margin-actions.ts` vs `persist-estimate.ts`) | **No** for QE-only demos; **Yes** if demo includes Pricing/Quote after margin edit |
+| CM-02 | **High — Commercial correctness** | Margin edit did not invalidate/sync Pricing/Quote (`margin-actions.ts` vs `persist-estimate.ts`) — **FIXED in COMMERCIAL-P0** (`markPricingDocumentsNeedingRecalibration`) | Was conditional demo risk; remediated |
 | CM-03 | Medium | `allow_benchmark_rates=false` may still inject fallback money (labelled missing) | No |
 | CM-04 | Medium | Legacy `rates.markup_percent` / `default_markup_percent` noise | No |
 | CM-05 | Medium | DB rate range columns unused; ranges from org factors only | No |
