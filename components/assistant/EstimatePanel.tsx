@@ -116,15 +116,17 @@ function MetricRow({
   prominent,
   dimmed,
   tertiary,
+  trailing,
 }: {
   label: string;
   value: string;
   prominent?: boolean;
   dimmed?: boolean;
   tertiary?: boolean;
+  trailing?: ReactNode;
 }) {
   return (
-    <div className="flex items-baseline justify-between gap-3">
+    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5">
       <span
         className={cn(
           "shrink-0 text-muted-foreground",
@@ -133,20 +135,23 @@ function MetricRow({
       >
         {label}
       </span>
-      <span
-        className={cn(
-          "text-right",
-          prominent
-            ? "text-3xl font-semibold tracking-tight text-foreground"
-            : tertiary
-              ? "text-sm font-medium text-foreground/90"
-              : "text-sm font-medium",
-          dimmed &&
-            "text-muted-foreground line-through decoration-muted-foreground/50"
-        )}
-      >
-        {value}
-      </span>
+      <div className="flex min-w-0 items-center justify-end gap-1.5">
+        <span
+          className={cn(
+            "text-right",
+            prominent
+              ? "text-3xl font-semibold tracking-tight text-foreground"
+              : tertiary
+                ? "text-sm font-medium text-foreground/90"
+                : "text-sm font-medium",
+            dimmed &&
+              "text-muted-foreground line-through decoration-muted-foreground/50"
+          )}
+        >
+          {value}
+        </span>
+        {trailing}
+      </div>
     </div>
   );
 }
@@ -798,7 +803,30 @@ export function EstimatePanel({
                 value={financialView?.marginLabel ?? "—"}
                 dimmed={isStale}
                 tertiary
+                trailing={
+                  !isStale && onMarginSave ? (
+                    <MarginEditControl
+                      marginPercent={estimate.marginPercent}
+                      targetMarginPercent={estimate.targetMarginPercent}
+                      defaultMarginPercent={defaultMarginPercent}
+                      disabled={isRegenerating || isGenerating}
+                      isSaving={isSavingMargin}
+                      onSave={onMarginSave}
+                      presentation="inline"
+                    />
+                  ) : null
+                }
               />
+              {!isStale && onMarginSave && isSavingMargin ? (
+                <SaveStatusIndicator status="saving" isSaving />
+              ) : !isStale && onMarginSave && marginSaveLabel ? (
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-margin-save-label
+                >
+                  {marginSaveLabel}
+                </p>
+              ) : null}
               <MetricRow
                 label="Gross profit"
                 value={financialView?.profitLabel ?? "—"}
@@ -911,83 +939,185 @@ export function EstimatePanel({
           </p>
 
           {/* Secondary expandable information */}
-          <div className="space-y-1.5">
-            {quickEstimatePresentation ? (
+          <div
+            className="space-y-1.5"
+            data-estimate-secondary-details
+          >
+            {/* Mobile: one collapsed “Estimate details” control */}
+            <div className="lg:hidden" data-mobile-estimate-details>
               <QuickEstimateDisclosure
-                title="Project readiness"
-                collapsedHint={readinessCollapsedHint}
+                title="Estimate details"
+                collapsedHint="Scope · Assumptions · Rates · Readiness"
+                defaultOpen={false}
               >
-                <QuickEstimateHierarchy model={quickEstimatePresentation} />
-              </QuickEstimateDisclosure>
-            ) : null}
-
-            {scopeLines ? (
-              <QuickEstimateDisclosure
-                title="Scope"
-                collapsedHint={scopeLines.collapsed}
-              >
-                <ul className="space-y-1.5 text-xs">
-                  <li>
-                    <span className="text-muted-foreground">Work Areas — </span>
-                    {scopeLines.workAreas}
-                  </li>
-                  <li>
-                    <span className="text-muted-foreground">
-                      Included scope —{" "}
-                    </span>
-                    {scopeLines.includedScope}
-                  </li>
-                </ul>
-              </QuickEstimateDisclosure>
-            ) : null}
-
-            <QuickEstimateDisclosure
-              title="Assumptions"
-              collapsedHint={
-                assumptionCount === 0
-                  ? "None listed"
-                  : `${assumptionCount} assumption${assumptionCount === 1 ? "" : "s"}`
-              }
-            >
-              {estimate.assumptions.length === 0 ? (
-                <p className="text-xs text-muted-foreground">
-                  No assumptions listed for this estimate.
-                </p>
-              ) : (
-                <ul className="space-y-1 text-xs text-foreground/90">
-                  {estimate.assumptions.slice(0, 8).map((item) => (
-                    <li key={item} className="flex gap-1.5">
-                      <span aria-hidden>•</span>
-                      <span>{item}</span>
-                    </li>
-                  ))}
-                  {estimate.assumptions.length > 8 ? (
-                    <li className="text-muted-foreground">
-                      +{estimate.assumptions.length - 8} more — use full
-                      breakdown
-                    </li>
+                <div className="space-y-1.5">
+                  {quickEstimatePresentation ? (
+                    <QuickEstimateDisclosure
+                      title="Project readiness"
+                      collapsedHint={readinessCollapsedHint}
+                    >
+                      <QuickEstimateHierarchy
+                        model={quickEstimatePresentation}
+                      />
+                    </QuickEstimateDisclosure>
                   ) : null}
-                </ul>
-              )}
-            </QuickEstimateDisclosure>
 
-            <QuickEstimateDisclosure
-              title="Rate sources"
-              collapsedHint={estimate.rateSourceSummary}
-            >
-              <p className="text-sm font-medium leading-snug">
-                {estimate.rateSourceSummary}
-              </p>
-              {estimate.rateSourceSummary.toLowerCase().includes("benchmark") ||
-              estimate.rateSourceSummary.toLowerCase().includes("missing") ? (
-                <Link
-                  href="/app/rates"
-                  className="mt-1 inline-block text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  {scopeLines ? (
+                    <QuickEstimateDisclosure
+                      title="Scope"
+                      collapsedHint={scopeLines.collapsed}
+                    >
+                      <ul className="space-y-1.5 text-xs">
+                        <li>
+                          <span className="text-muted-foreground">
+                            Work Areas —{" "}
+                          </span>
+                          {scopeLines.workAreas}
+                        </li>
+                        <li>
+                          <span className="text-muted-foreground">
+                            Included scope —{" "}
+                          </span>
+                          {scopeLines.includedScope}
+                        </li>
+                      </ul>
+                    </QuickEstimateDisclosure>
+                  ) : null}
+
+                  <QuickEstimateDisclosure
+                    title="Assumptions"
+                    collapsedHint={
+                      assumptionCount === 0
+                        ? "None listed"
+                        : `${assumptionCount} assumption${assumptionCount === 1 ? "" : "s"}`
+                    }
+                  >
+                    {estimate.assumptions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground">
+                        No assumptions listed for this estimate.
+                      </p>
+                    ) : (
+                      <ul className="space-y-1 text-xs text-foreground/90">
+                        {estimate.assumptions.slice(0, 8).map((item) => (
+                          <li key={item} className="flex gap-1.5">
+                            <span aria-hidden>•</span>
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                        {estimate.assumptions.length > 8 ? (
+                          <li className="text-muted-foreground">
+                            +{estimate.assumptions.length - 8} more — use full
+                            breakdown
+                          </li>
+                        ) : null}
+                      </ul>
+                    )}
+                  </QuickEstimateDisclosure>
+
+                  <QuickEstimateDisclosure
+                    title="Rate sources"
+                    collapsedHint={estimate.rateSourceSummary}
+                  >
+                    <p className="text-sm font-medium leading-snug">
+                      {estimate.rateSourceSummary}
+                    </p>
+                    {estimate.rateSourceSummary
+                      .toLowerCase()
+                      .includes("benchmark") ||
+                    estimate.rateSourceSummary
+                      .toLowerCase()
+                      .includes("missing") ? (
+                      <Link
+                        href="/app/rates"
+                        className="mt-1 inline-block text-xs text-muted-foreground underline-offset-2 hover:underline"
+                      >
+                        Set your rates
+                      </Link>
+                    ) : null}
+                  </QuickEstimateDisclosure>
+                </div>
+              </QuickEstimateDisclosure>
+            </div>
+
+            {/* Desktop rail: keep four disclosures */}
+            <div className="hidden space-y-1.5 lg:block" data-desktop-estimate-details>
+              {quickEstimatePresentation ? (
+                <QuickEstimateDisclosure
+                  title="Project readiness"
+                  collapsedHint={readinessCollapsedHint}
                 >
-                  Set your rates
-                </Link>
+                  <QuickEstimateHierarchy model={quickEstimatePresentation} />
+                </QuickEstimateDisclosure>
               ) : null}
-            </QuickEstimateDisclosure>
+
+              {scopeLines ? (
+                <QuickEstimateDisclosure
+                  title="Scope"
+                  collapsedHint={scopeLines.collapsed}
+                >
+                  <ul className="space-y-1.5 text-xs">
+                    <li>
+                      <span className="text-muted-foreground">Work Areas — </span>
+                      {scopeLines.workAreas}
+                    </li>
+                    <li>
+                      <span className="text-muted-foreground">
+                        Included scope —{" "}
+                      </span>
+                      {scopeLines.includedScope}
+                    </li>
+                  </ul>
+                </QuickEstimateDisclosure>
+              ) : null}
+
+              <QuickEstimateDisclosure
+                title="Assumptions"
+                collapsedHint={
+                  assumptionCount === 0
+                    ? "None listed"
+                    : `${assumptionCount} assumption${assumptionCount === 1 ? "" : "s"}`
+                }
+              >
+                {estimate.assumptions.length === 0 ? (
+                  <p className="text-xs text-muted-foreground">
+                    No assumptions listed for this estimate.
+                  </p>
+                ) : (
+                  <ul className="space-y-1 text-xs text-foreground/90">
+                    {estimate.assumptions.slice(0, 8).map((item) => (
+                      <li key={item} className="flex gap-1.5">
+                        <span aria-hidden>•</span>
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                    {estimate.assumptions.length > 8 ? (
+                      <li className="text-muted-foreground">
+                        +{estimate.assumptions.length - 8} more — use full
+                        breakdown
+                      </li>
+                    ) : null}
+                  </ul>
+                )}
+              </QuickEstimateDisclosure>
+
+              <QuickEstimateDisclosure
+                title="Rate sources"
+                collapsedHint={estimate.rateSourceSummary}
+              >
+                <p className="text-sm font-medium leading-snug">
+                  {estimate.rateSourceSummary}
+                </p>
+                {estimate.rateSourceSummary.toLowerCase().includes("benchmark") ||
+                estimate.rateSourceSummary.toLowerCase().includes("missing") ? (
+                  <Link
+                    href="/app/rates"
+                    className="mt-1 inline-block text-xs text-muted-foreground underline-offset-2 hover:underline"
+                  >
+                    Set your rates
+                  </Link>
+                ) : null}
+              </QuickEstimateDisclosure>
+            </div>
           </div>
 
           {/* Secondary action — full transparency */}
@@ -999,29 +1129,6 @@ export function EstimatePanel({
           >
             {ASSISTANT_ACTION_LABELS.viewFullBreakdown}
           </Button>
-
-          {!isStale && onMarginSave ? (
-            <div className="space-y-1.5">
-              <MarginEditControl
-                marginPercent={estimate.marginPercent}
-                targetMarginPercent={estimate.targetMarginPercent}
-                defaultMarginPercent={defaultMarginPercent}
-                disabled={isRegenerating || isGenerating}
-                isSaving={isSavingMargin}
-                onSave={onMarginSave}
-              />
-              {isSavingMargin ? (
-                <SaveStatusIndicator status="saving" isSaving />
-              ) : marginSaveLabel ? (
-                <p
-                  className="text-xs text-muted-foreground"
-                  data-margin-save-label
-                >
-                  {marginSaveLabel}
-                </p>
-              ) : null}
-            </div>
-          ) : null}
         </>
       )}
     </>

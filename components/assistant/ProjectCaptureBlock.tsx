@@ -110,21 +110,28 @@ export function ProjectCaptureBlock({
 
       <section
         aria-labelledby="site-notes-heading"
-        className="space-y-3 rounded-lg border border-border/60 bg-background px-3 py-3 sm:px-4"
+        className="space-y-2 sm:space-y-3 sm:rounded-lg sm:border sm:border-border/60 sm:bg-background sm:px-4 sm:py-3"
+        data-site-notes-section
       >
         <div className="space-y-1">
           <h4
             id="site-notes-heading"
             className="text-sm font-semibold text-foreground"
           >
-            Site Notes — Ongoing observations
+            <span className="sm:hidden">Site notes</span>
+            <span className="hidden sm:inline">
+              Site Notes — Ongoing observations
+            </span>
           </h4>
-          <p className="text-xs text-muted-foreground">
+          <p className="hidden text-xs text-muted-foreground sm:block">
             Add individual measurements, access issues, client requests and site
             conditions as you inspect the job.
           </p>
         </div>
-        <div className="rounded-md border border-dashed border-border/70 bg-muted/10 px-2.5 py-2.5 sm:px-3">
+        <div
+          className="sm:rounded-md sm:border sm:border-dashed sm:border-border/70 sm:bg-muted/10 sm:px-3 sm:py-2.5"
+          data-site-notes-nesting="responsive"
+        >
           <SiteNotesCaptureCard
             projectId={projectId}
             initialNotes={initialNotes}

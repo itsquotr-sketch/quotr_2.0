@@ -1,6 +1,6 @@
 # Stage 3.2.2 — Core Project/Site Interview Architecture
 
-**Status:** Complete Local — R4 Complete Local / Owner Demo Preview Pending  
+**Status:** Complete Local — R5 Complete Local / Owner Demo Preview Pending  
 **Date:** 2026-08-12  
 **Depends on:** Stage 3.2.1 candidate engine (`e00624f`)
 

@@ -162,7 +162,8 @@ function main(): void {
     "11 secondary actions are presentation states",
     pcBlock.includes('kind: "not_sure"') &&
       pcBlock.includes("Skip for now") &&
-      pcBlock.includes("Use reasonable assumption")
+      (pcBlock.includes("Use reasonable assumption") ||
+        pcBlock.includes("Use assumption"))
   );
   check(
     "12 Not sure copy is truthful (no invent)",

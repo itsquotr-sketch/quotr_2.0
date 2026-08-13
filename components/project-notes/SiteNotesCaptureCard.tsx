@@ -147,11 +147,10 @@ export function SiteNotesCaptureCard({
       {/* Mobile compact entry — desktop always shows composer */}
       {mobileProgressive && !showComposer ? (
         <div
-          className="rounded-xl border border-dashed bg-muted/20 p-3 md:hidden"
+          className="rounded-xl border border-dashed border-border/60 bg-transparent p-0 md:hidden"
           data-site-notes-composer="collapsed"
         >
-          <p className="text-sm font-medium text-foreground">Site notes</p>
-          <p className="mt-0.5 text-xs text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {noteTotal > 0
               ? `${noteTotal} site note${noteTotal === 1 ? "" : "s"} added`
               : "Add site notes for more information"}
@@ -160,7 +159,7 @@ export function SiteNotesCaptureCard({
             type="button"
             variant="outline"
             size="sm"
-            className="mt-2.5 h-9 w-full"
+            className="mt-2 h-9 w-full"
             onClick={() => setComposerOpen(true)}
           >
             {noteTotal > 0 ? "Add another note" : "+ Add site notes"}
@@ -170,8 +169,10 @@ export function SiteNotesCaptureCard({
 
       <div
         className={cn(
-          "space-y-3 rounded-xl border border-dashed bg-muted/20 p-4",
-          isCompact && "p-3",
+          "space-y-3",
+          // Desktop keeps a dashed composer surface; mobile avoids nested card chrome.
+          "md:rounded-xl md:border md:border-dashed md:bg-muted/20 md:p-4",
+          isCompact && "md:p-3",
           mobileProgressive && !showComposer && "hidden md:block"
         )}
         data-site-notes-composer={showComposer ? "open" : "desktop"}

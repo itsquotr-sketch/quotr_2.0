@@ -214,10 +214,13 @@ check(
   )
 );
 check(
-  "provider fallback uses structured copy",
+  "provider fallback uses customer-facing copy",
   presentAssistantError("scope_discovery_provider").includes(
-    "structured scope checks"
-  )
+    "information currently available"
+  ) ||
+    presentAssistantError("scope_discovery_provider").includes(
+      "Review the items below"
+    )
 );
 check(
   "Scope Discovery UI retains provider partial failure copy",

@@ -19,7 +19,7 @@ const SAFE_MESSAGES: Readonly<Record<AssistantErrorClass, string>> = Object.free
   analyse_job:
     "Quotr could not finish analysing this job. Check your project information and try again.",
   scope_discovery_provider:
-    "Quotr completed the structured scope checks, but additional contextual suggestions were unavailable.",
+    "Scope suggestions are based on the information currently available. Review the items below before continuing.",
   scope_review:
     "Scope review could not be updated. Try again, or continue with the current checklist.",
   save: "Could not save. Please try again.",

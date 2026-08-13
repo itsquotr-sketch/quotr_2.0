@@ -76,11 +76,11 @@ export type DismissReasonCode =
 export const SCOPE_DISCOVERY_UI_COPY = Object.freeze({
   cardTitle: "Scope Review",
   cardSubtitle:
-    "Review related work items within your confirmed work areas — inclusions, omissions and clarifications.",
+    "Review the items Quotr expects for this job. Untick anything that doesn't apply.",
   emptyPurpose:
-    "Quotr analyses scope after you confirm work areas. Review the checklist, then confirm the scope.",
+    "After work areas are confirmed, Quotr prepares a scope checklist for you to review.",
   batchIntro:
-    "Quotr has selected the scope items it believes are likely to apply. Untick anything that is not part of this job, then confirm the scope.",
+    "Review the items Quotr expects for this job. Untick anything that doesn't apply.",
   analyseButton: "Analyse scope",
   analyseAgainButton: "Analyse again",
   confirmScopeButton: "Confirm scope",
@@ -95,7 +95,7 @@ export const SCOPE_DISCOVERY_UI_COPY = Object.freeze({
   allDecided:
     "You have reviewed the current scope suggestions. Analyse again if project information changes.",
   providerPartialFailure:
-    "Quotr completed the structured scope checks, but additional contextual suggestions were unavailable.",
+    "Scope suggestions are based on the information currently available. Review the items below before continuing.",
   featureUnavailable: "Scope review is unavailable for this project.",
   qualityLocked:
     "Confirm the scope items above before selecting the specification level.",

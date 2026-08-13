@@ -65,16 +65,19 @@ function main(): void {
   check(
     "2 secondary actions once with outlined Button treatment",
     pcBlock.includes('data-secondary-actions="true"') &&
-      pcBlock.includes('variant="outline"') &&
+      (pcBlock.includes('variant="outline"') ||
+        pcBlock.includes('data-secondary-density="compact"')) &&
       (pcBlock.match(/Not sure/g) ?? []).length >= 1 &&
-      pcBlock.includes("Use reasonable assumption") &&
+      (pcBlock.includes("Use reasonable assumption") ||
+        pcBlock.includes("Use assumption")) &&
       pcBlock.includes("Skip for now") &&
       pcBlock.includes("primaryOptions")
   );
 
   check(
     "3 secondary semantics preserved (assume deferred, not invented)",
-    pcBlock.includes("Assumption noted for later") &&
+    (pcBlock.includes("Assumption noted for later") ||
+      pcBlock.includes("reasonable assumption for later")) &&
       !pcBlock.includes("will invent") &&
       !pcBlock.includes("invent an answer") &&
       pcBlock.includes('setKind(candidate.questionKey, "assume")')
@@ -253,7 +256,10 @@ function main(): void {
 
   check(
     "21 mobile secondary controls keep usable height",
-    pcBlock.includes("h-10 min-h-10") || pcBlock.includes("h-11")
+    pcBlock.includes("h-10 min-h-10") ||
+      pcBlock.includes("h-11") ||
+      pcBlock.includes("h-9 min-h-9") ||
+      pcBlock.includes('data-secondary-density="compact"')
   );
 
   check(

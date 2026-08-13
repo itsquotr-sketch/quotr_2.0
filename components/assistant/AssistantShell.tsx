@@ -1349,14 +1349,20 @@ export function AssistantShell({
                 items={completedEstimateAttentionItems}
                 overview={estimateReviewCompactOverview}
                 isStale={Boolean(estimate?.isStale)}
+                detailsOpen={estimateReviewDetailsOpen}
                 onReviewAttention={handleReviewAttention}
-                onViewDetails={() => {
-                  setEstimateReviewDetailsOpen(true);
-                  window.requestAnimationFrame(() => {
-                    estimateReviewCardRef.current?.scrollIntoView({
-                      behavior: "smooth",
-                      block: "nearest",
-                    });
+                onToggleDetails={() => {
+                  setEstimateReviewDetailsOpen((open) => {
+                    const next = !open;
+                    if (next) {
+                      window.requestAnimationFrame(() => {
+                        estimateReviewCardRef.current?.scrollIntoView({
+                          behavior: "smooth",
+                          block: "nearest",
+                        });
+                      });
+                    }
+                    return next;
                   });
                 }}
               />
@@ -1650,7 +1656,7 @@ export function AssistantShell({
           {showEstimateReviewFullCard ? (
             <CollapsibleStageCard
               title="Estimate Review"
-              subtitle="Review what Quotr will use for this estimate."
+              subtitle="What Quotr understood and will use for this estimate."
               statusLabel={
                 estimate?.isStale
                   ? "Needs refresh"
@@ -1666,17 +1672,23 @@ export function AssistantShell({
                     : "review"
               }
               preferredExpanded={
-                estimateReviewActionable || estimateReviewDetailsOpen
+                estimateReviewDetailsOpen ||
+                (estimateReviewActionable
                   ? stagePrefersExpanded(
                       "estimateReview",
                       activeDisclosureStage
-                    ) || estimateReviewDetailsOpen
-                  : false
+                    )
+                  : false)
               }
-              canCollapse={questionsSubmitted}
-              forceExpanded={
-                Boolean(estimate?.isStale) || estimateReviewDetailsOpen
-              }
+              canCollapse={questionsSubmitted && !Boolean(estimate?.isStale)}
+              forceExpanded={Boolean(estimate?.isStale)}
+              onExpandedChange={(expanded) => {
+                if (!expanded) {
+                  setEstimateReviewDetailsOpen(false);
+                } else {
+                  setEstimateReviewDetailsOpen(true);
+                }
+              }}
               isActive={
                 estimateReviewActionable &&
                 activeDisclosureStage === "estimateReview"

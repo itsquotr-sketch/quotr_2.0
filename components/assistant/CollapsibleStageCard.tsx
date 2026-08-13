@@ -29,6 +29,8 @@ type CollapsibleStageCardProps = {
   preferredExpanded?: boolean;
   /** When true, the card expands and stays expanded regardless of preference. */
   forceExpanded?: boolean;
+  /** Notified when expanded state changes via user toggle (presentation only). */
+  onExpandedChange?: (expanded: boolean) => void;
   canCollapse?: boolean;
   /** Collapsed at-a-glance content (string or rich summary). */
   summaryContent?: ReactNode;
@@ -69,6 +71,7 @@ export function CollapsibleStageCard({
   defaultExpanded = true,
   preferredExpanded,
   forceExpanded = false,
+  onExpandedChange,
   canCollapse = true,
   summaryContent,
   children,
@@ -96,14 +99,18 @@ export function CollapsibleStageCard({
   const showCollapsedChrome = canCollapse && !isExpanded;
 
   const toggle = () => {
-    if (!canCollapse) return;
+    if (!canCollapse || forceExpanded) return;
     const next = !isExpanded;
     setExpansion({ preferred, userExpanded: next });
+    onExpandedChange?.(next);
   };
 
   const openAndAct = () => {
     onAction?.();
-    if (canCollapse) setExpansion({ preferred, userExpanded: true });
+    if (canCollapse) {
+      setExpansion({ preferred, userExpanded: true });
+      onExpandedChange?.(true);
+    }
   };
 
   return (

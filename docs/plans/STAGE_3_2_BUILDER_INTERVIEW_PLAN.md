@@ -1,6 +1,6 @@
 # Stage 3.2 — Builder Interview Implementation Plan
 
-**Status:** Stage 3.2.2 In Owner Preview / R4 Complete Local; 3.2.3 Not Started  
+**Status:** Stage 3.2.2 In Owner Preview / R5 Complete Local; 3.2.3 Not Started  
 **Date:** 2026-08-12  
 **Prerequisite:** Stage 3.1B Complete — Preview Validated (`441f36c`)  
 **Architecture:** `docs/architecture/QUOTR_BUILDER_INTERVIEW_ARCHITECTURE.md`  
@@ -9,7 +9,7 @@
 **Reconciliation:** `docs/audits/STAGE_3_2_0_R1_ARCHITECTURE_RECONCILIATION.md`  
 **3.2.1 engine:** `docs/architecture/STAGE_3_2_1_CANDIDATE_ENGINE_ARCHITECTURE.md`  
 
-**Hard stops:** D1–D16 OWNER APPROVED; 3.2.1 Complete; **3.2.2 In Owner Preview / R4 Complete Local**. Still: no Work Area interview until 3.2.3; no soft-block Generate until 3.2.4; Production Scope Discovery remains Disabled; Company DNA remains Not Started; **do not start 3.2.3 until authorised.**
+**Hard stops:** D1–D16 OWNER APPROVED; 3.2.1 Complete; **3.2.2 In Owner Preview / R5 Complete Local**. Still: no Work Area interview until 3.2.3; no soft-block Generate until 3.2.4; Production Scope Discovery remains Disabled; Company DNA remains Not Started; **do not start 3.2.3 until authorised.**
 
 ---
 
@@ -169,7 +169,7 @@ Return stable sort: P0 → P1 → P2 → P3, then domain, then registry order.
 
 | Field | Value |
 | --- | --- |
-| **Status** | **In Owner Preview / R4 Complete Local** (2026-08-13) — Owner Demo Preview Pending |
+| **Status** | **In Owner Preview / R5 Complete Local** (2026-08-13) — Owner Demo Preview Pending |
 | **Purpose** | Wire ask-layer for CORE project site topics into Assistant (small batch UX); write Constraints |
 | **Migrations** | **None** |
 | **Prereq fixes** | Corrected constraint load table name (`constraints`); occupied key (`occupied_site`) |
@@ -303,5 +303,5 @@ Return stable sort: P0 → P1 → P2 → P3, then domain, then registry order.
 | Path | `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md` |
 | Supersedes for execution planning | `STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md` (handoff retained as pointer) |
 | 3.2.1 | **Complete — Local** |
-| 3.2.2 | **In Owner Preview / R4 Complete Local** (Owner Demo Preview Pending) |
+| 3.2.2 | **In Owner Preview / R5 Complete Local** (Owner Demo Preview Pending) |
 | 3.2.3 | **Not Started** |

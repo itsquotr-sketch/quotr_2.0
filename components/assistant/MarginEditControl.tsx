@@ -10,6 +10,7 @@ import {
   MARGIN_MIN_PERCENT,
   validateTargetMarginPercent,
 } from "@/lib/estimate/margin-override";
+import { cn } from "@/lib/utils";
 
 type MarginEditControlProps = {
   marginPercent: number;
@@ -18,6 +19,13 @@ type MarginEditControlProps = {
   disabled?: boolean;
   isSaving?: boolean;
   onSave: (targetMarginPercent: number | null) => Promise<void>;
+  /**
+   * Stage 3.2.2-R5 — when inline, idle state is only an Edit affordance
+   * (value is shown by the parent metric row).
+   */
+  presentation?: "row" | "inline";
+  /** Open directly in edit mode (used when parent already showed Edit). */
+  startInEditMode?: boolean;
 };
 
 export function MarginEditControl({
@@ -27,8 +35,10 @@ export function MarginEditControl({
   disabled,
   isSaving,
   onSave,
+  presentation = "row",
+  startInEditMode = false,
 }: MarginEditControlProps) {
-  const [isEditing, setIsEditing] = useState(false);
+  const [isEditing, setIsEditing] = useState(startInEditMode);
   const [draftValue, setDraftValue] = useState(
     String(targetMarginPercent ?? marginPercent)
   );
@@ -60,6 +70,25 @@ export function MarginEditControl({
   };
 
   if (!isEditing) {
+    if (presentation === "inline") {
+      return (
+        <Button
+          type="button"
+          variant="ghost"
+          size="sm"
+          className="h-7 px-2 text-xs"
+          disabled={disabled || isSaving}
+          onClick={() => {
+            setDraftValue(String(targetMarginPercent ?? marginPercent));
+            setIsEditing(true);
+          }}
+          data-margin-edit-inline
+        >
+          Edit
+        </Button>
+      );
+    }
+
     return (
       <div className="flex items-baseline justify-between gap-3">
         <span className="shrink-0 text-xs text-muted-foreground">Margin</span>
@@ -91,7 +120,13 @@ export function MarginEditControl({
   }
 
   return (
-    <div className="space-y-2 rounded-lg border border-border/70 bg-background px-2.5 py-2">
+    <div
+      className={cn(
+        "space-y-2 rounded-lg border border-border/70 bg-background px-2.5 py-2",
+        presentation === "inline" && "w-full min-w-[12rem] basis-full"
+      )}
+      data-margin-edit-form
+    >
       <p className="text-xs font-medium text-muted-foreground">
         Target margin %
       </p>

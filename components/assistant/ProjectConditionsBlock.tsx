@@ -401,7 +401,7 @@ export function ProjectConditionsBlock({
           return (
             <li
               key={candidate.questionKey}
-              className="space-y-3 rounded-lg border border-border/40 bg-muted/25 px-3 py-3 sm:px-3.5"
+              className="space-y-2.5 rounded-lg border border-border/40 bg-muted/25 px-3 py-2.5 sm:px-3.5"
               data-project-condition-key={candidate.questionKey}
               data-question-key={candidate.targetKey}
             >
@@ -423,17 +423,18 @@ export function ProjectConditionsBlock({
               />
 
               <div
-                className="flex flex-wrap gap-2 pt-0.5"
+                className="flex flex-wrap items-center gap-x-1 gap-y-1 pt-0.5"
                 data-secondary-actions="true"
+                data-secondary-density="compact"
               >
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   className={cn(
-                    "h-10 min-h-10 border-border/70 bg-background px-3 text-xs font-normal text-muted-foreground shadow-none",
+                    "h-9 min-h-9 px-2.5 text-xs font-normal text-muted-foreground",
                     draft?.kind === "not_sure" &&
-                      "border-foreground/30 font-medium text-foreground"
+                      "bg-muted/60 font-medium text-foreground"
                   )}
                   onClick={() => setKind(candidate.questionKey, "not_sure")}
                   disabled={saving}
@@ -441,29 +442,43 @@ export function ProjectConditionsBlock({
                   Not sure
                 </Button>
                 {candidate.priority !== "P0" ? (
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className={cn(
-                      "h-10 min-h-10 border-border/70 bg-background px-3 text-xs font-normal text-muted-foreground shadow-none",
-                      draft?.kind === "assume" &&
-                        "border-foreground/30 font-medium text-foreground"
-                    )}
-                    onClick={() => setKind(candidate.questionKey, "assume")}
-                    disabled={saving}
-                  >
-                    Use reasonable assumption
-                  </Button>
+                  <>
+                    <span
+                      className="hidden text-muted-foreground/50 sm:inline"
+                      aria-hidden
+                    >
+                      ·
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className={cn(
+                        "h-9 min-h-9 px-2.5 text-xs font-normal text-muted-foreground",
+                        draft?.kind === "assume" &&
+                          "bg-muted/60 font-medium text-foreground"
+                      )}
+                      onClick={() => setKind(candidate.questionKey, "assume")}
+                      disabled={saving}
+                    >
+                      Use assumption
+                    </Button>
+                  </>
                 ) : null}
+                <span
+                  className="hidden text-muted-foreground/50 sm:inline"
+                  aria-hidden
+                >
+                  ·
+                </span>
                 <Button
                   type="button"
-                  variant="outline"
+                  variant="ghost"
                   size="sm"
                   className={cn(
-                    "h-10 min-h-10 border-border/70 bg-background px-3 text-xs font-normal text-muted-foreground shadow-none",
+                    "h-9 min-h-9 px-2.5 text-xs font-normal text-muted-foreground",
                     draft?.kind === "skip" &&
-                      "border-foreground/30 font-medium text-foreground"
+                      "bg-muted/60 font-medium text-foreground"
                   )}
                   onClick={() => setKind(candidate.questionKey, "skip")}
                   disabled={saving}
@@ -480,8 +495,8 @@ export function ProjectConditionsBlock({
               ) : null}
               {draft?.kind === "assume" ? (
                 <p className="text-xs text-muted-foreground">
-                  Assumption noted for later — not saved as a confirmed
-                  condition yet.
+                  Using a reasonable assumption for later — not saved as a
+                  confirmed condition yet.
                 </p>
               ) : null}
               {draft?.kind === "skip" ? (
