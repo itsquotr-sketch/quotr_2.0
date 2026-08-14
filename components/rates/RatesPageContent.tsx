@@ -38,14 +38,20 @@ type RatesPageContentProps = {
   initialSection?: RatesSectionId;
 };
 
+/** Primary Rates navigation — used-now contractor setup. */
 const RATES_SECTIONS = [
   { id: "core", label: "Core labour" },
   { id: "work_types", label: "Work types" },
   { id: "materials", label: "All materials" },
-  { id: "legacy", label: "Legacy benchmarks" },
   { id: "defaults", label: "Defaults" },
   { id: "benchmarks", label: "Fallbacks" },
 ] as const;
+
+/** Historical package rates — kept reachable, not primary nav. */
+const LEGACY_RATES_SECTION = {
+  id: "legacy" as const,
+  label: "Legacy package rates",
+};
 
 function sortWorkTypesByPreference(
   types: string[],
@@ -146,7 +152,9 @@ export function RatesPageContent({
 
   const activeLabel =
     RATES_SECTIONS.find((section) => section.id === activeSection)?.label ??
-    "Rates";
+    (activeSection === LEGACY_RATES_SECTION.id
+      ? LEGACY_RATES_SECTION.label
+      : "Rates");
 
   const companyGrossMarginPercent = resolveCompanyGrossMarginPercent(
     state.settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT
@@ -284,8 +292,8 @@ export function RatesPageContent({
 
         {activeSection === "legacy" ? (
           <RatesTableSection
-            title="Legacy overall benchmarks"
-            description="Generic package rates kept for compatibility. Prefer component rates above. Cost-first still applies when you set a company cost."
+            title="Legacy package rates"
+            description="Older overall package rates kept for history and compatibility. Current estimates use Core labour, Work types, and materials above — prefer those. Cost-first still applies if you edit a cost here."
             catalogue={SCOPE_RATE_CATALOGUE}
             rates={state.rates}
             onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
@@ -307,6 +315,27 @@ export function RatesPageContent({
         {activeSection === "benchmarks" ? (
           <BenchmarkFallbackSection settings={state.settings} />
         ) : null}
+      </div>
+
+      <div className="rounded-lg border border-dashed border-border/70 bg-muted/10 px-3 py-3">
+        <p className="text-xs font-medium text-muted-foreground">Advanced</p>
+        <p className="mt-1 text-xs text-muted-foreground">
+          Older overall package rates are kept for history only. Current jobs use
+          Core labour, Work types, and materials.
+        </p>
+        <button
+          type="button"
+          className={cn(
+            buttonVariants({ variant: "ghost", size: "sm" }),
+            "mt-2 h-8 px-2 text-xs"
+          )}
+          onClick={() => selectSection(LEGACY_RATES_SECTION.id)}
+          aria-current={
+            activeSection === LEGACY_RATES_SECTION.id ? "page" : undefined
+          }
+        >
+          {LEGACY_RATES_SECTION.label}
+        </button>
       </div>
 
       <p className="text-xs text-muted-foreground">

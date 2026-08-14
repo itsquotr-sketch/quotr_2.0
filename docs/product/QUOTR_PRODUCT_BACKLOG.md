@@ -53,6 +53,8 @@
 | ISD-006 | Discovery rerun / idempotency | Feature | P0 | Analyse Job one-shot; no stale/supersede; duplicate risk on notes | Brief locked; note analyse blocked while pending | ScopeDiscoveryRun idempotency; stale/supersede; no duplicate provider calls | Stage 3.1B.4A / 3.1B.4B / 3.1B.5C | OCD-ISD-06/07/08; persistence owner approval | Complete — Local (orchestration + persistence + server run service); remote apply Applied and Verified | `verify-stage-3-1b4a-discovery-orchestration.ts`; `verify-stage-3-1b4b-persistence.ts`; `verify-stage-3-1b5c-gated-server-integration.ts` | Run history for learning later | Explicit user trigger; Analyse Job unchanged |
 | ISD-007 | Discovery latency / progress | Performance | P1 | Only basic Analysing state; no budgets | Unmeasured provider wait | Progress states + latency/cost budgets; cancellation where practical | Stage 3.1B.8 | Latency budget doc | Ready | Measure vs budget in Preview | — | Do not claim SLOs until measured |
 | ISD-008 | Attachment security design | Security | P1 | Photos/documents missing; future media is high-risk | No project attachments | Design DB ownership/RLS **and** Storage bucket policies before media ISD | Pre-media / D-S6 | Deferred schema D-S6 | Deferred | Design review + RLS/storage checklist | Visual evidence for DNA | Architecture-review: both DB and bucket policies required |
+| DEMO-R6 | Mobile Dashboard KPI densify + status dropdown; Legacy Rates Advanced | UX | P1 | Mobile Dashboard KPIs/filter waste vertical space; Legacy package rates clutter primary Rates nav | Tall KPI cards; horizontal status pills; Legacy in primary nav | Compact 2-col KPIs; mobile Status select; Legacy under Advanced only (data retained) | Demo polish / Preview | Cost-first Rates | Complete — Local (Owner smoke pending) | `verify-demo-r6-mobile-dashboard-legacy-rates.ts` | None | Presentation only |
+| RATE-LEGACY-01 | Deprecate/remove unused `scope.*` package rate rows | Cleanup | P2 | Historical package rates may confuse if left editable forever | Rows retained; Advanced UI only | Optional future migration after consumer proof + Owner gate — do **not** delete in DEMO-R6 | Post-demo commercial cleanup | Rate architecture CF-D5 | Deferred | Consumer audit + Owner approval + migration | Not DNA | No calculator change until replacement path exists |
 
 ---
 
@@ -100,6 +102,7 @@
 - **3.2.2** Core project/site interview: **In Owner Preview / R5 Complete Local** (Owner Demo Preview Pending). R2 UX/margin Complete Local; R3 demo-ready Estimate UX Complete Local; R4 demo UX completion Complete Local; **R5 demo UI polish Complete Local**.
 - **3.2.3** Not Started.
 - Post–3.2.2 commercial/materials: **COMMERCIAL-P0 Complete**; **Cost-first Rates Complete Local / Owner Preview Pending**; MaterialRequirement / Deck Takeoff **Not Started** — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`.
+- **DEMO-R6** (Preview polish): compact mobile Dashboard KPIs + mobile status dropdown; Legacy package rates demoted from primary Rates nav to Advanced (data retained; no calculator change). Future: optional Legacy rates deprecation/removal migration (backlog only — not this batch).
 - Production Scope Discovery: **Disabled**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned** (parallel; R2–R5 evidence recorded).
 
 ## Batch notes (Stage 3.1C auth / setup) — CLOSED

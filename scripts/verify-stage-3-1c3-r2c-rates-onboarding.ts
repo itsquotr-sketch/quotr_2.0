@@ -154,7 +154,12 @@ assert(
 
 const ratesPage = read("components/rates/RatesPageContent.tsx");
 assert("Show all work types control", /Show all work types/.test(ratesPage));
-assert("Legacy benchmarks section", /Legacy benchmarks/.test(ratesPage));
+assert(
+  "Legacy package rates under Advanced (not primary nav)",
+  /Advanced/.test(ratesPage) &&
+    /Legacy package rates/.test(ratesPage) &&
+    !/\{ id: "legacy", label: "Legacy benchmarks" \}/.test(ratesPage)
+);
 assert(
   "preferences personalise order copy",
   /personalise|preferred/i.test(ratesPage)

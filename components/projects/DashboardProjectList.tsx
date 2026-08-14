@@ -9,6 +9,7 @@ import { EmptyState } from "@/components/layout/empty-state";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { useIsDesktop } from "@/lib/hooks/use-media-query";
 import {
   DASHBOARD_FILTER_OPTIONS,
@@ -16,6 +17,12 @@ import {
 } from "@/lib/projects/status";
 import type { DashboardProjectListItem, ProjectListFilter } from "@/lib/projects/types";
 import { cn } from "@/lib/utils";
+
+const filterSelectClassName = cn(
+  "h-10 w-full rounded-lg border border-border/60 bg-card px-3 text-sm outline-none transition-[color,box-shadow]",
+  "focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/30",
+  "disabled:cursor-not-allowed disabled:opacity-50"
+);
 
 type DashboardProjectListProps = {
   projects: DashboardProjectListItem[];
@@ -108,8 +115,32 @@ export function DashboardProjectList({
         </div>
       </div>
 
-      <div className="-mx-4 overflow-x-auto px-4 sm:mx-0 sm:px-0">
-        <div className="flex w-max min-w-full gap-1.5 pb-1 sm:flex-wrap sm:w-auto">
+      <div className="space-y-1.5 md:hidden">
+        <Label htmlFor="dashboard-status-filter" className="text-xs text-muted-foreground">
+          Status
+        </Label>
+        <select
+          id="dashboard-status-filter"
+          aria-label="Filter projects by status"
+          disabled={isPending}
+          value={initialFilter}
+          onChange={(event) =>
+            updateParams({
+              filter: event.target.value as ProjectListFilter,
+            })
+          }
+          className={filterSelectClassName}
+        >
+          {DASHBOARD_FILTER_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label === "All" ? "All projects" : option.label}
+            </option>
+          ))}
+        </select>
+      </div>
+
+      <div className="hidden md:-mx-0 md:block">
+        <div className="flex flex-wrap gap-1.5">
           {DASHBOARD_FILTER_OPTIONS.map((option) => (
             <button
               key={option.value}
