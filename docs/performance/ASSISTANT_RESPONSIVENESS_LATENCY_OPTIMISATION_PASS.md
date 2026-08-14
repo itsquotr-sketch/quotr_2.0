@@ -111,6 +111,17 @@ Disclosure toggle / mobile density / Scope Review copy / Estimate details collap
 
 Audit/specification only — no implementation. Cost-first / takeoff work must not introduce per-answer writes or estimate fetch loops. **PERF-FUTURE-01 remains Planned.**
 
+### DEMO-R7 Dashboard findings (2026-08-14)
+
+Safe win shipped in DEMO-R7: Dashboard no longer re-fetches `auth.getUser` + `profiles` solely for `UserMenu` (layout/`AppUserContext` already owns identity). Projects/summary/readiness remain parallel via existing `Promise.all`.
+
+Deferred to **PERF-FUTURE-01** (not demo-safe tonight):
+- Whether `listProjects` + `getDashboardPipelineSummary` can share one org-scoped read without semantic risk
+- Filter `router.replace` RSC remount cost / narrower client update
+- Rates page still duplicates auth+profile for desktop header menu props (optional later de-dupe)
+
+**PERF-FUTURE-01 remains Planned.**
+
 ---
 
 ## Out of scope for Stage 3.1B

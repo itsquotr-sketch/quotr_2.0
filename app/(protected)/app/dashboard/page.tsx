@@ -15,7 +15,6 @@ import { measureServerLoad } from "@/lib/perf/timing";
 import { getProjectNextAction } from "@/lib/projects/next-action";
 import { parseProjectListFilter } from "@/lib/projects/status";
 import { getCompanySetupReadiness } from "@/lib/setup/readiness-actions";
-import { createClient } from "@/lib/supabase/server";
 
 type DashboardPageProps = {
   searchParams: Promise<{ filter?: string; q?: string }>;
@@ -26,18 +25,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   const filter = parseProjectListFilter(params.filter);
   const search = params.q?.trim() ?? "";
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
-  // Layout already redirected if basics missing — no Dashboard flash / soft gate.
+  // Identity comes from AppShell / AppUserContext (layout). Do not re-fetch
+  // auth+profile here — desktop UserMenu reads the shared context.
   const { projects, summary, readiness } = await measureServerLoad(
     "dashboard",
     async () => {
@@ -61,6 +50,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
+        compactOnMobile
         title="Dashboard"
         description="Quote faster. Miss less. Track projects from brief to quote."
         actions={
@@ -68,12 +58,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <div className="hidden md:block">
               <NewProjectDialog />
             </div>
-            <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
+            <UserMenu />
           </div>
         }
       />
-      <PageContainer>
-        <div className="space-y-6">
+      <PageContainer innerClassName="max-md:py-3 max-md:pb-4">
+        <div className="space-y-4 md:space-y-6">
           {isEmpty ? (
             <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-8 text-center sm:px-6">
               <h2 className="text-lg font-semibold tracking-tight">

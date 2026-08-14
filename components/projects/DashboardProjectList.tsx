@@ -90,8 +90,8 @@ export function DashboardProjectList({
           : "Try a different status filter or create a new project.";
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+    <div className="space-y-3 md:space-y-4">
+      <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <form
           className="relative min-w-0 flex-1 sm:max-w-sm"
           onSubmit={(event) => {
@@ -115,7 +115,7 @@ export function DashboardProjectList({
         </div>
       </div>
 
-      <div className="space-y-1.5 md:hidden">
+      <div className="space-y-1 md:hidden">
         <Label htmlFor="dashboard-status-filter" className="text-xs text-muted-foreground">
           Status
         </Label>

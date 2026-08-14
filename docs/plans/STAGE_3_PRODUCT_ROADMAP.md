@@ -125,6 +125,7 @@ Every Stage 3 release should track:
 - Snapshot safety: `docs/architecture/COMMERCIAL_SNAPSHOT_SAFETY.md`
 - Cost-first Rates: **Complete Local / Owner Preview Pending** — `docs/implementation/COST_FIRST_RATES_COMPLETION.md`
 - **DEMO-R6** Preview polish (Complete Local pending Owner smoke): mobile Dashboard KPI densify + status dropdown; Legacy package rates → Advanced nav only (no data delete; calculators unchanged). Verify: `scripts/verify-demo-r6-mobile-dashboard-legacy-rates.ts`. Future Legacy deprecation migration = backlog only.
+- **DEMO-R7** Final demo polish (Complete Local pending Owner): shared mobile header avatar; Dashboard compactOnMobile; safe Dashboard auth/profile de-dupe. Verify: `scripts/verify-demo-r7-mobile-header-dashboard.ts`. Deeper Dashboard latency remains **PERF-FUTURE-01**.
 - MaterialRequirement / Deck Takeoff / Stage 3.2.3: **Not Started**
 - Production Scope Discovery **Disabled**; Company DNA **Not Started**; PERF-FUTURE-01 **Planned**
 - Plan: `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`

@@ -34,7 +34,11 @@ export default async function RatesPage({ searchParams }: RatesPageProps) {
         title="Rates"
         description="Set the rates Quotr uses to prepare estimates."
         actions={
-          <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
+          <UserMenu
+            className="hidden md:inline-flex"
+            userEmail={user?.email}
+            fullName={profile?.full_name}
+          />
         }
       />
       <PageContainer>
