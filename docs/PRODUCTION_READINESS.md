@@ -47,8 +47,13 @@ Runtime validation:
 
 ## Storage
 
-- Company logo URLs are stored as external URLs in company settings (no Supabase Storage bucket required for V1).
-- If logo upload is added later, configure a public or signed bucket with RLS.
+- **BRANDING-P0:** Company logos upload to Supabase Storage bucket `organisation-branding`
+  (`{org_id}/branding/logo.<ext>`). Public read for quote/print rendering; write policies
+  scoped to the signed-in member’s organisation. Migration: `034_organisation_branding_storage.sql`.
+- `organisation_settings.logo_url` stores the display URL (uploaded public URL preferred;
+  legacy external image URLs retained for compatibility).
+- Quotes currently read **live** company branding (not a sent-quote logo snapshot) —
+  future immutability tracked as backlog **BRANDING-SNAPSHOT-01**.
 
 ## Test account setup
 

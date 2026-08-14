@@ -5,6 +5,7 @@ import { z } from "zod";
 import { USER_ERRORS, toUserError } from "@/lib/errors/user-message";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import type { createClient } from "@/lib/supabase/server";
+import { validateLegacyLogoUrl } from "@/lib/settings/logo";
 import type {
   CompanySettings,
   CompanySettingsActionResult,
@@ -286,6 +287,14 @@ export async function updateCompanySettings(
   }
 
   const data = parsed.data;
+
+  if (data.logoUrl !== undefined) {
+    const logoCheck = validateLegacyLogoUrl(data.logoUrl);
+    if (!logoCheck.ok) {
+      return { fieldErrors: { logoUrl: [logoCheck.error] } };
+    }
+  }
+
   await ensureSettingsRow(context.supabase, context.orgId);
 
   const update: Record<string, unknown> = {};

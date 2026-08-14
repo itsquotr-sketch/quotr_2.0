@@ -22,6 +22,11 @@ import {
 } from "@/lib/settings/company-actions";
 import { sanitizeBrandColour } from "@/lib/settings/branding";
 import type { CompanySettings } from "@/lib/settings/types";
+import { CompanyLogoField } from "@/components/settings/CompanyLogoField";
+import {
+  isOrganisationBrandingPublicUrl,
+  validateLegacyLogoUrl,
+} from "@/lib/settings/logo";
 import {
   COMPANY_SECTION_IDS,
   parseCompanySettingsSection,
@@ -576,30 +581,15 @@ export function CompanySettingsContent({
       </SectionCard>
       <SectionCard
         title="Branding"
-        description="Optional. Logo upload is not enabled yet — paste a logo URL."
+        description="Your logo and colours appear on quotes."
       >
-        <div className="space-y-2">
-          <Label htmlFor="logo-url">Logo URL</Label>
-          <Input
-            id="logo-url"
-            value={logoUrl}
-            onChange={(event) => setLogoUrl(event.target.value)}
-            placeholder="https://example.com/logo.png"
-          />
-          {logoUrl.trim() ? (
-            <div className="mt-2 rounded-md border border-border/60 bg-muted/20 p-3">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img
-                src={logoUrl}
-                alt="Logo preview"
-                className="max-h-12 w-auto max-w-[180px] object-contain"
-                onError={(event) => {
-                  event.currentTarget.style.display = "none";
-                }}
-              />
-            </div>
-          ) : null}
-        </div>
+        <CompanyLogoField
+          logoUrl={logoUrl.trim() ? logoUrl : null}
+          onSettingsChange={(next) => {
+            setLogoUrl(next.logoUrl ?? "");
+            // Keep local form settings in sync when upload/remove returns full row.
+          }}
+        />
         <div className="grid gap-4 sm:grid-cols-2">
           <ColourField
             id="brand-primary"
@@ -616,6 +606,50 @@ export function CompanySettingsContent({
             placeholder="#2563eb"
           />
         </div>
+        <details className="rounded-lg border border-dashed border-border/70 bg-muted/10 px-3 py-2">
+          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+            Advanced — legacy logo link
+          </summary>
+          <div className="mt-3 space-y-2">
+            <p className="text-[11px] text-muted-foreground">
+              Prefer Upload logo above. A webpage link (for example an Imgur
+              page) will not display on quotes — use a direct image file link
+              only if you must.
+            </p>
+            <Label htmlFor="logo-url">Legacy logo URL</Label>
+            <Input
+              id="logo-url"
+              value={
+                isOrganisationBrandingPublicUrl(
+                  logoUrl,
+                  process.env.NEXT_PUBLIC_SUPABASE_URL
+                )
+                  ? ""
+                  : logoUrl
+              }
+              onChange={(event) => setLogoUrl(event.target.value)}
+              placeholder="https://example.com/logo.png"
+            />
+            {(() => {
+              const check = validateLegacyLogoUrl(
+                isOrganisationBrandingPublicUrl(
+                  logoUrl,
+                  process.env.NEXT_PUBLIC_SUPABASE_URL
+                )
+                  ? ""
+                  : logoUrl
+              );
+              if (!check.ok) {
+                return (
+                  <p className="text-sm text-destructive" role="alert">
+                    {check.error}
+                  </p>
+                );
+              }
+              return null;
+            })()}
+          </div>
+        </details>
       </SectionCard>
       </>
       ) : null}

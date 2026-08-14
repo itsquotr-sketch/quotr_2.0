@@ -21,6 +21,7 @@ import {
 } from "@/lib/settings/branding";
 import type { CompanySettings } from "@/lib/settings/types";
 import { cn } from "@/lib/utils";
+import { QuoteCompanyLogo } from "@/components/quotes/QuoteCompanyLogo";
 
 // QuoteTemplate is client-facing. Do not render internal pricing fields here.
 
@@ -221,21 +222,11 @@ export function QuoteTemplate({
         )}
       >
         <div className="min-w-0 flex-1 space-y-1">
-          {companySettings?.logoUrl?.trim() ? (
-            // eslint-disable-next-line @next/next/no-img-element
-            <img
-              src={companySettings.logoUrl}
-              alt={companyName || "Company logo"}
-              className="mb-1 max-h-12 w-auto max-w-[200px] object-contain object-left print:max-h-10"
-            />
-          ) : companyName ? (
-            <p
-              className="text-base font-semibold tracking-tight text-neutral-900 print:text-[13pt]"
-              style={brandPrimary ? { color: brandPrimary } : undefined}
-            >
-              {companyName}
-            </p>
-          ) : null}
+          <QuoteCompanyLogo
+            logoUrl={companySettings?.logoUrl}
+            companyName={companyName}
+            brandPrimary={brandPrimary}
+          />
           <div className="space-y-0.5 text-xs leading-relaxed text-neutral-500 print:text-[9.5pt]">
             {contactPrimary ? <p>{contactPrimary}</p> : null}
             {website ? <p>{website}</p> : null}

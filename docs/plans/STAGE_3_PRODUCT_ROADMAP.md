@@ -124,8 +124,9 @@ Every Stage 3 release should track:
 - **COMMERCIAL-P0 Complete Local** — `docs/implementation/COMMERCIAL_P0_AUTHORITY_LOCK_COMPLETION.md`
 - Snapshot safety: `docs/architecture/COMMERCIAL_SNAPSHOT_SAFETY.md`
 - Cost-first Rates: **Complete Local / Owner Preview Pending** — `docs/implementation/COST_FIRST_RATES_COMPLETION.md`
-- **DEMO-R6** Preview polish (Complete Local pending Owner smoke): mobile Dashboard KPI densify + status dropdown; Legacy package rates → Advanced nav only (no data delete; calculators unchanged). Verify: `scripts/verify-demo-r6-mobile-dashboard-legacy-rates.ts`. Future Legacy deprecation migration = backlog only.
-- **DEMO-R7** Final demo polish (Complete Local pending Owner): shared mobile header avatar; Dashboard compactOnMobile; safe Dashboard auth/profile de-dupe. Verify: `scripts/verify-demo-r7-mobile-header-dashboard.ts`. Deeper Dashboard latency remains **PERF-FUTURE-01**.
+- **DEMO-R6** Preview polish: mobile Dashboard KPI densify + status dropdown; Legacy package rates → Advanced. Verify: `scripts/verify-demo-r6-mobile-dashboard-legacy-rates.ts`.
+- **DEMO-R7** Final demo polish: shared mobile header avatar; Dashboard compactOnMobile; safe Dashboard auth/profile de-dupe. Verify: `scripts/verify-demo-r7-mobile-header-dashboard.ts`. Deeper Dashboard latency remains **PERF-FUTURE-01**.
+- **BRANDING-P0** Company logo upload (Complete Local pending Owner): `organisation-branding` storage + Settings upload + quote fallback. Migration `034`. Snapshot immutability → **BRANDING-SNAPSHOT-01**. Verify: `scripts/verify-branding-p0-company-logo.ts`.
 - MaterialRequirement / Deck Takeoff / Stage 3.2.3: **Not Started**
 - Production Scope Discovery **Disabled**; Company DNA **Not Started**; PERF-FUTURE-01 **Planned**
 - Plan: `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
