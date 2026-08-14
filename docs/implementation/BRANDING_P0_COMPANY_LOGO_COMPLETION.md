@@ -1,9 +1,10 @@
 # BRANDING-P0 — Company logo upload + quote rendering
 
-**Status:** Complete Local / Owner Preview Pending  
+**Status:** Complete Local / Preview Ready (migration 034 Applied Remote)  
 **Date:** 2026-08-14  
-**Migration:** `supabase/migrations/034_organisation_branding_storage.sql` (required before upload works on Preview/remote)  
-**Verify:** `npx tsx scripts/verify-branding-p0-company-logo.ts`
+**Migration:** `supabase/migrations/034_organisation_branding_storage.sql` — **Applied** on linked `quotr_2.0` (`lxvnylhsbvudzzupxeqr`)  
+**Verify:** `npx tsx scripts/verify-branding-p0-company-logo.ts`  
+**Commits:** DEMO-R7 `4355c36…`; BRANDING-P0 `80c5ca3…`
 
 **Does not:** MaterialRequirement, Deck takeoff, catalogue, 3.2.3, DNA, PERF-FUTURE-01, Production SD, quote logo snapshot migration.
 
