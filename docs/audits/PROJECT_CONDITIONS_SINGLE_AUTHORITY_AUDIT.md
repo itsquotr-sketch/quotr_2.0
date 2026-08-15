@@ -1,13 +1,14 @@
 # Project Conditions — Single Authority Audit
 
-**Status:** Audit complete (2026-08-15). **IMPLEMENTED in FOUNDATION-R1 (Complete Local / Owner Preview Pending).**  
+**Status:** Audit complete (2026-08-15). **IMPLEMENTED in FOUNDATION-R1.** **FOUNDATION-R1-R1** added applicability filtering, remaining canonical ASK keys, and Generate hard-block (UI + server).  
 **Implementation:** `docs/implementation/FOUNDATION_R1_PROJECT_CONDITIONS_SUPPORT_COMPLETION.md`  
+**R1-R1:** `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`  
 **HEAD (audit baseline):** `f168fe0ec8a857fffa79888435ca90b9e8a1db25`  
 **Mode:** Historical inventory. Duplicate Scope Details questions and DC-01/DC-02 stacking were fixed in R1.  
 **Owner rule:** Project-wide conditions exist **only** in Project Conditions. They must **not** be asked again in Work Area Scope Details.  
 **Prior fix:** Stage 3.2.2-R1 single-consumed **Deck / Fence / Pergola** labour access (`getCombinedLabourAccessFactor`). R1 extended that to demolition / external-stairs / bathroom / retaining wall and removed WA PC questions.
 
-**Taxonomy already states this rule:** `docs/specifications/QUOTR_CONSTRAINT_TAXONOMY.md` §4 — “Do not ask the same semantic question in Scope Details and Constraints and Interview.” **Code does not yet enforce it.**
+**Taxonomy already states this rule:** `docs/specifications/QUOTR_CONSTRAINT_TAXONOMY.md` §4 — “Do not ask the same semantic question in Scope Details and Constraints and Interview.” FOUNDATION-R1 removed WA duplicates; FOUNDATION-R1-R1 makes Project Conditions actually appear and gates Generate on required keys.
 
 ---
 
@@ -36,10 +37,18 @@ Filter: `scope === "PROJECT" && askPolicy === "ASK" && writeTarget === "CONSTRAI
 | `interview.site.parking_loading` | Is parking or loading available on site? | `parking_loading` | `site.parking_loading` | **None** |
 | `interview.risk.hazardous_materials` | Is there asbestos or hazardous materials risk? | `hazardous_materials_risk` | `risk.hazmat` | **None** at project; demo **Fact** consumed |
 | `interview.risk.services_isolated` | Are services isolated before strip-out / demolition? | `services_isolated` | `risk.services` | **None** at project; demo **Fact** consumed |
+| `interview.site.waste_bin_access` | Is skip or bin access straightforward? | `waste_bin_access` | `site.waste_bin` | Disposal/haulage (R1-R1 ASK; applicability-gated) |
+| `interview.site.site_slope` | Is the site sloped? | `site_slope` | `site.slope` | Labour factor (+0.05) |
+| `interview.site.consent_engineering` | Is consent or engineering required? | `consent_engineering` | `compliance.consent` | Persist / suppress |
+| `interview.site.protection_dust_control` | Is protection or dust control required? | `protection_dust_control` | `risk.protection` | Persist / suppress |
+| `interview.site.client_supplied_items` | Will the client supply items? | `client_supplied_items` | `commercial.client_supplied` | Persist / suppress |
+| `interview.site.by_others_trades` | Are other trades working by others? | `by_others_trades` | `commercial.by_others` | Persist / suppress |
+
+**Applicability (R1-R1):** live snapshot asks only keys that `evaluateApplicableProjectConditions` marks material for confirmed WAs + Facts. Required unresolved keys hard-block Generate. Known extracted values show as Known and are not re-asked.
 
 **Persistence:** Project Conditions → `upsertProjectConstraintRecord` → table `constraints`.
 
-**CORE templates also exist** (legacy Site Constraints; **not** in the Project Conditions ASK batch): `waste_bin_access`, `protection_dust_control`, `client_supplied_items`, `by_others_trades`, `consent_engineering`, `site_slope` (`lib/assistant/constraint-templates.ts`). `site_slope` **does** feed `getLabourAdjustmentFactor` (+0.05).
+**CORE templates** remain the fallback questionnaire when Project Conditions is unavailable. Live PC ASK now includes the former CORE-only keys above, filtered by applicability.
 
 ---
 

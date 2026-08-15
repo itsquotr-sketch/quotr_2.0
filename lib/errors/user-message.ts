@@ -57,6 +57,8 @@ export const USER_ERRORS = {
   quoteStatusFailed: "Could not update quote status. Please try again.",
   estimateGenerateFailed:
     "Something went wrong while generating the estimate. Please try again.",
+  projectConditionsIncomplete:
+    "Complete the remaining project information before generating the estimate.",
   estimateSaveFailed:
     "Could not save the estimate. Please try again or regenerate the estimate.",
   recalibrationFailed:

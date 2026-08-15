@@ -327,8 +327,8 @@ export function AssistantShell({
   const preferProjectConditionsAsk =
     questionsSubmitted && projectConditionsUsable;
 
-  // When Project Conditions replaces the Site Constraints questionnaire,
-  // unlock ready_to_estimate so Generate Estimate works without a duplicate form.
+  // FOUNDATION-R1-R1: only unlock Generate when required Project Conditions
+  // are resolved. Empty saveConstraints([]) must not skip the PC stage.
   const estimateStageUnlockRef = useRef(false);
   useEffect(() => {
     if (
@@ -336,6 +336,9 @@ export function AssistantShell({
       constraintsSubmitted ||
       estimateStageUnlockRef.current
     ) {
+      return;
+    }
+    if (!projectConditionsSnapshot?.readiness.canGenerateQuickEstimate) {
       return;
     }
     estimateStageUnlockRef.current = true;
@@ -354,6 +357,7 @@ export function AssistantShell({
     constraintsSubmitted,
     project.id,
     router,
+    projectConditionsSnapshot?.readiness.canGenerateQuickEstimate,
   ]);
 
   const submittedConstraintAnswers = useMemo(() => {
@@ -693,6 +697,15 @@ export function AssistantShell({
     if (isGenerating || pendingAction != null || actionLockRef.current) {
       return;
     }
+    if (
+      preferProjectConditionsAsk &&
+      !projectConditionsSnapshot?.readiness.canGenerateQuickEstimate
+    ) {
+      setActionError(
+        "Complete the remaining project information before generating the estimate."
+      );
+      return;
+    }
     setIsGenerating(true);
     recordPreviewPerf("estimate_generate_ack", 0);
     const endPerf = startPreviewPerf("estimate_generate_complete");
@@ -703,10 +716,26 @@ export function AssistantShell({
         endPerf();
       }
     });
-  }, [isGenerating, pendingAction, project.id, runAction]);
+  }, [
+    isGenerating,
+    pendingAction,
+    project.id,
+    runAction,
+    preferProjectConditionsAsk,
+    projectConditionsSnapshot?.readiness.canGenerateQuickEstimate,
+  ]);
 
   const handleRegenerateEstimate = useCallback(() => {
     if (isRegenerating || pendingAction != null || actionLockRef.current) {
+      return;
+    }
+    if (
+      preferProjectConditionsAsk &&
+      !projectConditionsSnapshot?.readiness.canGenerateQuickEstimate
+    ) {
+      setActionError(
+        "Complete the remaining project information before generating the estimate."
+      );
       return;
     }
     setIsRegenerating(true);
@@ -719,7 +748,14 @@ export function AssistantShell({
         endPerf();
       }
     });
-  }, [isRegenerating, pendingAction, project.id, runAction]);
+  }, [
+    isRegenerating,
+    pendingAction,
+    project.id,
+    runAction,
+    preferProjectConditionsAsk,
+    projectConditionsSnapshot?.readiness.canGenerateQuickEstimate,
+  ]);
 
   const handleQuestionAnswer = useCallback(
     (questionId: string, value: string | number | boolean | string[]) => {
@@ -1058,7 +1094,13 @@ export function AssistantShell({
   const questionsIsCurrent =
     qualitySubmitted && questionBlock !== null && !questionsSubmitted;
   const constraintsIsCurrent = questionsSubmitted && !constraintsSubmitted;
-  const canGenerateEstimate = constraintsSubmitted && !estimateReady;
+  const projectConditionsReadyToGenerate = Boolean(
+    projectConditionsSnapshot?.readiness.canGenerateQuickEstimate
+  );
+  const canGenerateEstimate =
+    constraintsSubmitted &&
+    !estimateReady &&
+    (!preferProjectConditionsAsk || projectConditionsReadyToGenerate);
 
   const activeDisclosureStage = resolveActiveDisclosureStage({
     briefSubmitted,
@@ -1199,7 +1241,8 @@ export function AssistantShell({
     specificationSelected: qualitySubmitted && Boolean(qualityLevel),
     questionsSubmitted,
     constraintsSubmitted:
-      constraintsSubmitted || preferProjectConditionsAsk,
+      constraintsSubmitted &&
+      (!preferProjectConditionsAsk || projectConditionsReadyToGenerate),
   });
   const stepperSummaries = buildStepperStepSummaries({
     answeredQuestionCount,
@@ -1279,7 +1322,9 @@ export function AssistantShell({
     liveConstraints.length > 0
       ? `${liveConstraints.length} condition${liveConstraints.length === 1 ? "" : "s"}`
       : preferProjectConditionsAsk
-        ? "Conditions complete"
+        ? projectConditionsSnapshot?.complete
+          ? "Conditions complete"
+          : `${projectConditionsSnapshot?.remainingCount ?? 0} conditions remaining`
         : null,
   ]
     .filter(Boolean)
@@ -1735,12 +1780,10 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 7. Project Conditions (ASK + known review — 3.2.2-R1/R2) */}
+          {/* 7. Project Conditions (ASK + known review — 3.2.2-R1/R2 / R1-R1) */}
           {questionsSubmitted &&
           preferProjectConditionsAsk &&
-          (projectConditionsNeedsAsk ||
-            showCompletedDetailCards ||
-            !compressCompletedSetup) ? (
+          Boolean(projectConditionsSnapshot?.shouldShowStage) ? (
             <CollapsibleStageCard
               title="Project Conditions"
               subtitle={
@@ -1886,7 +1929,8 @@ export function AssistantShell({
             scopeReview={initialState.scopeReview}
             questionsSubmitted={questionsSubmitted}
             constraintsSubmitted={
-              constraintsSubmitted || preferProjectConditionsAsk
+              constraintsSubmitted &&
+              (!preferProjectConditionsAsk || projectConditionsReadyToGenerate)
             }
             canGenerateEstimate={canGenerateEstimate}
             pendingProposalCount={pendingNoteProposal ? 1 : 0}

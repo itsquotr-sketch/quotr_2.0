@@ -1,8 +1,9 @@
 # Post-Trial Master Development Pipeline
 
-**Status:** Programme active. **FOUNDATION-R1 Complete Local / Owner Preview Pending** (2026-08-15). **FOUNDATION-R2** = Scope Details completeness (**Not Started**). REQ-1/2/3 and Deck pilot **Not Started**.  
+**Status:** Programme active. **FOUNDATION-R1 Complete / Preview regression remediated by R1-R1.** **FOUNDATION-R1-R1 Complete Local / Owner Preview Pending** (2026-08-15). **FOUNDATION-R2** = Scope Details completeness (**Not Started**). REQ-1/2/3 and Deck pilot **Not Started**.  
 **HEAD baseline:** `f168fe0ec8a857fffa79888435ca90b9e8a1db25`  
 **Implementation:** `docs/implementation/FOUNDATION_R1_PROJECT_CONDITIONS_SUPPORT_COMPLETION.md`  
+**R1-R1:** `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`  
 **Audits:**  
 - `docs/audits/POST_TRIAL_MASTER_ARCHITECTURE_AUDIT.md`  
 - `docs/audits/SUPPORTED_WORK_AREA_COVERAGE_AUDIT.md`  
@@ -92,7 +93,7 @@ Risk: L = low, M = medium, H = high (commercial or product-claim).
 
 | Field | Value |
 | --- | --- |
-| **Status** | **Complete Local / Owner Preview Pending** (2026-08-15) |
+| **Status** | **Complete / Preview regression remediated by R1-R1.** |
 | **Implementation** | `docs/implementation/FOUNDATION_R1_PROJECT_CONDITIONS_SUPPORT_COMPLETION.md` |
 | **Verify** | `scripts/verify-foundation-r1-project-conditions-support.ts` |
 | **Dependencies** | PT-AUD-01; 3.2.2 R1 combined helper exists |
@@ -106,13 +107,30 @@ Risk: L = low, M = medium, H = high (commercial or product-claim).
 
 ---
 
+### FOUNDATION-R1-R1 — Project Conditions availability + estimate-readiness
+
+| Field | Value |
+| --- | --- |
+| **Status** | **Complete Local / Owner Preview Pending** (2026-08-15) |
+| **Implementation** | `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md` |
+| **Verify** | `scripts/verify-foundation-r1r1-project-conditions-readiness.ts` |
+| **Dependencies** | FOUNDATION-R1 Preview regression (Generate unlocked; PC stage missing) |
+| **Scope** | Deterministic PC applicability; required/assumable/optional; UI + server Generate hard-block; known-condition suppression; PC stage always visible when known or applicable |
+| **Non-goals** | FOUNDATION-R2; REQ-1; requirement emission; Deck takeoff; 3.2.3; DNA; PERF; Production |
+| **Migration** | None |
+| **Owner preview** | `docs/runbooks/FOUNDATION_R1R1_OWNER_PREVIEW.md` |
+| **Risk** | M (Generate now correctly blocked until required PC resolved) |
+| **Why now** | Owner Preview found Generate before Project Conditions; several WAs showed no PC questions |
+
+---
+
 ### FOUNDATION-R2 — Work Area Scope Details completeness / question quality
 
 | Field | Value |
 | --- | --- |
 | **Status** | **Not Started** |
 | **Objective** | Remaining Scope Details are Work-Area-physical only: conditionals, copy, completeness, no leftover project-logistics overlap |
-| **Dependencies** | FOUNDATION-R1 Owner Preview |
+| **Dependencies** | FOUNDATION-R1-R1 Owner Preview |
 | **Scope** | Question quality/conditionals; skip_bin vs `waste_bin_access`; disposal questions vs project waste; `deck.level` copy vs project `floor_level`; remaining interview DEFER clones; no new WAs |
 | **Non-goals** | Requirement emission; calculator takeoff rewrite; 3.2.3 interview UI; Deck face boards |
 | **Migration** | None |
@@ -382,7 +400,8 @@ Parallel. Evidence-backed P1: Analyse Job wait; margin `router.refresh`; residua
 
 ```
 PT-AUD-01 (done)
-→ FOUNDATION-R1 (Complete Local / Owner Preview Pending)
+→ FOUNDATION-R1 (Complete / Preview regression remediated by R1-R1)
+→ FOUNDATION-R1-R1 (Complete Local / Owner Preview Pending)
 → FOUNDATION-R2 (Scope Details completeness / question quality)
 → REQ-1 (EstimateRequirement envelope)
 → REQ-2 (MaterialRequirement emission)

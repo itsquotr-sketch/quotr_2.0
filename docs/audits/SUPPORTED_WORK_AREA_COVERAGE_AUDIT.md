@@ -1,6 +1,6 @@
 # Supported Work Area Coverage Audit
 
-**Status:** Audit complete (2026-08-15). **Product contract implemented in FOUNDATION-R1** — `docs/architecture/QUOTR_SUPPORTED_WORK_AREA_CONTRACT.md`.  
+**Status:** Audit complete (2026-08-15). **Product contract implemented in FOUNDATION-R1** — `docs/architecture/QUOTR_SUPPORTED_WORK_AREA_CONTRACT.md`. Project Conditions applicability for each product WA is in FOUNDATION-R1-R1 (`lib/project-conditions/applicability.ts`).  
 **HEAD (audit baseline):** `f168fe0ec8a857fffa79888435ca90b9e8a1db25` (`hardening/stage-2a-security`)  
 **Mode:** Historical inventory. Customer labels now Trial-supported / Developing / Component / Not supported yet (never “Estimate-ready”, never A–E in UI).  
 **Companion:** `docs/audits/POST_TRIAL_MASTER_ARCHITECTURE_AUDIT.md`  

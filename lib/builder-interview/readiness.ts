@@ -15,15 +15,28 @@ import { isCurrentAssumption } from "@/lib/builder-interview/assumptions";
 export function deriveInterviewReadiness(params: {
   candidates: readonly InterviewCandidate[];
   assumptionClassifications: readonly ClassifiedAssumption[];
+  /**
+   * FOUNDATION-R1-R1: when provided, these constraint keys hard-block Generate.
+   * Skip / Not sure / deferred assume do not clear a required key.
+   * Omit to keep the 3.2.1 P0 candidate behaviour.
+   */
+  unresolvedRequiredTargetKeys?: readonly string[];
 }): InterviewReadiness {
   const askCandidates = params.candidates.filter((c) => c.askPolicy === "ASK");
 
-  const openP0 = askCandidates.filter(
-    (c) =>
-      c.priority === "P0" &&
-      c.evidenceState !== "ASSUMED" &&
-      c.answerability !== "NOT_APPLICABLE"
-  );
+  const requiredKeySet = params.unresolvedRequiredTargetKeys
+    ? new Set(params.unresolvedRequiredTargetKeys)
+    : null;
+
+  const openP0 = askCandidates.filter((c) => {
+    if (c.evidenceState === "ASSUMED" || c.answerability === "NOT_APPLICABLE") {
+      return false;
+    }
+    if (requiredKeySet) {
+      return requiredKeySet.has(c.targetKey);
+    }
+    return c.priority === "P0";
+  });
   // Expert-unknowable P0 still blocks soft readiness unless assumed — D5/answerability:
   // they remain NEEDS_IMPORTANT_INFORMATION but are flagged in reasons.
   const openP0Answerable = openP0.filter((c) => c.answerability === "ON_SITE" || c.answerability === "REQUIRES_MEASUREMENT");
@@ -35,7 +48,15 @@ export function deriveInterviewReadiness(params: {
     isCurrentAssumption(a.status)
   );
 
-  const blockingCandidateKeys = openP0.map((c) => c.questionKey);
+  const blockingCandidateKeys =
+    requiredKeySet && requiredKeySet.size > 0
+      ? [
+          ...openP0.map((c) => c.questionKey),
+          ...[...requiredKeySet].filter(
+            (key) => !openP0.some((c) => c.targetKey === key)
+          ),
+        ]
+      : openP0.map((c) => c.questionKey);
   const assumptionCandidateKeys = currentAssumptions.map((a) => a.questionKey);
 
   const reasons: string[] = [];
@@ -44,7 +65,9 @@ export function deriveInterviewReadiness(params: {
   if (blockingCandidateKeys.length > 0) {
     state = "NEEDS_IMPORTANT_INFORMATION";
     reasons.push(
-      `Unresolved P0 ASK candidates: ${blockingCandidateKeys.join(", ")}`
+      requiredKeySet
+        ? `Unresolved required Project Conditions: ${[...requiredKeySet].join(", ")}`
+        : `Unresolved P0 ASK candidates: ${blockingCandidateKeys.join(", ")}`
     );
     if (openP0Expert.length > 0) {
       reasons.push(

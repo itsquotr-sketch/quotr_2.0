@@ -57,9 +57,13 @@ export type SemanticTopicId =
   | "site.working_hours"
   | "site.parking_loading"
   | "site.waste_bin"
+  | "site.slope"
   | "risk.hazmat"
   | "risk.services"
   | "risk.protection"
+  | "compliance.consent"
+  | "commercial.client_supplied"
+  | "commercial.by_others"
   | "demo.salvage"
   | "scope.existence"
   | "details.component";
@@ -263,7 +267,7 @@ export type InterviewReadiness = {
   assumptionCandidateKeys: readonly string[];
   openP0Keys: readonly string[];
   openP1Keys: readonly string[];
-  /** Soft-block model for Quick Estimate only (D3). No live generate change in 3.2.1. */
+  /** Soft-block model for Quick Estimate only (D3). FOUNDATION-R1-R1 wires required Project Conditions as a hard block on Generate. */
   canGenerateQuickEstimate: boolean;
   softBlockQuickEstimate: boolean;
 };

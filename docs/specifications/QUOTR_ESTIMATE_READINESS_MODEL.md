@@ -1,6 +1,7 @@
 # Quotr Estimate Readiness Model
 
-**Status:** Stage 3.2.0-R1 conceptual model; **derived in 3.2.1 pure engine**; **presented near Quick Estimate in 3.2.2** (label + attention only) — **Generate soft-block deferred to 3.2.4**  
+**Status:** Stage 3.2.0-R1 conceptual model; **derived in 3.2.1 pure engine**; **presented near Quick Estimate in 3.2.2**. **FOUNDATION-R1-R1** extends the same interview readiness model: unresolved **required applicable Project Conditions** hard-block Generate (UI + server). Soft-block for remaining P0 interview candidates stays deferred to 3.2.4.  
+**Date:** 2026-08-15 (R1-R1 overlay)  
 **Date:** 2026-08-12  
 **Complements:** Builder Interview architecture; existing Quick Estimate attention routing (3.1B R6-R4.1)  
 **Reconciliation:** `docs/audits/STAGE_3_2_0_R1_ARCHITECTURE_RECONCILIATION.md`  
@@ -111,15 +112,28 @@ No new readiness table. Soft-block (Owner D3) may prevent/warn on generate witho
 
 ---
 
-## 6. Generate policy (recommendation for D3)
+## 6. Generate policy
 
 | State | Generate Quick Estimate |
 | --- | --- |
 | READY | Allowed |
-| READY WITH ASSUMPTIONS | Allowed; banner lists assumptions |
-| NEEDS IMPORTANT INFORMATION | Soft-block with CTA to answer 1–3 P0 questions; Owner may allow “estimate anyway” with loud confidence warning |
+| READY WITH ASSUMPTIONS | Allowed only when a **persisted current assumption** exists. Deferred “Use reasonable assumption” (no Constraint write) does **not** clear a required Project Condition. |
+| NEEDS IMPORTANT INFORMATION | **FOUNDATION-R1-R1:** HARD BLOCK when a required applicable Project Condition is unresolved. Remaining P0 interview candidates (non-PC) stay presentation-only until 3.2.4. |
 
-**Recommended:** Soft-block P0, never hard-lock the product behind a full interview.
+### FOUNDATION-R1-R1 overlay (same SoT)
+
+Do **not** invent a second readiness store. `deriveInterviewReadiness` still owns the triad. When `unresolvedRequiredTargetKeys` is provided by `buildProjectConditionsSnapshot`:
+
+| Class | Generate |
+| --- | --- |
+| **Required** applicable, unanswered / Skip / Not sure | HARD BLOCK (`canGenerateQuickEstimate = false`). Server `runEstimateGeneration` refuses with a customer-safe message. |
+| **Assumable** unanswered | Asked; does not block. |
+| **Optional** unanswered | Asked; does not block. |
+| Known extracted constraint | Resolved. Shown as Known. Not re-asked. |
+| Skip / Not sure on required | Unresolved. Must not appear complete. |
+| Assume (current architecture) | `assumption_deferred` — not a Constraint value — not resolved. |
+
+Skip for now must **not** convert HARD BLOCK into READY.
 
 ---
 

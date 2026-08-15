@@ -313,7 +313,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
         .order("sort_order", { ascending: true }),
       supabase
         .from("projects")
-        .select("quality_level")
+        .select("quality_level, stage")
         .eq("id", projectId)
         .eq("org_id", orgId)
         .maybeSingle(),
@@ -352,6 +352,18 @@ export async function saveBuilderInterviewProjectAnswers(input: {
 
   if (savedCount > 0) {
     await markEstimateStale(projectId);
+    revalidateProjectPaths(projectId);
+  }
+
+  if (
+    snapshot.readiness.canGenerateQuickEstimate &&
+    project?.stage === "constraints"
+  ) {
+    await supabase
+      .from("projects")
+      .update({ stage: "ready_to_estimate" })
+      .eq("id", projectId)
+      .eq("org_id", orgId);
     revalidateProjectPaths(projectId);
   }
 

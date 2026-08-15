@@ -322,10 +322,12 @@ function main(): void {
       )
   );
   check(
-    "READINESS Generate Estimate authority unchanged (no softBlock wiring)",
-    !shell.includes("softBlockQuickEstimate &&") &&
-      !shell.includes("canGenerateEstimate=!projectConditions") &&
-      shell.includes("canGenerateEstimate={canGenerateEstimate}")
+    "READINESS Generate Estimate hard-blocks unresolved required Project Conditions (FOUNDATION-R1-R1)",
+    shell.includes("canGenerateQuickEstimate") &&
+      shell.includes("canGenerateEstimate=") &&
+      read(join("lib", "assistant", "actions.ts")).includes(
+        "projectConditionsIncomplete"
+      )
   );
   check(
     "ATTENTION Review routes to projectConditions",

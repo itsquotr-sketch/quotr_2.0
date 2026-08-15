@@ -29,6 +29,7 @@ import { getAnthropicModel } from "@/lib/ai/anthropic";
 import { buildInitialAnalysisInput } from "@/lib/project-notes/build-analysis-source";
 import { isInternalProjectNote } from "@/lib/project-notes/types";
 import { USER_ERRORS } from "@/lib/errors/user-message";
+import { buildLiveProjectConditionsSnapshot } from "@/lib/assistant/builder-interview-live";
 import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { getAnalysisCapableWorkAreaTypes } from "@/lib/scopes/capability";
@@ -1164,6 +1165,37 @@ async function runEstimateGeneration(
 
   if ("error" in contextResult) {
     return { error: contextResult.error };
+  }
+
+  const projectConditions = buildLiveProjectConditionsSnapshot({
+    projectId,
+    qualityLevel: contextResult.project.qualityLevel,
+    workAreas: contextResult.confirmedWorkAreas.map((wa) => ({
+      id: wa.id,
+      type: wa.type,
+      name: wa.name,
+      status: "confirmed" as const,
+    })),
+    facts: contextResult.facts.map((fact) => ({
+      key: fact.key,
+      workAreaId: fact.work_area_id,
+      value: fact.value,
+      source: fact.source ?? null,
+    })),
+    constraints: contextResult.constraints.map((constraint) => ({
+      key: constraint.key,
+      value:
+        typeof constraint.value === "string" ||
+        typeof constraint.value === "number" ||
+        typeof constraint.value === "boolean"
+          ? constraint.value
+          : String(constraint.value ?? ""),
+      source: null,
+    })),
+  });
+
+  if (!projectConditions.readiness.canGenerateQuickEstimate) {
+    return { error: USER_ERRORS.projectConditionsIncomplete };
   }
 
   let estimateResult;

@@ -7,6 +7,8 @@
 **Prereq:** This HEAD deployed Ready on Preview  
 **Do not:** start FOUNDATION-R2, emit requirements, start Deck takeoff, deploy Production
 
+**Owner Preview regression (after this runbook was used):** Generate Estimate was available with no visible Project Conditions. Retest using `docs/runbooks/FOUNDATION_R1R1_OWNER_PREVIEW.md`. Do not start FOUNDATION-R2 until R1-R1 Preview PASS.
+
 ---
 
 ## What changed (for the tester)

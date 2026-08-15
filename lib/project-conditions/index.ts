@@ -15,6 +15,18 @@ export {
 } from "@/lib/project-conditions/canonical";
 
 export {
+  evaluateApplicableProjectConditions,
+  getRequiredApplicableKeys,
+  getUnresolvedRequiredProjectConditionKeys,
+  isProjectConditionKeyApplicable,
+  isProjectConditionResolved,
+  PROJECT_CONDITIONS_APPLICABILITY_VERSION,
+  PROJECT_CONDITIONS_ESTIMATE_BLOCK_MESSAGE,
+  type ApplicableProjectCondition,
+  type ProjectConditionReadinessClass,
+} from "@/lib/project-conditions/applicability";
+
+export {
   resolveLegacyCartingMetres,
   resolveLegacyFloorLevel,
   resolveLegacyHazmat,

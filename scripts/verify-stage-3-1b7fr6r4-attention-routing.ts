@@ -313,11 +313,13 @@ check(
 );
 
 console.log("\nBOUNDARIES");
+const migrationFiles = readdirSync(
+  resolve(process.cwd(), "supabase/migrations")
+);
 check(
-  "no migration 034",
-  !readdirSync(resolve(process.cwd(), "supabase/migrations")).some((f) =>
-    f.startsWith("034")
-  )
+  "034 is branding storage only; R6-R4 added no later migration",
+  migrationFiles.some((f) => f.startsWith("034_organisation_branding")) &&
+    !migrationFiles.some((f) => f.startsWith("035"))
 );
 check(
   "Production Scope Discovery config intact",

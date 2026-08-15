@@ -23,9 +23,13 @@ export const TOPIC_PROJECT_CONSTRAINT_KEY: Partial<
   "site.working_hours": "working_hours",
   "site.parking_loading": "parking_loading",
   "site.waste_bin": "waste_bin_access",
+  "site.slope": "site_slope",
   "risk.hazmat": "hazardous_materials_risk",
   "risk.services": "services_isolated",
   "risk.protection": "protection_dust_control",
+  "compliance.consent": "consent_engineering",
+  "commercial.client_supplied": "client_supplied_items",
+  "commercial.by_others": "by_others_trades",
 };
 
 /** WA fact key suffixes / patterns that map to a topic (for project suppress). */

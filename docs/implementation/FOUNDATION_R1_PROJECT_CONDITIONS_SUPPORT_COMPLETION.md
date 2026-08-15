@@ -1,10 +1,11 @@
 # FOUNDATION-R1 — Project Conditions Support Completion
 
-**Status:** Complete Local / Owner Preview Pending  
+**Status:** Complete / Preview regression remediated by R1-R1. **FOUNDATION-R1-R1** corrects Project Conditions visibility + Generate Estimate gating.  
 **Date:** 2026-08-15  
 **Authorisation:** OD-R1-01, OD-R1-02, OD-CAT-01/02/03, OD-PC-01, OD-T1-01, OD-SNAP-01, OD-FACE-01 (deferred)
 
-**Verify:** `npx tsx scripts/verify-foundation-r1-project-conditions-support.ts`
+**Verify:** `npx tsx scripts/verify-foundation-r1-project-conditions-support.ts`  
+**Remediation:** `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`
 
 ---
 
@@ -58,7 +59,8 @@ Deck / Fence / Pergola labour single-consume from 3.2.2-R1 is **preserved**. Kit
 
 | Item | Status |
 | --- | --- |
-| FOUNDATION-R1 | **Complete Local / Owner Preview Pending** |
+| FOUNDATION-R1 | **Complete / Preview regression remediated by R1-R1** |
+| FOUNDATION-R1-R1 | See `FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md` |
 | FOUNDATION-R2 | Not Started (Scope Details completeness — not requirement emission) |
 | REQ-1 EstimateRequirement envelope | Not Started |
 | MaterialRequirement emission | Not Started |
@@ -83,6 +85,10 @@ Kept as Work-Area-physical or scope-inclusion. Review copy/conditionals in R2; d
 | `*.consent` / engineering on deck, retaining, pergola, stairs | WA consent vs project `consent_engineering` |
 | WA client-supplied (fixtures, paint, hardware, flooring) | Local supply vs project `client_supplied_items` |
 
-Owner preview runbook: `docs/runbooks/FOUNDATION_R1_OWNER_PREVIEW.md`
+Owner preview runbook: `docs/runbooks/FOUNDATION_R1_OWNER_PREVIEW.md`  
+**Preview regression remediation:** `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`  
+**R1-R1 retest:** `docs/runbooks/FOUNDATION_R1R1_OWNER_PREVIEW.md`
 
-**Exact next batch after Owner Preview:** FOUNDATION-R2 — Work Area Scope Details completeness / question quality / conditional logic. Do **not** emit requirements.
+R1 shipped, then Owner Preview found Generate unlocked with no visible Project Conditions. **FOUNDATION-R1-R1** corrects that. Historical R1 completion remains truthful.
+
+**Exact next after R1-R1 Owner Preview PASS:** FOUNDATION-R2 — Work Area Scope Details completeness / question quality / conditional logic. Do **not** emit requirements. Do **not** start R2 until authorised.
