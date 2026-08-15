@@ -53,18 +53,6 @@ export const fenceScope: ScopeDefinition = {
       category: "scope",
     },
     {
-      key: "fence.access",
-      label: "Access difficulty",
-      questionText: "How difficult is site access for this fence?",
-      inputType: "select",
-      options: ["Easy", "Moderate", "Difficult", "Not sure"],
-      required: false,
-      priority: 45,
-      factKey: "fence.access",
-      workAreaType: "fence",
-      category: "risk",
-    },
-    {
       key: "fence.gate_included",
       label: "Gate",
       questionText: "Is a gate included?",

@@ -1,5 +1,5 @@
 import {
-  getLabourAdjustmentFactor,
+  getCombinedLabourAccessFactor,
   getQualityFactor,
 } from "@/lib/estimate/adjustments";
 import { DEMOLITION_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
@@ -39,6 +39,13 @@ import {
   createAssumptionMetadata,
   recordDefaultedNumber,
 } from "@/lib/estimate/assumption-metadata";
+import {
+  resolveLegacyCartingMetres,
+  resolveLegacyFloorLevel,
+  resolveLegacyHazmat,
+  resolveLegacyServicesIsolated,
+  resolveLegacyWorkAreaAccess,
+} from "@/lib/project-conditions/legacy-adapter";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -63,21 +70,6 @@ function withOwner(
 function scopeIncludes(scopeItems: string[], ...keywords: string[]): boolean {
   const joined = scopeItems.map((item) => item.toLowerCase()).join(" ");
   return keywords.some((keyword) => joined.includes(keyword.toLowerCase()));
-}
-
-function accessFactor(access: string | null): number {
-  if (!access) return 1;
-  const lower = access.toLowerCase();
-  if (lower.includes("very poor")) return 1.4;
-  if (
-    lower.includes("poor") ||
-    lower.includes("difficult") ||
-    lower.includes("restrict")
-  ) {
-    return 1.25;
-  }
-  if (lower.includes("moderate")) return 1.1;
-  return 1;
 }
 
 function floorLevelFactor(level: string | null): number {
@@ -115,10 +107,21 @@ export function calculateDemolition(
   const wallLength = getNumberFact(facts, workArea.id, "demolition.wall_length_m");
   const floorArea = getNumberFact(facts, workArea.id, "demolition.floor_area_m2");
   const ceilingArea = getNumberFact(facts, workArea.id, "demolition.ceiling_area_m2");
-  const cartingDistance = getNumberFact(facts, workArea.id, "demolition.carting_distance_m");
-  const access = getStringFact(facts, workArea.id, "demolition.access");
-  const floorLevel = getStringFact(facts, workArea.id, "demolition.floor_level");
-  const servicesIsolated = getStringFact(facts, workArea.id, "demolition.services_isolated");
+  const cartingDistance = resolveLegacyCartingMetres({
+    facts,
+    workAreaId: workArea.id,
+    factKey: "demolition.carting_distance_m",
+  });
+  const floorLevel = resolveLegacyFloorLevel({
+    constraints: context.constraints,
+    facts,
+    workAreaId: workArea.id,
+  });
+  const servicesIsolated = resolveLegacyServicesIsolated({
+    constraints: context.constraints,
+    facts,
+    workAreaId: workArea.id,
+  });
 
   if (scopeItems.length === 0) {
     missingInfo.push(formatMissing("Demolition scope items"));
@@ -147,13 +150,14 @@ export function calculateDemolition(
     assumptions.push("Using assumed demolition area of 25 m² where quantities are unknown.");
   }
 
-  const accessMult = accessFactor(access);
+  // DC-01: floor level is vertical logistics (independent of site access).
+  // Site access / carry / occupied / hours apply once via labourAdjustment.
   const floorMult = floorLevelFactor(floorLevel);
-  const siteFactor = round2(accessMult * floorMult);
+  const siteFactor = round2(floorMult);
 
   if (siteFactor > 1) {
     assumptions.push(
-      `Access/floor level factor ${siteFactor} applied (access: ${access ?? "standard"}, level: ${floorLevel ?? "ground"}).`
+      `Floor-level factor ${siteFactor} applied (level: ${floorLevel ?? "ground"}). Not a second site-access multiplier.`
     );
   }
 
@@ -164,7 +168,12 @@ export function calculateDemolition(
     missingInfo.push(formatMissing("Services isolation"));
   }
 
-  const hazardous = hazardousRiskLevel(facts, workArea.id);
+  const hazardous =
+    resolveLegacyHazmat({
+      constraints: context.constraints,
+      facts,
+      workAreaId: workArea.id,
+    }) ?? hazardousRiskLevel(facts, workArea.id);
   if (hazardous && !hazardous.toLowerCase().includes("none")) {
     assumptions.push(`Hazardous materials risk noted: ${hazardous}. No hazardous removal priced.`);
     exclusions.push(
@@ -176,7 +185,15 @@ export function calculateDemolition(
     context.project,
     context.organisationSettings
   );
-  const labourAdjustment = getLabourAdjustmentFactor(context.constraints);
+  const labourAdjustment = getCombinedLabourAccessFactor({
+    constraints: context.constraints,
+    workAreaAccess: resolveLegacyWorkAreaAccess({
+      constraints: context.constraints,
+      facts,
+      workAreaId: workArea.id,
+      workAreaType: "demolition",
+    }),
+  });
   const labourRate = resolveLabourRate({
     rates: context.rates,
     organisationSettings: context.organisationSettings,
@@ -218,7 +235,7 @@ export function calculateDemolition(
           confidence: effectiveArea ? "confirmed" : "assumed",
           formula:
             siteFactor > 1
-              ? `Area × access/floor factor ${siteFactor}`
+              ? `Area × floor-level factor ${siteFactor}`
               : undefined,
         }),
       }
@@ -598,7 +615,7 @@ export function calculateDemolition(
           createAllowanceLineItem({
             workAreaId: workArea.id,
             workAreaName: workArea.name,
-            label: "Carting/access allowance",
+            label: "Carting/haulage allowance",
             recommendedCost: cartingRates.costRate,
             recommendedSell: cartingRates.sellRate,
             rateSource: cartingRates.sourceLabel,
@@ -625,41 +642,8 @@ export function calculateDemolition(
             quantity: cartingDistance,
             unit: "m",
             confidence: "confirmed",
-          }),
-        }
-      )
-    );
-  } else if (
-    access &&
-    (access.toLowerCase().includes("poor") || access.toLowerCase().includes("moderate"))
-  ) {
-    lineItems.push(
-      withOwner(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Access/carting allowance",
-          recommendedCost: DEMOLITION_BENCHMARKS.cartingAllowance.cost,
-          recommendedSell: DEMOLITION_BENCHMARKS.cartingAllowance.sell,
-          rateSource: "Benchmark allowance",
-          notes: access,
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          qualityFactor,
-        }),
-        "subcontractor_allowance",
-        {
-          scopeKey: "demolition.access",
-          basis: quantityBasisFrom({
-            sourceFact: "demolition.access",
-            sourceLabel: "Site access conditions",
-            quantity: 1,
-            unit: "allowance",
-            confidence: "confirmed",
             formula:
-              accessMult > 1
-                ? `Restricted/poor site access: access/carting allowance included (${access})`
-                : `Site access allowance included (${access})`,
+              "Haulage cost from carting metres — not a second site-access labour multiplier",
           }),
         }
       )
@@ -668,10 +652,6 @@ export function calculateDemolition(
 
   if (getBooleanFact(facts, workArea.id, "demolition.salvage_required")) {
     assumptions.push("Salvage of materials required — additional labour may apply.");
-  }
-
-  if (getBooleanFact(facts, workArea.id, "demolition.noise_hours_restriction")) {
-    assumptions.push("Noise/working hours restrictions may affect programme.");
   }
 
   lineItems.push(

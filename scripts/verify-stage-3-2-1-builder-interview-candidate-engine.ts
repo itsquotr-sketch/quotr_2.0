@@ -547,8 +547,8 @@ function main(): void {
   };
   const overrideResult = buildBuilderInterviewCandidates(overrideInput);
   check(
-    "Explicit demolition floor mismatch allows access override candidate",
-    overrideResult.candidates.some(
+    "Explicit demolition floor mismatch does not ASK access override (DEFER / Project Conditions own access)",
+    !overrideResult.candidates.some(
       (c) => c.questionKey === "interview.wa.demolition.access_override"
     )
   );

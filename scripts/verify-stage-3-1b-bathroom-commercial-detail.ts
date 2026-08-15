@@ -227,13 +227,13 @@ check(
 );
 
 // Single accessFactor on each line — no duplicate accessKey in metadata.
-check(
-  "no duplicate access multiplier fields on demolition meta",
-  demo?.labourMinimum?.accessFactor === 1.1 &&
-    Object.keys(demo?.labourMinimum ?? {}).filter((k) =>
-      k.toLowerCase().includes("access")
-    ).length <= 3
-);
+  check(
+    "no duplicate access multiplier fields on demolition meta",
+    Math.abs((demo?.labourMinimum?.accessFactor ?? 0) - 1.15) < 1e-9 &&
+      Object.keys(demo?.labourMinimum ?? {}).filter((k) =>
+        k.toLowerCase().includes("access")
+      ).length <= 3
+  );
 
 // ─── Distinction documented in code comments / helpers ───────
 check(

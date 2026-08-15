@@ -27,20 +27,20 @@ Demolition handling:
 
 Fact key rules:
 - Use canonical fact keys matching scope templates.
-- Deck: deck.length_m, deck.width_m, deck.height_m, deck.level, deck.board_material, deck.board_width_mm, deck.access_type, deck.vertical_face_boards_required, deck.balustrade_required, deck.handrail_required, deck.existing_deck_removal, deck.access, deck.substructure_included, deck.pile_or_post_replacement_required, deck.pile_or_post_count, deck.substructure_condition, deck.engineering_or_consent_status.
-- Fence: fence.length_m, fence.height_m, fence.material, fence.gate_included, fence.gate_count, fence.demolition_required, fence.disposal_required, fence.finish_required, fence.finish_type, fence.finish_sides, fence.access, fence.slope_condition, fence.boundary_approval_status, fence.services_risk.
-- Pergola: pergola.length_m, pergola.width_m, pergola.area_m2, pergola.material, pergola.attached, pergola.roofing_included, pergola.roofing_type, pergola.footings_required, pergola.gutters_included, pergola.tie_in_existing, pergola.finish_required, pergola.finish_type, pergola.access, pergola.engineering_or_consent_status.
-- Retaining wall: retaining_wall.length_m, retaining_wall.height_m, retaining_wall.is_raking, retaining_wall.height_high_m, retaining_wall.height_low_m, retaining_wall.fixing_type, retaining_wall.material, retaining_wall.drainage_required, retaining_wall.drain_connection_required, retaining_wall.backfill_included, retaining_wall.backfill_depth_m, retaining_wall.excavation_required, retaining_wall.carting_distance_m, retaining_wall.access, retaining_wall.engineering_or_consent_status, retaining_wall.disposal_included.
-- Bathroom: bathroom.area_m2, bathroom.renovation_type, bathroom.demolition_required, bathroom.fixtures_client_supplied, bathroom.fixtures_included (array), bathroom.waterproofing_included, bathroom.tiling_included, bathroom.floor_tiling_area_m2, bathroom.wall_tiling_area_m2, bathroom.tile_extent, bathroom.wall_tile_height, bathroom.shower_type, bathroom.plumbing_changes, bathroom.electrical_changes, bathroom.underfloor_heating_included, bathroom.ventilation_included, bathroom.wall_lining_included, bathroom.floor_prep_included, bathroom.access.
-- Kitchen: kitchen.area_m2, kitchen.renovation_type, kitchen.demolition_required, kitchen.cabinetry_included, kitchen.cabinetry_client_supplied, kitchen.cabinetry_type, kitchen.benchtop_included, kitchen.splashback_included, kitchen.rangehood_included, kitchen.flooring_included, kitchen.appliances_included, kitchen.appliances_client_supplied, kitchen.plumbing_changes, kitchen.electrical_changes, kitchen.access.
+- Deck: deck.length_m, deck.width_m, deck.height_m, deck.level, deck.board_material, deck.board_width_mm, deck.access_type, deck.vertical_face_boards_required, deck.balustrade_required, deck.handrail_required, deck.existing_deck_removal, deck.substructure_included, deck.pile_or_post_replacement_required, deck.pile_or_post_count, deck.substructure_condition, deck.engineering_or_consent_status.
+- Fence: fence.length_m, fence.height_m, fence.material, fence.gate_included, fence.gate_count, fence.demolition_required, fence.disposal_required, fence.finish_required, fence.finish_type, fence.finish_sides, fence.slope_condition, fence.boundary_approval_status, fence.services_risk.
+- Pergola: pergola.length_m, pergola.width_m, pergola.area_m2, pergola.material, pergola.attached, pergola.roofing_included, pergola.roofing_type, pergola.footings_required, pergola.gutters_included, pergola.tie_in_existing, pergola.finish_required, pergola.finish_type, pergola.engineering_or_consent_status.
+- Retaining wall: retaining_wall.length_m, retaining_wall.height_m, retaining_wall.is_raking, retaining_wall.height_high_m, retaining_wall.height_low_m, retaining_wall.fixing_type, retaining_wall.material, retaining_wall.drainage_required, retaining_wall.drain_connection_required, retaining_wall.backfill_included, retaining_wall.backfill_depth_m, retaining_wall.excavation_required, retaining_wall.engineering_or_consent_status, retaining_wall.disposal_included.
+- Bathroom: bathroom.area_m2, bathroom.renovation_type, bathroom.demolition_required, bathroom.fixtures_client_supplied, bathroom.fixtures_included (array), bathroom.waterproofing_included, bathroom.tiling_included, bathroom.floor_tiling_area_m2, bathroom.wall_tiling_area_m2, bathroom.tile_extent, bathroom.wall_tile_height, bathroom.shower_type, bathroom.plumbing_changes, bathroom.electrical_changes, bathroom.underfloor_heating_included, bathroom.ventilation_included, bathroom.wall_lining_included, bathroom.floor_prep_included.
+- Kitchen: kitchen.area_m2, kitchen.renovation_type, kitchen.demolition_required, kitchen.cabinetry_included, kitchen.cabinetry_client_supplied, kitchen.cabinetry_type, kitchen.benchtop_included, kitchen.splashback_included, kitchen.rangehood_included, kitchen.flooring_included, kitchen.appliances_included, kitchen.appliances_client_supplied, kitchen.plumbing_changes, kitchen.electrical_changes.
 - Internal walls: internal_walls.length_lm, internal_walls.height_m, internal_walls.framing_type, internal_walls.wall_lining_type, internal_walls.plasterboard_type, internal_walls.lining_sides, internal_walls.insulation_included, internal_walls.skirtings_included, internal_walls.demolition_included, internal_walls.stopping_included, internal_walls.painting_included.
 - Ceilings: ceilings.area_m2, ceilings.ceiling_type, ceilings.structure_type, ceilings.battens_included, ceilings.insulation_included, ceilings.stopping_included, ceilings.painting_included, ceilings.demolition_included.
 - Doors: doors.count, doors.door_type, doors.supply_scope, doors.prehung, doors.frames_included, doors.hardware_install_included, doors.hardware_client_supplied, doors.architraves_included, doors.painting_included, doors.existing_removal.
 - Flooring: flooring.area_m2, flooring.type, flooring.supply_scope, flooring.client_supplied, flooring.existing_flooring_removal, flooring.floor_prep_level, flooring.underlay_included, flooring.scotia_included, flooring.stairs_or_landings_included, flooring.disposal_included.
 - Painting: painting.location, painting.internal_area_m2, painting.external_area_m2, painting.surfaces (array), painting.coats_required, painting.prep_level, painting.paint_client_supplied, painting.door_painting_included, painting.primer_required.
 - Plastering: plastering.area_m2, plastering.level, plastering.surface_type, plastering.sanding_included, plastering.complexity.
-- Demolition: demolition.scope_items (array), demolition.area_m2, demolition.wall_length_m, demolition.floor_area_m2, demolition.ceiling_area_m2, demolition.disposal_included, demolition.skip_bin_included, demolition.carting_distance_m, demolition.access, demolition.floor_level, demolition.services_isolated, demolition.hazardous_materials_risk, demolition.salvage_required.
-- External stairs: external_stairs.risers_count, external_stairs.total_rise_m, external_stairs.width_m, external_stairs.material, external_stairs.landing_included, external_stairs.landing_area_m2, external_stairs.handrail_included, external_stairs.balustrade_included, external_stairs.existing_removal, external_stairs.access, external_stairs.ground_condition, external_stairs.consent_or_engineering_status, external_stairs.finish_required, external_stairs.finish_type, external_stairs.stringer_type.
+- Demolition: demolition.scope_items (array), demolition.area_m2, demolition.wall_length_m, demolition.floor_area_m2, demolition.ceiling_area_m2, demolition.disposal_included, demolition.skip_bin_included, demolition.salvage_required.
+- External stairs: external_stairs.risers_count, external_stairs.total_rise_m, external_stairs.width_m, external_stairs.material, external_stairs.landing_included, external_stairs.landing_area_m2, external_stairs.handrail_included, external_stairs.balustrade_included, external_stairs.existing_removal, external_stairs.ground_condition, external_stairs.consent_or_engineering_status, external_stairs.finish_required, external_stairs.finish_type, external_stairs.stringer_type.
 - Legacy keys still accepted: deck.material, deck.has_stairs, deck.has_balustrade, deck.demolition_required, bathroom.waterproofing_required, demolition.waste_removal_required, external_stairs.riser_count, external_stairs.handrail_required, demolition.hazardous_materials_suspected, demolition.services_isolation_required.
 - Do not create duplicate facts with different labels for the same information.
 - If length and width are provided, include both facts; do not also guess area — area will be calculated deterministically from length × width.
@@ -54,7 +54,7 @@ Fact key rules:
 - "vertical boards down the side" → deck.vertical_face_boards_required=true.
 - "remove existing deck" → deck.existing_deck_removal=true.
 - "8 piles" / "piles need redoing" → deck.pile_or_post_replacement_required=true, deck.pile_or_post_count=8 when stated.
-- "sloping boundary" / "poor access" → fence.slope_condition or fence.access=Difficult.
+- "sloping boundary" / "poor access" → fence.slope_condition or project constraint site_access=Difficult. Do not write fence.access.
 - "allow for disposal" / "include disposal" → fence.disposal_required=true or retaining_wall.disposal_included=true as appropriate.
 - "stain the fence" / "paint the fence" → fence.finish_required=true, fence.finish_type=stain or paint.
 - "attached pergola" → pergola.attached=Attached; "freestanding pergola" → pergola.attached=Free-standing.
@@ -64,7 +64,7 @@ Fact key rules:
 - "face fixed" → retaining_wall.fixing_type=Face-fixed.
 - "backfill 300mm" → retaining_wall.backfill_included=true, retaining_wall.backfill_depth_m=0.3.
 - "novacoil" / "connect to drain" → retaining_wall.drainage_required=true, retaining_wall.drain_connection_required as stated.
-- "45m carting distance" → retaining_wall.carting_distance_m=45.
+- "45m carting distance" → possibleConstraints material_carry_distance (project). Do not write retaining_wall.carting_distance_m as a new Work Area fact.
 - "raking wall from 1m down to 400mm" → retaining_wall.is_raking=true, retaining_wall.height_high_m=1, retaining_wall.height_low_m=0.4.
 - "bathroom fixtures supplied by client" → bathroom.fixtures_client_supplied=true.
 - "full bathroom reno" / "full bathroom renovation" → bathroom.renovation_type=Full strip-out and rebuild.
@@ -119,10 +119,10 @@ Fact key rules:
 - "internal demo" / "soft strip" / "gut the room" → demolition work area, demolition.scope_items includes General strip-out.
 - "dispose of waste" / "disposal included" → demolition.disposal_included=true.
 - "skip included" / "skip bin" → demolition.skip_bin_included=true, demolition.disposal_included=true.
-- "cart 40m to skip" → demolition.carting_distance_m=40.
-- "upstairs apartment" / "upper floor" → demolition.floor_level=Upper floor.
-- "services isolated by others" → demolition.services_isolated=By others.
-- "possible asbestos" / "asbestos suspected" → demolition.hazardous_materials_risk=Possible asbestos.
+- "cart 40m to skip" → project material_carry_distance, not demolition.carting_distance_m.
+- "upstairs apartment" / "upper floor" → project constraint floor_level=Upper floor. Do not write demolition.floor_level.
+- "services isolated by others" → project constraint services_isolated.
+- "possible asbestos" / "asbestos suspected" → project constraint hazardous_materials_risk.
 - "build 8 step timber stair" / "8-step stairs" → external_stairs.risers_count=8.
 - "external stairs to deck" → external_stairs work area recognised.
 - "1.4m rise" / "1.4 m total rise" → external_stairs.total_rise_m=1.4.

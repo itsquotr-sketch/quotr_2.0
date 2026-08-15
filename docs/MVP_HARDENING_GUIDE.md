@@ -410,4 +410,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-12 |
 | Stage 0 status | Complete |
-| Next stage | Stage **3.2.2-R5 Owner Demo Preview**; **Cost-first Rates Owner Preview**; **DEMO-R6/R7** Preview; **BRANDING-P0** Complete Local (apply migration 034); then **MaterialRequirement** when authorised. Production Scope Discovery **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**. |
+| Next stage | **FOUNDATION-R1 Complete Local / Owner Preview Pending**. Next impl when authorised: **FOUNDATION-R2** (Scope Details completeness — not requirement emission, not 3.2.3, not Deck takeoff). Production Scope Discovery **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**. |

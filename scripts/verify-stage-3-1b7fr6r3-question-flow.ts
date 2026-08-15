@@ -210,9 +210,9 @@ check(
 
 console.log("\nBOUNDARIES");
 check(
-  "no migration 034",
+  "no FOUNDATION-R1 migration (034 branding from later batch is allowed)",
   !readdirSync(resolve(process.cwd(), "supabase/migrations")).some((f) =>
-    f.startsWith("034")
+    /foundation.?r1|035_|036_/i.test(f)
   )
 );
 check(

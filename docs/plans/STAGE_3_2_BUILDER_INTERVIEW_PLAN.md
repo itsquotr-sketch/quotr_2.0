@@ -11,7 +11,9 @@
 
 **Hard stops:** D1–D16 OWNER APPROVED; 3.2.1 Complete; **3.2.2 In Owner Preview / R5 Complete Local**. Still: no Work Area interview until 3.2.3; no soft-block Generate until 3.2.4; Production Scope Discovery remains Disabled; Company DNA remains Not Started; **do not start 3.2.3 until authorised.**
 
-**Related (outside 3.2.3):** Post–3.2.2 commercial — **COMMERCIAL-P0 Complete Local**; Cost-first Rates / MaterialRequirement **Not Started** — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`.
+**Related (outside 3.2.3):** Post–3.2.2 commercial — **COMMERCIAL-P0 Complete Local**; **Cost-first Rates Complete Local / Owner Preview Pending**; MaterialRequirement **Not Started** — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`.
+
+**Post-trial reconciliation (2026-08-15):** original 3.2.3 “suppress project-known topics” merged into **FOUNDATION-R1** (**Complete Local / Owner Preview Pending**). 3.2.3 remains **Not Started**. Do not start 3.2.3 as originally scoped.
 
 ---
 
@@ -185,6 +187,7 @@ Return stable sort: P0 → P1 → P2 → P3, then domain, then registry order.
 | --- | --- |
 | **Status** | **Not Started** |
 | **Purpose** | WA overrides + conditional WA questions; suppress project-known topics in Scope Details generation |
+| **Post-trial note** | Suppress/remove project-condition duplicates is proposed for **FOUNDATION-R1** (`docs/audits/PROJECT_CONDITIONS_SINGLE_AUTHORITY_AUDIT.md`). Remaining WA-conditional interview → pipeline **PT-BI-1**. Do not implement in the audit batch. |
 
 ### 3.2.4 — Assumption / readiness integration
 

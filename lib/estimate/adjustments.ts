@@ -159,10 +159,12 @@ export function getLabourAdjustmentFactor(
     factor += 0.05;
   }
 
-  const rwAccess = constraints.find(
-    (constraint) => constraint.key === "retaining_wall.access"
-  );
-  if (String(rwAccess?.value).toLowerCase() === "difficult") {
+  // FOUNDATION-R1 OD-PC-01 — occupied / hours consumed once here.
+  // UNKNOWN / Not sure / No must not be treated as Yes.
+  if (isOccupiedSiteRestriction(constraints)) {
+    factor += 0.05;
+  }
+  if (isWorkingHoursRestriction(constraints)) {
     factor += 0.05;
   }
 
@@ -170,30 +172,60 @@ export function getLabourAdjustmentFactor(
   return Math.min(factor, 1.35);
 }
 
+function isAffirmativeRestriction(value: string | null): boolean {
+  if (!value) return false;
+  const lower = value.toLowerCase();
+  if (
+    lower === "no" ||
+    lower === "false" ||
+    lower === "none" ||
+    lower === "not sure" ||
+    lower === "unknown" ||
+    lower === "unsure"
+  ) {
+    return false;
+  }
+  return (
+    lower === "yes" ||
+    lower === "true" ||
+    lower.includes("restrict") ||
+    lower.includes("occupied") ||
+    lower.includes("after hours") ||
+    lower.includes("limited")
+  );
+}
+
+export function isOccupiedSiteRestriction(
+  constraints: EstimateConstraint[]
+): boolean {
+  return isAffirmativeRestriction(getConstraintValue(constraints, "occupied_site"));
+}
+
+export function isWorkingHoursRestriction(
+  constraints: EstimateConstraint[]
+): boolean {
+  return isAffirmativeRestriction(getConstraintValue(constraints, "working_hours"));
+}
+
 /**
- * Stage 3.2.2-R1 — One real-world site-access condition → one labour effect.
+ * Stage 3.2.2-R1 + FOUNDATION-R1 — One real-world site-access condition → one labour effect.
  *
  * When project `site_access` already contributes via getLabourAdjustmentFactor,
  * do NOT also multiply by a WA access Fact (deck.access / fence.access / …).
- * WA access only applies when project site_access is absent or Easy / Not sure.
+ * WA access only applies when project site_access is absent.
+ * Easy / Not sure on the project key is still the project answer (no WA fallback multiply).
  *
- * Carry remains a separate legitimate multiplier inside getLabourAdjustmentFactor.
- * Demolition carting *allowance* line items remain separate (discrete haulage cost).
+ * Carry, occupied site, and working hours are separate legitimate multipliers
+ * inside getLabourAdjustmentFactor (once). Haulage *allowance* $ lines remain
+ * discrete carting cost, never a second access labour multiply.
  */
 export function projectSiteAccessAlreadyApplied(
   constraints: EstimateConstraint[]
 ): boolean {
-  const access = getConstraintValue(constraints, "site_access")?.toLowerCase();
-  if (!access) return false;
-  if (
-    access === "easy" ||
-    access === "not sure" ||
-    access === "unknown" ||
-    access === "unsure"
-  ) {
-    return false;
-  }
-  return true;
+  // Any stored project site_access (including Easy / Not sure) is the authority.
+  // WA access Facts must not multiply on top.
+  const access = getConstraintValue(constraints, "site_access");
+  return Boolean(access && access.trim());
 }
 
 export function getCombinedLabourAccessFactor(params: {
@@ -220,6 +252,13 @@ export function getConstraintNotes(constraints: EstimateConstraint[]): string {
   const carry = getConstraintValue(constraints, "material_carry_distance");
   if (carry && !carry.startsWith("<")) {
     notes.push(`carry distance ${carry}`);
+  }
+
+  if (isOccupiedSiteRestriction(constraints)) {
+    notes.push("occupied site");
+  }
+  if (isWorkingHoursRestriction(constraints)) {
+    notes.push("restricted working hours");
   }
 
   if (notes.length === 0) return "";
@@ -249,15 +288,21 @@ export function getWorkAreaAccessFactor(
   return 1;
 }
 
-/** Prefer WA Fact; fall back to project site_access constraint (7F-R6). */
+/**
+ * @deprecated FOUNDATION-R1 — project `site_access` is the authority.
+ * Prefer getCombinedLabourAccessFactor. Kept for verify-script compatibility.
+ * Project constraint wins when present; WA value is legacy-only fallback.
+ */
 export function resolveWorkAreaAccessValue(params: {
   readonly workAreaAccess: string | null | undefined;
   readonly constraints: EstimateConstraint[];
 }): string | null {
+  const project = getConstraintValue(params.constraints, "site_access");
+  if (project) return project;
   if (params.workAreaAccess && String(params.workAreaAccess).trim()) {
     return String(params.workAreaAccess).trim();
   }
-  return getConstraintValue(params.constraints, "site_access");
+  return null;
 }
 
 /** Fence/pergola slope or ground condition labour multiplier. */

@@ -210,9 +210,9 @@ const DEMO_RENO_RISK: RegistryQuestionDef[] = [
     inputType: "select",
     options: ["Easy", "Moderate", "Poor", "Very poor", "Not sure"],
     priority: "P1",
-    askPolicy: "ASK",
+    askPolicy: "DEFER",
     reasonForAsking:
-      "Only when demolition floor/access differs from project-wide site access.",
+      "FOUNDATION-R1: site access is owned by Project Conditions. Historical Fact retained; never ASK as a WA fallback.",
     impact: { estimate: "labour", scope: "none", confidence: "medium" },
     answerability: "ON_SITE",
     triggerRuleIds: ["has_demolition_wa", "work_area_type_matches"],
@@ -229,7 +229,6 @@ const DEMO_RENO_RISK: RegistryQuestionDef[] = [
 const WA_ACCESS_CLONES: RegistryQuestionDef[] = [
   "demolition",
   "internal_walls",
-  "ceilings",
   "doors",
   "flooring",
   "painting",
@@ -249,9 +248,9 @@ const WA_ACCESS_CLONES: RegistryQuestionDef[] = [
   inputType: "select" as const,
   options: ["Easy", "Moderate", "Poor", "Very poor", "Not sure"],
   priority: "P2" as const,
-  askPolicy: "ASK" as const,
+  askPolicy: "DEFER" as const,
   reasonForAsking:
-    "WA access clone — suppressed by project site_access unless override trigger.",
+    "FOUNDATION-R1: WA access clone — Project Conditions owns site.access. Never ASK.",
   impact: {
     estimate: "labour" as const,
     scope: "none" as const,
@@ -277,9 +276,9 @@ const WA_CARRY_CLONES: RegistryQuestionDef[] = [
     question: "Approximate carting distance for demolition waste (m)?",
     inputType: "number",
     priority: "P2",
-    askPolicy: "ASK",
+    askPolicy: "DEFER",
     reasonForAsking:
-      "WA carry clone — suppressed by project material_carry_distance unless override.",
+      "FOUNDATION-R1: carting/carry is owned by Project Conditions. Historical metres Fact retained; never ASK.",
     impact: { estimate: "labour", scope: "none", confidence: "low" },
     answerability: "REQUIRES_MEASUREMENT",
     triggerRuleIds: ["has_demolition_wa", "work_area_type_matches"],

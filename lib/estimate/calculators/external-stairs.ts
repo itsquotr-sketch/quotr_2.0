@@ -1,5 +1,5 @@
 import {
-  getLabourAdjustmentFactor,
+  getCombinedLabourAccessFactor,
   getQualityFactor,
 } from "@/lib/estimate/adjustments";
 import {
@@ -43,6 +43,7 @@ import type {
   EstimateLineItemInput,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
+import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
 function withOwner(
   item: EstimateLineItemInput,
@@ -56,20 +57,6 @@ function withOwner(
     pricingOwner: owner,
     scopeKey: opts?.scopeKey,
   });
-}
-
-function accessFactor(access: string | null): number {
-  if (!access) return 1;
-  const lower = access.toLowerCase();
-  if (
-    lower.includes("poor") ||
-    lower.includes("difficult") ||
-    lower.includes("restrict")
-  ) {
-    return 1.25;
-  }
-  if (lower.includes("moderate")) return 1.1;
-  return 1;
 }
 
 function groundFactor(condition: string | null): number {
@@ -164,7 +151,6 @@ export function calculateExternalStairs(
     "external_stairs.finish_required"
   );
   const finishType = getStringFact(facts, workArea.id, "external_stairs.finish_type");
-  const access = getStringFact(facts, workArea.id, "external_stairs.access");
   const groundCondition = getStringFact(
     facts,
     workArea.id,
@@ -179,7 +165,9 @@ export function calculateExternalStairs(
   if (!riserCount) missingInfo.push(formatMissing("Riser count or total rise"));
   if (!material) missingInfo.push(formatMissing("Stair material"));
 
-  const siteFactor = round2(accessFactor(access) * groundFactor(groundCondition));
+  // DC-02: ground at the stair location is WA-specific. Site access is consumed
+  // once via labourAdjustment — do not also multiply accessFactor here.
+  const siteFactor = round2(groundFactor(groundCondition));
   const widthMult = widthFactor(widthM);
 
   if (approximateRisers && riserCount) {
@@ -190,7 +178,7 @@ export function calculateExternalStairs(
 
   if (siteFactor > 1) {
     assumptions.push(
-      `Site factor ${siteFactor} applied (access: ${access ?? "standard"}, ground: ${groundCondition ?? "level"}).`
+      `Ground-condition factor ${siteFactor} applied (${groundCondition ?? "level"}). Not a second site-access multiplier.`
     );
   }
 
@@ -203,7 +191,15 @@ export function calculateExternalStairs(
     context.project,
     context.organisationSettings
   );
-  const labourAdjustment = getLabourAdjustmentFactor(context.constraints);
+  const labourAdjustment = getCombinedLabourAccessFactor({
+    constraints: context.constraints,
+    workAreaAccess: resolveLegacyWorkAreaAccess({
+      constraints: context.constraints,
+      facts,
+      workAreaId: workArea.id,
+      workAreaType: "external_stairs",
+    }),
+  });
   const labourRate = resolveLabourRate({
     rates: context.rates,
     organisationSettings: context.organisationSettings,

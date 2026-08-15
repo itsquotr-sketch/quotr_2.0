@@ -52,6 +52,7 @@ type BriefCase = {
   brief: string;
   expectedWorkAreaTypes: string[];
   expectedFacts?: ExpectedFact[];
+  expectedProjectConditionSignals?: { key: string; textHint: string }[];
   dimensionPair?: DimensionPairAssertion;
   strictDimensions?: StrictDimensionsAssertion;
   forbiddenFactKeys?: string[];
@@ -70,7 +71,6 @@ const CASES: BriefCase[] = [
       { key: "deck.board_width_mm", value: 140 },
       { key: "deck.existing_deck_removal", value: true },
       { key: "deck.balustrade_required", value: true },
-      { key: "deck.access", value: "Moderate" },
     ],
     forbiddenFactKeys: ["recommended_cost", "recommended_sell", "price"],
   },
@@ -138,9 +138,13 @@ const CASES: BriefCase[] = [
       { key: "retaining_wall.fixing_type", value: "Face-fixed" },
       { key: "retaining_wall.backfill_included", value: true },
       { key: "retaining_wall.drainage_required", value: true },
-      { key: "retaining_wall.carting_distance_m", value: 45 },
-      { key: "retaining_wall.access", value: "Difficult" },
     ],
+    // FOUNDATION-R1: poor access + 45 m carting are Project Conditions, not WA facts.
+    expectedProjectConditionSignals: [
+      { key: "site_access", textHint: "access" },
+      { key: "material_carry_distance", textHint: "45" },
+    ],
+    forbiddenFactKeys: ["retaining_wall.access"],
   },
 ];
 
@@ -563,6 +567,18 @@ async function runCase(client: Anthropic, model: string, testCase: BriefCase) {
 
   for (const expected of testCase.expectedFacts ?? []) {
     assertFactExtracted(assertionContext, expected);
+  }
+
+  for (const signal of testCase.expectedProjectConditionSignals ?? []) {
+    const inFacts = result.facts.some((fact) => fact.key === signal.key);
+    const hint = signal.textHint.toLowerCase();
+    const inConstraints = result.possibleConstraints.some((item) =>
+      item.toLowerCase().includes(hint)
+    );
+    assert(
+      inFacts || inConstraints,
+      `${testCase.name}: project condition ${signal.key} (not a WA duplicate)`
+    );
   }
 
   const rawJson = JSON.stringify(result).toLowerCase();

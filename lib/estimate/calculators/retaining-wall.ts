@@ -1,8 +1,7 @@
 import {
+  getCombinedLabourAccessFactor,
   getConstraintNotes,
-  getLabourAdjustmentFactor,
   getQualityFactor,
-  hasPoorAccess,
 } from "@/lib/estimate/adjustments";
 import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
 import { RETAINING_WALL_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
@@ -39,6 +38,10 @@ import type {
   EstimateContext,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
+import {
+  resolveLegacyCartingMetres,
+  resolveLegacyWorkAreaAccess,
+} from "@/lib/project-conditions/legacy-adapter";
 
 function resolveWallHeight(
   facts: EstimateContext["facts"],
@@ -166,7 +169,15 @@ export function calculateRetainingWall(
     context.project,
     context.organisationSettings
   );
-  const labourAdjustment = getLabourAdjustmentFactor(context.constraints);
+  const labourAdjustment = getCombinedLabourAccessFactor({
+    constraints: context.constraints,
+    workAreaAccess: resolveLegacyWorkAreaAccess({
+      constraints: context.constraints,
+      facts,
+      workAreaId: workArea.id,
+      workAreaType: "retaining_wall",
+    }),
+  });
   const labourRate = resolveLabourRate({
     rates: context.rates,
     organisationSettings: context.organisationSettings,
@@ -459,34 +470,28 @@ export function calculateRetainingWall(
     assumptions.push("Engineering/consent requirements are subject to confirmation.");
   }
 
-  const cartingDistance = getNumberFact(
+  const cartingDistance = resolveLegacyCartingMetres({
     facts,
-    workArea.id,
-    "retaining_wall.carting_distance_m"
-  );
-  const access = getStringFact(facts, workArea.id, "retaining_wall.access");
+    workAreaId: workArea.id,
+    factKey: "retaining_wall.carting_distance_m",
+  });
 
-  if (cartingDistance || access || hasPoorAccess(context.constraints)) {
+  if (cartingDistance && cartingDistance > 0) {
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Carting/material handling allowance",
         recommendedCost:
-          cartingDistance && cartingDistance > 30
+          cartingDistance > 30
             ? RETAINING_WALL_BENCHMARKS.cartingLong.cost
             : RETAINING_WALL_BENCHMARKS.cartingModerate.cost,
         recommendedSell:
-          cartingDistance && cartingDistance > 30
+          cartingDistance > 30
             ? RETAINING_WALL_BENCHMARKS.cartingLong.sell
             : RETAINING_WALL_BENCHMARKS.cartingModerate.sell,
         rateSource: "Benchmark allowance",
-        notes: [
-          cartingDistance ? `${cartingDistance} m carting distance` : null,
-          access ? `${access} access` : null,
-        ]
-          .filter(Boolean)
-          .join(" · "),
+        notes: `${cartingDistance} m carting distance — haulage cost, not a second site-access labour multiplier`,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor: NO_FINISH_QUALITY_FACTOR,

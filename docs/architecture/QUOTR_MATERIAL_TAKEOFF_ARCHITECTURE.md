@@ -1,9 +1,11 @@
 # Quotr Material Takeoff Architecture
 
 **Status:** Proposed architecture (not implemented) — 2026-08-13  
+**Post-trial (2026-08-15):** MaterialRequirement + LabourRequirement absorbed/extended by `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (**not implemented**). Deck face-board geometry in §7 remains valid pending Owner **OD-FACE-01**.  
 **Prerequisite audit:** `docs/audits/MATERIAL_PRICING_TAKEOFF_CURRENT_STATE_AUDIT.md`  
 **Commercial model:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
-**Plan:** `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
+**Plan:** `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`  
+**Programme:** `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`
 
 **Hard stop:** Do not invent a large catalogue or build UI in this pass. Takeoff must share calculator authority with pricing — never an AI shopping list.
 

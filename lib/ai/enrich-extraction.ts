@@ -1,5 +1,6 @@
 import type { AIExtractionOutput } from "@/lib/ai/schema";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
+import { shouldDropDuplicateFactOnIngest } from "@/lib/project-conditions/canonical";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
 
@@ -120,6 +121,7 @@ function addFact(
     confidence?: number;
   }
 ): void {
+  if (shouldDropDuplicateFactOnIngest(params.key)) return;
   const exists = extraction.facts.some(
     (fact) =>
       fact.key === params.key && fact.work_area_type === params.workAreaType
@@ -148,6 +150,7 @@ function upsertFact(
     confidence?: number;
   }
 ): void {
+  if (shouldDropDuplicateFactOnIngest(params.key)) return;
   const existing = extraction.facts.find(
     (fact) =>
       fact.key === params.key && fact.work_area_type === params.workAreaType
@@ -1447,62 +1450,12 @@ function applyConstraintFactsToWorkAreas(
   brief: string,
   extraction: AIExtractionOutput
 ): void {
-  const cartingM = matchCartingDistanceM(brief);
-  const siteAccess = mapAccessConstraint(brief);
-
-  if (siteAccess && hasWorkAreaType(extraction, "retaining_wall")) {
-    const accessValue =
-      siteAccess === "Difficult" ? "Poor" : siteAccess;
-    addFact(extraction, {
-      workAreaType: "retaining_wall",
-      key: "retaining_wall.access",
-      label: "Access",
-      value: accessValue,
-    });
-  }
-
-  if (cartingM !== null) {
-    if (hasWorkAreaType(extraction, "retaining_wall")) {
-      addFact(extraction, {
-        workAreaType: "retaining_wall",
-        key: "retaining_wall.carting_distance_m",
-        label: "Carting distance",
-        value: cartingM,
-        unit: "m",
-      });
-    }
-    if (hasWorkAreaType(extraction, "demolition")) {
-      addFact(extraction, {
-        workAreaType: "demolition",
-        key: "demolition.carting_distance_m",
-        label: "Carting distance",
-        value: cartingM,
-        unit: "m",
-      });
-    }
-  }
-
-  if (includesAny(brief, ["level 2", "upstairs", "upper floor"])) {
-    if (hasWorkAreaType(extraction, "demolition")) {
-      addFact(extraction, {
-        workAreaType: "demolition",
-        key: "demolition.floor_level",
-        label: "Floor level",
-        value: "Upper floor",
-      });
-    }
-  }
-
-  if (includesAny(brief, ["services isolated by others"])) {
-    if (hasWorkAreaType(extraction, "demolition")) {
-      addFact(extraction, {
-        workAreaType: "demolition",
-        key: "demolition.services_isolated",
-        label: "Services isolated",
-        value: "By others",
-      });
-    }
-  }
+  // FOUNDATION-R1: do not dual-write project logistics onto WA Facts.
+  // Constraints extracted in extractConstraintsFromBrief are the authority.
+  void brief;
+  extraction.facts = extraction.facts.filter(
+    (fact) => !shouldDropDuplicateFactOnIngest(fact.key)
+  );
 }
 
 function mergePossibleConstraints(

@@ -157,18 +157,6 @@ export const internalWallsScope: ScopeDefinition = {
       category: "scope",
     },
     {
-      key: "internal_walls.access",
-      label: "Access difficulty",
-      questionText: "What is the site access like?",
-      inputType: "select",
-      options: ["Easy", "Moderate", "Difficult", "Not sure"],
-      required: false,
-      priority: 65,
-      factKey: "internal_walls.access",
-      workAreaType: "internal_walls",
-      category: "risk",
-    },
-    {
       key: "internal_walls.insulation_included",
       label: "Insulation",
       questionText: "Is wall insulation included?",

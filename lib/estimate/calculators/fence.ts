@@ -35,6 +35,7 @@ import type {
   EstimateContext,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
+import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
 function getFenceMaterialRates(material: string | null, context: EstimateContext) {
   const normalized = material?.toLowerCase() ?? "";
@@ -119,7 +120,12 @@ export function calculateFence(
   const labourAdjustment =
     getCombinedLabourAccessFactor({
       constraints: context.constraints,
-      workAreaAccess: getStringFact(facts, workArea.id, "fence.access"),
+      workAreaAccess: resolveLegacyWorkAreaAccess({
+        constraints: context.constraints,
+        facts,
+        workAreaId: workArea.id,
+        workAreaType: "fence",
+      }),
     }) *
     getSlopeLabourFactor(
       getStringFact(facts, workArea.id, "fence.slope_condition")

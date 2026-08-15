@@ -298,7 +298,10 @@ console.log("\nBOUNDARIES");
 const migrations = existsSync(resolve(process.cwd(), "supabase/migrations"))
   ? readdirSync(resolve(process.cwd(), "supabase/migrations"))
   : [];
-check("no migration 034", !migrations.some((f) => f.startsWith("034")));
+check(
+  "no FOUNDATION-R1 migration (034 branding from later batch is allowed)",
+  !migrations.some((f) => /foundation.?r1|035_|036_/i.test(f))
+);
 check(
   "R6-R1 docs present",
   existsSync(

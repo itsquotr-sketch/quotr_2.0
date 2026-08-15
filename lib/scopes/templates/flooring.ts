@@ -134,18 +134,6 @@ export const flooringScope: ScopeDefinition = {
       category: "scope",
     },
     {
-      key: "flooring.access",
-      label: "Access difficulty",
-      questionText: "What is the site access like?",
-      inputType: "select",
-      options: ["Easy", "Moderate", "Difficult", "Not sure"],
-      required: false,
-      priority: 55,
-      factKey: "flooring.access",
-      workAreaType: "flooring",
-      category: "risk",
-    },
-    {
       key: "flooring.stairs_or_landings_included",
       label: "Stairs or landings",
       questionText: "Are stairs or landings included in the flooring scope?",

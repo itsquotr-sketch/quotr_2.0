@@ -105,6 +105,7 @@ Every Stage 3 release should track:
 - 3.2.1 completion: `docs/implementation/STAGE_3_2_1_CANDIDATE_ENGINE_COMPLETION.md`
 - Handoff (historical pointer): `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_HANDOFF.md`
 - Status: **3.2.2 In Owner Preview / R5 Complete Local**; **3.2.3 Not Started**; Production Scope Discovery **Disabled**; Company DNA **Not Started**
+- Post-trial audit (docs only): `docs/audits/POST_TRIAL_MASTER_ARCHITECTURE_AUDIT.md`
 - 3.2.2-R1 audit: `docs/audits/STAGE_3_2_2_R1_DECK_OWNER_PREVIEW_AUDIT.md`
 - 3.2.2-R1 remediation: `docs/implementation/STAGE_3_2_2_R1_PROJECT_CONDITIONS_REMEDIATION.md`
 - 3.2.2-R1 Deck retest: `docs/runbooks/STAGE_3_2_2_R1_DECK_PREVIEW_RETEST.md`
@@ -130,6 +131,7 @@ Every Stage 3 release should track:
 - MaterialRequirement / Deck Takeoff / Stage 3.2.3: **Not Started**
 - Production Scope Discovery **Disabled**; Company DNA **Not Started**; PERF-FUTURE-01 **Planned**
 - Plan: `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
+- **Post-trial programme:** `docs/audits/POST_TRIAL_MASTER_ARCHITECTURE_AUDIT.md`; pipeline `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`. **FOUNDATION-R1 Complete Local / Owner Preview Pending**. **FOUNDATION-R2** = Scope Details completeness (**Not Started**). REQ-1/2/3 **Not Started**. Stage **3.2.3 remains Not Started**. Do not mark future phases Complete.
 
 ## Stage 3.1B planning pointers
 

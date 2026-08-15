@@ -1,4 +1,4 @@
-import { getQualityFactor, getQualityFactorNote, getWorkAreaAccessFactor, resolveWorkAreaAccessValue } from "@/lib/estimate/adjustments";
+import { getCombinedLabourAccessFactor, getQualityFactor, getQualityFactorNote } from "@/lib/estimate/adjustments";
 import { BATHROOM_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   applyAllowanceMinimum,
@@ -48,6 +48,7 @@ import type {
   EstimateContext,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
+import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
 function carpentryPrepHours(areaM2: number, renovationType: string | null): number {
   const base = renovationType?.toLowerCase().includes("full") ? 16 : 10;
@@ -134,12 +135,26 @@ export function calculateBathroom(
     workArea.id,
     "bathroom.demolition_required"
   );
-  const accessValue = resolveWorkAreaAccessValue({
-    workAreaAccess: getStringFact(facts, workArea.id, "bathroom.access"),
+  const labourAdjustment = getCombinedLabourAccessFactor({
     constraints: context.constraints,
+    workAreaAccess: resolveLegacyWorkAreaAccess({
+      constraints: context.constraints,
+      facts,
+      workAreaId: workArea.id,
+      workAreaType: "bathroom",
+    }),
   });
-  const accessFactor = getWorkAreaAccessFactor(accessValue);
-  const accessLabel = accessValue ?? undefined;
+  const accessFactor = labourAdjustment;
+  const projectAccess = context.constraints.find((c) => c.key === "site_access");
+  const accessLabel =
+    (projectAccess?.value != null ? String(projectAccess.value) : null) ??
+    resolveLegacyWorkAreaAccess({
+      constraints: context.constraints,
+      facts,
+      workAreaId: workArea.id,
+      workAreaType: "bathroom",
+    }) ??
+    undefined;
   const smallJobFactor = smallBathroomFactor(effectiveArea);
 
   if (demolitionRequired) {

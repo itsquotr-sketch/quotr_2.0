@@ -26,6 +26,7 @@ Runtime validation:
 - Stage **3.2.2 In Owner Preview / R5 Complete Local** (2026-08-13) — Owner Demo Preview Pending; **3.2.3 Not Started**. Stage 3.2 not globally Complete.
 - Post–3.2.2 commercial/materials: **COMMERCIAL-P0 Complete**; **Cost-first Rates Complete Local / Owner Preview Pending** — `docs/implementation/COST_FIRST_RATES_COMPLETION.md`. MaterialRequirement / Deck Takeoff **Not Started**.
 - Production Scope Discovery remains **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**.
+- **Post-trial architecture audit (2026-08-15):** `docs/audits/POST_TRIAL_MASTER_ARCHITECTURE_AUDIT.md`. **FOUNDATION-R1 Complete Local / Owner Preview Pending**. No production deploy from this batch.
 
 ## Supabase
 

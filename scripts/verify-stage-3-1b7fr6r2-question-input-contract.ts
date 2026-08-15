@@ -23,6 +23,7 @@ import {
   normalizeAnswerForUi,
 } from "../lib/scopes/fact-values";
 import { mapQuestion } from "../lib/assistant/mappers";
+import { getRegistryQuestion } from "../lib/builder-interview";
 
 let passed = 0;
 let failed = 0;
@@ -133,11 +134,10 @@ check(
   DB_QUESTION_INPUT_TYPES.join(",") === "number,select,boolean,text"
 );
 check(
-  "no migration 034 present",
-  !existsSync(resolve(process.cwd(), "supabase/migrations/034_*.sql")) &&
-    !readdirSync(resolve(process.cwd(), "supabase/migrations")).some((f) =>
-      f.startsWith("034")
-    )
+  "no FOUNDATION-R1 migration (034 branding from later batch is allowed)",
+  !readdirSync(resolve(process.cwd(), "supabase/migrations")).some((f) =>
+    /foundation.?r1|035_|036_/i.test(f)
+  )
 );
 
 // ---------------------------------------------------------------------------
@@ -216,18 +216,19 @@ for (const key of r6Keys) {
 // HAZMAT
 // ---------------------------------------------------------------------------
 console.log("\nHAZMAT");
-const hazmat = getScopeQuestions("demolition").find(
-  (q) => q.key === "demolition.hazardous_materials_risk"
-);
-check("hazmat uses select (DB-legal)", hazmat?.inputType === "select");
 check(
-  "hazmat distinguishes No known risk from Not sure",
-  Boolean(hazmat?.options?.includes("No known hazardous material risk")) &&
+  "hazmat is not a demolition Scope Details question",
+  !getScopeQuestions("demolition").some(
+    (q) => q.key === "demolition.hazardous_materials_risk"
+  )
+);
+const hazmat = getRegistryQuestion("interview.risk.hazardous_materials");
+check("Project Conditions hazmat uses boolean (Yes/No/Not sure)", hazmat?.inputType === "boolean");
+check(
+  "Project Conditions hazmat distinguishes No from Not sure",
+  Boolean(hazmat?.options?.includes("No")) &&
     Boolean(hazmat?.options?.includes("Not sure")) &&
-    Boolean(hazmat?.options?.includes("Possible asbestos")) &&
-    Boolean(hazmat?.options?.includes("Possible lead paint")) &&
-    Boolean(hazmat?.options?.includes("Possible mould")) &&
-    !(hazmat?.options ?? []).includes("None known")
+    Boolean(hazmat?.options?.includes("Yes"))
 );
 
 // ---------------------------------------------------------------------------

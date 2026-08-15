@@ -236,35 +236,57 @@ const wa = {
   sort_order: 1,
   status: "confirmed",
 };
-const accessTemplate = getScopeQuestions("demolition").find(
-  (t) => t.factKey === "demolition.access"
-)!;
 check(
-  "project-wide access constraint suppresses duplicate WA access question",
+  "FOUNDATION-R1 demolition.access template removed from Scope Details",
+  !getScopeQuestions("demolition").some((t) => t.factKey === "demolition.access")
+);
+check(
+  "FOUNDATION-R1 demolition.carting_distance_m template removed from Scope Details",
+  !getScopeQuestions("demolition").some(
+    (t) => t.factKey === "demolition.carting_distance_m"
+  )
+);
+check(
+  "project-wide access still skipped if a leftover access template is presented",
   shouldSkipTemplateQuestion(
-    accessTemplate,
+    {
+      key: "demolition.access",
+      label: "Access",
+      questionText: "Access?",
+      inputType: "select",
+      required: false,
+      priority: 1,
+      factKey: "demolition.access",
+      workAreaType: "demolition",
+    },
     wa,
     lookup,
     new Set(["demolition"]),
     {
       quality_level: "standard",
-      constraints: [{ key: "site_access", value: "Difficult" }],
+      constraints: [],
     }
   )
 );
-const cartingTemplate = getScopeQuestions("demolition").find(
-  (t) => t.factKey === "demolition.carting_distance_m"
-)!;
 check(
-  "carry constraint suppresses duplicate carry question",
+  "carry constraint still skipped if a leftover carting template is presented",
   shouldSkipTemplateQuestion(
-    cartingTemplate,
+    {
+      key: "demolition.carting_distance_m",
+      label: "Carting",
+      questionText: "Carting?",
+      inputType: "number",
+      required: false,
+      priority: 1,
+      factKey: "demolition.carting_distance_m",
+      workAreaType: "demolition",
+    },
     wa,
     lookup,
     new Set(["demolition"]),
     {
       quality_level: "standard",
-      constraints: [{ key: "material_carry_distance", value: "10–30m" }],
+      constraints: [],
     }
   )
 );
@@ -284,14 +306,11 @@ check(
 
 // ─── HAZMAT ──────────────────────────────────────────────────
 console.log("\nHAZMAT");
-const hazmat = getScopeQuestions("demolition").find(
-  (t) => t.factKey === "demolition.hazardous_materials_risk"
-)!;
 check(
-  "explicit No known risk != Not sure",
-  (hazmat.options ?? []).includes("No known hazardous material risk") &&
-    (hazmat.options ?? []).includes("Not sure") &&
-    !(hazmat.options ?? []).includes("None known")
+  "FOUNDATION-R1 demolition hazmat is a Project Condition, not Scope Details",
+  !getScopeQuestions("demolition").some(
+    (t) => t.factKey === "demolition.hazardous_materials_risk"
+  )
 );
 
 // ─── ACTION ROUTING ──────────────────────────────────────────
@@ -384,8 +403,8 @@ const migrations = existsSync(resolve(process.cwd(), "supabase/migrations"))
   ? readdirSync(resolve(process.cwd(), "supabase/migrations"))
   : [];
 check(
-  "no migration 034",
-  !migrations.some((f) => f.startsWith("034"))
+  "no FOUNDATION-R1 migration (034 branding from later batch is allowed)",
+  !migrations.some((f) => /foundation.?r1|035_|036_/i.test(f))
 );
 check(
   "R6 completion docs present",

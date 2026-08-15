@@ -165,18 +165,24 @@ const demo2 = calculateDemolition(
 );
 assert(labels(demo2.lineItems).includes("Flooring removal allowance"), "Demo2: flooring removal");
 assertOwner(demo2.lineItems, "Flooring removal allowance", "in_house_labour");
+const demo2FloorQty =
+  findLine(demo2.lineItems, "Flooring removal allowance")?.quantity ?? 0;
 assert(
-  (findLine(demo2.lineItems, "Flooring removal allowance")?.quantity ?? 0) > 30,
-  "Demo2: flooring quantity reflects access/floor factor"
+  Math.abs(demo2FloorQty - 34.5) < 1e-9,
+  "Demo2: flooring qty is floor-level 1.15 only (30 × 1.15), not stacked access×floor"
 );
 assert(labels(demo2.lineItems).includes("Skip bin allowance"), "Demo2: skip bin");
 assert(
-  labels(demo2.lineItems).some((l) => l.includes("Carting") || l.includes("Access")),
-  "Demo2: carting/access allowance"
+  labels(demo2.lineItems).includes("Carting/haulage allowance"),
+  "Demo2: carting/haulage allowance from metres, not a second access labour multiplier"
 );
 assert(
-  demo2.assumptions.some((a) => a.includes("1.32") || a.includes("factor")),
-  "Demo2: access/floor factor applied"
+  demo2.assumptions.some((a) => a.includes("Floor-level factor 1.15")),
+  "Demo2: floor-level factor applied independently of site access"
+);
+assert(
+  !demo2.assumptions.some((a) => a.includes("1.32")),
+  "Demo2: old stacked 1.32 access×floor factor is gone"
 );
 const demo2Quote = buildWorkAreaQuoteDescriptionDraft({
   type: "demolition",

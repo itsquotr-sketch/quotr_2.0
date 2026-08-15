@@ -210,18 +210,6 @@ export const kitchenScope: ScopeDefinition = {
       category: "scope",
     },
     {
-      key: "kitchen.access",
-      label: "Access difficulty",
-      questionText: "What is the site access like for this kitchen?",
-      inputType: "select",
-      options: ["Easy", "Moderate", "Difficult", "Not sure"],
-      required: false,
-      priority: 76,
-      factKey: "kitchen.access",
-      workAreaType: "kitchen",
-      category: "risk",
-    },
-    {
       key: "kitchen.plumbing_changes",
       label: "Plumbing changes",
       questionText: "What level of plumbing changes are included?",

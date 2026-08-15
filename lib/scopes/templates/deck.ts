@@ -109,18 +109,6 @@ export const deckScope: ScopeDefinition = {
       category: "scope",
     },
     {
-      key: "deck.access",
-      label: "Access difficulty",
-      questionText: "How difficult is site access for this deck?",
-      inputType: "select",
-      options: ["Easy", "Moderate", "Difficult", "Not sure"],
-      required: false,
-      priority: 48,
-      factKey: "deck.access",
-      workAreaType: "deck",
-      category: "risk",
-    },
-    {
       key: "deck.access_type",
       label: "Deck access",
       questionText:

@@ -231,18 +231,6 @@ export const bathroomScope: ScopeDefinition = {
       category: "scope",
     },
     {
-      key: "bathroom.access",
-      label: "Access difficulty",
-      questionText: "What is the site access like for this bathroom?",
-      inputType: "select",
-      options: ["Easy", "Moderate", "Difficult", "Not sure"],
-      required: false,
-      priority: 65,
-      factKey: "bathroom.access",
-      workAreaType: "bathroom",
-      category: "risk",
-    },
-    {
       key: "bathroom.underfloor_heating_included",
       label: "Underfloor heating",
       questionText: "Is underfloor heating included?",

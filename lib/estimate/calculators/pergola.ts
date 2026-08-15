@@ -37,6 +37,7 @@ import type {
   EstimateContext,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
+import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
 export function calculatePergola(
   context: EstimateContext,
@@ -101,7 +102,12 @@ export function calculatePergola(
   );
   const labourAdjustment = getCombinedLabourAccessFactor({
     constraints: context.constraints,
-    workAreaAccess: getStringFact(facts, workArea.id, "pergola.access"),
+    workAreaAccess: resolveLegacyWorkAreaAccess({
+      constraints: context.constraints,
+      facts,
+      workAreaId: workArea.id,
+      workAreaType: "pergola",
+    }),
   });
 
   const labourRate = resolveLabourRate({

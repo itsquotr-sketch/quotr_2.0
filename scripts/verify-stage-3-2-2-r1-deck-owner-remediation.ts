@@ -90,8 +90,14 @@ function main(): void {
     withWaAccess === constraintOnly && withWaAccess < naiveDouble
   );
   check(
-    "6 projectSiteAccessAlreadyApplied true for Difficult",
-    projectSiteAccessAlreadyApplied(difficultConstraints) === true
+    "6b Easy project site_access still counts as applied (no WA Restricted fallback)",
+    projectSiteAccessAlreadyApplied([
+      { key: "site_access", label: "Access", value: "Easy" },
+    ]) === true &&
+      getCombinedLabourAccessFactor({
+        constraints: [{ key: "site_access", label: "Access", value: "Easy" }],
+        workAreaAccess: "Restricted",
+      }) === 1
   );
 
   const carryFactor = getLabourAdjustmentFactor([

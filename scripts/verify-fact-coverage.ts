@@ -104,7 +104,6 @@ const SCENARIOS: FactCoverageScenario[] = [
       },
       { key: "bathroom.ventilation_included", booleanTrue: true, severity: "critical" },
       { key: "bathroom.fixtures_client_supplied", booleanTrue: true, severity: "critical" },
-      { key: "bathroom.access", includes: "moderate", severity: "warning" },
     ],
     expectedAnsweredQuestions: [
       { workAreaType: "bathroom", factKey: "bathroom.renovation_type" },
@@ -118,7 +117,6 @@ const SCENARIOS: FactCoverageScenario[] = [
       { workAreaType: "bathroom", factKey: "bathroom.electrical_changes" },
       { workAreaType: "bathroom", factKey: "bathroom.ventilation_included" },
       { workAreaType: "bathroom", factKey: "bathroom.fixtures_client_supplied" },
-      { workAreaType: "bathroom", factKey: "bathroom.access" },
     ],
     suspiciousIfUnanswered: [
       { workAreaType: "bathroom", factKey: "bathroom.floor_tiling_area_m2", severity: "critical" },
@@ -139,7 +137,6 @@ const SCENARIOS: FactCoverageScenario[] = [
       { key: "deck.vertical_face_boards_required", booleanTrue: true, severity: "warning" },
       { key: "deck.access_type", oneOf: ["None", "none"], severity: "critical" },
       { key: "deck.level", includes: "ground", severity: "warning" },
-      { key: "deck.access", includes: "easy", severity: "warning" },
     ],
     expectedAnsweredQuestions: [
       { workAreaType: "deck", factKey: "deck.area_m2", alternateFactKeys: ["deck.length_m", "deck.width_m"] },
@@ -164,7 +161,6 @@ const SCENARIOS: FactCoverageScenario[] = [
       { key: "deck.existing_deck_removal", booleanTrue: true, severity: "critical" },
       { key: "deck.access_type", includes: "stair", severity: "critical" },
       { key: "deck.balustrade_required", booleanTrue: true, severity: "critical" },
-      { key: "deck.access", includes: "moderate", severity: "warning" },
     ],
     expectedAnsweredQuestions: [
       { workAreaType: "deck", factKey: "deck.area_m2", alternateFactKeys: ["deck.length_m", "deck.width_m"] },
@@ -187,7 +183,6 @@ const SCENARIOS: FactCoverageScenario[] = [
       { key: "retaining_wall.height_high_m", value: 1, severity: "critical" },
       { key: "retaining_wall.height_low_m", value: 0.4, severity: "critical" },
       { key: "retaining_wall.fixing_type", includes: "face", severity: "critical" },
-      { key: "retaining_wall.access", oneOf: ["Poor", "Difficult", "poor", "difficult"], severity: "warning" },
       { key: "retaining_wall.backfill_included", booleanTrue: true, severity: "critical" },
       { key: "retaining_wall.drainage_required", booleanTrue: true, severity: "critical" },
       { key: "retaining_wall.carting_distance_m", value: 45, severity: "warning" },

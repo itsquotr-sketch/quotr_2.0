@@ -42,6 +42,7 @@ import type {
   EstimateContext,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
+import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
 function getDeckMaterialRate(
   material: string | null,
@@ -160,7 +161,12 @@ export function calculateDeck(
   );
   const labourAdjustment = getCombinedLabourAccessFactor({
     constraints: context.constraints,
-    workAreaAccess: getStringFact(facts, workArea.id, "deck.access"),
+    workAreaAccess: resolveLegacyWorkAreaAccess({
+      constraints: context.constraints,
+      facts,
+      workAreaId: workArea.id,
+      workAreaType: "deck",
+    }),
   });
   const constraintNotes = getConstraintNotes(context.constraints);
   const labourRate = resolveLabourRate({

@@ -2,10 +2,10 @@
 
 import { useMemo, useState } from "react";
 import {
-  getEstimateSupportLabel,
   SCOPE_CATALOGUE,
   type ScopeCatalogueItem,
 } from "@/lib/scopes/catalogue";
+import { getWorkAreaCapabilityLabel } from "@/lib/work-areas/support-contract";
 import type { WorkArea } from "@/components/assistant/types";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -77,9 +77,9 @@ export function AddWorkAreaDialog({
         <DialogHeader>
           <DialogTitle>Add work area</DialogTitle>
           <DialogDescription>
-            Choose any supported work area for this project. Company work-type
-            preferences do not limit what you can add. Changing work areas will
-            mark the estimate as outdated.
+            Choose a work area for this project. Capability labels show how
+            mature that estimate is — they are not equally accurate. Company
+            work-type preferences do not limit what you can add.
           </DialogDescription>
         </DialogHeader>
 
@@ -122,7 +122,7 @@ export function AddWorkAreaDialog({
                       </p>
                     </div>
                     <Badge variant="secondary" className="shrink-0 text-[10px]">
-                      {getEstimateSupportLabel(item.estimateSupport)}
+                      {getWorkAreaCapabilityLabel(item.type)}
                     </Badge>
                   </div>
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground">

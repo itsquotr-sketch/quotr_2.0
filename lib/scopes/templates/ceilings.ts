@@ -147,15 +147,16 @@ export const ceilingsScope: ScopeDefinition = {
     },
     {
       key: "ceilings.access",
-      label: "Height/access",
-      questionText: "What is the ceiling height/access like?",
+      label: "Ceiling working height",
+      questionText:
+        "What is the ceiling working height / access equipment like?",
       inputType: "select",
-      options: ["Standard", "High", "Difficult access", "Not sure"],
+      options: ["Standard", "High", "Difficult working height", "Not sure"],
       required: false,
       priority: 55,
       factKey: "ceilings.access",
       workAreaType: "ceilings",
-      category: "risk",
+      category: "scope",
     },
     {
       key: "ceilings.insulation_included",

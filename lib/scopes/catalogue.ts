@@ -157,9 +157,9 @@ export function getEstimateSupportLabel(
 ): string {
   switch (support) {
     case "calculator":
-      return "Estimate-ready";
+      return "Developing";
     case "rough_allowance":
-      return "Rough allowance";
+      return "Developing";
     case "not_supported":
       return "Not supported yet";
   }

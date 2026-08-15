@@ -95,18 +95,6 @@ export const pergolaScope: ScopeDefinition = {
       category: "scope",
     },
     {
-      key: "pergola.access",
-      label: "Access difficulty",
-      questionText: "How difficult is site access for this pergola?",
-      inputType: "select",
-      options: ["Easy", "Moderate", "Difficult", "Not sure"],
-      required: false,
-      priority: 35,
-      factKey: "pergola.access",
-      workAreaType: "pergola",
-      category: "risk",
-    },
-    {
       key: "pergola.footings_required",
       label: "Footings/posts",
       questionText: "Are post footings or concrete pads required?",

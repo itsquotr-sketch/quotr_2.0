@@ -13,4 +13,6 @@ R3 Owner demo retest: `docs/runbooks/STAGE_3_2_2_R3_OWNER_DEMO_READINESS_RETEST.
 
 Do **not** begin **3.2.3** until Owner authorises after R5 Owner Demo Preview.
 
-**Parallel workstream:** **COMMERCIAL-P0 Complete Local** (cost-first authority lock). Next commercial batch: Cost-first Rates UI — **Not Started**. Do **not** begin MaterialRequirement / Deck Takeoff / **3.2.3** until Owner authorises.
+**Parallel workstream:** **COMMERCIAL-P0 Complete Local**; **Cost-first Rates Complete Local / Owner Preview Pending**. Do **not** begin MaterialRequirement / Deck Takeoff / **3.2.3** until Owner authorises.
+
+**Post-trial (2026-08-15):** **FOUNDATION-R1 Complete Local / Owner Preview Pending**. 3.2.3 remains **Not Started**. Next authorised implementation: **FOUNDATION-R2** (Scope Details completeness), **not** requirement emission, **not** original 3.2.3.

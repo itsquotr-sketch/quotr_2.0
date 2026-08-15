@@ -13,6 +13,8 @@ Legend:
 
 Last updated: Phase 6I (pre-calibration readiness).
 
+> **SUPERSEDED FOR PROGRAMME PLANNING (2026-08-15):** Fitout rows below claiming **No** questions/calculators are **stale**. Authoritative inventory and maturity grades: `docs/audits/SUPPORTED_WORK_AREA_COVERAGE_AUDIT.md`. This file is retained as a historical calibration snapshot only.
+
 ## Summary matrix
 
 | Work area | AI recognition | Questions | Estimate calculator | Final pricing mapping | Quote description | Rates / calibration | Known gaps | Priority |

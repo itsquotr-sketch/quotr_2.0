@@ -145,18 +145,6 @@ export const externalStairsScope: ScopeDefinition = {
       category: "scope",
     },
     {
-      key: "external_stairs.access",
-      label: "Access",
-      questionText: "How difficult is site access?",
-      inputType: "select",
-      options: ["Easy", "Moderate", "Poor", "Not sure"],
-      required: false,
-      priority: 40,
-      factKey: "external_stairs.access",
-      workAreaType: "external_stairs",
-      category: "risk",
-    },
-    {
       key: "external_stairs.ground_condition",
       label: "Ground condition",
       questionText: "What is the ground condition at the stair location?",

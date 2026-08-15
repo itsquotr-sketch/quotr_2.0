@@ -23,6 +23,7 @@ import {
 } from "@/lib/scopes/derived-facts";
 import type { ScopeQuestionTemplate } from "@/lib/scopes/types";
 import { isQuestionSuppressedByScopeItemExclusion } from "@/lib/scope-discovery/ui/scope-item-question-gates";
+import { isProjectConditionDuplicateFactKey } from "@/lib/project-conditions/canonical";
 
 /**
  * Stage 3.1B.7F-R6: do not silently drop applicable questions on multi-WA jobs.
@@ -324,48 +325,29 @@ function constraintValue(
 }
 
 /**
- * When project-wide Site Constraints / scope already answer a WA question,
- * do not ask again (7F-R6 Fact-first / dedupe).
+ * FOUNDATION-R1: Project Conditions own project-wide topics.
+ * Duplicate Scope Details questions are never generated — even when the
+ * project constraint is still UNKNOWN. The Project Conditions interviewer
+ * owns asking them. ceilings.access / deck.access_type remain local.
  */
 function isSuppressedByProjectWideKnowledge(
   factKey: string,
   project: ProjectInput,
   factLookup: ReturnType<typeof buildFactLookup>,
-  workAreaId: string,
+  _workAreaId: string,
   confirmedTypes: Set<string>
 ): boolean {
-  const siteAccess = constraintValue(project, "site_access");
+  if (isProjectConditionDuplicateFactKey(factKey)) {
+    return true;
+  }
+
   const carry = constraintValue(project, "material_carry_distance");
-  const workingHours = constraintValue(project, "working_hours");
-  // Canonical key is occupied_site (never site_occupied — 3.2.2 naming fix).
   const occupied = constraintValue(project, "occupied_site");
 
   if (
-    (factKey === "demolition.access" ||
-      factKey === "internal_walls.access" ||
-      factKey === "ceilings.access" ||
-      factKey.endsWith(".access")) &&
-    siteAccess &&
-    siteAccess.toLowerCase() !== "easy" &&
-    siteAccess.toLowerCase() !== "not sure"
-  ) {
-    return true;
-  }
-
-  if (
-    (factKey === "demolition.carting_distance_m" ||
-      factKey === "demolition.skip_bin_included") &&
+    factKey === "demolition.skip_bin_included" &&
     carry &&
     !carry.startsWith("<")
-  ) {
-    return true;
-  }
-
-  if (
-    factKey === "demolition.noise_hours_restriction" &&
-    workingHours &&
-    workingHours.toLowerCase() !== "no" &&
-    workingHours.toLowerCase() !== "false"
   ) {
     return true;
   }
@@ -384,7 +366,6 @@ function isSuppressedByProjectWideKnowledge(
     if (knownYes) return true;
   }
 
-  // Occupied building is project-wide — do not re-ask per WA if captured.
   if (factKey.includes("occupied") && occupied) {
     return true;
   }
