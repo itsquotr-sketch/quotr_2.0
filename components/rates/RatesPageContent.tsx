@@ -266,7 +266,11 @@ export function RatesPageContent({
                       ? `${group.label} (common for your company)`
                       : group.label
                   }
-                  description="Enter your cost. Charge-out follows company gross margin unless you keep a custom charge-out."
+                  description={
+                    group.type === "deck"
+                      ? "Decking $/m² is cost per m² of deck area for the same boards — a fallback if you have no $/lm board rate under All materials. It is not a $/lm rate and not a whole-deck package (framing and fixings are separate)."
+                      : "Enter your cost. Charge-out follows company gross margin unless you keep a custom charge-out."
+                  }
                   catalogue={group.entries}
                   rates={state.rates}
                   onRatesChange={(rates) =>

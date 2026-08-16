@@ -485,8 +485,19 @@ function LineItemCard({
         ) : null}
         {item.costRate != null ? (
           <div>
-            <dt className="text-xs text-muted-foreground">Cost rate</dt>
-            <dd className="font-medium">{formatCurrency(item.costRate)}</dd>
+            <dt className="text-xs text-muted-foreground">Unit cost</dt>
+            <dd className="font-medium">
+              {formatCurrency(item.costRate)}
+              {item.unit && item.category !== "labour" ? (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  /{item.unit}
+                </span>
+              ) : item.category === "labour" ? (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  /hr
+                </span>
+              ) : null}
+            </dd>
           </div>
         ) : null}
         {item.sellRate != null ? (
@@ -494,9 +505,31 @@ function LineItemCard({
             <dt className="text-xs text-muted-foreground">Charge rate</dt>
             <dd className="font-medium">
               {formatCurrency(item.sellRate)}
+              {item.unit && item.category !== "labour" ? (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  /{item.unit}
+                </span>
+              ) : item.category === "labour" ? (
+                <span className="ml-1 text-xs font-normal text-muted-foreground">
+                  /hr
+                </span>
+              ) : null}
               {item.sellDerivedFromMargin ? (
                 <span className="ml-1 text-xs font-normal text-muted-foreground">
                   (from margin)
+                </span>
+              ) : null}
+            </dd>
+          </div>
+        ) : null}
+        {item.materialRateResolution?.display ? (
+          <div className="sm:col-span-2">
+            <dt className="text-xs text-muted-foreground">Rate source</dt>
+            <dd className="font-medium">
+              {item.materialRateResolution.display}
+              {item.materialRateResolution.conversionNote ? (
+                <span className="mt-0.5 block text-xs font-normal text-muted-foreground">
+                  {item.materialRateResolution.conversionNote}
                 </span>
               ) : null}
             </dd>
@@ -533,7 +566,9 @@ function LineItemCard({
       {materialBuildUpLines.length > 0 ? (
         <div className="mt-3 space-y-1 rounded-xl border border-dashed bg-background/60 px-3 py-2.5">
           <p className="text-xs font-medium text-muted-foreground">
-            Material quantities
+            {item.materialBuildUps?.some((buildUp) => buildUp.priced)
+              ? "Material quantities"
+              : "Physical takeoff (not used for this price)"}
           </p>
           <ul className="space-y-0.5 text-xs text-muted-foreground">
             {materialBuildUpLines.map((line, index) => (

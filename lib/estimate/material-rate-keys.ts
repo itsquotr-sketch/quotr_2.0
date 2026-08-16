@@ -57,7 +57,7 @@ export function getDeckBoardLmMaterialKey(material: string | null): string {
   if (normalized.includes("pine") || normalized.includes("treated")) {
     return MATERIAL_RATE_KEYS.deckingTreatedPineLm;
   }
-  return MATERIAL_RATE_KEYS.deckingHardwoodLm;
+  return MATERIAL_RATE_KEYS.deckingTreatedPineLm;
 }
 
 export function getDeckBoardM2MaterialKey(material: string | null): string {
@@ -91,7 +91,38 @@ export function getDeckLmBenchmark(material: string | null): {
   if (normalized.includes("pine") || normalized.includes("treated")) {
     return DECK_BENCHMARKS.treatedPineLm;
   }
-  return DECK_BENCHMARKS.boardLm;
+  return DECK_BENCHMARKS.treatedPineLm;
+}
+
+export function getDeckM2Benchmark(material: string | null): {
+  cost: number;
+  sell: number;
+} {
+  const normalized = material?.toLowerCase() ?? "";
+  if (normalized.includes("kwila")) {
+    return DECK_BENCHMARKS.kwilaDecking;
+  }
+  if (normalized.includes("composite")) {
+    return DECK_BENCHMARKS.compositeDecking;
+  }
+  if (normalized.includes("hardwood")) {
+    return DECK_BENCHMARKS.hardwoodDecking;
+  }
+  return DECK_BENCHMARKS.treatedPineDecking;
+}
+
+export function getDeckMaterialLabel(material: string | null): string {
+  const normalized = material?.toLowerCase() ?? "";
+  if (normalized.includes("kwila")) {
+    return "Kwila decking";
+  }
+  if (normalized.includes("composite")) {
+    return "Composite decking";
+  }
+  if (normalized.includes("hardwood")) {
+    return "Hardwood decking";
+  }
+  return "Treated pine decking";
 }
 
 export function getPlasterboardSheetMaterialKey(

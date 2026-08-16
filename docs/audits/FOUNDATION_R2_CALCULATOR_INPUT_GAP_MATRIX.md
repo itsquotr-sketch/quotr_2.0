@@ -14,7 +14,7 @@ Mapping codes: **A** current calculator · **B** future material requirement · 
 | --- | --- | --- |
 | L / W / area | A (area derived when L×W known) | Irregular override **E** / DECK-1 |
 | Height / level | A | Level hidden when height known |
-| Board material / width | A | Thickness, gap, orientation **E** |
+| Board material / width | A | Thickness, gap, orientation **E**. **R2-R1:** width + material now drive **priced** lm × `$/lm` (not display-only). |
 | Existing removal / substructure / piles | A | Joist/bearer sizes **E** |
 | Stairs (`access_type`) | A allowance | Geometry for local stair takeoff **E** |
 | Balustrade / handrail | A | Explicit No preserved |

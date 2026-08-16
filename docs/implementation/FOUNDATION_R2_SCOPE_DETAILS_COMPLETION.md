@@ -1,6 +1,6 @@
 # FOUNDATION-R2 — Scope Details completeness + question quality
 
-**Status:** Complete Local / Owner Preview Pending  
+**Status:** Complete Local / In Owner Preview / R2-R1 remediation ready  
 **Date:** 2026-08-16  
 **Branch:** `hardening/stage-2a-security`  
 **Prerequisite:** FOUNDATION-R1-R1 **Complete — Owner Preview Validated** (Owner live Preview: Project Conditions order, sole PC surface, Generate blocked until required PC resolved).
@@ -154,8 +154,10 @@ No migrations. No requirement emission. No Stage 3.2.3 UI. Tests not weakened.
 | --- | --- |
 | FOUNDATION-R1 | Complete |
 | FOUNDATION-R1-R1 | Complete — Owner Preview Validated |
-| FOUNDATION-R2 | **Complete Local / Owner Preview Pending** |
-| REQ-1 | Not Started |
+| FOUNDATION-R2 | **Complete Local / In Owner Preview / R2-R1 remediation ready** |
+| FOUNDATION-R2-R1 | Complete Local / Owner Preview Pending |
+| FOUNDATION-R2-R1-R1 | Complete Local / included in R2-R1 Preview gate |
+| REQ-1 | Not Started / technically ready after Owner PASS |
 | MaterialRequirement emission | Not Started |
 | LabourRequirement emission | Not Started |
 | Deck transparent estimator | Not Started |
@@ -164,4 +166,4 @@ No migrations. No requirement emission. No Stage 3.2.3 UI. Tests not weakened.
 | PERF-FUTURE-01 | Planned |
 | Production Scope Discovery | Disabled |
 
-**Exact next:** Owner FOUNDATION-R2 Preview (`docs/runbooks/FOUNDATION_R2_OWNER_PREVIEW.md`). After Owner PASS: **REQ-1**. Do not emit requirements in this batch. Do not start Deck Takeoff.
+**Exact next:** Owner FOUNDATION-R2-R1 Preview (`docs/runbooks/FOUNDATION_R2R1_OWNER_PREVIEW.md`) then remaining R2 question sampling. After Owner PASS: **REQ-1**. Do not emit requirements in R2. Do not start Deck Takeoff.

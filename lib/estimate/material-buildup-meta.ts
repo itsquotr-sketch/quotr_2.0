@@ -104,9 +104,11 @@ export function createDeckingBoardBuildUp(params: {
   boardWidthMm: number;
   wastagePercent: number;
   materialLabel?: string;
+  priced?: boolean;
 }): MaterialBuildUpEntry {
   const material = params.materialLabel ?? "decking";
   const basis = `${params.areaM2}m² deck / ${params.boardWidthMm}mm board width`;
+  const priced = params.priced ?? false;
 
   return {
     key: "decking_boards",
@@ -116,7 +118,9 @@ export function createDeckingBoardBuildUp(params: {
     wastagePercent: params.wastagePercent,
     basis,
     display: `Approx. ${params.result.totalLm} lm ${material} decking boards incl. ${params.wastagePercent}% wastage`,
-    priced: false,
+    priced,
+    pricingBasis: priced ? "quantity_x_rate" : undefined,
+    rateUnit: priced ? "lm" : undefined,
     buildUpType: "decking_boards_lm",
     inputs: {
       areaM2: params.areaM2,

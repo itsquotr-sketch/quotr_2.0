@@ -30,8 +30,14 @@ import {
   createDeckingBoardBuildUp,
   withMaterialBuildUp,
 } from "@/lib/estimate/material-buildup-meta";
+import { withMaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
+import { resolveDeckingBoardPricing } from "@/lib/estimate/deck-material-pricing";
+import { getDeckMaterialLabel } from "@/lib/estimate/material-rate-keys";
+import {
+  quantityBasisFrom,
+  withCommercialMetadata,
+} from "@/lib/estimate/commercial-realism";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
-import type { ResolvedRate } from "@/lib/estimate/types";
 import { baseConfidence } from "@/lib/estimate/summary";
 import {
   createAssumptionMetadata,
@@ -43,63 +49,6 @@ import type {
   EstimateWorkArea,
 } from "@/lib/estimate/types";
 import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
-
-function getDeckMaterialRate(
-  material: string | null,
-  context: EstimateContext
-): ResolvedRate & { materialLabel: string } {
-  const normalized = material?.toLowerCase() ?? "";
-  if (normalized.includes("kwila")) {
-    const resolved = resolveRate({
-      rates: context.rates,
-      rateType: "material",
-      itemKey: "deck.material.hardwood.m2",
-      workAreaType: "deck",
-      unit: "m2",
-      fallbackCostRate: DECK_BENCHMARKS.kwilaDecking.cost,
-      fallbackSellRate: DECK_BENCHMARKS.kwilaDecking.sell,
-      organisationSettings: context.organisationSettings,
-    });
-    return { ...resolved, materialLabel: "Kwila decking" };
-  }
-  if (normalized.includes("hardwood")) {
-    const resolved = resolveRate({
-      rates: context.rates,
-      rateType: "material",
-      itemKey: "deck.material.hardwood.m2",
-      workAreaType: "deck",
-      unit: "m2",
-      fallbackCostRate: DECK_BENCHMARKS.hardwoodDecking.cost,
-      fallbackSellRate: DECK_BENCHMARKS.hardwoodDecking.sell,
-      organisationSettings: context.organisationSettings,
-    });
-    return { ...resolved, materialLabel: "Hardwood decking" };
-  }
-  if (normalized.includes("composite")) {
-    const resolved = resolveRate({
-      rates: context.rates,
-      rateType: "material",
-      itemKey: "deck.material.composite.m2",
-      workAreaType: "deck",
-      unit: "m2",
-      fallbackCostRate: DECK_BENCHMARKS.compositeDecking.cost,
-      fallbackSellRate: DECK_BENCHMARKS.compositeDecking.sell,
-      organisationSettings: context.organisationSettings,
-    });
-    return { ...resolved, materialLabel: "Composite decking" };
-  }
-  const resolved = resolveRate({
-    rates: context.rates,
-    rateType: "material",
-    itemKey: "deck.material.treated_pine.m2",
-    workAreaType: "deck",
-    unit: "m2",
-    fallbackCostRate: DECK_BENCHMARKS.treatedPineDecking.cost,
-    fallbackSellRate: DECK_BENCHMARKS.treatedPineDecking.sell,
-    organisationSettings: context.organisationSettings,
-  });
-  return { ...resolved, materialLabel: "Treated pine decking" };
-}
 
 export function calculateDeck(
   context: EstimateContext,
@@ -219,7 +168,7 @@ export function calculateDeck(
     })
   );
 
-  const deckingRates = getDeckMaterialRate(material, context);
+  const materialLabel = getDeckMaterialLabel(material);
   const boardWidthFact = getNumberFact(facts, workArea.id, "deck.board_width_mm");
   const boardWidthMm = boardWidthFact ?? 140;
   const wastagePercent = resolveMaterialWastage(
@@ -235,6 +184,17 @@ export function calculateDeck(
           wastagePercent,
         })
       : null;
+
+  const deckingPricing = resolveDeckingBoardPricing({
+    context,
+    material,
+    label: materialLabel,
+    purchaseLm: deckingBoardResult?.totalLm ?? null,
+    boardWidthMm: boardWidthFact,
+    areaM2: effectiveArea,
+  });
+
+  const usedLmPricing = deckingPricing.usedBuildUpQuantity === true;
   const deckingBuildUp =
     area != null && boardWidthFact != null && deckingBoardResult
       ? createDeckingBoardBuildUp({
@@ -242,27 +202,57 @@ export function calculateDeck(
           areaM2: area,
           boardWidthMm: boardWidthFact,
           wastagePercent,
-          materialLabel: deckingRates.materialLabel,
+          materialLabel,
+          priced: usedLmPricing,
         })
       : null;
 
-  lineItems.push(
-    withMaterialBuildUp(
-      createRateLineItem({
-        workAreaId: workArea.id,
-        workAreaName: workArea.name,
-        label: "Decking materials package",
-        category: "materials",
-        quantity: effectiveArea,
-        unit: "m²",
-        notes: `${deckingRates.materialLabel} · ${boardWidthMm} mm boards · ${wastagePercent}% wastage`,
-        sortOrder: sortOrder++,
-        organisationSettings: context.organisationSettings,
-        qualityFactor,
-        ...rateFieldsFromResolved(deckingRates),
+  const pricedQuantity = deckingPricing.quantity;
+  const pricedUnit = deckingPricing.unit === "m2" ? "m²" : deckingPricing.unit;
+  const deckingLabel = usedLmPricing
+    ? "Decking materials"
+    : "Decking materials package";
+  const conversionNote = deckingPricing.resolution.conversionNote;
+  const deckingNotes = usedLmPricing
+    ? `${materialLabel} · ${boardWidthMm} mm boards · ${wastagePercent}% wastage${
+        conversionNote ? ` · ${conversionNote}` : ""
+      }`
+    : deckingBoardResult
+      ? `Package allowance (${materialLabel}). Physical takeoff ${deckingBoardResult.totalLm} lm is not the priced quantity.`
+      : `Package allowance (${materialLabel}) · board width not confirmed for lm pricing`;
+
+  let deckingItem = withMaterialBuildUp(
+    createRateLineItem({
+      workAreaId: workArea.id,
+      workAreaName: workArea.name,
+      label: deckingLabel,
+      category: "materials",
+      quantity: pricedQuantity,
+      unit: pricedUnit,
+      notes: deckingNotes,
+      sortOrder: sortOrder++,
+      organisationSettings: context.organisationSettings,
+      qualityFactor,
+      ...deckingPricing.rateFields,
+    }),
+    deckingBuildUp
+  );
+
+  if (usedLmPricing && deckingBoardResult && area != null && boardWidthFact != null) {
+    deckingItem = withCommercialMetadata(deckingItem, {
+      quantityBasis: quantityBasisFrom({
+        sourceFact: "deck.board_width_mm",
+        sourceLabel: "Board width and deck area",
+        quantity: deckingBoardResult.totalLm,
+        unit: "lm",
+        formula: `${area} m² / ${boardWidthFact / 1000} m × (1 + ${wastagePercent}% waste)`,
+        confidence: "derived",
       }),
-      deckingBuildUp
-    )
+    });
+  }
+
+  lineItems.push(
+    withMaterialRateResolution(deckingItem, deckingPricing.resolution)
   );
 
   const substructureIncluded =

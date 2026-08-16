@@ -14,7 +14,9 @@
 
 ## 1. Executive verdict
 
-Quotr has **partial takeoff math** (board lm, sheets, paint litres) and a **specific-material rates catalogue**, but **cost authority remains mostly m² packages and lump allowances**. Material build-ups are almost always `priced: false` (display metadata). `resolveMaterialRate` / `resolveBuildUpMaterialPricing` exist but are **not used by live calculators**.
+Quotr has **partial takeoff math** (board lm, sheets, paint litres) and a **specific-material rates catalogue**. As of FOUNDATION-R2-R1, **Deck decking** prices the physical lm takeoff via `resolveMaterialRate` when board width is known. Other build-ups remain mostly `priced: false` (display metadata). `resolveBuildUpMaterialPricing` is live for Deck decking only.
+
+**No dedicated takeoff / BOM table.** Takeoff detail lives in estimate line `notes` metadata (`materialBuildUp` / `materialBuildUps`).
 
 **No dedicated takeoff / BOM table.** Takeoff detail lives in estimate line `notes` metadata (`materialBuildUp` / `materialBuildUps`).
 

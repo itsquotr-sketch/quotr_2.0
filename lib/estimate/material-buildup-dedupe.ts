@@ -3,15 +3,15 @@ import { withMaterialBuildUp } from "@/lib/estimate/material-buildup-meta";
 
 const DUPLICATE_MATERIAL_PAIRS: {
   duplicateLabel: string;
-  parentLabel: string;
+  parentLabels: string[];
 }[] = [
   {
     duplicateLabel: "Decking boards",
-    parentLabel: "Decking materials package",
+    parentLabels: ["Decking materials", "Decking materials package"],
   },
   {
     duplicateLabel: "Backfill materials",
-    parentLabel: "Backfill allowance",
+    parentLabels: ["Backfill allowance"],
   },
 ];
 
@@ -36,7 +36,8 @@ export function mergeDuplicateMaterialBuildUpLineItems(
 
       const parentIndex = result.findIndex(
         (item) =>
-          item.workAreaId === workAreaId && item.label === pair.parentLabel
+          item.workAreaId === workAreaId &&
+          pair.parentLabels.includes(item.label)
       );
       if (parentIndex === -1) {
         continue;

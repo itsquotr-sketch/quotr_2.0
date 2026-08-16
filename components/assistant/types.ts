@@ -1,4 +1,5 @@
 import type { MaterialBuildUpEntry } from "@/lib/estimate/material-buildup-meta";
+import type { MaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
 import type {
   AllowanceMinimumMeta,
   LabourMinimumMeta,
@@ -111,6 +112,7 @@ export type EstimateLineItem = {
   sellDerivedFromMargin?: boolean;
   notes?: string;
   materialBuildUps?: MaterialBuildUpEntry[];
+  materialRateResolution?: MaterialRateResolution;
   pricingOwner?: PricingOwner;
   scopeKey?: string;
   overlapGroup?: string;

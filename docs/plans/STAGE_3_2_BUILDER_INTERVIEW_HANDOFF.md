@@ -15,4 +15,4 @@ Do **not** begin **3.2.3** until Owner authorises after R5 Owner Demo Preview.
 
 **Parallel workstream:** **COMMERCIAL-P0 Complete Local**; **Cost-first Rates Complete Local / Owner Preview Pending**. Do **not** begin MaterialRequirement / Deck Takeoff / **3.2.3** until Owner authorises.
 
-**Post-trial (2026-08-15):** **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated**. **FOUNDATION-R2 Complete Local / Owner Preview Pending**. 3.2.3 remains **Not Started**. Next authorised implementation after R2 Owner PASS: **REQ-1**, **not** requirement emission in R2, **not** original 3.2.3.
+**Post-trial (2026-08-15):** **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated**. **FOUNDATION-R2 Complete Local / Owner Preview remediation pending R2-R1**. **FOUNDATION-R2-R1 Complete Local / Owner Preview Pending**. 3.2.3 remains **Not Started**. Next authorised implementation after R2-R1 Owner PASS: **REQ-1**, **not** original 3.2.3.

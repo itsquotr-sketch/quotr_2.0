@@ -1,6 +1,6 @@
 # Post-Trial Master Development Pipeline
 
-**Status:** Programme active. **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated** (2026-08-16). **FOUNDATION-R2 Complete Local / Owner Preview Pending.** REQ-1/2/3 and Deck pilot **Not Started**.  
+**Status:** Programme active. **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated** (2026-08-16). **FOUNDATION-R2 Complete Local / In Owner Preview / R2-R1 remediation ready.** **FOUNDATION-R2-R1 Complete Local / Owner Preview Pending.** **FOUNDATION-R2-R1-R1 Complete Local / included in R2-R1 Preview gate.** REQ-1/2/3 and Deck pilot **Not Started**. **RATE-QUALITY-01 Backlog / Not Started**.  
 **HEAD baseline:** `f168fe0ec8a857fffa79888435ca90b9e8a1db25`  
 **Implementation:** `docs/implementation/FOUNDATION_R1_PROJECT_CONDITIONS_SUPPORT_COMPLETION.md`  
 **R1-R1:** `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`  
@@ -128,7 +128,7 @@ Risk: L = low, M = medium, H = high (commercial or product-claim).
 
 | Field | Value |
 | --- | --- |
-| **Status** | **Complete Local / Owner Preview Pending** (2026-08-16) |
+| **Status** | **Complete Local / Owner Preview remediation pending R2-R1** (2026-08-16). Question contract remains; commercial unit mismatch found on Preview. |
 | **Implementation** | `docs/implementation/FOUNDATION_R2_SCOPE_DETAILS_COMPLETION.md` |
 | **Verify** | `scripts/verify-foundation-r2-scope-details-completeness.ts` |
 | **Objective** | Remaining Scope Details are Work-Area-physical only: conditionals, copy, completeness, no leftover project-logistics overlap |
@@ -149,13 +149,57 @@ Risk: L = low, M = medium, H = high (commercial or product-claim).
 | --- | --- |
 | **Status** | **Not Started** |
 | **Objective** | Make requirement emission **possible**, not universal. Add the calculator output envelope, aggregation/composition, and diagnostics/provenance. Unchanged calculators emit empty `requirements[]`. Money still comes from line items. |
-| **Dependencies** | FOUNDATION-R2 (input quality) + FOUNDATION-R1 DC-01/02 |
+| **Dependencies** | FOUNDATION-R2 (input quality) + FOUNDATION-R2-R1 (Deck qty/rate units) + FOUNDATION-R1 DC-01/02 |
 | **Scope** | Optional `CalculatorResult.requirements`; Deck may map existing lines → envelope with honest `priced` flags; other WAs empty/passthrough |
 | **Non-goals** | Emitting from every calculator; Deck quantity takeoff (DECK-1); face-edge math (DECK-2); Materials Catalogue V2; UI takeoff page; changing commercial $ |
 | **Migration** | None (prefer derive-on-read) |
 | **Verification** | Envelope present; sums do not change commercial $ vs R1 |
 | **Risk** | M |
-| **Handoff** | After FOUNDATION-R2 Owner Preview PASS. Do **not** start until authorised. |
+| **Handoff** | After FOUNDATION-R2 **and FOUNDATION-R2-R1 + R2-R1-R1** Owner Preview PASS. Do **not** start until authorised. Deck pricing path must stay honest (`priced` flags). Contractor matching `$/m²` must remain able to outrank Quotr `$/lm` when conversion is valid. |
+
+---
+
+### FOUNDATION-R2-R1 — Material pricing unit + rate authority
+
+| Field | Value |
+| --- | --- |
+| **Status** | **Complete Local / Owner Preview Pending** (2026-08-16) |
+| **Implementation** | `docs/implementation/FOUNDATION_R2R1_MATERIAL_RATE_AUTHORITY_COMPLETION.md` |
+| **Verify** | `scripts/verify-foundation-r2r1-material-rate-authority.ts` |
+| **Objective** | Priced quantity unit matches rate unit; company $/lm consumed for Deck decking; package fallback cannot double-count |
+| **Dependencies** | FOUNDATION-R2 Preview finding (lm takeoff vs m² package) |
+| **Scope** | Audit all material calculators; fix Deck decking; honest Rates/Breakdown labels; document unused rates |
+| **Non-goals** | REQ-1; MaterialRequirement emit; Catalogue V2; fascia/DECK-1; new rate rows |
+| **Migration** | None |
+| **Owner preview** | `docs/runbooks/FOUNDATION_R2R1_OWNER_PREVIEW.md` |
+| **Risk** | **H** (Deck $ change — correctness) |
+
+---
+
+### FOUNDATION-R2-R1-R1 — Contractor rate precedence + unit reconciliation
+
+| Field | Value |
+| --- | --- |
+| **Status** | **Complete Local / included in R2-R1 Preview gate** (2026-08-16) |
+| **Implementation** | `docs/implementation/FOUNDATION_R2R1R1_CONTRACTOR_RATE_PRECEDENCE_COMPLETION.md` |
+| **Verify** | `scripts/verify-foundation-r2r1r1-contractor-rate-precedence.ts` |
+| **Objective** | Company matching-material pricing outranks Quotr benchmark; `$/m²` converts to `$/lm` only with known board coverage; waste once; honest Rates/Breakdown units |
+| **Dependencies** | FOUNDATION-R2-R1 core lm pricing (approved, not committed) |
+| **Scope** | Deck decking hierarchy; m² semantics audit; Owner $23 identity (no data rewrite); small Rates/Breakdown labels |
+| **Non-goals** | REQ-1; Catalogue V2; Deck face boards; other calculator rewires; Production |
+| **Migration** | None |
+| **Risk** | **H** (company m² now affects money when width known) |
+
+---
+
+### RATE-QUALITY-01 — Suspicious company rate / unit-mistake warning
+
+| Field | Value |
+| --- | --- |
+| **Status** | **Backlog / Not Started** |
+| **Objective** | Warn when a company rate is far from the matching Quotr benchmark family (e.g. hardwood $23/m² vs ~$230) |
+| **Non-goals** | Auto-correct; rewrite Owner data; implement in R2-R1 |
+| **Risk** | L |
 
 ---
 
@@ -191,6 +235,7 @@ Risk: L = low, M = medium, H = high (commercial or product-claim).
 | **Objective** | Deck QE explains major material quantities and lumped labour without claiming full framing takeoff |
 | **Dependencies** | REQ-2; REQ-3 |
 | **Non-goals** | Face-edge geometry (DECK-2); task labour breakdown (DECK-3) |
+| **Pilot notes** | Current lm uses **nominal board width as coverage**. Gaps, effective cover, orientation, and offcuts are **not** modelled. 126.65 lm is estimate-level takeoff, not fabrication accuracy. |
 | **Risk** | M |
 
 ---
@@ -405,7 +450,9 @@ Parallel. Evidence-backed P1: Analyse Job wait; margin `router.refresh`; residua
 PT-AUD-01 (done)
 → FOUNDATION-R1 (Complete / Preview regression remediated by R1-R1)
 → FOUNDATION-R1-R1 (Complete — Owner Preview Validated)
-→ FOUNDATION-R2 (Complete Local / Owner Preview Pending)
+→ FOUNDATION-R2 (Complete Local / In Owner Preview / R2-R1 remediation ready)
+→ FOUNDATION-R2-R1 (Complete Local / Owner Preview Pending)
+→ FOUNDATION-R2-R1-R1 (Complete Local / included in R2-R1 Preview gate)
 → REQ-1 (EstimateRequirement envelope)
 → REQ-2 (MaterialRequirement emission)
 → REQ-3 (LabourRequirement emission)

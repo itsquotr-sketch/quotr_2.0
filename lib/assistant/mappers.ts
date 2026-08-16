@@ -383,6 +383,7 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
     sellDerivedFromMargin: metadata.sellDerivedFromMargin,
     notes: displayNotes,
     materialBuildUps: getMaterialBuildUps(row.notes),
+    materialRateResolution: metadata.materialRateResolution,
     pricingOwner: metadata.pricingOwner,
     scopeKey: metadata.scopeKey,
     overlapGroup: metadata.overlapGroup,

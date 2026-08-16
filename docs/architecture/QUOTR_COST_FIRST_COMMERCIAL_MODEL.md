@@ -4,7 +4,9 @@
 **Prerequisite audit:** `docs/audits/COMMERCIAL_MARGIN_RATE_AUTHORITY_AUDIT.md`  
 **Plan:** `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
 
-**Hard stop:** Do not implement until Owner decisions in §8 are approved. Do not change Production Scope Discovery, Company DNA, or Stage 3.2.3 in this workstream unless sequenced explicitly.
+**FOUNDATION-R2-R1 (2026-08-16):** Deck decking money is quantity × unit **cost** (`$/lm` when board width known). Sell still follows COMMERCIAL-P0 (derived GM or legacy paired benchmark). Do not stack lm cost + m² package for the same boards.
+
+**FOUNDATION-R2-R1-R1 (2026-08-16):** Contractor matching-material `$/m²` outranks Quotr `$/lm` after explicit coverage conversion. Converted cost-only rows re-derive sell from company GM. Do not convert a `$/m²` figure as if it were `$/lm`. Do not rewrite persisted company rows.
 
 ---
 

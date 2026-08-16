@@ -33,11 +33,15 @@ function findActiveRate(
   return rates.find((rate) => rate.active && predicate(rate));
 }
 
-function unitsMatch(rateUnit: string, expectedUnit: string): boolean {
+export function materialRateUnitsMatch(
+  rateUnit: string,
+  expectedUnit: string
+): boolean {
   const normalize = (unit: string) =>
     unit
       .toLowerCase()
       .replace("m²", "m2")
+      .replace("face m2", "m2")
       .replace("each", "sheet")
       .replace("litre", "l")
       .replace("liter", "l");
@@ -83,21 +87,18 @@ export function formatMaterialRateResolutionDisplay(params: {
   unit: string;
   materialKey: string;
 }): string {
-  const unitLabel = params.unit === "m2" ? "$/m²" : params.unit === "lm" ? "$/lm" : params.unit === "m3" ? "$/m³" : params.unit === "l" ? "$/L" : params.unit === "each" ? "$/sheet" : `$/${params.unit}`;
-
   switch (params.source) {
     case "company_specific":
-      return `Company rate: ${params.label} ${unitLabel}`;
+      return "Your company rate";
     case "company_scope":
-      return `Company scope rate: ${params.label}`;
+      return "Your company package rate";
     case "company_category":
-      return `Company category rate: ${params.label}`;
+      return "Your company category rate";
     case "benchmark_specific":
-      return `Benchmark fallback: ${params.label} ${unitLabel}`;
     case "benchmark_category":
-      return `Benchmark category fallback: ${params.label}`;
+      return "Quotr benchmark";
     case "missing":
-      return `Missing specific rate — using benchmark for ${params.label}`;
+      return "Pricing required";
     default:
       return params.label;
   }
@@ -111,6 +112,7 @@ function buildResolvedMaterialRate(params: {
   itemKey: string;
   label: string;
   organisationSettings: OrganisationSettings | null;
+  explicitSellOverride?: boolean;
 }): ResolvedMaterialRate {
   const low = params.organisationSettings?.budget_rate_factor ?? 0.9;
   const high = params.organisationSettings?.premium_rate_factor ?? 1.15;
@@ -120,6 +122,7 @@ function buildResolvedMaterialRate(params: {
     costRate: params.costRate,
     sellRate: params.sellRate,
     applicableGrossMarginPercent: marginPercent,
+    explicitSellOverride: params.explicitSellOverride,
   });
 
   return {
@@ -155,6 +158,42 @@ function buildResolvedMaterialRate(params: {
   };
 }
 
+/**
+ * Convert a company matching-material $/m² rate into an equivalent $/lm rate
+ * using known board coverage width.
+ *
+ * equivalent_cost_per_lm = cost_per_m² × (board_width_mm / 1000)
+ *
+ * A $23/m² rate is not a $23/lm rate. Sell is converted only when the source
+ * row was a legacy pair or explicit override; cost-only rows re-derive sell
+ * from company gross margin after conversion (COMMERCIAL-P0).
+ */
+export function convertCompanyM2RateToLm(params: {
+  resolved: ResolvedMaterialRate;
+  boardWidthMm: number;
+  organisationSettings: OrganisationSettings | null;
+  label: string;
+}): ResolvedMaterialRate {
+  const widthM = params.boardWidthMm / 1000;
+  const costRate = round2(params.resolved.costRate * widthM);
+  const convertPairedSell =
+    params.resolved.isLegacyPairedRate || params.resolved.isExplicitSellOverride;
+  const sellRate = convertPairedSell
+    ? round2(params.resolved.sellRate * widthM)
+    : null;
+
+  return buildResolvedMaterialRate({
+    costRate,
+    sellRate,
+    unit: "lm",
+    materialRateSource: params.resolved.materialRateSource,
+    itemKey: params.resolved.resolvedMaterialKey,
+    label: params.label,
+    organisationSettings: params.organisationSettings,
+    explicitSellOverride: params.resolved.isExplicitSellOverride,
+  });
+}
+
 export function resolveMaterialRate(params: {
   orgRates: OrganisationRate[];
   materialKey: string;
@@ -181,7 +220,7 @@ export function resolveMaterialRate(params: {
       rate.item_key === params.materialKey &&
       rate.rate_type === "material" &&
       rate.cost_rate != null &&
-      unitsMatch(rate.unit, params.unit)
+      materialRateUnitsMatch(rate.unit, params.unit)
   );
 
   if (exactRate?.cost_rate != null) {
@@ -202,7 +241,8 @@ export function resolveMaterialRate(params: {
       (rate) =>
         rate.item_key === params.categoryKey &&
         rate.rate_type === "material" &&
-        rate.cost_rate != null
+        rate.cost_rate != null &&
+        materialRateUnitsMatch(rate.unit || params.unit, params.unit)
     );
     if (categoryRate?.cost_rate != null) {
       return buildResolvedMaterialRate({
@@ -217,26 +257,9 @@ export function resolveMaterialRate(params: {
     }
   }
 
-  if (params.workAreaType) {
-    const workAreaRate = findActiveRate(
-      params.orgRates,
-      (rate) =>
-        rate.rate_type === "material" &&
-        rate.work_area_type === params.workAreaType &&
-        rate.cost_rate != null
-    );
-    if (workAreaRate?.cost_rate != null) {
-      return buildResolvedMaterialRate({
-        costRate: workAreaRate.cost_rate,
-        sellRate: workAreaRate.sell_rate,
-        unit: workAreaRate.unit || params.unit,
-        materialRateSource: "company_category",
-        itemKey: workAreaRate.item_key,
-        label,
-        organisationSettings: params.organisationSettings,
-      });
-    }
-  }
+  // workAreaType is accepted for call-site compatibility but must not first-match
+  // an arbitrary work-area material rate (unit/material identity errors).
+  void params.workAreaType;
 
   if (params.scopeKey) {
     const scopeRate = findActiveRate(
@@ -244,7 +267,8 @@ export function resolveMaterialRate(params: {
       (rate) =>
         rate.item_key === params.scopeKey &&
         rate.rate_type === "scope" &&
-        rate.cost_rate != null
+        rate.cost_rate != null &&
+        materialRateUnitsMatch(rate.unit || params.unit, params.unit)
     );
     if (scopeRate?.cost_rate != null) {
       return buildResolvedMaterialRate({

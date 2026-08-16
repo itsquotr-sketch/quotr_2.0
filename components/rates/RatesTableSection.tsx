@@ -127,6 +127,9 @@ function RateMobileCard({
           {entry.trade ? (
             <p className="text-xs text-muted-foreground">{entry.trade}</p>
           ) : null}
+          {entry.description ? (
+            <p className="text-xs text-muted-foreground">{entry.description}</p>
+          ) : null}
           <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
             <span>{formatRateUnit(entry.unit)}</span>
             <span>·</span>

@@ -1,6 +1,6 @@
 # Quotr Supported Work Area Contract
 
-**Status:** FOUNDATION-R1 Complete. FOUNDATION-R1-R1 Complete — Owner Preview Validated (2026-08-16). FOUNDATION-R2 Complete Local / Owner Preview Pending.  
+**Status:** FOUNDATION-R1 Complete. FOUNDATION-R1-R1 Complete — Owner Preview Validated (2026-08-16). FOUNDATION-R2 Complete Local / Owner Preview remediation pending R2-R1. FOUNDATION-R2-R1 Complete Local / Owner Preview Pending.  
 **Code:** `lib/work-areas/support-contract.ts`  
 **Audit (historical):** `docs/audits/SUPPORTED_WORK_AREA_COVERAGE_AUDIT.md`  
 **Owner:** OD-CAT-01, OD-CAT-02, OD-CAT-03, OD-T1-01

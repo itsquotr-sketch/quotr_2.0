@@ -1,7 +1,7 @@
 # Quotr Material Takeoff Architecture
 
 **Status:** Proposed architecture (not implemented) — 2026-08-13  
-**Post-trial (2026-08-15):** MaterialRequirement + LabourRequirement absorbed/extended by `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (**not implemented**). Deck face-board geometry in §7 remains valid pending Owner **OD-FACE-01**.  
+**Post-trial (2026-08-15):** MaterialRequirement + LabourRequirement absorbed/extended by `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (**not implemented**). **FOUNDATION-R2-R1 (2026-08-16):** Deck **surface decking** now prices the same lm takeoff used for display when board width is known. **FOUNDATION-R2-R1-R1:** contractor `$/m²` may convert onto that lm takeoff using nominal board width; waste is already in purchase lm (do not apply twice). Face-board geometry in §7 remains deferred (OD-FACE-01). Do not treat these batches as Catalogue V2 or requirement emission.  
 **Prerequisite audit:** `docs/audits/MATERIAL_PRICING_TAKEOFF_CURRENT_STATE_AUDIT.md`  
 **Commercial model:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
 **Plan:** `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`  
@@ -210,6 +210,26 @@ Ask only what cannot be derived:
 **Stop** hardcoding `faceBoardLm` + labour 35/55 — resolve rates + labour via cost-first.
 
 Optional later: full height vs fascia strip only.
+
+### Current surface-decking approximation (R2-R1 / R2-R1-R1)
+
+Do **not** treat 126.65 lm as fabrication-level takeoff. Current formula:
+
+```
+baseLm    = round2(area_m² / (board_width_mm / 1000))
+wastageLm = round2(baseLm × waste%)
+purchaseLm = round2(baseLm + wastageLm)
+```
+
+Nominal board width is used as coverage width. **DECK-1 refinements (not in this batch):**
+
+- effective cover width vs nominal
+- gaps
+- orientation
+- board length / offcut effects
+- irregular geometry beyond area or L×W
+
+Waste is applied once in `purchaseLm`. Company `$/m²` conversion uses `cost_m² × coverage_width_m` against that purchase lm — do not also inflate area.
 
 ### Wire both
 1. Deck material pricing (priced requirement)

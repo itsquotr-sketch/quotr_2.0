@@ -56,12 +56,19 @@ const deck1 = calculateDeck(
   wa("d1", "deck", "Deck 1")
 );
 assert(!labels(deck1.lineItems).includes("Decking boards"), "Deck 1: no duplicate boards row");
-assert(labels(deck1.lineItems).includes("Decking materials package"), "Deck 1: has materials package");
+assert(
+  labels(deck1.lineItems).includes("Decking materials"),
+  "Deck 1: has quantity-priced decking materials"
+);
 assert(labels(deck1.lineItems).includes("Stair set allowance"), "Deck 1: stairs allowance");
 assert(labels(deck1.lineItems).includes("Balustrade allowance"), "Deck 1: balustrade");
 assert(
-  deck1.lineItems.find((i) => i.label === "Decking materials package")?.materialBuildUp != null,
-  "Deck 1: board lm build-up on package"
+  deck1.lineItems.find((i) => i.label === "Decking materials")?.materialBuildUp != null,
+  "Deck 1: board lm build-up on decking materials"
+);
+assert(
+  deck1.lineItems.find((i) => i.label === "Decking materials")?.unit === "lm",
+  "Deck 1: decking priced in lm"
 );
 
 // Deck 2: 36m² kwila, ground-level, face boards

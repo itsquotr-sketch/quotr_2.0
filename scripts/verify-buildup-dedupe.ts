@@ -34,6 +34,12 @@ const baseContext = {
   rates: [],
 } as unknown as EstimateContext;
 
+function isDeckingMaterialsLine(label: string): boolean {
+  return (
+    label === "Decking materials" || label === "Decking materials package"
+  );
+}
+
 function workArea(
   id: string,
   type: string,
@@ -66,15 +72,16 @@ assert(
   "Deck estimate has no separate Decking boards priced row"
 );
 assert(
-  deckMaterialLabels.includes("Decking materials package"),
-  "Deck estimate keeps Decking materials package"
+  deckMaterialLabels.includes("Decking materials"),
+  "Deck estimate keeps quantity-priced Decking materials"
 );
 
 const deckPackage = deckMerged.find(
-  (item) => item.label === "Decking materials package"
+  (item) => item.label === "Decking materials"
 );
-assert(deckPackage?.materialBuildUp != null, "Deck package has board lm build-up");
-assert(deckPackage?.materialBuildUp?.priced === false, "Deck build-up is not priced");
+assert(deckPackage?.materialBuildUp != null, "Deck materials have board lm build-up");
+assert(deckPackage?.materialBuildUp?.priced === true, "Deck lm build-up is priced when $/lm resolves");
+assert(deckPackage?.unit === "lm", "Deck materials priced in lm");
 
 // Test 2 — Estimate totals not inflated by build-up rows
 const estimateContext = {
@@ -341,22 +348,21 @@ const twoDeckContext = {
 const twoDeckEstimate = calculateEstimate(twoDeckContext);
 const deckAPackage = twoDeckEstimate.lineItems.find(
   (item) =>
-    item.workAreaId === "deck-a" && item.label === "Decking materials package"
+    item.workAreaId === "deck-a" && isDeckingMaterialsLine(item.label)
 );
 const deckBPackage = twoDeckEstimate.lineItems.find(
   (item) =>
-    item.workAreaId === "deck-b" && item.label === "Decking materials package"
+    item.workAreaId === "deck-b" && isDeckingMaterialsLine(item.label)
 );
-assert(deckAPackage != null, "Deck A keeps decking materials package");
-assert(deckBPackage != null, "Deck B keeps decking materials package");
+assert(deckAPackage != null, "Deck A keeps decking materials");
+assert(deckBPackage != null, "Deck B keeps decking materials");
 assert(
   deckAPackage?.workAreaId !== deckBPackage?.workAreaId,
   "Two deck work areas remain separate"
 );
 assert(
-  twoDeckEstimate.lineItems.filter(
-    (item) => item.label === "Decking materials package"
-  ).length === 2,
+  twoDeckEstimate.lineItems.filter((item) => isDeckingMaterialsLine(item.label))
+    .length === 2,
   "Two deck work areas each keep their own package row"
 );
 

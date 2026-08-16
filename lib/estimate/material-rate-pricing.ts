@@ -11,6 +11,8 @@ export type MaterialRateResolution = {
   display: string;
   confidence: ResolvedMaterialRate["confidence"];
   materialKey: string;
+  /** Contractor-facing conversion explanation; omit internal rate keys. */
+  conversionNote?: string;
 };
 
 export type BuildUpMaterialPricing = {
@@ -23,8 +25,9 @@ export type BuildUpMaterialPricing = {
   usedBuildUpQuantity: boolean;
 };
 
-function toMaterialRateResolution(
-  resolved: ResolvedMaterialRate
+export function toMaterialRateResolution(
+  resolved: ResolvedMaterialRate,
+  conversionNote?: string
 ): MaterialRateResolution {
   return {
     source: resolved.materialRateSource,
@@ -32,6 +35,7 @@ function toMaterialRateResolution(
     display: resolved.rateResolutionDisplay,
     confidence: resolved.confidence,
     materialKey: resolved.resolvedMaterialKey,
+    conversionNote,
   };
 }
 
@@ -45,6 +49,26 @@ function isSpecificUnitRate(
   const normalized = resolved.unit.toLowerCase().replace("m²", "m2");
   const expected = expectedUnit.toLowerCase().replace("m²", "m2");
   return normalized === expected;
+}
+
+/**
+ * Use the physical takeoff quantity when the resolved rate's unit matches and
+ * the source is a specific material cost (company or Quotr benchmark).
+ * Scope/package sources must not price lm takeoff as if they were $/lm.
+ */
+export function canPriceBuildUpQuantity(
+  resolved: ResolvedMaterialRate,
+  expectedUnit: string
+): boolean {
+  if (!isSpecificUnitRate(resolved, expectedUnit)) {
+    return false;
+  }
+  return (
+    resolved.materialRateSource === "company_specific" ||
+    resolved.materialRateSource === "company_category" ||
+    resolved.materialRateSource === "benchmark_specific" ||
+    resolved.materialRateSource === "benchmark_category"
+  );
 }
 
 export function resolveBuildUpMaterialPricing(params: {
@@ -84,12 +108,7 @@ export function resolveBuildUpMaterialPricing(params: {
     organisationSettings: params.context.organisationSettings,
   });
 
-  if (
-    (isSpecificUnitRate(primary, params.buildUpUnit) &&
-      (primary.materialRateSource.startsWith("company_") ||
-        !params.fallback)) ||
-    primary.materialRateSource === "company_specific"
-  ) {
+  if (canPriceBuildUpQuantity(primary, params.buildUpUnit)) {
     return {
       quantity: params.buildUpQuantity,
       unit: params.buildUpUnit,

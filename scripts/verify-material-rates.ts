@@ -81,10 +81,14 @@ const deckFallback = resolveBuildUpMaterialPricing({
   },
 });
 assert(
-  deckFallback.quantity === 70 && deckFallback.unit === "m2",
-  "Deck fallback uses m² quantity"
+  deckFallback.quantity === 550 && deckFallback.unit === "lm",
+  "Deck uses lm quantity when Quotr $/lm benchmark can resolve"
 );
-assert(!deckFallback.usedBuildUpQuantity, "Deck fallback does not use lm quantity");
+assert(deckFallback.usedBuildUpQuantity, "Deck benchmark lm uses physical takeoff");
+assert(
+  deckFallback.costRate === DECK_BENCHMARKS.kwilaLm.cost,
+  "Deck lm benchmark cost is used before m² package"
+);
 
 // Test 3 — Plasterboard sheet rate
 const sheetPricing = resolveBuildUpMaterialPricing({
@@ -168,8 +172,80 @@ assert(
   "Missing org rate uses benchmark"
 );
 assert(
-  missing.rateResolutionDisplay.includes("Benchmark"),
+  missing.rateResolutionDisplay === "Quotr benchmark",
   "Benchmark displayed in resolution text"
+);
+
+// Test 6 — m² package only when lm cannot resolve (benchmarks disabled)
+const packageWhenLmMissing = resolveBuildUpMaterialPricing({
+  context: {
+    rates: [
+      {
+        item_key: MATERIAL_RATE_KEYS.deckingKwilaM2,
+        rate_type: "material" as const,
+        unit: "m2",
+        cost_rate: 230,
+        sell_rate: 340,
+        active: true,
+      },
+    ],
+    organisationSettings: {
+      allow_benchmark_rates: false,
+      default_margin_percent: 20,
+    },
+    materialWastageSettings: null,
+  } as never,
+  materialKey: MATERIAL_RATE_KEYS.deckingKwilaLm,
+  label: "Kwila decking boards",
+  buildUpQuantity: 550,
+  buildUpUnit: "lm",
+  benchmarkCostRate: DECK_BENCHMARKS.kwilaLm.cost,
+  benchmarkSellRate: DECK_BENCHMARKS.kwilaLm.sell,
+  fallback: {
+    materialKey: MATERIAL_RATE_KEYS.deckingKwilaM2,
+    quantity: 70,
+    unit: "m2",
+    benchmarkCostRate: DECK_BENCHMARKS.kwilaDecking.cost,
+    benchmarkSellRate: DECK_BENCHMARKS.kwilaDecking.sell,
+  },
+});
+assert(
+  packageWhenLmMissing.quantity === 70 && packageWhenLmMissing.unit === "m2",
+  "m² package fallback only when lm rate cannot resolve"
+);
+assert(
+  !packageWhenLmMissing.usedBuildUpQuantity,
+  "Package fallback does not price the lm takeoff"
+);
+
+// Test 7 — company m² must not be applied as an lm rate
+const mismatched = resolveMaterialRate({
+  orgRates: [
+    {
+      item_key: MATERIAL_RATE_KEYS.deckingHardwoodM2,
+      rate_type: "material",
+      unit: "m2",
+      cost_rate: 23,
+      sell_rate: 25,
+      active: true,
+      work_area_type: "deck",
+    } as never,
+  ],
+  materialKey: MATERIAL_RATE_KEYS.deckingHardwoodLm,
+  unit: "lm",
+  label: "Hardwood decking",
+  benchmarkCostRate: DECK_BENCHMARKS.hardwoodLm.cost,
+  benchmarkSellRate: DECK_BENCHMARKS.hardwoodLm.sell,
+  workAreaType: "deck",
+  organisationSettings: orgSettings,
+});
+assert(
+  mismatched.costRate === DECK_BENCHMARKS.hardwoodLm.cost,
+  "Company m² decking rate does not override $/lm lookup"
+);
+assert(
+  mismatched.unit === "lm",
+  "lm lookup keeps lm unit"
 );
 
 console.log("\nAll Sprint 3 material rate checks passed.");

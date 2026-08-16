@@ -169,12 +169,14 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   // Deck
   entry({
     item_key: "deck.material.treated_pine.m2",
-    label: "Treated pine decking",
+    label: "Treated pine decking (per m² of deck area)",
     rate_type: "material",
     category: "material",
     work_area_type: "deck",
     workAreaLabel: "Deck",
     unit: "m2",
+    description:
+      "Cost per square metre of deck area ($/m²) for the same boards. Fallback if you have no $/lm board rate under All materials — converted using known board width. Not a $/lm rate and not a whole-deck package (framing and fixings are separate).",
     defaultCostRate: DECK_BENCHMARKS.treatedPineDecking.cost,
     defaultSellRate: DECK_BENCHMARKS.treatedPineDecking.sell,
     recommended: true,
@@ -183,12 +185,14 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "deck.material.hardwood.m2",
-    label: "Hardwood decking",
+    label: "Hardwood decking (per m² of deck area)",
     rate_type: "material",
     category: "material",
     work_area_type: "deck",
     workAreaLabel: "Deck",
     unit: "m2",
+    description:
+      "Cost per square metre of deck area ($/m²) for the same boards, including kwila when no kwila m² row exists. Fallback if you have no $/lm board rate under All materials. Not equivalent to a $/lm rate. Framing and fixings are separate.",
     defaultCostRate: DECK_BENCHMARKS.hardwoodDecking.cost,
     defaultSellRate: DECK_BENCHMARKS.hardwoodDecking.sell,
     recommended: true,
@@ -197,12 +201,14 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "deck.material.composite.m2",
-    label: "Composite decking",
+    label: "Composite decking (per m² of deck area)",
     rate_type: "material",
     category: "material",
     work_area_type: "deck",
     workAreaLabel: "Deck",
     unit: "m2",
+    description:
+      "Cost per square metre of deck area ($/m²) for the same boards. Fallback if you have no $/lm board rate under All materials. Not a whole-deck package — framing and fixings are separate.",
     defaultCostRate: DECK_BENCHMARKS.compositeDecking.cost,
     defaultSellRate: DECK_BENCHMARKS.compositeDecking.sell,
     recommended: true,
