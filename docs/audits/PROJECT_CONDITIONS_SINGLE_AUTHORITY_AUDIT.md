@@ -1,6 +1,6 @@
 # Project Conditions — Single Authority Audit
 
-**Status:** Audit complete (2026-08-15). **IMPLEMENTED in FOUNDATION-R1.** **FOUNDATION-R1-R1** added applicability filtering, remaining canonical ASK keys, and Generate hard-block (UI + server).  
+**Status:** Audit complete (2026-08-15). **IMPLEMENTED in FOUNDATION-R1.** **FOUNDATION-R1-R1** added applicability filtering, remaining canonical ASK keys, and Generate hard-block (UI + server). **FOUNDATION-R2** re-verified no Project Condition reintroduction in Scope Details.  
 **Implementation:** `docs/implementation/FOUNDATION_R1_PROJECT_CONDITIONS_SUPPORT_COMPLETION.md`  
 **R1-R1:** `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`  
 **HEAD (audit baseline):** `f168fe0ec8a857fffa79888435ca90b9e8a1db25`  

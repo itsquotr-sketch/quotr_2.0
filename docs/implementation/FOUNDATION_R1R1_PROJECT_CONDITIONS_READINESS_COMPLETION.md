@@ -1,10 +1,12 @@
 # FOUNDATION-R1-R1 — Project Conditions availability + estimate-readiness
 
-**Status:** Complete Local / Owner Preview Pending  
-**Date:** 2026-08-15  
+**Status:** Complete — Owner Preview Validated  
+**Date:** 2026-08-16  
 **Verify:** `npx tsx scripts/verify-foundation-r1r1-project-conditions-readiness.ts`
 
-FOUNDATION-R1 shipped (PC authority + WA support contract + DC-01/DC-02). Owner Preview then found Generate unlocked with no visible Project Conditions. This batch remediates that regression. It does **not** start FOUNDATION-R2 or requirement emission.
+FOUNDATION-R1 shipped (PC authority + WA support contract + DC-01/DC-02). Owner Preview then found Generate unlocked with no visible Project Conditions. This batch remediates that regression.
+
+**Owner Preview evidence (2026-08-16):** Owner manually tested the live Preview flow and confirmed Project Conditions appears in the correct order, is the sole project-wide conditions surface, and Generate Estimate stays blocked until required Project Conditions are resolved.
 
 ---
 
@@ -106,8 +108,8 @@ No migrations. No requirement emission. No Stage 3.2.3 UI.
 | Item | Status |
 | --- | --- |
 | FOUNDATION-R1 | Complete / Preview regression remediated by R1-R1 |
-| FOUNDATION-R1-R1 | **Complete Local / Owner Preview Pending** |
-| FOUNDATION-R2 | Not Started |
+| FOUNDATION-R1-R1 | **Complete — Owner Preview Validated** |
+| FOUNDATION-R2 | Complete Local / Owner Preview Pending — `docs/implementation/FOUNDATION_R2_SCOPE_DETAILS_COMPLETION.md` |
 | REQ-1 / Material / Labour emission | Not Started |
 | Deck pilot | Not Started |
 | Stage 3.2.3 | Not Started |
@@ -115,4 +117,4 @@ No migrations. No requirement emission. No Stage 3.2.3 UI.
 | PERF-FUTURE-01 | Planned |
 | Production Scope Discovery | Disabled |
 
-**Exact next:** Owner R1-R1 Preview retest. Do not start FOUNDATION-R2 until authorised.
+**Exact next after this record:** FOUNDATION-R2 Owner Preview. REQ-1 stays Not Started until R2 Owner PASS.

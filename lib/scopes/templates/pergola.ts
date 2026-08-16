@@ -41,9 +41,21 @@ export const pergolaScope: ScopeDefinition = {
       category: "measurement",
     },
     {
+      key: "pergola.height_m",
+      label: "Pergola height",
+      questionText: "What is the pergola height?",
+      inputType: "number",
+      unit: "m",
+      required: false,
+      priority: 12,
+      factKey: "pergola.height_m",
+      workAreaType: "pergola",
+      category: "measurement",
+    },
+    {
       key: "pergola.material",
       label: "Pergola material",
-      questionText: "What pergola material should be allowed for?",
+      questionText: "What material is the pergola?",
       inputType: "select",
       options: ["Timber", "Steel", "Aluminium", "Not sure"],
       required: true,
@@ -158,7 +170,7 @@ export const pergolaScope: ScopeDefinition = {
     {
       key: "pergola.finish_type",
       label: "Pergola finish type",
-      questionText: "What finish is included?",
+      questionText: "Paint, stain, or powdercoat?",
       inputType: "select",
       options: [
         "paint",

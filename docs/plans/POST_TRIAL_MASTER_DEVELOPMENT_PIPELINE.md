@@ -1,6 +1,6 @@
 # Post-Trial Master Development Pipeline
 
-**Status:** Programme active. **FOUNDATION-R1 Complete / Preview regression remediated by R1-R1.** **FOUNDATION-R1-R1 Complete Local / Owner Preview Pending** (2026-08-15). **FOUNDATION-R2** = Scope Details completeness (**Not Started**). REQ-1/2/3 and Deck pilot **Not Started**.  
+**Status:** Programme active. **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated** (2026-08-16). **FOUNDATION-R2 Complete Local / Owner Preview Pending.** REQ-1/2/3 and Deck pilot **Not Started**.  
 **HEAD baseline:** `f168fe0ec8a857fffa79888435ca90b9e8a1db25`  
 **Implementation:** `docs/implementation/FOUNDATION_R1_PROJECT_CONDITIONS_SUPPORT_COMPLETION.md`  
 **R1-R1:** `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`  
@@ -111,7 +111,7 @@ Risk: L = low, M = medium, H = high (commercial or product-claim).
 
 | Field | Value |
 | --- | --- |
-| **Status** | **Complete Local / Owner Preview Pending** (2026-08-15) |
+| **Status** | **Complete — Owner Preview Validated** (2026-08-16) |
 | **Implementation** | `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md` |
 | **Verify** | `scripts/verify-foundation-r1r1-project-conditions-readiness.ts` |
 | **Dependencies** | FOUNDATION-R1 Preview regression (Generate unlocked; PC stage missing) |
@@ -128,7 +128,9 @@ Risk: L = low, M = medium, H = high (commercial or product-claim).
 
 | Field | Value |
 | --- | --- |
-| **Status** | **Not Started** |
+| **Status** | **Complete Local / Owner Preview Pending** (2026-08-16) |
+| **Implementation** | `docs/implementation/FOUNDATION_R2_SCOPE_DETAILS_COMPLETION.md` |
+| **Verify** | `scripts/verify-foundation-r2-scope-details-completeness.ts` |
 | **Objective** | Remaining Scope Details are Work-Area-physical only: conditionals, copy, completeness, no leftover project-logistics overlap |
 | **Dependencies** | FOUNDATION-R1-R1 Owner Preview |
 | **Scope** | Question quality/conditionals; skip_bin vs `waste_bin_access`; disposal questions vs project waste; `deck.level` copy vs project `floor_level`; remaining interview DEFER clones; no new WAs |
@@ -146,13 +148,14 @@ Risk: L = low, M = medium, H = high (commercial or product-claim).
 | Field | Value |
 | --- | --- |
 | **Status** | **Not Started** |
-| **Objective** | Calculators may attach `requirements[]` envelope; money still from line items; no claim of takeoff completeness |
+| **Objective** | Make requirement emission **possible**, not universal. Add the calculator output envelope, aggregation/composition, and diagnostics/provenance. Unchanged calculators emit empty `requirements[]`. Money still comes from line items. |
 | **Dependencies** | FOUNDATION-R2 (input quality) + FOUNDATION-R1 DC-01/02 |
-| **Scope** | `CalculatorResult.requirements` optional; Deck maps existing lines → envelope (`priced` flags honest); other WAs empty or passthrough |
-| **Non-goals** | Face-edge math; Materials Catalogue V2; UI takeoff page |
+| **Scope** | Optional `CalculatorResult.requirements`; Deck may map existing lines → envelope with honest `priced` flags; other WAs empty/passthrough |
+| **Non-goals** | Emitting from every calculator; Deck quantity takeoff (DECK-1); face-edge math (DECK-2); Materials Catalogue V2; UI takeoff page; changing commercial $ |
 | **Migration** | None (prefer derive-on-read) |
 | **Verification** | Envelope present; sums do not change commercial $ vs R1 |
 | **Risk** | M |
+| **Handoff** | After FOUNDATION-R2 Owner Preview PASS. Do **not** start until authorised. |
 
 ---
 
@@ -401,8 +404,8 @@ Parallel. Evidence-backed P1: Analyse Job wait; margin `router.refresh`; residua
 ```
 PT-AUD-01 (done)
 → FOUNDATION-R1 (Complete / Preview regression remediated by R1-R1)
-→ FOUNDATION-R1-R1 (Complete Local / Owner Preview Pending)
-→ FOUNDATION-R2 (Scope Details completeness / question quality)
+→ FOUNDATION-R1-R1 (Complete — Owner Preview Validated)
+→ FOUNDATION-R2 (Complete Local / Owner Preview Pending)
 → REQ-1 (EstimateRequirement envelope)
 → REQ-2 (MaterialRequirement emission)
 → REQ-3 (LabourRequirement emission)

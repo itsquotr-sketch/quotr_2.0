@@ -7,7 +7,7 @@ export const externalStairsScope: ScopeDefinition = {
     {
       key: "external_stairs.risers_count",
       label: "Number of risers",
-      questionText: "Approximately how many risers are required?",
+      questionText: "How many risers?",
       inputType: "number",
       unit: "risers",
       required: false,
@@ -43,7 +43,7 @@ export const externalStairsScope: ScopeDefinition = {
     {
       key: "external_stairs.material",
       label: "Stair material",
-      questionText: "What stair material should be allowed for?",
+      questionText: "What stair material is being used?",
       inputType: "select",
       options: [
         "Treated timber",
@@ -139,7 +139,7 @@ export const externalStairsScope: ScopeDefinition = {
       inputType: "boolean",
       options: ["Yes", "No", "Not sure"],
       required: false,
-      priority: 35,
+      priority: 5,
       factKey: "external_stairs.existing_removal",
       workAreaType: "external_stairs",
       category: "scope",

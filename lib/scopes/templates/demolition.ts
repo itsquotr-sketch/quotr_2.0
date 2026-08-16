@@ -8,7 +8,7 @@ export const demolitionScope: ScopeDefinition = {
     {
       key: "demolition.scope_items",
       label: "Demolition scope",
-      questionText: "What demolition/strip-out items are included?",
+      questionText: "What is being demolished or stripped out?",
       inputType: "multi_select",
       options: [
         "Internal walls",
@@ -92,7 +92,7 @@ export const demolitionScope: ScopeDefinition = {
     {
       key: "demolition.skip_bin_included",
       label: "Skip bin",
-      questionText: "Is a skip bin included?",
+      questionText: "Is a skip included in this demolition scope?",
       inputType: "boolean",
       options: ["Yes", "No", "Not sure"],
       required: false,

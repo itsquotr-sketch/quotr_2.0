@@ -175,7 +175,7 @@ export function shouldHideConditionalQuestion(
     return false;
   }
 
-  if (key === "fence.gate_count") {
+  if (key === "fence.gate_count" || key === "fence.gate_width_m") {
     const gate = boolFact(lookup, workAreaId, "fence.gate_included");
     if (gate !== true) return true;
     return false;
@@ -518,6 +518,80 @@ export function shouldHideConditionalQuestion(
     const risers = numFact(lookup, workAreaId, "external_stairs.risers_count");
     const rise = numFact(lookup, workAreaId, "external_stairs.total_rise_m");
     if ((risers ?? 0) < 5 && (rise ?? 0) < 1) return true;
+    return false;
+  }
+
+  // FOUNDATION-R2 — parent/child gating and derived-geometry suppression.
+  if (key === "deck.area_m2") {
+    const length = numFact(lookup, workAreaId, "deck.length_m");
+    const width = numFact(lookup, workAreaId, "deck.width_m");
+    if (length !== null && width !== null) return true;
+    return false;
+  }
+
+  if (key === "deck.level") {
+    const height = numFact(lookup, workAreaId, "deck.height_m");
+    if (height !== null) return true;
+    return false;
+  }
+
+  if (key === "bathroom.waterproofing_extent") {
+    const included = boolFact(lookup, workAreaId, "bathroom.waterproofing_included");
+    if (included !== true) return true;
+    return false;
+  }
+
+  if (key === "bathroom.wall_tile_height") {
+    const extent = strFact(lookup, workAreaId, "bathroom.tile_extent");
+    if (
+      extent &&
+      (extent.toLowerCase().includes("floor only") ||
+        extent.toLowerCase().includes("splashback"))
+    ) {
+      return true;
+    }
+  }
+
+  if (key === "kitchen.benchtop_material") {
+    const included = boolFact(lookup, workAreaId, "kitchen.benchtop_included");
+    if (included !== true) return true;
+    return false;
+  }
+
+  if (key === "kitchen.island_length_m") {
+    const included = boolFact(lookup, workAreaId, "kitchen.island_included");
+    if (included !== true) return true;
+    return false;
+  }
+
+  if (key === "kitchen.cabinetry_lm") {
+    const included = boolFact(lookup, workAreaId, "kitchen.cabinetry_included");
+    if (included !== true) return true;
+    return false;
+  }
+
+  if (key === "retaining_wall.disposal_included") {
+    const excavation = boolFact(lookup, workAreaId, "retaining_wall.excavation_required");
+    if (excavation !== true) return true;
+    return false;
+  }
+
+  if (
+    key === "demolition.wall_length_m" ||
+    key === "demolition.floor_area_m2" ||
+    key === "demolition.ceiling_area_m2"
+  ) {
+    const scope = lookupValue(lookup, workAreaId, "demolition.scope_items");
+    if (!Array.isArray(scope) || scope.length === 0) return true;
+    const joined = scope.map(String).join(" ").toLowerCase();
+    if (key === "demolition.wall_length_m" && !joined.includes("wall")) return true;
+    if (key === "demolition.floor_area_m2" && !joined.includes("floor")) return true;
+    if (
+      key === "demolition.ceiling_area_m2" &&
+      !joined.includes("ceiling")
+    ) {
+      return true;
+    }
     return false;
   }
 

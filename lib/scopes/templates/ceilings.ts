@@ -104,7 +104,7 @@ export const ceilingsScope: ScopeDefinition = {
       inputType: "boolean",
       options: ["Yes", "No", "Not sure"],
       required: false,
-      priority: 15,
+      priority: 12,
       factKey: "ceilings.demolition_included",
       workAreaType: "ceilings",
       category: "scope",
@@ -148,8 +148,7 @@ export const ceilingsScope: ScopeDefinition = {
     {
       key: "ceilings.access",
       label: "Ceiling working height",
-      questionText:
-        "What is the ceiling working height / access equipment like?",
+      questionText: "What is the working height for this ceiling?",
       inputType: "select",
       options: ["Standard", "High", "Difficult working height", "Not sure"],
       required: false,

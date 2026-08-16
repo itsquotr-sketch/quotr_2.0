@@ -55,7 +55,7 @@ export const plasteringScope: ScopeDefinition = {
     {
       key: "plastering.complexity",
       label: "Stopping complexity",
-      questionText: "What is the corners/stopping complexity?",
+      questionText: "How complex is the stopping?",
       inputType: "select",
       options: ["Simple", "Standard", "Complex", "Not sure"],
       required: false,

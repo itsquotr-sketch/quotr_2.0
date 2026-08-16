@@ -1,10 +1,9 @@
 # FOUNDATION-R1-R1 — Owner Preview retest
 
-**Do not mark PASS automatically.**  
-**Preview only. Do not deploy Production.**  
-**Do not start FOUNDATION-R2.**
+**Status:** Complete — Owner Preview Validated (2026-08-16)  
+**Evidence:** Owner manually tested the live Preview flow and confirmed Project Conditions appears in the correct order, is the sole project-wide conditions surface, and Generate Estimate stays blocked until required Project Conditions are resolved.
 
-Stable Preview (after this batch is committed/pushed):  
+Stable Preview:  
 `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`
 
 ---
@@ -92,4 +91,4 @@ Do not treat Skip as complete.
 
 ---
 
-Owner records PASS/FAIL. Next authorised implementation after PASS: **FOUNDATION-R2** (Scope Details completeness), not REQ-1.
+Owner records PASS/FAIL. Next authorised implementation after PASS: **FOUNDATION-R2** (now Complete Local / Owner Preview Pending — `docs/runbooks/FOUNDATION_R2_OWNER_PREVIEW.md`), not REQ-1.

@@ -61,7 +61,7 @@ export const paintingScope: ScopeDefinition = {
     {
       key: "painting.coats_required",
       label: "Number of coats",
-      questionText: "How many coats are required?",
+      questionText: "How many coats?",
       inputType: "select",
       options: ["1", "2", "3", "Not sure"],
       required: true,

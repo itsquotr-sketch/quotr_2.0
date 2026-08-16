@@ -13,7 +13,7 @@
 
 **Related (outside 3.2.3):** Post–3.2.2 commercial — **COMMERCIAL-P0 Complete Local**; **Cost-first Rates Complete Local / Owner Preview Pending**; MaterialRequirement **Not Started** — `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`.
 
-**Post-trial reconciliation (2026-08-15):** original 3.2.3 “suppress project-known topics” merged into **FOUNDATION-R1**. **FOUNDATION-R1-R1** remediates Preview: PC applicability + Generate hard-block. 3.2.3 remains **Not Started**. Do not start 3.2.3 as originally scoped.
+**Post-trial reconciliation (2026-08-15):** original 3.2.3 “suppress project-known topics” merged into **FOUNDATION-R1**. **FOUNDATION-R1-R1** remediates Preview: PC applicability + Generate hard-block (Owner Preview Validated). **FOUNDATION-R2 Complete Local / Owner Preview Pending.** 3.2.3 remains **Not Started**. Do not start 3.2.3 as originally scoped.
 
 ---
 

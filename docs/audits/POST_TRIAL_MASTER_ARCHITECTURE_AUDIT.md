@@ -1,6 +1,6 @@
 # POST-TRIAL MASTER ARCHITECTURE AUDIT
 
-**Status:** Audit complete (2026-08-15). **FOUNDATION-R1: Complete / Preview regression remediated by R1-R1.** **FOUNDATION-R1-R1: Complete Local / Owner Preview Pending** — `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`.  
+**Status:** Audit complete (2026-08-15). **FOUNDATION-R1: Complete.** **FOUNDATION-R1-R1: Complete — Owner Preview Validated** — `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`. **FOUNDATION-R2: Complete Local / Owner Preview Pending** — `docs/implementation/FOUNDATION_R2_SCOPE_DETAILS_COMPLETION.md`.  
 **Mode:** Historical inventory. Do not treat “DO NOT IMPLEMENT” as current — R1 was later authorised (OD-R1-01).  
 **HEAD (audit baseline):** `f168fe0ec8a857fffa79888435ca90b9e8a1db25`  
 **Branch:** `hardening/stage-2a-security`  

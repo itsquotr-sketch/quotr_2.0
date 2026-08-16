@@ -79,7 +79,7 @@ export const doorsScope: ScopeDefinition = {
       inputType: "boolean",
       options: ["Yes", "No", "Not sure"],
       required: false,
-      priority: 48,
+      priority: 18,
       factKey: "doors.existing_removal",
       workAreaType: "doors",
       category: "scope",

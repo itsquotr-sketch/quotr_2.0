@@ -1,7 +1,7 @@
 # Quotr Estimate Requirements Architecture
 
 **Status:** Types frozen in FOUNDATION-R1 (`lib/estimate/requirements.ts`). **Emission Not Started.**  
-**Mode:** Architecture lock + TypeScript contracts only. Calculators must not emit requirements until **REQ-1**. FOUNDATION-R2 is Scope Details completeness, not emission.  
+**Mode:** Architecture lock + TypeScript contracts only. Calculators must not emit requirements until **REQ-1**. FOUNDATION-R2 Complete Local / Owner Preview Pending is Scope Details completeness, not emission.  
 **Supersedes in part:** `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md` (MaterialRequirement §4 is absorbed and extended; takeoff persistence and Deck pilot geometry remain valid).  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
 **Rate SoT:** `docs/architecture/QUOTR_RATE_AUTHORITY_AND_PROVENANCE_MODEL.md`  
@@ -372,4 +372,4 @@ Out of architecture foundation scope: live API clients.
 - Editable takeoff as money SoT  
 - Company DNA rate mutation from requirements  
 
-**Next implementation:** **REQ-1** may emit `CalculatorResult.requirements` (Deck-shaped) after FOUNDATION-R2 question quality. Do not emit in R1 or R2.
+**Next implementation:** **REQ-1** (after FOUNDATION-R2 Owner Preview PASS) adds the `CalculatorResult.requirements` envelope so emission is **possible**. It must not make every calculator emit, must not add Deck takeoff quantities, and must not change pricing authority. Empty `requirements[]` is valid. Do not emit in R1 or R2.

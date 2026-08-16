@@ -42,6 +42,7 @@ import { mapPricingItemsToQuoteItems } from "../lib/quotes/from-pricing";
 import type { PricingItem } from "../lib/pricing/types";
 import { resolveLineItemCategorySplit } from "../lib/estimate/category-breakdown";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
+import { getCombinedLabourAccessFactor } from "../lib/estimate/adjustments";
 import { assertNoDuplicateEstimateLineItems } from "../lib/estimate/commercial-realism";
 import { countOverlapGroups } from "../lib/estimate/pricing-ownership";
 import { applyScopeCrossoverResolution } from "../lib/scopes/scope-crossover";
@@ -65,8 +66,13 @@ type ValidationBrief = {
   }>;
   forbiddenQuestions?: Array<{ workAreaType: string; factKey: string }>;
   qualityLevel?: string;
-  constraintKeys?: string[];
-};
+    constraintKeys?: string[];
+    expectedProjectConditions?: Array<{
+      key: string;
+      includes?: string;
+    }>;
+    forbiddenFacts?: Array<{ key: string }>;
+  };
 
 const ALLOWED_TYPES = SCOPE_CATALOGUE.map((item) => item.type);
 
@@ -144,11 +150,13 @@ const BRIEFS: ValidationBrief[] = [
     brief:
       "Soft strip 80m² office including removal of internal partitions, ceiling tiles, carpet tiles, joinery and fixtures. Waste to be carted 45m to bin. Works are on level 2. Services isolated by others.",
     expectedWorkAreas: ["demolition"],
-    constraintKeys: ["material_carry_distance"],
+    expectedProjectConditions: [
+      { key: "material_carry_distance", includes: "30" },
+    ],
     expectedFacts: [
       { key: "demolition.disposal_included", workAreaType: "demolition", booleanTrue: true },
-      { key: "demolition.carting_distance_m", workAreaType: "demolition", value: 45 },
     ],
+    forbiddenFacts: [{ key: "demolition.carting_distance_m" }],
   },
   {
     id: 8,
@@ -156,10 +164,11 @@ const BRIEFS: ValidationBrief[] = [
     brief:
       "Build a 14.6m raking face-fixed timber retaining wall from 1m high down to 0.4m. Include excavation, backfill, novacoil drainage and disposal. Poor access and 45m carting distance.",
     expectedWorkAreas: ["retaining_wall"],
-    constraintKeys: ["site_access", "material_carry_distance"],
-    expectedFacts: [
-      { key: "retaining_wall.carting_distance_m", workAreaType: "retaining_wall", value: 45 },
+    expectedProjectConditions: [
+      { key: "site_access" },
+      { key: "material_carry_distance", includes: "30" },
     ],
+    forbiddenFacts: [{ key: "retaining_wall.carting_distance_m" }],
   },
   {
     id: 9,
@@ -378,9 +387,39 @@ function runDeterministicBrief(brief: ValidationBrief) {
   }
 
   const constraints = extractConstraintsFromBrief(brief.brief);
+  for (const expected of brief.expectedProjectConditions ?? []) {
+    const row = constraints.find((item) => item.key === expected.key);
+    if (!row) {
+      fail(brief, `Expected project condition ${expected.key}`, "P0");
+      continue;
+    }
+    if (
+      expected.includes &&
+      !String(row.value).toLowerCase().includes(expected.includes.toLowerCase())
+    ) {
+      fail(
+        brief,
+        `Expected project condition ${expected.key} to include ${expected.includes}, got ${String(row.value)}`,
+        "P0"
+      );
+    }
+  }
   for (const key of brief.constraintKeys ?? []) {
     if (!constraints.some((item) => item.key === key)) {
       fail(brief, `Expected constraint ${key}`, "P1");
+    }
+  }
+
+  for (const forbidden of brief.forbiddenFacts ?? []) {
+    const present = mergedFacts.some(
+      (item) => item.key === forbidden.key && factHasValue(item.value)
+    );
+    if (present) {
+      fail(
+        brief,
+        `Obsolete Work Area fact ${forbidden.key} must not be extracted (Project Conditions own carry)`,
+        "P0"
+      );
     }
   }
 
@@ -591,6 +630,132 @@ function runMessyRenovationEstimateChecks() {
   }
 }
 
+function estimateFromBrief(brief: ValidationBrief) {
+  const enriched = enrichExtractionFromBrief({
+    briefText: brief.brief,
+    extraction: coerceExtractionPayload({
+      workAreas: [],
+      facts: [],
+      assumptions: [],
+      possibleConstraints: [],
+      confidence: 0.5,
+      warnings: [],
+    }),
+    allowedTypes: ALLOWED_TYPES,
+  });
+  const normalised = normaliseAIExtraction(enriched.extraction);
+  const workAreas = normalised.workAreas.map((wa, index) => ({
+    id: `wa-carry-${brief.id}-${wa.type}`,
+    type: wa.type,
+    name: wa.type,
+    sort_order: index + 1,
+    status: "confirmed" as const,
+  }));
+  const factRows: ProjectFactRecord[] = normalised.facts.map((fact) => ({
+    key: fact.key,
+    work_area_id:
+      workAreas.find((wa) => wa.type === fact.work_area_type)?.id ?? null,
+    value: fact.value,
+    source: "ai_extracted" as const,
+  }));
+  const derived = deriveFactsForProject({
+    workAreas: workAreas.map((wa) => ({ id: wa.id, type: wa.type })),
+    projectFacts: factRows,
+  });
+  const mergedFacts = mergeDerivedFactsIntoRecords(factRows, derived);
+  const constraints = extractConstraintsFromBrief(brief.brief).map((c) => ({
+    key: c.key,
+    label: c.label,
+    value: c.value,
+  }));
+  const estimate = calculateEstimate({
+    project: { id: `carry-${brief.id}`, qualityLevel: "standard" },
+    confirmedWorkAreas: workAreas,
+    facts: mergedFacts,
+    constraints,
+    organisationSettings: {
+      allow_benchmark_rates: true,
+      default_margin_percent: 20,
+    },
+    materialWastageSettings: {
+      sheet_material: 10,
+      flooring: 10,
+      paint: 10,
+      default: 5,
+    },
+    rates: [],
+  } as Parameters<typeof calculateEstimate>[0]);
+  return { mergedFacts, constraints, estimate };
+}
+
+function runProjectCarryAuthorityChecks() {
+  const demoBrief = BRIEFS.find((b) => b.id === 7)!;
+  const rwBrief = BRIEFS.find((b) => b.id === 8)!;
+
+  const demo = estimateFromBrief(demoBrief);
+  const demoHasWaCarting = demo.mergedFacts.some(
+    (f) => f.key === "demolition.carting_distance_m" && factHasValue(f.value)
+  );
+  const demoHasHaulage = demo.estimate.lineItems.some((item) =>
+    /carting\/haulage/i.test(item.label)
+  );
+  const demoCarry = demo.constraints.find((c) => c.key === "material_carry_distance");
+  const demoLabourFactor = getCombinedLabourAccessFactor({
+    constraints: demo.constraints,
+  });
+
+  if (!demoCarry) {
+    fail(demoBrief, "Office Soft Strip missing project material_carry_distance", "P0");
+  } else if (demoHasWaCarting) {
+    fail(
+      demoBrief,
+      "Office Soft Strip extracted obsolete demolition.carting_distance_m",
+      "P0"
+    );
+  } else if (demoHasHaulage) {
+    fail(
+      demoBrief,
+      "Office Soft Strip priced WA carting/haulage while only Project Conditions carry exists",
+      "P0"
+    );
+  } else if (demoLabourFactor <= 1) {
+    fail(
+      demoBrief,
+      `Office Soft Strip expected labour carry factor from project condition, got ${demoLabourFactor}`,
+      "P0"
+    );
+  } else {
+    pass("Office Soft Strip: project carry exists; no WA carting Fact; no haulage duplicate");
+  }
+
+  const rw = estimateFromBrief(rwBrief);
+  const rwHasWaCarting = rw.mergedFacts.some(
+    (f) => f.key === "retaining_wall.carting_distance_m" && factHasValue(f.value)
+  );
+  const rwHasHaulage = rw.estimate.lineItems.some((item) =>
+    /carting\/material handling/i.test(item.label)
+  );
+  const rwCarry = rw.constraints.find((c) => c.key === "material_carry_distance");
+
+  if (!rwCarry) {
+    fail(rwBrief, "Retaining Wall missing project material_carry_distance", "P0");
+  } else if (rwHasWaCarting) {
+    fail(
+      rwBrief,
+      "Retaining Wall extracted obsolete retaining_wall.carting_distance_m",
+      "P0"
+    );
+  } else if (rwHasHaulage) {
+    fail(
+      rwBrief,
+      "Retaining Wall priced WA carting allowance while only Project Conditions carry exists",
+      "P0"
+    );
+  } else {
+    pass("Retaining Wall: project carry exists; no WA carting Fact; no haulage duplicate");
+  }
+}
+
 function runInfrastructureChecks() {
   const marginZero = validateMarginPercent(0);
   if (!marginZero.ok) {
@@ -765,6 +930,9 @@ for (const brief of BRIEFS) {
 
 console.log("\n=== Messy renovation estimate checks ===\n");
 runMessyRenovationEstimateChecks();
+
+console.log("\n=== Project carry authority (FOUNDATION-R1) ===\n");
+runProjectCarryAuthorityChecks();
 
 console.log("\n=== Infrastructure checks ===\n");
 runInfrastructureChecks();

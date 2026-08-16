@@ -61,7 +61,7 @@ Deck / Fence / Pergola labour single-consume from 3.2.2-R1 is **preserved**. Kit
 | --- | --- |
 | FOUNDATION-R1 | **Complete / Preview regression remediated by R1-R1** |
 | FOUNDATION-R1-R1 | See `FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md` |
-| FOUNDATION-R2 | Not Started (Scope Details completeness — not requirement emission) |
+| FOUNDATION-R2 | Complete Local / Owner Preview Pending — `docs/implementation/FOUNDATION_R2_SCOPE_DETAILS_COMPLETION.md` |
 | REQ-1 EstimateRequirement envelope | Not Started |
 | MaterialRequirement emission | Not Started |
 | LabourRequirement emission | Not Started |
@@ -89,6 +89,6 @@ Owner preview runbook: `docs/runbooks/FOUNDATION_R1_OWNER_PREVIEW.md`
 **Preview regression remediation:** `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`  
 **R1-R1 retest:** `docs/runbooks/FOUNDATION_R1R1_OWNER_PREVIEW.md`
 
-R1 shipped, then Owner Preview found Generate unlocked with no visible Project Conditions. **FOUNDATION-R1-R1** corrects that. Historical R1 completion remains truthful.
+R1 shipped, then Owner Preview found Generate unlocked with no visible Project Conditions. **FOUNDATION-R1-R1** corrects that (Owner Preview Validated 2026-08-16). Historical R1 completion remains truthful.
 
-**Exact next after R1-R1 Owner Preview PASS:** FOUNDATION-R2 — Work Area Scope Details completeness / question quality / conditional logic. Do **not** emit requirements. Do **not** start R2 until authorised.
+**Exact next after R1-R1 Owner Preview PASS:** FOUNDATION-R2 — now Complete Local / Owner Preview Pending. Do **not** emit requirements.

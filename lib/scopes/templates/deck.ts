@@ -67,7 +67,7 @@ export const deckScope: ScopeDefinition = {
     {
       key: "deck.board_material",
       label: "Decking board material",
-      questionText: "What decking board material/type is being allowed for?",
+      questionText: "What decking is being used?",
       inputType: "select",
       options: [
         "Treated Pine",
@@ -99,7 +99,7 @@ export const deckScope: ScopeDefinition = {
     {
       key: "deck.existing_deck_removal",
       label: "Existing deck removal",
-      questionText: "Is removal of an existing deck required?",
+      questionText: "Does the existing deck need removing?",
       inputType: "boolean",
       options: ["Yes", "No", "Not sure"],
       required: false,
@@ -179,7 +179,7 @@ export const deckScope: ScopeDefinition = {
     {
       key: "deck.substructure_included",
       label: "Substructure/framing",
-      questionText: "Is framing/substructure included in this scope?",
+      questionText: "Is new framing included?",
       inputType: "boolean",
       options: ["Yes", "No", "Not sure"],
       required: false,
@@ -233,7 +233,7 @@ export const deckScope: ScopeDefinition = {
     {
       key: "deck.engineering_or_consent_status",
       label: "Engineering/consent",
-      questionText: "Is engineering or building consent required?",
+      questionText: "Does this deck need consent or engineering?",
       inputType: "select",
       options: ["Not required", "Required", "Not sure"],
       required: false,
