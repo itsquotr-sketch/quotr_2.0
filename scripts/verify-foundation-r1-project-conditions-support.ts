@@ -18,7 +18,10 @@ import { calculateDemolition } from "../lib/estimate/calculators/demolition";
 import { calculateExternalStairs } from "../lib/estimate/calculators/external-stairs";
 import { calculateFence } from "../lib/estimate/calculators/fence";
 import { calculatePergola } from "../lib/estimate/calculators/pergola";
-import { ESTIMATE_REQUIREMENT_CONTRACT_VERSION } from "../lib/estimate/requirements";
+import {
+  ESTIMATE_REQUIREMENT_CONTRACT_VERSION,
+  ESTIMATE_REQUIREMENT_PLANNING_FREEZE_VERSION,
+} from "../lib/estimate/requirements";
 import type {
   EstimateContext,
   EstimateConstraint,
@@ -636,8 +639,9 @@ function main(): void {
   // 16–17. Requirement freeze + no emission
   console.log("\n16-17 REQUIREMENT TYPES FROZEN / NO EMISSION");
   check(
-    "EstimateRequirement contract version frozen",
-    ESTIMATE_REQUIREMENT_CONTRACT_VERSION === "foundation-r1.0"
+    "EstimateRequirement contract version is foundation-r1.1 (r1.0 planning freeze)",
+    ESTIMATE_REQUIREMENT_CONTRACT_VERSION === "foundation-r1.1" &&
+      ESTIMATE_REQUIREMENT_PLANNING_FREEZE_VERSION === "foundation-r1.0"
   );
   const reqSrc = read("lib/estimate/requirements.ts");
   check(

@@ -1,5 +1,6 @@
 # Quotr Scope Details Question Contract
 
+**Classification:** CANONICAL — Scope Details questions. Product/engine: `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`, `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
 **Status:** FOUNDATION-R2 Complete Local / Owner Preview Pending (2026-08-16)  
 **Audit:** `docs/audits/FOUNDATION_R2_SCOPE_DETAILS_QUESTION_AUDIT.md`  
 **Gaps:** `docs/audits/FOUNDATION_R2_CALCULATOR_INPUT_GAP_MATRIX.md`  

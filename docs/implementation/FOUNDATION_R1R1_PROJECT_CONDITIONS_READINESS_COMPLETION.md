@@ -1,5 +1,6 @@
 # FOUNDATION-R1-R1 — Project Conditions availability + estimate-readiness
 
+**Classification:** HISTORICAL completion.  
 **Status:** Complete — Owner Preview Validated  
 **Date:** 2026-08-16  
 **Verify:** `npx tsx scripts/verify-foundation-r1r1-project-conditions-readiness.ts`

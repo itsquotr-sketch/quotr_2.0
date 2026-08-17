@@ -1,6 +1,7 @@
 # Quotr Cost-First Commercial Model
 
-**Status:** Proposed architecture (not implemented) — 2026-08-13  
+**Classification:** CANONICAL — commercial money model. Product: `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`.  
+**Status:** **Implemented** — COMMERCIAL-P0 Complete Local; Cost-first Rates Complete Local / Owner Preview Pending. Header previously said “Proposed / not implemented” (stale). — 2026-08-13 / reconciled 2026-08-17  
 **Prerequisite audit:** `docs/audits/COMMERCIAL_MARGIN_RATE_AUTHORITY_AUDIT.md`  
 **Plan:** `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
 

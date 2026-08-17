@@ -1,5 +1,6 @@
 # Project Conditions — Single Authority Audit
 
+**Classification:** HISTORICAL inventory; contract now CANONICAL in `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md` §8 and `docs/architecture/QUOTR_SCOPE_DETAILS_QUESTION_CONTRACT.md`.  
 **Status:** Audit complete (2026-08-15). **IMPLEMENTED in FOUNDATION-R1.** **FOUNDATION-R1-R1** added applicability filtering, remaining canonical ASK keys, and Generate hard-block (UI + server). **FOUNDATION-R2** re-verified no Project Condition reintroduction in Scope Details.  
 **Implementation:** `docs/implementation/FOUNDATION_R1_PROJECT_CONDITIONS_SUPPORT_COMPLETION.md`  
 **R1-R1:** `docs/implementation/FOUNDATION_R1R1_PROJECT_CONDITIONS_READINESS_COMPLETION.md`  

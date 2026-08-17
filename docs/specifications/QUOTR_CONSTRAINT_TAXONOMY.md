@@ -1,5 +1,6 @@
 # Quotr Constraint Taxonomy
 
+**Classification:** CANONICAL — constraint keys. Engine PC authority: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
 **Status:** Stage 3.2.0-R1 specification (conceptual)  
 **Date:** 2026-08-12  
 **Resolves planning for:** DEF-7E-004 / FEAT-003  

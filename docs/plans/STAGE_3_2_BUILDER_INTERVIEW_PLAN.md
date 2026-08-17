@@ -1,5 +1,6 @@
 # Stage 3.2 — Builder Interview Implementation Plan
 
+**Classification:** SUPPORTING for remaining interview work (PT-BI-1 / 3.2.4+). Programme: `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`. Original 3.2.3 PC-suppress **superseded** by FOUNDATION-R1.  
 **Status:** Stage 3.2.2 In Owner Preview / R5 Complete Local; 3.2.3 Not Started  
 **Date:** 2026-08-12  
 **Prerequisite:** Stage 3.1B Complete — Preview Validated (`441f36c`)  

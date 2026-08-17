@@ -1,5 +1,6 @@
 # FOUNDATION-R2-R1 — Material rate authority audit
 
+**Classification:** SUPPORTING — current Deck rate evidence. **CANONICAL hierarchy:** `docs/architecture/QUOTR_MATERIAL_DOMAIN_ARCHITECTURE.md`.  
 **Status:** Complete Local / Owner Preview Pending  
 **Date:** 2026-08-16  
 **Does not start:** REQ-1, MaterialRequirement emission, Materials Catalogue V2, Deck takeoff/face boards, Production  

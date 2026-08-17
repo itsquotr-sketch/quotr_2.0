@@ -1,6 +1,7 @@
 # Stage 3 Product Roadmap
 
-**Status:** Active planning document  
+**Classification:** SUPERSEDED as primary plan by `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`. Retained as **HISTORICAL** Stage 3 tracker (keep 7F and stage rows).  
+**Status:** Historical Stage 3 tracker — not the current development plan  
 **Created:** 2026-08-05  
 **Governing process:** `docs/MVP_HARDENING_GUIDE.md`  
 **Architecture:** `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md`  
@@ -131,7 +132,7 @@ Every Stage 3 release should track:
 - MaterialRequirement / Deck Takeoff / Stage 3.2.3: **Not Started**
 - Production Scope Discovery **Disabled**; Company DNA **Not Started**; PERF-FUTURE-01 **Planned**
 - Plan: `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
-- **Post-trial programme:** `docs/audits/POST_TRIAL_MASTER_ARCHITECTURE_AUDIT.md`; pipeline `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`. **FOUNDATION-R1 Complete / Preview regression remediated by R1-R1**. **FOUNDATION-R1-R1 Complete — Owner Preview Validated**. **FOUNDATION-R2 Complete Local / Owner Preview remediation pending R2-R1**. **FOUNDATION-R2-R1 Complete Local / Owner Preview Pending**. REQ-1/2/3 **Not Started**. Stage **3.2.3 remains Not Started**. Do not mark future phases Complete.
+- **Current programme:** `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`. Historical post-trial audit: `docs/audits/POST_TRIAL_MASTER_ARCHITECTURE_AUDIT.md`; superseded pipeline `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`. **FOUNDATION-R1 Complete / Preview regression remediated by R1-R1**. **FOUNDATION-R1-R1 Complete — Owner Preview Validated**. **FOUNDATION-R2 Complete Local / Owner Preview remediation pending R2-R1**. **FOUNDATION-R2-R1 Complete Local / Owner Preview Pending**. REQ-1/2/3 **Not Started**. Stage **3.2.3 remains Not Started**. Do not mark future phases Complete.
 
 ## Stage 3.1B planning pointers
 

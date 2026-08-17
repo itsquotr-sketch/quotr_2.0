@@ -1,5 +1,6 @@
 # Quotr MVP Hardening and Engineering Guidance
 
+**Classification:** CANONICAL engineering governance. Product architecture: `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`. Plan: `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`.  
 **Status:** Active governance document  
 **Audience:** Cursor agents, engineers, and reviewers working on Quotr MVP hardening  
 **Scope:** Controlled, stage-by-stage hardening of the existing Quotr MVP  
@@ -410,4 +411,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-12 |
 | Stage 0 status | Complete |
-| Next stage | **FOUNDATION-R2-R1 Complete Local / Owner Preview Pending** (R2-R1-R1 included). Combined takeoff + contractor precedence on Preview after push. Next impl when authorised after Owner PASS: **REQ-1**. **RATE-QUALITY-01** backlog only. Production Scope Discovery **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**. |
+| Next stage | **PHASE 0 COMPLETE / ARCHITECTURE FROZEN.** Next impl: **REQ-1** (`READY / NOT STARTED`). Contract `foundation-r1.1`. Production Scope Discovery **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**. |

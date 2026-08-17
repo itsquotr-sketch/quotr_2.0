@@ -1,5 +1,6 @@
 # FOUNDATION-R2-R1 — Owner Preview
 
+**Classification:** SUPPORTING runbook. After PASS, next impl is REQ-1 (`docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`).  
 **Status:** Owner Preview Pending — do not auto-mark PASS  
 **Local completion:** `docs/implementation/FOUNDATION_R2R1_MATERIAL_RATE_AUTHORITY_COMPLETION.md`  
 **Precedence (included in this gate):** `docs/implementation/FOUNDATION_R2R1R1_CONTRACTOR_RATE_PRECEDENCE_COMPLETION.md`  

@@ -1,5 +1,6 @@
 # FOUNDATION-R2-R1-R1 — Contractor rate precedence completion
 
+**Classification:** HISTORICAL completion.  
 **Status:** Complete Local / included in R2-R1 Preview gate  
 **Date:** 2026-08-16  
 **Branch:** `hardening/stage-2a-security`  

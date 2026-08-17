@@ -1,5 +1,6 @@
 # Post–3.2.2 Commercial Authority + Materials Plan
 
+**Classification:** SUPERSEDED as programme plan by `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`.  
 **Status:** COMMERCIAL-P0 **Complete**; Cost-first Rates **Complete Local / Owner Preview Pending**; MaterialRequirement / Deck Takeoff **Not Started**  
 **Post-trial (2026-08-15):** Programme re-sequenced in `docs/audits/POST_TRIAL_MASTER_ARCHITECTURE_AUDIT.md` and `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`. Requirements types frozen in FOUNDATION-R1; **emission Not Started** (REQ-1+). **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated**. FOUNDATION-R2 Complete Local / Owner Preview Pending is Scope Details completeness, **not** emission. **FOUNDATION-R2-R1** is Deck priced-qty/rate-unit remediation, **not** emission. M1 / M2 remain **Not Started**.  
 **Date:** 2026-08-13  

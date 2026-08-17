@@ -1,8 +1,9 @@
 # Quotr Product Backlog
 
+**Classification:** SUPPORTING item register — not the development plan. **CANONICAL plan:** `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`.  
 **Status:** Active  
 **Created:** 2026-08-05  
-**Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated**; Stage **3.1B Complete — Preview Validated** (2026-08-11; baseline `441f36c`); Production Scope Discovery **Disabled**; Stage **3.2.0 Complete Planning**; Stage **3.2.0-R1 Complete**; Stage **3.2.1 Complete**; Stage **3.2.2 In Owner Preview / R5 Complete Local**; Stage **3.2.3 Not Started / superseded in part by Foundation cleanup**; Stage 3.2 **not** globally Complete; Company DNA **Not Started**; **PERF-FUTURE-01 Planned**. **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated** (2026-08-16). **FOUNDATION-R2 Complete Local / In Owner Preview / R2-R1 remediation ready.** **FOUNDATION-R2-R1 Complete Local / Owner Preview Pending.** **FOUNDATION-R2-R1-R1 Complete Local / included in R2-R1 Preview gate.**
+**Governing plan:** `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`. **Governing stage:** Stage 3.1A **Complete**; Stage 3.1D **Complete**; Stage **3.1C Complete — Preview Validated**; Stage **3.1B Complete — Preview Validated** (2026-08-11; baseline `441f36c`); Production Scope Discovery **Disabled**; Stage **3.2.0 Complete Planning**; Stage **3.2.0-R1 Complete**; Stage **3.2.1 Complete**; Stage **3.2.2 In Owner Preview / R5 Complete Local**; Stage **3.2.3 Not Started / superseded in part by Foundation cleanup**; Stage 3.2 **not** globally Complete; Company DNA **Not Started**; **PERF-FUTURE-01 Planned**. **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated** (2026-08-16). **FOUNDATION-R2** treated as sufficiently validated via R2/R2-R1 remediation. **FOUNDATION-R2-R1** pricing remediation complete. **FOUNDATION-R2-R1-R1** contractor-rate precedence complete. **PHASE 0 COMPLETE / ARCHITECTURE FROZEN.** REQ-1 **READY / NOT STARTED**. REQ-2/3/4 **Not Started**.
 **Preview sign-off:** 2026-08-05 — `docs/implementation/STAGE_3_1A_3_1D_PREVIEW_SIGNOFF.md`  
 **3.1B plan:** `docs/plans/STAGE_3_1B_INTELLIGENT_SCOPE_DISCOVERY_PLAN.md`  
 **Constraint:** Items marked Deferred must not be implemented until authorised; migrations 028/029 **Applied and Verified**; server integration **Complete — Local**; Scope Discovery UI **Complete — Local, Preview Test Pending**; Preview feature **Enabled only by owner configuration**; production feature **Disabled**; feature flag **Implemented** (`SCOPE_DISCOVERY_ENABLED`, default off); Analyse Job **Preserved / Unchanged**  
@@ -112,6 +113,7 @@
 - **DEMO-R7** (Final demo polish — Complete Local pending Owner): mobile AppShell header logo+avatar; Dashboard compactOnMobile (sr-only H1; hide title/subtitle/profile row); tighter spacing; safe drop of duplicate Dashboard auth/profile fetch. PERF-FUTURE-01 remains Planned for deeper latency.
 - **BRANDING-P0** Company logo upload + quote render (Complete Local pending Owner): Storage bucket `organisation-branding`; Settings upload UX; quote broken-image fallback. Snapshot immutability deferred (**BRANDING-SNAPSHOT-01**). Verify: `scripts/verify-branding-p0-company-logo.ts`.
 - Production Scope Discovery: **Disabled**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned** (parallel; R2–R5 evidence recorded).
+- **Architecture gates (PHASE 0-R1, not started):** REQ-SNAPSHOT-01 (blocks REQ-4); CAT-IDENTITY-01 (blocks CAT-V2 seeding); AN-EVIDENCE-01 (blocks AN-1 emitters); QUOTE-IMMUTABILITY-DB-01 (before public quote acceptance Production); SUB-AUTH-01 (before RFQ); ISD-MAP-01 (future CI).
 
 ## Batch notes (Stage 3.1C auth / setup) — CLOSED
 

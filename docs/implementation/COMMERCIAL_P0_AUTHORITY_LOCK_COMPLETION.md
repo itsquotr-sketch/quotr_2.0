@@ -1,5 +1,6 @@
 # COMMERCIAL-P0 — Cost-First Commercial Authority Lock Completion
 
+**Classification:** HISTORICAL completion (status map on P0 day is a snapshot; Cost-first Rates later shipped).  
 **Status:** Complete Local  
 **Date:** 2026-08-13  
 **Branch:** `hardening/stage-2a-security`  

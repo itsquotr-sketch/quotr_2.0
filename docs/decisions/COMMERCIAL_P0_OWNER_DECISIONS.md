@@ -1,5 +1,6 @@
 # COMMERCIAL-P0 — Owner Decisions (CF-D1–D7)
 
+**Classification:** CANONICAL for CF-D1–D7.  
 **Status:** OWNER APPROVED — 2026-08-13  
 **Batch:** COMMERCIAL-P0 Cost-First Commercial Authority Lock  
 **Prerequisite audits:**  

@@ -1,5 +1,6 @@
 # Material Pricing / Takeoff — Current-State Audit
 
+**Classification:** HISTORICAL / SUPPORTING evidence. **CANONICAL:** `docs/architecture/QUOTR_MATERIAL_DOMAIN_ARCHITECTURE.md`.  
 **Status:** Complete — Audit / Specification only (2026-08-13)  
 **Checkpoint:** Post Stage 3.2.2-R5 / before Stage 3.2.3  
 **Scope:** Document materials architecture for takeoff design. **No catalogue rows, UI, or calculator changes in this pass.**

@@ -1,5 +1,6 @@
 # Stage 3.2.0-R1 — Architecture Reconciliation & Owner Decision Gate
 
+**Classification:** HISTORICAL / SUPPORTING.  
 **Status:** Complete — Audit / Planning (docs only)  
 **Date:** 2026-08-12  
 **Prerequisite:** Stage 3.2.0 Complete Planning (2026-08-11)  

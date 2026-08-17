@@ -1,5 +1,6 @@
 # Quotr material rate consumption matrix
 
+**Classification:** SUPPORTING. **CANONICAL:** `docs/architecture/QUOTR_MATERIAL_DOMAIN_ARCHITECTURE.md`.  
 **Status:** FOUNDATION-R2-R1-R1 (2026-08-16)  
 **Drives:** Materials Catalogue V2 (not started)  
 **Rule:** Do not ask a contractor to maintain a rate that live estimating silently ignores. `calculatorSupport`: `used_now` | `planned`.

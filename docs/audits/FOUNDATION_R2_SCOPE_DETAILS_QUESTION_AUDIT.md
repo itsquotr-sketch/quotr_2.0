@@ -1,5 +1,6 @@
 # FOUNDATION-R2 — Scope Details question audit
 
+**Classification:** HISTORICAL / SUPPORTING evidence for the Scope Details contract.  
 **Status:** Complete Local / Owner Preview Pending (2026-08-16)  
 **Contract:** `docs/architecture/QUOTR_SCOPE_DETAILS_QUESTION_CONTRACT.md`  
 **Gaps:** `docs/audits/FOUNDATION_R2_CALCULATOR_INPUT_GAP_MATRIX.md`  

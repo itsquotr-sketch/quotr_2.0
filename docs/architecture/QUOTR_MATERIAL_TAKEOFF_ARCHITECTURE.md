@@ -1,6 +1,7 @@
 # Quotr Material Takeoff Architecture
 
-**Status:** Proposed architecture (not implemented) — 2026-08-13  
+**Classification:** SUPPORTING. **CANONICAL:** `docs/architecture/QUOTR_MATERIAL_DOMAIN_ARCHITECTURE.md` + `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
+**Status:** Partially implemented — Deck surface decking prices lm takeoff (FOUNDATION-R2-R1). Remainder still proposed. — 2026-08-13 / reconciled 2026-08-17  
 **Post-trial (2026-08-15):** MaterialRequirement + LabourRequirement absorbed/extended by `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (**not implemented**). **FOUNDATION-R2-R1 (2026-08-16):** Deck **surface decking** now prices the same lm takeoff used for display when board width is known. **FOUNDATION-R2-R1-R1:** contractor `$/m²` may convert onto that lm takeoff using nominal board width; waste is already in purchase lm (do not apply twice). Face-board geometry in §7 remains deferred (OD-FACE-01). Do not treat these batches as Catalogue V2 or requirement emission.  
 **Prerequisite audit:** `docs/audits/MATERIAL_PRICING_TAKEOFF_CURRENT_STATE_AUDIT.md`  
 **Commercial model:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  

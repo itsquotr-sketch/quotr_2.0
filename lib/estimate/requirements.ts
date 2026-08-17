@@ -1,16 +1,24 @@
 /**
- * FOUNDATION-R1 — EstimateRequirement type freeze.
+ * EstimateRequirement contract.
  *
- * Types only. Calculators must NOT emit these objects in this batch.
- * Quantity authority for a future generate; money remains line items +
- * cost-first commercial engine.
+ * foundation-r1.0 — FOUNDATION-R1 planning/type freeze (pre independent review).
+ * foundation-r1.1 — PHASE 0-R1 final pre-emission contract.
+ *
+ * Types + identity/invariant helpers only. Calculators must NOT emit these
+ * objects until REQ-1/REQ-2/REQ-3. Quantity authority for a future generate;
+ * money remains line items + cost-first commercial engine.
  *
  * Single-consumption: LabourRequirement.baseHours are unadjusted.
- * Project Condition productivity is referenced once via adjustmentRef —
+ * Project Condition productivity is referenced via adjustmentRef.factors —
  * never baked into each task and reapplied at rollup.
+ * Do not encode site_access / carry / occupied / hours into baseHours
+ * and also multiply by the same factor.
  */
 
-export const ESTIMATE_REQUIREMENT_CONTRACT_VERSION = "foundation-r1.0" as const;
+export const ESTIMATE_REQUIREMENT_PLANNING_FREEZE_VERSION =
+  "foundation-r1.0" as const;
+
+export const ESTIMATE_REQUIREMENT_CONTRACT_VERSION = "foundation-r1.1" as const;
 
 export type RequirementKind =
   | "material"
@@ -20,6 +28,36 @@ export type RequirementKind =
   | "waste";
 
 export type RequirementConfidence = "high" | "medium" | "low";
+
+/**
+ * Shared rate SOURCE. Do not encode unit conversion here.
+ * Company $160/m² converted to $/lm remains source "company" plus
+ * MaterialRequirement.conversion metadata.
+ */
+export type RequirementRateSource =
+  | "company"
+  | "project_override"
+  | "supplier"
+  | "benchmark"
+  | "hardcoded_legacy"
+  | "missing";
+
+/** Alias — same semantics as RequirementRateSource. */
+export type MaterialRateSource = RequirementRateSource;
+
+export type RequirementAssumptionSource =
+  | "calculator_default"
+  | "benchmark"
+  | "company_preference"
+  | "user_confirmed"
+  | "analysis_inference"
+  | "assumed_default";
+
+export type RequirementAssumption = {
+  key: string;
+  text: string;
+  source: RequirementAssumptionSource;
+};
 
 export type RequirementProvenance = {
   calculatorSource: string;
@@ -34,18 +72,19 @@ export type EstimateRequirementBase = {
   workAreaId: string;
   workAreaType: string;
   componentKey: string;
+  /** Semantic discriminator when the same component/kind can repeat. */
+  variantKey?: string;
   description: string;
   confidence: RequirementConfidence;
-  assumptions: string[];
+  assumptions: readonly RequirementAssumption[];
   provenance: RequirementProvenance;
+  /**
+   * true = participates in commercial pricing AND required pricing fields
+   * are resolved (non-null). false = physical/provenance only; not money
+   * authority. Never priced=true with null cost fields.
+   */
   priced: boolean;
 };
-
-export type MaterialRateSource =
-  | "company"
-  | "benchmark"
-  | "hardcoded_legacy"
-  | "missing";
 
 export type MaterialRequirement = EstimateRequirementBase & {
   kind: "material";
@@ -55,23 +94,33 @@ export type MaterialRequirement = EstimateRequirementBase & {
   baseQuantity: number;
   baseUnit: string;
   wasteFactor: number;
+  /**
+   * Continuous estimating purchase quantity after waste/conversion.
+   * Future procurement pack/order quantities are separate fields.
+   * Do not redefine this later as orderQuantity / packQuantity / stockLengthPlan.
+   */
   purchaseQuantity: number;
   purchaseUnit: string;
   conversion?: { from: string; to: string; factor: number };
-  rateSource: MaterialRateSource;
+  rateSource: RequirementRateSource;
   unitCost: number | null;
   totalCost: number | null;
 };
 
+export const PROJECT_LABOUR_PRODUCTIVITY_FACTOR_KEY =
+  "project.labour_productivity" as const;
+
 /**
- * Project productivity is applied once at rollup:
- * adjustedHours = baseHours × projectConditionFactor × qualityFactor
- *
- * Do not encode site_access / carry / occupied / hours into baseHours
- * and also multiply by the same factor.
+ * Provenance/calculation reference only.
+ * Does not decide multiplicative vs additive vs capped composition (OD-PC-01).
  */
+export type LabourAdjustmentFactorRef = {
+  key: string;
+  value: number;
+};
+
 export type LabourAdjustmentRef = {
-  projectConditionFactorKey: "project.labour_productivity";
+  factors: readonly LabourAdjustmentFactorRef[];
 };
 
 export type LabourRequirement = EstimateRequirementBase & {
@@ -89,7 +138,7 @@ export type LabourRequirement = EstimateRequirementBase & {
   rateKey: string;
   hourlyCost: number | null;
   totalCost: number | null;
-  rateProvenance: MaterialRateSource;
+  rateProvenance: RequirementRateSource;
 };
 
 export type PlantRequirement = EstimateRequirementBase & {
@@ -101,6 +150,16 @@ export type PlantRequirement = EstimateRequirementBase & {
   unitCost?: number | null;
   totalCost?: number | null;
 };
+
+/**
+ * Reserved RFQ/cost authority states. Not required on live objects until
+ * SUB-AUTH-01 / RFQ work. Do not treat as Phase-9 workflow fields now.
+ */
+export type SubcontractCostAuthority =
+  | "allowance"
+  | "benchmark"
+  | "rfq_quoted"
+  | "rfq_adopted";
 
 export type SubcontractRequirement = EstimateRequirementBase & {
   kind: "subcontract";
@@ -125,7 +184,60 @@ export type EstimateRequirement =
   | SubcontractRequirement
   | WasteRequirement;
 
-/** FOUNDATION-R1: calculators must not populate this. Reserved for REQ-1. */
+/**
+ * Component-level pricing authority lifecycle. Reserved for REQ-4.
+ * Do not implement an authority table in REQ-1.
+ */
+export type ComponentPricingAuthorityState =
+  | "LEGACY_AUTHORITATIVE"
+  | "SHADOW"
+  | "REQUIREMENT_AUTHORITATIVE"
+  | "LEGACY_FALLBACK"
+  | "LEGACY_RETIRED";
+
+/** REQ-1: calculators must not populate this until authorised. */
 export type CalculatorRequirementsEmit = {
   readonly requirements?: readonly EstimateRequirement[];
 };
+
+function isResolvedMoney(value: number | null | undefined): boolean {
+  return typeof value === "number" && Number.isFinite(value);
+}
+
+/** Zero is a real numeric value. Null is unresolved — not zero. */
+export function requirementPricingFieldsAreResolved(
+  requirement: EstimateRequirement
+): boolean {
+  switch (requirement.kind) {
+    case "material":
+      return (
+        isResolvedMoney(requirement.unitCost) &&
+        isResolvedMoney(requirement.totalCost)
+      );
+    case "labour":
+      return (
+        isResolvedMoney(requirement.hourlyCost) &&
+        isResolvedMoney(requirement.totalCost)
+      );
+    case "plant":
+      return isResolvedMoney(requirement.totalCost);
+    case "subcontract":
+      return isResolvedMoney(requirement.totalCost);
+    case "waste":
+      return isResolvedMoney(requirement.totalCost);
+  }
+}
+
+/**
+ * priced=true requires resolved pricing fields.
+ * priced=false may carry physical qty with null costs (not money authority).
+ * priced=true + totalCost=null is invalid — that is not "pricing required".
+ */
+export function isPricedInvariantSatisfied(
+  requirement: EstimateRequirement
+): boolean {
+  if (!requirement.priced) {
+    return true;
+  }
+  return requirementPricingFieldsAreResolved(requirement);
+}

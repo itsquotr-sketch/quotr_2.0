@@ -1,5 +1,6 @@
 # Quotr production readiness
 
+**Classification:** CANONICAL production ops checklist. Programme plan: `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`.  
 Internal checklist for deploying Quotr to test users. Do not commit secrets.
 
 ## Required environment variables
@@ -26,7 +27,7 @@ Runtime validation:
 - Stage **3.2.2 In Owner Preview / R5 Complete Local** (2026-08-13) — Owner Demo Preview Pending; **3.2.3 Not Started**. Stage 3.2 not globally Complete.
 - Post–3.2.2 commercial/materials: **COMMERCIAL-P0 Complete**; **Cost-first Rates Complete Local / Owner Preview Pending** — `docs/implementation/COST_FIRST_RATES_COMPLETION.md`. MaterialRequirement / Deck Takeoff **Not Started**.
 - Production Scope Discovery remains **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**.
-- **Post-trial architecture audit (2026-08-15):** `docs/audits/POST_TRIAL_MASTER_ARCHITECTURE_AUDIT.md`. **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated**. **FOUNDATION-R2 Complete Local / In Owner Preview / R2-R1 remediation ready**. **FOUNDATION-R2-R1 Complete Local / Owner Preview Pending**. **FOUNDATION-R2-R1-R1 included in that Preview gate**. No production deploy from this batch.
+- **Master architecture lock (2026-08-17):** `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`; plan `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`; challenge `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`. **PHASE 0 COMPLETE / ARCHITECTURE FROZEN.** REQ-1 **READY / NOT STARTED**. No production deploy from this batch.
 
 ## Supabase
 

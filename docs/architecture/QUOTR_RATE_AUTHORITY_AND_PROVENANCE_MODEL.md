@@ -1,5 +1,6 @@
 # Quotr Rate Authority & Provenance Model
 
+**Classification:** CANONICAL — rate provenance labels. Material hierarchy: `docs/architecture/QUOTR_MATERIAL_DOMAIN_ARCHITECTURE.md`.  
 **Stage:** 3.1C.3-R2C  
 **Status:** Active  
 **Code:** `lib/rates/authority.ts`

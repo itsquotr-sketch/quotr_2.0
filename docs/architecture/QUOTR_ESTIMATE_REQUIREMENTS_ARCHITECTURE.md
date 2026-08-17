@@ -1,6 +1,7 @@
 # Quotr Estimate Requirements Architecture
 
-**Status:** Types frozen in FOUNDATION-R1 (`lib/estimate/requirements.ts`). **Emission Not Started.**  
+**Classification:** SUPPORTING. **CANONICAL estimating engine:** `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
+**Status:** Planning freeze `foundation-r1.0`. **Final pre-emission contract `foundation-r1.1`** (`lib/estimate/requirements.ts`). **Emission Not Started.**  
 **Mode:** Architecture lock + TypeScript contracts only. Calculators must not emit requirements until **REQ-1**. FOUNDATION-R2 is Scope Details completeness. FOUNDATION-R2-R1 reconciles Deck priced qty/rate units. Neither emits requirements.  
 **Supersedes in part:** `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md` (MaterialRequirement §4 is absorbed and extended; takeoff persistence and Deck pilot geometry remain valid).  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -36,17 +37,16 @@ type RequirementKind =
   | "waste";
 
 type EstimateRequirementBase = {
-  requirementId: string; // stable within a generate; not a DB PK yet
+  requirementId: string; // deterministic: workAreaId + kind + componentKey [+ variantKey]
   kind: RequirementKind;
   workAreaId: string;
   workAreaType: string;
   componentKey: string; // e.g. "deck.face_boards", "deck.labour.decking"
   description: string;
   confidence: "high" | "medium" | "low";
-  assumptions: string[];
+  assumptions: RequirementAssumption[]; // { key, text, source } — not string[]
   provenance: RequirementProvenance;
-  /** When true, this requirement is included in estimate money */
-  priced: boolean;
+  priced: boolean; // true ⇒ commercial participant AND required cost fields non-null
 };
 
 type RequirementProvenance = {
@@ -94,7 +94,8 @@ type MaterialRequirement = EstimateRequirementBase & {
   purchaseUnit: string;
   conversion?: { from: string; to: string; factor: number };
   /** Money — resolved, not invented */
-  rateSource: "company" | "benchmark" | "hardcoded_legacy" | "missing";
+  rateSource: RequirementRateSource; // company | project_override | supplier | benchmark | hardcoded_legacy | missing
+  // Conversion is MaterialRequirement.conversion — not a separate source.
   unitCost: number | null; // cost-first
   totalCost: number | null; // purchaseQuantity × unitCost
 };
@@ -152,17 +153,16 @@ type LabourRequirement = EstimateRequirementBase & {
     unit: string;
     quantity: number;
   };
-  /** References — do not copy numeric factor into every task */
+  /** Provenance/calculation reference — does not lock OD-PC-01 composition */
   adjustmentRef: {
-    /** One project (or gated WA override) factor applied once at rollup */
-    projectConditionFactorKey: "project.labour_productivity";
+    factors: readonly { key: string; value: number }[];
   };
   /** Derived at rollup: baseHours × projectFactor × qualityFactor */
   adjustedHours: number;
   rateKey: string; // labour.carpenter.hour
   hourlyCost: number | null;
   totalCost: number | null; // adjustedHours × hourlyCost
-  rateProvenance: "company" | "benchmark" | "hardcoded_legacy" | "missing";
+  rateProvenance: RequirementRateSource;
 };
 ```
 

@@ -1,5 +1,6 @@
 # Commercial Margin / Rate Authority Audit
 
+**Classification:** HISTORICAL — P0 implemented. **CANONICAL commercial model:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`.  
 **Status:** Complete — Audit / Specification only (2026-08-13)  
 **Checkpoint:** Post Stage 3.2.2-R5 / before Stage 3.2.3  
 **Branch baseline:** `hardening/stage-2a-security` (`d84de4d` R5)  

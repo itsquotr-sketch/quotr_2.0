@@ -1,5 +1,6 @@
 # Estimate Commercial Boundary
 
+**Classification:** CANONICAL — AI vs engine.  
 **Stage:** 2B — Authoritative Pricing Engine  
 **Batch:** 2B.7  
 **Status:** Binding for estimate-domain financial adoption  

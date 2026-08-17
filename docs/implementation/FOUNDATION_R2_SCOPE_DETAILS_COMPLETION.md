@@ -1,5 +1,6 @@
 # FOUNDATION-R2 — Scope Details completeness + question quality
 
+**Classification:** HISTORICAL completion. Contract: `docs/architecture/QUOTR_SCOPE_DETAILS_QUESTION_CONTRACT.md`. Plan: `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`.  
 **Status:** Complete Local / In Owner Preview / R2-R1 remediation ready  
 **Date:** 2026-08-16  
 **Branch:** `hardening/stage-2a-security`  
@@ -166,4 +167,4 @@ No migrations. No requirement emission. No Stage 3.2.3 UI. Tests not weakened.
 | PERF-FUTURE-01 | Planned |
 | Production Scope Discovery | Disabled |
 
-**Exact next:** Owner FOUNDATION-R2-R1 Preview (`docs/runbooks/FOUNDATION_R2R1_OWNER_PREVIEW.md`) then remaining R2 question sampling. After Owner PASS: **REQ-1**. Do not emit requirements in R2. Do not start Deck Takeoff.
+**Exact next:** Owner FOUNDATION-R2-R1 Preview (`docs/runbooks/FOUNDATION_R2R1_OWNER_PREVIEW.md`) then remaining R2 question sampling. After Owner PASS: **REQ-1** per `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`. Do not emit requirements in R2. Do not start Deck Takeoff.

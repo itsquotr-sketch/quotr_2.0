@@ -1,5 +1,6 @@
 # FOUNDATION-R2 — Calculator input gap matrix
 
+**Classification:** SUPPORTING evidence. Canonical engine: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
 **Status:** Companion to `docs/audits/FOUNDATION_R2_SCOPE_DETAILS_QUESTION_AUDIT.md`  
 **Date:** 2026-08-16  
 **Rule:** A question existing does **not** improve calculator accuracy until consumed. R2 did not expand calculator logic.

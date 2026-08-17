@@ -1,5 +1,6 @@
 # Quotr Builder Interview — Architecture
 
+**Classification:** SUPPORTING. Programme: `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`.  
 **Status:** Stage 3.2.0-R1 Reconciled Planning; **3.2.1 engine Complete Local** (conceptual UI still not implemented)  
 **Date:** 2026-08-12  
 **Baseline:** Stage 3.1B Complete — Preview Validated (`441f36c`); Stage 3.2.0 planning 2026-08-11  

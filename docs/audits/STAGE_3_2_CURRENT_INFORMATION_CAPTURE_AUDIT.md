@@ -1,5 +1,6 @@
 # Stage 3.2.0 — Current Information Capture Audit
 
+**Classification:** HISTORICAL. Programme: `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`.  
 **Status:** Complete — Planning  
 **Date:** 2026-08-11  
 **Closure baseline (3.1B):** `441f36c` (docs close after Preview Validated)  

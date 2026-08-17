@@ -1,5 +1,6 @@
 # Cost-first Rates — Completion
 
+**Classification:** HISTORICAL completion.  
 **Status:** Complete Local / Owner Preview Pending  
 **Date:** 2026-08-14  
 **Baseline:** COMMERCIAL-P0 `280be453b66b938413429218a0a2ea39a14ffb89`  

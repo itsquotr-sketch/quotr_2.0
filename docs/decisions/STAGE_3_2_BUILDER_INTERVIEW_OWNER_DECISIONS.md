@@ -1,5 +1,6 @@
 # Stage 3.2 — Builder Interview Owner Decisions
 
+**Classification:** CANONICAL for D1–D16. Later programme decisions: `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md` §12.  
 **Status:** OWNER APPROVED (D1–D16) — 2026-08-12  
 **Stage:** 3.2.0-R1 Complete → **3.2.1 Unblocked**  
 **Plan:** `docs/plans/STAGE_3_2_BUILDER_INTERVIEW_PLAN.md`  

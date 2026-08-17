@@ -1,5 +1,6 @@
 # Commercial Snapshot Safety
 
+**Classification:** CANONICAL — snapshot kinds. Quote send immutability: BRANDING-SNAPSHOT-01 + QUOTE-2.  
 **Status:** Active — COMMERCIAL-P0  
 **Date:** 2026-08-13  
 **Related:** `lib/commercial-engine/core/cost-first-authority.ts`, CF-D4
@@ -33,6 +34,8 @@ updateEstimateMargin
 ```
 
 Issued quotes remain historical. User refreshes draft quotes from pricing after recalibrating pricing when desired.
+
+**QUOTE-IMMUTABILITY-DB-01** (before public quote send/acceptance Production): add DB-level defense-in-depth preventing mutation of immutable sent/accepted snapshots. Application-level safety remains. Do not migrate in this batch.
 
 ---
 

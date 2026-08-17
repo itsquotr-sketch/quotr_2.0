@@ -1,5 +1,6 @@
 # Stage 3.2.1 — Candidate Engine Architecture
 
+**Classification:** SUPPORTING.  
 **Status:** Complete — Local  
 **Date:** 2026-08-12  
 **Module:** `lib/builder-interview/`  

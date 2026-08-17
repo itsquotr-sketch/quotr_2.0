@@ -1,5 +1,6 @@
 # Quotr Estimate Readiness Model
 
+**Classification:** CANONICAL — readiness states.  
 **Status:** Stage 3.2.0-R1 conceptual model; **derived in 3.2.1 pure engine**; **presented near Quick Estimate in 3.2.2**. **FOUNDATION-R1-R1** extends the same interview readiness model: unresolved **required applicable Project Conditions** hard-block Generate (UI + server). Soft-block for remaining P0 interview candidates stays deferred to 3.2.4.  
 **Date:** 2026-08-15 (R1-R1 overlay)  
 **Date:** 2026-08-12  

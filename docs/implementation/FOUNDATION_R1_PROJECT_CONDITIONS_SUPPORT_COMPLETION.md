@@ -1,5 +1,6 @@
 # FOUNDATION-R1 — Project Conditions Support Completion
 
+**Classification:** HISTORICAL completion. Contract: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
 **Status:** Complete / Preview regression remediated by R1-R1. **FOUNDATION-R1-R1** corrects Project Conditions visibility + Generate Estimate gating.  
 **Date:** 2026-08-15  
 **Authorisation:** OD-R1-01, OD-R1-02, OD-CAT-01/02/03, OD-PC-01, OD-T1-01, OD-SNAP-01, OD-FACE-01 (deferred)

@@ -1,5 +1,6 @@
 # Post-Trial Master Development Pipeline
 
+**Classification:** SUPERSEDED BY `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md` (2026-08-17). Retain this file for historical phase text and verify-script anchors. Do not use as the primary current development plan.  
 **Status:** Programme active. **FOUNDATION-R1 Complete.** **FOUNDATION-R1-R1 Complete — Owner Preview Validated** (2026-08-16). **FOUNDATION-R2 Complete Local / In Owner Preview / R2-R1 remediation ready.** **FOUNDATION-R2-R1 Complete Local / Owner Preview Pending.** **FOUNDATION-R2-R1-R1 Complete Local / included in R2-R1 Preview gate.** REQ-1/2/3 and Deck pilot **Not Started**. **RATE-QUALITY-01 Backlog / Not Started**.  
 **HEAD baseline:** `f168fe0ec8a857fffa79888435ca90b9e8a1db25`  
 **Implementation:** `docs/implementation/FOUNDATION_R1_PROJECT_CONDITIONS_SUPPORT_COMPLETION.md`  
@@ -445,6 +446,8 @@ Parallel. Evidence-backed P1: Analyse Job wait; margin `router.refresh`; residua
 ---
 
 ## 4. Recommended order (compressed)
+
+**SUPERSEDED:** current sequence is `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`. Historical compressed order retained below.
 
 ```
 PT-AUD-01 (done)

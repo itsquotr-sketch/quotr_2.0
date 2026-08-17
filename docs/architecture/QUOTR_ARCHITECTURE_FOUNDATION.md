@@ -1,6 +1,7 @@
 # Quotr Architecture Foundation
 
-**Status:** Authoritative architectural foundation  
+**Classification:** SUPERSEDED as top-level product architecture by `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`. Retained as historical foundation. Stage 2B commercial engine **has shipped** (this file’s “Stage 2B has not started” line is stale).  
+**Status:** Historical architectural foundation  
 **Audience:** Product owners, engineers, and Cursor agents implementing Quotr stages  
 **Constraint:** Describe architecture only — not implementation  
 **Relationship to hardening:** Complements `docs/MVP_HARDENING_GUIDE.md`; does not replace stage process, tracker, or engineering principles  

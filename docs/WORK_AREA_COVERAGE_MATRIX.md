@@ -1,5 +1,7 @@
 # Work area coverage matrix
 
+**Classification:** SUPERSEDED. Canonical: `docs/product/QUOTR_SUPPORTED_WORK_AREAS.md`. Historical inventory: `docs/audits/SUPPORTED_WORK_AREA_COVERAGE_AUDIT.md`.
+
 Snapshot of **current product capability** for calibration testing. Status reflects code and templates in the repo — not field-proven accuracy.
 
 Legend:

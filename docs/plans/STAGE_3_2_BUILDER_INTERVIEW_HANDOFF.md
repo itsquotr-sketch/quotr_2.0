@@ -1,5 +1,6 @@
 # Stage 3.2 Builder Interview — Handoff Pointer
 
+**Classification:** SUPPORTING / HISTORICAL pointer. **CANONICAL plan:** `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`. Next implementation after R2-R1 Owner PASS: **REQ-1**, not original 3.2.3.  
 **3.2.0:** Complete Planning  
 **3.2.0-R1:** Complete  
 **3.2.1:** Complete  

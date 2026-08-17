@@ -1,5 +1,6 @@
 # Assistant Responsiveness & Latency Optimisation Pass
 
+**Classification:** CANONICAL workstream id PERF-FUTURE-01. Programme: `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md` §8.  
 **Status:** Planned — dedicated measured optimisation stage after Stage 3.1B closure  
 **ID:** PERF-FUTURE-01  
 **Severity:** Not a Stage 3.1B release blocker  

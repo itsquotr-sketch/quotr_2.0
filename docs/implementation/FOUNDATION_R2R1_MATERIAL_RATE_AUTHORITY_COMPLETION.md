@@ -1,5 +1,6 @@
 # FOUNDATION-R2-R1 — Material rate authority completion
 
+**Classification:** HISTORICAL completion. Canonical hierarchy: `docs/architecture/QUOTR_MATERIAL_DOMAIN_ARCHITECTURE.md`.  
 **Status:** Complete Local / Owner Preview Pending  
 **Date:** 2026-08-16  
 **Branch:** `hardening/stage-2a-security`  
@@ -56,4 +57,4 @@ Expected: **28 passed, 0 failed**.
 | Deck transparent estimator | Not Started |
 | Production Scope Discovery | Disabled |
 
-**Exact next:** Owner R2-R1 Preview including R2-R1-R1 tests (`docs/runbooks/FOUNDATION_R2R1_OWNER_PREVIEW.md`) on the same Deck job. Then remaining R2 question sampling if still needed. REQ-1 only if authorised after PASS.
+**Exact next:** Owner R2-R1 Preview including R2-R1-R1 tests (`docs/runbooks/FOUNDATION_R2R1_OWNER_PREVIEW.md`) on the same Deck job. Then remaining R2 question sampling if still needed. REQ-1 only if authorised after PASS — see `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`. Do not start REQ-1 from this completion document.
