@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-4B **BLOCKED / NOT STARTED**. REQ-TXN-01 **COMPLETE LOCAL / READY FOR COMMIT**. Does not authorise REQ-4B promotion.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-4B **READY / NOT STARTED**. REQ-TXN-01 **COMPLETE / REMOTE VALIDATED**. Does not authorise REQ-4B promotion.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Companion canonicals:**
 - Estimating: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`
@@ -298,8 +298,8 @@ Do not delete history.
 | REQ-4 | **IN PROGRESS** | REQ-4A complete; no promotions |
 | REQ-4A | **COMPLETE / TECHNICALLY VALIDATED** | snapshot + authority + reconciliation |
 | REQ-4B | **BLOCKED / NOT STARTED** | first promotion `decking.surface` |
-| REQ-SNAPSHOT-01 | **COMPLETE / REMOTE VALIDATED** | 035 applied; REQ-TXN-01 local, 036 not remote |
-| REQ-TXN-01 | **COMPLETE LOCAL / READY FOR COMMIT** | `persist_estimate_generation_v1`; mandatory snapshot; 036 not remote |
+| REQ-SNAPSHOT-01 | **COMPLETE / REMOTE VALIDATED** | 035 applied; REQ-TXN-01 remote 036 applied |
+| REQ-TXN-01 | **COMPLETE / REMOTE VALIDATED** | `persist_estimate_generation_v1`; mandatory snapshot; 036 applied |
 | MaterialRequirement | **ACTIVE** — current emitter: Deck surface only | REQ-2.1 |
 | LabourRequirement | **ACTIVE** — current emitter: Deck labour only | REQ-3.1 |
 | Component authority | **ACTIVE / NO PROMOTIONS** | Deck surface + labour SHADOW |

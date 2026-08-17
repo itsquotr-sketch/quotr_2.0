@@ -93,7 +93,7 @@ When **any** component is `REQUIREMENT_AUTHORITATIVE`, Quotr must **not** succes
 
 **Universal v1 invariant (REQ-TXN-01-R1):** every new atomic generation has a snapshot, including SHADOW/legacy. Commercial authority is unchanged.
 
-**Status:** **COMPLETE LOCAL / READY FOR COMMIT**. RPC `persist_estimate_generation_v1` implemented. v1 requires a snapshot. Migration 036 **not remote**. See `docs/architecture/QUOTR_ATOMIC_ESTIMATE_GENERATION_CONTRACT.md`.
+**Status:** **COMPLETE / REMOTE VALIDATED**. RPC `persist_estimate_generation_v1` implemented. v1 requires a snapshot. Migration 036 **REMOTE APPLIED**. See `docs/architecture/QUOTR_ATOMIC_ESTIMATE_GENERATION_CONTRACT.md`.
 
 Normal persist order (one transaction):
 
@@ -115,6 +115,6 @@ F. local DB migration/RLS behaviour verified (`scripts/verify-migration-035-requ
 
 ## 9. Remote apply
 
-Migration 035 is applied on the linked remote project. Migration 036 is **local only** until Owner review + commit/push. After remote 036, Preview persist must use the atomic RPC. Until then, SHADOW may still use the multi-call fallback if the RPC is missing.
+Migration 035 is applied on the linked remote project. Migration 036 is **REMOTE APPLIED** on `quotr_2.0` (`lxvnylhsbvudzzupxeqr`). Preview persist uses `persist_estimate_generation_v1`. The SHADOW multi-call fallback remains only if the RPC is missing.
 
 QUOTE-IMMUTABILITY-DB-01 remains Phase-9.

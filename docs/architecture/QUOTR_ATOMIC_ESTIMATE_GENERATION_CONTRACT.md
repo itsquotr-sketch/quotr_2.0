@@ -3,7 +3,7 @@
 **Status:** CANONICAL for REQ-TXN-01 / REQ-TXN-01-R1  
 **Date:** 2026-08-17  
 **RPC:** `public.persist_estimate_generation_v1(jsonb)`  
-**Migration:** `supabase/migrations/036_persist_estimate_generation_v1.sql` (**local applied; not remote**)  
+**Migration:** `supabase/migrations/036_persist_estimate_generation_v1.sql` (**REMOTE APPLIED** on `quotr_2.0` / `lxvnylhsbvudzzupxeqr`)  
 **Input contract:** `persist-estimate-generation-v1` (`PersistEstimateGenerationV1`)
 
 This contract makes commercially authoritative estimate persistence safe. It does **not** promote any component, change line-item money, or change Pricing/Quote values.

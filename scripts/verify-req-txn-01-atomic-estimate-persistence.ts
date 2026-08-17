@@ -1255,13 +1255,10 @@ function testAuthorityAndPlatform() {
   check("51 no AI", !persistSrc.toLowerCase().includes("openai") && !adapterSrc.includes("openai"));
   check("52 Production SD disabled", isScopeDiscoveryEnabled({}) === false);
   check(
-    "53 migration 036 not remote in this batch",
-    read("supabase/migrations/036_persist_estimate_generation_v1.sql").includes(
-      "LOCAL ONLY"
-    ) &&
-      read("supabase/migrations/036_persist_estimate_generation_v1.sql").includes(
-        "Do not apply remote"
-      )
+    "53 migration 036 remote applied is documented",
+    read("docs/implementation/REQ_TXN_01_ATOMIC_ESTIMATE_PERSISTENCE_COMPLETION.md").includes(
+      "REMOTE APPLIED"
+    )
   );
   check(
     "calculators not imported by persist adapter",

@@ -1,15 +1,16 @@
 # REQ-TXN-01 Atomic Estimate Persistence — Completion
 
-**Status:** COMPLETE LOCAL / READY FOR COMMIT  
-**Date:** 2026-08-17  
+**Status:** COMPLETE / REMOTE VALIDATED  
+**Date:** 2026-08-18  
 **Branch:** `hardening/stage-2a-security`  
-**HEAD at start:** `dc448602bc15dc4113155d97cf48e7cc504f2208`  
+**Code commit:** `a6d3502f12a381aaba935a5de4a1f79364353fc8`  
 **Verify:** `npx tsx scripts/verify-req-txn-01-atomic-estimate-persistence.ts`  
-**Migration:** `supabase/migrations/036_persist_estimate_generation_v1.sql` (amended locally for R1; not 037)  
-**Local apply:** function replaced in place (`CREATE OR REPLACE`); schema_migrations still 036  
-**Remote 036:** **NOT APPLIED**
+**Remote proof:** `npx tsx scripts/verify-req-txn-01-remote-preview-atomic-proof.ts`  
+**Migration:** `supabase/migrations/036_persist_estimate_generation_v1.sql`  
+**Local apply:** 001–036  
+**Remote 036:** **REMOTE APPLIED** on `quotr_2.0` (`lxvnylhsbvudzzupxeqr`)
 
-REQ-4 remains **IN PROGRESS**. REQ-4B remains **BLOCKED**. No component promotion. No UI. Production Scope Discovery **DISABLED**.
+REQ-4 remains **IN PROGRESS**. REQ-4B is **READY / NOT STARTED**. No component promotion. No UI. Production Scope Discovery **DISABLED**. Atomic estimate generation is **ACTIVE**.
 
 ---
 
@@ -42,12 +43,14 @@ Goldens (unchanged, no restamp):
 | Pergola 1 | $15,374 |
 | Retaining Wall 2 | $7,345 |
 
-## REQ-4B blockers
+## Remote proof
 
-1. Commit + push of REQ-TXN-01
-2. Apply migration 036 on remote `quotr_2.0` (`lxvnylhsbvudzzupxeqr`)
-3. Preview atomic persist proof
-4. Rollback behaviour validated as far as safely possible remotely
-5. Deck surface shadow reconciliation still exact
+- Preview Ready: unique `https://quotr-2-0-7yehizi4n-quotr1.vercel.app`; stable `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`
+- Dry-run then `db push --linked --yes` applied **only** `036_persist_estimate_generation_v1.sql`
+- Remote function: `persist_estimate_generation_v1(p_payload jsonb)`, `prosecdef=false`, `search_path=public`
+- Grants: authenticated execute **true**; anon **false**; service_role **false**
+- Remote proof: **37 passed, 0 failed** (authenticated RPC path, missing/invalid snapshot rollback, Fence `requirements: []`, A/B, P1/A P2/B, Q1→P1→A, cross-org)
 
-Do not start REQ-4B in this batch.
+## REQ-4B
+
+**READY / NOT STARTED.** Deck surface shadow reconciliation still exact. Do not start REQ-4B in this batch.
