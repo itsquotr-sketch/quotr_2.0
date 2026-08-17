@@ -2,7 +2,7 @@
 
 **Status:** CANONICAL for REQ-4A  
 **Date:** 2026-08-17  
-**Mode:** Infrastructure only. **No live promotions.** REQ-4A **COMPLETE / TECHNICALLY VALIDATED**.
+**Mode:** Infrastructure only. **No live promotions.** REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-TXN-01 **COMPLETE LOCAL / READY FOR COMMIT**.
 
 Authority is **external** to `EstimateRequirement`. Requirements do not store `commercialAuthority`. `priced: true` means cost data is complete; it does not mean the requirement owns estimate money.
 
@@ -57,6 +57,8 @@ Eligible when: authority SHADOW, semantic reimplementation, requirement + legacy
 
 REQ-4A never promotes. First REQ-4B candidate: Deck `decking.surface`. Deck labour stays SHADOW until separately approved.
 
+`generationRequiresRequirementSnapshot()` is true iff any registered component is `REQUIREMENT_AUTHORITATIVE`. Persist **always** snapshots regardless; this helper is not a snapshot-optionality switch. See `docs/architecture/QUOTR_ATOMIC_ESTIMATE_GENERATION_CONTRACT.md`.
+
 ## 7. Lookup
 
-`getComponentCommercialAuthority({ workAreaType, componentKey })` is the single resolver.
+`getComponentCommercialAuthority({ workAreaType, componentKey })` is the single authority resolver. Persist always snapshots; `generationRequiresRequirementSnapshot()` is not a snapshot-optionality switch.

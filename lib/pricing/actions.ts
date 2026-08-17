@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { buildPricingNotesFromEstimateLineItem } from "@/lib/estimate/line-item-metadata";
+import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-generation";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { toUserError } from "@/lib/errors/user-message";
 import {
@@ -566,6 +567,23 @@ export async function createPricingFromEstimate(input: {
   }
 
   if (estimate.is_stale) {
+    return {
+      error: "Regenerate the estimate before preparing final pricing.",
+    };
+  }
+
+  const pricingGeneration = isEstimateReadyForPricing(
+    {
+      estimateId: estimate.id as string,
+      requirementGenerationId:
+        (estimate.requirement_generation_id as string | null) ?? null,
+      latestRequirementSnapshotId:
+        (estimate.latest_requirement_snapshot_id as string | null) ?? null,
+      status: (estimate.status as string | null) ?? null,
+      isStale: Boolean(estimate.is_stale),
+    }
+  );
+  if (!pricingGeneration.ok) {
     return {
       error: "Regenerate the estimate before preparing final pricing.",
     };

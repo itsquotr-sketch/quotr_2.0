@@ -145,3 +145,14 @@ export function snapshotRegisteredAuthorities(): readonly {
     parityClass: entry.parityClass,
   }));
 }
+
+/**
+ * Server-side helper: true when any registered component is REQUIREMENT_AUTHORITATIVE.
+ * Persist always snapshots regardless. This flag gates promotion-unsafe fallback
+ * and future commercial authority behaviour — not snapshot optionality.
+ */
+export function generationRequiresRequirementSnapshot(): boolean {
+  return REGISTERED_COMPONENT_AUTHORITIES.some(
+    (entry) => entry.authority === "REQUIREMENT_AUTHORITATIVE"
+  );
+}

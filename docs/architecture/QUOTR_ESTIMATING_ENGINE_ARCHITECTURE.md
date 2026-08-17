@@ -646,7 +646,7 @@ Infrastructure only. Contracts: `docs/architecture/QUOTR_COMPONENT_COMMERCIAL_AU
 
 - REQ-SNAPSHOT-01 **COMPLETE / REMOTE VALIDATED** (`035_estimate_requirement_snapshots.sql`, applied on `lxvnylhsbvudzzupxeqr`).
 - Commercial lineage: `pricing_documents.requirement_snapshot_id`; `component_key` on estimate/pricing lines.
-- REQ-TXN-01 **READY / BLOCKING REQ-4B** (transactional persist safety not implemented).
+- REQ-TXN-01 **COMPLETE LOCAL / READY FOR COMMIT** (`persist_estimate_generation_v1`; v1 requires snapshot; migration 036 local only).
 - Deck `decking.surface` and `deck.labour` remain **SHADOW**.
 - Shadow reconciliation + eligibility exist. **No promotion.**
 - First REQ-4B candidate: Deck `decking.surface`. Do not start REQ-4B here.

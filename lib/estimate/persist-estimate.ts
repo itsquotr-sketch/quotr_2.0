@@ -1,14 +1,17 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CURRENT_CALIBRATION_VERSION } from "@/lib/estimate/calibration-version";
+import { generationRequiresRequirementSnapshot } from "@/lib/estimate/component-authority";
 import { buildLineItemNotes } from "@/lib/estimate/line-items";
+import {
+  buildPersistEstimateGenerationV1,
+  isAtomicPersistRpcUnavailable,
+  persistEstimateGenerationViaRpc,
+} from "@/lib/estimate/persist-estimate-generation";
 import {
   buildSnapshotPayloadForEstimate,
   createGenerationId,
 } from "@/lib/estimate/requirement-snapshot-persist";
-import {
-  createSupabaseRequirementSnapshotStore,
-  type RequirementSnapshotStore,
-} from "@/lib/estimate/requirement-snapshot-store";
+import { createSupabaseRequirementSnapshotStore } from "@/lib/estimate/requirement-snapshot-store";
 import type { EstimateResult } from "@/lib/estimate/types";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 
@@ -95,16 +98,29 @@ async function markEstimateFailed(
     .eq("id", estimateId);
 }
 
-export async function persistEstimateResult(
+async function markPricingRecalibration(
+  supabase: SupabaseClient,
+  orgId: string,
+  projectId: string
+): Promise<void> {
+  const { markPricingDocumentsNeedingRecalibration } = await import(
+    "@/lib/pricing/recalibration"
+  );
+  await markPricingDocumentsNeedingRecalibration(supabase, orgId, projectId);
+}
+
+/**
+ * SHADOW/legacy compatibility only. Never used when any component is
+ * REQUIREMENT_AUTHORITATIVE. Prefer persist_estimate_generation_v1.
+ */
+async function persistEstimateResultLegacyMultiCall(
   supabase: SupabaseClient,
   orgId: string,
   projectId: string,
   estimateResult: EstimateResult,
-  options?: { snapshotStore?: RequirementSnapshotStore }
+  generationId: string
 ): Promise<PersistEstimateResult> {
-  const generationId = createGenerationId();
-  const snapshotStore =
-    options?.snapshotStore ?? createSupabaseRequirementSnapshotStore(supabase);
+  const snapshotStore = createSupabaseRequirementSnapshotStore(supabase);
   const lineItemRows = estimateResult.lineItems.map((item) => ({
     org_id: orgId,
     project_id: projectId,
@@ -322,10 +338,60 @@ export async function persistEstimateResult(
     };
   }
 
-  const { markPricingDocumentsNeedingRecalibration } = await import(
-    "@/lib/pricing/recalibration"
-  );
-  await markPricingDocumentsNeedingRecalibration(supabase, orgId, projectId);
+  await markPricingRecalibration(supabase, orgId, projectId);
 
   return { success: true, estimateId, snapshot };
+}
+
+export async function persistEstimateResult(
+  supabase: SupabaseClient,
+  orgId: string,
+  projectId: string,
+  estimateResult: EstimateResult
+): Promise<PersistEstimateResult> {
+  const generationId = createGenerationId();
+  const payload = buildPersistEstimateGenerationV1({
+    projectId,
+    generationId,
+    estimateResult,
+  });
+
+  const rpc = await persistEstimateGenerationViaRpc(supabase, payload);
+  if (rpc.ok) {
+    await markPricingRecalibration(supabase, orgId, projectId);
+    return {
+      success: true,
+      estimateId: rpc.result.estimate_id,
+      snapshot: {
+        ok: true,
+        generationId: rpc.result.generation_id,
+        snapshotId: rpc.result.snapshot_id,
+        schemaVersion:
+          typeof payload.snapshot.schemaVersion === "string"
+            ? payload.snapshot.schemaVersion
+            : "estimate-requirement-snapshot-v1",
+      },
+    };
+  }
+
+  if (
+    isAtomicPersistRpcUnavailable(rpc.message) &&
+    !generationRequiresRequirementSnapshot()
+  ) {
+    return persistEstimateResultLegacyMultiCall(
+      supabase,
+      orgId,
+      projectId,
+      estimateResult,
+      generationId
+    );
+  }
+
+  return {
+    error: toUserError(
+      rpc.message,
+      "persistEstimate-atomic",
+      USER_ERRORS.estimateSaveFailed
+    ),
+  };
 }

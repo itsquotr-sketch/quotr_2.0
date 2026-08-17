@@ -1,8 +1,9 @@
 # Quotr Requirement Snapshot Contract
 
-**Status:** CANONICAL for REQ-SNAPSHOT-01 / REQ-4A / REQ-4A-R1  
+**Status:** CANONICAL for REQ-SNAPSHOT-01 / REQ-4A / REQ-TXN-01  
 **Date:** 2026-08-17  
-**Migration:** `supabase/migrations/035_estimate_requirement_snapshots.sql` (**applied remote** on `quotr_2.0` / `lxvnylhsbvudzzupxeqr`)
+**Migration:** `supabase/migrations/035_estimate_requirement_snapshots.sql` (**applied remote** on `quotr_2.0` / `lxvnylhsbvudzzupxeqr`)  
+**Atomic persist:** `supabase/migrations/036_persist_estimate_generation_v1.sql` (**local only**; see `docs/architecture/QUOTR_ATOMIC_ESTIMATE_GENERATION_CONTRACT.md`)
 
 Once a requirement becomes commercial authority, Quotr must answer: **why did this component cost X at that generation?** without joining today’s rates, Project Conditions, or assumptions.
 
@@ -76,11 +77,13 @@ Authenticated app: **INSERT + SELECT only** on snapshots. UPDATE trigger raises 
 
 New generation → new snapshot. Prior snapshot is not overwritten.
 
-## 6. Failure handling (REQ-4A / SHADOW)
+## 6. Failure handling (REQ-4A / SHADOW vs REQ-TXN-01)
 
 No requirement is commercially authoritative yet.
 
-If snapshot persist fails (or migration 035 is not on the remote): **legacy estimate remains usable**; snapshot/promotion readiness reports failure. Estimate generate must not break Preview before remote apply.
+**Local (036 applied):** `persist_estimate_generation_v1` persists estimate + lines + **mandatory** snapshot + pointer in one transaction. Snapshot insert failure rolls back the whole generation; the previous `ready` generation remains. Empty `requirements: []` is valid. Historical null pointers remain valid (no backfill). Old REQ-4A SHADOW behaviour (snapshot failure may still finalize) is **retired** on the atomic path.
+
+**Preview before remote 036:** if the RPC is unavailable and no component is `REQUIREMENT_AUTHORITATIVE`, a multi-call compatibility fallback may still run. After any promotion: **no fallback**. After remote 036, Preview must use the RPC.
 
 ## 7. REQ-TXN-01 (blocks REQ-4B)
 
@@ -88,29 +91,16 @@ If snapshot persist fails (or migration 035 is not on the remote): **legacy esti
 
 When **any** component is `REQUIREMENT_AUTHORITATIVE`, Quotr must **not** successfully publish/finalize a new commercial estimate generation whose required calculation snapshot failed to persist or whose snapshot cannot be deterministically linked to that generation.
 
-**Primary invariant:** commercial money must never be current/authoritative without its required calculation snapshot.
+**Universal v1 invariant (REQ-TXN-01-R1):** every new atomic generation has a snapshot, including SHADOW/legacy. Commercial authority is unchanged.
 
-**Status:** **READY / BLOCKING REQ-4B** (documented in REQ-4A; transactional RPC not implemented).
+**Status:** **COMPLETE LOCAL / READY FOR COMMIT**. RPC `persist_estimate_generation_v1` implemented. v1 requires a snapshot. Migration 036 **not remote**. See `docs/architecture/QUOTR_ATOMIC_ESTIMATE_GENERATION_CONTRACT.md`.
 
-### Current persist order (partial-failure states)
+Normal persist order (one transaction):
 
-`persistEstimateResult` uses multiple PostgREST round-trips (not one SQL transaction):
+1. Calculate + serialize outside the DB transaction
+2. RPC: lock estimate → validate lines → replace lines → insert snapshot → pointer + `ready`
 
-1. Stage estimate row (`requirement_generation_id`, status draft)
-2. Delete all line items
-3. Insert new line items
-4. Insert requirement snapshot
-5. Finalize estimate (ready + `latest_requirement_snapshot_id`)
-
-| Failure | State |
-| --- | --- |
-| A. estimate updated, line delete fails | Estimate failed; lines may be stale |
-| B. old lines deleted, insert fails | Estimate failed; **no lines** |
-| C. lines inserted, snapshot fails | Lines current; pointer null; OK in SHADOW |
-| D. snapshot inserted, finalize fails | Orphan snapshot; pointer may lag; resolve by generation id |
-| E. concurrent generations | Each UUID; last successful finalize wins pointer; both snapshots retained |
-
-**Minimum safe strategy (pre-REQ-4B):** database RPC / single transaction persisting generation + line replacement + snapshot + pointers (preferred). Snapshot-first staged generation is acceptable if orphan snapshots are identifiable and non-current.
+Duplicate `generation_id` fails deterministically. Concurrent generations serialize on an advisory lock + row `FOR UPDATE`.
 
 ## 8. REQ-SNAPSHOT-01 completion rule
 
@@ -125,6 +115,6 @@ F. local DB migration/RLS behaviour verified (`scripts/verify-migration-035-requ
 
 ## 9. Remote apply
 
-Migration 035 is applied on the linked remote project. Preview persist uses the committed snapshot store. Until REQ-TXN-01, SHADOW snapshot failure may still leave the legacy estimate usable.
+Migration 035 is applied on the linked remote project. Migration 036 is **local only** until Owner review + commit/push. After remote 036, Preview persist must use the atomic RPC. Until then, SHADOW may still use the multi-call fallback if the RPC is missing.
 
 QUOTE-IMMUTABILITY-DB-01 remains Phase-9.

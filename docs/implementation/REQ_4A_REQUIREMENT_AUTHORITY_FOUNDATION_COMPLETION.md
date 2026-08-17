@@ -11,7 +11,7 @@
 REQ-4 is **IN PROGRESS**. REQ-4A is snapshot + authority + reconciliation infrastructure. **No live component promotion.**
 
 REQ-SNAPSHOT-01 = **COMPLETE / REMOTE VALIDATED**.  
-REQ-TXN-01 = **READY / BLOCKING REQ-4B** (documented; transactional RPC not implemented).
+REQ-TXN-01 = **COMPLETE LOCAL / READY FOR COMMIT** (`persist_estimate_generation_v1`; 036 not remote).
 
 ---
 
@@ -58,8 +58,9 @@ Deck `decking.surface` — semantic reimplementation, exact shadow cost parity, 
 
 ## REQ-4B blockers
 
-1. **REQ-TXN-01** transactional safety implemented  
-2. Preview remains SHADOW until Owner starts REQ-4B
+1. **REQ-TXN-01** commit + push (`COMPLETE LOCAL / READY FOR COMMIT`)
+2. Migration 036 applied remote + Preview atomic persist proof  
+3. Preview remains SHADOW until Owner starts REQ-4B
 
 ## REQ-4B success condition (document only)
 

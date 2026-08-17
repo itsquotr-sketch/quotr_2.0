@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-4B **BLOCKED / NOT STARTED**. REQ-TXN-01 **READY / BLOCKING REQ-4B**.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-4B **BLOCKED / NOT STARTED**. REQ-TXN-01 **COMPLETE LOCAL / READY FOR COMMIT**.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Product architecture:** `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`  
 **Supersedes as programme plan:** `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`, `docs/plans/STAGE_3_PRODUCT_ROADMAP.md` (as primary plan), `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
@@ -140,7 +140,7 @@ Priority: **CRITICAL** · **HIGH** · **MEDIUM** · **LATER**
 | **User value** | Invisible at REQ-1; enables explainable takeoff |
 | **Technical dependency** | PHASE 0 frozen (`foundation-r1.1`); R1 DC-01/02 already clean. LabourAdjustmentRef ready before **REQ-3**. **REQ-SNAPSHOT-01** + component authority + parity classes before **REQ-4** promotion. |
 | **Commercial dependency** | Must not change $ at REQ-1 |
-| **Migration** | REQ-4A `035_estimate_requirement_snapshots.sql` applied remote on `quotr_2.0` (`lxvnylhsbvudzzupxeqr`). |
+| **Migration** | REQ-4A `035_estimate_requirement_snapshots.sql` applied remote on `quotr_2.0` (`lxvnylhsbvudzzupxeqr`). REQ-TXN-01 `036_persist_estimate_generation_v1.sql` **local only**. |
 | **Risk** | M |
 | **Owner test** | Goldens unchanged at REQ-1; later shadow diffs reviewed |
 | **Why now** | Pre-emission contract final; Deck qty/rate coherent; calculators otherwise freeze packages forever |
@@ -148,7 +148,7 @@ Priority: **CRITICAL** · **HIGH** · **MEDIUM** · **LATER**
 | **Non-goals** | UI takeoff; Catalogue V2; changing money at REQ-1; implementing component-authority table |
 | **Completion gate** | REQ-1 envelope tests; REQ-2/3 emit with `priced` honesty; REQ-4 only after snapshot + documented parity |
 | **Priority** | CRITICAL |
-| **Status** | REQ-1 **COMPLETE / TECHNICALLY VALIDATED**; REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**; REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**; REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**; REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**; REQ-4 **IN PROGRESS**; REQ-4A **COMPLETE / TECHNICALLY VALIDATED**; REQ-4B **BLOCKED / NOT STARTED**; REQ-SNAPSHOT-01 **COMPLETE / REMOTE VALIDATED**; REQ-TXN-01 **READY / BLOCKING REQ-4B** |
+| **Status** | REQ-1 **COMPLETE / TECHNICALLY VALIDATED**; REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**; REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**; REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**; REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**; REQ-4 **IN PROGRESS**; REQ-4A **COMPLETE / TECHNICALLY VALIDATED**; REQ-4B **BLOCKED / NOT STARTED**; REQ-SNAPSHOT-01 **COMPLETE / REMOTE VALIDATED**; REQ-TXN-01 **COMPLETE LOCAL / READY FOR COMMIT** |
 | **Batches** | **REQ-1** envelope + physical aggregation; **REQ-2** Deck **surface decking only**; **REQ-3** LabourRequirement emission; **REQ-4** requirement ↔ pricing reconciliation / shadow / promotion |
 
 ### PHASE 2 — Deck reference calculator
@@ -378,7 +378,7 @@ RATE-QUALITY-01 stays backlog. Do not auto-correct company `$23/m²`.
 | Cost-first Rates Owner Preview | C/E | outstanding Preview |
 | ISD-007 latency | F | PERF |
 | REQ-SNAPSHOT-01 | A | 1 — **COMPLETE / REMOTE VALIDATED**; REQ-4B blocked by REQ-TXN-01 |
-| REQ-TXN-01 | A | 0 — **READY / BLOCKING REQ-4B**; single-transaction estimate persist safety |
+| REQ-TXN-01 | A | 0 — **COMPLETE LOCAL / READY FOR COMMIT**; `persist_estimate_generation_v1` (mandatory snapshot); 036 not remote |
 | CAT-IDENTITY-01 | C | 2–3 — before CAT-V2 seeding |
 | AN-EVIDENCE-01 | F | before AN-1 |
 | QUOTE-IMMUTABILITY-DB-01 | E | before quote acceptance Production |
@@ -468,8 +468,8 @@ Already approved: CF-D1–D7, D1–D16 Builder Interview, OD-CAT-01/02/03, OD-R1
 
 1. PHASE 0 remains frozen.  
 2. REQ-4A is **COMPLETE / TECHNICALLY VALIDATED**.  
-3. REQ-SNAPSHOT-01 is **COMPLETE / REMOTE VALIDATED**; REQ-TXN-01 required before REQ-4B.  
-4. Do **not** start REQ-4B until Owner review. First candidate: Deck `decking.surface`. Deck labour stays SHADOW.  
+3. REQ-SNAPSHOT-01 is **COMPLETE / REMOTE VALIDATED**. REQ-TXN-01 is **COMPLETE LOCAL / READY FOR COMMIT**; remote 036 + Preview atomic proof still required before REQ-4B.  
+4. Do **not** start REQ-4B until Owner review + commit/push + remote 036. First candidate: Deck `decking.surface`. Deck labour stays SHADOW.  
 5. CM-03 remains **BACKLOG / NOT STARTED**.  
 6. Do not deploy Production. Do not enable Production Scope Discovery.
 

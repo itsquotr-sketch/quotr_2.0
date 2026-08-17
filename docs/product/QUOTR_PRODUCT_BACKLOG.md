@@ -114,7 +114,7 @@
 - **DEMO-R7** (Final demo polish — Complete Local pending Owner): mobile AppShell header logo+avatar; Dashboard compactOnMobile (sr-only H1; hide title/subtitle/profile row); tighter spacing; safe drop of duplicate Dashboard auth/profile fetch. PERF-FUTURE-01 remains Planned for deeper latency.
 - **BRANDING-P0** Company logo upload + quote render (Complete Local pending Owner): Storage bucket `organisation-branding`; Settings upload UX; quote broken-image fallback. Snapshot immutability deferred (**BRANDING-SNAPSHOT-01**). Verify: `scripts/verify-branding-p0-company-logo.ts`.
 - Production Scope Discovery: **Disabled**. Company DNA: **Not Started**. PERF-FUTURE-01: **Planned** (parallel; R2–R5 evidence recorded).
-- **Architecture gates:** REQ-SNAPSHOT-01 **COMPLETE / REMOTE VALIDATED**; **REQ-TXN-01 READY / BLOCKING REQ-4B** (transactional estimate persist safety); CAT-IDENTITY-01 (blocks CAT-V2 seeding); AN-EVIDENCE-01 (blocks AN-1 emitters); QUOTE-IMMUTABILITY-DB-01 (before public quote acceptance Production); SUB-AUTH-01 (before RFQ); ISD-MAP-01 (future CI).
+- **Architecture gates:** REQ-SNAPSHOT-01 **COMPLETE / REMOTE VALIDATED**; **REQ-TXN-01 COMPLETE LOCAL / READY FOR COMMIT** (atomic estimate persist; mandatory snapshot; 036 not remote); CAT-IDENTITY-01 (blocks CAT-V2 seeding); AN-EVIDENCE-01 (blocks AN-1 emitters); QUOTE-IMMUTABILITY-DB-01 (before public quote acceptance Production); SUB-AUTH-01 (before RFQ); ISD-MAP-01 (future CI).
 
 ## Batch notes (Stage 3.1C auth / setup) — CLOSED
 
