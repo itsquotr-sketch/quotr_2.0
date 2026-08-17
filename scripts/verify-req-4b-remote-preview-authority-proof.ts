@@ -169,7 +169,6 @@ async function main() {
   const userIds: string[] = [];
   try {
     const orgId = randomUUID();
-    const userId = randomUUID();
     const projectId = randomUUID();
     const workAreaId = randomUUID();
     const noWidthWaId = randomUUID();
@@ -184,7 +183,8 @@ async function main() {
     if (created.error || !created.data.user) {
       throw new Error(created.error?.message ?? "create user failed");
     }
-    userIds.push(created.data.user.id);
+    const userId = created.data.user.id;
+    userIds.push(userId);
 
     await admin.from("organisations").insert({
       id: orgId,
@@ -448,14 +448,14 @@ async function main() {
     if (pricingDoc?.id) {
       const surfaceCost = surfaceLine(companyLm)?.recommendedCost ?? 0;
       const surfaceSell = surfaceLine(companyLm)?.recommendedSell ?? 0;
-      await admin.from("pricing_items").insert({
+      const { error: itemError } = await admin.from("pricing_items").insert({
         org_id: orgId,
         project_id: projectId,
         pricing_document_id: pricingDoc.id,
-        work_area_id: workAreaId,
+        source_estimate_line_item_id: null,
         component_key: DECK_SURFACE_COMPONENT_KEY,
         item_type: "material",
-        delivery_method: "supply",
+        delivery_method: "in_house",
         internal_label: "Decking materials",
         client_label: "Decking materials",
         quantity: 126.65,
@@ -470,6 +470,7 @@ async function main() {
         calculation_mode: "quantity_rate",
         sort_order: 0,
       });
+      check("pricing item insert ok", !itemError, itemError?.message ?? "");
       const { data: pricingItems } = await admin
         .from("pricing_items")
         .select("component_key")

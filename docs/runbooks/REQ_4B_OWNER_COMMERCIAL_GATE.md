@@ -1,6 +1,6 @@
 # REQ-4B Owner Commercial Gate
 
-**Status:** OWNER REVIEW REQUIRED  
+**Status:** OWNER APPROVED / REMOTE VALIDATED  
 **Date:** 2026-08-18  
 **Batch:** REQ-4B — first live component authority promotion  
 **Verify locally:** `npx tsx scripts/verify-req-4b-deck-surface-authority-promotion.ts`
@@ -90,15 +90,15 @@ Do **not** commit/push/deploy from this gate. Review **same commercial result, d
 
 ## Owner checklist
 
-- [ ] Same cost/sell on A/B/C semantic fixtures
-- [ ] No double-count on promoted surface
-- [ ] Fallback D/E safe (no silent requirement $0 line)
-- [ ] Deck 1 golden $48,340 unchanged
-- [ ] `deck.labour` still line-money authority
-- [ ] Pricing/Quote paths unchanged (estimate lines only)
-- [ ] Snapshot shows authority + active source + requirement evidence
-- [ ] Local atomic persist + rollback proof acceptable
-- [ ] Approve commit/push/deploy separately (not in REQ-4B batch)
+- [x] Same cost/sell on A/B/C semantic fixtures (local + remote)
+- [x] No double-count on promoted surface
+- [x] Fallback D safe; E local authoritative
+- [x] Deck 1 golden $48,340 unchanged (local)
+- [x] `deck.labour` still line-money authority
+- [x] Pricing/Quote paths unchanged
+- [x] Snapshot shows authority + active source
+- [x] Remote atomic persist + rollback proof
+- [x] Remote Preview deploy validated (`f99dbec`)
 
 ---
 

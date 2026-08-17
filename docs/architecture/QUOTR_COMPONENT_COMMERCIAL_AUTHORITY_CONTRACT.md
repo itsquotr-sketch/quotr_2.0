@@ -2,7 +2,7 @@
 
 **Status:** CANONICAL for REQ-4A / REQ-4B  
 **Date:** 2026-08-18  
-**Mode:** REQ-4B **COMPLETE LOCAL / OWNER COMMERCIAL REVIEW PENDING**. First promotion: Deck `decking.surface` only.
+**Mode:** REQ-4B **COMPLETE / REMOTE VALIDATED**. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**.
 
 Authority is **external** to `EstimateRequirement`. Requirements do not store `commercialAuthority`. `priced: true` means cost data is complete; it does not mean the requirement owns estimate money.
 
@@ -55,7 +55,17 @@ Line UUIDs change on regenerate. **`component_key` is persisted** on `estimate_l
 
 Eligible when: authority SHADOW (pre-promotion), semantic reimplementation, requirement + legacy exist, priced, exact cost parity, quantity/hours parity where comparable, no duplicate requirement, snapshot persisted.
 
-REQ-4B promoted Deck `decking.surface` locally. Deck labour stays SHADOW until separately approved.
+REQ-4B promoted Deck `decking.surface` locally and on branch Preview. Deck labour stays SHADOW until separately approved.
+
+## 8. One-source commercial invariant (REQ-4B)
+
+For each **`workAreaId` + `componentKey`**, a generation may have **at most one active commercial source**:
+
+- `LEGACY` (unregistered / shadow comparator only)
+- `REQUIREMENT` (authoritative requirement-derived line)
+- `LEGACY_FALLBACK` (policy authoritative but generation uses legacy)
+
+**Never:** two active lines for the same component; never LEGACY + REQUIREMENT money together. Enforced by `assertNoDuplicateActiveComponents()` in `component-commercial-selection.ts`. Duplicate active components fail loudly.
 
 `generationRequiresRequirementSnapshot()` is true iff any registered component is `REQUIREMENT_AUTHORITATIVE`. Persist **always** snapshots regardless; this helper is not a snapshot-optionality switch. See `docs/architecture/QUOTR_ATOMIC_ESTIMATE_GENERATION_CONTRACT.md`.
 

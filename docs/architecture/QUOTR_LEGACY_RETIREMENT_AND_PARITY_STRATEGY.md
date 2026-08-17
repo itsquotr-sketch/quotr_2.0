@@ -69,7 +69,7 @@ REQ-4 is the first dedicated reconciliation batch. REQ-1 envelope is in place an
 
 **B. Intentional model improvement** — new physical model changes the result. Require: documented reason; fixture expected output updated explicitly; commercial review; Owner Preview. Numeric variance is **reported**, not auto-accepted because it sits under a generic % band.
 
-Component-level authority lifecycle: `LEGACY_AUTHORITATIVE` → `SHADOW` → `REQUIREMENT_AUTHORITATIVE` → `LEGACY_FALLBACK` → `LEGACY_RETIRED`. REQ-4A implements the registry + snapshot + commercial lineage. **REQ-4B promoted Deck `decking.surface` locally** (Owner commercial review pending). Deck labour remains SHADOW.
+Component-level authority lifecycle: … **REQ-4B promoted Deck `decking.surface` — COMPLETE / REMOTE VALIDATED**. REQ-4 **COMPLETE**. Deck labour remains SHADOW. Legacy Deck surface **not retired**.
 
 Existing verification to reuse: `scripts/verify-batch-2b4-shadow-parity.ts`, outdoor calibration, commercial goldens — extend, do not replace.
 

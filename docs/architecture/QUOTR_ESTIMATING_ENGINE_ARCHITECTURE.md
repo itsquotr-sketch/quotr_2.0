@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED.** REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-4B **BLOCKED / NOT STARTED**. Does not authorise commercial promotion.  
+**Mode:** PHASE 0 frozen. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED**. Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE**; `deck.labour` = **SHADOW**.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Absorbs:** `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (SUPPORTING)  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -647,9 +647,10 @@ Infrastructure only. Contracts: `docs/architecture/QUOTR_COMPONENT_COMMERCIAL_AU
 - REQ-SNAPSHOT-01 **COMPLETE / REMOTE VALIDATED** (`035_estimate_requirement_snapshots.sql`, applied on `lxvnylhsbvudzzupxeqr`).
 - Commercial lineage: `pricing_documents.requirement_snapshot_id`; `component_key` on estimate/pricing lines.
 - REQ-TXN-01 **COMPLETE / REMOTE VALIDATED** (`persist_estimate_generation_v1`; v1 requires snapshot; migration 036 applied remote).
-- Deck `decking.surface` and `deck.labour` remain **SHADOW**.
-- Shadow reconciliation + eligibility exist. **No promotion.**
-- First REQ-4B candidate: Deck `decking.surface`. Do not start REQ-4B here.
+- Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE** (REQ-4B). Composer: `component-commercial-selection.ts`.
+- Deck `deck.labour` remains **SHADOW**.
+- Shadow reconciliation + eligibility exist for non-promoted components.
+- **DECK-1** is next (structural material quantities). Do not start DECK-1 here.
 
 **Critical principle:** never switch an entire Work Area because one requirement is correct. Authority is **component level**. Mixed maturity must remain valid.
 
