@@ -12,6 +12,7 @@ import { ESTIMATE_REQUIREMENT_CONTRACT_VERSION } from "@/lib/estimate/requiremen
 import { assertRequirement } from "@/lib/estimate/requirement-validate";
 import { normalizeRequirements } from "@/lib/estimate/requirement-normalize";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
+import type { CommercialActiveSource } from "@/lib/estimate/component-commercial-selection";
 
 export const ESTIMATE_REQUIREMENT_SNAPSHOT_SCHEMA_VERSION =
   "estimate-requirement-snapshot-v1" as const;
@@ -27,6 +28,22 @@ export type EstimateRequirementSnapshotV1 = {
     componentKey: string;
     authority: ComponentCommercialAuthority;
     parityClass: RequirementParityClass;
+  }>;
+  /**
+   * Optional REQ-4B generation active-source evidence.
+   * Absent on pre-REQ-4B snapshots. Policy remains in componentAuthorities.
+   */
+  commercialSources?: Array<{
+    workAreaId: string;
+    workAreaType: string;
+    componentKey: string;
+    registeredAuthority: ComponentCommercialAuthority;
+    activeSource: CommercialActiveSource;
+    requirementId: string | null;
+    requirementCost: number | null;
+    legacyCost: number | null;
+    activeCost: number | null;
+    fallbackReason?: string;
   }>;
 };
 
@@ -160,6 +177,8 @@ export function parseEstimateRequirementSnapshot(
     };
   });
 
+  const commercialSources = parseCommercialSources(record.commercialSources);
+
   const snapshot: EstimateRequirementSnapshotV1 = {
     schemaVersion: ESTIMATE_REQUIREMENT_SNAPSHOT_SCHEMA_VERSION,
     requirementContractVersion: ESTIMATE_REQUIREMENT_CONTRACT_VERSION,
@@ -167,15 +186,75 @@ export function parseEstimateRequirementSnapshot(
     generationId: record.generationId,
     requirements,
     componentAuthorities,
+    ...(commercialSources ? { commercialSources } : {}),
   };
   assertJsonSafe(snapshot, "snapshot");
   return snapshot;
+}
+
+function parseOptionalNumber(value: unknown): number | null {
+  if (value == null) return null;
+  if (typeof value !== "number" || !Number.isFinite(value)) {
+    throw new RequirementSnapshotError("commercialSources cost must be finite or null");
+  }
+  return value;
+}
+
+function parseCommercialSources(
+  raw: unknown
+): EstimateRequirementSnapshotV1["commercialSources"] {
+  if (raw === undefined) return undefined;
+  if (!Array.isArray(raw)) {
+    throw new RequirementSnapshotError("commercialSources must be an array");
+  }
+  return raw.map((entry, index) => {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new RequirementSnapshotError(`commercialSources[${index}] invalid`);
+    }
+    const item = entry as Record<string, unknown>;
+    if (
+      typeof item.workAreaId !== "string" ||
+      typeof item.workAreaType !== "string" ||
+      typeof item.componentKey !== "string" ||
+      typeof item.registeredAuthority !== "string" ||
+      typeof item.activeSource !== "string"
+    ) {
+      throw new RequirementSnapshotError(
+        `commercialSources[${index}] missing required fields`
+      );
+    }
+    if (
+      item.activeSource !== "REQUIREMENT" &&
+      item.activeSource !== "LEGACY_FALLBACK" &&
+      item.activeSource !== "LEGACY"
+    ) {
+      throw new RequirementSnapshotError(
+        `commercialSources[${index}] unknown activeSource`
+      );
+    }
+    return {
+      workAreaId: item.workAreaId,
+      workAreaType: item.workAreaType,
+      componentKey: item.componentKey,
+      registeredAuthority: item.registeredAuthority as ComponentCommercialAuthority,
+      activeSource: item.activeSource as CommercialActiveSource,
+      requirementId:
+        item.requirementId == null ? null : String(item.requirementId),
+      requirementCost: parseOptionalNumber(item.requirementCost),
+      legacyCost: parseOptionalNumber(item.legacyCost),
+      activeCost: parseOptionalNumber(item.activeCost),
+      ...(typeof item.fallbackReason === "string"
+        ? { fallbackReason: item.fallbackReason }
+        : {}),
+    };
+  });
 }
 
 export function buildEstimateRequirementSnapshotV1(params: {
   generationId: string;
   generatedAt?: string;
   requirements: readonly EstimateRequirement[];
+  commercialSources?: EstimateRequirementSnapshotV1["commercialSources"];
 }): EstimateRequirementSnapshotV1 {
   return {
     schemaVersion: ESTIMATE_REQUIREMENT_SNAPSHOT_SCHEMA_VERSION,
@@ -184,5 +263,6 @@ export function buildEstimateRequirementSnapshotV1(params: {
     generationId: params.generationId,
     requirements: normalizeRequirements(params.requirements),
     componentAuthorities: [...snapshotRegisteredAuthorities()],
+    ...(params.commercialSources ? { commercialSources: params.commercialSources } : {}),
   };
 }

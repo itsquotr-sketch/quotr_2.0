@@ -686,16 +686,18 @@ check(
 );
 check(
   "COMMERCIAL 34 existing line-item authority unchanged",
-  calculateSrc.includes("Requirement costs are never added to totals") &&
+  (calculateSrc.includes("Requirement costs are never added to totals") ||
+    calculateSrc.includes("Do not add requirement cost on top of legacy money")) &&
     finalized.lineItems[0]?.recommendedSell === 125
 );
 check(
-  "COMMERCIAL 35 no component authority promotion",
+  "COMMERCIAL 35 Deck surface promoted in registry; calculate-estimate stays clean",
   existsSync(join("lib", "estimate", "component-authority.ts")) &&
     aggregateSrc.includes("Not pricing-authority promotion") &&
-    !read("lib/estimate/component-authority.ts").includes(
+    read("lib/estimate/component-authority.ts").includes(
       'authority: "REQUIREMENT_AUTHORITATIVE"'
-    )
+    ) &&
+    !read("lib/estimate/calculate-estimate.ts").includes("REQUIREMENT_AUTHORITATIVE")
 );
 check(
   "COMMERCIAL 36 no requirement row commercial persistence",

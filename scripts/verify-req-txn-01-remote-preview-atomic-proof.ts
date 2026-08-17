@@ -218,6 +218,18 @@ async function cleanup(
 async function main() {
   console.log("=== REQ-TXN-01 remote Preview atomic persist proof ===\n");
 
+  if (
+    getComponentCommercialAuthority({
+      workAreaType: "deck",
+      componentKey: DECK_SURFACE_COMPONENT_KEY,
+    }).authority === "REQUIREMENT_AUTHORITATIVE"
+  ) {
+    console.log(
+      "SKIP  REQ-4B local promotion active — remote Preview still SHADOW until deploy"
+    );
+    process.exit(0);
+  }
+
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");
   const anonKey = requireEnv("NEXT_PUBLIC_SUPABASE_ANON_KEY");

@@ -16,6 +16,7 @@ import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import type { SellAuthority } from "@/lib/commercial-engine/core/cost-first-authority";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
+import type { CommercialComponentSelection } from "@/lib/estimate/component-commercial-selection";
 
 export type EstimateProject = {
   id: string;
@@ -149,9 +150,19 @@ export type EstimateResult = {
   lineItems: EstimateLineItemInput[];
   /**
    * Project-level collected requirements after normalisation.
-   * Empty until REQ-2 / REQ-3 emit. Never added to estimate money.
+   * Empty until REQ-2 / REQ-3 emit. Never added on top of estimate money.
    */
   requirements?: readonly EstimateRequirement[];
+  /**
+   * REQ-4B — per-component commercial source after authority composition.
+   * Policy remains in the registry; this is the generation active source.
+   */
+  commercialSelections?: readonly CommercialComponentSelection[];
+  /**
+   * Pre-composition calculator lines for shadow reconciliation / fallback compare.
+   * Not persisted as a second money set.
+   */
+  legacyCommercialCandidates?: readonly EstimateLineItemInput[];
 };
 
 export type ProductivityRate = {

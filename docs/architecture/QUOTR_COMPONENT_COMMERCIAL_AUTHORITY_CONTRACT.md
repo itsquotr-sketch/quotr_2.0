@@ -1,8 +1,8 @@
 # Quotr Component Commercial Authority Contract
 
-**Status:** CANONICAL for REQ-4A  
-**Date:** 2026-08-17  
-**Mode:** Infrastructure only. **No live promotions.** REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-TXN-01 **COMPLETE / REMOTE VALIDATED**.
+**Status:** CANONICAL for REQ-4A / REQ-4B  
+**Date:** 2026-08-18  
+**Mode:** REQ-4B **COMPLETE LOCAL / OWNER COMMERCIAL REVIEW PENDING**. First promotion: Deck `decking.surface` only.
 
 Authority is **external** to `EstimateRequirement`. Requirements do not store `commercialAuthority`. `priced: true` means cost data is complete; it does not mean the requirement owns estimate money.
 
@@ -20,17 +20,17 @@ Unregistered components default to **LEGACY_AUTHORITATIVE**. The registry only l
 
 | Component | Authority | Parity class |
 | --- | --- | --- |
-| Deck `decking.surface` | **SHADOW** | SEMANTIC_REIMPLEMENTATION |
+| Deck `decking.surface` | **REQUIREMENT_AUTHORITATIVE** | SEMANTIC_REIMPLEMENTATION |
 | Deck `deck.labour` | **SHADOW** | SEMANTIC_REIMPLEMENTATION |
 | All other priced components | **LEGACY_AUTHORITATIVE** (default) | — |
 
-No component is `REQUIREMENT_AUTHORITATIVE`. Resolver is not used to select or suppress money paths.
+REQ-4B promotes **only** `decking.surface`. Resolver + composer select money source; Pricing/Quote remain line-based.
 
 ## 3. Future fallback / retirement (not activated)
 
 **REQUIREMENT_AUTHORITATIVE:** requirement is the normal money source.
 
-**LEGACY_FALLBACK:** requirement path is expected; legacy may be used under a defined failure/unsupported condition. **Both sources must never contribute money in the same generation.**
+**LEGACY_FALLBACK (REQ-4B activated):** generation may use legacy when requirement missing/unpriced; registry policy stays REQUIREMENT_AUTHORITATIVE. **Both sources must never contribute money in the same generation.**
 
 **LEGACY_RETIRED:** legacy calculation unused for new estimates. Historical snapshots/quotes remain readable. Helper deletion is a later cleanup.
 
@@ -53,9 +53,9 @@ Line UUIDs change on regenerate. **`component_key` is persisted** on `estimate_l
 
 ## 6. Promotion eligibility (compute only)
 
-Eligible when: authority SHADOW, semantic reimplementation, requirement + legacy exist, priced, exact cost parity, quantity/hours parity where comparable, no duplicate requirement, snapshot persisted.
+Eligible when: authority SHADOW (pre-promotion), semantic reimplementation, requirement + legacy exist, priced, exact cost parity, quantity/hours parity where comparable, no duplicate requirement, snapshot persisted.
 
-REQ-4A never promotes. First REQ-4B candidate: Deck `decking.surface`. Deck labour stays SHADOW until separately approved.
+REQ-4B promoted Deck `decking.surface` locally. Deck labour stays SHADOW until separately approved.
 
 `generationRequiresRequirementSnapshot()` is true iff any registered component is `REQUIREMENT_AUTHORITATIVE`. Persist **always** snapshots regardless; this helper is not a snapshot-optionality switch. See `docs/architecture/QUOTR_ATOMIC_ESTIMATE_GENERATION_CONTRACT.md`.
 

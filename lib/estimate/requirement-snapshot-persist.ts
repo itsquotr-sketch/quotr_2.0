@@ -16,6 +16,7 @@ import { buildEstimateRequirementSnapshotV1 } from "@/lib/estimate/requirement-s
 import type { EstimateRequirementSnapshotV1 } from "@/lib/estimate/requirement-snapshot";
 import type { EstimateResult } from "@/lib/estimate/types";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
+import type { CommercialComponentSelection } from "@/lib/estimate/component-commercial-selection";
 
 export type RequirementSnapshotPersistResult =
   | {
@@ -43,7 +44,8 @@ export type RequirementCommercialDiagnostics = {
     workAreaType: string;
     componentKey: string;
     eligible: boolean;
-    promoted: false;
+    promoted: boolean;
+    activeSource?: string;
   };
 };
 
@@ -68,11 +70,18 @@ export function reconcileRegisteredComponents(result: EstimateResult): {
   const requirements = result.requirements ?? [];
   const reconciliations: RequirementLegacyReconciliation[] = [];
   const duplicates = new Map<string, boolean>();
-  const workAreaIds = [...new Set(result.lineItems.map((item) => item.workAreaId))];
+  const comparisonLines =
+    result.legacyCommercialCandidates ?? result.lineItems;
+  const workAreaIds = [
+    ...new Set([
+      ...comparisonLines.map((item) => item.workAreaId),
+      ...result.lineItems.map((item) => item.workAreaId),
+    ]),
+  ];
 
   for (const registered of listRegisteredComponentAuthorities()) {
     const matchingWorkAreas = workAreaIds.filter((workAreaId) => {
-      const line = result.lineItems.find(
+      const line = comparisonLines.find(
         (item) =>
           item.workAreaId === workAreaId &&
           item.componentKey === registered.componentKey
@@ -107,7 +116,7 @@ export function reconcileRegisteredComponents(result: EstimateResult): {
       reconciliations.push(
         reconcileRequirementWithLegacyComponent({
           requirement: found.requirement,
-          lineItems: result.lineItems,
+          lineItems: comparisonLines,
           workAreaId,
           workAreaType: registered.workAreaType,
           componentKey: registered.componentKey,
@@ -129,6 +138,14 @@ export function buildRequirementCommercialDiagnostics(params: {
   const snapshotPersisted = params.snapshot?.ok === true;
   let promotionEligibleCount = 0;
   let candidateEligible = false;
+  const candidatePromoted =
+    getComponentCommercialAuthority(REQ_4B_FIRST_PROMOTION_CANDIDATE).authority ===
+    "REQUIREMENT_AUTHORITATIVE";
+  const candidateSelection = params.result.commercialSelections?.find(
+    (item) =>
+      item.workAreaType === REQ_4B_FIRST_PROMOTION_CANDIDATE.workAreaType &&
+      item.componentKey === REQ_4B_FIRST_PROMOTION_CANDIDATE.componentKey
+  );
 
   for (const reconciliation of reconciliations) {
     const eligibility = evaluatePromotionEligibility({
@@ -145,7 +162,7 @@ export function buildRequirementCommercialDiagnostics(params: {
         REQ_4B_FIRST_PROMOTION_CANDIDATE.workAreaType &&
       reconciliation.componentKey ===
         REQ_4B_FIRST_PROMOTION_CANDIDATE.componentKey &&
-      eligibility.eligible
+      reconciliation.status === "PASS"
     ) {
       candidateEligible = true;
     }
@@ -184,7 +201,8 @@ export function buildRequirementCommercialDiagnostics(params: {
     firstPromotionCandidate: {
       ...REQ_4B_FIRST_PROMOTION_CANDIDATE,
       eligible: candidateEligible,
-      promoted: false,
+      promoted: candidatePromoted,
+      activeSource: candidateSelection?.activeSource,
     },
   };
 }
@@ -198,10 +216,28 @@ export function buildSnapshotPayloadForEstimate(params: {
   result: EstimateResult;
   generatedAt?: string;
 }): EstimateRequirementSnapshotV1 {
+  const commercialSources = params.result.commercialSelections?.map(
+    (item: CommercialComponentSelection) => ({
+      workAreaId: item.workAreaId,
+      workAreaType: item.workAreaType,
+      componentKey: item.componentKey,
+      registeredAuthority: item.registeredAuthority,
+      activeSource: item.activeSource,
+      requirementId: item.requirementId,
+      requirementCost: item.requirementCost,
+      legacyCost: item.legacyCost,
+      activeCost: item.activeCost,
+      ...(item.fallbackReason ? { fallbackReason: item.fallbackReason } : {}),
+    })
+  );
+
   return buildEstimateRequirementSnapshotV1({
     generationId: params.generationId,
     generatedAt: params.generatedAt,
     requirements: params.result.requirements ?? [],
+    ...(commercialSources && commercialSources.length > 0
+      ? { commercialSources }
+      : {}),
   });
 }
 

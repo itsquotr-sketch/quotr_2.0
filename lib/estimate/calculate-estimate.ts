@@ -19,6 +19,7 @@ import { finalizeEstimateResult, mergeUnique } from "@/lib/estimate/summary";
 import { mergeDuplicateMaterialBuildUpLineItems } from "@/lib/estimate/material-buildup-dedupe";
 import { dedupePricedItemsByScopeOwnership } from "@/lib/estimate/pricing-ownership";
 import { collectRequirements } from "@/lib/estimate/requirement-normalize";
+import { applyRegisteredComponentCommercialAuthority } from "@/lib/estimate/component-commercial-selection";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -111,10 +112,18 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
     );
   }
 
-  const estimate = finalizeEstimateResult({
+  const requirements = collectRequirements(calculatorResults);
+  const composed = applyRegisteredComponentCommercialAuthority({
     lineItems: dedupePricedItemsByScopeOwnership(
       mergeDuplicateMaterialBuildUpLineItems(lineItems)
     ),
+    requirements,
+    workAreas: confirmed,
+    organisationSettings: context.organisationSettings,
+  });
+
+  const estimate = finalizeEstimateResult({
+    lineItems: composed.lineItems,
     assumptions: mergeUnique(assumptions),
     missingInfo: mergeUnique(missingInfo),
     exclusions: mergeUnique(exclusions),
@@ -122,9 +131,11 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
     assumptionMetadata,
   });
 
-  // Physical collection only. Requirement costs are never added to totals.
+  // Physical collection only. Do not add requirement cost on top of legacy money.
   return {
     ...estimate,
-    requirements: collectRequirements(calculatorResults),
+    requirements,
+    commercialSelections: composed.selections,
+    legacyCommercialCandidates: composed.legacyCandidates,
   };
 }

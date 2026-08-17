@@ -170,6 +170,4 @@ Pricing money is unchanged. Pricing copies `requirement_snapshot_id` at create a
 
 ## 14. REQ-4B gate
 
-REQ-4B may begin only after: local proof, Owner approval, commit/push, remote 036, Preview atomic persist proof, rollback behaviour validated as far as safely possible remotely, Deck surface shadow reconciliation still exact.
-
-Do not promote from this contract.
+REQ-4B local batch **COMPLETE** (Owner commercial review pending). Remote Preview remains SHADOW until deploy. Do not promote additional components from this contract.

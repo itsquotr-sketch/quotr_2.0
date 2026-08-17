@@ -150,7 +150,7 @@ function shadowAuthorities() {
     {
       workAreaType: "deck",
       componentKey: DECK_SURFACE_COMPONENT_KEY,
-      authority: "SHADOW",
+      authority: "REQUIREMENT_AUTHORITATIVE",
       parityClass: "SEMANTIC_REIMPLEMENTATION",
     },
     {
@@ -420,15 +420,15 @@ function testContract() {
 function testHelpers() {
   console.log("\n--- HELPERS ---\n");
   check(
-    "registry does not require snapshot today",
-    generationRequiresRequirementSnapshot() === false
+    "registry requires snapshot after REQ-4B promotion",
+    generationRequiresRequirementSnapshot() === true
   );
   check(
-    "surface remains SHADOW",
+    "surface is REQUIREMENT_AUTHORITATIVE",
     getComponentCommercialAuthority({
       workAreaType: "deck",
       componentKey: DECK_SURFACE_COMPONENT_KEY,
-    }).authority === "SHADOW"
+    }).authority === "REQUIREMENT_AUTHORITATIVE"
   );
   check(
     "labour remains SHADOW",
@@ -1214,11 +1214,11 @@ function testAuthorityAndPlatform() {
   const calculateSrc = read("lib/estimate/calculate-estimate.ts");
 
   check(
-    "41 surface remains SHADOW",
+    "41 surface is REQUIREMENT_AUTHORITATIVE",
     getComponentCommercialAuthority({
       workAreaType: "deck",
       componentKey: DECK_SURFACE_COMPONENT_KEY,
-    }).authority === "SHADOW"
+    }).authority === "REQUIREMENT_AUTHORITATIVE"
   );
   check(
     "42 labour remains SHADOW",
@@ -1228,9 +1228,9 @@ function testAuthorityAndPlatform() {
     }).authority === "SHADOW"
   );
   check(
-    "43 no promoted components",
-    !authoritySrc.includes('authority: "REQUIREMENT_AUTHORITATIVE"') &&
-      generationRequiresRequirementSnapshot() === false
+    "43 promoted surface requires snapshot generation flag",
+    authoritySrc.includes('authority: "REQUIREMENT_AUTHORITATIVE"') &&
+      generationRequiresRequirementSnapshot() === true
   );
   check(
     "44 requirement cost still not totals",

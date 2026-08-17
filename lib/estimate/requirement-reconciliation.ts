@@ -313,7 +313,7 @@ export function reconcileRequirementWithLegacyComponent(params: {
 
 export type PromotionEligibility = {
   eligible: boolean;
-  promoted: false;
+  promoted: boolean;
   reasons: readonly string[];
   reconciliation: RequirementLegacyReconciliation;
   snapshotPersisted: boolean;
@@ -349,7 +349,7 @@ export function evaluatePromotionEligibility(params: {
 
   return {
     eligible,
-    promoted: false,
+    promoted: params.reconciliation.authority === "REQUIREMENT_AUTHORITATIVE",
     reasons: [...new Set(reasons)],
     reconciliation: params.reconciliation,
     snapshotPersisted: params.snapshotPersisted,

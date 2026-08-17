@@ -1,10 +1,12 @@
 /**
- * REQ-4A — component-level commercial authority.
+ * REQ-4A / REQ-4B — component-level commercial authority.
  *
  * Authority is external to EstimateRequirement. Requirements never gain a
- * commercialAuthority field. This module does not select or suppress money.
+ * commercialAuthority field. Money selection lives in
+ * component-commercial-selection.ts.
  *
- * REQ-4A: no live promotions. SHADOW components stay SHADOW.
+ * REQ-4B: Deck `decking.surface` is REQUIREMENT_AUTHORITATIVE.
+ * Deck `deck.labour` remains SHADOW. No other promotions.
  */
 import {
   DECK_LABOUR_COMPONENT_KEY,
@@ -40,26 +42,25 @@ export type RegisteredComponentAuthority = ComponentAuthorityKey & {
 };
 
 /**
- * Future REQ-4B+ fallback contract. Not activated in REQ-4A.
- *
- * REQUIREMENT_AUTHORITATIVE: requirement is the normal money source.
- * LEGACY_FALLBACK: requirement path is expected, but the legacy line may be
- * used under a defined failure/unsupported condition.
+ * Generation-level fallback for REQUIREMENT_AUTHORITATIVE components.
+ * Policy stays requirement-authoritative; a generation may still use
+ * LEGACY_FALLBACK as the active source (width unknown / unpriced).
  * Both sources must never contribute money in the same generation.
  *
- * LEGACY_RETIRED: legacy calculation is unused for new estimates.
- * Historical snapshots/quotes remain readable. Do not delete helpers until
- * no consumers remain, goldens prove safety, and history needs are understood.
+ * LEGACY_RETIRED is not used in REQ-4B.
  */
 export const LEGACY_FALLBACK_CONTRACT = {
-  activated: false,
+  activated: true,
+  generationLevelOnly: true,
+  policyRemainsRequirementAuthoritative: true,
+  supportedConditions: ["missing_requirement", "unpriced_requirement"],
   bothSourcesMustNotContributeMoney: true,
   requirementAuthoritativeIsNormalMoneySource: true,
   retiredKeepsHistoricalSnapshotsReadable: true,
   physicalDeletionIsSeparateCleanup: true,
 } as const;
 
-/** First REQ-4B candidate. Do not promote in REQ-4A. */
+/** First promoted component (REQ-4B). */
 export const REQ_4B_FIRST_PROMOTION_CANDIDATE: ComponentAuthorityKey = {
   workAreaType: "deck",
   componentKey: DECK_SURFACE_COMPONENT_KEY,
@@ -70,7 +71,7 @@ const REGISTERED_COMPONENT_AUTHORITIES: readonly RegisteredComponentAuthority[] 
     {
       workAreaType: "deck",
       componentKey: DECK_SURFACE_COMPONENT_KEY,
-      authority: "SHADOW",
+      authority: "REQUIREMENT_AUTHORITATIVE",
       parityClass: "SEMANTIC_REIMPLEMENTATION",
     },
     {

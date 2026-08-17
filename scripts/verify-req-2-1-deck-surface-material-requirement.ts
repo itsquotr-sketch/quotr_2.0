@@ -369,19 +369,24 @@ check(
       .length === 1
 );
 check(
-  "COMMERCIAL 33 existing line remains money authority",
+  "COMMERCIAL 33 existing line remains sole active money (requirement replaces legacy)",
   quotrLine != null &&
     quotrEstimate.lineItems.some(
       (item) =>
         item.label === "Decking materials" &&
         item.recommendedCost === quotrLine.recommendedCost
+    ) &&
+    quotrEstimate.commercialSelections?.some(
+      (item) =>
+        item.componentKey === DECK_SURFACE_COMPONENT_KEY &&
+        item.activeSource === "REQUIREMENT"
     )
 );
 check(
-  "COMMERCIAL 34 requirement cost not added",
+  "COMMERCIAL 34 requirement cost equals active line (not stacked)",
   quotrReq?.totalCost === 2786.3 &&
-    round2(quotrEstimate.recommendedCost) !==
-      round2(lineCostSum + (quotrReq.totalCost ?? 0))
+    quotrLine?.recommendedCost === 2786.3 &&
+    round2(quotrEstimate.recommendedCost) === lineCostSum
 );
 const quoteSrc = read("lib/work-areas/quote-description.ts");
 const pricingSrc = read("lib/pricing/commercial-engine-adapter.ts");
@@ -396,11 +401,11 @@ check(
     !quoteSrc.includes("decking.surface")
 );
 check(
-  "COMMERCIAL 37 no component promotion",
+  "COMMERCIAL 37 Deck surface promoted; calculate-estimate stays free of authority literals",
   getComponentCommercialAuthority({
     workAreaType: "deck",
     componentKey: DECK_SURFACE_COMPONENT_KEY,
-  }).authority === "SHADOW" &&
+  }).authority === "REQUIREMENT_AUTHORITATIVE" &&
     !read("lib/estimate/calculate-estimate.ts").includes("REQUIREMENT_AUTHORITATIVE")
 );
 

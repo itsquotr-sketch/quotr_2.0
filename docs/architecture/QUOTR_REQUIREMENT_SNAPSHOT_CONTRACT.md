@@ -23,7 +23,7 @@ Therefore historical requirement evidence cannot live only on current lines. REQ
 
 Schema version: `estimate-requirement-snapshot-v1`
 
-Contains: `requirementContractVersion` (`foundation-r1.1`), `generatedAt`, `generationId`, `requirements[]` (full structured requirements including rate **outcomes**, hours, waste, conversion, assumptions, confidence, adjustment factors), `componentAuthorities[]` (registered policy at that generation).
+Contains: `requirementContractVersion` (`foundation-r1.1`), `generatedAt`, `generationId`, `requirements[]`, `componentAuthorities[]` (registered policy), optional `commercialSources[]` (generation active source: REQUIREMENT | LEGACY_FALLBACK | LEGACY).
 
 Does not contain: AI traces, credentials, live rate rows, UI state, reconciliation debug logs.
 

@@ -1,18 +1,14 @@
 /**
  * REQ-4A remote/Preview snapshot persistence proof.
  *
- * Uses the committed persistEstimateResult path against the linked remote
- * project. Creates a disposable labelled org and deletes it afterwards.
- *
- * Run:
- *   npx tsx scripts/verify-req-4a-remote-preview-snapshot-proof.ts
- *
- * Refuses to run unless NEXT_PUBLIC_SUPABASE_URL is the linked quotr_2.0 ref.
+ * Skips automatically when REQ-4B local promotion is active (Preview still SHADOW
+ * until Owner deploys REQ-4B).
  */
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
+import { getComponentCommercialAuthority } from "../lib/estimate/component-authority";
 import { DECK_LABOUR_COMPONENT_KEY } from "../lib/estimate/deck-labour-requirement";
 import { DECK_SURFACE_COMPONENT_KEY } from "../lib/estimate/deck-surface-requirement";
 import { MATERIAL_RATE_KEYS } from "../lib/estimate/material-rate-keys";
@@ -308,6 +304,18 @@ async function cleanup(
 
 async function main() {
   console.log("=== REQ-4A remote Preview snapshot persistence proof ===\n");
+
+  if (
+    getComponentCommercialAuthority({
+      workAreaType: "deck",
+      componentKey: DECK_SURFACE_COMPONENT_KEY,
+    }).authority === "REQUIREMENT_AUTHORITATIVE"
+  ) {
+    console.log(
+      "SKIP  REQ-4B local promotion active — remote Preview still SHADOW until deploy"
+    );
+    process.exit(0);
+  }
 
   const url = requireEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceKey = requireEnv("SUPABASE_SERVICE_ROLE_KEY");

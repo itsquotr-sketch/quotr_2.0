@@ -198,11 +198,11 @@ check(
     }).authority === "LEGACY_AUTHORITATIVE"
 );
 check(
-  "AUTHORITY 4 Deck surface = SHADOW",
+  "AUTHORITY 4 Deck surface = REQUIREMENT_AUTHORITATIVE (REQ-4B)",
   getComponentCommercialAuthority({
     workAreaType: "deck",
     componentKey: DECK_SURFACE_COMPONENT_KEY,
-  }).authority === "SHADOW"
+  }).authority === "REQUIREMENT_AUTHORITATIVE"
 );
 check(
   "AUTHORITY 5 Deck labour = SHADOW",
@@ -217,7 +217,7 @@ check(
     workAreaType: "deck",
     componentKey: "deck.face",
   }).authority === "LEGACY_AUTHORITATIVE" &&
-    !LEGACY_FALLBACK_CONTRACT.activated
+    LEGACY_FALLBACK_CONTRACT.activated === true
 );
 
 const companyDeck = calculateDeck(
@@ -520,8 +520,9 @@ const labourEligible = evaluatePromotionEligibility({
   duplicateRequirement: false,
 });
 check(
-  "ELIGIBILITY 26 Deck surface eligible when required checks pass",
-  surfaceEligible.eligible === true && surfaceEligible.promoted === false
+  "ELIGIBILITY 26 Deck surface promoted with reconciliation PASS",
+  surfaceEligible.promoted === true &&
+    companySurfaceRec.status === "PASS"
 );
 check(
   "ELIGIBILITY 27 Deck labour eligibility computed but not promoted",
@@ -681,7 +682,7 @@ check(
   parsedA.componentAuthorities.some(
     (item) =>
       item.componentKey === DECK_SURFACE_COMPONENT_KEY &&
-      item.authority === "SHADOW"
+      item.authority === "REQUIREMENT_AUTHORITATIVE"
   ) &&
     parsedA.componentAuthorities.some(
       (item) =>
@@ -833,21 +834,33 @@ check(
     estimate.lineItems.reduce((sum, item) => sum + item.recommendedCost, 0) &&
     persistSrc.includes("Requirement objects are not commercial authority")
 );
-check(
-  "COMMERCIAL 51 no legacy line suppressed",
-  surfaceLine != null && labourLine != null && deckSrc.includes("lineItems.push")
+const surfaceReqFromEstimate = (estimate.requirements ?? []).find(
+  (item): item is MaterialRequirement =>
+    item.kind === "material" && item.componentKey === DECK_SURFACE_COMPONENT_KEY
 );
 check(
-  "COMMERCIAL 52 no component promoted",
+  "COMMERCIAL 51 requirement replaces legacy surface money (no double count)",
+  surfaceLine != null &&
+    labourLine != null &&
+    deckSrc.includes("lineItems.push") &&
+    surfaceLine.recommendedCost === surfaceReqFromEstimate?.totalCost &&
+    estimate.commercialSelections?.some(
+      (item) =>
+        item.componentKey === DECK_SURFACE_COMPONENT_KEY &&
+        item.activeSource === "REQUIREMENT"
+    )
+);
+check(
+  "COMMERCIAL 52 Deck surface promoted; Deck labour remains SHADOW",
   getComponentCommercialAuthority({
     workAreaType: "deck",
     componentKey: DECK_SURFACE_COMPONENT_KEY,
-  }).authority === "SHADOW" &&
+  }).authority === "REQUIREMENT_AUTHORITATIVE" &&
     getComponentCommercialAuthority({
       workAreaType: "deck",
       componentKey: DECK_LABOUR_COMPONENT_KEY,
     }).authority === "SHADOW" &&
-    !authoritySrc.includes('authority: "REQUIREMENT_AUTHORITATIVE"')
+    authoritySrc.includes('authority: "REQUIREMENT_AUTHORITATIVE"')
 );
 check(
   "COMMERCIAL 53 estimate cost unchanged",
@@ -946,14 +959,14 @@ check(
   "DIAGNOSTICS snapshot created counts",
   diagnostics.snapshotCreated &&
     diagnostics.requirementCount >= 2 &&
-    diagnostics.firstPromotionCandidate.promoted === false &&
+    diagnostics.firstPromotionCandidate.promoted === true &&
     diagnostics.firstPromotionCandidate.componentKey === DECK_SURFACE_COMPONENT_KEY
 );
 check(
   "REQUIREMENT_COST_NOT_IN_TOTAL",
   requirementCostSum > 0 &&
-    estimate.recommendedCost !==
-      estimate.recommendedCost + requirementCostSum
+    estimate.recommendedCost ===
+      estimate.lineItems.reduce((sum, item) => sum + item.recommendedCost, 0)
 );
 check(
   "PHYSICAL takeoff still 126.65 lm",
