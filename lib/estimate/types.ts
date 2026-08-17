@@ -15,6 +15,7 @@ import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
 import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import type { SellAuthority } from "@/lib/commercial-engine/core/cost-first-authority";
+import type { DeckSubstructureGroupReconciliation } from "@/lib/estimate/deck-structure";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
 import type { CommercialComponentSelection } from "@/lib/estimate/component-commercial-selection";
 
@@ -129,6 +130,11 @@ export type CalculatorResult = {
    * must not emit until REQ-2 / REQ-3.
    */
   requirements?: readonly EstimateRequirement[];
+  /**
+   * DECK-1B — shadow structural group reconciliation vs legacy substructure package.
+   * Diagnostics only; legacy package remains money authority.
+   */
+  deckSubstructureReconciliation?: DeckSubstructureGroupReconciliation;
 };
 
 export type EstimateResult = {

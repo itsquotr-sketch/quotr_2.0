@@ -521,6 +521,45 @@ export function shouldHideConditionalQuestion(
     return false;
   }
 
+  // DECK-1B — deep structural facts: optional, grouped, dependency-gated (not a 14-question wall).
+  if (
+    key === "deck.board_direction" ||
+    key === "deck.joist_direction" ||
+    key === "deck.joist_section" ||
+    key === "deck.joist_centres_mm" ||
+    key === "deck.framing_treatment" ||
+    key === "deck.bearer_section" ||
+    key === "deck.bearer_row_count"
+  ) {
+    const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
+    if (substructure === false) return true;
+    return false;
+  }
+
+  if (
+    key === "deck.support_type" ||
+    key === "deck.supports_per_bearer" ||
+    key === "deck.support_section"
+  ) {
+    const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
+    if (substructure === false) return true;
+    const bearerRows = numFact(lookup, workAreaId, "deck.bearer_row_count");
+    if (bearerRows === null) return true;
+    return false;
+  }
+
+  if (
+    key === "deck.footing_length_mm" ||
+    key === "deck.footing_width_mm" ||
+    key === "deck.footing_depth_mm"
+  ) {
+    const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
+    if (substructure === false) return true;
+    const supportsPerBearer = numFact(lookup, workAreaId, "deck.supports_per_bearer");
+    if (supportsPerBearer === null) return true;
+    return false;
+  }
+
   // FOUNDATION-R2 — parent/child gating and derived-geometry suppression.
   if (key === "deck.area_m2") {
     const length = numFact(lookup, workAreaId, "deck.length_m");

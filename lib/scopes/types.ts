@@ -8,7 +8,10 @@ export type ScopeQuestionCategory =
   | "scope"
   | "finish"
   | "allowance"
-  | "risk";
+  | "risk"
+  | "framing"
+  | "supports"
+  | "footings";
 
 export type ScopeQuestionTemplate = {
   key: string;

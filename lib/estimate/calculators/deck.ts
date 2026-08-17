@@ -41,6 +41,10 @@ import {
   DECK_SURFACE_COMPONENT_KEY,
   maybeBuildDeckSurfaceRequirement,
 } from "@/lib/estimate/deck-surface-requirement";
+import {
+  buildDeckStructuralMaterialRequirements,
+  buildDeckSubstructureGroupReconciliation,
+} from "@/lib/estimate/deck-structure";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import { getDeckMaterialLabel } from "@/lib/estimate/material-rate-keys";
 import {
@@ -667,10 +671,26 @@ export function calculateDeck(
     constraintKeys: labourConstraintKeysFrom(context.constraints),
   });
 
+  const structural = buildDeckStructuralMaterialRequirements({
+    workArea,
+    facts,
+    rates: context.rates,
+    materialWastageSettings: context.materialWastageSettings,
+  });
+
   const requirements = [
     surfaceRequirement,
     labourRequirement,
+    ...structural.requirements,
   ].filter((item): item is NonNullable<typeof item> => item != null);
+
+  const deckSubstructureReconciliation =
+    structural.requirements.length > 0
+      ? buildDeckSubstructureGroupReconciliation({
+          legacyLineItems: lineItems,
+          structuralRequirements: structural.requirements,
+        })
+      : undefined;
 
   return {
     lineItems,
@@ -680,5 +700,8 @@ export function calculateDeck(
     confidence: baseConfidence(missingInfo.length),
     assumptionMetadata,
     ...(requirements.length > 0 ? { requirements: requirements } : {}),
+    ...(deckSubstructureReconciliation
+      ? { deckSubstructureReconciliation }
+      : {}),
   };
 }

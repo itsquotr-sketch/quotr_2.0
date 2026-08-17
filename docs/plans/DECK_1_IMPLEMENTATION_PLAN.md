@@ -1,6 +1,6 @@
 # DECK-1 Implementation Plan
 
-**Status:** PLANNING — DECK-1 IN PROGRESS / DECK-1A COMPLETE / OWNER MODEL VALIDATED  
+**Status:** PLANNING — DECK-1 IN PROGRESS / DECK-1A OWNER VALIDATED / DECK-1B COMPLETE LOCAL  
 **Date:** 2026-08-18  
 **Branch:** `hardening/stage-2a-security`
 
