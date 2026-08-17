@@ -29,6 +29,7 @@ export type PricingDocument = {
   org_id: string;
   project_id: string;
   estimate_id: string | null;
+  requirement_snapshot_id: string | null;
   title: string;
   status: PricingDocumentStatus;
   client_name: string | null;
@@ -71,6 +72,7 @@ export type PricingItem = {
   project_id: string;
   work_area_id: string | null;
   source_estimate_line_item_id: string | null;
+  component_key: string | null;
   item_type: PricingItemType;
   delivery_method: DeliveryMethod;
   internal_label: string;

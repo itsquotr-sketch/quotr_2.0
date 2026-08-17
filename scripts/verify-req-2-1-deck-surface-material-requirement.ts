@@ -11,10 +11,8 @@ import { calculateDeck } from "../lib/estimate/calculators/deck";
 import { calculateFence } from "../lib/estimate/calculators/fence";
 import { calculatePergola } from "../lib/estimate/calculators/pergola";
 import { calculateRetainingWall } from "../lib/estimate/calculators/retaining-wall";
-import {
-  DECK_SURFACE_COMPONENT_KEY,
-  getDeckSurfaceVariantKey,
-} from "../lib/estimate/deck-surface-requirement";
+import { DECK_SURFACE_COMPONENT_KEY, getDeckSurfaceVariantKey } from "../lib/estimate/deck-surface-requirement";
+import { getComponentCommercialAuthority } from "../lib/estimate/component-authority";
 import { calculateDeckingBoardLm } from "../lib/estimate/material-buildups";
 import { MATERIAL_RATE_KEYS } from "../lib/estimate/material-rate-keys";
 import { buildRequirementId } from "../lib/estimate/requirement-id";
@@ -399,7 +397,10 @@ check(
 );
 check(
   "COMMERCIAL 37 no component promotion",
-  !existsSync(join("lib", "estimate", "component-authority.ts")) &&
+  getComponentCommercialAuthority({
+    workAreaType: "deck",
+    componentKey: DECK_SURFACE_COMPONENT_KEY,
+  }).authority === "SHADOW" &&
     !read("lib/estimate/calculate-estimate.ts").includes("REQUIREMENT_AUTHORITATIVE")
 );
 
@@ -570,8 +571,9 @@ const migrations = existsSync(join("supabase", "migrations"))
   ? readdirSync(join("supabase", "migrations"))
   : [];
 check(
-  "PLATFORM 49 no migration",
-  !migrations.some((name) => /requirement|req.?2|snapshot/i.test(name))
+  "PLATFORM 49 no requirement-row commercial migration",
+  migrations.some((name) => name.includes("035_estimate_requirement_snapshots")) &&
+    !migrations.some((name) => name.includes("035_estimate_requirements.sql"))
 );
 const uiFiles = walkTs(join("app")).concat(walkTs(join("components")));
 check(

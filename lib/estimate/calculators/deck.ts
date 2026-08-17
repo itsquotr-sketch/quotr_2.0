@@ -33,10 +33,14 @@ import {
 import { withMaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
 import { resolveDeckingBoardPricing } from "@/lib/estimate/deck-material-pricing";
 import {
+  DECK_LABOUR_COMPONENT_KEY,
   buildDeckLabourRequirement,
   labourConstraintKeysFrom,
 } from "@/lib/estimate/deck-labour-requirement";
-import { maybeBuildDeckSurfaceRequirement } from "@/lib/estimate/deck-surface-requirement";
+import {
+  DECK_SURFACE_COMPONENT_KEY,
+  maybeBuildDeckSurfaceRequirement,
+} from "@/lib/estimate/deck-surface-requirement";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import { getDeckMaterialLabel } from "@/lib/estimate/material-rate-keys";
 import {
@@ -178,6 +182,7 @@ export function calculateDeck(
       qualityFactor,
       notes: constraintNotes || undefined,
       sortOrder: sortOrder++,
+      componentKey: DECK_LABOUR_COMPONENT_KEY,
       organisationSettings: context.organisationSettings,
       ...rateFieldsFromResolved(labourRate),
     })
@@ -246,6 +251,7 @@ export function calculateDeck(
       unit: pricedUnit,
       notes: deckingNotes,
       sortOrder: sortOrder++,
+      componentKey: DECK_SURFACE_COMPONENT_KEY,
       organisationSettings: context.organisationSettings,
       qualityFactor,
       ...deckingPricing.rateFields,

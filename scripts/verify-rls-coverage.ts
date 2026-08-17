@@ -52,6 +52,7 @@ const EXPECTED_APP_TABLES = [
   "scope_discovery_suggestions",
   "scope_discovery_decisions",
   "calibration_responses",
+  "estimate_requirement_snapshots",
 ] as const;
 
 const TABLES_WITHOUT_RLS_OK: string[] = [];
@@ -70,6 +71,8 @@ const POLICY_EXCEPTIONS: Record<
   scope_discovery_decisions: { update: true, delete: true },
   // Calibration: append/supersede — no authenticated DELETE policy.
   calibration_responses: { delete: true },
+  // REQ-4A snapshots: insert/select only — no authenticated UPDATE/DELETE.
+  estimate_requirement_snapshots: { update: true, delete: true },
 };
 
 function auditMigrations(): {

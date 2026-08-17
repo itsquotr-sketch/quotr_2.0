@@ -8,6 +8,7 @@ import { join } from "node:path";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
+import { getComponentCommercialAuthority } from "../lib/estimate/component-authority";
 import { calculateDemolition } from "../lib/estimate/calculators/demolition";
 import { calculateExternalStairs } from "../lib/estimate/calculators/external-stairs";
 import { calculateFence } from "../lib/estimate/calculators/fence";
@@ -586,7 +587,10 @@ check(
 );
 check(
   "COMMERCIAL 42 no component promotion",
-  !existsSync(join("lib", "estimate", "component-authority.ts")) &&
+  getComponentCommercialAuthority({
+    workAreaType: "deck",
+    componentKey: "deck.labour",
+  }).authority === "SHADOW" &&
     !read("lib/estimate/calculate-estimate.ts").includes("REQUIREMENT_AUTHORITATIVE") &&
     !read("lib/estimate/deck-labour-requirement.ts").includes("commercialAuthority")
 );
@@ -711,14 +715,14 @@ const migrations = existsSync(join("supabase", "migrations"))
   ? readdirSync(join("supabase", "migrations"))
   : [];
 check(
-  "PLATFORM 51 no persistence",
-  persistSrc.includes("Do not persist requirement") &&
-    !persistSrc.includes("deck.labour") &&
+  "PLATFORM 51 no requirement-row commercial persistence",
+  persistSrc.includes("Do not persist requirement rows onto estimates") &&
     !persistSrc.includes("LabourRequirement")
 );
 check(
-  "PLATFORM 52 no migration",
-  !migrations.some((name) => /requirement|req.?3|snapshot/i.test(name))
+  "PLATFORM 52 snapshot migration is REQ-4A only",
+  migrations.some((name) => name.includes("035_estimate_requirement_snapshots")) &&
+    !migrations.some((name) => /req.?3/i.test(name) && !name.includes("requirement_snapshots"))
 );
 const uiFiles = walkTs(join("app")).concat(walkTs(join("components")));
 check(

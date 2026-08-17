@@ -90,6 +90,11 @@ export type EstimateLineItemInput = {
   rateSource: string;
   rateSourceType?: RateSourceType;
   itemKey?: string;
+  /**
+   * Stable semantic component identity for REQ-4A mapping (e.g. decking.surface).
+   * Not the rate/item key. Persisted on estimate_line_items when present.
+   */
+  componentKey?: string;
   costRate?: number;
   sellRate?: number;
   sellDerivedFromMargin?: boolean;

@@ -18,6 +18,7 @@ export type EstimateLineItemRow = {
   recommended_sell: number | null;
   notes: string | null;
   sort_order: number;
+  component_key?: string | null;
 };
 
 export type RecalibrationItemClassification =
@@ -365,6 +366,7 @@ export function buildPricingItemRowFromEstimate(
     orphaned: false,
     recalibration_note: null,
     notes_internal: values.notesInternal,
+    component_key: lineItem.component_key ?? null,
   };
 }
 
@@ -392,5 +394,6 @@ export function buildPricingItemUpdateFromEstimate(
     optional: existing.optional,
     notes_client: existing.notes_client,
     notes_internal: values.notesInternal,
+    component_key: lineItem.component_key ?? existing.component_key ?? null,
   };
 }

@@ -1,11 +1,28 @@
 import type { SupabaseClient } from "@supabase/supabase-js";
 import { CURRENT_CALIBRATION_VERSION } from "@/lib/estimate/calibration-version";
 import { buildLineItemNotes } from "@/lib/estimate/line-items";
+import {
+  buildSnapshotPayloadForEstimate,
+  createGenerationId,
+} from "@/lib/estimate/requirement-snapshot-persist";
+import {
+  createSupabaseRequirementSnapshotStore,
+  type RequirementSnapshotStore,
+} from "@/lib/estimate/requirement-snapshot-store";
 import type { EstimateResult } from "@/lib/estimate/types";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 
+type PersistEstimateSnapshot =
+  | {
+      ok: true;
+      generationId: string;
+      snapshotId: string;
+      schemaVersion: string;
+    }
+  | { ok: false; generationId: string; reason: string };
+
 type PersistEstimateResult =
-  | { success: true; estimateId: string }
+  | { success: true; estimateId: string; snapshot: PersistEstimateSnapshot }
   | { error: string };
 
 function buildEstimatePayload(
@@ -13,10 +30,13 @@ function buildEstimatePayload(
   projectId: string,
   estimateResult: EstimateResult,
   status: "draft" | "ready" | "failed",
-  isStale: boolean
+  isStale: boolean,
+  generationId: string | null,
+  latestSnapshotId: string | null
 ) {
-  // REQ-1: EstimateRequirement collections stay in-memory (derive-on-generate).
-  // Do not persist requirement rows or JSON onto estimates.
+  // REQ-4A: append-only requirement snapshots, not editable requirement rows.
+  // Requirement objects are not commercial authority and are not written onto
+  // estimate_line_items. Do not persist requirement rows onto estimates.
   return {
     org_id: orgId,
     project_id: projectId,
@@ -39,7 +59,30 @@ function buildEstimatePayload(
     assumption_metadata: estimateResult.assumptionMetadata ?? {},
     generated_at: new Date().toISOString(),
     calibration_version: CURRENT_CALIBRATION_VERSION,
+    requirement_generation_id: generationId,
+    latest_requirement_snapshot_id: latestSnapshotId,
   };
+}
+
+function withoutSnapshotLinkColumns<T extends Record<string, unknown>>(
+  payload: T
+): Omit<
+  T,
+  "requirement_generation_id" | "latest_requirement_snapshot_id"
+> {
+  const rest = { ...payload };
+  delete rest.requirement_generation_id;
+  delete rest.latest_requirement_snapshot_id;
+  return rest;
+}
+
+function isMissingSnapshotSchemaError(message: string | undefined): boolean {
+  if (!message) return false;
+  return (
+    message.includes("requirement_generation_id") ||
+    message.includes("latest_requirement_snapshot_id") ||
+    message.includes("estimate_requirement_snapshots")
+  );
 }
 
 async function markEstimateFailed(
@@ -56,8 +99,12 @@ export async function persistEstimateResult(
   supabase: SupabaseClient,
   orgId: string,
   projectId: string,
-  estimateResult: EstimateResult
+  estimateResult: EstimateResult,
+  options?: { snapshotStore?: RequirementSnapshotStore }
 ): Promise<PersistEstimateResult> {
+  const generationId = createGenerationId();
+  const snapshotStore =
+    options?.snapshotStore ?? createSupabaseRequirementSnapshotStore(supabase);
   const lineItemRows = estimateResult.lineItems.map((item) => ({
     org_id: orgId,
     project_id: projectId,
@@ -77,7 +124,49 @@ export async function persistEstimateResult(
     rate_source: item.rateSource,
     notes: buildLineItemNotes(item),
     sort_order: item.sortOrder,
+    component_key: item.componentKey ?? null,
   }));
+
+  let snapshotSchemaAvailable = true;
+
+  async function writeEstimateRow(
+    payload: ReturnType<typeof buildEstimatePayload>,
+    existingId: string | null
+  ): Promise<{ id?: string; error: { message: string } | null }> {
+    const attempt = snapshotSchemaAvailable
+      ? payload
+      : withoutSnapshotLinkColumns(payload);
+    if (existingId) {
+      const { error } = await supabase
+        .from("estimates")
+        .update(attempt)
+        .eq("id", existingId);
+      if (error && snapshotSchemaAvailable && isMissingSnapshotSchemaError(error.message)) {
+        snapshotSchemaAvailable = false;
+        const retry = await supabase
+          .from("estimates")
+          .update(withoutSnapshotLinkColumns(payload))
+          .eq("id", existingId);
+        return { error: retry.error };
+      }
+      return { error };
+    }
+    const { data, error } = await supabase
+      .from("estimates")
+      .insert(attempt)
+      .select("id")
+      .single();
+    if (error && snapshotSchemaAvailable && isMissingSnapshotSchemaError(error.message)) {
+      snapshotSchemaAvailable = false;
+      const retry = await supabase
+        .from("estimates")
+        .insert(withoutSnapshotLinkColumns(payload))
+        .select("id")
+        .single();
+      return { id: retry.data?.id, error: retry.error };
+    }
+    return { id: data?.id, error };
+  }
 
   const { data: existingEstimate } = await supabase
     .from("estimates")
@@ -89,42 +178,49 @@ export async function persistEstimateResult(
 
   if (existingEstimate) {
     estimateId = existingEstimate.id;
-
-    const { error: stagingError } = await supabase
-      .from("estimates")
-      .update(
-        buildEstimatePayload(orgId, projectId, estimateResult, "draft", true)
-      )
-      .eq("id", estimateId);
-
-    if (stagingError) {
+    const staging = await writeEstimateRow(
+      buildEstimatePayload(
+        orgId,
+        projectId,
+        estimateResult,
+        "draft",
+        true,
+        generationId,
+        null
+      ),
+      estimateId
+    );
+    if (staging.error) {
       return {
         error: toUserError(
-          stagingError,
+          staging.error,
           "persistEstimate-staging",
           USER_ERRORS.estimateSaveFailed
         ),
       };
     }
   } else {
-    const { data: inserted, error: insertError } = await supabase
-      .from("estimates")
-      .insert(
-        buildEstimatePayload(orgId, projectId, estimateResult, "draft", true)
-      )
-      .select("id")
-      .single();
-
-    if (insertError || !inserted) {
+    const inserted = await writeEstimateRow(
+      buildEstimatePayload(
+        orgId,
+        projectId,
+        estimateResult,
+        "draft",
+        true,
+        generationId,
+        null
+      ),
+      null
+    );
+    if (inserted.error || !inserted.id) {
       return {
         error: toUserError(
-          insertError,
+          inserted.error,
           "persistEstimate-insert",
           USER_ERRORS.estimateSaveFailed
         ),
       };
     }
-
     estimateId = inserted.id;
   }
 
@@ -166,18 +262,60 @@ export async function persistEstimateResult(
     }
   }
 
-  const { error: finalizeError } = await supabase
-    .from("estimates")
-    .update(
-      buildEstimatePayload(orgId, projectId, estimateResult, "ready", false)
-    )
-    .eq("id", estimateId);
+  let snapshot: PersistEstimateSnapshot = {
+    ok: false,
+    generationId,
+    reason: snapshotSchemaAvailable ? "not_attempted" : "schema_unavailable",
+  };
+  if (snapshotSchemaAvailable) {
+    try {
+      const payload = buildSnapshotPayloadForEstimate({
+        generationId,
+        result: estimateResult,
+      });
+      const inserted = await snapshotStore.insert({
+        orgId,
+        projectId,
+        estimateId,
+        generationId,
+        payload,
+      });
+      snapshot = {
+        ok: true,
+        generationId,
+        snapshotId: inserted.id,
+        schemaVersion: inserted.schemaVersion,
+      };
+    } catch (error) {
+      snapshot = {
+        ok: false,
+        generationId,
+        reason:
+          error instanceof Error
+            ? error.message
+            : "requirement snapshot insert failed",
+      };
+    }
+  }
 
-  if (finalizeError) {
+  const finalize = await writeEstimateRow(
+    buildEstimatePayload(
+      orgId,
+      projectId,
+      estimateResult,
+      "ready",
+      false,
+      generationId,
+      snapshot.ok ? snapshot.snapshotId : null
+    ),
+    estimateId
+  );
+
+  if (finalize.error) {
     await markEstimateFailed(supabase, estimateId);
     return {
       error: toUserError(
-        finalizeError,
+        finalize.error,
         "persistEstimate-finalize",
         USER_ERRORS.estimateSaveFailed
       ),
@@ -189,5 +327,5 @@ export async function persistEstimateResult(
   );
   await markPricingDocumentsNeedingRecalibration(supabase, orgId, projectId);
 
-  return { success: true, estimateId };
+  return { success: true, estimateId, snapshot };
 }

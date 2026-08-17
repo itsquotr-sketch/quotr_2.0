@@ -691,13 +691,19 @@ check(
 );
 check(
   "COMMERCIAL 35 no component authority promotion",
-  !existsSync(join("lib", "estimate", "component-authority.ts")) &&
-    aggregateSrc.includes("Not pricing-authority promotion")
+  existsSync(join("lib", "estimate", "component-authority.ts")) &&
+    aggregateSrc.includes("Not pricing-authority promotion") &&
+    !read("lib/estimate/component-authority.ts").includes(
+      'authority: "REQUIREMENT_AUTHORITATIVE"'
+    )
 );
 check(
-  "COMMERCIAL 36 no requirement persistence",
+  "COMMERCIAL 36 no requirement row commercial persistence",
   !persistSrc.includes("requirements:") &&
-    persistSrc.includes("Do not persist requirement") &&
+    persistSrc.includes("Do not persist requirement rows onto estimates") &&
+    existsSync(
+      join("supabase", "migrations", "035_estimate_requirement_snapshots.sql")
+    ) &&
     !existsSync(join("supabase", "migrations", "035_estimate_requirements.sql"))
 );
 
@@ -760,8 +766,9 @@ const migrations = existsSync(join("supabase", "migrations"))
   ? readdirSync(join("supabase", "migrations"))
   : [];
 check(
-  "NON-REGRESSION 41 no DB migration",
-  !migrations.some((name) => /035|requirement/i.test(name))
+  "NON-REGRESSION 41 no editable requirement-row migration",
+  migrations.some((name) => name.includes("035_estimate_requirement_snapshots")) &&
+    !migrations.some((name) => name.includes("035_estimate_requirements.sql"))
 );
 check(
   "NON-REGRESSION 42 no Production SD",

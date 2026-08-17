@@ -13,6 +13,8 @@ export function mapPricingDocument(row: Record<string, unknown>): PricingDocumen
     org_id: row.org_id as string,
     project_id: row.project_id as string,
     estimate_id: (row.estimate_id as string | null) ?? null,
+    requirement_snapshot_id:
+      (row.requirement_snapshot_id as string | null) ?? null,
     title: row.title as string,
     status: row.status as PricingDocument["status"],
     client_name: (row.client_name as string | null) ?? null,
@@ -70,6 +72,7 @@ export function mapPricingItem(row: Record<string, unknown>): PricingItem {
     work_area_id: (row.work_area_id as string | null) ?? null,
     source_estimate_line_item_id:
       (row.source_estimate_line_item_id as string | null) ?? null,
+    component_key: (row.component_key as string | null) ?? null,
     item_type: row.item_type as PricingItem["item_type"],
     delivery_method: row.delivery_method as PricingItem["delivery_method"],
     internal_label: row.internal_label as string,

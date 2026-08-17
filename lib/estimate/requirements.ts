@@ -198,15 +198,11 @@ export type EstimateRequirement =
   | WasteRequirement;
 
 /**
- * Component-level pricing authority lifecycle. Reserved for REQ-4.
- * Do not implement an authority table in REQ-1.
+ * Component-level pricing authority lifecycle. Implemented in REQ-4A as
+ * external policy (`lib/estimate/component-authority.ts`). Requirements do
+ * not store commercialAuthority.
  */
-export type ComponentPricingAuthorityState =
-  | "LEGACY_AUTHORITATIVE"
-  | "SHADOW"
-  | "REQUIREMENT_AUTHORITATIVE"
-  | "LEGACY_FALLBACK"
-  | "LEGACY_RETIRED";
+export type { ComponentCommercialAuthority as ComponentPricingAuthorityState } from "@/lib/estimate/component-authority";
 
 /** Optional calculator envelope. REQ-2.1 Deck surface + REQ-3.1 Deck labour. Other calculators omit. */
 export type CalculatorRequirementsEmit = {

@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **READY / NOT STARTED**. Does not authorise REQ-4 promotion.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE LOCAL / OWNER REVIEW PENDING**. REQ-4B **NOT STARTED**. Does not authorise REQ-4B promotion.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Companion canonicals:**
 - Estimating: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`
@@ -15,6 +15,8 @@
 - Legacy / parity: `docs/architecture/QUOTR_LEGACY_RETIREMENT_AND_PARITY_STRATEGY.md`
 - Analytics: `docs/architecture/QUOTR_ANALYTICS_EVENT_ARCHITECTURE.md`
 - Requirement aggregation: `docs/architecture/QUOTR_REQUIREMENT_AGGREGATION_CONTRACT.md`
+- Component authority: `docs/architecture/QUOTR_COMPONENT_COMMERCIAL_AUTHORITY_CONTRACT.md`
+- Requirement snapshots: `docs/architecture/QUOTR_REQUIREMENT_SNAPSHOT_CONTRACT.md`
 
 This document is the **only** top-level current product architecture.  
 `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md` is **SUPERSEDED** as the governing product architecture (retained as historical foundation).
@@ -292,9 +294,13 @@ Do not delete history.
 | REQ-2.1 | **COMPLETE / TECHNICALLY VALIDATED** | Deck surface shadow only |
 | REQ-3 | **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED** | capability ACTIVE; not all WAs emit |
 | REQ-3.1 | **COMPLETE / TECHNICALLY VALIDATED** | Deck labour shadow only |
-| REQ-4 | **READY / NOT STARTED** | promotion after snapshot |
+| REQ-4 | **IN PROGRESS** | REQ-4A local; no promotions |
+| REQ-4A | **COMPLETE LOCAL / OWNER REVIEW PENDING** | snapshot + authority + reconciliation |
+| REQ-4B | **NOT STARTED** | first promotion candidate: Deck `decking.surface` |
+| REQ-SNAPSHOT-01 | **COMPLETE LOCAL** (035 not remote) | blocks REQ-4B until remote apply + Owner |
 | MaterialRequirement | **ACTIVE** — current emitter: Deck surface only | REQ-2.1 |
 | LabourRequirement | **ACTIVE** — current emitter: Deck labour only | REQ-3.1 |
+| Component authority | **ACTIVE / NO PROMOTIONS** | Deck surface + labour SHADOW |
 | CM-03 | **BACKLOG / NOT STARTED** | labour missing-label vs 60/90 money |
 | Deck transparent estimator | **Not Started** | DECK-1+ |
 | Materials Catalogue V2 | **Not Started** (`CAT-IDENTITY-01` gates seeding) | CAT-V2-1 |
@@ -311,7 +317,7 @@ Owner decisions (full register: master plan §12): **OD-ARCH-01** LOCKED MVP Mat
 ## 10. What this document does not authorise
 
 - Calculator emission beyond authorised REQ-2.1 / REQ-3.1 shadows
-- REQ-4 promotion
+- REQ-4B promotion
 - Stage 3.2.3 UI
 - Company DNA
 - Production Scope Discovery enablement

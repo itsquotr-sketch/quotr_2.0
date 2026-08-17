@@ -1,7 +1,7 @@
 # Quotr Estimate Requirements Architecture
 
 **Classification:** SUPPORTING. **CANONICAL estimating engine:** `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
-**Status:** Planning freeze `foundation-r1.0`. **Final pre-emission contract `foundation-r1.1`**. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED** (Deck surface only). REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED** (Deck labour only). REQ-4 **READY / NOT STARTED**.  
+**Status:** Planning freeze `foundation-r1.0`. **Final pre-emission contract `foundation-r1.1`**. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED** (Deck surface only). REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED** (Deck labour only). REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE LOCAL / OWNER REVIEW PENDING**. REQ-4B **NOT STARTED**.  
 **Mode:** Architecture lock + TypeScript contracts only. Calculators must not emit requirements until **REQ-1**. FOUNDATION-R2 is Scope Details completeness. FOUNDATION-R2-R1 reconciles Deck priced qty/rate units. Neither emits requirements.  
 **Supersedes in part:** `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md` (MaterialRequirement §4 is absorbed and extended; takeoff persistence and Deck pilot geometry remain valid).  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -376,4 +376,4 @@ Out of architecture foundation scope: live API clients.
 - Editable takeoff as money SoT  
 - Company DNA rate mutation from requirements  
 
-**Next implementation:** REQ-1 envelope is complete. REQ-2.1 Deck surface and REQ-3.1 Deck labour are the authorised shadow emitters. REQ-3 is closed. Next infrastructure: **REQ-4** (do not start here). Empty `requirements[]` remains valid for other calculators.
+**Next implementation:** REQ-4A is complete locally. Next: Owner review, then **REQ-4B** (Deck `decking.surface` only). Do not start REQ-4B here. Empty `requirements[]` remains valid for other calculators.

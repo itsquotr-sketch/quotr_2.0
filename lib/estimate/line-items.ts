@@ -94,6 +94,7 @@ export function createLabourLineItem(params: {
   rateSource: string;
   rateSourceType?: RateSourceType;
   itemKey?: string;
+  componentKey?: string;
   sellDerivedFromMargin?: boolean;
   notes?: string;
   sortOrder: number;
@@ -133,6 +134,7 @@ export function createLabourLineItem(params: {
       rateSource: params.rateSource,
       notes: noteParts.join(" · "),
       sortOrder: params.sortOrder,
+      componentKey: params.componentKey,
       ...buildAmounts(
         money.recommendedCost,
         money.recommendedSell,
@@ -218,6 +220,7 @@ export function createRateLineItem(params: {
   rateSource: string;
   rateSourceType?: RateSourceType;
   itemKey?: string;
+  componentKey?: string;
   sellDerivedFromMargin?: boolean;
   notes?: string;
   sortOrder: number;
@@ -246,6 +249,7 @@ export function createRateLineItem(params: {
         params.notes ??
         `${params.quantity} ${params.unit} × $${params.costRate}/${params.unit} cost`,
       sortOrder: params.sortOrder,
+      componentKey: params.componentKey,
       ...buildAmounts(
         money.recommendedCost,
         money.recommendedSell,

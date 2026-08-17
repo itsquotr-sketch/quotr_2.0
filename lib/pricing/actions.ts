@@ -651,6 +651,7 @@ export async function createPricingFromEstimate(input: {
         project_id: projectId,
         work_area_id: lineItem.work_area_id,
         source_estimate_line_item_id: lineItem.id,
+        component_key: (lineItem.component_key as string | null) ?? null,
         item_type: values.itemType,
         delivery_method: values.deliveryMethod,
         internal_label: lineItem.label,
@@ -783,12 +784,14 @@ export async function createPricingFromEstimate(input: {
   }
   const documentTotals = documentTotalsResult.totals;
 
-  const { data: pricingDocument, error: insertDocError } = await supabase
-    .from("pricing_documents")
-    .insert({
+  const requirementSnapshotId =
+    (estimate.latest_requirement_snapshot_id as string | null) ?? null;
+
+  const pricingDocumentInsert: Record<string, unknown> = {
       org_id: orgId,
       project_id: projectId,
       estimate_id: estimate.id,
+      requirement_snapshot_id: requirementSnapshotId,
       needs_recalibration: false,
       recalibration_status: "current",
       title: `Final pricing — ${project.title}`,
@@ -814,9 +817,34 @@ export async function createPricingFromEstimate(input: {
       exclusions,
       terms,
       created_by: user.id,
-    })
-    .select("id")
-    .single();
+  };
+
+  let insertDocError: { message: string } | null = null;
+  let pricingDocument: { id: string } | null = null;
+
+  {
+    const attempt = await supabase
+      .from("pricing_documents")
+      .insert(pricingDocumentInsert)
+      .select("id")
+      .single();
+    insertDocError = attempt.error;
+    pricingDocument = attempt.data;
+    if (
+      insertDocError?.message?.includes("requirement_snapshot_id") &&
+      pricingDocumentInsert.requirement_snapshot_id != null
+    ) {
+      const retryPayload = { ...pricingDocumentInsert };
+      delete retryPayload.requirement_snapshot_id;
+      const retry = await supabase
+        .from("pricing_documents")
+        .insert(retryPayload)
+        .select("id")
+        .single();
+      insertDocError = retry.error;
+      pricingDocument = retry.data;
+    }
+  }
 
   if (insertDocError || !pricingDocument) {
     return {
@@ -839,7 +867,21 @@ export async function createPricingFromEstimate(input: {
       .from("pricing_items")
       .insert(pricingItemRows);
 
-    if (itemsInsertError) {
+    let resolvedItemsError = itemsInsertError;
+    if (
+      itemsInsertError?.message?.includes("component_key") &&
+      pricingItemRows.some((row) => row.component_key != null)
+    ) {
+      const retryRows = pricingItemRows.map((row) => {
+        const copy = { ...row };
+        delete copy.component_key;
+        return copy;
+      });
+      const retry = await supabase.from("pricing_items").insert(retryRows);
+      resolvedItemsError = retry.error;
+    }
+
+    if (resolvedItemsError) {
       await supabase
         .from("pricing_documents")
         .delete()
@@ -847,7 +889,7 @@ export async function createPricingFromEstimate(input: {
         .eq("org_id", orgId);
       return {
         error: toUserError(
-          itemsInsertError,
+          resolvedItemsError,
           "pricing-create-items",
           PRICING_SAVE_FAILED
         ),

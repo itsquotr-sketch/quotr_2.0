@@ -263,19 +263,21 @@ const migrations = existsSync(join("supabase", "migrations"))
   ? readdirSync(join("supabase", "migrations"))
   : [];
 check(
-  "18 no requirement / r1.1 / snapshot migration",
-  !migrations.some((name) =>
-    /requirement|r1[._-]1|req.snapshot|estimate_requirement/i.test(name)
-  )
+  "18 no editable requirement-row commercial SoT migration",
+  !migrations.some((name) => {
+    if (name.includes("estimate_requirement_snapshots")) return false;
+    return /r1[._-]1|req.snapshot|estimate_requirement/i.test(name);
+  })
 );
 
 check("Production Scope Discovery remains disabled", isScopeDiscoveryEnabled({}) === false);
 check("Company DNA not started", !existsSync(join("lib", "company-dna")));
 check(
-  "component authority lifecycle reserved, not implemented as a table",
-  reqSrc.includes("LEGACY_AUTHORITATIVE") &&
-    reqSrc.includes("SHADOW") &&
-    !existsSync(join("lib", "estimate", "component-authority.ts"))
+  "component authority is external policy, not a requirement field",
+  existsSync(join("lib", "estimate", "component-authority.ts")) &&
+    read("lib/estimate/component-authority.ts").includes("LEGACY_AUTHORITATIVE") &&
+    read("lib/estimate/component-authority.ts").includes("SHADOW") &&
+    !reqSrc.includes("commercialAuthority:")
 );
 check(
   "purchaseQuantity documented as estimating qty not procurement pack",
