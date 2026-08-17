@@ -23,6 +23,14 @@ export type BuildUpMaterialPricing = {
   resolution: MaterialRateResolution;
   rateFields: ReturnType<typeof rateFieldsFromResolved>;
   usedBuildUpQuantity: boolean;
+  /** Optional conversion provenance when a company m² rate was converted to $/lm. */
+  conversion?: {
+    from: string;
+    to: string;
+    factor: number;
+    sourceUnitCost?: number;
+    basis?: string;
+  };
 };
 
 export function toMaterialRateResolution(

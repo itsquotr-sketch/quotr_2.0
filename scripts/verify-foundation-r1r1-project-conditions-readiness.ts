@@ -452,8 +452,10 @@ function main(): void {
     !migrations.some((f) => /r1r1|project.conditions.readiness/i.test(f))
   );
   check(
-    "no requirement emission",
-    !read("lib/estimate/calculators/deck.ts").includes("requirements:") &&
+    "requirement emission is Deck surface shadow only",
+    read("lib/estimate/calculators/deck.ts").includes(
+      "maybeBuildDeckSurfaceRequirement"
+    ) &&
       !read("lib/estimate/calculators/demolition.ts").includes("requirements:")
   );
   check(

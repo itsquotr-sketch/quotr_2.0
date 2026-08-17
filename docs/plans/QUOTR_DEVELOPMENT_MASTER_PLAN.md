@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **READY / NOT STARTED**. Does not start REQ-2.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **READY / NOT STARTED**.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Product architecture:** `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`  
 **Supersedes as programme plan:** `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`, `docs/plans/STAGE_3_PRODUCT_ROADMAP.md` (as primary plan), `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
@@ -75,7 +75,7 @@ Owner expected backbone is retained. Three dependency corrections:
 | Supplier after cladding/roofing | **Earlier.** Canonical catalogue + Deck keys first; CSV mapping does not need cladding. |
 | Photos / quote send / analytics / PERF only at the end | **AN-1 and PERF are parallel.** Quote send does not need cladding. Photos feed Facts after security design; they must not invent prices. DNA still last among learning. Production SD last among product-claim gates. |
 
-REQ-2 is the immediate implementation batch after REQ-1 close. First emission: **Deck surface decking only**. Remaining Owner Previews (Rates, Branding, DEMO-R7) are polish, not REQ-2 architecture blockers.
+REQ-2 is **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. Current emitter: **Deck surface only**. Future materials emit during Work Area maturation (DECK-1 / DECK-2 / other WAs). Next implementation: **REQ-3** LabourRequirement shadow. Remaining Owner Previews (Rates, Branding, DEMO-R7) are polish, not REQ-3 architecture blockers.
 
 ---
 
@@ -148,7 +148,7 @@ Priority: **CRITICAL** · **HIGH** · **MEDIUM** · **LATER**
 | **Non-goals** | UI takeoff; Catalogue V2; changing money at REQ-1; implementing component-authority table |
 | **Completion gate** | REQ-1 envelope tests; REQ-2/3 emit with `priced` honesty; REQ-4 only after snapshot + documented parity |
 | **Priority** | CRITICAL |
-| **Status** | REQ-1 **COMPLETE / TECHNICALLY VALIDATED**; REQ-2 **READY / NOT STARTED**; REQ-3/4 **NOT STARTED** |
+| **Status** | REQ-1 **COMPLETE / TECHNICALLY VALIDATED**; REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**; REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**; REQ-3 **READY / NOT STARTED**; REQ-4 **NOT STARTED** |
 | **Batches** | **REQ-1** envelope + physical aggregation; **REQ-2** Deck **surface decking only**; **REQ-3** LabourRequirement emission; **REQ-4** requirement ↔ pricing reconciliation / shadow / promotion |
 
 ### PHASE 2 — Deck reference calculator
@@ -467,7 +467,7 @@ Already approved: CF-D1–D7, D1–D16 Builder Interview, OD-CAT-01/02/03, OD-R1
 
 1. PHASE 0 remains frozen.  
 2. REQ-1 is **COMPLETE / TECHNICALLY VALIDATED**.  
-3. Next implementation: **REQ-2** — emit **Deck surface decking only** as a `MaterialRequirement` (`priced: true`, SHADOW — not estimate money). Do not emit face/fascia, joists, bearers, posts, concrete, or fixings.  
-4. Do not deploy Production.  
-5. Do not enable Production Scope Discovery.
+3. REQ-2 is **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. Current MaterialRequirement emitter: Deck surface only.  
+4. Next implementation: **REQ-3** — LabourRequirement shadow from existing Deck labour hours (do not invent task splits; hours ≠ crew duration).  
+5. Do not deploy Production. Do not enable Production Scope Discovery.
 

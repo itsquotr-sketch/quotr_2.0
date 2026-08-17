@@ -339,8 +339,8 @@ function labourRate(
     existsSync(join(process.cwd(), "docs/runbooks/COST_FIRST_RATES_OWNER_PREVIEW.md"))
   );
   check(
-    "BOUNDARY MaterialRequirement not started",
-    !existsSync(join(process.cwd(), "lib/estimate/material-requirement.ts"))
+    "BOUNDARY Catalogue V2 not started",
+    !existsSync(join(process.cwd(), "lib/materials/catalogue-v2.ts"))
   );
   check(
     "BOUNDARY no new migration in this batch",

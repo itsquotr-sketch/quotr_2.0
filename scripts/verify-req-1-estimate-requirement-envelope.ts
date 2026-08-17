@@ -1,7 +1,7 @@
 /**
  * REQ-1 — EstimateRequirement envelope + physical aggregation foundation.
  *
- * Types/collection/aggregation only. Production calculators must not emit.
+ * Types/collection/aggregation. REQ-2.1 may emit Deck surface only.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -769,7 +769,9 @@ check(
 );
 check(
   "NON-REGRESSION 43 no UI change required",
-  emittingCalcs.length === 0
+  emittingCalcs.length === 1 &&
+    emittingCalcs[0] === "deck.ts" &&
+    !read("docs/runbooks/REQ_1_OWNER_TECHNICAL_GATE.md").includes("Materials tab")
 );
 
 const shadow = toRequirementShadowFields(hardwoodA);
@@ -828,10 +830,12 @@ const deck1Sell = Math.round(
   deck1Calc.lineItems.reduce((sum, item) => sum + item.recommendedSell, 0)
 );
 check(
-  "GENERATE empty envelope on live Deck calculator",
-  deck1Calc.requirements === undefined &&
-    Array.isArray(deck1Estimate.requirements) &&
-    deck1Estimate.requirements.length === 0
+    "GENERATE Deck surface shadow envelope on live Deck calculator",
+  deck1Calc.requirements?.length === 1 &&
+    deck1Calc.requirements[0]?.kind === "material" &&
+    deck1Calc.requirements[0]?.componentKey === "decking.surface" &&
+    deck1Estimate.requirements?.length === 1 &&
+    Math.round(deck1Estimate.recommendedSell) === 48340
 );
 check(
   "GENERATE Deck 1 sell unchanged",

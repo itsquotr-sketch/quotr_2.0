@@ -1,7 +1,7 @@
 # Quotr Estimate Requirements Architecture
 
 **Classification:** SUPPORTING. **CANONICAL estimating engine:** `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
-**Status:** Planning freeze `foundation-r1.0`. **Final pre-emission contract `foundation-r1.1`**. **REQ-1 COMPLETE / TECHNICALLY VALIDATED. Emission Not Started.**  
+**Status:** Planning freeze `foundation-r1.0`. **Final pre-emission contract `foundation-r1.1`**. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED** (Deck surface only). REQ-3 **READY / NOT STARTED**.  
 **Mode:** Architecture lock + TypeScript contracts only. Calculators must not emit requirements until **REQ-1**. FOUNDATION-R2 is Scope Details completeness. FOUNDATION-R2-R1 reconciles Deck priced qty/rate units. Neither emits requirements.  
 **Supersedes in part:** `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md` (MaterialRequirement §4 is absorbed and extended; takeoff persistence and Deck pilot geometry remain valid).  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  

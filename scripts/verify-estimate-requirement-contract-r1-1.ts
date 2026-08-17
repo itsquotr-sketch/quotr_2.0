@@ -1,7 +1,7 @@
 /**
  * PHASE 0-R1 — EstimateRequirement foundation-r1.1 pre-emission contract.
  *
- * Types/helpers only. Must not emit calculator requirements or change money.
+ * foundation-r1.1 contract. REQ-2.1 may emit Deck surface only.
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
@@ -243,8 +243,9 @@ const emitting = calcFiles.filter((p) => {
   );
 });
 check(
-  "16 no calculator emits EstimateRequirement objects",
-  emitting.length === 0,
+  "16 only Deck calculator emits EstimateRequirement objects",
+  emitting.length === 1 &&
+    emitting[0].replace(/\\/g, "/").endsWith("calculators/deck.ts"),
   emitting.join(", ")
 );
 

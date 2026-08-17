@@ -4,10 +4,10 @@
  * foundation-r1.0 — FOUNDATION-R1 planning/type freeze (pre independent review).
  * foundation-r1.1 — PHASE 0-R1 final pre-emission contract.
  *
- * Types + identity/invariant helpers. REQ-1 makes the calculator envelope
- * possible. Calculators must NOT emit these objects until REQ-2/REQ-3.
- * Quantity authority for a future generate; money remains line items +
- * cost-first commercial engine.
+ * Types + identity/invariant helpers. REQ-1 made the calculator envelope
+ * possible. REQ-2.1 emits Deck surface MaterialRequirement only (shadow).
+ * Other calculators omit the field. Money remains line items + cost-first
+ * commercial engine until REQ-4 promotion.
  *
  * Single-consumption: LabourRequirement.baseHours are unadjusted.
  * Project Condition productivity is referenced via adjustmentRef.factors —
@@ -102,7 +102,18 @@ export type MaterialRequirement = EstimateRequirementBase & {
    */
   purchaseQuantity: number;
   purchaseUnit: string;
-  conversion?: { from: string; to: string; factor: number };
+  /**
+   * Unit conversion provenance. Source remains company/benchmark/etc. —
+   * conversion does not become a separate rate authority.
+   * Optional sourceUnitCost / basis explain company m² → lm.
+   */
+  conversion?: {
+    from: string;
+    to: string;
+    factor: number;
+    sourceUnitCost?: number;
+    basis?: string;
+  };
   rateSource: RequirementRateSource;
   unitCost: number | null;
   totalCost: number | null;
@@ -196,7 +207,7 @@ export type ComponentPricingAuthorityState =
   | "LEGACY_FALLBACK"
   | "LEGACY_RETIRED";
 
-/** Optional calculator envelope. Production calculators omit this until REQ-2/REQ-3. */
+/** Optional calculator envelope. REQ-2.1: Deck surface only. Other calculators omit. */
 export type CalculatorRequirementsEmit = {
   readonly requirements?: readonly EstimateRequirement[];
 };

@@ -176,6 +176,18 @@ function assertMaterial(requirement: MaterialRequirement): void {
     ) {
       fail(`${requirement.requirementId}: conversion metadata is invalid`);
     }
+    if (
+      requirement.conversion.sourceUnitCost != null &&
+      !isNonNegativeNumber(requirement.conversion.sourceUnitCost)
+    ) {
+      fail(`${requirement.requirementId}: conversion sourceUnitCost cannot be negative`);
+    }
+    if (
+      requirement.conversion.basis != null &&
+      !isNonEmptyString(requirement.conversion.basis)
+    ) {
+      fail(`${requirement.requirementId}: conversion basis must be a non-empty string when set`);
+    }
   }
   if (requirement.priced) {
     if (requirement.rateSource === "missing") {

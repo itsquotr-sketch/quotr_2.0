@@ -164,8 +164,8 @@ check(
   validateLegacyLogoUrl("https://cdn.example/logo.png").ok
 );
 check(
-  "BOUNDARY MaterialRequirement not started",
-  !existsSync(join(root, "lib/estimate/material-requirement.ts"))
+  "BOUNDARY Catalogue V2 not started",
+  !existsSync(join(root, "lib/materials/catalogue-v2.ts"))
 );
 check(
   "SCOPE_DISCOVERY not force-enabled",

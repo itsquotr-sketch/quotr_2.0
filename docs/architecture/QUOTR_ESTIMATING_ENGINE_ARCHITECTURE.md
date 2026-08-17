@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** Does not authorise calculator emission or pricing-authority change.  
+**Mode:** PHASE 0 frozen. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED.** REQ-3 **READY / NOT STARTED**. Does not authorise commercial promotion.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Absorbs:** `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (SUPPORTING)  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -603,11 +603,38 @@ REQ-1 is **COMPLETE / TECHNICALLY VALIDATED**.
 - **no** pricing-authority change;
 - shadow field helper only — comparison engine is REQ-4.
 
-`foundation-r1.1` remains the pre-emission contract. **REQ-2** emits **Deck surface decking only** (`priced: true`, SHADOW — not estimate money). Face/fascia waits for DECK-2 / OD-FACE-01.
+`foundation-r1.1` remains the contract. **REQ-2** is the MaterialRequirement emission foundation. **REQ-2.1** is the only current production emitter: Deck surface decking (`priced: true` when lm pricing resolves, SHADOW — not estimate money). Face/fascia waits for DECK-2 / OD-FACE-01. Structure waits for DECK-1.
+
+## 21.1 Three-truth model
+
+Every `EstimateRequirement` has three independent truths. Do not collapse them into one flag.
+
+| Truth | Question | REQ-2.1 Deck surface |
+| --- | --- | --- |
+| **Physical** | What physical work/material is required? | YES (when area + board width exist) |
+| **Pricing** | Can it resolve a cost, and from which source? | YES where company/Quotr lm resolves; else `missing` |
+| **Commercial authority** | Does it currently determine estimate money? | NO / SHADOW |
+
+`priced: true` is pricing-truth completeness, not commercial authority. Do not add `commercialAuthority` on the requirement object. REQ-4 owns authority externally at component level.
+
+## 21.2 REQ-2.1 Deck surface shadow (COMPLETE / TECHNICALLY VALIDATED)
+
+- One `MaterialRequirement`, `componentKey: decking.surface`.
+- Reuses `calculateDeckingBoardLm` + `resolveDeckingBoardPricing` — no second formula or resolver.
+- Compatibility identity: `deck.material.*.lm` (not CAT-V2).
+- Width unknown: **no requirement** (no fake lm; m² package line may remain).
+- Physical known + rate missing: `priced: false`, `rateSource: missing`.
+- Requirement cost is not added to estimate totals.
+- No UI, persistence, or component-authority promotion.
+- REQ-2 is **closed**. Further materials emit during WA maturation, not as REQ-2.2.
+
+## 21.3 REQ-3 handoff (not started)
+
+LabourRequirement shadow from **existing** hour calculations. First candidate: Deck **“Deck labour”**. One labour calculation → line + requirement. Hours ≠ crew elapsed time. Consume already-adjusted hours; do not recompose Project Conditions.
 
 ---
 
 ## 22. Non-goals of this lock
 
-Calculator changes · live rate resolver behaviour · requirement emission · UI · migrations · Catalogue V2 population · Company DNA · AN-1 emitters.
+Calculator changes beyond authorised batches · live rate resolver redesign · UI · migrations · Catalogue V2 population · Company DNA · AN-1 emitters. REQ-2.1 Deck surface shadow emission is the authorised exception to “no calculator emission”.
 

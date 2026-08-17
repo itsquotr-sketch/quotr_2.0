@@ -16,8 +16,8 @@ This is **physical / information aggregation**. It is **not** pricing-authority 
 `CalculatorResult.requirements?: readonly EstimateRequirement[]`
 
 - Omit or `[]` is valid.
-- Production calculators omit the field until REQ-2 / REQ-3.
-- `calculateEstimate` collects every Work Area envelope, normalises, and attaches `EstimateResult.requirements` (empty today).
+- Production calculators omit the field except Deck surface (REQ-2.1).
+- `calculateEstimate` collects every Work Area envelope, normalises, and attaches `EstimateResult.requirements`.
 - Requirement costs are **never** added to recommended cost/sell, Pricing, or Quote.
 
 ---
@@ -118,13 +118,20 @@ Derive-on-generate. `persistEstimateResult` does not write requirements. No migr
 
 ---
 
-## 11. REQ-2 first emission (not this contract’s implementation)
+## 11. REQ-2 MaterialRequirement emission foundation
 
-First production `MaterialRequirement`: **Deck surface decking only**.
+REQ-2 is **COMPLETE**. Capability is **ACTIVE**. Current production emitter: **Deck surface only**.
 
-Not in REQ-2: face/fascia (DECK-2 / OD-FACE-01), joists, bearers, posts/piles, concrete, fixings.
+Width unknown emits nothing. Incomplete coverage is allowed when information is insufficient. Do not emit an m² requirement to keep coverage high.
 
-`priced: true` on that future requirement means internally resolved pricing. It does **not** drive estimate totals until REQ-4.
+**DECK-1** owns joists, bearers, posts/piles, concrete, fixings, improved surface takeoff.  
+**DECK-2** owns face/fascia (Front / Rear / Left / Right).
+
+`priced: true` means internally resolved pricing. It does **not** drive estimate totals until REQ-4.
+
+Three truths: physical / pricing / commercial authority are independent. Commercial authority is not a field on `MaterialRequirement`.
+
+Compatibility identity: `deck.material.*.lm`. CAT-V2 later separates physical identity from rate unit.
 
 Reference fixture (16.12 m² / 140 mm / 10% hardwood): base **115.14 lm**, waste **11.51 lm**, purchase **126.65 lm**; Quotr $22/lm → cost **$2,786.30**. Same current Deck surface path. No duplicate pricing.
 

@@ -546,9 +546,13 @@ function main(): void {
 
   console.log("\nREADINESS / BOUNDARIES");
   check(
-    "requirement emission still absent",
-    !readFileSync("lib/estimate/calculators/deck.ts", "utf8").includes("requirements:") &&
-      !readFileSync("lib/estimate/calculators/bathroom.ts", "utf8").includes("requirements:")
+    "requirement emission is Deck surface only",
+    readFileSync("lib/estimate/calculators/deck.ts", "utf8").includes(
+      "maybeBuildDeckSurfaceRequirement"
+    ) &&
+      !readFileSync("lib/estimate/calculators/bathroom.ts", "utf8").includes(
+        "requirements:"
+      )
   );
   const eKeys = [
     "kitchen.island_included",

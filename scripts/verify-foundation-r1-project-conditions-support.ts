@@ -670,8 +670,9 @@ function main(): void {
     );
   });
   check(
-    "no calculator emits EstimateRequirement objects",
-    emitting.length === 0,
+    "only Deck calculator emits EstimateRequirement objects",
+    emitting.length === 1 &&
+      emitting[0].replace(/\\/g, "/").endsWith("calculators/deck.ts"),
     emitting.join(", ")
   );
   check(

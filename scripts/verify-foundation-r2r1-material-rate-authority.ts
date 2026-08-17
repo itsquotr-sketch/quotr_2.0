@@ -261,8 +261,9 @@ check(
 const deckSource = readFileSync("lib/estimate/calculators/deck.ts", "utf8");
 const bathSource = readFileSync("lib/estimate/calculators/bathroom.ts", "utf8");
 check(
-  "11. no requirement emission",
-  !deckSource.includes("requirements:") && !bathSource.includes("requirements:")
+  "11. requirement emission is Deck surface shadow only",
+  deckSource.includes("maybeBuildDeckSurfaceRequirement") &&
+    !bathSource.includes("requirements:")
 );
 
 check(

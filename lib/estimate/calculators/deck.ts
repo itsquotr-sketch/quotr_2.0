@@ -32,6 +32,7 @@ import {
 } from "@/lib/estimate/material-buildup-meta";
 import { withMaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
 import { resolveDeckingBoardPricing } from "@/lib/estimate/deck-material-pricing";
+import { maybeBuildDeckSurfaceRequirement } from "@/lib/estimate/deck-surface-requirement";
 import { getDeckMaterialLabel } from "@/lib/estimate/material-rate-keys";
 import {
   quantityBasisFrom,
@@ -62,7 +63,8 @@ export function calculateDeck(
   const lineItems: CalculatorResult["lineItems"] = [];
   let sortOrder = 1;
 
-  let area = getNumberFact(facts, workArea.id, "deck.area_m2");
+  const areaFact = getNumberFact(facts, workArea.id, "deck.area_m2");
+  let area = areaFact;
   const length = getNumberFact(facts, workArea.id, "deck.length_m");
   const width = getNumberFact(facts, workArea.id, "deck.width_m");
 
@@ -603,6 +605,31 @@ export function calculateDeck(
     );
   }
 
+  const surfaceFactKeys = [
+    areaFact != null ? "deck.area_m2" : null,
+    areaFact == null && length != null && width != null ? "deck.length_m" : null,
+    areaFact == null && length != null && width != null ? "deck.width_m" : null,
+    boardWidthFact != null ? "deck.board_width_mm" : null,
+    getStringFact(facts, workArea.id, "deck.board_material")
+      ? "deck.board_material"
+      : getStringFact(facts, workArea.id, "deck.material")
+        ? "deck.material"
+        : null,
+  ].filter((key): key is string => key != null);
+
+  const surfaceRequirement = maybeBuildDeckSurfaceRequirement({
+    workArea,
+    material,
+    materialLabel,
+    wastagePercent,
+    boardWidthMm: boardWidthFact,
+    deckingBoardResult,
+    deckingPricing,
+    usedLmPricing,
+    materialWastageSettings: context.materialWastageSettings,
+    factKeys: surfaceFactKeys,
+  });
+
   return {
     lineItems,
     assumptions,
@@ -610,5 +637,6 @@ export function calculateDeck(
     exclusions,
     confidence: baseConfidence(missingInfo.length),
     assumptionMetadata,
+    ...(surfaceRequirement ? { requirements: [surfaceRequirement] } : {}),
   };
 }

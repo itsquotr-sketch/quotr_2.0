@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. Does not authorise REQ-2 emission.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. Does not authorise REQ-3 emission or commercial promotion.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Companion canonicals:**
 - Estimating: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`
@@ -287,10 +287,12 @@ Do not delete history.
 | FOUNDATION-R2 | Owner flow treated as sufficiently validated via R2/R2-R1 remediation | R2 completion + challenge |
 | FOUNDATION-R2-R1 | **Pricing remediation complete** | R2-R1 completion |
 | FOUNDATION-R2-R1-R1 | **Contractor-rate precedence complete** | R2-R1-R1 completion |
-| REQ-1 | **COMPLETE / TECHNICALLY VALIDATED** | envelope + physical aggregation; no emission |
-| REQ-2 | **READY / NOT STARTED** | Deck surface decking only; not face/fascia |
-| REQ-3 / REQ-4 | **Not Started** | master plan |
-| MaterialRequirement | Types `foundation-r1.1`; **emission Not Started** | `lib/estimate/requirements.ts` |
+| REQ-1 | **COMPLETE / TECHNICALLY VALIDATED** | envelope + physical aggregation |
+| REQ-2 | **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED** | capability ACTIVE; not all WAs emit |
+| REQ-2.1 | **COMPLETE / TECHNICALLY VALIDATED** | Deck surface shadow only |
+| REQ-3 | **READY / NOT STARTED** | LabourRequirement shadow |
+| REQ-4 | **Not Started** | promotion after snapshot |
+| MaterialRequirement | **ACTIVE** — current emitter: Deck surface only | REQ-2.1 |
 | LabourRequirement | Types `foundation-r1.1`; **emission Not Started** | same |
 | Deck transparent estimator | **Not Started** | DECK-1+ |
 | Materials Catalogue V2 | **Not Started** (`CAT-IDENTITY-01` gates seeding) | CAT-V2-1 |

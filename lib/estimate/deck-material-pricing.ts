@@ -80,7 +80,8 @@ function withoutBenchmarks(
 function pricedLm(
   resolved: Parameters<typeof toMaterialRateResolution>[0],
   purchaseLm: number,
-  conversionNote?: string
+  conversionNote?: string,
+  conversion?: BuildUpMaterialPricing["conversion"]
 ): BuildUpMaterialPricing {
   return {
     quantity: purchaseLm,
@@ -90,6 +91,7 @@ function pricedLm(
     resolution: toMaterialRateResolution(resolved, conversionNote),
     rateFields: rateFieldsFromResolved(resolved, resolved.itemKey),
     usedBuildUpQuantity: true,
+    conversion,
   };
 }
 
@@ -167,7 +169,14 @@ export function resolveDeckingBoardPricing(params: {
       return pricedLm(
         converted,
         params.purchaseLm,
-        formatM2ToLmConversionNote(companyM2.costRate, params.boardWidthMm)
+        formatM2ToLmConversionNote(companyM2.costRate, params.boardWidthMm),
+        {
+          from: "m2",
+          to: "lm",
+          factor: coverageWidthM(params.boardWidthMm),
+          sourceUnitCost: companyM2.costRate,
+          basis: `${params.boardWidthMm}mm board coverage`,
+        }
       );
     }
 
