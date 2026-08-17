@@ -153,7 +153,7 @@ Estimate lines carry both (allowance/rate factories). Schema allows `rate_type=s
 | --- | --- | --- | --- |
 | CM-01 | **High — Commercial correctness** | Dual sell authorities: charge-out/benchmark sell ≠ org GM; default labour 60/90 (~33% GM) vs product 20% | **No** (demo) |
 | CM-02 | **High — Commercial correctness** | Margin edit did not invalidate/sync Pricing/Quote (`margin-actions.ts` vs `persist-estimate.ts`) — **FIXED in COMMERCIAL-P0** (`markPricingDocumentsNeedingRecalibration`) | Was conditional demo risk; remediated |
-| CM-03 | Medium | `allow_benchmark_rates=false` may still inject fallback money (labelled missing) | No |
+| CM-03 | Medium | **Labour benchmark-disabled fallback source-label mismatch.** `allow_benchmark_rates=false` + no company labour rate still injects $60/$90 while `sourceType` may be `missing`. Money is deliberate legacy fallback; label is misleading. Do not remove 60/90 silently. **Backlog / Not Started.** | No |
 | CM-04 | Medium | Legacy `rates.markup_percent` / `default_markup_percent` noise | No |
 | CM-05 | Medium | DB rate range columns unused; ranges from org factors only | No |
 | CM-06 | Medium | Work-area rate fallback can cross-bind unrelated material rows | No |

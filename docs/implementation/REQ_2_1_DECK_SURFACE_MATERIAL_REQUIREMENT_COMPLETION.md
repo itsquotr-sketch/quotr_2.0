@@ -81,3 +81,5 @@ Current production emitter: **Deck surface only**. Capability is **ACTIVE**. Fut
 Same discipline: one existing labour calculation → estimate line and LabourRequirement. Shadow only. No invented DECK-3 task split. Hours are labour hours, not crew elapsed time. Consume already-resolved adjusted hours; record `adjustmentRef.factors[]` as provenance; do not recompose Project Conditions (OD-PC-01 remains future).
 
 **Recommended first candidate:** Deck **“Deck labour”** line (`createLabourLineItem`, area × productivity × combined access × quality, `resolveLabourRate`). Isolated, always present, hour-based, exact cost parity possible. Not “Existing deck removal” (scope-gated), not face-board labour (lump $), not bathroom labour (more fragmented).
+
+**REQ-3.1 status:** COMPLETE / TECHNICALLY VALIDATED — see `docs/implementation/REQ_3_1_DECK_LABOUR_REQUIREMENT_COMPLETION.md`. REQ-3 is closed.

@@ -5,9 +5,10 @@
  * foundation-r1.1 — PHASE 0-R1 final pre-emission contract.
  *
  * Types + identity/invariant helpers. REQ-1 made the calculator envelope
- * possible. REQ-2.1 emits Deck surface MaterialRequirement only (shadow).
- * Other calculators omit the field. Money remains line items + cost-first
- * commercial engine until REQ-4 promotion.
+ * possible. REQ-2.1 emits Deck surface MaterialRequirement (shadow).
+ * REQ-3.1 emits Deck labour LabourRequirement (shadow). Other calculators
+ * omit the field. Money remains line items + cost-first commercial engine
+ * until REQ-4 promotion.
  *
  * Single-consumption: LabourRequirement.baseHours are unadjusted.
  * Project Condition productivity is referenced via adjustmentRef.factors —
@@ -207,7 +208,7 @@ export type ComponentPricingAuthorityState =
   | "LEGACY_FALLBACK"
   | "LEGACY_RETIRED";
 
-/** Optional calculator envelope. REQ-2.1: Deck surface only. Other calculators omit. */
+/** Optional calculator envelope. REQ-2.1 Deck surface + REQ-3.1 Deck labour. Other calculators omit. */
 export type CalculatorRequirementsEmit = {
   readonly requirements?: readonly EstimateRequirement[];
 };

@@ -1,7 +1,7 @@
 /**
  * REQ-1 — EstimateRequirement envelope + physical aggregation foundation.
  *
- * Types/collection/aggregation. REQ-2.1 may emit Deck surface only.
+ * Types/collection/aggregation. REQ-2.1 emits Deck surface; REQ-3.1 emits Deck labour.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -830,11 +830,15 @@ const deck1Sell = Math.round(
   deck1Calc.lineItems.reduce((sum, item) => sum + item.recommendedSell, 0)
 );
 check(
-    "GENERATE Deck surface shadow envelope on live Deck calculator",
-  deck1Calc.requirements?.length === 1 &&
-    deck1Calc.requirements[0]?.kind === "material" &&
-    deck1Calc.requirements[0]?.componentKey === "decking.surface" &&
-    deck1Estimate.requirements?.length === 1 &&
+    "GENERATE Deck surface + labour shadow envelope on live Deck calculator",
+  deck1Calc.requirements?.length === 2 &&
+    deck1Calc.requirements.some(
+      (item) => item.kind === "material" && item.componentKey === "decking.surface"
+    ) &&
+    deck1Calc.requirements.some(
+      (item) => item.kind === "labour" && item.componentKey === "deck.labour"
+    ) &&
+    deck1Estimate.requirements?.length === 2 &&
     Math.round(deck1Estimate.recommendedSell) === 48340
 );
 check(

@@ -16,7 +16,7 @@ This is **physical / information aggregation**. It is **not** pricing-authority 
 `CalculatorResult.requirements?: readonly EstimateRequirement[]`
 
 - Omit or `[]` is valid.
-- Production calculators omit the field except Deck surface (REQ-2.1).
+- Production calculators omit the field except Deck surface (REQ-2.1) and Deck labour (REQ-3.1).
 - `calculateEstimate` collects every Work Area envelope, normalises, and attaches `EstimateResult.requirements`.
 - Requirement costs are **never** added to recommended cost/sell, Pricing, or Quote.
 
@@ -75,6 +75,8 @@ Decking install and demolition do not merge as one task even if both are carpent
 `hoursAreElapsedDuration` is always `false`. Labour hours ≠ crew duration.
 
 `adjustmentRef.factors[]` are preserved per contributor. REQ-1 does not multiply/add/cap (OD-PC-01 remains open). Project Conditions are not re-run.
+
+REQ-3.1 current labour emitter: **Deck labour** (`componentKey: deck.labour`) only. Two Deck Work Areas retain two contributors. Trade totals may sum carpenter hours. Do not merge into one opaque task. DECK-3 later splits this lump. REQ-3 is **closed**.
 
 ---
 

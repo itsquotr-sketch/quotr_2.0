@@ -1,4 +1,5 @@
 import { round2 } from "@/lib/estimate/facts";
+import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import { buildPersistedLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { normalizeRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import {
@@ -101,12 +102,12 @@ export function createLabourLineItem(params: {
   const adjustmentFactor = params.adjustmentFactor ?? 1;
   const qualityFactor = params.qualityFactor ?? 1;
   // Domain owns hours shaping (qty × productivity × factors). Engine owns money.
-  const labourHours = round2(
-    params.quantity *
-      params.productivityHoursPerUnit *
-      adjustmentFactor *
-      qualityFactor
-  );
+  const labourHours = shapeLabourHours({
+    quantity: params.quantity,
+    productivityHoursPerUnit: params.productivityHoursPerUnit,
+    adjustmentFactor,
+    qualityFactor,
+  }).adjustedHours;
   const money = requireEstimateLabourMoney({
     labourHours,
     labourCostRate: params.labourCostRate,

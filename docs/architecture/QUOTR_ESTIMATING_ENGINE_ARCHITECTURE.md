@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED.** REQ-3 **READY / NOT STARTED**. Does not authorise commercial promotion.  
+**Mode:** PHASE 0 frozen. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED.** REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **READY / NOT STARTED**. Does not authorise commercial promotion.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Absorbs:** `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (SUPPORTING)  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -216,7 +216,7 @@ Quality/spec factor may also apply at rollup if it is a project/WA commercial fa
 | `rateKey` | e.g. `labour.carpenter.hour` |
 | `priced` | Policy |
 
-Do **not** copy a single opaque numeric `adjustmentFactor` onto every task. That is how double-consumption returns. Today a requirement may carry one factor (`project.labour_productivity`). Future emit (REQ-3) may list multiple contributing factors. **OD-PC-01** remains open for multiplicative / additive / capped / combined composition. Do not change current Project Condition calculations.
+Do **not** copy a single opaque numeric `adjustmentFactor` onto every task. That is how double-consumption returns. REQ-3.1 Deck labour carries the **combined** live factor as one `project.labour_productivity` entry when it is not 1. It does not decompose access × carry. **OD-PC-01** remains open for multiplicative / additive / capped / combined composition. Do not change current Project Condition calculations.
 
 ### DERIVED FIELDS
 
@@ -603,17 +603,17 @@ REQ-1 is **COMPLETE / TECHNICALLY VALIDATED**.
 - **no** pricing-authority change;
 - shadow field helper only — comparison engine is REQ-4.
 
-`foundation-r1.1` remains the contract. **REQ-2** is the MaterialRequirement emission foundation. **REQ-2.1** is the only current production emitter: Deck surface decking (`priced: true` when lm pricing resolves, SHADOW — not estimate money). Face/fascia waits for DECK-2 / OD-FACE-01. Structure waits for DECK-1.
+`foundation-r1.1` remains the contract. **REQ-2** is the MaterialRequirement emission foundation. **REQ-2.1** emits Deck surface decking (`priced: true` when lm pricing resolves, SHADOW — not estimate money). **REQ-3.1** emits Deck labour (`priced: true` when labour cost resolves, SHADOW). Face/fascia waits for DECK-2 / OD-FACE-01. Structure waits for DECK-1. Task-level labour waits for DECK-3.
 
 ## 21.1 Three-truth model
 
 Every `EstimateRequirement` has three independent truths. Do not collapse them into one flag.
 
-| Truth | Question | REQ-2.1 Deck surface |
-| --- | --- | --- |
-| **Physical** | What physical work/material is required? | YES (when area + board width exist) |
-| **Pricing** | Can it resolve a cost, and from which source? | YES where company/Quotr lm resolves; else `missing` |
-| **Commercial authority** | Does it currently determine estimate money? | NO / SHADOW |
+| Truth | Question | REQ-2.1 Deck surface | REQ-3.1 Deck labour |
+| --- | --- | --- | --- |
+| **Physical** | What physical work/material is required? | YES (when area + board width exist) | YES (lumped Deck labour hours) |
+| **Pricing** | Can it resolve a cost, and from which source? | YES where company/Quotr lm resolves; else `missing` | YES — company, or grandfathered 60/90 `hardcoded_legacy`. Current labour resolver has no unpriced path |
+| **Commercial authority** | Does it currently determine estimate money? | NO / SHADOW | NO / SHADOW |
 
 `priced: true` is pricing-truth completeness, not commercial authority. Do not add `commercialAuthority` on the requirement object. REQ-4 owns authority externally at component level.
 
@@ -628,13 +628,31 @@ Every `EstimateRequirement` has three independent truths. Do not collapse them i
 - No UI, persistence, or component-authority promotion.
 - REQ-2 is **closed**. Further materials emit during WA maturation, not as REQ-2.2.
 
-## 21.3 REQ-3 handoff (not started)
+## 21.3 REQ-3.1 Deck labour shadow (COMPLETE / TECHNICALLY VALIDATED)
 
-LabourRequirement shadow from **existing** hour calculations. First candidate: Deck **“Deck labour”**. One labour calculation → line + requirement. Hours ≠ crew elapsed time. Consume already-adjusted hours; do not recompose Project Conditions.
+- One `LabourRequirement`, `componentKey: deck.labour`, trade `carpenter`.
+- Reuses `shapeLabourHours` + the same `resolveLabourRate` object as the Deck labour line.
+- `baseHours` = hours before Project Condition combined factor (quality included because the live formula already applies it).
+- `adjustedHours` = current line hours. Combined PC factor recorded as `project.labour_productivity` when not 1. Not decomposed.
+- Hours ≠ crew elapsed duration. No duration fields.
+- No company labour rate: resolver still returns grandfathered 60/90. Requirement is `priced: true`, `rateProvenance: hardcoded_legacy`, exact line-cost parity. `sourceType: "missing"` is a label only (CM-03); the line is not unpriced. Do not omit 60/90 in REQ-3.1.
+- Requirement cost is not added to estimate totals.
+- Demolition / face-fascia labour not emitted. DECK-3 owns task split.
+- REQ-3 is **closed**. Further labour emits during WA maturation, not as REQ-3.2.
+
+## 21.4 REQ-4 handoff (READY / NOT STARTED)
+
+REQ-4 is the commercial-authority **migration framework**, not another emission stage.
+
+Owns: REQ-SNAPSHOT-01; component-level authority lifecycle; shadow reconciliation; parity classes; intentional-difference handling; requirement-authoritative promotion; legacy suppression/fallback; historical reproducibility.
+
+**Critical principle:** never switch an entire Work Area because one requirement is correct. Authority is **component level**. Mixed maturity must remain valid (e.g. `decking.surface` requirement-authoritative while `deck.substructure` / `deck.face` stay legacy fallback).
+
+REQ-SNAPSHOT-01 must be resolved **before** any requirement becomes commercial authority. Do not design or implement it here.
 
 ---
 
 ## 22. Non-goals of this lock
 
-Calculator changes beyond authorised batches · live rate resolver redesign · UI · migrations · Catalogue V2 population · Company DNA · AN-1 emitters. REQ-2.1 Deck surface shadow emission is the authorised exception to “no calculator emission”.
+Calculator changes beyond authorised batches · live rate resolver redesign · UI · migrations · Catalogue V2 population · Company DNA · AN-1 emitters. REQ-2.1 Deck surface and REQ-3.1 Deck labour shadow emission are the authorised exceptions to “no calculator emission”.
 

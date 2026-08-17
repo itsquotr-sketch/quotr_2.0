@@ -32,7 +32,12 @@ import {
 } from "@/lib/estimate/material-buildup-meta";
 import { withMaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
 import { resolveDeckingBoardPricing } from "@/lib/estimate/deck-material-pricing";
+import {
+  buildDeckLabourRequirement,
+  labourConstraintKeysFrom,
+} from "@/lib/estimate/deck-labour-requirement";
 import { maybeBuildDeckSurfaceRequirement } from "@/lib/estimate/deck-surface-requirement";
+import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import { getDeckMaterialLabel } from "@/lib/estimate/material-rate-keys";
 import {
   quantityBasisFrom,
@@ -150,6 +155,14 @@ export function calculateDeck(
       "Deck height above 1 m may require stairs, balustrade or consent confirmation."
     );
   }
+
+  const assumedArea = area == null;
+  const deckLabourHours = shapeLabourHours({
+    quantity: effectiveArea,
+    productivityHoursPerUnit: hoursPerM2,
+    adjustmentFactor: labourAdjustment,
+    qualityFactor,
+  });
 
   lineItems.push(
     createLabourLineItem({
@@ -630,6 +643,29 @@ export function calculateDeck(
     factKeys: surfaceFactKeys,
   });
 
+  const labourFactKeys = [
+    areaFact != null ? "deck.area_m2" : null,
+    areaFact == null && length != null && width != null ? "deck.length_m" : null,
+    areaFact == null && length != null && width != null ? "deck.width_m" : null,
+    deckHeight != null ? "deck.height_m" : null,
+    getStringFact(facts, workArea.id, "deck.level") ? "deck.level" : null,
+  ].filter((key): key is string => key != null);
+
+  const labourRequirement = buildDeckLabourRequirement({
+    workArea,
+    hours: deckLabourHours,
+    labourRate,
+    elevated: Boolean(elevated),
+    assumedArea,
+    factKeys: labourFactKeys,
+    constraintKeys: labourConstraintKeysFrom(context.constraints),
+  });
+
+  const requirements = [
+    surfaceRequirement,
+    labourRequirement,
+  ].filter((item): item is NonNullable<typeof item> => item != null);
+
   return {
     lineItems,
     assumptions,
@@ -637,6 +673,6 @@ export function calculateDeck(
     exclusions,
     confidence: baseConfidence(missingInfo.length),
     assumptionMetadata,
-    ...(surfaceRequirement ? { requirements: [surfaceRequirement] } : {}),
+    ...(requirements.length > 0 ? { requirements: requirements } : {}),
   };
 }

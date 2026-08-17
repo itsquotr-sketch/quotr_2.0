@@ -120,7 +120,7 @@ Reuse:
 - `scripts/verify-outdoor-calibration.ts`
 - `scripts/verify-batch-2b3b-golden-commercial-engine.ts`
 
-Add requirement fields to fixtures when further REQ-3 emit. REQ-2.1 adds Deck surface shadow only — do not restamp commercial goldens. Do not create a second golden religion.
+Add requirement fields to fixtures when further emit occurs. REQ-2.1 adds Deck surface shadow; REQ-3.1 adds Deck labour shadow — do not restamp commercial goldens. Do not create a second golden religion.
 
 ---
 

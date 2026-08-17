@@ -546,10 +546,13 @@ function main(): void {
 
   console.log("\nREADINESS / BOUNDARIES");
   check(
-    "requirement emission is Deck surface only",
+    "requirement emission is Deck surface + Deck labour only",
     readFileSync("lib/estimate/calculators/deck.ts", "utf8").includes(
       "maybeBuildDeckSurfaceRequirement"
     ) &&
+      readFileSync("lib/estimate/calculators/deck.ts", "utf8").includes(
+        "buildDeckLabourRequirement"
+      ) &&
       !readFileSync("lib/estimate/calculators/bathroom.ts", "utf8").includes(
         "requirements:"
       )

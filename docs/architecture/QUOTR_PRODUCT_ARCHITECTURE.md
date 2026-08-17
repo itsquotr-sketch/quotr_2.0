@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. Does not authorise REQ-3 emission or commercial promotion.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **READY / NOT STARTED**. Does not authorise REQ-4 promotion.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Companion canonicals:**
 - Estimating: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`
@@ -290,10 +290,12 @@ Do not delete history.
 | REQ-1 | **COMPLETE / TECHNICALLY VALIDATED** | envelope + physical aggregation |
 | REQ-2 | **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED** | capability ACTIVE; not all WAs emit |
 | REQ-2.1 | **COMPLETE / TECHNICALLY VALIDATED** | Deck surface shadow only |
-| REQ-3 | **READY / NOT STARTED** | LabourRequirement shadow |
-| REQ-4 | **Not Started** | promotion after snapshot |
+| REQ-3 | **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED** | capability ACTIVE; not all WAs emit |
+| REQ-3.1 | **COMPLETE / TECHNICALLY VALIDATED** | Deck labour shadow only |
+| REQ-4 | **READY / NOT STARTED** | promotion after snapshot |
 | MaterialRequirement | **ACTIVE** — current emitter: Deck surface only | REQ-2.1 |
-| LabourRequirement | Types `foundation-r1.1`; **emission Not Started** | same |
+| LabourRequirement | **ACTIVE** — current emitter: Deck labour only | REQ-3.1 |
+| CM-03 | **BACKLOG / NOT STARTED** | labour missing-label vs 60/90 money |
 | Deck transparent estimator | **Not Started** | DECK-1+ |
 | Materials Catalogue V2 | **Not Started** (`CAT-IDENTITY-01` gates seeding) | CAT-V2-1 |
 | Stage 3.2.3 | **Not Started** / original PC-suppress **superseded in part** by Foundation | pipeline + handoff |
@@ -308,8 +310,8 @@ Owner decisions (full register: master plan §12): **OD-ARCH-01** LOCKED MVP Mat
 
 ## 10. What this document does not authorise
 
-- Calculator emission, rate, catalogue, UI, or migration changes
-- REQ-2 / REQ-3 emission
+- Calculator emission beyond authorised REQ-2.1 / REQ-3.1 shadows
+- REQ-4 promotion
 - Stage 3.2.3 UI
 - Company DNA
 - Production Scope Discovery enablement

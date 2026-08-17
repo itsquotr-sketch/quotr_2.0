@@ -1,7 +1,7 @@
 # Quotr Estimate Requirements Architecture
 
 **Classification:** SUPPORTING. **CANONICAL estimating engine:** `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
-**Status:** Planning freeze `foundation-r1.0`. **Final pre-emission contract `foundation-r1.1`**. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED** (Deck surface only). REQ-3 **READY / NOT STARTED**.  
+**Status:** Planning freeze `foundation-r1.0`. **Final pre-emission contract `foundation-r1.1`**. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED** (Deck surface only). REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED** (Deck labour only). REQ-4 **READY / NOT STARTED**.  
 **Mode:** Architecture lock + TypeScript contracts only. Calculators must not emit requirements until **REQ-1**. FOUNDATION-R2 is Scope Details completeness. FOUNDATION-R2-R1 reconciles Deck priced qty/rate units. Neither emits requirements.  
 **Supersedes in part:** `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md` (MaterialRequirement §4 is absorbed and extended; takeoff persistence and Deck pilot geometry remain valid).  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -192,6 +192,8 @@ Project Conditions (access, carry, slope, …) may adjust **productivity**.
 
 Target Deck breakdown (pilot): demolition, setout, piles/posts, bearers, joists, decking, face/fascia, stairs, balustrade, waste/cleanup — each a `LabourRequirement` with `componentKey`.
 
+**REQ-3.1 current emission:** one shadow `LabourRequirement` for the existing **Deck labour** lump (`componentKey: deck.labour`). Does not invent the target task split. **DECK-3** owns that split. Face labour lump is not emitted.
+
 ---
 
 ## 5. Other kinds (minimal)
@@ -374,4 +376,4 @@ Out of architecture foundation scope: live API clients.
 - Editable takeoff as money SoT  
 - Company DNA rate mutation from requirements  
 
-**Next implementation:** **REQ-1** (after FOUNDATION-R2 **and R2-R1** Owner Preview PASS) adds the `CalculatorResult.requirements` envelope so emission is **possible**. It must not make every calculator emit, must not add Deck takeoff quantities, and must not change pricing authority. Empty `requirements[]` is valid. Deck decking lines must keep honest `priced` flags from R2-R1. Do not emit in R1, R2, or R2-R1.
+**Next implementation:** REQ-1 envelope is complete. REQ-2.1 Deck surface and REQ-3.1 Deck labour are the authorised shadow emitters. REQ-3 is closed. Next infrastructure: **REQ-4** (do not start here). Empty `requirements[]` remains valid for other calculators.

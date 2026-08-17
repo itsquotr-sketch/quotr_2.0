@@ -401,8 +401,9 @@ const pricingSource = readFileSync(
   "utf8"
 );
 check(
-  "requirement emission is Deck surface shadow only",
+  "requirement emission is Deck surface + labour shadow",
   deckSource.includes("maybeBuildDeckSurfaceRequirement") &&
+    deckSource.includes("buildDeckLabourRequirement") &&
     !pricingSource.includes("MaterialRequirement")
 );
 check(

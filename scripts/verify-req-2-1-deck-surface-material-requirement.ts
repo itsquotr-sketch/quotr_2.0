@@ -112,8 +112,9 @@ function deckingLine(result: ReturnType<typeof calculateDeck>) {
 function surfaceRequirement(
   result: ReturnType<typeof calculateDeck>
 ): MaterialRequirement | undefined {
-  const requirement = result.requirements?.[0];
-  return requirement?.kind === "material" ? requirement : undefined;
+  return result.requirements?.find(
+    (item): item is MaterialRequirement => item.kind === "material"
+  );
 }
 
 function round2(value: number): number {
@@ -127,7 +128,7 @@ check(
   calculateDeck(
     { ...baseContext, facts: hardwoodFacts("d1") } as never,
     wa("d1", "deck", "Deck")
-  ).requirements?.length === 1
+  ).requirements?.filter((item) => item.kind === "material").length === 1
 );
 
 const quotrDeck = calculateDeck(
@@ -342,12 +343,13 @@ const noWidthDeck = calculateDeck(
 const noWidthLine = deckingLine(noWidthDeck);
 check(
   "WIDTH UNKNOWN 29 no fake lm",
-  noWidthDeck.requirements == null && noWidthLine?.unit === "m²"
+  surfaceRequirement(noWidthDeck) == null && noWidthLine?.unit === "m²"
 );
 check(
   "WIDTH UNKNOWN 30 honest fallback/no-requirement behavior",
   noWidthLine?.label === "Decking materials package" &&
-    (noWidthDeck.requirements?.length ?? 0) === 0
+    (noWidthDeck.requirements ?? []).filter((item) => item.kind === "material")
+      .length === 0
 );
 check(
   "WIDTH UNKNOWN 31 no detailed-takeoff claim",
@@ -365,7 +367,8 @@ const lineCostSum = round2(
 check(
   "COMMERCIAL 32 estimate total unchanged",
   round2(quotrEstimate.recommendedCost) === lineCostSum &&
-    quotrEstimate.requirements?.length === 1
+    (quotrEstimate.requirements ?? []).filter((item) => item.kind === "material")
+      .length === 1
 );
 check(
   "COMMERCIAL 33 existing line remains money authority",
@@ -419,7 +422,8 @@ const hardwoodGroups = groupMaterialRequirements(
 );
 check(
   "AGGREGATION 38 two identical hardwood Deck WAs aggregate physically",
-  twoWaEstimate.requirements?.length === 2 &&
+  (twoWaEstimate.requirements ?? []).filter((item) => item.kind === "material")
+    .length === 2 &&
     hardwoodGroups.length === 1 &&
     hardwoodGroups[0]?.purchaseQuantity === 253.3
 );
@@ -479,7 +483,9 @@ const faceKeys = (faceDeck.requirements ?? []).map((item) => item.componentKey);
 const faceLabels = faceDeck.lineItems.map((item) => item.label.toLowerCase());
 check(
   "EXCLUSIONS 42 no fascia requirement",
-  faceKeys.every((key) => key === DECK_SURFACE_COMPONENT_KEY) &&
+  faceKeys.every(
+    (key) => key === DECK_SURFACE_COMPONENT_KEY || key === "deck.labour"
+  ) &&
     faceLabels.some((label) => label.includes("face") || label.includes("fascia"))
 );
 check(
@@ -615,8 +621,9 @@ check(
       true
 );
 check(
-  "VALIDATE single Deck collects one requirement",
-  quotrEstimate.requirements?.length === 1
+  "VALIDATE single Deck collects one MaterialRequirement",
+  (quotrEstimate.requirements ?? []).filter((item) => item.kind === "material")
+    .length === 1
 );
 check(
   "VALIDATE Deck 1 golden sell unchanged",
