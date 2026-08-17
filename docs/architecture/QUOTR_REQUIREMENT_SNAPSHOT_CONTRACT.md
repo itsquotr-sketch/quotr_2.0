@@ -2,7 +2,7 @@
 
 **Status:** CANONICAL for REQ-SNAPSHOT-01 / REQ-4A / REQ-4A-R1  
 **Date:** 2026-08-17  
-**Migration:** `supabase/migrations/035_estimate_requirement_snapshots.sql` (**local only; not applied remote**)
+**Migration:** `supabase/migrations/035_estimate_requirement_snapshots.sql` (**applied remote** on `quotr_2.0` / `lxvnylhsbvudzzupxeqr`)
 
 Once a requirement becomes commercial authority, Quotr must answer: **why did this component cost X at that generation?** without joining today’s rates, Project Conditions, or assumptions.
 
@@ -90,7 +90,7 @@ When **any** component is `REQUIREMENT_AUTHORITATIVE`, Quotr must **not** succes
 
 **Primary invariant:** commercial money must never be current/authoritative without its required calculation snapshot.
 
-**Status:** **BLOCKING REQ-4B / NOT STARTED** (documented in REQ-4A-R1; transactional RPC not implemented).
+**Status:** **READY / BLOCKING REQ-4B** (documented in REQ-4A; transactional RPC not implemented).
 
 ### Current persist order (partial-failure states)
 
@@ -125,6 +125,6 @@ F. local DB migration/RLS behaviour verified (`scripts/verify-migration-035-requ
 
 ## 9. Remote apply
 
-Preview cannot persist snapshots until 035 is applied on the target database. Until then, persist falls back to legacy estimate columns and records `schema_unavailable`. Pricing falls back without `requirement_snapshot_id` if column missing.
+Migration 035 is applied on the linked remote project. Preview persist uses the committed snapshot store. Until REQ-TXN-01, SHADOW snapshot failure may still leave the legacy estimate usable.
 
 QUOTE-IMMUTABILITY-DB-01 remains Phase-9.

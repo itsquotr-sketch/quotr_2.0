@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE LOCAL / OWNER REVIEW PENDING**. REQ-4B **NOT STARTED**. Does not authorise REQ-4B promotion.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-4B **BLOCKED / NOT STARTED**. Does not authorise REQ-4B promotion.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Companion canonicals:**
 - Estimating: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`
@@ -294,10 +294,10 @@ Do not delete history.
 | REQ-2.1 | **COMPLETE / TECHNICALLY VALIDATED** | Deck surface shadow only |
 | REQ-3 | **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED** | capability ACTIVE; not all WAs emit |
 | REQ-3.1 | **COMPLETE / TECHNICALLY VALIDATED** | Deck labour shadow only |
-| REQ-4 | **IN PROGRESS** | REQ-4A local; no promotions |
-| REQ-4A | **COMPLETE LOCAL / OWNER REVIEW PENDING** | snapshot + authority + reconciliation |
-| REQ-4B | **NOT STARTED** | first promotion candidate: Deck `decking.surface` |
-| REQ-SNAPSHOT-01 | **COMPLETE LOCAL** (035 not remote) | blocks REQ-4B until remote apply + Owner |
+| REQ-4 | **IN PROGRESS** | REQ-4A complete; no promotions |
+| REQ-4A | **COMPLETE / TECHNICALLY VALIDATED** | snapshot + authority + reconciliation |
+| REQ-4B | **BLOCKED / NOT STARTED** | first promotion `decking.surface` |
+| REQ-SNAPSHOT-01 | **COMPLETE / REMOTE VALIDATED** | 035 applied; REQ-TXN-01 still blocks REQ-4B |
 | MaterialRequirement | **ACTIVE** — current emitter: Deck surface only | REQ-2.1 |
 | LabourRequirement | **ACTIVE** — current emitter: Deck labour only | REQ-3.1 |
 | Component authority | **ACTIVE / NO PROMOTIONS** | Deck surface + labour SHADOW |

@@ -1,13 +1,15 @@
 # REQ-4A Owner Technical Gate
 
-**Status:** COMPLETE LOCAL / READY FOR COMMIT (REQ-4A-R1)  
+**Status:** COMPLETE / TECHNICALLY VALIDATED  
 **Date:** 2026-08-17  
 **Batch:** REQ-4A snapshot + authority + reconciliation + commercial lineage (no promotion)  
-**Completion:** `docs/implementation/REQ_4A_REQUIREMENT_AUTHORITY_FOUNDATION_COMPLETION.md`
+**Commit:** `69c2431fbba688445e1c1c97cf056df2d5c0dc0e`  
+**Migration 035:** Applied remote on `quotr_2.0` (`lxvnylhsbvudzzupxeqr`)  
+**Preview:** https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app  
 
 REQ-4A has **no customer-facing UI**. Automation is the principal gate.
 
-Do **not** apply migration 035 to remote until Owner approves this R1 report. Preview cannot persist snapshots until that apply.
+Do **not** start REQ-4B or REQ-TXN-01 in this gate. Do not promote any component.
 
 ---
 
@@ -20,6 +22,7 @@ Do **not** apply migration 035 to remote until Owner approves this R1 report. Pr
 5. Quote unchanged (lineage via Pricing parent).
 6. No authority badges / Materials / snapshot history UI.
 7. Local migration 035 verification passes.
+8. Remote 035 applied; Preview snapshot persist proven.
 
 ## Goldens (unchanged)
 

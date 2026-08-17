@@ -110,7 +110,7 @@ Diagnostics: counts by kind, priced/unpriced, missing pricing, duplicate IDs, un
 
 ## 9. Persistence
 
-REQ-4A append-only `estimate_requirement_snapshots` (migration 035, local). Requirement objects are not editable commercial rows and are not written onto `estimate_line_items`. REQ-SNAPSHOT-01 **COMPLETE LOCAL**; remote apply required before Preview can persist snapshots. REQ-4B remains blocked until Owner review + remote 035.
+REQ-4A append-only `estimate_requirement_snapshots` (migration 035, applied remote). Requirement objects are not editable commercial rows and are not written onto `estimate_line_items`. REQ-SNAPSHOT-01 **COMPLETE / REMOTE VALIDATED**. REQ-4B remains blocked by REQ-TXN-01.
 
 ---
 

@@ -2,7 +2,7 @@
 
 **Status:** CANONICAL for REQ-4A  
 **Date:** 2026-08-17  
-**Mode:** Infrastructure only. **No live promotions.**
+**Mode:** Infrastructure only. **No live promotions.** REQ-4A **COMPLETE / TECHNICALLY VALIDATED**.
 
 Authority is **external** to `EstimateRequirement`. Requirements do not store `commercialAuthority`. `priced: true` means cost data is complete; it does not mean the requirement owns estimate money.
 

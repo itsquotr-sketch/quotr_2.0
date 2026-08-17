@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED.** REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE LOCAL / OWNER REVIEW PENDING**. REQ-4B **NOT STARTED**. Does not authorise commercial promotion.  
+**Mode:** PHASE 0 frozen. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** **REQ-2.1 COMPLETE / TECHNICALLY VALIDATED.** REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-4B **BLOCKED / NOT STARTED**. Does not authorise commercial promotion.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Absorbs:** `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (SUPPORTING)  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -118,7 +118,7 @@ Requirements are **not** decorative takeoff metadata. They must progressively be
 | --- | --- |
 | **Calculator ownership** | The Work Area calculator that knows the physical model emits the requirement. No central BOM inventor. |
 | **Aggregation** | REQ-1 aggregates **physical** requirements independently from priced estimate-line money. Do not assume all requirements = money. Sum cost only for `priced: true`. |
-| **Persistence** | REQ-4A append-only snapshots (`035`, local). Do not make editable requirement rows the commercial SoT. |
+| **Persistence** | REQ-4A append-only snapshots (`035`, remote applied). Do not make editable requirement rows the commercial SoT. |
 | **UI exposure** | Materials / Labour / Breakdown project requirements. Do not dump internal objects. |
 | **Provenance** | Always preserved. Future calibration reads provenance; it must not be stripped. |
 | **Confidence / assumptions** | Canonical metadata; never multiply money. |
@@ -640,13 +640,13 @@ Every `EstimateRequirement` has three independent truths. Do not collapse them i
 - Demolition / face-fascia labour not emitted. DECK-3 owns task split.
 - REQ-3 is **closed**. Further labour emits during WA maturation, not as REQ-3.2.
 
-## 21.4 REQ-4A (COMPLETE LOCAL / READY FOR COMMIT — REQ-4A-R1)
+## 21.4 REQ-4A (COMPLETE / TECHNICALLY VALIDATED)
 
 Infrastructure only. Contracts: `docs/architecture/QUOTR_COMPONENT_COMMERCIAL_AUTHORITY_CONTRACT.md`, `docs/architecture/QUOTR_REQUIREMENT_SNAPSHOT_CONTRACT.md`.
 
-- REQ-SNAPSHOT-01 **COMPLETE LOCAL** (`035_estimate_requirement_snapshots.sql`, not applied remote).
+- REQ-SNAPSHOT-01 **COMPLETE / REMOTE VALIDATED** (`035_estimate_requirement_snapshots.sql`, applied on `lxvnylhsbvudzzupxeqr`).
 - Commercial lineage: `pricing_documents.requirement_snapshot_id`; `component_key` on estimate/pricing lines.
-- REQ-TXN-01 **BLOCKING REQ-4B / NOT STARTED** (transactional persist safety).
+- REQ-TXN-01 **READY / BLOCKING REQ-4B** (transactional persist safety not implemented).
 - Deck `decking.surface` and `deck.labour` remain **SHADOW**.
 - Shadow reconciliation + eligibility exist. **No promotion.**
 - First REQ-4B candidate: Deck `decking.surface`. Do not start REQ-4B here.
