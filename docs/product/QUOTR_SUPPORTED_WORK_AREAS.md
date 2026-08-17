@@ -49,6 +49,8 @@ OD-T1-01: do **not** claim customer “Supported” until scope + questions + co
 | Target tier | Intent | Types |
 | --- | --- | --- |
 | **TIER 1 / DEEP** | Reference-quality quantity + labour + transparency | Deck; Bathroom; Commercial Interior **composition** |
+
+**Deck estimating maturity (2026-08-18):** Surface (`decking.surface`) is requirement-authoritative with physical lm takeoff. Structure remains a legacy **m² package** (`deck.substructure.m2`). DECK-1A defines the physical structural model contract; member-level takeoff is **not implemented**. See `docs/architecture/DECK_STRUCTURAL_MATERIAL_MODEL.md`.
 | **TIER 2** | Commercially useful QE via requirements | Retaining Wall, Fence, Pergola, Kitchen |
 | **TIER 3 / FUTURE GREENFIELD** | New product WAs | Cladding, Roofing |
 

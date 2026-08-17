@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. Does not populate the catalogue or add rates. **CAT-IDENTITY-01** blocks canonical Catalogue V2 seeding. REQ-2.1 uses current compatibility keys `deck.material.*.lm` only. Physical identity and rate unit remain coupled until CAT-V2.  
+**Mode:** PHASE 0 frozen. Does not populate the catalogue or add rates. **CAT-IDENTITY-01** blocks canonical Catalogue V2 seeding. REQ-2.1 uses current compatibility keys `deck.material.*.lm` only. **DECK-1A** defines structural model contract (`docs/architecture/DECK_STRUCTURAL_MATERIAL_MODEL.md`); proposed keys `timber.sg8.*`, `deck.joists`, etc. are **not live** until DECK-1C.  
 **Absorbs:** `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md` (SUPPORTING)  
 **Rate evidence:** `docs/audits/FOUNDATION_R2R1_MATERIAL_RATE_AUTHORITY_AUDIT.md`, `docs/audits/QUOTR_MATERIAL_RATE_CONSUMPTION_MATRIX.md`  
 **Engine:** `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`

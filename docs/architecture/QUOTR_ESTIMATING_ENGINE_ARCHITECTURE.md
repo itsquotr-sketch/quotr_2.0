@@ -650,7 +650,7 @@ Infrastructure only. Contracts: `docs/architecture/QUOTR_COMPONENT_COMMERCIAL_AU
 - Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE** (REQ-4B). Composer: `component-commercial-selection.ts`.
 - Deck `deck.labour` remains **SHADOW**.
 - Shadow reconciliation + eligibility exist for non-promoted components.
-- **DECK-1** is next (structural material quantities). Do not start DECK-1 here.
+- **DECK-1** is next (structural material quantities). **DECK-1A** complete local — physical model contract in `docs/architecture/DECK_STRUCTURAL_MATERIAL_MODEL.md`. Do not start DECK-1B here.
 
 **Critical principle:** never switch an entire Work Area because one requirement is correct. Authority is **component level**. Mixed maturity must remain valid.
 
