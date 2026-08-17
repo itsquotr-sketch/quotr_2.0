@@ -4,9 +4,10 @@
  * foundation-r1.0 — FOUNDATION-R1 planning/type freeze (pre independent review).
  * foundation-r1.1 — PHASE 0-R1 final pre-emission contract.
  *
- * Types + identity/invariant helpers only. Calculators must NOT emit these
- * objects until REQ-1/REQ-2/REQ-3. Quantity authority for a future generate;
- * money remains line items + cost-first commercial engine.
+ * Types + identity/invariant helpers. REQ-1 makes the calculator envelope
+ * possible. Calculators must NOT emit these objects until REQ-2/REQ-3.
+ * Quantity authority for a future generate; money remains line items +
+ * cost-first commercial engine.
  *
  * Single-consumption: LabourRequirement.baseHours are unadjusted.
  * Project Condition productivity is referenced via adjustmentRef.factors —
@@ -195,7 +196,7 @@ export type ComponentPricingAuthorityState =
   | "LEGACY_FALLBACK"
   | "LEGACY_RETIRED";
 
-/** REQ-1: calculators must not populate this until authorised. */
+/** Optional calculator envelope. Production calculators omit this until REQ-2/REQ-3. */
 export type CalculatorRequirementsEmit = {
   readonly requirements?: readonly EstimateRequirement[];
 };

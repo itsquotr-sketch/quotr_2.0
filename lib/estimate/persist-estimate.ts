@@ -15,6 +15,8 @@ function buildEstimatePayload(
   status: "draft" | "ready" | "failed",
   isStale: boolean
 ) {
+  // REQ-1: EstimateRequirement collections stay in-memory (derive-on-generate).
+  // Do not persist requirement rows or JSON onto estimates.
   return {
     org_id: orgId,
     project_id: projectId,

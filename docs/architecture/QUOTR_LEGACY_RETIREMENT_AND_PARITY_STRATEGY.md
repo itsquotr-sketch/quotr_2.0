@@ -61,7 +61,7 @@ Applies especially to MaterialRequirements, LabourRequirements, Deck reference c
 
 Where new output **intentionally** differs (e.g. lm takeoff replacing m² package, as R2-R1 did: Deck 1 sell $53,440 → $48,340): require documented commercial justification **before** Owner Preview.
 
-REQ-4 is the first dedicated reconciliation batch. REQ-1 must not change money so that shadow has a clean baseline.
+REQ-4 is the first dedicated reconciliation batch. REQ-1 envelope is in place and must not change money so that shadow has a clean baseline. Physical aggregation: `docs/architecture/QUOTR_REQUIREMENT_AGGREGATION_CONTRACT.md`.
 
 ### Parity classes (AC-11 refined)
 

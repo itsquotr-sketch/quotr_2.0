@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen after independent challenge (PHASE 0-R1). Does not authorise calculator emission or pricing-authority change.  
+**Mode:** PHASE 0 frozen. **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** Does not authorise calculator emission or pricing-authority change.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Absorbs:** `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (SUPPORTING)  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -43,10 +43,10 @@ Facts + Constraints + Scope
   → Breakdown / Materials / Labour UI (projections)
 ```
 
-**Today:** line items are money SoT. Requirements types exist and are unused.  
+**Today:** line items are money SoT. REQ-1 envelope + physical aggregation exist; production calculators omit `requirements`.  
 **Target:** requirements become the physical basis; line items aggregate them.
 
-REQ-1 adds the envelope only. Empty `requirements[]` is valid. Existing calculators stay unchanged.
+REQ-1 made emission **possible**. Empty `requirements[]` is valid. Existing calculators stay unchanged. See `docs/architecture/QUOTR_REQUIREMENT_AGGREGATION_CONTRACT.md`.
 
 ---
 
@@ -589,20 +589,21 @@ The maturation ladder is a path, not a claim that every WA must become fully det
 
 Do not permanently assign every type today if evidence is insufficient. Architecture must support all three.
 
-## 21. REQ-1 envelope (next implementation, not this task)
+## 21. REQ-1 envelope (COMPLETE / TECHNICALLY VALIDATED)
 
-REQ-1 is **READY / NOT STARTED** after PHASE 0 freeze.
+REQ-1 is **COMPLETE / TECHNICALLY VALIDATED**.
 
-- optional `requirements[]` on `CalculatorResult` or equivalent;
-- empty arrays valid;
+- optional `requirements[]` on `CalculatorResult`;
+- empty / omitted arrays valid;
+- `calculateEstimate` collects and normalises across Work Areas;
 - aggregation of **physical** requirements, independent of current priced line authority;
 - provenance preserved;
-- **no** new physical quantities;
+- **no** new physical quantities from production calculators;
 - **no** UI takeoff;
 - **no** pricing-authority change;
-- enables later shadow/parity.
+- shadow field helper only — comparison engine is REQ-4.
 
-`foundation-r1.1` is the pre-emission contract. REQ-1 makes emission **possible**, not universal.
+`foundation-r1.1` remains the pre-emission contract. **REQ-2** emits **Deck surface decking only** (`priced: true`, SHADOW — not estimate money). Face/fascia waits for DECK-2 / OD-FACE-01.
 
 ---
 

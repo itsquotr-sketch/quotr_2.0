@@ -411,4 +411,4 @@ The following fields are intentionally incomplete until the current-state audit.
 | Created | 2026-07-24 |
 | Last updated | 2026-08-12 |
 | Stage 0 status | Complete |
-| Next stage | **PHASE 0 COMPLETE / ARCHITECTURE FROZEN.** Next impl: **REQ-1** (`READY / NOT STARTED`). Contract `foundation-r1.1`. Production Scope Discovery **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**. |
+| Next stage | **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** Next impl: **REQ-2** Deck surface decking emission only (`READY / NOT STARTED`). Contract `foundation-r1.1`. Production Scope Discovery **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**. |

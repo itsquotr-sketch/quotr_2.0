@@ -15,6 +15,7 @@ import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
 import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import type { SellAuthority } from "@/lib/commercial-engine/core/cost-first-authority";
+import type { EstimateRequirement } from "@/lib/estimate/requirements";
 
 export type EstimateProject = {
   id: string;
@@ -116,6 +117,12 @@ export type CalculatorResult = {
   exclusions: string[];
   confidence: number;
   assumptionMetadata?: AssumptionMetadata;
+  /**
+   * Optional EstimateRequirement envelope (REQ-1).
+   * Omit or [] is valid. Not commercial authority. Production calculators
+   * must not emit until REQ-2 / REQ-3.
+   */
+  requirements?: readonly EstimateRequirement[];
 };
 
 export type EstimateResult = {
@@ -135,6 +142,11 @@ export type EstimateResult = {
   exclusions: string[];
   assumptionMetadata?: AssumptionMetadata;
   lineItems: EstimateLineItemInput[];
+  /**
+   * Project-level collected requirements after normalisation.
+   * Empty until REQ-2 / REQ-3 emit. Never added to estimate money.
+   */
+  requirements?: readonly EstimateRequirement[];
 };
 
 export type ProductivityRate = {

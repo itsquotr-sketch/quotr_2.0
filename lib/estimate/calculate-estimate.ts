@@ -18,6 +18,7 @@ import { createAssumptionMetadata, mergeAssumptionMetadata } from "@/lib/estimat
 import { finalizeEstimateResult, mergeUnique } from "@/lib/estimate/summary";
 import { mergeDuplicateMaterialBuildUpLineItems } from "@/lib/estimate/material-buildup-dedupe";
 import { dedupePricedItemsByScopeOwnership } from "@/lib/estimate/pricing-ownership";
+import { collectRequirements } from "@/lib/estimate/requirement-normalize";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -110,7 +111,7 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
     );
   }
 
-  return finalizeEstimateResult({
+  const estimate = finalizeEstimateResult({
     lineItems: dedupePricedItemsByScopeOwnership(
       mergeDuplicateMaterialBuildUpLineItems(lineItems)
     ),
@@ -120,4 +121,10 @@ export function calculateEstimate(context: EstimateContext): EstimateResult {
     calculatorResults,
     assumptionMetadata,
   });
+
+  // Physical collection only. Requirement costs are never added to totals.
+  return {
+    ...estimate,
+    requirements: collectRequirements(calculatorResults),
+  };
 }

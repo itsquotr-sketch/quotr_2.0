@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. Does not authorise REQ-1 implementation.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. Does not authorise REQ-2 emission.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Companion canonicals:**
 - Estimating: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`
@@ -14,6 +14,7 @@
 - Development plan: `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`
 - Legacy / parity: `docs/architecture/QUOTR_LEGACY_RETIREMENT_AND_PARITY_STRATEGY.md`
 - Analytics: `docs/architecture/QUOTR_ANALYTICS_EVENT_ARCHITECTURE.md`
+- Requirement aggregation: `docs/architecture/QUOTR_REQUIREMENT_AGGREGATION_CONTRACT.md`
 
 This document is the **only** top-level current product architecture.  
 `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md` is **SUPERSEDED** as the governing product architecture (retained as historical foundation).
@@ -286,8 +287,9 @@ Do not delete history.
 | FOUNDATION-R2 | Owner flow treated as sufficiently validated via R2/R2-R1 remediation | R2 completion + challenge |
 | FOUNDATION-R2-R1 | **Pricing remediation complete** | R2-R1 completion |
 | FOUNDATION-R2-R1-R1 | **Contractor-rate precedence complete** | R2-R1-R1 completion |
-| REQ-1 | **READY / NOT STARTED** | `foundation-r1.1`; no emission |
-| REQ-2 / REQ-3 / REQ-4 | **Not Started** | master plan |
+| REQ-1 | **COMPLETE / TECHNICALLY VALIDATED** | envelope + physical aggregation; no emission |
+| REQ-2 | **READY / NOT STARTED** | Deck surface decking only; not face/fascia |
+| REQ-3 / REQ-4 | **Not Started** | master plan |
 | MaterialRequirement | Types `foundation-r1.1`; **emission Not Started** | `lib/estimate/requirements.ts` |
 | LabourRequirement | Types `foundation-r1.1`; **emission Not Started** | same |
 | Deck transparent estimator | **Not Started** | DECK-1+ |
@@ -304,8 +306,8 @@ Owner decisions (full register: master plan §12): **OD-ARCH-01** LOCKED MVP Mat
 
 ## 10. What this document does not authorise
 
-- Calculator, rate, catalogue, UI, or migration changes
-- REQ-1 implementation
+- Calculator emission, rate, catalogue, UI, or migration changes
+- REQ-2 / REQ-3 emission
 - Stage 3.2.3 UI
 - Company DNA
 - Production Scope Discovery enablement

@@ -1,7 +1,7 @@
 # Quotr Estimate Requirements Architecture
 
 **Classification:** SUPPORTING. **CANONICAL estimating engine:** `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`.  
-**Status:** Planning freeze `foundation-r1.0`. **Final pre-emission contract `foundation-r1.1`** (`lib/estimate/requirements.ts`). **Emission Not Started.**  
+**Status:** Planning freeze `foundation-r1.0`. **Final pre-emission contract `foundation-r1.1`**. **REQ-1 COMPLETE / TECHNICALLY VALIDATED. Emission Not Started.**  
 **Mode:** Architecture lock + TypeScript contracts only. Calculators must not emit requirements until **REQ-1**. FOUNDATION-R2 is Scope Details completeness. FOUNDATION-R2-R1 reconciles Deck priced qty/rate units. Neither emits requirements.  
 **Supersedes in part:** `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md` (MaterialRequirement §4 is absorbed and extended; takeoff persistence and Deck pilot geometry remain valid).  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -67,7 +67,9 @@ Typed variants:
 | `subcontract` | `SubcontractRequirement` | Bathroom plumbing/electrical allowances |
 | `waste` | `WasteRequirement` | Skip/disposal/carting allowances |
 
-**CalculatorResult** gains `requirements: EstimateRequirement[]` (optional until migration). Line items remain the **money projection**. Requirements are the **quantity authority**. A line may reference one or more `requirementId`s.
+**CalculatorResult** has optional `requirements?: readonly EstimateRequirement[]`. Line items remain the **money projection**. Requirements are the **quantity authority** once emitted. A line may later reference one or more `requirementId`s.
+
+**REQ-1:** collection, validation, physical aggregation. Production calculators omit the field. See `docs/architecture/QUOTR_REQUIREMENT_AGGREGATION_CONTRACT.md`.
 
 **Persistence:** derive on generate (same as takeoff architecture option B). Optional JSON cache on estimate; invalidate on regenerate. Do **not** make editable requirement rows the commercial SoT.
 
