@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED**. Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE**; `deck.labour` = **SHADOW**. Structural children = **SHADOW**. **DECK-1C** complete for initial structural timber rate coverage. **DECK-1D-A** **OWNER CALIBRATION MODEL VALIDATED**: `docs/audits/DECK_1D_LEGACY_SUBSTRUCTURE_DECOMPOSITION.md`. Identity lock: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.  
+**Mode:** PHASE 0 frozen. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED**. Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE**; `deck.labour` = **SHADOW**. Structural children = **SHADOW**. **DECK-1C** complete for initial structural timber rate coverage. **DECK-1D-A** **OWNER CALIBRATION MODEL VALIDATED**: `docs/audits/DECK_1D_LEGACY_SUBSTRUCTURE_DECOMPOSITION.md`. **DECK-2A** assisted estimate experience audit complete local: `docs/audits/DECK_2A_ASSISTED_ESTIMATE_EXPERIENCE_AUDIT.md`. Identity lock: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Absorbs:** `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (SUPPORTING)  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -494,7 +494,7 @@ Keep `deck.vertical_face_board_length_lm` as irregular override. Count-only `n �
 | Disposal line | Removal labour only |
 | Nominal board width as coverage | Gaps / effective cover / orientation / offcuts **not** modelled. 126.65 lm is estimate-level takeoff, not fabrication accuracy |
 
-Pilot sequence: DECK-1 explainable surface takeoff + lumped labour → DECK-2 face boards → DECK-3 task labour → DECK-4 calibration hooks → DECK-5 transparency UI. Framing members (joists/bearers/posts/concrete) follow Catalogue V2 keys.
+Pilot sequence: DECK-1 explainable surface takeoff + lumped labour → **DECK-2A assisted estimate experience / Builder Review contract** → DECK-2 face boards → DECK-3 task labour → DECK-4 calibration hooks → DECK-5 transparency UI. Framing members (joists/bearers/posts/concrete) follow Catalogue V2 keys.
 
 ---
 

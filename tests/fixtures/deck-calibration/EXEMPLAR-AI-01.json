@@ -1,0 +1,57 @@
+{
+  "id": "EXEMPLAR-AI-01",
+  "class": "REAL-JOB",
+  "evidenceType": "EXEMPLAR_ESTIMATE",
+  "sourceBrief": "Replace an existing elevated timber deck, approximately 5.2m x 3.1m, around 1.2m above ground. Remove existing decking and substructure. New: 140mm Kwila decking, new piles, 90x45 joists at 400 centres, fascia, two steps. No balustrade requested. Restricted rear access: 25–30m manual carry for material and waste.",
+  "eligibility": {
+    "eligibleForRateCalibration": false,
+    "eligibleForProductivityCalibration": false,
+    "eligibleForQuantityGolden": false,
+    "eligibleForArchitectureCalibration": true
+  },
+  "confidence": "MEDIUM",
+  "notes": [
+    "Architecture evidence only. Do not treat exemplar rates/hours/prices as Quotr authority.",
+    "Use Quotr calculator outputs as the authoritative deterministic quantity path where facts overlap.",
+    "Current deck taxonomy has no explicit Vitex/Kwila subclass handling beyond board material and width."
+  ],
+  "limitations": [
+    "Exemplar is not verified job-cost evidence.",
+    "Support/pile arrangement, support count, post lengths, connector detail, and concrete mix are not supplied.",
+    "Restricted access and manual carry are product-condition evidence, but this fixture does not invent productivity numbers beyond current engine behavior.",
+    "Potential fall-height vs no-balustrade compliance conflict should be surfaced as attention, not auto-priced."
+  ],
+  "assumedFramingFacts": [
+    "length 5.20 m, width 3.10 m, area 16.12 m2",
+    "height 1.20 m elevated",
+    "joists 90x45 at 400 mm centres",
+    "new substructure included",
+    "two-step access retained as deck stair access concept, not detailed stair geometry",
+    "board width 140 mm",
+    "board material Kwila",
+    "existing deck removal yes",
+    "balustrade explicitly not requested"
+  ],
+  "qualityLevel": "standard",
+  "facts": {
+    "deck.length_m": 5.2,
+    "deck.width_m": 3.1,
+    "deck.area_m2": 16.12,
+    "deck.board_material": "Kwila",
+    "deck.board_width_mm": 140,
+    "deck.height_m": 1.2,
+    "deck.level": "Elevated",
+    "deck.existing_deck_removal": true,
+    "deck.substructure_included": true,
+    "deck.joist_section": "90x45",
+    "deck.joist_centres_mm": 400,
+    "deck.access_type": "Stair set",
+    "deck.vertical_face_boards_required": true,
+    "deck.balustrade_required": false
+  },
+  "realJob": {
+    "notes": [
+      "Exemplar estimate only. No actual invoice or actual sell evidence attached."
+    ]
+  }
+}

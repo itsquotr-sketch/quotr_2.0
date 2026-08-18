@@ -1,0 +1,52 @@
+{
+  "id": "REAL-JOB-01",
+  "class": "REAL-JOB",
+  "evidenceType": "REAL_JOB_PARTIAL_COMMERCIAL_EVIDENCE",
+  "sourceBrief": "3m x 9m Vitex decking, 140mm decking boards, 0.14m high off ground, attaching onto an existing deck, new substructure required.",
+  "actualCustomerSellExGst": 13000,
+  "eligibility": {
+    "eligibleForRateCalibration": false,
+    "eligibleForProductivityCalibration": false,
+    "eligibleForQuantityGolden": false,
+    "eligibleForArchitectureCalibration": true
+  },
+  "confidence": "LOW",
+  "notes": [
+    "Partial real-job commercial evidence only. Actual customer sell is known, but internal cost evidence is incomplete.",
+    "Do not derive a Quotr benchmark, company rate, productivity, or margin from the actual sell.",
+    "Current deck material taxonomy does not have a Vitex option, so current-engine run maps the brief to Hardwood-class decking for pricing-path analysis only."
+  ],
+  "limitations": [
+    "No actual timber quantities or framing spec have been supplied.",
+    "Support count, support length, labour, material invoices, fixings, concrete, access, demolition, and exact exclusions are unknown unless Owner later supplies them.",
+    "Actual sell can be shown as directional context only, not as rate authority.",
+    "Current run should be treated as a fast-estimate architecture test, not parity proof."
+  ],
+  "assumedFramingFacts": [
+    "length 3.00 m, width 9.00 m, area 27.00 m2",
+    "height 0.14 m low-level",
+    "attached to existing deck does not by itself imply demolition/removal",
+    "new substructure included",
+    "board material normalized to current Hardwood-class deck taxonomy for engine run",
+    "board width 140 mm"
+  ],
+  "qualityLevel": "standard",
+  "facts": {
+    "deck.length_m": 3,
+    "deck.width_m": 9,
+    "deck.area_m2": 27,
+    "deck.board_material": "Hardwood",
+    "deck.board_width_mm": 140,
+    "deck.height_m": 0.14,
+    "deck.level": "Ground-level",
+    "deck.substructure_included": true
+  },
+  "realJob": {
+    "actualFinalCost": null,
+    "actualCustomerSellExGst": 13000,
+    "notes": [
+      "Actual sold job: $13,000 + GST.",
+      "Known as directional commercial outcome only; internal cost build-up not yet supplied."
+    ]
+  }
+}

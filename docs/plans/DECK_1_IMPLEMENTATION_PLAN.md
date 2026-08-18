@@ -1,6 +1,6 @@
 # DECK-1 Implementation Plan
 
-**Status:** PLANNING — DECK-1 IN PROGRESS / DECK-1A–1C COMPLETE FOR INITIAL TIMBER RATE COVERAGE / DECK-1D IN PROGRESS / DECK-1D-A **OWNER CALIBRATION MODEL VALIDATED**  
+**Status:** PLANNING — DECK-1 IN PROGRESS / DECK-1A–1C COMPLETE FOR INITIAL TIMBER RATE COVERAGE / DECK-1D IN PROGRESS / DECK-1D-A **OWNER CALIBRATION MODEL VALIDATED** / DECK-2A **COMPLETE LOCAL / OWNER PRODUCT REVIEW PENDING**
 **Date:** 2026-08-18  
 **Branch:** `hardening/stage-2a-security`
 
@@ -49,7 +49,7 @@ Replace coarse Deck structural **m² package** allowances with **physically expl
 | **DECK-1C** | Identity + rate coverage | **1C-A** identity/company-scope contract (this stage); **1C-B** sourced benchmarks after Owner identity approval | **None** — shadow only; no `timber.sg8` freeze |
 | **DECK-1D** | Calibration + legacy decomposition (1D-A audit/contract; 1D-B fixtures later) | Intentional model improvement — **not** exact package parity | **None** |
 | **DECK-1R** | Commercial review + selective authority promotion | Parent group or child promotion | **Owner gate** — intentional model improvement |
-| **DECK-2** | Face/fascia physical model | Separate programme | TBD |
+| **DECK-2** | Assisted estimate experience + face/fascia maturity | Separate programme | `docs/plans/DECK_2_ASSISTED_ESTIMATE_ROADMAP.md` |
 | **DECK-3** | Task-level labour | Separate programme | TBD |
 | **DECK-5** | Materials transparency UI | Read-only breakdown | TBD |
 

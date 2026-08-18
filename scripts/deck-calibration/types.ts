@@ -59,6 +59,12 @@ export type DeckCalibrationCoverageOverride = {
   note?: string;
 };
 
+export type DeckCalibrationEvidenceType =
+  | "SYNTHETIC_ESTIMATE_FIXTURE"
+  | "EXEMPLAR_ESTIMATE"
+  | "REAL_JOB_PARTIAL_COMMERCIAL_EVIDENCE"
+  | "REAL_JOB_FULL_COMMERCIAL_EVIDENCE";
+
 export type DeckCalibrationFixture = {
   id: string;
   class:
@@ -68,6 +74,15 @@ export type DeckCalibrationFixture = {
     | "PARTIAL-SPEC"
     | "CUSTOM-MATERIAL"
     | "REAL-JOB";
+  evidenceType?: DeckCalibrationEvidenceType;
+  sourceBrief?: string;
+  actualCustomerSellExGst?: number | null;
+  eligibility?: {
+    eligibleForRateCalibration: boolean;
+    eligibleForProductivityCalibration: boolean;
+    eligibleForQuantityGolden: boolean;
+    eligibleForArchitectureCalibration: boolean;
+  };
   confidence: "HIGH" | "MEDIUM" | "LOW";
   notes: string[];
   limitations: string[];
@@ -88,6 +103,7 @@ export type DeckCalibrationFixture = {
 export type DeckCalibrationRealJobEvidence = {
   quotedSubstructureCost?: number | null;
   quotedSubstructureAllowance?: number | null;
+  actualCustomerSellExGst?: number | null;
   actualFramingMaterialCost?: number | null;
   actualSupportsCost?: number | null;
   actualConcreteCost?: number | null;
