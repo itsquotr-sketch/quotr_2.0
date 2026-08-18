@@ -17,6 +17,10 @@ const INTERNAL_PHRASES = [
   "internal",
   "allowance source",
   "rate source",
+  "sell authority",
+  "legacy_paired_rate",
+  "derived_from_gross_margin",
+  "explicit_sell_override",
 ];
 
 export function sanitizeClientLabel(label: string): string {

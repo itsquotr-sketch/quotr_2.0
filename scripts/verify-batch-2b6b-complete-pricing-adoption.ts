@@ -143,10 +143,11 @@ function main(): void {
   });
   checks.push(
     assert(
-      "qty-rate estimate ignores stale recommended totals",
+      "qty-rate initial Pricing copies estimate totals (notes rates are lineage only)",
       qtyLine.ok &&
-        near(qtyLine.fields.totalCost, 500) &&
-        near(qtyLine.fields.totalSell, 800)
+        near(qtyLine.fields.totalCost, 9999) &&
+        near(qtyLine.fields.totalSell, 9999) &&
+        near(qtyLine.fields.unitSell ?? 0, 999.9)
     )
   );
 

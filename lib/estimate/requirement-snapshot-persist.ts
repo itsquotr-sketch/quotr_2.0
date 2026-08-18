@@ -238,6 +238,9 @@ export function buildSnapshotPayloadForEstimate(params: {
     ...(commercialSources && commercialSources.length > 0
       ? { commercialSources }
       : {}),
+    ...(params.result.estimateSellAuthority
+      ? { estimateSellAuthority: params.result.estimateSellAuthority }
+      : {}),
   });
 }
 

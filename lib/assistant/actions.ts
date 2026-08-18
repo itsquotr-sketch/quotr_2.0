@@ -1258,6 +1258,7 @@ async function runEstimateGeneration(
       grossProfit: totals.grossProfit,
       marginPercent: totals.marginPercent,
       markupPercent: totals.markupPercent,
+      estimateSellAuthority: "project_target_margin" as const,
     };
   }
 

@@ -9,11 +9,18 @@
  * Markup is never a sell authority.
  */
 
+import { roundMoney } from "@/lib/commercial-engine/core/money";
 import { deriveSellFromCost } from "@/lib/commercial-engine/core/sell-from-margin";
 import {
   MAX_GROSS_MARGIN_PERCENT,
   MIN_GROSS_MARGIN_PERCENT,
 } from "@/lib/commercial-engine/versioning";
+
+export const SELL_AUTHORITY_VALUES = [
+  "derived_from_gross_margin",
+  "legacy_paired_rate",
+  "explicit_sell_override",
+] as const;
 
 /** How unit sell was obtained for a resolved rate. */
 export type SellAuthority =
@@ -114,6 +121,78 @@ export function applyProjectGrossMarginToCost(
   projectGrossMarginPercent: number
 ): number {
   return deriveSellFromCost(cost, projectGrossMarginPercent);
+}
+
+export function isSellAuthority(value: unknown): value is SellAuthority {
+  return (SELL_AUTHORITY_VALUES as readonly string[]).includes(String(value));
+}
+
+export function isEstimateSellAuthority(
+  value: unknown
+): value is EstimateSellAuthority {
+  return value === "line_resolved_sells" || value === "project_target_margin";
+}
+
+const PAIRED_TOTAL_TOLERANCE = 0.05;
+
+/**
+ * Historical rows may omit sellAuthority. Infer only when deterministic.
+ *
+ * - persisted enum wins
+ * - sellDerivedFromMargin true → derived_from_gross_margin
+ * - notes pair × qty/hours matches recommended sell → legacy_paired_rate
+ * - notes pair present but totals do not match → derived_from_gross_margin
+ *   (typical project-GM rewrite that left source sellRate as evidence)
+ * - otherwise derived_from_gross_margin (cost-first default)
+ */
+export function interpretLineSellAuthority(params: {
+  persisted?: unknown;
+  sellDerivedFromMargin?: boolean | null;
+  sourceSellRate?: number | null;
+  recommendedSell: number;
+  quantity?: number | null;
+  labourHours?: number | null;
+}): SellAuthority {
+  if (isSellAuthority(params.persisted)) {
+    return params.persisted;
+  }
+  if (params.sellDerivedFromMargin === true) {
+    return "derived_from_gross_margin";
+  }
+  const moneyQty =
+    params.labourHours != null && params.labourHours > 0
+      ? params.labourHours
+      : params.quantity != null && params.quantity > 0
+        ? params.quantity
+        : null;
+  if (
+    params.sourceSellRate != null &&
+    Number.isFinite(params.sourceSellRate) &&
+    moneyQty != null
+  ) {
+    const pairedTotal = roundMoney(params.sourceSellRate * moneyQty);
+    if (Math.abs(pairedTotal - params.recommendedSell) <= PAIRED_TOTAL_TOLERANCE) {
+      return "legacy_paired_rate";
+    }
+    return "derived_from_gross_margin";
+  }
+  return "derived_from_gross_margin";
+}
+
+export function interpretEstimateSellAuthority(params: {
+  persisted?: unknown;
+  targetMarginPercent?: number | null;
+}): EstimateSellAuthority {
+  if (isEstimateSellAuthority(params.persisted)) {
+    return params.persisted;
+  }
+  if (
+    params.targetMarginPercent != null &&
+    Number.isFinite(params.targetMarginPercent)
+  ) {
+    return "project_target_margin";
+  }
+  return "line_resolved_sells";
 }
 
 export function commercialSnapshotKindForPricingDocument(params: {

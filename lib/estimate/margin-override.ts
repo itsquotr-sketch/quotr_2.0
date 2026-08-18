@@ -119,6 +119,8 @@ export function applyTargetMarginToLineItems<T extends {
   grossProfit?: number;
   marginPercent?: number;
   markupPercent?: number;
+  sellDerivedFromMargin?: boolean;
+  sellAuthority?: string;
 }>(
   lineItems: T[],
   targetMarginPercent: number,
@@ -140,6 +142,8 @@ export function applyTargetMarginToLineItems<T extends {
       grossProfit: amounts.grossProfit,
       marginPercent: amounts.marginPercent,
       markupPercent: amounts.markupPercent,
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin" as const,
     };
   });
 }

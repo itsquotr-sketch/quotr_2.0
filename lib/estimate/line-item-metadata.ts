@@ -6,6 +6,7 @@ import type {
   PricingSource,
 } from "@/lib/estimate/pricing-ownership";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import type { SellAuthority } from "@/lib/commercial-engine/core/cost-first-authority";
 
 const META_MARKER = "\n__quotr_meta__:";
 
@@ -58,6 +59,8 @@ export type LineItemMetadata = {
   sellRate?: number;
   rateSourceType?: RateSourceType;
   sellDerivedFromMargin?: boolean;
+  /** Current sell authority. Distinct from rateSourceType. */
+  sellAuthority?: SellAuthority;
   materialBuildUp?: MaterialBuildUpEntry;
   materialBuildUps?: MaterialBuildUpEntry[];
   materialRateResolution?: MaterialRateResolution;
@@ -219,6 +222,21 @@ export function buildPricingNotesFromEstimateLineItem(
   if (metadata.allowanceMinimum) {
     metaToStore.allowanceMinimum = metadata.allowanceMinimum;
   }
+  if (metadata.sellAuthority) {
+    metaToStore.sellAuthority = metadata.sellAuthority;
+  }
+  if (metadata.sellDerivedFromMargin != null) {
+    metaToStore.sellDerivedFromMargin = metadata.sellDerivedFromMargin;
+  }
+  if (metadata.costRate != null) {
+    metaToStore.costRate = metadata.costRate;
+  }
+  if (metadata.sellRate != null) {
+    metaToStore.sellRate = metadata.sellRate;
+  }
+  if (metadata.rateSourceType) {
+    metaToStore.rateSourceType = metadata.rateSourceType;
+  }
   if (Object.keys(metaToStore).length === 0) {
     return displayNotes || null;
   }
@@ -226,6 +244,21 @@ export function buildPricingNotesFromEstimateLineItem(
   return buildPersistedLineItemNotes({
     notes: displayNotes,
     metadata: metaToStore,
+  });
+}
+
+export function stampSellAuthorityOnNotes(
+  notes: string | null | undefined,
+  sellAuthority: SellAuthority
+): string | null {
+  const parsed = parseLineItemNotes(notes);
+  return buildPersistedLineItemNotes({
+    notes: parsed.displayNotes,
+    metadata: {
+      ...parsed.metadata,
+      sellAuthority,
+      sellDerivedFromMargin: sellAuthority === "derived_from_gross_margin",
+    },
   });
 }
 

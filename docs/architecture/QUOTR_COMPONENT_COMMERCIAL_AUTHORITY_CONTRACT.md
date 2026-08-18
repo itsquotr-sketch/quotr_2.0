@@ -6,6 +6,8 @@
 
 Authority is **external** to `EstimateRequirement`. Requirements do not store `commercialAuthority`. `priced: true` means cost data is complete; it does not mean the requirement owns estimate money.
 
+**Sell-authority SoT (RECOVERY-1):** `docs/architecture/QUOTR_COMMERCIAL_COST_TO_SELL_CONTRACT.md`. This file owns *which component line is active money*. It does not own how unit/total sell is derived.
+
 ---
 
 ## 1. Lifecycle

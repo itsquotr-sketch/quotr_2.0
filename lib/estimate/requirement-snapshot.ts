@@ -13,6 +13,8 @@ import { assertRequirement } from "@/lib/estimate/requirement-validate";
 import { normalizeRequirements } from "@/lib/estimate/requirement-normalize";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
 import type { CommercialActiveSource } from "@/lib/estimate/component-commercial-selection";
+import type { EstimateSellAuthority } from "@/lib/commercial-engine/core/cost-first-authority";
+import { isEstimateSellAuthority } from "@/lib/commercial-engine/core/cost-first-authority";
 
 export const ESTIMATE_REQUIREMENT_SNAPSHOT_SCHEMA_VERSION =
   "estimate-requirement-snapshot-v1" as const;
@@ -45,6 +47,11 @@ export type EstimateRequirementSnapshotV1 = {
     activeCost: number | null;
     fallbackReason?: string;
   }>;
+  /**
+   * Optional RECOVERY-1-R1 generation sell authority.
+   * Absent on historical snapshots — interpret from estimates.target_margin_percent.
+   */
+  estimateSellAuthority?: EstimateSellAuthority;
 };
 
 export class RequirementSnapshotError extends Error {
@@ -178,6 +185,9 @@ export function parseEstimateRequirementSnapshot(
   });
 
   const commercialSources = parseCommercialSources(record.commercialSources);
+  const estimateSellAuthority = isEstimateSellAuthority(record.estimateSellAuthority)
+    ? record.estimateSellAuthority
+    : undefined;
 
   const snapshot: EstimateRequirementSnapshotV1 = {
     schemaVersion: ESTIMATE_REQUIREMENT_SNAPSHOT_SCHEMA_VERSION,
@@ -187,6 +197,7 @@ export function parseEstimateRequirementSnapshot(
     requirements,
     componentAuthorities,
     ...(commercialSources ? { commercialSources } : {}),
+    ...(estimateSellAuthority ? { estimateSellAuthority } : {}),
   };
   assertJsonSafe(snapshot, "snapshot");
   return snapshot;
@@ -255,6 +266,7 @@ export function buildEstimateRequirementSnapshotV1(params: {
   generatedAt?: string;
   requirements: readonly EstimateRequirement[];
   commercialSources?: EstimateRequirementSnapshotV1["commercialSources"];
+  estimateSellAuthority?: EstimateRequirementSnapshotV1["estimateSellAuthority"];
 }): EstimateRequirementSnapshotV1 {
   return {
     schemaVersion: ESTIMATE_REQUIREMENT_SNAPSHOT_SCHEMA_VERSION,
@@ -264,5 +276,8 @@ export function buildEstimateRequirementSnapshotV1(params: {
     requirements: normalizeRequirements(params.requirements),
     componentAuthorities: [...snapshotRegisteredAuthorities()],
     ...(params.commercialSources ? { commercialSources: params.commercialSources } : {}),
+    ...(params.estimateSellAuthority
+      ? { estimateSellAuthority: params.estimateSellAuthority }
+      : {}),
   };
 }

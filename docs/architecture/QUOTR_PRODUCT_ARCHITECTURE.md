@@ -17,6 +17,7 @@
 - Analytics: `docs/architecture/QUOTR_ANALYTICS_EVENT_ARCHITECTURE.md`
 - Requirement aggregation: `docs/architecture/QUOTR_REQUIREMENT_AGGREGATION_CONTRACT.md`
 - Component authority: `docs/architecture/QUOTR_COMPONENT_COMMERCIAL_AUTHORITY_CONTRACT.md`
+- Cost-to-sell: `docs/architecture/QUOTR_COMMERCIAL_COST_TO_SELL_CONTRACT.md`
 - Requirement snapshots: `docs/architecture/QUOTR_REQUIREMENT_SNAPSHOT_CONTRACT.md`
 
 This document is the **only** top-level current product architecture.  

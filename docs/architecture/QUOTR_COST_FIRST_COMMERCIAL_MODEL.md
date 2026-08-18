@@ -9,6 +9,8 @@
 
 **FOUNDATION-R2-R1-R1 (2026-08-16):** Contractor matching-material `$/m²` outranks Quotr `$/lm` after explicit coverage conversion. Converted cost-only rows re-derive sell from company GM. Do not convert a `$/m²` figure as if it were `$/lm`. Do not rewrite persisted company rows.
 
+**RECOVERY-1 (2026-08-19):** Sell-authority SoT is `docs/architecture/QUOTR_COMMERCIAL_COST_TO_SELL_CONTRACT.md`. This file remains the cost-first product model. Do not duplicate competing sell rules here.
+
 ---
 
 ## 1. Product direction

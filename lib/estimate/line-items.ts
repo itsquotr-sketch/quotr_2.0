@@ -14,6 +14,7 @@ import type {
   LineItemCategory,
 } from "@/lib/estimate/types";
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
+import type { SellAuthority } from "@/lib/commercial-engine/core/cost-first-authority";
 
 /**
  * Expected money via commercial engine; low/high via org range factors (domain).
@@ -60,6 +61,7 @@ type RateMetadata = {
   costRate?: number;
   sellRate?: number;
   sellDerivedFromMargin?: boolean;
+  sellAuthority?: SellAuthority;
 };
 
 function withRateMetadata(
@@ -77,6 +79,7 @@ function withRateMetadata(
     costRate: metadata.costRate,
     sellRate: metadata.sellRate,
     sellDerivedFromMargin: metadata.sellDerivedFromMargin,
+    sellAuthority: metadata.sellAuthority,
   };
 }
 
@@ -96,6 +99,7 @@ export function createLabourLineItem(params: {
   itemKey?: string;
   componentKey?: string;
   sellDerivedFromMargin?: boolean;
+  sellAuthority?: SellAuthority;
   notes?: string;
   sortOrder: number;
   organisationSettings: OrganisationSettings | null;
@@ -148,6 +152,7 @@ export function createLabourLineItem(params: {
       costRate: params.labourCostRate,
       sellRate: params.labourSellRate,
       sellDerivedFromMargin: params.sellDerivedFromMargin,
+      sellAuthority: params.sellAuthority,
     }
   );
 }
@@ -163,6 +168,7 @@ export function createFixedLabourLineItem(params: {
   rateSourceType?: RateSourceType;
   itemKey?: string;
   sellDerivedFromMargin?: boolean;
+  sellAuthority?: SellAuthority;
   notes?: string;
   sortOrder: number;
   organisationSettings: OrganisationSettings | null;
@@ -200,6 +206,7 @@ export function createFixedLabourLineItem(params: {
       costRate: params.labourCostRate,
       sellRate: params.labourSellRate,
       sellDerivedFromMargin: params.sellDerivedFromMargin,
+      sellAuthority: params.sellAuthority,
     }
   );
 }
@@ -222,6 +229,7 @@ export function createRateLineItem(params: {
   itemKey?: string;
   componentKey?: string;
   sellDerivedFromMargin?: boolean;
+  sellAuthority?: SellAuthority;
   notes?: string;
   sortOrder: number;
   organisationSettings: OrganisationSettings | null;
@@ -263,6 +271,7 @@ export function createRateLineItem(params: {
       costRate: params.costRate,
       sellRate: params.sellRate,
       sellDerivedFromMargin: params.sellDerivedFromMargin,
+      sellAuthority: params.sellAuthority,
     }
   );
 }
@@ -278,6 +287,7 @@ export function createAllowanceLineItem(params: {
   rateSourceType?: RateSourceType;
   itemKey?: string;
   sellDerivedFromMargin?: boolean;
+  sellAuthority?: SellAuthority;
   notes?: string;
   sortOrder: number;
   organisationSettings: OrganisationSettings | null;
@@ -315,6 +325,7 @@ export function createAllowanceLineItem(params: {
       costRate: params.recommendedCost,
       sellRate: params.recommendedSell,
       sellDerivedFromMargin: params.sellDerivedFromMargin,
+      sellAuthority: params.sellAuthority,
     }
   );
 }
@@ -333,6 +344,7 @@ export function buildLineItemNotes(item: EstimateLineItemInput): string | null {
       sellRate: item.sellRate,
       rateSourceType: item.rateSourceType,
       sellDerivedFromMargin: item.sellDerivedFromMargin,
+      sellAuthority: item.sellAuthority,
       materialBuildUp: item.materialBuildUp,
       materialBuildUps:
         item.materialBuildUps ??

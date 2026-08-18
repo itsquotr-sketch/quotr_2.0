@@ -16,6 +16,7 @@ export function rateFieldsFromResolved(
     costRate: resolved.costRate,
     sellRate: resolved.sellRate,
     sellDerivedFromMargin: resolved.sellDerivedFromMargin,
+    sellAuthority: resolved.sellAuthority,
   };
 }
 

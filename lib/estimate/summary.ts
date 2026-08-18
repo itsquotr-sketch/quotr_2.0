@@ -257,6 +257,7 @@ export function finalizeEstimateResult(params: {
     missingInfo,
     exclusions,
     lineItems: params.lineItems,
+    estimateSellAuthority: "line_resolved_sells" as const,
   };
 }
 

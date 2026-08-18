@@ -11,6 +11,7 @@ import {
   validateTargetMarginPercent,
 } from "@/lib/estimate/margin-override";
 import { getDefaultMarginPercent } from "@/lib/estimate/rates";
+import { stampSellAuthorityOnNotes } from "@/lib/estimate/line-item-metadata";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import type { OrganisationSettings } from "@/components/setup/types";
 
@@ -134,7 +135,10 @@ export async function updateEstimateMargin(
       margin_percent: amounts.marginPercent,
       markup_percent: amounts.markupPercent,
       rate_source: item.rate_source,
-      notes: item.notes,
+      notes: stampSellAuthorityOnNotes(
+        item.notes as string | null,
+        "derived_from_gross_margin"
+      ),
       sort_order: item.sort_order,
     };
   });

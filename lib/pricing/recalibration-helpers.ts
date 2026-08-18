@@ -1,4 +1,4 @@
-import { buildPricingNotesFromEstimateLineItem, parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { buildPricingNotesFromEstimateLineItem, parseLineItemNotes, stampSellAuthorityOnNotes } from "@/lib/estimate/line-item-metadata";
 import { pricingOwnerToDeliveryMethod } from "@/lib/estimate/pricing-ownership";
 import {
   cleanClientLabel,
@@ -83,6 +83,7 @@ export function valuesFromEstimateLineItem(lineItem: EstimateLineItemRow) {
     throw new Error(authoritative.error);
   }
   const fields = authoritative.fields;
+  const sellAuthority = authoritative.sellAuthority;
 
   return {
     itemType,
@@ -107,7 +108,11 @@ export function valuesFromEstimateLineItem(lineItem: EstimateLineItemRow) {
     calculatedQuantity: fields.calculatedQuantity,
     costKnown: fields.costKnown,
     internalDescription: parseDisplayNotes(lineItem.notes),
-    notesInternal: buildPricingNotesFromEstimateLineItem(lineItem.notes),
+    notesInternal: stampSellAuthorityOnNotes(
+      buildPricingNotesFromEstimateLineItem(lineItem.notes),
+      sellAuthority
+    ),
+    sellAuthority,
   };
 }
 

@@ -14,7 +14,10 @@ import type {
 import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
 import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
-import type { SellAuthority } from "@/lib/commercial-engine/core/cost-first-authority";
+import type {
+  EstimateSellAuthority,
+  SellAuthority,
+} from "@/lib/commercial-engine/core/cost-first-authority";
 import type { DeckSubstructureGroupReconciliation } from "@/lib/estimate/deck-structure";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
 import type { CommercialComponentSelection } from "@/lib/estimate/component-commercial-selection";
@@ -100,6 +103,8 @@ export type EstimateLineItemInput = {
   costRate?: number;
   sellRate?: number;
   sellDerivedFromMargin?: boolean;
+  /** Current sell authority (distinct from rateSource). */
+  sellAuthority?: SellAuthority;
   notes?: string;
   materialBuildUp?: MaterialBuildUpEntry;
   materialBuildUps?: MaterialBuildUpEntry[];
@@ -154,6 +159,11 @@ export type EstimateResult = {
   exclusions: string[];
   assumptionMetadata?: AssumptionMetadata;
   lineItems: EstimateLineItemInput[];
+  /**
+   * How this generation's recommended sell was obtained.
+   * Default `line_resolved_sells`. Project GM rewrite → `project_target_margin`.
+   */
+  estimateSellAuthority?: EstimateSellAuthority;
   /**
    * Project-level collected requirements after normalisation.
    * Empty until REQ-2 / REQ-3 emit. Never added on top of estimate money.

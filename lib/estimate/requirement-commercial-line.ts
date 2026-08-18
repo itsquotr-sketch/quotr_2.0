@@ -78,6 +78,7 @@ export function adaptPricedMaterialRequirementToEstimateLine(params: {
     costRate: requirement.unitCost,
     sellRate: legacyLine.sellRate,
     sellDerivedFromMargin: legacyLine.sellDerivedFromMargin,
+    sellAuthority: legacyLine.sellAuthority,
     ...buildAmounts(recommendedCost, recommendedSell, organisationSettings),
   };
 }
@@ -110,6 +111,7 @@ export function adaptPricedMaterialRequirementWithoutLegacy(params: {
     rateSource: requirement.rateSource,
     componentKey: requirement.componentKey,
     sellDerivedFromMargin: true,
+    sellAuthority: "derived_from_gross_margin" as const,
     sortOrder: params.sortOrder,
     organisationSettings,
   });

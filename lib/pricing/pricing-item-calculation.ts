@@ -326,15 +326,13 @@ export function buildPricingItemFieldsFromEstimateLineItem(lineItem: {
         ? roundMoney(quantity * productivityRate)
         : null);
     const unitCost =
-      metadata.costRate ??
-      (calculatedQuantity && calculatedQuantity > 0
+      calculatedQuantity && calculatedQuantity > 0
         ? roundMoney(totalCost / calculatedQuantity)
-        : null);
+        : metadata.costRate ?? null;
     const unitSell =
-      metadata.sellRate ??
-      (calculatedQuantity && calculatedQuantity > 0
+      calculatedQuantity && calculatedQuantity > 0
         ? roundMoney(totalSell / calculatedQuantity)
-        : null);
+        : null;
 
     return withQuantityDefaults(
       computeProfitFields({
@@ -354,11 +352,11 @@ export function buildPricingItemFieldsFromEstimateLineItem(lineItem: {
   }
 
   const unitCost =
-    metadata.costRate ??
-    (quantity && quantity > 0 ? roundMoney(totalCost / quantity) : null);
+    quantity && quantity > 0
+      ? roundMoney(totalCost / quantity)
+      : metadata.costRate ?? null;
   const unitSell =
-    metadata.sellRate ??
-    (quantity && quantity > 0 ? roundMoney(totalSell / quantity) : null);
+    quantity && quantity > 0 ? roundMoney(totalSell / quantity) : null;
 
   if (quantity == null || quantity <= 0) {
     return withQuantityDefaults(
