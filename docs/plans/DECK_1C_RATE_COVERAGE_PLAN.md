@@ -1,12 +1,15 @@
 # DECK-1C Rate Coverage Plan
 
-**Status:** PLANNING — DECK-1C IN PROGRESS / DECK-1C-A **OWNER VALIDATED** / DECK-1C-B NOT STARTED  
+**Status:** PLANNING — DECK-1C IN PROGRESS / DECK-1C-A **OWNER VALIDATED** / **DECK-1C-B1 COMPLETE / OWNER VALIDATED** / DECK-1C-B2 NOT STARTED  
 **Date:** 2026-08-18  
-**HEAD:** `46b186202f727998c8578c3a14039ba9f9ba645c`  
+**HEAD:** `be0bd2ae5189a2701093334e97af1718b2e729e3`  
 **Identity contract:** `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`  
-**Company contract:** `docs/architecture/QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md`
+**Company contract:** `docs/architecture/QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md`  
+**B1 evidence:** `docs/research/DECK_1C_B1_NZ_STRUCTURAL_MATERIAL_EVIDENCE.md`  
+**B1 comparison:** `docs/research/DECK_1C_B1_BENCHMARK_SOURCE_COMPARISON.md`  
+**Owner gate:** `docs/runbooks/DECK_1C_B1_OWNER_RATE_GATE.md`
 
-DECK-1C-B is **not started**. No prices in this file.
+DECK-1C-B1 is **evidence only** and is now **Owner validated** (`docs/runbooks/DECK_1C_B1_OWNER_RATE_GATE.md`). No prices attached in this B1 commit.
 
 ---
 
@@ -16,42 +19,43 @@ DECK-1C-B is **not started**. No prices in this file.
 | --- | --- | --- |
 | **DECK-1C-A** | Material identity + company/project/Quotr scope + rate-matching contract | COMPLETE / OWNER VALIDATED |
 | **DECK-1C-A-R1** | CAT-IDENTITY-01 implementation (types, normalize, known/unknown/custom, treatment emission gate). No prices. | COMPLETE / TECHNICALLY VALIDATED |
-| **DECK-1C-B** | Sourced NZ benchmark research + attach prices to **approved** common identities | NOT STARTED |
+| **DECK-1C-B1** | NZ public source research + Owner evidence pack | COMPLETE / OWNER VALIDATED |
+| **DECK-1C-B2** | Attach Owner-approved sourced benchmarks only | NOT STARTED |
 | **DECK-1C-C** (optional later) | Save-for-future + company materials table (migration) | After identity + if Owner wants persistence before Materials UI |
 | **DECK-1D** | Shadow reconciliation vs legacy package | After 1C pricing evidence exists (unpriced children still honest) |
 | **DECK-1R** | Authority promotion | Owner gate — not now |
 
 ---
 
-## 2. DECK-1C-B research plan (do not execute now)
+## 2. DECK-1C-B1 outcome (research done; not executed as rates)
 
-After Owner approves identity:
+B1 found current NZ public products. Headline:
 
-1. Curate CORE COMMON rows (90×45, 140×45, 190×45 structural timber lm; 90×90 post EA) **without** inventing SG8 if the sourced product is not specified as SG8.
-2. Source **current NZ merchant list prices** (CSV/manual; no scraping in-agent as silent SoT). Record merchant, date, region, ex-GST, unit, product description.
-3. Map each source row to canonical identity (section, treatment, grade if stated, unit).
-4. If source is SG8 H3.2 140×45, the Quotr common identity **includes** those attributes — it does not price unknown-grade requirements.
-5. Supports: research **EA product** prices only. No length invention.
-6. Concrete: research only if Owner approved unknown-mix generic `$/m³` **or** a specified mix identity. Default recommendation: skip generic concrete benchmark.
-7. Provenance fields on every benchmark: source, date, region, confidence, `calculatorSupport`.
-8. Attach as Quotr exact benchmark **after** CAT-IDENTITY-01 keys exist. Company rates still outrank.
-9. Do **not** restamp Deck $48,340. Structural children remain SHADOW.
+- Framing SKUs are typically **Radiata SG8**, **H3.2 or H1.2**, **KD or green**, dressed **90×45 / 140×45 / 190×45** (call size 100×50 / 150×50 / 200×50).
+- Bunnings publishes **GST-inclusive** piece + $/lm; $/lm **stable across 4.8–6.0 m** within one identity.
+- ITM Stratford is cheaper and **Taranaki-specific**. Do not average with Bunnings.
+- Supports **90×90 H5** are sold **lm / long pieces**, not a length-free EA. Fence 2.4 m posts **are** EA but **different identity**.
+- Firth has **no public unknown-mix $/m³**; small-load threshold **3 m³** vs DECK-REF-01 **0.324 m³**.
 
-### Benchmark provenance requirements
+B2 may attach only the three approved Bunnings KD identities after a **separate** implementation batch. Structural children remain SHADOW.
+
+Legacy `deck.substructure.m2` package remains money authority. Do **not** restamp Deck $48,340.
+
+### Benchmark provenance requirements (unchanged; B2 uses B1 fields)
 
 | Field | Required |
 | --- | --- |
 | Merchant / list name | Yes |
 | Captured date | Yes |
 | Region (NZ default) | Yes |
-| Ex-GST unit cost | Yes (DECK-1C-B only) |
+| Ex-GST unit cost | Yes (DECK-1C-B2 only, after Owner) |
 | Unit | Yes (lm / ea / m3) |
 | Product text as sold | Yes (retain original) |
 | Mapped identity hash | Yes |
 | Confidence | Yes |
 | Effective / expiry | Preferred |
 
-No guessed market values.
+No guessed market values. No reuse of anonymous `DECK_BENCHMARKS.framing` $120/m² as joist lm.
 
 ---
 
@@ -65,6 +69,7 @@ No guessed market values.
 - Auto-save contractor customs into global catalogue
 - Invent post LM
 - Convert 0.324 m³ to bags
+- Median Bunnings + ITM into a fake national rate
 
 ---
 
@@ -72,6 +77,8 @@ No guessed market values.
 
 | Gate | Ready? |
 | --- | --- |
-| DECK-1C-B price research | **No** — CAT-IDENTITY-01 landed; B1 is research/handoff only until Owner reviews evidence |
+| DECK-1C-B1 evidence | **Yes** — Owner validated |
+| DECK-1C-B2 price attach | **No** — not started in this commit |
 | Company materials DB | **No** — contract only |
 | Structural promotion | **No** |
+

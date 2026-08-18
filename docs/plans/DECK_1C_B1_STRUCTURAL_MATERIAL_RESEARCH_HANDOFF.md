@@ -1,6 +1,6 @@
 # DECK-1C-B1 — NZ Structural Material Coverage + Source Research Handoff
 
-**Status:** READY / NOT STARTED — research specification only  
+**Status:** COMPLETE / OWNER VALIDATED — research evidence returned; Owner D1–D10 locked; no prices implemented in this batch  
 **Date:** 2026-08-18  
 **Depends on:** CAT-IDENTITY-01 (`e8e9ca298e9f8b48ef4e543d9e32168234a8d3c0`)  
 **Identity contract:** `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`  
