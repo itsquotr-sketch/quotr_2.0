@@ -315,8 +315,9 @@ check(
     stepperUi.includes("summary.primary")
 );
 check(
-  "stepper uses Specification label",
-  stepperUi.includes('label: "Specification"')
+  "stepper uses Clarify label",
+  stepperUi.includes('label: "Clarify"') &&
+    stepperUi.includes('label: "Job Plan"')
 );
 
 const card = read("components/assistant/CollapsibleStageCard.tsx");

@@ -126,11 +126,11 @@ const active = resolveActiveDisclosureStage({
   constraintsSubmitted: false,
   estimateReady: false,
 });
-check("active stage expands (quality)", active === "quality");
+check("active stage expands (clarify)", active === "clarify");
 check(
   "completed stages do not prefer expand",
   !stagePrefersExpanded("capture", active) &&
-    stagePrefersExpanded("quality", active)
+    stagePrefersExpanded("clarify", active)
 );
 check(
   "reduced-motion supported on stage cards",
@@ -241,7 +241,8 @@ check(
 );
 check(
   "Quick Estimate empty copy defined",
-  ASSISTANT_EMPTY_STATES.quick_estimate.title.includes("generate an estimate")
+  ASSISTANT_EMPTY_STATES.quick_estimate.title.includes("Job plan confirmed") &&
+    ASSISTANT_EMPTY_STATES.quick_estimate.nextAction.toLowerCase().includes("clarify")
 );
 check(
   "AssistantEmptyState component exists",
@@ -298,8 +299,8 @@ check(
     fileHas("lib/scope-discovery/ui/labels.ts", 'dismissed: "Not required"')
 );
 check(
-  "Stepper uses Scope Details",
-  fileHas("components/assistant/StepperNav.tsx", 'label: "Scope Details"')
+  "Stepper uses Clarify",
+  fileHas("components/assistant/StepperNav.tsx", 'label: "Clarify"')
 );
 
 // —— Performance instrumentation ——

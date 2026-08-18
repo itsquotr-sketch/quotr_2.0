@@ -1,18 +1,17 @@
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
 import type { StepperStepSummary } from "@/lib/assistant/stage-completion-summaries";
+import { toPlanningDisplayStage } from "@/lib/assistant/clarify/planning-stage";
 
 export const STEPPER_STAGES = [
   { key: "brief", label: "Brief" },
   { key: "confirm_work_areas", label: "Job Plan" },
-  { key: "quality", label: "Specification" },
-  { key: "work_area_questions", label: "Scope Details" },
-  { key: "constraints", label: "Site Constraints" },
+  { key: "quality", label: "Clarify" },
   { key: "estimate_ready", label: "Estimate" },
 ] as const;
 
-/** Builder Interview path — single user-facing conditions concept (3.2.2-R2). */
-export const PROJECT_CONDITIONS_STEPPER_LABEL = "Project Conditions";
+/** @deprecated Display name only — Project Conditions now live in Clarify. */
+export const PROJECT_CONDITIONS_STEPPER_LABEL = "Clarify";
 
 export type StepperStageKey = (typeof STEPPER_STAGES)[number]["key"];
 
@@ -21,41 +20,28 @@ export type StepperStepState = "complete" | "active" | "pending" | "attention";
 type StepperNavProps = {
   currentStage: string;
   needsAttention?: Partial<Record<StepperStageKey, boolean>>;
-  /** Compact secondary lines — presentation only (3.1B.7B). */
   stepSummaries?: Partial<Record<StepperStageKey, StepperStepSummary>>;
-  /**
-   * When true, label the constraints step as Project Conditions
-   * (presentation only — domain key remains `constraints`).
-   */
   preferProjectConditionsLabel?: boolean;
   className?: string;
 };
 
-const STAGE_ORDER = [
+const DISPLAY_ORDER = [
   "brief",
   "confirm_work_areas",
   "quality",
-  "work_area_questions",
-  "constraints",
-  "ready_to_estimate",
   "estimate_ready",
 ] as const;
 
 function resolveStageIndex(stage: string): number {
-  if (stage === "ready_to_estimate") {
-    return STAGE_ORDER.indexOf("constraints") + 1;
-  }
-
-  const idx = STAGE_ORDER.indexOf(stage as (typeof STAGE_ORDER)[number]);
-  return idx === -1 ? 0 : idx;
+  const display = toPlanningDisplayStage(stage as never);
+  if (display === "brief") return 0;
+  if (display === "job_plan") return 1;
+  if (display === "clarify") return 2;
+  return 3;
 }
 
 function getStepIndex(key: StepperStageKey): number {
-  if (key === "estimate_ready") {
-    return STAGE_ORDER.indexOf("estimate_ready");
-  }
-
-  return STAGE_ORDER.indexOf(key);
+  return DISPLAY_ORDER.indexOf(key);
 }
 
 function getStepState(
@@ -68,12 +54,6 @@ function getStepState(
 
   if (needsAttention) {
     return "attention";
-  }
-
-  if (stepKey === "estimate_ready") {
-    if (currentStage === "estimate_ready") return "active";
-    if (currentIdx > getStepIndex("constraints")) return "complete";
-    return "pending";
   }
 
   if (stepIdx < currentIdx) return "complete";
@@ -101,7 +81,6 @@ export function StepperNav({
   currentStage,
   needsAttention = {},
   stepSummaries = {},
-  preferProjectConditionsLabel = false,
   className,
 }: StepperNavProps) {
   return (
@@ -114,10 +93,6 @@ export function StepperNav({
             needsAttention[step.key]
           );
           const summary = stepSummaries[step.key];
-          const label =
-            step.key === "constraints" && preferProjectConditionsLabel
-              ? PROJECT_CONDITIONS_STEPPER_LABEL
-              : step.label;
 
           return (
             <li key={step.key}>
@@ -141,7 +116,7 @@ export function StepperNav({
                 </span>
                 <div className="min-w-0 flex-1 leading-tight">
                   <span className={cn("block", stateStyles[state])}>
-                    {label}
+                    {step.label}
                   </span>
                   {summary?.primary ? (
                     <span className="mt-0.5 block text-[11px] text-muted-foreground">

@@ -163,7 +163,7 @@ function main(): void {
 
   check(
     "6 Project Setup remains separate/collapsed",
-    setup.includes("View setup") &&
+    setup.includes("View setup") || setup.includes("Job details") &&
       shell.includes("compressCompletedSetup") &&
       shell.indexOf("EstimateReviewSummaryStrip") <
         shell.indexOf("<CompletedSetupDisclosure") &&

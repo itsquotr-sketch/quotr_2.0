@@ -363,8 +363,8 @@ check(
 
 // —— Terminology ——
 check(
-  "Stepper uses Scope Details",
-  fileHas("components/assistant/StepperNav.tsx", 'label: "Scope Details"')
+  "Stepper uses Clarify",
+  fileHas("components/assistant/StepperNav.tsx", 'label: "Clarify"')
 );
 check(
   "AssistantShell uses Scope Details + Site Constraints",

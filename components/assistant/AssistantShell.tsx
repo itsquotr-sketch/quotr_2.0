@@ -28,6 +28,7 @@ import type {
 } from "@/components/assistant/types";
 import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
 import { JobPlanPanel } from "@/components/assistant/job-plan/JobPlanPanel";
+import { ClarifyPanel } from "@/components/assistant/clarify/ClarifyPanel";
 import {
   ProjectCaptureCollapsedSummary,
   WorkAreasCollapsedSummary,
@@ -76,6 +77,15 @@ import {
   jobPlanWorkAreasFromUi,
 } from "@/lib/assistant/job-plan/from-assistant-state";
 import type { JobPlanScopeItem } from "@/lib/assistant/job-plan/types";
+import { composeClarifyView } from "@/lib/assistant/clarify/compose";
+import {
+  answerClarifyConstraint,
+  answerClarifyFact,
+  answerClarifySelectFact,
+  completeClarifyPlanning,
+} from "@/lib/assistant/clarify/actions";
+import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
+import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import type { EstimateFact } from "@/lib/estimate/types";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { startPreviewPerf, recordPreviewPerf } from "@/lib/assistant/preview-performance";
@@ -138,6 +148,7 @@ type PendingAction =
   | "quality"
   | "questions"
   | "constraints"
+  | "clarify"
   | "estimate"
   | "regenerate"
   | "add_work_area"
@@ -360,6 +371,9 @@ export function AssistantShell({
   // are resolved. Empty saveConstraints([]) must not skip the PC stage.
   const estimateStageUnlockRef = useRef(false);
   useEffect(() => {
+    if (CLARIFY_IS_PRIMARY) {
+      return;
+    }
     if (
       !preferProjectConditionsAsk ||
       constraintsSubmitted ||
@@ -730,20 +744,19 @@ export function AssistantShell({
     if (isGenerating || pendingAction != null || actionLockRef.current) {
       return;
     }
-    if (
-      preferProjectConditionsAsk &&
-      !projectConditionsSnapshot?.readiness.canGenerateQuickEstimate
-    ) {
-      setActionError(
-        "Complete the remaining project information before generating the estimate."
-      );
-      return;
-    }
     setIsGenerating(true);
     recordPreviewPerf("estimate_generate_ack", 0);
     const endPerf = startPreviewPerf("estimate_generate_complete");
     void runAction("estimate", async () => {
       try {
+        if (CLARIFY_IS_PRIMARY && !constraintsSubmitted) {
+          const advanced = await completeClarifyPlanning({
+            projectId: project.id,
+            qualityLevel: qualityLevel ?? "standard",
+            generate: true,
+          });
+          return advanced;
+        }
         return await generateStaticEstimate(project.id);
       } finally {
         endPerf();
@@ -754,8 +767,8 @@ export function AssistantShell({
     pendingAction,
     project.id,
     runAction,
-    preferProjectConditionsAsk,
-    projectConditionsSnapshot?.readiness.canGenerateQuickEstimate,
+    constraintsSubmitted,
+    qualityLevel,
   ]);
 
   const handleRegenerateEstimate = useCallback(() => {
@@ -1038,6 +1051,119 @@ export function AssistantShell({
     [project.id, router]
   );
 
+  const handleClarifyBoolean = useCallback(
+    async (
+      candidate: ClarifyCandidate,
+      presentation: "INCLUDED" | "NOT_INCLUDED"
+    ) => {
+      if (candidate.write && candidate.workAreaId) {
+        setJobPlanFactOverlay((prev) =>
+          applyJobPlanScopeWrite({
+            facts: prev,
+            workAreaId: candidate.workAreaId!,
+            write: candidate.write!,
+            presentation,
+          }) as EstimateFact[]
+        );
+        const result = await answerClarifyFact({
+          projectId: project.id,
+          workAreaId: candidate.workAreaId,
+          write: candidate.write,
+          presentation,
+        });
+        if (result.error) {
+          setActionError(result.error);
+          return;
+        }
+      } else if (candidate.factKey) {
+        const value = presentation === "INCLUDED";
+        setJobPlanFactOverlay((prev) =>
+          overlayFact(prev, {
+            key: candidate.factKey!,
+            work_area_id: candidate.workAreaId,
+            value,
+          })
+        );
+        const result = await answerClarifySelectFact({
+          projectId: project.id,
+          workAreaId: candidate.workAreaId,
+          key: candidate.factKey,
+          label: candidate.label,
+          value,
+          valueType: "boolean",
+        });
+        if (result.error) {
+          setActionError(result.error);
+          return;
+        }
+      }
+      startTransition(() => {
+        router.refresh();
+      });
+    },
+    [project.id, router]
+  );
+
+  const handleClarifyValue = useCallback(
+    async (candidate: ClarifyCandidate, value: string | number | boolean) => {
+      if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
+        const constraintKey = candidate.constraintKey ?? candidate.questionKey;
+        setLiveConstraints((prev) => [
+          ...prev.filter((row) => row.key !== constraintKey),
+          {
+            id: constraintKey,
+            key: constraintKey,
+            label: candidate.label,
+            value,
+            source: "user",
+          },
+        ]);
+        const result = await answerClarifyConstraint({
+          projectId: project.id,
+          questionKey: candidate.questionKey,
+          value,
+        });
+        if (result.error) {
+          setActionError(result.error);
+          return;
+        }
+        startTransition(() => {
+          router.refresh();
+        });
+        return;
+      }
+      if (!candidate.factKey) return;
+      setJobPlanFactOverlay((prev) =>
+        overlayFact(prev, {
+          key: candidate.factKey!,
+          work_area_id: candidate.workAreaId,
+          value,
+        })
+      );
+      const result = await answerClarifySelectFact({
+        projectId: project.id,
+        workAreaId: candidate.workAreaId,
+        key: candidate.factKey,
+        label: candidate.label,
+        value,
+        valueType:
+          candidate.inputType === "number"
+            ? "number"
+            : candidate.inputType === "boolean"
+              ? "boolean"
+              : "select",
+      });
+      if (result.error) {
+        setActionError(result.error);
+        return;
+      }
+      startTransition(() => {
+        router.refresh();
+      });
+    },
+    [project.id, router]
+  );
+
   const handleJobPlanSpecFact = useCallback(
     async (input: {
       workAreaId: string;
@@ -1216,6 +1342,33 @@ export function AssistantShell({
     ]
   );
 
+  const clarifyView = useMemo(
+    () =>
+      composeClarifyView({
+        stage,
+        briefText: briefText || project.briefText,
+        qualityLevel: qualityLevel ?? project.qualityLevel,
+        workAreas: displayWorkAreas,
+        facts: jobPlanFacts,
+        constraints: liveConstraints.map((row) => ({
+          key: row.key,
+          value: row.value,
+        })),
+        jobPlan,
+      }),
+    [
+      briefText,
+      displayWorkAreas,
+      jobPlan,
+      jobPlanFacts,
+      liveConstraints,
+      project.briefText,
+      project.qualityLevel,
+      qualityLevel,
+      stage,
+    ]
+  );
+
   // Stage 3.1A-R1: do not remount Scope Review on answer value changes —
   // remounting wiped optimistic local answers and caused temporary reversion.
 
@@ -1243,10 +1396,11 @@ export function AssistantShell({
   const projectConditionsReadyToGenerate = Boolean(
     projectConditionsSnapshot?.readiness.canGenerateQuickEstimate
   );
-  const canGenerateEstimate =
-    constraintsSubmitted &&
-    !estimateReady &&
-    (!preferProjectConditionsAsk || projectConditionsReadyToGenerate);
+  const canGenerateEstimate = CLARIFY_IS_PRIMARY
+    ? workAreasConfirmed && !estimateReady && clarifyView.canEstimateNow
+    : constraintsSubmitted &&
+      !estimateReady &&
+      (!preferProjectConditionsAsk || projectConditionsReadyToGenerate);
 
   const activeDisclosureStage = resolveActiveDisclosureStage({
     briefSubmitted,
@@ -1346,7 +1500,15 @@ export function AssistantShell({
     conditionLabels: constraintChips,
     assumptionCount: assumptionCountForReview,
   });
-  const projectInformationLabel = preferProjectConditionsAsk
+  const projectInformationLabel = CLARIFY_IS_PRIMARY
+    ? workAreasConfirmed && !estimateReady
+      ? clarifyView.enoughToEstimate
+        ? "Job plan confirmed · Estimate ready"
+        : `Job plan confirmed · ${clarifyView.visibleCount} thing${
+            clarifyView.visibleCount === 1 ? "" : "s"
+          } to clarify`
+      : null
+    : preferProjectConditionsAsk
     ? projectConditionsSnapshot?.complete
       ? projectConditionsSnapshot.readiness.state === "READY_WITH_ASSUMPTIONS"
         ? "Ready with assumptions"
@@ -1356,9 +1518,11 @@ export function AssistantShell({
         } remaining`
     : null;
   const projectConditionsAttention =
-    preferProjectConditionsAsk &&
-    projectConditionsSnapshot &&
-    !projectConditionsSnapshot.complete
+    CLARIFY_IS_PRIMARY && !estimateReady
+      ? []
+      : preferProjectConditionsAsk &&
+        projectConditionsSnapshot &&
+        !projectConditionsSnapshot.complete
       ? projectConditionsSnapshot.candidates
           .filter((c) => c.priority === "P0" || c.priority === "P1")
           .slice(0, 3)
@@ -1707,8 +1871,44 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 3. Specification (Quality level — UX label only) */}
-          {workAreasConfirmed &&
+          {CLARIFY_IS_PRIMARY &&
+          workAreasConfirmed &&
+          !compressCompletedSetup ? (
+            <CollapsibleStageCard
+              title="Clarify"
+              subtitle={
+                clarifyView.enoughToEstimate
+                  ? "Ready to estimate"
+                  : "A few things could improve this estimate"
+              }
+              statusLabel={
+                clarifyView.enoughToEstimate
+                  ? "Ready"
+                  : `${clarifyView.visibleCount} to clarify`
+              }
+              statusVariant="current"
+              preferredExpanded={stagePrefersExpanded(
+                "clarify",
+                activeDisclosureStage
+              )}
+              canCollapse={false}
+              isActive={activeDisclosureStage === "clarify"}
+            >
+              <ClarifyPanel
+                view={clarifyView}
+                isSaving={
+                  pendingAction === "clarify" || pendingAction === "estimate"
+                }
+                onAnswerBoolean={handleClarifyBoolean}
+                onAnswerValue={handleClarifyValue}
+                onEstimateNow={handleGenerateEstimate}
+              />
+            </CollapsibleStageCard>
+          ) : null}
+
+          {/* 3. Specification — legacy primary flow / post-estimate finish edit */}
+          {(!CLARIFY_IS_PRIMARY || isEditingQuality) &&
+          workAreasConfirmed &&
           (!compressCompletedSetup ||
             setupReviewOpen ||
             qualityIsCurrent ||
@@ -1776,8 +1976,8 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 4. Scope Details */}
-          {questionsIsCurrent && questionBlock ? (
+          {/* 4. Scope Details — legacy primary flow only */}
+          {!CLARIFY_IS_PRIMARY && questionsIsCurrent && questionBlock ? (
             <CollapsibleStageCard
               title="Scope Details"
               subtitle={questionBlock.description}
@@ -1810,8 +2010,9 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 4b. Completed Scope Details summary */}
-          {questionsSubmitted &&
+          {/* 4b. Completed Scope Details summary — legacy primary flow only */}
+          {!CLARIFY_IS_PRIMARY &&
+          questionsSubmitted &&
           questionBlock &&
           showCompletedDetailCards ? (
             <CollapsibleStageCard
@@ -1937,8 +2138,9 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {/* 7. Project Conditions (ASK + known review — 3.2.2-R1/R2 / R1-R1) */}
-          {questionsSubmitted &&
+          {/* 7. Project Conditions — legacy primary flow only */}
+          {!CLARIFY_IS_PRIMARY &&
+          questionsSubmitted &&
           preferProjectConditionsAsk &&
           Boolean(projectConditionsSnapshot?.shouldShowStage) ? (
             <CollapsibleStageCard
@@ -2005,7 +2207,8 @@ export function AssistantShell({
           ) : null}
 
           {/* 8. Site Constraints — legacy path only when Project Conditions unavailable */}
-          {questionsSubmitted &&
+          {!CLARIFY_IS_PRIMARY &&
+          questionsSubmitted &&
           !preferProjectConditionsAsk &&
           (constraintsIsCurrent ||
             showCompletedDetailCards ||
@@ -2089,7 +2292,9 @@ export function AssistantShell({
               constraintsSubmitted &&
               (!preferProjectConditionsAsk || projectConditionsReadyToGenerate)
             }
-            canGenerateEstimate={canGenerateEstimate}
+            canGenerateEstimate={
+              CLARIFY_IS_PRIMARY && !estimateReady ? false : canGenerateEstimate
+            }
             pendingProposalCount={pendingNoteProposal ? 1 : 0}
             unresolvedScopeImpactCount={unresolvedScopeImpactCount}
             constraintCount={liveConstraints.length}

@@ -3,11 +3,14 @@
  * Does not change completion, AI, Facts, or estimate authority.
  */
 
+import { JOB_PLAN_IS_PRIMARY } from "@/lib/assistant/job-plan/flags";
+
 export type AssistantDisclosureStage =
   | "capture"
   | "workAreas"
   | "scopeReview"
   | "quality"
+  | "clarify"
   | "questions"
   | "estimateReview"
   | "constraints"
@@ -40,20 +43,20 @@ export function resolveActiveDisclosureStage(
   }
   if (!input.briefSubmitted) return "capture";
   if (!input.workAreasConfirmed) return "workAreas";
-  if (input.scopeDiscoveryEnabled && !input.scopeReviewComplete) {
+  if (
+    input.scopeDiscoveryEnabled &&
+    !input.scopeReviewComplete &&
+    !JOB_PLAN_IS_PRIMARY
+  ) {
     return "scopeReview";
   }
-  if (input.qualityUnlocked && !input.qualitySubmitted) return "quality";
-  if (input.qualitySubmitted && !input.questionsSubmitted) return "questions";
-  // After questions: site constraints are the actionable incomplete form.
-  // DECK-2B: when ready to generate, Quick Estimate panel leads even if Scope Details remain open.
-  if (input.questionsSubmitted && !input.constraintsSubmitted) {
-    return "constraints";
+  // RECOVERY-4: quality / Scope Details / constraints compose into Clarify.
+  if (!input.estimateReady) {
+    if (input.constraintsSubmitted) return null;
+    return "clarify";
   }
   // Stale estimate forces Estimate Review attention without relocking prior stages.
   if (input.estimateStale) return "estimateReview";
-  // Ready to generate — no stage needs body space; Quick Estimate panel leads.
-  if (input.constraintsSubmitted && !input.estimateReady) return null;
   return null;
 }
 

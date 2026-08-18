@@ -72,8 +72,8 @@ export const ASSISTANT_EMPTY_STATES = Object.freeze({
     nextAction: "Complete Scope Details and Project Conditions to continue.",
   },
   quick_estimate: {
-    title: "Complete the required project details to generate an estimate.",
-    nextAction: "Work through the Assistant stages to unlock Generate estimate.",
+    title: "Job plan confirmed. Estimate when clarified or safely assumed.",
+    nextAction: "Answer remaining Clarify questions, or Estimate now using assumptions.",
   },
 } as const);
 

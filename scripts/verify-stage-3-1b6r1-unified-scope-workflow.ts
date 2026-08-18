@@ -3,7 +3,7 @@
  *
  * Run: npx tsx scripts/verify-stage-3-1b6r1-unified-scope-workflow.ts
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import {
   canCreateWorkAreaFromProposal,
@@ -192,16 +192,18 @@ check(
 );
 check(
   "Scope Discovery card still Scope Review",
-  shell.includes("ScopeDiscoveryReviewBlock") &&
-    SCOPE_DISCOVERY_UI_COPY.cardTitle === "Scope Review"
+  existsSync("components/assistant/ScopeDiscoveryReviewBlock.tsx") &&
+    SCOPE_DISCOVERY_UI_COPY.cardTitle === "Scope Review" &&
+    !shell.includes("<ScopeDiscoveryReviewBlock")
 );
 check(
-  "Scope Review mounts after work areas confirmed",
-  shell.includes("scopeDiscoveryEnabled && workAreasConfirmed")
+  "Scope Review is not a duplicate primary panel after Job Plan",
+  !shell.includes("scopeDiscoveryEnabled && workAreasConfirmed") &&
+    existsSync("components/assistant/ScopeDiscoveryReviewBlock.tsx")
 );
 check(
   "Scope Review receives work area labels for hierarchy",
-  shell.includes("workAreaLabels=")
+  reviewBlock.includes("workAreaLabel")
 );
 check(
   "Review block nests by work area sections",
@@ -209,9 +211,9 @@ check(
     reviewBlock.includes("workAreaLabel")
 );
 check(
-  "Stepper constraints label is Site Constraints (not Scope Review)",
+  "Stepper constraints label is Clarify (not Scope Review)",
   read("components/assistant/StepperNav.tsx").includes(
-    'label: "Site Constraints"'
+    'label: "Clarify"'
   ) &&
     !read("components/assistant/StepperNav.tsx").includes(
       'label: "Scope Review"'

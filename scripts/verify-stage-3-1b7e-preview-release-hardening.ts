@@ -308,8 +308,8 @@ check(
   ASSISTANT_ACTION_LABELS.recalculateEstimate === "Recalculate estimate"
 );
 check(
-  "Stepper uses Scope Details",
-  fileHas("components/assistant/StepperNav.tsx", 'label: "Scope Details"')
+  "Stepper uses Clarify",
+  fileHas("components/assistant/StepperNav.tsx", 'label: "Clarify"')
 );
 
 // —— Docs / gates ——

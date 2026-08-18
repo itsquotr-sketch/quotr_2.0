@@ -99,7 +99,7 @@ function main(): void {
 
   check(
     "5 Project Setup remains independently collapsible",
-    setup.includes("View setup") &&
+    (setup.includes("View setup") || setup.includes("Job details")) &&
       shell.includes("CompletedSetupDisclosure") &&
       shell.includes("setSetupReviewOpen") &&
       shell.indexOf("EstimateReviewSummaryStrip") <

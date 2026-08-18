@@ -72,13 +72,13 @@ const mid = resolveActiveDisclosureStage({
   constraintsSubmitted: false,
   estimateReady: false,
 });
-check("quality is active after scope complete", mid === "quality");
+check("clarify is active after Job Plan", mid === "clarify");
 check(
-  "prior stages do not prefer expanded when quality active",
+  "prior stages do not prefer expanded when Clarify active",
   !stagePrefersExpanded("capture", mid) &&
     !stagePrefersExpanded("workAreas", mid) &&
     !stagePrefersExpanded("scopeReview", mid) &&
-    stagePrefersExpanded("quality", mid)
+    stagePrefersExpanded("clarify", mid)
 );
 
 const afterQuestions = resolveActiveDisclosureStage({
@@ -93,13 +93,13 @@ const afterQuestions = resolveActiveDisclosureStage({
   estimateReady: false,
 });
 check(
-  "constraints active after questions (single expandable incomplete)",
-  afterQuestions === "constraints"
+  "Clarify active after questions (single expandable incomplete)",
+  afterQuestions === "clarify"
 );
 check(
-  "estimate review collapsed preference while constraints current",
+  "estimate review collapsed preference while Clarify current",
   !stagePrefersExpanded("estimateReview", afterQuestions) &&
-    stagePrefersExpanded("constraints", afterQuestions)
+    stagePrefersExpanded("clarify", afterQuestions)
 );
 
 const readyToGenerate = resolveActiveDisclosureStage({
@@ -348,8 +348,8 @@ check(
     shell.includes("ConstraintsCollapsedSummary")
 );
 check(
-  "specification title used for quality stage (UX rename only)",
-  shell.includes('title="Specification"')
+  "specification title retained for legacy/edit quality path",
+  shell.includes('title="Specification"') && shell.includes('title="Clarify"')
 );
 check(
   "analyse job still explicit (no auto rerun from disclosure)",

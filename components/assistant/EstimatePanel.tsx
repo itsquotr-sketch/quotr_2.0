@@ -665,7 +665,7 @@ export function EstimatePanel({
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Specification
+              Finish level
             </p>
             <p className="text-sm font-medium">{qualityLabel(qualityLevel)}</p>
           </div>
@@ -1306,8 +1306,8 @@ export function EstimatePanel({
             : canGenerateEstimate
               ? "Ready to generate your draft estimate"
               : constraintsSubmitted
-                ? "Complete remaining scope steps to generate"
-                : "Complete the required project details to generate an estimate."}
+                ? "A few things left to clarify"
+                : "Job plan confirmed. Estimate when clarified or safely assumed."}
         </CardDescription>
       </CardHeader>
 

@@ -1,72 +1,37 @@
-import {
-  PROJECT_CONDITIONS_STEPPER_LABEL,
-  STEPPER_STAGES,
-} from "@/components/assistant/StepperNav";
+import { STEPPER_STAGES } from "@/components/assistant/StepperNav";
 import type { AssistantStage } from "@/components/assistant/types";
+import { toPlanningDisplayStage } from "@/lib/assistant/clarify/planning-stage";
 
 type AssistantProgressProps = {
   currentStage: AssistantStage;
-  /** When true, constraints step shows as Project Conditions (3.2.2-R2). */
   preferProjectConditionsLabel?: boolean;
-  /** After estimate, progress is secondary and hidden on mobile. */
   deemphasised?: boolean;
 };
 
-const STAGE_ORDER = [
-  "brief",
-  "confirm_work_areas",
-  "quality",
-  "work_area_questions",
-  "constraints",
-  "ready_to_estimate",
-  "estimate_ready",
-] as const;
-
-function resolveStageIndex(stage: AssistantStage): number {
-  if (stage === "ready_to_estimate") {
-    return STAGE_ORDER.indexOf("constraints") + 1;
-  }
-
-  const idx = STAGE_ORDER.indexOf(stage as (typeof STAGE_ORDER)[number]);
-  return idx === -1 ? 0 : idx;
+function resolveDisplayIndex(stage: AssistantStage): number {
+  const display = toPlanningDisplayStage(stage);
+  if (display === "brief") return 0;
+  if (display === "job_plan") return 1;
+  if (display === "clarify") return 2;
+  return 3;
 }
 
-function getMobileStepLabel(
-  stage: AssistantStage,
-  preferProjectConditionsLabel: boolean
-): string {
-  const idx = resolveStageIndex(stage);
-  if (stage === "estimate_ready" || stage === "ready_to_estimate") {
-    return "Estimate";
-  }
-  if (stage === "constraints") {
-    return preferProjectConditionsLabel
-      ? PROJECT_CONDITIONS_STEPPER_LABEL
-      : "Site Constraints";
-  }
-
-  const step = STEPPER_STAGES.find((item) => {
-    const stepIdx = STAGE_ORDER.indexOf(
-      item.key === "estimate_ready" ? "estimate_ready" : item.key
-    );
-    return stepIdx === idx;
-  });
-
-  return step?.label ?? "Brief";
+function getMobileStepLabel(stage: AssistantStage): string {
+  const display = toPlanningDisplayStage(stage);
+  if (display === "brief") return "Brief";
+  if (display === "job_plan") return "Job Plan";
+  if (display === "clarify") return "Clarify";
+  return "Estimate";
 }
 
 export function AssistantProgress({
   currentStage,
-  preferProjectConditionsLabel = false,
   deemphasised = false,
 }: AssistantProgressProps) {
-  const currentIdx = resolveStageIndex(currentStage);
+  const currentIdx = resolveDisplayIndex(currentStage);
   const totalSteps = STEPPER_STAGES.length;
   const progressPercent = Math.round(((currentIdx + 1) / totalSteps) * 100);
-  const stepLabel = getMobileStepLabel(
-    currentStage,
-    preferProjectConditionsLabel
-  );
+  const stepLabel = getMobileStepLabel(currentStage);
 
   if (deemphasised) {
     return (
