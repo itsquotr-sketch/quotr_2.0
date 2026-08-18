@@ -1,6 +1,6 @@
 # Quotr Assisted Estimate Experience Contract
 
-**Status:** CANONICAL for DECK-2A planning  
+**Status:** CANONICAL for DECK-2A planning (Level 1–3). Generic next-generation Assistant: `docs/architecture/QUOTR_ASSISTANT_OPERATING_MODEL.md` (RECOVERY-2). **DECK-2C** face/fascia review editing is **superseded / deferred into RECOVERY-5 Builder Review**. This file does not compete with RECOVERY-2; it remains the Deck Quick Estimate product contract until Clarify/Job Plan are implemented.  
 **Date:** 2026-08-18  
 **Mode:** Product contract only. No production behavior change.  
 **Audit:** `docs/audits/DECK_2A_ASSISTED_ESTIMATE_EXPERIENCE_AUDIT.md`  

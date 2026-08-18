@@ -4,7 +4,7 @@
 **Date:** 2026-08-18  
 **HEAD:** `5e046e95cbb67992016e7ed80ddfb39ec8ab7c1d`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. **DECK-1 IN PROGRESS** — DECK-1A **COMPLETE / OWNER MODEL VALIDATED**; DECK-1B **COMPLETE / TECHNICALLY VALIDATED**; DECK-1C-A **COMPLETE / OWNER VALIDATED**. DECK-1C-B **NOT STARTED**. **DECK-2A COMPLETE / OWNER PRODUCT VALIDATED**. **DECK-2B COMPLETE LOCAL / OWNER UX REVIEW PENDING**.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. **DECK-1 IN PROGRESS** — DECK-1A **COMPLETE / OWNER MODEL VALIDATED**; DECK-1B **COMPLETE / TECHNICALLY VALIDATED**; DECK-1C-A **COMPLETE / OWNER VALIDATED**. DECK-1C-B **NOT STARTED**. **DECK-2A COMPLETE / OWNER PRODUCT VALIDATED**. **DECK-2B COMPLETE LOCAL / OWNER UX REVIEW PENDING**. **DECK-2C superseded / deferred into RECOVERY-5**. **RECOVERY-0 COMPLETE / COMMERCIAL RATE INTEGRITY VALIDATED**. **RECOVERY-1 COMPLETE / COMMERCIAL CONTRACT VALIDATED**. **RECOVERY-2 COMPLETE / OWNER ASSISTANT ARCHITECTURE VALIDATED**. **RECOVERY-3 Job Plan next (not started in this docs commit).**  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Product architecture:** `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`  
 **Supersedes as programme plan:** `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`, `docs/plans/STAGE_3_PRODUCT_ROADMAP.md` (as primary plan), `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
@@ -49,13 +49,13 @@ Includes: CAT-V2-1, Owner material-input, SUP-0, SUP-1, RATE-LEGACY-01, unused `
 
 How information enters Facts / Conditions / Scope.
 
-Includes: MEDIA-1/2/3, ISD-008 / D-S6 attachment security, remaining Builder Interview UX, FEAT-003 constraint expansion (gated D4), Analyse Job preserved.
+Includes: MEDIA-1/2/3, ISD-008 / D-S6 attachment security, remaining Builder Interview UX, FEAT-003 constraint expansion (gated D4), Analyse Job preserved. **RECOVERY-2** Assistant operating model (docs). **RECOVERY-3** Job Plan. **RECOVERY-4** Assistant state (PLANNING / ESTIMATE_READY / EDIT_JOB).
 
 ### E. COMMERCIAL WORKFLOW
 
 Documents the contractor sends and receives.
 
-Includes: Quick Estimate → Pricing → Quote (already live), QUOTE-1/2/3, BRANDING-SNAPSHOT-01, BRANDING-P0 Owner Preview, RFQ-1/2/3, FEAT-002 optional quote items.
+Includes: Quick Estimate → Pricing → Quote (already live), QUOTE-1/2/3, BRANDING-SNAPSHOT-01, BRANDING-P0 Owner Preview, RFQ-1/2/3, FEAT-002 optional quote items. **RECOVERY-5** Builder Review (absorbs DECK-2C).
 
 ### F. INTELLIGENCE / PLATFORM
 
@@ -169,7 +169,7 @@ Priority: **CRITICAL** · **HIGH** · **MEDIUM** · **LATER**
 | **Non-goals** | Engineering design; cladding |
 | **Completion gate** | SIMPLE/MEDIUM/COMPLEX/EDGE goldens; Owner Preview |
 | **Priority** | CRITICAL |
-| **Batches** | DECK-1 transparent estimator + takeoff; **DECK-2A assisted estimate experience audit/contract**; **DECK-2B assumption-led Quick Estimate**; DECK-2 face boards and review experience; DECK-3 task labour; DECK-4 calibration hooks (evidence, not DNA apply); DECK-5 transparency UI; DECK-R2 framing members |
+| **Batches** | DECK-1 transparent estimator + takeoff; **DECK-2A assisted estimate experience audit/contract**; **DECK-2B assumption-led Quick Estimate**; **DECK-2C superseded / deferred into RECOVERY-5 Builder Review**; DECK-3 task labour; DECK-4 calibration hooks (evidence, not DNA apply); DECK-5 transparency UI; DECK-R2 framing members |
 
 ### PHASE 3 — Materials Catalogue V2
 

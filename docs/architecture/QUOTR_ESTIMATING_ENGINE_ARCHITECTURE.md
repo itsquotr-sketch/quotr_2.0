@@ -636,7 +636,7 @@ Every `EstimateRequirement` has three independent truths. Do not collapse them i
 - `baseHours` = hours before Project Condition combined factor (quality included because the live formula already applies it).
 - `adjustedHours` = current line hours. Combined PC factor recorded as `project.labour_productivity` when not 1. Not decomposed.
 - Hours ≠ crew elapsed duration. No duration fields.
-- **Future (LABOUR-CREW-01, not implemented):** LABOUR EFFORT ≠ CREW SIZE ≠ ELAPSED DURATION. Example: 2 workers × 6 hours elapsed = 12 labour-hours. See `docs/architecture/QUOTR_COMMERCIAL_COST_TO_SELL_CONTRACT.md`. Do not start DECK-3.
+- **Future (LABOUR-CREW-01, not implemented):** LABOUR EFFORT ≠ CREW SIZE ≠ ELAPSED DURATION. Example: 2 workers × 6 hours elapsed = 12 labour-hours. Belongs in labour-domain / `LabourRequirement` architecture, not Job Plan. See `docs/architecture/QUOTR_WORK_AREA_ASSISTANT_CONTRACT.md` §6. Do not start DECK-3.
 - No company labour rate: resolver still returns grandfathered 60/90. Requirement is `priced: true`, `rateProvenance: hardcoded_legacy`, exact line-cost parity. `sourceType: "missing"` is a label only (CM-03); the line is not unpriced. Do not omit 60/90 in REQ-3.1.
 - Requirement cost is not added to estimate totals.
 - Demolition / face-fascia labour not emitted. DECK-3 owns task split.

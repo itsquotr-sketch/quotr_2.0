@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-4B **READY / NOT STARTED**. REQ-TXN-01 **COMPLETE / REMOTE VALIDATED**. **DECK-2A COMPLETE / OWNER PRODUCT VALIDATED**. **DECK-2B COMPLETE LOCAL / OWNER UX REVIEW PENDING**. Does not authorise REQ-4B promotion.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-2 **COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED**. REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED**. REQ-4 **IN PROGRESS**. REQ-4A **COMPLETE / TECHNICALLY VALIDATED**. REQ-4B **READY / NOT STARTED**. REQ-TXN-01 **COMPLETE / REMOTE VALIDATED**. **DECK-2A COMPLETE / OWNER PRODUCT VALIDATED**. **DECK-2B COMPLETE LOCAL / OWNER UX REVIEW PENDING**. **RECOVERY-0 COMPLETE / COMMERCIAL RATE INTEGRITY VALIDATED**. **RECOVERY-1 COMPLETE / COMMERCIAL CONTRACT VALIDATED**. **RECOVERY-2 COMPLETE / OWNER ASSISTANT ARCHITECTURE VALIDATED**. Does not authorise REQ-4B promotion. RECOVERY-3 Job Plan is the next implementation batch.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Companion canonicals:**
 - Estimating: `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`
@@ -19,6 +19,9 @@
 - Component authority: `docs/architecture/QUOTR_COMPONENT_COMMERCIAL_AUTHORITY_CONTRACT.md`
 - Cost-to-sell: `docs/architecture/QUOTR_COMMERCIAL_COST_TO_SELL_CONTRACT.md`
 - Requirement snapshots: `docs/architecture/QUOTR_REQUIREMENT_SNAPSHOT_CONTRACT.md`
+- Assistant operating model: `docs/architecture/QUOTR_ASSISTANT_OPERATING_MODEL.md`
+- Work Area Assistant ports: `docs/architecture/QUOTR_WORK_AREA_ASSISTANT_CONTRACT.md`
+- Estimate presentation: `docs/architecture/QUOTR_ESTIMATE_PRESENTATION_CONTRACT.md`
 
 This document is the **only** top-level current product architecture.  
 `docs/architecture/QUOTR_ARCHITECTURE_FOUNDATION.md` is **SUPERSEDED** as the governing product architecture (retained as historical foundation).
@@ -190,6 +193,7 @@ Scope Details must never become the fallback ask surface.
 | Company DNA | Approved recommendations from evidence | Silent commercial mutation |
 | Analytics | Events over the existing pipeline | Require UI before history exists |
 | Commercial Interior | Composition of component Work Areas | A monolithic `commercial_fitout` calculator |
+| Job Plan / Clarify (target) | Project existing Facts, WAs, scope items, constraints | Parallel Job Plan or question tables |
 | Cladding / Roofing | New product WAs only when built | Recognition implying support |
 
 ---
@@ -201,13 +205,13 @@ These domains are substantially established. Future work may refactor implementa
 1. Auth / organisation security and RLS tenancy
 2. Fact authority (Facts are Work-Area physical SoT)
 3. Project Conditions authority (R1 / R1-R1)
-4. Scope / Work Area flow (confirm → Scope Details → Generate)
+4. Scope / Work Area flow (live: confirm → Scope Details → Generate). Target: Brief → Job Plan → Clarify → Estimate (`QUOTR_ASSISTANT_OPERATING_MODEL.md`; not live)
 5. Cost-first commercial model (CF-D1–D7)
 6. Gross-margin semantics: `sell = cost / (1 − GM)` — never markup-as-GM
 7. Rate precedence / provenance labels
-8. Quick Estimate → Pricing → Quote progression
+8. Quick Estimate → Pricing → Quote progression (Builder Review is the future Level 2 surface)
 9. Quote branding (live today; snapshot on send is BRANDING-SNAPSHOT-01)
-10. Current Assistant UX framework
+10. Current Assistant UX framework (live). Target modes PLANNING / ESTIMATE_READY / EDIT_JOB — RECOVERY-3–4, not this file's live claim
 11. Supported-WA maturity concept (recognition ≠ estimating support)
 12. Estimate commercial boundary (AI/workflow vs commercial engine)
 13. Generate hard-block on unresolved required Project Conditions
@@ -234,7 +238,11 @@ Classification:
 | `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md` | **CANONICAL** — only current development plan |
 | `docs/architecture/QUOTR_LEGACY_RETIREMENT_AND_PARITY_STRATEGY.md` | **CANONICAL** — retirement + parity |
 | `docs/architecture/QUOTR_ANALYTICS_EVENT_ARCHITECTURE.md` | **CANONICAL** — events / analytics |
-| `docs/architecture/QUOTR_SCOPE_DETAILS_QUESTION_CONTRACT.md` | **CANONICAL** — Scope Details questions |
+| `docs/architecture/QUOTR_SCOPE_DETAILS_QUESTION_CONTRACT.md` | **CANONICAL** — Scope Details questions (internal domain; not a mandatory future stage) |
+| `docs/architecture/QUOTR_ASSISTANT_OPERATING_MODEL.md` | **CANONICAL** — next-generation Assistant UX (not live) |
+| `docs/architecture/QUOTR_WORK_AREA_ASSISTANT_CONTRACT.md` | **CANONICAL** — Work Area ports for Job Plan / Clarify |
+| `docs/architecture/QUOTR_ESTIMATE_PRESENTATION_CONTRACT.md` | **CANONICAL** — Builder Review projection buckets |
+| `docs/plans/QUOTR_WORK_AREA_MIGRATION_PLAN.md` | **CANONICAL** — phased WA Assistant migration (not a second programme plan) |
 | `docs/architecture/QUOTR_SUPPORTED_WORK_AREA_CONTRACT.md` | **CANONICAL** — code-level capability bands |
 | `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md` | **CANONICAL** — commercial money model |
 | `docs/architecture/QUOTR_RATE_AUTHORITY_AND_PROVENANCE_MODEL.md` | **CANONICAL** — rate provenance labels |
@@ -256,7 +264,7 @@ Classification:
 | `docs/audits/SUPPORTED_WORK_AREA_COVERAGE_AUDIT.md` | **HISTORICAL** — product view now `QUOTR_SUPPORTED_WORK_AREAS.md` |
 | `docs/audits/FOUNDATION_R2_*` | **HISTORICAL** |
 | `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md` | **CANONICAL disposition** of the independent challenge |
-| `docs/audits/COMMERCIAL_MARGIN_RATE_AUTHORITY_AUDIT.md` | **HISTORICAL** — P0 implemented |
+| `docs/audits/RECOVERY_2_ASSISTANT_DOMAIN_AUDIT.md` | **HISTORICAL** audit + **CANONICAL** disposition via Assistant operating model |
 | `docs/audits/MATERIAL_PRICING_TAKEOFF_CURRENT_STATE_AUDIT.md` | **HISTORICAL** / supporting evidence |
 | `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md` | **SUPERSEDED BY** `QUOTR_DEVELOPMENT_MASTER_PLAN.md` |
 | `docs/plans/STAGE_3_PRODUCT_ROADMAP.md` | **SUPERSEDED** as primary plan; **HISTORICAL** Stage 3 tracker |
