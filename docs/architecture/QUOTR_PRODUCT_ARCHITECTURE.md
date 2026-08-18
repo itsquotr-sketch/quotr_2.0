@@ -305,7 +305,7 @@ Do not delete history.
 | Component authority | **ACTIVE / NO PROMOTIONS** | Deck surface + labour SHADOW |
 | CM-03 | **BACKLOG / NOT STARTED** | labour missing-label vs 60/90 money |
 | Deck transparent estimator | **Not Started** | DECK-1+ |
-| Materials Catalogue V2 | **Not Started** (`CAT-IDENTITY-01` gates seeding) | CAT-V2-1 |
+| Materials Catalogue V2 | **Not Started** (`CAT-IDENTITY-01` / DECK-1C-A contract; implement after Owner identity gate) | CAT-V2-1 |
 | Stage 3.2.3 | **Not Started** / original PC-suppress **superseded in part** by Foundation | pipeline + handoff |
 | Company DNA | **Not Started** | no `lib/company-dna` |
 | PERF-FUTURE-01 | **Planned** | `ASSISTANT_RESPONSIVENESS_LATENCY_OPTIMISATION_PASS.md` |

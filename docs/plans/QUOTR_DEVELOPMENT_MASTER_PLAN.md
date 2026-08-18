@@ -4,7 +4,7 @@
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. **DECK-1 IN PROGRESS** — DECK-1A **COMPLETE LOCAL / OWNER MODEL REVIEW PENDING**.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. **DECK-1 IN PROGRESS** — DECK-1A **COMPLETE / OWNER MODEL VALIDATED**; DECK-1B **COMPLETE / TECHNICALLY VALIDATED**; DECK-1C-A **COMPLETE / OWNER VALIDATED**. DECK-1C-B **NOT STARTED**.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Product architecture:** `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`  
 **Supersedes as programme plan:** `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`, `docs/plans/STAGE_3_PRODUCT_ROADMAP.md` (as primary plan), `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
@@ -159,7 +159,7 @@ Priority: **CRITICAL** · **HIGH** · **MEDIUM** · **LATER**
 | **Workstream** | B (+ C keys) |
 | **Objective** | Deck becomes the transparent reference estimator |
 | **User value** | HIGH — explainable hours and materials on the trial WA |
-| **Technical dependency** | REQ-2/3; OD-FACE-01 for DECK-2; **CAT-IDENTITY-01** before canonical CAT-V2 rows; minimum Deck taxonomy interleaved as members require it |
+| **Technical dependency** | REQ-2/3; OD-FACE-01 for DECK-2; **CAT-IDENTITY-01** as DECK-1C-A-R1 after Owner identity gate, **before** DECK-1C-B prices / CAT-V2 rows |
 | **Commercial dependency** | Documented $ change when replacing packages; parity first |
 | **Migration** | None expected |
 | **Risk** | H (visible Deck $) |
@@ -379,7 +379,7 @@ RATE-QUALITY-01 stays backlog. Do not auto-correct company `$23/m²`.
 | ISD-007 latency | F | PERF |
 | REQ-SNAPSHOT-01 | A | 1 — **COMPLETE / REMOTE VALIDATED**; REQ-4B blocked by REQ-TXN-01 |
 | REQ-TXN-01 | A | 0 — **COMPLETE / REMOTE VALIDATED**; `persist_estimate_generation_v1` (mandatory snapshot); 036 applied on `lxvnylhsbvudzzupxeqr` |
-| CAT-IDENTITY-01 | C | 2–3 — before CAT-V2 seeding |
+| CAT-IDENTITY-01 | C | 2–3 — **DECK-1C-A contract written**; implement as DECK-1C-A-R1 after Owner identity gate; **before** DECK-1C-B prices / CAT-V2 seeding |
 | AN-EVIDENCE-01 | F | before AN-1 |
 | QUOTE-IMMUTABILITY-DB-01 | E | before quote acceptance Production |
 | SUB-AUTH-01 | E | before RFQ |

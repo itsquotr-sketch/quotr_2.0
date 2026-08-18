@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED**. Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE**; `deck.labour` = **SHADOW**.  
+**Mode:** PHASE 0 frozen. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED**. Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE**; `deck.labour` = **SHADOW**. Structural children = **SHADOW**. **DECK-1C-A** identity lock: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Absorbs:** `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (SUPPORTING)  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -136,7 +136,7 @@ State the physical material needed, convert to a purchase quantity, resolve unit
 | Field | Notes |
 | --- | --- |
 | `workAreaId`, `workAreaType`, `componentKey` | Owner |
-| `materialKey` | Canonical catalogue key; null if unknown |
+| `materialKey` | Canonical **material identity** (not component; not supplier SKU; not unit). Null/partial allowed. Live DECK-1B `timber.sg8.*` is defective until CAT-IDENTITY-01. |
 | `category` | FRAMING, DECKING, SHEET, … |
 | `description`, `specification` | Human |
 | `baseQuantity`, `baseUnit` | Physical qty **before** waste |

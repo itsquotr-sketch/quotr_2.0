@@ -2,7 +2,7 @@
 
 **Status:** CANONICAL for DECK-1 / DECK-1A  
 **Date:** 2026-08-18  
-**Mode:** DECK-1A **COMPLETE / OWNER MODEL VALIDATED** (R1 2026-08-18). DECK-1B implements shadow emission per this contract.
+**Mode:** DECK-1A **COMPLETE / OWNER MODEL VALIDATED**. DECK-1B **COMPLETE / TECHNICALLY VALIDATED**. Identity/rate contract: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md` (DECK-1C-A). Physical quantities in this file remain frozen.
 
 ---
 
@@ -121,12 +121,12 @@ User-confirmed `deck.board_direction` / `deck.joist_direction` always override d
 
 | componentKey | Description | Physical qty | Unit | Required inputs | Derived inputs | Waste | Material identity | Rate identity | Fallback | Confidence | Legacy target | Initial authority |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `deck.joists` | Primary joist members | joistCount × joistRunLength | lm | L, W, joist direction, joist centres, joist section, treatment | joistRunLength, perpendicularSpan, joistCount | framing waste % | timber / structural framing / joist / {section} / {treatment} | `timber.sg8.{section}.{treatment}.lm` | legacy `deck.substructure.m2` | HIGH if all spec user-known; MED if spacing default | **Framing/substructure** (portion) | **SHADOW** |
-| `deck.rim_framing` | Additional end rim (not full perimeter) | 2 × end dimension ⊥ joists | lm | L, W, joist direction, joist section, treatment | Outer parallel joists already in joistCount | framing waste % | same as joists | `timber.sg8.{section}.{treatment}.lm` | legacy package | HIGH/MED | bundled | **SHADOW** |
+| `deck.joists` | Primary joist members | joistCount × joistRunLength | lm | L, W, joist direction, joist centres, joist section, treatment | joistRunLength, perpendicularSpan, joistCount | framing waste % | timber / structural framing / {section} / {treatment?} / {grade?} — component not in identity; **do not assume SG8** | live helper still `timber.sg8.*` until CAT-IDENTITY-01 | legacy `deck.substructure.m2` | HIGH if all spec user-known; MED if spacing default | **Framing/substructure** (portion) | **SHADOW** |
+| `deck.rim_framing` | Additional end rim (not full perimeter) | 2 × end dimension ⊥ joists | lm | L, W, joist direction, joist section, treatment | Outer parallel joists already in joistCount | framing waste % | **same stock identity as joists** when spec identical | same as joists | legacy package | HIGH/MED | bundled | **SHADOW** |
 | `deck.blocking` | **DEFERRED** | — | — | — | — | — | Reserved | — | legacy | — | bundled | **NOT EMITTED in DECK-1B** |
-| `deck.bearers` | Bearer lines | bearerRowCount × bearerRunLength | lm | bearer row count, bearer section, treatment | bearerRunLength ∥ bearerDirection (⊥ joists) | framing waste % | timber / bearer / {section} | `timber.sg8.{section}.{treatment}.lm` | legacy package | MED/HIGH | bundled | **SHADOW** |
-| `deck.supports` | Posts / piles | supportCount | ea (MVP) | bearer rows, supports per bearer, support section | bearerRowCount × supportsPerBearer | none | timber / post / {section} | `timber.sg8.{section}.{treatment}.ea` | legacy package | MED/HIGH | bundled | **SHADOW** |
-| `deck.concrete` | Footing concrete | supportCount × volumeEach | m³ | footing L×W×D (mm facts); support count | volumeEach | **0%** initial | concrete / footing | TBD | omit if dims missing | MED | bundled | **SHADOW** |
+| `deck.bearers` | Bearer lines | bearerRowCount × bearerRunLength | lm | bearer row count, bearer section, treatment | bearerRunLength ∥ bearerDirection (⊥ joists) | framing waste % | generic structural timber (same family as joists) | same identity model; different section | legacy package | MED/HIGH | bundled | **SHADOW** |
+| `deck.supports` | Posts / piles | supportCount | ea (MVP) | bearer rows, supports per bearer, support section | bearerRowCount × supportsPerBearer | none | post/pile **EA product** (not framing lm) | EA exact rate or pricing required — never `$/lm` on EA | legacy package | MED/HIGH | bundled | **SHADOW** |
+| `deck.concrete` | Footing concrete | supportCount × volumeEach | m³ | footing L×W×D (mm facts); support count | volumeEach | **0%** initial | family **concrete** (do not freeze `concrete.footing` as universal identity); mix optional | pricing required if mix unknown unless Owner later approves generic $/m³ | omit if dims missing | MED | bundled | **SHADOW** |
 | `deck.fixings.structural` | Structural connectors | **NOT EMITTED in DECK-1B** | — | — | — | — | Reserved | — | legacy `deck.fixings.m2` | — | fixings m² | **DEFER** |
 | `deck.fixings.surface` | Decking screws/nails | per board row OR m² allowance | ea / allow | board count, intersections | — | none | fixings / decking | defer or allowance | keep legacy fixings m² | MED | fixings m² | **defer DECK-1** |
 
@@ -312,7 +312,7 @@ Variant encodes section + treatment where rate identity changes.
 7. Quotr package fallback  
 8. Pricing required  
 
-**Company exact outranks Quotr.** DECK-1B must seed benchmark lm rates for proposed `timber.sg8.*` keys before shadow emission is meaningful.
+**Company exact outranks Quotr.** DECK-1B emits shadow quantities **unpriced** when no exact company rate exists. Do **not** seed `timber.sg8.*` as canonical identity. DECK-1C-A locks identity; DECK-1C-B may add sourced benchmarks **after** Owner identity approval. See `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.
 
 ---
 
@@ -521,5 +521,7 @@ See `docs/runbooks/DECK_1A_OWNER_MODEL_GATE.md`.
 | `docs/audits/DECK_1A_CURRENT_STATE_AND_INPUT_AUDIT.md` | As-is audit |
 | `docs/plans/DECK_1_IMPLEMENTATION_PLAN.md` | DECK-1B+ sequence |
 | `docs/runbooks/DECK_1A_OWNER_MODEL_GATE.md` | Owner sign-off gate |
-| `docs/architecture/QUOTR_MATERIAL_DOMAIN_ARCHITECTURE.md` | Rate identity taxonomy |
+| `docs/architecture/QUOTR_MATERIAL_DOMAIN_ARCHITECTURE.md` | Material domain + rate hierarchy |
+| `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md` | DECK-1C-A identity lock |
+| `docs/architecture/QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md` | Three-scope materials/rates |
 | `docs/architecture/QUOTR_COMPONENT_COMMERCIAL_AUTHORITY_CONTRACT.md` | Authority lifecycle |

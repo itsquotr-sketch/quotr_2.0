@@ -1,12 +1,14 @@
 # DECK-1 Implementation Plan
 
-**Status:** PLANNING — DECK-1 IN PROGRESS / DECK-1A OWNER VALIDATED / DECK-1B TECHNICALLY VALIDATED  
+**Status:** PLANNING — DECK-1 IN PROGRESS / DECK-1A OWNER VALIDATED / DECK-1B TECHNICALLY VALIDATED / DECK-1C-A OWNER VALIDATED  
 **Date:** 2026-08-18  
 **Branch:** `hardening/stage-2a-security`
 
 **Canonical model:** `docs/architecture/DECK_STRUCTURAL_MATERIAL_MODEL.md`  
+**Identity (DECK-1C-A):** `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`  
+**Company/rates contract:** `docs/architecture/QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md`  
 **Current-state audit:** `docs/audits/DECK_1A_CURRENT_STATE_AND_INPUT_AUDIT.md`  
-**Owner gate:** `docs/runbooks/DECK_1A_OWNER_MODEL_GATE.md`
+**Owner gates:** `docs/runbooks/DECK_1A_OWNER_MODEL_GATE.md`, `docs/runbooks/DECK_1C_A_OWNER_IDENTITY_GATE.md`
 
 ---
 
@@ -18,8 +20,11 @@
 | `decking.surface` | REQUIREMENT_AUTHORITATIVE |
 | `deck.labour` | SHADOW |
 | Structural components | LEGACY (`deck.substructure.m2` package) |
-| DECK-1A | COMPLETE LOCAL / OWNER MODEL REVIEW PENDING |
+| DECK-1A | COMPLETE / OWNER MODEL VALIDATED (`ca1e137`) |
 | DECK-1B | COMPLETE / TECHNICALLY VALIDATED (`60a356e`) |
+| DECK-1C | IN PROGRESS |
+| DECK-1C-A | COMPLETE / OWNER VALIDATED |
+| DECK-1C-B | NOT STARTED |
 
 ---
 
@@ -35,7 +40,7 @@ Replace coarse Deck structural **m² package** allowances with **physically expl
 | --- | --- | --- | --- |
 | **DECK-1A** | Current-state audit + physical model contract | This document + architecture | **None** |
 | **DECK-1B** | Scope Details facts + shadow emitters + verifier | New facts (Owner-approved), calculator module, SHADOW reqs | **None** — legacy package remains authoritative |
-| **DECK-1C** | Rate keys + benchmarks + catalogue rows | `timber.sg8.*`, concrete key, fixings allowance | **None** — shadow pricing only |
+| **DECK-1C** | Identity + rate coverage | **1C-A** identity/company-scope contract (this stage); **1C-B** sourced benchmarks after Owner identity approval | **None** — shadow only; no `timber.sg8` freeze |
 | **DECK-1D** | Shadow reconciliation + fixture matrix outputs | Verifier proves Σ shadow ↔ legacy package | **None** |
 | **DECK-1R** | Commercial review + selective authority promotion | Parent group or child promotion | **Owner gate** — intentional model improvement |
 | **DECK-2** | Face/fascia physical model | Separate programme | TBD |
@@ -158,4 +163,4 @@ DECK-1 programme complete when:
 
 ## 10. Exact next action
 
-**Owner review of DECK-1A model contract** (`docs/runbooks/DECK_1A_OWNER_MODEL_GATE.md`). Upon approval, begin **DECK-1B** — Scope Details facts + shadow emission (no money change).
+**Owner review of DECK-1C-A identity gate is complete** (`docs/runbooks/DECK_1C_A_OWNER_IDENTITY_GATE.md`). Next: **CAT-IDENTITY-01 / DECK-1C-A-R1** (types + treatment-gate fix; no prices). Do **not** start DECK-1C-B.

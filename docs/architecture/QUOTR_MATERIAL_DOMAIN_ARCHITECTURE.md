@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. Does not populate the catalogue or add rates. **CAT-IDENTITY-01** blocks canonical Catalogue V2 seeding. REQ-2.1 uses current compatibility keys `deck.material.*.lm` only. **DECK-1A** defines structural model contract (`docs/architecture/DECK_STRUCTURAL_MATERIAL_MODEL.md`); proposed keys `timber.sg8.*`, `deck.joists`, etc. are **not live** until DECK-1C.  
+**Mode:** PHASE 0 frozen. Does not populate the catalogue or add rates. **CAT-IDENTITY-01** blocks canonical Catalogue V2 seeding. **DECK-1C-A** locks three-scope materials (Quotr / Company / Project) and Deck structural identity: `docs/architecture/QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md`, `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`. REQ-2.1 uses current compatibility keys `deck.material.*.lm` only. Live DECK-1B helper `timber.sg8.*` is a **known identity defect** (assumed grade + unit in key) — correct in CAT-IDENTITY-01 / DECK-1C-A-R1 after Owner identity gate. Do not add prices in DECK-1C-A.  
 **Absorbs:** `docs/architecture/QUOTR_MATERIAL_TAKEOFF_ARCHITECTURE.md` (SUPPORTING)  
 **Rate evidence:** `docs/audits/FOUNDATION_R2R1_MATERIAL_RATE_AUTHORITY_AUDIT.md`, `docs/audits/QUOTR_MATERIAL_RATE_CONSUMPTION_MATRIX.md`  
 **Engine:** `docs/architecture/QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md`
@@ -57,9 +57,13 @@ Do **not** invent the full merchant list in this lock. Owner provides catalogue 
 **CAT-IDENTITY-01 (blocks Catalogue V2 seeding):** current compatibility keys such as `deck.material.hardwood.lm` may remain for Rates. Before canonical CAT-V2 rows:
 
 - **MATERIAL IDENTITY** is independent of **RATE UNIT**
-- Example: `materialKey: timber.decking.hardwood.140` with rates as `materialKey + unit + cost + provenance`
+- Example: structured identity (family, section, treatment?, grade?) with rates as `identity + unit + cost + provenance`
+- Do **not** freeze `timber.sg8.140x45.h3_2.lm` as canonical material identity
 - Supplier SKU is a third mapping
-- Do not refactor live Deck keys in this batch
+- **Three scopes:** Quotr common / Company / Project custom — see `QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md`
+- Custom materials are first-class; known material does not require known price
+- Do not refactor live Deck **surface** keys in DECK-1C-A
+- **Sequencing:** implement as small **DECK-1C-A-R1** after Owner identity gate (now approved), **before** DECK-1C-B prices. Includes treatment emission-gate fix. No materials table.
 
 **`purchaseQuantity`** on MaterialRequirement is the continuous **estimating** quantity after waste/conversion. Future procurement (`orderQuantity` / `packQuantity` / `stockLengthPlan`) must not redefine it.
 
@@ -254,7 +258,7 @@ Framing and Deck taxonomy may be interleaved with DECK member takeoff. Bathroom/
 
 Specific keys exist in `lib/rates/specific-material-catalogue.ts`. Live money consumption is still narrow: Deck decking lm (R2-R1) is the honest `used_now` path. Sheets, backfill m³, flooring m², paint L are largely unconsumed for money. **Zero framing sizes.** Package `scope.*` keys are `planned`, not primary pricing.
 
-`resolveMaterialRate` is now used by Deck decking; it must remain the material resolver. Do not revive work-area first-match.
+`resolveMaterialRate` is now used by Deck decking; it must remain the material resolver. Do not revive work-area first-match. Structural children must not fall through to `deck.substructure.m2`. Company materials without rates are a valid state (pricing required) — not representable cleanly until a materials table exists (`QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md`).
 
 ---
 

@@ -18,7 +18,7 @@ Deterministic rectangular Deck structural physical quantities emitted as **shado
 | Item | Detail |
 | --- | --- |
 | Module | `lib/estimate/deck-structure.ts` |
-| Scope facts | 14 new optional Scope Details keys (framing/supports/footings/orientation) with dependency gating |
+| Scope facts | **13** new optional Scope Details keys (framing/supports/footings/orientation) with dependency gating. Prior “14” was an off-by-one (priorities 71–83). |
 | Shadow components | `deck.joists`, `deck.rim_framing`, `deck.bearers`, `deck.supports`, `deck.concrete` |
 | Geometry gate | Requires `deck.length_m` + `deck.width_m` (no area-only framing grid) |
 | Partial maturity | Each component emits when its own prerequisites are met |
@@ -64,5 +64,5 @@ Deterministic rectangular Deck structural physical quantities emitted as **shado
 
 ## Next
 
-**DECK-1C** — rate keys + benchmark seeding for `timber.sg8.*` and concrete.  
+**DECK-1C** — CAT-IDENTITY-01 types + treatment-gate fix, then DECK-1C-B sourced benchmarks. Do not freeze `timber.sg8.*`.  
 **DECK-1R** — commercial review + selective authority promotion (future).
