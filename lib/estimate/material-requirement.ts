@@ -60,6 +60,7 @@ export function buildMaterialRequirement(params: {
   purchaseUnit: string;
   conversion?: MaterialRequirement["conversion"];
   rateSource: RequirementRateSource;
+  rateEvidence?: MaterialRequirement["rateEvidence"];
   unitCost: number | null;
   totalCost: number | null;
 }): MaterialRequirement {
@@ -93,6 +94,7 @@ export function buildMaterialRequirement(params: {
     purchaseUnit: params.purchaseUnit,
     conversion: params.conversion,
     rateSource: params.rateSource,
+    rateEvidence: params.rateEvidence,
     unitCost: params.unitCost,
     totalCost: params.totalCost,
   };

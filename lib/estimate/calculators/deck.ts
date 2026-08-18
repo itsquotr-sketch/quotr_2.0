@@ -676,6 +676,7 @@ export function calculateDeck(
     facts,
     rates: context.rates,
     materialWastageSettings: context.materialWastageSettings,
+    organisationSettings: context.organisationSettings,
   });
 
   const requirements = [

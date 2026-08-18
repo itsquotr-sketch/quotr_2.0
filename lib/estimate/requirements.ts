@@ -123,6 +123,33 @@ export type MaterialRequirement = EstimateRequirementBase & {
     basis?: string;
   };
   rateSource: RequirementRateSource;
+  /**
+   * Immutable copy of the rate evidence used at generation time.
+   * Required for Quotr benchmark-priced structural timber so later
+   * catalogue changes cannot rewrite historical snapshot cost.
+   */
+  rateEvidence?: {
+    sourceName: string;
+    sourceType: string;
+    sourceURL: string;
+    sourceProductCode?: string;
+    sourceProductDescription?: string;
+    sourceRegion?: string;
+    sourceBranch?: string | null;
+    sourcePrice: number;
+    sourceUnit: string;
+    gstBasis: string;
+    channel?: string;
+    stockLengthM?: number;
+    conversionFormula?: string;
+    normalizedRateUnit: string;
+    normalizedRateExGst: number;
+    researchedAt: string;
+    verifiedAt: string;
+    quality?: string;
+    evidenceId?: string;
+    notes?: string;
+  };
   unitCost: number | null;
   totalCost: number | null;
 };

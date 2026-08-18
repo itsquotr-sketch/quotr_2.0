@@ -33,8 +33,16 @@ function cloneRequirement(requirement: EstimateRequirement): EstimateRequirement
       conversion: requirement.conversion
         ? { ...requirement.conversion }
         : undefined,
+      rateEvidence: requirement.rateEvidence
+        ? { ...requirement.rateEvidence }
+        : undefined,
       materialIdentity: requirement.materialIdentity
-        ? { ...requirement.materialIdentity }
+        ? {
+            ...requirement.materialIdentity,
+            processing: requirement.materialIdentity.processing ?? null,
+            processingKind:
+              requirement.materialIdentity.processingKind ?? "unknown",
+          }
         : undefined,
     };
   }

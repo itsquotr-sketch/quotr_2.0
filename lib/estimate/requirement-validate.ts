@@ -205,6 +205,24 @@ function assertMaterial(requirement: MaterialRequirement): void {
   ) {
     fail(`${requirement.requirementId}: totalCost cannot be negative`);
   }
+  if (requirement.rateEvidence) {
+    const evidence = requirement.rateEvidence;
+    if (!isNonEmptyString(evidence.sourceName) || !isNonEmptyString(evidence.sourceURL)) {
+      fail(`${requirement.requirementId}: rateEvidence source is incomplete`);
+    }
+    if (!isNonEmptyString(evidence.gstBasis) || !isNonEmptyString(evidence.sourceUnit)) {
+      fail(`${requirement.requirementId}: rateEvidence GST/unit is incomplete`);
+    }
+    if (!isNonNegativeNumber(evidence.sourcePrice) || !isNonNegativeNumber(evidence.normalizedRateExGst)) {
+      fail(`${requirement.requirementId}: rateEvidence prices must be non-negative`);
+    }
+    if (!isNonEmptyString(evidence.researchedAt) || !isNonEmptyString(evidence.verifiedAt)) {
+      fail(`${requirement.requirementId}: rateEvidence dates are required`);
+    }
+    if (!isNonEmptyString(evidence.normalizedRateUnit)) {
+      fail(`${requirement.requirementId}: rateEvidence normalizedRateUnit is required`);
+    }
+  }
 }
 
 function assertLabour(requirement: LabourRequirement): void {

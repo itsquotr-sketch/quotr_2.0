@@ -57,13 +57,13 @@ Do **not** invent the full merchant list in this lock. Owner provides catalogue 
 **CAT-IDENTITY-01 (blocks Catalogue V2 seeding):** current compatibility keys such as `deck.material.hardwood.lm` may remain for Rates. Before canonical CAT-V2 rows:
 
 - **MATERIAL IDENTITY** is independent of **RATE UNIT**
-- Example: structured identity (family, section, treatment?, grade?) with rates as `identity + unit + cost + provenance`
+- Example: structured identity (family, section, treatment?, grade?, processing?) with rates as `identity + unit + cost + provenance`
 - Do **not** freeze `timber.sg8.140x45.h3_2.lm` as canonical material identity
 - Supplier SKU is a third mapping
 - **Three scopes:** Quotr common / Company / Project custom — see `QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md`
 - Custom materials are first-class; known material does not require known price
 - Do not refactor live Deck **surface** keys in DECK-1C-A
-- **Sequencing:** implement as small **DECK-1C-A-R1** after Owner identity gate (now approved), **before** DECK-1C-B prices. Includes treatment emission-gate fix. No materials table.
+- **Sequencing:** CAT-IDENTITY-01 landed. DECK-1C-B2 attaches three exact Bunnings KD `$/lm` Quotr benchmarks locally (Owner review pending). No materials table.
 
 **`purchaseQuantity`** on MaterialRequirement is the continuous **estimating** quantity after waste/conversion. Future procurement (`orderQuantity` / `packQuantity` / `stockLengthPlan`) must not redefine it.
 

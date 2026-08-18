@@ -72,6 +72,7 @@ Product family: `structural_framing`
 Section: normalized `140x45`  
 Grade: optional (e.g. SG8) — **not** assumed  
 Treatment: optional normalized (H1.2 / H3.2 / H4 / H5 / custom / unknown)  
+Processing / moisture state: optional (`kd` \| `green`) — **not** assumed. Unknown must not become KD. Known KD is incompatible with known green.  
 Species/product: optional  
 Unit for rate: `lm` (framing)  
 Custom description: always retained when user-entered
@@ -84,7 +85,8 @@ Bearers use the **same** generic structural timber identity. Do not create a Dec
 | --- | --- | --- |
 | 140×45, treatment unknown, grade unknown | Yes | No |
 | 140×45 H3.2, grade unknown | Yes | Only if a rate exists for that **same** incomplete identity — not by filling SG8 |
-| 140×45 SG8 H3.2 | Yes | Yes, if exact company/Quotr/project rate exists |
+| 140×45 SG8 H3.2 | Yes | Only if processing also matches the rate row (KD ≠ green ≠ unknown) |
+| 140×45 SG8 H3.2 KD | Yes | Yes, if exact company/Quotr/project rate exists |
 
 ---
 
@@ -130,6 +132,20 @@ DECK-1B fact `deck.framing_treatment` is free text, optional, shared across jois
 
 ---
 
+## 7A. Processing / moisture state (DECK-1C-B2)
+
+B1 proved KD vs green/wet is commercially material at the same section/grade/treatment. CAT-IDENTITY therefore carries:
+
+| State | Meaning | Identity key |
+| --- | --- | --- |
+| **KNOWN `kd`** | Kiln-dried | `.kd` appended |
+| **KNOWN `green`** | Green / wet | `.green` appended |
+| **UNKNOWN** | No evidence | omitted |
+
+No everyday Scope Details question was added. Tokens may be parsed from existing free-text (`KD`, `kiln dried`, `green`, `wet`). Unknown processing must **not** receive a KD benchmark. Known green must **not** receive a KD benchmark.
+
+---
+
 ## 8. Treatment is not a physical emission gate (Owner approved)
 
 Physical timber quantity does **not** depend on treatment. **Section** is the minimum structured spec to emit a timber MaterialRequirement.
@@ -146,7 +162,7 @@ Formulas stay frozen. Only the emission gate changes.
 
 ## 9. Canonical identity table (DECK-1B children)
 
-Physical quantities remain DECK-REF-01. Live keys no longer embed assumed SG8 or rate unit. Debug key order: `family.productFamily.section[.species][.grade][.treatment|custom.slug]`. Unknown attributes are omitted, never fabricated.
+Physical quantities remain DECK-REF-01. Live keys no longer embed assumed SG8 or rate unit. Debug key order: `family.productFamily.section[.species][.grade][.treatment|custom.slug][.kd|.green]`. Unknown attributes are omitted, never fabricated. The debug key is **not** a persistent catalogue row ID.
 
 LVL is **`productFamily = structural_lvl`**, not a species of generic framing timber. Generic 240×45 `structural_framing` is incompatible with 240×45 LVL.
 
@@ -288,7 +304,7 @@ CUSTOM is not UNKNOWN. CUSTOM is not equivalent to any known class. Different cu
 
 Unknown attributes are omitted from the debug key. They are never fabricated (no default SG8).
 
-When grade/species/treatment **are** known, they **must** participate in the identity/key so they cannot collide with unknown or another known value.
+When grade/species/treatment/processing **are** known, they **must** participate in the identity/key so they cannot collide with unknown or another known value.
 
 ---
 
@@ -304,7 +320,7 @@ LVL is **`productFamily = structural_lvl`**, not `species = LVL`. Generic mill-s
 
 `originalDescription` is historical/display/audit evidence. It is **serialized** on snapshots so a historical requirement remains understandable without a live catalogue.
 
-It does **not** drive normal exact match when structured fields (family, productFamily, section, grade, treatment state/value, species) are demonstrably the same.
+It does **not** drive normal exact match when structured fields (family, productFamily, section, grade, treatment state/value, processing, species) are demonstrably the same.
 
 Harmless wording (`"140x45 H3.2"` vs `"140 x 45 treated framing"` **with the same structured H3.2**) is not a mismatch.
 

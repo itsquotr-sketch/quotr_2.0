@@ -152,6 +152,7 @@ State the physical material needed, convert to a purchase quantity, resolve unit
 | `purchaseUnit` | After conversion |
 | `unitCost` | Resolved at generate; not SoT |
 | `rateSource` | Shared `RequirementRateSource`: `company \| project_override \| supplier \| benchmark \| hardcoded_legacy \| missing`. Conversion is **not** a source. |
+| `rateEvidence` | Optional immutable copy of the benchmark (or other) evidence used at generation. Historical snapshots must not depend on live catalogue rows. |
 | `totalCost` | `purchaseQuantity × unitCost` when known |
 
 ### PRICE AUTHORITY

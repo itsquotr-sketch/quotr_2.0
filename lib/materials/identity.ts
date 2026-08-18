@@ -7,6 +7,14 @@
 
 export type MaterialTreatmentKind = "unknown" | "known" | "custom";
 
+/**
+ * Mill processing / moisture state. Commercially distinct from treatment.
+ * KD vs green/wet can have different public $/lm at the same section/grade/H class.
+ * Unknown must not become KD.
+ */
+export type MaterialProcessingState = "kd" | "green";
+export type MaterialProcessingKind = "unknown" | "known";
+
 export type MaterialIdentityMatch = "exact" | "partial" | "incompatible";
 
 export type MaterialIdentityCompleteness =
@@ -22,6 +30,8 @@ export type MaterialIdentity = {
   treatment: string | null;
   treatmentKind: MaterialTreatmentKind;
   treatmentCustom: string | null;
+  processing: MaterialProcessingState | null;
+  processingKind: MaterialProcessingKind;
   species: string | null;
   originalDescription: string | null;
 };
@@ -100,8 +110,10 @@ function stripNonTreatmentTokens(raw: string): string {
   return raw
     .replace(/×/g, "x")
     .replace(/(\d+(?:\.\d+)?)\s*[xX]\s*(\d+(?:\.\d+)?)(?:\s*mm\b)?/gi, " ")
-    .replace(/\bSG\s*\d+\b/gi, " ")
+    .replace(/\b(?:M)?SG\s*\d+\b/gi, " ")
     .replace(/\blvl\b/gi, " ")
+    .replace(/\bkiln[-\s]?dried\b/gi, " ")
+    .replace(/\b(kd|green|wet|gauged)\b/gi, " ")
     .replace(
       /\b(mm|timber|framing|structural|sawn|rough|pine|radiata)\b/gi,
       " "
@@ -117,7 +129,7 @@ export function normalizeMaterialGrade(
   if (raw == null) return null;
   const trimmed = raw.trim();
   if (!trimmed) return null;
-  const match = trimmed.match(/^sg\s*(\d+)$/i);
+  const match = trimmed.match(/^(?:m)?sg\s*(\d+)$/i);
   if (!match) return null;
   return `sg${match[1]}`;
 }
@@ -126,6 +138,7 @@ export function parseMaterialDescription(raw: string | null | undefined): {
   section: string | null;
   treatment: ReturnType<typeof normalizeMaterialTreatment>;
   grade: string | null;
+  processing: ReturnType<typeof normalizeMaterialProcessing>;
   originalDescription: string | null;
 } {
   const original = raw?.trim() ? raw.trim() : null;
@@ -133,13 +146,42 @@ export function parseMaterialDescription(raw: string | null | undefined): {
     section: normalizeMaterialSection(raw),
     treatment: normalizeMaterialTreatment(raw),
     grade: extractGradeToken(raw),
+    processing: normalizeMaterialProcessing(raw),
     originalDescription: original,
   };
 }
 
+export function normalizeMaterialProcessing(
+  raw: string | null | undefined
+): {
+  kind: MaterialProcessingKind;
+  value: MaterialProcessingState | null;
+} {
+  if (raw == null) {
+    return { kind: "unknown", value: null };
+  }
+  const text = raw.trim();
+  if (!text) {
+    return { kind: "unknown", value: null };
+  }
+
+  const hasKd = /\bKD\b/i.test(text) || /\bkiln[-\s]?dried\b/i.test(text);
+  const hasGreen = /\bgreen\b/i.test(text) || /\bwet\b/i.test(text);
+  if (hasKd && hasGreen) {
+    return { kind: "unknown", value: null };
+  }
+  if (hasKd) {
+    return { kind: "known", value: "kd" };
+  }
+  if (hasGreen) {
+    return { kind: "known", value: "green" };
+  }
+  return { kind: "unknown", value: null };
+}
+
 function extractGradeToken(raw: string | null | undefined): string | null {
   if (!raw) return null;
-  const match = raw.match(/\bSG\s*(\d+)\b/i);
+  const match = raw.match(/\b(?:M)?SG\s*(\d+)\b/i);
   return match ? `sg${match[1]}` : null;
 }
 
@@ -147,13 +189,21 @@ export function buildStructuralTimberIdentity(params: {
   sectionRaw: string | null | undefined;
   treatmentRaw?: string | null;
   gradeRaw?: string | null;
+  processingRaw?: string | null;
   species?: string | null;
   originalDescription?: string | null;
   productFamily?: string | null;
 }): MaterialIdentity | null {
-  const parsed = parseMaterialDescription(
-    params.originalDescription ?? params.sectionRaw ?? null
-  );
+  const combined = [
+    params.originalDescription,
+    params.sectionRaw,
+    params.treatmentRaw,
+    params.gradeRaw,
+    params.processingRaw,
+  ]
+    .filter((part): part is string => Boolean(part && String(part).trim()))
+    .join(" ");
+  const parsed = parseMaterialDescription(combined || params.sectionRaw || null);
   const section =
     normalizeMaterialSection(params.sectionRaw) ?? parsed.section;
   if (!section) {
@@ -164,6 +214,13 @@ export function buildStructuralTimberIdentity(params: {
     : parsed.treatment;
   const grade =
     normalizeMaterialGrade(params.gradeRaw) ?? parsed.grade;
+  const processingExplicit = params.processingRaw
+    ? normalizeMaterialProcessing(params.processingRaw)
+    : null;
+  const processing =
+    processingExplicit && processingExplicit.kind === "known"
+      ? processingExplicit
+      : parsed.processing;
   const lvl = isLvlProduct(
     params.productFamily,
     params.species,
@@ -185,6 +242,8 @@ export function buildStructuralTimberIdentity(params: {
     treatment: treatment.value,
     treatmentKind: treatment.kind,
     treatmentCustom: treatment.custom,
+    processing: processing.value,
+    processingKind: processing.kind,
     species,
     originalDescription:
       params.originalDescription?.trim() ||
@@ -224,6 +283,11 @@ export function buildSupportMaterialIdentity(params: {
   }
   const productFamily = inferSupportProductFamily(type);
   const treatment = normalizeMaterialTreatment(params.treatmentRaw);
+  const parsed = parseMaterialDescription(
+    [params.originalDescription, params.supportType, params.sectionRaw, params.treatmentRaw]
+      .filter(Boolean)
+      .join(" ")
+  );
   const original =
     params.originalDescription?.trim() ||
     [type, params.sectionRaw, params.treatmentRaw].filter(Boolean).join(" ").trim() ||
@@ -232,10 +296,12 @@ export function buildSupportMaterialIdentity(params: {
     family: STRUCTURAL_TIMBER_FAMILY,
     productFamily,
     section,
-    grade: null,
+    grade: parsed.grade,
     treatment: treatment.value,
     treatmentKind: treatment.kind,
     treatmentCustom: treatment.custom,
+    processing: parsed.processing.value,
+    processingKind: parsed.processing.kind,
     species: null,
     originalDescription: original,
   };
@@ -261,6 +327,8 @@ export function buildConcreteMaterialIdentity(params: {
     treatment: null,
     treatmentKind: "unknown",
     treatmentCustom: null,
+    processing: null,
+    processingKind: "unknown",
     species: null,
     originalDescription: params.originalDescription?.trim() || mix,
   };
@@ -289,7 +357,10 @@ export function materialIdentityCompleteness(
  * Includes every *known* commercially relevant attribute. Never invents SG8
  * or other unknowns merely to fill the key.
  *
- * Order: family.productFamily.section[.species][.grade][.treatment|custom.slug]
+ * Order: family.productFamily.section[.species][.grade][.treatment|custom.slug][.kd|.green]
+ *
+ * This debug key is a deterministic representation of known attributes.
+ * It is NOT a future globally unique persistent Material row ID.
  */
 export function serializeMaterialIdentityKey(identity: MaterialIdentity): string {
   const parts = [identity.family];
@@ -301,6 +372,9 @@ export function serializeMaterialIdentityKey(identity: MaterialIdentity): string
     parts.push(identity.treatment);
   } else if (identity.treatmentKind === "custom" && identity.treatmentCustom) {
     parts.push("custom", slugIdentityToken(identity.treatmentCustom));
+  }
+  if (identity.processingKind === "known" && identity.processing) {
+    parts.push(identity.processing);
   }
   return parts.join(".");
 }
@@ -351,6 +425,9 @@ export function compareMaterialIdentities(
     return "incompatible";
   }
 
+  const processingMatch = compareProcessing(left, right);
+  if (processingMatch !== "exact") return processingMatch;
+
   if ((left.species ?? null) !== (right.species ?? null)) {
     if (!left.species || !right.species) return "partial";
     if (left.species.toLowerCase() !== right.species.toLowerCase()) {
@@ -383,6 +460,23 @@ function compareTreatment(
     return "partial";
   }
   if (left.treatmentKind !== right.treatmentKind) {
+    return "partial";
+  }
+  return "exact";
+}
+
+function compareProcessing(
+  left: MaterialIdentity,
+  right: MaterialIdentity
+): MaterialIdentityMatch {
+  const leftKind = left.processingKind ?? "unknown";
+  const rightKind = right.processingKind ?? "unknown";
+  const leftValue = left.processing ?? null;
+  const rightValue = right.processing ?? null;
+  if (leftKind === "known" && rightKind === "known") {
+    return leftValue === rightValue ? "exact" : "incompatible";
+  }
+  if (leftKind !== rightKind) {
     return "partial";
   }
   return "exact";

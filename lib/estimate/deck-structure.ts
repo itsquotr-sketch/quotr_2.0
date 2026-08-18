@@ -11,7 +11,6 @@ import {
 } from "@/lib/estimate/facts";
 import {
   buildMaterialRequirement,
-  mapMaterialRateSourceToRequirement,
 } from "@/lib/estimate/material-requirement";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import type {
@@ -24,11 +23,10 @@ import type {
   EstimateLineItemInput,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
-import type { OrganisationRate } from "@/components/setup/types";
-import { materialRateUnitsMatch } from "@/lib/estimate/resolve-material-rate";
+import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
+import { resolveStructuralMaterialRequirementRate } from "@/lib/estimate/resolve-structural-material-rate";
 import {
   buildConcreteMaterialIdentity,
-  buildMaterialRateItemKey,
   buildStructuralTimberIdentity,
   buildSupportMaterialIdentity,
   serializeMaterialIdentityKey,
@@ -114,9 +112,14 @@ export type DeckSubstructureGroupReconciliation = {
   legacyPackageCost: number | null;
   childComponentKeys: readonly string[];
   emittedChildComponentKeys: readonly string[];
+  physicalChildCount: number;
+  pricedChildComponentKeys: readonly string[];
+  unpricedChildComponentKeys: readonly string[];
   pricedChildCostTotal: number | null;
   pricedChildCount: number;
   unpricedChildCount: number;
+  pricingCoverage: "none" | "partial" | "all_emitted_children";
+  commercialNote: string;
   status: "NOT_COMPARABLE" | "COVERAGE_PARTIAL" | "AGGREGATE_READY";
   reasons: readonly string[];
 };
@@ -404,63 +407,17 @@ export function calculateDeckStructureQuantities(params: {
   };
 }
 
-function findCompanyMaterialRate(
-  rates: readonly OrganisationRate[],
-  itemKey: string,
-  unit: string
-): OrganisationRate | undefined {
-  return rates.find(
-    (rate) =>
-      rate.active &&
-      rate.rate_type === "material" &&
-      rate.item_key === itemKey &&
-      materialRateUnitsMatch(rate.unit, unit)
-  );
-}
-
-function resolveStructuralRate(params: {
-  rates: readonly OrganisationRate[];
-  materialKey: string;
-  unit: "lm" | "ea" | "m3";
-  purchaseQuantity: number;
-}): Pick<
-  MaterialRequirement,
-  "priced" | "rateSource" | "unitCost" | "totalCost"
-> {
-  const companyRate = findCompanyMaterialRate(
-    params.rates,
-    params.materialKey,
-    params.unit
-  );
-  if (companyRate?.cost_rate == null) {
-    return {
-      priced: false,
-      rateSource: "missing",
-      unitCost: null,
-      totalCost: null,
-    };
-  }
-  const unitCost = Number(companyRate.cost_rate);
-  return {
-    priced: true,
-    rateSource: mapMaterialRateSourceToRequirement("company_specific"),
-    unitCost,
-    totalCost: round2(params.purchaseQuantity * unitCost),
-  };
-}
-
 function resolveIdentityRate(params: {
   identity: MaterialIdentity;
   unit: "lm" | "ea" | "m3";
   purchaseQuantity: number;
   rates: readonly OrganisationRate[];
-}): Pick<MaterialRequirement, "priced" | "rateSource" | "unitCost" | "totalCost"> {
-  return resolveStructuralRate({
-    rates: params.rates,
-    materialKey: buildMaterialRateItemKey(params.identity, params.unit),
-    unit: params.unit,
-    purchaseQuantity: params.purchaseQuantity,
-  });
+  organisationSettings?: OrganisationSettings | null;
+}): Pick<
+  MaterialRequirement,
+  "priced" | "rateSource" | "unitCost" | "totalCost" | "rateEvidence"
+> {
+  return resolveStructuralMaterialRequirementRate(params);
 }
 
 function framingTimberIdentity(
@@ -544,6 +501,7 @@ function buildJoistRequirement(params: {
   quantities: DeckStructureQuantities;
   framingWasteDefaulted: boolean;
   rates: readonly OrganisationRate[];
+  organisationSettings?: OrganisationSettings | null;
 }): MaterialRequirement | null {
   const identity = framingTimberIdentity(
     params.facts.joistSection,
@@ -555,6 +513,7 @@ function buildJoistRequirement(params: {
     unit: "lm",
     purchaseQuantity: params.quantities.joistPurchaseLm,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
@@ -593,6 +552,7 @@ function buildJoistRequirement(params: {
     purchaseQuantity: params.quantities.joistPurchaseLm,
     purchaseUnit: "lm",
     rateSource: pricing.rateSource,
+    rateEvidence: pricing.rateEvidence,
     unitCost: pricing.unitCost,
     totalCost: pricing.totalCost,
   });
@@ -604,6 +564,7 @@ function buildRimRequirement(params: {
   quantities: DeckStructureQuantities;
   framingWasteDefaulted: boolean;
   rates: readonly OrganisationRate[];
+  organisationSettings?: OrganisationSettings | null;
 }): MaterialRequirement | null {
   const identity = framingTimberIdentity(
     params.facts.joistSection,
@@ -615,6 +576,7 @@ function buildRimRequirement(params: {
     unit: "lm",
     purchaseQuantity: params.quantities.rimPurchaseLm,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
@@ -658,6 +620,7 @@ function buildRimRequirement(params: {
     purchaseQuantity: params.quantities.rimPurchaseLm,
     purchaseUnit: "lm",
     rateSource: pricing.rateSource,
+    rateEvidence: pricing.rateEvidence,
     unitCost: pricing.unitCost,
     totalCost: pricing.totalCost,
   });
@@ -669,6 +632,7 @@ function buildBearerRequirement(params: {
   quantities: DeckStructureQuantities;
   framingWasteDefaulted: boolean;
   rates: readonly OrganisationRate[];
+  organisationSettings?: OrganisationSettings | null;
 }): MaterialRequirement | null {
   if (!params.facts.bearerSection || params.facts.bearerRowCount == null) {
     return null;
@@ -683,6 +647,7 @@ function buildBearerRequirement(params: {
     unit: "lm",
     purchaseQuantity: params.quantities.bearerPurchaseLm,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
@@ -716,6 +681,7 @@ function buildBearerRequirement(params: {
     purchaseQuantity: params.quantities.bearerPurchaseLm,
     purchaseUnit: "lm",
     rateSource: pricing.rateSource,
+    rateEvidence: pricing.rateEvidence,
     unitCost: pricing.unitCost,
     totalCost: pricing.totalCost,
   });
@@ -726,6 +692,7 @@ function buildSupportRequirement(params: {
   facts: DeckStructureFacts;
   quantities: DeckStructureQuantities;
   rates: readonly OrganisationRate[];
+  organisationSettings?: OrganisationSettings | null;
 }): MaterialRequirement | null {
   if (
     !params.facts.supportType ||
@@ -746,6 +713,7 @@ function buildSupportRequirement(params: {
     unit: "ea",
     purchaseQuantity: params.quantities.supportCount,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
@@ -777,6 +745,7 @@ function buildSupportRequirement(params: {
     purchaseQuantity: params.quantities.supportCount,
     purchaseUnit: "ea",
     rateSource: pricing.rateSource,
+    rateEvidence: pricing.rateEvidence,
     unitCost: pricing.unitCost,
     totalCost: pricing.totalCost,
   });
@@ -787,6 +756,7 @@ function buildConcreteRequirement(params: {
   facts: DeckStructureFacts;
   quantities: DeckStructureQuantities;
   rates: readonly OrganisationRate[];
+  organisationSettings?: OrganisationSettings | null;
 }): MaterialRequirement | null {
   if (
     params.facts.footingLengthMm == null ||
@@ -803,6 +773,7 @@ function buildConcreteRequirement(params: {
     unit: "m3",
     purchaseQuantity: params.quantities.concretePurchaseM3,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
@@ -834,6 +805,7 @@ function buildConcreteRequirement(params: {
     purchaseQuantity: params.quantities.concretePurchaseM3,
     purchaseUnit: "m3",
     rateSource: pricing.rateSource,
+    rateEvidence: pricing.rateEvidence,
     unitCost: pricing.unitCost,
     totalCost: pricing.totalCost,
   });
@@ -844,6 +816,7 @@ export function buildDeckStructuralMaterialRequirements(params: {
   facts: readonly EstimateFact[];
   rates: readonly OrganisationRate[];
   materialWastageSettings: MaterialWastageSettings | null | undefined;
+  organisationSettings?: OrganisationSettings | null;
 }): {
   requirements: MaterialRequirement[];
   quantities: DeckStructureQuantities | null;
@@ -870,6 +843,7 @@ export function buildDeckStructuralMaterialRequirements(params: {
     quantities,
     framingWasteDefaulted: waste.defaulted,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   if (joists) requirements.push(joists);
   const rim = buildRimRequirement({
@@ -878,6 +852,7 @@ export function buildDeckStructuralMaterialRequirements(params: {
     quantities,
     framingWasteDefaulted: waste.defaulted,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   if (rim) requirements.push(rim);
 
@@ -887,6 +862,7 @@ export function buildDeckStructuralMaterialRequirements(params: {
     quantities,
     framingWasteDefaulted: waste.defaulted,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   if (bearer) requirements.push(bearer);
 
@@ -895,6 +871,7 @@ export function buildDeckStructuralMaterialRequirements(params: {
     facts: structureFacts,
     quantities,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   if (supports) requirements.push(supports);
 
@@ -903,6 +880,7 @@ export function buildDeckStructuralMaterialRequirements(params: {
     facts: structureFacts,
     quantities,
     rates: params.rates,
+    organisationSettings: params.organisationSettings,
   });
   if (concrete) requirements.push(concrete);
 
@@ -933,14 +911,23 @@ export function buildDeckSubstructureGroupReconciliation(params: {
 
   const reasons: string[] = ["intentional_model_improvement"];
   let status: DeckSubstructureGroupReconciliation["status"] = "NOT_COMPARABLE";
+  let pricingCoverage: DeckSubstructureGroupReconciliation["pricingCoverage"] =
+    "none";
+  if (pricedChildren.length > 0 && unpricedChildren.length > 0) {
+    pricingCoverage = "partial";
+  } else if (pricedChildren.length > 0 && unpricedChildren.length === 0) {
+    pricingCoverage = "all_emitted_children";
+  }
   if (legacyLine == null) {
     reasons.push("missing_legacy_substructure_line");
   } else if (unpricedChildren.length > 0) {
     status = "COVERAGE_PARTIAL";
     reasons.push("unpriced_structural_children");
+    reasons.push("priced_child_aggregate_is_not_complete_substructure_cost");
   } else if (pricedChildCostTotal != null) {
     status = "AGGREGATE_READY";
     reasons.push("priced_children_available_for_aggregate_review");
+    reasons.push("shadow_only_not_commercial_substructure_authority");
   }
 
   return {
@@ -950,9 +937,15 @@ export function buildDeckSubstructureGroupReconciliation(params: {
     legacyPackageCost: legacyLine?.recommendedCost ?? null,
     childComponentKeys,
     emittedChildComponentKeys: emitted,
+    physicalChildCount: params.structuralRequirements.length,
+    pricedChildComponentKeys: pricedChildren.map((item) => item.componentKey),
+    unpricedChildComponentKeys: unpricedChildren.map((item) => item.componentKey),
     pricedChildCostTotal,
     pricedChildCount: pricedChildren.length,
     unpricedChildCount: unpricedChildren.length,
+    pricingCoverage,
+    commercialNote:
+      "PARTIAL PRICED STRUCTURAL CHILD COST — SHADOW diagnostic aggregate only. Not substructure cost, not total structural cost, and not complete detailed cost. Does not enter estimate money.",
     status,
     reasons,
   };

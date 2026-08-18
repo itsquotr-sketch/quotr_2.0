@@ -90,6 +90,8 @@ From `QUOTR_MATERIAL_DOMAIN_ARCHITECTURE.md`:
 
 **Identity usefulness ≠ rate authority.** A Quotr common material may normalize a product without its benchmark outranking company or project cost.
 
+DECK-1C-B2 (local, Owner validated) adds three **Quotr sourced public-list benchmark** fallbacks for 90×45 / 140×45 / 190×45 SG8 H3.2 KD at hierarchy step 6. These are Quotr benchmark fallbacks — not market averages, trade rates, contractor rates, or supplier account prices.
+
 ---
 
 ## 5. Project rate ≠ company rate
