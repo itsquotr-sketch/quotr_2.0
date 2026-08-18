@@ -19,6 +19,7 @@ export const ASSISTANT_ACTION_LABELS = Object.freeze({
   generateEstimate: "Generate estimate",
   estimateNow: "Estimate now",
   reviewEstimate: "Review estimate",
+  editJobDetails: "Edit job details",
   recalculateEstimate: "Recalculate estimate",
   viewFullBreakdown: "View full breakdown",
   analyseAgain: "Analyse again",

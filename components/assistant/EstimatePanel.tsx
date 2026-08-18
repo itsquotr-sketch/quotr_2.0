@@ -48,6 +48,7 @@ import {
   deriveQuickEstimateConfidencePresentation,
   rankQuickEstimateAssumptions,
 } from "@/lib/assistant/presentation/quick-estimate-confidence";
+import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
 import type { AssistantUnderstandingSummary } from "@/lib/assistant/presentation/assistant-understanding-summary";
 import { AssistantUnderstandingSummaryCard } from "@/components/assistant/AssistantUnderstandingSummaryCard";
 import { MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS } from "@/lib/scopes/estimate-priority";
@@ -106,6 +107,8 @@ type EstimatePanelProps = {
   }[];
   /** DECK-2B — compact pre-estimate understanding lines. */
   understandingSummaries?: readonly AssistantUnderstandingSummary[];
+  /** DECK-2B-R2 — after estimate, sidebar is commercial metrics only. */
+  compactCommercialSidebar?: boolean;
   onViewBreakdown?: () => void;
   onGenerate?: () => void;
   onRegenerate?: () => void;
@@ -351,6 +354,7 @@ export function EstimatePanel({
   projectInformationLabel = null,
   projectConditionsAttention = [],
   understandingSummaries = [],
+  compactCommercialSidebar = false,
   onViewBreakdown,
   onGenerate,
   onRegenerate,
@@ -483,28 +487,30 @@ export function EstimatePanel({
   // 7F-R5: never invent "open clarification" from needs-detail counts.
   const clarificationLabels: string[] = [];
 
-  const attentionItems = buildQuickEstimateAttentionItems({
-    missingLabels,
-    missingByWorkArea: effectiveMissingByWorkArea,
-    clarificationLabels,
-    pendingProposalCount,
-    scopeReviewAttention: scopeReviewAttention.map((s) => ({
-      label: s.label,
-      workAreaName: s.workAreaName,
-      workAreaId: s.workAreaId,
-      suggestionId: s.suggestionId,
-    })),
-    projectConditionsAttention,
-    unresolvedScopeImpactLabels:
-      unresolvedScopeImpactLabels.length > 0
-        ? unresolvedScopeImpactLabels
-        : unresolvedScopeImpactCount > 0
-          ? Array.from(
-              { length: unresolvedScopeImpactCount },
-              () => "Suggested scope change"
-            )
-          : [],
-  });
+  const attentionItems = applyLevel1AttentionPresentation(
+    buildQuickEstimateAttentionItems({
+      missingLabels,
+      missingByWorkArea: effectiveMissingByWorkArea,
+      clarificationLabels,
+      pendingProposalCount,
+      scopeReviewAttention: scopeReviewAttention.map((s) => ({
+        label: s.label,
+        workAreaName: s.workAreaName,
+        workAreaId: s.workAreaId,
+        suggestionId: s.suggestionId,
+      })),
+      projectConditionsAttention,
+      unresolvedScopeImpactLabels:
+        unresolvedScopeImpactLabels.length > 0
+          ? unresolvedScopeImpactLabels
+          : unresolvedScopeImpactCount > 0
+            ? Array.from(
+                { length: unresolvedScopeImpactCount },
+                () => "Suggested scope change"
+              )
+            : [],
+    })
+  );
 
   const confidencePresentation = estimate
     ? deriveQuickEstimateConfidencePresentation({
@@ -785,6 +791,7 @@ export function EstimatePanel({
       ) : (
         <>
           {/* DECK-2B — Level 1 Quick Estimate summary */}
+          {!compactCommercialSidebar ? (
           <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -838,6 +845,7 @@ export function EstimatePanel({
               </div>
             ) : null}
           </div>
+          ) : null}
 
           {/* —— Commercial hierarchy (dominant) —— */}
           <div className={cn("space-y-3", isStale && "opacity-60")}>
@@ -954,7 +962,9 @@ export function EstimatePanel({
             </p>
           ) : null}
 
-          {status.kind === "attention" && status.attentionItems.length > 0 ? (
+          {status.kind === "attention" &&
+          status.attentionItems.length > 0 &&
+          !compactCommercialSidebar ? (
             <ul className="space-y-2.5 rounded-lg border border-amber-200/70 bg-amber-50/50 px-3 py-2.5 dark:border-amber-900/50 dark:bg-amber-950/20">
               {status.attentionItems.map((item) => (
                 <li

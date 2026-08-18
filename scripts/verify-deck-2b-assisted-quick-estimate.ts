@@ -2,6 +2,7 @@
  * DECK-2B assisted Quick Estimate verifier.
  * Run: npx tsx scripts/verify-deck-2b-assisted-quick-estimate.ts
  */
+import { readFileSync } from "node:fs";
 import { deriveInterviewReadiness } from "../lib/builder-interview/readiness";
 import {
   PROJECT_CONDITIONS_BATCH_SIZE,
@@ -27,7 +28,8 @@ import {
   filterEstimateBlockingProjectConditionKeys,
   getLevel1BlockingClass,
 } from "../lib/scopes/level1-blocking";
-import { planLevel1Questions } from "../lib/assistant/level1-question-plan";
+import { applyLevel1AttentionPresentation } from "../lib/assistant/presentation/attention-severity";
+import { resolveActiveDisclosureStage } from "../lib/assistant/progressive-disclosure";
 import { isProjectConditionDuplicateFactKey } from "../lib/project-conditions/canonical";
 import {
   buildQuestionBlockFromProjectState,
@@ -563,6 +565,117 @@ check("66 REAL-JOB scope demolition does not block submit", () => {
   const q = realBlock.questions.find((item) => item.key === "deck.existing_deck_removal");
   return q?.blocksEstimate === false;
 });
+
+const shellSrc = readFileSync("components/assistant/AssistantShell.tsx", "utf8");
+const readyCardSrc = readFileSync("components/assistant/EstimateReadyCard.tsx", "utf8");
+const progressSrc = readFileSync("components/assistant/AssistantProgress.tsx", "utf8");
+const disclosureSrc = readFileSync(
+  "components/assistant/CompletedSetupDisclosure.tsx",
+  "utf8"
+);
+const scopeReviewSrc = readFileSync(
+  "components/assistant/ScopeDiscoveryReviewBlock.tsx",
+  "utf8"
+);
+const progressiveSrc = readFileSync("lib/assistant/progressive-disclosure.ts", "utf8");
+
+check(
+  "67 estimate-generated state detected in shell",
+  shellSrc.includes('data-assistant-mode={compressCompletedSetup ? "estimate-ready" : "setup"}')
+);
+check(
+  "68 completed setup collapses after estimate",
+  shellSrc.includes("compressCompletedSetup") &&
+    disclosureSrc.includes("Job details")
+);
+check(
+  "69 Estimate Ready card is primary after generation",
+  readyCardSrc.includes("data-estimate-ready-card") &&
+    shellSrc.includes("EstimateReadyCard")
+);
+check(
+  "70 Project Capture not expanded by default after estimate",
+  progressiveSrc.includes("if (input.estimateReady && !input.estimateStale)")
+);
+check(
+  "71 Scope Review not permanently forced open",
+  scopeReviewSrc.includes("lastEditTokenRef") &&
+    !scopeReviewSrc.includes("requestEditToken > 0")
+);
+check(
+  "72 Job Details summary available",
+  disclosureSrc.includes("Job details") &&
+    disclosureSrc.includes("data-completed-setup-disclosure")
+);
+check(
+  "73 Edit details available",
+  ASSISTANT_ACTION_LABELS.editJobDetails === "Edit job details"
+);
+check(
+  "74 fascia missing remapped to check not Scope Review trap",
+  applyLevel1AttentionPresentation([
+    {
+      id: "fascia",
+      label: "Fascia / face boards",
+      detail: "Review scope",
+      attentionKind: "SCOPE",
+      reviewTarget: "scopeReview",
+      suggestionId: "s1",
+      workAreaId: WA,
+    },
+  ])[0]?.reviewTarget === "estimateReview" &&
+    applyLevel1AttentionPresentation([
+      {
+        id: "fascia",
+        label: "Fascia / face boards",
+        detail: "Review scope",
+        attentionKind: "SCOPE",
+        reviewTarget: "scopeReview",
+        suggestionId: "s1",
+        workAreaId: WA,
+      },
+    ])[0]?.productSeverity === "check"
+);
+check(
+  "75 estimate ready disclosure returns null",
+  resolveActiveDisclosureStage({
+    briefSubmitted: true,
+    workAreasConfirmed: true,
+    scopeDiscoveryEnabled: true,
+    scopeReviewComplete: false,
+    qualityUnlocked: true,
+    qualitySubmitted: true,
+    questionsSubmitted: true,
+    constraintsSubmitted: true,
+    estimateReady: true,
+  }) === null
+);
+check(
+  "76 centre/sidebar split after estimate",
+  shellSrc.includes("compactCommercialSidebar={compressCompletedSetup}") &&
+    readyCardSrc.includes("Top assumptions")
+);
+check(
+  "77 mobile post-estimate hides progress rail",
+  progressSrc.includes("deemphasised") &&
+    progressSrc.includes("data-assistant-progress-secondary")
+);
+check(
+  "78 return-to-estimate path exists",
+  readyCardSrc.includes("onReviewEstimate") &&
+    readyCardSrc.includes("ASSISTANT_ACTION_LABELS.reviewEstimate")
+);
+check(
+  "79 fascia Review deep-links fact without trapping token",
+  shellSrc.includes('item.factKey === "deck.vertical_face_boards_required"') &&
+    shellSrc.includes("setRequestScopeEdit") &&
+    scopeReviewSrc.includes("lastEditTokenRef")
+);
+check(
+  "80 Hide details returns to Estimate Ready",
+  shellSrc.includes("onExpandedChange={setSetupReviewOpen}") &&
+    disclosureSrc.includes("Hide details")
+);
 
 console.log(`\n=== Results: ${passed} passed, ${failed} failed ===\n`);
 process.exit(failed > 0 ? 1 : 0);

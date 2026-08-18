@@ -9,6 +9,7 @@ import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock"
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
 import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
+import { EstimateReadyCard } from "@/components/assistant/EstimateReadyCard";
 import { EstimateReviewSummaryStrip } from "@/components/assistant/EstimateReviewSummaryStrip";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
@@ -91,6 +92,12 @@ import {
   buildQuickEstimateAttentionItems,
   type QuickEstimateAttentionItem,
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
+import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
+import {
+  deriveQuickEstimateConfidencePresentation,
+  rankQuickEstimateAssumptions,
+} from "@/lib/assistant/presentation/quick-estimate-confidence";
+import { MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS } from "@/lib/scopes/estimate-priority";
 import { composeCurrentWorkAreaScopeState } from "@/lib/assistant/current-work-area-scope-state";
 import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
 import type { ManualScopeItemView } from "@/lib/work-areas/scope-items/types";
@@ -582,6 +589,18 @@ export function AssistantShell({
         return;
       }
 
+      // DECK-2B-R2: fascia is a CHECK, not a Scope Review trap — still deep-link
+      // the catalogue item when Review is clicked from Estimate Ready.
+      if (
+        target !== "scopeReview" &&
+        item.factKey === "deck.vertical_face_boards_required"
+      ) {
+        if (suggestionId) {
+          setReviewFocusSuggestionId(suggestionId);
+        }
+        setRequestScopeEdit((n) => n + 1);
+      }
+
       if (target === "scopeReview") {
         if (suggestionId) {
           setReviewFocusSuggestionId(suggestionId);
@@ -616,11 +635,13 @@ export function AssistantShell({
         return;
       }
 
-      if (target === "questions" || !target) {
+      if (target === "questions") {
         setForceExpandQuestions(true);
       }
-      if (target === "estimateReview" || item.workAreaId || item.questionId) {
-        // Ensure Estimate Review / Scope Details editors are visible.
+      if (target === "estimateReview") {
+        setEstimateReviewDetailsOpen(true);
+      }
+      if (item.questionId && target !== "estimateReview" && target !== "scopeReview") {
         setForceExpandQuestions(true);
       }
       setReviewFocusQuestionId(item.questionId ?? null);
@@ -1293,29 +1314,31 @@ export function AssistantShell({
 
   const completedEstimateAttentionItems: readonly QuickEstimateAttentionItem[] =
     compressCompletedSetup
-      ? buildQuickEstimateAttentionItems({
-          pendingProposalCount: pendingNoteProposal ? 1 : 0,
-          unresolvedScopeImpactLabels:
-            unresolvedScopeImpactCount > 0
-              ? Array.from(
-                  { length: unresolvedScopeImpactCount },
-                  () => "Suggested scope change"
-                )
-              : [],
-          scopeReviewAttention: scopeReviewAttentionItems,
-          projectConditionsAttention,
-          missingByWorkArea: initialState.scopeReview.workAreas.flatMap(
-            (wa) =>
-              wa.missingItems.map((label) => ({
-                workAreaName: wa.workAreaName,
-                workAreaId: wa.workAreaId,
-                label,
-                reviewTarget: "estimateReview" as const,
-                actionable: false,
-              }))
-          ),
-          clarificationLabels: pendingScopeDetailTitles,
-        })
+      ? applyLevel1AttentionPresentation(
+          buildQuickEstimateAttentionItems({
+            pendingProposalCount: pendingNoteProposal ? 1 : 0,
+            unresolvedScopeImpactLabels:
+              unresolvedScopeImpactCount > 0
+                ? Array.from(
+                    { length: unresolvedScopeImpactCount },
+                    () => "Suggested scope change"
+                  )
+                : [],
+            scopeReviewAttention: scopeReviewAttentionItems,
+            projectConditionsAttention,
+            missingByWorkArea: initialState.scopeReview.workAreas.flatMap(
+              (wa) =>
+                wa.missingItems.map((label) => ({
+                  workAreaName: wa.workAreaName,
+                  workAreaId: wa.workAreaId,
+                  label,
+                  reviewTarget: "estimateReview" as const,
+                  actionable: false,
+                }))
+            ),
+            clarificationLabels: pendingScopeDetailTitles,
+          })
+        )
       : [];
 
   const estimateReviewActionable =
@@ -1379,6 +1402,7 @@ export function AssistantShell({
       <AssistantProgress
         currentStage={stage}
         preferProjectConditionsLabel={preferProjectConditionsAsk}
+        deemphasised={compressCompletedSetup}
       />
 
       {actionError ? (
@@ -1390,6 +1414,7 @@ export function AssistantShell({
       <div
         className="mt-3 grid min-w-0 gap-5 lg:mt-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start xl:grid-cols-[220px_minmax(0,1fr)_340px]"
         data-assistant-main-grid
+        data-assistant-mode={compressCompletedSetup ? "estimate-ready" : "setup"}
       >
         <aside className="hidden xl:block">
           <div
@@ -1411,7 +1436,37 @@ export function AssistantShell({
         </aside>
 
         <div className="order-2 min-w-0 space-y-3 lg:order-none lg:space-y-2.5">
-          {compressCompletedSetup ? (
+          {compressCompletedSetup && estimate ? (
+            <>
+              <EstimateReadyCard
+                understanding={understandingSummaries[0] ?? null}
+                recommendedSell={estimate.recommendedSell}
+                confidenceBand={
+                  deriveQuickEstimateConfidencePresentation({
+                    confidencePercent: estimate.confidence,
+                    assumptionSeverity:
+                      estimate.assumptionMetadata?.assumptionSeverity,
+                    missingInfoCount: estimate.missingInfo.length,
+                    attentionCount: completedEstimateAttentionItems.length,
+                  }).band
+                }
+                assumptions={rankQuickEstimateAssumptions(
+                  estimate.assumptions,
+                  MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS
+                )}
+                attentionItems={completedEstimateAttentionItems}
+                onReviewEstimate={() => setBreakdownOpen(true)}
+                onEditJobDetails={() => setSetupReviewOpen(true)}
+                onReviewAttention={handleReviewAttention}
+              />
+              <CompletedSetupDisclosure
+                summaryLine={setupSummaryLine}
+                chips={setupChips}
+                expanded={setupReviewOpen}
+                onExpandedChange={setSetupReviewOpen}
+              />
+            </>
+          ) : compressCompletedSetup ? (
             <>
               <EstimateReviewSummaryStrip
                 items={completedEstimateAttentionItems}
@@ -1540,10 +1595,7 @@ export function AssistantShell({
           {/* 2b. Intelligent Scope Discovery — Preview flag only */}
           {scopeDiscoveryEnabled &&
           workAreasConfirmed &&
-          (!compressCompletedSetup ||
-            setupReviewOpen ||
-            unresolvedScopeImpactCount > 0 ||
-            !scopeReviewComplete) ? (
+          (!compressCompletedSetup || setupReviewOpen) ? (
             <div ref={scopeReviewCardRef}>
               <ScopeDiscoveryReviewBlock
                 projectId={project.id}
@@ -1976,6 +2028,7 @@ export function AssistantShell({
             scopeReviewAttention={scopeReviewAttentionItems}
             projectInformationLabel={projectInformationLabel}
             projectConditionsAttention={projectConditionsAttention}
+            compactCommercialSidebar={compressCompletedSetup}
             onViewBreakdown={() => setBreakdownOpen(true)}
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}

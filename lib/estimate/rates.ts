@@ -121,6 +121,53 @@ function findActiveRate(
   return rates.find((rate) => rate.active && predicate(rate));
 }
 
+/** Normalise rate units so lm vs m² cannot silently collide. */
+export function rateUnitsMatch(
+  rateUnit: string,
+  expectedUnit: string
+): boolean {
+  const normalize = (unit: string) =>
+    unit
+      .toLowerCase()
+      .replace("m²", "m2")
+      .replace("m^2", "m2")
+      .replace(/\s+/g, "");
+  return normalize(rateUnit) === normalize(expectedUnit);
+}
+
+/**
+ * Work-area fallback may only apply a generic/package rate.
+ * A different specific item_key (e.g. hardwood lm) must never steal
+ * framing/fixings/other exact-key lookups.
+ */
+export function isEligibleWorkAreaFallbackRate(params: {
+  rate: Pick<
+    OrganisationRate,
+    "rate_type" | "work_area_type" | "item_key" | "unit" | "cost_rate"
+  >;
+  rateType: string;
+  itemKey: string;
+  workAreaType?: string;
+  unit?: string;
+}): boolean {
+  const { rate } = params;
+  if (rate.rate_type !== params.rateType) return false;
+  if (!params.workAreaType || rate.work_area_type !== params.workAreaType) {
+    return false;
+  }
+  if (rate.cost_rate == null) return false;
+  const rateKey = rate.item_key?.trim() ?? "";
+  if (rateKey) {
+    if (rateKey === params.itemKey) return true;
+    const aliases = ITEM_KEY_ALIASES[params.itemKey] ?? [];
+    if (!aliases.includes(rateKey)) return false;
+  }
+  if (params.unit && rate.unit && !rateUnitsMatch(rate.unit, params.unit)) {
+    return false;
+  }
+  return true;
+}
+
 function allowBenchmarkFallback(
   settings: OrganisationSettings | null
 ): boolean {
@@ -202,12 +249,14 @@ export function resolveRate(params: {
     unit = exactRate.unit || unit;
     sourceType = "user_rate";
   } else if (params.workAreaType) {
-    const workAreaRate = findActiveRate(
-      params.rates,
-      (rate) =>
-        rate.rate_type === params.rateType &&
-        rate.work_area_type === params.workAreaType &&
-        rate.cost_rate != null
+    const workAreaRate = findActiveRate(params.rates, (rate) =>
+      isEligibleWorkAreaFallbackRate({
+        rate,
+        rateType: params.rateType,
+        itemKey: params.itemKey,
+        workAreaType: params.workAreaType,
+        unit: params.unit,
+      })
     );
 
     if (workAreaRate?.cost_rate != null) {

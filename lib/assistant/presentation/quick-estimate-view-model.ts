@@ -38,6 +38,12 @@ export type QuickEstimateAttentionItem = {
     | "projectConditions"
     | "estimateReview"
     | "quality";
+  /** DECK-2B-R2 — presentation severity only. */
+  readonly productSeverity?:
+    | "assumption"
+    | "check"
+    | "attention"
+    | "blocker";
 };
 
 export type QuickEstimateStatusPresentation = {

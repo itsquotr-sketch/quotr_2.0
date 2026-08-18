@@ -339,12 +339,15 @@ export function calculateDeck(
     })
   );
 
-  if (
-    getBooleanFactAny(facts, workArea.id, [
-      "deck.existing_deck_removal",
-      "deck.demolition_required",
-    ])
-  ) {
+  const existingDeckRemoval = getBooleanFactAny(facts, workArea.id, [
+    "deck.existing_deck_removal",
+    "deck.demolition_required",
+  ]);
+  if (existingDeckRemoval == null) {
+    assumptions.push("No demolition assumed.");
+  }
+
+  if (existingDeckRemoval) {
     const demoProductivity = resolveProductivity({
       productivityKey: "deck.demolition_hours_per_m2",
       unit: "m²",
@@ -588,10 +591,16 @@ export function calculateDeck(
     assumptions.push("No existing substructure — new construction assumed.");
   }
 
-  if (
-    getBooleanFact(facts, workArea.id, "deck.vertical_face_boards_required") ===
-    true
-  ) {
+  const fasciaRequired = getBooleanFact(
+    facts,
+    workArea.id,
+    "deck.vertical_face_boards_required"
+  );
+  if (fasciaRequired == null) {
+    assumptions.push("No fascia included unless confirmed.");
+  }
+
+  if (fasciaRequired === true) {
     const faceLm =
       getNumberFact(facts, workArea.id, "deck.vertical_face_board_length_lm") ??
       round2(

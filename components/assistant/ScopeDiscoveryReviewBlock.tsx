@@ -520,9 +520,15 @@ export function ScopeDiscoveryReviewBlock({
     onUnresolvedRecommendationsChange?.(scopeImpactRecommendations.length);
   }, [scopeImpactRecommendations.length, onUnresolvedRecommendationsChange]);
 
-  // 7F-R6-R4.1 — Quick Estimate Review opens Edit scope via props (no setState-in-effect).
-  const forceEditFromReview =
-    Boolean(focusSuggestionId) || requestEditToken > 0;
+  // 7F-R6-R4.1 — Review focus opens Edit scope once; user can collapse after.
+  const lastEditTokenRef = useRef(0);
+  useEffect(() => {
+    if (requestEditToken > lastEditTokenRef.current) {
+      lastEditTokenRef.current = requestEditToken;
+      setIsEditingScope(true);
+    }
+  }, [requestEditToken]);
+  const forceEditFromReview = Boolean(focusSuggestionId);
 
   const showChecklistEditor =
     !completion.complete || isEditingScope || forceEditFromReview;

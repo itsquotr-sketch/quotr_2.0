@@ -8,6 +8,8 @@ type AssistantProgressProps = {
   currentStage: AssistantStage;
   /** When true, constraints step shows as Project Conditions (3.2.2-R2). */
   preferProjectConditionsLabel?: boolean;
+  /** After estimate, progress is secondary and hidden on mobile. */
+  deemphasised?: boolean;
 };
 
 const STAGE_ORDER = [
@@ -56,6 +58,7 @@ function getMobileStepLabel(
 export function AssistantProgress({
   currentStage,
   preferProjectConditionsLabel = false,
+  deemphasised = false,
 }: AssistantProgressProps) {
   const currentIdx = resolveStageIndex(currentStage);
   const totalSteps = STEPPER_STAGES.length;
@@ -64,6 +67,17 @@ export function AssistantProgress({
     currentStage,
     preferProjectConditionsLabel
   );
+
+  if (deemphasised) {
+    return (
+      <nav
+        aria-label="Assistant progress"
+        className="mb-1 hidden w-full lg:mb-0"
+        data-assistant-progress
+        data-assistant-progress-secondary="true"
+      />
+    );
+  }
 
   return (
     <nav
