@@ -1,6 +1,6 @@
 # DECK-1 Implementation Plan
 
-**Status:** PLANNING — DECK-1 IN PROGRESS / DECK-1A OWNER VALIDATED / DECK-1B COMPLETE LOCAL  
+**Status:** PLANNING — DECK-1 IN PROGRESS / DECK-1A OWNER VALIDATED / DECK-1B TECHNICALLY VALIDATED  
 **Date:** 2026-08-18  
 **Branch:** `hardening/stage-2a-security`
 
@@ -19,7 +19,7 @@
 | `deck.labour` | SHADOW |
 | Structural components | LEGACY (`deck.substructure.m2` package) |
 | DECK-1A | COMPLETE LOCAL / OWNER MODEL REVIEW PENDING |
-| DECK-1B | NOT STARTED |
+| DECK-1B | COMPLETE / TECHNICALLY VALIDATED (`60a356e`) |
 
 ---
 
