@@ -261,7 +261,7 @@ Locked direction (CAT-IDENTITY-01):
 - A human-debuggable `item_key` may be **generated** for Rates UI / `public.rates` compatibility, e.g. `timber.structural.140x45.h3_2.lm` — but grade/treatment/unit omitted when unknown, and **never** invent `sg8` to obtain a key.
 - Supplier SKU is a later mapping, not the key.
 
-Current DECK-1B helper `timber.sg8.{section}.{treatment}.{unit}` embeds assumed grade **SG8** and unit into identity. CAT-IDENTITY-01 / DECK-1C-A-R1 must correct this after the DECK-1C-A docs commit. It is **not** a physical quantity defect.
+CAT-IDENTITY-01 generates `family.productFamily.section[.species][.grade][.treatment|custom.slug]`. Rate `item_key` may append unit. Unknown grade/treatment are omitted. SG8 is included only when explicitly known.
 
 ---
 

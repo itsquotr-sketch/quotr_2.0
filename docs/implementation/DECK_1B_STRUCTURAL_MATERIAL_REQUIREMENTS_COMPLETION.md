@@ -64,5 +64,5 @@ Deterministic rectangular Deck structural physical quantities emitted as **shado
 
 ## Next
 
-**DECK-1C** — CAT-IDENTITY-01 types + treatment-gate fix, then DECK-1C-B sourced benchmarks. Do not freeze `timber.sg8.*`.  
+**DECK-1C** — DECK-1C-B1 research evidence for Owner review (no prices in CAT-IDENTITY). Do not freeze `timber.sg8.*`.  
 **DECK-1R** — commercial review + selective authority promotion (future).

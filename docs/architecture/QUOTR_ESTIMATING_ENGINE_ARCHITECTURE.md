@@ -136,7 +136,7 @@ State the physical material needed, convert to a purchase quantity, resolve unit
 | Field | Notes |
 | --- | --- |
 | `workAreaId`, `workAreaType`, `componentKey` | Owner |
-| `materialKey` | Canonical **material identity** (not component; not supplier SKU; not unit). Null/partial allowed. Live DECK-1B `timber.sg8.*` is defective until CAT-IDENTITY-01. |
+| `materialKey` | Canonical **material identity** (not component; not supplier SKU; not unit). Null/partial allowed. CAT-IDENTITY-01: structured `materialIdentity` plus generated key; unknown attributes omitted, never invented. |
 | `category` | FRAMING, DECKING, SHEET, … |
 | `description`, `specification` | Human |
 | `baseQuantity`, `baseUnit` | Physical qty **before** waste |

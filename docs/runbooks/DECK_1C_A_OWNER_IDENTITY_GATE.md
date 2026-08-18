@@ -51,8 +51,8 @@ Owner approved the three-scope material architecture. CAT-IDENTITY-01 implementa
 | Item | Status |
 | --- | --- |
 | DECK-1C-A | COMPLETE / OWNER VALIDATED |
-| CAT-IDENTITY-01 / DECK-1C-A-R1 | READY (implementation after this docs commit) |
-| DECK-1C-B | NOT STARTED |
+| CAT-IDENTITY-01 / DECK-1C-A-R1 | COMPLETE / TECHNICALLY VALIDATED (this branch) |
+| DECK-1C-B | READY / NOT STARTED |
 
 ---
 

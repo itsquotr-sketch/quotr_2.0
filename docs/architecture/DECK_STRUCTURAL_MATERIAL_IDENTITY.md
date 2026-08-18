@@ -1,6 +1,6 @@
 # Deck Structural Material Identity
 
-**Status:** CANONICAL for DECK-1C-A — **OWNER VALIDATED**  
+**Status:** CANONICAL for DECK-1C-A — **OWNER VALIDATED**. CAT-IDENTITY-01 R1 implementation in this branch.  
 **Date:** 2026-08-18  
 **HEAD at planning:** `46b186202f727998c8578c3a14039ba9f9ba645c`  
 **Physical model:** `docs/architecture/DECK_STRUCTURAL_MATERIAL_MODEL.md` (quantities frozen)  
@@ -100,7 +100,7 @@ Canonical section: **larger nominal millimetre first**, separator `x`, no spaces
 | `45x140` | `140x45` | Yes | Yes | **Same stock identity** — installation orientation is component geometry, not merchant stock |
 | `140 x 45 mm` | `140x45` | Yes | Yes | Strip unit |
 | `200x50 rough sawn H3.2 custom pine` | `200x50` | Yes (partial parse) | **Always** | Treatment `H3.2` if parsed; remainder stays in original description |
-| `240x45 LVL` | `240x45` | Yes | Yes | Product `LVL` is not SG8; do not force grade |
+| `240x45 LVL` | `240x45` | Yes | Yes | Product family **`structural_lvl`**, not species and not generic `structural_framing` |
 | `Big deck timber` | (none) | Custom unstructured | Yes | Valid physical custom; no exact auto rate |
 | `150x50` vs `140x45` | different | Yes each | — | **Not** the same identity |
 
@@ -110,7 +110,7 @@ Do not silently drop the user’s original description.
 
 ## 6. Grade
 
-**Audit:** there is **no** `deck.joist_grade` fact. DECK-1B `buildStructuralTimberMaterialKey` currently **embeds `sg8` in the string key** even when the builder never entered grade.
+**Audit:** there is **no** `deck.joist_grade` fact. Canonical identity includes grade **only when explicitly known**. Unknown grade must not become SG8. Known SG8 vs unknown grade is **partial**, not exact.
 
 **Recommendation:** grade is **not** a compulsory everyday Scope Details question. Sources: selected Quotr common product, saved company material, later supplier product, optional advanced field, or explicit user spec.
 
@@ -146,7 +146,11 @@ Formulas stay frozen. Only the emission gate changes.
 
 ## 9. Canonical identity table (DECK-1B children)
 
-Physical quantities remain DECK-REF-01. Identity below is the **target** contract; live `materialKey` strings still use the defective `timber.sg8.*` helper until CAT-IDENTITY-01 implementation.
+Physical quantities remain DECK-REF-01. Live keys no longer embed assumed SG8 or rate unit. Debug key order: `family.productFamily.section[.species][.grade][.treatment|custom.slug]`. Unknown attributes are omitted, never fabricated.
+
+LVL is **`productFamily = structural_lvl`**, not a species of generic framing timber. Generic 240×45 `structural_framing` is incompatible with 240×45 LVL.
+
+Identity comparison is **not** rate eligibility. `exact` does not auto-price.
 
 | componentKey | Material family | Product family | Section (fixture) | Grade | Treatment (fixture) | Unit | Custom description | Canonical material identity (target) | Required facts for qty | Optional facts | Completeness today | Rate status |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -156,7 +160,7 @@ Physical quantities remain DECK-REF-01. Identity below is the **target** contrac
 | `deck.supports` | timber **or** proprietary | post / pile / other | 90x90 fixture | unknown | framing treatment if timber | **ea** | yes | **product EA identity**, not framing lm | support type + section + count inputs | treatment | Physical EA only | EA exact rate or pricing required — **never** timber $/lm on 8 EA |
 | `deck.concrete` | concrete | (generic; not `footing` frozen as family) | n/a | n/a | n/a | m3 | yes | concrete / mix? / m3 | footing L×W×D + support count | mix/strength | Physical volume yes; mix unknown | missing; no silent generic $/m3 |
 
-Live DECK-1B keys (as-is, defective): `timber.sg8.{section}.{treatment}.lm|ea`, `concrete.footing.m3`. Target: drop assumed `sg8`; do not freeze `concrete.footing` as universal material identity.
+Live keys omit unknown grade/treatment. Do not freeze `concrete.footing` as universal material identity. Identity exactness does not grant a rate.
 
 ---
 
@@ -267,3 +271,51 @@ Do **not** write: if section not in [90×45, 140×45, 190×45] → invalid.
 - supports: 8 EA, not invented LM
 
 DECK-1C does not introduce stock-length optimisation.
+
+---
+
+## 17. Known vs unknown vs custom (locked)
+
+Treatment (and the same pattern for un-normalizable species/grade/product text):
+
+| State | Meaning | Example |
+| --- | --- | --- |
+| **KNOWN** | Normalized to a standard value | `h3.2` |
+| **UNKNOWN** | No evidence | treatment omitted from the identity key |
+| **CUSTOM** | User-provided value Quotr does not normalize | `CCA special` — original string retained in `treatmentCustom` |
+
+CUSTOM is not UNKNOWN. CUSTOM is not equivalent to any known class. Different custom strings do not merge. Custom must not fuzzy-match H3.2 / H4 / another custom.
+
+Unknown attributes are omitted from the debug key. They are never fabricated (no default SG8).
+
+When grade/species/treatment **are** known, they **must** participate in the identity/key so they cannot collide with unknown or another known value.
+
+---
+
+## 18. Species / product family
+
+LVL is **`productFamily = structural_lvl`**, not `species = LVL`. Generic mill-sawn framing stays `structural_framing`. Same section (e.g. 240×45) with different product families is **incompatible**.
+
+`species` remains available for genuine timber species when known (e.g. radiata). Do not force LVL into species merely because the type has that field.
+
+---
+
+## 19. Original description
+
+`originalDescription` is historical/display/audit evidence. It is **serialized** on snapshots so a historical requirement remains understandable without a live catalogue.
+
+It does **not** drive normal exact match when structured fields (family, productFamily, section, grade, treatment state/value, species) are demonstrably the same.
+
+Harmless wording (`"140x45 H3.2"` vs `"140 x 45 treated framing"` **with the same structured H3.2**) is not a mismatch.
+
+If the only commercially relevant information cannot be normalized (custom treatment/product/grade text), matching stays conservative: custom vs known = incompatible; different custom strings = incompatible.
+
+---
+
+## 20. Identity comparison ≠ rate eligibility (locked)
+
+`compareMaterialIdentities()` answers: are these specifications **exact / partial / incompatible**?
+
+The rate resolver answers: may this rate commercially price this requirement?
+
+Exact identity is **not** sufficient by itself for every future rate source. Each source (company exact, project exact, Quotr benchmark, supplier) needs its own eligibility policy. DECK-1C-B builds on this. CAT-IDENTITY-01 does not auto-price from identity match.

@@ -17,6 +17,8 @@
  * and also multiply by the same factor.
  */
 
+import type { MaterialIdentity } from "@/lib/materials/identity";
+
 export const ESTIMATE_REQUIREMENT_PLANNING_FREEZE_VERSION =
   "foundation-r1.0" as const;
 
@@ -91,6 +93,11 @@ export type EstimateRequirementBase = {
 export type MaterialRequirement = EstimateRequirementBase & {
   kind: "material";
   materialKey: string | null;
+  /**
+   * CAT-IDENTITY-01 structured identity. Optional for older emitters
+   * (e.g. Deck surface). Snapshot-serializable JSON. Not a rate unit.
+   */
+  materialIdentity?: MaterialIdentity;
   category: string;
   specification?: string;
   baseQuantity: number;

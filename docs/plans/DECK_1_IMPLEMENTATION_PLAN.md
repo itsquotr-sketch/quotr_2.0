@@ -163,4 +163,4 @@ DECK-1 programme complete when:
 
 ## 10. Exact next action
 
-**Owner review of DECK-1C-A identity gate is complete** (`docs/runbooks/DECK_1C_A_OWNER_IDENTITY_GATE.md`). Next: **CAT-IDENTITY-01 / DECK-1C-A-R1** (types + treatment-gate fix; no prices). Do **not** start DECK-1C-B.
+**CAT-IDENTITY-01** is implemented on this branch. Next: **DECK-1C-B1 research evidence for Owner review** (no implementation, no prices in the identity batch). Do **not** start B1 research until the identity commit is Preview-validated.

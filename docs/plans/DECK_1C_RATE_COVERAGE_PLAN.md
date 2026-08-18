@@ -15,7 +15,7 @@ DECK-1C-B is **not started**. No prices in this file.
 | Batch | Name | Status |
 | --- | --- | --- |
 | **DECK-1C-A** | Material identity + company/project/Quotr scope + rate-matching contract | COMPLETE / OWNER VALIDATED |
-| **DECK-1C-A-R1** | CAT-IDENTITY-01 implementation (types, normalize, fix SG8-in-key, fix treatment emission gate). No prices. | After this docs commit |
+| **DECK-1C-A-R1** | CAT-IDENTITY-01 implementation (types, normalize, known/unknown/custom, treatment emission gate). No prices. | COMPLETE / TECHNICALLY VALIDATED |
 | **DECK-1C-B** | Sourced NZ benchmark research + attach prices to **approved** common identities | NOT STARTED |
 | **DECK-1C-C** (optional later) | Save-for-future + company materials table (migration) | After identity + if Owner wants persistence before Materials UI |
 | **DECK-1D** | Shadow reconciliation vs legacy package | After 1C pricing evidence exists (unpriced children still honest) |
@@ -72,6 +72,6 @@ No guessed market values.
 
 | Gate | Ready? |
 | --- | --- |
-| DECK-1C-B price research | **No** — waiting Owner identity approval (+ recommended CAT-IDENTITY-01 types) |
+| DECK-1C-B price research | **No** — CAT-IDENTITY-01 landed; B1 is research/handoff only until Owner reviews evidence |
 | Company materials DB | **No** — contract only |
 | Structural promotion | **No** |

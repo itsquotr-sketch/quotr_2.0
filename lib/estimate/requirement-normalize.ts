@@ -33,6 +33,9 @@ function cloneRequirement(requirement: EstimateRequirement): EstimateRequirement
       conversion: requirement.conversion
         ? { ...requirement.conversion }
         : undefined,
+      materialIdentity: requirement.materialIdentity
+        ? { ...requirement.materialIdentity }
+        : undefined,
     };
   }
 

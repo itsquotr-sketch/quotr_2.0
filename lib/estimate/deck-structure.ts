@@ -26,6 +26,14 @@ import type {
 } from "@/lib/estimate/types";
 import type { OrganisationRate } from "@/components/setup/types";
 import { materialRateUnitsMatch } from "@/lib/estimate/resolve-material-rate";
+import {
+  buildConcreteMaterialIdentity,
+  buildMaterialRateItemKey,
+  buildStructuralTimberIdentity,
+  buildSupportMaterialIdentity,
+  serializeMaterialIdentityKey,
+  type MaterialIdentity,
+} from "@/lib/materials/identity";
 
 export const DECK_JOISTS_COMPONENT_KEY = "deck.joists";
 export const DECK_RIM_FRAMING_COMPONENT_KEY = "deck.rim_framing";
@@ -86,10 +94,10 @@ export type DeckStructureFacts = {
   joistCentresMm: number;
   joistCentresDefaulted: boolean;
   orientation: DeckStructureOrientation;
-  joistSection: string;
+  joistSection: string | null;
   bearerSection: string | null;
   bearerRowCount: number | null;
-  framingTreatment: string;
+  framingTreatment: string | null;
   supportType: string | null;
   supportsPerBearer: number | null;
   supportSection: string | null;
@@ -137,23 +145,13 @@ function normalizeSectionToken(value: string): string {
   return value.trim().toLowerCase().replace(/\s+/g, "").replace("×", "x");
 }
 
-function normalizeTreatmentToken(value: string): string {
-  return value.trim().toLowerCase().replace(/\s+/g, "");
-}
-
 export function buildStructuralVariantKey(
   section: string,
-  treatment: string
+  treatment: string | null
 ): string {
-  return `${normalizeSectionToken(section)}-${normalizeTreatmentToken(treatment)}`;
-}
-
-export function buildStructuralTimberMaterialKey(
-  section: string,
-  treatment: string,
-  unit: "lm" | "ea"
-): string {
-  return `timber.sg8.${normalizeSectionToken(section)}.${normalizeTreatmentToken(treatment)}.${unit}`;
+  const sectionToken = normalizeSectionToken(section);
+  if (!treatment) return sectionToken;
+  return `${sectionToken}-${treatment}`;
 }
 
 export function resolveDeckFramingWastePercent(
@@ -235,9 +233,6 @@ export function readDeckStructureFacts(params: {
     params.workAreaId,
     "deck.framing_treatment"
   );
-  if (!joistSection || !framingTreatment) {
-    return null;
-  }
 
   const factKeys = [
     "deck.length_m",
@@ -245,8 +240,8 @@ export function readDeckStructureFacts(params: {
     joistCentresDefaulted ? null : "deck.joist_centres_mm",
     orientation.boardDirectionDefaulted ? null : "deck.board_direction",
     orientation.joistDirectionDefaulted ? null : "deck.joist_direction",
-    "deck.joist_section",
-    "deck.framing_treatment",
+    joistSection ? "deck.joist_section" : null,
+    framingTreatment ? "deck.framing_treatment" : null,
     getStringFact(facts, params.workAreaId, "deck.bearer_section")
       ? "deck.bearer_section"
       : null,
@@ -454,6 +449,35 @@ function resolveStructuralRate(params: {
   };
 }
 
+function resolveIdentityRate(params: {
+  identity: MaterialIdentity;
+  unit: "lm" | "ea" | "m3";
+  purchaseQuantity: number;
+  rates: readonly OrganisationRate[];
+}): Pick<MaterialRequirement, "priced" | "rateSource" | "unitCost" | "totalCost"> {
+  return resolveStructuralRate({
+    rates: params.rates,
+    materialKey: buildMaterialRateItemKey(params.identity, params.unit),
+    unit: params.unit,
+    purchaseQuantity: params.purchaseQuantity,
+  });
+}
+
+function framingTimberIdentity(
+  sectionRaw: string | null,
+  treatmentRaw: string | null
+): MaterialIdentity | null {
+  return buildStructuralTimberIdentity({
+    sectionRaw,
+    treatmentRaw,
+  });
+}
+
+function timberVariantKey(identity: MaterialIdentity): string {
+  if (!identity.section) return "unspecified";
+  return buildStructuralVariantKey(identity.section, identity.treatment);
+}
+
 function orientationAssumptions(
   orientation: DeckStructureOrientation
 ): RequirementAssumption[] {
@@ -520,28 +544,24 @@ function buildJoistRequirement(params: {
   quantities: DeckStructureQuantities;
   framingWasteDefaulted: boolean;
   rates: readonly OrganisationRate[];
-}): MaterialRequirement {
-  const variantKey = buildStructuralVariantKey(
+}): MaterialRequirement | null {
+  const identity = framingTimberIdentity(
     params.facts.joistSection,
     params.facts.framingTreatment
   );
-  const materialKey = buildStructuralTimberMaterialKey(
-    params.facts.joistSection,
-    params.facts.framingTreatment,
-    "lm"
-  );
-  const pricing = resolveStructuralRate({
-    rates: params.rates,
-    materialKey,
+  if (!identity) return null;
+  const pricing = resolveIdentityRate({
+    identity,
     unit: "lm",
     purchaseQuantity: params.quantities.joistPurchaseLm,
+    rates: params.rates,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
     workAreaType: params.workArea.type,
     componentKey: DECK_JOISTS_COMPONENT_KEY,
-    variantKey,
-    description: `Deck joists ${params.facts.joistSection}`,
+    variantKey: timberVariantKey(identity),
+    description: `Deck joists ${identity.section}`,
     confidence: structuralConfidence({
       joistCentresDefaulted: params.quantities.joistCentresDefaulted,
       orientationDefaulted:
@@ -563,9 +583,10 @@ function buildJoistRequirement(params: {
       constraintKeys: [],
     },
     priced: pricing.priced,
-    materialKey,
+    materialKey: serializeMaterialIdentityKey(identity),
+    materialIdentity: identity,
     category: "FRAMING",
-    specification: `${params.facts.joistSection} ${params.facts.framingTreatment}`,
+    specification: identity.originalDescription ?? identity.section ?? undefined,
     baseQuantity: params.quantities.joistBaseLm,
     baseUnit: "lm",
     wasteFactor: params.quantities.framingWastePercent / 100,
@@ -583,28 +604,24 @@ function buildRimRequirement(params: {
   quantities: DeckStructureQuantities;
   framingWasteDefaulted: boolean;
   rates: readonly OrganisationRate[];
-}): MaterialRequirement {
-  const variantKey = buildStructuralVariantKey(
+}): MaterialRequirement | null {
+  const identity = framingTimberIdentity(
     params.facts.joistSection,
     params.facts.framingTreatment
   );
-  const materialKey = buildStructuralTimberMaterialKey(
-    params.facts.joistSection,
-    params.facts.framingTreatment,
-    "lm"
-  );
-  const pricing = resolveStructuralRate({
-    rates: params.rates,
-    materialKey,
+  if (!identity) return null;
+  const pricing = resolveIdentityRate({
+    identity,
     unit: "lm",
     purchaseQuantity: params.quantities.rimPurchaseLm,
+    rates: params.rates,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
     workAreaType: params.workArea.type,
     componentKey: DECK_RIM_FRAMING_COMPONENT_KEY,
-    variantKey,
-    description: `Deck end rim framing ${params.facts.joistSection}`,
+    variantKey: timberVariantKey(identity),
+    description: `Deck end rim framing ${identity.section}`,
     confidence: structuralConfidence({
       joistCentresDefaulted: params.quantities.joistCentresDefaulted,
       orientationDefaulted:
@@ -631,9 +648,10 @@ function buildRimRequirement(params: {
       constraintKeys: [],
     },
     priced: pricing.priced,
-    materialKey,
+    materialKey: serializeMaterialIdentityKey(identity),
+    materialIdentity: identity,
     category: "FRAMING",
-    specification: `${params.facts.joistSection} ${params.facts.framingTreatment}`,
+    specification: identity.originalDescription ?? identity.section ?? undefined,
     baseQuantity: params.quantities.rimBaseLm,
     baseUnit: "lm",
     wasteFactor: params.quantities.framingWastePercent / 100,
@@ -655,27 +673,23 @@ function buildBearerRequirement(params: {
   if (!params.facts.bearerSection || params.facts.bearerRowCount == null) {
     return null;
   }
-  const variantKey = buildStructuralVariantKey(
+  const identity = framingTimberIdentity(
     params.facts.bearerSection,
     params.facts.framingTreatment
   );
-  const materialKey = buildStructuralTimberMaterialKey(
-    params.facts.bearerSection,
-    params.facts.framingTreatment,
-    "lm"
-  );
-  const pricing = resolveStructuralRate({
-    rates: params.rates,
-    materialKey,
+  if (!identity) return null;
+  const pricing = resolveIdentityRate({
+    identity,
     unit: "lm",
     purchaseQuantity: params.quantities.bearerPurchaseLm,
+    rates: params.rates,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
     workAreaType: params.workArea.type,
     componentKey: DECK_BEARERS_COMPONENT_KEY,
-    variantKey,
-    description: `Deck bearers ${params.facts.bearerSection}`,
+    variantKey: timberVariantKey(identity),
+    description: `Deck bearers ${identity.section}`,
     confidence: "high",
     assumptions: [
       ...orientationAssumptions(params.quantities.orientation),
@@ -692,9 +706,10 @@ function buildBearerRequirement(params: {
       constraintKeys: [],
     },
     priced: pricing.priced,
-    materialKey,
+    materialKey: serializeMaterialIdentityKey(identity),
+    materialIdentity: identity,
     category: "FRAMING",
-    specification: `${params.facts.bearerSection} ${params.facts.framingTreatment}`,
+    specification: identity.originalDescription ?? identity.section ?? undefined,
     baseQuantity: params.quantities.bearerBaseLm,
     baseUnit: "lm",
     wasteFactor: params.quantities.framingWastePercent / 100,
@@ -720,26 +735,23 @@ function buildSupportRequirement(params: {
   ) {
     return null;
   }
-  const variantKey = buildStructuralVariantKey(
-    params.facts.supportSection,
-    params.facts.framingTreatment
-  );
-  const materialKey = buildStructuralTimberMaterialKey(
-    params.facts.supportSection,
-    params.facts.framingTreatment,
-    "ea"
-  );
-  const pricing = resolveStructuralRate({
-    rates: params.rates,
-    materialKey,
+  const identity = buildSupportMaterialIdentity({
+    supportType: params.facts.supportType,
+    sectionRaw: params.facts.supportSection,
+    treatmentRaw: params.facts.framingTreatment,
+  });
+  if (!identity) return null;
+  const pricing = resolveIdentityRate({
+    identity,
     unit: "ea",
     purchaseQuantity: params.quantities.supportCount,
+    rates: params.rates,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
     workAreaType: params.workArea.type,
     componentKey: DECK_SUPPORTS_COMPONENT_KEY,
-    variantKey,
+    variantKey: timberVariantKey(identity),
     description: `${params.facts.supportType} ${params.facts.supportSection}`,
     confidence: "high",
     assumptions: [
@@ -755,9 +767,10 @@ function buildSupportRequirement(params: {
       constraintKeys: [],
     },
     priced: pricing.priced,
-    materialKey,
+    materialKey: serializeMaterialIdentityKey(identity),
+    materialIdentity: identity,
     category: "FRAMING",
-    specification: `${params.facts.supportSection} ${params.facts.framingTreatment}`,
+    specification: identity.originalDescription ?? params.facts.supportSection ?? undefined,
     baseQuantity: params.quantities.supportCount,
     baseUnit: "ea",
     wasteFactor: 0,
@@ -784,12 +797,12 @@ function buildConcreteRequirement(params: {
   ) {
     return null;
   }
-  const materialKey = "concrete.footing.m3";
-  const pricing = resolveStructuralRate({
-    rates: params.rates,
-    materialKey,
+  const identity = buildConcreteMaterialIdentity({});
+  const pricing = resolveIdentityRate({
+    identity,
     unit: "m3",
     purchaseQuantity: params.quantities.concretePurchaseM3,
+    rates: params.rates,
   });
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
@@ -811,9 +824,10 @@ function buildConcreteRequirement(params: {
       constraintKeys: [],
     },
     priced: pricing.priced,
-    materialKey,
+    materialKey: serializeMaterialIdentityKey(identity),
+    materialIdentity: identity,
     category: "CONCRETE",
-    specification: "footing",
+    specification: identity.originalDescription ?? "concrete",
     baseQuantity: params.quantities.concreteBaseM3,
     baseUnit: "m3",
     wasteFactor: 0,
@@ -849,22 +863,23 @@ export function buildDeckStructuralMaterialRequirements(params: {
   });
   quantities.framingWasteDefaulted = waste.defaulted;
 
-  const requirements: MaterialRequirement[] = [
-    buildJoistRequirement({
-      workArea: params.workArea,
-      facts: structureFacts,
-      quantities,
-      framingWasteDefaulted: waste.defaulted,
-      rates: params.rates,
-    }),
-    buildRimRequirement({
-      workArea: params.workArea,
-      facts: structureFacts,
-      quantities,
-      framingWasteDefaulted: waste.defaulted,
-      rates: params.rates,
-    }),
-  ];
+  const requirements: MaterialRequirement[] = [];
+  const joists = buildJoistRequirement({
+    workArea: params.workArea,
+    facts: structureFacts,
+    quantities,
+    framingWasteDefaulted: waste.defaulted,
+    rates: params.rates,
+  });
+  if (joists) requirements.push(joists);
+  const rim = buildRimRequirement({
+    workArea: params.workArea,
+    facts: structureFacts,
+    quantities,
+    framingWasteDefaulted: waste.defaulted,
+    rates: params.rates,
+  });
+  if (rim) requirements.push(rim);
 
   const bearer = buildBearerRequirement({
     workArea: params.workArea,

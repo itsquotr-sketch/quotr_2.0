@@ -121,7 +121,7 @@ User-confirmed `deck.board_direction` / `deck.joist_direction` always override d
 
 | componentKey | Description | Physical qty | Unit | Required inputs | Derived inputs | Waste | Material identity | Rate identity | Fallback | Confidence | Legacy target | Initial authority |
 | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
-| `deck.joists` | Primary joist members | joistCount × joistRunLength | lm | L, W, joist direction, joist centres, joist section, treatment | joistRunLength, perpendicularSpan, joistCount | framing waste % | timber / structural framing / {section} / {treatment?} / {grade?} — component not in identity; **do not assume SG8** | live helper still `timber.sg8.*` until CAT-IDENTITY-01 | legacy `deck.substructure.m2` | HIGH if all spec user-known; MED if spacing default | **Framing/substructure** (portion) | **SHADOW** |
+| `deck.joists` | Primary joist members | joistCount × joistRunLength | lm | L, W, joist direction, joist centres, joist section (treatment optional) | joistRunLength, perpendicularSpan, joistCount | framing waste % | timber / structural framing / {section} / {treatment?} / {grade?} — component not in identity; **do not assume SG8** | CAT-IDENTITY-01 `serializeMaterialIdentityKey` + unit on rate row only | legacy `deck.substructure.m2` | HIGH if all spec user-known; MED if spacing default | **Framing/substructure** (portion) | **SHADOW** |
 | `deck.rim_framing` | Additional end rim (not full perimeter) | 2 × end dimension ⊥ joists | lm | L, W, joist direction, joist section, treatment | Outer parallel joists already in joistCount | framing waste % | **same stock identity as joists** when spec identical | same as joists | legacy package | HIGH/MED | bundled | **SHADOW** |
 | `deck.blocking` | **DEFERRED** | — | — | — | — | — | Reserved | — | legacy | — | bundled | **NOT EMITTED in DECK-1B** |
 | `deck.bearers` | Bearer lines | bearerRowCount × bearerRunLength | lm | bearer row count, bearer section, treatment | bearerRunLength ∥ bearerDirection (⊥ joists) | framing waste % | generic structural timber (same family as joists) | same identity model; different section | legacy package | MED/HIGH | bundled | **SHADOW** |
@@ -312,7 +312,7 @@ Variant encodes section + treatment where rate identity changes.
 7. Quotr package fallback  
 8. Pricing required  
 
-**Company exact outranks Quotr.** DECK-1B emits shadow quantities **unpriced** when no exact company rate exists. Do **not** seed `timber.sg8.*` as canonical identity. DECK-1C-A locks identity; DECK-1C-B may add sourced benchmarks **after** Owner identity approval. See `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.
+**Company exact outranks Quotr.** DECK-1B emits shadow quantities **unpriced** when no exact company rate exists. Do **not** seed `timber.sg8.*` as canonical identity. CAT-IDENTITY-01 is the live identity layer. DECK-1C-B may add sourced benchmarks **after** Owner reviews B1 evidence. See `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.
 
 ---
 

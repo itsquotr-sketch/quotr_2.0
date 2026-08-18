@@ -50,6 +50,7 @@ export function buildMaterialRequirement(params: {
   provenance: RequirementProvenance;
   priced: boolean;
   materialKey: string | null;
+  materialIdentity?: MaterialRequirement["materialIdentity"];
   category: string;
   specification?: string;
   baseQuantity: number;
@@ -82,6 +83,7 @@ export function buildMaterialRequirement(params: {
     provenance: params.provenance,
     priced: params.priced,
     materialKey: params.materialKey,
+    materialIdentity: params.materialIdentity,
     category: params.category,
     specification: params.specification,
     baseQuantity: params.baseQuantity,

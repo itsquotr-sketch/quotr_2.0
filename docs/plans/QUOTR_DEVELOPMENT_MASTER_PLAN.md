@@ -159,7 +159,7 @@ Priority: **CRITICAL** · **HIGH** · **MEDIUM** · **LATER**
 | **Workstream** | B (+ C keys) |
 | **Objective** | Deck becomes the transparent reference estimator |
 | **User value** | HIGH — explainable hours and materials on the trial WA |
-| **Technical dependency** | REQ-2/3; OD-FACE-01 for DECK-2; **CAT-IDENTITY-01** as DECK-1C-A-R1 after Owner identity gate, **before** DECK-1C-B prices / CAT-V2 rows |
+| **Technical dependency** | REQ-2/3; OD-FACE-01 for DECK-2; **CAT-IDENTITY-01 COMPLETE**; **before** DECK-1C-B prices / CAT-V2 rows |
 | **Commercial dependency** | Documented $ change when replacing packages; parity first |
 | **Migration** | None expected |
 | **Risk** | H (visible Deck $) |
@@ -379,7 +379,7 @@ RATE-QUALITY-01 stays backlog. Do not auto-correct company `$23/m²`.
 | ISD-007 latency | F | PERF |
 | REQ-SNAPSHOT-01 | A | 1 — **COMPLETE / REMOTE VALIDATED**; REQ-4B blocked by REQ-TXN-01 |
 | REQ-TXN-01 | A | 0 — **COMPLETE / REMOTE VALIDATED**; `persist_estimate_generation_v1` (mandatory snapshot); 036 applied on `lxvnylhsbvudzzupxeqr` |
-| CAT-IDENTITY-01 | C | 2–3 — **DECK-1C-A contract written**; implement as DECK-1C-A-R1 after Owner identity gate; **before** DECK-1C-B prices / CAT-V2 seeding |
+| CAT-IDENTITY-01 | C | **COMPLETE / TECHNICALLY VALIDATED** — canonical identity + conservative comparison; **before** DECK-1C-B prices / CAT-V2 seeding |
 | AN-EVIDENCE-01 | F | before AN-1 |
 | QUOTE-IMMUTABILITY-DB-01 | E | before quote acceptance Production |
 | SUB-AUTH-01 | E | before RFQ |
