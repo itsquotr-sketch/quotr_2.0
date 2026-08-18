@@ -75,6 +75,8 @@ There is **no code list** of joists, bearers, posts, concrete, connectors, waste
 
 **Conclusion:** `$120/m²` is a **generic materials package**, not a takeoff. Comparing it to priced joists+rim+bearers alone is **not** a like-for-like materials variance.
 
+**Provenance note:** The repository provides **current system semantics** (the live estimator stores/uses `$120/m²` as a benchmarked recommended cost), but it does **not** prove the original economic composition of the historical `$120/m²` package. If original net material composition (labour/P&G/overhead/contingency) cannot be established from code/docs, treat this as **LEGACY COMMERCIAL ESTIMATING PACKAGE — COST PROVENANCE UNKNOWN** and keep comparisons **directional** (NOT meaningful variance on net-material basis).
+
 ---
 
 ## 3. All related legacy Deck structural money

@@ -67,6 +67,8 @@ Required-but-unpriced may **not** silently disappear.
 
 **No generic % tolerance** (Owner D8). Do not lock ±10% / ±20%.
 
+**Residual allowance is not a failure:** a mature hybrid model may intentionally represent lower-variability/incidentals as `ALLOWANCE` / `LEGACY_FALLBACK`. Only required work that is `UNPRICED` / `NOT_MODELLED` *without* an allowance/fallback/rate becomes an `ECONOMIC_GAP` under this calibration contract.
+
 ---
 
 ## 2. Money vs diagnostic layers
@@ -84,6 +86,25 @@ Do not label diagnostic timber as:
 - total structural cost
 - complete detailed cost
 - savings vs legacy
+
+---
+
+## 2.1 Legacy cost basis comparability (locked)
+
+Calibration must distinguish:
+
+- **CURRENT SYSTEM SEMANTICS:** the live estimator stores/uses `$120/m²` as a benchmarked recommended cost for `deck.substructure.m2`.
+- **ORIGINAL ECONOMIC PROVENANCE:** whether historical `$120/m²` was net material, material+incidental allowances, included labour/P&G/overhead/contingency, or a broader commercial package.
+
+If original economic provenance cannot be established from repository evidence, classify as:
+
+**`LEGACY COMMERCIAL ESTIMATING PACKAGE — COST PROVENANCE UNKNOWN`**
+
+Only calculate meaningful economic variance where compared figures share comparable basis (net-material vs net-material, labour vs labour, etc.). If legacy basis is uncertain, keep fixture outcomes at:
+
+- `NOT_COMPARABLE` or `PARTIAL_COVERAGE` (directional comparison only)
+
+Do not calibrate detailed net-material timber rates to `$120/m²` on an assumed like-for-like basis.
 
 ---
 
@@ -300,9 +321,7 @@ If only a lump “substructure” invoice exists, say so — still useful as NOT
 
 ### Import method (future DECK-1D-B — do not build UI)
 
-Prefer a **checked-in anonymized JSON fixture** under `tests/fixtures/deck-calibration/` (or equivalent), loaded by a **non-production script**. CSV is acceptable if columns match this contract. No calibration UI. No live org mutation.
-
-Synthetic fixtures (SIMPLE / MEDIUM / ELEVATED / PARTIAL-SPEC / CUSTOM-MATERIAL) may ship in DECK-1D-B **without** real-job data. REAL-JOB remains required before promotion. Do not invent real-job values.
+Prefer a **checked-in anonymized JSON fixture** under `tests/fixtures/deck-calibration/`, loaded by `scripts/deck-calibration/run-deck-calibration.ts`. REAL-JOB-TEMPLATE is schema-only until Owner supplies data.
 
 ---
 

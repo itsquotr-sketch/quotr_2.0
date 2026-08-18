@@ -1,6 +1,6 @@
 # DECK-1D Calibration Plan
 
-**Status:** PLANNING — DECK-1D IN PROGRESS / DECK-1D-A **COMPLETE / OWNER CALIBRATION MODEL VALIDATED** / DECK-1D-B NOT STARTED (authorised for local fixtures after this planning commit)  
+**Status:** PLANNING — DECK-1D IN PROGRESS / DECK-1D-A **COMPLETE / OWNER CALIBRATION MODEL VALIDATED** / DECK-1D-B **COMPLETE LOCAL / OWNER FIXTURE REVIEW PENDING**  
 **Date:** 2026-08-18  
 **Owner gate:** `docs/runbooks/DECK_1D_A_OWNER_CALIBRATION_GATE.md`  
 **Audit:** `docs/audits/DECK_1D_LEGACY_SUBSTRUCTURE_DECOMPOSITION.md`  
@@ -16,7 +16,7 @@ DECK-1C remains **COMPLETE FOR INITIAL STRUCTURAL TIMBER RATE COVERAGE**. Owner 
 | Batch | Name | Status |
 | --- | --- | --- |
 | **DECK-1D-A** | Current-state audit + calibration contract | **COMPLETE / OWNER CALIBRATION MODEL VALIDATED** |
-| **DECK-1D-B** | Synthetic fixtures + comparison diagnostics | Authorised; implement after this planning commit |
+| **DECK-1D-B** | Synthetic fixtures + comparison diagnostics | **COMPLETE LOCAL / OWNER FIXTURE REVIEW PENDING** |
 | **DECK-1D-C** (optional) | REAL-JOB ingest | After Owner supplies jobs — **required before promotion** |
 | **DECK-1R** | Authority promotion | Blocked: real-job + economic-hole gate + Owner signoff |
 

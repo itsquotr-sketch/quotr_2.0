@@ -1,0 +1,43 @@
+{
+  "id": "CUSTOM-MATERIAL-01",
+  "class": "CUSTOM-MATERIAL",
+  "confidence": "MEDIUM",
+  "notes": [
+    "Custom non-common joist/rim section 200x50. Not a whitelist failure.",
+    "Bearers remain 190x45 SG8 H3.2 KD so bearer benchmark may still resolve.",
+    "No Quotr benchmark for 200x50."
+  ],
+  "limitations": [
+    "Joists/rim pricing-required unless a future fixture supplies company/project rate.",
+    "Do not map 200x50 onto 190x45 or 140x45."
+  ],
+  "assumedFramingFacts": [
+    "SIMPLE-01 geometry",
+    "joist_section 200x50 (custom)",
+    "framing identity H3.2 SG8 KD still stated — section mismatch vs Quotr 140x45 benchmark",
+    "bearers 190x45, 2 rows"
+  ],
+  "qualityLevel": "standard",
+  "facts": {
+    "deck.length_m": 5.2,
+    "deck.width_m": 3.1,
+    "deck.area_m2": 16.12,
+    "deck.board_material": "Hardwood",
+    "deck.board_width_mm": 140,
+    "deck.height_m": 0.25,
+    "deck.level": "Ground-level",
+    "deck.substructure_included": true,
+    "deck.joist_section": "200x50",
+    "deck.joist_centres_mm": 450,
+    "deck.framing_treatment": "H3.2 SG8 KD",
+    "deck.bearer_section": "190x45",
+    "deck.bearer_row_count": 2,
+    "deck.support_type": "Post",
+    "deck.supports_per_bearer": 4,
+    "deck.support_section": "90x90",
+    "deck.footing_length_mm": 300,
+    "deck.footing_width_mm": 300,
+    "deck.footing_depth_mm": 450
+  },
+  "realJob": null
+}

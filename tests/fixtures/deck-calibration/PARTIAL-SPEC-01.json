@@ -1,0 +1,41 @@
+{
+  "id": "PARTIAL-SPEC-01",
+  "class": "PARTIAL-SPEC",
+  "confidence": "MEDIUM",
+  "notes": [
+    "Same geometry as SIMPLE-01. Identity incomplete on purpose.",
+    "No auto-enrichment of SG8, H3.2, or KD."
+  ],
+  "limitations": [
+    "Grade unknown. Treatment omitted. Processing unknown.",
+    "Quotr KD benchmark must not resolve."
+  ],
+  "assumedFramingFacts": [
+    "length 5.20 m × width 3.10 m",
+    "joists 140x45, bearers 190x45, centres 450 mm",
+    "supports/footings same layout as SIMPLE-01",
+    "framing_treatment omitted — section only"
+  ],
+  "qualityLevel": "standard",
+  "facts": {
+    "deck.length_m": 5.2,
+    "deck.width_m": 3.1,
+    "deck.area_m2": 16.12,
+    "deck.board_material": "Hardwood",
+    "deck.board_width_mm": 140,
+    "deck.height_m": 0.25,
+    "deck.level": "Ground-level",
+    "deck.substructure_included": true,
+    "deck.joist_section": "140x45",
+    "deck.joist_centres_mm": 450,
+    "deck.bearer_section": "190x45",
+    "deck.bearer_row_count": 2,
+    "deck.support_type": "Post",
+    "deck.supports_per_bearer": 4,
+    "deck.support_section": "90x90",
+    "deck.footing_length_mm": 300,
+    "deck.footing_width_mm": 300,
+    "deck.footing_depth_mm": 450
+  },
+  "realJob": null
+}

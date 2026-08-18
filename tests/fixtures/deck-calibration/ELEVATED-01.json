@@ -1,0 +1,50 @@
+{
+  "id": "ELEVATED-01",
+  "class": "ELEVATED",
+  "confidence": "LOW",
+  "notes": [
+    "Synthetic estimating fixture. Not structural design.",
+    "Height is recorded for labour/access distinction only.",
+    "Do not treat SIMPLE post assumptions as valid elevated structural design."
+  ],
+  "limitations": [
+    "Support / post length is UNKNOWN — not derived from deck.height_m.",
+    "Bracing / design connections are NOT modelled — not invented.",
+    "Structural connectors are NOT modelled.",
+    "Confidence reduced because length, bracing, and connectors are unresolved.",
+    "Physical model emits EA supports only; it cannot validly calculate post lm."
+  ],
+  "assumedFramingFacts": [
+    "length 6.00 m, width 4.00 m, area 24.00 m2",
+    "height 1.50 m (elevated; consent/stairs assumptions may appear on estimate)",
+    "joists 140x45 at 450 mm centres",
+    "bearers 190x45, 3 rows (explicit assumption, not engineering)",
+    "posts 90x90, 4 per bearer → 12 EA (count only)",
+    "footings 300 x 300 x 450 mm",
+    "framing identity H3.2 SG8 KD",
+    "post embedment / above-ground length: not supplied"
+  ],
+  "qualityLevel": "standard",
+  "facts": {
+    "deck.length_m": 6,
+    "deck.width_m": 4,
+    "deck.area_m2": 24,
+    "deck.board_material": "Hardwood",
+    "deck.board_width_mm": 140,
+    "deck.height_m": 1.5,
+    "deck.level": "Elevated",
+    "deck.substructure_included": true,
+    "deck.joist_section": "140x45",
+    "deck.joist_centres_mm": 450,
+    "deck.framing_treatment": "H3.2 SG8 KD",
+    "deck.bearer_section": "190x45",
+    "deck.bearer_row_count": 3,
+    "deck.support_type": "Post",
+    "deck.supports_per_bearer": 4,
+    "deck.support_section": "90x90",
+    "deck.footing_length_mm": 300,
+    "deck.footing_width_mm": 300,
+    "deck.footing_depth_mm": 450
+  },
+  "realJob": null
+}

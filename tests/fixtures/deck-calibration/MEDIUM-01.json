@@ -1,0 +1,48 @@
+{
+  "id": "MEDIUM-01",
+  "class": "MEDIUM",
+  "confidence": "MEDIUM",
+  "notes": [
+    "Synthetic estimating fixture. Not structural design or span-table compliance.",
+    "Every framing fact below is an explicit fixture assumption.",
+    "Purpose: scale test vs SIMPLE-01; expose supports/concrete gaps."
+  ],
+  "limitations": [
+    "Bearer row count is an assumed estimating input, not an engineered layout.",
+    "Supports unpriced. Concrete unpriced. Blocking/trimmers not modelled."
+  ],
+  "assumedFramingFacts": [
+    "length 7.00 m, width 5.00 m, area 35.00 m2",
+    "height 0.80 m (elevated labour applies)",
+    "joists 140x45 at 450 mm centres",
+    "bearers 190x45, 3 rows (explicit assumption)",
+    "posts 90x90, 4 per bearer → 12 EA",
+    "footings 300 x 300 x 450 mm",
+    "framing identity H3.2 SG8 KD",
+    "orientation defaults unchanged",
+    "framing waste default 5%"
+  ],
+  "qualityLevel": "standard",
+  "facts": {
+    "deck.length_m": 7,
+    "deck.width_m": 5,
+    "deck.area_m2": 35,
+    "deck.board_material": "Hardwood",
+    "deck.board_width_mm": 140,
+    "deck.height_m": 0.8,
+    "deck.level": "Elevated",
+    "deck.substructure_included": true,
+    "deck.joist_section": "140x45",
+    "deck.joist_centres_mm": 450,
+    "deck.framing_treatment": "H3.2 SG8 KD",
+    "deck.bearer_section": "190x45",
+    "deck.bearer_row_count": 3,
+    "deck.support_type": "Post",
+    "deck.supports_per_bearer": 4,
+    "deck.support_section": "90x90",
+    "deck.footing_length_mm": 300,
+    "deck.footing_width_mm": 300,
+    "deck.footing_depth_mm": 450
+  },
+  "realJob": null
+}

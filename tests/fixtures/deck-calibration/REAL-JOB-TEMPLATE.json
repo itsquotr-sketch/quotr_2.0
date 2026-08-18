@@ -1,0 +1,58 @@
+{
+  "id": "REAL-JOB-TEMPLATE",
+  "class": "REAL-JOB",
+  "template": true,
+  "confidence": "LOW",
+  "notes": [
+    "SCHEMA / TEMPLATE ONLY. Do not invent a completed job.",
+    "Replace placeholders only with Owner-supplied anonymized data.",
+    "No customer names, addresses, or invoices that identify a person."
+  ],
+  "limitations": [
+    "Empty actuals mean NOT_COMPARABLE until Owner fills this file or a copy."
+  ],
+  "assumedFramingFacts": [],
+  "fields": [
+    { "key": "id", "class": "REQUIRED", "placeholder": "RJ-YYYY-NNN" },
+    { "key": "facts.deck.length_m / deck.width_m or deck.area_m2", "class": "REQUIRED" },
+    { "key": "facts.deck.height_m", "class": "REQUIRED" },
+    { "key": "facts.deck.joist_section", "class": "REQUIRED" },
+    { "key": "facts.deck.bearer_section and bearer_row_count", "class": "REQUIRED", "notes": "If known" },
+    { "key": "facts.deck.support_type and count inputs", "class": "REQUIRED", "notes": "If known" },
+    { "key": "facts.deck.framing_treatment (treatment/grade/processing)", "class": "REQUIRED", "notes": "Where known; omit unknowns — do not invent" },
+    { "key": "realJob.quotedSubstructureCost OR actualFramingMaterialCost", "class": "REQUIRED", "notes": "At least one framing cost datum" },
+    { "key": "known exclusions list (notes)", "class": "REQUIRED" },
+    { "key": "facts.deck.joist_centres_mm", "class": "HIGH_VALUE" },
+    { "key": "facts.deck.bearer_row_count", "class": "HIGH_VALUE" },
+    { "key": "support length", "class": "HIGH_VALUE", "notes": "Not currently a calculator fact — record in notes" },
+    { "key": "footing mm facts", "class": "HIGH_VALUE" },
+    { "key": "realJob.actualFramingMaterialCost / invoices", "class": "HIGH_VALUE" },
+    { "key": "actual rates / quantities", "class": "HIGH_VALUE" },
+    { "key": "realJob.actualFixingsCost", "class": "HIGH_VALUE", "notes": "Can be one combined fixings/connectors/consumables allowance if that is all the contractor knows" },
+    { "key": "realJob.actualConcreteCost", "class": "HIGH_VALUE" },
+    { "key": "realJob.actualLabourHours / actualLabourCost", "class": "HIGH_VALUE" },
+    { "key": "realJob.actualDeliveryOrPlantCost", "class": "HIGH_VALUE", "notes": "If known; combined delivery/plant allowance is acceptable" },
+    { "key": "realJob.actualPgOrOverheadCost", "class": "HIGH_VALUE", "notes": "Only if explicitly identifiable; do not reverse-engineer from package totals" },
+    { "key": "realJob.quotedSubstructureAllowance", "class": "HIGH_VALUE", "notes": "If contractor only knows one framing/substructure allowance/package amount" },
+    { "key": "realJob.actualFinalCost", "class": "HIGH_VALUE" },
+    { "key": "delivery / plant / waste", "class": "HIGH_VALUE" },
+    { "key": "facts.deck.board_direction", "class": "OPTIONAL" },
+    { "key": "cartage notes", "class": "OPTIONAL" },
+    { "key": "region / date", "class": "OPTIONAL" }
+  ],
+  "facts": {},
+  "realJob": {
+    "quotedSubstructureCost": null,
+    "quotedSubstructureAllowance": null,
+    "actualFramingMaterialCost": null,
+    "actualSupportsCost": null,
+    "actualConcreteCost": null,
+    "actualFixingsCost": null,
+    "actualDeliveryOrPlantCost": null,
+    "actualLabourHours": null,
+    "actualLabourCost": null,
+    "actualPgOrOverheadCost": null,
+    "actualFinalCost": null,
+    "notes": ["Anonymized exclusions go here when Owner supplies a job."]
+  }
+}

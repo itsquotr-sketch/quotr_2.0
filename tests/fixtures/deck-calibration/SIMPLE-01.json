@@ -1,0 +1,50 @@
+{
+  "id": "SIMPLE-01",
+  "class": "SIMPLE",
+  "confidence": "HIGH",
+  "notes": [
+    "Synthetic estimating fixture. Not structural design.",
+    "Geometry from DECK-RATE-REF-01. Height 0.25 m so labour is not elevated.",
+    "MATERIAL / SUBSTRUCTURE COMPARISON only."
+  ],
+  "limitations": [
+    "Supports unpriced (length unknown).",
+    "Concrete unpriced (mix unknown).",
+    "Blocking/trimmers not modelled.",
+    "Structural connectors not detailed; deck.fixings.m2 remains catch-all."
+  ],
+  "assumedFramingFacts": [
+    "length 5.20 m, width 3.10 m, area 16.12 m2",
+    "height 0.25 m (ground/low — explicit, not a design rule)",
+    "joists 140x45 at 450 mm centres",
+    "bearers 190x45, 2 rows",
+    "posts 90x90, 4 per bearer",
+    "footings 300 x 300 x 450 mm",
+    "framing identity H3.2 SG8 KD",
+    "orientation defaults: boards ∥ length, joists ∥ width, bearers ∥ length",
+    "framing waste default 5%"
+  ],
+  "qualityLevel": "standard",
+  "facts": {
+    "deck.length_m": 5.2,
+    "deck.width_m": 3.1,
+    "deck.area_m2": 16.12,
+    "deck.board_material": "Hardwood",
+    "deck.board_width_mm": 140,
+    "deck.height_m": 0.25,
+    "deck.level": "Ground-level",
+    "deck.substructure_included": true,
+    "deck.joist_section": "140x45",
+    "deck.joist_centres_mm": 450,
+    "deck.framing_treatment": "H3.2 SG8 KD",
+    "deck.bearer_section": "190x45",
+    "deck.bearer_row_count": 2,
+    "deck.support_type": "Post",
+    "deck.supports_per_bearer": 4,
+    "deck.support_section": "90x90",
+    "deck.footing_length_mm": 300,
+    "deck.footing_width_mm": 300,
+    "deck.footing_depth_mm": 450
+  },
+  "realJob": null
+}
