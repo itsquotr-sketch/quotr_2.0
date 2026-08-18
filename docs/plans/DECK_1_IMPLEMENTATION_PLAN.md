@@ -163,4 +163,4 @@ DECK-1 programme complete when:
 
 ## 10. Exact next action
 
-**CAT-IDENTITY-01** is implemented on this branch. Next: **DECK-1C-B1 research evidence for Owner review** (no implementation, no prices in the identity batch). Do **not** start B1 research until the identity commit is Preview-validated.
+**CAT-IDENTITY-01** is **COMPLETE / TECHNICALLY VALIDATED**. Next: **DECK-1C-B1 research evidence for Owner review** (`docs/plans/DECK_1C_B1_STRUCTURAL_MATERIAL_RESEARCH_HANDOFF.md`). Do **not** attach prices until Owner reviews evidence.

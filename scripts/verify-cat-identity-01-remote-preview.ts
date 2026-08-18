@@ -413,12 +413,20 @@ async function main() {
         snapJoistC.materialIdentity.grade == null
     );
     check(
-      "C snapshot structural SHADOW authorities",
+      "C snapshot structural children present",
       DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS.every((key) =>
-        snapC.componentAuthorities.some(
-          (item) =>
-            item.componentKey === key && item.authority === "LEGACY_AUTHORITATIVE"
+        snapC.requirements.some(
+          (item) => item.kind === "material" && item.componentKey === key
         )
+      )
+    );
+    check(
+      "C snapshot does not promote structural children",
+      !snapC.componentAuthorities.some(
+        (item) =>
+          DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS.includes(
+            item.componentKey as (typeof DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS)[number]
+          ) && item.authority === "REQUIREMENT_AUTHORITATIVE"
       )
     );
     check(

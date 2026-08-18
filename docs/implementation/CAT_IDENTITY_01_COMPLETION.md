@@ -3,8 +3,11 @@
 **Status:** COMPLETE / TECHNICALLY VALIDATED  
 **Date:** 2026-08-18  
 **Branch:** `hardening/stage-2a-security`  
+**Commit:** `e8e9ca298e9f8b48ef4e543d9e32168234a8d3c0`  
 **Verify local:** `npx tsx scripts/verify-cat-identity-01.ts` (74/0)  
-**Verify remote Preview:** `npx tsx scripts/verify-cat-identity-01-remote-preview.ts`
+**Verify remote Preview:** `npx tsx scripts/verify-cat-identity-01-remote-preview.ts` (32/0)  
+**Preview unique:** `https://quotr-2-0-2ziudpqvu-quotr1.vercel.app`  
+**Preview stable:** `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`
 
 Shared material identity normalization and conservative comparison for partial, known, and custom specifications. Material identity is separate from rate unit and component identity. Deck structural requirements retain physical quantities when treatment is unknown.
 
@@ -55,4 +58,4 @@ Missing joist section: no fabricated timber MaterialRequirement.
 
 ## Next
 
-DECK-1C-B1 research **handoff / evidence** for Owner review. Do not attach prices until Owner accepts sourced identities.
+DECK-1C-B1 research **handoff** is `docs/plans/DECK_1C_B1_STRUCTURAL_MATERIAL_RESEARCH_HANDOFF.md`. Do not attach prices until Owner accepts sourced identities.
