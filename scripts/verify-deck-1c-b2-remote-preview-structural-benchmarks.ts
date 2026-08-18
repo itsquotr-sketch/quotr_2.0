@@ -9,6 +9,7 @@ import { randomUUID } from "node:crypto";
 import { config } from "dotenv";
 import type { OrganisationRate } from "../components/setup/types";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
+import { calculateDeck } from "../lib/estimate/calculators/deck";
 import { getComponentCommercialAuthority } from "../lib/estimate/component-authority";
 import { deckRateRef01Facts } from "../lib/estimate/deck-rate-ref-01";
 import {
@@ -340,7 +341,10 @@ async function main() {
     );
     check(
       "partial coverage note",
-      baseline.deckSubstructureReconciliation?.commercialNote.includes(
+      calculateDeck(
+        buildDeckContext({ projectId, workArea, facts: rateFacts }),
+        workArea
+      ).deckSubstructureReconciliation?.commercialNote.includes(
         "PARTIAL PRICED STRUCTURAL CHILD COST"
       )
     );
@@ -453,7 +457,7 @@ async function main() {
         id: companyRateId,
         rate_type: "material",
         trade: null,
-        work_area_type: "deck",
+        work_area_type: null,
         item_key: itemKey,
         label: "Disposable company 140x45",
         unit: "lm",
@@ -499,7 +503,7 @@ async function main() {
         id: projectRateId,
         rate_type: "project_material",
         trade: null,
-        work_area_type: "deck",
+        work_area_type: null,
         item_key: itemKey,
         label: "Disposable project 140x45",
         unit: "lm",

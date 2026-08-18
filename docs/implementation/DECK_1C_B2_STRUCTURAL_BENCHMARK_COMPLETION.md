@@ -1,11 +1,12 @@
 # DECK-1C-B2 — Structural Timber Benchmark Completion
 
-**Status:** COMPLETE / TECHNICALLY VALIDATED (pending Preview SHA in report)  
+**Status:** COMPLETE / TECHNICALLY VALIDATED  
+**Preview commit:** `bfbde275688349d3ad7302fb7d105e7c38e9bdbf`  
 **Date:** 2026-08-18  
 **Branch:** `hardening/stage-2a-security`  
 **B1 evidence commit:** `8deecb1e4fed87d7f962bbf5d9779436a0f43f56`  
 **Verify local:** `npx tsx scripts/verify-deck-1c-b2-structural-benchmarks.ts` (72/0)  
-**Verify Preview:** `npx tsx scripts/verify-deck-1c-b2-remote-preview-structural-benchmarks.ts`
+**Verify Preview:** `npx tsx scripts/verify-deck-1c-b2-remote-preview-structural-benchmarks.ts` (37/0)
 
 Attaches Owner-approved **Quotr sourced public-list benchmark** fallbacks (ex-GST $/lm) to three exact CAT-IDENTITY timber rows. These are **Quotr benchmark fallbacks** — not market averages, trade rates, contractor rates, supplier/account prices, structural defaults, or guarantees of current merchant price.
 
