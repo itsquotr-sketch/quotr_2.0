@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED**. Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE**; `deck.labour` = **SHADOW**. Structural children = **SHADOW**. **DECK-1C-A** identity lock: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.  
+**Mode:** PHASE 0 frozen. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED**. Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE**; `deck.labour` = **SHADOW**. Structural children = **SHADOW**. **DECK-1C** complete for initial structural timber rate coverage. **DECK-1D-A** **OWNER CALIBRATION MODEL VALIDATED**: `docs/audits/DECK_1D_LEGACY_SUBSTRUCTURE_DECOMPOSITION.md`. Identity lock: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Absorbs:** `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (SUPPORTING)  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  
@@ -487,7 +487,7 @@ Keep `deck.vertical_face_board_length_lm` as irregular override. Count-only `n �
 | --- | --- |
 | Face-edge selection | Not present |
 | Distinct face height / width / material | Defaults to decking facts |
-| Joist / bearer / post takeoff | Still `deck.substructure.m2` package |
+| Joist / bearer / post takeoff | Shadow children exist; **money** still `deck.substructure.m2` package. Calibration: `docs/architecture/DECK_STRUCTURAL_CALIBRATION_CONTRACT.md` |
 | Fixings | Still `$/m²` package |
 | Face labour | Hardcoded 35/55 per lm |
 | Task-level hours | One deck labour 1.2 hrs/m² + elevated + demo |

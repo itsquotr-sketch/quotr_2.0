@@ -30,7 +30,7 @@ Rule: **Do not remove legacy behaviour until** no live consumer; compatibility n
 | Hardcoded labour 60/90 | FALLBACK | REMOVE when `resolveLabourRate` always hits company/benchmark | Honest label |
 | Deck face `DECK_BENCHMARKS.faceBoardLm` + labour 35/55 | ACTIVE money / hardcoded | FALLBACK then REMOVE after DECK-2 | OD-FACE-01 |
 | `materialBuildUp` `priced: false` footnotes | COMPATIBILITY | ACTIVE MaterialRequirement `priced: true` per component | Do not dual-price |
-| Deck `deck.substructure.m2` / `deck.fixings.m2` | ACTIVE package | FALLBACK after DECK-R2 | Not converted to lm |
+| Deck `deck.substructure.m2` / `deck.fixings.m2` | ACTIVE package | FALLBACK after DECK-1R (not before) | Not converted to lm. DECK-1D-A: package is generic materials $/m² — member list LIKELY BUNDLED, not explicit. Children remain SHADOW. |
 | Old WA PC Facts (`deck.access`, demo carting, …) | DEPRECATED (suppressed) | REMOVE after no readers | R1 suppressed asks; keep resolvers for old rows |
 | Question template aliases | ACTIVE | Consolidate with ISD map later | Do not drop until ISD uses product types |
 | ISD `commercial_fitout` parent | ACTIVE recognition | Stay; never ACTIVE calculator | OD-CAT-01 |
@@ -69,7 +69,7 @@ REQ-4 is the first dedicated reconciliation batch. REQ-1 envelope is in place an
 
 **B. Intentional model improvement** — new physical model changes the result. Require: documented reason; fixture expected output updated explicitly; commercial review; Owner Preview. Numeric variance is **reported**, not auto-accepted because it sits under a generic % band.
 
-Component-level authority lifecycle: … **REQ-4B promoted Deck `decking.surface` — COMPLETE / REMOTE VALIDATED**. REQ-4 **COMPLETE**. Deck labour remains SHADOW. Legacy Deck surface **not retired**.
+Component-level authority lifecycle: … **REQ-4B promoted Deck `decking.surface` — COMPLETE / REMOTE VALIDATED**. REQ-4 **COMPLETE**. Deck labour remains SHADOW. Legacy Deck surface **not retired**. Structural children remain SHADOW; `deck.substructure.m2` remains LEGACY money. Do not skip SHADOW → REQUIREMENT_AUTHORITATIVE → LEGACY_FALLBACK → LEGACY_RETIRED. DECK-1D calibration: `docs/architecture/DECK_STRUCTURAL_CALIBRATION_CONTRACT.md`.
 
 Existing verification to reuse: `scripts/verify-batch-2b4-shadow-parity.ts`, outdoor calibration, commercial goldens — extend, do not replace.
 

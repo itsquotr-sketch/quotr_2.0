@@ -1,7 +1,11 @@
 # DECK-1D — Structural Calibration Handoff
 
-**Status:** PLANNING HANDOFF ONLY — **NOT STARTED** (no implementation)  
+**Status:** SUPERSEDED AS ACTIVE PLANNING DOC — DECK-1D-A **COMPLETE / OWNER CALIBRATION MODEL VALIDATED**  
 **Date:** 2026-08-18  
+**Active plan:** `docs/plans/DECK_1D_CALIBRATION_PLAN.md`  
+**Audit:** `docs/audits/DECK_1D_LEGACY_SUBSTRUCTURE_DECOMPOSITION.md`  
+**Contract:** `docs/architecture/DECK_STRUCTURAL_CALIBRATION_CONTRACT.md`  
+**Owner gate:** `docs/runbooks/DECK_1D_A_OWNER_CALIBRATION_GATE.md`  
 **Predecessor:** DECK-1C-B2 COMPLETE / TECHNICALLY VALIDATED  
 **Upstream plans:** `docs/plans/DECK_1C_RATE_COVERAGE_PLAN.md`  
 **Physical model:** `docs/architecture/DECK_STRUCTURAL_MATERIAL_MODEL.md`  
@@ -17,6 +21,8 @@ DECK-1D is the **calibration and comparison** phase between the legacy `deck.sub
 **This document does not recommend promotion.** Having Quotr sourced public-list benchmark fallbacks for joists, rim, and bearers is necessary diagnostic progress — it is **not** sufficient to promote structural children to commercial authority.
 
 **Out of scope for this handoff:** new formulas, code changes, rate attachment, migration, Production SD, or authority promotion.
+
+DECK-1D-A completed the audit/contract. This handoff remains historical context. Do not treat §A “implicitly cover” lists as EXPLICITLY INCLUDED — see the decomposition audit’s evidence classes.
 
 ---
 
@@ -313,7 +319,7 @@ Promotion (`deck.substructure` → shadow aggregate or child authority) is **out
 
 ### Pricing completeness
 
-- [ ] All **emitted** structural children priced **or** explicitly Owner-allowed as unpriced exclusions with documented rationale
+- [ ] All **emitted** structural children priced **or** represented without an economic hole: NOT_REQUIRED, ALLOWANCE, LEGACY_FALLBACK, project/company rate, or blocking UNPRICED. Unpriced ≠ excluded.
 - [ ] Supports: approved identity + unit (EA-at-length vs lm) + sourced benchmark or company rate
 - [ ] Concrete: mix strategy decided (generic $/m³ vs bags vs allowance) + small-load rule for sub-threshold volumes
 - [ ] Structural fixings: emitted child or explicit allowance rule — not silently folded into timber
