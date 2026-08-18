@@ -44,6 +44,13 @@ import {
   buildQuickEstimateStatusPresentation,
   type QuickEstimateAttentionItem,
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
+import {
+  deriveQuickEstimateConfidencePresentation,
+  rankQuickEstimateAssumptions,
+} from "@/lib/assistant/presentation/quick-estimate-confidence";
+import type { AssistantUnderstandingSummary } from "@/lib/assistant/presentation/assistant-understanding-summary";
+import { AssistantUnderstandingSummaryCard } from "@/components/assistant/AssistantUnderstandingSummaryCard";
+import { MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS } from "@/lib/scopes/estimate-priority";
 
 type EstimatePanelProps = {
   projectId: string;
@@ -97,6 +104,8 @@ type EstimatePanelProps = {
     readonly questionKey: string;
     readonly factKey?: string;
   }[];
+  /** DECK-2B — compact pre-estimate understanding lines. */
+  understandingSummaries?: readonly AssistantUnderstandingSummary[];
   onViewBreakdown?: () => void;
   onGenerate?: () => void;
   onRegenerate?: () => void;
@@ -341,6 +350,7 @@ export function EstimatePanel({
   scopeReviewAttention = [],
   projectInformationLabel = null,
   projectConditionsAttention = [],
+  understandingSummaries = [],
   onViewBreakdown,
   onGenerate,
   onRegenerate,
@@ -449,6 +459,18 @@ export function EstimatePanel({
       : estimate
         ? estimate.missingInfo.filter((item) => item.trim())
         : [];
+  const topAssumptions = estimate
+    ? rankQuickEstimateAssumptions(
+        estimate.assumptions,
+        MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS
+      )
+    : [];
+  const scopeSummaryLine =
+    quickEstimatePresentation?.estimatedWorkAreas &&
+    quickEstimatePresentation.estimatedWorkAreas !== "None yet"
+      ? quickEstimatePresentation.estimatedWorkAreas
+      : understandingSummaries[0]?.compactLine ?? null;
+
   const assumptionCount = estimate
     ? estimate.assumptions.length
     : scopeReview
@@ -483,6 +505,15 @@ export function EstimatePanel({
             )
           : [],
   });
+
+  const confidencePresentation = estimate
+    ? deriveQuickEstimateConfidencePresentation({
+        confidencePercent: estimate.confidence,
+        assumptionSeverity: estimate.assumptionMetadata?.assumptionSeverity,
+        missingInfoCount: estimate.missingInfo.length,
+        attentionCount: attentionItems.length,
+      })
+    : null;
 
   const status = buildQuickEstimateStatusPresentation({
     hasEstimate: Boolean(estimate),
@@ -703,11 +734,13 @@ export function EstimatePanel({
         <div className="space-y-4">
           {canGenerateEstimate ? (
             <>
+              <AssistantUnderstandingSummaryCard summaries={understandingSummaries} />
               <div className="rounded-xl border border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)]/40 px-4 py-5 text-center">
-                <p className="text-sm font-medium">Ready to generate</p>
+                <p className="text-sm font-medium">
+                  I have enough to give you an initial estimate now.
+                </p>
                 <p className="mt-1 text-xs text-muted-foreground">
-                  Scope and constraints are complete. Generate your draft
-                  estimate when you are ready.
+                  Optional specification can wait for Builder Review.
                 </p>
               </div>
               {unresolvedScopeImpactCount > 0 ? (
@@ -732,7 +765,7 @@ export function EstimatePanel({
                     Generating estimate…
                   </>
                 ) : (
-                  ASSISTANT_ACTION_LABELS.generateEstimate
+                  ASSISTANT_ACTION_LABELS.estimateNow
                 )}
               </Button>
             </>
@@ -751,6 +784,61 @@ export function EstimatePanel({
         </div>
       ) : (
         <>
+          {/* DECK-2B — Level 1 Quick Estimate summary */}
+          <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+            <div>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Work area
+              </p>
+              <p className="text-sm font-medium">
+                {quickEstimatePresentation?.estimatedWorkAreas ?? "Project"}
+              </p>
+            </div>
+            {scopeSummaryLine ? (
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Scope summary
+                </p>
+                <p className="text-sm text-foreground/90">{scopeSummaryLine}</p>
+              </div>
+            ) : null}
+            {confidencePresentation ? (
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Confidence
+                </p>
+                <p className="text-sm font-medium">{confidencePresentation.band}</p>
+                <p className="text-xs text-muted-foreground">
+                  {confidencePresentation.reasons.join(" · ")}
+                </p>
+              </div>
+            ) : null}
+            {topAssumptions.length > 0 ? (
+              <div>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Top assumptions
+                </p>
+                <ul className="mt-1 space-y-1 text-xs text-foreground/90">
+                  {topAssumptions.map((item) => (
+                    <li key={item} className="flex gap-1.5">
+                      <span aria-hidden>•</span>
+                      <span>{item}</span>
+                    </li>
+                  ))}
+                </ul>
+                {estimate.assumptions.length > topAssumptions.length ? (
+                  <button
+                    type="button"
+                    className="mt-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
+                    onClick={onViewBreakdown}
+                  >
+                    View all assumptions
+                  </button>
+                ) : null}
+              </div>
+            ) : null}
+          </div>
+
           {/* —— Commercial hierarchy (dominant) —— */}
           <div className={cn("space-y-3", isStale && "opacity-60")}>
             <div>
@@ -784,7 +872,11 @@ export function EstimatePanel({
 
             <MetricRow
               label="Estimate confidence"
-              value={`${estimate.confidence}%`}
+              value={
+                confidencePresentation
+                  ? `${confidencePresentation.band} (${estimate.confidence}%)`
+                  : `${estimate.confidence}%`
+              }
               dimmed={isStale}
             />
 
@@ -998,16 +1090,23 @@ export function EstimatePanel({
                       </p>
                     ) : (
                       <ul className="space-y-1 text-xs text-foreground/90">
-                        {estimate.assumptions.slice(0, 8).map((item) => (
+                        {topAssumptions.map((item) => (
                           <li key={item} className="flex gap-1.5">
                             <span aria-hidden>•</span>
                             <span>{item}</span>
                           </li>
                         ))}
-                        {estimate.assumptions.length > 8 ? (
+                        {estimate.assumptions.length > topAssumptions.length ? (
                           <li className="text-muted-foreground">
-                            +{estimate.assumptions.length - 8} more — use full
-                            breakdown
+                            +{estimate.assumptions.length - topAssumptions.length}{" "}
+                            more —{" "}
+                            <button
+                              type="button"
+                              className="underline-offset-2 hover:underline"
+                              onClick={onViewBreakdown}
+                            >
+                              View all assumptions
+                            </button>
                           </li>
                         ) : null}
                       </ul>

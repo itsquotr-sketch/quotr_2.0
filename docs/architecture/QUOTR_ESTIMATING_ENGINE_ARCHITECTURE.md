@@ -3,7 +3,7 @@
 **Status:** CANONICAL  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
-**Mode:** PHASE 0 frozen. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED**. Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE**; `deck.labour` = **SHADOW**. Structural children = **SHADOW**. **DECK-1C** complete for initial structural timber rate coverage. **DECK-1D-A** **OWNER CALIBRATION MODEL VALIDATED**: `docs/audits/DECK_1D_LEGACY_SUBSTRUCTURE_DECOMPOSITION.md`. **DECK-2A** assisted estimate experience audit complete local: `docs/audits/DECK_2A_ASSISTED_ESTIMATE_EXPERIENCE_AUDIT.md`. Identity lock: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.  
+**Mode:** PHASE 0 frozen. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED**. Deck `decking.surface` = **REQUIREMENT_AUTHORITATIVE**; `deck.labour` = **SHADOW**. Structural children = **SHADOW**. **DECK-1C** complete for initial structural timber rate coverage. **DECK-1D-A** **OWNER CALIBRATION MODEL VALIDATED**: `docs/audits/DECK_1D_LEGACY_SUBSTRUCTURE_DECOMPOSITION.md`. **DECK-2A** assisted estimate experience Owner-validated: `docs/audits/DECK_2A_ASSISTED_ESTIMATE_EXPERIENCE_AUDIT.md`. **DECK-2B** Quick Estimate high-value questions complete local. Identity lock: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md`.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Absorbs:** `docs/architecture/QUOTR_ESTIMATE_REQUIREMENTS_ARCHITECTURE.md` (SUPPORTING)  
 **Commercial SoT:** `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md`  

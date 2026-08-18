@@ -1,10 +1,10 @@
 # Quotr Development Master Plan
 
 **Status:** CANONICAL — the only primary current development plan  
-**Date:** 2026-08-17  
-**HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
+**Date:** 2026-08-18  
+**HEAD:** `5e046e95cbb67992016e7ed80ddfb39ec8ab7c1d`  
 **Branch:** `hardening/stage-2a-security`  
-**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. **DECK-1 IN PROGRESS** — DECK-1A **COMPLETE / OWNER MODEL VALIDATED**; DECK-1B **COMPLETE / TECHNICALLY VALIDATED**; DECK-1C-A **COMPLETE / OWNER VALIDATED**. DECK-1C-B **NOT STARTED**. **DECK-2A COMPLETE LOCAL / OWNER PRODUCT REVIEW PENDING**.  
+**Mode:** PHASE 0 **COMPLETE / ARCHITECTURE FROZEN**. REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. **DECK-1 IN PROGRESS** — DECK-1A **COMPLETE / OWNER MODEL VALIDATED**; DECK-1B **COMPLETE / TECHNICALLY VALIDATED**; DECK-1C-A **COMPLETE / OWNER VALIDATED**. DECK-1C-B **NOT STARTED**. **DECK-2A COMPLETE / OWNER PRODUCT VALIDATED**. **DECK-2B COMPLETE LOCAL / OWNER UX REVIEW PENDING**.  
 **Challenge:** `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`  
 **Product architecture:** `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`  
 **Supersedes as programme plan:** `docs/plans/POST_TRIAL_MASTER_DEVELOPMENT_PIPELINE.md`, `docs/plans/STAGE_3_PRODUCT_ROADMAP.md` (as primary plan), `docs/plans/POST_3_2_2_COMMERCIAL_MATERIALS_PLAN.md`
@@ -169,7 +169,7 @@ Priority: **CRITICAL** · **HIGH** · **MEDIUM** · **LATER**
 | **Non-goals** | Engineering design; cladding |
 | **Completion gate** | SIMPLE/MEDIUM/COMPLEX/EDGE goldens; Owner Preview |
 | **Priority** | CRITICAL |
-| **Batches** | DECK-1 transparent estimator + takeoff; **DECK-2A assisted estimate experience audit/contract**; DECK-2 face boards and review experience; DECK-3 task labour; DECK-4 calibration hooks (evidence, not DNA apply); DECK-5 transparency UI; DECK-R2 framing members |
+| **Batches** | DECK-1 transparent estimator + takeoff; **DECK-2A assisted estimate experience audit/contract**; **DECK-2B assumption-led Quick Estimate**; DECK-2 face boards and review experience; DECK-3 task labour; DECK-4 calibration hooks (evidence, not DNA apply); DECK-5 transparency UI; DECK-R2 framing members |
 
 ### PHASE 3 — Materials Catalogue V2
 

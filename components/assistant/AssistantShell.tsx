@@ -17,6 +17,8 @@ import {
   QuestionBlock,
   type QuestionAnswers,
 } from "@/components/assistant/QuestionBlock";
+import { buildProjectUnderstandingSummaries } from "@/lib/assistant/presentation/assistant-understanding-summary";
+import { AssistantUnderstandingSummaryCard } from "@/components/assistant/AssistantUnderstandingSummaryCard";
 import { ScopeSummaryBlock } from "@/components/assistant/ScopeSummaryBlock";
 import type {
   QualityLevel,
@@ -290,12 +292,17 @@ export function AssistantShell({
 
   const projectConditionsSnapshot = useMemo(() => {
     try {
+      const scopeQuestionCount =
+        questionsSubmitted && questionBlock
+          ? questionBlock.questions.length
+          : 0;
       return buildLiveProjectConditionsSnapshot({
         projectId: project.id,
         qualityLevel: project.qualityLevel,
         workAreas,
         facts: initialState.interviewFacts,
         constraints: liveConstraints,
+        scopeQuestionCount,
       });
     } catch {
       return null;
@@ -306,6 +313,8 @@ export function AssistantShell({
     workAreas,
     initialState.interviewFacts,
     liveConstraints,
+    questionsSubmitted,
+    questionBlock,
   ]);
 
   useEffect(() => {
@@ -1087,6 +1096,20 @@ export function AssistantShell({
   // Stage 3.1A-R1: do not remount Scope Review on answer value changes —
   // remounting wiped optimistic local answers and caused temporary reversion.
 
+  const understandingSummaries = useMemo(
+    () =>
+      buildProjectUnderstandingSummaries({
+        workAreas: displayWorkAreas.filter((wa) => wa.status === "confirmed"),
+        facts: initialState.scopeReview.workAreas.flatMap((wa) =>
+          wa.facts.map((fact) => ({
+            key: fact.key,
+            work_area_id: wa.workAreaId,
+            value: fact.rawValue ?? fact.value,
+          }))
+        ),
+      }),
+    [displayWorkAreas, initialState.scopeReview.workAreas]
+  );
   const captureIsCurrent = !briefSubmitted;
   const workAreasIsCurrent = briefSubmitted && !workAreasConfirmed;
   const qualityIsCurrent =
@@ -1640,16 +1663,21 @@ export function AssistantShell({
               isActive={activeDisclosureStage === "questions"}
               cardRef={questionsCardRef}
             >
-              <QuestionBlock
-                questions={questionBlock.questions}
-                derivedFactDisplays={initialState.derivedFactDisplays}
-                answers={questionAnswers}
-                isSaving={pendingAction === "questions"}
-                focusQuestionId={reviewFocusQuestionId}
-                focusQuestionKey={reviewFocusQuestionKey}
-                onAnswerChange={handleQuestionAnswer}
-                onSubmit={handleQuestionsSubmit}
-              />
+              <div className="space-y-4">
+                <AssistantUnderstandingSummaryCard
+                  summaries={understandingSummaries}
+                />
+                <QuestionBlock
+                  questions={questionBlock.questions}
+                  derivedFactDisplays={initialState.derivedFactDisplays}
+                  answers={questionAnswers}
+                  isSaving={pendingAction === "questions"}
+                  focusQuestionId={reviewFocusQuestionId}
+                  focusQuestionKey={reviewFocusQuestionKey}
+                  onAnswerChange={handleQuestionAnswer}
+                  onSubmit={handleQuestionsSubmit}
+                />
+              </div>
             </CollapsibleStageCard>
           ) : null}
 
@@ -1941,8 +1969,9 @@ export function AssistantShell({
               (activeDisclosureStage === null && canGenerateEstimate)
             }
             quickEstimatePresentation={
-              questionsSubmitted ? quickEstimatePresentation : null
+              qualitySubmitted ? quickEstimatePresentation : null
             }
+            understandingSummaries={understandingSummaries}
             pendingScopeDetailTitles={pendingScopeDetailTitles}
             scopeReviewAttention={scopeReviewAttentionItems}
             projectInformationLabel={projectInformationLabel}

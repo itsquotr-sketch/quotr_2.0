@@ -20,6 +20,8 @@ import {
   isInheritedFinishLevelKey,
 } from "@/lib/scopes/finish-level";
 import { getDerivedFactNote, resolveFactEditMeta } from "@/lib/scopes/fact-edit-meta";
+import { isQuickEstimateAskQuestion } from "@/lib/scopes/estimate-priority";
+import { blocksLevel1Estimate } from "@/lib/scopes/level1-blocking";
 import { getScopeQuestions } from "@/lib/scopes/registry";
 import {
   getMissingLabel,
@@ -224,6 +226,10 @@ function buildMissingItems(params: {
   };
 
   for (const template of templates) {
+    if (!isQuickEstimateAskQuestion(template)) {
+      continue;
+    }
+
     if (
       !isTemplateFactMissing({
         template,
@@ -233,6 +239,13 @@ function buildMissingItems(params: {
         confirmedTypes: params.confirmedTypes,
         project: params.project,
       })
+    ) {
+      continue;
+    }
+
+    if (
+      template.estimatePriorityClass != null &&
+      !blocksLevel1Estimate(template)
     ) {
       continue;
     }

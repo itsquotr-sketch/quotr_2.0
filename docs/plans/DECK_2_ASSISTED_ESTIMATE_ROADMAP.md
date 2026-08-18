@@ -1,6 +1,6 @@
 # DECK-2 Assisted Estimate Roadmap
 
-**Status:** DECK-2 IN PROGRESS / DECK-2A COMPLETE LOCAL / OWNER PRODUCT REVIEW PENDING  
+**Status:** DECK-2 IN PROGRESS / DECK-2A COMPLETE / OWNER PRODUCT VALIDATED / DECK-2B COMPLETE LOCAL / OWNER UX REVIEW PENDING  
 **Date:** 2026-08-18  
 **Contract:** `docs/architecture/QUOTR_ASSISTED_ESTIMATE_EXPERIENCE_CONTRACT.md`  
 **Audit:** `docs/audits/DECK_2A_ASSISTED_ESTIMATE_EXPERIENCE_AUDIT.md`
@@ -32,8 +32,8 @@ DECK-2 should now improve the actual everyday builder experience:
 
 | Batch | Purpose | Status |
 | --- | --- | --- |
-| `DECK-2A` | assisted estimate experience audit, fixtures, contract, roadmap | **COMPLETE LOCAL / OWNER PRODUCT REVIEW PENDING** |
-| `DECK-2B` | assistant question prioritization + Quick Estimate / Builder Review output shaping | not started |
+| `DECK-2A` | assisted estimate experience audit, fixtures, contract, roadmap | **COMPLETE / OWNER PRODUCT VALIDATED** |
+| `DECK-2B` | assistant question prioritization + Quick Estimate / Builder Review output shaping | **COMPLETE LOCAL / OWNER UX REVIEW PENDING** |
 | `DECK-2C` | face/fascia maturity and deck review editing improvements | not started |
 
 No DECK-2 batch authorizes structural promotion by itself.

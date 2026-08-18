@@ -56,8 +56,10 @@ export function buildLiveProjectConditionsSnapshot(params: {
   facts: readonly AssistantInterviewFact[];
   constraints: readonly Pick<ConstraintRow, "key" | "value" | "source">[];
   excludedScopeItemTypes?: readonly string[];
+  scopeQuestionCount?: number;
 }) {
   return buildProjectConditionsSnapshot(
-    buildLiveBuilderInterviewInput(params)
+    buildLiveBuilderInterviewInput(params),
+    { scopeQuestionCount: params.scopeQuestionCount }
   );
 }

@@ -16,3 +16,5 @@ export * from "./action-labels";
 export * from "./error-messages";
 export * from "./save-status";
 export * from "./quick-estimate-view-model";
+export * from "./assistant-understanding-summary";
+export * from "./quick-estimate-confidence";

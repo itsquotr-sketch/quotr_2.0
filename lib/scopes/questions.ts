@@ -22,6 +22,15 @@ import {
   type DerivedFactDisplay,
 } from "@/lib/scopes/derived-facts";
 import type { ScopeQuestionTemplate } from "@/lib/scopes/types";
+import {
+  getEstimatePriorityClass,
+  isNeverAskEstimateQuestion,
+  isQuickEstimateAskQuestion,
+  MAX_QUICK_ESTIMATE_P0_QUESTIONS,
+} from "@/lib/scopes/estimate-priority";
+import { blocksLevel1Estimate } from "@/lib/scopes/level1-blocking";
+import { planLevel1Questions } from "@/lib/assistant/level1-question-plan";
+import type { InterviewCandidate } from "@/lib/builder-interview/types";
 import { isQuestionSuppressedByScopeItemExclusion } from "@/lib/scope-discovery/ui/scope-item-question-gates";
 import { isProjectConditionDuplicateFactKey } from "@/lib/project-conditions/canonical";
 
@@ -29,8 +38,13 @@ import { isProjectConditionDuplicateFactKey } from "@/lib/project-conditions/can
  * Stage 3.1B.7F-R6: do not silently drop applicable questions on multi-WA jobs.
  * Progressive disclosure lives in the UI; question generation includes all
  * currently-applicable unanswered templates (required + optional).
+ * DECK-2B: classified templates use P0-only Quick Estimate budget.
  */
 const MAX_OPTIONAL_QUESTIONS_SOFT = 40;
+
+export const QUICK_ESTIMATE_BLOCK_TITLE = "Scope details";
+export const QUICK_ESTIMATE_BLOCK_DESCRIPTION =
+  "A few high-value details will sharpen the initial estimate. Optional specification can wait for Builder Review.";
 
 export const MISSING_DETAILS_BLOCK_TITLE = "Missing scope details";
 export const MISSING_DETAILS_BLOCK_DESCRIPTION =
@@ -75,6 +89,8 @@ export type BuiltQuestion = {
   options?: string[];
   unit?: string;
   required: boolean;
+  /** DECK-2B-R1 — whether unanswered question blocks Level 1 submit / estimate. */
+  blocksEstimate?: boolean;
   workAreaId: string;
   workAreaName: string;
   workAreaSortOrder: number;
@@ -103,7 +119,55 @@ export type ExistingQuestionRecord = {
 
 type CandidateQuestion = BuiltQuestion & {
   priority: number;
+  estimatePriorityClass: ReturnType<typeof getEstimatePriorityClass>;
 };
+
+function selectQuickEstimateQuestions(
+  candidates: CandidateQuestion[],
+  options?: {
+    readonly pcCandidatesForPlanning?: readonly InterviewCandidate[];
+    readonly questionBudget?: number;
+  }
+): CandidateQuestion[] {
+  const sortCandidates = (a: CandidateQuestion, b: CandidateQuestion) => {
+    if (a.workAreaSortOrder !== b.workAreaSortOrder) {
+      return a.workAreaSortOrder - b.workAreaSortOrder;
+    }
+    if (a.required !== b.required) {
+      return a.required ? -1 : 1;
+    }
+    return a.priority - b.priority;
+  };
+
+  const classifiedP0 = candidates.filter((q) => q.estimatePriorityClass === "P0");
+  const unclassified = candidates.filter((q) => q.estimatePriorityClass == null);
+
+  let selectedClassified: CandidateQuestion[] = [];
+  if (
+    classifiedP0.length > 0 ||
+    (options?.pcCandidatesForPlanning?.length ?? 0) > 0
+  ) {
+    const plan = planLevel1Questions({
+      scopeQuestions: classifiedP0,
+      pcCandidates: options?.pcCandidatesForPlanning ?? [],
+      max: options?.questionBudget ?? MAX_QUICK_ESTIMATE_P0_QUESTIONS,
+    });
+    selectedClassified = plan.scopeQuestions as CandidateQuestion[];
+  }
+
+  const required = unclassified.filter((q) => q.required);
+  const optional = unclassified.filter((q) => !q.required);
+  const selected = [
+    ...selectedClassified,
+    ...required,
+    ...optional.slice(0, MAX_OPTIONAL_QUESTIONS_SOFT),
+  ].filter((q, index, all) => {
+    const id = `${q.workAreaId}:${q.key}`;
+    return all.findIndex((item) => `${item.workAreaId}:${item.key}` === id) === index;
+  });
+
+  return selected.sort(sortCandidates);
+}
 
 export function getMissingLabel(template: ScopeQuestionTemplate): string {
   if (template.factKey === "deck.area_m2") {
@@ -241,6 +305,10 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
   for (const workArea of confirmed) {
     const templates = getScopeQuestions(workArea.type);
     for (const template of templates) {
+      if (!isQuickEstimateAskQuestion(template)) {
+        continue;
+      }
+
       const unanswered = params.includeOptional
         ? isTemplateQuestionUnanswered({
             template,
@@ -290,6 +358,7 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
         workAreaName: workArea.name,
         workAreaSortOrder: workArea.sort_order,
         priority: template.priority,
+        estimatePriorityClass: getEstimatePriorityClass(template),
         sortOrder: 0,
         initialAnswerValue: prepopulation?.value ?? null,
         initialAnswerSource: prepopulation?.source ?? null,
@@ -307,7 +376,7 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
     return a.priority - b.priority;
   });
 
-  return candidates.map((question, index) => ({
+  return selectQuickEstimateQuestions(candidates).map((question, index) => ({
     ...question,
     sortOrder: index + 1,
   }));
@@ -393,6 +462,10 @@ export function shouldSkipTemplateQuestion(
   }
 
   if (template.factKey === "deck.pergola_included") {
+    return true;
+  }
+
+  if (isNeverAskEstimateQuestion(template)) {
     return true;
   }
 
@@ -490,6 +563,9 @@ export function buildQuestionBlockFromProjectState(params: {
   confirmedWorkAreas: WorkAreaInput[];
   projectFacts: ProjectFactInput[];
   excludedScopeItemTypes?: ReadonlySet<string>;
+  /** DECK-2B-R1 — global Level 1 budget ranks Scope + PC together. */
+  pcCandidatesForPlanning?: readonly InterviewCandidate[];
+  scopeQuestionBudget?: number;
 }): BuiltQuestionBlock {
   const confirmed = params.confirmedWorkAreas
     .filter((workArea) => workArea.status === "confirmed")
@@ -524,6 +600,10 @@ export function buildQuestionBlockFromProjectState(params: {
         continue;
       }
 
+      if (!isQuickEstimateAskQuestion(template)) {
+        continue;
+      }
+
       if (isQuestionAnswered(factLookup, workArea.id, template.factKey)) {
         continue;
       }
@@ -544,10 +624,15 @@ export function buildQuestionBlockFromProjectState(params: {
         options: template.options,
         unit: template.unit,
         required: template.required,
+        blocksEstimate:
+          template.estimatePriorityClass != null
+            ? blocksLevel1Estimate(template)
+            : template.required,
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         workAreaSortOrder: workArea.sort_order,
         priority: template.priority,
+        estimatePriorityClass: getEstimatePriorityClass(template),
         sortOrder: 0,
         initialAnswerValue: prepopulation?.value ?? null,
         initialAnswerSource: prepopulation?.source ?? null,
@@ -555,30 +640,17 @@ export function buildQuestionBlockFromProjectState(params: {
     }
   }
 
-  candidates.sort((a, b) => {
-    if (a.workAreaSortOrder !== b.workAreaSortOrder) {
-      return a.workAreaSortOrder - b.workAreaSortOrder;
-    }
-    if (a.required !== b.required) {
-      return a.required ? -1 : 1;
-    }
-    return a.priority - b.priority;
-  });
-
-  // All required first; soft-cap only excess optionals (never drop required).
-  const required = candidates.filter((q) => q.required);
-  const optional = candidates.filter((q) => !q.required);
-  const selected = [
-    ...required,
-    ...optional.slice(0, MAX_OPTIONAL_QUESTIONS_SOFT),
-  ].map((question, index) => ({
+  const selected = selectQuickEstimateQuestions(candidates, {
+    pcCandidatesForPlanning: params.pcCandidatesForPlanning,
+    questionBudget: params.scopeQuestionBudget,
+  }).map((question, index) => ({
     ...question,
     sortOrder: index + 1,
   }));
 
   return {
-    title: "Scope details",
-    description: "A few details will help sharpen the estimate.",
+    title: QUICK_ESTIMATE_BLOCK_TITLE,
+    description: QUICK_ESTIMATE_BLOCK_DESCRIPTION,
     questions: selected,
     derivedDisplays: buildDerivedFactDisplays(mergedFacts),
   };
@@ -618,6 +690,10 @@ export function buildQuestionBlockForWorkArea(params: {
       continue;
     }
 
+    if (!isQuickEstimateAskQuestion(template)) {
+      continue;
+    }
+
     if (hasFactValue(factLookup, params.workArea.id, template.factKey)) {
       continue;
     }
@@ -642,36 +718,29 @@ export function buildQuestionBlockForWorkArea(params: {
       options: template.options,
       unit: template.unit,
       required: template.required,
+      blocksEstimate:
+        template.estimatePriorityClass != null
+          ? blocksLevel1Estimate(template)
+          : template.required,
       workAreaId: params.workArea.id,
       workAreaName: params.workArea.name,
       workAreaSortOrder: params.workArea.sort_order,
       priority: template.priority,
+      estimatePriorityClass: getEstimatePriorityClass(template),
       sortOrder: 0,
       initialAnswerValue: prepopulation?.value ?? null,
       initialAnswerSource: prepopulation?.source ?? null,
     });
   }
 
-  candidates.sort((a, b) => {
-    if (a.required !== b.required) {
-      return a.required ? -1 : 1;
-    }
-    return a.priority - b.priority;
-  });
-
-  const required = candidates.filter((q) => q.required);
-  const optional = candidates.filter((q) => !q.required);
-  const selected = [
-    ...required,
-    ...optional.slice(0, MAX_OPTIONAL_QUESTIONS_SOFT),
-  ].map((question, index) => ({
+  const selected = selectQuickEstimateQuestions(candidates).map((question, index) => ({
     ...question,
     sortOrder: index + 1,
   }));
 
   return {
     title: `${params.workArea.name} details`,
-    description: "A few details are needed for this added scope.",
+    description: QUICK_ESTIMATE_BLOCK_DESCRIPTION,
     questions: selected,
     derivedDisplays: buildDerivedFactDisplays(mergedFacts).filter(
       (display) => display.workAreaId === params.workArea.id

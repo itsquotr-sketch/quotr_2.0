@@ -41,6 +41,7 @@ export function resolveActiveDisclosureStage(
   if (input.qualityUnlocked && !input.qualitySubmitted) return "quality";
   if (input.qualitySubmitted && !input.questionsSubmitted) return "questions";
   // After questions: site constraints are the actionable incomplete form.
+  // DECK-2B: when ready to generate, Quick Estimate panel leads even if Scope Details remain open.
   if (input.questionsSubmitted && !input.constraintsSubmitted) {
     return "constraints";
   }

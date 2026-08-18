@@ -41,6 +41,8 @@ import {
   upsertProjectConstraintRecord,
 } from "@/lib/assistant/scope-persistence";
 import { buildQuestionBlockFromProjectState } from "@/lib/scopes/questions";
+import { buildLiveBuilderInterviewInput } from "@/lib/assistant/builder-interview-live";
+import { previewProjectConditionAskCandidates } from "@/lib/builder-interview/project-filter";
 import { normalizeAnswerForStorage, factHasValue } from "@/lib/scopes/fact-values";
 import {
   logQuestionInputTypeFailure,
@@ -605,6 +607,27 @@ async function createDynamicQuestionBlockIfNeeded(
     );
   }
 
+  const interviewInput = buildLiveBuilderInterviewInput({
+    projectId,
+    qualityLevel,
+    workAreas: workAreas ?? [],
+    facts: (projectFacts ?? []).map((fact) => ({
+      key: fact.key,
+      workAreaId: fact.work_area_id,
+      value: fact.value,
+      source: fact.source ?? null,
+    })),
+    constraints: (constraintRows ?? []).map((row) => ({
+      key: row.key,
+      value: row.value,
+      source: null,
+    })),
+    excludedScopeItemTypes: excludedScopeItemTypes
+      ? [...excludedScopeItemTypes]
+      : undefined,
+  });
+  const pcPreview = previewProjectConditionAskCandidates(interviewInput);
+
   const built = buildQuestionBlockFromProjectState({
     project: {
       quality_level: qualityLevel,
@@ -616,6 +639,7 @@ async function createDynamicQuestionBlockIfNeeded(
     confirmedWorkAreas: workAreas ?? [],
     projectFacts,
     excludedScopeItemTypes,
+    pcCandidatesForPlanning: pcPreview,
   });
 
   if (built.questions.length === 0) {

@@ -142,12 +142,26 @@ function main(): void {
       `${type}: Project Conditions produce questions`,
       snap.shouldShowStage && snap.candidates.length > 0 && ask.has("site_access")
     );
-    check(
-      `${type}: Generate blocked until required resolved`,
-      snap.readiness.canGenerateQuickEstimate === false &&
-        snap.unresolvedRequiredKeys.includes("site_access")
-    );
+    if (type === "deck") {
+      check(
+        `${type}: Level 1 Generate permitted (assumable PC)`,
+        snap.readiness.canGenerateQuickEstimate === true
+      );
+    } else {
+      check(
+        `${type}: Generate blocked until required resolved`,
+        snap.readiness.canGenerateQuickEstimate === false &&
+          snap.unresolvedRequiredKeys.includes("site_access")
+      );
+    }
   }
+
+  console.log("\n1b NON-DECK blocking retained");
+  check(
+    "bathroom blank: Generate still blocked until required resolved",
+    buildProjectConditionsSnapshot(inputFor("bathroom")).readiness
+      .canGenerateQuickEstimate === false
+  );
 
   console.log("\n9 COMMERCIAL COMPONENTS — project logistics once");
   const fitout = commercialInterior();
@@ -241,9 +255,9 @@ function main(): void {
   );
   const removalSnap = buildProjectConditionsSnapshot(deckRemoval);
   check(
-    "existing deck removal makes waste_bin required — Generate blocked",
+    "existing deck removal makes waste_bin required — Level 1 assumable for deck",
     removalSnap.unresolvedRequiredKeys.includes("waste_bin_access") &&
-      removalSnap.readiness.canGenerateQuickEstimate === false
+      removalSnap.readiness.canGenerateQuickEstimate === true
   );
 
   check(

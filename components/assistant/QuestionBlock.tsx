@@ -26,6 +26,11 @@ import {
 } from "@/lib/assistant/presentation";
 import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { scopeQuestionKeyBlocksLevel1Estimate } from "@/lib/scopes/level1-blocking";
+
+function questionBlocksSubmit(question: Question): boolean {
+  return scopeQuestionKeyBlocksLevel1Estimate(question.key);
+}
 
 export type QuestionAnswers = Record<string, string | number | boolean | string[] | null>;
 
@@ -562,7 +567,7 @@ function WorkAreaSection({
   };
 
   const remainingInWorkArea = group.questions.filter((q) => {
-    if (!q.required) return false;
+    if (!questionBlocksSubmit(q)) return false;
     const v = answers[q.id];
     return v === null || v === undefined || v === "";
   }).length;
@@ -611,7 +616,7 @@ function WorkAreaSection({
         <div className="space-y-3">
           {categoryGroups.map((cat) => {
             const remainingRequiredCount = cat.questions.filter((q) => {
-              if (!q.required) return false;
+              if (!questionBlocksSubmit(q)) return false;
               const v = answers[q.id];
               return v === null || v === undefined || v === "";
             }).length;
@@ -759,7 +764,7 @@ export function QuestionBlock({
   const handleSubmit = () => {
     const missing = questions.filter(
       (q) =>
-        q.required &&
+        questionBlocksSubmit(q) &&
         (answers[q.id] === null ||
           answers[q.id] === undefined ||
           answers[q.id] === "")
@@ -807,9 +812,18 @@ export function QuestionBlock({
         </p>
       ) : null}
       {!submitted && !hideSubmit ? (
-        <Button type="button" onClick={handleSubmit} disabled={isSaving}>
-          {isSaving ? ASSISTANT_ACTION_LABELS.saving : submitLabel}
-        </Button>
+        <div className="space-y-2">
+          <p className="text-xs text-muted-foreground">
+            Optional details can wait. Continue when you have enough to estimate.
+          </p>
+          <Button type="button" onClick={handleSubmit} disabled={isSaving}>
+            {isSaving
+              ? ASSISTANT_ACTION_LABELS.saving
+              : questions.every((q) => !questionBlocksSubmit(q))
+                ? "Continue to estimate"
+                : submitLabel}
+          </Button>
+        </div>
       ) : null}
     </div>
   );
