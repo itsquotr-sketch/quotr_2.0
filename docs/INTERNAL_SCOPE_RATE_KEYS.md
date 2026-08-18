@@ -6,8 +6,10 @@ Rates UI already exposes sheet/flooring/paint specific material rates; additiona
 ## Resolution priority
 
 1. Exact company rate matching `item_key` + `rate_type`
-2. Legacy alias key (see below)
-3. Work-area generic rate (`work_area_type` + `rate_type`)
+2. Legacy alias key (see below) — explicit compatibility only; no fuzzy match
+3. Work-area fallback (`lib/estimate/rates.ts`):
+   - **Named component lookup** (non-empty `itemKey`, e.g. `deck.substructure.m2`, `deck.fixings.m2`): exact or approved alias only. Blank / whitespace `item_key` is **not** compatible. Same `work_area_type` + unit is not enough.
+   - **Generic work-area lookup** (empty `itemKey`): a blank-key company rate of the same `rate_type` + `work_area_type` + unit may still apply. No blank→named compatibility contracts exist.
 4. Benchmark fallback (when `allow_benchmark_rates` is enabled)
 
 ## Supported alias keys

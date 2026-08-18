@@ -1,20 +1,25 @@
 /**
- * DECK-2B-R2 — Preview commercial integrity.
+ * DECK-2B-R2 / RECOVERY-0-R1 — Preview commercial integrity.
  * Run: npx tsx scripts/verify-deck-2b-r2-preview-commercial-integrity.ts
  *
- * Exercises the REAL app rate path (org rates loaded into calculateEstimate),
- * not the empty-rates calibration fixture path.
+ * Named component lookups reject blank item_key company rates.
+ * Generic work-area lookup (empty itemKey) may still use blank-key packages.
  */
 import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import { existsSync, readFileSync } from "node:fs";
-import { resolveRate, isEligibleWorkAreaFallbackRate } from "../lib/estimate/rates";
+import {
+  resolveRate,
+  isEligibleWorkAreaFallbackRate,
+  isNamedComponentLookup,
+  BLANK_ITEM_KEY_NAMED_COMPONENT_COMPATIBILITY,
+} from "../lib/estimate/rates";
+import { DECK_BENCHMARKS, FENCE_BENCHMARKS } from "../lib/estimate/benchmark-rates";
 import { calculateEstimate } from "../lib/estimate/calculate-estimate";
 import { getComponentCommercialAuthority } from "../lib/estimate/component-authority";
 import { DECK_SURFACE_COMPONENT_KEY } from "../lib/estimate/deck-surface-requirement";
 import { DECK_LABOUR_COMPONENT_KEY } from "../lib/estimate/deck-labour-requirement";
 import { MATERIAL_RATE_KEYS } from "../lib/estimate/material-rate-keys";
-import { DECK_BENCHMARKS } from "../lib/estimate/benchmark-rates";
 import {
   buildPersistEstimateGenerationV1,
   PERSIST_ESTIMATE_GENERATION_RPC,
@@ -58,13 +63,15 @@ function fact(key: string, workAreaId: string, value: unknown): EstimateFact {
   return { key, work_area_id: workAreaId, value };
 }
 
-function rate(partial: Partial<OrganisationRate> & { item_key: string }): OrganisationRate {
+function rate(
+  partial: Partial<OrganisationRate> & { item_key?: string }
+): OrganisationRate {
   return {
     id: partial.id ?? "r1",
     rate_type: partial.rate_type ?? "material",
     trade: partial.trade ?? null,
     work_area_type: partial.work_area_type ?? "deck",
-    item_key: partial.item_key,
+    item_key: partial.item_key ?? "",
     label: partial.label ?? partial.item_key,
     unit: partial.unit ?? "lm",
     cost_rate: partial.cost_rate ?? 22.5,
@@ -366,6 +373,322 @@ check(
   "34 DECK-1D collision documented in resolver",
   ratesSrc.includes("never steal") ||
     ratesSrc.includes("different specific item_key")
+);
+
+console.log("\n--- RECOVERY-0-R1 named component lock ---\n");
+
+check(
+  "43 no blank→named compatibility contracts exist",
+  Object.keys(BLANK_ITEM_KEY_NAMED_COMPONENT_COMPATIBILITY).length === 0
+);
+check(
+  "44 deck.substructure.m2 is a named component lookup",
+  isNamedComponentLookup("deck.substructure.m2") &&
+    isNamedComponentLookup("deck.fixings.m2")
+);
+
+const blankDeckM2 = rate({
+  item_key: "",
+  work_area_type: "deck",
+  unit: "m2",
+  cost_rate: 22.5,
+  sell_rate: null,
+});
+const whitespaceDeckM2 = rate({
+  item_key: "   ",
+  work_area_type: "deck",
+  unit: "m2",
+  cost_rate: 22.5,
+});
+const blankDeckLm = rate({
+  item_key: "",
+  work_area_type: "deck",
+  unit: "lm",
+  cost_rate: 22.5,
+});
+
+check(
+  "45 blank Deck m2 cannot price deck.substructure.m2",
+  isEligibleWorkAreaFallbackRate({
+    rate: blankDeckM2,
+    rateType: "material",
+    itemKey: "deck.substructure.m2",
+    workAreaType: "deck",
+    unit: "m2",
+  }) === false &&
+    resolveRate({
+      rates: [blankDeckM2, whitespaceDeckM2],
+      rateType: "material",
+      itemKey: "deck.substructure.m2",
+      workAreaType: "deck",
+      unit: "m2",
+      fallbackCostRate: DECK_BENCHMARKS.framing.cost,
+      fallbackSellRate: DECK_BENCHMARKS.framing.sell,
+      organisationSettings: orgSettings,
+    }).sourceType === "benchmark" &&
+    resolveRate({
+      rates: [blankDeckM2],
+      rateType: "material",
+      itemKey: "deck.substructure.m2",
+      workAreaType: "deck",
+      unit: "m2",
+      fallbackCostRate: DECK_BENCHMARKS.framing.cost,
+      fallbackSellRate: DECK_BENCHMARKS.framing.sell,
+      organisationSettings: orgSettings,
+    }).costRate === DECK_BENCHMARKS.framing.cost
+);
+check(
+  "46 blank Deck m2 cannot price deck.fixings.m2",
+  isEligibleWorkAreaFallbackRate({
+    rate: blankDeckM2,
+    rateType: "material",
+    itemKey: "deck.fixings.m2",
+    workAreaType: "deck",
+    unit: "m2",
+  }) === false &&
+    resolveRate({
+      rates: [blankDeckM2],
+      rateType: "material",
+      itemKey: "deck.fixings.m2",
+      workAreaType: "deck",
+      unit: "m2",
+      fallbackCostRate: DECK_BENCHMARKS.fixings.cost,
+      fallbackSellRate: DECK_BENCHMARKS.fixings.sell,
+      organisationSettings: orgSettings,
+    }).costRate === DECK_BENCHMARKS.fixings.cost
+);
+check(
+  "47 blank Deck lm cannot price framing or fixings",
+  isEligibleWorkAreaFallbackRate({
+    rate: blankDeckLm,
+    rateType: "material",
+    itemKey: "deck.substructure.m2",
+    workAreaType: "deck",
+    unit: "m2",
+  }) === false &&
+    isEligibleWorkAreaFallbackRate({
+      rate: blankDeckLm,
+      rateType: "material",
+      itemKey: "deck.fixings.m2",
+      workAreaType: "deck",
+      unit: "m2",
+    }) === false
+);
+check(
+  "48 unrelated hardwood lm cannot price framing or fixings",
+  isEligibleWorkAreaFallbackRate({
+    rate: collidingHardwoodLm,
+    rateType: "material",
+    itemKey: "deck.substructure.m2",
+    workAreaType: "deck",
+    unit: "m2",
+  }) === false &&
+    isEligibleWorkAreaFallbackRate({
+      rate: collidingHardwoodLm,
+      rateType: "material",
+      itemKey: "deck.fixings.m2",
+      workAreaType: "deck",
+      unit: "m2",
+    }) === false
+);
+
+const exactFramingCompany = resolveRate({
+  rates: [
+    rate({
+      item_key: "deck.substructure.m2",
+      unit: "m2",
+      cost_rate: 95,
+      sell_rate: 140,
+    }),
+  ],
+  rateType: "material",
+  itemKey: "deck.substructure.m2",
+  workAreaType: "deck",
+  unit: "m2",
+  fallbackCostRate: DECK_BENCHMARKS.framing.cost,
+  fallbackSellRate: DECK_BENCHMARKS.framing.sell,
+  organisationSettings: orgSettings,
+});
+check(
+  "49 exact deck.substructure.m2 company rate resolves",
+  exactFramingCompany.costRate === 95 &&
+    exactFramingCompany.sellRate === 140 &&
+    exactFramingCompany.sourceType === "user_rate"
+);
+
+const exactFixingsCompany = resolveRate({
+  rates: [
+    rate({
+      item_key: "deck.fixings.m2",
+      unit: "m2",
+      cost_rate: 31,
+      sell_rate: 48,
+    }),
+  ],
+  rateType: "material",
+  itemKey: "deck.fixings.m2",
+  workAreaType: "deck",
+  unit: "m2",
+  fallbackCostRate: DECK_BENCHMARKS.fixings.cost,
+  fallbackSellRate: DECK_BENCHMARKS.fixings.sell,
+  organisationSettings: orgSettings,
+});
+check(
+  "50 exact deck.fixings.m2 company rate resolves",
+  exactFixingsCompany.costRate === 31 &&
+    exactFixingsCompany.sourceType === "user_rate"
+);
+
+const aliasWaterproofing = resolveRate({
+  rates: [
+    rate({
+      item_key: "bathroom_waterproofing_m2",
+      work_area_type: "bathroom",
+      unit: "m2",
+      cost_rate: 88,
+      sell_rate: 130,
+    }),
+  ],
+  rateType: "material",
+  itemKey: "bathroom.waterproofing.m2",
+  workAreaType: "bathroom",
+  unit: "m2",
+  fallbackCostRate: 90,
+  fallbackSellRate: 140,
+  organisationSettings: orgSettings,
+});
+check(
+  "51 approved alias still resolves",
+  aliasWaterproofing.costRate === 88 &&
+    aliasWaterproofing.sourceType === "user_rate"
+);
+
+check(
+  "52 no exact company substructure → canonical framing benchmark",
+  resolveRate({
+    rates: [blankDeckM2, collidingHardwoodLm],
+    rateType: "material",
+    itemKey: "deck.substructure.m2",
+    workAreaType: "deck",
+    unit: "m2",
+    fallbackCostRate: DECK_BENCHMARKS.framing.cost,
+    fallbackSellRate: DECK_BENCHMARKS.framing.sell,
+    organisationSettings: orgSettings,
+  }).costRate === 120 &&
+    resolveRate({
+      rates: [blankDeckM2, collidingHardwoodLm],
+      rateType: "material",
+      itemKey: "deck.substructure.m2",
+      workAreaType: "deck",
+      unit: "m2",
+      fallbackCostRate: DECK_BENCHMARKS.framing.cost,
+      fallbackSellRate: DECK_BENCHMARKS.framing.sell,
+      organisationSettings: orgSettings,
+    }).sellRate === 180
+);
+check(
+  "53 no exact company fixings → canonical fixings benchmark",
+  resolveRate({
+    rates: [blankDeckM2, collidingHardwoodLm],
+    rateType: "material",
+    itemKey: "deck.fixings.m2",
+    workAreaType: "deck",
+    unit: "m2",
+    fallbackCostRate: DECK_BENCHMARKS.fixings.cost,
+    fallbackSellRate: DECK_BENCHMARKS.fixings.sell,
+    organisationSettings: orgSettings,
+  }).costRate === 25 &&
+    resolveRate({
+      rates: [blankDeckM2, collidingHardwoodLm],
+      rateType: "material",
+      itemKey: "deck.fixings.m2",
+      workAreaType: "deck",
+      unit: "m2",
+      fallbackCostRate: DECK_BENCHMARKS.fixings.cost,
+      fallbackSellRate: DECK_BENCHMARKS.fixings.sell,
+      organisationSettings: orgSettings,
+    }).sellRate === 40
+);
+
+const blankM2Estimate = calculateEstimate(
+  realJobContext([blankDeckM2, collidingHardwoodLm])
+);
+const blankM2Decking = blankM2Estimate.lineItems.find(
+  (item) => item.componentKey === DECK_SURFACE_COMPONENT_KEY
+);
+const blankM2Framing = blankM2Estimate.lineItems.find(
+  (item) => item.label === "Framing/substructure"
+);
+const blankM2Fixings = blankM2Estimate.lineItems.find(
+  (item) => item.label === "Fixings and consumables"
+);
+check(
+  "54 decking surface company rate remains valid beside blank m2",
+  blankM2Decking?.costRate === 22.5 &&
+    blankM2Decking.rateSourceType === "user_rate"
+);
+check(
+  "55 REAL-JOB blank m2 does not steal framing/fixings",
+  blankM2Framing?.costRate === 120 &&
+    blankM2Framing.rateSourceType === "benchmark" &&
+    blankM2Fixings?.costRate === 25 &&
+    blankM2Fixings.rateSourceType === "benchmark"
+);
+
+const genericLookup = resolveRate({
+  rates: [blankDeckM2],
+  rateType: "material",
+  itemKey: "",
+  workAreaType: "deck",
+  unit: "m2",
+  fallbackCostRate: 999,
+  fallbackSellRate: 1499,
+  organisationSettings: orgSettings,
+});
+check(
+  "56 generic lookup without named component still uses blank work-area rate",
+  genericLookup.costRate === 22.5 &&
+    (genericLookup.sourceType === "work_area_rate" ||
+      genericLookup.sourceType === "user_rate") &&
+    resolveRate({
+      rates: [whitespaceDeckM2],
+      rateType: "material",
+      itemKey: "",
+      workAreaType: "deck",
+      unit: "m2",
+      fallbackCostRate: 999,
+      fallbackSellRate: 1499,
+      organisationSettings: orgSettings,
+    }).sourceType === "work_area_rate"
+);
+check(
+  "56b generic lookup does not use a named hardwood lm as a package",
+  resolveRate({
+    rates: [collidingHardwoodLm],
+    rateType: "material",
+    itemKey: "",
+    workAreaType: "deck",
+    unit: "lm",
+    fallbackCostRate: 999,
+    fallbackSellRate: 1499,
+    organisationSettings: orgSettings,
+  }).costRate === 999
+);
+
+const fenceWithBlankDeck = resolveRate({
+  rates: [blankDeckM2, collidingHardwoodLm],
+  rateType: "material",
+  itemKey: "fence.material.timber.lm",
+  workAreaType: "fence",
+  unit: "lm",
+  fallbackCostRate: FENCE_BENCHMARKS.timberPerLm.cost,
+  fallbackSellRate: FENCE_BENCHMARKS.timberPerLm.sell,
+  organisationSettings: orgSettings,
+});
+check(
+  "57 unrelated Work Area (fence) is not stolen by blank Deck rate",
+  fenceWithBlankDeck.costRate === FENCE_BENCHMARKS.timberPerLm.cost &&
+    fenceWithBlankDeck.sourceType === "benchmark"
 );
 
 function testLocalDb(): void {

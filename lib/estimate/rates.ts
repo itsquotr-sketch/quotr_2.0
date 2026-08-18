@@ -135,8 +135,43 @@ export function rateUnitsMatch(
   return normalize(rateUnit) === normalize(expectedUnit);
 }
 
+export function isBlankRateItemKey(itemKey: string | null | undefined): boolean {
+  return (itemKey?.trim() ?? "") === "";
+}
+
+export function isNamedComponentLookup(itemKey: string | null | undefined): boolean {
+  return !isBlankRateItemKey(itemKey);
+}
+
 /**
- * Work-area fallback may only apply a generic/package rate.
+ * Explicit blank/`null` item_key → named-component compatibility.
+ * Empty on purpose: Owner has not approved any automatic blank-key mapping.
+ * Do not infer compatibility from work_area_type + unit.
+ */
+export const BLANK_ITEM_KEY_NAMED_COMPONENT_COMPATIBILITY: Readonly<
+  Record<string, true>
+> = Object.freeze({});
+
+function hasExplicitBlankKeyCompatibility(namedItemKey: string): boolean {
+  return BLANK_ITEM_KEY_NAMED_COMPONENT_COMPATIBILITY[namedItemKey] === true;
+}
+
+function itemKeyAliasesFor(itemKey: string): readonly string[] {
+  return ITEM_KEY_ALIASES[itemKey] ?? [];
+}
+
+/**
+ * NAMED COMPONENT LOOKUP vs GENERIC WORK-AREA LOOKUP.
+ *
+ * Named (non-empty itemKey, e.g. deck.substructure.m2 / deck.fixings.m2):
+ *   company rate must match exact item_key or an approved alias.
+ *   Blank / whitespace item_key is rejected unless an explicit compatibility
+ *   contract exists (none today). Same work_area_type + unit is not enough.
+ *
+ * Generic (empty itemKey):
+ *   blank-key company rates of the same rate_type + work_area_type + unit
+ *   may still apply. Specific item_key rows are not generic packages.
+ *
  * A different specific item_key (e.g. hardwood lm) must never steal
  * framing/fixings/other exact-key lookups.
  */
@@ -156,16 +191,25 @@ export function isEligibleWorkAreaFallbackRate(params: {
     return false;
   }
   if (rate.cost_rate == null) return false;
+
+  const lookupKey = params.itemKey.trim();
   const rateKey = rate.item_key?.trim() ?? "";
-  if (rateKey) {
-    if (rateKey === params.itemKey) return true;
-    const aliases = ITEM_KEY_ALIASES[params.itemKey] ?? [];
-    if (!aliases.includes(rateKey)) return false;
-  }
+  const namedLookup = isNamedComponentLookup(lookupKey);
+
   if (params.unit && rate.unit && !rateUnitsMatch(rate.unit, params.unit)) {
     return false;
   }
-  return true;
+
+  if (namedLookup) {
+    if (!rateKey) {
+      return hasExplicitBlankKeyCompatibility(lookupKey);
+    }
+    if (rateKey === lookupKey) return true;
+    return itemKeyAliasesFor(lookupKey).includes(rateKey);
+  }
+
+  // Generic work-area lookup: only a blank-key package of this work area.
+  return rateKey === "";
 }
 
 function allowBenchmarkFallback(
