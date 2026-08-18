@@ -27,8 +27,7 @@ import type {
   WorkAreaActiveQuestion,
 } from "@/components/assistant/types";
 import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
-import { WorkAreaConfirmationBlock } from "@/components/assistant/WorkAreaConfirmationBlock";
-import { ScopeDiscoveryReviewBlock } from "@/components/assistant/ScopeDiscoveryReviewBlock";
+import { JobPlanPanel } from "@/components/assistant/job-plan/JobPlanPanel";
 import {
   ProjectCaptureCollapsedSummary,
   WorkAreasCollapsedSummary,
@@ -67,6 +66,17 @@ import {
   addWorkAreaToProject,
   excludeWorkAreaFromProject,
 } from "@/lib/assistant/work-area-actions";
+import { composeJobPlan } from "@/lib/assistant/job-plan/compose";
+import { applyJobPlanScopeWrite } from "@/lib/assistant/job-plan/apply-write";
+import { writeJobPlanScopeDecision } from "@/lib/assistant/job-plan/actions";
+import { overlayFact } from "@/lib/assistant/job-plan/facts";
+import { JOB_PLAN_IS_PRIMARY } from "@/lib/assistant/job-plan/flags";
+import {
+  jobPlanFactsFromAssistantState,
+  jobPlanWorkAreasFromUi,
+} from "@/lib/assistant/job-plan/from-assistant-state";
+import type { JobPlanScopeItem } from "@/lib/assistant/job-plan/types";
+import type { EstimateFact } from "@/lib/estimate/types";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { startPreviewPerf, recordPreviewPerf } from "@/lib/assistant/preview-performance";
 import {
@@ -163,7 +173,7 @@ export function AssistantShell({
 
   const [briefText, setBriefText] = useState(project.briefText?.trim() ?? "");
 
-  const [workAreas, setWorkAreas] = useState<WorkArea[]>(() =>
+  const [workAreas] = useState<WorkArea[]>(() =>
     initialState.workAreas.map((wa) => ({ ...wa }))
   );
 
@@ -202,6 +212,9 @@ export function AssistantShell({
   const [addWorkAreaError, setAddWorkAreaError] = useState<string | null>(null);
   const [isAddingWorkArea, setIsAddingWorkArea] = useState(false);
   const [isExcludingWorkArea, setIsExcludingWorkArea] = useState(false);
+  const [jobPlanFactOverlay, setJobPlanFactOverlay] = useState<EstimateFact[]>(
+    []
+  );
   const [savingWorkAreaId, setSavingWorkAreaId] = useState<string | null>(null);
   const [workAreaSaveStatus, setWorkAreaSaveStatus] = useState<
     Record<string, "idle" | "saving" | "saved" | "error">
@@ -229,7 +242,7 @@ export function AssistantShell({
   const [savedQualityLevel, setSavedQualityLevel] = useState<QualityLevel | null>(
     project.qualityLevel
   );
-  const [scopeReviewComplete, setScopeReviewComplete] = useState(() => {
+  const [scopeReviewComplete] = useState(() => {
     if (!scopeDiscoveryEnabled) return true;
     const suggestions = scopeDiscoveryInitialResults?.allSuggestions ?? [];
     const hasRun = Boolean(scopeDiscoveryInitialResults?.runId);
@@ -250,12 +263,12 @@ export function AssistantShell({
       })
       .every((s) => s.decisionState !== "PROPOSED");
   });
-  const [unresolvedScopeImpactCount, setUnresolvedScopeImpactCount] =
+  const [unresolvedScopeImpactCount] =
     useState(0);
   const [manualScopeItems, setManualScopeItems] = useState<
     readonly ManualScopeItemView[]
   >([]);
-  const [liveScopeCounts, setLiveScopeCounts] = useState<{
+  const [liveScopeCounts] = useState<{
     includedCount: number;
     needsDetailCount: number;
     pendingDetailTitles: readonly string[];
@@ -273,10 +286,10 @@ export function AssistantShell({
   const [reviewFocusQuestionKey, setReviewFocusQuestionKey] = useState<
     string | null
   >(null);
-  const [reviewFocusSuggestionId, setReviewFocusSuggestionId] = useState<
+  const [, setReviewFocusSuggestionId] = useState<
     string | null
   >(null);
-  const [requestScopeEdit, setRequestScopeEdit] = useState(0);
+  const [, setRequestScopeEdit] = useState(0);
   const scopeReviewCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -448,19 +461,6 @@ export function AssistantShell({
     );
   }, [briefText, pendingAction, project.id, runAction]);
 
-  const handleWorkAreaToggle = useCallback((id: string) => {
-    setWorkAreas((prev) =>
-      prev.map((wa) =>
-        wa.id === id
-          ? {
-              ...wa,
-              status: wa.status === "excluded" ? "suggested" : "excluded",
-            }
-          : wa
-      )
-    );
-  }, []);
-
   const handleWorkAreasConfirm = useCallback(
     (areas: WorkArea[]) => {
       const selections = areas.map((wa) => ({
@@ -480,7 +480,7 @@ export function AssistantShell({
 
   const handleQualityContinue = useCallback(() => {
     if (!qualityLevel) return;
-    if (scopeDiscoveryEnabled && !scopeReviewComplete) {
+    if (scopeDiscoveryEnabled && !scopeReviewComplete && !JOB_PLAN_IS_PRIMARY) {
       setActionError(
         "Confirm the scope items above before selecting the specification level."
       );
@@ -521,7 +521,7 @@ export function AssistantShell({
   }, [savedQualityLevel]);
 
   const handleQualityEdit = useCallback(() => {
-    if (scopeDiscoveryEnabled && !scopeReviewComplete) {
+    if (scopeDiscoveryEnabled && !scopeReviewComplete && !JOB_PLAN_IS_PRIMARY) {
       setActionError(
         "Confirm the scope items above before changing the specification level."
       );
@@ -691,7 +691,10 @@ export function AssistantShell({
   );
 
   const qualityUnlocked =
-    !scopeDiscoveryEnabled || scopeReviewComplete || qualitySubmitted;
+    JOB_PLAN_IS_PRIMARY ||
+    !scopeDiscoveryEnabled ||
+    scopeReviewComplete ||
+    qualitySubmitted;
 
   const handleQuestionsSubmit = useCallback(() => {
     if (!questionBlock) return;
@@ -1004,6 +1007,71 @@ export function AssistantShell({
     [project.id, router]
   );
 
+  const handleJobPlanToggleScope = useCallback(
+    async (
+      item: JobPlanScopeItem,
+      presentation: "INCLUDED" | "NOT_INCLUDED"
+    ) => {
+      if (!item.write) return;
+      setJobPlanFactOverlay((prev) =>
+        applyJobPlanScopeWrite({
+          facts: prev,
+          workAreaId: item.workAreaId,
+          write: item.write!,
+          presentation,
+        }) as EstimateFact[]
+      );
+      const result = await writeJobPlanScopeDecision({
+        projectId: project.id,
+        workAreaId: item.workAreaId,
+        write: item.write,
+        presentation,
+      });
+      if (result.error) {
+        setActionError(result.error);
+        return;
+      }
+      startTransition(() => {
+        router.refresh();
+      });
+    },
+    [project.id, router]
+  );
+
+  const handleJobPlanSpecFact = useCallback(
+    async (input: {
+      workAreaId: string;
+      key: string;
+      label: string;
+      value: string | number;
+      valueType: "number" | "select";
+    }) => {
+      setJobPlanFactOverlay((prev) =>
+        overlayFact(prev, {
+          key: input.key,
+          work_area_id: input.workAreaId,
+          value: input.value,
+        })
+      );
+      const result = await updateProjectFact({
+        projectId: project.id,
+        workAreaId: input.workAreaId,
+        key: input.key,
+        label: input.label,
+        value: input.value,
+        valueType: input.valueType,
+      });
+      if (result.error) {
+        setActionError(result.error);
+        return;
+      }
+      startTransition(() => {
+        router.refresh();
+      });
+    },
+    [project.id, router]
+  );
+
   const handleSaveWorkAreaQuestions = useCallback(
     async (input: {
       workAreaId: string;
@@ -1113,6 +1181,40 @@ export function AssistantShell({
 
   const displayWorkAreas =
     workAreas.length > 0 ? workAreas : initialState.workAreas;
+
+  const jobPlanBaseFacts = useMemo(
+    () => jobPlanFactsFromAssistantState(initialState),
+    [initialState]
+  );
+  const jobPlanFacts = useMemo(() => {
+    let facts = jobPlanBaseFacts;
+    for (const row of jobPlanFactOverlay) {
+      facts = overlayFact(facts, row);
+    }
+    return facts;
+  }, [jobPlanBaseFacts, jobPlanFactOverlay]);
+  const jobPlan = useMemo(
+    () =>
+      composeJobPlan({
+        workAreas: jobPlanWorkAreasFromUi(displayWorkAreas),
+        facts: jobPlanFacts,
+        constraints: liveConstraints.map((row) => ({
+          key: row.key,
+          value: row.value,
+        })),
+        qualityLevel: qualityLevel ?? project.qualityLevel,
+        briefText: briefText || project.briefText,
+      }),
+    [
+      briefText,
+      displayWorkAreas,
+      jobPlanFacts,
+      liveConstraints,
+      project.briefText,
+      project.qualityLevel,
+      qualityLevel,
+    ]
+  );
 
   // Stage 3.1A-R1: do not remount Scope Review on answer value changes —
   // remounting wiped optimistic local answers and caused temporary reversion.
@@ -1543,20 +1645,22 @@ export function AssistantShell({
           </CollapsibleStageCard>
           )}
 
-          {/* 2. Work Area Confirmation */}
+          {/* 2. Job Plan — primary Work Area + user-facing scope confirmation */}
           {briefSubmitted &&
           (!compressCompletedSetup ||
             setupReviewOpen ||
             workAreasIsCurrent) ? (
             <CollapsibleStageCard
-              title="Work Areas"
-              subtitle="Review what we detected from your brief and site notes"
+              title="Job Plan"
+              subtitle="Quotr proposed this from your brief — scan, correct, continue"
               statusLabel={
                 workAreasIsCurrent
                   ? "Current"
                   : workAreasConfirmed
                     ? `${workAreaLists.included.length} included`
-                    : undefined
+                    : jobPlan.confirmCount > 0
+                      ? `${jobPlan.confirmCount} to confirm`
+                      : undefined
               }
               statusVariant={workAreasIsCurrent ? "current" : "complete"}
               preferredExpanded={stagePrefersExpanded(
@@ -1571,63 +1675,36 @@ export function AssistantShell({
                   highlights={workAreaHighlights}
                 />
               }
-              actionLabel={workAreasConfirmed ? "Change areas" : undefined}
+              actionLabel={workAreasConfirmed ? "View plan" : undefined}
             >
-              <WorkAreaConfirmationBlock
+              <JobPlanPanel
+                plan={jobPlan}
                 workAreas={displayWorkAreas}
+                facts={jobPlanFacts}
                 submitted={workAreasConfirmed}
                 isSaving={pendingAction === "work_areas"}
                 isAddingWorkArea={isAddingWorkArea}
+                isRemovingWorkArea={isExcludingWorkArea}
                 addWorkAreaError={addWorkAreaError}
-                onToggle={
-                  workAreasConfirmed ? undefined : handleWorkAreaToggle
-                }
-                onConfirm={
-                  workAreasConfirmed ? undefined : handleWorkAreasConfirm
+                onContinue={
+                  workAreasConfirmed
+                    ? undefined
+                    : () => handleWorkAreasConfirm(displayWorkAreas)
                 }
                 onAddWorkArea={
                   workAreasConfirmed ? undefined : handleAddWorkArea
                 }
+                onRemoveWorkArea={
+                  workAreasConfirmed ? undefined : handleExcludeWorkArea
+                }
+                onToggleScope={
+                  workAreasConfirmed ? undefined : handleJobPlanToggleScope
+                }
+                onSpecFact={
+                  workAreasConfirmed ? undefined : handleJobPlanSpecFact
+                }
               />
             </CollapsibleStageCard>
-          ) : null}
-
-          {/* 2b. Intelligent Scope Discovery — Preview flag only */}
-          {scopeDiscoveryEnabled &&
-          workAreasConfirmed &&
-          (!compressCompletedSetup || setupReviewOpen) ? (
-            <div ref={scopeReviewCardRef}>
-              <ScopeDiscoveryReviewBlock
-                projectId={project.id}
-                enabled={scopeDiscoveryEnabled}
-                initialResults={scopeDiscoveryInitialResults}
-                scopeReview={initialState.scopeReview}
-                workAreaLabels={Object.fromEntries(
-                  displayWorkAreas
-                    .filter((wa) => wa.status !== "excluded")
-                    .map((wa) => [wa.id, wa.name])
-                )}
-                onCompletionChange={setScopeReviewComplete}
-                onUnresolvedRecommendationsChange={
-                  setUnresolvedScopeImpactCount
-                }
-                onScopeStateChange={setLiveScopeCounts}
-                focusSuggestionId={reviewFocusSuggestionId}
-                requestEditToken={requestScopeEdit}
-                onFocusSuggestionHandled={() => setReviewFocusSuggestionId(null)}
-                onReviewScopeDetails={() => {
-                  questionsCardRef.current?.scrollIntoView({
-                    behavior: "smooth",
-                    block: "start",
-                  });
-                }}
-                preferredExpanded={stagePrefersExpanded(
-                  "scopeReview",
-                  activeDisclosureStage
-                )}
-                isActiveStage={activeDisclosureStage === "scopeReview"}
-              />
-            </div>
           ) : null}
 
           {/* 3. Specification (Quality level — UX label only) */}

@@ -4,7 +4,7 @@ import type { StepperStepSummary } from "@/lib/assistant/stage-completion-summar
 
 export const STEPPER_STAGES = [
   { key: "brief", label: "Brief" },
-  { key: "confirm_work_areas", label: "Work Areas" },
+  { key: "confirm_work_areas", label: "Job Plan" },
   { key: "quality", label: "Specification" },
   { key: "work_area_questions", label: "Scope Details" },
   { key: "constraints", label: "Site Constraints" },

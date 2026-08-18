@@ -78,7 +78,7 @@ function main(): void {
 
   check(
     "4 Project Setup collapses completed workflow",
-    setup.includes("View setup") &&
+    setup.includes("Job details") &&
       shell.includes("compressCompletedSetup") &&
       shell.includes("showCompletedDetailCards")
   );
@@ -87,7 +87,7 @@ function main(): void {
     "5 Completed steps remain accessible via setup expand",
     shell.includes("setupReviewOpen") &&
       shell.includes('title="Project Capture"') &&
-      shell.includes('title="Work Areas"') &&
+      shell.includes('title="Job Plan"') &&
       shell.includes('title="Specification"') &&
       shell.includes('title="Scope Details"') &&
       shell.includes('title="Project Conditions"')
@@ -132,7 +132,7 @@ function main(): void {
   check(
     "11 Mobile Project Setup collapsible",
     setup.includes("data-completed-setup-toggle") &&
-      setup.includes("View setup")
+      setup.includes("Job details")
   );
 
   check(

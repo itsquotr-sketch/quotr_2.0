@@ -206,7 +206,7 @@ check(
 check(
   "full stage bodies remain in CollapsibleStageCard children",
   fileHas(SHELL, "ProjectCaptureBlock") &&
-    fileHas(SHELL, "WorkAreaConfirmationBlock") &&
+    fileHas(SHELL, "JobPlanPanel") &&
     fileHas(SHELL, "QuestionBlock") &&
     fileHas(SHELL, "ScopeSummaryBlock")
 );

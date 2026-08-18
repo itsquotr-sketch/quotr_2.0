@@ -5,8 +5,10 @@
 export const ASSISTANT_ACTION_LABELS = Object.freeze({
   analyseJob: "Analyse Job",
   confirmWorkAreas: "Confirm Work Areas",
+  looksRight: "Looks right",
   savingWorkAreas: "Saving Work Areas…",
   workAreasSaved: "Work Areas saved",
+  removeWorkArea: "Remove",
   confirmScope: "Confirm scope",
   editScope: "Edit scope",
   includeInScope: "Include in scope",
