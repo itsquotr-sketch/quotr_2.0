@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { AddWorkAreaDialog } from "@/components/assistant/AddWorkAreaDialog";
 import { JobPlanWorkAreaCardView } from "@/components/assistant/job-plan/JobPlanWorkAreaCard";
+import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import { getJobPlanQuickSpecEditor } from "@/components/assistant/job-plan/quick-spec-editors";
 import { Button } from "@/components/ui/button";
 import type { WorkArea } from "@/components/assistant/types";
@@ -11,6 +12,7 @@ import type {
   JobPlanView,
 } from "@/lib/assistant/job-plan/types";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 type JobPlanPanelProps = {
@@ -24,6 +26,8 @@ type JobPlanPanelProps = {
   isAddingWorkArea?: boolean;
   isRemovingWorkArea?: boolean;
   addWorkAreaError?: string | null;
+  scopeSaveStatus?: SaveStatus;
+  scopeSaveError?: string | null;
   onContinue?: () => void;
   onAddWorkArea?: (workAreaType: string) => Promise<void>;
   onRemoveWorkArea?: (workAreaId: string) => void;
@@ -50,6 +54,8 @@ export function JobPlanPanel({
   isAddingWorkArea,
   isRemovingWorkArea,
   addWorkAreaError,
+  scopeSaveStatus = "idle",
+  scopeSaveError,
   onContinue,
   onAddWorkArea,
   onRemoveWorkArea,
@@ -67,8 +73,15 @@ export function JobPlanPanel({
           Analyse Job first, then confirm the Job Plan.
         </p>
         {onAddWorkArea ? (
-          <Button type="button" variant="ghost" size="sm" onClick={() => setAddOpen(true)}>
-            Add work area
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            className="min-h-11"
+            data-job-plan-add-work-area
+            onClick={() => setAddOpen(true)}
+          >
+            + Add work area
           </Button>
         ) : null}
         {onAddWorkArea ? (
@@ -133,16 +146,25 @@ export function JobPlanPanel({
             </Button>
           )}
           {onAddWorkArea ? (
-            <button
+            <Button
               type="button"
-              className="mt-2 block text-xs text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              variant="outline"
+              size="sm"
+              className="mt-2 min-h-11 w-full sm:w-auto"
               data-job-plan-add-work-area
               disabled={isSaving || isAddingWorkArea}
               onClick={() => setAddOpen(true)}
             >
-              Add another work area
-            </button>
+              + Add work area
+            </Button>
           ) : null}
+          <SaveStatusIndicator
+            status={scopeSaveStatus}
+            isSaving={scopeSaveStatus === "saving"}
+            hasError={scopeSaveStatus === "error"}
+            errorMessage={scopeSaveError}
+            className="mt-2"
+          />
         </div>
       ) : null}
 

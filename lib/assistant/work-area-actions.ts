@@ -148,7 +148,18 @@ export async function addWorkAreaToProject(input: {
 
   await markEstimateStale(projectId);
   revalidateProjectPath(projectId);
-  return { success: true };
+  return {
+    success: true,
+    workArea: {
+      id: workArea.id,
+      type: workAreaType,
+      name: catalogueItem.label,
+      status: "confirmed",
+      aiConfidence: 0,
+      summary: catalogueItem.description,
+      quoteDescription: null,
+    },
+  };
 }
 
 export async function excludeWorkAreaFromProject(input: {

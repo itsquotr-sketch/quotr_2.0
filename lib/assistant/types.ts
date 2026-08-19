@@ -102,6 +102,8 @@ export type ScopeReview = {
   generalExclusions: string[];
 };
 
+import type { EstimateRequirement } from "@/lib/estimate/requirements";
+
 export type AssistantState = {
   project: AssistantProject;
   workAreas: WorkArea[];
@@ -112,6 +114,8 @@ export type AssistantState = {
   /** Narrow facts for Builder Interview candidate engine (3.2.2). */
   interviewFacts: AssistantInterviewFact[];
   estimate: Estimate | null;
+  /** Immutable generation evidence for Builder Review takeoff (projection only). */
+  requirementSnapshotRequirements: readonly EstimateRequirement[];
   scopeSummary: ScopeSummary;
   scopeReview: ScopeReview;
   panelScopeSummaries: PanelScopeSummary[];
@@ -132,6 +136,8 @@ export type MarginUpdateTotals = {
 export type AssistantActionState = {
   error?: string;
   success?: boolean;
+  /** Present when addWorkAreaToProject succeeds — for optimistic Job Plan refresh. */
+  workArea?: WorkArea;
   /** Present on successful updateEstimateMargin — server-authoritative. */
   marginTotals?: MarginUpdateTotals;
 };

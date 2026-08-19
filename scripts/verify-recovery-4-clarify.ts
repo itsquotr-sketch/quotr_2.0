@@ -601,8 +601,9 @@ const ranked = sortClarifyCandidates([
 check("53 rank score orders commercially", ranked[0]?.id === "b" && ranked[1]?.id === "a");
 
 check(
-  "54 no Builder Review implementation",
-  !shell.includes("BuilderReview") && !existsSync("components/assistant/builder-review")
+  "54 Builder Review deferred to RECOVERY-5B verifier",
+  existsSync("scripts/verify-recovery-5b-builder-review.ts") &&
+    existsSync("components/assistant/builder-review/BuilderReviewSurface.tsx")
 );
 
 const sevenHard = Array.from({ length: 7 }, (_, i) =>

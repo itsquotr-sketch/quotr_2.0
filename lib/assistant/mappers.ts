@@ -460,6 +460,7 @@ export function buildAssistantState(input: {
   lineItems: DbLineItem[];
   projectFacts?: DbProjectFact[];
   defaultMarginPercent?: number;
+  requirementSnapshotRequirements?: readonly import("@/lib/estimate/requirements").EstimateRequirement[];
 }): AssistantState {
   const workAreas = input.workAreas.map(mapWorkArea);
   const workAreaNameById = new Map(
@@ -611,6 +612,8 @@ export function buildAssistantState(input: {
       source: fact.source ?? null,
     })),
     estimate,
+    requirementSnapshotRequirements:
+      input.requirementSnapshotRequirements ?? [],
     scopeSummary: {
       includedWorkAreas: buildIncludedWorkAreasFromDb(input.workAreas),
       scopeAssumptions,

@@ -443,10 +443,10 @@ check(
 check(
   "44 Builder Review hook only, no throwaway review UI",
   readyCard.includes("data-builder-review-entry") &&
-    shell.includes("setBreakdownOpen(true)") &&
-    !editSurface.includes("Labour hours") &&
-    !readySurface.includes("Allowances") &&
-    !readyCard.includes("Materials")
+    shell.includes("setBuilderReviewOpen(true)") &&
+    existsSync("components/assistant/builder-review/BuilderReviewSurface.tsx") &&
+    !editSurface.includes("Allowances") &&
+    !readySurface.includes("Allowances")
 );
 check(
   "45 no new DB enum / migration",

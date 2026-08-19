@@ -875,6 +875,53 @@ export function EstimatePanel({
                 </p>
               </div>
             </div>
+          ) : compactCommercialSidebar ? (
+          <div className="space-y-1.5" data-compact-commercial-summary="true">
+            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+              Commercial summary
+            </p>
+            <MetricRow
+              label="Cost"
+              value={formatCurrency(estimate.recommendedCost)}
+              dimmed={isStale}
+              tertiary
+            />
+            <MetricRow
+              label="Margin"
+              value={financialView?.marginLabel ?? "—"}
+              dimmed={isStale}
+              tertiary
+              trailing={
+                !isStale && onMarginSave ? (
+                  <MarginEditControl
+                    marginPercent={estimate.marginPercent}
+                    targetMarginPercent={estimate.targetMarginPercent}
+                    defaultMarginPercent={defaultMarginPercent}
+                    disabled={isRegenerating || isGenerating}
+                    isSaving={isSavingMargin}
+                    onSave={onMarginSave}
+                    presentation="inline"
+                  />
+                ) : null
+              }
+            />
+            {!isStale && onMarginSave && isSavingMargin ? (
+              <SaveStatusIndicator status="saving" isSaving />
+            ) : !isStale && onMarginSave && marginSaveLabel ? (
+              <p
+                className="text-xs text-muted-foreground"
+                data-margin-save-label
+              >
+                {marginSaveLabel}
+              </p>
+            ) : null}
+            <MetricRow
+              label="Gross profit"
+              value={financialView?.profitLabel ?? "—"}
+              dimmed={isStale}
+              tertiary
+            />
+          </div>
           ) : (
           <div className={cn("space-y-3", isStale && "opacity-60")}>
             <div>

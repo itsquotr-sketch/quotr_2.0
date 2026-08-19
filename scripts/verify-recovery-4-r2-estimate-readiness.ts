@@ -348,7 +348,7 @@ check(
 );
 check(
   "25 no mandatory refinement",
-  panel.includes("Optional. Add details") &&
+  panel.includes("Optional details") &&
     real.clarify.canEstimateNow
 );
 check(

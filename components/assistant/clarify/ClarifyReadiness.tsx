@@ -155,7 +155,7 @@ export function RefineEstimatePanel({
             Refine estimate
           </p>
           <p className="mt-0.5 text-sm text-muted-foreground">
-            Optional. Add details that this estimate actually uses.
+            Optional details that this estimate actually uses to improve accuracy.
           </p>
         </div>
         <Button
@@ -183,26 +183,33 @@ export function RefineEstimatePanel({
         </Button>
       ) : null}
 
-      {groups.map((group) => {
-        const rows = highByGroup(group);
-        if (rows.length === 0) return null;
-        return (
-          <section key={group} className="space-y-3" data-refine-group={group}>
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              {GROUP_LABEL[group]}
-            </p>
-            {rows.map((row) => (
-              <RefineField
-                key={row.id}
-                candidate={row}
-                isSaving={isSaving}
-                onAnswerBoolean={onAnswerBoolean}
-                onAnswerValue={onAnswerValue}
-              />
-            ))}
-          </section>
-        );
-      })}
+      {view.highValue.length > 0 ? (
+        <div className="space-y-3" data-refine-tier="most-useful">
+          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+            Most useful
+          </p>
+          {groups.map((group) => {
+            const rows = highByGroup(group);
+            if (rows.length === 0) return null;
+            return (
+              <section key={group} className="space-y-3" data-refine-group={group}>
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                  {GROUP_LABEL[group]}
+                </p>
+                {rows.map((row) => (
+                  <RefineField
+                    key={row.id}
+                    candidate={row}
+                    isSaving={isSaving}
+                    onAnswerBoolean={onAnswerBoolean}
+                    onAnswerValue={onAnswerValue}
+                  />
+                ))}
+              </section>
+            );
+          })}
+        </div>
+      ) : null}
 
       {view.advanced.length > 0 ? (
         <section data-refine-group="advanced">
@@ -213,7 +220,7 @@ export function RefineEstimatePanel({
             aria-expanded={advancedOpen}
             onClick={() => setAdvancedOpen((open) => !open)}
           >
-            <span className="text-sm font-medium">Advanced</span>
+            <span className="text-sm font-medium">More detail</span>
             <ChevronDown
               className={cn(
                 "size-4 text-muted-foreground transition-transform",

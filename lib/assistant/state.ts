@@ -2,6 +2,8 @@ import { notFound } from "next/navigation";
 import { buildAssistantState } from "@/lib/assistant/mappers";
 import type { AssistantState } from "@/lib/assistant/types";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import { parseEstimateRequirementSnapshot } from "@/lib/estimate/requirement-snapshot";
+import type { EstimateRequirement } from "@/lib/estimate/requirements";
 import {
   getAuthOrgContext,
   requireAuthOrgContext,
@@ -96,7 +98,7 @@ export async function getAssistantState(
     supabase
       .from("estimates")
       .select(
-        "id, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, is_stale, calibration_version, target_margin_percent, confidence, rate_source_summary, assumptions, missing_info, exclusions"
+        "id, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, is_stale, calibration_version, target_margin_percent, confidence, rate_source_summary, assumptions, missing_info, exclusions, latest_requirement_snapshot_id"
       )
       .eq("project_id", projectId)
       .eq("org_id", orgId)
@@ -124,6 +126,30 @@ export async function getAssistantState(
         .order("sort_order", { ascending: true })
     : { data: [] };
 
+  let requirementSnapshotRequirements: readonly EstimateRequirement[] = [];
+  const snapshotId =
+    estimate &&
+    "latest_requirement_snapshot_id" in estimate &&
+    typeof estimate.latest_requirement_snapshot_id === "string"
+      ? estimate.latest_requirement_snapshot_id
+      : null;
+  if (snapshotId) {
+    const { data: snapshotRow } = await supabase
+      .from("estimate_requirement_snapshots")
+      .select("payload")
+      .eq("id", snapshotId)
+      .eq("org_id", orgId)
+      .maybeSingle();
+    if (snapshotRow?.payload) {
+      try {
+        requirementSnapshotRequirements =
+          parseEstimateRequirementSnapshot(snapshotRow.payload).requirements;
+      } catch {
+        requirementSnapshotRequirements = [];
+      }
+    }
+  }
+
   return buildAssistantState({
     project,
     workAreas: workAreas ?? [],
@@ -135,5 +161,6 @@ export async function getAssistantState(
     projectFacts: projectFacts ?? [],
     defaultMarginPercent:
       organisationSettings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT,
+    requirementSnapshotRequirements,
   });
 }

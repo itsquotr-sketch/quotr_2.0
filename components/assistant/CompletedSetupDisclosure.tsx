@@ -2,9 +2,10 @@
 
 /**
  * Stage 3.2.2-R2/R3 — Compress completed Assistant stages into one contractor-first summary.
- * Presentation only — does not change the underlying stage machine.
+ * RECOVERY-5B — expanded body shows concise job context (not Builder Review).
  */
 
+import type { ReactNode } from "react";
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -13,6 +14,7 @@ type CompletedSetupDisclosureProps = {
   chips?: readonly string[];
   expanded: boolean;
   onExpandedChange: (expanded: boolean) => void;
+  children?: ReactNode;
   className?: string;
 };
 
@@ -21,6 +23,7 @@ export function CompletedSetupDisclosure({
   chips = [],
   expanded,
   onExpandedChange,
+  children,
   className,
 }: CompletedSetupDisclosureProps) {
   return (
@@ -64,6 +67,14 @@ export function CompletedSetupDisclosure({
           aria-hidden
         />
       </button>
+      {expanded && children ? (
+        <div
+          className="border-t border-border/40 px-3.5 py-3"
+          data-completed-setup-details="true"
+        >
+          {children}
+        </div>
+      ) : null}
     </div>
   );
 }

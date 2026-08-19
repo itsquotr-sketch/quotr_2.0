@@ -23,6 +23,8 @@ type EstimateReadyCardProps = {
   onEditJob?: () => void;
   onUpdateEstimate?: () => void;
   onReviewAttention?: (item: QuickEstimateAttentionItem) => void;
+  /** RECOVERY-5B — centre card focuses on review context; sell lives in Builder Review + sidebar. */
+  compactResult?: boolean;
   className?: string;
 };
 
@@ -49,6 +51,7 @@ export function EstimateReadyCard({
   onEditJob,
   onUpdateEstimate,
   onReviewAttention,
+  compactResult = false,
   className,
 }: EstimateReadyCardProps) {
   const money = staleEstimateMoneyPresentation(isStale);
@@ -126,27 +129,35 @@ export function EstimateReadyCard({
               </p>
             ) : null}
           </div>
-          <div className="mt-3">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              {money.sellLabel}
+          {!compactResult ? (
+            <>
+              <div className="mt-3">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {money.sellLabel}
+                </p>
+                <p className="mt-0.5 text-3xl font-semibold tracking-tight">
+                  {formatCurrency(recommendedSell)}{" "}
+                  <span className="text-sm font-medium text-muted-foreground">
+                    + GST
+                  </span>
+                </p>
+              </div>
+              {confidenceBand ? (
+                <p className="mt-2 text-sm">
+                  <span className="text-muted-foreground">Confidence </span>
+                  <span className="font-medium">{confidenceBand}</span>
+                </p>
+              ) : null}
+            </>
+          ) : (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Review estimate breakdown, materials, labour, and assumptions.
             </p>
-            <p className="mt-0.5 text-3xl font-semibold tracking-tight">
-              {formatCurrency(recommendedSell)}{" "}
-              <span className="text-sm font-medium text-muted-foreground">
-                + GST
-              </span>
-            </p>
-          </div>
-          {confidenceBand ? (
-            <p className="mt-2 text-sm">
-              <span className="text-muted-foreground">Confidence </span>
-              <span className="font-medium">{confidenceBand}</span>
-            </p>
-          ) : null}
+          )}
         </>
       )}
 
-      {!isStale && (assumptionCount > 0 || checkCount > 0) ? (
+      {!isStale && !compactResult && (assumptionCount > 0 || checkCount > 0) ? (
         <p
           className="mt-3 text-xs text-muted-foreground"
           data-estimate-ready-summary-counts
@@ -161,7 +172,7 @@ export function EstimateReadyCard({
         </p>
       ) : null}
 
-      {!isStale && topAssumptions.length > 0 ? (
+      {!isStale && !compactResult && topAssumptions.length > 0 ? (
         <div className="mt-2" data-estimate-ready-assumptions>
           <ul className="space-y-1 text-xs text-foreground/90">
             {topAssumptions.map((item) => (
@@ -174,7 +185,7 @@ export function EstimateReadyCard({
         </div>
       ) : null}
 
-      {!isStale && topChecks.length > 0 ? (
+      {!isStale && !compactResult && topChecks.length > 0 ? (
         <div className="mt-3" data-estimate-ready-checks>
           <ul className="space-y-2">
             {topChecks.map((item) => (

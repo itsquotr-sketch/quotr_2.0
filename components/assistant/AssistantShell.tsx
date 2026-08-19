@@ -9,6 +9,7 @@ import { ProjectCaptureBlock } from "@/components/assistant/ProjectCaptureBlock"
 import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
 import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
+import { BuilderReviewSurface } from "@/components/assistant/builder-review/BuilderReviewSurface";
 import { EstimateReadyCard } from "@/components/assistant/EstimateReadyCard";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
@@ -80,7 +81,10 @@ import {
 } from "@/lib/assistant/job-plan/from-assistant-state";
 import type { JobPlanScopeItem } from "@/lib/assistant/job-plan/types";
 import { composeClarifyView } from "@/lib/assistant/clarify/compose";
+import { composeBuilderReview } from "@/lib/assistant/builder-review";
 import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
+import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
+import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { composeRefineView } from "@/lib/assistant/refine/compose";
 import {
   answerClarifyConstraint,
@@ -196,9 +200,20 @@ export function AssistantShell({
 
   const [briefText, setBriefText] = useState(project.briefText?.trim() ?? "");
 
-  const [workAreas] = useState<WorkArea[]>(() =>
-    initialState.workAreas.map((wa) => ({ ...wa }))
-  );
+  const [addedWorkAreas, setAddedWorkAreas] = useState<WorkArea[]>([]);
+  const [excludedWorkAreaIds, setExcludedWorkAreaIds] = useState<
+    readonly string[]
+  >([]);
+
+  const displayWorkAreas = useMemo(() => {
+    const optimisticExcluded = new Set(excludedWorkAreaIds);
+    const serverVisible = initialState.workAreas.filter(
+      (wa) => wa.status !== "excluded" && !optimisticExcluded.has(wa.id)
+    );
+    const serverIds = new Set(serverVisible.map((wa) => wa.id));
+    const pending = addedWorkAreas.filter((wa) => !serverIds.has(wa.id));
+    return [...serverVisible, ...pending];
+  }, [addedWorkAreas, excludedWorkAreaIds, initialState.workAreas]);
 
   const [qualityLevel, setQualityLevel] = useState<QualityLevel | null>(
     project.qualityLevel
@@ -251,6 +266,12 @@ export function AssistantShell({
   );
   const workAreaSaveGuardRef = useRef(createLatestWriteGuard());
   const [breakdownOpen, setBreakdownOpen] = useState(false);
+  const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
+  const [jobPlanScopeSaveStatus, setJobPlanScopeSaveStatus] =
+    useState<SaveStatus>("idle");
+  const [jobPlanScopeSaveError, setJobPlanScopeSaveError] = useState<
+    string | null
+  >(null);
   const [isEditingQuality, setIsEditingQuality] = useState(false);
   const qualityCardRef = useRef<HTMLDivElement | null>(null);
   const questionsCardRef = useRef<HTMLDivElement | null>(null);
@@ -342,7 +363,7 @@ export function AssistantShell({
       return buildLiveProjectConditionsSnapshot({
         projectId: project.id,
         qualityLevel: project.qualityLevel,
-        workAreas,
+        workAreas: displayWorkAreas,
         facts: initialState.interviewFacts,
         constraints: liveConstraints,
         scopeQuestionCount,
@@ -353,7 +374,7 @@ export function AssistantShell({
   }, [
     project.id,
     project.qualityLevel,
-    workAreas,
+    displayWorkAreas,
     initialState.interviewFacts,
     liveConstraints,
     questionsSubmitted,
@@ -591,7 +612,7 @@ export function AssistantShell({
     }) => {
       const nav = resolveAttentionNavigation(item);
       if (nav.kind === "builder_review") {
-        setBreakdownOpen(true);
+        setBuilderReviewOpen(true);
         return;
       }
 
@@ -947,10 +968,22 @@ export function AssistantShell({
         return;
       }
 
+      if (result.workArea) {
+        setAddedWorkAreas((prev) => {
+          if (prev.some((wa) => wa.id === result.workArea!.id)) return prev;
+          if (
+            initialState.workAreas.some((wa) => wa.id === result.workArea!.id)
+          ) {
+            return prev;
+          }
+          return [...prev, result.workArea!];
+        });
+      }
+
       router.refresh();
       setIsAddingWorkArea(false);
     },
-    [project.id, router]
+    [initialState.workAreas, project.id, router]
   );
 
   const handleExcludeWorkArea = useCallback(
@@ -969,6 +1002,10 @@ export function AssistantShell({
         return;
       }
 
+      setExcludedWorkAreaIds((prev) =>
+        prev.includes(workAreaId) ? prev : [...prev, workAreaId]
+      );
+
       router.refresh();
       setIsExcludingWorkArea(false);
     },
@@ -981,6 +1018,8 @@ export function AssistantShell({
       presentation: "INCLUDED" | "NOT_INCLUDED"
     ) => {
       if (!item.write) return;
+      setJobPlanScopeSaveStatus("saving");
+      setJobPlanScopeSaveError(null);
       setJobPlanFactOverlay((prev) =>
         applyJobPlanScopeWrite({
           facts: prev,
@@ -997,8 +1036,16 @@ export function AssistantShell({
       });
       if (result.error) {
         setActionError(result.error);
+        setJobPlanScopeSaveStatus("error");
+        setJobPlanScopeSaveError(result.error);
+        setJobPlanFactOverlay([]);
+        router.refresh();
         return;
       }
+      setJobPlanScopeSaveStatus("saved");
+      window.setTimeout(() => {
+        setJobPlanScopeSaveStatus("idle");
+      }, 2000);
       startTransition(() => {
         router.refresh();
       });
@@ -1263,9 +1310,6 @@ export function AssistantShell({
     };
   }, [estimateBase, marginOverlay]);
 
-  const displayWorkAreas =
-    workAreas.length > 0 ? workAreas : initialState.workAreas;
-
   const jobPlanBaseFacts = useMemo(
     () => jobPlanFactsFromAssistantState(initialState),
     [initialState]
@@ -1495,21 +1539,28 @@ export function AssistantShell({
           (projectConditionsSnapshot?.remainingCount ?? 0) === 1 ? "" : "s"
         } remaining`
     : null;
-  const projectConditionsAttention =
-    CLARIFY_IS_PRIMARY && !estimateReady
-      ? []
-      : preferProjectConditionsAsk &&
-        projectConditionsSnapshot &&
-        !projectConditionsSnapshot.complete
-      ? projectConditionsSnapshot.candidates
-          .filter((c) => c.priority === "P0" || c.priority === "P1")
-          .slice(0, 3)
-          .map((c) => ({
-            label: c.question,
-            questionKey: c.questionKey,
-            factKey: c.targetKey,
-          }))
-      : [];
+  const projectConditionsAttention = useMemo(
+    () =>
+      CLARIFY_IS_PRIMARY && !estimateReady
+        ? []
+        : preferProjectConditionsAsk &&
+            projectConditionsSnapshot &&
+            !projectConditionsSnapshot.complete
+          ? projectConditionsSnapshot.candidates
+              .filter((c) => c.priority === "P0" || c.priority === "P1")
+              .slice(0, 3)
+              .map((c) => ({
+                label: c.question,
+                questionKey: c.questionKey,
+                factKey: c.targetKey,
+              }))
+          : [],
+    [
+      estimateReady,
+      preferProjectConditionsAsk,
+      projectConditionsSnapshot,
+    ]
+  );
   const assumptionCountForReview =
     initialState.scopeReview.generalAssumptions.length +
     initialState.scopeReview.workAreas.reduce(
@@ -1565,34 +1616,73 @@ export function AssistantShell({
     editJobOpen,
   });
 
-  const completedEstimateAttentionItems: readonly QuickEstimateAttentionItem[] =
-    hasEstimate
-      ? applyLevel1AttentionPresentation(
-          buildQuickEstimateAttentionItems({
-            pendingProposalCount: pendingNoteProposal ? 1 : 0,
-            unresolvedScopeImpactLabels:
-              unresolvedScopeImpactCount > 0
-                ? Array.from(
-                    { length: unresolvedScopeImpactCount },
-                    () => "Suggested scope change"
-                  )
-                : [],
-            scopeReviewAttention: scopeReviewAttentionItems,
-            projectConditionsAttention,
-            missingByWorkArea: initialState.scopeReview.workAreas.flatMap(
-              (wa) =>
-                wa.missingItems.map((label) => ({
-                  workAreaName: wa.workAreaName,
-                  workAreaId: wa.workAreaId,
-                  label,
-                  reviewTarget: "estimateReview" as const,
-                  actionable: false,
-                }))
-            ),
-            clarificationLabels: pendingScopeDetailTitles,
-          })
-        )
-      : [];
+  const completedEstimateAttentionItems = useMemo((): readonly QuickEstimateAttentionItem[] => {
+    if (!hasEstimate) return [];
+    return applyLevel1AttentionPresentation(
+      buildQuickEstimateAttentionItems({
+        pendingProposalCount: pendingNoteProposal ? 1 : 0,
+        unresolvedScopeImpactLabels:
+          unresolvedScopeImpactCount > 0
+            ? Array.from(
+                { length: unresolvedScopeImpactCount },
+                () => "Suggested scope change"
+              )
+            : [],
+        scopeReviewAttention: scopeReviewAttentionItems,
+        projectConditionsAttention,
+        missingByWorkArea: initialState.scopeReview.workAreas.flatMap(
+          (wa) =>
+            wa.missingItems.map((label) => ({
+              workAreaName: wa.workAreaName,
+              workAreaId: wa.workAreaId,
+              label,
+              reviewTarget: "estimateReview" as const,
+              actionable: false,
+            }))
+        ),
+        clarificationLabels: pendingScopeDetailTitles,
+      })
+    );
+  }, [
+    hasEstimate,
+    pendingNoteProposal,
+    unresolvedScopeImpactCount,
+    scopeReviewAttentionItems,
+    projectConditionsAttention,
+    initialState.scopeReview.workAreas,
+    pendingScopeDetailTitles,
+  ]);
+
+  const builderReviewView = useMemo(() => {
+    if (!estimate) return null;
+    const confidenceBand = deriveQuickEstimateConfidencePresentation({
+      confidencePercent: estimate.confidence,
+      assumptionSeverity: estimate.assumptionMetadata?.assumptionSeverity,
+      missingInfoCount: estimate.missingInfo.length,
+      attentionCount: completedEstimateAttentionItems.length,
+    }).band;
+    return composeBuilderReview({
+      estimate: {
+        recommendedCost: estimate.recommendedCost,
+        recommendedSell: estimate.recommendedSell,
+        marginPercent: estimate.marginPercent,
+        confidence: estimate.confidence,
+        isStale: estimate.isStale,
+        assumptions: estimate.assumptions,
+        missingInfo: estimate.missingInfo,
+        lineItems: estimate.lineItems,
+      },
+      workAreas: displayWorkAreas,
+      requirements: initialState.requirementSnapshotRequirements,
+      attentionItems: completedEstimateAttentionItems,
+      confidenceBand,
+    });
+  }, [
+    completedEstimateAttentionItems,
+    displayWorkAreas,
+    estimate,
+    initialState.requirementSnapshotRequirements,
+  ]);
 
   const estimateReviewActionable =
     Boolean(estimate?.isStale) ||
@@ -1692,43 +1782,109 @@ export function AssistantShell({
               isRegenerating={isRegenerating}
               pricingCtaEnabled={!pricingSummary}
             >
-              <EstimateReadyCard
-                workAreaSummaryLine={formatWorkAreaSummaryLine(
-                  workAreaLists.included
-                )}
-                workAreaSummaryDetail={formatWorkAreaSummaryDetail(
-                  workAreaLists.included
-                )}
-                recommendedSell={estimate.recommendedSell}
-                isStale={Boolean(estimate.isStale)}
-                isRegenerating={isRegenerating}
-                confidenceBand={
-                  deriveQuickEstimateConfidencePresentation({
-                    confidencePercent: estimate.confidence,
-                    assumptionSeverity:
-                      estimate.assumptionMetadata?.assumptionSeverity,
-                    missingInfoCount: estimate.missingInfo.length,
-                    attentionCount: completedEstimateAttentionItems.length,
-                  }).band
-                }
-                assumptions={rankQuickEstimateAssumptions(
-                  estimate.assumptions,
-                  MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS
-                )}
-                attentionItems={completedEstimateAttentionItems}
-                onReviewEstimate={() => setBreakdownOpen(true)}
-                onEditJob={() => openEditJob("job_plan")}
-                onUpdateEstimate={
-                  estimate.isStale ? handleRegenerateEstimate : undefined
-                }
-                onReviewAttention={handleReviewAttention}
-              />
-              <CompletedSetupDisclosure
-                summaryLine={setupSummaryLine}
-                chips={setupChips}
-                expanded={jobDetailsOpen}
-                onExpandedChange={setJobDetailsOpen}
-              />
+              {builderReviewOpen && builderReviewView ? (
+                <BuilderReviewSurface
+                  view={builderReviewView}
+                  isRegenerating={isRegenerating}
+                  onBack={() => setBuilderReviewOpen(false)}
+                  onEditJob={() => {
+                    setBuilderReviewOpen(false);
+                    openEditJob("job_plan");
+                  }}
+                  onRefine={() => {
+                    setBuilderReviewOpen(false);
+                    openEditJob("job_plan");
+                  }}
+                  onUpdateEstimate={
+                    estimate.isStale ? handleRegenerateEstimate : undefined
+                  }
+                  onChangeMaterial={() => {
+                    setBuilderReviewOpen(false);
+                    openEditJob("job_plan");
+                  }}
+                />
+              ) : (
+                <>
+                  <EstimateReadyCard
+                    workAreaSummaryLine={formatWorkAreaSummaryLine(
+                      workAreaLists.included
+                    )}
+                    workAreaSummaryDetail={formatWorkAreaSummaryDetail(
+                      workAreaLists.included
+                    )}
+                    recommendedSell={estimate.recommendedSell}
+                    isStale={Boolean(estimate.isStale)}
+                    isRegenerating={isRegenerating}
+                    confidenceBand={
+                      deriveQuickEstimateConfidencePresentation({
+                        confidencePercent: estimate.confidence,
+                        assumptionSeverity:
+                          estimate.assumptionMetadata?.assumptionSeverity,
+                        missingInfoCount: estimate.missingInfo.length,
+                        attentionCount: completedEstimateAttentionItems.length,
+                      }).band
+                    }
+                    assumptions={rankQuickEstimateAssumptions(
+                      estimate.assumptions,
+                      MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS
+                    )}
+                    attentionItems={completedEstimateAttentionItems}
+                    compactResult
+                    onReviewEstimate={() => setBuilderReviewOpen(true)}
+                    onEditJob={() => openEditJob("job_plan")}
+                    onUpdateEstimate={
+                      estimate.isStale ? handleRegenerateEstimate : undefined
+                    }
+                    onReviewAttention={handleReviewAttention}
+                  />
+                  <CompletedSetupDisclosure
+                    summaryLine={setupSummaryLine}
+                    chips={setupChips}
+                    expanded={jobDetailsOpen}
+                    onExpandedChange={setJobDetailsOpen}
+                  >
+                    <div className="space-y-3 text-sm">
+                      <div>
+                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                          Work areas
+                        </p>
+                        <p className="mt-1">{workAreaLists.included.join(" · ")}</p>
+                      </div>
+                      {qualityTitleLabel ? (
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Finish level
+                          </p>
+                          <p className="mt-1">{qualityTitleLabel}</p>
+                        </div>
+                      ) : null}
+                      {liveConstraints.length > 0 ? (
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Project conditions
+                          </p>
+                          <ul className="mt-1 space-y-1 text-xs text-foreground/90">
+                            {liveConstraints.slice(0, 4).map((row) => (
+                              <li key={row.id}>
+                                {row.label}: {String(row.value)}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : null}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="h-11 min-h-11 w-full sm:w-auto"
+                        data-estimate-ready-edit-job
+                        onClick={() => openEditJob("job_plan")}
+                      >
+                        {ASSISTANT_ACTION_LABELS.editJob}
+                      </Button>
+                    </div>
+                  </CompletedSetupDisclosure>
+                </>
+              )}
             </EstimateReadySurface>
           ) : null}
 
@@ -1752,6 +1908,8 @@ export function AssistantShell({
                   isAddingWorkArea={isAddingWorkArea}
                   isRemovingWorkArea={isExcludingWorkArea}
                   addWorkAreaError={addWorkAreaError}
+                  scopeSaveStatus={jobPlanScopeSaveStatus}
+                  scopeSaveError={jobPlanScopeSaveError}
                   onAddWorkArea={handleAddWorkArea}
                   onRemoveWorkArea={handleExcludeWorkArea}
                   onToggleScope={handleJobPlanToggleScope}
@@ -1807,7 +1965,7 @@ export function AssistantShell({
                       isSaving={pendingAction === "constraints"}
                       savingConstraintKey={savingConstraintKey}
                       constraintError={constraintError}
-                      workAreaTypes={workAreas
+                      workAreaTypes={displayWorkAreas
                         .filter((wa) => wa.status !== "excluded")
                         .map((wa) => wa.type)}
                       onAnswerChange={
@@ -1985,6 +2143,8 @@ export function AssistantShell({
                 isAddingWorkArea={isAddingWorkArea}
                 isRemovingWorkArea={isExcludingWorkArea}
                 addWorkAreaError={addWorkAreaError}
+                scopeSaveStatus={jobPlanScopeSaveStatus}
+                scopeSaveError={jobPlanScopeSaveError}
                 onContinue={
                   workAreasConfirmed
                     ? undefined
@@ -2382,7 +2542,7 @@ export function AssistantShell({
                 isSaving={pendingAction === "constraints"}
                 savingConstraintKey={savingConstraintKey}
                 constraintError={constraintError}
-                workAreaTypes={workAreas
+                workAreaTypes={displayWorkAreas
                   .filter((wa) => wa.status !== "excluded")
                   .map((wa) => wa.type)}
                 onAnswerChange={
@@ -2448,7 +2608,7 @@ export function AssistantShell({
             projectInformationLabel={projectInformationLabel}
             projectConditionsAttention={projectConditionsAttention}
             compactCommercialSidebar={assistantMode === "estimate_ready"}
-            onViewBreakdown={() => setBreakdownOpen(true)}
+            onViewBreakdown={() => setBuilderReviewOpen(true)}
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}
             onMarginSave={
