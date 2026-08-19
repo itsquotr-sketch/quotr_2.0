@@ -581,11 +581,12 @@ const progressiveSrc = readFileSync("lib/assistant/progressive-disclosure.ts", "
 
 check(
   "67 estimate-generated state detected in shell",
-  shellSrc.includes('data-assistant-mode={compressCompletedSetup ? "estimate-ready" : "setup"}')
+  shellSrc.includes("data-assistant-mode={assistantMode}") &&
+    shellSrc.includes("deriveAssistantUiMode")
 );
 check(
   "68 completed setup collapses after estimate",
-  shellSrc.includes("compressCompletedSetup") &&
+  shellSrc.includes('assistantMode === "estimate_ready"') &&
     disclosureSrc.includes("Job details")
 );
 check(
@@ -595,7 +596,8 @@ check(
 );
 check(
   "70 Project Capture not expanded by default after estimate",
-  progressiveSrc.includes("if (input.estimateReady && !input.estimateStale)")
+  progressiveSrc.includes("if (input.estimateReady)") &&
+    progressiveSrc.includes("return null")
 );
 check(
   "71 Scope Review not permanently forced open",
@@ -652,8 +654,8 @@ check(
 );
 check(
   "76 centre/sidebar split after estimate",
-  shellSrc.includes("compactCommercialSidebar={compressCompletedSetup}") &&
-    readyCardSrc.includes("Top assumptions")
+  shellSrc.includes('compactCommercialSidebar={assistantMode === "estimate_ready"}') &&
+    readyCardSrc.includes("data-estimate-ready-assumptions")
 );
 check(
   "77 mobile post-estimate hides progress rail",
@@ -667,13 +669,15 @@ check(
 );
 check(
   "79 fascia Review deep-links fact without trapping token",
-  shellSrc.includes('item.factKey === "deck.vertical_face_boards_required"') &&
-    shellSrc.includes("setRequestScopeEdit") &&
+  shellSrc.includes("resolveAttentionNavigation") &&
+    readFileSync("lib/assistant/mode/attention.ts", "utf8").includes(
+      'deck.vertical_face_boards_required'
+    ) &&
     scopeReviewSrc.includes("lastEditTokenRef")
 );
 check(
   "80 Hide details returns to Estimate Ready",
-  shellSrc.includes("onExpandedChange={setSetupReviewOpen}") &&
+  shellSrc.includes("onExpandedChange={setJobDetailsOpen}") &&
     disclosureSrc.includes("Hide details")
 );
 

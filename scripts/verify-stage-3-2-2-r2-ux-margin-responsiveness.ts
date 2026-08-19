@@ -111,18 +111,17 @@ function main(): void {
 
   check(
     "8 completed workflow compression present with expand/revisit",
-    completedSetup.includes("Project setup") &&
-      (completedSetup.includes("View setup") ||
-        completedSetup.includes("Review or edit completed steps")) &&
+    completedSetup.includes("Job details") &&
+      completedSetup.includes("Show details") &&
       shell.includes("CompletedSetupDisclosure") &&
-      shell.includes("compressCompletedSetup") &&
-      shell.includes("setupReviewOpen")
+      shell.includes("deriveAssistantUiMode") &&
+      shell.includes("editJobOpen")
   );
 
   check(
     "9 Estimate Review actionable stays visible; empty de-emphasised",
     shell.includes("estimateReviewActionable") &&
-      shell.includes("compressCompletedSetup") &&
+      shell.includes("assistantMode") &&
       shell.includes('title="Estimate Review"')
   );
 

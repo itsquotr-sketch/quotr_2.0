@@ -163,11 +163,10 @@ function main(): void {
 
   check(
     "6 Project Setup remains separate/collapsed",
-    setup.includes("View setup") || setup.includes("Job details") &&
-      shell.includes("compressCompletedSetup") &&
-      shell.indexOf("EstimateReviewSummaryStrip") <
-        shell.indexOf("<CompletedSetupDisclosure") &&
-      shell.includes("overview={estimateReviewCompactOverview}")
+    (setup.includes("View setup") || setup.includes("Job details")) &&
+      shell.includes("deriveAssistantUiMode") &&
+      shell.includes("<CompletedSetupDisclosure") &&
+      shell.includes("jobDetailsOpen")
   );
 
   check(
@@ -281,7 +280,7 @@ function main(): void {
     "17 Overview helper is presentation-only",
     overviewHelper.includes("presentation only") &&
       !overviewHelper.includes("@supabase") &&
-      shell.includes("buildEstimateReviewCompactOverview")
+      shell.includes("EstimateReadyCard")
   );
 
   check(

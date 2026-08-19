@@ -18,6 +18,8 @@ type JobPlanPanelProps = {
   workAreas: WorkArea[];
   facts: readonly EstimateFact[];
   submitted?: boolean;
+  /** Post-estimate workspace: editable without the Looks right interview CTA. */
+  workspaceEditing?: boolean;
   isSaving?: boolean;
   isAddingWorkArea?: boolean;
   isRemovingWorkArea?: boolean;
@@ -43,6 +45,7 @@ export function JobPlanPanel({
   workAreas,
   facts,
   submitted,
+  workspaceEditing = false,
   isSaving,
   isAddingWorkArea,
   isRemovingWorkArea,
@@ -54,6 +57,8 @@ export function JobPlanPanel({
   onSpecFact,
 }: JobPlanPanelProps) {
   const [addOpen, setAddOpen] = useState(false);
+  const interactive = workspaceEditing || !submitted;
+  const showCtaBar = workspaceEditing ? Boolean(onAddWorkArea) : !submitted;
 
   if (plan.cards.length === 0) {
     return (
@@ -91,10 +96,10 @@ export function JobPlanPanel({
           <JobPlanWorkAreaCardView
             key={card.workAreaId}
             card={card}
-            readOnly={submitted}
+            readOnly={!interactive}
             isRemoving={isRemovingWorkArea}
-            onToggleScope={submitted ? undefined : onToggleScope}
-            onRemove={submitted ? undefined : onRemoveWorkArea}
+            onToggleScope={interactive ? onToggleScope : undefined}
+            onRemove={interactive ? onRemoveWorkArea : undefined}
             specEditor={(() => {
               const Editor = getJobPlanQuickSpecEditor(card.workAreaType);
               return Editor ? (
@@ -109,22 +114,24 @@ export function JobPlanPanel({
         ))}
       </div>
 
-      {submitted ? null : (
+      {showCtaBar ? (
         <div
           className="sticky bottom-0 z-10 -mx-1 border-t border-border bg-background/95 px-1 pt-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           data-job-plan-cta-bar
         >
-          <Button
-            type="button"
-            className="w-full sm:w-auto"
-            data-job-plan-primary-cta
-            onClick={onContinue}
-            disabled={plan.cards.length === 0 || isSaving}
-          >
-            {isSaving
-              ? ASSISTANT_ACTION_LABELS.savingWorkAreas
-              : ASSISTANT_ACTION_LABELS.looksRight}
-          </Button>
+          {workspaceEditing ? null : (
+            <Button
+              type="button"
+              className="w-full sm:w-auto"
+              data-job-plan-primary-cta
+              onClick={onContinue}
+              disabled={plan.cards.length === 0 || isSaving}
+            >
+              {isSaving
+                ? ASSISTANT_ACTION_LABELS.savingWorkAreas
+                : ASSISTANT_ACTION_LABELS.looksRight}
+            </Button>
+          )}
           {onAddWorkArea ? (
             <button
               type="button"
@@ -137,7 +144,7 @@ export function JobPlanPanel({
             </button>
           ) : null}
         </div>
-      )}
+      ) : null}
 
       {onAddWorkArea ? (
         <AddWorkAreaDialog

@@ -53,9 +53,9 @@ function main(): void {
 
   check(
     "1 Estimate Review summary appears above Project Setup when estimate exists",
-    shell.includes("EstimateReviewSummaryStrip") &&
+    shell.includes("EstimateReadyCard") &&
       shell.includes("CompletedSetupDisclosure") &&
-      shell.indexOf("EstimateReviewSummaryStrip") <
+      shell.indexOf("<EstimateReadyCard") <
         shell.indexOf("<CompletedSetupDisclosure")
   );
 
@@ -79,13 +79,13 @@ function main(): void {
   check(
     "4 Project Setup collapses completed workflow",
     setup.includes("Job details") &&
-      shell.includes("compressCompletedSetup") &&
+      shell.includes("deriveAssistantUiMode") &&
       shell.includes("showCompletedDetailCards")
   );
 
   check(
     "5 Completed steps remain accessible via setup expand",
-    shell.includes("setupReviewOpen") &&
+    shell.includes("editJobOpen") &&
       shell.includes('title="Project Capture"') &&
       shell.includes('title="Job Plan"') &&
       shell.includes('title="Specification"') &&
@@ -102,7 +102,9 @@ function main(): void {
   check(
     "7 Desktop Quick Estimate remains commercially dominant",
     panel.includes("QUICK_ESTIMATE_STICKY_CLASS") &&
-      panel.includes("Recommended sell") &&
+      (panel.includes("Recommended sell") ||
+        panel.includes("staleMoney.sellLabel")) &&
+      panel.includes("text-3xl") &&
       panel.includes("PrepareFinalPricingButton")
   );
 
@@ -125,8 +127,8 @@ function main(): void {
 
   check(
     "10 Mobile Estimate Review visible in completed centre column",
-    shell.includes("EstimateReviewSummaryStrip") &&
-      shell.includes('order-2')
+    shell.includes("EstimateReadyCard") &&
+      shell.includes("order-2")
   );
 
   check(

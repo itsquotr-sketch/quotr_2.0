@@ -10,9 +10,11 @@ import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
 import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
 import { EstimateReadyCard } from "@/components/assistant/EstimateReadyCard";
-import { EstimateReviewSummaryStrip } from "@/components/assistant/EstimateReviewSummaryStrip";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
+import { PlanningSurface } from "@/components/assistant/mode/PlanningSurface";
+import { EstimateReadySurface } from "@/components/assistant/mode/EstimateReadySurface";
+import { EditJobSurface } from "@/components/assistant/mode/EditJobSurface";
 import { QualityBlock, QUALITY_OPTIONS } from "@/components/assistant/QualityBlock";
 import {
   QuestionBlock,
@@ -86,6 +88,14 @@ import {
 } from "@/lib/assistant/clarify/actions";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
+import {
+  ASSISTANT_MODES_PRIMARY,
+  deriveAssistantUiMode,
+  formatWorkAreaSummaryDetail,
+  formatWorkAreaSummaryLine,
+  resolveAttentionNavigation,
+  type EditJobSection,
+} from "@/lib/assistant/mode";
 import type { EstimateFact } from "@/lib/estimate/types";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { startPreviewPerf, recordPreviewPerf } from "@/lib/assistant/preview-performance";
@@ -105,7 +115,6 @@ import {
   buildWorkAreaSummaryLists,
   countAnsweredQuestions,
 } from "@/lib/assistant/stage-completion-summaries";
-import { buildEstimateReviewCompactOverview } from "@/lib/assistant/presentation/estimate-review-compact-overview";
 import type { AssistantState, ConstraintRow } from "@/lib/assistant/types";
 import { buildLiveProjectConditionsSnapshot } from "@/lib/assistant/builder-interview-live";
 import {
@@ -127,6 +136,7 @@ import type { NoteProposal } from "@/lib/project-notes/proposals/types";
 import type { SafeResultsRead } from "@/lib/scope-discovery/application/types";
 import type { PricingSummary } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
+import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 type AssistantShellProps = {
@@ -210,7 +220,11 @@ export function AssistantShell({
   const [marginOverlay, setMarginOverlay] = useState<MarginTotalsOverlay | null>(
     null
   );
-  const [setupReviewOpen, setSetupReviewOpen] = useState(false);
+  const [editJobOpen, setEditJobOpen] = useState(false);
+  const [editJobSection, setEditJobSection] = useState<EditJobSection | null>(
+    null
+  );
+  const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
   const [estimateReviewDetailsOpen, setEstimateReviewDetailsOpen] =
     useState(false);
   const marginSaveLockRef = useRef(false);
@@ -297,10 +311,6 @@ export function AssistantShell({
   const [reviewFocusQuestionKey, setReviewFocusQuestionKey] = useState<
     string | null
   >(null);
-  const [, setReviewFocusSuggestionId] = useState<
-    string | null
-  >(null);
-  const [, setRequestScopeEdit] = useState(0);
   const scopeReviewCardRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
@@ -551,6 +561,23 @@ export function AssistantShell({
     });
   }, [scopeDiscoveryEnabled, scopeReviewComplete]);
 
+  const openEditJob = useCallback((section: EditJobSection | null = "job_plan") => {
+    setEditJobOpen(true);
+    setEditJobSection(section);
+  }, []);
+
+  const closeEditJob = useCallback(() => {
+    setQualityLevel(savedQualityLevel);
+    setIsEditingQuality(false);
+    setEditJobOpen(false);
+    setEditJobSection(null);
+    setForceExpandQuestions(false);
+    setForceExpandProjectConditions(false);
+    setReviewFocusQuestionId(null);
+    setReviewFocusQuestionKey(null);
+    setProjectConditionsFocusKey(null);
+  }, [savedQualityLevel]);
+
   const handleReviewAttention = useCallback(
     (item: {
       reviewTarget?: string;
@@ -560,120 +587,42 @@ export function AssistantShell({
       suggestionId?: string;
       scopeItemId?: string;
     }) => {
-      const target = item.reviewTarget;
-      const suggestionId = item.suggestionId ?? item.scopeItemId ?? null;
-
-      // R3: reveal completed setup when Review targets stages behind disclosure.
-      if (
-        target === "questions" ||
-        target === "quality" ||
-        target === "estimateReview" ||
-        target === "scopeReview" ||
-        target === "projectConditions" ||
-        target === "constraints"
-      ) {
-        setSetupReviewOpen(true);
-        if (target === "estimateReview") {
-          setEstimateReviewDetailsOpen(true);
-        }
+      const nav = resolveAttentionNavigation(item);
+      if (nav.kind === "builder_review") {
+        setBreakdownOpen(true);
+        return;
       }
 
-      if (target === "projectConditions") {
+      setForceExpandQuestions(false);
+      setForceExpandProjectConditions(false);
+      setIsEditingQuality(false);
+      setEstimateReviewDetailsOpen(false);
+
+      openEditJob(nav.section);
+
+      if (nav.section === "details") {
+        beginQualitySpecEdit({
+          setEditing: setIsEditingQuality,
+          scrollTarget: qualityCardRef,
+        });
+      }
+      if (nav.section === "project_conditions") {
         setForceExpandProjectConditions(true);
-        setProjectConditionsFocusKey(
-          item.questionId ?? item.factKey ?? null
-        );
-        window.requestAnimationFrame(() => {
-          const key = item.questionId ?? item.factKey;
-          const precise = key
-            ? document.querySelector<HTMLElement>(
-                `[data-project-condition-key="${key}"], [data-question-key="${key}"]`
-              )
-            : null;
-          const el = precise ?? projectConditionsCardRef.current;
-          el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          const focusable = precise?.querySelector<HTMLElement>(
-            "input, select, textarea, button"
-          );
-          focusable?.focus({ preventScroll: true });
-          window.setTimeout(() => {
-            setForceExpandProjectConditions(false);
-          }, 600);
-        });
-        return;
+        setProjectConditionsFocusKey(item.questionId ?? item.factKey ?? null);
       }
-
-      // DECK-2B-R2: fascia is a CHECK, not a Scope Review trap — still deep-link
-      // the catalogue item when Review is clicked from Estimate Ready.
-      if (
-        target !== "scopeReview" &&
-        item.factKey === "deck.vertical_face_boards_required"
-      ) {
-        if (suggestionId) {
-          setReviewFocusSuggestionId(suggestionId);
-        }
-        setRequestScopeEdit((n) => n + 1);
-      }
-
-      if (target === "scopeReview") {
-        if (suggestionId) {
-          setReviewFocusSuggestionId(suggestionId);
-        }
-        setRequestScopeEdit((n) => n + 1);
-        window.requestAnimationFrame(() => {
-          const precise = suggestionId
-            ? document.querySelector<HTMLElement>(
-                `#scope-item-${suggestionId}, [data-suggestion-id="${suggestionId}"]`
-              )
-            : item.workAreaId
-              ? document.querySelector<HTMLElement>(
-                  `[data-work-area-id="${item.workAreaId}"]`
-                )
-              : null;
-          const el = precise ?? scopeReviewCardRef.current;
-          el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-          if (precise) {
-            const focusable = precise.querySelector<HTMLElement>(
-              "input, select, textarea, button"
-            );
-            focusable?.focus({ preventScroll: true });
-            precise.classList.add("ring-2", "ring-[var(--brand-orange)]/60");
-            window.setTimeout(() => {
-              precise.classList.remove(
-                "ring-2",
-                "ring-[var(--brand-orange)]/60"
-              );
-            }, 1600);
-          }
-        });
-        return;
-      }
-
-      if (target === "questions") {
+      if (nav.section === "advanced") {
         setForceExpandQuestions(true);
+        setReviewFocusQuestionId(item.questionId ?? null);
+        setReviewFocusQuestionKey(item.factKey ?? null);
+      } else {
+        setReviewFocusQuestionId(null);
+        setReviewFocusQuestionKey(item.factKey ?? null);
       }
-      if (target === "estimateReview") {
-        setEstimateReviewDetailsOpen(true);
-      }
-      if (item.questionId && target !== "estimateReview" && target !== "scopeReview") {
-        setForceExpandQuestions(true);
-      }
-      setReviewFocusQuestionId(item.questionId ?? null);
-      setReviewFocusQuestionKey(item.factKey ?? null);
 
       window.requestAnimationFrame(() => {
-        const stageEl =
-          target === "quality"
-            ? qualityCardRef.current
-            : target === "constraints"
-              ? constraintsCardRef.current
-              : target === "projectConditions"
-                ? projectConditionsCardRef.current
-              : target === "estimateReview"
-                ? estimateReviewCardRef.current
-                : questionsCardRef.current ?? estimateReviewCardRef.current;
-
-        // Prefer precise question / work-area target when available (7F-R6).
+        const sectionEl = document.querySelector<HTMLElement>(
+          `[data-edit-job-section="${nav.section}"]`
+        );
         const precise =
           (item.questionId
             ? document.querySelector<HTMLElement>(
@@ -682,7 +631,7 @@ export function AssistantShell({
             : null) ??
           (item.factKey
             ? document.querySelector<HTMLElement>(
-                `[data-question-key="${item.factKey}"]`
+                `[data-question-key="${item.factKey}"], [data-project-condition-key="${item.factKey}"]`
               )
             : null) ??
           (item.workAreaId
@@ -690,8 +639,7 @@ export function AssistantShell({
                 `[data-work-area-id="${item.workAreaId}"]`
               )
             : null);
-
-        const el = precise ?? stageEl;
+        const el = precise ?? sectionEl;
         el?.scrollIntoView({ behavior: "smooth", block: "nearest" });
         if (precise) {
           const focusable = precise.querySelector<HTMLElement>(
@@ -701,7 +649,7 @@ export function AssistantShell({
         }
       });
     },
-    []
+    [openEditJob]
   );
 
   const qualityUnlocked =
@@ -789,7 +737,12 @@ export function AssistantShell({
     const endPerf = startPreviewPerf("estimate_generate_complete");
     void runAction("regenerate", async () => {
       try {
-        return await regenerateStaticEstimate(project.id);
+        const result = await regenerateStaticEstimate(project.id);
+        if (!("error" in result && result.error)) {
+          setEditJobOpen(false);
+          setEditJobSection(null);
+        }
+        return result;
       } finally {
         endPerf();
       }
@@ -1481,25 +1434,6 @@ export function AssistantShell({
     answers: submittedConstraintAnswers,
     submittedRows: liveConstraints,
   });
-  const detailsConfirmedCount = initialState.scopeReview.workAreas.reduce(
-    (n, wa) => n + wa.facts.length,
-    0
-  );
-  const assumptionCountForReview =
-    initialState.scopeReview.generalAssumptions.length +
-    initialState.scopeReview.workAreas.reduce(
-      (n, wa) => n + wa.assumptions.length,
-      0
-    );
-  const estimateReviewCompactOverview = buildEstimateReviewCompactOverview({
-    workAreaNames: workAreaLists.included,
-    includedScopeTitles: composedScopeState.summaryLists.included,
-    includedScopeCount:
-      includedScopeItemCount || composedScopeState.summaryLists.included.length,
-    detailsConfirmedCount,
-    conditionLabels: constraintChips,
-    assumptionCount: assumptionCountForReview,
-  });
   const projectInformationLabel = CLARIFY_IS_PRIMARY
     ? workAreasConfirmed && !estimateReady
       ? clarifyView.enoughToEstimate
@@ -1532,6 +1466,12 @@ export function AssistantShell({
             factKey: c.targetKey,
           }))
       : [];
+  const assumptionCountForReview =
+    initialState.scopeReview.generalAssumptions.length +
+    initialState.scopeReview.workAreas.reduce(
+      (n, wa) => n + wa.assumptions.length,
+      0
+    );
   // 7F-R5: do not map needs-detail into "open clarification".
   // Named Scope Details pending titles drive attention via EstimatePanel.
   const quickEstimatePresentation = buildQuickEstimatePresentationModel({
@@ -1575,11 +1515,14 @@ export function AssistantShell({
       : undefined,
   });
 
-  const compressCompletedSetup =
-    estimateReady && !Boolean(estimate?.isStale);
+  const hasEstimate = Boolean(estimate);
+  const assistantMode = deriveAssistantUiMode({
+    hasEstimate,
+    editJobOpen,
+  });
 
   const completedEstimateAttentionItems: readonly QuickEstimateAttentionItem[] =
-    compressCompletedSetup
+    hasEstimate
       ? applyLevel1AttentionPresentation(
           buildQuickEstimateAttentionItems({
             pendingProposalCount: pendingNoteProposal ? 1 : 0,
@@ -1616,21 +1559,15 @@ export function AssistantShell({
     );
   const projectConditionsNeedsAsk =
     preferProjectConditionsAsk && !projectConditionsSnapshot?.complete;
-  const showCompletedDetailCards =
-    !compressCompletedSetup || setupReviewOpen;
+  const showCompletedDetailCards = assistantMode === "planning" && !CLARIFY_IS_PRIMARY;
   const qualityTitleLabel =
     qualityLevel
       ? QUALITY_OPTIONS.find((o) => o.value === qualityLevel)?.title ?? null
       : null;
   const setupSummaryLine = [
-    workAreaLists.included[0] ?? "Project",
+    formatWorkAreaSummaryLine(workAreaLists.included),
+    formatWorkAreaSummaryDetail(workAreaLists.included),
     qualityTitleLabel,
-    includedScopeItemCount > 0
-      ? `${includedScopeItemCount} scope item${includedScopeItemCount === 1 ? "" : "s"}`
-      : null,
-    answeredQuestionCount > 0
-      ? `${answeredQuestionCount} details answered`
-      : null,
     liveConstraints.length > 0
       ? `${liveConstraints.length} condition${liveConstraints.length === 1 ? "" : "s"}`
       : preferProjectConditionsAsk
@@ -1648,10 +1585,10 @@ export function AssistantShell({
   ].filter((v): v is string => Boolean(v));
 
   const showEstimateReviewFullCard =
+    assistantMode === "planning" &&
+    !CLARIFY_IS_PRIMARY &&
     questionsSubmitted &&
-    (!compressCompletedSetup
-      ? true
-      : estimateReviewActionable || estimateReviewDetailsOpen);
+    (estimateReviewActionable || estimateReviewDetailsOpen);
 
   const stepperAttention = {
     constraints:
@@ -1668,7 +1605,7 @@ export function AssistantShell({
       <AssistantProgress
         currentStage={stage}
         preferProjectConditionsLabel={preferProjectConditionsAsk}
-        deemphasised={compressCompletedSetup}
+        deemphasised={assistantMode !== "planning"}
       />
 
       {actionError ? (
@@ -1678,35 +1615,49 @@ export function AssistantShell({
       ) : null}
 
       <div
-        className="mt-3 grid min-w-0 gap-5 lg:mt-4 lg:grid-cols-[minmax(0,1fr)_340px] lg:items-start xl:grid-cols-[220px_minmax(0,1fr)_340px]"
+        className={cn(
+          "mt-3 grid min-w-0 gap-5 lg:mt-4 lg:items-start",
+          assistantMode === "planning" &&
+            "lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[220px_minmax(0,1fr)_340px]",
+          assistantMode === "estimate_ready" &&
+            "lg:grid-cols-[minmax(0,1fr)_340px]",
+          assistantMode === "edit_job" && "grid-cols-1"
+        )}
         data-assistant-main-grid
-        data-assistant-mode={compressCompletedSetup ? "estimate-ready" : "setup"}
+        data-assistant-mode={assistantMode}
+        data-assistant-modes-primary={ASSISTANT_MODES_PRIMARY ? "true" : "false"}
       >
-        <aside className="hidden xl:block">
-          <div
-            className={cn(
-              "sticky top-6",
-              compressCompletedSetup && "opacity-70"
-            )}
-            data-stepper-deemphasised={
-              compressCompletedSetup ? "true" : "false"
-            }
-          >
-            <StepperNav
-              currentStage={stage}
-              needsAttention={stepperAttention}
-              stepSummaries={stepperSummaries}
-              preferProjectConditionsLabel={preferProjectConditionsAsk}
-            />
-          </div>
-        </aside>
+        {assistantMode === "planning" ? (
+          <aside className="hidden xl:block">
+            <div className="sticky top-6">
+              <StepperNav
+                currentStage={stage}
+                needsAttention={stepperAttention}
+                stepSummaries={stepperSummaries}
+                preferProjectConditionsLabel={preferProjectConditionsAsk}
+              />
+            </div>
+          </aside>
+        ) : null}
 
         <div className="order-2 min-w-0 space-y-3 lg:order-none lg:space-y-2.5">
-          {compressCompletedSetup && estimate ? (
-            <>
+          {assistantMode === "estimate_ready" && estimate ? (
+            <EstimateReadySurface
+              projectId={project.id}
+              isStale={Boolean(estimate.isStale)}
+              isRegenerating={isRegenerating}
+              pricingCtaEnabled={!pricingSummary}
+            >
               <EstimateReadyCard
-                understanding={understandingSummaries[0] ?? null}
+                workAreaSummaryLine={formatWorkAreaSummaryLine(
+                  workAreaLists.included
+                )}
+                workAreaSummaryDetail={formatWorkAreaSummaryDetail(
+                  workAreaLists.included
+                )}
                 recommendedSell={estimate.recommendedSell}
+                isStale={Boolean(estimate.isStale)}
+                isRegenerating={isRegenerating}
                 confidenceBand={
                   deriveQuickEstimateConfidencePresentation({
                     confidencePercent: estimate.confidence,
@@ -1722,52 +1673,195 @@ export function AssistantShell({
                 )}
                 attentionItems={completedEstimateAttentionItems}
                 onReviewEstimate={() => setBreakdownOpen(true)}
-                onEditJobDetails={() => setSetupReviewOpen(true)}
+                onEditJob={() => openEditJob("job_plan")}
+                onUpdateEstimate={
+                  estimate.isStale ? handleRegenerateEstimate : undefined
+                }
                 onReviewAttention={handleReviewAttention}
               />
               <CompletedSetupDisclosure
                 summaryLine={setupSummaryLine}
                 chips={setupChips}
-                expanded={setupReviewOpen}
-                onExpandedChange={setSetupReviewOpen}
+                expanded={jobDetailsOpen}
+                onExpandedChange={setJobDetailsOpen}
               />
-            </>
-          ) : compressCompletedSetup ? (
-            <>
-              <EstimateReviewSummaryStrip
-                items={completedEstimateAttentionItems}
-                overview={estimateReviewCompactOverview}
-                isStale={Boolean(estimate?.isStale)}
-                detailsOpen={estimateReviewDetailsOpen}
-                onReviewAttention={handleReviewAttention}
-                onToggleDetails={() => {
-                  setEstimateReviewDetailsOpen((open) => {
-                    const next = !open;
-                    if (next) {
-                      window.requestAnimationFrame(() => {
-                        estimateReviewCardRef.current?.scrollIntoView({
-                          behavior: "smooth",
-                          block: "nearest",
-                        });
-                      });
-                    }
-                    return next;
-                  });
-                }}
-              />
-              <CompletedSetupDisclosure
-                summaryLine={setupSummaryLine}
-                chips={setupChips}
-                expanded={setupReviewOpen}
-                onExpandedChange={setSetupReviewOpen}
-              />
-            </>
+            </EstimateReadySurface>
           ) : null}
 
+          {assistantMode === "edit_job" ? (
+            <EditJobSurface
+              focusSection={editJobSection}
+              isStale={Boolean(estimate?.isStale)}
+              isRegenerating={isRegenerating}
+              onDone={closeEditJob}
+              onUpdateEstimate={
+                estimate?.isStale ? handleRegenerateEstimate : undefined
+              }
+              jobPlan={
+                <JobPlanPanel
+                  plan={jobPlan}
+                  workAreas={displayWorkAreas}
+                  facts={jobPlanFacts}
+                  submitted={workAreasConfirmed}
+                  workspaceEditing
+                  isSaving={pendingAction === "work_areas"}
+                  isAddingWorkArea={isAddingWorkArea}
+                  isRemovingWorkArea={isExcludingWorkArea}
+                  addWorkAreaError={addWorkAreaError}
+                  onAddWorkArea={handleAddWorkArea}
+                  onRemoveWorkArea={handleExcludeWorkArea}
+                  onToggleScope={handleJobPlanToggleScope}
+                  onSpecFact={handleJobPlanSpecFact}
+                />
+              }
+              projectConditions={
+                preferProjectConditionsAsk && projectConditionsSnapshot ? (
+                  <div ref={projectConditionsCardRef}>
+                    <ProjectConditionsBlock
+                      projectId={project.id}
+                      candidates={projectConditionsSnapshot.candidates ?? []}
+                      remainingCount={
+                        projectConditionsSnapshot.remainingCount ?? 0
+                      }
+                      complete={Boolean(projectConditionsSnapshot.complete)}
+                      knownConstraints={liveConstraints}
+                      onConstraintSave={handleConstraintSave}
+                      savingConstraintKey={savingConstraintKey}
+                      constraintError={constraintError}
+                      readiness={
+                        projectConditionsSnapshot.readiness ?? {
+                          state: "READY",
+                          reasons: [],
+                          blockingCandidateKeys: [],
+                          assumptionCandidateKeys: [],
+                          openP0Keys: [],
+                          openP1Keys: [],
+                          canGenerateQuickEstimate: true,
+                          softBlockQuickEstimate: false,
+                        }
+                      }
+                      focusQuestionKey={projectConditionsFocusKey}
+                      onSnapshotUpdate={(next) => {
+                        setLiveConstraints(next.constraints);
+                        setProjectConditionsFocusKey(null);
+                      }}
+                    />
+                  </div>
+                ) : (
+                  <div ref={constraintsCardRef}>
+                    <ConstraintBlock
+                      questions={initialState.constraintQuestions}
+                      answers={
+                        constraintsSubmitted
+                          ? submittedConstraintAnswers
+                          : constraintAnswers
+                      }
+                      submitted={constraintsSubmitted}
+                      editable
+                      presentation="questionnaire"
+                      suppressFallbackQuestionnaire={false}
+                      isSaving={pendingAction === "constraints"}
+                      savingConstraintKey={savingConstraintKey}
+                      constraintError={constraintError}
+                      workAreaTypes={workAreas
+                        .filter((wa) => wa.status !== "excluded")
+                        .map((wa) => wa.type)}
+                      onAnswerChange={
+                        constraintsSubmitted
+                          ? undefined
+                          : handleConstraintAnswer
+                      }
+                      onSubmit={
+                        constraintsSubmitted
+                          ? undefined
+                          : handleConstraintsSubmit
+                      }
+                      onConstraintSave={handleConstraintSave}
+                    />
+                  </div>
+                )
+              }
+              details={
+                <div ref={qualityCardRef}>
+                  <QualityBlock
+                    selected={qualityLevel}
+                    submitted={qualitySubmitted}
+                    editing={isEditingQuality}
+                    isSaving={pendingAction === "quality"}
+                    onSelect={setQualityLevel}
+                    onContinue={
+                      qualitySubmitted ? undefined : handleQualityContinue
+                    }
+                    onSave={qualitySubmitted ? handleQualitySave : undefined}
+                    onCancelEdit={
+                      qualitySubmitted ? handleQualityCancelEdit : undefined
+                    }
+                  />
+                  {qualitySubmitted && !isEditingQuality ? (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      className="mt-3 h-11 min-h-11"
+                      onClick={handleQualityEdit}
+                    >
+                      Change spec
+                    </Button>
+                  ) : null}
+                </div>
+              }
+              advanced={
+                <div className="space-y-4" ref={questionsCardRef}>
+                  {pendingNoteProposal ? (
+                    <NoteProposalReviewPanel
+                      projectId={project.id}
+                      proposal={pendingNoteProposal}
+                    />
+                  ) : null}
+                  <ScopeSummaryBlock
+                    projectId={project.id}
+                    scopeReview={initialState.scopeReview}
+                    workAreas={initialState.workAreas}
+                    editable
+                    manageWorkAreas={workAreasConfirmed}
+                    estimateIsStale={estimate?.isStale}
+                    savingFactKey={savingFactKey}
+                    savingWorkAreaId={savingWorkAreaId}
+                    workAreaSaveStatus={workAreaSaveStatus}
+                    workAreaQuestionError={workAreaQuestionError}
+                    factError={factError}
+                    isAddingWorkArea={isAddingWorkArea}
+                    isExcludingWorkArea={isExcludingWorkArea}
+                    addWorkAreaError={addWorkAreaError}
+                    constraintPreview={
+                      constraintChips.length === 0
+                        ? "None captured"
+                        : constraintChips.slice(0, 2).join(" · ")
+                    }
+                    onFactSave={handleFactSave}
+                    onSaveWorkAreaQuestions={handleSaveWorkAreaQuestions}
+                    onAddWorkArea={handleAddWorkArea}
+                    onExcludeWorkArea={handleExcludeWorkArea}
+                  />
+                  {questionBlock ? (
+                    <QuestionBlock
+                      questions={questionBlock.questions}
+                      derivedFactDisplays={initialState.derivedFactDisplays}
+                      answers={questionAnswers}
+                      submitted
+                      isSaving={false}
+                      focusQuestionId={reviewFocusQuestionId}
+                      focusQuestionKey={reviewFocusQuestionKey}
+                    />
+                  ) : null}
+                </div>
+              }
+            />
+          ) : null}
+
+          {assistantMode === "planning" ? (
+          <PlanningSurface>
           {/* 1. Project Capture */}
-          {(!compressCompletedSetup ||
-            setupReviewOpen ||
-            captureIsCurrent) && (
+          {(captureIsCurrent || !briefSubmitted || briefSubmitted) && (
           <CollapsibleStageCard
             title="Project Capture"
             subtitle={
@@ -1810,10 +1904,7 @@ export function AssistantShell({
           )}
 
           {/* 2. Job Plan — primary Work Area + user-facing scope confirmation */}
-          {briefSubmitted &&
-          (!compressCompletedSetup ||
-            setupReviewOpen ||
-            workAreasIsCurrent) ? (
+          {briefSubmitted ? (
             <CollapsibleStageCard
               title="Job Plan"
               subtitle="Quotr proposed this from your brief — scan, correct, continue"
@@ -1871,9 +1962,7 @@ export function AssistantShell({
             </CollapsibleStageCard>
           ) : null}
 
-          {CLARIFY_IS_PRIMARY &&
-          workAreasConfirmed &&
-          !compressCompletedSetup ? (
+          {CLARIFY_IS_PRIMARY && workAreasConfirmed ? (
             <CollapsibleStageCard
               title="Clarify"
               subtitle={
@@ -1908,11 +1997,8 @@ export function AssistantShell({
 
           {/* 3. Specification — legacy primary flow / post-estimate finish edit */}
           {(!CLARIFY_IS_PRIMARY || isEditingQuality) &&
-          workAreasConfirmed &&
-          (!compressCompletedSetup ||
-            setupReviewOpen ||
-            qualityIsCurrent ||
-            isEditingQuality) ? (
+          !CLARIFY_IS_PRIMARY &&
+          workAreasConfirmed ? (
             <CollapsibleStageCard
               title="Specification"
               subtitle="Set the finish level for this estimate"
@@ -2210,9 +2296,7 @@ export function AssistantShell({
           {!CLARIFY_IS_PRIMARY &&
           questionsSubmitted &&
           !preferProjectConditionsAsk &&
-          (constraintsIsCurrent ||
-            showCompletedDetailCards ||
-            !compressCompletedSetup) ? (
+          (constraintsIsCurrent || showCompletedDetailCards) ? (
             <CollapsibleStageCard
               title="Site Constraints"
               subtitle="Access, slope, and site conditions"
@@ -2267,11 +2351,18 @@ export function AssistantShell({
               />
             </CollapsibleStageCard>
           ) : null}
+          </PlanningSurface>
+          ) : null}
         </div>
 
+        {assistantMode !== "edit_job" ? (
         <div
           ref={estimatePanelAnchorRef}
-          className="order-1 min-w-0 lg:order-none lg:self-start"
+          className={cn(
+            "min-w-0 lg:self-start",
+            assistantMode === "planning" && "order-1 lg:order-none",
+            assistantMode === "estimate_ready" && "hidden lg:block"
+          )}
           data-quick-estimate-anchor
         >
           <EstimatePanel
@@ -2310,15 +2401,20 @@ export function AssistantShell({
             scopeReviewAttention={scopeReviewAttentionItems}
             projectInformationLabel={projectInformationLabel}
             projectConditionsAttention={projectConditionsAttention}
-            compactCommercialSidebar={compressCompletedSetup}
+            compactCommercialSidebar={assistantMode === "estimate_ready"}
             onViewBreakdown={() => setBreakdownOpen(true)}
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}
-            onMarginSave={estimateReady ? handleMarginSave : undefined}
-            onEditQuality={qualitySubmitted ? handleQualityEdit : undefined}
+            onMarginSave={
+              assistantMode === "estimate_ready" && !estimate?.isStale
+                ? handleMarginSave
+                : undefined
+            }
+            onEditQuality={undefined}
             onReviewAttention={handleReviewAttention}
           />
         </div>
+        ) : null}
       </div>
 
       <EstimateBreakdownModal

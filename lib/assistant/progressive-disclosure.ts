@@ -36,9 +36,9 @@ export type DisclosureProgressInput = {
 export function resolveActiveDisclosureStage(
   input: DisclosureProgressInput
 ): AssistantDisclosureStage {
-  // DECK-2B-R2: once an estimate exists, Estimate Ready mode leads.
-  // Incomplete optional scope (e.g. fascia) must not keep setup expanded.
-  if (input.estimateReady && !input.estimateStale) {
+  // RECOVERY-5A: once an estimate exists (current or stale), Estimate Ready
+  // leads. Stale does not rewind into the planning interview.
+  if (input.estimateReady) {
     return null;
   }
   if (!input.briefSubmitted) return "capture";

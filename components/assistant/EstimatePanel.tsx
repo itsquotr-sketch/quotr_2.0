@@ -52,6 +52,7 @@ import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/a
 import type { AssistantUnderstandingSummary } from "@/lib/assistant/presentation/assistant-understanding-summary";
 import { AssistantUnderstandingSummaryCard } from "@/components/assistant/AssistantUnderstandingSummaryCard";
 import { MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS } from "@/lib/scopes/estimate-priority";
+import { staleEstimateMoneyPresentation } from "@/lib/assistant/mode/derive";
 
 type EstimatePanelProps = {
   projectId: string;
@@ -364,6 +365,7 @@ export function EstimatePanel({
   onReadyToGeneratePresented,
 }: EstimatePanelProps) {
   const isStale = Boolean(estimate?.isStale);
+  const staleMoney = staleEstimateMoneyPresentation(isStale);
   const needsCalibrationUpdate =
     Boolean(estimate) &&
     !isStale &&
@@ -655,13 +657,18 @@ export function EstimatePanel({
         <PrepareFinalPricingButton
           projectId={projectId}
           className="w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
+          label={
+            compactCommercialSidebar
+              ? ASSISTANT_ACTION_LABELS.continueToPricing
+              : undefined
+          }
         />
       )
     ) : null;
 
   const panelBody = (
     <>
-      {qualityLevel ? (
+      {qualityLevel && !compactCommercialSidebar ? (
         <div className="flex items-center justify-between gap-3">
           <div className="min-w-0">
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
@@ -669,7 +676,7 @@ export function EstimatePanel({
             </p>
             <p className="text-sm font-medium">{qualityLabel(qualityLevel)}</p>
           </div>
-          {onEditQuality ? (
+          {onEditQuality && !compactCommercialSidebar ? (
             <Button
               type="button"
               variant="ghost"
@@ -695,7 +702,7 @@ export function EstimatePanel({
         </div>
       ) : null}
 
-      {isStale ? (
+      {isStale && !compactCommercialSidebar ? (
         <div
           className="space-y-3 rounded-xl border-2 border-amber-400 bg-amber-50 px-3 py-3 dark:border-amber-600 dark:bg-amber-950/40"
           role="alert"
@@ -848,10 +855,31 @@ export function EstimatePanel({
           ) : null}
 
           {/* —— Commercial hierarchy (dominant) —— */}
+          {compactCommercialSidebar && isStale ? (
+            <div
+              className="space-y-2"
+              data-compact-stale-summary="true"
+            >
+              <p className="text-sm font-semibold text-amber-950 dark:text-amber-100">
+                {staleMoney.heading}
+              </p>
+              <p className="text-xs text-muted-foreground">
+                {staleMoney.explanation}
+              </p>
+              <div data-previous-estimate>
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  {staleMoney.sellLabel}
+                </p>
+                <p className="mt-0.5 text-lg font-medium text-muted-foreground line-through">
+                  {formatCurrency(estimate.recommendedSell)}
+                </p>
+              </div>
+            </div>
+          ) : (
           <div className={cn("space-y-3", isStale && "opacity-60")}>
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Recommended sell
+                {staleMoney.sellLabel}
               </p>
               <p
                 className={cn(
@@ -935,8 +963,8 @@ export function EstimatePanel({
               />
             </div>
           </div>
-
-          {/* Concise status — always visible */}
+          )}
+          {!(compactCommercialSidebar && isStale) ? (
           <p
             className={cn(
               "text-xs font-medium",
@@ -950,6 +978,7 @@ export function EstimatePanel({
           >
             {status.statusLabel}
           </p>
+          ) : null}
 
           {projectInformationLabel ? (
             <p
@@ -1002,7 +1031,8 @@ export function EstimatePanel({
           ) : null}
 
           {/* True blockers stay outside collapsed sections */}
-          {estimate.assumptionMetadata?.assumptionSeverity === "critical" ? (
+          {estimate.assumptionMetadata?.assumptionSeverity === "critical" &&
+          !compactCommercialSidebar ? (
             <div
               className="rounded-md border border-amber-300/80 bg-amber-50/90 px-3 py-2 text-xs text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
               role="alert"
@@ -1040,7 +1070,8 @@ export function EstimatePanel({
             Internal only — not a quote.
           </p>
 
-          {/* Secondary expandable information */}
+          {!compactCommercialSidebar ? (
+          <>
           <div
             className="space-y-1.5"
             data-estimate-secondary-details
@@ -1229,7 +1260,6 @@ export function EstimatePanel({
             </div>
           </div>
 
-          {/* Secondary action — full transparency */}
           <Button
             type="button"
             variant="outline"
@@ -1238,6 +1268,8 @@ export function EstimatePanel({
           >
             {ASSISTANT_ACTION_LABELS.viewFullBreakdown}
           </Button>
+          </>
+          ) : null}
         </>
       )}
     </>
@@ -1256,6 +1288,7 @@ export function EstimatePanel({
             : "shadow-sm"
       )}
       data-estimate-panel-active={isActiveStage ? "true" : "false"}
+      data-compact-commercial-sidebar={compactCommercialSidebar ? "true" : "false"}
       data-quick-estimate-sticky="lg"
       data-ready-to-generate={canGenerateEstimate && !estimate ? "true" : "false"}
       data-mobile-qe-expanded={mobileExpanded ? "true" : "false"}

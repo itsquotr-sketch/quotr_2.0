@@ -7,7 +7,6 @@
 
 import { ChevronDown } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 
 type CompletedSetupDisclosureProps = {
   summaryLine: string;
@@ -54,7 +53,7 @@ export function CompletedSetupDisclosure({
             </p>
           ) : null}
           <p className="text-[11px] font-medium text-muted-foreground">
-            {expanded ? "Hide details" : ASSISTANT_ACTION_LABELS.editJobDetails}
+            {expanded ? "Hide details" : "Show details"}
           </p>
         </div>
         <ChevronDown
