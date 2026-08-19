@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -26,8 +26,17 @@ type JobPlanWorkAreaCardViewProps = {
     item: JobPlanScopeItem,
     presentation: "INCLUDED" | "NOT_INCLUDED"
   ) => void;
-  onRemove?: (workAreaId: string) => void;
+  onRemove?: (
+    workAreaId: string
+  ) => Promise<{ success: boolean; error?: string }> | void;
   specEditor?: ReactNode;
+  /**
+   * When set, this card will open its edit UI immediately and focus the
+   * requested control.
+   */
+  autoEditOpen?: boolean;
+  specFocusKey?: string | null;
+  scopeFocusItemId?: string | null;
 };
 
 function ScopeRow({
@@ -106,10 +115,46 @@ export function JobPlanWorkAreaCardView({
   onToggleScope,
   onRemove,
   specEditor,
+  autoEditOpen,
+  specFocusKey = null,
+  scopeFocusItemId = null,
 }: JobPlanWorkAreaCardViewProps) {
-  const [editOpen, setEditOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(() => Boolean(autoEditOpen));
   const [showAllIncluded, setShowAllIncluded] = useState(false);
   const headingId = `job-plan-${card.workAreaId}-title`;
+  const rootRef = useRef<HTMLElement | null>(null);
+
+  useEffect(() => {
+    if (!editOpen) return;
+
+    // Focus the requested material/spec control for supported editors.
+    if (specFocusKey) {
+      const id =
+        specFocusKey === "deck.board_material"
+          ? `deck-material-${card.workAreaId}`
+          : specFocusKey === "deck.board_width_mm"
+            ? `deck-width-${card.workAreaId}`
+            : specFocusKey === "deck.height_m"
+              ? `deck-height-${card.workAreaId}`
+              : null;
+
+      const el = id ? document.getElementById(id) : null;
+      if (el instanceof HTMLElement) {
+        el.focus({ preventScroll: true });
+        return;
+      }
+    }
+
+    // Focus the first edit action button for the target scope row.
+    if (scopeFocusItemId) {
+      const row = rootRef.current?.querySelector<HTMLElement>(
+        `[data-job-plan-item="${scopeFocusItemId}"]`
+      );
+      const btn = row?.querySelector<HTMLButtonElement>("button");
+      btn?.focus({ preventScroll: true });
+    }
+  }, [editOpen, specFocusKey, scopeFocusItemId, card.workAreaId]);
+
   const visibleIncluded =
     editOpen || showAllIncluded || card.included.length <= INCLUDED_PREVIEW_LIMIT
       ? card.included
@@ -118,6 +163,7 @@ export function JobPlanWorkAreaCardView({
 
   return (
     <article
+      ref={rootRef}
       data-job-plan-card
       data-work-area-id={card.workAreaId}
       data-work-area-type={card.workAreaType}
@@ -207,7 +253,7 @@ export function JobPlanWorkAreaCardView({
         </section>
       ) : null}
 
-      {card.notConfirmed.length > 0 ? (
+      {editOpen && card.notConfirmed.length > 0 ? (
         <section
           className="mt-3"
           data-job-plan-check
@@ -234,7 +280,7 @@ export function JobPlanWorkAreaCardView({
         </section>
       ) : null}
 
-      {card.notIncluded.length > 0 ? (
+      {editOpen && card.notIncluded.length > 0 ? (
         <section
           className="mt-3"
           data-job-plan-excluded

@@ -127,8 +127,12 @@ type ScopeSummaryBlockProps = {
     answers: MissingQuestionAnswers;
   }) => Promise<void>;
   workAreaSaveStatus?: Record<string, "idle" | "saving" | "saved" | "error">;
-  onAddWorkArea?: (workAreaType: string) => Promise<void>;
-  onExcludeWorkArea?: (workAreaId: string) => Promise<void>;
+  onAddWorkArea?: (
+    workAreaType: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  onExcludeWorkArea?: (
+    workAreaId: string
+  ) => Promise<{ success: boolean; error?: string }>;
 };
 
 function GlobalList({
@@ -190,6 +194,7 @@ export function ScopeSummaryBlock({
     id: string;
     name: string;
   } | null>(null);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const [detailsOpen, setDetailsOpen] = useState<Record<string, boolean>>({});
   /** Once a WA has outstanding details, keep it open until manual collapse (7F-R6-R3). */
   const [stickyDetailsOpen, setStickyDetailsOpen] = useState<ReadonlySet<string>>(
@@ -582,8 +587,8 @@ export function ScopeSummaryBlock({
           isSaving={isAddingWorkArea}
           error={addWorkAreaError}
           onAdd={async (workAreaType) => {
-            await onAddWorkArea(workAreaType);
-            setAddDialogOpen(false);
+            const out = await onAddWorkArea(workAreaType);
+            if (out.success) setAddDialogOpen(false);
           }}
         />
       ) : null}
@@ -591,7 +596,10 @@ export function ScopeSummaryBlock({
       <Dialog
         open={excludeTarget !== null}
         onOpenChange={(open) => {
-          if (!open) setExcludeTarget(null);
+          if (!open) {
+            setExcludeTarget(null);
+            setRemoveError(null);
+          }
         }}
       >
         <DialogContent showCloseButton>
@@ -618,14 +626,24 @@ export function ScopeSummaryBlock({
               disabled={isExcludingWorkArea || !excludeTarget}
               onClick={() => {
                 if (!excludeTarget || !onExcludeWorkArea) return;
-                void onExcludeWorkArea(excludeTarget.id).then(() => {
-                  setExcludeTarget(null);
+                setRemoveError(null);
+                void onExcludeWorkArea(excludeTarget.id).then((out) => {
+                  if (out.success) {
+                    setExcludeTarget(null);
+                    return;
+                  }
+                  setRemoveError(out.error ?? "Could not remove work area.");
                 });
               }}
             >
               {isExcludingWorkArea ? "Removing…" : "Remove from estimate"}
             </Button>
           </div>
+          {removeError ? (
+            <p className="mt-2 text-sm text-destructive" role="alert">
+              {removeError}
+            </p>
+          ) : null}
         </DialogContent>
       </Dialog>
     </div>

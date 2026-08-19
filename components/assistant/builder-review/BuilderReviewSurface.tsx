@@ -4,7 +4,10 @@ import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { formatCurrency } from "@/components/assistant/format";
-import type { BuilderReviewView } from "@/lib/assistant/builder-review";
+import type {
+  BuilderReviewImprovement,
+  BuilderReviewView,
+} from "@/lib/assistant/builder-review";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { cn } from "@/lib/utils";
 
@@ -14,6 +17,7 @@ type BuilderReviewSurfaceProps = {
   onBack: () => void;
   onEditJob?: () => void;
   onRefine?: () => void;
+  onImprove?: (improvement: BuilderReviewImprovement) => void;
   onUpdateEstimate?: () => void;
   onChangeMaterial?: (workAreaId: string | null) => void;
   className?: string;
@@ -31,6 +35,7 @@ export function BuilderReviewSurface({
   onBack,
   onEditJob,
   onRefine,
+  onImprove,
   onUpdateEstimate,
   onChangeMaterial,
   className,
@@ -38,8 +43,15 @@ export function BuilderReviewSurface({
   const multi = view.workAreas.length > 1;
   const [openAreas, setOpenAreas] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
-    for (const wa of view.workAreas) {
-      init[wa.workAreaName] = true;
+    if (view.workAreas.length === 1) {
+      init[view.workAreas[0]!.workAreaName] = true;
+    } else {
+      for (const wa of view.workAreas) {
+        init[wa.workAreaName] = false;
+      }
+      if (view.workAreas[0]) {
+        init[view.workAreas[0]!.workAreaName] = true;
+      }
     }
     return init;
   });
@@ -186,7 +198,21 @@ export function BuilderReviewSurface({
           <ul className="mt-3 space-y-2">
             {view.improvements.map((item) => (
               <li key={item.id} className="text-sm">
-                <span className="font-medium">{item.label}</span>
+                    {onImprove ? (
+                      <button
+                        type="button"
+                        className="w-full text-left"
+                        onClick={() => onImprove(item)}
+                        data-builder-review-improve-item
+                        aria-label={`Improve: ${item.label}`}
+                      >
+                        <span className="font-medium underline-offset-4 hover:underline">
+                          {item.label}
+                        </span>
+                      </button>
+                    ) : (
+                      <span className="font-medium">{item.label}</span>
+                    )}
                 {item.reason ? (
                   <span className="mt-0.5 block text-xs text-muted-foreground">
                     {item.reason}
@@ -254,6 +280,15 @@ export function BuilderReviewSurface({
                       {formatCurrency(wa.cost)} cost
                     </p>
                   )}
+                  {multi && !open ? (
+                    <p className="mt-0.5 text-[10px] text-muted-foreground">
+                      {wa.categories
+                        .filter((c) => c.cost > 0)
+                        .slice(0, 3)
+                        .map((c) => `${c.label} ${formatCurrency(c.cost)}`)
+                        .join(" · ")}
+                    </p>
+                  ) : null}
                 </div>
                 <ChevronDown
                   className={cn(
@@ -326,7 +361,9 @@ export function BuilderReviewSurface({
                                 {formatCurrency(line.recommendedCost)}
                               </p>
                             </div>
-                            {cat.id === "MATERIALS" && onChangeMaterial ? (
+                            {cat.id === "MATERIALS" &&
+                            onChangeMaterial &&
+                            wa.workAreaType === "deck" ? (
                               <button
                                 type="button"
                                 className="mt-2 text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"

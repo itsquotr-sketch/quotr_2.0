@@ -29,8 +29,17 @@ type JobPlanPanelProps = {
   scopeSaveStatus?: SaveStatus;
   scopeSaveError?: string | null;
   onContinue?: () => void;
-  onAddWorkArea?: (workAreaType: string) => Promise<void>;
-  onRemoveWorkArea?: (workAreaId: string) => void;
+  onAddWorkArea?: (
+    workAreaType: string
+  ) => Promise<{ success: boolean; error?: string }>;
+  onRemoveWorkArea?: (workAreaId: string) => Promise<{ success: boolean; error?: string }> | void;
+  /**
+   * When entering Edit Job with a contextual target, only render the relevant
+   * Work Area card and auto-open its edit controls.
+   */
+  focusWorkAreaId?: string | null;
+  specFocusKey?: string | null;
+  scopeFocusItemId?: string | null;
   onToggleScope?: (
     item: JobPlanScopeItem,
     presentation: "INCLUDED" | "NOT_INCLUDED"
@@ -59,14 +68,20 @@ export function JobPlanPanel({
   onContinue,
   onAddWorkArea,
   onRemoveWorkArea,
+  focusWorkAreaId = null,
+  specFocusKey = null,
+  scopeFocusItemId = null,
   onToggleScope,
   onSpecFact,
 }: JobPlanPanelProps) {
+  const cardsToRender = focusWorkAreaId
+    ? plan.cards.filter((c) => c.workAreaId === focusWorkAreaId)
+    : plan.cards;
   const [addOpen, setAddOpen] = useState(false);
   const interactive = workspaceEditing || !submitted;
   const showCtaBar = workspaceEditing ? Boolean(onAddWorkArea) : !submitted;
 
-  if (plan.cards.length === 0) {
+  if (cardsToRender.length === 0) {
     return (
       <div className="space-y-3 overflow-x-hidden" data-job-plan-panel>
         <p className="text-sm text-muted-foreground">
@@ -91,7 +106,10 @@ export function JobPlanPanel({
             workAreas={workAreas}
             isSaving={isAddingWorkArea}
             error={addWorkAreaError}
-            onAdd={onAddWorkArea}
+            onAdd={async (workAreaType) => {
+              const out = await onAddWorkArea(workAreaType);
+              if (out.success) setAddOpen(false);
+            }}
           />
         ) : null}
       </div>
@@ -105,7 +123,7 @@ export function JobPlanPanel({
       data-job-plan-primary="true"
     >
       <div className="flex flex-col gap-3">
-        {plan.cards.map((card) => (
+        {cardsToRender.map((card) => (
           <JobPlanWorkAreaCardView
             key={card.workAreaId}
             card={card}
@@ -113,6 +131,11 @@ export function JobPlanPanel({
             isRemoving={isRemovingWorkArea}
             onToggleScope={interactive ? onToggleScope : undefined}
             onRemove={interactive ? onRemoveWorkArea : undefined}
+            autoEditOpen={Boolean(
+              focusWorkAreaId && card.workAreaId === focusWorkAreaId
+            )}
+            specFocusKey={specFocusKey}
+            scopeFocusItemId={scopeFocusItemId}
             specEditor={(() => {
               const Editor = getJobPlanQuickSpecEditor(card.workAreaType);
               return Editor ? (
@@ -175,7 +198,10 @@ export function JobPlanPanel({
           workAreas={workAreas}
           isSaving={isAddingWorkArea}
           error={addWorkAreaError}
-          onAdd={onAddWorkArea}
+          onAdd={async (workAreaType) => {
+            const out = await onAddWorkArea(workAreaType);
+            if (out.success) setAddOpen(false);
+          }}
         />
       ) : null}
     </div>

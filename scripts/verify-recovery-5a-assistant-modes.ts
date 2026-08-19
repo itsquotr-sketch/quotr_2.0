@@ -166,7 +166,8 @@ check(
   "10 Edit panels absent until Edit job",
   shell.includes("assistantMode === \"edit_job\"") &&
     shell.includes("<EditJobSurface") &&
-    shell.includes("onEditJob={() => openEditJob(\"job_plan\")}") &&
+    (shell.includes("onEditJob={() => openEditJob(null)}") ||
+      shell.includes("onEditJob={() => openEditJob(\"job_plan\")}")) &&
     editSurface.includes("data-assistant-surface=\"edit_job\"")
 );
 check(
@@ -291,7 +292,8 @@ check(
 );
 check(
   "27 edit one WA does not reset another",
-  jobPlanPanel.includes("plan.cards.map") &&
+  (jobPlanPanel.includes("plan.cards.map") ||
+    jobPlanPanel.includes("cardsToRender.map")) &&
     shell.includes("onRemoveWorkArea={handleExcludeWorkArea}") &&
     !editSurface.includes("resetWorkAreas")
 );

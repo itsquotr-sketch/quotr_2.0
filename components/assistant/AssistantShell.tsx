@@ -32,6 +32,7 @@ import type {
 import type { MissingQuestionAnswers } from "@/components/assistant/ScopeReviewMissingSection";
 import { JobPlanPanel } from "@/components/assistant/job-plan/JobPlanPanel";
 import { ClarifyPanel } from "@/components/assistant/clarify/ClarifyPanel";
+import { RefineEstimatePanel } from "@/components/assistant/clarify/ClarifyReadiness";
 import {
   ProjectCaptureCollapsedSummary,
   WorkAreasCollapsedSummary,
@@ -144,6 +145,11 @@ import type { PricingSummary } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import type {
+  EstimateEditTarget,
+  JobPlanEditFocus,
+} from "@/lib/assistant/mode/estimate-edit-target";
+import { jobPlanEditFocusFromTarget } from "@/lib/assistant/mode/estimate-edit-target";
 
 type AssistantShellProps = {
   initialState: AssistantState;
@@ -241,6 +247,9 @@ export function AssistantShell({
   const [editJobSection, setEditJobSection] = useState<EditJobSection | null>(
     null
   );
+  const [jobPlanEditFocus, setJobPlanEditFocus] = useState<JobPlanEditFocus | null>(
+    null
+  );
   const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
   const [estimateReviewDetailsOpen, setEstimateReviewDetailsOpen] =
     useState(false);
@@ -267,6 +276,10 @@ export function AssistantShell({
   const workAreaSaveGuardRef = useRef(createLatestWriteGuard());
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
+  const [refineAfterEstimateOpen, setRefineAfterEstimateOpen] = useState(false);
+  const [refineAfterEstimateFocusKey, setRefineAfterEstimateFocusKey] = useState<
+    string | null
+  >(null);
   const [jobPlanScopeSaveStatus, setJobPlanScopeSaveStatus] =
     useState<SaveStatus>("idle");
   const [jobPlanScopeSaveError, setJobPlanScopeSaveError] = useState<
@@ -584,22 +597,54 @@ export function AssistantShell({
     });
   }, [scopeDiscoveryEnabled, scopeReviewComplete]);
 
-  const openEditJob = useCallback((section: EditJobSection | null = "job_plan") => {
-    setEditJobOpen(true);
-    setEditJobSection(section);
-  }, []);
+  const openEditJob = useCallback(
+    (
+      section: EditJobSection | null = null,
+      target?: EstimateEditTarget | null
+    ) => {
+      setEditJobOpen(true);
+      setEditJobSection(section);
+      setJobPlanEditFocus(jobPlanEditFocusFromTarget(target ?? null));
+    },
+    []
+  );
 
   const closeEditJob = useCallback(() => {
     setQualityLevel(savedQualityLevel);
     setIsEditingQuality(false);
     setEditJobOpen(false);
     setEditJobSection(null);
+    setJobPlanEditFocus(null);
     setForceExpandQuestions(false);
     setForceExpandProjectConditions(false);
     setReviewFocusQuestionId(null);
     setReviewFocusQuestionKey(null);
     setProjectConditionsFocusKey(null);
   }, [savedQualityLevel]);
+
+  const openRefineAfterEstimate = useCallback(
+    (focusKey?: string | null) => {
+      setRefineAfterEstimateFocusKey(focusKey ?? null);
+      setRefineAfterEstimateOpen(true);
+    },
+    []
+  );
+
+  const closeRefineAfterEstimate = useCallback(() => {
+    setRefineAfterEstimateOpen(false);
+    setRefineAfterEstimateFocusKey(null);
+  }, []);
+
+  useEffect(() => {
+    if (!refineAfterEstimateOpen) return;
+    if (!refineAfterEstimateFocusKey) return;
+
+    window.requestAnimationFrame(() => {
+      const selector = `[data-refine-field="${refineAfterEstimateFocusKey}"] input, [data-refine-field="${refineAfterEstimateFocusKey}"] select, [data-refine-field="${refineAfterEstimateFocusKey}"] button`;
+      const el = document.querySelector<HTMLElement>(selector);
+      el?.focus?.({ preventScroll: true });
+    });
+  }, [refineAfterEstimateOpen, refineAfterEstimateFocusKey]);
 
   const handleReviewAttention = useCallback(
     (item: {
@@ -764,6 +809,7 @@ export function AssistantShell({
         if (!("error" in result && result.error)) {
           setEditJobOpen(false);
           setEditJobSection(null);
+          setJobPlanEditFocus(null);
         }
         return result;
       } finally {
@@ -965,7 +1011,7 @@ export function AssistantShell({
       if (result.error) {
         setAddWorkAreaError(result.error);
         setIsAddingWorkArea(false);
-        return;
+        return { success: false as const, error: result.error };
       }
 
       if (result.workArea) {
@@ -980,8 +1026,11 @@ export function AssistantShell({
         });
       }
 
-      router.refresh();
       setIsAddingWorkArea(false);
+      startTransition(() => {
+        router.refresh();
+      });
+      return { success: true as const };
     },
     [initialState.workAreas, project.id, router]
   );
@@ -991,6 +1040,20 @@ export function AssistantShell({
       setIsExcludingWorkArea(true);
       setActionError(null);
 
+      const remaining = displayWorkAreas.filter((wa) => wa.id !== workAreaId)
+        .length;
+      if (remaining < 1) {
+        const error = "At least one work area must remain in the estimate.";
+        setActionError(error);
+        setIsExcludingWorkArea(false);
+        return { success: false as const, error };
+      }
+
+      // Optimistic: remove from projection immediately; rollback on server failure.
+      setExcludedWorkAreaIds((prev) =>
+        prev.includes(workAreaId) ? prev : [...prev, workAreaId]
+      );
+
       const result = await excludeWorkAreaFromProject({
         projectId: project.id,
         workAreaId,
@@ -998,18 +1061,20 @@ export function AssistantShell({
 
       if (result.error) {
         setActionError(result.error);
+        setExcludedWorkAreaIds((prev) =>
+          prev.filter((id) => id !== workAreaId)
+        );
         setIsExcludingWorkArea(false);
-        return;
+        return { success: false as const, error: result.error };
       }
 
-      setExcludedWorkAreaIds((prev) =>
-        prev.includes(workAreaId) ? prev : [...prev, workAreaId]
-      );
-
-      router.refresh();
+      startTransition(() => {
+        router.refresh();
+      });
       setIsExcludingWorkArea(false);
+      return { success: true as const };
     },
-    [project.id, router]
+    [project.id, router, displayWorkAreas]
   );
 
   const handleJobPlanToggleScope = useCallback(
@@ -1782,25 +1847,52 @@ export function AssistantShell({
               isRegenerating={isRegenerating}
               pricingCtaEnabled={!pricingSummary}
             >
-              {builderReviewOpen && builderReviewView ? (
+              {refineAfterEstimateOpen && refineView.hasCandidates ? (
+                <RefineEstimatePanel
+                  view={refineView}
+                  isSaving={false}
+                  canEstimateNow={false}
+                  onDone={closeRefineAfterEstimate}
+                  onAnswerBoolean={handleClarifyBoolean}
+                  onAnswerValue={handleClarifyValue}
+                />
+              ) : builderReviewOpen && builderReviewView ? (
                 <BuilderReviewSurface
                   view={builderReviewView}
                   isRegenerating={isRegenerating}
                   onBack={() => setBuilderReviewOpen(false)}
                   onEditJob={() => {
-                    setBuilderReviewOpen(false);
-                    openEditJob("job_plan");
+                    openEditJob(null);
                   }}
                   onRefine={() => {
-                    setBuilderReviewOpen(false);
-                    openEditJob("job_plan");
+                    openRefineAfterEstimate(null);
+                  }}
+                  onImprove={(improvement) => {
+                    const candidates = [
+                      ...refineView.highValue,
+                      ...refineView.advanced,
+                    ];
+                    const query = improvement.label.trim().toLowerCase();
+                    const match = candidates.find(
+                      (c) =>
+                        c.label.trim().toLowerCase() === query ||
+                        c.question.trim().toLowerCase() === query ||
+                        c.label.trim().toLowerCase().includes(query) ||
+                        query.includes(c.label.trim().toLowerCase())
+                    );
+                    openRefineAfterEstimate(match?.factKey ?? match?.constraintKey ?? null);
                   }}
                   onUpdateEstimate={
                     estimate.isStale ? handleRegenerateEstimate : undefined
                   }
-                  onChangeMaterial={() => {
-                    setBuilderReviewOpen(false);
-                    openEditJob("job_plan");
+                  onChangeMaterial={(workAreaId) => {
+                    if (!workAreaId) return;
+                    openEditJob("job_plan", {
+                      kind: "MATERIAL_SPEC",
+                      section: "job_plan",
+                      workAreaId,
+                      specFactKey: "deck.board_material",
+                    });
                   }}
                 />
               ) : (
@@ -1831,7 +1923,7 @@ export function AssistantShell({
                     attentionItems={completedEstimateAttentionItems}
                     compactResult
                     onReviewEstimate={() => setBuilderReviewOpen(true)}
-                    onEditJob={() => openEditJob("job_plan")}
+                    onEditJob={() => openEditJob(null)}
                     onUpdateEstimate={
                       estimate.isStale ? handleRegenerateEstimate : undefined
                     }
@@ -1877,7 +1969,7 @@ export function AssistantShell({
                         variant="outline"
                         className="h-11 min-h-11 w-full sm:w-auto"
                         data-estimate-ready-edit-job
-                        onClick={() => openEditJob("job_plan")}
+                        onClick={() => openEditJob(null)}
                       >
                         {ASSISTANT_ACTION_LABELS.editJob}
                       </Button>
@@ -1912,6 +2004,9 @@ export function AssistantShell({
                   scopeSaveError={jobPlanScopeSaveError}
                   onAddWorkArea={handleAddWorkArea}
                   onRemoveWorkArea={handleExcludeWorkArea}
+                  focusWorkAreaId={jobPlanEditFocus?.workAreaId ?? null}
+                  specFocusKey={jobPlanEditFocus?.specFocusKey ?? null}
+                  scopeFocusItemId={jobPlanEditFocus?.scopeFocusItemId ?? null}
                   onToggleScope={handleJobPlanToggleScope}
                   onSpecFact={handleJobPlanSpecFact}
                 />
@@ -2608,7 +2703,10 @@ export function AssistantShell({
             projectInformationLabel={projectInformationLabel}
             projectConditionsAttention={projectConditionsAttention}
             compactCommercialSidebar={assistantMode === "estimate_ready"}
-            onViewBreakdown={() => setBuilderReviewOpen(true)}
+            onViewBreakdown={() => {
+              setBuilderReviewOpen(false);
+              setBreakdownOpen(true);
+            }}
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}
             onMarginSave={

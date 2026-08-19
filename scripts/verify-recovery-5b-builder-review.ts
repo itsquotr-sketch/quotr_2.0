@@ -385,7 +385,7 @@ check(
 check("42 back clean", builderSurface.includes("data-builder-review-back"));
 check(
   "43 Edit Job route targeted",
-  shell.includes('openEditJob("job_plan")')
+  shell.includes("openEditJob(null)") || shell.includes('openEditJob("job_plan"')
 );
 check(
   "44 stale review clearly stale",

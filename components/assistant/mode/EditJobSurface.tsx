@@ -26,7 +26,8 @@ function sectionOpen(
 ): boolean {
   if (manual[id] != null) return Boolean(manual[id]);
   if (focusSection) return focusSection === id;
-  return id === "job_plan";
+  // General Edit Job starts compact: all sections collapsed until targeted.
+  return false;
 }
 
 function EditSection({
