@@ -30,3 +30,8 @@ export {
   answerClarifySelectFact,
   answerClarifyConstraint,
 } from "@/lib/assistant/clarify/actions";
+export {
+  legacyQualityRequiresScopeReview,
+  LEGACY_SCOPE_BEFORE_SPEC_ERROR,
+  DEFAULT_ESTIMATE_QUALITY,
+} from "@/lib/assistant/clarify/quality-gate";

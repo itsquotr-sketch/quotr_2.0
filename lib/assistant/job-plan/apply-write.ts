@@ -23,5 +23,6 @@ export function applyJobPlanScopeWrite(params: {
     key: params.write.factKey,
     work_area_id: params.workAreaId,
     value,
+    source: "user",
   });
 }

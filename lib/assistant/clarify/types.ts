@@ -78,6 +78,7 @@ export type ComposeClarifyInput = {
     readonly key: string;
     readonly work_area_id: string | null;
     readonly value: unknown;
+    readonly source?: string | null;
   }[];
   readonly constraints: readonly {
     readonly key: string;

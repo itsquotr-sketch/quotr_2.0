@@ -14,6 +14,7 @@ export function jobPlanFactsFromAssistantState(
         key: fact.key,
         work_area_id: wa.workAreaId,
         value: fact.rawValue ?? fact.value,
+        source: fact.sourceLabel === "answered" ? "user" : fact.sourceLabel,
       });
     }
   }

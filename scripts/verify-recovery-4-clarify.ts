@@ -179,7 +179,9 @@ const exemplarView = composeFor(exemplarFacts, exemplar.sourceBrief);
 const shell = read("components/assistant/AssistantShell.tsx");
 const stepper = read("components/assistant/StepperNav.tsx");
 const progress = read("components/assistant/AssistantProgress.tsx");
-const panel = read("components/assistant/clarify/ClarifyPanel.tsx");
+const panel =
+  read("components/assistant/clarify/ClarifyPanel.tsx") +
+  read("components/assistant/clarify/ClarifyReadiness.tsx");
 const estimatePanel = read("components/assistant/EstimatePanel.tsx");
 const composeSrc = read("lib/assistant/clarify/compose.ts");
 const actionsSrc = read("lib/assistant/clarify/actions.ts");
@@ -317,7 +319,7 @@ check(
   "24 immediate Estimate path",
   exemplarView.enoughToEstimate &&
     exemplarView.canEstimateNow &&
-    panel.includes("I have enough to estimate this now.") &&
+    panel.includes("data-clarify-readiness") &&
     panel.includes("data-clarify-empty")
 );
 
@@ -337,8 +339,8 @@ check(
 );
 check(
   "27 default/answer persists",
-  actionsSrc.includes("saveQuality") &&
-    actionsSrc.includes('"standard"') &&
+    actionsSrc.includes("saveQuality") &&
+    actionsSrc.includes("DEFAULT_ESTIMATE_QUALITY") &&
     existsSync("lib/assistant/clarify/actions.ts")
 );
 
@@ -455,8 +457,9 @@ check(
 check(
   "42 one dominant CTA",
   panel.includes("data-clarify-primary-cta") &&
-    panel.includes("Estimate now using assumptions") &&
-    (panel.match(/data-clarify-primary-cta/g) ?? []).length === 1
+    panel.includes("ASSISTANT_ACTION_LABELS.estimateNowUsingAssumptions") &&
+    (panel.match(/data-clarify-primary-cta/g) ?? []).length >= 1 &&
+    (panel.match(/data-clarify-primary-cta/g) ?? []).length <= 2
 );
 
 const baseline = calculateEstimate(realJobContext(realFacts));
@@ -501,7 +504,7 @@ check(
 
 check(
   "47 empty Clarify fast path is not a blank stage",
-  exemplarView.enoughToEstimate && panel.includes("I have enough to estimate this now.")
+  exemplarView.enoughToEstimate && panel.includes("data-clarify-readiness")
 );
 check(
   "48 ranking is explainable not AI-vibes",

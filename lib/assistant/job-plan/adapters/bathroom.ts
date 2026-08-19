@@ -1,4 +1,5 @@
-import { jobPlanBoolean, jobPlanNumber, jobPlanString, presentationFromBoolean } from "@/lib/assistant/job-plan/facts";
+import { effectiveJobPlanBoolean } from "@/lib/assistant/job-plan/exclusion-provenance";
+import { jobPlanNumber, jobPlanString, presentationFromBoolean } from "@/lib/assistant/job-plan/facts";
 import type {
   JobPlanAdapterContext,
   JobPlanScopeItem,
@@ -15,7 +16,12 @@ function boolScope(
   context: JobPlanAdapterContext,
   surfaceReason: string
 ): JobPlanScopeItem {
-  const value = jobPlanBoolean(context.facts, workAreaId, factKey);
+  const value = effectiveJobPlanBoolean(
+    context.facts,
+    workAreaId,
+    factKey,
+    context.briefText
+  );
   return {
     id,
     workAreaId,

@@ -80,6 +80,8 @@ import {
 } from "@/lib/assistant/job-plan/from-assistant-state";
 import type { JobPlanScopeItem } from "@/lib/assistant/job-plan/types";
 import { composeClarifyView } from "@/lib/assistant/clarify/compose";
+import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
+import { composeRefineView } from "@/lib/assistant/refine/compose";
 import {
   answerClarifyConstraint,
   answerClarifyFact,
@@ -1035,6 +1037,7 @@ export function AssistantShell({
             key: candidate.factKey!,
             work_area_id: candidate.workAreaId,
             value,
+            source: "user",
           })
         );
         const result = await answerClarifySelectFact({
@@ -1091,6 +1094,7 @@ export function AssistantShell({
           key: candidate.factKey!,
           work_area_id: candidate.workAreaId,
           value,
+          source: "user",
         })
       );
       const result = await answerClarifySelectFact({
@@ -1130,6 +1134,7 @@ export function AssistantShell({
           key: input.key,
           work_area_id: input.workAreaId,
           value: input.value,
+          source: "user",
         })
       );
       const result = await updateProjectFact({
@@ -1319,6 +1324,45 @@ export function AssistantShell({
       project.qualityLevel,
       qualityLevel,
       stage,
+    ]
+  );
+
+  const estimateReadiness = useMemo(
+    () =>
+      composeEstimateReadiness({
+        clarify: clarifyView,
+        jobPlan,
+        qualityLevel: qualityLevel ?? project.qualityLevel,
+        constraints: liveConstraints.map((row) => ({
+          key: row.key,
+          value: row.value,
+        })),
+      }),
+    [clarifyView, jobPlan, liveConstraints, project.qualityLevel, qualityLevel]
+  );
+
+  const refineView = useMemo(
+    () =>
+      composeRefineView({
+        briefText: briefText || project.briefText,
+        qualityLevel: qualityLevel ?? project.qualityLevel,
+        workAreas: displayWorkAreas,
+        facts: jobPlanFacts,
+        constraints: liveConstraints.map((row) => ({
+          key: row.key,
+          value: row.value,
+        })),
+        jobPlan,
+      }),
+    [
+      briefText,
+      displayWorkAreas,
+      jobPlan,
+      jobPlanFacts,
+      liveConstraints,
+      project.briefText,
+      project.qualityLevel,
+      qualityLevel,
     ]
   );
 
@@ -1985,6 +2029,8 @@ export function AssistantShell({
             >
               <ClarifyPanel
                 view={clarifyView}
+                readiness={estimateReadiness}
+                refineView={refineView}
                 isSaving={
                   pendingAction === "clarify" || pendingAction === "estimate"
                 }

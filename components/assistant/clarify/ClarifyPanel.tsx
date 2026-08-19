@@ -1,12 +1,21 @@
 "use client";
 
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import type { ClarifyCandidate, ClarifyView } from "@/lib/assistant/clarify/types";
+import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
+import type { RefineView } from "@/lib/assistant/refine/types";
+import {
+  ClarifyReadinessCard,
+  RefineEstimatePanel,
+} from "@/components/assistant/clarify/ClarifyReadiness";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { cn } from "@/lib/utils";
 
 type ClarifyPanelProps = {
   view: ClarifyView;
+  readiness: EstimateReadinessView;
+  refineView: RefineView;
   isSaving?: boolean;
   onAnswerBoolean?: (
     candidate: ClarifyCandidate,
@@ -113,35 +122,39 @@ function ClarifyQuestion({
 
 export function ClarifyPanel({
   view,
+  readiness,
+  refineView,
   isSaving,
   onAnswerBoolean,
   onAnswerValue,
   onEstimateNow,
 }: ClarifyPanelProps) {
+  const [refineOpen, setRefineOpen] = useState(false);
   const current = view.candidates[0] ?? null;
+
+  if (refineOpen && refineView.hasCandidates) {
+    return (
+      <RefineEstimatePanel
+        view={refineView}
+        isSaving={isSaving}
+        canEstimateNow={view.canEstimateNow}
+        onDone={() => setRefineOpen(false)}
+        onEstimateNow={onEstimateNow}
+        onAnswerBoolean={onAnswerBoolean}
+        onAnswerValue={onAnswerValue}
+      />
+    );
+  }
 
   if (view.enoughToEstimate || !current) {
     return (
-      <div
-        className="space-y-4 overflow-x-hidden"
-        data-clarify-panel
-        data-clarify-empty="true"
-      >
-        <p className="text-sm text-muted-foreground">
-          I have enough to estimate this now.
-        </p>
-        <Button
-          type="button"
-          className="min-h-11 w-full sm:w-auto"
-          data-clarify-primary-cta
-          disabled={isSaving || view.blocksEstimate}
-          onClick={onEstimateNow}
-        >
-          {isSaving
-            ? ASSISTANT_ACTION_LABELS.saving
-            : ASSISTANT_ACTION_LABELS.estimateNow}
-        </Button>
-      </div>
+      <ClarifyReadinessCard
+        readiness={readiness}
+        showRefine={refineView.hasCandidates}
+        isSaving={isSaving}
+        onEstimateNow={onEstimateNow}
+        onRefine={() => setRefineOpen(true)}
+      />
     );
   }
 
@@ -174,7 +187,7 @@ export function ClarifyPanel({
             disabled={isSaving}
             onClick={onEstimateNow}
           >
-            Estimate now using assumptions
+            {ASSISTANT_ACTION_LABELS.estimateNowUsingAssumptions}
           </button>
         ) : null}
       </div>

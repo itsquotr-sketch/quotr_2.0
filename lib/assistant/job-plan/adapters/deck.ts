@@ -1,6 +1,9 @@
 import type { EstimateFact } from "@/lib/estimate/types";
 import {
-  jobPlanBoolean,
+  effectiveJobPlanAccessType,
+  effectiveJobPlanBoolean,
+} from "@/lib/assistant/job-plan/exclusion-provenance";
+import {
   jobPlanNumber,
   jobPlanString,
   presentationFromBoolean,
@@ -22,10 +25,16 @@ function booleanItem(params: {
   label: string;
   factKey: string;
   facts: readonly EstimateFact[];
+  briefText: string | null;
   togglable?: boolean;
   surfaceReason: string;
 }): JobPlanScopeItem {
-  const value = jobPlanBoolean(params.facts, params.workAreaId, params.factKey);
+  const value = effectiveJobPlanBoolean(
+    params.facts,
+    params.workAreaId,
+    params.factKey,
+    params.briefText
+  );
   return {
     id: params.id,
     workAreaId: params.workAreaId,
@@ -47,9 +56,10 @@ function booleanItem(params: {
 
 function stepsItem(
   workAreaId: string,
-  facts: readonly EstimateFact[]
+  facts: readonly EstimateFact[],
+  briefText: string | null
 ): JobPlanScopeItem {
-  const access = jobPlanString(facts, workAreaId, "deck.access_type");
+  const access = effectiveJobPlanAccessType(facts, workAreaId, briefText);
   const lower = access?.toLowerCase() ?? "";
   let presentation: JobPlanScopeItem["presentation"] = "NOT_CONFIRMED";
   if (access) {
@@ -213,6 +223,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       label: "New framing / substructure",
       factKey: "deck.substructure_included",
       facts,
+      briefText: context.briefText,
       surfaceReason: "User-facing scope — implies joists/bearers/fixings internally",
     });
 
@@ -222,6 +233,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       label: "Existing deck removal",
       factKey: "deck.existing_deck_removal",
       facts,
+      briefText: context.briefText,
       surfaceReason: "Commercially meaningful unresolved demolition",
     });
 
@@ -231,15 +243,17 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       label: "Fascia / edge finish",
       factKey: "deck.vertical_face_boards_required",
       facts,
+      briefText: context.briefText,
       surfaceReason: "Commercially meaningful unresolved edge finish",
     });
 
-    const steps = stepsItem(id, facts);
+    const steps = stepsItem(id, facts, context.briefText);
 
-    const balustradeValue = jobPlanBoolean(
+    const balustradeValue = effectiveJobPlanBoolean(
       facts,
       id,
-      "deck.balustrade_required"
+      "deck.balustrade_required",
+      context.briefText
     );
     const elevated = isElevated(facts, id);
     const showBalustrade = balustradeValue !== null || elevated;
@@ -249,6 +263,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       label: "Balustrade",
       factKey: "deck.balustrade_required",
       facts,
+      briefText: context.briefText,
       surfaceReason: elevated
         ? "Elevated deck — balustrade is material to confirm"
         : "Explicit balustrade fact",

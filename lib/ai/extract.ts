@@ -16,6 +16,7 @@ import {
   type AIExtractionOutput,
 } from "@/lib/ai/schema";
 import { normaliseAIExtraction } from "@/lib/scopes/normalise-extracted-facts";
+import { stripImplicitScopeExclusions } from "@/lib/scopes/strip-implicit-scope-exclusions";
 
 export type BriefExtractionResult = {
   output: AIExtractionOutput;
@@ -79,12 +80,15 @@ export async function extractFromBrief(params: {
       allowedTypes: params.allowedTypes,
     });
 
-    const output = normaliseAIExtraction(
-      validateAndFilterExtraction(
-        enriched.extraction,
-        params.allowedTypes,
-        params.catalogueTypes
-      )
+    const output = stripImplicitScopeExclusions(
+      normaliseAIExtraction(
+        validateAndFilterExtraction(
+          enriched.extraction,
+          params.allowedTypes,
+          params.catalogueTypes
+        )
+      ),
+      params.briefText
     );
 
     return {

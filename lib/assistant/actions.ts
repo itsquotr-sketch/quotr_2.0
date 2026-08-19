@@ -12,6 +12,7 @@ import {
 import { AIExtractionError } from "@/lib/ai/schema";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
 import { canRunStageAction } from "@/lib/assistant/state";
+import { legacyQualityRequiresScopeReview } from "@/lib/assistant/clarify/quality-gate";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
 import type {
@@ -799,7 +800,9 @@ export async function saveQuality(
     return { error: "This action is not available at the current stage." };
   }
 
-  if (isScopeDiscoveryEnabled()) {
+  // RECOVERY-4-R2: Job Plan / Clarify own scope confirmation. Do not block
+  // Estimate now on the retired Scope Review → Specification gate.
+  if (legacyQualityRequiresScopeReview()) {
     try {
       const auth = await requireAuthOrgContext();
       if (auth.ok) {

@@ -3,6 +3,7 @@ import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
 import { assumptionsFromSkipped } from "@/lib/assistant/clarify/assumptions";
 import { allocateClarifyBudget, sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
+import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
   blockingClassForKey,
   constraintIsKnown,
@@ -42,12 +43,23 @@ function factHas(
   key: string,
   workAreaId: string | null
 ): boolean {
-  return input.facts.some(
+  const row = input.facts.find(
     (f) =>
       f.key === key &&
-      (workAreaId == null || f.work_area_id === workAreaId) &&
-      isKnownValue(f.value)
+      (workAreaId == null || f.work_area_id === workAreaId)
   );
+  if (!row || !isKnownValue(row.value)) return false;
+  if (
+    isImplicitScopeExclusion({
+      factKey: key,
+      value: row.value,
+      source: row.source,
+      briefText: input.briefText,
+    })
+  ) {
+    return false;
+  }
+  return true;
 }
 
 function askClassForScopeKey(key: string): ClarifyAskClass {

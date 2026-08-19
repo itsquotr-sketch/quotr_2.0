@@ -8,6 +8,7 @@ import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import type { QualityLevel } from "@/components/assistant/types";
 import type { JobPlanScopeWrite } from "@/lib/assistant/job-plan/types";
+import { DEFAULT_ESTIMATE_QUALITY } from "@/lib/assistant/clarify/quality-gate";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { revalidatePath } from "next/cache";
 
@@ -153,9 +154,21 @@ export async function completeClarifyPlanning(input: {
         ? input.qualityLevel
         : project.quality_level && project.quality_level !== "unknown"
           ? (project.quality_level as QualityLevel)
-          : "standard";
+          : DEFAULT_ESTIMATE_QUALITY;
     const saved = await saveQuality(input.projectId, level);
     if (saved.error) return saved;
+  } else if (
+    (!project.quality_level || project.quality_level === "unknown") &&
+    (stage === "work_area_questions" ||
+      stage === "constraints" ||
+      stage === "ready_to_estimate")
+  ) {
+    const { error: qualityError } = await supabase
+      .from("projects")
+      .update({ quality_level: DEFAULT_ESTIMATE_QUALITY })
+      .eq("id", input.projectId)
+      .eq("org_id", orgId);
+    if (qualityError) return { error: qualityError.message };
   }
 
   const { data: afterQuality } = await supabase

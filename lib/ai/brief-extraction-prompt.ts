@@ -6,6 +6,7 @@ Rules:
 - If a scope is mentioned but unsupported, include it in warnings.
 - Extract measurable facts only where clearly stated in the brief or site notes.
 - Do not guess exact quantities if not provided.
+- Absent from the brief is not an exclusion. Do not write false / None for optional scope (demolition, fascia, stairs, balustrade, similar) merely because it was not mentioned. Only extract negatives when the text explicitly says so ("no stairs", "no balustrade", "remove existing deck").
 - Do not price or estimate costs — extract scope only.
 - Use null work_area_type for project-level facts and access/site constraints.
 - Confidence should reflect certainty from the source text (0 to 1).
