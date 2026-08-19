@@ -129,31 +129,28 @@ export function EstimateReadyCard({
               </p>
             ) : null}
           </div>
-          {!compactResult ? (
-            <>
-              <div className="mt-3">
-                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                  {money.sellLabel}
-                </p>
-                <p className="mt-0.5 text-3xl font-semibold tracking-tight">
-                  {formatCurrency(recommendedSell)}{" "}
-                  <span className="text-sm font-medium text-muted-foreground">
-                    + GST
-                  </span>
-                </p>
-              </div>
-              {confidenceBand ? (
-                <p className="mt-2 text-sm">
-                  <span className="text-muted-foreground">Confidence </span>
-                  <span className="font-medium">{confidenceBand}</span>
-                </p>
-              ) : null}
-            </>
-          ) : (
-            <p className="mt-2 text-sm text-muted-foreground">
-              Review estimate breakdown, materials, labour, and assumptions.
+          <div className="mt-3">
+            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+              {money.sellLabel}
             </p>
-          )}
+            <p className="mt-0.5 text-3xl font-semibold tracking-tight">
+              {formatCurrency(recommendedSell)}{" "}
+              <span className="text-sm font-medium text-muted-foreground">
+                + GST
+              </span>
+            </p>
+          </div>
+          {confidenceBand ? (
+            <p className="mt-2 text-sm">
+              <span className="text-muted-foreground">Confidence </span>
+              <span className="font-medium">{confidenceBand}</span>
+            </p>
+          ) : null}
+          {compactResult ? (
+            <p className="mt-2 text-sm text-muted-foreground">
+              Review materials, labour, allowances, and assumptions in Builder Review.
+            </p>
+          ) : null}
         </>
       )}
 
