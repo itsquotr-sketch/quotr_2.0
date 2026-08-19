@@ -16,6 +16,8 @@ type CompletedSetupDisclosureProps = {
   onExpandedChange: (expanded: boolean) => void;
   children?: ReactNode;
   className?: string;
+  /** Label override — defaults to "Estimate Basis". */
+  title?: string;
 };
 
 export function CompletedSetupDisclosure({
@@ -25,6 +27,7 @@ export function CompletedSetupDisclosure({
   onExpandedChange,
   children,
   className,
+  title = "Estimate Basis",
 }: CompletedSetupDisclosureProps) {
   return (
     <div
@@ -44,10 +47,7 @@ export function CompletedSetupDisclosure({
       >
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-sm font-medium text-foreground">
-            Job details{" "}
-            <span className="text-muted-foreground" aria-hidden>
-              ✓
-            </span>
+            {title}
           </p>
           <p className="text-xs text-muted-foreground">{summaryLine}</p>
           {chips.length > 0 ? (

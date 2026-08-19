@@ -253,7 +253,7 @@ export function JobPlanWorkAreaCardView({
         </section>
       ) : null}
 
-      {editOpen && card.notConfirmed.length > 0 ? (
+      {card.notConfirmed.length > 0 ? (
         <section
           className="mt-3"
           data-job-plan-check

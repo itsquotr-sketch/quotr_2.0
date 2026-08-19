@@ -130,11 +130,13 @@ check(
 // SCOPE ITEM INCLUDE/TOGGLE (supported catalogue UX)
 // ------------------------------------------------------------
 check(
-  "16 Supported scope catalogue is gated behind Edit scope",
+  "16 Supported scope catalogue: notIncluded gated behind Edit, notConfirmed visible in normal view (R3)",
   workAreaCard.includes("data-job-plan-item={item.id}") &&
     workAreaCard.includes("data-job-plan-excluded") &&
     workAreaCard.includes("editOpen && card.notIncluded.length > 0") &&
-    workAreaCard.includes("editOpen && card.notConfirmed.length > 0")
+    // R3: notConfirmed CHECK items are visible in normal view (not behind editOpen)
+    workAreaCard.includes("{card.notConfirmed.length > 0 ?") &&
+    !workAreaCard.includes("editOpen && card.notConfirmed.length > 0")
 );
 check(
   "17 Canonical write path exists for scope toggles",

@@ -110,6 +110,13 @@ type EstimatePanelProps = {
   understandingSummaries?: readonly AssistantUnderstandingSummary[];
   /** DECK-2B-R2 — after estimate, sidebar is commercial metrics only. */
   compactCommercialSidebar?: boolean;
+  /** R3 — optional cost breakdown for Commercial Overview. */
+  commercialBreakdown?: {
+    materialsCost?: number | null;
+    labourCost?: number | null;
+    labourHours?: number | null;
+    allowancesCost?: number | null;
+  } | null;
   onViewBreakdown?: () => void;
   onGenerate?: () => void;
   onRegenerate?: () => void;
@@ -356,6 +363,7 @@ export function EstimatePanel({
   projectConditionsAttention = [],
   understandingSummaries = [],
   compactCommercialSidebar = false,
+  commercialBreakdown = null,
   onViewBreakdown,
   onGenerate,
   onRegenerate,
@@ -876,51 +884,96 @@ export function EstimatePanel({
               </div>
             </div>
           ) : compactCommercialSidebar ? (
-          <div className="space-y-1.5" data-compact-commercial-summary="true">
-            <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Commercial summary
-            </p>
-            <MetricRow
-              label="Cost"
-              value={formatCurrency(estimate.recommendedCost)}
-              dimmed={isStale}
-              tertiary
-            />
-            <MetricRow
-              label="Margin"
-              value={financialView?.marginLabel ?? "—"}
-              dimmed={isStale}
-              tertiary
-              trailing={
-                !isStale && onMarginSave ? (
-                  <MarginEditControl
-                    marginPercent={estimate.marginPercent}
-                    targetMarginPercent={estimate.targetMarginPercent}
-                    defaultMarginPercent={defaultMarginPercent}
-                    disabled={isRegenerating || isGenerating}
-                    isSaving={isSavingMargin}
-                    onSave={onMarginSave}
-                    presentation="inline"
-                  />
-                ) : null
-              }
-            />
-            {!isStale && onMarginSave && isSavingMargin ? (
-              <SaveStatusIndicator status="saving" isSaving />
-            ) : !isStale && onMarginSave && marginSaveLabel ? (
-              <p
-                className="text-xs text-muted-foreground"
-                data-margin-save-label
-              >
-                {marginSaveLabel}
+          <div className="space-y-3" data-compact-commercial-summary="true">
+            <div className="space-y-1.5">
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Commercial
               </p>
+              <MetricRow
+                label="Direct cost"
+                value={formatCurrency(estimate.recommendedCost)}
+                dimmed={isStale}
+                tertiary
+              />
+              <MetricRow
+                label="Gross margin"
+                value={financialView?.marginLabel ?? "—"}
+                dimmed={isStale}
+                tertiary
+                trailing={
+                  !isStale && onMarginSave ? (
+                    <MarginEditControl
+                      marginPercent={estimate.marginPercent}
+                      targetMarginPercent={estimate.targetMarginPercent}
+                      defaultMarginPercent={defaultMarginPercent}
+                      disabled={isRegenerating || isGenerating}
+                      isSaving={isSavingMargin}
+                      onSave={onMarginSave}
+                      presentation="inline"
+                    />
+                  ) : null
+                }
+              />
+              {!isStale && onMarginSave && isSavingMargin ? (
+                <SaveStatusIndicator status="saving" isSaving />
+              ) : !isStale && onMarginSave && marginSaveLabel ? (
+                <p
+                  className="text-xs text-muted-foreground"
+                  data-margin-save-label
+                >
+                  {marginSaveLabel}
+                </p>
+              ) : null}
+              <MetricRow
+                label="Gross profit"
+                value={financialView?.profitLabel ?? "—"}
+                dimmed={isStale}
+                tertiary
+              />
+            </div>
+            {commercialBreakdown &&
+              (commercialBreakdown.materialsCost != null ||
+                commercialBreakdown.labourCost != null ||
+                commercialBreakdown.labourHours != null ||
+                commercialBreakdown.allowancesCost != null) ? (
+              <div className="space-y-1.5 border-t border-border/40 pt-2.5" data-commercial-composition>
+                <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  Estimate Composition
+                </p>
+                {commercialBreakdown.materialsCost != null && commercialBreakdown.materialsCost > 0 ? (
+                  <MetricRow
+                    label="Materials"
+                    value={formatCurrency(commercialBreakdown.materialsCost)}
+                    dimmed={isStale}
+                    tertiary
+                  />
+                ) : null}
+                {commercialBreakdown.labourCost != null && commercialBreakdown.labourCost > 0 ? (
+                  <MetricRow
+                    label="Labour"
+                    value={formatCurrency(commercialBreakdown.labourCost)}
+                    dimmed={isStale}
+                    tertiary
+                  />
+                ) : null}
+                {commercialBreakdown.labourHours != null && commercialBreakdown.labourHours > 0 ? (
+                  <MetricRow
+                    label="Labour effort"
+                    value={`${commercialBreakdown.labourHours.toFixed(1)} hrs`}
+                    dimmed={isStale}
+                    tertiary
+                  />
+                ) : null}
+                {commercialBreakdown.allowancesCost != null && commercialBreakdown.allowancesCost > 0 ? (
+                  <MetricRow
+                    label="Allowances"
+                    value={formatCurrency(commercialBreakdown.allowancesCost)}
+                    dimmed={isStale}
+                    tertiary
+                  />
+                ) : null}
+              </div>
             ) : null}
-            <MetricRow
-              label="Gross profit"
-              value={financialView?.profitLabel ?? "—"}
-              dimmed={isStale}
-              tertiary
-            />
           </div>
           ) : (
           <div className={cn("space-y-3", isStale && "opacity-60")}>
@@ -1346,7 +1399,9 @@ export function EstimatePanel({
           className="border-b border-border/60 px-4 py-3 lg:hidden"
           data-mobile-qe-header="estimate"
         >
-          <p className="text-sm font-semibold">Quick Estimate</p>
+          <p className="text-sm font-semibold">
+            {compactCommercialSidebar ? "Commercial Overview" : "Quick Estimate"}
+          </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Draft estimate based on your inputs
           </p>
@@ -1379,7 +1434,9 @@ export function EstimatePanel({
       )}
 
       <CardHeader className="hidden pb-3 lg:block">
-        <CardTitle className="text-base">Quick Estimate</CardTitle>
+        <CardTitle className="text-base">
+          {estimate && compactCommercialSidebar ? "Commercial Overview" : "Quick Estimate"}
+        </CardTitle>
         <CardDescription>
           {estimate
             ? "Draft estimate based on your inputs"

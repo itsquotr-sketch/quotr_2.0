@@ -10,7 +10,6 @@ import {
   RefineEstimatePanel,
 } from "@/components/assistant/clarify/ClarifyReadiness";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
-import { cn } from "@/lib/utils";
 
 type ClarifyPanelProps = {
   view: ClarifyView;
@@ -174,21 +173,20 @@ export function ClarifyPanel({
         onAnswerValue={onAnswerValue}
       />
       <div
-        className="sticky bottom-0 z-10 border-t border-border bg-background/95 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+        className="sticky bottom-0 z-10 border-t border-border bg-background/95 px-0 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
         data-clarify-cta-bar
       >
         {view.canEstimateNow ? (
-          <button
+          <Button
             type="button"
-            className={cn(
-              "block text-xs text-muted-foreground underline-offset-4 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            )}
+            variant="outline"
+            className="min-h-11 w-full"
             data-clarify-estimate-assumptions
             disabled={isSaving}
             onClick={onEstimateNow}
           >
             {ASSISTANT_ACTION_LABELS.estimateNowUsingAssumptions}
-          </button>
+          </Button>
         ) : null}
       </div>
     </div>

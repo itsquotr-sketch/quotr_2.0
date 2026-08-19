@@ -152,35 +152,36 @@ export function JobPlanPanel({
 
       {showCtaBar ? (
         <div
-          className="sticky bottom-0 z-10 -mx-1 border-t border-border bg-background/95 px-1 pt-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]"
+          className="sticky bottom-0 z-10 -mx-1 border-t border-border bg-background/95 px-3 pt-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           data-job-plan-cta-bar
         >
-          {workspaceEditing ? null : (
-            <Button
-              type="button"
-              className="w-full sm:w-auto"
-              data-job-plan-primary-cta
-              onClick={onContinue}
-              disabled={plan.cards.length === 0 || isSaving}
-            >
-              {isSaving
-                ? ASSISTANT_ACTION_LABELS.savingWorkAreas
-                : ASSISTANT_ACTION_LABELS.looksRight}
-            </Button>
-          )}
-          {onAddWorkArea ? (
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="mt-2 min-h-11 w-full sm:w-auto"
-              data-job-plan-add-work-area
-              disabled={isSaving || isAddingWorkArea}
-              onClick={() => setAddOpen(true)}
-            >
-              + Add work area
-            </Button>
-          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            {workspaceEditing ? null : (
+              <Button
+                type="button"
+                className="min-h-11 flex-1 sm:flex-none"
+                data-job-plan-primary-cta
+                onClick={onContinue}
+                disabled={plan.cards.length === 0 || isSaving}
+              >
+                {isSaving
+                  ? ASSISTANT_ACTION_LABELS.savingWorkAreas
+                  : ASSISTANT_ACTION_LABELS.looksRight}
+              </Button>
+            )}
+            {onAddWorkArea ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="min-h-11 flex-1 sm:flex-none"
+                data-job-plan-add-work-area
+                disabled={isSaving || isAddingWorkArea}
+                onClick={() => setAddOpen(true)}
+              >
+                + Add work area
+              </Button>
+            ) : null}
+          </div>
           <SaveStatusIndicator
             status={scopeSaveStatus}
             isSaving={scopeSaveStatus === "saving"}

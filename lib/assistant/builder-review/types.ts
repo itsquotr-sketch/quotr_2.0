@@ -145,6 +145,7 @@ export type ComposeBuilderReviewInput = {
     readonly id: string;
     readonly label: string;
     readonly productSeverity?: string | null;
+    readonly attentionKind?: string | null;
     readonly reviewTarget?: string;
     readonly factKey?: string;
     readonly workAreaId?: string;

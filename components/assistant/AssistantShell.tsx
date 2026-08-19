@@ -250,7 +250,12 @@ export function AssistantShell({
   const [jobPlanEditFocus, setJobPlanEditFocus] = useState<JobPlanEditFocus | null>(
     null
   );
-  const [jobDetailsOpen, setJobDetailsOpen] = useState(false);
+  // Estimate Basis: expanded by default on desktop (lg), collapsed on mobile.
+  // Estimate Basis: expanded by default on desktop (lg ≥ 1024px), collapsed on mobile.
+  const [jobDetailsOpen, setJobDetailsOpen] = useState<boolean>(() => {
+    if (typeof window === "undefined") return false;
+    return window.matchMedia("(min-width: 1024px)").matches;
+  });
   const [estimateReviewDetailsOpen, setEstimateReviewDetailsOpen] =
     useState(false);
   const marginSaveLockRef = useRef(false);
@@ -285,6 +290,10 @@ export function AssistantShell({
   const [jobPlanScopeSaveError, setJobPlanScopeSaveError] = useState<
     string | null
   >(null);
+  // Local stale projection — set true immediately after a successful canonical write
+  // so the UI reflects staleness without waiting for router.refresh().
+  // Cleared once server refresh confirms canonical state.
+  const [localEstimateStale, setLocalEstimateStale] = useState(false);
   const [isEditingQuality, setIsEditingQuality] = useState(false);
   const qualityCardRef = useRef<HTMLDivElement | null>(null);
   const questionsCardRef = useRef<HTMLDivElement | null>(null);
@@ -645,6 +654,13 @@ export function AssistantShell({
       el?.focus?.({ preventScroll: true });
     });
   }, [refineAfterEstimateOpen, refineAfterEstimateFocusKey]);
+
+
+  // localEstimateStale is intentionally not cleared via effect to avoid
+  // react-hooks/set-state-in-effect violations. It is implicitly superseded
+  // once the server estimate (initialState.estimate.isStale) reflects the
+  // same truth after router.refresh().
+  // displayEstimateStale = estimate?.isStale || localEstimateStale covers both.
 
   const handleReviewAttention = useCallback(
     (item: {
@@ -1108,6 +1124,8 @@ export function AssistantShell({
         return;
       }
       setJobPlanScopeSaveStatus("saved");
+      // Project stale immediately — bridge server reconciliation.
+      if (estimateReady) setLocalEstimateStale(true);
       window.setTimeout(() => {
         setJobPlanScopeSaveStatus("idle");
       }, 2000);
@@ -1115,7 +1133,7 @@ export function AssistantShell({
         router.refresh();
       });
     },
-    [project.id, router]
+    [project.id, router, estimateReady]
   );
 
   const handleClarifyBoolean = useCallback(
@@ -1508,6 +1526,11 @@ export function AssistantShell({
       !estimateReady &&
       (!preferProjectConditionsAsk || projectConditionsReadyToGenerate);
 
+  // Derived stale: canonical server state OR local projection bridging refresh.
+  // localEstimateStale is cleared once the server confirms stale or on new estimate.
+  const displayEstimateStale =
+    Boolean(estimate?.isStale) || localEstimateStale;
+
   const activeDisclosureStage = resolveActiveDisclosureStage({
     briefSubmitted,
     workAreasConfirmed,
@@ -1518,7 +1541,7 @@ export function AssistantShell({
     questionsSubmitted,
     constraintsSubmitted,
     estimateReady,
-    estimateStale: Boolean(estimate?.isStale),
+    estimateStale: displayEstimateStale,
   });
 
   const captureSummaryModel = buildProjectCaptureSummaryModel({
@@ -1577,7 +1600,7 @@ export function AssistantShell({
   const estimateReviewSummaryModel = buildEstimateReviewSummaryModel({
     scopeReview: initialState.scopeReview,
     estimateReady,
-    estimateStale: Boolean(estimate?.isStale),
+    estimateStale: displayEstimateStale,
     constraintCount: liveConstraints.length,
     includedScopeItemCount:
       includedScopeItemCount || initialState.scopeReview.workAreas.length,
@@ -1657,7 +1680,7 @@ export function AssistantShell({
   const stepperSummaries = buildStepperStepSummaries({
     answeredQuestionCount,
     estimateReady,
-    estimateStale: Boolean(estimate?.isStale),
+    estimateStale: displayEstimateStale,
     constraintCount: liveConstraints.length,
     includedScopeItemCount:
       includedScopeItemCount || workAreaLists.included.length,
@@ -1732,7 +1755,7 @@ export function AssistantShell({
         recommendedSell: estimate.recommendedSell,
         marginPercent: estimate.marginPercent,
         confidence: estimate.confidence,
-        isStale: estimate.isStale,
+        isStale: displayEstimateStale,
         assumptions: estimate.assumptions,
         missingInfo: estimate.missingInfo,
         lineItems: estimate.lineItems,
@@ -1744,13 +1767,14 @@ export function AssistantShell({
     });
   }, [
     completedEstimateAttentionItems,
+    displayEstimateStale,
     displayWorkAreas,
     estimate,
     initialState.requirementSnapshotRequirements,
   ]);
 
   const estimateReviewActionable =
-    Boolean(estimate?.isStale) ||
+    displayEstimateStale ||
     (!estimateReady && questionsSubmitted) ||
     completedEstimateAttentionItems.length > 0 ||
     initialState.scopeReview.workAreas.some(
@@ -1796,7 +1820,7 @@ export function AssistantShell({
       initialState.scopeReview.workAreas.some(
         (workArea) => workArea.missingItems.length > 0
       ),
-    estimate_ready: estimate?.isStale,
+    estimate_ready: displayEstimateStale,
   };
 
   return (
@@ -1843,7 +1867,7 @@ export function AssistantShell({
           {assistantMode === "estimate_ready" && estimate ? (
             <EstimateReadySurface
               projectId={project.id}
-              isStale={Boolean(estimate.isStale)}
+              isStale={displayEstimateStale}
               isRegenerating={isRegenerating}
               pricingCtaEnabled={!pricingSummary}
             >
@@ -1864,9 +1888,9 @@ export function AssistantShell({
                   onEditJob={() => {
                     openEditJob(null);
                   }}
-                  onRefine={() => {
+                  onRefine={refineView.hasCandidates ? () => {
                     openRefineAfterEstimate(null);
-                  }}
+                  } : undefined}
                   onImprove={(improvement) => {
                     const candidates = [
                       ...refineView.highValue,
@@ -1883,7 +1907,7 @@ export function AssistantShell({
                     openRefineAfterEstimate(match?.factKey ?? match?.constraintKey ?? null);
                   }}
                   onUpdateEstimate={
-                    estimate.isStale ? handleRegenerateEstimate : undefined
+                    displayEstimateStale ? handleRegenerateEstimate : undefined
                   }
                   onChangeMaterial={(workAreaId) => {
                     if (!workAreaId) return;
@@ -1905,7 +1929,7 @@ export function AssistantShell({
                       workAreaLists.included
                     )}
                     recommendedSell={estimate.recommendedSell}
-                    isStale={Boolean(estimate.isStale)}
+                    isStale={displayEstimateStale}
                     isRegenerating={isRegenerating}
                     confidenceBand={
                       deriveQuickEstimateConfidencePresentation({
@@ -1925,7 +1949,7 @@ export function AssistantShell({
                     onReviewEstimate={() => setBuilderReviewOpen(true)}
                     onEditJob={() => openEditJob(null)}
                     onUpdateEstimate={
-                      estimate.isStale ? handleRegenerateEstimate : undefined
+                      displayEstimateStale ? handleRegenerateEstimate : undefined
                     }
                     onReviewAttention={handleReviewAttention}
                   />
@@ -1936,12 +1960,39 @@ export function AssistantShell({
                     onExpandedChange={setJobDetailsOpen}
                   >
                     <div className="space-y-3 text-sm">
+                      {(briefText || project.briefText) ? (
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Project Brief
+                          </p>
+                          <p className="mt-1 text-xs text-foreground/90 leading-relaxed">
+                            {briefText || project.briefText}
+                          </p>
+                        </div>
+                      ) : null}
                       <div>
                         <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-                          Work areas
+                          Work Areas
                         </p>
                         <p className="mt-1">{workAreaLists.included.join(" · ")}</p>
                       </div>
+                      {jobPlan.cards.length > 0 && jobPlan.cards.some((c) => c.included.length > 0) ? (
+                        <div>
+                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                            Scope
+                          </p>
+                          <ul className="mt-1 space-y-0.5 text-xs text-foreground/90">
+                            {jobPlan.cards.flatMap((c) =>
+                              c.included.map((item) => (
+                                <li key={`${c.workAreaId}-${item.id}`}>
+                                  {c.name !== workAreaLists.included[0] || jobPlan.cards.length > 1
+                                    ? `${c.name}: ` : ""}{item.label}
+                                </li>
+                              ))
+                            ).slice(0, 8)}
+                          </ul>
+                        </div>
+                      ) : null}
                       {qualityTitleLabel ? (
                         <div>
                           <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -1983,11 +2034,11 @@ export function AssistantShell({
           {assistantMode === "edit_job" ? (
             <EditJobSurface
               focusSection={editJobSection}
-              isStale={Boolean(estimate?.isStale)}
+              isStale={displayEstimateStale}
               isRegenerating={isRegenerating}
               onDone={closeEditJob}
               onUpdateEstimate={
-                estimate?.isStale ? handleRegenerateEstimate : undefined
+                displayEstimateStale ? handleRegenerateEstimate : undefined
               }
               jobPlan={
                 <JobPlanPanel
@@ -2120,7 +2171,7 @@ export function AssistantShell({
                     workAreas={initialState.workAreas}
                     editable
                     manageWorkAreas={workAreasConfirmed}
-                    estimateIsStale={estimate?.isStale}
+                    estimateIsStale={displayEstimateStale}
                     savingFactKey={savingFactKey}
                     savingWorkAreaId={savingWorkAreaId}
                     workAreaSaveStatus={workAreaSaveStatus}
@@ -2448,14 +2499,14 @@ export function AssistantShell({
               title="Estimate Review"
               subtitle="What Quotr understood and will use for this estimate."
               statusLabel={
-                estimate?.isStale
+                displayEstimateStale
                   ? "Needs refresh"
                   : estimateReady
                     ? estimateReviewSummaryModel.outcomeLabel
                     : "Review"
               }
               statusVariant={
-                estimate?.isStale
+                displayEstimateStale
                   ? "stale"
                   : estimateReady
                     ? "complete"
@@ -2470,8 +2521,8 @@ export function AssistantShell({
                     )
                   : false)
               }
-              canCollapse={questionsSubmitted && !Boolean(estimate?.isStale)}
-              forceExpanded={Boolean(estimate?.isStale)}
+              canCollapse={questionsSubmitted && !displayEstimateStale}
+              forceExpanded={displayEstimateStale}
               onExpandedChange={(expanded) => {
                 if (!expanded) {
                   setEstimateReviewDetailsOpen(false);
@@ -2499,7 +2550,7 @@ export function AssistantShell({
                 workAreas={initialState.workAreas}
                 editable={questionsSubmitted}
                 manageWorkAreas={workAreasConfirmed}
-                estimateIsStale={estimate?.isStale}
+                estimateIsStale={displayEstimateStale}
                 savingFactKey={savingFactKey}
                 savingWorkAreaId={savingWorkAreaId}
                 workAreaSaveStatus={workAreaSaveStatus}
@@ -2703,6 +2754,22 @@ export function AssistantShell({
             projectInformationLabel={projectInformationLabel}
             projectConditionsAttention={projectConditionsAttention}
             compactCommercialSidebar={assistantMode === "estimate_ready"}
+            commercialBreakdown={builderReviewView ? (() => {
+              const matCat = builderReviewView.overview.categorySummary.find((c) => c.id === "MATERIALS");
+              const labCat = builderReviewView.overview.categorySummary.find((c) => c.id === "LABOUR");
+              const allowCat = builderReviewView.overview.categorySummary.find((c) => c.id === "ALLOWANCES");
+              const labHrs = builderReviewView.workAreas.flatMap((wa) =>
+                wa.categories.flatMap((cat) =>
+                  cat.lines.map((l) => l.labourHours ?? 0)
+                )
+              ).reduce((a, b) => a + b, 0);
+              return {
+                materialsCost: matCat?.cost ?? null,
+                labourCost: labCat?.cost ?? null,
+                labourHours: labHrs > 0 ? labHrs : null,
+                allowancesCost: allowCat?.cost ?? null,
+              };
+            })() : null}
             onViewBreakdown={() => {
               setBuilderReviewOpen(false);
               setBreakdownOpen(true);
@@ -2710,7 +2777,7 @@ export function AssistantShell({
             onGenerate={handleGenerateEstimate}
             onRegenerate={handleRegenerateEstimate}
             onMarginSave={
-              assistantMode === "estimate_ready" && !estimate?.isStale
+              assistantMode === "estimate_ready" && !displayEstimateStale
                 ? handleMarginSave
                 : undefined
             }

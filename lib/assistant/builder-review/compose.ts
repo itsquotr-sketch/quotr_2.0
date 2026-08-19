@@ -292,6 +292,9 @@ function buildIssues(
     if (!key) continue;
     if (assumptionKeys.has(key)) continue;
 
+    // Non-actionable informational items are not improvements.
+    if (item.attentionKind === "NON_ACTIONABLE_INFORMATION") continue;
+
     const severity = item.productSeverity ?? "check";
     if (severity === "assumption") {
       if (assumptionKeys.has(key)) continue;
@@ -308,6 +311,18 @@ function buildIssues(
 
     if (checkKeys.has(key)) continue;
     checkKeys.add(key);
+
+    // Only include items that have an actionable route (reviewTarget maps to an editable section).
+    const hasActionableTarget = Boolean(
+      item.reviewTarget === "projectConditions" ||
+      item.reviewTarget === "constraints" ||
+      item.reviewTarget === "questions" ||
+      item.reviewTarget === "estimateReview" ||
+      item.reviewTarget === "scopeReview" ||
+      item.factKey ||
+      item.workAreaId
+    );
+
     const section =
       item.reviewTarget === "projectConditions" ||
       item.reviewTarget === "constraints"
@@ -321,7 +336,9 @@ function buildIssues(
       label: item.label,
       detail: null,
       editSection: section,
-    });
+      // Carry actionability to filter improvements below.
+      _actionable: hasActionableTarget,
+    } as BuilderReviewIssue & { _actionable: boolean });
   }
 
   for (const row of input.estimate.missingInfo) {
@@ -339,6 +356,9 @@ function buildIssues(
 
   for (const check of checks) {
     if (improvements.length >= MAX_IMPROVEMENTS) break;
+    // Only include actionable items (have an editable target).
+    const actionable = "_actionable" in check ? (check as BuilderReviewIssue & { _actionable: boolean })._actionable : true;
+    if (!actionable) continue;
     improvements.push({
       id: `improve:${check.id}`,
       label: check.label,

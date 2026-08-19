@@ -486,7 +486,8 @@ check(
   panel.includes("data-job-plan-primary-cta") &&
     panel.includes("looksRight") &&
     !card.includes("looksRight") &&
-    panel.includes("w-full sm:w-auto")
+    // R3: button sizing changed from w-full sm:w-auto to flex-1 sm:flex-none (consistent flex layout)
+    (panel.includes("w-full sm:w-auto") || panel.includes("flex-1 sm:flex-none"))
 );
 check(
   "51 destructive removal not primary",

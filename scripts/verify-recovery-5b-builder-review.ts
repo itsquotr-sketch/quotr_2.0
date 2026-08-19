@@ -351,7 +351,7 @@ check(
 check(
   "36 disclosure shows meaningful information",
   disclosure.includes("data-completed-setup-details") &&
-    shell.includes("Work areas") &&
+    (shell.includes("Work areas") || shell.includes("Work Areas")) &&
     shell.includes("Finish level")
 );
 check(
