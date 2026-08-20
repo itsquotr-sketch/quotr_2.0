@@ -131,6 +131,10 @@ export function RefineEstimatePanel({
   onEstimateNow,
   canEstimateNow,
   focusKey,
+  isStale = false,
+  isRegenerating = false,
+  updateError = null,
+  onUpdateEstimate,
   onAnswerBoolean,
   onAnswerValue,
 }: {
@@ -140,6 +144,10 @@ export function RefineEstimatePanel({
   onEstimateNow?: () => void;
   canEstimateNow: boolean;
   focusKey?: string | null;
+  isStale?: boolean;
+  isRegenerating?: boolean;
+  updateError?: string | null;
+  onUpdateEstimate?: () => void;
   onAnswerBoolean?: (candidate: ClarifyCandidate, presentation: "INCLUDED" | "NOT_INCLUDED") => void;
   onAnswerValue?: (candidate: ClarifyCandidate, value: string | number | boolean) => void;
 }) {
@@ -217,6 +225,39 @@ export function RefineEstimatePanel({
           {ASSISTANT_ACTION_LABELS.done}
         </Button>
       </div>
+
+      {isStale ? (
+        <div
+          className="rounded-xl border border-amber-300/80 bg-amber-50/80 px-3.5 py-3 dark:border-amber-800/60 dark:bg-amber-950/30"
+          role="status"
+          data-refine-stale="true"
+        >
+          <p className="text-sm font-medium text-amber-950 dark:text-amber-100">
+            Estimate needs updating
+          </p>
+          <p className="mt-0.5 text-xs text-amber-900/90 dark:text-amber-200/90">
+            Saved changes are on the job. Update the estimate when you are ready.
+          </p>
+          {onUpdateEstimate ? (
+            <Button
+              type="button"
+              className="mt-3 h-11 w-full min-h-11 sm:w-auto"
+              data-refine-update-estimate
+              onClick={onUpdateEstimate}
+              disabled={isRegenerating}
+            >
+              {isRegenerating
+                ? ASSISTANT_ACTION_LABELS.updatingEstimate
+                : ASSISTANT_ACTION_LABELS.updateEstimate}
+            </Button>
+          ) : null}
+          {updateError ? (
+            <p className="mt-2 text-sm text-destructive" role="alert">
+              {updateError}
+            </p>
+          ) : null}
+        </div>
+      ) : null}
 
       {groupedByWorkArea.length > 0 ? (
         <div className="space-y-4" data-refine-tier="all-actionable">

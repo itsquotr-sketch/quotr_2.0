@@ -26,6 +26,7 @@ export function EstimateReadySurface({
       data-assistant-surface="estimate_ready"
       data-estimate-stale={isStale ? "true" : "false"}
       data-estimate-regenerating={isRegenerating ? "true" : "false"}
+      data-update-estimate-busy={isRegenerating ? "true" : "false"}
     >
       {children}
       {!isStale && pricingCtaEnabled ? (

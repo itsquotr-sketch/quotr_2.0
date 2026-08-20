@@ -29,8 +29,8 @@ type SiteNotesCaptureCardProps = {
   variant?: "compact" | "full";
   showHeading?: boolean;
   /**
-   * Stage 3.2.2-R4 — on mobile, start with a compact add/edit disclosure
-   * instead of a large empty textarea. Desktop remains expanded.
+   * Progressive disclosure: composer starts closed on all breakpoints.
+   * Existing notes stay visible. "+ Add site note" opens the composer.
    */
   mobileProgressive?: boolean;
 };
@@ -61,8 +61,7 @@ export function SiteNotesCaptureCard({
   const noteTotal = totalNoteCount ?? initialNotes.length;
   const hiddenCount = Math.max(0, noteTotal - COMPACT_NOTE_LIMIT);
   const hasDraft = content.trim().length > 0;
-  const showComposer =
-    !mobileProgressive || composerOpen || hasDraft;
+  const showComposer = composerOpen || hasDraft;
 
   async function handleCreateNote() {
     const trimmed = content.trim();
@@ -145,7 +144,7 @@ export function SiteNotesCaptureCard({
       ) : null}
 
       {initialNotes.length === 0 ? (
-        isCompact && !(mobileProgressive && !showComposer) ? (
+        isCompact && showComposer ? (
           <p className="hidden text-xs text-muted-foreground md:block">
             No site notes yet. Add a note below.
           </p>
@@ -192,33 +191,31 @@ export function SiteNotesCaptureCard({
         </div>
       )}
 
-      {/* Mobile compact entry — desktop always shows composer */}
-      {mobileProgressive && !showComposer ? (
+      {/* Compact Add Site Note — composer closed until deliberately opened */}
+      {!showComposer ? (
         <div
-          className="rounded-xl border border-dashed border-border/60 bg-transparent p-0 md:hidden"
+          className="rounded-xl border border-dashed border-border/60 bg-transparent p-0"
           data-site-notes-composer="collapsed"
         >
           <Button
             type="button"
             variant="outline"
             className="mt-1 h-11 min-h-11 w-full"
+            data-site-notes-add
             onClick={() => setComposerOpen(true)}
           >
-            Add note
-            {noteTotal === 0 ? (
-              <span className="sr-only">+ Add site notes</span>
-            ) : null}
+            <span className="md:hidden">Add note</span>
+            <span className="hidden md:inline">+ Add site note</span>
+            <span className="sr-only">+ Add site notes</span>
           </Button>
         </div>
-      ) : null}
-
+      ) : (
       <div
         className={cn(
           "space-y-2",
-          "md:rounded-xl md:border md:border-dashed md:bg-muted/20 md:p-3",
-          mobileProgressive && !showComposer && "hidden md:block"
+          "rounded-xl border border-dashed bg-muted/20 p-3"
         )}
-        data-site-notes-composer={showComposer ? "open" : "desktop"}
+        data-site-notes-composer="open"
       >
         <div className="space-y-1.5">
           <Label htmlFor={`site-note-type-${projectId}`}>Note type</Label>
@@ -263,27 +260,27 @@ export function SiteNotesCaptureCard({
         ) : null}
 
         <div className="flex flex-wrap items-center gap-2">
-          {mobileProgressive && showComposer ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="h-11 min-h-11 md:hidden"
-              onClick={() => {
-                if (!hasDraft) {
-                  setComposerOpen(false);
-                  setSaveError(null);
-                }
-              }}
-              disabled={isSaving || hasDraft}
-            >
-              {hasDraft ? "Draft kept" : "Cancel"}
-            </Button>
-          ) : null}
+          <Button
+            type="button"
+            variant="ghost"
+            className="h-11 min-h-11"
+            data-site-notes-cancel
+            onClick={() => {
+              setContent("");
+              setNoteType("general");
+              setComposerOpen(false);
+              setSaveError(null);
+            }}
+            disabled={isSaving}
+          >
+            Cancel
+          </Button>
           <Button
             type="button"
             onClick={handleCreateNote}
             disabled={isSaving}
             className="h-11 min-h-11 w-full sm:w-auto"
+            data-site-notes-save
           >
             {isSaving ? (
               <>
@@ -296,6 +293,7 @@ export function SiteNotesCaptureCard({
           </Button>
         </div>
       </div>
+      )}
     </div>
   );
 }

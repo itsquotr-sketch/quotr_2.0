@@ -56,7 +56,7 @@ function ScopeRow({
 }: {
   item: JobPlanScopeItem;
   showActions: boolean;
-  tone: "included" | "check" | "excluded";
+  tone: "included" | "check" | "excluded" | "available";
   onToggle?: (presentation: "INCLUDED" | "NOT_INCLUDED") => void;
 }) {
   return (
@@ -87,6 +87,12 @@ function ScopeRow({
             aria-hidden
           />
         ) : null}
+        {tone === "available" ? (
+          <CircleHelp
+            className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
+        ) : null}
         <span className="min-w-0">
           <span className={cn(tone === "included" && "font-medium")}>
             {item.label}
@@ -99,13 +105,20 @@ function ScopeRow({
           {tone === "excluded" ? (
             <span className="ml-1.5 text-xs">— Not included</span>
           ) : null}
+          {tone === "available" ? (
+            <span className="ml-1.5 text-[11px] font-medium text-muted-foreground">
+              Available
+            </span>
+          ) : null}
         </span>
         <span className="sr-only">
           {tone === "included"
             ? ", included"
             : tone === "check"
               ? ", not confirmed"
-              : ", not included"}
+              : tone === "available"
+                ? ", available"
+                : ", not included"}
         </span>
       </span>
       {showActions && onToggle ? (
@@ -380,6 +393,35 @@ export function JobPlanWorkAreaCardView({
         </section>
       ) : null}
 
+      {editOpen && (card.editAvailable?.length ?? 0) > 0 ? (
+        <section
+          className="mt-3"
+          data-job-plan-available
+          data-job-plan-section="available"
+        >
+          <h4 className={PREMIUM.eyebrow}>
+            Available
+          </h4>
+          <ul className="mt-0.5" aria-label="Available supported scope">
+            {card.editAvailable!.map((item) => (
+              <ScopeRow
+                key={item.id}
+                item={item}
+                showActions={
+                  Boolean(!readOnly && item.togglable && onToggleScope)
+                }
+                tone="available"
+                onToggle={
+                  onToggleScope
+                    ? (next) => onToggleScope(item, next)
+                    : undefined
+                }
+              />
+            ))}
+          </ul>
+        </section>
+      ) : null}
+
       {editOpen && card.notIncluded.length > 0 ? (
         <section
           className="mt-3"
@@ -434,7 +476,7 @@ export function JobPlanWorkAreaCardView({
             aria-label="Edit scope and specification"
             onClick={() => setEditOpen((open) => !open)}
           >
-            {editOpen ? "Done" : "Edit"}
+            {editOpen ? "Done" : ASSISTANT_ACTION_LABELS.editScope}
           </Button>
         </div>
       )}

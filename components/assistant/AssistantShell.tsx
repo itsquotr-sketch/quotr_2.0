@@ -10,6 +10,7 @@ import { ConstraintBlock } from "@/components/assistant/ConstraintBlock";
 import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditionsBlock";
 import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
 import { BuilderReviewSurface } from "@/components/assistant/builder-review/BuilderReviewSurface";
+import { CommercialOverviewMetrics } from "@/components/assistant/CommercialOverviewMetrics";
 import { EstimateReadyCard } from "@/components/assistant/EstimateReadyCard";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
@@ -126,8 +127,10 @@ import type { AssistantState, ConstraintRow } from "@/lib/assistant/types";
 import { buildLiveProjectConditionsSnapshot } from "@/lib/assistant/builder-interview-live";
 import {
   buildQuickEstimateAttentionItems,
+  buildQuickEstimateStatusPresentation,
   type QuickEstimateAttentionItem,
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
+import { projectCommercialOverviewBreakdown } from "@/lib/assistant/presentation/commercial-overview-projection";
 import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
 import {
   deriveQuickEstimateConfidencePresentation,
@@ -292,8 +295,11 @@ export function AssistantShell({
   >(null);
   // Local stale projection — set true immediately after a successful canonical write
   // so the UI reflects staleness without waiting for router.refresh().
-  // Cleared once server refresh confirms canonical state.
+  // Canonical estimate.isStale remains authority. Local state only bridges latency.
+  // Never clear this from a fresh (isStale=false) server render — that older RSC
+  // payload can arrive after a newer write. Clear only after successful regenerate.
   const [localEstimateStale, setLocalEstimateStale] = useState(false);
+  const [commercialOverviewOpen, setCommercialOverviewOpen] = useState(false);
   const [isEditingQuality, setIsEditingQuality] = useState(false);
   const qualityCardRef = useRef<HTMLDivElement | null>(null);
   const questionsCardRef = useRef<HTMLDivElement | null>(null);
@@ -663,11 +669,9 @@ export function AssistantShell({
   }, [refineAfterEstimateOpen, refineAfterEstimateFocusKey]);
 
 
-  // localEstimateStale is intentionally not cleared via effect to avoid
-  // react-hooks/set-state-in-effect violations. It is implicitly superseded
-  // once the server estimate (initialState.estimate.isStale) reflects the
-  // same truth after router.refresh().
-  // displayEstimateStale = estimate?.isStale || localEstimateStale covers both.
+  // localEstimateStale is a latency bridge only. It is never synced from a
+  // fresh server estimate (that would let an older router.refresh() overwrite
+  // a newer local stale projection). Successful regenerate clears it.
 
   const handleReviewAttention = useCallback(
     (item: {
@@ -811,7 +815,11 @@ export function AssistantShell({
   ]);
 
   const handleRegenerateEstimate = useCallback(() => {
-    if (isRegenerating || pendingAction != null || actionLockRef.current) {
+    if (
+      isRegenerating ||
+      pendingAction != null ||
+      actionLockRef.current
+    ) {
       return;
     }
     if (
@@ -829,11 +837,13 @@ export function AssistantShell({
     void runAction("regenerate", async () => {
       try {
         const result = await regenerateStaticEstimate(project.id);
-        if (!("error" in result && result.error)) {
-          setEditJobOpen(false);
-          setEditJobSection(null);
-          setJobPlanEditFocus(null);
+        if (result.error) {
+          return result;
         }
+        setLocalEstimateStale(false);
+        setEditJobOpen(false);
+        setEditJobSection(null);
+        setJobPlanEditFocus(null);
         return result;
       } finally {
         endPerf();
@@ -1545,10 +1555,12 @@ export function AssistantShell({
       !estimateReady &&
       (!preferProjectConditionsAsk || projectConditionsReadyToGenerate);
 
-  // Derived stale: canonical server state OR local projection bridging refresh.
-  // localEstimateStale is cleared once the server confirms stale or on new estimate.
+  // Derived stale: canonical server isStale OR local latency bridge.
+  // Do not treat a fresh server render as clearing the bridge — that is the
+  // router.refresh() race. Successful regenerate clears localEstimateStale.
   const displayEstimateStale =
     Boolean(estimate?.isStale) || localEstimateStale;
+  const updatingEstimate = isRegenerating;
 
   const activeDisclosureStage = resolveActiveDisclosureStage({
     briefSubmitted,
@@ -1792,6 +1804,29 @@ export function AssistantShell({
     initialState.requirementSnapshotRequirements,
   ]);
 
+  const commercialBreakdown = useMemo(
+    () => projectCommercialOverviewBreakdown(builderReviewView),
+    [builderReviewView]
+  );
+
+  const mobileCommercialStatus = useMemo(
+    () =>
+      estimate
+        ? buildQuickEstimateStatusPresentation({
+            hasEstimate: true,
+            isStale: displayEstimateStale,
+            attentionItems: completedEstimateAttentionItems,
+            assumptionCritical:
+              estimate.assumptionMetadata?.assumptionSeverity === "critical",
+          })
+        : null,
+    [
+      completedEstimateAttentionItems,
+      displayEstimateStale,
+      estimate,
+    ]
+  );
+
   const estimateReviewActionable =
     displayEstimateStale ||
     (!estimateReady && questionsSubmitted) ||
@@ -1887,7 +1922,7 @@ export function AssistantShell({
             <EstimateReadySurface
               projectId={project.id}
               isStale={displayEstimateStale}
-              isRegenerating={isRegenerating}
+              isRegenerating={updatingEstimate}
               pricingCtaEnabled={!pricingSummary}
             >
               {refineAfterEstimateOpen && refineView.hasCandidates ? (
@@ -1896,6 +1931,12 @@ export function AssistantShell({
                   isSaving={false}
                   canEstimateNow={false}
                   focusKey={refineAfterEstimateFocusKey}
+                  isStale={displayEstimateStale}
+                  isRegenerating={updatingEstimate}
+                  updateError={actionError}
+                  onUpdateEstimate={
+                    displayEstimateStale ? handleRegenerateEstimate : undefined
+                  }
                   onDone={closeRefineAfterEstimate}
                   onAnswerBoolean={handleClarifyBoolean}
                   onAnswerValue={handleClarifyValue}
@@ -1903,7 +1944,7 @@ export function AssistantShell({
               ) : builderReviewOpen && builderReviewView ? (
                 <BuilderReviewSurface
                   view={builderReviewView}
-                  isRegenerating={isRegenerating}
+                  isRegenerating={updatingEstimate}
                   onBack={() => setBuilderReviewOpen(false)}
                   onEditJob={() => {
                     openEditJob(null);
@@ -1950,7 +1991,7 @@ export function AssistantShell({
                     )}
                     recommendedSell={estimate.recommendedSell}
                     isStale={displayEstimateStale}
-                    isRegenerating={isRegenerating}
+                    isRegenerating={updatingEstimate}
                     confidenceBand={
                       deriveQuickEstimateConfidencePresentation({
                         confidencePercent: estimate.confidence,
@@ -2050,6 +2091,30 @@ export function AssistantShell({
                       </Button>
                     </div>
                   </CompletedSetupDisclosure>
+                  <div
+                    className="lg:hidden"
+                    data-mobile-commercial-overview="true"
+                    data-mobile-commercial-open={
+                      commercialOverviewOpen ? "true" : "false"
+                    }
+                  >
+                    <CompletedSetupDisclosure
+                      title="Commercial Overview"
+                      summaryLine="Direct cost, margin, and composition"
+                      expanded={commercialOverviewOpen}
+                      onExpandedChange={setCommercialOverviewOpen}
+                    >
+                      <CommercialOverviewMetrics
+                        estimate={estimate}
+                        breakdown={commercialBreakdown}
+                        isStale={displayEstimateStale}
+                        statusLabel={mobileCommercialStatus?.statusLabel ?? null}
+                        statusKind={mobileCommercialStatus?.kind}
+                        compositionHeading="Composition"
+                        otherLabel="Other Direct"
+                      />
+                    </CompletedSetupDisclosure>
+                  </div>
                 </>
               )}
             </EstimateReadySurface>
@@ -2059,7 +2124,7 @@ export function AssistantShell({
             <EditJobSurface
               focusSection={editJobSection}
               isStale={displayEstimateStale}
-              isRegenerating={isRegenerating}
+              isRegenerating={updatingEstimate}
               onDone={closeEditJob}
               onUpdateEstimate={
                 displayEstimateStale ? handleRegenerateEstimate : undefined
@@ -2707,12 +2772,16 @@ export function AssistantShell({
         >
           <EstimatePanel
             projectId={initialState.project.id}
-            estimate={estimate}
+            estimate={
+              estimate
+                ? { ...estimate, isStale: displayEstimateStale }
+                : null
+            }
             qualityLevel={qualitySubmitted ? qualityLevel : null}
             pricingSummary={pricingSummary}
             quoteSummary={quoteSummary}
             isGenerating={isGenerating}
-            isRegenerating={isRegenerating}
+            isRegenerating={updatingEstimate}
             isSavingMargin={isSavingMargin}
             marginSaveLabel={marginSaveLabel}
             defaultMarginPercent={initialState.defaultMarginPercent}
@@ -2742,28 +2811,7 @@ export function AssistantShell({
             projectInformationLabel={projectInformationLabel}
             projectConditionsAttention={projectConditionsAttention}
             compactCommercialSidebar={assistantMode === "estimate_ready"}
-            commercialBreakdown={builderReviewView ? (() => {
-              const matCat = builderReviewView.overview.categorySummary.find((c) => c.id === "MATERIALS");
-              const labCat = builderReviewView.overview.categorySummary.find((c) => c.id === "LABOUR");
-              const allowCat = builderReviewView.overview.categorySummary.find((c) => c.id === "ALLOWANCES");
-              const subCat = builderReviewView.overview.categorySummary.find((c) => c.id === "SUBCONTRACT");
-              const plantCat = builderReviewView.overview.categorySummary.find((c) => c.id === "PLANT");
-              const otherCat = builderReviewView.overview.categorySummary.find((c) => c.id === "OTHER_DIRECT_COSTS");
-              const labHrs = builderReviewView.workAreas.flatMap((wa) =>
-                wa.categories.flatMap((cat) =>
-                  cat.lines.map((l) => l.labourHours ?? 0)
-                )
-              ).reduce((a, b) => a + b, 0);
-              return {
-                materialsCost: matCat?.cost ?? null,
-                labourCost: labCat?.cost ?? null,
-                labourHours: labHrs > 0 ? labHrs : null,
-                allowancesCost: allowCat?.cost ?? null,
-                subcontractCost: subCat?.cost ?? null,
-                plantCost: plantCat?.cost ?? null,
-                otherCost: otherCat?.cost ?? null,
-              };
-            })() : null}
+            commercialBreakdown={commercialBreakdown}
             onViewBreakdown={() => {
               setBuilderReviewOpen(false);
               setBreakdownOpen(true);
@@ -2787,7 +2835,7 @@ export function AssistantShell({
         open={breakdownOpen}
         onOpenChange={setBreakdownOpen}
         onRegenerate={handleRegenerateEstimate}
-        isRegenerating={isRegenerating}
+        isRegenerating={updatingEstimate}
         projectId={project.id}
       />
     </div>

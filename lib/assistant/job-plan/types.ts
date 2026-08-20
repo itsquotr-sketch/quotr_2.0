@@ -54,6 +54,11 @@ export type JobPlanWorkAreaCard = {
   readonly included: readonly JobPlanScopeItem[];
   readonly notIncluded: readonly JobPlanScopeItem[];
   readonly notConfirmed: readonly JobPlanScopeItem[];
+  /**
+   * Supported catalogue items hidden from the default Job Plan (contextual
+   * Check policy) but addable in Edit Scope. Not a second scope system.
+   */
+  readonly editAvailable?: readonly JobPlanScopeItem[];
   readonly confirmCount: number;
 };
 

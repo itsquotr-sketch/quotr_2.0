@@ -292,6 +292,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       included,
       notIncluded,
       notConfirmed,
+      editAvailable: showBalustrade ? [] : [balustrade],
       confirmCount: notConfirmed.length,
     };
   },

@@ -8,7 +8,12 @@ import type {
 import { isMonolithicCommercialFitoutType } from "@/lib/work-areas/support-contract";
 
 function assertNoLogisticsAsScope(card: JobPlanWorkAreaCard): JobPlanWorkAreaCard {
-  const all = [...card.included, ...card.notIncluded, ...card.notConfirmed];
+  const all = [
+    ...card.included,
+    ...card.notIncluded,
+    ...card.notConfirmed,
+    ...(card.editAvailable ?? []),
+  ];
   const leaked = all.filter(
     (item) => item.sourceFactKey && isForbiddenJobPlanScopeKey(item.sourceFactKey)
   );

@@ -163,19 +163,36 @@ function main(): void {
 
   check(
     "6 Project Setup remains separate/collapsed",
-    (setup.includes("View setup") || setup.includes("Job details")) &&
+    // Original copy was "View setup" / "Job details". Approved premium UI
+    // names this Estimate Basis: a disclosure independent of Estimate Ready,
+    // collapsible via jobDetailsOpen (desktop expanded, mobile collapsed).
+    setup.includes('data-completed-setup-disclosure="true"') &&
+      setup.includes('data-completed-setup-toggle="true"') &&
+      setup.includes('data-completed-setup-details="true"') &&
+      setup.includes('title = "Estimate Basis"') &&
+      setup.includes("Show details") &&
+      setup.includes("Hide details") &&
+      setup.includes("aria-expanded") &&
       shell.includes("deriveAssistantUiMode") &&
       shell.includes("<CompletedSetupDisclosure") &&
-      shell.includes("jobDetailsOpen")
+      shell.includes("jobDetailsOpen") &&
+      shell.includes('"(min-width: 1024px)"')
   );
 
   check(
     "7 Site Notes disclosure preserves notes",
+    // Original copy was "Site notes added". Approved UI keeps existing notes
+    // visible as SiteNoteCard rows (with compact truncation + total count)
+    // even when the composer is collapsed.
     notes.includes("mobileProgressive") &&
       notes.includes("initialNotes") &&
       notes.includes("SiteNoteCard") &&
       notes.includes("createProjectNote") &&
-      notes.includes("Site notes added")
+      notes.includes("visibleNotes.map") &&
+      notes.includes("totalNoteCount") &&
+      notes.includes("View all") &&
+      notes.includes("noteTotal") &&
+      notes.includes('data-site-notes-composer="collapsed"')
   );
 
   check(

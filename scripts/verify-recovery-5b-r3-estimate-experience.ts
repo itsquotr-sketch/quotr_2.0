@@ -55,6 +55,9 @@ const builderReviewSurface = read("components/assistant/builder-review/BuilderRe
 const builderReviewCompose = read("lib/assistant/builder-review/compose.ts");
 const builderReviewTypes = read("lib/assistant/builder-review/types.ts");
 const completedSetup = read("components/assistant/CompletedSetupDisclosure.tsx");
+const commercialProjection = read(
+  "lib/assistant/presentation/commercial-overview-projection.ts"
+);
 const clarifyPanelFile = read("components/assistant/clarify/ClarifyPanel.tsx");
 
 // ── SCOPE RECOMMENDATION ────────────────────────────────────────────────────
@@ -219,7 +222,7 @@ check(45, "Empty rows suppressed (conditional rendering)", estimatePanel.include
 
 check(46, "commercialBreakdown prop added to EstimatePanel", estimatePanel.includes("commercialBreakdown"));
 
-check(47, "commercialBreakdown computed in AssistantShell from builderReviewView categories", shell.includes("matCat") && shell.includes("labCat") && shell.includes("allowCat") && shell.includes("labHrs"));
+check(47, "commercialBreakdown computed in AssistantShell from builderReviewView categories", shell.includes("projectCommercialOverviewBreakdown(builderReviewView)") && commercialProjection.includes("matCat") && commercialProjection.includes("labCat") && commercialProjection.includes("allowCat") && commercialProjection.includes("labHrs"));
 
 // ── BUILDER REVIEW ─────────────────────────────────────────────────────────────
 
