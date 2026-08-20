@@ -74,7 +74,7 @@ export function ProjectCaptureBlock({
     <div className="space-y-4">
       <section
         aria-labelledby="project-brief-heading"
-        className="space-y-3 rounded-lg border border-border/60 bg-muted/25 px-3 py-3 sm:px-4"
+        className="space-y-3 rounded-xl border border-border/70 bg-card px-3 py-3.5 sm:px-4"
       >
         <div className="space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -158,7 +158,7 @@ export function ProjectCaptureBlock({
             type="button"
             onClick={onAnalyse}
             disabled={disabled || isAnalysing}
-            className="w-full sm:w-auto"
+            className="h-11 min-h-11 w-full sm:w-auto"
           >
             {isAnalysing ? "Analysing job…" : "Analyse job"}
           </Button>

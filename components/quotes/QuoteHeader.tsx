@@ -35,11 +35,11 @@ export function QuoteHeader({
   });
 
   return (
-    <div className="space-y-3 border-b pb-5">
+    <div className="space-y-2 border-b pb-4">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-xl font-semibold tracking-tight sm:text-2xl">
+            <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
               {quote.title}
             </h1>
             <Badge variant={statusDef.variant}>{statusDef.label}</Badge>

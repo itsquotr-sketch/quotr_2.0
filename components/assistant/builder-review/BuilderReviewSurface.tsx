@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EstimateCategoryHeader } from "@/components/ui/estimate-category-header";
+import { StatusPill } from "@/components/ui/status-pill";
 import { formatCurrency } from "@/components/assistant/format";
 import type {
   BuilderReviewImprovement,
@@ -110,15 +112,15 @@ export function BuilderReviewSurface({
       ) : null}
 
       <div
-        className="rounded-xl border border-border/60 bg-card px-4 py-4"
+        className="rounded-xl border border-border/60 bg-card px-4 py-3.5"
         data-builder-review-overview
       >
         <div className="flex flex-wrap items-end justify-between gap-3">
           <div>
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
               Recommended sell
             </p>
-            <p className="mt-0.5 text-2xl font-semibold tracking-tight">
+            <p className="mt-0.5 text-xl font-semibold tracking-tight tabular-nums">
               {formatCurrency(view.overview.recommendedSell)}{" "}
               <span className="text-sm font-medium text-muted-foreground">
                 + GST
@@ -126,10 +128,10 @@ export function BuilderReviewSurface({
             </p>
           </div>
           <div className="text-right">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-              Cost
+            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+              Direct cost
             </p>
-            <p className="text-sm font-medium">
+            <p className="text-sm font-semibold tabular-nums">
               {formatCurrency(view.overview.recommendedCost)}
             </p>
             <p className="text-xs text-muted-foreground">
@@ -192,8 +194,7 @@ export function BuilderReviewSurface({
         >
           <p className="text-sm font-semibold">Improve this estimate</p>
           <p className="mt-1 text-xs text-muted-foreground">
-            {view.improvements.length} detail
-            {view.improvements.length === 1 ? "" : "s"} could improve accuracy
+            Helpful details — not errors.
           </p>
           <ul className="mt-3 space-y-2">
             {view.improvements.map((item) => (
@@ -201,23 +202,26 @@ export function BuilderReviewSurface({
                     {onImprove ? (
                       <button
                         type="button"
-                        className="w-full text-left"
+                        className="flex w-full min-h-11 items-center justify-between gap-3 text-left"
                         onClick={() => onImprove(item)}
                         data-builder-review-improve-item
                         aria-label={`Improve: ${item.label}`}
                       >
-                        <span className="font-medium underline-offset-4 hover:underline">
-                          {item.label}
+                        <span className="min-w-0">
+                          <span className="font-medium">{item.label}</span>
+                          {item.reason ? (
+                            <span className="mt-0.5 block text-xs text-muted-foreground">
+                              {item.reason}
+                            </span>
+                          ) : null}
+                        </span>
+                        <span className="shrink-0 text-xs font-medium text-muted-foreground">
+                          Improve
                         </span>
                       </button>
                     ) : (
                       <span className="font-medium">{item.label}</span>
                     )}
-                {item.reason ? (
-                  <span className="mt-0.5 block text-xs text-muted-foreground">
-                    {item.reason}
-                  </span>
-                ) : null}
               </li>
             ))}
           </ul>
@@ -306,47 +310,49 @@ export function BuilderReviewSurface({
                       className="space-y-2"
                       data-builder-review-category={cat.id}
                     >
-                      <div className="flex items-baseline justify-between gap-2">
-                        <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                          {cat.label}
-                        </p>
-                        {cat.cost > 0 ? (
-                          <p className="text-xs font-medium">
-                            {formatCurrency(cat.cost)}
-                          </p>
-                        ) : null}
-                      </div>
+                      <EstimateCategoryHeader
+                        label={cat.label}
+                        amount={cat.cost > 0 ? formatCurrency(cat.cost) : null}
+                      />
 
-                      <ul className="space-y-3">
-                        {cat.lines.map((line) => (
+                      <ul className="space-y-1.5">
+                        {cat.lines.map((line) => {
+                          const pricingRequired =
+                            cat.id === "PRICING_REQUIRED" ||
+                            line.rateLabel === "Rate required";
+                          const qty = formatQty(line.quantity, line.unit);
+                          return (
                           <li
                             key={line.id}
-                            className="rounded-lg bg-muted/20 px-3 py-2.5"
+                            className="px-0 py-2"
                             data-builder-review-line={line.itemKey ?? line.id}
                             data-commercial="true"
                           >
                             <div className="flex items-start justify-between gap-3">
-                              <div className="min-w-0">
+                              <div className="min-w-0 space-y-0.5">
                                 <p className="text-sm font-medium leading-snug">
                                   {line.label}
                                 </p>
                                 {line.isAllowance ? (
-                                  <p className="mt-0.5 text-[11px] text-muted-foreground">
-                                    Allowance / package
-                                  </p>
+                                  <StatusPill tone="neutral">Allowance</StatusPill>
                                 ) : null}
                                 {line.specification ? (
-                                  <p className="mt-0.5 text-xs text-muted-foreground">
+                                  <p className="text-xs text-muted-foreground">
                                     {line.specification}
                                   </p>
                                 ) : null}
-                                <p className="mt-1 text-xs text-muted-foreground">
+                                {qty ? (
+                                  <p className="text-xs tabular-nums text-muted-foreground">
+                                    {qty}
+                                    {line.isAllowance ? " allowance" : ""}
+                                  </p>
+                                ) : null}
+                                <p className="text-xs text-muted-foreground">
                                   {[
-                                    formatQty(line.quantity, line.unit),
                                     line.labourHours != null
                                       ? `${line.labourHours} labour-hours`
                                       : null,
-                                    line.costRate != null
+                                    line.costRate != null && !pricingRequired
                                       ? `${formatCurrency(line.costRate)}${
                                           line.unit ? `/${line.unit}` : line.labourHours != null ? "/hour" : ""
                                         }`
@@ -357,9 +363,15 @@ export function BuilderReviewSurface({
                                     .join(" · ")}
                                 </p>
                               </div>
-                              <p className="shrink-0 text-sm font-medium">
-                                {formatCurrency(line.recommendedCost)}
-                              </p>
+                              {pricingRequired ? (
+                                <p className="shrink-0 text-right text-xs font-medium text-foreground">
+                                  Needs a trusted price
+                                </p>
+                              ) : (
+                                <p className="shrink-0 text-sm font-semibold tabular-nums">
+                                  {formatCurrency(line.recommendedCost)}
+                                </p>
+                              )}
                             </div>
                             {cat.id === "MATERIALS" &&
                             onChangeMaterial &&
@@ -376,7 +388,8 @@ export function BuilderReviewSurface({
                               </button>
                             ) : null}
                           </li>
-                        ))}
+                          );
+                        })}
                       </ul>
 
                       {cat.takeoff.length > 0 ? (
@@ -385,11 +398,12 @@ export function BuilderReviewSurface({
                           data-builder-review-takeoff
                           data-commercial="false"
                         >
-                          <p className="text-xs font-medium text-foreground">
-                            Recommended takeoff
+                          <p className="text-xs font-medium text-muted-foreground">
+                            Planning takeoff
                           </p>
                           <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                            {cat.takeoff[0]?.parentAllowanceHint}
+                            {cat.takeoff[0]?.parentAllowanceHint ??
+                              "Planning quantities are included within the framing/substructure allowance and are not priced separately."}
                           </p>
                           <ul className="mt-2 space-y-1.5">
                             {cat.takeoff.map((row) => (
@@ -428,15 +442,16 @@ export function BuilderReviewSurface({
 
       {(view.assumptions.length > 0 || view.checks.length > 0) ? (
         <div
-          className="space-y-3 rounded-xl border border-border/60 px-4 py-4"
+          className="space-y-2 rounded-xl border border-border/60 px-4 py-3"
           data-builder-review-issues
         >
           {view.assumptions.length > 0 ? (
-            <div data-builder-review-assumptions>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Assumptions
-              </p>
-              <ul className="mt-2 space-y-1.5 text-sm">
+            <details data-builder-review-assumptions className="group">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+                Assumptions ({view.assumptions.length})
+                <ChevronDown className="size-4 text-muted-foreground group-open:rotate-180 motion-safe:transition-transform" />
+              </summary>
+              <ul className="mt-1 space-y-1.5 pb-1 text-sm">
                 {view.assumptions.map((item) => (
                   <li key={item.id} className="flex gap-2">
                     <span className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
@@ -446,14 +461,15 @@ export function BuilderReviewSurface({
                   </li>
                 ))}
               </ul>
-            </div>
+            </details>
           ) : null}
           {view.checks.length > 0 ? (
-            <div data-builder-review-checks>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                Checks
-              </p>
-              <ul className="mt-2 space-y-1.5 text-sm">
+            <details data-builder-review-checks className="group">
+              <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between gap-2 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+                Checks ({view.checks.length})
+                <ChevronDown className="size-4 text-muted-foreground group-open:rotate-180 motion-safe:transition-transform" />
+              </summary>
+              <ul className="mt-1 space-y-1.5 pb-1 text-sm">
                 {view.checks.slice(0, 5).map((item) => (
                   <li key={item.id}>{item.label}</li>
                 ))}
@@ -463,7 +479,7 @@ export function BuilderReviewSurface({
                   +{view.checks.length - 5} more in Edit job
                 </p>
               ) : null}
-            </div>
+            </details>
           ) : null}
         </div>
       ) : null}

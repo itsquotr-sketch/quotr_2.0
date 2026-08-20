@@ -26,7 +26,7 @@ export function ProjectWorkspaceNav({
 }: ProjectWorkspaceNavProps) {
   return (
     <div className="border-b bg-background">
-      <div className={cn("mx-auto w-full px-4 pt-2 pb-3 sm:px-6 lg:px-8", LAYOUT_MAX_WIDTH.workspace)}>
+      <div className={cn("mx-auto w-full px-4 pt-1.5 pb-2.5 sm:px-6 lg:px-8", LAYOUT_MAX_WIDTH.workspace)}>
         <ProjectWorkspaceTabs
           projectId={projectId}
           activeTab={activeTab}

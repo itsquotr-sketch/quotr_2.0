@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import type { ClarifyCandidate, ClarifyView } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
@@ -90,7 +91,7 @@ function ClarifyQuestion({
               key={option}
               type="button"
               disabled={isSaving}
-              className="min-h-11 rounded-xl border border-border px-4 py-3 text-left text-sm hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              className="min-h-11 rounded-xl border border-border bg-background px-4 py-3 text-left text-sm font-medium hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               onClick={() => onAnswerValue?.(candidate, option)}
             >
               {option}
@@ -164,7 +165,7 @@ export function ClarifyPanel({
       data-clarify-count={view.visibleCount}
     >
       <p className="text-sm text-muted-foreground">
-        A few things could improve this estimate
+        A few things would make this estimate more accurate
       </p>
       <ClarifyQuestion
         candidate={current}
@@ -172,9 +173,9 @@ export function ClarifyPanel({
         onAnswerBoolean={onAnswerBoolean}
         onAnswerValue={onAnswerValue}
       />
-      <div
-        className="sticky bottom-0 z-10 border-t border-border bg-background/95 px-0 pt-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]"
-        data-clarify-cta-bar
+      <ActionFooter
+        className="-mx-1"
+        data-clarify-cta-bar=""
       >
         {view.canEstimateNow ? (
           <Button
@@ -188,7 +189,7 @@ export function ClarifyPanel({
             {ASSISTANT_ACTION_LABELS.estimateNowUsingAssumptions}
           </Button>
         ) : null}
-      </div>
+      </ActionFooter>
     </div>
   );
 }

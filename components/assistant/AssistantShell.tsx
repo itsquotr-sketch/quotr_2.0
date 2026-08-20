@@ -657,6 +657,7 @@ export function AssistantShell({
     window.requestAnimationFrame(() => {
       const selector = `[data-refine-field="${refineAfterEstimateFocusKey}"] input, [data-refine-field="${refineAfterEstimateFocusKey}"] select, [data-refine-field="${refineAfterEstimateFocusKey}"] button`;
       const el = document.querySelector<HTMLElement>(selector);
+      el?.scrollIntoView({ block: "center", behavior: "smooth" });
       el?.focus?.({ preventScroll: true });
     });
   }, [refineAfterEstimateOpen, refineAfterEstimateFocusKey]);
@@ -1859,9 +1860,9 @@ export function AssistantShell({
         className={cn(
           "mt-3 grid min-w-0 gap-5 lg:mt-4 lg:items-start",
           assistantMode === "planning" &&
-            "lg:grid-cols-[minmax(0,1fr)_340px] xl:grid-cols-[220px_minmax(0,1fr)_340px]",
+            "lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[200px_minmax(0,1fr)_380px]",
           assistantMode === "estimate_ready" &&
-            "lg:grid-cols-[minmax(0,1fr)_340px]",
+            "lg:grid-cols-[minmax(0,1fr)_380px]",
           assistantMode === "edit_job" && "grid-cols-1"
         )}
         data-assistant-main-grid
@@ -1894,6 +1895,7 @@ export function AssistantShell({
                   view={refineView}
                   isSaving={false}
                   canEstimateNow={false}
+                  focusKey={refineAfterEstimateFocusKey}
                   onDone={closeRefineAfterEstimate}
                   onAnswerBoolean={handleClarifyBoolean}
                   onAnswerValue={handleClarifyValue}
@@ -1977,28 +1979,29 @@ export function AssistantShell({
                     expanded={jobDetailsOpen}
                     onExpandedChange={setJobDetailsOpen}
                   >
-                    <div className="space-y-3 text-sm">
+                    <div className="space-y-4 text-sm">
                       {(briefText || project.briefText) ? (
-                        <div>
-                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dl>
+                          <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                             Project Brief
-                          </p>
-                          <p className="mt-1 text-xs text-foreground/90 leading-relaxed">
+                          </dt>
+                          <dd className="mt-1 text-xs leading-relaxed text-foreground/90">
                             {briefText || project.briefText}
-                          </p>
-                        </div>
+                          </dd>
+                        </dl>
                       ) : null}
-                      <div>
-                        <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                      <dl>
+                        <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                           Work Areas
-                        </p>
-                        <p className="mt-1">{workAreaLists.included.join(" · ")}</p>
-                      </div>
+                        </dt>
+                        <dd className="mt-1">{workAreaLists.included.join(" · ")}</dd>
+                      </dl>
                       {jobPlan.cards.length > 0 && jobPlan.cards.some((c) => c.included.length > 0) ? (
-                        <div>
-                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dl>
+                          <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                             Scope
-                          </p>
+                          </dt>
+                          <dd>
                           <ul className="mt-1 space-y-0.5 text-xs text-foreground/90">
                             {jobPlan.cards.flatMap((c) =>
                               c.included.map((item) => (
@@ -2009,21 +2012,23 @@ export function AssistantShell({
                               ))
                             ).slice(0, 8)}
                           </ul>
-                        </div>
+                          </dd>
+                        </dl>
                       ) : null}
                       {qualityTitleLabel ? (
-                        <div>
-                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dl>
+                          <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                             Finish level
-                          </p>
-                          <p className="mt-1">{qualityTitleLabel}</p>
-                        </div>
+                          </dt>
+                          <dd className="mt-1">{qualityTitleLabel}</dd>
+                        </dl>
                       ) : null}
                       {liveConstraints.length > 0 ? (
-                        <div>
-                          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                        <dl>
+                          <dt className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                             Project conditions
-                          </p>
+                          </dt>
+                          <dd>
                           <ul className="mt-1 space-y-1 text-xs text-foreground/90">
                             {liveConstraints.slice(0, 4).map((row) => (
                               <li key={row.id}>
@@ -2031,7 +2036,8 @@ export function AssistantShell({
                               </li>
                             ))}
                           </ul>
-                        </div>
+                          </dd>
+                        </dl>
                       ) : null}
                       <Button
                         type="button"
@@ -2740,6 +2746,9 @@ export function AssistantShell({
               const matCat = builderReviewView.overview.categorySummary.find((c) => c.id === "MATERIALS");
               const labCat = builderReviewView.overview.categorySummary.find((c) => c.id === "LABOUR");
               const allowCat = builderReviewView.overview.categorySummary.find((c) => c.id === "ALLOWANCES");
+              const subCat = builderReviewView.overview.categorySummary.find((c) => c.id === "SUBCONTRACT");
+              const plantCat = builderReviewView.overview.categorySummary.find((c) => c.id === "PLANT");
+              const otherCat = builderReviewView.overview.categorySummary.find((c) => c.id === "OTHER_DIRECT_COSTS");
               const labHrs = builderReviewView.workAreas.flatMap((wa) =>
                 wa.categories.flatMap((cat) =>
                   cat.lines.map((l) => l.labourHours ?? 0)
@@ -2750,6 +2759,9 @@ export function AssistantShell({
                 labourCost: labCat?.cost ?? null,
                 labourHours: labHrs > 0 ? labHrs : null,
                 allowancesCost: allowCat?.cost ?? null,
+                subcontractCost: subCat?.cost ?? null,
+                plantCost: plantCat?.cost ?? null,
+                otherCost: otherCat?.cost ?? null,
               };
             })() : null}
             onViewBreakdown={() => {

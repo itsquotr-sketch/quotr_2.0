@@ -32,7 +32,7 @@ export function CompletedSetupDisclosure({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border/40 bg-muted/10",
+        "rounded-xl border border-border/50 bg-muted/10",
         className
       )}
       data-completed-setup-disclosure="true"

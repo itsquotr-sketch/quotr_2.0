@@ -1,11 +1,10 @@
 "use client";
 
 import { useState, type ReactNode } from "react";
-import { ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { DisclosureHeader } from "@/components/ui/disclosure-header";
 import type { EditJobSection } from "@/lib/assistant/mode/types";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
-import { cn } from "@/lib/utils";
 
 type EditJobSurfaceProps = {
   focusSection: EditJobSection | null;
@@ -51,26 +50,7 @@ function EditSection({
       data-edit-job-section={id}
       data-edit-job-section-open={open ? "true" : "false"}
     >
-      <button
-        type="button"
-        className="flex w-full min-h-11 items-center justify-between gap-3 px-3.5 py-3 text-left"
-        onClick={onToggle}
-        aria-expanded={open}
-      >
-        <span>
-          <span className="block text-sm font-medium text-foreground">{title}</span>
-          {hint && !open ? (
-            <span className="mt-0.5 block text-xs text-muted-foreground">{hint}</span>
-          ) : null}
-        </span>
-        <ChevronDown
-          className={cn(
-            "size-4 shrink-0 text-muted-foreground transition-transform",
-            open && "rotate-180"
-          )}
-          aria-hidden
-        />
-      </button>
+      <DisclosureHeader title={title} hint={hint} open={open} onToggle={onToggle} />
       {open ? (
         <div className="border-t border-border/40 px-3.5 py-3">{children}</div>
       ) : null}

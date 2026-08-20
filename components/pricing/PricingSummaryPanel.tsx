@@ -4,6 +4,7 @@ import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
 import type { PricingDocument } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
+import { MetricRow } from "@/components/ui/metric-row";
 import {
   Card,
   CardContent,
@@ -74,25 +75,29 @@ export function PricingSummaryPanel({
         <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
           {!compact ? (
             <>
-              <SummaryRow
+              <MetricRow
                 label="Total cost"
                 value={view.subtotalCostFormatted}
+                tertiary
               />
-              <SummaryRow
+              <MetricRow
                 label="Total charge"
                 value={view.subtotalSellFormatted}
+                tertiary
               />
-              <SummaryRow
+              <MetricRow
                 label="Gross profit"
                 value={view.profitLabel}
+                tertiary
               />
-              <SummaryRow
+              <MetricRow
                 label="Margin"
                 value={view.marginLabel}
+                tertiary
               />
             </>
           ) : (
-            <SummaryRow
+            <MetricRow
               label="Total charge"
               value={view.subtotalSellFormatted}
               prominent

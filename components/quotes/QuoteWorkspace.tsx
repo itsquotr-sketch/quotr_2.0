@@ -307,8 +307,11 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             </Card>
           ) : null}
 
-          <div className="space-y-2 print:hidden">
-            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+          <div
+            className="rounded-xl border border-border/40 bg-neutral-50 p-2 dark:bg-neutral-950/40"
+            data-quote-customer-preview="true"
+          >
+            <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Client preview
             </p>
             <div className="mx-auto w-full max-w-[1040px]">{template}</div>

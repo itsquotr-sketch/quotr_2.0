@@ -89,7 +89,7 @@ export function SiteNoteCard({
     <>
       <article
         className={cn(
-          "rounded-xl border bg-card/50 p-4",
+          "rounded-xl border bg-card/50 px-3 py-2.5",
           isEditing && "ring-1 ring-primary/15"
         )}
       >
@@ -122,7 +122,7 @@ export function SiteNoteCard({
                 </span>
               ) : null}
             </div>
-            <p className="text-[11px] text-muted-foreground">
+            <p className="text-xs font-medium text-muted-foreground">
               {formatCapturedAt(note.capturedAt)}
             </p>
           </div>
@@ -215,7 +215,7 @@ export function SiteNoteCard({
             </div>
           </div>
         ) : (
-          <p className="mt-3 whitespace-pre-wrap text-sm leading-relaxed">
+          <p className="mt-2 whitespace-pre-wrap text-sm leading-snug">
             {note.content}
           </p>
         )}

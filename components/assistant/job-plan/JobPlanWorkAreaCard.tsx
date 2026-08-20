@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState, type ReactNode } from "react";
-import { MoreHorizontal } from "lucide-react";
+import { Check, CircleHelp, Minus, MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -21,7 +21,9 @@ import type {
   JobPlanScopeItem,
   JobPlanWorkAreaCard,
 } from "@/lib/assistant/job-plan/types";
+import { StatusPill } from "@/components/ui/status-pill";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { PREMIUM } from "@/lib/ui/premium";
 
 const INCLUDED_PREVIEW_LIMIT = 6;
 
@@ -66,21 +68,38 @@ function ScopeRow({
       data-job-plan-item={item.id}
       data-job-plan-state={item.presentation}
     >
-      <span className="text-sm">
+      <span className="flex min-w-0 items-start gap-2 text-sm">
         {tone === "included" ? (
-          <span aria-hidden="true" className="mr-1.5 text-foreground">
-            ✓
-          </span>
+          <Check
+            className="mt-0.5 size-3.5 shrink-0 text-foreground"
+            aria-hidden
+          />
         ) : null}
         {tone === "check" ? (
-          <span aria-hidden="true" className="mr-1.5 text-foreground">
-            ?
-          </span>
+          <CircleHelp
+            className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
         ) : null}
-        <span>{item.label}</span>
         {tone === "excluded" ? (
-          <span className="ml-1.5 text-xs">— Not included</span>
+          <Minus
+            className="mt-0.5 size-3.5 shrink-0 text-muted-foreground"
+            aria-hidden
+          />
         ) : null}
+        <span className="min-w-0">
+          <span className={cn(tone === "included" && "font-medium")}>
+            {item.label}
+          </span>
+          {tone === "check" ? (
+            <span className="ml-1.5 text-[11px] font-medium text-muted-foreground">
+              Check
+            </span>
+          ) : null}
+          {tone === "excluded" ? (
+            <span className="ml-1.5 text-xs">— Not included</span>
+          ) : null}
+        </span>
         <span className="sr-only">
           {tone === "included"
             ? ", included"
@@ -177,21 +196,25 @@ export function JobPlanWorkAreaCardView({
       data-work-area-id={card.workAreaId}
       data-work-area-type={card.workAreaType}
       aria-labelledby={headingId}
-      className="rounded-xl border border-border bg-card px-4 py-3"
+      className="rounded-xl border border-border/70 bg-card px-4 py-3.5"
     >
       <header className="flex items-start justify-between gap-2">
         <div className="min-w-0 space-y-1">
-          <h3 id={headingId} className="text-sm font-semibold tracking-tight">
+          <h3 id={headingId} className="text-base font-semibold tracking-tight">
             {card.name}
           </h3>
           {card.summary ? (
-            <p
+            <div
               data-job-plan-spec
               data-job-plan-section="spec"
-              className="text-xs text-muted-foreground"
+              className="flex flex-wrap gap-1.5"
             >
-              {card.summary}
-            </p>
+              {card.summary.split(" · ").filter(Boolean).map((chip) => (
+                <StatusPill key={chip} tone="neutral">
+                  {chip}
+                </StatusPill>
+              ))}
+            </div>
           ) : null}
         </div>
         {readOnly || !onRemove ? null : (
@@ -291,7 +314,7 @@ export function JobPlanWorkAreaCardView({
           data-job-plan-included
           data-job-plan-section="included"
         >
-          <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <h4 className={PREMIUM.eyebrow}>
             Included
           </h4>
           <ul className="mt-0.5" aria-label="Included scope">
@@ -336,7 +359,7 @@ export function JobPlanWorkAreaCardView({
           data-job-plan-check
           data-job-plan-section="check"
         >
-          <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <h4 className={PREMIUM.eyebrow}>
             Check
           </h4>
           <ul className="mt-0.5" aria-label="Items to confirm">
@@ -363,7 +386,7 @@ export function JobPlanWorkAreaCardView({
           data-job-plan-excluded
           data-job-plan-section="excluded"
         >
-          <h4 className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+          <h4 className={PREMIUM.eyebrow}>
             Not included
           </h4>
           <ul className="mt-0.5" aria-label="Explicitly not included">

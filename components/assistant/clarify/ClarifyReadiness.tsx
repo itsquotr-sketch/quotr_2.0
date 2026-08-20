@@ -1,11 +1,15 @@
 "use client";
 
 import { useMemo } from "react";
+import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
+import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
 import type { RefineCandidate, RefineGroupId, RefineView } from "@/lib/assistant/refine/types";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { PREMIUM } from "@/lib/ui/premium";
+import { cn } from "@/lib/utils";
 
 const GROUP_LABEL: Record<RefineGroupId, string> = {
   scope: "Scope",
@@ -43,17 +47,28 @@ function toClarifyCandidate(row: RefineCandidate): ClarifyCandidate {
 function RefineField({
   candidate,
   isSaving,
+  focusKey,
   onAnswerBoolean,
   onAnswerValue,
 }: {
   candidate: RefineCandidate;
   isSaving?: boolean;
+  focusKey?: string | null;
   onAnswerBoolean?: (candidate: ClarifyCandidate, presentation: "INCLUDED" | "NOT_INCLUDED") => void;
   onAnswerValue?: (candidate: ClarifyCandidate, value: string | number | boolean) => void;
 }) {
   const mapped = toClarifyCandidate(candidate);
+  const fieldKey = candidate.factKey ?? candidate.constraintKey;
+  const focused = Boolean(focusKey && fieldKey === focusKey);
   return (
-    <div className="space-y-2" data-refine-field={candidate.factKey ?? candidate.constraintKey}>
+    <div
+      className={cn(
+        "space-y-2",
+        focused &&
+          "rounded-xl ring-2 ring-[var(--brand-orange)]/30 ring-offset-2 ring-offset-background"
+      )}
+      data-refine-field={fieldKey}
+    >
       <p className="text-sm font-medium leading-snug">{candidate.question}</p>
       {candidate.inputType === "boolean" ? (
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -115,6 +130,7 @@ export function RefineEstimatePanel({
   onDone,
   onEstimateNow,
   canEstimateNow,
+  focusKey,
   onAnswerBoolean,
   onAnswerValue,
 }: {
@@ -123,6 +139,7 @@ export function RefineEstimatePanel({
   onDone: () => void;
   onEstimateNow?: () => void;
   canEstimateNow: boolean;
+  focusKey?: string | null;
   onAnswerBoolean?: (candidate: ClarifyCandidate, presentation: "INCLUDED" | "NOT_INCLUDED") => void;
   onAnswerValue?: (candidate: ClarifyCandidate, value: string | number | boolean) => void;
 }) {
@@ -143,8 +160,23 @@ export function RefineEstimatePanel({
       existing.rows.push(row);
       buckets.set(key, existing);
     }
-    return [...buckets.values()];
-  }, [allCandidates]);
+    const groups = [...buckets.values()];
+    if (!focusKey) return groups;
+    const focusedIndex = groups.findIndex((bucket) =>
+      bucket.rows.some(
+        (row) => row.factKey === focusKey || row.constraintKey === focusKey
+      )
+    );
+    if (focusedIndex <= 0) return groups;
+    const focused = groups[focusedIndex]!;
+    return [focused, ...groups.filter((_, i) => i !== focusedIndex)];
+  }, [allCandidates, focusKey]);
+
+  const focusedCandidate = focusKey
+    ? allCandidates.find(
+        (row) => row.factKey === focusKey || row.constraintKey === focusKey
+      )
+    : null;
 
   const groups: RefineGroupId[] = [
     "scope",
@@ -162,12 +194,18 @@ export function RefineEstimatePanel({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-            Refine estimate
-          </p>
-          <p className="mt-0.5 text-sm text-muted-foreground">
-            Optional details that this estimate actually uses to improve accuracy.
-          </p>
+          <SectionEyebrow>Refine estimate</SectionEyebrow>
+          {focusedCandidate ? (
+            <p className="mt-1 text-sm font-medium" data-refine-focus-context>
+              {focusedCandidate.workAreaName ?? "Project"}
+              <span className="mx-1.5 text-muted-foreground">→</span>
+              {focusedCandidate.label}
+            </p>
+          ) : (
+            <p className="mt-0.5 text-sm text-muted-foreground">
+              Optional details that this estimate actually uses to improve accuracy.
+            </p>
+          )}
         </div>
         <Button
           type="button"
@@ -180,20 +218,6 @@ export function RefineEstimatePanel({
         </Button>
       </div>
 
-      {canEstimateNow ? (
-        <Button
-          type="button"
-          className="min-h-11 w-full"
-          data-clarify-primary-cta
-          disabled={isSaving}
-          onClick={onEstimateNow}
-        >
-          {isSaving
-            ? ASSISTANT_ACTION_LABELS.saving
-            : ASSISTANT_ACTION_LABELS.estimateNow}
-        </Button>
-      ) : null}
-
       {groupedByWorkArea.length > 0 ? (
         <div className="space-y-4" data-refine-tier="all-actionable">
           {groupedByWorkArea.map((workAreaBucket) => (
@@ -202,7 +226,7 @@ export function RefineEstimatePanel({
               className="space-y-3"
               data-refine-work-area={workAreaBucket.label}
             >
-              <p className="text-xs font-semibold tracking-tight text-foreground">
+              <p className={PREMIUM.sectionTitle}>
                 {workAreaBucket.label}
               </p>
               {groups.map((group) => {
@@ -214,7 +238,7 @@ export function RefineEstimatePanel({
                     className="space-y-3"
                     data-refine-group={group}
                   >
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                    <p className={PREMIUM.eyebrow}>
                       {GROUP_LABEL[group]}
                     </p>
                     {rows.map((row) => (
@@ -222,6 +246,7 @@ export function RefineEstimatePanel({
                         key={row.id}
                         candidate={row}
                         isSaving={isSaving}
+                        focusKey={focusKey}
                         onAnswerBoolean={onAnswerBoolean}
                         onAnswerValue={onAnswerValue}
                       />
@@ -232,6 +257,22 @@ export function RefineEstimatePanel({
             </section>
           ))}
         </div>
+      ) : null}
+
+      {canEstimateNow ? (
+        <ActionFooter>
+          <Button
+            type="button"
+            className="min-h-11 w-full"
+            data-clarify-primary-cta
+            disabled={isSaving}
+            onClick={onEstimateNow}
+          >
+            {isSaving
+              ? ASSISTANT_ACTION_LABELS.saving
+              : ASSISTANT_ACTION_LABELS.estimateNow}
+          </Button>
+        </ActionFooter>
       ) : null}
     </div>
   );
@@ -258,7 +299,21 @@ export function ClarifyReadinessCard({
       data-clarify-empty="true"
     >
       <div>
-        <p className="text-base font-semibold tracking-tight">{readiness.heading}</p>
+        {readiness.blocksEstimate ? (
+          <>
+            <SectionEyebrow>Need a bit more</SectionEyebrow>
+            <p className="mt-1 text-base font-semibold tracking-tight">
+              {readiness.heading}
+            </p>
+          </>
+        ) : (
+          <>
+            <SectionEyebrow>Ready to estimate</SectionEyebrow>
+            <p className="mt-1 text-base font-semibold tracking-tight">
+              Quotr has enough information to estimate.
+            </p>
+          </>
+        )}
         <p className="mt-1 text-sm text-muted-foreground">{readiness.explanation}</p>
         {readiness.confidenceLabel ? (
           <p className="mt-1 text-xs text-muted-foreground" data-readiness-confidence>
@@ -275,7 +330,7 @@ export function ClarifyReadinessCard({
 
       {readiness.known.length > 0 ? (
         <div data-readiness-known>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className={PREMIUM.eyebrow}>
             Using
           </p>
           <ul className="mt-1 space-y-0.5 text-sm">
@@ -288,7 +343,7 @@ export function ClarifyReadinessCard({
 
       {readiness.assumptions.length > 0 ? (
         <div data-readiness-assumptions>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className={PREMIUM.eyebrow}>
             Assuming
           </p>
           <ul className="mt-1 space-y-0.5 text-sm">
@@ -299,7 +354,7 @@ export function ClarifyReadinessCard({
         </div>
       ) : null}
 
-      <div className="flex flex-col gap-2">
+      <ActionFooter innerClassName="flex-col sm:flex-row">
         <Button
           type="button"
           className="min-h-11 w-full"
@@ -323,7 +378,7 @@ export function ClarifyReadinessCard({
             {ASSISTANT_ACTION_LABELS.refineEstimate}
           </Button>
         ) : null}
-      </div>
+      </ActionFooter>
     </div>
   );
 }

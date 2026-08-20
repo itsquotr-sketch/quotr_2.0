@@ -87,6 +87,11 @@
   --app-surface: oklch(0.985 0.004 85);
   --background: var(--app-surface);
   --foreground: oklch(0.2 0.01 260);
+  --quotr-page-pad: 1rem;
+  --quotr-section-gap: 1rem;
+  --quotr-card-pad: 1rem;
+  --quotr-row-gap: 0.5rem;
+  --quotr-action-gap: 0.5rem;
 }
 
 .dark {
@@ -139,6 +144,41 @@
   button:focus-visible {
     outline: 2px solid oklch(0.705 0.213 47.604 / 0.55);
     outline-offset: 2px;
+  }
+}
+
+@layer components {
+  .quotr-eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    color: var(--muted-foreground);
+  }
+  .quotr-metric-value {
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+  }
+  .quotr-hero-value {
+    font-size: 1.875rem;
+    line-height: 1.15;
+    font-weight: 600;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html {
+    scroll-behavior: auto;
+  }
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
   }
 }
 

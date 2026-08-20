@@ -154,6 +154,7 @@ export function JobPlanPanel({
         <div
           className="sticky bottom-0 z-10 -mx-1 border-t border-border bg-background/95 px-3 pt-3 backdrop-blur pb-[max(0.75rem,env(safe-area-inset-bottom))]"
           data-job-plan-cta-bar
+          data-action-footer="true"
         >
           <div className="flex flex-wrap items-center gap-2">
             {workspaceEditing ? null : (

@@ -10,7 +10,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const navLinkClass =
-  "flex items-center gap-2.5 rounded-lg px-3 py-2.5 text-sm font-medium text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground";
+  "flex min-h-10 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium text-sidebar-foreground/85 transition-colors hover:bg-sidebar-accent hover:text-sidebar-accent-foreground";
 
 const activeNavClass =
   "bg-sidebar-accent text-sidebar-accent-foreground shadow-[inset_3px_0_0_0_var(--brand-orange)] text-sidebar-accent-foreground";
@@ -32,13 +32,13 @@ export function AppSidebarNav({
   const pathname = usePathname();
 
   return (
-    <aside className="hidden h-dvh w-[248px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground print:hidden md:flex">
-      <div className="flex h-14 shrink-0 items-center border-b border-sidebar-border px-4">
+    <aside className="hidden h-dvh w-[232px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground print:hidden md:flex">
+      <div className="flex h-12 shrink-0 items-center border-b border-sidebar-border px-3">
         <div className="rounded-md border border-white/10 bg-white/[0.97] px-2.5 py-1">
           <QuotrLogo height={28} />
         </div>
       </div>
-      <nav className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto px-3 py-4">
+      <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 py-3">
         {NAV_ITEMS.map(({ href, label, icon: Icon, ...item }) => {
           const isActive =
             pathname === href || pathname.startsWith(`${href}/`);

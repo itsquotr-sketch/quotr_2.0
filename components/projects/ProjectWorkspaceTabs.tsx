@@ -49,14 +49,14 @@ export function ProjectWorkspaceTabs({
 
   const tabClass = (isActive: boolean) =>
     cn(
-      "shrink-0 rounded-full border px-3 py-1.5 text-sm font-medium whitespace-nowrap transition-colors",
+      "shrink-0 rounded-full border px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors",
       isActive
         ? "border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)] text-foreground"
         : "border-transparent text-muted-foreground hover:border-border/60 hover:bg-card hover:text-foreground"
     );
 
   const tabClassDisabled =
-    "inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-full border border-transparent px-3 py-1.5 text-sm font-medium whitespace-nowrap opacity-50 text-muted-foreground";
+    "inline-flex shrink-0 cursor-not-allowed items-center gap-1.5 rounded-full border border-transparent px-3.5 py-2 text-sm font-medium whitespace-nowrap opacity-50 text-muted-foreground";
 
   return (
     <>

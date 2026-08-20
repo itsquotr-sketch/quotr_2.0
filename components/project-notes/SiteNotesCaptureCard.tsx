@@ -144,126 +144,13 @@ export function SiteNotesCaptureCard({
         </div>
       ) : null}
 
-      {/* Mobile compact entry — desktop always shows composer */}
-      {mobileProgressive && !showComposer ? (
-        <div
-          className="rounded-xl border border-dashed border-border/60 bg-transparent p-0 md:hidden"
-          data-site-notes-composer="collapsed"
-        >
-          <p className="text-xs text-muted-foreground">
-            {noteTotal > 0
-              ? `${noteTotal} site note${noteTotal === 1 ? "" : "s"} added`
-              : "Add site notes for more information"}
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="mt-2 h-9 w-full"
-            onClick={() => setComposerOpen(true)}
-          >
-            {noteTotal > 0 ? "Add another note" : "+ Add site notes"}
-          </Button>
-        </div>
-      ) : null}
-
-      <div
-        className={cn(
-          "space-y-3",
-          // Desktop keeps a dashed composer surface; mobile avoids nested card chrome.
-          "md:rounded-xl md:border md:border-dashed md:bg-muted/20 md:p-4",
-          isCompact && "md:p-3",
-          mobileProgressive && !showComposer && "hidden md:block"
-        )}
-        data-site-notes-composer={showComposer ? "open" : "desktop"}
-      >
-        <div className="space-y-2">
-          <Label htmlFor={`site-note-type-${projectId}`}>Note type</Label>
-          <div className="flex flex-wrap gap-1.5">
-            {PROJECT_NOTE_TYPE_OPTIONS.map((type) => (
-              <button
-                key={type}
-                type="button"
-                onClick={() => setNoteType(type)}
-                className={cn(
-                  "rounded-full border px-2.5 py-1 text-xs transition-colors",
-                  noteType === type
-                    ? "border-primary bg-primary/10 text-foreground"
-                    : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted"
-                )}
-              >
-                {PROJECT_NOTE_TYPE_LABELS[type]}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor={`site-note-content-${projectId}`}>Note</Label>
-          <Textarea
-            id={`site-note-content-${projectId}`}
-            value={content}
-            onChange={(event) => setContent(event.target.value)}
-            placeholder="Capture measurements, client comments, access issues…"
-            rows={isCompact ? 3 : 4}
-            className={cn(
-              "text-base md:text-sm",
-              isCompact ? "min-h-20" : "min-h-28"
-            )}
-          />
-        </div>
-
-        {saveError ? (
-          <p className="text-sm text-destructive" role="alert">
-            {saveError}
-          </p>
-        ) : null}
-
-        <div className="flex flex-wrap gap-2">
-          {mobileProgressive && showComposer ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size={isCompact ? "sm" : "default"}
-              className="h-9 md:hidden"
-              onClick={() => {
-                if (!hasDraft) {
-                  setComposerOpen(false);
-                  setSaveError(null);
-                }
-              }}
-              disabled={isSaving || hasDraft}
-            >
-              {hasDraft ? "Draft kept" : "Cancel"}
-            </Button>
-          ) : null}
-          <Button
-            type="button"
-            onClick={handleCreateNote}
-            disabled={isSaving}
-            size={isCompact ? "sm" : "default"}
-            variant="secondary"
-            className="w-full bg-foreground text-background hover:bg-foreground/90 sm:w-auto"
-          >
-            {isSaving ? (
-              <>
-                <Loader2 className="size-4 animate-spin" />
-                Saving note…
-              </>
-            ) : (
-              "Save note"
-            )}
-          </Button>
-        </div>
-      </div>
-
       {initialNotes.length === 0 ? (
         isCompact && !(mobileProgressive && !showComposer) ? (
           <p className="hidden text-xs text-muted-foreground md:block">
-            No site notes yet. Add measurements or observations above.
+            No site notes yet. Add a note below.
           </p>
         ) : !isCompact ? (
-          <div className="rounded-xl border border-dashed bg-muted/10 px-4 py-8 text-center">
+          <div className="rounded-xl border border-dashed bg-muted/10 px-4 py-6 text-center">
             <p className="text-sm font-medium">No site notes yet.</p>
             <p className="mt-1 text-sm text-muted-foreground">
               Add measurements, client comments, access issues or reminders as
@@ -272,12 +159,7 @@ export function SiteNotesCaptureCard({
           </div>
         ) : null
       ) : (
-        <div className="space-y-3">
-          {mobileProgressive && !showComposer ? (
-            <p className="text-xs font-medium text-muted-foreground md:hidden">
-              Site notes added
-            </p>
-          ) : null}
+        <div className="space-y-2">
           <ul className="space-y-2">
             {visibleNotes.map((note) => (
               <li key={note.id}>
@@ -309,6 +191,111 @@ export function SiteNotesCaptureCard({
           ) : null}
         </div>
       )}
+
+      {/* Mobile compact entry — desktop always shows composer */}
+      {mobileProgressive && !showComposer ? (
+        <div
+          className="rounded-xl border border-dashed border-border/60 bg-transparent p-0 md:hidden"
+          data-site-notes-composer="collapsed"
+        >
+          <Button
+            type="button"
+            variant="outline"
+            className="mt-1 h-11 min-h-11 w-full"
+            onClick={() => setComposerOpen(true)}
+          >
+            Add note
+            {noteTotal === 0 ? (
+              <span className="sr-only">+ Add site notes</span>
+            ) : null}
+          </Button>
+        </div>
+      ) : null}
+
+      <div
+        className={cn(
+          "space-y-2",
+          "md:rounded-xl md:border md:border-dashed md:bg-muted/20 md:p-3",
+          mobileProgressive && !showComposer && "hidden md:block"
+        )}
+        data-site-notes-composer={showComposer ? "open" : "desktop"}
+      >
+        <div className="space-y-1.5">
+          <Label htmlFor={`site-note-type-${projectId}`}>Note type</Label>
+          <div className="flex flex-wrap gap-1.5">
+            {PROJECT_NOTE_TYPE_OPTIONS.map((type) => (
+              <button
+                key={type}
+                type="button"
+                onClick={() => setNoteType(type)}
+                className={cn(
+                  "min-h-8 rounded-full border px-2.5 py-1 text-xs transition-colors",
+                  noteType === type
+                    ? "border-primary bg-primary/10 text-foreground"
+                    : "border-transparent bg-muted/60 text-muted-foreground hover:bg-muted"
+                )}
+              >
+                {PROJECT_NOTE_TYPE_LABELS[type]}
+              </button>
+            ))}
+          </div>
+        </div>
+
+        <div className="space-y-1.5">
+          <Label htmlFor={`site-note-content-${projectId}`}>Note</Label>
+          <Textarea
+            id={`site-note-content-${projectId}`}
+            value={content}
+            onChange={(event) => setContent(event.target.value)}
+            placeholder="Capture measurements, client comments, access issues…"
+            rows={isCompact ? 2 : 4}
+            className={cn(
+              "text-base md:text-sm",
+              isCompact ? "min-h-16" : "min-h-28"
+            )}
+          />
+        </div>
+
+        {saveError ? (
+          <p className="text-sm text-destructive" role="alert">
+            {saveError}
+          </p>
+        ) : null}
+
+        <div className="flex flex-wrap items-center gap-2">
+          {mobileProgressive && showComposer ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="h-11 min-h-11 md:hidden"
+              onClick={() => {
+                if (!hasDraft) {
+                  setComposerOpen(false);
+                  setSaveError(null);
+                }
+              }}
+              disabled={isSaving || hasDraft}
+            >
+              {hasDraft ? "Draft kept" : "Cancel"}
+            </Button>
+          ) : null}
+          <Button
+            type="button"
+            onClick={handleCreateNote}
+            disabled={isSaving}
+            className="h-11 min-h-11 w-full sm:w-auto"
+          >
+            {isSaving ? (
+              <>
+                <Loader2 className="size-4 animate-spin" />
+                Saving…
+              </>
+            ) : (
+              "Add note"
+            )}
+          </Button>
+        </div>
+      </div>
     </div>
   );
 }

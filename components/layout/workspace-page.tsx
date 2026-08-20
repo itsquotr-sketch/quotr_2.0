@@ -24,7 +24,7 @@ export function WorkspacePage({
       ) : null}
       {nav}
       <WorkspaceContainer
-        innerClassName={cn("mt-6 pb-6", contentClassName)}
+        innerClassName={cn("mt-4 pb-6 sm:mt-5", contentClassName)}
       >
         {children}
       </WorkspaceContainer>
@@ -44,7 +44,7 @@ export function WorkspaceHeaderBar({
   return (
     <div
       className={cn(
-        "mx-auto flex w-full items-start justify-between gap-3 px-4 py-2.5 sm:gap-4 sm:px-6 sm:py-5 lg:px-8",
+          "mx-auto flex w-full items-start justify-between gap-3 px-4 py-2 sm:gap-4 sm:px-6 sm:py-3 lg:px-8",
         LAYOUT_MAX_WIDTH.workspace
       )}
     >

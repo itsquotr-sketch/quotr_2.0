@@ -69,7 +69,7 @@ export function EstimateReadyCard({
   return (
     <section
       className={cn(
-        "rounded-xl border bg-card px-4 py-4",
+        "rounded-xl border bg-card px-4 py-3.5 sm:px-5 sm:py-4",
         isStale
           ? "border-amber-300/80 ring-1 ring-amber-400/20 dark:border-amber-800/60"
           : "border-[var(--brand-orange-muted)]/70 ring-1 ring-[var(--brand-orange)]/10",
@@ -116,7 +116,7 @@ export function EstimateReadyCard({
         </>
       ) : (
         <>
-          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
             {money.heading}
           </p>
           <div className="mt-1.5">
@@ -133,7 +133,7 @@ export function EstimateReadyCard({
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {money.sellLabel}
             </p>
-            <p className="mt-0.5 text-3xl font-semibold tracking-tight">
+            <p className="mt-0.5 text-3xl font-semibold tracking-tight tabular-nums">
               {formatCurrency(recommendedSell)}{" "}
               <span className="text-sm font-medium text-muted-foreground">
                 + GST
@@ -213,7 +213,7 @@ export function EstimateReadyCard({
         </div>
       ) : null}
 
-      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
         {isStale && onUpdateEstimate ? (
           <Button
             type="button"

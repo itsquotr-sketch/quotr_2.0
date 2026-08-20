@@ -21,6 +21,7 @@ import type { PricingSummary } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import type { PanelScopeSummary, ScopeReview } from "@/lib/assistant/types";
 import { Button } from "@/components/ui/button";
+import { MetricRow } from "@/components/ui/metric-row";
 import {
   Card,
   CardContent,
@@ -116,6 +117,9 @@ type EstimatePanelProps = {
     labourCost?: number | null;
     labourHours?: number | null;
     allowancesCost?: number | null;
+    subcontractCost?: number | null;
+    plantCost?: number | null;
+    otherCost?: number | null;
   } | null;
   onViewBreakdown?: () => void;
   onGenerate?: () => void;
@@ -129,52 +133,6 @@ type EstimatePanelProps = {
    */
   onReadyToGeneratePresented?: () => void;
 };
-
-function MetricRow({
-  label,
-  value,
-  prominent,
-  dimmed,
-  tertiary,
-  trailing,
-}: {
-  label: string;
-  value: string;
-  prominent?: boolean;
-  dimmed?: boolean;
-  tertiary?: boolean;
-  trailing?: ReactNode;
-}) {
-  return (
-    <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1.5">
-      <span
-        className={cn(
-          "shrink-0 text-muted-foreground",
-          tertiary ? "text-[11px]" : "text-xs"
-        )}
-      >
-        {label}
-      </span>
-      <div className="flex min-w-0 items-center justify-end gap-1.5">
-        <span
-          className={cn(
-            "text-right",
-            prominent
-              ? "text-3xl font-semibold tracking-tight text-foreground"
-              : tertiary
-                ? "text-sm font-medium text-foreground/90"
-                : "text-sm font-medium",
-            dimmed &&
-              "text-muted-foreground line-through decoration-muted-foreground/50"
-          )}
-        >
-          {value}
-        </span>
-        {trailing}
-      </div>
-    </div>
-  );
-}
 
 /** Collapsible secondary section — presentation local state only. */
 function QuickEstimateDisclosure({
@@ -935,7 +893,10 @@ export function EstimatePanel({
               (commercialBreakdown.materialsCost != null ||
                 commercialBreakdown.labourCost != null ||
                 commercialBreakdown.labourHours != null ||
-                commercialBreakdown.allowancesCost != null) ? (
+                commercialBreakdown.allowancesCost != null ||
+                commercialBreakdown.subcontractCost != null ||
+                commercialBreakdown.plantCost != null ||
+                commercialBreakdown.otherCost != null) ? (
               <div className="space-y-1.5 border-t border-border/40 pt-2.5" data-commercial-composition>
                 <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   Estimate Composition
@@ -968,6 +929,30 @@ export function EstimatePanel({
                   <MetricRow
                     label="Allowances"
                     value={formatCurrency(commercialBreakdown.allowancesCost)}
+                    dimmed={isStale}
+                    tertiary
+                  />
+                ) : null}
+                {commercialBreakdown.subcontractCost != null && commercialBreakdown.subcontractCost > 0 ? (
+                  <MetricRow
+                    label="Subcontract"
+                    value={formatCurrency(commercialBreakdown.subcontractCost)}
+                    dimmed={isStale}
+                    tertiary
+                  />
+                ) : null}
+                {commercialBreakdown.plantCost != null && commercialBreakdown.plantCost > 0 ? (
+                  <MetricRow
+                    label="Plant"
+                    value={formatCurrency(commercialBreakdown.plantCost)}
+                    dimmed={isStale}
+                    tertiary
+                  />
+                ) : null}
+                {commercialBreakdown.otherCost != null && commercialBreakdown.otherCost > 0 ? (
+                  <MetricRow
+                    label="Other"
+                    value={formatCurrency(commercialBreakdown.otherCost)}
                     dimmed={isStale}
                     tertiary
                   />
@@ -1065,6 +1050,12 @@ export function EstimatePanel({
           </div>
           )}
           {!(compactCommercialSidebar && isStale) ? (
+          <div className="space-y-1 border-t border-border/40 pt-2.5">
+            {compactCommercialSidebar ? (
+              <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                Status
+              </p>
+            ) : null}
           <p
             className={cn(
               "text-xs font-medium",
@@ -1078,6 +1069,7 @@ export function EstimatePanel({
           >
             {status.statusLabel}
           </p>
+          </div>
           ) : null}
 
           {projectInformationLabel ? (
@@ -1169,6 +1161,17 @@ export function EstimatePanel({
           <p className="text-[11px] text-muted-foreground">
             Internal only — not a quote.
           </p>
+
+          {compactCommercialSidebar && onViewBreakdown ? (
+            <button
+              type="button"
+              className="text-left text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+              onClick={onViewBreakdown}
+              data-detailed-breakdown-tertiary="true"
+            >
+              {ASSISTANT_ACTION_LABELS.viewFullBreakdown}
+            </button>
+          ) : null}
 
           {!compactCommercialSidebar ? (
           <>

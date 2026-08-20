@@ -19,7 +19,7 @@ export function ProjectWorkspaceHeader({
   subtitle,
 }: ProjectWorkspaceHeaderProps) {
   return (
-    <div className="space-y-1.5 sm:space-y-3">
+    <div className="space-y-1 sm:space-y-2">
       <Link
         href="/app/dashboard"
         className="inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"

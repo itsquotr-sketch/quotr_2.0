@@ -57,7 +57,7 @@ export function AppShell({
       <div className="flex min-h-dvh w-full md:h-dvh md:overflow-hidden">
         <AppSidebarNav setupIncomplete={setupIncomplete} />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background md:overflow-hidden print:bg-white">
-          <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b px-4 md:hidden print:hidden">
+          <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-background px-4 md:hidden print:hidden">
             <QuotrLogo height={26} />
             <AccountMenu variant="header" />
           </div>
