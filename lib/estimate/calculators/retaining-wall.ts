@@ -8,9 +8,12 @@ import { RETAINING_WALL_BENCHMARKS } from "@/lib/estimate/benchmark-rates";
 import {
   formatMissing,
   getBooleanFact,
+  getFact,
   getNumberFact,
   getNumberFactAny,
   getStringFact,
+  hasFactValue,
+  isNotSureValue,
   round2,
 } from "@/lib/estimate/facts";
 import {
@@ -36,12 +39,136 @@ import {
 import type {
   CalculatorResult,
   EstimateContext,
+  EstimateFact,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
 import {
   resolveLegacyCartingMetres,
   resolveLegacyWorkAreaAccess,
 } from "@/lib/project-conditions/legacy-adapter";
+
+/** Facts this calculator reads. post_spacing_m is intentionally absent. */
+export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
+  "retaining_wall.length_m",
+  "retaining_wall.height_m",
+  "retaining_wall.height_high_m",
+  "retaining_wall.high_height_m",
+  "retaining_wall.height_low_m",
+  "retaining_wall.low_height_m",
+  "retaining_wall.material",
+  "retaining_wall.fixing_type",
+  "retaining_wall.excavation_required",
+  "retaining_wall.drainage_required",
+  "retaining_wall.drain_connection_required",
+  "retaining_wall.backfill_included",
+  "retaining_wall.backfill_length_m",
+  "retaining_wall.backfill_height_m",
+  "retaining_wall.backfill_depth_m",
+  "retaining_wall.engineering_or_consent_status",
+  "retaining_wall.carting_distance_m",
+  "retaining_wall.disposal_included",
+] as const;
+
+export const RETAINING_WALL_HARD_MINIMUM_FACT_KEYS = [
+  "retaining_wall.length_m",
+  "retaining_wall.height_m",
+  "retaining_wall.material",
+] as const;
+
+export const BACKFILL_REFERENCE_ONLY_ASSUMPTION =
+  "Backfill dimensions recorded for reference; current allowance is not volume priced.";
+
+export const RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE =
+  "Quotr doesn't currently have a trusted price model for this retaining wall material.";
+
+/** Commercially supported families that emit a material line today. Block maps to concrete. */
+export const RETAINING_WALL_SUPPORTED_MATERIAL_FAMILIES = [
+  "timber",
+  "concrete",
+] as const;
+
+export type RetainingWallMaterialClass =
+  | "timber"
+  | "concrete"
+  | "missing"
+  | "unsupported";
+
+export type RetainingWallMaterialReadiness =
+  | "MISSING"
+  | "NOT_SURE"
+  | "SUPPORTED"
+  | "UNSUPPORTED_EXPLICIT";
+
+function materialTokens(material: string): string[] {
+  return material
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter(Boolean);
+}
+
+/**
+ * Canonical current mapping from actual rate paths — not fuzzy semantics.
+ * timber token → timber face m²
+ * concrete or block token → concrete face m²
+ */
+export function classifyRetainingWallMaterial(
+  material: string | null
+): RetainingWallMaterialClass {
+  if (!material) return "missing";
+  const tokens = materialTokens(material);
+  if (tokens.includes("concrete") || tokens.includes("block")) {
+    return "concrete";
+  }
+  if (tokens.includes("timber")) {
+    return "timber";
+  }
+  return "unsupported";
+}
+
+export function retainingWallMaterialReadiness(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): RetainingWallMaterialReadiness {
+  const row = getFact(
+    facts as EstimateFact[],
+    workAreaId,
+    "retaining_wall.material"
+  );
+  if (!row || !hasFactValue(row.value)) return "MISSING";
+  if (isNotSureValue(row.value)) return "NOT_SURE";
+  const classified = classifyRetainingWallMaterial(String(row.value).trim());
+  if (classified === "timber" || classified === "concrete") return "SUPPORTED";
+  return "UNSUPPORTED_EXPLICIT";
+}
+
+export function retainingWallHasCoreLength(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  return getNumberFact(facts as EstimateFact[], workAreaId, "retaining_wall.length_m") != null;
+}
+
+export function retainingWallHasCoreHeight(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  return resolveWallHeight(facts as EstimateFact[], workAreaId).height != null;
+}
+
+export function retainingWallHasSupportedMaterial(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  return retainingWallMaterialReadiness(facts, workAreaId) === "SUPPORTED";
+}
+
+export function retainingWallHasMaterialAnswer(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  const state = retainingWallMaterialReadiness(facts, workAreaId);
+  return state === "SUPPORTED" || state === "UNSUPPORTED_EXPLICIT";
+}
 
 function resolveWallHeight(
   facts: EstimateContext["facts"],
@@ -74,11 +201,13 @@ function resolveWallHeight(
 }
 
 function getWallMaterialRates(material: string | null, context: EstimateContext) {
-  const normalized = material?.toLowerCase() ?? "";
-  if (
-    normalized.includes("concrete") ||
-    normalized.includes("block")
-  ) {
+  const classified = classifyRetainingWallMaterial(material);
+  if (classified === "unsupported") {
+    throw new Error(
+      "Unsupported retaining wall material must not resolve a commercial rate"
+    );
+  }
+  if (classified === "concrete") {
     const resolved = resolveRate({
       rates: context.rates,
       rateType: "material",
@@ -134,7 +263,29 @@ export function calculateRetainingWall(
   if (!heightResult.height) missingInfo.push(formatMissing("Wall height"));
 
   const material = getStringFact(facts, workArea.id, "retaining_wall.material");
+  const materialReadiness = retainingWallMaterialReadiness(facts, workArea.id);
   if (!material) missingInfo.push(formatMissing("Wall material"));
+
+  if (
+    materialReadiness === "UNSUPPORTED_EXPLICIT" ||
+    materialReadiness === "NOT_SURE"
+  ) {
+    missingInfo.push(
+      formatMissing(
+        materialReadiness === "UNSUPPORTED_EXPLICIT"
+          ? "Trusted retaining wall material pricing"
+          : "Wall material"
+      )
+    );
+    return {
+      lineItems: [],
+      assumptions,
+      missingInfo,
+      exclusions,
+      confidence: baseConfidence(missingInfo.length),
+      assumptionMetadata,
+    };
+  }
 
   let effectiveLength = length;
   if (!effectiveLength) {
@@ -384,7 +535,7 @@ export function calculateRetainingWall(
           : round2(backfillLength * backfillHeight * backfillDepth);
 
       if (volume != null) {
-        assumptions.push(`Backfill volume calculated: ${volume} m³.`);
+        assumptions.push(BACKFILL_REFERENCE_ONLY_ASSUMPTION);
         const backfillBuildUp =
           backfillLengthValue && backfillHeightValue
             ? createBackfillVolumeBuildUp({

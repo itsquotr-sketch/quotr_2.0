@@ -1256,6 +1256,21 @@ export function calculatePainting(
   };
 }
 
+/** Facts the painting calculator reads for quantity, labour, material, or allowance. */
+export const PAINTING_CALCULATOR_CONSUMED_FACTS = [
+  "painting.location",
+  "painting.surfaces",
+  "painting.internal_area_m2",
+  "painting.external_area_m2",
+  "painting.coats_required",
+  "painting.prep_level",
+  "painting.door_painting_included",
+  "painting.joinery_surround_painting_required",
+  "painting.paint_client_supplied",
+  "painting.door_count",
+  "painting.joinery_surround_length_lm",
+] as const;
+
 export function calculatePlastering(
   context: EstimateContext,
   workArea: EstimateWorkArea

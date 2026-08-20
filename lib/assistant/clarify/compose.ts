@@ -20,6 +20,13 @@ import type {
   ClarifyView,
   ComposeClarifyInput,
 } from "@/lib/assistant/clarify/types";
+import {
+  RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE,
+  retainingWallHasCoreHeight,
+  retainingWallHasCoreLength,
+  retainingWallMaterialReadiness,
+} from "@/lib/estimate/calculators/retaining-wall";
+import type { EstimateFact } from "@/lib/estimate/types";
 
 const PC_SCORES: Record<string, number> = {
   site_access: 85,
@@ -135,32 +142,96 @@ function missingHardMinimum(
 ): ClarifyCandidate[] {
   const out: ClarifyCandidate[] = [];
   for (const card of input.jobPlan.cards) {
-    for (const key of ["deck.length_m", "deck.width_m", "deck.area_m2"] as const) {
-      if (card.workAreaType !== "deck") continue;
-      if (shouldSuppressKnownSpec(key, card.workAreaId, input)) continue;
-      if (factHas(input, key, card.workAreaId)) continue;
-      const template = getQuestionTemplateByKey(key);
-      out.push({
-        id: `hard:${card.workAreaId}:${key}`,
-        source: "scope_fact",
-        workAreaId: card.workAreaId,
-        workAreaName: card.name,
-        workAreaType: card.workAreaType,
-        factKey: key,
-        constraintKey: null,
-        questionKey: key,
-        label: template?.label ?? key,
-        question: template?.questionText ?? `What is ${key}?`,
-        askClass: "HARD_MINIMUM",
-        inputType: "number",
-        writeTarget: "FACT",
-        write: null,
-        blocksEstimate: true,
-        assumable: false,
-        rankScore: 1000,
-        rankReason: "HARD_MINIMUM geometry",
-        assumptionStatement: null,
-      });
+    if (card.workAreaType === "deck") {
+      for (const key of ["deck.length_m", "deck.width_m", "deck.area_m2"] as const) {
+        if (shouldSuppressKnownSpec(key, card.workAreaId, input)) continue;
+        if (factHas(input, key, card.workAreaId)) continue;
+        const template = getQuestionTemplateByKey(key);
+        out.push({
+          id: `hard:${card.workAreaId}:${key}`,
+          source: "scope_fact",
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          workAreaType: card.workAreaType,
+          factKey: key,
+          constraintKey: null,
+          questionKey: key,
+          label: template?.label ?? key,
+          question: template?.questionText ?? `What is ${key}?`,
+          askClass: "HARD_MINIMUM",
+          inputType: "number",
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: true,
+          assumable: false,
+          rankScore: 1000,
+          rankReason: "HARD_MINIMUM geometry",
+          assumptionStatement: null,
+        });
+      }
+    }
+
+    if (card.workAreaType === "retaining_wall") {
+      const facts = input.facts as EstimateFact[];
+      const missing: {
+        key: string;
+        inputType: ClarifyCandidate["inputType"];
+        rankScore: number;
+      }[] = [];
+      if (!retainingWallHasCoreLength(facts, card.workAreaId)) {
+        missing.push({
+          key: "retaining_wall.length_m",
+          inputType: "number",
+          rankScore: 1000,
+        });
+      }
+      if (!retainingWallHasCoreHeight(facts, card.workAreaId)) {
+        missing.push({
+          key: "retaining_wall.height_m",
+          inputType: "number",
+          rankScore: 999,
+        });
+      }
+      const materialState = retainingWallMaterialReadiness(facts, card.workAreaId);
+      if (materialState !== "SUPPORTED") {
+        missing.push({
+          key: "retaining_wall.material",
+          inputType: "select",
+          rankScore: 998,
+        });
+      }
+      for (const row of missing) {
+        const template = getQuestionTemplateByKey(row.key);
+        const unsupportedMaterial =
+          row.key === "retaining_wall.material" &&
+          materialState === "UNSUPPORTED_EXPLICIT";
+        out.push({
+          id: `hard:${card.workAreaId}:${row.key}`,
+          source: "scope_fact",
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          workAreaType: card.workAreaType,
+          factKey: row.key,
+          constraintKey: null,
+          questionKey: row.key,
+          label: template?.label ?? row.key,
+          question: unsupportedMaterial
+            ? RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE
+            : (template?.questionText ?? `What is ${row.key}?`),
+          askClass: "HARD_MINIMUM",
+          inputType: row.inputType,
+          options: template?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: true,
+          assumable: false,
+          rankScore: row.rankScore,
+          rankReason: unsupportedMaterial
+            ? "HARD_MINIMUM unsupported retaining wall material"
+            : "HARD_MINIMUM retaining wall core",
+          assumptionStatement: null,
+        });
+      }
     }
   }
   return out;

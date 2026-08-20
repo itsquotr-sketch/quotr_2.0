@@ -3,6 +3,7 @@ import type {
   ComposeReadinessInput,
   EstimateReadinessView,
 } from "@/lib/assistant/readiness/types";
+import { RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE } from "@/lib/estimate/calculators/retaining-wall";
 
 const KNOWN_LIMIT = 5;
 const ASSUMPTION_LIMIT = 4;
@@ -48,6 +49,30 @@ export function hardMinimumBlockerCopy(
   );
   if (deckGeometry) {
     return "I need the deck dimensions or area before I can estimate this.";
+  }
+  const retainingWallUnsupported = hard.some(
+    (c) =>
+      c.factKey === "retaining_wall.material" &&
+      c.rankReason.includes("unsupported")
+  );
+  if (retainingWallUnsupported) {
+    return RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE;
+  }
+  const retainingWallCore = hard.filter((c) =>
+    c.factKey === "retaining_wall.length_m" ||
+    c.factKey === "retaining_wall.height_m" ||
+    c.factKey === "retaining_wall.material"
+  );
+  if (retainingWallCore.length > 0) {
+    const labels = retainingWallCore.map((c) => {
+      if (c.factKey === "retaining_wall.length_m") return "length";
+      if (c.factKey === "retaining_wall.height_m") return "height";
+      return "material";
+    });
+    if (labels.length === 3) {
+      return "I need the retaining wall length, height, and material before I can estimate this.";
+    }
+    return `I need the retaining wall ${labels.join(" and ")} before I can estimate this.`;
   }
   const first = hard[0];
   if (first?.question) return first.question;

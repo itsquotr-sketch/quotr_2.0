@@ -925,3 +925,29 @@ export function calculateBathroom(
     assumptionMetadata,
   };
 }
+
+/** Facts this calculator reads for scope, quantity, material, labour, or allowance. */
+export const BATHROOM_CALCULATOR_CONSUMED_FACTS = [
+  "bathroom.area_m2",
+  "bathroom.tile_extent",
+  "bathroom.finish_level",
+  "bathroom.renovation_type",
+  "bathroom.demolition_required",
+  "bathroom.tiling_included",
+  "bathroom.waterproofing_included",
+  "bathroom.waterproofing_required",
+  "bathroom.fixtures_client_supplied",
+  "bathroom.fixtures_included",
+  "bathroom.includes_vanity",
+  "bathroom.includes_shower",
+  "bathroom.includes_toilet",
+  "bathroom.underfloor_heating_included",
+  "bathroom.plumbing_changes",
+  "bathroom.plumbing_allowance",
+  "bathroom.electrical_changes",
+  "bathroom.electrical_allowance",
+  "bathroom.ventilation_included",
+  "bathroom.wall_lining_included",
+  "bathroom.shower_type",
+  "bathroom.floor_prep_included",
+] as const;

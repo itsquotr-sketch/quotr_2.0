@@ -64,6 +64,45 @@ import type {
 } from "@/lib/estimate/types";
 import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
+/** Facts this calculator reads for scope, quantity, material, labour, allowance, or takeoff. */
+export const DECK_CALCULATOR_CONSUMED_FACTS = [
+  "deck.area_m2",
+  "deck.length_m",
+  "deck.width_m",
+  "deck.height_m",
+  "deck.level",
+  "deck.board_material",
+  "deck.material",
+  "deck.board_width_mm",
+  "deck.board_direction",
+  "deck.substructure_included",
+  "deck.existing_deck_removal",
+  "deck.demolition_required",
+  "deck.access_type",
+  "deck.has_stairs",
+  "deck.balustrade_required",
+  "deck.has_balustrade",
+  "deck.handrail_required",
+  "deck.engineering_or_consent_status",
+  "deck.pile_or_post_replacement_required",
+  "deck.pile_or_post_count",
+  "deck.substructure_condition",
+  "deck.vertical_face_boards_required",
+  "deck.vertical_face_board_length_lm",
+  "deck.joist_section",
+  "deck.joist_centres_mm",
+  "deck.joist_direction",
+  "deck.framing_treatment",
+  "deck.bearer_section",
+  "deck.bearer_row_count",
+  "deck.support_type",
+  "deck.supports_per_bearer",
+  "deck.support_section",
+  "deck.footing_length_mm",
+  "deck.footing_width_mm",
+  "deck.footing_depth_mm",
+] as const;
+
 export function calculateDeck(
   context: EstimateContext,
   workArea: EstimateWorkArea

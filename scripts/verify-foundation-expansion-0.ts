@@ -269,18 +269,17 @@ check(
 );
 check(
   37,
-  "Retaining Wall classified MINIMAL / ACTIVE RISK",
-  coverageDoc.includes("MINIMAL / ACTIVE RISK") &&
-    coverageDoc.includes("ACTIVE ESTIMATING RISK") &&
-    coverageDoc.includes("assumedValue: 10") === false &&
+  "Retaining Wall classified SAFETY HARDENED / still MINIMAL",
+  coverageDoc.includes("SAFETY HARDENED") &&
+    coverageDoc.includes("still MINIMAL") &&
     coverageDoc.includes("10 m") &&
     coverageDoc.includes("1.5 m")
 );
 check(
   38,
-  "Backfill integrity defect recorded",
-  coverageDoc.includes("DISCLOSURE / CALCULATION INTEGRITY DEFECT") &&
-    coverageDoc.includes("does not drive the priced quantity")
+  "Backfill integrity: volume does not drive priced quantity",
+  coverageDoc.includes("does not drive the priced quantity") &&
+    coverageDoc.includes("not volume priced")
 );
 check(
   39,
@@ -291,9 +290,11 @@ check(
 );
 check(
   40,
-  "Kitchen resolver defect and consumed-fact contract recorded",
+  "Kitchen rate authority fixed and consumed-fact contract recorded",
   coverageDoc.includes("KITCHEN-RATE-AUTHORITY-01") &&
+    coverageDoc.includes("RATE AUTHORITY FIXED") &&
     coverageDoc.includes("CONSUMED-FACT-CONTRACT-01") &&
+    coverageDoc.includes("FOUNDATION COMPLETE") &&
     coverageDoc.includes("ATTENTION-SEMANTICS-01")
 );
 check(

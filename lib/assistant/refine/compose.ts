@@ -1,5 +1,9 @@
 import { isKnownValue } from "@/lib/assistant/clarify/suppress";
 import { getRefineAdapter } from "@/lib/assistant/refine/adapters/registry";
+import {
+  isCalculatorConsumedConstraint,
+  isCalculatorConsumedFact,
+} from "@/lib/estimate/consumed-facts";
 import type {
   ComposeRefineInput,
   RefineCandidate,
@@ -83,7 +87,11 @@ export function composeRefineView(input: ComposeRefineInput): RefineView {
   const unique = collected.filter((row) => {
     if (seen.has(row.id)) return false;
     seen.add(row.id);
-    return row.consumedByCalculator;
+    if (row.constraintKey) {
+      return isCalculatorConsumedConstraint(row.constraintKey);
+    }
+    if (!row.factKey) return false;
+    return isCalculatorConsumedFact(row.workAreaType, row.factKey);
   });
 
   const highValue = unique.filter((row) => row.tier === "high_value");

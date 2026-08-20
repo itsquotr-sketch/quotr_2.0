@@ -1,6 +1,6 @@
 # Quotr Work Area Estimating Coverage
 
-**Status:** CANONICAL — FOUNDATION-EXPANSION-0-R1 (independent-audit reconciled)  
+**Status:** CANONICAL — ESTIMATOR-SAFETY-0 (trust / commercial integrity hardening)  
 **Date:** 2026-08-20  
 **Related:** [QUOTR_SUPPORTED_WORK_AREA_CONTRACT.md](./QUOTR_SUPPORTED_WORK_AREA_CONTRACT.md), [QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md](./QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md), [QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md](./QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md)
 
@@ -123,8 +123,8 @@ Estimator maturity (this document) is independent of product display band (§12)
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | deck | trial_supported | MATURE / CONDITIONAL | MATURE / CONDITIONAL | hybrid DETAILED + PACKAGE + SHADOW | PARTIAL | MATURE / CONDITIONAL | PARTIAL | **MATURE / CONDITIONAL** |
 | bathroom | trial_supported | PARTIAL | PARTIAL | PACKAGE_ALLOWANCE (mixed resolve) | PARTIAL (per-trade exists) | PARTIAL | PARTIAL | **PARTIAL** — labour ahead of material |
-| retaining_wall | developing | MINIMAL | MINIMAL | PACKAGE + SHADOW defect | PARTIAL | MINIMAL / misleading | MINIMAL | **MINIMAL / ACTIVE RISK** |
-| kitchen | developing | MINIMAL | MINIMAL | PACKAGE + resolver defect | MINIMAL (no shared access factor) | MINIMAL | MINIMAL | **MINIMAL** + **KITCHEN-RATE-AUTHORITY-01** |
+| retaining_wall | developing | MINIMAL | SAFETY HARDENED / still MINIMAL | PACKAGE + SHADOW (disclosure fixed) | PARTIAL | MINIMAL | MINIMAL | **MINIMAL (SAFETY HARDENED)** |
+| kitchen | developing | MINIMAL | MINIMAL | PACKAGE + **RATE AUTHORITY FIXED** | MINIMAL (no shared access factor) | MINIMAL | MINIMAL | **MINIMAL** — **KITCHEN-RATE-AUTHORITY-01 FIXED** |
 | fence | developing | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL (slope flag) | MINIMAL | MINIMAL | **MINIMAL** |
 | pergola | developing | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL | MINIMAL | MINIMAL | **MINIMAL** — not ahead of fence |
 | external_stairs | component | PARTIAL | PARTIAL | PACKAGE_ALLOWANCE + some resolveRate | PARTIAL | PARTIAL | PARTIAL | **PARTIAL** — calculator ahead of display band |
@@ -164,7 +164,7 @@ Hybrid commercial model (intentional):
 **KNOWN DEFECT / RISK**
 
 - None of the silent-complete-price class of retaining wall
-- `consumedByCalculator: true` is **manually asserted** on Refine candidates (see **CONSUMED-FACT-CONTRACT-01**)
+- Refine `consumedByCalculator` is now **verified** against the calculator-owned consumed-fact contract (see **CONSUMED-FACT-CONTRACT-01** — FOUNDATION COMPLETE). Adapters still declare ask candidates; compose drops keys the calculator does not consume.
 
 **FUTURE CAPABILITY (deferred)**
 
@@ -180,64 +180,88 @@ Hybrid commercial model (intentional):
 
 ---
 
-## 8. Retaining Wall — MINIMAL / ACTIVE ESTIMATING RISK
+## 8. Retaining Wall — MINIMAL (SAFETY HARDENED)
 
-**CURRENT IMPLEMENTATION**
+**CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
 
 | Layer | Status |
 | --- | --- |
-| Calculator | `lib/estimate/calculators/retaining-wall.ts` — present |
-| Job Plan adapter | **None** — falls through to `genericJobPlanAdapter` |
-| Refine adapter | **None** — `getRefineAdapter("retaining_wall")` is `null` |
-| Clarify policy | **None** specific — no retaining-wall clarify adapter |
+| Calculator | `lib/estimate/calculators/retaining-wall.ts` — present; still package-level |
+| Job Plan adapter | **Minimum** — `lib/assistant/job-plan/adapters/retaining-wall.ts` (core card + length/height/material chips). Not mature. |
+| Refine adapter | **None** — `getRefineAdapter("retaining_wall")` is `null`. Full maturity not started. |
+| Clarify policy | **HARD_MINIMUM** for length, height (or high+low), material via existing Clarify/readiness |
 
-Silent complete-price behaviour:
+Core estimate readiness:
 
-| Missing fact | What the calculator does |
+| Missing fact | Normal commercial path |
 | --- | --- |
-| `retaining_wall.length_m` | Defaults to **10 m** via `recordDefaultedNumber` |
-| `retaining_wall.height_m` (and no high/low) | Defaults to **1.5 m** |
-| `retaining_wall.material` | `getWallMaterialRates(null)` falls through to **timber face** benchmark rates |
+| `retaining_wall.length_m` | **HARD_MINIMUM** — estimate blocked |
+| `retaining_wall.height_m` (and no high/low) | **HARD_MINIMUM** — estimate blocked |
+| `retaining_wall.material` missing / Not sure | **HARD_MINIMUM** — estimate blocked |
+| `retaining_wall.material` explicit unsupported (e.g. Gabion) | **HARD_MINIMUM / UNSUPPORTED_EXPLICIT** — estimate blocked |
+| All three known **and commercially supported** material | Estimate may proceed with current calculator |
 
-Therefore a substantially unspecified wall can receive a **complete-looking commercial estimate**.
+Answered is **not** the same as priceable.
 
-This is **ACTIVE ESTIMATING RISK**. Do not soften this language.
+Internal calculator defaults **10 m** / **1.5 m** remain for legacy compatibility only. They must **not** masquerade as user-known geometry on the normal Retaining Wall commercial path. Readiness blocks zero-input complete price.
+
+### 8.0 Supported commercial material set (code truth)
+
+A material is commercially supported only if the calculator can emit a legitimate material line/rate path:
+
+| User tokens (canonical, not fuzzy) | Rate path | Family |
+| --- | --- | --- |
+| `timber` (e.g. Timber, treated timber) | `retaining_wall.material.timber.face_m2` | timber |
+| `concrete` or `block` (e.g. Concrete, Block, concrete block) | `retaining_wall.material.concrete.face_m2` | concrete |
+
+No `wood` / `hardwood` / gabion substring matching. Template options: Timber / Concrete / Block / Not sure.
+
+**UNSUPPORTED_EXPLICIT** (named material with no rate path, e.g. Gabion):
+
+- Clarify/readiness **blocker** with: `"Quotr doesn't currently have a trusted price model for this retaining wall material."`
+- Change material via existing select, or Edit Job
+- **No** Estimate now
+- **No** silent timber substitute
+- **No** $0 material line
+- **No** labour-only complete-looking estimate
+
+**FUTURE CONTRACT (not built):** **RW-UNSUPPORTED-MATERIAL-PRICING-01** — once Work Area/material-level `PRICING_REQUIRED` is supported safely: preserve physical material identity, emit pricing-required material requirement, other trusted components may continue, Builder Review shows Needs pricing. Current safest behaviour is blocking.
+
+This closes the former **ACTIVE ESTIMATING RISK** (silent complete-price) and the unsupported-material labour-only gap. Estimator maturity remains **MINIMAL**. Do not promote.
 
 ### 8.1 Fact contract (code-verified)
 
-| Fact | Asked in Job Plan / Refine? | Consumed by calculator? | Class now |
+| Fact | Asked in Job Plan / Clarify? | Consumed by calculator? | Class now |
 | --- | --- | --- | --- |
-| `retaining_wall.length_m` | No dedicated ASK_NOW | Yes (face m²; default 10) | **HARD_MINIMUM** / **ASK_NOW** (target) |
-| `retaining_wall.height_m` | No | Yes (or default 1.5) | **HARD_MINIMUM** / **ASK_NOW** (target) |
-| `height_high_m` / `height_low_m` | No | Yes — average height derive | **REFINE** (target) |
-| `retaining_wall.material` | No | Yes — rate family; null → timber fallback | **HARD_MINIMUM** / **ASK_NOW** (target) |
+| `retaining_wall.length_m` | HARD_MINIMUM Clarify | Yes (face m²; default 10 only if calculator invoked without readiness) | **HARD_MINIMUM** |
+| `retaining_wall.height_m` | HARD_MINIMUM Clarify | Yes (or default 1.5 only if calculator invoked without readiness) | **HARD_MINIMUM** |
+| `height_high_m` / `height_low_m` | Not asked as interview; satisfies height hard minimum when both present | Yes — average height derive | **REFINE** (target) |
+| `retaining_wall.material` | HARD_MINIMUM Clarify; UNSUPPORTED_EXPLICIT blocks | Yes — timber/concrete families only; missing / Not sure / unsupported block Estimate Ready | **HARD_MINIMUM** |
 | `retaining_wall.fixing_type` | No | Yes — face-fixed labour ×1.15 | **REFINE** (target) |
 | `retaining_wall.excavation_required` | No | Yes — extra hours/face m² | **REFINE** (target) |
 | `retaining_wall.drainage_required` | No | Yes — drain lm / novacoil | **REFINE** (target) |
 | `retaining_wall.drain_connection_required` | No | Yes | **REFINE** (target) |
 | carting / disposal | Partial via PC / facts | Yes | **REFINE** (target) |
 | `retaining_wall.is_raking` | No | Indirect via high/low height | **REFINE** (target) |
-| `retaining_wall.post_spacing_m` | Template only | **NOT CONSUMED** | **NOT_CURRENTLY_CONSUMED** — not ADVANCED refinement |
+| `retaining_wall.post_spacing_m` | Template only — **not asked** | **NOT CONSUMED** | **NOT_CURRENTLY_CONSUMED** — not ADVANCED refinement |
 | engineering/consent | Template | Exclusion text only | INFORMATIONAL / ADVANCED (target, if consumed) |
 | existing wall removal | — | No | **NOT_CURRENTLY_CONSUMED** |
 | ground conditions | — | No | **NOT_CURRENTLY_CONSUMED** |
 
-### 8.2 Backfill — DISCLOSURE / CALCULATION INTEGRITY DEFECT
+### 8.2 Backfill — DISCLOSURE FIXED (quantity still face m²)
 
-**KNOWN DEFECT / RISK**
+**CURRENT IMPLEMENTATION**
 
 When `backfill_included` and `backfill_depth_m` are present, the calculator:
 
 1. Computes `volume` via `calculateBackfillVolume`
-2. Pushes assumption: `"Backfill volume calculated: X m³"`
+2. Pushes assumption: `"Backfill dimensions recorded for reference; current allowance is not volume priced."`
 3. Attaches a volume build-up as **shadow metadata**
 4. Prices the line as **quantity = `faceArea`**, unit **`face m²`**, item key `retaining_wall.backfill.face_m2`
 
-The disclosed m³ **does not drive the priced quantity**.
+The computed m³ **does not drive the priced quantity**. That remains true. The former `"Backfill volume calculated: X m³"` wording is removed so the narrative cannot imply a commercial volume takeoff.
 
-Must resolve before Retaining Wall maturity expansion. **Do not treat the m³ disclosure as commercial truth.**
-
-**TARGET ARCHITECTURE:** priced backfill quantity = computed volume (or drop the volume disclosure).
+No backfill formula or rate path was changed. **TARGET ARCHITECTURE:** priced backfill quantity = computed volume (Owner approval required).
 
 ---
 
@@ -251,7 +275,7 @@ Job Plan + Refine adapters exist. ASK_NOW-class facts are wired for dimensions, 
 
 ### retaining_wall (CURRENT IMPLEMENTATION)
 
-No dedicated interview. HARD_MINIMUM facts are **not asked** before estimate. See §8.
+Minimum Job Plan adapter. HARD_MINIMUM Clarify asks length, height, material before estimate. Secondary facts remain assumed. No Refine adapter. See §8.
 
 ### bathroom (CURRENT IMPLEMENTATION)
 
@@ -282,9 +306,9 @@ Labels = **priced emission**, not conceptual takeoff.
 | Work Area | What the calculator actually prices | Taxonomy |
 | --- | --- | --- |
 | deck | Decking (lm takeoff or m² package); substructure m² package; stair/balustrade/handrail **allowances**; structural takeoff may be SHADOW | hybrid DETAILED + PACKAGE_ALLOWANCE + SHADOW |
-| retaining_wall | Face m² material package; drainage lm; backfill **face m² package** (volume is SHADOW / defective) | PACKAGE_ALLOWANCE + SHADOW defect |
+| retaining_wall | Face m² material package; drainage lm; backfill **face m² package** (volume is SHADOW; disclosure does not claim pricing impact) | PACKAGE_ALLOWANCE + SHADOW |
 | bathroom | Waterproofing / tiling / fixtures / lining as **benchmark or resolved package lines**, not separate product identities | PACKAGE_ALLOWANCE |
-| kitchen | Cabinetry + benchtop via `resolveRate`; appliances / install / splashback / rangehood **hardcoded benchmarks** | PACKAGE_ALLOWANCE + **resolver defect** |
+| kitchen | Cabinetry + benchtop + appliances / install / splashback / rangehood via `resolveRate`; remaining flooring / plumbing / electrical / package still hardcoded | PACKAGE_ALLOWANCE + remaining hardcoded related lines |
 | fence | Timber/metal **per lm package** — not posts / rails / panels | PACKAGE_ALLOWANCE |
 | pergola | Frame + roof package rates | PACKAGE_ALLOWANCE |
 | external_stairs | Material per riser + landing m² + handrail/balustrade lm packages | PACKAGE_ALLOWANCE |
@@ -328,37 +352,50 @@ Evidence: `external_stairs` and `painting` are `component` but calculator/adapte
 
 ---
 
-## 13. Kitchen — KITCHEN-RATE-AUTHORITY-01
+## 13. Kitchen — KITCHEN-RATE-AUTHORITY-01 FIXED
 
-**KNOWN DEFECT / RISK — MUST-FIX BEFORE KITCHEN EXPANSION / broader commercial release**
+**CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
 
 | Line | Rate path |
 | --- | --- |
 | Cabinetry | `resolveRate` + `KITCHEN_BENCHMARKS.cabinetry` fallback |
 | Benchtop | `resolveRate` + fallback |
-| Appliances | **Hardcoded** `KITCHEN_BENCHMARKS.appliances` |
-| Appliance install | **Hardcoded** |
-| Splashback | **Hardcoded** |
-| Rangehood | **Hardcoded** |
-| Flooring / plumbing / electrical / materials package | Also hardcoded benchmarks (related, same defect class) |
+| Appliances | `resolveRate` + `kitchen.appliances.allowance` + benchmark fallback |
+| Appliance install | `resolveRate` + `kitchen.appliance_install.allowance` + benchmark fallback |
+| Splashback | `resolveRate` + `kitchen.splashback.allowance` + benchmark fallback |
+| Rangehood | `resolveRate` + `kitchen.rangehood.allowance` + benchmark fallback |
+| Flooring / plumbing / electrical / materials package | Still hardcoded — classified below; **not** migrated in R1 |
 
-Consequence: a **company rate for those item keys is ignored**.
+Named-component safety applies: blank-key generic kitchen rates cannot steal these lines. Wrong unit does not bind. Unrelated `kitchen.cabinetry.allowance` does not steal.
 
-Backlog: **KITCHEN-RATE-AUTHORITY-01**. Do not fix in this documentation batch.
+Estimator maturity remains **MINIMAL**. No new rates were seeded. Lookup keys follow the existing kitchen `*.allowance` contract used by cabinetry/benchtop.
+
+**KITCHEN-RATE-AUTHORITY-01** is **FIXED** for the four confirmed bypass lines.
+
+### 13.1 Remaining hardcoded Kitchen lines (ESTIMATOR-SAFETY-0-R1 audit)
+
+No new keys/rates in this batch. Only a line with an existing canonical named key, defined unit/type, and proven exact resolver compatibility would be migrated. None of the remaining lines meet that bar.
+
+| Line | Description | itemKey | type / unit | Benchmark | Canonical kitchen key? | Other WA identity? | resolveRate today? | Class |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| Flooring | Lump = area × flooring benchmark | none | allowance lump (priced from m² × $/m²) | `KITCHEN_BENCHMARKS.flooring` | No `kitchen.flooring.allowance` | `flooring.material.m2` is **flooring WA**, not Kitchen | No | **C NEEDS_RATE_IDENTITY_BEFORE_RESOLVER** |
+| Plumbing | Major / minor / default lumps | none | allowance lump | `plumbing` / `plumbingMajor` / `plumbingMinor` | No `kitchen.plumbing.allowance` | `bathroom.plumbing.allowance` is **bathroom WA** | No | **C NEEDS_RATE_IDENTITY_BEFORE_RESOLVER** |
+| Electrical | Major / minor / default lumps | none | allowance lump | `electrical` / `electricalMajor` / `electricalMinor` | No `kitchen.electrical.allowance` | Bathroom electrical is a different WA | No | **C NEEDS_RATE_IDENTITY_BEFORE_RESOLVER** |
+| Materials package | Area × `materialsPerM2` with `minimumPackage` floor when no component finishes | none | materials lump | `materialsPerM2` + `minimumPackage` | No kitchen package allowance key | `scope.kitchen.m2` is starter-catalogue planned, not this lump | No | **B PACKAGE_BENCHMARK_ONLY_BY_CURRENT_CONTRACT** |
+
+**R1 Kitchen change:** none beyond the four already-routed named allowances. Remaining lines deferred to Kitchen maturity.
 
 ---
 
-## 14. consumedByCalculator — CONSUMED-FACT-CONTRACT-01
+## 14. consumedByCalculator — CONSUMED-FACT-CONTRACT-01 FOUNDATION COMPLETE
 
-**CURRENT IMPLEMENTATION:** Deck (and bathroom/painting) Refine adapters set `consumedByCalculator: true` **manually**. Compose then filters on that flag. Acceptable for the current three adapters.
+**CURRENT IMPLEMENTATION:** Calculators export typed consumed-fact lists. `lib/estimate/consumed-facts.ts` is the registry. Compose Refine keeps a candidate only when the fact (or Project Condition) is in that contract.
 
-**KNOWN DEFECT / RISK (architecture):** unsafe to copy by hand across 13 Work Areas. UI can claim a field improves the estimate when the calculator ignores it (`post_spacing_m` is the retaining-wall example of a template fact that is not consumed).
+Deck / Bathroom / Painting Refine adapters still list **when to ask**. They no longer independently invent commercial consumption.
 
-**MUST-FIX before large-scale adapter rollout:** **CONSUMED-FACT-CONTRACT-01**
+**NEW ADAPTER GATE:** No new Work Area-specific Refine adapter may be considered mature unless its refinement facts are backed by the calculator-consumed-fact contract. Prerequisite for Retaining Wall full maturity, Bathroom material maturity, External Stairs adapter, and future WA expansion.
 
-**TARGET ARCHITECTURE:** derived consumed-fact metadata **or** static/lint/test verification against actual calculator `getNumberFact` / `getStringFact` / `getBooleanFact` reads.
-
-Do not implement in this task.
+Verifier: `scripts/verify-estimator-safety-0.ts` — false consumed keys fail.
 
 ---
 
@@ -395,12 +432,12 @@ Do **not** mass-delete in this task.
 
 ## 17. MUST-FIX before estimator expansion
 
-| ID | Item | Blocks |
+| ID | Item | Status |
 | --- | --- | --- |
-| A | Retaining Wall zero/low-input complete-price (10 m / 1.5 m / timber fallback) | Any RW expansion / trust |
-| B | Retaining Wall misleading backfill-volume disclosure vs face m² price | RW maturity |
-| C | Kitchen resolver bypass — **KITCHEN-RATE-AUTHORITY-01** | Kitchen expansion / commercial release of those lines |
-| D | **CONSUMED-FACT-CONTRACT-01** before adapter replication | Multi-WA Refine/Job Plan rollout |
+| A | Retaining Wall zero/low-input complete-price (10 m / 1.5 m / timber fallback) | **CLOSED** in ESTIMATOR-SAFETY-0 (readiness HARD_MINIMUM). Internal defaults remain legacy-only. Unsupported named material **CLOSED** in R1 (blocks; no labour-only). |
+| B | Retaining Wall misleading backfill-volume disclosure vs face m² price | **CLOSED** (wording). Quantity still face m² — not a pricing-model change. |
+| C | Kitchen resolver bypass — **KITCHEN-RATE-AUTHORITY-01** | **FIXED** for appliances / install / splashback / rangehood. Flooring/plumbing/electrical = **C**; package = **B**. Not migrated in R1. |
+| D | **CONSUMED-FACT-CONTRACT-01** before adapter replication | **FOUNDATION COMPLETE** |
 | E | Material capability taxonomy consistency (this document now defines labels) | Planning honesty |
 | F | Capability-band ≠ estimator maturity (this document; later code simplification) | Expansion ordering |
 
@@ -416,6 +453,7 @@ Unless business priorities change:
 - External stairs balustrade compliance detail
 - Demolition hazardous-material model
 - Company Material UX
+- **RW-UNSUPPORTED-MATERIAL-PRICING-01** — pricing-required path for known unsupported RW material (currently blocked)
 - LABOUR-CREW-01
 - Fitout detailed material decomposition
 - ATTENTION-SEMANTICS-01 (unless a one-line exhaustiveness fix is cheap later)
@@ -428,7 +466,7 @@ Display band is **not** the order.
 
 | Order | Work Area | Why |
 | --- | --- | --- |
-| 1 | **retaining_wall** | Current behaviour presents **trust / commercial risk** (silent complete price + backfill disclosure defect) |
+| 1 | **retaining_wall** | Safety hardened; full materials/labour modelling **NOT STARTED** |
 | 2 | **bathroom** | Job Plan + Refine already exist; **per-trade labour** exists; material maturity can make a second reference WA |
 | 3 | **external_stairs** | Calculator already ahead of `component` band; dedicated Assistant adapter is relatively cheap |
 
@@ -438,7 +476,7 @@ Then reassess:
 | --- | --- |
 | Fence | After RW interview patterns; slope already partial |
 | Pergola | Same package class as fence — not automatically next |
-| Kitchen | Depends on **KITCHEN-RATE-AUTHORITY-01** |
+| Kitchen | Remaining hardcoded flooring/plumbing/electrical/package lines; still MINIMAL |
 
 Fitout batch later, after labour verification (`getCombinedLabourAccessFactor` gap in `fitout.ts`).
 
@@ -483,24 +521,24 @@ Primary remaining delay: full `router.refresh()` RSC reload after canonical writ
 
 ## 23. Independent audit reconciliation
 
-This R1 pass accepts the read-only audit unless code inspection disproved a claim. Inspection **confirmed**:
+This R1 pass accepts the read-only audit unless code inspection disproved a claim. Inspection **confirmed at FE-0**, then **ESTIMATOR-SAFETY-0 closed**:
 
-- RW 10 m / 1.5 m defaults and timber material fallback
-- Backfill volume disclosed, face m² priced
-- `post_spacing_m` unused by calculator
-- Kitchen hardcoded appliance/install/splashback/rangehood
-- Kitchen has no shared access factor
+- RW 10 m / 1.5 m defaults remain internally; normal path no longer accepts zero-input complete price
+- Backfill volume still face m² priced; narrative no longer claims volume pricing
+- `post_spacing_m` unused by calculator (not asked)
+- Kitchen appliances/install/splashback/rangehood now resolveRate
+- Kitchen has no shared access factor (unchanged)
 - Fence slope condition is partial
 - Bathroom per-trade labour exists
-- Deck Refine `consumedByCalculator` is manual
+- Deck/Bathroom/Painting Refine keys verified against calculator-owned consumed-fact contract
 - Display bands do not gate calculators
-- Attention unknown-kind fallthrough
+- Attention unknown-kind fallthrough (ATTENTION-SEMANTICS-01 unchanged)
 
 ---
 
 ## 24. Next actions
 
-1. Commit / push FE-0 + this canonical map (this task).
-2. UX-PREMIUM-01 (paused until Owner starts it).
-3. **ESTIMATOR-SAFETY-0** (not started): RW silent-price + backfill integrity, then CONSUMED-FACT-CONTRACT-01, then Kitchen resolver — **before** estimator expansion.
-4. Do **not** start retaining-wall or kitchen calculator fixes in this task.
+1. ESTIMATOR-SAFETY-0 + R1: **COMPLETE** after commit / Preview.
+2. **UX-PREMIUM-01** next. Do not start in this batch.
+3. Retaining Wall full maturity: **NOT STARTED** (requires consumed-fact-backed Refine adapter; no new takeoff in this batch).
+4. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, RW-UNSUPPORTED-MATERIAL-PRICING-01 implementation, or LABOUR-CREW-01 in this task.
