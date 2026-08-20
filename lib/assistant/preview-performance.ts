@@ -20,7 +20,9 @@ export type PreviewPerfMark =
   | "builder_interview_batch_save_complete"
   | "builder_interview_recompute"
   | "margin_save_ack"
-  | "margin_save_complete";
+  | "margin_save_complete"
+  | "work_area_remove_complete"
+  | "canonical_write_stale_projection";
 
 type PerfSample = {
   readonly mark: PreviewPerfMark;

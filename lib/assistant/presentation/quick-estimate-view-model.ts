@@ -48,7 +48,7 @@ export type QuickEstimateAttentionItem = {
 
 export type QuickEstimateStatusPresentation = {
   readonly kind: QuickEstimateStatusKind;
-  /** Concise one-line status, e.g. "Ready for pricing" / "2 items need attention". */
+  /** Concise one-line status, e.g. "Ready for pricing" / "2 details could improve this estimate". */
   readonly statusLabel: string;
   /** Count of attention items when kind === "attention" — equals attentionItems.length. */
   readonly attentionCount: number;
@@ -343,6 +343,98 @@ export function buildQuickEstimateAttentionItems(params: {
   return items;
 }
 
+/** Builder-facing attention semantics — presentation only (FOUNDATION-EXPANSION-0). */
+export type AttentionSemanticBucket =
+  | "ACTIONABLE_REFINEMENT"
+  | "CHECK"
+  | "ASSUMPTION"
+  | "PRICING_REQUIRED"
+  | "BLOCKER"
+  | "INFORMATIONAL";
+
+type AttentionItemForStatus = QuickEstimateAttentionItem & {
+  readonly productSeverity?:
+    | "assumption"
+    | "check"
+    | "attention"
+    | "blocker";
+};
+
+export function classifyAttentionSemanticBucket(
+  item: AttentionItemForStatus
+): AttentionSemanticBucket {
+  if (item.attentionKind === "NON_ACTIONABLE_INFORMATION") {
+    return "INFORMATIONAL";
+  }
+  if (item.attentionKind === "PRICING_REQUIRED") {
+    return "PRICING_REQUIRED";
+  }
+  if (
+    item.attentionKind === "ASSUMPTION" ||
+    item.productSeverity === "assumption"
+  ) {
+    return "ASSUMPTION";
+  }
+  if (item.productSeverity === "check") {
+    return "CHECK";
+  }
+  if (!item.reviewTarget) {
+    return "INFORMATIONAL";
+  }
+  if (item.attentionKind === "QUESTION") {
+    return "ACTIONABLE_REFINEMENT";
+  }
+  if (item.attentionKind === "SCOPE") {
+    return "CHECK";
+  }
+  return "ACTIONABLE_REFINEMENT";
+}
+
+function semanticStatusLabel(counts: {
+  readonly actionableRefinement: number;
+  readonly checks: number;
+  readonly assumptions: number;
+  readonly pricingRequired: number;
+}): { readonly kind: QuickEstimateStatusKind; readonly label: string } {
+  if (counts.actionableRefinement > 0) {
+    return {
+      kind: "attention",
+      label:
+        counts.actionableRefinement === 1
+          ? "1 detail could improve this estimate"
+          : `${counts.actionableRefinement} details could improve this estimate`,
+    };
+  }
+  if (counts.checks > 0) {
+    return {
+      kind: "attention",
+      label:
+        counts.checks === 1
+          ? "1 check remaining"
+          : `${counts.checks} checks remaining`,
+    };
+  }
+  if (counts.pricingRequired > 0) {
+    return {
+      kind: "attention",
+      label:
+        counts.pricingRequired === 1
+          ? "1 item needs pricing"
+          : `${counts.pricingRequired} items need pricing`,
+    };
+  }
+  if (counts.assumptions > 0) {
+    return {
+      kind: "ready",
+      label:
+        counts.assumptions === 1
+          ? "1 assumption used"
+          : `${counts.assumptions} assumptions used`,
+    };
+  }
+  return { kind: "ready", label: "Ready for pricing" };
+}
+
 /**
  * Build concise project-status for the Quick Estimate rail.
  * Does not compute confidence or money — only labels from exact items.
@@ -352,7 +444,7 @@ export function buildQuickEstimateStatusPresentation(params: {
   readonly isStale?: boolean;
   readonly canGenerateEstimate?: boolean;
   /** Prefer exact items; when provided, attentionCount === attentionItems.length. */
-  readonly attentionItems?: readonly QuickEstimateAttentionItem[];
+  readonly attentionItems?: readonly AttentionItemForStatus[];
   /** @deprecated Prefer attentionItems — kept for callers that only have counts. */
   readonly missingCount?: number;
   readonly outstandingClarificationCount?: number;
@@ -392,37 +484,51 @@ export function buildQuickEstimateStatusPresentation(params: {
             : [],
       });
 
-  const attentionCount = attentionItems.length;
+  const displayAttentionItems = attentionItems.filter(
+    (item) => classifyAttentionSemanticBucket(item) !== "INFORMATIONAL"
+  );
+
+  const semanticCounts = displayAttentionItems.reduce(
+    (acc, item) => {
+      const bucket = classifyAttentionSemanticBucket(item);
+      if (bucket === "ACTIONABLE_REFINEMENT") acc.actionableRefinement += 1;
+      if (bucket === "CHECK") acc.checks += 1;
+      if (bucket === "ASSUMPTION") acc.assumptions += 1;
+      if (bucket === "PRICING_REQUIRED") acc.pricingRequired += 1;
+      return acc;
+    },
+    {
+      actionableRefinement: 0,
+      checks: 0,
+      assumptions: 0,
+      pricingRequired: 0,
+    }
+  );
+
+  const attentionCount = displayAttentionItems.length;
 
   if (params.isStale) {
     return {
       kind: "stale",
       statusLabel: "Needs recalculation",
       attentionCount,
-      attentionItems,
+      attentionItems: displayAttentionItems,
       blockerLabels: blockers,
     };
   }
 
-  if (params.hasEstimate && attentionCount === 0) {
+  if (params.hasEstimate) {
+    const semantic = semanticStatusLabel(semanticCounts);
     return {
-      kind: "ready",
-      statusLabel: "Ready for pricing",
-      attentionCount: 0,
-      attentionItems: [],
-      blockerLabels: blockers,
-    };
-  }
-
-  if (params.hasEstimate && attentionCount > 0) {
-    return {
-      kind: "attention",
-      statusLabel:
-        attentionCount === 1
-          ? "1 item needs attention"
-          : `${attentionCount} items need attention`,
-      attentionCount,
-      attentionItems,
+      kind: semantic.kind,
+      statusLabel: semantic.label,
+      attentionCount:
+        semantic.kind === "attention"
+          ? semanticCounts.actionableRefinement +
+            semanticCounts.checks +
+            semanticCounts.pricingRequired
+          : semanticCounts.assumptions,
+      attentionItems: displayAttentionItems,
       blockerLabels: blockers,
     };
   }
@@ -432,7 +538,7 @@ export function buildQuickEstimateStatusPresentation(params: {
       kind: "pending",
       statusLabel: "Ready to generate",
       attentionCount,
-      attentionItems,
+      attentionItems: displayAttentionItems,
       blockerLabels: blockers,
     };
   }
@@ -441,7 +547,7 @@ export function buildQuickEstimateStatusPresentation(params: {
     kind: "pending",
     statusLabel: params.readinessLabel?.trim() || "Waiting for inputs",
     attentionCount,
-    attentionItems,
+    attentionItems: displayAttentionItems,
     blockerLabels: blockers,
   };
 }

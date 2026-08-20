@@ -157,16 +157,18 @@ check(
     shell.includes("preventScroll: true")
 );
 check(
-  "20 Refine hierarchy shows Most useful tier",
-  refinePanel.includes("Most useful")
+  "20 Refine shows all actionable candidates immediately (FE-0)",
+  refinePanel.includes('data-refine-all-visible="true"') &&
+    refinePanel.includes("[...view.highValue, ...view.advanced]")
 );
 check(
-  "21 Refine hierarchy exposes More detail (other details tier)",
-  refinePanel.includes("More detail")
+  "21 Refine has no nested More detail gate (FE-0)",
+  !refinePanel.includes("More detail") &&
+    !refinePanel.includes("data-refine-advanced-toggle")
 );
 check(
-  "22 Refine tier uses ADVANCED classification",
-  refinePanel.includes('row.tier === "advanced"')
+  "22 Refine tier classification remains in compose",
+  read("lib/assistant/refine/compose.ts").includes('row.tier === "advanced"')
 );
 
 // ------------------------------------------------------------

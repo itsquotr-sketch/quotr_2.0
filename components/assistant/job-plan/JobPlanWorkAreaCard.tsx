@@ -4,6 +4,13 @@ import { useEffect, useRef, useState, type ReactNode } from "react";
 import { MoreHorizontal } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -121,6 +128,8 @@ export function JobPlanWorkAreaCardView({
 }: JobPlanWorkAreaCardViewProps) {
   const [editOpen, setEditOpen] = useState(() => Boolean(autoEditOpen));
   const [showAllIncluded, setShowAllIncluded] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
   const headingId = `job-plan-${card.workAreaId}-title`;
   const rootRef = useRef<HTMLElement | null>(null);
 
@@ -199,7 +208,10 @@ export function JobPlanWorkAreaCardView({
                 variant="destructive"
                 disabled={isRemoving}
                 data-job-plan-remove
-                onClick={() => onRemove(card.workAreaId)}
+                onClick={() => {
+                  setRemoveError(null);
+                  setRemoveConfirmOpen(true);
+                }}
               >
                 {ASSISTANT_ACTION_LABELS.removeWorkArea} {card.name}
               </DropdownMenuItem>
@@ -207,6 +219,71 @@ export function JobPlanWorkAreaCardView({
           </DropdownMenu>
         )}
       </header>
+
+      {onRemove ? (
+        <Dialog
+          open={removeConfirmOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setRemoveConfirmOpen(false);
+              setRemoveError(null);
+            }
+          }}
+        >
+          <DialogContent showCloseButton>
+            <DialogHeader>
+              <DialogTitle>Remove from estimate?</DialogTitle>
+              <DialogDescription>
+                Remove {card.name} from this estimate? Existing details will be
+                kept in case you add it back later. The estimate will need to be
+                updated.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex justify-end gap-2">
+              <Button
+                type="button"
+                variant="ghost"
+                disabled={isRemoving}
+                onClick={() => setRemoveConfirmOpen(false)}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                disabled={isRemoving}
+                data-job-plan-remove-confirm
+                onClick={() => {
+                  setRemoveError(null);
+                  const result = onRemove(card.workAreaId);
+                  void Promise.resolve(result).then((out) => {
+                    if (out?.success) {
+                      setRemoveConfirmOpen(false);
+                      return;
+                    }
+                    if (out && !out.success) {
+                      setRemoveError(
+                        out.error ?? "Could not remove work area."
+                      );
+                    }
+                  });
+                }}
+              >
+                {isRemoving ? "Removing…" : "Remove from estimate"}
+              </Button>
+            </div>
+            {removeError ? (
+              <p
+                className="mt-2 text-sm text-destructive"
+                role="alert"
+                data-job-plan-remove-error
+              >
+                {removeError}
+              </p>
+            ) : null}
+          </DialogContent>
+        </Dialog>
+      ) : null}
 
       {card.included.length > 0 ? (
         <section

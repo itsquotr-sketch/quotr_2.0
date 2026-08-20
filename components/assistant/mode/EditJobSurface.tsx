@@ -16,7 +16,7 @@ type EditJobSurfaceProps = {
   jobPlan: ReactNode;
   projectConditions: ReactNode;
   details: ReactNode;
-  advanced: ReactNode;
+  advanced?: ReactNode | null;
 };
 
 function sectionOpen(
@@ -87,7 +87,7 @@ export function EditJobSurface({
   jobPlan,
   projectConditions,
   details,
-  advanced,
+  advanced = null,
 }: EditJobSurfaceProps) {
   const [manual, setManual] = useState<Partial<Record<EditJobSection, boolean>>>(
     {}
@@ -158,8 +158,8 @@ export function EditJobSurface({
 
       <EditSection
         id="job_plan"
-        title="Job Plan"
-        hint="Work Areas and scope"
+        title="Work Areas"
+        hint="Scope, measurements, and materials"
         open={sectionOpen("job_plan", focusSection, manual)}
         onToggle={() => toggle("job_plan")}
       >
@@ -168,7 +168,7 @@ export function EditJobSurface({
 
       <EditSection
         id="project_conditions"
-        title="Project Conditions"
+        title="Site & Project Conditions"
         hint="Access, site, and constraints"
         open={sectionOpen("project_conditions", focusSection, manual)}
         onToggle={() => toggle("project_conditions")}
@@ -178,23 +178,25 @@ export function EditJobSurface({
 
       <EditSection
         id="details"
-        title="Details"
-        hint="Finish level and specification"
+        title="Additional Details"
+        hint="Finish level and other project inputs"
         open={sectionOpen("details", focusSection, manual)}
         onToggle={() => toggle("details")}
       >
         {details}
       </EditSection>
 
-      <EditSection
-        id="advanced"
-        title="Advanced"
-        hint="Refinement details"
-        open={sectionOpen("advanced", focusSection, manual)}
-        onToggle={() => toggle("advanced")}
-      >
-        {advanced}
-      </EditSection>
+      {advanced ? (
+        <EditSection
+          id="advanced"
+          title="Advanced"
+          hint="Proposals and specialist inputs"
+          open={sectionOpen("advanced", focusSection, manual)}
+          onToggle={() => toggle("advanced")}
+        >
+          {advanced}
+        </EditSection>
+      ) : null}
     </div>
   );
 }

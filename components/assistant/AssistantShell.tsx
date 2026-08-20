@@ -376,6 +376,12 @@ export function AssistantShell({
   const constraintsSubmitted = isStageAtOrBeyond(stage, "ready_to_estimate");
   const estimateReady = stage === "estimate_ready";
 
+  const bridgeEstimateStaleAfterCanonicalWrite = useCallback(() => {
+    if (!estimateReady) return;
+    setLocalEstimateStale(true);
+    recordPreviewPerf("canonical_write_stale_projection", 0, { ok: true });
+  }, [estimateReady]);
+
   const projectConditionsSnapshot = useMemo(() => {
     try {
       const scopeQuestionCount =
@@ -889,11 +895,12 @@ export function AssistantShell({
 
       setSavingFactKey(null);
       endSavePerf();
+      bridgeEstimateStaleAfterCanonicalWrite();
       startTransition(() => {
         router.refresh();
       });
     },
-    [project.id, router]
+    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
   );
 
   const handleConstraintSave = useCallback(
@@ -932,11 +939,12 @@ export function AssistantShell({
         return next;
       });
       setSavingConstraintKey(null);
+      bridgeEstimateStaleAfterCanonicalWrite();
       startTransition(() => {
         router.refresh();
       });
     },
-    [project.id, router]
+    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
   );
 
   const handleMarginSave = useCallback(
@@ -1043,18 +1051,20 @@ export function AssistantShell({
       }
 
       setIsAddingWorkArea(false);
+      bridgeEstimateStaleAfterCanonicalWrite();
       startTransition(() => {
         router.refresh();
       });
       return { success: true as const };
     },
-    [initialState.workAreas, project.id, router]
+    [bridgeEstimateStaleAfterCanonicalWrite, initialState.workAreas, project.id, router]
   );
 
   const handleExcludeWorkArea = useCallback(
     async (workAreaId: string) => {
       setIsExcludingWorkArea(true);
       setActionError(null);
+      const endRemovePerf = startPreviewPerf("work_area_remove_complete");
 
       const remaining = displayWorkAreas.filter((wa) => wa.id !== workAreaId)
         .length;
@@ -1062,6 +1072,7 @@ export function AssistantShell({
         const error = "At least one work area must remain in the estimate.";
         setActionError(error);
         setIsExcludingWorkArea(false);
+        endRemovePerf();
         return { success: false as const, error };
       }
 
@@ -1081,16 +1092,19 @@ export function AssistantShell({
           prev.filter((id) => id !== workAreaId)
         );
         setIsExcludingWorkArea(false);
+        endRemovePerf();
         return { success: false as const, error: result.error };
       }
 
+      bridgeEstimateStaleAfterCanonicalWrite();
       startTransition(() => {
         router.refresh();
       });
       setIsExcludingWorkArea(false);
+      endRemovePerf();
       return { success: true as const };
     },
-    [project.id, router, displayWorkAreas]
+    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router, displayWorkAreas]
   );
 
   const handleJobPlanToggleScope = useCallback(
@@ -1124,8 +1138,7 @@ export function AssistantShell({
         return;
       }
       setJobPlanScopeSaveStatus("saved");
-      // Project stale immediately — bridge server reconciliation.
-      if (estimateReady) setLocalEstimateStale(true);
+      bridgeEstimateStaleAfterCanonicalWrite();
       window.setTimeout(() => {
         setJobPlanScopeSaveStatus("idle");
       }, 2000);
@@ -1133,7 +1146,7 @@ export function AssistantShell({
         router.refresh();
       });
     },
-    [project.id, router, estimateReady]
+    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
   );
 
   const handleClarifyBoolean = useCallback(
@@ -1183,11 +1196,12 @@ export function AssistantShell({
           return;
         }
       }
+      bridgeEstimateStaleAfterCanonicalWrite();
       startTransition(() => {
         router.refresh();
       });
     },
-    [project.id, router]
+    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
   );
 
   const handleClarifyValue = useCallback(
@@ -1213,6 +1227,7 @@ export function AssistantShell({
           setActionError(result.error);
           return;
         }
+        bridgeEstimateStaleAfterCanonicalWrite();
         startTransition(() => {
           router.refresh();
         });
@@ -1244,11 +1259,12 @@ export function AssistantShell({
         setActionError(result.error);
         return;
       }
+      bridgeEstimateStaleAfterCanonicalWrite();
       startTransition(() => {
         router.refresh();
       });
     },
-    [project.id, router]
+    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
   );
 
   const handleJobPlanSpecFact = useCallback(
@@ -1279,11 +1295,12 @@ export function AssistantShell({
         setActionError(result.error);
         return;
       }
+      bridgeEstimateStaleAfterCanonicalWrite();
       startTransition(() => {
         router.refresh();
       });
     },
-    [project.id, router]
+    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
   );
 
   const handleSaveWorkAreaQuestions = useCallback(
@@ -1360,12 +1377,13 @@ export function AssistantShell({
       }));
       setSavingWorkAreaId(null);
       endSavePerf();
+      bridgeEstimateStaleAfterCanonicalWrite();
       // Optimistic local answers already show Saved — refresh in background.
       startTransition(() => {
         router.refresh();
       });
     },
-    [project.id, router]
+    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
   );
 
   const estimateBase = estimateReady ? initialState.estimate : null;
@@ -2158,50 +2176,14 @@ export function AssistantShell({
                 </div>
               }
               advanced={
-                <div className="space-y-4" ref={questionsCardRef}>
-                  {pendingNoteProposal ? (
+                pendingNoteProposal ? (
+                  <div className="space-y-4" ref={questionsCardRef}>
                     <NoteProposalReviewPanel
                       projectId={project.id}
                       proposal={pendingNoteProposal}
                     />
-                  ) : null}
-                  <ScopeSummaryBlock
-                    projectId={project.id}
-                    scopeReview={initialState.scopeReview}
-                    workAreas={initialState.workAreas}
-                    editable
-                    manageWorkAreas={workAreasConfirmed}
-                    estimateIsStale={displayEstimateStale}
-                    savingFactKey={savingFactKey}
-                    savingWorkAreaId={savingWorkAreaId}
-                    workAreaSaveStatus={workAreaSaveStatus}
-                    workAreaQuestionError={workAreaQuestionError}
-                    factError={factError}
-                    isAddingWorkArea={isAddingWorkArea}
-                    isExcludingWorkArea={isExcludingWorkArea}
-                    addWorkAreaError={addWorkAreaError}
-                    constraintPreview={
-                      constraintChips.length === 0
-                        ? "None captured"
-                        : constraintChips.slice(0, 2).join(" · ")
-                    }
-                    onFactSave={handleFactSave}
-                    onSaveWorkAreaQuestions={handleSaveWorkAreaQuestions}
-                    onAddWorkArea={handleAddWorkArea}
-                    onExcludeWorkArea={handleExcludeWorkArea}
-                  />
-                  {questionBlock ? (
-                    <QuestionBlock
-                      questions={questionBlock.questions}
-                      derivedFactDisplays={initialState.derivedFactDisplays}
-                      answers={questionAnswers}
-                      submitted
-                      isSaving={false}
-                      focusQuestionId={reviewFocusQuestionId}
-                      focusQuestionKey={reviewFocusQuestionKey}
-                    />
-                  ) : null}
-                </div>
+                  </div>
+                ) : null
               }
             />
           ) : null}

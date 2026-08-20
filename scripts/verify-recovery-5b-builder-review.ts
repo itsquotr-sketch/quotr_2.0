@@ -559,8 +559,9 @@ check(
     shell.includes("setAddedWorkAreas")
 );
 check(
-  "64 refine most useful tier",
-  refinePanel.includes("Most useful") && refinePanel.includes("More detail")
+  "64 refine shows all actionable candidates (FE-0)",
+  refinePanel.includes('data-refine-all-visible="true"') &&
+    !refinePanel.includes("More detail")
 );
 check(
   "65 work-area-actions returns workArea",

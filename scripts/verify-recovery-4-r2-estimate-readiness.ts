@@ -342,9 +342,9 @@ check(
     )
 );
 check(
-  "24 advanced fields progressive",
-  panel.includes("data-refine-advanced") &&
-    panel.includes("useState(false)")
+  "24 advanced fields visible without nested gate (FE-0)",
+  panel.includes('data-refine-all-visible="true"') &&
+    !panel.includes("data-refine-advanced-toggle")
 );
 check(
   "25 no mandatory refinement",
@@ -416,8 +416,8 @@ check(
 );
 check(
   "40 no giant form",
-  panel.includes("data-refine-advanced-toggle") &&
-    real.refine.highValue.length <= 8
+  !panel.includes("data-refine-advanced-toggle") &&
+    real.refine.highValue.length + real.refine.advanced.length <= 12
 );
 
 const labourLine = baseline.lineItems.find(

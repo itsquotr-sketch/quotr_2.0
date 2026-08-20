@@ -53,7 +53,7 @@ export function resolveAttentionNavigation(
   }
 
   if (target === "questions") {
-    return { kind: "edit_job", section: "advanced" };
+    return { kind: "edit_job", section: "job_plan" };
   }
 
   if (

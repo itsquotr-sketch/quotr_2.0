@@ -128,14 +128,21 @@ check(15, "localEstimateStale state declared", shell.includes("const [localEstim
 
 check(16, "displayEstimateStale combines canonical and local projection", shell.includes("displayEstimateStale =") && shell.includes("localEstimateStale"));
 
-check(17, "Successful scope write sets localEstimateStale when estimate exists", shell.includes("if (estimateReady) setLocalEstimateStale(true)"));
+check(
+  17,
+  "Successful scope write projects stale when estimate exists",
+  shell.includes("bridgeEstimateStaleAfterCanonicalWrite()") &&
+    shell.includes("setJobPlanScopeSaveStatus(\"saved\")")
+);
 
-check(18, "Failed scope write does NOT set localEstimateStale (only on success)", (() => {
-  // localEstimateStale is set after 'setJobPlanScopeSaveStatus("saved")'
-  // not after result.error block
-  const errorBlock = shell.indexOf("setJobPlanScopeSaveStatus(\"error\")");
-  const staleSet = shell.indexOf("setLocalEstimateStale(true)");
-  return staleSet > errorBlock; // stale set comes AFTER error block in file order (in success path)
+check(18, "Failed scope write does NOT project stale (only on success)", (() => {
+  const toggleFn = shell.slice(
+    shell.indexOf("const handleJobPlanToggleScope = useCallback("),
+    shell.indexOf("const handleClarifyBoolean = useCallback(")
+  );
+  const errorIdx = toggleFn.indexOf('setJobPlanScopeSaveStatus("error")');
+  const bridgeIdx = toggleFn.indexOf("bridgeEstimateStaleAfterCanonicalWrite()");
+  return bridgeIdx > errorIdx;
 })());
 
 check(19, "displayEstimateStale used in EstimateReadySurface", shell.includes("isStale={displayEstimateStale}"));

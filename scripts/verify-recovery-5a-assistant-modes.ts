@@ -202,7 +202,7 @@ check(
   "15 Job Plan editable",
   jobPlanPanel.includes("workspaceEditing") &&
     shell.includes("workspaceEditing") &&
-    editSurface.includes("Job Plan")
+    editSurface.includes("Work Areas")
 );
 check(
   "16 constraints editable",
@@ -220,9 +220,9 @@ check(
 check(
   "18 advanced details progressive",
   editSurface.includes('id="advanced"') &&
-    editSurface.includes("Refinement details") &&
+    editSurface.includes("Proposals and specialist inputs") &&
     editSurface.includes("focusSection") &&
-    shell.includes("advanced={")
+    editSurface.includes("{advanced ?")
 );
 check(
   "19 canonical writes only",

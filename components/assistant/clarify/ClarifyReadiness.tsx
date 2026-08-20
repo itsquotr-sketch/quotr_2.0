@@ -1,13 +1,11 @@
 "use client";
 
-import { useState } from "react";
-import { ChevronDown } from "lucide-react";
+import { useMemo } from "react";
 import { Button } from "@/components/ui/button";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
 import type { RefineCandidate, RefineGroupId, RefineView } from "@/lib/assistant/refine/types";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
-import { cn } from "@/lib/utils";
 
 const GROUP_LABEL: Record<RefineGroupId, string> = {
   scope: "Scope",
@@ -56,11 +54,6 @@ function RefineField({
   const mapped = toClarifyCandidate(candidate);
   return (
     <div className="space-y-2" data-refine-field={candidate.factKey ?? candidate.constraintKey}>
-      {candidate.workAreaName ? (
-        <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-          {candidate.workAreaName}
-        </p>
-      ) : null}
       <p className="text-sm font-medium leading-snug">{candidate.question}</p>
       {candidate.inputType === "boolean" ? (
         <div className="flex flex-col gap-2 sm:flex-row">
@@ -133,21 +126,39 @@ export function RefineEstimatePanel({
   onAnswerBoolean?: (candidate: ClarifyCandidate, presentation: "INCLUDED" | "NOT_INCLUDED") => void;
   onAnswerValue?: (candidate: ClarifyCandidate, value: string | number | boolean) => void;
 }) {
-  const [advancedOpen, setAdvancedOpen] = useState(false);
+  const allCandidates = useMemo(
+    () => [...view.highValue, ...view.advanced],
+    [view.advanced, view.highValue]
+  );
+
+  const groupedByWorkArea = useMemo(() => {
+    const buckets = new Map<
+      string,
+      { label: string; rows: RefineCandidate[] }
+    >();
+    for (const row of allCandidates) {
+      const key = row.workAreaId ?? "project";
+      const label = row.workAreaName ?? "Site & project";
+      const existing = buckets.get(key) ?? { label, rows: [] };
+      existing.rows.push(row);
+      buckets.set(key, existing);
+    }
+    return [...buckets.values()];
+  }, [allCandidates]);
+
   const groups: RefineGroupId[] = [
     "scope",
     "specification",
     "structure",
     "project_conditions",
   ];
-  const highByGroup = (id: RefineGroupId) =>
-    view.highValue.filter((row) => row.group === id);
 
   return (
     <div
       className="space-y-4 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom))]"
       data-refine-panel
       data-clarify-panel
+      data-refine-all-visible="true"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -183,65 +194,44 @@ export function RefineEstimatePanel({
         </Button>
       ) : null}
 
-      {view.highValue.length > 0 ? (
-        <div className="space-y-3" data-refine-tier="most-useful">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Most useful
-          </p>
-          {groups.map((group) => {
-            const rows = highByGroup(group);
-            if (rows.length === 0) return null;
-            return (
-              <section key={group} className="space-y-3" data-refine-group={group}>
-                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-                  {GROUP_LABEL[group]}
-                </p>
-                {rows.map((row) => (
-                  <RefineField
-                    key={row.id}
-                    candidate={row}
-                    isSaving={isSaving}
-                    onAnswerBoolean={onAnswerBoolean}
-                    onAnswerValue={onAnswerValue}
-                  />
-                ))}
-              </section>
-            );
-          })}
+      {groupedByWorkArea.length > 0 ? (
+        <div className="space-y-4" data-refine-tier="all-actionable">
+          {groupedByWorkArea.map((workAreaBucket) => (
+            <section
+              key={workAreaBucket.label}
+              className="space-y-3"
+              data-refine-work-area={workAreaBucket.label}
+            >
+              <p className="text-xs font-semibold tracking-tight text-foreground">
+                {workAreaBucket.label}
+              </p>
+              {groups.map((group) => {
+                const rows = workAreaBucket.rows.filter((row) => row.group === group);
+                if (rows.length === 0) return null;
+                return (
+                  <div
+                    key={`${workAreaBucket.label}:${group}`}
+                    className="space-y-3"
+                    data-refine-group={group}
+                  >
+                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                      {GROUP_LABEL[group]}
+                    </p>
+                    {rows.map((row) => (
+                      <RefineField
+                        key={row.id}
+                        candidate={row}
+                        isSaving={isSaving}
+                        onAnswerBoolean={onAnswerBoolean}
+                        onAnswerValue={onAnswerValue}
+                      />
+                    ))}
+                  </div>
+                );
+              })}
+            </section>
+          ))}
         </div>
-      ) : null}
-
-      {view.advanced.length > 0 ? (
-        <section data-refine-group="advanced">
-          <button
-            type="button"
-            className="flex min-h-11 w-full items-center justify-between rounded-xl border border-border/60 px-3 py-2 text-left"
-            data-refine-advanced-toggle
-            aria-expanded={advancedOpen}
-            onClick={() => setAdvancedOpen((open) => !open)}
-          >
-            <span className="text-sm font-medium">More detail</span>
-            <ChevronDown
-              className={cn(
-                "size-4 text-muted-foreground transition-transform",
-                advancedOpen && "rotate-180"
-              )}
-            />
-          </button>
-          {advancedOpen ? (
-            <div className="mt-3 space-y-3" data-refine-advanced>
-              {view.advanced.map((row) => (
-                <RefineField
-                  key={row.id}
-                  candidate={row}
-                  isSaving={isSaving}
-                  onAnswerBoolean={onAnswerBoolean}
-                  onAnswerValue={onAnswerValue}
-                />
-              ))}
-            </div>
-          ) : null}
-        </section>
       ) : null}
     </div>
   );
