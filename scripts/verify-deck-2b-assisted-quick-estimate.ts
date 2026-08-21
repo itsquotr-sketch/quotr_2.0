@@ -587,7 +587,8 @@ check(
 check(
   "68 completed setup collapses after estimate",
   shellSrc.includes('assistantMode === "estimate_ready"') &&
-    disclosureSrc.includes("Job details")
+    disclosureSrc.includes("Estimate Basis") &&
+    disclosureSrc.includes("data-completed-setup-disclosure")
 );
 check(
   "69 Estimate Ready card is primary after generation",
@@ -605,8 +606,8 @@ check(
     !scopeReviewSrc.includes("requestEditToken > 0")
 );
 check(
-  "72 Job Details summary available",
-  disclosureSrc.includes("Job details") &&
+  "72 Estimate Basis summary available",
+  disclosureSrc.includes("Estimate Basis") &&
     disclosureSrc.includes("data-completed-setup-disclosure")
 );
 check(

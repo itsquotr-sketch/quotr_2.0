@@ -16,6 +16,9 @@ import {
   DECK_RIM_FRAMING_COMPONENT_KEY,
   DECK_SUPPORTS_COMPONENT_KEY,
   DECK_SUBSTRUCTURE_GROUP_KEY,
+  DECK_STRUCTURAL_ESTIMATING_DISCLAIMER,
+  DECK_PHYSICAL_TAKEOFF_UNAVAILABLE_HINT,
+  PLANNING_TAKEOFF_PARENT_HINT,
 } from "@/lib/estimate/deck-structure";
 import { DECK_SURFACE_COMPONENT_KEY } from "@/lib/estimate/deck-surface-requirement";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
@@ -189,10 +192,10 @@ export function toTakeoffRow(
     quantity: round2(req.purchaseQuantity),
     unit: req.purchaseUnit,
     specification: req.specification ?? null,
+    detail: req.specification ?? null,
     confidenceLabel: takeoffConfidence(req),
     commercial: false,
-    parentAllowanceHint:
-      "Planning quantities — included within the framing/substructure allowance and not priced separately.",
+    parentAllowanceHint: PLANNING_TAKEOFF_PARENT_HINT,
   };
 }
 
@@ -213,9 +216,22 @@ function workAreaTypeForName(
 function attachTakeoff(
   categories: BuilderReviewCategoryGroup[],
   takeoff: readonly BuilderReviewTakeoffRow[],
-  workAreaType: string | null
+  workAreaType: string | null,
+  unavailableHint: string | null
 ): BuilderReviewCategoryGroup[] {
-  if (takeoff.length === 0 || workAreaType !== "deck") return categories;
+  if (workAreaType !== "deck") return categories;
+  if (takeoff.length === 0 && !unavailableHint) return categories;
+
+  const withMeta = (
+    target: BuilderReviewCategoryGroup
+  ): BuilderReviewCategoryGroup => ({
+    ...target,
+    takeoff,
+    takeoffDisclaimer:
+      takeoff.length > 0 ? DECK_STRUCTURAL_ESTIMATING_DISCLAIMER : null,
+    takeoffUnavailableHint:
+      takeoff.length === 0 ? unavailableHint : null,
+  });
 
   const framingIdx = categories.findIndex(
     (c) =>
@@ -229,7 +245,7 @@ function attachTakeoff(
   if (framingIdx >= 0) {
     const target = categories[framingIdx]!;
     const next = [...categories];
-    next[framingIdx] = { ...target, takeoff };
+    next[framingIdx] = withMeta(target);
     return next;
   }
 
@@ -238,20 +254,41 @@ function attachTakeoff(
   if (materialsIdx >= 0) {
     const target = categories[materialsIdx]!;
     const next = [...categories];
-    next[materialsIdx] = { ...target, takeoff };
+    next[materialsIdx] = withMeta(target);
     return next;
   }
 
-  return [
-    ...categories,
-    {
-      id: "ALLOWANCES",
-      label: CATEGORY_LABELS.ALLOWANCES,
-      cost: 0,
-      lines: [],
-      takeoff,
-    },
-  ];
+  if (takeoff.length === 0 && unavailableHint) {
+    return [
+      ...categories,
+      {
+        id: "ALLOWANCES",
+        label: CATEGORY_LABELS.ALLOWANCES,
+        cost: 0,
+        lines: [],
+        takeoff: [],
+        takeoffDisclaimer: null,
+        takeoffUnavailableHint: unavailableHint,
+      },
+    ];
+  }
+
+  if (takeoff.length > 0) {
+    return [
+      ...categories,
+      {
+        id: "ALLOWANCES",
+        label: CATEGORY_LABELS.ALLOWANCES,
+        cost: 0,
+        lines: [],
+        takeoff,
+        takeoffDisclaimer: DECK_STRUCTURAL_ESTIMATING_DISCLAIMER,
+        takeoffUnavailableHint: null,
+      },
+    ];
+  }
+
+  return categories;
 }
 
 function normalizeIssueKey(text: string): string {
@@ -473,6 +510,8 @@ export function composeBuilderReview(
         cost: round2(catLines.reduce((sum, line) => sum + line.recommendedCost, 0)),
         lines: catLines,
         takeoff: [],
+        takeoffDisclaimer: null,
+        takeoffUnavailableHint: null,
       };
     });
 
@@ -486,7 +525,24 @@ export function composeBuilderReview(
           })
         : [];
 
-    categories = attachTakeoff(categories, deckTakeoff, meta.type);
+    const hasFramingAllowance = priced.some(
+      (line) =>
+        (line.itemKey ?? "").includes("substructure") ||
+        /framing|substructure/i.test(line.label)
+    );
+    const unavailableHint =
+      meta.type === "deck" &&
+      deckTakeoff.length === 0 &&
+      hasFramingAllowance
+        ? DECK_PHYSICAL_TAKEOFF_UNAVAILABLE_HINT
+        : null;
+
+    categories = attachTakeoff(
+      categories,
+      deckTakeoff,
+      meta.type,
+      unavailableHint
+    );
 
     return {
       workAreaId: meta.id,

@@ -392,7 +392,7 @@ export function BuilderReviewSurface({
                         })}
                       </ul>
 
-                      {cat.takeoff.length > 0 ? (
+                      {cat.takeoff.length > 0 || cat.takeoffUnavailableHint ? (
                         <div
                           className="rounded-lg border border-dashed border-border/70 px-3 py-2.5"
                           data-builder-review-takeoff
@@ -401,34 +401,55 @@ export function BuilderReviewSurface({
                           <p className="text-xs font-medium text-muted-foreground">
                             Planning takeoff
                           </p>
-                          <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
-                            {cat.takeoff[0]?.parentAllowanceHint ??
-                              "Planning quantities are included within the framing/substructure allowance and are not priced separately."}
-                          </p>
-                          <ul className="mt-2 space-y-1.5">
-                            {cat.takeoff.map((row) => (
-                              <li
-                                key={row.requirementId}
-                                className="flex items-baseline justify-between gap-2 text-xs"
-                                data-takeoff-row={row.componentKey}
-                              >
-                                <span>
-                                  {row.label}
-                                  {row.specification
-                                    ? ` · ${row.specification}`
-                                    : ""}
-                                  {row.confidenceLabel ? (
-                                    <span className="mt-0.5 block text-[10px] text-muted-foreground">
-                                      {row.confidenceLabel}
-                                    </span>
-                                  ) : null}
-                                </span>
-                                <span className="shrink-0 font-medium">
-                                  {formatQty(row.quantity, row.unit)}
-                                </span>
-                              </li>
-                            ))}
-                          </ul>
+                          {cat.takeoff.length > 0 ? (
+                            <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
+                              {cat.takeoff[0]?.parentAllowanceHint ??
+                                "Planning quantities are included within the framing/substructure allowance and are not priced separately."}
+                            </p>
+                          ) : (
+                            <p
+                              className="mt-1 text-[11px] leading-snug text-muted-foreground"
+                              data-takeoff-unavailable
+                            >
+                              {cat.takeoffUnavailableHint}
+                            </p>
+                          )}
+                          {cat.takeoffDisclaimer ? (
+                            <p
+                              className="mt-1 text-[11px] leading-snug text-muted-foreground"
+                              data-takeoff-disclaimer
+                            >
+                              {cat.takeoffDisclaimer}
+                            </p>
+                          ) : null}
+                          {cat.takeoff.length > 0 ? (
+                            <ul className="mt-2 space-y-1.5">
+                              {cat.takeoff.map((row) => (
+                                <li
+                                  key={row.requirementId}
+                                  className="flex flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5 text-xs"
+                                  data-takeoff-row={row.componentKey}
+                                >
+                                  <span className="min-w-0">
+                                    <span className="font-medium">{row.label}</span>
+                                    {row.detail ? (
+                                      <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                                        {row.detail}
+                                      </span>
+                                    ) : null}
+                                    {row.confidenceLabel ? (
+                                      <span className="mt-0.5 block text-[10px] text-muted-foreground">
+                                        {row.confidenceLabel}
+                                      </span>
+                                    ) : null}
+                                  </span>
+                                  <span className="shrink-0 font-medium">
+                                    {formatQty(row.quantity, row.unit)}
+                                  </span>
+                                </li>
+                              ))}
+                            </ul>
+                          ) : null}
                         </div>
                       ) : null}
                     </section>

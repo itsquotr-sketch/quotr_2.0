@@ -103,6 +103,11 @@ export function composeRefineView(input: ComposeRefineInput): RefineView {
   };
 }
 
+/**
+ * Physically consumed for planning takeoff, but not Refine-interviewed.
+ * Quotr derives/assumes joist layout; do not ask the builder to take off.
+ * Name retained for RECOVERY-4-R2 compatibility.
+ */
 export const DECK_NOT_CONSUMED_REFINE_KEYS = [
   "deck.joist_section",
   "deck.joist_centres_mm",

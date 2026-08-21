@@ -44,6 +44,7 @@ import {
 import {
   buildDeckStructuralMaterialRequirements,
   buildDeckSubstructureGroupReconciliation,
+  deckStructureAssumptionTexts,
 } from "@/lib/estimate/deck-structure";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import { getDeckMaterialLabel } from "@/lib/estimate/material-rate-keys";
@@ -726,6 +727,9 @@ export function calculateDeck(
     materialWastageSettings: context.materialWastageSettings,
     organisationSettings: context.organisationSettings,
   });
+  if (structural.quantities) {
+    assumptions.push(...deckStructureAssumptionTexts(structural.quantities));
+  }
 
   const requirements = [
     surfaceRequirement,

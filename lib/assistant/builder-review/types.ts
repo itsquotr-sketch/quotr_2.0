@@ -53,6 +53,7 @@ export type BuilderReviewTakeoffRow = {
   readonly quantity: number;
   readonly unit: string;
   readonly specification: string | null;
+  readonly detail: string | null;
   readonly confidenceLabel: "Preliminary quantity" | "Based on current layout assumptions" | null;
   readonly commercial: false;
   readonly parentAllowanceHint: string | null;
@@ -65,6 +66,8 @@ export type BuilderReviewCategoryGroup = {
   readonly lines: readonly BuilderReviewPricedLine[];
   /** Non-commercial planning quantities attached under this category. */
   readonly takeoff: readonly BuilderReviewTakeoffRow[];
+  readonly takeoffDisclaimer: string | null;
+  readonly takeoffUnavailableHint: string | null;
 };
 
 export type BuilderReviewWorkAreaGroup = {

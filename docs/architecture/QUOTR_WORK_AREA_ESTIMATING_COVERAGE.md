@@ -149,10 +149,12 @@ What is real today:
 - Dedicated Job Plan adapter (`lib/assistant/job-plan/adapters/deck.ts`)
 - Dedicated Refine adapter (`lib/assistant/refine/adapters/deck.ts`)
 - Real **decking surface** quantity model (board lm takeoff exists)
-- Real **structural shadow requirement** model where facts permit (joist/post takeoff can exist without owning money)
+- Real **structural shadow / planning takeoff** model for rectangular decks with new substructure (`lib/estimate/deck-structure.ts`)
+- Geometry readiness: `DETAILED_GEOMETRY_AVAILABLE` | `AREA_ONLY` | `IRREGULAR_UNSUPPORTED`
 - Calculator: `lib/estimate/calculators/deck.ts`
 - Access labour factor applied via `getCombinedLabourAccessFactor`
 - Component commercial authority path for decking vs allowance fallback
+- **DECK-MATURITY-2A PHYSICAL TAKEOFF FOUNDATION** — layout defaults (450 mm joist centres; 1.8 m bearer/support spacing) are disclosed estimating assumptions, not engineering
 
 Hybrid commercial model (intentional):
 
@@ -170,13 +172,40 @@ Hybrid commercial model (intentional):
 
 - LABOUR-CREW-01
 - Non-rectangular structural detail
-- Promoting every allowance to DETAILED_REQUIREMENT
+- Promoting structural children to commercial money (**DECK-MATURITY-2B**)
 
 **Do not copy universally**
 
 - Height / access / steps coupling
 - Deck structural material identity contracts
 - Fascia level-1 check remapping
+
+---
+
+## 7A. Deck Maturity 2A — PHYSICAL TAKEOFF FOUNDATION
+
+**Status:** COMPLETE / COMMITTED / PREVIEW (2A-R1 orientation correction Owner-approved)  
+**Verifier:** `scripts/verify-deck-maturity-2a.ts`  
+**Contract:** `lib/estimate/deck-information-contract.ts`
+
+| Axis | 2A / 2A-R1 rule |
+| --- | --- |
+| Geometry storage | `deck.length_m` / `deck.width_m` are **plan dimensions**, often first-written × second-written. They are **not** structural orientation. |
+| Derived framing orientation | When board/joist direction are both unknown: joists span the **shorter** rectangle axis; bearers run perpendicular (along the longer axis). Near-square tie (`|L−W| ≤ 0.05 m`): historical joists-along-width default. |
+| Explicit orientation | `deck.joist_direction` wins. Else explicit `deck.board_direction` forces joists perpendicular to boards. No Clarify question for joist direction. |
+| Boards | Aesthetic/material. Defaulted boards follow perpendicular-to-joists when orientation is derived. Do not let stored “length” own framing. |
+| New substructure | Activates planning takeoff. Commercial money stays `deck.substructure.m2`. |
+| Joists / rim | Count and lm derived when L×W exist. Identity optional. |
+| Bearers / supports | Explicit layout facts win. If **both** missing, estimate at **1.8 m** spacing — **UNSOURCED estimating default**, not a compliance rule. Partial spec still omits the missing child. Conservative support layout: existing connection is not assumed to provide structural support. |
+| Concrete | Only with footing L×W×D and support count. Never invented. |
+| Quantity confidence | Geometry-validated ≠ assumption-dependent planning quantity ≠ commercial promotion ready. |
+| Commercial | No joist / bearer / rim / pile / concrete dollars. |
+
+Promotion-readiness labels (2B input, **do not promote**): `GEOMETRY_VALIDATED` / `PLANNING_QUANTITY` / `ASSUMPTION_DEPENDENT_QUANTITY` / `IDENTITY_VALIDATED` / `RATE_AVAILABLE` / `COMMERCIAL_PROMOTION_READY`.
+
+Residual allowance (intentional, not counted): fixings, connectors, DPC, minor blocking, consumables, delivery/sundries.
+
+**Not in 2A:** structural material commercial promotion, new rates, LABOUR-CREW-01, Retaining Wall maturity.
 
 ---
 
@@ -271,7 +300,7 @@ Classification keys: **HARD_MINIMUM**, **ASK_NOW**, **ASSUME_IF_SKIPPED**, **REF
 
 ### deck (CURRENT IMPLEMENTATION)
 
-Job Plan + Refine adapters exist. ASK_NOW-class facts are wired for dimensions, board material, access/steps. Joist section / centres are **not** Refine candidates (`DECK_NOT_CONSUMED_REFINE_KEYS`).
+Job Plan + Refine adapters exist. HARD_MINIMUM Clarify is dimensions/area. ASK_NOW covers Job Plan checks (removal, fascia, steps when relevant). Board material and height are Refine if unknown. Joist section / centres are physically consumed but **not** Refine-interviewed (`DECK_NOT_CONSUMED_REFINE_KEYS`) — Quotr derives/assumes layout. See §7A and `DECK_INFORMATION_CONTRACT`.
 
 ### retaining_wall (CURRENT IMPLEMENTATION)
 
@@ -538,7 +567,8 @@ This R1 pass accepts the read-only audit unless code inspection disproved a clai
 
 ## 24. Next actions
 
-1. ESTIMATOR-SAFETY-0 + R1: **COMPLETE** after commit / Preview.
-2. **UX-PREMIUM-01** next. Do not start in this batch.
-3. Retaining Wall full maturity: **NOT STARTED** (requires consumed-fact-backed Refine adapter; no new takeoff in this batch).
-4. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, RW-UNSUPPORTED-MATERIAL-PRICING-01 implementation, or LABOUR-CREW-01 in this task.
+1. UX-PREMIUM-01: **COMPLETE / OWNER VALIDATED**.
+2. DECK-MATURITY-2A / 2A-R1: **COMPLETE / COMMITTED / PREVIEW**.
+3. DECK-MATURITY-2B: **NOT STARTED** — structural child commercial promotion only after Owner review of 2A.
+4. Retaining Wall full maturity: **NOT STARTED**.
+5. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production.

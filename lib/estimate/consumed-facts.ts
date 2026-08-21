@@ -75,3 +75,77 @@ export function refineFactsAreContractBacked(
   const consumed = getCalculatorConsumedFacts(workAreaType);
   return factKeys.every((key) => consumed.has(key));
 }
+
+/**
+ * DECK-MATURITY-2A — additive consumption domains.
+ * `isCalculatorConsumedFact` remains the Refine gate (any domain).
+ * A fact may be physically consumed without commercial money effect.
+ */
+export type ConsumedFactDomain =
+  | "scope"
+  | "physical"
+  | "commercial"
+  | "confidence";
+
+export type ConsumedFactConsumption = {
+  readonly factKey: string;
+  readonly scope: boolean;
+  readonly physical: boolean;
+  readonly commercial: boolean;
+  readonly confidence: boolean;
+};
+
+/** Structural layout/identity facts: planning takeoff only in 2A. */
+const DECK_PHYSICAL_ONLY_FACTS = new Set<string>([
+  "deck.board_direction",
+  "deck.joist_section",
+  "deck.joist_centres_mm",
+  "deck.joist_direction",
+  "deck.framing_treatment",
+  "deck.bearer_section",
+  "deck.bearer_row_count",
+  "deck.support_type",
+  "deck.supports_per_bearer",
+  "deck.support_section",
+  "deck.footing_length_mm",
+  "deck.footing_width_mm",
+  "deck.footing_depth_mm",
+]);
+
+export function getConsumedFactConsumption(
+  workAreaType: string | null | undefined,
+  factKey: string | null | undefined
+): ConsumedFactConsumption | null {
+  if (!workAreaType || !factKey) return null;
+  if (!isCalculatorConsumedFact(workAreaType, factKey)) return null;
+  if (workAreaType === "deck" && DECK_PHYSICAL_ONLY_FACTS.has(factKey)) {
+    return {
+      factKey,
+      scope: false,
+      physical: true,
+      commercial: false,
+      confidence: false,
+    };
+  }
+  return {
+    factKey,
+    scope: factKey.includes("included") || factKey.includes("required"),
+    physical: true,
+    commercial: true,
+    confidence: factKey.includes("condition") || factKey.includes("engineering"),
+  };
+}
+
+export function isPhysicalTakeoffConsumedFact(
+  workAreaType: string | null | undefined,
+  factKey: string | null | undefined
+): boolean {
+  return getConsumedFactConsumption(workAreaType, factKey)?.physical === true;
+}
+
+export function isCommercialConsumedFact(
+  workAreaType: string | null | undefined,
+  factKey: string | null | undefined
+): boolean {
+  return getConsumedFactConsumption(workAreaType, factKey)?.commercial === true;
+}

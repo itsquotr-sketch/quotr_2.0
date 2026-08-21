@@ -2,7 +2,11 @@
 
 **Status:** CANONICAL for DECK-1 / DECK-1A  
 **Date:** 2026-08-18  
-**Mode:** DECK-1A **COMPLETE / OWNER MODEL VALIDATED**. DECK-1B **COMPLETE / TECHNICALLY VALIDATED**. Identity/rate contract: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md` (DECK-1C-A). Physical quantities in this file remain frozen.
+**Mode:** DECK-1A **COMPLETE / OWNER MODEL VALIDATED**. DECK-1B **COMPLETE / TECHNICALLY VALIDATED**. Identity/rate contract: `docs/architecture/DECK_STRUCTURAL_MATERIAL_IDENTITY.md` (DECK-1C-A). Physical quantities in this file remain frozen for supplied-spec jobs (DECK-REF-01).
+
+**DECK-MATURITY-2A addendum:** When new substructure is included and rectangular L×W exist but bearer/support layout facts are both omitted, the calculator applies disclosed estimating layout defaults (1.8 m bearer spacing along the joist run; 1.8 m supports along each bearer — **UNSOURCED estimating default**, not a compliance rule). Explicit facts still win. Joist/rim quantities no longer require timber identity to emit as unpriced planning takeoff. Concrete still requires footing dimensions. No commercial promotion.
+
+**DECK-MATURITY-2A-R1:** Geometric `length_m`/`width_m` are storage axes (often first-written × second-written). They do **not** automatically set joist direction. When orientation facts are absent, joists span the shorter practical rectangle axis; bearers run perpendicular. Explicit `deck.joist_direction` or `deck.board_direction` still override. DECK-REF-01 (5.20 × 3.10) already has the shorter axis as width, so frozen 1B quantities are unchanged. See coverage §7A.
 
 ---
 
@@ -101,7 +105,11 @@ Where member sizes, spacing, or support design depend on engineering or formal s
 2. Joists run **perpendicular to decking boards** → **parallel to deck width** (`deckWidth`).
 3. Bearers run **perpendicular to joists** → **parallel to deck length** (`deckLength`).
 
-**Physical relationship:** boards ∥ length; joists ∥ width; bearers ∥ length.
+**Physical relationship (DECK-1A storage convention):** boards ∥ stored length; joists ∥ stored width; bearers ∥ stored length.
+
+**DECK-MATURITY-2A-R1 — do not treat stored length as joist direction.** `deck.length_m` / `deck.width_m` are geometric storage (often first-written × second-written). When `deck.board_direction` and `deck.joist_direction` are both unknown, planning joists span the **shorter** rectangle axis; bearers run perpendicular. Explicit joist or board direction still overrides. Near-square tie (`|L−W| ≤ 0.05 m`) keeps the historical joists-along-width default so tiny differences do not flip layout. Board direction is aesthetic unless the builder sets it. This is an estimating planning rule, not a compliance claim.
+
+DECK-REF-01 (5.20 × 3.10) already has the shorter axis as width, so frozen 1B quantities are unchanged under the 2A-R1 rule.
 
 User-confirmed `deck.board_direction` / `deck.joist_direction` always override defaults. Defaults recorded as structured assumptions.
 

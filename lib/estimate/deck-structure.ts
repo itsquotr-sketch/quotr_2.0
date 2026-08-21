@@ -5,6 +5,7 @@
  * DECK-STRUCT-01: quantifies supplied/assumed specification; no compliance claim.
  */
 import {
+  getBooleanFact,
   getNumberFact,
   getStringFact,
   round2,
@@ -50,8 +51,40 @@ export const DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS = [
 
 export const DEFAULT_JOIST_CENTRES_MM = 450;
 export const DEFAULT_FRAMING_WASTE_PERCENT = 5;
+/**
+ * Bearer-row / support spacing along a run.
+ * Provenance: LEGACY / UNSOURCED estimating default (DECK-1 architecture
+ * example). Not a validated span-table or compliance rule.
+ */
+export const DEFAULT_BEARER_SPACING_M = 1.8;
+export const DEFAULT_SUPPORT_SPACING_M = 1.8;
+/** Square/near-square tie: keep historical joists-along-width default. */
+export const SHORTER_AXIS_TIE_TOLERANCE_M = 0.05;
+
+export const CONSERVATIVE_SUPPORT_LAYOUT_HINT =
+  "Support layout estimated conservatively. An existing connection is not assumed to provide structural support.";
+
+export const PLANNING_TAKEOFF_PARENT_HINT =
+  "Planning quantities are included within the framing/substructure allowance and are not priced separately.";
+
+export const DECK_STRUCTURAL_ESTIMATING_DISCLAIMER =
+  "Planning quantities use the current estimating layout assumptions. Final member sizing, spans, foundations and structural requirements should be confirmed where required.";
+
+export const DECK_PHYSICAL_TAKEOFF_UNAVAILABLE_HINT =
+  "More detail needed for framing quantities.";
+
+export type DeckGeometryReadiness =
+  | "DETAILED_GEOMETRY_AVAILABLE"
+  | "AREA_ONLY"
+  | "IRREGULAR_UNSUPPORTED";
 
 export type DeckAxis = "length" | "width";
+
+export type DeckJoistOrientationSource =
+  | "explicit_joist"
+  | "explicit_board"
+  | "derived_shorter_span"
+  | "historical_default";
 
 export type DeckStructureOrientation = {
   boardDirection: DeckAxis;
@@ -59,6 +92,7 @@ export type DeckStructureOrientation = {
   bearerDirection: DeckAxis;
   boardDirectionDefaulted: boolean;
   joistDirectionDefaulted: boolean;
+  joistOrientationSource: DeckJoistOrientationSource;
 };
 
 export type DeckStructureQuantities = {
@@ -84,6 +118,9 @@ export type DeckStructureQuantities = {
   footingVolumeEachM3: number;
   concreteBaseM3: number;
   concretePurchaseM3: number;
+  bearerRowCountDefaulted: boolean;
+  supportsPerBearerDefaulted: boolean;
+  layoutEstimated: boolean;
 };
 
 export type DeckStructureFacts = {
@@ -128,6 +165,60 @@ function perpendicular(axis: DeckAxis): DeckAxis {
   return axis === "length" ? "width" : "length";
 }
 
+export function classifyDeckGeometryReadiness(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+}): DeckGeometryReadiness {
+  const facts = [...params.facts];
+  const deckLengthM = getNumberFact(facts, params.workAreaId, "deck.length_m");
+  const deckWidthM = getNumberFact(facts, params.workAreaId, "deck.width_m");
+  const areaM2 = getNumberFact(facts, params.workAreaId, "deck.area_m2");
+  if (
+    deckLengthM != null &&
+    deckWidthM != null &&
+    deckLengthM > 0 &&
+    deckWidthM > 0
+  ) {
+    return "DETAILED_GEOMETRY_AVAILABLE";
+  }
+  if (areaM2 != null && areaM2 > 0) return "AREA_ONLY";
+  return "IRREGULAR_UNSUPPORTED";
+}
+
+export function deckSubstructureIncluded(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+}): boolean {
+  return (
+    getBooleanFact(
+      [...params.facts],
+      params.workAreaId,
+      "deck.substructure_included"
+    ) ?? true
+  );
+}
+
+/** Boundary-inclusive count: ceil(span / spacing) + 1. Same convention as joists. */
+export function deckLayoutCountFromSpan(spanM: number, spacingM: number): number {
+  if (!(spanM > 0) || !(spacingM > 0)) return 0;
+  return Math.ceil(spanM / spacingM) + 1;
+}
+
+/**
+ * Planning joist axis = shorter rectangle side.
+ * Geometric length/width storage is not structural orientation.
+ * Near-square tie uses historical joists-along-width default.
+ */
+export function shorterPlanningAxis(
+  deckLengthM: number,
+  deckWidthM: number
+): DeckAxis {
+  if (Math.abs(deckLengthM - deckWidthM) <= SHORTER_AXIS_TIE_TOLERANCE_M) {
+    return "width";
+  }
+  return deckLengthM <= deckWidthM ? "length" : "width";
+}
+
 function parseDeckAxis(value: string | null): DeckAxis | null {
   if (!value) return null;
   const normalized = value.trim().toLowerCase();
@@ -170,22 +261,64 @@ export function resolveDeckFramingWastePercent(
 export function resolveDeckStructureOrientation(params: {
   boardDirectionFact: string | null;
   joistDirectionFact: string | null;
+  deckLengthM?: number | null;
+  deckWidthM?: number | null;
 }): DeckStructureOrientation {
-  const boardDirectionDefaulted = params.boardDirectionFact == null;
-  const boardDirection =
-    parseDeckAxis(params.boardDirectionFact) ?? "length";
+  const explicitJoist = parseDeckAxis(params.joistDirectionFact);
+  const explicitBoard = parseDeckAxis(params.boardDirectionFact);
+  const hasGeometry =
+    params.deckLengthM != null &&
+    params.deckWidthM != null &&
+    params.deckLengthM > 0 &&
+    params.deckWidthM > 0;
 
-  const joistDirectionDefaulted = params.joistDirectionFact == null;
-  const joistDirection =
-    parseDeckAxis(params.joistDirectionFact) ??
-    perpendicular(boardDirection);
+  if (explicitJoist) {
+    const boardDirection = explicitBoard ?? perpendicular(explicitJoist);
+    return {
+      boardDirection,
+      joistDirection: explicitJoist,
+      bearerDirection: perpendicular(explicitJoist),
+      boardDirectionDefaulted: explicitBoard == null,
+      joistDirectionDefaulted: false,
+      joistOrientationSource: "explicit_joist",
+    };
+  }
+
+  if (explicitBoard) {
+    const joistDirection = perpendicular(explicitBoard);
+    return {
+      boardDirection: explicitBoard,
+      joistDirection,
+      bearerDirection: perpendicular(joistDirection),
+      boardDirectionDefaulted: false,
+      joistDirectionDefaulted: true,
+      joistOrientationSource: "explicit_board",
+    };
+  }
+
+  if (hasGeometry) {
+    const joistDirection = shorterPlanningAxis(
+      params.deckLengthM!,
+      params.deckWidthM!
+    );
+    const boardDirection = perpendicular(joistDirection);
+    return {
+      boardDirection,
+      joistDirection,
+      bearerDirection: perpendicular(joistDirection),
+      boardDirectionDefaulted: true,
+      joistDirectionDefaulted: true,
+      joistOrientationSource: "derived_shorter_span",
+    };
+  }
 
   return {
-    boardDirection,
-    joistDirection,
-    bearerDirection: perpendicular(joistDirection),
-    boardDirectionDefaulted,
-    joistDirectionDefaulted,
+    boardDirection: "length",
+    joistDirection: "width",
+    bearerDirection: "length",
+    boardDirectionDefaulted: true,
+    joistDirectionDefaulted: true,
+    joistOrientationSource: "historical_default",
   };
 }
 
@@ -224,6 +357,8 @@ export function readDeckStructureFacts(params: {
       params.workAreaId,
       "deck.joist_direction"
     ),
+    deckLengthM,
+    deckWidthM,
   });
 
   const joistSection = getStringFact(
@@ -357,11 +492,20 @@ export function calculateDeckStructureQuantities(params: {
     facts.deckLengthM,
     facts.deckWidthM
   );
-  const bearerRowCount = facts.bearerRowCount ?? 0;
+
+  // Layout defaults are a package: only when neither bearer rows nor
+  // supports-per-bearer were supplied. Partial spec still omits the missing child.
+  const layoutEstimated =
+    facts.bearerRowCount == null && facts.supportsPerBearer == null;
+  const bearerRowCount = layoutEstimated
+    ? deckLayoutCountFromSpan(joistRunLengthM, DEFAULT_BEARER_SPACING_M)
+    : (facts.bearerRowCount ?? 0);
   const bearerBaseLm = round2(bearerRowCount * bearerRunLengthM);
   const bearerPurchaseLm = purchaseLm(bearerBaseLm, params.framingWastePercent);
 
-  const supportsPerBearer = facts.supportsPerBearer ?? 0;
+  const supportsPerBearer = layoutEstimated
+    ? deckLayoutCountFromSpan(bearerRunLengthM, DEFAULT_SUPPORT_SPACING_M)
+    : (facts.supportsPerBearer ?? 0);
   const supportCount = Math.round(bearerRowCount * supportsPerBearer);
 
   let footingVolumeEachM3 = 0;
@@ -404,6 +548,9 @@ export function calculateDeckStructureQuantities(params: {
     footingVolumeEachM3,
     concreteBaseM3,
     concretePurchaseM3,
+    bearerRowCountDefaulted: layoutEstimated,
+    supportsPerBearerDefaulted: layoutEstimated,
+    layoutEstimated,
   };
 }
 
@@ -436,26 +583,37 @@ function timberVariantKey(identity: MaterialIdentity): string {
 }
 
 function orientationAssumptions(
-  orientation: DeckStructureOrientation
+  orientation: DeckStructureOrientation,
+  joistRunLengthM?: number
 ): RequirementAssumption[] {
   const assumptions: RequirementAssumption[] = [];
-  if (orientation.boardDirectionDefaulted) {
+  if (
+    orientation.joistDirectionDefaulted &&
+    orientation.joistOrientationSource === "derived_shorter_span" &&
+    joistRunLengthM != null
+  ) {
     assumptions.push({
-      key: "deck.board_direction_default",
-      text: "Deck boards assumed parallel to deck length.",
+      key: "deck.joists.shorter_span_default",
+      text: `Joists estimated across the shorter ${joistRunLengthM} m span.`,
+      source: "calculator_default",
+    });
+  } else if (orientation.joistDirectionDefaulted) {
+    assumptions.push({
+      key: "deck.joist_direction_default",
+      text: "Joists assumed perpendicular to decking boards.",
       source: "calculator_default",
     });
   }
-  if (orientation.joistDirectionDefaulted) {
+  if (orientation.boardDirectionDefaulted) {
     assumptions.push({
-      key: "deck.joist_direction_default",
-      text: "Joists assumed perpendicular to decking boards (parallel to deck width).",
+      key: "deck.board_direction_default",
+      text: "Deck boards assumed perpendicular to joists.",
       source: "calculator_default",
     });
   }
   assumptions.push({
     key: "deck.bearer_direction_derived",
-    text: "Bearers derived perpendicular to joists (parallel to deck length when joists run across width).",
+    text: "Bearers derived perpendicular to joists.",
     source: "calculator_default",
   });
   return assumptions;
@@ -485,14 +643,133 @@ function framingAssumptions(params: {
   return assumptions;
 }
 
+function layoutAssumptions(quantities: DeckStructureQuantities): RequirementAssumption[] {
+  if (!quantities.layoutEstimated) return [];
+  return [
+    {
+      key: "deck.layout.rectangular_estimated",
+      text: "Standard rectangular layout assumed.",
+      source: "calculator_default",
+    },
+    {
+      key: "deck.bearers.spacing_default",
+      text: `Bearer rows estimated at ${DEFAULT_BEARER_SPACING_M} m spacing (${quantities.bearerRowCount} runs).`,
+      source: "calculator_default",
+    },
+    {
+      key: "deck.supports.spacing_default",
+      text: `Support layout estimated at ${DEFAULT_SUPPORT_SPACING_M} m along each bearer (${quantities.supportsPerBearer} per run).`,
+      source: "calculator_default",
+    },
+    {
+      key: "deck.supports.conservative_layout",
+      text: CONSERVATIVE_SUPPORT_LAYOUT_HINT,
+      source: "calculator_default",
+    },
+  ];
+}
+
+export function deckStructureAssumptionTexts(
+  quantities: DeckStructureQuantities
+): string[] {
+  const texts: string[] = [];
+  if (
+    quantities.orientation.joistDirectionDefaulted &&
+    quantities.orientation.joistOrientationSource === "derived_shorter_span"
+  ) {
+    texts.push(
+      `Joists estimated across the shorter ${quantities.joistRunLengthM} m span.`
+    );
+  } else if (quantities.orientation.joistDirectionDefaulted) {
+    texts.push("Joists assumed perpendicular to decking boards.");
+  }
+  if (quantities.orientation.boardDirectionDefaulted) {
+    texts.push("Deck boards assumed perpendicular to joists.");
+  }
+  if (quantities.joistCentresDefaulted) {
+    texts.push(
+      `Joist centres assumed ${quantities.joistCentresMm} mm.`
+    );
+  }
+  if (quantities.layoutEstimated) {
+    texts.push("Standard rectangular layout assumed.");
+    texts.push("Support layout estimated.");
+    texts.push(CONSERVATIVE_SUPPORT_LAYOUT_HINT);
+  }
+  return texts;
+}
+
 function structuralConfidence(params: {
   joistCentresDefaulted: boolean;
   orientationDefaulted: boolean;
+  hasIdentity: boolean;
 }): RequirementConfidence {
-  if (!params.joistCentresDefaulted && !params.orientationDefaulted) {
+  if (
+    params.hasIdentity &&
+    !params.joistCentresDefaulted &&
+    !params.orientationDefaulted
+  ) {
     return "high";
   }
   return "medium";
+}
+
+function joistPlanningSpecification(
+  quantities: DeckStructureQuantities,
+  section: string | null | undefined
+): string {
+  const span =
+    quantities.orientation.joistDirectionDefaulted
+      ? `estimated across ${quantities.joistRunLengthM} m span`
+      : `${quantities.joistRunLengthM} m span`;
+  const detail = `${quantities.joistCount} ea · ${span}`;
+  return section ? `${detail} · ${section}` : detail;
+}
+
+function rimPlanningSpecification(
+  quantities: DeckStructureQuantities,
+  section: string | null | undefined
+): string {
+  return section
+    ? `${quantities.rimBaseLm} lm net · ${section}`
+    : `${quantities.rimBaseLm} lm net`;
+}
+
+function bearerPlanningSpecification(
+  quantities: DeckStructureQuantities,
+  section: string | null | undefined
+): string {
+  const detail = `${quantities.bearerRowCount} runs`;
+  return section ? `${detail} · ${section}` : detail;
+}
+
+function sharedFramingAssumptions(params: {
+  quantities: DeckStructureQuantities;
+  framingWasteDefaulted: boolean;
+}): RequirementAssumption[] {
+  return [
+    ...orientationAssumptions(
+      params.quantities.orientation,
+      params.quantities.joistRunLengthM
+    ),
+    ...framingAssumptions({
+      joistCentresDefaulted: params.quantities.joistCentresDefaulted,
+      joistCentresMm: params.quantities.joistCentresMm,
+      framingWasteDefaulted: params.framingWasteDefaulted,
+      framingWastePercent: params.quantities.framingWastePercent,
+    }),
+    ...layoutAssumptions(params.quantities),
+  ];
+}
+
+function unpricedPlanningFields() {
+  return {
+    priced: false as const,
+    materialKey: null,
+    rateSource: "missing" as const,
+    unitCost: null,
+    totalCost: null,
+  };
 }
 
 function buildJoistRequirement(params: {
@@ -503,56 +780,60 @@ function buildJoistRequirement(params: {
   rates: readonly OrganisationRate[];
   organisationSettings?: OrganisationSettings | null;
 }): MaterialRequirement | null {
+  if (params.quantities.joistCount <= 0 || params.quantities.joistPurchaseLm <= 0) {
+    return null;
+  }
   const identity = framingTimberIdentity(
     params.facts.joistSection,
     params.facts.framingTreatment
   );
-  if (!identity) return null;
-  const pricing = resolveIdentityRate({
-    identity,
-    unit: "lm",
-    purchaseQuantity: params.quantities.joistPurchaseLm,
-    rates: params.rates,
-    organisationSettings: params.organisationSettings,
-  });
+  const pricing = identity
+    ? resolveIdentityRate({
+        identity,
+        unit: "lm",
+        purchaseQuantity: params.quantities.joistPurchaseLm,
+        rates: params.rates,
+        organisationSettings: params.organisationSettings,
+      })
+    : unpricedPlanningFields();
+  const section =
+    identity?.originalDescription ?? identity?.section ?? params.facts.joistSection;
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
     workAreaType: params.workArea.type,
     componentKey: DECK_JOISTS_COMPONENT_KEY,
-    variantKey: timberVariantKey(identity),
-    description: `Deck joists ${identity.section}`,
+    variantKey: identity ? timberVariantKey(identity) : "layout-estimate",
+    description: identity?.section
+      ? `Deck joists ${identity.section}`
+      : "Deck joists",
     confidence: structuralConfidence({
       joistCentresDefaulted: params.quantities.joistCentresDefaulted,
       orientationDefaulted:
         params.quantities.orientation.boardDirectionDefaulted ||
         params.quantities.orientation.joistDirectionDefaulted,
+      hasIdentity: identity != null,
     }),
-    assumptions: [
-      ...orientationAssumptions(params.quantities.orientation),
-      ...framingAssumptions({
-        joistCentresDefaulted: params.quantities.joistCentresDefaulted,
-        joistCentresMm: params.quantities.joistCentresMm,
-        framingWasteDefaulted: params.framingWasteDefaulted,
-        framingWastePercent: params.quantities.framingWastePercent,
-      }),
-    ],
+    assumptions: sharedFramingAssumptions({
+      quantities: params.quantities,
+      framingWasteDefaulted: params.framingWasteDefaulted,
+    }),
     provenance: {
       calculatorSource: "deck.structure.joists",
       factKeys: params.facts.factKeys,
       constraintKeys: [],
     },
     priced: pricing.priced,
-    materialKey: serializeMaterialIdentityKey(identity),
-    materialIdentity: identity,
+    materialKey: identity ? serializeMaterialIdentityKey(identity) : null,
+    materialIdentity: identity ?? undefined,
     category: "FRAMING",
-    specification: identity.originalDescription ?? identity.section ?? undefined,
+    specification: joistPlanningSpecification(params.quantities, section),
     baseQuantity: params.quantities.joistBaseLm,
     baseUnit: "lm",
     wasteFactor: params.quantities.framingWastePercent / 100,
     purchaseQuantity: params.quantities.joistPurchaseLm,
     purchaseUnit: "lm",
     rateSource: pricing.rateSource,
-    rateEvidence: pricing.rateEvidence,
+    rateEvidence: "rateEvidence" in pricing ? pricing.rateEvidence : undefined,
     unitCost: pricing.unitCost,
     totalCost: pricing.totalCost,
   });
@@ -566,43 +847,47 @@ function buildRimRequirement(params: {
   rates: readonly OrganisationRate[];
   organisationSettings?: OrganisationSettings | null;
 }): MaterialRequirement | null {
+  if (params.quantities.rimPurchaseLm <= 0) return null;
   const identity = framingTimberIdentity(
     params.facts.joistSection,
     params.facts.framingTreatment
   );
-  if (!identity) return null;
-  const pricing = resolveIdentityRate({
-    identity,
-    unit: "lm",
-    purchaseQuantity: params.quantities.rimPurchaseLm,
-    rates: params.rates,
-    organisationSettings: params.organisationSettings,
-  });
+  const pricing = identity
+    ? resolveIdentityRate({
+        identity,
+        unit: "lm",
+        purchaseQuantity: params.quantities.rimPurchaseLm,
+        rates: params.rates,
+        organisationSettings: params.organisationSettings,
+      })
+    : unpricedPlanningFields();
+  const section =
+    identity?.originalDescription ?? identity?.section ?? params.facts.joistSection;
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
     workAreaType: params.workArea.type,
     componentKey: DECK_RIM_FRAMING_COMPONENT_KEY,
-    variantKey: timberVariantKey(identity),
-    description: `Deck end rim framing ${identity.section}`,
+    variantKey: identity ? timberVariantKey(identity) : "layout-estimate",
+    description: identity?.section
+      ? `Deck end rim framing ${identity.section}`
+      : "Deck end rim framing",
     confidence: structuralConfidence({
       joistCentresDefaulted: params.quantities.joistCentresDefaulted,
       orientationDefaulted:
         params.quantities.orientation.boardDirectionDefaulted ||
         params.quantities.orientation.joistDirectionDefaulted,
+      hasIdentity: identity != null,
     }),
     assumptions: [
-      ...orientationAssumptions(params.quantities.orientation),
+      ...sharedFramingAssumptions({
+        quantities: params.quantities,
+        framingWasteDefaulted: params.framingWasteDefaulted,
+      }),
       {
         key: "deck.rim.end_only",
         text: "Additional rim framing on joist ends only; outer parallel joists already counted in joist grid.",
         source: "calculator_default",
       },
-      ...framingAssumptions({
-        joistCentresDefaulted: params.quantities.joistCentresDefaulted,
-        joistCentresMm: params.quantities.joistCentresMm,
-        framingWasteDefaulted: params.framingWasteDefaulted,
-        framingWastePercent: params.quantities.framingWastePercent,
-      }),
     ],
     provenance: {
       calculatorSource: "deck.structure.rim",
@@ -610,17 +895,17 @@ function buildRimRequirement(params: {
       constraintKeys: [],
     },
     priced: pricing.priced,
-    materialKey: serializeMaterialIdentityKey(identity),
-    materialIdentity: identity,
+    materialKey: identity ? serializeMaterialIdentityKey(identity) : null,
+    materialIdentity: identity ?? undefined,
     category: "FRAMING",
-    specification: identity.originalDescription ?? identity.section ?? undefined,
+    specification: rimPlanningSpecification(params.quantities, section),
     baseQuantity: params.quantities.rimBaseLm,
     baseUnit: "lm",
     wasteFactor: params.quantities.framingWastePercent / 100,
     purchaseQuantity: params.quantities.rimPurchaseLm,
     purchaseUnit: "lm",
     rateSource: pricing.rateSource,
-    rateEvidence: pricing.rateEvidence,
+    rateEvidence: "rateEvidence" in pricing ? pricing.rateEvidence : undefined,
     unitCost: pricing.unitCost,
     totalCost: pricing.totalCost,
   });
@@ -634,54 +919,56 @@ function buildBearerRequirement(params: {
   rates: readonly OrganisationRate[];
   organisationSettings?: OrganisationSettings | null;
 }): MaterialRequirement | null {
-  if (!params.facts.bearerSection || params.facts.bearerRowCount == null) {
+  if (params.quantities.bearerRowCount <= 0 || params.quantities.bearerPurchaseLm <= 0) {
     return null;
   }
   const identity = framingTimberIdentity(
     params.facts.bearerSection,
     params.facts.framingTreatment
   );
-  if (!identity) return null;
-  const pricing = resolveIdentityRate({
-    identity,
-    unit: "lm",
-    purchaseQuantity: params.quantities.bearerPurchaseLm,
-    rates: params.rates,
-    organisationSettings: params.organisationSettings,
-  });
+  const pricing = identity
+    ? resolveIdentityRate({
+        identity,
+        unit: "lm",
+        purchaseQuantity: params.quantities.bearerPurchaseLm,
+        rates: params.rates,
+        organisationSettings: params.organisationSettings,
+      })
+    : unpricedPlanningFields();
+  const section =
+    identity?.originalDescription ??
+    identity?.section ??
+    params.facts.bearerSection;
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
     workAreaType: params.workArea.type,
     componentKey: DECK_BEARERS_COMPONENT_KEY,
-    variantKey: timberVariantKey(identity),
-    description: `Deck bearers ${identity.section}`,
-    confidence: "high",
-    assumptions: [
-      ...orientationAssumptions(params.quantities.orientation),
-      ...framingAssumptions({
-        joistCentresDefaulted: params.quantities.joistCentresDefaulted,
-        joistCentresMm: params.quantities.joistCentresMm,
-        framingWasteDefaulted: params.framingWasteDefaulted,
-        framingWastePercent: params.quantities.framingWastePercent,
-      }),
-    ],
+    variantKey: identity ? timberVariantKey(identity) : "layout-estimate",
+    description: identity?.section
+      ? `Deck bearers ${identity.section}`
+      : "Deck bearers",
+    confidence: identity && !params.quantities.layoutEstimated ? "high" : "medium",
+    assumptions: sharedFramingAssumptions({
+      quantities: params.quantities,
+      framingWasteDefaulted: params.framingWasteDefaulted,
+    }),
     provenance: {
       calculatorSource: "deck.structure.bearers",
       factKeys: params.facts.factKeys,
       constraintKeys: [],
     },
     priced: pricing.priced,
-    materialKey: serializeMaterialIdentityKey(identity),
-    materialIdentity: identity,
+    materialKey: identity ? serializeMaterialIdentityKey(identity) : null,
+    materialIdentity: identity ?? undefined,
     category: "FRAMING",
-    specification: identity.originalDescription ?? identity.section ?? undefined,
+    specification: bearerPlanningSpecification(params.quantities, section),
     baseQuantity: params.quantities.bearerBaseLm,
     baseUnit: "lm",
     wasteFactor: params.quantities.framingWastePercent / 100,
     purchaseQuantity: params.quantities.bearerPurchaseLm,
     purchaseUnit: "lm",
     rateSource: pricing.rateSource,
-    rateEvidence: pricing.rateEvidence,
+    rateEvidence: "rateEvidence" in pricing ? pricing.rateEvidence : undefined,
     unitCost: pricing.unitCost,
     totalCost: pricing.totalCost,
   });
@@ -694,40 +981,45 @@ function buildSupportRequirement(params: {
   rates: readonly OrganisationRate[];
   organisationSettings?: OrganisationSettings | null;
 }): MaterialRequirement | null {
-  if (
-    !params.facts.supportType ||
-    !params.facts.supportSection ||
-    params.facts.supportsPerBearer == null ||
-    params.facts.bearerRowCount == null
-  ) {
-    return null;
-  }
-  const identity = buildSupportMaterialIdentity({
-    supportType: params.facts.supportType,
-    sectionRaw: params.facts.supportSection,
-    treatmentRaw: params.facts.framingTreatment,
-  });
-  if (!identity) return null;
-  const pricing = resolveIdentityRate({
-    identity,
-    unit: "ea",
-    purchaseQuantity: params.quantities.supportCount,
-    rates: params.rates,
-    organisationSettings: params.organisationSettings,
-  });
+  if (params.quantities.supportCount <= 0) return null;
+  const identity =
+    params.facts.supportType && params.facts.supportSection
+      ? buildSupportMaterialIdentity({
+          supportType: params.facts.supportType,
+          sectionRaw: params.facts.supportSection,
+          treatmentRaw: params.facts.framingTreatment,
+        })
+      : null;
+  const pricing = identity
+    ? resolveIdentityRate({
+        identity,
+        unit: "ea",
+        purchaseQuantity: params.quantities.supportCount,
+        rates: params.rates,
+        organisationSettings: params.organisationSettings,
+      })
+    : unpricedPlanningFields();
+  const section =
+    identity?.originalDescription ?? params.facts.supportSection ?? null;
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
     workAreaType: params.workArea.type,
     componentKey: DECK_SUPPORTS_COMPONENT_KEY,
-    variantKey: timberVariantKey(identity),
-    description: `${params.facts.supportType} ${params.facts.supportSection}`,
-    confidence: "high",
+    variantKey: identity ? timberVariantKey(identity) : "layout-estimate",
+    description:
+      params.facts.supportType && params.facts.supportSection
+        ? `${params.facts.supportType} ${params.facts.supportSection}`
+        : "Deck supports / piles",
+    confidence: identity && !params.quantities.layoutEstimated ? "high" : "medium",
     assumptions: [
       {
         key: "deck.supports.count_model",
         text: `Support count = bearer rows × supports per bearer (${params.quantities.bearerRowCount} × ${params.quantities.supportsPerBearer}).`,
-        source: "user_confirmed",
+        source: params.quantities.layoutEstimated
+          ? "calculator_default"
+          : "user_confirmed",
       },
+      ...layoutAssumptions(params.quantities),
     ],
     provenance: {
       calculatorSource: "deck.structure.supports",
@@ -735,17 +1027,17 @@ function buildSupportRequirement(params: {
       constraintKeys: [],
     },
     priced: pricing.priced,
-    materialKey: serializeMaterialIdentityKey(identity),
-    materialIdentity: identity,
+    materialKey: identity ? serializeMaterialIdentityKey(identity) : null,
+    materialIdentity: identity ?? undefined,
     category: "FRAMING",
-    specification: identity.originalDescription ?? params.facts.supportSection ?? undefined,
+    specification: section ?? undefined,
     baseQuantity: params.quantities.supportCount,
     baseUnit: "ea",
     wasteFactor: 0,
     purchaseQuantity: params.quantities.supportCount,
     purchaseUnit: "ea",
     rateSource: pricing.rateSource,
-    rateEvidence: pricing.rateEvidence,
+    rateEvidence: "rateEvidence" in pricing ? pricing.rateEvidence : undefined,
     unitCost: pricing.unitCost,
     totalCost: pricing.totalCost,
   });
@@ -820,13 +1112,27 @@ export function buildDeckStructuralMaterialRequirements(params: {
 }): {
   requirements: MaterialRequirement[];
   quantities: DeckStructureQuantities | null;
+  geometryReadiness: DeckGeometryReadiness;
 } {
+  const geometryReadiness = classifyDeckGeometryReadiness({
+    facts: params.facts,
+    workAreaId: params.workArea.id,
+  });
+  if (
+    !deckSubstructureIncluded({
+      facts: params.facts,
+      workAreaId: params.workArea.id,
+    })
+  ) {
+    return { requirements: [], quantities: null, geometryReadiness };
+  }
+
   const structureFacts = readDeckStructureFacts({
     facts: params.facts,
     workAreaId: params.workArea.id,
   });
   if (!structureFacts) {
-    return { requirements: [], quantities: null };
+    return { requirements: [], quantities: null, geometryReadiness };
   }
 
   const waste = resolveDeckFramingWastePercent(params.materialWastageSettings);
@@ -884,7 +1190,7 @@ export function buildDeckStructuralMaterialRequirements(params: {
   });
   if (concrete) requirements.push(concrete);
 
-  return { requirements, quantities };
+  return { requirements, quantities, geometryReadiness };
 }
 
 export function buildDeckSubstructureGroupReconciliation(params: {
