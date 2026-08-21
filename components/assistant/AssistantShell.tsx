@@ -14,6 +14,8 @@ import { CommercialOverviewMetrics } from "@/components/assistant/CommercialOver
 import { EstimateReadyCard } from "@/components/assistant/EstimateReadyCard";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
+import { MarginEditControl } from "@/components/assistant/MarginEditControl";
+import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import { PlanningSurface } from "@/components/assistant/mode/PlanningSurface";
 import { EstimateReadySurface } from "@/components/assistant/mode/EstimateReadySurface";
 import { EditJobSurface } from "@/components/assistant/mode/EditJobSurface";
@@ -72,6 +74,11 @@ import {
   addWorkAreaToProject,
   excludeWorkAreaFromProject,
 } from "@/lib/assistant/work-area-actions";
+import {
+  LAST_ACTIVE_WORK_AREA_MESSAGE,
+  canRemoveCanonicalWorkArea,
+  projectActiveCanonicalWorkAreas,
+} from "@/lib/assistant/work-area-active";
 import { composeJobPlan } from "@/lib/assistant/job-plan/compose";
 import { applyJobPlanScopeWrite } from "@/lib/assistant/job-plan/apply-write";
 import { writeJobPlanScopeDecision } from "@/lib/assistant/job-plan/actions";
@@ -215,13 +222,18 @@ export function AssistantShell({
   >([]);
 
   const displayWorkAreas = useMemo(() => {
-    const optimisticExcluded = new Set(excludedWorkAreaIds);
-    const serverVisible = initialState.workAreas.filter(
-      (wa) => wa.status !== "excluded" && !optimisticExcluded.has(wa.id)
-    );
-    const serverIds = new Set(serverVisible.map((wa) => wa.id));
-    const pending = addedWorkAreas.filter((wa) => !serverIds.has(wa.id));
-    return [...serverVisible, ...pending];
+    const reconciledExcluded = excludedWorkAreaIds.filter((id) => {
+      const row = initialState.workAreas.find((wa) => wa.id === id);
+      return row != null && row.status !== "excluded";
+    });
+    const reconciledAdded = addedWorkAreas.filter((wa) => {
+      const row = initialState.workAreas.find((server) => server.id === wa.id);
+      return !(row && row.status !== "excluded");
+    });
+    return projectActiveCanonicalWorkAreas(initialState.workAreas, {
+      optimisticExcludedIds: reconciledExcluded,
+      pendingAdded: reconciledAdded,
+    });
   }, [addedWorkAreas, excludedWorkAreaIds, initialState.workAreas]);
 
   const [qualityLevel, setQualityLevel] = useState<QualityLevel | null>(
@@ -1050,13 +1062,16 @@ export function AssistantShell({
       }
 
       if (result.workArea) {
+        setExcludedWorkAreaIds((prev) =>
+          prev.filter((id) => id !== result.workArea!.id)
+        );
         setAddedWorkAreas((prev) => {
           if (prev.some((wa) => wa.id === result.workArea!.id)) return prev;
-          if (
-            initialState.workAreas.some((wa) => wa.id === result.workArea!.id)
-          ) {
-            return prev;
-          }
+          const serverActive = initialState.workAreas.some(
+            (wa) =>
+              wa.id === result.workArea!.id && wa.status !== "excluded"
+          );
+          if (serverActive) return prev;
           return [...prev, result.workArea!];
         });
       }
@@ -1077,10 +1092,8 @@ export function AssistantShell({
       setActionError(null);
       const endRemovePerf = startPreviewPerf("work_area_remove_complete");
 
-      const remaining = displayWorkAreas.filter((wa) => wa.id !== workAreaId)
-        .length;
-      if (remaining < 1) {
-        const error = "At least one work area must remain in the estimate.";
+      if (!canRemoveCanonicalWorkArea(displayWorkAreas, workAreaId)) {
+        const error = LAST_ACTIVE_WORK_AREA_MESSAGE;
         setActionError(error);
         setIsExcludingWorkArea(false);
         endRemovePerf();
@@ -1893,7 +1906,9 @@ export function AssistantShell({
 
       <div
         className={cn(
-          "mt-3 grid min-w-0 gap-5 lg:mt-4 lg:items-start",
+          assistantMode === "estimate_ready"
+            ? "mt-1 grid min-w-0 gap-5 lg:mt-4 lg:items-start"
+            : "mt-3 grid min-w-0 gap-5 lg:mt-4 lg:items-start",
           assistantMode === "planning" &&
             "lg:grid-cols-[minmax(0,1fr)_380px] xl:grid-cols-[200px_minmax(0,1fr)_380px]",
           assistantMode === "estimate_ready" &&
@@ -1901,6 +1916,9 @@ export function AssistantShell({
           assistantMode === "edit_job" && "grid-cols-1"
         )}
         data-assistant-main-grid
+        data-estimate-ready-mobile-gap={
+          assistantMode === "estimate_ready" ? "tight" : undefined
+        }
         data-assistant-mode={assistantMode}
         data-assistant-modes-primary={ASSISTANT_MODES_PRIMARY ? "true" : "false"}
       >
@@ -2112,7 +2130,48 @@ export function AssistantShell({
                         statusKind={mobileCommercialStatus?.kind}
                         compositionHeading="Composition"
                         otherLabel="Other Direct"
+                        marginTrailing={
+                          !displayEstimateStale && estimate ? (
+                            <span data-mobile-margin-edit="true">
+                              <MarginEditControl
+                                marginPercent={estimate.marginPercent}
+                                targetMarginPercent={estimate.targetMarginPercent}
+                                defaultMarginPercent={
+                                  initialState.defaultMarginPercent
+                                }
+                                disabled={updatingEstimate || isGenerating}
+                                isSaving={isSavingMargin}
+                                onSave={handleMarginSave}
+                                presentation="inline"
+                              />
+                            </span>
+                          ) : null
+                        }
+                        marginSaveIndicator={
+                          !displayEstimateStale && isSavingMargin ? (
+                            <SaveStatusIndicator status="saving" isSaving />
+                          ) : !displayEstimateStale && marginSaveLabel ? (
+                            <p
+                              className="text-xs text-muted-foreground"
+                              data-margin-save-label
+                            >
+                              {marginSaveLabel}
+                            </p>
+                          ) : null
+                        }
                       />
+                      <button
+                        type="button"
+                        className="mt-2 text-left text-[11px] text-muted-foreground underline-offset-4 hover:underline"
+                        onClick={() => {
+                          setBuilderReviewOpen(false);
+                          setBreakdownOpen(true);
+                        }}
+                        data-mobile-detailed-breakdown="true"
+                        data-detailed-breakdown-tertiary="true"
+                      >
+                        {ASSISTANT_ACTION_LABELS.viewFullBreakdown}
+                      </button>
                     </CompletedSetupDisclosure>
                   </div>
                 </>
@@ -2600,7 +2659,7 @@ export function AssistantShell({
               <ScopeSummaryBlock
                 projectId={project.id}
                 scopeReview={initialState.scopeReview}
-                workAreas={initialState.workAreas}
+                workAreas={displayWorkAreas}
                 editable={questionsSubmitted}
                 manageWorkAreas={workAreasConfirmed}
                 estimateIsStale={displayEstimateStale}

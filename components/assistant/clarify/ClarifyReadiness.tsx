@@ -10,6 +10,7 @@ import type { RefineCandidate, RefineGroupId, RefineView } from "@/lib/assistant
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
+import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
 
 const GROUP_LABEL: Record<RefineGroupId, string> = {
   scope: "Scope",
@@ -33,6 +34,7 @@ function toClarifyCandidate(row: RefineCandidate): ClarifyCandidate {
     question: row.question,
     askClass: row.tier === "advanced" ? "ADVANCED" : "REFINEMENT",
     inputType: row.inputType,
+    unit: row.unit,
     options: row.options,
     writeTarget: row.writeTarget,
     write: row.write,
@@ -105,19 +107,10 @@ function RefineField({
           ))}
         </div>
       ) : (
-        <input
-          className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
-          inputMode={candidate.inputType === "number" ? "decimal" : "text"}
-          aria-label={candidate.label}
-          disabled={isSaving}
-          onBlur={(event) => {
-            const raw = event.target.value;
-            if (!raw.trim()) return;
-            const value =
-              candidate.inputType === "number" ? Number(raw) : raw;
-            if (candidate.inputType === "number" && !Number.isFinite(value)) return;
-            onAnswerValue?.(mapped, value);
-          }}
+        <ClarifyValueField
+          candidate={mapped}
+          isSaving={isSaving}
+          onSubmit={(value) => onAnswerValue?.(mapped, value)}
         />
       )}
     </div>

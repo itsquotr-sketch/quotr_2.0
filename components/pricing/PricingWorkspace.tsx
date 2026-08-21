@@ -213,7 +213,7 @@ export function PricingWorkspace({
   );
 
   return (
-    <div className="space-y-5 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div className="space-y-5 pb-[calc(11rem+env(safe-area-inset-bottom))] md:pb-0">
       <PricingHeader
         document={document}
         projectTitle={projectTitle}

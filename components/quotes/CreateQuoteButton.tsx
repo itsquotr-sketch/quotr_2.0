@@ -12,6 +12,7 @@ type CreateQuoteButtonProps = {
   pricingDocumentId: string;
   isReviewed: boolean;
   quoteSummary: QuoteSummary | null;
+  presentation?: "default" | "bar";
 };
 
 export function CreateQuoteButton({
@@ -19,6 +20,7 @@ export function CreateQuoteButton({
   pricingDocumentId,
   isReviewed,
   quoteSummary,
+  presentation = "default",
 }: CreateQuoteButtonProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -27,7 +29,7 @@ export function CreateQuoteButton({
     return (
       <Button
         type="button"
-        className="w-full"
+        className={presentation === "bar" ? "h-11 min-h-11 w-full" : "w-full"}
         render={
           <Link href={`/app/projects/${projectId}/quotes/${quoteSummary.id}`} />
         }
@@ -51,7 +53,7 @@ export function CreateQuoteButton({
     <div className="space-y-2">
       <Button
         type="button"
-        className="w-full"
+        className={presentation === "bar" ? "h-11 min-h-11 w-full" : "w-full"}
         disabled={!isReviewed || isPending}
         onClick={handleCreate}
       >

@@ -59,14 +59,19 @@ function ScopeRow({
   tone: "included" | "check" | "excluded" | "available";
   onToggle?: (presentation: "INCLUDED" | "NOT_INCLUDED") => void;
 }) {
+  const stackOnMobile = showActions && Boolean(onToggle);
+
   return (
     <li
       className={cn(
-        "flex min-h-11 items-center justify-between gap-2 py-0.5",
+        stackOnMobile
+          ? "flex flex-col gap-1.5 py-1.5 sm:min-h-11 sm:flex-row sm:items-center sm:justify-between sm:gap-2 sm:py-0.5"
+          : "flex min-h-11 items-center justify-between gap-2 py-0.5",
         tone === "excluded" && "text-muted-foreground"
       )}
       data-job-plan-item={item.id}
       data-job-plan-state={item.presentation}
+      data-job-plan-check-row={tone === "check" ? "true" : undefined}
     >
       <span className="flex min-w-0 items-start gap-2 text-sm">
         {tone === "included" ? (
@@ -94,19 +99,25 @@ function ScopeRow({
           />
         ) : null}
         <span className="min-w-0">
-          <span className={cn(tone === "included" && "font-medium")}>
+          <span
+            className={cn("block", tone === "included" && "font-medium")}
+            data-job-plan-item-title=""
+          >
             {item.label}
           </span>
           {tone === "check" ? (
-            <span className="ml-1.5 text-[11px] font-medium text-muted-foreground">
+            <span
+              className="mt-0.5 block text-[11px] font-medium text-muted-foreground"
+              data-job-plan-check-status=""
+            >
               Check
             </span>
           ) : null}
           {tone === "excluded" ? (
-            <span className="ml-1.5 text-xs">— Not included</span>
+            <span className="ml-0 text-xs">— Not included</span>
           ) : null}
           {tone === "available" ? (
-            <span className="ml-1.5 text-[11px] font-medium text-muted-foreground">
+            <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
               Available
             </span>
           ) : null}
@@ -122,11 +133,15 @@ function ScopeRow({
         </span>
       </span>
       {showActions && onToggle ? (
-        <span className="flex shrink-0 gap-1">
+        <span
+          className="flex w-full gap-1 sm:w-auto sm:shrink-0"
+          data-job-plan-check-actions={tone === "check" ? "true" : undefined}
+        >
           <Button
             type="button"
             size="sm"
             variant="outline"
+            className="min-h-9 flex-1 sm:min-h-7 sm:flex-none"
             aria-label={`Include ${item.label}`}
             onClick={() => onToggle("INCLUDED")}
           >
@@ -136,6 +151,7 @@ function ScopeRow({
             type="button"
             size="sm"
             variant="ghost"
+            className="min-h-9 flex-1 sm:min-h-7 sm:flex-none"
             aria-label={`Mark ${item.label} as not included`}
             onClick={() => onToggle("NOT_INCLUDED")}
           >

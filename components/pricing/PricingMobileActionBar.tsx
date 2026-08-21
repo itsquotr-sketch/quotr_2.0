@@ -37,9 +37,10 @@ export function PricingMobileActionBar({
         "fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur-sm md:hidden print:hidden",
         className
       )}
+      data-pricing-mobile-action-bar="true"
     >
-      <div className="mx-auto flex max-w-lg items-center gap-3 px-4 py-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
-        <div className="min-w-0 flex-1">
+      <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+        <div className="min-w-0" data-pricing-mobile-total="true">
           <p className="text-[11px] font-medium text-muted-foreground">
             Total incl. GST
           </p>
@@ -47,13 +48,15 @@ export function PricingMobileActionBar({
             {formatPricingMoney(document.total_incl_gst)}
           </p>
         </div>
-        <div className="flex shrink-0 flex-col gap-1.5">
+        <div
+          className="flex w-full flex-col gap-2"
+          data-pricing-mobile-actions="true"
+        >
           {needsRecalibration && onRecalibrate ? (
             <Button
               type="button"
-              size="sm"
               variant="outline"
-              className="h-9"
+              className="h-11 min-h-11 w-full"
               onClick={onRecalibrate}
             >
               Recalibrate
@@ -64,6 +67,7 @@ export function PricingMobileActionBar({
               pricingDocumentId={document.id}
               isReviewed={isReviewed}
               quoteSummary={quoteSummary}
+              presentation="bar"
             />
           ) : (
             <>
@@ -72,7 +76,7 @@ export function PricingMobileActionBar({
                   type="button"
                   size="sm"
                   variant="outline"
-                  className="h-9"
+                  className="h-11 min-h-11 w-full"
                   disabled={isSaving}
                   onClick={onSaveDocument}
                 >
@@ -88,6 +92,7 @@ export function PricingMobileActionBar({
                 pricingDocumentId={document.id}
                 isReviewed={isReviewed}
                 quoteSummary={quoteSummary}
+                presentation="bar"
               />
             </>
           )}

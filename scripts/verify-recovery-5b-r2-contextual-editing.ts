@@ -114,7 +114,11 @@ check(
 );
 check(
   "13 Remove WA prevents removing last work area",
-  shell.includes("At least one work area must remain")
+  shell.includes("LAST_ACTIVE_WORK_AREA_MESSAGE") &&
+    shell.includes("canRemoveCanonicalWorkArea") &&
+    read("lib/assistant/work-area-active.ts").includes(
+      "At least one work area must remain in the estimate."
+    )
 );
 check(
   "14 Remove WA shows user-facing inline error",

@@ -8,6 +8,10 @@ import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStale } from "@/lib/estimate/stale";
 import { assertOrgOwnsActiveProject, assertOrgOwnsWorkArea } from "@/lib/security/org-ownership";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
+import {
+  LAST_ACTIVE_WORK_AREA_MESSAGE,
+  isActiveCanonicalWorkAreaStatus,
+} from "@/lib/assistant/work-area-active";
 
 const CATALOGUE_BY_TYPE = new Map(
   SCOPE_CATALOGUE.map((item) => [item.type, item])
@@ -211,14 +215,18 @@ export async function excludeWorkAreaFromProject(input: {
     return { success: true };
   }
 
-  const { data: confirmedCount } = await supabase
+  const { data: activeRows } = await supabase
     .from("work_areas")
-    .select("id")
+    .select("id, status")
     .eq("project_id", projectId)
-    .eq("status", "confirmed");
+    .neq("status", "excluded");
 
-  if ((confirmedCount ?? []).length <= 1 && workArea.status === "confirmed") {
-    return { error: "At least one work area must remain in the estimate." };
+  const activeCount = (activeRows ?? []).filter((row) =>
+    isActiveCanonicalWorkAreaStatus(row.status)
+  ).length;
+
+  if (activeCount <= 1) {
+    return { error: LAST_ACTIVE_WORK_AREA_MESSAGE };
   }
 
   const { error } = await supabase

@@ -24,7 +24,7 @@ export function WorkspacePage({
       ) : null}
       {nav}
       <WorkspaceContainer
-        innerClassName={cn("mt-4 pb-6 sm:mt-5", contentClassName)}
+        innerClassName={cn("mt-2 pt-3 pb-6 sm:mt-5 sm:pt-6", contentClassName)}
       >
         {children}
       </WorkspaceContainer>

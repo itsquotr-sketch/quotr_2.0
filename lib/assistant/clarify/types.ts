@@ -31,6 +31,7 @@ export type ClarifyCandidate = {
   readonly question: string;
   readonly askClass: ClarifyAskClass;
   readonly inputType: "boolean" | "select" | "number" | "text";
+  readonly unit?: string;
   readonly options?: readonly string[];
   readonly writeTarget: ClarifyWriteTarget;
   readonly write: JobPlanScopeWrite | null;

@@ -23,6 +23,7 @@ export type RefineCandidate = {
   readonly label: string;
   readonly question: string;
   readonly inputType: "boolean" | "select" | "number";
+  readonly unit?: string;
   readonly options?: readonly string[];
   readonly writeTarget: ClarifyWriteTarget;
   readonly write: JobPlanScopeWrite | null;

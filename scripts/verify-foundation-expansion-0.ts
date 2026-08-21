@@ -68,7 +68,10 @@ check(
 check(
   4,
   "Last work area blocked with clear message",
-  shell.includes("At least one work area must remain")
+  shell.includes("LAST_ACTIVE_WORK_AREA_MESSAGE") &&
+    read("lib/assistant/work-area-active.ts").includes(
+      "At least one work area must remain in the estimate."
+    )
 );
 check(
   5,

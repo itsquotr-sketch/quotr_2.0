@@ -11,6 +11,7 @@ import {
   RefineEstimatePanel,
 } from "@/components/assistant/clarify/ClarifyReadiness";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
 
 type ClarifyPanelProps = {
   view: ClarifyView;
@@ -99,21 +100,10 @@ function ClarifyQuestion({
           ))}
         </div>
       ) : (
-        <input
-          className="min-h-11 w-full rounded-xl border border-border bg-background px-3 text-sm"
-          inputMode={candidate.inputType === "number" ? "decimal" : "text"}
-          aria-label={candidate.label}
-          disabled={isSaving}
-          onBlur={(event) => {
-            const raw = event.target.value;
-            if (!raw.trim()) return;
-            const value =
-              candidate.inputType === "number" ? Number(raw) : raw;
-            if (candidate.inputType === "number" && !Number.isFinite(value)) {
-              return;
-            }
-            onAnswerValue?.(candidate, value);
-          }}
+        <ClarifyValueField
+          candidate={candidate}
+          isSaving={isSaving}
+          onSubmit={(value) => onAnswerValue?.(candidate, value)}
         />
       )}
     </div>
