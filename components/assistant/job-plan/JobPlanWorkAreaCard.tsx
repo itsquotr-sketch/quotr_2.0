@@ -193,7 +193,15 @@ export function JobPlanWorkAreaCardView({
             ? `deck-width-${card.workAreaId}`
             : specFocusKey === "deck.height_m"
               ? `deck-height-${card.workAreaId}`
-              : null;
+              : specFocusKey === "deck.joist_section"
+                ? `deck-joist-${card.workAreaId}`
+                : specFocusKey === "deck.bearer_section"
+                  ? `deck-bearer-${card.workAreaId}`
+                  : specFocusKey === "deck.support_section"
+                    ? `deck-post-${card.workAreaId}`
+                    : specFocusKey === "deck.fascia_material"
+                      ? `deck-fascia-${card.workAreaId}`
+                      : null;
 
       const el = id ? document.getElementById(id) : null;
       if (el instanceof HTMLElement) {

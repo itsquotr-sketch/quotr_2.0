@@ -120,6 +120,7 @@ type DbLineItem = {
   rate_source: string | null;
   notes: string | null;
   sort_order: number;
+  component_key?: string | null;
 };
 
 type DbProject = {
@@ -380,6 +381,7 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
     costRate: metadata.costRate,
     sellRate: metadata.sellRate,
     itemKey: metadata.itemKey,
+    componentKey: row.component_key ?? undefined,
     sellDerivedFromMargin: metadata.sellDerivedFromMargin,
     notes: displayNotes,
     materialBuildUps: getMaterialBuildUps(row.notes),

@@ -117,7 +117,7 @@ const estimate = calculateEstimate(ctx(rateWa, rateFacts));
 const deckCalc = calculateDeck(ctx(rateWa, rateFacts), rateWa);
 
 const framing = estimate.lineItems.find((item) => item.label === "Framing/substructure");
-const fixings = estimate.lineItems.find((item) => item.label === "Fixings and consumables");
+const fixings = estimate.lineItems.find((item) => item.itemKey === "deck.fixings.m2");
 const labour = estimate.lineItems.find((item) => item.label === "Deck labour");
 const joist = materialReq(estimate, DECK_JOISTS_COMPONENT_KEY);
 const rim = materialReq(estimate, DECK_RIM_FRAMING_COMPONENT_KEY);

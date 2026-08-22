@@ -190,18 +190,28 @@ const collidingRatesEstimate = calculateEstimate(
   realJobContext([collidingHardwoodLm])
 );
 check(
-  "7 fixture empty-rates sell is $16,069.10",
-  emptyRatesEstimate.recommendedSell === 16069.1,
+  "7 fixture empty-rates sell is DEFAULT-RATE ENGINE $12,878.01",
+  emptyRatesEstimate.recommendedSell === 12878.01,
   `sell=${emptyRatesEstimate.recommendedSell}`
 );
 
-const framingLine = collidingRatesEstimate.lineItems.find(
+const packageLine = collidingRatesEstimate.lineItems.find(
   (item) => item.label === "Framing/substructure"
 );
-const fixingsLine = collidingRatesEstimate.lineItems.find(
-  (item) => item.label === "Fixings and consumables"
+const joistsLine = collidingRatesEstimate.lineItems.find(
+  (item) => item.label === "Joists"
 );
-const labourLine = collidingRatesEstimate.lineItems.find(
+const fixingsLine = collidingRatesEstimate.lineItems.find(
+  (item) => item.itemKey === "deck.fixings.m2"
+);
+const splitLabour = collidingRatesEstimate.lineItems.filter(
+  (item) =>
+    item.category === "labour" &&
+    (item.label === "Decking installation" ||
+      item.label === "Substructure framing" ||
+      item.label === "Pile/post installation")
+);
+const lumpLabour = collidingRatesEstimate.lineItems.find(
   (item) => item.label === "Deck labour"
 );
 const deckingLine = collidingRatesEstimate.lineItems.find(
@@ -209,22 +219,27 @@ const deckingLine = collidingRatesEstimate.lineItems.find(
 );
 
 check(
-  "8 colliding hardwood lm does not steal framing/fixings to Preview-defect band",
-  framingLine?.costRate === 120 &&
+  "8 colliding hardwood lm does not steal timber/residual to Preview-defect band",
+  joistsLine != null &&
+    joistsLine.costRate !== 22.5 &&
     fixingsLine?.costRate === 25 &&
+    packageLine == null &&
     collidingRatesEstimate.recommendedSell > 10000,
-  `sell=${collidingRatesEstimate.recommendedSell}`
+  `sell=${collidingRatesEstimate.recommendedSell} joistRate=${joistsLine?.costRate}`
 );
 
-check("9 persisted-path framing line exists", Boolean(framingLine));
+check("9 persisted-path joists line exists under detailed authority", Boolean(joistsLine));
 check("10 persisted-path decking line exists", Boolean(deckingLine));
-check("11 persisted-path labour line exists", Boolean(labourLine));
+check(
+  "11 persisted-path split labour exists; lumped Deck labour absent",
+  splitLabour.length === 3 && lumpLabour == null
+);
 check("12 persisted-path fixings line exists", Boolean(fixingsLine));
 
 check(
-  "13 framing cost rate is $120 not $22.50",
-  framingLine?.costRate === 120,
-  `costRate=${framingLine?.costRate}`
+  "13 joist timber cost is SG8 benchmark, not colliding $22.50",
+  joistsLine?.costRate === 8.09,
+  `costRate=${joistsLine?.costRate}`
 );
 check(
   "14 fixings cost rate is $25 not $22.50",
@@ -232,16 +247,16 @@ check(
   `costRate=${fixingsLine?.costRate}`
 );
 check(
-  "15 framing item key remains deck.substructure.m2",
-  framingLine?.itemKey === "deck.substructure.m2"
+  "15 package key absent when detailed joists are authoritative",
+  packageLine == null && joistsLine != null
 );
 check(
   "16 fixings item key remains deck.fixings.m2",
   fixingsLine?.itemKey === "deck.fixings.m2"
 );
 check(
-  "17 framing source is not work_area_rate",
-  framingLine?.rateSourceType !== "work_area_rate"
+  "17 joists source is not work_area_rate",
+  joistsLine?.rateSourceType !== "work_area_rate"
 );
 check(
   "18 fixings source is not work_area_rate",
@@ -284,7 +299,10 @@ const companySurface = calculateEstimate(
 const surfaceAfterCompany = companySurface.lineItems.find(
   (item) => item.componentKey === DECK_SURFACE_COMPONENT_KEY
 );
-const framingAfterCompany = companySurface.lineItems.find(
+const joistsAfterCompany = companySurface.lineItems.find(
+  (item) => item.label === "Joists"
+);
+const packageAfterCompany = companySurface.lineItems.find(
   (item) => item.label === "Framing/substructure"
 );
 check(
@@ -292,8 +310,8 @@ check(
   surfaceAfterCompany?.costRate === 18.5
 );
 check(
-  "21 company hardwood lm does not steal framing",
-  framingAfterCompany?.costRate === 120
+  "21 company hardwood lm does not steal joist timber",
+  joistsAfterCompany?.costRate === 8.09 && packageAfterCompany == null
 );
 
 check(
@@ -311,22 +329,29 @@ check(
   }).authority === "SHADOW"
 );
 check(
-  "24 framing line has no promoted structural child key",
-  framingLine?.componentKey == null ||
-    framingLine.componentKey === "deck.substructure.m2"
+  "24 detailed joists are not the old package key",
+  joistsLine != null &&
+    joistsLine.itemKey !== "deck.substructure.m2" &&
+    packageLine == null
 );
 
-const labourCount = collidingRatesEstimate.lineItems.filter(
+const lumpLabourCount = collidingRatesEstimate.lineItems.filter(
   (item) => item.label === "Deck labour"
 ).length;
-const framingCount = collidingRatesEstimate.lineItems.filter(
+const packageCount = collidingRatesEstimate.lineItems.filter(
   (item) => item.label === "Framing/substructure"
 ).length;
 const fixingsCount = collidingRatesEstimate.lineItems.filter(
-  (item) => item.label === "Fixings and consumables"
+  (item) => item.itemKey === "deck.fixings.m2"
 ).length;
-check("25 labour active exactly once", labourCount === 1);
-check("26 framing active exactly once", framingCount === 1);
+check(
+  "25 split labour is the active labour money; lump absent",
+  splitLabour.length === 3 && lumpLabourCount === 0
+);
+check(
+  "26 never package + detailed structure",
+  packageCount === 0 && joistsLine != null
+);
 check("27 fixings active exactly once", fixingsCount === 1);
 
 const lineSell = collidingRatesEstimate.lineItems.reduce(
@@ -347,7 +372,7 @@ check(
 );
 check(
   "30 fixture calibration sell unchanged",
-  runDeckCalibration(realJob).commercialSafety.estimateSell === 16069.1
+  runDeckCalibration(realJob).commercialSafety.estimateSell === 12878.01
 );
 
 check(
@@ -616,11 +641,14 @@ const blankM2Estimate = calculateEstimate(
 const blankM2Decking = blankM2Estimate.lineItems.find(
   (item) => item.componentKey === DECK_SURFACE_COMPONENT_KEY
 );
-const blankM2Framing = blankM2Estimate.lineItems.find(
+const blankM2Joists = blankM2Estimate.lineItems.find(
+  (item) => item.label === "Joists"
+);
+const blankM2Package = blankM2Estimate.lineItems.find(
   (item) => item.label === "Framing/substructure"
 );
 const blankM2Fixings = blankM2Estimate.lineItems.find(
-  (item) => item.label === "Fixings and consumables"
+  (item) => item.itemKey === "deck.fixings.m2"
 );
 check(
   "54 decking surface company rate remains valid beside blank m2",
@@ -628,9 +656,9 @@ check(
     blankM2Decking.rateSourceType === "user_rate"
 );
 check(
-  "55 REAL-JOB blank m2 does not steal framing/fixings",
-  blankM2Framing?.costRate === 120 &&
-    blankM2Framing.rateSourceType === "benchmark" &&
+  "55 REAL-JOB blank m2 does not steal joists/residual",
+  blankM2Joists?.costRate === 8.09 &&
+    blankM2Package == null &&
     blankM2Fixings?.costRate === 25 &&
     blankM2Fixings.rateSourceType === "benchmark"
 );
@@ -794,13 +822,13 @@ function testLocalDb(): void {
             SELECT recommended_cost::text
           FROM public.estimate_line_items
           WHERE estimate_id = (SELECT id FROM public.estimates WHERE project_id = '${projectId}'::uuid)
-            AND label = 'Framing/substructure';
+            AND label = 'Joists';
         `,
       }
     ).trim();
     dbCheck(
-      "37 persisted framing cost is 27×120",
-      Number(framingPersisted) === 3240,
+      "37 persisted joists cost is 66.15×8.09",
+      Number(framingPersisted) === 535.15,
       `recommended_cost=${framingPersisted}`
     );
 
@@ -813,7 +841,7 @@ function testLocalDb(): void {
             SELECT recommended_cost::text
           FROM public.estimate_line_items
           WHERE estimate_id = (SELECT id FROM public.estimates WHERE project_id = '${projectId}'::uuid)
-            AND label = 'Fixings and consumables';
+            AND label = 'Fixings, connectors & sundries';
         `,
       }
     ).trim();

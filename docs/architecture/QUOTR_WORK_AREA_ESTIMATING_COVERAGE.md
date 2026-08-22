@@ -209,6 +209,31 @@ Residual allowance (intentional, not counted): fixings, connectors, DPC, minor b
 
 ---
 
+## 7B. Deck Maturity 2B / 2B-R1 — SCOPE-COMPONENT COMMERCIAL ESTIMATING
+
+**Status:** 2B architecture COMPLETE LOCAL. **2B-R1 COMPLETE LOCAL / OWNER COMMERCIAL REVIEW PENDING** (do not commit until Owner reviews the new Deck commercial result).  
+**Verifier:** `scripts/verify-deck-maturity-2b.ts`
+
+| Intent | 2B-R1 authority |
+| --- | --- |
+| Decking boards | Unchanged `decking.surface` REQUIREMENT_AUTHORITATIVE |
+| Decking + framing + pile labour | DETAILED when starter/company productivities exist for decking 0.55 h/m², substructure 0.52 h/m², and posts 0.20 h/ea. Old 1.2 lump is fallback only. Elevated 0.25 h/m² remains a separate extra |
+| Structural materials | DETAILED when joists, bearers, rim, and piles all have quantity, identity, trusted rate, and piles have procurement quantity. Else PACKAGE_FALLBACK on `deck.substructure.m2`. No package + detail |
+| Piles | Default 125×125 H5 house pile $23.50/lm EX GST. Physical required length ≠ purchase lm. Stock lengths 0.60–3.60 m. 100×100 H5 is selectable without binding the 125 rate |
+| Fascia | Physical height coverage. Labour 0.45 h/lm replaces $35/lm labour allowance when hours are trusted. Material $22/lm allowance remains until fascia identity/rate is complete |
+| Steps | Starter 4.0 h/m² tread (low-confidence). Stair lump remains money until step material and labour are both complete. Does not block structural promotion |
+| Demolition | Existing `deck.demolition_hours_per_m2` 0.35 unchanged |
+| Balustrade | Unchanged lump. Not matured |
+| Fixings | Residual `deck.fixings.m2` $25/$40 **RESIDUAL_STARTER_BENCHMARK**. Builder label: Fixings, connectors & sundries. Covers screws/clips, connectors, DPC, blocking, consumables. Not timber/boards/concrete/delivery. |
+| Access/carry | Applied once to each labour line (equivalent to once on the sum). Not per-component then again on an aggregate |
+| Promotion rule | Never sum package + detailed children. Missing/zero productivity uses lump — no silent zero labour |
+
+Estimating material assumptions are **not** NZS 3604 or structural certification.
+
+**Not in 2B-R1:** Retaining Wall, Company DNA calibration, balustrade engineering, golden restamp.
+
+---
+
 ## 8. Retaining Wall — MINIMAL (SAFETY HARDENED)
 
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
@@ -569,6 +594,6 @@ This R1 pass accepts the read-only audit unless code inspection disproved a clai
 
 1. UX-PREMIUM-01: **COMPLETE / OWNER VALIDATED**.
 2. DECK-MATURITY-2A / 2A-R1: **COMPLETE / COMMITTED / PREVIEW**.
-3. DECK-MATURITY-2B: **NOT STARTED** — structural child commercial promotion only after Owner review of 2A.
+3. DECK-MATURITY-2B: **COMPLETE LOCAL / OWNER COMMERCIAL REVIEW PENDING** — package fallback remains until post rates and labour splits exist.
 4. Retaining Wall full maturity: **NOT STARTED**.
 5. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production.

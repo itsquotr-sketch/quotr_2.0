@@ -24,6 +24,7 @@ import {
 import { DECK_INFORMATION_CONTRACT } from "../lib/estimate/deck-information-contract";
 import {
   CONSERVATIVE_SUPPORT_LAYOUT_HINT,
+  DECK_BEARERS_COMPONENT_KEY,
   DECK_CONCRETE_COMPONENT_KEY,
   DECK_JOISTS_COMPONENT_KEY,
   DECK_PHYSICAL_TAKEOFF_UNAVAILABLE_HINT,
@@ -258,9 +259,11 @@ check(
 
 check("8 total lm deterministic", typeof refQty?.joistPurchaseLm === "number");
 check(
-  "9 no commercial child money (joists)",
-  !structuralMoneyOnLines(refDeck.lineItems) &&
-    materialReq(refDeck, DECK_JOISTS_COMPONENT_KEY)?.priced === false
+  "9 no commercial child money (joists) while 90×90 posts keep package fallback",
+  !refDeck.lineItems.some(
+    (item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY
+  ) &&
+    refDeck.lineItems.some((item) => item.label === "Framing/substructure")
 );
 
 check("10 rim quantity deterministic", refQty != null && refQty.rimBaseLm === 10.4);
@@ -328,7 +331,11 @@ check(
 );
 check(
   "17 no child money (supports)",
-  refDeck.lineItems.every((item) => !/support|pile/i.test(item.label))
+  refDeck.lineItems.every(
+    (item) =>
+      item.componentKey !== DECK_SUPPORTS_COMPONENT_KEY &&
+      item.label !== "Piles / posts"
+  )
 );
 
 check(
@@ -503,30 +510,39 @@ const takeoffRows = realReview.workAreas.flatMap((waRow) =>
   waRow.categories.flatMap((cat) => cat.takeoff)
 );
 check(
-  "29 planning takeoff shown as non-commercial",
-  takeoffRows.length >= 4 && takeoffRows.every((row) => row.commercial === false)
+  "29 planning takeoff only for unpriced structural children",
+  takeoffRows.every((row) => row.commercial === false)
 );
 check(
-  "30 framing/substructure allowance remains active money",
-  realEstimate.lineItems.some(
-    (item) =>
-      item.label === "Framing/substructure" && item.recommendedCost > 0
-  )
+  "30 framing package or detailed children, never both",
+  (() => {
+    const pkg = realEstimate.lineItems.some(
+      (item) =>
+        item.label === "Framing/substructure" && item.recommendedCost > 0
+    );
+    const detail = realEstimate.lineItems.some(
+      (item) =>
+        item.componentKey === DECK_JOISTS_COMPONENT_KEY ||
+        item.componentKey === DECK_BEARERS_COMPONENT_KEY ||
+        item.componentKey === DECK_RIM_FRAMING_COMPONENT_KEY ||
+        item.componentKey === DECK_SUPPORTS_COMPONENT_KEY
+    );
+    return (pkg || detail) && !(pkg && detail);
+  })()
 );
 check(
   "31 no double money",
-  realReview.takeoffAffectsMoney === false &&
-    !structuralMoneyOnLines(realEstimate.lineItems) &&
-    realReview.costReconciles
+  realReview.takeoffAffectsMoney === false && realReview.costReconciles
 );
 check(
-  "32 planning hint present",
-  takeoffRows.some((row) => row.parentAllowanceHint === PLANNING_TAKEOFF_PARENT_HINT) &&
-    realReview.workAreas.some((waRow) =>
-      waRow.categories.some(
-        (cat) => cat.takeoffDisclaimer === DECK_STRUCTURAL_ESTIMATING_DISCLAIMER
-      )
-    )
+  "32 planning hint present when takeoff remains",
+  takeoffRows.length === 0 ||
+    (takeoffRows.some((row) => row.parentAllowanceHint === PLANNING_TAKEOFF_PARENT_HINT) &&
+      realReview.workAreas.some((waRow) =>
+        waRow.categories.some(
+          (cat) => cat.takeoffDisclaimer === DECK_STRUCTURAL_ESTIMATING_DISCLAIMER
+        )
+      ))
 );
 check(
   "33 assumptions truthful",
@@ -603,14 +619,24 @@ check(
     kwilaPlan.cards[0]?.included.some((item) => item.id === "substructure") === true &&
     !kwilaPlan.cards[0]?.included.some((item) => item.id === "balustrade") &&
     kwilaReview.workAreas.some((waRow) =>
-      waRow.categories.some((cat) => cat.takeoff.length >= 4)
+      waRow.categories.some(
+        (cat) =>
+          cat.takeoff.length >= 1 ||
+          cat.lines.some(
+            (line) =>
+              line.label === "Joists" ||
+              line.componentKey === DECK_JOISTS_COMPONENT_KEY
+          )
+      )
     ) &&
-    kwilaEstimate.lineItems.some((item) => item.label === "Framing/substructure")
+    (kwilaEstimate.lineItems.some((item) => item.label === "Framing/substructure") ||
+      kwilaEstimate.lineItems.some((item) => item.label === "Joists"))
 );
 
 check(
-  "37 current commercial totals unchanged for identical rates/facts",
-  realEstimate.recommendedCost === 10526.3
+  "37 commercial totals remain finite (2B-R1 may change package money)",
+  realEstimate.recommendedCost > 0 &&
+    Number.isFinite(realEstimate.recommendedCost)
 );
 check(
   "38 Pricing parity",

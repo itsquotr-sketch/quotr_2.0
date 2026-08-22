@@ -109,6 +109,7 @@ export type EstimateLineItem = {
   costRate?: number;
   sellRate?: number;
   itemKey?: string;
+  componentKey?: string;
   sellDerivedFromMargin?: boolean;
   notes?: string;
   materialBuildUps?: MaterialBuildUpEntry[];

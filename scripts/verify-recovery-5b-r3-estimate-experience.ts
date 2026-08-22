@@ -206,7 +206,7 @@ check(37, "compactCommercialSidebar='estimate_ready' mode triggers rename", shel
 
 check(38, "Direct cost shown in Commercial Overview sidebar", estimatePanel.includes("Direct cost"));
 
-check(39, "Gross margin shown in Commercial Overview sidebar", estimatePanel.includes("Gross margin") || estimatePanel.includes("marginLabel"));
+check(39, "Effective gross margin shown in Commercial Overview sidebar", estimatePanel.includes("Effective gross margin") || estimatePanel.includes("marginLabel"));
 
 check(40, "Gross profit shown in Commercial Overview sidebar", estimatePanel.includes("Gross profit"));
 

@@ -231,12 +231,14 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "deck.fixings.m2",
-    label: "Deck fixings and consumables",
+    label: "Fixings, connectors & sundries",
     rate_type: "material",
     category: "material",
     work_area_type: "deck",
     workAreaLabel: "Deck",
     unit: "m2",
+    description:
+      "Residual starter $/m² for decking screws/clips, hangers/brackets/bolts, DPC, blocking, consumables and small sundries. Not deck boards, joist/bearer/rim/pile timber, fascia, steps, concrete or delivery. Company override if you know your kit.",
     defaultCostRate: DECK_BENCHMARKS.fixings.cost,
     defaultSellRate: DECK_BENCHMARKS.fixings.sell,
     recommended: true,
@@ -603,12 +605,22 @@ export function formatRateUnit(unit: string): string {
     case "riser":
       return "riser";
     case "each":
-      return "each";
+    case "ea":
+      return unit === "each" ? "each" : "ea";
     case "allowance":
       return "allowance";
     default:
       return unit;
   }
+}
+
+export function formatProductivityHours(
+  hours: number | null | undefined,
+  unit: string
+): string {
+  if (hours == null || !Number.isFinite(hours)) return "—";
+  const text = Number.isInteger(hours) ? hours.toFixed(1) : hours.toFixed(2);
+  return `${text} h/${formatRateUnit(unit)}`;
 }
 
 export function groupCatalogueByWorkArea(

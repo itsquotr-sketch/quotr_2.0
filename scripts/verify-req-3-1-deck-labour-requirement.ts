@@ -475,8 +475,9 @@ const faceDeck = calculateDeck(
 );
 const faceKeys = (faceDeck.requirements ?? []).map((item) => item.componentKey);
 check(
-  "SCOPE 29 face/fascia labour not emitted",
-  faceDeck.lineItems.some((item) => item.label === "Face board labour allowance") &&
+  "SCOPE 29 face/fascia labour uses hours not the old $35 allowance",
+  faceDeck.lineItems.some((item) => item.label === "Fascia installation") &&
+    !faceDeck.lineItems.some((item) => item.label === "Face board labour allowance") &&
     !faceKeys.some(
       (key) =>
         key.includes("fascia") ||

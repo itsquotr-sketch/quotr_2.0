@@ -92,6 +92,7 @@ export function RateEditDialog({
   );
 
   const unitLabel = formatRateUnit(catalogueEntry.unit);
+  const isProductivity = catalogueEntry.rate_type === "productivity";
   const recommended = useMemo(
     () =>
       tryRecommendedChargeOutFromCostString(
@@ -120,7 +121,7 @@ export function RateEditDialog({
 
     const cost = parseOptionalNumber(values.cost_rate);
     if (cost == null) {
-      setError("Enter your cost.");
+      setError(isProductivity ? "Enter hours." : "Enter your cost.");
       return;
     }
     if (cost < 0) {
@@ -129,7 +130,7 @@ export function RateEditDialog({
     }
 
     let sellToSave = "";
-    let mode = values.sellMode;
+    let mode = isProductivity ? "derived" : values.sellMode;
 
     if (mode === "derived") {
       sellToSave = "";
@@ -187,10 +188,12 @@ export function RateEditDialog({
           ) : null}
 
           <div className="space-y-2">
-            <Label htmlFor="rate-cost">Your cost</Label>
+            <Label htmlFor="rate-cost">
+              {isProductivity ? "Hours" : "Your cost"}
+            </Label>
             <div className="relative">
               <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
-                $
+                {catalogueEntry.rate_type === "productivity" ? "h" : "$"}
               </span>
               <Input
                 id="rate-cost"
@@ -210,11 +213,14 @@ export function RateEditDialog({
               />
             </div>
             <p className="text-xs text-muted-foreground">
-              What this costs your business · {unitLabel}
+              {isProductivity
+                ? `Hours per ${unitLabel}. This is not a dollar rate.`
+                : `What this costs your business · ${unitLabel}`}
             </p>
           </div>
 
-          <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3 space-y-1.5">
+          {isProductivity ? null : (
+            <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3 space-y-1.5">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Recommended charge-out
             </p>
@@ -228,8 +234,9 @@ export function RateEditDialog({
               Using {companyGrossMarginPercent}% company gross margin
             </p>
           </div>
+          )}
 
-          {initialPresented.hasRetainedChargeOut &&
+          {isProductivity ? null : initialPresented.hasRetainedChargeOut &&
           values.sellMode === "retained_custom" ? (
             <div className="rounded-lg border border-amber-200/80 bg-amber-50/50 px-3 py-3 space-y-2 dark:border-amber-900/40 dark:bg-amber-950/20">
               <p className="text-sm font-medium">Current charge-out retained</p>
@@ -255,12 +262,13 @@ export function RateEditDialog({
             </div>
           ) : null}
 
-          {!isRetained ? (
+          {isProductivity ? null : !isRetained ? (
             <p className="text-xs text-muted-foreground">
               Charge-out will follow your company gross margin when you estimate.
             </p>
           ) : null}
 
+          {isProductivity ? null : (
           <div className="space-y-2">
             <button
               type="button"
@@ -316,6 +324,7 @@ export function RateEditDialog({
               </div>
             ) : null}
           </div>
+          )}
 
           {existingRate ? (
             <div className="flex items-center gap-2">

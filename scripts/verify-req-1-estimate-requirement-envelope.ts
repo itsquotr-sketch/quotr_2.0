@@ -840,14 +840,16 @@ const deck1Sell = Math.round(
 );
 check(
     "GENERATE Deck surface + labour shadow envelope on live Deck calculator",
-  deck1Calc.requirements?.length === 2 &&
+  (deck1Calc.requirements?.length ?? 0) >= 2 &&
     deck1Calc.requirements.some(
       (item) => item.kind === "material" && item.componentKey === "decking.surface"
     ) &&
     deck1Calc.requirements.some(
       (item) => item.kind === "labour" && item.componentKey === "deck.labour"
     ) &&
-    deck1Estimate.requirements?.length === 2 &&
+    (deck1Estimate.requirements?.some(
+      (item) => item.kind === "material" && item.componentKey === "decking.surface"
+    ) ?? false) &&
     Math.round(deck1Estimate.recommendedSell) === 48340
 );
 check(

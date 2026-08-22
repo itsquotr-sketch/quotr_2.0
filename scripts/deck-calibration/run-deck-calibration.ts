@@ -151,8 +151,24 @@ export function runDeckCalibration(
         : null;
 
   const framing = estimate.lineItems.find((item) => item.label === "Framing/substructure");
-  const fixings = estimate.lineItems.find((item) => item.label === "Fixings and consumables");
-  const labour = estimate.lineItems.find((item) => item.label === "Deck labour");
+  const fixings = estimate.lineItems.find(
+    (item) => item.itemKey === "deck.fixings.m2"
+  );
+  const labourLines = estimate.lineItems.filter(
+    (item) =>
+      item.includedInTotal !== false &&
+      item.category === "labour" &&
+      (item.label === "Deck labour" ||
+        item.label === "Decking installation" ||
+        item.label === "Substructure framing" ||
+        item.label === "Pile/post installation")
+  );
+  const labour =
+    labourLines.find((item) => item.label === "Deck labour") ?? labourLines[0];
+  const labourCost = labourLines.reduce(
+    (sum, item) => sum + item.recommendedCost,
+    0
+  );
   const otherStructuralLines = estimate.lineItems
     .filter((item) =>
       /pile\/post replacement|substructure replacement|stair|balustrade|handrail/i.test(
@@ -272,10 +288,10 @@ export function runDeckCalibration(
       unit: "m2",
       cost: fixings?.recommendedCost ?? null,
       notes: [
-        "Commercially covered today via retained legacy fixings/consumables line.",
-        "Shown separately from deck.substructure.",
+        "Commercially covered today via residual fixings/connectors/sundries line.",
+        "Shown separately from deck.substructure and from explicit timber.",
         "Not included in PARTIAL PRICED STRUCTURAL CHILD COST.",
-        "Surface vs structural split remains UNKNOWN.",
+        "Does not include deck boards, joist/bearer/rim/pile timber, fascia, steps, concrete or delivery.",
       ],
     },
     {
@@ -317,14 +333,14 @@ export function runDeckCalibration(
     },
     {
       key: "labour",
-      label: "CURRENT LABOUR AUTHORITY (Deck labour)",
+      label: "CURRENT LABOUR AUTHORITY (split or lumped)",
       scopeRequirement: "REQUIRED",
-      bucketState: "PRICED",
+      bucketState: labourCost > 0 ? "PRICED" : "UNPRICED",
       economicGap: false,
       knownModelGap: false,
-      quantity: labour?.quantity ?? null,
-      unit: labour?.unit ?? null,
-      cost: labour?.recommendedCost ?? null,
+      quantity: labourLines.reduce((sum, item) => sum + (item.labourHours ?? 0), 0) || labour?.quantity || null,
+      unit: labour?.unit ?? "hour",
+      cost: labourCost > 0 ? round2(labourCost) : null,
       notes: [
         "Not included in detailed structural child subtotal.",
         "Not DECK-3 task labour.",
@@ -407,7 +423,7 @@ export function runDeckCalibration(
       substructureCost: framing?.recommendedCost ?? null,
       fixingsCost: fixings?.recommendedCost ?? null,
       fixingsLabel: "LEGACY CATCH-ALL FIXINGS",
-      labourCost: labour?.recommendedCost ?? null,
+      labourCost: labourCost > 0 ? round2(labourCost) : null,
       labourLabel: "CURRENT LABOUR AUTHORITY",
       otherStructuralLines,
     },

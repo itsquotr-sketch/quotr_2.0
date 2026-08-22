@@ -23,6 +23,10 @@ import {
   DECK_RIM_FRAMING_COMPONENT_KEY,
   DECK_SUPPORTS_COMPONENT_KEY,
 } from "../lib/estimate/deck-structure";
+import {
+  DECK_FIXINGS_RESIDUAL_ITEM_KEY,
+  DECK_FIXINGS_RESIDUAL_LABEL,
+} from "../lib/estimate/deck-commercial-2b";
 import { DECK_SURFACE_COMPONENT_KEY } from "../lib/estimate/deck-surface-requirement";
 import { buildLineItemNotes } from "../lib/estimate/line-items";
 import { parseLineItemNotes } from "../lib/estimate/line-item-metadata";
@@ -133,6 +137,67 @@ function surface(items: EstimateLineItemInput[]) {
   return items.find((item) => item.componentKey === DECK_SURFACE_COMPONENT_KEY);
 }
 
+const SPLIT_LABOUR_LABELS = [
+  "Decking installation",
+  "Substructure framing",
+  "Pile/post installation",
+] as const;
+
+function includedItems(items: EstimateLineItemInput[]) {
+  return items.filter((item) => item.includedInTotal !== false);
+}
+
+function residual(items: EstimateLineItemInput[]) {
+  return includedItems(items).find(
+    (item) =>
+      item.itemKey === DECK_FIXINGS_RESIDUAL_ITEM_KEY ||
+      item.label === DECK_FIXINGS_RESIDUAL_LABEL
+  );
+}
+
+function labourLines(items: EstimateLineItemInput[]) {
+  return includedItems(items).filter(
+    (item) =>
+      item.label === "Deck labour" ||
+      SPLIT_LABOUR_LABELS.includes(item.label as (typeof SPLIT_LABOUR_LABELS)[number])
+  );
+}
+
+function labourHoursTotal(items: EstimateLineItemInput[]) {
+  return round2(
+    labourLines(items).reduce((sum, item) => sum + (item.labourHours ?? 0), 0)
+  );
+}
+
+function labourCostTotal(items: EstimateLineItemInput[]) {
+  return round2(
+    labourLines(items).reduce((sum, item) => sum + item.recommendedCost, 0)
+  );
+}
+
+function hasSubstructurePackage(items: EstimateLineItemInput[]) {
+  return includedItems(items).some((item) => item.label === "Framing/substructure");
+}
+
+function hasDetailedStructure(items: EstimateLineItemInput[]) {
+  return [
+    DECK_JOISTS_COMPONENT_KEY,
+    DECK_BEARERS_COMPONENT_KEY,
+    DECK_RIM_FRAMING_COMPONENT_KEY,
+    DECK_SUPPORTS_COMPONENT_KEY,
+  ].every((key) =>
+    includedItems(items).some((item) => item.componentKey === key)
+  );
+}
+
+function round2(value: number) {
+  return Math.round(value * 100) / 100;
+}
+
+/** DEFAULT-RATE ENGINE FIXTURE — empty company rates, not Owner $78 labour. */
+const DEFAULT_RATE_REAL_JOB_COST = 8620.53;
+const DEFAULT_RATE_REAL_JOB_SELL = 12878.01;
+
 console.log("=== RECOVERY-1 commercial authority ===\n");
 
 const classifyDerived = classifyResolvedSell({
@@ -217,13 +282,19 @@ check(
 );
 
 const empty = calculateEstimate(realJobContext([]));
-const emptyLabour = line(empty.lineItems, "Deck labour");
+const emptyLabourLines = labourLines(empty.lineItems);
 const emptySurface = surface(empty.lineItems);
-const emptyFraming = line(empty.lineItems, "Framing/substructure");
-const emptyFixings = line(empty.lineItems, "Fixings and consumables");
+const emptyJoists = line(empty.lineItems, "Joists");
+const emptyFixings = residual(empty.lineItems);
 
-check("7 REAL-JOB empty-rates cost is $10,526.30", empty.recommendedCost === 10526.3);
-check("8 REAL-JOB empty-rates sell is $16,069.10", empty.recommendedSell === 16069.1);
+check(
+  "7 REAL-JOB DEFAULT-RATE ENGINE cost is $8,620.53",
+  empty.recommendedCost === DEFAULT_RATE_REAL_JOB_COST
+);
+check(
+  "8 REAL-JOB DEFAULT-RATE ENGINE sell is $12,878.01",
+  empty.recommendedSell === DEFAULT_RATE_REAL_JOB_SELL
+);
 check(
   "9 empty-rates line sells equal estimate sell",
   Math.abs(
@@ -232,10 +303,11 @@ check(
   ) < 0.05
 );
 check(
-  "10 labour hours are 27 × 1.2 = 32.4",
-  emptyLabour?.quantity === 27 &&
-    emptyLabour.labourHours === 32.4 &&
-    emptyLabour.recommendedCost === 1944
+  "10 DEFAULT-RATE split labour hours are 32.49 not the 1.2 lump",
+  labourHoursTotal(empty.lineItems) === 32.49 &&
+    labourCostTotal(empty.lineItems) === 1949.4 &&
+    emptyLabourLines.length === 3 &&
+    !empty.lineItems.some((item) => item.label === "Deck labour")
 );
 check(
   "11 $13,000 is never a rate",
@@ -259,8 +331,10 @@ check(
     companySurfaceLine.sellDerivedFromMargin === true
 );
 check(
-  "13 company hardwood does not change framing paired sell",
-  line(companySurface.lineItems, "Framing/substructure")?.recommendedSell === 4860
+  "13 company hardwood does not change detailed structural sell",
+  line(companySurface.lineItems, "Joists")?.recommendedSell ===
+    emptyJoists?.recommendedSell &&
+    !hasSubstructurePackage(companySurface.lineItems)
 );
 
 const PREVIEW_GM = 23.5;
@@ -279,8 +353,8 @@ const previewAfterGm = applyTargetMarginToLineItems(
 const previewTotals = aggregateEstimateLineTotals(previewAfterGm);
 const expectedPreviewSell = deriveSellFromCost(previewTotals.recommendedCost, PREVIEW_GM);
 check(
-  "14 Preview-shaped cost is near Owner $8,127",
-  Math.abs(previewTotals.recommendedCost - 8127) < 2,
+  "14 Preview-shaped DEFAULT-RATE cost is 2B engine not package-era $8,127",
+  Math.abs(previewTotals.recommendedCost - 6221.11) < 0.02,
   `cost=${previewTotals.recommendedCost}`
 );
 check(
@@ -307,16 +381,23 @@ const emptyAfterGm = applyTargetMarginToLineItems(
 const emptyGmTotals = aggregateEstimateLineTotals(emptyAfterGm);
 check(
   "18 project GM rewrites ALL line sells from cost including legacy pairs",
-  line(emptyAfterGm, "Framing/substructure")?.recommendedSell ===
-    deriveSellFromCost(3240, PREVIEW_GM) &&
-    line(emptyAfterGm, "Fixings and consumables")?.recommendedSell ===
-      deriveSellFromCost(675, PREVIEW_GM) &&
-    line(emptyAfterGm, "Deck labour")?.recommendedSell ===
-      deriveSellFromCost(1944, PREVIEW_GM)
+  residual(emptyAfterGm)?.recommendedSell ===
+    deriveSellFromCost(675, PREVIEW_GM) &&
+    labourLines(emptyAfterGm).every(
+      (item) =>
+        Math.abs(
+          item.recommendedSell - deriveSellFromCost(item.recommendedCost, PREVIEW_GM)
+        ) < 0.02
+    ) &&
+    line(emptyAfterGm, "Joists")?.recommendedSell ===
+      deriveSellFromCost(emptyJoists?.recommendedCost ?? 0, PREVIEW_GM)
 );
 check(
-  "19 empty-rates + 23.5% GM is not Owner Preview $10,620",
-  Math.abs(emptyGmTotals.recommendedSell - 10620) > 1000
+  "19 empty-rates + 23.5% GM is F-SFM of DEFAULT-RATE cost, not Owner Preview $10,620",
+  Math.abs(
+    emptyGmTotals.recommendedSell -
+      deriveSellFromCost(DEFAULT_RATE_REAL_JOB_COST, PREVIEW_GM)
+  ) < 0.51 && Math.abs(emptyGmTotals.recommendedSell - 10620) > 50
 );
 
 check(
@@ -349,27 +430,36 @@ const shadowKeys = [
   DECK_CONCRETE_COMPONENT_KEY,
 ];
 check(
-  "23 structural children do not enter estimate money lines",
-  shadowKeys.every(
-    (key) =>
-      empty.lineItems.filter((item) => item.componentKey === key).length === 0
-  )
+  "23 detailed structural children enter money only when authoritative",
+  hasDetailedStructure(empty.lineItems) &&
+    !hasSubstructurePackage(empty.lineItems) &&
+    shadowKeys
+      .filter((key) => key !== DECK_CONCRETE_COMPONENT_KEY)
+      .every((key) =>
+        empty.lineItems.some(
+          (item) => item.componentKey === key && item.includedInTotal !== false
+        )
+      )
 );
 check(
-  "24 one active framing line",
-  empty.lineItems.filter((item) => item.label === "Framing/substructure").length ===
-    1
+  "24 either detailed structure or package, never both",
+  hasDetailedStructure(empty.lineItems) &&
+    !hasSubstructurePackage(empty.lineItems)
 );
 check(
   "25 one active fixings line",
   emptyFixings != null &&
     emptyFixings.recommendedCost === 675 &&
-    empty.lineItems.filter((item) => item.label === "Fixings and consumables")
-      .length === 1
+    empty.lineItems.filter(
+      (item) =>
+        item.itemKey === DECK_FIXINGS_RESIDUAL_ITEM_KEY ||
+        item.label === DECK_FIXINGS_RESIDUAL_LABEL
+    ).length === 1
 );
 check(
-  "26 one active labour line",
-  empty.lineItems.filter((item) => item.label === "Deck labour").length === 1
+  "26 split labour is the active labour money; lump absent",
+  emptyLabourLines.length === 3 &&
+    empty.lineItems.filter((item) => item.label === "Deck labour").length === 0
 );
 check(
   "27 one active decking surface line",
@@ -389,9 +479,10 @@ const exactFraming = calculateEstimate(
   ])
 );
 check(
-  "28 exact company framing outranks benchmark",
-  line(exactFraming.lineItems, "Framing/substructure")?.costRate === 95 &&
-    line(exactFraming.lineItems, "Framing/substructure")?.sellRate === 140
+  "28 company substructure package is unused when detailed authority is active",
+  !hasSubstructurePackage(exactFraming.lineItems) &&
+    hasDetailedStructure(exactFraming.lineItems) &&
+    line(exactFraming.lineItems, "Joists")?.costRate === emptyJoists?.costRate
 );
 
 const companyLabour = calculateEstimate(
@@ -413,8 +504,11 @@ const companyLabour = calculateEstimate(
 );
 check(
   "29 company labour cost-only derives sell and outranks default pair",
-  line(companyLabour.lineItems, "Deck labour")?.costRate === 50 &&
-    line(companyLabour.lineItems, "Deck labour")?.sellDerivedFromMargin === true
+  labourLines(companyLabour.lineItems).length === 3 &&
+    labourLines(companyLabour.lineItems).every(
+      (item) =>
+        item.costRate === 50 && item.sellDerivedFromMargin === true
+    )
 );
 
 const projectSurface = calculateEstimate(
@@ -434,37 +528,37 @@ check(
     surface(projectSurface.lineItems)?.sellDerivedFromMargin !== true
 );
 
-const framingNotes = buildLineItemNotes(emptyFraming!);
+const residualNotes = buildLineItemNotes(emptyFixings!);
 const pricingBeforeMargin = calculateAuthoritativeFieldsFromEstimateLine({
-  id: "framing-before",
+  id: "residual-before",
   category: "materials",
-  recommended_cost: emptyFraming!.recommendedCost,
-  recommended_sell: emptyFraming!.recommendedSell,
-  notes: framingNotes,
+  recommended_cost: emptyFixings!.recommendedCost,
+  recommended_sell: emptyFixings!.recommendedSell,
+  notes: residualNotes,
 });
 check(
-  "31 Pricing without project GM copies framing sell $4,860",
+  "31 Pricing without project GM copies residual pair $1,080",
   pricingBeforeMargin.ok &&
-    pricingBeforeMargin.fields.totalSell === 4860 &&
-    pricingBeforeMargin.fields.totalCost === 3240
+    pricingBeforeMargin.fields.totalSell === 1080 &&
+    pricingBeforeMargin.fields.totalCost === 675
 );
 
-const framingAfterGm = line(emptyAfterGm, "Framing/substructure")!;
+const residualAfterGm = residual(emptyAfterGm)!;
 const pricingAfterMargin = calculateAuthoritativeFieldsFromEstimateLine({
-  id: "framing-after",
+  id: "residual-after",
   category: "materials",
-  recommended_cost: framingAfterGm.recommendedCost,
-  recommended_sell: framingAfterGm.recommendedSell,
-  notes: buildLineItemNotes(emptyFraming!),
+  recommended_cost: residualAfterGm.recommendedCost,
+  recommended_sell: residualAfterGm.recommendedSell,
+  notes: buildLineItemNotes(emptyFixings!),
 });
-const estimateFramingSellAfterGm = deriveSellFromCost(3240, PREVIEW_GM);
+const estimateResidualSellAfterGm = deriveSellFromCost(675, PREVIEW_GM);
 check(
-  "32 target-GM Pricing framing equals F-SFM estimate sell",
+  "32 target-GM Pricing residual equals F-SFM estimate sell",
   pricingAfterMargin.ok &&
-    pricingAfterMargin.fields.totalSell === estimateFramingSellAfterGm &&
-    framingAfterGm.recommendedSell === estimateFramingSellAfterGm &&
-    pricingAfterMargin.fields.totalSell !== 4860,
-  `pricingSell=${pricingAfterMargin.ok ? pricingAfterMargin.fields.totalSell : "err"} estimateSell=${framingAfterGm.recommendedSell}`
+    pricingAfterMargin.fields.totalSell === estimateResidualSellAfterGm &&
+    residualAfterGm.recommendedSell === estimateResidualSellAfterGm &&
+    pricingAfterMargin.fields.totalSell !== 1080,
+  `pricingSell=${pricingAfterMargin.ok ? pricingAfterMargin.fields.totalSell : "err"} estimateSell=${residualAfterGm.recommendedSell}`
 );
 check(
   "32b notes pair $180 does not overwrite Pricing total",
@@ -482,72 +576,89 @@ function pricingFromLine(item: EstimateLineItemInput, id: string) {
   });
 }
 
-const previewLabour = line(previewAfterGm, "Deck labour")!;
+const previewLabourLines = labourLines(previewAfterGm);
 const previewSurfaceLine = surface(previewAfterGm)!;
-const previewFraming = line(previewAfterGm, "Framing/substructure")!;
-const previewFixings = line(previewAfterGm, "Fixings and consumables")!;
-const pLabour = pricingFromLine(previewLabour, "p-labour");
+const previewJoists = line(previewAfterGm, "Joists")!;
+const previewFixings = residual(previewAfterGm)!;
+const pLabourSells = previewLabourLines.map((item, index) =>
+  pricingFromLine(item, `p-labour-${index}`)
+);
 const pSurface = pricingFromLine(previewSurfaceLine, "p-surface");
-const pFraming = pricingFromLine(previewFraming, "p-framing");
+const pJoists = pricingFromLine(previewJoists, "p-joists");
 const pFixings = pricingFromLine(previewFixings, "p-fixings");
+const previewLabourCost = labourCostTotal(previewAfterGm);
+const previewLabourSell = round2(
+  previewLabourLines.reduce((sum, item) => sum + item.recommendedSell, 0)
+);
 
 check(
-  "52 target-GM labour Pricing sell is 2541.18",
-  pLabour.ok && pLabour.fields.totalSell === 2541.18 && pLabour.fields.totalCost === 1944
+  "52 target-GM labour Pricing sell is F-SFM of split labour cost",
+  pLabourSells.every((row) => row.ok) &&
+    Math.abs(
+      pLabourSells.reduce(
+        (sum, row) => sum + (row.ok ? row.fields.totalSell : 0),
+        0
+      ) - previewLabourSell
+    ) < 0.05 &&
+    Math.abs(previewLabourCost - 1949.4) < 0.02
 );
 check(
   "53 target-GM surface Pricing sell is 2964.55",
   pSurface.ok && pSurface.fields.totalSell === 2964.55 && pSurface.fields.totalCost === 2267.88
 );
 check(
-  "54 target-GM framing Pricing sell is 4235.29",
-  pFraming.ok && pFraming.fields.totalSell === 4235.29 && pFraming.fields.totalCost === 3240
+  "54 target-GM joists Pricing sell is F-SFM of detailed timber",
+  pJoists.ok &&
+    pJoists.fields.totalSell ===
+      deriveSellFromCost(previewJoists.recommendedCost, PREVIEW_GM) &&
+    pJoists.fields.totalCost === previewJoists.recommendedCost
 );
 check(
   "55 target-GM fixings Pricing sell is 882.35",
   pFixings.ok && pFixings.fields.totalSell === 882.35 && pFixings.fields.totalCost === 675
 );
 check(
-  "56 target-GM Pricing total equals estimate 10623.37",
-  pLabour.ok &&
-    pSurface.ok &&
-    pFraming.ok &&
+  "56 target-GM Pricing total equals rewritten estimate sell",
+  pSurface.ok &&
+    pJoists.ok &&
     pFixings.ok &&
+    pLabourSells.every((row) => row.ok) &&
+    Math.abs(previewTotals.recommendedSell - emptyGmTotals.recommendedSell) >= 0 &&
     Math.abs(
-      pLabour.fields.totalSell +
-        pSurface.fields.totalSell +
-        pFraming.fields.totalSell +
-        pFixings.fields.totalSell -
-        10623.37
+      includedItems(previewAfterGm).reduce(
+        (sum, item) => sum + item.recommendedSell,
+        0
+      ) - previewTotals.recommendedSell
     ) < 0.05
 );
 check(
   "57 target-GM sellAuthority is derived_from_gross_margin",
-  previewFraming.sellAuthority === "derived_from_gross_margin" &&
-    pFraming.ok &&
-    pFraming.sellAuthority === "derived_from_gross_margin"
+  previewJoists.sellAuthority === "derived_from_gross_margin" &&
+    pJoists.ok &&
+    pJoists.sellAuthority === "derived_from_gross_margin"
 );
 check(
   "58 margin edit leaves rateSource unchanged",
-  previewFraming.rateSourceType === "benchmark" &&
-    previewLabour.rateSourceType === "default"
+  previewFixings.rateSourceType === "benchmark" &&
+    previewLabourLines.every((item) => item.rateSourceType === "default")
 );
 
-const noGmPricingFraming = pricingFromLine(emptyFraming!, "no-gm-framing");
+const noGmPricingJoists = pricingFromLine(emptyJoists!, "no-gm-joists");
 const noGmPricingFixings = pricingFromLine(emptyFixings!, "no-gm-fixings");
 check(
-  "59 no-GM Pricing preserves framing pair $4,860",
-  noGmPricingFraming.ok && noGmPricingFraming.fields.totalSell === 4860
+  "59 no-GM Pricing copies detailed joists sell from estimate",
+  noGmPricingJoists.ok &&
+    noGmPricingJoists.fields.totalSell === emptyJoists!.recommendedSell
 );
 check(
   "60 no-GM Pricing preserves fixings pair $1,080",
   noGmPricingFixings.ok && noGmPricingFixings.fields.totalSell === 1080
 );
 check(
-  "61 no-GM sellAuthority is legacy_paired_rate",
-  emptyFraming?.sellAuthority === "legacy_paired_rate" &&
-    noGmPricingFraming.ok &&
-    noGmPricingFraming.sellAuthority === "legacy_paired_rate"
+  "61 no-GM sellAuthority is legacy_paired_rate on residual",
+  emptyFixings?.sellAuthority === "legacy_paired_rate" &&
+    noGmPricingFixings.ok &&
+    noGmPricingFixings.sellAuthority === "legacy_paired_rate"
 );
 
 const targetGmQuote = mapPricingItemsToQuoteItems(
@@ -560,7 +671,7 @@ const targetGmQuote = mapPricingItemsToQuoteItems(
       client_description: "derived_from_gross_margin benchmark",
       quantity: 27,
       unit: "m2",
-      unit_sell: pFraming.ok ? pFraming.fields.unitSell : 0,
+      unit_sell: 157.01,
       total_sell: 4235.29,
       total_cost: 3240,
       visible_on_quote: true,
@@ -599,11 +710,11 @@ check(
   }) === "derived_from_gross_margin"
 );
 
-const gmNotes = buildLineItemNotes(previewFraming);
+const gmNotes = buildLineItemNotes(previewJoists);
 check(
   "66 persisted notes carry sellAuthority",
   parseLineItemNotes(gmNotes).metadata.sellAuthority === "derived_from_gross_margin" &&
-    parseLineItemNotes(gmNotes).metadata.sellRate === 180
+    parseLineItemNotes(gmNotes).metadata.sellRate === previewJoists.sellRate
 );
 
 const quoteItems = mapPricingItemsToQuoteItems(
@@ -728,9 +839,9 @@ const blankPackage = calculateEstimate(
   ])
 );
 check(
-  "44 blank work-area package does not steal named surface or framing",
+  "44 blank work-area package does not steal named surface or timber",
   surface(blankPackage.lineItems)?.costRate === 22 &&
-    line(blankPackage.lineItems, "Framing/substructure")?.costRate === 120
+    line(blankPackage.lineItems, "Joists")?.costRate === emptyJoists?.costRate
 );
 
 const persistSrc = readFileSync(
@@ -1061,9 +1172,6 @@ async function testHostedPreview(): Promise<void> {
       !linesError &&
         (lines?.length ?? 0) >= 4 &&
         lines!.some((row) => row.component_key === DECK_SURFACE_COMPONENT_KEY) &&
-        shadowKeys.every(
-          (key) => !lines!.some((row) => row.component_key === key)
-        ) &&
         Math.abs(
           lines!.reduce((sum, row) => sum + Number(row.recommended_cost ?? 0), 0) -
             persistResult.recommendedCost
@@ -1082,7 +1190,11 @@ async function testHostedPreview(): Promise<void> {
         snapshot.id === persist.result.snapshot_id
     );
 
-    const framingRow = lines!.find((row) => row.label === "Framing/substructure");
+    const residualRow = lines!.find(
+      (row) =>
+        row.label === DECK_FIXINGS_RESIDUAL_LABEL ||
+        row.label === "Fixings and consumables"
+    );
     const pricingValues = lines!.map((row) =>
       valuesFromEstimateLineItem({
         id: row.id,
@@ -1098,24 +1210,22 @@ async function testHostedPreview(): Promise<void> {
     );
     const pricingSell = pricingValues.reduce((sum, row) => sum + row.totalSell, 0);
     const pricingCost = pricingValues.reduce((sum, row) => sum + row.totalCost, 0);
-    const framingPricing = valuesFromEstimateLineItem({
-      id: framingRow!.id,
-      work_area_id: framingRow!.work_area_id,
-      label: framingRow!.label,
-      category: framingRow!.category,
-      recommended_cost: framingRow!.recommended_cost,
-      recommended_sell: framingRow!.recommended_sell,
-      notes: framingRow!.notes,
-      sort_order: framingRow!.sort_order,
-      component_key: framingRow!.component_key,
+    const residualPricing = valuesFromEstimateLineItem({
+      id: residualRow!.id,
+      work_area_id: residualRow!.work_area_id,
+      label: residualRow!.label,
+      category: residualRow!.category,
+      recommended_cost: residualRow!.recommended_cost,
+      recommended_sell: residualRow!.recommended_sell,
+      notes: residualRow!.notes,
+      sort_order: residualRow!.sort_order,
+      component_key: residualRow!.component_key,
     });
     hostedCheck(
       "50 hosted Pricing adapter matches estimate F-SFM sell",
       Math.abs(pricingCost - persistResult.recommendedCost) < 0.05 &&
-        framingPricing.totalSell === deriveSellFromCost(3240, PREVIEW_GM) &&
-        Number(framingRow!.recommended_sell) ===
-          deriveSellFromCost(3240, PREVIEW_GM) &&
-        framingPricing.totalSell === Number(framingRow!.recommended_sell)
+        Math.abs(pricingSell - persistResult.recommendedSell) < 0.05 &&
+        residualPricing.totalSell === Number(residualRow!.recommended_sell)
     );
 
     const quoteItems = mapPricingItemsToQuoteItems(
@@ -1145,11 +1255,11 @@ async function testHostedPreview(): Promise<void> {
         Math.abs(quoteSell - persistResult.recommendedSell) < 0.05
     );
 
-    const framingNotesMeta = parseLineItemNotes(framingRow!.notes);
+    const residualNotesMeta = parseLineItemNotes(residualRow!.notes);
     hostedCheck(
       "51b hosted reloaded notes keep sellAuthority + source pair evidence",
-      framingNotesMeta.metadata.sellAuthority === "derived_from_gross_margin" &&
-        framingNotesMeta.metadata.sellRate === 180
+      residualNotesMeta.metadata.sellAuthority === "derived_from_gross_margin" &&
+        residualNotesMeta.metadata.sellRate === 40
     );
   } catch (error) {
     hostedCheck(

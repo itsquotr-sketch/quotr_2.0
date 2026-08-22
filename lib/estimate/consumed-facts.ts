@@ -110,6 +110,10 @@ const DECK_PHYSICAL_ONLY_FACTS = new Set<string>([
   "deck.footing_length_mm",
   "deck.footing_width_mm",
   "deck.footing_depth_mm",
+  "deck.step_count",
+  "deck.step_width_m",
+  "deck.step_going_m",
+  "deck.fascia_material",
 ]);
 
 export function getConsumedFactConsumption(

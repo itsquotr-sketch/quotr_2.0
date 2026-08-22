@@ -26,9 +26,21 @@ import type {
 } from "@/lib/estimate/types";
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
 import { resolveStructuralMaterialRequirementRate } from "@/lib/estimate/resolve-structural-material-rate";
+import { calculateDeckPostLength } from "@/lib/estimate/deck-support-length";
+import { procureHousePiles } from "@/lib/estimate/deck-pile-procurement";
+import {
+  DEFAULT_BEARER_SECTION,
+  DEFAULT_FRAMING_TREATMENT,
+  DEFAULT_JOIST_SECTION,
+  DEFAULT_LIGHT_SUPPORT_SECTION,
+  DEFAULT_SUPPORT_SECTION,
+  DEFAULT_SUPPORT_TREATMENT,
+  DEFAULT_SUPPORT_TYPE,
+  DECK_IDENTITY_ESTIMATING_DISCLAIMER,
+  resolveFramingIdentityFromFacts,
+} from "@/lib/estimate/deck-default-identities";
 import {
   buildConcreteMaterialIdentity,
-  buildStructuralTimberIdentity,
   buildSupportMaterialIdentity,
   serializeMaterialIdentityKey,
   type MaterialIdentity,
@@ -121,21 +133,34 @@ export type DeckStructureQuantities = {
   bearerRowCountDefaulted: boolean;
   supportsPerBearerDefaulted: boolean;
   layoutEstimated: boolean;
+  postEmbedmentM: number | null;
+  postLengthEachM: number | null;
+  postTotalLm: number | null;
+  postPurchaseLengthEachM: number | null;
+  postPurchaseLm: number | null;
+  postProcurementOk: boolean | null;
+  joistSectionDefaulted: boolean;
+  bearerSectionDefaulted: boolean;
+  supportIdentityDefaulted: boolean;
 };
 
 export type DeckStructureFacts = {
   deckLengthM: number;
   deckWidthM: number;
+  deckHeightM: number | null;
   joistCentresMm: number;
   joistCentresDefaulted: boolean;
   orientation: DeckStructureOrientation;
   joistSection: string | null;
+  joistSectionDefaulted: boolean;
   bearerSection: string | null;
+  bearerSectionDefaulted: boolean;
   bearerRowCount: number | null;
   framingTreatment: string | null;
   supportType: string | null;
   supportsPerBearer: number | null;
   supportSection: string | null;
+  supportIdentityDefaulted: boolean;
   footingLengthMm: number | null;
   footingWidthMm: number | null;
   footingDepthMm: number | null;
@@ -361,16 +386,47 @@ export function readDeckStructureFacts(params: {
     deckWidthM,
   });
 
-  const joistSection = getStringFact(
+  const joistSectionFact = getStringFact(
     facts,
     params.workAreaId,
     "deck.joist_section"
   );
-  const framingTreatment = getStringFact(
+  const joistSectionDefaulted = joistSectionFact == null;
+  const joistSection = joistSectionFact ?? DEFAULT_JOIST_SECTION;
+  const framingTreatmentFact = getStringFact(
     facts,
     params.workAreaId,
     "deck.framing_treatment"
   );
+  const framingTreatment =
+    framingTreatmentFact ??
+    (joistSectionDefaulted ? DEFAULT_FRAMING_TREATMENT : null);
+
+  const bearerSectionFact = getStringFact(
+    facts,
+    params.workAreaId,
+    "deck.bearer_section"
+  );
+  const bearerSectionDefaulted = bearerSectionFact == null;
+  const bearerSection = bearerSectionFact ?? DEFAULT_BEARER_SECTION;
+
+  const supportTypeFact = getStringFact(
+    facts,
+    params.workAreaId,
+    "deck.support_type"
+  );
+  const supportSectionFact = getStringFact(
+    facts,
+    params.workAreaId,
+    "deck.support_section"
+  );
+  const supportIdentityDefaulted =
+    supportTypeFact == null && supportSectionFact == null;
+  const supportSection = supportSectionFact ?? DEFAULT_SUPPORT_SECTION;
+  const supportType =
+    supportTypeFact ??
+    (supportSection === DEFAULT_LIGHT_SUPPORT_SECTION ? "Post" : DEFAULT_SUPPORT_TYPE);
+
 
   const factKeys = [
     "deck.length_m",
@@ -378,23 +434,17 @@ export function readDeckStructureFacts(params: {
     joistCentresDefaulted ? null : "deck.joist_centres_mm",
     orientation.boardDirectionDefaulted ? null : "deck.board_direction",
     orientation.joistDirectionDefaulted ? null : "deck.joist_direction",
-    joistSection ? "deck.joist_section" : null,
-    framingTreatment ? "deck.framing_treatment" : null,
-    getStringFact(facts, params.workAreaId, "deck.bearer_section")
-      ? "deck.bearer_section"
-      : null,
+    joistSectionDefaulted ? null : "deck.joist_section",
+    framingTreatmentFact ? "deck.framing_treatment" : null,
+    bearerSectionDefaulted ? null : "deck.bearer_section",
     getNumberFact(facts, params.workAreaId, "deck.bearer_row_count") != null
       ? "deck.bearer_row_count"
       : null,
-    getStringFact(facts, params.workAreaId, "deck.support_type")
-      ? "deck.support_type"
-      : null,
+    supportIdentityDefaulted ? null : "deck.support_type",
     getNumberFact(facts, params.workAreaId, "deck.supports_per_bearer") != null
       ? "deck.supports_per_bearer"
       : null,
-    getStringFact(facts, params.workAreaId, "deck.support_section")
-      ? "deck.support_section"
-      : null,
+    supportIdentityDefaulted ? null : "deck.support_section",
     getNumberFact(facts, params.workAreaId, "deck.footing_length_mm") != null
       ? "deck.footing_length_mm"
       : null,
@@ -409,32 +459,28 @@ export function readDeckStructureFacts(params: {
   return {
     deckLengthM,
     deckWidthM,
+    deckHeightM: getNumberFact(facts, params.workAreaId, "deck.height_m"),
     joistCentresMm,
     joistCentresDefaulted,
     orientation,
     joistSection,
-    bearerSection: getStringFact(
-      facts,
-      params.workAreaId,
-      "deck.bearer_section"
-    ),
+    joistSectionDefaulted,
+    bearerSection,
+    bearerSectionDefaulted,
     bearerRowCount: getNumberFact(
       facts,
       params.workAreaId,
       "deck.bearer_row_count"
     ),
     framingTreatment,
-    supportType: getStringFact(facts, params.workAreaId, "deck.support_type"),
+    supportType,
     supportsPerBearer: getNumberFact(
       facts,
       params.workAreaId,
       "deck.supports_per_bearer"
     ),
-    supportSection: getStringFact(
-      facts,
-      params.workAreaId,
-      "deck.support_section"
-    ),
+    supportSection,
+    supportIdentityDefaulted,
     footingLengthMm: getNumberFact(
       facts,
       params.workAreaId,
@@ -508,6 +554,36 @@ export function calculateDeckStructureQuantities(params: {
     : (facts.supportsPerBearer ?? 0);
   const supportCount = Math.round(bearerRowCount * supportsPerBearer);
 
+  let postEmbedmentM: number | null = null;
+  let postLengthEachM: number | null = null;
+  let postTotalLm: number | null = null;
+  let postPurchaseLengthEachM: number | null = null;
+  let postPurchaseLm: number | null = null;
+  let postProcurementOk: boolean | null = null;
+  if (facts.deckHeightM != null && facts.deckHeightM > 0 && supportCount > 0) {
+    const posts = calculateDeckPostLength({
+      deckHeightM: facts.deckHeightM,
+      supportCount,
+    });
+    postEmbedmentM = posts.embedmentM;
+    postLengthEachM = posts.lengthEachM;
+    postTotalLm = posts.totalLm;
+    const housePileProcurement =
+      /pile/i.test(facts.supportType ?? "") ||
+      facts.supportSection === DEFAULT_SUPPORT_SECTION;
+    if (housePileProcurement) {
+      const procurement = procureHousePiles({
+        requiredLengthEachM: posts.embedmentM + (2 / 3) * facts.deckHeightM,
+        supportCount,
+      });
+      postProcurementOk = procurement.ok;
+      if (procurement.ok) {
+        postPurchaseLengthEachM = procurement.purchaseLengthEachM;
+        postPurchaseLm = procurement.purchaseLm;
+      }
+    }
+  }
+
   let footingVolumeEachM3 = 0;
   let concreteBaseM3 = 0;
   if (
@@ -551,6 +627,15 @@ export function calculateDeckStructureQuantities(params: {
     bearerRowCountDefaulted: layoutEstimated,
     supportsPerBearerDefaulted: layoutEstimated,
     layoutEstimated,
+    postEmbedmentM,
+    postLengthEachM,
+    postTotalLm,
+    postPurchaseLengthEachM,
+    postPurchaseLm,
+    postProcurementOk,
+    joistSectionDefaulted: facts.joistSectionDefaulted,
+    bearerSectionDefaulted: facts.bearerSectionDefaulted,
+    supportIdentityDefaulted: facts.supportIdentityDefaulted,
   };
 }
 
@@ -569,11 +654,13 @@ function resolveIdentityRate(params: {
 
 function framingTimberIdentity(
   sectionRaw: string | null,
-  treatmentRaw: string | null
+  treatmentRaw: string | null,
+  sectionDefaulted = false
 ): MaterialIdentity | null {
-  return buildStructuralTimberIdentity({
-    sectionRaw,
-    treatmentRaw,
+  return resolveFramingIdentityFromFacts({
+    section: sectionRaw,
+    treatment: treatmentRaw,
+    sectionDefaulted,
   });
 }
 
@@ -759,6 +846,17 @@ function sharedFramingAssumptions(params: {
       framingWastePercent: params.quantities.framingWastePercent,
     }),
     ...layoutAssumptions(params.quantities),
+    ...(params.quantities.joistSectionDefaulted ||
+    params.quantities.bearerSectionDefaulted ||
+    params.quantities.supportIdentityDefaulted
+      ? [
+          {
+            key: "deck.framing.identity_default",
+            text: DECK_IDENTITY_ESTIMATING_DISCLAIMER,
+            source: "calculator_default" as const,
+          },
+        ]
+      : []),
   ];
 }
 
@@ -785,7 +883,8 @@ function buildJoistRequirement(params: {
   }
   const identity = framingTimberIdentity(
     params.facts.joistSection,
-    params.facts.framingTreatment
+    params.facts.framingTreatment,
+    params.facts.joistSectionDefaulted
   );
   const pricing = identity
     ? resolveIdentityRate({
@@ -850,7 +949,8 @@ function buildRimRequirement(params: {
   if (params.quantities.rimPurchaseLm <= 0) return null;
   const identity = framingTimberIdentity(
     params.facts.joistSection,
-    params.facts.framingTreatment
+    params.facts.framingTreatment,
+    params.facts.joistSectionDefaulted
   );
   const pricing = identity
     ? resolveIdentityRate({
@@ -924,7 +1024,8 @@ function buildBearerRequirement(params: {
   }
   const identity = framingTimberIdentity(
     params.facts.bearerSection,
-    params.facts.framingTreatment
+    params.facts.framingTreatment,
+    params.facts.bearerSectionDefaulted
   );
   const pricing = identity
     ? resolveIdentityRate({
@@ -987,10 +1088,29 @@ function buildSupportRequirement(params: {
       ? buildSupportMaterialIdentity({
           supportType: params.facts.supportType,
           sectionRaw: params.facts.supportSection,
-          treatmentRaw: params.facts.framingTreatment,
+          treatmentRaw:
+            params.facts.supportIdentityDefaulted ||
+            params.facts.supportSection === "100x100" ||
+            params.facts.supportSection === "125x125"
+              ? DEFAULT_SUPPORT_TREATMENT
+              : params.facts.framingTreatment,
         })
       : null;
-  const pricing = identity
+  const procurementReady =
+    params.quantities.postProcurementOk === true &&
+    params.quantities.postPurchaseLm != null &&
+    params.quantities.postPurchaseLm > 0;
+  const lmPricing =
+    identity && procurementReady
+      ? resolveIdentityRate({
+          identity,
+          unit: "lm",
+          purchaseQuantity: params.quantities.postPurchaseLm!,
+          rates: params.rates,
+          organisationSettings: params.organisationSettings,
+        })
+      : null;
+  const eaPricing = identity
     ? resolveIdentityRate({
         identity,
         unit: "ea",
@@ -999,8 +1119,17 @@ function buildSupportRequirement(params: {
         organisationSettings: params.organisationSettings,
       })
     : unpricedPlanningFields();
+  const canPriceLm = Boolean(lmPricing?.priced);
+  const pricing = canPriceLm ? lmPricing! : identity ? eaPricing : unpricedPlanningFields();
   const section =
     identity?.originalDescription ?? params.facts.supportSection ?? null;
+  const postSpec =
+    params.quantities.postPurchaseLm != null &&
+    params.quantities.postPurchaseLengthEachM != null
+      ? `${params.quantities.supportCount} ea · ${params.quantities.postPurchaseLengthEachM} m purchase length each · ${params.quantities.postPurchaseLm} lm purchased`
+      : params.quantities.postLengthEachM != null
+        ? `${params.quantities.supportCount} ea · physical required ~${params.quantities.postLengthEachM} m each`
+        : `${params.quantities.supportCount} ea`;
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
     workAreaType: params.workArea.type,
@@ -1019,6 +1148,33 @@ function buildSupportRequirement(params: {
           ? "calculator_default"
           : "user_confirmed",
       },
+      ...(params.quantities.postLengthEachM != null
+        ? [
+            {
+              key: "deck.supports.length_heuristic",
+              text: `Physical required pile length ≈ ${params.quantities.postLengthEachM} m each (embedment plus two-thirds of deck height). Estimating assumption only.`,
+              source: "calculator_default" as const,
+            },
+          ]
+        : []),
+      ...(params.quantities.postPurchaseLengthEachM != null
+        ? [
+            {
+              key: "deck.supports.procurement",
+              text: `Purchased as ${params.quantities.postPurchaseLengthEachM} m stock length each (smallest supported length covering required length).`,
+              source: "calculator_default" as const,
+            },
+          ]
+        : []),
+      ...(params.quantities.postProcurementOk === false
+        ? [
+            {
+              key: "deck.supports.procurement_required",
+              text: "Required pile length exceeds the largest supported stock length. Pricing required — length was not clamped.",
+              source: "calculator_default" as const,
+            },
+          ]
+        : []),
       ...layoutAssumptions(params.quantities),
     ],
     provenance: {
@@ -1030,12 +1186,16 @@ function buildSupportRequirement(params: {
     materialKey: identity ? serializeMaterialIdentityKey(identity) : null,
     materialIdentity: identity ?? undefined,
     category: "FRAMING",
-    specification: section ?? undefined,
-    baseQuantity: params.quantities.supportCount,
-    baseUnit: "ea",
+    specification: section ? `${postSpec} · ${section}` : postSpec,
+    baseQuantity: canPriceLm
+      ? params.quantities.postPurchaseLm!
+      : params.quantities.supportCount,
+    baseUnit: canPriceLm ? "lm" : "ea",
     wasteFactor: 0,
-    purchaseQuantity: params.quantities.supportCount,
-    purchaseUnit: "ea",
+    purchaseQuantity: canPriceLm
+      ? params.quantities.postPurchaseLm!
+      : params.quantities.supportCount,
+    purchaseUnit: canPriceLm ? "lm" : "ea",
     rateSource: pricing.rateSource,
     rateEvidence: "rateEvidence" in pricing ? pricing.rateEvidence : undefined,
     unitCost: pricing.unitCost,

@@ -88,6 +88,7 @@ export function adaptPricedMaterialRequirementWithoutLegacy(params: {
   workAreaName: string;
   sortOrder: number;
   organisationSettings: OrganisationSettings | null;
+  label?: string;
 }): EstimateLineItemInput {
   const { requirement, organisationSettings } = params;
   if (!isPricedMaterialRequirement(requirement)) {
@@ -102,7 +103,7 @@ export function adaptPricedMaterialRequirementWithoutLegacy(params: {
   const line = createRateLineItem({
     workAreaId: requirement.workAreaId,
     workAreaName: params.workAreaName,
-    label: "Decking materials",
+    label: params.label ?? "Decking materials",
     category: "materials",
     quantity: requirement.purchaseQuantity,
     unit: requirement.purchaseUnit,

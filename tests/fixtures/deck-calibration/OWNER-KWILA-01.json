@@ -14,7 +14,8 @@
   "notes": [
     "Owner smoke fixture for DECK-MATURITY-2A.",
     "Same geometry and scope as REAL-JOB-01 with Kwila surface instead of Vitex/Hardwood.",
-    "Commercial money may differ from REAL-JOB-01 only via existing Kwila vs Hardwood material-rate identities.",
+    "Empty-rates labour is DEFAULT_RATE_ENGINE_FIXTURE ($60/$90 Quotr fallback), not Owner company labour.",
+    "Owner company labour is $78/hr via explicit labour.carpenter.hour — OWNER_COMPANY_RATE_FIXTURE only.",
     "No balustrade in brief — low-level deck must not recommend balustrade."
   ],
   "limitations": [

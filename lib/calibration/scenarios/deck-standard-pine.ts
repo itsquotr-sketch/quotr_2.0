@@ -40,7 +40,7 @@ export const DECK_STANDARD_PINE_V1: CalibrationScenario = {
   scopeItems: [
     "New timber substructure",
     "H3.2 treated pine decking",
-    "Fixings and consumables",
+    "Fixings, connectors & sundries",
     "Exclude balustrade",
     "Exclude stairs",
     "Exclude demolition",

@@ -14,7 +14,7 @@
   "notes": [
     "Partial real-job commercial evidence only. Actual customer sell is known, but internal cost evidence is incomplete.",
     "Do not derive a Quotr benchmark, company rate, productivity, or margin from the actual sell.",
-    "Current deck material taxonomy does not have a Vitex option, so current-engine run maps the brief to Hardwood-class decking for pricing-path analysis only."
+    "Empty-rates labour is DEFAULT_RATE_ENGINE_FIXTURE ($60/$90 Quotr fallback), not a live company labour rate."
   ],
   "limitations": [
     "No actual timber quantities or framing spec have been supplied.",

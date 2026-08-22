@@ -14,6 +14,7 @@ import type { OrganisationRate, OrganisationSettings } from "@/components/setup/
 import { round2 } from "@/lib/estimate/facts";
 import { materialRateUnitsMatch } from "@/lib/estimate/resolve-material-rate";
 import type { MaterialRequirement, RequirementRateSource } from "@/lib/estimate/requirements";
+import { findExactHousePileBenchmark } from "@/lib/estimate/house-pile-benchmarks";
 import {
   cloneStructuralBenchmarkEvidence,
   findExactStructuralTimberBenchmark,
@@ -137,16 +138,41 @@ export function resolveStructuralMaterialRequirementRate(params: {
   const benchmarkAllowed =
     params.organisationSettings?.allow_benchmark_rates !== false;
   if (benchmarkAllowed) {
-    const benchmark = findExactStructuralTimberBenchmark(
+    const timberBenchmark = findExactStructuralTimberBenchmark(
       params.identity,
       params.unit
     );
-    if (benchmark) {
+    if (timberBenchmark) {
       return pricedFromUnitCost({
         purchaseQuantity: params.purchaseQuantity,
-        unitCost: benchmark.normalizedRateExGst,
+        unitCost: timberBenchmark.normalizedRateExGst,
         rateSource: "benchmark",
-        rateEvidence: evidenceForSnapshot(benchmark),
+        rateEvidence: evidenceForSnapshot(timberBenchmark),
+      });
+    }
+    const pileBenchmark = findExactHousePileBenchmark(
+      params.identity,
+      params.unit
+    );
+    if (pileBenchmark) {
+      return pricedFromUnitCost({
+        purchaseQuantity: params.purchaseQuantity,
+        unitCost: pileBenchmark.normalizedRateExGst,
+        rateSource: "benchmark",
+        rateEvidence: {
+          sourceName: pileBenchmark.sourceName,
+          sourceType: pileBenchmark.sourceType,
+          sourceURL: "quotr://benchmarks/house-pile-125x125-h5",
+          sourcePrice: pileBenchmark.normalizedRateExGst,
+          sourceUnit: pileBenchmark.rateUnit,
+          gstBasis: pileBenchmark.gstBasis,
+          normalizedRateUnit: pileBenchmark.rateUnit,
+          normalizedRateExGst: pileBenchmark.normalizedRateExGst,
+          researchedAt: "2026-08-22",
+          verifiedAt: "2026-08-22",
+          evidenceId: pileBenchmark.evidenceId,
+          notes: pileBenchmark.notes,
+        },
       });
     }
   }

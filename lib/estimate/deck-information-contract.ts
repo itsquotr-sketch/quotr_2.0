@@ -220,6 +220,46 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     commercial: false,
     reason: "Template fact; calculator does not consume.",
   },
+  {
+    factKey: "deck.ground_clearance_m",
+    questionClass: "ASSUME_IF_SKIPPED",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: true,
+    reason: "Fascia ground gap. Defaults 20 mm. Affects fascia board lm.",
+  },
+  {
+    factKey: "deck.fascia_material",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: false,
+    reason: "Fascia identity. Money still package $/lm until fascia rate is company-set.",
+  },
+  {
+    factKey: "deck.step_count",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: false,
+    reason: "Optional rise-count override. Default from height / 175 mm.",
+  },
+  {
+    factKey: "deck.step_width_m",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: false,
+    reason: "Step width. Default 1.0 m. Planning takeoff until step labour exists.",
+  },
+  {
+    factKey: "deck.step_going_m",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: false,
+    reason: "Tread depth. Default 280 mm. Planning takeoff.",
+  },
 ];
 
 /**

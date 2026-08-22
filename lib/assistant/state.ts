@@ -119,7 +119,7 @@ export async function getAssistantState(
     ? await supabase
         .from("estimate_line_items")
         .select(
-          "id, work_area_name, label, category, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, rate_source, notes, sort_order"
+          "id, work_area_name, label, category, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, rate_source, notes, sort_order, component_key"
         )
         .eq("estimate_id", estimate.id)
         .eq("org_id", orgId)

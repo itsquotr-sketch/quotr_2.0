@@ -64,6 +64,8 @@ const STRUCTURAL_TAKEOFF_KEYS = new Set([
   DECK_BEARERS_COMPONENT_KEY,
   DECK_SUPPORTS_COMPONENT_KEY,
   DECK_CONCRETE_COMPONENT_KEY,
+  "deck.steps.treads",
+  "deck.steps.framing",
 ]);
 
 const MAX_IMPROVEMENTS = 4;
@@ -147,7 +149,7 @@ export function toPricedLine(item: EstimateLineItem): BuilderReviewPricedLine {
     costRate: item.costRate ?? null,
     rateLabel: mapRateLabel(item.rateSource ?? ""),
     itemKey: item.itemKey ?? null,
-    componentKey: item.itemKey ?? null,
+    componentKey: item.componentKey ?? item.itemKey ?? null,
     isAllowance: isAllowanceLine(item),
     specification: lineSpecification(item),
     sourceLine: item,
@@ -474,8 +476,14 @@ export function composeBuilderReview(
   );
 
   const requirements = input.requirements ?? [];
+  const commercialComponentKeys = new Set(
+    activeLines(input.estimate.lineItems)
+      .map((item) => item.componentKey)
+      .filter((key): key is string => Boolean(key))
+  );
   const structuralTakeoff = requirements
     .filter(isNonCommercialStructuralTakeoff)
+    .filter((req) => !commercialComponentKeys.has(req.componentKey))
     .map(toTakeoffRow);
 
   const workAreas: BuilderReviewWorkAreaGroup[] = waTotals.map((wa) => {

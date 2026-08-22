@@ -513,7 +513,11 @@ check(
 check(
   "EXCLUSIONS 47 no fixing requirement",
   !faceKeys.some((key) => key.includes("fixing")) &&
-    faceDeck.lineItems.some((item) => item.label === "Fixings and consumables")
+    faceDeck.lineItems.some(
+      (item) =>
+        item.itemKey === "deck.fixings.m2" ||
+        /Fixings/i.test(item.label)
+    )
 );
 
 const calcFiles = walkTs(join("lib", "estimate", "calculators"));

@@ -326,28 +326,31 @@ const classify = classifyResolvedSell({
 });
 check(
   "29 RECOVERY-1 sell parity remains",
-  baseline.recommendedCost === 10526.3 &&
-    baseline.recommendedSell === 16069.1 &&
+  baseline.recommendedCost === 8620.53 &&
+    baseline.recommendedSell === 12878.01 &&
     classify.sellAuthority === "derived_from_gross_margin" &&
     classify.sellRate === deriveSellFromCost(22.5, 23.5)
 );
 
 check(
-  "30 no shadow structural promotion",
+  "30 structural money is detailed XOR package; labour requirement stays SHADOW",
   getComponentCommercialAuthority({
     workAreaType: "deck",
     componentKey: DECK_LABOUR_COMPONENT_KEY,
   }).authority === "SHADOW" &&
-    !baseline.lineItems.some((l) => /joist|bearer|rim joist/i.test(l.label))
+    baseline.lineItems.some((l) => l.label === "Joists") &&
+    !baseline.lineItems.some((l) => l.label === "Framing/substructure")
 );
 check(
-  "30b framing remains a single package line",
-  baseline.lineItems.filter((l) => l.label === "Framing/substructure").length === 1
+  "30b never package + detailed structure",
+  baseline.lineItems.filter((l) => l.label === "Framing/substructure").length ===
+    0 &&
+    baseline.lineItems.some((l) => l.label === "Joists")
 );
 check(
-  "31 no duplicate active commercial line from Job Plan",
-  baseline.lineItems.filter((l) => l.label === "Framing/substructure").length === 1 &&
-    afterPlan.lineItems.length === baseline.lineItems.length
+  "31 Job Plan does not duplicate commercial lines",
+  afterPlan.lineItems.length === baseline.lineItems.length &&
+    !afterPlan.lineItems.some((l) => l.label === "Framing/substructure")
 );
 
 const shell = read("components/assistant/AssistantShell.tsx");
@@ -539,8 +542,8 @@ check(
   "57 money unchanged",
   baseline.recommendedCost === afterPlan.recommendedCost &&
     baseline.recommendedSell === afterPlan.recommendedSell &&
-    baseline.recommendedCost === 10526.3 &&
-    baseline.recommendedSell === 16069.1
+    baseline.recommendedCost === 8620.53 &&
+    baseline.recommendedSell === 12878.01
 );
 
 console.log("\n=== Multi-WA Job Plan fixture ===");

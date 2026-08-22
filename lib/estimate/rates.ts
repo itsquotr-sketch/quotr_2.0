@@ -378,6 +378,7 @@ export function resolveLabourRate(params: {
     sellRate: classified.sellRate,
     sourceLabel: getRateSourceLabel(sourceType),
     sourceType,
+    itemKey: labourKeys[0],
     sellDerivedFromMargin: classified.sellDerivedFromMargin,
     sellAuthority: classified.sellAuthority,
     grossMarginPercent: classified.grossMarginPercent,

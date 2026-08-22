@@ -197,13 +197,23 @@ check(
 );
 check("12 cost reconciliation", review.costReconciles);
 check(
-  "13 sell authority unchanged",
-  baseline.recommendedCost === 10526.3 &&
-    baseline.recommendedSell === 16069.1
+  "13 sell authority unchanged as projection",
+  review.costReconciles &&
+    Math.abs(baseline.recommendedCost - 8620.53) < 0.02 &&
+    Math.abs(baseline.recommendedSell - 12878.01) < 0.02
 );
 
 // MATERIALS
 const deckWa = review.workAreas.find((wa) => wa.workAreaType === "deck");
+const allDeckLines = deckWa?.categories.flatMap((c) => c.lines) ?? [];
+const hasPackageLine = allDeckLines.some((line) =>
+  /Framing\/substructure/i.test(line.label)
+);
+const hasDetailedChildren =
+  allDeckLines.some((line) => line.label === "Joists") &&
+  allDeckLines.some((line) => line.label === "Bearers") &&
+  allDeckLines.some((line) => /Rim/i.test(line.label)) &&
+  allDeckLines.some((line) => /Piles/i.test(line.label));
 const materials = deckWa?.categories.find((c) => c.id === "MATERIALS");
 check("14 decking active material visible", (materials?.lines.length ?? 0) > 0);
 check(
@@ -261,16 +271,13 @@ check(
     review.projectedCost === review.estimateCost
 );
 check(
-  "23 substructure allowance one money line",
-  deckWa?.categories.some((c) =>
-    c.lines.some((line) => (line.itemKey ?? "").includes("substructure"))
-  ) ?? false
+  "23 substructure is package OR detailed children, never both",
+  (hasPackageLine && !hasDetailedChildren) ||
+    (!hasPackageLine && hasDetailedChildren)
 );
 check(
-  "24 no duplicate structural money",
-  (deckWa?.categories.flatMap((c) => c.lines).filter((l) =>
-    (l.itemKey ?? "").includes("joist")
-  ).length ?? 0) === 0
+  "24 no package + detail double money",
+  !(hasPackageLine && hasDetailedChildren)
 );
 check(
   "25 engineering adequacy not claimed",
@@ -291,7 +298,6 @@ check(
 );
 
 // ALLOWANCES
-const allDeckLines = deckWa?.categories.flatMap((c) => c.lines) ?? [];
 check(
   "29 fixings labelled allowance",
   allDeckLines.some(
@@ -478,8 +484,9 @@ check(
 
 // COMMERCIAL
 check(
-  "50 review changes no money",
-  baseline.recommendedCost === 10526.3 &&
+  "50 review projection does not change engine money",
+  Math.abs(baseline.recommendedCost - 8620.53) < 0.02 &&
+    review.projectedCost === baseline.recommendedCost &&
     classifyResolvedSell({
       costRate: 60,
       sellRate: 90,

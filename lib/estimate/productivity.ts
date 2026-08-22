@@ -1,7 +1,34 @@
+import type { OrganisationRate } from "@/components/setup/types";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { ProductivityRate } from "@/lib/estimate/types";
 
 const PRODUCTIVITY_SOURCE = getRateSourceLabel("productivity");
+const COMPANY_PRODUCTIVITY_SOURCE = getRateSourceLabel("user_rate");
+
+function normalizeProductivityUnit(unit: string): string {
+  return unit.toLowerCase().replace("²", "2").replace(/\s+/g, "");
+}
+
+export function findCompanyProductivityRate(
+  rates: readonly OrganisationRate[] | undefined,
+  key: string,
+  unit?: string
+): OrganisationRate | undefined {
+  if (!rates?.length) return undefined;
+  const wanted = unit ? normalizeProductivityUnit(unit) : null;
+  return rates.find((rate) => {
+    if (!rate.active || rate.cost_rate == null) return false;
+    if (rate.item_key !== key) return false;
+    if (rate.rate_type !== "productivity") return false;
+    if (wanted && rate.unit) {
+      const have = normalizeProductivityUnit(rate.unit);
+      if (have !== wanted && have !== `h/${wanted}` && have !== `hours_per_${wanted}`) {
+        return false;
+      }
+    }
+    return true;
+  });
+}
 
 function productivityEntry(
   key: string,
@@ -35,6 +62,36 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     "deck.demolition_hours_per_m2",
     "Existing deck removal",
     0.35,
+    "m²"
+  ),
+  "deck.decking.install.hours_per_m2": productivityEntry(
+    "deck.decking.install.hours_per_m2",
+    "Decking install",
+    0.55,
+    "m²"
+  ),
+  "deck.substructure.install.hours_per_m2": productivityEntry(
+    "deck.substructure.install.hours_per_m2",
+    "Substructure framing",
+    0.52,
+    "m²"
+  ),
+  "deck.posts.install.hours_per_ea": productivityEntry(
+    "deck.posts.install.hours_per_ea",
+    "Pile/post install",
+    0.2,
+    "ea"
+  ),
+  "deck.fascia.install.hours_per_lm": productivityEntry(
+    "deck.fascia.install.hours_per_lm",
+    "Fascia install",
+    0.45,
+    "lm"
+  ),
+  "deck.steps.install.hours_per_m2": productivityEntry(
+    "deck.steps.install.hours_per_m2",
+    "Steps install (starter / low-confidence)",
+    4.0,
     "m²"
   ),
   "deck.balustrade_hours_per_lm": productivityEntry(
@@ -163,7 +220,23 @@ export function resolveProductivity(params: {
   productivityKey: string;
   unit?: string;
   fallbackHoursPerUnit: number;
+  rates?: readonly OrganisationRate[];
 }): ProductivityRate {
+  const company = findCompanyProductivityRate(
+    params.rates,
+    params.productivityKey,
+    params.unit
+  );
+  if (company?.cost_rate != null) {
+    return {
+      key: params.productivityKey,
+      label: company.label || params.productivityKey,
+      hoursPerUnit: Number(company.cost_rate),
+      unit: params.unit ?? company.unit ?? "unit",
+      sourceLabel: COMPANY_PRODUCTIVITY_SOURCE,
+    };
+  }
+
   const benchmark = BENCHMARK_PRODUCTIVITY[params.productivityKey];
 
   if (benchmark) {
@@ -177,4 +250,9 @@ export function resolveProductivity(params: {
     unit: params.unit ?? "unit",
     sourceLabel: PRODUCTIVITY_SOURCE,
   };
+}
+
+/** Split labour may only promote when hours are finite and greater than zero. */
+export function isTrustedProductivityHours(hoursPerUnit: number): boolean {
+  return Number.isFinite(hoursPerUnit) && hoursPerUnit > 0;
 }

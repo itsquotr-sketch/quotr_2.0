@@ -225,9 +225,12 @@ const noSectionDeck = calculateDeck(
   wa("t2", "deck", "No joist section")
 );
 check(
-  "30 no fabricated joist identity without section",
-  materialReq(noSectionDeck, DECK_JOISTS_COMPONENT_KEY) == null &&
-    materialReq(noSectionDeck, DECK_RIM_FRAMING_COMPONENT_KEY) == null
+  "30 omitted joist section uses disclosed 90x45 estimating default",
+  materialReq(noSectionDeck, DECK_JOISTS_COMPONENT_KEY)?.materialIdentity?.section ===
+    "90x45" &&
+    materialReq(noSectionDeck, DECK_JOISTS_COMPONENT_KEY)?.assumptions.some(
+      (item) => item.key === "deck.framing.identity_default"
+    ) === true
 );
 
 const concrete = materialReq(noTreatmentDeck, DECK_CONCRETE_COMPONENT_KEY);

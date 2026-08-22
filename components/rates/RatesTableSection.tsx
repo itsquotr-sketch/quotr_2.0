@@ -13,6 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import {
   formatRateUnit,
+  formatProductivityHours,
   groupCatalogueByWorkArea,
 } from "@/lib/rates/catalogue";
 import { getRateSourceLabel } from "@/lib/rates/calibration";
@@ -60,6 +61,10 @@ function EngineBadge({
       Planned
     </Badge>
   );
+}
+
+function isProductivityEntry(entry: RateCatalogueEntry): boolean {
+  return entry.rate_type === "productivity";
 }
 
 function ChargeOutCell({
@@ -136,24 +141,39 @@ function RateMobileCard({
             <span>{getRateSourceLabel(rate, entry.item_key)}</span>
           </div>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm tabular-nums">
-            <span>
-              Your cost{" "}
-              <span className="font-medium">{formatMoney(rate?.cost_rate)}</span>
-            </span>
-            <span>
-              Charge-out{" "}
-              <span className="font-medium">{formatMoney(charge.value)}</span>
-              {charge.isCustom ? (
-                <span className="ml-1 text-xs font-normal text-muted-foreground">
-                  (custom)
+            {isProductivityEntry(entry) ? (
+              <span>
+                Hours{" "}
+                <span className="font-medium">
+                  {formatProductivityHours(
+                    rate?.cost_rate ?? entry.defaultCostRate ?? null,
+                    entry.unit
+                  )}
                 </span>
-              ) : null}
-            </span>
+              </span>
+            ) : (
+              <>
+                <span>
+                  Your cost{" "}
+                  <span className="font-medium">{formatMoney(rate?.cost_rate)}</span>
+                </span>
+                <span>
+                  Charge-out{" "}
+                  <span className="font-medium">{formatMoney(charge.value)}</span>
+                  {charge.isCustom ? (
+                    <span className="ml-1 text-xs font-normal text-muted-foreground">
+                      (custom)
+                    </span>
+                  ) : null}
+                </span>
+              </>
+            )}
           </div>
           {!hasCompanyRate && entry.defaultCostRate != null ? (
             <p className="text-xs text-muted-foreground">
-              Quotr benchmark cost: ${entry.defaultCostRate.toFixed(0)}{" "}
-              {formatRateUnit(entry.unit)}
+              {isProductivityEntry(entry)
+                ? `Quotr starter: ${formatProductivityHours(entry.defaultCostRate, entry.unit)}`
+                : `Quotr benchmark cost: $${entry.defaultCostRate.toFixed(entry.defaultCostRate % 1 === 0 ? 0 : 2)} ${formatRateUnit(entry.unit)}`}
             </p>
           ) : null}
         </div>
@@ -176,7 +196,7 @@ function RateMobileCard({
               className="h-8 text-xs"
               onClick={onAdoptBenchmark}
             >
-              Use benchmark cost
+              {isProductivityEntry(entry) ? "Use starter hours" : "Use benchmark cost"}
             </Button>
           ) : null}
         </div>
@@ -220,21 +240,34 @@ function RateRow({
         ) : null}
         {!hasCompanyRate && entry.defaultCostRate != null ? (
           <div className="text-xs text-muted-foreground">
-            Quotr benchmark cost: ${entry.defaultCostRate.toFixed(0)}
+            {isProductivityEntry(entry)
+              ? `Quotr starter: ${formatProductivityHours(entry.defaultCostRate, entry.unit)}`
+              : `Quotr benchmark cost: $${entry.defaultCostRate.toFixed(entry.defaultCostRate % 1 === 0 ? 0 : 2)}`}
           </div>
         ) : null}
       </td>
       <td className="hidden px-3 py-2.5 text-muted-foreground sm:table-cell">
-        {formatRateUnit(entry.unit)}
+        {isProductivityEntry(entry)
+          ? `h/${formatRateUnit(entry.unit)}`
+          : formatRateUnit(entry.unit)}
       </td>
       <td className="px-3 py-2.5 tabular-nums">
-        {formatMoney(rate?.cost_rate)}
+        {isProductivityEntry(entry)
+          ? formatProductivityHours(
+              rate?.cost_rate ?? entry.defaultCostRate ?? null,
+              entry.unit
+            )
+          : formatMoney(rate?.cost_rate)}
       </td>
       <td className="px-3 py-2.5">
-        <ChargeOutCell
-          rate={rate}
-          companyGrossMarginPercent={companyGrossMarginPercent}
-        />
+        {isProductivityEntry(entry) ? (
+          <span className="text-muted-foreground">—</span>
+        ) : (
+          <ChargeOutCell
+            rate={rate}
+            companyGrossMarginPercent={companyGrossMarginPercent}
+          />
+        )}
       </td>
       <td className="hidden px-3 py-2.5 text-xs text-muted-foreground md:table-cell">
         {getRateSourceLabel(rate, entry.item_key)}
@@ -264,7 +297,7 @@ function RateRow({
               size="sm"
               onClick={onAdoptBenchmark}
             >
-              Use benchmark cost
+              {isProductivityEntry(entry) ? "Use starter hours" : "Use benchmark cost"}
             </Button>
           ) : null}
           <Button type="button" variant="ghost" size="sm" onClick={onEdit}>

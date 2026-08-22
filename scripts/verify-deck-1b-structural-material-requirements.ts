@@ -340,8 +340,9 @@ check(
     !read("lib/estimate/deck-structure.ts").includes("NZS")
 );
 check(
-  "38 height not converted to post LM",
-  !read("lib/estimate/deck-structure.ts").includes("deck.height_m")
+  "38 height may estimate post length; support purchase unit stays EA",
+  materialReq(refDeck, DECK_SUPPORTS_COMPONENT_KEY)?.purchaseUnit === "ea" &&
+    read("lib/estimate/deck-structure.ts").includes("postLengthEachM")
 );
 
 const substructureLine = refDeck.lineItems.find(

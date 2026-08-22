@@ -854,7 +854,7 @@ export function EstimatePanel({
                 tertiary
               />
               <MetricRow
-                label="Gross margin"
+                label="Effective gross margin"
                 value={financialView?.marginLabel ?? "—"}
                 dimmed={isStale}
                 tertiary

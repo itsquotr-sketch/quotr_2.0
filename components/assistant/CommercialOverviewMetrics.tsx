@@ -56,7 +56,7 @@ export function CommercialOverviewMetrics({
           tertiary
         />
         <MetricRow
-          label="Gross margin"
+          label="Effective gross margin"
           value={financialView.marginLabel ?? "—"}
           dimmed={isStale}
           tertiary

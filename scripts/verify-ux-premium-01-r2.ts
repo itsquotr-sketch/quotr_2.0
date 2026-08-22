@@ -254,7 +254,7 @@ check(
   !metrics.includes("Recommended sell") &&
     !metrics.includes("recommendedSell") &&
     metrics.includes("Direct cost") &&
-    metrics.includes("Gross margin") &&
+    metrics.includes("Effective gross margin") &&
     metrics.includes("Gross profit")
 );
 
