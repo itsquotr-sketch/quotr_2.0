@@ -103,7 +103,7 @@ export function adaptPricedMaterialRequirementWithoutLegacy(params: {
   const line = createRateLineItem({
     workAreaId: requirement.workAreaId,
     workAreaName: params.workAreaName,
-    label: params.label ?? "Decking materials",
+    label: params.label ?? "Decking",
     category: "materials",
     quantity: requirement.purchaseQuantity,
     unit: requirement.purchaseUnit,

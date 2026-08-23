@@ -106,6 +106,8 @@ export type EstimateLineItemInput = {
   /** Current sell authority (distinct from rateSource). */
   sellAuthority?: SellAuthority;
   notes?: string;
+  /** Short builder-facing material identity; preferred over long notes in Builder Review. */
+  identitySummary?: string;
   materialBuildUp?: MaterialBuildUpEntry;
   materialBuildUps?: MaterialBuildUpEntry[];
   materialRateResolution?: MaterialRateResolution;

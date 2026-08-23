@@ -337,7 +337,7 @@ export function BuilderReviewSurface({
                                   <StatusPill tone="neutral">Allowance</StatusPill>
                                 ) : null}
                                 {line.specification ? (
-                                  <p className="text-xs text-muted-foreground">
+                                  <p className="text-xs break-words text-muted-foreground">
                                     {line.specification}
                                   </p>
                                 ) : null}

@@ -2,6 +2,14 @@ import type { OrganisationRate } from "@/components/setup/types";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { ProductivityRate } from "@/lib/estimate/types";
 
+/**
+ * PRODUCTIVITY = TIME (hours / physical unit), including NORMAL handling
+ * at the workface (positioning, measuring, cutting, ordinary moving, install).
+ * ABNORMAL ACCESS/CARRY is a Project Condition multiplier applied once.
+ * Do not inflate these hours and also apply access for the same issue.
+ * Hourly labour $ is a separate rate; changing it must not change hours.
+ */
+
 const PRODUCTIVITY_SOURCE = getRateSourceLabel("productivity");
 const COMPANY_PRODUCTIVITY_SOURCE = getRateSourceLabel("user_rate");
 

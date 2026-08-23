@@ -390,7 +390,7 @@ function testFallback() {
   check(
     "27 width-unknown legacy fallback",
     surfaceReq(noWidth) == null &&
-      surfaceLine(noWidth)?.label === "Decking materials package" &&
+      surfaceLine(noWidth)?.label === "Decking package" &&
       noWidth.commercialSelections?.some(
         (item) =>
           item.componentKey === DECK_SURFACE_COMPONENT_KEY &&

@@ -1,5 +1,16 @@
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
-import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
+import {
+  getBooleanFact,
+  hasFactValue,
+  isNotSureValue,
+} from "@/lib/estimate/facts";
+import {
+  DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
+  DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
+  deckStepsCommerciallyIncluded,
+  newSubstructureIncluded,
+  shouldAskPileReplacement,
+} from "@/lib/estimate/deck-scope-2c";
 import type {
   ComposeRefineInput,
   RefineCandidate,
@@ -72,9 +83,11 @@ const DECK_CHECK_COPY: Record<
   "deck.vertical_face_boards_required": {
     question: "Include fascia / edge finish?",
   },
-  "deck.access_type": {
-    question: "Are steps or a stair set included?",
-    options: ["None", "Single step or step-down", "Stair set"],
+  "deck.steps_included": {
+    question: "Are new steps included?",
+  },
+  "deck.concrete_to_supports": {
+    question: "Include concrete to piles or posts?",
   },
   "deck.balustrade_required": {
     question: "Include a balustrade?",
@@ -85,9 +98,23 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
   workAreaType: "deck",
   candidates({ workAreaId, workAreaName, facts, briefText, notConfirmed }) {
     const out: RefineCandidate[] = [];
+    const supportsRelevant =
+      newSubstructureIncluded([...facts], workAreaId) ||
+      shouldAskPileReplacement({ facts: [...facts], workAreaId });
+    const stepsActive = deckStepsCommerciallyIncluded({
+      facts: [...facts],
+      workAreaId,
+    });
+    const concreteYes =
+      getBooleanFact([...facts], workAreaId, DECK_CONCRETE_TO_SUPPORTS_FACT_KEY) ===
+      true;
+
     for (const item of notConfirmed) {
       const key = item.sourceFactKey;
       if (!key || !(key in DECK_CHECK_COPY)) continue;
+      if (key === DECK_CONCRETE_TO_SUPPORTS_FACT_KEY && !supportsRelevant) {
+        continue;
+      }
       const copy = DECK_CHECK_COPY[key]!;
       const row = fromCheck(item, workAreaName, "deck", {
         question: copy.question,
@@ -140,7 +167,10 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
       });
     }
 
-    if (!known(facts, workAreaId, "deck.pile_or_post_replacement_required", briefText)) {
+    if (
+      shouldAskPileReplacement({ facts: [...facts], workAreaId }) &&
+      !known(facts, workAreaId, "deck.pile_or_post_replacement_required", briefText)
+    ) {
       out.push({
         id: `refine:${workAreaId}:deck.pile_or_post_replacement_required`,
         group: "structure",
@@ -152,7 +182,7 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
         constraintKey: null,
         questionKey: "deck.pile_or_post_replacement_required",
         label: "Pile / post replacement",
-        question: "Replace piles or posts?",
+        question: "Replace existing piles or posts?",
         inputType: "boolean",
         writeTarget: "FACT",
         write: {
@@ -166,7 +196,10 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
       });
     }
 
-    if (!known(facts, workAreaId, "deck.substructure_condition", briefText)) {
+    if (
+      !newSubstructureIncluded([...facts], workAreaId) &&
+      !known(facts, workAreaId, "deck.substructure_condition", briefText)
+    ) {
       out.push({
         id: `refine:${workAreaId}:deck.substructure_condition`,
         group: "structure",
@@ -181,6 +214,53 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
         question: "What is the existing substructure condition?",
         inputType: "select",
         options: ["Sound", "Partial replacement", "Full replacement", "None", "Unknown"],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      stepsActive &&
+      !known(facts, workAreaId, "deck.step_width_m", briefText)
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:deck.step_width_m`,
+        group: "specification",
+        tier: "advanced",
+        workAreaId,
+        workAreaName,
+        workAreaType: "deck",
+        factKey: "deck.step_width_m",
+        constraintKey: null,
+        questionKey: "deck.step_width_m",
+        label: "Step width",
+        question: "Approximate step width?",
+        inputType: "number",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      supportsRelevant &&
+      concreteYes &&
+      !known(facts, workAreaId, DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY, briefText)
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:${DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY}`,
+        group: "structure",
+        tier: "advanced",
+        workAreaId,
+        workAreaName,
+        workAreaType: "deck",
+        factKey: DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
+        constraintKey: null,
+        questionKey: DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
+        label: "Concrete bags per hole",
+        question: "How many 20kg bags per hole?",
+        inputType: "number",
         writeTarget: "FACT",
         write: null,
         consumedByCalculator: true,

@@ -14,6 +14,7 @@ import {
   briefImpliesConstraint,
   stepsAreRelevant,
 } from "@/lib/assistant/clarify/suppress";
+import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
 import type {
   ClarifyAskClass,
   ClarifyCandidate,
@@ -85,6 +86,17 @@ function candidateFromJobPlanCheck(
   const key = item.sourceFactKey;
   if (!key) return null;
   if (key === "deck.access_type" && !stepsAreRelevant(input, card.workAreaId)) {
+    return null;
+  }
+  if (key === "deck.steps_included" && !stepsAreRelevant(input, card.workAreaId)) {
+    return null;
+  }
+  const questionClass = deckFactQuestionClass(key);
+  if (
+    questionClass === "REFINE" ||
+    questionClass === "DERIVED" ||
+    questionClass === "NOT_CONSUMED"
+  ) {
     return null;
   }
   if (key === "deck.balustrade_required" && !shouldAskBalustrade(input, card.workAreaId)) {

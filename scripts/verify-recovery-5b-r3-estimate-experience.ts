@@ -81,9 +81,9 @@ check(3, "Removal is NOT_CONFIRMED by default (effectiveJobPlanBoolean)", deckAd
 check(4, "Fascia is NOT_CONFIRMED by default", deckAdapter.includes(`id: "fascia"`) &&
   deckAdapter.includes(`factKey: "deck.vertical_face_boards_required"`));
 
-check(5, "Steps recommendation uses access_type context (not blind check)", deckAdapter.includes("stepsItem") &&
-  deckAdapter.includes("effectiveJobPlanAccessType") &&
-  deckAdapter.includes(`presentation = lower === "none" ? "NOT_INCLUDED" : "INCLUDED"`));
+check(5, "Steps uses dedicated steps_included fact (not access_type commercial include)", deckAdapter.includes("stepsItem") &&
+  deckAdapter.includes(`factKey: "deck.steps_included"`) &&
+  !deckAdapter.includes(`includeValue: "Stair set"`));
 
 check(6, "Balustrade NOT surfaced for low-level deck without evidence", deckAdapter.includes("showBalustrade") &&
   deckAdapter.includes("balustradeValue !== null || elevated") &&

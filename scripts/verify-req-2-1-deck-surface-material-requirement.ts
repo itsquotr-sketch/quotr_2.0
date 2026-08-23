@@ -103,7 +103,7 @@ function hardwoodFacts(workAreaId: string, includeWidth = true): EstimateFact[] 
 
 function deckingLine(result: ReturnType<typeof calculateDeck>) {
   return result.lineItems.find((item) =>
-    item.label.startsWith("Decking materials")
+    item.label.startsWith("Decking")
   );
 }
 
@@ -225,7 +225,7 @@ check(
 check(
   "COMPANY LM 12 exact parity with existing Deck surface cost",
   companyLmReq?.totalCost === companyLmLine?.recommendedCost &&
-    companyLmLine?.label === "Decking materials" &&
+    companyLmLine?.label === "Decking" &&
     companyLmLine.quantity === 126.65
 );
 
@@ -291,7 +291,7 @@ check("QUOTR 22 total cost $2,786.30", quotrReq?.totalCost === 2786.3);
 check(
   "QUOTR 23 parity with current Deck surface cost",
   quotrReq?.totalCost === quotrLine?.recommendedCost &&
-    quotrLine?.label === "Decking materials"
+    quotrLine?.label === "Decking"
 );
 
 const missingDeck = calculateDeck(
@@ -329,9 +329,9 @@ check("MISSING 26 totalCost=null", missingReq?.totalCost === null);
 check("MISSING 27 rateSource=missing", missingReq?.rateSource === "missing");
 check(
   "MISSING 28 estimate existing missing-pricing behaviour unchanged",
-    missingLine?.label === "Decking materials package" &&
+    missingLine?.label === "Decking package" &&
     missingLine.unit === "m²" &&
-    missingEstimate.lineItems.some((item) => item.label === "Decking materials package")
+    missingEstimate.lineItems.some((item) => item.label === "Decking package")
 );
 
 const noWidthDeck = calculateDeck(
@@ -345,7 +345,7 @@ check(
 );
 check(
   "WIDTH UNKNOWN 30 honest fallback/no-requirement behavior",
-  noWidthLine?.label === "Decking materials package" &&
+  noWidthLine?.label === "Decking package" &&
     (noWidthDeck.requirements ?? []).filter((item) => item.kind === "material")
       .length === 0
 );
@@ -373,7 +373,7 @@ check(
   quotrLine != null &&
     quotrEstimate.lineItems.some(
       (item) =>
-        item.label === "Decking materials" &&
+        item.label === "Decking" &&
         item.recommendedCost === quotrLine.recommendedCost
     ) &&
     quotrEstimate.commercialSelections?.some(

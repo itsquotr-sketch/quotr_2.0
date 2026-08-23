@@ -234,6 +234,32 @@ Estimating material assumptions are **not** NZS 3604 or structural certification
 
 ---
 
+## 7C. Deck Maturity 2C — FINAL SCOPE OWNERSHIP / PRODUCTIVITY UX
+
+**Status:** COMPLETE / COMMITTED / PREVIEW  
+**Verifier:** `scripts/verify-deck-maturity-2c.ts`
+
+Does not rebuild 2A/2B architecture.
+
+| Contract | 2C rule |
+| --- | --- |
+| Labour model | Quantity × productivity hours = TIME. Hours × labour $/hr = MONEY. Separate. |
+| Normal handling | Included in each scope productivity. No separate handling line. |
+| Abnormal access/carry | Project Conditions, applied once. |
+| Productivity Rates | Dedicated Labour productivity section. Hours only — no $. Persistence via existing company rates. |
+| Pile/post replacement | Only when existing supports may be reused. New substructure owns new piles — no question, no allowance, stale replacement ignored. |
+| Material identity | Builder Review shows resolved identity under Joists / Bearers / Rim / Piles / Decking. |
+| Decking label | Builder-facing **Decking** (not Decking materials). |
+| Pile presentation | Identity + count + purchase length each + purchased lm. Required length remains secondary. |
+| Pile labour | Hours/ea includes set-out, hole excavation/prep, positioning. No separate digging line. |
+| Concrete | Optional YES/NO/NOT_SURE when supports active. Default 2.5 × 20kg bags/hole, round up. Own hours/hole (NEEDS_OWNER_BENCHMARK if no company hours). No invented $ rate. Residual is not concrete money. |
+| Steps | Only brief/Job Plan include, or canonical `Stair set` / `has_stairs`. Height and logistics `access_type` "Single step or step-down" do not auto-include. Detailed Step decking + framing + installation promote only when `deck.steps_included` is explicit and the chain is complete; otherwise stair lump. XOR, never both. |
+| Planning takeoff | No duplicate of authoritative commercial lines. |
+
+**Not in 2C:** new geometry, NZS, supplier API, Company DNA calibration, balustrade, freight, Retaining Wall, Bathroom, PERF-01, Production.
+
+---
+
 ## 8. Retaining Wall — MINIMAL (SAFETY HARDENED)
 
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**

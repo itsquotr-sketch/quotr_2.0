@@ -112,6 +112,7 @@ export type EstimateLineItem = {
   componentKey?: string;
   sellDerivedFromMargin?: boolean;
   notes?: string;
+  identitySummary?: string;
   materialBuildUps?: MaterialBuildUpEntry[];
   materialRateResolution?: MaterialRateResolution;
   pricingOwner?: PricingOwner;

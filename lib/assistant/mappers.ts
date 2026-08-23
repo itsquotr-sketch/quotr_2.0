@@ -384,6 +384,7 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
     componentKey: row.component_key ?? undefined,
     sellDerivedFromMargin: metadata.sellDerivedFromMargin,
     notes: displayNotes,
+    identitySummary: displayNotes ?? undefined,
     materialBuildUps: getMaterialBuildUps(row.notes),
     materialRateResolution: metadata.materialRateResolution,
     pricingOwner: metadata.pricingOwner,

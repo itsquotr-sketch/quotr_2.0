@@ -36,7 +36,7 @@ const baseContext = {
 
 function isDeckingMaterialsLine(label: string): boolean {
   return (
-    label === "Decking materials" || label === "Decking materials package"
+    label === "Decking" || label === "Decking package"
   );
 }
 
@@ -72,12 +72,12 @@ assert(
   "Deck estimate has no separate Decking boards priced row"
 );
 assert(
-  deckMaterialLabels.includes("Decking materials"),
-  "Deck estimate keeps quantity-priced Decking materials"
+  deckMaterialLabels.includes("Decking"),
+  "Deck estimate keeps quantity-priced Decking"
 );
 
 const deckPackage = deckMerged.find(
-  (item) => item.label === "Decking materials"
+  (item) => item.label === "Decking"
 );
 assert(deckPackage?.materialBuildUp != null, "Deck materials have board lm build-up");
 assert(deckPackage?.materialBuildUp?.priced === true, "Deck lm build-up is priced when $/lm resolves");
@@ -169,7 +169,7 @@ const deckMissing = calculateDeck(
   workArea("wa4", "deck", "Deck missing width")
 );
 const deckMissingPackage = deckMissing.lineItems.find(
-  (item) => item.label === "Decking materials package"
+  (item) => item.label === "Decking package"
 );
 assert(
   deckMissingPackage?.materialBuildUp == null,

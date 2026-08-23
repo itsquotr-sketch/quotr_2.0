@@ -323,7 +323,7 @@ assert(
   "Deck5: handrail on external stairs"
 );
 const deckMaterials = deck5.lineItems.find((item) =>
-  item.label.includes("Decking materials")
+  item.label.includes("Decking")
 );
 assert(deckMaterials != null, "Deck5: deck materials package present");
 assert(

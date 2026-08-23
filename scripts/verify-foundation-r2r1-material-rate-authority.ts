@@ -91,7 +91,7 @@ const ownerDeck = calculateDeck(
 );
 
 const deckingLine = ownerDeck.lineItems.find((item) =>
-  item.label.startsWith("Decking materials")
+  item.label.startsWith("Decking")
 );
 
 check("2. one decking materials line", deckingLine != null);
@@ -159,7 +159,7 @@ const companyDeck = calculateDeck(
   wa("d1", "deck", "Deck")
 );
 const companyLine = companyDeck.lineItems.find((item) =>
-  item.label.startsWith("Decking materials")
+  item.label.startsWith("Decking")
 );
 check(
   "3c. company exact $/lm wins",
@@ -173,7 +173,7 @@ check(
 
 check(
   "8. line metadata truthful (quantity-priced label)",
-  deckingLine?.label === "Decking materials"
+  deckingLine?.label === "Decking"
 );
 check(
   "9. rate provenance visible",
@@ -196,7 +196,7 @@ const noWidth = calculateDeck(
   wa("d2", "deck", "Deck")
 );
 const packageLine = noWidth.lineItems.find(
-  (item) => item.label === "Decking materials package"
+  (item) => item.label === "Decking package"
 );
 check(
   "5c. m² package only when board width unknown",

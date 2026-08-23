@@ -110,11 +110,37 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
   },
   {
     factKey: "deck.access_type",
-    questionClass: "ASK_NOW",
+    questionClass: "REFINE",
     calculatorConsumed: true,
     physical: false,
+    commercial: false,
+    reason:
+      "Logistics access only. Do not treat Single step or step-down as commercial Steps.",
+  },
+  {
+    factKey: "deck.steps_included",
+    questionClass: "ASK_NOW",
+    calculatorConsumed: true,
+    physical: true,
     commercial: true,
-    reason: "Steps/stairs allowance. Not a stair engineering model.",
+    reason:
+      "Commercial Steps include. Height does not auto-include. Job Plan / brief only.",
+  },
+  {
+    factKey: "deck.concrete_to_supports",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: true,
+    reason: "Optional concrete at piles/posts. Only when supports are active. Not forced.",
+  },
+  {
+    factKey: "deck.concrete_bags_per_hole",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: true,
+    reason: "Bags per hole when concrete YES. Default 2.5. Round purchased bags up.",
   },
   {
     factKey: "deck.balustrade_required",
@@ -242,7 +268,7 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     calculatorConsumed: true,
     physical: true,
     commercial: false,
-    reason: "Optional rise-count override. Default from height / 175 mm.",
+    reason: "Optional rise-count override after Steps are included. Default from height / 175 mm.",
   },
   {
     factKey: "deck.step_width_m",
@@ -250,7 +276,7 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     calculatorConsumed: true,
     physical: true,
     commercial: false,
-    reason: "Step width. Default 1.0 m. Planning takeoff until step labour exists.",
+    reason: "Step width after Steps included. Default 1.0 m.",
   },
   {
     factKey: "deck.step_going_m",
@@ -258,9 +284,18 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     calculatorConsumed: true,
     physical: true,
     commercial: false,
-    reason: "Tread depth. Default 280 mm. Planning takeoff.",
+    reason: "Tread depth after Steps included. Default 280 mm.",
   },
 ];
+
+export function deckFactQuestionClass(
+  factKey: string
+): DeckFactQuestionClass | null {
+  return (
+    DECK_INFORMATION_CONTRACT.find((row) => row.factKey === factKey)
+      ?.questionClass ?? null
+  );
+}
 
 /**
  * Future optional: attached-edge / existing-deck connection as a Deck fact.

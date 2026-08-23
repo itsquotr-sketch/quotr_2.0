@@ -778,9 +778,9 @@ const deckKeys = adapterKeys(deckAdapter!, [
   {
     id: "steps",
     label: "Steps",
-    sourceFactKey: "deck.access_type",
+    sourceFactKey: "deck.steps_included",
     write: {
-      factKey: "deck.access_type",
+      factKey: "deck.steps_included",
       valueType: "boolean",
       includeValue: true,
       excludeValue: false,
@@ -903,7 +903,7 @@ const deckResult = calculateDeck(
 );
 check(
   "29 no Deck money change (priced lines still present)",
-  deckResult.lineItems.some((i) => i.label === "Decking materials") &&
+  deckResult.lineItems.some((i) => i.label === "Decking") &&
     deckResult.lineItems.some((i) => /labour/i.test(i.label))
 );
 

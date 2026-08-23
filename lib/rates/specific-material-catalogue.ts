@@ -380,7 +380,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "m2",
     description:
-      "Hours per m², not dollars. Company override wins. Used now for detailed decking install labour.",
+      "Hours per m², not dollars. Includes normal handling at the workface (positioning, measuring, cutting, moving boards, installation). Abnormal access/carry is a Project Condition, applied once.",
     defaultCostRate: 0.55,
     calculatorSupport: "used_now",
     recommended: true,
@@ -394,7 +394,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "m2",
     description:
-      "Hours per m², not dollars. Excludes pile/post installation. Company override wins.",
+      "Hours per m², not dollars. Includes normal handling of framing timber at the workface. Excludes pile/post installation. Abnormal access/carry is a Project Condition, applied once.",
     defaultCostRate: 0.52,
     calculatorSupport: "used_now",
     recommended: true,
@@ -407,7 +407,8 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "deck",
     workAreaLabel: "Deck productivity",
     unit: "ea",
-    description: "Hours per support, not dollars. Company override wins.",
+    description:
+      "Hours per support, not dollars. Includes normal set-out, hole excavation, hole preparation, positioning, cutting/setting, and installation. Does not include concrete placement. Abnormal access/carry is a Project Condition, applied once.",
     defaultCostRate: 0.2,
     calculatorSupport: "used_now",
     recommended: true,
@@ -435,9 +436,36 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck productivity",
     unit: "m2",
     description:
-      "Starter / low-confidence hours per m² of tread area. Not dollars. Stair lump remains money until step material and labour are both complete.",
+      "Hours per m² of tread area, not dollars. Includes normal handling of step materials at the workface. Used when Steps are commercially included and the detailed step chain is complete.",
     defaultCostRate: 4.0,
-    calculatorSupport: "planned",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "deck.concrete.place.hours_per_hole",
+    label: "Concrete placement (hours/hole)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "deck",
+    workAreaLabel: "Deck productivity",
+    unit: "ea",
+    description:
+      "NEEDS_OWNER_BENCHMARK. Hours per hole for mixing, placing, basic consolidation/finishing, and normal cleanup. Excludes hole excavation (owned by pile/post installation). No invented starter hours. Enter company hours; missing hours is Pricing Required, not zero labour.",
+    calculatorSupport: "used_now",
+  }),
+];
+
+export const DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: "deck.concrete.premix.20kg.bag",
+    label: "20 kg premix concrete",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "deck",
+    workAreaLabel: "Deck concrete",
+    unit: "bag",
+    description:
+      "Exact 20 kg premix bag identity. No invented Quotr $ benchmark. Company or project exact rate required; otherwise Pricing Required. Not residual fixings money.",
+    calculatorSupport: "used_now",
   }),
 ];
 
@@ -445,6 +473,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DECKING_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_POST_SPECIFIC_MATERIAL_CATALOGUE,
+  ...DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
   ...SHEET_SPECIFIC_MATERIAL_CATALOGUE,
   ...RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -472,9 +501,15 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     entries: DECK_POST_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
+    title: "Deck concrete",
+    description:
+      "20 kg premix bag identity. No invented $ benchmark — company exact or Pricing Required.",
+    entries: DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
     title: "Deck productivity",
     description:
-      "Hours per physical unit — enter hours in the cost field. Charge-out is unused. Split keys stay planned until company sets them; lumped Deck labour remains money authority.",
+      "Hours per physical unit — enter hours, not dollars. Charge-out is unused. Productivity includes normal handling; Project Conditions own abnormal access/carry once.",
     entries: DECK_PRODUCTIVITY_RATE_CATALOGUE,
   },
   {

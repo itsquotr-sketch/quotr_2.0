@@ -329,8 +329,8 @@ const realDeck = calculateDeck(ctx(realFacts), wa("real"));
 
 check(
   "1 decking qty unchanged",
-  lineCost(kwilaDeck.lineItems, "Decking materials") > 0 ||
-    lineCost(kwilaDeck.lineItems, "Decking materials package") > 0
+  lineCost(kwilaDeck.lineItems, "Decking") > 0 ||
+    lineCost(kwilaDeck.lineItems, "Decking package") > 0
 );
 check(
   "2 decking material rate authority intact",
@@ -870,10 +870,14 @@ const stairDeck = calculateDeck(
   wa(kwilaId)
 );
 check(
-  "82 steps starter exists; stair lump stays",
+  "82 steps XOR: detailed install or stair lump, not both",
   starterSteps.hoursPerUnit === 4 &&
-    stairDeck.lineItems.some((item) => /stair/i.test(item.label)) &&
-    !stairDeck.lineItems.some((item) => item.label === "Steps installation")
+    (stairDeck.lineItems.some((item) => item.label === "Step installation") ||
+      stairDeck.lineItems.some((item) => /stair|step-down/i.test(item.label))) &&
+    !(
+      stairDeck.lineItems.some((item) => item.label === "Step installation") &&
+      stairDeck.lineItems.some((item) => /allowance/i.test(item.label) && /stair|step-down/i.test(item.label))
+    )
 );
 
 check(
@@ -994,7 +998,7 @@ check(
     sellAuthorities.has("derived_from_gross_margin") &&
     !sellAuthorities.has("explicit_sell_override") &&
     included(kwilaDeck.lineItems).every((item) => item.sellAuthority != null) &&
-    kwilaDeck.lineItems.find((item) => item.label === "Decking materials")
+    kwilaDeck.lineItems.find((item) => item.label === "Decking")
       ?.sellAuthority === "legacy_paired_rate" &&
     kwilaDeck.lineItems.find((item) => item.label === DECK_FIXINGS_RESIDUAL_LABEL)
       ?.sellAuthority === "legacy_paired_rate" &&
@@ -1189,7 +1193,7 @@ check(
   read("lib/estimate/deck-material-pricing.ts").includes(
     "framing/fixings are separate keys"
   ) &&
-    kwilaDeck.lineItems.some((item) => item.label === "Decking materials") &&
+    kwilaDeck.lineItems.some((item) => item.label === "Decking") &&
     kwilaDeck.lineItems.some((item) => item.label === DECK_FIXINGS_RESIDUAL_LABEL) &&
     included(kwilaDeck.lineItems).filter(
       (item) => item.label === DECK_FIXINGS_RESIDUAL_LABEL

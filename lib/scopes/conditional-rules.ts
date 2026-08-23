@@ -136,19 +136,9 @@ export function shouldHideConditionalQuestion(
   }
 
   if (key === "deck.pile_or_post_replacement_required") {
-    const height = deckHeightM(lookup, workAreaId);
-    const level = strFact(lookup, workAreaId, "deck.level");
-    const elevated =
-      (height !== null && height > 0.3) ||
-      Boolean(level?.toLowerCase().includes("elevated"));
-    const removal = boolFact(lookup, workAreaId, "deck.existing_deck_removal");
     const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
-    const shouldAsk =
-      elevated ||
-      removal === true ||
-      substructure === true ||
-      substructure === null;
-    if (!shouldAsk) return true;
+    const newLayout = substructure ?? true;
+    if (newLayout) return true;
     return false;
   }
 
@@ -169,9 +159,40 @@ export function shouldHideConditionalQuestion(
       "deck.pile_or_post_replacement_required"
     );
     const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
-    if (replacement !== true && substructure !== true && substructure !== null) {
+    const newLayout = substructure ?? true;
+    if (newLayout) return true;
+    if (replacement !== true && substructure === false) {
       return true;
     }
+    return false;
+  }
+
+  if (key === "deck.concrete_to_supports") {
+    const substructure = boolFact(lookup, workAreaId, "deck.substructure_included");
+    const newLayout = substructure ?? true;
+    if (!newLayout) return true;
+    return false;
+  }
+
+  if (key === "deck.concrete_bags_per_hole") {
+    const concrete = boolFact(lookup, workAreaId, "deck.concrete_to_supports");
+    if (concrete !== true) return true;
+    return false;
+  }
+
+  if (
+    key === "deck.step_count" ||
+    key === "deck.step_width_m" ||
+    key === "deck.step_going_m"
+  ) {
+    const steps = boolFact(lookup, workAreaId, "deck.steps_included");
+    const hasStairs = boolFact(lookup, workAreaId, "deck.has_stairs");
+    const access = strFact(lookup, workAreaId, "deck.access_type")?.toLowerCase();
+    const included =
+      steps === true ||
+      hasStairs === true ||
+      Boolean(access?.includes("stair set"));
+    if (!included) return true;
     return false;
   }
 

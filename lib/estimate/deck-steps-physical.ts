@@ -2,6 +2,7 @@
  * DECK-MATURITY-2B — simple rectangular step estimating model.
  * Not stair compliance. No stringer engineering. No fascia duplication.
  */
+import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
 import { getNumberFact, round2 } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
 
@@ -28,16 +29,20 @@ export type DeckStepsQuantities = {
 export function deckStepsIncluded(params: {
   accessType: string | null;
   hasStairs: boolean | null;
+  facts?: readonly EstimateFact[];
+  workAreaId?: string;
 }): boolean {
+  if (params.facts && params.workAreaId) {
+    return deckStepsCommerciallyIncluded({
+      facts: params.facts,
+      workAreaId: params.workAreaId,
+    });
+  }
   if (params.hasStairs === true) return true;
   if (params.hasStairs === false) return false;
   const access = params.accessType?.trim().toLowerCase() ?? "";
   if (!access || access === "none") return false;
-  return (
-    access.includes("stair") ||
-    access.includes("step") ||
-    access.includes("multiple")
-  );
+  return access.includes("stair set") || access === "stair set";
 }
 
 export function estimateDeckRiseCount(deckHeightM: number): number {

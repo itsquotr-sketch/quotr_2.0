@@ -50,6 +50,8 @@ export function DeckQuickSpecEditor({
   const steps = deckStepsIncluded({
     accessType: jobPlanString(facts, workAreaId, "deck.access_type"),
     hasStairs: jobPlanBoolean(facts, workAreaId, "deck.has_stairs"),
+    facts,
+    workAreaId,
   });
   const joist = jobPlanString(facts, workAreaId, "deck.joist_section") ?? "";
   const bearer = jobPlanString(facts, workAreaId, "deck.bearer_section") ?? "";

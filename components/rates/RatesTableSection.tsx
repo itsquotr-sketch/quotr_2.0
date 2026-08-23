@@ -39,7 +39,7 @@ type RatesTableSectionProps = {
   rates: RatesPageRate[];
   onRatesChange: (rates: RatesPageRate[]) => void;
   companyGrossMarginPercent?: number;
-  variant?: "labour" | "grouped";
+  variant?: "labour" | "grouped" | "productivity";
   showEngineColumn?: boolean;
   showAddButton?: boolean;
 };
@@ -209,6 +209,7 @@ function RateRow({
   entry,
   rate,
   showEngineColumn,
+  hideChargeOut = false,
   labelColumn,
   companyGrossMarginPercent,
   onEdit,
@@ -217,6 +218,7 @@ function RateRow({
   entry: RateCatalogueEntry;
   rate: RatesPageRate | undefined;
   showEngineColumn: boolean;
+  hideChargeOut?: boolean;
   labelColumn: string;
   companyGrossMarginPercent: number;
   onEdit: () => void;
@@ -259,6 +261,7 @@ function RateRow({
             )
           : formatMoney(rate?.cost_rate)}
       </td>
+      {hideChargeOut ? null : (
       <td className="px-3 py-2.5">
         {isProductivityEntry(entry) ? (
           <span className="text-muted-foreground">—</span>
@@ -269,6 +272,7 @@ function RateRow({
           />
         )}
       </td>
+      )}
       <td className="hidden px-3 py-2.5 text-xs text-muted-foreground md:table-cell">
         {getRateSourceLabel(rate, entry.item_key)}
       </td>
@@ -338,9 +342,10 @@ export function RatesTableSection({
   );
 
   const groups =
-    variant === "grouped"
+    variant === "grouped" || variant === "productivity"
       ? groupCatalogueByWorkArea(catalogue)
       : [{ workAreaLabel: "", entries: catalogue }];
+  const productivityTable = variant === "productivity";
 
   async function handleSave(values: RateEditValues): Promise<boolean> {
     if (!editingEntry) return false;
@@ -469,7 +474,8 @@ export function RatesTableSection({
           ) : (
             groups.map((group) => (
               <div key={group.workAreaLabel || "labour"} className="space-y-2">
-                {variant === "grouped" && group.workAreaLabel ? (
+                {((variant === "grouped" || variant === "productivity") &&
+                group.workAreaLabel) ? (
                   <h3 className="text-sm font-medium">{group.workAreaLabel}</h3>
                 ) : null}
 
@@ -479,8 +485,12 @@ export function RatesTableSection({
                       <tr className="border-b border-border/60 bg-muted/30 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
                         <th className="px-3 py-2">Item</th>
                         <th className="hidden px-3 py-2 sm:table-cell">Unit</th>
-                        <th className="px-3 py-2">Your cost</th>
-                        <th className="px-3 py-2">Charge-out</th>
+                        <th className="px-3 py-2">
+                          {productivityTable ? "Hours" : "Your cost"}
+                        </th>
+                        {productivityTable ? null : (
+                          <th className="px-3 py-2">Charge-out</th>
+                        )}
                         <th className="hidden px-3 py-2 md:table-cell">
                           Source
                         </th>
@@ -500,6 +510,7 @@ export function RatesTableSection({
                           entry={entry}
                           rate={rateMap.get(entry.item_key)}
                           showEngineColumn={showEngineColumn}
+                          hideChargeOut={productivityTable}
                           labelColumn={entry.label}
                           companyGrossMarginPercent={margin}
                           onEdit={() => {

@@ -85,7 +85,7 @@ function hardwoodFacts(workAreaId: string, includeWidth = true): EstimateFact[] 
 
 function deckingLine(result: ReturnType<typeof calculateDeck>) {
   return result.lineItems.find((item) =>
-    item.label.startsWith("Decking materials")
+    item.label.startsWith("Decking")
   );
 }
 
@@ -321,7 +321,7 @@ const caseD = calculateDeck(
 const lineD = deckingLine(caseD);
 check(
   "CASE D: unknown width uses honest m² package, no fake lm",
-  lineD?.label === "Decking materials package" &&
+  lineD?.label === "Decking package" &&
     lineD.unit === "m²" &&
     lineD.quantity === ownerArea &&
     lineD.costRate === 160 &&
@@ -359,7 +359,7 @@ const caseE = calculateDeck(
 const lineE = deckingLine(caseE);
 check(
   "CASE E: benchmarks off and no company rate → pricing required package",
-  lineE?.label === "Decking materials package" &&
+  lineE?.label === "Decking package" &&
     lineE.unit === "m²" &&
     lineE.costRate === 0 &&
     lineE.materialRateResolution?.display === "Pricing required"

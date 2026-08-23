@@ -7,7 +7,12 @@ const DUPLICATE_MATERIAL_PAIRS: {
 }[] = [
   {
     duplicateLabel: "Decking boards",
-    parentLabels: ["Decking materials", "Decking materials package"],
+    parentLabels: [
+      "Decking",
+      "Decking package",
+      "Decking materials",
+      "Decking materials package",
+    ],
   },
   {
     duplicateLabel: "Backfill materials",

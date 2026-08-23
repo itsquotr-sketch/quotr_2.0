@@ -57,17 +57,24 @@ const deck1 = calculateDeck(
 );
 assert(!labels(deck1.lineItems).includes("Decking boards"), "Deck 1: no duplicate boards row");
 assert(
-  labels(deck1.lineItems).includes("Decking materials"),
+  labels(deck1.lineItems).includes("Decking"),
   "Deck 1: has quantity-priced decking materials"
 );
-assert(labels(deck1.lineItems).includes("Stair set allowance"), "Deck 1: stairs allowance");
+const deck1HasStairLump = labels(deck1.lineItems).includes("Stair set allowance");
+const deck1HasStepDetail = labels(deck1.lineItems).some((label) =>
+  /Step (decking|framing|installation)/i.test(label)
+);
+assert(
+  (deck1HasStairLump || deck1HasStepDetail) && !(deck1HasStairLump && deck1HasStepDetail),
+  "Deck 1: stairs commercial XOR (allowance or detailed Steps, not both)"
+);
 assert(labels(deck1.lineItems).includes("Balustrade allowance"), "Deck 1: balustrade");
 assert(
-  deck1.lineItems.find((i) => i.label === "Decking materials")?.materialBuildUp != null,
+  deck1.lineItems.find((i) => i.label === "Decking")?.materialBuildUp != null,
   "Deck 1: board lm build-up on decking materials"
 );
 assert(
-  deck1.lineItems.find((i) => i.label === "Decking materials")?.unit === "lm",
+  deck1.lineItems.find((i) => i.label === "Decking")?.unit === "lm",
   "Deck 1: decking priced in lm"
 );
 
@@ -280,6 +287,7 @@ const deckPiles = calculateDeck(
       fact("deck.area_m2", "d3", 40),
       fact("deck.board_material", "d3", "Kwila"),
       fact("deck.height_m", "d3", 0.9),
+      fact("deck.substructure_included", "d3", false),
       fact("deck.pile_or_post_replacement_required", "d3", true),
       fact("deck.pile_or_post_count", "d3", 8),
     ],
@@ -291,8 +299,13 @@ assert(
   "Deck piles: replacement allowance"
 );
 assert(
-  labels(deckPiles.lineItems).filter((l) => l === "Framing/substructure").length === 1,
+  labels(deckPiles.lineItems).filter((l) => l === "Framing/substructure").length <= 1,
   "Deck piles: no duplicate framing row"
+);
+assert(
+  !labels(deckPiles.lineItems).includes("Piles / posts") &&
+    !labels(deckPiles.lineItems).includes("Pile/post installation"),
+  "Deck piles: replacement does not also add new-support commercial lines"
 );
 
 // Fence finishing

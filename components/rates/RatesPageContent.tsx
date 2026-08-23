@@ -16,6 +16,7 @@ import {
   MATERIAL_RATE_CATALOGUE,
   SCOPE_RATE_CATALOGUE,
 } from "@/lib/rates/catalogue";
+import { DECK_PRODUCTIVITY_RATE_CATALOGUE } from "@/lib/rates/specific-material-catalogue";
 import { getRatesPageState } from "@/lib/rates/actions";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 import type { RatesPageState } from "@/lib/rates/types";
@@ -41,6 +42,7 @@ type RatesPageContentProps = {
 /** Primary Rates navigation — used-now contractor setup. */
 const RATES_SECTIONS = [
   { id: "core", label: "Core labour" },
+  { id: "productivity", label: "Labour productivity" },
   { id: "work_types", label: "Work types" },
   { id: "materials", label: "All materials" },
   { id: "defaults", label: "Defaults" },
@@ -230,6 +232,19 @@ export function RatesPageContent({
             onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
             companyGrossMarginPercent={companyGrossMarginPercent}
             variant="labour"
+            showEngineColumn
+          />
+        ) : null}
+
+        {activeSection === "productivity" ? (
+          <RatesTableSection
+            title="Labour productivity"
+            description="Hours per physical unit — not dollars. Editing hours changes labour TIME. Your labour $/hr is under Core labour and changes MONEY, not hours. These hours include normal handling at the workface. Abnormal access/carry is a Project Condition, applied once."
+            catalogue={DECK_PRODUCTIVITY_RATE_CATALOGUE}
+            rates={state.rates}
+            onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+            companyGrossMarginPercent={companyGrossMarginPercent}
+            variant="productivity"
             showEngineColumn
           />
         ) : null}

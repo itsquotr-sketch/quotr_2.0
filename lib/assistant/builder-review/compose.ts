@@ -21,6 +21,11 @@ import {
   PLANNING_TAKEOFF_PARENT_HINT,
 } from "@/lib/estimate/deck-structure";
 import { DECK_SURFACE_COMPONENT_KEY } from "@/lib/estimate/deck-surface-requirement";
+import {
+  DECK_CONCRETE_BAGS_COMPONENT_KEY,
+  DECK_STEPS_FRAMING_COMPONENT_KEY,
+  DECK_STEPS_TREADS_COMPONENT_KEY,
+} from "@/lib/estimate/deck-scope-2c";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { EstimateLineItem } from "@/components/assistant/types";
 import type { EstimateRequirement, MaterialRequirement } from "@/lib/estimate/requirements";
@@ -64,8 +69,11 @@ const STRUCTURAL_TAKEOFF_KEYS = new Set([
   DECK_BEARERS_COMPONENT_KEY,
   DECK_SUPPORTS_COMPONENT_KEY,
   DECK_CONCRETE_COMPONENT_KEY,
+  DECK_CONCRETE_BAGS_COMPONENT_KEY,
   "deck.steps.treads",
   "deck.steps.framing",
+  DECK_STEPS_TREADS_COMPONENT_KEY,
+  DECK_STEPS_FRAMING_COMPONENT_KEY,
 ]);
 
 const MAX_IMPROVEMENTS = 4;
@@ -123,6 +131,9 @@ function isAllowanceLine(item: EstimateLineItem): boolean {
 }
 
 function lineSpecification(item: EstimateLineItem): string | null {
+  if (item.identitySummary?.trim()) {
+    return item.identitySummary.trim();
+  }
   const parts: string[] = [];
   const resolution = item.materialRateResolution;
   if (resolution?.display) {
@@ -130,7 +141,10 @@ function lineSpecification(item: EstimateLineItem): string | null {
   }
   if (item.notes?.trim()) {
     const note = item.notes.trim();
-    if (note.length <= 80 && !parts.includes(note)) parts.push(note);
+    const identityCut = note.split(" · Identity:")[0]?.trim() ?? note;
+    if (identityCut && !parts.includes(identityCut)) {
+      parts.push(identityCut);
+    }
   }
   return parts.length > 0 ? parts.join(" · ") : null;
 }
@@ -483,7 +497,15 @@ export function composeBuilderReview(
   );
   const structuralTakeoff = requirements
     .filter(isNonCommercialStructuralTakeoff)
-    .filter((req) => !commercialComponentKeys.has(req.componentKey))
+    .filter((req) => {
+      if (
+        req.componentKey === DECK_CONCRETE_COMPONENT_KEY &&
+        commercialComponentKeys.has(DECK_CONCRETE_BAGS_COMPONENT_KEY)
+      ) {
+        return false;
+      }
+      return !commercialComponentKeys.has(req.componentKey);
+    })
     .map(toTakeoffRow);
 
   const workAreas: BuilderReviewWorkAreaGroup[] = waTotals.map((wa) => {

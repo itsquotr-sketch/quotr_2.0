@@ -1,13 +1,11 @@
 import type { EstimateFact } from "@/lib/estimate/types";
-import {
-  effectiveJobPlanAccessType,
-  effectiveJobPlanBoolean,
-} from "@/lib/assistant/job-plan/exclusion-provenance";
+import { effectiveJobPlanBoolean } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
   jobPlanNumber,
   jobPlanString,
   presentationFromBoolean,
 } from "@/lib/assistant/job-plan/facts";
+import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
 import type {
   JobPlanAdapterContext,
   JobPlanScopeItem,
@@ -59,28 +57,32 @@ function stepsItem(
   facts: readonly EstimateFact[],
   briefText: string | null
 ): JobPlanScopeItem {
-  const access = effectiveJobPlanAccessType(facts, workAreaId, briefText);
-  const lower = access?.toLowerCase() ?? "";
-  let presentation: JobPlanScopeItem["presentation"] = "NOT_CONFIRMED";
-  if (access) {
-    presentation = lower === "none" ? "NOT_INCLUDED" : "INCLUDED";
-  }
+  const explicit = effectiveJobPlanBoolean(
+    facts,
+    workAreaId,
+    "deck.steps_included",
+    briefText
+  );
+  const commercial =
+    explicit ??
+    (deckStepsCommerciallyIncluded({ facts, workAreaId }) ? true : null);
   return {
     id: "steps",
     workAreaId,
     label: "Steps",
-    presentation,
+    presentation: presentationFromBoolean(commercial),
     kind: "user_scope",
     togglable: true,
     write: {
-      factKey: "deck.access_type",
-      valueType: "select",
-      includeValue: "Stair set",
-      excludeValue: "None",
+      factKey: "deck.steps_included",
+      valueType: "boolean",
+      includeValue: true,
+      excludeValue: false,
       label: "Steps",
     },
-    sourceFactKey: "deck.access_type",
-    surfaceReason: "Deck-local stair/step-down — not site_access",
+    sourceFactKey: "deck.steps_included",
+    surfaceReason:
+      "Commercial Steps when the brief or builder includes them, or when Stair set / has_stairs is already canonical — height and Single step/step-down do not auto-include",
   };
 }
 
@@ -249,6 +251,23 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
 
     const steps = stepsItem(id, facts, context.briefText);
 
+    const substructureValue = effectiveJobPlanBoolean(
+      facts,
+      id,
+      "deck.substructure_included",
+      context.briefText
+    );
+    const showConcrete = substructureValue !== false;
+    const concrete = booleanItem({
+      id: "concrete_to_supports",
+      workAreaId: id,
+      label: "Concrete to supports",
+      factKey: "deck.concrete_to_supports",
+      facts,
+      briefText: context.briefText,
+      surfaceReason: "Optional pile/post concrete — not forced for every Deck",
+    });
+
     const balustradeValue = effectiveJobPlanBoolean(
       facts,
       id,
@@ -275,6 +294,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       removal,
       fascia,
       steps,
+      ...(showConcrete ? [concrete] : []),
       ...(showBalustrade ? [balustrade] : []),
     ];
 

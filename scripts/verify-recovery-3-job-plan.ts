@@ -148,7 +148,7 @@ check(
       i.sourceFactKey !== "site_access" &&
       i.sourceFactKey !== "material_carry_distance" &&
       !isForbiddenJobPlanScopeKey(i.sourceFactKey ?? "")
-  ) && itemOn(realCard, "steps")?.sourceFactKey === "deck.access_type"
+  ) && itemOn(realCard, "steps")?.sourceFactKey === "deck.steps_included"
 );
 
 const exemplarPlan = composeJobPlan({
@@ -391,11 +391,15 @@ check(
     !realCard?.summary.toLowerCase().includes("standard")
 );
 
+function isEstimateComponentScopeLabel(label: string): boolean {
+  return /joists?|bearers?|\brim framing\b|fixings/i.test(label);
+}
+
 check(
   "37 user-facing scope is not estimate components",
   !realPlan.cards.some((c) =>
     [...c.included, ...c.notConfirmed].some((i) =>
-      /joist|bearer|rim|concrete|fixings/i.test(i.label)
+      isEstimateComponentScopeLabel(i.label)
     )
   )
 );
@@ -428,7 +432,7 @@ check(
     itemOn(realCard, "substructure")?.presentation === "INCLUDED" &&
     !realCheckIds.includes("decking") &&
     !realCheckIds.includes("substructure") &&
-    realCheckIds.join(",") === "fascia,removal,steps"
+    realCheckIds.join(",") === "concrete_to_supports,fascia,removal,steps"
 );
 check(
   "43 included scope appears once",
@@ -459,8 +463,9 @@ check(
   "46 low-relevance possible scope is suppressed",
   itemOn(realCard, "balustrade") == null &&
     ![...(realCard?.included ?? []), ...(realCard?.notConfirmed ?? [])].some((i) =>
-      /joist|bearer|rim|concrete|fixings/i.test(i.label)
-    )
+      isEstimateComponentScopeLabel(i.label)
+    ) &&
+    itemOn(realCard, "concrete_to_supports")?.presentation === "NOT_CONFIRMED"
 );
 check(
   "47 REAL-JOB balustrade is not surfaced without evidence",

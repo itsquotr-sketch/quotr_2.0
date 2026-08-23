@@ -53,9 +53,31 @@ import {
 import { calculateDeckFasciaQuantities } from "@/lib/estimate/deck-fascia";
 import {
   calculateDeckStepsQuantities,
-  deckStepsIncluded,
 } from "@/lib/estimate/deck-steps-physical";
 import { defaultStepFramingIdentity } from "@/lib/estimate/deck-default-identities";
+import {
+  DECK_CONCRETE_BAGS_COMPONENT_KEY,
+  DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
+  DECK_CONCRETE_MATERIAL_ITEM_KEY,
+  DECK_CONCRETE_PLACE_COMPONENT_KEY,
+  DECK_CONCRETE_PRODUCTIVITY_KEY,
+  DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
+  DECK_STEPS_FRAMING_COMPONENT_KEY,
+  DECK_STEPS_INCLUDED_FACT_KEY,
+  DECK_STEPS_INSTALL_COMPONENT_KEY,
+  DECK_STEPS_TREADS_COMPONENT_KEY,
+  DECKING_LINE_LABEL,
+  DECKING_PACKAGE_LINE_LABEL,
+  concreteBagsPerHole,
+  concreteToSupportsIncluded,
+  deckStepsCommerciallyIncluded,
+  deckSupportsActive,
+  formatDeckIdentityLine,
+  formatMaterialIdentityDisplay,
+  formatPilePurchaseIdentity,
+  pileReplacementApplicable,
+  purchasedConcreteBags,
+} from "@/lib/estimate/deck-scope-2c";
 import {
   DECK_FIXINGS_RESIDUAL_ITEM_KEY,
   DECK_FIXINGS_RESIDUAL_LABEL,
@@ -63,9 +85,11 @@ import {
   decideDeckSubstructureAuthority,
 } from "@/lib/estimate/deck-commercial-2b";
 import { adaptPricedMaterialRequirementWithoutLegacy } from "@/lib/estimate/requirement-commercial-line";
-import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import { getDeckMaterialLabel } from "@/lib/estimate/material-rate-keys";
+import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import { buildConcreteMaterialIdentity } from "@/lib/materials/identity";
+import { resolveStructuralMaterialRequirementRate } from "@/lib/estimate/resolve-structural-material-rate";
 import {
   quantityBasisFrom,
   withCommercialMetadata,
@@ -99,6 +123,7 @@ export const DECK_CALCULATOR_CONSUMED_FACTS = [
   "deck.demolition_required",
   "deck.access_type",
   "deck.has_stairs",
+  DECK_STEPS_INCLUDED_FACT_KEY,
   "deck.balustrade_required",
   "deck.has_balustrade",
   "deck.handrail_required",
@@ -113,6 +138,8 @@ export const DECK_CALCULATOR_CONSUMED_FACTS = [
   "deck.step_count",
   "deck.step_width_m",
   "deck.step_going_m",
+  DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
+  DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
   "deck.joist_section",
   "deck.joist_centres_mm",
   "deck.joist_direction",
@@ -233,7 +260,6 @@ export function calculateDeck(
 
   const materialLabel = getDeckMaterialLabel(material);
   const boardWidthFact = getNumberFact(facts, workArea.id, "deck.board_width_mm");
-  const boardWidthMm = boardWidthFact ?? 140;
   const wastagePercent = resolveMaterialWastage(
     context.materialWastageSettings,
     "decking"
@@ -273,11 +299,15 @@ export function calculateDeck(
   const pricedQuantity = deckingPricing.quantity;
   const pricedUnit = deckingPricing.unit === "m2" ? "m²" : deckingPricing.unit;
   const deckingLabel = usedLmPricing
-    ? "Decking materials"
-    : "Decking materials package";
+    ? DECKING_LINE_LABEL
+    : DECKING_PACKAGE_LINE_LABEL;
   const conversionNote = deckingPricing.resolution.conversionNote;
+  const deckingIdentity = formatDeckIdentityLine([
+    materialLabel,
+    boardWidthFact != null ? `${boardWidthFact} mm boards` : null,
+  ]);
   const deckingNotes = usedLmPricing
-    ? `${materialLabel} · ${boardWidthMm} mm boards · ${wastagePercent}% wastage${
+    ? `${deckingIdentity} · ${wastagePercent}% wastage${
         conversionNote ? ` · ${conversionNote}` : ""
       }`
     : deckingBoardResult
@@ -301,6 +331,7 @@ export function calculateDeck(
     }),
     deckingBuildUp
   );
+  deckingItem = { ...deckingItem, identitySummary: deckingIdentity };
 
   if (usedLmPricing && deckingBoardResult && area != null && boardWidthFact != null) {
     deckingItem = withCommercialMetadata(deckingItem, {
@@ -421,7 +452,7 @@ export function calculateDeck(
         labourSellRate: labourRate.sellRate,
         adjustmentFactor: labourAdjustment,
         qualityFactor,
-        notes: `Physical driver: deck area. Productivity: ${deckingInstallProductivity.hoursPerUnit} h/m² · ${deckingInstallProductivity.sourceLabel}${constraintNotes ? ` · ${constraintNotes}` : ""}`,
+        notes: `Physical driver: deck area. Includes normal handling at the workface. Productivity: ${deckingInstallProductivity.hoursPerUnit} h/m² · ${deckingInstallProductivity.sourceLabel}${constraintNotes ? ` · ${constraintNotes}` : ""}`,
         sortOrder: sortOrder++,
         componentKey: "deck.decking.install",
         organisationSettings: context.organisationSettings,
@@ -455,7 +486,7 @@ export function calculateDeck(
           labourSellRate: labourRate.sellRate,
           adjustmentFactor: labourAdjustment,
           qualityFactor,
-          notes: `Physical driver: deck area. Excludes pile/post install. Productivity: ${substructureInstallProductivity.hoursPerUnit} h/m² · ${substructureInstallProductivity.sourceLabel}`,
+          notes: `Physical driver: deck area. Includes normal framing handling at the workface. Excludes pile/post install. Productivity: ${substructureInstallProductivity.hoursPerUnit} h/m² · ${substructureInstallProductivity.sourceLabel}`,
           sortOrder: sortOrder++,
           componentKey: "deck.substructure.install",
           organisationSettings: context.organisationSettings,
@@ -480,7 +511,7 @@ export function calculateDeck(
           labourSellRate: labourRate.sellRate,
           adjustmentFactor: labourAdjustment,
           qualityFactor,
-          notes: `Physical driver: ${supportCount} supports. Productivity: ${postsInstallProductivity.hoursPerUnit} h/ea · ${postsInstallProductivity.sourceLabel}`,
+          notes: `Physical driver: ${supportCount} supports. Includes set-out, hole excavation, hole preparation, positioning, cutting/setting, and normal installation. Excludes concrete placement. Productivity: ${postsInstallProductivity.hoursPerUnit} h/ea · ${postsInstallProductivity.sourceLabel}`,
           sortOrder: sortOrder++,
           componentKey: "deck.posts.install",
           organisationSettings: context.organisationSettings,
@@ -585,14 +616,36 @@ export function calculateDeck(
         });
         lineItems.push({
           ...adapted,
-          notes: [
-            row.req.specification,
-            `Identity: ${row.req.materialKey ?? row.req.description}`,
-            `Purchase ${row.req.purchaseQuantity} ${row.req.purchaseUnit}`,
-            `Rate: ${row.req.rateSource}${row.req.rateEvidence?.sourceName ? ` · ${row.req.rateEvidence.sourceName}` : ""}`,
-          ]
-            .filter(Boolean)
-            .join(" · "),
+          identitySummary:
+            row.req.componentKey === DECK_SUPPORTS_COMPONENT_KEY
+              ? formatPilePurchaseIdentity({
+                  identityDisplay: formatMaterialIdentityDisplay(
+                    row.req.materialIdentity
+                  ),
+                  supportCount: structural.quantities?.supportCount ?? 0,
+                  purchaseLengthEachM:
+                    structural.quantities?.postPurchaseLengthEachM ?? null,
+                  purchaseLm: structural.quantities?.postPurchaseLm ?? null,
+                })
+              : formatDeckIdentityLine([
+                  formatMaterialIdentityDisplay(row.req.materialIdentity),
+                  `${row.req.purchaseQuantity} ${row.req.purchaseUnit}`,
+                ]),
+          notes:
+            row.req.componentKey === DECK_SUPPORTS_COMPONENT_KEY
+              ? formatPilePurchaseIdentity({
+                  identityDisplay: formatMaterialIdentityDisplay(
+                    row.req.materialIdentity
+                  ),
+                  supportCount: structural.quantities?.supportCount ?? 0,
+                  purchaseLengthEachM:
+                    structural.quantities?.postPurchaseLengthEachM ?? null,
+                  purchaseLm: structural.quantities?.postPurchaseLm ?? null,
+                })
+              : formatDeckIdentityLine([
+                  formatMaterialIdentityDisplay(row.req.materialIdentity),
+                  `${row.req.purchaseQuantity} ${row.req.purchaseUnit}`,
+                ]),
         });
       }
     } else {
@@ -693,62 +746,10 @@ export function calculateDeck(
 
   const accessType = getStringFact(facts, workArea.id, "deck.access_type");
   const legacyStairs = getBooleanFact(facts, workArea.id, "deck.has_stairs");
-
-  if (!hasExternalStairs) {
-    const accessLower = accessType?.toLowerCase() ?? "";
-    if (
-      accessLower.includes("stair set") ||
-      (legacyStairs === true && !accessType)
-    ) {
-      lineItems.push(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Stair set allowance",
-          recommendedCost: DECK_BENCHMARKS.stairsAllowance.cost,
-          recommendedSell: DECK_BENCHMARKS.stairsAllowance.sell,
-          ...benchmarkRateFields(),
-          notes: "External stair set allowance included with deck.",
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          qualityFactor,
-        })
-      );
-      if (deckHeight !== null && deckHeight > 1) {
-        assumptions.push(
-          "Final stair design, handrail and consent requirements are subject to confirmation."
-        );
-      }
-    } else if (accessLower.includes("multiple")) {
-      lineItems.push(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Multi-side step-down allowance",
-          recommendedCost: DECK_BENCHMARKS.multiSideStairsAllowance.cost,
-          recommendedSell: DECK_BENCHMARKS.multiSideStairsAllowance.sell,
-          ...benchmarkRateFields(),
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          qualityFactor,
-        })
-      );
-    } else if (accessLower.includes("single step")) {
-      lineItems.push(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Step-down allowance",
-          recommendedCost: DECK_BENCHMARKS.stepAllowance.cost,
-          recommendedSell: DECK_BENCHMARKS.stepAllowance.sell,
-          ...benchmarkRateFields(),
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          qualityFactor,
-        })
-      );
-    }
-  }
+  const stepsIncluded = deckStepsCommerciallyIncluded({
+    facts,
+    workAreaId: workArea.id,
+  });
 
   if (
     getBooleanFactAny(facts, workArea.id, [
@@ -804,11 +805,16 @@ export function calculateDeck(
     assumptions.push("Engineering/consent requirements are subject to confirmation.");
   }
 
-  const pileReplacement = getBooleanFact(
+  const pileReplacementFact = getBooleanFact(
     facts,
     workArea.id,
     "deck.pile_or_post_replacement_required"
   );
+  const replacementApplicable = pileReplacementApplicable({
+    facts,
+    workAreaId: workArea.id,
+  });
+  const pileReplacement = replacementApplicable ? pileReplacementFact : false;
   const substructureCondition = getStringFact(
     facts,
     workArea.id,
@@ -864,15 +870,16 @@ export function calculateDeck(
         "Pile/post replacement count is subject to confirmation."
       );
     }
-  } else if (pileReplacement === null) {
+  } else if (pileReplacement === null && replacementApplicable) {
     assumptions.push(
       "Existing substructure condition is subject to confirmation."
     );
   }
 
   if (
-    substructureCondition?.includes("partial") ||
-    substructureCondition?.includes("full")
+    replacementApplicable &&
+    (substructureCondition?.includes("partial") ||
+      substructureCondition?.includes("full"))
   ) {
     const hasPileLine = lineItems.some((item) =>
       item.label.includes("Pile/post replacement")
@@ -937,8 +944,8 @@ export function calculateDeck(
       fallbackHoursPerUnit: 0.45,
       rates: context.rates,
     });
-    lineItems.push(
-      createRateLineItem({
+    lineItems.push({
+      ...createRateLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Vertical face/fascia boards",
@@ -952,8 +959,14 @@ export function calculateDeck(
         organisationSettings: context.organisationSettings,
         qualityFactor,
         componentKey: "deck.fascia",
-      })
-    );
+        notes:
+          getStringFact(facts, workArea.id, "deck.fascia_material")?.trim() ||
+          "Fascia / edge boards · height-sensitive quantity · $22/lm fallback",
+      }),
+      identitySummary:
+        getStringFact(facts, workArea.id, "deck.fascia_material")?.trim() ||
+        "Fascia / edge boards · height-sensitive quantity · $22/lm fallback",
+    });
     if (isTrustedProductivityHours(fasciaProductivity.hoursPerUnit)) {
       lineItems.push(
         createLabourLineItem({
@@ -989,6 +1002,137 @@ export function calculateDeck(
         })
       );
     }
+  }
+
+  const supportsActive = deckSupportsActive({
+    substructureIncluded,
+    supportCount: structural.quantities?.supportCount,
+  });
+  const concreteIncluded = concreteToSupportsIncluded({
+    facts,
+    workAreaId: workArea.id,
+    supportsActive,
+  });
+  if (concreteIncluded) {
+    const holeCount = structural.quantities?.supportCount ?? 0;
+    const bagsEach = concreteBagsPerHole(facts, workArea.id);
+    const bags = purchasedConcreteBags(holeCount, bagsEach);
+    const concreteIdentity = buildConcreteMaterialIdentity({
+      originalDescription: "20 kg premix concrete",
+    });
+    const identitySummary = formatDeckIdentityLine([
+      concreteIdentity.originalDescription,
+      bags > 0 ? `${bags} bags` : null,
+      `${bagsEach} bags/hole`,
+    ]);
+    const companyConcrete = context.rates.find(
+      (rate) =>
+        rate.active &&
+        rate.item_key === DECK_CONCRETE_MATERIAL_ITEM_KEY &&
+        rate.cost_rate != null
+    );
+    if (bags > 0 && companyConcrete?.cost_rate != null) {
+      const unitCost = Number(companyConcrete.cost_rate);
+      const unitSell =
+        companyConcrete.sell_rate != null
+          ? Number(companyConcrete.sell_rate)
+          : unitCost / (1 - (context.organisationSettings?.default_margin_percent ?? 20) / 100);
+      lineItems.push({
+        ...createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Concrete",
+          category: "materials",
+          quantity: bags,
+          unit: "bag",
+          costRate: unitCost,
+          sellRate: unitSell,
+          rateSource: getRateSourceLabel("user_rate"),
+          rateSourceType: "user_rate",
+          itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
+          componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
+          notes: identitySummary,
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor,
+        }),
+        identitySummary,
+      });
+    } else if (bags > 0) {
+      lineItems.push({
+        ...createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Concrete",
+          category: "materials",
+          quantity: bags,
+          unit: "bag",
+          costRate: 0,
+          sellRate: 0,
+          rateSource: getRateSourceLabel("missing"),
+          rateSourceType: "missing",
+          itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
+          componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
+          notes: identitySummary,
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor,
+        }),
+        identitySummary,
+      });
+      missingInfo.push("Concrete 20kg premix bag rate required");
+    }
+
+    const placeProductivity = resolveProductivity({
+      productivityKey: DECK_CONCRETE_PRODUCTIVITY_KEY,
+      unit: "ea",
+      fallbackHoursPerUnit: 0,
+      rates: context.rates,
+    });
+    if (holeCount > 0 && isTrustedProductivityHours(placeProductivity.hoursPerUnit)) {
+      lineItems.push(
+        createLabourLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Concrete placement",
+          quantity: holeCount,
+          unit: "ea",
+          productivityHoursPerUnit: placeProductivity.hoursPerUnit,
+          labourCostRate: labourRate.costRate,
+          labourSellRate: labourRate.sellRate,
+          adjustmentFactor: labourAdjustment,
+          qualityFactor,
+          notes: `Mixing, placing, basic finishing. Excludes hole excavation (pile/post installation). Productivity: ${placeProductivity.hoursPerUnit} h/hole · ${placeProductivity.sourceLabel}`,
+          sortOrder: sortOrder++,
+          componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,
+          organisationSettings: context.organisationSettings,
+          ...rateFieldsFromResolved(labourRate),
+        })
+      );
+    } else if (holeCount > 0) {
+      lineItems.push({
+        ...createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Concrete placement",
+          category: "labour",
+          quantity: holeCount,
+          unit: "ea",
+          costRate: 0,
+          sellRate: 0,
+          rateSource: getRateSourceLabel("missing"),
+          rateSourceType: "missing",
+          componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,
+          notes: "Concrete placement productivity NEEDS_OWNER_BENCHMARK (hours/hole). Hole excavation is in pile/post installation.",
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+        }),
+      });
+      missingInfo.push("Concrete placement hours/hole required");
+    }
+    assumptions.push(
+      `Concrete to supports uses ${bagsEach} × 20kg bags per hole (${bags} bags purchased, rounded up).`
+    );
   }
 
   const surfaceFactKeys = [
@@ -1034,8 +1178,7 @@ export function calculateDeck(
     constraintKeys: labourConstraintKeysFrom(context.constraints),
   });
 
-  const stepReqs = [];
-  if (deckStepsIncluded({ accessType, hasStairs: legacyStairs })) {
+  if (stepsIncluded && !hasExternalStairs) {
     const steps = calculateDeckStepsQuantities({
       facts,
       workAreaId: workArea.id,
@@ -1043,78 +1186,170 @@ export function calculateDeck(
       wastePercent: wastagePercent,
     });
     if (steps) {
+      // Step treads inherits deck board material. Vertical faces stay in Fascia.
       assumptions.push(
         `Steps estimated as ${steps.riseCount} rises (${steps.estimatedRiserM} m). Estimating layout only — not stair compliance.`
       );
       const stepFramingIdentity = defaultStepFramingIdentity();
-      stepReqs.push(
-        buildMaterialRequirement({
-          workAreaId: workArea.id,
-          workAreaType: workArea.type,
-          componentKey: "deck.steps.treads",
-          description: "Step tread decking (inherits deck board material)",
-          confidence: "medium",
-          assumptions: [
-            {
-              key: "deck.steps.treads",
-              text: "Tread surfaces follow estimated rise count. Vertical faces stay in Fascia.",
-              source: "calculator_default",
-            },
-          ],
-          provenance: {
-            calculatorSource: "deck.steps.treads",
-            factKeys: ["deck.height_m", "deck.access_type"],
-            constraintKeys: [],
-          },
-          priced: false,
-          materialKey: null,
-          category: "FINISH",
-          baseQuantity: steps.treadAreaM2,
-          baseUnit: "m2",
-          wasteFactor: wastagePercent / 100,
-          purchaseQuantity: round2(
-            steps.treadAreaM2 * (1 + wastagePercent / 100)
-          ),
-          purchaseUnit: "m2",
-          rateSource: "missing",
-          unitCost: null,
-          totalCost: null,
-        }),
-        buildMaterialRequirement({
-          workAreaId: workArea.id,
-          workAreaType: workArea.type,
-          componentKey: "deck.steps.framing",
-          description: "Step box framing 190x45 H3.2 (estimating assumption)",
-          confidence: "medium",
-          assumptions: [
-            {
-              key: "deck.steps.framing",
-              text: "Each rise modelled as a framed box with internals at 450 mm centres. Not stringer engineering.",
-              source: "calculator_default",
-            },
-          ],
-          provenance: {
-            calculatorSource: "deck.steps.framing",
-            factKeys: ["deck.height_m", "deck.access_type"],
-            constraintKeys: [],
-          },
-          priced: false,
-          materialKey: stepFramingIdentity
-            ? `${stepFramingIdentity.family}.${stepFramingIdentity.productFamily}.${stepFramingIdentity.section}`
-            : null,
-          materialIdentity: stepFramingIdentity ?? undefined,
-          category: "FRAMING",
-          specification: "190x45 H3.2",
-          baseQuantity: steps.framingNetLm,
-          baseUnit: "lm",
-          wasteFactor: wastagePercent / 100,
-          purchaseQuantity: steps.framingPurchaseLm,
-          purchaseUnit: "lm",
-          rateSource: "missing",
-          unitCost: null,
-          totalCost: null,
-        })
+      const treadLm = calculateDeckingBoardLm({
+        areaM2: steps.treadAreaM2,
+        boardWidthMm: boardWidthFact,
+        wastagePercent,
+      });
+      const treadPricing = resolveDeckingBoardPricing({
+        context,
+        material,
+        label: materialLabel,
+        purchaseLm: treadLm?.totalLm ?? null,
+        boardWidthMm: boardWidthFact,
+        areaM2: steps.treadAreaM2,
+      });
+      const framingPricing = stepFramingIdentity
+        ? resolveStructuralMaterialRequirementRate({
+            identity: stepFramingIdentity,
+            unit: "lm",
+            purchaseQuantity: steps.framingPurchaseLm,
+            rates: context.rates,
+            organisationSettings: context.organisationSettings,
+          })
+        : { priced: false as const, unitCost: null, totalCost: null, rateSource: "missing" as const };
+      const stepsProductivity = resolveProductivity({
+        productivityKey: "deck.steps.install.hours_per_m2",
+        unit: "m2",
+        fallbackHoursPerUnit: 4.0,
+        rates: context.rates,
+      });
+      const treadsPriced =
+        treadPricing.rateFields.costRate > 0 &&
+        treadPricing.resolution.source !== "missing";
+      const framingPriced =
+        framingPricing.priced === true && framingPricing.unitCost != null;
+      const labourTrusted = isTrustedProductivityHours(
+        stepsProductivity.hoursPerUnit
       );
+      const explicitStepsIncluded =
+        getBooleanFact(facts, workArea.id, DECK_STEPS_INCLUDED_FACT_KEY) ===
+        true;
+      const detailedComplete =
+        explicitStepsIncluded && treadsPriced && framingPriced && labourTrusted;
+
+      if (detailedComplete && framingPricing.priced && framingPricing.unitCost != null) {
+        const treadIdentity = formatDeckIdentityLine([
+          materialLabel,
+          boardWidthFact != null ? `${boardWidthFact} mm` : null,
+        ]);
+        const framingIdentityText = formatMaterialIdentityDisplay(stepFramingIdentity);
+        let treadLine = createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Step decking",
+          category: "materials",
+          quantity: treadPricing.quantity,
+          unit: treadPricing.unit === "m2" ? "m²" : treadPricing.unit,
+          notes: treadIdentity,
+          sortOrder: sortOrder++,
+          componentKey: DECK_STEPS_TREADS_COMPONENT_KEY,
+          organisationSettings: context.organisationSettings,
+          qualityFactor,
+          ...treadPricing.rateFields,
+        });
+        treadLine = {
+          ...withMaterialRateResolution(treadLine, treadPricing.resolution),
+          identitySummary: treadIdentity,
+        };
+        lineItems.push(treadLine);
+
+        const framingUnitSell =
+          framingPricing.unitCost /
+          (1 - (context.organisationSettings?.default_margin_percent ?? 20) / 100);
+        lineItems.push({
+          ...createRateLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Step framing",
+            category: "materials",
+            quantity: steps.framingPurchaseLm,
+            unit: "lm",
+            costRate: framingPricing.unitCost,
+            sellRate: framingUnitSell,
+            rateSource: framingPricing.rateSource,
+            componentKey: DECK_STEPS_FRAMING_COMPONENT_KEY,
+            notes: formatDeckIdentityLine([
+              framingIdentityText,
+              `${steps.framingPurchaseLm} lm`,
+            ]),
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            qualityFactor,
+            sellDerivedFromMargin: true,
+            sellAuthority: "derived_from_gross_margin",
+          }),
+          identitySummary: formatDeckIdentityLine([
+            framingIdentityText,
+            `${steps.framingPurchaseLm} lm`,
+          ]),
+        });
+
+        lineItems.push(
+          createLabourLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Step installation",
+            quantity: steps.treadAreaM2,
+            unit: "m²",
+            productivityHoursPerUnit: stepsProductivity.hoursPerUnit,
+            labourCostRate: labourRate.costRate,
+            labourSellRate: labourRate.sellRate,
+            adjustmentFactor: labourAdjustment,
+            qualityFactor,
+            notes: `Physical driver: tread area. Productivity: ${stepsProductivity.hoursPerUnit} h/m² · ${stepsProductivity.sourceLabel}`,
+            sortOrder: sortOrder++,
+            componentKey: DECK_STEPS_INSTALL_COMPONENT_KEY,
+            organisationSettings: context.organisationSettings,
+            ...rateFieldsFromResolved(labourRate),
+          })
+        );
+      } else {
+        const accessLower = accessType?.toLowerCase() ?? "";
+        const stairSet =
+          accessLower.includes("stair set") ||
+          (legacyStairs === true && !accessType);
+        const multi = accessLower.includes("multiple");
+        const allowance = stairSet
+          ? {
+              label: "Stair set allowance",
+              cost: DECK_BENCHMARKS.stairsAllowance.cost,
+              sell: DECK_BENCHMARKS.stairsAllowance.sell,
+              notes: "External stair set allowance included with deck.",
+            }
+          : multi
+            ? {
+                label: "Multi-side step-down allowance",
+                cost: DECK_BENCHMARKS.multiSideStairsAllowance.cost,
+                sell: DECK_BENCHMARKS.multiSideStairsAllowance.sell,
+                notes: "Steps included — detailed chain incomplete; allowance is commercial authority.",
+              }
+            : {
+                label: "Step-down allowance",
+                cost: DECK_BENCHMARKS.stepAllowance.cost,
+                sell: DECK_BENCHMARKS.stepAllowance.sell,
+                notes: "Steps included — detailed chain incomplete; allowance is commercial authority.",
+              };
+        lineItems.push(
+          createAllowanceLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: allowance.label,
+            recommendedCost: allowance.cost,
+            recommendedSell: allowance.sell,
+            ...benchmarkRateFields(),
+            notes: allowance.notes,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            qualityFactor,
+          })
+        );
+      }
     }
   }
 
@@ -1122,7 +1357,6 @@ export function calculateDeck(
     surfaceRequirement,
     labourRequirement,
     ...structural.requirements,
-    ...stepReqs,
   ].filter((item): item is NonNullable<typeof item> => item != null);
 
   const deckSubstructureReconciliation =

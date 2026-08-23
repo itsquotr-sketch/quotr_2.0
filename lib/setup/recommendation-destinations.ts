@@ -90,6 +90,7 @@ export function getSetupRecommendationHref(
 
 export const RATES_SECTION_IDS = [
   "core",
+  "productivity",
   "work_types",
   "materials",
   "legacy",
