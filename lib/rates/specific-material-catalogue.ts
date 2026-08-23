@@ -327,7 +327,7 @@ export const DECK_POST_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
           workAreaLabel: "Deck posts",
           unit: "lm",
           description:
-            "Valid physical identity. No invented Quotr benchmark. Company or project exact rate required; otherwise package fallback / Pricing Required.",
+            "Valid physical identity. No invented Quotr benchmark. Company or project exact rate required; otherwise Pricing Required. Does not restore the substructure package on detailed geometry.",
           calculatorSupport: "used_now",
         }),
       ]
@@ -447,7 +447,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     category: "labour",
     work_area_type: "deck",
     workAreaLabel: "Deck productivity",
-    unit: "ea",
+    unit: "hole",
     description:
       "NEEDS_OWNER_BENCHMARK. Hours per hole for mixing, placing, basic consolidation/finishing, and normal cleanup. Excludes hole excavation (owned by pile/post installation). No invented starter hours. Enter company hours; missing hours is Pricing Required, not zero labour.",
     calculatorSupport: "used_now",
@@ -474,7 +474,6 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DECK_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_POST_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE,
-  ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
   ...SHEET_SPECIFIC_MATERIAL_CATALOGUE,
   ...RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -497,7 +496,7 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Deck posts / piles",
     description:
-      "Rate slots only until a trusted company rate exists. Missing post rates keep the substructure package as money authority.",
+      "Exact pile/post identities. Company $/lm wins. Missing post rates are Pricing Required on detailed geometry — they do not restore the substructure package.",
     entries: DECK_POST_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
@@ -505,12 +504,6 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "20 kg premix bag identity. No invented $ benchmark — company exact or Pricing Required.",
     entries: DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE,
-  },
-  {
-    title: "Deck productivity",
-    description:
-      "Hours per physical unit — enter hours, not dollars. Charge-out is unused. Productivity includes normal handling; Project Conditions own abnormal access/carry once.",
-    entries: DECK_PRODUCTIVITY_RATE_CATALOGUE,
   },
   {
     title: "Sheet materials",

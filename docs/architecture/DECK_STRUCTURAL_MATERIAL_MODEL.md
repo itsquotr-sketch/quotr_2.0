@@ -8,9 +8,11 @@
 
 **DECK-MATURITY-2A-R1:** Geometric `length_m`/`width_m` are storage axes (often first-written × second-written). They do **not** automatically set joist direction. When orientation facts are absent, joists span the shorter practical rectangle axis; bearers run perpendicular. Explicit `deck.joist_direction` or `deck.board_direction` still override. DECK-REF-01 (5.20 × 3.10) already has the shorter axis as width, so frozen 1B quantities are unchanged. See coverage §7A.
 
-**DECK-MATURITY-2B-R1:** Default pile/support commercial identity is **125×125 H5 house pile** with a trusted $23.50/lm starter benchmark and stock-length procurement. 100×100 H5 remains a valid alternative without an invented rate. Labour split starter hours (decking 0.55 / framing 0.52 / posts 0.20) replace the 1.2 lump when complete. Structural `deck.substructure.m2` is suppressed only when joists, bearers, rim, and procured piles all have trusted rates.
+**DECK-MATURITY-2B-R1:** Default pile/support commercial identity is **125×125 H5 house pile** with a trusted $23.50/lm starter benchmark and stock-length procurement. 100×100 H5 remains a valid alternative without an invented rate. Labour split starter hours (decking 0.55 / framing 0.52 / posts 0.20) replace the 1.2 lump when complete.
 
-**DECK-MATURITY-2B:** Fascia height coverage, pile length heuristic, and step estimating takeoff are physical. Default identities (90×45 / 140×45 H3.2 KD SG8; 125×125 H5 house piles, with 100×100 H5 remaining selectable) are estimating assumptions, not certification. Commercial structure uses detailed children when the full authority chain exists; otherwise `deck.substructure.m2`.
+**DECK-MATURITY-2B (superseded by 2D for rate-missing fallback):** During migration, `deck.substructure.m2` was suppressed only when every structural child had a trusted rate. That all-or-nothing rule is no longer the mature detailed-geometry contract.
+
+**DECK-MATURITY-2D:** PHYSICAL QUANTITY ≠ MATERIAL IDENTITY ≠ MATERIAL RATE. Detailed geometry uses **component-level commercial authority**. A missing trusted rate marks that component Pricing Required. It does **not** restore `deck.substructure.m2`. Package lifecycle is `PACKAGE_FALLBACK_FOR_INSUFFICIENT_PHYSICAL_MODEL` (area-only, unsupported geometry, unsafe reconstruction — including over-max pile procurement). Do not delete the package.
 
 ---
 

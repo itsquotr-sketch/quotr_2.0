@@ -30,7 +30,6 @@ import { calculateDeckPostLength } from "@/lib/estimate/deck-support-length";
 import { procureHousePiles } from "@/lib/estimate/deck-pile-procurement";
 import {
   DEFAULT_BEARER_SECTION,
-  DEFAULT_FRAMING_TREATMENT,
   DEFAULT_JOIST_SECTION,
   DEFAULT_LIGHT_SUPPORT_SECTION,
   DEFAULT_SUPPORT_SECTION,
@@ -398,9 +397,7 @@ export function readDeckStructureFacts(params: {
     params.workAreaId,
     "deck.framing_treatment"
   );
-  const framingTreatment =
-    framingTreatmentFact ??
-    (joistSectionDefaulted ? DEFAULT_FRAMING_TREATMENT : null);
+  const framingTreatment = framingTreatmentFact;
 
   const bearerSectionFact = getStringFact(
     facts,

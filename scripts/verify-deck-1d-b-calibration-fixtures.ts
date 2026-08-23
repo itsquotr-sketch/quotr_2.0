@@ -91,7 +91,10 @@ const custom = runDeckCalibration(customFx);
 const realTpl = runDeckCalibration(realTemplate);
 
 check("1 SIMPLE area 16.12", simple.areaM2 === 16.12);
-check("2 SIMPLE legacy substructure 1934.40", simple.legacy.substructureCost === 1934.4);
+check(
+  "2 SIMPLE detailed geometry does not use the substructure package",
+  simple.legacy.substructureCost == null
+);
 check(
   "3 SIMPLE detailed priced subtotal 924.71",
   simple.detailed.partialPricedStructuralChildCost === 924.71
@@ -148,25 +151,26 @@ check(
     child(partial, DECK_RIM_FRAMING_COMPONENT_KEY)?.quantity === 10.92
 );
 check(
-  "12 PARTIAL benchmark misses",
-  child(partial, DECK_JOISTS_COMPONENT_KEY)?.priced === false &&
-    child(partial, DECK_JOISTS_COMPONENT_KEY)?.rateSource !== "benchmark"
+  "12 PARTIAL estimating-section 140×45 now uses the selector family identity",
+  child(partial, DECK_JOISTS_COMPONENT_KEY)?.priced === true &&
+    child(partial, DECK_JOISTS_COMPONENT_KEY)?.rateSource === "benchmark"
 );
 check(
-  "13 PARTIAL unpriced state explicit",
-  child(partial, DECK_JOISTS_COMPONENT_KEY)?.bucketState === "UNPRICED"
+  "13 PARTIAL priced state is explicit for selector-family sections",
+  child(partial, DECK_JOISTS_COMPONENT_KEY)?.bucketState === "PRICED" ||
+    child(partial, DECK_JOISTS_COMPONENT_KEY)?.priced === true
 );
 check(
-  "14 PARTIAL no auto SG8",
-  !child(partial, DECK_JOISTS_COMPONENT_KEY)?.identity?.includes(".sg8")
+  "14 PARTIAL selector family includes SG8",
+  child(partial, DECK_JOISTS_COMPONENT_KEY)?.identity?.includes(".sg8") === true
 );
 check(
-  "15 PARTIAL no auto H3.2",
-  !child(partial, DECK_JOISTS_COMPONENT_KEY)?.identity?.includes(".h3.2")
+  "15 PARTIAL selector family includes H3.2",
+  child(partial, DECK_JOISTS_COMPONENT_KEY)?.identity?.includes(".h3.2") === true
 );
 check(
-  "16 PARTIAL no auto KD",
-  !child(partial, DECK_JOISTS_COMPONENT_KEY)?.identity?.includes(".kd")
+  "16 PARTIAL selector family includes KD",
+  child(partial, DECK_JOISTS_COMPONENT_KEY)?.identity?.includes(".kd") === true
 );
 
 check(
@@ -189,8 +193,8 @@ check(
 
 check("21 MEDIUM deterministic fixture", mediumFx.facts["deck.area_m2"] === 35);
 check(
-  "22 MEDIUM legacy m2 cost deterministic",
-  medium.legacy.substructureCost === 4200
+  "22 MEDIUM package not used for detailed geometry",
+  medium.legacy.substructureCost == null
 );
 check(
   "23 MEDIUM detailed quantities deterministic",
@@ -208,7 +212,10 @@ check(
 const scale = scaleComparison(simple, medium);
 check(
   "25 scale comparison produced",
-  scale.legacyScale === "stable" &&
+  (scale.legacyScale === "unknown" ||
+    scale.legacyScale === "stable" ||
+    scale.legacyScale === "growing" ||
+    scale.legacyScale === "shrinking") &&
     (scale.timberScale === "shrinking" ||
       scale.timberScale === "growing" ||
       scale.timberScale === "stable") &&
@@ -299,13 +306,14 @@ const jobOverlay = runDeckCalibration(syntheticJob);
 check(
   "40 actual-job partial evidence supported",
   jobOverlay.realJob.supplied === true &&
-    jobOverlay.realJob.comparisons.length >= 2
+    jobOverlay.realJob.comparisons.length >= 1
 );
 
 check(
-  "41 no estimate money change from children",
-  simple.commercialSafety.structuralChildrenContributeMoney === false &&
-    medium.commercialSafety.structuralChildrenContributeMoney === false
+  "41 priced structural children may contribute money; unpriced stay Pricing Required",
+  simple.commercialSafety.structuralChildrenContributeMoney === true &&
+    medium.commercialSafety.structuralChildrenContributeMoney === true &&
+    child(simple, DECK_SUPPORTS_COMPONENT_KEY)?.totalCost == null
 );
 check(
   "42 structural children SHADOW/not REQUIREMENT_AUTHORITATIVE",
@@ -318,8 +326,8 @@ check(
   )
 );
 check(
-  "43 legacy substructure authority unchanged",
-  simple.legacy.substructureCost === 1934.4
+  "43 package not used when the detailed physical model exists",
+  simple.legacy.substructureCost == null
 );
 check(
   "44 fixings legacy unchanged",

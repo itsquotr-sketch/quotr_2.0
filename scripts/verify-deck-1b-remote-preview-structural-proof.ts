@@ -297,16 +297,15 @@ async function main() {
       materialReq(refEstimate, DECK_CONCRETE_COMPONENT_KEY)?.purchaseQuantity === 0.324
     );
     check(
-      "legacy substructure line present",
-      refEstimate.lineItems.some((item) => item.label === "Framing/substructure")
+      "legacy substructure line not used when detailed physical model exists",
+      !refEstimate.lineItems.some((item) => item.label === "Framing/substructure")
     );
     check(
-      "no structural line on money",
-      refEstimate.lineItems.every(
+      "unpriced 90×90 stays detailed Pricing Required",
+      refEstimate.lineItems.some(
         (item) =>
-          !DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS.includes(
-            item.componentKey as (typeof DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS)[number]
-          )
+          item.componentKey === DECK_SUPPORTS_COMPONENT_KEY &&
+          item.rateSourceType === "missing"
       )
     );
 
@@ -383,9 +382,9 @@ async function main() {
       )
     );
     check(
-      "400 centres legacy substructure unchanged",
-      regen400.lineItems.find((item) => item.label === "Framing/substructure")
-        ?.quantity === 16.12
+      "400 centres detailed model remains (no package reversion)",
+      !regen400.lineItems.some((item) => item.label === "Framing/substructure") &&
+        materialReq(regen400, DECK_JOISTS_COMPONENT_KEY)?.purchaseQuantity === 45.57
     );
 
     const partialFacts = centres400Facts.filter(
@@ -405,9 +404,9 @@ async function main() {
         materialReq(partial, DECK_JOISTS_COMPONENT_KEY) != null
     );
     check(
-      "partial maturity money unchanged",
-      partial.lineItems.find((item) => item.label === "Framing/substructure")
-        ?.quantity === 16.12
+      "partial maturity detailed model remains",
+      !partial.lineItems.some((item) => item.label === "Framing/substructure") &&
+        materialReq(partial, DECK_JOISTS_COMPONENT_KEY) != null
     );
   } finally {
     await cleanup(admin, orgIds, userIds);

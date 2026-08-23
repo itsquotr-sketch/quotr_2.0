@@ -5,6 +5,7 @@
 import {
   buildStructuralTimberIdentity,
   buildSupportMaterialIdentity,
+  normalizeMaterialSection,
   type MaterialIdentity,
 } from "@/lib/materials/identity";
 
@@ -24,6 +25,13 @@ export const DEFAULT_STEP_FRAMING_SECTION = "190x45";
 
 export const DECK_IDENTITY_ESTIMATING_DISCLAIMER =
   "Framing sizes are estimating material assumptions, not a structural or compliance selection.";
+
+/** Selector-compatible estimating framing sections. Not a merchant-unknown identity. */
+export const DECK_ESTIMATING_FRAMING_SECTIONS = new Set([
+  DEFAULT_JOIST_SECTION,
+  DEFAULT_BEARER_SECTION,
+  DEFAULT_HEAVY_BEARER_SECTION,
+]);
 
 function framingIdentity(section: string): MaterialIdentity | null {
   return buildStructuralTimberIdentity({
@@ -71,8 +79,13 @@ export function resolveFramingIdentityFromFacts(params: {
   sectionDefaulted: boolean;
 }): MaterialIdentity | null {
   if (!params.section) return null;
+  const section =
+    normalizeMaterialSection(params.section) ?? params.section;
   if (params.sectionDefaulted) {
-    return framingIdentity(params.section);
+    return framingIdentity(section);
+  }
+  if (DECK_ESTIMATING_FRAMING_SECTIONS.has(section) && !params.treatment) {
+    return framingIdentity(section);
   }
   return buildStructuralTimberIdentity({
     sectionRaw: params.section,

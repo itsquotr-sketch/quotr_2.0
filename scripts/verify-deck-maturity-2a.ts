@@ -259,18 +259,21 @@ check(
 
 check("8 total lm deterministic", typeof refQty?.joistPurchaseLm === "number");
 check(
-  "9 no commercial child money (joists) while 90×90 posts keep package fallback",
-  !refDeck.lineItems.some(
+  "9 detailed geometry stays detailed when 90×90 posts lack a rate",
+  refDeck.lineItems.some(
     (item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY
   ) &&
-    refDeck.lineItems.some((item) => item.label === "Framing/substructure")
+    !refDeck.lineItems.some((item) => item.label === "Framing/substructure") &&
+    refDeck.lineItems.some(
+      (item) => item.label === "Piles / posts" && item.rateSourceType === "missing"
+    )
 );
 
 check("10 rim quantity deterministic", refQty != null && refQty.rimBaseLm === 10.4);
 check(
-  "11 no child money (rim)",
+  "11 rim remains a detailed commercial child",
   materialReq(refDeck, DECK_RIM_FRAMING_COMPONENT_KEY) != null &&
-    refDeck.lineItems.every((item) => item.label !== "Rim framing")
+    refDeck.lineItems.some((item) => item.label === "Rim framing")
 );
 
 check(
@@ -307,8 +310,8 @@ check(
   })()
 );
 check(
-  "14 no child money (bearers)",
-  refDeck.lineItems.every((item) => !/bearer/i.test(item.label))
+  "14 bearers remain a detailed commercial child",
+  refDeck.lineItems.some((item) => /bearer/i.test(item.label))
 );
 
 check("15 support count deterministic where valid", refQty?.supportCount === 8);
@@ -330,11 +333,11 @@ check(
   )
 );
 check(
-  "17 no child money (supports)",
-  refDeck.lineItems.every(
+  "17 unpriced 90×90 supports stay detailed Pricing Required",
+  refDeck.lineItems.some(
     (item) =>
-      item.componentKey !== DECK_SUPPORTS_COMPONENT_KEY &&
-      item.label !== "Piles / posts"
+      item.componentKey === DECK_SUPPORTS_COMPONENT_KEY &&
+      item.rateSourceType === "missing"
   )
 );
 

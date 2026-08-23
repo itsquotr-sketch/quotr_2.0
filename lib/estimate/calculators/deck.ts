@@ -83,8 +83,13 @@ import {
   DECK_FIXINGS_RESIDUAL_LABEL,
   decideDeckLabourSplit,
   decideDeckSubstructureAuthority,
+  deckDetailedPhysicalModelAvailable,
 } from "@/lib/estimate/deck-commercial-2b";
-import { adaptPricedMaterialRequirementWithoutLegacy } from "@/lib/estimate/requirement-commercial-line";
+import {
+  adaptPricedMaterialRequirementWithoutLegacy,
+  adaptUnpricedMaterialRequirementToEstimateLine,
+} from "@/lib/estimate/requirement-commercial-line";
+import { resolveComponentCommercialAuthority } from "@/lib/estimate/component-commercial-authority";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import { getDeckMaterialLabel } from "@/lib/estimate/material-rate-keys";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
@@ -376,18 +381,18 @@ export function calculateDeck(
   const supportReq = structural.requirements.find(
     (item) => item.componentKey === DECK_SUPPORTS_COMPONENT_KEY
   );
-  const pilesCommerciallyReady =
-    supportReq?.priced === true &&
-    supportReq.purchaseQuantity > 0 &&
-    (supportReq.purchaseUnit === "lm"
-      ? structural.quantities?.postProcurementOk === true
-      : true);
+  const detailedPhysicalModelAvailable = deckDetailedPhysicalModelAvailable({
+    geometryReadiness: structural.geometryReadiness,
+    joistQuantity: joistReq?.purchaseQuantity ?? 0,
+    bearerQuantity: bearerReq?.purchaseQuantity ?? 0,
+    rimQuantity: rimReq?.purchaseQuantity ?? 0,
+    supportQuantity: supportReq?.purchaseQuantity ?? 0,
+    supportPurchaseUnit: supportReq?.purchaseUnit ?? null,
+    postProcurementOk: structural.quantities?.postProcurementOk ?? null,
+  });
   const substructureAuthority = decideDeckSubstructureAuthority({
     substructureIncluded,
-    joistsPriced: joistReq?.priced === true,
-    bearersPriced: bearerReq?.priced === true,
-    rimPriced: rimReq?.priced === true,
-    postsPriced: pilesCommerciallyReady,
+    detailedPhysicalModelAvailable,
   });
 
   const deckingInstallProductivity = resolveProductivity({
@@ -606,47 +611,54 @@ export function calculateDeck(
         { req: supportReq, label: "Piles / posts" },
       ];
       for (const row of structuralLines) {
-        if (!row.req || !row.req.priced) continue;
-        const adapted = adaptPricedMaterialRequirementWithoutLegacy({
-          requirement: row.req,
-          workAreaName: workArea.name,
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          label: row.label,
+        const authority = resolveComponentCommercialAuthority({
+          applicable: true,
+          hasTrustedPhysicalQuantity: (row.req?.purchaseQuantity ?? 0) > 0,
+          hasTrustedRate: row.req?.priced === true,
         });
+        if (authority === "NOT_APPLICABLE" || !row.req) continue;
+        const identitySummary =
+          row.req.componentKey === DECK_SUPPORTS_COMPONENT_KEY
+            ? formatPilePurchaseIdentity({
+                identityDisplay: formatMaterialIdentityDisplay(
+                  row.req.materialIdentity
+                ),
+                supportCount: structural.quantities?.supportCount ?? 0,
+                purchaseLengthEachM:
+                  structural.quantities?.postPurchaseLengthEachM ?? null,
+                purchaseLm: structural.quantities?.postPurchaseLm ?? null,
+              })
+            : formatDeckIdentityLine([
+                formatMaterialIdentityDisplay(row.req.materialIdentity),
+                `${row.req.purchaseQuantity} ${row.req.purchaseUnit}`,
+              ]);
+        if (authority === "DETAILED_PRICED") {
+          const adapted = adaptPricedMaterialRequirementWithoutLegacy({
+            requirement: row.req,
+            workAreaName: workArea.name,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            label: row.label,
+          });
+          lineItems.push({
+            ...adapted,
+            identitySummary,
+            notes: identitySummary,
+          });
+          continue;
+        }
         lineItems.push({
-          ...adapted,
-          identitySummary:
-            row.req.componentKey === DECK_SUPPORTS_COMPONENT_KEY
-              ? formatPilePurchaseIdentity({
-                  identityDisplay: formatMaterialIdentityDisplay(
-                    row.req.materialIdentity
-                  ),
-                  supportCount: structural.quantities?.supportCount ?? 0,
-                  purchaseLengthEachM:
-                    structural.quantities?.postPurchaseLengthEachM ?? null,
-                  purchaseLm: structural.quantities?.postPurchaseLm ?? null,
-                })
-              : formatDeckIdentityLine([
-                  formatMaterialIdentityDisplay(row.req.materialIdentity),
-                  `${row.req.purchaseQuantity} ${row.req.purchaseUnit}`,
-                ]),
-          notes:
-            row.req.componentKey === DECK_SUPPORTS_COMPONENT_KEY
-              ? formatPilePurchaseIdentity({
-                  identityDisplay: formatMaterialIdentityDisplay(
-                    row.req.materialIdentity
-                  ),
-                  supportCount: structural.quantities?.supportCount ?? 0,
-                  purchaseLengthEachM:
-                    structural.quantities?.postPurchaseLengthEachM ?? null,
-                  purchaseLm: structural.quantities?.postPurchaseLm ?? null,
-                })
-              : formatDeckIdentityLine([
-                  formatMaterialIdentityDisplay(row.req.materialIdentity),
-                  `${row.req.purchaseQuantity} ${row.req.purchaseUnit}`,
-                ]),
+          ...adaptUnpricedMaterialRequirementToEstimateLine({
+            requirement: row.req,
+            workAreaName: workArea.name,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            label: row.label,
+          }),
+          identitySummary,
+          notes: identitySummary,
         });
+        missingInfo.push(`${row.label} material rate required`);
       }
     } else {
       const framingRates = resolveRate({
@@ -1085,7 +1097,7 @@ export function calculateDeck(
 
     const placeProductivity = resolveProductivity({
       productivityKey: DECK_CONCRETE_PRODUCTIVITY_KEY,
-      unit: "ea",
+      unit: "hole",
       fallbackHoursPerUnit: 0,
       rates: context.rates,
     });
@@ -1096,7 +1108,7 @@ export function calculateDeck(
           workAreaName: workArea.name,
           label: "Concrete placement",
           quantity: holeCount,
-          unit: "ea",
+          unit: "hole",
           productivityHoursPerUnit: placeProductivity.hoursPerUnit,
           labourCostRate: labourRate.costRate,
           labourSellRate: labourRate.sellRate,
@@ -1117,7 +1129,7 @@ export function calculateDeck(
           label: "Concrete placement",
           category: "labour",
           quantity: holeCount,
-          unit: "ea",
+          unit: "hole",
           costRate: 0,
           sellRate: 0,
           rateSource: getRateSourceLabel("missing"),

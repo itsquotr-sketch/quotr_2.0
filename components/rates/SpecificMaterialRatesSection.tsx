@@ -1,6 +1,7 @@
 "use client";
 
 import { RatesTableSection } from "@/components/rates/RatesTableSection";
+import { catalogueEntriesForRatesSection } from "@/lib/rates/rate-section-contract";
 import { SPECIFIC_MATERIAL_RATE_GROUPS } from "@/lib/rates/specific-material-catalogue";
 import type { RatesPageRate } from "@/lib/rates/types";
 
@@ -26,19 +27,23 @@ export function SpecificMaterialRatesSection({
           company gross margin. Leave blank to use Quotr benchmark cost.
         </p>
       </div>
-      {SPECIFIC_MATERIAL_RATE_GROUPS.map((group) => (
+      {SPECIFIC_MATERIAL_RATE_GROUPS.map((group) => {
+        const entries = catalogueEntriesForRatesSection(group.entries, "material");
+        if (entries.length === 0) return null;
+        return (
         <RatesTableSection
           key={group.title}
           title={group.title}
           description={group.description}
-          catalogue={group.entries}
+          catalogue={entries}
           rates={rates}
           onRatesChange={onRatesChange}
           companyGrossMarginPercent={companyGrossMarginPercent}
           variant="grouped"
           showEngineColumn
         />
-      ))}
+        );
+      })}
     </div>
   );
 }

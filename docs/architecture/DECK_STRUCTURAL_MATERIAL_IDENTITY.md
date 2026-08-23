@@ -152,7 +152,10 @@ Physical timber quantity does **not** depend on treatment. **Section** is the mi
 
 **Locked for CAT-IDENTITY-01:**
 
-- Section known, treatment unknown → emit joists / rim / bearers (when other physical inputs exist). Identity records treatment unknown. `priced=false`.
+- Identity module: section known, treatment unknown → identity records treatment unknown. Exact SG8/H3.2/KD rates do not bind.
+- Calculator estimating selector: omitted treatment on a **selector-compatible** framing section (`90x45` / `140x45` / `190x45`) uses the disclosed Estimating Basics identity (SG8 H3.2 KD) so Owner material change can price. This is not identity-module invention.
+- Explicit incomplete treatment (e.g. `H3.2` with no grade/KD) stays incomplete and unpriced.
+- Custom sections (e.g. `200x50`, LVL) stay unpriced without an exact rate.
 - Section unknown → do **not** fabricate a timber MaterialRequirement identity. Internal quantity math may still run.
 - Remove the DECK-1B `framing_treatment` all-or-nothing gate.
 

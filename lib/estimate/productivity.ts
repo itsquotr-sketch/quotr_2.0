@@ -17,22 +17,36 @@ function normalizeProductivityUnit(unit: string): string {
   return unit.toLowerCase().replace("²", "2").replace(/\s+/g, "");
 }
 
+const HOLE_UNITS = new Set(["hole", "h/hole", "hours_per_hole"]);
+const EA_UNITS = new Set(["ea", "each", "h/ea", "hours_per_ea"]);
+
+/** Exact physical-unit families. h/hole is not h/ea unless a contract declares them compatible. */
+export function productivityUnitsCompatible(
+  rateUnit: string,
+  expectedUnit: string
+): boolean {
+  const have = normalizeProductivityUnit(rateUnit);
+  const wanted = normalizeProductivityUnit(expectedUnit);
+  if (have === wanted || have === `h/${wanted}` || have === `hours_per_${wanted}`) {
+    return true;
+  }
+  if (HOLE_UNITS.has(have) && HOLE_UNITS.has(wanted)) return true;
+  if (EA_UNITS.has(have) && EA_UNITS.has(wanted)) return true;
+  return false;
+}
+
 export function findCompanyProductivityRate(
   rates: readonly OrganisationRate[] | undefined,
   key: string,
   unit?: string
 ): OrganisationRate | undefined {
   if (!rates?.length) return undefined;
-  const wanted = unit ? normalizeProductivityUnit(unit) : null;
   return rates.find((rate) => {
     if (!rate.active || rate.cost_rate == null) return false;
     if (rate.item_key !== key) return false;
     if (rate.rate_type !== "productivity") return false;
-    if (wanted && rate.unit) {
-      const have = normalizeProductivityUnit(rate.unit);
-      if (have !== wanted && have !== `h/${wanted}` && have !== `hours_per_${wanted}`) {
-        return false;
-      }
+    if (unit && rate.unit && !productivityUnitsCompatible(rate.unit, unit)) {
+      return false;
     }
     return true;
   });

@@ -8,7 +8,10 @@ import {
   RETAINING_WALL_BENCHMARKS,
 } from "@/lib/estimate/benchmark-rates";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
-import { SPECIFIC_MATERIAL_RATE_CATALOGUE } from "@/lib/rates/specific-material-catalogue";
+import {
+  SPECIFIC_MATERIAL_RATE_CATALOGUE,
+  DECK_PRODUCTIVITY_RATE_CATALOGUE,
+} from "@/lib/rates/specific-material-catalogue";
 
 function entry(
   partial: Omit<RateCatalogueEntry, "recommended"> & {
@@ -582,6 +585,7 @@ export const ALL_RATE_CATALOGUE: RateCatalogueEntry[] = [
 export const FULL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...ALL_RATE_CATALOGUE,
   ...SPECIFIC_MATERIAL_RATE_CATALOGUE,
+  ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
 ];
 
 export const RECOMMENDED_RATE_CATALOGUE = ALL_RATE_CATALOGUE.filter(
@@ -607,6 +611,10 @@ export function formatRateUnit(unit: string): string {
     case "each":
     case "ea":
       return unit === "each" ? "each" : "ea";
+    case "hole":
+      return "hole";
+    case "bag":
+      return "bag";
     case "allowance":
       return "allowance";
     default:

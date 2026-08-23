@@ -260,6 +260,28 @@ Does not rebuild 2A/2B architecture.
 
 ---
 
+## 7D. Deck Maturity 2D — FINAL MATERIAL SELECTION + RATE AUTHORITY
+
+**Status:** COMPLETE LOCAL / OWNER FINAL MATERIAL-RATE REVIEW PENDING  
+**Verifier:** `scripts/verify-deck-maturity-2d.ts`
+
+Does not rebuild Deck geometry or change starter productivities.
+
+| Contract | 2D rule |
+| --- | --- |
+| Layers | Physical quantity ≠ material identity ≠ material rate. |
+| Detailed authority | Component-level: DETAILED_PRICED / PRICING_REQUIRED / NOT_APPLICABLE. |
+| Package lifecycle | `PACKAGE_FALLBACK_FOR_INSUFFICIENT_PHYSICAL_MODEL` only. Not a rate-missing fallback. |
+| Missing rate | Trusted quantity remains. Needs a trusted price. Never silent $0. Never whole-package reversion. |
+| Rates sections | `rate_type=material` → Materials. `rate_type=productivity` → Labour productivity. `rate_type=labour` → Core labour $/hr. One section per row. |
+| Concrete productivity | Company `h/hole` persists (`rate_type=productivity`, unit `hole`). No Quotr hours benchmark. |
+| Selectors | Compatible family only (framing sections / H5 piles). No SED retaining pole. |
+| Units | Exact unit required. `h/hole` is not `h/ea`. `$/lm` is not `$/ea`. |
+
+**Not in 2D:** new geometry, new productivity benchmarks, fascia/steps maturity, balustrade, delivery, Company DNA, Retaining Wall, PERF-01, Production.
+
+---
+
 ## 8. Retaining Wall — MINIMAL (SAFETY HARDENED)
 
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
@@ -620,6 +642,8 @@ This R1 pass accepts the read-only audit unless code inspection disproved a clai
 
 1. UX-PREMIUM-01: **COMPLETE / OWNER VALIDATED**.
 2. DECK-MATURITY-2A / 2A-R1: **COMPLETE / COMMITTED / PREVIEW**.
-3. DECK-MATURITY-2B: **COMPLETE LOCAL / OWNER COMMERCIAL REVIEW PENDING** — package fallback remains until post rates and labour splits exist.
-4. Retaining Wall full maturity: **NOT STARTED**.
-5. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production.
+3. DECK-MATURITY-2B: **COMPLETE / COMMITTED**.
+4. DECK-MATURITY-2C: **COMPLETE / COMMITTED / PREVIEW**.
+5. DECK-MATURITY-2D: **COMPLETE LOCAL / OWNER FINAL MATERIAL-RATE REVIEW PENDING**.
+6. Retaining Wall full maturity: **NOT STARTED**.
+7. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production.

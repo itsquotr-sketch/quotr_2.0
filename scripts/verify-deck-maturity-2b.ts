@@ -1,7 +1,8 @@
 /**
  * DECK-MATURITY-2B — scope-component commercial estimating.
- * Architecture + physical models. Package remains money until posts have rates
- * and labour splits are company-set. No invented NZD prices.
+ * Architecture + physical models. Package remains only when the detailed
+ * physical structural model cannot be built. Missing rates are Pricing Required.
+ * No invented NZD prices.
  *
  * Run: npx tsx scripts/verify-deck-maturity-2b.ts
  */
@@ -499,13 +500,16 @@ check(
 
 const subAuth = decideDeckSubstructureAuthority({
   substructureIncluded: true,
-  joistsPriced: true,
-  bearersPriced: true,
-  rimPriced: true,
-  postsPriced: false,
+  detailedPhysicalModelAvailable: true,
 });
-check("39 one authority per work intent", subAuth.mode === "PACKAGE_FALLBACK");
-check("40 package fallback if detail incomplete", subAuth.readiness === "READY_BUT_RATE_MISSING");
+check("39 detailed geometry uses component-level authority", subAuth.mode === "DETAILED_AUTHORITATIVE");
+check(
+  "40 package fallback if physical model incomplete",
+  decideDeckSubstructureAuthority({
+    substructureIncluded: true,
+    detailedPhysicalModelAvailable: false,
+  }).mode === "PACKAGE_FALLBACK"
+);
 check(
   "41 detailed structural promoted",
   !hasPackage(kwilaDeck.lineItems) && hasChildMoney(kwilaDeck.lineItems)
@@ -846,9 +850,14 @@ const post100 = calculateDeck(
   wa(kwilaId)
 );
 check(
-  "80 100×100 without company rate stays package fallback",
-  hasPackage(post100.lineItems) &&
-    materialReq(post100, DECK_SUPPORTS_COMPONENT_KEY)?.priced !== true
+  "80 100×100 without company rate stays detailed + Pricing Required",
+  !hasPackage(post100.lineItems) &&
+    hasChildMoney(post100.lineItems) &&
+    post100.lineItems.some(
+      (item) =>
+        item.label === "Piles / posts" &&
+        item.rateSourceType === "missing"
+    )
 );
 
 const fasciaDeck = calculateDeck(
@@ -1077,9 +1086,9 @@ check(
     !read("lib/estimate/calculators/deck.ts").includes("fixings.cost -")
 );
 check(
-  "97 package suppression unchanged",
+  "97 package suppression: detailed rate-miss stays detailed; over-max stays package",
   !hasPackage(kwilaDeck.lineItems) &&
-    hasPackage(post100.lineItems) &&
+    !hasPackage(post100.lineItems) &&
     hasPackage(tallDeck.lineItems)
 );
 check(

@@ -11,6 +11,7 @@ import {
   createRateLineItem,
 } from "@/lib/estimate/line-items";
 import { requireEstimateQuantityRateMoney } from "@/lib/estimate/estimate-commercial-engine-adapter";
+import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { OrganisationSettings } from "@/components/setup/types";
 import type { MaterialRequirement } from "@/lib/estimate/requirements";
 import type { EstimateLineItemInput } from "@/lib/estimate/types";
@@ -126,4 +127,33 @@ export function adaptPricedMaterialRequirementWithoutLegacy(params: {
     ),
     costRate: requirement.unitCost,
   };
+}
+
+/**
+ * Trusted physical quantity with no trusted rate.
+ * Keeps the requirement visible as Pricing Required. Never silent $0 money.
+ */
+export function adaptUnpricedMaterialRequirementToEstimateLine(params: {
+  requirement: MaterialRequirement;
+  workAreaName: string;
+  sortOrder: number;
+  organisationSettings: OrganisationSettings | null;
+  label?: string;
+}): EstimateLineItemInput {
+  const { requirement } = params;
+  return createRateLineItem({
+    workAreaId: requirement.workAreaId,
+    workAreaName: params.workAreaName,
+    label: params.label ?? requirement.description,
+    category: "materials",
+    quantity: requirement.purchaseQuantity,
+    unit: requirement.purchaseUnit,
+    costRate: 0,
+    sellRate: 0,
+    rateSource: getRateSourceLabel("missing"),
+    rateSourceType: "missing",
+    componentKey: requirement.componentKey,
+    sortOrder: params.sortOrder,
+    organisationSettings: params.organisationSettings,
+  });
 }

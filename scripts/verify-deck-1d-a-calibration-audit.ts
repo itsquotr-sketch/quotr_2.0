@@ -128,19 +128,17 @@ const pricedChildTotal = round2(
   (joist?.totalCost ?? 0) + (rim?.totalCost ?? 0) + (bearer?.totalCost ?? 0)
 );
 
-check("legacy substructure cost 1934.40", framing?.recommendedCost === 1934.4);
+check("legacy substructure package not used for detailed rate-miss", framing == null);
 check("legacy fixings cost 403.00", fixings?.recommendedCost === 403);
 check("PARTIAL PRICED STRUCTURAL CHILD COST 924.71", pricedChildTotal === 924.71);
 check("supports unpriced 8 EA", supports?.priced === false && supports.purchaseQuantity === 8);
 check("concrete unpriced 0.324", concrete?.priced === false && concrete.purchaseQuantity === 0.324);
 check(
-  "no structural child money lines",
-  estimate.lineItems.every(
-    (item) =>
-      !DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS.includes(
-        item.componentKey as (typeof DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS)[number]
-      )
-  )
+  "priced structural children on money; posts Pricing Required",
+  estimate.lineItems.some((item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY) &&
+    estimate.lineItems.some(
+      (item) => item.componentKey === DECK_SUPPORTS_COMPONENT_KEY && item.rateSourceType === "missing"
+    )
 );
 check(
   "partial coverage note",

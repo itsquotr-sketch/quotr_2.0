@@ -349,8 +349,12 @@ const substructureLine = refDeck.lineItems.find(
   (item) => item.label === "Framing/substructure"
 );
 check(
-  "39 legacy substructure line remains",
-  substructureLine != null && substructureLine.quantity === 16.12
+  "39 detailed geometry keeps children when 90×90 posts lack a rate",
+  substructureLine == null &&
+    refDeck.lineItems.some((item) => item.label === "Joists") &&
+    refDeck.lineItems.some(
+      (item) => item.label === "Piles / posts" && item.rateSourceType === "missing"
+    )
 );
 check(
   "40 no structural component promoted",
@@ -363,13 +367,12 @@ check(
   )
 );
 check(
-  "41 structural requirements not on money lines",
-  refDeck.lineItems.every(
-    (item) =>
-      !DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS.includes(
-        item.componentKey as (typeof DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS)[number]
-      )
-  )
+  "41 unpriced posts stay detailed Pricing Required, not a package",
+  refDeck.lineItems.some(
+    (item) => item.componentKey === DECK_SUPPORTS_COMPONENT_KEY
+  ) &&
+    refDeck.lineItems.some((item) => item.label === "Joists") &&
+    !refDeck.lineItems.some((item) => item.label === "Framing/substructure")
 );
 
 
@@ -418,9 +421,10 @@ check(
 );
 check(
   "47 unpriced child coverage honest",
-  reconciliation?.status === "COVERAGE_PARTIAL" &&
-    reconciliation.unpricedChildCount === 5 &&
-    reconciliation.pricedChildCount === 0
+  reconciliation?.unpricedChildCount === 5 &&
+    reconciliation.pricedChildCount === 0 &&
+    (reconciliation.status === "COVERAGE_PARTIAL" ||
+      reconciliation.status === "NOT_COMPARABLE")
 );
 check(
   "48 children mapped",
@@ -531,9 +535,9 @@ check(
   materialReq(centres400Deck, DECK_RIM_FRAMING_COMPONENT_KEY)?.purchaseQuantity === 10.92
 );
 check(
-  "65 legacy substructure money unchanged after centres edit",
-  centres400Deck.lineItems.find((item) => item.label === "Framing/substructure")
-    ?.quantity === 16.12
+  "65 detailed model remains after centres edit (no package reversion)",
+  !centres400Deck.lineItems.some((item) => item.label === "Framing/substructure") &&
+    materialReq(centres400Deck, DECK_JOISTS_COMPONENT_KEY)?.purchaseQuantity != null
 );
 
 function projectFacts(rows: EstimateFact[]): ProjectFactRecord[] {

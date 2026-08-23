@@ -17,6 +17,7 @@ import {
   SCOPE_RATE_CATALOGUE,
 } from "@/lib/rates/catalogue";
 import { DECK_PRODUCTIVITY_RATE_CATALOGUE } from "@/lib/rates/specific-material-catalogue";
+import { catalogueEntriesForRatesSection } from "@/lib/rates/rate-section-contract";
 import { getRatesPageState } from "@/lib/rates/actions";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 import type { RatesPageState } from "@/lib/rates/types";
@@ -93,11 +94,14 @@ export function RatesPageContent({
   );
 
   const workTypeCatalogue = useMemo(() => {
-    const used = MATERIAL_RATE_CATALOGUE.filter(
-      (entry) =>
-        entry.calculatorSupport === "used_now" &&
-        entry.work_area_type &&
-        (entry.recommended || preferred.includes(entry.work_area_type))
+    const used = catalogueEntriesForRatesSection(
+      MATERIAL_RATE_CATALOGUE.filter(
+        (entry) =>
+          entry.calculatorSupport === "used_now" &&
+          entry.work_area_type &&
+          (entry.recommended || preferred.includes(entry.work_area_type))
+      ),
+      "material"
     );
 
     const types = Array.from(
@@ -240,7 +244,10 @@ export function RatesPageContent({
           <RatesTableSection
             title="Labour productivity"
             description="Hours per physical unit — not dollars. Editing hours changes labour TIME. Your labour $/hr is under Core labour and changes MONEY, not hours. These hours include normal handling at the workface. Abnormal access/carry is a Project Condition, applied once."
-            catalogue={DECK_PRODUCTIVITY_RATE_CATALOGUE}
+            catalogue={catalogueEntriesForRatesSection(
+              DECK_PRODUCTIVITY_RATE_CATALOGUE,
+              "productivity"
+            )}
             rates={state.rates}
             onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
             companyGrossMarginPercent={companyGrossMarginPercent}

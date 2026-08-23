@@ -342,12 +342,12 @@ export function BuilderReviewSurface({
                                   </p>
                                 ) : null}
                                 {qty ? (
-                                  <p className="text-xs tabular-nums text-muted-foreground">
+                                  <p className="text-xs break-words tabular-nums text-muted-foreground">
                                     {qty}
                                     {line.isAllowance ? " allowance" : ""}
                                   </p>
                                 ) : null}
-                                <p className="text-xs text-muted-foreground">
+                                <p className="text-xs break-words text-muted-foreground">
                                   {[
                                     line.labourHours != null
                                       ? `${line.labourHours} labour-hours`
@@ -364,7 +364,7 @@ export function BuilderReviewSurface({
                                 </p>
                               </div>
                               {pricingRequired ? (
-                                <p className="shrink-0 text-right text-xs font-medium text-foreground">
+                                <p className="max-w-[42%] shrink-0 text-right text-xs font-medium text-foreground break-words">
                                   Needs a trusted price
                                 </p>
                               ) : (
@@ -373,7 +373,8 @@ export function BuilderReviewSurface({
                                 </p>
                               )}
                             </div>
-                            {cat.id === "MATERIALS" &&
+                            {(cat.id === "MATERIALS" ||
+                              cat.id === "PRICING_REQUIRED") &&
                             onChangeMaterial &&
                             wa.workAreaType === "deck" ? (
                               <button

@@ -299,38 +299,33 @@ async function main() {
     );
     const joistA = materialReq(estimateA, DECK_JOISTS_COMPONENT_KEY);
     const rimA = materialReq(estimateA, DECK_RIM_FRAMING_COMPONENT_KEY);
-    const sellA = Math.round(estimateA.recommendedSell);
     check("A joists 42.32 lm", joistA?.purchaseQuantity === 42.32);
     check("A rim 10.92 lm", rimA?.purchaseQuantity === 10.92);
     check(
-      "A treatment unknown",
-      joistA?.materialIdentity?.treatmentKind === "unknown" &&
-        joistA.materialIdentity.treatment == null &&
-        joistA.materialIdentity.grade == null
+      "A omitted treatment uses disclosed Estimating Basics identity",
+      joistA?.materialIdentity?.treatment === "h3.2" &&
+        joistA.materialIdentity.grade === "sg8" &&
+        joistA.materialIdentity.processing === "kd"
     );
-    check("A priced=false", joistA?.priced === false && rimA?.priced === false);
+    check("A selector-family section may price", joistA?.priced === true && rimA?.priced === true);
     check(
-      "A legacy substructure present",
-      estimateA.lineItems.some((item) => item.label === "Framing/substructure")
+      "A detailed geometry does not use the substructure package",
+      !estimateA.lineItems.some((item) => item.label === "Framing/substructure") &&
+        estimateA.lineItems.some((item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY)
     );
     check(
-      "A no structural money lines",
-      estimateA.lineItems.every(
-        (item) =>
-          !DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS.includes(
-            item.componentKey as (typeof DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS)[number]
-          )
-      )
+      "A structural children may appear as money lines",
+      estimateA.lineItems.some((item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY)
     );
 
     const snapA = await persistAndParse(userClient, admin, projectId, estimateA);
     const snapJoistA = snapMaterial(snapA, DECK_JOISTS_COMPONENT_KEY);
     check(
-      "A snapshot retains unknown treatment identity",
+      "A snapshot retains selector-family Estimating Basics identity",
       snapJoistA?.purchaseQuantity === 42.32 &&
         snapJoistA.materialIdentity?.section === "140x45" &&
-        snapJoistA.materialIdentity.treatmentKind === "unknown" &&
-        snapJoistA.priced === false
+        snapJoistA.materialIdentity.grade === "sg8" &&
+        snapJoistA.priced === true
     );
 
     await admin
@@ -351,7 +346,11 @@ async function main() {
     check("B custom 200x50 section valid", joistB?.materialIdentity?.section === "200x50");
     check("B quantity emits", joistB != null && joistB.purchaseQuantity === 42.32);
     check("B priced=false", joistB?.priced === false);
-    check("B sell unchanged vs A", Math.round(estimateB.recommendedSell) === sellA);
+    check(
+      "B custom stays detailed without package",
+      estimateB.lineItems.some((item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY) &&
+        !estimateB.lineItems.some((item) => item.label === "Framing/substructure")
+    );
     const snapB = await persistAndParse(userClient, admin, projectId, estimateB);
     const snapJoistB = snapMaterial(snapB, DECK_JOISTS_COMPONENT_KEY);
     check(
@@ -403,7 +402,11 @@ async function main() {
         concreteC.priced === false
     );
     check("C priced=false without rates", joistC?.priced === false);
-    check("C sell unchanged vs A", Math.round(estimateC.recommendedSell) === sellA);
+    check(
+      "C incomplete H3.2 stays detailed without package",
+      estimateC.lineItems.some((item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY) &&
+        !estimateC.lineItems.some((item) => item.label === "Framing/substructure")
+    );
     const snapC = await persistAndParse(userClient, admin, projectId, estimateC);
     const snapJoistC = snapMaterial(snapC, DECK_JOISTS_COMPONENT_KEY);
     check(

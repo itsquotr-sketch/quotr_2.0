@@ -124,7 +124,12 @@ export function RateEditDialog({
       setError(isProductivity ? "Enter hours." : "Enter your cost.");
       return;
     }
-    if (cost < 0) {
+    if (isProductivity) {
+      if (!(cost > 0)) {
+        setError("Hours must be greater than zero.");
+        return;
+      }
+    } else if (cost < 0) {
       setError("Cost must be non-negative.");
       return;
     }

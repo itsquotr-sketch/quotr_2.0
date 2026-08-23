@@ -541,13 +541,10 @@ check(
   )
 );
 check(
-  "47 child cost not in estimate totals",
-  rateDeck.lineItems.every(
-    (item) =>
-      item.componentKey !== DECK_JOISTS_COMPONENT_KEY &&
-      item.componentKey !== DECK_RIM_FRAMING_COMPONENT_KEY &&
-      item.componentKey !== DECK_BEARERS_COMPONENT_KEY
-  )
+  "47 unpriced 90×90 does not restore the substructure package",
+  rateDeck.lineItems.some(
+    (item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY
+  ) && !rateDeck.lineItems.some((item) => item.label === "Framing/substructure")
 );
 
 const rateEstimate = calculateEstimate({
@@ -561,9 +558,11 @@ const refEstimate = calculateEstimate({
   facts: deckRef01Facts("ref"),
 } as never);
 check(
-  "48 legacy substructure money unchanged",
-  Math.round(rateEstimate.recommendedSell) === Math.round(refEstimate.recommendedSell) &&
-    rateDeck.lineItems.some((item) => item.label === "Framing/substructure")
+  "48 detailed geometry XOR package remains",
+  !rateDeck.lineItems.some((item) => item.label === "Framing/substructure") &&
+    !refEstimate.lineItems.some((item) => item.label === "Framing/substructure") &&
+    rateDeck.lineItems.some((item) => item.label === "Joists") &&
+    refEstimate.lineItems.some((item) => item.label === "Joists")
 );
 check(
   "49 decking surface authority unchanged",

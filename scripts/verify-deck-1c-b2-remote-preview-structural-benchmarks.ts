@@ -327,17 +327,15 @@ async function main() {
       concrete?.purchaseQuantity === 0.324 && concrete.priced === false
     );
     check(
-      "no structural child line items in commercial total",
-      baseline.lineItems.every(
-        (item) =>
-          !DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS.includes(
-            item.componentKey as (typeof DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS)[number]
-          )
-      )
+      "unpriced 90×90 does not restore package",
+      baseline.lineItems.some(
+        (item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY
+      ) && !baseline.lineItems.some((item) => item.label === "Framing/substructure")
     );
     check(
-      "legacy Framing/substructure present",
-      baseline.lineItems.some((item) => item.label === "Framing/substructure")
+      "detailed geometry XOR package",
+      !baseline.lineItems.some((item) => item.label === "Framing/substructure") &&
+        baseline.lineItems.some((item) => item.label === "Joists")
     );
     check(
       "partial coverage note",
@@ -437,7 +435,12 @@ async function main() {
       materialReq(negE, DECK_JOISTS_COMPONENT_KEY)?.priced === false &&
         materialReq(negE, DECK_JOISTS_COMPONENT_KEY)?.materialIdentity?.section === "200x50"
     );
-    check("negative cases sell unchanged", Math.round(negE.recommendedSell) === sellBaseline);
+    check(
+      "negative custom section stays detailed without package",
+      materialReq(negE, DECK_JOISTS_COMPONENT_KEY)?.priced === false &&
+        negE.lineItems.some((item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY) &&
+        !negE.lineItems.some((item) => item.label === "Framing/substructure")
+    );
 
     const itemKey = kd140ItemKey();
     const companyRateId = randomUUID();
@@ -476,8 +479,10 @@ async function main() {
         materialReq(companyDeck, DECK_JOISTS_COMPONENT_KEY)?.unitCost === 20
     );
     check(
-      "company precedence sell unchanged",
-      Math.round(companyDeck.recommendedSell) === sellBaseline
+      "company exact rate changes joist money only",
+      materialReq(companyDeck, DECK_JOISTS_COMPONENT_KEY)?.unitCost === 20 &&
+        Math.round(companyDeck.recommendedSell) !== sellBaseline &&
+        !companyDeck.lineItems.some((item) => item.label === "Framing/substructure")
     );
     const snapCompany = await persistAndParse(userClient, admin, projectId, companyDeck);
     check(

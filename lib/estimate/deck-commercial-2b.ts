@@ -1,11 +1,19 @@
 /**
- * DECK-MATURITY-2B — scope-component commercial authority.
+ * DECK-MATURITY-2B / 2D — scope-component commercial authority.
  *
- * One commercial source per work intent. Structural children only replace
- * deck.substructure.m2 when every required child can price from a trusted rate,
- * including pile procurement quantity. Labour lump remains until starter or
- * company productivities exist for decking, framing, and posts.
+ * 2D: PHYSICAL QUANTITY ≠ MATERIAL IDENTITY ≠ MATERIAL RATE.
+ * Detailed geometry keeps component-level commercial authority. Missing a
+ * trusted rate marks that component Pricing Required — it does not restore
+ * deck.substructure.m2.
+ *
+ * Package lifecycle: PACKAGE_FALLBACK_FOR_INSUFFICIENT_PHYSICAL_MODEL
+ * (area-only, unsupported geometry, unsafe reconstruction). Not a
+ * rate-missing fallback for a detailed physical model.
+ *
+ * Labour lump remains until starter or company productivities exist for
+ * decking, framing, and posts.
  */
+import type { DeckGeometryReadiness } from "@/lib/estimate/deck-structure";
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
 import { resolveStructuralMaterialRequirementRate } from "@/lib/estimate/resolve-structural-material-rate";
 import type { MaterialIdentity } from "@/lib/materials/identity";
@@ -87,46 +95,68 @@ export function structuralChildCanPrice(params: {
   }).priced;
 }
 
+/** Package remains only when the detailed physical structural model cannot be built safely. */
+export const DECK_SUBSTRUCTURE_PACKAGE_LIFECYCLE =
+  "PACKAGE_FALLBACK_FOR_INSUFFICIENT_PHYSICAL_MODEL" as const;
+
+export function deckDetailedPhysicalModelAvailable(params: {
+  geometryReadiness: DeckGeometryReadiness;
+  joistQuantity: number;
+  bearerQuantity: number;
+  rimQuantity: number;
+  supportQuantity: number;
+  supportPurchaseUnit: string | null;
+  postProcurementOk: boolean | null;
+}): boolean {
+  if (params.geometryReadiness !== "DETAILED_GEOMETRY_AVAILABLE") return false;
+  if (
+    !(
+      params.joistQuantity > 0 &&
+      params.bearerQuantity > 0 &&
+      params.rimQuantity > 0 &&
+      params.supportQuantity > 0
+    )
+  ) {
+    return false;
+  }
+  if (params.postProcurementOk === false) {
+    return false;
+  }
+  return true;
+}
+
 export function decideDeckSubstructureAuthority(params: {
   substructureIncluded: boolean;
-  joistsPriced: boolean;
-  bearersPriced: boolean;
-  rimPriced: boolean;
-  postsPriced: boolean;
+  detailedPhysicalModelAvailable: boolean;
 }): {
   mode: DeckCommercialMode;
   readiness: DeckComponentReadiness;
   reason: string;
+  packageLifecycle: typeof DECK_SUBSTRUCTURE_PACKAGE_LIFECYCLE | null;
 } {
   if (!params.substructureIncluded) {
     return {
       mode: "NON_COMMERCIAL_PLANNING",
       readiness: "NOT_READY",
       reason: "New substructure excluded.",
+      packageLifecycle: null,
     };
   }
-  if (
-    params.joistsPriced &&
-    params.bearersPriced &&
-    params.rimPriced &&
-    params.postsPriced
-  ) {
+  if (params.detailedPhysicalModelAvailable) {
     return {
       mode: "DETAILED_AUTHORITATIVE",
       readiness: "PROMOTED",
       reason:
-        "Joists, bearers, rim and posts all have trusted rates. Package not summed.",
+        "Detailed geometry has trusted structural quantities. Each component prices independently; missing rates are Pricing Required, not a package.",
+      packageLifecycle: null,
     };
   }
-  const missing: string[] = [];
-  if (!params.joistsPriced) missing.push("joists");
-  if (!params.bearersPriced) missing.push("bearers");
-  if (!params.rimPriced) missing.push("rim");
-  if (!params.postsPriced) missing.push("posts");
   return {
     mode: "PACKAGE_FALLBACK",
-    readiness: "READY_BUT_RATE_MISSING",
-    reason: `Substructure package remains money authority until trusted rates exist for: ${missing.join(", ")}.`,
+    readiness: "NOT_READY",
+    reason:
+      "Substructure package remains money authority because the detailed physical structural model cannot be reconstructed safely.",
+    packageLifecycle: DECK_SUBSTRUCTURE_PACKAGE_LIFECYCLE,
   };
 }
 
@@ -205,7 +235,8 @@ export function deckScopeAuthorityMatrix(params: {
         params.substructureMode === "DETAILED_AUTHORITATIVE"
           ? "PROMOTED"
           : "READY_BUT_RATE_MISSING",
-      reason: "No package + detail double count. No mysterious residual subtract.",
+      reason:
+        "Detailed geometry uses component-level money. Package is only PACKAGE_FALLBACK_FOR_INSUFFICIENT_PHYSICAL_MODEL. No package + detail double count.",
     },
     {
       intent: "Fascia labour",

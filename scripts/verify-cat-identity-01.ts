@@ -208,8 +208,12 @@ const bearerNoT = materialReq(noTreatmentDeck, DECK_BEARERS_COMPONENT_KEY);
 check("25 joists emit without treatment", joistNoT != null);
 check("26 joists purchase 42.32", joistNoT?.purchaseQuantity === 42.32);
 check(
-  "27 priced=false",
-  joistNoT?.priced === false && joistNoT.rateSource === "missing"
+  "27 omitted treatment uses disclosed Estimating Basics identity",
+  joistNoT?.priced === true &&
+    joistNoT.rateSource === "benchmark" &&
+    serializeMaterialIdentityKey(joistNoT.materialIdentity!).includes(".sg8") &&
+    serializeMaterialIdentityKey(joistNoT.materialIdentity!).includes(".h3.2") &&
+    serializeMaterialIdentityKey(joistNoT.materialIdentity!).includes(".kd")
 );
 check("28 rim emits without treatment", rimNoT != null && rimNoT.purchaseQuantity === 10.92);
 check(
@@ -329,8 +333,9 @@ check(
   )
 );
 check(
-  "41 substructure money remains",
-  refDeck.lineItems.some((item) => item.label === "Framing/substructure")
+  "41 detailed geometry does not use the substructure package",
+  !refDeck.lineItems.some((item) => item.label === "Framing/substructure") &&
+    refDeck.lineItems.some((item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY)
 );
 check(
   "42 surface REQUIREMENT_AUTHORITATIVE",
@@ -402,13 +407,9 @@ check(
     materialReq(refDeck, DECK_CONCRETE_COMPONENT_KEY)?.purchaseQuantity === 0.324
 );
 check(
-  "54 no structural money lines",
-  refDeck.lineItems.every(
-    (item) =>
-      !DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS.includes(
-        item.componentKey as (typeof DECK_STRUCTURAL_SHADOW_COMPONENT_KEYS)[number]
-      )
-  )
+  "54 structural children may appear as priced or Pricing Required lines",
+  refDeck.lineItems.some((item) => item.componentKey === DECK_JOISTS_COMPONENT_KEY) &&
+    !refDeck.lineItems.some((item) => item.label === "Framing/substructure")
 );
 
 const concreteId = buildConcreteMaterialIdentity({});

@@ -36,6 +36,7 @@ const VALID_RATE_TYPES = [
   "scope",
   "package",
   "allowance",
+  "productivity",
 ] as const;
 
 function normalizeRate(rate: Record<string, unknown>): RatesPageRate {
@@ -191,28 +192,43 @@ export async function saveRateSettings(
   return { success: true };
 }
 
-const rateInputSchema = z.object({
-  id: z.string().uuid().optional(),
-  item_key: z.string().trim().min(1, "Item key is required"),
-  rate_type: z.enum(VALID_RATE_TYPES),
-  trade: z.string().optional(),
-  work_area_type: z.string().optional(),
-  label: z.string().trim().min(1, "Label is required"),
-  unit: z.string().trim().min(1, "Unit is required"),
-  cost_rate: z.number().min(0, "Cost rate must be non-negative").nullable().optional(),
-  sell_rate: z.number().min(0, "Sell rate must be non-negative").nullable().optional(),
-  markup_percent: z
-    .number()
-    .min(0, "Markup must be non-negative")
-    .max(MAX_MARKUP_PERCENT, `Markup must be at most ${MAX_MARKUP_PERCENT}%`)
-    .refine(
-      (value) => validateMarkupPercent(value).ok,
-      "Markup must be a finite value between 0% and 1000%."
-    )
-    .nullable()
-    .optional(),
-  active: z.boolean().optional(),
-});
+const rateInputSchema = z
+  .object({
+    id: z.string().uuid().optional(),
+    item_key: z.string().trim().min(1, "Item key is required"),
+    rate_type: z.enum(VALID_RATE_TYPES),
+    trade: z.string().optional(),
+    work_area_type: z.string().optional(),
+    label: z.string().trim().min(1, "Label is required"),
+    unit: z.string().trim().min(1, "Unit is required"),
+    cost_rate: z.number().min(0, "Cost rate must be non-negative").nullable().optional(),
+    sell_rate: z.number().min(0, "Sell rate must be non-negative").nullable().optional(),
+    markup_percent: z
+      .number()
+      .min(0, "Markup must be non-negative")
+      .max(MAX_MARKUP_PERCENT, `Markup must be at most ${MAX_MARKUP_PERCENT}%`)
+      .refine(
+        (value) => validateMarkupPercent(value).ok,
+        "Markup must be a finite value between 0% and 1000%."
+      )
+      .nullable()
+      .optional(),
+    active: z.boolean().optional(),
+  })
+  .superRefine((data, ctx) => {
+    if (data.rate_type !== "productivity") return;
+    if (
+      data.cost_rate == null ||
+      !Number.isFinite(data.cost_rate) ||
+      !(data.cost_rate > 0)
+    ) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["cost_rate"],
+        message: "Hours must be greater than zero.",
+      });
+    }
+  });
 
 async function verifyRateOwnership(
   supabase: AuthOrgContext["supabase"],
