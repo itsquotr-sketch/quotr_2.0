@@ -15,6 +15,7 @@ import {
   stepsAreRelevant,
 } from "@/lib/assistant/clarify/suppress";
 import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
+import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
 import type {
   ClarifyAskClass,
   ClarifyCandidate,
@@ -27,6 +28,8 @@ import {
   retainingWallHasCoreLength,
   retainingWallMaterialReadiness,
 } from "@/lib/estimate/calculators/retaining-wall";
+import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
+import { getStringFact } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 const PC_SCORES: Record<string, number> = {
@@ -91,7 +94,8 @@ function candidateFromJobPlanCheck(
   if (key === "deck.steps_included" && !stepsAreRelevant(input, card.workAreaId)) {
     return null;
   }
-  const questionClass = deckFactQuestionClass(key);
+  const questionClass =
+    deckFactQuestionClass(key) ?? retainingWallFactQuestionClass(key);
   if (
     questionClass === "REFINE" ||
     questionClass === "DERIVED" ||
@@ -254,33 +258,116 @@ function missingHardMinimum(
 function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
   const out: ClarifyCandidate[] = [];
   for (const wa of input.workAreas.filter((w) => w.status !== "excluded")) {
-    if (wa.type !== "bathroom") continue;
-    const key = "bathroom.plumbing_changes";
-    if (factHas(input, key, wa.id)) continue;
-    const template = getQuestionTemplateByKey(key);
-    out.push({
-      id: `fact:${wa.id}:${key}`,
-      source: "scope_fact",
-      workAreaId: wa.id,
-      workAreaName: wa.name,
-      workAreaType: wa.type,
-      factKey: key,
-      constraintKey: null,
-      questionKey: key,
-      label: template?.label ?? "Plumbing changes",
-      question:
-        template?.questionText ?? "What level of plumbing changes are included?",
-      askClass: "ASK_NOW",
-      inputType: "select",
-      options: template?.options,
-      writeTarget: "FACT",
-      write: null,
-      blocksEstimate: false,
-      assumable: true,
-      rankScore: CHECK_SCORES[key] ?? 60,
-      rankReason: "Bathroom commercial plumbing",
-      assumptionStatement: "Standard plumbing allowance",
-    });
+    if (wa.type === "bathroom") {
+      const key = "bathroom.plumbing_changes";
+      if (factHas(input, key, wa.id)) continue;
+      const template = getQuestionTemplateByKey(key);
+      out.push({
+        id: `fact:${wa.id}:${key}`,
+        source: "scope_fact",
+        workAreaId: wa.id,
+        workAreaName: wa.name,
+        workAreaType: wa.type,
+        factKey: key,
+        constraintKey: null,
+        questionKey: key,
+        label: template?.label ?? "Plumbing changes",
+        question:
+          template?.questionText ?? "What level of plumbing changes are included?",
+        askClass: "ASK_NOW",
+        inputType: "select",
+        options: template?.options,
+        writeTarget: "FACT",
+        write: null,
+        blocksEstimate: false,
+        assumable: true,
+        rankScore: CHECK_SCORES[key] ?? 60,
+        rankReason: "Bathroom commercial plumbing",
+        assumptionStatement: "Standard plumbing allowance",
+      });
+      continue;
+    }
+
+    if (wa.type !== "retaining_wall") continue;
+    const facts = input.facts as EstimateFact[];
+    if (
+      !retainingWallHasCoreLength(facts, wa.id) ||
+      !retainingWallHasCoreHeight(facts, wa.id) ||
+      retainingWallMaterialReadiness(facts, wa.id) !== "SUPPORTED"
+    ) {
+      continue;
+    }
+    const system = classifyRetainingWallSystem(
+      getStringFact(facts, wa.id, "retaining_wall.material")
+    );
+    const extras: { key: string; reason: string; score: number }[] = [
+      {
+        key: "retaining_wall.surcharge",
+        reason: "Retaining wall surcharge / load",
+        score: 82,
+      },
+      {
+        key: "retaining_wall.excavation_required",
+        reason: "Retaining wall excavation scope",
+        score: 70,
+      },
+      {
+        key: "retaining_wall.drainage_required",
+        reason: "Retaining wall drainage / novacoil",
+        score: 68,
+      },
+      {
+        key: "retaining_wall.backfill_included",
+        reason: "Retaining wall backfill scope",
+        score: 66,
+      },
+    ];
+    if (system === "CONCRETE_MASONRY_WALL") {
+      extras.push({
+        key: "retaining_wall.waterproofing_required",
+        reason: "Masonry waterproofing",
+        score: 64,
+      });
+    }
+    if (system === "TIMBER_RETAINING_WALL") {
+      extras.push({
+        key: "retaining_wall.face_board_section",
+        reason: "Timber face-board identity",
+        score: 58,
+      });
+    }
+    for (const extra of extras) {
+      if (factHas(input, extra.key, wa.id)) continue;
+      if (retainingWallFactQuestionClass(extra.key) === "REFINE") continue;
+      const template = getQuestionTemplateByKey(extra.key);
+      out.push({
+        id: `fact:${wa.id}:${extra.key}`,
+        source: "scope_fact",
+        workAreaId: wa.id,
+        workAreaName: wa.name,
+        workAreaType: wa.type,
+        factKey: extra.key,
+        constraintKey: null,
+        questionKey: extra.key,
+        label: template?.label ?? extra.key,
+        question: template?.questionText ?? extra.key,
+        askClass: "ASK_NOW",
+        inputType:
+          template?.inputType === "boolean"
+            ? "boolean"
+            : template?.inputType === "number"
+              ? "number"
+              : "select",
+        options: template?.options,
+        writeTarget: "FACT",
+        write: null,
+        blocksEstimate: false,
+        assumable: true,
+        rankScore: extra.score,
+        rankReason: extra.reason,
+        assumptionStatement: null,
+      });
+    }
   }
   return out;
 }

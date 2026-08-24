@@ -11,6 +11,7 @@ import type { RateCatalogueEntry } from "@/lib/rates/types";
 import {
   SPECIFIC_MATERIAL_RATE_CATALOGUE,
   DECK_PRODUCTIVITY_RATE_CATALOGUE,
+  RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
 } from "@/lib/rates/specific-material-catalogue";
 
 function entry(
@@ -586,6 +587,7 @@ export const FULL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...ALL_RATE_CATALOGUE,
   ...SPECIFIC_MATERIAL_RATE_CATALOGUE,
   ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
+  ...RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
 ];
 
 export const RECOMMENDED_RATE_CATALOGUE = ALL_RATE_CATALOGUE.filter(

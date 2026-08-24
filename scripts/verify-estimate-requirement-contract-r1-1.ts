@@ -244,8 +244,13 @@ const emitting = calcFiles.filter((p) => {
 });
 check(
   "16 only Deck calculator emits EstimateRequirement objects",
-  emitting.length === 1 &&
-    emitting[0].replace(/\\/g, "/").endsWith("calculators/deck.ts"),
+  emitting.length === 2 &&
+    emitting.some((p) =>
+      p.replace(/\\/g, "/").endsWith("calculators/deck.ts")
+    ) &&
+    emitting.some((p) =>
+      p.replace(/\\/g, "/").endsWith("calculators/retaining-wall.ts")
+    ),
   emitting.join(", ")
 );
 

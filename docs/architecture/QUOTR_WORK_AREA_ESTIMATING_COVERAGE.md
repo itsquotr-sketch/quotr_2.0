@@ -284,13 +284,59 @@ Does not rebuild Deck geometry or change starter productivities.
 
 ## 8. Retaining Wall — MINIMAL (SAFETY HARDENED)
 
+**CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)** — commercial package remains **still MINIMAL**.
+
+**RETAINING WALL MATURITY 1A — PHYSICAL MODEL FOUNDATION (COMPLETE LOCAL / OWNER FINAL PHYSICAL APPROVAL PENDING)**
+
+1A-R1 calibrates the approved 1A architecture: timber default embedment **0.50 × H(x)**, discrete sleeper purchase EA (bay × courses), and backfill locked as **in-place / geometric volume**. **1A-R2** corrects timber pile layout: **1.2 m is target/max estimating spacing**, not a fixed grid. Bays are generated evenly (`ceil(L / target)` then `actual = L / bays`) so the last bay is not a short remainder. Actual spacing may be smaller than the target. This is not structural compliance. Concrete sleeper posts remain sleeper-length bay geometry. Commercial package money is unchanged. Do **not** promote 1B.
+
+| Layer | 1A-R1 status |
+| --- | --- |
+| Information contract | `lib/estimate/retaining-wall-information-contract.ts` |
+| Physical model | `lib/estimate/retaining-wall-physical.ts` plus timber/sleeper/masonry modules |
+| Calculator | Existing package money preserved; unpriced `requirements` attached when real geometry exists |
+| Job Plan | Core wall + Check excavation/drainage/backfill; waterproofing only for masonry |
+| Refine adapter | Registered — type-specific consumed facts only |
+| Builder Review | Planning takeoff rows; money unchanged |
+| Verifier | `scripts/verify-retaining-wall-maturity-1a.ts` |
+
+Do not treat 1A planning quantities as priced lines. 1B commercial promotion is **not started**.
+
+### 8.0A 1B promotion-readiness matrix (do not promote)
+
+Classifications: **PHYSICAL_QUANTITY_READY** / **IDENTITY_READY** / **RATE_READY** / **PRODUCTIVITY_READY** / **COMMERCIAL_PROMOTION_READY**.
+
+| System | Component | Physical | Identity | Rate | Productivity | Commercial promotion |
+| --- | --- | --- | --- | --- | --- | --- |
+| Timber | Face boards | PHYSICAL_QUANTITY_READY | IDENTITY_READY | not ready (no trusted $/lm) | slot only | not ready |
+| Timber | H5 SED piles | PHYSICAL_QUANTITY_READY | IDENTITY_READY | not ready | slot only | not ready |
+| Timber | Novacoil | PHYSICAL_QUANTITY_READY (net lm) | IDENTITY_READY | not ready as child | slot only | not ready |
+| Timber | Drainage aggregate | PHYSICAL_QUANTITY_READY (in-place m³) | IDENTITY_READY | catalogue m³ unused; package is face m² | slot only | not ready |
+| Timber | Fixings / residual | not ready (package residual) | residual | package rate only | not ready | not ready |
+| Timber | Concrete (if applicable) | not modelled for timber piles | — | — | — | not ready |
+| Sleeper | Sleepers | PHYSICAL_QUANTITY_READY (discrete EA) | IDENTITY_READY | not ready | slot only | not ready |
+| Sleeper | Steel posts | PHYSICAL_QUANTITY_READY | IDENTITY_READY | not ready | slot only | not ready |
+| Sleeper | Hole concrete | PHYSICAL_QUANTITY_READY (cylinder m³; bags need yield) | IDENTITY_READY | not ready | slot only | not ready |
+| Sleeper | Novacoil | PHYSICAL_QUANTITY_READY | IDENTITY_READY | not ready as child | slot only | not ready |
+| Sleeper | Drainage aggregate | PHYSICAL_QUANTITY_READY (in-place m³) | IDENTITY_READY | not ready as child | slot only | not ready |
+| Masonry | Blocks | PHYSICAL_QUANTITY_READY (net; purchase round/waste later) | IDENTITY_READY | not ready | slot only | not ready |
+| Masonry | Footing concrete | PHYSICAL_QUANTITY_READY | IDENTITY_READY | not ready | slot only | not ready |
+| Masonry | Sub-base | PHYSICAL_QUANTITY_READY | IDENTITY_READY | not ready | slot only | not ready |
+| Masonry | Rebar | **not ready** unless design facts exist; unknown must not become silent zero | identity slot only | not ready | slot only | not ready |
+| Masonry | Core fill | PHYSICAL_QUANTITY_READY (m³) | IDENTITY_READY | not ready | slot only | not ready |
+| Masonry | Waterproofing | PHYSICAL_QUANTITY_READY (masonry-only starter) | IDENTITY_READY | not ready | slot only | not ready |
+| Masonry | Novacoil | PHYSICAL_QUANTITY_READY | IDENTITY_READY | not ready as child | slot only | not ready |
+| Masonry | Drainage aggregate | PHYSICAL_QUANTITY_READY (in-place m³) | IDENTITY_READY | not ready as child | slot only | not ready |
+
+**COMMERCIAL_PROMOTION_READY = false** for every child. RW-2 golden **$7,345** remains package authority.
+
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
 
 | Layer | Status |
 | --- | --- |
 | Calculator | `lib/estimate/calculators/retaining-wall.ts` — present; still package-level |
 | Job Plan adapter | **Minimum** — `lib/assistant/job-plan/adapters/retaining-wall.ts` (core card + length/height/material chips). Not mature. |
-| Refine adapter | **None** — `getRefineAdapter("retaining_wall")` is `null`. Full maturity not started. |
+| Refine adapter | Registered in 1A (`lib/assistant/refine/adapters/retaining-wall.ts`) — type-specific consumed facts only. Commercial package still MINIMAL. |
 | Clarify policy | **HARD_MINIMUM** for length, height (or high+low), material via existing Clarify/readiness |
 
 Core estimate readiness:
@@ -627,7 +673,7 @@ This R1 pass accepts the read-only audit unless code inspection disproved a clai
 
 - RW 10 m / 1.5 m defaults remain internally; normal path no longer accepts zero-input complete price
 - Backfill volume still face m² priced; narrative no longer claims volume pricing
-- `post_spacing_m` unused by calculator (not asked)
+- `post_spacing_m` consumed for timber planning layout only (not Clarify/Job Plan; not commercial money)
 - Kitchen appliances/install/splashback/rangehood now resolveRate
 - Kitchen has no shared access factor (unchanged)
 - Fence slope condition is partial

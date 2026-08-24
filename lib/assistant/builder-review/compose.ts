@@ -26,6 +26,26 @@ import {
   DECK_STEPS_FRAMING_COMPONENT_KEY,
   DECK_STEPS_TREADS_COMPONENT_KEY,
 } from "@/lib/estimate/deck-scope-2c";
+import {
+  RW_BACKFILL_COMPONENT,
+  RW_EXCAVATION_COMPONENT,
+  RW_FACE_AREA_COMPONENT,
+  RW_MASONRY_BLOCKS_COMPONENT,
+  RW_MASONRY_CORE_COMPONENT,
+  RW_MASONRY_FOOTING_COMPONENT,
+  RW_MASONRY_REBAR_COMPONENT,
+  RW_MASONRY_SUBBASE_COMPONENT,
+  RW_MASONRY_WATERPROOF_COMPONENT,
+  RW_NOVACOIL_COMPONENT,
+  RW_SLEEPER_COMPONENT,
+  RW_SLEEPER_CONCRETE_COMPONENT,
+  RW_SLEEPER_POSTS_EA_COMPONENT,
+  RW_SLEEPER_POSTS_LM_COMPONENT,
+  RW_TIMBER_BOARDS_COMPONENT,
+  RW_TIMBER_PILES_EA_COMPONENT,
+  RW_TIMBER_PILES_LM_COMPONENT,
+} from "@/lib/estimate/retaining-wall-identities";
+import { RW_PLANNING_TAKEOFF_DISCLAIMER } from "@/lib/estimate/retaining-wall-physical";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { EstimateLineItem } from "@/components/assistant/types";
 import type { EstimateRequirement, MaterialRequirement } from "@/lib/estimate/requirements";
@@ -74,6 +94,23 @@ const STRUCTURAL_TAKEOFF_KEYS = new Set([
   "deck.steps.framing",
   DECK_STEPS_TREADS_COMPONENT_KEY,
   DECK_STEPS_FRAMING_COMPONENT_KEY,
+  RW_FACE_AREA_COMPONENT,
+  RW_NOVACOIL_COMPONENT,
+  RW_BACKFILL_COMPONENT,
+  RW_EXCAVATION_COMPONENT,
+  RW_TIMBER_BOARDS_COMPONENT,
+  RW_TIMBER_PILES_EA_COMPONENT,
+  RW_TIMBER_PILES_LM_COMPONENT,
+  RW_SLEEPER_COMPONENT,
+  RW_SLEEPER_POSTS_EA_COMPONENT,
+  RW_SLEEPER_POSTS_LM_COMPONENT,
+  RW_SLEEPER_CONCRETE_COMPONENT,
+  RW_MASONRY_BLOCKS_COMPONENT,
+  RW_MASONRY_FOOTING_COMPONENT,
+  RW_MASONRY_SUBBASE_COMPONENT,
+  RW_MASONRY_CORE_COMPONENT,
+  RW_MASONRY_WATERPROOF_COMPONENT,
+  RW_MASONRY_REBAR_COMPONENT,
 ]);
 
 const MAX_IMPROVEMENTS = 4;
@@ -187,6 +224,23 @@ function takeoffLabel(req: MaterialRequirement): string {
   if (req.componentKey === DECK_BEARERS_COMPONENT_KEY) return "Bearers";
   if (req.componentKey === DECK_SUPPORTS_COMPONENT_KEY) return "Supports";
   if (req.componentKey === DECK_CONCRETE_COMPONENT_KEY) return "Concrete";
+  if (req.componentKey === RW_FACE_AREA_COMPONENT) return "Wall face";
+  if (req.componentKey === RW_NOVACOIL_COMPONENT) return "Novacoil";
+  if (req.componentKey === RW_BACKFILL_COMPONENT) return "Drainage backfill (in-place)";
+  if (req.componentKey === RW_EXCAVATION_COMPONENT) return "Bulk excavation";
+  if (req.componentKey === RW_TIMBER_BOARDS_COMPONENT) return "Face boards";
+  if (req.componentKey === RW_TIMBER_PILES_EA_COMPONENT) return "Piles";
+  if (req.componentKey === RW_TIMBER_PILES_LM_COMPONENT) return "Pile length";
+  if (req.componentKey === RW_SLEEPER_COMPONENT) return "Concrete sleepers";
+  if (req.componentKey === RW_SLEEPER_POSTS_EA_COMPONENT) return "Steel posts";
+  if (req.componentKey === RW_SLEEPER_POSTS_LM_COMPONENT) return "Steel post length";
+  if (req.componentKey === RW_SLEEPER_CONCRETE_COMPONENT) return "Post-hole concrete";
+  if (req.componentKey === RW_MASONRY_BLOCKS_COMPONENT) return "Masonry blocks";
+  if (req.componentKey === RW_MASONRY_FOOTING_COMPONENT) return "Strip footing";
+  if (req.componentKey === RW_MASONRY_SUBBASE_COMPONENT) return "Sub-base";
+  if (req.componentKey === RW_MASONRY_CORE_COMPONENT) return "Core fill";
+  if (req.componentKey === RW_MASONRY_WATERPROOF_COMPONENT) return "Waterproofing";
+  if (req.componentKey === RW_MASONRY_REBAR_COMPONENT) return "Reinforcement";
   return req.description;
 }
 
@@ -235,7 +289,9 @@ function attachTakeoff(
   workAreaType: string | null,
   unavailableHint: string | null
 ): BuilderReviewCategoryGroup[] {
-  if (workAreaType !== "deck") return categories;
+  if (workAreaType !== "deck" && workAreaType !== "retaining_wall") {
+    return categories;
+  }
   if (takeoff.length === 0 && !unavailableHint) return categories;
 
   const withMeta = (
@@ -244,7 +300,11 @@ function attachTakeoff(
     ...target,
     takeoff,
     takeoffDisclaimer:
-      takeoff.length > 0 ? DECK_STRUCTURAL_ESTIMATING_DISCLAIMER : null,
+      takeoff.length > 0
+        ? workAreaType === "retaining_wall"
+          ? RW_PLANNING_TAKEOFF_DISCLAIMER
+          : DECK_STRUCTURAL_ESTIMATING_DISCLAIMER
+        : null,
     takeoffUnavailableHint:
       takeoff.length === 0 ? unavailableHint : null,
   });
@@ -545,8 +605,8 @@ export function composeBuilderReview(
       };
     });
 
-    const deckTakeoff =
-      meta.type === "deck"
+    const areaTakeoff =
+      meta.type === "deck" || meta.type === "retaining_wall"
         ? structuralTakeoff.filter((row) => {
             const req = requirements.find(
               (r) => r.requirementId === row.requirementId
@@ -562,14 +622,14 @@ export function composeBuilderReview(
     );
     const unavailableHint =
       meta.type === "deck" &&
-      deckTakeoff.length === 0 &&
+      areaTakeoff.length === 0 &&
       hasFramingAllowance
         ? DECK_PHYSICAL_TAKEOFF_UNAVAILABLE_HINT
         : null;
 
     categories = attachTakeoff(
       categories,
-      deckTakeoff,
+      areaTakeoff,
       meta.type,
       unavailableHint
     );

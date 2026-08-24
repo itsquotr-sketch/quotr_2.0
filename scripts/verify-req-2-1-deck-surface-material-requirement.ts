@@ -568,12 +568,15 @@ const retaining = calculateRetainingWall(
 );
 check(
   "EXCLUSIONS 48 no other calculator emits requirements",
-  emitting.length === 1 &&
-    emitting[0]?.replace(/\\/g, "/").endsWith("calculators/deck.ts") &&
+  emitting.length === 2 &&
+    emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/deck.ts")) &&
+    emitting.some((p) =>
+      p.replace(/\\/g, "/").endsWith("calculators/retaining-wall.ts")
+    ) &&
     fence.requirements == null &&
     bathroom.requirements == null &&
     pergola.requirements == null &&
-    retaining.requirements == null
+    (retaining.requirements ?? []).every((req) => req.priced === false)
 );
 
 const migrations = existsSync(join("supabase", "migrations"))

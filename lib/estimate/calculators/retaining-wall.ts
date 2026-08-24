@@ -46,8 +46,13 @@ import {
   resolveLegacyCartingMetres,
   resolveLegacyWorkAreaAccess,
 } from "@/lib/project-conditions/legacy-adapter";
+import { buildRetainingWallPhysicalModel } from "@/lib/estimate/retaining-wall-physical";
+import {
+  classifyRetainingWallSystem,
+  retainingWallLegacyCommercialFamily,
+} from "@/lib/estimate/retaining-wall-systems";
 
-/** Facts this calculator reads. post_spacing_m is intentionally absent. */
+/** Facts this calculator reads. Physical-only keys do not change 1A money. */
 export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
   "retaining_wall.length_m",
   "retaining_wall.height_m",
@@ -55,15 +60,37 @@ export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
   "retaining_wall.high_height_m",
   "retaining_wall.height_low_m",
   "retaining_wall.low_height_m",
+  "retaining_wall.is_raking",
   "retaining_wall.material",
   "retaining_wall.fixing_type",
+  "retaining_wall.surcharge",
+  "retaining_wall.surcharge_type",
   "retaining_wall.excavation_required",
+  "retaining_wall.excavation_volume_m3",
   "retaining_wall.drainage_required",
   "retaining_wall.drain_connection_required",
   "retaining_wall.backfill_included",
   "retaining_wall.backfill_length_m",
   "retaining_wall.backfill_height_m",
   "retaining_wall.backfill_depth_m",
+  "retaining_wall.post_spacing_m",
+  "retaining_wall.pile_embedment_m",
+  "retaining_wall.pile_embedment_ratio",
+  "retaining_wall.face_board_section",
+  "retaining_wall.sleeper_length_m",
+  "retaining_wall.sleeper_face_height_m",
+  "retaining_wall.sleeper_post_embedment_m",
+  "retaining_wall.hole_diameter_m",
+  "retaining_wall.premix_bag_yield_m3",
+  "retaining_wall.block_series",
+  "retaining_wall.block_laying_method",
+  "retaining_wall.footing_width_m",
+  "retaining_wall.footing_depth_m",
+  "retaining_wall.vertical_starter_spacing_m",
+  "retaining_wall.horizontal_rebar_runs",
+  "retaining_wall.waterproofing_required",
+  "retaining_wall.waterproofing_type",
+  "retaining_wall.waterproofing_method",
   "retaining_wall.engineering_or_consent_status",
   "retaining_wall.carting_distance_m",
   "retaining_wall.disposal_included",
@@ -76,7 +103,7 @@ export const RETAINING_WALL_HARD_MINIMUM_FACT_KEYS = [
 ] as const;
 
 export const BACKFILL_REFERENCE_ONLY_ASSUMPTION =
-  "Backfill dimensions recorded for reference; current allowance is not volume priced.";
+  "Planning backfill volume (m³) is takeoff only; the current commercial backfill allowance is not volume priced.";
 
 export const RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE =
   "Quotr doesn't currently have a trusted price model for this retaining wall material.";
@@ -99,29 +126,18 @@ export type RetainingWallMaterialReadiness =
   | "SUPPORTED"
   | "UNSUPPORTED_EXPLICIT";
 
-function materialTokens(material: string): string[] {
-  return material
-    .toLowerCase()
-    .split(/[^a-z0-9]+/)
-    .filter(Boolean);
-}
 
 /**
- * Canonical current mapping from actual rate paths — not fuzzy semantics.
- * timber token → timber face m²
- * concrete or block token → concrete face m²
+ * Commercial family for the 1A package. Physical system is classified
+ * separately; sleeper/masonry still price through the concrete face-m² package.
  */
 export function classifyRetainingWallMaterial(
   material: string | null
 ): RetainingWallMaterialClass {
-  if (!material) return "missing";
-  const tokens = materialTokens(material);
-  if (tokens.includes("concrete") || tokens.includes("block")) {
-    return "concrete";
-  }
-  if (tokens.includes("timber")) {
-    return "timber";
-  }
+  const system = classifyRetainingWallSystem(material);
+  if (system === "missing") return "missing";
+  const family = retainingWallLegacyCommercialFamily(system);
+  if (family) return family;
   return "unsupported";
 }
 
@@ -699,6 +715,13 @@ export function calculateRetainingWall(
     );
   }
 
+  const physical = buildRetainingWallPhysicalModel({
+    context,
+    workAreaId: workArea.id,
+    material,
+  });
+  assumptions.push(...physical.assumptions);
+
   return {
     lineItems,
     assumptions,
@@ -706,5 +729,8 @@ export function calculateRetainingWall(
     exclusions,
     confidence: baseConfidence(missingInfo.length),
     assumptionMetadata,
+    ...(physical.requirements.length > 0
+      ? { requirements: physical.requirements }
+      : {}),
   };
 }

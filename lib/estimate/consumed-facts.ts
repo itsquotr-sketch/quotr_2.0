@@ -116,6 +116,32 @@ const DECK_PHYSICAL_ONLY_FACTS = new Set<string>([
   "deck.fascia_material",
 ]);
 
+/** Retaining Wall 1A physical/planning facts: takeoff only, not package money. */
+const RW_PHYSICAL_ONLY_FACTS = new Set<string>([
+  "retaining_wall.is_raking",
+  "retaining_wall.surcharge",
+  "retaining_wall.surcharge_type",
+  "retaining_wall.excavation_volume_m3",
+  "retaining_wall.post_spacing_m",
+  "retaining_wall.pile_embedment_m",
+  "retaining_wall.pile_embedment_ratio",
+  "retaining_wall.face_board_section",
+  "retaining_wall.sleeper_length_m",
+  "retaining_wall.sleeper_face_height_m",
+  "retaining_wall.sleeper_post_embedment_m",
+  "retaining_wall.hole_diameter_m",
+  "retaining_wall.premix_bag_yield_m3",
+  "retaining_wall.block_series",
+  "retaining_wall.block_laying_method",
+  "retaining_wall.footing_width_m",
+  "retaining_wall.footing_depth_m",
+  "retaining_wall.vertical_starter_spacing_m",
+  "retaining_wall.horizontal_rebar_runs",
+  "retaining_wall.waterproofing_required",
+  "retaining_wall.waterproofing_type",
+  "retaining_wall.waterproofing_method",
+]);
+
 export function getConsumedFactConsumption(
   workAreaType: string | null | undefined,
   factKey: string | null | undefined
@@ -129,6 +155,15 @@ export function getConsumedFactConsumption(
       physical: true,
       commercial: false,
       confidence: false,
+    };
+  }
+  if (workAreaType === "retaining_wall" && RW_PHYSICAL_ONLY_FACTS.has(factKey)) {
+    return {
+      factKey,
+      scope: false,
+      physical: true,
+      commercial: false,
+      confidence: factKey.includes("surcharge") || factKey.includes("engineering"),
     };
   }
   return {

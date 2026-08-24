@@ -840,12 +840,12 @@ check(
 
 check(
   "27 false consumed key fails verifier",
-  isCalculatorConsumedFact("deck", "retaining_wall.post_spacing_m") === false &&
-    isCalculatorConsumedFact("retaining_wall", "retaining_wall.post_spacing_m") ===
+  isCalculatorConsumedFact("deck", "retaining_wall.gabion_mesh") === false &&
+    isCalculatorConsumedFact("retaining_wall", "retaining_wall.gabion_mesh") ===
       false &&
-    refineFactsAreContractBacked("deck", ["retaining_wall.post_spacing_m"]) === false &&
+    refineFactsAreContractBacked("deck", ["retaining_wall.gabion_mesh"]) === false &&
     !RETAINING_WALL_CALCULATOR_CONSUMED_FACTS.includes(
-      "retaining_wall.post_spacing_m" as never
+      "retaining_wall.gabion_mesh" as never
     )
 );
 

@@ -813,8 +813,11 @@ const emitting = calcFiles.filter((p) => {
 });
 check(
   "EMITTERS only Deck calculator emits requirements",
-  emitting.length === 1 &&
-    emitting[0]?.replace(/\\/g, "/").endsWith("calculators/deck.ts")
+  emitting.length === 2 &&
+    emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/deck.ts")) &&
+    emitting.some((p) =>
+      p.replace(/\\/g, "/").endsWith("calculators/retaining-wall.ts")
+    )
 );
 
 console.log(`\n=== REQ-3.1 Results: ${passed} passed, ${failed} failed ===`);
