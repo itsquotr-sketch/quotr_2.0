@@ -92,6 +92,7 @@ import type { JobPlanScopeItem } from "@/lib/assistant/job-plan/types";
 import { composeClarifyView } from "@/lib/assistant/clarify/compose";
 import { composeBuilderReview } from "@/lib/assistant/builder-review";
 import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
+import { evaluatePackageQuickEstimateReadiness } from "@/lib/assistant/readiness/package-quick-estimate";
 import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { composeRefineView } from "@/lib/assistant/refine/compose";
@@ -838,10 +839,29 @@ export function AssistantShell({
       preferProjectConditionsAsk &&
       !projectConditionsSnapshot?.readiness.canGenerateQuickEstimate
     ) {
-      setActionError(
-        "Complete the remaining project information before generating the estimate."
-      );
-      return;
+      const packageReadiness = evaluatePackageQuickEstimateReadiness({
+        workAreas: displayWorkAreas.map((wa) => ({
+          id: wa.id,
+          type: wa.type,
+          status: wa.status,
+        })),
+        facts: (() => {
+          let facts = jobPlanFactsFromAssistantState(initialState);
+          for (const row of jobPlanFactOverlay) {
+            facts = overlayFact(facts, row);
+          }
+          return facts;
+        })(),
+        unresolvedRequiredProjectConditionKeys:
+          projectConditionsSnapshot.unresolvedRequiredKeys ?? [],
+      });
+      if (!(CLARIFY_IS_PRIMARY && packageReadiness.ready)) {
+        setActionError(
+          packageReadiness.builderCopy ??
+            "Complete the remaining project information before generating the estimate."
+        );
+        return;
+      }
     }
     setIsRegenerating(true);
     recordPreviewPerf("estimate_generate_ack", 0);
@@ -867,7 +887,10 @@ export function AssistantShell({
     project.id,
     runAction,
     preferProjectConditionsAsk,
-    projectConditionsSnapshot?.readiness.canGenerateQuickEstimate,
+    projectConditionsSnapshot,
+    displayWorkAreas,
+    initialState,
+    jobPlanFactOverlay,
   ]);
 
   const handleQuestionAnswer = useCallback(

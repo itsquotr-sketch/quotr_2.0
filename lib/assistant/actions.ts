@@ -11,6 +11,7 @@ import {
 } from "@/lib/ai/mappers";
 import { AIExtractionError } from "@/lib/ai/schema";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
+import { evaluatePackageQuickEstimateReadiness } from "@/lib/assistant/readiness/package-quick-estimate";
 import { canRunStageAction } from "@/lib/assistant/state";
 import { legacyQualityRequiresScopeReview } from "@/lib/assistant/clarify/quality-gate";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
@@ -1223,17 +1224,27 @@ async function runEstimateGeneration(
     })),
   });
 
-  if (!projectConditions.readiness.canGenerateQuickEstimate) {
-    if (CLARIFY_IS_PRIMARY) {
-      const blocking = filterEstimateBlockingProjectConditionKeys(
-        projectConditions.unresolvedRequiredKeys
-      );
-      if (blocking.length > 0) {
-        return { error: USER_ERRORS.projectConditionsIncomplete };
-      }
-    } else {
-      return { error: USER_ERRORS.projectConditionsIncomplete };
+  if (CLARIFY_IS_PRIMARY) {
+    const packageReadiness = evaluatePackageQuickEstimateReadiness({
+      workAreas: contextResult.confirmedWorkAreas.map((wa) => ({
+        id: wa.id,
+        type: wa.type,
+        status: "confirmed",
+      })),
+      facts: contextResult.facts,
+      unresolvedRequiredProjectConditionKeys:
+        filterEstimateBlockingProjectConditionKeys(
+          projectConditions.unresolvedRequiredKeys
+        ),
+    });
+    if (!packageReadiness.ready) {
+      return {
+        error:
+          packageReadiness.builderCopy ?? USER_ERRORS.projectConditionsIncomplete,
+      };
     }
+  } else if (!projectConditions.readiness.canGenerateQuickEstimate) {
+    return { error: USER_ERRORS.projectConditionsIncomplete };
   }
 
   let estimateResult;
