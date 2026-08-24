@@ -146,7 +146,8 @@ export const retainingWallJobPlanAdapter: JobPlanWorkAreaAdapter = {
         label: "Drainage / novacoil",
         factKey: "retaining_wall.drainage_required",
         facts: context.facts,
-        surfaceReason: "Check: drainage is optional shared scope",
+        surfaceReason:
+          "Standard on timber and sleeper walls unless turned off. Not a Clarify blocker.",
       }),
       booleanCheck({
         id: "rw-backfill",
@@ -154,7 +155,8 @@ export const retainingWallJobPlanAdapter: JobPlanWorkAreaAdapter = {
         label: "Backfill",
         factKey: "retaining_wall.backfill_included",
         facts: context.facts,
-        surfaceReason: "Check: drainage aggregate / backfill is optional scope",
+        surfaceReason:
+          "Standard drainage aggregate on timber and sleeper walls unless turned off. Not excavation.",
       }),
     ];
     if (system === "CONCRETE_MASONRY_WALL") {

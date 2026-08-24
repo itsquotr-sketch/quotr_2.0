@@ -13,7 +13,7 @@ import {
 import { requireEstimateQuantityRateMoney } from "@/lib/estimate/estimate-commercial-engine-adapter";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { OrganisationSettings } from "@/components/setup/types";
-import type { MaterialRequirement } from "@/lib/estimate/requirements";
+import type { LabourRequirement, MaterialRequirement } from "@/lib/estimate/requirements";
 import type { EstimateLineItemInput } from "@/lib/estimate/types";
 
 export function isPricedMaterialRequirement(
@@ -155,5 +155,38 @@ export function adaptUnpricedMaterialRequirementToEstimateLine(params: {
     componentKey: requirement.componentKey,
     sortOrder: params.sortOrder,
     organisationSettings: params.organisationSettings,
+    notes: "Needs a trusted price.",
+  });
+}
+
+/**
+ * Known labour scope + physical driver with no trusted productivity.
+ * Visible Pricing Required. Never silent 0 hours as complete labour.
+ */
+export function adaptUnpricedLabourRequirementToEstimateLine(params: {
+  requirement: LabourRequirement;
+  workAreaName: string;
+  sortOrder: number;
+  organisationSettings: OrganisationSettings | null;
+  label?: string;
+}): EstimateLineItemInput {
+  const { requirement } = params;
+  const qty = requirement.productivityBasis.quantity;
+  const unit = requirement.productivityBasis.unit;
+  return createRateLineItem({
+    workAreaId: requirement.workAreaId,
+    workAreaName: params.workAreaName,
+    label: params.label ?? requirement.description,
+    category: "labour",
+    quantity: qty,
+    unit,
+    costRate: 0,
+    sellRate: 0,
+    rateSource: getRateSourceLabel("missing"),
+    rateSourceType: "missing",
+    componentKey: requirement.componentKey,
+    sortOrder: params.sortOrder,
+    organisationSettings: params.organisationSettings,
+    notes: `Needs productivity. ${qty} ${unit}. ${requirement.description}`,
   });
 }

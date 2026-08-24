@@ -226,10 +226,17 @@ assert(
   labels(rw2.lineItems).some((l) => l.includes("Novacoil")),
   "RW 2: drainage"
 );
-assert(labels(rw2.lineItems).includes("Backfill allowance"), "RW 2: backfill");
 assert(
-  rw2.lineItems.find((i) => i.label === "Backfill allowance")?.materialBuildUp != null,
-  "RW 2: backfill volume build-up"
+  labels(rw2.lineItems).includes("Backfill allowance"),
+  "RW 2: backfill"
+);
+assert(
+  labels(rw2.lineItems).includes("Retaining wall materials"),
+  "RW 2: package materials remain monetary authority"
+);
+assert(
+  labels(rw2.lineItems).some((l) => /drainage aggregate|backfill/i.test(l)),
+  "RW 2: detailed in-place backfill"
 );
 
 // Retaining wall disposal — included

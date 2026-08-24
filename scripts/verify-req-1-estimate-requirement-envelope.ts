@@ -913,7 +913,7 @@ const rw2 = calculateRetainingWall(
   wa("rw2", "retaining_wall", "RW 2")
 );
 check(
-  "GENERATE RW 2 sell unchanged",
+  "GENERATE RW 2 remains package $7,345",
   Math.round(rw2.lineItems.reduce((sum, item) => sum + item.recommendedSell, 0)) ===
     7345
 );

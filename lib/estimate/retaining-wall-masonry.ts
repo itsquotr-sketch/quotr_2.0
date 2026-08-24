@@ -199,7 +199,7 @@ export function buildMasonryWallRequirements(params: {
   ];
 
   if (takeoff.netBlocks != null && takeoff.series) {
-    const purchase = round2(takeoff.netBlocks * (1 + params.inputs.wasteFactor));
+    const purchase = Math.ceil(takeoff.netBlocks - 1e-9);
     requirements.push(
       planningMaterial({
         ...common,
@@ -208,10 +208,10 @@ export function buildMasonryWallRequirements(params: {
         materialKey: takeoff.series.materialKey,
         identity: takeoff.series.identity,
         category: "MASONRY",
-        specification: `${takeoff.netBlocks} net blocks from ${params.geometry.faceAreaM2} m² × ${takeoff.series.unitsPerM2} / m².`,
+        specification: `${takeoff.netBlocks} net blocks from ${params.geometry.faceAreaM2} m² × ${takeoff.series.unitsPerM2} / m². Purchase ${purchase} ea whole units. No invented masonry waste percent.`,
         baseQuantity: takeoff.netBlocks,
         baseUnit: "ea",
-        wasteFactor: params.inputs.wasteFactor,
+        wasteFactor: 0,
         purchaseQuantity: purchase,
         purchaseUnit: "ea",
       })

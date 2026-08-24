@@ -39,9 +39,11 @@ import {
   RW_NOVACOIL_COMPONENT,
   RW_SLEEPER_COMPONENT,
   RW_SLEEPER_CONCRETE_COMPONENT,
+  RW_SLEEPER_FIXINGS_COMPONENT,
   RW_SLEEPER_POSTS_EA_COMPONENT,
   RW_SLEEPER_POSTS_LM_COMPONENT,
   RW_TIMBER_BOARDS_COMPONENT,
+  RW_TIMBER_FIXINGS_COMPONENT,
   RW_TIMBER_PILES_EA_COMPONENT,
   RW_TIMBER_PILES_LM_COMPONENT,
 } from "@/lib/estimate/retaining-wall-identities";
@@ -105,6 +107,8 @@ const STRUCTURAL_TAKEOFF_KEYS = new Set([
   RW_SLEEPER_POSTS_EA_COMPONENT,
   RW_SLEEPER_POSTS_LM_COMPONENT,
   RW_SLEEPER_CONCRETE_COMPONENT,
+  RW_SLEEPER_FIXINGS_COMPONENT,
+  RW_TIMBER_FIXINGS_COMPONENT,
   RW_MASONRY_BLOCKS_COMPONENT,
   RW_MASONRY_FOOTING_COMPONENT,
   RW_MASONRY_SUBBASE_COMPONENT,
@@ -235,6 +239,8 @@ function takeoffLabel(req: MaterialRequirement): string {
   if (req.componentKey === RW_SLEEPER_POSTS_EA_COMPONENT) return "Steel posts";
   if (req.componentKey === RW_SLEEPER_POSTS_LM_COMPONENT) return "Steel post length";
   if (req.componentKey === RW_SLEEPER_CONCRETE_COMPONENT) return "Post-hole concrete";
+  if (req.componentKey === RW_TIMBER_FIXINGS_COMPONENT) return "Fixings / connectors";
+  if (req.componentKey === RW_SLEEPER_FIXINGS_COMPONENT) return "Sleeper connectors";
   if (req.componentKey === RW_MASONRY_BLOCKS_COMPONENT) return "Masonry blocks";
   if (req.componentKey === RW_MASONRY_FOOTING_COMPONENT) return "Strip footing";
   if (req.componentKey === RW_MASONRY_SUBBASE_COMPONENT) return "Sub-base";

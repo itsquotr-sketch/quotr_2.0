@@ -9,7 +9,8 @@
 export type ComponentCommercialAuthority =
   | "DETAILED_PRICED"
   | "PRICING_REQUIRED"
-  | "NOT_APPLICABLE";
+  | "NOT_APPLICABLE"
+  | "PACKAGE_FALLBACK";
 
 export function resolveComponentCommercialAuthority(params: {
   applicable: boolean;
@@ -20,6 +21,13 @@ export function resolveComponentCommercialAuthority(params: {
     return "NOT_APPLICABLE";
   }
   return params.hasTrustedRate ? "DETAILED_PRICED" : "PRICING_REQUIRED";
+}
+
+/** Wall-level package is not a component rate-miss fallback. */
+export function resolvePackageFallbackAuthority(params: {
+  physicalModelSufficient: boolean;
+}): ComponentCommercialAuthority {
+  return params.physicalModelSufficient ? "NOT_APPLICABLE" : "PACKAGE_FALLBACK";
 }
 
 export function hasTrustedPhysicalQuantity(

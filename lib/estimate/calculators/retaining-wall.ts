@@ -51,6 +51,24 @@ import {
   classifyRetainingWallSystem,
   retainingWallLegacyCommercialFamily,
 } from "@/lib/estimate/retaining-wall-systems";
+import {
+  commercializeRetainingWall,
+  detailedLabour,
+  detailedMoneyMaterials,
+} from "@/lib/estimate/retaining-wall-commercial";
+import {
+  resolveRetainingWallBackfillIncluded,
+  resolveRetainingWallDrainageIncluded,
+  RW_BACKFILL_STANDARD_ASSUMPTION,
+  RW_DRAINAGE_STANDARD_ASSUMPTION,
+} from "@/lib/estimate/retaining-wall-defaults";
+import {
+  adaptPricedMaterialRequirementWithoutLegacy,
+  adaptUnpricedLabourRequirementToEstimateLine,
+  adaptUnpricedMaterialRequirementToEstimateLine,
+  isPricedMaterialRequirement,
+} from "@/lib/estimate/requirement-commercial-line";
+import { RW_FACE_AREA_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
 
 /** Facts this calculator reads. Physical-only keys do not change 1A money. */
 export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
@@ -350,6 +368,38 @@ export function calculateRetainingWall(
     organisationSettings: context.organisationSettings,
   });
 
+  const physical = buildRetainingWallPhysicalModel({
+    context,
+    workAreaId: workArea.id,
+    material,
+  });
+  const commercial = commercializeRetainingWall({
+    physical,
+    facts,
+    workAreaId: workArea.id,
+    rates: context.rates,
+    organisationSettings: context.organisationSettings,
+  });
+  const detailed =
+    commercial.mode === "DETAILED_COMPONENT_AUTHORITY";
+  const drainageScope = resolveRetainingWallDrainageIncluded({
+    facts,
+    workAreaId: workArea.id,
+    system: physical.system,
+  });
+  const backfillScope = resolveRetainingWallBackfillIncluded({
+    facts,
+    workAreaId: workArea.id,
+    system: physical.system,
+  });
+  if (drainageScope.assumed) assumptions.push(RW_DRAINAGE_STANDARD_ASSUMPTION);
+  if (backfillScope.assumed) assumptions.push(RW_BACKFILL_STANDARD_ASSUMPTION);
+  assumptions.push(...physical.assumptions, ...commercial.assumptions);
+  if (detailed) {
+    missingInfo.push(...commercial.missingInfo);
+  }
+
+  if (!detailed) {
   const baseProductivity = resolveProductivity({
     productivityKey: "retaining_wall.base_labour_hours_per_face_m2",
     unit: "face m²",
@@ -392,7 +442,7 @@ export function calculateRetainingWall(
     })
   );
 
-  if (getBooleanFact(facts, workArea.id, "retaining_wall.drainage_required")) {
+  if (drainageScope.included) {
     const drainage = resolveProductivity({
       productivityKey: "retaining_wall.drainage_hours_per_m",
       unit: "m",
@@ -496,7 +546,7 @@ export function calculateRetainingWall(
         "Drainage design and outfall are subject to confirmation."
       );
     }
-  } else {
+  } else if (getBooleanFact(facts, workArea.id, "retaining_wall.drainage_required") === null && !drainageScope.assumed) {
     missingInfo.push(formatMissing("Drainage scope"));
   }
 
@@ -518,7 +568,7 @@ export function calculateRetainingWall(
     })
   );
 
-  if (getBooleanFact(facts, workArea.id, "retaining_wall.backfill_included")) {
+  if (backfillScope.included) {
     const backfillLength =
       getNumberFact(facts, workArea.id, "retaining_wall.backfill_length_m") ??
       effectiveLength;
@@ -622,8 +672,67 @@ export function calculateRetainingWall(
         })
       );
     }
-  } else {
+  } else if (getBooleanFact(facts, workArea.id, "retaining_wall.backfill_included") === null && !backfillScope.assumed) {
     missingInfo.push(formatMissing("Backfill scope"));
+  }
+  } else {
+    for (const requirement of detailedMoneyMaterials(commercial.requirements)) {
+      if (requirement.componentKey === RW_FACE_AREA_COMPONENT) continue;
+      if (isPricedMaterialRequirement(requirement)) {
+        lineItems.push(
+          adaptPricedMaterialRequirementWithoutLegacy({
+            requirement,
+            workAreaName: workArea.name,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            label: requirement.description,
+          })
+        );
+      } else {
+        lineItems.push(
+          adaptUnpricedMaterialRequirementToEstimateLine({
+            requirement,
+            workAreaName: workArea.name,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            label: requirement.description,
+          })
+        );
+      }
+    }
+    for (const requirement of detailedLabour(commercial.requirements)) {
+      if (requirement.priced && requirement.hourlyCost != null) {
+        lineItems.push(
+          createLabourLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: requirement.description,
+            quantity: requirement.productivityBasis.quantity,
+            unit: requirement.productivityBasis.unit,
+            productivityHoursPerUnit: requirement.productivityBasis.hoursPerUnit,
+            labourCostRate: labourRate.costRate,
+            labourSellRate: labourRate.sellRate,
+            adjustmentFactor: labourAdjustment,
+            qualityFactor: NO_FINISH_QUALITY_FACTOR,
+            rateSource: labourRate.sourceLabel,
+            componentKey: requirement.componentKey,
+            notes: `${requirement.productivityBasis.quantity} ${requirement.productivityBasis.unit} × ${requirement.productivityBasis.hoursPerUnit} h/${requirement.productivityBasis.unit}`,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+          })
+        );
+      } else {
+        lineItems.push(
+          adaptUnpricedLabourRequirementToEstimateLine({
+            requirement,
+            workAreaName: workArea.name,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            label: requirement.description,
+          })
+        );
+      }
+    }
   }
 
   const consentStatus = getStringFact(
@@ -715,13 +824,6 @@ export function calculateRetainingWall(
     );
   }
 
-  const physical = buildRetainingWallPhysicalModel({
-    context,
-    workAreaId: workArea.id,
-    material,
-  });
-  assumptions.push(...physical.assumptions);
-
   return {
     lineItems,
     assumptions,
@@ -729,8 +831,16 @@ export function calculateRetainingWall(
     exclusions,
     confidence: baseConfidence(missingInfo.length),
     assumptionMetadata,
-    ...(physical.requirements.length > 0
-      ? { requirements: physical.requirements }
+    ...((commercial.requirements.length > 0
+      ? commercial.requirements
+      : physical.requirements
+    ).length > 0
+      ? {
+          requirements:
+            commercial.requirements.length > 0
+              ? commercial.requirements
+              : physical.requirements,
+        }
       : {}),
   };
 }

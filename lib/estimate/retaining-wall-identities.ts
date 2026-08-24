@@ -50,6 +50,26 @@ export const RW_MASONRY_SUBBASE_COMPONENT = "retaining_wall.masonry.subbase";
 export const RW_MASONRY_CORE_COMPONENT = "retaining_wall.masonry.core_fill";
 export const RW_MASONRY_WATERPROOF_COMPONENT = "retaining_wall.masonry.waterproofing";
 export const RW_MASONRY_REBAR_COMPONENT = "retaining_wall.masonry.rebar";
+export const RW_TIMBER_FIXINGS_COMPONENT = "retaining_wall.timber.fixings.residual";
+export const RW_SLEEPER_FIXINGS_COMPONENT = "retaining_wall.sleeper.fixings.residual";
+export const RW_TIMBER_PILE_LABOUR_COMPONENT = "retaining_wall.timber.piles.install";
+export const RW_TIMBER_FACE_LABOUR_COMPONENT = "retaining_wall.timber.face_boards.install";
+export const RW_BACKFILL_LABOUR_COMPONENT = "retaining_wall.backfill.place";
+export const RW_EXCAVATION_LABOUR_COMPONENT = "retaining_wall.excavation.bulk.labour";
+export const RW_SLEEPER_POST_LABOUR_COMPONENT = "retaining_wall.sleeper.posts.install";
+export const RW_SLEEPER_CONCRETE_LABOUR_COMPONENT = "retaining_wall.sleeper.concrete.place";
+export const RW_SLEEPER_FACE_LABOUR_COMPONENT = "retaining_wall.sleeper.sleepers.install";
+export const RW_MASONRY_SUBBASE_LABOUR_COMPONENT = "retaining_wall.masonry.subbase.compact";
+export const RW_MASONRY_FOOTING_LABOUR_COMPONENT = "retaining_wall.masonry.footing.place";
+export const RW_MASONRY_REBAR_LABOUR_COMPONENT = "retaining_wall.masonry.rebar.install";
+export const RW_MASONRY_BLOCK_LABOUR_COMPONENT = "retaining_wall.masonry.block_lay";
+export const RW_MASONRY_CORE_LABOUR_COMPONENT = "retaining_wall.masonry.core_fill.place";
+export const RW_MASONRY_WATERPROOF_LABOUR_COMPONENT =
+  "retaining_wall.masonry.waterproofing.install";
+export const RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT =
+  "retaining_wall.masonry.block_lay.subcontract";
+export const RW_MASONRY_WATERPROOF_SUBCONTRACT_COMPONENT =
+  "retaining_wall.masonry.waterproofing.subcontract";
 
 export type MasonrySeriesMetadata = {
   series: "150" | "200";

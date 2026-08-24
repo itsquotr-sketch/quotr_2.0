@@ -133,12 +133,13 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
     },
     {
       factKey: "retaining_wall.drainage_required",
-      questionClass: "ASK_NOW",
+      questionClass: "ASSUME_IF_SKIPPED",
       calculatorConsumed: true,
       physical: true,
       commercial: true,
       confidence: false,
-      reason: "Novacoil / drainage include. Default recommendation Check/Yes.",
+      reason:
+        "Novacoil is standard on timber and sleeper walls. Missing fact assumes yes. Explicit no removes drainage.",
     },
     {
       factKey: "retaining_wall.drain_connection_required",
@@ -151,12 +152,13 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
     },
     {
       factKey: "retaining_wall.backfill_included",
-      questionClass: "ASK_NOW",
+      questionClass: "ASSUME_IF_SKIPPED",
       calculatorConsumed: true,
       physical: true,
       commercial: true,
       confidence: false,
-      reason: "Drainage aggregate / backfill include. Physical m³ is planning truth in 1A.",
+      reason:
+        "Drainage aggregate is standard on timber and sleeper walls. Missing fact assumes yes. Explicit no removes backfill. Not bulk excavation.",
     },
     {
       factKey: "retaining_wall.backfill_length_m",

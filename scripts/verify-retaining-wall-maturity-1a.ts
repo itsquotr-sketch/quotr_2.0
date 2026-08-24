@@ -424,13 +424,19 @@ console.log("\n--- AUTHORITY ---\n");
 const commercial = calculateRetainingWall(ctx(timberLevel), wa());
 const slopeCalc = calculateRetainingWall(ctx(timberSlope), wa());
 check(
-  "62 existing commercial package preserved",
-  commercial.lineItems.length > 0 &&
-    commercial.lineItems.some((i) => /material/i.test(i.label))
+  "62 detailed timber physical XOR package face money",
+  (commercial.requirements ?? []).some(
+    (r) => r.kind === "material" && r.componentKey?.includes("face_board") && r.purchaseQuantity > 0
+  ) &&
+    commercial.lineItems.some(
+      (i) => i.label === "Retaining wall labour" || i.label === "Retaining wall materials"
+    )
 );
 check(
-  "63 new planning children no duplicate money",
-  (commercial.requirements ?? []).every((r) => r.priced === false)
+  "63 unpriced detailed children keep physical quantity",
+  (commercial.requirements ?? []).some(
+    (r) => r.kind === "material" && r.priced === false && r.purchaseQuantity > 0
+  )
 );
 check(
   "64 rate missing does not erase physical qty",
@@ -461,8 +467,9 @@ const rw2Golden = calculateEstimate({
   rates: [],
 } as never);
 check(
-  "66 Pricing/Quote unchanged",
-  Math.round(rw2Golden.recommendedSell) === 7345
+  "66 RW-2 remains package $7,345 before commercial readiness",
+  Math.round(rw2Golden.recommendedSell) === 7345 &&
+    rw2Golden.lineItems.some((i) => i.label === "Retaining wall materials")
 );
 
 console.log("\n--- FIXTURES ---\n");
@@ -618,10 +625,15 @@ check(
     )
 );
 check(
-  "R1-16 commercial children remain unpriced",
-  (commercial.requirements ?? []).every((r) => r.priced === false)
+  "R1-16 unpriced detailed children keep quantity",
+  (commercial.requirements ?? []).some(
+    (r) => r.kind === "material" && r.priced === false && r.purchaseQuantity > 0
+  )
 );
-check("R1-17 RW-2 $7,345 unchanged", Math.round(rw2Golden.recommendedSell) === 7345);
+check(
+  "R1-17 RW-2 remains package $7,345 until commercial readiness",
+  Math.round(rw2Golden.recommendedSell) === 7345
+);
 
 console.log("\n--- 1A-R2 TIMBER EVEN-BAY LAYOUT ---\n");
 const layout10 = timberPileLayout(10, 1.2);
@@ -662,10 +674,15 @@ check(
     postPositionsM(10, 2).join(",") === "0,2,4,6,8,10"
 );
 check(
-  "R2-12 commercial total unchanged",
-  (commercial.requirements ?? []).every((r) => r.priced === false)
+  "R2-12 unpriced detailed children keep quantity",
+  (commercial.requirements ?? []).some(
+    (r) => r.kind === "material" && r.priced === false && r.purchaseQuantity > 0
+  )
 );
-check("R2-13 RW-2 remains $7,345", Math.round(rw2Golden.recommendedSell) === 7345);
+check(
+  "R2-13 RW-2 remains package $7,345 until commercial readiness",
+  Math.round(rw2Golden.recommendedSell) === 7345
+);
 check(
   "useful: explicit 1.0 m is still a maximum for even bays",
   timberPileLayout(10, 1).bayCount === 10 &&

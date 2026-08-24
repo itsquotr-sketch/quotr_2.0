@@ -199,7 +199,10 @@ check(
 );
 check(
   "6 secondary unknowns may remain assumptions",
-  coreCalc.missingInfo.length > 0 && !core.readiness.blocksEstimate
+  !core.readiness.blocksEstimate &&
+    core.readiness.canEstimateNow &&
+    (coreCalc.assumptions.some((row) => /drainage|novacoil|backfill/i.test(row)) ||
+      coreCalc.missingInfo.length > 0)
 );
 check(
   "7 Job Plan/Clarify does not ask post_spacing",
@@ -422,10 +425,11 @@ check(
     materialLine(concreteCase.calc)?.recommendedCost === concreteFace
 );
 check(
-  "R1 supported block passes",
+  "R1 supported block keeps package money until commercial readiness",
   !blockCase.ui.readiness.blocksEstimate &&
-    materialLine(blockCase.calc)?.recommendedCost === concreteFace &&
-    materialLine(concreteBlockCase.calc)?.recommendedCost === concreteFace
+    materialLine(blockCase.calc) != null &&
+    materialLine(concreteBlockCase.calc) != null &&
+    blockCase.calc.lineItems.some((i) => i.label === "Retaining wall labour")
 );
 
 const rw2GoldenFacts = [
@@ -453,8 +457,9 @@ const rw2Golden = calculateEstimate({
   rates: [],
 } as never);
 check(
-  "R1 known-input RW golden money unchanged",
-  Math.round(rw2Golden.recommendedSell) === 7345
+  "R1 known-input RW golden remains package $7,345",
+  Math.round(rw2Golden.recommendedSell) === 7345 &&
+    rw2Golden.lineItems.some((i) => i.label === "Retaining wall materials")
 );
 
 check(

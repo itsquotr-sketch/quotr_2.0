@@ -33,13 +33,28 @@ import {
   RW_NOVACOIL_KEY,
 } from "@/lib/estimate/retaining-wall-identities";
 import { planningMaterial } from "@/lib/estimate/retaining-wall-planning";
-import { buildMasonryWallRequirements } from "@/lib/estimate/retaining-wall-masonry";
-import { buildSleeperWallRequirements } from "@/lib/estimate/retaining-wall-sleeper";
-import { buildTimberWallRequirements } from "@/lib/estimate/retaining-wall-timber";
+import {
+  buildMasonryWallRequirements,
+  type MasonryWallTakeoff,
+} from "@/lib/estimate/retaining-wall-masonry";
+import {
+  buildSleeperWallRequirements,
+  type SleeperWallTakeoff,
+} from "@/lib/estimate/retaining-wall-sleeper";
+import {
+  buildTimberWallRequirements,
+  type TimberPileTakeoff,
+} from "@/lib/estimate/retaining-wall-timber";
 import {
   classifyRetainingWallSystem,
   type RetainingWallSystemClass,
 } from "@/lib/estimate/retaining-wall-systems";
+import {
+  resolveRetainingWallBackfillIncluded,
+  resolveRetainingWallDrainageIncluded,
+  RW_BACKFILL_STANDARD_ASSUMPTION,
+  RW_DRAINAGE_STANDARD_ASSUMPTION,
+} from "@/lib/estimate/retaining-wall-defaults";
 
 export const RW_PLANNING_TAKEOFF_DISCLAIMER =
   "Planning quantities for estimating. Not structural design or a consent determination.";
@@ -52,6 +67,9 @@ export type RetainingWallPhysicalModel = {
   excavationMode: BulkExcavationMode;
   requirements: EstimateRequirement[];
   assumptions: string[];
+  timberPiles?: TimberPileTakeoff;
+  sleeperTakeoff?: SleeperWallTakeoff;
+  masonryTakeoff?: MasonryWallTakeoff;
 };
 
 function factKeysFor(system: RetainingWallSystemClass): string[] {
@@ -132,6 +150,9 @@ export function buildRetainingWallPhysicalModel(params: {
     100;
   const requirements: EstimateRequirement[] = [];
   const assumptions = [...geometryAssumptionTexts(geometry)];
+  let timberPiles: TimberPileTakeoff | undefined;
+  let sleeperTakeoff: SleeperWallTakeoff | undefined;
+  let masonryTakeoff: MasonryWallTakeoff | undefined;
 
   const heightSpec = geometry.sloping
     ? `${geometry.h1M} m → ${geometry.h2M} m`
@@ -154,12 +175,15 @@ export function buildRetainingWallPhysicalModel(params: {
     })
   );
 
-  const drainage = getBooleanFact(
+  const drainage = resolveRetainingWallDrainageIncluded({
     facts,
     workAreaId,
-    "retaining_wall.drainage_required"
-  );
-  if (drainage === true) {
+    system,
+  });
+  if (drainage.assumed) {
+    assumptions.push(RW_DRAINAGE_STANDARD_ASSUMPTION);
+  }
+  if (drainage.included) {
     requirements.push(
       planningMaterial({
         workAreaId,
@@ -180,12 +204,15 @@ export function buildRetainingWallPhysicalModel(params: {
     );
   }
 
-  const backfill = getBooleanFact(
+  const backfill = resolveRetainingWallBackfillIncluded({
     facts,
     workAreaId,
-    "retaining_wall.backfill_included"
-  );
-  if (backfill === true) {
+    system,
+  });
+  if (backfill.assumed) {
+    assumptions.push(RW_BACKFILL_STANDARD_ASSUMPTION);
+  }
+  if (backfill.included) {
     const depthOverride = getNumberFact(
       facts,
       workAreaId,
@@ -198,7 +225,7 @@ export function buildRetainingWallPhysicalModel(params: {
       depthM: depthOverride ?? undefined,
     });
     assumptions.push(
-      "Planning backfill is in-place / geometric volume (300 mm drainage zone, stopping 150 mm below the retained surface). Not a purchase quantity — no bulking, compaction, or procurement waste yet. Current commercial backfill line remains a face-m² package until 1B."
+      "Planning backfill is in-place / geometric volume (300 mm drainage zone, stopping 150 mm below the retained surface). Not a purchase quantity — no bulking, compaction, or procurement waste. Backfill material is not excavation."
     );
     requirements.push(
       planningMaterial({
@@ -301,6 +328,7 @@ export function buildRetainingWallPhysicalModel(params: {
     });
     requirements.push(...timber.requirements);
     assumptions.push(...timber.assumptions);
+    timberPiles = timber.piles;
   }
 
   if (system === "CONCRETE_SLEEPER_WALL") {
@@ -339,6 +367,7 @@ export function buildRetainingWallPhysicalModel(params: {
     });
     requirements.push(...sleeper.requirements);
     assumptions.push(...sleeper.assumptions);
+    sleeperTakeoff = sleeper.takeoff;
   }
 
   if (system === "CONCRETE_MASONRY_WALL") {
@@ -397,6 +426,7 @@ export function buildRetainingWallPhysicalModel(params: {
     });
     requirements.push(...masonry.requirements);
     assumptions.push(...masonry.assumptions);
+    masonryTakeoff = masonry.takeoff;
   }
 
   if (system === "CONCRETE_UNSPECIFIED") {
@@ -405,5 +435,14 @@ export function buildRetainingWallPhysicalModel(params: {
     );
   }
 
-  return { geometry, system, excavationMode, requirements, assumptions };
+  return {
+    geometry,
+    system,
+    excavationMode,
+    requirements,
+    assumptions,
+    timberPiles,
+    sleeperTakeoff,
+    masonryTakeoff,
+  };
 }
