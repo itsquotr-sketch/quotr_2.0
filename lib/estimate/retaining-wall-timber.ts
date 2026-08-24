@@ -162,7 +162,7 @@ export function buildTimberWallRequirements(params: {
       materialKey: RW_H5_SED_POLE_KEY,
       identity: H5_SED_POLE_IDENTITY,
       category: "TIMBER",
-      specification: `${piles.count} piles. Target/max centres ${piles.targetSpacingM} m; actual even-bay spacing ${round2(piles.actualSpacingM)} m. Lengths follow H(x), not max wall height.`,
+      specification: `${piles.count} piles. ${piles.spacingAssumed ? "Estimating default" : "Explicit"} target/max centres ${piles.targetSpacingM} m; actual even-bay spacing ${round2(piles.actualSpacingM)} m. Lengths follow H(x), not max wall height.`,
       baseQuantity: piles.count,
       baseUnit: "ea",
       wasteFactor: 0,

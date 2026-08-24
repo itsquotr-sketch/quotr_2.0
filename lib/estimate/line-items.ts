@@ -107,22 +107,24 @@ export function createLabourLineItem(params: {
   const adjustmentFactor = params.adjustmentFactor ?? 1;
   const qualityFactor = params.qualityFactor ?? 1;
   // Domain owns hours shaping (qty × productivity × factors). Engine owns money.
-  const labourHours = shapeLabourHours({
+  const labourHoursResult = shapeLabourHours({
     quantity: params.quantity,
     productivityHoursPerUnit: params.productivityHoursPerUnit,
     adjustmentFactor,
     qualityFactor,
-  }).adjustedHours;
+  });
+  const labourHours = labourHoursResult.adjustedHours;
   const money = requireEstimateLabourMoney({
     labourHours,
     labourCostRate: params.labourCostRate,
     labourSellRate: params.labourSellRate,
   });
 
-  const noteParts = [
-    `${params.quantity} ${params.unit} × ${params.productivityHoursPerUnit} hrs/${params.unit} = ${labourHours} hrs`,
-    params.notes,
-  ].filter(Boolean);
+  const equation =
+    labourHoursResult.adjustmentFactor !== 1
+      ? `${params.quantity} ${params.unit} × ${params.productivityHoursPerUnit} hrs/${params.unit} = ${labourHoursResult.baseHours} base hrs · site access/carry ×${labourHoursResult.adjustmentFactor} = ${labourHours} hrs`
+      : `${params.quantity} ${params.unit} × ${params.productivityHoursPerUnit} hrs/${params.unit} = ${labourHours} hrs`;
+  const noteParts = [equation, params.notes].filter(Boolean);
 
   return withRateMetadata(
     {

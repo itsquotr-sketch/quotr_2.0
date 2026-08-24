@@ -201,6 +201,14 @@ export function JobPlanWorkAreaCardView({
                     ? `deck-post-${card.workAreaId}`
                     : specFocusKey === "deck.fascia_material"
                       ? `deck-fascia-${card.workAreaId}`
+                      : specFocusKey === "retaining_wall.face_board_section"
+                        ? `rw-boards-${card.workAreaId}`
+                        : specFocusKey === "retaining_wall.material"
+                          ? `rw-material-${card.workAreaId}`
+                          : specFocusKey === "retaining_wall.length_m"
+                            ? `rw-length-${card.workAreaId}`
+                            : specFocusKey === "retaining_wall.excavation_volume_m3"
+                              ? `rw-excavation-volume-${card.workAreaId}`
                       : null;
 
       const el = id ? document.getElementById(id) : null;

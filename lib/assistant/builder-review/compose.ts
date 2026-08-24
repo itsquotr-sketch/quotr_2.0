@@ -261,14 +261,20 @@ export function isNonCommercialStructuralTakeoff(
 export function toTakeoffRow(
   req: MaterialRequirement
 ): BuilderReviewTakeoffRow {
+  const netPurchaseDiffer =
+    req.wasteFactor > 0 && req.baseQuantity !== req.purchaseQuantity;
+  const qtyDetail = netPurchaseDiffer
+    ? `${round2(req.baseQuantity)} ${req.baseUnit} net · ${round2(req.purchaseQuantity)} ${req.purchaseUnit} purchased`
+    : null;
+  const spec = [qtyDetail, req.specification].filter(Boolean).join(" · ") || null;
   return {
     requirementId: req.requirementId,
     componentKey: req.componentKey,
     label: takeoffLabel(req),
     quantity: round2(req.purchaseQuantity),
     unit: req.purchaseUnit,
-    specification: req.specification ?? null,
-    detail: req.specification ?? null,
+    specification: spec,
+    detail: spec,
     confidenceLabel: takeoffConfidence(req),
     commercial: false,
     parentAllowanceHint: PLANNING_TAKEOFF_PARENT_HINT,

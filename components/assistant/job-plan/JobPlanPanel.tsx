@@ -14,6 +14,7 @@ import type {
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
 import type { EstimateFact } from "@/lib/estimate/types";
+import type { JobPlanConstraintWrite } from "@/components/assistant/job-plan/quick-spec-editors";
 
 type JobPlanPanelProps = {
   plan: JobPlanView;
@@ -51,6 +52,8 @@ type JobPlanPanelProps = {
     value: string | number;
     valueType: "number" | "select";
   }) => void;
+  constraints?: readonly { key: string; value: unknown }[];
+  onConstraint?: JobPlanConstraintWrite;
 };
 
 export function JobPlanPanel({
@@ -73,6 +76,8 @@ export function JobPlanPanel({
   scopeFocusItemId = null,
   onToggleScope,
   onSpecFact,
+  constraints,
+  onConstraint,
 }: JobPlanPanelProps) {
   const cardsToRender = focusWorkAreaId
     ? plan.cards.filter((c) => c.workAreaId === focusWorkAreaId)
@@ -143,6 +148,8 @@ export function JobPlanPanel({
                   workAreaId={card.workAreaId}
                   facts={facts}
                   onSpecFact={onSpecFact}
+                  constraints={constraints}
+                  onConstraint={onConstraint}
                 />
               ) : null;
             })()}

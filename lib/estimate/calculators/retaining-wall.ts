@@ -503,7 +503,9 @@ export function calculateRetainingWall(
           category: "materials",
           quantity: drainageBuildUp?.novacoilLm ?? effectiveLength,
           unit: "lm",
-          notes: "Drainage aggregate allowance included",
+          notes: drainageBuildUp
+            ? `${drainageLength} lm net · ${drainageBuildUp.novacoilLm} lm purchased (${drainageWastagePercent}% existing wastage, applied once). Drainage aggregate allowance included.`
+            : "Drainage aggregate allowance included",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor: NO_FINISH_QUALITY_FACTOR,

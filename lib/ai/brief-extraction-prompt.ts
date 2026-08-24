@@ -66,6 +66,9 @@ Fact key rules:
 - "backfill 300mm" → retaining_wall.backfill_included=true, retaining_wall.backfill_depth_m=0.3.
 - "novacoil" / "connect to drain" → retaining_wall.drainage_required=true, retaining_wall.drain_connection_required as stated.
 - "45m carting distance" → possibleConstraints material_carry_distance (project). Do not write retaining_wall.carting_distance_m as a new Work Area fact.
+- "Moderate access, around 30m distance" → project constraints site_access=Moderate and material_carry_distance=10–30m. Do not re-ask those Project Conditions. Do not write retaining_wall.carting_distance_m.
+- Do not extract retaining_wall.post_spacing_m unless the brief explicitly states pile/post centres or spacing.
+- "requires excavation" → retaining_wall.excavation_required=true. Do not invent excavation m³ from backfill.
 - "raking wall from 1m down to 400mm" → retaining_wall.is_raking=true, retaining_wall.height_high_m=1, retaining_wall.height_low_m=0.4.
 - "bathroom fixtures supplied by client" → bathroom.fixtures_client_supplied=true.
 - "full bathroom reno" / "full bathroom renovation" → bathroom.renovation_type=Full strip-out and rebuild.

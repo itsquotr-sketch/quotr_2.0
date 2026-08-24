@@ -3,6 +3,10 @@ import { getEstimatePriorityClass } from "@/lib/scopes/estimate-priority";
 import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import type { ComposeClarifyInput } from "@/lib/assistant/clarify/types";
+import {
+  briefSuppliesCarryDistance,
+  briefSuppliesSiteAccess,
+} from "@/lib/project-conditions/brief-logistics";
 
 const KNOWN_GEOMETRY_KEYS = new Set([
   "deck.length_m",
@@ -131,12 +135,10 @@ export function briefImpliesConstraint(
   const text = brief ?? "";
   if (!text.trim()) return false;
   if (key === "site_access") {
-    return /restricted access|difficult access|easy access|rear access|site access|limited access/i.test(
-      text
-    );
+    return briefSuppliesSiteAccess(text);
   }
   if (key === "material_carry_distance") {
-    return /carry|carting|\d+\s*[–-]\s*\d+\s*m/i.test(text);
+    return briefSuppliesCarryDistance(text);
   }
   if (key === "waste_bin_access") {
     return /waste bin|skip bin|waste handling/i.test(text);

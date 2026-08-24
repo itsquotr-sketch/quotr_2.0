@@ -38,6 +38,13 @@ export function DeckQuickSpecEditor({
   workAreaId: string;
   facts: readonly EstimateFact[];
   onSpecFact?: QuickSpecFactWrite;
+  constraints?: readonly { key: string; value: unknown }[];
+  onConstraint?: (input: {
+    key: string;
+    label: string;
+    value: string;
+    inputType?: "select" | "boolean";
+  }) => void;
 }) {
   const material = jobPlanString(facts, workAreaId, "deck.board_material") ?? "";
   const width = jobPlanNumber(facts, workAreaId, "deck.board_width_mm");

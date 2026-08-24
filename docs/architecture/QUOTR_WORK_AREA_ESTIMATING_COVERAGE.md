@@ -330,6 +330,22 @@ Classifications: **PHYSICAL_QUANTITY_READY** / **IDENTITY_READY** / **RATE_READY
 
 **COMMERCIAL_PROMOTION_READY = false** for every child. RW-2 golden **$7,345** remains package authority.
 
+**RETAINING WALL MATURITY 1C — OWNER PREVIEW CORRECTIONS (COMPLETE LOCAL / OWNER PRE-CALIBRATION REVIEW PENDING)**
+
+1C does not redesign Quotr and does not promote detailed Timber money. Package Quick Estimate remains authority until coverage. Verifier: `scripts/verify-retaining-wall-maturity-1c.ts`.
+
+| 1C correction | Contract |
+| --- | --- |
+| Pile spacing | No hidden 1.0 m default. Invented `retaining_wall.post_spacing_m` is dropped unless the brief has explicit centres/spacing. Approved target/max = 1.2 m → 15 m wall = 13 bays / 14 piles. |
+| Access / carry | Canonical Project Conditions `site_access` and `material_carry_distance`. Brief “Moderate access, around 30m distance” persists. Duplicate Clarify carry question suppressed via consumed-fact lookup, not text hiding. |
+| Edit Scope | Existing Job Plan editor surfaces timber geometry, boards, drainage/backfill/excavation, and the same Project Condition access/carry values. Writes mark estimate stale. |
+| Net vs purchase | Existing 10% waste only. Novacoil 15 lm net / 16.5 lm purchased. Face boards 110 lm net / 121 lm purchased. |
+| Labour presentation | Hours equation shows base hours then site access/carry adjustment. Moderate + 10–30 m = ×1.10 once. No second carting labour line for the same condition. |
+| Detailed labour slots | Excavation h/m³, timber piles h/ea, face boards h/m², backfill h/m³ — productivity slots only. Missing productivity is not $0. Package labour XOR detailed labour. |
+| Excavation | “Requires excavation” is scope, not volume. Bulk m³ is not invented from backfill. Pile-hole work stays inside pile installation when detailed. |
+
+Do **not** invent NZD or productivity hour benchmarks. Sleeper/Masonry physical models are unchanged. Deck 2D is unchanged.
+
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
 
 | Layer | Status |

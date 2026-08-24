@@ -195,6 +195,26 @@ export const retainingWallRefineAdapter: RefineWorkAreaAdapter = {
       }
     }
 
+    if (
+      getBooleanFact(typedFacts, workAreaId, "retaining_wall.excavation_required") ===
+        true &&
+      getNumberFact(typedFacts, workAreaId, "retaining_wall.excavation_volume_m3") ==
+        null
+    ) {
+      out.push(
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: "retaining_wall.excavation_volume_m3",
+          label: "Bulk excavation volume",
+          question:
+            "Known bulk excavation volume (m³)? Do not use backfill volume as a substitute.",
+          inputType: "number",
+          group: "structure",
+        })
+      );
+    }
+
     return out;
   },
 };

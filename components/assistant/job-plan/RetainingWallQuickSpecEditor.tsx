@@ -1,0 +1,442 @@
+"use client";
+
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import type { QuickSpecFactWrite } from "@/components/assistant/job-plan/DeckQuickSpecEditor";
+import {
+  jobPlanBoolean,
+  jobPlanNumber,
+  jobPlanString,
+} from "@/lib/assistant/job-plan/facts";
+import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
+import type { EstimateFact } from "@/lib/estimate/types";
+
+function Group({
+  title,
+  children,
+}: {
+  title: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div className="space-y-2 rounded-lg border border-border/60 p-3">
+      <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+        {title}
+      </p>
+      <div className="grid gap-3">{children}</div>
+    </div>
+  );
+}
+
+function yesNo(value: boolean | null): string {
+  if (value === true) return "Yes";
+  if (value === false) return "No";
+  return "";
+}
+
+function constraintString(
+  constraints: readonly { key: string; value: unknown }[] | undefined,
+  key: string
+): string {
+  const row = constraints?.find((item) => item.key === key);
+  if (row == null || row.value == null || row.value === "") return "";
+  return String(row.value);
+}
+
+export function RetainingWallQuickSpecEditor({
+  workAreaId,
+  facts,
+  onSpecFact,
+  constraints,
+  onConstraint,
+}: {
+  workAreaId: string;
+  facts: readonly EstimateFact[];
+  onSpecFact?: QuickSpecFactWrite;
+  constraints?: readonly { key: string; value: unknown }[];
+  onConstraint?: (input: {
+    key: string;
+    label: string;
+    value: string;
+    inputType?: "select" | "boolean";
+  }) => void;
+}) {
+  const material = jobPlanString(facts, workAreaId, "retaining_wall.material") ?? "";
+  const system = classifyRetainingWallSystem(material);
+  const length = jobPlanNumber(facts, workAreaId, "retaining_wall.length_m");
+  const height = jobPlanNumber(facts, workAreaId, "retaining_wall.height_m");
+  const high = jobPlanNumber(facts, workAreaId, "retaining_wall.height_high_m");
+  const low = jobPlanNumber(facts, workAreaId, "retaining_wall.height_low_m");
+  const raking = Boolean(high != null && low != null && high !== low);
+  const faceBoard =
+    jobPlanString(facts, workAreaId, "retaining_wall.face_board_section") ?? "";
+  const spacing = jobPlanNumber(facts, workAreaId, "retaining_wall.post_spacing_m");
+  const embedment = jobPlanNumber(facts, workAreaId, "retaining_wall.pile_embedment_m");
+  const drainage = jobPlanBoolean(facts, workAreaId, "retaining_wall.drainage_required");
+  const backfill = jobPlanBoolean(facts, workAreaId, "retaining_wall.backfill_included");
+  const excavation = jobPlanBoolean(
+    facts,
+    workAreaId,
+    "retaining_wall.excavation_required"
+  );
+  const excavationVolume = jobPlanNumber(
+    facts,
+    workAreaId,
+    "retaining_wall.excavation_volume_m3"
+  );
+  const siteAccess = constraintString(constraints, "site_access");
+  const carryDistance = constraintString(constraints, "material_carry_distance");
+
+  return (
+    <div className="grid gap-3" data-rw-quick-spec>
+      <Group title="Wall">
+        <div className="space-y-1">
+          <Label htmlFor={`rw-material-${workAreaId}`}>Wall type</Label>
+          <select
+            id={`rw-material-${workAreaId}`}
+            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            value={material}
+            onChange={(event) =>
+              onSpecFact?.({
+                workAreaId,
+                key: "retaining_wall.material",
+                label: "Wall type",
+                value: event.target.value,
+                valueType: "select",
+              })
+            }
+          >
+            <option value="">Not set</option>
+            <option value="Timber">Timber</option>
+            <option value="Concrete sleeper">Concrete sleeper</option>
+            <option value="Masonry">Masonry</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`rw-length-${workAreaId}`}>Length (m)</Label>
+          <Input
+            id={`rw-length-${workAreaId}`}
+            type="number"
+            inputMode="decimal"
+            step="0.01"
+            defaultValue={length ?? ""}
+            onBlur={(event) => {
+              const next = Number(event.target.value);
+              if (!Number.isFinite(next)) return;
+              onSpecFact?.({
+                workAreaId,
+                key: "retaining_wall.length_m",
+                label: "Wall length",
+                value: next,
+                valueType: "number",
+              });
+            }}
+          />
+        </div>
+        {raking ? (
+          <>
+            <div className="space-y-1">
+              <Label htmlFor={`rw-high-${workAreaId}`}>High-end height (m)</Label>
+              <Input
+                id={`rw-high-${workAreaId}`}
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                defaultValue={high ?? ""}
+                onBlur={(event) => {
+                  const next = Number(event.target.value);
+                  if (!Number.isFinite(next)) return;
+                  onSpecFact?.({
+                    workAreaId,
+                    key: "retaining_wall.height_high_m",
+                    label: "High-end height",
+                    value: next,
+                    valueType: "number",
+                  });
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label htmlFor={`rw-low-${workAreaId}`}>Low-end height (m)</Label>
+              <Input
+                id={`rw-low-${workAreaId}`}
+                type="number"
+                inputMode="decimal"
+                step="0.01"
+                defaultValue={low ?? ""}
+                onBlur={(event) => {
+                  const next = Number(event.target.value);
+                  if (!Number.isFinite(next)) return;
+                  onSpecFact?.({
+                    workAreaId,
+                    key: "retaining_wall.height_low_m",
+                    label: "Low-end height",
+                    value: next,
+                    valueType: "number",
+                  });
+                }}
+              />
+            </div>
+          </>
+        ) : (
+          <div className="space-y-1">
+            <Label htmlFor={`rw-height-${workAreaId}`}>Height (m)</Label>
+            <Input
+              id={`rw-height-${workAreaId}`}
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              defaultValue={height ?? high ?? ""}
+              onBlur={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next)) return;
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.height_m",
+                  label: "Wall height",
+                  value: next,
+                  valueType: "number",
+                });
+              }}
+            />
+          </div>
+        )}
+      </Group>
+
+      {system === "TIMBER_RETAINING_WALL" ? (
+        <Group title="Timber">
+          <div className="space-y-1">
+            <Label htmlFor={`rw-boards-${workAreaId}`}>Face boards</Label>
+            <select
+              id={`rw-boards-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={faceBoard}
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.face_board_section",
+                  label: "Face boards",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value="">150×50 H4 (estimating default)</option>
+              <option value="150×50 H4">150×50 H4</option>
+              <option value="200×50 H4">200×50 H4</option>
+            </select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Piles stay H5 SED / pole. Changing board width recalculates face-board
+            lm from wall area. Identities are estimating selections, not a
+            structural certificate.
+          </p>
+        </Group>
+      ) : null}
+
+      <Group title="Drainage / excavation">
+        <div className="space-y-1">
+          <Label htmlFor={`rw-drainage-${workAreaId}`}>Drainage / novacoil</Label>
+          <select
+            id={`rw-drainage-${workAreaId}`}
+            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            value={yesNo(drainage)}
+            onChange={(event) =>
+              onSpecFact?.({
+                workAreaId,
+                key: "retaining_wall.drainage_required",
+                label: "Drainage / novacoil",
+                value: event.target.value,
+                valueType: "select",
+              })
+            }
+          >
+            <option value="">Standard on timber/sleeper</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`rw-backfill-${workAreaId}`}>Backfill</Label>
+          <select
+            id={`rw-backfill-${workAreaId}`}
+            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            value={yesNo(backfill)}
+            onChange={(event) =>
+              onSpecFact?.({
+                workAreaId,
+                key: "retaining_wall.backfill_included",
+                label: "Backfill",
+                value: event.target.value,
+                valueType: "select",
+              })
+            }
+          >
+            <option value="">Standard drainage aggregate</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`rw-excavation-${workAreaId}`}>Excavation</Label>
+          <select
+            id={`rw-excavation-${workAreaId}`}
+            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            value={yesNo(excavation)}
+            onChange={(event) =>
+              onSpecFact?.({
+                workAreaId,
+                key: "retaining_wall.excavation_required",
+                label: "Excavation",
+                value: event.target.value,
+                valueType: "select",
+              })
+            }
+          >
+            <option value="">Not set</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+        </div>
+      </Group>
+
+      <Group title="Site conditions">
+        <div className="space-y-1">
+          <Label htmlFor={`rw-access-${workAreaId}`}>Access</Label>
+          <select
+            id={`rw-access-${workAreaId}`}
+            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            value={siteAccess}
+            onChange={(event) =>
+              onConstraint?.({
+                key: "site_access",
+                label: "Site access",
+                value: event.target.value,
+                inputType: "select",
+              })
+            }
+          >
+            <option value="">Not set</option>
+            <option value="Easy">Easy</option>
+            <option value="Moderate">Moderate</option>
+            <option value="Difficult">Difficult</option>
+            <option value="Very poor">Very poor</option>
+          </select>
+        </div>
+        <div className="space-y-1">
+          <Label htmlFor={`rw-carry-${workAreaId}`}>Carry distance</Label>
+          <select
+            id={`rw-carry-${workAreaId}`}
+            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            value={carryDistance}
+            onChange={(event) =>
+              onConstraint?.({
+                key: "material_carry_distance",
+                label: "Material carry distance",
+                value: event.target.value,
+                inputType: "select",
+              })
+            }
+          >
+            <option value="">Not set</option>
+            <option value="< 10m">&lt; 10m</option>
+            <option value="10–30m">10–30m</option>
+            <option value="> 30m">&gt; 30m</option>
+          </select>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          These are the same Project Conditions values — not a retaining-wall
+          copy of access or carry.
+        </p>
+      </Group>
+
+      <details className="rounded-lg border border-border/60 p-3">
+        <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+          Refinement
+        </summary>
+        <div className="mt-3 grid gap-3">
+          {system === "TIMBER_RETAINING_WALL" ? (
+            <>
+              <div className="space-y-1">
+                <Label htmlFor={`rw-spacing-${workAreaId}`}>
+                  Target pile spacing (m)
+                </Label>
+                <Input
+                  id={`rw-spacing-${workAreaId}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.05"
+                  placeholder="1.2 estimating default"
+                  defaultValue={spacing ?? ""}
+                  onBlur={(event) => {
+                    const next = Number(event.target.value);
+                    if (!Number.isFinite(next) || !(next > 0)) return;
+                    onSpecFact?.({
+                      workAreaId,
+                      key: "retaining_wall.post_spacing_m",
+                      label: "Pile centres",
+                      value: next,
+                      valueType: "number",
+                    });
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`rw-embedment-${workAreaId}`}>
+                  Pile embedment (m)
+                </Label>
+                <Input
+                  id={`rw-embedment-${workAreaId}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.05"
+                  placeholder="50% of H(x) if blank"
+                  defaultValue={embedment ?? ""}
+                  onBlur={(event) => {
+                    const next = Number(event.target.value);
+                    if (!Number.isFinite(next)) return;
+                    onSpecFact?.({
+                      workAreaId,
+                      key: "retaining_wall.pile_embedment_m",
+                      label: "Pile embedment",
+                      value: next,
+                      valueType: "number",
+                    });
+                  }}
+                />
+              </div>
+            </>
+          ) : null}
+          <div className="space-y-1">
+            <Label htmlFor={`rw-excavation-volume-${workAreaId}`}>
+              Bulk excavation volume (m³)
+            </Label>
+            <Input
+              id={`rw-excavation-volume-${workAreaId}`}
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              placeholder="Only if known — not taken from backfill"
+              defaultValue={excavationVolume ?? ""}
+              onBlur={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next) || !(next > 0)) return;
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.excavation_volume_m3",
+                  label: "Bulk excavation volume",
+                  value: next,
+                  valueType: "number",
+                });
+              }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Site access and carry distance live in Project Conditions — the same
+            canonical values, not a second retaining-wall copy.
+          </p>
+        </div>
+      </details>
+    </div>
+  );
+}

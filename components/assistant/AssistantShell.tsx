@@ -1990,6 +1990,16 @@ export function AssistantShell({
                   }
                   onChangeMaterial={(workAreaId) => {
                     if (!workAreaId) return;
+                    const workArea = displayWorkAreas.find((row) => row.id === workAreaId);
+                    if (workArea?.type === "retaining_wall") {
+                      openEditJob("job_plan", {
+                        kind: "MATERIAL_SPEC",
+                        section: "job_plan",
+                        workAreaId,
+                        specFactKey: "retaining_wall.face_board_section",
+                      });
+                      return;
+                    }
                     openEditJob("job_plan", {
                       kind: "MATERIAL_SPEC",
                       section: "job_plan",
@@ -2208,6 +2218,8 @@ export function AssistantShell({
                   scopeFocusItemId={jobPlanEditFocus?.scopeFocusItemId ?? null}
                   onToggleScope={handleJobPlanToggleScope}
                   onSpecFact={handleJobPlanSpecFact}
+                  constraints={liveConstraints}
+                  onConstraint={handleConstraintSave}
                 />
               }
               projectConditions={
@@ -2419,6 +2431,10 @@ export function AssistantShell({
                 }
                 onSpecFact={
                   workAreasConfirmed ? undefined : handleJobPlanSpecFact
+                }
+                constraints={liveConstraints}
+                onConstraint={
+                  workAreasConfirmed ? undefined : handleConstraintSave
                 }
               />
             </CollapsibleStageCard>

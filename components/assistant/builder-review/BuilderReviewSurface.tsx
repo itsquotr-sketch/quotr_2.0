@@ -376,7 +376,8 @@ export function BuilderReviewSurface({
                             {(cat.id === "MATERIALS" ||
                               cat.id === "PRICING_REQUIRED") &&
                             onChangeMaterial &&
-                            wa.workAreaType === "deck" ? (
+                            (wa.workAreaType === "deck" ||
+                              wa.workAreaType === "retaining_wall") ? (
                               <button
                                 type="button"
                                 className="mt-2 text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"

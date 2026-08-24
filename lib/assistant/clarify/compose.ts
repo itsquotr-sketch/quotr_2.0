@@ -372,6 +372,16 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
   return out;
 }
 
+function canonicalCarryDistanceIsKnown(input: ComposeClarifyInput): boolean {
+  if (constraintIsKnown(input.constraints, "material_carry_distance")) {
+    return true;
+  }
+  return input.facts.some(
+    (fact) =>
+      fact.key === "retaining_wall.carting_distance_m" && isKnownValue(fact.value)
+  );
+}
+
 function fallbackProjectCondition(
   input: ComposeClarifyInput,
   params: {
@@ -384,6 +394,12 @@ function fallbackProjectCondition(
   }
 ): ClarifyCandidate | null {
   if (constraintIsKnown(input.constraints, params.targetKey)) return null;
+  if (
+    params.targetKey === "material_carry_distance" &&
+    canonicalCarryDistanceIsKnown(input)
+  ) {
+    return null;
+  }
   if (briefImpliesConstraint(input.briefText, params.targetKey)) return null;
   return {
     id: `pc:${params.targetKey}`,
@@ -440,6 +456,12 @@ function projectConditionCandidates(
 
   const fromPreview: ClarifyCandidate[] = pc.flatMap((c) => {
     if (constraintIsKnown(input.constraints, c.targetKey)) return [];
+    if (
+      c.targetKey === "material_carry_distance" &&
+      canonicalCarryDistanceIsKnown(input)
+    ) {
+      return [];
+    }
     if (briefImpliesConstraint(input.briefText, c.targetKey)) return [];
     if (c.inputType === "multi_select") return [];
     // Initial Clarify only ranks commercially material PC questions.

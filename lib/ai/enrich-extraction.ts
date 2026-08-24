@@ -1,6 +1,14 @@
 import type { AIExtractionOutput } from "@/lib/ai/schema";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { shouldDropDuplicateFactOnIngest } from "@/lib/project-conditions/canonical";
+import {
+  briefHasExplicitPileSpacing,
+  briefHasSpoilCartingLanguage,
+  briefRequiresExcavation,
+  matchCarryDistanceMetresFromBrief,
+  matchRetainingWallLengthM,
+  matchRetainingWallRakingHeightsM,
+} from "@/lib/project-conditions/brief-logistics";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
 
@@ -43,6 +51,8 @@ function matchLinearMetres(text: string): number | null {
 }
 
 function matchCartingDistanceM(text: string): number | null {
+  const fromLogistics = matchCarryDistanceMetresFromBrief(text);
+  if (fromLogistics != null) return fromLogistics;
   const patterns = [
     /cart(?:ed|ing)?\s*(?:distance\s*)?(?:of\s*)?(\d+)\s*m/i,
     /carried\s*(\d+)\s*m/i,
@@ -856,22 +866,62 @@ function inferRetainingWall(
     allowedTypes
   );
 
-  const lengthMatch = brief.match(/(\d+(?:\.\d+)?)\s*m\s+raking|\b(\d+(?:\.\d+)?)\s*m\b/i);
-  if (lengthMatch) {
+  const lengthM = matchRetainingWallLengthM(brief);
+  if (lengthM != null) {
     addFact(extraction, {
       workAreaType: "retaining_wall",
       key: "retaining_wall.length_m",
       label: "Wall length",
-      value: Number(lengthMatch[1] ?? lengthMatch[2]),
+      value: lengthM,
       unit: "m",
     });
   }
 
-  if (includesAny(brief, ["raking"])) {
+  const raking = matchRetainingWallRakingHeightsM(brief);
+  if (raking) {
     addFact(extraction, {
       workAreaType: "retaining_wall",
       key: "retaining_wall.is_raking",
       label: "Is raking",
+      value: true,
+    });
+    addFact(extraction, {
+      workAreaType: "retaining_wall",
+      key: "retaining_wall.height_high_m",
+      label: "High-end height",
+      value: raking.highM,
+      unit: "m",
+    });
+    addFact(extraction, {
+      workAreaType: "retaining_wall",
+      key: "retaining_wall.height_low_m",
+      label: "Low-end height",
+      value: raking.lowM,
+      unit: "m",
+    });
+  } else if (includesAny(brief, ["raking"])) {
+    addFact(extraction, {
+      workAreaType: "retaining_wall",
+      key: "retaining_wall.is_raking",
+      label: "Is raking",
+      value: true,
+    });
+  }
+
+  if (includesAny(brief, ["timber retaining"])) {
+    addFact(extraction, {
+      workAreaType: "retaining_wall",
+      key: "retaining_wall.material",
+      label: "Wall material",
+      value: "Timber",
+    });
+  }
+
+  if (briefRequiresExcavation(brief)) {
+    addFact(extraction, {
+      workAreaType: "retaining_wall",
+      key: "retaining_wall.excavation_required",
+      label: "Excavation required",
       value: true,
     });
   }
@@ -902,6 +952,28 @@ function inferRetainingWall(
       value: true,
     });
   }
+}
+
+/** Drop invented RW logistics/spacing facts. Canonical Project Conditions own access/carry. */
+function sanitizeRetainingWallExtractedFacts(
+  brief: string,
+  extraction: AIExtractionOutput
+): void {
+  extraction.facts = extraction.facts.filter((fact) => {
+    if (
+      fact.key === "retaining_wall.post_spacing_m" &&
+      !briefHasExplicitPileSpacing(brief)
+    ) {
+      return false;
+    }
+    if (
+      fact.key === "retaining_wall.carting_distance_m" &&
+      !briefHasSpoilCartingLanguage(brief)
+    ) {
+      return false;
+    }
+    return true;
+  });
 }
 
 function inferExternalStairs(
@@ -1495,6 +1567,7 @@ export function enrichExtractionFromBrief(params: {
   inferFence(brief, extraction, params.allowedTypes);
   inferPergola(brief, extraction, params.allowedTypes);
   inferRetainingWall(brief, extraction, params.allowedTypes);
+  sanitizeRetainingWallExtractedFacts(brief, extraction);
   inferExternalStairs(brief, extraction, params.allowedTypes);
   inferPlastering(brief, extraction, params.allowedTypes);
   inferDemolitionAndRemoval(brief, extraction, params.allowedTypes);
