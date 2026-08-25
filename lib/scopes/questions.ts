@@ -12,7 +12,9 @@ import {
   buildFactLookup,
   factHasValue,
   getPrepopulationForQuestion,
+  getFactValue,
   hasFactValue,
+  toPositiveNumber,
   type ProjectFactRecord,
 } from "@/lib/scopes/fact-values";
 import {
@@ -343,7 +345,7 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
         workAreaId: workArea.id,
         factKey: template.factKey,
         inputType: template.inputType,
-        options: template.options,
+        options: spoilQuestionOptions(template, workArea.id, factLookup),
       });
 
       candidates.push({
@@ -351,7 +353,7 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
         label: template.label,
         questionText: template.questionText,
         inputType: template.inputType,
-        options: template.options,
+        options: spoilQuestionOptions(template, workArea.id, factLookup),
         unit: template.unit,
         required: template.required,
         workAreaId: workArea.id,
@@ -399,6 +401,25 @@ function constraintValue(
  * project constraint is still UNKNOWN. The Project Conditions interviewer
  * owns asking them. ceilings.access / deck.access_type remain local.
  */
+function spoilQuestionOptions(
+  template: ScopeQuestionTemplate,
+  workAreaId: string,
+  factLookup: ReturnType<typeof buildFactLookup>
+): string[] | undefined {
+  if (template.factKey !== "retaining_wall.spoil_removal_portion") {
+    return template.options;
+  }
+  const volume = toPositiveNumber(
+    getFactValue(factLookup, workAreaId, "retaining_wall.excavation_volume_m3")
+  );
+  if (volume == null) return template.options;
+  return [
+    `All — ${volume.toFixed(1)}m³`,
+    "Some — enter quantity",
+    "None",
+  ];
+}
+
 function isSuppressedByProjectWideKnowledge(
   factKey: string,
   project: ProjectInput,
@@ -613,7 +634,7 @@ export function buildQuestionBlockFromProjectState(params: {
         workAreaId: workArea.id,
         factKey: template.factKey,
         inputType: template.inputType,
-        options: template.options,
+        options: spoilQuestionOptions(template, workArea.id, factLookup),
       });
 
       candidates.push({
@@ -621,7 +642,7 @@ export function buildQuestionBlockFromProjectState(params: {
         label: template.label,
         questionText: template.questionText,
         inputType: template.inputType,
-        options: template.options,
+        options: spoilQuestionOptions(template, workArea.id, factLookup),
         unit: template.unit,
         required: template.required,
         blocksEstimate:

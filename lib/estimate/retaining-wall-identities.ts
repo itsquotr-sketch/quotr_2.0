@@ -40,6 +40,15 @@ export const RW_EXCAVATION_COMPONENT = "retaining_wall.excavation.bulk";
 export const RW_EXCAVATION_SUBCONTRACT_COMPONENT =
   "retaining_wall.excavation.subcontract";
 export const RW_SPOIL_DISPOSAL_COMPONENT = "retaining_wall.spoil.disposal";
+/** Leftover TIP-FEE-ONLY identity. Must not resolve all-in spoil removal. */
+export const RW_SPOIL_DISPOSAL_M3_KEY = "retaining_wall.spoil.disposal.m3";
+/** MVP all-in hardfill/spoil removal: cartage + tip, $/m³ of measured in-situ excavation. */
+export const RW_SPOIL_REMOVAL_ALL_IN_M3_KEY =
+  "retaining_wall.spoil.removal.all_in.m3";
+export const RW_SPOIL_REMOVAL_PORTION_KEY =
+  "retaining_wall.spoil_removal_portion";
+export const RW_SPOIL_REMOVAL_VOLUME_KEY =
+  "retaining_wall.spoil_removal_volume_m3";
 export const RW_TIMBER_BOARDS_COMPONENT = "retaining_wall.timber.face_boards";
 export const RW_TIMBER_PILES_EA_COMPONENT = "retaining_wall.timber.piles.ea";
 export const RW_TIMBER_PILES_LM_COMPONENT = "retaining_wall.timber.piles.lm";

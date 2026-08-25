@@ -1,4 +1,4 @@
-import { jobPlanNumber, jobPlanString, presentationFromBoolean } from "@/lib/assistant/job-plan/facts";
+import { jobPlanBoolean, jobPlanNumber, jobPlanString, presentationFromBoolean } from "@/lib/assistant/job-plan/facts";
 import { round2 } from "@/lib/estimate/facts";
 import { retainingWallHasCoreHeight } from "@/lib/estimate/calculators/retaining-wall";
 import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
@@ -20,15 +20,7 @@ function booleanCheck(params: {
   facts: readonly EstimateFact[];
   surfaceReason: string;
 }): JobPlanScopeItem {
-  const raw = jobPlanString(params.facts, params.workAreaId, params.factKey);
-  const value =
-    raw == null
-      ? null
-      : /^(true|yes)$/i.test(String(raw))
-        ? true
-        : /^(false|no)$/i.test(String(raw))
-          ? false
-          : null;
+  const value = jobPlanBoolean(params.facts, params.workAreaId, params.factKey);
   return {
     id: params.id,
     workAreaId: params.workAreaId,
@@ -159,6 +151,21 @@ export const retainingWallJobPlanAdapter: JobPlanWorkAreaAdapter = {
           "Standard drainage aggregate on timber and sleeper walls unless turned off. Not excavation.",
       }),
     ];
+    if (
+      jobPlanBoolean(context.facts, workArea.id, "retaining_wall.excavation_required") ===
+      true
+    ) {
+      checks.push(
+        booleanCheck({
+          id: "rw-spoil-removal",
+          workAreaId: workArea.id,
+          label: "Spoil removal",
+          factKey: "retaining_wall.disposal_included",
+          facts: context.facts,
+          surfaceReason: "Check: excavated spoil leaving site is optional commercial scope",
+        })
+      );
+    }
     if (system === "CONCRETE_MASONRY_WALL") {
       checks.push(
         booleanCheck({

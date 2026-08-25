@@ -43,8 +43,23 @@ export type BuilderReviewPricedLine = {
   readonly componentKey: string | null;
   readonly isAllowance: boolean;
   readonly specification: string | null;
+  readonly supporting: string | null;
+  readonly detail: string | null;
+  readonly pricingHelper: string | null;
   readonly rateContext: string | null;
   readonly sourceLine: EstimateLineItem;
+};
+
+export type BuilderReviewLineGroup = {
+  readonly id: string;
+  readonly label: string;
+  readonly recommendedCost: number;
+  readonly supporting: string | null;
+  readonly secondary: string | null;
+  readonly itemKey: string | null;
+  readonly showChangeMaterial: boolean;
+  readonly rateContext: string | null;
+  readonly children: readonly BuilderReviewPricedLine[];
 };
 
 export type BuilderReviewTakeoffRow = {
@@ -69,7 +84,10 @@ export type BuilderReviewCategoryGroup = {
   readonly takeoff: readonly BuilderReviewTakeoffRow[];
   readonly takeoffDisclaimer: string | null;
   readonly takeoffUnavailableHint: string | null;
+  readonly takeoffCollapsedByDefault: boolean;
+  readonly takeoffTitle: string;
   readonly groupNotes: readonly { readonly id: string; readonly title: string; readonly detail: string }[];
+  readonly lineGroups: readonly BuilderReviewLineGroup[];
 };
 
 export type BuilderReviewWorkAreaGroup = {

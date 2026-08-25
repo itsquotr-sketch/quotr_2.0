@@ -1,5 +1,6 @@
 import type { QualityLevel } from "@/components/assistant/types";
 import type { EstimateFact } from "@/lib/estimate/types";
+import { parseYesNoValue } from "@/lib/scopes/fact-values";
 import { resolveFinishLevel } from "@/lib/scopes/finish-level";
 
 const NOT_SURE_VALUES = new Set([
@@ -88,15 +89,7 @@ export function getBooleanFact(
 ): boolean | null {
   const value = getFact(facts, workAreaId, key)?.value;
   if (!hasFactValue(value) || isNotSureValue(value)) return null;
-
-  if (value === true || value === "true" || value === "Yes" || value === "yes") {
-    return true;
-  }
-  if (value === false || value === "false" || value === "No" || value === "no") {
-    return false;
-  }
-
-  return null;
+  return parseYesNoValue(value);
 }
 
 export function getBooleanFactAny(

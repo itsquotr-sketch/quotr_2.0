@@ -215,6 +215,81 @@ export const retainingWallRefineAdapter: RefineWorkAreaAdapter = {
       );
     }
 
+    if (
+      getBooleanFact(typedFacts, workAreaId, "retaining_wall.excavation_required") ===
+      true
+    ) {
+      if (!known(facts, workAreaId, "retaining_wall.disposal_included")) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: "retaining_wall.disposal_included",
+            label: "Spoil removal",
+            question: "Will excavated spoil need to be removed from site?",
+            inputType: "select",
+            options: [
+              "No — spoil will remain or be reused on site",
+              "Yes — some or all will be removed",
+              "Not sure",
+            ],
+          })
+        );
+      } else if (
+        getBooleanFact(typedFacts, workAreaId, "retaining_wall.disposal_included") ===
+        true
+      ) {
+        const excavationM3 = getNumberFact(
+          typedFacts,
+          workAreaId,
+          "retaining_wall.excavation_volume_m3"
+        );
+        if (excavationM3 != null && !known(facts, workAreaId, "retaining_wall.spoil_removal_portion")) {
+          out.push(
+            candidate({
+              workAreaId,
+              workAreaName,
+              factKey: "retaining_wall.spoil_removal_portion",
+              label: "Spoil leaving site",
+              question: "How much of the excavated material needs to leave site?",
+              inputType: "select",
+              options: [
+                `All — ${excavationM3.toFixed(1)}m³`,
+                "Some — enter quantity",
+                "None",
+              ],
+            })
+          );
+        }
+        const portion = getStringFact(
+          typedFacts,
+          workAreaId,
+          "retaining_wall.spoil_removal_portion"
+        );
+        const some = Boolean(portion && /^some\b/i.test(portion));
+        if (
+          (some || excavationM3 == null) &&
+          getNumberFact(
+            typedFacts,
+            workAreaId,
+            "retaining_wall.spoil_removal_volume_m3"
+          ) == null
+        ) {
+          out.push(
+            candidate({
+              workAreaId,
+              workAreaName,
+              factKey: "retaining_wall.spoil_removal_volume_m3",
+              label: "Spoil removal volume",
+              question: "Estimated spoil removal volume (m³)?",
+              inputType: "number",
+              group: "structure",
+            })
+          );
+        }
+      }
+    }
+
     return out;
   },
 };

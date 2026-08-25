@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { DerivedFactDisplay } from "@/lib/assistant/types";
 import type { Question } from "@/components/assistant/types";
-import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
+import { normalizeBooleanForUi, parseYesNoValue } from "@/lib/scopes/fact-values";
 import { formatSelectAnswerValue } from "@/lib/scopes/fact-labels";
 import {
   classifyQuestionPresentationCategory,
@@ -119,14 +119,30 @@ function chipValueMatches(
     return value.includes(option);
   }
   if (value === option) return true;
-  if (option === "Yes") return value === true || value === "true";
-  if (option === "No") return value === false || value === "false";
+  const parsed = parseYesNoValue(value);
+  if (option === "Yes" || /^yes\b/i.test(option)) {
+    return parsed === true || value === true || value === "true";
+  }
+  if (option === "No" || /^no\b(?!t)/i.test(option)) {
+    return parsed === false || value === false || value === "false";
+  }
   if (option === "Not sure") {
     return (
       value === "Not sure" ||
       value === "not sure" ||
       value === "not_sure"
     );
+  }
+  if (typeof value === "string") {
+    const a = option.trim().toLowerCase();
+    const b = value.trim().toLowerCase();
+    if (a === b) return true;
+    if (a.split("—")[0]?.trim() && b.startsWith(a.split("—")[0]!.trim())) {
+      return true;
+    }
+    if (b.split("—")[0]?.trim() && a.startsWith(b.split("—")[0]!.trim())) {
+      return true;
+    }
   }
   return false;
 }

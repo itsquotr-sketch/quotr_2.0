@@ -11,6 +11,7 @@ export type {
   BuilderReviewCategoryId,
   BuilderReviewImprovement,
   BuilderReviewIssue,
+  BuilderReviewLineGroup,
   BuilderReviewOverview,
   BuilderReviewPricedLine,
   BuilderReviewTakeoffRow,

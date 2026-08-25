@@ -320,7 +320,15 @@ export function BuilderReviewSurface({
                         amount={cat.cost > 0 ? formatCurrency(cat.cost) : null}
                       />
 
-                      {cat.groupNotes.map((note) => (
+                      {cat.groupNotes
+                        .filter(
+                          (note) =>
+                            !(
+                              note.id === "pile-procurement" &&
+                              cat.lineGroups.length > 0
+                            )
+                        )
+                        .map((note) => (
                         <p
                           key={note.id}
                           className="text-xs leading-snug break-words text-muted-foreground"
@@ -333,12 +341,102 @@ export function BuilderReviewSurface({
                         </p>
                       ))}
 
+                      {cat.lineGroups.map((group) => (
+                        <div
+                          key={group.id}
+                          className="px-0 py-2"
+                          data-builder-review-line-group={group.id}
+                          data-commercial="true"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 space-y-0.5">
+                              <p className="text-sm font-medium leading-snug">
+                                {group.label}
+                              </p>
+                              {group.supporting ? (
+                                <p className="text-xs break-words text-muted-foreground">
+                                  {group.supporting}
+                                </p>
+                              ) : null}
+                              {group.secondary ? (
+                                <p className="text-xs break-words text-muted-foreground">
+                                  {group.secondary}
+                                </p>
+                              ) : null}
+                              {group.rateContext ? (
+                                <p className="text-[11px] leading-snug break-words text-muted-foreground">
+                                  {group.rateContext}
+                                </p>
+                              ) : null}
+                            </div>
+                            <p className="shrink-0 text-sm font-semibold tabular-nums">
+                              {formatCurrency(group.recommendedCost)}
+                            </p>
+                          </div>
+                          {group.children.length > 0 ? (
+                            <details className="group/stock mt-2">
+                              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                                Stock breakdown
+                              </summary>
+                              <ul className="mt-1.5 space-y-1.5">
+                                {group.children.map((child) => (
+                                  <li
+                                    key={child.id}
+                                    className="flex items-start justify-between gap-3 text-xs"
+                                    data-builder-review-stock-sku={
+                                      child.itemKey ?? child.id
+                                    }
+                                  >
+                                    <span className="min-w-0 break-words">
+                                      <span className="font-medium">
+                                        {child.label}
+                                      </span>
+                                      {child.quantity != null ? (
+                                        <span className="mt-0.5 block text-muted-foreground">
+                                          {formatQty(child.quantity, child.unit)}
+                                          {child.costRate != null
+                                            ? ` · ${formatCurrency(child.costRate)}${
+                                                child.unit ? `/${child.unit}` : ""
+                                              } · ${child.rateLabel}`
+                                            : ""}
+                                        </span>
+                                      ) : null}
+                                      {child.rateContext ? (
+                                        <span className="mt-0.5 block text-[11px] text-muted-foreground">
+                                          {child.rateContext}
+                                        </span>
+                                      ) : null}
+                                    </span>
+                                    <span className="shrink-0 font-medium tabular-nums">
+                                      {formatCurrency(child.recommendedCost)}
+                                    </span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          ) : null}
+                          {group.showChangeMaterial &&
+                          onChangeMaterial &&
+                          (wa.workAreaType === "deck" ||
+                            wa.workAreaType === "retaining_wall") ? (
+                            <button
+                              type="button"
+                              className="mt-2 text-xs font-medium text-muted-foreground underline-offset-4 hover:underline"
+                              data-builder-review-change-material
+                              onClick={() => onChangeMaterial(wa.workAreaId)}
+                            >
+                              Change material
+                            </button>
+                          ) : null}
+                        </div>
+                      ))}
+
                       <ul className="space-y-1.5">
                         {cat.lines.map((line) => {
                           const pricingRequired =
                             cat.id === "PRICING_REQUIRED" ||
                             line.rateLabel === "Rate required";
-                          const qty = formatQty(line.quantity, line.unit);
+                          const labour = cat.id === "LABOUR";
                           return (
                           <li
                             key={line.id}
@@ -354,46 +452,50 @@ export function BuilderReviewSurface({
                                 {line.isAllowance ? (
                                   <StatusPill tone="neutral">Allowance</StatusPill>
                                 ) : null}
-                                {line.specification ? (
+                                {line.supporting ? (
                                   <p className="text-xs break-words text-muted-foreground">
-                                    {line.specification}
+                                    {line.supporting}
                                   </p>
                                 ) : null}
-                                {qty ? (
-                                  <p className="text-xs break-words tabular-nums text-muted-foreground">
-                                    {qty}
-                                    {line.isAllowance ? " allowance" : ""}
-                                  </p>
-                                ) : null}
-                                <p className="text-xs break-words text-muted-foreground">
-                                  {[
-                                    line.labourHours != null
-                                      ? `${line.labourHours} labour-hours`
-                                      : null,
-                                    line.costRate != null && !pricingRequired
-                                      ? `${formatCurrency(line.costRate)}${
-                                          line.unit ? `/${line.unit}` : line.labourHours != null ? "/hour" : ""
-                                        }`
-                                      : null,
-                                    line.rateLabel,
-                                  ]
-                                    .filter(Boolean)
-                                    .join(" · ")}
-                                </p>
                                 {line.rateContext ? (
                                   <p className="text-[11px] leading-snug break-words text-muted-foreground">
                                     {line.rateContext}
                                   </p>
                                 ) : null}
+                                {line.pricingHelper ? (
+                                  <p className="text-xs break-words text-muted-foreground">
+                                    {line.pricingHelper}
+                                  </p>
+                                ) : null}
+                                {line.detail ? (
+                                  <details className="text-xs text-muted-foreground">
+                                    <summary className="cursor-pointer">
+                                      Details
+                                    </summary>
+                                    <p className="mt-1 break-words">{line.detail}</p>
+                                  </details>
+                                ) : null}
                               </div>
                               {pricingRequired ? (
                                 <p className="max-w-[42%] shrink-0 text-right text-xs font-medium text-foreground break-words">
-                                  Needs a trusted price
+                                  {/spoil/i.test(line.label)
+                                    ? "Price required"
+                                    : "Needs a trusted price"}
                                 </p>
                               ) : (
-                                <p className="shrink-0 text-sm font-semibold tabular-nums">
-                                  {formatCurrency(line.recommendedCost)}
-                                </p>
+                                <div className="shrink-0 text-right">
+                                  {labour && line.labourHours != null ? (
+                                    <p
+                                      className="text-xs tabular-nums text-muted-foreground"
+                                      aria-label={`${line.labourHours} labour-hours`}
+                                    >
+                                      {line.labourHours}h
+                                    </p>
+                                  ) : null}
+                                  <p className="text-sm font-semibold tabular-nums">
+                                    {formatCurrency(line.recommendedCost)}
+                                  </p>
+                                </div>
                               )}
                             </div>
                             {(cat.id === "MATERIALS" ||
@@ -418,27 +520,46 @@ export function BuilderReviewSurface({
                       </ul>
 
                       {cat.takeoff.length > 0 || cat.takeoffUnavailableHint ? (
-                        <div
+                        <details
                           className="rounded-lg border border-dashed border-border/70 px-3 py-2.5"
                           data-builder-review-takeoff
                           data-commercial="false"
+                          data-takeoff-collapsed={
+                            cat.takeoffCollapsedByDefault ? "true" : "false"
+                          }
+                          open={!cat.takeoffCollapsedByDefault}
                         >
-                          <p className="text-xs font-medium text-muted-foreground">
-                            Planning takeoff
-                          </p>
-                          {cat.takeoff.length > 0 ? (
+                          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+                            {cat.takeoffTitle}
+                            {cat.takeoff.length > 0 ? (
+                              <span className="mt-0.5 block font-normal">
+                                {cat.takeoff
+                                  .filter((row) =>
+                                    /wall face|piles|pile length/i.test(row.label)
+                                  )
+                                  .slice(0, 3)
+                                  .map(
+                                    (row) =>
+                                      `${row.label} ${formatQty(row.quantity, row.unit)}`
+                                  )
+                                  .join(" · ")}
+                              </span>
+                            ) : null}
+                          </summary>
+                          {cat.takeoff.length > 0 && wa.workAreaType === "deck" ? (
                             <p className="mt-1 text-[11px] leading-snug text-muted-foreground">
                               {cat.takeoff[0]?.parentAllowanceHint ??
                                 "Planning quantities are included within the framing/substructure allowance and are not priced separately."}
                             </p>
-                          ) : (
+                          ) : null}
+                          {cat.takeoff.length === 0 && cat.takeoffUnavailableHint ? (
                             <p
                               className="mt-1 text-[11px] leading-snug text-muted-foreground"
                               data-takeoff-unavailable
                             >
                               {cat.takeoffUnavailableHint}
                             </p>
-                          )}
+                          ) : null}
                           {cat.takeoffDisclaimer ? (
                             <p
                               className="mt-1 text-[11px] leading-snug text-muted-foreground"
@@ -475,7 +596,7 @@ export function BuilderReviewSurface({
                               ))}
                             </ul>
                           ) : null}
-                        </div>
+                        </details>
                       ) : null}
                     </section>
                   ))}

@@ -71,11 +71,14 @@ import {
   isPricedMaterialRequirement,
 } from "@/lib/estimate/requirement-commercial-line";
 import { RW_EXCAVATION_LABOUR_COMPONENT, RW_EXCAVATION_SUBCONTRACT_COMPONENT, RW_FACE_AREA_COMPONENT, RW_SPOIL_DISPOSAL_COMPONENT, RW_BACKFILL_COMPONENT, RW_TIMBER_BOARDS_COMPONENT, RW_TIMBER_FIXINGS_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
+import { RW_SPOIL_REMOVAL_EXCEEDS_MEASURED } from "@/lib/estimate/retaining-wall-spoil-removal";
 import { detailedTimberLabourFromCost, RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER } from "@/lib/estimate/retaining-wall-timber-1d";
 import {
   formatAggregateProcurementCopy,
+  formatAggregateProcurementDetail,
   formatBoardProcurementCopy,
   formatFixingsAllowanceCopy,
+  formatTimberLabourCompactCopy,
   formatTimberLabourModifierCopy,
 } from "@/lib/estimate/retaining-wall-builder-copy";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
@@ -123,6 +126,8 @@ export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
   "retaining_wall.engineering_or_consent_status",
   "retaining_wall.carting_distance_m",
   "retaining_wall.disposal_included",
+  "retaining_wall.spoil_removal_portion",
+  "retaining_wall.spoil_removal_volume_m3",
 ] as const;
 
 export const RETAINING_WALL_HARD_MINIMUM_FACT_KEYS = [
@@ -702,16 +707,20 @@ export function calculateRetainingWall(
             wasteFactor: requirement.wasteFactor,
           });
         } else if (requirement.componentKey === RW_BACKFILL_COMPONENT) {
-          notes = formatAggregateProcurementCopy({
+          notes = `${formatAggregateProcurementCopy({
             inPlaceM3: requirement.baseQuantity,
             purchaseM3: requirement.purchaseQuantity,
-          });
+          })} · ${formatAggregateProcurementDetail()}`;
         } else if (requirement.componentKey === RW_TIMBER_FIXINGS_COMPONENT) {
           notes = /company residual/i.test(requirement.specification ?? "")
             ? "Fixings and connectors allowance · company residual"
                 : formatFixingsAllowanceCopy(
                     round2(requirement.totalCost / RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER)
                   );
+        } else if (requirement.componentKey === RW_SPOIL_DISPOSAL_COMPONENT) {
+          notes = requirement.specification?.includes(RW_SPOIL_REMOVAL_EXCEEDS_MEASURED)
+            ? `${round2(requirement.purchaseQuantity)} m³ spoil leaving site. ${RW_SPOIL_REMOVAL_EXCEEDS_MEASURED}`
+            : `${round2(requirement.purchaseQuantity)} m³ spoil leaving site`;
         }
         lineItems.push(
           {
@@ -729,7 +738,7 @@ export function calculateRetainingWall(
       } else {
         const pricingNote =
           requirement.componentKey === RW_SPOIL_DISPOSAL_COMPONENT
-            ? "Spoil disposal — price required."
+            ? "Add a hardfill removal rate in Rates."
             : requirement.componentKey === RW_EXCAVATION_SUBCONTRACT_COMPONENT
               ? "Excavation subcontract — price required."
               : requirement.specification ?? "Needs a trusted price.";
@@ -773,6 +782,17 @@ export function calculateRetainingWall(
           unit: requirement.productivityBasis.unit,
           hoursPerUnit: requirement.productivityBasis.hoursPerUnit,
         });
+        const labourCompact = formatTimberLabourCompactCopy({
+          constraints: context.constraints,
+          includeMaterialCarry,
+          quantity: requirement.productivityBasis.quantity,
+          unit: requirement.productivityBasis.unit,
+          hoursPerUnit: requirement.productivityBasis.hoursPerUnit,
+          label: requirement.description,
+        });
+        const labourSupporting = [labourCompact.supporting, labourCompact.modifiers]
+          .filter(Boolean)
+          .join(" · ");
         lineItems.push({
           ...createLabourLineItem({
             workAreaId: workArea.id,
@@ -797,7 +817,7 @@ export function calculateRetainingWall(
             organisationSettings: context.organisationSettings,
           }),
           notes: labourNotes,
-          identitySummary: labourNotes,
+          identitySummary: labourSupporting,
         });
       } else {
         lineItems.push(
@@ -842,7 +862,7 @@ export function calculateRetainingWall(
           componentKey: requirement.componentKey,
           sellDerivedFromMargin: true,
           sellAuthority: "derived_from_gross_margin",
-          notes: `${days} day${days === 1 ? "" : "s"} × $${unitCost}/day dry hire. Quantity from machine hours, not sell.`,
+          notes: `${days} day${days === 1 ? "" : "s"} × $${unitCost}/day dry hire. ${requirement.hours != null && requirement.hours > 0 ? `${requirement.hours} estimated machine hours rounded to ${days} hire day.` : "Quantity from machine hours, not sell."}`,
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
         })
@@ -895,14 +915,19 @@ export function calculateRetainingWall(
     workArea.id,
     "retaining_wall.disposal_included"
   );
+  const excavationRequired =
+    getBooleanFact(facts, workArea.id, "retaining_wall.excavation_required") ===
+    true;
   const hasDisposalLine = lineItems.some((item) =>
-    /disposal|cartage allowance/i.test(item.label)
+    /disposal|cartage allowance|spoil removal/i.test(item.label)
   );
 
-  if (
+  if (commercial.mode === "DETAILED_COMPONENT_AUTHORITY") {
+    // Spoil removal is owned by the timber commercial component.
+  } else if (
+    excavationRequired &&
     disposalIncluded === true &&
-    !hasDisposalLine &&
-    commercial.mode !== "DETAILED_COMPONENT_AUTHORITY"
+    !hasDisposalLine
   ) {
     const disposalRates = resolveRate({
       rates: context.rates,
@@ -935,11 +960,11 @@ export function calculateRetainingWall(
         qualityFactor: NO_FINISH_QUALITY_FACTOR,
       })
     );
-  } else if (disposalIncluded === false) {
-    exclusions.push("Spoil disposal and cartage excluded unless stated otherwise.");
-  } else if (disposalIncluded === null) {
+  } else if (excavationRequired && disposalIncluded === false) {
+    exclusions.push("Spoil removal excluded — spoil remains or is reused on site.");
+  } else if (excavationRequired && disposalIncluded === null) {
     assumptions.push(
-      "Disposal/cartage is subject to confirmation unless stated otherwise."
+      "Spoil removal from site is not confirmed. Excavation labour and plant still apply if spoil stays on site."
     );
   }
 

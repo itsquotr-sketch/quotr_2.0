@@ -44,6 +44,9 @@ import {
   RW_SLEEPER_FIXINGS_COMPONENT,
   RW_SLEEPER_POSTS_EA_COMPONENT,
   RW_SLEEPER_POSTS_LM_COMPONENT,
+  RW_SPOIL_DISPOSAL_COMPONENT,
+  RW_SPOIL_DISPOSAL_M3_KEY,
+  RW_SPOIL_REMOVAL_ALL_IN_M3_KEY,
   RW_TIMBER_BOARDS_COMPONENT,
   RW_TIMBER_FIXINGS_COMPONENT,
   RW_TIMBER_PILES_EA_COMPONENT,
@@ -51,9 +54,11 @@ import {
   isRwTimberPileStockComponent,
 } from "@/lib/estimate/retaining-wall-identities";
 import {
+  formatPileGroupSupporting,
   formatPileProcurementSummary,
   stripInternalEstimateTokens,
 } from "@/lib/estimate/retaining-wall-builder-copy";
+import { RW_SPOIL_REMOVAL_PRICING_HELPER } from "@/lib/estimate/retaining-wall-spoil-removal";
 import { timberRateVarianceContext } from "@/lib/estimate/retaining-wall-rate-context";
 import { RW_PLANNING_TAKEOFF_DISCLAIMER } from "@/lib/estimate/retaining-wall-physical";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
@@ -64,6 +69,7 @@ import type {
   BuilderReviewCategoryId,
   BuilderReviewImprovement,
   BuilderReviewIssue,
+  BuilderReviewLineGroup,
   BuilderReviewPricedLine,
   BuilderReviewTakeoffRow,
   BuilderReviewView,
@@ -140,6 +146,14 @@ export function mapLineCategory(
     return "PLANT";
   }
   const source = classifyRateSource(item.rateSource ?? "");
+  if (
+    item.componentKey === RW_SPOIL_DISPOSAL_COMPONENT ||
+    item.itemKey === RW_SPOIL_DISPOSAL_M3_KEY ||
+    item.itemKey === RW_SPOIL_REMOVAL_ALL_IN_M3_KEY ||
+    /spoil (disposal|removal)/i.test(item.label)
+  ) {
+    return source === "missing" ? "PRICING_REQUIRED" : "WASTE";
+  }
   if (source === "missing") return "PRICING_REQUIRED";
 
   switch (item.category) {
@@ -214,6 +228,11 @@ function mapRwBuilderLabel(label: string): string {
   if (label === "Excavation labour") return "Excavation";
   if (/EXCAVATION ALLOWANCE/i.test(label)) return "Excavation allowance";
   if (/mini-excavator/i.test(label)) return "Mini-excavator / auger";
+  if (/fixings, connectors and sundries/i.test(label)) {
+    return "Fixings and connectors allowance";
+  }
+  if (/novacoil/i.test(label) && !/labour/i.test(label)) return "Novacoil drainage";
+  if (/spoil disposal/i.test(label)) return "Spoil removal";
   return label;
 }
 
@@ -226,6 +245,10 @@ export function toPricedLine(item: EstimateLineItem): BuilderReviewPricedLine {
     appliedCostRate: item.costRate,
     rateLabel,
   });
+  const hierarchy = lineHierarchy(item, rateLabel, category);
+  const spoil =
+    item.componentKey === RW_SPOIL_DISPOSAL_COMPONENT ||
+    /spoil (disposal|removal)/i.test(item.label);
   return {
     id: item.id,
     label: mapRwBuilderLabel(item.label),
@@ -240,9 +263,89 @@ export function toPricedLine(item: EstimateLineItem): BuilderReviewPricedLine {
     itemKey: item.itemKey ?? null,
     componentKey: item.componentKey ?? item.itemKey ?? null,
     isAllowance: isAllowanceLine(item),
-    specification: lineSpecification(item),
+    specification: hierarchy.supporting,
+    supporting: hierarchy.supporting,
+    detail: hierarchy.detail,
+    pricingHelper: spoil && rateLabel === "Rate required" ? RW_SPOIL_REMOVAL_PRICING_HELPER : null,
     rateContext: variance?.copy ?? null,
     sourceLine: item,
+  };
+}
+
+function lineHierarchy(
+  item: EstimateLineItem,
+  rateLabel: string,
+  category: BuilderReviewCategoryId
+): { supporting: string | null; detail: string | null } {
+  const spec = lineSpecification(item);
+  const qty =
+    item.quantity != null
+      ? Number.isInteger(item.quantity)
+        ? String(item.quantity)
+        : item.quantity.toFixed(item.unit === "m3" ? 2 : 1)
+      : null;
+  const qtyUnit = qty && item.unit ? `${qty}${item.unit === "m3" ? "m³" : item.unit === "lm" ? "lm" : ` ${item.unit}`}` : qty;
+
+  if (category === "LABOUR") {
+    const compact = stripInternalEstimateTokens(
+      item.identitySummary ?? item.notes ?? ""
+    );
+    return {
+      supporting: compact || null,
+      detail: null,
+    };
+  }
+
+  if (category === "PLANT") {
+    const rate =
+      item.costRate != null
+        ? `$${item.costRate}/day · ${rateLabel}`
+        : rateLabel;
+    const hoursMatch = (item.notes ?? "").match(
+      /([\d.]+)\s+estimated machine hours rounded to (\d+)/i
+    );
+    return {
+      supporting: rate,
+      detail: hoursMatch
+        ? `${hoursMatch[1]} estimated machine hours rounded to ${hoursMatch[2]} hire day.`
+        : null,
+    };
+  }
+
+  if (item.componentKey === RW_NOVACOIL_COMPONENT) {
+    const rate =
+      item.costRate != null
+        ? `$${item.costRate}/lm · ${rateLabel}`
+        : rateLabel;
+    return {
+      supporting: [qtyUnit, rate].filter(Boolean).join(" · ") || null,
+      detail: null,
+    };
+  }
+
+  if (item.componentKey === RW_TIMBER_FIXINGS_COMPONENT) {
+    return { supporting: spec, detail: null };
+  }
+
+  if (
+    item.componentKey === RW_SPOIL_DISPOSAL_COMPONENT ||
+    /spoil (disposal|removal)/i.test(item.label)
+  ) {
+    return {
+      supporting: qtyUnit,
+      detail: null,
+    };
+  }
+
+  const rateBit =
+    item.costRate != null && item.unit
+      ? `$${item.costRate}/${item.unit} · ${rateLabel}`
+      : rateLabel !== "Rate required"
+        ? rateLabel
+        : null;
+  return {
+    supporting: [spec, rateBit].filter(Boolean).join(" · ") || null,
+    detail: null,
   };
 }
 
@@ -331,6 +434,50 @@ function workAreaTypeForName(
     : { id: null, type: null };
 }
 
+function buildPileLineGroup(
+  requirements: readonly EstimateRequirement[],
+  workAreaId: string | null,
+  stockLines: readonly BuilderReviewPricedLine[]
+): BuilderReviewLineGroup | null {
+  if (stockLines.length === 0) return null;
+  const inArea = requirements.filter(
+    (row) => !workAreaId || row.workAreaId === workAreaId
+  );
+  const ea = inArea.find(
+    (row) => row.kind === "material" && row.componentKey === RW_TIMBER_PILES_EA_COMPONENT
+  ) as MaterialRequirement | undefined;
+  const lm = inArea.find(
+    (row) => row.kind === "material" && row.componentKey === RW_TIMBER_PILES_LM_COMPONENT
+  ) as MaterialRequirement | undefined;
+  const purchaseLm = round2(
+    stockLines.reduce((sum, line) => {
+      const fromKey = line.componentKey?.match(/(\d+)_(\d+)m$/);
+      const length = fromKey ? Number(`${fromKey[1]}.${fromKey[2]}`) : 0;
+      return sum + (line.quantity ?? 0) * length;
+    }, 0)
+  );
+  const compact = formatPileGroupSupporting({
+    pileCount: ea?.purchaseQuantity ?? stockLines.reduce((s, l) => s + (l.quantity ?? 0), 0),
+    theoreticalLm: lm?.baseQuantity ?? lm?.purchaseQuantity ?? 0,
+    purchaseLm,
+  });
+  const company = stockLines.every((line) => line.rateLabel === "Company rate");
+  const hasVariance = stockLines.some((line) => Boolean(line.rateContext));
+  return {
+    id: "h5-retaining-poles",
+    label: "H5 retaining poles",
+    recommendedCost: round2(
+      stockLines.reduce((sum, line) => sum + line.recommendedCost, 0)
+    ),
+    supporting: compact.supporting,
+    secondary: compact.secondary,
+    itemKey: stockLines[0]?.itemKey ?? null,
+    showChangeMaterial: true,
+    rateContext: company && hasVariance ? "Company stock rates are being used." : null,
+    children: stockLines,
+  };
+}
+
 function pileProcurementGroupNote(
   requirements: readonly EstimateRequirement[],
   workAreaId: string | null
@@ -397,6 +544,9 @@ function attachTakeoff(
         : null,
     takeoffUnavailableHint:
       takeoff.length === 0 ? unavailableHint : null,
+    takeoffCollapsedByDefault: workAreaType === "retaining_wall",
+    takeoffTitle:
+      workAreaType === "retaining_wall" ? "Takeoff details" : "Planning takeoff",
   });
 
   const framingIdx = categories.findIndex(
@@ -435,7 +585,10 @@ function attachTakeoff(
         takeoff: [],
         takeoffDisclaimer: null,
         takeoffUnavailableHint: unavailableHint,
+        takeoffCollapsedByDefault: false,
+        takeoffTitle: "Planning takeoff",
         groupNotes: [],
+        lineGroups: [],
       },
     ];
   }
@@ -451,7 +604,10 @@ function attachTakeoff(
         takeoff,
         takeoffDisclaimer: DECK_STRUCTURAL_ESTIMATING_DISCLAIMER,
         takeoffUnavailableHint: null,
+        takeoffCollapsedByDefault: false,
+        takeoffTitle: "Planning takeoff",
         groupNotes: [],
+        lineGroups: [],
       },
     ];
   }
@@ -466,6 +622,20 @@ function normalizeIssueKey(text: string): string {
     .trim();
 }
 
+function isHighValueBuilderImprovement(label: string, retainingWallOnly: boolean): boolean {
+  if (/consent|engineering/i.test(label)) return true;
+  if (/spoil removal|disposal included|spoil leaving/i.test(label)) return true;
+  if (/quantity required|price required|trusted price|hardfill removal rate/i.test(label)) {
+    return true;
+  }
+  if (/face.board|material specification|wall type|unsupported/i.test(label)) return true;
+  if (!retainingWallOnly) return true;
+  if (/spacing|waste factor|procurement allowance|10% waste|site access|carry distance|compaction|stock length|target\/max/i.test(label)) {
+    return false;
+  }
+  return false;
+}
+
 function buildIssues(
   input: ComposeBuilderReviewInput
 ): {
@@ -473,6 +643,9 @@ function buildIssues(
   checks: BuilderReviewIssue[];
   improvements: BuilderReviewImprovement[];
 } {
+  const retainingWallOnly =
+    input.workAreas.length > 0 &&
+    input.workAreas.every((wa) => wa.type === "retaining_wall");
   const assumptionKeys = new Set<string>();
   const assumptions: BuilderReviewIssue[] = [];
   for (const row of input.estimate.assumptions) {
@@ -561,9 +734,9 @@ function buildIssues(
 
   for (const check of checks) {
     if (improvements.length >= MAX_IMPROVEMENTS) break;
-    // Only include actionable items (have an editable target).
     const actionable = "_actionable" in check ? (check as BuilderReviewIssue & { _actionable: boolean })._actionable : true;
     if (!actionable) continue;
+    if (!isHighValueBuilderImprovement(check.label, retainingWallOnly)) continue;
     improvements.push({
       id: `improve:${check.id}`,
       label: check.label,
@@ -572,10 +745,21 @@ function buildIssues(
     });
   }
 
-  if (improvements.length < MAX_IMPROVEMENTS) {
+  if (improvements.length < MAX_IMPROVEMENTS && !retainingWallOnly) {
     for (const assumption of assumptions) {
       if (improvements.length >= MAX_IMPROVEMENTS) break;
       if (/finish|standard|budget|premium/i.test(assumption.label)) continue;
+      improvements.push({
+        id: `improve:${assumption.id}`,
+        label: assumption.label.replace(/^Assuming\s+/i, "Confirm "),
+        reason: "Currently assumed",
+        editSection: "refine",
+      });
+    }
+  } else if (improvements.length < MAX_IMPROVEMENTS) {
+    for (const assumption of assumptions) {
+      if (improvements.length >= MAX_IMPROVEMENTS) break;
+      if (!isHighValueBuilderImprovement(assumption.label, true)) continue;
       improvements.push({
         id: `improve:${assumption.id}`,
         label: assumption.label.replace(/^Assuming\s+/i, "Confirm "),
@@ -701,7 +885,11 @@ export function composeBuilderReview(
         takeoff: [],
         takeoffDisclaimer: null,
         takeoffUnavailableHint: null,
+        takeoffCollapsedByDefault: meta.type === "retaining_wall",
+        takeoffTitle:
+          meta.type === "retaining_wall" ? "Takeoff details" : "Planning takeoff",
         groupNotes: [],
+        lineGroups: [],
       };
     });
 
@@ -736,11 +924,26 @@ export function composeBuilderReview(
 
     const pileNote = pileProcurementGroupNote(requirements, meta.id);
     if (pileNote) {
-      categories = categories.map((cat) =>
-        cat.id === "MATERIALS"
-          ? { ...cat, groupNotes: [...cat.groupNotes, pileNote] }
-          : cat
-      );
+      categories = categories.map((cat) => {
+        if (cat.id !== "MATERIALS") return cat;
+        const stockLines = cat.lines.filter(
+          (line) =>
+            Boolean(line.componentKey) &&
+            isRwTimberPileStockComponent(line.componentKey!)
+        );
+        const remaining = cat.lines.filter(
+          (line) =>
+            !line.componentKey ||
+            !isRwTimberPileStockComponent(line.componentKey)
+        );
+        const group = buildPileLineGroup(requirements, meta.id, stockLines);
+        return {
+          ...cat,
+          lines: remaining,
+          groupNotes: [...cat.groupNotes, pileNote],
+          lineGroups: group ? [...cat.lineGroups, group] : cat.lineGroups,
+        };
+      });
     }
 
     return {
@@ -765,12 +968,19 @@ export function composeBuilderReview(
       .filter((item) => mapLineCategory(item) === "PLANT")
       .reduce((sum, item) => sum + item.recommendedCost, 0)
   );
+  const wasteCost = round2(
+    lines
+      .filter((item) => mapLineCategory(item) === "WASTE")
+      .reduce((sum, item) => sum + item.recommendedCost, 0)
+  );
   const categorySummary = CATEGORY_ORDER.map((id) => {
     let cost = 0;
-    if (id === "MATERIALS") cost = categoryRollup.materials?.cost ?? 0;
-    else if (id === "LABOUR") cost = categoryRollup.labour?.cost ?? 0;
+    if (id === "MATERIALS") {
+      cost = round2((categoryRollup.materials?.cost ?? 0) - wasteCost);
+    } else if (id === "LABOUR") cost = categoryRollup.labour?.cost ?? 0;
     else if (id === "SUBCONTRACT") cost = categoryRollup.subcontractor?.cost ?? 0;
     else if (id === "PLANT") cost = plantCost;
+    else if (id === "WASTE") cost = wasteCost;
     else if (id === "ALLOWANCES") {
       cost = round2(
         (categoryRollup.allowance?.cost ?? 0) +

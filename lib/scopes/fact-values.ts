@@ -59,13 +59,25 @@ export function roundToTwoDecimals(value: number): number {
   return Math.round(value * 100) / 100;
 }
 
+/**
+ * Yes / No / Not sure, including builder-facing labels such as
+ * "Yes — some or all will be removed". "Not sure" is not No.
+ */
+export function parseYesNoValue(value: unknown): boolean | null {
+  if (value === true || value === "true") return true;
+  if (value === false || value === "false") return false;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed) return null;
+  if (/^yes\b/i.test(trimmed)) return true;
+  if (/^no\b(?!t)/i.test(trimmed)) return false;
+  return null;
+}
+
 export function normalizeBooleanForUi(value: unknown): string | null {
-  if (value === true || value === "true" || value === "Yes" || value === "yes") {
-    return "Yes";
-  }
-  if (value === false || value === "false" || value === "No" || value === "no") {
-    return "No";
-  }
+  const parsed = parseYesNoValue(value);
+  if (parsed === true) return "Yes";
+  if (parsed === false) return "No";
   if (typeof value === "string") {
     const lower = value.trim().toLowerCase();
     if (

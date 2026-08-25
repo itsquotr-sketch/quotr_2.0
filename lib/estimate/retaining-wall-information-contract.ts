@@ -385,8 +385,29 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       calculatorConsumed: true,
       physical: false,
       commercial: true,
+      confidence: true,
+      reason:
+        "Spoil removal from site is a separate commercial intent from excavation labour/plant. Not inferred from material carry. Default: spoil stays on site unless stated.",
+    },
+    {
+      factKey: "retaining_wall.spoil_removal_portion",
+      questionClass: "REFINE",
+      calculatorConsumed: true,
+      physical: false,
+      commercial: true,
       confidence: false,
-      reason: "Spoil disposal allowance on the legacy commercial path.",
+      reason:
+        "All / Some / None of measured excavation leaving site. All uses known excavation m³. Not backfill volume.",
+    },
+    {
+      factKey: "retaining_wall.spoil_removal_volume_m3",
+      questionClass: "REFINE",
+      calculatorConsumed: true,
+      physical: false,
+      commercial: true,
+      confidence: true,
+      reason:
+        "Partial or estimated spoil as measured/in-situ equivalent m³. Do not invent. If above measured excavation, disclose and do not clip.",
     },
     {
       factKey: "retaining_wall.carting_distance_m",

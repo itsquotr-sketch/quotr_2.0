@@ -282,7 +282,7 @@ Does not rebuild Deck geometry or change starter productivities.
 
 ---
 
-## 8. Retaining Wall — SAFETY HARDENED / TIMBER 1E POLISH
+## 8. Retaining Wall — SAFETY HARDENED / TIMBER 1F CLOSURE
 
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)** — hard-minimum and unsupported-material safety remain. Supported Timber uses detailed component authority. Sleeper/Masonry commercial package remains **still MINIMAL**.
 
@@ -352,13 +352,25 @@ Verifier: `scripts/verify-retaining-wall-maturity-1d.ts`.
 
 Supported Timber money is component-level: physical quantity → identity → procurement quantity → rate → cost; labour is physical work quantity → productivity → base hours → per-intent Project Condition modifier → adjusted hours → labour cost rate → cost; sell is cost → target GM. Legacy face-m² package is `LEGACY_FALLBACK_ONLY`. Pile purchase is stock-length EA rounded up (1.8 / 2.4 / 2.7 / 3.0 / 3.6 m H5 SED 150–175). Unknown excavation is a labelled 0.6 h/face-m² **EXCAVATION ALLOWANCE**, not invented m³. `post_spacing_m` is consumed for timber pile layout and 1D stock procurement.
 
-**RETAINING WALL MATURITY 1E — FINAL TIMBER COMMERCIAL + UX POLISH (COMPLETE LOCAL / OWNER FINAL TIMBER UX APPROVAL PENDING)**
+**RETAINING WALL MATURITY 1E — FINAL TIMBER COMMERCIAL + UX POLISH (COMPLETE / OWNER VALIDATED)**
 
 Verifier: `scripts/verify-retaining-wall-maturity-1e.ts`.
 
 Self-performed measured bulk excavation is owned by excavation labour + applicable plant. The physical `retaining_wall.excavation.bulk` row is a driver, not a generic $/m³ Pricing Required. Subcontracted excavation XOR suppresses self-perform labour and excavation plant hours. Spoil/disposal is a separate intent (`retaining_wall.disposal_included`), never inferred from material carry. Plant days = `ceil((pile machine hours + measured excavation machine hours + setup hours) / 7 productive h/day)`, minimum 1 when machine-assisted. Machine occupancy is separate from carpenter attendance. Builder Review shows procurement summaries, rate-variance context when company/project differs >25% from a comparable Quotr identity/unit, and human copy instead of internal tokens.
 
 Do **not** start Sleeper or Masonry from 1E.
+
+**RETAINING WALL MATURITY 1F — FINAL TIMBER CLOSURE (COMPLETE LOCAL / OWNER APPROVED IN PRINCIPLE)**
+
+Verifier: `scripts/verify-retaining-wall-maturity-1f.ts`.
+
+Spoil removal is asked only when excavation (or other spoil-generating scope) exists: “Will excavated spoil need to be removed from site?” All / Some / None uses measured excavation m³ without re-entry. MVP commercial identity is all-in `retaining_wall.spoil.removal.all_in.m3` (cartage + tip). `retaining_wall.spoil.disposal.m3` remains leftover tip-fee-only. No invented Quotr $/m³. Builder Review uses a three-level hierarchy, grouped H5 poles, collapsed Takeoff details, and compact labour/plant/material rows. Do not reopen geometry, pile math, productivity, plant machine-hours, package/detail XOR, Pricing, or Quote.
+
+**RETAINING WALL MATURITY 1F-R1 — FINAL SPOIL RATE SEMANTIC LOCK**
+
+MVP prices spoil as **measured / in-situ excavation m³ × all-in removal $/m³**. All-in = normal cartage + normal tip, calibrated to that measured basis. No bulking. Hierarchy: project all-in exact → company all-in exact → future Quotr all-in benchmark → Pricing Required. Leftover `retaining_wall.spoil.disposal.m3` (tip/disposal fee only) must not resolve all-in and must not close the gap. Future architecture may split in-situ vs loose spoil vs truck/load vs tip vs haulage — not built in this phase. Excavation labour + plant price excavation; all-in spoil prices removal/disposal only.
+
+Do **not** start Sleeper, Masonry, another Work Area, or Production from 1F / 1F-R1.
 
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
 

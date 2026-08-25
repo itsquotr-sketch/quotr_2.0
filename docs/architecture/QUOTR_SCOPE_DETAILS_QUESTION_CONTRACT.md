@@ -88,7 +88,7 @@ Examples locked in R2:
 - Island ≠ Yes → no island length
 - Benchtop ≠ Yes → no benchtop material
 - Cabinetry ≠ Yes → no cabinetry lm
-- Excavation ≠ Yes → no spoil disposal
+- Excavation ≠ Yes → no spoil removal
 - Demolition scope must include walls/floor/ceilings before those quantity questions
 - Deck L×W known → do not ask area
 - Deck height known → do not ask `deck.level`

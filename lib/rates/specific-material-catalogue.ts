@@ -437,6 +437,34 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
 ];
 
+export const WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: "retaining_wall.spoil.removal.all_in.m3",
+    label: "Hardfill / excavated spoil removal",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Waste / disposal",
+    unit: "m3",
+    description:
+      "All-in cartage and disposal cost per measured excavation m³. Company exact $/m³, otherwise Pricing Required — no invented Quotr starter. Not a tip-only fee.",
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "retaining_wall.spoil.disposal.m3",
+    label: "Disposal / tip fee only",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Waste / disposal",
+    unit: "m3",
+    description:
+      "Tip/disposal fee only per m³ — not cartage. Leftover future split. Does not price all-in spoil removal. No invented Quotr starter.",
+    calculatorSupport: "leftover",
+  }),
+];
+
 export const FLOORING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   entry({
     item_key: "flooring.material.m2",
@@ -951,6 +979,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE,
   ...SHEET_SPECIFIC_MATERIAL_CATALOGUE,
   ...RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
+  ...WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
   ...PAINTING_SPECIFIC_MATERIAL_CATALOGUE,
 ];
@@ -991,6 +1020,12 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "Timber 1D-R1 identities: 150×50 H4 No.2/retaining, 200×50 H4 No.2/retaining, H5 SED 150–175 mm stock-length EA, novacoil, drainage aggregate, mini-excavator day, fixings residual. Generic H5 $/lm is leftover. Company exact overrides Quotr starters. Face-m² package rates are legacy fallback only.",
     entries: RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Waste / disposal",
+    description:
+      "All-in hardfill/spoil removal is cartage + tip per measured excavation m³. Disposal / tip fee only is a leftover identity and does not price removal. Not drainage aggregate.",
+    entries: WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Flooring",

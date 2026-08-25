@@ -251,13 +251,15 @@ const rwDisposal = calculateRetainingWall(
       fact("retaining_wall.material", "rw3", "Timber"),
       fact("retaining_wall.drainage_required", "rw3", true),
       fact("retaining_wall.backfill_included", "rw3", false),
+      fact("retaining_wall.excavation_required", "rw3", true),
+      fact("retaining_wall.excavation_volume_m3", "rw3", 2),
       fact("retaining_wall.disposal_included", "rw3", true),
     ],
   } as EstimateContext,
   wa("rw3", "retaining_wall", "RW disposal")
 );
 assert(
-  labels(rwDisposal.lineItems).filter((l) => l === "Spoil disposal").length === 1 &&
+  labels(rwDisposal.lineItems).filter((l) => /spoil (disposal|removal)/i.test(l)).length === 1 &&
     !labels(rwDisposal.lineItems).includes("Disposal / cartage allowance") &&
     !labels(rwDisposal.lineItems).includes("Bulk excavation"),
   "RW disposal: single disposal line"
@@ -273,6 +275,7 @@ const rwDisposalUnknown = calculateRetainingWall(
       fact("retaining_wall.is_raking", "rw4", false),
       fact("retaining_wall.fixing_type", "rw4", "Standard"),
       fact("retaining_wall.material", "rw4", "Timber"),
+      fact("retaining_wall.excavation_required", "rw4", true),
       fact("retaining_wall.drainage_required", "rw4", false),
       fact("retaining_wall.backfill_included", "rw4", false),
     ],
@@ -284,7 +287,7 @@ assert(
   "RW unknown disposal: no priced disposal line"
 );
 assert(
-  rwDisposalUnknown.assumptions.some((a) => a.toLowerCase().includes("disposal")),
+  rwDisposalUnknown.assumptions.some((a) => /spoil removal|disposal/i.test(a)),
   "RW unknown disposal: assumption present"
 );
 
@@ -396,7 +399,7 @@ const rwQuote = buildWorkAreaQuoteDescriptionDraft({
   ],
 });
 assert(
-  rwQuote.toLowerCase().includes("disposal"),
+  /spoil (disposal|removal)/i.test(rwQuote),
   "Quote: retaining wall disposal mentioned when included"
 );
 assert(!rwQuote.toLowerCase().includes("benchmark"), "Quote: no benchmark source");

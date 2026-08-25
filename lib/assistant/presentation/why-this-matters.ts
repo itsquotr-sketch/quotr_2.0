@@ -34,8 +34,12 @@ const WHY_THIS_MATTERS: Readonly<Record<string, string>> = Object.freeze({
     "Carting distance can affect labour and waste handling.",
   site_access:
     "Site access can affect labour productivity and handling allowances.",
-  occupied_site:
-    "An occupied site can affect working method and time allowances.",
+  "retaining_wall.disposal_included":
+    "Asked only when excavation creates spoil. Removal from site is extra commercial cost, not excavation labour.",
+  "retaining_wall.spoil_removal_portion":
+    "All uses the measured excavation quantity. Some needs a removal volume.",
+  "retaining_wall.spoil_removal_volume_m3":
+    "Removal volume prices hardfill leaving site. Leave blank if not sure.",
   working_hours:
     "Working-hour restrictions can affect programme and labour productivity.",
   floor_level:

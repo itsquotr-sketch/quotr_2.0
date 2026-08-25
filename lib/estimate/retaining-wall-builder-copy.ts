@@ -80,6 +80,49 @@ export function formatTimberLabourModifierCopy(params: {
   return `${driver} · ${reasons.join(" · ")} · Adjusted ${params.adjustedHours}h`;
 }
 
+export function formatTimberLabourCompactCopy(params: {
+  constraints: readonly EstimateConstraint[];
+  includeMaterialCarry: boolean;
+  quantity: number;
+  unit: string;
+  hoursPerUnit: number;
+  label: string;
+}): { supporting: string; modifiers: string | null } {
+  const unitDriver =
+    params.unit === "ea" && /pile/i.test(params.label)
+      ? "piles"
+      : params.unit === "m3"
+        ? "m³"
+        : params.unit === "m2"
+          ? "m²"
+          : params.unit;
+  const rateUnit = params.unit === "ea" ? "ea" : params.unit === "m3" ? "m³" : params.unit;
+  const driver = `${params.quantity}${unitDriver === "piles" ? " piles" : ` ${unitDriver}`} × ${params.hoursPerUnit}h/${rateUnit}`;
+  const parts = getLabourAdjustmentParts(params.constraints);
+  const reasons: string[] = [];
+  if (parts.accessAddend > 0) {
+    const access = params.constraints.find((row) => row.key === "site_access");
+    const label = String(access?.value ?? "site").replace(/site access/i, "").trim();
+    reasons.push(`${label} access ${formatPercentAddend(parts.accessAddend)}`);
+  }
+  if (params.includeMaterialCarry && parts.carryAddend > 0) {
+    reasons.push(`Material carry ${formatPercentAddend(parts.carryAddend)}`);
+  }
+  if (parts.slopeAddend > 0) {
+    reasons.push(`Site slope ${formatPercentAddend(parts.slopeAddend)}`);
+  }
+  if (parts.occupiedAddend > 0) {
+    reasons.push(`Occupied site ${formatPercentAddend(parts.occupiedAddend)}`);
+  }
+  if (parts.hoursAddend > 0) {
+    reasons.push(`Restricted hours ${formatPercentAddend(parts.hoursAddend)}`);
+  }
+  return {
+    supporting: driver,
+    modifiers: reasons.length > 0 ? `${reasons.join(" · ")}.` : null,
+  };
+}
+
 export function formatBoardProcurementCopy(params: {
   netLm: number;
   purchaseLm: number;
@@ -93,12 +136,17 @@ export function formatAggregateProcurementCopy(params: {
   inPlaceM3: number;
   purchaseM3: number;
 }): string {
-  return `${round2(params.inPlaceM3)} m³ in-place · Includes 25% procurement allowance for loose volume, handling and waste · ${round2(params.purchaseM3)} m³ purchased`;
+  return `${round2(params.inPlaceM3)} m³ in-place · ${round2(params.purchaseM3)} m³ purchased`;
+}
+
+export function formatAggregateProcurementDetail(): string {
+  return "Includes 25% procurement allowance";
 }
 
 export function formatFixingsAllowanceCopy(timberMaterialCost: number): string {
+  void timberMaterialCost;
   const pct = Math.round(RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER * 100);
-  return `Fixings and connectors allowance · ${pct}% of timber materials ($${round2(timberMaterialCost)})`;
+  return `${pct}% of timber materials`;
 }
 
 export function formatPileProcurementSummary(params: {
@@ -115,6 +163,18 @@ export function formatPileProcurementSummary(params: {
   return {
     title: "Pile procurement",
     detail: `Required: ${params.pileCount} piles · ${round2(params.theoreticalLm)} lm required length. Purchased stock: ${params.purchaseEa} poles · ${round2(params.purchaseLm)} lm. Offcut / procurement difference ${offcut} lm. ${sku}.`,
+  };
+}
+
+export function formatPileGroupSupporting(params: {
+  pileCount: number;
+  theoreticalLm: number;
+  purchaseLm: number;
+}): { supporting: string; secondary: string } {
+  const offcut = round2(params.purchaseLm - params.theoreticalLm);
+  return {
+    supporting: `${params.pileCount} poles · ${round2(params.theoreticalLm)}lm required · ${round2(params.purchaseLm)}lm purchased`,
+    secondary: `${offcut}lm procurement/offcut difference`,
   };
 }
 

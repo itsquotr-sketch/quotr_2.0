@@ -33,7 +33,8 @@ function factValue(
 function isAffirmative(value: string | null): boolean {
   if (!value) return false;
   const lower = value.toLowerCase();
-  return lower === "yes" || lower === "true" || lower === "included";
+  if (lower === "included") return true;
+  return /^yes\b/i.test(value.trim()) || lower === "true";
 }
 
 function appendScopeClause(base: string, clause: string | null): string {
@@ -809,14 +810,14 @@ function buildRetainingWallDraft(facts?: WorkAreaQuoteFact[]): string {
   if (isAffirmative(factValue(facts, "retaining_wall.disposal_included"))) {
     draft = appendScopeClause(
       draft,
-      "Spoil disposal and cartage is included where applicable."
+      "Spoil removal is included where applicable."
     );
   } else {
     const disposal = factValue(facts, "retaining_wall.disposal_included");
     if (disposal?.toLowerCase() === "false" || disposal?.toLowerCase() === "no") {
       draft = appendScopeClause(
         draft,
-        "Spoil disposal and cartage is excluded unless specifically confirmed."
+        "Spoil removal is excluded unless specifically confirmed."
       );
     }
   }

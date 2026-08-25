@@ -20,6 +20,8 @@ import {
   RW_EXCAVATION_SUBCONTRACT_COMPONENT,
   RW_FACE_BOARD_150_H4_KEY,
   RW_SPOIL_DISPOSAL_COMPONENT,
+  RW_SPOIL_DISPOSAL_M3_KEY,
+  RW_SPOIL_REMOVAL_ALL_IN_M3_KEY,
   RW_TIMBER_BOARDS_COMPONENT,
   RW_TIMBER_PILE_LABOUR_COMPONENT,
   isRwTimberPileStockComponent,
@@ -161,6 +163,7 @@ function spawnVerifier(script: string): boolean {
       cwd: process.cwd(),
       encoding: "utf8",
       shell: process.platform === "win32",
+      env: { ...process.env, RW_SKIP_NESTED_SPAWN: "1" },
     });
     return true;
   } catch (error) {
@@ -313,7 +316,7 @@ check(
   "4 spoil/export separate",
   mat(measured.requirements, RW_SPOIL_DISPOSAL_COMPONENT) == null &&
     mat(spoil.requirements, RW_SPOIL_DISPOSAL_COMPONENT) != null &&
-    spoil.lineItems.some((item) => /spoil disposal/i.test(item.label)) &&
+    spoil.lineItems.some((item) => /spoil (disposal|removal)/i.test(item.label)) &&
     !spoil.lineItems.some((item) => item.label === "Bulk excavation")
 );
 check(
@@ -626,9 +629,9 @@ check(
       "calculateRetainingWall"
     )
 );
-check("42 RW-1D passes", spawnVerifier("scripts/verify-retaining-wall-maturity-1d.ts"));
-check("43 RW-1C-R3 passes", spawnVerifier("scripts/verify-retaining-wall-maturity-1c-r3.ts"));
-check("44 Deck 2D passes", spawnVerifier("scripts/verify-deck-maturity-2d.ts"));
+check("42 RW-1D passes", process.env.RW_SKIP_NESTED_SPAWN === "1" || spawnVerifier("scripts/verify-retaining-wall-maturity-1d.ts"));
+check("43 RW-1C-R3 passes", process.env.RW_SKIP_NESTED_SPAWN === "1" || spawnVerifier("scripts/verify-retaining-wall-maturity-1c-r3.ts"));
+check("44 Deck 2D passes", process.env.RW_SKIP_NESTED_SPAWN === "1" || spawnVerifier("scripts/verify-deck-maturity-2d.ts"));
 check(
   "45 plant days are whole hire days",
   Number.isInteger(ownerPlantModel.days) && ownerPlantModel.days >= 1
@@ -649,6 +652,103 @@ check(
 check(
   "48 Manual method constant still distinct",
   RW_TIMBER_PILING_METHOD_MANUAL !== RW_TIMBER_PILING_METHOD_MACHINE
+);
+
+console.log("\n--- SPOIL DISPOSAL ---\n");
+const disposalFalse = calculateRetainingWall(
+  ctx(previewFacts([fact("retaining_wall.disposal_included", false)])),
+  wa()
+);
+const disposalRate = calculateRetainingWall(
+  ctx(previewFacts([fact("retaining_wall.disposal_included", true)]), [
+    testRate(RW_SPOIL_REMOVAL_ALL_IN_M3_KEY, "m3", 25),
+  ]),
+  wa()
+);
+const spoilLine = spoil.lineItems.find(
+  (item) => item.componentKey === RW_SPOIL_DISPOSAL_COMPONENT
+);
+const spoilPriced = disposalRate.lineItems.find(
+  (item) => item.componentKey === RW_SPOIL_DISPOSAL_COMPONENT
+);
+const backfillQty =
+  spoil.lineItems.find((item) => /drainage aggregate/i.test(item.label))
+    ?.quantity ?? 0;
+const spoilReview = composeBuilderReview({
+  estimate: {
+    recommendedCost: spoil.lineItems.reduce((s, i) => s + i.recommendedCost, 0),
+    recommendedSell: spoil.lineItems.reduce((s, i) => s + i.recommendedSell, 0),
+    marginPercent: 20,
+    confidence: spoil.confidence,
+    assumptions: spoil.assumptions,
+    missingInfo: spoil.missingInfo,
+    lineItems: spoil.lineItems as never,
+  },
+  workAreas: [wa()],
+  requirements: spoil.requirements,
+});
+const spoilCat = spoilReview.workAreas[0]?.categories.find(
+  (cat) => cat.id === "PRICING_REQUIRED"
+);
+check(
+  "49 disposal false emits no spoil money or Pricing Required",
+  disposalFalse.lineItems.every(
+    (item) => item.componentKey !== RW_SPOIL_DISPOSAL_COMPONENT
+  ) &&
+    !disposalFalse.missingInfo.some((row) => /spoil (disposal|removal)/i.test(row))
+);
+check(
+  "50 disposal true without rate is only Spoil disposal Pricing Required",
+  spoilLine != null &&
+    spoilLine.rateSourceType === "missing" &&
+    near(spoilLine.quantity ?? 0, 4) &&
+    spoilLine.unit === "m3" &&
+    spoil.missingInfo.some((row) => /spoil (disposal|removal) rate/i.test(row)) &&
+    !spoil.missingInfo.some((row) => /bulk excavation/i.test(row))
+);
+check(
+  "51 disposal quantity is excavated spoil m³, not backfill",
+  near(spoilLine?.quantity ?? 0, 4) &&
+    backfillQty > 4 &&
+    !near(spoilLine?.quantity ?? 0, backfillQty)
+);
+check(
+  "52 company all-in spoil $/m³ is isolated",
+  near(spoilPriced?.recommendedCost ?? 0, 100) &&
+    near(spoilPriced?.costRate ?? 0, 25) &&
+    near(
+      plantLine(disposalRate.lineItems)?.recommendedCost ?? 0,
+      plantLine(measured.lineItems)?.recommendedCost ?? 0
+    ) &&
+    near(
+      disposalRate.lineItems.find((item) => item.componentKey === RW_TIMBER_BOARDS_COMPONENT)
+        ?.recommendedCost ?? 0,
+      measured.lineItems.find((item) => item.componentKey === RW_TIMBER_BOARDS_COMPONENT)
+        ?.recommendedCost ?? 0
+    )
+);
+check(
+  "53 material carry does not create disposal",
+  !measured.lineItems.some((item) => item.componentKey === RW_SPOIL_DISPOSAL_COMPONENT)
+);
+check(
+  "54 Rates UI has spoil $/m³ slot with no invented starter",
+  readFileSync("lib/rates/specific-material-catalogue.ts", "utf8").includes(
+    `item_key: "${RW_SPOIL_DISPOSAL_M3_KEY}"`
+  ) &&
+    readFileSync("lib/rates/specific-material-catalogue.ts", "utf8").includes(
+      "title: \"Waste / disposal\""
+    ) &&
+    /no invented Quotr starter/i.test(
+      readFileSync("lib/rates/specific-material-catalogue.ts", "utf8")
+    )
+);
+check(
+  "55 Builder Review maps unpriced spoil to Pricing required, not Bulk excavation",
+  (spoilCat?.lines.some((line) => /spoil (disposal|removal)/i.test(line.label)) ?? false) &&
+    !spoilReview.workAreas[0]?.categories
+      .flatMap((cat) => cat.lines)
+      .some((line) => line.label === "Bulk excavation")
 );
 
 console.log("\n--- OWNER PLANT DUMP ---\n");

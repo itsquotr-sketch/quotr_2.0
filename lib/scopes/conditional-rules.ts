@@ -1,6 +1,7 @@
 import {
   factHasValue,
   getFactValue,
+  parseYesNoValue,
   toPositiveNumber,
   type ProjectFactRecord,
 } from "@/lib/scopes/fact-values";
@@ -24,12 +25,8 @@ function boolFact(
 ): boolean | null {
   const value = lookupValue(lookup, workAreaId, key);
   if (!factHasValue(value) || isNotSureValue(value)) return null;
-  if (value === true || value === "true" || value === "Yes" || value === "yes") {
-    return true;
-  }
-  if (value === false || value === "false" || value === "No" || value === "no") {
-    return false;
-  }
+  const parsed = parseYesNoValue(value);
+  if (parsed !== null) return parsed;
   if (typeof value === "string" && (value === "None" || value === "none")) {
     return false;
   }
@@ -633,6 +630,34 @@ export function shouldHideConditionalQuestion(
   if (key === "retaining_wall.disposal_included") {
     const excavation = boolFact(lookup, workAreaId, "retaining_wall.excavation_required");
     if (excavation !== true) return true;
+    return false;
+  }
+
+  if (key === "retaining_wall.spoil_removal_portion") {
+    const excavation = boolFact(lookup, workAreaId, "retaining_wall.excavation_required");
+    const disposal = boolFact(lookup, workAreaId, "retaining_wall.disposal_included");
+    if (excavation !== true || disposal !== true) return true;
+    const excavationM3 = numFact(lookup, workAreaId, "retaining_wall.excavation_volume_m3");
+    if (excavationM3 == null) return true;
+    return false;
+  }
+
+  if (key === "retaining_wall.spoil_removal_volume_m3") {
+    const excavation = boolFact(lookup, workAreaId, "retaining_wall.excavation_required");
+    const disposal = boolFact(lookup, workAreaId, "retaining_wall.disposal_included");
+    if (excavation !== true || disposal !== true) return true;
+    const excavationM3 = numFact(lookup, workAreaId, "retaining_wall.excavation_volume_m3");
+    const portionRaw = lookupValue(
+      lookup,
+      workAreaId,
+      "retaining_wall.spoil_removal_portion"
+    );
+    const portion = String(portionRaw ?? "")
+      .trim()
+      .toLowerCase();
+    if (excavationM3 != null) {
+      return !(portion === "some" || portion.startsWith("some"));
+    }
     return false;
   }
 

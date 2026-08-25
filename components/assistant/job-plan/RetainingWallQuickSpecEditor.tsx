@@ -84,6 +84,18 @@ export function RetainingWallQuickSpecEditor({
     workAreaId,
     "retaining_wall.excavation_volume_m3"
   );
+  const spoilRemoval = jobPlanBoolean(
+    facts,
+    workAreaId,
+    "retaining_wall.disposal_included"
+  );
+  const spoilPortion =
+    jobPlanString(facts, workAreaId, "retaining_wall.spoil_removal_portion") ?? "";
+  const spoilVolume = jobPlanNumber(
+    facts,
+    workAreaId,
+    "retaining_wall.spoil_removal_volume_m3"
+  );
   const siteAccess = constraintString(constraints, "site_access");
   const carryDistance = constraintString(constraints, "material_carry_distance");
 
@@ -298,6 +310,111 @@ export function RetainingWallQuickSpecEditor({
             <option value="No">No</option>
           </select>
         </div>
+        {excavation === true ? (
+          <div className="space-y-1">
+            <Label htmlFor={`rw-spoil-${workAreaId}`}>
+              Will excavated spoil need to be removed from site?
+            </Label>
+            <select
+              id={`rw-spoil-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={
+                spoilRemoval === true
+                  ? "Yes"
+                  : spoilRemoval === false
+                    ? "No"
+                    : ""
+              }
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.disposal_included",
+                  label: "Spoil removal",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value="">Not sure</option>
+              <option value="No">No — spoil will remain or be reused on site</option>
+              <option value="Yes">Yes — some or all will be removed</option>
+            </select>
+          </div>
+        ) : null}
+        {excavation === true && spoilRemoval === true && excavationVolume != null ? (
+          <div className="space-y-1">
+            <Label htmlFor={`rw-spoil-portion-${workAreaId}`}>
+              How much of the excavated material needs to leave site?
+            </Label>
+            <select
+              id={`rw-spoil-portion-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={
+                /^all/i.test(spoilPortion)
+                  ? "All"
+                  : /^some/i.test(spoilPortion)
+                    ? "Some"
+                    : /^none/i.test(spoilPortion)
+                      ? "None"
+                      : ""
+              }
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.spoil_removal_portion",
+                  label: "Spoil leaving site",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value="">Not set</option>
+              <option value="All">All — {excavationVolume.toFixed(1)}m³</option>
+              <option value="Some">Some — enter quantity</option>
+              <option value="None">None</option>
+            </select>
+          </div>
+        ) : null}
+        {excavation === true &&
+        spoilRemoval === true &&
+        (excavationVolume == null || /^some/i.test(spoilPortion)) ? (
+          <div className="space-y-1">
+            <Label htmlFor={`rw-spoil-volume-${workAreaId}`}>
+              Estimated spoil removal volume (m³)
+            </Label>
+            <Input
+              id={`rw-spoil-volume-${workAreaId}`}
+              type="number"
+              inputMode="decimal"
+              step="0.1"
+              min={0}
+              placeholder="Not sure"
+              defaultValue={spoilVolume ?? ""}
+              onBlur={(event) => {
+                const raw = event.target.value.trim();
+                if (raw === "") {
+                  onSpecFact?.({
+                    workAreaId,
+                    key: "retaining_wall.spoil_removal_volume_m3",
+                    label: "Spoil removal volume",
+                    value: "Not sure",
+                    valueType: "select",
+                  });
+                  return;
+                }
+                const next = Number(raw);
+                if (!Number.isFinite(next) || next < 0) return;
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.spoil_removal_volume_m3",
+                  label: "Spoil removal volume",
+                  value: next,
+                  valueType: "number",
+                });
+              }}
+            />
+          </div>
+        ) : null}
       </Group>
 
       <Group title="Site conditions">

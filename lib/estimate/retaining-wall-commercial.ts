@@ -17,6 +17,12 @@ import {
   type ComponentCommercialAuthority,
 } from "@/lib/estimate/component-commercial-authority";
 import { getBooleanFact, getStringFact, round2 as round2 } from "@/lib/estimate/facts";
+import {
+  resolveSpoilRemoval,
+  RW_SPOIL_REMOVAL_EXCEEDS_MEASURED,
+  RW_SPOIL_REMOVAL_MISSING_QUANTITY,
+  RW_SPOIL_REMOVAL_MISSING_RATE,
+} from "@/lib/estimate/retaining-wall-spoil-removal";
 import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
 import { MATERIAL_RATE_KEYS } from "@/lib/estimate/material-rate-keys";
 import { findCompanyProductivityRate } from "@/lib/estimate/productivity";
@@ -42,6 +48,9 @@ import {
   RW_EXCAVATION_LABOUR_COMPONENT,
   RW_EXCAVATION_SUBCONTRACT_COMPONENT,
   RW_SPOIL_DISPOSAL_COMPONENT,
+  RW_SPOIL_REMOVAL_ALL_IN_M3_KEY,
+  RW_SPOIL_REMOVAL_PORTION_KEY,
+  RW_SPOIL_REMOVAL_VOLUME_KEY,
   RW_FACE_AREA_COMPONENT,
   RW_MASONRY_BLOCK_LABOUR_COMPONENT,
   RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT,
@@ -589,6 +598,8 @@ function priceMaterial(
   if (requirement.componentKey === RW_NOVACOIL_COMPONENT) {
     namedKeys.push(MATERIAL_RATE_KEYS.drainageNovacoilLm);
   }
+  // Spoil removal prices only retaining_wall.spoil.removal.all_in.m3.
+  // Tip-only leftover retaining_wall.spoil.disposal.m3 must not resolve it.
   for (const key of namedKeys) {
     const named = findExactNamedMaterialRate(rates, key, unit);
     if (named?.cost_rate != null) {
@@ -1355,30 +1366,62 @@ export function commercializeRetainingWall(params: {
     );
   }
 
+  const spoil = resolveSpoilRemoval({
+    facts,
+    workAreaId,
+    excavationVolumeM3: hasTrustedPhysicalQuantity(excavationQty)
+      ? excavationQty
+      : null,
+  });
+  assumptions.push(...spoil.assumptions);
+  missingInfo.push(...spoil.missingInfo);
   if (
     physical.system === "TIMBER_RETAINING_WALL" &&
-    getBooleanFact([...facts], workAreaId, "retaining_wall.disposal_included") === true
+    spoil.removalRequired === true &&
+    spoil.quantityKnown &&
+    spoil.removalVolumeM3 != null
   ) {
-    const spoilQty = hasTrustedPhysicalQuantity(excavationQty) ? excavationQty : 1;
-    pricedMaterials.push(
-      planningMaterial({
-        workAreaId,
-        componentKey: RW_SPOIL_DISPOSAL_COMPONENT,
-        description: "Spoil disposal",
-        materialKey: RW_SPOIL_DISPOSAL_COMPONENT,
-        category: "WASTE",
-        specification:
-          "Spoil removal / disposal is separate from excavation. Needs a trusted disposal rate (m³, tonne, load, or allowance).",
-        baseQuantity: spoilQty,
-        baseUnit: hasTrustedPhysicalQuantity(excavationQty) ? "m3" : "item",
-        wasteFactor: 0,
-        purchaseQuantity: spoilQty,
-        purchaseUnit: hasTrustedPhysicalQuantity(excavationQty) ? "m3" : "item",
-        factKeys: ["retaining_wall.disposal_included"],
-        source: "retaining_wall.spoil.disposal",
-      })
+    const spoilQty = spoil.removalVolumeM3;
+    const spoilSpec = spoil.exceedsMeasured
+      ? `${round2(spoilQty)} m³ measured-equivalent spoil leaving site. ${RW_SPOIL_REMOVAL_EXCEEDS_MEASURED} All-in cartage + tip on measured m³. No bulking. Not drainage aggregate. Not excavation labour.`
+      : `${round2(spoilQty)} m³ measured in-situ excavation leaving site. All-in cartage + tip on the same measured m³. No bulking. Not drainage aggregate. Not excavation labour.`;
+    const spoilRow = planningMaterial({
+      workAreaId,
+      componentKey: RW_SPOIL_DISPOSAL_COMPONENT,
+      description: "Spoil removal",
+      materialKey: RW_SPOIL_REMOVAL_ALL_IN_M3_KEY,
+      category: "WASTE",
+      specification: spoilSpec,
+      baseQuantity: spoilQty,
+      baseUnit: "m3",
+      wasteFactor: 0,
+      purchaseQuantity: spoilQty,
+      purchaseUnit: "m3",
+      factKeys: [
+        "retaining_wall.disposal_included",
+        "retaining_wall.excavation_volume_m3",
+        RW_SPOIL_REMOVAL_PORTION_KEY,
+        RW_SPOIL_REMOVAL_VOLUME_KEY,
+      ],
+      source: "retaining_wall.spoil.removal",
+    });
+    const pricedSpoil = priceMaterial(
+      spoilRow,
+      rates,
+      organisationSettings,
+      inheritedBenchmarks
     );
-    missingInfo.push("Spoil disposal rate");
+    pricedMaterials.push(pricedSpoil);
+    if (pricedSpoil.priced !== true) {
+      missingInfo.push(RW_SPOIL_REMOVAL_MISSING_RATE);
+    }
+  } else if (
+    physical.system === "TIMBER_RETAINING_WALL" &&
+    spoil.removalRequired === true &&
+    !spoil.quantityKnown &&
+    !spoil.missingInfo.includes(RW_SPOIL_REMOVAL_MISSING_QUANTITY)
+  ) {
+    missingInfo.push(RW_SPOIL_REMOVAL_MISSING_QUANTITY);
   }
 
   const plant: PlantRequirement[] = [];
@@ -1432,7 +1475,7 @@ export function commercializeRetainingWall(params: {
       },
       priced: true,
       plantKey: RW_MINI_EXCAVATOR_DAY_KEY,
-      hours: null,
+      hours: scaled.totalMachineHours,
       quantity,
       unit: "day",
       unitCost,
@@ -1443,6 +1486,7 @@ export function commercializeRetainingWall(params: {
 
   for (const row of pricedMaterials) {
     if (SKIP_MONEY.has(row.componentKey)) continue;
+    if (row.componentKey === RW_SPOIL_DISPOSAL_COMPONENT) continue;
     if (hasTrustedPhysicalQuantity(row.purchaseQuantity) && row.priced !== true) {
       missingInfo.push(`${row.description} trusted price`);
     }
