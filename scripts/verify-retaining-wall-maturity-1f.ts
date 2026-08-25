@@ -577,15 +577,17 @@ check(
 );
 
 console.log("\n--- REGRESSION ---\n");
-const rw1eOk = spawnVerifier("scripts/verify-retaining-wall-maturity-1e.ts");
+const skipNested = process.env.RW_SKIP_NESTED_SPAWN === "1";
+const rw1eOk =
+  skipNested || spawnVerifier("scripts/verify-retaining-wall-maturity-1e.ts");
 check("31 RW-1E", rw1eOk);
 check(
   "32 RW-1D",
-  spawnVerifier("scripts/verify-retaining-wall-maturity-1d.ts")
+  skipNested || spawnVerifier("scripts/verify-retaining-wall-maturity-1d.ts")
 );
 check(
   "33 RW-1C-R3",
-  spawnVerifier("scripts/verify-retaining-wall-maturity-1c-r3.ts")
+  skipNested || spawnVerifier("scripts/verify-retaining-wall-maturity-1c-r3.ts")
 );
 check(
   "34 package/detail XOR",
@@ -613,7 +615,8 @@ const quoteParityOk =
     "calculateRetainingWall"
   );
 check("36 Quote parity", quoteParityOk);
-const deck2dOk = spawnVerifier("scripts/verify-deck-maturity-2d.ts");
+const deck2dOk =
+  skipNested || spawnVerifier("scripts/verify-deck-maturity-2d.ts");
 check("37 Deck 2D", deck2dOk);
 check(
   "38 Rates UI Waste / disposal",

@@ -108,7 +108,7 @@ export const retainingWallRefineAdapter: RefineWorkAreaAdapter = {
             workAreaName,
             factKey: "retaining_wall.sleeper_length_m",
             label: "Sleeper length",
-            question: "Selected sleeper length?",
+            question: "Sleeper length if known? Default 2.0 m (2000 mm class).",
             inputType: "number",
           })
         );
@@ -120,8 +120,41 @@ export const retainingWallRefineAdapter: RefineWorkAreaAdapter = {
             workAreaName,
             factKey: "retaining_wall.sleeper_face_height_m",
             label: "Sleeper face height",
-            question: "Selected sleeper face height?",
+            question: "Sleeper face height if known? Default 0.20 m (200 mm class).",
             inputType: "number",
+          })
+        );
+      }
+      if (!known(facts, workAreaId, "retaining_wall.post_spacing_m")) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: "retaining_wall.post_spacing_m",
+            label: "Post spacing",
+            question:
+              "Target / maximum post spacing if known? Default is sleeper length. Not a structural standard.",
+            inputType: "number",
+            group: "structure",
+          })
+        );
+      }
+      if (
+        getNumberFact(
+          typedFacts,
+          workAreaId,
+          "retaining_wall.sleeper_post_embedment_m"
+        ) == null
+      ) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: "retaining_wall.sleeper_post_embedment_m",
+            label: "Post embedment",
+            question: "Design post embedment depth, if known?",
+            inputType: "number",
+            group: "structure",
           })
         );
       }

@@ -72,12 +72,15 @@ import {
 } from "@/lib/estimate/requirement-commercial-line";
 import { RW_EXCAVATION_LABOUR_COMPONENT, RW_EXCAVATION_SUBCONTRACT_COMPONENT, RW_FACE_AREA_COMPONENT, RW_SPOIL_DISPOSAL_COMPONENT, RW_BACKFILL_COMPONENT, RW_TIMBER_BOARDS_COMPONENT, RW_TIMBER_FIXINGS_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
 import { RW_SPOIL_REMOVAL_EXCEEDS_MEASURED } from "@/lib/estimate/retaining-wall-spoil-removal";
+import { RW_SLEEPER_DESIGN_CONFIRM } from "@/lib/estimate/retaining-wall-sleeper-2a";
 import { detailedTimberLabourFromCost, RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER } from "@/lib/estimate/retaining-wall-timber-1d";
 import {
   formatAggregateProcurementCopy,
   formatAggregateProcurementDetail,
   formatBoardProcurementCopy,
   formatFixingsAllowanceCopy,
+  formatSleeperCompactCopy,
+  formatSleeperConcreteCopy,
   formatTimberLabourCompactCopy,
   formatTimberLabourModifierCopy,
 } from "@/lib/estimate/retaining-wall-builder-copy";
@@ -416,6 +419,16 @@ export function calculateRetainingWall(
   if (detailed) {
     missingInfo.push(...commercial.missingInfo);
   }
+  if (
+    physical.system === "CONCRETE_SLEEPER_WALL" &&
+    physical.sleeperTakeoff &&
+    (physical.sleeperTakeoff.spacingAssumed ||
+      !physical.sleeperTakeoff.embedmentExplicit)
+  ) {
+    if (!missingInfo.includes(RW_SLEEPER_DESIGN_CONFIRM)) {
+      missingInfo.push(RW_SLEEPER_DESIGN_CONFIRM);
+    }
+  }
 
   if (!detailed) {
   const baseProductivity = resolveProductivity({
@@ -700,6 +713,7 @@ export function calculateRetainingWall(
       if (requirement.componentKey === RW_FACE_AREA_COMPONENT) continue;
       if (isPricedMaterialRequirement(requirement)) {
         let notes = requirement.specification ?? undefined;
+        let identitySummary: string | undefined;
         if (requirement.componentKey === RW_TIMBER_BOARDS_COMPONENT) {
           notes = formatBoardProcurementCopy({
             netLm: requirement.baseQuantity,
@@ -717,10 +731,29 @@ export function calculateRetainingWall(
                 : formatFixingsAllowanceCopy(
                     round2(requirement.totalCost / RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER)
                   );
-        } else if (requirement.componentKey === RW_SPOIL_DISPOSAL_COMPONENT) {
+          } else if (requirement.componentKey === RW_SPOIL_DISPOSAL_COMPONENT) {
           notes = requirement.specification?.includes(RW_SPOIL_REMOVAL_EXCEEDS_MEASURED)
             ? `${round2(requirement.purchaseQuantity)} m³ spoil leaving site. ${RW_SPOIL_REMOVAL_EXCEEDS_MEASURED}`
             : `${round2(requirement.purchaseQuantity)} m³ spoil leaving site`;
+        } else if (requirement.componentKey === "retaining_wall.sleeper.sleepers") {
+          const compact = formatSleeperCompactCopy({
+            sleeperCount: requirement.purchaseQuantity,
+            bayCount: physical.sleeperTakeoff?.bayCount ?? null,
+            courses: physical.sleeperTakeoff?.coursesPerBay ?? [],
+            unitCost: requirement.unitCost,
+            standardSleeperEa: physical.sleeperTakeoff?.standardSleeperEa,
+            cutSleeperEa: physical.sleeperTakeoff?.cutSleeperEa,
+          });
+          notes = compact.secondary ?? compact.supporting;
+          identitySummary = compact.supporting;
+        } else if (requirement.componentKey === "retaining_wall.sleeper.posts.procure") {
+          notes = requirement.specification ?? undefined;
+        } else if (requirement.componentKey === "retaining_wall.sleeper.hole_concrete") {
+          notes = formatSleeperConcreteCopy({
+            volumeM3: physical.sleeperTakeoff?.holeVolumeM3 ?? requirement.baseQuantity,
+            bagCount: physical.sleeperTakeoff?.bagCount ?? requirement.purchaseQuantity,
+            unitCost: requirement.unitCost,
+          }).supporting;
         }
         lineItems.push(
           {
@@ -732,7 +765,7 @@ export function calculateRetainingWall(
               label: requirement.description,
             }),
             notes,
-            identitySummary: notes,
+            identitySummary: identitySummary ?? notes,
           }
         );
       } else {

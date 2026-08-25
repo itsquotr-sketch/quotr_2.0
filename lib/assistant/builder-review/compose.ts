@@ -44,6 +44,7 @@ import {
   RW_SLEEPER_FIXINGS_COMPONENT,
   RW_SLEEPER_POSTS_EA_COMPONENT,
   RW_SLEEPER_POSTS_LM_COMPONENT,
+  RW_SLEEPER_POSTS_PROCURE_COMPONENT,
   RW_SPOIL_DISPOSAL_COMPONENT,
   RW_SPOIL_DISPOSAL_M3_KEY,
   RW_SPOIL_REMOVAL_ALL_IN_M3_KEY,
@@ -56,6 +57,7 @@ import {
 import {
   formatPileGroupSupporting,
   formatPileProcurementSummary,
+  formatSleeperGroupSupporting,
   stripInternalEstimateTokens,
 } from "@/lib/estimate/retaining-wall-builder-copy";
 import { RW_SPOIL_REMOVAL_PRICING_HELPER } from "@/lib/estimate/retaining-wall-spoil-removal";
@@ -233,6 +235,10 @@ function mapRwBuilderLabel(label: string): string {
   }
   if (/novacoil/i.test(label) && !/labour/i.test(label)) return "Novacoil drainage";
   if (/spoil disposal/i.test(label)) return "Spoil removal";
+  if (label === "Steel post installation") return "Post installation";
+  if (label === "Concrete sleeper installation") return "Sleeper installation";
+  if (label === "Post-hole concrete placement") return "Post-hole concrete placement";
+  if (label === "Sleeper hole concrete placement") return "Post-hole concrete placement";
   return label;
 }
 
@@ -323,8 +329,30 @@ function lineHierarchy(
     };
   }
 
-  if (item.componentKey === RW_TIMBER_FIXINGS_COMPONENT) {
-    return { supporting: spec, detail: null };
+  if (item.componentKey === RW_SLEEPER_POSTS_PROCURE_COMPONENT) {
+    return {
+      supporting: spec,
+      detail: null,
+    };
+  }
+
+  if (item.componentKey === RW_SLEEPER_COMPONENT) {
+    return {
+      supporting: item.identitySummary || spec || qtyUnit,
+      detail:
+        item.notes &&
+        item.identitySummary &&
+        item.notes !== item.identitySummary
+          ? item.notes
+          : null,
+    };
+  }
+
+  if (item.componentKey === RW_SLEEPER_CONCRETE_COMPONENT) {
+    return {
+      supporting: item.identitySummary || spec || qtyUnit,
+      detail: null,
+    };
   }
 
   if (
@@ -377,6 +405,7 @@ function takeoffLabel(req: MaterialRequirement): string {
   if (req.componentKey === RW_SLEEPER_COMPONENT) return "Concrete sleepers";
   if (req.componentKey === RW_SLEEPER_POSTS_EA_COMPONENT) return "Steel posts";
   if (req.componentKey === RW_SLEEPER_POSTS_LM_COMPONENT) return "Steel post length";
+  if (req.componentKey === RW_SLEEPER_POSTS_PROCURE_COMPONENT) return "Steel retaining posts";
   if (req.componentKey === RW_SLEEPER_CONCRETE_COMPONENT) return "Post-hole concrete";
   if (req.componentKey === RW_TIMBER_FIXINGS_COMPONENT) return "Fixings / connectors";
   if (req.componentKey === RW_SLEEPER_FIXINGS_COMPONENT) return "Sleeper connectors";
@@ -475,6 +504,53 @@ function buildPileLineGroup(
     showChangeMaterial: true,
     rateContext: company && hasVariance ? "Company stock rates are being used." : null,
     children: stockLines,
+  };
+}
+
+function buildSleeperPostLineGroup(
+  requirements: readonly EstimateRequirement[],
+  workAreaId: string | null,
+  procureLines: readonly BuilderReviewPricedLine[]
+): BuilderReviewLineGroup | null {
+  if (procureLines.length === 0) return null;
+  const inArea = requirements.filter(
+    (row) => !workAreaId || row.workAreaId === workAreaId
+  );
+  const ea = inArea.find(
+    (row) =>
+      row.kind === "material" && row.componentKey === RW_SLEEPER_POSTS_EA_COMPONENT
+  ) as MaterialRequirement | undefined;
+  const lm = inArea.find(
+    (row) =>
+      row.kind === "material" && row.componentKey === RW_SLEEPER_POSTS_LM_COMPONENT
+  ) as MaterialRequirement | undefined;
+  const compact = formatSleeperGroupSupporting({
+    postCount: ea?.purchaseQuantity ?? 0,
+    theoreticalLm: lm?.baseQuantity ?? lm?.purchaseQuantity ?? 0,
+  });
+  const lengths = inArea.find(
+    (row) =>
+      row.kind === "material" && row.componentKey === RW_SLEEPER_POSTS_LM_COMPONENT
+  ) as MaterialRequirement | undefined;
+  return {
+    id: "steel-retaining-posts",
+    label: "Steel retaining posts",
+    recommendedCost: round2(
+      procureLines.reduce((sum, line) => sum + line.recommendedCost, 0)
+    ),
+    supporting: compact.supporting,
+    secondary: compact.secondary,
+    itemKey: procureLines[0]?.itemKey ?? null,
+    showChangeMaterial: true,
+    rateContext: procureLines[0]?.rateContext ?? null,
+    children: procureLines.map((line) => ({
+      ...line,
+      supporting:
+        line.supporting ??
+        (lengths
+          ? `${round2(lengths.purchaseQuantity)}lm theoretical`
+          : line.supporting),
+    })),
   };
 }
 
@@ -623,7 +699,13 @@ function normalizeIssueKey(text: string): string {
 }
 
 function isHighValueBuilderImprovement(label: string, retainingWallOnly: boolean): boolean {
-  if (/consent|engineering/i.test(label)) return true;
+  if (/confirm sleeper system/i.test(label)) return true;
+  // Disclosures that explicitly deny being manufacturer/engineering rules stay collapsed.
+  const estimatingDisclosureOnly =
+    /estimating assumption only|not a manufacturer requirement|not a manufacturer SKU/i.test(
+      label
+    );
+  if (!estimatingDisclosureOnly && /consent|engineering/i.test(label)) return true;
   if (/spoil removal|disposal included|spoil leaving/i.test(label)) return true;
   if (/quantity required|price required|trusted price|hardfill removal rate/i.test(label)) {
     return true;
@@ -942,6 +1024,27 @@ export function composeBuilderReview(
           lines: remaining,
           groupNotes: [...cat.groupNotes, pileNote],
           lineGroups: group ? [...cat.lineGroups, group] : cat.lineGroups,
+        };
+      });
+    }
+
+    const sleeperPostGroup = buildSleeperPostLineGroup(
+      requirements,
+      meta.id,
+      priced.filter(
+        (line) => line.componentKey === RW_SLEEPER_POSTS_PROCURE_COMPONENT
+      )
+    );
+    if (sleeperPostGroup) {
+      categories = categories.map((cat) => {
+        if (cat.id !== "MATERIALS") return cat;
+        const remaining = cat.lines.filter(
+          (line) => line.componentKey !== RW_SLEEPER_POSTS_PROCURE_COMPONENT
+        );
+        return {
+          ...cat,
+          lines: remaining,
+          lineGroups: [...cat.lineGroups, sleeperPostGroup],
         };
       });
     }

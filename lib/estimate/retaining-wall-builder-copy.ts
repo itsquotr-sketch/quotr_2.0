@@ -91,11 +91,17 @@ export function formatTimberLabourCompactCopy(params: {
   const unitDriver =
     params.unit === "ea" && /pile/i.test(params.label)
       ? "piles"
-      : params.unit === "m3"
-        ? "m³"
-        : params.unit === "m2"
-          ? "m²"
-          : params.unit;
+      : params.unit === "ea" && /post/i.test(params.label)
+        ? "posts"
+        : params.unit === "ea" && /sleeper/i.test(params.label)
+          ? "sleepers"
+          : params.unit === "hole"
+            ? "holes"
+            : params.unit === "m3"
+              ? "m³"
+              : params.unit === "m2"
+                ? "m²"
+                : params.unit;
   const rateUnit = params.unit === "ea" ? "ea" : params.unit === "m3" ? "m³" : params.unit;
   const driver = `${params.quantity}${unitDriver === "piles" ? " piles" : ` ${unitDriver}`} × ${params.hoursPerUnit}h/${rateUnit}`;
   const parts = getLabourAdjustmentParts(params.constraints);
@@ -188,5 +194,63 @@ export function timberLabourLabel(componentKey: string, unknownAllowance: boolea
   if (componentKey.includes("excavation.bulk.labour")) {
     return unknownAllowance ? "Excavation allowance" : "Excavation";
   }
+  if (componentKey.endsWith("posts.install")) return "Post installation";
+  if (componentKey.endsWith("sleepers.install")) return "Sleeper installation";
+  if (componentKey.endsWith("concrete.place")) return "Post-hole concrete placement";
   return "Labour";
+}
+
+export function formatSleeperGroupSupporting(params: {
+  postCount: number;
+  theoreticalLm: number;
+}): { supporting: string; secondary: string } {
+  return {
+    supporting: `${params.postCount} posts · ${round2(params.theoreticalLm)}lm theoretical`,
+    secondary: "Estimating lengths from local wall height + embedment. Not stock rounding.",
+  };
+}
+
+export function formatSleeperCompactCopy(params: {
+  sleeperCount: number;
+  bayCount: number | null;
+  courses: number[];
+  unitCost: number | null;
+  standardSleeperEa?: number;
+  cutSleeperEa?: number;
+}): { supporting: string; secondary: string | null } {
+  const courseHint =
+    params.courses.length === 0
+      ? null
+      : params.courses.every((n) => n === params.courses[0])
+        ? `${params.courses[0]} courses`
+        : `courses ${params.courses[0]}–${params.courses.at(-1)}`;
+  const rate =
+    params.unitCost != null ? `$${params.unitCost}/EA` : null;
+  const cut =
+    (params.cutSleeperEa ?? 0) > 0
+      ? `${params.standardSleeperEa} standard · ${params.cutSleeperEa} cut/end`
+      : null;
+  return {
+    supporting: [`${params.sleeperCount} EA`, courseHint, rate]
+      .filter(Boolean)
+      .join(" · "),
+    secondary: [cut, params.bayCount != null ? `${params.bayCount} bays` : null]
+      .filter(Boolean)
+      .join(" · ") || null,
+  };
+}
+
+export function formatSleeperConcreteCopy(params: {
+  volumeM3: number;
+  bagCount: number | null;
+  unitCost: number | null;
+}): { supporting: string; secondary: string | null } {
+  const bags =
+    params.bagCount != null
+      ? `${params.bagCount} bags${params.unitCost != null ? ` · $${params.unitCost}/bag` : ""}`
+      : null;
+  return {
+    supporting: `${round2(params.volumeM3)} m³ required${bags ? ` · ${bags}` : ""}`,
+    secondary: null,
+  };
 }

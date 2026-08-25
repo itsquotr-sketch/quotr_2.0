@@ -72,6 +72,21 @@ export function RetainingWallQuickSpecEditor({
     jobPlanString(facts, workAreaId, "retaining_wall.face_board_section") ?? "";
   const spacing = jobPlanNumber(facts, workAreaId, "retaining_wall.post_spacing_m");
   const embedment = jobPlanNumber(facts, workAreaId, "retaining_wall.pile_embedment_m");
+  const sleeperLength = jobPlanNumber(
+    facts,
+    workAreaId,
+    "retaining_wall.sleeper_length_m"
+  );
+  const sleeperFace = jobPlanNumber(
+    facts,
+    workAreaId,
+    "retaining_wall.sleeper_face_height_m"
+  );
+  const sleeperEmbedment = jobPlanNumber(
+    facts,
+    workAreaId,
+    "retaining_wall.sleeper_post_embedment_m"
+  );
   const drainage = jobPlanBoolean(facts, workAreaId, "retaining_wall.drainage_required");
   const backfill = jobPlanBoolean(facts, workAreaId, "retaining_wall.backfill_included");
   const excavation = jobPlanBoolean(
@@ -242,6 +257,64 @@ export function RetainingWallQuickSpecEditor({
             Piles stay H5 SED / pole. Changing board width recalculates face-board
             lm from wall area. Identities are estimating selections, not a
             structural certificate.
+          </p>
+        </Group>
+      ) : null}
+
+      {system === "CONCRETE_SLEEPER_WALL" ? (
+        <Group title="Concrete sleeper">
+          <div className="space-y-1">
+            <Label htmlFor={`rw-sleeper-length-${workAreaId}`}>
+              Sleeper length (m)
+            </Label>
+            <Input
+              id={`rw-sleeper-length-${workAreaId}`}
+              type="number"
+              inputMode="decimal"
+              step="0.05"
+              placeholder="2.0 estimating default"
+              defaultValue={sleeperLength ?? ""}
+              onBlur={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next) || !(next > 0)) return;
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.sleeper_length_m",
+                  label: "Sleeper length",
+                  value: next,
+                  valueType: "number",
+                });
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`rw-sleeper-face-${workAreaId}`}>
+              Sleeper face height (m)
+            </Label>
+            <Input
+              id={`rw-sleeper-face-${workAreaId}`}
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.20 estimating default"
+              defaultValue={sleeperFace ?? ""}
+              onBlur={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next) || !(next > 0)) return;
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.sleeper_face_height_m",
+                  label: "Sleeper face height",
+                  value: next,
+                  valueType: "number",
+                });
+              }}
+            />
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Defaults are 2000×200 mm class. Changing length recalculates bays and
+            posts. Identities are estimating selections, not a manufacturer or
+            engineering certificate.
           </p>
         </Group>
       ) : null}
@@ -516,6 +589,58 @@ export function RetainingWallQuickSpecEditor({
                       workAreaId,
                       key: "retaining_wall.pile_embedment_m",
                       label: "Pile embedment",
+                      value: next,
+                      valueType: "number",
+                    });
+                  }}
+                />
+              </div>
+            </>
+          ) : null}
+          {system === "CONCRETE_SLEEPER_WALL" ? (
+            <>
+              <div className="space-y-1">
+                <Label htmlFor={`rw-sleeper-spacing-${workAreaId}`}>
+                  Target post spacing (m)
+                </Label>
+                <Input
+                  id={`rw-sleeper-spacing-${workAreaId}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.05"
+                  placeholder="Sleeper length if blank"
+                  defaultValue={spacing ?? ""}
+                  onBlur={(event) => {
+                    const next = Number(event.target.value);
+                    if (!Number.isFinite(next) || !(next > 0)) return;
+                    onSpecFact?.({
+                      workAreaId,
+                      key: "retaining_wall.post_spacing_m",
+                      label: "Post spacing",
+                      value: next,
+                      valueType: "number",
+                    });
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`rw-sleeper-embedment-${workAreaId}`}>
+                  Post embedment (m)
+                </Label>
+                <Input
+                  id={`rw-sleeper-embedment-${workAreaId}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="0.05"
+                  placeholder="70% of H(x) if blank"
+                  defaultValue={sleeperEmbedment ?? ""}
+                  onBlur={(event) => {
+                    const next = Number(event.target.value);
+                    if (!Number.isFinite(next)) return;
+                    onSpecFact?.({
+                      workAreaId,
+                      key: "retaining_wall.sleeper_post_embedment_m",
+                      label: "Post embedment",
                       value: next,
                       valueType: "number",
                     });

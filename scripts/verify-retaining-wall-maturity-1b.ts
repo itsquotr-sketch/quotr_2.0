@@ -57,8 +57,8 @@ import {
   RW_SLEEPER_FACE_LABOUR_COMPONENT,
   RW_SLEEPER_POST_LABOUR_COMPONENT,
   RW_SLEEPER_POSTS_EA_COMPONENT,
+  RW_SLEEPER_POSTS_PROCURE_COMPONENT,
   RW_STEEL_POST_KEY,
-  RW_SLEEPER_FIXINGS_COMPONENT,
   RW_TIMBER_FIXINGS_COMPONENT,
   RW_TIMBER_BOARDS_COMPONENT,
   RW_TIMBER_FACE_LABOUR_COMPONENT,
@@ -472,10 +472,8 @@ check(
   "17 Sleeper follows same commercial readiness gate",
   sleeperPhysicalReady(sleeperPhys) &&
     sleeperCalcA.requirements.some((row) => row.componentKey === RW_SLEEPER_COMPONENT) &&
-    mat(com(sleeperLevel, "Concrete sleeper").requirements, RW_SLEEPER_FIXINGS_COMPONENT) !=
-      null &&
-    hasPackage(sleeperCalcA.lineItems) &&
-    !hasDetailedMoney(sleeperCalcA.lineItems)
+    !hasPackage(sleeperCalcA.lineItems) &&
+    hasDetailedMoney(sleeperCalcA.lineItems)
 );
 check(
   "18 Masonry follows safe readiness gate",
@@ -589,13 +587,14 @@ const sleeperPriced = com(sleeperLevel, "Concrete sleeper", [
 ]);
 check(
   "20 post material rate exact",
-  mat(sleeperPriced.requirements, RW_SLEEPER_POSTS_EA_COMPONENT)?.priced === true &&
-    mat(sleeperPriced.requirements, RW_SLEEPER_POSTS_EA_COMPONENT)?.unitCost === TEST_POST
+  mat(sleeperPriced.requirements, RW_SLEEPER_POSTS_PROCURE_COMPONENT)?.priced === true &&
+    mat(sleeperPriced.requirements, RW_SLEEPER_POSTS_PROCURE_COMPONENT)?.unitCost === TEST_POST &&
+    mat(sleeperPriced.requirements, RW_SLEEPER_POSTS_PROCURE_COMPONENT)?.purchaseUnit === "ea"
 );
 const sleeperLab = com(sleeperLevel, "Concrete sleeper", [
   testRate(RW_PRODUCTIVITY_KEYS.sleeperPostsEa, "ea", 0.6, "productivity"),
   testRate(RW_PRODUCTIVITY_KEYS.sleeperConcreteHole, "hole", 0.2, "productivity"),
-  testRate(RW_PRODUCTIVITY_KEYS.sleeperFaceM2, "m2", 0.5, "productivity"),
+  testRate(RW_PRODUCTIVITY_KEYS.sleeperSleepersEa, "ea", 0.5, "productivity"),
   testRate("labour.carpenter.hour", "hour", TEST_LABOUR, "labour"),
 ]);
 check(
@@ -607,17 +606,17 @@ check(
   (mat(sleeperCalcA.requirements, RW_SLEEPER_CONCRETE_COMPONENT)?.baseQuantity ?? 0) > 0
 );
 check(
-  "23 bag count only with yield",
-  sleeperPhys.sleeperTakeoff?.bagCount == null &&
-    mat(sleeperCalcA.requirements, RW_SLEEPER_CONCRETE_COMPONENT)?.purchaseUnit === "m3"
+  "23 bag count uses default 20kg yield",
+  (sleeperPhys.sleeperTakeoff?.bagCount ?? 0) > 0 &&
+    mat(sleeperCalcA.requirements, RW_SLEEPER_CONCRETE_COMPONENT)?.purchaseUnit === "bag"
 );
 check(
   "24 concrete labour h/hole",
   lab(sleeperLab.requirements, RW_SLEEPER_CONCRETE_LABOUR_COMPONENT)?.productivityBasis.unit === "hole"
 );
 check(
-  "25 sleeper labour h/m²",
-  lab(sleeperLab.requirements, RW_SLEEPER_FACE_LABOUR_COMPONENT)?.productivityBasis.unit === "m2"
+  "25 sleeper labour h/ea",
+  lab(sleeperLab.requirements, RW_SLEEPER_FACE_LABOUR_COMPONENT)?.productivityBasis.unit === "ea"
 );
 
 console.log("\n--- MASONRY ---\n");

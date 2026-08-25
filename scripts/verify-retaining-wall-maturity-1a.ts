@@ -60,6 +60,7 @@ import {
 import { FULL_RATE_CATALOGUE } from "../lib/rates/catalogue";
 import { isMaterialRatesCatalogueEntry } from "../lib/rates/rate-section-contract";
 import { RW_TIMBER_1D_PRODUCTIVITY_STARTERS } from "../lib/estimate/retaining-wall-timber-1d";
+import { RW_SLEEPER_2A_PRODUCTIVITY_STARTERS } from "../lib/estimate/retaining-wall-sleeper-2a";
 import type { EstimateContext, EstimateFact, EstimateWorkArea } from "../lib/estimate/types";
 import type { EstimateRequirement } from "../lib/estimate/requirements";
 
@@ -420,9 +421,10 @@ check("58 h/ea works", RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.timberPilesEa]
 check("59 h/lm works", RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.masonryRebarLm] === "lm");
 check("60 h/hole works", RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.sleeperConcreteHole] === "hole");
 check(
-  "61 non-1D productivity rows still have no invented hour defaults",
+  "61 non-detailed productivity rows still have no invented hour defaults",
   prod
     .filter((e) => !(e.item_key in RW_TIMBER_1D_PRODUCTIVITY_STARTERS))
+    .filter((e) => !(e.item_key in RW_SLEEPER_2A_PRODUCTIVITY_STARTERS))
     .filter((e) => !e.item_key.startsWith("plant.mini_excavator."))
     .every((e) => e.defaultCostRate == null)
 );
@@ -523,11 +525,9 @@ check(
     prod.every((e) => FULL_RATE_CATALOGUE.some((x) => x.item_key === e.item_key))
 );
 check(
-  "useful: sleeper/masonry identities remain unpriced; timber 1D starters are explicit",
-  RETAINING_SPECIFIC_MATERIAL_CATALOGUE.filter(
-    (e) =>
-      e.item_key.startsWith("retaining_wall.sleeper") ||
-      e.item_key.startsWith("retaining_wall.masonry")
+  "useful: masonry identities remain unpriced; timber 1D / sleeper 2A starters are explicit",
+  RETAINING_SPECIFIC_MATERIAL_CATALOGUE.filter((e) =>
+    e.item_key.startsWith("retaining_wall.masonry")
   ).every((e) => e.defaultCostRate == null)
 );
 check(

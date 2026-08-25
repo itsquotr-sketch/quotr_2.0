@@ -19,6 +19,8 @@ export const RW_FACE_BOARD_200_H4_KEY =
 export const RW_H5_SED_POLE_KEY = "retaining_wall.timber.pile.h5_sed";
 export const RW_CONCRETE_SLEEPER_KEY = "retaining_wall.sleeper.precast";
 export const RW_STEEL_POST_KEY = "retaining_wall.sleeper.steel_post";
+/** Bagged post-hole concrete. Distinct from Deck's unpriced premix identity. */
+export const RW_SLEEPER_PREMIX_20KG_KEY = "retaining_wall.sleeper.premix.20kg.bag";
 export const RW_DRAINAGE_AGGREGATE_KEY = "retaining_wall.backfill.m3";
 export const RW_NOVACOIL_KEY = "retaining_wall.drainage.lm";
 export const RW_PREMIX_20KG_KEY = "deck.concrete.premix.20kg.bag";
@@ -74,7 +76,10 @@ export function isRwTimberPileStockComponent(componentKey: string): boolean {
 export const RW_SLEEPER_COMPONENT = "retaining_wall.sleeper.sleepers";
 export const RW_SLEEPER_POSTS_EA_COMPONENT = "retaining_wall.sleeper.posts.ea";
 export const RW_SLEEPER_POSTS_LM_COMPONENT = "retaining_wall.sleeper.posts.lm";
+export const RW_SLEEPER_POSTS_PROCURE_COMPONENT =
+  "retaining_wall.sleeper.posts.procure";
 export const RW_SLEEPER_CONCRETE_COMPONENT = "retaining_wall.sleeper.hole_concrete";
+export const RW_SLEEPER_PLANT_COMPONENT = "retaining_wall.sleeper.plant";
 export const RW_MASONRY_BLOCKS_COMPONENT = "retaining_wall.masonry.blocks";
 export const RW_MASONRY_FOOTING_COMPONENT = "retaining_wall.masonry.footing";
 export const RW_MASONRY_SUBBASE_COMPONENT = "retaining_wall.masonry.subbase";
@@ -169,7 +174,7 @@ export function h5SedStockIdentity(stockLengthM: number): MaterialIdentity {
 export const CONCRETE_SLEEPER_IDENTITY: MaterialIdentity = {
   family: "precast",
   productFamily: "concrete_sleeper",
-  section: null,
+  section: "2000x200",
   grade: null,
   treatment: null,
   treatmentKind: "unknown",
@@ -177,13 +182,14 @@ export const CONCRETE_SLEEPER_IDENTITY: MaterialIdentity = {
   processing: null,
   processingKind: "unknown",
   species: null,
-  originalDescription: "Precast concrete retaining-wall sleeper",
+  originalDescription:
+    "Precast concrete retaining-wall sleeper — estimating default 2000×200 mm class, not a manufacturer SKU",
 };
 
 export const STEEL_RW_POST_IDENTITY: MaterialIdentity = {
   family: "steel",
   productFamily: "retaining_wall_post",
-  section: null,
+  section: "h_section",
   grade: null,
   treatment: null,
   treatmentKind: "unknown",
@@ -191,7 +197,8 @@ export const STEEL_RW_POST_IDENTITY: MaterialIdentity = {
   processing: null,
   processingKind: "unknown",
   species: null,
-  originalDescription: "Steel retaining-wall post",
+  originalDescription:
+    "H-section steel retaining-wall post — estimating class, not a manufacturer SKU or stock length",
 };
 
 export const DRAINAGE_AGGREGATE_IDENTITY: MaterialIdentity = {

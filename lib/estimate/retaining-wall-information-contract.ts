@@ -204,7 +204,7 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       commercial: false,
       confidence: false,
       reason:
-        "Timber pile centres. Default 1.2 m is target/max ESTIMATING_LAYOUT_ASSUMPTION. Bays are generated evenly, so actual spacing may be smaller than the target. Not a structural standard. Explicit builder/design spacing is also a maximum for layout unless individual post positions are later supplied.",
+        "Timber pile centres, or sleeper post centres when the wall is Concrete sleeper. Timber 1.2 m is target/max even-bay. Sleeper: explicit spacing is a system/user module with full bays plus residual/end bay — not even-distributed 1.875 m bays. Default sleeper module is the purchased sleeper length. Not a structural standard.",
     },
     {
       factKey: "retaining_wall.pile_embedment_m",
@@ -236,21 +236,23 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
     },
     {
       factKey: "retaining_wall.sleeper_length_m",
-      questionClass: "REFINE",
+      questionClass: "ASSUME_IF_SKIPPED",
       calculatorConsumed: true,
       physical: true,
       commercial: false,
       confidence: false,
-      reason: "Selected concrete sleeper length. Drives bay/post count.",
+      reason:
+        "PHYSICAL_PURCHASED_UNIT_LENGTH. Fact key retaining_wall.sleeper_length_m is the purchased sleeper length, not a continuously resized bay. Default 2.0 m (2000 mm class) if skipped. Layout is full standard bays plus one residual/end bay. Explicit post spacing overrides as system/user centres.",
     },
     {
       factKey: "retaining_wall.sleeper_face_height_m",
-      questionClass: "REFINE",
+      questionClass: "ASSUME_IF_SKIPPED",
       calculatorConsumed: true,
       physical: true,
       commercial: false,
       confidence: false,
-      reason: "Selected sleeper face height. Required for sleeper quantity.",
+      reason:
+        "Selected sleeper face height. Default 0.20 m (200 mm class) if skipped. Required for sleeper quantity.",
     },
     {
       factKey: "retaining_wall.sleeper_post_embedment_m",
@@ -259,7 +261,7 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       physical: true,
       commercial: false,
       confidence: false,
-      reason: "Explicit steel-post embedment. Overrides 0.70 × H(x) estimating heuristic.",
+      reason: "Explicit steel-post embedment. Overrides the 70% × H(x) preliminary estimating assumption. That default is not a manufacturer requirement or engineering rule.",
     },
     {
       factKey: "retaining_wall.hole_diameter_m",

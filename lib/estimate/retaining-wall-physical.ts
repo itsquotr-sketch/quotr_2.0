@@ -97,6 +97,10 @@ function factKeysFor(system: RetainingWallSystemClass): string[] {
       ...common,
       "retaining_wall.sleeper_length_m",
       "retaining_wall.sleeper_face_height_m",
+      "retaining_wall.post_spacing_m",
+      "retaining_wall.sleeper_post_embedment_m",
+      "retaining_wall.hole_diameter_m",
+      "retaining_wall.premix_bag_yield_m3",
     ];
   }
   if (system === "CONCRETE_MASONRY_WALL") {
@@ -346,6 +350,11 @@ export function buildRetainingWallPhysicalModel(params: {
           facts,
           workAreaId,
           "retaining_wall.sleeper_face_height_m"
+        ),
+        postSpacingM: getNumberFact(
+          facts,
+          workAreaId,
+          "retaining_wall.post_spacing_m"
         ),
         postEmbedmentM: getNumberFact(
           facts,

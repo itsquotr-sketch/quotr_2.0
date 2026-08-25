@@ -615,7 +615,7 @@ check(
 );
 const sleeperCalc = calculateRetainingWall(ctx(sleeperLevel), wa());
 const masonryCalc = calculateRetainingWall(ctx(masonryLevel), wa());
-check("31 incomplete sleeper coverage stays package", hasPackage(sleeperCalc.lineItems));
+check("31 sleeper 2A coverage promotes detailed", !hasPackage(sleeperCalc.lineItems));
 check(
   "32 full timber 1D coverage promotes detailed",
   ownerCommercial.mode === "DETAILED_COMPONENT_AUTHORITY" &&
@@ -728,7 +728,7 @@ const review = composeBuilderReview({
   requirements: ownerEstimate.requirements,
 });
 check("45 Builder Review still composes", review.workAreas.length > 0);
-check("46 sleeper still package", hasPackage(sleeperCalc.lineItems));
+check("46 sleeper 2A detailed", !hasPackage(sleeperCalc.lineItems));
 check("47 masonry still package", hasPackage(masonryCalc.lineItems));
 check(
   "48 1D starters live in the rate system, not calculator hardcoded NZD",
@@ -902,8 +902,8 @@ check(
 );
 check(
   "R1-19 package fallback may retain legacy pair",
-  hasPackage(sleeperCalc.lineItems) &&
-    sleeperCalc.lineItems.some(
+  hasPackage(masonryCalc.lineItems) &&
+    masonryCalc.lineItems.some(
       (item) => item.label === "Retaining wall labour"
     )
 );

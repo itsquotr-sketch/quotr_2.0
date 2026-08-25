@@ -3,6 +3,7 @@
  * Informative only. Never overrides Project / Company / Quotr hierarchy.
  */
 import { timber1DMaterialStarter } from "@/lib/estimate/retaining-wall-timber-1d";
+import { sleeper2AMaterialStarter } from "@/lib/estimate/retaining-wall-sleeper-2a";
 import { RW_MINI_EXCAVATOR_DAY_COST_EX_GST, RW_MINI_EXCAVATOR_DAY_KEY } from "@/lib/estimate/retaining-wall-construction-method";
 
 /** Show comparison only when the applied rate differs by more than 25%. */
@@ -30,7 +31,8 @@ function quotrBenchmarkForKey(
   if (itemKey === RW_MINI_EXCAVATOR_DAY_KEY && unit === "day") {
     return { cost: RW_MINI_EXCAVATOR_DAY_COST_EX_GST, unit: "day" };
   }
-  const starter = timber1DMaterialStarter(itemKey);
+  const starter =
+    timber1DMaterialStarter(itemKey) ?? sleeper2AMaterialStarter(itemKey, unit);
   if (!starter) return null;
   if (starter.unit !== unit) return null;
   return { cost: starter.costPerUnit, unit: starter.unit };

@@ -115,6 +115,30 @@ export function timberMachineAccessFeasible(
   return !accessIsMachineBlocked(resolved.value);
 }
 
+export function resolveSleeperPostMethod(
+  constraints: readonly EstimateConstraint[] | null | undefined,
+  facts?: readonly EstimateFact[] | null,
+  workAreaId?: string
+): {
+  method: RwTimberPilingMethod;
+  machineAccess: boolean;
+  disclosure: string;
+} {
+  const timber = resolveTimberPilingMethod(constraints, facts, workAreaId);
+  if (!timber.machineAccess) {
+    return {
+      ...timber,
+      disclosure:
+        "Site access cannot take a mini-excavator/auger. Steel post holes are manual. Plant is not priced.",
+    };
+  }
+  return {
+    ...timber,
+    disclosure:
+      "Accessible-site starter: machine-assisted steel post holes (mini-excavator/auger). Carpenter labour is attendance, set-out, place and plumb. Concrete placement is a separate labour intent. Hole digging is not bulk excavation.",
+  };
+}
+
 export function resolveTimberPilingMethod(
   constraints: readonly EstimateConstraint[] | null | undefined,
   facts?: readonly EstimateFact[] | null,

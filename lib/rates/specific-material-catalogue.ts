@@ -333,19 +333,42 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "retaining_wall",
     workAreaLabel: "Concrete sleeper wall",
     unit: "ea",
-    description: "Precast sleeper identity. Not timber H4 boards. No invented NZD.",
-    calculatorSupport: "planned",
+    description:
+      "LOW-CONFIDENCE QUOTR STARTER BENCHMARK for a 2000×200 mm class sleeper. Not a trusted current market price. Company/Project exact overrides. Purchase EA — cut/end bays still buy a full unit.",
+    defaultCostRate: 36,
+    defaultSellRate: 45,
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "retaining_wall.sleeper.steel_post",
-    label: "Steel retaining-wall post",
+    label: "H-section steel retaining post",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Concrete sleeper wall",
-    unit: "ea",
-    description: "Steel post identity. No invented NZD in 1A.",
-    calculatorSupport: "planned",
+    unit: "lm",
+    description:
+      "LOW-CONFIDENCE QUOTR STARTER BENCHMARK for H-section retaining posts $/lm. Not a supplier quote. Stock-length SKUs are not invented. Company may also set an EA rate.",
+    defaultCostRate: 58,
+    defaultSellRate: 72.5,
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "retaining_wall.sleeper.premix.20kg.bag",
+    label: "Post-hole premix (20 kg bag)",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Concrete sleeper wall",
+    unit: "bag",
+    description:
+      "MEDIUM-CONFIDENCE Quotr starter in the current NZ 20 kg GP/rapid retail band (~$11–12/bag ex GST). Bags = ceil(hole m³ / 0.01 m³ yield). Estimating-grade premix — not a specified structural mix. Company exact overrides.",
+    defaultCostRate: 11.5,
+    defaultSellRate: 14.38,
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "retaining_wall.masonry.block.150_series",
@@ -826,7 +849,9 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "ea",
-    description: "Hours per steel post. Hole excavation/setting included; concrete placement is separate.",
+    description:
+      "Hours per steel post including set-out, attend machine hole, place, plumb. 2A machine-assisted starter 0.95 h/ea. Manual 2.0 h/ea. Concrete placement is a separate intent.",
+    defaultCostRate: 0.95,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -837,18 +862,34 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "hole",
-    description: "Hours per hole for concrete placement. Not combined with post installation.",
+    description:
+      "Hours per hole for mix/place/consolidate. 2A starter 0.12 h/hole. Not combined with post installation. Hole digging is owned by post install + plant.",
+    defaultCostRate: 0.12,
     calculatorSupport: "used_now",
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.sleeperFaceM2,
-    label: "Concrete sleeper installation (hours/m²)",
+    label: "Concrete sleeper installation (hours/m²) — leftover",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m2",
-    description: "Hours per m² sleeper face. Not timber wall productivity.",
+    description:
+      "Leftover face-m² sleeper labour. 2A prices discrete sleeper EA instead.",
+    calculatorSupport: "leftover",
+  }),
+  entry({
+    item_key: RW_PRODUCTIVITY_KEYS.sleeperSleepersEa,
+    label: "Concrete sleeper installation (hours/ea)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Retaining wall productivity",
+    unit: "ea",
+    description:
+      "Hours per sleeper. 2A starter 0.22 h/ea. Driver is discrete EA, not wall m².",
+    defaultCostRate: 0.22,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1018,7 +1059,7 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Retaining / drainage",
     description:
-      "Timber 1D-R1 identities: 150×50 H4 No.2/retaining, 200×50 H4 No.2/retaining, H5 SED 150–175 mm stock-length EA, novacoil, drainage aggregate, mini-excavator day, fixings residual. Generic H5 $/lm is leftover. Company exact overrides Quotr starters. Face-m² package rates are legacy fallback only.",
+      "Timber 1D-R1 and Sleeper 2A identities: 150×50 / 200×50 H4 No.2/retaining, H5 SED 150–175 mm stock-length EA, precast sleepers EA, H-section posts $/lm, post-hole 20 kg premix, novacoil, drainage aggregate, mini-excavator day, timber fixings residual. Generic H5 $/lm is leftover. Company exact overrides Quotr starters. Face-m² package rates are legacy fallback only.",
     entries: RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
