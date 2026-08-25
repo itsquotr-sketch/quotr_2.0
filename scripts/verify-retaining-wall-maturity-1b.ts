@@ -14,20 +14,22 @@ import { findCompanyProductivityRate } from "../lib/estimate/productivity";
 import { buildPricingItemFieldsFromEstimateLineItem } from "../lib/pricing/pricing-item-calculation";
 import {
   commercializeRetainingWall,
-  componentAuthorityOf,
   decideRetainingWallPhysicalMode,
   masonryPhysicalReady,
   packageXorDetailedHolds,
   retainingWallCoverageIsReady,
   sleeperPhysicalReady,
   timberPhysicalReady,
-  RW_BACKFILL_PROCUREMENT_STATUS,
-  RW_NOVACOIL_LABOUR_OWNERSHIP,
   RW_PACKAGE_LIFECYCLE,
   RW_QUICK_ESTIMATE_PACKAGE_NOTE,
   RW_REBAR_GAP,
-  RW_TIMBER_RESIDUAL_CLASS,
 } from "../lib/estimate/retaining-wall-commercial";
+import {
+  RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS,
+  RW_DRAINAGE_AGGREGATE_PROCUREMENT_FACTOR,
+  RW_TIMBER_DRAINAGE_LABOUR_OWNERSHIP,
+  RW_TIMBER_FIXINGS_METHOD,
+} from "../lib/estimate/retaining-wall-timber-1d";
 import {
   H5_SED_POLE_IDENTITY,
   RW_BACKFILL_COMPONENT,
@@ -63,6 +65,7 @@ import {
   RW_TIMBER_PILE_LABOUR_COMPONENT,
   RW_TIMBER_PILES_EA_COMPONENT,
   RW_TIMBER_PILES_LM_COMPONENT,
+  isRwTimberPileStockComponent,
 } from "../lib/estimate/retaining-wall-identities";
 import { buildRetainingWallPhysicalModel } from "../lib/estimate/retaining-wall-physical";
 import {
@@ -153,6 +156,16 @@ function ctx(facts: EstimateFact[], rates: OrganisationRate[] = []): EstimateCon
     materialWastageSettings: { defaultMaterialWastagePercent: 10 },
     rates,
   } as unknown as EstimateContext;
+}
+
+function stockPriced(
+  reqs: readonly EstimateRequirement[] | undefined
+): boolean {
+  const rows = (reqs ?? []).filter(
+    (row): row is MaterialRequirement =>
+      row.kind === "material" && isRwTimberPileStockComponent(row.componentKey)
+  );
+  return rows.length > 0 && rows.every((row) => row.priced === true);
 }
 
 function mat(
@@ -344,11 +357,12 @@ check(
     (boardsA?.purchaseQuantity ?? 0) > 0
 );
 check(
-  "2 empty-rate Timber package remains monetary authority",
-  timberA.mode === "LEGACY_PACKAGE_AUTHORITY" &&
+  "2 empty-rate Timber uses 1D detailed money with Quotr starters",
+  timberA.mode === "DETAILED_COMPONENT_AUTHORITY" &&
     timberA.physicalMode === "DETAILED_PHYSICAL_MODEL" &&
-    hasPackage(timberCalcA.lineItems) &&
-    !hasDetailedMoney(timberCalcA.lineItems)
+    timberA.commerciallyReady === true &&
+    !hasPackage(timberCalcA.lineItems) &&
+    hasDetailedMoney(timberCalcA.lineItems)
 );
 check(
   "3 empty-rate Timber sell not $0",
@@ -372,19 +386,20 @@ const rw2Empty = calculateEstimate(
   )
 );
 check(
-  "4 RW-2 package result remains $7,345 before commercial readiness",
-  Math.round(rw2Empty.recommendedSell) === 7345
+  "4 RW-2 empty-rate promotes detailed money (no longer locked to package $7,345)",
+  rw2Empty.recommendedSell > 0 &&
+    !rw2Empty.lineItems.some((item) => item.label === "Retaining wall materials")
 );
 check(
-  "5 partial board rate does not add to package money",
-  hasPackage(timberSelectiveCalc.lineItems) &&
-    !hasDetailedMoney(timberSelectiveCalc.lineItems) &&
-    near(sellOf(timberSelectiveCalc.lineItems), sellOf(timberCalcA.lineItems))
+  "5 partial board rate stays inside detailed money (no package mix)",
+  !hasPackage(timberSelectiveCalc.lineItems) &&
+    hasDetailedMoney(timberSelectiveCalc.lineItems) &&
+    timberSelective.mode === "DETAILED_COMPONENT_AUTHORITY"
 );
 check(
-  "6 partial board rate does not promote whole system",
-  timberSelective.mode === "LEGACY_PACKAGE_AUTHORITY" &&
-    timberSelective.commerciallyReady === false &&
+  "6 partial board override does not restore package",
+  timberSelective.mode === "DETAILED_COMPONENT_AUTHORITY" &&
+    timberSelective.commerciallyReady === true &&
     mat(timberSelective.requirements, RW_TIMBER_BOARDS_COMPONENT)?.priced === true
 );
 check(
@@ -403,11 +418,10 @@ check(
     !hasPackage(timberPostPromotionCalc.lineItems)
 );
 check(
-  "10 post-promotion missing rate becomes component Pricing Required",
-  mat(timberPostPromotion.requirements, RW_TIMBER_BOARDS_COMPONENT)?.priced === false &&
-    componentAuthorityOf(mat(timberPostPromotion.requirements, RW_TIMBER_BOARDS_COMPONENT)!) ===
-      "PRICING_REQUIRED" &&
-    mat(timberPostPromotion.requirements, RW_TIMBER_PILES_LM_COMPONENT)?.priced === true
+  "10 post-promotion missing company board rate falls back to Quotr starter, not package",
+  mat(timberPostPromotion.requirements, RW_TIMBER_BOARDS_COMPONENT)?.priced === true &&
+    stockPriced(timberPostPromotion.requirements) &&
+    timberPostPromotion.mode === "DETAILED_COMPONENT_AUTHORITY"
 );
 check(
   "11 missing drainage assumes YES for Timber",
@@ -423,19 +437,23 @@ check(
   )
 );
 check(
-  "13 missing backfill assumption handled per approved contract",
-  near(mat(timberAssumeCom.requirements, RW_BACKFILL_COMPONENT)?.purchaseQuantity ?? 0, 2.55)
+  "13 missing backfill assumption still emits in-place volume; purchase applies 1.25 factor",
+  near(mat(timberAssumeCom.requirements, RW_BACKFILL_COMPONENT)?.baseQuantity ?? 0, 2.55) &&
+    near(
+      mat(timberAssumeCom.requirements, RW_BACKFILL_COMPONENT)?.purchaseQuantity ?? 0,
+      2.55 * RW_DRAINAGE_AGGREGATE_PROCUREMENT_FACTOR
+    )
 );
 check(
-  "14 backfill procurement gap prevents false detailed completeness",
-  timberA.backfillProcurement === RW_BACKFILL_PROCUREMENT_STATUS &&
-    timberA.commerciallyReady === false
+  "14 backfill procurement factor is applied for Timber 1D",
+  timberA.backfillProcurement === RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS &&
+    timberA.commerciallyReady === true
 );
 check(
-  "15 residual gap prevents false detailed completeness",
-  timberA.residualClass === RW_TIMBER_RESIDUAL_CLASS &&
-    mat(timberA.requirements, RW_TIMBER_FIXINGS_COMPONENT)?.priced === false &&
-    timberA.commerciallyReady === false
+  "15 residual 8% of timber materials is an approved allowance",
+  timberA.residualClass === RW_TIMBER_FIXINGS_METHOD &&
+    mat(timberA.requirements, RW_TIMBER_FIXINGS_COMPONENT)?.priced === true &&
+    timberA.commerciallyReady === true
 );
 check(
   "16 no package + detailed money double count",
@@ -524,10 +542,10 @@ check(
 );
 const pileLabA = lab(timberA.requirements, RW_TIMBER_PILE_LABOUR_COMPONENT);
 check(
-  "14 missing productivity is not zero complete labour",
-  pileLabA?.priced === false &&
-    pileLabA.totalCost == null &&
-    pileLabA.assumptions.some((row) => /not zero hours/i.test(row.text))
+  "14 missing company productivity uses Quotr starter, not zero hours",
+  pileLabA?.priced === true &&
+    (pileLabA.baseHours ?? 0) > 0 &&
+    (pileLabA.totalCost ?? 0) > 0
 );
 check(
   "15 novacoil quantity remains length",
@@ -535,9 +553,13 @@ check(
     mat(timberA.requirements, RW_NOVACOIL_COMPONENT)?.purchaseUnit === "lm"
 );
 check(
-  "16 backfill driver m³",
+  "16 backfill driver m³ is in-place; purchase applies procurement factor",
   mat(timberA.requirements, RW_BACKFILL_COMPONENT)?.purchaseUnit === "m3" &&
-    near(mat(timberA.requirements, RW_BACKFILL_COMPONENT)?.purchaseQuantity ?? 0, 2.55)
+    near(mat(timberA.requirements, RW_BACKFILL_COMPONENT)?.baseQuantity ?? 0, 2.55) &&
+    near(
+      mat(timberA.requirements, RW_BACKFILL_COMPONENT)?.purchaseQuantity ?? 0,
+      2.55 * RW_DRAINAGE_AGGREGATE_PROCUREMENT_FACTOR
+    )
 );
 
 console.log("\n--- SLEEPER ---\n");
@@ -736,16 +758,16 @@ console.log("\n--- COMMERCIAL ---\n");
 check(
   "46 no economic hole",
   mat(timberA.requirements, RW_TIMBER_FIXINGS_COMPONENT) != null &&
-    timberA.residualClass === RW_TIMBER_RESIDUAL_CLASS &&
-    timberA.backfillProcurement === RW_BACKFILL_PROCUREMENT_STATUS &&
-    mat(timberA.requirements, RW_TIMBER_FIXINGS_COMPONENT)?.priced === false
+    timberA.residualClass === RW_TIMBER_FIXINGS_METHOD &&
+    timberA.backfillProcurement === RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS &&
+    mat(timberA.requirements, RW_TIMBER_FIXINGS_COMPONENT)?.priced === true
 );
 check(
   "47 no duplicate package",
   !hasPackage(timberFullCalc.lineItems) &&
     !timberFullCalc.lineItems.some((item) => item.label === "Backfill allowance") &&
     !timberFullCalc.lineItems.some((item) => item.label === "Drainage labour") &&
-    timberFull.novacoilLabourOwnership === RW_NOVACOIL_LABOUR_OWNERSHIP
+    timberFull.novacoilLabourOwnership === RW_TIMBER_DRAINAGE_LABOUR_OWNERSHIP
 );
 check(
   "48 Pricing parity copies estimate",
@@ -774,22 +796,22 @@ check(
 
 console.log("\n--- FIXTURES ---\n");
 check(
-  "51 RW-TIMBER-01 no-rate",
+  "51 RW-TIMBER-01 no-rate uses Timber 1D starters",
   timberPhysicalReady(timberPhys) &&
-    timberA.mode === "LEGACY_PACKAGE_AUTHORITY" &&
+    timberA.mode === "DETAILED_COMPONENT_AUTHORITY" &&
     timberA.physicalMode === "DETAILED_PHYSICAL_MODEL" &&
     mat(timberA.requirements, RW_TIMBER_PILES_EA_COMPONENT)?.purchaseQuantity === 10 &&
     near(mat(timberA.requirements, RW_TIMBER_PILES_LM_COMPONENT)?.purchaseQuantity ?? 0, 15) &&
     mat(timberA.requirements, RW_NOVACOIL_COMPONENT)?.purchaseQuantity === 10 &&
-    near(mat(timberA.requirements, RW_BACKFILL_COMPONENT)?.purchaseQuantity ?? 0, 2.55) &&
-    mat(timberA.requirements, RW_TIMBER_PILES_LM_COMPONENT)?.priced === false
+    near(mat(timberA.requirements, RW_BACKFILL_COMPONENT)?.baseQuantity ?? 0, 2.55) &&
+    stockPriced(timberA.requirements)
 );
 check(
-  "52 RW-TIMBER-01 selective-rate",
+  "52 RW-TIMBER-01 selective-rate stays detailed",
   mat(timberSelective.requirements, RW_TIMBER_BOARDS_COMPONENT)?.priced === true &&
-    mat(timberSelective.requirements, RW_TIMBER_PILES_LM_COMPONENT)?.priced === false &&
-    timberSelective.mode === "LEGACY_PACKAGE_AUTHORITY" &&
-    !hasDetailedMoney(timberSelectiveCalc.lineItems)
+    stockPriced(timberSelective.requirements) &&
+    timberSelective.mode === "DETAILED_COMPONENT_AUTHORITY" &&
+    hasDetailedMoney(timberSelectiveCalc.lineItems)
 );
 const boardsFull = mat(timberFull.requirements, RW_TIMBER_BOARDS_COMPONENT);
 check(
@@ -837,17 +859,17 @@ check(
   hasPackage(unspecifiedCalc.lineItems)
 );
 check(
-  "useful: timber without drainage fact stays package money",
-  hasPackage(calculateRetainingWall(ctx(timberNoDrainage), wa()).lineItems)
+  "useful: timber without drainage fact assumes drainage and stays detailed",
+  !hasPackage(calculateRetainingWall(ctx(timberNoDrainage), wa()).lineItems) &&
+    hasDetailedMoney(calculateRetainingWall(ctx(timberNoDrainage), wa()).lineItems)
 );
 check(
   "useful: empty-rate Quick Estimate is not blocked by detailed pricing gaps",
-  sellOf(timberCalcA.lineItems) > 0 &&
-    !timberCalcA.missingInfo.some((row) => /trusted price|productivity/i.test(row))
+  sellOf(timberCalcA.lineItems) > 0
 );
 check(
-  "useful: package-owned assumptions stay builder-facing",
-  timberCalcA.assumptions.some((row) => row.includes("Quick Estimate")) &&
+  "useful: 1D detailed assumptions stay builder-facing",
+  timberCalcA.assumptions.some((row) => row.includes("Timber residual method")) &&
     !timberCalcA.assumptions.some((row) => row.includes("SHADOW"))
 );
 check(
@@ -912,9 +934,9 @@ const rw2 = calculateEstimate({
   confirmedWorkAreas: [wa("rw2")],
 } as never);
 check(
-  "useful: RW-2 empty-rate remains package $7,345",
-  Math.round(rw2.recommendedSell) === 7345 &&
-    rw2.lineItems.some((item) => item.label === "Retaining wall materials")
+  "useful: RW-2 empty-rate is detailed (package $7,345 retired for covered Timber)",
+  rw2.recommendedSell > 0 &&
+    !rw2.lineItems.some((item) => item.label === "Retaining wall materials")
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

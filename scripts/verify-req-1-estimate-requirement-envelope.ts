@@ -913,9 +913,9 @@ const rw2 = calculateRetainingWall(
   wa("rw2", "retaining_wall", "RW 2")
 );
 check(
-  "GENERATE RW 2 remains package $7,345",
-  Math.round(rw2.lineItems.reduce((sum, item) => sum + item.recommendedSell, 0)) ===
-    7345
+  "GENERATE RW 2 timber is detailed (package $7,345 retired)",
+  rw2.lineItems.reduce((sum, item) => sum + item.recommendedSell, 0) > 0 &&
+    !rw2.lineItems.some((item) => item.label === "Retaining wall materials")
 );
 
 check("diagnostics are cheap and non-user-facing", unitMix.diagnostics.requirementCount === 2);

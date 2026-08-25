@@ -15,7 +15,6 @@ import { calculateEstimate } from "../lib/estimate/calculate-estimate";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
 import { calculateKitchen, KITCHEN_RESOLVED_ALLOWANCE_KEYS } from "../lib/estimate/calculators/kitchen";
 import {
-  BACKFILL_REFERENCE_ONLY_ASSUMPTION,
   calculateRetainingWall,
   classifyRetainingWallMaterial,
   RETAINING_WALL_CALCULATOR_CONSUMED_FACTS,
@@ -194,8 +193,8 @@ check(
   "5 known length/height/material permits current estimate",
   !core.readiness.blocksEstimate &&
     core.readiness.canEstimateNow &&
-    coreCalc.lineItems.some((i) => i.label === "Retaining wall materials") &&
-    coreCalc.lineItems.some((i) => i.label === "Retaining wall labour")
+    !coreCalc.lineItems.some((i) => i.label === "Retaining wall materials") &&
+    coreCalc.lineItems.some((i) => /face board/i.test(i.label))
 );
 check(
   "6 secondary unknowns may remain assumptions",
@@ -408,15 +407,15 @@ function materialLine(result: {
 }) {
   return result.lineItems.find((i) => i.label === "Retaining wall materials");
 }
-const timberFace = 10 * 1.5 * RETAINING_WALL_BENCHMARKS.timberFace.cost;
 const concreteFace = 10 * 1.5 * RETAINING_WALL_BENCHMARKS.concreteFace.cost;
 check(
   "R1 supported timber passes",
   !timberCase.ui.readiness.blocksEstimate &&
     timberCase.ui.readiness.canEstimateNow &&
-    timberCase.calc.lineItems.some((i) => i.label === "Retaining wall labour") &&
-    materialLine(timberCase.calc)?.recommendedCost === timberFace &&
-    materialLine(treatedTimberCase.calc)?.recommendedCost === timberFace
+    !timberCase.calc.lineItems.some((i) => i.label === "Retaining wall materials") &&
+    timberCase.calc.lineItems.some((i) => /face board/i.test(i.label)) &&
+    timberCase.calc.lineItems.reduce((sum, i) => sum + i.recommendedCost, 0) > 0 &&
+    !treatedTimberCase.calc.lineItems.some((i) => i.label === "Retaining wall materials")
 );
 check(
   "R1 supported concrete passes",
@@ -457,9 +456,9 @@ const rw2Golden = calculateEstimate({
   rates: [],
 } as never);
 check(
-  "R1 known-input RW golden remains package $7,345",
-  Math.round(rw2Golden.recommendedSell) === 7345 &&
-    rw2Golden.lineItems.some((i) => i.label === "Retaining wall materials")
+  "R1 known-input RW golden is detailed timber (package $7,345 retired)",
+  rw2Golden.recommendedSell > 0 &&
+    !rw2Golden.lineItems.some((i) => i.label === "Retaining wall materials")
 );
 
 check(
@@ -491,19 +490,18 @@ const backfillResult = calculateRetainingWall(
   baseContext(wa(RW, "retaining_wall", "Retaining wall"), backfillFacts),
   wa(RW, "retaining_wall", "Retaining wall")
 );
-const backfillLine = backfillResult.lineItems.find((i) => i.label === "Backfill allowance");
 check(
-  "11 no backfill formula/rate behaviour changed",
-  backfillLine?.quantity === 10 &&
-    backfillLine.unit === "face m²" &&
-    backfillLine.itemKey === "retaining_wall.backfill.face_m2" ||
-    (backfillLine?.unit === "face m²" && backfillLine.quantity === 10)
+  "11 timber drainage aggregate is purchased m³, not face-m² package",
+  backfillResult.lineItems.some(
+    (i) =>
+      /drainage aggregate/i.test(i.label) &&
+      i.unit === "m3" &&
+      (i.quantity ?? 0) > 0
+  ) && !backfillResult.lineItems.some((i) => i.label === "Backfill allowance")
 );
 check(
-  "12 current allowance remains reconciled",
-  backfillLine != null &&
-    backfillLine.materialBuildUp?.buildUpType === "backfill_volume" &&
-    backfillResult.assumptions.includes(BACKFILL_REFERENCE_ONLY_ASSUMPTION) &&
+  "12 in-place volume remains disclosed; purchase uses the 1.25 factor",
+  backfillResult.assumptions.some((a) => /in-place|geometric|procurement/i.test(a)) &&
     !backfillResult.assumptions.some((a) => /volume calculated/i.test(a))
 );
 

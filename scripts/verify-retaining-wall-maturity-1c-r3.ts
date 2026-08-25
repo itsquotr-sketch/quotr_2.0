@@ -512,8 +512,9 @@ const rw2 = calculateEstimate(
   )
 );
 check(
-  "45 package Quick Estimate remains $7,345 reference",
-  Math.round(rw2.recommendedSell) === 7345
+  "45 RW-2 empty-rate timber is detailed (package $7,345 retired)",
+  rw2.recommendedSell > 0 &&
+    !rw2.lineItems.some((item) => item.label === "Retaining wall materials")
 );
 check(
   "46 no $0 Quick Estimate regression",

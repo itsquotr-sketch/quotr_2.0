@@ -16,7 +16,10 @@ import {
   MATERIAL_RATE_CATALOGUE,
   SCOPE_RATE_CATALOGUE,
 } from "@/lib/rates/catalogue";
-import { DECK_PRODUCTIVITY_RATE_CATALOGUE } from "@/lib/rates/specific-material-catalogue";
+import {
+  DECK_PRODUCTIVITY_RATE_CATALOGUE,
+  RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
+} from "@/lib/rates/specific-material-catalogue";
 import { catalogueEntriesForRatesSection } from "@/lib/rates/rate-section-contract";
 import { getRatesPageState } from "@/lib/rates/actions";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
@@ -245,7 +248,10 @@ export function RatesPageContent({
             title="Labour productivity"
             description="Hours per physical unit — not dollars. Editing hours changes labour TIME. Your labour $/hr is under Core labour and changes MONEY, not hours. These hours include normal handling at the workface. Abnormal access/carry is a Project Condition, applied once."
             catalogue={catalogueEntriesForRatesSection(
-              DECK_PRODUCTIVITY_RATE_CATALOGUE,
+              [
+                ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
+                ...RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
+              ],
               "productivity"
             )}
             rates={state.rates}
@@ -317,16 +323,32 @@ export function RatesPageContent({
         ) : null}
 
         {activeSection === "legacy" ? (
-          <RatesTableSection
-            title="Legacy package rates"
-            description="Older overall package rates kept for history and compatibility. Current estimates use Core labour, Work types, and materials above — prefer those. Cost-first still applies if you edit a cost here."
-            catalogue={SCOPE_RATE_CATALOGUE}
-            rates={state.rates}
-            onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-            companyGrossMarginPercent={companyGrossMarginPercent}
-            variant="grouped"
-            showEngineColumn
-          />
+          <div className="space-y-4">
+            <RatesTableSection
+              title="Legacy package rates"
+              description="Older overall package rates kept for history and compatibility. Current estimates use Core labour, Work types, and materials above — prefer those. Cost-first still applies if you edit a cost here."
+              catalogue={SCOPE_RATE_CATALOGUE}
+              rates={state.rates}
+              onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+              companyGrossMarginPercent={companyGrossMarginPercent}
+              variant="grouped"
+              showEngineColumn
+            />
+            <RatesTableSection
+              title="Retaining-wall legacy package fallback"
+              description="Face-m² timber/concrete/backfill package rates. Timber 1D detailed estimates use quantity × identity × rate instead. These remain only for insufficient physical model, unsupported systems, or coverage failure."
+              catalogue={MATERIAL_RATE_CATALOGUE.filter(
+                (entry) =>
+                  entry.work_area_type === "retaining_wall" &&
+                  entry.calculatorSupport === "leftover"
+              )}
+              rates={state.rates}
+              onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
+              companyGrossMarginPercent={companyGrossMarginPercent}
+              variant="grouped"
+              showEngineColumn
+            />
+          </div>
         ) : null}
 
         {activeSection === "defaults" ? (

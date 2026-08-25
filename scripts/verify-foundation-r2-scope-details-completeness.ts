@@ -562,7 +562,6 @@ function main(): void {
     "kitchen.island_length_m",
     "kitchen.cabinetry_lm",
     "kitchen.benchtop_material",
-    "retaining_wall.post_spacing_m",
     "pergola.height_m",
     "internal_walls.fire_or_acoustic",
     "fence.post_spacing_m",

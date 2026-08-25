@@ -227,16 +227,16 @@ assert(
   "RW 2: drainage"
 );
 assert(
-  labels(rw2.lineItems).includes("Backfill allowance"),
-  "RW 2: backfill"
+  !labels(rw2.lineItems).includes("Backfill allowance"),
+  "RW 2: package backfill allowance retired for timber"
 );
 assert(
-  labels(rw2.lineItems).includes("Retaining wall materials"),
-  "RW 2: package materials remain monetary authority"
+  !labels(rw2.lineItems).includes("Retaining wall materials"),
+  "RW 2: package face-m² materials retired for timber"
 );
 assert(
-  labels(rw2.lineItems).some((l) => /drainage aggregate|backfill/i.test(l)),
-  "RW 2: detailed in-place backfill"
+  labels(rw2.lineItems).some((l) => /drainage aggregate/i.test(l)),
+  "RW 2: detailed drainage aggregate"
 );
 
 // Retaining wall disposal — included

@@ -315,10 +315,10 @@ const calc = calculateRetainingWall(ctx(ownerFacts(), [
   { key: "site_access", value: "Moderate" },
   { key: "material_carry_distance", value: "10–30m" },
 ]), wa());
-const labourLine = calc.lineItems.find((item) => item.label === "Retaining wall labour");
-const drainLine = calc.lineItems.find((item) => item.label === "Drainage labour");
-check("43 package labour equation includes base vs adjusted", Boolean(labourLine?.notes?.includes("base hrs")));
-check("44 access/carry shown when applied", Boolean(labourLine?.notes?.includes("access/carry")));
+const pileLine = calc.lineItems.find((item) => item.label === "Pile installation labour");
+const drainLine = calc.lineItems.find((item) => item.label === "Drainage installation labour");
+check("43 detailed labour equation includes base vs adjusted", Boolean(pileLine?.notes?.includes("base hrs")));
+check("44 access/carry shown when applied", Boolean(pileLine?.notes?.includes("access/carry")));
 check("45 drainage equation also reconciles", Boolean(drainLine?.notes?.includes("base hrs")));
 check("46 no separate carting labour line for owner fixture", !calc.lineItems.some((item) => /carting\/material handling/i.test(item.label)));
 check(
@@ -326,11 +326,15 @@ check(
   physical.excavationMode === "NONE" &&
     !physical.requirements.some((r) => r.componentKey?.includes("excavation.bulk") && r.kind === "material" && r.purchaseQuantity > 0)
 );
-check("48 package Quick Estimate still present before detailed readiness", calc.lineItems.some((item) => item.label === "Retaining wall materials"));
+check(
+  "48 detailed timber money is primary (package face-m² retired)",
+  !calc.lineItems.some((item) => item.label === "Retaining wall materials") &&
+    calc.lineItems.some((item) => item.componentKey === RW_TIMBER_BOARDS_COMPONENT)
+);
 check(
   "49 package XOR detailed labour money",
-  calc.lineItems.some((item) => item.label === "Retaining wall labour") &&
-    !calc.lineItems.some((item) => item.label === "Timber pile installation")
+  !calc.lineItems.some((item) => item.label === "Retaining wall labour") &&
+    calc.lineItems.some((item) => item.label === "Pile installation labour")
 );
 
 console.log("\n--- PRODUCTIVITY / AUTHORITY ---\n");
@@ -342,7 +346,7 @@ check(
   "54 slots absent Materials catalogue",
   RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE.every((row) => !isMaterialRatesCatalogueEntry(row))
 );
-check("55 commercial still package until coverage", commercial.mode !== "DETAILED_COMPONENT_AUTHORITY");
+check("55 commercial promotes when Timber 1D coverage is complete", commercial.mode === "DETAILED_COMPONENT_AUTHORITY");
 
 console.log("\n--- NON-REGRESSION / FILES ---\n");
 check("56 1C editor file exists", existsSync("components/assistant/job-plan/RetainingWallQuickSpecEditor.tsx"));

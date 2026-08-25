@@ -6,6 +6,7 @@
 export const RW_PRODUCTIVITY_KEYS = {
   excavationM3: "retaining_wall.excavation.hours_per_m3",
   backfillM3: "retaining_wall.backfill.hours_per_m3",
+  drainageLm: "retaining_wall.drainage.install.hours_per_lm",
   timberPilesEa: "retaining_wall.timber.piles.install.hours_per_ea",
   timberFaceM2: "retaining_wall.timber.face_boards.install.hours_per_m2",
   sleeperPostsEa: "retaining_wall.sleeper.posts.install.hours_per_ea",
@@ -25,6 +26,7 @@ export const RW_PRODUCTIVITY_UNITS: Record<
 > = {
   [RW_PRODUCTIVITY_KEYS.excavationM3]: "m3",
   [RW_PRODUCTIVITY_KEYS.backfillM3]: "m3",
+  [RW_PRODUCTIVITY_KEYS.drainageLm]: "lm",
   [RW_PRODUCTIVITY_KEYS.timberPilesEa]: "ea",
   [RW_PRODUCTIVITY_KEYS.timberFaceM2]: "m2",
   [RW_PRODUCTIVITY_KEYS.sleeperPostsEa]: "ea",

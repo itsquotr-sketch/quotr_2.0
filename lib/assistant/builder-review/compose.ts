@@ -46,6 +46,7 @@ import {
   RW_TIMBER_FIXINGS_COMPONENT,
   RW_TIMBER_PILES_EA_COMPONENT,
   RW_TIMBER_PILES_LM_COMPONENT,
+  isRwTimberPileStockComponent,
 } from "@/lib/estimate/retaining-wall-identities";
 import { RW_PLANNING_TAKEOFF_DISCLAIMER } from "@/lib/estimate/retaining-wall-physical";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
@@ -128,6 +129,9 @@ function activeLines(
 export function mapLineCategory(
   item: EstimateLineItem
 ): BuilderReviewCategoryId {
+  if (item.itemKey?.startsWith("plant.") || /mini-excavator|auger/i.test(item.label)) {
+    return "PLANT";
+  }
   const source = classifyRateSource(item.rateSource ?? "");
   if (source === "missing") return "PRICING_REQUIRED";
 
@@ -167,7 +171,8 @@ function isAllowanceLine(item: EstimateLineItem): boolean {
     key.includes("fixings") ||
     key.includes("substructure") ||
     key.includes("allowance") ||
-    /package/i.test(item.label)
+    /package/i.test(item.label) ||
+    /excavation allowance/i.test(item.label)
   );
 }
 
@@ -230,11 +235,12 @@ function takeoffLabel(req: MaterialRequirement): string {
   if (req.componentKey === DECK_CONCRETE_COMPONENT_KEY) return "Concrete";
   if (req.componentKey === RW_FACE_AREA_COMPONENT) return "Wall face";
   if (req.componentKey === RW_NOVACOIL_COMPONENT) return "Novacoil";
-  if (req.componentKey === RW_BACKFILL_COMPONENT) return "Drainage backfill (in-place)";
+  if (req.componentKey === RW_BACKFILL_COMPONENT) return "Drainage aggregate / drainage backfill";
   if (req.componentKey === RW_EXCAVATION_COMPONENT) return "Bulk excavation";
   if (req.componentKey === RW_TIMBER_BOARDS_COMPONENT) return "Face boards";
   if (req.componentKey === RW_TIMBER_PILES_EA_COMPONENT) return "Piles";
-  if (req.componentKey === RW_TIMBER_PILES_LM_COMPONENT) return "Pile length";
+  if (req.componentKey === RW_TIMBER_PILES_LM_COMPONENT) return "Pile length (theoretical)";
+  if (isRwTimberPileStockComponent(req.componentKey)) return req.description;
   if (req.componentKey === RW_SLEEPER_COMPONENT) return "Concrete sleepers";
   if (req.componentKey === RW_SLEEPER_POSTS_EA_COMPONENT) return "Steel posts";
   if (req.componentKey === RW_SLEEPER_POSTS_LM_COMPONENT) return "Steel post length";

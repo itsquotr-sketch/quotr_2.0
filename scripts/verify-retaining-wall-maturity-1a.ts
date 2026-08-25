@@ -59,6 +59,7 @@ import {
 } from "../lib/rates/specific-material-catalogue";
 import { FULL_RATE_CATALOGUE } from "../lib/rates/catalogue";
 import { isMaterialRatesCatalogueEntry } from "../lib/rates/rate-section-contract";
+import { RW_TIMBER_1D_PRODUCTIVITY_STARTERS } from "../lib/estimate/retaining-wall-timber-1d";
 import type { EstimateContext, EstimateFact, EstimateWorkArea } from "../lib/estimate/types";
 import type { EstimateRequirement } from "../lib/estimate/requirements";
 
@@ -418,23 +419,29 @@ check("57 h/m2 works", RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.timberFaceM2] 
 check("58 h/ea works", RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.timberPilesEa] === "ea");
 check("59 h/lm works", RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.masonryRebarLm] === "lm");
 check("60 h/hole works", RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.sleeperConcreteHole] === "hole");
-check("61 no invented money from missing productivity", prod.every((e) => e.defaultCostRate == null));
+check(
+  "61 non-1D productivity rows still have no invented hour defaults",
+  prod
+    .filter((e) => !(e.item_key in RW_TIMBER_1D_PRODUCTIVITY_STARTERS))
+    .every((e) => e.defaultCostRate == null)
+);
 
 console.log("\n--- AUTHORITY ---\n");
 const commercial = calculateRetainingWall(ctx(timberLevel), wa());
 const slopeCalc = calculateRetainingWall(ctx(timberSlope), wa());
+const sleeperCalc = calculateRetainingWall(ctx(sleeperLevel), wa());
 check(
-  "62 detailed timber physical XOR package face money",
+  "62 detailed timber money XOR package face money",
   (commercial.requirements ?? []).some(
     (r) => r.kind === "material" && r.componentKey?.includes("face_board") && r.purchaseQuantity > 0
   ) &&
-    commercial.lineItems.some(
+    !commercial.lineItems.some(
       (i) => i.label === "Retaining wall labour" || i.label === "Retaining wall materials"
     )
 );
 check(
-  "63 unpriced detailed children keep physical quantity",
-  (commercial.requirements ?? []).some(
+  "63 unpriced sleeper/masonry children keep physical quantity",
+  (sleeperCalc.requirements ?? []).some(
     (r) => r.kind === "material" && r.priced === false && r.purchaseQuantity > 0
   )
 );
@@ -467,9 +474,9 @@ const rw2Golden = calculateEstimate({
   rates: [],
 } as never);
 check(
-  "66 RW-2 remains package $7,345 before commercial readiness",
-  Math.round(rw2Golden.recommendedSell) === 7345 &&
-    rw2Golden.lineItems.some((i) => i.label === "Retaining wall materials")
+  "66 RW-2 timber uses detailed money (package $7,345 retired)",
+  rw2Golden.recommendedSell > 0 &&
+    !rw2Golden.lineItems.some((i) => i.label === "Retaining wall materials")
 );
 
 console.log("\n--- FIXTURES ---\n");
@@ -515,10 +522,12 @@ check(
     prod.every((e) => FULL_RATE_CATALOGUE.some((x) => x.item_key === e.item_key))
 );
 check(
-  "useful: new identities unpriced",
-  RETAINING_SPECIFIC_MATERIAL_CATALOGUE.filter((e) => e.item_key !== "retaining_wall.backfill.m3").every(
-    (e) => e.defaultCostRate == null
-  )
+  "useful: sleeper/masonry identities remain unpriced; timber 1D starters are explicit",
+  RETAINING_SPECIFIC_MATERIAL_CATALOGUE.filter(
+    (e) =>
+      e.item_key.startsWith("retaining_wall.sleeper") ||
+      e.item_key.startsWith("retaining_wall.masonry")
+  ).every((e) => e.defaultCostRate == null)
 );
 check(
   "useful: refine adapter registered",
@@ -625,14 +634,15 @@ check(
     )
 );
 check(
-  "R1-16 unpriced detailed children keep quantity",
-  (commercial.requirements ?? []).some(
+  "R1-16 unpriced sleeper children keep quantity",
+  (sleeperCalc.requirements ?? []).some(
     (r) => r.kind === "material" && r.priced === false && r.purchaseQuantity > 0
   )
 );
 check(
-  "R1-17 RW-2 remains package $7,345 until commercial readiness",
-  Math.round(rw2Golden.recommendedSell) === 7345
+  "R1-17 RW-2 timber uses detailed money (package $7,345 retired)",
+  rw2Golden.recommendedSell > 0 &&
+    !rw2Golden.lineItems.some((i) => i.label === "Retaining wall materials")
 );
 
 console.log("\n--- 1A-R2 TIMBER EVEN-BAY LAYOUT ---\n");
@@ -674,14 +684,15 @@ check(
     postPositionsM(10, 2).join(",") === "0,2,4,6,8,10"
 );
 check(
-  "R2-12 unpriced detailed children keep quantity",
-  (commercial.requirements ?? []).some(
+  "R2-12 unpriced sleeper children keep quantity",
+  (sleeperCalc.requirements ?? []).some(
     (r) => r.kind === "material" && r.priced === false && r.purchaseQuantity > 0
   )
 );
 check(
-  "R2-13 RW-2 remains package $7,345 until commercial readiness",
-  Math.round(rw2Golden.recommendedSell) === 7345
+  "R2-13 RW-2 timber uses detailed money (package $7,345 retired)",
+  rw2Golden.recommendedSell > 0 &&
+    !rw2Golden.lineItems.some((i) => i.label === "Retaining wall materials")
 );
 check(
   "useful: explicit 1.0 m is still a maximum for even bays",

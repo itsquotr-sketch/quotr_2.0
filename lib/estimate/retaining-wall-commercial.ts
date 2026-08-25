@@ -16,7 +16,7 @@ import {
   resolveComponentCommercialAuthority,
   type ComponentCommercialAuthority,
 } from "@/lib/estimate/component-commercial-authority";
-import { getStringFact, round2 } from "@/lib/estimate/facts";
+import { getBooleanFact, getStringFact, round2 as round2 } from "@/lib/estimate/facts";
 import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
 import { MATERIAL_RATE_KEYS } from "@/lib/estimate/material-rate-keys";
 import { findCompanyProductivityRate } from "@/lib/estimate/productivity";
@@ -26,9 +26,16 @@ import type {
   EstimateRequirement,
   LabourRequirement,
   MaterialRequirement,
+  PlantRequirement,
   RequirementRateSource,
 } from "@/lib/estimate/requirements";
+import { buildRequirementId } from "@/lib/estimate/requirement-id";
+import { normalizeRequirement } from "@/lib/estimate/requirement-normalize";
 import {
+  H5_SED_POLE_IDENTITY,
+  h5SedStockIdentity,
+  isRwTimberPileStockComponent,
+  rwTimberPileStockComponentKey,
   RW_BACKFILL_COMPONENT,
   RW_BACKFILL_LABOUR_COMPONENT,
   RW_EXCAVATION_COMPONENT,
@@ -47,6 +54,7 @@ import {
   RW_MASONRY_FOOTING_COMPONENT,
   RW_MASONRY_SUBBASE_COMPONENT,
   RW_MASONRY_WATERPROOF_COMPONENT,
+  RW_DRAINAGE_LABOUR_COMPONENT,
   RW_NOVACOIL_COMPONENT,
   RW_SLEEPER_COMPONENT,
   RW_SLEEPER_CONCRETE_COMPONENT,
@@ -61,12 +69,47 @@ import {
   RW_TIMBER_PILE_LABOUR_COMPONENT,
   RW_TIMBER_PILES_EA_COMPONENT,
   RW_TIMBER_PILES_LM_COMPONENT,
+  RW_TIMBER_PLANT_COMPONENT,
   RW_TIMBER_BOARDS_COMPONENT,
 } from "@/lib/estimate/retaining-wall-identities";
-import { planningMaterial } from "@/lib/estimate/retaining-wall-planning";
+import { planningMaterial as planningMaterial } from "@/lib/estimate/retaining-wall-planning";
 import type { RetainingWallPhysicalModel } from "@/lib/estimate/retaining-wall-physical";
+import {
+  RW_H5_SED_CLASS_DISCLOSURE,
+  procureTimberPiles,
+} from "@/lib/estimate/retaining-wall-pile-procurement";
+import {
+  RW_MINI_EXCAVATOR_DAY_BASIS,
+  RW_MINI_EXCAVATOR_DAY_COST_EX_GST,
+  RW_MINI_EXCAVATOR_DAY_KEY,
+  RW_TIMBER_COMPACTION_METHOD,
+  RW_TIMBER_PILING_METHOD_MACHINE,
+  resolveTimberPilingMethod,
+  timberMiniExcavatorDays,
+} from "@/lib/estimate/retaining-wall-construction-method";
 import { RW_PRODUCTIVITY_KEYS } from "@/lib/estimate/retaining-wall-productivity";
-import type { EstimateFact } from "@/lib/estimate/types";
+import {
+  RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS,
+  RW_DRAINAGE_AGGREGATE_PROCUREMENT_FACTOR,
+  RW_DRAINAGE_AGGREGATE_PROCUREMENT_NOTE,
+  RW_EXCAVATION_UNKNOWN_ALLOWANCE_HOURS_PER_FACE_M2,
+  RW_EXCAVATION_UNKNOWN_TREATMENT,
+  RW_TIMBER_AUTHORITY_WITH_ALLOWANCE,
+  RW_TIMBER_1D_ACCESS_RULE,
+  RW_TIMBER_CONCRETE_TREATMENT,
+  RW_TIMBER_DRAINAGE_LABOUR_OWNERSHIP,
+  RW_TIMBER_FIXINGS_KIND,
+  RW_TIMBER_FIXINGS_METHOD,
+  RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER,
+  RW_TIMBER_PACKAGE_LIFECYCLE,
+  RW_TIMBER_PLANT_TREATMENT,
+  drainageAggregatePurchaseM3,
+  timber1DExcavationHoursM3,
+  timber1DMaterialStarter,
+  timber1DPileHours,
+  timber1DProductivityStarter,
+} from "@/lib/estimate/retaining-wall-timber-1d";
+import type { EstimateConstraint, EstimateFact } from "@/lib/estimate/types";
 import type { MaterialIdentity } from "@/lib/materials/identity";
 
 export const RW_PACKAGE_LIFECYCLE =
@@ -141,17 +184,27 @@ export type RetainingWallCommercialResult = {
   requirements: EstimateRequirement[];
   residualClass:
     | typeof RW_TIMBER_RESIDUAL_CLASS
+    | typeof RW_TIMBER_FIXINGS_METHOD
     | "NOT_APPLICABLE"
     | "LEGACY_PACKAGE_SCOPE_UNKNOWN";
-  backfillProcurement: typeof RW_BACKFILL_PROCUREMENT_STATUS | "NOT_APPLICABLE";
-  novacoilLabourOwnership: typeof RW_NOVACOIL_LABOUR_OWNERSHIP;
+  backfillProcurement:
+    | typeof RW_BACKFILL_PROCUREMENT_STATUS
+    | typeof RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS
+    | "NOT_APPLICABLE";
+  novacoilLabourOwnership:
+    | typeof RW_NOVACOIL_LABOUR_OWNERSHIP
+    | typeof RW_TIMBER_DRAINAGE_LABOUR_OWNERSHIP;
   gaps: string[];
   inheritedBenchmarks: string[];
   assumptions: string[];
   missingInfo: string[];
 };
 
-const SKIP_MONEY = new Set([RW_FACE_AREA_COMPONENT]);
+const SKIP_MONEY = new Set([
+  RW_FACE_AREA_COMPONENT,
+  RW_TIMBER_PILES_EA_COMPONENT,
+  RW_TIMBER_PILES_LM_COMPONENT,
+]);
 
 function asMaterial(
   row: EstimateRequirement | undefined
@@ -326,15 +379,48 @@ export function evaluateRetainingWallCommercialCoverage(params: {
 
   if (physical.system === "TIMBER_RETAINING_WALL") {
     push("face_boards", "Face boards", RW_TIMBER_BOARDS_COMPONENT, "material", true);
-    push("sed_piles", "SED piles", RW_TIMBER_PILES_LM_COMPONENT, "material", true);
+    const stockRows = rows.filter(
+      (row): row is MaterialRequirement =>
+        row.kind === "material" && isRwTimberPileStockComponent(row.componentKey)
+    );
+    out.push(
+      cat(
+        "sed_piles",
+        "SED piles",
+        stockRows.length > 0 && stockRows.every((row) => row.priced === true)
+          ? "DETAILED_PRICED"
+          : "PRICING_REQUIRED",
+        true,
+        "material"
+      )
+    );
     push("pile_labour", "Pile installation labour", RW_TIMBER_PILE_LABOUR_COMPONENT, "labour", true);
     push("face_labour", "Face-board labour", RW_TIMBER_FACE_LABOUR_COMPONENT, "labour", true);
     push("novacoil", "Drainage / novacoil", RW_NOVACOIL_COMPONENT, "material", true);
-    push("backfill_material", "Backfill material", RW_BACKFILL_COMPONENT, "material", true);
-    push("backfill_labour", "Backfill labour", RW_BACKFILL_LABOUR_COMPONENT, "labour", true);
+    push("drainage_labour", "Drainage installation labour", RW_DRAINAGE_LABOUR_COMPONENT, "labour", true);
+    push("backfill_material", "Drainage aggregate", RW_BACKFILL_COMPONENT, "material", true);
+    push("backfill_labour", "Drainage backfill labour", RW_BACKFILL_LABOUR_COMPONENT, "labour", true);
     push("residual", "Fixings / connectors residual", RW_TIMBER_FIXINGS_COMPONENT, "residual", true);
     push("excavation", "Excavation", RW_EXCAVATION_COMPONENT, "material", false);
-    push("excavation_labour", "Excavation labour", RW_EXCAVATION_LABOUR_COMPONENT, "labour", false);
+    push("excavation_labour", "Excavation labour", RW_EXCAVATION_LABOUR_COMPONENT, "labour", true);
+    const plant = rows.find(
+      (row): row is PlantRequirement =>
+        row.kind === "plant" && row.componentKey === RW_TIMBER_PLANT_COMPONENT
+    );
+    const plantQty = plant?.quantity ?? 0;
+    out.push(
+      cat(
+        "plant",
+        "Plant",
+        plantQty > 0 && plant?.priced === true
+          ? "DETAILED_PRICED"
+          : plantQty === 0
+            ? "NOT_APPLICABLE"
+            : "PRICING_REQUIRED",
+        plantQty > 0,
+        "material"
+      )
+    );
   } else if (physical.system === "CONCRETE_SLEEPER_WALL") {
     push("sleepers", "Sleepers", RW_SLEEPER_COMPONENT, "material", true);
     push("steel_posts", "Steel posts", RW_SLEEPER_POSTS_EA_COMPONENT, "material", true);
@@ -485,6 +571,26 @@ function priceMaterial(
     }
   }
 
+  const timberStarter = timber1DMaterialStarter(
+    requirement.materialKey ?? namedKeys[0] ?? null
+  );
+  if (
+    timberStarter &&
+    rateUnitsMatch(timberStarter.unit, unit) &&
+    timberStarter.costPerUnit > 0
+  ) {
+    inherited.push(
+      `${requirement.componentKey} used Quotr Timber 1D starter ${timberStarter.costPerUnit}/${timberStarter.unit}`
+    );
+    return {
+      ...requirement,
+      priced: true,
+      unitCost: timberStarter.costPerUnit,
+      totalCost: round2(requirement.purchaseQuantity * timberStarter.costPerUnit),
+      rateSource: "benchmark",
+    };
+  }
+
   const identity = requirement.materialIdentity as MaterialIdentity | undefined;
   const sedPole =
     requirement.componentKey === RW_TIMBER_PILES_EA_COMPONENT ||
@@ -538,14 +644,26 @@ function labourSlot(params: {
   rates: readonly OrganisationRate[];
   hourlyCost: number;
   rateProvenance: RequirementRateSource;
+  fallbackHoursPerUnit?: number;
 }): LabourRequirement {
   const company = findCompanyProductivityRate(
     params.rates,
     params.productivityKey,
     params.unit
   );
+  const starter = timber1DProductivityStarter(params.productivityKey);
   const hoursPerUnit =
-    company?.cost_rate != null ? Number(company.cost_rate) : null;
+    company?.cost_rate != null
+      ? Number(company.cost_rate)
+      : params.fallbackHoursPerUnit != null
+        ? params.fallbackHoursPerUnit
+        : starter?.hoursPerUnit ?? null;
+  const hoursSource: RequirementRateSource =
+    company?.cost_rate != null
+      ? params.rateProvenance
+      : hoursPerUnit != null
+        ? "benchmark"
+        : "missing";
   const priced =
     hoursPerUnit != null &&
     hoursPerUnit > 0 &&
@@ -589,7 +707,11 @@ function labourSlot(params: {
     rateKey: params.productivityKey,
     hourlyCost: priced ? params.hourlyCost : null,
     totalCost: priced ? round2(baseHours * params.hourlyCost) : null,
-    rateProvenance: priced ? params.rateProvenance : "missing",
+    rateProvenance: priced
+      ? hoursSource === "benchmark"
+        ? "benchmark"
+        : params.rateProvenance
+      : "missing",
   });
 }
 
@@ -620,8 +742,10 @@ export function commercializeRetainingWall(params: {
   workAreaId: string;
   rates: readonly OrganisationRate[];
   organisationSettings: OrganisationSettings | null;
+  constraints?: readonly EstimateConstraint[];
 }): RetainingWallCommercialResult {
-  const { physical, facts, workAreaId, rates, organisationSettings } = params;
+  const { physical, facts, workAreaId, rates, organisationSettings, constraints } =
+    params;
   const physicalMode = decideRetainingWallPhysicalMode(physical);
   const inheritedBenchmarks: string[] = [];
   const gaps: string[] = [];
@@ -661,6 +785,13 @@ export function commercializeRetainingWall(params: {
   });
   const labourSource: RequirementRateSource =
     labourRate.sourceType === "user_rate" ? "company" : "hardcoded_legacy";
+  const timberLabourSource: RequirementRateSource =
+    labourRate.sourceType === "user_rate" ? "company" : "benchmark";
+  const pilingMethod = resolveTimberPilingMethod(
+    constraints,
+    facts,
+    workAreaId
+  );
 
   const pricedMaterials: MaterialRequirement[] = [];
   for (const row of physical.requirements) {
@@ -669,12 +800,37 @@ export function commercializeRetainingWall(params: {
       pricedMaterials.push(row);
       continue;
     }
+    if (
+      row.componentKey === RW_TIMBER_PILES_EA_COMPONENT ||
+      row.componentKey === RW_TIMBER_PILES_LM_COMPONENT
+    ) {
+      pricedMaterials.push(row);
+      continue;
+    }
     if (row.componentKey === RW_BACKFILL_COMPONENT) {
-      const priced = priceMaterial(row, rates, organisationSettings, inheritedBenchmarks);
-      pricedMaterials.push({
-        ...priced,
-        specification: `${row.specification ?? ""} In-place volume. ${RW_BACKFILL_PROCUREMENT_STATUS}.`,
-      });
+      const inPlace = row.baseQuantity;
+      const timberProcurement =
+        physical.system === "TIMBER_RETAINING_WALL" &&
+        hasTrustedPhysicalQuantity(inPlace);
+      const purchaseQuantity = timberProcurement
+        ? drainageAggregatePurchaseM3(inPlace)
+        : row.purchaseQuantity;
+      const priced = priceMaterial(
+        {
+          ...row,
+          purchaseQuantity,
+          description: timberProcurement
+            ? "Drainage aggregate / drainage backfill"
+            : row.description,
+          specification: timberProcurement
+            ? `${row.specification ?? ""} In-place ${inPlace} m³ × ${RW_DRAINAGE_AGGREGATE_PROCUREMENT_FACTOR} procurement factor = ${purchaseQuantity} m³ purchased. ${RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS}. ${RW_DRAINAGE_AGGREGATE_PROCUREMENT_NOTE}`
+            : `${row.specification ?? ""} In-place volume. ${RW_BACKFILL_PROCUREMENT_STATUS}.`,
+        },
+        rates,
+        organisationSettings,
+        inheritedBenchmarks
+      );
+      pricedMaterials.push(priced);
       if (priced.priced !== true) {
         missingInfo.push("Backfill purchase conversion / procurement factor");
       }
@@ -686,13 +842,90 @@ export function commercializeRetainingWall(params: {
   }
 
   if (physical.system === "TIMBER_RETAINING_WALL") {
+    const piles = physical.timberPiles;
+    if (piles) {
+      const procurement = procureTimberPiles(piles);
+      assumptions.push(
+        RW_H5_SED_CLASS_DISCLOSURE,
+        `Theoretical pile length ${procurement.theoreticalTotalLm} lm. Purchase ${procurement.purchaseEa} ea / ${procurement.purchaseTotalLm} lm stock. Required length is not purchase quantity.`,
+        pilingMethod.disclosure,
+        `Drainage-metal consolidation: ${RW_TIMBER_COMPACTION_METHOD}.`
+      );
+      for (const group of procurement.byStock) {
+        const stockReq = planningMaterial({
+          workAreaId,
+          componentKey: rwTimberPileStockComponentKey(group.stockLengthM),
+          variantKey: `${group.stockLengthM}m`,
+          description: `H5 SED 150–175 mm × ${group.stockLengthM} m stock pole`,
+          materialKey: group.itemKey,
+          identity: h5SedStockIdentity(group.stockLengthM),
+          category: "TIMBER",
+          specification: `${group.ea} ea of ${group.stockLengthM} m stock. ${RW_H5_SED_CLASS_DISCLOSURE}`,
+          baseQuantity: group.ea,
+          baseUnit: "ea",
+          wasteFactor: 0,
+          purchaseQuantity: group.ea,
+          purchaseUnit: "ea",
+          factKeys: ["retaining_wall.material"],
+          source: "retaining_wall.timber.pile_stock",
+        });
+        pricedMaterials.push(
+          priceMaterial(stockReq, rates, organisationSettings, inheritedBenchmarks)
+        );
+      }
+      if (procurement.oversizeCount > 0) {
+        const oversize = planningMaterial({
+          workAreaId,
+          componentKey: rwTimberPileStockComponentKey("oversize"),
+          variantKey: "oversize",
+          description: "H5 SED pile exceeds maximum catalogue stock length",
+          materialKey: null,
+          identity: H5_SED_POLE_IDENTITY,
+          category: "TIMBER",
+          specification: `${procurement.oversizeCount} pile(s) longer than ${3.6} m stock. Pricing Required — do not clamp.`,
+          baseQuantity: procurement.oversizeCount,
+          baseUnit: "ea",
+          wasteFactor: 0,
+          purchaseQuantity: procurement.oversizeCount,
+          purchaseUnit: "ea",
+          factKeys: ["retaining_wall.material"],
+          source: "retaining_wall.timber.pile_stock",
+        });
+        pricedMaterials.push(oversize);
+        missingInfo.push("H5 SED pile stock length above catalogue maximum");
+      }
+    }
+    const boardCost =
+      materialOf(pricedMaterials, RW_TIMBER_BOARDS_COMPONENT)?.totalCost ?? 0;
+    const pileStockCost = pricedMaterials
+      .filter(
+        (row) =>
+          isRwTimberPileStockComponent(row.componentKey) &&
+          row.priced === true
+      )
+      .reduce((sum, row) => sum + (row.totalCost ?? 0), 0);
+    const timberMaterialCost = round2(boardCost + pileStockCost);
+    const residualNamed = findExactNamedMaterialRate(
+      rates,
+      RW_TIMBER_FIXINGS_COMPONENT,
+      "item"
+    );
+    const residualCost =
+      residualNamed?.cost_rate != null
+        ? Number(residualNamed.cost_rate)
+        : round2(timberMaterialCost * RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER);
+    const residualPriced =
+      residualCost > 0 &&
+      (residualNamed?.cost_rate != null || timberMaterialCost > 0);
     const residual = planningMaterial({
       workAreaId,
       componentKey: RW_TIMBER_FIXINGS_COMPONENT,
       description: "Fixings, connectors and sundries",
       materialKey: RW_TIMBER_FIXINGS_COMPONENT,
       category: "RESIDUAL",
-      specification: `Legacy timber package residual not in boards/piles/drainage/labour: ${RW_TIMBER_RESIDUAL_SCOPE.join(", ")}. ${RW_TIMBER_RESIDUAL_CLASS}. No invented rate.`,
+      specification: residualNamed?.cost_rate != null
+        ? `Company residual allowance. ${RW_TIMBER_FIXINGS_METHOD}.`
+        : `${Math.round(RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER * 100)}% of face-board + purchased pile stock cost ($${timberMaterialCost}). ${RW_TIMBER_FIXINGS_KIND}. ${RW_TIMBER_FIXINGS_METHOD}. Scope: ${RW_TIMBER_RESIDUAL_SCOPE.join(", ")}.`,
       baseQuantity: 1,
       baseUnit: "item",
       wasteFactor: 0,
@@ -701,8 +934,23 @@ export function commercializeRetainingWall(params: {
       factKeys: ["retaining_wall.material"],
       source: "retaining_wall.residual",
     });
-    pricedMaterials.push(
-      priceMaterial(residual, rates, organisationSettings, inheritedBenchmarks)
+    pricedMaterials.push({
+      ...residual,
+      priced: residualPriced,
+      unitCost: residualPriced ? residualCost : null,
+      totalCost: residualPriced ? residualCost : null,
+      rateSource: residualPriced
+        ? residualNamed?.cost_rate != null
+          ? "company"
+          : "benchmark"
+        : "missing",
+    });
+    assumptions.push(
+      `Timber residual method: ${RW_TIMBER_FIXINGS_METHOD}.`,
+      `Timber plant: ${RW_TIMBER_PLANT_TREATMENT}.`,
+      `Timber pile concrete: ${RW_TIMBER_CONCRETE_TREATMENT}.`,
+      `Timber access: ${RW_TIMBER_1D_ACCESS_RULE.note}`,
+      `Package lifecycle for detailed-ready timber: ${RW_TIMBER_PACKAGE_LIFECYCLE}.`
     );
   }
 
@@ -749,26 +997,46 @@ export function commercializeRetainingWall(params: {
       labourSlot({
         workAreaId,
         componentKey: RW_TIMBER_PILE_LABOUR_COMPONENT,
-        description: "Timber pile installation",
+        description: "Pile installation labour",
         productivityKey: RW_PRODUCTIVITY_KEYS.timberPilesEa,
         unit: "ea",
         quantity: qtyOf(pricedMaterials, RW_TIMBER_PILES_EA_COMPONENT),
         rates,
         hourlyCost: labourRate.costRate,
-        rateProvenance: labourSource,
+        rateProvenance: timberLabourSource,
+        fallbackHoursPerUnit: timber1DPileHours(pilingMethod.method),
       }),
       labourSlot({
         workAreaId,
         componentKey: RW_TIMBER_FACE_LABOUR_COMPONENT,
-        description: "Timber face-board installation",
+        description: "Face-board installation",
         productivityKey: RW_PRODUCTIVITY_KEYS.timberFaceM2,
         unit: "m2",
         quantity: face,
         rates,
         hourlyCost: labourRate.costRate,
-        rateProvenance: labourSource,
+        rateProvenance: timberLabourSource,
       })
     );
+    const novacoilQty = qtyOf(pricedMaterials, RW_NOVACOIL_COMPONENT);
+    if (hasTrustedPhysicalQuantity(novacoilQty)) {
+      labour.push(
+        labourSlot({
+          workAreaId,
+          componentKey: RW_DRAINAGE_LABOUR_COMPONENT,
+          description: "Drainage installation labour",
+          productivityKey: RW_PRODUCTIVITY_KEYS.drainageLm,
+          unit: "lm",
+          quantity: novacoilQty,
+          rates,
+          hourlyCost: labourRate.costRate,
+          rateProvenance: timberLabourSource,
+        })
+      );
+      assumptions.push(
+        `Timber drainage labour ownership: ${RW_TIMBER_DRAINAGE_LABOUR_OWNERSHIP}.`
+      );
+    }
   }
 
   if (physical.system === "CONCRETE_SLEEPER_WALL" && physical.sleeperTakeoff) {
@@ -949,19 +1217,29 @@ export function commercializeRetainingWall(params: {
     }
   }
 
-  const backfillQty = qtyOf(pricedMaterials, RW_BACKFILL_COMPONENT);
-  if (hasTrustedPhysicalQuantity(backfillQty)) {
+  const backfillRow = materialOf(pricedMaterials, RW_BACKFILL_COMPONENT);
+  const backfillLabourQty =
+    physical.system === "TIMBER_RETAINING_WALL"
+      ? (backfillRow?.baseQuantity ?? 0)
+      : qtyOf(pricedMaterials, RW_BACKFILL_COMPONENT);
+  if (hasTrustedPhysicalQuantity(backfillLabourQty)) {
     labour.push(
       labourSlot({
         workAreaId,
         componentKey: RW_BACKFILL_LABOUR_COMPONENT,
-        description: "Retaining wall backfill",
+        description:
+          physical.system === "TIMBER_RETAINING_WALL"
+            ? "Drainage backfill labour"
+            : "Retaining wall backfill",
         productivityKey: RW_PRODUCTIVITY_KEYS.backfillM3,
         unit: "m3",
-        quantity: backfillQty,
+        quantity: backfillLabourQty,
         rates,
         hourlyCost: labourRate.costRate,
-        rateProvenance: labourSource,
+        rateProvenance:
+          physical.system === "TIMBER_RETAINING_WALL"
+            ? timberLabourSource
+            : labourSource,
       })
     );
   }
@@ -975,15 +1253,103 @@ export function commercializeRetainingWall(params: {
       labourSlot({
         workAreaId,
         componentKey: RW_EXCAVATION_LABOUR_COMPONENT,
-        description: "Bulk excavation",
+        description: "Excavation labour",
         productivityKey: RW_PRODUCTIVITY_KEYS.excavationM3,
         unit: "m3",
         quantity: excavationQty,
         rates,
         hourlyCost: labourRate.costRate,
-        rateProvenance: labourSource,
+        rateProvenance:
+          physical.system === "TIMBER_RETAINING_WALL"
+            ? timberLabourSource
+            : labourSource,
+        fallbackHoursPerUnit:
+          physical.system === "TIMBER_RETAINING_WALL"
+            ? timber1DExcavationHoursM3(pilingMethod.method)
+            : undefined,
       })
     );
+  } else if (
+    physical.system === "TIMBER_RETAINING_WALL" &&
+    getBooleanFact([...facts], workAreaId, "retaining_wall.excavation_required") === true
+  ) {
+    labour.push(
+      labourSlot({
+        workAreaId,
+        componentKey: RW_EXCAVATION_LABOUR_COMPONENT,
+        description:
+          "Excavation labour (EXCAVATION ALLOWANCE — bulk volume not measured, not m³ productivity)",
+        productivityKey: RW_PRODUCTIVITY_KEYS.excavationM3,
+        unit: "m2",
+        quantity: face,
+        rates,
+        hourlyCost: labourRate.costRate,
+        rateProvenance: timberLabourSource,
+        fallbackHoursPerUnit: RW_EXCAVATION_UNKNOWN_ALLOWANCE_HOURS_PER_FACE_M2,
+      })
+    );
+    assumptions.push(
+      `Excavation required without measured m³. ${RW_EXCAVATION_UNKNOWN_TREATMENT} at ${RW_EXCAVATION_UNKNOWN_ALLOWANCE_HOURS_PER_FACE_M2} h/face-m². Pile-hole work stays in piling labour. No invented bulk m³.`
+    );
+  }
+
+  const plant: PlantRequirement[] = [];
+  if (physical.system === "TIMBER_RETAINING_WALL") {
+    const machine = pilingMethod.method === RW_TIMBER_PILING_METHOD_MACHINE;
+    const measuredExcavationM3 =
+      physical.excavationMode === "EXPLICIT_VOLUME"
+        ? qtyOf(pricedMaterials, RW_EXCAVATION_COMPONENT)
+        : null;
+    const scaled = timberMiniExcavatorDays({
+      method: pilingMethod.method,
+      pileCount: physical.timberPiles?.count ?? 0,
+      measuredExcavationM3,
+    });
+    const quantity = machine ? scaled.days : 0;
+    const namedPlant = rates.find(
+      (rate) =>
+        rate.active &&
+        rate.item_key === RW_MINI_EXCAVATOR_DAY_KEY &&
+        rate.cost_rate != null
+    );
+    const unitCost = machine
+      ? Number(namedPlant?.cost_rate ?? RW_MINI_EXCAVATOR_DAY_COST_EX_GST)
+      : 0;
+    const plantReq: PlantRequirement = {
+      requirementId: buildRequirementId({
+        workAreaId,
+        kind: "plant",
+        componentKey: RW_TIMBER_PLANT_COMPONENT,
+      }),
+      kind: "plant",
+      workAreaId,
+      workAreaType: "retaining_wall",
+      componentKey: RW_TIMBER_PLANT_COMPONENT,
+      description: machine
+        ? "Mini-excavator / auger (machine-assisted pile holes)"
+        : "Plant not applicable — manual piling (machine cannot reach workface)",
+      confidence: "medium",
+      assumptions: [
+        {
+          key: "rw_plant_method",
+          text: `${pilingMethod.disclosure} ${RW_MINI_EXCAVATOR_DAY_BASIS}. ${scaled.basis}`,
+          source: "calculator_default",
+        },
+      ],
+      provenance: {
+        calculatorSource: "retaining_wall.timber.plant",
+        factKeys: [],
+        constraintKeys: ["site_access"],
+      },
+      priced: true,
+      plantKey: RW_MINI_EXCAVATOR_DAY_KEY,
+      hours: null,
+      quantity,
+      unit: "day",
+      unitCost,
+      totalCost: round2(quantity * unitCost),
+    };
+    plant.push(normalizeRequirement(plantReq) as PlantRequirement);
   }
 
   for (const row of pricedMaterials) {
@@ -996,11 +1362,28 @@ export function commercializeRetainingWall(params: {
     if (row.priced !== true) missingInfo.push(`${row.description} productivity`);
   }
 
-  const requirements = [...pricedMaterials, ...labour];
-  const coverage = evaluateRetainingWallCommercialCoverage({
+  const requirements = [...pricedMaterials, ...labour, ...plant];
+  let coverage = evaluateRetainingWallCommercialCoverage({
     physical,
     requirements,
     gaps,
+  });
+  coverage = coverage.map((row) => {
+    if (row.key !== "excavation_labour") return row;
+    const excavationLabour = labour.find(
+      (item) => item.componentKey === RW_EXCAVATION_LABOUR_COMPONENT
+    );
+    if (
+      excavationLabour?.priced === true &&
+      excavationLabour.description.includes("allowance")
+    ) {
+      return {
+        ...row,
+        state: "EXPLICIT_ALLOWANCE" as const,
+        required: true,
+      };
+    }
+    return row;
   });
   const commerciallyReady = retainingWallCoverageIsReady(coverage);
   const postPromotion = retainingWallPostPromotionHold(coverage);
@@ -1013,8 +1396,15 @@ export function commercializeRetainingWall(params: {
     : postPromotion && detailedMoney
       ? "DETAILED_COMPONENT_AUTHORITATIVE"
       : "DETAILED_PHYSICAL_SHADOW";
+  const excavationAllowance = labour.some(
+    (item) =>
+      item.componentKey === RW_EXCAVATION_LABOUR_COMPONENT &&
+      item.description.includes("EXCAVATION ALLOWANCE")
+  );
   const reason = commerciallyReady
-    ? "Required commercial categories are covered. Detailed component money is authoritative."
+    ? excavationAllowance
+      ? `${RW_TIMBER_AUTHORITY_WITH_ALLOWANCE}. Detailed component money is authoritative. Excavation is an explicit allowance, not measured m³.`
+      : "Required commercial categories are covered. Detailed component money is authoritative."
     : detailedMoney
       ? "Detailed money remains after promotion. A missing exact material rate is Pricing Required and does not restore package."
       : RW_QUICK_ESTIMATE_PACKAGE_NOTE;
@@ -1032,14 +1422,21 @@ export function commercializeRetainingWall(params: {
     requirements,
     residualClass:
       physical.system === "TIMBER_RETAINING_WALL"
-        ? RW_TIMBER_RESIDUAL_CLASS
+        ? RW_TIMBER_FIXINGS_METHOD
         : physical.system === "CONCRETE_SLEEPER_WALL"
           ? RW_TIMBER_RESIDUAL_CLASS
           : "NOT_APPLICABLE",
-    backfillProcurement: hasTrustedPhysicalQuantity(backfillQty)
-      ? RW_BACKFILL_PROCUREMENT_STATUS
-      : "NOT_APPLICABLE",
-    novacoilLabourOwnership: RW_NOVACOIL_LABOUR_OWNERSHIP,
+    backfillProcurement:
+      physical.system === "TIMBER_RETAINING_WALL" &&
+      hasTrustedPhysicalQuantity(backfillLabourQty)
+        ? RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS
+        : hasTrustedPhysicalQuantity(backfillLabourQty)
+          ? RW_BACKFILL_PROCUREMENT_STATUS
+          : "NOT_APPLICABLE",
+    novacoilLabourOwnership:
+      physical.system === "TIMBER_RETAINING_WALL"
+        ? RW_TIMBER_DRAINAGE_LABOUR_OWNERSHIP
+        : RW_NOVACOIL_LABOUR_OWNERSHIP,
     gaps,
     inheritedBenchmarks,
     assumptions,
@@ -1054,6 +1451,8 @@ export function detailedMoneyMaterials(
     (row): row is MaterialRequirement =>
       row.kind === "material" &&
       row.componentKey !== RW_FACE_AREA_COMPONENT &&
+      row.componentKey !== RW_TIMBER_PILES_EA_COMPONENT &&
+      row.componentKey !== RW_TIMBER_PILES_LM_COMPONENT &&
       hasTrustedPhysicalQuantity(row.purchaseQuantity)
   );
 }
@@ -1063,6 +1462,15 @@ export function detailedLabour(
 ): LabourRequirement[] {
   return requirements.filter(
     (row): row is LabourRequirement => row.kind === "labour"
+  );
+}
+
+export function detailedPlant(
+  requirements: readonly EstimateRequirement[]
+): PlantRequirement[] {
+  return requirements.filter(
+    (row): row is PlantRequirement =>
+      row.kind === "plant" && (row.quantity ?? 0) > 0 && row.priced === true
   );
 }
 

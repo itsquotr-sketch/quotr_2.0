@@ -11,10 +11,50 @@ import {
   createRateLineItem,
 } from "@/lib/estimate/line-items";
 import { requireEstimateQuantityRateMoney } from "@/lib/estimate/estimate-commercial-engine-adapter";
-import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  getRateSourceLabel,
+  type RateSourceType,
+} from "@/lib/estimate/rate-source-labels";
 import type { OrganisationSettings } from "@/components/setup/types";
-import type { LabourRequirement, MaterialRequirement } from "@/lib/estimate/requirements";
+import type {
+  LabourRequirement,
+  MaterialRequirement,
+  RequirementRateSource,
+} from "@/lib/estimate/requirements";
 import type { EstimateLineItemInput } from "@/lib/estimate/types";
+
+function mapRequirementRateSource(source: RequirementRateSource): {
+  rateSource: string;
+  rateSourceType: RateSourceType;
+} {
+  switch (source) {
+    case "company":
+      return {
+        rateSource: getRateSourceLabel("user_rate"),
+        rateSourceType: "user_rate",
+      };
+    case "project_override":
+      return {
+        rateSource: getRateSourceLabel("work_area_rate"),
+        rateSourceType: "work_area_rate",
+      };
+    case "missing":
+      return {
+        rateSource: getRateSourceLabel("missing"),
+        rateSourceType: "missing",
+      };
+    case "hardcoded_legacy":
+      return {
+        rateSource: getRateSourceLabel("fallback"),
+        rateSourceType: "fallback",
+      };
+    default:
+      return {
+        rateSource: getRateSourceLabel("benchmark"),
+        rateSourceType: "benchmark",
+      };
+  }
+}
 
 export function isPricedMaterialRequirement(
   requirement: MaterialRequirement
@@ -101,6 +141,7 @@ export function adaptPricedMaterialRequirementWithoutLegacy(params: {
   const margin = defaultMarginPercent(organisationSettings);
   const unitSell =
     requirement.unitCost / (1 - margin / 100);
+  const source = mapRequirementRateSource(requirement.rateSource);
   const line = createRateLineItem({
     workAreaId: requirement.workAreaId,
     workAreaName: params.workAreaName,
@@ -110,7 +151,8 @@ export function adaptPricedMaterialRequirementWithoutLegacy(params: {
     unit: requirement.purchaseUnit,
     costRate: requirement.unitCost,
     sellRate: unitSell,
-    rateSource: requirement.rateSource,
+    rateSource: source.rateSource,
+    rateSourceType: source.rateSourceType,
     componentKey: requirement.componentKey,
     sellDerivedFromMargin: true,
     sellAuthority: "derived_from_gross_margin" as const,

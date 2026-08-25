@@ -40,6 +40,25 @@ export const RW_EXCAVATION_COMPONENT = "retaining_wall.excavation.bulk";
 export const RW_TIMBER_BOARDS_COMPONENT = "retaining_wall.timber.face_boards";
 export const RW_TIMBER_PILES_EA_COMPONENT = "retaining_wall.timber.piles.ea";
 export const RW_TIMBER_PILES_LM_COMPONENT = "retaining_wall.timber.piles.lm";
+export const RW_TIMBER_PILES_STOCK_COMPONENT =
+  "retaining_wall.timber.piles.stock";
+export const RW_TIMBER_PLANT_COMPONENT = "retaining_wall.timber.plant";
+
+export function rwTimberPileStockComponentKey(
+  stockLengthM: number | "oversize"
+): string {
+  if (stockLengthM === "oversize") {
+    return `${RW_TIMBER_PILES_STOCK_COMPONENT}.oversize`;
+  }
+  return `${RW_TIMBER_PILES_STOCK_COMPONENT}.${stockLengthM.toFixed(1).replace(".", "_")}m`;
+}
+
+export function isRwTimberPileStockComponent(componentKey: string): boolean {
+  return (
+    componentKey === RW_TIMBER_PILES_STOCK_COMPONENT ||
+    componentKey.startsWith(`${RW_TIMBER_PILES_STOCK_COMPONENT}.`)
+  );
+}
 export const RW_SLEEPER_COMPONENT = "retaining_wall.sleeper.sleepers";
 export const RW_SLEEPER_POSTS_EA_COMPONENT = "retaining_wall.sleeper.posts.ea";
 export const RW_SLEEPER_POSTS_LM_COMPONENT = "retaining_wall.sleeper.posts.lm";
@@ -54,6 +73,7 @@ export const RW_TIMBER_FIXINGS_COMPONENT = "retaining_wall.timber.fixings.residu
 export const RW_SLEEPER_FIXINGS_COMPONENT = "retaining_wall.sleeper.fixings.residual";
 export const RW_TIMBER_PILE_LABOUR_COMPONENT = "retaining_wall.timber.piles.install";
 export const RW_TIMBER_FACE_LABOUR_COMPONENT = "retaining_wall.timber.face_boards.install";
+export const RW_DRAINAGE_LABOUR_COMPONENT = "retaining_wall.drainage.novacoil.install";
 export const RW_BACKFILL_LABOUR_COMPONENT = "retaining_wall.backfill.place";
 export const RW_EXCAVATION_LABOUR_COMPONENT = "retaining_wall.excavation.bulk.labour";
 export const RW_SLEEPER_POST_LABOUR_COMPONENT = "retaining_wall.sleeper.posts.install";
@@ -81,42 +101,41 @@ export type MasonrySeriesMetadata = {
 };
 
 function timberBoard(section: string, description: string): MaterialIdentity {
-  return (
-    buildStructuralTimberIdentity({
-      sectionRaw: section,
-      treatmentRaw: "H4",
-      originalDescription: description,
-      productFamily: STRUCTURAL_FRAMING_PRODUCT_FAMILY,
-    }) ?? {
-      family: STRUCTURAL_TIMBER_FAMILY,
-      productFamily: STRUCTURAL_FRAMING_PRODUCT_FAMILY,
-      section,
-      grade: null,
-      treatment: "h4",
-      treatmentKind: "known",
-      treatmentCustom: null,
-      processing: null,
-      processingKind: "unknown",
-      species: null,
-      originalDescription: description,
-    }
-  );
+  const built = buildStructuralTimberIdentity({
+    sectionRaw: section,
+    treatmentRaw: "H4",
+    originalDescription: description,
+    productFamily: STRUCTURAL_FRAMING_PRODUCT_FAMILY,
+  });
+  return {
+    family: STRUCTURAL_TIMBER_FAMILY,
+    productFamily: STRUCTURAL_FRAMING_PRODUCT_FAMILY,
+    section: built?.section ?? section,
+    grade: "no2_retaining",
+    treatment: "h4",
+    treatmentKind: "known",
+    treatmentCustom: null,
+    processing: "green",
+    processingKind: "known",
+    species: built?.species ?? null,
+    originalDescription: description,
+  };
 }
 
 export const TIMBER_FACE_BOARD_150_H4: MaterialIdentity = timberBoard(
   "150x50",
-  "150×50 H4 retaining-wall face board"
+  "150×50 H4 No.2 / retaining-grade face board (not SG8 structural)"
 );
 
 export const TIMBER_FACE_BOARD_200_H4: MaterialIdentity = timberBoard(
   "200x50",
-  "200×50 H4 retaining-wall face board"
+  "200×50 H4 No.2 / retaining-grade face board (not SG8 structural)"
 );
 
 export const H5_SED_POLE_IDENTITY: MaterialIdentity = {
   family: STRUCTURAL_TIMBER_FAMILY,
   productFamily: "sed_pole",
-  section: null,
+  section: "150-175",
   grade: null,
   treatment: "h5",
   treatmentKind: "known",
@@ -125,8 +144,15 @@ export const H5_SED_POLE_IDENTITY: MaterialIdentity = {
   processingKind: "unknown",
   species: null,
   originalDescription:
-    "H5 SED / pole — retaining-wall pile, not a deck house pile",
+    "H5 SED 150–175 mm retaining pole (estimating default) — not a deck house pile; stock length is the purchase unit",
 };
+
+export function h5SedStockIdentity(stockLengthM: number): MaterialIdentity {
+  return {
+    ...H5_SED_POLE_IDENTITY,
+    originalDescription: `H5 SED 150–175 mm × ${stockLengthM} m stock retaining pole (estimating default class — not structural design)`,
+  };
+}
 
 export const CONCRETE_SLEEPER_IDENTITY: MaterialIdentity = {
   family: "precast",

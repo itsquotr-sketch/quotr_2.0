@@ -1,6 +1,7 @@
 import {
   getCombinedLabourAccessFactor,
   getConstraintNotes,
+  getIntentLabourAdjustmentFactor,
   getQualityFactor,
 } from "@/lib/estimate/adjustments";
 import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
@@ -55,6 +56,7 @@ import {
   commercializeRetainingWall,
   detailedLabour,
   detailedMoneyMaterials,
+  detailedPlant,
 } from "@/lib/estimate/retaining-wall-commercial";
 import {
   resolveRetainingWallBackfillIncluded,
@@ -68,7 +70,8 @@ import {
   adaptUnpricedMaterialRequirementToEstimateLine,
   isPricedMaterialRequirement,
 } from "@/lib/estimate/requirement-commercial-line";
-import { RW_FACE_AREA_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
+import { RW_EXCAVATION_LABOUR_COMPONENT, RW_FACE_AREA_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
+import { detailedTimberLabourFromCost } from "@/lib/estimate/retaining-wall-timber-1d";
 
 /** Facts this calculator reads. Physical-only keys do not change 1A money. */
 export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
@@ -354,14 +357,15 @@ export function calculateRetainingWall(
     context.project,
     context.organisationSettings
   );
+  const workAreaAccess = resolveLegacyWorkAreaAccess({
+    constraints: context.constraints,
+    facts,
+    workAreaId: workArea.id,
+    workAreaType: "retaining_wall",
+  });
   const labourAdjustment = getCombinedLabourAccessFactor({
     constraints: context.constraints,
-    workAreaAccess: resolveLegacyWorkAreaAccess({
-      constraints: context.constraints,
-      facts,
-      workAreaId: workArea.id,
-      workAreaType: "retaining_wall",
-    }),
+    workAreaAccess,
   });
   const labourRate = resolveLabourRate({
     rates: context.rates,
@@ -379,6 +383,7 @@ export function calculateRetainingWall(
     workAreaId: workArea.id,
     rates: context.rates,
     organisationSettings: context.organisationSettings,
+    constraints: context.constraints,
   });
   const detailed =
     commercial.mode === "DETAILED_COMPONENT_AUTHORITY";
@@ -682,13 +687,16 @@ export function calculateRetainingWall(
       if (requirement.componentKey === RW_FACE_AREA_COMPONENT) continue;
       if (isPricedMaterialRequirement(requirement)) {
         lineItems.push(
-          adaptPricedMaterialRequirementWithoutLegacy({
-            requirement,
-            workAreaName: workArea.name,
-            sortOrder: sortOrder++,
-            organisationSettings: context.organisationSettings,
-            label: requirement.description,
-          })
+          {
+            ...adaptPricedMaterialRequirementWithoutLegacy({
+              requirement,
+              workAreaName: workArea.name,
+              sortOrder: sortOrder++,
+              organisationSettings: context.organisationSettings,
+              label: requirement.description,
+            }),
+            notes: requirement.specification ?? undefined,
+          }
         );
       } else {
         lineItems.push(
@@ -704,6 +712,17 @@ export function calculateRetainingWall(
     }
     for (const requirement of detailedLabour(commercial.requirements)) {
       if (requirement.priced && requirement.hourlyCost != null) {
+        const labourMoney = detailedTimberLabourFromCost(
+          labourRate.costRate,
+          context.organisationSettings
+        );
+        const includeMaterialCarry =
+          requirement.componentKey !== RW_EXCAVATION_LABOUR_COMPONENT;
+        const intentAdjustment = getIntentLabourAdjustmentFactor({
+          constraints: context.constraints,
+          workAreaAccess,
+          includeMaterialCarry,
+        });
         lineItems.push(
           createLabourLineItem({
             workAreaId: workArea.id,
@@ -712,12 +731,17 @@ export function calculateRetainingWall(
             quantity: requirement.productivityBasis.quantity,
             unit: requirement.productivityBasis.unit,
             productivityHoursPerUnit: requirement.productivityBasis.hoursPerUnit,
-            labourCostRate: labourRate.costRate,
-            labourSellRate: labourRate.sellRate,
-            adjustmentFactor: labourAdjustment,
+            labourCostRate: labourMoney.costPerHour,
+            labourSellRate: labourMoney.sellPerHour,
+            adjustmentFactor: intentAdjustment,
             qualityFactor: NO_FINISH_QUALITY_FACTOR,
             rateSource: labourRate.sourceLabel,
             componentKey: requirement.componentKey,
+            sellDerivedFromMargin: true,
+            sellAuthority: labourMoney.sellAuthority,
+            adjustmentLabel: includeMaterialCarry
+              ? "site access/carry"
+              : "site access",
             notes: `${requirement.productivityBasis.quantity} ${requirement.productivityBasis.unit} × ${requirement.productivityBasis.hoursPerUnit} h/${requirement.productivityBasis.unit}`,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
@@ -734,6 +758,43 @@ export function calculateRetainingWall(
           })
         );
       }
+    }
+    for (const requirement of detailedPlant(commercial.requirements)) {
+      const days = requirement.quantity ?? 0;
+      const unitCost = requirement.unitCost ?? 0;
+      const cost = requirement.totalCost ?? round2(days * unitCost);
+      const gm =
+        context.organisationSettings?.default_margin_percent ?? 20;
+      const sell = gm >= 100 ? cost : Math.round((cost / (1 - gm / 100)) * 100) / 100;
+      const companyPlant = Boolean(
+        context.rates.find(
+          (rate) =>
+            rate.active &&
+            rate.item_key === (requirement.plantKey ?? "plant.mini_excavator.day") &&
+            rate.cost_rate != null
+        )
+      );
+      lineItems.push(
+        createAllowanceLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: requirement.description,
+          recommendedCost: cost,
+          recommendedSell: sell,
+          quantity: days,
+          unit: "day",
+          unitCost,
+          unitSell: days > 0 ? sell / days : sell,
+          rateSource: companyPlant ? "Your company rate" : "Quotr benchmark",
+          itemKey: requirement.plantKey ?? "plant.mini_excavator.day",
+          componentKey: requirement.componentKey,
+          sellDerivedFromMargin: true,
+          sellAuthority: "derived_from_gross_margin",
+          notes: `${days} day${days === 1 ? "" : "s"} × $${unitCost}/day dry hire · machine-assisted pile holes and limited bulk attendance. Quantity from physical workload, not sell.`,
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+        })
+      );
     }
   }
 

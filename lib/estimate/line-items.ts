@@ -101,6 +101,7 @@ export function createLabourLineItem(params: {
   sellDerivedFromMargin?: boolean;
   sellAuthority?: SellAuthority;
   notes?: string;
+  adjustmentLabel?: string;
   sortOrder: number;
   organisationSettings: OrganisationSettings | null;
 }): EstimateLineItemInput {
@@ -120,9 +121,10 @@ export function createLabourLineItem(params: {
     labourSellRate: params.labourSellRate,
   });
 
+  const adjustmentLabel = params.adjustmentLabel ?? "site access/carry";
   const equation =
     labourHoursResult.adjustmentFactor !== 1
-      ? `${params.quantity} ${params.unit} × ${params.productivityHoursPerUnit} hrs/${params.unit} = ${labourHoursResult.baseHours} base hrs · site access/carry ×${labourHoursResult.adjustmentFactor} = ${labourHours} hrs`
+      ? `${params.quantity} ${params.unit} × ${params.productivityHoursPerUnit} hrs/${params.unit} = ${labourHoursResult.baseHours} base hrs · ${adjustmentLabel} ×${labourHoursResult.adjustmentFactor} = ${labourHours} hrs`
       : `${params.quantity} ${params.unit} × ${params.productivityHoursPerUnit} hrs/${params.unit} = ${labourHours} hrs`;
   const noteParts = [equation, params.notes].filter(Boolean);
 
@@ -288,12 +290,17 @@ export function createAllowanceLineItem(params: {
   rateSource: string;
   rateSourceType?: RateSourceType;
   itemKey?: string;
+  componentKey?: string;
   sellDerivedFromMargin?: boolean;
   sellAuthority?: SellAuthority;
   notes?: string;
   sortOrder: number;
   organisationSettings: OrganisationSettings | null;
   qualityFactor?: number;
+  quantity?: number;
+  unit?: string;
+  unitCost?: number;
+  unitSell?: number;
 }): EstimateLineItemInput {
   const qualityFactor = params.qualityFactor ?? 1;
   const recommendedCost = round2(params.recommendedCost * qualityFactor);
@@ -302,6 +309,8 @@ export function createAllowanceLineItem(params: {
     totalCost: recommendedCost,
     totalSell: recommendedSell,
   });
+  const quantity = params.quantity ?? 1;
+  const unit = params.unit ?? "allow";
 
   return withRateMetadata(
     {
@@ -309,11 +318,12 @@ export function createAllowanceLineItem(params: {
       workAreaName: params.workAreaName,
       label: params.label,
       category: params.category ?? "allowance",
-      quantity: 1,
-      unit: "allow",
+      quantity,
+      unit,
       rateSource: params.rateSource,
       notes: params.notes,
       sortOrder: params.sortOrder,
+      componentKey: params.componentKey,
       ...buildAmounts(
         money.recommendedCost,
         money.recommendedSell,
@@ -324,8 +334,8 @@ export function createAllowanceLineItem(params: {
       rateSource: params.rateSource,
       rateSourceType: params.rateSourceType,
       itemKey: params.itemKey,
-      costRate: params.recommendedCost,
-      sellRate: params.recommendedSell,
+      costRate: params.unitCost ?? params.recommendedCost,
+      sellRate: params.unitSell ?? params.recommendedSell,
       sellDerivedFromMargin: params.sellDerivedFromMargin,
       sellAuthority: params.sellAuthority,
     }

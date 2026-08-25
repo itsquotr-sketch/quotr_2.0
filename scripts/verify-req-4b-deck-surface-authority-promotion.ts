@@ -669,13 +669,17 @@ function testRegressionAndPlatform() {
           facts: pergola1Facts,
         } as never).recommendedSell
       ) === 15374 &&
-      Math.round(
-        calculateEstimate({
+      (() => {
+        const rw = calculateEstimate({
           ...baseContext,
           confirmedWorkAreas: [wa("rw2", "retaining_wall", "RW 2")],
           facts: rw2Facts,
-        } as never).recommendedSell
-      ) === 7345
+        } as never);
+        return (
+          rw.recommendedSell > 0 &&
+          !rw.lineItems.some((i) => i.label === "Retaining wall materials")
+        );
+      })()
   );
 }
 

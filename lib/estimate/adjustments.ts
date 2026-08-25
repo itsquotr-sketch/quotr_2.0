@@ -128,48 +128,100 @@ export function parseCarryDistanceCategory(
   return "unknown";
 }
 
-export function getLabourAdjustmentFactor(
-  constraints: EstimateConstraint[]
-): number {
-  let factor = 1;
+export type LabourAdjustmentParts = {
+  accessAddend: number;
+  carryAddend: number;
+  slopeAddend: number;
+  occupiedAddend: number;
+  hoursAddend: number;
+};
 
-  const access = getConstraintValue(constraints, "site_access")?.toLowerCase();
+const LABOUR_ADJUSTMENT_CAP = 1.35;
+
+export function getLabourAdjustmentParts(
+  constraints: readonly EstimateConstraint[]
+): LabourAdjustmentParts {
+  const list = [...constraints];
+  let accessAddend = 0;
+  const access = getConstraintValue(list, "site_access")?.toLowerCase();
   if (
     access === "difficult" ||
     access === "very poor" ||
     access === "verypoor" ||
     access === "restricted"
   ) {
-    factor += 0.1;
+    accessAddend = 0.1;
   } else if (access === "moderate") {
-    factor += 0.05;
+    accessAddend = 0.05;
   }
 
-  const slope = getConstraintValue(constraints, "site_slope")?.toLowerCase();
+  let slopeAddend = 0;
+  const slope = getConstraintValue(list, "site_slope")?.toLowerCase();
   if (slope === "yes" || slope === "true" || slope === "difficult") {
-    factor += 0.05;
+    slopeAddend = 0.05;
   }
 
-  const carry = getConstraintValue(constraints, "material_carry_distance");
+  let carryAddend = 0;
+  const carry = getConstraintValue(list, "material_carry_distance");
   const carryCategory = parseCarryDistanceCategory(carry);
-
   if (carryCategory === "long") {
-    factor += 0.1;
+    carryAddend = 0.1;
   } else if (carryCategory === "moderate" || carryCategory === "unknown") {
-    factor += 0.05;
+    carryAddend = 0.05;
   }
 
-  // FOUNDATION-R1 OD-PC-01 — occupied / hours consumed once here.
-  // UNKNOWN / Not sure / No must not be treated as Yes.
-  if (isOccupiedSiteRestriction(constraints)) {
-    factor += 0.05;
-  }
-  if (isWorkingHoursRestriction(constraints)) {
-    factor += 0.05;
-  }
+  return {
+    accessAddend,
+    carryAddend,
+    slopeAddend,
+    occupiedAddend: isOccupiedSiteRestriction(list) ? 0.05 : 0,
+    hoursAddend: isWorkingHoursRestriction(list) ? 0.05 : 0,
+  };
+}
 
-  // Cap compound site adjustment to avoid runaway labour loading in v1.
-  return Math.min(factor, 1.35);
+function composeLabourAdjustmentFromParts(
+  parts: LabourAdjustmentParts,
+  includeMaterialCarry: boolean
+): number {
+  const factor =
+    1 +
+    parts.accessAddend +
+    (includeMaterialCarry ? parts.carryAddend : 0) +
+    parts.slopeAddend +
+    parts.occupiedAddend +
+    parts.hoursAddend;
+  return Math.min(factor, LABOUR_ADJUSTMENT_CAP);
+}
+
+export function getLabourAdjustmentFactor(
+  constraints: EstimateConstraint[]
+): number {
+  return composeLabourAdjustmentFromParts(
+    getLabourAdjustmentParts(constraints),
+    true
+  );
+}
+
+/**
+ * Per-intent Project Conditions labour modifier.
+ * Site access, slope, occupied, and hours may apply to on-site work.
+ * Material carry applies only when the intent moves incoming materials.
+ * Spoil/export is never this carry key — use waste/spoil/carting facts.
+ */
+export function getIntentLabourAdjustmentFactor(params: {
+  readonly constraints: readonly EstimateConstraint[];
+  readonly workAreaAccess?: string | null;
+  readonly includeMaterialCarry: boolean;
+}): number {
+  const constraints = [...params.constraints];
+  const factor = composeLabourAdjustmentFromParts(
+    getLabourAdjustmentParts(constraints),
+    params.includeMaterialCarry
+  );
+  if (projectSiteAccessAlreadyApplied(constraints)) {
+    return factor;
+  }
+  return factor * getWorkAreaAccessFactor(params.workAreaAccess);
 }
 
 function isAffirmativeRestriction(value: string | null): boolean {

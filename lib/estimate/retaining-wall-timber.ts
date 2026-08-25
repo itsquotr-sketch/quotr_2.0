@@ -48,6 +48,7 @@ export type TimberPileTakeoff = {
   embedmentRatio: number;
   embedmentExplicit: boolean;
   positionsM: number[];
+  retainedHeightsM: number[];
   lengthsM: number[];
   totalLengthM: number;
 };
@@ -68,8 +69,10 @@ export function timberPileTakeoff(
     inputs.pileEmbedmentRatio != null && inputs.pileEmbedmentRatio > 0
       ? inputs.pileEmbedmentRatio
       : RETAINING_WALL_TIMBER_EMBEDMENT_RATIO;
+  const retainedHeightsM: number[] = [];
   const lengthsM = layout.positionsM.map((x) => {
     const above = heightAtX(geometry.lengthM, geometry.h1M, geometry.h2M, x);
+    retainedHeightsM.push(round2(above));
     const embed = embedmentExplicit
       ? inputs.pileEmbedmentM!
       : above * embedmentRatio;
@@ -85,6 +88,7 @@ export function timberPileTakeoff(
     embedmentRatio,
     embedmentExplicit,
     positionsM: layout.positionsM,
+    retainedHeightsM,
     lengthsM,
     totalLengthM: round2(lengthsM.reduce((sum, n) => sum + n, 0)),
   };

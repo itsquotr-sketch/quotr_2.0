@@ -13,6 +13,7 @@ import type { MaterialIdentity } from "@/lib/materials/identity";
 export function planningMaterial(params: {
   workAreaId: string;
   componentKey: string;
+  variantKey?: string;
   description: string;
   materialKey: string | null;
   identity?: MaterialIdentity;
@@ -31,6 +32,7 @@ export function planningMaterial(params: {
     workAreaId: params.workAreaId,
     workAreaType: "retaining_wall",
     componentKey: params.componentKey,
+    variantKey: params.variantKey,
     description: params.description,
     confidence: params.confidence ?? "medium",
     assumptions: [],
