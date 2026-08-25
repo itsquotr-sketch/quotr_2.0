@@ -40,6 +40,8 @@ import {
   RW_BACKFILL_LABOUR_COMPONENT,
   RW_EXCAVATION_COMPONENT,
   RW_EXCAVATION_LABOUR_COMPONENT,
+  RW_EXCAVATION_SUBCONTRACT_COMPONENT,
+  RW_SPOIL_DISPOSAL_COMPONENT,
   RW_FACE_AREA_COMPONENT,
   RW_MASONRY_BLOCK_LABOUR_COMPONENT,
   RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT,
@@ -83,7 +85,9 @@ import {
   RW_MINI_EXCAVATOR_DAY_COST_EX_GST,
   RW_MINI_EXCAVATOR_DAY_KEY,
   RW_TIMBER_COMPACTION_METHOD,
+  RW_TIMBER_EXCAVATION_SUBCONTRACT,
   RW_TIMBER_PILING_METHOD_MACHINE,
+  resolveTimberExcavationMethod,
   resolveTimberPilingMethod,
   timberMiniExcavatorDays,
 } from "@/lib/estimate/retaining-wall-construction-method";
@@ -204,6 +208,7 @@ const SKIP_MONEY = new Set([
   RW_FACE_AREA_COMPONENT,
   RW_TIMBER_PILES_EA_COMPONENT,
   RW_TIMBER_PILES_LM_COMPONENT,
+  RW_EXCAVATION_COMPONENT,
 ]);
 
 function asMaterial(
@@ -401,8 +406,33 @@ export function evaluateRetainingWallCommercialCoverage(params: {
     push("backfill_material", "Drainage aggregate", RW_BACKFILL_COMPONENT, "material", true);
     push("backfill_labour", "Drainage backfill labour", RW_BACKFILL_LABOUR_COMPONENT, "labour", true);
     push("residual", "Fixings / connectors residual", RW_TIMBER_FIXINGS_COMPONENT, "residual", true);
-    push("excavation", "Excavation", RW_EXCAVATION_COMPONENT, "material", false);
-    push("excavation_labour", "Excavation labour", RW_EXCAVATION_LABOUR_COMPONENT, "labour", true);
+    out.push(cat("excavation", "Excavation", "NOT_APPLICABLE", false, "material"));
+    const excavationSubcontract = materialOf(
+      rows,
+      RW_EXCAVATION_SUBCONTRACT_COMPONENT
+    );
+    if (excavationSubcontract) {
+      out.push(
+        cat(
+          "excavation_subcontract",
+          "Excavation subcontract",
+          coverageStateFromRequirement(excavationSubcontract, "material"),
+          true,
+          "material"
+        )
+      );
+      out.push(
+        cat("excavation_labour", "Excavation labour", "NOT_APPLICABLE", false, "labour")
+      );
+    } else {
+      push(
+        "excavation_labour",
+        "Excavation labour",
+        RW_EXCAVATION_LABOUR_COMPONENT,
+        "labour",
+        true
+      );
+    }
     const plant = rows.find(
       (row): row is PlantRequirement =>
         row.kind === "plant" && row.componentKey === RW_TIMBER_PLANT_COMPONENT
@@ -530,13 +560,16 @@ function findExactNamedMaterialRate(
   itemKey: string,
   unit: string
 ): OrganisationRate | undefined {
-  return rates.find(
+  const matches = rates.filter(
     (rate) =>
       rate.active &&
       (rate.rate_type === "material" || rate.rate_type === "project_material") &&
       rate.item_key === itemKey &&
       rate.cost_rate != null &&
       rateUnitsMatch(rate.unit, unit)
+  );
+  return (
+    matches.find((rate) => rate.rate_type === "project_material") ?? matches[0]
   );
 }
 
@@ -792,6 +825,10 @@ export function commercializeRetainingWall(params: {
     facts,
     workAreaId
   );
+  const excavationMethod = resolveTimberExcavationMethod(facts, workAreaId);
+  const excavationSubcontracted =
+    physical.system === "TIMBER_RETAINING_WALL" &&
+    excavationMethod === RW_TIMBER_EXCAVATION_SUBCONTRACT;
 
   const pricedMaterials: MaterialRequirement[] = [];
   for (const row of physical.requirements) {
@@ -802,7 +839,8 @@ export function commercializeRetainingWall(params: {
     }
     if (
       row.componentKey === RW_TIMBER_PILES_EA_COMPONENT ||
-      row.componentKey === RW_TIMBER_PILES_LM_COMPONENT
+      row.componentKey === RW_TIMBER_PILES_LM_COMPONENT ||
+      row.componentKey === RW_EXCAVATION_COMPONENT
     ) {
       pricedMaterials.push(row);
       continue;
@@ -1245,7 +1283,31 @@ export function commercializeRetainingWall(params: {
   }
 
   const excavationQty = qtyOf(pricedMaterials, RW_EXCAVATION_COMPONENT);
-  if (
+  if (excavationSubcontracted) {
+    const subcontractQty = hasTrustedPhysicalQuantity(excavationQty)
+      ? excavationQty
+      : physical.geometry?.faceAreaM2 ?? 1;
+    const subcontractUnit = hasTrustedPhysicalQuantity(excavationQty) ? "m3" : "item";
+    pricedMaterials.push(
+      planningMaterial({
+        workAreaId,
+        componentKey: RW_EXCAVATION_SUBCONTRACT_COMPONENT,
+        description: "Excavation subcontract",
+        materialKey: RW_EXCAVATION_SUBCONTRACT_COMPONENT,
+        category: "EXCAVATION",
+        specification:
+          "Self-perform excavation labour and plant are not priced. Needs an excavation subcontract rate.",
+        baseQuantity: subcontractQty,
+        baseUnit: subcontractUnit,
+        wasteFactor: 0,
+        purchaseQuantity: subcontractQty,
+        purchaseUnit: subcontractUnit,
+        factKeys: ["retaining_wall.excavation_method"],
+        source: "retaining_wall.excavation.subcontract",
+      })
+    );
+    missingInfo.push("Excavation subcontract rate");
+  } else if (
     physical.excavationMode === "EXPLICIT_VOLUME" &&
     hasTrustedPhysicalQuantity(excavationQty)
   ) {
@@ -1293,17 +1355,44 @@ export function commercializeRetainingWall(params: {
     );
   }
 
+  if (
+    physical.system === "TIMBER_RETAINING_WALL" &&
+    getBooleanFact([...facts], workAreaId, "retaining_wall.disposal_included") === true
+  ) {
+    const spoilQty = hasTrustedPhysicalQuantity(excavationQty) ? excavationQty : 1;
+    pricedMaterials.push(
+      planningMaterial({
+        workAreaId,
+        componentKey: RW_SPOIL_DISPOSAL_COMPONENT,
+        description: "Spoil disposal",
+        materialKey: RW_SPOIL_DISPOSAL_COMPONENT,
+        category: "WASTE",
+        specification:
+          "Spoil removal / disposal is separate from excavation. Needs a trusted disposal rate (m³, tonne, load, or allowance).",
+        baseQuantity: spoilQty,
+        baseUnit: hasTrustedPhysicalQuantity(excavationQty) ? "m3" : "item",
+        wasteFactor: 0,
+        purchaseQuantity: spoilQty,
+        purchaseUnit: hasTrustedPhysicalQuantity(excavationQty) ? "m3" : "item",
+        factKeys: ["retaining_wall.disposal_included"],
+        source: "retaining_wall.spoil.disposal",
+      })
+    );
+    missingInfo.push("Spoil disposal rate");
+  }
+
   const plant: PlantRequirement[] = [];
   if (physical.system === "TIMBER_RETAINING_WALL") {
     const machine = pilingMethod.method === RW_TIMBER_PILING_METHOD_MACHINE;
     const measuredExcavationM3 =
-      physical.excavationMode === "EXPLICIT_VOLUME"
+      !excavationSubcontracted && physical.excavationMode === "EXPLICIT_VOLUME"
         ? qtyOf(pricedMaterials, RW_EXCAVATION_COMPONENT)
         : null;
     const scaled = timberMiniExcavatorDays({
       method: pilingMethod.method,
       pileCount: physical.timberPiles?.count ?? 0,
       measuredExcavationM3,
+      rates,
     });
     const quantity = machine ? scaled.days : 0;
     const namedPlant = rates.find(
@@ -1326,7 +1415,7 @@ export function commercializeRetainingWall(params: {
       workAreaType: "retaining_wall",
       componentKey: RW_TIMBER_PLANT_COMPONENT,
       description: machine
-        ? "Mini-excavator / auger (machine-assisted pile holes)"
+        ? "Mini-excavator / auger"
         : "Plant not applicable — manual piling (machine cannot reach workface)",
       confidence: "medium",
       assumptions: [
@@ -1453,6 +1542,7 @@ export function detailedMoneyMaterials(
       row.componentKey !== RW_FACE_AREA_COMPONENT &&
       row.componentKey !== RW_TIMBER_PILES_EA_COMPONENT &&
       row.componentKey !== RW_TIMBER_PILES_LM_COMPONENT &&
+      row.componentKey !== RW_EXCAVATION_COMPONENT &&
       hasTrustedPhysicalQuantity(row.purchaseQuantity)
   );
 }

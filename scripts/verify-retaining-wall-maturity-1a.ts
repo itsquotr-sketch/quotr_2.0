@@ -423,6 +423,7 @@ check(
   "61 non-1D productivity rows still have no invented hour defaults",
   prod
     .filter((e) => !(e.item_key in RW_TIMBER_1D_PRODUCTIVITY_STARTERS))
+    .filter((e) => !e.item_key.startsWith("plant.mini_excavator."))
     .every((e) => e.defaultCostRate == null)
 );
 

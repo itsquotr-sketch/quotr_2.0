@@ -252,10 +252,10 @@ check(
   ].every((key) => usedNow.includes(key))
 );
 check(
-  "10b. unused sheet/backfill/paint-litre rates marked planned",
+  "10b. unused sheet/paint-litre rates marked planned; timber backfill m³ is used_now",
   planned.includes("sheet.plasterboard.standard.each") &&
-    planned.includes("retaining_wall.backfill.m3") &&
-    planned.includes("paint.litre")
+    planned.includes("paint.litre") &&
+    usedNow.includes("retaining_wall.backfill.m3")
 );
 
 const deckSource = readFileSync("lib/estimate/calculators/deck.ts", "utf8");

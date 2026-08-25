@@ -29,6 +29,8 @@ import {
 import {
   RW_BACKFILL_COMPONENT,
   RW_EXCAVATION_COMPONENT,
+  RW_EXCAVATION_LABOUR_COMPONENT,
+  RW_EXCAVATION_SUBCONTRACT_COMPONENT,
   RW_FACE_AREA_COMPONENT,
   RW_MASONRY_BLOCKS_COMPONENT,
   RW_MASONRY_CORE_COMPONENT,
@@ -48,6 +50,11 @@ import {
   RW_TIMBER_PILES_LM_COMPONENT,
   isRwTimberPileStockComponent,
 } from "@/lib/estimate/retaining-wall-identities";
+import {
+  formatPileProcurementSummary,
+  stripInternalEstimateTokens,
+} from "@/lib/estimate/retaining-wall-builder-copy";
+import { timberRateVarianceContext } from "@/lib/estimate/retaining-wall-rate-context";
 import { RW_PLANNING_TAKEOFF_DISCLAIMER } from "@/lib/estimate/retaining-wall-physical";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { EstimateLineItem } from "@/components/assistant/types";
@@ -163,6 +170,9 @@ export function mapRateLabel(raw: string): string {
 }
 
 function isAllowanceLine(item: EstimateLineItem): boolean {
+  if (item.itemKey?.startsWith("plant.") || /mini-excavator|auger/i.test(item.label)) {
+    return false;
+  }
   if (item.category === "allowance" || item.category === "contingency") {
     return true;
   }
@@ -186,20 +196,39 @@ function lineSpecification(item: EstimateLineItem): string | null {
     parts.push(resolution.display);
   }
   if (item.notes?.trim()) {
-    const note = item.notes.trim();
+    const note = stripInternalEstimateTokens(item.notes.trim());
     const identityCut = note.split(" · Identity:")[0]?.trim() ?? note;
     if (identityCut && !parts.includes(identityCut)) {
       parts.push(identityCut);
     }
   }
-  return parts.length > 0 ? parts.join(" · ") : null;
+  const joined = parts.length > 0 ? parts.join(" · ") : null;
+  return joined ? stripInternalEstimateTokens(joined) : null;
+}
+
+function mapRwBuilderLabel(label: string): string {
+  if (label === "Pile installation labour") return "Pile installation";
+  if (label === "Face-board installation") return "Retaining-wall face installation";
+  if (label === "Drainage installation labour") return "Drainage installation";
+  if (label === "Drainage backfill labour") return "Drainage backfill";
+  if (label === "Excavation labour") return "Excavation";
+  if (/EXCAVATION ALLOWANCE/i.test(label)) return "Excavation allowance";
+  if (/mini-excavator/i.test(label)) return "Mini-excavator / auger";
+  return label;
 }
 
 export function toPricedLine(item: EstimateLineItem): BuilderReviewPricedLine {
   const category = mapLineCategory(item);
+  const rateLabel = mapRateLabel(item.rateSource ?? "");
+  const variance = timberRateVarianceContext({
+    itemKey: item.itemKey,
+    unit: item.unit,
+    appliedCostRate: item.costRate,
+    rateLabel,
+  });
   return {
     id: item.id,
-    label: item.label,
+    label: mapRwBuilderLabel(item.label),
     category,
     recommendedCost: item.recommendedCost,
     recommendedSell: item.recommendedSell,
@@ -207,11 +236,12 @@ export function toPricedLine(item: EstimateLineItem): BuilderReviewPricedLine {
     unit: item.unit ?? null,
     labourHours: item.labourHours ?? null,
     costRate: item.costRate ?? null,
-    rateLabel: mapRateLabel(item.rateSource ?? ""),
+    rateLabel,
     itemKey: item.itemKey ?? null,
     componentKey: item.componentKey ?? item.itemKey ?? null,
     isAllowance: isAllowanceLine(item),
     specification: lineSpecification(item),
+    rateContext: variance?.copy ?? null,
     sourceLine: item,
   };
 }
@@ -301,6 +331,48 @@ function workAreaTypeForName(
     : { id: null, type: null };
 }
 
+function pileProcurementGroupNote(
+  requirements: readonly EstimateRequirement[],
+  workAreaId: string | null
+): { id: string; title: string; detail: string } | null {
+  const inArea = requirements.filter(
+    (row) => !workAreaId || row.workAreaId === workAreaId
+  );
+  const stock = inArea.filter(
+    (row): row is MaterialRequirement =>
+      row.kind === "material" && isRwTimberPileStockComponent(row.componentKey)
+  );
+  if (stock.length === 0) return null;
+  const ea = inArea.find(
+    (row) => row.kind === "material" && row.componentKey === RW_TIMBER_PILES_EA_COMPONENT
+  ) as MaterialRequirement | undefined;
+  const lm = inArea.find(
+    (row) => row.kind === "material" && row.componentKey === RW_TIMBER_PILES_LM_COMPONENT
+  ) as MaterialRequirement | undefined;
+  const byStock = stock.map((row) => {
+    const fromKey = row.componentKey.match(/(\d+)_(\d+)m$/);
+    const fromLabel = row.description.match(/×\s*([\d.]+)\s*m/);
+    const stockLengthM = fromLabel
+      ? Number(fromLabel[1])
+      : fromKey
+        ? Number(`${fromKey[1]}.${fromKey[2]}`)
+        : 0;
+    return { stockLengthM, ea: row.purchaseQuantity };
+  });
+  const purchaseEa = stock.reduce((sum, row) => sum + row.purchaseQuantity, 0);
+  const purchaseLm = round2(
+    byStock.reduce((sum, row) => sum + row.ea * row.stockLengthM, 0)
+  );
+  const summary = formatPileProcurementSummary({
+    pileCount: ea?.purchaseQuantity ?? purchaseEa,
+    theoreticalLm: lm?.baseQuantity ?? lm?.purchaseQuantity ?? 0,
+    purchaseEa,
+    purchaseLm,
+    byStock,
+  });
+  return { id: "pile-procurement", ...summary };
+}
+
 function attachTakeoff(
   categories: BuilderReviewCategoryGroup[],
   takeoff: readonly BuilderReviewTakeoffRow[],
@@ -363,6 +435,7 @@ function attachTakeoff(
         takeoff: [],
         takeoffDisclaimer: null,
         takeoffUnavailableHint: unavailableHint,
+        groupNotes: [],
       },
     ];
   }
@@ -378,6 +451,7 @@ function attachTakeoff(
         takeoff,
         takeoffDisclaimer: DECK_STRUCTURAL_ESTIMATING_DISCLAIMER,
         takeoffUnavailableHint: null,
+        groupNotes: [],
       },
     ];
   }
@@ -582,6 +656,13 @@ export function composeBuilderReview(
       ) {
         return false;
       }
+      if (
+        req.componentKey === RW_EXCAVATION_COMPONENT &&
+        (commercialComponentKeys.has(RW_EXCAVATION_LABOUR_COMPONENT) ||
+          commercialComponentKeys.has(RW_EXCAVATION_SUBCONTRACT_COMPONENT))
+      ) {
+        return false;
+      }
       return !commercialComponentKeys.has(req.componentKey);
     })
     .map(toTakeoffRow);
@@ -620,6 +701,7 @@ export function composeBuilderReview(
         takeoff: [],
         takeoffDisclaimer: null,
         takeoffUnavailableHint: null,
+        groupNotes: [],
       };
     });
 
@@ -652,6 +734,15 @@ export function composeBuilderReview(
       unavailableHint
     );
 
+    const pileNote = pileProcurementGroupNote(requirements, meta.id);
+    if (pileNote) {
+      categories = categories.map((cat) =>
+        cat.id === "MATERIALS"
+          ? { ...cat, groupNotes: [...cat.groupNotes, pileNote] }
+          : cat
+      );
+    }
+
     return {
       workAreaId: meta.id,
       workAreaName: wa.name,
@@ -669,14 +760,23 @@ export function composeBuilderReview(
   const costReconciles = Math.abs(projectedCost - estimateCost) < 0.05;
 
   const categoryRollup = presentEstimateCategoryTotals(lines);
+  const plantCost = round2(
+    lines
+      .filter((item) => mapLineCategory(item) === "PLANT")
+      .reduce((sum, item) => sum + item.recommendedCost, 0)
+  );
   const categorySummary = CATEGORY_ORDER.map((id) => {
     let cost = 0;
     if (id === "MATERIALS") cost = categoryRollup.materials?.cost ?? 0;
     else if (id === "LABOUR") cost = categoryRollup.labour?.cost ?? 0;
     else if (id === "SUBCONTRACT") cost = categoryRollup.subcontractor?.cost ?? 0;
+    else if (id === "PLANT") cost = plantCost;
     else if (id === "ALLOWANCES") {
-      cost =
-        (categoryRollup.allowance?.cost ?? 0) + (categoryRollup.mixed?.cost ?? 0);
+      cost = round2(
+        (categoryRollup.allowance?.cost ?? 0) +
+          (categoryRollup.mixed?.cost ?? 0) -
+          plantCost
+      );
     } else if (id === "OTHER_DIRECT_COSTS") {
       cost = categoryRollup.contingency?.cost ?? 0;
     }
@@ -711,6 +811,8 @@ export function composeBuilderReview(
         assumptions.length,
         checks.length
       ),
+      marginSourceLabel:
+        "Target GM comes from company Rates defaults. Quotr starter is 20% if unset.",
       workAreaCount: workAreas.filter((wa) => wa.workAreaName !== "Unallocated")
         .length,
       workAreaNames: workAreas.map((wa) => wa.workAreaName),

@@ -37,6 +37,9 @@ export const RW_FACE_AREA_COMPONENT = "retaining_wall.face";
 export const RW_NOVACOIL_COMPONENT = "retaining_wall.drainage.novacoil";
 export const RW_BACKFILL_COMPONENT = "retaining_wall.backfill.volume";
 export const RW_EXCAVATION_COMPONENT = "retaining_wall.excavation.bulk";
+export const RW_EXCAVATION_SUBCONTRACT_COMPONENT =
+  "retaining_wall.excavation.subcontract";
+export const RW_SPOIL_DISPOSAL_COMPONENT = "retaining_wall.spoil.disposal";
 export const RW_TIMBER_BOARDS_COMPONENT = "retaining_wall.timber.face_boards";
 export const RW_TIMBER_PILES_EA_COMPONENT = "retaining_wall.timber.piles.ea";
 export const RW_TIMBER_PILES_LM_COMPONENT = "retaining_wall.timber.piles.lm";

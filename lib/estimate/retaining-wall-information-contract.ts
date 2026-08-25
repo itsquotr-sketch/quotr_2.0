@@ -370,6 +370,16 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       reason: "User-supplied consent/engineering status. Quotr does not determine legality.",
     },
     {
+      factKey: "retaining_wall.excavation_method",
+      questionClass: "REFINE",
+      calculatorConsumed: true,
+      physical: false,
+      commercial: true,
+      confidence: false,
+      reason:
+        "SELF_PERFORM vs SUBCONTRACT excavation ownership. XOR. Default self-perform.",
+    },
+    {
       factKey: "retaining_wall.disposal_included",
       questionClass: "REFINE",
       calculatorConsumed: true,

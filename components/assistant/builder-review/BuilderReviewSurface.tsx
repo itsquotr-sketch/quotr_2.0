@@ -137,6 +137,11 @@ export function BuilderReviewSurface({
             <p className="text-xs text-muted-foreground">
               GM {view.overview.marginPercent.toFixed(1)}%
             </p>
+            {view.overview.marginSourceLabel ? (
+              <p className="max-w-[16rem] text-[11px] leading-snug text-muted-foreground">
+                {view.overview.marginSourceLabel}
+              </p>
+            ) : null}
           </div>
         </div>
 
@@ -315,6 +320,19 @@ export function BuilderReviewSurface({
                         amount={cat.cost > 0 ? formatCurrency(cat.cost) : null}
                       />
 
+                      {cat.groupNotes.map((note) => (
+                        <p
+                          key={note.id}
+                          className="text-xs leading-snug break-words text-muted-foreground"
+                          data-builder-review-group-note={note.id}
+                        >
+                          <span className="font-medium text-foreground">
+                            {note.title}.{" "}
+                          </span>
+                          {note.detail}
+                        </p>
+                      ))}
+
                       <ul className="space-y-1.5">
                         {cat.lines.map((line) => {
                           const pricingRequired =
@@ -362,6 +380,11 @@ export function BuilderReviewSurface({
                                     .filter(Boolean)
                                     .join(" · ")}
                                 </p>
+                                {line.rateContext ? (
+                                  <p className="text-[11px] leading-snug break-words text-muted-foreground">
+                                    {line.rateContext}
+                                  </p>
+                                ) : null}
                               </div>
                               {pricingRequired ? (
                                 <p className="max-w-[42%] shrink-0 text-right text-xs font-medium text-foreground break-words">

@@ -153,6 +153,7 @@ export function adaptPricedMaterialRequirementWithoutLegacy(params: {
     sellRate: unitSell,
     rateSource: source.rateSource,
     rateSourceType: source.rateSourceType,
+    itemKey: requirement.materialKey ?? undefined,
     componentKey: requirement.componentKey,
     sellDerivedFromMargin: true,
     sellAuthority: "derived_from_gross_margin" as const,

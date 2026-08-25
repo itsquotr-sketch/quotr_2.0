@@ -257,7 +257,9 @@ const rwDisposal = calculateRetainingWall(
   wa("rw3", "retaining_wall", "RW disposal")
 );
 assert(
-  labels(rwDisposal.lineItems).filter((l) => l === "Disposal / cartage allowance").length === 1,
+  labels(rwDisposal.lineItems).filter((l) => l === "Spoil disposal").length === 1 &&
+    !labels(rwDisposal.lineItems).includes("Disposal / cartage allowance") &&
+    !labels(rwDisposal.lineItems).includes("Bulk excavation"),
   "RW disposal: single disposal line"
 );
 assert(totalSell(rwDisposal.lineItems) > 0, "RW disposal: positive total");

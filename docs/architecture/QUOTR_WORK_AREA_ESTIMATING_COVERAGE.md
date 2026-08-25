@@ -123,7 +123,7 @@ Estimator maturity (this document) is independent of product display band (§12)
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | deck | trial_supported | MATURE / CONDITIONAL | MATURE / CONDITIONAL | hybrid DETAILED + PACKAGE + SHADOW | PARTIAL | MATURE / CONDITIONAL | PARTIAL | **MATURE / CONDITIONAL** |
 | bathroom | trial_supported | PARTIAL | PARTIAL | PACKAGE_ALLOWANCE (mixed resolve) | PARTIAL (per-trade exists) | PARTIAL | PARTIAL | **PARTIAL** — labour ahead of material |
-| retaining_wall | developing | PARTIAL | SAFETY HARDENED / timber 1D detailed | Timber DETAILED; sleeper/masonry package **still MINIMAL** | PARTIAL (timber task labour) | Timber DETAILED / sleeper-masonry MINIMAL | PARTIAL | **SAFETY HARDENED / TIMBER 1D DETAILED** |
+| retaining_wall | developing | PARTIAL | SAFETY HARDENED / timber 1E polish | Timber DETAILED; sleeper/masonry package **still MINIMAL** | PARTIAL (timber task labour) | Timber DETAILED / sleeper-masonry MINIMAL | PARTIAL | **SAFETY HARDENED / TIMBER 1E POLISH** |
 | kitchen | developing | MINIMAL | MINIMAL | PACKAGE + **RATE AUTHORITY FIXED** | MINIMAL (no shared access factor) | MINIMAL | MINIMAL | **MINIMAL** — **KITCHEN-RATE-AUTHORITY-01 FIXED** |
 | fence | developing | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL (slope flag) | MINIMAL | MINIMAL | **MINIMAL** |
 | pergola | developing | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL | MINIMAL | MINIMAL | **MINIMAL** — not ahead of fence |
@@ -282,7 +282,7 @@ Does not rebuild Deck geometry or change starter productivities.
 
 ---
 
-## 8. Retaining Wall — SAFETY HARDENED / TIMBER 1D DETAILED
+## 8. Retaining Wall — SAFETY HARDENED / TIMBER 1E POLISH
 
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)** — hard-minimum and unsupported-material safety remain. Supported Timber uses detailed component authority. Sleeper/Masonry commercial package remains **still MINIMAL**.
 
@@ -350,7 +350,15 @@ Sleeper/Masonry physical models are unchanged. Deck 2D is unchanged.
 
 Verifier: `scripts/verify-retaining-wall-maturity-1d.ts`.
 
-Supported Timber money is component-level: physical quantity → identity → procurement quantity → rate → cost; labour is physical work quantity → productivity → base hours → per-intent Project Condition modifier → adjusted hours → labour cost rate → cost; sell is cost → target GM. Legacy face-m² package is `LEGACY_FALLBACK_ONLY`. Pile purchase is stock-length EA rounded up (1.8 / 2.4 / 2.7 / 3.0 / 3.6 m H5 SED 150–175). Plant days = `max(1, ceil(piles/16 + measured m³/20))` when machine-assisted. Unknown excavation is a labelled 0.6 h/face-m² **EXCAVATION ALLOWANCE**, not invented m³. `post_spacing_m` is consumed for timber pile layout and 1D stock procurement.
+Supported Timber money is component-level: physical quantity → identity → procurement quantity → rate → cost; labour is physical work quantity → productivity → base hours → per-intent Project Condition modifier → adjusted hours → labour cost rate → cost; sell is cost → target GM. Legacy face-m² package is `LEGACY_FALLBACK_ONLY`. Pile purchase is stock-length EA rounded up (1.8 / 2.4 / 2.7 / 3.0 / 3.6 m H5 SED 150–175). Unknown excavation is a labelled 0.6 h/face-m² **EXCAVATION ALLOWANCE**, not invented m³. `post_spacing_m` is consumed for timber pile layout and 1D stock procurement.
+
+**RETAINING WALL MATURITY 1E — FINAL TIMBER COMMERCIAL + UX POLISH (COMPLETE LOCAL / OWNER FINAL TIMBER UX APPROVAL PENDING)**
+
+Verifier: `scripts/verify-retaining-wall-maturity-1e.ts`.
+
+Self-performed measured bulk excavation is owned by excavation labour + applicable plant. The physical `retaining_wall.excavation.bulk` row is a driver, not a generic $/m³ Pricing Required. Subcontracted excavation XOR suppresses self-perform labour and excavation plant hours. Spoil/disposal is a separate intent (`retaining_wall.disposal_included`), never inferred from material carry. Plant days = `ceil((pile machine hours + measured excavation machine hours + setup hours) / 7 productive h/day)`, minimum 1 when machine-assisted. Machine occupancy is separate from carpenter attendance. Builder Review shows procurement summaries, rate-variance context when company/project differs >25% from a comparable Quotr identity/unit, and human copy instead of internal tokens.
+
+Do **not** start Sleeper or Masonry from 1E.
 
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
 

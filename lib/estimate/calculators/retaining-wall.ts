@@ -70,8 +70,15 @@ import {
   adaptUnpricedMaterialRequirementToEstimateLine,
   isPricedMaterialRequirement,
 } from "@/lib/estimate/requirement-commercial-line";
-import { RW_EXCAVATION_LABOUR_COMPONENT, RW_FACE_AREA_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
-import { detailedTimberLabourFromCost } from "@/lib/estimate/retaining-wall-timber-1d";
+import { RW_EXCAVATION_LABOUR_COMPONENT, RW_EXCAVATION_SUBCONTRACT_COMPONENT, RW_FACE_AREA_COMPONENT, RW_SPOIL_DISPOSAL_COMPONENT, RW_BACKFILL_COMPONENT, RW_TIMBER_BOARDS_COMPONENT, RW_TIMBER_FIXINGS_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
+import { detailedTimberLabourFromCost, RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER } from "@/lib/estimate/retaining-wall-timber-1d";
+import {
+  formatAggregateProcurementCopy,
+  formatBoardProcurementCopy,
+  formatFixingsAllowanceCopy,
+  formatTimberLabourModifierCopy,
+} from "@/lib/estimate/retaining-wall-builder-copy";
+import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 
 /** Facts this calculator reads. Physical-only keys do not change 1A money. */
 export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
@@ -87,6 +94,7 @@ export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
   "retaining_wall.surcharge",
   "retaining_wall.surcharge_type",
   "retaining_wall.excavation_required",
+  "retaining_wall.excavation_method",
   "retaining_wall.excavation_volume_m3",
   "retaining_wall.drainage_required",
   "retaining_wall.drain_connection_required",
@@ -686,6 +694,25 @@ export function calculateRetainingWall(
     for (const requirement of detailedMoneyMaterials(commercial.requirements)) {
       if (requirement.componentKey === RW_FACE_AREA_COMPONENT) continue;
       if (isPricedMaterialRequirement(requirement)) {
+        let notes = requirement.specification ?? undefined;
+        if (requirement.componentKey === RW_TIMBER_BOARDS_COMPONENT) {
+          notes = formatBoardProcurementCopy({
+            netLm: requirement.baseQuantity,
+            purchaseLm: requirement.purchaseQuantity,
+            wasteFactor: requirement.wasteFactor,
+          });
+        } else if (requirement.componentKey === RW_BACKFILL_COMPONENT) {
+          notes = formatAggregateProcurementCopy({
+            inPlaceM3: requirement.baseQuantity,
+            purchaseM3: requirement.purchaseQuantity,
+          });
+        } else if (requirement.componentKey === RW_TIMBER_FIXINGS_COMPONENT) {
+          notes = /company residual/i.test(requirement.specification ?? "")
+            ? "Fixings and connectors allowance · company residual"
+                : formatFixingsAllowanceCopy(
+                    round2(requirement.totalCost / RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER)
+                  );
+        }
         lineItems.push(
           {
             ...adaptPricedMaterialRequirementWithoutLegacy({
@@ -695,19 +722,27 @@ export function calculateRetainingWall(
               organisationSettings: context.organisationSettings,
               label: requirement.description,
             }),
-            notes: requirement.specification ?? undefined,
+            notes,
+            identitySummary: notes,
           }
         );
       } else {
-        lineItems.push(
-          adaptUnpricedMaterialRequirementToEstimateLine({
+        const pricingNote =
+          requirement.componentKey === RW_SPOIL_DISPOSAL_COMPONENT
+            ? "Spoil disposal — price required."
+            : requirement.componentKey === RW_EXCAVATION_SUBCONTRACT_COMPONENT
+              ? "Excavation subcontract — price required."
+              : requirement.specification ?? "Needs a trusted price.";
+        lineItems.push({
+          ...adaptUnpricedMaterialRequirementToEstimateLine({
             requirement,
             workAreaName: workArea.name,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
             label: requirement.description,
-          })
-        );
+          }),
+          notes: pricingNote,
+        });
       }
     }
     for (const requirement of detailedLabour(commercial.requirements)) {
@@ -723,8 +758,23 @@ export function calculateRetainingWall(
           workAreaAccess,
           includeMaterialCarry,
         });
-        lineItems.push(
-          createLabourLineItem({
+        const hours = shapeLabourHours({
+          quantity: requirement.productivityBasis.quantity,
+          productivityHoursPerUnit: requirement.productivityBasis.hoursPerUnit,
+          adjustmentFactor: intentAdjustment,
+          qualityFactor: NO_FINISH_QUALITY_FACTOR,
+        });
+        const labourNotes = formatTimberLabourModifierCopy({
+          constraints: context.constraints,
+          includeMaterialCarry,
+          baseHours: hours.baseHours,
+          adjustedHours: hours.adjustedHours,
+          quantity: requirement.productivityBasis.quantity,
+          unit: requirement.productivityBasis.unit,
+          hoursPerUnit: requirement.productivityBasis.hoursPerUnit,
+        });
+        lineItems.push({
+          ...createLabourLineItem({
             workAreaId: workArea.id,
             workAreaName: workArea.name,
             label: requirement.description,
@@ -742,11 +792,13 @@ export function calculateRetainingWall(
             adjustmentLabel: includeMaterialCarry
               ? "site access/carry"
               : "site access",
-            notes: `${requirement.productivityBasis.quantity} ${requirement.productivityBasis.unit} × ${requirement.productivityBasis.hoursPerUnit} h/${requirement.productivityBasis.unit}`,
+            notes: labourNotes,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
-          })
-        );
+          }),
+          notes: labourNotes,
+          identitySummary: labourNotes,
+        });
       } else {
         lineItems.push(
           adaptUnpricedLabourRequirementToEstimateLine({
@@ -790,7 +842,7 @@ export function calculateRetainingWall(
           componentKey: requirement.componentKey,
           sellDerivedFromMargin: true,
           sellAuthority: "derived_from_gross_margin",
-          notes: `${days} day${days === 1 ? "" : "s"} × $${unitCost}/day dry hire · machine-assisted pile holes and limited bulk attendance. Quantity from physical workload, not sell.`,
+          notes: `${days} day${days === 1 ? "" : "s"} × $${unitCost}/day dry hire. Quantity from machine hours, not sell.`,
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
         })
@@ -847,7 +899,11 @@ export function calculateRetainingWall(
     /disposal|cartage allowance/i.test(item.label)
   );
 
-  if (disposalIncluded === true && !hasDisposalLine) {
+  if (
+    disposalIncluded === true &&
+    !hasDisposalLine &&
+    commercial.mode !== "DETAILED_COMPONENT_AUTHORITY"
+  ) {
     const disposalRates = resolveRate({
       rates: context.rates,
       rateType: "allowance",

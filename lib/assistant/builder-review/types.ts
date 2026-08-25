@@ -43,6 +43,7 @@ export type BuilderReviewPricedLine = {
   readonly componentKey: string | null;
   readonly isAllowance: boolean;
   readonly specification: string | null;
+  readonly rateContext: string | null;
   readonly sourceLine: EstimateLineItem;
 };
 
@@ -68,6 +69,7 @@ export type BuilderReviewCategoryGroup = {
   readonly takeoff: readonly BuilderReviewTakeoffRow[];
   readonly takeoffDisclaimer: string | null;
   readonly takeoffUnavailableHint: string | null;
+  readonly groupNotes: readonly { readonly id: string; readonly title: string; readonly detail: string }[];
 };
 
 export type BuilderReviewWorkAreaGroup = {
@@ -106,6 +108,7 @@ export type BuilderReviewOverview = {
   readonly marginPercent: number;
   readonly confidenceBand: string | null;
   readonly confidenceExplanation: string | null;
+  readonly marginSourceLabel: string | null;
   readonly workAreaCount: number;
   readonly workAreaNames: readonly string[];
   readonly categorySummary: readonly BuilderReviewCategorySummary[];

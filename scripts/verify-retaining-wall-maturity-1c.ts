@@ -318,7 +318,11 @@ const calc = calculateRetainingWall(ctx(ownerFacts(), [
 const pileLine = calc.lineItems.find((item) => item.label === "Pile installation labour");
 const drainLine = calc.lineItems.find((item) => item.label === "Drainage installation labour");
 check("43 detailed labour equation includes base vs adjusted", Boolean(pileLine?.notes?.includes("base hrs")));
-check("44 access/carry shown when applied", Boolean(pileLine?.notes?.includes("access/carry")));
+check(
+  "44 access/carry shown when applied",
+  Boolean(pileLine?.notes?.toLowerCase().includes("site access")) &&
+    Boolean(pileLine?.notes?.toLowerCase().includes("carry"))
+);
 check("45 drainage equation also reconciles", Boolean(drainLine?.notes?.includes("base hrs")));
 check("46 no separate carting labour line for owner fixture", !calc.lineItems.some((item) => /carting\/material handling/i.test(item.label)));
 check(

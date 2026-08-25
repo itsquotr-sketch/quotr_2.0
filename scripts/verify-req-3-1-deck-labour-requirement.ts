@@ -433,7 +433,8 @@ check(
 const adjustmentsSrc = read("lib/estimate/adjustments.ts");
 check(
   "PC 26 OD-PC-01 composition remains unchanged",
-  adjustmentsSrc.includes("Cap compound site adjustment") &&
+  adjustmentsSrc.includes("LABOUR_ADJUSTMENT_CAP") &&
+    adjustmentsSrc.includes("Math.min(factor, LABOUR_ADJUSTMENT_CAP)") &&
     !read("lib/estimate/deck-labour-requirement.ts").includes("Math.min") &&
     carryLabour?.adjustedHours === deckLabourLine(carryRestricted)?.labourHours
 );

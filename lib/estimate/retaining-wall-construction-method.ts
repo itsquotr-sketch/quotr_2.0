@@ -5,6 +5,9 @@
  * (mini-excavator / auger). Labour productivity must match that method.
  * If access cannot take a machine, do not price plant; use manual productivity.
  */
+import type { OrganisationRate } from "@/components/setup/types";
+import { getStringFact } from "@/lib/estimate/facts";
+import { timberMiniExcavatorWorkload } from "@/lib/estimate/retaining-wall-plant-workload";
 import type { EstimateConstraint, EstimateFact } from "@/lib/estimate/types";
 import { resolveProjectCondition } from "@/lib/project-conditions/legacy-adapter";
 
@@ -22,49 +25,68 @@ export const RW_MINI_EXCAVATOR_DAY_COST_EX_GST = 420;
 export const RW_MINI_EXCAVATOR_DAY_BASIS =
   "QUOTR_STARTER_DRY_HIRE_DAY_EX_GST" as const;
 
-/** One suburban machine day of pile-hole / attendance work. Not a production study. */
-export const RW_PILES_PER_MACHINE_DAY = 16;
-/** Measured bulk cut only. Unknown face-m² excavation allowance does not add plant days. */
-export const RW_MEASURED_EXCAVATION_M3_PER_MACHINE_DAY = 20;
+export {
+  RW_TIMBER_PLANT_SCALING_RULE,
+  timberMiniExcavatorWorkload,
+} from "@/lib/estimate/retaining-wall-plant-workload";
 
-export const RW_TIMBER_PLANT_SCALING_RULE =
-  "MIN_1_DAY_THEN_CEIL_PILE_LOAD_PLUS_MEASURED_EXCAVATION_LOAD" as const;
+export const RW_TIMBER_EXCAVATION_SELF_PERFORM = "SELF_PERFORMED" as const;
+export const RW_TIMBER_EXCAVATION_SUBCONTRACT = "SUBCONTRACTED" as const;
+export type RwTimberExcavationMethod =
+  | typeof RW_TIMBER_EXCAVATION_SELF_PERFORM
+  | typeof RW_TIMBER_EXCAVATION_SUBCONTRACT;
+
+export function resolveTimberExcavationMethod(
+  facts: readonly EstimateFact[] | null | undefined,
+  workAreaId: string
+): RwTimberExcavationMethod {
+  const raw = getStringFact(
+    [...(facts ?? [])],
+    workAreaId,
+    "retaining_wall.excavation_method"
+  );
+  const value = (raw ?? "").toLowerCase();
+  if (
+    value.includes("subcontract") ||
+    value.includes("subbie") ||
+    value === "subcontract"
+  ) {
+    return RW_TIMBER_EXCAVATION_SUBCONTRACT;
+  }
+  return RW_TIMBER_EXCAVATION_SELF_PERFORM;
+}
 
 /**
- * Integer plant days for machine-assisted timber walls.
- * Workload = pileCount/16 + measuredBulkM3/20. Minimum 1 when machine scope exists.
+ * Integer plant days from machine hours (1E).
  * Manual method: 0. Unknown excavation allowance is not a plant driver.
  */
 export function timberMiniExcavatorDays(params: {
   method: RwTimberPilingMethod;
   pileCount: number;
   measuredExcavationM3: number | null;
-}): { days: number; pileLoad: number; excavationLoad: number; basis: string } {
-  if (params.method !== RW_TIMBER_PILING_METHOD_MACHINE) {
-    return {
-      days: 0,
-      pileLoad: 0,
-      excavationLoad: 0,
-      basis: "Manual piling — no mini-excavator day.",
-    };
-  }
-  const pileCount = params.pileCount > 0 ? params.pileCount : 0;
-  const measured =
-    params.measuredExcavationM3 != null && params.measuredExcavationM3 > 0
-      ? params.measuredExcavationM3
-      : 0;
-  const pileLoad = pileCount / RW_PILES_PER_MACHINE_DAY;
-  const excavationLoad = measured / RW_MEASURED_EXCAVATION_M3_PER_MACHINE_DAY;
-  const workload = pileLoad + excavationLoad;
-  const machineScope = pileCount > 0 || measured > 0;
-  const days = machineScope ? Math.max(1, Math.ceil(workload - 1e-12)) : 0;
+  rates?: readonly OrganisationRate[];
+}): {
+  days: number;
+  pileLoad: number;
+  excavationLoad: number;
+  pileMachineHours: number;
+  excavationMachineHours: number;
+  setupHours: number;
+  totalMachineHours: number;
+  productiveHoursPerDay: number;
+  basis: string;
+} {
+  const workload = timberMiniExcavatorWorkload(params);
   return {
-    days,
-    pileLoad,
-    excavationLoad,
-    basis: machineScope
-      ? `${RW_TIMBER_PLANT_SCALING_RULE}. ${pileCount} piles / ${RW_PILES_PER_MACHINE_DAY} per day + ${measured} m³ measured bulk / ${RW_MEASURED_EXCAVATION_M3_PER_MACHINE_DAY} m³ per day → ${days} day(s). Unknown excavation allowance does not add plant days.`
-      : "No machine scope.",
+    days: workload.days,
+    pileLoad: workload.pileMachineHours,
+    excavationLoad: workload.excavationMachineHours,
+    pileMachineHours: workload.pileMachineHours,
+    excavationMachineHours: workload.excavationMachineHours,
+    setupHours: workload.setupHours,
+    totalMachineHours: workload.totalMachineHours,
+    productiveHoursPerDay: workload.productiveHoursPerDay,
+    basis: workload.basis,
   };
 }
 

@@ -18,11 +18,15 @@ export const RW_PRODUCTIVITY_KEYS = {
   masonryBlockM2: "retaining_wall.masonry.block_lay.hours_per_m2",
   masonryCoreFillM3: "retaining_wall.masonry.core_fill.hours_per_m3",
   masonryWaterproofM2: "retaining_wall.masonry.waterproofing.hours_per_m2",
+  plantHoursPerPile: "plant.mini_excavator.hours_per_pile",
+  plantHoursPerM3: "plant.mini_excavator.hours_per_m3",
+  plantSetupHours: "plant.mini_excavator.setup_hours",
+  plantProductiveHoursPerDay: "plant.mini_excavator.productive_hours_per_day",
 } as const;
 
 export const RW_PRODUCTIVITY_UNITS: Record<
   (typeof RW_PRODUCTIVITY_KEYS)[keyof typeof RW_PRODUCTIVITY_KEYS],
-  "m3" | "m2" | "ea" | "lm" | "hole"
+  "m3" | "m2" | "ea" | "lm" | "hole" | "job" | "day"
 > = {
   [RW_PRODUCTIVITY_KEYS.excavationM3]: "m3",
   [RW_PRODUCTIVITY_KEYS.backfillM3]: "m3",
@@ -38,4 +42,8 @@ export const RW_PRODUCTIVITY_UNITS: Record<
   [RW_PRODUCTIVITY_KEYS.masonryBlockM2]: "m2",
   [RW_PRODUCTIVITY_KEYS.masonryCoreFillM3]: "m3",
   [RW_PRODUCTIVITY_KEYS.masonryWaterproofM2]: "m2",
+  [RW_PRODUCTIVITY_KEYS.plantHoursPerPile]: "ea",
+  [RW_PRODUCTIVITY_KEYS.plantHoursPerM3]: "m3",
+  [RW_PRODUCTIVITY_KEYS.plantSetupHours]: "job",
+  [RW_PRODUCTIVITY_KEYS.plantProductiveHoursPerDay]: "day",
 };
