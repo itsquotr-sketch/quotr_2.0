@@ -204,7 +204,7 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       commercial: false,
       confidence: false,
       reason:
-        "Timber pile centres, or sleeper post centres when the wall is Concrete sleeper. Timber 1.2 m is target/max even-bay. Sleeper: explicit spacing is a system/user module with full bays plus residual/end bay — not even-distributed 1.875 m bays. Default sleeper module is the purchased sleeper length. Not a structural standard.",
+        "TIMBER ONLY — pile centres. Default 1.2 m is target/max even-bay ESTIMATING_LAYOUT_ASSUMPTION. Must NOT be consumed as Concrete Sleeper post spacing. Sleeper uses retaining_wall.sleeper_post_spacing_m.",
     },
     {
       factKey: "retaining_wall.pile_embedment_m",
@@ -213,7 +213,8 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       physical: true,
       commercial: false,
       confidence: false,
-      reason: "User/design pile embedment depth. Overrides the estimating ratio.",
+      reason:
+        "TIMBER ONLY — user/design pile embedment depth. Overrides the timber estimating ratio. Must NOT become Sleeper steel-post embedment.",
     },
     {
       factKey: "retaining_wall.pile_embedment_ratio",
@@ -223,7 +224,7 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       commercial: false,
       confidence: false,
       reason:
-        "Default estimating embedment 0.50 × H(x). Design or builder-supplied embedment overrides. Not an engineering rule.",
+        "Timber default estimating embedment 0.50 × H(x). Design or builder-supplied embedment overrides. Not an engineering rule.",
     },
     {
       factKey: "retaining_wall.face_board_section",
@@ -242,7 +243,7 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       commercial: false,
       confidence: false,
       reason:
-        "PHYSICAL_PURCHASED_UNIT_LENGTH. Fact key retaining_wall.sleeper_length_m is the purchased sleeper length, not a continuously resized bay. Default 2.0 m (2000 mm class) if skipped. Layout is full standard bays plus one residual/end bay. Explicit post spacing overrides as system/user centres.",
+        "PHYSICAL_PURCHASED_UNIT_LENGTH. Fact key retaining_wall.sleeper_length_m is the purchased sleeper length, not a continuously resized bay. Default 2.0 m (2000 mm class) if skipped. Layout is full standard bays plus one residual/end bay. Explicit sleeper_post_spacing_m overrides as system/user centres.",
     },
     {
       factKey: "retaining_wall.sleeper_face_height_m",
@@ -255,13 +256,24 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
         "Selected sleeper face height. Default 0.20 m (200 mm class) if skipped. Required for sleeper quantity.",
     },
     {
+      factKey: "retaining_wall.sleeper_post_spacing_m",
+      questionClass: "REFINE",
+      calculatorConsumed: true,
+      physical: true,
+      commercial: false,
+      confidence: false,
+      reason:
+        "SLEEPER ONLY — post centres / bay module. Default is purchased sleeper length. Full standard bays + residual/end bay. Must NOT read Timber retaining_wall.post_spacing_m. Spacing shorter than sleeper length is a module mismatch attention.",
+    },
+    {
       factKey: "retaining_wall.sleeper_post_embedment_m",
       questionClass: "REFINE",
       calculatorConsumed: true,
       physical: true,
       commercial: false,
       confidence: false,
-      reason: "Explicit steel-post embedment. Overrides the 70% × H(x) preliminary estimating assumption. That default is not a manufacturer requirement or engineering rule.",
+      reason:
+        "SLEEPER ONLY — explicit steel-post embedment. Overrides the 70% × H(x) preliminary estimating assumption. Must NOT read Timber pile_embedment_m.",
     },
     {
       factKey: "retaining_wall.hole_diameter_m",

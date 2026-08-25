@@ -50,6 +50,7 @@ import {
   RW_SLEEPER_DEFAULT_SPACING_DISCLOSURE,
   RW_SLEEPER_DESIGN_CONFIRM,
   RW_SLEEPER_LENGTH_SEMANTICS,
+  RW_SLEEPER_MODULE_MISMATCH,
   RW_SLEEPER_PACKAGE_LIFECYCLE,
   sleeper2AMaterialStarter,
 } from "../lib/estimate/retaining-wall-sleeper-2a";
@@ -159,7 +160,6 @@ function secondFacts(): EstimateFact[] {
     fact("retaining_wall.material", "Concrete sleeper"),
     fact("retaining_wall.length_m", 6),
     fact("retaining_wall.height_m", 0.8),
-    fact("retaining_wall.post_spacing_m", 1.5),
     fact("retaining_wall.excavation_required", true),
     fact("retaining_wall.excavation_volume_m3", 2),
     fact("retaining_wall.disposal_included", true),
@@ -326,7 +326,7 @@ const spoilPriced = calculateRetainingWall(
 
 const designedCtx = ctx(
   ownerFacts([
-    fact("retaining_wall.post_spacing_m", 1.8),
+    fact("retaining_wall.sleeper_post_spacing_m", 2.0),
     fact("retaining_wall.sleeper_post_embedment_m", 0.8),
   ])
 );
@@ -335,7 +335,7 @@ const designedEstimate = calculateEstimate(designedCtx);
 const designedTakeoff = sleeperWallTakeoff(geometry!, {
   sleeperLengthM: null,
   sleeperFaceHeightM: null,
-  postSpacingM: 1.8,
+  postSpacingM: 2.0,
   postEmbedmentM: 0.8,
   holeDiameterM: null,
   premixBagYieldM3: null,
@@ -632,7 +632,9 @@ check(
   editorSrc.includes("CONCRETE_SLEEPER_WALL") &&
     editorSrc.includes("retaining_wall.sleeper_length_m") &&
     editorSrc.includes("retaining_wall.sleeper_post_embedment_m") &&
-    editorSrc.includes("retaining_wall.post_spacing_m")
+    editorSrc.includes("retaining_wall.sleeper_post_spacing_m") &&
+    editorSrc.includes("retaining_wall.post_spacing_m") &&
+    editorSrc.includes("retaining_wall.pile_embedment_m")
 );
 check(
   "46 Wall type switching safe",
@@ -782,10 +784,11 @@ check(
 check(
   "R1-13 explicit system spacing overrides generic module",
   designedTakeoff.spacingAssumed === false &&
-    designedTakeoff.targetSpacingM === 1.8 &&
-    designedTakeoff.fullBayCount === 8 &&
-    near(designedTakeoff.residualBayWidthM, 0.6) &&
-    designedTakeoff.postPositionsM[1] === 1.8
+    designedTakeoff.targetSpacingM === 2 &&
+    designedTakeoff.moduleMismatch === false &&
+    designedTakeoff.fullBayCount === 7 &&
+    near(designedTakeoff.residualBayWidthM, 1) &&
+    designedTakeoff.postPositionsM[1] === 2
 );
 check(
   "R1-14 explicit embedment overrides generic",
@@ -842,6 +845,184 @@ check(
     RW_SLEEPER_2A_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.sleeperPostsEa]
       ?.confidenceBand === "low"
 );
+
+console.log("\n--- 2A-R4 SYSTEM-FACT ISOLATION ---\n");
+const timberThenSleeperFacts = ownerFacts([
+  fact("retaining_wall.material", "Concrete sleeper"),
+  fact("retaining_wall.post_spacing_m", 1.0),
+  fact("retaining_wall.pile_embedment_m", 1.0),
+]);
+const timberThenSleeper = calculateRetainingWall(ctx(timberThenSleeperFacts), wa());
+const timberThenSleeperPhys = buildRetainingWallPhysicalModel({
+  context: ctx(timberThenSleeperFacts),
+  workAreaId: "rw1",
+  material: "Concrete sleeper",
+});
+const sleeperThenTimberFacts = ownerFacts([
+  fact("retaining_wall.material", "Timber"),
+  fact("retaining_wall.face_board_section", "150×50 H4"),
+  fact("retaining_wall.sleeper_post_spacing_m", 1.5),
+  fact("retaining_wall.sleeper_post_embedment_m", 0.9),
+]);
+const sleeperThenTimberPhys = buildRetainingWallPhysicalModel({
+  context: ctx(sleeperThenTimberFacts),
+  workAreaId: "rw1",
+  material: "Timber",
+});
+const mismatchCalc = calculateRetainingWall(
+  ctx(
+    ownerFacts([
+      fact("retaining_wall.sleeper_post_spacing_m", 1.0),
+    ])
+  ),
+  wa()
+);
+const mismatchPhys = buildRetainingWallPhysicalModel({
+  context: ctx(
+    ownerFacts([fact("retaining_wall.sleeper_post_spacing_m", 1.0)])
+  ),
+  workAreaId: "rw1",
+  material: "Concrete sleeper",
+});
+
+check(
+  "R4-1 Timber spacing does not become Sleeper spacing",
+  timberThenSleeperPhys.sleeperTakeoff?.spacingAssumed === true &&
+    timberThenSleeperPhys.sleeperTakeoff?.targetSpacingM === 2 &&
+    timberThenSleeperPhys.sleeperTakeoff?.bayCount === 8 &&
+    timberThenSleeperPhys.sleeperTakeoff?.postCount === 9
+);
+check(
+  "R4-2 Timber embedment does not become Sleeper embedment",
+  timberThenSleeperPhys.sleeperTakeoff?.embedmentExplicit === false &&
+    near(timberThenSleeperPhys.sleeperTakeoff?.postLengthsM[0] ?? 0, 2.72)
+);
+check(
+  "R4-3 Sleeper spacing does not become Timber spacing",
+  sleeperThenTimberPhys.timberPiles?.targetSpacingM === 1.2 &&
+    sleeperThenTimberPhys.timberPiles?.spacingAssumed === true
+);
+check(
+  "R4-4 Sleeper embedment does not become Timber embedment",
+  sleeperThenTimberPhys.timberPiles?.embedmentExplicit === false
+);
+check(
+  "R4-5 shared geometry persists",
+  near(timberThenSleeperPhys.geometry.faceAreaM2, 16.5) &&
+    near(sleeperThenTimberPhys.geometry.faceAreaM2, 16.5)
+);
+check(
+  "R4-6 shared access persists",
+  Boolean(
+    lab(timberThenSleeper.requirements, RW_SLEEPER_POST_LABOUR_COMPONENT)
+      ?.adjustedHours
+  )
+);
+check(
+  "R4-7 excavation persists",
+  Boolean(
+    lab(timberThenSleeper.requirements, RW_EXCAVATION_LABOUR_COMPONENT)
+      ?.adjustedHours
+  )
+);
+check(
+  "R4-8 drainage persists",
+  mat(timberThenSleeper.requirements, RW_NOVACOIL_COMPONENT)?.purchaseQuantity ===
+    15
+);
+check(
+  "R4-9 spoil persists",
+  !timberThenSleeper.lineItems.some((item) =>
+    /spoil|hardfill/i.test(item.label)
+  )
+);
+check(
+  "R4-10 canonical 15m Sleeper returns 8 bays / 9 posts",
+  takeoff.bayCount === 8 && takeoff.postCount === 9
+);
+check(
+  "R4-11 48 sleeper procurement restored",
+  takeoff.sleeperCount === 48
+);
+check(
+  "R4-12 only residual bay uses cut/end semantics",
+  takeoff.standardSleeperEa === 44 &&
+    takeoff.cutSleeperEa === 4 &&
+    takeoff.moduleMismatch === false &&
+    near(takeoff.residualBayWidthM, 1)
+);
+check(
+  "R4-13 explicit Sleeper spacing still overrides",
+  designedTakeoff.spacingAssumed === false &&
+    designedTakeoff.targetSpacingM === 2 &&
+    !designedCalc.missingInfo.includes(RW_SLEEPER_DESIGN_CONFIRM)
+);
+check(
+  "R4-14 spacing < sleeper length produces mismatch attention",
+  mismatchPhys.sleeperTakeoff?.moduleMismatch === true &&
+    mismatchCalc.missingInfo.includes(RW_SLEEPER_MODULE_MISMATCH) &&
+    mismatchCalc.assumptions.includes(RW_SLEEPER_MODULE_MISMATCH) &&
+    (mismatchPhys.sleeperTakeoff?.bayCount ?? 0) === 15 &&
+    (mismatchPhys.sleeperTakeoff?.postCount ?? 0) === 16 &&
+    (mismatchPhys.sleeperTakeoff?.standardSleeperEa ?? -1) === 0
+);
+check(
+  "R4-15 no cutting-stock optimiser invented",
+  !readFileSync("lib/estimate/retaining-wall-sleeper.ts", "utf8").includes(
+    "cuttingStock"
+  ) &&
+    !readFileSync("lib/estimate/retaining-wall-sleeper.ts", "utf8").includes(
+      "optimiser"
+    )
+);
+check(
+  "R4-16 concrete recalculates",
+  near(takeoff.holeVolumeM3, 0.478, 0.01) &&
+    takeoff.bagCount === 48 &&
+    (mismatchPhys.sleeperTakeoff?.holeCount ?? 0) === 16
+);
+check(
+  "R4-17 labour recalculates",
+  (lab(timberThenSleeper.requirements, RW_SLEEPER_FACE_LABOUR_COMPONENT)
+    ?.baseHours ?? 0) > 0 &&
+    (lab(mismatchCalc.requirements, RW_SLEEPER_FACE_LABOUR_COMPONENT)
+      ?.baseHours ?? 0) >
+      (lab(timberThenSleeper.requirements, RW_SLEEPER_FACE_LABOUR_COMPONENT)
+        ?.baseHours ?? 0)
+);
+check(
+  "R4-18 package/detail XOR unchanged",
+  packageXorDetailedHolds({
+    mode: "DETAILED_COMPONENT_AUTHORITY",
+    hasPackageFaceLine: hasPackage(timberThenSleeper.lineItems),
+    hasDetailedMoneyLine: hasDetailedMoney(timberThenSleeper.lineItems),
+  })
+);
+check(
+  "R4-19 Pricing parity",
+  timberThenSleeper.lineItems.every((item) => {
+    const copied = buildPricingItemFieldsFromEstimateLineItem({
+      category: item.category,
+      recommended_cost: item.recommendedCost,
+      recommended_sell: item.recommendedSell,
+      notes: item.notes ?? null,
+    });
+    return near(copied.totalCost, item.recommendedCost);
+  })
+);
+check(
+  "R4-20 Quote parity",
+  near(
+    calculateEstimate(ctx(timberThenSleeperFacts)).recommendedSell,
+    timberThenSleeper.lineItems.reduce((s, i) => s + i.recommendedSell, 0),
+    0.05
+  )
+);
+check(
+  "R4-21 Timber 1F unchanged",
+  spawnVerifier("scripts/verify-retaining-wall-maturity-1f.ts")
+);
+check("R4-22 Deck 2D unchanged", spawnVerifier("scripts/verify-deck-maturity-2d.ts"));
 
 console.log("\n--- REGRESSION ---\n");
 check("49 Timber RW 1F passes", spawnVerifier("scripts/verify-retaining-wall-maturity-1f.ts"));
@@ -907,7 +1088,7 @@ const secondTakeoff = sleeperWallTakeoff(
   {
     sleeperLengthM: null,
     sleeperFaceHeightM: null,
-    postSpacingM: 1.5,
+    postSpacingM: null,
     postEmbedmentM: null,
     holeDiameterM: null,
     premixBagYieldM3: null,

@@ -54,9 +54,19 @@ export const RW_SLEEPER_DEFAULT_EMBEDMENT_DISCLOSURE =
   "Steel post embedment is a preliminary estimating assumption of 70% of local wall height at each post (total length ≈ 1.70 × H(x)). Estimating assumption only — not a manufacturer requirement, engineering rule, or structural recommendation.";
 export const RW_SLEEPER_DESIGN_CONFIRM =
   "Confirm sleeper system / post spacing and embedment.";
+/**
+ * Explicit sleeper post spacing shorter than the purchased sleeper unit length.
+ * Not the normal full-module + residual/end-bay estimating case.
+ */
+export const RW_SLEEPER_MODULE_MISMATCH =
+  "Post spacing does not match the selected sleeper length. Confirm the sleeper system or adjust spacing.";
 export const RW_SLEEPER_CONCRETE_GRADE_DISCLOSURE =
   "Concrete grade/product to be confirmed with selected wall system/design. Bagged general-purpose premix is an estimating material, not a specified structural mix.";
 export const RW_ESTIMATING_ASSUMPTION_CONFIRM = RW_SLEEPER_DESIGN_CONFIRM;
+/** Sleeper-only post centres. Never consume Timber `retaining_wall.post_spacing_m`. */
+export const RW_SLEEPER_POST_SPACING_FACT = "retaining_wall.sleeper_post_spacing_m" as const;
+/** Timber pile centres (legacy key retained for Timber only). */
+export const RW_TIMBER_PILE_SPACING_FACT = "retaining_wall.post_spacing_m" as const;
 
 export const RW_SLEEPER_CONCRETE_OWNERSHIP =
   "CONCRETE_PLACEMENT_SEPARATE_FROM_POST_INSTALL" as const;

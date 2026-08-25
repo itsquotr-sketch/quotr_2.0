@@ -932,7 +932,11 @@ check(
   readFileSync(
     "docs/architecture/QUOTR_WORK_AREA_ESTIMATING_COVERAGE.md",
     "utf8"
-  ).includes("Yes — timber pile layout and 1D stock procurement")
+  ).includes("Yes — **Timber only** pile layout and 1D stock procurement") ||
+    readFileSync(
+      "docs/architecture/QUOTR_WORK_AREA_ESTIMATING_COVERAGE.md",
+      "utf8"
+    ).includes("Yes — timber pile layout and 1D stock procurement")
 );
 
 console.log("\n--- R2 PER-INTENT MODIFIERS / PLANT SCALING ---\n");

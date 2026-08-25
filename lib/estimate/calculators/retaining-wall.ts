@@ -72,7 +72,7 @@ import {
 } from "@/lib/estimate/requirement-commercial-line";
 import { RW_EXCAVATION_LABOUR_COMPONENT, RW_EXCAVATION_SUBCONTRACT_COMPONENT, RW_FACE_AREA_COMPONENT, RW_SPOIL_DISPOSAL_COMPONENT, RW_BACKFILL_COMPONENT, RW_TIMBER_BOARDS_COMPONENT, RW_TIMBER_FIXINGS_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
 import { RW_SPOIL_REMOVAL_EXCEEDS_MEASURED } from "@/lib/estimate/retaining-wall-spoil-removal";
-import { RW_SLEEPER_DESIGN_CONFIRM } from "@/lib/estimate/retaining-wall-sleeper-2a";
+import { RW_SLEEPER_DESIGN_CONFIRM, RW_SLEEPER_MODULE_MISMATCH } from "@/lib/estimate/retaining-wall-sleeper-2a";
 import { detailedTimberLabourFromCost, RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER } from "@/lib/estimate/retaining-wall-timber-1d";
 import {
   formatAggregateProcurementCopy,
@@ -114,6 +114,7 @@ export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
   "retaining_wall.face_board_section",
   "retaining_wall.sleeper_length_m",
   "retaining_wall.sleeper_face_height_m",
+  "retaining_wall.sleeper_post_spacing_m",
   "retaining_wall.sleeper_post_embedment_m",
   "retaining_wall.hole_diameter_m",
   "retaining_wall.premix_bag_yield_m3",
@@ -421,12 +422,21 @@ export function calculateRetainingWall(
   }
   if (
     physical.system === "CONCRETE_SLEEPER_WALL" &&
-    physical.sleeperTakeoff &&
-    (physical.sleeperTakeoff.spacingAssumed ||
-      !physical.sleeperTakeoff.embedmentExplicit)
+    physical.sleeperTakeoff
   ) {
-    if (!missingInfo.includes(RW_SLEEPER_DESIGN_CONFIRM)) {
-      missingInfo.push(RW_SLEEPER_DESIGN_CONFIRM);
+    if (physical.sleeperTakeoff.moduleMismatch) {
+      if (!missingInfo.includes(RW_SLEEPER_MODULE_MISMATCH)) {
+        missingInfo.push(RW_SLEEPER_MODULE_MISMATCH);
+      }
+    }
+    if (
+      physical.sleeperTakeoff.spacingAssumed ||
+      !physical.sleeperTakeoff.embedmentExplicit ||
+      physical.sleeperTakeoff.moduleMismatch
+    ) {
+      if (!missingInfo.includes(RW_SLEEPER_DESIGN_CONFIRM)) {
+        missingInfo.push(RW_SLEEPER_DESIGN_CONFIRM);
+      }
     }
   }
 

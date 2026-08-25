@@ -700,6 +700,7 @@ function normalizeIssueKey(text: string): string {
 
 function isHighValueBuilderImprovement(label: string, retainingWallOnly: boolean): boolean {
   if (/confirm sleeper system/i.test(label)) return true;
+  if (/post spacing does not match the selected sleeper length/i.test(label)) return true;
   // Disclosures that explicitly deny being manufacturer/engineering rules stay collapsed.
   const estimatingDisclosureOnly =
     /estimating assumption only|not a manufacturer requirement|not a manufacturer SKU/i.test(

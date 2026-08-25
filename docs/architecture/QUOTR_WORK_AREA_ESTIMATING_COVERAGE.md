@@ -382,7 +382,11 @@ Adapts mature Timber 1D/1F architecture. Does not invent a second estimating mod
 
 `retaining_wall.sleeper_length_m` is **PHYSICAL_PURCHASED_UNIT_LENGTH**, not a continuously resized bay. Layout is **full standard bays + one residual/end bay** (15 m / 2.0 m → 7 × 2.0 m + 1.0 m residual). Cut/end sleepers still purchase a full standard unit. Post spacing/embedment are estimating assumptions; one Improve Estimate item: “Confirm sleeper system / post spacing and embedment.” Does not block Quick Estimate and does not regress to package. Starter sleeper $36/EA and post $58/lm are **low-confidence Quotr starters**, not trusted market prices. Premix starter **$11.50/bag** (medium, ~$11–12 retail band). Productivities unchanged.
 
-Do **not** start Masonry, Bathroom, or another Work Area from 2A / 2A-R1.
+**RETAINING WALL MATURITY 2A-R4 — SYSTEM-FACT ISOLATION (COMPLETE LOCAL / OWNER FINAL SLEEPER DEFECT REVIEW PENDING)**
+
+Timber pile centres stay on `retaining_wall.post_spacing_m`. Sleeper post centres use **`retaining_wall.sleeper_post_spacing_m` only**. Timber pile embedment stays on `pile_embedment_m`; Sleeper embedment stays on `sleeper_post_embedment_m`. Wall-type switch preserves shared geometry/access/excavation/drainage/spoil and does **not** silently reuse the other system’s spacing/embedment. Explicit sleeper spacing shorter than purchased sleeper length surfaces **module mismatch** attention (does not block Quick Estimate).
+
+Do **not** start Masonry, Bathroom, or another Work Area from 2A / 2A-R1 / 2A-R4.
 
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
 
@@ -445,7 +449,8 @@ This closes the former **ACTIVE ESTIMATING RISK** (silent complete-price) and th
 | `retaining_wall.drain_connection_required` | No | Yes | **REFINE** (target) |
 | carting / disposal | Partial via PC / facts | Yes | **REFINE** (target) |
 | `retaining_wall.is_raking` | No | Indirect via high/low height | **REFINE** (target) |
-| `retaining_wall.post_spacing_m` | Template / Refine — **not** Job Plan Clarify | Yes — timber pile layout and 1D stock procurement. Default 1.2 m only when omitted. | **REFINE** (consumed) |
+| `retaining_wall.post_spacing_m` | Template / Refine — **not** Job Plan Clarify | Yes — **Timber only** pile layout and 1D stock procurement. Default 1.2 m when omitted. Must not drive Sleeper. | **REFINE** (consumed) |
+| `retaining_wall.sleeper_post_spacing_m` | Refine / Edit Scope | Yes — **Sleeper only** post centres / bay module. Default = purchased sleeper length. | **REFINE** (consumed) |
 | engineering/consent | Template | Exclusion text only | INFORMATIONAL / ADVANCED (target, if consumed) |
 | existing wall removal | — | No | **NOT_CURRENTLY_CONSUMED** |
 | ground conditions | — | No | **NOT_CURRENTLY_CONSUMED** |
@@ -746,5 +751,5 @@ This R1 pass accepts the read-only audit unless code inspection disproved a clai
 4. DECK-MATURITY-2C: **COMPLETE / COMMITTED / PREVIEW**.
 5. DECK-MATURITY-2D: **COMPLETE LOCAL / OWNER FINAL MATERIAL-RATE REVIEW PENDING**.
 6. RETAINING-WALL-MATURITY-1D / 1F (Timber detailed): **COMPLETE / OWNER APPROVED**.
-7. RETAINING-WALL-MATURITY-2A / 2A-R1 (Concrete Sleeper detailed): **COMPLETE / COMMITTED / OWNER APPROVED**. Masonry commercial maturity: **NOT STARTED**.
+7. RETAINING-WALL-MATURITY-2A / 2A-R1 (Concrete Sleeper detailed): **COMPLETE / COMMITTED / OWNER APPROVED**. 2A-R4 system-fact isolation: **COMPLETE LOCAL / OWNER FINAL SLEEPER DEFECT REVIEW PENDING**. Masonry commercial maturity: **NOT STARTED**.
 8. Do **not** start Masonry, Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production.

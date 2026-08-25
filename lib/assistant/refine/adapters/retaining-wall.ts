@@ -125,15 +125,15 @@ export const retainingWallRefineAdapter: RefineWorkAreaAdapter = {
           })
         );
       }
-      if (!known(facts, workAreaId, "retaining_wall.post_spacing_m")) {
+      if (!known(facts, workAreaId, "retaining_wall.sleeper_post_spacing_m")) {
         out.push(
           candidate({
             workAreaId,
             workAreaName,
-            factKey: "retaining_wall.post_spacing_m",
-            label: "Post spacing",
+            factKey: "retaining_wall.sleeper_post_spacing_m",
+            label: "Sleeper post spacing",
             question:
-              "Target / maximum post spacing if known? Default is sleeper length. Not a structural standard.",
+              "Sleeper post centres if known? Default is the purchased sleeper length. Not Timber pile spacing. Not a structural standard.",
             inputType: "number",
             group: "structure",
           })

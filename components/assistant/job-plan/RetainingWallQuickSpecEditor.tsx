@@ -82,6 +82,11 @@ export function RetainingWallQuickSpecEditor({
     workAreaId,
     "retaining_wall.sleeper_face_height_m"
   );
+  const sleeperSpacing = jobPlanNumber(
+    facts,
+    workAreaId,
+    "retaining_wall.sleeper_post_spacing_m"
+  );
   const sleeperEmbedment = jobPlanNumber(
     facts,
     workAreaId,
@@ -609,14 +614,14 @@ export function RetainingWallQuickSpecEditor({
                   inputMode="decimal"
                   step="0.05"
                   placeholder="Sleeper length if blank"
-                  defaultValue={spacing ?? ""}
+                  defaultValue={sleeperSpacing ?? ""}
                   onBlur={(event) => {
                     const next = Number(event.target.value);
                     if (!Number.isFinite(next) || !(next > 0)) return;
                     onSpecFact?.({
                       workAreaId,
-                      key: "retaining_wall.post_spacing_m",
-                      label: "Post spacing",
+                      key: "retaining_wall.sleeper_post_spacing_m",
+                      label: "Sleeper post spacing",
                       value: next,
                       valueType: "number",
                     });

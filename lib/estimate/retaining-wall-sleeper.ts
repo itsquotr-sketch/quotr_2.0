@@ -40,6 +40,7 @@ import {
   RW_SLEEPER_DEFAULT_SPACING_DISCLOSURE,
   RW_SLEEPER_DESIGN_CONFIRM,
   RW_SLEEPER_LENGTH_SEMANTICS,
+  RW_SLEEPER_MODULE_MISMATCH,
   RW_SLEEPER_NOMINAL_MODULE_DISCLOSURE,
 } from "@/lib/estimate/retaining-wall-sleeper-2a";
 
@@ -87,6 +88,11 @@ export type SleeperWallTakeoff = {
   dimensionsMissing: boolean;
   sleeperLengthSemantics: typeof RW_SLEEPER_LENGTH_SEMANTICS;
   bayLayoutKind: typeof RW_SLEEPER_BAY_LAYOUT_KIND;
+  /**
+   * True when explicit sleeper post spacing is shorter than the purchased
+   * sleeper unit — not the normal residual/end-bay estimating case.
+   */
+  moduleMismatch: boolean;
 };
 
 export type SleeperBayLayout = {
@@ -186,6 +192,8 @@ export function sleeperWallTakeoff(
   const spacingAssumed =
     inputs.postSpacingM == null || !(inputs.postSpacingM > 0);
   const targetSpacingM = spacingAssumed ? sleeperLengthM : inputs.postSpacingM!;
+  const moduleMismatch =
+    !spacingAssumed && targetSpacingM < sleeperLengthM - 1e-9;
   const layout = sleeperBayLayout(geometry.lengthM, targetSpacingM);
   const { bayCount, postCount: postCountValue, positionsM: positions } = layout;
   const actualSpacingM = layout.moduleM;
@@ -284,6 +292,7 @@ export function sleeperWallTakeoff(
     dimensionsMissing: false,
     sleeperLengthSemantics: RW_SLEEPER_LENGTH_SEMANTICS,
     bayLayoutKind: RW_SLEEPER_BAY_LAYOUT_KIND,
+    moduleMismatch,
   };
 }
 
@@ -305,25 +314,33 @@ export function buildSleeperWallRequirements(params: {
   if (takeoff.sleeperFaceAssumed) {
     assumptions.push(RW_SLEEPER_DEFAULT_FACE_DISCLOSURE);
   }
-  if (takeoff.spacingAssumed) {
+  if (takeoff.moduleMismatch) {
+    assumptions.push(RW_SLEEPER_MODULE_MISMATCH);
+  } else if (takeoff.spacingAssumed) {
     assumptions.push(RW_SLEEPER_DEFAULT_SPACING_DISCLOSURE);
     assumptions.push(RW_SLEEPER_NOMINAL_MODULE_DISCLOSURE);
   } else {
     assumptions.push(
-      `Post centres use the explicit ${takeoff.targetSpacingM} m system/user spacing. Layout is ${takeoff.fullBayCount} full module bay(s)${takeoff.residualBayWidthM > 0 ? ` plus a ${takeoff.residualBayWidthM} m residual/end bay` : ""}. Not even-distributed. Confirm the selected system.`
+      `Post centres use the explicit ${takeoff.targetSpacingM} m sleeper-system spacing. Layout is ${takeoff.fullBayCount} full module bay(s)${takeoff.residualBayWidthM > 0 ? ` plus a ${takeoff.residualBayWidthM} m residual/end bay` : ""}. Not even-distributed. Confirm the selected system.`
     );
   }
   if (!takeoff.embedmentExplicit) {
     assumptions.push(RW_SLEEPER_DEFAULT_EMBEDMENT_DISCLOSURE);
   }
-  if (takeoff.spacingAssumed || !takeoff.embedmentExplicit) {
+  if (
+    takeoff.spacingAssumed ||
+    !takeoff.embedmentExplicit ||
+    takeoff.moduleMismatch
+  ) {
     assumptions.push(RW_SLEEPER_DESIGN_CONFIRM);
   }
   if (takeoff.sleeperCount != null) {
-    const cutHint =
-      takeoff.cutSleeperEa > 0
-        ? ` ${takeoff.standardSleeperEa} standard + ${takeoff.cutSleeperEa} cut/end (purchased as full units, ${RW_SLEEPER_CUT_PROCUREMENT}).`
-        : "";
+    let cutHint = "";
+    if (takeoff.moduleMismatch && takeoff.cutSleeperEa > 0) {
+      cutHint = ` ${takeoff.standardSleeperEa} standard + ${takeoff.cutSleeperEa} shortened (spacing shorter than sleeper length — not the normal residual/end-bay cut rule).`;
+    } else if (takeoff.cutSleeperEa > 0) {
+      cutHint = ` ${takeoff.standardSleeperEa} standard + ${takeoff.cutSleeperEa} cut/end (purchased as full units, ${RW_SLEEPER_CUT_PROCUREMENT}).`;
+    }
     assumptions.push(
       `Sleeper purchase is ${takeoff.sleeperCount} EA.${cutHint} Face-area coverage is ${takeoff.coverageEa} sleeper-equivalents and is not the purchase quantity.`
     );
@@ -351,12 +368,16 @@ export function buildSleeperWallRequirements(params: {
         category: "SLEEPER",
         specification: `${takeoff.sleeperCount} EA purchased${
           takeoff.cutSleeperEa > 0
-            ? ` (${takeoff.standardSleeperEa} standard + ${takeoff.cutSleeperEa} cut/end)`
+            ? takeoff.moduleMismatch
+              ? ` (${takeoff.standardSleeperEa} standard + ${takeoff.cutSleeperEa} shortened — spacing/product mismatch)`
+              : ` (${takeoff.standardSleeperEa} standard + ${takeoff.cutSleeperEa} cut/end)`
             : ""
         }. ${takeoff.fullBayCount} full ${takeoff.targetSpacingM} m bays${
-          takeoff.residualBayWidthM > 0
+          takeoff.residualBayWidthM > 0 && !takeoff.moduleMismatch
             ? ` + ${takeoff.residualBayWidthM} m residual/end`
-            : ""
+            : takeoff.moduleMismatch
+              ? ` (module shorter than sleeper length)`
+              : ""
         }. Discrete units — not a fractional face-area purchase.`,
         baseQuantity: takeoff.sleeperCount,
         baseUnit: "ea",
