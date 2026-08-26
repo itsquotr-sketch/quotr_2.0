@@ -424,7 +424,7 @@ check(
     materialLine(concreteCase.calc)?.recommendedCost === concreteFace
 );
 check(
-  "R1 supported block keeps package money until commercial readiness",
+  "R1 supported block keeps package money until reinforcement commercially ready",
   !blockCase.ui.readiness.blocksEstimate &&
     materialLine(blockCase.calc) != null &&
     materialLine(concreteBlockCase.calc) != null &&

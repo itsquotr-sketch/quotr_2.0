@@ -409,12 +409,20 @@ function takeoffLabel(req: MaterialRequirement): string {
   if (req.componentKey === RW_SLEEPER_CONCRETE_COMPONENT) return "Post-hole concrete";
   if (req.componentKey === RW_TIMBER_FIXINGS_COMPONENT) return "Fixings / connectors";
   if (req.componentKey === RW_SLEEPER_FIXINGS_COMPONENT) return "Sleeper connectors";
-  if (req.componentKey === RW_MASONRY_BLOCKS_COMPONENT) return "Masonry blocks";
-  if (req.componentKey === RW_MASONRY_FOOTING_COMPONENT) return "Strip footing";
-  if (req.componentKey === RW_MASONRY_SUBBASE_COMPONENT) return "Sub-base";
+  if (req.componentKey === RW_MASONRY_BLOCKS_COMPONENT) return "Concrete masonry blocks";
+  if (req.componentKey === RW_MASONRY_FOOTING_COMPONENT) return "Concrete footing";
+  if (req.componentKey === RW_MASONRY_SUBBASE_COMPONENT) return "Subbase";
   if (req.componentKey === RW_MASONRY_CORE_COMPONENT) return "Core fill";
-  if (req.componentKey === RW_MASONRY_WATERPROOF_COMPONENT) return "Waterproofing";
+  if (req.componentKey === RW_MASONRY_WATERPROOF_COMPONENT) {
+    return "Retaining-side waterproofing";
+  }
   if (req.componentKey === RW_MASONRY_REBAR_COMPONENT) return "Reinforcement";
+  if (req.componentKey === "retaining_wall.masonry.rebar.allowance") {
+    return "Reinforcement allowance";
+  }
+  if (req.componentKey === "retaining_wall.masonry.mortar.allowance") {
+    return "Masonry mortar / laying consumables";
+  }
   return req.description;
 }
 

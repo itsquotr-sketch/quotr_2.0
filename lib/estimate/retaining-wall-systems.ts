@@ -47,7 +47,8 @@ export function classifyRetainingWallSystem(
     t.includes("masonry") ||
     t.includes("block") ||
     t.includes("blocks") ||
-    t.includes("cmu");
+    t.includes("cmu") ||
+    t.includes("besser");
   if (masonry) return "CONCRETE_MASONRY_WALL";
 
   if (t.includes("timber")) {
@@ -68,7 +69,7 @@ export function retainingWallSystemLabel(system: RetainingWallSystem): string {
     case "CONCRETE_SLEEPER_WALL":
       return "Concrete sleeper wall";
     case "CONCRETE_MASONRY_WALL":
-      return "Concrete masonry wall";
+      return "Concrete masonry / Besser block";
   }
 }
 

@@ -28,6 +28,11 @@ import {
   masonrySeriesFromFact,
   type MasonrySeriesMetadata,
 } from "@/lib/estimate/retaining-wall-identities";
+import {
+  RW_MASONRY_BLOCK_PROCUREMENT_DISCLOSURE,
+  RW_MASONRY_BLOCK_PROCUREMENT_FACTOR,
+  masonryBlockPurchaseEa,
+} from "@/lib/estimate/retaining-wall-masonry-2b";
 import { planningMaterial } from "@/lib/estimate/retaining-wall-planning";
 
 export const RW_DEFAULT_LIQUID_COVERAGE_L_PER_M2 = 1;
@@ -146,22 +151,28 @@ export function buildMasonryWallRequirements(params: {
   ];
   if (takeoff.series) {
     assumptions.push(
-      `${takeoff.series.series}-series blocks at ${takeoff.series.unitsPerM2} / m² (product metadata).`
+      `${takeoff.series.series}-series blocks at ${takeoff.series.unitsPerM2} / m² (product metadata). Full core fill assumed for estimating. Confirm engineered masonry design.`
     );
   } else {
     assumptions.push(
       "Selected masonry series has no product metadata — block quantity not fabricated."
     );
   }
-  if (takeoff.verticalStarters == null) {
+  if (takeoff.verticalStarters == null && takeoff.horizontalRebarLm == null) {
     assumptions.push(
-      "Vertical starter spacing is a design input. Not claimed as a universal compliant spacing."
+      "Reinforcement is design-dependent. Not quantified as a fabricated engineering schedule."
     );
-  }
-  if (takeoff.horizontalRebarLm == null) {
-    assumptions.push(
-      "Horizontal reinforcement not quantified — no fabricated engineering schedule."
-    );
+  } else {
+    if (takeoff.verticalStarters == null) {
+      assumptions.push(
+        "Vertical starter spacing is a design input. Not claimed as a universal compliant spacing."
+      );
+    }
+    if (takeoff.horizontalRebarLm == null) {
+      assumptions.push(
+        "Horizontal reinforcement not quantified — no fabricated engineering schedule."
+      );
+    }
   }
 
   const common = {
@@ -199,7 +210,9 @@ export function buildMasonryWallRequirements(params: {
   ];
 
   if (takeoff.netBlocks != null && takeoff.series) {
-    const purchase = Math.ceil(takeoff.netBlocks - 1e-9);
+    const procurementFactor = RW_MASONRY_BLOCK_PROCUREMENT_FACTOR;
+    const purchase = masonryBlockPurchaseEa(takeoff.netBlocks, procurementFactor);
+    const wastePct = Math.round(procurementFactor * 100);
     requirements.push(
       planningMaterial({
         ...common,
@@ -208,14 +221,15 @@ export function buildMasonryWallRequirements(params: {
         materialKey: takeoff.series.materialKey,
         identity: takeoff.series.identity,
         category: "MASONRY",
-        specification: `${takeoff.netBlocks} net blocks from ${params.geometry.faceAreaM2} m² × ${takeoff.series.unitsPerM2} / m². Purchase ${purchase} ea whole units. No invented masonry waste percent.`,
+        specification: `${takeoff.netBlocks} net blocks from ${params.geometry.faceAreaM2} m² × ${takeoff.series.unitsPerM2} / m². Purchase ${purchase} ea (= ceil(net × ${1 + procurementFactor})) including ${wastePct}% procurement allowance once. ${RW_MASONRY_BLOCK_PROCUREMENT_DISCLOSURE}`,
         baseQuantity: takeoff.netBlocks,
         baseUnit: "ea",
-        wasteFactor: 0,
+        wasteFactor: procurementFactor,
         purchaseQuantity: purchase,
         purchaseUnit: "ea",
       })
     );
+    assumptions.push(RW_MASONRY_BLOCK_PROCUREMENT_DISCLOSURE);
   }
 
   if (takeoff.coreFillM3 != null) {

@@ -223,7 +223,7 @@ const rw2 = calculateRetainingWall(
   wa("rw2", "retaining_wall", "RW 2")
 );
 assert(
-  labels(rw2.lineItems).some((l) => l.includes("Novacoil")),
+  labels(rw2.lineItems).some((l) => /punched\s*\/\s*slotted drainage coil/i.test(l)),
   "RW 2: drainage"
 );
 assert(

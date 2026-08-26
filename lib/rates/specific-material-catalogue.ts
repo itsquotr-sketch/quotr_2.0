@@ -1,4 +1,4 @@
-﻿import {
+import {
   DECK_BENCHMARKS,
   FITOUT_BENCHMARKS,
 } from "@/lib/estimate/benchmark-rates";
@@ -104,7 +104,7 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "internal_walls",
     workAreaLabel: "Sheet materials",
     unit: "each",
-    description: "Per sheet (2.4 ├ù 1.2 m) when sheet count build-up is calculated.",
+    description: "Per sheet (2.4 × 1.2 m) when sheet count build-up is calculated.",
     defaultCostRate: FITOUT_BENCHMARKS.plasterboardSheet.cost,
     defaultSellRate: FITOUT_BENCHMARKS.plasterboardSheet.sell,
     recommended: true,
@@ -182,7 +182,7 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Retaining / drainage",
     unit: "m3",
     description:
-      "Purchase m┬│ after the Timber 1D 1.25 procurement factor. In-place volume stays the labour driver. Not a face-m┬▓ package.",
+      "Purchase m³ after the Timber 1D 1.25 procurement factor. In-place volume stays the labour driver. Not a face-m² package.",
     defaultCostRate: 72,
     defaultSellRate: 90,
     recommended: true,
@@ -190,14 +190,14 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.timber.face_board.150x50.h4",
-    label: "Retaining-wall face board 150├ù50 H4 No.2 / retaining",
+    label: "Retaining-wall face board 150×50 H4 No.2 / retaining",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall timber",
     unit: "lm",
     description:
-      "150├ù50 H4 No.2 / retaining-grade face board (not SG8). Purchase lm ├ù company or Quotr starter $/lm.",
+      "150×50 H4 No.2 / retaining-grade face board (not SG8). Purchase lm × company or Quotr starter $/lm.",
     defaultCostRate: 12.8,
     defaultSellRate: 16,
     recommended: true,
@@ -205,14 +205,14 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.timber.face_board.200x50.h4",
-    label: "Retaining-wall face board 200├ù50 H4 No.2 / retaining",
+    label: "Retaining-wall face board 200×50 H4 No.2 / retaining",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall timber",
     unit: "lm",
     description:
-      "200├ù50 H4 No.2 / retaining-grade face board (not SG8). Purchase lm ├ù company or Quotr starter $/lm.",
+      "200×50 H4 No.2 / retaining-grade face board (not SG8). Purchase lm × company or Quotr starter $/lm.",
     defaultCostRate: 17.4,
     defaultSellRate: 21.75,
     recommended: true,
@@ -220,14 +220,14 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.timber.pile.h5_sed",
-    label: "H5 SED / pole (legacy $/lm ΓÇö leftover)",
+    label: "H5 SED / pole (legacy $/lm — leftover)",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall timber",
     unit: "lm",
     description:
-      "Legacy generic H5 SED $/lm. 1D-R1 prices stock-length EA by 150ΓÇô175 mm class. Not used for detailed timber money.",
+      "Legacy generic H5 SED $/lm. 1D-R1 prices stock-length EA by 150–175 mm class. Not used for detailed timber money.",
     defaultCostRate: 28,
     defaultSellRate: 35,
     recommended: false,
@@ -235,14 +235,14 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.timber.pile.h5_sed.150_175.1_8m",
-    label: "H5 SED 150ΓÇô175 mm ├ù 1.8 m stock pole",
+    label: "H5 SED 150–175 mm × 1.8 m stock pole",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall timber",
     unit: "ea",
     description:
-      "Purchase EA of 1.8 m H5 SED 150ΓÇô175 mm. Estimating default diameter class ΓÇö not structural design.",
+      "Purchase EA of 1.8 m H5 SED 150–175 mm. Estimating default diameter class — not structural design.",
     defaultCostRate: 38,
     defaultSellRate: 47.5,
     recommended: true,
@@ -250,14 +250,14 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.timber.pile.h5_sed.150_175.2_4m",
-    label: "H5 SED 150ΓÇô175 mm ├ù 2.4 m stock pole",
+    label: "H5 SED 150–175 mm × 2.4 m stock pole",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall timber",
     unit: "ea",
     description:
-      "Purchase EA of 2.4 m H5 SED 150ΓÇô175 mm. Estimating default diameter class ΓÇö not structural design.",
+      "Purchase EA of 2.4 m H5 SED 150–175 mm. Estimating default diameter class — not structural design.",
     defaultCostRate: 52,
     defaultSellRate: 65,
     recommended: true,
@@ -265,14 +265,14 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.timber.pile.h5_sed.150_175.2_7m",
-    label: "H5 SED 150ΓÇô175 mm ├ù 2.7 m stock pole",
+    label: "H5 SED 150–175 mm × 2.7 m stock pole",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall timber",
     unit: "ea",
     description:
-      "Purchase EA of 2.7 m H5 SED 150ΓÇô175 mm.",
+      "Purchase EA of 2.7 m H5 SED 150–175 mm.",
     defaultCostRate: 60,
     defaultSellRate: 75,
     recommended: true,
@@ -280,13 +280,13 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.timber.pile.h5_sed.150_175.3_0m",
-    label: "H5 SED 150ΓÇô175 mm ├ù 3.0 m stock pole",
+    label: "H5 SED 150–175 mm × 3.0 m stock pole",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall timber",
     unit: "ea",
-    description: "Purchase EA of 3.0 m H5 SED 150ΓÇô175 mm.",
+    description: "Purchase EA of 3.0 m H5 SED 150–175 mm.",
     defaultCostRate: 68,
     defaultSellRate: 85,
     recommended: true,
@@ -294,13 +294,13 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.timber.pile.h5_sed.150_175.3_6m",
-    label: "H5 SED 150ΓÇô175 mm ├ù 3.6 m stock pole",
+    label: "H5 SED 150–175 mm × 3.6 m stock pole",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall timber",
     unit: "ea",
-    description: "Purchase EA of 3.6 m H5 SED 150ΓÇô175 mm.",
+    description: "Purchase EA of 3.6 m H5 SED 150–175 mm.",
     defaultCostRate: 88,
     defaultSellRate: 110,
     recommended: true,
@@ -370,7 +370,7 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Concrete sleeper wall",
     unit: "ea",
     description:
-      "LOW-CONFIDENCE QUOTR STARTER BENCHMARK for a 2000├ù200 mm class sleeper. Not a trusted current market price. Company/Project exact overrides. Purchase EA ΓÇö cut/end bays still buy a full unit.",
+      "LOW-CONFIDENCE QUOTR STARTER BENCHMARK for a 2000×200 mm class sleeper. Not a trusted current market price. Company/Project exact overrides. Purchase EA — cut/end bays still buy a full unit.",
     defaultCostRate: 36,
     defaultSellRate: 45,
     recommended: true,
@@ -400,7 +400,7 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Concrete sleeper wall",
     unit: "bag",
     description:
-      "MEDIUM-CONFIDENCE Quotr starter in the current NZ 20 kg GP/rapid retail band (~$11ΓÇô12/bag ex GST). Bags = ceil(hole m┬│ / 0.01 m┬│ yield). Estimating-grade premix ΓÇö not a specified structural mix. Company exact overrides.",
+      "MEDIUM-CONFIDENCE Quotr starter in the current NZ 20 kg GP/rapid retail band (~$11–12/bag ex GST). Bags = ceil(hole m³ / 0.01 m³ yield). Estimating-grade premix — not a specified structural mix. Company exact overrides.",
     defaultCostRate: 11.5,
     defaultSellRate: 14.38,
     recommended: true,
@@ -414,8 +414,11 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "retaining_wall",
     workAreaLabel: "Masonry wall",
     unit: "ea",
-    description: "150-series identity with product metadata. No invented NZD.",
-    calculatorSupport: "planned",
+    description:
+      "LOW-CONFIDENCE Quotr starter for 150-series CMU/Besser EA. Purchase qty includes disclosed 5% procurement allowance. Company/Project exact overrides.",
+    defaultCostRate: 4.8,
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "retaining_wall.masonry.block.200_series",
@@ -425,8 +428,24 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "retaining_wall",
     workAreaLabel: "Masonry wall",
     unit: "ea",
-    description: "200-series identity 390├ù190├ù190. No invented NZD.",
-    calculatorSupport: "planned",
+    description:
+      "LOW-CONFIDENCE Quotr starter for 200-series 390×190×190 CMU/Besser EA. Purchase qty includes disclosed 5% procurement allowance. Company/Project exact overrides.",
+    defaultCostRate: 5.5,
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "retaining_wall.masonry.mortar.allowance",
+    label: "Masonry mortar / laying consumables",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Masonry wall",
+    unit: "item",
+    description:
+      "Optional company mortar / laying-consumables lump. When unset, Quotr uses 10% of purchased block material as a low-confidence starter. Not core fill. Not included in labour-only block-lay subcontract.",
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "retaining_wall.masonry.core_fill.m3",
@@ -436,8 +455,11 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "retaining_wall",
     workAreaLabel: "Masonry wall",
     unit: "m3",
-    description: "Core-fill volume identity. No invented NZD.",
-    calculatorSupport: "planned",
+    description:
+      "LOW-CONFIDENCE Quotr starter $/m³ for core fill/grout. Distinct from drainage aggregate and footing concrete unless company unifies. Company/Project exact overrides.",
+    defaultCostRate: 260,
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "retaining_wall.masonry.footing.m3",
@@ -447,8 +469,11 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "retaining_wall",
     workAreaLabel: "Masonry wall",
     unit: "m3",
-    description: "Footing concrete identity. No invented NZD.",
-    calculatorSupport: "planned",
+    description:
+      "LOW-CONFIDENCE Quotr starter ready-mix $/m³ for strip footing. Not bagged concrete. Pump/delivery not invented. Company/Project exact overrides.",
+    defaultCostRate: 245,
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "retaining_wall.masonry.subbase.m3",
@@ -458,8 +483,11 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "retaining_wall",
     workAreaLabel: "Masonry wall",
     unit: "m3",
-    description: "Sub-base aggregate identity. No invented NZD.",
-    calculatorSupport: "planned",
+    description:
+      "MEDIUM-CONFIDENCE Quotr starter for compacted sub-base under footing. Distinct from drainage aggregate. Company/Project exact overrides.",
+    defaultCostRate: 68,
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "retaining_wall.masonry.rebar.lm",
@@ -469,8 +497,22 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "retaining_wall",
     workAreaLabel: "Masonry wall",
     unit: "lm",
-    description: "Rebar identity. Quantified only when design runs are stated.",
-    calculatorSupport: "planned",
+    description:
+      "Rebar identity. Quantified only when design runs are stated. Otherwise use reinforcement allowance.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "retaining_wall.masonry.rebar.allowance",
+    label: "Masonry reinforcement allowance",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Masonry wall",
+    unit: "item",
+    description:
+      "Optional company design-dependent reinforcement allowance (lump). Not a fabricated bar schedule.",
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "retaining_wall.masonry.waterproofing.liquid",
@@ -480,8 +522,11 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "retaining_wall",
     workAreaLabel: "Masonry wall",
     unit: "L",
-    description: "Liquid membrane identity. No invented NZD.",
-    calculatorSupport: "planned",
+    description:
+      "LOW-CONFIDENCE Quotr starter for liquid retaining-side membrane $/L (~1 L/m²). Company/Project exact overrides.",
+    defaultCostRate: 12,
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "retaining_wall.masonry.waterproofing.sheet",
@@ -491,8 +536,37 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "retaining_wall",
     workAreaLabel: "Masonry wall",
     unit: "m2",
-    description: "Sheet membrane identity. No invented NZD.",
-    calculatorSupport: "planned",
+    description:
+      "LOW-CONFIDENCE Quotr starter for sheet retaining-side membrane $/m². Company/Project exact overrides.",
+    defaultCostRate: 22,
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "retaining_wall.masonry.block_lay.subcontract",
+    label: "Block laying subcontract",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Masonry wall",
+    unit: "m2",
+    description:
+      "Company/Project subcontract $/face-m² for block laying LABOUR ONLY. Builder still supplies blocks and mortar. XOR with self-perform labour. Pricing Required when unset.",
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "retaining_wall.masonry.waterproofing.subcontract",
+    label: "Waterproofing subcontract",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Masonry wall",
+    unit: "m2",
+    description:
+      "Company/Project subcontract $/m² for retaining-side waterproofing. XOR with self-perform. Pricing Required when unset.",
+    recommended: true,
+    calculatorSupport: "used_now",
   }),
 ];
 
@@ -519,7 +593,7 @@ export const WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = 
     workAreaLabel: "Waste / disposal",
     unit: "m3",
     description:
-      "Tip/disposal fee only per m┬│ ΓÇö not cartage. Leftover future split. Does not price all-in spoil removal. No invented Quotr starter.",
+      "Tip/disposal fee only per m³ — not cartage. Leftover future split. Does not price all-in spoil removal. No invented Quotr starter.",
     calculatorSupport: "leftover",
   }),
 ];
@@ -573,7 +647,7 @@ export const PAINTING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "painting",
     workAreaLabel: "Painting",
     unit: "l",
-    description: "Per litre when paint quantity build-up is calculated. Not currently priced ΓÇö paint is still an m┬▓ package.",
+    description: "Per litre when paint quantity build-up is calculated. Not currently priced — paint is still an m² package.",
     defaultCostRate: FITOUT_BENCHMARKS.paintPerLitre.cost,
     defaultSellRate: FITOUT_BENCHMARKS.paintPerLitre.sell,
     recommended: true,
@@ -581,7 +655,7 @@ export const PAINTING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "painting.material.m2",
-    label: "Paint materials (per m┬▓)",
+    label: "Paint materials (per m²)",
     rate_type: "material",
     category: "material",
     work_area_type: "painting",
@@ -626,16 +700,16 @@ const lightPostIdentity = lightSupportIdentity();
 
 export const DECK_FRAMING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   ...(joistIdentity
-    ? [framingCatalogueEntry(joistIdentity, "Joist timber 90├ù45 H3.2 KD SG8")]
+    ? [framingCatalogueEntry(joistIdentity, "Joist timber 90×45 H3.2 KD SG8")]
     : []),
   ...(bearerIdentity
-    ? [framingCatalogueEntry(bearerIdentity, "Bearer timber 140├ù45 H3.2 KD SG8")]
+    ? [framingCatalogueEntry(bearerIdentity, "Bearer timber 140×45 H3.2 KD SG8")]
     : []),
   ...(stepFramingIdentity
     ? [
         framingCatalogueEntry(
           stepFramingIdentity,
-          "Step framing 190├ù45 H3.2 KD SG8"
+          "Step framing 190×45 H3.2 KD SG8"
         ),
       ]
     : []),
@@ -646,14 +720,14 @@ export const DECK_POST_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     ? [
         entry({
           item_key: buildMaterialRateItemKey(housePileIdentity, "lm"),
-          label: "125├ù125 H5 sawn house pile",
+          label: "125×125 H5 sawn house pile",
           rate_type: "material",
           category: "material",
           work_area_type: "deck",
           workAreaLabel: "Deck posts",
           unit: "lm",
           description:
-            "Quotr starter benchmark $23.50/lm EX GST for 125├ù125 H5 sawn house pile. Not laminated post. Not H4. Company exact override wins.",
+            "Quotr starter benchmark $23.50/lm EX GST for 125×125 H5 sawn house pile. Not laminated post. Not H4. Company exact override wins.",
           defaultCostRate: HOUSE_PILE_BENCHMARK_COST_EX_GST,
           calculatorSupport: "used_now",
           recommended: true,
@@ -664,7 +738,7 @@ export const DECK_POST_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     ? [
         entry({
           item_key: buildMaterialRateItemKey(lightPostIdentity, "lm"),
-          label: "100├ù100 H5 timber post",
+          label: "100×100 H5 timber post",
           rate_type: "material",
           category: "material",
           work_area_type: "deck",
@@ -681,21 +755,21 @@ export const DECK_POST_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
 export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
   entry({
     item_key: "deck.base_labour_hours_per_m2",
-    label: "Deck labour (current lumped hours/m┬▓)",
+    label: "Deck labour (current lumped hours/m²)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "deck",
     workAreaLabel: "Deck productivity",
     unit: "m2",
     description:
-      "Hours per m┬▓, not dollars. Fallback labour lump when the detailed install split is incomplete. Company override wins.",
+      "Hours per m², not dollars. Fallback labour lump when the detailed install split is incomplete. Company override wins.",
     defaultCostRate: 1.2,
     calculatorSupport: "used_now",
     recommended: true,
   }),
   entry({
     item_key: "deck.elevated_extra_hours_per_m2",
-    label: "Elevated deck extra (hours/m┬▓)",
+    label: "Elevated deck extra (hours/m²)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "deck",
@@ -706,7 +780,7 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "deck.demolition_hours_per_m2",
-    label: "Deck demolition (hours/m┬▓)",
+    label: "Deck demolition (hours/m²)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "deck",
@@ -717,28 +791,28 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "deck.decking.install.hours_per_m2",
-    label: "Decking installation (hours/m┬▓)",
+    label: "Decking installation (hours/m²)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "deck",
     workAreaLabel: "Deck productivity",
     unit: "m2",
     description:
-      "Hours per m┬▓, not dollars. Includes normal handling at the workface (positioning, measuring, cutting, moving boards, installation). Abnormal access/carry is a Project Condition, applied once.",
+      "Hours per m², not dollars. Includes normal handling at the workface (positioning, measuring, cutting, moving boards, installation). Abnormal access/carry is a Project Condition, applied once.",
     defaultCostRate: 0.55,
     calculatorSupport: "used_now",
     recommended: true,
   }),
   entry({
     item_key: "deck.substructure.install.hours_per_m2",
-    label: "Substructure framing (hours/m┬▓)",
+    label: "Substructure framing (hours/m²)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "deck",
     workAreaLabel: "Deck productivity",
     unit: "m2",
     description:
-      "Hours per m┬▓, not dollars. Includes normal handling of framing timber at the workface. Excludes pile/post installation. Abnormal access/carry is a Project Condition, applied once.",
+      "Hours per m², not dollars. Includes normal handling of framing timber at the workface. Excludes pile/post installation. Abnormal access/carry is a Project Condition, applied once.",
     defaultCostRate: 0.52,
     calculatorSupport: "used_now",
     recommended: true,
@@ -773,14 +847,14 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "deck.steps.install.hours_per_m2",
-    label: "Steps installation (hours/m┬▓ tread)",
+    label: "Steps installation (hours/m² tread)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "deck",
     workAreaLabel: "Deck productivity",
     unit: "m2",
     description:
-      "Hours per m┬▓ of tread area, not dollars. Includes normal handling of step materials at the workface. Used when Steps are commercially included and the detailed step chain is complete.",
+      "Hours per m² of tread area, not dollars. Includes normal handling of step materials at the workface. Used when Steps are commercially included and the detailed step chain is complete.",
     defaultCostRate: 4.0,
     calculatorSupport: "used_now",
   }),
@@ -851,26 +925,38 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     workAreaLabel: "Retaining wall productivity",
     unit: "m3",
     description:
-      "Crew attendance hours per m┬│ measured bulk cut. Timber 1D machine-assisted starter 0.45 h/m┬│. Manual 1.6 h/m┬│. Missing company hours uses the starter, not zero. Plant occupancy is a separate machine-hours rate.",
-    defaultCostRate: 1.6,
-    calculatorSupport: "used_now",
+      "Legacy combined key kept for backward compatibility. Prefer machine-assisted or manual excavation productivity rows.",
+    calculatorSupport: "leftover",
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.backfillM3,
-    label: "Retaining wall backfill (hours/m┬│)",
+    label: "Retaining wall backfill (hours/m³)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m3",
     description:
-      "Hours per m┬│ placing/spreading/basic consolidation of drainage aggregate. Timber 1D starter 0.55 h/m┬│ in-place. Access/carry stays Project Conditions.",
+      "Hours per m³ placing/spreading/basic consolidation of drainage aggregate. Timber 1D starter 0.55 h/m³ in-place. Access/carry stays Project Conditions.",
     defaultCostRate: 0.55,
     calculatorSupport: "used_now",
   }),
   entry({
+    item_key: RW_PRODUCTIVITY_KEYS.timberConcreteHole,
+    label: "Timber post-hole concrete placement (labour-h/hole)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Retaining wall productivity",
+    unit: "hole",
+    description:
+      "Total worker-hours per hole for mix/place/consolidate bagged premix. Starter 0.12 labour-h/hole. Separate from pile install.",
+    defaultCostRate: 0.12,
+    calculatorSupport: "used_now",
+  }),
+  entry({
     item_key: RW_PRODUCTIVITY_KEYS.timberPilesEa,
-    label: "Timber pile installation (hours/ea)",
+    label: "Timber pile installation (labour-h/ea)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
@@ -882,13 +968,13 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.timberFaceM2,
-    label: "Timber face-board installation (hours/m┬▓)",
+    label: "Timber face-board installation (hours/m²)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m2",
-    description: "Hours per m┬▓ face area. Timber 1D starter 0.55 h/m┬▓. Driver is face area, not board lm.",
+    description: "Hours per m² face area. Timber 1D starter 0.55 h/m². Driver is face area, not board lm.",
     defaultCostRate: 0.55,
     calculatorSupport: "used_now",
   }),
@@ -933,14 +1019,14 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.sleeperFaceM2,
-    label: "Concrete sleeper installation (hours/m┬▓) ΓÇö leftover",
+    label: "Concrete sleeper installation (hours/m²) — leftover",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m2",
     description:
-      "Leftover face-m┬▓ sleeper labour. 2A prices discrete sleeper EA instead.",
+      "Leftover face-m² sleeper labour. 2A prices discrete sleeper EA instead.",
     calculatorSupport: "leftover",
   }),
   entry({
@@ -952,30 +1038,34 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     workAreaLabel: "Retaining wall productivity",
     unit: "ea",
     description:
-      "Hours per sleeper. 2A starter 0.22 h/ea. Driver is discrete EA, not wall m┬▓.",
+      "Hours per sleeper. 2A starter 0.22 h/ea. Driver is discrete EA, not wall m².",
     defaultCostRate: 0.22,
     calculatorSupport: "used_now",
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.masonrySubbaseM2,
-    label: "Masonry sub-base compaction (hours/m┬▓)",
+    label: "Masonry sub-base compaction (hours/m²)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m2",
-    description: "Hours per m┬▓ footing base area. Slot only.",
+    description:
+      "Hours per m² footing base area. 2B starter 0.15 h/m². Company editable.",
+    defaultCostRate: 0.15,
     calculatorSupport: "used_now",
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.masonryFootingM3,
-    label: "Masonry footing concrete (hours/m┬│)",
+    label: "Masonry footing concrete (hours/m³)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m3",
-    description: "Hours per m┬│ footing concrete placement. Does not imply excavation/rebar/sub-base.",
+    description:
+      "Hours per m³ footing concrete placement. 2B starter 1.2 h/m³. Does not imply excavation/rebar/sub-base.",
+    defaultCostRate: 1.2,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -986,41 +1076,48 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "lm",
-    description: "Hours per lm reinforcement. Slot only.",
+    description:
+      "Hours per lm reinforcement when design quantity exists. 2B starter 0.08 h/lm.",
+    defaultCostRate: 0.08,
     calculatorSupport: "used_now",
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.masonryBlockM2,
-    label: "Masonry block laying (hours/m┬▓)",
+    label: "Masonry block laying (hours/m²)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m2",
     description:
-      "Self-perform hours per m┬▓. XOR with subcontract ΓÇö do not price both.",
+      "Self-perform hours per face m². 2B starter 1.8 h/m². XOR with subcontract — do not price both.",
+    defaultCostRate: 1.8,
     calculatorSupport: "used_now",
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.masonryCoreFillM3,
-    label: "Masonry core fill (hours/m┬│)",
+    label: "Masonry core fill (hours/m³)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m3",
-    description: "Separate core-fill hours per m┬│ when not included in block laying.",
+    description:
+      "Separate core-fill hours per m³. 2B starter 0.85 h/m³. Not included in block laying.",
+    defaultCostRate: 0.85,
     calculatorSupport: "used_now",
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.masonryWaterproofM2,
-    label: "Masonry waterproofing (hours/m┬▓)",
+    label: "Masonry waterproofing (hours/m²)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "m2",
-    description: "Self-perform hours per m┬▓. XOR with subcontract.",
+    description:
+      "Self-perform hours per m² retaining-side. 2B starter 0.28 h/m². XOR with subcontract.",
+    defaultCostRate: 0.28,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -1038,14 +1135,14 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.plantHoursPerM3,
-    label: "Mini-excavator occupancy (hours/m┬│)",
+    label: "Mini-excavator occupancy (hours/m³)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall plant productivity",
     unit: "m3",
     description:
-      "Machine hours per measured bulk m┬│. Not crew attendance. Timber 1E starter 0.25 h/m┬│.",
+      "Machine hours per measured bulk m³. Not crew attendance. Timber 1E starter 0.25 h/m³.",
     defaultCostRate: 0.25,
     calculatorSupport: "used_now",
   }),
@@ -1093,7 +1190,7 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Decking",
     description:
-      "Preferred: cost per linear metre of board ($/lm). Work types still lists per-m┬▓ deck-area fallbacks for the same boards ΓÇö those are not $/lm and not a whole-deck package.",
+      "Preferred: cost per linear metre of board ($/lm). Work types still lists per-m² deck-area fallbacks for the same boards — those are not $/lm and not a whole-deck package.",
     entries: DECKING_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
@@ -1105,43 +1202,43 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Deck posts / piles",
     description:
-      "Exact pile/post identities. Company $/lm wins. Missing post rates are Pricing Required on detailed geometry ΓÇö they do not restore the substructure package.",
+      "Exact pile/post identities. Company $/lm wins. Missing post rates are Pricing Required on detailed geometry — they do not restore the substructure package.",
     entries: DECK_POST_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Deck concrete",
     description:
-      "20 kg premix bag identity. No invented $ benchmark ΓÇö company exact or Pricing Required.",
+      "20 kg premix bag identity. No invented $ benchmark — company exact or Pricing Required.",
     entries: DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Sheet materials",
     description:
-      "Planned per-sheet rates. Current lining estimates still use m┬▓ packages; sheet counts are takeoff only.",
+      "Planned per-sheet rates. Current lining estimates still use m² packages; sheet counts are takeoff only.",
     entries: SHEET_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Retaining / drainage",
     description:
-      "Timber 1D-R1 and Sleeper 2A identities: 150├ù50 / 200├ù50 H4 No.2/retaining, H5 SED 150ΓÇô175 mm stock-length EA, precast sleepers EA, H-section posts $/lm, post-hole 20 kg premix, novacoil, drainage aggregate, mini-excavator day, timber fixings residual. Generic H5 $/lm is leftover. Company exact overrides Quotr starters. Face-m┬▓ package rates are legacy fallback only.",
+      "Timber 1D-R1 and Sleeper 2A identities: 150×50 / 200×50 H4 No.2/retaining, H5 SED 150–175 mm stock-length EA, precast sleepers EA, H-section posts $/lm, post-hole 20 kg premix, novacoil, drainage aggregate, mini-excavator day, timber fixings residual. Generic H5 $/lm is leftover. Company exact overrides Quotr starters. Face-m² package rates are legacy fallback only.",
     entries: RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Waste / disposal",
     description:
-      "All-in hardfill/spoil removal is cartage + tip per measured excavation m┬│. Disposal / tip fee only is a leftover identity and does not price removal. Not drainage aggregate.",
+      "All-in hardfill/spoil removal is cartage + tip per measured excavation m³. Disposal / tip fee only is a leftover identity and does not price removal. Not drainage aggregate.",
     entries: WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Flooring",
     description:
-      "Planned flooring material rates. Current flooring still uses a hardcoded m┬▓ package.",
+      "Planned flooring material rates. Current flooring still uses a hardcoded m² package.",
     entries: FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Painting",
     description:
-      "Per m┬▓ paint package is used now. Per-litre takeoff is display-only until paint litres are priced.",
+      "Per m² paint package is used now. Per-litre takeoff is display-only until paint litres are priced.",
     entries: PAINTING_SPECIFIC_MATERIAL_CATALOGUE,
   },
 ] as const;

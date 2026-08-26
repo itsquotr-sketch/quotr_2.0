@@ -260,7 +260,15 @@ check(
     editorSrc.includes("site_access") &&
     editorSrc.includes("material_carry_distance")
 );
-check("31 sleeper/masonry fields are not forced onto timber", editorSrc.includes("TIMBER_RETAINING_WALL") && !editorSrc.includes("block_series"));
+check(
+  "31 sleeper/masonry fields are not forced onto timber",
+  editorSrc.includes("TIMBER_RETAINING_WALL") &&
+    editorSrc.includes("CONCRETE_MASONRY_WALL") &&
+    editorSrc.includes("block_series") &&
+    /system === "TIMBER_RETAINING_WALL"[\s\S]*?Face boards[\s\S]*?system === "CONCRETE_MASONRY_WALL"[\s\S]*?block_series/.test(
+      editorSrc
+    )
+);
 
 const physical = buildRetainingWallPhysicalModel({
   context: ctx(ownerFacts()),

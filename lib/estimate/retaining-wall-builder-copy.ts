@@ -197,6 +197,14 @@ export function timberLabourLabel(componentKey: string, unknownAllowance: boolea
   if (componentKey.endsWith("posts.install")) return "Post installation";
   if (componentKey.endsWith("sleepers.install")) return "Sleeper installation";
   if (componentKey.endsWith("concrete.place")) return "Post-hole concrete placement";
+  if (componentKey.includes("masonry.subbase.compact")) return "Sub-base compaction";
+  if (componentKey.includes("masonry.footing.place")) return "Footing concrete placement";
+  if (componentKey.includes("masonry.block_lay")) return "Block laying";
+  if (componentKey.includes("masonry.core_fill.place")) return "Core filling";
+  if (componentKey.includes("masonry.waterproofing.install")) {
+    return "Retaining-side waterproofing";
+  }
+  if (componentKey.includes("masonry.rebar.install")) return "Reinforcement installation";
   return "Labour";
 }
 
@@ -252,5 +260,74 @@ export function formatSleeperConcreteCopy(params: {
   return {
     supporting: `${round2(params.volumeM3)} m³ required${bags ? ` · ${bags}` : ""}`,
     secondary: null,
+  };
+}
+
+export function formatMasonryBlockCompactCopy(params: {
+  series: string | null;
+  netEa: number;
+  purchaseEa: number;
+  wasteFactor: number;
+  faceAreaM2: number;
+  unitsPerM2: number;
+  unitCost: number | null;
+  rateLabel?: string | null;
+}): { supporting: string; secondary: string | null } {
+  const seriesLabel =
+    params.series === "150"
+      ? "150-series"
+      : params.series === "200"
+        ? "200-series"
+        : params.series ?? "concrete masonry";
+  const wastePct = Math.round(params.wasteFactor * 100);
+  const rate =
+    params.unitCost != null
+      ? `$${params.unitCost}/EA${params.rateLabel ? ` · ${params.rateLabel}` : ""}`
+      : null;
+  const purchaseNote =
+    wastePct > 0 && params.purchaseEa !== Math.ceil(params.netEa - 1e-9)
+      ? `${round2(params.netEa)} EA required · ${params.purchaseEa} EA purchased · ${wastePct}% procurement allowance`
+      : `${params.purchaseEa} EA purchased`;
+  return {
+    supporting: [`${seriesLabel}`, `${params.purchaseEa} EA`, rate]
+      .filter(Boolean)
+      .join(" · "),
+    secondary: purchaseNote,
+  };
+}
+
+export function formatMasonryMortarCompactCopy(params: {
+  totalCost: number | null;
+  basis: string;
+}): { supporting: string; secondary: string | null } {
+  const money =
+    params.totalCost != null ? `$${round2(params.totalCost)}` : "Price required";
+  return {
+    supporting: money,
+    secondary: params.basis,
+  };
+}
+
+export function formatMasonryVolumeCompactCopy(params: {
+  volumeM3: number;
+  unitCost: number | null;
+  label: string;
+}): { supporting: string; secondary: string | null } {
+  const rate = params.unitCost != null ? `$${params.unitCost}/m³` : null;
+  return {
+    supporting: [`${round2(params.volumeM3)} m³`, rate].filter(Boolean).join(" · "),
+    secondary: params.label,
+  };
+}
+
+export function formatMasonryWaterproofCompactCopy(params: {
+  areaM2: number;
+  unitCost: number | null;
+  productLabel?: string | null;
+}): { supporting: string; secondary: string | null } {
+  const rate = params.unitCost != null ? `$${params.unitCost}/m²` : null;
+  return {
+    supporting: [`${round2(params.areaM2)} m²`, rate].filter(Boolean).join(" · "),
+    secondary: params.productLabel ?? "Retaining-side waterproofing",
   };
 }

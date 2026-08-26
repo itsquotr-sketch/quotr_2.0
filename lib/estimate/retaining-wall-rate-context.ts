@@ -4,6 +4,7 @@
  */
 import { timber1DMaterialStarter } from "@/lib/estimate/retaining-wall-timber-1d";
 import { sleeper2AMaterialStarter } from "@/lib/estimate/retaining-wall-sleeper-2a";
+import { masonry2BMaterialStarter } from "@/lib/estimate/retaining-wall-masonry-2b";
 import { RW_MINI_EXCAVATOR_DAY_COST_EX_GST, RW_MINI_EXCAVATOR_DAY_KEY } from "@/lib/estimate/retaining-wall-construction-method";
 
 /** Show comparison only when the applied rate differs by more than 25%. */
@@ -32,7 +33,9 @@ function quotrBenchmarkForKey(
     return { cost: RW_MINI_EXCAVATOR_DAY_COST_EX_GST, unit: "day" };
   }
   const starter =
-    timber1DMaterialStarter(itemKey) ?? sleeper2AMaterialStarter(itemKey, unit);
+    timber1DMaterialStarter(itemKey) ??
+    sleeper2AMaterialStarter(itemKey, unit) ??
+    masonry2BMaterialStarter(itemKey, unit);
   if (!starter) return null;
   if (starter.unit !== unit) return null;
   return { cost: starter.costPerUnit, unit: starter.unit };

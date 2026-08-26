@@ -161,6 +161,36 @@ import {
   sleeper2APostHours,
   sleeper2AProductivityStarter,
 } from "@/lib/estimate/retaining-wall-sleeper-2a";
+import {
+  masonry2BExcavationHoursM3,
+  masonry2BMaterialStarter,
+  masonry2BProductivityStarter,
+  RW_MASONRY_2B_ACCESS_RULE,
+  RW_MASONRY_AUTHORITY_WITH_ALLOWANCE,
+  RW_MASONRY_BLOCK_PROCUREMENT_DISCLOSURE,
+  RW_MASONRY_BLOCK_SUBCONTRACT_BASIS,
+  RW_MASONRY_BLOCK_SUBCONTRACT_KEY,
+  RW_MASONRY_CORE_FILL_DISCLOSURE,
+  RW_MASONRY_DESIGN_CONFIRM,
+  RW_MASONRY_ENGINEERING_BOUNDARY,
+  RW_MASONRY_FOOTING_DISCLOSURE,
+  RW_MASONRY_MORTAR_COMPONENT,
+  RW_MASONRY_MORTAR_DISCLOSURE,
+  RW_MASONRY_MORTAR_KEY,
+  RW_MASONRY_MORTAR_KIND,
+  RW_MASONRY_MORTAR_METHOD,
+  RW_MASONRY_MORTAR_PERCENT_OF_BLOCKS,
+  RW_MASONRY_PACKAGE_LIFECYCLE,
+  RW_MASONRY_PLANT_COMPONENT,
+  RW_MASONRY_PLANT_TREATMENT,
+  RW_MASONRY_REBAR_ALLOWANCE_COMPONENT,
+  RW_MASONRY_REBAR_ALLOWANCE_KEY,
+  RW_MASONRY_REBAR_TREATMENT,
+  RW_MASONRY_REINFORCEMENT_ACTION,
+  RW_MASONRY_SUBBASE_DISCLOSURE,
+  RW_MASONRY_WATERPROOF_SUBCONTRACT_KEY,
+  RW_REBAR_ALLOWANCE,
+} from "@/lib/estimate/retaining-wall-masonry-2b";
 import type { EstimateConstraint, EstimateFact } from "@/lib/estimate/types";
 import type { MaterialIdentity } from "@/lib/materials/identity";
 
@@ -238,6 +268,7 @@ export type RetainingWallCommercialResult = {
     | typeof RW_TIMBER_RESIDUAL_CLASS
     | typeof RW_TIMBER_FIXINGS_METHOD
     | typeof RW_SLEEPER_FIXINGS_TREATMENT
+    | typeof RW_MASONRY_REBAR_TREATMENT
     | "NOT_APPLICABLE"
     | "LEGACY_PACKAGE_SCOPE_UNKNOWN";
   backfillProcurement:
@@ -587,14 +618,33 @@ export function evaluateRetainingWallCommercialCoverage(params: {
     push("blocks", "Blocks", RW_MASONRY_BLOCKS_COMPONENT, "material", true);
     push("footing", "Footing", RW_MASONRY_FOOTING_COMPONENT, "material", true);
     push("subbase", "Sub-base", RW_MASONRY_SUBBASE_COMPONENT, "material", true);
+    const mortar = materialOf(rows, RW_MASONRY_MORTAR_COMPONENT);
+    out.push(
+      cat(
+        "mortar",
+        "Masonry mortar / laying consumables",
+        coverageStateFromRequirement(mortar, "residual"),
+        true,
+        "residual"
+      )
+    );
     const rebar = materialOf(rows, RW_MASONRY_REBAR_COMPONENT);
+    const rebarAllowance = materialOf(rows, RW_MASONRY_REBAR_ALLOWANCE_COMPONENT);
+    const allowanceMoney =
+      rebarAllowance != null &&
+      rebarAllowance.priced === true &&
+      (rebarAllowance.totalCost ?? 0) > 0;
     out.push(
       cat(
         "reinforcement",
         "Reinforcement",
-        gaps.includes(RW_REBAR_GAP)
-          ? "PRICING_REQUIRED"
-          : coverageStateFromRequirement(rebar, "design"),
+        allowanceMoney
+          ? "EXPLICIT_ALLOWANCE"
+          : gaps.includes(RW_REBAR_GAP) ||
+              gaps.includes(RW_REBAR_ALLOWANCE) ||
+              (rebarAllowance != null && !allowanceMoney)
+            ? "PRICING_REQUIRED"
+            : coverageStateFromRequirement(rebar, "design"),
         true,
         "design"
       )
@@ -644,11 +694,15 @@ export function evaluateRetainingWallCommercialCoverage(params: {
         );
       }
     } else {
-      push("waterproofing", "Waterproofing", RW_MASONRY_WATERPROOF_COMPONENT, "material", true);
+      out.push(
+        cat("waterproofing", "Retaining-side waterproofing", "NOT_APPLICABLE", false, "material")
+      );
     }
     push("novacoil", "Punched drainage coil", RW_NOVACOIL_COMPONENT, "material", true);
     push("drainage_sock", "Drainage coil sock", RW_DRAINAGE_SOCK_COMPONENT, "material", false);
-    push("backfill_material", "Backfill material", RW_BACKFILL_COMPONENT, "material", true);
+    push("drainage_labour", "Drainage installation labour", RW_DRAINAGE_LABOUR_COMPONENT, "labour", true);
+    push("backfill_material", "Drainage aggregate", RW_BACKFILL_COMPONENT, "material", true);
+    push("backfill_labour", "Drainage backfill labour", RW_BACKFILL_LABOUR_COMPONENT, "labour", true);
     push("core_labour", "Core fill labour", RW_MASONRY_CORE_LABOUR_COMPONENT, "labour", true);
     push("footing_labour", "Footing labour", RW_MASONRY_FOOTING_LABOUR_COMPONENT, "labour", true);
     push("subbase_labour", "Sub-base labour", RW_MASONRY_SUBBASE_LABOUR_COMPONENT, "labour", true);
@@ -669,8 +723,52 @@ export function evaluateRetainingWallCommercialCoverage(params: {
         "labour"
       )
     );
+    out.push(cat("excavation", "Excavation", "NOT_APPLICABLE", false, "material"));
+    const excavationSubcontract = materialOf(
+      rows,
+      RW_EXCAVATION_SUBCONTRACT_COMPONENT
+    );
+    if (excavationSubcontract) {
+      out.push(
+        cat(
+          "excavation_subcontract",
+          "Excavation subcontract",
+          coverageStateFromRequirement(excavationSubcontract, "material"),
+          true,
+          "material"
+        )
+      );
+      out.push(
+        cat("excavation_labour", "Excavation labour", "NOT_APPLICABLE", false, "labour")
+      );
+    } else {
+      push(
+        "excavation_labour",
+        "Excavation labour",
+        RW_EXCAVATION_LABOUR_COMPONENT,
+        "labour",
+        true
+      );
+    }
+    const plant = rows.find(
+      (row): row is PlantRequirement =>
+        row.kind === "plant" && row.componentKey === RW_MASONRY_PLANT_COMPONENT
+    );
+    const plantQty = plant?.quantity ?? 0;
+    out.push(
+      cat(
+        "plant",
+        "Plant",
+        plantQty > 0 && plant?.priced === true
+          ? "DETAILED_PRICED"
+          : plantQty === 0
+            ? "NOT_APPLICABLE"
+            : "PRICING_REQUIRED",
+        plantQty > 0,
+        "material"
+      )
+    );
   }
-  return out;
   return out;
 }
 
@@ -791,10 +889,16 @@ function priceMaterial(
     requirement.materialKey ?? namedKeys[0] ?? null,
     unit
   );
+  const masonryStarter = masonry2BMaterialStarter(
+    requirement.materialKey ?? namedKeys[0] ?? null,
+    unit
+  );
   const mappedStarter =
     timberStarter && rateUnitsMatch(timberStarter.unit, unit)
       ? timberStarter
-      : sleeperStarter;
+      : sleeperStarter && rateUnitsMatch(sleeperStarter.unit, unit)
+        ? sleeperStarter
+        : masonryStarter;
   if (
     mappedStarter &&
     rateUnitsMatch(mappedStarter.unit, unit) &&
@@ -874,7 +978,8 @@ function labourSlot(params: {
   );
   const starter =
     timber1DProductivityStarter(params.productivityKey) ??
-    sleeper2AProductivityStarter(params.productivityKey);
+    sleeper2AProductivityStarter(params.productivityKey) ??
+    masonry2BProductivityStarter(params.productivityKey);
   const hoursPerUnit =
     company?.cost_rate != null
       ? Number(company.cost_rate)
@@ -1036,10 +1141,23 @@ export function commercializeRetainingWall(params: {
   const detailedLabourSource = detailedSystem ? timberLabourSource : labourSource;
 
   const pricedMaterials: MaterialRequirement[] = [];
+  const waterproofMethodEarly = getStringFact(
+    facts as EstimateFact[],
+    workAreaId,
+    "retaining_wall.waterproofing_method"
+  );
+  const waterproofSubcontracted =
+    masonrySystem && isSubcontractMethod(waterproofMethodEarly);
   for (const row of physical.requirements) {
     if (row.kind !== "material") continue;
     if (row.componentKey === RW_FACE_AREA_COMPONENT) {
       pricedMaterials.push(row);
+      continue;
+    }
+    if (
+      waterproofSubcontracted &&
+      row.componentKey === RW_MASONRY_WATERPROOF_COMPONENT
+    ) {
       continue;
     }
     if (
@@ -1297,17 +1415,152 @@ export function commercializeRetainingWall(params: {
   }
 
   const masonry = physical.masonryTakeoff;
-  if (
-    physical.system === "CONCRETE_MASONRY_WALL" &&
-    masonry &&
-    masonry.horizontalRebarLm == null &&
-    masonry.verticalStarters == null
-  ) {
-    gaps.push(RW_REBAR_GAP);
-    missingInfo.push("Reinforcement design / quantity required");
+  if (physical.system === "CONCRETE_MASONRY_WALL" && masonry) {
     assumptions.push(
-      "Masonry reinforcement is unresolved. Explicit commercial gap ΓÇö not a $0 rebar line and not a complete wall cost."
+      RW_MASONRY_FOOTING_DISCLOSURE,
+      RW_MASONRY_SUBBASE_DISCLOSURE,
+      RW_MASONRY_CORE_FILL_DISCLOSURE,
+      RW_MASONRY_BLOCK_PROCUREMENT_DISCLOSURE,
+      RW_MASONRY_MORTAR_DISCLOSURE,
+      RW_MASONRY_ENGINEERING_BOUNDARY,
+      `Masonry plant: ${RW_MASONRY_PLANT_TREATMENT}.`,
+      `Masonry access: ${RW_MASONRY_2B_ACCESS_RULE.note}`,
+      `Package lifecycle for detailed-ready masonry: ${RW_MASONRY_PACKAGE_LIFECYCLE}.`,
+      `Drainage-metal consolidation: ${RW_TIMBER_COMPACTION_METHOD}.`,
+      `Reinforcement treatment: ${RW_MASONRY_REBAR_TREATMENT}.`,
+      `Block laying subcontract basis: ${RW_MASONRY_BLOCK_SUBCONTRACT_BASIS}.`
     );
+    if (
+      masonry.horizontalRebarLm == null &&
+      masonry.verticalStarters == null
+    ) {
+      const allowanceNamed = findExactNamedMaterialRate(
+        rates,
+        RW_MASONRY_REBAR_ALLOWANCE_KEY,
+        "item"
+      );
+      const allowanceCost =
+        allowanceNamed?.cost_rate != null ? Number(allowanceNamed.cost_rate) : null;
+      const hasMonetaryAllowance =
+        allowanceCost != null && Number.isFinite(allowanceCost) && allowanceCost > 0;
+
+      if (hasMonetaryAllowance) {
+        gaps.push(RW_REBAR_ALLOWANCE);
+        assumptions.push(
+          `Reinforcement is design-dependent. Approved company/project allowance $${allowanceCost} — not a fabricated bar schedule.`
+        );
+        const allowance = planningMaterial({
+          workAreaId,
+          componentKey: RW_MASONRY_REBAR_ALLOWANCE_COMPONENT,
+          description: "Reinforcement allowance / design to be confirmed",
+          materialKey: RW_MASONRY_REBAR_ALLOWANCE_KEY,
+          category: "ALLOWANCE",
+          specification: `Allowance $${allowanceCost}. Design-dependent — not an engineered bar schedule. ${RW_MASONRY_DESIGN_CONFIRM}`,
+          baseQuantity: 1,
+          baseUnit: "item",
+          wasteFactor: 0,
+          purchaseQuantity: 1,
+          purchaseUnit: "item",
+          factKeys: ["retaining_wall.material"],
+          source: "retaining_wall.masonry.rebar.allowance",
+        });
+        pricedMaterials.push({
+          ...allowance,
+          priced: true,
+          unitCost: allowanceCost,
+          totalCost: allowanceCost,
+          rateSource:
+            allowanceNamed?.rate_type === "project_material"
+              ? "project_override"
+              : "company",
+        });
+      } else {
+        // Applicable design-dependent category with no approved monetary allowance.
+        // PRICING_REQUIRED — never EXPLICIT_ALLOWANCE at $0, never silent omit.
+        gaps.push(RW_REBAR_GAP);
+        assumptions.push(
+          "Reinforcement is design-dependent. No approved allowance or engineered quantity — Pricing Required. Not a fabricated bar schedule and not a silent $0 line."
+        );
+        const placeholder = planningMaterial({
+          workAreaId,
+          componentKey: RW_MASONRY_REBAR_ALLOWANCE_COMPONENT,
+          description: "Reinforcement — design to be confirmed",
+          materialKey: RW_MASONRY_REBAR_ALLOWANCE_KEY,
+          category: "ALLOWANCE",
+          specification: `Design to be confirmed. Price required. ${RW_MASONRY_REINFORCEMENT_ACTION}`,
+          baseQuantity: 1,
+          baseUnit: "item",
+          wasteFactor: 0,
+          purchaseQuantity: 1,
+          purchaseUnit: "item",
+          factKeys: ["retaining_wall.material"],
+          source: "retaining_wall.masonry.rebar.allowance",
+        });
+        pricedMaterials.push({
+          ...placeholder,
+          priced: false,
+          unitCost: null,
+          totalCost: null,
+          rateSource: "missing",
+        });
+        missingInfo.push(RW_MASONRY_REINFORCEMENT_ACTION);
+      }
+      if (!missingInfo.includes(RW_MASONRY_DESIGN_CONFIRM)) {
+        missingInfo.push(RW_MASONRY_DESIGN_CONFIRM);
+      }
+    }
+
+    // Mortar / laying consumables — builder-owned under labour-only subcontract.
+    // Not hidden in labour. Not core fill. Company item OR % of purchased blocks.
+    const pricedBlocks = materialOf(pricedMaterials, RW_MASONRY_BLOCKS_COMPONENT);
+    if (pricedBlocks != null && hasTrustedPhysicalQuantity(pricedBlocks.purchaseQuantity)) {
+      const blockMaterialCost =
+        pricedBlocks.priced === true ? pricedBlocks.totalCost ?? 0 : 0;
+      const mortarNamed = findExactNamedMaterialRate(
+        rates,
+        RW_MASONRY_MORTAR_KEY,
+        "item"
+      );
+      const mortarCost =
+        mortarNamed?.cost_rate != null
+          ? Number(mortarNamed.cost_rate)
+          : round2(blockMaterialCost * RW_MASONRY_MORTAR_PERCENT_OF_BLOCKS);
+      const mortarPriced =
+        mortarCost > 0 &&
+        (mortarNamed?.cost_rate != null ||
+          (pricedBlocks.priced === true && blockMaterialCost > 0));
+      const mortar = planningMaterial({
+        workAreaId,
+        componentKey: RW_MASONRY_MORTAR_COMPONENT,
+        description: "Masonry mortar / laying consumables",
+        materialKey: RW_MASONRY_MORTAR_KEY,
+        category: "RESIDUAL",
+        specification: mortarNamed?.cost_rate != null
+          ? `Company mortar / laying-consumables allowance. ${RW_MASONRY_MORTAR_METHOD}. Not core fill.`
+          : `${Math.round(RW_MASONRY_MORTAR_PERCENT_OF_BLOCKS * 100)}% of purchased block material ($${blockMaterialCost}). ${RW_MASONRY_MORTAR_KIND}. ${RW_MASONRY_MORTAR_METHOD}. Not core fill. Not included in block unit rate or labour.`,
+        baseQuantity: 1,
+        baseUnit: "item",
+        wasteFactor: 0,
+        purchaseQuantity: 1,
+        purchaseUnit: "item",
+        factKeys: ["retaining_wall.material"],
+        source: "retaining_wall.masonry.mortar",
+      });
+      pricedMaterials.push({
+        ...mortar,
+        priced: mortarPriced,
+        unitCost: mortarPriced ? mortarCost : null,
+        totalCost: mortarPriced ? mortarCost : null,
+        rateSource: mortarPriced
+          ? mortarNamed?.cost_rate != null
+            ? "company"
+            : "benchmark"
+          : "missing",
+      });
+      if (!mortarPriced && pricedBlocks.priced === true) {
+        missingInfo.push("Masonry mortar / laying consumables");
+      }
+    }
   }
 
   const labour: LabourRequirement[] = [];
@@ -1483,25 +1736,31 @@ export function commercializeRetainingWall(params: {
       "retaining_wall.block_laying_method"
     );
     if (masonry.subcontractBlocks || isSubcontractMethod(blockMethod)) {
+      const blockSub = planningMaterial({
+        workAreaId,
+        componentKey: RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT,
+        description: "Block laying subcontract",
+        materialKey: RW_MASONRY_BLOCK_SUBCONTRACT_KEY,
+        category: "SUBCONTRACT",
+        specification: `Labour-only subcontract (${RW_MASONRY_BLOCK_SUBCONTRACT_BASIS}). Builder still owns blocks and mortar / laying consumables. XOR self-perform labour — no duplicate labour money.`,
+        baseQuantity: face,
+        baseUnit: "m2",
+        wasteFactor: 0,
+        purchaseQuantity: face,
+        purchaseUnit: "m2",
+        factKeys: ["retaining_wall.block_laying_method"],
+        source: "retaining_wall.masonry.subcontract",
+      });
       pricedMaterials.push(
-        planningMaterial({
-          workAreaId,
-          componentKey: RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT,
-          description: "Block laying subcontract",
-          materialKey: null,
-          category: "SUBCONTRACT",
-          specification:
-            "Subcontract XOR self-perform. No duplicate block-laying labour.",
-          baseQuantity: face,
-          baseUnit: "m2",
-          wasteFactor: 0,
-          purchaseQuantity: face,
-          purchaseUnit: "m2",
-          factKeys: ["retaining_wall.block_laying_method"],
-          source: "retaining_wall.masonry.subcontract",
-        })
+        priceMaterial(blockSub, rates, organisationSettings, inheritedBenchmarks)
       );
-      missingInfo.push("Block laying subcontract rate");
+      if (
+        pricedMaterials.find(
+          (row) => row.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT
+        )?.priced !== true
+      ) {
+        missingInfo.push("Block laying subcontract rate");
+      }
     } else {
       labour.push(
         labourSlot({
@@ -1539,25 +1798,33 @@ export function commercializeRetainingWall(params: {
         "retaining_wall.waterproofing_method"
       );
       if (isSubcontractMethod(wpMethod)) {
+        const wpSub = planningMaterial({
+          workAreaId,
+          componentKey: RW_MASONRY_WATERPROOF_SUBCONTRACT_COMPONENT,
+          description: "Retaining-side waterproofing subcontract",
+          materialKey: RW_MASONRY_WATERPROOF_SUBCONTRACT_KEY,
+          category: "SUBCONTRACT",
+          specification:
+            "Subcontract XOR self-perform. No duplicate waterproofing labour. Retaining-side only.",
+          baseQuantity: masonry.waterproofingM2!,
+          baseUnit: "m2",
+          wasteFactor: 0,
+          purchaseQuantity: masonry.waterproofingM2!,
+          purchaseUnit: "m2",
+          factKeys: ["retaining_wall.waterproofing_method"],
+          source: "retaining_wall.masonry.waterproof.subcontract",
+        });
         pricedMaterials.push(
-          planningMaterial({
-            workAreaId,
-            componentKey: RW_MASONRY_WATERPROOF_SUBCONTRACT_COMPONENT,
-            description: "Waterproofing subcontract",
-            materialKey: null,
-            category: "SUBCONTRACT",
-            specification:
-              "Subcontract XOR self-perform. No duplicate waterproofing labour.",
-            baseQuantity: masonry.waterproofingM2!,
-            baseUnit: "m2",
-            wasteFactor: 0,
-            purchaseQuantity: masonry.waterproofingM2!,
-            purchaseUnit: "m2",
-            factKeys: ["retaining_wall.waterproofing_method"],
-            source: "retaining_wall.masonry.waterproof.subcontract",
-          })
+          priceMaterial(wpSub, rates, organisationSettings, inheritedBenchmarks)
         );
-        missingInfo.push("Waterproofing subcontract rate");
+        if (
+          pricedMaterials.find(
+            (row) =>
+              row.componentKey === RW_MASONRY_WATERPROOF_SUBCONTRACT_COMPONENT
+          )?.priced !== true
+        ) {
+          missingInfo.push("Waterproofing subcontract rate");
+        }
       } else {
         labour.push(
           labourSlot({
@@ -1781,7 +2048,7 @@ export function commercializeRetainingWall(params: {
       ? RW_TIMBER_PLANT_COMPONENT
       : sleeperSystem
         ? RW_SLEEPER_PLANT_COMPONENT
-        : RW_TIMBER_PLANT_COMPONENT;
+        : RW_MASONRY_PLANT_COMPONENT;
     const plantReq: PlantRequirement = {
       requirementId: buildRequirementId({
         workAreaId,
@@ -1830,6 +2097,8 @@ export function commercializeRetainingWall(params: {
   for (const row of pricedMaterials) {
     if (SKIP_MONEY.has(row.componentKey)) continue;
     if (row.componentKey === RW_SPOIL_DISPOSAL_COMPONENT) continue;
+    if (row.componentKey === RW_MASONRY_REBAR_ALLOWANCE_COMPONENT) continue;
+    if (row.componentKey === RW_MASONRY_MORTAR_COMPONENT) continue;
     if (hasTrustedPhysicalQuantity(row.purchaseQuantity) && row.priced !== true) {
       missingInfo.push(`${row.description} trusted price`);
     }
@@ -1882,7 +2151,9 @@ export function commercializeRetainingWall(params: {
       ? `${
           timberSystem
             ? RW_TIMBER_AUTHORITY_WITH_ALLOWANCE
-            : RW_SLEEPER_AUTHORITY_WITH_ALLOWANCE
+            : sleeperSystem
+              ? RW_SLEEPER_AUTHORITY_WITH_ALLOWANCE
+              : RW_MASONRY_AUTHORITY_WITH_ALLOWANCE
         }. Detailed component money is authoritative. Excavation is an explicit allowance, not measured m³.`
       : "Required commercial categories are covered. Detailed component money is authoritative."
     : detailedMoney
@@ -1905,7 +2176,9 @@ export function commercializeRetainingWall(params: {
         ? RW_TIMBER_FIXINGS_METHOD
         : sleeperSystem
           ? RW_SLEEPER_FIXINGS_TREATMENT
-          : "NOT_APPLICABLE",
+          : masonrySystem
+            ? RW_MASONRY_REBAR_TREATMENT
+            : "NOT_APPLICABLE",
     backfillProcurement:
       detailedSystem && hasTrustedPhysicalQuantity(backfillLabourQty)
         ? RW_DRAINAGE_AGGREGATE_PROCUREMENT_BASIS

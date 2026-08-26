@@ -73,18 +73,36 @@ import {
 import { RW_EXCAVATION_LABOUR_COMPONENT, RW_EXCAVATION_SUBCONTRACT_COMPONENT, RW_FACE_AREA_COMPONENT, RW_SPOIL_DISPOSAL_COMPONENT, RW_BACKFILL_COMPONENT, RW_TIMBER_BOARDS_COMPONENT, RW_TIMBER_FIXINGS_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
 import { RW_SPOIL_REMOVAL_EXCEEDS_MEASURED } from "@/lib/estimate/retaining-wall-spoil-removal";
 import { RW_SLEEPER_DESIGN_CONFIRM, RW_SLEEPER_MODULE_MISMATCH } from "@/lib/estimate/retaining-wall-sleeper-2a";
+import {
+  RW_MASONRY_DESIGN_CONFIRM,
+  RW_MASONRY_MORTAR_COMPONENT,
+  RW_MASONRY_MORTAR_PERCENT_OF_BLOCKS,
+  RW_MASONRY_REBAR_ALLOWANCE_COMPONENT,
+} from "@/lib/estimate/retaining-wall-masonry-2b";
 import { detailedTimberLabourFromCost, RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER } from "@/lib/estimate/retaining-wall-timber-1d";
 import {
   formatAggregateProcurementCopy,
   formatAggregateProcurementDetail,
   formatBoardProcurementCopy,
   formatFixingsAllowanceCopy,
+  formatMasonryBlockCompactCopy,
+  formatMasonryMortarCompactCopy,
+  formatMasonryVolumeCompactCopy,
+  formatMasonryWaterproofCompactCopy,
   formatSleeperCompactCopy,
   formatSleeperConcreteCopy,
   formatTimberLabourCompactCopy,
   formatTimberLabourModifierCopy,
 } from "@/lib/estimate/retaining-wall-builder-copy";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
+import {
+  RW_MASONRY_BLOCKS_COMPONENT,
+  RW_MASONRY_CORE_COMPONENT,
+  RW_MASONRY_FOOTING_COMPONENT,
+  RW_MASONRY_SUBBASE_COMPONENT,
+  RW_MASONRY_WATERPROOF_COMPONENT,
+  RW_MASONRY_WATERPROOF_SUBCONTRACT_COMPONENT,
+} from "@/lib/estimate/retaining-wall-identities";
 
 /** Facts this calculator reads. Physical-only keys do not change 1A money. */
 export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
@@ -440,6 +458,17 @@ export function calculateRetainingWall(
     }
   }
 
+  if (
+    physical.system === "CONCRETE_MASONRY_WALL" &&
+    physical.masonryTakeoff &&
+    physical.masonryTakeoff.horizontalRebarLm == null &&
+    physical.masonryTakeoff.verticalStarters == null
+  ) {
+    if (!missingInfo.includes(RW_MASONRY_DESIGN_CONFIRM)) {
+      missingInfo.push(RW_MASONRY_DESIGN_CONFIRM);
+    }
+  }
+
   if (!detailed) {
   const baseProductivity = resolveProductivity({
     productivityKey: "retaining_wall.base_labour_hours_per_face_m2",
@@ -764,6 +793,67 @@ export function calculateRetainingWall(
             bagCount: physical.sleeperTakeoff?.bagCount ?? requirement.purchaseQuantity,
             unitCost: requirement.unitCost,
           }).supporting;
+        } else if (requirement.componentKey === RW_MASONRY_BLOCKS_COMPONENT) {
+          const rateLabel =
+            requirement.rateSource === "company" ||
+            requirement.rateSource === "project_override"
+              ? "Company rate"
+              : requirement.rateSource === "benchmark"
+                ? "Quotr starter"
+                : null;
+          const compact = formatMasonryBlockCompactCopy({
+            series: physical.masonryTakeoff?.series?.series ?? null,
+            netEa: requirement.baseQuantity,
+            purchaseEa: requirement.purchaseQuantity,
+            wasteFactor: requirement.wasteFactor,
+            faceAreaM2: physical.geometry?.faceAreaM2 ?? 0,
+            unitsPerM2: physical.masonryTakeoff?.series?.unitsPerM2 ?? 12.5,
+            unitCost: requirement.unitCost,
+            rateLabel,
+          });
+          notes = compact.secondary ?? compact.supporting;
+          identitySummary = compact.supporting;
+        } else if (requirement.componentKey === RW_MASONRY_MORTAR_COMPONENT) {
+          const compact = formatMasonryMortarCompactCopy({
+            totalCost: requirement.totalCost,
+            basis:
+              requirement.rateSource === "company"
+                ? "Company allowance"
+                : `${Math.round(RW_MASONRY_MORTAR_PERCENT_OF_BLOCKS * 100)}% of purchased block material`,
+          });
+          notes = compact.secondary ?? undefined;
+          identitySummary = compact.supporting;
+        } else if (
+          requirement.componentKey === RW_MASONRY_FOOTING_COMPONENT ||
+          requirement.componentKey === RW_MASONRY_SUBBASE_COMPONENT ||
+          requirement.componentKey === RW_MASONRY_CORE_COMPONENT
+        ) {
+          const label =
+            requirement.componentKey === RW_MASONRY_FOOTING_COMPONENT
+              ? "Strip footing concrete"
+              : requirement.componentKey === RW_MASONRY_SUBBASE_COMPONENT
+                ? "Sub-base aggregate"
+                : "Core fill / grout";
+          const compact = formatMasonryVolumeCompactCopy({
+            volumeM3: requirement.purchaseQuantity,
+            unitCost: requirement.unitCost,
+            label,
+          });
+          notes = compact.secondary ?? undefined;
+          identitySummary = compact.supporting;
+        } else if (requirement.componentKey === RW_MASONRY_WATERPROOF_COMPONENT) {
+          const compact = formatMasonryWaterproofCompactCopy({
+            areaM2: requirement.purchaseQuantity,
+            unitCost: requirement.unitCost,
+            productLabel: requirement.description,
+          });
+          notes = compact.secondary ?? undefined;
+          identitySummary = compact.supporting;
+        } else if (requirement.componentKey === RW_MASONRY_REBAR_ALLOWANCE_COMPONENT) {
+          notes =
+            requirement.priced === true && requirement.totalCost != null
+              ? `Allowance $${round2(requirement.totalCost)} · design to be confirmed`
+              : "Design to be confirmed · price required";
         }
         lineItems.push(
           {

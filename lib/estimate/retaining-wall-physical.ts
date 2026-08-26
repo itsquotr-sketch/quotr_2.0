@@ -16,8 +16,14 @@ import {
   backfillVolumeM3,
   geometryAssumptionTexts,
   resolveRetainingWallGeometry,
+  RETAINING_WALL_MASONRY_FOOTING_DEPTH_M,
+  RETAINING_WALL_MASONRY_FOOTING_WIDTH_M,
   type RetainingWallGeometry,
 } from "@/lib/estimate/retaining-wall-geometry";
+import {
+  RW_MASONRY_DERIVED_FOOTING_EXCAVATION_NOTE,
+  RW_MASONRY_FOOTING_EXCAVATION_OWNERSHIP,
+} from "@/lib/estimate/retaining-wall-masonry-2b";
 import {
   classifyRetainingWallSurcharge,
   retainingWallConsentNotes,
@@ -299,7 +305,11 @@ export function buildRetainingWallPhysicalModel(params: {
         description: "Bulk excavation",
         materialKey: null,
         category: "EXCAVATION",
-        specification: `${explicitExcavation} m³ supplied excavation volume. Not assumed equal to backfill.`,
+        specification: `${explicitExcavation} m³ supplied excavation volume. Not assumed equal to backfill.${
+          system === "CONCRETE_MASONRY_WALL"
+            ? ` Measured volume owns excavation — derived footing trench is not added again. Ownership: ${RW_MASONRY_FOOTING_EXCAVATION_OWNERSHIP}.`
+            : ""
+        }`,
         baseQuantity: explicitExcavation,
         baseUnit: "m3",
         wasteFactor: 0,
@@ -309,11 +319,56 @@ export function buildRetainingWallPhysicalModel(params: {
         source: "retaining_wall.excavation",
       })
     );
+    if (system === "CONCRETE_MASONRY_WALL") {
+      assumptions.push(
+        `Measured excavation owns the dig. Footing trench is not double-counted. Ownership: ${RW_MASONRY_FOOTING_EXCAVATION_OWNERSHIP}.`
+      );
+    }
   } else if (excavationRequired === true) {
-    excavationMode = "NONE";
-    assumptions.push(
-      "Bulk excavation is included in scope but no safe planning volume was derived. Backfill volume is not used as excavation quantity."
-    );
+    if (system === "CONCRETE_MASONRY_WALL" && geometry) {
+      const footingWidth =
+        getNumberFact(facts, workAreaId, "retaining_wall.footing_width_m") ??
+        RETAINING_WALL_MASONRY_FOOTING_WIDTH_M;
+      const footingDepth =
+        getNumberFact(facts, workAreaId, "retaining_wall.footing_depth_m") ??
+        RETAINING_WALL_MASONRY_FOOTING_DEPTH_M;
+      const derived =
+        Math.round(geometry.lengthM * footingWidth * footingDepth * 100) / 100;
+      if (derived > 0) {
+        excavationMode = "DERIVED";
+        requirements.push(
+          planningMaterial({
+            workAreaId,
+            componentKey: RW_EXCAVATION_COMPONENT,
+            description: "Derived footing trench excavation",
+            materialKey: null,
+            category: "EXCAVATION",
+            specification: `${derived} m³ derived footing trench (${geometry.lengthM} × ${footingWidth} × ${footingDepth}). ${RW_MASONRY_DERIVED_FOOTING_EXCAVATION_NOTE} Ownership: ${RW_MASONRY_FOOTING_EXCAVATION_OWNERSHIP}.`,
+            baseQuantity: derived,
+            baseUnit: "m3",
+            wasteFactor: 0,
+            purchaseQuantity: derived,
+            purchaseUnit: "m3",
+            factKeys: keys,
+            source: "retaining_wall.excavation.derived_footing",
+          })
+        );
+        assumptions.push(
+          RW_MASONRY_DERIVED_FOOTING_EXCAVATION_NOTE,
+          `Excavation ownership: ${RW_MASONRY_FOOTING_EXCAVATION_OWNERSHIP}. Measured bulk excavation is not added again when present.`
+        );
+      } else {
+        excavationMode = "NONE";
+        assumptions.push(
+          "Bulk excavation is included in scope but no safe planning volume was derived. Backfill volume is not used as excavation quantity."
+        );
+      }
+    } else {
+      excavationMode = "NONE";
+      assumptions.push(
+        "Bulk excavation is included in scope but no safe planning volume was derived. Backfill volume is not used as excavation quantity."
+      );
+    }
   }
 
   const surcharge = classifyRetainingWallSurcharge(

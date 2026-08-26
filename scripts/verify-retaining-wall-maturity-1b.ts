@@ -621,11 +621,14 @@ check(
 
 console.log("\n--- MASONRY ---\n");
 const blocks = mat(masonryA.requirements, RW_MASONRY_BLOCKS_COMPONENT);
+const masonryNetBlocks = 125;
+const masonryPurchaseBlocks = Math.ceil(masonryNetBlocks * 1.05 - 1e-9);
 check(
   "26 block purchase whole EA",
   blocks?.purchaseUnit === "ea" &&
     Number.isInteger(blocks.purchaseQuantity) &&
-    blocks.purchaseQuantity === 125
+    near(blocks.baseQuantity ?? 0, masonryNetBlocks) &&
+    blocks.purchaseQuantity === masonryPurchaseBlocks
 );
 const masonryPriced = com(masonryLevel, "Masonry / block", [
   testRate(RW_MASONRY_200_KEY, "ea", TEST_BLOCK),
@@ -672,8 +675,16 @@ check(
   lab(masonryLab.requirements, RW_MASONRY_SUBBASE_LABOUR_COMPONENT)?.productivityBasis.unit === "m2"
 );
 check(
-  "33 unresolved rebar is explicit gap, not zero",
-  masonryA.gaps.includes(RW_REBAR_GAP) && mat(masonryA.requirements, RW_MASONRY_REBAR_COMPONENT) == null
+  "33 unresolved rebar is Pricing Required, not silent $0",
+  masonryA.gaps.includes(RW_REBAR_GAP) &&
+    mat(masonryA.requirements, RW_MASONRY_REBAR_COMPONENT) == null &&
+    (mat(masonryA.requirements, "retaining_wall.masonry.rebar.allowance")?.priced !==
+      true ||
+      (mat(masonryA.requirements, "retaining_wall.masonry.rebar.allowance")
+        ?.totalCost ?? 0) === 0) &&
+    masonryA.coverage.some(
+      (row) => row.key === "reinforcement" && row.state === "PRICING_REQUIRED"
+    )
 );
 const masonryRebar = com(
   [...masonryLevel, fact("retaining_wall.horizontal_rebar_runs", 2)],
@@ -839,8 +850,10 @@ check(
     (sleeperPhys.sleeperTakeoff?.holeVolumeM3 ?? 0) > 0
 );
 check(
-  "56 RW-MASONRY unresolved rebar",
-  mat(masonryA.requirements, RW_MASONRY_BLOCKS_COMPONENT)?.purchaseQuantity === 125 &&
+  "56 RW-MASONRY unresolved rebar Pricing Required",
+  near(mat(masonryA.requirements, RW_MASONRY_BLOCKS_COMPONENT)?.baseQuantity ?? 0, 125) &&
+    mat(masonryA.requirements, RW_MASONRY_BLOCKS_COMPONENT)?.purchaseQuantity ===
+      masonryPurchaseBlocks &&
     near(mat(masonryA.requirements, RW_MASONRY_FOOTING_COMPONENT)?.purchaseQuantity ?? 0, 1) &&
     near(mat(masonryA.requirements, RW_MASONRY_SUBBASE_COMPONENT)?.purchaseQuantity ?? 0, 0.4) &&
     near(mat(masonryA.requirements, RW_MASONRY_CORE_COMPONENT)?.purchaseQuantity ?? 0, 1) &&

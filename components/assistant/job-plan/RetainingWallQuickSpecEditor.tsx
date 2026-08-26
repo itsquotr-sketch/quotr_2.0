@@ -358,6 +358,181 @@ export function RetainingWallQuickSpecEditor({
         </Group>
       ) : null}
 
+      {system === "CONCRETE_MASONRY_WALL" ? (
+        <Group title="Concrete masonry / Besser">
+          <div className="space-y-1">
+            <Label htmlFor={`rw-block-series-${workAreaId}`}>Block type</Label>
+            <select
+              id={`rw-block-series-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={
+                jobPlanString(facts, workAreaId, "retaining_wall.block_series") ??
+                ""
+              }
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.block_series",
+                  label: "Block type",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value="">200 mm concrete masonry (default)</option>
+              <option value="200-series">200 mm concrete masonry</option>
+              <option value="150-series">150 mm concrete masonry</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`rw-block-method-${workAreaId}`}>
+              Block laying method
+            </Label>
+            <select
+              id={`rw-block-method-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={
+                jobPlanString(
+                  facts,
+                  workAreaId,
+                  "retaining_wall.block_laying_method"
+                ) ?? ""
+              }
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.block_laying_method",
+                  label: "Block laying method",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value="">Self-perform (company default)</option>
+              <option value="Self-perform">Self-perform</option>
+              <option value="Subcontract">Subcontract</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`rw-footing-w-${workAreaId}`}>
+              Footing width (m)
+            </Label>
+            <Input
+              id={`rw-footing-w-${workAreaId}`}
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.40 estimating default"
+              defaultValue={
+                jobPlanNumber(facts, workAreaId, "retaining_wall.footing_width_m") ??
+                ""
+              }
+              onBlur={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next) || !(next > 0)) return;
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.footing_width_m",
+                  label: "Footing width",
+                  value: next,
+                  valueType: "number",
+                });
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`rw-footing-d-${workAreaId}`}>
+              Footing depth (m)
+            </Label>
+            <Input
+              id={`rw-footing-d-${workAreaId}`}
+              type="number"
+              inputMode="decimal"
+              step="0.01"
+              placeholder="0.25 estimating default"
+              defaultValue={
+                jobPlanNumber(facts, workAreaId, "retaining_wall.footing_depth_m") ??
+                ""
+              }
+              onBlur={(event) => {
+                const next = Number(event.target.value);
+                if (!Number.isFinite(next) || !(next > 0)) return;
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.footing_depth_m",
+                  label: "Footing depth",
+                  value: next,
+                  valueType: "number",
+                });
+              }}
+            />
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`rw-wp-req-${workAreaId}`}>
+              Retaining-side waterproofing
+            </Label>
+            <select
+              id={`rw-wp-req-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={yesNo(
+                jobPlanBoolean(
+                  facts,
+                  workAreaId,
+                  "retaining_wall.waterproofing_required"
+                )
+              )}
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.waterproofing_required",
+                  label: "Retaining-side waterproofing",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value="">Not set</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+            </select>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor={`rw-wp-method-${workAreaId}`}>
+              Waterproofing method
+            </Label>
+            <select
+              id={`rw-wp-method-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={
+                jobPlanString(
+                  facts,
+                  workAreaId,
+                  "retaining_wall.waterproofing_method"
+                ) ?? ""
+              }
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: "retaining_wall.waterproofing_method",
+                  label: "Waterproofing method",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value="">Self-perform (company default)</option>
+              <option value="Self-perform">Self-perform</option>
+              <option value="Subcontract">Subcontract</option>
+            </select>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            Footing 400×250 mm and 100 mm sub-base are estimating assumptions,
+            subject to engineering/design. Reinforcement is design-dependent —
+            not a fabricated bar schedule.
+          </p>
+        </Group>
+      ) : null}
+
       <Group title="Drainage / excavation">
         <div className="space-y-1">
           <Label htmlFor={`rw-drainage-${workAreaId}`}>Drainage / novacoil</Label>
