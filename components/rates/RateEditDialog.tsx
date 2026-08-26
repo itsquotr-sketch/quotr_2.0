@@ -15,6 +15,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 import { formatRateUnit } from "@/lib/rates/catalogue";
+import { personHoursPerUnit } from "@/lib/estimate/retaining-wall-family-coverage";
 import type { OrganisationRate } from "@/components/setup/types";
 import {
   formatMoney,
@@ -90,6 +91,9 @@ export function RateEditDialog({
         companyGrossMarginPercent,
       }).hasRetainedChargeOut
   );
+  const [crewSize, setCrewSize] = useState("2");
+  const [elapsedHours, setElapsedHours] = useState("1");
+  const [quantityCompleted, setQuantityCompleted] = useState("4");
 
   const unitLabel = formatRateUnit(catalogueEntry.unit);
   const isProductivity = catalogueEntry.rate_type === "productivity";
@@ -115,6 +119,18 @@ export function RateEditDialog({
   const isRetained =
     values.sellMode === "retained_custom" ||
     values.sellMode === "explicit_override";
+
+  const derivedPersonHours = useMemo(() => {
+    const crew = parseOptionalNumber(crewSize);
+    const elapsed = parseOptionalNumber(elapsedHours);
+    const qty = parseOptionalNumber(quantityCompleted);
+    if (crew == null || elapsed == null || qty == null) return null;
+    return personHoursPerUnit({
+      crewSize: crew,
+      elapsedHours: elapsed,
+      quantityCompleted: qty,
+    });
+  }, [crewSize, elapsedHours, quantityCompleted]);
 
   async function handleSave() {
     setError(null);
@@ -219,10 +235,92 @@ export function RateEditDialog({
             </div>
             <p className="text-xs text-muted-foreground">
               {isProductivity
-                ? `Hours per ${unitLabel}. This is not a dollar rate.`
+                ? `Total worker-hours per ${unitLabel} — not elapsed crew time.`
                 : `What this costs your business · ${unitLabel}`}
             </p>
           </div>
+
+          {isProductivity ? (
+            <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Productivity helper
+              </p>
+              <p className="text-xs text-muted-foreground">
+                Crew size × elapsed hours ÷ quantity completed = labour-hours per
+                unit.
+              </p>
+              <div className="grid grid-cols-3 gap-2">
+                <div className="space-y-1">
+                  <Label htmlFor="crew-size" className="text-xs">
+                    Crew
+                  </Label>
+                  <Input
+                    id="crew-size"
+                    type="number"
+                    min="1"
+                    step="1"
+                    inputMode="numeric"
+                    value={crewSize}
+                    onChange={(event) => setCrewSize(event.target.value)}
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="elapsed-hours" className="text-xs">
+                    Elapsed (h)
+                  </Label>
+                  <Input
+                    id="elapsed-hours"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={elapsedHours}
+                    onChange={(event) => setElapsedHours(event.target.value)}
+                    className="h-8"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label htmlFor="qty-completed" className="text-xs">
+                    Qty done
+                  </Label>
+                  <Input
+                    id="qty-completed"
+                    type="number"
+                    min="0"
+                    step="0.01"
+                    inputMode="decimal"
+                    value={quantityCompleted}
+                    onChange={(event) =>
+                      setQuantityCompleted(event.target.value)
+                    }
+                    className="h-8"
+                  />
+                </div>
+              </div>
+              {derivedPersonHours != null ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-sm tabular-nums">
+                    = {derivedPersonHours} labour-h/{unitLabel}
+                  </p>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7"
+                    onClick={() =>
+                      setValues((prev) => ({
+                        ...prev,
+                        cost_rate: String(derivedPersonHours),
+                      }))
+                    }
+                  >
+                    Use result
+                  </Button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
 
           {isProductivity ? null : (
             <div className="rounded-lg border border-border/60 bg-muted/20 px-3 py-3 space-y-1.5">

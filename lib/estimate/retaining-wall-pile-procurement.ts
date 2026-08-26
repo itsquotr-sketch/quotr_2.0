@@ -10,6 +10,8 @@
  */
 import { round2 } from "@/lib/estimate/facts";
 import type { TimberPileTakeoff } from "@/lib/estimate/retaining-wall-timber";
+import { selectHousePileStockLengthM } from "@/lib/estimate/deck-pile-procurement";
+import { RW_HOUSE_PILE_125_KEY } from "@/lib/estimate/retaining-wall-identities";
 
 export const RW_H5_SED_CLASS_DEFAULT = "150-175" as const;
 export const RW_H5_SED_CLASS_KIND = "EXPLICIT_ESTIMATING_DEFAULT" as const;
@@ -214,5 +216,46 @@ export function procureTimberPiles(
     oversizeCount: rows.filter((row) => row.status === "PRICING_REQUIRED").length,
     rows,
     byStock,
+  };
+}
+
+export type RwHousePileProcurement = {
+  theoreticalTotalLm: number;
+  purchaseTotalLm: number;
+  purchaseEa: number;
+  oversizeCount: number;
+  itemKey: typeof RW_HOUSE_PILE_125_KEY;
+  rows: {
+    requiredLengthM: number;
+    stockLengthM: number | null;
+    status: "STOCK" | "PRICING_REQUIRED";
+  }[];
+};
+
+/** House-pile stock-length procurement — required lm is not purchase lm. */
+export function procureTimberHousePiles(
+  piles: TimberPileTakeoff
+): RwHousePileProcurement {
+  const rows = piles.lengthsM.map((requiredLengthM) => {
+    const stockLengthM = selectHousePileStockLengthM(requiredLengthM);
+    return {
+      requiredLengthM: round2(requiredLengthM),
+      stockLengthM,
+      status:
+        stockLengthM != null
+          ? ("STOCK" as const)
+          : ("PRICING_REQUIRED" as const),
+    };
+  });
+  const purchaseTotalLm = round2(
+    rows.reduce((sum, row) => sum + (row.stockLengthM ?? 0), 0)
+  );
+  return {
+    theoreticalTotalLm: piles.totalLengthM,
+    purchaseTotalLm,
+    purchaseEa: rows.filter((row) => row.status === "STOCK").length,
+    oversizeCount: rows.filter((row) => row.status === "PRICING_REQUIRED").length,
+    itemKey: RW_HOUSE_PILE_125_KEY,
+    rows,
   };
 }

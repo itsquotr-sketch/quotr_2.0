@@ -10,6 +10,7 @@ import { getStringFact } from "@/lib/estimate/facts";
 import { timberMiniExcavatorWorkload } from "@/lib/estimate/retaining-wall-plant-workload";
 import type { EstimateConstraint, EstimateFact } from "@/lib/estimate/types";
 import { resolveProjectCondition } from "@/lib/project-conditions/legacy-adapter";
+import { resolveRetainingWallDiggerAccess } from "@/lib/estimate/retaining-wall-family-coverage";
 
 export const RW_TIMBER_PILING_METHOD_MACHINE = "MACHINE_ASSISTED" as const;
 export const RW_TIMBER_PILING_METHOD_MANUAL = "MANUAL" as const;
@@ -90,29 +91,16 @@ export function timberMiniExcavatorDays(params: {
   };
 }
 
-function accessIsMachineBlocked(access: string | null | undefined): boolean {
-  const value = access?.toLowerCase() ?? "";
-  return (
-    value === "difficult" ||
-    value === "very poor" ||
-    value === "verypoor" ||
-    value === "restricted"
-  );
-}
-
 export function timberMachineAccessFeasible(
   constraints: readonly EstimateConstraint[] | null | undefined,
   facts?: readonly EstimateFact[] | null,
   workAreaId?: string
 ): boolean {
-  const resolved = resolveProjectCondition({
-    constraints: [...(constraints ?? [])],
-    facts: facts ? [...facts] : undefined,
+  return resolveRetainingWallDiggerAccess({
+    constraints,
+    facts,
     workAreaId,
-    constraintKey: "site_access",
-    legacyFactKey: "retaining_wall.access",
-  });
-  return !accessIsMachineBlocked(resolved.value);
+  }).machineFeasible;
 }
 
 export function resolveSleeperPostMethod(
@@ -124,18 +112,26 @@ export function resolveSleeperPostMethod(
   machineAccess: boolean;
   disclosure: string;
 } {
-  const timber = resolveTimberPilingMethod(constraints, facts, workAreaId);
-  if (!timber.machineAccess) {
+  const resolved = resolveRetainingWallDiggerAccess({
+    constraints,
+    facts,
+    workAreaId,
+  });
+  if (!resolved.machineFeasible) {
     return {
-      ...timber,
+      method: RW_TIMBER_PILING_METHOD_MANUAL,
+      machineAccess: false,
       disclosure:
-        "Site access cannot take a mini-excavator/auger. Steel post holes are manual. Plant is not priced.",
+        resolved.disclosure +
+        " Steel post holes are manual. Plant is not priced.",
     };
   }
   return {
-    ...timber,
+    method: RW_TIMBER_PILING_METHOD_MACHINE,
+    machineAccess: true,
     disclosure:
-      "Accessible-site starter: machine-assisted steel post holes (mini-excavator/auger). Carpenter labour is attendance, set-out, place and plumb. Concrete placement is a separate labour intent. Hole digging is not bulk excavation.",
+      resolved.disclosure +
+      " Accessible-site starter: machine-assisted steel post holes (mini-excavator/auger). Carpenter labour is attendance, set-out, place and plumb. Concrete placement is a separate labour intent. Hole digging is not bulk excavation.",
   };
 }
 
@@ -148,23 +144,24 @@ export function resolveTimberPilingMethod(
   machineAccess: boolean;
   disclosure: string;
 } {
-  const machineAccess = timberMachineAccessFeasible(
+  const resolved = resolveRetainingWallDiggerAccess({
     constraints,
     facts,
-    workAreaId
-  );
-  if (!machineAccess) {
+    workAreaId,
+  });
+  if (!resolved.machineFeasible) {
     return {
       method: RW_TIMBER_PILING_METHOD_MANUAL,
       machineAccess: false,
       disclosure:
-        "Site access cannot take a mini-excavator/auger. Pile holes are manual. Plant is not priced.",
+        resolved.disclosure + " Pile holes are manual. Plant is not priced.",
     };
   }
   return {
     method: RW_TIMBER_PILING_METHOD_MACHINE,
     machineAccess: true,
     disclosure:
-      "Accessible-site starter: machine-assisted pile holes (mini-excavator/auger). Carpenter labour is attendance, set-out, place and plumb — not a hand-dug 0.85 h/ea with no machine.",
+      resolved.disclosure +
+      " Accessible-site starter: machine-assisted pile holes (mini-excavator/auger). Carpenter labour is attendance, set-out, place and plumb — not a hand-dug 0.85 h/ea with no machine.",
   };
 }

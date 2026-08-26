@@ -1,9 +1,11 @@
 /**
  * RETAINING-WALL-MATURITY-1A — material identities.
- * Physical identity only. No invented NZD. Do not use Deck house piles.
+ * Physical identity only. No invented NZD.
  */
 
+import { HOUSE_PILE_125_IDENTITY } from "@/lib/estimate/house-pile-benchmarks";
 import {
+  buildMaterialRateItemKey,
   STRUCTURAL_FRAMING_PRODUCT_FAMILY,
   STRUCTURAL_TIMBER_FAMILY,
   buildConcreteMaterialIdentity,
@@ -171,6 +173,17 @@ export function h5SedStockIdentity(stockLengthM: number): MaterialIdentity {
   };
 }
 
+/** Reuses Deck 125×125 H5 house-pile identity semantics; RW-specific rate key. */
+export const HOUSE_PILE_125_RW_IDENTITY: MaterialIdentity = {
+  ...HOUSE_PILE_125_IDENTITY,
+  originalDescription:
+    "125×125 H5 sawn house pile / square pile — retaining post alternative to H5 SED roundwood",
+};
+export const RW_HOUSE_PILE_125_KEY = buildMaterialRateItemKey(
+  HOUSE_PILE_125_RW_IDENTITY,
+  "lm"
+);
+
 export const CONCRETE_SLEEPER_IDENTITY: MaterialIdentity = {
   family: "precast",
   productFamily: "concrete_sleeper",
@@ -226,7 +239,8 @@ export const NOVACOIL_IDENTITY: MaterialIdentity = {
   processing: null,
   processingKind: "unknown",
   species: null,
-  originalDescription: "Perforated drainage coil (novacoil)",
+  originalDescription:
+    "100 mm punched / slotted drainage coil (novacoil) — retaining-wall drainage",
 };
 
 export function premix20kgIdentity(): MaterialIdentity {

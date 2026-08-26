@@ -1,7 +1,7 @@
 /**
  * RETAINING-WALL-MATURITY-1B-R1 — standard scope defaults.
- * Novacoil / drainage aggregate are normally applicable on timber and sleeper
- * walls. Explicit false removes them. Bulk excavation is never assumed.
+ * Novacoil / drainage aggregate are normally applicable on timber, sleeper,
+ * and masonry walls. Explicit false removes them. Bulk excavation is never assumed.
  */
 
 import { getBooleanFact } from "@/lib/estimate/facts";
@@ -16,7 +16,9 @@ export const RW_BACKFILL_STANDARD_ASSUMPTION =
 
 function assumesStandardDrainage(system: RetainingWallSystemClass): boolean {
   return (
-    system === "TIMBER_RETAINING_WALL" || system === "CONCRETE_SLEEPER_WALL"
+    system === "TIMBER_RETAINING_WALL" ||
+    system === "CONCRETE_SLEEPER_WALL" ||
+    system === "CONCRETE_MASONRY_WALL"
   );
 }
 

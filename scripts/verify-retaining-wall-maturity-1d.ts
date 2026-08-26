@@ -689,9 +689,9 @@ check(
     )
 );
 check(
-  "42 timber does not invent pile concrete",
-  RW_TIMBER_CONCRETE_TREATMENT.includes("NOT_IN_TIMBER") &&
-    !ownerCalc.lineItems.some((item) => /concrete/i.test(item.label))
+  "42 timber post-hole concrete has explicit material + separate placement labour",
+  RW_TIMBER_CONCRETE_TREATMENT.includes("SEPARATE") &&
+    ownerCalc.lineItems.some((item) => /post-hole concrete/i.test(item.label))
 );
 
 console.log("\n--- DOWNSTREAM / NON-REGRESSION ---\n");
@@ -729,7 +729,7 @@ const review = composeBuilderReview({
 });
 check("45 Builder Review still composes", review.workAreas.length > 0);
 check("46 sleeper 2A detailed", !hasPackage(sleeperCalc.lineItems));
-check("47 masonry still package", hasPackage(masonryCalc.lineItems));
+check("47 masonry package until reinforcement allowance", hasPackage(masonryCalc.lineItems));
 check(
   "48 1D starters live in the rate system, not calculator hardcoded NZD",
   RW_TIMBER_1D_MATERIAL_STARTERS[RW_FACE_BOARD_150_H4_KEY]!.costPerUnit === 12.8 &&
@@ -918,8 +918,8 @@ check(
 );
 check(
   "R1-21 Owner fixture reconciles",
-  near(ownerEstimate.recommendedCost, 5583.08, 0.5) &&
-    near(ownerEstimate.recommendedSell, 6978.93, 0.5) &&
+  near(ownerEstimate.recommendedCost, 5855.08, 0.5) &&
+    near(ownerEstimate.recommendedSell, 7319, 0.5) &&
     ownerProcurement?.purchaseEa === 14 &&
     near(ownerProcurement?.purchaseTotalLm ?? 0, 28.8)
 );
@@ -1096,11 +1096,11 @@ check(
 );
 check(
   "R2-15 Owner direct cost reconciles after excavation-only modifier change",
-  near(ownerEstimate.recommendedCost, 5583.08, 0.5)
+  near(ownerEstimate.recommendedCost, 5855.08, 0.5)
 );
 check(
   "R2-16 Owner sell reconciles at 20% GM",
-  near(ownerEstimate.recommendedSell, 6978.93, 0.5) &&
+  near(ownerEstimate.recommendedSell, 7319, 0.5) &&
     near(ownerEstimate.marginPercent, 20)
 );
 check(

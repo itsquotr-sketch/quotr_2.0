@@ -20,6 +20,7 @@ import {
   RW_STEEL_POST_KEY,
 } from "@/lib/estimate/retaining-wall-identities";
 import { RW_PRODUCTIVITY_KEYS } from "@/lib/estimate/retaining-wall-productivity";
+import { retainingWallExcavationHoursStarter } from "@/lib/estimate/retaining-wall-family-coverage";
 
 /** Common NZ 2000 mm sleeper. Disclosed estimating default, not a brand. */
 export const RW_DEFAULT_SLEEPER_LENGTH_M = 2;
@@ -164,9 +165,7 @@ export function sleeper2APostHours(method: RwTimberPilingMethod): number {
 }
 
 export function sleeper2AExcavationHoursM3(method: RwTimberPilingMethod): number {
-  return method === RW_TIMBER_PILING_METHOD_MANUAL
-    ? RW_SLEEPER_EXCAVATION_HOURS_MANUAL_M3
-    : 0.45;
+  return retainingWallExcavationHoursStarter(method);
 }
 
 export type RwSleeperStarterConfidence = "low" | "medium";

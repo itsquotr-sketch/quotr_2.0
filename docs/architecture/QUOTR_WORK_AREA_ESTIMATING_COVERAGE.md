@@ -82,7 +82,7 @@ SUPPORTED SCOPE
 
 Do not jump from scope directly to an arbitrary rate line.
 
-**CURRENT IMPLEMENTATION:** several calculators still emit package / allowance money before a full physical model (masonry retaining-wall package, kitchen appliance lump sums, most fitout m² packages). Supported Timber and Concrete Sleeper retaining walls use detailed component money.
+**CURRENT IMPLEMENTATION:** several calculators still emit package / allowance money before a full physical model (kitchen appliance lump sums, most fitout m² packages, unspecified concrete retaining-wall package). Supported Timber, Concrete Sleeper, and Masonry retaining walls use detailed component money when commercially ready.
 
 ---
 
@@ -123,7 +123,7 @@ Estimator maturity (this document) is independent of product display band (§12)
 | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 | deck | trial_supported | MATURE / CONDITIONAL | MATURE / CONDITIONAL | hybrid DETAILED + PACKAGE + SHADOW | PARTIAL | MATURE / CONDITIONAL | PARTIAL | **MATURE / CONDITIONAL** |
 | bathroom | trial_supported | PARTIAL | PARTIAL | PACKAGE_ALLOWANCE (mixed resolve) | PARTIAL (per-trade exists) | PARTIAL | PARTIAL | **PARTIAL** — labour ahead of material |
-| retaining_wall | developing | PARTIAL | SAFETY HARDENED / timber 1F + sleeper 2A | Timber + Concrete Sleeper DETAILED; masonry package **still MINIMAL** | PARTIAL (timber + sleeper task labour) | Timber + Sleeper DETAILED / masonry MINIMAL | PARTIAL | **SAFETY HARDENED / TIMBER 1F / SLEEPER 2A LOCAL** |
+| retaining_wall | developing | PARTIAL | SAFETY HARDENED / timber 1F + sleeper 2A + masonry 2B | Timber + Concrete Sleeper + Masonry DETAILED | PARTIAL (timber + sleeper + masonry task labour) | Timber + Sleeper + Masonry DETAILED | PARTIAL | **SAFETY HARDENED / TIMBER 1F / SLEEPER 2A / MASONRY 2B LOCAL** |
 | kitchen | developing | MINIMAL | MINIMAL | PACKAGE + **RATE AUTHORITY FIXED** | MINIMAL (no shared access factor) | MINIMAL | MINIMAL | **MINIMAL** — **KITCHEN-RATE-AUTHORITY-01 FIXED** |
 | fence | developing | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL (slope flag) | MINIMAL | MINIMAL | **MINIMAL** |
 | pergola | developing | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL | MINIMAL | MINIMAL | **MINIMAL** — not ahead of fence |
@@ -243,7 +243,7 @@ Does not rebuild 2A/2B architecture.
 
 | Contract | 2C rule |
 | --- | --- |
-| Labour model | Quantity × productivity hours = TIME. Hours × labour $/hr = MONEY. Separate. |
+| Labour model | Quantity × productivity **labour-hours** = TIME. Productivity is **total person-hours per unit** (not elapsed crew time). Hours × labour $/hr = MONEY. Separate. |
 | Normal handling | Included in each scope productivity. No separate handling line. |
 | Abnormal access/carry | Project Conditions, applied once. |
 | Productivity Rates | Dedicated Labour productivity section. Hours only — no $. Persistence via existing company rates. |
@@ -282,9 +282,9 @@ Does not rebuild Deck geometry or change starter productivities.
 
 ---
 
-## 8. Retaining Wall — SAFETY HARDENED / TIMBER 1F / SLEEPER 2A LOCAL
+## 8. Retaining Wall — SAFETY HARDENED / TIMBER 1F / SLEEPER 2A / MASONRY 2B LOCAL
 
-**CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)** — hard-minimum and unsupported-material safety remain. Supported Timber and Concrete Sleeper use detailed component authority. Masonry commercial package remains **still MINIMAL**.
+**CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)** — hard-minimum and unsupported-material safety remain. Supported Timber, Concrete Sleeper, and Concrete Masonry / Besser use detailed component authority when commercial coverage is complete. Legacy concrete face-m² package remains fallback for unspecified concrete / incomplete models only.
 
 **RETAINING WALL MATURITY 1A — PHYSICAL MODEL FOUNDATION (COMPLETE LOCAL / OWNER FINAL PHYSICAL APPROVAL PENDING)**
 
@@ -328,7 +328,7 @@ Classifications: **PHYSICAL_QUANTITY_READY** / **IDENTITY_READY** / **RATE_READY
 | Masonry | Novacoil | PHYSICAL_QUANTITY_READY | IDENTITY_READY | not ready as child | slot only | not ready |
 | Masonry | Drainage aggregate | PHYSICAL_QUANTITY_READY (in-place m³) | IDENTITY_READY | not ready as child | slot only | not ready |
 
-**1D supersedes timber rows above.** Supported Timber children are commercially priced. **2A supersedes sleeper rows above.** Masonry remains not commercially promoted. Package **$7,345** is retired for detailed-ready Timber and Concrete Sleeper.
+**1D supersedes timber rows above.** Supported Timber children are commercially priced. **2A supersedes sleeper rows above.** **2B supersedes masonry rows above** — masonry detailed commercial with disclosed Quotr starters, design-dependent reinforcement allowance, and package XOR detailed. Package **$7,345** is retired for detailed-ready Timber, Concrete Sleeper, and Masonry.
 
 **RETAINING WALL MATURITY 1C — OWNER PREVIEW CORRECTIONS (COMPLETE LOCAL / OWNER PRE-CALIBRATION REVIEW PENDING)**
 
@@ -386,15 +386,31 @@ Adapts mature Timber 1D/1F architecture. Does not invent a second estimating mod
 
 Timber pile centres stay on `retaining_wall.post_spacing_m`. Sleeper post centres use **`retaining_wall.sleeper_post_spacing_m` only**. Timber pile embedment stays on `pile_embedment_m`; Sleeper embedment stays on `sleeper_post_embedment_m`. Wall-type switch preserves shared geometry/access/excavation/drainage/spoil and does **not** silently reuse the other system’s spacing/embedment. Explicit sleeper spacing shorter than purchased sleeper length surfaces **module mismatch** attention (does not block Quick Estimate).
 
-Do **not** start Masonry, Bathroom, or another Work Area from 2A / 2A-R1 / 2A-R4.
+Do **not** start Masonry, Bathroom, or another Work Area from 2A / 2A-R1 / 2A-R4. *(Historical 2A gate. 2B later promoted Masonry.)*
+
+**RETAINING WALL MATURITY 2B — CONCRETE MASONRY / BESSER DETAILED COMMERCIAL (COMPLETE LOCAL / OWNER REVIEWED)**
+
+Verifier: `scripts/verify-retaining-wall-maturity-2b.ts`.
+
+Adapts shared Timber 1D / Sleeper 2A architecture. Does not invent a second estimating model. Canonical system `CONCRETE_MASONRY_WALL` (builder-facing: Concrete masonry / Besser block). Shared geometry (length × average height; linear H(x) on slope). Footing estimating geometry **400 × 250 mm**; sub-base **100 mm** — disclosed estimating assumptions, subject to engineering/design. Blocks: 200-series / 150-series at **12.5 / m²**; discrete purchase EA. Core fill from block count ÷ **125** (200) or **165** (150) blocks/m³; full core-fill assumed for estimating (disclosed). Measured excavation owns dig; derived footing trench only when measured volume absent. Waterproofing is retaining-side only; self-perform XOR subcontract. Block laying self-perform XOR subcontract. Shared drainage / novacoil / aggregate (×1.25 purchase) / spoil all-in. Mini-excavator plant for excavation when access allows; no invented plate-compactor day. Package lifecycle `LEGACY_FALLBACK_ONLY` when detailed-ready.
+
+**RETAINING WALL MATURITY 2B-R1 — MASONRY COMMERCIAL INTEGRITY LOCK (COMPLETE LOCAL / OWNER APPROVED IN PRINCIPLE)**
+
+Reinforcement without an engineered bar schedule is **design-dependent**. Allowed states only: (A) explicit quantity + trusted rate → `DETAILED_PRICED`; (B) approved monetary company/project allowance (`retaining_wall.masonry.rebar.allowance`, unit `item`, cost_rate > 0) → `EXPLICIT_ALLOWANCE`; (C) applicable + no approved allowance/rate → `PRICING_REQUIRED` (visible placeholder, not silent $0); (D) explicitly not applicable → `NOT_APPLICABLE`. `EXPLICIT_ALLOWANCE` requires a real monetary amount. No Quotr reinforcement starter invented. Canonical first-promotion: package remains sole Quick Estimate money until reinforcement is commercially covered (`retainingWallPostPromotionHold` / designOk). No package+detail double money. Builder row: Allowance $X or Price required + Improve Estimate “Add a reinforcement allowance or confirm the engineered design.”
+
+**RETAINING WALL MATURITY 2B-R2 — FINAL MASONRY PROCUREMENT COVERAGE (COMPLETE LOCAL / OWNER FINAL MASONRY CLOSURE APPROVAL PENDING)**
+
+Block **net** = physical face × 12.5. Block **purchase** = `ceil(net × 1.05)` once (5% Quotr starter procurement for cuts/breakage/site loss — not org default 10% wastage). Mortar / laying consumables = explicit residual: company item allowance **or** 10% of purchased block material (low-confidence Quotr starter). Not bagged joint-volume precision. Not core fill. Not inside labour. Block-lay subcontract remains **labour-only**; builder owns blocks + mortar. R1 reinforcement lock unchanged.
+
+Do **not** start Bathroom, another Work Area, or Production from 2B-R2 until Owner final masonry closure approval.
 
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
 
 | Layer | Status |
 | --- | --- |
-| Calculator | `lib/estimate/calculators/retaining-wall.ts` — detailed Timber or Concrete Sleeper when coverage is complete; package fallback for masonry/incomplete timber |
+| Calculator | `lib/estimate/calculators/retaining-wall.ts` — detailed Timber, Concrete Sleeper, or Masonry when coverage is complete; package fallback for unspecified concrete / incomplete models |
 | Job Plan adapter | **Minimum** — `lib/assistant/job-plan/adapters/retaining-wall.ts` (core card + length/height/material chips). Not mature. |
-| Refine adapter | Registered in 1A (`lib/assistant/refine/adapters/retaining-wall.ts`) — type-specific consumed facts only. Masonry commercial package still MINIMAL. |
+| Refine adapter | Registered in 1A (`lib/assistant/refine/adapters/retaining-wall.ts`) — type-specific consumed facts only. Masonry commercial maturity **2B LOCAL**. |
 | Clarify policy | **HARD_MINIMUM** for length, height (or high+low), material via existing Clarify/readiness |
 
 Core estimate readiness:
@@ -513,7 +529,7 @@ Labels = **priced emission**, not conceptual takeoff.
 | Work Area | What the calculator actually prices | Taxonomy |
 | --- | --- | --- |
 | deck | Decking (lm takeoff or m² package); substructure m² package; stair/balustrade/handrail **allowances**; structural takeoff may be SHADOW | hybrid DETAILED + PACKAGE_ALLOWANCE + SHADOW |
-| retaining_wall | Supported Timber: boards / H5 SED stock EA / novacoil / drainage aggregate m³ / fixings residual / task labour / plant days. Concrete Sleeper: sleeper EA / steel posts lm-or-EA / bagged post-hole concrete / novacoil / aggregate / task labour / plant days. Masonry: face-m² package fallback | Timber + Sleeper DETAILED + masonry PACKAGE_ALLOWANCE |
+| retaining_wall | Supported Timber: boards / H5 SED stock EA / novacoil / drainage aggregate m³ / fixings residual / task labour / plant days. Concrete Sleeper: sleeper EA / steel posts lm-or-EA / bagged post-hole concrete / novacoil / aggregate / task labour / plant days. Masonry: blocks EA / footing m³ / sub-base m³ / core fill m³ / waterproofing / reinforcement allowance / novacoil / aggregate / task labour / plant days | Timber + Sleeper + Masonry DETAILED |
 | bathroom | Waterproofing / tiling / fixtures / lining as **benchmark or resolved package lines**, not separate product identities | PACKAGE_ALLOWANCE |
 | kitchen | Cabinetry + benchtop + appliances / install / splashback / rangehood via `resolveRate`; remaining flooring / plumbing / electrical / package still hardcoded | PACKAGE_ALLOWANCE + remaining hardcoded related lines |
 | fence | Timber/metal **per lm package** — not posts / rails / panels | PACKAGE_ALLOWANCE |
@@ -536,7 +552,7 @@ Do not describe bathroom waterproofing/tiles/fixtures/linings, fence posts/rails
 | Work Area | CURRENT IMPLEMENTATION | Access / site | Notes |
 | --- | --- | --- | --- |
 | deck | Productivity hours + access factor | `getCombinedLabourAccessFactor` | LABOUR-CREW-01 deferred |
-| retaining_wall | Timber + Sleeper: task labour (excavation / posts or piles / face or sleepers / drainage / backfill) + per-intent access. Masonry still package hours/face m² | Access + carry per intent; excavation excludes inward carry | Volume labour uses in-place backfill m³ when detailed |
+| retaining_wall | Timber + Sleeper + Masonry: task labour (excavation / posts or piles / face or sleepers or blocks / footing / core fill / waterproofing / drainage / backfill) + per-intent access | Access + carry per intent; excavation excludes inward carry | Volume labour uses in-place backfill m³ when detailed |
 | bathroom | **Per-trade breakdown exists** (demo, carpentry/prep, fixture install, lining, coordination) | Access factor yes | Labour more mature than material |
 | kitchen | Package hours / lump labour | **Does not call `getCombinedLabourAccessFactor`** | Prior coverage claim was wrong |
 | fence | Hours per lm | Access factor yes; **`fence.slope_condition` steep/slope multiplies labour** | Terrain/slope is **partial**, not absent |
@@ -673,7 +689,7 @@ Display band is **not** the order.
 
 | Order | Work Area | Why |
 | --- | --- | --- |
-| 1 | **retaining_wall** | Timber 1F + Sleeper 2A detailed; masonry commercial **NOT STARTED** |
+| 1 | **retaining_wall** | Timber 1F + Sleeper 2A + Masonry 2B/2B-R1 (Owner final masonry approval pending) |
 | 2 | **bathroom** | Job Plan + Refine already exist; **per-trade labour** exists; material maturity can make a second reference WA |
 | 3 | **external_stairs** | Calculator already ahead of `component` band; dedicated Assistant adapter is relatively cheap |
 
@@ -731,7 +747,7 @@ Primary remaining delay: full `router.refresh()` RSC reload after canonical writ
 This R1 pass accepts the read-only audit unless code inspection disproved a claim. Inspection **confirmed at FE-0**, then **ESTIMATOR-SAFETY-0 closed**:
 
 - RW 10 m / 1.5 m defaults remain internally; normal path no longer accepts zero-input complete price
-- Timber backfill is in-place m³ × 1.25 purchase assumption; sleeper/masonry backfill remains package
+- Timber / Sleeper / Masonry backfill is in-place m³ × 1.25 purchase assumption when detailed
 - `post_spacing_m` consumed for timber pile layout and 1D stock procurement (not Clarify/Job Plan)
 - Kitchen appliances/install/splashback/rangehood now resolveRate
 - Kitchen has no shared access factor (unchanged)
@@ -751,5 +767,6 @@ This R1 pass accepts the read-only audit unless code inspection disproved a clai
 4. DECK-MATURITY-2C: **COMPLETE / COMMITTED / PREVIEW**.
 5. DECK-MATURITY-2D: **COMPLETE LOCAL / OWNER FINAL MATERIAL-RATE REVIEW PENDING**.
 6. RETAINING-WALL-MATURITY-1D / 1F (Timber detailed): **COMPLETE / OWNER APPROVED**.
-7. RETAINING-WALL-MATURITY-2A / 2A-R1 (Concrete Sleeper detailed): **COMPLETE / COMMITTED / OWNER APPROVED**. 2A-R4 system-fact isolation: **COMPLETE LOCAL / OWNER FINAL SLEEPER DEFECT REVIEW PENDING**. Masonry commercial maturity: **NOT STARTED**.
-8. Do **not** start Masonry, Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production.
+7. RETAINING-WALL-MATURITY-2A / 2A-R1 (Concrete Sleeper detailed): **COMPLETE / COMMITTED / OWNER APPROVED**. 2A-R4 system-fact isolation: **COMPLETE LOCAL / OWNER FINAL SLEEPER DEFECT REVIEW PENDING**.
+8. RETAINING-WALL-MATURITY-2B (Concrete Masonry / Besser detailed): **COMPLETE LOCAL / OWNER REVIEWED**. **2B-R1 commercial integrity lock: COMPLETE LOCAL / OWNER APPROVED IN PRINCIPLE**. **2B-R2 procurement coverage: COMPLETE LOCAL / OWNER FINAL MASONRY CLOSURE APPROVAL PENDING**.
+9. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production from 2B until Owner masonry review.

@@ -17,6 +17,7 @@ import {
   RW_FACE_BOARD_150_H4_KEY,
   RW_FACE_BOARD_200_H4_KEY,
   RW_H5_SED_POLE_KEY,
+  RW_HOUSE_PILE_125_KEY,
   RW_DRAINAGE_AGGREGATE_KEY,
   RW_NOVACOIL_KEY,
 } from "@/lib/estimate/retaining-wall-identities";
@@ -26,6 +27,17 @@ import {
   rwH5SedStockItemKey,
 } from "@/lib/estimate/retaining-wall-pile-procurement";
 import { RW_PRODUCTIVITY_KEYS } from "@/lib/estimate/retaining-wall-productivity";
+import {
+  RW_DRAINAGE_SOCK_KEY,
+  RW_DRAINAGE_SOCK_STARTER_COST_PER_LM,
+  RW_EXCAVATION_MACHINE_HOURS_KEY,
+  RW_EXCAVATION_MANUAL_HOURS_KEY,
+  RW_EXCAVATION_MACHINE_HOURS_STARTER,
+  RW_EXCAVATION_MANUAL_HOURS_STARTER,
+  retainingWallExcavationHoursStarter,
+  retainingWallExcavationProductivityKey,
+} from "@/lib/estimate/retaining-wall-family-coverage";
+import { HOUSE_PILE_BENCHMARK_COST_EX_GST } from "@/lib/estimate/house-pile-benchmarks";
 
 /**
  * Drainage metal is placed loosely / lightly consolidated, not structural fill.
@@ -55,7 +67,9 @@ export const RW_TIMBER_PLANT_TREATMENT =
   "MINI_EXCAVATOR_MACHINE_HOURS_CEIL_TO_DAYS_WHEN_MACHINE_ACCESS_ELSE_MANUAL" as const;
 
 export const RW_TIMBER_CONCRETE_TREATMENT =
-  "NOT_IN_TIMBER_PHYSICAL_MODEL" as const;
+  "CONCRETE_PLACEMENT_SEPARATE_FROM_PILE_INSTALL" as const;
+export const RW_TIMBER_CONCRETE_OWNERSHIP =
+  "POST_HOLE_BAGGED_PREMIX_MATERIAL_PLUS_SEPARATE_PLACEMENT_LABOUR" as const;
 
 export const RW_TIMBER_AUTHORITY_WITH_ALLOWANCE =
   "DETAILED_COMPONENT_AUTHORITY_WITH_ALLOWANCE" as const;
@@ -143,9 +157,40 @@ export const RW_TIMBER_1D_PRODUCTIVITY_STARTERS: Record<
     excluded: "Pile holes, spoil export, mini-excavator hire (separate plant)",
     confidence: "starter",
     crewMethod: "Carpenter/labourer attending mini-excavator",
-    plantAssumption: "Mini-excavator day when access allows; manual 1.6 h/m³ if no machine",
+    plantAssumption: "Mini-excavator day when digger access allows; manual 1.6 labour-h/m³ if no machine",
     rationale:
-      "Measured bulk cut with machine on site is attendance, not 1.6 h/m³ hand digging. Unknown volume stays a labelled face-m² EXCAVATION ALLOWANCE.",
+      "Measured bulk cut with machine on site is attendance, not 1.6 labour-h/m³ hand digging. Unknown volume stays a labelled face-m² EXCAVATION ALLOWANCE.",
+  },
+  [RW_EXCAVATION_MACHINE_HOURS_KEY]: {
+    hoursPerUnit: RW_EXCAVATION_MACHINE_HOURS_STARTER,
+    unit: "m3",
+    included: "Machine-assisted bulk excavation crew attendance",
+    excluded: "Pile holes, spoil export, mini-excavator hire (separate plant)",
+    confidence: "starter",
+    crewMethod: "Carpenter/labourer attending mini-excavator",
+    plantAssumption: "Mini-excavator when digger access allows",
+    rationale: "Shared Timber/Sleeper/Masonry machine-assisted excavation starter.",
+  },
+  [RW_EXCAVATION_MANUAL_HOURS_KEY]: {
+    hoursPerUnit: RW_EXCAVATION_MANUAL_HOURS_STARTER,
+    unit: "m3",
+    included: "Manual bulk excavation",
+    excluded: "Machine plant, pile holes",
+    confidence: "starter",
+    crewMethod: "Hand digging / barrow when no digger access",
+    plantAssumption: "None",
+    rationale: "Shared Timber/Sleeper/Masonry manual excavation starter.",
+  },
+  [RW_PRODUCTIVITY_KEYS.timberConcreteHole]: {
+    hoursPerUnit: 0.12,
+    unit: "hole",
+    included: "Mix/place/consolidate bagged premix in pile holes",
+    excluded: "Hole digging (pile install labour), plant, bulk excavation",
+    confidence: "starter",
+    crewMethod: "1 person placing premix in post holes after piles set",
+    plantAssumption: "None",
+    rationale:
+      "Separate from pile-install attendance. Matches sleeper post-hole concrete placement starter.",
   },
 };
 
@@ -160,10 +205,13 @@ export function timber1DPileHours(method: RwTimberPilingMethod): number {
 }
 
 export function timber1DExcavationHoursM3(method: RwTimberPilingMethod): number {
-  return method === RW_TIMBER_PILING_METHOD_MANUAL
-    ? RW_TIMBER_EXCAVATION_HOURS_MANUAL_M3
-    : RW_TIMBER_1D_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.excavationM3]!
-        .hoursPerUnit;
+  return retainingWallExcavationHoursStarter(method);
+}
+
+export function timber1DExcavationProductivityKey(
+  method: RwTimberPilingMethod
+): string {
+  return retainingWallExcavationProductivityKey(method);
 }
 
 const stockMaterialStarters: Record<
@@ -213,8 +261,22 @@ export const RW_TIMBER_1D_MATERIAL_STARTERS: Record<
   [RW_NOVACOIL_KEY]: {
     costPerUnit: 8.5,
     unit: "lm",
-    identity: "100 mm slotted drainage coil (novacoil)",
-    rationale: "2025/26 merchant band for 100 mm slotted drain coil, ex GST.",
+    identity: "100 mm punched / slotted drainage coil (novacoil)",
+    rationale: "2025/26 merchant band for 100 mm punched/slotted drain coil, ex GST.",
+  },
+  [RW_HOUSE_PILE_125_KEY]: {
+    costPerUnit: HOUSE_PILE_BENCHMARK_COST_EX_GST,
+    unit: "lm",
+    identity: "125×125 H5 sawn house pile — retaining post alternative",
+    rationale:
+      "Reuses Deck house-pile Quotr starter $/lm. Purchase is stock-length lm, not required lm.",
+  },
+  [RW_DRAINAGE_SOCK_KEY]: {
+    costPerUnit: RW_DRAINAGE_SOCK_STARTER_COST_PER_LM,
+    unit: "lm",
+    identity: "Drainage coil filter sock",
+    rationale:
+      "LOW-CONFIDENCE Quotr starter for filter sock $/lm when builder selects sock Yes.",
   },
   [RW_DRAINAGE_AGGREGATE_KEY]: {
     costPerUnit: 72,

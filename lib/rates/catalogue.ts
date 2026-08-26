@@ -411,7 +411,7 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.drainage.lm",
-    label: "Novacoil / drainage coil",
+    label: "Punched / slotted drainage coil (novacoil)",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
@@ -630,7 +630,7 @@ export function formatProductivityHours(
 ): string {
   if (hours == null || !Number.isFinite(hours)) return "—";
   const text = Number.isInteger(hours) ? hours.toFixed(1) : hours.toFixed(2);
-  return `${text} h/${formatRateUnit(unit)}`;
+  return `${text} labour-h/${formatRateUnit(unit)}`;
 }
 
 export function groupCatalogueByWorkArea(

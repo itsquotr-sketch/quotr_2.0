@@ -8,6 +8,13 @@ import {
   jobPlanNumber,
   jobPlanString,
 } from "@/lib/assistant/job-plan/facts";
+import {
+  RW_DIGGER_ACCESS_FACT,
+  RW_DRAINAGE_SOCK_FACT,
+  RW_PILE_MATERIAL_FACT,
+  RW_PILE_MATERIAL_H5_SED,
+  RW_PILE_MATERIAL_HOUSE_PILE_125,
+} from "@/lib/estimate/retaining-wall-family-coverage";
 import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
 import type { EstimateFact } from "@/lib/estimate/types";
 
@@ -93,6 +100,12 @@ export function RetainingWallQuickSpecEditor({
     "retaining_wall.sleeper_post_embedment_m"
   );
   const drainage = jobPlanBoolean(facts, workAreaId, "retaining_wall.drainage_required");
+  const drainageSock =
+    jobPlanString(facts, workAreaId, RW_DRAINAGE_SOCK_FACT) ?? "";
+  const pileMaterial =
+    jobPlanString(facts, workAreaId, RW_PILE_MATERIAL_FACT) ?? "";
+  const diggerAccess =
+    jobPlanString(facts, workAreaId, RW_DIGGER_ACCESS_FACT) ?? "";
   const backfill = jobPlanBoolean(facts, workAreaId, "retaining_wall.backfill_included");
   const excavation = jobPlanBoolean(
     facts,
@@ -258,10 +271,31 @@ export function RetainingWallQuickSpecEditor({
               <option value="200×50 H4">200×50 H4</option>
             </select>
           </div>
+          <div className="space-y-1">
+            <Label htmlFor={`rw-pile-material-${workAreaId}`}>Post / pile material</Label>
+            <select
+              id={`rw-pile-material-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={pileMaterial || RW_PILE_MATERIAL_H5_SED}
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: RW_PILE_MATERIAL_FACT,
+                  label: "Post / pile material",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value={RW_PILE_MATERIAL_H5_SED}>H5 SED retaining pole</option>
+              <option value={RW_PILE_MATERIAL_HOUSE_PILE_125}>
+                125×125 H5 house pile
+              </option>
+            </select>
+          </div>
           <p className="text-xs text-muted-foreground">
-            Piles stay H5 SED / pole. Changing board width recalculates face-board
-            lm from wall area. Identities are estimating selections, not a
-            structural certificate.
+            Physical post count and length stay the same — only procurement identity
+            and rate change. House pile uses stock-length $/lm; SED uses stock EA.
           </p>
         </Group>
       ) : null}
@@ -346,6 +380,32 @@ export function RetainingWallQuickSpecEditor({
             <option value="No">No</option>
           </select>
         </div>
+        {drainage === true ? (
+          <div className="space-y-1">
+            <Label htmlFor={`rw-drainage-sock-${workAreaId}`}>
+              Drain coil sock required?
+            </Label>
+            <select
+              id={`rw-drainage-sock-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={drainageSock}
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: RW_DRAINAGE_SOCK_FACT,
+                  label: "Drain coil sock",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value="">Not set</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Not sure">Not sure</option>
+            </select>
+          </div>
+        ) : null}
         <div className="space-y-1">
           <Label htmlFor={`rw-backfill-${workAreaId}`}>Backfill</Label>
           <select
@@ -388,6 +448,32 @@ export function RetainingWallQuickSpecEditor({
             <option value="No">No</option>
           </select>
         </div>
+        {excavation === true ? (
+          <div className="space-y-1">
+            <Label htmlFor={`rw-digger-access-${workAreaId}`}>
+              Can a mini excavator / digger access the work area?
+            </Label>
+            <select
+              id={`rw-digger-access-${workAreaId}`}
+              className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+              value={diggerAccess}
+              onChange={(event) =>
+                onSpecFact?.({
+                  workAreaId,
+                  key: RW_DIGGER_ACCESS_FACT,
+                  label: "Digger access",
+                  value: event.target.value,
+                  valueType: "select",
+                })
+              }
+            >
+              <option value="">Not set</option>
+              <option value="Yes">Yes</option>
+              <option value="No">No</option>
+              <option value="Not sure">Not sure</option>
+            </select>
+          </div>
+        ) : null}
         {excavation === true ? (
           <div className="space-y-1">
             <Label htmlFor={`rw-spoil-${workAreaId}`}>

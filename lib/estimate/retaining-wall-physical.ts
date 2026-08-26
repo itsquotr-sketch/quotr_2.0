@@ -32,6 +32,12 @@ import {
   RW_NOVACOIL_COMPONENT,
   RW_NOVACOIL_KEY,
 } from "@/lib/estimate/retaining-wall-identities";
+import {
+  parseDrainageSockRequired,
+  parseTimberPileMaterial,
+  RW_DRAINAGE_SOCK_COMPONENT,
+  RW_DRAINAGE_SOCK_KEY,
+} from "@/lib/estimate/retaining-wall-family-coverage";
 import { planningMaterial } from "@/lib/estimate/retaining-wall-planning";
 import {
   buildMasonryWallRequirements,
@@ -192,11 +198,11 @@ export function buildRetainingWallPhysicalModel(params: {
       planningMaterial({
         workAreaId,
         componentKey: RW_NOVACOIL_COMPONENT,
-        description: "Novacoil drainage",
+        description: "Punched / slotted drainage coil (novacoil)",
         materialKey: RW_NOVACOIL_KEY,
         identity: NOVACOIL_IDENTITY,
         category: "DRAINAGE",
-        specification: `${geometry.lengthM} lm along the wall. Net lm. No procurement allowance yet.`,
+        specification: `${geometry.lengthM} lm punched/slotted drainage coil along the wall heel.`,
         baseQuantity: geometry.lengthM,
         baseUnit: "lm",
         wasteFactor: 0,
@@ -206,6 +212,26 @@ export function buildRetainingWallPhysicalModel(params: {
         source: "retaining_wall.drainage",
       })
     );
+    const sockRequired = parseDrainageSockRequired(facts, workAreaId);
+    if (sockRequired === true) {
+      requirements.push(
+        planningMaterial({
+          workAreaId,
+          componentKey: RW_DRAINAGE_SOCK_COMPONENT,
+          description: "Drainage coil sock / filter sock",
+          materialKey: RW_DRAINAGE_SOCK_KEY,
+          category: "DRAINAGE",
+          specification: `${geometry.lengthM} lm filter sock matching installed drainage coil length.`,
+          baseQuantity: geometry.lengthM,
+          baseUnit: "lm",
+          wasteFactor: 0,
+          purchaseQuantity: geometry.lengthM,
+          purchaseUnit: "lm",
+          factKeys: keys,
+          source: "retaining_wall.drainage.sock",
+        })
+      );
+    }
   }
 
   const backfill = resolveRetainingWallBackfillIncluded({
@@ -326,6 +352,17 @@ export function buildRetainingWallPhysicalModel(params: {
           facts,
           workAreaId,
           "retaining_wall.pile_embedment_ratio"
+        ),
+        pileMaterial: parseTimberPileMaterial(facts, workAreaId),
+        holeDiameterM: getNumberFact(
+          facts,
+          workAreaId,
+          "retaining_wall.hole_diameter_m"
+        ),
+        premixBagYieldM3: getNumberFact(
+          facts,
+          workAreaId,
+          "retaining_wall.premix_bag_yield_m3"
         ),
         wasteFactor,
       },
