@@ -900,6 +900,41 @@ export function RetainingWallQuickSpecEditor({
                   }}
                 />
               </div>
+              <div className="space-y-1">
+                <Label htmlFor={`rw-hole-dia-${workAreaId}`}>
+                  Post-hole diameter (mm)
+                </Label>
+                <Input
+                  id={`rw-hole-dia-${workAreaId}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="10"
+                  placeholder="300 estimating default"
+                  defaultValue={
+                    jobPlanNumber(facts, workAreaId, "retaining_wall.hole_diameter_m") !=
+                    null
+                      ? Math.round(
+                          (jobPlanNumber(
+                            facts,
+                            workAreaId,
+                            "retaining_wall.hole_diameter_m"
+                          ) as number) * 1000
+                        )
+                      : ""
+                  }
+                  onBlur={(event) => {
+                    const mm = Number(event.target.value);
+                    if (!Number.isFinite(mm) || !(mm > 0)) return;
+                    onSpecFact?.({
+                      workAreaId,
+                      key: "retaining_wall.hole_diameter_m",
+                      label: "Post-hole diameter",
+                      value: mm / 1000,
+                      valueType: "number",
+                    });
+                  }}
+                />
+              </div>
             </>
           ) : null}
           {system === "CONCRETE_SLEEPER_WALL" ? (
@@ -947,6 +982,41 @@ export function RetainingWallQuickSpecEditor({
                       key: "retaining_wall.sleeper_post_embedment_m",
                       label: "Post embedment",
                       value: next,
+                      valueType: "number",
+                    });
+                  }}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label htmlFor={`rw-sleeper-hole-dia-${workAreaId}`}>
+                  Post-hole diameter (mm)
+                </Label>
+                <Input
+                  id={`rw-sleeper-hole-dia-${workAreaId}`}
+                  type="number"
+                  inputMode="decimal"
+                  step="10"
+                  placeholder="300 estimating default"
+                  defaultValue={
+                    jobPlanNumber(facts, workAreaId, "retaining_wall.hole_diameter_m") !=
+                    null
+                      ? Math.round(
+                          (jobPlanNumber(
+                            facts,
+                            workAreaId,
+                            "retaining_wall.hole_diameter_m"
+                          ) as number) * 1000
+                        )
+                      : ""
+                  }
+                  onBlur={(event) => {
+                    const mm = Number(event.target.value);
+                    if (!Number.isFinite(mm) || !(mm > 0)) return;
+                    onSpecFact?.({
+                      workAreaId,
+                      key: "retaining_wall.hole_diameter_m",
+                      label: "Post-hole diameter",
+                      value: mm / 1000,
                       valueType: "number",
                     });
                   }}

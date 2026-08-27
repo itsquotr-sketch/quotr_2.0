@@ -29,7 +29,7 @@ import {
   retainingWallMaterialReadiness,
 } from "@/lib/estimate/calculators/retaining-wall";
 import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
-import { getStringFact } from "@/lib/estimate/facts";
+import { getBooleanFact, getStringFact } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 const PC_SCORES: Record<string, number> = {
@@ -322,6 +322,15 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         score: 66,
       },
     ];
+    const excavationYes =
+      getBooleanFact(facts, wa.id, "retaining_wall.excavation_required") === true;
+    if (excavationYes && !factHas(input, "retaining_wall.digger_access", wa.id)) {
+      extras.push({
+        key: "retaining_wall.digger_access",
+        reason: "Mini excavator / digger access for excavation method",
+        score: 72,
+      });
+    }
     if (system === "CONCRETE_MASONRY_WALL") {
       extras.push({
         key: "retaining_wall.waterproofing_required",

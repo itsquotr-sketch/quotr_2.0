@@ -514,7 +514,7 @@ check(
     lab(ownerCalc.requirements, RW_SLEEPER_FACE_LABOUR_COMPONENT)?.productivityBasis
       .unit === "ea" &&
     lab(ownerCalc.requirements, RW_SLEEPER_CONCRETE_LABOUR_COMPONENT)?.productivityBasis
-      .unit === "hole" &&
+      .unit === "m3" &&
     lab(ownerCalc.requirements, RW_EXCAVATION_LABOUR_COMPONENT)?.productivityBasis.unit ===
       "m3"
 );
@@ -528,8 +528,12 @@ check(
 check(
   "28 Concrete placement not double-owned",
   ownerCalc.assumptions.some((row) => /CONCRETE_PLACEMENT_SEPARATE/i.test(row)) &&
-    lab(ownerCalc.requirements, RW_SLEEPER_CONCRETE_LABOUR_COMPONENT)?.productivityBasis
-      .quantity === takeoff.postCount
+    near(
+      lab(ownerCalc.requirements, RW_SLEEPER_CONCRETE_LABOUR_COMPONENT)?.productivityBasis
+        .quantity ?? 0,
+      takeoff.netConcreteM3 ?? takeoff.holeVolumeM3,
+      0.02
+    )
 );
 const plantOwner = ownerCalc.lineItems.find((item) =>
   /mini-excavator/i.test(item.label)
@@ -663,9 +667,11 @@ check(
     RW_DEFAULT_SLEEPER_FACE_HEIGHT_M === 0.2
 );
 check(
-  "E2 bag yield default 0.01 m³",
+  "E2 bag yield default 0.01 m³ from net concrete",
   takeoff.bagYieldM3 === RW_PREMIX_20KG_YIELD_M3 &&
-    takeoff.bagCount === Math.ceil(takeoff.holeVolumeM3 / RW_PREMIX_20KG_YIELD_M3 - 1e-12)
+    takeoff.netConcreteM3 != null &&
+    takeoff.bagCount ===
+      Math.ceil(takeoff.netConcreteM3 / RW_PREMIX_20KG_YIELD_M3 - 1e-12)
 );
 check(
   "E3 no sleeper waste factor invented",
@@ -842,6 +848,8 @@ check(
       ?.hoursPerUnit === 0.22 &&
     RW_SLEEPER_2A_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.sleeperConcreteHole]
       ?.hoursPerUnit === 0.12 &&
+    RW_SLEEPER_2A_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.postHoleConcreteM3]
+      ?.hoursPerUnit === 3.5 &&
     RW_SLEEPER_2A_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.sleeperPostsEa]
       ?.confidenceBand === "low"
 );
@@ -978,6 +986,7 @@ check(
 check(
   "R4-16 concrete recalculates",
   near(takeoff.holeVolumeM3, 0.478, 0.01) &&
+    near(takeoff.netConcreteM3 ?? 0, 0.478, 0.01) &&
     takeoff.bagCount === 48 &&
     (mismatchPhys.sleeperTakeoff?.holeCount ?? 0) === 16
 );

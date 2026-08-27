@@ -412,6 +412,14 @@ Do **not** start Bathroom, another Work Area, or Production from 2B-R2 until Own
 
 Shared family behaviour across all three systems: punched/slotted drainage coil identity, optional drain sock, digger access with machine/manual excavation switching (0.45 / 1.6 labour-h/m³ starters), person-hour productivity semantics, Timber house-pile alternative and post-hole concrete. Verifier: `scripts/verify-retaining-wall-family-coverage-01.ts`.
 
+**RETAINING-WALL-PHYSICAL-CORRECTNESS-R6 — POST LAYOUT + NET POST-HOLE CONCRETE (COMPLETE LOCAL / OWNER REVIEWED)**
+
+Calculation-correctness only: Timber/Sleeper end posts locked; post-hole concrete = gross cylinder − embedded post displacement → bags from net; placement productivity is `retaining_wall.post_hole_concrete.place.hours_per_m3` (labour-h/m³, Quotr starter 3.5); `retaining_wall.digger_access` is ASK_NOW when excavation applies. Verifier: `scripts/verify-retaining-wall-post-concrete-r6.ts`.
+
+**RETAINING-WALL-PHYSICAL-CORRECTNESS-R6-R1 — CONCRETE PRECISION (COMPLETE LOCAL / OWNER FINAL APPROVAL PENDING)**
+
+Procurement bags and placement labour use full-precision net (no round2 before ceil). SED Ø 162.5 mm is an explicit Quotr estimating fallback (not product metadata). House-pile sides from identity section `125x125`. Display may show 0.33 m³ while bags ceil from unrounded net.
+
 **RETAINING WALL FAMILY-CLOSURE-01 — PRODUCT-LEVEL FAMILY VALIDATION (COMPLETE / OWNER APPROVED)**
 
 **RETAINING WALL = MVP COMPLETE / FAMILY VALIDATED**

@@ -305,8 +305,8 @@ const hole = cylinderVolumeM3(0.3, 0.6);
 check("29 cylindrical hole volume exact", near(hole, Math.PI * 0.15 ** 2 * 0.6, 0.0001));
 check("30 300×600 hole ≈42.4L", near(hole * 1000, 42.4, 0.05));
 check(
-  "31 bag count uses product yield",
-  sleeper.bagCount === Math.ceil((sleeper.holeVolumeM3 ?? 0) / 0.01)
+  "31 bag count uses product yield on net concrete",
+  sleeper.bagCount === Math.ceil((sleeper.netConcreteM3 ?? 0) / 0.01)
 );
 check("32 no hardcoded three-bag falsehood", sleeper.bagCount !== 3);
 

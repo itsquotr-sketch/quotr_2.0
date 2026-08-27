@@ -131,6 +131,7 @@ const RW_PHYSICAL_ONLY_FACTS = new Set<string>([
   "retaining_wall.sleeper_post_spacing_m",
   "retaining_wall.sleeper_post_embedment_m",
   "retaining_wall.hole_diameter_m",
+  "retaining_wall.digger_access",
   "retaining_wall.premix_bag_yield_m3",
   "retaining_wall.block_series",
   "retaining_wall.block_laying_method",

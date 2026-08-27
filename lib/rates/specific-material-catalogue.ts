@@ -943,16 +943,16 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.timberConcreteHole,
-    label: "Timber post-hole concrete placement (labour-h/hole)",
+    label: "Timber post-hole concrete placement (labour-h/hole) — legacy",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "hole",
     description:
-      "Total worker-hours per hole for mix/place/consolidate bagged premix. Starter 0.12 labour-h/hole. Separate from pile install.",
+      "LEGACY hours/hole. Mature path uses Retaining wall — post-hole concrete placement (labour-h/m³). Do not reinterpret this numeric as h/m³.",
     defaultCostRate: 0.12,
-    calculatorSupport: "used_now",
+    calculatorSupport: "leftover",
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.timberPilesEa,
@@ -1006,16 +1006,30 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.sleeperConcreteHole,
-    label: "Sleeper post concrete placement (hours/hole)",
+    label: "Sleeper post concrete placement (hours/hole) — legacy",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "retaining_wall",
     workAreaLabel: "Retaining wall productivity",
     unit: "hole",
     description:
-      "Hours per hole for mix/place/consolidate. 2A starter 0.12 h/hole. Not combined with post installation. Hole digging is owned by post install + plant.",
+      "LEGACY hours/hole. Mature path uses Retaining wall — post-hole concrete placement (labour-h/m³). Do not reinterpret this numeric as h/m³.",
     defaultCostRate: 0.12,
+    calculatorSupport: "leftover",
+  }),
+  entry({
+    item_key: RW_PRODUCTIVITY_KEYS.postHoleConcreteM3,
+    label: "Retaining wall — post-hole concrete placement",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "retaining_wall",
+    workAreaLabel: "Retaining wall productivity",
+    unit: "m3",
+    description:
+      "Total person-hours required to mix/place one cubic metre of post-hole concrete. Shared Timber/Sleeper. Quotr starter 3.5 labour-h/m³ (low confidence). Company editable. Not hours/hole.",
+    defaultCostRate: 3.5,
     calculatorSupport: "used_now",
+    recommended: true,
   }),
   entry({
     item_key: RW_PRODUCTIVITY_KEYS.sleeperFaceM2,

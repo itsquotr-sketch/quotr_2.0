@@ -54,6 +54,7 @@ import {
   RW_TIMBER_PILES_LM_COMPONENT,
   isRwTimberPileStockComponent,
 } from "@/lib/estimate/retaining-wall-identities";
+import { RW_TIMBER_CONCRETE_COMPONENT } from "@/lib/estimate/retaining-wall-family-coverage";
 import {
   formatPileGroupSupporting,
   formatPileProcurementSummary,
@@ -351,10 +352,18 @@ function lineHierarchy(
     };
   }
 
-  if (item.componentKey === RW_SLEEPER_CONCRETE_COMPONENT) {
+  if (
+    item.componentKey === RW_SLEEPER_CONCRETE_COMPONENT ||
+    item.componentKey === RW_TIMBER_CONCRETE_COMPONENT
+  ) {
     return {
       supporting: item.identitySummary || spec || qtyUnit,
-      detail: null,
+      detail:
+        item.notes &&
+        item.identitySummary &&
+        item.notes !== item.identitySummary
+          ? item.notes
+          : null,
     };
   }
 
@@ -412,6 +421,7 @@ function takeoffLabel(req: MaterialRequirement): string {
   if (req.componentKey === RW_SLEEPER_POSTS_LM_COMPONENT) return "Steel post length";
   if (req.componentKey === RW_SLEEPER_POSTS_PROCURE_COMPONENT) return "Steel retaining posts";
   if (req.componentKey === RW_SLEEPER_CONCRETE_COMPONENT) return "Post-hole concrete";
+  if (req.componentKey === RW_TIMBER_CONCRETE_COMPONENT) return "Post-hole concrete";
   if (req.componentKey === RW_TIMBER_FIXINGS_COMPONENT) return "Fixings / connectors";
   if (req.componentKey === RW_SLEEPER_FIXINGS_COMPONENT) return "Sleeper connectors";
   if (req.componentKey === RW_MASONRY_BLOCKS_COMPONENT) return "Concrete masonry blocks";

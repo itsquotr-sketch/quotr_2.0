@@ -184,13 +184,24 @@ export const RW_TIMBER_1D_PRODUCTIVITY_STARTERS: Record<
   [RW_PRODUCTIVITY_KEYS.timberConcreteHole]: {
     hoursPerUnit: 0.12,
     unit: "hole",
-    included: "Mix/place/consolidate bagged premix in pile holes",
-    excluded: "Hole digging (pile install labour), plant, bulk excavation",
+    included: "LEGACY — mix/place bagged premix per hole (superseded by m³ key)",
+    excluded: "Hole digging, plant, bulk excavation",
     confidence: "starter",
-    crewMethod: "1 person placing premix in post holes after piles set",
+    crewMethod: "Legacy h/hole — not consumed as m³ authority",
     plantAssumption: "None",
     rationale:
-      "Separate from pile-install attendance. Matches sleeper post-hole concrete placement starter.",
+      "Legacy starter retained for catalogue identity only. Mature path uses retaining_wall.post_hole_concrete.place.hours_per_m3.",
+  },
+  [RW_PRODUCTIVITY_KEYS.postHoleConcreteM3]: {
+    hoursPerUnit: 3.5,
+    unit: "m3",
+    included: "Mix/place/consolidate bagged premix into post holes after posts set",
+    excluded: "Hole digging, post setting, plant, bulk excavation",
+    confidence: "starter",
+    crewMethod: "1 person mixing and placing bagged premix",
+    plantAssumption: "None",
+    rationale:
+      "LOW-CONFIDENCE QUOTR STARTER. Person-hours per m³ net placed concrete. Not converted from legacy h/hole. Company/Project exact overrides.",
   },
 };
 

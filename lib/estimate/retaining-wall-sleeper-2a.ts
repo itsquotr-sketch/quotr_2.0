@@ -131,14 +131,26 @@ export const RW_SLEEPER_2A_PRODUCTIVITY_STARTERS: Record<
   [RW_PRODUCTIVITY_KEYS.sleeperConcreteHole]: {
     hoursPerUnit: 0.12,
     unit: "hole",
-    included: "Mix/place bagged concrete, basic consolidation, strike off at post hole",
+    included: "LEGACY — mix/place bagged concrete per hole (superseded by m³ key)",
+    excluded: "Hole excavation, post setting, sleeper install, bulk excavation, plant",
+    confidence: "starter",
+    confidenceBand: "low",
+    crewMethod: "Legacy h/hole — not consumed as m³ authority",
+    plantAssumption: "None",
+    rationale:
+      "Legacy starter retained for catalogue identity only. Mature path uses retaining_wall.post_hole_concrete.place.hours_per_m3.",
+  },
+  [RW_PRODUCTIVITY_KEYS.postHoleConcreteM3]: {
+    hoursPerUnit: 3.5,
+    unit: "m3",
+    included: "Mix/place bagged concrete, basic consolidation at post holes",
     excluded: "Hole excavation, post setting, sleeper install, bulk excavation, plant",
     confidence: "starter",
     confidenceBand: "low",
     crewMethod: "1 person with bagged premix at already-set posts",
     plantAssumption: "None — hand mix/place",
     rationale:
-      "A 300 mm post hole is a small pour. ~7 min/hole covers mix, place, and consolidate. Not combined with post-install hours.",
+      "LOW-CONFIDENCE QUOTR STARTER. Shared Timber/Sleeper person-hours per m³ net placed. Not converted from legacy h/hole.",
   },
   [RW_PRODUCTIVITY_KEYS.sleeperSleepersEa]: {
     hoursPerUnit: 0.22,

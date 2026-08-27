@@ -75,7 +75,7 @@ export function formatTimberLabourModifierCopy(params: {
       `Restricted hours ${formatPercentAddend(parts.hoursAddend)}`
     );
   }
-  const driver = `${params.quantity} ${params.unit} × ${params.hoursPerUnit} h/${params.unit} = ${params.baseHours} base hrs`;
+  const driver = `${params.quantity} ${params.unit} × ${params.hoursPerUnit} labour-h/${params.unit === "m3" ? "m³" : params.unit} = ${params.baseHours} base hrs`;
   if (reasons.length === 0 || params.baseHours === params.adjustedHours) {
     return driver;
   }
@@ -105,7 +105,7 @@ export function formatTimberLabourCompactCopy(params: {
                 ? "m²"
                 : params.unit;
   const rateUnit = params.unit === "ea" ? "ea" : params.unit === "m3" ? "m³" : params.unit;
-  const driver = `${params.quantity}${unitDriver === "piles" ? " piles" : ` ${unitDriver}`} × ${params.hoursPerUnit}h/${rateUnit}`;
+  const driver = `${params.quantity}${unitDriver === "piles" ? " piles" : ` ${unitDriver}`} × ${params.hoursPerUnit} labour-h/${rateUnit}`;
   const parts = getLabourAdjustmentParts(params.constraints);
   const reasons: string[] = [];
   if (parts.accessAddend > 0) {
@@ -254,14 +254,20 @@ export function formatSleeperConcreteCopy(params: {
   volumeM3: number;
   bagCount: number | null;
   unitCost: number | null;
+  grossHoleVolumeM3?: number | null;
+  postDisplacementM3?: number | null;
 }): { supporting: string; secondary: string | null } {
   const bags =
     params.bagCount != null
       ? `${params.bagCount} bags${params.unitCost != null ? ` · $${params.unitCost}/bag` : ""}`
       : null;
+  const secondary =
+    params.grossHoleVolumeM3 != null && params.postDisplacementM3 != null
+      ? `Gross holes ${round2(params.grossHoleVolumeM3)} m³ · less post displacement ${round2(params.postDisplacementM3)} m³ · net placed ${round2(params.volumeM3)} m³`
+      : null;
   return {
     supporting: `${round2(params.volumeM3)} m³ required${bags ? ` · ${bags}` : ""}`,
-    secondary: null,
+    secondary,
   };
 }
 

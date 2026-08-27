@@ -604,6 +604,8 @@ export function formatRateUnit(unit: string): string {
   switch (unit) {
     case "m2":
       return "m²";
+    case "m3":
+      return "m³";
     case "lm":
       return "lm";
     case "hour":

@@ -11,10 +11,14 @@ export const RW_PRODUCTIVITY_KEYS = {
   backfillM3: "retaining_wall.backfill.hours_per_m3",
   drainageLm: "retaining_wall.drainage.install.hours_per_lm",
   timberPilesEa: "retaining_wall.timber.piles.install.hours_per_ea",
+  /** @deprecated Legacy h/hole — do not use as m³ authority. Prefer postHoleConcreteM3. */
   timberConcreteHole: "retaining_wall.timber.concrete.place.hours_per_hole",
   timberFaceM2: "retaining_wall.timber.face_boards.install.hours_per_m2",
   sleeperPostsEa: "retaining_wall.sleeper.posts.install.hours_per_ea",
+  /** @deprecated Legacy h/hole — do not use as m³ authority. Prefer postHoleConcreteM3. */
   sleeperConcreteHole: "retaining_wall.sleeper.concrete.place.hours_per_hole",
+  /** Shared Timber/Sleeper post-hole concrete placement — labour-h / m³ net placed. */
+  postHoleConcreteM3: "retaining_wall.post_hole_concrete.place.hours_per_m3",
   sleeperFaceM2: "retaining_wall.sleeper.sleepers.install.hours_per_m2",
   sleeperSleepersEa: "retaining_wall.sleeper.sleepers.install.hours_per_ea",
   masonrySubbaseM2: "retaining_wall.masonry.subbase.compact.hours_per_m2",
@@ -43,6 +47,7 @@ export const RW_PRODUCTIVITY_UNITS: Record<
   [RW_PRODUCTIVITY_KEYS.timberFaceM2]: "m2",
   [RW_PRODUCTIVITY_KEYS.sleeperPostsEa]: "ea",
   [RW_PRODUCTIVITY_KEYS.sleeperConcreteHole]: "hole",
+  [RW_PRODUCTIVITY_KEYS.postHoleConcreteM3]: "m3",
   [RW_PRODUCTIVITY_KEYS.sleeperFaceM2]: "m2",
   [RW_PRODUCTIVITY_KEYS.sleeperSleepersEa]: "ea",
   [RW_PRODUCTIVITY_KEYS.masonrySubbaseM2]: "m2",

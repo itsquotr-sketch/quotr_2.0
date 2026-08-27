@@ -72,6 +72,7 @@ import {
   isPricedMaterialRequirement,
 } from "@/lib/estimate/requirement-commercial-line";
 import { RW_EXCAVATION_LABOUR_COMPONENT, RW_EXCAVATION_SUBCONTRACT_COMPONENT, RW_FACE_AREA_COMPONENT, RW_SPOIL_DISPOSAL_COMPONENT, RW_BACKFILL_COMPONENT, RW_TIMBER_BOARDS_COMPONENT, RW_TIMBER_FIXINGS_COMPONENT } from "@/lib/estimate/retaining-wall-identities";
+import { RW_TIMBER_CONCRETE_COMPONENT } from "@/lib/estimate/retaining-wall-family-coverage";
 import { RW_SPOIL_REMOVAL_EXCEEDS_MEASURED } from "@/lib/estimate/retaining-wall-spoil-removal";
 import { RW_SLEEPER_DESIGN_CONFIRM, RW_SLEEPER_MODULE_MISMATCH } from "@/lib/estimate/retaining-wall-sleeper-2a";
 import {
@@ -124,6 +125,7 @@ export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
   "retaining_wall.surcharge",
   "retaining_wall.surcharge_type",
   "retaining_wall.excavation_required",
+  "retaining_wall.digger_access",
   "retaining_wall.excavation_method",
   "retaining_wall.excavation_volume_m3",
   "retaining_wall.drainage_required",
@@ -806,11 +808,28 @@ export function calculateRetainingWall(
         } else if (requirement.componentKey === "retaining_wall.sleeper.posts.procure") {
           notes = requirement.specification ?? undefined;
         } else if (requirement.componentKey === "retaining_wall.sleeper.hole_concrete") {
-          notes = formatSleeperConcreteCopy({
-            volumeM3: physical.sleeperTakeoff?.holeVolumeM3 ?? requirement.baseQuantity,
-            bagCount: physical.sleeperTakeoff?.bagCount ?? requirement.purchaseQuantity,
+          const concreteCopy = formatSleeperConcreteCopy({
+            volumeM3:
+              physical.sleeperTakeoff?.netConcreteM3 ?? requirement.baseQuantity,
+            bagCount:
+              physical.sleeperTakeoff?.bagCount ?? requirement.purchaseQuantity,
             unitCost: requirement.unitCost,
-          }).supporting;
+            grossHoleVolumeM3: physical.sleeperTakeoff?.grossHoleVolumeM3,
+            postDisplacementM3: physical.sleeperTakeoff?.postDisplacementM3,
+          });
+          notes = concreteCopy.secondary ?? concreteCopy.supporting;
+          identitySummary = concreteCopy.supporting;
+        } else if (requirement.componentKey === RW_TIMBER_CONCRETE_COMPONENT) {
+          const concreteCopy = formatSleeperConcreteCopy({
+            volumeM3:
+              physical.timberPiles?.netConcreteM3 ?? requirement.baseQuantity,
+            bagCount: physical.timberPiles?.bagCount ?? requirement.purchaseQuantity,
+            unitCost: requirement.unitCost,
+            grossHoleVolumeM3: physical.timberPiles?.grossHoleVolumeM3,
+            postDisplacementM3: physical.timberPiles?.postDisplacementM3,
+          });
+          notes = concreteCopy.secondary ?? concreteCopy.supporting;
+          identitySummary = concreteCopy.supporting;
         } else if (requirement.componentKey === RW_MASONRY_BLOCKS_COMPONENT) {
           const isSubSupplyPlaceholder = /subcontract supply placeholder/i.test(
             requirement.specification ?? ""

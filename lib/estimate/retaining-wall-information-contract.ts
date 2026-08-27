@@ -282,7 +282,18 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       physical: true,
       commercial: false,
       confidence: false,
-      reason: "Post-hole diameter for sleeper concrete. Default 300 mm estimating geometry.",
+      reason:
+        "Post-hole diameter for Timber and Sleeper bagged concrete. Default 300 mm estimating geometry. Editable in Edit Scope.",
+    },
+    {
+      factKey: "retaining_wall.digger_access",
+      questionClass: "ASK_NOW",
+      calculatorConsumed: true,
+      physical: false,
+      commercial: true,
+      confidence: true,
+      reason:
+        "ASK_NOW when excavation applies. Yes → machine-assisted excavation/plant; No → manual. Not sure uses disclosed site_access inference.",
     },
     {
       factKey: "retaining_wall.premix_bag_yield_m3",

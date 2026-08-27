@@ -15,6 +15,10 @@ import {
   type RetainingWallGeometry,
 } from "@/lib/estimate/retaining-wall-geometry";
 import {
+  buildSleeperPostHoleConcrete,
+  type PostDisplacementKind,
+} from "@/lib/estimate/retaining-wall-post-hole-concrete";
+import {
   CONCRETE_SLEEPER_IDENTITY,
   RW_CONCRETE_SLEEPER_KEY,
   RW_SLEEPER_COMPONENT,
@@ -72,10 +76,16 @@ export type SleeperWallTakeoff = {
   totalPostLengthM: number;
   holeVolumeM3: number;
   holeVolumeL: number;
+  grossHoleVolumeM3: number;
+  postDisplacementM3: number;
+  netConcreteM3: number;
+  netConcreteDisplayM3: number;
   holeDiameterM: number;
   holeCount: number;
   bagCount: number | null;
   bagYieldM3: number;
+  displacementKind: PostDisplacementKind;
+  displacementDisclosure: string | null;
   /** Purchased sleeper unit length (or explicit post-centre module). */
   targetSpacingM: number;
   /** Standard full-bay width (= module). Not L / bayCount even-split. */
@@ -210,14 +220,22 @@ export function sleeperWallTakeoff(
     inputs.holeDiameterM != null && inputs.holeDiameterM > 0
       ? inputs.holeDiameterM
       : RETAINING_WALL_DEFAULT_HOLE_DIAMETER_M;
-  const holeVolumeM3 = positions.reduce((sum, x, index) => {
+  const embedmentLengthsM = positions.map((x, index) => {
     const above = heightAtX(geometry.lengthM, geometry.h1M, geometry.h2M, x);
     const length = postLengthsM[index] ?? 0;
     const embed = Math.max(length - above, 0);
-    const depth =
-      embed > 0 ? embed : above * RETAINING_WALL_SLEEPER_EMBEDMENT_RATIO;
-    return sum + cylinderVolumeM3(diameter, depth);
-  }, 0);
+    return embed > 0 ? embed : above * RETAINING_WALL_SLEEPER_EMBEDMENT_RATIO;
+  });
+  const bagYieldM3 =
+    inputs.premixBagYieldM3 != null && inputs.premixBagYieldM3 > 0
+      ? inputs.premixBagYieldM3
+      : RW_PREMIX_20KG_YIELD_M3;
+  const concrete = buildSleeperPostHoleConcrete({
+    holeDiameterM: diameter,
+    embedmentLengthsM,
+    bagYieldM3,
+    steelCrossSectionAreaM2: null,
+  });
   const coverageEa = round2(
     geometry.faceAreaM2 / (sleeperLengthM * sleeperFaceHeightM)
   );
@@ -255,12 +273,6 @@ export function sleeperWallTakeoff(
     0
   );
   const purchaseEa = standardSleeperEa + cutSleeperEa;
-  const bagYieldM3 =
-    inputs.premixBagYieldM3 != null && inputs.premixBagYieldM3 > 0
-      ? inputs.premixBagYieldM3
-      : RW_PREMIX_20KG_YIELD_M3;
-  const bagCount =
-    bagYieldM3 > 0 ? Math.ceil(holeVolumeM3 / bagYieldM3 - 1e-12) : null;
 
   return {
     sleeperCount: purchaseEa,
@@ -276,12 +288,18 @@ export function sleeperWallTakeoff(
     postCount: postCountValue,
     postLengthsM,
     totalPostLengthM: round2(postLengthsM.reduce((sum, n) => sum + n, 0)),
-    holeVolumeM3: round2(holeVolumeM3 * 10000) / 10000,
-    holeVolumeL: round2(holeVolumeM3 * 1000),
+    holeVolumeM3: concrete.grossHoleVolumeM3,
+    holeVolumeL: round2(concrete.netConcreteM3 * 1000),
+    grossHoleVolumeM3: concrete.grossHoleVolumeM3,
+    postDisplacementM3: concrete.postDisplacementM3,
+    netConcreteM3: concrete.netConcreteM3,
+    netConcreteDisplayM3: concrete.netConcreteDisplayM3,
     holeDiameterM: diameter,
     holeCount: positions.length,
-    bagCount,
+    bagCount: concrete.bagCount > 0 ? concrete.bagCount : null,
     bagYieldM3,
+    displacementKind: concrete.displacementKind,
+    displacementDisclosure: concrete.displacementDisclosure,
     targetSpacingM,
     actualSpacingM,
     spacingAssumed,
@@ -421,11 +439,14 @@ export function buildSleeperWallRequirements(params: {
     );
   }
 
-  if (takeoff.postCount != null && takeoff.holeVolumeM3 > 0) {
+  if (takeoff.postCount != null && takeoff.netConcreteM3 > 0) {
     const holeSpec =
       takeoff.bagCount != null
-        ? `${takeoff.holeVolumeM3} m³ required (${takeoff.holeVolumeL} L, ${takeoff.holeCount} holes) → ${takeoff.bagCount} bags.`
-        : `${takeoff.holeVolumeM3} m³ required (${takeoff.holeVolumeL} L, ${takeoff.holeCount} holes).`;
+        ? `${takeoff.netConcreteDisplayM3} m³ net placed (${round2(takeoff.grossHoleVolumeM3)} m³ gross − ${round2(takeoff.postDisplacementM3)} m³ post displacement, ${takeoff.holeCount} holes) → ${takeoff.bagCount} bags.`
+        : `${takeoff.netConcreteDisplayM3} m³ net placed (${takeoff.holeCount} holes).`;
+    if (takeoff.displacementDisclosure) {
+      assumptions.push(takeoff.displacementDisclosure);
+    }
 
     requirements.push(
       planningMaterial({
@@ -436,11 +457,11 @@ export function buildSleeperWallRequirements(params: {
         identity: premix20kgIdentity(),
         category: "CONCRETE",
         specification: holeSpec,
-        baseQuantity: takeoff.holeVolumeM3,
+        baseQuantity: takeoff.netConcreteM3,
         baseUnit: "m3",
         wasteFactor: 0,
         purchaseQuantity:
-          takeoff.bagCount != null ? takeoff.bagCount : takeoff.holeVolumeM3,
+          takeoff.bagCount != null ? takeoff.bagCount : takeoff.netConcreteM3,
         purchaseUnit: takeoff.bagCount != null ? "bag" : "m3",
       })
     );

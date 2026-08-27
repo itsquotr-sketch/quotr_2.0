@@ -10,11 +10,14 @@ import {
   RETAINING_WALL_DEFAULT_PILE_SPACING_M,
   RETAINING_WALL_PILE_SPACING_KIND,
   RETAINING_WALL_TIMBER_EMBEDMENT_RATIO,
-  cylinderVolumeM3,
   heightAtX,
   timberPileLayout,
   type RetainingWallGeometry,
 } from "@/lib/estimate/retaining-wall-geometry";
+import {
+  buildTimberPostHoleConcrete,
+  type PostDisplacementKind,
+} from "@/lib/estimate/retaining-wall-post-hole-concrete";
 import {
   H5_SED_POLE_IDENTITY,
   HOUSE_PILE_125_RW_IDENTITY,
@@ -73,10 +76,19 @@ export type TimberPileTakeoff = {
     | typeof RW_PILE_MATERIAL_H5_SED
     | typeof RW_PILE_MATERIAL_HOUSE_PILE_125;
   holeDiameterM: number;
+  /** @deprecated Prefer grossHoleVolumeM3 / netConcreteM3 — kept as gross for older readers. */
   holeVolumeM3: number;
+  grossHoleVolumeM3: number;
+  postDisplacementM3: number;
+  /** Full-precision net — bags and labour authority. */
+  netConcreteM3: number;
+  /** Display-only round2(net); must not drive bags/labour. */
+  netConcreteDisplayM3: number;
   holeCount: number;
   bagCount: number;
   bagYieldM3: number;
+  displacementKind: PostDisplacementKind;
+  displacementDisclosure: string | null;
 };
 
 export function timberPileTakeoff(
@@ -114,14 +126,12 @@ export function timberPileTakeoff(
     inputs.premixBagYieldM3 != null && inputs.premixBagYieldM3 > 0
       ? inputs.premixBagYieldM3
       : RW_PREMIX_20KG_YIELD_M3;
-  const holeVolumeM3 = round2(
-    embedmentLengthsM.reduce(
-      (sum, depth) => sum + cylinderVolumeM3(holeDiameterM / 2, depth),
-      0
-    )
-  );
-  const bagCount =
-    holeVolumeM3 > 0 ? Math.ceil(holeVolumeM3 / bagYieldM3 - 1e-9) : 0;
+  const concrete = buildTimberPostHoleConcrete({
+    holeDiameterM,
+    embedmentLengthsM,
+    pileMaterial: inputs.pileMaterial,
+    bagYieldM3,
+  });
   return {
     count: layout.pileCount,
     spacingM: targetSpacingM,
@@ -138,10 +148,16 @@ export function timberPileTakeoff(
     totalLengthM: round2(lengthsM.reduce((sum, n) => sum + n, 0)),
     pileMaterial: inputs.pileMaterial,
     holeDiameterM,
-    holeVolumeM3,
+    holeVolumeM3: concrete.grossHoleVolumeM3,
+    grossHoleVolumeM3: concrete.grossHoleVolumeM3,
+    postDisplacementM3: concrete.postDisplacementM3,
+    netConcreteM3: concrete.netConcreteM3,
+    netConcreteDisplayM3: concrete.netConcreteDisplayM3,
     holeCount: layout.pileCount,
-    bagCount,
+    bagCount: concrete.bagCount,
     bagYieldM3,
+    displacementKind: concrete.displacementKind,
+    displacementDisclosure: concrete.displacementDisclosure,
   };
 }
 
@@ -200,10 +216,13 @@ export function buildTimberWallRequirements(params: {
       "House pile selected — 125×125 H5 sawn square pile identity. Physical post count and required length unchanged; procurement uses stock-length $/lm."
     );
   }
-  if (piles.holeVolumeM3 > 0) {
+  if (piles.netConcreteM3 > 0 || piles.grossHoleVolumeM3 > 0) {
     assumptions.push(
-      `Post-hole concrete: ${piles.holeCount} holes × ${round2(piles.holeDiameterM * 1000)} mm diameter × embedment depth. ${piles.bagCount} bags at ${piles.bagYieldM3} m³/bag yield. Placement labour is separate from pile install.`
+      `Post-hole concrete: ${piles.holeCount} holes × ${round2(piles.holeDiameterM * 1000)} mm Ø. Gross ${round2(piles.grossHoleVolumeM3)} m³ − post displacement ${round2(piles.postDisplacementM3)} m³ = net ${piles.netConcreteDisplayM3} m³ → ${piles.bagCount} bags at ${piles.bagYieldM3} m³/bag. Placement labour is separate from pile install.`
     );
+    if (piles.displacementDisclosure) {
+      assumptions.push(piles.displacementDisclosure);
+    }
   }
 
   const common = {
@@ -266,9 +285,9 @@ export function buildTimberWallRequirements(params: {
         materialKey: RW_SLEEPER_PREMIX_20KG_KEY,
         identity: premix20kgIdentity(),
         category: "CONCRETE",
-        specification: `${piles.holeVolumeM3} m³ in ${piles.holeCount} pile holes (${round2(piles.holeDiameterM * 1000)} mm Ø × embedment). ${piles.bagCount} × 20 kg bags at ${piles.bagYieldM3} m³/bag.`,
-        baseQuantity: piles.bagCount,
-        baseUnit: "bag",
+        specification: `${piles.netConcreteDisplayM3} m³ net placed (${round2(piles.grossHoleVolumeM3)} m³ gross − ${round2(piles.postDisplacementM3)} m³ post displacement) in ${piles.holeCount} holes (${round2(piles.holeDiameterM * 1000)} mm Ø). ${piles.bagCount} × 20 kg bags at ${piles.bagYieldM3} m³/bag.`,
+        baseQuantity: piles.netConcreteM3,
+        baseUnit: "m3",
         wasteFactor: 0,
         purchaseQuantity: piles.bagCount,
         purchaseUnit: "bag",
