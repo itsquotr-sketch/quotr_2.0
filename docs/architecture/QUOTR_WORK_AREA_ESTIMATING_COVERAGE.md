@@ -404,6 +404,26 @@ Block **net** = physical face × 12.5. Block **purchase** = `ceil(net × 1.05)` 
 
 Do **not** start Bathroom, another Work Area, or Production from 2B-R2 until Owner final masonry closure approval.
 
+**RETAINING WALL FAMILY-COVERAGE-01 — SHARED TIMBER / SLEEPER / MASONRY COVERAGE (COMPLETE / COMMITTED / PREVIEW)**
+
+Shared family behaviour across all three systems: punched/slotted drainage coil identity, optional drain sock, digger access with machine/manual excavation switching (0.45 / 1.6 labour-h/m³ starters), person-hour productivity semantics, Timber house-pile alternative and post-hole concrete. Verifier: `scripts/verify-retaining-wall-family-coverage-01.ts`.
+
+**RETAINING WALL FAMILY-CLOSURE-01 — PRODUCT-LEVEL FAMILY VALIDATION (COMPLETE / OWNER APPROVED)**
+
+**RETAINING WALL = MVP COMPLETE / FAMILY VALIDATED**
+
+Supported systems:
+
+| System | Status |
+| --- | --- |
+| Timber retaining wall | MVP MATURE / OWNER VALIDATED |
+| Concrete sleeper retaining wall | MVP MATURE / OWNER VALIDATED |
+| Concrete masonry / Besser block retaining wall | MVP MATURE / OWNER VALIDATED |
+
+Product-level closure validates: system selection UX, shared fact ownership, system-specific isolation, material/labour/plant/spoil completeness, wall-type switching matrix, commercial authority (package/detail XOR), Pricing/Quote parity, productivity semantics, Builder Review hierarchy, and integrated regression. Verifier: `scripts/verify-retaining-wall-family-closure-01.ts`.
+
+This is a **closed mature Work Area**. Reopen only for real defects, material commercial gaps from user testing, or calibration from contractor data — not speculative refinement.
+
 **CURRENT IMPLEMENTATION (ESTIMATOR-SAFETY-0)**
 
 | Layer | Status |

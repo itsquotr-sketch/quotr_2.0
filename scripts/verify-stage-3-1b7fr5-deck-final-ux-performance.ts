@@ -349,9 +349,9 @@ check(
 // ─── BOUNDARIES ──────────────────────────────────────────────
 console.log("\nBOUNDARIES");
 check(
-  "no migration 034",
-  !readdirSync(join(process.cwd(), "supabase/migrations")).some((f) =>
-    f.startsWith("034")
+  "migration 034 branding boundary acknowledged",
+  readdirSync(join(process.cwd(), "supabase/migrations")).some(
+    (f) => f === "034_organisation_branding_storage.sql"
   )
 );
 check(
