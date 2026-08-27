@@ -57,6 +57,7 @@ import {
   detailedLabour,
   detailedMoneyMaterials,
   detailedPlant,
+  retainingWallMasonryDetailedDisplay,
 } from "@/lib/estimate/retaining-wall-commercial";
 import {
   resolveRetainingWallBackfillIncluded,
@@ -77,7 +78,9 @@ import {
   RW_MASONRY_DESIGN_CONFIRM,
   RW_MASONRY_MORTAR_COMPONENT,
   RW_MASONRY_MORTAR_PERCENT_OF_BLOCKS,
+  RW_MASONRY_MORTAR_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
   RW_MASONRY_REBAR_ALLOWANCE_COMPONENT,
+  RW_MASONRY_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
 } from "@/lib/estimate/retaining-wall-masonry-2b";
 import { detailedTimberLabourFromCost, RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER } from "@/lib/estimate/retaining-wall-timber-1d";
 import {
@@ -97,6 +100,7 @@ import {
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import {
   RW_MASONRY_BLOCKS_COMPONENT,
+  RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT,
   RW_MASONRY_CORE_COMPONENT,
   RW_MASONRY_FOOTING_COMPONENT,
   RW_MASONRY_SUBBASE_COMPONENT,
@@ -138,6 +142,7 @@ export const RETAINING_WALL_CALCULATOR_CONSUMED_FACTS = [
   "retaining_wall.premix_bag_yield_m3",
   "retaining_wall.block_series",
   "retaining_wall.block_laying_method",
+  "retaining_wall.masonry.subcontract_scope",
   "retaining_wall.footing_width_m",
   "retaining_wall.footing_depth_m",
   "retaining_wall.vertical_starter_spacing_m",
@@ -421,7 +426,18 @@ export function calculateRetainingWall(
     constraints: context.constraints,
   });
   const detailed =
-    commercial.mode === "DETAILED_COMPONENT_AUTHORITY";
+    commercial.mode === "DETAILED_COMPONENT_AUTHORITY" ||
+    retainingWallMasonryDetailedDisplay({
+      physical,
+      mode: commercial.mode,
+      physicalMode: commercial.physicalMode,
+      lifecycle: commercial.lifecycle,
+      blockLayingMethod: getStringFact(
+        facts,
+        workArea.id,
+        "retaining_wall.block_laying_method"
+      ),
+    });
   const drainageScope = resolveRetainingWallDrainageIncluded({
     facts,
     workAreaId: workArea.id,
@@ -794,12 +810,19 @@ export function calculateRetainingWall(
             unitCost: requirement.unitCost,
           }).supporting;
         } else if (requirement.componentKey === RW_MASONRY_BLOCKS_COMPONENT) {
+          const isSubSupplyPlaceholder = /subcontract supply placeholder/i.test(
+            requirement.specification ?? ""
+          );
           const rateLabel =
             requirement.rateSource === "company" ||
             requirement.rateSource === "project_override"
-              ? "Company rate"
+              ? isSubSupplyPlaceholder
+                ? "Placeholder"
+                : "Company rate"
               : requirement.rateSource === "benchmark"
-                ? "Quotr starter"
+                ? isSubSupplyPlaceholder
+                  ? "Placeholder"
+                  : "Quotr starter"
                 : null;
           const compact = formatMasonryBlockCompactCopy({
             series: physical.masonryTakeoff?.series?.series ?? null,
@@ -811,18 +834,58 @@ export function calculateRetainingWall(
             unitCost: requirement.unitCost,
             rateLabel,
           });
-          notes = compact.secondary ?? compact.supporting;
+          notes = isSubSupplyPlaceholder
+            ? [
+                compact.secondary ?? compact.supporting,
+                RW_MASONRY_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            : compact.secondary ?? compact.supporting;
           identitySummary = compact.supporting;
         } else if (requirement.componentKey === RW_MASONRY_MORTAR_COMPONENT) {
+          const isSubSupplyPlaceholder = /subcontract supply placeholder/i.test(
+            requirement.specification ?? ""
+          );
           const compact = formatMasonryMortarCompactCopy({
             totalCost: requirement.totalCost,
-            basis:
-              requirement.rateSource === "company"
+            basis: isSubSupplyPlaceholder
+              ? "Subcontract supply placeholder"
+              : requirement.rateSource === "company"
                 ? "Company allowance"
                 : `${Math.round(RW_MASONRY_MORTAR_PERCENT_OF_BLOCKS * 100)}% of purchased block material`,
           });
-          notes = compact.secondary ?? undefined;
+          notes = isSubSupplyPlaceholder
+            ? [
+                compact.secondary,
+                RW_MASONRY_MORTAR_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
+              ]
+                .filter(Boolean)
+                .join(" · ")
+            : compact.secondary ?? undefined;
           identitySummary = compact.supporting;
+        } else if (
+          requirement.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT ||
+          requirement.componentKey === RW_MASONRY_WATERPROOF_SUBCONTRACT_COMPONENT ||
+          requirement.componentKey === RW_EXCAVATION_SUBCONTRACT_COMPONENT
+        ) {
+          const subLabel =
+            requirement.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT
+              ? "Masonry block laying — subcontract labour"
+              : requirement.description;
+          lineItems.push({
+            ...adaptPricedMaterialRequirementWithoutLegacy({
+              requirement,
+              workAreaName: workArea.name,
+              sortOrder: sortOrder++,
+              organisationSettings: context.organisationSettings,
+              label: subLabel,
+            }),
+            category: "subcontractor",
+            notes: requirement.specification ?? undefined,
+            identitySummary: requirement.specification ?? undefined,
+          });
+          continue;
         } else if (
           requirement.componentKey === RW_MASONRY_FOOTING_COMPONENT ||
           requirement.componentKey === RW_MASONRY_SUBBASE_COMPONENT ||
@@ -874,15 +937,28 @@ export function calculateRetainingWall(
             ? "Add a hardfill removal rate in Rates."
             : requirement.componentKey === RW_EXCAVATION_SUBCONTRACT_COMPONENT
               ? "Excavation subcontract — price required."
-              : requirement.specification ?? "Needs a trusted price.";
+              : requirement.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT
+                ? "Masonry block laying subcontract — price required."
+                : requirement.specification ?? "Needs a trusted price.";
+        const unpricedCategory =
+          requirement.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT ||
+          requirement.componentKey === RW_MASONRY_WATERPROOF_SUBCONTRACT_COMPONENT ||
+          requirement.componentKey === RW_EXCAVATION_SUBCONTRACT_COMPONENT
+            ? ("subcontractor" as const)
+            : ("materials" as const);
+        const unpricedLabel =
+          requirement.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT
+            ? "Masonry block laying — subcontract labour"
+            : requirement.description;
         lineItems.push({
           ...adaptUnpricedMaterialRequirementToEstimateLine({
             requirement,
             workAreaName: workArea.name,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
-            label: requirement.description,
+            label: unpricedLabel,
           }),
+          category: unpricedCategory,
           notes: pricingNote,
         });
       }

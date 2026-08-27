@@ -309,7 +309,17 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
       physical: false,
       commercial: false,
       confidence: false,
-      reason: "SELF_PERFORM vs SUBCONTRACT. XOR — no duplicate money.",
+      reason: "SELF_PERFORM vs SUBCONTRACT block laying only. XOR — no duplicate money.",
+    },
+    {
+      factKey: "retaining_wall.masonry.subcontract_scope",
+      questionClass: "REFINE",
+      calculatorConsumed: true,
+      physical: false,
+      commercial: true,
+      confidence: false,
+      reason:
+        "Masonry-only. When block laying is subcontract: LABOUR_ONLY vs LABOUR_AND_BLOCK_MATERIALS. Does not subcontract the whole wall.",
     },
     {
       factKey: "retaining_wall.footing_width_m",

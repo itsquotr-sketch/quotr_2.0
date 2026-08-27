@@ -386,7 +386,7 @@ export function RetainingWallQuickSpecEditor({
           </div>
           <div className="space-y-1">
             <Label htmlFor={`rw-block-method-${workAreaId}`}>
-              Block laying method
+              Blockwork delivery
             </Label>
             <select
               id={`rw-block-method-${workAreaId}`}
@@ -402,7 +402,7 @@ export function RetainingWallQuickSpecEditor({
                 onSpecFact?.({
                   workAreaId,
                   key: "retaining_wall.block_laying_method",
-                  label: "Block laying method",
+                  label: "Blockwork delivery",
                   value: event.target.value,
                   valueType: "select",
                 })
@@ -413,6 +413,45 @@ export function RetainingWallQuickSpecEditor({
               <option value="Subcontract">Subcontract</option>
             </select>
           </div>
+          {jobPlanString(
+            facts,
+            workAreaId,
+            "retaining_wall.block_laying_method"
+          )
+            ?.toLowerCase()
+            .includes("subcontract") ? (
+            <div className="space-y-1">
+              <Label htmlFor={`rw-block-sub-scope-${workAreaId}`}>
+                Subcontractor provides
+              </Label>
+              <select
+                id={`rw-block-sub-scope-${workAreaId}`}
+                className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+                value={
+                  jobPlanString(
+                    facts,
+                    workAreaId,
+                    "retaining_wall.masonry.subcontract_scope"
+                  ) ?? ""
+                }
+                onChange={(event) =>
+                  onSpecFact?.({
+                    workAreaId,
+                    key: "retaining_wall.masonry.subcontract_scope",
+                    label: "Subcontractor provides",
+                    value: event.target.value,
+                    valueType: "select",
+                  })
+                }
+              >
+                <option value="">Labour only (default)</option>
+                <option value="Labour only">Labour only</option>
+                <option value="Labour + blocks & laying materials">
+                  Labour + blocks & laying materials
+                </option>
+              </select>
+            </div>
+          ) : null}
           <div className="space-y-1">
             <Label htmlFor={`rw-footing-w-${workAreaId}`}>
               Footing width (m)

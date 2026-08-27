@@ -400,7 +400,11 @@ Reinforcement without an engineered bar schedule is **design-dependent**. Allowe
 
 **RETAINING WALL MATURITY 2B-R2 — FINAL MASONRY PROCUREMENT COVERAGE (COMPLETE LOCAL / OWNER FINAL MASONRY CLOSURE APPROVAL PENDING)**
 
-Block **net** = physical face × 12.5. Block **purchase** = `ceil(net × 1.05)` once (5% Quotr starter procurement for cuts/breakage/site loss — not org default 10% wastage). Mortar / laying consumables = explicit residual: company item allowance **or** 10% of purchased block material (low-confidence Quotr starter). Not bagged joint-volume precision. Not core fill. Not inside labour. Block-lay subcontract remains **labour-only**; builder owns blocks + mortar. R1 reinforcement lock unchanged.
+Block **net** = physical face × 12.5. Block **purchase** = `ceil(net × 1.05)` once (5% Quotr starter procurement for cuts/breakage/site loss — not org default 10% wastage). Mortar / laying consumables = explicit residual: company item allowance **or** 10% of purchased block material (low-confidence Quotr starter). Not bagged joint-volume precision. Not core fill. Not inside labour. Block-lay subcontract remains **labour-only** by default; builder owns blocks + mortar unless scope is **Labour + blocks & laying materials** (placeholder costs from company rates until subcontractor supply is confirmed). R1 reinforcement lock unchanged.
+
+**RETAINING WALL MATURITY 2B-R4 — MASONRY BLOCK-LAYING SUBCONTRACT OWNERSHIP (COMPLETE LOCAL / OWNER MASONRY SUBCONTRACT REVIEW PENDING)**
+
+Blockwork delivery: **Self-perform** XOR **Subcontract** applies **only to block laying**, not excavation, footing, core fill, waterproofing, drainage, or the whole wall. When subcontract: **Labour only** (builder supplies blocks + mortar) or **Labour + blocks & laying materials** (physical takeoff retained; block/mortar costs marked subcontract-supply placeholder from company rates). Subcontract labour rate: `retaining_wall.masonry.block_lay.subcontract` ($/face m²). Detailed masonry takeoff is preserved under subcontract — no generic `$400/face m²` package masquerading as the subcontract scope.
 
 Do **not** start Bathroom, another Work Area, or Production from 2B-R2 until Owner final masonry closure approval.
 

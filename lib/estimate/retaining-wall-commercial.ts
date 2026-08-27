@@ -170,6 +170,7 @@ import {
   RW_MASONRY_BLOCK_PROCUREMENT_DISCLOSURE,
   RW_MASONRY_BLOCK_SUBCONTRACT_BASIS,
   RW_MASONRY_BLOCK_SUBCONTRACT_KEY,
+  RW_MASONRY_BLOCK_LAYING_SUBCONTRACT_LABOUR_ONLY_KEY,
   RW_MASONRY_CORE_FILL_DISCLOSURE,
   RW_MASONRY_DESIGN_CONFIRM,
   RW_MASONRY_ENGINEERING_BOUNDARY,
@@ -180,6 +181,7 @@ import {
   RW_MASONRY_MORTAR_KIND,
   RW_MASONRY_MORTAR_METHOD,
   RW_MASONRY_MORTAR_PERCENT_OF_BLOCKS,
+  RW_MASONRY_MORTAR_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
   RW_MASONRY_PACKAGE_LIFECYCLE,
   RW_MASONRY_PLANT_COMPONENT,
   RW_MASONRY_PLANT_TREATMENT,
@@ -188,6 +190,9 @@ import {
   RW_MASONRY_REBAR_TREATMENT,
   RW_MASONRY_REINFORCEMENT_ACTION,
   RW_MASONRY_SUBBASE_DISCLOSURE,
+  RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_AND_MATERIALS,
+  RW_MASONRY_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
+  isMasonryBlockLayingSubcontract,
   RW_MASONRY_WATERPROOF_SUBCONTRACT_KEY,
   RW_REBAR_ALLOWANCE,
 } from "@/lib/estimate/retaining-wall-masonry-2b";
@@ -365,6 +370,57 @@ export function masonryPhysicalReady(
     hasTrustedPhysicalQuantity(takeoff.subbaseM3) &&
     hasTrustedPhysicalQuantity(takeoff.coreFillM3)
   );
+}
+
+/** Detailed masonry Builder Review even when package money is still authoritative. */
+export function retainingWallMasonryDetailedDisplay(params: {
+  physical: RetainingWallPhysicalModel;
+  mode: RetainingWallSystemAuthorityMode;
+  physicalMode: RetainingWallPhysicalMode;
+  lifecycle: RetainingWallPackageLifecycle;
+  blockLayingMethod: string | null;
+}): boolean {
+  if (params.mode === "DETAILED_COMPONENT_AUTHORITY") return true;
+  if (params.physical.system !== "CONCRETE_MASONRY_WALL") return false;
+  if (params.physicalMode !== "DETAILED_PHYSICAL_MODEL") return false;
+  if (!masonryPhysicalReady(params.physical)) return false;
+  if (!isMasonryBlockLayingSubcontract(params.blockLayingMethod)) return false;
+  return (
+    params.lifecycle === "DETAILED_PHYSICAL_SHADOW" ||
+    params.lifecycle === "DETAILED_COMPONENT_AUTHORITATIVE"
+  );
+}
+
+function tagMasonrySubcontractSupplyPlaceholders(
+  pricedMaterials: MaterialRequirement[],
+  masonry: NonNullable<RetainingWallPhysicalModel["masonryTakeoff"]>
+): void {
+  if (
+    !masonry.subcontractBlocks ||
+    masonry.subcontractScope !== RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_AND_MATERIALS
+  ) {
+    return;
+  }
+  const placeholderTag = "Subcontract supply placeholder";
+  for (let i = 0; i < pricedMaterials.length; i += 1) {
+    const row = pricedMaterials[i]!;
+    if (
+      row.componentKey !== RW_MASONRY_BLOCKS_COMPONENT &&
+      row.componentKey !== RW_MASONRY_MORTAR_COMPONENT
+    ) {
+      continue;
+    }
+    const disclosure =
+      row.componentKey === RW_MASONRY_BLOCKS_COMPONENT
+        ? RW_MASONRY_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE
+        : RW_MASONRY_MORTAR_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE;
+    pricedMaterials[i] = {
+      ...row,
+      specification: [row.specification, placeholderTag, disclosure]
+        .filter(Boolean)
+        .join(" · "),
+    };
+  }
 }
 
 export function decideRetainingWallPhysicalMode(
@@ -706,23 +762,37 @@ export function evaluateRetainingWallCommercialCoverage(params: {
     push("core_labour", "Core fill labour", RW_MASONRY_CORE_LABOUR_COMPONENT, "labour", true);
     push("footing_labour", "Footing labour", RW_MASONRY_FOOTING_LABOUR_COMPONENT, "labour", true);
     push("subbase_labour", "Sub-base labour", RW_MASONRY_SUBBASE_LABOUR_COMPONENT, "labour", true);
-    const blockLabour = rows.find(
-      (row) =>
-        row.componentKey === RW_MASONRY_BLOCK_LABOUR_COMPONENT ||
-        row.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT
+    const blockSub = materialOf(rows, RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT);
+    const blockLabourRow = rows.find(
+      (row): row is LabourRequirement =>
+        row.kind === "labour" &&
+        row.componentKey === RW_MASONRY_BLOCK_LABOUR_COMPONENT
     );
-    out.push(
-      cat(
-        "block_authority",
-        "Block laying labour / subcontract",
-        coverageStateFromRequirement(
-          blockLabour as MaterialRequirement | LabourRequirement | undefined,
+    if (blockSub) {
+      out.push(
+        cat(
+          "block_authority",
+          "Masonry block laying — subcontract labour",
+          coverageStateFromRequirement(blockSub, "material"),
+          true,
+          "material"
+        )
+      );
+    } else if (blockLabourRow) {
+      out.push(
+        cat(
+          "block_authority",
+          "Block laying labour",
+          coverageStateFromRequirement(blockLabourRow, "labour"),
+          true,
           "labour"
-        ),
-        true,
-        "labour"
-      )
-    );
+        )
+      );
+    } else {
+      out.push(
+        cat("block_authority", "Block laying", "NOT_APPLICABLE", false, "labour")
+      );
+    }
     out.push(cat("excavation", "Excavation", "NOT_APPLICABLE", false, "material"));
     const excavationSubcontract = materialOf(
       rows,
@@ -864,6 +934,9 @@ function priceMaterial(
   }
   if (requirement.componentKey === RW_DRAINAGE_SOCK_COMPONENT) {
     namedKeys.push(RW_DRAINAGE_SOCK_KEY);
+  }
+  if (requirement.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT) {
+    namedKeys.push(RW_MASONRY_BLOCK_LAYING_SUBCONTRACT_LABOUR_ONLY_KEY);
   }
   // Spoil removal prices only retaining_wall.spoil.removal.all_in.m3.
   // Tip-only leftover retaining_wall.spoil.disposal.m3 must not resolve it.
@@ -1561,6 +1634,7 @@ export function commercializeRetainingWall(params: {
         missingInfo.push("Masonry mortar / laying consumables");
       }
     }
+    tagMasonrySubcontractSupplyPlaceholders(pricedMaterials, masonry);
   }
 
   const labour: LabourRequirement[] = [];
@@ -1736,19 +1810,27 @@ export function commercializeRetainingWall(params: {
       "retaining_wall.block_laying_method"
     );
     if (masonry.subcontractBlocks || isSubcontractMethod(blockMethod)) {
+      const scope = masonry.subcontractScope;
+      const scopeNote =
+        scope === RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_AND_MATERIALS
+          ? "Subcontractor supplies blocks and laying materials; costs use your current material rates as estimating placeholders until a subcontractor quote is confirmed."
+          : `Labour-only subcontract (${RW_MASONRY_BLOCK_SUBCONTRACT_BASIS}). Builder still owns blocks and mortar / laying consumables.`;
       const blockSub = planningMaterial({
         workAreaId,
         componentKey: RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT,
-        description: "Block laying subcontract",
+        description: "Masonry block laying — subcontract labour",
         materialKey: RW_MASONRY_BLOCK_SUBCONTRACT_KEY,
         category: "SUBCONTRACT",
-        specification: `Labour-only subcontract (${RW_MASONRY_BLOCK_SUBCONTRACT_BASIS}). Builder still owns blocks and mortar / laying consumables. XOR self-perform labour — no duplicate labour money.`,
+        specification: `${scopeNote} XOR self-perform labour — no duplicate labour money.`,
         baseQuantity: face,
         baseUnit: "m2",
         wasteFactor: 0,
         purchaseQuantity: face,
         purchaseUnit: "m2",
-        factKeys: ["retaining_wall.block_laying_method"],
+        factKeys: [
+          "retaining_wall.block_laying_method",
+          "retaining_wall.masonry.subcontract_scope",
+        ],
         source: "retaining_wall.masonry.subcontract",
       });
       pricedMaterials.push(
@@ -1759,7 +1841,7 @@ export function commercializeRetainingWall(params: {
           (row) => row.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT
         )?.priced !== true
       ) {
-        missingInfo.push("Block laying subcontract rate");
+        missingInfo.push("Masonry block laying subcontract rate");
       }
     } else {
       labour.push(

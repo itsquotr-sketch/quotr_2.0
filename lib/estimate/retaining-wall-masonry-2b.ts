@@ -77,6 +77,48 @@ export const RW_MASONRY_MORTAR_DISCLOSURE =
 export const RW_MASONRY_BLOCK_SUBCONTRACT_BASIS =
   "LABOUR_ONLY_BUILDER_SUPPLIES_BLOCKS_AND_MORTAR" as const;
 
+/** Masonry-only fact — does not leak to Timber/Sleeper. */
+export const RW_MASONRY_SUBCONTRACT_SCOPE_FACT =
+  "retaining_wall.masonry.subcontract_scope" as const;
+
+export const RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_ONLY = "LABOUR_ONLY" as const;
+export const RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_AND_MATERIALS =
+  "LABOUR_AND_BLOCK_MATERIALS" as const;
+
+export type MasonrySubcontractScope =
+  | typeof RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_ONLY
+  | typeof RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_AND_MATERIALS;
+
+export function parseMasonrySubcontractScope(
+  raw: string | null | undefined
+): MasonrySubcontractScope {
+  const t = (raw ?? "").toLowerCase().replace(/[\s-+&]+/g, "_");
+  if (
+    t.includes("labour_and") ||
+    t.includes("blocks") ||
+    t.includes("laying_materials") ||
+    t.includes("materials")
+  ) {
+    return RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_AND_MATERIALS;
+  }
+  return RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_ONLY;
+}
+
+export function isMasonryBlockLayingSubcontract(raw: string | null | undefined): boolean {
+  const t = (raw ?? "").toLowerCase();
+  return t.includes("subcontract") || t.includes("subbie") || t === "subcontract";
+}
+
+export const RW_MASONRY_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE =
+  "Placeholder based on your current block rate — confirm subcontractor supply price.";
+
+export const RW_MASONRY_MORTAR_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE =
+  "Placeholder based on your current estimating allowance — confirm subcontractor supply price.";
+
+/** Alias documenting preferred rate identity; canonical key remains block_lay.subcontract. */
+export const RW_MASONRY_BLOCK_LAYING_SUBCONTRACT_LABOUR_ONLY_KEY =
+  "retaining_wall.masonry.block_laying.subcontract.labour_only" as const;
+
 export function masonryBlockPurchaseEa(
   netBlocks: number,
   procurementFactor: number = RW_MASONRY_BLOCK_PROCUREMENT_FACTOR
@@ -219,6 +261,14 @@ export const RW_MASONRY_2B_MATERIAL_STARTERS: Record<
     identity: "Drainage aggregate / drainage metal (purchased m³)",
     confidence: "medium",
     rationale: "Shared Timber 1D / Sleeper 2A starter — drainage metal only, not core fill or sub-base.",
+  },
+  [RW_MASONRY_BLOCK_SUBCONTRACT_KEY]: {
+    costPerUnit: 85,
+    unit: "m2",
+    identity: "Masonry block laying — subcontract labour only ($/face m²)",
+    confidence: "low",
+    rationale:
+      "LOW-CONFIDENCE QUOTR STARTER. Indicative NZ subcontract block-laying labour band $/face m² — labour only, builder supplies blocks and mortar unless scope says otherwise. Company/Project exact overrides.",
   },
 };
 

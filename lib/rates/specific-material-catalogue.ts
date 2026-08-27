@@ -1,4 +1,4 @@
-import {
+﻿import {
   DECK_BENCHMARKS,
   FITOUT_BENCHMARKS,
 } from "@/lib/estimate/benchmark-rates";
@@ -544,14 +544,14 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "retaining_wall.masonry.block_lay.subcontract",
-    label: "Block laying subcontract",
+    label: "Masonry block laying — subcontract labour only",
     rate_type: "material",
     category: "material",
     work_area_type: "retaining_wall",
     workAreaLabel: "Masonry wall",
     unit: "m2",
     description:
-      "Company/Project subcontract $/face-m² for block laying LABOUR ONLY. Builder still supplies blocks and mortar. XOR with self-perform labour. Pricing Required when unset.",
+      "Labour-only subcontract rate for laying masonry blocks ($/face m²). Materials remain builder supplied unless scope is Labour + blocks & laying materials. XOR with self-perform labour. Pricing Required when unset.",
     recommended: true,
     calculatorSupport: "used_now",
   }),

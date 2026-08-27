@@ -487,6 +487,11 @@ export function buildRetainingWallPhysicalModel(params: {
           workAreaId,
           "retaining_wall.block_laying_method"
         ),
+        subcontractScope: getStringFact(
+          facts,
+          workAreaId,
+          "retaining_wall.masonry.subcontract_scope"
+        ),
         footingWidthM: getNumberFact(
           facts,
           workAreaId,

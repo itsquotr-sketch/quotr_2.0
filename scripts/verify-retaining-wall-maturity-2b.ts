@@ -931,6 +931,8 @@ check(
   editorSrc.includes("Concrete masonry / Besser") &&
     editorSrc.includes("retaining_wall.block_series") &&
     editorSrc.includes("retaining_wall.block_laying_method") &&
+    editorSrc.includes("retaining_wall.masonry.subcontract_scope") &&
+    editorSrc.includes("Blockwork delivery") &&
     editorSrc.includes("retaining_wall.waterproofing_required")
 );
 const switchToTimber = calculateRetainingWall(
@@ -1143,6 +1145,10 @@ if (process.env.RW_SKIP_NESTED_SPAWN === "1") {
 } else {
   check("50 Sleeper RW 2A", spawnVerifier("scripts/verify-retaining-wall-maturity-2a.ts"));
   check("51 Timber RW 1F", spawnVerifier("scripts/verify-retaining-wall-maturity-1f.ts"));
+  check(
+    "51b Masonry subcontract R4",
+    spawnVerifier("scripts/verify-retaining-wall-masonry-subcontract-r4.ts")
+  );
   const deckOk =
     existsSync("scripts/verify-deck-maturity-2d.ts")
       ? spawnVerifier("scripts/verify-deck-maturity-2d.ts")

@@ -16,6 +16,11 @@ function known(
   return true;
 }
 
+function isBlockLayingSubcontract(raw: string | null | undefined): boolean {
+  const t = (raw ?? "").toLowerCase();
+  return t.includes("subcontract") || t.includes("subbie") || t === "subcontract";
+}
+
 function candidate(params: {
   workAreaId: string;
   workAreaName: string;
@@ -180,10 +185,31 @@ export const retainingWallRefineAdapter: RefineWorkAreaAdapter = {
             workAreaId,
             workAreaName,
             factKey: "retaining_wall.block_laying_method",
-            label: "Block laying",
-            question: "Self-perform or subcontract block laying?",
+            label: "Blockwork delivery",
+            question: "How will the blockwork be completed?",
             inputType: "select",
             options: ["Self-perform", "Subcontract"],
+          })
+        );
+      }
+      const blockMethod = getStringFact(
+        typedFacts,
+        workAreaId,
+        "retaining_wall.block_laying_method"
+      );
+      if (
+        isBlockLayingSubcontract(blockMethod) &&
+        !known(facts, workAreaId, "retaining_wall.masonry.subcontract_scope")
+      ) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: "retaining_wall.masonry.subcontract_scope",
+            label: "Subcontractor provides",
+            question: "What will the masonry subcontractor provide?",
+            inputType: "select",
+            options: ["Labour only", "Labour + blocks & laying materials"],
           })
         );
       }

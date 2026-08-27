@@ -239,6 +239,7 @@ function mapRwBuilderLabel(label: string): string {
   if (label === "Concrete sleeper installation") return "Sleeper installation";
   if (label === "Post-hole concrete placement") return "Post-hole concrete placement";
   if (label === "Sleeper hole concrete placement") return "Post-hole concrete placement";
+  if (label === "Block laying subcontract") return "Masonry block laying — subcontract labour";
   return label;
 }
 

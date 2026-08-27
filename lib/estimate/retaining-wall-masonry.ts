@@ -31,7 +31,11 @@ import {
 import {
   RW_MASONRY_BLOCK_PROCUREMENT_DISCLOSURE,
   RW_MASONRY_BLOCK_PROCUREMENT_FACTOR,
+  RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_ONLY,
+  isMasonryBlockLayingSubcontract,
   masonryBlockPurchaseEa,
+  parseMasonrySubcontractScope,
+  type MasonrySubcontractScope,
 } from "@/lib/estimate/retaining-wall-masonry-2b";
 import { planningMaterial } from "@/lib/estimate/retaining-wall-planning";
 
@@ -40,6 +44,7 @@ export const RW_DEFAULT_LIQUID_COVERAGE_L_PER_M2 = 1;
 export type MasonryWallInputs = {
   blockSeries: string | null;
   layingMethod: string | null;
+  subcontractScope: string | null;
   footingWidthM: number | null;
   footingDepthM: number | null;
   verticalStarterSpacingM: number | null;
@@ -62,7 +67,9 @@ export type MasonryWallTakeoff = {
   verticalStarters: number | null;
   horizontalRebarLm: number | null;
   selfPerformBlocks: boolean;
+  /** Block laying is subcontracted — not block material ownership. */
   subcontractBlocks: boolean;
+  subcontractScope: MasonrySubcontractScope;
 };
 
 function isSubcontract(raw: string | null): boolean {
@@ -112,7 +119,10 @@ export function masonryWallTakeoff(
     inputs.horizontalRebarRuns != null && inputs.horizontalRebarRuns > 0
       ? round2(geometry.lengthM * inputs.horizontalRebarRuns)
       : null;
-  const subcontractBlocks = isSubcontract(inputs.layingMethod);
+  const subcontractBlocks = isMasonryBlockLayingSubcontract(inputs.layingMethod);
+  const subcontractScope: MasonrySubcontractScope = subcontractBlocks
+    ? parseMasonrySubcontractScope(inputs.subcontractScope)
+    : RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_ONLY;
 
   return {
     series,
@@ -127,6 +137,7 @@ export function masonryWallTakeoff(
     horizontalRebarLm,
     selfPerformBlocks: !subcontractBlocks,
     subcontractBlocks,
+    subcontractScope,
   };
 }
 
