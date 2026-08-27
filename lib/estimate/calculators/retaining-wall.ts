@@ -80,7 +80,9 @@ import {
   RW_MASONRY_MORTAR_PERCENT_OF_BLOCKS,
   RW_MASONRY_MORTAR_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
   RW_MASONRY_REBAR_ALLOWANCE_COMPONENT,
+  RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_ONLY,
   RW_MASONRY_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
+  formatMasonryBlockSubcontractBuilderCopy,
 } from "@/lib/estimate/retaining-wall-masonry-2b";
 import { detailedTimberLabourFromCost, RW_TIMBER_FIXINGS_PERCENT_OF_TIMBER } from "@/lib/estimate/retaining-wall-timber-1d";
 import {
@@ -842,7 +844,9 @@ export function calculateRetainingWall(
                 .filter(Boolean)
                 .join(" · ")
             : compact.secondary ?? compact.supporting;
-          identitySummary = compact.supporting;
+          identitySummary = isSubSupplyPlaceholder
+            ? [compact.supporting, notes].filter(Boolean).join(" · ")
+            : compact.supporting;
         } else if (requirement.componentKey === RW_MASONRY_MORTAR_COMPONENT) {
           const isSubSupplyPlaceholder = /subcontract supply placeholder/i.test(
             requirement.specification ?? ""
@@ -863,12 +867,18 @@ export function calculateRetainingWall(
                 .filter(Boolean)
                 .join(" · ")
             : compact.secondary ?? undefined;
-          identitySummary = compact.supporting;
+          identitySummary = isSubSupplyPlaceholder
+            ? [compact.supporting, notes].filter(Boolean).join(" · ")
+            : compact.supporting;
         } else if (
           requirement.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT ||
           requirement.componentKey === RW_MASONRY_WATERPROOF_SUBCONTRACT_COMPONENT ||
           requirement.componentKey === RW_EXCAVATION_SUBCONTRACT_COMPONENT
         ) {
+          const subCopy = formatMasonryBlockSubcontractBuilderCopy(
+            physical.masonryTakeoff?.subcontractScope ??
+              RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_ONLY
+          );
           const subLabel =
             requirement.componentKey === RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT
               ? "Masonry block laying — subcontract labour"
@@ -882,8 +892,8 @@ export function calculateRetainingWall(
               label: subLabel,
             }),
             category: "subcontractor",
-            notes: requirement.specification ?? undefined,
-            identitySummary: requirement.specification ?? undefined,
+            notes: subCopy,
+            identitySummary: subCopy,
           });
           continue;
         } else if (

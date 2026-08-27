@@ -17,6 +17,8 @@ const INTERNAL_TOKEN = /\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b/g;
 export function stripInternalEstimateTokens(text: string): string {
   return text
     .replace(INTERNAL_TOKEN, "")
+    .replace(/\bXOR\b[^.·]*[.]?/gi, "")
+    .replace(/\(\s*\)/g, "")
     .replace(/\s{2,}/g, " ")
     .replace(/\s*·\s*·/g, " · ")
     .replace(/^[ ·]+|[ ·]+$/g, "")

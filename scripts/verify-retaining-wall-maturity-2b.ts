@@ -63,7 +63,6 @@ import {
   RW_MASONRY_2B_MATERIAL_STARTERS,
   RW_MASONRY_2B_PRODUCTIVITY_STARTERS,
   RW_MASONRY_BLOCK_PROCUREMENT_FACTOR,
-  RW_MASONRY_BLOCK_SUBCONTRACT_BASIS,
   RW_MASONRY_DESIGN_CONFIRM,
   RW_MASONRY_MORTAR_COMPONENT,
   RW_MASONRY_MORTAR_KEY,
@@ -668,8 +667,7 @@ check(
 );
 check(
   "R2-10 subcontract labour-only retains builder materials",
-  RW_MASONRY_BLOCK_SUBCONTRACT_BASIS.includes("LABOUR_ONLY") &&
-    secondMortar != null &&
+  secondMortar != null &&
     (secondMortar.totalCost ?? 0) > 0 &&
     secondBlocks != null &&
     mat(secondCommercial.requirements, RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT)?.priced ===
@@ -678,7 +676,7 @@ check(
 );
 check(
   "R2-11 supply-install not silently assumed",
-  /labour-only|LABOUR_ONLY/i.test(
+  /Subcontractor supplies block-laying labour/i.test(
     mat(secondCommercial.requirements, RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT)
       ?.specification ?? ""
   )

@@ -115,6 +115,26 @@ export const RW_MASONRY_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE =
 export const RW_MASONRY_MORTAR_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE =
   "Placeholder based on your current estimating allowance — confirm subcontractor supply price.";
 
+/** Builder Review — labour-only block-laying subcontract scope. */
+export const RW_MASONRY_BLOCK_SUBCONTRACT_LABOUR_ONLY_BUILDER_COPY =
+  "Subcontractor supplies block-laying labour. Blocks and laying materials remain builder supplied.";
+
+/** Builder Review — labour + blocks & laying materials subcontract scope. */
+export const RW_MASONRY_BLOCK_SUBCONTRACT_LABOUR_AND_MATERIALS_BUILDER_COPY =
+  "Subcontractor is expected to supply block-laying labour, blocks and laying materials. Material costs shown are placeholders until subcontractor pricing is confirmed.";
+
+export function formatMasonryBlockSubcontractBuilderCopy(
+  scope: MasonrySubcontractScope
+): string {
+  return scope === RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_AND_MATERIALS
+    ? RW_MASONRY_BLOCK_SUBCONTRACT_LABOUR_AND_MATERIALS_BUILDER_COPY
+    : RW_MASONRY_BLOCK_SUBCONTRACT_LABOUR_ONLY_BUILDER_COPY;
+}
+
+/** Approved family label for punched/slotted drainage coil in Builder Review. */
+export const RW_PUNCHED_SLOTTED_DRAINAGE_COIL_BUILDER_LABEL =
+  "Punched / slotted drainage coil" as const;
+
 /** Alias documenting preferred rate identity; canonical key remains block_lay.subcontract. */
 export const RW_MASONRY_BLOCK_LAYING_SUBCONTRACT_LABOUR_ONLY_KEY =
   "retaining_wall.masonry.block_laying.subcontract.labour_only" as const;

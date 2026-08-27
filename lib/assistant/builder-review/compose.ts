@@ -233,7 +233,9 @@ function mapRwBuilderLabel(label: string): string {
   if (/fixings, connectors and sundries/i.test(label)) {
     return "Fixings and connectors allowance";
   }
-  if (/novacoil/i.test(label) && !/labour/i.test(label)) return "Novacoil drainage";
+  if (/novacoil/i.test(label) && !/labour/i.test(label)) {
+    return "Punched / slotted drainage coil";
+  }
   if (/spoil disposal/i.test(label)) return "Spoil removal";
   if (label === "Steel post installation") return "Post installation";
   if (label === "Concrete sleeper installation") return "Sleeper installation";
@@ -396,7 +398,9 @@ function takeoffLabel(req: MaterialRequirement): string {
   if (req.componentKey === DECK_SUPPORTS_COMPONENT_KEY) return "Supports";
   if (req.componentKey === DECK_CONCRETE_COMPONENT_KEY) return "Concrete";
   if (req.componentKey === RW_FACE_AREA_COMPONENT) return "Wall face";
-  if (req.componentKey === RW_NOVACOIL_COMPONENT) return "Novacoil";
+  if (req.componentKey === RW_NOVACOIL_COMPONENT) {
+    return "Punched / slotted drainage coil";
+  }
   if (req.componentKey === RW_BACKFILL_COMPONENT) return "Drainage aggregate / drainage backfill";
   if (req.componentKey === RW_EXCAVATION_COMPONENT) return "Bulk excavation";
   if (req.componentKey === RW_TIMBER_BOARDS_COMPONENT) return "Face boards";

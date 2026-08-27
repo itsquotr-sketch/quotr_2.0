@@ -30,9 +30,14 @@ import {
   RW_MASONRY_MORTAR_COMPONENT,
   RW_MASONRY_REBAR_ALLOWANCE_COMPONENT,
   RW_MASONRY_REBAR_ALLOWANCE_KEY,
+  RW_MASONRY_BLOCK_SUBCONTRACT_LABOUR_ONLY_BUILDER_COPY,
+  RW_MASONRY_BLOCK_SUBCONTRACT_LABOUR_AND_MATERIALS_BUILDER_COPY,
+  RW_MASONRY_MORTAR_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
   RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_AND_MATERIALS,
   RW_MASONRY_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE,
+  RW_PUNCHED_SLOTTED_DRAINAGE_COIL_BUILDER_LABEL,
 } from "../lib/estimate/retaining-wall-masonry-2b";
+import { RW_NOVACOIL_COMPONENT } from "../lib/estimate/retaining-wall-identities";
 import { faceAreaM2 } from "../lib/estimate/retaining-wall-geometry";
 import { MASONRY_SERIES_200 } from "../lib/estimate/retaining-wall-identities";
 import type {
@@ -496,6 +501,113 @@ check(
     lab(subLabourComm.requirements, RW_BACKFILL_LABOUR_COMPONENT) != null
 );
 void subLabMatCalc;
+
+function directCost(calc: ReturnType<typeof calculateRetainingWall>): number {
+  return calc.lineItems
+    .filter((row) => row.includedInTotal !== false)
+    .reduce((sum, row) => sum + (row.recommendedCost ?? 0), 0);
+}
+
+function mkReview(calc: ReturnType<typeof calculateRetainingWall>, comm: typeof selfComm) {
+  return composeBuilderReview({
+    estimate: {
+      lineItems: calc.lineItems.map((item, index) => ({
+        ...item,
+        id: `li-${index}`,
+        workAreaName: "Retaining wall",
+        grossProfit: 0,
+        marginPercent: 20,
+        markupPercent: 25,
+        includedInTotal: true,
+      })),
+      recommendedCost: directCost(calc),
+      recommendedSell: calc.recommendedSell,
+      assumptions: calc.assumptions,
+      exclusions: calc.exclusions,
+      missingInfo: calc.missingInfo,
+    },
+    workAreas: [{ id: "rw1", name: "Retaining wall", type: "retaining_wall" }],
+    requirements: comm.requirements,
+  });
+}
+
+function reviewBlob(review: ReturnType<typeof composeBuilderReview>): string {
+  return review.workAreas
+    .flatMap((wa) =>
+      wa.categories.flatMap((cat) =>
+        cat.lines.flatMap((line) => [
+          line.label,
+          line.supporting ?? "",
+          line.detail ?? "",
+          line.specification ?? "",
+        ])
+      )
+    )
+    .join(" ");
+}
+
+const selfReview = mkReview(selfCalc, selfComm);
+const subLoReview = mkReview(subLabourCalc, subLabourComm);
+const subLmReview = mkReview(subLabMatCalc, subLabMatComm);
+const reviewText = [
+  reviewBlob(selfReview),
+  reviewBlob(subLoReview),
+  reviewBlob(subLmReview),
+].join(" ");
+
+const selfDirect = Math.round(directCost(selfCalc) * 100) / 100;
+const subLoDirect = Math.round(directCost(subLabourCalc) * 100) / 100;
+const subLmDirect = Math.round(directCost(subLabMatCalc) * 100) / 100;
+
+check(
+  "R4-33 no internal subcontract token in Builder Review",
+  !/LABOUR_ONLY_BUILDER_SUPPLIES_BLOCKS_AND_MORTAR/i.test(reviewText)
+);
+check(
+  "R4-34 no XOR in builder-facing subcontract copy",
+  !/\bXOR\b/i.test(reviewText)
+);
+check(
+  "R4-35 labour-only human copy rendered",
+  reviewBlob(subLoReview).includes(RW_MASONRY_BLOCK_SUBCONTRACT_LABOUR_ONLY_BUILDER_COPY)
+);
+check(
+  "R4-36 labour+materials human copy rendered",
+  reviewBlob(subLmReview).includes(
+    RW_MASONRY_BLOCK_SUBCONTRACT_LABOUR_AND_MATERIALS_BUILDER_COPY
+  )
+);
+check(
+  "R4-37 block placeholder copy preserved",
+  reviewBlob(subLmReview).includes(RW_MASONRY_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE)
+);
+check(
+  "R4-38 mortar placeholder copy preserved",
+  reviewBlob(subLmReview).includes(RW_MASONRY_MORTAR_SUBCONTRACT_SUPPLY_PLACEHOLDER_DISCLOSURE)
+);
+check(
+  "R4-39 punched/slotted drainage builder label",
+  selfCalc.lineItems.some((row) => row.componentKey === RW_NOVACOIL_COMPONENT) &&
+    reviewBlob(selfReview).includes(RW_PUNCHED_SLOTTED_DRAINAGE_COIL_BUILDER_LABEL) &&
+    !reviewBlob(selfReview).includes("Novacoil drainage")
+);
+check(
+  "R4-40 direct costs unchanged vs validated fixture",
+  near(subLoDirect, subLmDirect, 0.01) &&
+    selfDirect > subLoDirect &&
+    near(
+      selfDirect - subLoDirect,
+      (selfBlockLine?.recommendedCost ?? 0) - (blockSub?.totalCost ?? 0),
+      120
+    )
+);
+check(
+  "R4-41 physical quantities unchanged under copy cleanup",
+  mat(selfComm.requirements, RW_MASONRY_BLOCKS_COMPONENT)?.purchaseQuantity ===
+    mat(subLabourComm.requirements, RW_MASONRY_BLOCKS_COMPONENT)?.purchaseQuantity &&
+    mat(subLabMatComm.requirements, RW_MASONRY_BLOCKS_COMPONENT)?.purchaseQuantity ===
+      expectedPurchase
+);
 
 console.log(`\nRW-MASONRY-SUBCONTRACT-R4: ${passed} passed, ${failed} failed`);
 process.exit(failed > 0 ? 1 : 0);

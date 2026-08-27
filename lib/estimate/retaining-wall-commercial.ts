@@ -168,9 +168,9 @@ import {
   RW_MASONRY_2B_ACCESS_RULE,
   RW_MASONRY_AUTHORITY_WITH_ALLOWANCE,
   RW_MASONRY_BLOCK_PROCUREMENT_DISCLOSURE,
-  RW_MASONRY_BLOCK_SUBCONTRACT_BASIS,
   RW_MASONRY_BLOCK_SUBCONTRACT_KEY,
   RW_MASONRY_BLOCK_LAYING_SUBCONTRACT_LABOUR_ONLY_KEY,
+  formatMasonryBlockSubcontractBuilderCopy,
   RW_MASONRY_CORE_FILL_DISCLOSURE,
   RW_MASONRY_DESIGN_CONFIRM,
   RW_MASONRY_ENGINEERING_BOUNDARY,
@@ -1501,7 +1501,7 @@ export function commercializeRetainingWall(params: {
       `Package lifecycle for detailed-ready masonry: ${RW_MASONRY_PACKAGE_LIFECYCLE}.`,
       `Drainage-metal consolidation: ${RW_TIMBER_COMPACTION_METHOD}.`,
       `Reinforcement treatment: ${RW_MASONRY_REBAR_TREATMENT}.`,
-      `Block laying subcontract basis: ${RW_MASONRY_BLOCK_SUBCONTRACT_BASIS}.`
+      "Block laying subcontract applies to block-laying labour only; builder retains other wall scope unless labour + blocks & laying materials is selected."
     );
     if (
       masonry.horizontalRebarLm == null &&
@@ -1811,17 +1811,13 @@ export function commercializeRetainingWall(params: {
     );
     if (masonry.subcontractBlocks || isSubcontractMethod(blockMethod)) {
       const scope = masonry.subcontractScope;
-      const scopeNote =
-        scope === RW_MASONRY_SUBCONTRACT_SCOPE_LABOUR_AND_MATERIALS
-          ? "Subcontractor supplies blocks and laying materials; costs use your current material rates as estimating placeholders until a subcontractor quote is confirmed."
-          : `Labour-only subcontract (${RW_MASONRY_BLOCK_SUBCONTRACT_BASIS}). Builder still owns blocks and mortar / laying consumables.`;
       const blockSub = planningMaterial({
         workAreaId,
         componentKey: RW_MASONRY_BLOCK_SUBCONTRACT_COMPONENT,
         description: "Masonry block laying — subcontract labour",
         materialKey: RW_MASONRY_BLOCK_SUBCONTRACT_KEY,
         category: "SUBCONTRACT",
-        specification: `${scopeNote} XOR self-perform labour — no duplicate labour money.`,
+        specification: formatMasonryBlockSubcontractBuilderCopy(scope),
         baseQuantity: face,
         baseUnit: "m2",
         wasteFactor: 0,
