@@ -38,13 +38,18 @@ import {
   RW_H5_SED_DISPLACEMENT_DISCLOSURE,
   RW_HOUSE_PILE_125_SECTION_M,
   RW_HOUSE_PILE_125_SECTION_SOURCE,
+  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_KEY,
+  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER,
   RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_KEY,
-  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER,
   RW_STEEL_POST_DISPLACEMENT_UNKNOWN_DISCLOSURE,
   squareSectionDisplacementM3,
   roundSectionDisplacementM3,
   steelSectionDisplacementM3,
 } from "../lib/estimate/retaining-wall-post-hole-concrete";
+import {
+  formatPostHoleBaggedConcreteCopy,
+  formatTimberLabourCompactCopy,
+} from "../lib/estimate/retaining-wall-builder-copy";
 import {
   HOUSE_PILE_125_RW_IDENTITY,
   RW_SLEEPER_CONCRETE_COMPONENT,
@@ -393,14 +398,15 @@ check(
 console.log("\n=== R6 LABOUR ===\n");
 
 check(
-  "22 Placement driver is m³",
-  RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.postHoleConcreteM3] === "m3" &&
-    RW_PRODUCTIVITY_KEYS.postHoleConcreteM3 ===
-      RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_KEY
+  "22 Placement driver is bag",
+  RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.postHoleConcreteBag] === "bag" &&
+    RW_PRODUCTIVITY_KEYS.postHoleConcreteBag ===
+      RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_KEY
 );
 check(
-  "23 No h/hole driver on mature path",
-  commercialSrc.includes("RW_PRODUCTIVITY_KEYS.postHoleConcreteM3") &&
+  "23 No h/hole or mature h/m³ driver on mature path",
+  commercialSrc.includes("RW_PRODUCTIVITY_KEYS.postHoleConcreteBag") &&
+    !commercialSrc.includes("postHoleConcreteM3") &&
     !commercialSrc.includes("timberConcreteHole") &&
     !commercialSrc.includes("sleeperConcreteHole")
 );
@@ -425,28 +431,24 @@ const timberConcreteLab = lab(
   RW_TIMBER_CONCRETE_LABOUR_COMPONENT
 );
 const expectedHours = round2(
-  sedPiles.netConcreteM3 * RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER
+  sedPiles.bagCount * RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER
 );
 check(
-  "24 Placement hours = net m³ × labour-h/m³",
+  "24 Placement hours = bags × labour-h/bag",
   timberConcreteLab != null &&
-    timberConcreteLab.productivityBasis.unit === "m3" &&
-    near(
-      timberConcreteLab.productivityBasis.quantity,
-      sedPiles.netConcreteM3,
-      0.02
-    ) &&
+    timberConcreteLab.productivityBasis.unit === "bag" &&
+    timberConcreteLab.productivityBasis.quantity === sedPiles.bagCount &&
     near(
       timberConcreteLab.productivityBasis.hoursPerUnit,
-      RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER,
-      0.01
+      RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER,
+      1e-9
     ) &&
     near(timberConcreteLab.baseHours, expectedHours, 0.05)
 );
 
 const companyProd = calculateRetainingWall(
   ctx(timberFacts, [
-    testRate(RW_PRODUCTIVITY_KEYS.postHoleConcreteM3, "m3", 5.0, "productivity"),
+    testRate(RW_PRODUCTIVITY_KEYS.postHoleConcreteBag, "bag", 0.05, "productivity"),
     testRate("labour.carpenter.hour", "hour", 65, "labour"),
   ]),
   wa()
@@ -455,20 +457,20 @@ const companyLab = lab(companyProd.requirements, RW_TIMBER_CONCRETE_LABOUR_COMPO
 check(
   "25 Company productivity overrides Quotr",
   companyLab != null &&
-    near(companyLab.productivityBasis.hoursPerUnit, 5.0, 0.01)
+    near(companyLab.productivityBasis.hoursPerUnit, 0.05, 0.001)
 );
 
 const crew = personHoursPerUnit({
   crewSize: 2,
-  elapsedHours: 1.5,
-  quantityCompleted: 0.5,
+  elapsedHours: 0.5,
+  quantityCompleted: 20,
 });
-check("26 Crew-helper person-hour arithmetic", crew === 6);
+check("26 Crew-helper person-hour arithmetic", crew === 0.05);
 check(
   "27 No double crew multiplier",
-  /person-hours|labour-h\/m³|Total person-hours/i.test(
+  /person-hours|labour-h\/bag|one bag/i.test(
     RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE.find(
-      (e) => e.item_key === RW_PRODUCTIVITY_KEYS.postHoleConcreteM3
+      (e) => e.item_key === RW_PRODUCTIVITY_KEYS.postHoleConcreteBag
     )?.description ?? ""
   ) &&
     !/× crew|multiply crew/i.test(postHoleSrc)
@@ -477,7 +479,7 @@ check(
 check(
   "28 Timber uses new productivity",
   timberConcreteLab?.productivityBasis.key ===
-    RW_PRODUCTIVITY_KEYS.postHoleConcreteM3
+    RW_PRODUCTIVITY_KEYS.postHoleConcreteBag
 );
 
 const sleeperFacts: EstimateFact[] = [
@@ -497,8 +499,8 @@ const sleeperConcreteLab = lab(
 check(
   "29 Sleeper uses new productivity",
   sleeperConcreteLab?.productivityBasis.key ===
-    RW_PRODUCTIVITY_KEYS.postHoleConcreteM3 &&
-    sleeperConcreteLab.productivityBasis.unit === "m3"
+    RW_PRODUCTIVITY_KEYS.postHoleConcreteBag &&
+    sleeperConcreteLab.productivityBasis.unit === "bag"
 );
 
 console.log("\n=== R6 CLARIFY ===\n");
@@ -566,9 +568,9 @@ check(
     /net|gross|displacement|m³/i.test(sleeperMat.specification ?? "")
 );
 check(
-  "37 labour copy uses labour-h/m³",
+  "37 labour copy uses labour-h/bag",
   builderCopySrc.includes("labour-h/") &&
-    formatProductivityHours(3.5, "m3").includes("labour-h/m³")
+    formatProductivityHours(0.035, "bag").includes("labour-h/bag")
 );
 const sleeperPhys = buildRetainingWallPhysicalModel({
   context: ctx(sleeperFacts),
@@ -654,13 +656,13 @@ check(
   near(
     (lab(timberWideCalc.requirements, RW_TIMBER_CONCRETE_LABOUR_COMPONENT)
       ?.baseHours ?? 0),
-    sedWide.netConcreteM3 * RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER,
+    sedWide.bagCount * RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER,
     0.08
   )
 );
 check(
-  "F5 Material/labour both use net m³",
-  (mat(timberCalc.requirements, RW_TIMBER_CONCRETE_COMPONENT)?.baseQuantity ??
+  "F5 Material bags / labour bags reconcile",
+  (mat(timberCalc.requirements, RW_TIMBER_CONCRETE_COMPONENT)?.purchaseQuantity ??
     -1) === timberConcreteLab?.productivityBasis.quantity
 );
 check(
@@ -669,19 +671,21 @@ check(
     -1) === 0
 );
 check(
-  "F7 Legacy hole keys leftover in catalogue",
+  "F7 Legacy hole/m³ keys leftover in catalogue",
   RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE.find(
     (e) => e.item_key === RW_PRODUCTIVITY_KEYS.timberConcreteHole
   )?.calculatorSupport === "leftover" &&
     RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE.find(
       (e) => e.item_key === RW_PRODUCTIVITY_KEYS.postHoleConcreteM3
+    )?.calculatorSupport === "leftover" &&
+    RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE.find(
+      (e) => e.item_key === RW_PRODUCTIVITY_KEYS.postHoleConcreteBag
     )?.calculatorSupport === "used_now"
 );
 check(
-  "F8 Starter not converted from 0.12/hole",
-  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER === 3.5 &&
-    !postHoleSrc.includes("0.12 / ") &&
-    !postHoleSrc.includes("0.12/")
+  "F8 Starter is dimensional h/bag conversion",
+  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER === 0.035 &&
+    near(0.035, 3.5 * 0.01, 1e-12)
 );
 
 const ownerEstimate = calculateEstimate(ctx(timberFacts, labourRates));
@@ -738,17 +742,12 @@ check(
     !/const netConcreteM3 = round2\(/.test(postHoleSrc)
 );
 const houseLabourHours =
-  housePiles.netConcreteM3 * RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER;
-const houseLabourFromDisplay =
-  housePiles.netConcreteDisplayM3 * RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER;
+  housePiles.bagCount * RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER;
 check(
-  "R1-5 labour uses unrounded net",
-  Math.abs(houseLabourHours - houseLabourFromDisplay) > 1e-6 &&
-    near(
-      timberConcreteLab?.productivityBasis.quantity ?? -1,
-      sedPiles.netConcreteM3,
-      1e-9
-    )
+  "R1-5 labour uses bag quantity not display net",
+  timberConcreteLab?.productivityBasis.unit === "bag" &&
+    timberConcreteLab.productivityBasis.quantity === sedPiles.bagCount &&
+    Math.abs(houseLabourHours - housePiles.netConcreteDisplayM3 * 3.5) > 1e-6
 );
 check(
   "R1-6 SED fallback clearly identified as assumption",
@@ -808,6 +807,156 @@ check(
     near(sedPiles.netConcreteM3, sedExactNet, 1e-9) &&
     sedPiles.bagCount === Math.ceil(sedExactNet / 0.01 - 1e-12) &&
     sedPiles.bagCount === 30
+);
+
+console.log("\n=== R6-R3 BAG PRIMARY + H/BAG ===\n");
+
+const houseCopy = formatPostHoleBaggedConcreteCopy({
+  bagCount: housePiles.bagCount,
+  holeCount: housePiles.holeCount,
+  unitCost: 11.5,
+  sloping: false,
+  holeDiameterM: housePiles.holeDiameterM,
+  grossHoleVolumeM3: housePiles.grossHoleVolumeM3,
+  postDisplacementM3: housePiles.postDisplacementM3,
+  netConcreteM3: housePiles.netConcreteM3,
+  bagYieldM3: housePiles.bagYieldM3,
+});
+check(
+  "R3-1 primary material copy shows total bags",
+  /^34 bags required/.test(houseCopy.supporting)
+);
+check(
+  "R3-2 primary material copy shows bags/hole",
+  /3\.4 bags\/hole/.test(houseCopy.supporting) ||
+    /bags\/hole/.test(houseCopy.supporting)
+);
+check(
+  "R3-3 gross/displacement/net in Takeoff details",
+  /Gross hole volume: 0\.42 m³/.test(houseCopy.secondary ?? "") &&
+    /Less post displacement: 0\.09 m³/.test(houseCopy.secondary ?? "") &&
+    /Net concrete: 0\.33 m³/.test(houseCopy.secondary ?? "") &&
+    !/Gross/.test(houseCopy.supporting)
+);
+check(
+  "R3-4 bag count still uses full-precision net",
+  housePiles.bagCount === 34 &&
+    housePiles.bagCount ===
+      bagCountFromNetConcrete(housePiles.netConcreteM3, 0.01)
+);
+check(
+  "R3-5 average bags/hole = total bags / holes",
+  near(housePiles.bagCount / housePiles.holeCount, 3.4, 0.05)
+);
+const slopeCopy = formatPostHoleBaggedConcreteCopy({
+  bagCount: sleeperOwner.bagCount ?? 0,
+  holeCount: sleeperOwner.holeCount,
+  unitCost: null,
+  sloping: true,
+  holeDiameterM: sleeperOwner.holeDiameterM,
+  grossHoleVolumeM3: sleeperOwner.grossHoleVolumeM3,
+  postDisplacementM3: sleeperOwner.postDisplacementM3,
+  netConcreteM3: sleeperOwner.netConcreteM3,
+  bagYieldM3: sleeperOwner.bagYieldM3,
+});
+check(
+  "R3-6 sloping wall says avg where applicable",
+  /bags\/hole avg/.test(slopeCopy.supporting)
+);
+check(
+  "R3-7 placement productivity unit = labour-h/bag",
+  RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.postHoleConcreteBag] === "bag"
+);
+check(
+  "R3-8 new productivity key used",
+  timberConcreteLab?.productivityBasis.key ===
+    RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_KEY
+);
+const legacyM3Company = calculateRetainingWall(
+  ctx(timberFacts, [
+    testRate(RW_PRODUCTIVITY_KEYS.postHoleConcreteM3, "m3", 9.9, "productivity"),
+    testRate("labour.carpenter.hour", "hour", 65, "labour"),
+  ]),
+  wa()
+);
+const legacyLab = lab(
+  legacyM3Company.requirements,
+  RW_TIMBER_CONCRETE_LABOUR_COMPONENT
+);
+check(
+  "R3-9 old h/m³ key not silently reinterpreted",
+  legacyLab?.productivityBasis.key ===
+    RW_PRODUCTIVITY_KEYS.postHoleConcreteBag &&
+    near(
+      legacyLab?.productivityBasis.hoursPerUnit ?? -1,
+      RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER,
+      1e-9
+    ) &&
+    RW_PRODUCTIVITY_KEYS.postHoleConcreteM3 ===
+      RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_KEY
+);
+check(
+  "R3-10 starter = 0.035 labour-h/bag",
+  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER === 0.035
+);
+check(
+  "R3-11 placement hours = bags × h/bag",
+  near(
+    timberConcreteLab?.baseHours ?? -1,
+    sedPiles.bagCount * 0.035,
+    0.02
+  )
+);
+check(
+  "R3-12 labour does not use net m³ on bagged mature path",
+  timberConcreteLab?.productivityBasis.unit === "bag" &&
+    timberConcreteLab.productivityBasis.quantity === sedPiles.bagCount
+);
+const labourDisplay = formatTimberLabourCompactCopy({
+  constraints: [],
+  includeMaterialCarry: false,
+  quantity: 35,
+  unit: "bag",
+  hoursPerUnit: 0.035,
+  label: "Post-hole concrete placement",
+});
+check(
+  "R3-13 labour display no raw long floating point",
+  !/\d\.\d{6,}/.test(labourDisplay.supporting) &&
+    /35 bags × 0\.035 labour-h\/bag = 1\.23 hrs/.test(labourDisplay.supporting)
+);
+check(
+  "R3-14 volume display <=2dp",
+  /0\.33 m³/.test(houseCopy.secondary ?? "") &&
+    !/0\.330365/.test(houseCopy.secondary ?? "")
+);
+check(
+  "R3-15 hour display <=2dp",
+  /1\.23 hrs/.test(labourDisplay.supporting)
+);
+check(
+  "R3-16 productivity display sensible precision",
+  /0\.035 labour-h\/bag/.test(labourDisplay.supporting)
+);
+check(
+  "R3-17 internal calculation precision unchanged",
+  housePiles.netConcreteM3 > housePiles.netConcreteDisplayM3 &&
+    housePiles.bagCount === 34
+);
+check("R3-18 Timber path green", timberConcreteLab != null && housePiles.bagCount === 34);
+check(
+  "R3-19 Sleeper path green",
+  sleeperConcreteLab != null &&
+    sleeperConcreteLab.productivityBasis.unit === "bag"
+);
+check(
+  "R3-20 Masonry m³ concrete paths unchanged",
+  RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.masonryFootingM3] === "m3" &&
+    RW_PRODUCTIVITY_UNITS[RW_PRODUCTIVITY_KEYS.masonryCoreFillM3] === "m3"
+);
+check(
+  "R3-21 Clarify unchanged",
+  retainingWallFactQuestionClass(RW_DIGGER_ACCESS_FACT) === "ASK_NOW"
 );
 
 console.log("\n=== R6 REGRESSION SPAWNS ===\n");

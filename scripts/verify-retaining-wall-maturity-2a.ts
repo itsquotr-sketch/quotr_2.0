@@ -514,7 +514,7 @@ check(
     lab(ownerCalc.requirements, RW_SLEEPER_FACE_LABOUR_COMPONENT)?.productivityBasis
       .unit === "ea" &&
     lab(ownerCalc.requirements, RW_SLEEPER_CONCRETE_LABOUR_COMPONENT)?.productivityBasis
-      .unit === "m3" &&
+      .unit === "bag" &&
     lab(ownerCalc.requirements, RW_EXCAVATION_LABOUR_COMPONENT)?.productivityBasis.unit ===
       "m3"
 );
@@ -528,12 +528,8 @@ check(
 check(
   "28 Concrete placement not double-owned",
   ownerCalc.assumptions.some((row) => /CONCRETE_PLACEMENT_SEPARATE/i.test(row)) &&
-    near(
-      lab(ownerCalc.requirements, RW_SLEEPER_CONCRETE_LABOUR_COMPONENT)?.productivityBasis
-        .quantity ?? 0,
-      takeoff.netConcreteM3 ?? takeoff.holeVolumeM3,
-      0.02
-    )
+    lab(ownerCalc.requirements, RW_SLEEPER_CONCRETE_LABOUR_COMPONENT)?.productivityBasis
+      .quantity === takeoff.bagCount
 );
 const plantOwner = ownerCalc.lineItems.find((item) =>
   /mini-excavator/i.test(item.label)
@@ -848,8 +844,8 @@ check(
       ?.hoursPerUnit === 0.22 &&
     RW_SLEEPER_2A_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.sleeperConcreteHole]
       ?.hoursPerUnit === 0.12 &&
-    RW_SLEEPER_2A_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.postHoleConcreteM3]
-      ?.hoursPerUnit === 3.5 &&
+    RW_SLEEPER_2A_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.postHoleConcreteBag]
+      ?.hoursPerUnit === 0.035 &&
     RW_SLEEPER_2A_PRODUCTIVITY_STARTERS[RW_PRODUCTIVITY_KEYS.sleeperPostsEa]
       ?.confidenceBand === "low"
 );

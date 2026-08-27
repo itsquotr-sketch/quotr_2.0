@@ -918,8 +918,8 @@ check(
 );
 check(
   "R1-21 Owner fixture reconciles",
-  near(ownerEstimate.recommendedCost, 6120.38, 0.5) &&
-    near(ownerEstimate.recommendedSell, 7650.75, 0.5) &&
+  near(ownerEstimate.recommendedCost, 6121.58, 0.5) &&
+    near(ownerEstimate.recommendedSell, 7652.25, 0.5) &&
     ownerProcurement?.purchaseEa === 14 &&
     near(ownerProcurement?.purchaseTotalLm ?? 0, 28.8)
 );
@@ -1096,11 +1096,11 @@ check(
 );
 check(
   "R2-15 Owner direct cost reconciles after excavation-only modifier change",
-  near(ownerEstimate.recommendedCost, 6120.38, 0.5)
+  near(ownerEstimate.recommendedCost, 6121.58, 0.5)
 );
 check(
   "R2-16 Owner sell reconciles at 20% GM",
-  near(ownerEstimate.recommendedSell, 7650.75, 0.5) &&
+  near(ownerEstimate.recommendedSell, 7652.25, 0.5) &&
     near(ownerEstimate.marginPercent, 20)
 );
 check(

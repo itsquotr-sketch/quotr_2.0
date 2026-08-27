@@ -131,26 +131,38 @@ export const RW_SLEEPER_2A_PRODUCTIVITY_STARTERS: Record<
   [RW_PRODUCTIVITY_KEYS.sleeperConcreteHole]: {
     hoursPerUnit: 0.12,
     unit: "hole",
-    included: "LEGACY — mix/place bagged concrete per hole (superseded by m³ key)",
+    included: "LEGACY — mix/place bagged concrete per hole (superseded by h/bag key)",
     excluded: "Hole excavation, post setting, sleeper install, bulk excavation, plant",
     confidence: "starter",
     confidenceBand: "low",
-    crewMethod: "Legacy h/hole — not consumed as m³ authority",
+    crewMethod: "Legacy h/hole — not consumed as h/bag authority",
     plantAssumption: "None",
     rationale:
-      "Legacy starter retained for catalogue identity only. Mature path uses retaining_wall.post_hole_concrete.place.hours_per_m3.",
+      "Legacy starter retained for catalogue identity only. Mature path uses retaining_wall.post_hole_concrete.place.hours_per_bag.",
   },
   [RW_PRODUCTIVITY_KEYS.postHoleConcreteM3]: {
     hoursPerUnit: 3.5,
     unit: "m3",
-    included: "Mix/place bagged concrete, basic consolidation at post holes",
+    included: "LEGACY — mix/place bagged concrete per m³ (superseded by h/bag key)",
+    excluded: "Hole excavation, post setting, sleeper install, bulk excavation, plant",
+    confidence: "starter",
+    confidenceBand: "low",
+    crewMethod: "Legacy h/m³ — not consumed as h/bag authority",
+    plantAssumption: "None",
+    rationale:
+      "Legacy starter retained for catalogue identity only. Mature path uses retaining_wall.post_hole_concrete.place.hours_per_bag.",
+  },
+  [RW_PRODUCTIVITY_KEYS.postHoleConcreteBag]: {
+    hoursPerUnit: 0.035,
+    unit: "bag",
+    included: "Mix/place one bag of premix, basic consolidation at post holes",
     excluded: "Hole excavation, post setting, sleeper install, bulk excavation, plant",
     confidence: "starter",
     confidenceBand: "low",
     crewMethod: "1 person with bagged premix at already-set posts",
     plantAssumption: "None — hand mix/place",
     rationale:
-      "LOW-CONFIDENCE QUOTR STARTER. Shared Timber/Sleeper person-hours per m³ net placed. Not converted from legacy h/hole.",
+      "LOW-CONFIDENCE QUOTR STARTER. Dimensional conversion of prior 3.5 labour-h/m³ × 0.01 m³/bag = 0.035 labour-h/bag.",
   },
   [RW_PRODUCTIVITY_KEYS.sleeperSleepersEa]: {
     hoursPerUnit: 0.22,

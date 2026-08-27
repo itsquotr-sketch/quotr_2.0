@@ -110,7 +110,7 @@ import {
   RW_TIMBER_CONCRETE_LABOUR_COMPONENT,
 } from "@/lib/estimate/retaining-wall-family-coverage";
 import {
-  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER,
+  RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER,
 } from "@/lib/estimate/retaining-wall-post-hole-concrete";
 import {
   RW_MINI_EXCAVATOR_DAY_BASIS,
@@ -1687,20 +1687,20 @@ export function commercializeRetainingWall(params: {
         `Timber drainage labour ownership: ${RW_TIMBER_DRAINAGE_LABOUR_OWNERSHIP}.`
       );
     }
-    const timberNetConcrete = physical.timberPiles?.netConcreteM3 ?? 0;
-    if (timberNetConcrete > 0) {
+    const timberBags = physical.timberPiles?.bagCount ?? 0;
+    if (timberBags > 0) {
       labour.push(
         labourSlot({
           workAreaId,
           componentKey: RW_TIMBER_CONCRETE_LABOUR_COMPONENT,
           description: "Post-hole concrete placement",
-          productivityKey: RW_PRODUCTIVITY_KEYS.postHoleConcreteM3,
-          unit: "m3",
-          quantity: timberNetConcrete,
+          productivityKey: RW_PRODUCTIVITY_KEYS.postHoleConcreteBag,
+          unit: "bag",
+          quantity: timberBags,
           rates,
           hourlyCost: labourRate.costRate,
           rateProvenance: timberLabourSource,
-          fallbackHoursPerUnit: RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER,
+          fallbackHoursPerUnit: RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER,
         })
       );
     }
@@ -1709,7 +1709,7 @@ export function commercializeRetainingWall(params: {
   if (physical.system === "CONCRETE_SLEEPER_WALL" && physical.sleeperTakeoff) {
     const posts = physical.sleeperTakeoff.postCount ?? 0;
     const sleepers = physical.sleeperTakeoff.sleeperCount ?? 0;
-    const sleeperNetConcrete = physical.sleeperTakeoff.netConcreteM3 ?? 0;
+    const sleeperBags = physical.sleeperTakeoff.bagCount ?? 0;
     labour.push(
       labourSlot({
         workAreaId,
@@ -1724,19 +1724,19 @@ export function commercializeRetainingWall(params: {
         fallbackHoursPerUnit: sleeper2APostHours(pilingMethod.method),
       })
     );
-    if (sleeperNetConcrete > 0) {
+    if (sleeperBags > 0) {
       labour.push(
         labourSlot({
           workAreaId,
           componentKey: RW_SLEEPER_CONCRETE_LABOUR_COMPONENT,
           description: "Post-hole concrete placement",
-          productivityKey: RW_PRODUCTIVITY_KEYS.postHoleConcreteM3,
-          unit: "m3",
-          quantity: sleeperNetConcrete,
+          productivityKey: RW_PRODUCTIVITY_KEYS.postHoleConcreteBag,
+          unit: "bag",
+          quantity: sleeperBags,
           rates,
           hourlyCost: labourRate.costRate,
           rateProvenance: detailedLabourSource,
-          fallbackHoursPerUnit: RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER,
+          fallbackHoursPerUnit: RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER,
         })
       );
     }

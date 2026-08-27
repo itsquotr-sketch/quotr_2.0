@@ -611,8 +611,8 @@ check(
     mat(sleeperCalcA.requirements, RW_SLEEPER_CONCRETE_COMPONENT)?.purchaseUnit === "bag"
 );
 check(
-  "24 concrete labour labour-h/m³",
-  lab(sleeperLab.requirements, RW_SLEEPER_CONCRETE_LABOUR_COMPONENT)?.productivityBasis.unit === "m3"
+  "24 concrete labour labour-h/bag",
+  lab(sleeperLab.requirements, RW_SLEEPER_CONCRETE_LABOUR_COMPONENT)?.productivityBasis.unit === "bag"
 );
 check(
   "25 sleeper labour h/ea",

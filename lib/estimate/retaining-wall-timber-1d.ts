@@ -184,24 +184,35 @@ export const RW_TIMBER_1D_PRODUCTIVITY_STARTERS: Record<
   [RW_PRODUCTIVITY_KEYS.timberConcreteHole]: {
     hoursPerUnit: 0.12,
     unit: "hole",
-    included: "LEGACY — mix/place bagged premix per hole (superseded by m³ key)",
+    included: "LEGACY — mix/place bagged premix per hole (superseded by h/bag key)",
     excluded: "Hole digging, plant, bulk excavation",
     confidence: "starter",
-    crewMethod: "Legacy h/hole — not consumed as m³ authority",
+    crewMethod: "Legacy h/hole — not consumed as h/bag authority",
     plantAssumption: "None",
     rationale:
-      "Legacy starter retained for catalogue identity only. Mature path uses retaining_wall.post_hole_concrete.place.hours_per_m3.",
+      "Legacy starter retained for catalogue identity only. Mature path uses retaining_wall.post_hole_concrete.place.hours_per_bag.",
   },
   [RW_PRODUCTIVITY_KEYS.postHoleConcreteM3]: {
     hoursPerUnit: 3.5,
     unit: "m3",
-    included: "Mix/place/consolidate bagged premix into post holes after posts set",
+    included: "LEGACY — mix/place bagged premix per m³ (superseded by h/bag key)",
+    excluded: "Hole digging, post setting, plant, bulk excavation",
+    confidence: "starter",
+    crewMethod: "Legacy h/m³ — not consumed as h/bag authority",
+    plantAssumption: "None",
+    rationale:
+      "Legacy starter retained for catalogue identity only. Mature path uses retaining_wall.post_hole_concrete.place.hours_per_bag.",
+  },
+  [RW_PRODUCTIVITY_KEYS.postHoleConcreteBag]: {
+    hoursPerUnit: 0.035,
+    unit: "bag",
+    included: "Mix/place/consolidate one bag of premix into post holes after posts set",
     excluded: "Hole digging, post setting, plant, bulk excavation",
     confidence: "starter",
     crewMethod: "1 person mixing and placing bagged premix",
     plantAssumption: "None",
     rationale:
-      "LOW-CONFIDENCE QUOTR STARTER. Person-hours per m³ net placed concrete. Not converted from legacy h/hole. Company/Project exact overrides.",
+      "LOW-CONFIDENCE QUOTR STARTER. Dimensional conversion of prior 3.5 labour-h/m³ × 0.01 m³/bag yield = 0.035 labour-h/bag. Company/Project exact overrides.",
   },
 };
 

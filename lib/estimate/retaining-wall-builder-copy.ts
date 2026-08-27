@@ -75,7 +75,7 @@ export function formatTimberLabourModifierCopy(params: {
       `Restricted hours ${formatPercentAddend(parts.hoursAddend)}`
     );
   }
-  const driver = `${params.quantity} ${params.unit} × ${params.hoursPerUnit} labour-h/${params.unit === "m3" ? "m³" : params.unit} = ${params.baseHours} base hrs`;
+  const driver = `${formatLabourDriverQuantity(params.quantity, params.unit)} × ${formatLabourProductivityRate(params.hoursPerUnit, params.unit)} labour-h/${formatLabourRateUnit(params.unit)} = ${round2(params.baseHours)} base hrs`;
   if (reasons.length === 0 || params.baseHours === params.adjustedHours) {
     return driver;
   }
@@ -99,13 +99,22 @@ export function formatTimberLabourCompactCopy(params: {
           ? "sleepers"
           : params.unit === "hole"
             ? "holes"
-            : params.unit === "m3"
-              ? "m³"
-              : params.unit === "m2"
-                ? "m²"
-                : params.unit;
-  const rateUnit = params.unit === "ea" ? "ea" : params.unit === "m3" ? "m³" : params.unit;
-  const driver = `${params.quantity}${unitDriver === "piles" ? " piles" : ` ${unitDriver}`} × ${params.hoursPerUnit} labour-h/${rateUnit}`;
+            : params.unit === "bag"
+              ? "bags"
+              : params.unit === "m3"
+                ? "m³"
+                : params.unit === "m2"
+                  ? "m²"
+                  : params.unit;
+  const qtyText = formatLabourDriverQuantity(params.quantity, params.unit);
+  const rateText = formatLabourProductivityRate(params.hoursPerUnit, params.unit);
+  const rateUnit = formatLabourRateUnit(params.unit);
+  const hoursText = round2(params.quantity * params.hoursPerUnit).toFixed(2);
+  const driverCore =
+    unitDriver === "piles"
+      ? `${qtyText} piles × ${rateText} labour-h/${rateUnit}`
+      : `${qtyText} ${unitDriver} × ${rateText} labour-h/${rateUnit}`;
+  const driver = `${driverCore} = ${hoursText} hrs`;
   const parts = getLabourAdjustmentParts(params.constraints);
   const reasons: string[] = [];
   if (parts.accessAddend > 0) {
@@ -129,6 +138,28 @@ export function formatTimberLabourCompactCopy(params: {
     supporting: driver,
     modifiers: reasons.length > 0 ? `${reasons.join(" · ")}.` : null,
   };
+}
+
+function formatLabourDriverQuantity(quantity: number, unit: string): string {
+  if (unit === "bag" || unit === "ea" || unit === "hole") {
+    return String(Math.round(quantity));
+  }
+  return round2(quantity).toFixed(2);
+}
+
+function formatLabourRateUnit(unit: string): string {
+  if (unit === "m3") return "m³";
+  if (unit === "m2") return "m²";
+  return unit;
+}
+
+/** h/bag keeps up to 3 dp so 0.035 does not display as 0.04 and break arithmetic. */
+function formatLabourProductivityRate(hoursPerUnit: number, unit: string): string {
+  if (unit === "bag") {
+    const trimmed = Number(hoursPerUnit.toFixed(3));
+    return String(trimmed);
+  }
+  return round2(hoursPerUnit).toFixed(2);
 }
 
 export function formatBoardProcurementCopy(params: {
@@ -250,24 +281,75 @@ export function formatSleeperCompactCopy(params: {
   };
 }
 
+export function formatPostHoleBaggedConcreteCopy(params: {
+  bagCount: number;
+  holeCount: number;
+  unitCost: number | null;
+  sloping: boolean;
+  holeDiameterM: number;
+  grossHoleVolumeM3: number;
+  postDisplacementM3: number;
+  netConcreteM3: number;
+  bagYieldM3: number;
+}): { supporting: string; secondary: string | null } {
+  const bagsPerHole =
+    params.holeCount > 0 ? params.bagCount / params.holeCount : 0;
+  const bagsPerHoleText =
+    Math.abs(bagsPerHole - Math.round(bagsPerHole)) < 1e-9
+      ? `${Math.round(bagsPerHole)}.0`
+      : (Math.round(bagsPerHole * 10) / 10).toFixed(1);
+  const perHoleLabel = params.sloping ? "bags/hole avg" : "bags/hole";
+  const rate =
+    params.unitCost != null ? ` · $${params.unitCost}/bag` : "";
+  return {
+    supporting: `${params.bagCount} bags required · ${bagsPerHoleText} ${perHoleLabel}${rate}`,
+    secondary: [
+      `${params.holeCount} post holes`,
+      `${round2(params.holeDiameterM * 1000)} mm hole diameter`,
+      `Gross hole volume: ${round2(params.grossHoleVolumeM3)} m³`,
+      `Less post displacement: ${round2(params.postDisplacementM3)} m³`,
+      `Net concrete: ${round2(params.netConcreteM3)} m³`,
+      `Bag yield: ${params.bagYieldM3} m³/bag`,
+      `Total: ${params.bagCount} bags`,
+    ].join(" · "),
+  };
+}
+
+/** @deprecated Prefer formatPostHoleBaggedConcreteCopy — kept for call-site migration. */
 export function formatSleeperConcreteCopy(params: {
   volumeM3: number;
   bagCount: number | null;
   unitCost: number | null;
   grossHoleVolumeM3?: number | null;
   postDisplacementM3?: number | null;
+  holeCount?: number | null;
+  holeDiameterM?: number | null;
+  bagYieldM3?: number | null;
+  sloping?: boolean;
 }): { supporting: string; secondary: string | null } {
+  if (params.bagCount != null && params.holeCount != null && params.holeCount > 0) {
+    return formatPostHoleBaggedConcreteCopy({
+      bagCount: params.bagCount,
+      holeCount: params.holeCount,
+      unitCost: params.unitCost,
+      sloping: params.sloping === true,
+      holeDiameterM: params.holeDiameterM ?? 0.3,
+      grossHoleVolumeM3: params.grossHoleVolumeM3 ?? params.volumeM3,
+      postDisplacementM3: params.postDisplacementM3 ?? 0,
+      netConcreteM3: params.volumeM3,
+      bagYieldM3: params.bagYieldM3 ?? 0.01,
+    });
+  }
   const bags =
     params.bagCount != null
       ? `${params.bagCount} bags${params.unitCost != null ? ` · $${params.unitCost}/bag` : ""}`
       : null;
-  const secondary =
-    params.grossHoleVolumeM3 != null && params.postDisplacementM3 != null
-      ? `Gross holes ${round2(params.grossHoleVolumeM3)} m³ · less post displacement ${round2(params.postDisplacementM3)} m³ · net placed ${round2(params.volumeM3)} m³`
-      : null;
   return {
-    supporting: `${round2(params.volumeM3)} m³ required${bags ? ` · ${bags}` : ""}`,
-    secondary,
+    supporting: `${params.bagCount ?? round2(params.volumeM3)} ${params.bagCount != null ? "bags required" : "m³ required"}${bags && params.bagCount == null ? ` · ${bags}` : ""}`,
+    secondary:
+      params.grossHoleVolumeM3 != null && params.postDisplacementM3 != null
+        ? `Gross holes ${round2(params.grossHoleVolumeM3)} m³ · less post displacement ${round2(params.postDisplacementM3)} m³ · net placed ${round2(params.volumeM3)} m³`
+        : null,
   };
 }
 

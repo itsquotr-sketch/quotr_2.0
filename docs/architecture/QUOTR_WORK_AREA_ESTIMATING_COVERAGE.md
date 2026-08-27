@@ -414,11 +414,15 @@ Shared family behaviour across all three systems: punched/slotted drainage coil 
 
 **RETAINING-WALL-PHYSICAL-CORRECTNESS-R6 — POST LAYOUT + NET POST-HOLE CONCRETE (COMPLETE LOCAL / OWNER REVIEWED)**
 
-Calculation-correctness only: Timber/Sleeper end posts locked; post-hole concrete = gross cylinder − embedded post displacement → bags from net; placement productivity is `retaining_wall.post_hole_concrete.place.hours_per_m3` (labour-h/m³, Quotr starter 3.5); `retaining_wall.digger_access` is ASK_NOW when excavation applies. Verifier: `scripts/verify-retaining-wall-post-concrete-r6.ts`.
+Calculation-correctness only: Timber/Sleeper end posts locked; post-hole concrete = gross cylinder − embedded post displacement → bags from net; `retaining_wall.digger_access` is ASK_NOW when excavation applies. Placement productivity moved to labour-h/bag in R6-R3 (legacy h/m³ leftover). Verifier: `scripts/verify-retaining-wall-post-concrete-r6.ts`.
 
-**RETAINING-WALL-PHYSICAL-CORRECTNESS-R6-R1 — CONCRETE PRECISION (COMPLETE LOCAL / OWNER FINAL APPROVAL PENDING)**
+**RETAINING-WALL-PHYSICAL-CORRECTNESS-R6-R1 — CONCRETE PRECISION (COMPLETE LOCAL / OWNER APPROVED)**
 
 Procurement bags and placement labour use full-precision net (no round2 before ceil). SED Ø 162.5 mm is an explicit Quotr estimating fallback (not product metadata). House-pile sides from identity section `125x125`. Display may show 0.33 m³ while bags ceil from unrounded net.
+
+**RETAINING-WALL-R6-R3 — BAGGED CONCRETE BUILDER REVIEW + LABOUR-H/BAG (COMPLETE / OWNER APPROVED / COMMITTED / PREVIEW PENDING)**
+
+Primary Builder Review for post-hole bagged premix shows total bags + bags/hole (avg on sloping walls). Gross/displacement/net stay in Takeoff details. Placement productivity is `retaining_wall.post_hole_concrete.place.hours_per_bag` (Quotr starter 0.035 labour-h/bag = prior 3.5 h/m³ × 0.01 m³/bag). Legacy h/m³ key leftover.
 
 **RETAINING WALL FAMILY-CLOSURE-01 — PRODUCT-LEVEL FAMILY VALIDATION (COMPLETE / OWNER APPROVED)**
 

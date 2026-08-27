@@ -816,6 +816,10 @@ export function calculateRetainingWall(
             unitCost: requirement.unitCost,
             grossHoleVolumeM3: physical.sleeperTakeoff?.grossHoleVolumeM3,
             postDisplacementM3: physical.sleeperTakeoff?.postDisplacementM3,
+            holeCount: physical.sleeperTakeoff?.holeCount,
+            holeDiameterM: physical.sleeperTakeoff?.holeDiameterM,
+            bagYieldM3: physical.sleeperTakeoff?.bagYieldM3,
+            sloping: physical.geometry?.sloping === true,
           });
           notes = concreteCopy.secondary ?? concreteCopy.supporting;
           identitySummary = concreteCopy.supporting;
@@ -827,6 +831,10 @@ export function calculateRetainingWall(
             unitCost: requirement.unitCost,
             grossHoleVolumeM3: physical.timberPiles?.grossHoleVolumeM3,
             postDisplacementM3: physical.timberPiles?.postDisplacementM3,
+            holeCount: physical.timberPiles?.holeCount,
+            holeDiameterM: physical.timberPiles?.holeDiameterM,
+            bagYieldM3: physical.timberPiles?.bagYieldM3,
+            sloping: physical.geometry?.sloping === true,
           });
           notes = concreteCopy.secondary ?? concreteCopy.supporting;
           identitySummary = concreteCopy.supporting;

@@ -11,14 +11,19 @@ export const RW_PRODUCTIVITY_KEYS = {
   backfillM3: "retaining_wall.backfill.hours_per_m3",
   drainageLm: "retaining_wall.drainage.install.hours_per_lm",
   timberPilesEa: "retaining_wall.timber.piles.install.hours_per_ea",
-  /** @deprecated Legacy h/hole — do not use as m³ authority. Prefer postHoleConcreteM3. */
+  /** @deprecated Legacy h/hole — do not use as bag authority. Prefer postHoleConcreteBag. */
   timberConcreteHole: "retaining_wall.timber.concrete.place.hours_per_hole",
   timberFaceM2: "retaining_wall.timber.face_boards.install.hours_per_m2",
   sleeperPostsEa: "retaining_wall.sleeper.posts.install.hours_per_ea",
-  /** @deprecated Legacy h/hole — do not use as m³ authority. Prefer postHoleConcreteM3. */
+  /** @deprecated Legacy h/hole — do not use as bag authority. Prefer postHoleConcreteBag. */
   sleeperConcreteHole: "retaining_wall.sleeper.concrete.place.hours_per_hole",
-  /** Shared Timber/Sleeper post-hole concrete placement — labour-h / m³ net placed. */
+  /**
+   * @deprecated Legacy labour-h/m³ — do not reinterpret as h/bag.
+   * Mature bagged path uses postHoleConcreteBag.
+   */
   postHoleConcreteM3: "retaining_wall.post_hole_concrete.place.hours_per_m3",
+  /** Mature Timber/Sleeper bagged post-hole placement — labour-h / bag procured. */
+  postHoleConcreteBag: "retaining_wall.post_hole_concrete.place.hours_per_bag",
   sleeperFaceM2: "retaining_wall.sleeper.sleepers.install.hours_per_m2",
   sleeperSleepersEa: "retaining_wall.sleeper.sleepers.install.hours_per_ea",
   masonrySubbaseM2: "retaining_wall.masonry.subbase.compact.hours_per_m2",
@@ -35,7 +40,7 @@ export const RW_PRODUCTIVITY_KEYS = {
 
 export const RW_PRODUCTIVITY_UNITS: Record<
   (typeof RW_PRODUCTIVITY_KEYS)[keyof typeof RW_PRODUCTIVITY_KEYS],
-  "m3" | "m2" | "ea" | "lm" | "hole" | "job" | "day"
+  "m3" | "m2" | "ea" | "lm" | "hole" | "bag" | "job" | "day"
 > = {
   [RW_PRODUCTIVITY_KEYS.excavationM3]: "m3",
   [RW_PRODUCTIVITY_KEYS.excavationMachineM3]: "m3",
@@ -48,6 +53,7 @@ export const RW_PRODUCTIVITY_UNITS: Record<
   [RW_PRODUCTIVITY_KEYS.sleeperPostsEa]: "ea",
   [RW_PRODUCTIVITY_KEYS.sleeperConcreteHole]: "hole",
   [RW_PRODUCTIVITY_KEYS.postHoleConcreteM3]: "m3",
+  [RW_PRODUCTIVITY_KEYS.postHoleConcreteBag]: "bag",
   [RW_PRODUCTIVITY_KEYS.sleeperFaceM2]: "m2",
   [RW_PRODUCTIVITY_KEYS.sleeperSleepersEa]: "ea",
   [RW_PRODUCTIVITY_KEYS.masonrySubbaseM2]: "m2",

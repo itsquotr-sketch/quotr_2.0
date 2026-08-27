@@ -61,21 +61,32 @@ export const RW_STEEL_POST_DISPLACEMENT_UNKNOWN_DISCLOSURE =
   "Steel-post displacement not deducted because selected section area is not confirmed; concrete quantity is conservatively estimated.";
 
 /**
- * Shared post-hole concrete placement productivity (labour-h / m³ net placed).
- * New key — do not reinterpret legacy hours_per_hole company rates as m³.
+ * Shared post-hole bagged concrete placement productivity (labour-h / bag).
+ * New key — do not reinterpret legacy hours_per_m3 company rates as h/bag.
+ */
+export const RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_KEY =
+  "retaining_wall.post_hole_concrete.place.hours_per_bag" as const;
+
+/**
+ * @deprecated Legacy labour-h/m³ key. Mature bagged path uses hours_per_bag.
+ * Do not consume as h/bag authority.
  */
 export const RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_KEY =
   "retaining_wall.post_hole_concrete.place.hours_per_m3" as const;
 
+/** @deprecated Kept for catalogue identity only. */
+export const RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER = 3.5;
+
 /**
  * LOW-CONFIDENCE Quotr starter — bagged premix mix/place into post holes.
- * Not converted from the legacy 0.12 h/hole starter (false precision).
- * Ready-mix footing placement is ~1.2 h/m³; bagged post-hole work is slower.
+ * Dimensional conversion of the R6 validated 3.5 labour-h/m³ starter at the
+ * canonical 0.01 m³/bag yield: 3.5 × 0.01 = 0.035 labour-h/bag.
+ * Not a fixture-derived calibration.
  */
-export const RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_M3_STARTER = 3.5;
+export const RW_POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER = 0.035;
 export const RW_POST_HOLE_CONCRETE_PLACE_STARTER_CONFIDENCE = "low" as const;
 export const RW_POST_HOLE_CONCRETE_PLACE_STARTER_RATIONALE =
-  "LOW-CONFIDENCE QUOTR STARTER. Total person-hours to mix and place one cubic metre of bagged post-hole concrete by hand after posts are set. Not derived from the legacy h/hole starter. Company/Project exact overrides.";
+  "LOW-CONFIDENCE QUOTR STARTER. Total person-hours to mix and place one bag of post-hole concrete. Dimensional conversion of the prior 3.5 labour-h/m³ starter × 0.01 m³/bag yield. Company/Project exact overrides.";
 
 export type PostDisplacementKind =
   | "HOUSE_PILE_RECT"
