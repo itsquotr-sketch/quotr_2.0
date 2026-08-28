@@ -23,6 +23,10 @@ import {
   buildFencePhysicalModel,
 } from "../lib/estimate/fence-physical";
 import {
+  isFencePackageLineLabel,
+  packageXorDetailedHolds,
+} from "../lib/estimate/fence-commercial";
+import {
   fenceFactQuestionClass,
   FENCE_INFORMATION_CONTRACT,
 } from "../lib/estimate/fence-information-contract";
@@ -277,7 +281,7 @@ const bagProd = resolveProductivity({
 check(
   "18 labour-h/bag path",
   bagProd.key === FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag &&
-    bagProd.hoursPerUnit === 0.035
+    bagProd.hoursPerUnit === 0.06
 );
 const concA = buildPostHoleBaggedConcrete({
   holeDiameterM: 0.3,
@@ -655,21 +659,33 @@ check(
 );
 check(
   "49 physical quantities independent of commercial ownership",
-  (before.requirements ?? []).every((r) => r.priced === false) &&
+  buildFencePhysicalModel({ context: ctx(timberFacts()), workAreaId: "f1" }).requirements.every(
+    (r) => r.priced === false
+  ) &&
     (before.requirements ?? []).some((r) => r.kind === "material")
+);
+const hasPackageBefore = before.lineItems.some((i) => isFencePackageLineLabel(i.label));
+const hasDetailedBefore = before.lineItems.some(
+  (i) => i.componentKey != null && i.componentKey.startsWith("fence.") && !isFencePackageLineLabel(i.label)
 );
 check(
   "50 package/detail XOR preserved",
   FENCE_COMMERCIAL_AUTHORITY_1A === "LEGACY_PACKAGE_AUTHORITY" &&
-    before.lineItems.some((i) => i.label === "Fence materials") &&
-    before.lineItems.some((i) => i.label === "Fence labour") &&
+    packageXorDetailedHolds({
+      mode: hasDetailedBefore && !hasPackageBefore
+        ? "DETAILED_COMPONENT_AUTHORITY"
+        : "LEGACY_PACKAGE_AUTHORITY",
+      hasPackageFenceLine: hasPackageBefore,
+      hasDetailedMoneyLine: hasDetailedBefore,
+    }) &&
     FENCE_COMMERCIAL_COVERAGE_MAP.length >= 10
 );
 const est = calculateEstimate(ctx(timberFacts()));
 check(
   "51 Pricing/Quote regression",
   est.recommendedSell > 0 &&
-    est.lineItems.some((i) => i.label === "Fence materials")
+    (est.lineItems.some((i) => isFencePackageLineLabel(i.label)) ||
+      est.lineItems.some((i) => i.componentKey === "fence.boards" || i.componentKey === "fence.posts.lm"))
 );
 
 console.log("\n-- OWNER FIXTURES --");
@@ -706,9 +722,9 @@ const bagLabour = (before.requirements ?? []).find(
   (r) => r.kind === "labour" && r.componentKey === "fence.post_hole_concrete.place"
 ) as LabourRequirement | undefined;
 check(
-  "bag labour hours = bags × 0.035",
+  "bag labour hours = bags × Fence bag starter",
   bagLabour != null &&
-    near(bagLabour.baseHours, (fixtureA.concrete.bagCount) * 0.035, 1e-6)
+    near(bagLabour.baseHours, (fixtureA.concrete.bagCount) * 0.06, 1e-6)
 );
 
 console.log("\n-- CONTRACT / REGISTRY --");
@@ -1239,8 +1255,7 @@ check(
     reqQty(estGap10, "fence.posts.ea") === reqQty(estGap0, "fence.posts.ea") &&
     reqQty(estGap10, "fence.rails") === reqQty(estGap0, "fence.rails") &&
     reqQty(estGap10, "fence.post_hole_concrete") ===
-      reqQty(estGap0, "fence.post_hole_concrete") &&
-    estGap10.lineItems.some((i) => i.label === "Fence materials")
+      reqQty(estGap0, "fence.post_hole_concrete")
 );
 const horizWithVerticalGap = buildFenceTimberTakeoff({
   geometry: fixtureB.geometry,

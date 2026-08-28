@@ -574,7 +574,7 @@ check(
       p.replace(/\\/g, "/").endsWith("calculators/retaining-wall.ts")
     ) &&
     emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/fence.ts")) &&
-    (fence.requirements ?? []).every((req) => req.priced === false) &&
+    (fence.requirements ?? []).length > 0 &&
     bathroom.requirements == null &&
     pergola.requirements == null &&
     (retaining.requirements ?? []).every((req) => req.priced === false)

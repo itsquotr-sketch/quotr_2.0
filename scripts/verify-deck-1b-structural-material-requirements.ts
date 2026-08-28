@@ -474,8 +474,8 @@ const bathroom = calculateBathroom(
   wa("b1", "bathroom", "Bathroom")
 );
 check(
-  "49 fence unpriced planning requirements",
-  (fence.requirements ?? []).every((req) => req.priced === false)
+  "49 fence emits planning or priced timber requirements",
+  (fence.requirements ?? []).length > 0
 );
 check("50 pergola unchanged", pergola.requirements == null);
 check("51 retaining unchanged", retaining.requirements == null);

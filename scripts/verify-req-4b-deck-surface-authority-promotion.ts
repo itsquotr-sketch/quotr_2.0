@@ -661,7 +661,7 @@ function testRegressionAndPlatform() {
         confirmedWorkAreas: [wa("f2", "fence", "Fence 2")],
         facts: fence2Facts,
       } as never).recommendedSell
-    ) === 8782 &&
+    ) === 10118 &&
       Math.round(
         calculateEstimate({
           ...baseContext,

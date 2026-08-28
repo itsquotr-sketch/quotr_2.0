@@ -1,6 +1,7 @@
 import {
   getCombinedLabourAccessFactor,
   getFenceHeightMaterialFactor,
+  getIntentLabourAdjustmentFactor,
   getQualityFactor,
   getSlopeLabourFactor,
 } from "@/lib/estimate/adjustments";
@@ -43,6 +44,20 @@ import {
   fenceGateScopeApplies,
   type FenceSystemClass,
 } from "@/lib/estimate/fence-systems";
+import {
+  commercializeFenceWithLabour,
+  detailedFenceLabour,
+  detailedFenceLabourFromCost,
+  detailedFenceMoneyMaterials,
+  fenceCommercialLineLabel,
+  fenceLabourIncludesCarry,
+} from "@/lib/estimate/fence-commercial";
+import {
+  adaptPricedMaterialRequirementWithoutLegacy,
+  adaptUnpricedLabourRequirementToEstimateLine,
+  adaptUnpricedMaterialRequirementToEstimateLine,
+  isPricedMaterialRequirement,
+} from "@/lib/estimate/requirement-commercial-line";
 
 export const FENCE_CALCULATOR_CONSUMED_FACTS = [
   "fence.length_m",
@@ -55,6 +70,7 @@ export const FENCE_CALCULATOR_CONSUMED_FACTS = [
   "fence.slat_gap_mm",
   "fence.post_spacing_m",
   "fence.post_embedment_m",
+  "fence.post_stock_length_m",
   "fence.hole_diameter_m",
   "fence.rail_count",
   "fence.section_width_m",
@@ -225,15 +241,16 @@ export function calculateFence(
     context.project,
     context.organisationSettings
   );
+  const workAreaAccess = resolveLegacyWorkAreaAccess({
+    constraints: context.constraints,
+    facts,
+    workAreaId: workArea.id,
+    workAreaType: "fence",
+  });
   const labourAdjustment =
     getCombinedLabourAccessFactor({
       constraints: context.constraints,
-      workAreaAccess: resolveLegacyWorkAreaAccess({
-        constraints: context.constraints,
-        facts,
-        workAreaId: workArea.id,
-        workAreaType: "fence",
-      }),
+      workAreaAccess,
     }) *
     getSlopeLabourFactor(
       getStringFact(facts, workArea.id, "fence.slope_condition")
@@ -269,7 +286,22 @@ export function calculateFence(
     rates: context.rates,
     organisationSettings: context.organisationSettings,
   });
+  const commercial = commercializeFenceWithLabour({
+    physical,
+    facts,
+    workAreaId: workArea.id,
+    rates: context.rates,
+    organisationSettings: context.organisationSettings,
+    constraints: context.constraints,
+    hourlyCost: labourRate.costRate,
+  });
+  assumptions.push(...commercial.assumptions);
+  const detailed = commercial.mode === "DETAILED_COMPONENT_AUTHORITY";
+  if (detailed) {
+    missingInfo.push(...commercial.missingInfo);
+  }
 
+  if (!detailed) {
   const fenceProductivity = resolveProductivity({
     productivityKey: "fence.labour_hours_per_lm",
     unit: "lm",
@@ -335,8 +367,10 @@ export function calculateFence(
       fenceBuildUp
     )
   );
+  }
 
   if (
+    !detailed &&
     fenceGateScopeApplies(physical.system) &&
     getBooleanFact(facts, workArea.id, "fence.gate_included")
   ) {
@@ -388,6 +422,83 @@ export function calculateFence(
         qualityFactor,
       })
     );
+  }
+
+  if (detailed) {
+    const labourMoney = detailedFenceLabourFromCost(
+      labourRate.costRate,
+      context.organisationSettings
+    );
+    for (const requirement of detailedFenceMoneyMaterials(commercial.requirements)) {
+      if (isPricedMaterialRequirement(requirement)) {
+        lineItems.push({
+          ...adaptPricedMaterialRequirementWithoutLegacy({
+            requirement,
+            workAreaName: workArea.name,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            label: fenceCommercialLineLabel(requirement),
+          }),
+          notes: requirement.specification ?? undefined,
+          identitySummary: requirement.specification ?? requirement.description,
+        });
+      } else {
+        lineItems.push(
+          adaptUnpricedMaterialRequirementToEstimateLine({
+            requirement,
+            workAreaName: workArea.name,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            label: fenceCommercialLineLabel(requirement),
+          })
+        );
+      }
+    }
+    for (const requirement of detailedFenceLabour(commercial.requirements)) {
+      if (requirement.priced === true && requirement.hourlyCost != null) {
+        const includeMaterialCarry = fenceLabourIncludesCarry(
+          requirement.componentKey
+        );
+        const intentAdjustment = getIntentLabourAdjustmentFactor({
+          constraints: context.constraints,
+          workAreaAccess,
+          includeMaterialCarry,
+        }) * getSlopeLabourFactor(
+          getStringFact(facts, workArea.id, "fence.slope_condition")
+        );
+        lineItems.push(
+          createLabourLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: fenceCommercialLineLabel(requirement),
+            quantity: requirement.productivityBasis.quantity,
+            unit: requirement.productivityBasis.unit,
+            productivityHoursPerUnit: requirement.productivityBasis.hoursPerUnit,
+            labourCostRate: labourMoney.costPerHour,
+            labourSellRate: labourMoney.sellPerHour,
+            adjustmentFactor: intentAdjustment,
+            qualityFactor: NO_FINISH_QUALITY_FACTOR,
+            rateSource: labourRate.sourceLabel,
+            componentKey: requirement.componentKey,
+            sellDerivedFromMargin: true,
+            sellAuthority: labourMoney.sellAuthority,
+            notes: `${requirement.productivityBasis.quantity} ${requirement.productivityBasis.unit} × ${requirement.productivityBasis.hoursPerUnit} labour-h/${requirement.productivityBasis.unit}`,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+          })
+        );
+      } else {
+        lineItems.push(
+          adaptUnpricedLabourRequirementToEstimateLine({
+            requirement,
+            workAreaName: workArea.name,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            label: fenceCommercialLineLabel(requirement),
+          })
+        );
+      }
+    }
   }
 
   if (getBooleanFact(facts, workArea.id, "fence.demolition_required")) {
@@ -497,8 +608,10 @@ export function calculateFence(
     exclusions,
     confidence,
     assumptionMetadata,
-    ...(physical.requirements.length > 0
-      ? { requirements: physical.requirements }
-      : {}),
+    ...(commercial.requirements.length > 0
+      ? { requirements: commercial.requirements }
+      : physical.requirements.length > 0
+        ? { requirements: physical.requirements }
+        : {}),
   };
 }

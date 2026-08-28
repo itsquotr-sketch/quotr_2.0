@@ -314,7 +314,8 @@ function buildFenceDraft(
   const length = factValue(facts, "fence.length_m");
   const height = factValue(facts, "fence.height_m");
   const material = factValue(facts, "fence.material");
-  const materialPhrase = material ? material.toLowerCase() : "fence";
+  const systemLabel = factValue(facts, "fence.system");
+  const materialPhrase = (systemLabel || material || "fence").toLowerCase();
   const system = classifyFenceSystem(
     factValue(facts, "fence.system") ?? material,
     factValue(facts, "fence.paling_or_panel_type")
@@ -340,9 +341,14 @@ function buildFenceDraft(
   }
 
   if (gateInActiveScope && isAffirmative(factValue(facts, "fence.gate_included"))) {
+    const detailedGate = pricingItems?.some((item) =>
+      /gate frame|gate hardware|timber gate/i.test(item.label)
+    );
     draft = appendScopeClause(
       draft,
-      "Gate allowance is included where applicable."
+      detailedGate
+        ? "A timber gate is included."
+        : "Gate allowance is included where applicable."
     );
   }
 

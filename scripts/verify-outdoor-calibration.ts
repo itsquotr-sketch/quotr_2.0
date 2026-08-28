@@ -113,12 +113,19 @@ const fence1 = calculateFence(
   } as EstimateContext,
   wa("f1", "fence", "Fence 1")
 );
-assert(labels(fence1.lineItems).includes("Fence labour"), "Fence 1: labour");
-assert(labels(fence1.lineItems).includes("Fence materials"), "Fence 1: materials");
+assert(
+  labels(fence1.lineItems).some((l) => l === "Fence labour" || l === "Post installation"),
+  "Fence 1: labour"
+);
+assert(
+  labels(fence1.lineItems).some((l) => l === "Fence materials" || l === "Fence posts" || l === "Palings"),
+  "Fence 1: materials"
+);
 assert(!labels(fence1.lineItems).includes("Gate allowance"), "Fence 1: no gate");
 assert(
-  fence1.lineItems.find((i) => i.label === "Fence materials")?.materialBuildUp != null,
-  "Fence 1: scope build-up on materials"
+  fence1.lineItems.find((i) => i.label === "Fence materials")?.materialBuildUp != null ||
+    fence1.lineItems.some((i) => i.componentKey === "fence.posts.lm"),
+  "Fence 1: package build-up or detailed post takeoff"
 );
 
 // Fence 2: 30lm, 2m, gate, removal, sloping
@@ -138,7 +145,12 @@ const fence2 = calculateFence(
   } as EstimateContext,
   wa("f2", "fence", "Fence 2")
 );
-assert(labels(fence2.lineItems).includes("Gate allowance"), "Fence 2: gate");
+assert(
+  labels(fence2.lineItems).some(
+    (l) => l === "Gate allowance" || /gate/i.test(l)
+  ),
+  "Fence 2: gate"
+);
 assert(labels(fence2.lineItems).includes("Existing fence removal"), "Fence 2: removal");
 assert(labels(fence2.lineItems).includes("Fence disposal allowance"), "Fence 2: disposal");
 

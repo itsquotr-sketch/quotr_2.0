@@ -44,6 +44,28 @@ export const FENCE_PREMIX_20KG_KEY = "fence.concrete.premix.20kg.bag";
 export const FENCE_GATE_HARDWARE_KEY = "fence.gate.hardware.ea";
 export const FENCE_FIXINGS_TIMBER_KEY = "fence.fixings.timber.allowance";
 export const FENCE_FIXINGS_MODULAR_KEY = "fence.fixings.panel_brackets.allowance";
+export const FENCE_POST_MATERIAL_KEY = "fence.timber.post.100x100.h4";
+export const FENCE_GATE_FRAME_MATERIAL_KEY = "fence.gate.frame.75x50.h4";
+export const FENCE_CAPPING_SECTION = "65x40";
+
+export function fencePostMaterialKey(): string {
+  return FENCE_POST_MATERIAL_KEY;
+}
+
+export function fenceGateFrameMaterialKey(): string {
+  return FENCE_GATE_FRAME_MATERIAL_KEY;
+}
+
+export function fenceBoardMaterialKey(
+  species: FenceTimberSpecies,
+  thicknessMm: number
+): string {
+  return `fence.board.${species}.150x${thicknessMm}`;
+}
+
+export function fenceCappingMaterialKey(species: FenceTimberSpecies): string {
+  return `fence.capping.${species}.${FENCE_CAPPING_SECTION}`;
+}
 
 export const FENCE_POST_IDENTITY: MaterialIdentity = {
   family: STRUCTURAL_TIMBER_FAMILY,
@@ -328,9 +350,9 @@ export const FENCE_TAKEOFF_COMPONENT_KEYS = [
 ] as const;
 
 /**
- * Proposed commercial basis for timber fixings once detailed money exists:
- * 8% of (posts + boards/slats + rails + capping) material cost, excluding
- * gate hardware. 1A package currently owns this money.
+ * FENCE-MATURITY-1B-R1 timber fixings:
+ * 8% of boards/slats + rails + capping material cost only.
+ * Excludes posts, concrete, gate frame, gate hardware, waste, demolition, finish.
  */
 export const FENCE_TIMBER_FIXINGS_COST_BASIS =
-  "PROPORTIONAL_8_PERCENT_OF_TIMBER_MATERIAL_COST_EXCLUDING_GATE_HARDWARE";
+  "PROPORTIONAL_8_PERCENT_OF_BOARD_RAIL_CAPPING_MATERIAL_COST";

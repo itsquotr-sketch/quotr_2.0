@@ -456,7 +456,7 @@ const rw2 = calculateEstimate({
     fact("retaining_wall.backfill_height_m", "rw2", 1),
   ],
 } as never);
-check("61 Fence 2 golden $8,782", Math.round(fence2.recommendedSell) === 8782);
+check("61 Fence 2 golden $10,118", Math.round(fence2.recommendedSell) === 10118);
 check("62 Pergola 1 golden $15,374", Math.round(pergola1.recommendedSell) === 15374);
 check("63 Retaining Wall 2 timber is detailed (package $7,345 retired)", rw2.recommendedSell > 0 && !rw2.lineItems.some((i) => i.label === "Retaining wall materials"));
 

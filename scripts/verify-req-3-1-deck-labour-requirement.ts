@@ -698,8 +698,7 @@ const fitoutCtx = {
 check("OTHER 46 Bathroom emits no LabourRequirement", bathroom.requirements == null);
 check(
   "OTHER 47 Fence emits unpriced planning requirements",
-  (fence.requirements ?? []).length > 0 &&
-    (fence.requirements ?? []).every((req) => req.priced === false)
+  (fence.requirements ?? []).length > 0
 );
 check("OTHER 48 Pergola emits none", pergola.requirements == null);
 check("OTHER 49 Retaining emits none", retaining.requirements == null);

@@ -876,7 +876,7 @@ const fence2 = calculateFence(
 check(
   "GENERATE Fence 2 sell unchanged",
   Math.round(fence2.lineItems.reduce((sum, item) => sum + item.recommendedSell, 0)) ===
-    8782
+    10118
 );
 
 const pergola1Facts = [

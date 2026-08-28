@@ -185,6 +185,16 @@ export const FENCE_INFORMATION_CONTRACT: readonly FenceInformationContractRow[] 
     reason: "Editable physical fact. Default 0.6 m. Not hard minimum. Not engineering.",
   },
   {
+    factKey: "fence.post_stock_length_m",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: false,
+    commercial: true,
+    confidence: false,
+    reason:
+      "Optional purchased H4 100×100 stock length. When set and long enough, overrides the Quotr ladder. Does not change post geometry.",
+  },
+  {
     factKey: "fence.hole_diameter_m",
     questionClass: "REFINE",
     calculatorConsumed: true,

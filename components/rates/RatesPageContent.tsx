@@ -18,6 +18,7 @@ import {
 } from "@/lib/rates/catalogue";
 import {
   DECK_PRODUCTIVITY_RATE_CATALOGUE,
+  FENCE_PRODUCTIVITY_RATE_CATALOGUE,
   RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
 } from "@/lib/rates/specific-material-catalogue";
 import { catalogueEntriesForRatesSection } from "@/lib/rates/rate-section-contract";
@@ -251,6 +252,7 @@ export function RatesPageContent({
               [
                 ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
                 ...RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
+                ...FENCE_PRODUCTIVITY_RATE_CATALOGUE,
               ],
               "productivity"
             )}

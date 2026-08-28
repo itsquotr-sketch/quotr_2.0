@@ -23,6 +23,11 @@ import {
   FENCE_TOP_ALLOWANCE_DISCLOSURE,
 } from "@/lib/estimate/fence-defaults";
 import {
+  fencePostOversizeAttention,
+  procureFencePosts,
+  type FencePostProcurement,
+} from "@/lib/estimate/fence-post-procurement";
+import {
   classifyFenceGatePosition,
   defaultRailCountForHeight,
   FENCE_BOARD_THICKNESS_19_MM,
@@ -62,6 +67,7 @@ import {
   rectangularSectionDisplacementM3,
   type PostHoleConcreteTakeoff,
 } from "@/lib/estimate/post-hole-concrete";
+import { round2 } from "@/lib/estimate/facts";
 import type { MaterialIdentity } from "@/lib/materials/identity";
 
 export type FenceTimberOrientation = "vertical" | "horizontal";
@@ -123,7 +129,11 @@ export type FenceTimberTakeoff = {
   postCount: number;
   gateEdgePostCount: number;
   postRequiredLengthM: number;
+  /** Physical required total lm = count × required length. Not purchase. */
   postStockLm: number;
+  postPurchasedStockLengthM: number | null;
+  postPurchasedLm: number | null;
+  postProcurement: FencePostProcurement;
   embedmentM: number;
   embedmentAssumed: boolean;
   holeDiameterM: number;
@@ -184,6 +194,8 @@ export function buildFenceTimberTakeoff(params: {
   gateCappingIncluded?: boolean | null;
   horizontalCourseCount?: number | null;
   wastePercent: number | null;
+  selectedPostStockLengthM?: number | null;
+  availablePostStockLengthsM?: readonly number[];
 }): FenceTimberTakeoff {
   const assumptions: string[] = [];
   const attention: string[] = [];
@@ -406,6 +418,23 @@ export function buildFenceTimberTakeoff(params: {
   const postRequiredLengthM = geometry.heightM + embedmentM;
   assumptions.push(FENCE_TOP_ALLOWANCE_DISCLOSURE);
   const postStockLm = postLayout.postCount * postRequiredLengthM;
+  const postProcurement = procureFencePosts({
+    requiredLengthEachM: postRequiredLengthM,
+    postCount: postLayout.postCount,
+    selectedStockLengthM: params.selectedPostStockLengthM,
+    availableStockLengthsM: params.availablePostStockLengthsM,
+  });
+  if (postProcurement.ok) {
+    assumptions.push(
+      `Fence posts purchased as ${postProcurement.purchaseLengthEachM} m stock covering ${round2(postRequiredLengthM)} m required length (height + embedment). ${postProcurement.source === "selected" ? "Builder/company stock length selected." : postProcurement.source === "company_ladder" ? "Company stock-length ladder." : "Quotr H4 100×100 stock ladder."}`
+    );
+  } else if (postProcurement.reason === "exceeds_max_stock") {
+    attention.push(fencePostOversizeAttention(postRequiredLengthM));
+  } else if (postProcurement.reason === "selected_too_short") {
+    attention.push(
+      `Selected post stock length is shorter than the required ${round2(postRequiredLengthM)} m. Pricing Required — short stock was not used.`
+    );
+  }
 
   const unusualHeight = geometry.heightM > FENCE_UNUSUAL_HEIGHT_M;
   if (unusualHeight) {
@@ -496,6 +525,11 @@ export function buildFenceTimberTakeoff(params: {
     gateEdgePostCount,
     postRequiredLengthM,
     postStockLm,
+    postPurchasedStockLengthM: postProcurement.ok
+      ? postProcurement.purchaseLengthEachM
+      : null,
+    postPurchasedLm: postProcurement.ok ? postProcurement.purchaseLm : null,
+    postProcurement,
     embedmentM,
     embedmentAssumed,
     holeDiameterM,

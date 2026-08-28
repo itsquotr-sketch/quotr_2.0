@@ -1010,6 +1010,13 @@ export function composeBuilderReview(
       ) {
         return false;
       }
+      if (
+        commercialComponentKeys.has(FENCE_POSTS_LM_COMPONENT) &&
+        (req.componentKey === FENCE_POSTS_EA_COMPONENT ||
+          req.componentKey === FENCE_GATE_POSTS_EA_COMPONENT)
+      ) {
+        return false;
+      }
       return !commercialComponentKeys.has(req.componentKey);
     })
     .map(toTakeoffRow);

@@ -753,7 +753,7 @@ const rw2 = calculateEstimate({
   ],
 } as never);
 
-check("70 Fence 2 golden $8,782", Math.round(fence2.recommendedSell) === 8782);
+check("70 Fence 2 golden $10,118", Math.round(fence2.recommendedSell) === 10118);
 check("71 Pergola 1 golden $15,374", Math.round(pergola1.recommendedSell) === 15374);
 check("72 Retaining Wall 2 timber is detailed (package $7,345 retired)", rw2.recommendedSell > 0 && !rw2.lineItems.some((i) => i.label === "Retaining wall materials"));
 

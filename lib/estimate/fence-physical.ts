@@ -39,6 +39,10 @@ import {
   FENCE_RAILS_COMPONENT,
   FENCE_SECTIONS_COMPONENT,
   FENCE_SECTION_LABOUR_COMPONENT,
+  fenceBoardMaterialKey,
+  fenceCappingMaterialKey,
+  fenceGateFrameMaterialKey,
+  fencePostMaterialKey,
 } from "@/lib/estimate/fence-identities";
 import {
   classifyFenceMetalMaterial,
@@ -61,6 +65,7 @@ import {
 import { FENCE_PACKAGE_XOR_NOTE } from "@/lib/estimate/fence-defaults";
 import { round2 } from "@/lib/estimate/facts";
 import { formatPostHoleBaggedConcreteCopy } from "@/lib/estimate/retaining-wall-builder-copy";
+import { companyFencePostStockLengthsM } from "@/lib/estimate/fence-post-procurement";
 
 export const FENCE_PLANNING_TAKEOFF_DISCLAIMER =
   "Planning quantities for estimating. Not structural design, wind engineering, or a compliance determination.";
@@ -82,6 +87,7 @@ function factKeysFor(system: FenceSystemClass): string[] {
     "fence.system",
     "fence.material",
     "fence.post_embedment_m",
+    "fence.post_stock_length_m",
     "fence.hole_diameter_m",
     "fence.demolition_required",
     "fence.slope_condition",
@@ -121,9 +127,10 @@ function factKeysFor(system: FenceSystemClass): string[] {
 function parseThicknessMm(raw: string | number | null): number | null {
   if (raw == null) return null;
   if (typeof raw === "number" && (raw === 19 || raw === 25)) return raw;
-  const text = String(raw);
-  if (/\b25\b/.test(text)) return 25;
-  if (/\b19\b/.test(text)) return 19;
+  const text = String(raw).toLowerCase();
+  // Builder-facing options are "150 × 19mm" / "150 × 25mm".
+  if (text.includes("25")) return 25;
+  if (text.includes("19")) return 19;
   return null;
 }
 
@@ -232,6 +239,12 @@ export function buildFencePhysicalModel(params: {
         "fence.horizontal_course_count"
       ),
       wastePercent: timberFramingPercent,
+      selectedPostStockLengthM: getNumberFact(
+        facts,
+        workAreaId,
+        "fence.post_stock_length_m"
+      ),
+      availablePostStockLengthsM: companyFencePostStockLengthsM(context.rates),
     });
     assumptions.push(...timber.assumptions);
     attention.push(...timber.attention);
@@ -253,10 +266,14 @@ export function buildFencePhysicalModel(params: {
         workAreaId,
         componentKey: FENCE_POSTS_EA_COMPONENT,
         description: "Fence posts",
-        materialKey: "fence.timber.post.100x100.h4",
+        materialKey: fencePostMaterialKey(),
         identity: timber.postIdentity,
         category: "POSTS",
-        specification: `${timber.postCount} EA · ${round2(timber.postRequiredLengthM)} m required length (height + embedment)`,
+        specification: `${timber.postCount} EA · required ${round2(timber.postRequiredLengthM)} m/post (height + embedment)${
+          timber.postPurchasedStockLengthM != null
+            ? ` · purchased ${timber.postPurchasedStockLengthM} m stock`
+            : ""
+        }`,
         baseQuantity: timber.postCount,
         baseUnit: "ea",
         wasteFactor: 0,
@@ -271,14 +288,16 @@ export function buildFencePhysicalModel(params: {
         workAreaId,
         componentKey: FENCE_POSTS_LM_COMPONENT,
         description: "Fence post stock length",
-        materialKey: "fence.timber.post.100x100.h4",
+        materialKey: fencePostMaterialKey(),
         identity: timber.postIdentity,
         category: "POSTS",
-        specification: `${round2(timber.postStockLm)} lm theoretical (${timber.postCount} × ${round2(timber.postRequiredLengthM)} m)`,
+        specification: timber.postProcurement.ok
+          ? `${timber.postCount} posts · required ${round2(timber.postRequiredLengthM)} m/post · purchased ${timber.postCount} × ${timber.postPurchasedStockLengthM} m = ${round2(timber.postPurchasedLm ?? 0)} lm`
+          : `${timber.postCount} posts · required ${round2(timber.postRequiredLengthM)} m/post · stock length Pricing Required (not clamped)`,
         baseQuantity: timber.postStockLm,
         baseUnit: "lm",
         wasteFactor: 0,
-        purchaseQuantity: timber.postStockLm,
+        purchaseQuantity: timber.postPurchasedLm ?? timber.postStockLm,
         purchaseUnit: "lm",
         factKeys: keys,
         source: "fence.timber.posts.lm",
@@ -290,7 +309,7 @@ export function buildFencePhysicalModel(params: {
           workAreaId,
           componentKey: FENCE_GATE_POSTS_EA_COMPONENT,
           description: "Gate posts",
-          materialKey: "fence.timber.post.100x100.h4",
+          materialKey: fencePostMaterialKey(),
           identity: timber.gatePostIdentity,
           category: "POSTS",
           specification: `${timber.gateEdgePostCount} gate-edge posts · included in fence post count · assumed same section as fence posts`,
@@ -310,7 +329,7 @@ export function buildFencePhysicalModel(params: {
         componentKey: FENCE_BOARDS_COMPONENT,
         description:
           system === "TIMBER_HORIZONTAL_SLAT" ? "Slats" : "Palings",
-        materialKey: `fence.board.${timber.species}.${timber.thicknessMm}`,
+        materialKey: fenceBoardMaterialKey(timber.species, timber.thicknessMm),
         identity: timber.boardIdentity,
         category: "BOARDS",
         specification:
@@ -352,7 +371,7 @@ export function buildFencePhysicalModel(params: {
           workAreaId,
           componentKey: FENCE_CAPPING_COMPONENT,
           description: "Top capping",
-          materialKey: `fence.capping.${timber.species}`,
+          materialKey: fenceCappingMaterialKey(timber.species),
           identity: timber.cappingIdentity,
           category: "CAPPING",
           specification:
@@ -375,7 +394,7 @@ export function buildFencePhysicalModel(params: {
           workAreaId,
           componentKey: FENCE_GATE_FRAME_COMPONENT,
           description: "Gate framing",
-          materialKey: "fence.gate.frame.lm",
+          materialKey: fenceGateFrameMaterialKey(),
           identity: timber.gateFrameIdentity,
           category: "GATE",
           specification: `${timber.gateCount} gate(s) · ${round2(timber.gateFrameLm)} lm (2 stiles + 2 rails + 1 brace)`,
@@ -463,12 +482,12 @@ export function buildFencePhysicalModel(params: {
         fencePlanningLabour({
           workAreaId,
           componentKey: FENCE_FRAMING_LABOUR_COMPONENT,
-          description: "Fence framing",
+          description: "Rail installation",
           trade: "fencing",
-          productivityKey: FENCE_PRODUCTIVITY_KEYS.framingLm,
-          hoursPerUnit: FENCE_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.framingLm],
+          productivityKey: FENCE_PRODUCTIVITY_KEYS.railLm,
+          hoursPerUnit: FENCE_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.railLm],
           unit: "lm",
-          quantity: timber.fixedFenceLengthM,
+          quantity: timber.railRequiredLm,
           factKeys: keys,
           accessSensitive: true,
         })
@@ -480,19 +499,19 @@ export function buildFencePhysicalModel(params: {
         componentKey: FENCE_BOARD_LABOUR_COMPONENT,
         description:
           system === "TIMBER_HORIZONTAL_SLAT"
-            ? "Board/slat installation"
-            : "Board installation",
+            ? "Horizontal slat installation"
+            : "Vertical paling installation",
         trade: "fencing",
         productivityKey:
           system === "TIMBER_HORIZONTAL_SLAT"
-            ? FENCE_PRODUCTIVITY_KEYS.horizontalSlatsM2
-            : FENCE_PRODUCTIVITY_KEYS.verticalBoardsM2,
+            ? FENCE_PRODUCTIVITY_KEYS.horizontalSlatsLm
+            : FENCE_PRODUCTIVITY_KEYS.verticalBoardsLm,
         hoursPerUnit:
           system === "TIMBER_HORIZONTAL_SLAT"
-            ? FENCE_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.horizontalSlatsM2]
-            : FENCE_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.verticalBoardsM2],
-        unit: "m2",
-        quantity: timber.faceAreaM2,
+            ? FENCE_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.horizontalSlatsLm]
+            : FENCE_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.verticalBoardsLm],
+        unit: "lm",
+        quantity: timber.boardRequiredLm,
         factKeys: keys,
         accessSensitive: true,
       })
@@ -518,7 +537,7 @@ export function buildFencePhysicalModel(params: {
         fencePlanningLabour({
           workAreaId,
           componentKey: FENCE_GATE_LABOUR_COMPONENT,
-          description: "Gate installation",
+          description: "Timber gate fabrication & installation",
           trade: "fencing",
           productivityKey: FENCE_PRODUCTIVITY_KEYS.gateInstall,
           hoursPerUnit: FENCE_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.gateInstall],

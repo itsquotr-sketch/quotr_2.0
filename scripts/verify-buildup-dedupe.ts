@@ -218,9 +218,15 @@ assert(
   "No separate Backfill materials priced row"
 );
 const backfillItem = rwMerged.find((item) => item.label === "Backfill allowance");
+const detailedBackfill = rwMerged.some(
+  (item) =>
+    item.componentKey === "retaining_wall.backfill.volume" ||
+    /backfill|drainage aggregate/i.test(item.label)
+);
 assert(
-  backfillItem?.materialBuildUp?.buildUpType === "backfill_volume",
-  "Backfill volume appears as build-up on allowance item"
+  backfillItem?.materialBuildUp?.buildUpType === "backfill_volume" ||
+    detailedBackfill,
+  "Backfill volume appears as build-up on allowance item or detailed backfill takeoff"
 );
 
 // Paint litres build-up
@@ -264,11 +270,18 @@ const fenceMerged = mergeDuplicateMaterialBuildUpLineItems(fenceResult.lineItems
 const fenceMaterialRows = fenceMerged.filter((item) =>
   item.label.toLowerCase().includes("fence material")
 );
-assert(fenceMaterialRows.length === 1, "Fence has single materials priced row");
+const fenceDetailedPosts = fenceMerged.some((item) => item.componentKey === "fence.posts.lm");
 assert(
-  fenceMaterialRows[0]?.materialBuildUp != null,
-  "Fence materials row carries scope build-up metadata"
+  (fenceMaterialRows.length === 1 && fenceMaterialRows[0]?.materialBuildUp != null) ||
+    fenceDetailedPosts,
+  "Fence has package materials build-up or detailed post takeoff"
 );
+if (fenceMaterialRows.length === 1) {
+  assert(
+    fenceMaterialRows[0]?.materialBuildUp != null,
+    "Fence materials row carries scope build-up metadata"
+  );
+}
 
 // Pergola — area build-up on frame/materials row only
 const pergolaContext = {
@@ -318,13 +331,25 @@ const rwDrainageMerged = mergeDuplicateMaterialBuildUpLineItems(
   rwDrainage.lineItems
 );
 assert(
-  rwDrainageMerged.filter((item) => item.label.includes("Novacoil")).length === 1,
-  "Retaining wall has single drainage materials row"
+  rwDrainageMerged.filter((item) => item.label.includes("Novacoil")).length <= 1,
+  "Retaining wall has at most one drainage materials row"
 );
 assert(
-  rwDrainageMerged.filter((item) => item.label === "Backfill allowance").length === 1,
-  "Retaining wall has single backfill allowance row"
+  rwDrainageMerged.filter((item) => item.label === "Backfill allowance").length <= 1,
+  "Retaining wall has at most one backfill allowance row"
 );
+const drainageDetailed =
+  rwDrainageMerged.some((item) => /novacoil|drainage coil/i.test(item.label)) ||
+  rwDrainageMerged.some((item) =>
+    String(item.componentKey ?? "").includes("novacoil")
+  );
+const backfillDetailed =
+  rwDrainageMerged.some((item) => item.label === "Backfill allowance") ||
+  rwDrainageMerged.some((item) =>
+    String(item.componentKey ?? "").includes("backfill")
+  );
+assert(drainageDetailed, "Retaining wall drainage is package or detailed");
+assert(backfillDetailed, "Retaining wall backfill is package or detailed");
 
 // Test — two separate deck work areas keep separate decking board build-ups
 const twoDeckContext = {

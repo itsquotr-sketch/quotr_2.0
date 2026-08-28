@@ -1,21 +1,28 @@
 /**
- * FENCE-MATURITY-1A — future productivity identities.
+ * FENCE-MATURITY-1A / 1B-R1 — Fence productivity identities.
  * Starters are LOW-CONFIDENCE Quotr estimating hours. Not Company Rates.
- * Package labour (fence.labour_hours_per_lm) remains 1A money authority.
+ * Package labour (fence.labour_hours_per_lm) remains modular / incomplete money.
  */
-
-import { POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER } from "@/lib/estimate/post-hole-concrete";
 
 export const FENCE_PRODUCTIVITY_KEYS = {
   postInstall: "fence.post.install.hours_per_post",
+  /** Leftover 1A planning key — per fence lm. Not 1B money. */
   framingLm: "fence.framing.hours_per_lm",
+  /** 1B money: labour-h per required rail lm. */
+  railLm: "fence.rail.install.hours_per_lm",
+  /** Leftover 1A planning key — per face m². Not 1B money. */
   verticalBoardsM2: "fence.board.vertical.hours_per_m2",
+  /** 1B money: labour-h per required board lm. */
+  verticalBoardsLm: "fence.board.vertical.hours_per_lm",
+  /** Leftover 1A planning key — per face m². Not 1B money. */
   horizontalSlatsM2: "fence.board.horizontal.hours_per_m2",
+  /** 1B money: labour-h per required slat lm. */
+  horizontalSlatsLm: "fence.board.horizontal.hours_per_lm",
   cappingLm: "fence.capping.hours_per_lm",
   gateInstall: "fence.gate.install.hours_per_gate",
   postHoleConcreteBag: "fence.post_hole_concrete.place.hours_per_bag",
   sectionInstall: "fence.section.install.hours_per_section",
-  /** Legacy package labour — 1A money path. */
+  /** Legacy package labour — modular / incomplete timber money path. */
   packageLm: "fence.labour_hours_per_lm",
   gateAllowance: "fence.gate_hours_allowance",
   demolitionLm: "fence.demolition_hours_per_lm",
@@ -24,8 +31,11 @@ export const FENCE_PRODUCTIVITY_KEYS = {
 export const FENCE_PRODUCTIVITY_UNITS = {
   [FENCE_PRODUCTIVITY_KEYS.postInstall]: "post",
   [FENCE_PRODUCTIVITY_KEYS.framingLm]: "lm",
+  [FENCE_PRODUCTIVITY_KEYS.railLm]: "lm",
   [FENCE_PRODUCTIVITY_KEYS.verticalBoardsM2]: "m2",
+  [FENCE_PRODUCTIVITY_KEYS.verticalBoardsLm]: "lm",
   [FENCE_PRODUCTIVITY_KEYS.horizontalSlatsM2]: "m2",
+  [FENCE_PRODUCTIVITY_KEYS.horizontalSlatsLm]: "lm",
   [FENCE_PRODUCTIVITY_KEYS.cappingLm]: "lm",
   [FENCE_PRODUCTIVITY_KEYS.gateInstall]: "gate",
   [FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag]: "bag",
@@ -40,14 +50,16 @@ export const FENCE_PRODUCTIVITY_STARTERS: Record<
   (typeof FENCE_PRODUCTIVITY_KEYS)[keyof typeof FENCE_PRODUCTIVITY_KEYS],
   number
 > = {
-  [FENCE_PRODUCTIVITY_KEYS.postInstall]: 0.45,
+  [FENCE_PRODUCTIVITY_KEYS.postInstall]: 0.7,
   [FENCE_PRODUCTIVITY_KEYS.framingLm]: 0.2,
+  [FENCE_PRODUCTIVITY_KEYS.railLm]: 0.08,
   [FENCE_PRODUCTIVITY_KEYS.verticalBoardsM2]: 0.35,
+  [FENCE_PRODUCTIVITY_KEYS.verticalBoardsLm]: 0.05,
   [FENCE_PRODUCTIVITY_KEYS.horizontalSlatsM2]: 0.4,
+  [FENCE_PRODUCTIVITY_KEYS.horizontalSlatsLm]: 0.06,
   [FENCE_PRODUCTIVITY_KEYS.cappingLm]: 0.08,
-  [FENCE_PRODUCTIVITY_KEYS.gateInstall]: 1.5,
-  [FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag]:
-    POST_HOLE_CONCRETE_PLACE_HOURS_PER_BAG_STARTER,
+  [FENCE_PRODUCTIVITY_KEYS.gateInstall]: 2,
+  [FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag]: 0.06,
   [FENCE_PRODUCTIVITY_KEYS.sectionInstall]: 0.35,
   [FENCE_PRODUCTIVITY_KEYS.packageLm]: 0.6,
   [FENCE_PRODUCTIVITY_KEYS.gateAllowance]: 2,

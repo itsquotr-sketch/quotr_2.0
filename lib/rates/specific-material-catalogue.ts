@@ -22,6 +22,17 @@ import {
   RW_DRAINAGE_SOCK_STARTER_COST_PER_LM,
 } from "@/lib/estimate/retaining-wall-family-coverage";
 import { RW_HOUSE_PILE_125_KEY } from "@/lib/estimate/retaining-wall-identities";
+import { FENCE_PRODUCTIVITY_KEYS } from "@/lib/estimate/fence-productivity";
+import {
+  FENCE_GATE_HARDWARE_KEY,
+  FENCE_PREMIX_20KG_KEY,
+  fenceBoardMaterialKey,
+  fenceCappingMaterialKey,
+  fenceGateFrameMaterialKey,
+  fencePostMaterialKey,
+  fenceRailMaterialKey,
+} from "@/lib/estimate/fence-identities";
+import { FENCE_TIMBER_1B_MATERIAL_STARTERS } from "@/lib/estimate/fence-timber-1b";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 
 function entry(
@@ -1201,6 +1212,159 @@ export const RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
   }),
 ];
 
+function fenceStarterEntry(
+  itemKey: string,
+  label: string,
+  extra?: Partial<RateCatalogueEntry>
+): RateCatalogueEntry {
+  const starter = FENCE_TIMBER_1B_MATERIAL_STARTERS[itemKey];
+  const cost = starter?.costPerUnit;
+  const sell = cost != null ? Math.round((cost / 0.8) * 100) / 100 : undefined;
+  return entry({
+    item_key: itemKey,
+    label,
+    rate_type: "material",
+    category: "material",
+    work_area_type: "fence",
+    workAreaLabel: "Fence timber",
+    unit: starter?.unit ?? "lm",
+    description: starter?.basis ?? "LOW-CONFIDENCE Quotr starter. Company exact overrides.",
+    defaultCostRate: cost,
+    defaultSellRate: sell,
+    calculatorSupport: "used_now",
+    recommended: true,
+    ...extra,
+  });
+}
+
+export const FENCE_TIMBER_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  fenceStarterEntry(fencePostMaterialKey(), "Fence post — H4 100×100"),
+  fenceStarterEntry(fenceRailMaterialKey("75x50"), "Fence rail — H4 75×50"),
+  fenceStarterEntry(fenceRailMaterialKey("100x50"), "Fence rail — H4 100×50"),
+  fenceStarterEntry(fenceRailMaterialKey("75x40"), "Fence rail — H4 75×40"),
+  fenceStarterEntry(fenceBoardMaterialKey("radiata_pine", 19), "Radiata paling 150×19"),
+  fenceStarterEntry(fenceBoardMaterialKey("radiata_pine", 25), "Radiata paling 150×25"),
+  fenceStarterEntry(fenceBoardMaterialKey("macrocarpa", 19), "Macrocarpa paling 150×19"),
+  fenceStarterEntry(fenceBoardMaterialKey("macrocarpa", 25), "Macrocarpa paling 150×25"),
+  fenceStarterEntry(fenceBoardMaterialKey("cedar", 19), "Cedar paling 150×19"),
+  fenceStarterEntry(fenceBoardMaterialKey("cedar", 25), "Cedar paling 150×25"),
+  fenceStarterEntry(fenceBoardMaterialKey("hardwood", 19), "Hardwood paling 150×19 (generic)"),
+  fenceStarterEntry(fenceBoardMaterialKey("hardwood", 25), "Hardwood paling 150×25 (generic)"),
+  fenceStarterEntry(fenceCappingMaterialKey("radiata_pine"), "Radiata capping 65×40"),
+  fenceStarterEntry(fenceCappingMaterialKey("macrocarpa"), "Macrocarpa capping 65×40"),
+  fenceStarterEntry(fenceCappingMaterialKey("cedar"), "Cedar capping 65×40"),
+  fenceStarterEntry(fenceCappingMaterialKey("hardwood"), "Hardwood capping 65×40 (generic)"),
+  fenceStarterEntry(fenceGateFrameMaterialKey(), "Gate frame — H4 75×50"),
+  fenceStarterEntry(FENCE_GATE_HARDWARE_KEY, "Fence gate hardware set", {
+    unit: "ea",
+  }),
+  fenceStarterEntry(FENCE_PREMIX_20KG_KEY, "20 kg premix (fence post holes)", {
+    unit: "bag",
+    description:
+      "Same 20 kg premix identity as Deck/RW. Company exact on this key or deck.concrete.premix.20kg.bag wins.",
+  }),
+];
+
+export const FENCE_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: FENCE_PRODUCTIVITY_KEYS.postInstall,
+    label: "Fence post installation (labour-h/post)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "fence",
+    workAreaLabel: "Fence productivity",
+    unit: "post",
+    description:
+      "Total person-hours per post: set-out, ordinary hole digging, normal workface handling, set/plumb/brace. Starter 0.70. Not elapsed crew time.",
+    defaultCostRate: 0.7,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FENCE_PRODUCTIVITY_KEYS.railLm,
+    label: "Fence rail installation (labour-h/rail-lm)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "fence",
+    workAreaLabel: "Fence productivity",
+    unit: "lm",
+    description:
+      "Total person-hours per required rail lm. Reacts to 2 vs 3 rails. Starter 0.08. Not fence-lm package labour.",
+    defaultCostRate: 0.08,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FENCE_PRODUCTIVITY_KEYS.verticalBoardsLm,
+    label: "Vertical paling installation (labour-h/board-lm)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "fence",
+    workAreaLabel: "Fence productivity",
+    unit: "lm",
+    description:
+      "Total person-hours per required board lm. Gap/board count changes hours. Starter 0.05. Not face m².",
+    defaultCostRate: 0.05,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FENCE_PRODUCTIVITY_KEYS.horizontalSlatsLm,
+    label: "Horizontal slat installation (labour-h/slat-lm)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "fence",
+    workAreaLabel: "Fence productivity",
+    unit: "lm",
+    description:
+      "Total person-hours per required slat lm. Course count changes hours. Starter 0.06. Distinct from vertical palings.",
+    defaultCostRate: 0.06,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FENCE_PRODUCTIVITY_KEYS.cappingLm,
+    label: "Fence capping installation (labour-h/lm)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "fence",
+    workAreaLabel: "Fence productivity",
+    unit: "lm",
+    description: "Total person-hours per installed capping lm. Starter 0.08.",
+    defaultCostRate: 0.08,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FENCE_PRODUCTIVITY_KEYS.gateInstall,
+    label: "Timber gate fabrication & installation (labour-h/gate)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "fence",
+    workAreaLabel: "Fence productivity",
+    unit: "gate",
+    description:
+      "Frame assembly, hanging, hinges and latch. Gate-face boards stay in paling/slat labour. Starter 2.0.",
+    defaultCostRate: 2,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag,
+    label: "Fence post-hole concrete placement (labour-h/bag)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "fence",
+    workAreaLabel: "Fence productivity",
+    unit: "bag",
+    description:
+      "Fence-specific mix and place one bag. Starter 0.06. Not the RW 0.035 h/bag starter. Not h/m³ or h/hole.",
+    defaultCostRate: 0.06,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+];
+
 export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DECKING_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -1211,6 +1375,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
   ...PAINTING_SPECIFIC_MATERIAL_CATALOGUE,
+  ...FENCE_TIMBER_SPECIFIC_MATERIAL_CATALOGUE,
 ];
 
 export const SPECIFIC_MATERIAL_RATE_GROUPS = [
@@ -1267,5 +1432,11 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "Per m² paint package is used now. Per-litre takeoff is display-only until paint litres are priced.",
     entries: PAINTING_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Fence timber",
+    description:
+      "Detailed Timber Fence identities. Company exact overrides LOW-CONFIDENCE Quotr starters. Modular metal/plastic stays on package $/lm.",
+    entries: FENCE_TIMBER_SPECIFIC_MATERIAL_CATALOGUE,
   },
 ] as const;

@@ -185,7 +185,7 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
   "fence.post.install.hours_per_post": productivityEntry(
     "fence.post.install.hours_per_post",
     "Fence post installation",
-    0.45,
+    0.7,
     "post"
   ),
   "fence.framing.hours_per_lm": productivityEntry(
@@ -194,17 +194,35 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     0.2,
     "lm"
   ),
+  "fence.rail.install.hours_per_lm": productivityEntry(
+    "fence.rail.install.hours_per_lm",
+    "Fence rail installation",
+    0.08,
+    "lm"
+  ),
   "fence.board.vertical.hours_per_m2": productivityEntry(
     "fence.board.vertical.hours_per_m2",
     "Vertical fence board installation",
     0.35,
     "m2"
   ),
+  "fence.board.vertical.hours_per_lm": productivityEntry(
+    "fence.board.vertical.hours_per_lm",
+    "Vertical paling installation",
+    0.05,
+    "lm"
+  ),
   "fence.board.horizontal.hours_per_m2": productivityEntry(
     "fence.board.horizontal.hours_per_m2",
     "Horizontal fence slat installation",
     0.4,
     "m2"
+  ),
+  "fence.board.horizontal.hours_per_lm": productivityEntry(
+    "fence.board.horizontal.hours_per_lm",
+    "Horizontal timber slat installation",
+    0.06,
+    "lm"
   ),
   "fence.capping.hours_per_lm": productivityEntry(
     "fence.capping.hours_per_lm",
@@ -215,13 +233,13 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
   "fence.gate.install.hours_per_gate": productivityEntry(
     "fence.gate.install.hours_per_gate",
     "Fence gate installation",
-    1.5,
+    2,
     "gate"
   ),
   "fence.post_hole_concrete.place.hours_per_bag": productivityEntry(
     "fence.post_hole_concrete.place.hours_per_bag",
     "Fence post-hole concrete placement",
-    0.035,
+    0.06,
     "bag"
   ),
   "fence.section.install.hours_per_section": productivityEntry(
