@@ -16,6 +16,11 @@ import {
   mergeDerivedFactsIntoRecords,
 } from "@/lib/scopes/derived-facts";
 import {
+  classifyFenceSystem,
+  fenceGateScopeApplies,
+  isFenceTimberGateFactKey,
+} from "@/lib/estimate/fence-systems";
+import {
   getInheritedFinishLevelForWorkArea,
   isInheritedFinishLevelKey,
 } from "@/lib/scopes/finish-level";
@@ -150,6 +155,16 @@ function getUnitForKey(
   return match?.unit;
 }
 
+function lookupFactString(
+  lookup: Map<string, ProjectFactRecord>,
+  workAreaId: string,
+  key: string
+): string | null {
+  const value = lookup.get(`${workAreaId}:${key}`)?.value;
+  if (typeof value === "string" && value.trim()) return value;
+  return null;
+}
+
 function shouldSkipFact(params: {
   workAreaType: string;
   canonicalKey: string;
@@ -171,6 +186,17 @@ function shouldSkipFact(params: {
       lookup.get(`${workAreaId}:retaining_wall.height_low_m`)?.value
     );
     if (hasHigh && hasLow) {
+      return true;
+    }
+  }
+
+  if (workAreaType === "fence" && isFenceTimberGateFactKey(canonicalKey)) {
+    const system = classifyFenceSystem(
+      lookupFactString(lookup, workAreaId, "fence.system") ??
+        lookupFactString(lookup, workAreaId, "fence.material"),
+      lookupFactString(lookup, workAreaId, "fence.paling_or_panel_type")
+    );
+    if (!fenceGateScopeApplies(system)) {
       return true;
     }
   }

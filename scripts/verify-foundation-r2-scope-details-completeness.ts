@@ -564,9 +564,6 @@ function main(): void {
     "kitchen.benchtop_material",
     "pergola.height_m",
     "internal_walls.fire_or_acoustic",
-    "fence.post_spacing_m",
-    "fence.paling_or_panel_type",
-    "fence.gate_width_m",
     "bathroom.waterproofing_extent",
   ];
   const calculatorSources = [

@@ -1,3 +1,8 @@
+import {
+  classifyFenceSystem,
+  fenceGateScopeApplies,
+} from "@/lib/estimate/fence-systems";
+
 export type WorkAreaQuoteFact = {
   key: string;
   label: string;
@@ -58,7 +63,8 @@ function joinLabels(items: WorkAreaQuotePricingItem[] | undefined): string {
 
 function enrichFromPricingItems(
   draft: string,
-  items: WorkAreaQuotePricingItem[] | undefined
+  items: WorkAreaQuotePricingItem[] | undefined,
+  options?: { omitGateClause?: boolean }
 ): string {
   const labels = joinLabels(items);
   if (!labels) {
@@ -84,10 +90,14 @@ function enrichFromPricingItems(
       pattern: /\b(roof|roofing|covering|polycarb|shade sail)\b/i,
       clause: "Roof or covering allowance is included where applicable.",
     },
-    {
-      pattern: /\bgate\b/i,
-      clause: "Gate allowance is included where applicable.",
-    },
+    ...(options?.omitGateClause
+      ? []
+      : [
+          {
+            pattern: /\bgate\b/i,
+            clause: "Gate allowance is included where applicable.",
+          },
+        ]),
     {
       pattern: /\bdrainage\b/i,
       clause: "Drainage allowance is included where applicable.",
@@ -305,6 +315,11 @@ function buildFenceDraft(
   const height = factValue(facts, "fence.height_m");
   const material = factValue(facts, "fence.material");
   const materialPhrase = material ? material.toLowerCase() : "fence";
+  const system = classifyFenceSystem(
+    factValue(facts, "fence.system") ?? material,
+    factValue(facts, "fence.paling_or_panel_type")
+  );
+  const gateInActiveScope = fenceGateScopeApplies(system);
 
   let draft =
     "Supply and install fencing works to the agreed lineal metre scope, including fence materials, fixings, installation labour and removal of existing fencing where included.";
@@ -324,7 +339,7 @@ function buildFenceDraft(
     );
   }
 
-  if (isAffirmative(factValue(facts, "fence.gate_included"))) {
+  if (gateInActiveScope && isAffirmative(factValue(facts, "fence.gate_included"))) {
     draft = appendScopeClause(
       draft,
       "Gate allowance is included where applicable."
@@ -378,7 +393,9 @@ function buildFenceDraft(
     );
   }
 
-  draft = enrichFromPricingItems(draft, pricingItems);
+  draft = enrichFromPricingItems(draft, pricingItems, {
+    omitGateClause: !gateInActiveScope,
+  });
 
   return finalizeDraft(
     `${draft} Final fence height, material selection, ground conditions, boundary set-out and any required neighbour, consent or services checks are subject to confirmation.`

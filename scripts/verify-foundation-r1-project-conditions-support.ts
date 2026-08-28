@@ -671,12 +671,15 @@ function main(): void {
   });
   check(
     "only Deck calculator emits EstimateRequirement objects",
-    emitting.length === 2 &&
+    emitting.length === 3 &&
       emitting.some((p) =>
         p.replace(/\\/g, "/").endsWith("calculators/deck.ts")
       ) &&
       emitting.some((p) =>
         p.replace(/\\/g, "/").endsWith("calculators/retaining-wall.ts")
+      ) &&
+      emitting.some((p) =>
+        p.replace(/\\/g, "/").endsWith("calculators/fence.ts")
       ),
     emitting.join(", ")
   );

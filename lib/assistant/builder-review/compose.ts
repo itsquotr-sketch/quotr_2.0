@@ -64,6 +64,23 @@ import {
 import { RW_SPOIL_REMOVAL_PRICING_HELPER } from "@/lib/estimate/retaining-wall-spoil-removal";
 import { timberRateVarianceContext } from "@/lib/estimate/retaining-wall-rate-context";
 import { RW_PLANNING_TAKEOFF_DISCLAIMER } from "@/lib/estimate/retaining-wall-physical";
+import { FENCE_PLANNING_TAKEOFF_DISCLAIMER } from "@/lib/estimate/fence-physical";
+import {
+  FENCE_BOARDS_COMPONENT,
+  FENCE_CAPPING_COMPONENT,
+  FENCE_CONCRETE_COMPONENT,
+  FENCE_FACE_AREA_COMPONENT,
+  FENCE_FIXINGS_MODULAR_COMPONENT,
+  FENCE_FIXINGS_TIMBER_COMPONENT,
+  FENCE_GATE_FRAME_COMPONENT,
+  FENCE_GATE_HARDWARE_COMPONENT,
+  FENCE_GATE_POSTS_EA_COMPONENT,
+  FENCE_POSTS_EA_COMPONENT,
+  FENCE_POSTS_LM_COMPONENT,
+  FENCE_RAILS_COMPONENT,
+  FENCE_SECTIONS_COMPONENT,
+  FENCE_TAKEOFF_COMPONENT_KEYS,
+} from "@/lib/estimate/fence-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { EstimateLineItem } from "@/components/assistant/types";
 import type { EstimateRequirement, MaterialRequirement } from "@/lib/estimate/requirements";
@@ -132,6 +149,7 @@ const STRUCTURAL_TAKEOFF_KEYS = new Set([
   RW_MASONRY_CORE_COMPONENT,
   RW_MASONRY_WATERPROOF_COMPONENT,
   RW_MASONRY_REBAR_COMPONENT,
+  ...FENCE_TAKEOFF_COMPONENT_KEYS,
 ]);
 
 const MAX_IMPROVEMENTS = 4;
@@ -438,6 +456,25 @@ function takeoffLabel(req: MaterialRequirement): string {
   if (req.componentKey === "retaining_wall.masonry.mortar.allowance") {
     return "Masonry mortar / laying consumables";
   }
+  if (req.componentKey === FENCE_FACE_AREA_COMPONENT) return "Fence face";
+  if (req.componentKey === FENCE_POSTS_EA_COMPONENT) return "Fence posts";
+  if (req.componentKey === FENCE_GATE_POSTS_EA_COMPONENT) return "Gate posts";
+  if (req.componentKey === FENCE_POSTS_LM_COMPONENT) return "Fence post length";
+  if (req.componentKey === FENCE_BOARDS_COMPONENT) {
+    if (/paling/i.test(req.description)) return "Palings";
+    if (/slat/i.test(req.description)) return "Slats";
+    return req.description;
+  }
+  if (req.componentKey === FENCE_RAILS_COMPONENT) return "Rails";
+  if (req.componentKey === FENCE_CAPPING_COMPONENT) return "Top capping";
+  if (req.componentKey === FENCE_GATE_FRAME_COMPONENT) return "Gate framing";
+  if (req.componentKey === FENCE_GATE_HARDWARE_COMPONENT) return "Gate hardware";
+  if (req.componentKey === FENCE_CONCRETE_COMPONENT) {
+    return "Post-hole concrete (bagged premix)";
+  }
+  if (req.componentKey === FENCE_FIXINGS_TIMBER_COMPONENT) return "Fixings";
+  if (req.componentKey === FENCE_FIXINGS_MODULAR_COMPONENT) return "Fixings/brackets";
+  if (req.componentKey === FENCE_SECTIONS_COMPONENT) return "Fence sections";
   return req.description;
 }
 
@@ -625,7 +662,11 @@ function attachTakeoff(
   workAreaType: string | null,
   unavailableHint: string | null
 ): BuilderReviewCategoryGroup[] {
-  if (workAreaType !== "deck" && workAreaType !== "retaining_wall") {
+  if (
+    workAreaType !== "deck" &&
+    workAreaType !== "retaining_wall" &&
+    workAreaType !== "fence"
+  ) {
     return categories;
   }
   if (takeoff.length === 0 && !unavailableHint) return categories;
@@ -639,13 +680,18 @@ function attachTakeoff(
       takeoff.length > 0
         ? workAreaType === "retaining_wall"
           ? RW_PLANNING_TAKEOFF_DISCLAIMER
-          : DECK_STRUCTURAL_ESTIMATING_DISCLAIMER
+          : workAreaType === "fence"
+            ? FENCE_PLANNING_TAKEOFF_DISCLAIMER
+            : DECK_STRUCTURAL_ESTIMATING_DISCLAIMER
         : null,
     takeoffUnavailableHint:
       takeoff.length === 0 ? unavailableHint : null,
-    takeoffCollapsedByDefault: workAreaType === "retaining_wall",
+    takeoffCollapsedByDefault:
+      workAreaType === "retaining_wall" || workAreaType === "fence",
     takeoffTitle:
-      workAreaType === "retaining_wall" ? "Takeoff details" : "Planning takeoff",
+      workAreaType === "retaining_wall" || workAreaType === "fence"
+        ? "Takeoff details"
+        : "Planning takeoff",
   });
 
   const framingIdx = categories.findIndex(
@@ -721,10 +767,13 @@ function normalizeIssueKey(text: string): string {
     .trim();
 }
 
-function isHighValueBuilderImprovement(label: string, retainingWallOnly: boolean): boolean {
+function isHighValueBuilderImprovement(
+  label: string,
+  retainingWallOnly: boolean,
+  fenceOnly = false
+): boolean {
   if (/confirm sleeper system/i.test(label)) return true;
   if (/post spacing does not match the selected sleeper length/i.test(label)) return true;
-  // Disclosures that explicitly deny being manufacturer/engineering rules stay collapsed.
   const estimatingDisclosureOnly =
     /estimating assumption only|not a manufacturer requirement|not a manufacturer SKU/i.test(
       label
@@ -735,6 +784,11 @@ function isHighValueBuilderImprovement(label: string, retainingWallOnly: boolean
     return true;
   }
   if (/face.board|material specification|wall type|unsupported/i.test(label)) return true;
+  if (fenceOnly) {
+    return /confirm (post spacing|post embedment|gate width|horizontal slat gap|horizontal slat support|gap between vertical palings|modular panel|section width|top capp|existing.fence removal)/i.test(
+      label
+    ) || /tall fence/i.test(label);
+  }
   if (!retainingWallOnly) return true;
   if (/spacing|waste factor|procurement allowance|10% waste|site access|carry distance|compaction|stock length|target\/max/i.test(label)) {
     return false;
@@ -752,6 +806,9 @@ function buildIssues(
   const retainingWallOnly =
     input.workAreas.length > 0 &&
     input.workAreas.every((wa) => wa.type === "retaining_wall");
+  const fenceOnly =
+    input.workAreas.length > 0 &&
+    input.workAreas.every((wa) => wa.type === "fence");
   const assumptionKeys = new Set<string>();
   const assumptions: BuilderReviewIssue[] = [];
   for (const row of input.estimate.assumptions) {
@@ -842,7 +899,7 @@ function buildIssues(
     if (improvements.length >= MAX_IMPROVEMENTS) break;
     const actionable = "_actionable" in check ? (check as BuilderReviewIssue & { _actionable: boolean })._actionable : true;
     if (!actionable) continue;
-    if (!isHighValueBuilderImprovement(check.label, retainingWallOnly)) continue;
+    if (!isHighValueBuilderImprovement(check.label, retainingWallOnly, fenceOnly)) continue;
     improvements.push({
       id: `improve:${check.id}`,
       label: check.label,
@@ -851,7 +908,7 @@ function buildIssues(
     });
   }
 
-  if (improvements.length < MAX_IMPROVEMENTS && !retainingWallOnly) {
+  if (improvements.length < MAX_IMPROVEMENTS && !retainingWallOnly && !fenceOnly) {
     for (const assumption of assumptions) {
       if (improvements.length >= MAX_IMPROVEMENTS) break;
       if (/finish|standard|budget|premium/i.test(assumption.label)) continue;
@@ -865,7 +922,7 @@ function buildIssues(
   } else if (improvements.length < MAX_IMPROVEMENTS) {
     for (const assumption of assumptions) {
       if (improvements.length >= MAX_IMPROVEMENTS) break;
-      if (!isHighValueBuilderImprovement(assumption.label, true)) continue;
+      if (!isHighValueBuilderImprovement(assumption.label, true, fenceOnly)) continue;
       improvements.push({
         id: `improve:${assumption.id}`,
         label: assumption.label.replace(/^Assuming\s+/i, "Confirm "),
@@ -991,16 +1048,21 @@ export function composeBuilderReview(
         takeoff: [],
         takeoffDisclaimer: null,
         takeoffUnavailableHint: null,
-        takeoffCollapsedByDefault: meta.type === "retaining_wall",
+        takeoffCollapsedByDefault:
+          meta.type === "retaining_wall" || meta.type === "fence",
         takeoffTitle:
-          meta.type === "retaining_wall" ? "Takeoff details" : "Planning takeoff",
+          meta.type === "retaining_wall" || meta.type === "fence"
+            ? "Takeoff details"
+            : "Planning takeoff",
         groupNotes: [],
         lineGroups: [],
       };
     });
 
     const areaTakeoff =
-      meta.type === "deck" || meta.type === "retaining_wall"
+      meta.type === "deck" ||
+      meta.type === "retaining_wall" ||
+      meta.type === "fence"
         ? structuralTakeoff.filter((row) => {
             const req = requirements.find(
               (r) => r.requirementId === row.requirementId

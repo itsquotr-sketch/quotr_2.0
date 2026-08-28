@@ -778,9 +778,10 @@ check(
 );
 check(
   "NON-REGRESSION 43 no UI change required",
-  emittingCalcs.length === 2 &&
+  emittingCalcs.length === 3 &&
     emittingCalcs.includes("deck.ts") &&
     emittingCalcs.includes("retaining-wall.ts") &&
+    emittingCalcs.includes("fence.ts") &&
     !read("docs/runbooks/REQ_1_OWNER_TECHNICAL_GATE.md").includes("Materials tab")
 );
 

@@ -568,12 +568,13 @@ const retaining = calculateRetainingWall(
 );
 check(
   "EXCLUSIONS 48 no other calculator emits requirements",
-  emitting.length === 2 &&
+  emitting.length === 3 &&
     emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/deck.ts")) &&
     emitting.some((p) =>
       p.replace(/\\/g, "/").endsWith("calculators/retaining-wall.ts")
     ) &&
-    fence.requirements == null &&
+    emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/fence.ts")) &&
+    (fence.requirements ?? []).every((req) => req.priced === false) &&
     bathroom.requirements == null &&
     pergola.requirements == null &&
     (retaining.requirements ?? []).every((req) => req.priced === false)

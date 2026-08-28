@@ -14,6 +14,11 @@ import {
   retainingWallHasCoreLength,
   retainingWallMaterialReadiness,
 } from "@/lib/estimate/calculators/retaining-wall";
+import {
+  fenceHasCoreHeight,
+  fenceHasCoreLength,
+  fenceSystemReadiness,
+} from "@/lib/estimate/calculators/fence";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
 import type { EstimateFact } from "@/lib/estimate/types";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
@@ -134,29 +139,78 @@ function retainingWallHardMinimumBlockers(
   return out;
 }
 
+function fenceHardMinimumBlockers(
+  workAreaId: string,
+  facts: readonly EstimateFact[]
+): PackageQuickEstimateBlocker[] {
+  const out: PackageQuickEstimateBlocker[] = [];
+  if (!fenceHasCoreLength(facts as EstimateFact[], workAreaId)) {
+    out.push({
+      key: "fence.length_m",
+      requiredness: "HARD_MINIMUM",
+      declaredBy: "lib/estimate/calculators/fence.ts#FENCE_HARD_MINIMUM_FACT_KEYS",
+      expected: "positive length (m)",
+      storedValue: factValue(facts, workAreaId, "fence.length_m"),
+      store: "project_facts",
+      uiMayShowAnswered: false,
+      calculatorConsumes: true,
+      category: "length",
+    });
+  }
+  if (!fenceHasCoreHeight(facts as EstimateFact[], workAreaId)) {
+    out.push({
+      key: "fence.height_m",
+      requiredness: "HARD_MINIMUM",
+      declaredBy: "lib/estimate/calculators/fence.ts#FENCE_HARD_MINIMUM_FACT_KEYS",
+      expected: "positive height (m)",
+      storedValue: factValue(facts, workAreaId, "fence.height_m"),
+      store: "project_facts",
+      uiMayShowAnswered: false,
+      calculatorConsumes: true,
+      category: "height",
+    });
+  }
+  const system = fenceSystemReadiness(facts as EstimateFact[], workAreaId);
+  if (system !== "SUPPORTED") {
+    out.push({
+      key: "fence.system",
+      requiredness: "HARD_MINIMUM",
+      declaredBy: "lib/estimate/calculators/fence.ts#fenceSystemReadiness",
+      expected: "timber vertical / horizontal / metal modular / plastic modular",
+      storedValue:
+        factValue(facts, workAreaId, "fence.system") ??
+        factValue(facts, workAreaId, "fence.material"),
+      store: "project_facts",
+      uiMayShowAnswered: system === "UNSUPPORTED_EXPLICIT",
+      calculatorConsumes: true,
+      category: "system",
+    });
+  }
+  return out;
+}
+
 export function builderCopyForPackageQuickEstimateBlockers(
   blockers: readonly PackageQuickEstimateBlocker[]
 ): string | null {
   if (blockers.length === 0) return null;
   const categories = new Set(blockers.map((row) => row.category));
+  const fence = blockers.some((row) => row.key.startsWith("fence."));
+  const noun = fence ? "fence" : "retaining wall";
   if (categories.has("system") && categories.has("length") && categories.has("height")) {
-    return "Add the retaining wall type, length, and height to update this estimate.";
+    return `Add the ${noun} type, length, and height to update this estimate.`;
   }
-  if (categories.has("length") && categories.has("height") && categories.has("system")) {
-    return "Add the retaining wall type, length, and height to update this estimate.";
-  }
-  const rwBits: string[] = [];
-  if (categories.has("system")) rwBits.push("type");
-  if (categories.has("length")) rwBits.push("length");
-  if (categories.has("height")) rwBits.push("height");
-  if (rwBits.length > 0) {
-    if (rwBits.length === 1) {
-      return `Add the retaining wall ${rwBits[0]} to update this estimate.`;
+  const bits: string[] = [];
+  if (categories.has("system")) bits.push("type");
+  if (categories.has("length")) bits.push("length");
+  if (categories.has("height")) bits.push("height");
+  if (bits.length > 0) {
+    if (bits.length === 1) {
+      return `Add the ${noun} ${bits[0]} to update this estimate.`;
     }
-    if (rwBits.length === 2) {
-      return `Add the retaining wall ${rwBits[0]} and ${rwBits[1]} to update this estimate.`;
+    if (bits.length === 2) {
+      return `Add the ${noun} ${bits[0]} and ${bits[1]} to update this estimate.`;
     }
-    return "Add the retaining wall type, length, and height to update this estimate.";
+    return `Add the ${noun} type, length, and height to update this estimate.`;
   }
   return "Complete the remaining project information before generating the estimate.";
 }
@@ -172,6 +226,9 @@ export function evaluatePackageQuickEstimateReadiness(
   for (const wa of confirmed) {
     if (wa.type === "retaining_wall") {
       blockers.push(...retainingWallHardMinimumBlockers(wa.id, input.facts));
+    }
+    if (wa.type === "fence") {
+      blockers.push(...fenceHardMinimumBlockers(wa.id, input.facts));
     }
   }
 

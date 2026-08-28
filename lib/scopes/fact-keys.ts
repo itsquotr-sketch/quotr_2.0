@@ -50,6 +50,11 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
     gate_included: "fence.gate_included",
     demolition_required: "fence.demolition_required",
     existing_fence_removal: "fence.demolition_required",
+    system: "fence.system",
+    timber_species: "fence.timber_species",
+    species: "fence.timber_species",
+    gate_position: "fence.gate_position",
+    rail_section: "fence.rail_section",
   },
   pergola: {
     length: "pergola.length_m",

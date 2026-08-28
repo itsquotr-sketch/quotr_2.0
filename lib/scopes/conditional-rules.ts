@@ -193,10 +193,16 @@ export function shouldHideConditionalQuestion(
     return false;
   }
 
-  if (key === "fence.gate_count" || key === "fence.gate_width_m") {
+  if (key === "fence.gate_count" || key === "fence.gate_width_m" || key === "fence.gate_position") {
     const gate = boolFact(lookup, workAreaId, "fence.gate_included");
     if (gate !== true) return true;
-    return false;
+  }
+
+  if (key === "fence.gate_capping") {
+    const gate = boolFact(lookup, workAreaId, "fence.gate_included");
+    const capping = boolFact(lookup, workAreaId, "fence.top_capping");
+    if (gate !== true) return true;
+    if (capping !== true) return true;
   }
 
   if (key === "fence.disposal_required") {
@@ -209,6 +215,77 @@ export function shouldHideConditionalQuestion(
     const finish = boolFact(lookup, workAreaId, "fence.finish_required");
     if (finish !== true) return true;
     return false;
+  }
+
+  const fenceSystemRaw =
+    strFact(lookup, workAreaId, "fence.system") ??
+    strFact(lookup, workAreaId, "fence.material");
+  const paling = strFact(lookup, workAreaId, "fence.paling_or_panel_type");
+  if (fenceSystemRaw || paling) {
+    const tokens = `${fenceSystemRaw ?? ""} ${paling ?? ""}`.toLowerCase();
+    const modular =
+      tokens.includes("metal") ||
+      tokens.includes("aluminium") ||
+      tokens.includes("aluminum") ||
+      tokens.includes("steel") ||
+      tokens.includes("plastic") ||
+      tokens.includes("composite") ||
+      tokens.includes("slat fence");
+    const horizontal =
+      tokens.includes("horizontal") || tokens.includes("slat");
+    const timber =
+      tokens.includes("timber") ||
+      tokens.includes("paling") ||
+      tokens.includes("wood") ||
+      tokens.includes("radiata") ||
+      tokens.includes("macrocarpa") ||
+      tokens.includes("cedar") ||
+      tokens.includes("hardwood");
+    if (
+      (key === "fence.timber_species" ||
+        key === "fence.board_thickness_mm" ||
+        key === "fence.top_capping" ||
+        key === "fence.post_spacing_m" ||
+        key === "fence.rail_count" ||
+        key === "fence.rail_section" ||
+        key === "fence.slat_gap_mm" ||
+        key === "fence.horizontal_course_count" ||
+        key === "fence.vertical_paling_gap_mm") &&
+      modular &&
+      !timber
+    ) {
+      return true;
+    }
+    if (key === "fence.slat_gap_mm" && !horizontal) return true;
+    if (key === "fence.horizontal_course_count" && !horizontal) return true;
+    if (key === "fence.vertical_paling_gap_mm" && (horizontal || modular || !timber)) {
+      return true;
+    }
+    if (
+      (key === "fence.gate_included" ||
+        key === "fence.gate_count" ||
+        key === "fence.gate_width_m" ||
+        key === "fence.gate_position" ||
+        key === "fence.gate_capping") &&
+      modular &&
+      !timber
+    ) {
+      return true;
+    }
+    if (key === "fence.rail_count" && horizontal) return true;
+    if (key === "fence.rail_section" && horizontal) return true;
+    if (
+      (key === "fence.section_width_m" ||
+        key === "fence.section_count" ||
+        key === "fence.metal_material") &&
+      timber &&
+      !modular
+    ) {
+      return true;
+    }
+    if (key === "fence.metal_material" && tokens.includes("plastic")) {
+      return true;
+    }
   }
 
   if (key === "pergola.roofing_type") {

@@ -140,6 +140,21 @@ const FACT_DISPLAY_LABELS: Record<string, string> = {
   "fence.post_spacing_m": "Post spacing",
   "fence.paling_or_panel_type": "Paling or panel type",
   "fence.gate_width_m": "Gate width",
+  "fence.system": "Fence type",
+  "fence.timber_species": "Timber species",
+  "fence.board_thickness_mm": "Board thickness",
+  "fence.top_capping": "Top capping",
+  "fence.slat_gap_mm": "Slat gap",
+  "fence.post_embedment_m": "Post embedment",
+  "fence.hole_diameter_m": "Post-hole diameter",
+  "fence.section_width_m": "Section width",
+  "fence.section_count": "Section count",
+  "fence.metal_material": "Metal type",
+  "fence.gate_position": "Gate position",
+  "fence.gate_capping": "Gate matches fence capping",
+  "fence.horizontal_course_count": "Horizontal slat course count",
+  "fence.vertical_paling_gap_mm": "Gap between vertical palings",
+  "fence.rail_section": "Fence rail section",
 };
 
 export function getCanonicalFactKey(

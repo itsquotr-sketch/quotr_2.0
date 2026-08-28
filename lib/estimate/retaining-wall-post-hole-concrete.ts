@@ -6,7 +6,6 @@
  * Displacement uses known section geometry only; unknown steel area → 0 (conservative).
  */
 
-import { round2 } from "@/lib/estimate/facts";
 import { cylinderVolumeM3 } from "@/lib/estimate/retaining-wall-geometry";
 import {
   RW_PILE_MATERIAL_H5_SED,
@@ -14,6 +13,28 @@ import {
 } from "@/lib/estimate/retaining-wall-family-coverage";
 import { HOUSE_PILE_125_RW_IDENTITY } from "@/lib/estimate/retaining-wall-identities";
 import { RW_H5_SED_CLASS_DEFAULT } from "@/lib/estimate/retaining-wall-pile-procurement";
+import {
+  bagCountFromNetConcrete,
+  finalizePostHoleConcrete,
+  netConcreteFromGrossAndDisplacement,
+  rectangularSectionDisplacementM3,
+  roundSectionDisplacementM3,
+  squareSectionDisplacementM3,
+  steelSectionDisplacementM3,
+  type PostDisplacementKind,
+  type PostDisplacementResult,
+  type PostHoleConcreteTakeoff,
+} from "@/lib/estimate/post-hole-concrete";
+
+export {
+  bagCountFromNetConcrete,
+  netConcreteFromGrossAndDisplacement,
+  rectangularSectionDisplacementM3,
+  roundSectionDisplacementM3,
+  squareSectionDisplacementM3,
+  steelSectionDisplacementM3,
+};
+export type { PostDisplacementKind, PostDisplacementResult, PostHoleConcreteTakeoff };
 
 /**
  * Quotr LOW-CONFIDENCE estimating fallback for H5 SED class 150–175 mm.
@@ -88,51 +109,6 @@ export const RW_POST_HOLE_CONCRETE_PLACE_STARTER_CONFIDENCE = "low" as const;
 export const RW_POST_HOLE_CONCRETE_PLACE_STARTER_RATIONALE =
   "LOW-CONFIDENCE QUOTR STARTER. Total person-hours to mix and place one bag of post-hole concrete. Dimensional conversion of the prior 3.5 labour-h/m³ starter × 0.01 m³/bag yield. Company/Project exact overrides.";
 
-export type PostDisplacementKind =
-  | "HOUSE_PILE_RECT"
-  | "SED_ROUND"
-  | "STEEL_SECTION_AREA"
-  | "STEEL_UNKNOWN_ZERO"
-  | "NONE";
-
-export type PostDisplacementResult = {
-  volumeM3: number;
-  kind: PostDisplacementKind;
-  disclosure: string | null;
-};
-
-export function squareSectionDisplacementM3(
-  sideM: number,
-  embedmentM: number
-): number {
-  if (!(sideM > 0) || !(embedmentM > 0)) return 0;
-  return sideM * sideM * embedmentM;
-}
-
-export function rectangularSectionDisplacementM3(
-  widthM: number,
-  depthM: number,
-  embedmentM: number
-): number {
-  if (!(widthM > 0) || !(depthM > 0) || !(embedmentM > 0)) return 0;
-  return widthM * depthM * embedmentM;
-}
-
-export function roundSectionDisplacementM3(
-  diameterM: number,
-  embedmentM: number
-): number {
-  return cylinderVolumeM3(diameterM, embedmentM);
-}
-
-export function steelSectionDisplacementM3(
-  crossSectionAreaM2: number,
-  embedmentM: number
-): number {
-  if (!(crossSectionAreaM2 > 0) || !(embedmentM > 0)) return 0;
-  return crossSectionAreaM2 * embedmentM;
-}
-
 export function timberPostDisplacementForEmbedment(params: {
   pileMaterial:
     | typeof RW_PILE_MATERIAL_H5_SED
@@ -187,68 +163,6 @@ export function steelPostDisplacementForEmbedment(params: {
     volumeM3: 0,
     kind: "STEEL_UNKNOWN_ZERO",
     disclosure: RW_STEEL_POST_DISPLACEMENT_UNKNOWN_DISCLOSURE,
-  };
-}
-
-export function netConcreteFromGrossAndDisplacement(
-  grossHoleVolumeM3: number,
-  postDisplacementM3: number
-): number {
-  return Math.max(grossHoleVolumeM3 - Math.max(postDisplacementM3, 0), 0);
-}
-
-export function bagCountFromNetConcrete(
-  netConcreteM3: number,
-  bagYieldM3: number
-): number {
-  if (!(netConcreteM3 > 0) || !(bagYieldM3 > 0)) return 0;
-  // ceil on full-precision net. Tiny epsilon only avoids FP exact-multiple overshoot.
-  return Math.ceil(netConcreteM3 / bagYieldM3 - 1e-12);
-}
-
-export type PostHoleConcreteTakeoff = {
-  holeDiameterM: number;
-  holeCount: number;
-  /** Full-precision gross (calc authority). Display may round2. */
-  grossHoleVolumeM3: number;
-  /** Full-precision displacement (calc authority). */
-  postDisplacementM3: number;
-  /** Full-precision net — bags and labour use this, not a pre-rounded display value. */
-  netConcreteM3: number;
-  /** Display helper only — round2(net). Must not drive bags or labour. */
-  netConcreteDisplayM3: number;
-  bagCount: number;
-  bagYieldM3: number;
-  displacementKind: PostDisplacementKind;
-  displacementDisclosure: string | null;
-};
-
-function finalizePostHoleConcrete(params: {
-  holeDiameterM: number;
-  holeCount: number;
-  gross: number;
-  displacement: number;
-  bagYieldM3: number;
-  kind: PostDisplacementKind;
-  disclosure: string | null;
-}): PostHoleConcreteTakeoff {
-  const grossHoleVolumeM3 = params.gross;
-  const postDisplacementM3 = params.displacement;
-  const netConcreteM3 = netConcreteFromGrossAndDisplacement(
-    grossHoleVolumeM3,
-    postDisplacementM3
-  );
-  return {
-    holeDiameterM: params.holeDiameterM,
-    holeCount: params.holeCount,
-    grossHoleVolumeM3,
-    postDisplacementM3,
-    netConcreteM3,
-    netConcreteDisplayM3: round2(netConcreteM3),
-    bagCount: bagCountFromNetConcrete(netConcreteM3, params.bagYieldM3),
-    bagYieldM3: params.bagYieldM3,
-    displacementKind: params.kind,
-    displacementDisclosure: params.disclosure,
   };
 }
 

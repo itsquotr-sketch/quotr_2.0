@@ -16,6 +16,13 @@ const RETAINING_WALL_HARD_MINIMUM_KEYS = new Set([
   "retaining_wall.material",
 ]);
 
+const FENCE_HARD_MINIMUM_KEYS = new Set([
+  "fence.length_m",
+  "fence.height_m",
+  "fence.system",
+  "fence.material",
+]);
+
 const DECK_ASSUMABLE_KEYS = new Set([
   "deck.height_m",
   "deck.board_material",
@@ -47,6 +54,9 @@ export function getLevel1BlockingClass(
     return "HARD_MINIMUM";
   }
   if (RETAINING_WALL_HARD_MINIMUM_KEYS.has(template.factKey)) {
+    return "HARD_MINIMUM";
+  }
+  if (FENCE_HARD_MINIMUM_KEYS.has(template.factKey)) {
     return "HARD_MINIMUM";
   }
   if (DECK_ASSUMABLE_KEYS.has(template.factKey)) {

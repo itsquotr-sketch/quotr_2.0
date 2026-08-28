@@ -182,6 +182,54 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     0.25,
     "lm"
   ),
+  "fence.post.install.hours_per_post": productivityEntry(
+    "fence.post.install.hours_per_post",
+    "Fence post installation",
+    0.45,
+    "post"
+  ),
+  "fence.framing.hours_per_lm": productivityEntry(
+    "fence.framing.hours_per_lm",
+    "Fence framing",
+    0.2,
+    "lm"
+  ),
+  "fence.board.vertical.hours_per_m2": productivityEntry(
+    "fence.board.vertical.hours_per_m2",
+    "Vertical fence board installation",
+    0.35,
+    "m2"
+  ),
+  "fence.board.horizontal.hours_per_m2": productivityEntry(
+    "fence.board.horizontal.hours_per_m2",
+    "Horizontal fence slat installation",
+    0.4,
+    "m2"
+  ),
+  "fence.capping.hours_per_lm": productivityEntry(
+    "fence.capping.hours_per_lm",
+    "Fence capping installation",
+    0.08,
+    "lm"
+  ),
+  "fence.gate.install.hours_per_gate": productivityEntry(
+    "fence.gate.install.hours_per_gate",
+    "Fence gate installation",
+    1.5,
+    "gate"
+  ),
+  "fence.post_hole_concrete.place.hours_per_bag": productivityEntry(
+    "fence.post_hole_concrete.place.hours_per_bag",
+    "Fence post-hole concrete placement",
+    0.035,
+    "bag"
+  ),
+  "fence.section.install.hours_per_section": productivityEntry(
+    "fence.section.install.hours_per_section",
+    "Fence section installation",
+    0.35,
+    "section"
+  ),
   "demolition.labour_hours_per_m2": productivityEntry(
     "demolition.labour_hours_per_m2",
     "Demolition labour",

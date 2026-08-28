@@ -15,6 +15,7 @@ import {
   stepsAreRelevant,
 } from "@/lib/assistant/clarify/suppress";
 import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
+import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
 import type {
   ClarifyAskClass,
@@ -28,6 +29,13 @@ import {
   retainingWallHasCoreLength,
   retainingWallMaterialReadiness,
 } from "@/lib/estimate/calculators/retaining-wall";
+import {
+  fenceHasCoreHeight,
+  fenceHasCoreLength,
+  fenceSystemReadiness,
+  FENCE_UNSUPPORTED_SYSTEM_MESSAGE,
+} from "@/lib/estimate/calculators/fence";
+import { classifyFenceSystem, fenceGateScopeApplies, isModularFenceSystem, isTimberFenceSystem } from "@/lib/estimate/fence-systems";
 import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
 import { getBooleanFact, getStringFact } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
@@ -43,6 +51,9 @@ const PC_SCORES: Record<string, number> = {
 const CHECK_SCORES: Record<string, number> = {
   "deck.existing_deck_removal": 90,
   "bathroom.demolition_required": 88,
+  "fence.demolition_required": 88,
+  "fence.gate_included": 86,
+  "fence.top_capping": 70,
   "deck.vertical_face_boards_required": 55,
   "deck.access_type": 35,
   "deck.balustrade_required": 20,
@@ -95,7 +106,9 @@ function candidateFromJobPlanCheck(
     return null;
   }
   const questionClass =
-    deckFactQuestionClass(key) ?? retainingWallFactQuestionClass(key);
+    deckFactQuestionClass(key) ??
+    retainingWallFactQuestionClass(key) ??
+    fenceFactQuestionClass(key);
   if (
     questionClass === "REFINE" ||
     questionClass === "DERIVED" ||
@@ -251,6 +264,69 @@ function missingHardMinimum(
         });
       }
     }
+
+    if (card.workAreaType === "fence") {
+      const facts = input.facts as EstimateFact[];
+      const missing: {
+        key: string;
+        inputType: ClarifyCandidate["inputType"];
+        rankScore: number;
+      }[] = [];
+      if (!fenceHasCoreLength(facts, card.workAreaId)) {
+        missing.push({
+          key: "fence.length_m",
+          inputType: "number",
+          rankScore: 1000,
+        });
+      }
+      if (!fenceHasCoreHeight(facts, card.workAreaId)) {
+        missing.push({
+          key: "fence.height_m",
+          inputType: "number",
+          rankScore: 999,
+        });
+      }
+      const systemState = fenceSystemReadiness(facts, card.workAreaId);
+      if (systemState !== "SUPPORTED") {
+        missing.push({
+          key: "fence.system",
+          inputType: "select",
+          rankScore: 998,
+        });
+      }
+      for (const row of missing) {
+        const template = getQuestionTemplateByKey(row.key);
+        const unsupported =
+          row.key === "fence.system" && systemState === "UNSUPPORTED_EXPLICIT";
+        out.push({
+          id: `hard:${card.workAreaId}:${row.key}`,
+          source: "scope_fact",
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          workAreaType: card.workAreaType,
+          factKey: row.key,
+          constraintKey: null,
+          questionKey: row.key,
+          label: template?.label ?? row.key,
+          question: unsupported
+            ? FENCE_UNSUPPORTED_SYSTEM_MESSAGE
+            : (template?.questionText ?? `What is ${row.key}?`),
+          askClass: "HARD_MINIMUM",
+          inputType: row.inputType,
+          unit: template?.unit,
+          options: template?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: true,
+          assumable: false,
+          rankScore: row.rankScore,
+          rankReason: unsupported
+            ? "HARD_MINIMUM unsupported fence type"
+            : "HARD_MINIMUM fence core",
+          assumptionStatement: null,
+        });
+      }
+    }
   }
   return out;
 }
@@ -285,6 +361,109 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         rankReason: "Bathroom commercial plumbing",
         assumptionStatement: "Standard plumbing allowance",
       });
+      continue;
+    }
+
+    if (wa.type === "fence") {
+      const facts = input.facts as EstimateFact[];
+      if (
+        !fenceHasCoreLength(facts, wa.id) ||
+        !fenceHasCoreHeight(facts, wa.id) ||
+        fenceSystemReadiness(facts, wa.id) !== "SUPPORTED"
+      ) {
+        continue;
+      }
+      const system = classifyFenceSystem(
+        getStringFact(facts, wa.id, "fence.system") ??
+          getStringFact(facts, wa.id, "fence.material"),
+        getStringFact(facts, wa.id, "fence.paling_or_panel_type")
+      );
+      const extras: { key: string; reason: string; score: number }[] = [];
+      if (isTimberFenceSystem(system)) {
+        extras.push(
+          {
+            key: "fence.board_thickness_mm",
+            reason: "Timber board thickness",
+            score: 78,
+          },
+          {
+            key: "fence.top_capping",
+            reason: "Timber top capping",
+            score: 74,
+          }
+        );
+        if (fenceGateScopeApplies(system)) {
+          extras.push({
+            key: "fence.gate_included",
+            reason: "Fence gate",
+            score: 76,
+          });
+        }
+        if (system === "TIMBER_HORIZONTAL_SLAT") {
+          extras.push({
+            key: "fence.slat_gap_mm",
+            reason: "Horizontal slat gap",
+            score: 80,
+          });
+        } else {
+          extras.push({
+            key: "fence.post_spacing_m",
+            reason: "Timber post spacing if non-standard",
+            score: 60,
+          });
+        }
+        extras.push({
+          key: "fence.timber_species",
+          reason: "Visible timber species",
+          score: 62,
+        });
+      } else if (isModularFenceSystem(system)) {
+        extras.push({
+          key: "fence.section_width_m",
+          reason: "Modular section width / product",
+          score: 80,
+        });
+      }
+      extras.push({
+        key: "fence.demolition_required",
+        reason: "Existing fence removal",
+        score: 68,
+      });
+      for (const extra of extras) {
+        if (factHas(input, extra.key, wa.id)) continue;
+        const cls = fenceFactQuestionClass(extra.key);
+        if (cls === "REFINE" || cls === "DERIVED" || cls === "NOT_CONSUMED") {
+          continue;
+        }
+        const template = getQuestionTemplateByKey(extra.key);
+        out.push({
+          id: `fact:${wa.id}:${extra.key}`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: extra.key,
+          constraintKey: null,
+          questionKey: extra.key,
+          label: template?.label ?? extra.key,
+          question: template?.questionText ?? extra.key,
+          askClass: "ASK_NOW",
+          inputType:
+            template?.inputType === "boolean"
+              ? "boolean"
+              : template?.inputType === "number"
+                ? "number"
+                : "select",
+          options: template?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: true,
+          rankScore: extra.score,
+          rankReason: extra.reason,
+          assumptionStatement: null,
+        });
+      }
       continue;
     }
 

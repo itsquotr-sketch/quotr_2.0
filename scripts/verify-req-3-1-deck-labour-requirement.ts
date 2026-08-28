@@ -696,7 +696,11 @@ const fitoutCtx = {
   facts: [fact("internal_walls.area_m2", "ft1", 40)],
 } as never;
 check("OTHER 46 Bathroom emits no LabourRequirement", bathroom.requirements == null);
-check("OTHER 47 Fence emits none", fence.requirements == null);
+check(
+  "OTHER 47 Fence emits unpriced planning requirements",
+  (fence.requirements ?? []).length > 0 &&
+    (fence.requirements ?? []).every((req) => req.priced === false)
+);
 check("OTHER 48 Pergola emits none", pergola.requirements == null);
 check("OTHER 49 Retaining emits none", retaining.requirements == null);
 check(
@@ -814,11 +818,12 @@ const emitting = calcFiles.filter((p) => {
 });
 check(
   "EMITTERS only Deck calculator emits requirements",
-  emitting.length === 2 &&
+  emitting.length === 3 &&
     emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/deck.ts")) &&
     emitting.some((p) =>
       p.replace(/\\/g, "/").endsWith("calculators/retaining-wall.ts")
-    )
+    ) &&
+    emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/fence.ts"))
 );
 
 console.log(`\n=== REQ-3.1 Results: ${passed} passed, ${failed} failed ===`);

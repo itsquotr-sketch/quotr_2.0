@@ -125,7 +125,7 @@ Estimator maturity (this document) is independent of product display band (§12)
 | bathroom | trial_supported | PARTIAL | PARTIAL | PACKAGE_ALLOWANCE (mixed resolve) | PARTIAL (per-trade exists) | PARTIAL | PARTIAL | **PARTIAL** — labour ahead of material |
 | retaining_wall | developing | PARTIAL | SAFETY HARDENED / timber 1F + sleeper 2A + masonry 2B | Timber + Concrete Sleeper + Masonry DETAILED | PARTIAL (timber + sleeper + masonry task labour) | Timber + Sleeper + Masonry DETAILED | PARTIAL | **SAFETY HARDENED / TIMBER 1F / SLEEPER 2A / MASONRY 2B LOCAL** |
 | kitchen | developing | MINIMAL | MINIMAL | PACKAGE + **RATE AUTHORITY FIXED** | MINIMAL (no shared access factor) | MINIMAL | MINIMAL | **MINIMAL** — **KITCHEN-RATE-AUTHORITY-01 FIXED** |
-| fence | developing | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL (slope flag) | MINIMAL | MINIMAL | **MINIMAL** |
+| fence | developing | PARTIAL | PARTIAL / 1A contract | PACKAGE_ALLOWANCE money + SHADOW physical takeoff | PARTIAL (package lm; task labour SHADOW) | PACKAGE lm XOR | PARTIAL | **FENCE-MATURITY-1A PHYSICAL / INFORMATION FOUNDATION COMPLETE** |
 | pergola | developing | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL | MINIMAL | MINIMAL | **MINIMAL** — not ahead of fence |
 | external_stairs | component | PARTIAL | PARTIAL | PACKAGE_ALLOWANCE + some resolveRate | PARTIAL | PARTIAL | PARTIAL | **PARTIAL** — calculator ahead of display band |
 | demolition | component | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL | MINIMAL | MINIMAL | **MINIMAL** — relatively honest |
@@ -414,7 +414,7 @@ Shared family behaviour across all three systems: punched/slotted drainage coil 
 
 **RETAINING-WALL-PHYSICAL-CORRECTNESS-R6 — POST LAYOUT + NET POST-HOLE CONCRETE (COMPLETE LOCAL / OWNER REVIEWED)**
 
-Calculation-correctness only: Timber/Sleeper end posts locked; post-hole concrete = gross cylinder − embedded post displacement → bags from net; `retaining_wall.digger_access` is ASK_NOW when excavation applies. Placement productivity moved to labour-h/bag in R6-R3 (legacy h/m³ leftover). Verifier: `scripts/verify-retaining-wall-post-concrete-r6.ts`.
+Calculation-correctness only: Timber/Sleeper end posts locked; post-hole concrete = gross cylinder − embedded post displacement → bags from net; `retaining_wall.digger_access` is ASK_NOW when excavation applies. Placement productivity moved to labour-h/bag in R6-R3 (legacy h/m³ leftover). Shared math now lives in `lib/estimate/post-hole-concrete.ts` (Fence 1A promotion). RW file re-exports and keeps RW-specific displacement identities. Verifier: `scripts/verify-retaining-wall-post-concrete-r6.ts`.
 
 **RETAINING-WALL-PHYSICAL-CORRECTNESS-R6-R1 — CONCRETE PRECISION (COMPLETE LOCAL / OWNER APPROVED)**
 
@@ -524,6 +524,71 @@ No backfill formula or rate path was changed. **TARGET ARCHITECTURE:** priced ba
 
 ---
 
+## 8A. Fence — FENCE-MATURITY-1A PHYSICAL + INFORMATION FOUNDATION
+
+**FENCE-MATURITY-1A = COMPLETE / COMMITTED / PREVIEW**
+
+**FENCE-MATURITY-1A-R1 / R2 / R3 = CLOSED**
+
+Fence physical + information foundation = **CLOSED**. Commercial detailed maturity = **NOT STARTED**. Package `$/lm` remains monetary authority. Do not treat planning takeoff as priced component calculations. Do **not** start Bathroom from 1A. Do **not** start Fence 1B until a later commercial pass is authorised.
+
+### CURRENT IMPLEMENTATION
+
+| Layer | 1A / R1 status |
+| --- | --- |
+| Systems | `TIMBER_VERTICAL_PALING`, `TIMBER_HORIZONTAL_SLAT`, `METAL_SLAT_MODULAR`, `PLASTIC_MODULAR`. Builder labels only. Canonical key `fence.system`; legacy `fence.material` still classifies. |
+| Hard minimum | Type (`fence.system` **or** `fence.material`), length, height. Species is ASK_NOW with Radiata fallback — not hard minimum. |
+| Shared geometry | Face area = length × height, full precision. Length is the complete fence line including gate openings. |
+| Information contract | `lib/estimate/fence-information-contract.ts` |
+| Physical model | `lib/estimate/fence-physical.ts` plus timber / modular / geometry modules |
+| Calculator | Existing package labour/materials labels preserved (`Fence labour` / `Fence materials`). Unpriced `requirements` attached when type + length + height exist. |
+| Job Plan / Edit Scope | Dedicated adapter + `FenceQuickSpecEditor` |
+| Refine adapter | Registered — consumed facts only |
+| Builder Review | Planning takeoff under Materials (`Takeoff details` collapsed). Package lines stay money. Improve Estimate is high-value only. |
+| Verifier | `scripts/verify-fence-maturity-1a.ts` |
+
+Do not treat 1A planning quantities as priced lines. Physical quantities remain even if commercial method later changes.
+
+### Systems and physical models
+
+**Timber vertical paling:** posts from **segmented fixed runs** (max 1.8 m centres, even-split so resolved ≤ max; first post at 0, last at L; gate-edge posts shared/deduplicated). Palings are counted **per fixed run** plus **per gate face**, independently: `ceil((L + G) / (B + G))` with board width B = 150 mm and system-specific `fence.vertical_paling_gap_mm` G (default **0 mm**, ASSUME_IF_SKIPPED, disclosed “Vertical palings assumed installed without a deliberate gap.”). At G = 0 this is `ceil(L / B)`. Isolated from horizontal `fence.slat_gap_mm`. Required lm = total board EA × height. Purchased lm = required × 1.05 once (company timber-framing wastage overrides when set). Rails = (2 if H < 1.5 m else 3) × sum(fixed runs) — no rails through the gate opening. Rail identity is treated H4 **75×50** (`fence.rail.75x50.h4`) unless the builder selects another section. Capping = fixed-run tops; if gate capping matches (default Yes when cap + gate), add gate visual width. Gate frame `2H+2W+√(H²+W²)`, gate hardware EA, bagged post-hole concrete.
+
+**Timber horizontal slat:** whole-board **fit-within-height**. Default courses = `floor((H + G) / (B + G))` with minimum 1. Occupied height = `courses×B + (courses−1)×G`. Residual clearance = `H − occupied` (never negative under the default model) and is presented as approximately half top + half bottom. Builder may override course count; if occupied height exceeds nominated fence height, attention is shown and the override is not rewritten. Default gap 10 mm, disclosed. Slats are assumed to **span directly between fence posts**. No automatic secondary rails/battens. Confirm secondary battens/support if required by the selected system.
+
+**Visible species** (Radiata / Macrocarpa / Cedar / Hardwood) applies to boards/slats and capping. Posts/rails stay treated H4 100×100 / 75×50 pine unless the builder changes those identities. Thickness 19 vs 25 changes identity, not face coverage.
+
+**Modular (metal slat / plastic composite):** same geometry engine. Default section width 1.8 m. `full = floor(L/W)`, residual = remainder, residual > 0 → one extra **purchased** section (not even-redistributed). Posts = purchased sections + 1. Residual bay is exposed as full + cut/residual. Metal vs plastic keep separate identities. Company section product strategy: family key `fence.section.{metal_slat|plastic_composite}.{material}` plus SKU `{widthMm}x{heightMm}`. No supplier catalogue in 1A. **Modular gates are not modelled in Fence 1A.** Timber gate facts may remain stored across system switches for return-switch, but they are **not consumed and not rendered** by metal or plastic systems (`fenceGateScopeApplies`) until a later pass models modular gate products — no opening subtraction, no gate-edge posts, no gate framing/hardware/capping money, no Quote/Builder Review/Pricing/scope gate wording. Modular Edit Scope suppresses Timber-only gate controls. Do not change modular residual / posts=sections+1.
+
+**Gate position (R1):** builder fact `fence.gate_position` — At an end / Within the fence run / Not sure. Unresolved / Not sure → **WITHIN_FENCE_RUN**, gate centred where geometry permits. Disclosed: “Gate position assumed within the fence run for estimating.” One-gate MVP. AT_END → one fixed run `L − gateWidth` (opening at the far end). WITHIN → two fixed runs. Post layout is calculated independently per run; shared boundary posts are deduplicated. Always: fence start post, gate-edge post(s), fence end post. Gate-edge posts are classified separately and default to the same section as fence posts (“Gate posts assumed same section as fence posts”). Do not automatically upsize. Future gate-post identity can resolve without changing geometry.
+
+**Gate capping (R1):** if top capping = Yes and gate = Yes, `fence.gate_capping` Yes/No (default Yes, ASSUME_IF_SKIPPED). Yes → total cap = fixed + gate visual width. No → fixed fence only. Do not double-count gate-frame top timber.
+
+**Post-hole concrete:** shared helper `lib/estimate/post-hole-concrete.ts`. Gross cylinder − displacement = net. Bags = `ceil(fullPrecisionNet / 0.01)` at job total. Timber displacement = 100×100 × embedment. Metal/plastic: zero displacement + disclosure. Fence labour key `fence.post_hole_concrete.place.hours_per_bag` (starter 0.035). Do not bind Fence to `retaining_wall.*` company productivity. Post-install labour-h/post owns set-out, ordinary hole digging, moving posts/tools within the normal workface, and setting/plumbing/bracing — no second excavation line. Post-hole concrete placement owns bag handling at the workface, mixing, and placing. Digger-access is **not** imported for ordinary Fence jobs.
+
+**Access/carry (ownership only, not 1A money):** posts, rails, boards/panels, gate materials, and bagged concrete may later receive `material_carry_distance` **once each**. Concrete placement is not indiscriminately multiplied. Package labour still uses the existing access/slope factors.
+
+**Fixings:** explicit allowance ownership. Proposed future timber basis: 8% of timber material cost excluding gate hardware. Package owns this money in 1A.
+
+**Slope / corners:** captured/disclosed. No stepped-panel engine. No polygon. Straight-run estimating assumption.
+
+**Finish / stain:** not included unless explicit Yes. Legacy finish money path kept only when `fence.finish_required` is true.
+
+**Demolition:** `fence.demolition_required` is in the information model (Yes/No). 1A does not commercially mature demolition beyond the existing legacy removal/disposal lines.
+
+### Commercial coverage (1A)
+
+`LEGACY_PACKAGE_AUTHORITY`. PACKAGE XOR DETAILED is preserved: package lm is money; detailed physical requirements are SHADOW (`priced: false`). Gate hardware / gate labour / demolition / disposal keep existing legacy priced lines.
+
+### Reusable cross-work-area decisions (do not duplicate architecture docs)
+
+1. **Modular section + residual** — `lib/estimate/fence-geometry.ts#modularSectionLayout`. Floor full modules; leftover is one purchased cut/residual section; posts = sections + 1. Do not even-redistribute.
+2. **Generic post-hole bagged concrete** — `lib/estimate/post-hole-concrete.ts`. Diameter (not radius). Full-precision bag ceil. Work-area labour keys stay labelled.
+3. **Company-configurable modular section identity** — family key + width×height SKU. Company rate can later outrank Quotr. No catalogue in 1A.
+
+Verifier: `scripts/verify-fence-maturity-1a.ts`.
+
+---
+
 ## 9. Question coverage (current vs target)
 
 Classification keys: **HARD_MINIMUM**, **ASK_NOW**, **ASSUME_IF_SKIPPED**, **REFINE**, **ADVANCED**, **DERIVED_NEVER_ASK**, **NOT_CURRENTLY_CONSUMED**.
@@ -540,7 +605,11 @@ Minimum Job Plan adapter. HARD_MINIMUM Clarify asks length, height, material bef
 
 Job Plan + Refine adapters exist. Room size / wet-area facts partially asked. Finish still quality-driven.
 
-### kitchen, fence, pergola (CURRENT IMPLEMENTATION)
+### fence (CURRENT IMPLEMENTATION)
+
+Dedicated Job Plan + Refine + Edit Scope. HARD_MINIMUM Clarify: type, length, height. ASK_NOW is system-specific (board thickness, gate, capping, horizontal slat gap). Modular section width is ASSUME_IF_SKIPPED at 1.8 m. Digger access is not asked. See §8A and `FENCE_INFORMATION_CONTRACT`.
+
+### kitchen, pergola (CURRENT IMPLEMENTATION)
 
 Generic Job Plan. No Refine adapter. Dimension facts live in templates, not ASK_NOW interview.
 
@@ -568,7 +637,7 @@ Labels = **priced emission**, not conceptual takeoff.
 | retaining_wall | Supported Timber: boards / H5 SED stock EA / novacoil / drainage aggregate m³ / fixings residual / task labour / plant days. Concrete Sleeper: sleeper EA / steel posts lm-or-EA / bagged post-hole concrete / novacoil / aggregate / task labour / plant days. Masonry: blocks EA / footing m³ / sub-base m³ / core fill m³ / waterproofing / reinforcement allowance / novacoil / aggregate / task labour / plant days | Timber + Sleeper + Masonry DETAILED |
 | bathroom | Waterproofing / tiling / fixtures / lining as **benchmark or resolved package lines**, not separate product identities | PACKAGE_ALLOWANCE |
 | kitchen | Cabinetry + benchtop + appliances / install / splashback / rangehood via `resolveRate`; remaining flooring / plumbing / electrical / package still hardcoded | PACKAGE_ALLOWANCE + remaining hardcoded related lines |
-| fence | Timber/metal **per lm package** — not posts / rails / panels | PACKAGE_ALLOWANCE |
+| fence | **Priced:** timber/metal **per lm package**. **SHADOW takeoff:** posts, boards/slats, rails, capping, modular sections, gate frame, bagged concrete, fixings | PACKAGE_ALLOWANCE + SHADOW |
 | pergola | Frame + roof package rates | PACKAGE_ALLOWANCE |
 | external_stairs | Material per riser + landing m² + handrail/balustrade lm packages | PACKAGE_ALLOWANCE |
 | demolition | Wall lm / floor m² / ceiling m² / fixture ea packages | PACKAGE_ALLOWANCE |
@@ -579,7 +648,7 @@ Labels = **priced emission**, not conceptual takeoff.
 | painting | m² labour/material; paint litres SHADOW | PACKAGE_ALLOWANCE + SHADOW |
 | plastering | m² package | PACKAGE_ALLOWANCE |
 
-Do not describe bathroom waterproofing/tiles/fixtures/linings, fence posts/rails/panels, or ceiling grid/tiles/plaster as DETAILED_REQUIREMENT unless the calculator emits separately priced identities.
+Do not describe bathroom waterproofing/tiles/fixtures/linings, or ceiling grid/tiles/plaster as DETAILED_REQUIREMENT unless the calculator emits separately priced identities. Fence posts/rails/panels exist as **unpriced physical requirements** in 1A — package lm remains monetary authority.
 
 ---
 
@@ -591,7 +660,7 @@ Do not describe bathroom waterproofing/tiles/fixtures/linings, fence posts/rails
 | retaining_wall | Timber + Sleeper + Masonry: task labour (excavation / posts or piles / face or sleepers or blocks / footing / core fill / waterproofing / drainage / backfill) + per-intent access | Access + carry per intent; excavation excludes inward carry | Volume labour uses in-place backfill m³ when detailed |
 | bathroom | **Per-trade breakdown exists** (demo, carpentry/prep, fixture install, lining, coordination) | Access factor yes | Labour more mature than material |
 | kitchen | Package hours / lump labour | **Does not call `getCombinedLabourAccessFactor`** | Prior coverage claim was wrong |
-| fence | Hours per lm | Access factor yes; **`fence.slope_condition` steep/slope multiplies labour** | Terrain/slope is **partial**, not absent |
+| fence | Package hours per lm (1A money). Task labour SHADOW: post / framing / boards or sections / capping / gate / bagged concrete | Access factor on package labour; slope flag still multiplies package hours. Task labour not yet commercially multiplied | Terrain/slope is **partial**. Post-install owns ordinary hole digging |
 | pergola | Hours per m² | Access factor yes | Not materially ahead of fence |
 | external_stairs | Hours with ground/width factors | Access factor yes | Comparatively mature |
 | demolition | Hours by element | Access + carting | Hazardous material **FUTURE** |
@@ -733,8 +802,8 @@ Then reassess:
 
 | Candidate | Gate |
 | --- | --- |
-| Fence | After RW interview patterns; slope already partial |
-| Pergola | Same package class as fence — not automatically next |
+| Fence | **FENCE-MATURITY-1A COMPLETE / COMMITTED / PREVIEW** — physical + information closed; commercial detailed not started. Do not start Bathroom |
+| Pergola | Same historic package class as pre-1A fence — not automatically next |
 | Kitchen | Remaining hardcoded flooring/plumbing/electrical/package lines; still MINIMAL |
 
 Fitout batch later, after labour verification (`getCombinedLabourAccessFactor` gap in `fitout.ts`).
@@ -787,7 +856,7 @@ This R1 pass accepts the read-only audit unless code inspection disproved a clai
 - `post_spacing_m` consumed for timber pile layout and 1D stock procurement (not Clarify/Job Plan)
 - Kitchen appliances/install/splashback/rangehood now resolveRate
 - Kitchen has no shared access factor (unchanged)
-- Fence slope condition is partial
+- Fence slope condition is partial; Fence 1A adds physical takeoff while package lm remains money
 - Bathroom per-trade labour exists
 - Deck/Bathroom/Painting Refine keys verified against calculator-owned consumed-fact contract
 - Display bands do not gate calculators
@@ -805,4 +874,5 @@ This R1 pass accepts the read-only audit unless code inspection disproved a clai
 6. RETAINING-WALL-MATURITY-1D / 1F (Timber detailed): **COMPLETE / OWNER APPROVED**.
 7. RETAINING-WALL-MATURITY-2A / 2A-R1 (Concrete Sleeper detailed): **COMPLETE / COMMITTED / OWNER APPROVED**. 2A-R4 system-fact isolation: **COMPLETE LOCAL / OWNER FINAL SLEEPER DEFECT REVIEW PENDING**.
 8. RETAINING-WALL-MATURITY-2B (Concrete Masonry / Besser detailed): **COMPLETE LOCAL / OWNER REVIEWED**. **2B-R1 commercial integrity lock: COMPLETE LOCAL / OWNER APPROVED IN PRINCIPLE**. **2B-R2 procurement coverage: COMPLETE LOCAL / OWNER FINAL MASONRY CLOSURE APPROVAL PENDING**.
-9. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production from 2B until Owner masonry review.
+9. FENCE-MATURITY-1A: **COMPLETE / COMMITTED / PREVIEW**. Physical + information foundation **CLOSED**. Commercial detailed maturity **NOT STARTED**. Package lm remains money. Do **not** start Bathroom or Fence 1B.
+10. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production from Fence 1A.

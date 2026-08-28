@@ -33,15 +33,111 @@ import {
 import type {
   CalculatorResult,
   EstimateContext,
+  EstimateFact,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
 import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
+import { buildFencePhysicalModel } from "@/lib/estimate/fence-physical";
+import {
+  classifyFenceSystem,
+  fenceGateScopeApplies,
+  type FenceSystemClass,
+} from "@/lib/estimate/fence-systems";
+
+export const FENCE_CALCULATOR_CONSUMED_FACTS = [
+  "fence.length_m",
+  "fence.height_m",
+  "fence.system",
+  "fence.material",
+  "fence.timber_species",
+  "fence.board_thickness_mm",
+  "fence.top_capping",
+  "fence.slat_gap_mm",
+  "fence.post_spacing_m",
+  "fence.post_embedment_m",
+  "fence.hole_diameter_m",
+  "fence.rail_count",
+  "fence.section_width_m",
+  "fence.section_count",
+  "fence.section_height_m",
+  "fence.metal_material",
+  "fence.paling_or_panel_type",
+  "fence.gate_included",
+  "fence.gate_count",
+  "fence.gate_width_m",
+  "fence.gate_position",
+  "fence.gate_capping",
+  "fence.horizontal_course_count",
+  "fence.vertical_paling_gap_mm",
+  "fence.rail_section",
+  "fence.demolition_required",
+  "fence.disposal_required",
+  "fence.slope_condition",
+  "fence.finish_required",
+  "fence.finish_type",
+  "fence.finish_sides",
+  "fence.boundary_approval_status",
+  "fence.services_risk",
+] as const;
+
+export const FENCE_HARD_MINIMUM_FACT_KEYS = [
+  "fence.length_m",
+  "fence.height_m",
+  "fence.system",
+  "fence.material",
+] as const;
+
+export function fenceHasCoreLength(
+  facts: EstimateFact[],
+  workAreaId: string
+): boolean {
+  const length = getNumberFact(facts, workAreaId, "fence.length_m");
+  return length != null && length > 0;
+}
+
+export function fenceHasCoreHeight(
+  facts: EstimateFact[],
+  workAreaId: string
+): boolean {
+  const height = getNumberFact(facts, workAreaId, "fence.height_m");
+  return height != null && height > 0;
+}
+
+export type FenceSystemReadiness =
+  | "MISSING"
+  | "NOT_SURE"
+  | "SUPPORTED"
+  | "UNSUPPORTED_EXPLICIT";
+
+export function fenceSystemReadiness(
+  facts: EstimateFact[],
+  workAreaId: string
+): FenceSystemReadiness {
+  const raw =
+    getStringFact(facts, workAreaId, "fence.system") ??
+    getStringFact(facts, workAreaId, "fence.material");
+  if (!raw) return "MISSING";
+  const classified: FenceSystemClass = classifyFenceSystem(
+    raw,
+    getStringFact(facts, workAreaId, "fence.paling_or_panel_type")
+  );
+  if (classified === "missing") return "NOT_SURE";
+  if (classified === "unsupported") return "UNSUPPORTED_EXPLICIT";
+  return "SUPPORTED";
+}
+
+export const FENCE_UNSUPPORTED_SYSTEM_MESSAGE =
+  "Quotr doesn't currently have a trusted estimating model for this fence type.";
 
 function getFenceMaterialRates(material: string | null, context: EstimateContext) {
   const normalized = material?.toLowerCase() ?? "";
   if (
     normalized.includes("metal") ||
-    normalized.includes("composite")
+    normalized.includes("composite") ||
+    normalized.includes("plastic") ||
+    normalized.includes("aluminium") ||
+    normalized.includes("aluminum") ||
+    normalized.includes("steel")
   ) {
     const resolved = resolveRate({
       rates: context.rates,
@@ -57,7 +153,9 @@ function getFenceMaterialRates(material: string | null, context: EstimateContext
       cost: resolved.costRate,
       sell: resolved.sellRate,
       rateSource: resolved.sourceLabel,
-      materialLabel: normalized.includes("composite") ? "composite" : "metal",
+      materialLabel: normalized.includes("composite") || normalized.includes("plastic")
+        ? "composite"
+        : "metal",
     };
   }
 
@@ -95,10 +193,20 @@ export function calculateFence(
   const length = getNumberFact(facts, workArea.id, "fence.length_m");
   const height = getNumberFact(facts, workArea.id, "fence.height_m");
   const material = getStringFact(facts, workArea.id, "fence.material");
+  const systemRaw = getStringFact(facts, workArea.id, "fence.system");
 
   if (!length) missingInfo.push(formatMissing("Fence length"));
   if (!height) missingInfo.push(formatMissing("Fence height"));
-  if (!material) missingInfo.push(formatMissing("Fence material"));
+  if (!material && !systemRaw) missingInfo.push(formatMissing("Fence type"));
+
+  const physical = buildFencePhysicalModel({
+    context,
+    workAreaId: workArea.id,
+  });
+  assumptions.push(...physical.assumptions);
+  for (const item of physical.attention) {
+    assumptions.push(item);
+  }
 
   let effectiveLength = length;
   if (!effectiveLength) {
@@ -168,8 +276,8 @@ export function calculateFence(
     fallbackHoursPerUnit: 0.6,
   });
 
-  lineItems.push(
-    createLabourLineItem({
+  lineItems.push({
+    ...createLabourLineItem({
       workAreaId: workArea.id,
       workAreaName: workArea.name,
       label: "Fence labour",
@@ -184,10 +292,11 @@ export function calculateFence(
       notes: height ? `${height} m high fence` : undefined,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
-    })
-  );
+    }),
+    identitySummary: "Package labour — not a task takeoff",
+  });
 
-  const materialRates = getFenceMaterialRates(material, context);
+  const materialRates = getFenceMaterialRates(systemRaw ?? material, context);
   const heightFactor = getFenceHeightMaterialFactor(height);
   const adjustedCostRate = round2(materialRates.cost * heightFactor);
   const adjustedSellRate = round2(materialRates.sell * heightFactor);
@@ -203,28 +312,34 @@ export function calculateFence(
 
   lineItems.push(
     withMaterialBuildUp(
-      createRateLineItem({
-        workAreaId: workArea.id,
-        workAreaName: workArea.name,
-        label: "Fence materials",
-        category: "materials",
-        quantity: effectiveLength,
-        unit: "lm",
-        costRate: adjustedCostRate,
-        sellRate: adjustedSellRate,
-        rateSource: materialRates.rateSource,
-        notes: height
-          ? `${height} m high · height factor ${heightFactor.toFixed(2)}`
-          : undefined,
-        sortOrder: sortOrder++,
-        organisationSettings: context.organisationSettings,
-        qualityFactor,
-      }),
+      {
+        ...createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Fence materials",
+          category: "materials",
+          quantity: effectiveLength,
+          unit: "lm",
+          costRate: adjustedCostRate,
+          sellRate: adjustedSellRate,
+          rateSource: materialRates.rateSource,
+          notes: height
+            ? `${height} m high · height factor ${heightFactor.toFixed(2)}`
+            : undefined,
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+          qualityFactor,
+        }),
+        identitySummary: "Package estimate — not a component takeoff",
+      },
       fenceBuildUp
     )
   );
 
-  if (getBooleanFact(facts, workArea.id, "fence.gate_included")) {
+  if (
+    fenceGateScopeApplies(physical.system) &&
+    getBooleanFact(facts, workArea.id, "fence.gate_included")
+  ) {
     const gateCount =
       getNumberFact(facts, workArea.id, "fence.gate_count") ?? 1;
     const gateProductivity = resolveProductivity({
@@ -364,12 +479,26 @@ export function calculateFence(
     exclusions.push("Final painting or staining excluded unless stated.");
   }
 
+  let confidence = baseConfidence(missingInfo.length);
+  if (physical.system === "missing" || physical.system === "unsupported") {
+    confidence = Math.min(confidence, 45);
+  }
+  if (physical.modular?.sectionWidthAssumed) {
+    confidence = Math.max(0, confidence - 5);
+  }
+  if (physical.attention.some((row) => /slat gap/i.test(row))) {
+    confidence = Math.max(0, confidence - 5);
+  }
+
   return {
     lineItems,
     assumptions,
     missingInfo,
     exclusions,
-    confidence: baseConfidence(missingInfo.length),
+    confidence,
     assumptionMetadata,
+    ...(physical.requirements.length > 0
+      ? { requirements: physical.requirements }
+      : {}),
   };
 }

@@ -219,6 +219,10 @@ const postHoleSrc = readFileSync(
   "lib/estimate/retaining-wall-post-hole-concrete.ts",
   "utf8"
 );
+const sharedPostHoleSrc = readFileSync(
+  "lib/estimate/post-hole-concrete.ts",
+  "utf8"
+);
 const commercialSrc = readFileSync(
   "lib/estimate/retaining-wall-commercial.ts",
   "utf8"
@@ -737,8 +741,9 @@ check(
   "R1-4 bag ceil uses unrounded total net",
   housePiles.bagCount ===
     bagCountFromNetConcrete(housePiles.netConcreteM3, 0.01) &&
-    postHoleSrc.includes("bagCountFromNetConcrete(netConcreteM3") &&
-    postHoleSrc.includes("FULL-PRECISION") &&
+    sharedPostHoleSrc.includes("bagCountFromNetConcrete(netConcreteM3") &&
+    /FULL-PRECISION/i.test(sharedPostHoleSrc) &&
+    !/const netConcreteM3 = round2\(/.test(sharedPostHoleSrc) &&
     !/const netConcreteM3 = round2\(/.test(postHoleSrc)
 );
 const houseLabourHours =
@@ -772,9 +777,12 @@ const geomSrc = readFileSync("lib/estimate/retaining-wall-geometry.ts", "utf8");
 check(
   "R1-8 diameter helper receives diameter, not radius",
   /export function cylinderVolumeM3\(diameterM/.test(geomSrc) &&
-    postHoleSrc.includes("cylinderVolumeM3(params.holeDiameterM") &&
+    (postHoleSrc.includes("cylinderVolumeM3(params.holeDiameterM") ||
+      sharedPostHoleSrc.includes("cylinderVolumeM3(params.holeDiameterM")) &&
     !postHoleSrc.includes("holeDiameterM / 2") &&
-    !postHoleSrc.includes("holeDiameterM/2")
+    !postHoleSrc.includes("holeDiameterM/2") &&
+    !sharedPostHoleSrc.includes("holeDiameterM / 2") &&
+    !sharedPostHoleSrc.includes("holeDiameterM/2")
 );
 const g300 = cylinderVolumeM3(0.3, 0.6);
 const g400 = cylinderVolumeM3(0.4, 0.6);
