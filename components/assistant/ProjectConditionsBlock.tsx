@@ -19,7 +19,7 @@ import {
   type BuilderInterviewItemResult,
 } from "@/lib/assistant/builder-interview-actions";
 import { startPreviewPerf } from "@/lib/assistant/preview-performance";
-import type { ConstraintRow } from "@/lib/assistant/types";
+import type { AssistantMutationResult, ConstraintRow } from "@/lib/assistant/types";
 import type { Question } from "@/components/assistant/types";
 
 export type ProjectConditionsLocalAnswer = {
@@ -55,6 +55,8 @@ type ProjectConditionsBlockProps = {
     complete: boolean;
     readiness: InterviewReadiness;
     constraints: ConstraintRow[];
+    assistantMutation?: AssistantMutationResult;
+    recoveryRefresh?: boolean;
   }) => void;
   focusQuestionKey?: string | null;
 };
@@ -229,6 +231,8 @@ export function ProjectConditionsBlock({
           complete: result.complete,
           readiness: result.readiness,
           constraints: result.constraints,
+          assistantMutation: result.assistantMutation,
+          recoveryRefresh: result.recoveryRefresh,
         });
 
         if (result.savedCount > 0) {

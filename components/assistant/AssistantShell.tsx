@@ -71,12 +71,17 @@ import {
 import type { Estimate } from "@/components/assistant/types";
 import type {
   AssistantActionState,
+  AssistantMutationResult,
   EstimateGenerationResult,
 } from "@/lib/assistant/types";
 import {
   shouldApplyEstimateGeneration,
   type AppliedEstimateGeneration,
 } from "@/lib/assistant/estimate-generation-apply";
+import {
+  shouldApplyAssistantMutation,
+  type AppliedAssistantMutation,
+} from "@/lib/assistant/assistant-mutation-result";
 import { useEstimateGenerationProjection } from "@/components/projects/estimate-generation-projection";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import {
@@ -220,6 +225,10 @@ export function AssistantShell({
   const actionLockRef = useRef(false);
   const generationRequestSeqRef = useRef(0);
   const appliedGenerationRef = useRef<AppliedEstimateGeneration | null>(null);
+  const factMutationSeqRef = useRef(0);
+  const appliedMutationRef = useRef<AppliedAssistantMutation | null>(null);
+  const factMutationGateRef = useRef(Promise.resolve());
+  const overlaySeqByFactRef = useRef(new Map<string, number>());
   const estimateNavProjection = useEstimateGenerationProjection();
   const { project } = initialState;
 
@@ -232,27 +241,53 @@ export function AssistantShell({
   const [excludedWorkAreaIds, setExcludedWorkAreaIds] = useState<
     readonly string[]
   >([]);
+  const [assistantMutationProjection, setAssistantMutationProjection] =
+    useState<AssistantMutationResult | undefined>(undefined);
+
+  const displayedAssistant = useMemo(() => {
+    const mutation = assistantMutationProjection;
+    if (!mutation || mutation.projectId !== initialState.project.id) {
+      return initialState;
+    }
+    return {
+      ...initialState,
+      project: {
+        ...initialState.project,
+        stage: mutation.stage,
+      },
+      workAreas: mutation.workAreas,
+      questionBlock: mutation.questionBlock,
+      additionalQuestionBlocks: mutation.additionalQuestionBlocks,
+      constraintQuestions: mutation.constraintQuestions,
+      submittedConstraints: mutation.submittedConstraints,
+      interviewFacts: mutation.interviewFacts,
+      scopeSummary: mutation.scopeSummary,
+      scopeReview: mutation.scopeReview,
+      panelScopeSummaries: mutation.panelScopeSummaries,
+      derivedFactDisplays: mutation.derivedFactDisplays,
+    };
+  }, [assistantMutationProjection, initialState]);
 
   const displayWorkAreas = useMemo(() => {
     const reconciledExcluded = excludedWorkAreaIds.filter((id) => {
-      const row = initialState.workAreas.find((wa) => wa.id === id);
+      const row = displayedAssistant.workAreas.find((wa) => wa.id === id);
       return row != null && row.status !== "excluded";
     });
     const reconciledAdded = addedWorkAreas.filter((wa) => {
-      const row = initialState.workAreas.find((server) => server.id === wa.id);
+      const row = displayedAssistant.workAreas.find((server) => server.id === wa.id);
       return !(row && row.status !== "excluded");
     });
-    return projectActiveCanonicalWorkAreas(initialState.workAreas, {
+    return projectActiveCanonicalWorkAreas(displayedAssistant.workAreas, {
       optimisticExcludedIds: reconciledExcluded,
       pendingAdded: reconciledAdded,
     });
-  }, [addedWorkAreas, excludedWorkAreaIds, initialState.workAreas]);
+  }, [addedWorkAreas, excludedWorkAreaIds, displayedAssistant.workAreas]);
 
   const [qualityLevel, setQualityLevel] = useState<QualityLevel | null>(
     project.qualityLevel
   );
 
-  const questionBlock = initialState.questionBlock;
+  const questionBlock = displayedAssistant.questionBlock;
   const [questionAnswers, setQuestionAnswers] = useState<QuestionAnswers>(() =>
     questionBlock
       ? initAnswersFromQuestions(questionBlock.questions)
@@ -260,7 +295,7 @@ export function AssistantShell({
   );
 
   const [constraintAnswers, setConstraintAnswers] = useState<QuestionAnswers>(
-    () => initAnswersFromQuestions(initialState.constraintQuestions)
+    () => initAnswersFromQuestions(displayedAssistant.constraintQuestions)
   );
 
   const [isGenerating, setIsGenerating] = useState(false);
@@ -326,7 +361,10 @@ export function AssistantShell({
   const [generationProjection, setGenerationProjection] = useState<
     EstimateGenerationResult | undefined
   >(undefined);
-  const stage = generationProjection?.stage ?? project.stage;
+  const stage =
+    generationProjection?.stage ??
+    assistantMutationProjection?.stage ??
+    project.stage;
   const [commercialOverviewOpen, setCommercialOverviewOpen] = useState(false);
   const [isEditingQuality, setIsEditingQuality] = useState(false);
   const qualityCardRef = useRef<HTMLDivElement | null>(null);
@@ -412,12 +450,91 @@ export function AssistantShell({
 
   const bridgeEstimateStaleAfterCanonicalWrite = useCallback(() => {
     if (!estimateReady) return;
-    setGenerationProjection(undefined);
-    appliedGenerationRef.current = null;
-    estimateNavProjection?.clearEstimateGeneration();
     setLocalEstimateStale(true);
+    estimateNavProjection?.markEstimateStale();
     recordPreviewPerf("canonical_write_stale_projection", 0, { ok: true });
   }, [estimateNavProjection, estimateReady]);
+
+  const runSerializedFactMutation = useCallback(
+    async <T,>(fn: () => Promise<T>): Promise<T> => {
+      const previous = factMutationGateRef.current;
+      let release: () => void = () => {};
+      factMutationGateRef.current = new Promise<void>((resolve) => {
+        release = resolve;
+      });
+      await previous;
+      try {
+        return await fn();
+      } finally {
+        release();
+      }
+    },
+    []
+  );
+
+  const tagOverlayFactSeq = useCallback((row: EstimateFact, seq: number) => {
+    overlaySeqByFactRef.current.set(`${row.work_area_id ?? ""}:${row.key}`, seq);
+  }, []);
+
+  const settleCanonicalMutation = useCallback(
+    (result: AssistantActionState, requestSeq: number): boolean => {
+      if (result.recoveryRefresh) return false;
+      if (!result.assistantMutation) {
+        return Boolean(result.success);
+      }
+      const incoming: AppliedAssistantMutation = {
+        projectId: result.assistantMutation.projectId,
+        requestSeq,
+      };
+      if (
+        !shouldApplyAssistantMutation({
+          currentProjectId: project.id,
+          applied: appliedMutationRef.current,
+          incoming,
+        })
+      ) {
+        return true;
+      }
+      appliedMutationRef.current = incoming;
+      setAssistantMutationProjection(result.assistantMutation);
+      setLiveConstraints(result.assistantMutation.submittedConstraints);
+      setJobPlanFactOverlay((prev) =>
+        prev.filter((row) => {
+          const key = `${row.work_area_id ?? ""}:${row.key}`;
+          const seq = overlaySeqByFactRef.current.get(key);
+          return seq != null && seq > requestSeq;
+        })
+      );
+      if (result.assistantMutation.estimateStale) {
+        setLocalEstimateStale(true);
+        estimateNavProjection?.markEstimateStale();
+      }
+      return true;
+    },
+    [estimateNavProjection, project.id]
+  );
+
+  const applyProjectConditionsSnapshot = useCallback(
+    (next: {
+      constraints: ConstraintRow[];
+      assistantMutation?: AssistantMutationResult;
+      recoveryRefresh?: boolean;
+    }) => {
+      setLiveConstraints(next.constraints);
+      setProjectConditionsFocusKey(null);
+      if (next.assistantMutation || next.recoveryRefresh) {
+        settleCanonicalMutation(
+          {
+            success: true,
+            assistantMutation: next.assistantMutation,
+            recoveryRefresh: next.recoveryRefresh,
+          },
+          ++factMutationSeqRef.current
+        );
+      }
+    },
+    [settleCanonicalMutation]
+  );
 
   const projectConditionsSnapshot = useMemo(() => {
     try {
@@ -429,7 +546,7 @@ export function AssistantShell({
         projectId: project.id,
         qualityLevel: project.qualityLevel,
         workAreas: displayWorkAreas,
-        facts: initialState.interviewFacts,
+        facts: displayedAssistant.interviewFacts,
         constraints: liveConstraints,
         scopeQuestionCount,
       });
@@ -440,7 +557,7 @@ export function AssistantShell({
     project.id,
     project.qualityLevel,
     displayWorkAreas,
-    initialState.interviewFacts,
+    displayedAssistant.interviewFacts,
     liveConstraints,
     questionsSubmitted,
     questionBlock,
@@ -502,25 +619,27 @@ export function AssistantShell({
   ]);
 
   const submittedConstraintAnswers = useMemo(() => {
-    if (liveConstraints.length === 0 && initialState.submittedConstraints.length === 0) {
+    if (
+      liveConstraints.length === 0 &&
+      displayedAssistant.submittedConstraints.length === 0
+    ) {
       return constraintAnswers;
     }
     const rows =
       liveConstraints.length > 0
         ? liveConstraints
-        : initialState.submittedConstraints;
-    // Map by constraint question id when present, else by key-as-id.
+        : displayedAssistant.submittedConstraints;
     const byKey = new Map(rows.map((r) => [r.key, r.value]));
     return Object.fromEntries(
-      initialState.constraintQuestions.map((q) => [
+      displayedAssistant.constraintQuestions.map((q) => [
         q.id,
         byKey.get(q.key) ?? q.value ?? null,
       ])
     );
   }, [
     constraintAnswers,
-    initialState.constraintQuestions,
-    initialState.submittedConstraints,
+    displayedAssistant.constraintQuestions,
+    displayedAssistant.submittedConstraints,
     liveConstraints,
   ]);
 
@@ -578,6 +697,15 @@ export function AssistantShell({
             }
             shouldRefresh = false;
           }
+        } else if (
+          !isEstimateMutation &&
+          !result.recoveryRefresh &&
+          result.assistantMutation
+        ) {
+          const incomingSeq = ++factMutationSeqRef.current;
+          if (settleCanonicalMutation(result, incomingSeq)) {
+            shouldRefresh = false;
+          }
         }
 
         if (shouldRefresh) {
@@ -595,7 +723,7 @@ export function AssistantShell({
         actionLockRef.current = false;
       }
     },
-    [estimateNavProjection, project.id, router]
+    [estimateNavProjection, project.id, router, settleCanonicalMutation]
   );
 
   const handleAnalyseJob = useCallback(() => {
@@ -832,7 +960,7 @@ export function AssistantShell({
   }, [project.id, questionAnswers, questionBlock, runAction]);
 
   const handleConstraintsSubmit = useCallback(() => {
-    const constraints = initialState.constraintQuestions.map((q) => ({
+    const constraints = displayedAssistant.constraintQuestions.map((q) => ({
       key: q.key,
       label: q.label,
       value: constraintAnswers[q.id] as string | number | boolean,
@@ -843,7 +971,7 @@ export function AssistantShell({
     );
   }, [
     constraintAnswers,
-    initialState.constraintQuestions,
+    displayedAssistant.constraintQuestions,
     project.id,
     runAction,
   ]);
@@ -899,7 +1027,7 @@ export function AssistantShell({
           status: wa.status,
         })),
         facts: (() => {
-          let facts = jobPlanFactsFromAssistantState(initialState);
+          let facts = jobPlanFactsFromAssistantState(displayedAssistant);
           for (const row of jobPlanFactOverlay) {
             facts = overlayFact(facts, row);
           }
@@ -935,7 +1063,7 @@ export function AssistantShell({
     preferProjectConditionsAsk,
     projectConditionsSnapshot,
     displayWorkAreas,
-    initialState,
+    displayedAssistant,
     jobPlanFactOverlay,
   ]);
 
@@ -967,16 +1095,28 @@ export function AssistantShell({
       const endSavePerf = startPreviewPerf("question_save_complete");
       setSavingFactKey(factKey);
       setFactError(null);
+      const requestSeq = ++factMutationSeqRef.current;
+      tagOverlayFactSeq(
+        {
+          key: input.key,
+          work_area_id: input.workAreaId,
+          value: input.value,
+          source: "user",
+        },
+        requestSeq
+      );
 
-      const result = await updateProjectFact({
-        projectId: project.id,
-        workAreaId: input.workAreaId,
-        key: input.key,
-        label: input.label,
-        value: input.value,
-        unit: input.unit,
-        valueType: input.inputType,
-      });
+      const result = await runSerializedFactMutation(() =>
+        updateProjectFact({
+          projectId: project.id,
+          workAreaId: input.workAreaId,
+          key: input.key,
+          label: input.label,
+          value: input.value,
+          unit: input.unit,
+          valueType: input.inputType,
+        })
+      );
 
       if (result.error) {
         setFactError(result.error);
@@ -987,12 +1127,21 @@ export function AssistantShell({
 
       setSavingFactKey(null);
       endSavePerf();
-      bridgeEstimateStaleAfterCanonicalWrite();
-      startTransition(() => {
-        router.refresh();
-      });
+      if (!settleCanonicalMutation(result, requestSeq)) {
+        bridgeEstimateStaleAfterCanonicalWrite();
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     },
-    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
+    [
+      bridgeEstimateStaleAfterCanonicalWrite,
+      project.id,
+      router,
+      runSerializedFactMutation,
+      settleCanonicalMutation,
+      tagOverlayFactSeq,
+    ]
   );
 
   const handleConstraintSave = useCallback(
@@ -1004,14 +1153,17 @@ export function AssistantShell({
     }) => {
       setSavingConstraintKey(input.key);
       setConstraintError(null);
+      const requestSeq = ++factMutationSeqRef.current;
 
-      const result = await updateProjectConstraint({
-        projectId: project.id,
-        key: input.key,
-        label: input.label,
-        value: input.value,
-        inputType: input.inputType,
-      });
+      const result = await runSerializedFactMutation(() =>
+        updateProjectConstraint({
+          projectId: project.id,
+          key: input.key,
+          label: input.label,
+          value: input.value,
+          inputType: input.inputType,
+        })
+      );
 
       if (result.error) {
         setConstraintError(result.error);
@@ -1031,12 +1183,20 @@ export function AssistantShell({
         return next;
       });
       setSavingConstraintKey(null);
-      bridgeEstimateStaleAfterCanonicalWrite();
-      startTransition(() => {
-        router.refresh();
-      });
+      if (!settleCanonicalMutation(result, requestSeq)) {
+        bridgeEstimateStaleAfterCanonicalWrite();
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     },
-    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
+    [
+      bridgeEstimateStaleAfterCanonicalWrite,
+      project.id,
+      router,
+      runSerializedFactMutation,
+      settleCanonicalMutation,
+    ]
   );
 
   const handleMarginSave = useCallback(
@@ -1208,6 +1368,19 @@ export function AssistantShell({
       if (!item.write) return;
       setJobPlanScopeSaveStatus("saving");
       setJobPlanScopeSaveError(null);
+      const requestSeq = ++factMutationSeqRef.current;
+      tagOverlayFactSeq(
+        {
+          key: item.write.factKey,
+          work_area_id: item.workAreaId,
+          value:
+            presentation === "INCLUDED"
+              ? item.write.includeValue
+              : item.write.excludeValue,
+          source: "user",
+        },
+        requestSeq
+      );
       setJobPlanFactOverlay((prev) =>
         applyJobPlanScopeWrite({
           facts: prev,
@@ -1216,12 +1389,14 @@ export function AssistantShell({
           presentation,
         }) as EstimateFact[]
       );
-      const result = await writeJobPlanScopeDecision({
-        projectId: project.id,
-        workAreaId: item.workAreaId,
-        write: item.write,
-        presentation,
-      });
+      const result = await runSerializedFactMutation(() =>
+        writeJobPlanScopeDecision({
+          projectId: project.id,
+          workAreaId: item.workAreaId,
+          write: item.write!,
+          presentation,
+        })
+      );
       if (result.error) {
         setActionError(result.error);
         setJobPlanScopeSaveStatus("error");
@@ -1231,15 +1406,24 @@ export function AssistantShell({
         return;
       }
       setJobPlanScopeSaveStatus("saved");
-      bridgeEstimateStaleAfterCanonicalWrite();
       window.setTimeout(() => {
         setJobPlanScopeSaveStatus("idle");
       }, 2000);
-      startTransition(() => {
-        router.refresh();
-      });
+      if (!settleCanonicalMutation(result, requestSeq)) {
+        bridgeEstimateStaleAfterCanonicalWrite();
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     },
-    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
+    [
+      bridgeEstimateStaleAfterCanonicalWrite,
+      project.id,
+      router,
+      runSerializedFactMutation,
+      settleCanonicalMutation,
+      tagOverlayFactSeq,
+    ]
   );
 
   const handleClarifyBoolean = useCallback(
@@ -1247,7 +1431,21 @@ export function AssistantShell({
       candidate: ClarifyCandidate,
       presentation: "INCLUDED" | "NOT_INCLUDED"
     ) => {
+      const requestSeq = ++factMutationSeqRef.current;
+      let result: AssistantActionState = { success: true };
       if (candidate.write && candidate.workAreaId) {
+        tagOverlayFactSeq(
+          {
+            key: candidate.write.factKey,
+            work_area_id: candidate.workAreaId,
+            value:
+              presentation === "INCLUDED"
+                ? candidate.write.includeValue
+                : candidate.write.excludeValue,
+            source: "user",
+          },
+          requestSeq
+        );
         setJobPlanFactOverlay((prev) =>
           applyJobPlanScopeWrite({
             facts: prev,
@@ -1256,18 +1454,29 @@ export function AssistantShell({
             presentation,
           }) as EstimateFact[]
         );
-        const result = await answerClarifyFact({
-          projectId: project.id,
-          workAreaId: candidate.workAreaId,
-          write: candidate.write,
-          presentation,
-        });
+        result = await runSerializedFactMutation(() =>
+          answerClarifyFact({
+            projectId: project.id,
+            workAreaId: candidate.workAreaId!,
+            write: candidate.write!,
+            presentation,
+          })
+        );
         if (result.error) {
           setActionError(result.error);
           return;
         }
       } else if (candidate.factKey) {
         const value = presentation === "INCLUDED";
+        tagOverlayFactSeq(
+          {
+            key: candidate.factKey,
+            work_area_id: candidate.workAreaId,
+            value,
+            source: "user",
+          },
+          requestSeq
+        );
         setJobPlanFactOverlay((prev) =>
           overlayFact(prev, {
             key: candidate.factKey!,
@@ -1276,29 +1485,41 @@ export function AssistantShell({
             source: "user",
           })
         );
-        const result = await answerClarifySelectFact({
-          projectId: project.id,
-          workAreaId: candidate.workAreaId,
-          key: candidate.factKey,
-          label: candidate.label,
-          value,
-          valueType: "boolean",
-        });
+        result = await runSerializedFactMutation(() =>
+          answerClarifySelectFact({
+            projectId: project.id,
+            workAreaId: candidate.workAreaId,
+            key: candidate.factKey!,
+            label: candidate.label,
+            value,
+            valueType: "boolean",
+          })
+        );
         if (result.error) {
           setActionError(result.error);
           return;
         }
       }
-      bridgeEstimateStaleAfterCanonicalWrite();
-      startTransition(() => {
-        router.refresh();
-      });
+      if (!settleCanonicalMutation(result, requestSeq)) {
+        bridgeEstimateStaleAfterCanonicalWrite();
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     },
-    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
+    [
+      bridgeEstimateStaleAfterCanonicalWrite,
+      project.id,
+      router,
+      runSerializedFactMutation,
+      settleCanonicalMutation,
+      tagOverlayFactSeq,
+    ]
   );
 
   const handleClarifyValue = useCallback(
     async (candidate: ClarifyCandidate, value: string | number | boolean) => {
+      const requestSeq = ++factMutationSeqRef.current;
       if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
         const constraintKey = candidate.constraintKey ?? candidate.questionKey;
         setLiveConstraints((prev) => [
@@ -1311,22 +1532,35 @@ export function AssistantShell({
             source: "user",
           },
         ]);
-        const result = await answerClarifyConstraint({
-          projectId: project.id,
-          questionKey: candidate.questionKey,
-          value,
-        });
+        const result = await runSerializedFactMutation(() =>
+          answerClarifyConstraint({
+            projectId: project.id,
+            questionKey: candidate.questionKey!,
+            value,
+          })
+        );
         if (result.error) {
           setActionError(result.error);
           return;
         }
-        bridgeEstimateStaleAfterCanonicalWrite();
-        startTransition(() => {
-          router.refresh();
-        });
+        if (!settleCanonicalMutation(result, requestSeq)) {
+          bridgeEstimateStaleAfterCanonicalWrite();
+          startTransition(() => {
+            router.refresh();
+          });
+        }
         return;
       }
       if (!candidate.factKey) return;
+      tagOverlayFactSeq(
+        {
+          key: candidate.factKey,
+          work_area_id: candidate.workAreaId,
+          value,
+          source: "user",
+        },
+        requestSeq
+      );
       setJobPlanFactOverlay((prev) =>
         overlayFact(prev, {
           key: candidate.factKey!,
@@ -1335,29 +1569,40 @@ export function AssistantShell({
           source: "user",
         })
       );
-      const result = await answerClarifySelectFact({
-        projectId: project.id,
-        workAreaId: candidate.workAreaId,
-        key: candidate.factKey,
-        label: candidate.label,
-        value,
-        valueType:
-          candidate.inputType === "number"
-            ? "number"
-            : candidate.inputType === "boolean"
-              ? "boolean"
-              : "select",
-      });
+      const result = await runSerializedFactMutation(() =>
+        answerClarifySelectFact({
+          projectId: project.id,
+          workAreaId: candidate.workAreaId,
+          key: candidate.factKey!,
+          label: candidate.label,
+          value,
+          valueType:
+            candidate.inputType === "number"
+              ? "number"
+              : candidate.inputType === "boolean"
+                ? "boolean"
+                : "select",
+        })
+      );
       if (result.error) {
         setActionError(result.error);
         return;
       }
-      bridgeEstimateStaleAfterCanonicalWrite();
-      startTransition(() => {
-        router.refresh();
-      });
+      if (!settleCanonicalMutation(result, requestSeq)) {
+        bridgeEstimateStaleAfterCanonicalWrite();
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     },
-    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
+    [
+      bridgeEstimateStaleAfterCanonicalWrite,
+      project.id,
+      router,
+      runSerializedFactMutation,
+      settleCanonicalMutation,
+      tagOverlayFactSeq,
+    ]
   );
 
   const handleJobPlanSpecFact = useCallback(
@@ -1368,6 +1613,16 @@ export function AssistantShell({
       value: string | number;
       valueType: "number" | "select";
     }) => {
+      const requestSeq = ++factMutationSeqRef.current;
+      tagOverlayFactSeq(
+        {
+          key: input.key,
+          work_area_id: input.workAreaId,
+          value: input.value,
+          source: "user",
+        },
+        requestSeq
+      );
       setJobPlanFactOverlay((prev) =>
         overlayFact(prev, {
           key: input.key,
@@ -1376,24 +1631,35 @@ export function AssistantShell({
           source: "user",
         })
       );
-      const result = await updateProjectFact({
-        projectId: project.id,
-        workAreaId: input.workAreaId,
-        key: input.key,
-        label: input.label,
-        value: input.value,
-        valueType: input.valueType,
-      });
+      const result = await runSerializedFactMutation(() =>
+        updateProjectFact({
+          projectId: project.id,
+          workAreaId: input.workAreaId,
+          key: input.key,
+          label: input.label,
+          value: input.value,
+          valueType: input.valueType,
+        })
+      );
       if (result.error) {
         setActionError(result.error);
         return;
       }
-      bridgeEstimateStaleAfterCanonicalWrite();
-      startTransition(() => {
-        router.refresh();
-      });
+      if (!settleCanonicalMutation(result, requestSeq)) {
+        bridgeEstimateStaleAfterCanonicalWrite();
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     },
-    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
+    [
+      bridgeEstimateStaleAfterCanonicalWrite,
+      project.id,
+      router,
+      runSerializedFactMutation,
+      settleCanonicalMutation,
+      tagOverlayFactSeq,
+    ]
   );
 
   const handleSaveWorkAreaQuestions = useCallback(
@@ -1412,6 +1678,8 @@ export function AssistantShell({
         [input.workAreaId]: "saving",
       }));
       setWorkAreaQuestionError(null);
+      const requestSeq = ++factMutationSeqRef.current;
+      let lastResult: AssistantActionState | null = null;
 
       const questionsByBlock = new Map<string, WorkAreaActiveQuestion[]>();
       for (const question of input.questions) {
@@ -1432,11 +1700,10 @@ export function AssistantShell({
           continue;
         }
 
-        const result = await saveQuestionBlockAnswers(
-          project.id,
-          blockId,
-          payload
+        const result = await runSerializedFactMutation(() =>
+          saveQuestionBlockAnswers(project.id, blockId, payload)
         );
+        lastResult = result;
 
         if (!workAreaSaveGuardRef.current.isCurrent(saveToken)) {
           endSavePerf();
@@ -1470,13 +1737,23 @@ export function AssistantShell({
       }));
       setSavingWorkAreaId(null);
       endSavePerf();
-      bridgeEstimateStaleAfterCanonicalWrite();
-      // Optimistic local answers already show Saved — refresh in background.
-      startTransition(() => {
-        router.refresh();
-      });
+      if (
+        lastResult &&
+        !settleCanonicalMutation(lastResult, requestSeq)
+      ) {
+        bridgeEstimateStaleAfterCanonicalWrite();
+        startTransition(() => {
+          router.refresh();
+        });
+      }
     },
-    [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
+    [
+      bridgeEstimateStaleAfterCanonicalWrite,
+      project.id,
+      router,
+      runSerializedFactMutation,
+      settleCanonicalMutation,
+    ]
   );
 
   const estimateBase = estimateReady
@@ -1507,8 +1784,8 @@ export function AssistantShell({
   }, [estimateBase, marginOverlay]);
 
   const jobPlanBaseFacts = useMemo(
-    () => jobPlanFactsFromAssistantState(initialState),
-    [initialState]
+    () => jobPlanFactsFromAssistantState(displayedAssistant),
+    [displayedAssistant]
   );
   const jobPlanFacts = useMemo(() => {
     let facts = jobPlanBaseFacts;
@@ -1613,7 +1890,7 @@ export function AssistantShell({
     () =>
       buildProjectUnderstandingSummaries({
         workAreas: displayWorkAreas.filter((wa) => wa.status === "confirmed"),
-        facts: initialState.scopeReview.workAreas.flatMap((wa) =>
+        facts: displayedAssistant.scopeReview.workAreas.flatMap((wa) =>
           wa.facts.map((fact) => ({
             key: fact.key,
             work_area_id: wa.workAreaId,
@@ -1621,7 +1898,7 @@ export function AssistantShell({
           }))
         ),
       }),
-    [displayWorkAreas, initialState.scopeReview.workAreas]
+    [displayWorkAreas, displayedAssistant.scopeReview.workAreas]
   );
   const captureIsCurrent = !briefSubmitted;
   const workAreasIsCurrent = briefSubmitted && !workAreasConfirmed;
@@ -1672,7 +1949,7 @@ export function AssistantShell({
   const workAreaLists = buildWorkAreaSummaryLists(displayWorkAreas);
   const workAreaHighlights = buildWorkAreaFactHighlights({
     workAreas: displayWorkAreas,
-    scopeReview: initialState.scopeReview,
+    scopeReview: displayedAssistant.scopeReview,
     qualityLevel: qualitySubmitted ? qualityLevel : null,
   });
   const qualitySummaryModel = buildQualitySummaryModel(qualityLevel);
@@ -1693,9 +1970,9 @@ export function AssistantShell({
       composeCurrentWorkAreaScopeState({
         suggestions: scopeDiscoveryInitialResults?.allSuggestions ?? [],
         manualItems: manualScopeItems,
-        scopeReview: initialState.scopeReview,
+        scopeReview: displayedAssistant.scopeReview,
       }),
-    [scopeDiscoveryInitialResults, manualScopeItems, initialState.scopeReview]
+    [scopeDiscoveryInitialResults, manualScopeItems, displayedAssistant.scopeReview]
   );
   const includedScopeItemCount =
     liveScopeCounts?.includedCount ?? composedScopeState.includedCount;
@@ -1713,15 +1990,15 @@ export function AssistantShell({
       suggestionId: s.suggestionId,
     }));
   const estimateReviewSummaryModel = buildEstimateReviewSummaryModel({
-    scopeReview: initialState.scopeReview,
+    scopeReview: displayedAssistant.scopeReview,
     estimateReady,
     estimateStale: displayEstimateStale,
     constraintCount: liveConstraints.length,
     includedScopeItemCount:
-      includedScopeItemCount || initialState.scopeReview.workAreas.length,
+      includedScopeItemCount || displayedAssistant.scopeReview.workAreas.length,
   });
   const constraintChips = buildConstraintChipLabels({
-    questions: initialState.constraintQuestions,
+    questions: displayedAssistant.constraintQuestions,
     answers: submittedConstraintAnswers,
     submittedRows: liveConstraints,
   });
@@ -1765,8 +2042,8 @@ export function AssistantShell({
     ]
   );
   const assumptionCountForReview =
-    initialState.scopeReview.generalAssumptions.length +
-    initialState.scopeReview.workAreas.reduce(
+    displayedAssistant.scopeReview.generalAssumptions.length +
+    displayedAssistant.scopeReview.workAreas.reduce(
       (n, wa) => n + wa.assumptions.length,
       0
     );
@@ -1779,7 +2056,7 @@ export function AssistantShell({
     outstandingClarificationCount: 0,
     assumptionCount: assumptionCountForReview,
     missingCount: Math.max(
-      initialState.scopeReview.workAreas.reduce(
+      displayedAssistant.scopeReview.workAreas.reduce(
         (n, wa) => n + wa.missingItems.length,
         0
       ),
@@ -1833,7 +2110,7 @@ export function AssistantShell({
             : [],
         scopeReviewAttention: scopeReviewAttentionItems,
         projectConditionsAttention,
-        missingByWorkArea: initialState.scopeReview.workAreas.flatMap(
+        missingByWorkArea: displayedAssistant.scopeReview.workAreas.flatMap(
           (wa) =>
             wa.missingItems.map((label) => ({
               workAreaName: wa.workAreaName,
@@ -1852,7 +2129,7 @@ export function AssistantShell({
     unresolvedScopeImpactCount,
     scopeReviewAttentionItems,
     projectConditionsAttention,
-    initialState.scopeReview.workAreas,
+    displayedAssistant.scopeReview.workAreas,
     pendingScopeDetailTitles,
   ]);
 
@@ -1918,7 +2195,7 @@ export function AssistantShell({
     displayEstimateStale ||
     (!estimateReady && questionsSubmitted) ||
     completedEstimateAttentionItems.length > 0 ||
-    initialState.scopeReview.workAreas.some(
+    displayedAssistant.scopeReview.workAreas.some(
       (workArea) => workArea.missingItems.length > 0
     );
   const projectConditionsNeedsAsk =
@@ -1958,7 +2235,7 @@ export function AssistantShell({
     constraints:
       questionsSubmitted &&
       !constraintsSubmitted &&
-      initialState.scopeReview.workAreas.some(
+      displayedAssistant.scopeReview.workAreas.some(
         (workArea) => workArea.missingItems.length > 0
       ),
     estimate_ready: displayEstimateStale,
@@ -2323,16 +2600,13 @@ export function AssistantShell({
                         }
                       }
                       focusQuestionKey={projectConditionsFocusKey}
-                      onSnapshotUpdate={(next) => {
-                        setLiveConstraints(next.constraints);
-                        setProjectConditionsFocusKey(null);
-                      }}
+                      onSnapshotUpdate={applyProjectConditionsSnapshot}
                     />
                   </div>
                 ) : (
                   <div ref={constraintsCardRef}>
                     <ConstraintBlock
-                      questions={initialState.constraintQuestions}
+                      questions={displayedAssistant.constraintQuestions}
                       answers={
                         constraintsSubmitted
                           ? submittedConstraintAnswers
@@ -2748,7 +3022,7 @@ export function AssistantShell({
             >
               <ScopeSummaryBlock
                 projectId={project.id}
-                scopeReview={initialState.scopeReview}
+                scopeReview={displayedAssistant.scopeReview}
                 workAreas={displayWorkAreas}
                 editable={questionsSubmitted}
                 manageWorkAreas={workAreasConfirmed}
@@ -2838,10 +3112,7 @@ export function AssistantShell({
                   }
                 }
                 focusQuestionKey={projectConditionsFocusKey}
-                onSnapshotUpdate={(next) => {
-                  setLiveConstraints(next.constraints);
-                  setProjectConditionsFocusKey(null);
-                }}
+                onSnapshotUpdate={applyProjectConditionsSnapshot}
               />
             </CollapsibleStageCard>
           ) : null}
@@ -2877,7 +3148,7 @@ export function AssistantShell({
               actionLabel={constraintsSubmitted ? "View" : undefined}
             >
               <ConstraintBlock
-                questions={initialState.constraintQuestions}
+                questions={displayedAssistant.constraintQuestions}
                 answers={
                   constraintsSubmitted
                     ? submittedConstraintAnswers
@@ -2939,7 +3210,7 @@ export function AssistantShell({
             marginSaveLabel={marginSaveLabel}
             defaultMarginPercent={initialState.defaultMarginPercent}
             panelScopeSummaries={initialState.panelScopeSummaries}
-            scopeReview={initialState.scopeReview}
+            scopeReview={displayedAssistant.scopeReview}
             questionsSubmitted={questionsSubmitted}
             constraintsSubmitted={
               constraintsSubmitted &&

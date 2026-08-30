@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { completeAssistantMutation } from "@/lib/assistant/complete-assistant-mutation";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { commitUserFactEdit } from "@/lib/assistant/scope-persistence";
@@ -121,6 +122,7 @@ export async function updateProjectFact(
   }
 
   await markEstimateStaleWithContext(context, projectId);
+  const mutation = await completeAssistantMutation(context, projectId);
   revalidateProjectPath(projectId);
-  return { success: true };
+  return mutation;
 }

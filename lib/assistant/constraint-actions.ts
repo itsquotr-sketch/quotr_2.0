@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import { completeAssistantMutation } from "@/lib/assistant/complete-assistant-mutation";
 import { upsertProjectConstraintRecord } from "@/lib/assistant/scope-persistence";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
@@ -72,6 +73,7 @@ export async function updateProjectConstraint(
   }
 
   await markEstimateStaleWithContext(context, projectId);
+  const mutation = await completeAssistantMutation(context, projectId);
   revalidateAssistantPaths(projectId);
-  return { success: true };
+  return mutation;
 }

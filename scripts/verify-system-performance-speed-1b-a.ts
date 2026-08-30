@@ -298,9 +298,9 @@ check(
     shellSrc.includes("shouldRefresh = false")
 );
 check(
-  "8. unrelated Clarify refresh remains",
+  "8. Clarify/fact-save canonical mutation remains (refresh is recovery)",
   factSrc.includes("updateProjectFact") &&
-    shellSrc.includes("await updateProjectFact(") &&
+    shellSrc.includes("updateProjectFact(") &&
     /handleFactSave[\s\S]*router\.refresh\(\)/.test(shellSrc)
 );
 check(

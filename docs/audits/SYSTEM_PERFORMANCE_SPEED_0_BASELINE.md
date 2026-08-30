@@ -1250,4 +1250,168 @@ After owner review + commit/push: measure Generate **action complete** vs **Buil
 
 Do not start SPEED 1B-B or SPEED 2 in this batch.
 
+---
+
+# SYSTEM PERFORMANCE — SPEED 1B-B RESULT
+
+**Status:** COMPLETE LOCAL / OWNER APPROVED  
+**Date:** 2026-08-31  
+**Does not:** start Speed 2, batch derived-fact writes, rewrite missing-question persistence, change Generate/Update projection, change calculators/rates/persist RPC, start Pricing UX, start Bathroom, or deploy Production.
+
+**Companion:** `scripts/verify-system-performance-speed-1b-b.ts`
+
+## What changed
+
+Clarify / Job Plan / project fact saves still run the **existing** canonical write pipeline (raw fact, question mirror, derived-fact loop, missing-question rebuild, estimate stale). After those writes finish, the server re-reads persisted Assistant fact/question/constraint/stale state and returns `assistantMutation`. The client applies `assistantMutationProjection` over SSR data. Ordinary successful saves **do not** `router.refresh()`.
+
+Generate/Update remains Speed 1B-A (`generationProjection`). Fact mutation **stales** the existing Estimate; it does **not** manufacture a new one.
+
+## BEFORE — Clarify / fact save
+
+```
+input (Clarify answer / Job Plan spec / fact edit)
+  → pending (Saving… / overlay)
+  → updateProjectFact / writeJobPlanScopeDecision / answerClarify*
+  → auth + org ownership
+  → commitUserFactEdit (project_facts then question mirror)
+  → persistDerivedFactsForProject (row-by-row)
+  → ensureMissingDetailsQuestionBlock
+  → markEstimateStaleWithContext
+  → revalidatePath(/app/projects/:id)
+  → { success: true }
+  → router.refresh()
+  → entire Project RSC
+  → UI settles
+```
+
+## AFTER — Clarify / fact save
+
+```
+input
+  → pending (Saving… / overlay)   // unchanged
+  → SAME canonical writes as BEFORE
+  → loadAssistantMutationResult (re-read persisted facts/questions/constraints/stale/stage)
+  → revalidatePath(/app/projects/:id)   // future navigation only
+  → { success, assistantMutation }
+  → apply assistantMutationProjection (seq + serialized mutation gate)
+  → UI settles
+  → no router.refresh on ordinary success
+```
+
+Recovery: missing/invalid canonical response → `{ recoveryRefresh: true }` → existing `router.refresh()`.
+
+## BEFORE — Job Plan
+
+Same write pipeline via `writeJobPlanScopeDecision` → `updateProjectFact`, then full refresh.
+
+## AFTER — Job Plan
+
+Same writes. Canonical `assistantMutation` applied locally. Ordinary success skips full refresh. Error path still refreshes.
+
+## Response contract
+
+`AssistantActionState.assistantMutation`:
+
+| Field | Source |
+| --- | --- |
+| `projectId` | authenticated project |
+| `stage` | `projects.stage` after writes |
+| `workAreas` | persisted work areas (SSR mapper) |
+| `interviewFacts` | persisted `project_facts` (Facts SoT) |
+| `derivedFactDisplays` | SSR display of persisted + derived merge |
+| `scopeReview` / `panelScopeSummaries` / `scopeSummary` | same mappers as `getAssistantState` |
+| `questionBlock` / `additionalQuestionBlocks` | persisted question journal |
+| `constraintQuestions` / `submittedConstraints` | persisted constraints |
+| `estimateStale` / `hasEstimate` | estimate **header** only (`is_stale`) |
+
+Construction: **after all mutation writes**, `loadAssistantMutationResult` re-reads DB and `buildAssistantState` (no line items). Not a mix of pre-write memory and post-write rows.
+
+Does **not** include: estimate line items/money, Pricing, Quote, notes/photos, rate catalogue.
+
+## Client projection
+
+SSR `initialState` + `assistantMutationProjection` → `displayedAssistant`.  
+`generationProjection` remains Estimate-only (1B-A). Fact mutation does **not** clear it; nav `markEstimateStale()` + `localEstimateStale` show stale without replacing money.
+
+Race: per-project `requestSeq` (`shouldApplyAssistantMutation`) rejects late older snapshots and cross-project payloads. `runSerializedFactMutation` serializes in-flight fact/constraint saves so overlapping different-fact snapshots cannot drop a newer in-flight key. Overlay rows with `seq > appliedSeq` are kept until their response arrives.
+
+## Revalidation policy
+
+**Retain `revalidatePath(/app/projects/:id)`** so the next navigation/RSC render loads the persisted facts. Do **not** call `router.refresh()` on ordinary successful Clarify/Job Plan/fact save.
+
+## router.refresh
+
+| Site | Change |
+| --- | --- |
+| Clarify / Job Plan / fact save success | **no refresh** when `assistantMutation` applies |
+| Constraint / Project Conditions success (same loader) | **no refresh** when payload applies |
+| Recovery / missing payload / Job Plan write error | refresh remains |
+| Generate/Update success | **unchanged 1B-A** (no refresh) |
+| Work Area add/exclude, margin, brief, quality, notes | **unchanged** |
+
+Executable `router.refresh();` in AssistantShell: **14 before, 14 after**. Ordinary fact-save sites now execute refresh only as recovery.
+
+## Write path
+
+Unchanged logical writes for `updateProjectFact`:
+
+1. `commitUserFactEdit` (fact upsert + question mirror)
+2. `persistDerivedFactsForProject` (row-by-row; **Speed 2**)
+3. `ensureMissingDetailsQuestionBlock` (**Speed 2**)
+4. `markEstimateStaleWithContext`
+
+1B-B only **adds** a post-write canonical read. It does not batch derived facts or rewrite missing-question persistence.
+
+`updateProjectFact` always marks the Estimate stale when an estimate row exists (existing semantics). No new non-economic skip was added.
+
+`updateProjectFact` does **not** change `projects.stage`. Stage can change on the specialised `saveQuestionBlockAnswers` path (question-block submit); that result’s `stage` is returned when that path is used.
+
+## Constraints / Project Conditions
+
+Included: same `completeAssistantMutation` loader after `updateProjectConstraint` and `saveBuilderInterviewProjectAnswers`. Constraints remain the `constraints` table, not `project_facts`.
+
+## Payload size (MEASURED local, post-write mapper, no line items)
+
+Speed 1B-B verifier, JSON of `assistantMutation`:
+
+| Fixture | Payload |
+| --- | ---: |
+| single simple fact | **2.1 KB** |
+| numeric + derived (Deck REAL-JOB-01 facts) | **4.1 KB** |
+| question-set change | **3.2 KB** |
+| Fence type switch | **3.1 KB** |
+
+Response construction (local `buildAssistantState` map): **0.01 ms** in the verifier. Server mutation time remains dominated by **Speed 2** sequential derived-fact writes and missing-question rebuild — not measured as reduced here.
+
+## Remaining Speed 2 bottlenecks
+
+| Work | Programme |
+| --- | --- |
+| Sequential derived-fact writes / N+1 upserts | **SPEED 2** |
+| Missing-question database/write optimisation | **SPEED 2** |
+| Query/index optimisation | **SPEED 2** |
+| Transaction/batching redesign | **SPEED 2** |
+
+## REQ-TXN-01
+
+**VERIFY_LATER — LOCAL SUPABASE REQUIRED.** Independent of this batch.
+
+## Preview smoke
+
+SSO Deployment Protection blocks unauthenticated Preview probes. **PREVIEW OWNER MANUAL SMOKE REQUIRED** after this commit is live:
+
+A. Deck dimension fact edit — save settles, no full Project reload, estimate stale  
+B. Clarify answer — question state updates, no full Project reload  
+C. Clear known fact — missing state returns, stale remains  
+D. Fence Timber → Aluminium — current system UI, no timber-only Clarify, estimate stale, no auto-recalc  
+E. Project Condition edit — state updates, estimate stale, no full Project reload  
+F. Update Estimate afterwards — 1B-A generation projection still works, stale clears, Builder Review updates
+
+## Next action
+
+**SYSTEM-PERFORMANCE-SPEED-1B-B = COMPLETE LOCAL / OWNER APPROVED**
+
+Speed 1 is complete once this commit is Preview READY (1A + 1B-A + 1B-B). Next programme is **SYSTEM-PERFORMANCE-SPEED-2**. Do not start SPEED 2, SPEED 3, Pricing UX, or Bathroom from this batch.
+
+
 

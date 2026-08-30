@@ -31,6 +31,7 @@ import { getEstimateContextWithContext } from "@/lib/estimate/context";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
 import { loadEstimateGenerationResult } from "@/lib/assistant/load-estimate-generation-result";
+import { completeAssistantMutation } from "@/lib/assistant/complete-assistant-mutation";
 import { measureServerLoad } from "@/lib/perf/timing";
 import { getAnthropicModel } from "@/lib/ai/anthropic";
 import { buildInitialAnalysisInput } from "@/lib/project-notes/build-analysis-source";
@@ -1072,8 +1073,9 @@ export async function saveQuestionBlockAnswers(
   }
 
   await markEstimateStaleWithContext(auth, projectId);
+  const mutation = await completeAssistantMutation(auth, projectId);
   revalidateProjectAssistantPath(projectId);
-  return { success: true };
+  return mutation;
 }
 
 export async function saveConstraints(

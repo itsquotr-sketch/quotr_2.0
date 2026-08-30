@@ -64,7 +64,11 @@ export async function answerClarifyConstraint(input: {
     ],
   });
   if (result.error) return { error: result.error };
-  return { success: true };
+  return {
+    success: true,
+    assistantMutation: result.assistantMutation,
+    recoveryRefresh: result.recoveryRefresh,
+  };
 }
 
 async function submitOpenQuestionBlock(

@@ -149,6 +149,28 @@ export type EstimateGenerationResult = {
   pricingSummary: PricingSummary | null;
 };
 
+/**
+ * Canonical Clarify / Job Plan / fact-mutation response.
+ * Projection of persisted Facts SoT + sibling Assistant state after the
+ * existing mutation pipeline. Does not include Estimate line items / money.
+ */
+export type AssistantMutationResult = {
+  projectId: string;
+  stage: AssistantStage;
+  workAreas: WorkArea[];
+  interviewFacts: AssistantInterviewFact[];
+  derivedFactDisplays: DerivedFactDisplay[];
+  scopeReview: ScopeReview;
+  panelScopeSummaries: PanelScopeSummary[];
+  scopeSummary: ScopeSummary;
+  questionBlock: QuestionBlockData | null;
+  additionalQuestionBlocks: QuestionBlockData[];
+  constraintQuestions: Question[];
+  submittedConstraints: ConstraintRow[];
+  estimateStale: boolean;
+  hasEstimate: boolean;
+};
+
 export type AssistantActionState = {
   error?: string;
   success?: boolean;
@@ -161,6 +183,11 @@ export type AssistantActionState = {
    * persisted estimate — not an unpersisted calculator DTO.
    */
   estimateGeneration?: EstimateGenerationResult;
+  /**
+   * Present after successful Clarify / Job Plan / fact / constraint mutation.
+   * Projection of persisted Facts / questions / readiness / stale — not money.
+   */
+  assistantMutation?: AssistantMutationResult;
   /**
    * Persist succeeded (or equivalent) but canonical response could not be
    * built. Client may router.refresh() as recovery only.

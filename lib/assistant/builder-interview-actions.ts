@@ -21,10 +21,11 @@ import {
 import { isReservedConstraintKey } from "@/lib/scopes/domain-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { upsertProjectConstraintRecord } from "@/lib/assistant/scope-persistence";
+import { completeAssistantMutation } from "@/lib/assistant/complete-assistant-mutation";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
-import type { ConstraintRow } from "@/lib/assistant/types";
+import type { AssistantMutationResult, ConstraintRow } from "@/lib/assistant/types";
 import type {
   InterviewCandidate,
   InterviewReadiness,
@@ -79,6 +80,8 @@ export type SaveBuilderInterviewProjectAnswersResult = {
   remainingCount: number;
   readiness: InterviewReadiness;
   complete: boolean;
+  assistantMutation?: AssistantMutationResult;
+  recoveryRefresh?: boolean;
 };
 
 function displayValue(value: unknown): string {
@@ -379,6 +382,8 @@ export async function saveBuilderInterviewProjectAnswers(input: {
         i.status === "assumption_deferred"
     );
 
+  const mutationState = await completeAssistantMutation(auth, projectId);
+
   return {
     success: allOk,
     error:
@@ -396,5 +401,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
     remainingCount: snapshot.remainingCount,
     readiness: snapshot.readiness,
     complete: snapshot.complete,
+    assistantMutation: mutationState.assistantMutation,
+    recoveryRefresh: mutationState.recoveryRefresh,
   };
 }

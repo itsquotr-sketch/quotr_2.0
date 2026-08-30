@@ -23,6 +23,7 @@ type EstimateGenerationNavProjection = {
 type EstimateGenerationProjectionContextValue = {
   projection: EstimateGenerationNavProjection;
   applyEstimateGeneration: (result: EstimateGenerationResult) => void;
+  markEstimateStale: () => void;
   clearEstimateGeneration: () => void;
 };
 
@@ -55,6 +56,14 @@ export function EstimateGenerationProjectionProvider({
     []
   );
 
+  const markEstimateStale = useCallback(() => {
+    setOverlay((prev) => ({
+      hasEstimate: prev?.hasEstimate ?? initialHasEstimate,
+      estimateIsStale: true,
+      pricingSummary: prev?.pricingSummary ?? initialPricingSummary,
+    }));
+  }, [initialHasEstimate, initialPricingSummary]);
+
   const clearEstimateGeneration = useCallback(() => {
     setOverlay(null);
   }, []);
@@ -68,10 +77,12 @@ export function EstimateGenerationProjectionProvider({
     return {
       projection,
       applyEstimateGeneration,
+      markEstimateStale,
       clearEstimateGeneration,
     };
   }, [
     applyEstimateGeneration,
+    markEstimateStale,
     clearEstimateGeneration,
     initialEstimateIsStale,
     initialHasEstimate,
