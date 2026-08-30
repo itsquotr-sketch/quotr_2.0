@@ -115,7 +115,7 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     physical: true,
     commercial: true,
     reason:
-      "Optional vertical face / skirting cladding. Height-sensitive. Do not infer from fascia or elevation.",
+      "Optional full-height deck skirting / screening. Height-sensitive. Do not infer from fascia or elevation.",
   },
   {
     factKey: "deck.access_type",
@@ -281,19 +281,21 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
   },
   {
     factKey: "deck.step_width_m",
-    questionClass: "REFINE",
+    questionClass: "ASSUME_IF_SKIPPED",
     calculatorConsumed: true,
     physical: true,
-    commercial: false,
-    reason: "Step width after Steps included. Default 1.0 m.",
+    commercial: true,
+    reason:
+      "Stair width for Step decking, framing, and tread-area labour. Default 1.0 m LOW-CONFIDENCE, disclosed. Do not emit unexplained detailed money if unresolved.",
   },
   {
     factKey: "deck.step_going_m",
-    questionClass: "REFINE",
+    questionClass: "ASSUME_IF_SKIPPED",
     calculatorConsumed: true,
     physical: true,
-    commercial: false,
-    reason: "Tread depth after Steps included. Default 280 mm.",
+    commercial: true,
+    reason:
+      "Tread depth for Step decking quantity and tread-area labour. Default 280 mm LOW-CONFIDENCE, disclosed. Do not emit unexplained detailed money if unresolved.",
   },
 ];
 

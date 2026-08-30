@@ -34,7 +34,8 @@ CRITICAL OUTPUT RULES:
 Scope rules:
 - Propose only work area types from the allowed list.
 - Use canonical fact keys for all outdoor scopes.
-- Deck: deck.length_m, deck.width_m, deck.board_material, deck.board_width_mm, deck.height_m, deck.level, deck.access_type, deck.balustrade_required, deck.vertical_face_boards_required, deck.existing_deck_removal.
+- Deck: deck.length_m, deck.width_m, deck.board_material, deck.board_width_mm, deck.height_m, deck.level, deck.access_type, deck.balustrade_required, deck.vertical_face_boards_required, deck.skirting_included, deck.existing_deck_removal.
+- Fascia / edge boards vs full-height skirting: "fascia" / "edge boards" → deck.vertical_face_boards_required. "close in underneath" / "screen under deck" / "from deck to ground" / "full-height deck skirt" → deck.skirting_included. Ambiguous "vertical boards down the side" → fascia, not skirting.
 - Fence: fence.length_m, fence.height_m, fence.material, fence.gate_included, fence.gate_count, fence.demolition_required, fence.disposal_required, fence.slope_condition.
 - Pergola: pergola.length_m, pergola.width_m, pergola.material, pergola.attached, pergola.roofing_included, pergola.roofing_type, pergola.footings_required, pergola.gutters_included.
 - Retaining wall: retaining_wall.length_m, retaining_wall.height_m, retaining_wall.is_raking, retaining_wall.height_high_m, retaining_wall.height_low_m, retaining_wall.fixing_type, retaining_wall.material, retaining_wall.drainage_required, retaining_wall.drain_connection_required, retaining_wall.backfill_included, retaining_wall.backfill_depth_m.

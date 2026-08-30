@@ -84,7 +84,7 @@ const DECK_CHECK_COPY: Record<
     question: "Include fascia / edge boards?",
   },
   "deck.skirting_included": {
-    question: "Deck skirting / vertical face cladding included?",
+    question: "Is full-height deck skirting / screening included?",
   },
   "deck.steps_included": {
     question: "Are new steps included?",
@@ -230,15 +230,38 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
       out.push({
         id: `refine:${workAreaId}:deck.step_width_m`,
         group: "specification",
-        tier: "advanced",
+        tier: "high_value",
         workAreaId,
         workAreaName,
         workAreaType: "deck",
         factKey: "deck.step_width_m",
         constraintKey: null,
         questionKey: "deck.step_width_m",
-        label: "Step width",
-        question: "Approximate step width?",
+        label: "Stair width",
+        question: "How wide are the stairs?",
+        inputType: "number",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      stepsActive &&
+      !known(facts, workAreaId, "deck.step_going_m", briefText)
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:deck.step_going_m`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "deck",
+        factKey: "deck.step_going_m",
+        constraintKey: null,
+        questionKey: "deck.step_going_m",
+        label: "Tread depth",
+        question: "How deep are the stair treads?",
         inputType: "number",
         writeTarget: "FACT",
         write: null,

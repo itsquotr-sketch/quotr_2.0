@@ -210,7 +210,7 @@ function buildDeckDraft(
   if (isAffirmative(factValue(facts, "deck.skirting_included"))) {
     draft = appendScopeClause(
       draft,
-      "Deck skirting / vertical face cladding is included where applicable."
+      "Full-height deck skirting / screening is included where applicable."
     );
   }
 

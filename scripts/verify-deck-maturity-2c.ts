@@ -14,8 +14,11 @@ import {
   DECK_CONCRETE_BAGS_PER_HOLE_DEFAULT,
   DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
   DECK_CONCRETE_MATERIAL_ITEM_KEY,
+  DECK_CONCRETE_MATERIAL_LABEL,
   DECK_CONCRETE_PLACE_COMPONENT_KEY,
+  DECK_CONCRETE_PLACE_LABEL,
   DECK_CONCRETE_PRODUCTIVITY_CLASS,
+  DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY,
   DECK_CONCRETE_PRODUCTIVITY_KEY,
   DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
   DECK_NORMAL_HANDLING_CONTRACT,
@@ -404,7 +407,7 @@ check(
   "26 concrete only relevant with supports",
   jobPlanSrc.includes("showConcrete") &&
     refineSrc.includes("supportsRelevant") &&
-    !kwilaDeck.lineItems.some((item) => item.label === "Concrete")
+    !kwilaDeck.lineItems.some((item) => item.label === DECK_CONCRETE_MATERIAL_LABEL)
 );
 const yesFacts = [...kwilaFacts, fact(DECK_CONCRETE_TO_SUPPORTS_FACT_KEY, kwilaId, true)];
 const concreteYes = calculateDeck(ctx(yesFacts), wa(kwilaId));
@@ -414,17 +417,17 @@ const concreteNo = calculateDeck(
 );
 check(
   "27 Yes activates concrete",
-  concreteYes.lineItems.some((item) => item.label === "Concrete") &&
+    concreteYes.lineItems.some((item) => item.label === DECK_CONCRETE_MATERIAL_LABEL) &&
     concreteYes.lineItems.some(
       (item) =>
-        item.label === "Concrete placement" ||
+        item.label === DECK_CONCRETE_PLACE_LABEL ||
         item.componentKey === DECK_CONCRETE_PLACE_COMPONENT_KEY
     )
 );
 check(
   "28 No suppresses",
-  !concreteNo.lineItems.some((item) => item.label === "Concrete") &&
-    !concreteNo.lineItems.some((item) => item.label === "Concrete placement") &&
+    !concreteNo.lineItems.some((item) => item.label === DECK_CONCRETE_MATERIAL_LABEL) &&
+    !concreteNo.lineItems.some((item) => item.label === DECK_CONCRETE_PLACE_LABEL) &&
     !concreteNo.missingInfo.some((info) => /concrete/i.test(info))
 );
 check(
@@ -433,7 +436,7 @@ check(
 );
 const bags = purchasedConcreteBags(18, 2.5);
 check("30 purchased bags round whole", bags === 45 && Number.isInteger(bags));
-const concreteMat = concreteYes.lineItems.find((item) => item.label === "Concrete");
+const concreteMat = concreteYes.lineItems.find((item) => item.label === DECK_CONCRETE_MATERIAL_LABEL);
 check(
   "31 concrete exact material identity",
   concreteMat?.itemKey === DECK_CONCRETE_MATERIAL_ITEM_KEY &&
@@ -447,10 +450,12 @@ check(
     composeSrc.includes("PRICING_REQUIRED")
 );
 check(
-  "33 concrete productivity separate",
+  "33 concrete productivity is hours/bag with leftover hours/hole",
   prodKeys.includes(DECK_CONCRETE_PRODUCTIVITY_KEY) &&
     catalogueSrc.includes(DECK_CONCRETE_PRODUCTIVITY_CLASS) &&
-    !prodSrc.includes(`"${DECK_CONCRETE_PRODUCTIVITY_KEY}"`)
+    prodSrc.includes(`"${DECK_CONCRETE_PRODUCTIVITY_KEY}"`) &&
+    catalogueSrc.includes(DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY) &&
+    catalogueSrc.includes("leftover")
 );
 check(
   "34 concrete labour does not duplicate digging",
@@ -733,6 +738,7 @@ check(
   "66 Refine Owner fixture has no replacement or steps details",
   !refineKeys.includes("deck.pile_or_post_replacement_required") &&
     !refineKeys.includes("deck.step_width_m") &&
+    !refineKeys.includes("deck.step_going_m") &&
     !refineKeys.includes(DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY)
 );
 

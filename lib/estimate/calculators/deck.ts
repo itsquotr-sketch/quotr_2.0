@@ -8,6 +8,7 @@ import {
   formatLabourAdjustmentDetail,
   formatLabourAdjustmentPrimary,
   formatLm,
+  formatQuantity,
   formatRequiredPurchased,
 } from "@/lib/estimate/builder-presentation-format";
 import { NO_FINISH_QUALITY_FACTOR } from "@/lib/estimate/constants";
@@ -58,10 +59,13 @@ import {
   deckStructureAssumptionTexts,
 } from "@/lib/estimate/deck-structure";
 import {
+  DECK_FASCIA_BUILDER_LABEL,
   DECK_FASCIA_COMPONENT_KEY,
   DECK_FASCIA_INSTALL_COMPONENT_KEY,
+  DECK_SKIRTING_BUILDER_LABEL,
   DECK_SKIRTING_COMPONENT_KEY,
   DECK_SKIRTING_INSTALL_COMPONENT_KEY,
+  DECK_SKIRTING_INSTALL_LABEL,
   calculateDeckFasciaQuantities,
   calculateDeckSkirtingQuantities,
   deckSkirtingIncluded,
@@ -70,20 +74,25 @@ import {
   DECK_FASCIA_INSTALL_HOURS_PER_LM_KEY,
   DECK_SUBSTRUCTURE_STARTER_CONFIDENCE,
   requiredInstalledFramingLm,
+  resolveDeckConcretePlaceProductivity,
   resolveDeckDeckingInstallProductivity,
   resolveDeckSkirtingInstallProductivity,
   resolveDeckSubstructureInstallProductivity,
 } from "@/lib/estimate/deck-productivity";
 import {
   calculateDeckStepsQuantities,
+  DEFAULT_STEP_WIDTH_M,
+  formatStepGeometryTakeoff,
+  stepPhysicalGeometryReady,
 } from "@/lib/estimate/deck-steps-physical";
 import { defaultStepFramingIdentity } from "@/lib/estimate/deck-default-identities";
 import {
   DECK_CONCRETE_BAGS_COMPONENT_KEY,
   DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
   DECK_CONCRETE_MATERIAL_ITEM_KEY,
+  DECK_CONCRETE_MATERIAL_LABEL,
   DECK_CONCRETE_PLACE_COMPONENT_KEY,
-  DECK_CONCRETE_PRODUCTIVITY_KEY,
+  DECK_CONCRETE_PLACE_LABEL,
   DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
   DECK_STEPS_FRAMING_COMPONENT_KEY,
   DECK_STEPS_INCLUDED_FACT_KEY,
@@ -133,6 +142,7 @@ import type {
   EstimateContext,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
+import { detailedMoneyAllowed } from "@/lib/estimate/physical-requirement-resolution";
 import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
 /** Facts this calculator reads for scope, quantity, material, labour, allowance, or takeoff. */
@@ -183,6 +193,19 @@ export const DECK_CALCULATOR_CONSUMED_FACTS = [
   "deck.footing_width_mm",
   "deck.footing_depth_mm",
 ] as const;
+
+function labourExpandedNotes(params: {
+  physicalDriver: string;
+  extra?: string;
+  adjustmentDetail: string;
+  productivity: string;
+}): string {
+  const adj =
+    params.adjustmentDetail.trim() || "No Project Condition adjustment.";
+  return [params.physicalDriver, params.extra, adj, params.productivity]
+    .filter((part): part is string => Boolean(part?.trim()))
+    .join(" ");
+}
 
 export function calculateDeck(
   context: EstimateContext,
@@ -494,7 +517,11 @@ export function calculateDeck(
         labourSellRate: labourRate.sellRate,
         adjustmentFactor: labourAdjustment,
         adjustmentLabel: labourAdjustmentSummary,
-        notes: `Physical driver: required installed decking lm (${formatLm(requiredDeckingLm)} lm). Waste is procurement, not labour. ${labourAdjustmentDetail || "No access/carry adjustment."} Productivity: ${deckingInstallProductivity.hoursPerUnit} h/lm · ${deckingInstallProductivity.sourceLabel}${constraintNotes ? ` · ${constraintNotes}` : ""}`,
+          notes: labourExpandedNotes({
+            physicalDriver: `Physical driver: required installed decking lm (${formatLm(requiredDeckingLm)} lm). Waste is procurement, not labour.`,
+            adjustmentDetail: labourAdjustmentDetail,
+            productivity: `Productivity: ${deckingInstallProductivity.hoursPerUnit} h/lm · ${deckingInstallProductivity.sourceLabel}${constraintNotes ? ` · ${constraintNotes}` : ""}`,
+          }),
         sortOrder: sortOrder++,
         componentKey: "deck.decking.install",
         organisationSettings: context.organisationSettings,
@@ -530,7 +557,11 @@ export function calculateDeck(
           labourSellRate: labourRate.sellRate,
           adjustmentFactor: labourAdjustment,
           adjustmentLabel: labourAdjustmentSummary,
-          notes: `Physical driver: required installed framing lm (${DECK_SUBSTRUCTURE_STARTER_CONFIDENCE} starter). ${framingTakeoff ?? ""}. Excludes pile/post install. Waste is not labour. ${labourAdjustmentDetail || "No access/carry adjustment."} Productivity: ${substructureInstallProductivity.hoursPerUnit} h/lm · ${substructureInstallProductivity.sourceLabel}`,
+          notes: labourExpandedNotes({
+            physicalDriver: `Physical driver: required installed framing lm (${DECK_SUBSTRUCTURE_STARTER_CONFIDENCE} starter). ${framingTakeoff ?? ""}. Excludes pile/post install. Waste is not labour.`,
+            adjustmentDetail: labourAdjustmentDetail,
+            productivity: `Productivity: ${substructureInstallProductivity.hoursPerUnit} h/lm · ${substructureInstallProductivity.sourceLabel}`,
+          }),
           sortOrder: sortOrder++,
           componentKey: "deck.substructure.install",
           organisationSettings: context.organisationSettings,
@@ -554,7 +585,11 @@ export function calculateDeck(
           labourSellRate: labourRate.sellRate,
           adjustmentFactor: labourAdjustment,
           adjustmentLabel: labourAdjustmentSummary,
-          notes: `Physical driver: ${supportCount} supports. Includes set-out, hole excavation, hole preparation, positioning, cutting/setting, and normal installation. Excludes concrete placement. ${labourAdjustmentDetail || "No access/carry adjustment."} Productivity: ${postsInstallProductivity.hoursPerUnit} h/ea · ${postsInstallProductivity.sourceLabel}`,
+          notes: labourExpandedNotes({
+            physicalDriver: `Physical driver: ${supportCount} supports. Includes set-out, hole excavation, hole preparation, positioning, cutting/setting, and normal installation. Excludes concrete placement.`,
+            adjustmentDetail: labourAdjustmentDetail,
+            productivity: `Productivity: ${postsInstallProductivity.hoursPerUnit} h/ea · ${postsInstallProductivity.sourceLabel}`,
+          }),
           sortOrder: sortOrder++,
           componentKey: "deck.posts.install",
           organisationSettings: context.organisationSettings,
@@ -590,7 +625,11 @@ export function calculateDeck(
           labourSellRate: labourRate.sellRate,
           adjustmentFactor: labourAdjustment,
           adjustmentLabel: labourAdjustmentSummary,
-          notes: `Workface/elevation complexity allowance on deck area. ${labourAdjustmentDetail || "No access/carry adjustment."} Productivity: ${elevatedProductivity.hoursPerUnit} h/m² · ${elevatedProductivity.sourceLabel}`,
+          notes: labourExpandedNotes({
+            physicalDriver: "Workface/elevation complexity allowance on deck area.",
+            adjustmentDetail: labourAdjustmentDetail,
+            productivity: `Productivity: ${elevatedProductivity.hoursPerUnit} h/m² · ${elevatedProductivity.sourceLabel}`,
+          }),
           sortOrder: sortOrder++,
           componentKey: "deck.elevated_extra",
           organisationSettings: context.organisationSettings,
@@ -787,7 +826,11 @@ export function calculateDeck(
         adjustmentFactor: labourAdjustment,
         adjustmentLabel: labourAdjustmentSummary,
         qualityFactor: NO_FINISH_QUALITY_FACTOR,
-        notes: `Physical driver: deck area. ${labourAdjustmentDetail || "No access/carry adjustment."} Productivity: ${demoProductivity.hoursPerUnit} h/m²`,
+        notes: labourExpandedNotes({
+          physicalDriver: "Physical driver: deck area.",
+          adjustmentDetail: labourAdjustmentDetail,
+          productivity: `Productivity: ${demoProductivity.hoursPerUnit} h/m²`,
+        }),
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         ...rateFieldsFromResolved(labourRate),
@@ -998,7 +1041,7 @@ export function calculateDeck(
     });
     const fasciaIdentity = formatDeckIdentityLine([
       getStringFact(facts, workArea.id, "deck.fascia_material")?.trim() ||
-        "Fascia / edge boards",
+        DECK_FASCIA_BUILDER_LABEL,
       formatRequiredPurchased({
         required: fasciaQty.fasciaNetLm,
         purchased: fasciaQty.fasciaPurchaseLm,
@@ -1010,7 +1053,7 @@ export function calculateDeck(
       ...createRateLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
-        label: "Fascia / edge boards",
+        label: DECK_FASCIA_BUILDER_LABEL,
         category: "materials",
         quantity: fasciaQty.fasciaPurchaseLm,
         unit: "lm",
@@ -1037,7 +1080,11 @@ export function calculateDeck(
           labourSellRate: labourRate.sellRate,
           adjustmentFactor: labourAdjustment,
           adjustmentLabel: labourAdjustmentSummary,
-          notes: `Physical driver: required fascia lm. ${labourAdjustmentDetail || "No access/carry adjustment."} Productivity: ${fasciaProductivity.hoursPerUnit} h/lm · ${fasciaProductivity.sourceLabel}`,
+          notes: labourExpandedNotes({
+            physicalDriver: "Physical driver: required fascia lm.",
+            adjustmentDetail: labourAdjustmentDetail,
+            productivity: `Productivity: ${fasciaProductivity.hoursPerUnit} h/lm · ${fasciaProductivity.sourceLabel}`,
+          }),
           sortOrder: sortOrder++,
           componentKey: DECK_FASCIA_INSTALL_COMPONENT_KEY,
           organisationSettings: context.organisationSettings,
@@ -1078,14 +1125,14 @@ export function calculateDeck(
     });
     assumptions.push(
       skirtingQty.heightModelApplied
-        ? `Deck skirting / vertical face uses exposed perimeter × height minus ${skirtingQty.groundGapM * 1000} mm ground gap (${round2(skirtingQty.boardHeightEquivalents)} board-height equivalents). Explicit skirting scope — not inferred from elevation.`
-        : "Deck skirting uses edge length only because deck height is not confirmed."
+        ? `${DECK_SKIRTING_BUILDER_LABEL} uses exposed perimeter × height minus ${skirtingQty.groundGapM * 1000} mm ground gap (${round2(skirtingQty.boardHeightEquivalents)} board-height equivalents). Explicit skirting scope — not inferred from elevation.`
+        : `${DECK_SKIRTING_BUILDER_LABEL} uses edge length only because deck height is not confirmed.`
     );
     const skirtingProductivity = resolveDeckSkirtingInstallProductivity(
       context.rates
     );
     const skirtingIdentity = formatDeckIdentityLine([
-      "Vertical face / skirting boards",
+      DECK_SKIRTING_BUILDER_LABEL,
       formatRequiredPurchased({
         required: skirtingQty.skirtingNetLm,
         purchased: skirtingQty.skirtingPurchaseLm,
@@ -1097,7 +1144,7 @@ export function calculateDeck(
       ...createRateLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
-        label: "Deck skirting / vertical face boards",
+        label: DECK_SKIRTING_BUILDER_LABEL,
         category: "materials",
         quantity: skirtingQty.skirtingPurchaseLm,
         unit: "lm",
@@ -1116,7 +1163,7 @@ export function calculateDeck(
         createLabourLineItem({
           workAreaId: workArea.id,
           workAreaName: workArea.name,
-          label: "Deck skirting installation",
+          label: DECK_SKIRTING_INSTALL_LABEL,
           quantity: skirtingQty.skirtingNetLm,
           unit: "lm",
           productivityHoursPerUnit: skirtingProductivity.hoursPerUnit,
@@ -1124,7 +1171,12 @@ export function calculateDeck(
           labourSellRate: labourRate.sellRate,
           adjustmentFactor: labourAdjustment,
           adjustmentLabel: labourAdjustmentSummary,
-          notes: `Physical driver: required skirting lm. Height-sensitive. ${labourAdjustmentDetail || "No access/carry adjustment."} Productivity: ${skirtingProductivity.hoursPerUnit} h/lm · ${skirtingProductivity.sourceLabel}`,
+          notes: labourExpandedNotes({
+            physicalDriver:
+              "Physical driver: required skirting lm. Height-sensitive full-height screening.",
+            adjustmentDetail: labourAdjustmentDetail,
+            productivity: `Productivity: ${skirtingProductivity.hoursPerUnit} h/lm · ${skirtingProductivity.sourceLabel}`,
+          }),
           sortOrder: sortOrder++,
           componentKey: DECK_SKIRTING_INSTALL_COMPONENT_KEY,
           organisationSettings: context.organisationSettings,
@@ -1150,10 +1202,11 @@ export function calculateDeck(
     const concreteIdentity = buildConcreteMaterialIdentity({
       originalDescription: "20 kg premix concrete",
     });
+    const bagsEachDisplay = (Math.round(bagsEach * 10) / 10).toFixed(1);
     const identitySummary = formatDeckIdentityLine([
       concreteIdentity.originalDescription,
-      bags > 0 ? `${bags} bags` : null,
-      `${bagsEach} bags/hole`,
+      bags > 0 ? `${bags} bags required` : null,
+      `${bagsEachDisplay} bags/hole avg`,
     ]);
     const companyConcrete = context.rates.find(
       (rate) =>
@@ -1171,7 +1224,7 @@ export function calculateDeck(
         ...createRateLineItem({
           workAreaId: workArea.id,
           workAreaName: workArea.name,
-          label: "Concrete",
+          label: DECK_CONCRETE_MATERIAL_LABEL,
           category: "materials",
           quantity: bags,
           unit: "bag",
@@ -1192,7 +1245,7 @@ export function calculateDeck(
         ...createRateLineItem({
           workAreaId: workArea.id,
           workAreaName: workArea.name,
-          label: "Concrete",
+          label: DECK_CONCRETE_MATERIAL_LABEL,
           category: "materials",
           quantity: bags,
           unit: "bag",
@@ -1211,52 +1264,51 @@ export function calculateDeck(
       missingInfo.push("Concrete 20kg premix bag rate required");
     }
 
-    const placeProductivity = resolveProductivity({
-      productivityKey: DECK_CONCRETE_PRODUCTIVITY_KEY,
-      unit: "hole",
-      fallbackHoursPerUnit: 0,
-      rates: context.rates,
-    });
-    if (holeCount > 0 && isTrustedProductivityHours(placeProductivity.hoursPerUnit)) {
+    const placeProductivity = resolveDeckConcretePlaceProductivity(context.rates);
+    if (bags > 0 && isTrustedProductivityHours(placeProductivity.hoursPerUnit)) {
       lineItems.push(
         createLabourLineItem({
           workAreaId: workArea.id,
           workAreaName: workArea.name,
-          label: "Concrete placement",
-          quantity: holeCount,
-          unit: "hole",
+          label: DECK_CONCRETE_PLACE_LABEL,
+          quantity: bags,
+          unit: "bag",
           productivityHoursPerUnit: placeProductivity.hoursPerUnit,
           labourCostRate: labourRate.costRate,
           labourSellRate: labourRate.sellRate,
           adjustmentFactor: labourAdjustment,
           adjustmentLabel: labourAdjustmentSummary,
-          notes: `Physical driver: ${holeCount} holes. Mixing, placing, basic finishing. Excludes hole excavation (pile/post installation). ${labourAdjustmentDetail || "No access/carry adjustment."} Productivity: ${placeProductivity.hoursPerUnit} h/hole · ${placeProductivity.sourceLabel}`,
+          notes: labourExpandedNotes({
+            physicalDriver: `Physical driver: ${bags} bags purchased. Mixing, placing, basic finishing. Excludes hole excavation (pile/post installation). ${holeCount} holes · ${bagsEachDisplay} bags/hole avg.`,
+            adjustmentDetail: labourAdjustmentDetail,
+            productivity: `Productivity: ${placeProductivity.hoursPerUnit} h/bag · ${placeProductivity.sourceLabel}`,
+          }),
           sortOrder: sortOrder++,
           componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,
           organisationSettings: context.organisationSettings,
           ...rateFieldsFromResolved(labourRate),
         })
       );
-    } else if (holeCount > 0) {
+    } else if (bags > 0) {
       lineItems.push({
         ...createRateLineItem({
           workAreaId: workArea.id,
           workAreaName: workArea.name,
-          label: "Concrete placement",
+          label: DECK_CONCRETE_PLACE_LABEL,
           category: "labour",
-          quantity: holeCount,
-          unit: "hole",
+          quantity: bags,
+          unit: "bag",
           costRate: 0,
           sellRate: 0,
           rateSource: getRateSourceLabel("missing"),
           rateSourceType: "missing",
           componentKey: DECK_CONCRETE_PLACE_COMPONENT_KEY,
-          notes: "Concrete placement productivity NEEDS_OWNER_BENCHMARK (hours/hole). Hole excavation is in pile/post installation.",
+          notes: "Concrete placement productivity required (hours/bag). Hole excavation is in pile/post installation. Legacy hours/hole is leftover and is not consumed.",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
         }),
       });
-      missingInfo.push("Concrete placement hours/hole required");
+      missingInfo.push("Concrete placement hours/bag required");
     }
     assumptions.push(
       `Concrete to supports uses ${bagsEach} × 20kg bags per hole (${bags} bags purchased, rounded up).`
@@ -1314,10 +1366,53 @@ export function calculateDeck(
       wastePercent: wastagePercent,
     });
     if (steps) {
+      const goingMm = Math.round(steps.goingM * 1000);
+      const stepGeometryReady = stepPhysicalGeometryReady(steps);
+      if (steps.widthDefaulted && stepGeometryReady) {
+        recordDefaultedNumber(assumptionMetadata, {
+          key: "deck.step_width_m",
+          label: "Stair width",
+          assumedValue: DEFAULT_STEP_WIDTH_M,
+          unit: " m",
+          reason: "LOW-CONFIDENCE estimating assumption for stair width.",
+          severity: "warning",
+          workAreaId: workArea.id,
+        });
+        assumptions.push(
+          `Assuming stair width ${DEFAULT_STEP_WIDTH_M.toFixed(1)} m (LOW-CONFIDENCE).`
+        );
+      }
+      if (steps.goingDefaulted && stepGeometryReady) {
+        recordDefaultedNumber(assumptionMetadata, {
+          key: "deck.step_going_m",
+          label: "Tread depth",
+          assumedValue: goingMm,
+          unit: " mm",
+          reason: "LOW-CONFIDENCE estimating assumption for stair tread depth.",
+          severity: "warning",
+          workAreaId: workArea.id,
+        });
+        assumptions.push(
+          `Assuming stair tread depth ${goingMm} mm (LOW-CONFIDENCE).`
+        );
+      }
       // Step treads inherits deck board material. Vertical faces stay in Fascia.
       assumptions.push(
         `Steps estimated as ${steps.riseCount} rises (${steps.estimatedRiserM} m). Estimating layout only — not stair compliance.`
       );
+      const explicitStepsIncluded =
+        getBooleanFact(facts, workArea.id, DECK_STEPS_INCLUDED_FACT_KEY) ===
+        true;
+      if (!stepGeometryReady) {
+        if (explicitStepsIncluded) {
+          if (!detailedMoneyAllowed(steps.widthResolution)) {
+            missingInfo.push("Stair width required");
+          }
+          if (!detailedMoneyAllowed(steps.goingResolution)) {
+            missingInfo.push("Tread depth required");
+          }
+        }
+      } else {
       const stepFramingIdentity = defaultStepFramingIdentity();
       const treadLm = calculateDeckingBoardLm({
         areaM2: steps.treadAreaM2,
@@ -1355,18 +1450,35 @@ export function calculateDeck(
       const labourTrusted = isTrustedProductivityHours(
         stepsProductivity.hoursPerUnit
       );
-      const explicitStepsIncluded =
-        getBooleanFact(facts, workArea.id, DECK_STEPS_INCLUDED_FACT_KEY) ===
-        true;
       const detailedComplete =
         explicitStepsIncluded && treadsPriced && framingPriced && labourTrusted;
 
       if (detailedComplete && framingPricing.priced && framingPricing.unitCost != null) {
+        const treadQtyCopy =
+          treadLm != null
+            ? formatRequiredPurchased({
+                required: treadLm.baseLm,
+                purchased: treadLm.totalLm,
+                unit: "lm",
+                wastePercent: wastagePercent,
+              })
+            : `${formatQuantity(steps.treadAreaM2)} m² tread area`;
         const treadIdentity = formatDeckIdentityLine([
           materialLabel,
           boardWidthFact != null ? `${boardWidthFact} mm` : null,
+          treadQtyCopy,
         ]);
         const framingIdentityText = formatMaterialIdentityDisplay(stepFramingIdentity);
+        const framingIdentity = formatDeckIdentityLine([
+          framingIdentityText,
+          formatRequiredPurchased({
+            required: steps.framingNetLm,
+            purchased: steps.framingPurchaseLm,
+            unit: "lm",
+            wastePercent: wastagePercent,
+          }),
+        ]);
+        const treadTakeoff = formatStepGeometryTakeoff(steps);
         let treadLine = createRateLineItem({
           workAreaId: workArea.id,
           workAreaName: workArea.name,
@@ -1374,7 +1486,7 @@ export function calculateDeck(
           category: "materials",
           quantity: treadPricing.quantity,
           unit: treadPricing.unit === "m2" ? "m²" : treadPricing.unit,
-          notes: treadIdentity,
+          notes: treadTakeoff,
           sortOrder: sortOrder++,
           componentKey: DECK_STEPS_TREADS_COMPONENT_KEY,
           organisationSettings: context.organisationSettings,
@@ -1401,19 +1513,13 @@ export function calculateDeck(
             sellRate: framingUnitSell,
             rateSource: framingPricing.rateSource,
             componentKey: DECK_STEPS_FRAMING_COMPONENT_KEY,
-            notes: formatDeckIdentityLine([
-              framingIdentityText,
-              `${steps.framingPurchaseLm} lm`,
-            ]),
+            notes: framingIdentity,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
             sellDerivedFromMargin: true,
             sellAuthority: "derived_from_gross_margin",
           }),
-          identitySummary: formatDeckIdentityLine([
-            framingIdentityText,
-            `${steps.framingPurchaseLm} lm`,
-          ]),
+          identitySummary: framingIdentity,
         });
 
         lineItems.push(
@@ -1428,7 +1534,11 @@ export function calculateDeck(
             labourSellRate: labourRate.sellRate,
             adjustmentFactor: labourAdjustment,
             adjustmentLabel: labourAdjustmentSummary,
-            notes: `Physical driver: tread area. ${labourAdjustmentDetail || "No access/carry adjustment."} Productivity: ${stepsProductivity.hoursPerUnit} h/m² · ${stepsProductivity.sourceLabel}`,
+            notes: labourExpandedNotes({
+              physicalDriver: `Physical driver: tread area ${formatQuantity(steps.treadAreaM2)} m² from stair width ${formatQuantity(steps.widthM)} m (${steps.widthDefaulted ? "assumed" : "known"}) × tread depth × ${steps.treadCount} treads (${goingMm} mm ${steps.goingDefaulted ? "assumed" : "known"}).`,
+              adjustmentDetail: labourAdjustmentDetail,
+              productivity: `Productivity: ${stepsProductivity.hoursPerUnit} h/m² · ${stepsProductivity.sourceLabel}`,
+            }),
             sortOrder: sortOrder++,
             componentKey: DECK_STEPS_INSTALL_COMPONENT_KEY,
             organisationSettings: context.organisationSettings,
@@ -1475,6 +1585,7 @@ export function calculateDeck(
             qualityFactor,
           })
         );
+      }
       }
     }
   }

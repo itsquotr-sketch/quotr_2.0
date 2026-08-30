@@ -18,6 +18,7 @@ import { getCombinedLabourAccessFactor } from "../lib/estimate/adjustments";
 import {
   calculateDeckFasciaQuantities,
   calculateDeckSkirtingQuantities,
+  DECK_SKIRTING_BUILDER_LABEL,
   DECK_SKIRTING_INCLUDED_FACT_KEY,
 } from "../lib/estimate/deck-fascia";
 import {
@@ -38,7 +39,11 @@ import {
   readDeckStructureFacts,
 } from "../lib/estimate/deck-structure";
 import { calculateDeckingBoardLm } from "../lib/estimate/material-buildups";
-import { DECK_CONCRETE_PRODUCTIVITY_KEY } from "../lib/estimate/deck-scope-2c";
+import {
+  DECK_CONCRETE_MATERIAL_LABEL,
+  DECK_CONCRETE_PLACE_HOURS_PER_BAG,
+  DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY,
+} from "../lib/estimate/deck-scope-2c";
 import { DECK_INFORMATION_CONTRACT } from "../lib/estimate/deck-information-contract";
 import { deriveSellFromCost } from "../lib/commercial-engine/core/sell-from-margin";
 import { round2 } from "../lib/estimate/facts";
@@ -170,7 +175,7 @@ function ownerRates(extra: OrganisationRate[] = []): OrganisationRate[] {
     labourOrgRate(78),
     materialOrgRate("deck.material.kwila.lm", 18.5),
     materialOrgRate("deck.concrete.premix.20kg.bag", 9.5, "bag"),
-    productivityOrgRate(DECK_CONCRETE_PRODUCTIVITY_KEY, "hole", 0.4),
+    productivityOrgRate(DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY, "hole", 0.4),
     ...extra,
   ];
 }
@@ -409,12 +414,12 @@ const subLab = line(after.lineItems, "Substructure framing");
 const pileLab = line(after.lineItems, "Pile/post installation");
 const elevLab = line(after.lineItems, "Elevated extra labour");
 const demoLab = line(after.lineItems, "Existing deck removal");
-const concMat = line(after.lineItems, "Concrete");
+const concMat = line(after.lineItems, DECK_CONCRETE_MATERIAL_LABEL);
 const concLab = line(after.lineItems, "Concrete placement");
 const fixings = line(after.lineItems, "Fixings, connectors & sundries");
 const fasciaMat = line(after.lineItems, "Fascia / edge boards");
 const fasciaLab = line(after.lineItems, "Fascia installation");
-const skirtMat = line(after.lineItems, "Deck skirting / vertical face boards");
+const skirtMat = line(after.lineItems, DECK_SKIRTING_BUILDER_LABEL);
 
 check(
   "12 decking quantity visible on material line",
@@ -446,8 +451,14 @@ check(
   Math.abs((demoLab?.labourHours ?? 0) - 8.45) < 0.03
 );
 check(
-  "18 concrete 16 × 0.4 × 1.15 = 7.36 not 8.46",
-  Math.abs((concLab?.labourHours ?? 0) - 7.36) < 0.03
+  "18 concrete 40 bags × 0.16 × 1.15 = 7.36 not 8.46",
+  concLab?.unit === "bag" &&
+    concLab?.quantity === 40 &&
+    Math.abs((concLab?.labourHours ?? 0) - 7.36) < 0.03 &&
+    Math.abs(
+      round2(40 * DECK_CONCRETE_PLACE_HOURS_PER_BAG * 1.15) -
+        (concLab?.labourHours ?? 0)
+    ) < 0.03
 );
 check(
   "19 fascia labour follows perimeter not 128.8 lm",
@@ -467,8 +478,8 @@ check(
 check(
   "23 premium quality does not inflate materials",
   Math.abs(
-    (line(premiumEasy.lineItems, "Concrete")?.recommendedCost ?? 0) -
-      (line(easy.lineItems, "Concrete")?.recommendedCost ?? 0)
+    (line(premiumEasy.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.recommendedCost ?? 0) -
+      (line(easy.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.recommendedCost ?? 0)
   ) < 0.05 &&
     Math.abs(
       (line(premiumEasy.lineItems, "Fixings, connectors & sundries")
@@ -479,7 +490,7 @@ check(
 );
 check(
   "24 access does not change material cost",
-  Math.abs((concMat?.recommendedCost ?? 0) - (line(easy.lineItems, "Concrete")?.recommendedCost ?? 0)) <
+  Math.abs((concMat?.recommendedCost ?? 0) - (line(easy.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.recommendedCost ?? 0)) <
     0.05 &&
     Math.abs(
       (fixings?.recommendedCost ?? 0) -
@@ -549,7 +560,7 @@ check(
     (line(tallFascia.lineItems, "Fascia installation")?.quantity ?? 0) -
       (fasciaLab?.quantity ?? 0)
   ) < 0.05 &&
-    line(tallFascia.lineItems, "Deck skirting / vertical face boards") == null
+    line(tallFascia.lineItems, DECK_SKIRTING_BUILDER_LABEL) == null
 );
 
 const withSkirt = calculateDeck(
@@ -585,7 +596,7 @@ check(
 );
 check(
   "32 explicit skirting is a separate line, no double-count as fascia",
-  line(withSkirt.lineItems, "Deck skirting / vertical face boards") != null &&
+  line(withSkirt.lineItems, DECK_SKIRTING_BUILDER_LABEL) != null &&
     line(withSkirt.lineItems, "Fascia / edge boards") != null &&
     Math.abs(
       (line(withSkirt.lineItems, "Fascia installation")?.quantity ?? 0) - 18.4
@@ -816,7 +827,7 @@ check(
   "46 fascia question is edge boards, not vertical cladding",
   read("lib/scopes/templates/deck.ts").includes("Are fascia / edge boards included?") &&
     read("lib/scopes/templates/deck.ts").includes(
-      "Deck skirting / vertical face cladding included?"
+      "Is full-height deck skirting / screening included?"
     )
 );
 
@@ -880,8 +891,8 @@ const parityLabels = [
   "Piles / posts",
   "Fixings, connectors & sundries",
   "Fascia / edge boards",
-  "Deck skirting / vertical face boards",
-  "Concrete",
+  DECK_SKIRTING_BUILDER_LABEL,
+  DECK_CONCRETE_MATERIAL_LABEL,
   "Decking installation",
   "Substructure framing",
   "Pile/post installation",

@@ -1,6 +1,6 @@
 /**
  * DECK-MATURITY-2D — material/rate authority, Rates type separation,
- * concrete h/hole persistence contract.
+ * concrete h/bag persistence contract.
  * Run: npx tsx scripts/verify-deck-maturity-2d.ts
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -21,6 +21,10 @@ import {
 } from "../lib/estimate/deck-default-identities";
 import {
   DECK_CONCRETE_MATERIAL_ITEM_KEY,
+  DECK_CONCRETE_MATERIAL_LABEL,
+  DECK_CONCRETE_PLACE_HOURS_PER_BAG,
+  DECK_CONCRETE_PLACE_LABEL,
+  DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY,
   DECK_CONCRETE_PRODUCTIVITY_KEY,
   DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
 } from "../lib/estimate/deck-scope-2c";
@@ -290,13 +294,13 @@ const concreteCat = productivityCatalogue.find(
   (row) => row.item_key === DECK_CONCRETE_PRODUCTIVITY_KEY
 );
 check(
-  "5 h/hole editable",
-  concreteCat?.unit === "hole" &&
+  "5 h/bag editable",
+  concreteCat?.unit === "bag" &&
     dialogSrc.includes('isProductivity ? "Hours"') &&
     dialogSrc.includes("Hours must be greater than zero")
 );
 check(
-  "6 h/hole save persists",
+  "6 h/bag save persists",
   actionsSrc.includes('"productivity"') &&
     migrationSrc.includes("'productivity'") &&
     actionsSrc.includes("Hours must be greater than zero")
@@ -310,36 +314,46 @@ check(
 const concreteHours = calculateDeck(
   ctx(
     [...kwilaFacts, fact(DECK_CONCRETE_TO_SUPPORTS_FACT_KEY, kwilaId, true)],
-    [productivityOrgRate(DECK_CONCRETE_PRODUCTIVITY_KEY, "hole", 0.25)]
+    [productivityOrgRate(DECK_CONCRETE_PRODUCTIVITY_KEY, "bag", 0.2)]
   ),
   wa(kwilaId)
 );
 const concreteHoursLine = lineByLabel(concreteHours.lineItems, "Concrete placement");
 check(
   "8 value changes only concrete hours",
-  concreteHoursLine?.labourHours === 4.5 &&
+  concreteHoursLine?.labourHours === 9 &&
     hoursByLabel(concreteHours.lineItems, "Decking installation") ===
       hoursByLabel(kwilaDeck.lineItems, "Decking installation") &&
     hoursByLabel(concreteHours.lineItems, "Pile/post installation") ===
       hoursByLabel(kwilaDeck.lineItems, "Pile/post installation")
 );
 check(
-  "9 no Quotr benchmark invented",
-  concreteCat?.defaultCostRate == null &&
+  "9 leftover h/hole is not the detailed starter; h/bag starter exists",
+  concreteCat?.defaultCostRate === DECK_CONCRETE_PLACE_HOURS_PER_BAG &&
     resolveProductivity({
       productivityKey: DECK_CONCRETE_PRODUCTIVITY_KEY,
+      unit: "bag",
+      fallbackHoursPerUnit: DECK_CONCRETE_PLACE_HOURS_PER_BAG,
+    }).hoursPerUnit === DECK_CONCRETE_PLACE_HOURS_PER_BAG &&
+    resolveProductivity({
+      productivityKey: DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY,
       unit: "hole",
       fallbackHoursPerUnit: 0,
     }).hoursPerUnit === 0
 );
 check(
   "10 unit retained correctly",
-  concreteHoursLine?.unit === "hole" &&
-    !productivityUnitsCompatible("hole", "ea") &&
+  concreteHoursLine?.unit === "bag" &&
+    !productivityUnitsCompatible("hole", "bag") &&
     findCompanyProductivityRate(
-      [productivityOrgRate(DECK_CONCRETE_PRODUCTIVITY_KEY, "ea", 0.25)],
+      [productivityOrgRate(DECK_CONCRETE_PRODUCTIVITY_KEY, "hole", 0.25)],
       DECK_CONCRETE_PRODUCTIVITY_KEY,
-      "hole"
+      "bag"
+    ) == null &&
+    findCompanyProductivityRate(
+      [productivityOrgRate(DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY, "hole", 0.4)],
+      DECK_CONCRETE_PRODUCTIVITY_KEY,
+      "bag"
     ) == null
 );
 
@@ -483,7 +497,7 @@ const concretePriced = calculateDeck(
     [...kwilaFacts, fact(DECK_CONCRETE_TO_SUPPORTS_FACT_KEY, kwilaId, true)],
     [
       materialOrgRate(DECK_CONCRETE_MATERIAL_ITEM_KEY, "bag", 8),
-      productivityOrgRate(DECK_CONCRETE_PRODUCTIVITY_KEY, "hole", 0.25),
+      productivityOrgRate(DECK_CONCRETE_PRODUCTIVITY_KEY, "bag", 0.2),
     ]
   ),
   wa(kwilaId)
@@ -494,18 +508,19 @@ const concreteNo = calculateDeck(
 );
 check(
   "26 YES + bag rate + productivity prices detail",
-  !isPricingRequired(lineByLabel(concretePriced.lineItems, "Concrete")) &&
-    hoursByLabel(concretePriced.lineItems, "Concrete placement") === 4.5 &&
-    lineByLabel(concretePriced.lineItems, "Concrete")?.quantity === 45
+  !isPricingRequired(lineByLabel(concretePriced.lineItems, DECK_CONCRETE_MATERIAL_LABEL)) &&
+    hoursByLabel(concretePriced.lineItems, DECK_CONCRETE_PLACE_LABEL) === 9 &&
+    lineByLabel(concretePriced.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.quantity === 45
 );
 check(
   "27 YES + missing bag rate → material Pricing Required",
-  isPricingRequired(lineByLabel(concreteYes.lineItems, "Concrete")) &&
-    lineByLabel(concreteYes.lineItems, "Concrete")?.quantity === 45
+  isPricingRequired(lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)) &&
+    lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.quantity === 45
 );
 check(
-  "28 YES + missing productivity → labour Pricing Required",
-  isPricingRequired(lineByLabel(concreteYes.lineItems, "Concrete placement"))
+  "28 YES + missing company h/bag uses Quotr starter, not Pricing Required",
+  !isPricingRequired(lineByLabel(concreteYes.lineItems, DECK_CONCRETE_PLACE_LABEL)) &&
+    hoursByLabel(concreteYes.lineItems, DECK_CONCRETE_PLACE_LABEL) === 7.2
 );
 check(
   "29 no package caused by missing concrete rate",
@@ -513,7 +528,7 @@ check(
 );
 check(
   "30 NO → no concrete issue",
-  !concreteNo.lineItems.some((item) => item.label === "Concrete") &&
+  !concreteNo.lineItems.some((item) => item.label === DECK_CONCRETE_MATERIAL_LABEL) &&
     !concreteNo.missingInfo.some((info) => /concrete/i.test(info))
 );
 

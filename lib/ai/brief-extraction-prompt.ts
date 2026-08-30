@@ -28,7 +28,7 @@ Demolition handling:
 
 Fact key rules:
 - Use canonical fact keys matching scope templates.
-- Deck: deck.length_m, deck.width_m, deck.height_m, deck.level, deck.board_material, deck.board_width_mm, deck.access_type, deck.vertical_face_boards_required, deck.balustrade_required, deck.handrail_required, deck.existing_deck_removal, deck.substructure_included, deck.pile_or_post_replacement_required, deck.pile_or_post_count, deck.substructure_condition, deck.engineering_or_consent_status.
+- Deck: deck.length_m, deck.width_m, deck.height_m, deck.level, deck.board_material, deck.board_width_mm, deck.access_type, deck.vertical_face_boards_required, deck.skirting_included, deck.balustrade_required, deck.handrail_required, deck.existing_deck_removal, deck.substructure_included, deck.pile_or_post_replacement_required, deck.pile_or_post_count, deck.substructure_condition, deck.engineering_or_consent_status.
 - Fence: fence.length_m, fence.height_m, fence.material, fence.gate_included, fence.gate_count, fence.demolition_required, fence.disposal_required, fence.finish_required, fence.finish_type, fence.finish_sides, fence.slope_condition, fence.boundary_approval_status, fence.services_risk.
 - Pergola: pergola.length_m, pergola.width_m, pergola.area_m2, pergola.material, pergola.attached, pergola.roofing_included, pergola.roofing_type, pergola.footings_required, pergola.gutters_included, pergola.tie_in_existing, pergola.finish_required, pergola.finish_type, pergola.engineering_or_consent_status.
 - Retaining wall: retaining_wall.length_m, retaining_wall.height_m, retaining_wall.is_raking, retaining_wall.height_high_m, retaining_wall.height_low_m, retaining_wall.material (Timber / Concrete sleeper / Masonry / block / Concrete — do not guess sleeper vs masonry from the word "concrete" alone), retaining_wall.surcharge, retaining_wall.excavation_required, retaining_wall.drainage_required, retaining_wall.backfill_included, retaining_wall.fixing_type, retaining_wall.drain_connection_required, retaining_wall.backfill_depth_m, retaining_wall.engineering_or_consent_status, retaining_wall.disposal_included.
@@ -52,7 +52,9 @@ Fact key rules:
 - "stairs" / "stair set" → deck.access_type="Stair set".
 - "balustrade" → deck.balustrade_required=true.
 - "no balustrade" / "balustrade not required" → deck.balustrade_required=false.
-- "vertical boards down the side" → deck.vertical_face_boards_required=true.
+- "fascia" / "edge boards" / "fascia around the deck" → deck.vertical_face_boards_required=true.
+- "close in underneath the deck" / "screen under deck" / "vertical boards from deck to ground" / "full-height deck skirt" / "clad the face below the deck" → deck.skirting_included=true.
+- Ambiguous "vertical boards down the side" without ground / under / full-height context → deck.vertical_face_boards_required=true. Do NOT set deck.skirting_included. Prefer fascia + Improve, not silent full-height cladding.
 - "remove existing deck" → deck.existing_deck_removal=true.
 - "8 piles" / "piles need redoing" → deck.pile_or_post_replacement_required=true, deck.pile_or_post_count=8 when stated.
 - "sloping boundary" / "poor access" → fence.slope_condition or project constraint site_access=Difficult. Do not write fence.access.

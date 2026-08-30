@@ -1,11 +1,16 @@
 /**
- * DECK-R7 — fascia (edge board) vs skirting (vertical face cladding).
+ * DECK-R7 / R8 — fascia (edge boards) vs full-height skirting / screening.
  *
  * These are not the same physical scope.
  * Fascia: exposed deck perimeter × courses. Not height-driven.
- * Skirting: optional explicit vertical face. Height-sensitive.
- * Elevation does not auto-include skirting.
+ * Skirting: optional explicit full-height screening. Height-sensitive.
+ * Elevation / fascia Yes does not auto-include skirting.
  */
+
+export const DECK_FASCIA_BUILDER_LABEL = "Fascia / edge boards";
+export const DECK_SKIRTING_BUILDER_LABEL =
+  "Full-height deck skirting / screening";
+export const DECK_SKIRTING_INSTALL_LABEL = "Full-height skirting installation";
 import { getBooleanFact, getNumberFact, round2 } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
 

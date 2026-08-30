@@ -19,6 +19,7 @@ function normalizeProductivityUnit(unit: string): string {
 
 const HOLE_UNITS = new Set(["hole", "h/hole", "hours_per_hole"]);
 const EA_UNITS = new Set(["ea", "each", "h/ea", "hours_per_ea"]);
+const BAG_UNITS = new Set(["bag", "bags", "h/bag", "hours_per_bag"]);
 
 /** Exact physical-unit families. h/hole is not h/ea unless a contract declares them compatible. */
 export function productivityUnitsCompatible(
@@ -32,6 +33,7 @@ export function productivityUnitsCompatible(
   }
   if (HOLE_UNITS.has(have) && HOLE_UNITS.has(wanted)) return true;
   if (EA_UNITS.has(have) && EA_UNITS.has(wanted)) return true;
+  if (BAG_UNITS.has(have) && BAG_UNITS.has(wanted)) return true;
   return false;
 }
 
@@ -124,9 +126,15 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
   ),
   "deck.skirting.install.hours_per_lm": productivityEntry(
     "deck.skirting.install.hours_per_lm",
-    "Deck skirting / vertical face install",
+    "Full-height deck skirting / screening install",
     0.45,
     "lm"
+  ),
+  "deck.post_hole_concrete.place.hours_per_bag": productivityEntry(
+    "deck.post_hole_concrete.place.hours_per_bag",
+    "Deck post-hole concrete placement",
+    0.16,
+    "bag"
   ),
   "deck.steps.install.hours_per_m2": productivityEntry(
     "deck.steps.install.hours_per_m2",

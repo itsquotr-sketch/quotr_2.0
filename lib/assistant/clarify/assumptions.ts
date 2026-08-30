@@ -6,7 +6,7 @@ import type {
 const STATEMENTS: Record<string, string> = {
   "deck.existing_deck_removal": "No demolition included",
   "deck.vertical_face_boards_required": "No fascia included",
-  "deck.skirting_included": "No deck skirting / vertical face cladding",
+  "deck.skirting_included": "No full-height deck skirting / screening",
   site_access: "Standard access",
   material_carry_distance: "Standard carry",
   waste_bin_access: "Standard waste handling",

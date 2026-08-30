@@ -265,7 +265,7 @@ export function DeckQuickSpecEditor({
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor={`deck-step-width-${workAreaId}`}>Width (m)</Label>
+            <Label htmlFor={`deck-step-width-${workAreaId}`}>Stair width (m)</Label>
             <Input
               id={`deck-step-width-${workAreaId}`}
               type="number"
@@ -279,7 +279,7 @@ export function DeckQuickSpecEditor({
                 onSpecFact?.({
                   workAreaId,
                   key: "deck.step_width_m",
-                  label: "Step width",
+                  label: "Stair width",
                   value: next,
                   valueType: "number",
                 });
@@ -301,7 +301,7 @@ export function DeckQuickSpecEditor({
                 onSpecFact?.({
                   workAreaId,
                   key: "deck.step_going_m",
-                  label: "Step going",
+                  label: "Tread depth",
                   value: next,
                   valueType: "number",
                 });

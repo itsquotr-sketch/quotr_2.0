@@ -1,9 +1,18 @@
 /**
- * DECK-MATURITY-2B — simple rectangular step estimating model.
+ * DECK-MATURITY-2B / R8 / R8-R1 — simple rectangular step estimating model.
  * Not stair compliance. No stringer engineering. No fascia duplication.
+ *
+ * Shared Step geometry (width, going, tread count) is KNOWN, DERIVED,
+ * ASSUMED (disclosed), or INFORMATION_REQUIRED. Material, framing, and
+ * labour consume this object — never a silent raw fallback.
  */
 import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
 import { getNumberFact, round2 } from "@/lib/estimate/facts";
+import {
+  detailedMoneyAllowed,
+  resolvePhysicalRequirement,
+  type PhysicalRequirementResolution,
+} from "@/lib/estimate/physical-requirement-resolution";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 export const DEFAULT_STEP_TARGET_RISER_M = 0.175;
@@ -15,9 +24,14 @@ export const DEFAULT_STEP_FRAMING_CENTRES_M = 0.45;
 export type DeckStepsQuantities = {
   riseCount: number;
   riseCountDefaulted: boolean;
+  riseCountResolution: PhysicalRequirementResolution;
   estimatedRiserM: number;
   widthM: number;
+  widthDefaulted: boolean;
+  widthResolution: PhysicalRequirementResolution;
   goingM: number;
+  goingDefaulted: boolean;
+  goingResolution: PhysicalRequirementResolution;
   treadCount: number;
   treadAreaM2: number;
   framingOuterLm: number;
@@ -54,33 +68,124 @@ export function estimateDeckRiseCount(deckHeightM: number): number {
   return count;
 }
 
+function provenanceWord(resolution: PhysicalRequirementResolution): string {
+  if (resolution === "KNOWN") return "known";
+  if (resolution === "ASSUMED") return "assumed";
+  if (resolution === "DERIVED") return "derived";
+  return "required";
+}
+
+/** Builder Review takeoff copy for Step decking. */
+export function formatStepGeometryTakeoff(steps: DeckStepsQuantities): string {
+  const goingMm = Math.round(steps.goingM * 1000);
+  return [
+    `Treads: ${steps.treadCount}`,
+    `Width: ${steps.widthM.toFixed(1)}m ${provenanceWord(steps.widthResolution)}`,
+    `Tread depth: ${goingMm}mm ${provenanceWord(steps.goingResolution)}`,
+  ].join(". ");
+}
+
+export function stepPhysicalGeometryReady(steps: DeckStepsQuantities): boolean {
+  return (
+    detailedMoneyAllowed(steps.widthResolution) &&
+    detailedMoneyAllowed(steps.goingResolution) &&
+    steps.treadCount > 0 &&
+    detailedMoneyAllowed(steps.riseCountResolution)
+  );
+}
+
+function emptyQuantities(params: {
+  riseCount: number;
+  riseCountDefaulted: boolean;
+  riseCountResolution: PhysicalRequirementResolution;
+  estimatedRiserM: number;
+  widthM: number;
+  widthDefaulted: boolean;
+  widthResolution: PhysicalRequirementResolution;
+  goingM: number;
+  goingDefaulted: boolean;
+  goingResolution: PhysicalRequirementResolution;
+}): DeckStepsQuantities {
+  return {
+    ...params,
+    treadCount: params.riseCount,
+    treadAreaM2: 0,
+    framingOuterLm: 0,
+    framingInternalLm: 0,
+    framingNetLm: 0,
+    framingPurchaseLm: 0,
+  };
+}
+
 export function calculateDeckStepsQuantities(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
   deckHeightM: number | null;
   wastePercent: number;
+  /** ASSUME_IF_SKIPPED for tread depth. Set false only to prove the money guard. */
+  assumeGoingIfMissing?: boolean;
+  /** ASSUME_IF_SKIPPED for stair width. Set false only to prove the money guard. */
+  assumeWidthIfMissing?: boolean;
 }): DeckStepsQuantities | null {
   const facts = [...params.facts];
   const countFact = getNumberFact(facts, params.workAreaId, "deck.step_count");
-  const riseCountDefaulted = countFact == null;
-  const riseCount =
-    countFact != null && countFact > 0
-      ? Math.round(countFact)
-      : params.deckHeightM != null
+  const derivedRise =
+    countFact == null || !(countFact > 0)
+      ? params.deckHeightM != null
         ? estimateDeckRiseCount(params.deckHeightM)
-        : 0;
+        : null
+      : null;
+  const riseResolved = resolvePhysicalRequirement({
+    knownValue: countFact != null && countFact > 0 ? Math.round(countFact) : null,
+    derivedValue: derivedRise != null && derivedRise > 0 ? derivedRise : null,
+    assumptionAllowed: false,
+  });
+  const riseCount = riseResolved.value ?? 0;
   if (riseCount <= 0) return null;
 
-  const widthM =
-    getNumberFact(facts, params.workAreaId, "deck.step_width_m") ??
-    DEFAULT_STEP_WIDTH_M;
-  const goingM =
-    getNumberFact(facts, params.workAreaId, "deck.step_going_m") ??
-    DEFAULT_STEP_GOING_M;
-  const estimatedRiserM =
+  const widthFact = getNumberFact(facts, params.workAreaId, "deck.step_width_m");
+  const widthResolved = resolvePhysicalRequirement({
+    knownValue: widthFact != null && widthFact > 0 ? widthFact : null,
+    assumptionValue: DEFAULT_STEP_WIDTH_M,
+    assumptionAllowed: params.assumeWidthIfMissing !== false,
+  });
+
+  const goingFact = getNumberFact(facts, params.workAreaId, "deck.step_going_m");
+  const goingResolved = resolvePhysicalRequirement({
+    knownValue: goingFact != null && goingFact > 0 ? goingFact : null,
+    assumptionValue: DEFAULT_STEP_GOING_M,
+    assumptionAllowed: params.assumeGoingIfMissing !== false,
+  });
+
+  const estimatedRiserM = round2(
     params.deckHeightM != null && riseCount > 0
       ? params.deckHeightM / riseCount
-      : DEFAULT_STEP_TARGET_RISER_M;
+      : DEFAULT_STEP_TARGET_RISER_M
+  );
+  const base = {
+    riseCount,
+    riseCountDefaulted: riseResolved.resolution !== "KNOWN",
+    riseCountResolution: riseResolved.resolution,
+    estimatedRiserM,
+    widthM: widthResolved.value ?? 0,
+    widthDefaulted: widthResolved.resolution === "ASSUMED",
+    widthResolution: widthResolved.resolution,
+    goingM: goingResolved.value ?? 0,
+    goingDefaulted: goingResolved.resolution === "ASSUMED",
+    goingResolution: goingResolved.resolution,
+  };
+
+  if (
+    !detailedMoneyAllowed(widthResolved.resolution) ||
+    widthResolved.value == null ||
+    !detailedMoneyAllowed(goingResolved.resolution) ||
+    goingResolved.value == null
+  ) {
+    return emptyQuantities(base);
+  }
+
+  const widthM = widthResolved.value;
+  const goingM = goingResolved.value;
   const treadCount = riseCount;
   const treadAreaM2 = round2(widthM * goingM * treadCount);
 
@@ -96,9 +201,7 @@ export function calculateDeckStepsQuantities(params: {
   );
 
   return {
-    riseCount,
-    riseCountDefaulted,
-    estimatedRiserM: round2(estimatedRiserM),
+    ...base,
     widthM,
     goingM,
     treadCount,

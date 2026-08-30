@@ -884,14 +884,14 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
   entry({
     item_key: "deck.skirting.install.hours_per_lm",
-    label: "Deck skirting / vertical face (labour-h / lm)",
+    label: "Full-height deck skirting / screening (labour-h / lm)",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "deck",
     workAreaLabel: "Deck productivity",
     unit: "lm",
     description:
-      "Hours per installed skirting lm, not dollars. Only when skirting / vertical face cladding is explicitly included. Height-sensitive. Not inferred from elevation or fascia.",
+      "Hours per installed full-height skirting / screening lm, not dollars. Only when full-height deck skirting / screening is explicitly included. Height-sensitive. Not inferred from elevation or fascia.",
     defaultCostRate: 0.45,
     calculatorSupport: "used_now",
   }),
@@ -909,16 +909,30 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     calculatorSupport: "used_now",
   }),
   entry({
+    item_key: "deck.post_hole_concrete.place.hours_per_bag",
+    label: "Deck post-hole concrete placement (labour-h/bag)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "deck",
+    workAreaLabel: "Deck productivity",
+    unit: "bag",
+    description:
+      "LOW_CONFIDENCE starter 0.16 labour-h/bag (0.4 h/hole mixing/placing/finishing ÷ 2.5 bags/hole canonical default). Driver is whole purchased bags. Hole excavation stays in pile/post installation. Not Fence 0.06 or RW 0.035. Company exact hours/bag wins. Legacy hours/hole is leftover and is never reinterpreted as hours/bag.",
+    defaultCostRate: 0.16,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
     item_key: "deck.concrete.place.hours_per_hole",
-    label: "Concrete placement (hours/hole)",
+    label: "Deck concrete placement (hours/hole) — legacy",
     rate_type: "productivity",
     category: "labour",
     work_area_type: "deck",
     workAreaLabel: "Deck productivity",
     unit: "hole",
     description:
-      "NEEDS_OWNER_BENCHMARK. Hours per hole for mixing, placing, basic consolidation/finishing, and normal cleanup. Excludes hole excavation (owned by pile/post installation). No invented starter hours. Enter company hours; missing hours is Pricing Required, not zero labour.",
-    calculatorSupport: "used_now",
+      "LEGACY hours/hole. Mature Deck path uses Deck post-hole concrete placement (labour-h/bag). Do not reinterpret this numeric as h/bag.",
+    calculatorSupport: "leftover",
   }),
 ];
 

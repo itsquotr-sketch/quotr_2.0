@@ -93,7 +93,7 @@ const deck2 = calculateDeck(
 );
 assert(
   labels(deck2.lineItems).some(
-    (l) => l.includes("Fascia") || l.includes("skirting") || l.includes("Vertical face")
+    (l) => l.includes("Fascia") || l.includes("skirting")
   ),
   "Deck 2: fascia / edge boards when fascia included"
 );

@@ -73,6 +73,8 @@ export type LineItemMetadata = {
   quantityBasis?: QuantityBasis;
   labourMinimum?: LabourMinimumMeta;
   allowanceMinimum?: AllowanceMinimumMeta;
+  /** Concise Builder Review primary copy. Distinct from diagnostic notes. */
+  identitySummary?: string;
 };
 
 export function serializeLineItemMetadata(meta: LineItemMetadata): string {
@@ -221,6 +223,9 @@ export function buildPricingNotesFromEstimateLineItem(
   }
   if (metadata.allowanceMinimum) {
     metaToStore.allowanceMinimum = metadata.allowanceMinimum;
+  }
+  if (metadata.identitySummary) {
+    metaToStore.identitySummary = metadata.identitySummary;
   }
   if (metadata.sellAuthority) {
     metaToStore.sellAuthority = metadata.sellAuthority;

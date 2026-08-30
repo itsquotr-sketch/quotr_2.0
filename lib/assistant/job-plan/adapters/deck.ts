@@ -252,11 +252,11 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
     const skirting = booleanItem({
       id: "skirting",
       workAreaId: id,
-      label: "Deck skirting / vertical face",
+      label: "Full-height deck skirting / screening",
       factKey: "deck.skirting_included",
       facts,
       briefText: context.briefText,
-      surfaceReason: "Optional height-sensitive cladding — not inferred from fascia or elevation",
+      surfaceReason: "Optional full-height screening — not inferred from fascia, elevation, or height",
     });
 
     const steps = stepsItem(id, facts, context.briefText);

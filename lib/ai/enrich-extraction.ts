@@ -632,18 +632,55 @@ function inferDeck(
     });
   }
 
+  const fullHeightSkirting = includesAny(brief, [
+    "close in underneath the deck",
+    "close in underneath",
+    "close in under the deck",
+    "screen under deck",
+    "screen underneath the deck",
+    "vertical boards from deck to ground",
+    "from deck to ground",
+    "full-height deck skirt",
+    "full height deck skirt",
+    "full-height skirting",
+    "full height skirting",
+    "clad the face below the deck",
+    "clad the face below",
+  ]);
+  if (fullHeightSkirting) {
+    addFact(extraction, {
+      workAreaType: "deck",
+      key: "deck.skirting_included",
+      label: "Full-height deck skirting / screening",
+      value: true,
+    });
+  }
+
   if (
     includesAny(brief, [
-      "vertical face",
-      "face boards",
       "fascia",
       "include fascia",
-    ])
+      "edge boards",
+      "edge-board",
+      "face boards",
+      "vertical boards down the side",
+      "vertical face",
+    ]) &&
+    !fullHeightSkirting
   ) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.vertical_face_boards_required",
-      label: "Vertical face boards",
+      label: "Fascia / edge boards",
+      value: true,
+    });
+  } else if (
+    includesAny(brief, ["fascia", "include fascia", "edge boards", "edge-board"])
+  ) {
+    addFact(extraction, {
+      workAreaType: "deck",
+      key: "deck.vertical_face_boards_required",
+      label: "Fascia / edge boards",
       value: true,
     });
   }

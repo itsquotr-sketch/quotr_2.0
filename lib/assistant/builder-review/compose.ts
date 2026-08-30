@@ -402,9 +402,16 @@ function lineHierarchy(
       : rateLabel !== "Rate required"
         ? rateLabel
         : null;
+  const stepTreadDetail =
+    item.componentKey === DECK_STEPS_TREADS_COMPONENT_KEY &&
+    item.notes &&
+    item.identitySummary &&
+    item.notes !== item.identitySummary
+      ? item.notes
+      : null;
   return {
     supporting: [spec, rateBit].filter(Boolean).join(" · ") || null,
-    detail: null,
+    detail: stepTreadDetail,
   };
 }
 

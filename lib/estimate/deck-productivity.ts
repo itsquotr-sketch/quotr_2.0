@@ -12,8 +12,20 @@ import {
   isTrustedProductivityHours,
   resolveProductivity,
 } from "@/lib/estimate/productivity";
+import {
+  DECK_CONCRETE_PLACE_HOURS_PER_BAG,
+  DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY,
+  DECK_CONCRETE_PRODUCTIVITY_KEY,
+} from "@/lib/estimate/deck-scope-2c";
 import type { OrganisationRate } from "@/components/setup/types";
 import type { ProductivityRate } from "@/lib/estimate/types";
+
+export {
+  DECK_CONCRETE_PRODUCTIVITY_KEY as DECK_CONCRETE_PLACE_HOURS_PER_BAG_KEY,
+  DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY,
+  DECK_CONCRETE_PLACE_HOURS_PER_BAG,
+  DECK_CONCRETE_LEGACY_HOURS_PER_HOLE,
+} from "@/lib/estimate/deck-scope-2c";
 
 export const DECK_DECKING_INSTALL_HOURS_PER_LM_KEY =
   "deck.decking.install.hours_per_lm";
@@ -114,6 +126,30 @@ export function resolveDeckSkirtingInstallProductivity(
     fallbackHoursPerUnit: DECK_SKIRTING_INSTALL_HOURS_PER_LM,
     rates,
   });
+}
+
+export function resolveDeckConcretePlaceProductivity(
+  rates: readonly OrganisationRate[] | undefined
+): ProductivityRate {
+  return resolveProductivity({
+    productivityKey: DECK_CONCRETE_PRODUCTIVITY_KEY,
+    unit: "bag",
+    fallbackHoursPerUnit: DECK_CONCRETE_PLACE_HOURS_PER_BAG,
+    rates,
+  });
+}
+
+export function hasIncompatibleLegacyConcreteHoleRate(
+  rates: readonly OrganisationRate[] | undefined
+): boolean {
+  if (!rates?.length) return false;
+  return rates.some(
+    (rate) =>
+      rate.active &&
+      rate.rate_type === "productivity" &&
+      rate.item_key === DECK_CONCRETE_PRODUCTIVITY_HOLE_LEGACY_KEY &&
+      rate.cost_rate != null
+  );
 }
 
 export function hasIncompatibleLegacyDeckingM2Rate(
