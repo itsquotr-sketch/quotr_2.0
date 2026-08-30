@@ -103,6 +103,7 @@ export type ScopeReview = {
 };
 
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
+import type { PricingSummary } from "@/lib/pricing/types";
 
 export type AssistantState = {
   project: AssistantProject;
@@ -133,6 +134,21 @@ export type MarginUpdateTotals = {
   targetMarginPercent: number | null;
 };
 
+/**
+ * Canonical Generate/Update response. Projection of persisted estimate rows.
+ * Client must not recalculate commercial money from this payload.
+ */
+export type EstimateGenerationResult = {
+  projectId: string;
+  estimateId: string;
+  generationId: string;
+  stage: AssistantStage;
+  stale: boolean;
+  estimate: Estimate;
+  requirementSnapshotRequirements: readonly EstimateRequirement[];
+  pricingSummary: PricingSummary | null;
+};
+
 export type AssistantActionState = {
   error?: string;
   success?: boolean;
@@ -140,6 +156,16 @@ export type AssistantActionState = {
   workArea?: WorkArea;
   /** Present on successful updateEstimateMargin — server-authoritative. */
   marginTotals?: MarginUpdateTotals;
+  /**
+   * Present after successful Generate/Update persist. Projection of the
+   * persisted estimate — not an unpersisted calculator DTO.
+   */
+  estimateGeneration?: EstimateGenerationResult;
+  /**
+   * Persist succeeded (or equivalent) but canonical response could not be
+   * built. Client may router.refresh() as recovery only.
+   */
+  recoveryRefresh?: boolean;
 };
 
 export type WorkAreaSelection = {

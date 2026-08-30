@@ -1,5 +1,10 @@
 import { notFound } from "next/navigation";
 import { buildAssistantState } from "@/lib/assistant/mappers";
+import {
+  ASSISTANT_ESTIMATE_COLUMNS,
+  ASSISTANT_LINE_ITEM_COLUMNS,
+  ASSISTANT_WORK_AREA_COLUMNS,
+} from "@/lib/assistant/estimate-generation-result";
 import type { AssistantState } from "@/lib/assistant/types";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { parseEstimateRequirementSnapshot } from "@/lib/estimate/requirement-snapshot";
@@ -64,9 +69,7 @@ export async function getAssistantStateWithContext(
   ] = await Promise.all([
     supabase
       .from("work_areas")
-      .select(
-        "id, type, name, status, ai_confidence, summary, quote_description, sort_order, created_at"
-      )
+      .select(ASSISTANT_WORK_AREA_COLUMNS)
       .eq("project_id", projectId)
       .eq("org_id", orgId)
       .order("sort_order", { ascending: true })
@@ -94,9 +97,7 @@ export async function getAssistantStateWithContext(
       .order("created_at", { ascending: true }),
     supabase
       .from("estimates")
-      .select(
-        "id, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, is_stale, calibration_version, target_margin_percent, confidence, rate_source_summary, assumptions, missing_info, exclusions, latest_requirement_snapshot_id"
-      )
+      .select(ASSISTANT_ESTIMATE_COLUMNS)
       .eq("project_id", projectId)
       .eq("org_id", orgId)
       .maybeSingle(),
@@ -115,9 +116,7 @@ export async function getAssistantStateWithContext(
   const { data: lineItems } = estimate?.id
     ? await supabase
         .from("estimate_line_items")
-        .select(
-          "id, work_area_name, label, category, cost_low, cost_high, sell_low, sell_high, recommended_cost, recommended_sell, gross_profit, margin_percent, markup_percent, rate_source, notes, sort_order, component_key"
-        )
+        .select(ASSISTANT_LINE_ITEM_COLUMNS)
         .eq("estimate_id", estimate.id)
         .eq("org_id", orgId)
         .order("sort_order", { ascending: true })

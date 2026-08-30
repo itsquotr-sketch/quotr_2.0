@@ -1114,3 +1114,140 @@ Do not start Speed 1B in this batch.
 
 **STOP.** Owner may start **SYSTEM-PERFORMANCE-SPEED-1B** in a later batch. Do not start Pricing UX, Bathroom, or Production deploy.
 
+---
+
+# SYSTEM PERFORMANCE — SPEED 1B-A RESULT
+
+**Status:** COMPLETE LOCAL / OWNER APPROVED  
+**Date:** 2026-08-31  
+**Does not:** start Speed 1B-B, start Speed 2, change derived-fact writes, change persist RPC, change calculators, start Pricing UX, start Bathroom, or deploy Production.
+
+**Companion:** `scripts/verify-system-performance-speed-1b-a.ts`
+
+## What changed
+
+Generate and Update Estimate return a **canonical persisted estimate projection** after `persist_estimate_generation_v1`. The client applies that projection to Assistant / Builder Review / Commercial Overview / stale / stage / Pricing Required without a full Project `router.refresh()`.
+
+## BEFORE — Generate
+
+```
+click Generate
+  → pending lock (isGenerating + actionLockRef)
+  → generateStaticEstimate / completeClarifyPlanning(generate:true)
+  → calculate → persist_estimate_generation_v1 → optional stage=estimate_ready
+  → revalidatePath(/app/projects/:id)
+  → return { success: true }
+  → runAction router.refresh()
+  → full Project RSC (auth + domain loaders + AssistantShell remount via stage key)
+  → Builder Review usable
+```
+
+## AFTER — Generate
+
+```
+click Generate
+  → pending lock
+  → calculate → persist_estimate_generation_v1 → optional stage write
+  → loadEstimateGenerationResult (re-read persisted estimate/lines/snapshot)
+  → revalidatePath(/app/projects/:id)   // future navigation only; not an immediate reload
+  → return { success, estimateGeneration }
+  → apply projection (estimate, snapshot requirements, stage, stale=false, pricingSummary)
+  → Builder Review usable from returned state
+  → no router.refresh on success
+```
+
+Recovery: if persist succeeded but response construction failed → `{ recoveryRefresh: true }` → `router.refresh()`.
+
+## BEFORE — Update
+
+Same as Generate plus `regenerateStaticEstimate` stage gate, then `runEstimateGeneration({ allowRegenerate: true })`, then full refresh.
+
+## AFTER — Update
+
+Same canonical response path. Client replaces estimate projection. Edit Job closes. No full assistant tree reload on success.
+
+## Response contract
+
+`AssistantActionState.estimateGeneration`:
+
+| Field | Source |
+| --- | --- |
+| `projectId` | authenticated project |
+| `estimateId` | persisted `estimates.id` |
+| `generationId` | persist snapshot generation id |
+| `stage` | `projects.stage` after persist (typically `estimate_ready`) |
+| `stale` | persisted `is_stale` (false on success) |
+| `estimate` | `mapEstimate` of persisted rows (same as SSR) |
+| `requirementSnapshotRequirements` | parsed snapshot payload |
+| `pricingSummary` | latest pricing document summary (recalibration flag if a doc exists) |
+
+Construction: **after persist**, `loadEstimateGenerationResult` re-reads DB with the same column lists as `getAssistantState`. Not an in-memory calculator DTO.
+
+## Revalidation policy
+
+**Retain `revalidatePath(/app/projects/:id)`** so the next navigation/RSC render loads the persisted estimate. Do **not** call `router.refresh()` on successful Generate/Update. Revalidation does not force an immediate whole-page reload.
+
+## router.refresh
+
+| Site | Change |
+| --- | --- |
+| Generate success (via `runAction("estimate")`) | **no refresh** when canonical payload applies |
+| Update success (via `runAction("regenerate")`) | **no refresh** when canonical payload applies |
+| Recovery / missing payload | refresh remains |
+| Clarify / fact-save | **unchanged** (Speed 1B-B) |
+| Other AssistantShell mutations | **unchanged** |
+
+Executable `router.refresh();` in AssistantShell: **14 before, 14 after**. No unrelated sites deleted. Generate/Update no longer execute the `runAction` refresh on the success path.
+
+## Client reconciliation
+
+`generationProjection` overlays SSR `initialState.estimate` / stage / snapshot requirements. Nav badges use `EstimateGenerationProjectionProvider` (hasEstimate, stale, pricingSummary). Local state is a projection of server authority. Fact/constraint writes still clear the projection and set the stale bridge, then `router.refresh()` (Clarify unchanged).
+
+Race: `actionLockRef` prevents overlapping Generate/Update. `generationRequestSeqRef` + `shouldApplyEstimateGeneration` rejects cross-project and older `requestSeq` / duplicate `generationId`.
+
+## Persistence / authority
+
+`persist_estimate_generation_v1` unchanged. Pricing still reads persisted Estimate. Quote still snapshots Pricing. Client projection is not Pricing/Quote authority.
+
+## Payload size (MEASURED local, persist-row mapping, empty company rates)
+
+Speed 1B-A verifier, JSON of `estimateGeneration`:
+
+| Fixture | Payload | Speed 0 Estimate JSON (harness) |
+| --- | ---: | ---: |
+| Deck REAL-JOB-01 | **22.5 KB** | ~32 KB |
+| Fence timber 18 m | **31.9 KB** | ~42 KB |
+| RW timber 10×1 | **28.3 KB** | ~37 KB |
+| multi-WA | **78.5 KB** | ~107 KB |
+
+Smaller than a full Estimate+Builder-Review RSC island because the action returns mapped estimate + snapshot requirements, not the whole assistant tree. Not slimmed further (Speed 3). Removing the Project RSC refresh is the win.
+
+## Remaining Speed 1B-B
+
+Clarify / fact-save still uses full `router.refresh()`. Speed 1B-B is **interaction / state reconciliation only** for that path (return useful mutation state, skip ordinary full refresh where safe). Do not start 1B-B in this batch.
+
+## Speed 2 boundary (not Speed 1B-B)
+
+| Work | Programme |
+| --- | --- |
+| Sequential derived-fact writes / N+1 upserts | **SPEED 2** |
+| Missing-question database/write optimisation (`ensureMissingDetailsQuestionBlock` rebuild) | **SPEED 2** where applicable |
+| Clarify refresh / fact-save state reconciliation | **SPEED 1B-B** |
+
+Speed 1B-B must not batch derived facts or rewrite missing-question persistence.
+
+## Preview measurement plan
+
+After owner review + commit/push: measure Generate **action complete** vs **Builder Review usable** on Preview (SSO session required). Do not claim Preview milliseconds from this local batch.
+
+## REQ-TXN-01
+
+**VERIFY_LATER — LOCAL SUPABASE REQUIRED.** Independent of this batch.
+
+## Next action
+
+**SYSTEM-PERFORMANCE-SPEED-1B-A = COMPLETE LOCAL / OWNER APPROVED**
+
+Do not start SPEED 1B-B or SPEED 2 in this batch.
+
+

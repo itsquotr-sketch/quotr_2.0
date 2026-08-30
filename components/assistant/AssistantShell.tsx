@@ -69,6 +69,15 @@ import {
   type MarginTotalsOverlay,
 } from "@/lib/assistant/margin-optimistic";
 import type { Estimate } from "@/components/assistant/types";
+import type {
+  AssistantActionState,
+  EstimateGenerationResult,
+} from "@/lib/assistant/types";
+import {
+  shouldApplyEstimateGeneration,
+  type AppliedEstimateGeneration,
+} from "@/lib/assistant/estimate-generation-apply";
+import { useEstimateGenerationProjection } from "@/components/projects/estimate-generation-projection";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import {
   addWorkAreaToProject,
@@ -209,8 +218,10 @@ export function AssistantShell({
 }: AssistantShellProps) {
   const router = useRouter();
   const actionLockRef = useRef(false);
+  const generationRequestSeqRef = useRef(0);
+  const appliedGenerationRef = useRef<AppliedEstimateGeneration | null>(null);
+  const estimateNavProjection = useEstimateGenerationProjection();
   const { project } = initialState;
-  const stage = project.stage;
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [actionError, setActionError] = useState<string | null>(null);
@@ -312,6 +323,10 @@ export function AssistantShell({
   // Never clear this from a fresh (isStale=false) server render — that older RSC
   // payload can arrive after a newer write. Clear only after successful regenerate.
   const [localEstimateStale, setLocalEstimateStale] = useState(false);
+  const [generationProjection, setGenerationProjection] = useState<
+    EstimateGenerationResult | undefined
+  >(undefined);
+  const stage = generationProjection?.stage ?? project.stage;
   const [commercialOverviewOpen, setCommercialOverviewOpen] = useState(false);
   const [isEditingQuality, setIsEditingQuality] = useState(false);
   const qualityCardRef = useRef<HTMLDivElement | null>(null);
@@ -397,9 +412,12 @@ export function AssistantShell({
 
   const bridgeEstimateStaleAfterCanonicalWrite = useCallback(() => {
     if (!estimateReady) return;
+    setGenerationProjection(undefined);
+    appliedGenerationRef.current = null;
+    estimateNavProjection?.clearEstimateGeneration();
     setLocalEstimateStale(true);
     recordPreviewPerf("canonical_write_stale_projection", 0, { ok: true });
-  }, [estimateReady]);
+  }, [estimateNavProjection, estimateReady]);
 
   const projectConditionsSnapshot = useMemo(() => {
     try {
@@ -507,7 +525,7 @@ export function AssistantShell({
   ]);
 
   const runAction = useCallback(
-    async (action: PendingAction, fn: () => Promise<{ error?: string }>) => {
+    async (action: PendingAction, fn: () => Promise<AssistantActionState>) => {
       if (actionLockRef.current) {
         return;
       }
@@ -531,7 +549,41 @@ export function AssistantShell({
           return;
         }
 
-        router.refresh();
+        const isEstimateMutation =
+          action === "estimate" || action === "regenerate";
+        const generation = result.estimateGeneration;
+        let shouldRefresh = true;
+
+        if (isEstimateMutation && !result.recoveryRefresh && generation) {
+          const incoming: AppliedEstimateGeneration = {
+            projectId: generation.projectId,
+            generationId: generation.generationId,
+            requestSeq: generationRequestSeqRef.current,
+          };
+          if (
+            shouldApplyEstimateGeneration({
+              currentProjectId: project.id,
+              applied: appliedGenerationRef.current,
+              incoming,
+            })
+          ) {
+            appliedGenerationRef.current = incoming;
+            setGenerationProjection(generation);
+            setLocalEstimateStale(false);
+            estimateNavProjection?.applyEstimateGeneration(generation);
+            if (action === "regenerate") {
+              setEditJobOpen(false);
+              setEditJobSection(null);
+              setJobPlanEditFocus(null);
+            }
+            shouldRefresh = false;
+          }
+        }
+
+        if (shouldRefresh) {
+          router.refresh();
+        }
+
         setPendingAction(null);
         if (action === "estimate") {
           setIsGenerating(false);
@@ -543,7 +595,7 @@ export function AssistantShell({
         actionLockRef.current = false;
       }
     },
-    [router]
+    [estimateNavProjection, project.id, router]
   );
 
   const handleAnalyseJob = useCallback(() => {
@@ -800,6 +852,7 @@ export function AssistantShell({
     if (isGenerating || pendingAction != null || actionLockRef.current) {
       return;
     }
+    generationRequestSeqRef.current += 1;
     setIsGenerating(true);
     recordPreviewPerf("estimate_generate_ack", 0);
     const endPerf = startPreviewPerf("estimate_generate_complete");
@@ -866,17 +919,10 @@ export function AssistantShell({
     setIsRegenerating(true);
     recordPreviewPerf("estimate_generate_ack", 0);
     const endPerf = startPreviewPerf("estimate_generate_complete");
+    generationRequestSeqRef.current += 1;
     void runAction("regenerate", async () => {
       try {
-        const result = await regenerateStaticEstimate(project.id);
-        if (result.error) {
-          return result;
-        }
-        setLocalEstimateStale(false);
-        setEditJobOpen(false);
-        setEditJobSection(null);
-        setJobPlanEditFocus(null);
-        return result;
+        return await regenerateStaticEstimate(project.id);
       } finally {
         endPerf();
       }
@@ -1433,7 +1479,9 @@ export function AssistantShell({
     [bridgeEstimateStaleAfterCanonicalWrite, project.id, router]
   );
 
-  const estimateBase = estimateReady ? initialState.estimate : null;
+  const estimateBase = estimateReady
+    ? (generationProjection?.estimate ?? initialState.estimate)
+    : null;
   if (
     marginOverlay &&
     estimateBase &&
@@ -1828,7 +1876,9 @@ export function AssistantShell({
         lineItems: estimate.lineItems,
       },
       workAreas: displayWorkAreas,
-      requirements: initialState.requirementSnapshotRequirements,
+      requirements:
+        generationProjection?.requirementSnapshotRequirements ??
+        initialState.requirementSnapshotRequirements,
       attentionItems: completedEstimateAttentionItems,
       confidenceBand,
     });
@@ -1837,6 +1887,7 @@ export function AssistantShell({
     displayEstimateStale,
     displayWorkAreas,
     estimate,
+    generationProjection?.requirementSnapshotRequirements,
     initialState.requirementSnapshotRequirements,
   ]);
 
@@ -2876,7 +2927,11 @@ export function AssistantShell({
                 : null
             }
             qualityLevel={qualitySubmitted ? qualityLevel : null}
-            pricingSummary={pricingSummary}
+            pricingSummary={
+              generationProjection
+                ? generationProjection.pricingSummary
+                : pricingSummary
+            }
             quoteSummary={quoteSummary}
             isGenerating={isGenerating}
             isRegenerating={updatingEstimate}

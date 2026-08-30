@@ -30,6 +30,8 @@ import { loadProjectStage } from "@/lib/assistant/load-project-stage";
 import { getEstimateContextWithContext } from "@/lib/estimate/context";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
+import { loadEstimateGenerationResult } from "@/lib/assistant/load-estimate-generation-result";
+import { measureServerLoad } from "@/lib/perf/timing";
 import { getAnthropicModel } from "@/lib/ai/anthropic";
 import { buildInitialAnalysisInput } from "@/lib/project-notes/build-analysis-source";
 import { isInternalProjectNote } from "@/lib/project-notes/types";
@@ -1148,7 +1150,15 @@ async function runEstimateGeneration(
 
   if (stage === "estimate_ready") {
     if (!options.allowRegenerate) {
-      return { success: true };
+      const existing = await measureServerLoad(
+        "estimateGenerationResult",
+        () => loadEstimateGenerationResult(auth, projectId)
+      );
+      if ("error" in existing) {
+        return { success: true, recoveryRefresh: true };
+      }
+      revalidateProjectAssistantPath(projectId);
+      return { success: true, estimateGeneration: existing };
     }
   } else if (!canRunStageAction(stage, "generate_estimate")) {
     return { error: "This action is not available at the current stage." };
@@ -1279,8 +1289,24 @@ async function runEstimateGeneration(
     }
   }
 
+  const generationId =
+    persistResult.snapshot.ok === true
+      ? persistResult.snapshot.generationId
+      : persistResult.estimateId;
+
+  const estimateGeneration = await measureServerLoad(
+    "estimateGenerationResult",
+    () =>
+      loadEstimateGenerationResult(auth, projectId, { generationId })
+  );
+
   revalidateProjectAssistantPath(projectId);
-  return { success: true };
+
+  if ("error" in estimateGeneration) {
+    return { success: true, recoveryRefresh: true };
+  }
+
+  return { success: true, estimateGeneration };
 }
 
 export async function generateStaticEstimate(

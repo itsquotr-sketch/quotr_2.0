@@ -6,7 +6,10 @@ import {
 import { UserMenu } from "@/components/layout/user-menu";
 import { DuplicatedProjectBanner } from "@/components/projects/DuplicatedProjectBanner";
 import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHeader";
-import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
+import {
+  EstimateGenerationProjectionProvider,
+  ProjectWorkspaceNavProjected,
+} from "@/components/projects/estimate-generation-projection";
 import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
 import { getAssistantStateWithContext } from "@/lib/assistant/state";
 import { measureServerLoad } from "@/lib/perf/timing";
@@ -98,6 +101,11 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   }
 
   return (
+    <EstimateGenerationProjectionProvider
+      initialHasEstimate={hasEstimate || tabContext.hasEstimate}
+      initialEstimateIsStale={estimateIsStale}
+      initialPricingSummary={pricingSummary ?? tabContext.pricingSummary}
+    >
     <WorkspacePage
       header={
         <WorkspaceHeaderBar
@@ -107,13 +115,10 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         </WorkspaceHeaderBar>
       }
       nav={
-        <ProjectWorkspaceNav
+        <ProjectWorkspaceNavProjected
           projectId={projectId}
           activeTab="assistant"
-          pricingSummary={pricingSummary ?? tabContext.pricingSummary}
           quoteSummary={quoteSummary}
-          hasEstimate={hasEstimate || tabContext.hasEstimate}
-          estimateIsStale={estimateIsStale}
         />
       }
     >
@@ -144,5 +149,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         </div>
       ) : null}
     </WorkspacePage>
+    </EstimateGenerationProjectionProvider>
   );
 }
