@@ -12,6 +12,7 @@ import type {
   CompanySettingsInput,
   OrgQuoteDefaults,
 } from "@/lib/settings/types";
+import { loadCompanySettingsForRequest } from "@/lib/settings/company-settings-loader";
 
 const COMPANY_SETTINGS_PATH = "/app/settings/company";
 
@@ -245,24 +246,7 @@ const COMPANY_SETTINGS_SELECT =
   "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
 
 export async function getCompanySettings(): Promise<CompanySettings | null> {
-  const context = await getSettingsAuthContext();
-  if (!context) {
-    return null;
-  }
-
-  await ensureSettingsRow(context.supabase, context.orgId);
-
-  const { data: row, error } = await context.supabase
-    .from("organisation_settings")
-    .select(COMPANY_SETTINGS_SELECT)
-    .eq("org_id", context.orgId)
-    .maybeSingle();
-
-  if (error || !row) {
-    return null;
-  }
-
-  return mapSettingsRow(context.organisationName, row);
+  return loadCompanySettingsForRequest();
 }
 
 export async function updateCompanySettings(

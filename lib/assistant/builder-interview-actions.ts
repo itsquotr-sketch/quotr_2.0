@@ -21,7 +21,7 @@ import {
 import { isReservedConstraintKey } from "@/lib/scopes/domain-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { upsertProjectConstraintRecord } from "@/lib/assistant/scope-persistence";
-import { markEstimateStale } from "@/lib/estimate/stale";
+import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import type { ConstraintRow } from "@/lib/assistant/types";
@@ -351,7 +351,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
   });
 
   if (savedCount > 0) {
-    await markEstimateStale(projectId);
+    await markEstimateStaleWithContext(auth, projectId);
     revalidateProjectPaths(projectId);
   }
 

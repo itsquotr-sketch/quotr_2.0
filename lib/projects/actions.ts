@@ -6,17 +6,16 @@ import { getAuthOrgContext } from "@/lib/assistant/state";
 import { projectDetailsSchema } from "@/lib/projects/schema";
 import {
   applyProjectListFilter,
+  getProjectSelect,
   hasBusinessStatusColumns,
   hasLifecycleColumns,
   isMissingBusinessStatusColumnsError,
   isMissingLifecycleColumnsError,
   markBusinessStatusColumnsUnavailable,
   markLifecycleColumnsUnavailable,
-  PROJECT_SELECT,
-  PROJECT_SELECT_BASE,
-  PROJECT_SELECT_WITHOUT_BUSINESS_STATUS,
   withLifecycleDefaults,
 } from "@/lib/projects/query-utils";
+import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import {
   ACTIVE_PIPELINE_STATUSES,
   isBusinessStatus,
@@ -31,19 +30,6 @@ import type {
   ProjectListFilter,
   ProjectListItem,
 } from "@/lib/projects/types";
-
-function getProjectSelect(
-  lifecycleAvailable: boolean,
-  businessStatusAvailable: boolean
-): string {
-  if (!lifecycleAvailable) {
-    return PROJECT_SELECT_BASE;
-  }
-
-  return businessStatusAvailable
-    ? PROJECT_SELECT
-    : PROJECT_SELECT_WITHOUT_BUSINESS_STATUS;
-}
 
 export async function listProjects(
   options?: {
@@ -275,59 +261,13 @@ export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSu
   };
 }
 
-export async function getProject(
-  projectId: string,
-  retried = false
-): Promise<Project> {
+export async function getProject(projectId: string): Promise<Project> {
   const context = await getAuthOrgContext();
   if (!context) {
     notFound();
   }
 
-  const lifecycleAvailable = await hasLifecycleColumns(context.supabase);
-  const businessStatusAvailable = lifecycleAvailable
-    ? await hasBusinessStatusColumns(context.supabase)
-    : false;
-
-  let query = context.supabase
-    .from("projects")
-    .select(
-      getProjectSelect(lifecycleAvailable, businessStatusAvailable)
-    )
-    .eq("id", projectId);
-
-  if (lifecycleAvailable) {
-    query = query.is("deleted_at", null);
-  }
-
-  const { data: project, error } = await query.maybeSingle();
-
-  if (error) {
-    if (isMissingLifecycleColumnsError(error) && !retried) {
-      markLifecycleColumnsUnavailable();
-      return getProject(projectId, true);
-    }
-
-    if (isMissingBusinessStatusColumnsError(error) && !retried) {
-      markBusinessStatusColumnsUnavailable();
-      return getProject(projectId, true);
-    }
-
-    console.error("[getProject] query failed:", error.message);
-    notFound();
-  }
-
-  if (!project) {
-    notFound();
-  }
-
-  const mapped = withLifecycleDefaults(project as unknown as Record<string, unknown>);
-
-  if (lifecycleAvailable && mapped.deleted_at) {
-    notFound();
-  }
-
-  return mapped;
+  return getProjectWithContext(context, projectId);
 }
 
 export async function createProject(

@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
-import type { AssistantStage, QualityLevel } from "@/components/assistant/types";
+import type { QualityLevel } from "@/components/assistant/types";
 import { extractFromBrief } from "@/lib/ai/extract";
 import {
   aiFactsToRows,
@@ -26,9 +26,10 @@ import {
   calculateEstimate,
   EstimateEngineError,
 } from "@/lib/estimate/calculate-estimate";
-import { getEstimateContext } from "@/lib/estimate/context";
+import { loadProjectStage } from "@/lib/assistant/load-project-stage";
+import { getEstimateContextWithContext } from "@/lib/estimate/context";
+import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
-import { markEstimateStale } from "@/lib/estimate/stale";
 import { getAnthropicModel } from "@/lib/ai/anthropic";
 import { buildInitialAnalysisInput } from "@/lib/project-notes/build-analysis-source";
 import { isInternalProjectNote } from "@/lib/project-notes/types";
@@ -58,7 +59,6 @@ import {
 } from "@/lib/scopes/question-input-types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
-import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
 
 const BRIEF_MAX_LENGTH = 5000;
@@ -149,43 +149,6 @@ function toSafeAssistantError(fallback: string): string {
   return fallback;
 }
 
-async function loadProjectStage(projectId: string) {
-  const auth = await requireAuthOrgContext();
-  if (!auth.ok) {
-    return {
-      error:
-        auth.code === "organisation_required"
-          ? auth.error
-          : ("Not authenticated." as const),
-    };
-  }
-
-  const owned = await assertOrgOwnsActiveProject(auth, projectId);
-  if ("error" in owned) {
-    return { error: "Project not found." as const };
-  }
-
-  const { supabase, orgId } = auth;
-
-  const { data: project, error } = await supabase
-    .from("projects")
-    .select("id, stage")
-    .eq("id", projectId)
-    .eq("org_id", orgId)
-    .maybeSingle();
-
-  if (error || !project) {
-    return { error: "Project not found." as const };
-  }
-
-  return {
-    supabase,
-    orgId,
-    projectId: project.id,
-    stage: project.stage as AssistantStage,
-  };
-}
-
 /**
  * Analyse Job capability types — full Quotr catalogue.
  * Company Setup preferences must not restrict extraction (3.1C.3-R2B).
@@ -210,7 +173,8 @@ export async function saveBriefAndSeedWorkAreas(
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, stage } = loaded;
+  const { auth, stage } = loaded;
+  const { supabase, orgId } = auth;
 
   if (isStageAtOrBeyond(stage, "confirm_work_areas")) {
     return { success: true };
@@ -479,7 +443,8 @@ export async function confirmWorkAreas(
     return { error: loaded.error };
   }
 
-  const { supabase, stage } = loaded;
+  const { auth, stage } = loaded;
+  const { supabase } = auth;
 
   if (isStageAtOrBeyond(stage, "quality")) {
     return { success: true };
@@ -510,7 +475,7 @@ export async function confirmWorkAreas(
     return { error: stageError.message };
   }
 
-  await markEstimateStale(projectId);
+  await markEstimateStaleWithContext(auth, projectId);
 
   // Stage 3.1B.7F-R5 — Acknowledge WA confirmation immediately.
   // Automatic Scope Review is owned by ScopeDiscoveryReviewBlock auto-run
@@ -760,7 +725,8 @@ export async function saveQuality(
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, stage } = loaded;
+  const { auth, stage } = loaded;
+  const { supabase, orgId } = auth;
 
   // 7F-R6-R1: if already past Specification, still persist the selected tier and
   // heal orphan/empty Scope Details blocks so Budget/Standard/Premium all work.
@@ -891,7 +857,8 @@ export async function updateProjectQualityLevel(
     return { error: loaded.error };
   }
 
-  const { supabase, stage } = loaded;
+  const { auth, stage } = loaded;
+  const { supabase } = auth;
 
   if (!isStageAtOrBeyond(stage, "work_area_questions")) {
     return { error: "Quality can only be changed after the initial quality step." };
@@ -920,7 +887,7 @@ export async function updateProjectQualityLevel(
     return { error: updateError.message };
   }
 
-  await markEstimateStale(projectId);
+  await markEstimateStaleWithContext(auth, projectId);
   revalidateAssistantPaths(projectId);
   return { success: true };
 }
@@ -957,7 +924,8 @@ export async function saveQuestionBlockAnswers(
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, stage } = loaded;
+  const { auth, stage } = loaded;
+  const { supabase, orgId } = auth;
 
   const { data: block } = await supabase
     .from("question_blocks")
@@ -1101,7 +1069,7 @@ export async function saveQuestionBlockAnswers(
     return { error: toSafeAssistantError(ANSWER_SAVE_FAILED) };
   }
 
-  await markEstimateStale(projectId);
+  await markEstimateStaleWithContext(auth, projectId);
   revalidateProjectAssistantPath(projectId);
   return { success: true };
 }
@@ -1126,7 +1094,8 @@ export async function saveConstraints(
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, stage } = loaded;
+  const { auth, stage } = loaded;
+  const { supabase, orgId } = auth;
 
   if (isStageAtOrBeyond(stage, "ready_to_estimate")) {
     return { success: true };
@@ -1160,7 +1129,7 @@ export async function saveConstraints(
     return { error: stageError.message };
   }
 
-  await markEstimateStale(projectId);
+  await markEstimateStaleWithContext(auth, projectId);
   revalidateAssistantPaths(projectId);
   return { success: true };
 }
@@ -1174,7 +1143,8 @@ async function runEstimateGeneration(
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, stage } = loaded;
+  const { auth, stage } = loaded;
+  const { supabase, orgId } = auth;
 
   if (stage === "estimate_ready") {
     if (!options.allowRegenerate) {
@@ -1190,7 +1160,7 @@ async function runEstimateGeneration(
       .select("id, target_margin_percent")
       .eq("project_id", projectId)
       .maybeSingle(),
-    getEstimateContext(projectId),
+    getEstimateContextWithContext(auth, projectId),
   ]);
 
   if ("error" in contextResult) {

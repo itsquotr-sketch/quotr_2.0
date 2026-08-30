@@ -8,20 +8,23 @@ import { DuplicatedProjectBanner } from "@/components/projects/DuplicatedProject
 import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
-import { getAssistantState } from "@/lib/assistant/state";
+import { getAssistantStateWithContext } from "@/lib/assistant/state";
 import { measureServerLoad } from "@/lib/perf/timing";
-import { listProjectNotes } from "@/lib/project-notes/actions";
-import { getPendingNoteProposal } from "@/lib/project-notes/proposals/actions";
 import {
-  getLatestPricingSummary,
-  getProjectWorkspaceTabContext,
-} from "@/lib/pricing/actions";
-import { getLatestQuoteSummary } from "@/lib/quotes/actions";
-import { getProject } from "@/lib/projects/actions";
+  getPendingNoteProposalWithContext,
+  listProjectNotesWithContext,
+} from "@/lib/project-notes/note-loaders";
+import {
+  getLatestPricingSummaryWithContext,
+  getProjectWorkspaceTabContextWithContext,
+} from "@/lib/pricing/pricing-loaders";
+import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
+import { getProjectWithContext } from "@/lib/projects/project-loaders";
 import { getScopeDiscoveryResultsAction } from "@/lib/scope-discovery/actions";
 import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
 import type { SafeResultsRead } from "@/lib/scope-discovery/application/types";
-import { createClient } from "@/lib/supabase/server";
+import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
+import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
 type ProjectPageProps = {
@@ -33,23 +36,32 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
   const { projectId } = await params;
 
   const pageData = await measureServerLoad("project", async () => {
+    const auth = await requireAuthOrgContext();
+    if (!auth.ok) {
+      notFound();
+    }
+
     const [
       project,
       assistantState,
       noteList,
       pendingNoteProposal,
       pricingSummary,
-      tabContext,
       quoteSummary,
     ] = await Promise.all([
-      getProject(projectId),
-      getAssistantState(projectId),
-      listProjectNotes(projectId),
-      getPendingNoteProposal(projectId),
-      getLatestPricingSummary(projectId),
-      getProjectWorkspaceTabContext(projectId),
-      getLatestQuoteSummary(projectId),
+      getProjectWithContext(auth, projectId),
+      getAssistantStateWithContext(auth, projectId),
+      listProjectNotesWithContext(auth, projectId),
+      getPendingNoteProposalWithContext(auth, projectId),
+      getLatestPricingSummaryWithContext(auth, projectId),
+      getLatestQuoteSummaryWithContext(auth, projectId),
     ]);
+
+    const tabContext = await getProjectWorkspaceTabContextWithContext(
+      auth,
+      projectId,
+      { pricingSummary }
+    );
 
     return {
       project,
@@ -72,17 +84,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     quoteSummary,
   } = pageData;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
   const hasEstimate = Boolean(assistantState.estimate);
   const estimateIsStale =
     assistantState.estimate?.isStale ?? tabContext.estimateIsStale;
@@ -100,9 +101,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
     <WorkspacePage
       header={
         <WorkspaceHeaderBar
-          actions={
-            <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
-          }
+          actions={<UserMenu />}
         >
           <ProjectWorkspaceHeader project={project} subtitle="Project assistant" />
         </WorkspaceHeaderBar>

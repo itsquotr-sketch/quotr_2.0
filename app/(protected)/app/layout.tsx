@@ -1,8 +1,9 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { getAuthDisplayProfile } from "@/lib/security/auth-display";
+import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { needsCompanyBasics } from "@/lib/setup/actions";
-import { createClient } from "@/lib/supabase/server";
 
 const SETUP_REQUIRED_PATH = "/app/setup-required";
 const SETUP_BASICS_PATH = "/app/setup?mode=basics";
@@ -34,47 +35,13 @@ export default async function AppLayout({
   const pathname = headerStore.get("x-pathname");
   const onSetupRequired = isSetupRequiredPath(pathname);
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const auth = await requireAuthOrgContext();
 
-  if (!user) {
-    redirect("/login");
-  }
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name, org_id")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  let organisationName: string | null = null;
-  let tradingName: string | null = null;
-  let organisationValid = false;
-
-  if (profile?.org_id) {
-    const [{ data: organisation }, { data: settings }] = await Promise.all([
-      supabase
-        .from("organisations")
-        .select("id, name")
-        .eq("id", profile.org_id)
-        .maybeSingle(),
-      supabase
-        .from("organisation_settings")
-        .select("trading_name")
-        .eq("org_id", profile.org_id)
-        .maybeSingle(),
-    ]);
-
-    if (organisation) {
-      organisationValid = true;
-      organisationName = organisation.name ?? null;
-      tradingName = (settings?.trading_name as string | null) ?? null;
+  if (!auth.ok) {
+    if (auth.code === "not_authenticated") {
+      redirect("/login");
     }
-  }
 
-  if (!organisationValid) {
     if (!onSetupRequired) {
       redirect(SETUP_REQUIRED_PATH);
     }
@@ -93,22 +60,23 @@ export default async function AppLayout({
     redirect("/app/dashboard");
   }
 
-  // Stage 3.1C.3-R2A: hard gate basics before Dashboard / app surfaces.
-  // Single status read via needsCompanyBasics (no rates catalogue).
-  const basicsNeeded = await needsCompanyBasics();
+  const [display, basicsNeeded] = await Promise.all([
+    getAuthDisplayProfile(),
+    needsCompanyBasics(),
+  ]);
+
   if (basicsNeeded && !isCompanyBasicsAllowedPath(pathname)) {
     redirect(SETUP_BASICS_PATH);
   }
 
-  // Incomplete badge = basics missing only (not full wizard).
   const setupIncomplete = basicsNeeded;
 
   return (
     <AppShell
-      userEmail={user.email}
-      fullName={profile?.full_name}
-      organisationName={organisationName}
-      tradingName={tradingName}
+      userEmail={display?.userEmail ?? auth.user.email}
+      fullName={display?.fullName}
+      organisationName={display?.organisationName}
+      tradingName={display?.tradingName}
       setupIncomplete={setupIncomplete}
     >
       {children}

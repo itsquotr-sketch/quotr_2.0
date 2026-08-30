@@ -8,14 +8,15 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { ProjectWorkspaceHeader } from "@/components/projects/ProjectWorkspaceHeader";
 import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
-import { getProjectWorkspaceTabContext } from "@/lib/pricing/actions";
+import { getProjectWorkspaceTabContextWithContext } from "@/lib/pricing/pricing-loaders";
 import { measureServerLoad } from "@/lib/perf/timing";
 import {
-  getLatestQuoteSummary,
-  getQuoteWorkspaceData,
-} from "@/lib/quotes/actions";
-import { getProject } from "@/lib/projects/actions";
-import { createClient } from "@/lib/supabase/server";
+  getLatestQuoteSummaryWithContext,
+  getQuoteWorkspaceDataWithContext,
+} from "@/lib/quotes/quote-loaders";
+import { getProjectWithContext } from "@/lib/projects/project-loaders";
+import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
+import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
 type QuotePageProps = {
@@ -27,11 +28,16 @@ export default async function QuotePage({ params }: QuotePageProps) {
   const { projectId, quoteId } = await params;
 
   const pageData = await measureServerLoad("quote", async () => {
+    const auth = await requireAuthOrgContext();
+    if (!auth.ok) {
+      notFound();
+    }
+
     const [data, project, tabContext, quoteSummary] = await Promise.all([
-      getQuoteWorkspaceData(projectId, quoteId),
-      getProject(projectId),
-      getProjectWorkspaceTabContext(projectId),
-      getLatestQuoteSummary(projectId),
+      getQuoteWorkspaceDataWithContext(auth, projectId, quoteId),
+      getProjectWithContext(auth, projectId),
+      getProjectWorkspaceTabContextWithContext(auth, projectId),
+      getLatestQuoteSummaryWithContext(auth, projectId),
     ]);
 
     return { data, project, tabContext, quoteSummary };
@@ -39,24 +45,11 @@ export default async function QuotePage({ params }: QuotePageProps) {
 
   const { data, project, tabContext, quoteSummary } = pageData;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden print:bg-white">
       <header className="shrink-0 border-b bg-background print:hidden">
         <WorkspaceHeaderBar
-          actions={
-            <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
-          }
+          actions={<UserMenu />}
         >
           <ProjectWorkspaceHeader project={project} subtitle="Client quote" />
         </WorkspaceHeaderBar>

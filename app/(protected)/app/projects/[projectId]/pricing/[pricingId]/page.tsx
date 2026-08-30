@@ -9,15 +9,14 @@ import { ProjectWorkspaceNav } from "@/components/projects/ProjectWorkspaceNav";
 import { SetupGuidanceServerBanner } from "@/components/setup/SetupGuidanceServerBanner";
 import { measureServerLoad } from "@/lib/perf/timing";
 import {
-  getPricingWorkspaceData,
-  getProjectWorkspaceTabContext,
-} from "@/lib/pricing/actions";
-import {
-  getLatestQuoteSummary,
-  getQuoteSummaryForPricingDocument,
-} from "@/lib/quotes/actions";
-import { getProject } from "@/lib/projects/actions";
-import { createClient } from "@/lib/supabase/server";
+  getPricingWorkspaceDataWithContext,
+  getProjectWorkspaceTabContextWithContext,
+} from "@/lib/pricing/pricing-loaders";
+import { getQuoteSummaryForPricingDocument } from "@/lib/quotes/actions";
+import { getLatestQuoteSummaryWithContext } from "@/lib/quotes/quote-loaders";
+import { getProjectWithContext } from "@/lib/projects/project-loaders";
+import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
+import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
 type PricingPageProps = {
@@ -29,19 +28,19 @@ export default async function PricingPage({ params }: PricingPageProps) {
   const { projectId, pricingId } = await params;
 
   const pageData = await measureServerLoad("pricing", async () => {
-    const [
-      data,
-      project,
-      tabContext,
-      quoteSummaryForDoc,
-      quoteSummary,
-    ] = await Promise.all([
-      getPricingWorkspaceData(projectId, pricingId),
-      getProject(projectId),
-      getProjectWorkspaceTabContext(projectId),
-      getQuoteSummaryForPricingDocument(pricingId),
-      getLatestQuoteSummary(projectId),
-    ]);
+    const auth = await requireAuthOrgContext();
+    if (!auth.ok) {
+      notFound();
+    }
+
+    const [data, project, tabContext, quoteSummaryForDoc, quoteSummary] =
+      await Promise.all([
+        getPricingWorkspaceDataWithContext(auth, projectId, pricingId),
+        getProjectWithContext(auth, projectId),
+        getProjectWorkspaceTabContextWithContext(auth, projectId),
+        getQuoteSummaryForPricingDocument(pricingId),
+        getLatestQuoteSummaryWithContext(auth, projectId),
+      ]);
 
     return { data, project, tabContext, quoteSummaryForDoc, quoteSummary };
   });
@@ -55,24 +54,11 @@ export default async function PricingPage({ params }: PricingPageProps) {
     new Date(data.document.updated_at).getTime() >
       new Date(effectiveQuoteSummary.created_at).getTime();
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
   return (
     <WorkspacePage
       header={
         <WorkspaceHeaderBar
-          actions={
-            <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
-          }
+          actions={<UserMenu />}
         >
           <ProjectWorkspaceHeader project={project} subtitle="Final pricing" />
         </WorkspaceHeaderBar>

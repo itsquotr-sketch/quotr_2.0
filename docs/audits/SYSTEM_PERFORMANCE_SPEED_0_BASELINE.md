@@ -784,3 +784,178 @@ No product-code changes in Speed 0.
 Exact next action: **SYSTEM-PERFORMANCE-SPEED-1A = REQUEST CONSOLIDATION** (not started in this batch). Do not start SPEED 1A in this batch. Do not start SPEED 1B, Pricing UX, Bathroom, or Production deploy.
 
 **REQ-TXN-01 = VERIFY_LATER — LOCAL SUPABASE REQUIRED**
+
+---
+
+# SYSTEM PERFORMANCE — SPEED 1A RESULT
+
+**Status:** COMPLETE LOCAL / OWNER PERFORMANCE REVIEW PENDING  
+**Date:** 2026-08-31  
+**Does not:** start Speed 1B, change refresh/state behaviour, batch derived facts, change persist RPC, change calculators, start Pricing UX, start Bathroom, commit, push, or deploy Production.
+
+**Companion:** `scripts/verify-system-performance-speed-1a.ts`
+
+## What changed
+
+Request-scoped memoisation and trusted internal loaders. Product behaviour is unchanged.
+
+1. **Canonical auth resolver** (`requireAuthOrgContext`) is wrapped in **React.cache()**. Next.js 16 / React 19 discards this cache at the end of each request / server-action invocation. Nested calls in the same request share one `getUser` → `profiles.org_id` → `organisations.id` tree.
+2. **Supabase server `createClient`** is also React.cache()’d. One cookie-bound client per request. Not a process-global client.
+3. **Public vs internal helpers:** loaders live in `import "server-only"` modules (`*-loaders.ts`). They receive `AuthOrgContext` as a trusted argument and are **not** `"use server"` exports (so clients cannot pass a forged ctx). Public `"use server"` wrappers still authenticate.
+4. **Project / Pricing / Quote pages** resolve auth once, then `Promise.all` independent domain loaders with that context.
+5. **Pricing summary** is loaded once on Project open and passed into `getProjectWorkspaceTabContextWithContext` (no nested `getLatestPricingSummary` auth/query).
+6. **Generate / Update:** `loadProjectStage` is request-cached; Update’s second stage read is the same in-flight/cached result (both occur before any stage write). `getEstimateContextWithContext` uses the already-resolved auth. Persist RPC, calculator, recalibration, `revalidatePath`, and client `router.refresh` are unchanged.
+7. **`markEstimateStaleWithContext`** reuses the mutation’s trusted context. Public `markEstimateStale` still authenticates.
+8. **Quote** loads company settings via `getCompanySettingsWithContext` (data, not identity). Standalone `getCompanySettings` still authenticates.
+9. **Layout** uses `requireAuthOrgContext` instead of a parallel getUser/profile/org tree. Display names use a separate request-scoped helper (not stored as identity authority).
+10. **Dev-only** underlying-auth counter (`getUnderlyingAuthResolutionCount`) — production no-op, no PII, no telemetry.
+
+## What intentionally did not change
+
+- `router.refresh` / `revalidatePath` policy (Speed 1B)
+- Fact upsert, question mirror, derived-fact N+1, missing-question rebuild (Speed 1B / 2)
+- `persist_estimate_generation_v1` payload and semantics
+- Deck / Fence / RW calculators, rates, productivity, commercial formulas
+- Pricing/Quote UX, optimistic pricing edits
+- RLS, org/project predicates on domain queries
+- Region / Vercel / Supabase topology
+- Migrations
+
+## Security model (locked)
+
+| Rule | Mechanism |
+| --- | --- |
+| Authentication | `supabase.auth.getUser()` from the request cookie session |
+| Organisation | `profiles.org_id` then `organisations.id` — never client `org_id` / `organisation_id` / `user_id` |
+| Ownership | `assertOrgOwnsActiveProject` (and resource helpers) still `eq org_id` + `deleted_at` |
+| RLS | Unchanged; trusted context does not replace DB isolation |
+| Fail-closed | No user / no profile / missing or mismatched org → `not_authenticated` or `organisation_required` |
+| Cache | React.cache only. Failed results stay failed in-request. Thrown resolver cannot become a later success. Next request starts empty. |
+
+## Cache lifecycle (proved)
+
+Mechanism: `import { cache } from "react"` wrapping a **zero-argument** resolver.
+
+| Scenario | Result |
+| --- | --- |
+| 3× `requireAuthOrgContext()` in one request | Underlying getUser+profile+org **once** |
+| Second request / later server action | Independently resolved (Next request store is empty) |
+| Different authenticated user | Different request → independent resolution |
+| Failed auth in-request | Cached failure; cannot become success without a new request |
+| Thrown resolver | Cached rejection; nested calls throw; never a stale success |
+| Process-global Map keyed by user | **Not used** |
+| Node/tsx scripts (no Next request store) | React.cache is a **no-op** — executions are not memoised, which proves identity is not leaked process-globally outside App Router |
+
+## Before / after call graphs (DERIVED)
+
+### Project open — BEFORE (Speed 0)
+
+```
+layout: getUser → profile → org/settings → needsCompanyBasics (repeat auth)
+  → Promise.all(7 loaders) each with own auth+ownership
+    → tabContext nested getLatestPricingSummary (repeat auth)
+  → page getUser + profile.full_name
+  → setup readiness (repeat auth)
+```
+
+Auth/org trees: **~10–12**. Pricing summary: **2**.
+
+### Project open — AFTER (Speed 1A)
+
+```
+layout: requireAuthOrgContext (cached) → display + needsCompanyBasics (cached auth)
+  → page: requireAuthOrgContext (same cache)
+    → Promise.all(project, assistant, notes, pending, pricing summary, quote summary)
+    → tabContext(preloaded pricing summary)  // estimate stale only
+  → UserMenu from AppShell (no extra profile query)
+```
+
+Auth/org trees: **1** underlying. Pricing summary: **1**. Ownership still enforced per loader (defence in depth). Domain reads remain parallel.
+
+### Generate — BEFORE
+
+```
+loadProjectStage (auth+stage)
+  → parallel existing estimate + getEstimateContext (repeat auth)
+  → calculate → persist RPC → pricing flag → optional stage → revalidate
+  → client router.refresh
+```
+
+### Generate — AFTER
+
+```
+loadProjectStage (cached auth+stage)
+  → parallel existing estimate + getEstimateContextWithContext(auth)
+  → calculate → persist RPC → pricing flag → optional stage → revalidate
+  → client router.refresh  // UNCHANGED
+```
+
+### Update — BEFORE
+
+`loadProjectStage` then `runEstimateGeneration` → **second** `loadProjectStage`.
+
+### Update — AFTER
+
+Same two call sites; **one** cached stage read (both before any stage write).
+
+### Pricing / Quote
+
+One request auth, then parallel workspace + project + tab + summaries. Quote company settings use trusted context.
+
+## DERIVED query / auth counts
+
+| Surface | Metric | BEFORE | AFTER |
+| --- | --- | ---: | ---: |
+| Project open | underlying auth/org trees | ~10–12 | **1** |
+| Project open | pricing summary reads | 2 | **1** |
+| Project open | project ownership checks | ~7 | ~6 (still per loader; no identity cache) |
+| Project open | total derived queries | ~25–40 | **~18–28** (auth amplification removed; domain reads remain) |
+| Generate | auth/context trees | 2+ | **1** |
+| Generate | stage reads | 1 | 1 |
+| Update | stage reads | 2 | **1** |
+| Pricing open | auth trees | ~5–6 | **1** |
+| Quote open | auth trees (incl. company settings) | ~5–6 | **1** |
+
+Label: **DERIVED** from code. Not Postgres `pg_stat_statements`. Do not claim Preview wall-clock savings until measured.
+
+## router.refresh / revalidatePath
+
+Unchanged except no redundant nested pricing-summary **loader**. AssistantShell still issues `router.refresh` after Generate/Update/Clarify. Fact save still `revalidatePath(/app/projects/:id)`. **Speed 1B.**
+
+## Estimator
+
+CPU harness expected to remain ~1–4 ms / fixture E ~4.11 ms avg. Economics: REAL-JOB-01 **12878.01** unchanged.
+
+## Remaining Speed 1B targets
+
+- Clarify / fact-save refresh policy
+- Generate / Update refresh policy and returning canonical mutation state
+- Narrower refresh / local reconciliation
+- Not: derived-fact batching (Speed 2), payload slimming (Speed 3)
+
+## Preview measurement plan
+
+After owner review + commit/push of Speed 1A:
+
+1. Project usable load (Job Plan first paint)
+2. Generate action wall-clock
+3. Update action wall-clock
+4. Pricing open
+5. Quote open
+
+Compare to Speed 0 **INITIAL PERFORMANCE BUDGET PROPOSALS**. Do not add CI wall-clock failures.
+
+## Region
+
+Unchanged: Cloudflare AKL measured; Vercel compute region **NOT CURRENTLY OBSERVABLE** in-repo; Supabase Postgres origin **NOT CURRENTLY OBSERVABLE**. No region changes.
+
+## REQ-TXN-01
+
+**VERIFY_LATER — NOT EXECUTED / ENVIRONMENT BLOCKED** unless local `supabase_db_quotr*` is available during this batch.
+
+## Next action
+
+**SYSTEM-PERFORMANCE-SPEED-1A = COMPLETE LOCAL / OWNER PERFORMANCE REVIEW PENDING**
+
+Do not start SPEED 1B in this batch.
+

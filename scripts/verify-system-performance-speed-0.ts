@@ -289,8 +289,18 @@ check(
   authSrc.includes('.from("organisations")')
 );
 check(
-  "no React.cache weakening of auth in auth-org-context (Speed 0 must not change this silently)",
-  !authSrc.includes("cache(")
+  "Speed 0 baseline records no React.cache at measurement time",
+  audit.includes("no `React.cache()`")
+);
+check(
+  "auth-org-context does not use process-global identity cache",
+  !authSrc.includes("new Map") &&
+    !authSrc.includes("unstable_cache") &&
+    !authSrc.includes("use cache")
+);
+check(
+  "Speed 1A may add request-scoped React.cache around requireAuthOrgContext",
+  authSrc.includes("cache(") ? authSrc.includes('from "react"') : true
 );
 check(
   "assertOrgOwnsActiveProject still filters org_id + deleted_at",

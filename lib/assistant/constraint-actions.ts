@@ -5,7 +5,7 @@ import { z } from "zod";
 import { upsertProjectConstraintRecord } from "@/lib/assistant/scope-persistence";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
-import { markEstimateStale } from "@/lib/estimate/stale";
+import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 
@@ -71,7 +71,7 @@ export async function updateProjectConstraint(
     return { error: result.error };
   }
 
-  await markEstimateStale(projectId);
+  await markEstimateStaleWithContext(context, projectId);
   revalidateAssistantPaths(projectId);
   return { success: true };
 }

@@ -5,7 +5,7 @@ import { z } from "zod";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
-import { markEstimateStale } from "@/lib/estimate/stale";
+import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { assertOrgOwnsActiveProject, assertOrgOwnsWorkArea } from "@/lib/security/org-ownership";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import {
@@ -150,7 +150,7 @@ export async function addWorkAreaToProject(input: {
     return { error: ensureResult.error };
   }
 
-  await markEstimateStale(projectId);
+  await markEstimateStaleWithContext(context, projectId);
   revalidateProjectPath(projectId);
   return {
     success: true,
@@ -239,7 +239,7 @@ export async function excludeWorkAreaFromProject(input: {
     return { error: error.message };
   }
 
-  await markEstimateStale(projectId);
+  await markEstimateStaleWithContext(context, projectId);
 
   const { data: project } = await supabase
     .from("projects")

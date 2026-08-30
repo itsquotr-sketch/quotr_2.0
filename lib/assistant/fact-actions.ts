@@ -7,7 +7,7 @@ import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-quest
 import { commitUserFactEdit } from "@/lib/assistant/scope-persistence";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
-import { markEstimateStale } from "@/lib/estimate/stale";
+import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 
 const updateFactSchema = z.object({
@@ -120,7 +120,7 @@ export async function updateProjectFact(
     return { error: ensureResult.error };
   }
 
-  await markEstimateStale(projectId);
+  await markEstimateStaleWithContext(context, projectId);
   revalidateProjectPath(projectId);
   return { success: true };
 }

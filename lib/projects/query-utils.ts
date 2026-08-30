@@ -19,6 +19,19 @@ export const PROJECT_SELECT = `${PROJECT_SELECT_BASE}, ${PROJECT_SELECT_LIFECYCL
 
 export const PROJECT_SELECT_WITHOUT_BUSINESS_STATUS = `${PROJECT_SELECT_BASE}, ${PROJECT_SELECT_LIFECYCLE}`;
 
+export function getProjectSelect(
+  lifecycleAvailable: boolean,
+  businessStatusAvailable: boolean
+): string {
+  if (!lifecycleAvailable) {
+    return PROJECT_SELECT_BASE;
+  }
+
+  return businessStatusAvailable
+    ? PROJECT_SELECT
+    : PROJECT_SELECT_WITHOUT_BUSINESS_STATUS;
+}
+
 type SupabaseError = { message?: string; code?: string } | null;
 
 export function isMissingLifecycleColumnsError(error: SupabaseError): boolean {

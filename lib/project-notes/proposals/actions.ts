@@ -17,8 +17,9 @@ import {
 } from "@/lib/assistant/scope-persistence";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
-import { markEstimateStale } from "@/lib/estimate/stale";
+import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { getProjectNoteTypeLabel, isInternalProjectNote } from "@/lib/project-notes/types";
+import { getPendingNoteProposalWithContext } from "@/lib/project-notes/note-loaders";
 import {
   mapExtractionToProposalItems,
   mapNoteProposalRow,
@@ -74,19 +75,7 @@ export async function getPendingNoteProposal(
   const context = await getAuthOrgContext();
   if (!context) return null;
 
-  const { data } = await context.supabase
-    .from("note_proposals")
-    .select(
-      "id, project_id, note_ids, summary, status, proposed_work_areas, proposed_facts, proposed_constraints, created_at, reviewed_at"
-    )
-    .eq("project_id", projectId)
-    .eq("org_id", context.orgId)
-    .eq("status", "pending_review")
-    .order("created_at", { ascending: false })
-    .limit(1)
-    .maybeSingle();
-
-  return data ? mapNoteProposalRow(data) : null;
+  return getPendingNoteProposalWithContext(context, projectId);
 }
 
 export async function analyseProjectNotes(
@@ -625,7 +614,7 @@ export async function applyNoteProposal(
       .maybeSingle();
 
     if (estimate) {
-      await markEstimateStale(projectId);
+      await markEstimateStaleWithContext(context, projectId);
     }
   }
 

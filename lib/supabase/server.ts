@@ -1,8 +1,17 @@
+import { cache } from "react";
 import { createServerClient } from "@supabase/ssr";
 import { cookies } from "next/headers";
 import "@/lib/env";
 
-export async function createClient() {
+/**
+ * Request-scoped Supabase server client.
+ *
+ * Wrapped in React.cache() so layout, pages, and nested helpers in the same
+ * Next.js request share one cookie-bound client. The cache is discarded when
+ * the request ends — this is not a process-global client and must never be
+ * used as cross-request session state.
+ */
+export const createClient = cache(async function createClient() {
   const cookieStore = await cookies();
 
   return createServerClient(
@@ -25,4 +34,4 @@ export async function createClient() {
       },
     }
   );
-}
+});

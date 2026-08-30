@@ -110,7 +110,7 @@ export async function isSetupIncomplete(): Promise<boolean> {
  * Leaving not_started via saveCompanyBasics unlocks Dashboard.
  */
 export async function needsCompanyBasics(): Promise<boolean> {
-  const context = await getSetupAuthContext();
+  const context = await getAuthOrgContext();
   if (!context) {
     return true;
   }

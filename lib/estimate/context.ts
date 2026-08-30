@@ -5,6 +5,8 @@ import type {
 } from "@/components/setup/types";
 import type { EstimateContext } from "@/lib/estimate/types";
 import { getAuthOrgContext } from "@/lib/assistant/state";
+import type { AuthOrgContext } from "@/lib/security/auth-org-context";
+import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import {
@@ -72,13 +74,14 @@ function mapMaterialWastageSettings(
   };
 }
 
-export async function getEstimateContext(
+export async function getEstimateContextWithContext(
+  context: AuthOrgContext,
   projectId: string,
   retried = false
 ): Promise<EstimateContext | { error: string }> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return { error: "Not authenticated." };
+  const owned = await assertOrgOwnsActiveProject(context, projectId);
+  if ("error" in owned) {
+    return { error: "Project not found." };
   }
 
   const { supabase, orgId } = context;
@@ -88,12 +91,13 @@ export async function getEstimateContext(
     .from("projects")
     .select("id, quality_level")
     .eq("id", projectId)
+    .eq("org_id", orgId)
     .maybeSingle();
 
   if (projectError || !project) {
     if (projectError && isMissingLifecycleColumnsError(projectError) && !retried) {
       markLifecycleColumnsUnavailable();
-      return getEstimateContext(projectId, true);
+      return getEstimateContextWithContext(context, projectId, true);
     }
     return { error: "Project not found." };
   }
@@ -103,12 +107,13 @@ export async function getEstimateContext(
       .from("projects")
       .select("deleted_at")
       .eq("id", projectId)
+      .eq("org_id", orgId)
       .maybeSingle();
 
     if (lifecycleError) {
       if (isMissingLifecycleColumnsError(lifecycleError) && !retried) {
         markLifecycleColumnsUnavailable();
-        return getEstimateContext(projectId, true);
+        return getEstimateContextWithContext(context, projectId, true);
       }
       return { error: "Project not found." };
     }
@@ -201,4 +206,14 @@ export async function getEstimateContext(
     materialWastageSettings: mapMaterialWastageSettings(organisationSettings),
     rates: (rates ?? []) as OrganisationRate[],
   };
+}
+
+export async function getEstimateContext(
+  projectId: string
+): Promise<EstimateContext | { error: string }> {
+  const context = await getAuthOrgContext();
+  if (!context) {
+    return { error: "Not authenticated." };
+  }
+  return getEstimateContextWithContext(context, projectId);
 }

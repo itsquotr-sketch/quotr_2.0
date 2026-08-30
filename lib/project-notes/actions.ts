@@ -5,8 +5,11 @@ import { z } from "zod";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import { mapProjectNote } from "@/lib/project-notes/mappers";
 import {
+  listProjectNotesWithContext,
+  type ProjectNoteListResult,
+} from "@/lib/project-notes/note-loaders";
+import {
   isInternalProjectNote,
-  type ProjectNote,
   type ProjectNoteActionState,
   type ProjectNoteSource,
   type ProjectNoteType,
@@ -78,13 +81,7 @@ async function assertProjectOwned(
   return { ok: true };
 }
 
-const INITIAL_NOTES_LIMIT = 20;
-
-export type ProjectNoteListResult = {
-  notes: ProjectNote[];
-  totalCount: number;
-  pendingAnalysisCount: number;
-};
+export type { ProjectNoteListResult };
 
 async function fetchProjectNoteCounts(
   supabase: Awaited<
@@ -143,33 +140,7 @@ export async function listProjectNotes(
     return { notes: [], totalCount: 0, pendingAnalysisCount: 0 };
   }
 
-  const { supabase, orgId } = context;
-  const limit = options?.limit ?? INITIAL_NOTES_LIMIT;
-
-  const [{ data, error }, counts] = await Promise.all([
-    supabase
-      .from("project_notes")
-      .select(
-        "id, project_id, content, note_type, source, captured_by, captured_at, updated_at, analysis_status"
-      )
-      .eq("project_id", projectId)
-      .eq("org_id", orgId)
-      .is("deleted_at", null)
-      .order("captured_at", { ascending: false })
-      .limit(limit),
-    fetchProjectNoteCounts(supabase, orgId, projectId),
-  ]);
-
-  if (error) {
-    console.error("[listProjectNotes]", error.message);
-    return { notes: [], totalCount: 0, pendingAnalysisCount: 0 };
-  }
-
-  return {
-    notes: (data ?? []).map(mapProjectNote),
-    totalCount: counts.totalCount,
-    pendingAnalysisCount: counts.pendingAnalysisCount,
-  };
+  return listProjectNotesWithContext(context, projectId, options);
 }
 
 export async function createProjectNote(

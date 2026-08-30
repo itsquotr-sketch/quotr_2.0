@@ -37,6 +37,9 @@ export async function assertOrgOwnsProject(
  * Soft-deleted projects are treated as not found so their children are hidden
  * from active flows without hard-deleting stored child rows (S1-017 / 2A.4).
  * Lifecycle paths that must see deleted projects should use assertOrgOwnsProject.
+ *
+ * Not request-cached: each loader still enforces org+project predicates
+ * (defence in depth). Auth/org discovery is memoised separately.
  */
 export async function assertOrgOwnsActiveProject(
   ctx: AuthOrgContext,

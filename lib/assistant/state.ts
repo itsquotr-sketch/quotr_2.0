@@ -7,6 +7,7 @@ import type { EstimateRequirement } from "@/lib/estimate/requirements";
 import {
   getAuthOrgContext,
   requireAuthOrgContext,
+  type AuthOrgContext,
 } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 
@@ -23,14 +24,10 @@ export {
  */
 export { getAuthOrgContext, requireAuthOrgContext };
 
-export async function getAssistantState(
+export async function getAssistantStateWithContext(
+  auth: AuthOrgContext,
   projectId: string
 ): Promise<AssistantState> {
-  const auth = await requireAuthOrgContext();
-  if (!auth.ok) {
-    notFound();
-  }
-
   // Soft-deleted projects are not found — children stay stored but hidden from
   // normal active assistant queries (Batch 2A.4 / S1-017).
   const owned = await assertOrgOwnsActiveProject(auth, projectId);
@@ -163,4 +160,14 @@ export async function getAssistantState(
       organisationSettings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT,
     requirementSnapshotRequirements,
   });
+}
+
+export async function getAssistantState(
+  projectId: string
+): Promise<AssistantState> {
+  const auth = await requireAuthOrgContext();
+  if (!auth.ok) {
+    notFound();
+  }
+  return getAssistantStateWithContext(auth, projectId);
 }
