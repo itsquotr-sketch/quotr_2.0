@@ -69,6 +69,11 @@ Runtime validation:
 
 See `docs/KNOWN_LIMITATIONS.md`.
 
+## Verification debt (Speed 0)
+
+- **REQ-TXN-01 local verifier** (`scripts/verify-req-txn-01-atomic-estimate-persistence.ts`): **VERIFY_LATER — NOT EXECUTED / ENVIRONMENT BLOCKED.** Local Docker `supabase_db_quotr*` was unavailable during SYSTEM-PERFORMANCE-SPEED-0. Do **not** mark PASS. Do **not** mark product FAIL. Feature remains **COMPLETE / REMOTE VALIDATED** (migration 036 on `lxvnylhsbvudzzupxeqr`). Re-run the local verifier when `supabase start` (or equivalent) is available. Canonical record: `docs/audits/SYSTEM_PERFORMANCE_SPEED_0_BASELINE.md`.
+- **Region confirmation:** Cloudflare AKL is measured from the Speed 0 probe. Vercel compute/function region and Supabase Postgres origin region are **not currently observable** in-repo. Confirm both in dashboards before treating infrastructure latency as a programme. Do not change regions from this note.
+
 ## Rollback
 
 - Revert to the previous Vercel deployment from the hosting dashboard.
