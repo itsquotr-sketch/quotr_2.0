@@ -1,14 +1,40 @@
 /**
- * DECK-MATURITY-2B — fascia coverage estimating model.
- * Not a compliance or weather-tightness check.
+ * DECK-R7 — fascia (edge board) vs skirting (vertical face cladding).
+ *
+ * These are not the same physical scope.
+ * Fascia: exposed deck perimeter × courses. Not height-driven.
+ * Skirting: optional explicit vertical face. Height-sensitive.
+ * Elevation does not auto-include skirting.
  */
-import { getNumberFact, round2 } from "@/lib/estimate/facts";
+import { getBooleanFact, getNumberFact, round2 } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 export const DEFAULT_FASCIA_GROUND_GAP_M = 0.02;
 export const DEFAULT_FASCIA_BOARD_FACE_M = 0.14;
+export const DEFAULT_FASCIA_COURSES = 1;
+
+export const DECK_SKIRTING_INCLUDED_FACT_KEY = "deck.skirting_included";
+export const DECK_FASCIA_COMPONENT_KEY = "deck.fascia";
+export const DECK_FASCIA_INSTALL_COMPONENT_KEY = "deck.fascia.install";
+export const DECK_SKIRTING_COMPONENT_KEY = "deck.skirting";
+export const DECK_SKIRTING_INSTALL_COMPONENT_KEY = "deck.skirting.install";
 
 export type DeckFasciaQuantities = {
+  edgeLengthM: number;
+  courses: number;
+  fasciaNetLm: number;
+  fasciaPurchaseLm: number;
+  /** @deprecated height belongs to skirting, not fascia */
+  groundGapM: number;
+  groundGapDefaulted: boolean;
+  deckHeightM: number | null;
+  boardFaceM: number;
+  effectiveHeightM: number;
+  boardHeightEquivalents: number;
+  heightModelApplied: boolean;
+};
+
+export type DeckSkirtingQuantities = {
   edgeLengthM: number;
   groundGapM: number;
   groundGapDefaulted: boolean;
@@ -16,8 +42,8 @@ export type DeckFasciaQuantities = {
   boardFaceM: number;
   effectiveHeightM: number;
   boardHeightEquivalents: number;
-  fasciaNetLm: number;
-  fasciaPurchaseLm: number;
+  skirtingNetLm: number;
+  skirtingPurchaseLm: number;
   heightModelApplied: boolean;
 };
 
@@ -28,6 +54,34 @@ export function deckFasciaBoardFaceM(boardWidthMm: number | null): number {
   return DEFAULT_FASCIA_BOARD_FACE_M;
 }
 
+export function deckExposedPerimeterM(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  lengthM: number | null;
+  widthM: number | null;
+  areaM2: number;
+}): number {
+  const edgeFact = getNumberFact(
+    [...params.facts],
+    params.workAreaId,
+    "deck.vertical_face_board_length_lm"
+  );
+  if (edgeFact != null) return edgeFact;
+  return round2(
+    params.lengthM && params.widthM
+      ? 2 * (params.lengthM + params.widthM)
+      : params.areaM2 * 0.5
+  );
+}
+
+function wastePurchaseLm(netLm: number, wastePercent: number): number {
+  return round2(netLm * (1 + wastePercent / 100));
+}
+
+/**
+ * Ordinary fascia / edge boards.
+ * Driver: exposed perimeter × courses. Not deck elevation height.
+ */
 export function calculateDeckFasciaQuantities(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
@@ -38,22 +92,49 @@ export function calculateDeckFasciaQuantities(params: {
   boardWidthMm: number | null;
   wastePercent: number;
 }): DeckFasciaQuantities {
-  const facts = [...params.facts];
-  const edgeFact = getNumberFact(
-    facts,
+  const edgeLengthM = deckExposedPerimeterM(params);
+  const coursesFact = getNumberFact(
+    [...params.facts],
     params.workAreaId,
-    "deck.vertical_face_board_length_lm"
+    "deck.fascia_courses"
   );
-  const edgeLengthM =
-    edgeFact ??
-    round2(
-      params.lengthM && params.widthM
-        ? 2 * (params.lengthM + params.widthM)
-        : params.areaM2 * 0.5
-    );
+  const courses =
+    coursesFact != null && coursesFact > 0 ? coursesFact : DEFAULT_FASCIA_COURSES;
+  const fasciaNetLm = round2(edgeLengthM * courses);
+  const boardFaceM = deckFasciaBoardFaceM(params.boardWidthMm);
 
+  return {
+    edgeLengthM,
+    courses,
+    fasciaNetLm,
+    fasciaPurchaseLm: wastePurchaseLm(fasciaNetLm, params.wastePercent),
+    groundGapM: DEFAULT_FASCIA_GROUND_GAP_M,
+    groundGapDefaulted: true,
+    deckHeightM: params.deckHeightM,
+    boardFaceM,
+    effectiveHeightM: 0,
+    boardHeightEquivalents: courses,
+    heightModelApplied: false,
+  };
+}
+
+/**
+ * Optional full-height vertical deck face / skirting.
+ * Only when the builder explicitly includes skirting.
+ */
+export function calculateDeckSkirtingQuantities(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  lengthM: number | null;
+  widthM: number | null;
+  areaM2: number;
+  deckHeightM: number | null;
+  boardWidthMm: number | null;
+  wastePercent: number;
+}): DeckSkirtingQuantities {
+  const edgeLengthM = deckExposedPerimeterM(params);
   const gapFact = getNumberFact(
-    facts,
+    [...params.facts],
     params.workAreaId,
     "deck.ground_clearance_m"
   );
@@ -69,10 +150,7 @@ export function calculateDeckFasciaQuantities(params: {
   const boardHeightEquivalents = heightModelApplied
     ? effectiveHeightM / boardFaceM
     : 1;
-  const fasciaNetLm = round2(edgeLengthM * boardHeightEquivalents);
-  const fasciaPurchaseLm = round2(
-    fasciaNetLm * (1 + params.wastePercent / 100)
-  );
+  const skirtingNetLm = round2(edgeLengthM * boardHeightEquivalents);
 
   return {
     edgeLengthM,
@@ -82,8 +160,34 @@ export function calculateDeckFasciaQuantities(params: {
     boardFaceM,
     effectiveHeightM,
     boardHeightEquivalents,
-    fasciaNetLm,
-    fasciaPurchaseLm,
+    skirtingNetLm,
+    skirtingPurchaseLm: wastePurchaseLm(skirtingNetLm, params.wastePercent),
     heightModelApplied,
   };
+}
+
+export function deckSkirtingIncluded(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+}): boolean {
+  return (
+    getBooleanFact(
+      [...params.facts],
+      params.workAreaId,
+      DECK_SKIRTING_INCLUDED_FACT_KEY
+    ) === true
+  );
+}
+
+export function deckFasciaIncluded(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+}): boolean {
+  return (
+    getBooleanFact(
+      [...params.facts],
+      params.workAreaId,
+      "deck.vertical_face_boards_required"
+    ) === true
+  );
 }

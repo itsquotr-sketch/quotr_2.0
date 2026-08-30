@@ -205,7 +205,8 @@ export function deckScopeAuthorityMatrix(params: {
         params.labourMode === "DETAILED_AUTHORITATIVE"
           ? "PROMOTED"
           : "NEEDS_OWNER_BENCHMARK",
-      reason: "Uses starter or company hours/m² when the split is complete.",
+      reason:
+        "Uses starter or company hours/installed decking lm when the split is complete.",
     },
     {
       intent: "Substructure framing labour",
@@ -283,7 +284,7 @@ export function deckScopeAuthorityMatrix(params: {
       oldAuthority: "getCombinedLabourAccessFactor once",
       newAuthority: "DETAILED_AUTHORITATIVE",
       readiness: "PROMOTED",
-      reason: "Applied once to hours, not per component then again.",
+      reason: "Applied once to physical base hours. Builder Review does not re-apply.",
     },
     {
       intent: "Elevated extra",

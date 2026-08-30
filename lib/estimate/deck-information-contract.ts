@@ -106,7 +106,16 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     calculatorConsumed: true,
     physical: true,
     commercial: true,
-    reason: "Fascia allowance; quantity from geometry when included.",
+    reason: "Fascia / edge boards; quantity from exposed perimeter when included. Not full-height skirting.",
+  },
+  {
+    factKey: "deck.skirting_included",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: true,
+    reason:
+      "Optional vertical face / skirting cladding. Height-sensitive. Do not infer from fascia or elevation.",
   },
   {
     factKey: "deck.access_type",

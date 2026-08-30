@@ -1,4 +1,9 @@
 import { round2 } from "@/lib/estimate/facts";
+import {
+  formatLabourAdjustmentPrimary,
+  formatLabourCalculationLine,
+  formatLabourHours,
+} from "@/lib/estimate/builder-presentation-format";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
 import { buildPersistedLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { normalizeRateSourceLabel } from "@/lib/estimate/rate-source-labels";
@@ -121,11 +126,20 @@ export function createLabourLineItem(params: {
     labourSellRate: params.labourSellRate,
   });
 
-  const adjustmentLabel = params.adjustmentLabel ?? "site access/carry";
+  const adjustmentSummary =
+    params.adjustmentLabel ??
+    formatLabourAdjustmentPrimary(labourHoursResult.adjustmentFactor);
+  const identitySummary = formatLabourCalculationLine({
+    quantity: params.quantity,
+    unit: params.unit,
+    hoursPerUnit: params.productivityHoursPerUnit,
+    adjustmentFactor: labourHoursResult.adjustmentFactor,
+    adjustmentSummary,
+  });
   const equation =
     labourHoursResult.adjustmentFactor !== 1
-      ? `${params.quantity} ${params.unit} × ${params.productivityHoursPerUnit} hrs/${params.unit} = ${labourHoursResult.baseHours} base hrs · ${adjustmentLabel} ×${labourHoursResult.adjustmentFactor} = ${labourHours} hrs`
-      : `${params.quantity} ${params.unit} × ${params.productivityHoursPerUnit} hrs/${params.unit} = ${labourHours} hrs`;
+      ? `${formatLabourHours(labourHoursResult.baseHours)} base h · ${adjustmentSummary} → ${formatLabourHours(labourHours)} h`
+      : `${formatLabourHours(labourHours)} h`;
   const noteParts = [equation, params.notes].filter(Boolean);
 
   return withRateMetadata(
@@ -141,6 +155,7 @@ export function createLabourLineItem(params: {
       productivityUnit: params.unit,
       rateSource: params.rateSource,
       notes: noteParts.join(" · "),
+      identitySummary,
       sortOrder: params.sortOrder,
       componentKey: params.componentKey,
       ...buildAmounts(

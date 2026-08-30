@@ -210,13 +210,13 @@ console.log("== PRODUCTIVITY ==");
 const prodKeys = DECK_PRODUCTIVITY_RATE_CATALOGUE.map((e) => e.item_key);
 check(
   "1 Rates exposes Decking productivity",
-  prodKeys.includes("deck.decking.install.hours_per_m2") &&
+  prodKeys.includes("deck.decking.install.hours_per_lm") &&
     ratesPage.includes("Labour productivity") &&
     (RATES_SECTION_IDS as readonly string[]).includes("productivity")
 );
 check(
   "2 Rates exposes Substructure productivity",
-  prodKeys.includes("deck.substructure.install.hours_per_m2")
+  prodKeys.includes("deck.substructure.install.hours_per_framing_lm")
 );
 check(
   "3 Rates exposes Pile productivity",
@@ -249,12 +249,12 @@ check(
 
 const baseHours = hoursByLabel(kwilaDeck.lineItems, "Decking installation");
 const deckingBoost = calculateDeck(
-  ctx(kwilaFacts, [productivityOrgRate("deck.decking.install.hours_per_m2", "m2", 0.8)]),
+  ctx(kwilaFacts, [productivityOrgRate("deck.decking.install.hours_per_lm", "lm", 0.12)]),
   wa(kwilaId)
 );
 const subBoost = calculateDeck(
   ctx(kwilaFacts, [
-    productivityOrgRate("deck.substructure.install.hours_per_m2", "m2", 0.9),
+    productivityOrgRate("deck.substructure.install.hours_per_framing_lm", "lm", 0.2),
   ]),
   wa(kwilaId)
 );
@@ -748,11 +748,11 @@ check(
   "67 labour rate resolution still independent of productivity",
   labourEmpty.costRate !== labour78.costRate &&
     resolveProductivity({
-      productivityKey: "deck.decking.install.hours_per_m2",
-      unit: "m2",
-      fallbackHoursPerUnit: 0.55,
+      productivityKey: "deck.decking.install.hours_per_lm",
+      unit: "lm",
+      fallbackHoursPerUnit: 0.077,
       rates: [labourOrgRate(78, 78)],
-    }).hoursPerUnit === 0.55
+    }).hoursPerUnit === 0.077
 );
 
 console.log("\n== OWNER 3×9 COMMERCIAL RESULT ($78 explicit) ==");

@@ -203,7 +203,14 @@ function buildDeckDraft(
   if (isAffirmative(factValue(facts, "deck.vertical_face_boards_required"))) {
     draft = appendScopeClause(
       draft,
-      "Vertical face/fascia boards are included where applicable."
+      "Fascia / edge boards are included where applicable."
+    );
+  }
+
+  if (isAffirmative(factValue(facts, "deck.skirting_included"))) {
+    draft = appendScopeClause(
+      draft,
+      "Deck skirting / vertical face cladding is included where applicable."
     );
   }
 

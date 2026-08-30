@@ -56,6 +56,13 @@ function EngineBadge({
       </Badge>
     );
   }
+  if (support === "leftover") {
+    return (
+      <Badge variant="outline" className="text-[10px]">
+        Legacy
+      </Badge>
+    );
+  }
   return (
     <Badge variant="outline" className="text-[10px]">
       Planned

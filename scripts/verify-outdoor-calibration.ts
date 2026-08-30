@@ -92,8 +92,10 @@ const deck2 = calculateDeck(
   wa("d2", "deck", "Deck 2")
 );
 assert(
-  labels(deck2.lineItems).some((l) => l.includes("Vertical face")),
-  "Deck 2: vertical face boards"
+  labels(deck2.lineItems).some(
+    (l) => l.includes("Fascia") || l.includes("skirting") || l.includes("Vertical face")
+  ),
+  "Deck 2: fascia / edge boards when fascia included"
 );
 assert(
   !labels(deck2.lineItems).includes("Stair set allowance"),

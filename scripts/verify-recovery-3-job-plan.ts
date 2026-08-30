@@ -432,7 +432,7 @@ check(
     itemOn(realCard, "substructure")?.presentation === "INCLUDED" &&
     !realCheckIds.includes("decking") &&
     !realCheckIds.includes("substructure") &&
-    realCheckIds.join(",") === "concrete_to_supports,fascia,removal,steps"
+    realCheckIds.join(",") === "concrete_to_supports,fascia,removal,skirting,steps"
 );
 check(
   "43 included scope appears once",

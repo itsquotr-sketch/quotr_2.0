@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import { EstimateCategoryHeader } from "@/components/ui/estimate-category-header";
 import { StatusPill } from "@/components/ui/status-pill";
 import { formatCurrency } from "@/components/assistant/format";
+import { formatLabourHours } from "@/lib/estimate/builder-presentation-format";
 import type {
   BuilderReviewImprovement,
   BuilderReviewView,
@@ -470,7 +471,7 @@ export function BuilderReviewSurface({
                                 {line.detail ? (
                                   <details className="text-xs text-muted-foreground">
                                     <summary className="cursor-pointer">
-                                      Details
+                                      {labour ? "Calculation details" : "Details"}
                                     </summary>
                                     <p className="mt-1 break-words">{line.detail}</p>
                                   </details>
@@ -487,9 +488,9 @@ export function BuilderReviewSurface({
                                   {labour && line.labourHours != null ? (
                                     <p
                                       className="text-xs tabular-nums text-muted-foreground"
-                                      aria-label={`${line.labourHours} labour-hours`}
+                                      aria-label={`${formatLabourHours(line.labourHours)} labour-hours`}
                                     >
-                                      {line.labourHours}h
+                                      {formatLabourHours(line.labourHours)} h
                                     </p>
                                   ) : null}
                                   <p className="text-sm font-semibold tabular-nums">

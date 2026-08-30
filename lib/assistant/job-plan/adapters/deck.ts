@@ -242,11 +242,21 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
     const fascia = booleanItem({
       id: "fascia",
       workAreaId: id,
-      label: "Fascia / edge finish",
+      label: "Fascia / edge boards",
       factKey: "deck.vertical_face_boards_required",
       facts,
       briefText: context.briefText,
       surfaceReason: "Commercially meaningful unresolved edge finish",
+    });
+
+    const skirting = booleanItem({
+      id: "skirting",
+      workAreaId: id,
+      label: "Deck skirting / vertical face",
+      factKey: "deck.skirting_included",
+      facts,
+      briefText: context.briefText,
+      surfaceReason: "Optional height-sensitive cladding — not inferred from fascia or elevation",
     });
 
     const steps = stepsItem(id, facts, context.briefText);
@@ -293,6 +303,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       substructure,
       removal,
       fascia,
+      skirting,
       steps,
       ...(showConcrete ? [concrete] : []),
       ...(showBalustrade ? [balustrade] : []),

@@ -45,6 +45,12 @@ const EXPLICIT_NEGATIVE: Record<string, readonly string[]> = {
     "no vertical face",
     "without face boards",
   ],
+  "deck.skirting_included": [
+    "no skirting",
+    "without skirting",
+    "no vertical cladding",
+    "without vertical face",
+  ],
   "deck.balustrade_required": [
     "no balustrade",
     "without balustrade",

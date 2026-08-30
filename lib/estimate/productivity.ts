@@ -86,15 +86,27 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     0.35,
     "m²"
   ),
+  "deck.decking.install.hours_per_lm": productivityEntry(
+    "deck.decking.install.hours_per_lm",
+    "Decking install",
+    0.077,
+    "lm"
+  ),
   "deck.decking.install.hours_per_m2": productivityEntry(
     "deck.decking.install.hours_per_m2",
-    "Decking install",
+    "Decking install (legacy h/m² — not consumed for detailed money)",
     0.55,
     "m²"
   ),
+  "deck.substructure.install.hours_per_framing_lm": productivityEntry(
+    "deck.substructure.install.hours_per_framing_lm",
+    "Substructure framing",
+    0.13,
+    "lm"
+  ),
   "deck.substructure.install.hours_per_m2": productivityEntry(
     "deck.substructure.install.hours_per_m2",
-    "Substructure framing",
+    "Substructure framing (legacy h/m² — not consumed for detailed money)",
     0.52,
     "m²"
   ),
@@ -107,6 +119,12 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
   "deck.fascia.install.hours_per_lm": productivityEntry(
     "deck.fascia.install.hours_per_lm",
     "Fascia install",
+    0.45,
+    "lm"
+  ),
+  "deck.skirting.install.hours_per_lm": productivityEntry(
+    "deck.skirting.install.hours_per_lm",
+    "Deck skirting / vertical face install",
     0.45,
     "lm"
   ),

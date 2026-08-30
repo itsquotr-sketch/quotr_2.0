@@ -55,6 +55,7 @@ const CHECK_SCORES: Record<string, number> = {
   "fence.gate_included": 86,
   "fence.top_capping": 70,
   "deck.vertical_face_boards_required": 55,
+  "deck.skirting_included": 52,
   "deck.access_type": 35,
   "deck.balustrade_required": 20,
   "bathroom.plumbing_changes": 62,

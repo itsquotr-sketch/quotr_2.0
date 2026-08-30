@@ -32,7 +32,7 @@ import {
   defaultSupportIdentity,
   lightSupportIdentity,
 } from "../lib/estimate/deck-default-identities";
-import { calculateDeckFasciaQuantities } from "../lib/estimate/deck-fascia";
+import { calculateDeckFasciaQuantities, calculateDeckSkirtingQuantities } from "../lib/estimate/deck-fascia";
 import {
   calculateDeckStepsQuantities,
   estimateDeckRiseCount,
@@ -403,11 +403,32 @@ const fasciaB = calculateDeckFasciaQuantities({
   boardWidthMm: 140,
   wastePercent: 0,
 });
-check("13 fascia height affects quantity", fasciaA.fasciaNetLm !== fasciaB.fasciaNetLm);
-check("14 300mm example = 2.0 equivalents", Math.abs(fasciaA.boardHeightEquivalents - 2) < 0.001);
+check("13 fascia is not height-driven", fasciaA.fasciaNetLm === fasciaB.fasciaNetLm);
+check("14 fascia = exposed perimeter × 1 course", fasciaA.fasciaNetLm === 14);
+const skirtingA = calculateDeckSkirtingQuantities({
+  facts: [],
+  workAreaId: "f",
+  lengthM: 4,
+  widthM: 3,
+  areaM2: 12,
+  deckHeightM: 0.3,
+  boardWidthMm: 140,
+  wastePercent: 0,
+});
+const skirtingB = calculateDeckSkirtingQuantities({
+  facts: [],
+  workAreaId: "f",
+  lengthM: 4,
+  widthM: 3,
+  areaM2: 12,
+  deckHeightM: 0.25,
+  boardWidthMm: 140,
+  wastePercent: 0,
+});
+check("15 skirting 300mm example = 2.0 equivalents", Math.abs(skirtingA.boardHeightEquivalents - 2) < 0.001);
 check(
-  "15 250mm example ≈ 1.64",
-  Math.abs(fasciaB.boardHeightEquivalents - 1.642857) < 0.001
+  "15b skirting 250mm example ≈ 1.64",
+  Math.abs(skirtingB.boardHeightEquivalents - 1.642857) < 0.001
 );
 check(
   "16 fascia labour uses installed fascia lm",
@@ -651,7 +672,8 @@ check(
   "60 Deck reference / REAL-JOB still has money",
   realCost > 0
 );
-check("61 fascia fixtures", Math.abs(fasciaA.boardHeightEquivalents - 2) < 0.001 && fasciaB.boardHeightEquivalents > 1.6);
+check("61 fascia fixtures are perimeter-only", fasciaA.fasciaNetLm === 14 && fasciaB.fasciaNetLm === 14);
+check("61b skirting remains height-sensitive", Math.abs(skirtingA.boardHeightEquivalents - 2) < 0.001 && skirtingB.boardHeightEquivalents > 1.6);
 check("62 pile-depth boundaries", deckPostEmbedmentM(0.449) === 0.2);
 check("63 step fixture 0.70 m → 4 rises", estimateDeckRiseCount(0.7) === 4);
 
@@ -706,13 +728,13 @@ check(
 );
 
 const starterDecking = resolveProductivity({
-  productivityKey: "deck.decking.install.hours_per_m2",
-  unit: "m²",
+  productivityKey: "deck.decking.install.hours_per_lm",
+  unit: "lm",
   fallbackHoursPerUnit: 0,
 });
 const starterFraming = resolveProductivity({
-  productivityKey: "deck.substructure.install.hours_per_m2",
-  unit: "m²",
+  productivityKey: "deck.substructure.install.hours_per_framing_lm",
+  unit: "lm",
   fallbackHoursPerUnit: 0,
 });
 const starterPosts = resolveProductivity({
@@ -737,8 +759,8 @@ const starterDemo = resolveProductivity({
 });
 check(
   "71 starter productivity defaults exact",
-  starterDecking.hoursPerUnit === 0.55 &&
-    starterFraming.hoursPerUnit === 0.52 &&
+  starterDecking.hoursPerUnit === 0.077 &&
+    starterFraming.hoursPerUnit === 0.13 &&
     starterPosts.hoursPerUnit === 0.2 &&
     starterFascia.hoursPerUnit === 0.45 &&
     starterSteps.hoursPerUnit === 4 &&
@@ -746,6 +768,12 @@ check(
 );
 
 const overrideDeck = calculateDeck(
+  ctx(kwilaFacts, [
+    productivityOrgRate("deck.decking.install.hours_per_lm", "lm", 0.12),
+  ]),
+  wa(kwilaId)
+);
+const legacyM2Ignored = calculateDeck(
   ctx(kwilaFacts, [
     productivityOrgRate("deck.decking.install.hours_per_m2", "m2", 0.7),
   ]),
@@ -768,10 +796,8 @@ const basePileH =
     ?.labourHours ?? 0;
 check(
   "72 company decking productivity override is modular",
-  Math.abs(
-    (overrideDeck.lineItems.find((item) => item.label === "Decking installation")
-      ?.labourHours ?? 0) - 18.9
-  ) < 0.02 &&
+  (overrideDeck.lineItems.find((item) => item.label === "Decking installation")
+    ?.labourHours ?? 0) > baseDeckingH &&
     Math.abs(
       (overrideDeck.lineItems.find((item) => item.label === "Substructure framing")
         ?.labourHours ?? 0) - baseFramingH
@@ -780,6 +806,13 @@ check(
       (overrideDeck.lineItems.find((item) => item.label === "Pile/post installation")
         ?.labourHours ?? 0) - basePileH
     ) < 0.001
+);
+check(
+  "72b legacy company h/m² is not reinterpreted as h/lm",
+  Math.abs(
+    (legacyM2Ignored.lineItems.find((item) => item.label === "Decking installation")
+      ?.labourHours ?? 0) - baseDeckingH
+  ) < 0.001
 );
 check(
   "73 company pile productivity override is modular",
@@ -795,7 +828,7 @@ check(
 
 const zeroSplit = calculateDeck(
   ctx(kwilaFacts, [
-    productivityOrgRate("deck.decking.install.hours_per_m2", "m2", 0),
+    productivityOrgRate("deck.decking.install.hours_per_lm", "lm", 0),
   ]),
   wa(kwilaId)
 );
@@ -871,7 +904,7 @@ check(
   "81 fascia labour 0.45 h/lm; old $35 allowance suppressed",
   fasciaDeck.lineItems.some((item) => item.label === "Fascia installation") &&
     !fasciaDeck.lineItems.some((item) => item.label === "Face board labour allowance") &&
-    fasciaDeck.lineItems.some((item) => item.label === "Vertical face/fascia boards")
+    fasciaDeck.lineItems.some((item) => item.label === "Fascia / edge boards")
 );
 
 const stairDeck = calculateDeck(

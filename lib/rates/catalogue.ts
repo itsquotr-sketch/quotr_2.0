@@ -610,6 +610,10 @@ export function formatRateUnit(unit: string): string {
       return "m³";
     case "lm":
       return "lm";
+    case "decking_lm":
+      return "decking lm";
+    case "framing_lm":
+      return "framing lm";
     case "hour":
       return "hr";
     case "riser":

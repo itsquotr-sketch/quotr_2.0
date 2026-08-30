@@ -81,7 +81,10 @@ const DECK_CHECK_COPY: Record<
     question: "Include existing deck removal?",
   },
   "deck.vertical_face_boards_required": {
-    question: "Include fascia / edge finish?",
+    question: "Include fascia / edge boards?",
+  },
+  "deck.skirting_included": {
+    question: "Deck skirting / vertical face cladding included?",
   },
   "deck.steps_included": {
     question: "Are new steps included?",

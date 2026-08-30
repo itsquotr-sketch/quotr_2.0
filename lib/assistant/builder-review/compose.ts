@@ -316,11 +316,12 @@ function lineHierarchy(
 
   if (category === "LABOUR") {
     const compact = stripInternalEstimateTokens(
-      item.identitySummary ?? item.notes ?? ""
+      item.identitySummary?.trim() || ""
     );
+    const notes = stripInternalEstimateTokens(item.notes?.trim() || "");
     return {
-      supporting: compact || null,
-      detail: null,
+      supporting: compact || notes || null,
+      detail: compact && notes && notes !== compact ? notes : null,
     };
   }
 
@@ -691,7 +692,9 @@ function attachTakeoff(
     takeoffTitle:
       workAreaType === "retaining_wall" || workAreaType === "fence"
         ? "Takeoff details"
-        : "Planning takeoff",
+        : takeoff.length > 0
+          ? "Framing takeoff available"
+          : "Planning takeoff",
   });
 
   const framingIdx = categories.findIndex(
@@ -750,7 +753,7 @@ function attachTakeoff(
         takeoffDisclaimer: DECK_STRUCTURAL_ESTIMATING_DISCLAIMER,
         takeoffUnavailableHint: null,
         takeoffCollapsedByDefault: false,
-        takeoffTitle: "Planning takeoff",
+        takeoffTitle: "Framing takeoff available",
         groupNotes: [],
         lineGroups: [],
       },
@@ -1083,10 +1086,17 @@ export function composeBuilderReview(
         (line.itemKey ?? "").includes("substructure") ||
         /framing|substructure/i.test(line.label)
     );
+    const hasDetailedFramingMaterials = priced.some(
+      (line) =>
+        line.componentKey === DECK_JOISTS_COMPONENT_KEY ||
+        line.componentKey === DECK_BEARERS_COMPONENT_KEY ||
+        line.componentKey === DECK_RIM_FRAMING_COMPONENT_KEY
+    );
     const unavailableHint =
       meta.type === "deck" &&
       areaTakeoff.length === 0 &&
-      hasFramingAllowance
+      hasFramingAllowance &&
+      !hasDetailedFramingMaterials
         ? DECK_PHYSICAL_TAKEOFF_UNAVAILABLE_HINT
         : null;
 
