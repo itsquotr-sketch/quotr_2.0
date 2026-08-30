@@ -3,6 +3,11 @@ import {
   fenceGateScopeApplies,
   isModularFenceSystem,
 } from "@/lib/estimate/fence-systems";
+import {
+  FENCE_MODULAR_GATE_EXCLUSION_CLIENT,
+  fenceQuoteReadiness,
+  fenceQuoteSystemPhrase,
+} from "@/lib/estimate/fence-quote-readiness";
 
 export type WorkAreaQuoteFact = {
   key: string;
@@ -41,6 +46,12 @@ function isAffirmative(value: string | null): boolean {
   const lower = value.toLowerCase();
   if (lower === "included") return true;
   return /^yes\b/i.test(value.trim()) || lower === "true";
+}
+
+function isExplicitNo(value: string | null): boolean {
+  if (!value) return false;
+  const lower = value.toLowerCase();
+  return lower === "false" || lower === "no" || /^no\b/i.test(value.trim());
 }
 
 function appendScopeClause(base: string, clause: string | null): string {
@@ -328,23 +339,21 @@ function buildFenceDraft(
     factValue(facts, "fence.paling_or_panel_type")
   );
   const gateInActiveScope = fenceGateScopeApplies(system);
-  let materialPhrase = (systemLabel || material || "fence").toLowerCase();
-  if (system === "METAL_SLAT_MODULAR") {
-    const metal = (factValue(facts, "fence.metal_material") ?? "").toLowerCase();
-    materialPhrase = metal.includes("steel") ? "steel slat" : "aluminium slat";
-  } else if (system === "PLASTIC_MODULAR") {
-    materialPhrase = "plastic/composite";
-  }
+  const materialPhrase = fenceQuoteSystemPhrase({
+    system,
+    systemOrMaterial: systemLabel || material,
+    metalMaterial: factValue(facts, "fence.metal_material"),
+  });
 
   let draft =
     "Supply and install fencing works to the agreed lineal metre scope, including fence materials, fixings, installation labour and removal of existing fencing where included.";
 
   if (length && height) {
-    draft = `Supply and install approximately ${length} lm of ${height} m high ${materialPhrase} fencing to the agreed scope, including materials, fixings, installation labour and removal of existing fencing where included.`;
+    draft = `Supply and install approximately ${length} lm of ${height} m high ${materialPhrase} to the agreed scope, including materials, fixings, installation labour and removal of existing fencing where included.`;
   } else if (length) {
-    draft = `Supply and install approximately ${length} lm of ${materialPhrase} fencing to the agreed scope, including materials, fixings, installation labour and removal of existing fencing where included.`;
+    draft = `Supply and install approximately ${length} lm of ${materialPhrase} to the agreed scope, including materials, fixings, installation labour and removal of existing fencing where included.`;
   } else if (material) {
-    draft = `Supply and install ${materialPhrase} fencing works to the agreed lineal metre scope, including materials, fixings, installation labour and removal of existing fencing where included.`;
+    draft = `Supply and install ${materialPhrase} works to the agreed lineal metre scope, including materials, fixings, installation labour and removal of existing fencing where included.`;
   }
 
   if (isAffirmative(factValue(facts, "fence.demolition_required"))) {
@@ -417,14 +426,24 @@ function buildFenceDraft(
     omitGateClause: !gateInActiveScope,
   });
 
-  if (
-    isModularFenceSystem(system) &&
-    isAffirmative(factValue(facts, "fence.modular_gate_requested"))
-  ) {
+  const modularGateRequested = factValue(facts, "fence.modular_gate_requested");
+  if (isModularFenceSystem(system) && isAffirmative(modularGateRequested)) {
+    const gateReadiness = fenceQuoteReadiness({
+      missingInfo: [
+        "Modular fence gate — pricing required. Select/price a compatible manufactured gate.",
+      ],
+      system,
+      modularGateRequested: true,
+    });
     draft = appendScopeClause(
       draft,
       "A compatible manufactured gate is requested and is not included in this price — pricing required."
     );
+    if (gateReadiness.status === "ATTENTION_REQUIRED") {
+      draft = appendScopeClause(draft, gateReadiness.reasons[0] ?? null);
+    }
+  } else if (isModularFenceSystem(system) && isExplicitNo(modularGateRequested)) {
+    draft = appendScopeClause(draft, FENCE_MODULAR_GATE_EXCLUSION_CLIENT);
   }
 
   return finalizeDraft(

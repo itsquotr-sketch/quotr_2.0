@@ -50,6 +50,7 @@ import {
   rankQuickEstimateAssumptions,
 } from "@/lib/assistant/presentation/quick-estimate-confidence";
 import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
+import { fenceQuoteBlockingLabels } from "@/lib/estimate/fence-quote-readiness";
 import type { AssistantUnderstandingSummary } from "@/lib/assistant/presentation/assistant-understanding-summary";
 import { AssistantUnderstandingSummaryCard } from "@/components/assistant/AssistantUnderstandingSummaryCard";
 import { MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS } from "@/lib/scopes/estimate-priority";
@@ -381,6 +382,18 @@ export function EstimatePanel({
               detailOverride: "Review scope",
             };
           }
+          if (/modular fence gate|panel height does not match/i.test(label)) {
+            return {
+              workAreaName: workArea.workAreaName,
+              workAreaId: workArea.workAreaId,
+              label,
+              actionable: true as const,
+              attentionKind: "PRICING_REQUIRED" as const,
+              reviewTarget: "estimateReview" as const,
+              detailOverride:
+                "Pricing required before this quote is commercially ready.",
+            };
+          }
           return {
             workAreaName: workArea.workAreaName,
             workAreaId: workArea.workAreaId,
@@ -468,6 +481,9 @@ export function EstimatePanel({
         suggestionId: s.suggestionId,
       })),
       projectConditionsAttention,
+      pricingRequiredLabels: estimate
+        ? fenceQuoteBlockingLabels(estimate.missingInfo)
+        : [],
       unresolvedScopeImpactLabels:
         unresolvedScopeImpactLabels.length > 0
           ? unresolvedScopeImpactLabels

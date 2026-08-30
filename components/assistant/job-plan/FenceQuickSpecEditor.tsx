@@ -651,7 +651,9 @@ export function FenceQuickSpecEditor({
             <option value="No">No</option>
           </select>
           <p className="text-xs text-muted-foreground">
-            Manufactured modular gates are not modelled. Yes → pricing required.
+            Manufactured modular gates are not modelled. Yes keeps the gate as
+            Pricing Required — the quote is not ready until a compatible gate is
+            priced, or Gate requested is set to No.
           </p>
         </div>
       </Group>

@@ -101,7 +101,7 @@ export const FENCE_INFORMATION_CONTRACT: readonly FenceInformationContractRow[] 
     physical: false,
     commercial: true,
     confidence: true,
-    reason: "Explicit modular manufactured-gate request. Distinct from leftover Timber fence.gate_included. Unsupported in 1C → Pricing Required. Not timber gate geometry.",
+    reason: "Explicit modular manufactured-gate request. Distinct from leftover Timber fence.gate_included. Unsupported → Pricing Required. Quote is not commercially ready until priced or Gate requested is set to No (client exclusion wording). Not timber gate geometry.",
   },
   {
     factKey: "fence.gate_count",

@@ -8,6 +8,12 @@
  * R6-R4.1: scope-level items without questions route to Scope Review with Review.
  */
 
+import {
+  FENCE_MODULAR_GATE_QUOTE_ATTENTION,
+  isFenceQuoteBlockingMissingInfo,
+  isUnresolvedModularGateMissingInfo,
+} from "@/lib/estimate/fence-quote-readiness";
+
 export type QuickEstimateStatusKind = "ready" | "attention" | "pending" | "stale";
 
 /** Attention classification — presentation only (7F-R6-R4 / R4.1). */
@@ -187,6 +193,8 @@ export function buildQuickEstimateAttentionItems(params: {
     readonly questionKey: string;
     readonly factKey?: string;
   }[];
+  /** Unresolved requested commercial scope — quote must not present as ready. */
+  readonly pricingRequiredLabels?: readonly string[];
 }): readonly QuickEstimateAttentionItem[] {
   const items: QuickEstimateAttentionItem[] = [];
   const seenScopeKeys = new Set<string>();
@@ -290,6 +298,16 @@ export function buildQuickEstimateAttentionItems(params: {
     for (const [index, label] of (params.missingLabels ?? []).entries()) {
       const trimmed = label.trim();
       if (!trimmed) continue;
+      if (isFenceQuoteBlockingMissingInfo(trimmed)) {
+        items.push({
+          id: `missing:${index}:${trimmed}`,
+          label: trimmed,
+          detail: FENCE_MODULAR_GATE_QUOTE_ATTENTION,
+          attentionKind: "PRICING_REQUIRED",
+          reviewTarget: "estimateReview",
+        });
+        continue;
+      }
       // Labels alone cannot promise Scope Details Review (no question id).
       items.push({
         id: `missing:${index}:${trimmed}`,
@@ -298,6 +316,29 @@ export function buildQuickEstimateAttentionItems(params: {
         attentionKind: "NON_ACTIONABLE_INFORMATION",
       });
     }
+  }
+
+  for (const [index, label] of (params.pricingRequiredLabels ?? []).entries()) {
+    const trimmed = label.trim();
+    if (!trimmed) continue;
+    if (
+      items.some(
+        (item) =>
+          item.label.toLowerCase() === trimmed.toLowerCase() &&
+          item.attentionKind === "PRICING_REQUIRED"
+      )
+    ) {
+      continue;
+    }
+    items.push({
+      id: `pricing-required:${index}:${trimmed}`,
+      label: trimmed,
+      detail: isUnresolvedModularGateMissingInfo(trimmed)
+        ? FENCE_MODULAR_GATE_QUOTE_ATTENTION
+        : "Pricing required before this quote is commercially ready.",
+      attentionKind: "PRICING_REQUIRED",
+      reviewTarget: "estimateReview",
+    });
   }
 
   for (const [index, label] of (params.clarificationLabels ?? []).entries()) {
