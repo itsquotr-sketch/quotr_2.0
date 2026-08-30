@@ -37,6 +37,7 @@ export const FENCE_FRAMING_LABOUR_COMPONENT = "fence.framing.install";
 export const FENCE_BOARD_LABOUR_COMPONENT = "fence.boards.install";
 export const FENCE_CAPPING_LABOUR_COMPONENT = "fence.capping.install";
 export const FENCE_GATE_LABOUR_COMPONENT = "fence.gate.install";
+export const FENCE_MODULAR_GATE_COMPONENT = "fence.gate.modular";
 export const FENCE_CONCRETE_LABOUR_COMPONENT = "fence.post_hole_concrete.place";
 export const FENCE_SECTION_LABOUR_COMPONENT = "fence.sections.install";
 
@@ -245,13 +246,69 @@ function slug(value: string): string {
     .replace(/^_|_$/g, "");
 }
 
+export const FENCE_SECTION_ALUMINIUM_FAMILY_KEY =
+  "fence.section.metal_slat.aluminium";
+export const FENCE_SECTION_STEEL_FAMILY_KEY = "fence.section.metal_slat.steel";
+export const FENCE_SECTION_PLASTIC_FAMILY_KEY = "fence.section.plastic_composite";
+
+export const FENCE_POST_ALUMINIUM_KEY = "fence.post.metal.aluminium";
+export const FENCE_POST_STEEL_KEY = "fence.post.metal.steel";
+export const FENCE_POST_PLASTIC_KEY = "fence.post.plastic_composite";
+
 export function fenceSectionFamilyKey(
   system: Extract<FenceSystem, "METAL_SLAT_MODULAR" | "PLASTIC_MODULAR">,
   material: string
 ): string {
-  const systemSlug =
-    system === "METAL_SLAT_MODULAR" ? "metal_slat" : "plastic_composite";
-  return `fence.section.${systemSlug}.${slug(material) || "standard"}`;
+  if (system === "PLASTIC_MODULAR") {
+    return FENCE_SECTION_PLASTIC_FAMILY_KEY;
+  }
+  const metal = slug(material);
+  return metal === "steel"
+    ? FENCE_SECTION_STEEL_FAMILY_KEY
+    : FENCE_SECTION_ALUMINIUM_FAMILY_KEY;
+}
+
+export function fenceModularPostMaterialKey(
+  system: Extract<FenceSystem, "METAL_SLAT_MODULAR" | "PLASTIC_MODULAR">,
+  metalMaterial: FenceMetalMaterial | null
+): string {
+  if (system === "PLASTIC_MODULAR") return FENCE_POST_PLASTIC_KEY;
+  return metalMaterial === "steel" ? FENCE_POST_STEEL_KEY : FENCE_POST_ALUMINIUM_KEY;
+}
+
+/** Parse family or SKU `fence.section.*.{widthMm}x{heightMm}`. */
+export function parseFenceSectionProductKey(itemKey: string): {
+  familyKey: string;
+  skuKey: string;
+  widthM: number | null;
+  heightM: number | null;
+} | null {
+  if (!itemKey.startsWith("fence.section.")) return null;
+  const dim = itemKey.match(/\.(\d{3,5})x(\d{3,5})$/);
+  if (dim) {
+    const familyKey = itemKey.slice(0, -dim[0].length);
+    if (!familyKey.startsWith("fence.section.")) return null;
+    return {
+      familyKey,
+      skuKey: itemKey,
+      widthM: Number(dim[1]) / 1000,
+      heightM: Number(dim[2]) / 1000,
+    };
+  }
+  if (
+    itemKey === FENCE_SECTION_PLASTIC_FAMILY_KEY ||
+    itemKey === FENCE_SECTION_ALUMINIUM_FAMILY_KEY ||
+    itemKey === FENCE_SECTION_STEEL_FAMILY_KEY ||
+    /^fence\.section\.metal_slat\.[a-z0-9_]+$/.test(itemKey)
+  ) {
+    return {
+      familyKey: itemKey,
+      skuKey: itemKey,
+      widthM: null,
+      heightM: null,
+    };
+  }
+  return null;
 }
 
 export function fenceSectionSkuKey(

@@ -1,7 +1,8 @@
 /**
- * FENCE-MATURITY-1B — Timber commercial layer.
+ * FENCE-MATURITY-1B / 1C — Fence commercial layer.
  * Consumes 1A physical takeoff. Does not recalculate geometry.
- * Modular systems remain LEGACY_PACKAGE_AUTHORITY.
+ * Timber: DETAILED when coverage ready.
+ * Modular metal/plastic: DETAILED when 1C coverage is ready; otherwise package.
  */
 
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
@@ -15,6 +16,7 @@ import {
   FENCE_CONCRETE_COMPONENT,
   FENCE_CONCRETE_LABOUR_COMPONENT,
   FENCE_FACE_AREA_COMPONENT,
+  FENCE_FIXINGS_MODULAR_COMPONENT,
   FENCE_FIXINGS_TIMBER_COMPONENT,
   FENCE_FIXINGS_TIMBER_KEY,
   FENCE_FRAMING_LABOUR_COMPONENT,
@@ -22,15 +24,32 @@ import {
   FENCE_GATE_HARDWARE_COMPONENT,
   FENCE_GATE_POSTS_EA_COMPONENT,
   FENCE_GATE_LABOUR_COMPONENT,
+  FENCE_MODULAR_GATE_COMPONENT,
   FENCE_POSTS_EA_COMPONENT,
   FENCE_POSTS_LM_COMPONENT,
   FENCE_POST_LABOUR_COMPONENT,
   FENCE_PREMIX_20KG_KEY,
   FENCE_RAILS_COMPONENT,
+  FENCE_SECTIONS_COMPONENT,
+  FENCE_SECTION_LABOUR_COMPONENT,
+  parseFenceSectionProductKey,
 } from "@/lib/estimate/fence-identities";
 import type { FencePhysicalModel } from "@/lib/estimate/fence-physical";
+import {
+  FENCE_MODULAR_1C_AUTHORITY,
+  FENCE_MODULAR_1C_PACKAGE,
+  FENCE_MODULAR_1C_PACKAGE_NOTE,
+  FENCE_MODULAR_GENERIC_DISCLOSURE,
+  FENCE_MODULAR_GATE_PRICING_DETAIL,
+  FENCE_MODULAR_HEIGHT_INCOMPATIBLE,
+  FENCE_MODULAR_POST_LABOUR_REUSE,
+  FENCE_MODULAR_SECTION_LABOUR_OWNERSHIP,
+  modular1CMaterialStarter,
+  modular1CProductivityStarter,
+  modularInstalledSectionCount,
+} from "@/lib/estimate/fence-modular-1c";
 import { FENCE_PRODUCTIVITY_KEYS } from "@/lib/estimate/fence-productivity";
-import { isTimberFenceSystem } from "@/lib/estimate/fence-systems";
+import { isModularFenceSystem, isTimberFenceSystem } from "@/lib/estimate/fence-systems";
 import {
   FENCE_CAPPING_SECTION_DISCLOSURE,
   FENCE_GATE_FRAME_DISCLOSURE,
@@ -135,6 +154,15 @@ function priceMaterial(
   if (!hasTrustedPhysicalQuantity(requirement.purchaseQuantity)) {
     return requirement;
   }
+  if (requirement.componentKey === FENCE_MODULAR_GATE_COMPONENT) {
+    return {
+      ...requirement,
+      priced: false,
+      unitCost: null,
+      totalCost: null,
+      rateSource: "missing",
+    };
+  }
   const unit = requirement.purchaseUnit;
   const namedKeys = [requirement.materialKey].filter(
     (key): key is string => Boolean(key)
@@ -142,7 +170,22 @@ function priceMaterial(
   if (requirement.componentKey === FENCE_CONCRETE_COMPONENT) {
     namedKeys.push(FENCE_PREMIX_20KG_KEY, RW_PREMIX_20KG_KEY);
   }
+  const requirementSku =
+    requirement.componentKey === FENCE_SECTIONS_COMPONENT && requirement.materialKey
+      ? parseFenceSectionProductKey(requirement.materialKey)
+      : null;
+  if (requirementSku) {
+    namedKeys.push(requirementSku.skuKey, requirementSku.familyKey);
+  }
   for (const key of namedKeys) {
+    const rateParsed = parseFenceSectionProductKey(key);
+    if (
+      requirementSku?.widthM != null &&
+      rateParsed?.widthM != null &&
+      Math.abs(requirementSku.widthM - rateParsed.widthM) > 0.01
+    ) {
+      continue;
+    }
     const named = findExactNamedMaterialRate(rates, key, unit);
     if (named?.cost_rate != null) {
       const unitCost = Number(named.cost_rate);
@@ -159,7 +202,8 @@ function priceMaterial(
 
   if (quotrStartersAllowed(organisationSettings)) {
     for (const key of namedKeys) {
-      const starter = timber1BMaterialStarter(key);
+      const starter =
+        timber1BMaterialStarter(key) ?? modular1CMaterialStarter(key);
       if (starter && rateUnitsMatch(starter.unit, unit) && starter.costPerUnit > 0) {
         inherited.push(
           `${requirement.componentKey} used Quotr starter ${starter.costPerUnit}/${starter.unit}`
@@ -201,7 +245,9 @@ function labourSlot(params: {
     params.productivityKey,
     params.unit
   );
-  const starter = timber1BProductivityStarter(params.productivityKey);
+  const starter =
+    timber1BProductivityStarter(params.productivityKey) ??
+    modular1CProductivityStarter(params.productivityKey);
   const hoursPerUnit =
     company?.cost_rate != null
       ? Number(company.cost_rate)
@@ -311,10 +357,15 @@ export function fencePostPromotionHold(
 export function detailedFenceMoneyMaterials(
   requirements: readonly EstimateRequirement[]
 ): MaterialRequirement[] {
+  const hasPostLm = requirements.some(
+    (row) => row.kind === "material" && row.componentKey === FENCE_POSTS_LM_COMPONENT
+  );
   return requirements.filter(
     (row): row is MaterialRequirement =>
       row.kind === "material" &&
-      !SKIP_MONEY.has(row.componentKey) &&
+      row.componentKey !== FENCE_FACE_AREA_COMPONENT &&
+      row.componentKey !== FENCE_GATE_POSTS_EA_COMPONENT &&
+      !(hasPostLm && row.componentKey === FENCE_POSTS_EA_COMPONENT) &&
       hasTrustedPhysicalQuantity(row.purchaseQuantity)
   );
 }
@@ -348,6 +399,12 @@ export function fenceCommercialLineLabel(
   switch (requirement.componentKey) {
     case FENCE_POSTS_LM_COMPONENT:
       return "Fence posts";
+    case FENCE_POSTS_EA_COMPONENT:
+      return "Fence posts";
+    case FENCE_SECTIONS_COMPONENT:
+      return "Fence sections";
+    case FENCE_FIXINGS_MODULAR_COMPONENT:
+      return "Brackets and fixings";
     case FENCE_BOARDS_COMPONENT:
       return /slat/i.test(requirement.description)
         ? "Horizontal slats"
@@ -366,6 +423,8 @@ export function fenceCommercialLineLabel(
       return "Fence fixings";
     case FENCE_POST_LABOUR_COMPONENT:
       return "Post installation";
+    case FENCE_SECTION_LABOUR_COMPONENT:
+      return "Section installation";
     case FENCE_FRAMING_LABOUR_COMPONENT:
       return "Rail/framing installation";
     case FENCE_BOARD_LABOUR_COMPONENT:
@@ -376,6 +435,8 @@ export function fenceCommercialLineLabel(
       return "Top-cap installation";
     case FENCE_GATE_LABOUR_COMPONENT:
       return "Timber gate fabrication & installation";
+    case FENCE_MODULAR_GATE_COMPONENT:
+      return "Modular fence gate";
     case FENCE_CONCRETE_LABOUR_COMPONENT:
       return "Post-hole concrete placement";
     default:
@@ -385,11 +446,9 @@ export function fenceCommercialLineLabel(
 
 export function isFenceDetailedMoneyComponent(componentKey: string | undefined): boolean {
   if (!componentKey) return false;
-  if (SKIP_MONEY.has(componentKey)) return false;
-  return (
-    componentKey.startsWith("fence.") &&
-    componentKey !== "fence.face"
-  );
+  if (componentKey === FENCE_FACE_AREA_COMPONENT) return false;
+  if (componentKey === FENCE_GATE_POSTS_EA_COMPONENT) return false;
+  return componentKey.startsWith("fence.");
 }
 
 export function fenceLabourIncludesCarry(componentKey: string): boolean {
@@ -434,6 +493,10 @@ export function commercializeFence(params: {
   const inherited: string[] = [];
   const { physical, workAreaId, rates, organisationSettings } = params;
 
+  if (isModularFenceSystem(physical.system) && physical.modular) {
+    return commercializeModularFence(params);
+  }
+
   if (!isTimberFenceSystem(physical.system) || !physical.timber) {
     return {
       mode: FENCE_TIMBER_1B_PACKAGE,
@@ -442,7 +505,7 @@ export function commercializeFence(params: {
       reason:
         physical.system === "missing" || physical.system === "unsupported"
           ? "Fence type is not a commercially mature Timber system."
-          : "Modular Fence remains LEGACY_PACKAGE_AUTHORITY in 1B.",
+          : "Fence remains LEGACY_PACKAGE_AUTHORITY until commercial coverage is complete.",
       requirements: physical.requirements,
       assumptions,
       missingInfo,
@@ -708,6 +771,162 @@ function finishFenceCommercial(params: {
   };
 }
 
+function commercializeModularFence(params: {
+  physical: FencePhysicalModel;
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  rates: readonly OrganisationRate[];
+  organisationSettings: OrganisationSettings | null;
+  constraints?: readonly EstimateConstraint[];
+}): FenceCommercialResult {
+  const assumptions: string[] = [];
+  const missingInfo: string[] = [];
+  const inherited: string[] = [];
+  const modular = params.physical.modular!;
+  void params.facts;
+  void params.constraints;
+
+  const fromPhysical = params.physical.requirements.filter(
+    (row): row is MaterialRequirement => row.kind === "material"
+  );
+  const pricedMaterials: MaterialRequirement[] = [];
+  for (const row of fromPhysical) {
+    if (row.componentKey === FENCE_FACE_AREA_COMPONENT) {
+      pricedMaterials.push(row);
+      continue;
+    }
+    if (
+      row.componentKey === FENCE_SECTIONS_COMPONENT &&
+      modular.heightMismatch
+    ) {
+      pricedMaterials.push({
+        ...row,
+        priced: false,
+        unitCost: null,
+        totalCost: null,
+        rateSource: "missing",
+      });
+      missingInfo.push(FENCE_MODULAR_HEIGHT_INCOMPATIBLE);
+      continue;
+    }
+    pricedMaterials.push(
+      priceMaterial(row, params.rates, params.organisationSettings, inherited)
+    );
+  }
+
+  assumptions.push(FENCE_MODULAR_GENERIC_DISCLOSURE);
+  assumptions.push(FENCE_MODULAR_POST_LABOUR_REUSE);
+  assumptions.push(FENCE_MODULAR_SECTION_LABOUR_OWNERSHIP);
+  if (modular.fixingsIncluded) {
+    assumptions.push(
+      "Selected modular section product includes brackets/fixings. No separate fixings money."
+    );
+  } else {
+    assumptions.push(
+      "Quotr generic modular sections do not include brackets/fixings. Separate $/installed-section allowance applies unless Company marks fixings included."
+    );
+  }
+
+  return {
+    mode: FENCE_MODULAR_1C_PACKAGE,
+    commerciallyReady: false,
+    coverage: [],
+    reason: FENCE_MODULAR_1C_PACKAGE_NOTE,
+    requirements: pricedMaterials,
+    assumptions,
+    missingInfo,
+    inherited,
+  };
+}
+
+function finishModularFenceCommercial(params: {
+  physical: FencePhysicalModel;
+  pricedMaterials: MaterialRequirement[];
+  labour: LabourRequirement[];
+  assumptions: string[];
+  inherited: string[];
+  missingInfo: string[];
+}): FenceCommercialResult {
+  const modular = params.physical.modular!;
+  const byKey = (key: string) =>
+    params.pricedMaterials.find((row) => row.componentKey === key);
+  const labourBy = (key: string) =>
+    params.labour.find((row) => row.componentKey === key);
+  const fixingsRequired = !modular.fixingsIncluded;
+
+  const coverage: FenceCoverageCategory[] = [
+    coverageRow("sections", "material", true, byKey(FENCE_SECTIONS_COMPONENT)),
+    coverageRow("posts_ea", "material", true, byKey(FENCE_POSTS_EA_COMPONENT)),
+    coverageRow("concrete", "material", true, byKey(FENCE_CONCRETE_COMPONENT)),
+    coverageRow(
+      "fixings",
+      "residual",
+      fixingsRequired,
+      byKey(FENCE_FIXINGS_MODULAR_COMPONENT)
+    ),
+    coverageRow("post_labour", "labour", true, labourBy(FENCE_POST_LABOUR_COMPONENT)),
+    coverageRow(
+      "section_labour",
+      "labour",
+      true,
+      labourBy(FENCE_SECTION_LABOUR_COMPONENT)
+    ),
+    coverageRow(
+      "concrete_labour",
+      "labour",
+      true,
+      labourBy(FENCE_CONCRETE_LABOUR_COMPONENT)
+    ),
+    coverageRow(
+      "modular_gate",
+      "allowance",
+      byKey(FENCE_MODULAR_GATE_COMPONENT) != null,
+      byKey(FENCE_MODULAR_GATE_COMPONENT)
+    ),
+  ];
+
+  const missingInfo = [...params.missingInfo];
+  for (const row of params.pricedMaterials) {
+    if (row.componentKey === FENCE_FACE_AREA_COMPONENT) continue;
+    if (row.componentKey === FENCE_MODULAR_GATE_COMPONENT) {
+      missingInfo.push(FENCE_MODULAR_GATE_PRICING_DETAIL);
+      continue;
+    }
+    if (hasTrustedPhysicalQuantity(row.purchaseQuantity) && row.priced !== true) {
+      missingInfo.push(`${row.description} trusted price`);
+    }
+  }
+  for (const row of params.labour) {
+    if (row.priced !== true) missingInfo.push(`${row.description} productivity`);
+  }
+
+  const commerciallyReady = fenceCoverageIsReady(coverage);
+  const postPromotion = fencePostPromotionHold(coverage);
+  const detailedMoney = commerciallyReady || (postPromotion && !commerciallyReady);
+  const mode: FenceSystemAuthorityMode = detailedMoney
+    ? FENCE_MODULAR_1C_AUTHORITY
+    : FENCE_MODULAR_1C_PACKAGE;
+  const reason = commerciallyReady
+    ? "Required modular commercial categories are covered. Detailed component money is authoritative."
+    : detailedMoney
+      ? "Detailed money remains after promotion. A missing exact material or productivity rate is Pricing Required and does not restore package."
+      : FENCE_MODULAR_1C_PACKAGE_NOTE;
+  if (mode === FENCE_MODULAR_1C_PACKAGE) {
+    params.assumptions.push(FENCE_MODULAR_1C_PACKAGE_NOTE);
+  }
+
+  return {
+    mode,
+    commerciallyReady,
+    coverage,
+    reason,
+    requirements: [...params.pricedMaterials, ...params.labour],
+    assumptions: params.assumptions,
+    missingInfo,
+    inherited: params.inherited,
+  };
+}
+
 export function commercializeFenceWithLabour(params: {
   physical: FencePhysicalModel;
   facts: readonly EstimateFact[];
@@ -717,6 +936,75 @@ export function commercializeFenceWithLabour(params: {
   constraints?: readonly EstimateConstraint[];
   hourlyCost: number;
 }): FenceCommercialResult {
+  if (isModularFenceSystem(params.physical.system) && params.physical.modular) {
+    const first = commercializeFence(params);
+    const modular = params.physical.modular;
+    const labour: LabourRequirement[] = [];
+    const slot = (
+      componentKey: string,
+      description: string,
+      productivityKey: string,
+      unit: string,
+      quantity: number,
+      accessSensitive: boolean
+    ) => {
+      if (!hasTrustedPhysicalQuantity(quantity)) return;
+      labour.push(
+        labourSlot({
+          workAreaId: params.workAreaId,
+          componentKey,
+          description,
+          productivityKey,
+          unit,
+          quantity,
+          rates: params.rates,
+          hourlyCost: params.hourlyCost,
+          organisationSettings: params.organisationSettings,
+          accessSensitive,
+        })
+      );
+    };
+    const installed = modularInstalledSectionCount({
+      fullSectionCount: modular.fullSectionCount,
+      residualWidthM: modular.residualWidthM,
+    });
+    slot(
+      FENCE_POST_LABOUR_COMPONENT,
+      "Post installation",
+      FENCE_PRODUCTIVITY_KEYS.postInstall,
+      "post",
+      modular.postCount,
+      true
+    );
+    slot(
+      FENCE_SECTION_LABOUR_COMPONENT,
+      "Section installation",
+      FENCE_PRODUCTIVITY_KEYS.sectionInstall,
+      "section",
+      installed,
+      true
+    );
+    slot(
+      FENCE_CONCRETE_LABOUR_COMPONENT,
+      "Post-hole concrete placement",
+      FENCE_PRODUCTIVITY_KEYS.postHoleConcreteBag,
+      "bag",
+      modular.concrete.bagCount,
+      false
+    );
+    const materials = first.requirements.filter(
+      (row): row is MaterialRequirement => row.kind === "material"
+    );
+    return finishModularFenceCommercial({
+      physical: params.physical,
+      pricedMaterials: materials,
+      labour,
+      assumptions: first.assumptions,
+      inherited: first.inherited,
+      missingInfo: first.missingInfo,
+    });
+  }
+
   const first = commercializeFence(params);
   if (!isTimberFenceSystem(params.physical.system) || !params.physical.timber) {
     return first;
@@ -823,11 +1111,19 @@ export function commercializeFenceWithLabour(params: {
 }
 
 export function componentAuthorityOfFence(
-  requirement: MaterialRequirement | LabourRequirement
+  requirement: MaterialRequirement | LabourRequirement,
+  siblings?: readonly EstimateRequirement[]
 ): ComponentCommercialAuthority {
   if (requirement.kind === "material") {
+    const hasPostLm = (siblings ?? []).some(
+      (row) => row.kind === "material" && row.componentKey === FENCE_POSTS_LM_COMPONENT
+    );
+    const skip =
+      requirement.componentKey === FENCE_FACE_AREA_COMPONENT ||
+      requirement.componentKey === FENCE_GATE_POSTS_EA_COMPONENT ||
+      (requirement.componentKey === FENCE_POSTS_EA_COMPONENT && hasPostLm);
     return resolveComponentCommercialAuthority({
-      applicable: !SKIP_MONEY.has(requirement.componentKey),
+      applicable: !skip,
       hasTrustedPhysicalQuantity: hasTrustedPhysicalQuantity(
         requirement.purchaseQuantity
       ),

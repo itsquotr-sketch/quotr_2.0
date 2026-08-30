@@ -65,6 +65,9 @@ export type FenceModularTakeoff = {
   modularGatesModelled: false;
   fixedFenceLengthM: number;
   unusualHeight: boolean;
+  fixingsIncluded: boolean;
+  fixingsOwnership: "INCLUDED_IN_SECTION_PRODUCT" | "SEPARATE_FIXINGS_REQUIREMENT";
+  gateRequested: boolean;
   assumptions: string[];
   attention: string[];
 };
@@ -78,6 +81,8 @@ export function buildFenceModularTakeoff(params: {
   sectionCountOverride: number | null;
   embedmentM: number | null;
   holeDiameterM: number | null;
+  fixingsIncluded?: boolean;
+  gateRequested?: boolean;
 }): FenceModularTakeoff {
   const assumptions: string[] = [];
   const attention: string[] = [];
@@ -156,7 +161,7 @@ export function buildFenceModularTakeoff(params: {
     Math.abs(sectionHeightM - geometry.heightM) > 0.05;
   if (heightMismatch) {
     attention.push(
-      "Selected panel height does not match the fence height. Manufactured sections are not stretched."
+      "Selected panel height does not match the fence height. Manufactured sections are not stretched or cropped. Product confirmation / Pricing Required."
     );
   }
 
@@ -221,6 +226,12 @@ export function buildFenceModularTakeoff(params: {
     modularGatesModelled: false,
     fixedFenceLengthM,
     unusualHeight,
+    fixingsIncluded: params.fixingsIncluded === true,
+    fixingsOwnership:
+      params.fixingsIncluded === true
+        ? "INCLUDED_IN_SECTION_PRODUCT"
+        : "SEPARATE_FIXINGS_REQUIREMENT",
+    gateRequested: params.gateRequested === true,
     assumptions,
     attention,
   };

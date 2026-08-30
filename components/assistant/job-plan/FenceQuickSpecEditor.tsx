@@ -98,6 +98,11 @@ export function FenceQuickSpecEditor({
   const sectionCount = jobPlanNumber(facts, workAreaId, "fence.section_count");
   const metal = jobPlanString(facts, workAreaId, "fence.metal_material") ?? "";
   const gate = jobPlanBoolean(facts, workAreaId, "fence.gate_included");
+  const modularGate = jobPlanBoolean(
+    facts,
+    workAreaId,
+    "fence.modular_gate_requested"
+  );
   const gateWidth = jobPlanNumber(facts, workAreaId, "fence.gate_width_m");
   const gatePosition = jobPlanString(facts, workAreaId, "fence.gate_position") ?? "";
   const gateCapping = jobPlanString(facts, workAreaId, "fence.gate_capping") ?? "";
@@ -620,6 +625,35 @@ export function FenceQuickSpecEditor({
             ) : null}
           </>
         ) : null}
+      </Group>
+      ) : null}
+
+      {isModularFenceSystem(system) ? (
+      <Group title="Gate">
+        <div className="space-y-1">
+          <Label htmlFor={`fence-modular-gate-${workAreaId}`}>Gate requested</Label>
+          <select
+            id={`fence-modular-gate-${workAreaId}`}
+            className="h-9 w-full rounded-lg border border-border bg-background px-2 text-sm"
+            value={yesNo(modularGate)}
+            onChange={(event) =>
+              onSpecFact?.({
+                workAreaId,
+                key: "fence.modular_gate_requested",
+                label: "Gate requested",
+                value: event.target.value,
+                valueType: "select",
+              })
+            }
+          >
+            <option value="">Not confirmed</option>
+            <option value="Yes">Yes</option>
+            <option value="No">No</option>
+          </select>
+          <p className="text-xs text-muted-foreground">
+            Manufactured modular gates are not modelled. Yes → pricing required.
+          </p>
+        </div>
       </Group>
       ) : null}
 

@@ -125,7 +125,7 @@ Estimator maturity (this document) is independent of product display band (§12)
 | bathroom | trial_supported | PARTIAL | PARTIAL | PACKAGE_ALLOWANCE (mixed resolve) | PARTIAL (per-trade exists) | PARTIAL | PARTIAL | **PARTIAL** — labour ahead of material |
 | retaining_wall | developing | PARTIAL | SAFETY HARDENED / timber 1F + sleeper 2A + masonry 2B | Timber + Concrete Sleeper + Masonry DETAILED | PARTIAL (timber + sleeper + masonry task labour) | Timber + Sleeper + Masonry DETAILED | PARTIAL | **SAFETY HARDENED / TIMBER 1F / SLEEPER 2A / MASONRY 2B LOCAL** |
 | kitchen | developing | MINIMAL | MINIMAL | PACKAGE + **RATE AUTHORITY FIXED** | MINIMAL (no shared access factor) | MINIMAL | MINIMAL | **MINIMAL** — **KITCHEN-RATE-AUTHORITY-01 FIXED** |
-| fence | developing | PARTIAL | PARTIAL / 1A contract | Timber DETAILED + modular PACKAGE | Timber task labour DETAILED; modular package | Timber DETAILED XOR modular PACKAGE | PARTIAL | **FENCE-MATURITY-1B TIMBER COMMERCIAL LOCAL** |
+| fence | developing | PARTIAL | PARTIAL / 1A contract | Timber DETAILED + modular DETAILED | Timber + modular task labour DETAILED | Timber XOR modular DETAILED XOR package | PARTIAL | **FENCE-MATURITY-1C MODULAR COMMERCIAL LOCAL** |
 | pergola | developing | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL | MINIMAL | MINIMAL | **MINIMAL** — not ahead of fence |
 | external_stairs | component | PARTIAL | PARTIAL | PACKAGE_ALLOWANCE + some resolveRate | PARTIAL | PARTIAL | PARTIAL | **PARTIAL** — calculator ahead of display band |
 | demolition | component | MINIMAL | MINIMAL | PACKAGE_ALLOWANCE | PARTIAL | MINIMAL | MINIMAL | **MINIMAL** — relatively honest |
@@ -530,7 +530,7 @@ No backfill formula or rate path was changed. **TARGET ARCHITECTURE:** priced ba
 
 **FENCE-MATURITY-1A-R1 / R2 / R3 = CLOSED**
 
-Fence physical + information foundation = **CLOSED**. **FENCE-MATURITY-1B = COMPLETE / COMMITTED / PREVIEW.** Timber paling — vertical board and Horizontal timber slats = **MVP COMMERCIALLY MATURE**. Metal/plastic modular remains `LEGACY_PACKAGE_AUTHORITY` / 1C pending. Do **not** start Fence 1C or Bathroom from 1B.
+Fence physical + information foundation = **CLOSED**. **FENCE-MATURITY-1B = COMPLETE / COMMITTED / PREVIEW.** Timber paling — vertical board and Horizontal timber slats = **MVP COMMERCIALLY MATURE**. **FENCE-MATURITY-1C = COMPLETE LOCAL / OWNER MODULAR COMMERCIAL REVIEW PENDING.** Aluminium/steel slat and Plastic/composite modular are commercially matured locally. Do **not** start Bathroom.
 
 ### CURRENT IMPLEMENTATION
 
@@ -541,11 +541,11 @@ Fence physical + information foundation = **CLOSED**. **FENCE-MATURITY-1B = COMP
 | Shared geometry | Face area = length × height, full precision. Length is the complete fence line including gate openings. |
 | Information contract | `lib/estimate/fence-information-contract.ts` |
 | Physical model | `lib/estimate/fence-physical.ts` plus timber / modular / geometry modules |
-| Calculator | Timber 1B detailed component money when coverage ready; otherwise package `Fence labour` / `Fence materials`. Modular stays package. |
+| Calculator | Timber 1B detailed component money when coverage ready; modular 1C detailed when coverage ready; otherwise package `Fence labour` / `Fence materials`. |
 | Job Plan / Edit Scope | Dedicated adapter + `FenceQuickSpecEditor` |
 | Refine adapter | Registered — consumed facts only |
-| Builder Review | Detailed Timber lines when promoted; planning takeoff remains evidence. Package lines stay money on modular / incomplete timber. |
-| Verifier | `scripts/verify-fence-maturity-1a.ts`, `scripts/verify-fence-maturity-1b.ts` |
+| Builder Review | Detailed Timber or modular lines when promoted; planning takeoff remains evidence. Package lines stay money until that system’s coverage is ready. |
+| Verifier | `scripts/verify-fence-maturity-1a.ts`, `scripts/verify-fence-maturity-1b.ts`, `scripts/verify-fence-maturity-1c.ts` |
 
 Do not treat 1A planning quantities as priced lines. Physical quantities remain even if commercial method later changes.
 
@@ -557,7 +557,7 @@ Do not treat 1A planning quantities as priced lines. Physical quantities remain 
 
 **Visible species** (Radiata / Macrocarpa / Cedar / Hardwood) applies to boards/slats and capping. Posts/rails stay treated H4 100×100 / 75×50 pine unless the builder changes those identities. Thickness 19 vs 25 changes identity, not face coverage.
 
-**Modular (metal slat / plastic composite):** same geometry engine. Default section width 1.8 m. `full = floor(L/W)`, residual = remainder, residual > 0 → one extra **purchased** section (not even-redistributed). Posts = purchased sections + 1. Residual bay is exposed as full + cut/residual. Metal vs plastic keep separate identities. Company section product strategy: family key `fence.section.{metal_slat|plastic_composite}.{material}` plus SKU `{widthMm}x{heightMm}`. No supplier catalogue in 1A. **Modular gates are not modelled in Fence 1A.** Timber gate facts may remain stored across system switches for return-switch, but they are **not consumed and not rendered** by metal or plastic systems (`fenceGateScopeApplies`) until a later pass models modular gate products — no opening subtraction, no gate-edge posts, no gate framing/hardware/capping money, no Quote/Builder Review/Pricing/scope gate wording. Modular Edit Scope suppresses Timber-only gate controls. Do not change modular residual / posts=sections+1.
+**Modular (metal slat / plastic composite):** same geometry engine. Default section width 1.8 m. `full = floor(L/W)`, residual = remainder, residual > 0 → one extra **purchased** whole section (not even-redistributed, not 5.56 EA). Posts = purchased sections + 1. Residual bay is exposed as full + cut/residual. Metal vs plastic keep separate commercial identities. **Company section product** (family or `{widthMm}x{heightMm}` SKU) outranks Quotr generic benchmark; product width drives geometry unless the builder override is compatible. Fence height vs manufactured section height: mismatch is attention / Pricing Required — manufactured panels are not stretched. **Modular gates remain NOT MODELLED.** Timber gate facts may remain stored across system switches for return-switch, but they are **not consumed**. If a gate is requested on modular: `Modular gate pricing required`. No opening subtraction. Do not change modular residual / posts=sections+1.
 
 **Gate position (R1):** builder fact `fence.gate_position` — At an end / Within the fence run / Not sure. Unresolved / Not sure → **WITHIN_FENCE_RUN**, gate centred where geometry permits. Disclosed: “Gate position assumed within the fence run for estimating.” One-gate MVP. AT_END → one fixed run `L − gateWidth` (opening at the far end). WITHIN → two fixed runs. Post layout is calculated independently per run; shared boundary posts are deduplicated. Always: fence start post, gate-edge post(s), fence end post. Gate-edge posts are classified separately and default to the same section as fence posts (“Gate posts assumed same section as fence posts”). Do not automatically upsize. Future gate-post identity can resolve without changing geometry.
 
@@ -577,7 +577,7 @@ Do not treat 1A planning quantities as priced lines. Physical quantities remain 
 
 ### Commercial coverage (1A / 1B)
 
-`LEGACY_PACKAGE_AUTHORITY` until Timber 1B coverage is ready, then `DETAILED_COMPONENT_AUTHORITY`. PACKAGE XOR DETAILED is preserved. Modular remains package. After Timber promotion, a missing selected rate stays detailed + Pricing Required.
+`LEGACY_PACKAGE_AUTHORITY` until that system’s required commercial categories are ready, then `DETAILED_COMPONENT_AUTHORITY`. PACKAGE XOR DETAILED is preserved. After promotion, a missing selected rate stays detailed + Pricing Required. No package restore.
 
 ### FENCE-MATURITY-1B — Timber commercial
 
@@ -589,9 +589,9 @@ Do not treat 1A planning quantities as priced lines. Physical quantities remain 
 
 **TIMBER FENCE — HORIZONTAL SLATS = MVP COMMERCIALLY MATURE**
 
-**METAL / PLASTIC = PACKAGE AUTHORITY / 1C PENDING**
+**METAL / PLASTIC = FENCE-MATURITY-1C LOCAL / OWNER MODULAR COMMERCIAL REVIEW PENDING**
 
-In scope: Timber paling — vertical board; Horizontal timber slats. Out of scope: Aluminium / steel modular; Plastic / composite modular.
+In scope for 1B: Timber paling — vertical board; Horizontal timber slats.
 
 Physical model still owns quantities. Commercial requirements own cost (`lib/estimate/fence-commercial.ts`, starters in `lib/estimate/fence-timber-1b.ts`).
 
@@ -609,13 +609,47 @@ Verifier: `scripts/verify-fence-maturity-1b.ts`.
 
 Reusable decision: labour productivity should follow **installed physical units** (board-lm, rail-lm) rather than gross face area when installer effort tracks piece count.
 
-Verifier: `scripts/verify-fence-maturity-1b.ts`.
+### FENCE-MATURITY-1C — Modular commercial
+
+**FENCE-MATURITY-1C = COMPLETE LOCAL / OWNER REVIEWED** (architecture approved in principle)
+
+**FENCE-MATURITY-1C-R1 = COMPLETE LOCAL / OWNER FINAL MODULAR REVIEW PENDING**
+
+**METAL_SLAT_MODULAR** subtypes Aluminium and Steel, and **PLASTIC_MODULAR** (builder label: Plastic / composite fence), are commercially matured locally. Timber Fence and Deck were not reopened.
+
+**Direct Cost** = sum of active detailed commercial cost lines (materials + labour + explicit allowances/waste/other). No invisible quality, package residue, GM, or access multiplier inside Direct. Project Conditions may change applicable **labour line hours** once (visible on the labour line, Deck R7/R8 style) and do not change manufactured section/post/fixings/concrete unit prices.
+
+**Physical engine owns** section count, residual width, post count, hole count, concrete quantity. **Commercial engine owns** product identity, rate, cost, labour, fixings, allowances, authority. Pricing does not recalculate section geometry. **Rate lookup must not change physical dimensions.** Only an explicitly selected section product/SKU may drive width/height.
+
+**Section product:** manufactured EA panel. Family keys `fence.section.metal_slat.aluminium`, `fence.section.metal_slat.steel`, `fence.section.plastic_composite`. SKU `{widthMm}x{heightMm}`. Never generic m² when an EA identity exists. Residual bay still purchases one whole standard section.
+
+**Dimension ownership:** selected Company product width drives modular layout. An unselected Company 2.0 m SKU rate does **not** silently change a 1.8 m physical model. Incompatible-dimension Company SKUs are not exact rates for a different module width.
+
+**Company products** (label, system/type, material, width, height, $/section, optional SKU) outrank Quotr generic benchmarks. No supplier integration.
+
+**Quotr generic LOW-CONFIDENCE starters (not SKUs, not fixture-tuned):** aluminium section $220/ea; steel $190/ea; plastic/composite $160/ea; aluminium post $45/ea; steel post $38/ea; plastic post $32/ea; brackets/fixings $18/installed-section; premix 20 kg $11.50/bag (shared Fence bag identity). 1C-R1 did not recalibrate starters.
+
+**Posts:** EA manufactured modular posts. Distinct from Timber H4 100×100 stock-lm and retaining-wall H-posts. No timber stock ladder.
+
+**Labour:** post installation reuses `fence.post.install.hours_per_post` **0.70** (same hole/set/plumb ownership). Section installation `fence.section.install.hours_per_section` **0.35**, shared Metal and Plastic, driver = installed bay count (residual cut included). Concrete placement reuses Fence `0.06` labour-h/bag. Person-hours per unit. No crew multiplier.
+
+**Fixings:** Quotr generic sections do **not** include brackets → separate $/section. `fence.modular_fixings_included` Yes → no separate money. Never both.
+
+**Gates:** Modular gates remain **not modelled**. Applicability: `SUPPORTED` | `UNSUPPORTED_REQUESTED` | `NOT_REQUESTED`. Explicit `fence.modular_gate_requested` → `UNSUPPORTED_REQUESTED` (Pricing Required, no timber gate geometry/money). Stored Timber `fence.gate_included` on a modular system is `NOT_REQUESTED` / not consumed (1A-R3). No opening subtraction.
+
+**Waste:** residual whole-section purchase is procurement waste. No extra panel waste %. Finish is not added automatically (manufactured product finish). Demolition stays the existing explicit allowance/fallback.
+
+**Authority:** package until required materials (sections, posts EA, concrete, fixings if separate) and labour (post, section, concrete place) resolve; then `DETAILED_COMPONENT_AUTHORITY`. After promotion, missing rate/productivity stays detailed + specific Pricing Required. An unresolved modular gate does not restore package.
+
+Verifier: `scripts/verify-fence-maturity-1c.ts`.
+
+Reusable decision: **product dimensions drive physical modular geometry** when a Company section product is **explicitly selected**. A rate catalogue entry must not independently change section width, height, section count, or post count.
 
 ### Reusable cross-work-area decisions (do not duplicate architecture docs)
 
 1. **Modular section + residual** — `lib/estimate/fence-geometry.ts#modularSectionLayout`. Floor full modules; leftover is one purchased cut/residual section; posts = sections + 1. Do not even-redistribute.
 2. **Generic post-hole bagged concrete** — `lib/estimate/post-hole-concrete.ts`. Diameter (not radius). Full-precision bag ceil. Work-area labour keys stay labelled.
-3. **Company-configurable modular section identity** — family key + width×height SKU. Company rate can later outrank Quotr. No catalogue in 1A.
+3. **Company-configurable modular section identity** — family key + width×height SKU. Company exact product outranks Quotr generic. Product dimensions drive physical geometry.
 4. **Installed physical labour drivers** — when installer effort tracks piece count (board-lm, rail-lm), do not use gross face m².
 5. **Fence post stock-length purchase** — required length (height + embedment) is physical; purchase is the smallest covering stock length. Do not price theoretical lm when a stock ladder exists.
 
@@ -836,7 +870,7 @@ Then reassess:
 
 | Candidate | Gate |
 | --- | --- |
-| Fence | **FENCE-MATURITY-1B COMPLETE LOCAL / OWNER TIMBER COMMERCIAL REVIEW PENDING** — modular still package. Do not start 1C or Bathroom |
+| Fence | **FENCE-MATURITY-1C COMPLETE LOCAL / OWNER MODULAR COMMERCIAL REVIEW PENDING**. Timber remains closed. Do not start Bathroom |
 | Pergola | Same historic package class as pre-1A fence — not automatically next |
 | Kitchen | Remaining hardcoded flooring/plumbing/electrical/package lines; still MINIMAL |
 
@@ -908,5 +942,6 @@ This R1 pass accepts the read-only audit unless code inspection disproved a clai
 6. RETAINING-WALL-MATURITY-1D / 1F (Timber detailed): **COMPLETE / OWNER APPROVED**.
 7. RETAINING-WALL-MATURITY-2A / 2A-R1 (Concrete Sleeper detailed): **COMPLETE / COMMITTED / OWNER APPROVED**. 2A-R4 system-fact isolation: **COMPLETE LOCAL / OWNER FINAL SLEEPER DEFECT REVIEW PENDING**.
 8. RETAINING-WALL-MATURITY-2B (Concrete Masonry / Besser detailed): **COMPLETE LOCAL / OWNER REVIEWED**. **2B-R1 commercial integrity lock: COMPLETE LOCAL / OWNER APPROVED IN PRINCIPLE**. **2B-R2 procurement coverage: COMPLETE LOCAL / OWNER FINAL MASONRY CLOSURE APPROVAL PENDING**.
-9. FENCE-MATURITY-1B: **COMPLETE / COMMITTED / PREVIEW**. Timber vertical paling and horizontal slats are MVP commercially mature. Modular remains package. Do **not** start Fence 1C or Bathroom.
-10. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production from Fence 1A.
+9. FENCE-MATURITY-1B: **COMPLETE / COMMITTED / PREVIEW**. Timber vertical paling and horizontal slats are MVP commercially mature.
+10. FENCE-MATURITY-1C: **COMPLETE LOCAL / OWNER MODULAR COMMERCIAL REVIEW PENDING**. Aluminium/steel slat and Plastic/composite modular are commercially matured locally. Do **not** start Bathroom.
+11. Do **not** start Bathroom expansion, External Stairs adapter, Company Material UX, LABOUR-CREW-01, PERF-01, or Production from this pass.

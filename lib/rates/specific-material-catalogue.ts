@@ -24,14 +24,22 @@ import {
 import { RW_HOUSE_PILE_125_KEY } from "@/lib/estimate/retaining-wall-identities";
 import { FENCE_PRODUCTIVITY_KEYS } from "@/lib/estimate/fence-productivity";
 import {
+  FENCE_FIXINGS_MODULAR_KEY,
   FENCE_GATE_HARDWARE_KEY,
+  FENCE_POST_ALUMINIUM_KEY,
+  FENCE_POST_PLASTIC_KEY,
+  FENCE_POST_STEEL_KEY,
   FENCE_PREMIX_20KG_KEY,
+  FENCE_SECTION_ALUMINIUM_FAMILY_KEY,
+  FENCE_SECTION_PLASTIC_FAMILY_KEY,
+  FENCE_SECTION_STEEL_FAMILY_KEY,
   fenceBoardMaterialKey,
   fenceCappingMaterialKey,
   fenceGateFrameMaterialKey,
   fencePostMaterialKey,
   fenceRailMaterialKey,
 } from "@/lib/estimate/fence-identities";
+import { FENCE_MODULAR_1C_MATERIAL_STARTERS } from "@/lib/estimate/fence-modular-1c";
 import { FENCE_TIMBER_1B_MATERIAL_STARTERS } from "@/lib/estimate/fence-timber-1b";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 
@@ -1318,6 +1326,56 @@ export const FENCE_TIMBER_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
 ];
 
+function fenceModularStarterEntry(
+  itemKey: string,
+  label: string,
+  extra?: Partial<RateCatalogueEntry>
+): RateCatalogueEntry {
+  const starter = FENCE_MODULAR_1C_MATERIAL_STARTERS[itemKey];
+  const cost = starter?.costPerUnit;
+  const sell = cost != null ? Math.round((cost / 0.8) * 100) / 100 : undefined;
+  return entry({
+    item_key: itemKey,
+    label,
+    rate_type: "material",
+    category: "material",
+    work_area_type: "fence",
+    workAreaLabel: "Fence modular",
+    unit: starter?.unit ?? "ea",
+    description: starter?.basis ?? "LOW-CONFIDENCE Quotr generic benchmark. Not a supplier SKU.",
+    defaultCostRate: cost,
+    defaultSellRate: sell,
+    calculatorSupport: "used_now",
+    recommended: true,
+    ...extra,
+  });
+}
+
+export const FENCE_MODULAR_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  fenceModularStarterEntry(
+    FENCE_SECTION_ALUMINIUM_FAMILY_KEY,
+    "Aluminium slat fence section (1.8 m wide × matching height)"
+  ),
+  fenceModularStarterEntry(
+    FENCE_SECTION_STEEL_FAMILY_KEY,
+    "Steel slat fence section (1.8 m wide × matching height)"
+  ),
+  fenceModularStarterEntry(
+    FENCE_SECTION_PLASTIC_FAMILY_KEY,
+    "Plastic / composite fence section (1.8 m wide × matching height)"
+  ),
+  fenceModularStarterEntry(FENCE_POST_ALUMINIUM_KEY, "Aluminium modular fence post"),
+  fenceModularStarterEntry(FENCE_POST_STEEL_KEY, "Steel modular fence post"),
+  fenceModularStarterEntry(
+    FENCE_POST_PLASTIC_KEY,
+    "Plastic / composite modular fence post"
+  ),
+  fenceModularStarterEntry(
+    FENCE_FIXINGS_MODULAR_KEY,
+    "Modular fence brackets & fixings"
+  ),
+];
+
 export const FENCE_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
   entry({
     item_key: FENCE_PRODUCTIVITY_KEYS.postInstall,
@@ -1328,7 +1386,7 @@ export const FENCE_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Fence productivity",
     unit: "post",
     description:
-      "Total person-hours per post: set-out, ordinary hole digging, normal workface handling, set/plumb/brace. Starter 0.70. Not elapsed crew time.",
+      "Total person-hours per post: set-out, ordinary hole digging, normal workface handling, set/plumb/brace. Starter 0.70. Shared Timber and modular Fence. Not elapsed crew time.",
     defaultCostRate: 0.7,
     calculatorSupport: "used_now",
     recommended: true,
@@ -1416,6 +1474,20 @@ export const FENCE_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     calculatorSupport: "used_now",
     recommended: true,
   }),
+  entry({
+    item_key: FENCE_PRODUCTIVITY_KEYS.sectionInstall,
+    label: "Modular fence section installation (labour-h/section)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "fence",
+    workAreaLabel: "Fence productivity",
+    unit: "section",
+    description:
+      "Total person-hours per installed section/bay, including ordinary residual cut. Shared Metal and Plastic/composite. Starter 0.35. Not purchased waste quantity.",
+    defaultCostRate: 0.35,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
 ];
 
 export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
@@ -1429,6 +1501,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
   ...PAINTING_SPECIFIC_MATERIAL_CATALOGUE,
   ...FENCE_TIMBER_SPECIFIC_MATERIAL_CATALOGUE,
+  ...FENCE_MODULAR_SPECIFIC_MATERIAL_CATALOGUE,
 ];
 
 export const SPECIFIC_MATERIAL_RATE_GROUPS = [
@@ -1489,7 +1562,13 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Fence timber",
     description:
-      "Detailed Timber Fence identities. Company exact overrides LOW-CONFIDENCE Quotr starters. Modular metal/plastic stays on package $/lm.",
+      "Detailed Timber Fence identities. Company exact overrides LOW-CONFIDENCE Quotr starters.",
     entries: FENCE_TIMBER_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Fence modular",
+    description:
+      "Manufactured section $/EA and modular post $/EA. Company product (including width×height SKU) outranks Quotr generic benchmarks. Nominal 1.8 m wide × matching fence height unless the Company SKU says otherwise.",
+    entries: FENCE_MODULAR_SPECIFIC_MATERIAL_CATALOGUE,
   },
 ] as const;

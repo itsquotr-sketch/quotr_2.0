@@ -31,6 +31,7 @@ import {
   fenceRailMaterialKey,
   FENCE_GATE_HARDWARE_KEY,
   FENCE_GATE_LABOUR_COMPONENT,
+  FENCE_MODULAR_GATE_COMPONENT,
   FENCE_POSTS_EA_COMPONENT,
   FENCE_POSTS_LM_COMPONENT,
   FENCE_POST_LABOUR_COMPONENT,
@@ -42,8 +43,20 @@ import {
   fenceBoardMaterialKey,
   fenceCappingMaterialKey,
   fenceGateFrameMaterialKey,
+  fenceModularPostMaterialKey,
   fencePostMaterialKey,
 } from "@/lib/estimate/fence-identities";
+import {
+  FENCE_SECTION_PRODUCT_KEY_FACT,
+  FENCE_MODULAR_FIXINGS_INCLUDED_FACT,
+  FENCE_MODULAR_GATE_REQUESTED_FACT,
+  FENCE_MODULAR_GATE_PRICING_DETAIL,
+  modularFixingsIncluded,
+  modularGateApplicability,
+  modularGateRequestedCount,
+  modularInstalledSectionCount,
+  resolveModularSectionSelection,
+} from "@/lib/estimate/fence-modular-1c";
 import {
   classifyFenceMetalMaterial,
   classifyFenceSystem,
@@ -119,6 +132,10 @@ function factKeysFor(system: FenceSystemClass): string[] {
       "fence.section_height_m",
       "fence.metal_material",
       "fence.paling_or_panel_type",
+      FENCE_SECTION_PRODUCT_KEY_FACT,
+      FENCE_MODULAR_FIXINGS_INCLUDED_FACT,
+      FENCE_MODULAR_GATE_REQUESTED_FACT,
+      "fence.gate_included",
     ];
   }
   return common;
@@ -566,26 +583,49 @@ export function buildFencePhysicalModel(params: {
   }
 
   if (isModularFenceSystem(system)) {
+    const metalMaterial = classifyFenceMetalMaterial(
+      getStringFact(facts, workAreaId, "fence.metal_material") ??
+        getStringFact(facts, workAreaId, "fence.material")
+    );
+    const selection = resolveModularSectionSelection({
+      system,
+      metalMaterial,
+      fenceHeightM: geometry.heightM,
+      facts,
+      workAreaId,
+      rates: context.rates,
+    });
+    assumptions.push(...selection.assumptions);
+    attention.push(...selection.attention);
+    const fixingsIncluded = modularFixingsIncluded(facts, workAreaId);
+    const gateApplicability = modularGateApplicability(system, facts, workAreaId);
+    const gateRequested = gateApplicability === "UNSUPPORTED_REQUESTED";
+    const requestedGateCount = gateRequested
+      ? modularGateRequestedCount(facts, workAreaId)
+      : 0;
     modular = buildFenceModularTakeoff({
       geometry,
       system,
-      metalMaterial: classifyFenceMetalMaterial(
-        getStringFact(facts, workAreaId, "fence.metal_material") ??
-          getStringFact(facts, workAreaId, "fence.material")
-      ),
-      sectionWidthM: getNumberFact(facts, workAreaId, "fence.section_width_m"),
-      sectionHeightM: getNumberFact(facts, workAreaId, "fence.section_height_m"),
+      metalMaterial,
+      sectionWidthM: selection.sectionWidthM,
+      sectionHeightM: selection.sectionHeightM,
       sectionCountOverride: getNumberFact(facts, workAreaId, "fence.section_count"),
       embedmentM: getNumberFact(facts, workAreaId, "fence.post_embedment_m"),
       holeDiameterM: getNumberFact(facts, workAreaId, "fence.hole_diameter_m"),
+      fixingsIncluded,
+      gateRequested,
     });
     assumptions.push(...modular.assumptions);
     attention.push(...modular.attention);
 
+    const installedSections = modularInstalledSectionCount({
+      fullSectionCount: modular.fullSectionCount,
+      residualWidthM: modular.residualWidthM,
+    });
     const residualBit =
       modular.residualWidthM > 0
-        ? `${modular.fullSectionCount} full + 1 cut/residual (${round2(modular.residualWidthM)} m)`
-        : `${modular.purchasedSectionCount} full sections`;
+        ? `${modular.fullSectionCount} full + 1 cut/residual (${round2(modular.residualWidthM)} m) · ${modular.purchasedSectionCount} purchased whole sections`
+        : `${modular.purchasedSectionCount} full sections required/purchased`;
     const concreteCopy = formatPostHoleBaggedConcreteCopy({
       bagCount: modular.concrete.bagCount,
       holeCount: modular.holeCount,
@@ -603,9 +643,9 @@ export function buildFencePhysicalModel(params: {
         workAreaId,
         componentKey: FENCE_SECTIONS_COMPONENT,
         description: "Fence sections",
-        materialKey: modular.sectionProduct.itemKey,
+        materialKey: modular.sectionProduct.skuKey,
         category: "SECTIONS",
-        specification: `${residualBit} · ${modular.purchasedSectionCount} purchased EA · ${modular.sectionWidthM} m module`,
+        specification: `${residualBit} · ${modular.sectionWidthM} m × ${modular.sectionHeightM ?? geometry.heightM} m · whole EA sections (not fractional panels)`,
         baseQuantity: modular.purchasedSectionCount,
         baseUnit: "ea",
         wasteFactor: 0,
@@ -620,13 +660,10 @@ export function buildFencePhysicalModel(params: {
         workAreaId,
         componentKey: FENCE_POSTS_EA_COMPONENT,
         description: "Fence posts",
-        materialKey:
-          system === "PLASTIC_MODULAR"
-            ? "fence.plastic.post"
-            : "fence.metal.post",
+        materialKey: fenceModularPostMaterialKey(system, modular.metalMaterial),
         identity: modular.postIdentity,
         category: "POSTS",
-        specification: `${modular.postCount} EA · posts = sections + 1`,
+        specification: `${modular.postCount} EA manufactured modular posts · posts = purchased sections + 1`,
         baseQuantity: modular.postCount,
         baseUnit: "ea",
         wasteFactor: 0,
@@ -654,24 +691,46 @@ export function buildFencePhysicalModel(params: {
         source: "fence.post_hole_concrete",
       })
     );
-    requirements.push(
-      fencePlanningMaterial({
-        workAreaId,
-        componentKey: FENCE_FIXINGS_MODULAR_COMPONENT,
-        description: "Fixings/brackets",
-        materialKey: FENCE_FIXINGS_MODULAR_KEY,
-        category: "FIXINGS",
-        specification:
-          "Panel-to-post brackets/fixings if not included in the panel kit. Package owns money in 1A.",
-        baseQuantity: 1,
-        baseUnit: "allowance",
-        wasteFactor: 0,
-        purchaseQuantity: 1,
-        purchaseUnit: "allowance",
-        factKeys: keys,
-        source: "fence.modular.fixings",
-      })
-    );
+    if (!modular.fixingsIncluded) {
+      requirements.push(
+        fencePlanningMaterial({
+          workAreaId,
+          componentKey: FENCE_FIXINGS_MODULAR_COMPONENT,
+          description: "Fixings/brackets",
+          materialKey: FENCE_FIXINGS_MODULAR_KEY,
+          category: "FIXINGS",
+          specification: `${installedSections} installed sections × brackets/fixings. Separate from the section product. Not Timber 8%.`,
+          baseQuantity: installedSections,
+          baseUnit: "section",
+          wasteFactor: 0,
+          purchaseQuantity: installedSections,
+          purchaseUnit: "section",
+          factKeys: keys,
+          source: "fence.modular.fixings",
+        })
+      );
+    }
+    if (gateRequested) {
+      attention.push(FENCE_MODULAR_GATE_PRICING_DETAIL);
+      requirements.push(
+        fencePlanningMaterial({
+          workAreaId,
+          componentKey: FENCE_MODULAR_GATE_COMPONENT,
+          description: "Modular fence gate",
+          materialKey: FENCE_MODULAR_GATE_COMPONENT,
+          category: "GATE",
+          specification: `${requestedGateCount} gate requested. Manufactured modular gates are not modelled. Select/price a compatible manufactured gate. Not a timber gate.`,
+          baseQuantity: requestedGateCount,
+          baseUnit: "ea",
+          wasteFactor: 0,
+          purchaseQuantity: requestedGateCount,
+          purchaseUnit: "ea",
+          factKeys: keys,
+          source: "fence.modular.gate",
+          confidence: "low",
+        })
+      );
+    }
     requirements.push(
       fencePlanningLabour({
         workAreaId,
@@ -695,7 +754,7 @@ export function buildFencePhysicalModel(params: {
         productivityKey: FENCE_PRODUCTIVITY_KEYS.sectionInstall,
         hoursPerUnit: FENCE_PRODUCTIVITY_STARTERS[FENCE_PRODUCTIVITY_KEYS.sectionInstall],
         unit: "section",
-        quantity: modular.purchasedSectionCount,
+        quantity: installedSections,
         factKeys: keys,
         accessSensitive: true,
       })

@@ -95,6 +95,15 @@ export const FENCE_INFORMATION_CONTRACT: readonly FenceInformationContractRow[] 
     reason: "Gate included. TIMBER only. Missing assumes no. Stored but not consumed on Metal/Plastic modular.",
   },
   {
+    factKey: "fence.modular_gate_requested",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: false,
+    commercial: true,
+    confidence: true,
+    reason: "Explicit modular manufactured-gate request. Distinct from leftover Timber fence.gate_included. Unsupported in 1C → Pricing Required. Not timber gate geometry.",
+  },
+  {
     factKey: "fence.gate_count",
     questionClass: "ASK_NOW",
     calculatorConsumed: true,
@@ -244,9 +253,9 @@ export const FENCE_INFORMATION_CONTRACT: readonly FenceInformationContractRow[] 
     questionClass: "REFINE",
     calculatorConsumed: true,
     physical: true,
-    commercial: false,
+    commercial: true,
     confidence: true,
-    reason: "Manufactured panel height. Attention if it does not match fence height.",
+    reason: "Manufactured panel height. Attention / Pricing Required if it does not match fence height. Manufactured sections are not stretched.",
   },
   {
     factKey: "fence.metal_material",
@@ -256,6 +265,26 @@ export const FENCE_INFORMATION_CONTRACT: readonly FenceInformationContractRow[] 
     commercial: true,
     confidence: false,
     reason: "Aluminium vs steel for metal modular identity.",
+  },
+  {
+    factKey: "fence.section_product_key",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: true,
+    confidence: true,
+    reason:
+      "Company/Quotr modular section product key. Product width/height drive geometry unless the builder override is compatible.",
+  },
+  {
+    factKey: "fence.modular_fixings_included",
+    questionClass: "REFINE",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: true,
+    confidence: false,
+    reason:
+      "Whether the selected modular section product includes brackets/fixings. Yes = no separate fixings money.",
   },
   {
     factKey: "fence.paling_or_panel_type",

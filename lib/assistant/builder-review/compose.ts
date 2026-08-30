@@ -797,7 +797,7 @@ function isHighValueBuilderImprovement(
   if (fenceOnly) {
     return /confirm (post spacing|post embedment|gate width|horizontal slat gap|horizontal slat support|gap between vertical palings|modular panel|section width|top capp|existing.fence removal)/i.test(
       label
-    ) || /tall fence/i.test(label);
+    ) || /tall fence|modular (fence )?gate.{0,40}pricing required|panel height does not match|compatible manufactured gate/i.test(label);
   }
   if (!retainingWallOnly) return true;
   if (/spacing|waste factor|procurement allowance|10% waste|site access|carry distance|compaction|stock length|target\/max/i.test(label)) {

@@ -1,6 +1,7 @@
 import {
   classifyFenceSystem,
   fenceGateScopeApplies,
+  isModularFenceSystem,
 } from "@/lib/estimate/fence-systems";
 
 export type WorkAreaQuoteFact = {
@@ -322,12 +323,18 @@ function buildFenceDraft(
   const height = factValue(facts, "fence.height_m");
   const material = factValue(facts, "fence.material");
   const systemLabel = factValue(facts, "fence.system");
-  const materialPhrase = (systemLabel || material || "fence").toLowerCase();
   const system = classifyFenceSystem(
     factValue(facts, "fence.system") ?? material,
     factValue(facts, "fence.paling_or_panel_type")
   );
   const gateInActiveScope = fenceGateScopeApplies(system);
+  let materialPhrase = (systemLabel || material || "fence").toLowerCase();
+  if (system === "METAL_SLAT_MODULAR") {
+    const metal = (factValue(facts, "fence.metal_material") ?? "").toLowerCase();
+    materialPhrase = metal.includes("steel") ? "steel slat" : "aluminium slat";
+  } else if (system === "PLASTIC_MODULAR") {
+    materialPhrase = "plastic/composite";
+  }
 
   let draft =
     "Supply and install fencing works to the agreed lineal metre scope, including fence materials, fixings, installation labour and removal of existing fencing where included.";
@@ -409,6 +416,16 @@ function buildFenceDraft(
   draft = enrichFromPricingItems(draft, pricingItems, {
     omitGateClause: !gateInActiveScope,
   });
+
+  if (
+    isModularFenceSystem(system) &&
+    isAffirmative(factValue(facts, "fence.modular_gate_requested"))
+  ) {
+    draft = appendScopeClause(
+      draft,
+      "A compatible manufactured gate is requested and is not included in this price — pricing required."
+    );
+  }
 
   return finalizeDraft(
     `${draft} Final fence height, material selection, ground conditions, boundary set-out and any required neighbour, consent or services checks are subject to confirmation.`

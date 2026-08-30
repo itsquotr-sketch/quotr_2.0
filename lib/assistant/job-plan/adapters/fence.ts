@@ -3,6 +3,7 @@ import {
   classifyFenceSystem,
   fenceGateScopeApplies,
   fenceSystemLabel,
+  isModularFenceSystem,
   isTimberFenceSystem,
 } from "@/lib/estimate/fence-systems";
 import type {
@@ -142,6 +143,18 @@ export const fenceJobPlanAdapter: JobPlanWorkAreaAdapter = {
           factKey: "fence.top_capping",
           facts: context.facts,
           surfaceReason: "Check: timber top capping is optional",
+        })
+      );
+    } else if (isModularFenceSystem(system)) {
+      checks.push(
+        booleanCheck({
+          id: "fence-modular-gate",
+          workAreaId: workArea.id,
+          label: "Gate",
+          factKey: "fence.modular_gate_requested",
+          facts: context.facts,
+          surfaceReason:
+            "Check: manufactured modular gate is requested. Not modelled — pricing required if yes.",
         })
       );
     }

@@ -28,6 +28,7 @@ import {
   FENCE_POSTS_LM_COMPONENT,
   FENCE_PREMIX_20KG_KEY,
   FENCE_RAILS_COMPONENT,
+  FENCE_SECTIONS_COMPONENT,
   fenceBoardMaterialKey,
   fenceCappingMaterialKey,
   fenceGateFrameMaterialKey,
@@ -578,8 +579,11 @@ check(
 
 const metal = calculateFence(ctx(metalFacts()), wa());
 check(
-  "42 Timber→Metal returns package authority",
-  hasPackage(metal.lineItems) && !hasDetailed(metal.lineItems)
+  "42 Timber→Metal isolates modular detailed",
+  !hasPackage(metal.lineItems) &&
+    metal.lineItems.some((i) => i.componentKey === FENCE_SECTIONS_COMPONENT) &&
+    !metal.lineItems.some((i) => i.componentKey === FENCE_BOARDS_COMPONENT) &&
+    !metal.lineItems.some((i) => /gate/i.test(i.label))
 );
 check(
   "43 stale gates remain isolated",
@@ -851,8 +855,8 @@ check(
     hasDetailed(ownerA.lineItems) &&
     !hasPackage(ownerB.lineItems) &&
     hasDetailed(ownerB.lineItems) &&
-    hasPackage(metal.lineItems) &&
-    !hasDetailed(metal.lineItems)
+    !hasPackage(metal.lineItems) &&
+    metal.lineItems.some((i) => i.componentKey === FENCE_SECTIONS_COMPONENT)
 );
 check(
   "R1.builder review purchased stock",
