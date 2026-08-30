@@ -959,3 +959,158 @@ Unchanged: Cloudflare AKL measured; Vercel compute region **NOT CURRENTLY OBSERV
 
 Do not start SPEED 1B in this batch.
 
+---
+
+# SPEED 1A — PREVIEW RESULT
+
+**Status:** SYSTEM-PERFORMANCE-SPEED-1A = COMPLETE / COMMITTED / PREVIEW  
+**Date:** 2026-08-31  
+**Does not:** start Speed 1B, change `router.refresh`, change derived-fact writes, change persist RPC, change calculators, start Pricing UX, start Bathroom, or deploy Production.
+
+This section records R1 closure. It does **not** rewrite the Speed 0 baseline above.
+
+## Commits and deployment
+
+| Item | Value | Class |
+| --- | --- | --- |
+| Speed 1A product commit | `cff3f8274285b3e05d404612749a21f837624f70` | MEASURED (`git rev-parse`) |
+| Product remote SHA | `cff3f8274285b3e05d404612749a21f837624f70` on `origin/hardening/stage-2a-security` | MEASURED |
+| Speed 1A Preview deployed SHA | `cff3f8274285b3e05d404612749a21f837624f70` | MEASURED (`vercel ls` `githubCommitSha`) |
+| Deployment | `dpl_g44GRVMD5LKtFJj6iZoMjX7nUVDq` | MEASURED (`vercel inspect`) |
+| Target | `preview` | MEASURED |
+| Ready | `READY` | MEASURED |
+| Unique Preview URL | `https://quotr-2-0-ap0dl48un-quotr1.vercel.app` | MEASURED |
+| Stable Preview URL | `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` | MEASURED (`aliases`) |
+| Production | not deployed | MEASURED (`target: preview`) |
+
+This appendix is a docs-only follow-up after the product SHA above was Preview-Ready and probed. Product behaviour of Speed 1A is that SHA.
+
+## Structural before / after (Speed 0 → Speed 1A)
+
+Label: **DERIVED** from locked code. Not Postgres `pg_stat_statements`. Not Preview wall-clock.
+
+| Surface | Metric | Speed 0 BEFORE | Speed 1A AFTER |
+| --- | --- | ---: | ---: |
+| Project open | underlying auth/org trees | ~10–12 | **1** |
+| Project open | pricing summary reads | 2 | **1** (preloaded into workspace tab context) |
+| Project open | project ownership checks | ~7 | ~6 (still per-loader; not identity-cached) |
+| Project open | total derived queries | ~25–40 | **~18–28** |
+| Generate | auth/context trees | 2+ | **1** (`getEstimateContextWithContext`) |
+| Generate | stage reads | 1 | 1 |
+| Update | `loadProjectStage` call sites | 2 | 2 in source |
+| Update | stage DB reads | 2 | **1** (`React.cache(loadProjectStageUncached)`; both reads occur before any stage write) |
+| Pricing open | auth trees | ~5–6 | **1** |
+| Quote open | auth trees | ~5–6 | **1** |
+
+Update implementation: `regenerateStaticEstimate` calls `loadProjectStage(projectId)`, then `runEstimateGeneration` calls `loadProjectStage(projectId)` again. Same request, same argument → one uncached execution. Generate-only uses the inner call once.
+
+## Preview measurement limitations
+
+Deployment Protection (Vercel SSO) gates **every** Preview URL including `/` and `/login`. Unauthenticated probes receive `302` to `https://vercel.com/sso-api?...`. No session cookie is available to this measurement agent. Therefore:
+
+- Project open, Generate, Update, Pricing open, Quote open, and Clarify save **cannot** be exercised as a signed-in builder on this Preview.
+- `measureServerLoad` is **dev-only** (`NODE_ENV === "development"`). Preview production builds do not emit `[perf]` logs.
+- `getUnderlyingAuthResolutionCount` is a **production no-op**. No Production-visible telemetry was added.
+- Do **not** convert query-count reduction into milliseconds.
+
+## Preview HTTP probes (unauthenticated)
+
+Class: **MEASURED** — Vercel SSO gate only. **Not** Next.js RSC, **not** Project/Pricing/Quote, **not** server actions.
+
+Probe machine: Windows, NZ. Unique deployment `quotr-2-0-ap0dl48un-quotr1.vercel.app`.
+
+| Probe | HTTP | TTFB (`time_starttransfer`) | `X-Vercel-Id` |
+| --- | --- | ---: | --- |
+| Unique `/` | 302 SSO | 560 ms | `syd1::…` |
+| Unique `/login` | 302 SSO | 366 ms | `syd1::…` |
+| Unique `/app` | 302 SSO | 127 ms | `syd1::…` |
+| Stable `/` | 302 SSO | 539 ms | `syd1::…` |
+
+These times include TLS + SSO redirect. They are **not** budget evidence.
+
+## User-visible flow timings
+
+| Flow | Action complete | UI usable / settled | Class |
+| --- | --- | --- | --- |
+| A. Project open | — | — | **NOT OBSERVABLE** (SSO) |
+| B. Generate Estimate | — | — | **NOT OBSERVABLE** (SSO) |
+| C. Update Estimate | — | — | **NOT OBSERVABLE** (SSO) |
+| D. Pricing open | — | — | **NOT OBSERVABLE** (SSO) |
+| E. Quote open | — | — | **NOT OBSERVABLE** (SSO) |
+| Clarify save (Speed 1B baseline only) | — | — | **NOT OBSERVABLE** (SSO) |
+
+Auth-resolution count on Preview: **NOT OBSERVABLE**. Dev counter is disabled in production builds. No new telemetry.
+
+## Budget classification
+
+Provisional Speed 0 budgets remain **not SLOs**. Without authenticated Preview timings, product flows are **NOT CLASSIFIED**.
+
+| Metric | TARGET / WARNING / FAIL | Preview result |
+| --- | --- | --- |
+| Project usable load | 800 / 1500 / 3000 ms | **NOT CLASSIFIED** |
+| Generate action complete | 800 / 1500 / 4000 ms | **NOT CLASSIFIED** |
+| Generate usable including refresh | 1200 / 2500 / 5000 ms | **NOT CLASSIFIED** |
+| Update Estimate usable | 1200 / 2500 / 5000 ms | **NOT CLASSIFIED** |
+| Pricing open | 800 / 1500 / 3000 ms | **NOT CLASSIFIED** |
+| Quote open | 800 / 1500 / 3000 ms | **NOT CLASSIFIED** |
+
+Do not infer TARGET/WARNING/FAIL from auth-tree reduction.
+
+## Did Speed 1A deliver material user-visible improvement?
+
+**Cannot be claimed from Preview wall-clock.** Structural query/auth reduction is **PASS** (DERIVED). User-visible Preview timing is **NOT OBSERVABLE**.
+
+`router.refresh` after Generate / Update / Clarify is **unchanged** (14 executable `router.refresh();` in `AssistantShell`; Speed 0 counted the same 14. Speed 1A local report’s “17” counted 3 comment mentions. Speed 1A added **zero** refresh calls; `AssistantShell.tsx` is not in the Speed 1A product commit). Mutation **usable/settled** time is therefore still expected to be dominated by full-tree refresh — **DERIVED**, not Preview-measured. That is evidence for Speed 1B, not a Speed 1A failure.
+
+## Estimator CPU / economics (local, not Preview)
+
+Re-run of `scripts/measure-system-performance-speed-0.ts` after Speed 1A, empty company rates, 50 runs. Class: **MEASURED** local CPU.
+
+| Fixture | recommendedSell | avg | p95 |
+| --- | ---: | ---: | ---: |
+| B REAL-JOB-01 | **12878.01** | 1.22 ms | 1.44 ms |
+| E multi-WA | **17098.63** | 4.05 ms | 5.18 ms |
+
+Speed 0 fixture E was ~4.11 ms avg / ~4.95 ms p95. Same 1–7 ms band. Goldens not restamped. Calculators not changed.
+
+## Region topology
+
+No region changes.
+
+| Fact | Value | Class |
+| --- | --- | --- |
+| In-repo `next.config.ts` / inspect `vercelConfig` | empty `{}` | MEASURED |
+| Vercel build `createdIn` | `sfo1` | MEASURED (`vercel inspect`) |
+| Vercel lambda `deployedTo` | `iad1` | MEASURED (`vercel inspect` function placement) |
+| This probe’s `X-Vercel-Id` routing label | `syd1` | MEASURED (response header; routing hop, not a dashboard Postgres region) |
+| Supabase Postgres origin region | — | **NOT CURRENTLY OBSERVABLE** |
+| Speed 0 Cloudflare colo on Supabase hostname probe | AKL | HISTORICAL MEASURED (Speed 0); not re-used as Preview app timing |
+
+Do not infer a topology programme from `syd1` vs `iad1`. Confirm dashboards before any region change.
+
+## REQ-TXN-01
+
+**VERIFY_LATER — LOCAL SUPABASE REQUIRED.** Local `supabase_db_quotr*` was not available during R1. Not treated as a product FAIL.
+
+## Speed 1A success decision
+
+| Axis | Result |
+| --- | --- |
+| Structural | **PASS** |
+| Preview user-visible timing | **NOT OBSERVABLE** (SSO) |
+| Combined | **STRUCTURAL PASS; REFRESH STILL THE EXPECTED SETTLED-UI BOTTLENECK (DERIVED).** Not a Speed 1A failure. Validates Speed 1B as the next programme, after owner start — not in this batch. |
+
+## Recommended Speed 1B scope (do not start here)
+
+Ranked by Speed 0 register + unchanged refresh policy. Preview wall-clock could not re-rank them.
+
+1. Clarify / fact save → acknowledgement vs full `router.refresh` settled assistant (SP0-02, highest frequency).
+2. Generate Estimate → action complete vs Builder Review usable after refresh (SP0-03).
+3. Update Estimate → same split as Generate.
+
+Do not start Speed 1B in this batch.
+
+## Exact next action
+
+**STOP.** Owner may start **SYSTEM-PERFORMANCE-SPEED-1B** in a later batch. Do not start Pricing UX, Bathroom, or Production deploy.
+
