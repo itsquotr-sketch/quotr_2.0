@@ -43,6 +43,7 @@ export type Quote = {
   superseded_by_quote_id: string | null;
   superseded_at: string | null;
   revision_note: string | null;
+  presentation_mode: "grouped" | "detailed" | "lump_sum";
 };
 
 export type QuoteItem = {
@@ -90,6 +91,7 @@ export type QuoteInput = {
   assumptions?: string[];
   exclusions?: string[];
   terms?: string | null;
+  presentation_mode?: "grouped" | "detailed" | "lump_sum";
 };
 
 export type QuoteItemInput = {

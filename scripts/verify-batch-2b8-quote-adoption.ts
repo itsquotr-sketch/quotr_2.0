@@ -195,7 +195,8 @@ function main(): void {
   checks.push(
     assert(
       "draft recalc uses authoritative adapter",
-      actionsSrc.includes("calculateAuthoritativeQuoteTotals") &&
+      (actionsSrc.includes("calculateQuoteBaseTotalsFromItems") ||
+        actionsSrc.includes("calculateAuthoritativeQuoteTotals")) &&
         actionsSrc.includes("resolveAuthoritativeQuoteItemTotal")
     )
   );
@@ -210,7 +211,8 @@ function main(): void {
   checks.push(
     assert(
       "create/refresh snapshot uses authoritative totals",
-      buildSrc.includes("calculateAuthoritativeQuoteTotals") &&
+      (buildSrc.includes("calculateQuoteBaseTotalsFromItems") ||
+        buildSrc.includes("calculateAuthoritativeQuoteTotals")) &&
         !buildSrc.includes("calculateQuoteTotals(")
     )
   );

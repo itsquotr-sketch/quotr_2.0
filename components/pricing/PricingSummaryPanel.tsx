@@ -73,6 +73,11 @@ export function PricingSummaryPanel({
       </CardHeader>
       <CardContent className={cn("space-y-3", compact && "pt-0")}>
         <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
+          <SummaryRow
+            label="Sell ex GST"
+            value={view.subtotalSellFormatted}
+            prominent
+          />
           {!compact ? (
             <>
               <MetricRow
@@ -81,37 +86,30 @@ export function PricingSummaryPanel({
                 tertiary
               />
               <MetricRow
-                label="Total charge"
-                value={view.subtotalSellFormatted}
-                tertiary
-              />
-              <MetricRow
                 label="Gross profit"
                 value={view.profitLabel}
                 tertiary
               />
               <MetricRow
-                label="Margin"
+                label="Gross margin"
                 value={view.marginLabel}
                 tertiary
               />
             </>
           ) : (
-            <MetricRow
-              label="Total charge"
-              value={view.subtotalSellFormatted}
-              prominent
-            />
+            <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
+              <span>Cost {view.subtotalCostFormatted}</span>
+              <span>GP {view.profitLabel}</span>
+              <span>{view.marginLabel}</span>
+            </div>
           )}
         </div>
         <div className={cn("rounded-lg border border-border/60 bg-card px-3 py-3", !compact && "border-[var(--brand-orange-muted)]/60")}>
-          {!compact ? (
-            <SummaryRow
-              label={view.gstLabel}
-              value={view.gstAmountFormatted}
-            />
-          ) : null}
-          <div className={cn(!compact && "mt-2 border-t border-border/60 pt-2")}>
+          <SummaryRow
+            label={view.gstLabel}
+            value={view.gstAmountFormatted}
+          />
+          <div className="mt-2 border-t border-border/60 pt-2">
             <SummaryRow
               label="Total incl. GST"
               value={view.totalInclGstFormatted}

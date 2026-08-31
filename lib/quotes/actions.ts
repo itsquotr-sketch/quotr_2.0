@@ -29,10 +29,8 @@ import {
   assertOrgOwnsQuoteItem,
 } from "@/lib/security/org-ownership";
 import { buildQuoteSnapshotFromReviewedPricing } from "@/lib/quotes/build-from-pricing";
-import {
-  calculateAuthoritativeQuoteTotals,
-  resolveAuthoritativeQuoteItemTotal,
-} from "@/lib/quotes/quote-commercial-engine-adapter";
+import { calculateQuoteBaseTotalsFromItems } from "@/lib/quotes/base-totals";
+import { resolveAuthoritativeQuoteItemTotal } from "@/lib/quotes/quote-commercial-engine-adapter";
 import type { QuoteItemFromPricing } from "@/lib/quotes/from-pricing";
 import { mapQuote, mapQuoteItem } from "@/lib/quotes/mappers";
 import {
@@ -129,7 +127,7 @@ async function recalculateAndPersistQuoteTotals(
 ) {
   const { data: items, error } = await supabase
     .from("quote_items")
-    .select("total, visible")
+    .select("total, visible, optional")
     .eq("quote_id", quoteId)
     .eq("org_id", orgId);
 
@@ -140,7 +138,7 @@ async function recalculateAndPersistQuoteTotals(
     throw new Error(QUOTE_SAVE_FAILED);
   }
 
-  const totalsResult = calculateAuthoritativeQuoteTotals(
+  const totalsResult = calculateQuoteBaseTotalsFromItems(
     items ?? [],
     gstRate,
     "quote-draft-recalc"
@@ -492,6 +490,7 @@ export async function createQuoteFromPricing(input: {
       exclusions: quoteFields.exclusions,
       assumptions: quoteFields.assumptions,
       terms: quoteFields.terms,
+      presentation_mode: quoteFields.presentation_mode,
       created_by: user.id,
     })
     .select("id")
@@ -603,6 +602,9 @@ export async function updateQuote(
     update.exclusions = quoteInput.exclusions;
   }
   if (quoteInput.terms !== undefined) update.terms = quoteInput.terms;
+  if (quoteInput.presentation_mode !== undefined) {
+    update.presentation_mode = quoteInput.presentation_mode;
+  }
 
   const { error } = await supabase
     .from("quotes")
@@ -1233,6 +1235,7 @@ export async function reviseQuote(input: {
       parent_quote_id: rootId,
       revised_from_quote_id: quote.id,
       revision_note: revisionNote ?? null,
+      presentation_mode: quote.presentation_mode,
     })
     .select("id")
     .single();
@@ -1513,6 +1516,7 @@ export async function reviseQuoteFromFinalPricing(input: {
       parent_quote_id: rootId,
       revised_from_quote_id: quote.id,
       revision_note: revisionNote ?? null,
+      presentation_mode: quote.presentation_mode,
     })
     .select("id")
     .single();

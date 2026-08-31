@@ -1,5 +1,5 @@
 export const PRICING_TABLE_GRID_COLS =
-  "md:grid-cols-[minmax(0,1.8fr)_minmax(0,0.85fr)_minmax(0,0.65fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.65fr)_4.5rem]";
+  "md:grid-cols-[2rem_minmax(0,1.8fr)_minmax(0,0.85fr)_minmax(0,0.65fr)_minmax(0,0.85fr)_minmax(0,0.6fr)_minmax(0,0.65fr)_4.5rem]";
 
 export const PRICING_TABLE_GRID =
   `grid gap-x-2 gap-y-1 px-3 py-2.5 ${PRICING_TABLE_GRID_COLS} md:items-center`;

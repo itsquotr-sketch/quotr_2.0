@@ -4,7 +4,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from
 import { RecalibrationBanner } from "@/components/pricing/RecalibrationBanner";
 import { EmptyState } from "@/components/layout/empty-state";
 import { WorkspaceBanner } from "@/components/layout/workspace-banner";
+import { PricingBulkToolbar } from "@/components/pricing/PricingBulkToolbar";
 import { PricingDetailsCard } from "@/components/pricing/PricingDetailsCard";
+import { PricingGroupControl } from "@/components/pricing/PricingGroupControl";
 import { PricingHeader } from "@/components/pricing/PricingHeader";
 import { PricingMobileActionBar } from "@/components/pricing/PricingMobileActionBar";
 import { PricingReviewChecklist } from "@/components/pricing/PricingReviewChecklist";
@@ -13,13 +15,19 @@ import { PricingTermsCard } from "@/components/pricing/PricingTermsCard";
 import { PricingWorkAreaSection } from "@/components/pricing/PricingWorkAreaSection";
 import {
   addPricingItem,
+  deleteManualPricingItems,
   deletePricingItem,
   duplicatePricingItem,
   markPricingReviewed,
+  setPricingItemsQuoteVisibility,
   updatePricingDocument,
   updatePricingItem,
 } from "@/lib/pricing/actions";
-import { groupItemsByWorkArea } from "@/lib/pricing/mappers";
+import {
+  groupPricingItems,
+  isManuallyAddedPricingItem,
+  type PricingGroupBy,
+} from "@/lib/pricing/grouping";
 import type {
   PricingDocument,
   PricingDocumentInput,
@@ -41,7 +49,11 @@ export function PricingWorkspace({
   pricingChangedAfterQuote = false,
 }: PricingWorkspaceProps) {
   const [isSaving, startSave] = useTransition();
+  const [isBulkPending, startBulk] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [groupBy, setGroupBy] = useState<PricingGroupBy>("work_area");
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [selectionMode, setSelectionMode] = useState(false);
   const documentDraftRef = useRef<PricingDocumentInput>({});
   const [document, setDocument] = useState<PricingDocument>(initialData.document);
   const [items, setItems] = useState<PricingItem[]>(initialData.items);
@@ -79,9 +91,27 @@ export function PricingWorkspace({
   }, [initialData]);
 
   const groupedSections = useMemo(
-    () => groupItemsByWorkArea(items, workAreas),
-    [items, workAreas]
+    () => groupPricingItems(items, workAreas, groupBy),
+    [items, workAreas, groupBy]
   );
+
+  const selectedItems = useMemo(
+    () => items.filter((item) => selectedIds.has(item.id)),
+    [items, selectedIds]
+  );
+  const canDeleteCount = selectedItems.filter(isManuallyAddedPricingItem).length;
+
+  const handleToggleSelect = useCallback((itemId: string) => {
+    setSelectedIds((current) => {
+      const next = new Set(current);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  }, []);
 
   const handleDocumentChange = useCallback((updates: PricingDocumentInput) => {
     documentDraftRef.current = {
@@ -212,6 +242,65 @@ export function PricingWorkspace({
     [applyDocumentUpdate, pricingDocumentId, projectId]
   );
 
+  const handleBulkVisibility = (visibleOnQuote: boolean) => {
+    if (selectedIds.size === 0) return;
+    setSaveError(null);
+    startBulk(async () => {
+      const result = await setPricingItemsQuoteVisibility({
+        pricingDocumentId,
+        itemIds: Array.from(selectedIds),
+        visibleOnQuote,
+      });
+      if (result.error) {
+        setSaveError(result.error);
+        return;
+      }
+      const updated = new Set(result.updatedItemIds ?? []);
+      setItems((current) =>
+        current.map((item) =>
+          updated.has(item.id)
+            ? { ...item, visible_on_quote: visibleOnQuote }
+            : item
+        )
+      );
+      if (result.document) {
+        applyDocumentUpdate(result.document);
+      }
+      setSelectedIds(new Set());
+    });
+  };
+
+  const handleBulkDelete = () => {
+    const manualIds = selectedItems
+      .filter(isManuallyAddedPricingItem)
+      .map((item) => item.id);
+    if (manualIds.length === 0) return;
+    if (
+      !window.confirm(
+        `Delete ${manualIds.length} manually added line${manualIds.length === 1 ? "" : "s"}? Estimate-sourced items will not be deleted.`
+      )
+    ) {
+      return;
+    }
+    setSaveError(null);
+    startBulk(async () => {
+      const result = await deleteManualPricingItems({
+        pricingDocumentId,
+        itemIds: manualIds,
+      });
+      if (result.error) {
+        setSaveError(result.error);
+        return;
+      }
+      const deleted = new Set(result.deletedItemIds ?? []);
+      setItems((current) => current.filter((item) => !deleted.has(item.id)));
+      if (result.document) {
+        applyDocumentUpdate(result.document);
+      }
+      setSelectedIds(new Set());
+    });
+  };
+
   return (
     <div className="space-y-5 pb-[calc(11rem+env(safe-area-inset-bottom))] md:pb-0">
       <PricingHeader
@@ -232,9 +321,7 @@ export function PricingWorkspace({
       </div>
 
       <WorkspaceBanner>
-        Review and adjust pricing before creating a client quote. You remain
-        responsible for confirming scope, quantities, subcontractor allowances,
-        terms and final pricing.
+        Internal pricing — review before creating a client quote.
       </WorkspaceBanner>
 
       {quoteSummary != null ? (
@@ -301,17 +388,42 @@ export function PricingWorkspace({
                 description="Line items appear here after you prepare final pricing from your estimate. Check each work area section below or add items manually."
               />
             ) : null}
+            {items.length > 0 ? (
+              <>
+                <PricingGroupControl
+                  value={groupBy}
+                  onChange={setGroupBy}
+                  selectionMode={selectionMode}
+                  onSelectionModeChange={setSelectionMode}
+                  selectedCount={selectedIds.size}
+                />
+                <PricingBulkToolbar
+                  selectedCount={selectedIds.size}
+                  canDeleteCount={canDeleteCount}
+                  isPending={isBulkPending}
+                  onShowOnQuote={() => handleBulkVisibility(true)}
+                  onHideFromQuote={() => handleBulkVisibility(false)}
+                  onDeleteManual={handleBulkDelete}
+                  onClear={() => setSelectedIds(new Set())}
+                />
+              </>
+            ) : null}
             {groupedSections.map((section) => (
               <PricingWorkAreaSection
-                key={section.workArea?.id ?? "general"}
+                key={section.key}
                 projectId={projectId}
-                workArea={section.workArea}
+                title={section.title}
+                workArea={groupBy === "work_area" ? section.workArea : null}
                 items={section.items}
+                selectedIds={selectedIds}
+                selectionMode={selectionMode}
+                onToggleSelect={handleToggleSelect}
                 onQuoteDescriptionSaved={handleQuoteDescriptionSaved}
                 onSaveItem={handleSaveItem}
                 onDuplicateItem={handleDuplicateItem}
                 onDeleteItem={handleDeleteItem}
                 onAddItem={handleAddItem}
+                showAddItem={groupBy === "work_area"}
               />
             ))}
           </div>

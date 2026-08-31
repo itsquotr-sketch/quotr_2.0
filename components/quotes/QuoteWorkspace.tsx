@@ -6,6 +6,7 @@ import { useCallback, useRef, useState, useTransition, type ReactNode } from "re
 import { Printer } from "lucide-react";
 import { QuoteHeader } from "@/components/quotes/QuoteHeader";
 import { QuoteMobileActionBar } from "@/components/quotes/QuoteMobileActionBar";
+import { QuotePresentationControl } from "@/components/quotes/QuotePresentationControl";
 import { QuoteSummaryPanel } from "@/components/quotes/QuoteSummaryPanel";
 import { QuoteTermsCard } from "@/components/quotes/QuoteTermsCard";
 import { WorkspaceBanner } from "@/components/layout/workspace-banner";
@@ -20,6 +21,9 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { quoteDocumentViewModel } from "@/lib/quotes/financial-view-model";
+import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
+import { cn } from "@/lib/utils";
 import {
   markQuoteAccepted,
   markQuoteDeclined,
@@ -29,6 +33,7 @@ import {
   updateQuote,
 } from "@/lib/quotes/actions";
 import { REFRESH_FROM_PRICING_STATUSES } from "@/lib/quotes/revision";
+import type { QuotePresentationMode } from "@/lib/quotes/presentation";
 import type { QuoteInput, QuoteWorkspaceData } from "@/lib/quotes/types";
 
 type QuoteWorkspaceProps = {
@@ -42,6 +47,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
   const [isRevising, startRevise] = useTransition();
   const [isStatusPending, startStatus] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
   const quoteDraftRef = useRef<QuoteInput>({});
 
   const {
@@ -120,6 +126,21 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
     });
   };
 
+  const handlePresentationModeChange = (mode: QuotePresentationMode) => {
+    if (!isEditable) return;
+    setSaveError(null);
+    startSave(async () => {
+      const result = await updateQuote(quoteId, { presentation_mode: mode });
+      if (result.error) {
+        setSaveError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  };
+
+  const quoteFinance = quoteDocumentViewModel(quote);
+
   const handlePrint = () => {
     const printUrl = `/app/projects/${projectId}/quotes/${quoteId}/print`;
     window.open(printUrl, "_blank", "noopener,noreferrer");
@@ -147,14 +168,14 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             onClick={handleRefreshFromPricing}
           >
             {isRevising
-              ? "Creating revision…"
+              ? "Updating…"
               : isDraftRefresh
-                ? "Refresh from final pricing"
+                ? "Update from Pricing"
                 : "Create revision"}
           </Button>
           <p className="text-xs leading-relaxed text-muted-foreground">
             {isDraftRefresh
-              ? "Update this draft from the latest reviewed final pricing."
+              ? "Replace this draft with a new snapshot from reviewed pricing."
               : "Create a new draft revision without changing this quote."}
           </p>
         </div>
@@ -209,10 +230,21 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
           </p>
         </div>
       ) : pricingChangedAfterQuote ? (
-        <p className="rounded-lg border border-amber-200/80 bg-amber-50/60 px-4 py-2.5 text-sm text-amber-950 print:hidden dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
-          Final pricing may have changed since this quote was created. Refresh
-          from final pricing if totals should match.
-        </p>
+        <div className="space-y-2 rounded-lg border border-amber-200/80 bg-amber-50/60 px-4 py-2.5 text-sm text-amber-950 print:hidden dark:border-amber-900/40 dark:bg-amber-950/20 dark:text-amber-100">
+          <p>Pricing has changed since this quote was created.</p>
+          {canRefreshFromPricing ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="border-amber-300 bg-white text-amber-950"
+              disabled={isRevising}
+              onClick={handleRefreshFromPricing}
+            >
+              {isRevising ? "Updating…" : "Update quote"}
+            </Button>
+          ) : null}
+        </div>
       ) : (
         <WorkspaceBanner className="print:hidden">
           Client-facing quote — review scope, pricing, exclusions and terms before
@@ -233,12 +265,67 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </p>
       ) : null}
 
-      <div className="xl:hidden print:hidden">{actionPanel}</div>
+      <Card className="border-border/60 shadow-none print:hidden xl:hidden">
+        <CardHeader className="pb-2">
+          <div className="flex items-center justify-between gap-2">
+            <CardTitle className="text-base">Quote summary</CardTitle>
+            <span className="text-xs text-muted-foreground">
+              {formatQuoteBadgeLabel(quote.status)}
+            </span>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div>
+            <p className="text-[11px] text-muted-foreground">Client total</p>
+            <p className="text-2xl font-semibold tabular-nums tracking-tight">
+              {quoteFinance.totalInclGstFormatted}
+            </p>
+            <p className="text-xs text-muted-foreground">
+              {quoteFinance.subtotalFormatted} ex GST
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Button
+              type="button"
+              className="h-11 flex-1"
+              onClick={() => {
+                setMobilePreviewOpen((open) => !open);
+                if (!mobilePreviewOpen) {
+                  window.setTimeout(() => {
+                    globalThis.document
+                      .getElementById("quote-client-preview")
+                      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                  }, 50);
+                }
+              }}
+            >
+              {mobilePreviewOpen ? "Hide preview" : "Preview quote"}
+            </Button>
+            {isEditable ? (
+              <Button
+                type="button"
+                variant="outline"
+                className="h-11 flex-1"
+                onClick={() => {
+                  globalThis.document
+                    .getElementById("quote-edit-details")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }}
+              >
+                Edit details
+              </Button>
+            ) : null}
+          </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] print:block">
         <div className="min-w-0 space-y-5">
           {isEditable ? (
-            <Card className="border-border/60 shadow-none print:hidden">
+            <Card
+              id="quote-edit-details"
+              className="border-border/60 shadow-none print:hidden"
+            >
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Quote settings</CardTitle>
                 <CardDescription className="text-xs">
@@ -303,13 +390,22 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
                   }
                 />
               </div>
+              <QuotePresentationControl
+                value={quote.presentation_mode}
+                disabled={isSaving}
+                onChange={handlePresentationModeChange}
+              />
               </CardContent>
             </Card>
           ) : null}
 
           <div
-            className="rounded-xl border border-border/40 bg-neutral-50 p-2 dark:bg-neutral-950/40"
+            className={cn(
+              "rounded-xl border border-border/40 bg-neutral-50 p-2 dark:bg-neutral-950/40",
+              !mobilePreviewOpen && "max-xl:hidden"
+            )}
             data-quote-customer-preview="true"
+            id="quote-client-preview"
           >
             <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               Client preview
@@ -322,7 +418,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             <details className="group rounded-lg border border-border/60 bg-card print:hidden">
               <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
                 <span className="flex items-center justify-between gap-2">
-                  Terms & client notes
+                  Terms & exclusions
                   <span className="text-xs font-normal text-muted-foreground group-open:hidden">
                     Expand to edit
                   </span>

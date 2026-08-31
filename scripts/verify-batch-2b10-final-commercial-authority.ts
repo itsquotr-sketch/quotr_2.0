@@ -162,7 +162,10 @@ function main(): void {
   checks.push(
     assert(
       "quote build imports quote commercial adapter",
-      quoteBuild.includes("quote-commercial-engine-adapter")
+      quoteBuild.includes("calculateQuoteBaseTotalsFromItems") &&
+        read("lib/quotes/base-totals.ts").includes(
+          "quote-commercial-engine-adapter"
+        )
     )
   );
   checks.push(
@@ -515,6 +518,7 @@ function main(): void {
     superseded_by_quote_id: null,
     superseded_at: null,
     revision_note: null,
+    presentation_mode: "grouped",
   } satisfies Quote;
   const vm = quoteDocumentViewModel(snapshotQuote);
   checks.push(

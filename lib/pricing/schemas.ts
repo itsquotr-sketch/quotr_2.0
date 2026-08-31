@@ -206,6 +206,17 @@ export const markPricingReviewedInputSchema = z.object({
   pricingDocumentId: uuidSchema,
 });
 
+export const setPricingItemsQuoteVisibilityInputSchema = z.object({
+  pricingDocumentId: uuidSchema,
+  itemIds: z.array(uuidSchema).min(1).max(200),
+  visibleOnQuote: z.boolean(),
+});
+
+export const deleteManualPricingItemsInputSchema = z.object({
+  pricingDocumentId: uuidSchema,
+  itemIds: z.array(uuidSchema).min(1).max(200),
+});
+
 /** Validate derived gross-margin / markup pair without changing formulas. */
 export const derivedCommercialPercentsSchema = z.object({
   margin_percent: grossMarginPercentSchema,

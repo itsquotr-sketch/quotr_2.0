@@ -8,12 +8,13 @@ import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
 import { getOrgQuoteDefaultsForOrg } from "@/lib/settings/company-actions";
+import { filterInternalLinesFromBlock } from "@/lib/quotes/client-narrative";
 import {
-  resolveAssumptionsForSnapshot,
-  resolveExclusionsForSnapshot,
-  resolveTermsForSnapshot,
-} from "@/lib/settings/snapshot";
-import { calculateAuthoritativeQuoteTotals } from "@/lib/quotes/quote-commercial-engine-adapter";
+  resolveClientQuoteAssumptions,
+  resolveClientQuoteExclusions,
+  resolveClientQuoteTerms,
+} from "@/lib/quotes/client-fields";
+import { calculateQuoteBaseTotalsFromItems } from "@/lib/quotes/base-totals";
 import {
   buildInclusionsFromPricing,
   mapPricingItemsToQuoteItems,
@@ -43,6 +44,7 @@ export type PricingQuoteSnapshot = {
     exclusions: string[];
     assumptions: string[];
     terms: string;
+    presentation_mode: "grouped";
   };
   quoteItems: QuoteItemFromPricing[];
 };
@@ -155,15 +157,18 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
   const orgDefaults = await getOrgQuoteDefaultsForOrg(supabase, orgId);
   const quoteGstRate =
     document.gst_rate ?? orgDefaults.defaultGstRate ?? DEFAULT_GST_RATE;
-  const quoteTerms = resolveTermsForSnapshot(document.terms, orgDefaults);
-  const quoteExclusions = resolveExclusionsForSnapshot(
-    parseStringArray(document.exclusions),
-    orgDefaults
-  );
-  const quoteAssumptions = resolveAssumptionsForSnapshot(
-    parseStringArray(document.assumptions),
-    orgDefaults
-  );
+  const quoteTerms = resolveClientQuoteTerms({
+    pricingClientTerms: document.terms,
+    orgDefaults,
+  });
+  const quoteExclusions = resolveClientQuoteExclusions({
+    pricingClientExclusions: parseStringArray(document.exclusions),
+    orgDefaults,
+  });
+  const quoteAssumptions = resolveClientQuoteAssumptions({
+    pricingClientAssumptions: parseStringArray(document.assumptions),
+    orgDefaults,
+  });
   const quoteValidUntil =
     document.valid_until ?? addDaysIsoDate(orgDefaults.defaultQuoteValidityDays);
 
@@ -172,8 +177,8 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     workAreaNames,
     workAreaDescriptions
   );
-  const totalsResult = calculateAuthoritativeQuoteTotals(
-    quoteItems.map((item) => ({ total: item.total ?? 0, visible: true })),
+  const totalsResult = calculateQuoteBaseTotalsFromItems(
+    quoteItems,
     quoteGstRate,
     "quote-snapshot-from-pricing"
   );
@@ -197,11 +202,12 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
       gst_rate: quoteGstRate,
       gst_amount: totals.gstAmount,
       total_incl_gst: totals.totalInclGst,
-      scope_summary: document.scope_summary,
+      scope_summary: filterInternalLinesFromBlock(document.scope_summary),
       inclusions,
       exclusions: quoteExclusions,
       assumptions: quoteAssumptions,
-      terms: quoteTerms,
+      terms: filterInternalLinesFromBlock(quoteTerms) ?? quoteTerms,
+      presentation_mode: "grouped",
     },
     quoteItems,
   };

@@ -47,9 +47,12 @@ export function QuoteTermsCard({
 
       <div className="space-y-1.5">
         <Label htmlFor="quote-assumptions" className="text-xs">
-          Assumptions
+          Client assumptions
         </Label>
-        <p className="text-[11px] text-muted-foreground">One item per line</p>
+        <p className="text-[11px] text-muted-foreground">
+          One item per line. Internal estimate language is hidden from the client
+          preview automatically.
+        </p>
         <Textarea
           id="quote-assumptions"
           rows={4}

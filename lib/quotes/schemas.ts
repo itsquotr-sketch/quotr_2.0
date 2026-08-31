@@ -42,6 +42,7 @@ export const quoteInputSchema = z.object({
   assumptions: z.array(trimmedStringSchema(2000)).optional(),
   exclusions: z.array(trimmedStringSchema(2000)).optional(),
   terms: z.union([trimmedStringSchema(10000), z.null()]).optional(),
+  presentation_mode: z.enum(["grouped", "detailed", "lump_sum"]).optional(),
 });
 
 export const quoteItemInputSchema = z.object({

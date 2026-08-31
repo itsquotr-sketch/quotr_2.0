@@ -9,21 +9,27 @@ import {
   formatRegistrationLines,
   getCompanyDisplayName,
 } from "@/lib/quotes/display";
+import { groupQuoteItemsBySection, type QuoteItemSection } from "@/lib/quotes/mappers";
 import {
-  groupQuoteItemsBySection,
-  type QuoteItemSection,
-} from "@/lib/quotes/mappers";
+  filterClientFacingNarrative,
+  filterInternalLinesFromBlock,
+  sanitizeClientNarrativeBlock,
+} from "@/lib/quotes/client-narrative";
+import {
+  groupedSectionLabel,
+  lumpSumScopeNarrative,
+  OPTIONAL_ITEMS_CLIENT_NOTE,
+  presentQuoteClientDocument,
+} from "@/lib/quotes/presentation";
 import { sanitizeClientQuoteDescription } from "@/lib/quotes/sanitize";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
-import {
-  brandColourTint,
-  getBrandColours,
-} from "@/lib/settings/branding";
+import { brandColourTint, getBrandColours } from "@/lib/settings/branding";
 import type { CompanySettings } from "@/lib/settings/types";
 import { cn } from "@/lib/utils";
 import { QuoteCompanyLogo } from "@/components/quotes/QuoteCompanyLogo";
 
 // QuoteTemplate is client-facing. Do not render internal pricing fields here.
+// Document totals always use stored quote.subtotal / gst_amount / total_incl_gst.
 
 export type QuoteTemplateProps = {
   quote: Quote;
@@ -55,9 +61,6 @@ function QuoteLineItemRow({ item }: { item: QuoteItem }) {
         <td className="py-1.5 pr-3 align-top print:py-1 print:pr-2">
           <p className="font-medium text-neutral-900 print:text-[9.5pt]">
             {item.label}
-            {item.optional ? (
-              <span className="ml-1 text-[10px] font-normal">(optional)</span>
-            ) : null}
           </p>
           {description ? (
             <p className="mt-0.5 text-xs leading-snug text-neutral-500 print:text-[9pt]">
@@ -81,12 +84,7 @@ function QuoteLineItemRow({ item }: { item: QuoteItem }) {
 
       <tr className="sm:hidden print:hidden">
         <td colSpan={5} className="border-b border-neutral-200 py-2.5 last:border-0">
-          <div
-            className={cn(
-              "space-y-1",
-              item.optional && "text-neutral-500"
-            )}
-          >
+          <div className={cn("space-y-1", item.optional && "text-neutral-500")}>
             <p className="font-medium text-neutral-900">{item.label}</p>
             {description ? (
               <p className="text-xs leading-snug text-neutral-500">
@@ -112,6 +110,49 @@ function QuoteLineItemRow({ item }: { item: QuoteItem }) {
         </td>
       </tr>
     </>
+  );
+}
+
+function QuoteItemsTable({
+  items,
+  brandPrimary,
+}: {
+  items: QuoteItem[];
+  brandPrimary: string | null;
+}) {
+  return (
+    <div className="overflow-x-auto">
+      <table className="quote-template-table w-full table-fixed text-xs print:text-[9pt]">
+        <colgroup>
+          <col />
+          <col className="w-14 print:w-12" />
+          <col className="w-16 print:w-14" />
+          <col className="w-24 print:w-20" />
+          <col className="w-24 print:w-20" />
+        </colgroup>
+        <thead className="hidden sm:table-header-group print:table-header-group">
+          <tr
+            className="border-b text-left text-[11px] text-neutral-500 print:text-[9pt]"
+            style={
+              brandPrimary
+                ? { borderColor: brandColourTint(brandPrimary) }
+                : undefined
+            }
+          >
+            <th className="pb-1 pr-3 font-medium">Item</th>
+            <th className="pb-1 pr-2 text-right font-medium">Qty</th>
+            <th className="pb-1 pr-2 text-right font-medium">Unit</th>
+            <th className="pb-1 pr-2 text-right font-medium">Unit price</th>
+            <th className="pb-1 text-right font-medium">Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          {items.map((item) => (
+            <QuoteLineItemRow key={item.id} item={item} />
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 
@@ -171,11 +212,37 @@ function TextBlockSection({
   );
 }
 
+function OptionalItemsSection({
+  items,
+  accentColour,
+  brandPrimary,
+}: {
+  items: QuoteItem[];
+  accentColour: string | null;
+  brandPrimary: string | null;
+}) {
+  if (items.length === 0) return null;
+
+  return (
+    <section className="quote-template-section mb-5 break-inside-avoid print:mb-4">
+      <h3
+        className="mb-1 text-sm font-semibold text-neutral-900 print:text-[11pt]"
+        style={accentColour ? { color: accentColour } : undefined}
+      >
+        Optional items
+      </h3>
+      <p className="mb-2 text-xs leading-relaxed text-neutral-500 print:mb-1.5 print:text-[9pt]">
+        {OPTIONAL_ITEMS_CLIENT_NOTE}
+      </p>
+      <QuoteItemsTable items={items} brandPrimary={brandPrimary} />
+    </section>
+  );
+}
+
 export function QuoteTemplate({
   quote,
   quoteItems,
   companySettings,
-  sections: sectionsProp,
 }: QuoteTemplateProps) {
   const companyName = getCompanyDisplayName(companySettings);
   const companyAddress = companySettings
@@ -183,16 +250,10 @@ export function QuoteTemplate({
     : null;
   const quoteReference = formatQuoteReference(quote);
   const registrationLines = formatRegistrationLines(companySettings);
+  const presentation = presentQuoteClientDocument(quote, quoteItems);
 
   const { primary: brandPrimary, accent: brandAccent } =
     getBrandColours(companySettings);
-
-  const sections = (sectionsProp ?? groupQuoteItemsBySection(quoteItems))
-    .map((section) => ({
-      ...section,
-      items: section.items.filter((item) => item.visible),
-    }))
-    .filter((section) => section.items.length > 0);
 
   const email = companySettings?.contactEmail?.trim();
   const phone = companySettings?.contactPhone?.trim();
@@ -201,10 +262,18 @@ export function QuoteTemplate({
 
   const gstTreatmentNote = formatGstTreatmentNote(companySettings);
   const paymentTerms = companySettings?.defaultPaymentTerms?.trim() || null;
+  const hasOptional = presentation.optionalItems.length > 0;
+  const lumpSumScope = filterInternalLinesFromBlock(
+    lumpSumScopeNarrative(quote.scope_summary, presentation)
+  );
 
   const brandStyle = brandPrimary
     ? ({ "--quote-brand-primary": brandPrimary } as CSSProperties)
     : undefined;
+
+  const detailedSections = groupQuoteItemsBySection(
+    presentation.includedItems
+  );
 
   return (
     <article
@@ -281,7 +350,8 @@ export function QuoteTemplate({
         </div>
       </header>
 
-      {quote.scope_summary?.trim() ? (
+      {presentation.mode !== "lump_sum" &&
+      filterInternalLinesFromBlock(quote.scope_summary) ? (
         <section className="quote-template-section mb-5 break-inside-avoid print:mb-4">
           <h3
             className="mb-1.5 text-sm font-semibold text-neutral-900 print:text-[11pt]"
@@ -290,7 +360,21 @@ export function QuoteTemplate({
             Scope summary
           </h3>
           <p className="text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:text-[10pt]">
-            {quote.scope_summary}
+            {filterInternalLinesFromBlock(quote.scope_summary)}
+          </p>
+        </section>
+      ) : null}
+
+      {presentation.mode === "lump_sum" && lumpSumScope ? (
+        <section className="quote-template-section mb-5 break-inside-avoid print:mb-4">
+          <h3
+            className="mb-1.5 text-sm font-semibold text-neutral-900 print:text-[11pt]"
+            style={brandAccent ? { color: brandAccent } : undefined}
+          >
+            Scope
+          </h3>
+          <p className="text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:text-[10pt]">
+            {lumpSumScope}
           </p>
         </section>
       ) : null}
@@ -305,71 +389,99 @@ export function QuoteTemplate({
         </div>
       ) : null}
 
-      <div className="quote-template-sections mb-5 space-y-5 print:mb-4 print:space-y-4">
-        {sections.length === 0 ? (
-          <EmptyState
-            title="No quote items"
-            description="This quote has no visible line items yet. Refresh from final pricing or check item visibility."
-            className="border-neutral-200 bg-neutral-50/50 print:hidden"
-          />
-        ) : (
-          sections.map((section) => (
-            <section
-              key={section.sectionTitle ?? "general"}
-              className="quote-template-section break-inside-avoid-page"
-            >
-              {section.sectionTitle ? (
-                <h3
-                  className="mb-1 text-sm font-semibold text-neutral-900 print:text-[11pt]"
-                  style={brandAccent ? { color: brandAccent } : undefined}
+      {presentation.mode === "grouped" ? (
+        <div className="quote-template-sections mb-5 space-y-5 print:mb-4 print:space-y-4">
+          {presentation.groupedSections.length === 0 ? (
+            <EmptyState
+              title="No quote items"
+              description="This quote has no visible line items yet."
+              className="border-neutral-200 bg-neutral-50/50 print:hidden"
+            />
+          ) : (
+            presentation.groupedSections.map((section) => {
+              const sectionDescription = sanitizeClientNarrativeBlock(
+                section.sectionDescription
+              );
+              return (
+                <section
+                  key={section.sectionTitle ?? "general"}
+                  className="quote-template-section break-inside-avoid-page"
                 >
-                  {section.sectionTitle}
-                </h3>
-              ) : null}
-              {section.sectionDescription ? (
-                <p className="mb-2 text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:mb-1.5 print:text-[9.5pt]">
-                  {section.sectionDescription}
-                </p>
-              ) : null}
-
-              <div className="overflow-x-auto">
-                <table className="quote-template-table w-full table-fixed text-xs print:text-[9pt]">
-                  <colgroup>
-                    <col />
-                    <col className="w-14 print:w-12" />
-                    <col className="w-16 print:w-14" />
-                    <col className="w-24 print:w-20" />
-                    <col className="w-24 print:w-20" />
-                  </colgroup>
-                  <thead className="hidden sm:table-header-group print:table-header-group">
-                    <tr
-                      className="border-b text-left text-[11px] text-neutral-500 print:text-[9pt]"
-                      style={
-                        brandPrimary
-                          ? { borderColor: brandColourTint(brandPrimary) }
-                          : undefined
-                      }
+                  {section.sectionTitle ? (
+                    <h3
+                      className="mb-1 text-sm font-semibold text-neutral-900 print:text-[11pt]"
+                      style={brandAccent ? { color: brandAccent } : undefined}
                     >
-                      <th className="pb-1 pr-3 font-medium">Item</th>
-                      <th className="pb-1 pr-2 text-right font-medium">Qty</th>
-                      <th className="pb-1 pr-2 text-right font-medium">Unit</th>
-                      <th className="pb-1 pr-2 text-right font-medium">
-                        Unit price
-                      </th>
-                      <th className="pb-1 text-right font-medium">Total</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {section.items.map((item) => (
-                      <QuoteLineItemRow key={item.id} item={item} />
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </section>
-          ))
-        )}
-      </div>
+                      {section.sectionTitle}
+                    </h3>
+                  ) : null}
+                  {sectionDescription ? (
+                    <p className="mb-2 text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:mb-1.5 print:text-[9.5pt]">
+                      {sectionDescription}
+                    </p>
+                  ) : null}
+                  <div className="flex items-baseline justify-between gap-4 border-t border-neutral-200 pt-2">
+                    <p className="text-sm font-medium text-neutral-900 print:text-[10pt]">
+                      {groupedSectionLabel(section.sectionTitle)}
+                    </p>
+                    <p className="text-sm font-semibold tabular-nums text-neutral-900 print:text-[10pt]">
+                      {formatPricingMoney(section.total)}
+                    </p>
+                  </div>
+                </section>
+              );
+            })
+          )}
+        </div>
+      ) : null}
+
+      {presentation.mode === "detailed" ? (
+        <div className="quote-template-sections mb-5 space-y-5 print:mb-4 print:space-y-4">
+          {detailedSections.length === 0 ? (
+            <EmptyState
+              title="No quote items"
+              description="This quote has no visible line items yet."
+              className="border-neutral-200 bg-neutral-50/50 print:hidden"
+            />
+          ) : (
+            detailedSections.map((section) => {
+              const sectionDescription = sanitizeClientNarrativeBlock(
+                section.sectionDescription
+              );
+              return (
+                <section
+                  key={section.sectionTitle ?? "general"}
+                  className="quote-template-section break-inside-avoid-page"
+                >
+                  {section.sectionTitle ? (
+                    <h3
+                      className="mb-1 text-sm font-semibold text-neutral-900 print:text-[11pt]"
+                      style={brandAccent ? { color: brandAccent } : undefined}
+                    >
+                      {section.sectionTitle}
+                    </h3>
+                  ) : null}
+                  {sectionDescription ? (
+                    <p className="mb-2 text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:mb-1.5 print:text-[9.5pt]">
+                      {sectionDescription}
+                    </p>
+                  ) : null}
+                  <QuoteItemsTable
+                    items={section.items}
+                    brandPrimary={brandPrimary}
+                  />
+                </section>
+              );
+            })
+          )}
+        </div>
+      ) : null}
+
+      <OptionalItemsSection
+        items={presentation.optionalItems}
+        accentColour={brandAccent}
+        brandPrimary={brandPrimary}
+      />
 
       <section
         className={cn(
@@ -390,9 +502,16 @@ export function QuoteTemplate({
         <p className="mb-2 text-xs text-neutral-500 print:mb-1.5 print:text-[9pt]">
           {gstTreatmentNote}
         </p>
+        {hasOptional ? (
+          <p className="mb-2 text-xs text-neutral-500 print:mb-1.5 print:text-[9pt]">
+            Optional items are not included in this total.
+          </p>
+        ) : null}
         <div className="ml-auto max-w-[240px] space-y-1 text-sm print:max-w-[220px] print:text-[10pt]">
           <div className="flex justify-between gap-4">
-            <span className="text-neutral-500">Subtotal</span>
+            <span className="text-neutral-500">
+              {hasOptional ? "Base subtotal" : "Subtotal"}
+            </span>
             <span className="tabular-nums text-neutral-900">
               {formatPricingMoney(quote.subtotal)}
             </span>
@@ -437,12 +556,12 @@ export function QuoteTemplate({
 
           <TextListSection
             title="Assumptions"
-            items={quote.assumptions}
+            items={filterClientFacingNarrative(quote.assumptions)}
             accentColour={brandAccent}
           />
           <TextListSection
             title="Exclusions"
-            items={quote.exclusions}
+            items={filterClientFacingNarrative(quote.exclusions)}
             accentColour={brandAccent}
           />
           {paymentTerms ? (
@@ -454,7 +573,7 @@ export function QuoteTemplate({
           ) : null}
           <TextBlockSection
             title="Terms"
-            content={quote.terms}
+            content={filterInternalLinesFromBlock(quote.terms)}
             accentColour={brandAccent}
           />
           <TextBlockSection
@@ -464,7 +583,7 @@ export function QuoteTemplate({
           />
           <TextBlockSection
             title="Notes to client"
-            content={quote.notes_to_client}
+            content={filterInternalLinesFromBlock(quote.notes_to_client)}
             accentColour={brandAccent}
           />
       </div>

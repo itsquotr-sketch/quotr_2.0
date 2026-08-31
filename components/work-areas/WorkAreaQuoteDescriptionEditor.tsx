@@ -123,7 +123,7 @@ export function WorkAreaQuoteDescriptionEditor({
         <div className="flex min-w-0 items-start justify-between gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-              Description
+              Client description
             </p>
             {!isEditing ? (
               currentPreview ? (
@@ -255,8 +255,11 @@ export function WorkAreaQuoteDescriptionEditor({
       <div className="flex items-start justify-between gap-2">
         <div>
           <h4 className="text-xs font-medium text-muted-foreground uppercase tracking-wide">
-            Quote description
+            Client description
           </h4>
+          <p className="mt-0.5 text-[11px] text-muted-foreground">
+            Shown on the client quote for this work area. You own the final wording.
+          </p>
           {existingQuoteWarning ? (
             <p className="mt-1 text-[11px] leading-relaxed text-amber-800 dark:text-amber-300">
               Existing quotes will not update automatically. Revise the quote if

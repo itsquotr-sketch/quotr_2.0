@@ -13,9 +13,11 @@ import {
 import {
   addPricingItemInputSchema,
   createPricingFromEstimateInputSchema,
+  deleteManualPricingItemsInputSchema,
   deletePricingItemInputSchema,
   duplicatePricingItemInputSchema,
   markPricingReviewedInputSchema,
+  setPricingItemsQuoteVisibilityInputSchema,
   updatePricingDocumentInputSchema,
   updatePricingItemInputSchema,
 } from "@/lib/pricing/schemas";
@@ -61,8 +63,11 @@ import {
 } from "@/lib/pricing/gst-source";
 import { getOrgQuoteDefaultsForOrg } from "@/lib/settings/company-actions";
 import {
-  resolveAssumptionsForSnapshot,
-  resolveExclusionsForSnapshot,
+  formatEstimateNarrativeForInternalNotes,
+  resolveClientQuoteAssumptions,
+  resolveClientQuoteExclusions,
+} from "@/lib/quotes/client-fields";
+import {
   resolveTermsForSnapshot,
 } from "@/lib/settings/snapshot";
 import {
@@ -482,19 +487,20 @@ export async function createPricingFromEstimate(input: {
     .eq("status", "confirmed");
 
   const workAreaNames = (workAreas ?? []).map((workArea) => workArea.name);
-  const estimateAssumptions = parseStringArray(estimate.assumptions);
-  const estimateExclusions = parseStringArray(estimate.exclusions);
-
   const orgDefaults = await getOrgQuoteDefaultsForOrg(supabase, orgId);
-  const assumptions = resolveAssumptionsForSnapshot(
-    estimateAssumptions,
-    orgDefaults
-  );
-  const exclusions = resolveExclusionsForSnapshot(
-    estimateExclusions,
-    orgDefaults
-  );
+  const assumptions = resolveClientQuoteAssumptions({
+    pricingClientAssumptions: [],
+    orgDefaults,
+  });
+  const exclusions = resolveClientQuoteExclusions({
+    pricingClientExclusions: [],
+    orgDefaults,
+  });
   const terms = resolveTermsForSnapshot(null, orgDefaults);
+  const internalNotes = formatEstimateNarrativeForInternalNotes({
+    assumptions: parseStringArray(estimate.assumptions),
+    exclusions: parseStringArray(estimate.exclusions),
+  });
   // C-28 / CD-09: organisation GST seeds the document; the same rate must
   // drive insert totals and the post-item recalculation (never hardcoded 15).
   const createGst = resolveCreatePricingFromEstimateGstRates(
@@ -547,7 +553,7 @@ export async function createPricingFromEstimate(input: {
         internal_label: lineItem.label,
         client_label: cleanClientLabel(lineItem.label),
         internal_description: displayNotes || null,
-        client_description: displayNotes || null,
+        client_description: null,
         quantity: values.quantity,
         unit: values.unit,
         unit_cost: values.unitCost,
@@ -706,6 +712,7 @@ export async function createPricingFromEstimate(input: {
       assumptions,
       exclusions,
       terms,
+      internal_notes: internalNotes,
       created_by: user.id,
   };
 
@@ -1595,4 +1602,201 @@ export async function markPricingReviewed(
     parsed.data.pricingDocumentId
   );
   return { success: true };
+}
+
+export async function setPricingItemsQuoteVisibility(input: {
+  pricingDocumentId: string;
+  itemIds: string[];
+  visibleOnQuote: boolean;
+}): Promise<PricingActionState> {
+  const parsed = parsePricingInput(setPricingItemsQuoteVisibilityInputSchema, input);
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
+  if ("error" in loaded) {
+    return { error: loaded.error };
+  }
+
+  const { supabase, orgId, document } = loaded;
+  const uniqueIds = Array.from(new Set(parsed.data.itemIds));
+
+  const { data: ownedRows, error: loadError } = await supabase
+    .from("pricing_items")
+    .select("id")
+    .eq("pricing_document_id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId)
+    .in("id", uniqueIds);
+
+  if (loadError) {
+    return {
+      error: toUserError(loadError, "pricing-bulk-visibility", PRICING_SAVE_FAILED),
+    };
+  }
+
+  const ownedIds = (ownedRows ?? []).map((row) => row.id as string);
+  if (ownedIds.length === 0) {
+    return { error: "No matching pricing items found." };
+  }
+
+  const { error } = await supabase
+    .from("pricing_items")
+    .update({ visible_on_quote: parsed.data.visibleOnQuote })
+    .eq("pricing_document_id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId)
+    .in("id", ownedIds);
+
+  if (error) {
+    return {
+      error: toUserError(error, "pricing-bulk-visibility", PRICING_SAVE_FAILED),
+    };
+  }
+
+  await supabase
+    .from("pricing_documents")
+    .update({
+      status: "draft",
+      reviewed_at: null,
+    })
+    .eq("id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId);
+
+  await logPricingAuditEvent({
+    supabase,
+    organisationId: orgId,
+    projectId: document.project_id,
+    pricingDocumentId: parsed.data.pricingDocumentId,
+    userId: loaded.user.id,
+    action: "pricing_item_visibility_bulk",
+    newValues: {
+      visible_on_quote: parsed.data.visibleOnQuote,
+      item_ids: ownedIds,
+    },
+  });
+
+  const updatedDocument = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+  if (!updatedDocument) {
+    return { error: "Failed to load updated pricing document." };
+  }
+
+  revalidatePricingProjectPath(
+    document.project_id,
+    parsed.data.pricingDocumentId
+  );
+
+  return {
+    success: true,
+    document: updatedDocument,
+    updatedItemIds: ownedIds,
+    skippedCount: uniqueIds.length - ownedIds.length,
+  };
+}
+
+export async function deleteManualPricingItems(input: {
+  pricingDocumentId: string;
+  itemIds: string[];
+}): Promise<PricingActionState> {
+  const parsed = parsePricingInput(deleteManualPricingItemsInputSchema, input);
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
+  if ("error" in loaded) {
+    return { error: loaded.error };
+  }
+
+  const { supabase, orgId, document } = loaded;
+  const uniqueIds = Array.from(new Set(parsed.data.itemIds));
+
+  const { data: ownedRows, error: loadError } = await supabase
+    .from("pricing_items")
+    .select("id, source_estimate_line_item_id")
+    .eq("pricing_document_id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId)
+    .in("id", uniqueIds);
+
+  if (loadError) {
+    return {
+      error: toUserError(loadError, "pricing-bulk-delete", PRICING_SAVE_FAILED),
+    };
+  }
+
+  const manualIds = (ownedRows ?? [])
+    .filter((row) => row.source_estimate_line_item_id == null)
+    .map((row) => row.id as string);
+
+  if (manualIds.length === 0) {
+    return {
+      error:
+        "Only manually added lines can be bulk-deleted. Estimate-sourced items were left unchanged.",
+    };
+  }
+
+  const { error } = await supabase
+    .from("pricing_items")
+    .delete()
+    .eq("pricing_document_id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId)
+    .is("source_estimate_line_item_id", null)
+    .in("id", manualIds);
+
+  if (error) {
+    return {
+      error: toUserError(error, "pricing-bulk-delete", PRICING_SAVE_FAILED),
+    };
+  }
+
+  await logPricingAuditEvent({
+    supabase,
+    organisationId: orgId,
+    projectId: document.project_id,
+    pricingDocumentId: parsed.data.pricingDocumentId,
+    userId: loaded.user.id,
+    action: "pricing_item_delete_bulk",
+    oldValues: { item_ids: manualIds },
+  });
+
+  const { data: gstRow } = await supabase
+    .from("pricing_documents")
+    .select("gst_rate")
+    .eq("id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  await recalculateAndPersistDocumentTotals(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId,
+    resolveStoredPricingDocumentGstRate(
+      coercePersistedGstRate(gstRow?.gst_rate)
+    ).rate,
+    true
+  );
+
+  const updatedDocument = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+  if (!updatedDocument) {
+    return { error: "Failed to load updated pricing document." };
+  }
+
+  revalidatePricingProjectPath(
+    document.project_id,
+    parsed.data.pricingDocumentId
+  );
+
+  return {
+    success: true,
+    document: updatedDocument,
+    deletedItemIds: manualIds,
+    skippedCount: uniqueIds.length - manualIds.length,
+  };
 }

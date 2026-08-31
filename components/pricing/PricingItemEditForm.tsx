@@ -79,8 +79,6 @@ function calculationHelperText(mode: CalculationMode): string {
 type PricingItemEditFormProps = {
   form: PricingItemInput;
   setForm: React.Dispatch<React.SetStateAction<PricingItemInput>>;
-  materialBuildUpDisplay?: string | null;
-  materialRateSourceDisplay?: string | null;
   error?: string | null;
   isPending?: boolean;
   onSave: () => void;
@@ -91,8 +89,6 @@ type PricingItemEditFormProps = {
 export function PricingItemEditForm({
   form,
   setForm,
-  materialBuildUpDisplay,
-  materialRateSourceDisplay,
   error,
   isPending = false,
   onSave,
@@ -477,32 +473,15 @@ export function PricingItemEditForm({
           </div>
         </div>
 
-        {materialBuildUpDisplay ? (
-          <div className="space-y-1 sm:col-span-2">
-            <Label className="text-muted-foreground">Material build-up</Label>
-            <p className="text-sm text-muted-foreground">
-              {materialBuildUpDisplay}
-            </p>
-          </div>
-        ) : null}
-        {materialRateSourceDisplay ? (
-          <div className="space-y-1 sm:col-span-2">
-            <Label className="text-muted-foreground">Rate source</Label>
-            <p className="text-sm text-muted-foreground">
-              {materialRateSourceDisplay}
-            </p>
-          </div>
-        ) : null}
-
         <div className="space-y-2 sm:col-span-2">
-          <Label>Internal notes</Label>
+          <Label>Client description</Label>
           <Textarea
             rows={2}
-            value={form.notes_internal ?? ""}
+            value={form.client_description ?? ""}
             onChange={(event) =>
               setForm((current) => ({
                 ...current,
-                notes_internal: event.target.value || null,
+                client_description: event.target.value || null,
               }))
             }
           />

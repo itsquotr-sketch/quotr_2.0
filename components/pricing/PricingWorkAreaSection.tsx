@@ -22,8 +22,12 @@ import { cn } from "@/lib/utils";
 
 type PricingWorkAreaSectionProps = {
   projectId: string;
+  title?: string;
   workArea: PricingWorkArea | null;
   items: PricingItem[];
+  selectedIds?: Set<string>;
+  selectionMode?: boolean;
+  onToggleSelect?: (itemId: string) => void;
   onQuoteDescriptionSaved?: (
     workAreaId: string,
     description: string | null
@@ -35,17 +39,23 @@ type PricingWorkAreaSectionProps = {
   onDuplicateItem: (itemId: string) => Promise<{ error?: string }>;
   onDeleteItem: (itemId: string) => Promise<{ error?: string }>;
   onAddItem: (workAreaId: string | null) => Promise<{ error?: string }>;
+  showAddItem?: boolean;
 };
 
 export function PricingWorkAreaSection({
   projectId,
+  title,
   workArea,
   items,
+  selectedIds,
+  selectionMode = false,
+  onToggleSelect,
   onQuoteDescriptionSaved,
   onSaveItem,
   onDuplicateItem,
   onDeleteItem,
   onAddItem,
+  showAddItem = true,
 }: PricingWorkAreaSectionProps) {
   const [expanded, setExpanded] = useState(true);
   const [isPending, startTransition] = useTransition();
@@ -68,7 +78,7 @@ export function PricingWorkAreaSection({
     });
   };
 
-  const sectionName = workArea?.name ?? "General";
+  const sectionName = title ?? workArea?.name ?? "General";
 
   return (
     <section className="overflow-hidden rounded-lg border border-border/60 bg-card">
@@ -106,7 +116,7 @@ export function PricingWorkAreaSection({
           type="button"
           variant="outline"
           size="sm"
-          className="h-8 shrink-0"
+          className={cn("h-8 shrink-0", !showAddItem && "hidden")}
           disabled={isPending}
           onClick={handleAdd}
         >
@@ -133,6 +143,7 @@ export function PricingWorkAreaSection({
           ) : null}
 
           <div className={PRICING_TABLE_HEADER_CLASS}>
+            <span />
             <span className="min-w-0">Item</span>
             <span className="min-w-0">Category</span>
             <span className="text-right">Qty</span>
@@ -154,6 +165,9 @@ export function PricingWorkAreaSection({
                 key={item.id}
                 item={item}
                 layout={itemLayout}
+                selected={selectedIds?.has(item.id) ?? false}
+                selectionMode={selectionMode}
+                onToggleSelect={onToggleSelect}
                 onSaveItem={onSaveItem}
                 onDuplicateItem={onDuplicateItem}
                 onDeleteItem={onDeleteItem}

@@ -7,6 +7,9 @@ import type { PricingItem, PricingItemInput } from "@/lib/pricing/types";
 type PricingItemListItemProps = {
   item: PricingItem;
   layout: "table" | "card";
+  selected?: boolean;
+  selectionMode?: boolean;
+  onToggleSelect?: (itemId: string) => void;
   onSaveItem: (
     itemId: string,
     input: PricingItemInput
@@ -18,6 +21,9 @@ type PricingItemListItemProps = {
 function PricingItemListItemComponent({
   item,
   layout,
+  selected,
+  selectionMode,
+  onToggleSelect,
   onSaveItem,
   onDuplicateItem,
   onDeleteItem,
@@ -39,6 +45,9 @@ function PricingItemListItemComponent({
     <PricingItemRow
       item={item}
       layout={layout}
+      selected={selected}
+      selectionMode={selectionMode}
+      onToggleSelect={onToggleSelect}
       onSave={handleSave}
       onDuplicate={handleDuplicate}
       onDelete={handleDelete}

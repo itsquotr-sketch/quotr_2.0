@@ -16,6 +16,12 @@ import {
   stripCostPatterns,
 } from "../lib/quotes/sanitize";
 import {
+  filterClientFacingNarrative,
+  isInternalClientNarrative,
+} from "../lib/quotes/client-narrative";
+import { resolveClientQuoteAssumptions } from "../lib/quotes/client-fields";
+import type { OrgQuoteDefaults } from "../lib/settings/types";
+import {
   assertMarginPercentForEstimating,
   InvalidMarginPercentError,
   validateMarginPercent,
@@ -145,6 +151,67 @@ const warnings = collectQuoteSanitisationWarnings([dirtyItem]);
 assert(
   "warnings collected for suspicious remnants if any",
   Array.isArray(warnings)
+);
+
+console.log("\n--- Client narrative leakage ---");
+assert(
+  "blocks internal working estimate line",
+  isInternalClientNarrative(
+    "This is an internal working estimate, not a client quote."
+  )
+);
+assert(
+  "blocks overhead and margin line",
+  isInternalClientNarrative("Pricing includes overhead and margin allowance.")
+);
+assert(
+  "keeps final selections line",
+  !isInternalClientNarrative("Final selections may affect price.")
+);
+assert(
+  "blocks productivity calculator assumption",
+  isInternalClientNarrative("Elevated deck adds extra labour productivity allowance.")
+);
+const filtered = filterClientFacingNarrative([
+  "This is an internal working estimate, not a client quote.",
+  "Pricing includes overhead and margin allowance.",
+  "Final selections may affect price.",
+  "Access is from the street.",
+]);
+assert(
+  "filter keeps client-safe assumptions only",
+  filtered.length === 2 &&
+    filtered.includes("Final selections may affect price.") &&
+    filtered.includes("Access is from the street.")
+);
+
+console.log("\n--- Structural estimate narrative exclusion ---");
+const leftoverPackers =
+  "Estimator used leftover packers from the yard for temporary set-out.";
+assert(
+  "phrase filter does not treat leftover packers as banned",
+  !isInternalClientNarrative(leftoverPackers)
+);
+const structuralDefaults: OrgQuoteDefaults = {
+  defaultGstRate: 15,
+  defaultQuoteValidityDays: 30,
+  defaultPaymentTerms: null,
+  defaultQuoteTerms: null,
+  defaultQuoteExclusions: null,
+  defaultQuoteAssumptions: "Access is from the street.",
+};
+const structuralClient = resolveClientQuoteAssumptions({
+  pricingClientAssumptions: [],
+  orgDefaults: structuralDefaults,
+});
+assert(
+  "arbitrary internal estimate copy never reaches client Quote",
+  !structuralClient.includes(leftoverPackers) &&
+    !structuralClient.includes("Internal productivity assumption XYZ")
+);
+assert(
+  "empty pricing client assumptions seed from org defaults only",
+  structuralClient.join("|") === "Access is from the street."
 );
 
 console.log("\n--- Totals section not sanitised here ---");

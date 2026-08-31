@@ -615,7 +615,13 @@ check(
   readdirSync(join(root, "supabase/migrations"))
     .filter((name) => name.endsWith(".sql"))
     .sort()
-    .at(-1) === "039_ai_usage_events.sql"
+    .at(-1) === "040_quote_presentation_mode.sql" &&
+    !readFileSync(
+      join(root, "supabase/migrations/040_quote_presentation_mode.sql"),
+      "utf8"
+    )
+      .toLowerCase()
+      .includes("row level security")
 );
 
 console.log("\n-- PROGRAMME BOUNDARY --");

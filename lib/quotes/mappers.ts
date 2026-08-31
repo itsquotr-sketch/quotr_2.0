@@ -39,6 +39,11 @@ export function mapQuote(row: Record<string, unknown>): Quote {
       (row.superseded_by_quote_id as string | null) ?? null,
     superseded_at: (row.superseded_at as string | null) ?? null,
     revision_note: (row.revision_note as string | null) ?? null,
+    presentation_mode:
+      row.presentation_mode === "detailed" ||
+      row.presentation_mode === "lump_sum"
+        ? row.presentation_mode
+        : "grouped",
   };
 }
 

@@ -129,6 +129,9 @@ export type PricingActionState = {
   pricingDocumentId?: string;
   item?: PricingItem;
   deletedItemId?: string;
+  deletedItemIds?: string[];
+  updatedItemIds?: string[];
+  skippedCount?: number;
   document?: PricingDocument;
 };
 

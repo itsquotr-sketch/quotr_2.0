@@ -1,14 +1,16 @@
 "use client";
 
 import { memo, useMemo, useState, useTransition } from "react";
-import { ChevronDown, Copy, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
+import { Copy, Eye, EyeOff, Pencil, Trash2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   getCalculationModeForSave,
   itemToForm,
   PricingItemEditForm,
 } from "@/components/pricing/PricingItemEditForm";
+import { PricingCalculationDetails } from "@/components/pricing/PricingCalculationDetails";
 import {
   Sheet,
   SheetContent,
@@ -18,15 +20,7 @@ import {
 import { PRICING_ITEM_TYPES } from "@/lib/pricing/status";
 import { PricingOwnershipBadge } from "@/components/pricing/PricingOwnershipBadge";
 import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
-import {
-  formatQuantityBasisDisplay,
-  getCommercialTrustDetailLinesFromNotes,
-} from "@/lib/estimate/commercial-realism";
 import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
-import {
-  getMaterialBuildUpDisplay,
-  getMaterialRateSourceDisplay,
-} from "@/lib/estimate/line-item-metadata";
 import { PRICING_TABLE_GRID } from "@/lib/pricing/table-layout";
 import type { PricingItem, PricingItemInput } from "@/lib/pricing/types";
 import { cn } from "@/lib/utils";
@@ -34,6 +28,9 @@ import { cn } from "@/lib/utils";
 type PricingItemRowProps = {
   item: PricingItem;
   layout?: "table" | "card";
+  selected?: boolean;
+  selectionMode?: boolean;
+  onToggleSelect?: (itemId: string) => void;
   onSave: (input: PricingItemInput) => Promise<{ error?: string }>;
   onDuplicate: () => Promise<{ error?: string }>;
   onDelete: () => Promise<{ error?: string }>;
@@ -42,37 +39,23 @@ type PricingItemRowProps = {
 function PricingItemRowComponent({
   item,
   layout = "table",
+  selected = false,
+  selectionMode = false,
+  onToggleSelect,
   onSave,
   onDuplicate,
   onDelete,
 }: PricingItemRowProps) {
   const [expanded, setExpanded] = useState(false);
-  const [detailExpanded, setDetailExpanded] = useState(false);
   const [sheetOpen, setSheetOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const [form, setForm] = useState<PricingItemInput>(() => itemToForm(item));
 
   const moneyView = useMemo(() => pricingItemViewModel(item), [item]);
-  const materialBuildUpDisplay = useMemo(
-    () => getMaterialBuildUpDisplay(item.notes_internal),
-    [item.notes_internal]
-  );
-  const materialRateSourceDisplay = useMemo(
-    () => getMaterialRateSourceDisplay(item.notes_internal),
-    [item.notes_internal]
-  );
   const { metadata: pricingMetadata } = useMemo(
     () => parseLineItemNotes(item.notes_internal),
     [item.notes_internal]
-  );
-  const trustDetailLines = useMemo(
-    () =>
-      getCommercialTrustDetailLinesFromNotes(
-        item.notes_internal,
-        pricingMetadata.pricingOwner
-      ),
-    [item.notes_internal, pricingMetadata.pricingOwner]
   );
   const categoryLabel = useMemo(
     () =>
@@ -124,23 +107,38 @@ function PricingItemRowComponent({
       : "—";
 
   const editForm = (
-    <PricingItemEditForm
-      form={form}
-      setForm={setForm}
-      materialBuildUpDisplay={materialBuildUpDisplay}
-      materialRateSourceDisplay={materialRateSourceDisplay}
-      error={error}
-      isPending={isPending}
-      onSave={handleSave}
-      onCancel={closeEditor}
-    />
+    <div className="space-y-4">
+      <PricingItemEditForm
+        form={form}
+        setForm={setForm}
+        error={error}
+        isPending={isPending}
+        onSave={handleSave}
+        onCancel={closeEditor}
+      />
+      <PricingCalculationDetails item={item} rawNotes={item.notes_internal} />
+    </div>
   );
+
+  const selectControl =
+    onToggleSelect && (layout === "table" || selectionMode) ? (
+      <Checkbox
+        checked={selected}
+        aria-label={`Select ${item.client_label}`}
+        className="mt-0.5"
+        onClick={(event) => event.stopPropagation()}
+        onCheckedChange={() => onToggleSelect(item.id)}
+      />
+    ) : null;
 
   if (layout === "card") {
     return (
       <>
         <div className="rounded-lg border border-border/60 bg-card p-3">
-          <div className="flex items-start justify-between gap-2">
+          <div className="flex items-start gap-2">
+            {selectionMode ? (
+              <div className="pt-0.5">{selectControl}</div>
+            ) : null}
             <div className="min-w-0 flex-1 space-y-1.5">
               <p className="text-sm font-medium leading-snug">
                 {item.client_label}
@@ -184,72 +182,21 @@ function PricingItemRowComponent({
                   </>
                 )}
               </div>
-              {detailExpanded ? (
-                <div className="space-y-1 border-t border-border/50 pt-2 text-[11px] leading-snug text-muted-foreground">
-                  {pricingMetadata.quantityBasis ? (
-                    <p>
-                      <span className="font-medium text-foreground/80">
-                        Qty basis:
-                      </span>{" "}
-                      {formatQuantityBasisDisplay(pricingMetadata.quantityBasis)}
-                    </p>
-                  ) : null}
-                  {materialBuildUpDisplay ? (
-                    <p>
-                      <span className="font-medium text-foreground/80">
-                        Build-up:
-                      </span>{" "}
-                      {materialBuildUpDisplay}
-                    </p>
-                  ) : null}
-                  {materialRateSourceDisplay ? (
-                    <p>
-                      <span className="font-medium text-foreground/80">
-                        Rate source:
-                      </span>{" "}
-                      {materialRateSourceDisplay}
-                    </p>
-                  ) : null}
-                  {trustDetailLines.length > 0 ? (
-                    <p>{trustDetailLines.join(" · ")}</p>
-                  ) : null}
-                  {item.notes_internal && !materialBuildUpDisplay ? (
-                    <p className="italic">{item.notes_internal}</p>
-                  ) : null}
-                </div>
-              ) : trustDetailLines.length > 0 ? (
-                <p className="text-[11px] leading-snug text-muted-foreground">
-                  {trustDetailLines.join(" · ")}
-                </p>
-              ) : null}
+              <PricingCalculationDetails
+                item={item}
+                rawNotes={item.notes_internal}
+              />
             </div>
-            <div className="flex shrink-0 flex-col gap-1">
-              <Button
-                type="button"
-                variant="outline"
-                size="sm"
-                className="h-8"
-                disabled={isPending}
-                onClick={openEditor}
-              >
-                Edit
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 px-2 text-[11px] text-muted-foreground"
-                onClick={() => setDetailExpanded((prev) => !prev)}
-              >
-                {detailExpanded ? "Less" : "Details"}
-                <ChevronDown
-                  className={cn(
-                    "ml-0.5 size-3 transition-transform",
-                    detailExpanded && "rotate-180"
-                  )}
-                />
-              </Button>
-            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 shrink-0"
+              disabled={isPending}
+              onClick={openEditor}
+            >
+              Edit
+            </Button>
           </div>
         </div>
 
@@ -272,7 +219,8 @@ function PricingItemRowComponent({
   return (
     <div className="bg-background">
       <div className={PRICING_TABLE_GRID}>
-        <div className="min-w-0 md:col-span-1">
+        <div className="hidden md:flex md:items-center">{selectControl}</div>
+        <div className="min-w-0">
           <p className="text-sm font-medium leading-snug">{item.client_label}</p>
           {moneyView.pricingRequired ? (
             <Badge
@@ -285,21 +233,6 @@ function PricingItemRowComponent({
           {item.internal_label !== item.client_label ? (
             <p className="truncate text-xs text-muted-foreground">
               {item.internal_label}
-            </p>
-          ) : null}
-          {materialBuildUpDisplay ? (
-            <p className="mt-1 text-[11px] italic leading-snug text-muted-foreground/90">
-              {materialBuildUpDisplay}
-            </p>
-          ) : null}
-          {materialRateSourceDisplay ? (
-            <p className="mt-0.5 text-[10px] leading-snug text-muted-foreground/60">
-              {materialRateSourceDisplay}
-            </p>
-          ) : null}
-          {trustDetailLines.length > 0 ? (
-            <p className="mt-1 text-[11px] leading-snug text-muted-foreground/90">
-              {trustDetailLines.join(" · ")}
             </p>
           ) : null}
         </div>

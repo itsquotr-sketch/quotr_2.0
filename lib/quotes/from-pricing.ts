@@ -4,6 +4,9 @@ import { ensureQuoteItemQuantityUnit } from "@/lib/pricing/quantity-defaults";
 import type { PricingItem } from "@/lib/pricing/types";
 import type { QuoteItemInput } from "@/lib/quotes/types";
 import {
+  sanitizeClientNarrativeBlock,
+} from "@/lib/quotes/client-narrative";
+import {
   containsSuspiciousQuoteText,
   sanitizeClientQuoteDescription,
   sanitizeClientQuoteLabel,
@@ -87,6 +90,7 @@ export function resolveQuoteItemLabel(item: PricingItem): string {
 }
 
 export function resolveQuoteItemDescription(item: PricingItem): string | null {
+  // Structural: only client-owned fields. Internal estimator notes never seed this.
   const description =
     item.client_description?.trim() || item.notes_client?.trim() || null;
   return sanitizeClientQuoteDescription(description);
@@ -153,7 +157,7 @@ export function mapPricingItemsToQuoteItems(
         section_title: item.work_area_id
           ? (workAreaNames.get(item.work_area_id) ?? null)
           : null,
-        section_description: sectionDescription,
+        section_description: sanitizeClientNarrativeBlock(sectionDescription),
         label: resolveQuoteItemLabel(item),
         description: resolveQuoteItemDescription(item),
         ...ensureQuoteItemQuantityUnit({
@@ -175,7 +179,9 @@ export function buildInclusionsFromPricing(
   pricingItems: PricingItem[],
   workAreaNames: Map<string, string>
 ): string[] {
-  const visibleItems = pricingItems.filter((item) => item.visible_on_quote);
+  const visibleItems = pricingItems.filter(
+    (item) => item.visible_on_quote && !item.optional
+  );
   const inclusions = new Set<string>();
 
   for (const item of visibleItems) {
