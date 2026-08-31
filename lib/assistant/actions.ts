@@ -7,9 +7,15 @@ import {
   NO_CAPTURE_ERROR,
   NO_WORK_AREAS_ERROR,
   UNKNOWN_ANALYSIS_ERROR,
+  classifyAnalysisError,
   userMessageForAnalysisError,
 } from "@/lib/ai/analyse-job-contract";
-import { extractFromBrief } from "@/lib/ai/extract";
+import { extractFromBrief, getExtractionInvocation } from "@/lib/ai/extract";
+import { persistAiUsageEvent } from "@/lib/ai/usage-events";
+import {
+  logAnalyseJobTiming,
+  startAnalyseJobTiming,
+} from "@/lib/ai/analyse-job-timing";
 import {
   aiFactsToRows,
   aiWorkAreasToRows,
@@ -140,9 +146,19 @@ export async function saveBriefAndSeedWorkAreas(
     };
   }
 
+  const timing = startAnalyseJobTiming();
+  let lastErrorClass: string | null = null;
+
   try {
   const loaded = await loadProjectStage(projectId);
+  timing.mark("T1");
   if ("error" in loaded) {
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: "setup",
+    });
     return { error: loaded.error };
   }
 
@@ -150,10 +166,22 @@ export async function saveBriefAndSeedWorkAreas(
   const { supabase, orgId } = auth;
 
   if (isStageAtOrBeyond(stage, "confirm_work_areas")) {
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: true,
+      errorClass: null,
+    });
     return { success: true };
   }
 
   if (!canRunStageAction(stage, "save_brief")) {
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: "setup",
+    });
     return { error: "This action is not available at the current stage." };
   }
 
@@ -164,6 +192,7 @@ export async function saveBriefAndSeedWorkAreas(
     .eq("org_id", orgId)
     .is("deleted_at", null)
     .order("captured_at", { ascending: true });
+  timing.mark("T2");
 
   if (notesError) {
     logBriefAnalysisFailure(projectId, {
@@ -171,6 +200,12 @@ export async function saveBriefAndSeedWorkAreas(
       noteCount: 0,
       combinedInputLength: 0,
       reason: `notes query failed: ${notesError.message}`,
+    });
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: "unknown",
     });
     return { error: UNKNOWN_ANALYSIS_ERROR };
   }
@@ -180,6 +215,12 @@ export async function saveBriefAndSeedWorkAreas(
   );
 
   if (!trimmed && noteRows.length === 0) {
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: "setup",
+    });
     return { error: NO_CAPTURE_ERROR };
   }
 
@@ -189,8 +230,15 @@ export async function saveBriefAndSeedWorkAreas(
     .eq("id", projectId);
 
   if (briefError) {
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: "unknown",
+    });
     return { error: briefError.message };
   }
+  timing.mark("T3");
 
   // Capability catalogue — not organisation_work_areas preferences.
   const allowedTypes = loadAnalysisCapableWorkAreaTypes();
@@ -206,13 +254,26 @@ export async function saveBriefAndSeedWorkAreas(
       briefText: analysisSource,
       allowedTypes,
       catalogueTypes: CATALOGUE_TYPES,
+      mark: timing.mark,
     });
+    await persistAiUsageEvent(auth, projectId, extractionResult.invocation);
   } catch (error) {
+    lastErrorClass = classifyAnalysisError(error);
+    const invocation = getExtractionInvocation(error);
+    if (invocation) {
+      await persistAiUsageEvent(auth, projectId, invocation);
+    }
     logBriefAnalysisFailure(projectId, {
       briefLength: trimmed.length,
       noteCount: noteRows.length,
       combinedInputLength: analysisSource.length,
       reason: error instanceof Error ? error.message : "AI extraction failed",
+    });
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: lastErrorClass,
     });
     return { error: userMessageForAnalysisError(error) };
   }
@@ -241,9 +302,16 @@ export async function saveBriefAndSeedWorkAreas(
       .insert(workAreaRows);
 
     if (insertError) {
+      timing.mark("T13");
+      logAnalyseJobTiming({
+        marks: timing.marks,
+        success: false,
+        errorClass: "unknown",
+      });
       return { error: insertError.message };
     }
   }
+  timing.mark("T7");
 
   const { data: allWorkAreas, error: workAreasError } = await supabase
     .from("work_areas")
@@ -251,6 +319,12 @@ export async function saveBriefAndSeedWorkAreas(
     .eq("project_id", projectId);
 
   if (workAreasError || !allWorkAreas || allWorkAreas.length === 0) {
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: "no_work_areas",
+    });
     return { error: NO_WORK_AREAS_ERROR };
   }
 
@@ -302,6 +376,12 @@ export async function saveBriefAndSeedWorkAreas(
           .eq("project_id", projectId);
 
         if (updateError) {
+          timing.mark("T13");
+          logAnalyseJobTiming({
+            marks: timing.marks,
+            success: false,
+            errorClass: "unknown",
+          });
           return { error: updateError.message };
         }
         continue;
@@ -316,10 +396,17 @@ export async function saveBriefAndSeedWorkAreas(
         .insert(factsToInsert);
 
       if (factsError) {
+        timing.mark("T13");
+        logAnalyseJobTiming({
+          marks: timing.marks,
+          success: false,
+          errorClass: "unknown",
+        });
         return { error: factsError.message };
       }
     }
   }
+  timing.mark("T8");
 
   const { error: stageError } = await supabase
     .from("projects")
@@ -332,8 +419,15 @@ export async function saveBriefAndSeedWorkAreas(
     .eq("id", projectId);
 
   if (stageError) {
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: "unknown",
+    });
     return { error: stageError.message };
   }
+  timing.mark("T10");
 
   if (extractionResult.constraints.length > 0) {
     const { data: existingConstraints } = await supabase
@@ -384,22 +478,45 @@ export async function saveBriefAndSeedWorkAreas(
       const results = await Promise.all(constraintWrites);
       const failed = results.find((r) => r.error);
       if (failed?.error) {
+        timing.mark("T13");
+        logAnalyseJobTiming({
+          marks: timing.marks,
+          success: false,
+          errorClass: "unknown",
+        });
         return { error: failed.error.message };
       }
     }
   }
+  timing.mark("T9");
 
   // Stage 3.2.2-R1: project-scoped revalidate only — avoid dashboard remount
   // extending the Analyse → Work Areas UI gap (PERF-FUTURE-01 still owns deeper work).
   revalidateProjectAssistantPath(projectId);
-  return completeAssistantMutation(auth, projectId);
+  timing.mark("T11");
+  const assistantResult = await completeAssistantMutation(auth, projectId);
+  timing.mark("T12");
+  timing.mark("T13");
+  logAnalyseJobTiming({
+    marks: timing.marks,
+    success: !assistantResult.error,
+    errorClass: assistantResult.error ? "unknown" : null,
+  });
+  return assistantResult;
   } catch (error) {
+    lastErrorClass = classifyAnalysisError(error);
     logBriefAnalysisFailure(projectId, {
       briefLength: trimmed.length,
       noteCount: 0,
       combinedInputLength: 0,
       reason:
         error instanceof Error ? error.message : "unexpected analysis failure",
+    });
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: lastErrorClass,
     });
     return { error: userMessageForAnalysisError(error) };
   }

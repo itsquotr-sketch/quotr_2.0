@@ -33,7 +33,7 @@ export function AnalyseNotesSection({
 
       router.refresh();
     } catch {
-      setAnalyseError("Analysis took too long. Please try again.");
+      setAnalyseError("We couldn't analyse your notes. Please try again.");
     } finally {
       setIsAnalysing(false);
     }

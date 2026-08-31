@@ -615,7 +615,7 @@ check(
   readdirSync(join(root, "supabase/migrations"))
     .filter((name) => name.endsWith(".sql"))
     .sort()
-    .at(-1) === "038_rates_productivity_type.sql"
+    .at(-1) === "039_ai_usage_events.sql"
 );
 
 console.log("\n-- PROGRAMME BOUNDARY --");

@@ -54,7 +54,7 @@ export function createAnthropicScopeDiscoveryTransport(): ScopeDiscoveryTranspor
     const started = Date.now();
     try {
       const model = request.model || defaultModel;
-      const message = await createAnthropicMessage(
+      const result = await createAnthropicMessage(
         {
           model,
           max_tokens: request.maxTokens,
@@ -71,14 +71,14 @@ export function createAnthropicScopeDiscoveryTransport(): ScopeDiscoveryTranspor
       );
 
       return {
-        text: getTextFromResponse(message.content),
-        model: message.model || model,
-        requestId: message.id ?? null,
+        text: getTextFromResponse(result.message.content),
+        model: result.message.model || model,
+        requestId: result.message.id ?? null,
         tokenUsage: {
-          inputTokens: message.usage?.input_tokens ?? null,
-          outputTokens: message.usage?.output_tokens ?? null,
+          inputTokens: result.usage.inputTokens,
+          outputTokens: result.usage.outputTokens,
         },
-        latencyMs: Date.now() - started,
+        latencyMs: result.latencyMs || Date.now() - started,
       };
     } catch (error) {
       if (error instanceof ScopeDiscoveryProviderError) {

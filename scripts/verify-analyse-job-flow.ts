@@ -8,13 +8,20 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { AIExtractionError } from "../lib/ai/schema";
 import {
+  ANALYSE_JOB_ACTION_MAX_DURATION_SECONDS,
+  ANALYSE_JOB_PROVIDER_TIMEOUT_MS,
+  ANALYSE_JOB_RETRY_MIN_REMAINING_MS,
   ANALYSE_JOB_TIMEOUT_MS,
   ANALYSE_JOB_TIMEOUT_USER_MESSAGE,
   ANALYSE_JOB_PROVIDER,
   AI_PARSE_ERROR,
+  AI_SETUP_ERROR,
+  UNKNOWN_ANALYSIS_ERROR,
+  classifyAnalysisError,
   isTimeoutOrAbortError,
   userMessageForAnalysisError,
 } from "../lib/ai/analyse-job-contract";
+import { isRetryableAnthropicError } from "../lib/ai/retry";
 import { buildBriefExtractionFromModelText } from "../lib/ai/brief-extraction-result";
 import { aiFactsToRows, aiWorkAreasToRows } from "../lib/ai/mappers";
 import { SCOPE_CATALOGUE } from "../lib/scopes/catalogue";
@@ -56,6 +63,10 @@ const capture = read("components/assistant/ProjectCaptureBlock.tsx");
 const anthropic = read("lib/ai/anthropic.ts");
 const retry = read("lib/ai/retry.ts");
 const notesUi = read("components/project-notes/AnalyseNotesSection.tsx");
+const page = read("app/(protected)/app/projects/[projectId]/page.tsx");
+const usageEvents = read("lib/ai/usage-events.ts");
+const notesExtract = read("lib/ai/extract-notes.ts");
+const notesActions = read("lib/project-notes/proposals/actions.ts");
 
 const saveFn = actions.slice(
   actions.indexOf("export async function saveBriefAndSeedWorkAreas"),
@@ -91,15 +102,28 @@ check(
 );
 
 check(
-  "9 timeout is 45s",
-  ANALYSE_JOB_TIMEOUT_MS === 45_000 &&
+  "9 provider timeout is 75s not whole-action",
+  ANALYSE_JOB_PROVIDER_TIMEOUT_MS === 75_000 &&
+    ANALYSE_JOB_TIMEOUT_MS === 75_000 &&
     extract.includes("ANALYSE_JOB_TIMEOUT_MS") &&
-    anthropic.includes("maxRetries: 0")
+    anthropic.includes("maxRetries: 0") &&
+    anthropic.includes("ANALYSE_JOB_PROVIDER_TIMEOUT_MS")
+);
+check(
+  "9 action maxDuration is 120s on project page",
+  ANALYSE_JOB_ACTION_MAX_DURATION_SECONDS === 120 &&
+    /export const maxDuration = 120/.test(page)
 );
 check(
   "9 retries do not retry timeout",
   retry.includes("isTimeoutOrAbortError") &&
     retry.includes("return false")
+);
+check(
+  "9 retry requires remaining budget",
+  ANALYSE_JOB_RETRY_MIN_REMAINING_MS === 8_000 &&
+    anthropic.includes("ANALYSE_JOB_RETRY_MIN_REMAINING_MS") &&
+    anthropic.includes("attemptCount > 1")
 );
 
 const allowed = SCOPE_CATALOGUE.map((item) => item.type);
@@ -208,9 +232,62 @@ const timeoutErr = new Error("The operation was aborted due to timeout");
 timeoutErr.name = "TimeoutError";
 check("8 timeout detected", isTimeoutOrAbortError(timeoutErr));
 check(
-  "8 timeout user message",
-  userMessageForAnalysisError(timeoutErr) === ANALYSE_JOB_TIMEOUT_USER_MESSAGE &&
-    shell.includes("ANALYSE_JOB_TIMEOUT_USER_MESSAGE")
+  "8 timeout user message is for real timeout only",
+  userMessageForAnalysisError(timeoutErr) === ANALYSE_JOB_TIMEOUT_USER_MESSAGE
+);
+check(
+  "8 client catch is not always timeout",
+  shell.includes("UNKNOWN_ANALYSIS_ERROR") &&
+    !/action === "brief"[\s\S]{0,80}ANALYSE_JOB_TIMEOUT_USER_MESSAGE/.test(shell)
+);
+check(
+  "8 substring timeout is not classified as timeout",
+  !isTimeoutOrAbortError(new Error("timeout configuration is invalid")) &&
+    classifyAnalysisError(new Error("timeout configuration is invalid")) ===
+      "unknown"
+);
+check(
+  "8 provider 400 is invalid not timeout",
+  classifyAnalysisError({ status: 400, message: "invalid model" }) ===
+    "provider_invalid" &&
+    userMessageForAnalysisError({ status: 400 }) === AI_SETUP_ERROR &&
+    userMessageForAnalysisError({ status: 400 }) !==
+      ANALYSE_JOB_TIMEOUT_USER_MESSAGE
+);
+check(
+  "8 provider 401/403 are auth",
+  classifyAnalysisError({ status: 401 }) === "provider_auth" &&
+    classifyAnalysisError({ status: 403 }) === "provider_auth"
+);
+check(
+  "8 provider 429 is rate limit and retryable",
+  classifyAnalysisError({ status: 429 }) === "provider_rate_limit" &&
+    isRetryableAnthropicError({ status: 429 })
+);
+check(
+  "8 provider 500 is server and retryable",
+  classifyAnalysisError({ status: 500 }) === "provider_server" &&
+    isRetryableAnthropicError({ status: 500 })
+);
+check(
+  "8 400/401/403 are not retryable",
+  !isRetryableAnthropicError({ status: 400 }) &&
+    !isRetryableAnthropicError({ status: 401 }) &&
+    !isRetryableAnthropicError({ status: 403 })
+);
+check(
+  "8 parse error is not timeout",
+  userMessageForAnalysisError(
+    new AIExtractionError("Failed to parse AI response as JSON. Preview: abc")
+  ) === AI_PARSE_ERROR
+);
+check(
+  "8 unknown client fallback exists",
+  UNKNOWN_ANALYSIS_ERROR.length > 0
+);
+check(
+  "8 notes UI catch is not timeout string",
+  !notesUi.includes(ANALYSE_JOB_TIMEOUT_USER_MESSAGE)
 );
 
 check(
@@ -232,6 +309,35 @@ check(
 check(
   "notes UI also clears loading in finally",
   notesUi.includes("finally") && notesUi.includes("setIsAnalysing(false)")
+);
+
+check(
+  "12 one Anthropic call in extractFromBrief",
+  (extract.match(/await createAnthropicMessage/g) ?? []).length === 1 &&
+    !extract.includes("isRepair") &&
+    !saveFn.includes("createAnthropicScopeDiscoveryTransport")
+);
+
+check(
+  "13 malformed JSON is local parse only in Analyse Job",
+  read("lib/ai/brief-extraction-result.ts").includes("parseJsonObject") &&
+    !extract.toLowerCase().includes("repair")
+);
+
+check(
+  "29 Analyse Job persists usage event",
+  saveFn.includes("persistAiUsageEvent") &&
+    extract.includes("invocation") &&
+    usageEvents.includes("ai_usage_events") &&
+    !usageEvents.includes("prompt") &&
+    !usageEvents.includes("completion")
+);
+
+check(
+  "32 Analyse Notes persists usage and shares provider timeout",
+  notesExtract.includes("ANALYSE_JOB_TIMEOUT_MS") &&
+    notesExtract.includes("invocation") &&
+    notesActions.includes("persistAiUsageEvent")
 );
 
 const usage = reportTokenUsage({

@@ -53,6 +53,7 @@ const EXPECTED_APP_TABLES = [
   "scope_discovery_decisions",
   "calibration_responses",
   "estimate_requirement_snapshots",
+  "ai_usage_events",
 ] as const;
 
 const TABLES_WITHOUT_RLS_OK: string[] = [];
@@ -73,6 +74,8 @@ const POLICY_EXCEPTIONS: Record<
   calibration_responses: { delete: true },
   // REQ-4A snapshots: insert/select only — no authenticated UPDATE/DELETE.
   estimate_requirement_snapshots: { update: true, delete: true },
+  // AI usage: append-only metadata — authenticated insert/select only.
+  ai_usage_events: { update: true, delete: true },
 };
 
 function auditMigrations(): {

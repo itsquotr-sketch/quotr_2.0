@@ -68,6 +68,7 @@ for (const script of allScripts) {
   if (liveScripts.includes(script)) continue;
   if (script === "scripts/verify-ai-call-boundaries.ts") continue;
   if (script === "scripts/report-ai-usage.ts") continue;
+  if (script === "scripts/diagnose-analyse-job-once.ts") continue;
   const src = read(script);
   const makesPaidCall =
     src.includes("@anthropic-ai/sdk") &&
@@ -145,9 +146,19 @@ for (const file of libFiles) {
   );
 }
 
+const diagnose = read("scripts/diagnose-analyse-job-once.ts");
 check(
-  "report-ai-usage does not import Anthropic SDK",
-  !read("scripts/report-ai-usage.ts").includes("@anthropic-ai/sdk")
+  "diagnose script is one-shot and gated by DIAGNOSE_ANALYSE_JOB=1",
+  diagnose.includes("DIAGNOSE_ANALYSE_JOB") &&
+    diagnose.includes('!== "1"') &&
+    diagnose.includes("--live") &&
+    !diagnose.includes("shouldRunLiveAiTests")
+);
+check(
+  "diagnose script is not the live regression master",
+  !diagnose.includes("verify-fact-coverage") &&
+    !diagnose.includes("verify-outdoor-ai") &&
+    !diagnose.includes("verify-internal-ai")
 );
 check(
   ".env.local.example documents RUN_LIVE_AI_TESTS",

@@ -1,4 +1,4 @@
-import { isTimeoutOrAbortError } from "@/lib/ai/analyse-job-contract";
+import { isTimeoutOrAbortError, getErrorStatus } from "@/lib/ai/analyse-job-contract";
 
 const DEFAULT_MAX_ATTEMPTS = 3;
 const MAX_BACKOFF_MS = 8_000;
@@ -7,28 +7,7 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export { isTimeoutOrAbortError };
-
-function getErrorStatus(error: unknown): number | null {
-  if (error == null || typeof error !== "object") {
-    return null;
-  }
-
-  const record = error as Record<string, unknown>;
-  if (typeof record.status === "number") {
-    return record.status;
-  }
-
-  const nested = record.error;
-  if (nested != null && typeof nested === "object") {
-    const nestedRecord = nested as Record<string, unknown>;
-    if (typeof nestedRecord.status === "number") {
-      return nestedRecord.status;
-    }
-  }
-
-  return null;
-}
+export { isTimeoutOrAbortError, getErrorStatus };
 
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) {
@@ -38,28 +17,30 @@ function getErrorMessage(error: unknown): string {
 }
 
 /**
- * Retry transient Anthropic/API failures (429 rate limit, 5xx). Does not retry
- * schema or user/input validation errors.
+ * Retry 429 and 5xx / selected network transients only.
+ * Never retry timeout, abort, 400, 401, 403, 404, or invalid-model.
  */
 export function isRetryableAnthropicError(error: unknown): boolean {
+  if (isTimeoutOrAbortError(error)) {
+    return false;
+  }
+
   const status = getErrorStatus(error);
   if (status === 429) {
     return true;
   }
+  if (status != null && status >= 400 && status < 500) {
+    return false;
+  }
   if (status != null && status >= 500 && status < 600) {
     return true;
-  }
-
-  if (isTimeoutOrAbortError(error)) {
-    return false;
   }
 
   const message = getErrorMessage(error).toLowerCase();
   if (
     message.includes("rate limit") ||
     message.includes("overloaded") ||
-    message.includes("econnreset") ||
-    message.includes("network")
+    message.includes("econnreset")
   ) {
     return true;
   }

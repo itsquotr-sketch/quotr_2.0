@@ -7,6 +7,8 @@ import {
   NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
   NOTE_ANALYSIS_PARSE_USER_MESSAGE,
 } from "@/lib/ai/extract-notes";
+import { persistAiUsageEvent } from "@/lib/ai/usage-events";
+import { getAttachedInvocation } from "@/lib/ai/usage-types";
 import { AIExtractionError } from "@/lib/ai/schema";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
@@ -228,7 +230,12 @@ export async function analyseProjectNotes(
       },
       catalogueTypes: CATALOGUE_TYPES,
     });
+    await persistAiUsageEvent(context, projectId, extraction.invocation);
   } catch (error) {
+    const failedInvocation = getAttachedInvocation(error);
+    if (failedInvocation) {
+      await persistAiUsageEvent(context, projectId, failedInvocation);
+    }
     if (error instanceof AIExtractionError) {
       const friendlyCodes = new Set([
         "NOTE_ANALYSIS_PARSE",
@@ -257,7 +264,7 @@ export async function analyseProjectNotes(
   }
 
   const proposalItems = mapExtractionToProposalItems({
-    extraction,
+    extraction: extraction.output,
     catalogueByType: CATALOGUE_BY_TYPE,
     workAreas: workAreas ?? [],
     facts: projectFacts ?? [],
@@ -289,7 +296,7 @@ export async function analyseProjectNotes(
       proposed_work_areas: proposalItems.proposedWorkAreas,
       proposed_facts: proposalItems.proposedFacts,
       proposed_constraints: proposalItems.proposedConstraints,
-      summary: extraction.summary || null,
+      summary: extraction.output.summary || null,
       status: "pending_review",
       created_by: user.id,
     })

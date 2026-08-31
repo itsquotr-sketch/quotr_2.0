@@ -1,8 +1,23 @@
 import "server-only";
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { ANALYSE_JOB_TIMEOUT_MS } from "@/lib/ai/analyse-job-contract";
-import { createAnthropicMessage, getAnthropicModel } from "@/lib/ai/anthropic";
+import {
+  ANALYSE_JOB_TIMEOUT_CODE,
+  ANALYSE_JOB_TIMEOUT_MS,
+  ANALYSE_JOB_TIMEOUT_USER_MESSAGE,
+  classifyAnalysisError,
+  isTimeoutOrAbortError,
+} from "@/lib/ai/analyse-job-contract";
+import {
+  createAnthropicMessage,
+  getAnthropicInvocationMeta,
+  getAnthropicModel,
+} from "@/lib/ai/anthropic";
+import {
+  emptyTokenFields,
+  mergeInvocations,
+  type AiProviderInvocation,
+} from "@/lib/ai/usage-types";
 import {
   NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
   validateNoteProposalExtraction,
@@ -180,9 +195,9 @@ function logNoteAnalysisFailure(
   });
 }
 
-async function requestNoteAnalysis(
-  userPrompt: string
-): Promise<
+type NoteAnalysisCallResult = {
+  invocation: AiProviderInvocation;
+} & (
   | {
       ok: true;
       rawText: string;
@@ -191,10 +206,46 @@ async function requestNoteAnalysis(
       normalisationWarnings: string[];
     }
   | { ok: false; rawText: string; error: string; code: string }
-> {
+);
+
+function notesInvocationFromProvider(
+  provider: {
+    attemptCount: number;
+    latencyMs: number;
+    usage: AiProviderInvocation["usage"];
+    message: { model?: string };
+  },
+  model: string,
+  success: boolean,
+  errorClass: string | null
+): AiProviderInvocation {
+  return {
+    feature: "analyse_notes",
+    provider: "anthropic",
+    model: provider.message.model || model,
+    latencyMs: provider.latencyMs,
+    attemptCount: provider.attemptCount,
+    success,
+    errorClass,
+    usage: provider.usage,
+  };
+}
+
+function attachNotesInvocation(
+  error: AIExtractionError,
+  invocation: AiProviderInvocation
+): AIExtractionError {
+  (error as AIExtractionError & { invocation: AiProviderInvocation }).invocation =
+    invocation;
+  return error;
+}
+
+async function requestNoteAnalysis(
+  userPrompt: string
+): Promise<NoteAnalysisCallResult> {
   const model = getAnthropicModel();
 
-  const message = await createAnthropicMessage(
+  const provider = await createAnthropicMessage(
     {
       model,
       max_tokens: 4096,
@@ -205,7 +256,8 @@ async function requestNoteAnalysis(
     { timeoutMs: ANALYSE_JOB_TIMEOUT_MS, label: "extractFromSiteNotes" }
   );
 
-  const rawText = getTextFromResponse(message.content);
+  const invocation = notesInvocationFromProvider(provider, model, true, null);
+  const rawText = getTextFromResponse(provider.message.content);
   const jsonResult = parseJsonObject(rawText);
 
   if (!jsonResult.success) {
@@ -214,6 +266,7 @@ async function requestNoteAnalysis(
       rawText,
       error: jsonResult.error,
       code: "NOTE_ANALYSIS_PARSE",
+      invocation: { ...invocation, success: false, errorClass: "parse" },
     };
   }
 
@@ -232,6 +285,7 @@ async function requestNoteAnalysis(
           ? `No valid proposal items after skipping ${normalised.skippedCount} invalid item(s).`
           : "No proposal items in AI response.",
       code: "NOTE_ANALYSIS_NO_UPDATES",
+      invocation: { ...invocation, success: false, errorClass: "no_work_areas" },
     };
   }
 
@@ -243,6 +297,7 @@ async function requestNoteAnalysis(
       parsed: cleaned,
       skippedCount: normalised.skippedCount,
       normalisationWarnings: normalised.warnings,
+      invocation,
     };
   } catch (error) {
     return {
@@ -250,23 +305,31 @@ async function requestNoteAnalysis(
       rawText,
       error: error instanceof Error ? error.message : "Normalisation failed.",
       code: "NOTE_ANALYSIS_INTERNAL",
+      invocation: { ...invocation, success: false, errorClass: "schema" },
     };
   }
 }
+
+export type ExtractFromSiteNotesResult = {
+  output: NoteProposalExtractionOutput;
+  invocation: AiProviderInvocation;
+};
 
 export async function extractFromSiteNotes(params: {
   context: NoteAnalysisContext;
   catalogueTypes: string[];
   projectId?: string;
-}): Promise<NoteProposalExtractionOutput> {
+}): Promise<ExtractFromSiteNotesResult> {
   if (params.context.notes.length === 0) {
     throw new AIExtractionError("No site notes to analyse.", "NOTE_ANALYSIS_EMPTY");
   }
 
   const noteCount = params.context.notes.length;
+  const model = getAnthropicModel();
 
   try {
     let result = await requestNoteAnalysis(buildUserPrompt(params.context));
+    let invocation = result.invocation;
 
     if (!result.ok) {
       logNoteAnalysisFailure(params.projectId, {
@@ -278,14 +341,22 @@ export async function extractFromSiteNotes(params: {
       });
 
       if (result.code === "NOTE_ANALYSIS_NO_UPDATES") {
-        throw new AIExtractionError(
-          NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
-          "NOTE_ANALYSIS_NO_UPDATES"
+        throw attachNotesInvocation(
+          new AIExtractionError(
+            NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
+            "NOTE_ANALYSIS_NO_UPDATES"
+          ),
+          invocation
         );
       }
 
       const retryResult = await requestNoteAnalysis(
         buildUserPrompt(params.context, true)
+      );
+      invocation = mergeInvocations(
+        "analyse_notes",
+        invocation,
+        retryResult.invocation
       );
 
       if (!retryResult.ok) {
@@ -298,15 +369,21 @@ export async function extractFromSiteNotes(params: {
         });
 
         if (retryResult.code === "NOTE_ANALYSIS_NO_UPDATES") {
-          throw new AIExtractionError(
-            NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
-            "NOTE_ANALYSIS_NO_UPDATES"
+          throw attachNotesInvocation(
+            new AIExtractionError(
+              NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
+              "NOTE_ANALYSIS_NO_UPDATES"
+            ),
+            invocation
           );
         }
 
-        throw new AIExtractionError(
-          NOTE_ANALYSIS_RETRY_USER_MESSAGE,
-          "NOTE_ANALYSIS_PARSE_RETRY"
+        throw attachNotesInvocation(
+          new AIExtractionError(
+            NOTE_ANALYSIS_RETRY_USER_MESSAGE,
+            "NOTE_ANALYSIS_PARSE_RETRY"
+          ),
+          invocation
         );
       }
 
@@ -314,9 +391,12 @@ export async function extractFromSiteNotes(params: {
     }
 
     if (!result.ok) {
-      throw new AIExtractionError(
-        NOTE_ANALYSIS_PARSE_USER_MESSAGE,
-        "NOTE_ANALYSIS_PARSE"
+      throw attachNotesInvocation(
+        new AIExtractionError(
+          NOTE_ANALYSIS_PARSE_USER_MESSAGE,
+          "NOTE_ANALYSIS_PARSE"
+        ),
+        invocation
       );
     }
 
@@ -331,34 +411,80 @@ export async function extractFromSiteNotes(params: {
       });
     }
 
-    return validateNoteProposalExtraction(
-      result.parsed,
-      params.context.allowedTypes,
-      params.catalogueTypes
-    );
+    return {
+      output: validateNoteProposalExtraction(
+        result.parsed,
+        params.context.allowedTypes,
+        params.catalogueTypes
+      ),
+      invocation,
+    };
   } catch (error) {
+    const meta = getAnthropicInvocationMeta(error);
+    const fallbackInvocation: AiProviderInvocation = {
+      feature: "analyse_notes",
+      provider: "anthropic",
+      model,
+      latencyMs: meta?.latencyMs ?? 0,
+      attemptCount: meta?.attemptCount ?? 1,
+      success: false,
+      errorClass: classifyAnalysisError(error),
+      usage: meta?.usage ?? emptyTokenFields(),
+    };
+
     if (error instanceof AIExtractionError) {
       if (
         error.code === "NOTE_ANALYSIS_PARSE" ||
         error.code === "NOTE_ANALYSIS_SCHEMA" ||
         error.code === "NOTE_ANALYSIS_INTERNAL"
       ) {
-        throw new AIExtractionError(
-          NOTE_ANALYSIS_PARSE_USER_MESSAGE,
-          error.code
+        throw attachNotesInvocation(
+          new AIExtractionError(
+            NOTE_ANALYSIS_PARSE_USER_MESSAGE,
+            error.code
+          ),
+          getExtractionLikeInvocation(error) ?? fallbackInvocation
         );
+      }
+      if (!getExtractionLikeInvocation(error)) {
+        throw attachNotesInvocation(error, fallbackInvocation);
       }
       throw error;
     }
 
-    const message = error instanceof Error ? error.message : "Note analysis failed.";
-    if (message.includes("ANTHROPIC_API_KEY")) {
-      throw new AIExtractionError(
-        "AI setup is missing. Check your organisation configuration.",
-        "NOTE_ANALYSIS_SETUP"
+    if (isTimeoutOrAbortError(error)) {
+      throw attachNotesInvocation(
+        new AIExtractionError(
+          ANALYSE_JOB_TIMEOUT_USER_MESSAGE,
+          ANALYSE_JOB_TIMEOUT_CODE
+        ),
+        fallbackInvocation
       );
     }
 
-    throw new AIExtractionError(message, "NOTE_ANALYSIS_UNKNOWN");
+    const message = error instanceof Error ? error.message : "Note analysis failed.";
+    if (message.includes("ANTHROPIC_API_KEY")) {
+      throw attachNotesInvocation(
+        new AIExtractionError(
+          "AI setup is missing. Check your organisation configuration.",
+          "NOTE_ANALYSIS_SETUP"
+        ),
+        fallbackInvocation
+      );
+    }
+
+    throw attachNotesInvocation(
+      new AIExtractionError(message, "NOTE_ANALYSIS_UNKNOWN"),
+      fallbackInvocation
+    );
   }
+}
+
+function getExtractionLikeInvocation(
+  error: unknown
+): AiProviderInvocation | null {
+  if (error != null && typeof error === "object" && "invocation" in error) {
+    return (error as { invocation?: AiProviderInvocation }).invocation ?? null;
+  }
+  return null;
 }

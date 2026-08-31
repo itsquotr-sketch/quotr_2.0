@@ -30,6 +30,10 @@ import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { notFound } from "next/navigation";
 import { connection } from "next/server";
 
+/** Hosts Analyse Job / Notes server actions. Must exceed provider (75s) + DB. */
+export const maxDuration = 120;
+export const runtime = "nodejs";
+
 type ProjectPageProps = {
   params: Promise<{ projectId: string }>;
 };

@@ -330,7 +330,7 @@ const migrations = readdirSync(join(root, "supabase/migrations"))
   .sort();
 check(
   "29. no Speed 1A migration",
-  migrations[migrations.length - 1] === "038_rates_productivity_type.sql",
+  migrations[migrations.length - 1] === "039_ai_usage_events.sql",
   `latest=${migrations[migrations.length - 1]}`
 );
 check(
