@@ -23,6 +23,10 @@ import {
 } from "@/components/ui/card";
 import { quoteDocumentViewModel } from "@/lib/quotes/financial-view-model";
 import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
+import {
+  canMarkQuoteAccepted,
+  canMarkQuoteSent,
+} from "@/lib/quotes/transaction";
 import { cn } from "@/lib/utils";
 import {
   markQuoteAccepted,
@@ -35,6 +39,7 @@ import {
 import { REFRESH_FROM_PRICING_STATUSES } from "@/lib/quotes/revision";
 import type { QuotePresentationMode } from "@/lib/quotes/presentation";
 import type { QuoteInput, QuoteWorkspaceData } from "@/lib/quotes/types";
+import { QuoteTransactionHistory } from "@/components/quotes/QuoteTransactionHistory";
 
 type QuoteWorkspaceProps = {
   initialData: QuoteWorkspaceData;
@@ -55,6 +60,8 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
     projectTitle,
     pricingDocumentUpdatedAt,
     latestRevisionQuoteId,
+    threadRevisions = [],
+    recentEvents = [],
   } = initialData;
   const quoteId = quote.id;
   const projectId = quote.project_id;
@@ -183,21 +190,35 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
 
       <QuoteSummaryPanel
         quote={quote}
-        onMarkSent={isEditable ? handleMarkSent : undefined}
+        onMarkSent={
+          canMarkQuoteSent(quote.status) && isEditable
+            ? handleMarkSent
+            : undefined
+        }
         onMarkAccepted={
-          quote.status === "sent" || isEditable
+          canMarkQuoteAccepted(quote.status) && quote.status !== "accepted"
             ? handleMarkAccepted
             : undefined
         }
         onMarkDeclined={
-          quote.status === "sent" || isEditable
+          quote.status === "sent" || quote.status === "viewed"
             ? handleMarkDeclined
             : undefined
         }
         onMarkExpired={
-          quote.status === "sent" ? handleMarkExpired : undefined
+          quote.status === "sent" || quote.status === "viewed"
+            ? handleMarkExpired
+            : undefined
         }
       />
+      {threadRevisions.length > 0 ? (
+        <QuoteTransactionHistory
+          projectId={projectId}
+          currentQuoteId={quoteId}
+          revisions={threadRevisions}
+          events={recentEvents}
+        />
+      ) : null}
     </div>
   );
 
@@ -217,7 +238,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
           className="rounded-lg border border-amber-300/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 print:hidden dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
           role="status"
         >
-          <p className="font-medium">This quote has been revised.</p>
+          <p className="font-medium">This quote has been superseded.</p>
           <p className="mt-1">
             View the{" "}
             <Link
@@ -252,10 +273,10 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </WorkspaceBanner>
       )}
 
-      {quote.revision_number > 1 || quote.revised_from_quote_id ? (
+      {quote.revision_number > 0 ? (
         <p className="text-sm text-muted-foreground print:hidden">
-          {quote.revision_number > 1 ? `Revision ${quote.revision_number}.` : null}
-          {quote.revised_from_quote_id ? " Revised from a previous quote." : null}
+          {quote.quote_number ? `${quote.quote_number} · ` : null}
+          Revision {quote.revision_number}.
         </p>
       ) : null}
 
@@ -453,8 +474,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         onSave={handleSaveQuote}
         onPrint={handlePrint}
         onMarkSent={
-          !isEditable &&
-          (quote.status === "draft" || quote.status === "revised")
+          isEditable
             ? () => {
                 startStatus(async () => {
                   await handleMarkSent();
@@ -463,7 +483,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             : undefined
         }
         onMarkAccepted={
-          quote.status === "sent"
+          quote.status === "sent" || quote.status === "viewed"
             ? () => {
                 startStatus(async () => {
                   await handleMarkAccepted();

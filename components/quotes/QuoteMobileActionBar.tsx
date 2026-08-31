@@ -4,6 +4,7 @@ import { Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Quote } from "@/lib/quotes/types";
+import { canMarkQuoteAccepted, canMarkQuoteSent } from "@/lib/quotes/transaction";
 
 type QuoteMobileActionBarProps = {
   quote: Quote;
@@ -31,10 +32,12 @@ export function QuoteMobileActionBar({
   className,
 }: QuoteMobileActionBarProps) {
   const busy = isSaving || isRevising || isStatusPending;
-  const canMarkSent =
-    (quote.status === "draft" || quote.status === "revised") && onMarkSent;
-  const canMarkAccepted =
-    (quote.status === "sent" || quote.status === "draft") && onMarkAccepted;
+  const showMarkSent =
+    canMarkQuoteSent(quote.status) && quote.status === "draft" && onMarkSent;
+  const showMarkAccepted =
+    canMarkQuoteAccepted(quote.status) &&
+    quote.status !== "accepted" &&
+    onMarkAccepted;
 
   return (
     <div
@@ -70,9 +73,11 @@ export function QuoteMobileActionBar({
             "Save quote"
           )}
         </Button>
-      ) : canMarkSent ? (
+      ) : null}
+      {showMarkSent ? (
         <Button
           type="button"
+          variant={canSave ? "outline" : "default"}
           className="h-11 min-w-0 flex-1"
           disabled={busy}
           onClick={onMarkSent}
@@ -83,7 +88,7 @@ export function QuoteMobileActionBar({
             "Mark sent"
           )}
         </Button>
-      ) : canMarkAccepted ? (
+      ) : !canSave && showMarkAccepted ? (
         <Button
           type="button"
           variant="outline"
@@ -93,7 +98,7 @@ export function QuoteMobileActionBar({
         >
           Mark accepted
         </Button>
-      ) : (
+      ) : !canSave && !showMarkSent ? (
         <Button
           type="button"
           variant="secondary"
@@ -104,11 +109,15 @@ export function QuoteMobileActionBar({
             ? "Accepted"
             : quote.status === "declined"
               ? "Declined"
-              : quote.status === "sent"
-                ? "Sent"
-                : "View actions above"}
+              : quote.status === "viewed"
+                ? "Viewed"
+                : quote.status === "sent"
+                  ? "Sent"
+                  : quote.status === "superseded"
+                    ? "Superseded"
+                    : "View actions above"}
         </Button>
-      )}
+      ) : null}
     </div>
   );
 }

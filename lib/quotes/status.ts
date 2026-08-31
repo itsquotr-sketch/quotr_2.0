@@ -24,6 +24,13 @@ export const QUOTE_STATUSES: QuoteStatusDefinition[] = [
     sortOrder: 20,
   },
   {
+    value: "viewed",
+    label: "Viewed",
+    description: "Client has opened the sent quote.",
+    variant: "default",
+    sortOrder: 25,
+  },
+  {
     value: "accepted",
     label: "Accepted",
     description: "Client accepted the quote.",
@@ -45,9 +52,9 @@ export const QUOTE_STATUSES: QuoteStatusDefinition[] = [
     sortOrder: 50,
   },
   {
-    value: "revised",
-    label: "Revised",
-    description: "Quote has been superseded by a revision.",
+    value: "superseded",
+    label: "Superseded",
+    description: "Quote has been superseded by a later revision.",
     variant: "outline",
     sortOrder: 60,
   },
@@ -65,6 +72,9 @@ const statusByValue = new Map(
 );
 
 export function getQuoteStatusDefinition(value: string): QuoteStatusDefinition {
+  if (value === "revised") {
+    return statusByValue.get("superseded") ?? QUOTE_STATUSES[0];
+  }
   return (
     statusByValue.get(value as QuoteStatus) ?? QUOTE_STATUSES[0]
   );
@@ -76,12 +86,16 @@ export function formatQuoteBadgeLabel(status: QuoteStatus): string {
       return "Quote draft";
     case "sent":
       return "Quote sent";
+    case "viewed":
+      return "Quote viewed";
     case "accepted":
       return "Quote accepted";
     case "declined":
       return "Quote declined";
     case "expired":
       return "Quote expired";
+    case "superseded":
+      return "Quote superseded";
     default:
       return getQuoteStatusDefinition(status).label;
   }

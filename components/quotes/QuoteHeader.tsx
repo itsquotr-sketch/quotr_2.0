@@ -43,11 +43,9 @@ export function QuoteHeader({
               {quote.title}
             </h1>
             <Badge variant={statusDef.variant}>{statusDef.label}</Badge>
-            {quote.revision_number > 1 ? (
-              <Badge variant="outline" className="text-[10px]">
-                Revision {quote.revision_number}
-              </Badge>
-            ) : null}
+            <Badge variant="outline" className="text-[10px]">
+              Revision {quote.revision_number}
+            </Badge>
             {quote.status === "draft" ? (
               <Badge variant="outline" className="text-[10px]">
                 Draft quote

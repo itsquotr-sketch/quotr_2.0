@@ -24,10 +24,11 @@ import type { QuoteStatus } from "@/lib/quotes/types";
 export const QUOTE_STATUS_VALUES = [
   "draft",
   "sent",
+  "viewed",
   "accepted",
   "declined",
   "expired",
-  "revised",
+  "superseded",
   "archived",
 ] as const satisfies readonly QuoteStatus[];
 

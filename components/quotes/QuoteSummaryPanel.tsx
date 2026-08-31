@@ -12,6 +12,12 @@ import {
 } from "@/components/ui/card";
 import { quoteDocumentViewModel } from "@/lib/quotes/financial-view-model";
 import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
+import {
+  canMarkQuoteAccepted,
+  canMarkQuoteDeclined,
+  canMarkQuoteExpired,
+  canMarkQuoteSent,
+} from "@/lib/quotes/transaction";
 import type { Quote } from "@/lib/quotes/types";
 
 type QuoteSummaryPanelProps = {
@@ -69,12 +75,10 @@ export function QuoteSummaryPanel({
     });
   };
 
-  const canMarkSent = quote.status === "draft" || quote.status === "revised";
-  const canMarkAccepted =
-    quote.status === "sent" || quote.status === "draft";
-  const canMarkDeclined =
-    quote.status === "sent" || quote.status === "draft";
-  const canMarkExpired = quote.status === "sent";
+  const canMarkSent = canMarkQuoteSent(quote.status) && quote.status === "draft";
+  const canMarkAccepted = canMarkQuoteAccepted(quote.status) && quote.status !== "accepted";
+  const canMarkDeclined = canMarkQuoteDeclined(quote.status) && quote.status !== "declined";
+  const canMarkExpired = canMarkQuoteExpired(quote.status) && quote.status !== "expired";
 
   return (
     <Card className="border-border/60 shadow-none lg:sticky lg:top-[4.5rem] lg:self-start">
@@ -85,11 +89,9 @@ export function QuoteSummaryPanel({
             {formatQuoteBadgeLabel(quote.status)}
           </Badge>
         </div>
-        {quote.revision_number > 1 ? (
-          <p className="text-xs text-muted-foreground">
-            Revision {quote.revision_number}
-          </p>
-        ) : null}
+        <p className="text-xs text-muted-foreground">
+          Revision {quote.revision_number}
+        </p>
         <p className="text-xs text-muted-foreground">
           Client-facing totals (GST exclusive subtotal)
         </p>
@@ -164,9 +166,12 @@ export function QuoteSummaryPanel({
               Mark expired
             </Button>
           ) : null}
-          {quote.status === "sent" ? (
+          {quote.status === "sent" || quote.status === "viewed" ? (
             <p className="text-xs text-muted-foreground">
-              Sent {quote.sent_at ? new Date(quote.sent_at).toLocaleDateString("en-NZ") : ""}
+              {quote.status === "viewed" ? "Viewed" : "Sent"}
+              {quote.sent_at
+                ? ` ${new Date(quote.sent_at).toLocaleDateString("en-NZ")}`
+                : ""}
             </p>
           ) : null}
         </div>

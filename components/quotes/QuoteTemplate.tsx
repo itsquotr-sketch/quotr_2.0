@@ -25,6 +25,7 @@ import { sanitizeClientQuoteDescription } from "@/lib/quotes/sanitize";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
 import { brandColourTint, getBrandColours } from "@/lib/settings/branding";
 import type { CompanySettings } from "@/lib/settings/types";
+import { resolveQuoteIssuerSettings } from "@/lib/quotes/issuer-snapshot";
 import { cn } from "@/lib/utils";
 import { QuoteCompanyLogo } from "@/components/quotes/QuoteCompanyLogo";
 
@@ -242,8 +243,12 @@ function OptionalItemsSection({
 export function QuoteTemplate({
   quote,
   quoteItems,
-  companySettings,
+  companySettings: liveCompanySettings,
 }: QuoteTemplateProps) {
+  const companySettings = resolveQuoteIssuerSettings(
+    quote,
+    liveCompanySettings
+  );
   const companyName = getCompanyDisplayName(companySettings);
   const companyAddress = companySettings
     ? formatCompanyAddress(companySettings)

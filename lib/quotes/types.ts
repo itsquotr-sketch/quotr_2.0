@@ -1,11 +1,48 @@
 export type QuoteStatus =
   | "draft"
   | "sent"
+  | "viewed"
   | "accepted"
   | "declined"
   | "expired"
-  | "revised"
+  | "superseded"
   | "archived";
+
+export type QuoteActorType = "user" | "client" | "system";
+
+export type QuoteEventType =
+  | "quote_created"
+  | "quote_updated"
+  | "quote_revision_created"
+  | "quote_sent"
+  | "quote_viewed"
+  | "quote_accepted"
+  | "quote_declined"
+  | "quote_expired"
+  | "quote_superseded"
+  | "quote_archived";
+
+export type QuoteIssuerSnapshot = {
+  organisationName: string;
+  tradingName: string | null;
+  legalName: string | null;
+  contactEmail: string | null;
+  contactPhone: string | null;
+  website: string | null;
+  addressLine1: string | null;
+  addressLine2: string | null;
+  city: string | null;
+  region: string | null;
+  postcode: string | null;
+  addressCountry: string;
+  nzbn: string | null;
+  gstNumber: string | null;
+  logoUrl: string | null;
+  brandPrimaryColour: string | null;
+  brandAccentColour: string | null;
+  defaultPaymentTerms: string | null;
+  source?: "send" | "migration_041_current_org";
+};
 
 export type Quote = {
   id: string;
@@ -34,9 +71,13 @@ export type Quote = {
   created_at: string;
   updated_at: string;
   sent_at: string | null;
+  viewed_at: string | null;
   accepted_at: string | null;
   declined_at: string | null;
   expired_at: string | null;
+  issuer_snapshot: QuoteIssuerSnapshot | null;
+  snapshot_fingerprint: string | null;
+  snapshot_fingerprint_version: string | null;
   revision_number: number;
   parent_quote_id: string | null;
   revised_from_quote_id: string | null;
@@ -74,6 +115,31 @@ export type QuoteSummary = {
   pricing_document_id: string | null;
   created_at: string;
   revision_number: number;
+};
+
+export type QuoteThreadRevision = {
+  id: string;
+  revision_number: number;
+  status: QuoteStatus;
+  quote_number: string | null;
+  sent_at: string | null;
+  viewed_at: string | null;
+  accepted_at: string | null;
+  declined_at: string | null;
+  expired_at: string | null;
+  superseded_by_quote_id: string | null;
+  superseded_at: string | null;
+  created_at: string;
+};
+
+export type QuoteEventRecord = {
+  id: string;
+  quote_id: string;
+  event_type: QuoteEventType;
+  actor_type: QuoteActorType;
+  actor_user_id: string | null;
+  occurred_at: string;
+  metadata: Record<string, unknown>;
 };
 
 export type QuoteActionState = {
@@ -114,6 +180,8 @@ export type QuoteWorkspaceData = {
   companySettings: CompanySettings | null;
   pricingDocumentUpdatedAt: string | null;
   latestRevisionQuoteId: string | null;
+  threadRevisions: QuoteThreadRevision[];
+  recentEvents: QuoteEventRecord[];
 };
 
 export type QuotePrintData = {

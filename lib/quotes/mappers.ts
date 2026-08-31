@@ -1,4 +1,5 @@
 import { parseStringArray } from "@/lib/pricing/calculations";
+import { parseQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
 
 export function mapQuote(row: Record<string, unknown>): Quote {
@@ -29,9 +30,14 @@ export function mapQuote(row: Record<string, unknown>): Quote {
     created_at: row.created_at as string,
     updated_at: row.updated_at as string,
     sent_at: (row.sent_at as string | null) ?? null,
+    viewed_at: (row.viewed_at as string | null) ?? null,
     accepted_at: (row.accepted_at as string | null) ?? null,
     declined_at: (row.declined_at as string | null) ?? null,
     expired_at: (row.expired_at as string | null) ?? null,
+    issuer_snapshot: parseQuoteIssuerSnapshot(row.issuer_snapshot),
+    snapshot_fingerprint: (row.snapshot_fingerprint as string | null) ?? null,
+    snapshot_fingerprint_version:
+      (row.snapshot_fingerprint_version as string | null) ?? null,
     revision_number: Number(row.revision_number ?? 1),
     parent_quote_id: (row.parent_quote_id as string | null) ?? null,
     revised_from_quote_id: (row.revised_from_quote_id as string | null) ?? null,

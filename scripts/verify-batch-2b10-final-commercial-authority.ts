@@ -509,9 +509,13 @@ function main(): void {
     created_at: "",
     updated_at: "",
     sent_at: null,
+    viewed_at: null,
     accepted_at: null,
     declined_at: null,
     expired_at: null,
+    issuer_snapshot: null,
+    snapshot_fingerprint: null,
+    snapshot_fingerprint_version: null,
     revision_number: 1,
     parent_quote_id: null,
     revised_from_quote_id: null,
@@ -541,8 +545,9 @@ function main(): void {
   );
   checks.push(
     assert(
-      "reviseQuote supersedes prior quote (new record)",
-      quoteActions.includes("superseded_by_quote_id: newQuoteId")
+      "sending a later revision supersedes prior sent/viewed quotes",
+      quoteActions.includes("SEND_QUOTE_REVISION_RPC") &&
+        !quoteActions.includes('status: "revised"')
     )
   );
   checks.push(

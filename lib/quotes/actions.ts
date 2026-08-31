@@ -32,12 +32,32 @@ import { buildQuoteSnapshotFromReviewedPricing } from "@/lib/quotes/build-from-p
 import { calculateQuoteBaseTotalsFromItems } from "@/lib/quotes/base-totals";
 import { resolveAuthoritativeQuoteItemTotal } from "@/lib/quotes/quote-commercial-engine-adapter";
 import type { QuoteItemFromPricing } from "@/lib/quotes/from-pricing";
+import { appendQuoteEvent } from "@/lib/quotes/events";
+import { captureQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
 import { mapQuote, mapQuoteItem } from "@/lib/quotes/mappers";
 import {
   pickLatestQuoteSummary,
   REFRESH_FROM_PRICING_STATUSES,
   REVISABLE_QUOTE_STATUSES,
 } from "@/lib/quotes/revision";
+import { hashQuoteSnapshotFingerprint, QUOTE_SNAPSHOT_FINGERPRINT_VERSION } from "@/lib/quotes/snapshot-fingerprint";
+import {
+  assertQuoteSnapshotMutable,
+  assertQuoteStatusTransition,
+  quoteThreadId,
+} from "@/lib/quotes/transaction";
+import {
+  ACCEPT_QUOTE_REVISION_RPC,
+  ALLOCATE_ORG_QUOTE_NUMBER_RPC,
+  CREATE_QUOTE_REVISION_RPC,
+  DECLINE_QUOTE_REVISION_RPC,
+  EXPIRE_QUOTE_REVISION_RPC,
+  INSERT_DRAFT_QUOTE_RPC,
+  MARK_QUOTE_VIEWED_RPC,
+  SEND_QUOTE_REVISION_RPC,
+  invokeQuoteTxn,
+  mapQuoteTxnError,
+} from "@/lib/quotes/quote-rpc";
 import {
   fetchQuoteSummaries,
   fetchQuoteSummariesForProjects,
@@ -108,13 +128,150 @@ async function loadOwnedQuote(quoteId: string) {
 }
 
 function assertQuoteEditable(quote: ReturnType<typeof mapQuote>) {
-  if (quote.status !== "draft") {
-    return "Only draft quotes can be edited. Create a revision instead." as const;
+  return assertQuoteSnapshotMutable(quote);
+}
+
+type QuoteDbClient = Awaited<
+  ReturnType<typeof import("@/lib/supabase/server").createClient>
+>;
+
+function rpcQuoteItemPayload(item: {
+  pricing_item_id?: string | null;
+  work_area_id?: string | null;
+  section_title?: string | null;
+  section_description?: string | null;
+  label: string;
+  description?: string | null;
+  quantity?: number | null;
+  unit?: string | null;
+  unit_price?: number | null;
+  total?: number | null;
+  visible?: boolean;
+  optional?: boolean;
+  sort_order?: number;
+}) {
+  return {
+    pricing_item_id: item.pricing_item_id ?? null,
+    work_area_id: item.work_area_id ?? null,
+    section_title: item.section_title ?? null,
+    section_description: item.section_description ?? null,
+    label: item.label,
+    description: item.description ?? null,
+    quantity: item.quantity ?? null,
+    unit: item.unit ?? null,
+    unit_price: item.unit_price ?? null,
+    total: item.total ?? 0,
+    visible: item.visible ?? true,
+    optional: item.optional ?? false,
+    sort_order: item.sort_order ?? 0,
+  };
+}
+
+function revisionQuoteFieldsFromQuote(quote: {
+  pricing_document_id: string | null;
+  estimate_id: string | null;
+  title: string;
+  client_name: string | null;
+  site_address: string | null;
+  issue_date: string | null;
+  valid_until: string | null;
+  subtotal: number;
+  gst_rate: number;
+  gst_amount: number;
+  total_incl_gst: number;
+  scope_summary: string | null;
+  inclusions: string[];
+  exclusions: string[];
+  assumptions: string[];
+  terms: string | null;
+  notes_to_client: string | null;
+  presentation_mode: string;
+}) {
+  return {
+    pricing_document_id: quote.pricing_document_id,
+    estimate_id: quote.estimate_id,
+    title: quote.title,
+    client_name: quote.client_name,
+    site_address: quote.site_address,
+    issue_date: quote.issue_date,
+    valid_until: quote.valid_until,
+    subtotal: quote.subtotal,
+    gst_rate: quote.gst_rate,
+    gst_amount: quote.gst_amount,
+    total_incl_gst: quote.total_incl_gst,
+    scope_summary: quote.scope_summary,
+    inclusions: quote.inclusions,
+    exclusions: quote.exclusions,
+    assumptions: quote.assumptions,
+    terms: quote.terms,
+    notes_to_client: quote.notes_to_client,
+    presentation_mode: quote.presentation_mode,
+  };
+}
+
+async function findOpenDraftInThread(
+  supabase: QuoteDbClient,
+  orgId: string,
+  projectId: string,
+  rootId: string
+): Promise<string | null> {
+  const { data } = await supabase
+    .from("quotes")
+    .select("id")
+    .eq("org_id", orgId)
+    .eq("project_id", projectId)
+    .eq("status", "draft")
+    .is("superseded_by_quote_id", null)
+    .or(`id.eq.${rootId},parent_quote_id.eq.${rootId}`)
+    .limit(1)
+    .maybeSingle();
+  return data?.id ?? null;
+}
+
+async function recordQuoteEvent(input: {
+  supabase: QuoteDbClient;
+  orgId: string;
+  projectId: string;
+  quoteId: string;
+  eventType: Parameters<typeof appendQuoteEvent>[0]["eventType"];
+  userId?: string | null;
+  actorType?: "user" | "client" | "system";
+  metadata?: Record<string, unknown>;
+}): Promise<string | null> {
+  return appendQuoteEvent({
+    supabase: input.supabase as never,
+    orgId: input.orgId,
+    projectId: input.projectId,
+    quoteId: input.quoteId,
+    eventType: input.eventType,
+    actorType: input.actorType ?? "user",
+    actorUserId: input.userId ?? null,
+    metadata: input.metadata,
+  });
+}
+
+async function runQuoteTxn(
+  supabase: QuoteDbClient,
+  fn: string,
+  args: Record<string, unknown> = {}
+) {
+  return invokeQuoteTxn(supabase as never, fn, args);
+}
+
+async function allocateOrgQuoteNumber(
+  supabase: QuoteDbClient
+): Promise<{ quoteNumber: string } | { error: string }> {
+  const { data, error } = await (
+    supabase as never as {
+      rpc: (
+        fn: string
+      ) => Promise<{ data: unknown; error: { message?: string } | null }>;
+    }
+  ).rpc(ALLOCATE_ORG_QUOTE_NUMBER_RPC);
+  if (error || typeof data !== "string" || !data.trim()) {
+    return { error: mapQuoteTxnError(error) };
   }
-  if (quote.superseded_by_quote_id) {
-    return "This quote has been superseded. Open the latest revision to edit." as const;
-  }
-  return null;
+  return { quoteNumber: data };
 }
 
 async function recalculateAndPersistQuoteTotals(
@@ -468,60 +625,39 @@ export async function createQuoteFromPricing(input: {
 
   const { quoteFields, quoteItems } = snapshot;
 
-  const { data: quote, error: quoteError } = await supabase
-    .from("quotes")
-    .insert({
-      org_id: orgId,
-      project_id: projectId,
-      pricing_document_id: pricingDocumentId,
-      estimate_id: snapshot.estimateId,
-      title: quoteFields.title,
-      status: "draft",
-      client_name: quoteFields.client_name,
-      site_address: quoteFields.site_address,
-      issue_date: quoteFields.issue_date,
-      valid_until: quoteFields.valid_until,
-      subtotal: quoteFields.subtotal,
-      gst_rate: quoteFields.gst_rate,
-      gst_amount: quoteFields.gst_amount,
-      total_incl_gst: quoteFields.total_incl_gst,
-      scope_summary: quoteFields.scope_summary,
-      inclusions: quoteFields.inclusions,
-      exclusions: quoteFields.exclusions,
-      assumptions: quoteFields.assumptions,
-      terms: quoteFields.terms,
-      presentation_mode: quoteFields.presentation_mode,
-      created_by: user.id,
-    })
-    .select("id")
-    .single();
+  const created = await runQuoteTxn(supabase, INSERT_DRAFT_QUOTE_RPC, {
+    p_payload: {
+      projectId,
+      quote: {
+        pricing_document_id: pricingDocumentId,
+        estimate_id: snapshot.estimateId,
+        title: quoteFields.title,
+        client_name: quoteFields.client_name,
+        site_address: quoteFields.site_address,
+        issue_date: quoteFields.issue_date,
+        valid_until: quoteFields.valid_until,
+        subtotal: quoteFields.subtotal,
+        gst_rate: quoteFields.gst_rate,
+        gst_amount: quoteFields.gst_amount,
+        total_incl_gst: quoteFields.total_incl_gst,
+        scope_summary: quoteFields.scope_summary,
+        inclusions: quoteFields.inclusions,
+        exclusions: quoteFields.exclusions,
+        assumptions: quoteFields.assumptions,
+        terms: quoteFields.terms,
+        presentation_mode: quoteFields.presentation_mode,
+      },
+      items: quoteItems.map(rpcQuoteItemPayload),
+    },
+  });
 
-  if (quoteError || !quote) {
-    return {
-      error: toUserError(
-        quoteError,
-        "createQuoteFromPricing",
-        USER_ERRORS.quoteCreateFailed
-      ),
-    };
+  if ("error" in created) {
+    return { error: created.error };
   }
 
-  const quoteId = quote.id;
-  const itemsError = await insertQuoteItemRows(
-    supabase,
-    orgId,
-    projectId,
-    quoteId,
-    quoteItems
-  );
-
-  if (itemsError) {
-    await supabase
-      .from("quotes")
-      .delete()
-      .eq("id", quoteId)
-      .eq("org_id", orgId);
-    return { error: itemsError };
+  const quoteId = created.result.quoteId;
+  if (!quoteId) {
+    return { error: USER_ERRORS.quoteCreateFailed };
   }
 
   const currentStatus = project.business_status as string;
@@ -617,6 +753,16 @@ export async function updateQuote(
       error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
     };
   }
+
+  await recordQuoteEvent({
+    supabase,
+    orgId,
+    projectId: quote.project_id,
+    quoteId: parsed.data.quoteId,
+    eventType: "quote_updated",
+    userId: loaded.user.id,
+    metadata: { fields: Object.keys(update) },
+  });
 
   revalidateQuoteProjectPath(
     quote.project_id,
@@ -910,6 +1056,14 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
   }
 
   const { supabase, orgId, quote, user } = loaded;
+  const transition = assertQuoteStatusTransition(quote.status, "sent");
+  if (!transition.ok) {
+    return { error: transition.error };
+  }
+
+  if (transition.idempotent) {
+    return { success: true };
+  }
 
   // Stage 3.1C.3 — hard-block issue when company identity/contact missing.
   const { getCompanySetupReadiness } = await import(
@@ -925,40 +1079,85 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
     };
   }
 
-  const now = new Date().toISOString();
-
-  const { error } = await supabase
-    .from("quotes")
-    .update({
-      status: "sent",
-      sent_at: now,
-    })
-    .eq("id", parsed.data.quoteId)
-    .eq("org_id", orgId);
-
-  if (error) {
+  const companySettings = await getCompanySettingsWithContext({
+    supabase: loaded.supabase,
+    orgId: loaded.orgId,
+    user: loaded.user,
+  });
+  const issuerSnapshot = captureQuoteIssuerSnapshot(companySettings);
+  if (!issuerSnapshot) {
     return {
-      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
+      error: "Complete company details before sending this quote.",
     };
   }
 
-  if (quote.pricing_document_id) {
-    await supabase
-      .from("pricing_documents")
-      .update({
-        status: "converted_to_quote",
-        converted_to_quote_at: now,
-      })
-      .eq("id", quote.pricing_document_id)
-      .eq("org_id", orgId);
+  let quoteNumber = quote.quote_number;
+  if (!quoteNumber) {
+    const allocated = await allocateOrgQuoteNumber(supabase);
+    if ("error" in allocated) {
+      return { error: allocated.error };
+    }
+    quoteNumber = allocated.quoteNumber;
+    const { error: numberError } = await supabase
+      .from("quotes")
+      .update({ quote_number: quoteNumber })
+      .eq("id", parsed.data.quoteId)
+      .eq("org_id", orgId)
+      .eq("status", "draft");
+    if (numberError) {
+      return {
+        error: toUserError(
+          numberError,
+          "quote-update",
+          USER_ERRORS.quoteStatusFailed
+        ),
+      };
+    }
   }
 
-  await updateProjectBusinessStatusIfActive(
-    supabase,
-    orgId,
-    quote.project_id,
-    "quote_sent"
+  const { data: itemRows } = await supabase
+    .from("quote_items")
+    .select("*")
+    .eq("quote_id", parsed.data.quoteId)
+    .eq("org_id", orgId)
+    .order("sort_order");
+  const snapshotItems = (itemRows ?? []).map((row) => mapQuoteItem(row));
+  const snapshotFingerprint = hashQuoteSnapshotFingerprint(
+    { ...quote, quote_number: quoteNumber },
+    snapshotItems,
+    issuerSnapshot
   );
+
+  const sent = await runQuoteTxn(supabase, SEND_QUOTE_REVISION_RPC, {
+    p_quote_id: parsed.data.quoteId,
+    p_issuer_snapshot: issuerSnapshot,
+    p_snapshot_fingerprint: snapshotFingerprint,
+    p_fingerprint_version: QUOTE_SNAPSHOT_FINGERPRINT_VERSION,
+  });
+  if ("error" in sent) {
+    return { error: sent.error };
+  }
+
+  const now = new Date().toISOString();
+  if (!sent.result.idempotent) {
+    if (quote.pricing_document_id) {
+      await supabase
+        .from("pricing_documents")
+        .update({
+          status: "converted_to_quote",
+          converted_to_quote_at: now,
+        })
+        .eq("id", quote.pricing_document_id)
+        .eq("org_id", orgId);
+    }
+
+    await updateProjectBusinessStatusIfActive(
+      supabase,
+      orgId,
+      quote.project_id,
+      "quote_sent"
+    );
+  }
 
   revalidateQuoteDashboard(
     quote.project_id,
@@ -981,6 +1180,45 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
   return { success: true };
 }
 
+export async function markQuoteViewed(
+  quoteId: string
+): Promise<QuoteActionState> {
+  const parsed = parseQuoteInput(quoteIdInputSchema, { quoteId });
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedQuote(parsed.data.quoteId);
+  if ("error" in loaded) {
+    return { error: loaded.error };
+  }
+
+  const { supabase, quote } = loaded;
+  const transition = assertQuoteStatusTransition(quote.status, "viewed");
+  if (!transition.ok) {
+    return { error: transition.error };
+  }
+
+  if (transition.idempotent || quote.viewed_at) {
+    return { success: true };
+  }
+
+  const viewed = await runQuoteTxn(supabase, MARK_QUOTE_VIEWED_RPC, {
+    p_quote_id: parsed.data.quoteId,
+    p_actor_type: "user",
+  });
+  if ("error" in viewed) {
+    return { error: viewed.error };
+  }
+
+  revalidateQuoteDashboard(
+    quote.project_id,
+    parsed.data.quoteId,
+    quote.pricing_document_id
+  );
+  return { success: true };
+}
+
 export async function markQuoteAccepted(
   quoteId: string
 ): Promise<QuoteActionState> {
@@ -995,30 +1233,30 @@ export async function markQuoteAccepted(
   }
 
   const { supabase, orgId, quote } = loaded;
-  const now = new Date().toISOString();
-
-  const { error } = await supabase
-    .from("quotes")
-    .update({
-      status: "accepted",
-      accepted_at: now,
-    })
-    .eq("id", parsed.data.quoteId)
-    .eq("org_id", orgId);
-
-  if (error) {
-    return {
-      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
-    };
+  const transition = assertQuoteStatusTransition(quote.status, "accepted");
+  if (!transition.ok) {
+    return { error: transition.error };
+  }
+  if (transition.idempotent) {
+    return { success: true };
   }
 
-  await updateProjectBusinessStatusIfActive(
-    supabase,
-    orgId,
-    quote.project_id,
-    "won",
-    { won_at: now }
-  );
+  const accepted = await runQuoteTxn(supabase, ACCEPT_QUOTE_REVISION_RPC, {
+    p_quote_id: parsed.data.quoteId,
+  });
+  if ("error" in accepted) {
+    return { error: accepted.error };
+  }
+
+  if (!accepted.result.idempotent) {
+    await updateProjectBusinessStatusIfActive(
+      supabase,
+      orgId,
+      quote.project_id,
+      "won",
+      { won_at: new Date().toISOString() }
+    );
+  }
 
   revalidateQuoteDashboard(
     quote.project_id,
@@ -1042,30 +1280,30 @@ export async function markQuoteDeclined(
   }
 
   const { supabase, orgId, quote } = loaded;
-  const now = new Date().toISOString();
-
-  const { error } = await supabase
-    .from("quotes")
-    .update({
-      status: "declined",
-      declined_at: now,
-    })
-    .eq("id", parsed.data.quoteId)
-    .eq("org_id", orgId);
-
-  if (error) {
-    return {
-      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
-    };
+  const transition = assertQuoteStatusTransition(quote.status, "declined");
+  if (!transition.ok) {
+    return { error: transition.error };
+  }
+  if (transition.idempotent) {
+    return { success: true };
   }
 
-  await updateProjectBusinessStatusIfActive(
-    supabase,
-    orgId,
-    quote.project_id,
-    "lost",
-    { lost_at: now }
-  );
+  const declined = await runQuoteTxn(supabase, DECLINE_QUOTE_REVISION_RPC, {
+    p_quote_id: parsed.data.quoteId,
+  });
+  if ("error" in declined) {
+    return { error: declined.error };
+  }
+
+  if (!declined.result.idempotent) {
+    await updateProjectBusinessStatusIfActive(
+      supabase,
+      orgId,
+      quote.project_id,
+      "lost",
+      { lost_at: new Date().toISOString() }
+    );
+  }
 
   revalidateQuoteDashboard(
     quote.project_id,
@@ -1088,22 +1326,20 @@ export async function markQuoteExpired(
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, quote } = loaded;
-  const now = new Date().toISOString();
+  const { supabase, quote } = loaded;
+  const transition = assertQuoteStatusTransition(quote.status, "expired");
+  if (!transition.ok) {
+    return { error: transition.error };
+  }
+  if (transition.idempotent) {
+    return { success: true };
+  }
 
-  const { error } = await supabase
-    .from("quotes")
-    .update({
-      status: "expired",
-      expired_at: now,
-    })
-    .eq("id", parsed.data.quoteId)
-    .eq("org_id", orgId);
-
-  if (error) {
-    return {
-      error: toUserError(error, "quote-update", USER_ERRORS.quoteUpdateFailed),
-    };
+  const expired = await runQuoteTxn(supabase, EXPIRE_QUOTE_REVISION_RPC, {
+    p_quote_id: parsed.data.quoteId,
+  });
+  if ("error" in expired) {
+    return { error: expired.error };
   }
 
   revalidateQuoteDashboard(
@@ -1129,7 +1365,7 @@ export async function reviseQuote(input: {
     return { error: auth.error };
   }
 
-  const { supabase, user, orgId } = auth;
+  const { supabase, orgId } = auth;
   const { projectId, quoteId, revisionNote } = parsed.data;
 
   const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
@@ -1160,8 +1396,26 @@ export async function reviseQuote(input: {
     return { error: "Draft quotes can be edited directly." };
   }
 
+  if (quote.superseded_by_quote_id) {
+    return {
+      error: "This quote has been superseded. Open the latest revision instead.",
+    };
+  }
+
   if (!REVISABLE_QUOTE_STATUSES.includes(quote.status)) {
     return { error: "This quote cannot be revised." };
+  }
+
+  const rootId = quoteThreadId(quote);
+  const existingDraftId = await findOpenDraftInThread(
+    supabase,
+    orgId,
+    projectId,
+    rootId
+  );
+  if (existingDraftId) {
+    revalidateQuoteProjectPath(projectId, existingDraftId, quote.pricing_document_id);
+    redirect(`/app/projects/${projectId}/quotes/${existingDraftId}`);
   }
 
   const { data: sourceItems, error: itemsError } = await supabase
@@ -1181,144 +1435,43 @@ export async function reviseQuote(input: {
     };
   }
 
-  const rootId = quote.parent_quote_id ?? quote.id;
-
-  const { data: chainQuotes, error: chainError } = await supabase
-    .from("quotes")
-    .select("revision_number")
-    .eq("org_id", orgId)
-    .eq("project_id", projectId)
-    .or(`id.eq.${rootId},parent_quote_id.eq.${rootId}`)
-    .order("revision_number", { ascending: false })
-    .limit(1);
-
-  if (chainError) {
-    return {
-      error: toUserError(
-        chainError,
-        "reviseQuote-chain",
-        USER_ERRORS.quoteRevisionFailed
+  const created = await runQuoteTxn(supabase, CREATE_QUOTE_REVISION_RPC, {
+    p_source_quote_id: quoteId,
+    p_payload: {
+      revisionNote: revisionNote ?? null,
+      quote: revisionQuoteFieldsFromQuote(quote),
+      items: (sourceItems ?? []).map((item) =>
+        rpcQuoteItemPayload({
+          pricing_item_id: item.pricing_item_id as string | null,
+          work_area_id: item.work_area_id as string | null,
+          section_title: item.section_title as string | null,
+          section_description: item.section_description as string | null,
+          label: item.label as string,
+          description: item.description as string | null,
+          quantity: item.quantity != null ? Number(item.quantity) : null,
+          unit: item.unit as string | null,
+          unit_price: item.unit_price != null ? Number(item.unit_price) : null,
+          total: Number(item.total ?? 0),
+          visible: Boolean(item.visible ?? true),
+          optional: Boolean(item.optional ?? false),
+          sort_order: Number(item.sort_order ?? 0),
+        })
       ),
-    };
+    },
+  });
+
+  if ("error" in created) {
+    return { error: created.error };
   }
 
-  const nextRevision =
-    Number(chainQuotes?.[0]?.revision_number ?? quote.revision_number) + 1;
-  const now = new Date().toISOString();
-
-  const { data: newQuote, error: insertError } = await supabase
-    .from("quotes")
-    .insert({
-      org_id: orgId,
-      project_id: projectId,
-      pricing_document_id: quote.pricing_document_id,
-      estimate_id: quote.estimate_id,
-      quote_number: quote.quote_number,
-      title: quote.title,
-      status: "draft",
-      client_name: quote.client_name,
-      site_address: quote.site_address,
-      issue_date: quote.issue_date,
-      valid_until: quote.valid_until,
-      subtotal: quote.subtotal,
-      gst_rate: quote.gst_rate,
-      gst_amount: quote.gst_amount,
-      total_incl_gst: quote.total_incl_gst,
-      scope_summary: quote.scope_summary,
-      inclusions: quote.inclusions,
-      exclusions: quote.exclusions,
-      assumptions: quote.assumptions,
-      terms: quote.terms,
-      notes_to_client: quote.notes_to_client,
-      created_by: user.id,
-      revision_number: nextRevision,
-      parent_quote_id: rootId,
-      revised_from_quote_id: quote.id,
-      revision_note: revisionNote ?? null,
-      presentation_mode: quote.presentation_mode,
-    })
-    .select("id")
-    .single();
-
-  if (insertError || !newQuote) {
-    return {
-      error: toUserError(
-        insertError,
-        "reviseQuote-insert",
-        USER_ERRORS.quoteRevisionFailed
-      ),
-    };
+  const newQuoteId = created.result.quoteId;
+  if (!newQuoteId) {
+    return { error: USER_ERRORS.quoteRevisionFailed };
   }
 
-  const newQuoteId = newQuote.id;
-
-  if (sourceItems && sourceItems.length > 0) {
-    const copiedItems = sourceItems.map((item) => ({
-      org_id: orgId,
-      quote_id: newQuoteId,
-      project_id: projectId,
-      pricing_item_id: item.pricing_item_id,
-      work_area_id: item.work_area_id,
-      section_title: item.section_title,
-      section_description: item.section_description,
-      label: item.label,
-      description: item.description,
-      quantity: item.quantity,
-      unit: item.unit,
-      unit_price: item.unit_price,
-      total: item.total,
-      visible: item.visible,
-      optional: item.optional,
-      sort_order: item.sort_order,
-    }));
-
-    const { error: copyItemsError } = await supabase
-      .from("quote_items")
-      .insert(copiedItems);
-
-    if (copyItemsError) {
-      await supabase
-        .from("quotes")
-        .delete()
-        .eq("id", newQuoteId)
-        .eq("org_id", orgId);
-      return {
-        error: toUserError(
-          copyItemsError,
-          "reviseQuote-copy-items",
-          USER_ERRORS.quoteRevisionFailed
-        ),
-      };
-    }
-  }
-
-  const { error: supersedeError } = await supabase
-    .from("quotes")
-    .update({
-      superseded_by_quote_id: newQuoteId,
-      superseded_at: now,
-    })
-    .eq("id", quoteId)
-    .eq("org_id", orgId);
-
-  if (supersedeError) {
-    await supabase
-      .from("quote_items")
-      .delete()
-      .eq("quote_id", newQuoteId)
-      .eq("org_id", orgId);
-    await supabase
-      .from("quotes")
-      .delete()
-      .eq("id", newQuoteId)
-      .eq("org_id", orgId);
-    return {
-      error: toUserError(
-        supersedeError,
-        "reviseQuote-supersede",
-        USER_ERRORS.quoteRevisionFailed
-      ),
-    };
+  if (created.result.idempotent) {
+    revalidateQuoteProjectPath(projectId, newQuoteId, quote.pricing_document_id);
+    redirect(`/app/projects/${projectId}/quotes/${newQuoteId}`);
   }
 
   const { data: project } = await supabase
@@ -1461,121 +1614,168 @@ export async function reviseQuoteFromFinalPricing(input: {
     return { error: snapshot.error };
   }
 
-  const rootId = quote.parent_quote_id ?? quote.id;
-
-  const { data: chainQuotes, error: chainError } = await supabase
-    .from("quotes")
-    .select("revision_number")
-    .eq("org_id", orgId)
-    .eq("project_id", projectId)
-    .or(`id.eq.${rootId},parent_quote_id.eq.${rootId}`)
-    .order("revision_number", { ascending: false })
-    .limit(1);
-
-  if (chainError) {
-    return {
-      error: toUserError(
-        chainError,
-        "reviseQuote-chain",
-        USER_ERRORS.quoteRevisionFailed
-      ),
-    };
-  }
-
-  const nextRevision =
-    Number(chainQuotes?.[0]?.revision_number ?? quote.revision_number) + 1;
-  const now = new Date().toISOString();
   const { quoteFields, quoteItems } = snapshot;
+  const rootId = quoteThreadId(quote);
 
-  const { data: newQuote, error: insertError } = await supabase
-    .from("quotes")
-    .insert({
-      org_id: orgId,
-      project_id: projectId,
-      pricing_document_id: resolvedPricingDocumentId,
-      estimate_id: snapshot.estimateId,
-      quote_number: quote.quote_number,
-      title: quoteFields.title,
-      status: "draft",
-      client_name: quoteFields.client_name,
-      site_address: quoteFields.site_address,
-      issue_date: quoteFields.issue_date,
-      valid_until: quoteFields.valid_until,
-      subtotal: quoteFields.subtotal,
-      gst_rate: quoteFields.gst_rate,
-      gst_amount: quoteFields.gst_amount,
-      total_incl_gst: quoteFields.total_incl_gst,
-      scope_summary: quoteFields.scope_summary,
-      inclusions: quoteFields.inclusions,
-      exclusions: quoteFields.exclusions,
-      assumptions: quoteFields.assumptions,
-      terms: quoteFields.terms,
-      notes_to_client: quote.notes_to_client,
-      created_by: user.id,
-      revision_number: nextRevision,
-      parent_quote_id: rootId,
-      revised_from_quote_id: quote.id,
-      revision_note: revisionNote ?? null,
-      presentation_mode: quote.presentation_mode,
-    })
-    .select("id")
-    .single();
-
-  if (insertError || !newQuote) {
-    return {
-      error: toUserError(
-        insertError,
-        "reviseQuote-insert",
+  const applyPricingSnapshotToDraft = async (targetQuoteId: string) => {
+    const { error: deleteItemsError } = await supabase
+      .from("quote_items")
+      .delete()
+      .eq("quote_id", targetQuoteId)
+      .eq("org_id", orgId);
+    if (deleteItemsError) {
+      return toUserError(
+        deleteItemsError,
+        "reviseQuote-replace-items",
         USER_ERRORS.quoteRevisionFailed
-      ),
-    };
+      );
+    }
+
+    const itemsError = await insertQuoteItemRows(
+      supabase,
+      orgId,
+      projectId,
+      targetQuoteId,
+      quoteItems
+    );
+    if (itemsError) return itemsError;
+
+    const { error: updateError } = await supabase
+      .from("quotes")
+      .update({
+        pricing_document_id: resolvedPricingDocumentId,
+        estimate_id: snapshot.estimateId,
+        title: quoteFields.title,
+        client_name: quoteFields.client_name,
+        site_address: quoteFields.site_address,
+        issue_date: quoteFields.issue_date,
+        valid_until: quoteFields.valid_until,
+        subtotal: quoteFields.subtotal,
+        gst_rate: quoteFields.gst_rate,
+        gst_amount: quoteFields.gst_amount,
+        total_incl_gst: quoteFields.total_incl_gst,
+        scope_summary: quoteFields.scope_summary,
+        inclusions: quoteFields.inclusions,
+        exclusions: quoteFields.exclusions,
+        assumptions: quoteFields.assumptions,
+        terms: quoteFields.terms,
+        notes_to_client: quote.notes_to_client,
+        presentation_mode: quote.presentation_mode,
+      })
+      .eq("id", targetQuoteId)
+      .eq("org_id", orgId)
+      .eq("status", "draft");
+
+    if (updateError) {
+      return toUserError(
+        updateError,
+        "reviseQuote-replace-quote",
+        USER_ERRORS.quoteRevisionFailed
+      );
+    }
+    return null;
+  };
+
+  if (quote.status === "draft") {
+    const replaceError = await applyPricingSnapshotToDraft(quoteId);
+    if (replaceError) return { error: replaceError };
+
+    await recordQuoteEvent({
+      supabase,
+      orgId,
+      projectId,
+      quoteId,
+      eventType: "quote_updated",
+      userId: user.id,
+      metadata: { source: "pricing_refresh" },
+    });
+
+    revalidateQuoteDashboard(projectId, quoteId, resolvedPricingDocumentId);
+    redirect(`/app/projects/${projectId}/quotes/${quoteId}`);
   }
 
-  const newQuoteId = newQuote.id;
-  const itemsError = await insertQuoteItemRows(
+  const existingDraftId = await findOpenDraftInThread(
     supabase,
     orgId,
     projectId,
-    newQuoteId,
-    quoteItems
+    rootId
   );
-
-  if (itemsError) {
-    await supabase
-      .from("quotes")
-      .delete()
-      .eq("id", newQuoteId)
-      .eq("org_id", orgId);
-    return { error: itemsError };
+  if (existingDraftId) {
+    const replaceError = await applyPricingSnapshotToDraft(existingDraftId);
+    if (replaceError) return { error: replaceError };
+    await recordQuoteEvent({
+      supabase,
+      orgId,
+      projectId,
+      quoteId: existingDraftId,
+      eventType: "quote_updated",
+      userId: user.id,
+      metadata: { source: "pricing_refresh" },
+    });
+    revalidateQuoteDashboard(
+      projectId,
+      existingDraftId,
+      resolvedPricingDocumentId
+    );
+    redirect(`/app/projects/${projectId}/quotes/${existingDraftId}`);
   }
 
-  const { error: supersedeError } = await supabase
-    .from("quotes")
-    .update({
-      superseded_by_quote_id: newQuoteId,
-      superseded_at: now,
-    })
-    .eq("id", quoteId)
-    .eq("org_id", orgId);
+  const created = await runQuoteTxn(supabase, CREATE_QUOTE_REVISION_RPC, {
+    p_source_quote_id: quoteId,
+    p_payload: {
+      revisionNote: revisionNote ?? null,
+      quote: {
+        ...revisionQuoteFieldsFromQuote(quote),
+        pricing_document_id: resolvedPricingDocumentId,
+        estimate_id: snapshot.estimateId,
+        title: quoteFields.title,
+        client_name: quoteFields.client_name,
+        site_address: quoteFields.site_address,
+        issue_date: quoteFields.issue_date,
+        valid_until: quoteFields.valid_until,
+        subtotal: quoteFields.subtotal,
+        gst_rate: quoteFields.gst_rate,
+        gst_amount: quoteFields.gst_amount,
+        total_incl_gst: quoteFields.total_incl_gst,
+        scope_summary: quoteFields.scope_summary,
+        inclusions: quoteFields.inclusions,
+        exclusions: quoteFields.exclusions,
+        assumptions: quoteFields.assumptions,
+        terms: quoteFields.terms,
+        notes_to_client: quote.notes_to_client,
+        presentation_mode: quote.presentation_mode,
+      },
+      items: quoteItems.map(rpcQuoteItemPayload),
+    },
+  });
 
-  if (supersedeError) {
-    await supabase
-      .from("quote_items")
-      .delete()
-      .eq("quote_id", newQuoteId)
-      .eq("org_id", orgId);
-    await supabase
-      .from("quotes")
-      .delete()
-      .eq("id", newQuoteId)
-      .eq("org_id", orgId);
-    return {
-      error: toUserError(
-        supersedeError,
-        "reviseQuote-supersede",
-        USER_ERRORS.quoteRevisionFailed
-      ),
-    };
+  if ("error" in created) {
+    return { error: created.error };
+  }
+
+  const newQuoteId = created.result.quoteId;
+  if (!newQuoteId) {
+    return { error: USER_ERRORS.quoteRevisionFailed };
+  }
+
+  if (created.result.idempotent) {
+    const replaceError = await applyPricingSnapshotToDraft(newQuoteId);
+    if (replaceError) return { error: replaceError };
+    await recordQuoteEvent({
+      supabase,
+      orgId,
+      projectId,
+      quoteId: newQuoteId,
+      eventType: "quote_updated",
+      userId: user.id,
+      metadata: { source: "pricing_refresh" },
+    });
+    revalidateQuoteDashboard(
+      projectId,
+      newQuoteId,
+      resolvedPricingDocumentId
+    );
+    redirect(`/app/projects/${projectId}/quotes/${newQuoteId}`);
   }
 
   const currentStatus = project.business_status as string;

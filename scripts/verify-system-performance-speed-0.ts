@@ -371,7 +371,7 @@ const migrations = readdirSync(join(root, "supabase/migrations"))
   .sort();
 check(
   "latest migration remains 038 (no Speed 0 schema change)",
-  migrations[migrations.length - 1] === "040_quote_presentation_mode.sql",
+  migrations[migrations.length - 1] === "041_quote_transaction.sql",
   `latest=${migrations[migrations.length - 1]}`
 );
 check(

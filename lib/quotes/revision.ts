@@ -50,10 +50,10 @@ export function formatQuoteRevisionLabel(input: {
 
 export const REVISABLE_QUOTE_STATUSES: QuoteStatus[] = [
   "sent",
+  "viewed",
   "accepted",
   "declined",
   "expired",
-  "revised",
 ];
 
 /** Quotes that can be refreshed into a new revision from reviewed Final Pricing. */
