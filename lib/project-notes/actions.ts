@@ -81,8 +81,6 @@ async function assertProjectOwned(
   return { ok: true };
 }
 
-export type { ProjectNoteListResult };
-
 async function fetchProjectNoteCounts(
   supabase: Awaited<
     ReturnType<typeof import("@/lib/supabase/server").createClient>

@@ -4,7 +4,8 @@
  *
  * Run: npx tsx scripts/verify-analyse-job-flow.ts
  */
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { execFileSync } from "node:child_process";
 import { join, resolve } from "node:path";
 import { AIExtractionError } from "../lib/ai/schema";
 import {
@@ -348,6 +349,81 @@ const usage = reportTokenUsage({
 });
 check("usage helper does not invent USD", usage.estimatedUsd === null);
 check("usage helper totals tokens", usage.totalTokens === 1200);
+
+check(
+  "03 Analyse Job does not run Speed 2 derived reconciliation",
+  !saveFn.includes("persistDerivedFactsForProject")
+);
+check(
+  "03 telemetry insert is best-effort try/catch",
+  usageEvents.includes("try {") &&
+    usageEvents.includes("Observability must never") &&
+    usageEvents.includes("from(\"ai_usage_events\")")
+);
+check(
+  "03 canonical load failure is recovery not throw",
+  read("lib/assistant/complete-assistant-mutation.ts").includes(
+    "recoveryRefresh: true"
+  )
+);
+
+function listUseServerFiles(dir: string): string[] {
+  const out: string[] = [];
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (entry.name === "node_modules" || entry.name === ".next") continue;
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      out.push(...listUseServerFiles(full));
+      continue;
+    }
+    if (!entry.name.endsWith(".ts") && !entry.name.endsWith(".tsx")) continue;
+    const src = readFileSync(full, "utf8");
+    if (src.startsWith('"use server"') || src.startsWith("'use server'")) {
+      out.push(full.slice(root.length + 1).replaceAll("\\", "/"));
+    }
+  }
+  return out;
+}
+
+const useServerFiles = [
+  ...listUseServerFiles(join(root, "lib")),
+  ...listUseServerFiles(join(root, "app")),
+];
+/** Proven Next/Turbopack crash: type-only re-export becomes a runtime server-action binding. */
+function hasTypeOnlyReexport(src: string): boolean {
+  return /export type \{/.test(src) || /export \{[\s\S]*?\btype\s+\w/.test(src);
+}
+const typeReexports = useServerFiles.filter((file) =>
+  hasTypeOnlyReexport(read(file))
+);
+check(
+  "03 use-server modules do not re-export types (Next/Turbopack ReferenceError)",
+  typeReexports.length === 0,
+  typeReexports.join(", ")
+);
+check(
+  "03 notes actions imported by capture card is a use-server module",
+  useServerFiles.includes("lib/project-notes/actions.ts")
+);
+check(
+  "03 ProjectNoteListResult remains on non-server-action note-loaders",
+  read("lib/project-notes/note-loaders.ts").includes(
+    "export type ProjectNoteListResult"
+  ) && !read("lib/project-notes/note-loaders.ts").startsWith('"use server"')
+);
+
+try {
+  execFileSync("npx", ["tsx", "scripts/verify-analyse-job-fresh-project.ts"], {
+    cwd: root,
+    stdio: "inherit",
+    timeout: 60_000,
+    shell: process.platform === "win32",
+    env: { ...process.env, RUN_LIVE_AI_TESTS: undefined },
+  });
+  check("03 fresh-project / failure-phase harness", true);
+} catch {
+  check("03 fresh-project / failure-phase harness", false);
+}
 
 console.log(`\nANALYSE-JOB-FLOW RESULT: ${passed} passed, ${failed} failed\n`);
 if (failed > 0) process.exit(1);
