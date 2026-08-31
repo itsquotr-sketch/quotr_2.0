@@ -179,6 +179,41 @@ export async function getQuoteWorkspaceDataWithContext(
         }))
   );
 
+  const { data: deliveryRows, error: deliveryError } = await supabase
+    .from("quote_deliveries")
+    .select(
+      "id, quote_id, recipient_email, recipient_name, message, provider, kind, status, attempt_number, snapshot_fingerprint, provider_message_id, submitted_at, delivered_at, failed_at, failure_code, failure_message_safe, created_at"
+    )
+    .eq("org_id", orgId)
+    .eq("quote_id", quoteId)
+    .order("created_at", { ascending: false })
+    .limit(20);
+
+  const deliveries = deliveryError
+    ? []
+    : (deliveryRows ?? []).map((row) => ({
+    id: row.id as string,
+    quote_id: row.quote_id as string,
+    recipient_email: row.recipient_email as string,
+    recipient_name: (row.recipient_name as string | null) ?? null,
+    message: (row.message as string | null) ?? null,
+    provider: (row.provider as string) ?? "resend",
+    kind: row.kind === "resend" ? "resend" as const : row.kind === "send" ? "send" as const : undefined,
+    status: row.status as import("@/lib/quotes/delivery-types").QuoteDeliveryStatus,
+    attempt_number: Number(row.attempt_number ?? 1),
+    snapshot_fingerprint:
+      (row.snapshot_fingerprint as string | null | undefined) ?? null,
+    provider_message_id:
+      (row.provider_message_id as string | null | undefined) ?? null,
+    submitted_at: (row.submitted_at as string | null) ?? null,
+    delivered_at: (row.delivered_at as string | null) ?? null,
+    failed_at: (row.failed_at as string | null) ?? null,
+    failure_code: (row.failure_code as string | null) ?? null,
+    failure_message_safe:
+      (row.failure_message_safe as string | null) ?? null,
+    created_at: row.created_at as string,
+  }));
+
   return {
     projectTitle: project.title,
     quote: mappedQuote,
@@ -188,6 +223,7 @@ export async function getQuoteWorkspaceDataWithContext(
     latestRevisionQuoteId: latestSummary?.id ?? null,
     threadRevisions,
     recentEvents,
+    deliveries,
   };
 }
 

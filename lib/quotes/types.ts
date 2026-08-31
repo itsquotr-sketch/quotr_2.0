@@ -85,6 +85,8 @@ export type Quote = {
   superseded_at: string | null;
   revision_note: string | null;
   presentation_mode: "grouped" | "detailed" | "lump_sum";
+  send_lock_delivery_id?: string | null;
+  send_lock_fingerprint?: string | null;
 };
 
 export type QuoteItem = {
@@ -148,6 +150,18 @@ export type QuoteActionState = {
   quoteId?: string;
 };
 
+export type QuoteDeliveryActionState = {
+  error?: string;
+  success?: boolean;
+  quoteIssued?: boolean;
+  emailSubmitted?: boolean;
+  emailInProgress?: boolean;
+  needsFinalize?: boolean;
+  deliveryId?: string;
+  recipientEmail?: string;
+  publicPath?: string;
+};
+
 export type QuoteInput = {
   title?: string;
   issue_date?: string | null;
@@ -171,6 +185,7 @@ export type QuoteItemInput = {
   optional?: boolean;
 };
 
+import type { QuoteDeliveryRecord } from "@/lib/quotes/delivery-types";
 import type { CompanySettings } from "@/lib/settings/types";
 
 export type QuoteWorkspaceData = {
@@ -182,6 +197,7 @@ export type QuoteWorkspaceData = {
   latestRevisionQuoteId: string | null;
   threadRevisions: QuoteThreadRevision[];
   recentEvents: QuoteEventRecord[];
+  deliveries: QuoteDeliveryRecord[];
 };
 
 export type QuotePrintData = {

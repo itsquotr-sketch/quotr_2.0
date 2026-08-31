@@ -14,6 +14,7 @@ import {
   quoteIdInputSchema,
   reviseQuoteFromFinalPricingInputSchema,
   reviseQuoteInputSchema,
+  sendQuoteToClientInputSchema,
   setQuoteItemVisibleInputSchema,
   updateQuoteInputSchema,
   updateQuoteItemInputSchema,
@@ -44,6 +45,9 @@ import { hashQuoteSnapshotFingerprint, QUOTE_SNAPSHOT_FINGERPRINT_VERSION } from
 import {
   assertQuoteSnapshotMutable,
   assertQuoteStatusTransition,
+  canIssueQuoteDelivery,
+  canResendQuoteDelivery,
+  quoteHasActiveSendLock,
   quoteThreadId,
 } from "@/lib/quotes/transaction";
 import {
@@ -52,9 +56,14 @@ import {
   CREATE_QUOTE_REVISION_RPC,
   DECLINE_QUOTE_REVISION_RPC,
   EXPIRE_QUOTE_REVISION_RPC,
+  FAIL_QUOTE_DELIVERY_RPC,
+  FINALIZE_QUOTE_DELIVERY_RPC,
   INSERT_DRAFT_QUOTE_RPC,
   MARK_QUOTE_VIEWED_RPC,
+  PREPARE_QUOTE_DELIVERY_RPC,
+  RECORD_QUOTE_DELIVERY_ACCEPTED_RPC,
   SEND_QUOTE_REVISION_RPC,
+  invokeQuoteDeliveryTxn,
   invokeQuoteTxn,
   mapQuoteTxnError,
 } from "@/lib/quotes/quote-rpc";
@@ -64,6 +73,7 @@ import {
 } from "@/lib/quotes/summary-queries";
 import type {
   QuoteActionState,
+  QuoteDeliveryActionState,
   QuoteInput,
   QuoteItemInput,
   QuoteSummary,
@@ -73,6 +83,25 @@ import type {
 import { ACTIVE_PIPELINE_STATUSES } from "@/lib/projects/status";
 import { getCompanySettingsWithContext } from "@/lib/settings/company-settings-loader";
 import { getLatestQuoteSummaryWithContext, getQuoteWorkspaceDataWithContext } from "@/lib/quotes/quote-loaders";
+import { requireOrgEntitlement } from "@/lib/quotes/entitlements";
+import {
+  quoteDeliveryIdempotencyKey,
+  normalizeDeliveryEmail,
+} from "@/lib/quotes/delivery-idempotency";
+import {
+  buildQuoteDeliveryEmail,
+  isQuoteDeliveryProviderConfigured,
+  quoteDeliveryFromAddress,
+  quoteDeliverySiteOrigin,
+} from "@/lib/quotes/delivery-email";
+import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
+import { decideQuoteSendProviderAction } from "@/lib/quotes/delivery-send-policy";
+import {
+  generateQuoteAccessToken,
+  hashQuoteAccessToken,
+  quotePublicPath,
+} from "@/lib/quotes/delivery-token";
+import { resolveQuoteIssuerSettings } from "@/lib/quotes/issuer-snapshot";
 import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 
 const QUOTE_SAVE_FAILED = USER_ERRORS.quoteUpdateFailed;
@@ -1044,6 +1073,45 @@ export async function deleteQuoteItem(
   return { success: true };
 }
 
+async function applyQuoteIssuedSideEffects(input: {
+  supabase: QuoteDbClient;
+  orgId: string;
+  userId: string;
+  quote: ReturnType<typeof mapQuote>;
+  previousStatus: string;
+}) {
+  const now = new Date().toISOString();
+  if (input.quote.pricing_document_id) {
+    await input.supabase
+      .from("pricing_documents")
+      .update({
+        status: "converted_to_quote",
+        converted_to_quote_at: now,
+      })
+      .eq("id", input.quote.pricing_document_id)
+      .eq("org_id", input.orgId);
+  }
+
+  await updateProjectBusinessStatusIfActive(
+    input.supabase,
+    input.orgId,
+    input.quote.project_id,
+    "quote_sent"
+  );
+
+  await logPricingAuditEvent({
+    supabase: input.supabase,
+    organisationId: input.orgId,
+    projectId: input.quote.project_id,
+    pricingDocumentId: input.quote.pricing_document_id,
+    quoteId: input.quote.id,
+    userId: input.userId,
+    action: "quote_status_change",
+    oldValues: { status: input.previousStatus },
+    newValues: { status: "sent" },
+  });
+}
+
 export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> {
   const parsed = parseQuoteInput(quoteIdInputSchema, { quoteId });
   if (!parsed.ok) {
@@ -1056,6 +1124,11 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
   }
 
   const { supabase, orgId, quote, user } = loaded;
+  if (quoteHasActiveSendLock(quote)) {
+    return {
+      error: "This quote is already being sent. Retry finalising the email, or wait.",
+    };
+  }
   const transition = assertQuoteStatusTransition(quote.status, "sent");
   if (!transition.ok) {
     return { error: transition.error };
@@ -1138,25 +1211,14 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
     return { error: sent.error };
   }
 
-  const now = new Date().toISOString();
   if (!sent.result.idempotent) {
-    if (quote.pricing_document_id) {
-      await supabase
-        .from("pricing_documents")
-        .update({
-          status: "converted_to_quote",
-          converted_to_quote_at: now,
-        })
-        .eq("id", quote.pricing_document_id)
-        .eq("org_id", orgId);
-    }
-
-    await updateProjectBusinessStatusIfActive(
+    await applyQuoteIssuedSideEffects({
       supabase,
       orgId,
-      quote.project_id,
-      "quote_sent"
-    );
+      userId: user.id,
+      quote,
+      previousStatus: quote.status,
+    });
   }
 
   revalidateQuoteDashboard(
@@ -1165,19 +1227,418 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
     quote.pricing_document_id
   );
 
-  await logPricingAuditEvent({
-    supabase,
-    organisationId: orgId,
-    projectId: quote.project_id,
-    pricingDocumentId: quote.pricing_document_id,
-    quoteId: parsed.data.quoteId,
-    userId: user.id,
-    action: "quote_status_change",
-    oldValues: { status: quote.status },
-    newValues: { status: "sent" },
-  });
-
   return { success: true };
+}
+
+export async function sendQuoteToClient(input: {
+  quoteId: string;
+  recipientName: string;
+  recipientEmail: string;
+  message: string;
+}): Promise<QuoteDeliveryActionState> {
+  const parsed = parseQuoteInput(sendQuoteToClientInputSchema, input);
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedQuote(parsed.data.quoteId);
+  if ("error" in loaded) {
+    return { error: loaded.error };
+  }
+
+  const entitlement = requireOrgEntitlement(loaded.orgId, "quotes.send");
+  if (!entitlement.ok) {
+    return { error: entitlement.error };
+  }
+
+  const origin = quoteDeliverySiteOrigin();
+  const fromAddress = quoteDeliveryFromAddress();
+  if (
+    !isQuoteDeliveryProviderConfigured() ||
+    !origin ||
+    !fromAddress
+  ) {
+    return {
+      error:
+        "Email delivery is not configured yet. Ask an admin to set the sending domain before sending quotes.",
+    };
+  }
+
+  const { supabase, quote, orgId, user } = loaded;
+  const isFirstSend = canIssueQuoteDelivery(quote.status);
+  if (!isFirstSend && !canResendQuoteDelivery(quote.status)) {
+    return { error: "This quote cannot be emailed in its current status." };
+  }
+
+  const companySettings = await getCompanySettingsWithContext(loaded);
+  const issuerSnapshot = captureQuoteIssuerSnapshot(companySettings);
+  if (!issuerSnapshot) {
+    return {
+      error: "Complete company details before sending this quote.",
+    };
+  }
+
+  let quoteNumber = quote.quote_number;
+  let working = quote;
+  if (isFirstSend) {
+    const { getCompanySetupReadiness } = await import(
+      "@/lib/setup/readiness-actions"
+    );
+    const readiness = await getCompanySetupReadiness();
+    if (!readiness.quoteReady) {
+      return {
+        error:
+          readiness.missingQuoteSetup[0]?.reason ??
+          "Complete company contact details before sending this quote.",
+      };
+    }
+    if (!quoteNumber) {
+      const allocated = await allocateOrgQuoteNumber(supabase);
+      if ("error" in allocated) {
+        return { error: allocated.error };
+      }
+      quoteNumber = allocated.quoteNumber;
+      const { error: numberError } = await supabase
+        .from("quotes")
+        .update({ quote_number: quoteNumber })
+        .eq("id", parsed.data.quoteId)
+        .eq("org_id", orgId)
+        .eq("status", "draft");
+      if (numberError) {
+        return {
+          error: toUserError(
+            numberError,
+            "quote-update",
+            USER_ERRORS.quoteStatusFailed
+          ),
+        };
+      }
+    }
+    working = { ...quote, quote_number: quoteNumber };
+  }
+
+  const { data: itemRows } = await supabase
+    .from("quote_items")
+    .select("*")
+    .eq("quote_id", parsed.data.quoteId)
+    .eq("org_id", orgId)
+    .order("sort_order");
+  const snapshotItems = (itemRows ?? []).map((row) => mapQuoteItem(row));
+  const snapshotFingerprint = isFirstSend
+    ? hashQuoteSnapshotFingerprint(working, snapshotItems, issuerSnapshot)
+    : working.snapshot_fingerprint;
+  if (!snapshotFingerprint) {
+    return { error: USER_ERRORS.quoteStatusFailed };
+  }
+
+  const recipientEmail = normalizeDeliveryEmail(parsed.data.recipientEmail);
+  const { data: latestDelivery } = await supabase
+    .from("quote_deliveries")
+    .select("id, status, idempotency_key, submitted_at, created_at")
+    .eq("org_id", orgId)
+    .eq("quote_id", working.id)
+    .eq("recipient_email", recipientEmail)
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+
+  const { count: priorAttempts } = await supabase
+    .from("quote_deliveries")
+    .select("id", { count: "exact", head: true })
+    .eq("org_id", orgId)
+    .eq("quote_id", working.id);
+
+  const kind = isFirstSend ? "send" : "resend";
+  const reusableStatus =
+    latestDelivery?.status === "preparing" ||
+    latestDelivery?.status === "accepted";
+  const idempotencyKey =
+    latestDelivery?.idempotency_key && reusableStatus
+      ? latestDelivery.idempotency_key
+      : quoteDeliveryIdempotencyKey({
+          quoteId: working.id,
+          revisionNumber: working.revision_number,
+          fingerprint: snapshotFingerprint,
+          recipientEmail,
+          kind,
+          resendAttempt: kind === "resend" ? (priorAttempts ?? 0) + 1 : undefined,
+        });
+
+  const rawToken = generateQuoteAccessToken();
+  const prepared = await invokeQuoteDeliveryTxn(
+    supabase as never,
+    PREPARE_QUOTE_DELIVERY_RPC,
+    {
+      p_quote_id: working.id,
+      p_recipient_email: recipientEmail,
+      p_recipient_name: parsed.data.recipientName,
+      p_message: parsed.data.message,
+      p_token_hash: hashQuoteAccessToken(rawToken),
+      p_idempotency_key: idempotencyKey,
+      p_snapshot_fingerprint: snapshotFingerprint,
+      p_kind: kind,
+    }
+  );
+  if ("error" in prepared) {
+    return { error: prepared.error, quoteIssued: !isFirstSend };
+  }
+
+  const publicPath = quotePublicPath(rawToken);
+  const decision = decideQuoteSendProviderAction(prepared.result);
+  const deliveryId = prepared.result.deliveryId;
+  const providerKey =
+    prepared.result.idempotencyKey ?? idempotencyKey;
+
+  if (decision === "wait") {
+    revalidateQuoteDashboard(
+      working.project_id,
+      working.id,
+      working.pricing_document_id
+    );
+    return {
+      success: true,
+      quoteIssued: !isFirstSend,
+      emailInProgress: true,
+      deliveryId,
+      recipientEmail,
+    };
+  }
+
+  if (decision === "already_submitted") {
+    revalidateQuoteDashboard(
+      working.project_id,
+      working.id,
+      working.pricing_document_id
+    );
+    return {
+      success: true,
+      quoteIssued: true,
+      emailSubmitted: true,
+      deliveryId,
+      recipientEmail,
+    };
+  }
+
+  if (!deliveryId) {
+    return {
+      error: USER_ERRORS.quoteDeliveryFailed,
+      quoteIssued: !isFirstSend,
+    };
+  }
+
+  if (decision === "submit") {
+    const issuer = resolveQuoteIssuerSettings(working, companySettings);
+    const email = buildQuoteDeliveryEmail({
+      quote: {
+        ...working,
+        snapshot_fingerprint: snapshotFingerprint,
+      },
+      issuer,
+      recipientName: parsed.data.recipientName,
+      message: parsed.data.message,
+      publicUrl: `${origin}${publicPath}`,
+    });
+
+    const provider = getQuoteDeliveryProvider();
+    const submitted = await provider.send({
+      to: recipientEmail,
+      from: fromAddress,
+      replyTo: issuer?.contactEmail ?? fromAddress,
+      subject: email.subject,
+      html: email.html,
+      text: email.text,
+      idempotencyKey: providerKey,
+    });
+
+    if (!submitted.ok) {
+      await invokeQuoteDeliveryTxn(supabase as never, FAIL_QUOTE_DELIVERY_RPC, {
+        p_delivery_id: deliveryId,
+        p_failure_code: submitted.code,
+        p_failure_message_safe: USER_ERRORS.quoteDeliveryFailed,
+      });
+      revalidateQuoteDashboard(
+        working.project_id,
+        working.id,
+        working.pricing_document_id
+      );
+      return {
+        error: USER_ERRORS.quoteDeliveryFailed,
+        quoteIssued: !isFirstSend,
+        emailSubmitted: false,
+        recipientEmail,
+        publicPath,
+      };
+    }
+
+    const accepted = await invokeQuoteDeliveryTxn(
+      supabase as never,
+      RECORD_QUOTE_DELIVERY_ACCEPTED_RPC,
+      {
+        p_delivery_id: deliveryId,
+        p_provider_message_id: submitted.providerMessageId,
+      }
+    );
+    if ("error" in accepted) {
+      revalidateQuoteDashboard(
+        working.project_id,
+        working.id,
+        working.pricing_document_id
+      );
+      return {
+        error: "Email submitted — finalising Quote status.",
+        quoteIssued: false,
+        emailSubmitted: true,
+        needsFinalize: true,
+        deliveryId,
+        recipientEmail,
+        publicPath,
+      };
+    }
+  }
+
+  const finalized = await invokeQuoteDeliveryTxn(
+    supabase as never,
+    FINALIZE_QUOTE_DELIVERY_RPC,
+    {
+      p_delivery_id: deliveryId,
+      p_issuer_snapshot: issuerSnapshot,
+      p_snapshot_fingerprint: snapshotFingerprint,
+      p_fingerprint_version: QUOTE_SNAPSHOT_FINGERPRINT_VERSION,
+    }
+  );
+  if ("error" in finalized) {
+    revalidateQuoteDashboard(
+      working.project_id,
+      working.id,
+      working.pricing_document_id
+    );
+    return {
+      error: "Email submitted — finalising Quote status.",
+      quoteIssued: false,
+      emailSubmitted: true,
+      needsFinalize: true,
+      deliveryId,
+      recipientEmail,
+      publicPath,
+    };
+  }
+
+  if (isFirstSend && finalized.result.quoteStatus === "sent") {
+    await applyQuoteIssuedSideEffects({
+      supabase,
+      orgId,
+      userId: user.id,
+      quote: working,
+      previousStatus: "draft",
+    });
+  }
+
+  revalidateQuoteDashboard(
+    working.project_id,
+    working.id,
+    working.pricing_document_id
+  );
+
+  return {
+    success: true,
+    quoteIssued: true,
+    emailSubmitted: true,
+    recipientEmail,
+    publicPath,
+    deliveryId,
+  };
+}
+
+export async function finalizeQuoteDelivery(
+  deliveryId: string
+): Promise<QuoteDeliveryActionState> {
+  if (!deliveryId) {
+    return { error: USER_ERRORS.quoteDeliveryFailed };
+  }
+
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) {
+    return { error: auth.error };
+  }
+
+  const { data: delivery, error: deliveryError } = await auth.supabase
+    .from("quote_deliveries")
+    .select(
+      "id, quote_id, snapshot_fingerprint, provider_message_id, status, kind"
+    )
+    .eq("id", deliveryId)
+    .eq("org_id", auth.orgId)
+    .maybeSingle();
+  if (deliveryError || !delivery) {
+    return { error: "Delivery not found." };
+  }
+  if (!delivery.provider_message_id) {
+    return { error: USER_ERRORS.quoteDeliveryFailed };
+  }
+
+  const loaded = await loadOwnedQuote(delivery.quote_id as string);
+  if ("error" in loaded) {
+    return { error: loaded.error };
+  }
+
+  const companySettings = await getCompanySettingsWithContext(loaded);
+  const issuerSnapshot = captureQuoteIssuerSnapshot(companySettings);
+  if (!issuerSnapshot) {
+    return {
+      error: "Complete company details before sending this quote.",
+    };
+  }
+
+  const fingerprint =
+    (delivery.snapshot_fingerprint as string | null) ??
+    loaded.quote.send_lock_fingerprint ??
+    loaded.quote.snapshot_fingerprint;
+  if (!fingerprint) {
+    return { error: USER_ERRORS.quoteStatusFailed };
+  }
+
+  const wasDraft = loaded.quote.status === "draft";
+  const finalized = await invokeQuoteDeliveryTxn(
+    loaded.supabase as never,
+    FINALIZE_QUOTE_DELIVERY_RPC,
+    {
+      p_delivery_id: delivery.id,
+      p_issuer_snapshot: issuerSnapshot,
+      p_snapshot_fingerprint: fingerprint,
+      p_fingerprint_version: QUOTE_SNAPSHOT_FINGERPRINT_VERSION,
+    }
+  );
+  if ("error" in finalized) {
+    return {
+      error: "Email submitted — finalising Quote status.",
+      emailSubmitted: true,
+      needsFinalize: true,
+      deliveryId: delivery.id as string,
+    };
+  }
+
+  if (wasDraft && finalized.result.quoteStatus === "sent") {
+    await applyQuoteIssuedSideEffects({
+      supabase: loaded.supabase,
+      orgId: loaded.orgId,
+      userId: loaded.user.id,
+      quote: loaded.quote,
+      previousStatus: "draft",
+    });
+  }
+
+  revalidateQuoteDashboard(
+    loaded.quote.project_id,
+    loaded.quote.id,
+    loaded.quote.pricing_document_id
+  );
+
+  return {
+    success: true,
+    quoteIssued: true,
+    emailSubmitted: true,
+    deliveryId: delivery.id as string,
+  };
 }
 
 export async function markQuoteViewed(

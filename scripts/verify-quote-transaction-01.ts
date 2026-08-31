@@ -137,6 +137,12 @@ assert(
 console.log("\n--- Draft mutability / sent immutability ---");
 assert("draft is mutable", canMutateQuoteSnapshot(quoteDoc({ status: "draft" })));
 assert(
+  "draft with send lock is immutable",
+  !canMutateQuoteSnapshot(
+    quoteDoc({ status: "draft", send_lock_delivery_id: "d-1" })
+  )
+);
+assert(
   "sent is immutable",
   !canMutateQuoteSnapshot(quoteDoc({ status: "sent" }))
 );
@@ -153,6 +159,12 @@ assert(
 assert(
   "sent mutation is rejected",
   assertQuoteSnapshotMutable(quoteDoc({ status: "sent" })) != null
+);
+assert(
+  "send-lock mutation is rejected",
+  assertQuoteSnapshotMutable(
+    quoteDoc({ status: "draft", send_lock_delivery_id: "d-1" })
+  ) === "This quote cannot be edited while it is being sent."
 );
 assert(
   "accepted mutation is rejected",
@@ -376,14 +388,17 @@ assert(
     transactionSrc.includes("canMutateQuoteSnapshot")
 );
 
-console.log("\n--- Delivery / acceptance not built ---");
+console.log("\n--- Delivery / acceptance boundary ---");
 assert(
-  "no outbound email/SMTP in quote actions",
-  !/nodemailer|sendgrid|resend|smtp/i.test(actionsSrc)
+  "quote freeze is not SMTP; email is the Resend adapter",
+  actionsSrc.includes("getQuoteDeliveryProvider") &&
+    actionsSrc.includes("sendQuoteToClient") &&
+    !/nodemailer|sendgrid|smtp/i.test(actionsSrc)
 );
 assert(
-  "no public client quote URL",
-  !actionsSrc.includes("public-quote") &&
+  "public access is a hashed token path not a raw quote UUID helper",
+  actionsSrc.includes("quotePublicPath") &&
+    !actionsSrc.includes("public-quote") &&
     !actionsSrc.includes("client_token")
 );
 assert("no Stripe in quote transaction", !/stripe/i.test(actionsSrc));
@@ -471,8 +486,9 @@ const migrations = readdirSync("supabase/migrations")
   .filter((name) => name.endsWith(".sql"))
   .sort();
 assert(
-  "041 is latest migration",
-  migrations.at(-1) === "041_quote_transaction.sql"
+  "041 quote transaction exists; 042 delivery is latest",
+  migrations.includes("041_quote_transaction.sql") &&
+    migrations.at(-1) === "042_quote_delivery.sql"
 );
 assert("viewed status added", migrationSrc.includes("'viewed'"));
 assert(
@@ -668,28 +684,25 @@ assert(
     /status:\s*"draft"/.test(headActions)
 );
 assert(
-  "HEAD mark sent writes only status+sent_at",
-  /status:\s*"sent",\s*sent_at: now/.test(headActions) &&
-    !headActions.includes("issuer_snapshot")
+  "committed app freezes via send RPC",
+  headActions.includes("SEND_QUOTE_REVISION_RPC") &&
+    headActions.includes("ACCEPT_QUOTE_REVISION_RPC")
 );
 assert(
-  "HEAD accept/decline/expire write lifecycle columns only",
-  headActions.includes('status: "accepted"') &&
-    headActions.includes("accepted_at") &&
-    headActions.includes('status: "declined"') &&
-    headActions.includes("declined_at") &&
-    headActions.includes('status: "expired"') &&
-    headActions.includes("expired_at") &&
+  "committed app accept/decline/expire use lifecycle RPCs",
+  headActions.includes("DECLINE_QUOTE_REVISION_RPC") &&
+    headActions.includes("EXPIRE_QUOTE_REVISION_RPC") &&
     !headActions.includes('status: "revised"')
 );
 assert(
-  "HEAD revise sets superseded_by without status revised",
-  headActions.includes("superseded_by_quote_id: newQuoteId") &&
+  "committed app revises via create revision RPC",
+  headActions.includes("CREATE_QUOTE_REVISION_RPC") &&
     !headActions.includes('status: "revised"')
 );
 assert(
-  "HEAD draft edits are gated before freeze would apply",
-  headActions.includes("Only draft quotes can be edited")
+  "committed draft edits still require draft",
+  headActions.includes("assertQuoteEditable") &&
+    transactionSrc.includes("Only draft quotes can be edited")
 );
 assert(
   "post-041 freeze allows HEAD lifecycle writes",

@@ -41,17 +41,30 @@ export function quoteThreadId(quote: Pick<Quote, "id" | "parent_quote_id">): str
   return quote.parent_quote_id ?? quote.id;
 }
 
-export function canMutateQuoteSnapshot(
-  quote: Pick<Quote, "status" | "superseded_by_quote_id">
+export function quoteHasActiveSendLock(
+  quote: Pick<Quote, "send_lock_delivery_id">
 ): boolean {
-  return quote.status === "draft" && quote.superseded_by_quote_id == null;
+  return Boolean(quote.send_lock_delivery_id);
+}
+
+export function canMutateQuoteSnapshot(
+  quote: Pick<Quote, "status" | "superseded_by_quote_id" | "send_lock_delivery_id">
+): boolean {
+  return (
+    quote.status === "draft" &&
+    quote.superseded_by_quote_id == null &&
+    !quoteHasActiveSendLock(quote)
+  );
 }
 
 export function assertQuoteSnapshotMutable(
-  quote: Pick<Quote, "status" | "superseded_by_quote_id">
+  quote: Pick<Quote, "status" | "superseded_by_quote_id" | "send_lock_delivery_id">
 ): string | null {
   if (quote.superseded_by_quote_id) {
     return "This quote has been superseded. Open the latest revision to edit.";
+  }
+  if (quoteHasActiveSendLock(quote)) {
+    return "This quote cannot be edited while it is being sent.";
   }
   if (!canMutateQuoteSnapshot(quote)) {
     return "Only draft quotes can be edited. Create a revision instead.";
@@ -101,6 +114,20 @@ export function canMarkQuoteDeclined(status: QuoteStatus): boolean {
 
 export function canMarkQuoteExpired(status: QuoteStatus): boolean {
   return status === "sent" || status === "viewed" || status === "expired";
+}
+
+export function canIssueQuoteDelivery(status: QuoteStatus): boolean {
+  return status === "draft";
+}
+
+export function canResendQuoteDelivery(status: QuoteStatus): boolean {
+  return (
+    status === "sent" ||
+    status === "viewed" ||
+    status === "accepted" ||
+    status === "declined" ||
+    status === "expired"
+  );
 }
 
 export function isQuoteLifecycleTerminal(status: QuoteStatus): boolean {

@@ -24,8 +24,11 @@ import {
 import { quoteDocumentViewModel } from "@/lib/quotes/financial-view-model";
 import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
 import {
+  canIssueQuoteDelivery,
   canMarkQuoteAccepted,
-  canMarkQuoteSent,
+  canMutateQuoteSnapshot,
+  canResendQuoteDelivery,
+  quoteHasActiveSendLock,
 } from "@/lib/quotes/transaction";
 import { cn } from "@/lib/utils";
 import {
@@ -40,6 +43,8 @@ import { REFRESH_FROM_PRICING_STATUSES } from "@/lib/quotes/revision";
 import type { QuotePresentationMode } from "@/lib/quotes/presentation";
 import type { QuoteInput, QuoteWorkspaceData } from "@/lib/quotes/types";
 import { QuoteTransactionHistory } from "@/components/quotes/QuoteTransactionHistory";
+import { QuoteDeliveryHistory } from "@/components/quotes/QuoteDeliveryHistory";
+import { QuoteSendSheet } from "@/components/quotes/QuoteSendSheet";
 
 type QuoteWorkspaceProps = {
   initialData: QuoteWorkspaceData;
@@ -53,6 +58,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
   const [isStatusPending, startStatus] = useTransition();
   const [saveError, setSaveError] = useState<string | null>(null);
   const [mobilePreviewOpen, setMobilePreviewOpen] = useState(false);
+  const [sendOpen, setSendOpen] = useState(false);
   const quoteDraftRef = useRef<QuoteInput>({});
 
   const {
@@ -62,12 +68,13 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
     latestRevisionQuoteId,
     threadRevisions = [],
     recentEvents = [],
+    deliveries = [],
   } = initialData;
   const quoteId = quote.id;
   const projectId = quote.project_id;
 
-  const isEditable =
-    quote.status === "draft" && quote.superseded_by_quote_id == null;
+  const isEditable = canMutateQuoteSnapshot(quote);
+  const sendLockActive = quoteHasActiveSendLock(quote);
   const isSuperseded = quote.superseded_by_quote_id != null;
   const canRefreshFromPricing =
     REFRESH_FROM_PRICING_STATUSES.includes(quote.status) && !isSuperseded;
@@ -190,8 +197,16 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
 
       <QuoteSummaryPanel
         quote={quote}
+        onSendQuote={
+          canIssueQuoteDelivery(quote.status) ? () => setSendOpen(true) : undefined
+        }
+        onResendQuote={
+          canResendQuoteDelivery(quote.status)
+            ? () => setSendOpen(true)
+            : undefined
+        }
         onMarkSent={
-          canMarkQuoteSent(quote.status) && isEditable
+          canIssueQuoteDelivery(quote.status) && !sendLockActive
             ? handleMarkSent
             : undefined
         }
@@ -211,6 +226,12 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             : undefined
         }
       />
+      {deliveries.length > 0 || quote.viewed_at ? (
+        <QuoteDeliveryHistory
+          deliveries={deliveries}
+          viewedAt={quote.viewed_at}
+        />
+      ) : null}
       {threadRevisions.length > 0 ? (
         <QuoteTransactionHistory
           projectId={projectId}
@@ -233,7 +254,19 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         />
       </div>
 
-      {isSuperseded && latestRevisionQuoteId ? (
+      {sendLockActive ? (
+        <div
+          className="rounded-lg border border-amber-300/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 print:hidden dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
+          role="status"
+        >
+          <p className="font-medium">This quote cannot be edited while it is being sent.</p>
+          <p className="mt-1">
+            {deliveries.some((row) => row.status === "accepted")
+              ? "Email submitted — finalising Quote status."
+              : "Wait for send to finish, or try again if the email failed."}
+          </p>
+        </div>
+      ) : isSuperseded && latestRevisionQuoteId ? (
         <div
           className="rounded-lg border border-amber-300/80 bg-amber-50/90 px-4 py-3 text-sm text-amber-950 print:hidden dark:border-amber-800/60 dark:bg-amber-950/30 dark:text-amber-100"
           role="status"
@@ -473,13 +506,14 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         isStatusPending={isStatusPending}
         onSave={handleSaveQuote}
         onPrint={handlePrint}
-        onMarkSent={
-          isEditable
-            ? () => {
-                startStatus(async () => {
-                  await handleMarkSent();
-                });
-              }
+        onSendQuote={
+          canIssueQuoteDelivery(quote.status)
+            ? () => setSendOpen(true)
+            : undefined
+        }
+        onResendQuote={
+          canResendQuoteDelivery(quote.status)
+            ? () => setSendOpen(true)
             : undefined
         }
         onMarkAccepted={
@@ -492,6 +526,17 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             : undefined
         }
       />
+      {canIssueQuoteDelivery(quote.status) ||
+      canResendQuoteDelivery(quote.status) ? (
+        <QuoteSendSheet
+          quote={quote}
+          projectTitle={projectTitle}
+          deliveries={deliveries}
+          open={sendOpen}
+          onOpenChange={setSendOpen}
+          mode={canIssueQuoteDelivery(quote.status) ? "send" : "resend"}
+        />
+      ) : null}
     </div>
   );
 }

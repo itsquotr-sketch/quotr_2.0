@@ -105,5 +105,21 @@ export const quoteDocumentGstSchema = z.object({
   gst_rate: gstRatePercentSchema,
 });
 
+export const sendQuoteToClientInputSchema = z.object({
+  quoteId: uuidSchema,
+  recipientName: trimmedStringSchema(200, {
+    min: 1,
+    requiredMessage: "Recipient name is required.",
+  }),
+  recipientEmail: z.email("Enter a valid email address."),
+  message: trimmedStringSchema(2000, {
+    min: 1,
+    requiredMessage: "A short message is required.",
+  }),
+});
+
 export type QuoteInputParsed = z.infer<typeof quoteInputSchema>;
 export type QuoteItemInputParsed = z.infer<typeof quoteItemInputSchema>;
+export type SendQuoteToClientInputParsed = z.infer<
+  typeof sendQuoteToClientInputSchema
+>;

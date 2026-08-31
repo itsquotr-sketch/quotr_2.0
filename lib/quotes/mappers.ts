@@ -50,6 +50,10 @@ export function mapQuote(row: Record<string, unknown>): Quote {
       row.presentation_mode === "lump_sum"
         ? row.presentation_mode
         : "grouped",
+    send_lock_delivery_id:
+      (row.send_lock_delivery_id as string | null | undefined) ?? null,
+    send_lock_fingerprint:
+      (row.send_lock_fingerprint as string | null | undefined) ?? null,
   };
 }
 

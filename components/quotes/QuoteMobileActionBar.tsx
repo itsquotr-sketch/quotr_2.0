@@ -4,7 +4,7 @@ import { Loader2, Printer } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import type { Quote } from "@/lib/quotes/types";
-import { canMarkQuoteAccepted, canMarkQuoteSent } from "@/lib/quotes/transaction";
+import { canMarkQuoteAccepted } from "@/lib/quotes/transaction";
 
 type QuoteMobileActionBarProps = {
   quote: Quote;
@@ -14,7 +14,8 @@ type QuoteMobileActionBarProps = {
   canSave?: boolean;
   onSave?: () => void;
   onPrint: () => void;
-  onMarkSent?: () => void;
+  onSendQuote?: () => void;
+  onResendQuote?: () => void;
   onMarkAccepted?: () => void;
   className?: string;
 };
@@ -27,13 +28,14 @@ export function QuoteMobileActionBar({
   canSave = false,
   onSave,
   onPrint,
-  onMarkSent,
+  onSendQuote,
+  onResendQuote,
   onMarkAccepted,
   className,
 }: QuoteMobileActionBarProps) {
   const busy = isSaving || isRevising || isStatusPending;
-  const showMarkSent =
-    canMarkQuoteSent(quote.status) && quote.status === "draft" && onMarkSent;
+  const showSend = Boolean(onSendQuote);
+  const showResend = Boolean(onResendQuote) && !showSend;
   const showMarkAccepted =
     canMarkQuoteAccepted(quote.status) &&
     quote.status !== "accepted" &&
@@ -74,21 +76,29 @@ export function QuoteMobileActionBar({
           )}
         </Button>
       ) : null}
-      {showMarkSent ? (
+      {showSend ? (
         <Button
           type="button"
           variant={canSave ? "outline" : "default"}
           className="h-11 min-w-0 flex-1"
           disabled={busy}
-          onClick={onMarkSent}
+          onClick={onSendQuote}
         >
-          {isStatusPending ? (
-            <Loader2 className="size-4 animate-spin" />
-          ) : (
-            "Mark sent"
-          )}
+          Send quote
         </Button>
-      ) : !canSave && showMarkAccepted ? (
+      ) : null}
+      {showResend ? (
+        <Button
+          type="button"
+          variant={canSave ? "outline" : "default"}
+          className="h-11 min-w-0 flex-1"
+          disabled={busy}
+          onClick={onResendQuote}
+        >
+          Resend
+        </Button>
+      ) : null}
+      {!showSend && !showResend && showMarkAccepted ? (
         <Button
           type="button"
           variant="outline"
@@ -98,7 +108,7 @@ export function QuoteMobileActionBar({
         >
           Mark accepted
         </Button>
-      ) : !canSave && !showMarkSent ? (
+      ) : !canSave && !showSend && !showResend && !showMarkAccepted ? (
         <Button
           type="button"
           variant="secondary"

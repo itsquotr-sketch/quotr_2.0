@@ -55,6 +55,7 @@ export const USER_ERRORS = {
     "Could not create the quote revision. Please try again.",
   quoteUpdateFailed: "Could not save quote changes. Please try again.",
   quoteStatusFailed: "Could not update quote status. Please try again.",
+  quoteDeliveryFailed: "Quote email could not be sent. Please try again.",
   estimateGenerateFailed:
     "Something went wrong while generating the estimate. Please try again.",
   projectConditionsIncomplete:

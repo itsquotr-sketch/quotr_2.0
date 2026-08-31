@@ -615,7 +615,10 @@ check(
   readdirSync(join(root, "supabase/migrations"))
     .filter((name) => name.endsWith(".sql"))
     .sort()
-    .at(-1) === "041_quote_transaction.sql" &&
+    .at(-1) === "042_quote_delivery.sql" &&
+    readdirSync(join(root, "supabase/migrations")).includes(
+      "041_quote_transaction.sql"
+    ) &&
     !readFileSync(
       join(root, "supabase/migrations/040_quote_presentation_mode.sql"),
       "utf8"

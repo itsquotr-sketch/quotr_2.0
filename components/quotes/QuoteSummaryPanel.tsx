@@ -22,6 +22,8 @@ import type { Quote } from "@/lib/quotes/types";
 
 type QuoteSummaryPanelProps = {
   quote: Quote;
+  onSendQuote?: () => void;
+  onResendQuote?: () => void;
   onMarkSent?: () => Promise<{ error?: string }>;
   onMarkAccepted?: () => Promise<{ error?: string }>;
   onMarkDeclined?: () => Promise<{ error?: string }>;
@@ -55,6 +57,8 @@ function SummaryRow({
 
 export function QuoteSummaryPanel({
   quote,
+  onSendQuote,
+  onResendQuote,
   onMarkSent,
   onMarkAccepted,
   onMarkDeclined,
@@ -119,17 +123,38 @@ export function QuoteSummaryPanel({
               {statusError}
             </p>
           ) : null}
-          {canMarkSent && onMarkSent ? (
+          {onSendQuote ? (
             <Button
               type="button"
               className="w-full"
+              disabled={isPending}
+              onClick={onSendQuote}
+            >
+              Send quote
+            </Button>
+          ) : null}
+          {onResendQuote ? (
+            <Button
+              type="button"
+              className="w-full"
+              disabled={isPending}
+              onClick={onResendQuote}
+            >
+              Resend quote
+            </Button>
+          ) : null}
+          {canMarkSent && onMarkSent ? (
+            <Button
+              type="button"
+              variant="ghost"
+              className="w-full text-muted-foreground"
               disabled={isPending}
               onClick={() => runAction(onMarkSent)}
             >
               {isPending ? (
                 <Loader2 className="size-4 animate-spin" />
               ) : (
-                "Mark as sent"
+                "Mark sent without email"
               )}
             </Button>
           ) : null}

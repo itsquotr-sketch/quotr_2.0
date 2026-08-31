@@ -9,6 +9,11 @@ export const EXPIRE_QUOTE_REVISION_RPC = "expire_quote_revision_v1";
 export const MARK_QUOTE_VIEWED_RPC = "mark_quote_viewed_v1";
 export const ALLOCATE_ORG_QUOTE_NUMBER_RPC = "allocate_org_quote_number_v1";
 export const APPEND_QUOTE_UPDATED_RPC = "append_quote_updated_v1";
+export const PREPARE_QUOTE_DELIVERY_RPC = "prepare_quote_delivery_v1";
+export const RECORD_QUOTE_DELIVERY_ACCEPTED_RPC =
+  "record_quote_delivery_accepted_v1";
+export const FINALIZE_QUOTE_DELIVERY_RPC = "finalize_quote_delivery_v1";
+export const FAIL_QUOTE_DELIVERY_RPC = "fail_quote_delivery_v1";
 
 export type QuoteTxnResult = {
   ok: boolean;
@@ -18,6 +23,23 @@ export type QuoteTxnResult = {
   quoteNumber?: string | null;
   revisionNumber?: number;
   supersededQuoteIds?: string[];
+};
+
+export type QuoteDeliveryTxnResult = {
+  ok: boolean;
+  reuse?: boolean;
+  skipSubmit?: boolean;
+  skipProvider?: boolean;
+  needsFinalize?: boolean;
+  inProgress?: boolean;
+  idempotent?: boolean;
+  deliveryId?: string;
+  status?: string;
+  quoteId?: string;
+  quoteStatus?: string;
+  attemptNumber?: number;
+  idempotencyKey?: string;
+  providerMessageId?: string;
 };
 
 type QuoteRpcClient = {
@@ -63,7 +85,56 @@ export function mapQuoteTxnError(error: { message?: string } | null): string {
   if (message.includes("QUOTE_TXN:INVALID_PAYLOAD")) {
     return "Could not update the quote. Please try again.";
   }
+  if (message.includes("QUOTE_TXN:SEND_IN_PROGRESS")) {
+    return "This quote is already being sent. Please wait or retry finalising.";
+  }
   return "Could not update quote status. Please try again.";
+}
+
+export function parseQuoteDeliveryTxnResult(
+  data: unknown
+): QuoteDeliveryTxnResult | null {
+  if (!data || typeof data !== "object") return null;
+  const row = data as Record<string, unknown>;
+  if (row.ok !== true) return null;
+  return {
+    ok: true,
+    reuse: Boolean(row.reuse),
+    skipSubmit: Boolean(row.skipSubmit),
+    skipProvider: Boolean(row.skipProvider),
+    needsFinalize: Boolean(row.needsFinalize),
+    inProgress: Boolean(row.inProgress),
+    idempotent: Boolean(row.idempotent),
+    deliveryId: typeof row.deliveryId === "string" ? row.deliveryId : undefined,
+    status: typeof row.status === "string" ? row.status : undefined,
+    quoteId: typeof row.quoteId === "string" ? row.quoteId : undefined,
+    quoteStatus:
+      typeof row.quoteStatus === "string" ? row.quoteStatus : undefined,
+    attemptNumber:
+      typeof row.attemptNumber === "number" ? row.attemptNumber : undefined,
+    idempotencyKey:
+      typeof row.idempotencyKey === "string" ? row.idempotencyKey : undefined,
+    providerMessageId:
+      typeof row.providerMessageId === "string"
+        ? row.providerMessageId
+        : undefined,
+  };
+}
+
+export async function invokeQuoteDeliveryTxn(
+  supabase: QuoteRpcClient,
+  fn: string,
+  args: Record<string, unknown> = {}
+): Promise<{ result: QuoteDeliveryTxnResult } | { error: string }> {
+  const { data, error } = await supabase.rpc(fn, args);
+  if (error) {
+    return { error: mapQuoteTxnError(error) };
+  }
+  const result = parseQuoteDeliveryTxnResult(data);
+  if (!result) {
+    return { error: mapQuoteTxnError(null) };
+  }
+  return { result };
 }
 
 export function parseQuoteTxnResult(data: unknown): QuoteTxnResult | null {
