@@ -552,7 +552,7 @@ async function createDynamicQuestionBlockIfNeeded(
       .order("sort_order"),
     supabase
       .from("project_facts")
-      .select("key, work_area_id, value, source")
+      .select("key, work_area_id, value, source, conflict_warning")
       .eq("project_id", projectId),
     supabase
       .from("constraints")
@@ -560,13 +560,17 @@ async function createDynamicQuestionBlockIfNeeded(
       .eq("project_id", projectId),
   ]);
 
-  const projectFacts = await persistDerivedFactsForProject(
+  const derivedPersist = await persistDerivedFactsForProject(
     supabase,
     orgId,
     projectId,
     workAreas ?? [],
     projectFactsRaw ?? []
   );
+  if (derivedPersist.error) {
+    return { error: derivedPersist.error };
+  }
+  const projectFacts = derivedPersist.facts;
 
   let excludedScopeItemTypes: ReadonlySet<string> | undefined;
   if (isScopeDiscoveryEnabled()) {
@@ -1041,23 +1045,27 @@ export async function saveQuestionBlockAnswers(
     }
   }
 
-  const { data: workAreas } = await supabase
-    .from("work_areas")
-    .select("id, type, status")
-    .eq("project_id", projectId);
+  const [{ data: workAreas }, { data: projectFactsRaw }] = await Promise.all([
+    supabase
+      .from("work_areas")
+      .select("id, type, status")
+      .eq("project_id", projectId),
+    supabase
+      .from("project_facts")
+      .select("key, work_area_id, value, source, conflict_warning")
+      .eq("project_id", projectId),
+  ]);
 
-  const { data: projectFactsRaw } = await supabase
-    .from("project_facts")
-    .select("key, work_area_id, value, source")
-    .eq("project_id", projectId);
-
-  await persistDerivedFactsForProject(
+  const derivedPersist = await persistDerivedFactsForProject(
     supabase,
     orgId,
     projectId,
     workAreas ?? [],
     projectFactsRaw ?? []
   );
+  if (derivedPersist.error) {
+    return { error: toSafeAssistantError(ANSWER_SAVE_FAILED) };
+  }
 
   const ensureStage = isAdditionalBlock ? stage : "constraints";
 

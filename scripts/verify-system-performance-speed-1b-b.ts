@@ -570,10 +570,10 @@ check(
 
 console.log("\n-- PROGRAMME BOUNDARY --");
 check(
-  "34. derived-fact write architecture unchanged",
-  persistSrc.includes("for (const derived of derivedFacts)") &&
-    persistSrc.includes("persistDerivedFactsForProject") &&
-    !persistSrc.includes(".upsert(")
+  "34. derived-fact persistence still owned by persistDerivedFactsForProject",
+  persistSrc.includes("persistDerivedFactsForProject") &&
+    persistSrc.includes("deriveFactsForProject") &&
+    factSrc.includes("persistDerivedFactsForProject")
 );
 check(
   "35. missing-question write architecture unchanged",

@@ -579,23 +579,28 @@ export async function applyNoteProposal(
     .eq("org_id", orgId);
 
   if (changesApplied > 0) {
-    const { data: workAreasForDerived } = await supabase
-      .from("work_areas")
-      .select("id, type, status")
-      .eq("project_id", projectId);
+    const [{ data: workAreasForDerived }, { data: factsForDerived }] =
+      await Promise.all([
+        supabase
+          .from("work_areas")
+          .select("id, type, status")
+          .eq("project_id", projectId),
+        supabase
+          .from("project_facts")
+          .select("key, work_area_id, value, source, conflict_warning")
+          .eq("project_id", projectId),
+      ]);
 
-    const { data: factsForDerived } = await supabase
-      .from("project_facts")
-      .select("key, work_area_id, value, source")
-      .eq("project_id", projectId);
-
-    await persistDerivedFactsForProject(
+    const derivedPersist = await persistDerivedFactsForProject(
       supabase,
       orgId,
       projectId,
       workAreasForDerived ?? [],
       factsForDerived ?? []
     );
+    if (derivedPersist.error) {
+      return { error: derivedPersist.error };
+    }
 
     await ensureMissingDetailsQuestionBlock(
       supabase,
@@ -604,6 +609,7 @@ export async function applyNoteProposal(
       {
         stage: project.stage,
         qualityLevel: project.quality_level,
+        skipDerivedPersist: true,
       }
     );
 

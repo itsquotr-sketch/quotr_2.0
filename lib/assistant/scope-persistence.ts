@@ -125,6 +125,39 @@ export async function mirrorFactOntoQuestions(
     inputType?: string | null;
   }
 ): Promise<ScopePersistResult> {
+  // Known input type: one set-based UPDATE, no per-row SELECT.
+  // 0 matching rows is success — same as looping an empty select.
+  if (params.inputType) {
+    const storedValue = normalizeAnswerForStorage(
+      params.value as string | number | boolean | string[],
+      params.inputType as
+        | "number"
+        | "select"
+        | "boolean"
+        | "text"
+        | "multi_select"
+    );
+
+    let updateQuery = supabase
+      .from("questions")
+      .update({
+        answer_value: storedValue,
+        answer_source: "user",
+      })
+      .eq("project_id", params.projectId)
+      .eq("key", params.key);
+
+    if (params.workAreaId) {
+      updateQuery = updateQuery.eq("work_area_id", params.workAreaId);
+    }
+
+    const { error } = await updateQuery;
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+    return { ok: true };
+  }
+
   let questionQuery = supabase
     .from("questions")
     .select("id, input_type, options")
@@ -142,14 +175,12 @@ export async function mirrorFactOntoQuestions(
 
   for (const question of questions ?? []) {
     const template = getQuestionTemplateByKey(params.key);
-    const inputType = (params.inputType
-      ? params.inputType
-      : resolveUiQuestionInputType({
-          persistedInputType: question.input_type,
-          options: question.options,
-          key: params.key,
-          templateInputType: template?.inputType,
-        })) as
+    const inputType = resolveUiQuestionInputType({
+      persistedInputType: question.input_type,
+      options: question.options,
+      key: params.key,
+      templateInputType: template?.inputType,
+    }) as
       | "number"
       | "select"
       | "boolean"

@@ -123,15 +123,17 @@ export async function ensureMissingDetailsQuestionBlock(
       .order("sort_order"),
     supabase
       .from("project_facts")
-      .select("key, work_area_id, value, source")
+      .select("key, work_area_id, value, source, conflict_warning")
       .eq("project_id", projectId),
     supabase
       .from("questions")
-      .select("work_area_id, key, label, unit, answer_value, question_block_id")
+      .select(
+        "work_area_id, key, label, unit, answer_value, question_block_id, sort_order"
+      )
       .eq("project_id", projectId),
     supabase
       .from("question_blocks")
-      .select("id, status, stage")
+      .select("id, status, stage, title")
       .eq("project_id", projectId)
       .eq("stage", "work_area_questions"),
     supabase
@@ -168,24 +170,35 @@ export async function ensureMissingDetailsQuestionBlock(
     healResult.healed > 0
       ? await supabase
           .from("project_facts")
-          .select("key, work_area_id, value, source")
+          .select("key, work_area_id, value, source, conflict_warning")
           .eq("project_id", projectId)
       : { data: projectFactsRaw };
 
-  const projectFacts = options?.skipDerivedPersist
-    ? (factsAfterHeal ?? []).map((fact) => ({
-        key: fact.key,
-        work_area_id: fact.work_area_id,
-        value: fact.value,
-        source: fact.source,
-      }))
-    : await persistDerivedFactsForProject(
-        supabase,
-        orgId,
-        projectId,
-        confirmedWorkAreas,
-        factsAfterHeal ?? []
-      );
+  let projectFacts: Array<{
+    key: string;
+    work_area_id: string | null;
+    value: unknown;
+    source?: string | null;
+  }> = (factsAfterHeal ?? []).map((fact) => ({
+    key: fact.key,
+    work_area_id: fact.work_area_id,
+    value: fact.value,
+    source: fact.source,
+  }));
+
+  if (!options?.skipDerivedPersist) {
+    const derivedPersist = await persistDerivedFactsForProject(
+      supabase,
+      orgId,
+      projectId,
+      confirmedWorkAreas,
+      factsAfterHeal ?? []
+    );
+    if (derivedPersist.error) {
+      return { error: derivedPersist.error };
+    }
+    projectFacts = derivedPersist.facts;
+  }
 
   let qualityLevel = options?.qualityLevel ?? null;
   if (qualityLevel === undefined) {
@@ -219,24 +232,19 @@ export async function ensureMissingDetailsQuestionBlock(
     return {};
   }
 
-  const { data: existingBlock } = await supabase
-    .from("question_blocks")
-    .select("id")
-    .eq("project_id", projectId)
-    .eq("stage", "work_area_questions")
-    .eq("status", "active")
-    .eq("title", MISSING_DETAILS_BLOCK_TITLE)
-    .maybeSingle();
+  const existingBlock = (workAreaQuestionBlocks ?? []).find(
+    (block) =>
+      block.status === "active" &&
+      block.title === MISSING_DETAILS_BLOCK_TITLE
+  );
 
   if (existingBlock) {
-    const { data: blockQuestions } = await supabase
-      .from("questions")
-      .select("work_area_id, key, sort_order")
-      .eq("question_block_id", existingBlock.id)
-      .eq("project_id", projectId);
+    const blockQuestions = (questionRows ?? []).filter(
+      (question) => question.question_block_id === existingBlock.id
+    );
 
     const existingKeys = new Set(
-      (blockQuestions ?? []).map(
+      blockQuestions.map(
         (question) => `${question.work_area_id}:${question.key}`
       )
     );
@@ -250,7 +258,7 @@ export async function ensureMissingDetailsQuestionBlock(
 
     const maxSortOrder = Math.max(
       0,
-      ...(blockQuestions ?? []).map((question) => question.sort_order ?? 0)
+      ...blockQuestions.map((question) => question.sort_order ?? 0)
     );
     const error = await insertQuestionsIntoBlock(
       supabase,

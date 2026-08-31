@@ -1413,5 +1413,427 @@ F. Update Estimate afterwards — 1B-A generation projection still works, stale 
 
 Speed 1 is complete once this commit is Preview READY (1A + 1B-A + 1B-B). Next programme is **SYSTEM-PERFORMANCE-SPEED-2**. Do not start SPEED 2, SPEED 3, Pricing UX, or Bathroom from this batch.
 
+---
+
+# SYSTEM PERFORMANCE — SPEED 2 RESULT
+
+**Status:** COMPLETE LOCAL / OWNER PERFORMANCE REVIEW PENDING  
+**Date:** 2026-08-31  
+**Does not:** change client projections, restore `router.refresh`, change Estimate generation, calculators, rates, commercial formulas, Work Area outputs, stale policy, or question semantics. Does not start Speed 3, Pricing UX, Bathroom, or deploy Production. **No commit / push / deploy in this batch.**
+
+**Companion:** `scripts/verify-system-performance-speed-2.ts`
+
+Counts below are **DERIVED** from the current write path (structural). Local Supabase was **not** available, so Postgres timings / EXPLAIN / REQ-TXN-01 remain **NOT OBSERVABLE / VERIFY_LATER**. Do not treat these as measured round-trip milliseconds.
+
+## What changed
+
+Canonical `updateProjectFact` still writes the same logical state (raw user fact, question journal mirror, derived facts, missing-detail questions, estimate stale) and still returns Speed 1B-B `assistantMutation` from `loadAssistantMutationResult`. Speed 2 makes those writes cheaper:
+
+1. **Derived facts** — `persistDerivedFactsForProject` no longer SELECT+write per derived row. It classifies in memory (`planDerivedFactWrites`) and issues **one bulk UPSERT** (conflict `project_id,work_area_id,key`). Unchanged derived rows are skipped without extra SELECTs. User-owned rows are never in the write set. Retired derived rows are **not** deleted (existing SoT).
+2. **Duplicate derived pass removed** — `updateProjectFact` now calls `ensureMissingDetailsQuestionBlock(..., { skipDerivedPersist: true })` after the first persist. Same logical derived writes, half the derived statements.
+3. **Missing-question extra SELECTs folded** — the first parallel load now includes block `title` and question `sort_order`. Existing missing-details block / active keys / max sort_order are derived in memory. `insertQuestionsIntoBlock` remains **one bulk INSERT** of only new keys (add-only differential, unchanged).
+4. **Question mirror** — when `valueType` is known (Clarify / Job Plan / fact edit), `mirrorFactOntoQuestions` issues **one** UPDATE by `project_id` + `key` (+ `work_area_id`) instead of SELECT + per-id UPDATE.
+
+**NO RPC.** Partial unique indexes may not infer PostgREST `ON CONFLICT`; persist falls back to one bulk INSERT + natural-key UPDATEs with `.neq("source", "user")`. Still no per-row SELECT.
+
+## BEFORE — mutation waterfall (`updateProjectFact`)
+
+```
+validate Zod
+→ getAuthOrgContext
+→ assertOrgOwnsActiveProject
+→ SELECT projects (stage, quality_level)
+→ optional SELECT work_areas (id)
+→ commitUserFactEdit
+     SELECT project_facts (id, source)
+     UPDATE or INSERT raw user fact
+     SELECT questions matching key
+     UPDATE each matching question (loop)
+→ SELECT work_areas
+→ SELECT project_facts
+→ persistDerivedFactsForProject
+     for each derived candidate:
+       SELECT id, source
+       UPDATE by id or INSERT
+→ ensureMissingDetailsQuestionBlock
+     5 parallel SELECTs (work_areas, facts, questions, blocks, constraints)
+     persistDerivedFactsForProject AGAIN (second N+1)
+     sequential SELECT missing-details block by title
+     sequential SELECT questions in that block
+     bulk INSERT new missing questions (if any)
+→ markEstimateStaleWithContext (ownership SELECT + UPDATE estimates)
+→ loadAssistantMutationResult (7 parallel SELECTs)   // Speed 1B-B, kept
+→ revalidatePath
+→ return assistantMutation
+```
+
+## AFTER — mutation waterfall
+
+```
+validate Zod
+→ getAuthOrgContext
+→ assertOrgOwnsActiveProject
+→ SELECT projects ∥ optional SELECT work_area   // parallel
+→ commitUserFactEdit
+     SELECT project_facts (id, source)            // unchanged canonical write
+     UPDATE or INSERT raw user fact
+     UPDATE questions by key (+ work_area)        // 1 statement when valueType known
+→ SELECT work_areas ∥ SELECT project_facts        // parallel; includes conflict_warning
+→ persistDerivedFactsForProject
+     deriveFactsForProject (in-memory, unchanged)
+     planDerivedFactWrites (in-memory)
+     0 or 1 bulk UPSERT of rows that actually changed
+→ ensureMissingDetailsQuestionBlock (skipDerivedPersist: true)
+     5 parallel SELECTs (title + sort_order included)
+     no second derived persist
+     in-memory existing-block / key / sort_order
+     0 or 1 bulk INSERT of new missing questions
+→ markEstimateStaleWithContext                    // unchanged
+→ loadAssistantMutationResult                     // unchanged Speed 1B-B canonical read
+→ revalidatePath
+→ return assistantMutation
+```
+
+## Operation counts (DERIVED)
+
+| Fixture | Derived N | Derived statements BEFORE | Derived statements AFTER | Notes |
+| --- | ---: | ---: | ---: | --- |
+| A. Simple fact, mature deck (unchanged `deck.area_m2`) | 1 | 4 (2 passes × SELECT+write) | **0** | skip unchanged + skip second persist |
+| B. Numeric / derived (length×width → area, no existing derived) | 1 | 4 | **1** bulk UPSERT | Deck REAL-JOB-01 dimensions |
+| C. Question-change (new missing keys) | — | +2 sequential SELECTs + 1 bulk INSERT | **+0** extra SELECTs + 1 bulk INSERT | add-only differential kept |
+| D. Fence Timber → Aluminium | 0 | 0 derived writes (empty loop × 2) | **0** | timber facts remain stored; no derived deletes |
+| E. Clear width (area no longer produced) | 0 | 0 writes; stale derived row remains | **0 writes; row remains** | no delete |
+| F. Constraints / Project Conditions | — | no derived/missing-question pipeline | **unchanged / already cheap** | not forced through facts |
+| Multi-WA (deck area + RW height + backfill) | 3 | 12 | **1** | batching scales with N |
+
+Write amplification (logical user fact → DB row writes for derived):
+
+- BEFORE: 1 user fact → N derived SELECT+write → same N again in ensure.
+- AFTER: 1 user fact → 0–1 bulk derived statement.
+
+Question mirror: BEFORE 1 SELECT + M UPDATEs; AFTER 1 UPDATE when input type is known.
+
+Canonical response load count: **1** (unchanged; not removed).
+
+Sequential RTT: reduced by dropping per-derived SELECTs, the second derived pass, two missing-question SELECTs when the block already exists, and per-question mirror updates.
+
+## Derived-fact audit
+
+- Calculated by `deriveFactsForProject` (in-memory). Typical keys: `deck.area_m2`, `pergola.area_m2`, `retaining_wall.height_m`, `retaining_wall.backfill_volume_m3`, lining/tiling/stair approximations. All candidates have non-null `work_area_id`.
+- BEFORE: each candidate did its own SELECT + INSERT/UPDATE. Unchanged values were rewritten. User source skipped via `shouldWriteDerivedFact`. **No deletes** of obsolete derived rows.
+- AFTER: same derivation; same user guard; same no-delete; skip rewrite when `source=derived` and value + `conflict_warning` already match (in-memory, no extra SELECT). `ai_extracted` still promoted to `derived`.
+
+## Unchanged-row decision
+
+Skip in memory when already derived with equal value and warning. Do **not** add per-row SELECTs to detect this. Prefer set-based comparison of the already-loaded fact set.
+
+## Derived provenance
+
+Bulk rows still set `source: "derived"`, `confidence: 1`, `label`, `unit`, `value`, `conflict_warning`, `org_id`, `project_id`, `work_area_id`, `key`.
+
+## Conflict / unique key
+
+```
+project_facts_project_work_area_key_idx
+  UNIQUE (project_id, work_area_id, key) WHERE work_area_id IS NOT NULL
+```
+
+Identity is **not** key alone. Every bulk row includes `org_id` + `project_id` from AuthOrgContext. `project_id` is globally unique so a cross-org same-project_id collision is impossible; org_id is still written and fallback UPDATEs filter `org_id` + `project_id` + `.neq("source","user")`.
+
+## Question mirror
+
+`mirrorFactOntoQuestions` still never creates questions. Capture journal only. Facts remain SoT.
+
+## Missing-question audit (BEFORE)
+
+- 5-way parallel load, heal, optional second derived persist, `buildMissingRequiredQuestionsForWorkAreas`.
+- Extra SELECT for active block titled `Missing scope details`, extra SELECT of that block’s questions.
+- Compare existing keys vs required; **insert only new**; do not delete resolved; bulk `insert(questionRows)` already.
+- New-block path still SELECTs max `sort_order` across all blocks (create-only; rare).
+
+## Rebuild-trigger decision
+
+**Retain rebuild on every fact mutation.** The information-contract architecture does not expose a safe fact-key → missing-question dependency graph. No brittle skip list. Optimise DB ops instead.
+
+## Question batching / differential / ordering
+
+Implemented: in-memory differential + existing bulk insert. `sort_order = startSortOrder + index + 1` preserves `buildMissingRequiredQuestionsForWorkAreas` order. Unique `(question_block_id, key)` still prevents duplicate actives.
+
+## Raw fact path
+
+`commitUserFactEdit` / `upsertScopedFact` still SELECT + UPDATE/INSERT. Needed for derived-edit block. Not optimised away. No-op same-value short-circuit **not** implemented (journal + stale still required).
+
+## Stale update
+
+`markEstimateStaleWithContext` still ownership-checks then `UPDATE estimates SET is_stale=true`. Duplicate ownership SELECT is low materiality; **not** changed. No materiality-aware stale policy.
+
+## Post-write canonical read / mutation loader
+
+`loadAssistantMutationResult` **kept**. Already excludes line items. Not narrowed in Speed 2. Correct post-write canonical state > one query.
+
+## Select-column result
+
+High-frequency mutation queries already used explicit columns. Added `conflict_warning` on fact loads (needed for unchanged skip) and `title` / `sort_order` on the missing-question first load (eliminates two SELECTs). No cosmetic `select("*")` sweep.
+
+## Index audit / decision
+
+Existing indexes already cover `(project_id, work_area_id, key)` and `(project_id)`. **No migration.** EXPLAIN not run (no local Postgres). Do not add indexes from intuition.
+
+## RPC decision
+
+**NO RPC.** Batching fits existing Supabase insert/upsert/update. A mutation RPC is not justified: largest win was derived N+1 + duplicate persist, now set-based. REQ-TXN-01 / `persist_estimate_generation_v1` untouched.
+
+## Transaction / failure / partial-write
+
+- One bulk UPSERT (or fallback insert) is atomic **per statement**.
+- Across statements (raw fact, derived, questions, stale, canonical read) still **not** end-to-end atomic. Same as BEFORE; batching **reduces** partial derived-row failure (N writes → 1).
+- Derived persist errors now return `{ error }` and **do not** call `completeAssistantMutation`. BEFORE silently ignored per-row write errors.
+- Question bulk insert already failed the action on error.
+
+## Payload / client / router
+
+`assistantMutation` shape unchanged. Client projections frozen (`generationProjection`, `assistantMutationProjection`, `runSerializedFactMutation`). Ordinary success still has no `router.refresh()` (14 executable `router.refresh();` remain, recovery only).
+
+## Security
+
+AuthOrgContext, server org, `assertOrgOwnsActiveProject`, RLS unchanged. Bulk rows always carry `org_id` + `project_id`. Conflict key includes `project_id`. Fallback UPDATE never overwrites `source=user`.
+
+## Idempotence
+
+Second identical persist of already-derived equal values plans **zero** writes. Missing-question path still no-ops when `toAdd` is empty.
+
+## Calculator / rate / Estimate persistence freeze
+
+REAL-JOB-01 recommended sell **12878.01** re-confirmed. `resolveRate` / catalogue / `persist_estimate_generation_v1` unchanged.
+
+## REQ-TXN-01
+
+**VERIFY_LATER — LOCAL SUPABASE REQUIRED.** Independent of this batch.
+
+## Remaining bottlenecks
+
+| Work | Notes |
+| --- | --- |
+| Canonical post-write read (`loadAssistantMutationResult`, 7 parallel SELECTs) | Keep for Speed 1 parity; Speed 3 payload topic |
+| `ensureMissingDetailsQuestionBlock` 5-way reload after persist already loaded facts/WAs | Duplicate read; not removed (heal/readiness still need current rows) |
+| `markEstimateStaleWithContext` extra ownership SELECT | Low materiality |
+| Heal `upsertScopedFact` loop | Usually 0 after a successful user fact save |
+| End-to-end mutation transaction | Not claimed; NO RPC |
+
+Speed 3 (payload / client render) is **not** started. Evidence: mutation cost is now dominated by remaining sequential statements + canonical read, not derived N+1. Payload work is a separate programme.
+
+## Next action
+
+**SYSTEM-PERFORMANCE-SPEED-2 = COMPLETE LOCAL / OWNER PERFORMANCE REVIEW PENDING**
+
+Do not commit/push/deploy from this batch. Do not start SPEED 3, Pricing UX, or Bathroom.
+
+---
+
+# SYSTEM PERFORMANCE — SPEED 2-R1 RESULT
+
+**Status:** COMPLETE LOCAL / OWNER FINAL PERFORMANCE REVIEW PENDING  
+**Date:** 2026-08-31  
+**Parent SHA (immediate Speed 2 work parent):** `3184a3cdd15e44b93544394c1fd69ac5e48bd66d`  
+Does not start Speed 3, Pricing UX, Bathroom, or deploy Production. **No commit / push / deploy in this batch.**
+
+## Derived-state reconciliation invariant
+
+`project_facts` remains canonical estimating Facts SoT.
+
+A row with `source = derived` may remain **active current estimating truth** only while the current canonical `deriveFactsForProject` pass still emits that identity (`work_area_id` + `key`) for a **confirmed** work area that was evaluated.
+
+If source inputs disappear (e.g. `deck.width_m` cleared) or the identity is no longer derivable:
+
+the derivation-owned row is **deleted** from `project_facts`.
+
+Fresh `loadAssistantMutationResult` / `assistantMutation` therefore cannot still show the obsolete derived value.
+
+## Derivation-owned sources
+
+| Source | Derivation may overwrite? | Derivation may retire? |
+| --- | --- | --- |
+| `user` | no (`shouldWriteDerivedFact` false) | **never** |
+| `derived` | yes | **yes** — this layer owns it |
+| `ai_extracted` | yes (promoted to `derived` when the pass emits the key) | **not until promoted**. Idle AI keys whose identity is absent from this pass are kept |
+| `default` / `assumption` / `system` | yes if the pass emits the key | no (not `source=derived`) |
+
+No new source enum. Promotion of `ai_extracted` → `derived` is preserved; after promotion, a later pass may retire the row.
+
+## Reconciliation scope
+
+Evaluated domain = **confirmed work area IDs** passed into `persistDerivedFactsForProject` (the same set `deriveFactsForProject` iterates).
+
+- Deck-derived rows are only considered against the Deck work area.
+- Clearing Deck width does **not** retire Retaining Wall or Fence derived rows.
+- Excluded / unconfirmed work areas are outside the pass and are not scanned for retirement.
+- Project-level (`work_area_id` null) derived rows are not produced today and are not retired.
+
+## Delete vs retire
+
+`project_facts` has **no** inactive/deleted lifecycle column. R1 **deletes** derivation-owned obsolete rows. Soft-delete was not invented.
+
+Delete filters (required on every statement):
+
+`org_id` + `project_id` + `source = derived` + `work_area_id` + `key IN (...)`
+
+Never “delete all facts not in the current derivation set”. Never `source=user`.
+
+## Write plan (R1)
+
+`planDerivedFactWrites` now returns:
+
+- `toInsert` — new identities
+- `toUpdate` — existing non-user identities whose value/provenance changed (including `ai_extracted` promotion)
+- `toRetire` — `source=derived` identities in the evaluated WA set that the pass no longer emits
+- `toWrite` = insert + update
+- unchanged / user-owned skip counts
+
+Zero operations when nothing changed.
+
+## Upsert / PostgREST finding
+
+Conflict identity is still `(project_id, work_area_id, key)` via partial unique index `project_facts_project_work_area_key_idx` (`WHERE work_area_id IS NOT NULL`).
+
+PostgREST `.upsert({ onConflict })` emits `ON CONFLICT (cols)` **without** the index `WHERE` predicate. PostgreSQL cannot infer a partial unique index as arbiter without that predicate. **Speed 2-R1 does not use `.upsert()` as the write path.**
+
+Primary path, using already-loaded facts (no per-row SELECT):
+
+1. one bulk `INSERT` for `toInsert`
+2. bounded parallel `UPDATE` by natural key for `toUpdate` (`.neq("source","user")`)
+3. one set-based `DELETE` per work area that has retirements
+
+## Clear / change / multi-WA / empty (DERIVED planner proof)
+
+| Fixture | Result |
+| --- | --- |
+| Clear `deck.width_m` | `deck.area_m2` retired (1 set-based delete). Merge has no area row |
+| Change width 4→3 (area 20→15) | 1 UPDATE, one canonical row, value 15, no duplicate |
+| Multi-WA, clear Deck width | Deck area retired; RW `height_m` + `backfill_volume_m3` remain |
+| Fence WA with stray `source=derived` and 0 current derived output | that derived row retired; user fence facts kept |
+| User-owned `deck.area_m2` | never overwritten, never retired |
+| Idle `ai_extracted` area without width | kept |
+| `ai_extracted` area with length×width | UPDATE promotes to `derived` |
+
+## Operation counts (DERIVED)
+
+| Fixture | AFTER statements |
+| --- | --- |
+| Unchanged mature deck area | **0** |
+| New derived area | **1 INSERT** |
+| Changed width | **1 UPDATE group** |
+| Removed derived (clear width) | **1 DELETE** |
+| Multi-WA new derived (3 keys) | **1 INSERT** (bulk) |
+
+Correctness takes precedence over a zero-write metric on the removal fixture.
+
+## Failure semantics
+
+Insert, update, or delete error → `persistDerivedFactsForProject` returns `{ error }` → `updateProjectFact` returns `{ error }` → **does not** call `completeAssistantMutation`.
+
+## RW height emission (narrow)
+
+`deriveFactsForProject` now re-emits `retaining_wall.height_m` from high/low whenever existing source is not `user` (same pattern as deck area). Average formula unchanged. This lets reconciliation distinguish “inputs gone” from “output already stored”.
+
+## Recovery 5B parent-baseline comparison
+
+Immediate parent of Speed 2 work: **`3184a3cdd15e44b93544394c1fd69ac5e48bd66d`**.
+
+Exact verifier: `scripts/verify-recovery-5b-builder-review.ts`.
+
+| Tree | Result | Failing check |
+| --- | --- | --- |
+| Parent `3184a3c` (stash of Speed 2/R1) | **61 passed, 1 failed** | 51 Pricing parity contract preserved |
+| Current Speed 2-R1 | **61 passed, 1 failed** | 51 Pricing parity contract preserved |
+
+Check 51 asserts `lib/pricing/actions.ts` contains the string `recommended_sell`. `git log -S recommended_sell -- lib/pricing/actions.ts` shows the last touch of that string was **`cff3f82` (Speed 1A)**. Parent and current trees both lack it. Speed 2 / R1 do not modify Pricing.
+
+Classification: **BASELINE VERIFIER DEBT / PRE-EXISTING**. Fence-family “Recovery” spawn is Recovery **1**, not 5B — prior programme PASS reports did not execute this 5B string check. Do not restamp Pricing to satisfy it. Recommended later verifier maintenance: replace check 51 with a behavioural Pricing-adopts-Estimate assertion (`createPricingFromEstimate`).
+
+## REQ-TXN-01
+
+**VERIFY_LATER — ENVIRONMENT BLOCKED.** Local `supabase_db_quotr*` not running.
+
+## Next action
+
+**SYSTEM-PERFORMANCE-SPEED-2-R1 = COMPLETE LOCAL / OWNER FINAL PERFORMANCE REVIEW PENDING**
+
+Do not commit/push/deploy. Do not start SPEED 3, Pricing UX, or Bathroom.
+
+---
+
+# SYSTEM PERFORMANCE — SPEED 2 FINAL LOCK (R2)
+
+**Status:** COMPLETE / COMMITTED / PREVIEW (this batch)  
+**Date:** 2026-08-31  
+**Does not:** start Speed 3, change Speed 1 projections or `router.refresh`, change calculators/rates/commercial formulas, start Pricing UX or Bathroom, or deploy Production.
+
+## Locked derived-fact SoT invariant
+
+`project_facts` remains canonical estimating Facts SoT. A `source=derived` row may remain active only while the current canonical `deriveFactsForProject` pass still emits that `(work_area_id, key)` for a confirmed/evaluated work area. If a source input disappears, the obsolete derived row is **deleted**. User facts are never retired.
+
+## Locked source ownership
+
+| Source | Overwrite | Retire |
+| --- | --- | --- |
+| `user` | never | never |
+| `derived` | yes | yes |
+| `ai_extracted` | yes when the pass emits the key (promoted to `derived`) | not until owned as `derived` |
+| `default` / `assumption` / `system` | existing authority (may be overwritten if the pass emits the key) | not treated as derivation-owned |
+
+No new source enums.
+
+## Locked reconciliation scope
+
+Confirmed work-area IDs of the current persist pass only. Deck cannot retire RW/Fence/other WA derived rows. No project-wide negative-key delete.
+
+## Locked write plan
+
+`toInsert` / `toUpdate` / `toRetire` / unchanged, from already-loaded facts. No per-row SELECT+write loop. No PostgREST `.upsert(onConflict: project_id,work_area_id,key)` against the partial unique index (predicate cannot be expressed). Insert/update/delete partitioning is the write path.
+
+- New rows: one bulk INSERT with server `org_id` + `project_id` + provenance.
+- Existing non-user rows: bounded UPDATE by natural key; `.neq("source","user")`.
+- Obsolete derived: one set-based DELETE per affected WA (`org_id`, `project_id`, `source=derived`, `work_area_id`, `key IN (...)`).
+- Unchanged derived value + conflict warning: zero derived writes.
+
+## Locked question pipeline
+
+Question mirror one UPDATE when `valueType` known; missing-details first load reused; differential bulk insert; canonical `sort_order`. Questions = journal. Facts = SoT. No speculative fact-key skip list. Missing-question rebuild does **not** run a second derived persist (`skipDerivedPersist: true` after the canonical persist).
+
+## Locked failure / transaction claims
+
+Insert, update, or delete error → mutation `{ error }` → **no** `completeAssistantMutation`. No end-to-end mutation atomicity claimed. No RPC. `persist_estimate_generation_v1` unchanged. REQ-TXN-01 remains VERIFY_LATER.
+
+## Locked Speed 1 client
+
+`generationProjection`, `assistantMutationProjection`, `runSerializedFactMutation`, request sequencing, ordinary no-`router.refresh` unchanged.
+
+## Remaining bottlenecks (Speed 3 evidence)
+
+| Item | Class |
+| --- | --- |
+| Canonical post-write 7-way `loadAssistantMutationResult` | **DEFER** (correctness; payloads a few KB) |
+| `ensureMissingDetails` fact/WA reload after persist | **MINOR** |
+| `markEstimateStaleWithContext` extra ownership SELECT | **MINOR** |
+| Payload / client render (Speed 3) | **DEFER — NOT STARTED** |
+
+Estimator CPU remains negligible. Frequent `assistantMutation` payloads remain a few KB. Auth/refresh/write amplification of Speed 0–2 is addressed. **Speed 3 is evidence-gated and not started.**
+
+## Recovery 5B / environment debts (unchanged)
+
+- Recovery 5B check 51: **BASELINE VERIFIER DEBT / PRE-EXISTING** (parent `3184a3c` 61/1 = current 61/1). Do not modify Pricing.
+- REQ-TXN-01: **VERIFY_LATER — LOCAL SUPABASE REQUIRED**.
+- Fact-coverage spawn: environment/tool availability (Anthropic) if skipped.
+
+## Next action after this commit
+
+**SYSTEM-PERFORMANCE-SPEED-2 = COMPLETE / COMMITTED / PREVIEW**  
+**SYSTEM-PERFORMANCE CORE PROGRAMME = SPEED 0 + SPEED 1 + SPEED 2 COMPLETE**  
+**SPEED 3 = EVIDENCE-GATED / NOT STARTED**
+
+Reassess product responsiveness on Preview. Do not start Speed 3, Pricing UX, or Bathroom from this batch.
+
+
+
 
 

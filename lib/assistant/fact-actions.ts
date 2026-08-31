@@ -49,28 +49,29 @@ export async function updateProjectFact(
     return { error: ownedProject.error };
   }
 
-  const { data: project } = await supabase
-    .from("projects")
-    .select("id, stage, quality_level")
-    .eq("id", projectId)
-    .eq("org_id", orgId)
-    .maybeSingle();
+  const [{ data: project }, workAreaLookup] = await Promise.all([
+    supabase
+      .from("projects")
+      .select("id, stage, quality_level")
+      .eq("id", projectId)
+      .eq("org_id", orgId)
+      .maybeSingle(),
+    workAreaId
+      ? supabase
+          .from("work_areas")
+          .select("id")
+          .eq("id", workAreaId)
+          .eq("project_id", projectId)
+          .maybeSingle()
+      : Promise.resolve({ data: { id: "ok" } }),
+  ]);
 
   if (!project) {
     return { error: "Project not found." };
   }
 
-  if (workAreaId) {
-    const { data: workArea } = await supabase
-      .from("work_areas")
-      .select("id")
-      .eq("id", workAreaId)
-      .eq("project_id", projectId)
-      .maybeSingle();
-
-    if (!workArea) {
-      return { error: "Work area not found." };
-    }
+  if (workAreaId && !workAreaLookup.data) {
+    return { error: "Work area not found." };
   }
 
   // Stage 3.1D: Fact SoT commit, then question mirror.
@@ -89,23 +90,28 @@ export async function updateProjectFact(
     return { error: commit.error };
   }
 
-  const { data: workAreas } = await supabase
-    .from("work_areas")
-    .select("id, type, status")
-    .eq("project_id", projectId);
+  const [{ data: workAreas }, { data: projectFactsRaw }] = await Promise.all([
+    supabase
+      .from("work_areas")
+      .select("id, type, status")
+      .eq("project_id", projectId),
+    supabase
+      .from("project_facts")
+      .select("key, work_area_id, value, source, conflict_warning")
+      .eq("project_id", projectId),
+  ]);
 
-  const { data: projectFactsRaw } = await supabase
-    .from("project_facts")
-    .select("key, work_area_id, value, source")
-    .eq("project_id", projectId);
-
-  await persistDerivedFactsForProject(
+  const derivedPersist = await persistDerivedFactsForProject(
     supabase,
     orgId,
     projectId,
     workAreas ?? [],
     projectFactsRaw ?? []
   );
+
+  if (derivedPersist.error) {
+    return { error: derivedPersist.error };
+  }
 
   const ensureResult = await ensureMissingDetailsQuestionBlock(
     supabase,
@@ -114,6 +120,7 @@ export async function updateProjectFact(
     {
       stage: project.stage,
       qualityLevel: project.quality_level,
+      skipDerivedPersist: true,
     }
   );
 

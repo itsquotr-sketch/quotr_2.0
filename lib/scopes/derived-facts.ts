@@ -90,8 +90,8 @@ export function deriveFactsForProject(params: {
       const existingHeight = lookup.get(
         `${workArea.id}:retaining_wall.height_m`
       );
-      if (existingHeight?.source === "user" || factHasValue(existingHeight?.value)) {
-        // still derive backfill volume when dimensions exist
+      if (existingHeight?.source === "user") {
+        // User-owned height is never overwritten; still derive backfill.
       } else {
         const heightHigh = toPositiveNumber(
           getFactValue(lookup, workArea.id, "retaining_wall.height_high_m")
