@@ -3,13 +3,18 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { QualityLevel } from "@/components/assistant/types";
+import {
+  NO_CAPTURE_ERROR,
+  NO_WORK_AREAS_ERROR,
+  UNKNOWN_ANALYSIS_ERROR,
+  userMessageForAnalysisError,
+} from "@/lib/ai/analyse-job-contract";
 import { extractFromBrief } from "@/lib/ai/extract";
 import {
   aiFactsToRows,
   aiWorkAreasToRows,
   factDedupeKey,
 } from "@/lib/ai/mappers";
-import { AIExtractionError } from "@/lib/ai/schema";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
 import { evaluatePackageQuickEstimateReadiness } from "@/lib/assistant/readiness/package-quick-estimate";
 import { canRunStageAction } from "@/lib/assistant/state";
@@ -66,17 +71,6 @@ import { isScopeDiscoveryEnabled } from "@/lib/scope-discovery/configuration";
 
 const BRIEF_MAX_LENGTH = 5000;
 
-const UNKNOWN_ANALYSIS_ERROR =
-  "We couldn't analyse your job. Please try again.";
-const NO_CAPTURE_ERROR =
-  "Add a brief or at least one site note before analysing.";
-const AI_SETUP_ERROR =
-  "AI setup is missing. Check your Anthropic API key.";
-const AI_PARSE_ERROR =
-  "Quotr could not understand the analysis response. Please try again.";
-const NO_WORK_AREAS_ERROR =
-  "No supported work areas were detected. Try adding more detail about the job, or add a work area manually.";
-
 function logBriefAnalysisFailure(
   projectId: string,
   context: {
@@ -94,31 +88,6 @@ function logBriefAnalysisFailure(
     model: getAnthropicModel(),
     reason: context.reason,
   });
-}
-
-function userMessageForAnalysisError(error: unknown): string {
-  if (error instanceof AIExtractionError) {
-    if (error.message.includes("No valid work areas")) {
-      return NO_WORK_AREAS_ERROR;
-    }
-    if (
-      error.message.includes("schema validation") ||
-      error.message.includes("parse AI response")
-    ) {
-      return AI_PARSE_ERROR;
-    }
-    if (error.message.includes("No allowed work area types")) {
-      return AI_SETUP_ERROR;
-    }
-  }
-
-  if (error instanceof Error) {
-    if (error.message.includes("ANTHROPIC_API_KEY")) {
-      return AI_SETUP_ERROR;
-    }
-  }
-
-  return UNKNOWN_ANALYSIS_ERROR;
 }
 
 const CATALOGUE_TYPES = SCOPE_CATALOGUE.map((item) => item.type);
@@ -171,6 +140,7 @@ export async function saveBriefAndSeedWorkAreas(
     };
   }
 
+  try {
   const loaded = await loadProjectStage(projectId);
   if ("error" in loaded) {
     return { error: loaded.error };
@@ -422,7 +392,17 @@ export async function saveBriefAndSeedWorkAreas(
   // Stage 3.2.2-R1: project-scoped revalidate only — avoid dashboard remount
   // extending the Analyse → Work Areas UI gap (PERF-FUTURE-01 still owns deeper work).
   revalidateProjectAssistantPath(projectId);
-  return { success: true };
+  return completeAssistantMutation(auth, projectId);
+  } catch (error) {
+    logBriefAnalysisFailure(projectId, {
+      briefLength: trimmed.length,
+      noteCount: 0,
+      combinedInputLength: 0,
+      reason:
+        error instanceof Error ? error.message : "unexpected analysis failure",
+    });
+    return { error: userMessageForAnalysisError(error) };
+  }
 }
 
 export async function confirmWorkAreas(

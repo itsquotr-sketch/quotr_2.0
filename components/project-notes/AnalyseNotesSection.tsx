@@ -23,16 +23,20 @@ export function AnalyseNotesSection({
     setAnalyseError(null);
     setIsAnalysing(true);
 
-    const result = await analyseProjectNotes({ projectId });
+    try {
+      const result = await analyseProjectNotes({ projectId });
 
-    setIsAnalysing(false);
+      if ("error" in result) {
+        setAnalyseError(result.error);
+        return;
+      }
 
-    if ("error" in result) {
-      setAnalyseError(result.error);
-      return;
+      router.refresh();
+    } catch {
+      setAnalyseError("Analysis took too long. Please try again.");
+    } finally {
+      setIsAnalysing(false);
     }
-
-    router.refresh();
   }
 
   return (

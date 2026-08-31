@@ -1,9 +1,13 @@
+import { isTimeoutOrAbortError } from "@/lib/ai/analyse-job-contract";
+
 const DEFAULT_MAX_ATTEMPTS = 3;
 const MAX_BACKOFF_MS = 8_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+export { isTimeoutOrAbortError };
 
 function getErrorStatus(error: unknown): number | null {
   if (error == null || typeof error !== "object") {
@@ -46,12 +50,14 @@ export function isRetryableAnthropicError(error: unknown): boolean {
     return true;
   }
 
+  if (isTimeoutOrAbortError(error)) {
+    return false;
+  }
+
   const message = getErrorMessage(error).toLowerCase();
   if (
     message.includes("rate limit") ||
     message.includes("overloaded") ||
-    message.includes("timeout") ||
-    message.includes("timed out") ||
     message.includes("econnreset") ||
     message.includes("network")
   ) {

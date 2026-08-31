@@ -1,8 +1,8 @@
 import "server-only";
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient, getAnthropicModel } from "@/lib/ai/anthropic";
-import { withAnthropicRetry } from "@/lib/ai/retry";
+import { ANALYSE_JOB_TIMEOUT_MS } from "@/lib/ai/analyse-job-contract";
+import { createAnthropicMessage, getAnthropicModel } from "@/lib/ai/anthropic";
 import {
   NOTE_ANALYSIS_NO_UPDATES_MESSAGE,
   validateNoteProposalExtraction,
@@ -192,19 +192,17 @@ async function requestNoteAnalysis(
     }
   | { ok: false; rawText: string; error: string; code: string }
 > {
-  const client = getAnthropicClient();
   const model = getAnthropicModel();
 
-  const message = await withAnthropicRetry(
-    () =>
-      client.messages.create({
-        model,
-        max_tokens: 4096,
-        temperature: 0,
-        system: SYSTEM_PROMPT,
-        messages: [{ role: "user", content: userPrompt }],
-      }),
-    { label: "extractFromSiteNotes" }
+  const message = await createAnthropicMessage(
+    {
+      model,
+      max_tokens: 4096,
+      temperature: 0,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: "user", content: userPrompt }],
+    },
+    { timeoutMs: ANALYSE_JOB_TIMEOUT_MS, label: "extractFromSiteNotes" }
   );
 
   const rawText = getTextFromResponse(message.content);
@@ -356,7 +354,7 @@ export async function extractFromSiteNotes(params: {
     const message = error instanceof Error ? error.message : "Note analysis failed.";
     if (message.includes("ANTHROPIC_API_KEY")) {
       throw new AIExtractionError(
-        "AI setup is missing. Check your Anthropic API key.",
+        "AI setup is missing. Check your organisation configuration.",
         "NOTE_ANALYSIS_SETUP"
       );
     }

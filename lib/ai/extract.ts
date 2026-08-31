@@ -2,37 +2,21 @@ import "server-only";
 
 import type Anthropic from "@anthropic-ai/sdk";
 import {
-  BRIEF_EXTRACTION_SYSTEM_PROMPT,
-  buildBriefExtractionUserPrompt,
-} from "@/lib/ai/brief-extraction-prompt";
-import { getAnthropicClient, getAnthropicModel } from "@/lib/ai/anthropic";
-import { withAnthropicRetry } from "@/lib/ai/retry";
-import { enrichExtractionFromBrief } from "@/lib/ai/enrich-extraction";
-import { parseJsonObject, previewAiResponse } from "@/lib/ai/parse-json";
+  ANALYSE_JOB_TIMEOUT_CODE,
+  ANALYSE_JOB_TIMEOUT_MS,
+  ANALYSE_JOB_TIMEOUT_USER_MESSAGE,
+  isTimeoutOrAbortError,
+} from "@/lib/ai/analyse-job-contract";
+import { createAnthropicMessage, getAnthropicModel } from "@/lib/ai/anthropic";
 import {
-  AIExtractionError,
-  coerceExtractionPayload,
-  validateAndFilterExtraction,
-  type AIExtractionOutput,
-} from "@/lib/ai/schema";
-import { normaliseAIExtraction } from "@/lib/scopes/normalise-extracted-facts";
-import { stripImplicitScopeExclusions } from "@/lib/scopes/strip-implicit-scope-exclusions";
+  BRIEF_EXTRACTION_SYSTEM_PROMPT,
+  buildBriefExtractionFromModelText,
+  buildBriefExtractionUserPrompt,
+} from "@/lib/ai/brief-extraction-result";
+import type { BriefExtractionResult } from "@/lib/ai/brief-extraction-types";
+import { AIExtractionError } from "@/lib/ai/schema";
 
-export type BriefExtractionResult = {
-  output: AIExtractionOutput;
-  qualityLevel: ReturnType<typeof enrichExtractionFromBrief>["qualityLevel"];
-  constraints: ReturnType<typeof enrichExtractionFromBrief>["constraints"];
-};
-
-function extractJsonFromText(text: string): unknown {
-  const parsed = parseJsonObject(text);
-  if (!parsed.success) {
-    throw new AIExtractionError(
-      `Failed to parse AI response as JSON. Preview: ${previewAiResponse(text, 120)}`
-    );
-  }
-  return parsed.data;
-}
+export type { BriefExtractionResult };
 
 function getTextFromResponse(content: Anthropic.Message["content"]): string {
   const textBlock = content.find((block) => block.type === "text");
@@ -52,53 +36,38 @@ export async function extractFromBrief(params: {
   }
 
   try {
-    const client = getAnthropicClient();
     const model = getAnthropicModel();
     const userPrompt = buildBriefExtractionUserPrompt(
       params.briefText,
       params.allowedTypes
     );
 
-    const message = await withAnthropicRetry(
-      () =>
-        client.messages.create({
-          model,
-          max_tokens: 4096,
-          temperature: 0,
-          system: BRIEF_EXTRACTION_SYSTEM_PROMPT,
-          messages: [{ role: "user", content: userPrompt }],
-        }),
-      { label: "extractFromBrief" }
+    const message = await createAnthropicMessage(
+      {
+        model,
+        max_tokens: 4096,
+        temperature: 0,
+        system: BRIEF_EXTRACTION_SYSTEM_PROMPT,
+        messages: [{ role: "user", content: userPrompt }],
+      },
+      { timeoutMs: ANALYSE_JOB_TIMEOUT_MS, label: "extractFromBrief" }
     );
 
-    const rawText = getTextFromResponse(message.content);
-    const rawJson = extractJsonFromText(rawText);
-    const coerced = coerceExtractionPayload(rawJson);
-    const enriched = enrichExtractionFromBrief({
+    return buildBriefExtractionFromModelText({
+      rawText: getTextFromResponse(message.content),
       briefText: params.briefText,
-      extraction: coerced,
       allowedTypes: params.allowedTypes,
+      catalogueTypes: params.catalogueTypes,
     });
-
-    const output = stripImplicitScopeExclusions(
-      normaliseAIExtraction(
-        validateAndFilterExtraction(
-          enriched.extraction,
-          params.allowedTypes,
-          params.catalogueTypes
-        )
-      ),
-      params.briefText
-    );
-
-    return {
-      output,
-      qualityLevel: enriched.qualityLevel,
-      constraints: enriched.constraints,
-    };
   } catch (error) {
     if (error instanceof AIExtractionError) {
       throw error;
+    }
+    if (isTimeoutOrAbortError(error)) {
+      throw new AIExtractionError(
+        ANALYSE_JOB_TIMEOUT_USER_MESSAGE,
+        ANALYSE_JOB_TIMEOUT_CODE
+      );
     }
     throw new AIExtractionError(
       error instanceof Error ? error.message : "AI extraction failed."

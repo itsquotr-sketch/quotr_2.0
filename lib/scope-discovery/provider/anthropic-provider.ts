@@ -11,8 +11,8 @@
 import "server-only";
 
 import type Anthropic from "@anthropic-ai/sdk";
-import { getAnthropicClient, getAnthropicModel } from "@/lib/ai/anthropic";
-import { withAnthropicRetry } from "@/lib/ai/retry";
+import { ANALYSE_JOB_TIMEOUT_MS } from "@/lib/ai/analyse-job-contract";
+import { createAnthropicMessage, getAnthropicModel } from "@/lib/ai/anthropic";
 import {
   assertAnthropicApiKeyConfigured,
   hasAnthropicApiKey,
@@ -53,18 +53,17 @@ export function createAnthropicScopeDiscoveryTransport(): ScopeDiscoveryTranspor
   return async (request): Promise<ScopeDiscoveryTransportResponse> => {
     const started = Date.now();
     try {
-      const client = getAnthropicClient();
       const model = request.model || defaultModel;
-      const message = await withAnthropicRetry(
-        () =>
-          client.messages.create({
-            model,
-            max_tokens: request.maxTokens,
-            temperature: request.temperature,
-            system: request.systemPrompt,
-            messages: [{ role: "user", content: request.userPrompt }],
-          }),
+      const message = await createAnthropicMessage(
         {
+          model,
+          max_tokens: request.maxTokens,
+          temperature: request.temperature,
+          system: request.systemPrompt,
+          messages: [{ role: "user", content: request.userPrompt }],
+        },
+        {
+          timeoutMs: ANALYSE_JOB_TIMEOUT_MS,
           label: request.isRepair
             ? "scopeDiscoveryRepair"
             : "scopeDiscoveryPrimary",

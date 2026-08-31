@@ -35,7 +35,7 @@ import {
   type ProjectFactRecord,
 } from "../lib/scopes/fact-values";
 import { getScopeQuestions } from "../lib/scopes/registry";
-import { prepareProjectFactsForQuestions } from "../lib/scopes/questions";
+import { shouldRunLiveAiTests, logLiveAiSkip } from "../lib/ai/live-ai-tests";
 
 type Severity = "critical" | "warning" | "info";
 
@@ -823,6 +823,11 @@ async function runScenario(
 }
 
 async function main() {
+  if (!shouldRunLiveAiTests()) {
+    logLiveAiSkip("verify-fact-coverage", SCENARIOS.length);
+    process.exit(0);
+  }
+
   const apiKey = process.env.ANTHROPIC_API_KEY;
   const model = process.env.ANTHROPIC_MODEL ?? "claude-sonnet-4-6";
 

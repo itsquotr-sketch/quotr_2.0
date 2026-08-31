@@ -98,6 +98,7 @@ import { applyJobPlanScopeWrite } from "@/lib/assistant/job-plan/apply-write";
 import { writeJobPlanScopeDecision } from "@/lib/assistant/job-plan/actions";
 import { overlayFact } from "@/lib/assistant/job-plan/facts";
 import { JOB_PLAN_IS_PRIMARY } from "@/lib/assistant/job-plan/flags";
+import { ANALYSE_JOB_TIMEOUT_USER_MESSAGE } from "@/lib/ai/analyse-job-contract";
 import {
   jobPlanFactsFromAssistantState,
   jobPlanWorkAreasFromUi,
@@ -712,6 +713,19 @@ export function AssistantShell({
           router.refresh();
         }
 
+        setPendingAction(null);
+        if (action === "estimate") {
+          setIsGenerating(false);
+        }
+        if (action === "regenerate") {
+          setIsRegenerating(false);
+        }
+      } catch {
+        setActionError(
+          action === "brief"
+            ? ANALYSE_JOB_TIMEOUT_USER_MESSAGE
+            : "Something went wrong. Please try again."
+        );
         setPendingAction(null);
         if (action === "estimate") {
           setIsGenerating(false);

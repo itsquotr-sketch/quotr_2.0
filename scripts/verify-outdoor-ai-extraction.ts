@@ -23,7 +23,7 @@ import {
 } from "../lib/scopes/derived-facts";
 import { normaliseAIExtraction } from "../lib/scopes/normalise-extracted-facts";
 import type { ProjectFactRecord } from "../lib/scopes/fact-values";
-import { toPositiveNumber } from "../lib/scopes/fact-values";
+import { shouldRunLiveAiTests, logLiveAiSkip } from "../lib/ai/live-ai-tests";
 
 type ExpectedFact = { key: string; value?: string | number | boolean };
 
@@ -627,6 +627,11 @@ function describeCase(testCase: BriefCase): void {
 }
 
 async function main() {
+  if (!shouldRunLiveAiTests()) {
+    logLiveAiSkip("verify-outdoor-ai-extraction", CASES.length);
+    process.exit(0);
+  }
+
   if (!process.env.ANTHROPIC_API_KEY) {
     console.log("ANTHROPIC_API_KEY not set — skipping live AI calls.");
     console.log("\nTo run live extraction tests:");
