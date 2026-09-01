@@ -145,6 +145,39 @@ export function sanitizeClientNarrativeBlock(
   return sanitizeClientQuoteDescription(joined) ?? joined;
 }
 
+/**
+ * Display-only sanitiser that keeps builder paragraph breaks and blank lines.
+ * Does not rewrite scope copy. Used by QuoteTemplate, not snapshot writes.
+ */
+export function sanitizeClientNarrativeDisplay(
+  text: string | null | undefined
+): string | null {
+  if (!text?.trim()) {
+    return null;
+  }
+
+  const lines = text.replace(/\r\n/g, "\n").split("\n").map((line) => {
+    if (!line.trim()) {
+      return "";
+    }
+    const sentences = line
+      .split(/(?<=[.!?])\s+/)
+      .map((sentence) => sentence.trim())
+      .filter(
+        (sentence) =>
+          sentence.length > 0 && !isInternalClientNarrative(sentence)
+      );
+    if (sentences.length === 0) {
+      return "";
+    }
+    const joined = sentences.join(" ");
+    return sanitizeClientQuoteDescription(joined) ?? joined;
+  });
+
+  const result = lines.join("\n").replace(/^\n+|\n+$/g, "");
+  return result.trim() ? result : null;
+}
+
 export function filterInternalLinesFromBlock(
   text: string | null | undefined
 ): string | null {

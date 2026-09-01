@@ -12,6 +12,7 @@ export type Project = {
   title: string;
   brief_text: string | null;
   client_name: string | null;
+  client_email: string | null;
   site_address: string | null;
   priority: ProjectPriority;
   due_date: string | null;

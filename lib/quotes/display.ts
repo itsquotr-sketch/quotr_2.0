@@ -99,3 +99,32 @@ export function formatQuoteDocumentTitle(quote: {
   }
   return `Quote: ${formatQuoteReference(quote)}`;
 }
+
+export function formatQuoteWorkspaceTitle(title: string): string {
+  const stripped = stripLeadingQuotePrefix(title);
+  return stripped ? `Quote — ${stripped}` : "Quote";
+}
+
+export function formatQuoteNumberRevision(quote: {
+  quote_number: string | null;
+  revision_number: number;
+}): string {
+  const number = quote.quote_number?.trim();
+  if (number) {
+    return `${number} · Revision ${quote.revision_number}`;
+  }
+  return `Revision ${quote.revision_number}`;
+}
+
+export function formatQuoteDateTime(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return new Intl.DateTimeFormat("en-NZ", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(date);
+}

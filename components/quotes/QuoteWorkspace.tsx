@@ -22,7 +22,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { quoteDocumentViewModel } from "@/lib/quotes/financial-view-model";
-import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
 import {
   canIssueQuoteDelivery,
   canMarkQuoteAccepted,
@@ -64,6 +63,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
   const {
     quote,
     projectTitle,
+    projectClientEmail = null,
     pricingDocumentUpdatedAt,
     latestRevisionQuoteId,
     threadRevisions = [],
@@ -155,6 +155,25 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
 
   const quoteFinance = quoteDocumentViewModel(quote);
 
+  const deliveryAndHistory = (
+    <>
+      {deliveries.length > 0 || quote.viewed_at ? (
+        <QuoteDeliveryHistory
+          deliveries={deliveries}
+          viewedAt={quote.viewed_at}
+        />
+      ) : null}
+      {threadRevisions.length > 0 ? (
+        <QuoteTransactionHistory
+          projectId={projectId}
+          currentQuoteId={quoteId}
+          revisions={threadRevisions}
+          events={recentEvents}
+        />
+      ) : null}
+    </>
+  );
+
   const handlePrint = () => {
     const printUrl = `/app/projects/${projectId}/quotes/${quoteId}/print`;
     window.open(printUrl, "_blank", "noopener,noreferrer");
@@ -226,20 +245,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             : undefined
         }
       />
-      {deliveries.length > 0 || quote.viewed_at ? (
-        <QuoteDeliveryHistory
-          deliveries={deliveries}
-          viewedAt={quote.viewed_at}
-        />
-      ) : null}
-      {threadRevisions.length > 0 ? (
-        <QuoteTransactionHistory
-          projectId={projectId}
-          currentQuoteId={quoteId}
-          revisions={threadRevisions}
-          events={recentEvents}
-        />
-      ) : null}
+      {deliveryAndHistory}
     </div>
   );
 
@@ -306,13 +312,6 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </WorkspaceBanner>
       )}
 
-      {quote.revision_number > 0 ? (
-        <p className="text-sm text-muted-foreground print:hidden">
-          {quote.quote_number ? `${quote.quote_number} · ` : null}
-          Revision {quote.revision_number}.
-        </p>
-      ) : null}
-
       {saveError ? (
         <p className="text-sm text-destructive print:hidden" role="alert">
           {saveError}
@@ -321,12 +320,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
 
       <Card className="border-border/60 shadow-none print:hidden xl:hidden">
         <CardHeader className="pb-2">
-          <div className="flex items-center justify-between gap-2">
-            <CardTitle className="text-base">Quote summary</CardTitle>
-            <span className="text-xs text-muted-foreground">
-              {formatQuoteBadgeLabel(quote.status)}
-            </span>
-          </div>
+          <CardTitle className="text-base">Quote summary</CardTitle>
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
@@ -373,7 +367,9 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </CardContent>
       </Card>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_300px] print:block">
+      <div className="space-y-3 print:hidden xl:hidden">{deliveryAndHistory}</div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)] print:block">
         <div className="min-w-0 space-y-5">
           {isEditable ? (
             <Card
@@ -493,9 +489,17 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
           ) : null}
         </div>
 
-        <div className="hidden space-y-3 print:hidden xl:block">
-          {actionPanel}
-        </div>
+        <aside
+          data-quote-sidebar="true"
+          className="hidden print:hidden xl:block"
+        >
+          <div
+            data-quote-sidebar-stack="true"
+            className="space-y-3 xl:sticky xl:top-[4.5rem] xl:max-h-[calc(100vh-5.5rem)] xl:overflow-y-auto"
+          >
+            {actionPanel}
+          </div>
+        </aside>
       </div>
 
       <QuoteMobileActionBar
@@ -529,8 +533,10 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
       {canIssueQuoteDelivery(quote.status) ||
       canResendQuoteDelivery(quote.status) ? (
         <QuoteSendSheet
+          key={`${quote.id}:${sendOpen ? "open" : "closed"}`}
           quote={quote}
           projectTitle={projectTitle}
+          projectClientEmail={projectClientEmail}
           deliveries={deliveries}
           open={sendOpen}
           onOpenChange={setSendOpen}

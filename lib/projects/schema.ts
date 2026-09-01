@@ -11,6 +11,15 @@ export const projectDetailsSchema = z.object({
     .trim()
     .max(160, "Client name must be 160 characters or less")
     .optional(),
+  client_email: z
+    .string()
+    .trim()
+    .max(254, "Email must be 254 characters or less")
+    .optional()
+    .refine(
+      (value) => !value || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value),
+      "Enter a valid email address"
+    ),
   site_address: z
     .string()
     .trim()

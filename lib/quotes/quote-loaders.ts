@@ -25,6 +25,7 @@ import {
   assertOrgOwnsQuote,
 } from "@/lib/security/org-ownership";
 import { getCompanySettingsWithContext } from "@/lib/settings/company-settings-loader";
+import { hasClientEmailColumn } from "@/lib/projects/query-utils";
 
 export async function getLatestQuoteSummaryWithContext(
   auth: AuthOrgContext,
@@ -58,15 +59,23 @@ export async function getQuoteWorkspaceDataWithContext(
   }
 
   const { supabase, orgId } = auth;
+  const clientEmailAvailable = await hasClientEmailColumn(supabase);
 
   const [{ data: project }, { data: quote }, { data: items }, companySettings] =
     await Promise.all([
-      supabase
-        .from("projects")
-        .select("id, title, deleted_at")
-        .eq("id", projectId)
-        .eq("org_id", orgId)
-        .maybeSingle(),
+      clientEmailAvailable
+        ? supabase
+            .from("projects")
+            .select("id, title, client_email, deleted_at")
+            .eq("id", projectId)
+            .eq("org_id", orgId)
+            .maybeSingle()
+        : supabase
+            .from("projects")
+            .select("id, title, deleted_at")
+            .eq("id", projectId)
+            .eq("org_id", orgId)
+            .maybeSingle(),
       supabase
         .from("quotes")
         .select("*")
@@ -86,6 +95,11 @@ export async function getQuoteWorkspaceDataWithContext(
   if (!project || project.deleted_at || !quote) {
     notFound();
   }
+
+  const projectClientEmail =
+    "client_email" in project && typeof project.client_email === "string"
+      ? project.client_email
+      : null;
 
   let pricingDocumentUpdatedAt: string | null = null;
   if (quote.pricing_document_id) {
@@ -216,6 +230,7 @@ export async function getQuoteWorkspaceDataWithContext(
 
   return {
     projectTitle: project.title,
+    projectClientEmail,
     quote: mappedQuote,
     items: (items ?? []).map((row) => mapQuoteItem(row)),
     companySettings,

@@ -2,7 +2,6 @@
 
 import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
-import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -11,7 +10,6 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { quoteDocumentViewModel } from "@/lib/quotes/financial-view-model";
-import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
 import {
   canMarkQuoteAccepted,
   canMarkQuoteDeclined,
@@ -85,17 +83,9 @@ export function QuoteSummaryPanel({
   const canMarkExpired = canMarkQuoteExpired(quote.status) && quote.status !== "expired";
 
   return (
-    <Card className="border-border/60 shadow-none lg:sticky lg:top-[4.5rem] lg:self-start">
+    <Card className="border-border/60 shadow-none">
       <CardHeader className="pb-2">
-        <div className="flex items-center justify-between gap-2">
-          <CardTitle className="text-base">Quote summary</CardTitle>
-          <Badge variant="outline" className="text-[10px] font-normal">
-            {formatQuoteBadgeLabel(quote.status)}
-          </Badge>
-        </div>
-        <p className="text-xs text-muted-foreground">
-          Revision {quote.revision_number}
-        </p>
+        <CardTitle className="text-base">Quote summary</CardTitle>
         <p className="text-xs text-muted-foreground">
           Client-facing totals (GST exclusive subtotal)
         </p>
@@ -190,14 +180,6 @@ export function QuoteSummaryPanel({
             >
               Mark expired
             </Button>
-          ) : null}
-          {quote.status === "sent" || quote.status === "viewed" ? (
-            <p className="text-xs text-muted-foreground">
-              {quote.status === "viewed" ? "Viewed" : "Sent"}
-              {quote.sent_at
-                ? ` ${new Date(quote.sent_at).toLocaleDateString("en-NZ")}`
-                : ""}
-            </p>
           ) : null}
         </div>
       </CardContent>

@@ -192,6 +192,7 @@ export type QuoteWorkspaceData = {
   quote: Quote;
   items: QuoteItem[];
   projectTitle: string;
+  projectClientEmail: string | null;
   companySettings: CompanySettings | null;
   pricingDocumentUpdatedAt: string | null;
   latestRevisionQuoteId: string | null;

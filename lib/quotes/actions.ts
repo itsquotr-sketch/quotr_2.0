@@ -35,6 +35,7 @@ import { resolveAuthoritativeQuoteItemTotal } from "@/lib/quotes/quote-commercia
 import type { QuoteItemFromPricing } from "@/lib/quotes/from-pricing";
 import { appendQuoteEvent } from "@/lib/quotes/events";
 import { captureQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
+import { getCompanyDisplayName } from "@/lib/quotes/display";
 import { mapQuote, mapQuoteItem } from "@/lib/quotes/mappers";
 import {
   pickLatestQuoteSummary,
@@ -90,9 +91,11 @@ import {
 } from "@/lib/quotes/delivery-idempotency";
 import {
   buildQuoteDeliveryEmail,
+  formatQuoteDeliveryFromHeader,
   isQuoteDeliveryProviderConfigured,
   quoteDeliveryFromAddress,
   quoteDeliverySiteOrigin,
+  resolveQuoteDeliveryReplyTo,
 } from "@/lib/quotes/delivery-email";
 import { getQuoteDeliveryProvider } from "@/lib/quotes/delivery-provider";
 import { decideQuoteSendProviderAction } from "@/lib/quotes/delivery-send-policy";
@@ -1428,6 +1431,12 @@ export async function sendQuoteToClient(input: {
 
   if (decision === "submit") {
     const issuer = resolveQuoteIssuerSettings(working, companySettings);
+    const { data: projectRow } = await supabase
+      .from("projects")
+      .select("title")
+      .eq("id", working.project_id)
+      .eq("org_id", loaded.orgId)
+      .maybeSingle();
     const email = buildQuoteDeliveryEmail({
       quote: {
         ...working,
@@ -1437,13 +1446,22 @@ export async function sendQuoteToClient(input: {
       recipientName: parsed.data.recipientName,
       message: parsed.data.message,
       publicUrl: `${origin}${publicPath}`,
+      projectTitle:
+        projectRow && typeof projectRow.title === "string"
+          ? projectRow.title
+          : null,
     });
+    const fromHeader = formatQuoteDeliveryFromHeader(
+      getCompanyDisplayName(issuer),
+      fromAddress
+    );
+    const replyTo = resolveQuoteDeliveryReplyTo(issuer?.contactEmail);
 
     const provider = getQuoteDeliveryProvider();
     const submitted = await provider.send({
       to: recipientEmail,
-      from: fromAddress,
-      replyTo: issuer?.contactEmail ?? fromAddress,
+      from: fromHeader,
+      replyTo,
       subject: email.subject,
       html: email.html,
       text: email.text,

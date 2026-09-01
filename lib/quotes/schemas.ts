@@ -109,7 +109,7 @@ export const sendQuoteToClientInputSchema = z.object({
   quoteId: uuidSchema,
   recipientName: trimmedStringSchema(200, {
     min: 1,
-    requiredMessage: "Recipient name is required.",
+    requiredMessage: "Client name is required.",
   }),
   recipientEmail: z.email("Enter a valid email address."),
   message: trimmedStringSchema(2000, {

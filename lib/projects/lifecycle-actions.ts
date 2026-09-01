@@ -4,6 +4,7 @@ import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import {
+  hasClientEmailColumn,
   isMissingLifecycleColumnsError,
   isMissingBusinessStatusColumnsError,
   mapLifecycleActionError,
@@ -148,14 +149,25 @@ export async function duplicateProject(projectId: string): Promise<never> {
 
   const { supabase, user, orgId } = context;
 
-  const { data: source, error: sourceError } = await supabase
-    .from("projects")
-    .select(
-      "id, title, brief_text, client_name, site_address, priority, due_date, notes, quality_level, status, deleted_at"
-    )
-    .eq("id", projectId)
-    .eq("org_id", orgId)
-    .maybeSingle();
+  const clientEmailAvailable = await hasClientEmailColumn(supabase);
+
+  const { data: source, error: sourceError } = clientEmailAvailable
+    ? await supabase
+        .from("projects")
+        .select(
+          "id, title, brief_text, client_name, client_email, site_address, priority, due_date, notes, quality_level, status, deleted_at"
+        )
+        .eq("id", projectId)
+        .eq("org_id", orgId)
+        .maybeSingle()
+    : await supabase
+        .from("projects")
+        .select(
+          "id, title, brief_text, client_name, site_address, priority, due_date, notes, quality_level, status, deleted_at"
+        )
+        .eq("id", projectId)
+        .eq("org_id", orgId)
+        .maybeSingle();
 
   if (sourceError) {
     if (isMissingLifecycleColumnsError(sourceError)) {
@@ -174,6 +186,15 @@ export async function duplicateProject(projectId: string): Promise<never> {
     title: `${source.title} Copy`,
     brief_text: source.brief_text,
     client_name: source.client_name,
+    ...(clientEmailAvailable
+      ? {
+          client_email:
+            clientEmailAvailable && source && "client_email" in source
+              ? ((source as { client_email?: string | null }).client_email ??
+                null)
+              : null,
+        }
+      : {}),
     site_address: null,
     priority: source.priority,
     due_date: source.due_date,

@@ -38,6 +38,7 @@ function projectToFormState(project: Project) {
   return {
     title: project.title,
     clientName: project.client_name ?? "",
+    clientEmail: project.client_email ?? "",
     siteAddress: project.site_address ?? "",
     briefText: project.brief_text ?? "",
     priority: project.priority,
@@ -51,6 +52,7 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState(project.title);
   const [clientName, setClientName] = useState(project.client_name ?? "");
+  const [clientEmail, setClientEmail] = useState(project.client_email ?? "");
   const [siteAddress, setSiteAddress] = useState(project.site_address ?? "");
   const [briefText, setBriefText] = useState(project.brief_text ?? "");
   const [priority, setPriority] = useState<ProjectPriority>(project.priority);
@@ -64,6 +66,7 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
     const form = projectToFormState(project);
     setTitle(form.title);
     setClientName(form.clientName);
+    setClientEmail(form.clientEmail);
     setSiteAddress(form.siteAddress);
     setBriefText(form.briefText);
     setPriority(form.priority);
@@ -89,6 +92,7 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
     const result = await updateProject(project.id, {
       title,
       client_name: clientName || undefined,
+      client_email: clientEmail || undefined,
       site_address: siteAddress || undefined,
       brief_text: briefText || undefined,
       priority,
@@ -167,6 +171,28 @@ export function EditProjectDialog({ project }: EditProjectDialogProps) {
                 {fieldErrors.client_name?.[0] ? (
                   <p className="text-sm text-destructive">
                     {fieldErrors.client_name[0]}
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="edit-client-email">
+                  Client email{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="edit-client-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={clientEmail}
+                  onChange={(event) => setClientEmail(event.target.value)}
+                  maxLength={254}
+                />
+                {fieldErrors.client_email?.[0] ? (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.client_email[0]}
                   </p>
                 ) : null}
               </div>

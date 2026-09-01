@@ -37,6 +37,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [clientName, setClientName] = useState("");
+  const [clientEmail, setClientEmail] = useState("");
   const [siteAddress, setSiteAddress] = useState("");
   const [briefText, setBriefText] = useState("");
   const [priority, setPriority] = useState<ProjectPriority>("normal");
@@ -50,6 +51,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
   function resetForm() {
     setTitle("");
     setClientName("");
+    setClientEmail("");
     setSiteAddress("");
     setBriefText("");
     setPriority("normal");
@@ -76,6 +78,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
     const result = await createProject({
       title,
       client_name: clientName || undefined,
+      client_email: clientEmail || undefined,
       site_address: siteAddress || undefined,
       brief_text: briefText || undefined,
       priority,
@@ -162,6 +165,29 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
                 {fieldErrors.client_name?.[0] ? (
                   <p className="text-sm text-destructive">
                     {fieldErrors.client_name[0]}
+                  </p>
+                ) : null}
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="client-email">
+                  Client email{" "}
+                  <span className="font-normal text-muted-foreground">
+                    (optional)
+                  </span>
+                </Label>
+                <Input
+                  id="client-email"
+                  type="email"
+                  inputMode="email"
+                  autoComplete="email"
+                  value={clientEmail}
+                  onChange={(event) => setClientEmail(event.target.value)}
+                  placeholder="e.g. jane@example.com"
+                  maxLength={254}
+                />
+                {fieldErrors.client_email?.[0] ? (
+                  <p className="text-sm text-destructive">
+                    {fieldErrors.client_email[0]}
                   </p>
                 ) : null}
               </div>

@@ -32,7 +32,9 @@ import {
   canMutateQuoteSnapshot,
   canResendQuoteDelivery,
 } from "../lib/quotes/transaction";
-import { buildQuoteDeliveryEmail } from "../lib/quotes/delivery-email";
+import { buildQuoteDeliveryEmail, formatQuoteDeliveryFromHeader, resolveQuoteDeliveryReplyTo, isSafeContractorReplyToEmail, buildQuoteDeliverySubject } from "../lib/quotes/delivery-email";
+import { resolveClientFacingTermsSections } from "../lib/quotes/client-terms-display";
+import { DEFAULT_PAYMENT_TERMS, DEFAULT_QUOTE_TERMS } from "../lib/settings/defaults";
 import {
   createSimulatedQuoteSendState,
   decideQuoteSendProviderAction,
@@ -76,9 +78,10 @@ const migrations = readdirSync("supabase/migrations")
   .sort();
 
 assert(
-  "042 is latest quote delivery migration after 041",
+  "042 delivery architecture remains; 043 is additive client_email",
   migrations.includes("042_quote_delivery.sql") &&
-    migrations[migrations.length - 1] === "042_quote_delivery.sql"
+    migrations.includes("043_project_client_email.sql") &&
+    migrations[migrations.length - 1] === "043_project_client_email.sql"
 );
 
 assert(
@@ -442,8 +445,7 @@ assert(
     migrationSrc.includes("finalize_quote_delivery_v1")
 );
 
-const email = buildQuoteDeliveryEmail({
-  quote: {
+const sampleQuote = {
     id: "q-1",
     org_id: "org",
     project_id: "p",
@@ -484,7 +486,10 @@ const email = buildQuoteDeliveryEmail({
     superseded_at: null,
     revision_note: null,
     presentation_mode: "grouped",
-  } satisfies Quote,
+  } satisfies Quote;
+
+const email = buildQuoteDeliveryEmail({
+  quote: sampleQuote,
   issuer: null,
   recipientName: "Client",
   message: defaultQuoteDeliveryMessage({
@@ -492,11 +497,12 @@ const email = buildQuoteDeliveryEmail({
     projectTitle: "Deck",
   }),
   publicUrl: "https://example.test/q/qt_abc",
+  projectTitle: "Deck",
 });
 assert(
   "email contains revision identity and no cost diagnostics",
   email.subject.includes("Q-0001") &&
-    email.text.includes("Revision: 1") &&
+    email.text.includes("Revision 1") &&
     email.text.includes("https://example.test/q/qt_abc") &&
     !email.html.includes("margin") &&
     !email.html.includes("unit_cost")
@@ -662,6 +668,239 @@ assert(
     viewRouteSrc.includes("isLikelyNonHumanUserAgent") &&
     !publicPageSrc.includes("markPublicQuoteViewedByToken") &&
     QUOTE_PUBLIC_VIEW_BEACON_DELAY_MS >= 1000
+);
+
+console.log("\n--- QUOTE-DELIVERY-02 presentation ---");
+
+const workspaceSrc = readFileSync(
+  "components/quotes/QuoteWorkspace.tsx",
+  "utf8"
+);
+const headerSrc = readFileSync("components/quotes/QuoteHeader.tsx", "utf8");
+const publicShellSrc = readFileSync(
+  "components/quotes/QuotePublicShell.tsx",
+  "utf8"
+);
+const templateSrc = readFileSync("components/quotes/QuoteTemplate.tsx", "utf8");
+const historySrc = readFileSync(
+  "components/quotes/QuoteDeliveryHistory.tsx",
+  "utf8"
+);
+const projectSchemaSrc = readFileSync("lib/projects/schema.ts", "utf8");
+const projectActionsSrc = readFileSync("lib/projects/actions.ts", "utf8");
+const migration043 = readFileSync(
+  "supabase/migrations/043_project_client_email.sql",
+  "utf8"
+);
+const newProjectSrc = readFileSync(
+  "components/projects/NewProjectDialog.tsx",
+  "utf8"
+);
+const editProjectSrc = readFileSync(
+  "components/projects/EditProjectDialog.tsx",
+  "utf8"
+);
+
+assert(
+  "desktop Send uses centred dialog; mobile uses bottom sheet",
+  sendSheetSrc.includes('data-quote-send-mode="dialog"') &&
+    sendSheetSrc.includes('data-quote-send-mode="sheet"') &&
+    sendSheetSrc.includes("useIsDesktop") &&
+    sendSheetSrc.includes('side="bottom"') &&
+    sendSheetSrc.includes("sm:max-w-[36rem]")
+);
+
+assert(
+  "send form labels Client and Email, not Recipient",
+  sendSheetSrc.includes(">Client<") &&
+    sendSheetSrc.includes('htmlFor="quote-send-email">Email') &&
+    !sendSheetSrc.includes(">Recipient<") &&
+    sendSheetSrc.includes("data-quote-send-summary")
+);
+
+assert(
+  "Project client_email is optional default only",
+  projectSchemaSrc.includes("client_email") &&
+    newProjectSrc.includes("Client email") &&
+    editProjectSrc.includes("edit-client-email") &&
+    sendSheetSrc.includes("projectClientEmail") &&
+    sendSheetSrc.includes("quote.client_name") &&
+    /latest\?\.recipient_email \|\| projectClientEmail/.test(sendSheetSrc)
+);
+
+assert(
+  "043 adds nullable projects.client_email and does not rewrite deliveries",
+  migration043.includes("add column if not exists client_email text") &&
+    !/alter table public\.quote_deliveries/i.test(migration043) &&
+    !projectActionsSrc.includes('.from("quote_deliveries")')
+);
+
+assert(
+  "delivery recipient snapshot is quote_deliveries not Project",
+  actionsSrc.includes("p_recipient_email: recipientEmail") &&
+    !actionsSrc.includes("client_email") &&
+    historySrc.includes("row.recipient_email")
+);
+
+assert(
+  "sidebar is one sticky stack; summary card is not independently sticky",
+  workspaceSrc.includes('data-quote-sidebar-stack="true"') &&
+    workspaceSrc.includes("xl:sticky") &&
+    !summarySrc.includes("lg:sticky") &&
+    workspaceSrc.includes("xl:grid-cols-[minmax(0,1fr)_minmax(280px,320px)]")
+);
+
+assert(
+  "quote header owns status; summary does not repeat badge",
+  headerSrc.includes("formatQuoteWorkspaceTitle") &&
+    headerSrc.includes("statusDef.label") &&
+    !summarySrc.includes("formatQuoteBadgeLabel") &&
+    !workspaceSrc.includes("formatQuoteBadgeLabel")
+);
+
+const branded = buildQuoteDeliveryEmail({
+  quote: {
+    ...sampleQuote,
+    quote_number: "Q-0002",
+    title: "Deck Test 20",
+  },
+  issuer: {
+    organisationName: "Quotr Limited",
+    tradingName: "ERC Contracting",
+    legalName: "ERC Contracting Limited",
+    contactEmail: "office@erc.example",
+    contactPhone: "021 000 000",
+    website: null,
+    addressLine1: null,
+    addressLine2: null,
+    city: null,
+    region: null,
+    postcode: null,
+    addressCountry: "New Zealand",
+    nzbn: null,
+    gstNumber: null,
+    defaultGstRate: 15,
+    defaultQuoteValidityDays: 30,
+    defaultPaymentTerms: "Payment 50% deposit.",
+    defaultQuoteTerms: null,
+    defaultQuoteExclusions: null,
+    defaultQuoteAssumptions: null,
+    logoUrl: "https://cdn.example/logo.png",
+    brandPrimaryColour: null,
+    brandAccentColour: null,
+    defaultMaterialWastagePercent: 0,
+    deckingWastagePercent: null,
+    sheetMaterialWastagePercent: null,
+    flooringWastagePercent: null,
+    paintWastagePercent: null,
+    timberFramingWastagePercent: null,
+  },
+  recipientName: "Alex",
+  message: "Hi Alex, please find our quote for Deck Test 20.",
+  publicUrl: "https://example.test/q/qt_abc",
+  projectTitle: "Deck Test 20",
+});
+
+assert(
+  "email subject is contractor-first with project",
+  branded.subject ===
+    "ERC Contracting — Quote Q-0002 for Deck Test 20" &&
+    buildQuoteDeliverySubject({
+      companyName: "ERC Contracting",
+      quoteNumber: "Q-0002",
+    }) === "ERC Contracting — Quote Q-0002"
+);
+
+assert(
+  "FROM display uses contractor via Quotr and verified address",
+  formatQuoteDeliveryFromHeader(
+    "ERC Contracting",
+    "quotes@quotes.get-quotr.com"
+  ) === "ERC Contracting via Quotr <quotes@quotes.get-quotr.com>" &&
+    formatQuoteDeliveryFromHeader(
+      "ERC Contracting",
+      "Quotr Limited <quotes@quotes.get-quotr.com>"
+    ) === "ERC Contracting via Quotr <quotes@quotes.get-quotr.com>"
+);
+
+assert(
+  "Reply-To uses issuer email, never recipient input",
+  resolveQuoteDeliveryReplyTo("office@erc.example") ===
+    "office@erc.example" &&
+    !isSafeContractorReplyToEmail("not-an-email") &&
+    !isSafeContractorReplyToEmail("office@erc.example\nBcc:evil@x.com") &&
+    resolveQuoteDeliveryReplyTo("client@example.com") ===
+      resolveQuoteDeliveryReplyTo("client@example.com") &&
+    sendFn.includes("resolveQuoteDeliveryReplyTo(issuer?.contactEmail)") &&
+    !sendFn.includes("replyTo: parsed.data.recipientEmail")
+);
+
+assert(
+  "HTML email has View Quote button, text fallback, no Accept",
+  branded.html.includes("View Quote") &&
+    branded.html.includes("<a href=") &&
+    branded.text.includes("View quote:") &&
+    !branded.html.includes("Accept") &&
+    !branded.text.includes("Accept") &&
+    branded.html.includes("Sent securely via Quotr") &&
+    branded.text.includes("Sent securely via Quotr")
+);
+
+assert(
+  "email is client-safe",
+  !branded.html.toLowerCase().includes("unit_cost") &&
+    !branded.html.toLowerCase().includes("productivity") &&
+    !branded.html.toLowerCase().includes("gross profit") &&
+    !branded.html.includes("margin") &&
+    !branded.html.toLowerCase().includes("rate source")
+);
+
+assert(
+  "public shell has identity, status, print, and unused acceptance seam",
+  publicShellSrc.includes("Print / Save PDF") &&
+    publicShellSrc.includes("formatClientQuoteStatusLabel") &&
+    publicShellSrc.includes('data-quote-acceptance-seam="true"') &&
+    !publicShellSrc.includes("Accept quote") &&
+    publicDocSrc.includes("QuotePublicShell")
+);
+
+assert(
+  "duplicate default payment terms are stripped from Terms section",
+  resolveClientFacingTermsSections({
+    quoteTerms: `${DEFAULT_QUOTE_TERMS}\n\n${DEFAULT_PAYMENT_TERMS}`,
+    issuerPaymentTerms: DEFAULT_PAYMENT_TERMS,
+    hasValiditySection: true,
+  }).terms === null &&
+    resolveClientFacingTermsSections({
+      quoteTerms: `${DEFAULT_QUOTE_TERMS}\n\n${DEFAULT_PAYMENT_TERMS}`,
+      issuerPaymentTerms: DEFAULT_PAYMENT_TERMS,
+      hasValiditySection: true,
+    }).paymentTerms === DEFAULT_PAYMENT_TERMS &&
+    resolveClientFacingTermsSections({
+      quoteTerms: "Site must remain accessible.\n\nCustom retention 10%.",
+      issuerPaymentTerms: DEFAULT_PAYMENT_TERMS,
+      hasValiditySection: true,
+    }).terms?.includes("Site must remain accessible") === true &&
+    templateSrc.includes("resolveClientFacingTermsSections")
+);
+
+assert(
+  "delivery history keeps Submitted/Delivered/view/Resent distinct",
+  historySrc.includes("First client-page view") &&
+    historySrc.includes("Submitted") &&
+    historySrc.includes("Delivered") &&
+    historySrc.includes("Resent") &&
+    !historySrc.includes('"Sent" to')
+);
+
+assert(
+  "send path still prepare → provider → accepted → finalize",
+  sendFn.indexOf("PREPARE_QUOTE_DELIVERY_RPC") <
+    sendFn.indexOf("provider.send") &&
+    sendFn.indexOf("provider.send") <
+      sendFn.indexOf("RECORD_QUOTE_DELIVERY_ACCEPTED_RPC") &&
+    sendFn.indexOf("RECORD_QUOTE_DELIVERY_ACCEPTED_RPC") <
+      sendFn.indexOf("FINALIZE_QUOTE_DELIVERY_RPC")
 );
 
 if (process.env.RUN_LIVE_DELIVERY_TESTS === "1") {

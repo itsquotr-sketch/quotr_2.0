@@ -13,8 +13,10 @@ import { groupQuoteItemsBySection, type QuoteItemSection } from "@/lib/quotes/ma
 import {
   filterClientFacingNarrative,
   filterInternalLinesFromBlock,
-  sanitizeClientNarrativeBlock,
+  sanitizeClientNarrativeDisplay,
 } from "@/lib/quotes/client-narrative";
+import { resolveClientFacingTermsSections } from "@/lib/quotes/client-terms-display";
+import { ClientFormattedText } from "@/components/quotes/ClientFormattedText";
 import {
   groupedSectionLabel,
   lumpSumScopeNarrative,
@@ -122,7 +124,7 @@ function QuoteItemsTable({
   brandPrimary: string | null;
 }) {
   return (
-    <div className="overflow-x-auto">
+    <div className="max-sm:overflow-x-hidden sm:overflow-x-auto">
       <table className="quote-template-table w-full table-fixed text-xs print:text-[9pt]">
         <colgroup>
           <col />
@@ -206,9 +208,10 @@ function TextBlockSection({
       >
         {title}
       </h4>
-      <p className="break-words text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:text-[10pt]">
-        {content}
-      </p>
+      <ClientFormattedText
+        className="text-sm leading-relaxed text-neutral-600 print:text-[10pt]"
+        text={content}
+      />
     </section>
   );
 }
@@ -266,7 +269,13 @@ export function QuoteTemplate({
   const contactPrimary = [email, phone].filter(Boolean).join(" · ");
 
   const gstTreatmentNote = formatGstTreatmentNote(companySettings);
-  const paymentTerms = companySettings?.defaultPaymentTerms?.trim() || null;
+  const termsSections = resolveClientFacingTermsSections({
+    quoteTerms: filterInternalLinesFromBlock(quote.terms),
+    issuerPaymentTerms: companySettings?.defaultPaymentTerms ?? null,
+    hasValiditySection: Boolean(quote.valid_until),
+  });
+  const paymentTerms = termsSections.paymentTerms;
+  const clientTerms = termsSections.terms;
   const hasOptional = presentation.optionalItems.length > 0;
   const lumpSumScope = filterInternalLinesFromBlock(
     lumpSumScopeNarrative(quote.scope_summary, presentation)
@@ -364,9 +373,10 @@ export function QuoteTemplate({
           >
             Scope summary
           </h3>
-          <p className="text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:text-[10pt]">
-            {filterInternalLinesFromBlock(quote.scope_summary)}
-          </p>
+          <ClientFormattedText
+            className="text-sm leading-relaxed text-neutral-600 print:text-[10pt]"
+            text={filterInternalLinesFromBlock(quote.scope_summary) ?? ""}
+          />
         </section>
       ) : null}
 
@@ -378,9 +388,10 @@ export function QuoteTemplate({
           >
             Scope
           </h3>
-          <p className="text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:text-[10pt]">
-            {lumpSumScope}
-          </p>
+          <ClientFormattedText
+            className="text-sm leading-relaxed text-neutral-600 print:text-[10pt]"
+            text={lumpSumScope}
+          />
         </section>
       ) : null}
 
@@ -404,7 +415,7 @@ export function QuoteTemplate({
             />
           ) : (
             presentation.groupedSections.map((section) => {
-              const sectionDescription = sanitizeClientNarrativeBlock(
+              const sectionDescription = sanitizeClientNarrativeDisplay(
                 section.sectionDescription
               );
               return (
@@ -421,9 +432,10 @@ export function QuoteTemplate({
                     </h3>
                   ) : null}
                   {sectionDescription ? (
-                    <p className="mb-2 text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:mb-1.5 print:text-[9.5pt]">
-                      {sectionDescription}
-                    </p>
+                    <ClientFormattedText
+                      className="mb-2 text-sm leading-relaxed text-neutral-600 print:mb-1.5 print:text-[9.5pt]"
+                      text={sectionDescription}
+                    />
                   ) : null}
                   <div className="flex items-baseline justify-between gap-4 border-t border-neutral-200 pt-2">
                     <p className="text-sm font-medium text-neutral-900 print:text-[10pt]">
@@ -450,7 +462,7 @@ export function QuoteTemplate({
             />
           ) : (
             detailedSections.map((section) => {
-              const sectionDescription = sanitizeClientNarrativeBlock(
+              const sectionDescription = sanitizeClientNarrativeDisplay(
                 section.sectionDescription
               );
               return (
@@ -467,9 +479,10 @@ export function QuoteTemplate({
                     </h3>
                   ) : null}
                   {sectionDescription ? (
-                    <p className="mb-2 text-sm leading-relaxed text-neutral-600 whitespace-pre-wrap print:mb-1.5 print:text-[9.5pt]">
-                      {sectionDescription}
-                    </p>
+                    <ClientFormattedText
+                      className="mb-2 text-sm leading-relaxed text-neutral-600 print:mb-1.5 print:text-[9.5pt]"
+                      text={sectionDescription}
+                    />
                   ) : null}
                   <QuoteItemsTable
                     items={section.items}
@@ -578,7 +591,7 @@ export function QuoteTemplate({
           ) : null}
           <TextBlockSection
             title="Terms"
-            content={filterInternalLinesFromBlock(quote.terms)}
+            content={clientTerms}
             accentColour={brandAccent}
           />
           <TextBlockSection

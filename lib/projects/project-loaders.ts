@@ -9,10 +9,13 @@ import {
 import {
   getProjectSelect,
   hasBusinessStatusColumns,
+  hasClientEmailColumn,
   hasLifecycleColumns,
   isMissingBusinessStatusColumnsError,
+  isMissingClientEmailColumnError,
   isMissingLifecycleColumnsError,
   markBusinessStatusColumnsUnavailable,
+  markClientEmailColumnUnavailable,
   markLifecycleColumnsUnavailable,
   withLifecycleDefaults,
 } from "@/lib/projects/query-utils";
@@ -27,10 +30,17 @@ export async function getProjectWithContext(
   const businessStatusAvailable = lifecycleAvailable
     ? await hasBusinessStatusColumns(context.supabase)
     : false;
+  const clientEmailAvailable = await hasClientEmailColumn(context.supabase);
 
   let query = context.supabase
     .from("projects")
-    .select(getProjectSelect(lifecycleAvailable, businessStatusAvailable))
+    .select(
+      getProjectSelect(
+        lifecycleAvailable,
+        businessStatusAvailable,
+        clientEmailAvailable
+      )
+    )
     .eq("id", projectId)
     .eq("org_id", context.orgId);
 
@@ -48,6 +58,11 @@ export async function getProjectWithContext(
 
     if (isMissingBusinessStatusColumnsError(error) && !retried) {
       markBusinessStatusColumnsUnavailable();
+      return getProjectWithContext(context, projectId, true);
+    }
+
+    if (isMissingClientEmailColumnError(error) && !retried) {
+      markClientEmailColumnUnavailable();
       return getProjectWithContext(context, projectId, true);
     }
 

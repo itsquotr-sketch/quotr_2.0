@@ -6,12 +6,16 @@ import { getAuthOrgContext } from "@/lib/assistant/state";
 import { projectDetailsSchema } from "@/lib/projects/schema";
 import {
   applyProjectListFilter,
+  clientEmailMigrationRequiredMessage,
   getProjectSelect,
   hasBusinessStatusColumns,
+  hasClientEmailColumn,
   hasLifecycleColumns,
   isMissingBusinessStatusColumnsError,
+  isMissingClientEmailColumnError,
   isMissingLifecycleColumnsError,
   markBusinessStatusColumnsUnavailable,
+  markClientEmailColumnUnavailable,
   markLifecycleColumnsUnavailable,
   withLifecycleDefaults,
 } from "@/lib/projects/query-utils";
@@ -49,11 +53,16 @@ export async function listProjects(
   const businessStatusAvailable = lifecycleAvailable
     ? await hasBusinessStatusColumns(context.supabase)
     : false;
+  const clientEmailAvailable = await hasClientEmailColumn(context.supabase);
 
   let query = context.supabase
     .from("projects")
     .select(
-      getProjectSelect(lifecycleAvailable, businessStatusAvailable)
+      getProjectSelect(
+        lifecycleAvailable,
+        businessStatusAvailable,
+        clientEmailAvailable
+      )
     )
     .order("created_at", { ascending: false });
 
@@ -86,6 +95,11 @@ export async function listProjects(
 
     if (isMissingBusinessStatusColumnsError(error) && !retried) {
       markBusinessStatusColumnsUnavailable();
+      return listProjects(options, true);
+    }
+
+    if (isMissingClientEmailColumnError(error) && !retried) {
+      markClientEmailColumnUnavailable();
       return listProjects(options, true);
     }
 
@@ -291,12 +305,19 @@ export async function createProject(
   const {
     title,
     client_name,
+    client_email,
     site_address,
     brief_text,
     priority,
     due_date,
     notes,
   } = parsed.data;
+  const clientEmailValue = client_email || null;
+  const clientEmailAvailable = await hasClientEmailColumn(supabase);
+
+  if (clientEmailValue && !clientEmailAvailable) {
+    return { error: clientEmailMigrationRequiredMessage() };
+  }
 
   const { data: project, error } = await supabase
     .from("projects")
@@ -305,6 +326,7 @@ export async function createProject(
       created_by: user.id,
       title,
       client_name: client_name || null,
+      ...(clientEmailAvailable ? { client_email: clientEmailValue } : {}),
       site_address: site_address || null,
       brief_text: brief_text || null,
       priority,
@@ -327,6 +349,7 @@ export async function createProject(
           created_by: user.id,
           title,
           client_name: client_name || null,
+          ...(clientEmailAvailable ? { client_email: clientEmailValue } : {}),
           site_address: site_address || null,
           brief_text: brief_text || null,
           priority,
@@ -376,21 +399,29 @@ export async function updateProject(
 
   const { supabase, orgId } = context;
   const lifecycleAvailable = await hasLifecycleColumns(supabase);
+  const clientEmailAvailable = await hasClientEmailColumn(supabase);
   const {
     title,
     client_name,
+    client_email,
     site_address,
     brief_text,
     priority,
     due_date,
     notes,
   } = parsed.data;
+  const clientEmailValue = client_email || null;
+
+  if (clientEmailValue && !clientEmailAvailable) {
+    return { error: clientEmailMigrationRequiredMessage() };
+  }
 
   let query = supabase
     .from("projects")
     .update({
       title,
       client_name: client_name || null,
+      ...(clientEmailAvailable ? { client_email: clientEmailValue } : {}),
       site_address: site_address || null,
       brief_text: brief_text || null,
       priority,

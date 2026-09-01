@@ -4,7 +4,10 @@ import { Loader2 } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPricingDate } from "@/lib/pricing/format";
-import { formatQuoteRevisionLabel } from "@/lib/quotes/revision";
+import {
+  formatQuoteNumberRevision,
+  formatQuoteWorkspaceTitle,
+} from "@/lib/quotes/display";
 import { getQuoteStatusDefinition } from "@/lib/quotes/status";
 import type { Quote } from "@/lib/quotes/types";
 
@@ -29,10 +32,6 @@ export function QuoteHeader({
   onSave,
 }: QuoteHeaderProps) {
   const statusDef = getQuoteStatusDefinition(quote.status);
-  const revisionLabel = formatQuoteRevisionLabel({
-    quote_number: quote.quote_number,
-    revision_number: quote.revision_number,
-  });
 
   return (
     <div className="space-y-2 border-b pb-4">
@@ -40,23 +39,17 @@ export function QuoteHeader({
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
             <h1 className="text-lg font-semibold tracking-tight sm:text-xl">
-              {quote.title}
+              {formatQuoteWorkspaceTitle(quote.title)}
             </h1>
             <Badge variant={statusDef.variant}>{statusDef.label}</Badge>
-            <Badge variant="outline" className="text-[10px]">
-              Revision {quote.revision_number}
-            </Badge>
-            {quote.status === "draft" ? (
-              <Badge variant="outline" className="text-[10px]">
-                Draft quote
-              </Badge>
-            ) : null}
           </div>
+          <p className="text-sm font-medium text-foreground">
+            {formatQuoteNumberRevision(quote)}
+          </p>
           <p className="text-sm text-muted-foreground">
             {buildMetaLine(quote, projectTitle)}
           </p>
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-            <span>{revisionLabel}</span>
             {quote.issue_date ? (
               <span>Issued {formatPricingDate(quote.issue_date)}</span>
             ) : null}

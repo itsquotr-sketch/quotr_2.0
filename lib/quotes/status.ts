@@ -100,3 +100,30 @@ export function formatQuoteBadgeLabel(status: QuoteStatus): string {
       return getQuoteStatusDefinition(status).label;
   }
 }
+
+/** Client-facing public Quote status. Avoid internal wording like "Quote sent". */
+export function formatClientQuoteStatusLabel(
+  status: QuoteStatus,
+  options?: { superseded?: boolean; expired?: boolean }
+): string {
+  if (options?.superseded || status === "superseded") {
+    return "Superseded";
+  }
+  if (options?.expired || status === "expired") {
+    return "Expired";
+  }
+  switch (status) {
+    case "sent":
+      return "Sent";
+    case "viewed":
+      return "Viewed";
+    case "accepted":
+      return "Accepted";
+    case "declined":
+      return "Declined";
+    case "draft":
+      return "Sent";
+    default:
+      return getQuoteStatusDefinition(status).label;
+  }
+}

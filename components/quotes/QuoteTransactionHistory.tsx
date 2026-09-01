@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { formatPricingDate } from "@/lib/pricing/format";
+import { formatQuoteDateTime } from "@/lib/quotes/display";
 import { getQuoteStatusDefinition } from "@/lib/quotes/status";
 import type { QuoteEventRecord, QuoteThreadRevision } from "@/lib/quotes/types";
 import {
@@ -14,9 +14,7 @@ import {
 } from "@/components/ui/sheet";
 
 function formatStamp(value: string | null): string | null {
-  if (!value) return null;
-  const asDate = value.length <= 10 ? value : value.slice(0, 10);
-  return formatPricingDate(asDate);
+  return formatQuoteDateTime(value);
 }
 
 function revisionLine(revision: QuoteThreadRevision): string {
@@ -100,7 +98,7 @@ export function QuoteTransactionHistory({
                     <span className="font-medium">{eventLabel(event)}</span>
                     <span className="text-muted-foreground">
                       {" "}
-                      {new Date(event.occurred_at).toLocaleString("en-NZ")}
+                      {formatQuoteDateTime(event.occurred_at)}
                     </span>
                   </li>
                 ))

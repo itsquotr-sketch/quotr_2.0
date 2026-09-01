@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CreateFinalPricingDialog } from "@/components/pricing/CreateFinalPricingDialog";
 import type { PricingSummary } from "@/lib/pricing/types";
-import { formatQuoteBadgeLabel } from "@/lib/quotes/status";
+import { getQuoteStatusDefinition } from "@/lib/quotes/status";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { cn } from "@/lib/utils";
 
@@ -135,7 +135,7 @@ export function ProjectWorkspaceTabs({
             >
               Quote
               <Badge variant="outline" className="text-[10px]">
-                {formatQuoteBadgeLabel(quoteSummary!.status)}
+                {getQuoteStatusDefinition(quoteSummary!.status).label}
               </Badge>
             </Link>
           ) : (

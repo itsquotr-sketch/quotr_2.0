@@ -19,17 +19,28 @@ export const PROJECT_SELECT = `${PROJECT_SELECT_BASE}, ${PROJECT_SELECT_LIFECYCL
 
 export const PROJECT_SELECT_WITHOUT_BUSINESS_STATUS = `${PROJECT_SELECT_BASE}, ${PROJECT_SELECT_LIFECYCLE}`;
 
+export function clientEmailMigrationRequiredMessage(): string {
+  return "Client email requires a database update. Please run migration 043_project_client_email.sql.";
+}
+
 export function getProjectSelect(
   lifecycleAvailable: boolean,
-  businessStatusAvailable: boolean
+  businessStatusAvailable: boolean,
+  clientEmailAvailable = false
 ): string {
+  const base = clientEmailAvailable
+    ? `${PROJECT_SELECT_BASE}, client_email`
+    : PROJECT_SELECT_BASE;
+
   if (!lifecycleAvailable) {
-    return PROJECT_SELECT_BASE;
+    return base;
   }
 
-  return businessStatusAvailable
-    ? PROJECT_SELECT
-    : PROJECT_SELECT_WITHOUT_BUSINESS_STATUS;
+  const lifecycleAndStatus = businessStatusAvailable
+    ? `${PROJECT_SELECT_LIFECYCLE}, ${PROJECT_SELECT_BUSINESS_STATUS}`
+    : PROJECT_SELECT_LIFECYCLE;
+
+  return `${base}, ${lifecycleAndStatus}`;
 }
 
 type SupabaseError = { message?: string; code?: string } | null;
@@ -46,6 +57,20 @@ export function isMissingLifecycleColumnsError(error: SupabaseError): boolean {
     (message.includes("archived_at") && message.includes("does not exist")) ||
     (message.includes("deleted_at") && message.includes("does not exist")) ||
     (message.includes("duplicated_from_project_id") &&
+      message.includes("does not exist"))
+  );
+}
+
+export function isMissingClientEmailColumnError(error: SupabaseError): boolean {
+  if (!error) {
+    return false;
+  }
+
+  const message = (error.message ?? "").toLowerCase();
+  return (
+    message.includes("client_email") &&
+    (error.code === "42703" ||
+      error.code === "PGRST204" ||
       message.includes("does not exist"))
   );
 }
@@ -94,6 +119,7 @@ export function withLifecycleDefaults(
   return {
     ...(row as Omit<
       Project,
+      | "client_email"
       | "archived_at"
       | "deleted_at"
       | "duplicated_from_project_id"
@@ -103,6 +129,7 @@ export function withLifecycleDefaults(
       | "won_at"
       | "lost_at"
     >),
+    client_email: (row.client_email as string | null | undefined) ?? null,
     archived_at: (row.archived_at as string | null | undefined) ?? null,
     deleted_at: (row.deleted_at as string | null | undefined) ?? null,
     duplicated_from_project_id:
@@ -163,6 +190,7 @@ export function applyProjectListFilter(
 /** Only cache a positive result — never cache false (avoids stale false after migration). */
 let lifecycleColumnsConfirmed = false;
 let businessStatusColumnsConfirmed = false;
+let clientEmailColumnConfirmed = false;
 
 export function markLifecycleColumnsUnavailable() {
   lifecycleColumnsConfirmed = false;
@@ -170,6 +198,10 @@ export function markLifecycleColumnsUnavailable() {
 
 export function markBusinessStatusColumnsUnavailable() {
   businessStatusColumnsConfirmed = false;
+}
+
+export function markClientEmailColumnUnavailable() {
+  clientEmailColumnConfirmed = false;
 }
 
 export async function hasLifecycleColumns(
@@ -226,7 +258,35 @@ export async function hasBusinessStatusColumns(
   return true;
 }
 
+export async function hasClientEmailColumn(
+  supabase: Awaited<
+    ReturnType<typeof import("@/lib/supabase/server").createClient>
+  >
+): Promise<boolean> {
+  if (clientEmailColumnConfirmed) {
+    return true;
+  }
+
+  const { error } = await supabase
+    .from("projects")
+    .select("client_email")
+    .limit(1);
+
+  if (!error) {
+    clientEmailColumnConfirmed = true;
+    return true;
+  }
+
+  if (isMissingClientEmailColumnError(error)) {
+    return false;
+  }
+
+  console.error("[hasClientEmailColumn] probe failed:", error.message);
+  return true;
+}
+
 export function resetLifecycleColumnsCacheForTests() {
   lifecycleColumnsConfirmed = false;
   businessStatusColumnsConfirmed = false;
+  clientEmailColumnConfirmed = false;
 }
