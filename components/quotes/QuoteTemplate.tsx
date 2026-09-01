@@ -23,7 +23,10 @@ import {
   OPTIONAL_ITEMS_CLIENT_NOTE,
   presentQuoteClientDocument,
 } from "@/lib/quotes/presentation";
-import { sanitizeClientQuoteDescription } from "@/lib/quotes/sanitize";
+import {
+  clientSafeQuoteLineDescription,
+  isEstimatorDiagnosticDescription,
+} from "@/lib/quotes/client-line-description";
 import { QuoteAcceptanceRecordSection } from "@/components/quotes/QuoteAcceptanceRecord";
 import type { QuoteAcceptanceRecord } from "@/lib/quotes/acceptance-types";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
@@ -54,7 +57,7 @@ function MetaRow({ label, value }: { label: string; value: string }) {
 }
 
 function QuoteLineItemRow({ item }: { item: QuoteItem }) {
-  const description = sanitizeClientQuoteDescription(item.description);
+  const description = clientSafeQuoteLineDescription(item.description);
 
   return (
     <>
@@ -65,11 +68,11 @@ function QuoteLineItemRow({ item }: { item: QuoteItem }) {
         )}
       >
         <td className="py-1.5 pr-3 align-top print:py-1 print:pr-2">
-          <p className="font-medium text-neutral-900 print:text-[9.5pt]">
+          <p className="font-medium break-words text-neutral-900 print:text-[9.5pt]">
             {item.label}
           </p>
           {description ? (
-            <p className="mt-0.5 text-xs leading-snug text-neutral-500 print:text-[9pt]">
+            <p className="mt-0.5 text-xs leading-snug break-words text-neutral-500 print:text-[9pt]">
               {description}
             </p>
           ) : null}
@@ -91,9 +94,9 @@ function QuoteLineItemRow({ item }: { item: QuoteItem }) {
       <tr className="sm:hidden print:hidden">
         <td colSpan={5} className="border-b border-neutral-200 py-2.5 last:border-0">
           <div className={cn("space-y-1", item.optional && "text-neutral-500")}>
-            <p className="font-medium text-neutral-900">{item.label}</p>
+            <p className="font-medium break-words text-neutral-900">{item.label}</p>
             {description ? (
-              <p className="text-xs leading-snug text-neutral-500">
+              <p className="text-xs leading-snug break-words text-neutral-500">
                 {description}
               </p>
             ) : null}
@@ -297,7 +300,7 @@ export function QuoteTemplate({
     <article
       id="quote-template"
       className={cn(
-        "quote-template mx-auto w-full max-w-[960px] rounded-xl border border-border/60 bg-white p-5 text-neutral-900 shadow-sm sm:p-7",
+        "quote-template mx-auto w-full min-w-0 max-w-[960px] overflow-x-hidden rounded-xl border border-border/60 bg-white p-5 text-neutral-900 shadow-sm sm:p-7",
         "print:max-w-none print:rounded-none print:border-0 print:bg-white print:p-0 print:text-[10pt] print:leading-normal print:shadow-none print:text-black"
       )}
       style={brandStyle}
@@ -419,9 +422,13 @@ export function QuoteTemplate({
             />
           ) : (
             presentation.groupedSections.map((section) => {
-              const sectionDescription = sanitizeClientNarrativeDisplay(
+              const rawSection = sanitizeClientNarrativeDisplay(
                 section.sectionDescription
               );
+              const sectionDescription =
+                rawSection && !isEstimatorDiagnosticDescription(rawSection)
+                  ? rawSection
+                  : null;
               return (
                 <section
                   key={section.sectionTitle ?? "general"}
@@ -466,9 +473,13 @@ export function QuoteTemplate({
             />
           ) : (
             detailedSections.map((section) => {
-              const sectionDescription = sanitizeClientNarrativeDisplay(
+              const rawSection = sanitizeClientNarrativeDisplay(
                 section.sectionDescription
               );
+              const sectionDescription =
+                rawSection && !isEstimatorDiagnosticDescription(rawSection)
+                  ? rawSection
+                  : null;
               return (
                 <section
                   key={section.sectionTitle ?? "general"}

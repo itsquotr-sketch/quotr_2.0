@@ -1,5 +1,6 @@
 import { createHmac, createHash, timingSafeEqual } from "node:crypto";
 import type { QuoteDeliveryStatus } from "@/lib/quotes/delivery-types";
+import type { NotificationDeliveryStatus } from "@/lib/quotes/notifications";
 
 export type ResendWebhookEvent = {
   providerEventId: string;
@@ -107,5 +108,34 @@ export function nextDeliveryStatusFromWebhook(
   if (current === "bounced") return current;
   if (incoming === "delivered") return "delivered";
   if (incoming === "failed" && current === "preparing") return "failed";
+  return current;
+}
+
+export function mapResendEventToNotificationDeliveryStatus(
+  type: string
+): NotificationDeliveryStatus | null {
+  switch (type) {
+    case "email.sent":
+      return "submitted";
+    case "email.delivered":
+      return "delivered";
+    case "email.bounced":
+    case "email.complained":
+    case "email.failed":
+    case "email.delivery_delayed":
+      return "failed";
+    default:
+      return null;
+  }
+}
+
+export function nextNotificationDeliveryStatusFromWebhook(
+  current: NotificationDeliveryStatus,
+  incoming: NotificationDeliveryStatus
+): NotificationDeliveryStatus {
+  if (current === "delivered" && incoming !== "failed") return current;
+  if (incoming === "delivered") return "delivered";
+  if (incoming === "failed") return "failed";
+  if (incoming === "submitted" && current === "pending") return "submitted";
   return current;
 }

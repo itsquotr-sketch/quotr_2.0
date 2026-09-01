@@ -3,9 +3,12 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import {
   digestWebhookPayload,
   mapResendEventToDeliveryStatus,
+  mapResendEventToNotificationDeliveryStatus,
   nextDeliveryStatusFromWebhook,
+  nextNotificationDeliveryStatusFromWebhook,
   verifyResendWebhookSignature,
 } from "@/lib/quotes/delivery-webhooks";
+import { isMissingNotificationTableError } from "@/lib/quotes/notifications";
 
 export async function POST(request: Request) {
   const payload = await request.text();
@@ -92,6 +95,41 @@ export async function POST(request: Request) {
       patch.failure_code = type;
     }
     await admin.from("quote_deliveries").update(patch).eq("id", delivery.id);
+  }
+
+  if (providerMessageId) {
+    const incomingNotification =
+      mapResendEventToNotificationDeliveryStatus(type);
+    const { data: notificationDelivery, error: notificationError } = await admin
+      .from("notification_deliveries")
+      .select("id, status")
+      .eq("provider", "resend")
+      .eq("provider_message_id", providerMessageId)
+      .maybeSingle();
+    if (
+      notificationError &&
+      !isMissingNotificationTableError(notificationError)
+    ) {
+      return NextResponse.json({ ok: false }, { status: 500 });
+    }
+    if (notificationDelivery && incomingNotification) {
+      const next = nextNotificationDeliveryStatusFromWebhook(
+        notificationDelivery.status as never,
+        incomingNotification
+      );
+      const notificationPatch: Record<string, unknown> = { status: next };
+      if (next === "delivered") {
+        notificationPatch.delivered_at = new Date().toISOString();
+      }
+      if (next === "failed") {
+        notificationPatch.failed_at = new Date().toISOString();
+        notificationPatch.last_error_safe = "Email could not be delivered.";
+      }
+      await admin
+        .from("notification_deliveries")
+        .update(notificationPatch)
+        .eq("id", notificationDelivery.id);
+    }
   }
 
   return NextResponse.json({ ok: true, duplicate: Boolean(existing) });

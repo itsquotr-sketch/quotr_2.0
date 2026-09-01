@@ -7,8 +7,10 @@ import {
   sanitizeClientNarrativeBlock,
 } from "@/lib/quotes/client-narrative";
 import {
+  clientSafeQuoteLineDescription,
+} from "@/lib/quotes/client-line-description";
+import {
   containsSuspiciousQuoteText,
-  sanitizeClientQuoteDescription,
   sanitizeClientQuoteLabel,
 } from "@/lib/quotes/sanitize";
 
@@ -90,10 +92,11 @@ export function resolveQuoteItemLabel(item: PricingItem): string {
 }
 
 export function resolveQuoteItemDescription(item: PricingItem): string | null {
-  // Structural: only client-owned fields. Internal estimator notes never seed this.
+  // Intentional client copy only. Never fall back to estimator notes,
+  // internal_description, notes_internal, metadata or calculation details.
   const description =
     item.client_description?.trim() || item.notes_client?.trim() || null;
-  return sanitizeClientQuoteDescription(description);
+  return clientSafeQuoteLineDescription(description);
 }
 
 function resolveQuoteUnitPrice(item: PricingItem): number | null {

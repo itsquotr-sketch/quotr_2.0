@@ -78,11 +78,12 @@ const migrations = readdirSync("supabase/migrations")
   .sort();
 
 assert(
-  "042 delivery architecture remains; 044 is latest additive acceptance",
+  "042 delivery architecture remains; 044–045 are later additive",
   migrations.includes("042_quote_delivery.sql") &&
     migrations.includes("043_project_client_email.sql") &&
     migrations.includes("044_quote_acceptance.sql") &&
-    migrations[migrations.length - 1] === "044_quote_acceptance.sql"
+    migrations.includes("045_commercial_close.sql") &&
+    migrations[migrations.length - 1] === "045_commercial_close.sql"
 );
 
 assert(

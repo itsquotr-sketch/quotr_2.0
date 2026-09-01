@@ -604,7 +604,7 @@ const migrations = readdirSync(join(root, "supabase/migrations"))
   .sort();
 check(
   "39. no migrations unless explicitly justified",
-  migrations[migrations.length - 1] === "044_quote_acceptance.sql"
+  migrations[migrations.length - 1] === "045_commercial_close.sql"
 );
 
 const fenceTimberFacts: EstimateFact[] = [

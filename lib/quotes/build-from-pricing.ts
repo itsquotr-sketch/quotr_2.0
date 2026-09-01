@@ -15,6 +15,7 @@ import {
   resolveClientQuoteTerms,
 } from "@/lib/quotes/client-fields";
 import { calculateQuoteBaseTotalsFromItems } from "@/lib/quotes/base-totals";
+import { NEW_QUOTE_PRESENTATION_MODE } from "@/lib/quotes/presentation";
 import {
   buildInclusionsFromPricing,
   mapPricingItemsToQuoteItems,
@@ -44,7 +45,7 @@ export type PricingQuoteSnapshot = {
     exclusions: string[];
     assumptions: string[];
     terms: string;
-    presentation_mode: "grouped";
+    presentation_mode: typeof NEW_QUOTE_PRESENTATION_MODE;
   };
   quoteItems: QuoteItemFromPricing[];
 };
@@ -207,7 +208,7 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
       exclusions: quoteExclusions,
       assumptions: quoteAssumptions,
       terms: filterInternalLinesFromBlock(quoteTerms) ?? quoteTerms,
-      presentation_mode: "grouped",
+      presentation_mode: NEW_QUOTE_PRESENTATION_MODE,
     },
     quoteItems,
   };

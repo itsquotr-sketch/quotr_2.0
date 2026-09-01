@@ -10,7 +10,14 @@ export const QUOTE_PRESENTATION_MODES = [
 
 export type QuotePresentationMode = (typeof QUOTE_PRESENTATION_MODES)[number];
 
-export const DEFAULT_QUOTE_PRESENTATION_MODE: QuotePresentationMode = "grouped";
+/** New Quote snapshots. Historical rows keep their stored presentation_mode. */
+export const NEW_QUOTE_PRESENTATION_MODE: QuotePresentationMode = "detailed";
+
+/** Unknown/missing values stay grouped so historical Quotes do not flip. */
+export const LEGACY_QUOTE_PRESENTATION_FALLBACK: QuotePresentationMode =
+  "grouped";
+
+export const DEFAULT_QUOTE_PRESENTATION_MODE = NEW_QUOTE_PRESENTATION_MODE;
 
 export function parseQuotePresentationMode(
   value: unknown
@@ -18,7 +25,7 @@ export function parseQuotePresentationMode(
   if (value === "detailed" || value === "lump_sum" || value === "grouped") {
     return value;
   }
-  return DEFAULT_QUOTE_PRESENTATION_MODE;
+  return LEGACY_QUOTE_PRESENTATION_FALLBACK;
 }
 
 export function isIncludedInQuoteBaseTotal(item: {

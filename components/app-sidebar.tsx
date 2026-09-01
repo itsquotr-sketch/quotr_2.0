@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Building2, DollarSign, LayoutDashboard, Settings2 } from "lucide-react";
 import { FeedbackLink } from "@/components/layout/feedback-link";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 import { SidebarAccount } from "@/components/layout/sidebar-account";
 import { Badge } from "@/components/ui/badge";
@@ -67,6 +68,12 @@ export function AppSidebarNav({
       </nav>
       <div className="mt-auto shrink-0 border-t border-sidebar-border p-3">
         <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs font-medium text-sidebar-foreground/70">
+              Notifications
+            </p>
+            <NotificationBell variant="sidebar" />
+          </div>
           <FeedbackLink variant="sidebar-footer" />
           <SidebarAccount variant="sidebar" />
         </div>

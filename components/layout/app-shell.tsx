@@ -5,6 +5,7 @@ import { AppSidebarNav } from "@/components/app-sidebar";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { AppUserProvider } from "@/components/layout/app-user-context";
 import { MobileNav } from "@/components/layout/mobile-nav";
+import { NotificationBell } from "@/components/layout/notification-bell";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 
 type AppShellProps = {
@@ -59,7 +60,10 @@ export function AppShell({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background md:overflow-hidden print:bg-white">
           <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-background px-4 md:hidden print:hidden">
             <QuotrLogo height={26} />
-            <AccountMenu variant="header" />
+            <div className="flex items-center gap-1">
+              <NotificationBell variant="header" />
+              <AccountMenu variant="header" />
+            </div>
           </div>
           <div
             className={

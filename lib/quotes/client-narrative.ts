@@ -45,6 +45,9 @@ const INTERNAL_NARRATIVE_PATTERNS: RegExp[] = [
   /\b__quotr_meta__\b/i,
   /\bpricing required\b/i,
   /\bcarry distance\b/i,
+  /physical driver\s*:/i,
+  /\brequired quantity\b/i,
+  /\bpurchased quantity\b/i,
 ];
 
 function normalizeNarrative(text: string): string {

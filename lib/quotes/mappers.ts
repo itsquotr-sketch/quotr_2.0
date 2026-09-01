@@ -1,4 +1,8 @@
 import { parseStringArray } from "@/lib/pricing/calculations";
+import {
+  clientSafeQuoteLineDescription,
+  isEstimatorDiagnosticDescription,
+} from "@/lib/quotes/client-line-description";
 import { parseQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
 
@@ -66,9 +70,15 @@ export function mapQuoteItem(row: Record<string, unknown>): QuoteItem {
     pricing_item_id: (row.pricing_item_id as string | null) ?? null,
     work_area_id: (row.work_area_id as string | null) ?? null,
     section_title: (row.section_title as string | null) ?? null,
-    section_description: (row.section_description as string | null) ?? null,
+    section_description: isEstimatorDiagnosticDescription(
+      (row.section_description as string | null) ?? null
+    )
+      ? null
+      : ((row.section_description as string | null) ?? null),
     label: row.label as string,
-    description: (row.description as string | null) ?? null,
+    description: clientSafeQuoteLineDescription(
+      (row.description as string | null) ?? null
+    ),
     quantity: row.quantity != null ? Number(row.quantity) : null,
     unit: (row.unit as string | null) ?? null,
     unit_price: row.unit_price != null ? Number(row.unit_price) : null,

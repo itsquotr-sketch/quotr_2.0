@@ -7,8 +7,8 @@ import {
 } from "@/lib/quotes/presentation";
 
 const OPTIONS: Array<{ value: QuotePresentationMode; label: string; hint: string }> = [
-  { value: "grouped", label: "Grouped", hint: "Work area totals" },
   { value: "detailed", label: "Detailed", hint: "Visible lines" },
+  { value: "grouped", label: "Grouped", hint: "Work area totals" },
   { value: "lump_sum", label: "Lump sum", hint: "Scope plus total" },
 ];
 

@@ -1,4 +1,8 @@
 import { parseQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
+import {
+  clientSafeQuoteLineDescription,
+  isEstimatorDiagnosticDescription,
+} from "@/lib/quotes/client-line-description";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
 
 const PUBLIC_QUOTE_KEYS = [
@@ -164,13 +168,19 @@ export function toPublicQuoteItemsFromLookup(
       work_area_id: null,
       section_title:
         typeof item.section_title === "string" ? item.section_title : null,
-      section_description:
+      section_description: isEstimatorDiagnosticDescription(
         typeof item.section_description === "string"
+          ? item.section_description
+          : null
+      )
+        ? null
+        : typeof item.section_description === "string"
           ? item.section_description
           : null,
       label: typeof item.label === "string" ? item.label : "Item",
-      description:
-        typeof item.description === "string" ? item.description : null,
+      description: clientSafeQuoteLineDescription(
+        typeof item.description === "string" ? item.description : null
+      ),
       quantity: item.quantity != null ? Number(item.quantity) : null,
       unit: typeof item.unit === "string" ? item.unit : null,
       unit_price: item.unit_price != null ? Number(item.unit_price) : null,
