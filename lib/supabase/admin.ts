@@ -15,12 +15,26 @@ function readServerEnv(name: string): string | undefined {
   return process.env[name];
 }
 
+function serviceRoleJwtRole(token: string): string | null {
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64url").toString("utf8")
+    ) as { role?: unknown };
+    return typeof payload.role === "string" ? payload.role : null;
+  } catch {
+    return null;
+  }
+}
+
 export function createAdminClient() {
   const url = readServerEnv("NEXT_PUBLIC_SUPABASE_URL");
   const serviceRoleKey = readServerEnv("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!url || !serviceRoleKey) {
     throw new Error("Missing Supabase admin environment variables.");
+  }
+  if (serviceRoleJwtRole(serviceRoleKey) !== "service_role") {
+    throw new Error("Supabase admin key is not a service_role JWT.");
   }
 
   return createClient(url, serviceRoleKey, {
