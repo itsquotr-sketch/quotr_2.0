@@ -6,7 +6,13 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "db:preview:status": "node scripts/db-target.mjs preview status",
+    "db:preview:push-dry": "node scripts/db-target.mjs preview push-dry",
+    "db:preview:push": "node scripts/db-target.mjs preview push",
+    "db:production:status": "node scripts/db-target.mjs production status",
+    "db:production:push-dry": "node scripts/db-target.mjs production push-dry",
+    "db:production:push": "node scripts/db-target.mjs production push"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.105.0",

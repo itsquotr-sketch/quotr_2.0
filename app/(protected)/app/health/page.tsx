@@ -8,6 +8,12 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { getEnvSummary } from "@/lib/env";
+import {
+  internalDeploymentLabel,
+  resolveQuotrDeployment,
+  supabaseHostnameFromUrl,
+  supabaseProjectRefFromUrl,
+} from "@/lib/deployment/environment";
 import { createClient } from "@/lib/supabase/server";
 import packageJson from "@/package.json";
 
@@ -47,8 +53,12 @@ export default async function HealthPage() {
 
   const envSummary = getEnvSummary();
   const buildDate = process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) ?? "local";
-  const environment =
-    process.env.VERCEL_ENV ?? process.env.NODE_ENV ?? "development";
+  const deployment = resolveQuotrDeployment();
+  const environmentLabel = internalDeploymentLabel(deployment) ?? "Production";
+  const supabaseHost =
+    supabaseHostnameFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? "—";
+  const supabaseRef =
+    supabaseProjectRefFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? "—";
 
   return (
     <>
@@ -81,7 +91,9 @@ export default async function HealthPage() {
               />
               <HealthRow label="App version" value={packageJson.version} />
               <HealthRow label="Build ref" value={buildDate} />
-              <HealthRow label="Environment" value={environment} />
+              <HealthRow label="Deployment" value={environmentLabel} />
+              <HealthRow label="Supabase host" value={supabaseHost} />
+              <HealthRow label="Supabase project ref" value={supabaseRef} />
             </CardContent>
           </Card>
 

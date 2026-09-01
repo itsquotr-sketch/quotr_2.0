@@ -27,6 +27,7 @@
 # Local Supabase generated / machine-specific (do not commit)
 supabase/.temp/
 supabase/.branches/
+supabase/.preview-project-ref
 
 # debug
 npm-debug.log*

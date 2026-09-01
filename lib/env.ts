@@ -1,3 +1,8 @@
+import {
+  PRODUCTION_SUPABASE_PROJECT_REF,
+  supabaseProjectRefFromUrl,
+} from "@/lib/deployment/environment";
+
 type EnvCheck = {
   name: string;
   value: string | undefined;
@@ -97,5 +102,24 @@ export function assertEnvSafety(): void {
   }
 }
 
+/**
+ * Local `next dev` must not silently use Production Supabase.
+ * Hosted Vercel Preview/Production skip this check (they use their own env).
+ */
+export function assertLocalNotProductionSupabase(): void {
+  const vercelEnv = process.env.VERCEL_ENV;
+  if (vercelEnv === "preview" || vercelEnv === "production") {
+    return;
+  }
+
+  const ref = supabaseProjectRefFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL);
+  if (ref === PRODUCTION_SUPABASE_PROJECT_REF) {
+    throw new Error(
+      "Local development must not use Production Supabase (lxvnylhsbvudzzupxeqr). Point .env.local at `supabase start` (http://127.0.0.1:54321) or the Preview project shhpjsoldmqtkdbgrbtm. See docs/architecture/QUOTR_ENVIRONMENT_ARCHITECTURE.md."
+    );
+  }
+}
+
 assertEnvSafety();
 assertRequiredEnv();
+assertLocalNotProductionSupabase();

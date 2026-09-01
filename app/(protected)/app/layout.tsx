@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { internalDeploymentLabel } from "@/lib/deployment/environment";
 import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { needsCompanyBasics } from "@/lib/setup/actions";
@@ -78,6 +79,7 @@ export default async function AppLayout({
       organisationName={display?.organisationName}
       tradingName={display?.tradingName}
       setupIncomplete={setupIncomplete}
+      deploymentLabel={internalDeploymentLabel()}
     >
       {children}
     </AppShell>

@@ -15,6 +15,7 @@ type AppShellProps = {
   organisationName?: string | null;
   tradingName?: string | null;
   setupIncomplete?: boolean;
+  deploymentLabel?: "Local" | "Preview" | null;
 };
 
 function isQuotePrintRoute(pathname: string | null): boolean {
@@ -32,6 +33,7 @@ export function AppShell({
   organisationName,
   tradingName,
   setupIncomplete = false,
+  deploymentLabel = null,
 }: AppShellProps) {
   const pathname = usePathname();
 
@@ -53,13 +55,24 @@ export function AppShell({
         organisationName,
         tradingName,
         setupIncomplete,
+        deploymentLabel,
       }}
     >
       <div className="flex min-h-dvh w-full md:h-dvh md:overflow-hidden">
-        <AppSidebarNav setupIncomplete={setupIncomplete} />
+        <AppSidebarNav
+          setupIncomplete={setupIncomplete}
+          deploymentLabel={deploymentLabel}
+        />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background md:overflow-hidden print:bg-white">
           <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-background px-4 md:hidden print:hidden">
-            <QuotrLogo height={26} />
+            <div className="flex min-w-0 items-center gap-2">
+              <QuotrLogo height={26} />
+              {deploymentLabel ? (
+                <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+                  {deploymentLabel}
+                </span>
+              ) : null}
+            </div>
             <div className="flex items-center gap-1">
               <NotificationBell variant="header" />
               <AccountMenu variant="header" />

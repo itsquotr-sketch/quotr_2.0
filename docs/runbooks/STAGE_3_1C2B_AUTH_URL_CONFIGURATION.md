@@ -4,6 +4,8 @@
 **Branch:** `hardening/stage-2a-security`  
 **Do not:** put secrets in this file; invent a Production domain; use commit-specific Vercel URLs as canonical Preview origin.
 
+**ENVIRONMENT-01:** Preview and Production are **separate** Supabase projects. Configure Auth Site URL / Redirect URLs on the **Preview** project dashboard after it exists. Do **not** change Production Auth URL configuration. See `docs/architecture/QUOTR_ENVIRONMENT_ARCHITECTURE.md`.
+
 ## Canonical origins
 
 | Environment | Site origin | Callback |
@@ -30,9 +32,9 @@ In Vercel → Project → Settings → Environment Variables → **Preview**:
 | Variable | Value |
 | --- | --- |
 | `NEXT_PUBLIC_SITE_URL` | `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` |
-| `NEXT_PUBLIC_SUPABASE_URL` | (existing Preview Supabase project URL) |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | (existing anon key) |
-| `SUPABASE_SERVICE_ROLE_KEY` | only if admin/ops paths need it (optional for normal signup) |
+| `NEXT_PUBLIC_SUPABASE_URL` | **Preview** Supabase project URL (not `lxvnylhsbvudzzupxeqr`) |
+| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | **Preview** anon key |
+| `SUPABASE_SERVICE_ROLE_KEY` | **Preview** service role only (webhook/admin). Never the Production service role |
 | Other existing app vars | unchanged |
 
 **Do not** set Production `NEXT_PUBLIC_SITE_URL` to the Preview branch alias.
@@ -62,7 +64,12 @@ Dashboard → **Authentication** → **URL Configuration** → **Site URL**
 | Production domain **not** live yet | Keep Site URL on the **stable Preview** origin (or Local for pure local work). Do **not** pretend Preview is Production forever. |
 | Production domain approved | Set Site URL to the **Production** origin. |
 
-Site URL is Supabase’s default “home” for some redirects — keep it as the primary long-lived environment, not a disposable commit URL.
+Site URL is configured **per hosted Supabase project**. After ENVIRONMENT-01:
+
+- **Preview project:** Site URL = stable Preview origin.
+- **Production project (`lxvnylhsbvudzzupxeqr`):** leave unchanged in ENVIRONMENT-01.
+
+Do not use a disposable commit URL as Site URL.
 
 ---
 

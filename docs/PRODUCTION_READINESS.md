@@ -29,6 +29,20 @@ Runtime validation:
 - Production Scope Discovery remains **Disabled**. Company DNA **Not Started**. PERF-FUTURE-01 **Planned**.
 - **Master architecture lock (2026-08-17):** `docs/architecture/QUOTR_PRODUCT_ARCHITECTURE.md`; plan `docs/plans/QUOTR_DEVELOPMENT_MASTER_PLAN.md`; challenge `docs/audits/MASTER_ARCHITECTURE_INDEPENDENT_CHALLENGE_REVIEW.md`. **PHASE 0 COMPLETE / ARCHITECTURE FROZEN.** **REQ-1 COMPLETE / TECHNICALLY VALIDATED.** **REQ-2 COMPLETE / MATERIAL EMISSION FOUNDATION VALIDATED.** REQ-2.1 **COMPLETE / TECHNICALLY VALIDATED** (Deck surface shadow only). REQ-3 **COMPLETE / LABOUR EMISSION FOUNDATION VALIDATED**. REQ-3.1 **COMPLETE / TECHNICALLY VALIDATED** (Deck labour shadow only). REQ-4 **COMPLETE / COMPONENT AUTHORITY MIGRATION VALIDATED**. REQ-4B **COMPLETE / REMOTE VALIDATED** (`f99dbec`, Preview). REQ-SNAPSHOT-01 **COMPLETE / REMOTE VALIDATED** (035). REQ-TXN-01 **COMPLETE / REMOTE VALIDATED** (036). CM-03 **BACKLOG**. **No Production application deploy.**
 
+## Environments (ENVIRONMENT-01)
+
+Canonical topology: `docs/architecture/QUOTR_ENVIRONMENT_ARCHITECTURE.md`.
+
+| Environment | Supabase |
+| --- | --- |
+| Local | Docker (`project_id` `quotr_local` in `supabase/config.toml`) |
+| Preview | **Separate** hosted project (create via `docs/runbooks/ENVIRONMENT_01_PREVIEW_SUPABASE.md`) |
+| Production | `quotr_2.0` / `lxvnylhsbvudzzupxeqr` — do not use for Preview |
+
+Safe CLI: `npm run db:preview:status` / `db:preview:push`. Never `supabase db push --linked`.
+
+Historical notes below that say Preview used `lxvnylhsbvudzzupxeqr` describe the **pre-split** shared database. They are not current target authority.
+
 ## Supabase
 
 - Apply all migrations in `supabase/migrations/` to the target project.
