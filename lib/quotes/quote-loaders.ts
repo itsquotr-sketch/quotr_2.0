@@ -26,6 +26,11 @@ import {
 } from "@/lib/security/org-ownership";
 import { getCompanySettingsWithContext } from "@/lib/settings/company-settings-loader";
 import { hasClientEmailColumn } from "@/lib/projects/query-utils";
+import {
+  isMissingQuoteAcceptanceTableError,
+  mapQuoteAcceptance,
+  mapQuoteDecline,
+} from "@/lib/quotes/acceptance-mappers";
 
 export async function getLatestQuoteSummaryWithContext(
   auth: AuthOrgContext,
@@ -228,6 +233,32 @@ export async function getQuoteWorkspaceDataWithContext(
     created_at: row.created_at as string,
   }));
 
+  let acceptance = null;
+  let decline = null;
+  const [{ data: acceptanceRow, error: acceptanceError }, { data: declineRow, error: declineError }] =
+    await Promise.all([
+      supabase
+        .from("quote_acceptances")
+        .select("*")
+        .eq("org_id", orgId)
+        .eq("quote_id", quoteId)
+        .maybeSingle(),
+      supabase
+        .from("quote_declines")
+        .select("*")
+        .eq("org_id", orgId)
+        .eq("quote_id", quoteId)
+        .maybeSingle(),
+    ]);
+  if (!acceptanceError && acceptanceRow) {
+    acceptance = mapQuoteAcceptance(acceptanceRow as Record<string, unknown>);
+  } else if (acceptanceError && !isMissingQuoteAcceptanceTableError(acceptanceError)) {
+    acceptance = null;
+  }
+  if (!declineError && declineRow) {
+    decline = mapQuoteDecline(declineRow as Record<string, unknown>);
+  }
+
   return {
     projectTitle: project.title,
     projectClientEmail,
@@ -239,6 +270,8 @@ export async function getQuoteWorkspaceDataWithContext(
     threadRevisions,
     recentEvents,
     deliveries,
+    acceptance,
+    decline,
   };
 }
 

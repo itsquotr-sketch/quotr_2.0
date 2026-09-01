@@ -33,6 +33,7 @@ export default async function QuotePrintPage({ params }: QuotePrintPageProps) {
         quote={data.quote}
         quoteItems={data.items}
         companySettings={data.companySettings}
+        acceptance={data.acceptance}
       />
     </div>
   );

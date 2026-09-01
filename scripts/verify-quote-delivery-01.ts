@@ -78,10 +78,11 @@ const migrations = readdirSync("supabase/migrations")
   .sort();
 
 assert(
-  "042 delivery architecture remains; 043 is additive client_email",
+  "042 delivery architecture remains; 044 is latest additive acceptance",
   migrations.includes("042_quote_delivery.sql") &&
     migrations.includes("043_project_client_email.sql") &&
-    migrations[migrations.length - 1] === "043_project_client_email.sql"
+    migrations.includes("044_quote_acceptance.sql") &&
+    migrations[migrations.length - 1] === "044_quote_acceptance.sql"
 );
 
 assert(
@@ -389,9 +390,9 @@ assert(
 );
 
 assert(
-  "public document has no accept/decline controls",
-  !publicDocSrc.includes("Accept") &&
-    !publicDocSrc.includes("Decline") &&
+  "public document hosts acceptance controls separately from delivery email",
+  publicDocSrc.includes("QuotePublicActions") &&
+    publicDocSrc.includes("QuotePublicShell") &&
     publicDocSrc.includes("superseded")
 );
 
@@ -856,7 +857,7 @@ assert(
 );
 
 assert(
-  "public shell has identity, status, print, and unused acceptance seam",
+  "public shell has identity, status, print, and acceptance seam",
   publicShellSrc.includes("Print / Save PDF") &&
     publicShellSrc.includes("formatClientQuoteStatusLabel") &&
     publicShellSrc.includes('data-quote-acceptance-seam="true"') &&

@@ -14,6 +14,10 @@ export const RECORD_QUOTE_DELIVERY_ACCEPTED_RPC =
   "record_quote_delivery_accepted_v1";
 export const FINALIZE_QUOTE_DELIVERY_RPC = "finalize_quote_delivery_v1";
 export const FAIL_QUOTE_DELIVERY_RPC = "fail_quote_delivery_v1";
+export const ACCEPT_QUOTE_BY_ACCESS_TOKEN_RPC =
+  "accept_quote_by_access_token_v1";
+export const DECLINE_QUOTE_BY_ACCESS_TOKEN_RPC =
+  "decline_quote_by_access_token_v1";
 
 export type QuoteTxnResult = {
   ok: boolean;

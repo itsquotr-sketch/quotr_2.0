@@ -5,15 +5,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPricingDate } from "@/lib/pricing/format";
 import {
+  formatQuoteDateTime,
   formatQuoteNumberRevision,
   formatQuoteWorkspaceTitle,
 } from "@/lib/quotes/display";
+import { formatAcceptanceSourceLabel } from "@/lib/quotes/acceptance";
 import { getQuoteStatusDefinition } from "@/lib/quotes/status";
+import type { QuoteAcceptanceRecord } from "@/lib/quotes/acceptance-types";
 import type { Quote } from "@/lib/quotes/types";
 
 type QuoteHeaderProps = {
   quote: Quote;
   projectTitle: string;
+  acceptance?: QuoteAcceptanceRecord | null;
   isSaving?: boolean;
   onSave?: () => void;
 };
@@ -28,6 +32,7 @@ function buildMetaLine(quote: Quote, projectTitle: string): string {
 export function QuoteHeader({
   quote,
   projectTitle,
+  acceptance = null,
   isSaving,
   onSave,
 }: QuoteHeaderProps) {
@@ -55,6 +60,16 @@ export function QuoteHeader({
             ) : null}
             {quote.valid_until ? (
               <span>Valid until {formatPricingDate(quote.valid_until)}</span>
+            ) : null}
+            {quote.status === "accepted" && acceptance ? (
+              <span>
+                {acceptance.source === "client" && acceptance.signer_name
+                  ? `Accepted by client ${acceptance.signer_name}`
+                  : formatAcceptanceSourceLabel(acceptance.source)}
+                {formatQuoteDateTime(acceptance.accepted_at)
+                  ? ` · ${formatQuoteDateTime(acceptance.accepted_at)}`
+                  : ""}
+              </span>
             ) : null}
           </div>
         </div>

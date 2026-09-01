@@ -24,6 +24,8 @@ import {
   presentQuoteClientDocument,
 } from "@/lib/quotes/presentation";
 import { sanitizeClientQuoteDescription } from "@/lib/quotes/sanitize";
+import { QuoteAcceptanceRecordSection } from "@/components/quotes/QuoteAcceptanceRecord";
+import type { QuoteAcceptanceRecord } from "@/lib/quotes/acceptance-types";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
 import { brandColourTint, getBrandColours } from "@/lib/settings/branding";
 import type { CompanySettings } from "@/lib/settings/types";
@@ -39,6 +41,7 @@ export type QuoteTemplateProps = {
   quoteItems: QuoteItem[];
   companySettings: CompanySettings | null;
   sections?: QuoteItemSection[];
+  acceptance?: QuoteAcceptanceRecord | null;
 };
 
 function MetaRow({ label, value }: { label: string; value: string }) {
@@ -247,6 +250,7 @@ export function QuoteTemplate({
   quote,
   quoteItems,
   companySettings: liveCompanySettings,
+  acceptance = null,
 }: QuoteTemplateProps) {
   const companySettings = resolveQuoteIssuerSettings(
     quote,
@@ -605,6 +609,7 @@ export function QuoteTemplate({
             accentColour={brandAccent}
           />
       </div>
+      <QuoteAcceptanceRecordSection quote={quote} acceptance={acceptance} />
     </article>
   );
 }

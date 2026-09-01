@@ -11,11 +11,20 @@ import {
   toPublicQuoteItemsFromLookup,
 } from "@/lib/quotes/delivery-client-payload";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
+import type {
+  PublicQuoteAcceptanceSummary,
+  PublicQuoteDeclineSummary,
+  PublicQuoteRecipientSeed,
+} from "@/lib/quotes/acceptance-types";
 
 export type PublicQuoteDocument = {
   quote: Quote;
   items: QuoteItem[];
   superseded: boolean;
+  issuerOrgId: string | null;
+  recipient: PublicQuoteRecipientSeed | null;
+  acceptance: PublicQuoteAcceptanceSummary | null;
+  decline: PublicQuoteDeclineSummary | null;
 };
 
 function createPublicSupabase() {
@@ -53,10 +62,72 @@ export async function lookupPublicQuoteByToken(
   });
   if (!safety.ok) return null;
 
+  const recipient =
+    row.recipient && typeof row.recipient === "object"
+      ? (row.recipient as Record<string, unknown>)
+      : null;
+  const acceptance =
+    row.acceptance && typeof row.acceptance === "object"
+      ? (row.acceptance as Record<string, unknown>)
+      : null;
+  const decline =
+    row.decline && typeof row.decline === "object"
+      ? (row.decline as Record<string, unknown>)
+      : null;
+
   return {
     quote: toPublicQuoteFromLookup(quoteRow),
     items: toPublicQuoteItemsFromLookup(itemRows),
     superseded: quoteRow.superseded === true,
+    issuerOrgId: typeof row.orgId === "string" ? row.orgId : null,
+    recipient: recipient
+      ? {
+          name: typeof recipient.name === "string" ? recipient.name : null,
+          email: typeof recipient.email === "string" ? recipient.email : null,
+        }
+      : null,
+    acceptance: acceptance
+      ? {
+          source: acceptance.source === "manual" ? "manual" : "client",
+          signer_name:
+            typeof acceptance.signer_name === "string"
+              ? acceptance.signer_name
+              : null,
+          accepted_at:
+            typeof acceptance.accepted_at === "string"
+              ? acceptance.accepted_at
+              : "",
+          quote_number:
+            typeof acceptance.quote_number === "string"
+              ? acceptance.quote_number
+              : null,
+          revision_number: Number(acceptance.revision_number ?? 1),
+          acceptance_declaration:
+            typeof acceptance.acceptance_declaration === "string"
+              ? acceptance.acceptance_declaration
+              : null,
+          signature_method:
+            acceptance.signature_method === "drawn" ||
+            acceptance.signature_method === "none"
+              ? acceptance.signature_method
+              : "typed",
+          signature_value:
+            typeof acceptance.signature_value === "string"
+              ? acceptance.signature_value
+              : null,
+          accepted_total_incl_gst:
+            acceptance.accepted_total_incl_gst != null
+              ? Number(acceptance.accepted_total_incl_gst)
+              : null,
+        }
+      : null,
+    decline: decline
+      ? {
+          source: decline.source === "manual" ? "manual" : "client",
+          declined_at:
+            typeof decline.declined_at === "string" ? decline.declined_at : "",
+        }
+      : null,
   };
 }
 

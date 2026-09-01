@@ -156,8 +156,13 @@ export function QuoteSummaryPanel({
               disabled={isPending}
               onClick={() => runAction(onMarkAccepted)}
             >
-              Mark accepted
+              Mark accepted manually
             </Button>
+          ) : null}
+          {canMarkAccepted && onMarkAccepted ? (
+            <p className="text-[11px] leading-relaxed text-muted-foreground">
+              Manual override. This does not create a client signature.
+            </p>
           ) : null}
           {canMarkDeclined && onMarkDeclined ? (
             <Button

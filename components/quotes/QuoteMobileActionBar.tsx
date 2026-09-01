@@ -106,7 +106,7 @@ export function QuoteMobileActionBar({
           disabled={busy}
           onClick={onMarkAccepted}
         >
-          Mark accepted
+          Mark accepted manually
         </Button>
       ) : !canSave && !showSend && !showResend && !showMarkAccepted ? (
         <Button

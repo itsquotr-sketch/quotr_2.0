@@ -73,11 +73,12 @@ export default async function QuotePage({ params }: QuotePageProps) {
         <QuoteWorkspace
           initialData={data}
           template={
-            <QuoteTemplate
-              quote={data.quote}
-              quoteItems={data.items}
-              companySettings={data.companySettings}
-            />
+        <QuoteTemplate
+          quote={data.quote}
+          quoteItems={data.items}
+          companySettings={data.companySettings}
+          acceptance={data.acceptance}
+        />
           }
         />
       </WorkspaceContainer>

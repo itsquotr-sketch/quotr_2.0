@@ -37,6 +37,7 @@ import { appendQuoteEvent } from "@/lib/quotes/events";
 import { captureQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
 import { getCompanyDisplayName } from "@/lib/quotes/display";
 import { mapQuote, mapQuoteItem } from "@/lib/quotes/mappers";
+import { mapQuoteAcceptance } from "@/lib/quotes/acceptance-mappers";
 import {
   pickLatestQuoteSummary,
   REFRESH_FROM_PRICING_STATUSES,
@@ -581,10 +582,21 @@ export async function getQuotePrintData(
     notFound();
   }
 
+  const { data: acceptanceRow, error: acceptanceError } = await supabase
+    .from("quote_acceptances")
+    .select("*")
+    .eq("org_id", orgId)
+    .eq("quote_id", quoteId)
+    .maybeSingle();
+
   return {
     quote: mapQuote(quote),
     items: (items ?? []).map((row) => mapQuoteItem(row)),
     companySettings,
+    acceptance:
+      !acceptanceError && acceptanceRow
+        ? mapQuoteAcceptance(acceptanceRow as Record<string, unknown>)
+        : null,
   };
 }
 

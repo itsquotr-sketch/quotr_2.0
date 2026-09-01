@@ -4,8 +4,9 @@
  * Builder + Business: quotes.send, quotes.acceptance
  * Business additionally: quote.approval, margin.guardrails, team roles/audit.
  *
- * QUOTE-DELIVERY-01 and future QUOTE-ACCEPTANCE-01 must call this at the
- * server boundary. Until Billing exists, known Quote capabilities are allowed.
+ * QUOTE-DELIVERY-01 and QUOTE-ACCEPTANCE-01 must call this at the
+ * server boundary against the issuer organisation. Until Billing exists,
+ * known Quote capabilities are allowed. Do not trust a browser plan value.
  */
 export type QuoteEntitlementKey =
   | "quotes.send"

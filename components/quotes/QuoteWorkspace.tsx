@@ -43,6 +43,7 @@ import type { QuotePresentationMode } from "@/lib/quotes/presentation";
 import type { QuoteInput, QuoteWorkspaceData } from "@/lib/quotes/types";
 import { QuoteTransactionHistory } from "@/components/quotes/QuoteTransactionHistory";
 import { QuoteDeliveryHistory } from "@/components/quotes/QuoteDeliveryHistory";
+import { QuoteAcceptanceDetails } from "@/components/quotes/QuoteAcceptanceDetails";
 import { QuoteSendSheet } from "@/components/quotes/QuoteSendSheet";
 
 type QuoteWorkspaceProps = {
@@ -69,6 +70,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
     threadRevisions = [],
     recentEvents = [],
     deliveries = [],
+    acceptance = null,
   } = initialData;
   const quoteId = quote.id;
   const projectId = quote.project_id;
@@ -245,6 +247,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             : undefined
         }
       />
+      <QuoteAcceptanceDetails quote={quote} acceptance={acceptance} />
       {deliveryAndHistory}
     </div>
   );
@@ -255,6 +258,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         <QuoteHeader
           quote={quote}
           projectTitle={projectTitle}
+          acceptance={acceptance}
           isSaving={isSaving}
           onSave={isEditable ? handleSaveQuote : undefined}
         />

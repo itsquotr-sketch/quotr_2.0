@@ -615,7 +615,7 @@ check(
   readdirSync(join(root, "supabase/migrations"))
     .filter((name) => name.endsWith(".sql"))
     .sort()
-    .at(-1) === "043_project_client_email.sql" &&
+    .at(-1) === "044_quote_acceptance.sql" &&
     readdirSync(join(root, "supabase/migrations")).includes(
       "041_quote_transaction.sql"
     ) &&

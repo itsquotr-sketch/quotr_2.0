@@ -37,6 +37,8 @@ export default async function PublicQuotePage({ params }: PublicQuotePageProps) 
       items={document.items}
       superseded={document.superseded}
       token={token}
+      recipient={document.recipient}
+      acceptance={document.acceptance}
     />
   );
 }

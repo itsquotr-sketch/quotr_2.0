@@ -187,6 +187,10 @@ export type QuoteItemInput = {
 
 import type { QuoteDeliveryRecord } from "@/lib/quotes/delivery-types";
 import type { CompanySettings } from "@/lib/settings/types";
+import type {
+  QuoteAcceptanceRecord,
+  QuoteDeclineRecord,
+} from "@/lib/quotes/acceptance-types";
 
 export type QuoteWorkspaceData = {
   quote: Quote;
@@ -199,10 +203,13 @@ export type QuoteWorkspaceData = {
   threadRevisions: QuoteThreadRevision[];
   recentEvents: QuoteEventRecord[];
   deliveries: QuoteDeliveryRecord[];
+  acceptance: QuoteAcceptanceRecord | null;
+  decline: QuoteDeclineRecord | null;
 };
 
 export type QuotePrintData = {
   quote: Quote;
   items: QuoteItem[];
   companySettings: CompanySettings | null;
+  acceptance: QuoteAcceptanceRecord | null;
 };

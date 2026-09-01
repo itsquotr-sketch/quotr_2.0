@@ -41,9 +41,13 @@ function eventLabel(event: QuoteEventRecord): string {
     case "quote_viewed":
       return "Viewed";
     case "quote_accepted":
-      return "Accepted";
+      return event.actor_type === "client"
+        ? "Accepted by client"
+        : "Marked accepted manually";
     case "quote_declined":
-      return "Declined";
+      return event.actor_type === "client"
+        ? "Declined by client"
+        : "Marked declined manually";
     case "quote_expired":
       return "Expired";
     case "quote_superseded":
