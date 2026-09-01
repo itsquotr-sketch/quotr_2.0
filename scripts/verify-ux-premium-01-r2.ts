@@ -115,7 +115,8 @@ check(
 check(
   2,
   "Update estimate appears immediately after save (local bridge, no RSC wait)",
-  shell.includes("Boolean(estimate?.isStale) || localEstimateStale") &&
+  shell.includes("Boolean(estimate) &&") &&
+    shell.includes("Boolean(estimate?.isStale) || localEstimateStale") &&
     shell.includes("displayEstimateStale ? handleRegenerateEstimate") &&
     refinePanel.includes("data-refine-update-estimate") &&
     refinePanel.includes("Estimate needs updating")
@@ -136,8 +137,8 @@ check(
   4,
   "successful regeneration clears local stale",
   shell.includes("setLocalEstimateStale(false)") &&
-    shell.includes("const result = await regenerateStaticEstimate") &&
-    /if \(result\.error\) \{\s*return result;\s*\}\s*setLocalEstimateStale\(false\)/.test(
+    shell.includes("regenerateStaticEstimate") &&
+    /setGenerationProjection\(generation\);\s*setLocalEstimateStale\(false\)/.test(
       shell
     )
 );

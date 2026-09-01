@@ -123,6 +123,7 @@ async function sendPendingDeliveriesForQuote(input: {
     const email = buildQuoteResponseNotificationEmail({
       kind,
       companyName: company,
+      issuerLogoUrl: issuer?.logoUrl ?? null,
       projectTitle: payloadString(payload, "projectTitle"),
       quoteNumber: payloadString(payload, "quoteNumber") ?? "Quote",
       revisionNumber: payloadNumber(payload, "revisionNumber") ?? 1,

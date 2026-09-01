@@ -9,6 +9,12 @@ import {
   matchRetainingWallLengthM,
   matchRetainingWallRakingHeightsM,
 } from "@/lib/project-conditions/brief-logistics";
+import {
+  briefHasIntegralDeckStepLanguage,
+  filterIntegralDeckExternalStairsWorkAreas,
+  isExternalStairsFactKey,
+  shouldSuggestExternalStairs,
+} from "@/lib/scopes/deck-stairs-boundary";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
 
@@ -95,6 +101,32 @@ function matchRiserCount(text: string): number | null {
   if (!match) return null;
   const value = Number(match[1]);
   return Number.isFinite(value) && value > 0 ? value : null;
+}
+
+const INTEGRAL_STEP_COUNT_WORDS: Record<string, number> = {
+  one: 1,
+  two: 2,
+  three: 3,
+  four: 4,
+  five: 5,
+  six: 6,
+  seven: 7,
+  eight: 8,
+  nine: 9,
+  ten: 10,
+};
+
+function matchIntegralDeckStepCount(text: string): number | null {
+  const digit = text.match(/\b(\d+)\s+steps?\b/i);
+  if (digit) {
+    const value = Number(digit[1]);
+    return Number.isFinite(value) && value > 0 ? value : null;
+  }
+  const word = text.match(
+    /\b(one|two|three|four|five|six|seven|eight|nine|ten)\s+steps?\b/i
+  );
+  if (!word) return null;
+  return INTEGRAL_STEP_COUNT_WORDS[word[1]!.toLowerCase()] ?? null;
 }
 
 function hasWorkAreaType(
@@ -586,6 +618,37 @@ function inferDeck(
     allowedTypes
   );
 
+  const dims = brief.match(
+    /(\d+(?:\.\d+)?)\s*m\s*[x×]\s*(\d+(?:\.\d+)?)\s*m/
+  );
+  if (dims) {
+    addFact(extraction, {
+      workAreaType: "deck",
+      key: "deck.length_m",
+      label: "Deck length",
+      value: Number(dims[1]),
+      unit: "m",
+    });
+    addFact(extraction, {
+      workAreaType: "deck",
+      key: "deck.width_m",
+      label: "Deck width",
+      value: Number(dims[2]),
+      unit: "m",
+    });
+  }
+
+  const deckHeightMatch = brief.match(/(\d+(?:\.\d+)?)\s*m\s+high/);
+  if (deckHeightMatch) {
+    addFact(extraction, {
+      workAreaType: "deck",
+      key: "deck.height_m",
+      label: "Deck height",
+      value: Number(deckHeightMatch[1]),
+      unit: "m",
+    });
+  }
+
   const area = matchAreaM2(brief);
   if (area !== null) {
     const side = Math.round(Math.sqrt(area) * 10) / 10;
@@ -749,7 +812,33 @@ function inferDeck(
     });
   }
 
-  if (includesAny(brief, ["stairs down", "stair set", "include stairs"])) {
+  if (briefHasIntegralDeckStepLanguage(brief)) {
+    addFact(extraction, {
+      workAreaType: "deck",
+      key: "deck.steps_included",
+      label: "Steps",
+      value: true,
+    });
+    if (!hasWorkAreaType(extraction, "external_stairs")) {
+      addFact(extraction, {
+        workAreaType: "deck",
+        key: "deck.access_type",
+        label: "Access type",
+        value: includesAny(brief, ["stair set", "stairs down", "include stairs"])
+          ? "Stair set"
+          : "Single step or step-down",
+      });
+    }
+    const stepCount = matchIntegralDeckStepCount(brief);
+    if (stepCount != null) {
+      addFact(extraction, {
+        workAreaType: "deck",
+        key: "deck.step_count",
+        label: "Number of steps",
+        value: stepCount,
+      });
+    }
+  } else if (includesAny(brief, ["stairs down", "stair set", "include stairs"])) {
     if (!hasWorkAreaType(extraction, "external_stairs")) {
       addFact(extraction, {
         workAreaType: "deck",
@@ -1018,24 +1107,19 @@ function inferExternalStairs(
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
-  const patterns = [
-    "external stair",
-    "outdoor stair",
-    "timber stair",
-    "deck stair",
-    "stairs to deck",
-    "stair set",
-    "steps with handrail",
-    "remove existing stairs",
-    "remove existing stair",
-    "-step ",
-    " step ",
-  ];
-  const riserCount = matchRiserCount(brief);
-  const hasStairPhrase =
-    includesAny(brief, patterns) || riserCount !== null;
+  const hasDeck =
+    hasWorkAreaType(extraction, "deck") ||
+    includesAny(brief, ["deck", "decking", "kwila"]);
+  if (
+    !shouldSuggestExternalStairs({
+      briefText: brief,
+      hasDeck,
+    })
+  ) {
+    return;
+  }
 
-  if (!hasStairPhrase) return;
+  const riserCount = matchRiserCount(brief);
 
   addWorkAreaIfMissing(
     extraction,
@@ -1091,7 +1175,7 @@ function inferExternalStairs(
   }
 
   const widthMatch = brief.match(/(\d+(?:\.\d+)?)\s*m\s+wide/i);
-  if (widthMatch) {
+  if (widthMatch && !hasWorkAreaType(extraction, "deck")) {
     addFact(extraction, {
       workAreaType: "external_stairs",
       key: "external_stairs.width_m",
@@ -1100,6 +1184,23 @@ function inferExternalStairs(
       unit: "m",
     });
   }
+}
+
+function applyDeckExternalStairsBoundary(
+  brief: string,
+  extraction: AIExtractionOutput
+): void {
+  const nextWorkAreas = filterIntegralDeckExternalStairsWorkAreas(
+    extraction.workAreas,
+    brief
+  );
+  if (nextWorkAreas.length === extraction.workAreas.length) return;
+  extraction.workAreas = nextWorkAreas;
+  extraction.facts = extraction.facts.filter(
+    (fact) =>
+      fact.work_area_type !== "external_stairs" &&
+      !isExternalStairsFactKey(fact.key)
+  );
 }
 
 function inferPlastering(
@@ -1606,6 +1707,7 @@ export function enrichExtractionFromBrief(params: {
   inferRetainingWall(brief, extraction, params.allowedTypes);
   sanitizeRetainingWallExtractedFacts(brief, extraction);
   inferExternalStairs(brief, extraction, params.allowedTypes);
+  applyDeckExternalStairsBoundary(brief, extraction);
   inferPlastering(brief, extraction, params.allowedTypes);
   inferDemolitionAndRemoval(brief, extraction, params.allowedTypes);
   inferNoTiling(brief, extraction);

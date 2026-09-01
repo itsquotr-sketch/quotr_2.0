@@ -286,7 +286,7 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     physical: true,
     commercial: true,
     reason:
-      "Stair width for Step decking, framing, and tread-area labour. Default 1.0 m LOW-CONFIDENCE, disclosed. Do not emit unexplained detailed money if unresolved.",
+      "Step width for Step decking, framing, and tread-area labour. Default 1.0 m LOW-CONFIDENCE, disclosed. Do not infer the full deck edge. Do not emit unexplained detailed money if unresolved.",
   },
   {
     factKey: "deck.step_going_m",

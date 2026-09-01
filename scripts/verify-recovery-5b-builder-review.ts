@@ -496,8 +496,9 @@ check(
 );
 check(
   "51 Pricing parity contract preserved",
-  existsSync("lib/pricing/actions.ts") &&
-    read("lib/pricing/actions.ts").includes("recommended_sell")
+  existsSync("lib/pricing/estimate-to-pricing-adapter.ts") &&
+    read("lib/pricing/estimate-to-pricing-adapter.ts").includes("recommended_sell") &&
+    existsSync("lib/pricing/actions.ts")
 );
 check(
   "52 Quote safety preserved",

@@ -156,8 +156,8 @@ export const deckScope: ScopeDefinition = {
     },
     {
       key: "deck.step_width_m",
-      label: "Stair width",
-      questionText: "How wide are the stairs?",
+      label: "Step width",
+      questionText: "How wide are the steps?",
       inputType: "number",
       unit: "m",
       required: false,

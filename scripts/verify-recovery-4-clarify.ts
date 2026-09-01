@@ -176,6 +176,10 @@ function rankIndex(view: ClarifyView, key: string): number {
 
 const realView = composeFor(realFacts, realJob.sourceBrief);
 const exemplarView = composeFor(exemplarFacts, exemplar.sourceBrief);
+const exemplarAssumedView = composeFor(
+  [...exemplarFacts, fact("deck.step_width_m", DECK, "Not sure")],
+  exemplar.sourceBrief
+);
 const shell = read("components/assistant/AssistantShell.tsx");
 const stepper = read("components/assistant/StepperNav.tsx");
 const progress = read("components/assistant/AssistantProgress.tsx");
@@ -296,8 +300,10 @@ check(
 );
 
 check(
-  "17 near-zero Clarify",
-  exemplarView.visibleCount === 0 && exemplarView.enoughToEstimate
+  "17 stair-set decks still require step width",
+  hasKey(exemplarView, "deck.step_width_m") &&
+    !exemplarView.enoughToEstimate &&
+    exemplarAssumedView.enoughToEstimate
 );
 check("18 access suppressed", !hasKey(exemplarView, "site_access"));
 check("19 carry suppressed", !hasKey(exemplarView, "material_carry_distance"));
@@ -317,8 +323,8 @@ check(
 );
 check(
   "24 immediate Estimate path",
-  exemplarView.enoughToEstimate &&
-    exemplarView.canEstimateNow &&
+  exemplarAssumedView.enoughToEstimate &&
+    exemplarAssumedView.canEstimateNow &&
     panel.includes("data-clarify-readiness") &&
     panel.includes("data-clarify-empty")
 );
@@ -503,7 +509,7 @@ check(
 
 check(
   "47 empty Clarify fast path is not a blank stage",
-  exemplarView.enoughToEstimate && panel.includes("data-clarify-readiness")
+  exemplarAssumedView.enoughToEstimate && panel.includes("data-clarify-readiness")
 );
 check(
   "48 ranking is explainable not AI-vibes",
@@ -686,8 +692,7 @@ const zeroUseful = allocateClarifyBudget(
 check(
   "59 0 useful candidates → immediate Estimate",
   zeroUseful.visible.length === 0 &&
-    exemplarView.visibleCount === 0 &&
-    exemplarView.enoughToEstimate
+    exemplarAssumedView.enoughToEstimate
 );
 
 const threeUseful = allocateClarifyBudget(

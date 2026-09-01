@@ -195,7 +195,7 @@ export function RefineEstimatePanel({
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <SectionEyebrow>Refine estimate</SectionEyebrow>
+          <SectionEyebrow>Improve this estimate</SectionEyebrow>
           {focusedCandidate ? (
             <p className="mt-1 text-sm font-medium" data-refine-focus-context>
               {focusedCandidate.workAreaName ?? "Project"}
@@ -314,16 +314,12 @@ export function RefineEstimatePanel({
 
 export function ClarifyReadinessCard({
   readiness,
-  showRefine,
   isSaving,
   onEstimateNow,
-  onRefine,
 }: {
   readiness: EstimateReadinessView;
-  showRefine: boolean;
   isSaving?: boolean;
   onEstimateNow?: () => void;
-  onRefine?: () => void;
 }) {
   return (
     <div
@@ -344,7 +340,7 @@ export function ClarifyReadinessCard({
           <>
             <SectionEyebrow>Ready to estimate</SectionEyebrow>
             <p className="mt-1 text-base font-semibold tracking-tight">
-              Quotr has enough information to estimate.
+              All required details resolved
             </p>
           </>
         )}
@@ -400,18 +396,6 @@ export function ClarifyReadinessCard({
             ? ASSISTANT_ACTION_LABELS.saving
             : ASSISTANT_ACTION_LABELS.estimateNow}
         </Button>
-        {showRefine ? (
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 w-full"
-            data-clarify-refine-cta
-            disabled={isSaving}
-            onClick={onRefine}
-          >
-            {ASSISTANT_ACTION_LABELS.refineEstimate}
-          </Button>
-        ) : null}
       </ActionFooter>
     </div>
   );

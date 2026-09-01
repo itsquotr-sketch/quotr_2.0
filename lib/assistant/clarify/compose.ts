@@ -37,7 +37,14 @@ import {
 } from "@/lib/estimate/calculators/fence";
 import { classifyFenceSystem, fenceGateScopeApplies, isModularFenceSystem, isTimberFenceSystem } from "@/lib/estimate/fence-systems";
 import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
-import { getBooleanFact, getStringFact } from "@/lib/estimate/facts";
+import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
+import { STEP_WIDTH_ASSUMPTION_STATEMENT } from "@/lib/estimate/deck-steps-physical";
+import {
+  getBooleanFact,
+  getStringFact,
+  hasFactValue,
+  isNotSureValue,
+} from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 const PC_SCORES: Record<string, number> = {
@@ -71,7 +78,9 @@ function factHas(
       f.key === key &&
       (workAreaId == null || f.work_area_id === workAreaId)
   );
-  if (!row || !isKnownValue(row.value)) return false;
+  if (!row || !hasFactValue(row.value)) return false;
+  if (isNotSureValue(row.value)) return true;
+  if (!isKnownValue(row.value)) return false;
   if (
     isImplicitScopeExclusion({
       factKey: key,
@@ -164,6 +173,10 @@ function candidateFromJobPlanCheck(
           : key === "deck.access_type"
             ? "No steps included"
             : null,
+    economicClass:
+      key === "deck.steps_included"
+        ? "REQUIRED_FOR_ECONOMIC_MODEL"
+        : undefined,
   };
 }
 
@@ -362,6 +375,41 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         rankReason: "Bathroom commercial plumbing",
         assumptionStatement: "Standard plumbing allowance",
       });
+      continue;
+    }
+
+    if (wa.type === "deck") {
+      const facts = input.facts as EstimateFact[];
+      const stepsActive = deckStepsCommerciallyIncluded({
+        facts,
+        workAreaId: wa.id,
+      });
+      if (stepsActive && !factHas(input, "deck.step_width_m", wa.id)) {
+        const template = getQuestionTemplateByKey("deck.step_width_m");
+        out.push({
+          id: `fact:${wa.id}:deck.step_width_m`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: "deck.step_width_m",
+          constraintKey: null,
+          questionKey: "deck.step_width_m",
+          label: template?.label ?? "Step width",
+          question: template?.questionText ?? "How wide are the steps?",
+          askClass: "ASK_NOW",
+          inputType: "number",
+          unit: template?.unit ?? "m",
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: true,
+          rankScore: 82,
+          rankReason: "REQUIRED_FOR_ECONOMIC_MODEL step width",
+          assumptionStatement: STEP_WIDTH_ASSUMPTION_STATEMENT,
+          economicClass: "REQUIRED_FOR_ECONOMIC_MODEL",
+        });
+      }
       continue;
     }
 
@@ -769,7 +817,13 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
     }
   }
   const blocksEstimate = visible.some((c) => c.blocksEstimate);
-  const enoughToEstimate = visible.length === 0 && !blocksEstimate;
+  const remainingRequiredCount = visible.filter(
+    (c) =>
+      c.askClass === "HARD_MINIMUM" ||
+      c.blocksEstimate ||
+      c.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL"
+  ).length;
+  const enoughToEstimate = remainingRequiredCount === 0 && !blocksEstimate;
 
   return {
     candidates: visible,
@@ -777,8 +831,9 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
     assumptions,
     estimateNowAssumptions,
     visibleCount: visible.length,
+    remainingRequiredCount,
     blocksEstimate,
-    canEstimateNow: !blocksEstimate,
+    canEstimateNow: !blocksEstimate && remainingRequiredCount === 0,
     enoughToEstimate,
   };
 }

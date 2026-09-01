@@ -137,7 +137,7 @@ function liveFacts(overrides: EstimateFact[] = []): EstimateFact[] {
     fact("deck.concrete_bags_per_hole", LIVE_ID, 3),
     fact(DECK_STEPS_INCLUDED_FACT_KEY, LIVE_ID, true),
     fact("deck.step_count", LIVE_ID, 3),
-    fact("deck.step_width_m", LIVE_ID, 9),
+    { key: "deck.step_width_m", work_area_id: LIVE_ID, value: 9, source: "user" },
   ];
   const keys = new Set(overrides.map((row) => row.key));
   return [...base.filter((row) => !keys.has(row.key)), ...overrides];
@@ -350,9 +350,9 @@ check(
     contractWidth[0]?.questionClass === "ASSUME_IF_SKIPPED" &&
     contractWidth[0]?.commercial === true &&
     read("lib/scopes/templates/deck.ts").includes('key: "deck.step_width_m"') &&
-    read("lib/scopes/templates/deck.ts").includes("How wide are the stairs?") &&
+    read("lib/scopes/templates/deck.ts").includes("How wide are the steps?") &&
     read("components/assistant/job-plan/DeckQuickSpecEditor.tsx").includes(
-      "Stair width"
+      "Step width"
     )
 );
 
@@ -413,7 +413,7 @@ check(
     omittedQty?.widthM === DEFAULT_STEP_WIDTH_M &&
     omittedQty?.widthDefaulted === true &&
     omittedDeck.assumptions.some((row) =>
-      /assuming stair width 1\.0 m \(LOW-CONFIDENCE\)/i.test(row)
+      /assuming 1\.0 m step width/i.test(row)
     )
 );
 
@@ -423,11 +423,11 @@ check(
     omittedRefine.highValue.some(
       (row) =>
         row.factKey === "deck.step_width_m" &&
-        row.question === "How wide are the stairs?" &&
-        row.label === "Stair width"
+        row.question === "How wide are the steps?" &&
+        row.label === "Step width"
     ) &&
-    (omittedReview.improvements.some((row) => /confirm stair width/i.test(row.label)) ||
-      omittedReview.assumptions.some((row) => /stair width/i.test(row.label)))
+    (omittedReview.improvements.some((row) => /confirm (stair|step) width/i.test(row.label)) ||
+      omittedReview.assumptions.some((row) => /(stair|step) width/i.test(row.label)))
 );
 
 const knownBothFacts = liveFacts([fact("deck.step_going_m", LIVE_ID, 0.28)]);
@@ -448,7 +448,7 @@ check(
     Math.abs((liveQty?.goingM ?? 0) - DEFAULT_STEP_GOING_M) < 0.001 &&
     omittedQty?.goingResolution === PHYSICAL_REQUIREMENT_RESOLUTION.ASSUMED &&
     omittedDeck.assumptions.some((row) => /assuming stair tread depth 280 mm/i.test(row)) &&
-    omittedDeck.assumptions.some((row) => /assuming stair width 1\.0 m/i.test(row))
+    omittedDeck.assumptions.some((row) => /assuming 1\.0 m step width/i.test(row))
 );
 
 const derivedCount = calculateDeckStepsQuantities({
@@ -589,7 +589,7 @@ check(
     blockedWidth.treadAreaM2 === 0 &&
     blockedWidth.framingNetLm === 0 &&
     !stepPhysicalGeometryReady(blockedWidth) &&
-    calcSrc.includes('missingInfo.push("Stair width required")') &&
+    calcSrc.includes('missingInfo.push("Step width required")') &&
     calcSrc.includes("stepPhysicalGeometryReady")
 );
 
@@ -623,7 +623,7 @@ check(
     omittedQty.goingM === DEFAULT_STEP_GOING_M &&
     takeoff.includes("Width: 1.0m assumed") &&
     takeoff.includes("Tread depth: 280mm assumed") &&
-    takeoff.includes("Treads: 3") &&
+    takeoff.includes("Steps: 3") &&
     (omittedPriced.detail ?? "").includes("Width: 1.0m assumed") &&
     (omittedPriced.detail ?? "").includes("Tread depth: 280mm assumed") &&
     /required/i.test(omittedPriced.supporting ?? "") &&

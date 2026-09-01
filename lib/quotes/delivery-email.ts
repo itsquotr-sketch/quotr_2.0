@@ -65,7 +65,9 @@ export function resolveQuoteDeliveryReplyTo(
   return quoteDeliveryReplyToFallback();
 }
 
-function safeLogoUrl(logoUrl: string | null | undefined): string | null {
+export function quoteEmailSafeLogoUrl(
+  logoUrl: string | null | undefined
+): string | null {
   const result = validateLegacyLogoUrl(logoUrl);
   if (!result.ok || !result.url) return null;
   try {
@@ -77,6 +79,10 @@ function safeLogoUrl(logoUrl: string | null | undefined): string | null {
   } catch {
     return null;
   }
+}
+
+function safeLogoUrl(logoUrl: string | null | undefined): string | null {
+  return quoteEmailSafeLogoUrl(logoUrl);
 }
 
 export function buildQuoteDeliverySubject(input: {

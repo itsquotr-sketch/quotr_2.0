@@ -24,7 +24,7 @@ export function getProjectNextAction(project: ProjectListItem): string {
     return "Create quote";
   }
 
-  if (project.estimate_is_stale) {
+  if (project.has_estimate && project.estimate_is_stale) {
     return "Regenerate estimate";
   }
 

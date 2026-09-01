@@ -336,6 +336,7 @@ export const DECK_RELATIONSHIPS: readonly ScopeRelationship[] = Object.freeze([
     suppressConditions: anyOf(
       { op: "fact_equals", factKey: "deck.access_type", value: "None" },
       { op: "fact_is_explicit_no", factKey: "deck.stairs_required" },
+      { op: "fact_is_explicit_yes", factKey: "deck.steps_included" },
       { op: "accepted_wa_exists", scopeType: "stairs" },
       { op: "accepted_wa_exists", scopeType: "external_stairs" }
     ),

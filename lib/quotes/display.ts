@@ -116,11 +116,14 @@ export function formatQuoteNumberRevision(quote: {
   return `Revision ${quote.revision_number}`;
 }
 
+export const QUOTE_DISPLAY_TIMEZONE = "Pacific/Auckland";
+
 export function formatQuoteDateTime(value: string | null | undefined): string | null {
   if (!value) return null;
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) return null;
   return new Intl.DateTimeFormat("en-NZ", {
+    timeZone: QUOTE_DISPLAY_TIMEZONE,
     day: "numeric",
     month: "short",
     year: "numeric",

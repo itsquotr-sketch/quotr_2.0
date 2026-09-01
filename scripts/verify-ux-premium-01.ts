@@ -207,7 +207,7 @@ check(
 check(
   15,
   "Ready copy and Refine grouping contracts",
-  refinePanel.includes("Quotr has enough information to estimate.") &&
+  refinePanel.includes("All required details resolved") &&
     refinePanel.includes("data-refine-work-area") &&
     refinePanel.includes("data-refine-group") &&
     refinePanel.includes("data-refine-focus-context")

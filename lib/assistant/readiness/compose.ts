@@ -112,8 +112,8 @@ export function composeEstimateReadiness(
         ? "Need a bit more"
         : "Ready to estimate",
     explanation: enough
-      ? "I have enough for an initial estimate."
-      : blockerCopy ?? "A few things could improve this estimate.",
+      ? "All required details resolved."
+      : blockerCopy ?? "Answer the remaining required estimating questions.",
     known,
     assumptions,
     checks,

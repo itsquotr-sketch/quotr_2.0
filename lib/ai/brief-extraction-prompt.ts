@@ -49,8 +49,9 @@ Fact key rules:
 - "2m timber fence with a gate" → fence.height_m=2, fence.material=Timber, fence.gate_included=true.
 - "18m aluminium slat fence with one gate" / steel slat / plastic composite fence with a gate → set the modular system plus fence.modular_gate_requested=true. Do not treat that as a timber gate. Do not copy a leftover timber gate into fence.modular_gate_requested unless the current brief is a modular fence that itself requests a gate.
 - "kwila deck" / "140mm hardwood decking" → deck.board_material=Kwila or Hardwood, deck.board_width_mm=140.
-- "step down" → deck.access_type="Single step or step-down".
-- "stairs" / "stair set" → deck.access_type="Stair set".
+- "step down" / "step down included" / "single step" / "deck steps" / "two steps to ground" → deck.steps_included=true and deck.access_type="Single step or step-down". Do NOT suggest a separate external_stairs work area.
+- "stairs" / "stair set" on a deck, without independent stair-assembly language → deck.access_type="Stair set". Do NOT suggest external_stairs.
+- Only suggest external_stairs for a genuine independent stair assembly: "external staircase", "stair flight", "stairs between levels", "stringer stairs", "landing and stairs", "access stair", "separate external stairs", "replace external stairs".
 - "balustrade" → deck.balustrade_required=true.
 - "no balustrade" / "balustrade not required" → deck.balustrade_required=false.
 - "fascia" / "edge boards" / "fascia around the deck" → deck.vertical_face_boards_required=true.

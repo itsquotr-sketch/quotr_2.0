@@ -105,6 +105,7 @@ export function ClarifyValueField({
           {error}
         </p>
       ) : null}
+      <div className="flex flex-col gap-2 sm:flex-row">
       <Button
         type="button"
         className="min-h-11 w-full sm:w-auto"
@@ -114,6 +115,19 @@ export function ClarifyValueField({
       >
         {ASSISTANT_ACTION_LABELS.save}
       </Button>
+      {candidate.assumable && !candidate.blocksEstimate ? (
+        <Button
+          type="button"
+          variant="outline"
+          className="min-h-11 w-full sm:w-auto"
+          disabled={isSaving}
+          data-clarify-use-assumption="true"
+          onClick={() => onSubmit("Not sure")}
+        >
+          {ASSISTANT_ACTION_LABELS.useQuotrAssumption}
+        </Button>
+      ) : null}
+      </div>
     </div>
   );
 }

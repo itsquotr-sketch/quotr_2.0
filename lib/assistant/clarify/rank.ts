@@ -50,7 +50,8 @@ export function isClarifyMustAsk(candidate: ClarifyCandidate): boolean {
   return (
     candidate.askClass === "HARD_MINIMUM" ||
     candidate.blocksEstimate ||
-    !candidate.assumable
+    !candidate.assumable ||
+    candidate.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL"
   );
 }
 

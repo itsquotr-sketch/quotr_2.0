@@ -121,7 +121,9 @@ check(12, "Estimate-now-using-assumptions is a proper Button (not raw link)", cl
 
 check(13, "Clarify CTA footer is padded (not edge-to-edge text link)", clarifyPanel.includes("min-h-11 w-full") && clarifyPanel.includes("data-clarify-estimate-assumptions"));
 
-check(14, "Refine button gated by showRefine in ClarifyReadinessCard", clarifyReadiness.includes("showRefine ?") || clarifyReadiness.includes("{showRefine ?"));
+check(14, "Clarify has no Refine estimate branch", !clarifyPanel.includes("data-clarify-refine-cta") &&
+  !clarifyReadiness.includes("showRefine") &&
+  clarifyReadiness.includes("All required details resolved"));
 
 // ── STALE STATE ─────────────────────────────────────────────────────────────
 
@@ -161,7 +163,9 @@ check(21, "onRefine gated by refineView.hasCandidates in BuilderReviewSurface", 
 check(22, "Zero candidates → no Refine button (onRefine=undefined)", shell.includes("refineView.hasCandidates ? () => {") &&
   shell.includes(": undefined}"));
 
-check(23, "Refine button in ClarifyReadiness gated by showRefine prop", clarifyReadiness.includes("showRefine ?") || clarifyReadiness.includes("{showRefine ?"));
+check(23, "Improve this estimate remains post-estimate", builderReviewSurface.includes("Improve this estimate") &&
+  clarifyReadiness.includes("Improve this estimate") &&
+  !clarifyReadiness.includes("showRefine"));
 
 // ── IMPROVE TRUTHFULNESS ─────────────────────────────────────────────────────
 

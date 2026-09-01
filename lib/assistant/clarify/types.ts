@@ -9,6 +9,11 @@ export type ClarifyAskClass =
   | "ADVANCED"
   | "DERIVED_NEVER_ASK";
 
+export type ClarifyEconomicClass =
+  | "REQUIRED_FOR_ECONOMIC_MODEL"
+  | "HIGH_VALUE_OPTIONAL"
+  | "LOW_VALUE";
+
 export type ClarifySource =
   | "job_plan_check"
   | "scope_fact"
@@ -40,6 +45,7 @@ export type ClarifyCandidate = {
   readonly rankScore: number;
   readonly rankReason: string;
   readonly assumptionStatement: string | null;
+  readonly economicClass?: ClarifyEconomicClass;
 };
 
 export type ClarifyAssumption = {
@@ -60,6 +66,7 @@ export type ClarifyView = {
   /** Disclosures if the builder chooses Estimate now now (visible + deferred). */
   readonly estimateNowAssumptions: readonly ClarifyAssumption[];
   readonly visibleCount: number;
+  readonly remainingRequiredCount: number;
   readonly blocksEstimate: boolean;
   readonly canEstimateNow: boolean;
   readonly enoughToEstimate: boolean;

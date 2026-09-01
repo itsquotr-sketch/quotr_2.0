@@ -66,7 +66,6 @@ export function DeckQuickSpecEditor({
   const fasciaMaterial =
     jobPlanString(facts, workAreaId, "deck.fascia_material") ?? "";
   const stepWidth = jobPlanNumber(facts, workAreaId, "deck.step_width_m");
-  const stepGoing = jobPlanNumber(facts, workAreaId, "deck.step_going_m");
   const stepCount = jobPlanNumber(facts, workAreaId, "deck.step_count");
 
   return (
@@ -139,7 +138,14 @@ export function DeckQuickSpecEditor({
       </Group>
 
       {substructure ? (
-        <Group title="Substructure">
+        <details className="rounded-lg border border-border/60 p-3" data-deck-substructure-assumptions>
+          <summary className="cursor-pointer text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            Substructure assumptions
+          </summary>
+          <p className="mt-2 text-xs text-muted-foreground">
+            Estimating assumptions for pricing. Not a structural design.
+          </p>
+          <div className="mt-3 grid gap-3">
           <div className="space-y-1">
             <Label htmlFor={`deck-joist-${workAreaId}`}>Joists</Label>
             <select
@@ -206,7 +212,8 @@ export function DeckQuickSpecEditor({
           <p className="text-xs text-muted-foreground">
             These are estimating material assumptions, not a structural selection.
           </p>
-        </Group>
+          </div>
+        </details>
       ) : null}
 
       {fascia ? (
@@ -240,24 +247,26 @@ export function DeckQuickSpecEditor({
       {steps ? (
         <Group title="Steps">
           <p className="text-xs text-muted-foreground">
-            Treads inherit the selected deck board. Framing defaults to 190×45
-            H3.2.
+            Quotr assumes evenly spaced steps based on the deck height.
           </p>
           <div className="space-y-1">
-            <Label htmlFor={`deck-step-count-${workAreaId}`}>Rise count</Label>
+            <Label htmlFor={`deck-step-count-${workAreaId}`}>Number of steps</Label>
             <Input
               id={`deck-step-count-${workAreaId}`}
               type="number"
               inputMode="numeric"
-              defaultValue={stepCount ?? ""}
-              placeholder="From height (175 mm target)"
+              min={1}
+              defaultValue={stepCount != null && stepCount > 0 ? stepCount : ""}
+              placeholder="Auto from height"
               onBlur={(event) => {
-                const next = Number(event.target.value);
-                if (!Number.isFinite(next)) return;
+                const raw = event.target.value.trim();
+                if (!raw) return;
+                const next = Number(raw);
+                if (!Number.isFinite(next) || next <= 0) return;
                 onSpecFact?.({
                   workAreaId,
                   key: "deck.step_count",
-                  label: "Step rise count",
+                  label: "Number of steps",
                   value: next,
                   valueType: "number",
                 });
@@ -265,43 +274,22 @@ export function DeckQuickSpecEditor({
             />
           </div>
           <div className="space-y-1">
-            <Label htmlFor={`deck-step-width-${workAreaId}`}>Stair width (m)</Label>
+            <Label htmlFor={`deck-step-width-${workAreaId}`}>Step width (m)</Label>
             <Input
               id={`deck-step-width-${workAreaId}`}
               type="number"
               inputMode="decimal"
               step="0.01"
+              min="0.1"
               defaultValue={stepWidth ?? ""}
-              placeholder="1.0"
+              placeholder="1.0 if unknown"
               onBlur={(event) => {
                 const next = Number(event.target.value);
-                if (!Number.isFinite(next)) return;
+                if (!Number.isFinite(next) || next <= 0) return;
                 onSpecFact?.({
                   workAreaId,
                   key: "deck.step_width_m",
-                  label: "Stair width",
-                  value: next,
-                  valueType: "number",
-                });
-              }}
-            />
-          </div>
-          <div className="space-y-1">
-            <Label htmlFor={`deck-step-going-${workAreaId}`}>Tread depth (m)</Label>
-            <Input
-              id={`deck-step-going-${workAreaId}`}
-              type="number"
-              inputMode="decimal"
-              step="0.01"
-              defaultValue={stepGoing ?? ""}
-              placeholder="0.28"
-              onBlur={(event) => {
-                const next = Number(event.target.value);
-                if (!Number.isFinite(next)) return;
-                onSpecFact?.({
-                  workAreaId,
-                  key: "deck.step_going_m",
-                  label: "Tread depth",
+                  label: "Step width",
                   value: next,
                   valueType: "number",
                 });

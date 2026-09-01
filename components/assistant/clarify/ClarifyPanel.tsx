@@ -1,15 +1,11 @@
 "use client";
 
-import { useState } from "react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import type { ClarifyCandidate, ClarifyView } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
 import type { RefineView } from "@/lib/assistant/refine/types";
-import {
-  ClarifyReadinessCard,
-  RefineEstimatePanel,
-} from "@/components/assistant/clarify/ClarifyReadiness";
+import { ClarifyReadinessCard } from "@/components/assistant/clarify/ClarifyReadiness";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
 
@@ -113,37 +109,20 @@ function ClarifyQuestion({
 export function ClarifyPanel({
   view,
   readiness,
-  refineView,
   isSaving,
   onAnswerBoolean,
   onAnswerValue,
   onEstimateNow,
 }: ClarifyPanelProps) {
-  const [refineOpen, setRefineOpen] = useState(false);
   const current = view.candidates[0] ?? null;
-
-  if (refineOpen && refineView.hasCandidates) {
-    return (
-      <RefineEstimatePanel
-        view={refineView}
-        isSaving={isSaving}
-        canEstimateNow={view.canEstimateNow}
-        onDone={() => setRefineOpen(false)}
-        onEstimateNow={onEstimateNow}
-        onAnswerBoolean={onAnswerBoolean}
-        onAnswerValue={onAnswerValue}
-      />
-    );
-  }
+  const remaining = view.remainingRequiredCount ?? view.visibleCount;
 
   if (view.enoughToEstimate || !current) {
     return (
       <ClarifyReadinessCard
         readiness={readiness}
-        showRefine={refineView.hasCandidates}
         isSaving={isSaving}
         onEstimateNow={onEstimateNow}
-        onRefine={() => setRefineOpen(true)}
       />
     );
   }
@@ -154,8 +133,10 @@ export function ClarifyPanel({
       data-clarify-panel
       data-clarify-count={view.visibleCount}
     >
-      <p className="text-sm text-muted-foreground">
-        A few things would make this estimate more accurate
+      <p className="text-sm text-muted-foreground" data-clarify-progress>
+        {remaining === 1
+          ? "1 detail remaining"
+          : `${remaining} details remaining`}
       </p>
       <ClarifyQuestion
         candidate={current}

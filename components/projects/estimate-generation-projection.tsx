@@ -57,11 +57,14 @@ export function EstimateGenerationProjectionProvider({
   );
 
   const markEstimateStale = useCallback(() => {
-    setOverlay((prev) => ({
-      hasEstimate: prev?.hasEstimate ?? initialHasEstimate,
-      estimateIsStale: true,
-      pricingSummary: prev?.pricingSummary ?? initialPricingSummary,
-    }));
+    setOverlay((prev) => {
+      const hasEstimate = prev?.hasEstimate ?? initialHasEstimate;
+      return {
+        hasEstimate,
+        estimateIsStale: hasEstimate,
+        pricingSummary: prev?.pricingSummary ?? initialPricingSummary,
+      };
+    });
   }, [initialHasEstimate, initialPricingSummary]);
 
   const clearEstimateGeneration = useCallback(() => {

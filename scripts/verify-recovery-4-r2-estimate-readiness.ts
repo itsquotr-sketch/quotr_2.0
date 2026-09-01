@@ -150,7 +150,7 @@ const shell = read("components/assistant/AssistantShell.tsx");
 const panel =
   read("components/assistant/clarify/ClarifyPanel.tsx") +
   read("components/assistant/clarify/ClarifyReadiness.tsx");
-const extractSrc = read("lib/ai/extract.ts");
+const extractSrc = read("lib/ai/brief-extraction-result.ts");
 const promptSrc = read("lib/ai/brief-extraction-prompt.ts");
 const assumptionsSrc = read("lib/assistant/clarify/assumptions.ts");
 const stripSrc = read("lib/scopes/strip-implicit-scope-exclusions.ts");
@@ -321,14 +321,23 @@ check(
     panel.includes("data-clarify-primary-cta")
 );
 check(
-  "21 Refine secondary",
-  ASSISTANT_ACTION_LABELS.refineEstimate === "Refine estimate" &&
-    panel.includes("data-clarify-refine-cta")
+  "21 Clarify has no Refine estimate branch",
+  !panel.includes("data-clarify-refine-cta") &&
+    read("components/assistant/clarify/ClarifyReadiness.tsx").includes(
+      "All required details resolved"
+    ) &&
+    read("components/assistant/clarify/ClarifyValueField.tsx").includes(
+      "data-clarify-use-assumption"
+    )
 );
 check(
-  "22 Refine hidden when no useful candidates",
-  panel.includes("showRefine={refineView.hasCandidates}") ||
-    panel.includes("refineView.hasCandidates")
+  "22 Improve this estimate remains post-estimate",
+  read("components/assistant/builder-review/BuilderReviewSurface.tsx").includes(
+    "Improve this estimate"
+  ) &&
+    read("components/assistant/clarify/ClarifyReadiness.tsx").includes(
+      "Improve this estimate"
+    )
 );
 
 check(
@@ -343,12 +352,16 @@ check(
 );
 check(
   "24 advanced fields visible without nested gate (FE-0)",
-  panel.includes('data-refine-all-visible="true"') &&
-    !panel.includes("data-refine-advanced-toggle")
+  read("components/assistant/clarify/ClarifyReadiness.tsx").includes(
+    'data-refine-all-visible="true"'
+  ) &&
+    !read("components/assistant/clarify/ClarifyReadiness.tsx").includes(
+      "data-refine-advanced-toggle"
+    )
 );
 check(
-  "25 no mandatory refinement",
-  panel.includes("Optional details") &&
+  "25 post-estimate Improve remains optional",
+  read("components/assistant/clarify/ClarifyReadiness.tsx").includes("Optional details") &&
     real.clarify.canEstimateNow
 );
 check(
@@ -358,14 +371,14 @@ check(
     !existsSync("supabase/migrations/037_refine.sql")
 );
 check(
-  "27 Done returns cleanly",
-  panel.includes("data-refine-done") &&
-    panel.includes("ASSISTANT_ACTION_LABELS.done") &&
-    panel.includes("setRefineOpen(false)")
+  "27 Done returns cleanly from Improve panel",
+  read("components/assistant/clarify/ClarifyReadiness.tsx").includes("data-refine-done") &&
+    read("components/assistant/clarify/ClarifyReadiness.tsx").includes("ASSISTANT_ACTION_LABELS.done")
 );
 check(
   "28 Estimate now still available",
-  panel.includes("canEstimateNow={view.canEstimateNow}") &&
+  panel.includes("data-clarify-primary-cta") &&
+    panel.includes("ASSISTANT_ACTION_LABELS.estimateNow") &&
     real.refine.hasCandidates
 );
 
@@ -384,15 +397,27 @@ const baseline = calculateEstimate(realJobContext(realFacts));
 check("31 same canonical inputs = same cost", baseline.recommendedCost === 8620.53);
 check("32 same canonical inputs = same sell", baseline.recommendedSell === 12878.01);
 
+const exemplarAssumedFacts = [
+  ...exemplarFacts,
+  fact("deck.step_width_m", DECK, "Not sure"),
+];
+const exemplarAssumed = composePair(
+  exemplarAssumedFacts,
+  exemplar.sourceBrief
+);
 check(
   "33 immediate/near-immediate ready",
-  exemplarPair.clarify.enoughToEstimate &&
-    exemplarPair.readiness.enoughToEstimate
+  !exemplarPair.clarify.enoughToEstimate &&
+    exemplarPair.clarify.candidates.some(
+      (c) => c.factKey === "deck.step_width_m"
+    ) &&
+    exemplarAssumed.clarify.enoughToEstimate &&
+    exemplarAssumed.readiness.enoughToEstimate
 );
 check(
   "34 EXEMPLAR Estimate now generates",
-  exemplarPair.clarify.canEstimateNow &&
-    calculateEstimate(realJobContext(exemplarFacts)).recommendedCost > 0
+  exemplarAssumed.clarify.canEstimateNow &&
+    calculateEstimate(realJobContext(exemplarAssumedFacts)).recommendedCost > 0
 );
 check(
   "35 no duplicated questions",
@@ -409,7 +434,7 @@ check(
   panel.includes('data-clarify-primary-cta') &&
     !panel.includes("sticky") || panel.includes("data-clarify-cta-bar")
 );
-check("38 Refine secondary", panel.includes("data-clarify-refine-cta"));
+check("38 Clarify has no Refine CTA", !panel.includes("data-clarify-refine-cta"));
 check(
   "39 no overflow",
   panel.includes("overflow-x-hidden") && panel.includes("min-h-11")

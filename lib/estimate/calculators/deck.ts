@@ -83,6 +83,8 @@ import {
   calculateDeckStepsQuantities,
   DEFAULT_STEP_WIDTH_M,
   formatStepGeometryTakeoff,
+  STEP_ARRANGEMENT_FROM_HEIGHT_STATEMENT,
+  STEP_WIDTH_ASSUMPTION_STATEMENT,
   stepPhysicalGeometryReady,
 } from "@/lib/estimate/deck-steps-physical";
 import { defaultStepFramingIdentity } from "@/lib/estimate/deck-default-identities";
@@ -1359,28 +1361,34 @@ export function calculateDeck(
   });
 
   if (stepsIncluded && !hasExternalStairs) {
+    // Vertical faces stay in Fascia — step decking is treads only.
     const steps = calculateDeckStepsQuantities({
       facts,
       workAreaId: workArea.id,
       deckHeightM: deckHeight,
       wastePercent: wastagePercent,
     });
-    if (steps) {
+    const explicitStepsIncluded =
+      getBooleanFact(facts, workArea.id, DECK_STEPS_INCLUDED_FACT_KEY) ===
+      true;
+    if (!steps || steps.riseCount <= 0) {
+      if (explicitStepsIncluded || stepsIncluded) {
+        missingInfo.push("Step arrangement required");
+      }
+    } else {
       const goingMm = Math.round(steps.goingM * 1000);
       const stepGeometryReady = stepPhysicalGeometryReady(steps);
       if (steps.widthDefaulted && stepGeometryReady) {
         recordDefaultedNumber(assumptionMetadata, {
           key: "deck.step_width_m",
-          label: "Stair width",
+          label: "Step width",
           assumedValue: DEFAULT_STEP_WIDTH_M,
           unit: " m",
-          reason: "LOW-CONFIDENCE estimating assumption for stair width.",
+          reason: STEP_WIDTH_ASSUMPTION_STATEMENT,
           severity: "warning",
           workAreaId: workArea.id,
         });
-        assumptions.push(
-          `Assuming stair width ${DEFAULT_STEP_WIDTH_M.toFixed(1)} m (LOW-CONFIDENCE).`
-        );
+        assumptions.push(STEP_WIDTH_ASSUMPTION_STATEMENT);
       }
       if (steps.goingDefaulted && stepGeometryReady) {
         recordDefaultedNumber(assumptionMetadata, {
@@ -1396,17 +1404,17 @@ export function calculateDeck(
           `Assuming stair tread depth ${goingMm} mm (LOW-CONFIDENCE).`
         );
       }
-      // Step treads inherits deck board material. Vertical faces stay in Fascia.
-      assumptions.push(
-        `Steps estimated as ${steps.riseCount} rises (${steps.estimatedRiserM} m). Estimating layout only — not stair compliance.`
-      );
-      const explicitStepsIncluded =
-        getBooleanFact(facts, workArea.id, DECK_STEPS_INCLUDED_FACT_KEY) ===
-        true;
+      if (steps.riseCountDefaulted) {
+        assumptions.push(STEP_ARRANGEMENT_FROM_HEIGHT_STATEMENT);
+      } else {
+        assumptions.push(
+          `Steps estimated as ${steps.riseCount} rises (${steps.estimatedRiserM} m). Estimating layout only — not stair compliance.`
+        );
+      }
       if (!stepGeometryReady) {
         if (explicitStepsIncluded) {
           if (!detailedMoneyAllowed(steps.widthResolution)) {
-            missingInfo.push("Stair width required");
+            missingInfo.push("Step width required");
           }
           if (!detailedMoneyAllowed(steps.goingResolution)) {
             missingInfo.push("Tread depth required");
@@ -1419,6 +1427,7 @@ export function calculateDeck(
         boardWidthMm: boardWidthFact,
         wastagePercent,
       });
+      // inherits deck board material
       const treadPricing = resolveDeckingBoardPricing({
         context,
         material,

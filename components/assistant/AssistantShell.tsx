@@ -506,7 +506,10 @@ export function AssistantShell({
           return seq != null && seq > requestSeq;
         })
       );
-      if (result.assistantMutation.estimateStale) {
+      if (
+        result.assistantMutation.hasEstimate &&
+        result.assistantMutation.estimateStale
+      ) {
         setLocalEstimateStale(true);
         estimateNavProjection?.markEstimateStale();
       }
@@ -1591,11 +1594,13 @@ export function AssistantShell({
           label: candidate.label,
           value,
           valueType:
-            candidate.inputType === "number"
-              ? "number"
-              : candidate.inputType === "boolean"
-                ? "boolean"
-                : "select",
+            typeof value === "string" && value.trim().toLowerCase() === "not sure"
+              ? "select"
+              : candidate.inputType === "number"
+                ? "number"
+                : candidate.inputType === "boolean"
+                  ? "boolean"
+                  : "select",
         })
       );
       if (result.error) {
@@ -1934,7 +1939,8 @@ export function AssistantShell({
   // Do not treat a fresh server render as clearing the bridge — that is the
   // router.refresh() race. Successful regenerate clears localEstimateStale.
   const displayEstimateStale =
-    Boolean(estimate?.isStale) || localEstimateStale;
+    Boolean(estimate) &&
+    (Boolean(estimate?.isStale) || localEstimateStale);
   const updatingEstimate = isRegenerating;
 
   const activeDisclosureStage = resolveActiveDisclosureStage({

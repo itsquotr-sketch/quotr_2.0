@@ -509,12 +509,12 @@ check(
 check(
   "17 step decking required qty visible",
   /required/i.test(stepDeck?.identitySummary ?? "") &&
-    /54(\.0)? lm required/i.test(stepDeck?.identitySummary ?? "")
+    /6(\.0)? lm required/i.test(stepDeck?.identitySummary ?? "")
 );
 check(
   "18 step purchased qty visible",
   /purchased/i.test(stepDeck?.identitySummary ?? "") &&
-    /59\.4 lm purchased/i.test(stepDeck?.identitySummary ?? "")
+    /6\.6 lm purchased/i.test(stepDeck?.identitySummary ?? "")
 );
 check(
   "19 waste material only",
@@ -577,11 +577,12 @@ check(
       liveReview.assumptions.some((row) => /tread depth/i.test(row.label)))
 );
 check(
-  "live stair width is KNOWN (explicit 9 m)",
-  stepsAssumed?.widthResolution === "KNOWN" &&
-    stepsAssumed?.widthM === 9 &&
-    !live.assumptions.some((row) => /assuming stair width/i.test(row)) &&
-    !refine.highValue.some((row) => row.factKey === "deck.step_width_m")
+  "live stair width is not the unstated 9 m deck edge",
+  stepsAssumed?.widthResolution === "ASSUMED" &&
+    stepsAssumed?.widthM === 1 &&
+    live.assumptions.some((row) =>
+      /assuming 1\.0 m step width/i.test(row)
+    )
 );
 
 console.log("\n== GLOBAL QUALITY ==");
@@ -628,9 +629,7 @@ const noStepsRefine = composeRefineView({
 check(
   "25 no mass Clarify regression",
   !noStepsRefine.highValue.some((row) => row.factKey === "deck.step_going_m") &&
-    !noStepsRefine.highValue.some((row) => row.factKey === "deck.step_width_m") &&
-    !read("lib/assistant/clarify/compose.ts").includes("deck.step_going_m") &&
-    !read("lib/assistant/clarify/compose.ts").includes("deck.step_width_m")
+    !noStepsRefine.highValue.some((row) => row.factKey === "deck.step_width_m")
 );
 
 console.log("\n== PRESENTATION ==");

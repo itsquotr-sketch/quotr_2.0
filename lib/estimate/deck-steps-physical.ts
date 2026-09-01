@@ -7,7 +7,7 @@
  * labour consume this object — never a silent raw fallback.
  */
 import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
-import { getNumberFact, round2 } from "@/lib/estimate/facts";
+import { getFact, getNumberFact, round2 } from "@/lib/estimate/facts";
 import {
   detailedMoneyAllowed,
   resolvePhysicalRequirement,
@@ -20,6 +20,11 @@ export const MAX_STEP_ESTIMATING_RISER_M = 0.19;
 export const DEFAULT_STEP_GOING_M = 0.28;
 export const DEFAULT_STEP_WIDTH_M = 1;
 export const DEFAULT_STEP_FRAMING_CENTRES_M = 0.45;
+
+export const STEP_ARRANGEMENT_FROM_HEIGHT_STATEMENT =
+  "Step arrangement estimated from deck height for pricing. Final compliant dimensions to be confirmed.";
+export const STEP_WIDTH_ASSUMPTION_STATEMENT =
+  "Assuming 1.0 m step width for pricing. Not the full deck edge unless specified.";
 
 export type DeckStepsQuantities = {
   riseCount: number;
@@ -79,7 +84,7 @@ function provenanceWord(resolution: PhysicalRequirementResolution): string {
 export function formatStepGeometryTakeoff(steps: DeckStepsQuantities): string {
   const goingMm = Math.round(steps.goingM * 1000);
   return [
-    `Treads: ${steps.treadCount}`,
+    `Steps: ${steps.treadCount}`,
     `Width: ${steps.widthM.toFixed(1)}m ${provenanceWord(steps.widthResolution)}`,
     `Tread depth: ${goingMm}mm ${provenanceWord(steps.goingResolution)}`,
   ].join(". ");
@@ -117,6 +122,25 @@ function emptyQuantities(params: {
   };
 }
 
+function looksLikeUnstatedFullDeckEdgeWidth(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  widthM: number;
+}): boolean {
+  if (!(params.widthM >= 2)) return false;
+  const row = getFact([...params.facts], params.workAreaId, "deck.step_width_m");
+  if (row?.source === "user") return false;
+  const length = getNumberFact([...params.facts], params.workAreaId, "deck.length_m");
+  const deckWidth = getNumberFact(
+    [...params.facts],
+    params.workAreaId,
+    "deck.width_m"
+  );
+  return [length, deckWidth].some(
+    (edge) => edge != null && Math.abs(edge - params.widthM) < 0.05
+  );
+}
+
 export function calculateDeckStepsQuantities(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
@@ -129,21 +153,46 @@ export function calculateDeckStepsQuantities(params: {
 }): DeckStepsQuantities | null {
   const facts = [...params.facts];
   const countFact = getNumberFact(facts, params.workAreaId, "deck.step_count");
+  const knownCount =
+    countFact != null && countFact > 0 ? Math.round(countFact) : null;
   const derivedRise =
-    countFact == null || !(countFact > 0)
+    knownCount == null
       ? params.deckHeightM != null
         ? estimateDeckRiseCount(params.deckHeightM)
         : null
       : null;
   const riseResolved = resolvePhysicalRequirement({
-    knownValue: countFact != null && countFact > 0 ? Math.round(countFact) : null,
+    knownValue: knownCount,
     derivedValue: derivedRise != null && derivedRise > 0 ? derivedRise : null,
     assumptionAllowed: false,
   });
   const riseCount = riseResolved.value ?? 0;
-  if (riseCount <= 0) return null;
+  if (riseCount <= 0) {
+    return emptyQuantities({
+      riseCount: 0,
+      riseCountDefaulted: false,
+      riseCountResolution: riseResolved.resolution,
+      estimatedRiserM: DEFAULT_STEP_TARGET_RISER_M,
+      widthM: 0,
+      widthDefaulted: false,
+      widthResolution: "INFORMATION_REQUIRED",
+      goingM: 0,
+      goingDefaulted: false,
+      goingResolution: "INFORMATION_REQUIRED",
+    });
+  }
 
-  const widthFact = getNumberFact(facts, params.workAreaId, "deck.step_width_m");
+  const rawWidthFact = getNumberFact(facts, params.workAreaId, "deck.step_width_m");
+  const widthFact =
+    rawWidthFact != null &&
+    rawWidthFact > 0 &&
+    !looksLikeUnstatedFullDeckEdgeWidth({
+      facts,
+      workAreaId: params.workAreaId,
+      widthM: rawWidthFact,
+    })
+      ? rawWidthFact
+      : null;
   const widthResolved = resolvePhysicalRequirement({
     knownValue: widthFact != null && widthFact > 0 ? widthFact : null,
     assumptionValue: DEFAULT_STEP_WIDTH_M,

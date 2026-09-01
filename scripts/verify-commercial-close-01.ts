@@ -424,7 +424,13 @@ assert(
     return (
       accepted.subject === "New Deck Test — Quote Q-0001 accepted" &&
       declined.subject === "New Deck Test — Quote Q-0001 declined" &&
+      client.subject === "Your acceptance of Quote Q-0001 is confirmed" &&
       client.text.includes("Your acceptance has been recorded.") &&
+      client.text.includes("Accepted total:") &&
+      client.text.includes("incl GST") &&
+      client.text.includes("https://example.test/q/qt_token") &&
+      client.html.includes("View accepted quote") &&
+      !client.html.replace(/href="[^"]+"/g, "").includes("qt_token") &&
       !blob.includes("required quantity") &&
       !blob.includes("physical driver") &&
       !blob.includes("productivity") &&
