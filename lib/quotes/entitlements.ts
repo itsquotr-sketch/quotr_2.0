@@ -5,8 +5,9 @@
  * Business additionally: quote.approval, margin.guardrails, team roles/audit.
  *
  * QUOTE-DELIVERY-01 and QUOTE-ACCEPTANCE-01 must call this at the
- * server boundary against the issuer organisation. Until Billing exists,
- * known Quote capabilities are allowed. Do not trust a browser plan value.
+ * server boundary against the issuer organisation. BILLING-1 stores
+ * subscription authority but does not enforce it. Until BILLING-2,
+ * known Quote capabilities remain allowed. Do not trust a browser plan value.
  */
 export type QuoteEntitlementKey =
   | "quotes.send"

@@ -95,9 +95,10 @@ const quote = {
 console.log("=== QUOTE-ACCEPTANCE-01 ===\n");
 
 assert(
-  "044 acceptance remains; 045 commercial close is latest additive",
+  "044 acceptance remains; 045 commercial close remains; 046 billing is latest additive",
   migrations.includes("044_quote_acceptance.sql") &&
-    migrations.at(-1) === "045_commercial_close.sql"
+    migrations.includes("045_commercial_close.sql") &&
+    migrations.at(-1) === "046_billing_foundation.sql"
 );
 assert(
   "041 accept/decline RPCs remain",

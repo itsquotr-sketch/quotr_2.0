@@ -10,11 +10,11 @@ This document supersedes any runbook that assumed Preview and Production share S
 
 ## Topology
 
-| Environment | Application | Database | Stripe (future BILLING-1+) |
+| Environment | Application | Database | Stripe |
 | --- | --- | --- | --- |
-| **Local** | `next dev` at `http://localhost:3000` | Preferred: local Docker (`supabase start`). Interim on this machine: hosted Preview `shhpjsoldmqtkdbgrbtm`. Never Production. | Stripe **TEST** only. Never live keys. |
-| **Preview** | Stable branch alias `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` | Hosted `quotr_preview` / `shhpjsoldmqtkdbgrbtm` (Sydney) | `BILLING_ENVIRONMENT=test` + Stripe **TEST** only |
-| **Production** | Production domain when approved. **No Production app deploy in ENVIRONMENT-01.** | Existing `quotr_2.0` / `lxvnylhsbvudzzupxeqr` | `BILLING_ENVIRONMENT=live` + Stripe **LIVE** only |
+| **Local** | `next dev` at `http://localhost:3000` | Preferred: local Docker (`supabase start`). Interim on this machine: hosted Preview `shhpjsoldmqtkdbgrbtm`. Never Production. | Stripe **TEST** only. `BILLING_ENVIRONMENT` unset → `test`. Never live keys. |
+| **Preview** | Stable branch alias `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` | Hosted `quotr_preview` / `shhpjsoldmqtkdbgrbtm` (Sydney) | Explicit `BILLING_ENVIRONMENT=test` + Stripe **TEST** only |
+| **Production** | Production domain when approved. **No Production app deploy in BILLING-1.** | Existing `quotr_2.0` / `lxvnylhsbvudzzupxeqr` | Explicit `BILLING_ENVIRONMENT=live` + Stripe **LIVE** only (not configured in BILLING-1) |
 
 ### Project refs
 
@@ -114,31 +114,38 @@ Until a Production app exists, Resend is Preview-only in practice.
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | May keep existing non-billing test configuration. Live AI remains opt-in (`RUN_LIVE_AI_TESTS`, `SCOPE_DISCOVERY_ENABLED`) | Unchanged |
 | Google Maps / Google generative | Not used | Not used |
-| Stripe | Not implemented. Future test keys only | Future live keys only |
+| Stripe | BILLING-1 foundation in code. Preview TEST keys later. Production LIVE keys not in BILLING-1. | LIVE keys later; not configured in BILLING-1 |
 
 Do not rotate keys in ENVIRONMENT-01.
 
 ---
 
-## Future Stripe contract (do not implement now)
+## Stripe contract (BILLING-1)
+
+Authority is explicit `BILLING_ENVIRONMENT`. Do not infer test/live from `VERCEL_ENV` alone.
 
 ```
 # Preview
 BILLING_ENVIRONMENT=test
 # STRIPE_SECRET_KEY=sk_test_...
 # STRIPE_WEBHOOK_SECRET=whsec_...
-# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_test_...
+# STRIPE_PRICE_BUILDER_MONTHLY=price_...
+# STRIPE_PRICE_BUSINESS_BASE_MONTHLY=price_...
+# STRIPE_PRICE_BUSINESS_SEAT_MONTHLY=price_...
 
-# Production
+# Production (later; not BILLING-1)
 BILLING_ENVIRONMENT=live
 # STRIPE_SECRET_KEY=sk_live_...
 # STRIPE_WEBHOOK_SECRET=whsec_...
-# NEXT_PUBLIC_STRIPE_PUBLISHABLE_KEY=pk_live_...
 ```
+
+Publishable key is not required until BILLING-3 Checkout.
 
 Preview must never receive live Stripe keys. Production must never receive test Stripe keys.
 
 Even after databases are separate, billing rows still carry `billing_environment` (`test` \| `live`) as defence in depth (BILLING-0). Preview DB stores test only. Production DB stores live only.
+
+Migration 046 is Preview-first after owner review. See `docs/architecture/QUOTR_BILLING_ARCHITECTURE.md`.
 
 ---
 

@@ -54,6 +54,10 @@ const EXPECTED_APP_TABLES = [
   "calibration_responses",
   "estimate_requirement_snapshots",
   "ai_usage_events",
+  "org_billing_customers",
+  "org_subscriptions",
+  "stripe_processed_events",
+  "org_billing_overrides",
 ] as const;
 
 const TABLES_WITHOUT_RLS_OK: string[] = [];
@@ -76,6 +80,20 @@ const POLICY_EXCEPTIONS: Record<
   estimate_requirement_snapshots: { update: true, delete: true },
   // AI usage: append-only metadata — authenticated insert/select only.
   ai_usage_events: { update: true, delete: true },
+  org_billing_customers: { insert: true, update: true, delete: true },
+  org_subscriptions: { insert: true, update: true, delete: true },
+  stripe_processed_events: {
+    select: true,
+    insert: true,
+    update: true,
+    delete: true,
+  },
+  org_billing_overrides: {
+    select: true,
+    insert: true,
+    update: true,
+    delete: true,
+  },
 };
 
 function auditMigrations(): {
