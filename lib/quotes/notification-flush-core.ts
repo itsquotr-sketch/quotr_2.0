@@ -29,6 +29,7 @@ export type QuoteResponseNotificationFlushResult = {
     | "provider_unconfigured"
     | "missing_table"
     | "error";
+  errorCode?: string;
 };
 
 export type NotificationFlushDeliveryRow = {
@@ -49,7 +50,7 @@ export type NotificationFlushStore = {
     quoteId: string;
   }): Promise<
     | { ok: true; rows: Array<{ id: string; payload: unknown }> }
-    | { ok: false; missingTable?: boolean }
+    | { ok: false; missingTable?: boolean; errorCode?: string }
   >;
   listPendingEmailDeliveries(input: {
     orgId: string;
@@ -138,6 +139,7 @@ export async function sendPendingQuoteResponseNotificationDeliveries(
       submitted: 0,
       failed: 0,
       skipped: notifications.missingTable ? "missing_table" : "error",
+      errorCode: notifications.errorCode,
     };
   }
   if (!notifications.rows.length) {

@@ -31,6 +31,7 @@ function createSupabaseNotificationFlushStore(
         return {
           ok: false,
           missingTable: isMissingNotificationFlushTableError(error),
+          errorCode: error.code || error.message?.slice(0, 80),
         };
       }
       return {

@@ -5,6 +5,19 @@ import { isQuoteResponseNotificationFlushContext } from "@/lib/quotes/notificati
 
 export const runtime = "nodejs";
 
+function adminJwtRole(): string | null {
+  const token = process.env["SUPABASE_SERVICE_ROLE_KEY"]?.trim();
+  if (!token) return null;
+  try {
+    const payload = JSON.parse(
+      Buffer.from(token.split(".")[1], "base64url").toString("utf8")
+    ) as { role?: unknown };
+    return typeof payload.role === "string" ? payload.role : "unknown";
+  } catch {
+    return "invalid_jwt";
+  }
+}
+
 export async function POST(
   _request: Request,
   context: { params: Promise<{ quoteId: string }> }
@@ -39,7 +52,11 @@ export async function POST(
       quoteId,
       orgId: auth.orgId,
     });
-    return NextResponse.json({ ok: true, result });
+    return NextResponse.json({
+      ok: true,
+      result,
+      admin_role: adminJwtRole(),
+    });
   } catch {
     return NextResponse.json({ ok: false }, { status: 500 });
   }
