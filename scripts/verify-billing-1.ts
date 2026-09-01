@@ -31,6 +31,7 @@ import { mapStripeSubscriptionStatus } from "../lib/billing/status";
 import type { BillingStore, EventClaimRecord } from "../lib/billing/store";
 import {
   buildInternalTrialSubscription,
+  deriveInternalTrialAccessState,
   isNoCardInternalTrial,
 } from "../lib/billing/trial";
 import type {
@@ -553,6 +554,26 @@ assert(
     trial.paidSeatQuantity === 1 &&
     trial.source === "internal_trial"
 );
+assert(
+  "persisted no-card trial status stays trialing",
+  trial.status === "trialing"
+);
+assert(
+  "future trial_ends_at derives trialing",
+  deriveInternalTrialAccessState(trial, new Date("2026-09-07T00:00:00.000Z")) ===
+    "trialing"
+);
+assert(
+  "past trial_ends_at derives trial_expired without changing persisted status",
+  deriveInternalTrialAccessState(trial, new Date("2026-09-20T00:00:00.000Z")) ===
+    "trial_expired" && trial.status === "trialing"
+);
+assert(
+  "trial_expired is not a persisted subscription status",
+  !file("supabase/migrations/046_billing_foundation.sql").includes(
+    "trial_expired"
+  )
+);
 
 assert(
   "duplicate processed event is skipped",
@@ -626,7 +647,8 @@ assert(
   "billing summary returns customer, subscription, override without enforcing access",
   summary.customer?.stripeCustomerId === CUSTOMER_A &&
     summary.subscription?.source === "internal_trial" &&
-    summary.activeOverride?.id === "ovr_1"
+    summary.activeOverride?.id === "ovr_1" &&
+    summary.effectiveTrialState === "trialing"
 );
 
 assert(

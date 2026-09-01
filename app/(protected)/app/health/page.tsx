@@ -9,6 +9,10 @@ import {
 } from "@/components/ui/card";
 import { getEnvSummary } from "@/lib/env";
 import {
+  probeBillingEnvironmentLabel,
+  probePreviewServiceRole,
+} from "@/lib/billing/admin-health";
+import {
   internalDeploymentLabel,
   resolveQuotrDeployment,
   supabaseHostnameFromUrl,
@@ -59,6 +63,8 @@ export default async function HealthPage() {
     supabaseHostnameFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? "—";
   const supabaseRef =
     supabaseProjectRefFromUrl(process.env.NEXT_PUBLIC_SUPABASE_URL) ?? "—";
+  const serviceRoleProbe = await probePreviewServiceRole();
+  const billingEnvironmentProbe = probeBillingEnvironmentLabel();
 
   return (
     <>
@@ -94,6 +100,14 @@ export default async function HealthPage() {
               <HealthRow label="Deployment" value={environmentLabel} />
               <HealthRow label="Supabase host" value={supabaseHost} />
               <HealthRow label="Supabase project ref" value={supabaseRef} />
+              <HealthRow
+                label="Billing environment"
+                value={billingEnvironmentProbe}
+              />
+              <HealthRow
+                label="Preview service role"
+                value={serviceRoleProbe}
+              />
             </CardContent>
           </Card>
 

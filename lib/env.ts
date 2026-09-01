@@ -35,6 +35,9 @@ const SERVER_ENV_CHECKS: EnvCheck[] = [
     value: process.env.NEXT_PUBLIC_FEEDBACK_EMAIL,
     required: false,
   },
+  { name: "BILLING_ENVIRONMENT", value: process.env.BILLING_ENVIRONMENT, required: false },
+  { name: "STRIPE_SECRET_KEY", value: process.env.STRIPE_SECRET_KEY, required: false },
+  { name: "STRIPE_WEBHOOK_SECRET", value: process.env.STRIPE_WEBHOOK_SECRET, required: false },
 ];
 
 function formatMissing(checks: EnvCheck[]): string[] {

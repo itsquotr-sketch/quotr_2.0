@@ -119,12 +119,20 @@ export type OrgBillingOverride = {
   createdAt: string;
 };
 
+/**
+ * Derived access hint for a Quotr-managed no-card trial.
+ * Persisted org_subscriptions.status stays `trialing`.
+ * BILLING-1 does not enforce this.
+ */
+export type EffectiveTrialState = "trialing" | "trial_expired";
+
 export type OrgBillingState = {
   orgId: string;
   billingEnvironment: BillingEnvironment;
   customer: OrgBillingCustomer | null;
   subscription: OrgSubscription | null;
   activeOverride: OrgBillingOverride | null;
+  effectiveTrialState: EffectiveTrialState | null;
 };
 
 export type StripePriceConfig = {

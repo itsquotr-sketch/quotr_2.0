@@ -113,6 +113,29 @@ org_subscriptions
 
 Checkout (BILLING-3) later creates the Stripe Customer/subscription and the webhook overwrites the same org+environment row with `source=stripe`.
 
+### Expired no-card trial (derived, not persisted)
+
+Persist:
+
+```
+source = internal_trial
+status = trialing
+trial_ends_at = timestamptz
+stripe ids = null
+```
+
+Do **not** store `trial_expired` on `org_subscriptions.status`.
+
+Future BILLING-2 resolver (`deriveInternalTrialAccessState`):
+
+| Condition | Effective state |
+| --- | --- |
+| `source != internal_trial` | `null` (not a no-card trial) |
+| `source = internal_trial` and `now < trial_ends_at` | `trialing` |
+| `source = internal_trial` and `now >= trial_ends_at` | `trial_expired` |
+
+`getOrgBillingState` exposes `effectiveTrialState` as input to BILLING-2. BILLING-1 does not enforce access.
+
 ---
 
 ## Internal status model

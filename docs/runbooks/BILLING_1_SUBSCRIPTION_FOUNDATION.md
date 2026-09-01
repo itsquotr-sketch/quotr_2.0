@@ -1,62 +1,74 @@
 # BILLING-1 subscription foundation runbook
 
-**Status:** Local foundation complete. Owner review pending.  
-**Do not apply migration 046 until the owner review gate passes.**  
-**Do not deploy. Do not configure Production Stripe.**
+**Status:** BILLING-1-R1 owner-approved apply/deploy path.  
+**Preview project:** `quotr_preview` / `shhpjsoldmqtkdbgrbtm`  
+**Production:** do not apply 046. Do not deploy.
 
 See `docs/architecture/QUOTR_BILLING_ARCHITECTURE.md`.
 
 ---
 
-## Preview Vercel env (TEST only)
+## Expired no-card trial
 
-Set on Preview after owner review and after 046 is applied to Preview. Do **not** request live keys.
+Persist `status=trialing`. Derive `trial_expired` when `now() >= trial_ends_at`. Helper: `deriveInternalTrialAccessState`. No paywall in BILLING-1.
+
+---
+
+## Preview Vercel env (TEST only)
 
 ```
 BILLING_ENVIRONMENT=test
 STRIPE_SECRET_KEY=<Stripe TEST secret>
-STRIPE_WEBHOOK_SECRET=<Preview Stripe TEST endpoint secret>
+STRIPE_WEBHOOK_SECRET=<TEST webhook signing secret>
 STRIPE_PRICE_BUILDER_MONTHLY=<test Price>
 STRIPE_PRICE_BUSINESS_BASE_MONTHLY=<test Price>
 STRIPE_PRICE_BUSINESS_SEAT_MONTHLY=<test Price>
 ```
 
-Webhook URL (after Preview deploy of this branch):
+Production Stripe remains unconfigured.
 
-`https://<preview-host>/api/webhooks/stripe`
-
-Listen to:
-
-- `customer.subscription.created`
-- `customer.subscription.updated`
-- `customer.subscription.deleted`
-- `checkout.session.completed`
-- `invoice.paid`
-- `invoice.payment_failed`
+Price IDs are env contract only. Do not commit them.
 
 ---
 
-## Stripe Dashboard setup (TEST MODE only)
+## Vercel Deployment Protection and Stripe webhooks
 
-Owner creates these in Stripe **Test mode**. Do not create via scripts unless the owner asks.
+Preview is behind Vercel Standard Deployment Protection (SSO). Stripe cannot complete Vercel login.
 
-All prices: NZD, monthly, **tax exclusive**.
+**Do not globally disable Preview protection.**
+
+Owner configuration:
+
+1. Vercel → Project → Deployment Protection → enable **Protection Bypass for Automation**.
+2. Create a Stripe **Test mode** webhook endpoint URL:
+
+```
+https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app/api/webhooks/stripe?x-vercel-protection-bypass=<bypass-secret>
+```
+
+Stripe Dashboard cannot send the `x-vercel-protection-bypass` header. The query parameter is the supported bypass. Keep the secret in Stripe only.
+
+Optional: if the Vercel plan later supports ignored paths, add `/api/webhooks/stripe` as an exception and then the query parameter can be removed.
+
+Events: `customer.subscription.created|updated|deleted`, `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`.
+
+Test events must have `livemode=false`.
+
+---
+
+## Stripe Dashboard (TEST MODE only)
+
+NZD monthly, tax exclusive:
 
 | Product | Price |
 | --- | --- |
-| Quotr Builder | $65 NZD / month |
-| Quotr Business | $79 NZD / month |
-| Quotr Business Additional User | $35 NZD / month |
-
-Copy the three Price IDs into the Preview env names above.
-
-GST: NZ 15% exclusive. Add a manual Stripe tax rate later. Do not mix with Quote GST.
+| Quotr Builder | $65 |
+| Quotr Business | $79 |
+| Quotr Business Additional User | $35 |
 
 ---
 
 ## Migration 046
-
-Preview project: `quotr_preview` / `shhpjsoldmqtkdbgrbtm`.
 
 ```
 npm run db:preview:status
@@ -64,19 +76,14 @@ npm run db:preview:push-dry
 npm run db:preview:push
 ```
 
-Never `db push --linked`.  
-Never apply 046 to Production (`lxvnylhsbvudzzupxeqr`) in BILLING-1.
+Never `db push --linked`. Never apply 046 to Production (`lxvnylhsbvudzzupxeqr`).
 
 ---
 
 ## Future reconciliation
 
-Not scheduled. Shape lives in `lib/billing/reconciliation.ts`.
-
-Intended later:
-
 ```
 npx tsx scripts/reconcile-billing.ts
 ```
 
-Compares Stripe subscriptions vs `org_subscriptions` vs `paid_seat_quantity` in the current `BILLING_ENVIRONMENT`.
+Not scheduled.

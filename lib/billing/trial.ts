@@ -5,6 +5,7 @@ import {
 } from "@/lib/billing/plans";
 import type {
   BillingEnvironment,
+  EffectiveTrialState,
   OrgSubscription,
 } from "@/lib/billing/types";
 
@@ -63,4 +64,31 @@ export function isNoCardInternalTrial(
     subscription.stripeCustomerId == null &&
     subscription.stripeSubscriptionId == null
   );
+}
+
+/**
+ * Future BILLING-2 resolver. Persisted status remains `trialing`.
+ * `trial_expired` is derived from trial_ends_at, never stored in BILLING-1.
+ */
+export function deriveInternalTrialAccessState(
+  subscription: Pick<OrgSubscription, "source" | "status" | "trialEndsAt">,
+  now: Date = new Date()
+): EffectiveTrialState | null {
+  if (subscription.source !== "internal_trial") {
+    return null;
+  }
+  if (subscription.status !== "trialing") {
+    return null;
+  }
+  if (!subscription.trialEndsAt) {
+    return "trialing";
+  }
+  const ends = new Date(subscription.trialEndsAt).getTime();
+  if (!Number.isFinite(ends)) {
+    return "trialing";
+  }
+  if (now.getTime() >= ends) {
+    return "trial_expired";
+  }
+  return "trialing";
 }

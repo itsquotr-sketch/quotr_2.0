@@ -7,6 +7,7 @@ import type {
 } from "@/lib/billing/types";
 import { selectActiveBillingOverride } from "@/lib/billing/overrides";
 import type { BillingStore } from "@/lib/billing/store";
+import { deriveInternalTrialAccessState } from "@/lib/billing/trial";
 
 /**
  * Read helper for BILLING-2. Does not enforce capabilities.
@@ -50,5 +51,8 @@ export function assembleOrgBillingState(input: {
       input.overrides,
       input.now ?? new Date()
     ),
+    effectiveTrialState: input.subscription
+      ? deriveInternalTrialAccessState(input.subscription, input.now ?? new Date())
+      : null,
   };
 }
