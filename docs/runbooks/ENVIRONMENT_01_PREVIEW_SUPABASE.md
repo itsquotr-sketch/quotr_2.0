@@ -1,6 +1,6 @@
 # ENVIRONMENT-01 — Separate Preview Supabase
 
-**Status:** Preview project created (`quotr_preview` / `shhpjsoldmqtkdbgrbtm`, Sydney). Schema **001–045 applied to Preview**. Vercel Preview env still must be switched by the owner.  
+**Status:** ENVIRONMENT-01-R2 — Preview schema **001–045 applied**. Vercel Preview env **cut over** to `shhpjsoldmqtkdbgrbtm`. Production remains `lxvnylhsbvudzzupxeqr`.  
 **Production:** `quotr_2.0` / `lxvnylhsbvudzzupxeqr` — **do not migrate, do not reconfigure Auth, do not change Resend, do not deploy.**  
 **Canonical architecture:** `docs/architecture/QUOTR_ENVIRONMENT_ARCHITECTURE.md`
 

@@ -12,8 +12,8 @@ Preview and Production **must** use separate Supabase projects before hosted Str
 
 | Environment | Supabase | Stripe (later) |
 | --- | --- | --- |
-| Local | Local Docker | none / never live |
-| Preview | New project | TEST only, `BILLING_ENVIRONMENT=test` |
+| Local | Local Docker, or hosted Preview `shhpjsoldmqtkdbgrbtm` until Docker is available. Never Production. | TEST only. Never live. |
+| Preview | `quotr_preview` / `shhpjsoldmqtkdbgrbtm` | TEST only, `BILLING_ENVIRONMENT=test` |
 | Production | `quotr_2.0` / `lxvnylhsbvudzzupxeqr` | LIVE only, `BILLING_ENVIRONMENT=live` |
 
 Do not clone Production customer data into Preview.

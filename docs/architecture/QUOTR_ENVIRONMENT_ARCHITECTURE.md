@@ -1,7 +1,7 @@
 # Quotr environment architecture
 
 **Classification:** CANONICAL environment authority (ENVIRONMENT-01).  
-**Status:** Preview hosted project **created** — `quotr_preview` / `shhpjsoldmqtkdbgrbtm` (Sydney / `ap-southeast-2`).  
+**Status:** ENVIRONMENT-01-R2 — Preview hosted project **cut over**. Vercel Preview env points at `quotr_preview` / `shhpjsoldmqtkdbgrbtm`. Production remains `quotr_2.0` / `lxvnylhsbvudzzupxeqr`.  
 **Do not commit secrets.**
 
 This document supersedes any runbook that assumed Preview and Production share Supabase project `lxvnylhsbvudzzupxeqr`.
@@ -10,11 +10,11 @@ This document supersedes any runbook that assumed Preview and Production share S
 
 ## Topology
 
-| Environment | Application | Database | Stripe (future BILLING-3) |
+| Environment | Application | Database | Stripe (future BILLING-1+) |
 | --- | --- | --- | --- |
-| **Local** | `next dev` at `http://localhost:3000` | Local Docker (`supabase start`) or a developer-chosen non-Production project | Not configured. Never live keys. |
-| **Preview** | Stable branch alias `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` | Hosted `quotr_preview` / `shhpjsoldmqtkdbgrbtm` (Sydney) | `BILLING_ENVIRONMENT=test` + Stripe **test** keys only |
-| **Production** | Production domain when approved. **No Production app deploy in ENVIRONMENT-01.** | Existing `quotr_2.0` / `lxvnylhsbvudzzupxeqr` | `BILLING_ENVIRONMENT=live` + Stripe **live** keys only |
+| **Local** | `next dev` at `http://localhost:3000` | Preferred: local Docker (`supabase start`). Interim on this machine: hosted Preview `shhpjsoldmqtkdbgrbtm`. Never Production. | Stripe **TEST** only. Never live keys. |
+| **Preview** | Stable branch alias `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app` | Hosted `quotr_preview` / `shhpjsoldmqtkdbgrbtm` (Sydney) | `BILLING_ENVIRONMENT=test` + Stripe **TEST** only |
+| **Production** | Production domain when approved. **No Production app deploy in ENVIRONMENT-01.** | Existing `quotr_2.0` / `lxvnylhsbvudzzupxeqr` | `BILLING_ENVIRONMENT=live` + Stripe **LIVE** only |
 
 ### Project refs
 
@@ -32,14 +32,16 @@ Local CLI `project_id` in `supabase/config.toml` is `quotr_local`. That is a Doc
 
 ### Preview
 
-Must point at the **Preview** Supabase project after it exists:
+**Cut over (ENVIRONMENT-01-R2):** Preview Vercel `NEXT_PUBLIC_SUPABASE_URL` resolves to `shhpjsoldmqtkdbgrbtm`. Production remains `lxvnylhsbvudzzupxeqr`.
 
-- `NEXT_PUBLIC_SUPABASE_URL`
-- `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-- `SUPABASE_SERVICE_ROLE_KEY` (Preview project only; optional for signup, required for Resend webhook / admin tooling)
+Keep Preview-only:
+
+- `NEXT_PUBLIC_SUPABASE_URL` = `https://shhpjsoldmqtkdbgrbtm.supabase.co`
+- `NEXT_PUBLIC_SUPABASE_ANON_KEY` (quotr_preview)
+- `SUPABASE_SERVICE_ROLE_KEY` (quotr_preview; required for Resend webhook / admin)
 - `NEXT_PUBLIC_SITE_URL=https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`
 
-Do **not** leave Preview Vercel vars on `lxvnylhsbvudzzupxeqr`.
+Do **not** point Preview Vercel vars at `lxvnylhsbvudzzupxeqr`.
 
 ### Production
 
@@ -149,14 +151,14 @@ This machine did not have Docker running during ENVIRONMENT-01-R1, so `.env.loca
 
 ---
 
-## Vercel Preview cutover (owner)
+## Vercel Preview cutover
 
-`NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY` are currently one Vercel row attached to **Preview and Production**. They must be **split**:
+**Done (ENVIRONMENT-01-R2).** Preview and Production Supabase URL/keys are split. `hardening/stage-2a-security` Preview was redeployed. Production application was not deployed.
 
-1. Keep **Production** values on Production only (`lxvnylhsbvudzzupxeqr`).
-2. Set **Preview-only** values to `quotr_preview` (`https://shhpjsoldmqtkdbgrbtm.supabase.co` + that project's anon + service role).
-3. Redeploy Preview branch `hardening/stage-2a-security` only.
+Hosted Preview URLs are behind Vercel Deployment Protection (SSO). `/app/health` on the stable alias requires a Vercel login or a Protection Bypass for Automation. Unauthenticated fetches show `Login - Vercel`, not Quotr.
 
-Do not change Production values. Do not deploy Production.
+Preview Auth rejects some synthetic TLDs (`email_address_invalid` for `.test`). Email confirmation is on; signup can rate-limit (`over_email_send_rate_limit`).
+
+Trial policy (do not implement in ENVIRONMENT-01): 14 days, no card at signup, payment required on conversion, no permanent free plan.
 
 ---
