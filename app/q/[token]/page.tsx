@@ -5,6 +5,8 @@ import { lookupPublicQuoteByToken } from "@/lib/quotes/public-lookup";
 import { formatQuoteReference } from "@/lib/quotes/display";
 import { connection } from "next/server";
 
+export const runtime = "nodejs";
+
 type PublicQuotePageProps = {
   params: Promise<{ token: string }>;
 };

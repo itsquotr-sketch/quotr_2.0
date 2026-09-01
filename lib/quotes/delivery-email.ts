@@ -196,13 +196,13 @@ export function buildQuoteDeliveryEmail(input: {
 }
 
 export function quoteDeliverySiteOrigin(): string | null {
-  const raw = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  const raw = process.env["NEXT_PUBLIC_SITE_URL"]?.trim();
   if (!raw) return null;
   return raw.replace(/\/+$/, "");
 }
 
 export function quoteDeliveryFromAddress(): string | null {
-  const from = process.env.RESEND_FROM_EMAIL?.trim();
+  const from = process.env["RESEND_FROM_EMAIL"]?.trim();
   return from || null;
 }
 

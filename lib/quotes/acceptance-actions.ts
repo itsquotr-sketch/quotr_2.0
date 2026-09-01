@@ -18,9 +18,10 @@ import {
 import {
   hashQuoteAccessToken,
   isQuoteAccessTokenFormat,
+  quotePublicPath,
 } from "@/lib/quotes/delivery-token";
 import { lookupPublicQuoteByToken } from "@/lib/quotes/public-lookup";
-import { flushQuoteResponseNotificationsForPublicToken } from "@/lib/quotes/notification-flush";
+import { flushPendingQuoteResponseNotifications } from "@/lib/quotes/notification-flush";
 import { createClient } from "@supabase/supabase-js";
 import type { QuoteSignatureMethod } from "@/lib/quotes/acceptance-types";
 
@@ -147,7 +148,14 @@ export async function acceptPublicQuoteByToken(input: {
   if (!parsed.ok) {
     return { error: mapPublicDecisionError(parsed.error) };
   }
-  await flushQuoteResponseNotificationsForPublicToken(input.token);
+  const orgId = document.issuerOrgId;
+  if (orgId) {
+    await flushPendingQuoteResponseNotifications({
+      quoteId: document.quote.id,
+      orgId,
+      publicPath: quotePublicPath(input.token),
+    });
+  }
   return {
     success: true,
     idempotent: parsed.idempotent,
@@ -200,7 +208,14 @@ export async function declinePublicQuoteByToken(input: {
   if (!parsed.ok) {
     return { error: mapPublicDecisionError(parsed.error) };
   }
-  await flushQuoteResponseNotificationsForPublicToken(input.token);
+  const orgId = document.issuerOrgId;
+  if (orgId) {
+    await flushPendingQuoteResponseNotifications({
+      quoteId: document.quote.id,
+      orgId,
+      publicPath: quotePublicPath(input.token),
+    });
+  }
   return {
     success: true,
     idempotent: parsed.idempotent,

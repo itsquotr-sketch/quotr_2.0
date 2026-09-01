@@ -158,7 +158,7 @@ function wrapContractorFirstEmail(input: {
 }
 
 export function quoteResponseNotificationFromHeader(companyName: string | null): string | null {
-  const from = process.env.RESEND_FROM_EMAIL?.trim();
+  const from = process.env["RESEND_FROM_EMAIL"]?.trim();
   if (!from) return null;
   return formatQuoteDeliveryFromHeader(companyName, from);
 }

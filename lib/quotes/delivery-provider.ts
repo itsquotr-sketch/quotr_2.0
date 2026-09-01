@@ -39,10 +39,10 @@ export function createResendQuoteDeliveryProvider(): QuoteDeliveryProvider {
   return {
     name: "resend",
     isConfigured() {
-      return Boolean(process.env.RESEND_API_KEY?.trim());
+      return Boolean(process.env["RESEND_API_KEY"]?.trim());
     },
     async send(payload: QuoteDeliveryEmailPayload): Promise<QuoteDeliveryProviderResult> {
-      const apiKey = process.env.RESEND_API_KEY?.trim();
+      const apiKey = process.env["RESEND_API_KEY"]?.trim();
       if (!apiKey) {
         return {
           ok: false,
@@ -111,7 +111,7 @@ export function createResendQuoteDeliveryProvider(): QuoteDeliveryProvider {
 }
 
 export function getQuoteDeliveryProvider(): QuoteDeliveryProvider {
-  if (process.env.QUOTE_DELIVERY_PROVIDER === "mock") {
+  if (process.env["QUOTE_DELIVERY_PROVIDER"] === "mock") {
     return createMockQuoteDeliveryProvider();
   }
   return createResendQuoteDeliveryProvider();

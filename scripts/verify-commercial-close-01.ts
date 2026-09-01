@@ -318,18 +318,22 @@ assert(
 );
 assert(
   "public accept/decline flush after RPC, errors swallowed",
-    acceptActionsSrc.includes("await flushQuoteResponseNotificationsForPublicToken") &&
+    acceptActionsSrc.includes("await flushPendingQuoteResponseNotifications") &&
     acceptActionsSrc.lastIndexOf("ACCEPT_QUOTE_BY_ACCESS_TOKEN_RPC") <
-      acceptActionsSrc.indexOf("await flushQuoteResponseNotificationsForPublicToken") &&
+      acceptActionsSrc.indexOf("await flushPendingQuoteResponseNotifications") &&
     flushSrc.includes("Accept/decline remains canonical") &&
-    !quoteActionsSrc.includes("flushQuoteResponseNotificationsForPublicToken")
+    !quoteActionsSrc.includes("flushPendingQuoteResponseNotifications")
 );
 assert(
-  "flush is quote-scoped and not inside a SQL transaction",
-  flushSrc.includes("quote_access_tokens") &&
-    flushSrc.includes("hashQuoteAccessToken") &&
+  "flush is quote/org-scoped from trusted records, not inside a SQL transaction",
+  flushSrc.includes("runQuoteResponseNotificationFlush") &&
+    flushSrc.includes("getQuoteDeliveryProvider") &&
+    acceptActionsSrc.includes("issuerOrgId") &&
+    acceptActionsSrc.includes("quotePublicPath(input.token)") &&
     !flushSrc.includes(".rpc(") &&
-    !acceptActionsSrc.includes("api.resend.com")
+    !acceptActionsSrc.includes("api.resend.com") &&
+    !acceptActionsSrc.includes("requireAuthOrgContext") &&
+    !acceptActionsSrc.includes("auth_org_id")
 );
 assert(
   "idempotency keys are stable per evidence + recipient",
@@ -441,7 +445,7 @@ assert(
 assert(
   "flush uses issuer snapshot, not inferred company-name correction",
   flushSrc.includes("issuer_snapshot") &&
-    flushSrc.includes("parseQuoteIssuerSnapshot")
+    file("lib/quotes/notification-flush-core.ts").includes("parseQuoteIssuerSnapshot")
 );
 assert(
   "Resend webhook can mark notification deliveries without breaking quote delivery",

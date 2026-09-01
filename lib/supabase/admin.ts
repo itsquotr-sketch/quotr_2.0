@@ -11,9 +11,13 @@ import { createClient } from "@supabase/supabase-js";
  *
  * Never import this from client components.
  */
+function readServerEnv(name: string): string | undefined {
+  return process.env[name];
+}
+
 export function createAdminClient() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const url = readServerEnv("NEXT_PUBLIC_SUPABASE_URL");
+  const serviceRoleKey = readServerEnv("SUPABASE_SERVICE_ROLE_KEY");
 
   if (!url || !serviceRoleKey) {
     throw new Error("Missing Supabase admin environment variables.");
