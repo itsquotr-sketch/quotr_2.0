@@ -1,7 +1,7 @@
 # Quotr billing architecture
 
 **Classification:** CANONICAL organisation subscription authority (BILLING-1).  
-**Status:** SUBSCRIPTION FOUNDATION COMPLETE LOCAL / OWNER REVIEW PENDING.  
+**Status:** Preview 046 applied. Preview app deployed. Stripe TEST keys/prices remain owner setup. Entitlements not enforced.  
 **Does not enforce entitlements.** Billing gates access later (BILLING-2). Estimating, Pricing, Quote money, delivery, and acceptance are unchanged.
 
 Related:

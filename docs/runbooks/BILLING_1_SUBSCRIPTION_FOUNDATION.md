@@ -1,8 +1,6 @@
 # BILLING-1 subscription foundation runbook
 
-**Status:** BILLING-1-R1 owner-approved apply/deploy path.  
-**Preview project:** `quotr_preview` / `shhpjsoldmqtkdbgrbtm`  
-**Production:** do not apply 046. Do not deploy.
+**Status:** Preview migration **046 applied** (`shhpjsoldmqtkdbgrbtm`). Production remains **045**. Preview app deployed for `hardening/stage-2a-security`. Stripe TEST products/keys are owner-configured next — not in repo.
 
 See `docs/architecture/QUOTR_BILLING_ARCHITECTURE.md`.
 
