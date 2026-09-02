@@ -564,26 +564,21 @@ const upgradeParams = buildBuilderToBusinessUpgradeParams({
   orgId: ORG_A,
   billingEnvironment: "test",
   existingMetadata: { org_id: ORG_A },
-  nzGstTaxRateId: "txr_gst",
 });
 assert(
-  "upgrade GST is re-attached on the Business item",
-  upgradeParams.items[0]?.tax_rates?.[0] === "txr_gst" &&
-    upgradeParams.default_tax_rates?.[0] === "txr_gst" &&
+  "upgrade pending update is price-only; GST is not re-sent",
+  upgradeParams.items[0]?.price === PRICES.businessBaseMonthly &&
+    upgradeParams.items[0]?.id === "si_builder" &&
+    !("tax_rates" in (upgradeParams.items[0] ?? {})) &&
+    !("default_tax_rates" in upgradeParams) &&
     upgradeParams.proration_behavior === "always_invoice" &&
     upgradeParams.payment_behavior === "pending_if_incomplete" &&
     upgradeParams.billing_cycle_anchor === "unchanged"
 );
 assert(
-  "upgrade without GST env does not invent a tax rate",
-  buildBuilderToBusinessUpgradeParams({
-    builderItemId: "si_builder",
-    businessPriceId: PRICES.businessBaseMonthly,
-    orgId: ORG_A,
-    billingEnvironment: "test",
-    existingMetadata: {},
-    nzGstTaxRateId: null,
-  }).items[0]?.tax_rates === undefined
+  "upgrade params never invent item tax_rates",
+  !("tax_rates" in (upgradeParams.items[0] ?? {})) &&
+    !("default_tax_rates" in upgradeParams)
 );
 assert(
   "upgrade double-click is idempotent per subscription",
@@ -629,16 +624,18 @@ assert(
     }) === "payment"
 );
 assert(
-  "GST is present on the upgrade proration invoice when tax env is configured",
+  "proration invoice GST is detected from inherited default_tax_rates, not upgrade tax mutation",
   invoiceIncludesConfiguredTaxRate(
     {
       default_tax_rates: ["txr_gst"],
-      lines: { data: [{ tax_rates: ["txr_gst"] }] },
+      lines: { data: [{ tax_rates: [] }] },
     },
     "txr_gst"
   ) &&
     !invoiceIncludesConfiguredTaxRate({ lines: { data: [{ tax_rates: [] }] } }, "txr_gst") &&
-    Boolean(upgradeParams.items[0]?.tax_rates?.includes("txr_gst"))
+    !("tax_rates" in (upgradeParams.items[0] ?? {})) &&
+    /pending_if_incomplete/.test(file("lib/billing/upgrade-policy.ts")) &&
+    /items\[\]\.tax_rates/.test(file("lib/billing/upgrade-policy.ts"))
 );
 assert(
   "Customer create params stay stable when name/email change",

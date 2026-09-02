@@ -27,9 +27,7 @@ export type BuilderToBusinessUpgradeParams = {
     id: string;
     price: string;
     quantity: 1;
-    tax_rates?: string[];
   }>;
-  default_tax_rates?: string[];
   metadata: Record<string, string>;
 };
 
@@ -115,15 +113,23 @@ export function upgradeConfirmPath(kind: UpgradeConfirmKind): string {
   return `/app/settings/billing?upgrade=${kind}`;
 }
 
+/**
+ * Stripe TEST (API 2026-08-26.dahlia) rejects both `items[].tax_rates` and
+ * `default_tax_rates` on `subscriptions.update` when
+ * `payment_behavior=pending_if_incomplete`.
+ *
+ * GST continuity does not require those fields: Checkout already stored the
+ * NZ GST Tax Rate on `subscription.default_tax_rates` (and the current item).
+ * A price-only pending update keeps that authority, so the proration invoice
+ * and later renewals still receive 15% exclusive GST.
+ */
 export function buildBuilderToBusinessUpgradeParams(input: {
   builderItemId: string;
   businessPriceId: string;
   orgId: string;
   billingEnvironment: string;
   existingMetadata: Record<string, string>;
-  nzGstTaxRateId: string | null;
 }): BuilderToBusinessUpgradeParams {
-  const taxRates = input.nzGstTaxRateId ? [input.nzGstTaxRateId] : undefined;
   return {
     proration_behavior: BUILDER_TO_BUSINESS_PRORATION_BEHAVIOR,
     billing_cycle_anchor: BUILDER_TO_BUSINESS_BILLING_CYCLE_ANCHOR,
@@ -133,10 +139,8 @@ export function buildBuilderToBusinessUpgradeParams(input: {
         id: input.builderItemId,
         price: input.businessPriceId,
         quantity: 1,
-        ...(taxRates ? { tax_rates: taxRates } : {}),
       },
     ],
-    ...(taxRates ? { default_tax_rates: taxRates } : {}),
     metadata: {
       ...input.existingMetadata,
       org_id: input.orgId,

@@ -244,7 +244,6 @@ export async function upgradeToBusiness(): Promise<BillingActionResult | void> {
         (entry): entry is [string, string] => typeof entry[1] === "string"
       )
     ),
-    nzGstTaxRateId: readNzGstTaxRateId(),
   });
 
   const updated = await stripe.subscriptions.update(

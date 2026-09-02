@@ -247,7 +247,7 @@ Mirror applies only when `event.created` ≥ `org_subscriptions.last_stripe_even
 
 ## GST
 
-NZ beta: 15% GST, tax **exclusive**. Optional `STRIPE_TAX_RATE_NZ_GST` attaches a Stripe tax rate on Checkout line items and on Builder→Business item updates (including the immediate `always_invoice` proration invoice). Missing env: exclusive price with **no** GST line (do not invent 15%). Present: exclusive price + configured 15% GST. `tax_behavior=exclusive` alone does not add GST. Do **not** mix SaaS GST with construction Quote GST.
+NZ beta: 15% GST, tax **exclusive**. Optional `STRIPE_TAX_RATE_NZ_GST` attaches a Stripe Tax Rate on Checkout (`line_items.tax_rates` and `subscription_data.default_tax_rates`). Long-term SaaS GST authority is **subscription `default_tax_rates`**. Builder → Business pending updates must **not** send `items[].tax_rates` or `default_tax_rates`: Stripe rejects both when `payment_behavior=pending_if_incomplete`. Existing subscription GST continues onto the proration invoice and renewals. Missing env: exclusive price with **no** GST line (do not invent 15%). `tax_behavior=exclusive` alone does not add GST. Do **not** mix SaaS GST with construction Quote GST.
 
 ---
 
