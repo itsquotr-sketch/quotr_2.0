@@ -1,10 +1,11 @@
 export function FirstRunProgress({
   current,
 }: {
-  current: "company" | "pricing" | "job";
+  current: "company" | "work" | "pricing" | "job";
 }) {
   const steps = [
     { id: "company" as const, label: "Company" },
+    { id: "work" as const, label: "Work" },
     { id: "pricing" as const, label: "Pricing" },
     { id: "job" as const, label: "First job" },
   ];

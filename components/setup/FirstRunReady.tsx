@@ -21,10 +21,10 @@ export function FirstRunReady() {
           Add what you know now — plans and full details aren&apos;t required.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-3">
         <p className="text-sm text-muted-foreground">
-          Quotr will help you turn notes into an estimate, then a customer
-          quote.
+          Quotr can already estimate using your settings and benchmark rates.
+          You can personalise it further anytime.
         </p>
       </CardContent>
       <CardFooter className="flex flex-col gap-3 border-t sm:flex-row sm:justify-end">

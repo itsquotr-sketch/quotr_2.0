@@ -1,4 +1,5 @@
 import type { CompanySettings } from "@/lib/settings/types";
+import { DEFAULT_ORG_TIMEZONE, formatInOrgTimezone } from "@/lib/org/timezone";
 
 export function stripLeadingQuotePrefix(value: string): string {
   return value.replace(/^quote\s*[—–:\-]\s*/i, "").trim();
@@ -116,18 +117,16 @@ export function formatQuoteNumberRevision(quote: {
   return `Revision ${quote.revision_number}`;
 }
 
-export const QUOTE_DISPLAY_TIMEZONE = "Pacific/Auckland";
+export const QUOTE_DISPLAY_TIMEZONE = DEFAULT_ORG_TIMEZONE;
 
-export function formatQuoteDateTime(value: string | null | undefined): string | null {
-  if (!value) return null;
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return null;
-  return new Intl.DateTimeFormat("en-NZ", {
-    timeZone: QUOTE_DISPLAY_TIMEZONE,
-    day: "numeric",
-    month: "short",
-    year: "numeric",
-    hour: "numeric",
-    minute: "2-digit",
-  }).format(date);
+/**
+ * Display a stored UTC timestamp in the organisation timezone.
+ * Pass timeZone when organisation_settings.timezone exists; until then
+ * Pacific/Auckland is the NZ default.
+ */
+export function formatQuoteDateTime(
+  value: string | null | undefined,
+  timeZone: string = QUOTE_DISPLAY_TIMEZONE
+): string | null {
+  return formatInOrgTimezone(value, timeZone);
 }

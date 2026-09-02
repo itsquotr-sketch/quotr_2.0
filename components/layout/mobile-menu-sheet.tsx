@@ -39,7 +39,7 @@ type MobileMenuSheetProps = {
 export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
   const [open, setOpen] = useState(false);
   const pathname = usePathname();
-  const { setupIncomplete } = useAppUser();
+  const { setupIncomplete, showTeamNav } = useAppUser();
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -70,7 +70,9 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
               <UserRound className="size-4" />
               <span className="flex-1 text-left">Profile</span>
             </Button>
-            {MENU_LINKS.map(({ href, label, icon: Icon, ...item }) => {
+            {MENU_LINKS.filter(
+              (item) => item.href !== "/app/settings/team" || showTeamNav
+            ).map(({ href, label, icon: Icon, ...item }) => {
               const isActive =
                 pathname === href || pathname.startsWith(`${href}/`);
               const showBadge =

@@ -2,6 +2,8 @@ import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
 import { getOrgBillingState } from "@/lib/billing/server";
+import { resolveEffectiveAccessPolicy } from "@/lib/billing/access-policy";
+import { shouldShowTeamPrimaryNav } from "@/lib/billing/team-nav-visibility";
 import {
   deriveTrialCountdown,
   trialBannerNotice,
@@ -26,7 +28,7 @@ function isSetupRequiredPath(pathname: string | null): boolean {
   );
 }
 
-/** Routes allowed while first-run Company or Pricing Basics are unfinished. */
+/** Routes allowed while first-run Company, Work, or Pricing Basics are unfinished. */
 function isFirstRunSetupPath(pathname: string | null): boolean {
   if (!pathname) {
     return false;
@@ -82,23 +84,34 @@ export default async function AppLayout({
     redirect(forcedSetup);
   }
 
-  const setupIncomplete = firstRunStage === "basics";
+  const setupIncomplete =
+    firstRunStage === "basics" ||
+    firstRunStage === "work" ||
+    firstRunStage === "pricing";
 
   let billingNotice: TrialBannerNotice | null = null;
-  if (!pathname?.startsWith("/app/settings/billing")) {
-    try {
-      const billingState = await getOrgBillingState(auth.orgId);
-      if (billingState.subscription?.source === "internal_trial") {
-        billingNotice = trialBannerNotice(
-          deriveTrialCountdown({
-            trialEndsAt: billingState.subscription.trialEndsAt,
-            effectiveTrialState: billingState.effectiveTrialState,
-          })
-        );
-      }
-    } catch {
-      billingNotice = null;
+  let showTeamNav = false;
+  try {
+    const billingState = await getOrgBillingState(auth.orgId);
+    const policy = resolveEffectiveAccessPolicy(billingState);
+    showTeamNav = shouldShowTeamPrimaryNav({
+      source: policy.source,
+      planCode: policy.planCode,
+    });
+    if (
+      !pathname?.startsWith("/app/settings/billing") &&
+      billingState.subscription?.source === "internal_trial"
+    ) {
+      billingNotice = trialBannerNotice(
+        deriveTrialCountdown({
+          trialEndsAt: billingState.subscription.trialEndsAt,
+          effectiveTrialState: billingState.effectiveTrialState,
+        })
+      );
     }
+  } catch {
+    billingNotice = null;
+    showTeamNav = false;
   }
 
   return (
@@ -108,6 +121,7 @@ export default async function AppLayout({
       organisationName={display?.organisationName}
       tradingName={display?.tradingName}
       setupIncomplete={setupIncomplete}
+      showTeamNav={showTeamNav}
       deploymentLabel={internalDeploymentLabel()}
       billingNotice={billingNotice}
     >

@@ -423,20 +423,20 @@ assert(
   "14-day countdown is whole days, not hours",
   countdown14?.daysRemaining === 14 &&
     countdown14.label.includes("14 days") &&
-    countdown14.tone === "normal"
+    countdown14.tone === "subtle"
 );
 const countdown7 = deriveTrialCountdown({
   trialEndsAt: new Date(NOW.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
   effectiveTrialState: "trialing",
   now: NOW,
 });
-assert("7 days remaining is subtle banner", countdown7?.tone === "subtle");
+assert("7 days remaining is stronger-but-calm banner", countdown7?.tone === "strong");
 const countdown3 = deriveTrialCountdown({
   trialEndsAt: new Date(NOW.getTime() + 3 * 24 * 60 * 60 * 1000).toISOString(),
   effectiveTrialState: "trialing",
   now: NOW,
 });
-assert("3 days remaining is stronger banner", countdown3?.tone === "strong");
+assert("3 days remaining is urgent banner", countdown3?.tone === "urgent");
 const expired = deriveTrialCountdown({
   trialEndsAt: new Date(NOW.getTime() - 1000).toISOString(),
   effectiveTrialState: "trial_expired",
@@ -444,8 +444,8 @@ const expired = deriveTrialCountdown({
 });
 assert("expired trial countdown is expired", expired?.expired === true);
 assert(
-  "normal trial has no app-wide banner",
-  trialBannerNotice(countdown14) === null
+  "early trial still has a persistent banner",
+  trialBannerNotice(countdown14)?.tone === "subtle"
 );
 assert(
   "expired trial has choose-plan banner",

@@ -21,6 +21,8 @@ export type OrganisationSettings = {
   currency: string;
   country: string;
   region: string | null;
+  contact_email?: string | null;
+  contact_phone?: string | null;
   onboarding_status: SetupStatus;
   onboarding_step: SetupStep;
   onboarding_completed_at: string | null;
@@ -66,6 +68,8 @@ export type CompanyBasicsInput = {
   currency: string;
   country: string;
   region?: string;
+  contact_email: string;
+  contact_phone?: string;
   default_gst_rate: number;
 };
 

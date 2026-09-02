@@ -33,10 +33,12 @@ export type CompanyBasicsMode = "basics" | "optional";
 type CompanyBasicsStepProps = {
   state: SetupState;
   /**
-   * basics — first-run gate: save → pricing basics
+   * basics — first-run gate: save → Your Work
    * optional — Setup improve: save stays in Setup (parent callback)
    */
   mode?: CompanyBasicsMode;
+  /** Signup email used to prefill company contact email. */
+  userEmail?: string;
   /** Called after successful save in optional mode (no Dashboard redirect). */
   onSaved?: () => void;
 };
@@ -47,6 +49,7 @@ const selectClassName =
 export function CompanyBasicsStep({
   state,
   mode = "basics",
+  userEmail,
   onSaved,
 }: CompanyBasicsStepProps) {
   const router = useRouter();
@@ -65,6 +68,10 @@ export function CompanyBasicsStep({
   const [currency, setCurrency] = useState(initialCurrency);
   const [currencyTouched, setCurrencyTouched] = useState(false);
   const [region, setRegion] = useState(settings?.region ?? "");
+  const [contactEmail, setContactEmail] = useState(
+    settings?.contact_email ?? userEmail ?? ""
+  );
+  const [contactPhone, setContactPhone] = useState(settings?.contact_phone ?? "");
   const [gstRegistered, setGstRegistered] = useState<GstRegisteredChoice | "">(
     derivedRegistered ?? ""
   );
@@ -98,6 +105,8 @@ export function CompanyBasicsStep({
       currency,
       country,
       region: region || undefined,
+      contact_email: contactEmail,
+      contact_phone: contactPhone || undefined,
       default_gst_rate: gstRateFromRegisteredChoice(
         gstRegistered,
         countryOption?.suggestedGstPercent ?? suggestedGst
@@ -124,7 +133,7 @@ export function CompanyBasicsStep({
     if (!ok) return;
 
     if (mode === "basics") {
-      router.replace("/app/setup?mode=pricing");
+      router.replace("/app/setup?mode=work");
       return;
     }
 
@@ -142,7 +151,7 @@ export function CompanyBasicsStep({
         </CardTitle>
         <CardDescription>
           {isBasicsGate
-            ? "A few company details so quotes use the right currency and tax."
+            ? "A few company details so quotes use the right currency, tax, and contact information."
             : "Update country, currency, and tax. Changes apply to new pricing and quotes."}
         </CardDescription>
       </CardHeader>
@@ -230,6 +239,46 @@ export function CompanyBasicsStep({
               placeholder="e.g. Auckland"
               className="h-11"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="basics-contact-email">Company email</Label>
+            <Input
+              id="basics-contact-email"
+              type="email"
+              autoComplete="email"
+              required
+              value={contactEmail}
+              onChange={(event) => setContactEmail(event.target.value)}
+              placeholder="quotes@yourcompany.co.nz"
+              className="h-11"
+            />
+            {fieldErrors.contact_email?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.contact_email[0]}
+              </p>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              Shown on quotes so clients can reach you.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="basics-contact-phone">Phone (optional)</Label>
+            <Input
+              id="basics-contact-phone"
+              type="tel"
+              autoComplete="tel"
+              value={contactPhone}
+              onChange={(event) => setContactPhone(event.target.value)}
+              placeholder="e.g. 021 000 0000"
+              className="h-11"
+            />
+            {fieldErrors.contact_phone?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.contact_phone[0]}
+              </p>
+            ) : null}
           </div>
 
           <fieldset className="space-y-3">

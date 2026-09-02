@@ -35,6 +35,7 @@ import { roleAllowsPermission } from "../lib/team/permissions";
 import {
   FIRST_RUN_BASICS_PATH,
   FIRST_RUN_PRICING_PATH,
+  FIRST_RUN_WORK_PATH,
   firstRunForcedPath,
   resolveFirstRunStage,
   setupModeRedirect,
@@ -185,10 +186,19 @@ function main() {
     }) === "basics"
   );
   assert(
-    "company saved (work_areas) is Pricing Basics",
+    "company saved without work is Your Work",
     resolveFirstRunStage({
       onboardingStatus: "in_progress",
       onboardingStep: "work_areas",
+      hasPrimaryWorkAreas: false,
+    }) === "work"
+  );
+  assert(
+    "company saved with work is Pricing Basics",
+    resolveFirstRunStage({
+      onboardingStatus: "in_progress",
+      onboardingStep: "work_areas",
+      hasPrimaryWorkAreas: true,
     }) === "pricing"
   );
   assert(
@@ -213,8 +223,12 @@ function main() {
     }) === "done"
   );
   assert(
-    "company save + mode=basics resumes pricing not dashboard",
-    setupModeRedirect("basics", "pricing") === FIRST_RUN_PRICING_PATH
+    "company save + mode=basics resumes work not dashboard",
+    setupModeRedirect("basics", "work") === FIRST_RUN_WORK_PATH
+  );
+  assert(
+    "work complete + mode=work resumes pricing",
+    setupModeRedirect("work", "pricing") === FIRST_RUN_PRICING_PATH
   );
   assert(
     "pricing skip/save + mode=pricing stays on pricing",
@@ -230,6 +244,10 @@ function main() {
     setupModeRedirect("ready", "pricing") === FIRST_RUN_PRICING_PATH
   );
   assert(
+    "unfinished work cannot open pricing",
+    setupModeRedirect("pricing", "work") === FIRST_RUN_WORK_PATH
+  );
+  assert(
     "unfinished company cannot open pricing",
     setupModeRedirect("pricing", "basics") === FIRST_RUN_BASICS_PATH
   );
@@ -238,8 +256,9 @@ function main() {
     setupModeRedirect("basics", "done") === "/app/dashboard"
   );
   assert(
-    "layout forces pricing until visited",
-    firstRunForcedPath("pricing") === FIRST_RUN_PRICING_PATH &&
+    "layout forces work then pricing until visited",
+    firstRunForcedPath("work") === FIRST_RUN_WORK_PATH &&
+      firstRunForcedPath("pricing") === FIRST_RUN_PRICING_PATH &&
       firstRunForcedPath("ready") === null &&
       firstRunForcedPath("done") === null
   );

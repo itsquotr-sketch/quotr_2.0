@@ -97,7 +97,7 @@ export function PricingBasicsStep({ state }: PricingBasicsStepProps) {
 
           <div className="space-y-2">
             <Label htmlFor="pricing-labour-cost">
-              What do you cost your own labour at?
+              What does an hour of your labour cost the business?
             </Label>
             <div className="flex items-center gap-2">
               <Input
@@ -120,13 +120,15 @@ export function PricingBasicsStep({ state }: PricingBasicsStepProps) {
               <p className="text-sm text-destructive">{fieldErrors.labourCost[0]}</p>
             ) : null}
             <p id="pricing-labour-help" className="text-xs text-muted-foreground">
-              Use what an hour of your labour costs the business. You can change
-              this later.
+              An approximate cost is fine. Quotr can use benchmark rates if you
+              skip this.
             </p>
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="pricing-margin">Your target gross margin</Label>
+            <Label htmlFor="pricing-margin">
+              What gross margin do you usually aim for?
+            </Label>
             <div className="flex items-center gap-2">
               <Input
                 id="pricing-margin"
@@ -148,8 +150,12 @@ export function PricingBasicsStep({ state }: PricingBasicsStepProps) {
               </p>
             ) : null}
             <p id="pricing-margin-help" className="text-xs text-muted-foreground">
-              Quotr prices from cost so your sell price keeps this target
-              margin. Default is {PRICING_BASICS_DEFAULT_MARGIN}%.
+              Quotr prices from cost using this target. You can change it
+              anytime. Default is {PRICING_BASICS_DEFAULT_MARGIN}%.
+            </p>
+            <p className="text-xs text-muted-foreground">
+              Example: 20% margin means a $100 cost job needs about $125 sell
+              price.
             </p>
           </div>
         </CardContent>

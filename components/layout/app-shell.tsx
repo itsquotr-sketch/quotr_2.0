@@ -17,6 +17,7 @@ type AppShellProps = {
   organisationName?: string | null;
   tradingName?: string | null;
   setupIncomplete?: boolean;
+  showTeamNav?: boolean;
   deploymentLabel?: "Local" | "Preview" | null;
   billingNotice?: TrialBannerNotice | null;
 };
@@ -36,6 +37,7 @@ export function AppShell({
   organisationName,
   tradingName,
   setupIncomplete = false,
+  showTeamNav = false,
   deploymentLabel = null,
   billingNotice = null,
 }: AppShellProps) {
@@ -59,12 +61,14 @@ export function AppShell({
         organisationName,
         tradingName,
         setupIncomplete,
+        showTeamNav,
         deploymentLabel,
       }}
     >
       <div className="flex min-h-dvh w-full md:h-dvh md:overflow-hidden">
         <AppSidebarNav
           setupIncomplete={setupIncomplete}
+          showTeamNav={showTeamNav}
           deploymentLabel={deploymentLabel}
         />
         <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background md:overflow-hidden print:bg-white">

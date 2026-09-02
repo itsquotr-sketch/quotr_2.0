@@ -8,6 +8,7 @@ export type AppUserContextValue = {
   organisationName?: string | null;
   tradingName?: string | null;
   setupIncomplete?: boolean;
+  showTeamNav?: boolean;
   /** Internal operator label. Never render on public Quote pages. */
   deploymentLabel?: "Local" | "Preview" | null;
 };

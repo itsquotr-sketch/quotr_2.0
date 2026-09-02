@@ -35,13 +35,13 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
 
   const { supabase, orgId } = context;
 
-  const [{ data: organisation }, { data: settings }, { data: labourRates }, { data: preferredWorkAreas }, { data: calibrations }] =
+  const [{ data: organisation }, { data: settings }, { data: labourRates }, { data: companyRates }, { data: preferredWorkAreas }, { data: calibrations }] =
     await Promise.all([
       supabase.from("organisations").select("name").eq("id", orgId).maybeSingle(),
       supabase
         .from("organisation_settings")
         .select(
-          "currency, country, region, default_gst_rate, default_margin_percent, onboarding_status, trading_name, legal_name, contact_email, contact_phone, address_line_1, city"
+          "currency, country, region, default_gst_rate, default_margin_percent, onboarding_status, trading_name, legal_name, contact_email, contact_phone, address_line_1, city, logo_url"
         )
         .eq("org_id", orgId)
         .maybeSingle(),
@@ -53,6 +53,12 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
         .eq("rate_type", "labour")
         .not("cost_rate", "is", null)
         .limit(1),
+      supabase
+        .from("rates")
+        .select("id")
+        .eq("org_id", orgId)
+        .eq("active", true)
+        .not("cost_rate", "is", null),
       supabase
         .from("organisation_work_areas")
         .select("id")
@@ -94,6 +100,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
         : null,
     hasLabourRate: (labourRates?.length ?? 0) > 0,
     hasWorkTypePreferences: (preferredWorkAreas?.length ?? 0) > 0,
+    companyRateCount: companyRates?.length ?? 0,
     hasCalibration: calibratedScenarioIds.size > 0,
     calibratedScenarioCount: calibratedScenarioIds.size,
     calibrationScenarioTotal: 2,
@@ -103,5 +110,6 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     contactPhone: (settings?.contact_phone as string | null) ?? null,
     addressLine1: (settings?.address_line_1 as string | null) ?? null,
     city: (settings?.city as string | null) ?? null,
+    logoUrl: (settings?.logo_url as string | null) ?? null,
   });
 }

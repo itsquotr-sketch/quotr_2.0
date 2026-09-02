@@ -30,6 +30,7 @@ import {
   parseOptionalTargetMargin,
 } from "@/lib/setup/pricing-basics";
 import { resolveFirstRunStage, type FirstRunStage } from "@/lib/setup/first-run-stage";
+import { hasEnabledPrimaryWorkArea } from "@/lib/setup/first-run-work-areas";
 
 type SetupAuthContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -126,15 +127,24 @@ export async function getFirstRunStage(): Promise<FirstRunStage> {
     return "basics";
   }
 
-  const { data: settings } = await context.supabase
-    .from("organisation_settings")
-    .select("onboarding_status, onboarding_step")
-    .eq("org_id", context.orgId)
-    .maybeSingle();
+  const [{ data: settings }, { data: preferredWorkAreas }] = await Promise.all([
+    context.supabase
+      .from("organisation_settings")
+      .select("onboarding_status, onboarding_step")
+      .eq("org_id", context.orgId)
+      .maybeSingle(),
+    context.supabase
+      .from("organisation_work_areas")
+      .select("work_area_type, enabled")
+      .eq("org_id", context.orgId)
+      .eq("enabled", true)
+      .limit(1),
+  ]);
 
   return resolveFirstRunStage({
     onboardingStatus: settings?.onboarding_status,
     onboardingStep: settings?.onboarding_step,
+    hasPrimaryWorkAreas: (preferredWorkAreas?.length ?? 0) > 0,
   });
 }
 
@@ -150,6 +160,17 @@ const companyBasicsSchema = z.object({
     .min(1, "Country is required")
     .max(64, "Country is too long"),
   region: z.string().trim().max(120).optional(),
+  contact_email: z
+    .string()
+    .trim()
+    .min(1, "Company email is required")
+    .email("Enter a valid company email.")
+    .max(254, "Email is too long"),
+  contact_phone: z
+    .string()
+    .trim()
+    .max(40, "Phone number is too long")
+    .optional(),
   default_gst_rate: z
     .number()
     .min(0, "GST rate must be at least 0")
@@ -158,7 +179,7 @@ const companyBasicsSchema = z.object({
 
 /**
  * Confirm minimum company basics.
- * Sets onboarding_step to work_areas (existing enum) meaning Pricing Basics
+ * Sets onboarding_step to work_areas (existing enum) meaning Your Work
  * is next. Does not skip the user to Dashboard.
  */
 export async function saveCompanyBasics(
@@ -203,8 +224,8 @@ export async function saveCompanyBasics(
 
   const alreadyCompleted = existing?.onboarding_status === "completed";
   const currentStep = existing?.onboarding_step ?? "company";
-  // Advance only from company; do not rewind pricing-visited (rates) or later.
-  const shouldMarkPricingNext =
+  // Advance only from company; do not rewind work/pricing-visited or later.
+  const shouldMarkWorkNext =
     !alreadyCompleted && (!existing || currentStep === "company");
 
   const payload = {
@@ -212,11 +233,13 @@ export async function saveCompanyBasics(
     currency: currencyCode,
     country: countryCode,
     region: data.region?.trim() || null,
+    contact_email: data.contact_email.trim(),
+    contact_phone: data.contact_phone?.trim() || null,
     default_gst_rate: data.default_gst_rate,
-    ...(shouldMarkPricingNext
+    ...(shouldMarkWorkNext
       ? {
           onboarding_status: "in_progress" as const,
-          // work_areas = company basics saved; Pricing Basics not visited yet.
+          // work_areas = company basics saved; Your Work not completed yet.
           onboarding_step: "work_areas" as const,
         }
       : {}),
@@ -554,6 +577,62 @@ export async function saveOrganisationWorkAreas(input: {
   revalidatePath("/app/rates");
 
   return {};
+}
+
+/**
+ * First-run primary Work Areas. Requires at least one selection.
+ * Persists to organisation_work_areas.enabled. Does not advance
+ * onboarding_step to rates (Pricing Basics still required).
+ */
+export async function savePrimaryWorkAreas(input: {
+  selections: WorkAreaSelection[];
+}): Promise<ActionResult> {
+  const parsed = workAreasSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Invalid work type selections." };
+  }
+
+  if (!hasEnabledPrimaryWorkArea(parsed.data.selections)) {
+    return {
+      error: "Choose at least one kind of work you usually price.",
+      fieldErrors: { selections: ["Select at least one work area."] },
+    };
+  }
+
+  const context = await getSetupAuthContext();
+  if (!context) {
+    return MISSING_ORG_ERROR;
+  }
+
+  const { supabase, orgId } = context;
+  const selectionMap = new Map(
+    parsed.data.selections.map((s) => [s.work_area_type, s.enabled])
+  );
+
+  const rows = SCOPE_CATALOGUE.map((item, index) => ({
+    org_id: orgId,
+    work_area_type: item.type,
+    label: item.label,
+    category: item.category,
+    description: item.description,
+    estimate_support: item.estimateSupport,
+    enabled: selectionMap.get(item.type) === true,
+    sort_order: index,
+  }));
+
+  const { error: upsertError } = await supabase
+    .from("organisation_work_areas")
+    .upsert(rows, { onConflict: "org_id,work_area_type" });
+
+  if (upsertError) {
+    return { error: upsertError.message };
+  }
+
+  revalidatePath("/app/setup");
+  revalidatePath("/app/dashboard");
+  revalidatePath("/app/rates");
+
+  return { success: true };
 }
 
 const rateValueSchema = z

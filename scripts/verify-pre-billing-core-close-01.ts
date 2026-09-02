@@ -337,7 +337,7 @@ const local = formatQuoteDateTime(occurredAt) ?? "";
 assert(
   "acceptance timestamps use Pacific/Auckland",
   QUOTE_DISPLAY_TIMEZONE === "Pacific/Auckland" &&
-    read("lib/quotes/display.ts").includes("timeZone: QUOTE_DISPLAY_TIMEZONE") &&
+    read("lib/quotes/display.ts").includes("QUOTE_DISPLAY_TIMEZONE") &&
     /4:50\s*pm/i.test(local)
 );
 

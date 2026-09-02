@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -86,11 +86,6 @@ export function RatesPageContent({
     parseRatesSection(initialSection) ?? "core"
   );
   const [showAllWorkTypes, setShowAllWorkTypes] = useState(false);
-  const sectionHeadingRef = useRef<HTMLHeadingElement>(null);
-
-  useEffect(() => {
-    sectionHeadingRef.current?.focus();
-  }, [activeSection]);
 
   const preferred = useMemo(
     () => state.preferredWorkAreaTypes ?? [],
@@ -178,13 +173,7 @@ export function RatesPageContent({
         onChange={selectSection}
       />
 
-      <h2
-        ref={sectionHeadingRef}
-        tabIndex={-1}
-        className="sr-only focus:not-sr-only focus:rounded-md focus:outline-none focus:ring-2 focus:ring-[var(--brand-orange)]"
-      >
-        {activeLabel}
-      </h2>
+      <h2 className="sr-only">{activeLabel}</h2>
       <CalibrationSummaryCard state={state} />
 
       <Card className="border-border/60 bg-muted/15 shadow-none">

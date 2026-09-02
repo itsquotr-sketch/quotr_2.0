@@ -69,18 +69,22 @@ export function deriveTrialCountdown(input: {
   } else if (endKey === tomorrowKey) {
     label = "Ends tomorrow.";
   } else if (daysRemaining === 1) {
-    label = "1 day remaining.";
+    label = "1 day left.";
   } else {
-    label = `${daysRemaining} days remaining.`;
+    label = `${daysRemaining} days left.`;
   }
 
-  let tone: TrialCountdownTone = "normal";
+  let tone: TrialCountdownTone = "subtle";
   if (endKey === todayKey || daysRemaining <= 1) {
     tone = "urgent";
   } else if (daysRemaining <= 3) {
-    tone = "strong";
+    tone = "urgent";
   } else if (daysRemaining <= 7) {
-    tone = "subtle";
+    tone = "strong";
+  }
+
+  if (tone === "subtle") {
+    label = `Business Trial · ${daysRemaining} days left`;
   }
 
   return {
@@ -141,7 +145,7 @@ export function trialBannerNotice(
   if (countdown.tone === "strong") {
     return {
       tone: "strong",
-      title: "Trial ending soon",
+      title: "Business Trial",
       message: `${countdown.label} Choose a plan before your trial ends.`,
       ctaLabel: "Choose a plan",
       href: "/app/settings/billing",
@@ -150,8 +154,8 @@ export function trialBannerNotice(
 
   return {
     tone: "subtle",
-    title: "Quotr Trial",
-    message: countdown.label,
+    title: countdown.label,
+    message: "You can choose a plan anytime.",
     ctaLabel: "Choose a plan",
     href: "/app/settings/billing",
   };

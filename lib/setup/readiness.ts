@@ -44,6 +44,11 @@ export type CompanySetupReadiness = {
   usingDefaultMargin: boolean;
   hasLabourRate: boolean;
   hasWorkTypePreferences: boolean;
+  companyRateCount: number;
+  hasCalibration: boolean;
+  hasLogo: boolean;
+  hasAddress: boolean;
+  hasContactEmail: boolean;
   organisationName: string;
   currency: string;
   country: string;
@@ -64,6 +69,8 @@ export type CompanySetupReadinessInput = {
   hasLabourRate: boolean;
   /** True when org has at least one preferred (enabled) work type. */
   hasWorkTypePreferences: boolean;
+  /** Count of active company rates with a cost_rate. */
+  companyRateCount?: number;
   /** True when org has at least one active calibration response. */
   hasCalibration?: boolean;
   /** Distinct active calibrated scenarios (for subtle “another” tip). */
@@ -76,6 +83,7 @@ export type CompanySetupReadinessInput = {
   contactPhone: string | null;
   addressLine1: string | null;
   city: string | null;
+  logoUrl?: string | null;
 };
 
 function nonEmpty(value: string | null | undefined): boolean {
@@ -203,6 +211,14 @@ export function computeCompanySetupReadiness(
   const hasContact =
     nonEmpty(input.contactEmail) || nonEmpty(input.contactPhone);
   const hasAddress = nonEmpty(input.addressLine1) || nonEmpty(input.city);
+  const hasContactEmail = nonEmpty(input.contactEmail);
+  const hasLogo = nonEmpty(input.logoUrl);
+  const companyRateCount =
+    input.companyRateCount != null && Number.isFinite(input.companyRateCount)
+      ? Math.max(0, Math.floor(input.companyRateCount))
+      : input.hasLabourRate
+        ? 1
+        : 0;
 
   if (!nonEmpty(displayName)) {
     missingQuoteSetup.push({
@@ -290,6 +306,11 @@ export function computeCompanySetupReadiness(
     usingDefaultMargin,
     hasLabourRate: input.hasLabourRate,
     hasWorkTypePreferences: input.hasWorkTypePreferences,
+    companyRateCount,
+    hasCalibration: Boolean(input.hasCalibration),
+    hasLogo,
+    hasAddress,
+    hasContactEmail,
     organisationName,
     currency,
     country,

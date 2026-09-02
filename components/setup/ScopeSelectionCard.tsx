@@ -10,6 +10,7 @@ type ScopeSelectionCardProps = {
   scope: ScopeCatalogueItem;
   enabled: boolean;
   onToggle: (enabled: boolean) => void;
+  compact?: boolean;
 };
 
 /**
@@ -21,6 +22,7 @@ export function ScopeSelectionCard({
   scope,
   enabled,
   onToggle,
+  compact = false,
 }: ScopeSelectionCardProps) {
   return (
     <Card
@@ -31,18 +33,20 @@ export function ScopeSelectionCard({
       )}
       onClick={() => onToggle(!enabled)}
     >
-      <CardContent className="flex gap-3 py-4">
+      <CardContent className="flex gap-3 py-3 sm:py-4">
         <Checkbox
           checked={enabled}
           onCheckedChange={(checked) => onToggle(checked === true)}
           onClick={(event) => event.stopPropagation()}
           aria-label={`Prefer ${scope.label}`}
         />
-        <div className="min-w-0 flex-1 space-y-1.5">
+        <div className="min-w-0 flex-1 space-y-1">
           <Label className="cursor-pointer text-sm font-medium">
             {scope.label}
           </Label>
-          <p className="text-sm text-muted-foreground">{scope.description}</p>
+          {compact ? null : (
+            <p className="text-sm text-muted-foreground">{scope.description}</p>
+          )}
         </div>
       </CardContent>
     </Card>

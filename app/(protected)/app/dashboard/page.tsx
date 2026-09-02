@@ -1,5 +1,4 @@
 import { Suspense } from "react";
-import Link from "next/link";
 import { PageContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -69,24 +68,21 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <PageContainer innerClassName="max-md:py-3 max-md:pb-4">
         <div className="space-y-4 md:space-y-6">
           {isEmpty ? (
-            <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-8 text-center sm:px-6">
-              <h2 className="text-lg font-semibold tracking-tight">
-                Start your first job
-              </h2>
-              <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                Add what you know now — plans and full details aren&apos;t
-                required.
-              </p>
-              <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-                <NewProjectDialog intent="first-job" />
-                <Link
-                  href="/app/setup?mode=improve"
-                  className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
-                >
-                  Optional company details
-                </Link>
+            <>
+              <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-8 text-center sm:px-6">
+                <h2 className="text-lg font-semibold tracking-tight">
+                  Start your first job
+                </h2>
+                <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
+                  Add what you know now — plans and full details aren&apos;t
+                  required.
+                </p>
+                <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
+                  <NewProjectDialog intent="first-job" />
+                </div>
               </div>
-            </div>
+              <ImproveSetupCard readiness={readiness} />
+            </>
           ) : (
             <>
               <ImproveSetupCard

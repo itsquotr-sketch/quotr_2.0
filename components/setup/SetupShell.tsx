@@ -18,7 +18,7 @@ import { RatesStep } from "./RatesStep";
 import type { SetupState, SetupStep } from "./types";
 import { WorkAreasStep } from "./WorkAreasStep";
 
-export type SetupShellMode = "basics" | "pricing" | "ready" | "improve";
+export type SetupShellMode = "basics" | "work" | "pricing" | "ready" | "improve";
 
 type ImproveSection = "company" | "work_areas" | "rates" | "calibrate";
 
@@ -73,13 +73,35 @@ export function SetupShell({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <PageHeader
           title="Welcome to Quotr"
-          description="A few company details, then how you price."
+          description="A few company details, then the work you usually price."
           actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
         />
         <FormContainer>
           <div className="mx-auto w-full max-w-lg">
             <FirstRunProgress current="company" />
-            <CompanyBasicsStep state={state} mode="basics" />
+            <CompanyBasicsStep
+              state={state}
+              mode="basics"
+              userEmail={userEmail}
+            />
+          </div>
+        </FormContainer>
+      </div>
+    );
+  }
+
+  if (mode === "work") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <PageHeader
+          title="Your work"
+          description="Tell Quotr the jobs you usually price."
+          actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
+        />
+        <FormContainer>
+          <div className="mx-auto w-full max-w-2xl">
+            <FirstRunProgress current="work" />
+            <WorkAreasStep state={state} mode="first-run" />
           </div>
         </FormContainer>
       </div>
@@ -90,7 +112,7 @@ export function SetupShell({
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <PageHeader
-          title="How you price"
+          title="Your pricing basics"
           description="Optional labour cost and target margin — skip if you are not sure yet."
           actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
         />
@@ -170,6 +192,7 @@ export function SetupShell({
           <CompanyBasicsStep
             state={state}
             mode="optional"
+            userEmail={userEmail}
             onSaved={() => {
               void refreshState();
             }}
@@ -179,6 +202,7 @@ export function SetupShell({
         {section === "work_areas" ? (
           <WorkAreasStep
             state={state}
+            mode="improve"
             onSaved={() => {
               void refreshState();
             }}

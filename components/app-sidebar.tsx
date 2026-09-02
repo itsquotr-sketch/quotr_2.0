@@ -27,14 +27,19 @@ const NAV_ITEMS = [
 
 type AppSidebarNavProps = {
   setupIncomplete?: boolean;
+  showTeamNav?: boolean;
   deploymentLabel?: "Local" | "Preview" | null;
 };
 
 export function AppSidebarNav({
   setupIncomplete = false,
+  showTeamNav = false,
   deploymentLabel = null,
 }: AppSidebarNavProps) {
   const pathname = usePathname();
+  const items = NAV_ITEMS.filter(
+    (item) => item.href !== "/app/settings/team" || showTeamNav
+  );
 
   return (
     <aside className="hidden h-dvh w-[232px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground print:hidden md:flex">
@@ -49,7 +54,7 @@ export function AppSidebarNav({
         ) : null}
       </div>
       <nav className="flex min-h-0 flex-1 flex-col gap-1 overflow-y-auto px-2.5 py-3">
-        {NAV_ITEMS.map(({ href, label, icon: Icon, ...item }) => {
+        {items.map(({ href, label, icon: Icon, ...item }) => {
           const isActive =
             pathname === href || pathname.startsWith(`${href}/`);
           const showBadge =
