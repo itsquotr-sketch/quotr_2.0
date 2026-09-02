@@ -5,6 +5,10 @@ import {
   evaluateOrgEntitlement,
   type EntitlementDecision,
 } from "@/lib/billing/entitlements";
+import type {
+  EntitlementReasonCode,
+  UpgradeTarget,
+} from "@/lib/billing/entitlement-reasons";
 import { logBillingEvent } from "@/lib/billing/logging";
 import { ENTITLEMENT_CAPABILITIES } from "@/lib/billing/capabilities";
 import { resolveEffectiveAccessPolicy } from "@/lib/billing/access-policy";
@@ -90,11 +94,21 @@ export async function getOrgEntitlementSummary(
   };
 }
 
+export type EntitlementDeniedPayload = {
+  error: string;
+  reasonCode: EntitlementReasonCode;
+  upgradeTarget: UpgradeTarget;
+};
+
 export async function entitlementDeniedError(
   orgId: string,
   capability: string
-): Promise<{ error: string } | null> {
+): Promise<EntitlementDeniedPayload | null> {
   const decision = await requireOrgEntitlement(orgId, capability);
   if (decision.ok) return null;
-  return { error: decision.message ?? "This action is not available." };
+  return {
+    error: decision.message ?? "This action is not available.",
+    reasonCode: decision.reasonCode ?? "upgrade_required",
+    upgradeTarget: decision.upgradeTarget,
+  };
 }

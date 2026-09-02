@@ -5,8 +5,8 @@ export type CustomerMappingConflict =
   | { ok: false; errorCode: string; errorSafe: string };
 
 /**
- * Mapping primitives only. BILLING-1 does not create Stripe Customers on
- * signup. Lazy create belongs in BILLING-3 Checkout.
+ * Mapping primitives. BILLING-3 Checkout lazily creates one Stripe Customer
+ * per organisation and persists the mapping. Never one Customer per user.
  */
 export function assertCustomerMappingAssignable(input: {
   orgId: string;

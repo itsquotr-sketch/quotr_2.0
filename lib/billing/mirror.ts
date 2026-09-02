@@ -103,8 +103,38 @@ export function parseStripeSubscriptionLike(
     trialEnd: typeof object.trial_end === "number" ? object.trial_end : null,
     pauseCollection: Boolean(object.pause_collection),
     metadata,
+    // Plan authority is current `items` only. pending_update is ignored here.
     items,
   };
+}
+
+/**
+ * Inspect Stripe pending_update for upgrade skip/UX. Never pass these Price IDs
+ * into mapStripeSubscriptionToMirror — they are not current plan authority.
+ */
+export function pendingUpdatePriceIdsFromSubscriptionObject(
+  object: Record<string, unknown>
+): string[] {
+  const pending = object.pending_update;
+  if (!pending || typeof pending !== "object") {
+    return [];
+  }
+  const items = (pending as { subscription_items?: unknown }).subscription_items;
+  if (!Array.isArray(items)) {
+    return [];
+  }
+  return items.flatMap((item) => {
+    if (!item || typeof item !== "object") {
+      return [];
+    }
+    const price = (item as { price?: unknown }).price;
+    const id = extractStripeId(
+      price && typeof price === "object"
+        ? (price as Record<string, unknown>).id
+        : price
+    );
+    return id ? [id] : [];
+  });
 }
 
 export function periodFromSubscriptionItems(

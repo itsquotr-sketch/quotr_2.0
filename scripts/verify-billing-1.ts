@@ -292,9 +292,10 @@ assert(
   migrations.includes("046_billing_foundation.sql")
 );
 assert(
-  "047 past_due authority is latest numbered local migration",
+  "048 billing checkout trial is latest numbered local migration",
   migrations.includes("047_past_due_authority.sql") &&
-    migrations[migrations.length - 1] === "047_past_due_authority.sql"
+    migrations.includes("048_billing_checkout_trial.sql") &&
+    migrations[migrations.length - 1] === "048_billing_checkout_trial.sql"
 );
 assert(
   "047 only adds past_due_since",
@@ -911,9 +912,36 @@ async function runAsyncChecks() {
     })
   );
   assert(
-    "checkout.session.completed is recorded/ignored until BILLING-3",
+    "checkout.session.completed without customer is ignored, not subscription authority",
     checkout.result === "ignored" &&
-      checkout.errorCode === "checkout_deferred_billing_3"
+      checkout.errorCode === "checkout_without_customer"
+  );
+
+  const checkoutMapped = await process(
+    createMemoryStore({ customers: [mappedCustomer(ORG_A, CUSTOMER_A)] }),
+    event({
+      id: "evt_checkout_mapped",
+      type: "checkout.session.completed",
+      created: 1_700_000_610,
+      object: {
+        id: "cs_test_mapped",
+        object: "checkout.session",
+        mode: "subscription",
+        customer: CUSTOMER_A,
+        client_reference_id: ORG_A,
+        metadata: {
+          org_id: ORG_A,
+          billing_environment: "test",
+          selected_plan: "builder",
+        },
+      },
+    })
+  );
+  assert(
+    "checkout.session.completed corroborates mapping without writing a plan",
+    checkoutMapped.result === "processed" &&
+      checkoutMapped.errorCode === "checkout_corroborated" &&
+      checkoutMapped.orgId === ORG_A
   );
 
   const invoiceStore = createMemoryStore({

@@ -125,6 +125,8 @@ export type PricingSummary = {
 
 export type PricingActionState = {
   error?: string;
+  reasonCode?: string;
+  upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   success?: boolean;
   pricingDocumentId?: string;
   item?: PricingItem;

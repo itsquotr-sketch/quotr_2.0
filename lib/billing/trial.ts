@@ -13,7 +13,7 @@ import type {
  * Quotr-managed no-card trial exists BEFORE a Stripe Customer/subscription.
  * Represented as org_subscriptions source=internal_trial, status=trialing,
  * plan_code=business, paid_seat_quantity=1, nullable Stripe ids.
- * BILLING-1 does not start trials on signup.
+ * BILLING-3 starts the trial at organisation provision (ensure_org_internal_trial).
  */
 export function buildInternalTrialSubscription(input: {
   id: string;

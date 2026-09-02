@@ -1,8 +1,8 @@
 # Quotr billing architecture
 
-**Classification:** CANONICAL organisation subscription authority (BILLING-1) plus entitlement evaluation (BILLING-2 local).  
-**Status:** Preview 046 applied. 047 past_due authority is local / unapplied. Stripe TEST foundation verified. BILLING-2 entitlement authority is local / compatibility mode / not deployed.  
-**BILLING-2 evaluates and can enforce capabilities. Preview orgs without billing rows stay usable until BILLING-3.** Estimating, Pricing, Quote money, delivery, and acceptance evidence are unchanged.
+**Classification:** CANONICAL organisation subscription authority (BILLING-1) plus entitlement evaluation (BILLING-2) plus trial / Checkout / Portal (BILLING-3 local).  
+**Status:** Preview 046/047 applied. Corrected 048 is local / unapplied (environment-neutral; no hardcoded `test`). Stripe TEST foundation verified. BILLING-2 entitlement authority is compatibility on Preview until bootstrap + strict gate. BILLING-3 local architecture complete pending owner commit gate. Do not apply 048 until that gate.  
+**BILLING-2 evaluates and can enforce capabilities. BILLING-3 initializes trials at organisation provision.** Estimating, Pricing, Quote money, delivery, and acceptance evidence are unchanged.
 
 Related:
 
@@ -213,7 +213,7 @@ Events implemented:
 | Type | BILLING-1 behaviour |
 | --- | --- |
 | `customer.subscription.created/updated/deleted` | Mirror |
-| `checkout.session.completed` | Record/ignore (`checkout_deferred_billing_3`) |
+| `checkout.session.completed` | Corroborate customer mapping / metadata (`checkout_corroborated`). Does **not** write plan/status. Subscription created/updated remains authority. |
 | `invoice.paid` | Record processed; **do not** force `active` |
 | `invoice.payment_failed` | May set `past_due` and `past_due_since` on first transition if not stale; does **not** bump subscription event version; repeated failures do not reset `past_due_since` |
 
@@ -231,9 +231,23 @@ Mirror applies only when `event.created` ≥ `org_subscriptions.last_stripe_even
 
 ---
 
+## BILLING-3 trial / Checkout / Portal (local)
+
+- DB billing environment authority is singleton `billing_runtime_config` (service_role/postgres only; no authenticated writes). `billing_runtime_environment()` returns `test` or `live` and fails closed if the row is missing, duplicated, or invalid. 048 does not seed the row. Preview ops insert `test`; future Production ops insert `live`. Same SQL. Stripe Checkout mapping still uses server `BILLING_ENVIRONMENT` and must match the DB row.
+- Trial starts at organisation provision (`ensure_org_internal_trial` inside `provision_organisation_for_new_user`). Environment comes from `billing_runtime_environment()` only. Missing/invalid config fails closed. First insert wins; retries cannot extend `trial_ends_at`.
+- Preview bootstrap: `bootstrap_missing_preview_internal_trials()` gives existing orgs with **no** billing row a **fresh** 14-day trial from `now()`. Refuses unless runtime environment is `test`. Does not use `organisations.created_at`. Do not run on Production.
+- Billing page: `/app/settings/billing`. Plan selection sends only `builder` | `business`. Server resolves Stripe Price IDs.
+- Checkout success URL is not authority. The page waits for `org_subscriptions` via webhook.
+- Customer Portal is hosted Stripe. Recommend TEST Portal config: payment methods, invoices, cancel — **not** plan/seat switching until BILLING-4.
+- Builder → Business upgrade: Stripe `subscriptions.update` with `proration_behavior=always_invoice`, `payment_behavior=pending_if_incomplete`, and `billing_cycle_anchor=unchanged`. Failed proration payment leaves the current Builder Price; `pending_update` is not plan authority. Entitlement switches only after webhook confirms current Business Price. Business → Builder is deferred (`downgrade_deferred_billing_4`).
+- Stripe Customer create uses only stable metadata (`org_id`, `billing_environment`) with a deterministic idempotency key. Company name and billing email are applied with Customer UPDATE after mapping exists.
+- Strict Preview enforcement only after every Preview org has a trial, Stripe subscription, or override. Not switched in the local-only phase.
+
+---
+
 ## GST
 
-NZ beta: 15% GST, tax **exclusive**, manual Stripe tax rate later. Do **not** mix SaaS GST with construction Quote GST. No SaaS tax implementation in BILLING-1 beyond Price/config compatibility.
+NZ beta: 15% GST, tax **exclusive**. Optional `STRIPE_TAX_RATE_NZ_GST` attaches a Stripe tax rate on Checkout line items and on Builder→Business item updates (including the immediate `always_invoice` proration invoice). Missing env: exclusive price with **no** GST line (do not invent 15%). Present: exclusive price + configured 15% GST. `tax_behavior=exclusive` alone does not add GST. Do **not** mix SaaS GST with construction Quote GST.
 
 ---
 

@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { createPricingFromEstimate } from "@/lib/pricing/actions";
 
 type CreateFinalPricingDialogProps = {
@@ -27,13 +28,24 @@ export function CreateFinalPricingDialog({
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [denial, setDenial] = useState<{
+    reasonCode?: string;
+    upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
+  } | null>(null);
 
   const handleCreate = () => {
     setError(null);
+    setDenial(null);
     startTransition(async () => {
       const result = await createPricingFromEstimate({ projectId });
       if (result.error) {
         setError(result.error);
+        if (result.reasonCode) {
+          setDenial({
+            reasonCode: result.reasonCode,
+            upgradeTarget: result.upgradeTarget,
+          });
+        }
         return;
       }
       onOpenChange(false);
@@ -52,7 +64,15 @@ export function CreateFinalPricingDialog({
           </DialogDescription>
         </DialogHeader>
         {error ? (
-          <p className="text-sm text-destructive" role="alert">{error}</p>
+          denial ? (
+            <BillingAccessDenied
+              error={error}
+              reasonCode={denial.reasonCode}
+              upgradeTarget={denial.upgradeTarget}
+            />
+          ) : (
+            <p className="text-sm text-destructive" role="alert">{error}</p>
+          )
         ) : null}
         <DialogFooter>
           <Button

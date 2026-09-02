@@ -1,6 +1,7 @@
 "use client";
 
 import { cloneElement, isValidElement, useState } from "react";
+import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { createProject } from "@/lib/projects/actions";
 import type { ProjectPriority } from "@/lib/projects/types";
 import { Button } from "@/components/ui/button";
@@ -45,6 +46,10 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
   const [notes, setNotes] = useState("");
   const [notesOpen, setNotesOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [denial, setDenial] = useState<{
+    reasonCode?: string;
+    upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
+  } | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [pending, setPending] = useState(false);
 
@@ -59,6 +64,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
     setNotes("");
     setNotesOpen(false);
     setError(null);
+    setDenial(null);
     setFieldErrors({});
   }
 
@@ -72,6 +78,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
     setError(null);
+    setDenial(null);
     setFieldErrors({});
     setPending(true);
 
@@ -90,6 +97,12 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
 
     if (result?.error) {
       setError(result.error);
+      if (result.reasonCode) {
+        setDenial({
+          reasonCode: result.reasonCode,
+          upgradeTarget: result.upgradeTarget,
+        });
+      }
       return;
     }
 
@@ -126,9 +139,17 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
 
           <form onSubmit={handleSubmit} className="space-y-5">
             {error ? (
-              <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
-                {error}
-              </p>
+              denial ? (
+                <BillingAccessDenied
+                  error={error}
+                  reasonCode={denial.reasonCode}
+                  upgradeTarget={denial.upgradeTarget}
+                />
+              ) : (
+                <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
+                  {error}
+                </p>
+              )
             ) : null}
 
             <div className="space-y-2">

@@ -95,7 +95,7 @@ Verified on Preview only (`shhpjsoldmqtkdbgrbtm`), git branch `hardening/stage-2
 - Hosted runtime: `BILLING_ENVIRONMENT=test`, Stripe TEST secret, webhook secret, three TEST Price IDs.
 - Prices (Stripe TEST retrieve, not Product names): Builder NZD 6500 / month / exclusive; Business NZD 7900 / month / exclusive; additional user NZD 3500 / month / exclusive.
 - Webhook without bypass is protected; with bypass reaches `/api/webhooks/stripe`.
-- Signed TEST `checkout.session.completed` is recorded `ignored` (`checkout_deferred_billing_3`). Replay is idempotent. Fixture `livemode=true` is ignored (`environment_mismatch`). No live Stripe.
+- Signed TEST `checkout.session.completed` is recorded processed/ignored as corroboration (`checkout_corroborated` / `checkout_without_customer`). It does **not** write subscription plan/status. Replay is idempotent. Fixture `livemode=true` is ignored (`environment_mismatch`). No live Stripe.
 - Subscription mirror used TEST customer create/delete (no Checkout, no card). Unknown Price fails without seat mutation.
 - No paywall: fixture org with zero `org_subscriptions` still created Project, opened Estimate/Pricing, sent and accepted a Quote.
 - Production remains migration 045, no Stripe env, no 046 tables, no Production deploy.

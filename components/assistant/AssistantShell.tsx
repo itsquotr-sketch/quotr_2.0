@@ -11,6 +11,7 @@ import { ProjectConditionsBlock } from "@/components/assistant/ProjectConditions
 import { CompletedSetupDisclosure } from "@/components/assistant/CompletedSetupDisclosure";
 import { BuilderReviewSurface } from "@/components/assistant/builder-review/BuilderReviewSurface";
 import { CommercialOverviewMetrics } from "@/components/assistant/CommercialOverviewMetrics";
+import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { EstimateReadyCard } from "@/components/assistant/EstimateReadyCard";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
@@ -235,6 +236,10 @@ export function AssistantShell({
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [actionError, setActionError] = useState<string | null>(null);
+  const [actionDenial, setActionDenial] = useState<{
+    reasonCode?: string;
+    upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
+  } | null>(null);
 
   const [briefText, setBriefText] = useState(project.briefText?.trim() ?? "");
 
@@ -656,12 +661,19 @@ export function AssistantShell({
       actionLockRef.current = true;
       setPendingAction(action);
       setActionError(null);
+      setActionDenial(null);
 
       try {
         const result = await fn();
 
         if (result.error) {
           setActionError(result.error);
+          if (result.reasonCode) {
+            setActionDenial({
+              reasonCode: result.reasonCode,
+              upgradeTarget: result.upgradeTarget ?? null,
+            });
+          }
           setPendingAction(null);
           if (action === "estimate") {
             setIsGenerating(false);
@@ -2270,9 +2282,18 @@ export function AssistantShell({
       />
 
       {actionError ? (
-        <p className="mt-3 text-sm text-destructive lg:mt-4" role="alert">
-          {actionError}
-        </p>
+        actionDenial ? (
+          <BillingAccessDenied
+            error={actionError}
+            reasonCode={actionDenial.reasonCode}
+            upgradeTarget={actionDenial.upgradeTarget}
+            className="mt-3 lg:mt-4"
+          />
+        ) : (
+          <p className="mt-3 text-sm text-destructive lg:mt-4" role="alert">
+            {actionError}
+          </p>
+        )
       ) : null}
 
       <div

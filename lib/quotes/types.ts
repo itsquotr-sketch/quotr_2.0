@@ -146,12 +146,16 @@ export type QuoteEventRecord = {
 
 export type QuoteActionState = {
   error?: string;
+  reasonCode?: string;
+  upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   success?: boolean;
   quoteId?: string;
 };
 
 export type QuoteDeliveryActionState = {
   error?: string;
+  reasonCode?: string;
+  upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   success?: boolean;
   quoteIssued?: boolean;
   emailSubmitted?: boolean;

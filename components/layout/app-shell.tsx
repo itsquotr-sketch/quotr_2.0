@@ -2,11 +2,13 @@
 
 import { usePathname } from "next/navigation";
 import { AppSidebarNav } from "@/components/app-sidebar";
+import { TrialNoticeBanner } from "@/components/billing/TrialNoticeBanner";
 import { AccountMenu } from "@/components/layout/account-menu";
 import { AppUserProvider } from "@/components/layout/app-user-context";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
+import type { TrialBannerNotice } from "@/lib/billing/trial-countdown";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -16,6 +18,7 @@ type AppShellProps = {
   tradingName?: string | null;
   setupIncomplete?: boolean;
   deploymentLabel?: "Local" | "Preview" | null;
+  billingNotice?: TrialBannerNotice | null;
 };
 
 function isQuotePrintRoute(pathname: string | null): boolean {
@@ -34,6 +37,7 @@ export function AppShell({
   tradingName,
   setupIncomplete = false,
   deploymentLabel = null,
+  billingNotice = null,
 }: AppShellProps) {
   const pathname = usePathname();
 
@@ -78,6 +82,9 @@ export function AppShell({
               <AccountMenu variant="header" />
             </div>
           </div>
+          {billingNotice && !pathname?.startsWith("/app/settings/billing") ? (
+            <TrialNoticeBanner notice={billingNotice} />
+          ) : null}
           <div
             className={
               showMobileNav

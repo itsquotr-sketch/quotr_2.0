@@ -12,6 +12,10 @@ import {
 } from "@/lib/billing/mirror";
 import { resolvePastDueSince } from "@/lib/billing/past-due";
 import { validateTrustedBillingMetadata } from "@/lib/billing/customers";
+import {
+  corroborateCheckoutSession,
+  parseCheckoutSessionLike,
+} from "@/lib/billing/checkout-session";
 import type { BillingStore } from "@/lib/billing/store";
 import type {
   BillingEnvironment,
@@ -180,11 +184,24 @@ async function handleClaimedEvent(input: {
       : {};
 
   if (event.type === "checkout.session.completed") {
-    return {
-      result: "ignored",
-      errorCode: "checkout_deferred_billing_3",
-      errorSafe: "Checkout is not processed until BILLING-3.",
-    };
+    const session = parseCheckoutSessionLike(object);
+    if (!session) {
+      return {
+        result: "ignored",
+        errorCode: "checkout_invalid_session",
+        errorSafe: "Checkout session object could not be parsed.",
+      };
+    }
+    const mapped = session.customerId
+      ? await store.getCustomerByStripeId(session.customerId, billingEnvironment)
+      : null;
+    const corroborated = corroborateCheckoutSession({
+      session,
+      billingEnvironment,
+      mappedOrgId: mapped?.orgId ?? null,
+      prices,
+    });
+    return corroborated;
   }
 
   if (!STRIPE_FOUNDATION_EVENT_TYPES.includes(event.type as never)) {

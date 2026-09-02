@@ -3,6 +3,7 @@
 import { useMemo, useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
+import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -54,6 +55,7 @@ function SendFields({
   message,
   setMessage,
   error,
+  denial,
   success,
 }: {
   quote: Quote;
@@ -65,6 +67,10 @@ function SendFields({
   message: string;
   setMessage: (value: string) => void;
   error: string | null;
+  denial: {
+    reasonCode?: string;
+    upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
+  } | null;
   success: string | null;
 }) {
   const view = quoteDocumentViewModel(quote);
@@ -116,9 +122,17 @@ function SendFields({
         ) : null}
       </div>
       {error ? (
-        <p className="text-sm text-destructive" role="alert">
-          {error}
-        </p>
+        denial ? (
+          <BillingAccessDenied
+            error={error}
+            reasonCode={denial.reasonCode}
+            upgradeTarget={denial.upgradeTarget}
+          />
+        ) : (
+          <p className="text-sm text-destructive" role="alert">
+            {error}
+          </p>
+        )
       ) : null}
       {success ? (
         <p className="text-sm text-green-700 dark:text-green-400" role="status">
@@ -156,6 +170,10 @@ export function QuoteSendSheet({
   );
   const [message, setMessage] = useState(latest?.message || defaultMessage);
   const [error, setError] = useState<string | null>(null);
+  const [denial, setDenial] = useState<{
+    reasonCode?: string;
+    upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
+  } | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
   const [needsFinalizeId, setNeedsFinalizeId] = useState<string | null>(
     deliveries.find((row) => row.status === "accepted")?.id ?? null
@@ -163,6 +181,7 @@ export function QuoteSendSheet({
 
   const submit = () => {
     setError(null);
+    setDenial(null);
     setSuccess(null);
     startTransition(async () => {
       const result = await sendQuoteToClient({
@@ -179,6 +198,12 @@ export function QuoteSendSheet({
       }
       if (result.error) {
         setError(result.error);
+        if (result.reasonCode) {
+          setDenial({
+            reasonCode: result.reasonCode,
+            upgradeTarget: result.upgradeTarget,
+          });
+        }
         if (result.quoteIssued) router.refresh();
         return;
       }
@@ -228,6 +253,7 @@ export function QuoteSendSheet({
       message={message}
       setMessage={setMessage}
       error={error}
+      denial={denial}
       success={success}
     />
   );

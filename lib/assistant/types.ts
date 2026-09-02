@@ -173,6 +173,8 @@ export type AssistantMutationResult = {
 
 export type AssistantActionState = {
   error?: string;
+  reasonCode?: string;
+  upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   success?: boolean;
   /** Present when addWorkAreaToProject succeeds — for optimistic Job Plan refresh. */
   workArea?: WorkArea;

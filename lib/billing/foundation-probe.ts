@@ -428,13 +428,14 @@ export async function probeSignedCheckoutSession() {
     ok:
       posted.http_status === 200 &&
       first.present === true &&
-      first.status === "ignored" &&
-      first.error_code === "checkout_deferred_billing_3",
+      (first.status === "ignored" || first.status === "processed") &&
+      (first.error_code === "checkout_without_customer" ||
+        first.error_code === "checkout_corroborated"),
     stripe_event_id: id,
     http: posted,
     receipt: first,
-    expected_status: "ignored",
-    expected_error_code: "checkout_deferred_billing_3",
+    expected_status: "ignored_or_processed",
+    expected_error_code: "checkout_without_customer_or_corroborated",
   };
 }
 

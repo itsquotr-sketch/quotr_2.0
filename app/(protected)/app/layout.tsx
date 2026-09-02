@@ -1,6 +1,12 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { getOrgBillingState } from "@/lib/billing/server";
+import {
+  deriveTrialCountdown,
+  trialBannerNotice,
+  type TrialBannerNotice,
+} from "@/lib/billing/trial-countdown";
 import { internalDeploymentLabel } from "@/lib/deployment/environment";
 import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
@@ -72,6 +78,23 @@ export default async function AppLayout({
 
   const setupIncomplete = basicsNeeded;
 
+  let billingNotice: TrialBannerNotice | null = null;
+  if (!pathname?.startsWith("/app/settings/billing")) {
+    try {
+      const billingState = await getOrgBillingState(auth.orgId);
+      if (billingState.subscription?.source === "internal_trial") {
+        billingNotice = trialBannerNotice(
+          deriveTrialCountdown({
+            trialEndsAt: billingState.subscription.trialEndsAt,
+            effectiveTrialState: billingState.effectiveTrialState,
+          })
+        );
+      }
+    } catch {
+      billingNotice = null;
+    }
+  }
+
   return (
     <AppShell
       userEmail={display?.userEmail ?? auth.user.email}
@@ -80,6 +103,7 @@ export default async function AppLayout({
       tradingName={display?.tradingName}
       setupIncomplete={setupIncomplete}
       deploymentLabel={internalDeploymentLabel()}
+      billingNotice={billingNotice}
     >
       {children}
     </AppShell>

@@ -1,3 +1,7 @@
+import type {
+  EntitlementReasonCode,
+  UpgradeTarget,
+} from "@/lib/billing/entitlement-reasons";
 import type { ProjectDetailsInput } from "@/lib/projects/schema";
 import type { BusinessStatus } from "@/lib/projects/status";
 import type { PricingSummary } from "@/lib/pricing/types";
@@ -44,6 +48,8 @@ export type UpdateProjectInput = ProjectDetailsInput;
 
 export type ProjectActionState = {
   error?: string;
+  reasonCode?: EntitlementReasonCode;
+  upgradeTarget?: UpgradeTarget;
   fieldErrors?: Record<string, string[]>;
   success?: boolean;
 };
