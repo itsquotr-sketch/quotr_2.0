@@ -495,7 +495,9 @@ assert(
     migrations.includes("046_billing_foundation.sql") &&
     migrations.includes("047_past_due_authority.sql") &&
     migrations.includes("048_billing_checkout_trial.sql") &&
-    migrations.at(-1) === "049_organisation_memberships.sql"
+    migrations.includes("049_organisation_memberships.sql") &&
+    migrations.includes("050_unbind_removed_membership.sql") &&
+    migrations.at(-1) === "050_unbind_removed_membership.sql"
 );
 assert("viewed status added", migrationSrc.includes("'viewed'"));
 assert(

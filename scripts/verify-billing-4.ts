@@ -132,7 +132,114 @@ const provisionSql = migration049;
 const permissionSrc = file("lib/team/permissions.ts");
 const invitePolicy = file("lib/team/invite-policy.ts");
 
-assert("049 exists locally and is not 050+", files.includes("049_organisation_memberships.sql"));
+const migration050 = file("supabase/migrations/050_unbind_removed_membership.sql");
+assert(
+  "049 memberships remain and 050 unbind is latest numbered local migration",
+  files.includes("049_organisation_memberships.sql") &&
+    files.includes("050_unbind_removed_membership.sql") &&
+    files.filter((name) => name.endsWith(".sql")).sort().at(-1) ===
+      "050_unbind_removed_membership.sql"
+);
+assert(
+  "050 is environment-neutral product SQL (no Preview/Production refs or fixture ids)",
+  !/shhpjsoldmqtkdbgrbtm/.test(migration050) &&
+    !/lxvnylhsbvudzzupxeqr/.test(migration050) &&
+    !/PREVIEW ONLY/.test(migration050) &&
+    !/select 'test'::text/.test(migration050) &&
+    !/\bcus_|\bsub_|\bprice_/.test(migration050) &&
+    !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(
+      migration050
+    )
+);
+assert(
+  "050 clears profiles.org_id on membership removed so auth_org_id unbinds",
+  /new\.status = 'removed'/.test(migration050) &&
+    /set org_id = null/.test(migration050) &&
+    /role = 'member'/.test(migration050) &&
+    /auth_org_id\(\) no longer resolves/.test(migration050) &&
+    /Access revoke must not wait for Stripe/.test(migration050)
+);
+assert(
+  "hosted remove revokes access then processes claimed Stripe decrement",
+  /remove_organisation_member_v1/.test(teamActions) &&
+    /processClaimedSeatMutationForOrg\(context\.orgId/.test(teamActions) &&
+    SEAT_REMOVE_PRORATION_BEHAVIOR === "create_prorations"
+);
+
+function recon(input: Parameters<typeof classifyTeamReconciliation>[0]) {
+  return classifyTeamReconciliation(input).state;
+}
+const reconBase = {
+  planCode: "business" as const,
+  trial: false,
+  pendingActivationCount: 0,
+};
+assert(
+  "reconciliation matrix: healthy 1-user, pending invite, pending_billing, failed payment, 2-user, decremented 1-user",
+  recon({
+    ...reconBase,
+    paidSeatQuantity: 1,
+    extraSeatItemQuantity: 0,
+    snapshot: {
+      activeMemberCount: 1,
+      pendingBillingCount: 0,
+      validPendingInviteCount: 0,
+    },
+  }) === "healthy" &&
+    recon({
+      ...reconBase,
+      paidSeatQuantity: 1,
+      extraSeatItemQuantity: 0,
+      snapshot: {
+        activeMemberCount: 1,
+        pendingBillingCount: 0,
+        validPendingInviteCount: 1,
+      },
+    }) === "reserved_capacity" &&
+    recon({
+      ...reconBase,
+      paidSeatQuantity: 1,
+      extraSeatItemQuantity: 0,
+      snapshot: {
+        activeMemberCount: 1,
+        pendingBillingCount: 1,
+        validPendingInviteCount: 0,
+      },
+      pendingActivationCount: 1,
+    }) === "pending_billing_zero_access" &&
+    recon({
+      ...reconBase,
+      paidSeatQuantity: 1,
+      extraSeatItemQuantity: 0,
+      snapshot: {
+        activeMemberCount: 1,
+        pendingBillingCount: 1,
+        validPendingInviteCount: 0,
+      },
+      pendingActivationCount: 1,
+      paymentAttentionSeatOperationCount: 1,
+    }) === "payment_attention" &&
+    recon({
+      ...reconBase,
+      paidSeatQuantity: 2,
+      extraSeatItemQuantity: 1,
+      snapshot: {
+        activeMemberCount: 2,
+        pendingBillingCount: 0,
+        validPendingInviteCount: 0,
+      },
+    }) === "healthy" &&
+    recon({
+      ...reconBase,
+      paidSeatQuantity: 1,
+      extraSeatItemQuantity: 0,
+      snapshot: {
+        activeMemberCount: 1,
+        pendingBillingCount: 0,
+        validPendingInviteCount: 0,
+      },
+    }) === "healthy"
+);
 assert(
   "049 is marked local-only / never Production",
   /LOCAL ONLY/.test(migration049) && /Never apply to Production/.test(migration049)
