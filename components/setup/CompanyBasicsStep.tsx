@@ -124,8 +124,7 @@ export function CompanyBasicsStep({
     if (!ok) return;
 
     if (mode === "basics") {
-      router.push("/app/setup?mode=pricing");
-      router.refresh();
+      router.replace("/app/setup?mode=pricing");
       return;
     }
 

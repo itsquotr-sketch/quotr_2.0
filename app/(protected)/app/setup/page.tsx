@@ -1,7 +1,11 @@
 import { redirect } from "next/navigation";
 import { SetupShell } from "@/components/setup/SetupShell";
 import { getCalibrationScenarioStatuses } from "@/lib/calibration/actions";
-import { getSetupState, needsCompanyBasics } from "@/lib/setup/actions";
+import { getFirstRunStage, getSetupState } from "@/lib/setup/actions";
+import {
+  setupModeRedirect,
+  setupShellMode,
+} from "@/lib/setup/first-run-stage";
 import { createClient } from "@/lib/supabase/server";
 
 type SetupPageProps = {
@@ -17,21 +21,14 @@ const IMPROVE_SECTIONS = new Set([
 
 export default async function SetupPage({ searchParams }: SetupPageProps) {
   const params = await searchParams;
-  const basicsNeeded = await needsCompanyBasics();
+  const stage = await getFirstRunStage();
   const modeParam = params.mode;
-
-  // Basics already confirmed — don't keep user on forced basics URL.
-  if (!basicsNeeded && modeParam === "basics") {
-    redirect("/app/dashboard");
+  const modeRedirect = setupModeRedirect(modeParam, stage);
+  if (modeRedirect) {
+    redirect(modeRedirect);
   }
 
-  const shellMode = basicsNeeded
-    ? "basics"
-    : modeParam === "pricing"
-      ? "pricing"
-      : modeParam === "ready"
-        ? "ready"
-        : "improve";
+  const shellMode = setupShellMode(modeParam, stage);
 
   const sectionParam = params.section?.trim();
   const initialImproveSection =

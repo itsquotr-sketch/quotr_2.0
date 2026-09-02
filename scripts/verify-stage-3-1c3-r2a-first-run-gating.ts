@@ -34,8 +34,8 @@ function main() {
   section("ROUTING");
   const layout = read("app/(protected)/app/layout.tsx");
   assert(
-    "layout redirects when basics missing",
-    /needsCompanyBasics/.test(layout) && /mode=basics/.test(layout)
+    "layout redirects when first-run stage is unfinished",
+    /getFirstRunStage/.test(layout) && /firstRunForcedPath/.test(layout)
   );
   assert(
     "setup-required path remains separate",
@@ -49,8 +49,8 @@ function main() {
   const setupPage = read("app/(protected)/app/setup/page.tsx");
   assert("setup page reads mode searchParam", /mode/.test(setupPage));
   assert(
-    "basics ready + mode=basics redirects Dashboard",
-    /modeParam === "basics"/.test(setupPage) && /dashboard/.test(setupPage)
+    "company-complete basics URL resumes pricing not dashboard",
+    /setupModeRedirect/.test(setupPage) && /getFirstRunStage/.test(setupPage)
   );
   const dashboard = read("app/(protected)/app/dashboard/page.tsx");
   assert(
@@ -165,8 +165,8 @@ function main() {
     !/SetupPromptCard/.test(dashboard)
   );
   assert(
-    "layout badge uses basicsNeeded only",
-    /setupIncomplete = basicsNeeded/.test(layout)
+    "layout badge uses company basics stage only",
+    /setupIncomplete = firstRunStage === "basics"/.test(layout)
   );
 
   section("READINESS");

@@ -152,7 +152,7 @@ export async function signup(
   const origin = await getAuthSiteOrigin();
   const emailRedirectTo = buildAuthCallbackUrl(
     origin,
-    inviteToken ? `/invite/${inviteToken}` : "/app/dashboard"
+    inviteToken ? `/invite/${inviteToken}` : POST_SIGNUP_DESTINATION
   );
 
   const { data: authData, error: authError } = await supabase.auth.signUp({

@@ -10,11 +10,11 @@ import {
 import { internalDeploymentLabel } from "@/lib/deployment/environment";
 import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
-import { needsCompanyBasics } from "@/lib/setup/actions";
+import { getFirstRunStage } from "@/lib/setup/actions";
+import { firstRunForcedPath } from "@/lib/setup/first-run-stage";
 import { lookupPendingInvitationForCurrentUser } from "@/lib/team/public-invite";
 
 const SETUP_REQUIRED_PATH = "/app/setup-required";
-const SETUP_BASICS_PATH = "/app/setup?mode=basics";
 
 function isSetupRequiredPath(pathname: string | null): boolean {
   if (!pathname) {
@@ -26,8 +26,8 @@ function isSetupRequiredPath(pathname: string | null): boolean {
   );
 }
 
-/** Routes allowed while company basics are not yet confirmed. */
-function isCompanyBasicsAllowedPath(pathname: string | null): boolean {
+/** Routes allowed while first-run Company or Pricing Basics are unfinished. */
+function isFirstRunSetupPath(pathname: string | null): boolean {
   if (!pathname) {
     return false;
   }
@@ -72,16 +72,17 @@ export default async function AppLayout({
     redirect("/app/dashboard");
   }
 
-  const [display, basicsNeeded] = await Promise.all([
+  const [display, firstRunStage] = await Promise.all([
     getAuthDisplayProfile(),
-    needsCompanyBasics(),
+    getFirstRunStage(),
   ]);
 
-  if (basicsNeeded && !isCompanyBasicsAllowedPath(pathname)) {
-    redirect(SETUP_BASICS_PATH);
+  const forcedSetup = firstRunForcedPath(firstRunStage);
+  if (forcedSetup && !isFirstRunSetupPath(pathname)) {
+    redirect(forcedSetup);
   }
 
-  const setupIncomplete = basicsNeeded;
+  const setupIncomplete = firstRunStage === "basics";
 
   let billingNotice: TrialBannerNotice | null = null;
   if (!pathname?.startsWith("/app/settings/billing")) {

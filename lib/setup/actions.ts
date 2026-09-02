@@ -29,6 +29,7 @@ import {
   parseOptionalLabourCost,
   parseOptionalTargetMargin,
 } from "@/lib/setup/pricing-basics";
+import { resolveFirstRunStage, type FirstRunStage } from "@/lib/setup/first-run-stage";
 
 type SetupAuthContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -111,22 +112,30 @@ export async function isSetupIncomplete(): Promise<boolean> {
 
 /**
  * First-run company basics still need confirmation (Stage 3.1C.3-R2A).
- * Authority: onboarding_status is null or not_started.
- * Leaving not_started via saveCompanyBasics unlocks Dashboard.
+ * True only while first-run stage is Company Basics (see getFirstRunStage).
+ * Company save must not be treated as total onboarding completion.
  */
 export async function needsCompanyBasics(): Promise<boolean> {
+  const stage = await getFirstRunStage();
+  return stage === "basics";
+}
+
+export async function getFirstRunStage(): Promise<FirstRunStage> {
   const context = await getAuthOrgContext();
   if (!context) {
-    return true;
+    return "basics";
   }
 
   const { data: settings } = await context.supabase
     .from("organisation_settings")
-    .select("onboarding_status")
+    .select("onboarding_status, onboarding_step")
     .eq("org_id", context.orgId)
     .maybeSingle();
 
-  return !settings || settings.onboarding_status === "not_started";
+  return resolveFirstRunStage({
+    onboardingStatus: settings?.onboarding_status,
+    onboardingStep: settings?.onboarding_step,
+  });
 }
 
 const companyBasicsSchema = z.object({
@@ -148,9 +157,9 @@ const companyBasicsSchema = z.object({
 });
 
 /**
- * Confirm minimum company basics and unlock Dashboard.
- * Does not require rates, margins, work areas, or branding.
- * Persists canonical ISO country/currency codes into existing text columns.
+ * Confirm minimum company basics.
+ * Sets onboarding_step to work_areas (existing enum) meaning Pricing Basics
+ * is next. Does not skip the user to Dashboard.
  */
 export async function saveCompanyBasics(
   input: CompanyBasicsInput
@@ -188,12 +197,15 @@ export async function saveCompanyBasics(
 
   const { data: existing } = await supabase
     .from("organisation_settings")
-    .select("id, onboarding_status")
+    .select("id, onboarding_status, onboarding_step")
     .eq("org_id", orgId)
     .maybeSingle();
 
   const alreadyCompleted = existing?.onboarding_status === "completed";
-  const alreadyInProgress = existing?.onboarding_status === "in_progress";
+  const currentStep = existing?.onboarding_step ?? "company";
+  // Advance only from company; do not rewind pricing-visited (rates) or later.
+  const shouldMarkPricingNext =
+    !alreadyCompleted && (!existing || currentStep === "company");
 
   const payload = {
     org_id: orgId,
@@ -201,12 +213,13 @@ export async function saveCompanyBasics(
     country: countryCode,
     region: data.region?.trim() || null,
     default_gst_rate: data.default_gst_rate,
-    ...(alreadyCompleted || alreadyInProgress
-      ? {}
-      : {
+    ...(shouldMarkPricingNext
+      ? {
           onboarding_status: "in_progress" as const,
+          // work_areas = company basics saved; Pricing Basics not visited yet.
           onboarding_step: "work_areas" as const,
-        }),
+        }
+      : {}),
   };
 
   const { error } = await supabase
@@ -237,6 +250,8 @@ const pricingBasicsSchema = z.object({
  * Labour writes labour.carpenter.hour cost_rate (sell left unset so margin applies).
  * Margin writes organisation_settings.default_margin_percent.
  * Skip leaves benchmarks allowed and 20% default margin.
+ * Skip still writes onboarding_step = rates so returning users are not
+ * sent back to Pricing Basics.
  */
 export async function savePricingBasics(input: {
   labourCost?: string | number | null;

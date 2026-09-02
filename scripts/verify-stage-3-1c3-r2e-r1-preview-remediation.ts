@@ -69,8 +69,8 @@ assert(
 const layout = read("app/(protected)/app/layout.tsx");
 assert(
   "Basics still hard-gated before Dashboard",
-  layout.includes("needsCompanyBasics") &&
-    layout.includes("redirect(SETUP_BASICS_PATH)")
+  layout.includes("getFirstRunStage") &&
+    layout.includes("firstRunForcedPath")
 );
 
 section("DASHBOARD DISCLOSURE");

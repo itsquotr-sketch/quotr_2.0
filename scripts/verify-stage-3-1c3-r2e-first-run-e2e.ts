@@ -35,14 +35,14 @@ console.log("=== Stage 3.1C.3-R2E first-run E2E verification ===\n");
 section("BASICS GATE ONLY");
 const layout = read("app/(protected)/app/layout.tsx");
 assert(
-  "layout Incomplete badge = basicsNeeded only",
-  layout.includes("setupIncomplete = basicsNeeded") &&
-    layout.includes("needsCompanyBasics")
+  "layout Incomplete badge = company basics stage only",
+  layout.includes('setupIncomplete = firstRunStage === "basics"') &&
+    layout.includes("getFirstRunStage")
 );
 assert(
-  "layout redirects when basics missing",
-  layout.includes('SETUP_BASICS_PATH = "/app/setup?mode=basics"') &&
-    layout.includes("redirect(SETUP_BASICS_PATH)")
+  "layout redirects unfinished first-run away from Dashboard",
+  layout.includes("firstRunForcedPath") &&
+    layout.includes("isFirstRunSetupPath")
 );
 const basics = computeCompanySetupReadiness({
   accountReady: true,

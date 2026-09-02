@@ -64,15 +64,13 @@ export function PricingBasicsStep({ state }: PricingBasicsStepProps) {
     event.preventDefault();
     const ok = await persist({ skipAll: false });
     if (!ok) return;
-    router.push("/app/setup?mode=ready");
-    router.refresh();
+    router.replace("/app/setup?mode=ready");
   }
 
   async function handleSkip() {
     const ok = await persist({ skipAll: true });
     if (!ok) return;
-    router.push("/app/setup?mode=ready");
-    router.refresh();
+    router.replace("/app/setup?mode=ready");
   }
 
   const currency = state.settings?.currency ?? "NZD";

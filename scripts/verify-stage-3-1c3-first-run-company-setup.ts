@@ -87,8 +87,8 @@ function main() {
   );
   assert(
     "layout gates basics before Dashboard (R2A)",
-    /needsCompanyBasics/.test(read("app/(protected)/app/layout.tsx")) &&
-      /mode=basics/.test(read("app/(protected)/app/layout.tsx"))
+    /getFirstRunStage/.test(read("app/(protected)/app/layout.tsx")) &&
+      /firstRunForcedPath/.test(read("app/(protected)/app/layout.tsx"))
   );
   assert(
     "dashboard does not soft-render basics gate",

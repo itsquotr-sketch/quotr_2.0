@@ -32,6 +32,14 @@ import {
 } from "../lib/setup/pricing-basics";
 import { DEFAULT_MARGIN_PERCENT } from "../lib/estimate/constants";
 import { roleAllowsPermission } from "../lib/team/permissions";
+import {
+  FIRST_RUN_BASICS_PATH,
+  FIRST_RUN_PRICING_PATH,
+  firstRunForcedPath,
+  resolveFirstRunStage,
+  setupModeRedirect,
+  setupShellMode,
+} from "../lib/setup/first-run-stage";
 
 function assert(label: string, ok: boolean) {
   console.log(ok ? "PASS" : "FAIL", label);
@@ -160,6 +168,111 @@ function main() {
   assert(
     "callback still preserves /invite/ next",
     /next.startsWith\("\/invite\/"\)/.test(callback)
+  );
+  assert(
+    "ordinary signup emailRedirectTo uses company basics",
+    /inviteToken \? `\/invite\/\$\{inviteToken\}` : POST_SIGNUP_DESTINATION/.test(
+      authActions
+    )
+  );
+
+  section("FIRST-RUN STAGE MACHINE");
+  assert(
+    "not_started is Company Basics",
+    resolveFirstRunStage({
+      onboardingStatus: "not_started",
+      onboardingStep: "company",
+    }) === "basics"
+  );
+  assert(
+    "company saved (work_areas) is Pricing Basics",
+    resolveFirstRunStage({
+      onboardingStatus: "in_progress",
+      onboardingStep: "work_areas",
+    }) === "pricing"
+  );
+  assert(
+    "pricing visited (rates) is ready",
+    resolveFirstRunStage({
+      onboardingStatus: "in_progress",
+      onboardingStep: "rates",
+    }) === "ready"
+  );
+  assert(
+    "completed onboarding is done",
+    resolveFirstRunStage({
+      onboardingStatus: "completed",
+      onboardingStep: "completed",
+    }) === "done"
+  );
+  assert(
+    "legacy review step is done",
+    resolveFirstRunStage({
+      onboardingStatus: "in_progress",
+      onboardingStep: "review",
+    }) === "done"
+  );
+  assert(
+    "company save + mode=basics resumes pricing not dashboard",
+    setupModeRedirect("basics", "pricing") === FIRST_RUN_PRICING_PATH
+  );
+  assert(
+    "pricing skip/save + mode=pricing stays on pricing",
+    setupModeRedirect("pricing", "ready") === null
+  );
+  assert(
+    "pricing skip/save + mode=ready stays on ready",
+    setupModeRedirect("ready", "ready") === null &&
+      setupShellMode("ready", "ready") === "ready"
+  );
+  assert(
+    "unfinished pricing cannot open ready",
+    setupModeRedirect("ready", "pricing") === FIRST_RUN_PRICING_PATH
+  );
+  assert(
+    "unfinished company cannot open pricing",
+    setupModeRedirect("pricing", "basics") === FIRST_RUN_BASICS_PATH
+  );
+  assert(
+    "existing done user on basics goes to dashboard",
+    setupModeRedirect("basics", "done") === "/app/dashboard"
+  );
+  assert(
+    "layout forces pricing until visited",
+    firstRunForcedPath("pricing") === FIRST_RUN_PRICING_PATH &&
+      firstRunForcedPath("ready") === null &&
+      firstRunForcedPath("done") === null
+  );
+  const setupPage = read("app/(protected)/app/setup/page.tsx");
+  assert("setup page uses first-run stage", /getFirstRunStage/.test(setupPage));
+  assert(
+    "setup page no longer dumps basics to dashboard",
+    !/!basicsNeeded && modeParam === "basics"/.test(setupPage)
+  );
+  const layout = read("app/(protected)/app/layout.tsx");
+  assert("layout resumes unfinished first-run", /firstRunForcedPath/.test(layout));
+  assert(
+    "ordinary owner callback still avoids invite",
+    resolveEmailConfirmDestination({
+      next: "/app/dashboard",
+      hasOrg: true,
+      pendingInvite: "none",
+      provisioned: false,
+    }) === POST_SIGNUP_DESTINATION &&
+      POST_SIGNUP_DESTINATION === FIRST_RUN_BASICS_PATH
+  );
+  assert(
+    "invite callback remains invite-aware",
+    resolveEmailConfirmDestination({
+      next: "/invite/abc",
+      hasOrg: false,
+      pendingInvite: "none",
+      provisioned: false,
+    }) === "/invite/abc"
+  );
+  assert(
+    "pricing skip persists via onboarding_step rates",
+    /onboarding_step: "rates"/.test(read("lib/setup/actions.ts"))
   );
 
   section("GST REGISTERED");
