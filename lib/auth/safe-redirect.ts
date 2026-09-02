@@ -51,7 +51,8 @@ export function getSafeInternalPath(
     trimmed.startsWith("/app/") ||
     trimmed === "/app" ||
     trimmed.startsWith("/reset-password") ||
-    trimmed === "/reset-password"
+    trimmed === "/reset-password" ||
+    trimmed.startsWith("/invite/")
   ) {
     return trimmed;
   }

@@ -37,6 +37,8 @@ import {
 } from "@/lib/billing/urls";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getCompanySettingsWithContext } from "@/lib/settings/company-settings-loader";
+import { permissionDeniedError } from "@/lib/team/permission-server";
+import { reservedSeatCount } from "@/lib/team/capacity";
 
 export type BillingActionResult = { error: string };
 
@@ -55,7 +57,35 @@ export async function getBillingPageState(): Promise<BillingPageView | { error: 
   const auth = await requireOrgContext();
   if (!auth.ok) return { error: auth.error };
   const state = await getOrgBillingState(auth.context.orgId);
-  return buildBillingPageView(state);
+  const manage = await permissionDeniedError({
+    orgId: auth.context.orgId,
+    userId: auth.context.user.id,
+    permission: "billing.manage",
+  });
+  const { data: memberRows } = await auth.context.supabase.rpc(
+    "list_organisation_team_v1"
+  );
+  const { data: inviteRows } = await auth.context.supabase.rpc(
+    "list_organisation_invitations_v1"
+  );
+  const activeUserCount = Array.isArray(memberRows)
+    ? memberRows.filter((row) => row.status === "active").length
+    : state.subscription?.paidSeatQuantity ?? 1;
+  const pendingBilling = Array.isArray(memberRows)
+    ? memberRows.filter((row) => row.status === "pending_billing").length
+    : 0;
+  const pendingInvites = Array.isArray(inviteRows)
+    ? inviteRows.filter((row) => row.status === "pending").length
+    : 0;
+  return buildBillingPageView(state, new Date(), {
+    canManageBilling: !manage,
+    activeUserCount,
+    reservedUserCount: reservedSeatCount({
+      activeMemberCount: activeUserCount,
+      pendingBillingCount: pendingBilling,
+      validPendingInviteCount: pendingInvites,
+    }),
+  });
 }
 
 export async function startCheckout(
@@ -69,6 +99,12 @@ export async function startCheckout(
   const auth = await requireOrgContext();
   if (!auth.ok) return { error: auth.error };
   const { context } = auth;
+  const manageDenied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "billing.manage",
+  });
+  if (manageDenied) return manageDenied;
   const billingEnvironment = resolveBillingEnvironment();
   const state = await getOrgBillingState(context.orgId);
   const guard = canCreateSubscriptionCheckout(state);
@@ -167,6 +203,12 @@ export async function startCheckout(
 export async function startCustomerPortal(): Promise<BillingActionResult | void> {
   const auth = await requireOrgContext();
   if (!auth.ok) return { error: auth.error };
+  const manageDenied = await permissionDeniedError({
+    orgId: auth.context.orgId,
+    userId: auth.context.user.id,
+    permission: "billing.manage",
+  });
+  if (manageDenied) return manageDenied;
   const billingEnvironment = resolveBillingEnvironment();
   const state = await getOrgBillingState(auth.context.orgId);
   const stripeCustomerId = state.customer?.stripeCustomerId;
@@ -196,6 +238,12 @@ export async function startCustomerPortal(): Promise<BillingActionResult | void>
 export async function upgradeToBusiness(): Promise<BillingActionResult | void> {
   const auth = await requireOrgContext();
   if (!auth.ok) return { error: auth.error };
+  const manageDenied = await permissionDeniedError({
+    orgId: auth.context.orgId,
+    userId: auth.context.user.id,
+    permission: "billing.manage",
+  });
+  if (manageDenied) return manageDenied;
   const state = await getOrgBillingState(auth.context.orgId);
   const guard = canUpgradeBuilderToBusiness(state);
   if (!guard.ok) {

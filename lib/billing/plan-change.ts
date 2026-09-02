@@ -61,19 +61,10 @@ export function canUpgradeBuilderToBusiness(
   };
 }
 
-/**
- * Business → Builder is deferred. BILLING-3 orgs have one user, but extra
- * Business seats arrive in BILLING-4 and would make an unvalidated
- * downgrade unsafe. Keep this seam; do not DB-flip.
- */
-export function canDowngradeBusinessToBuilder(
-  state: OrgBillingState
-): PlanChangeGuard {
-  void state;
-  return {
-    ok: false,
-    errorCode: "downgrade_deferred_billing_4",
-    errorSafe:
-      "Downgrade to Builder is deferred until seat validation exists. Use Customer Portal to cancel, or stay on Business.",
-  };
-}
+export {
+  canDowngradeBusinessToBuilder,
+  isTeamSafeForBuilderDowngrade,
+  buildBusinessToBuilderScheduleIntent,
+  BUSINESS_TO_BUILDER_TIMING,
+  type DowngradeTeamSnapshot,
+} from "@/lib/billing/downgrade-policy";

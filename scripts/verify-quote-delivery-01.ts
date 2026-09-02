@@ -78,14 +78,15 @@ const migrations = readdirSync("supabase/migrations")
   .sort();
 
 assert(
-  "042 delivery architecture remains; 044–048 are later additive",
+  "042 delivery architecture remains; later billing/membership migrations are additive",
   migrations.includes("042_quote_delivery.sql") &&
     migrations.includes("043_project_client_email.sql") &&
     migrations.includes("044_quote_acceptance.sql") &&
     migrations.includes("045_commercial_close.sql") &&
     migrations.includes("046_billing_foundation.sql") &&
     migrations.includes("047_past_due_authority.sql") &&
-    migrations[migrations.length - 1] === "048_billing_checkout_trial.sql"
+    migrations.includes("048_billing_checkout_trial.sql") &&
+    migrations[migrations.length - 1] === "049_organisation_memberships.sql"
 );
 
 assert(
@@ -425,12 +426,13 @@ assert(
 
 assert(
   "future entitlement seam has no plan strings",
-  entitlementsSrc.includes('requireOrgEntitlement') &&
+  entitlementsSrc.includes("requireOrgEntitlement") &&
     entitlementsSrc.includes('"quotes.send"') &&
     entitlementsSrc.includes('"quotes.acceptance"') &&
     !entitlementsSrc.includes("business") &&
     !entitlementsSrc.includes("builder") &&
-    actionsSrc.includes('requireOrgEntitlement(loaded.orgId, "quotes.send")')
+    actionsSrc.includes('permission: "quotes.send"') &&
+    actionsSrc.includes('entitlement: "quotes.send"')
 );
 
 assert(

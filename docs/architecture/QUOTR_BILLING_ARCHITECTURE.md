@@ -1,8 +1,8 @@
 # Quotr billing architecture
 
-**Classification:** CANONICAL organisation subscription authority (BILLING-1) plus entitlement evaluation (BILLING-2) plus trial / Checkout / Portal (BILLING-3 local).  
-**Status:** Preview 046/047 applied. Corrected 048 is local / unapplied (environment-neutral; no hardcoded `test`). Stripe TEST foundation verified. BILLING-2 entitlement authority is compatibility on Preview until bootstrap + strict gate. BILLING-3 local architecture complete pending owner commit gate. Do not apply 048 until that gate.  
-**BILLING-2 evaluates and can enforce capabilities. BILLING-3 initializes trials at organisation provision.** Estimating, Pricing, Quote money, delivery, and acceptance evidence are unchanged.
+**Classification:** CANONICAL organisation subscription authority (BILLING-1) plus entitlement evaluation (BILLING-2) plus trial / Checkout / Portal (BILLING-3) plus Business memberships / invitations / seat billing (BILLING-4 local).  
+**Status:** Preview 046/047/048 applied. 049 is local / unapplied. Do not apply 049 until owner review. Never Production. Stripe TEST configured on Preview. BILLING-4-R1: pending_billing is zero-access; membership is the only post-049 role authority. BILLING-4-R2: at most one in-flight Stripe seat mutation per org/environment; later acceptances queue.  
+**BILLING-4 builds organisation memberships, invitations, roles, and payment-safe additional-user Stripe items. Estimating, Pricing, and Quote money are unchanged.**
 
 Related:
 
@@ -239,9 +239,31 @@ Mirror applies only when `event.created` ≥ `org_subscriptions.last_stripe_even
 - Billing page: `/app/settings/billing`. Plan selection sends only `builder` | `business`. Server resolves Stripe Price IDs.
 - Checkout success URL is not authority. The page waits for `org_subscriptions` via webhook.
 - Customer Portal is hosted Stripe. Recommend TEST Portal config: payment methods, invoices, cancel — **not** plan/seat switching until BILLING-4.
-- Builder → Business upgrade: Stripe `subscriptions.update` with `proration_behavior=always_invoice`, `payment_behavior=pending_if_incomplete`, and `billing_cycle_anchor=unchanged`. Failed proration payment leaves the current Builder Price; `pending_update` is not plan authority. Entitlement switches only after webhook confirms current Business Price. Business → Builder is deferred (`downgrade_deferred_billing_4`).
+- Builder → Business upgrade: Stripe `subscriptions.update` with `proration_behavior=always_invoice`, `payment_behavior=pending_if_incomplete`, and `billing_cycle_anchor=unchanged`. Failed proration payment leaves the current Builder Price; `pending_update` is not plan authority. Entitlement switches only after webhook confirms current Business Price.
 - Stripe Customer create uses only stable metadata (`org_id`, `billing_environment`) with a deterministic idempotency key. Company name and billing email are applied with Customer UPDATE after mapping exists.
 - Strict Preview enforcement only after every Preview org has a trial, Stripe subscription, or override. Not switched in the local-only phase.
+
+---
+
+## BILLING-4 memberships / invitations / seats (local)
+
+049 is **local / unapplied**. Do not apply to Preview in this phase. Never Production.
+
+- `organisation_memberships` is team/role authority for **active** members only. `pending_billing` is durable join workflow: **zero org access**, `profiles.org_id` stays NULL until paid-seat activation. Viewer is an active paid role — not a stand-in for pending seats.
+- `profiles.org_id` remains the single-org tenant binding for `auth_org_id()` **after activation**. One user, one organisation. Exactly one active Owner.
+- After 049 exists: membership is canonical. Bound profile without an active membership fails closed for mutations (no `profiles.role` grant). Pre-049 local fallback to `profiles.role` remains only when the membership table is missing.
+- Roles: Owner, Admin, Estimator, Viewer. **All four consume one full paid seat.** Viewer is not free.
+- Legacy `profiles.role`: owner→owner, admin→admin, member→estimator. Viewer is new.
+- Permissions are central (`requireOrgPermission` / `requireEntitlementAndPermission`). Plan entitlement AND **active** role must both pass. Checkout/Portal/upgrade require Owner `billing.manage`.
+- Invitations: hash-only tokens, 7-day pending reservation, unique pending email per org, Owner-only create (Admin cannot add billed seats). Sending an invite is Owner consent for the future $35+GST seat charge; no second approval at accept. Capacity = active + pending_billing + pending invites against Business max 5. `accepting` invitations are not counted — the unit has moved to `pending_billing`. Custom is not capped here.
+- Invite-aware signup: `provision_organisation_for_new_user` raises `PROVISION:PENDING_INVITATION` for pending/accepting invites **or** `pending_billing` memberships, including unbound profiles. `/invite/[token]` plus `/invite/continue`.
+- Payment-safe seat add: membership stays `pending_billing` with unbound profile until `org_subscriptions.paid_seat_quantity` covers the resulting **active** count. Then atomic bind: membership active + `profiles.org_id` + compatibility role + invite accepted. Additional-user Price quantity = `max(0, paid users - 1)`. Add uses `always_invoice` + `pending_if_incomplete`. Failed payment does not activate. GST remains `subscription.default_tax_rates`.
+- Serialized Stripe seat mutations (R2): `billing_seat_operations` insert as `queued`. In-flight is `pending` / `awaiting_payment` / `awaiting_mirror`. Partial unique index `billing_seat_operations_one_inflight_uidx` on `(org_id, billing_environment)` is the durable lock (advisory locks end with the HTTP transaction). A second accept may enter `pending_billing` but must not call Stripe. Desired quantity is recalculated at claim from canonical active count (`active+1` add, `greatest(active,1)` remove). Webhook activates oldest covered pending member, completes matching ops, claims at most one next op, then one trusted Node Stripe call.
+- New paid-seat charges and new invitations require Stripe Business `status=active`. `past_due` (including BILLING-2 work grace) and `scheduled_to_cancel` cannot add users. Existing members remain usable under BILLING-2 until period end / grace policy.
+- Local `next build` must not load Production Supabase. Use `npm run build:safe` (`.env.local` only). Never `.env.production.local`.
+- Seat remove: access revoked immediately. Stripe quantity decreases with `create_prorations` (credit on next invoice, no cash refund); item deleted when extra quantity returns to 0. Decrement queues behind any in-flight add. Do not restore access if Stripe sync is delayed. In-flight add cannot be cancelled against Stripe; queued/failed pending_billing may be cancelled and the reservation released.
+- Business → Builder: allowed only when the company is already one person with no pending invites/activations; scheduled for end of current period.
+- Team page: `/app/settings/team`. Builder/trial empty states do not send invites.
 
 ---
 

@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useActionState } from "react";
+import { Suspense, useActionState, useMemo } from "react";
+import { useSearchParams } from "next/navigation";
 import {
   resendSignupConfirmation,
   type RecoveryActionState,
@@ -19,6 +20,7 @@ import {
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { isWellFormedInviteToken } from "@/lib/team/tokens";
 
 const initialState: AuthActionState = {};
 const resendInitial: RecoveryActionState = {};
@@ -53,8 +55,8 @@ function ConfirmationPending({ email }: { email?: string }) {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm text-muted-foreground">
-          After you confirm, you&apos;ll be signed in. If company setup is still
-          needed, we&apos;ll ask you to finish it once.
+          After you confirm, you&apos;ll be signed in. If you were invited to a
+          company, we&apos;ll take you back to the invitation.
         </p>
         {resendState.error ? (
           <p
@@ -95,7 +97,12 @@ function ConfirmationPending({ email }: { email?: string }) {
   );
 }
 
-export default function SignupPage() {
+function SignupForm() {
+  const searchParams = useSearchParams();
+  const inviteToken = useMemo(() => {
+    const raw = searchParams.get("invite") ?? "";
+    return isWellFormedInviteToken(raw) ? raw : "";
+  }, [searchParams]);
   const [state, formAction, pending] = useActionState(signup, initialState);
 
   if (state.confirmationPending) {
@@ -106,15 +113,19 @@ export default function SignupPage() {
     return (
       <Card>
         <CardHeader className="pb-4 sm:pb-6">
-          <CardTitle className="text-xl">Account created</CardTitle>
+          <CardTitle className="text-xl">
+            {inviteToken ? "Account created" : "Account created"}
+          </CardTitle>
           <CardDescription>
-            Taking you to company basics to finish getting started.
+            {inviteToken
+              ? "Taking you back to your invitation."
+              : "Taking you to company basics to finish getting started."}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <AuthContinue
             continueTo={state.continueTo}
-            label="Opening company basics…"
+            label={inviteToken ? "Opening invitation…" : "Opening company basics…"}
           />
         </CardContent>
       </Card>
@@ -124,12 +135,19 @@ export default function SignupPage() {
   return (
     <Card>
       <CardHeader className="pb-4 sm:pb-6">
-        <CardTitle className="text-xl">Create your Quotr account</CardTitle>
+        <CardTitle className="text-xl">
+          {inviteToken ? "Join this Quotr company" : "Create your Quotr account"}
+        </CardTitle>
         <CardDescription>
-          Set up your organisation and start building structured estimates.
+          {inviteToken
+            ? "Create your login. You will join the company that invited you — we will not create a second company."
+            : "Set up your organisation and start building structured estimates."}
         </CardDescription>
       </CardHeader>
       <form action={formAction} className="flex flex-col gap-(--card-spacing)">
+        {inviteToken ? (
+          <input type="hidden" name="invite_token" value={inviteToken} />
+        ) : null}
         <CardContent className="space-y-4">
           {state.error ? (
             <p
@@ -153,18 +171,20 @@ export default function SignupPage() {
             <FieldError messages={state.fieldErrors?.full_name} />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="organisation_name">Organisation / company</Label>
-            <Input
-              id="organisation_name"
-              name="organisation_name"
-              autoComplete="organization"
-              placeholder="Smith Building Co."
-              required
-              className="h-11"
-            />
-            <FieldError messages={state.fieldErrors?.organisation_name} />
-          </div>
+          {inviteToken ? null : (
+            <div className="space-y-2">
+              <Label htmlFor="organisation_name">Organisation / company</Label>
+              <Input
+                id="organisation_name"
+                name="organisation_name"
+                autoComplete="organization"
+                placeholder="Smith Building Co."
+                required
+                className="h-11"
+              />
+              <FieldError messages={state.fieldErrors?.organisation_name} />
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -198,12 +218,16 @@ export default function SignupPage() {
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
           <Button type="submit" className="h-11 w-full" disabled={pending}>
-            {pending ? "Creating account…" : "Create account"}
+            {pending
+              ? "Creating account…"
+              : inviteToken
+                ? "Create account and join"
+                : "Create account"}
           </Button>
           <p className="text-center text-sm text-muted-foreground">
             Already have an account?{" "}
             <Link
-              href="/login"
+              href={inviteToken ? `/login?next=/invite/${inviteToken}` : "/login"}
               className="font-medium text-foreground underline-offset-4 hover:underline"
             >
               Sign in
@@ -212,5 +236,13 @@ export default function SignupPage() {
         </CardFooter>
       </form>
     </Card>
+  );
+}
+
+export default function SignupPage() {
+  return (
+    <Suspense>
+      <SignupForm />
+    </Suspense>
   );
 }

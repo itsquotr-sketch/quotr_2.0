@@ -13,6 +13,7 @@ import type {
   OrgQuoteDefaults,
 } from "@/lib/settings/types";
 import { loadCompanySettingsForRequest } from "@/lib/settings/company-settings-loader";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 
 const COMPANY_SETTINGS_PATH = "/app/settings/company";
 
@@ -258,6 +259,15 @@ export async function updateCompanySettings(
       error:
         "Your organisation profile could not be loaded. Try signing out and back in.",
     };
+  }
+  const auth = await getAuthOrgContext();
+  if (auth) {
+    const denied = await permissionDeniedError({
+      orgId: auth.orgId,
+      userId: auth.user.id,
+      permission: "company.edit",
+    });
+    if (denied) return denied;
   }
 
   const parsed = companySettingsSchema.safeParse(input);

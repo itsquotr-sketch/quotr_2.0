@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "build": "next build",
+    "build:safe": "node scripts/next-build-safe.mjs",
     "start": "next start",
     "lint": "eslint",
     "db:preview:status": "node scripts/db-target.mjs preview status",

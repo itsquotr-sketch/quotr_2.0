@@ -6,6 +6,7 @@ import { constructStripeWebhookEvent } from "@/lib/billing/stripe";
 import { createSupabaseBillingStore } from "@/lib/billing/supabase-store";
 import { processBillingStripeEvent } from "@/lib/billing/webhook";
 import type { StripeEventLike } from "@/lib/billing/types";
+import { advanceSeatQueueAfterMirror } from "@/lib/billing/seat-queue-process";
 
 export async function handleStripeWebhookRequest(
   request: Request
@@ -60,6 +61,14 @@ export async function handleStripeWebhookRequest(
     prices,
     store,
   });
+
+  if (result.result === "processed" && result.orgId) {
+    try {
+      await advanceSeatQueueAfterMirror(result.orgId);
+    } catch {
+      // Mirror remains authority. Queue advance retries on the next event or user refresh.
+    }
+  }
 
   return NextResponse.json(
     { ok: result.result !== "failed" && result.result !== "rejected" },

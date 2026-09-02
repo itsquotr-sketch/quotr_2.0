@@ -6,7 +6,7 @@ import { buildPricingNotesFromEstimateLineItem } from "@/lib/estimate/line-item-
 import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-generation";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { toUserError } from "@/lib/errors/user-message";
-import { entitlementDeniedError } from "@/lib/billing/entitlement-server";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 import {
   parsePricingInput,
   validateComputedItemForPersistence,
@@ -396,7 +396,12 @@ export async function createPricingFromEstimate(input: {
   }
 
   const { supabase, user, orgId } = auth;
-  const denied = await entitlementDeniedError(orgId, "pricing.access");
+  const denied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "pricing.edit",
+    entitlement: "pricing.access",
+  });
   if (denied) return denied;
   const { projectId, estimateId } = parsed.data;
 

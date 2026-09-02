@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
-import { entitlementDeniedError } from "@/lib/billing/entitlement-server";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 import { projectDetailsSchema } from "@/lib/projects/schema";
 import {
   applyProjectListFilter,
@@ -303,7 +303,12 @@ export async function createProject(
   }
 
   const { supabase, user, orgId } = context;
-  const denied = await entitlementDeniedError(orgId, "projects.create");
+  const denied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "projects.create",
+    entitlement: "projects.create",
+  });
   if (denied) return denied;
   const {
     title,
@@ -400,7 +405,14 @@ export async function updateProject(
     };
   }
 
-  const { supabase, orgId } = context;
+  const { supabase, orgId, user } = context;
+  const editDenied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "projects.edit",
+    entitlement: "projects.create",
+  });
+  if (editDenied) return editDenied;
   const lifecycleAvailable = await hasLifecycleColumns(supabase);
   const clientEmailAvailable = await hasClientEmailColumn(supabase);
   const {

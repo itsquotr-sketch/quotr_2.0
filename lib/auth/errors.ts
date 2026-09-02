@@ -18,6 +18,7 @@ export type AuthErrorCategory =
   | "PROVISIONING_FAILED"
   | "ACCOUNT_REPAIR_FAILED"
   | "ACCOUNT_ALREADY_PROVISIONED"
+  | "INVITE_PENDING"
   | "CONFIRMATION_PENDING"
   | "CONFIRMATION_FAILED"
   | "CONFIRMATION_LINK_INVALID"
@@ -61,6 +62,8 @@ export const AUTH_USER_MESSAGES: Record<AuthErrorCategory, string> = {
     "We couldn’t finish setting up your company. Please try again shortly.",
   ACCOUNT_ALREADY_PROVISIONED:
     "Your company account is already set up. Continue to the dashboard.",
+  INVITE_PENDING:
+    "You have an invitation to join a company. Open the invite link instead of creating a new company.",
   CONFIRMATION_PENDING:
     "We've sent a confirmation link to your email address. Open the link to finish creating your Quotr account.",
   CONFIRMATION_FAILED:
@@ -227,6 +230,9 @@ export function classifyProvisioningError(
   }
   if (m.includes("profile_inconsistent")) {
     return context === "repair" ? "ACCOUNT_REPAIR_FAILED" : "PROVISIONING_FAILED";
+  }
+  if (m.includes("pending_invitation")) {
+    return "INVITE_PENDING";
   }
 
   return context === "repair" ? "ACCOUNT_REPAIR_FAILED" : "PROVISIONING_FAILED";

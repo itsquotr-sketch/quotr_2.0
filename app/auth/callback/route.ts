@@ -94,6 +94,8 @@ export async function GET(request: NextRequest) {
   let destination = next;
   if (next.startsWith("/reset-password")) {
     destination = "/reset-password";
+  } else if (next.startsWith("/invite/")) {
+    destination = next;
   } else {
     const { data: profile } = await supabase
       .from("profiles")
@@ -102,7 +104,7 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
 
     if (!profile?.org_id) {
-      destination = "/app/setup-required";
+      destination = "/invite/continue";
     } else {
       const { data: organisation } = await supabase
         .from("organisations")

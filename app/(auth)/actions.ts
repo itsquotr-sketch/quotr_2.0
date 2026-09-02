@@ -15,12 +15,13 @@ import {
 import { passwordSchema } from "@/lib/auth/password";
 import { POST_SIGNUP_DESTINATION } from "@/lib/auth/post-auth-navigation";
 import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
-import { readSafeNext } from "@/lib/auth/safe-redirect";
+import { readSafeNext, getSafeInternalPath } from "@/lib/auth/safe-redirect";
 import {
   buildAuthCallbackUrl,
   getAuthSiteOrigin,
 } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
+import { isWellFormedInviteToken } from "@/lib/team/tokens";
 
 export type AuthActionState = {
   error?: string;
@@ -46,10 +47,11 @@ const signupSchema = z.object({
   organisation_name: z
     .string()
     .trim()
-    .min(1, "Organisation name is required")
-    .max(200, "Organisation name is too long"),
+    .max(200, "Organisation name is too long")
+    .optional(),
   email: z.email("Invalid email address"),
   password: passwordSchema,
+  invite_token: z.string().optional(),
 });
 
 const loginSchema = z.object({
@@ -119,16 +121,27 @@ export async function signup(
 
   const parsed = signupSchema.safeParse({
     full_name: formData.get("full_name"),
-    organisation_name: formData.get("organisation_name"),
+    organisation_name: formData.get("organisation_name") ?? undefined,
     email: formData.get("email"),
     password: formData.get("password"),
+    invite_token: formData.get("invite_token") ?? undefined,
   });
 
   if (!parsed.success) {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const { full_name, organisation_name, email, password } = parsed.data;
+  const { full_name, organisation_name, email, password, invite_token } =
+    parsed.data;
+  const inviteToken = isWellFormedInviteToken(invite_token ?? "")
+    ? invite_token!.trim()
+    : null;
+
+  if (!inviteToken && !organisation_name?.trim()) {
+    return {
+      fieldErrors: { organisation_name: ["Organisation name is required"] },
+    };
+  }
 
   logAuthEvent({
     event: "signup_started",
@@ -137,7 +150,10 @@ export async function signup(
 
   const supabase = await createClient();
   const origin = await getAuthSiteOrigin();
-  const emailRedirectTo = buildAuthCallbackUrl(origin, "/app/dashboard");
+  const emailRedirectTo = buildAuthCallbackUrl(
+    origin,
+    inviteToken ? `/invite/${inviteToken}` : "/app/dashboard"
+  );
 
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
@@ -178,7 +194,8 @@ export async function signup(
   if (!hasSession) {
     // Email confirmation required: auth user exists, but authenticated RPC
     // cannot run. Do not claim company provisioning succeeded.
-    // Confirm link → /auth/callback → setup-required if profile missing.
+    // Confirm link → /auth/callback → setup-required if profile missing
+    // (or /invite/[token] when this signup is invite-aware).
     logAuthEvent({
       event: "confirmation_pending",
       category: "CONFIRMATION_PENDING",
@@ -193,8 +210,18 @@ export async function signup(
     };
   }
 
+  if (inviteToken) {
+    logAuthEvent({
+      event: "signup_completed",
+      correlationId,
+      userId,
+      elapsedMs: Date.now() - startedAt,
+    });
+    return { continueTo: getSafeInternalPath(`/invite/${inviteToken}`) };
+  }
+
   const provisioned = await provisionOrganisationForCurrentUser(supabase, {
-    organisationName: organisation_name,
+    organisationName: organisation_name!.trim(),
     fullName: full_name,
     correlationId,
     userId,
@@ -202,6 +229,9 @@ export async function signup(
   });
 
   if (!provisioned.ok) {
+    if (provisioned.category === "INVITE_PENDING") {
+      return { continueTo: "/invite/continue" };
+    }
     return signupFail(provisioned.category, correlationId, startedAt, {
       userId,
     });
@@ -301,6 +331,9 @@ export async function finishAccountSetup(
   });
 
   if (!provisioned.ok) {
+    if (provisioned.category === "INVITE_PENDING") {
+      return { continueTo: "/invite/continue" };
+    }
     logAuthEvent({
       event: "account_repair_failed",
       category: provisioned.category,

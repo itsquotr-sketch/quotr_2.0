@@ -15,6 +15,7 @@ import {
   planAllowsCapability,
   trialAllowsCapability,
 } from "@/lib/billing/entitlement-matrix";
+import { selfServiceUserLimit } from "@/lib/team/capacity";
 import {
   denialReasonForAccessClass,
   entitlementDenialMessage,
@@ -197,15 +198,10 @@ export function evaluateOrgEntitlement(input: {
   }
 
   if (capability === "team.invite" && input.memberCount != null) {
-    const seats =
-      input.state.activeOverride?.paidSeatQuantity ??
-      input.state.subscription?.paidSeatQuantity ??
-      null;
-    if (
-      seats != null &&
-      input.memberCount >= seats &&
-      policy.planCode !== "custom"
-    ) {
+    const limit = selfServiceUserLimit(policy.planCode, {
+      trial: policy.source === "internal_trial" && !policy.trialExpired,
+    });
+    if (limit != null && input.memberCount >= limit) {
       return deny({ ...base, reasonCode: "seat_limit" });
     }
   }

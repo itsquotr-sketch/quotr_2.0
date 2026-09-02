@@ -264,8 +264,8 @@ const acceptanceSrc = file("lib/quotes/acceptance-actions.ts");
 const rls046 = file("supabase/migrations/046_billing_foundation.sql");
 
 assert(
-  "048 is latest numbered local migration",
-  migrations.at(-1) === "048_billing_checkout_trial.sql" &&
+  "049 is latest numbered local migration; 048 trial remains",
+  migrations.at(-1) === "049_organisation_memberships.sql" &&
     /ensure_org_internal_trial/.test(migration048)
 );
 assert(
@@ -688,11 +688,11 @@ assert(
     /now\(\) \+ interval '14 days'/.test(migration048)
 );
 assert(
-  "Business→Builder downgrade is deferred with a future seat seam",
+  "Business→Builder downgrade requires team reduced to one",
   canDowngradeBusinessToBuilder({
     ...emptyState(),
     subscription: stripeSub("business"),
-  }).errorCode === "downgrade_deferred_billing_4"
+  }).errorCode === "downgrade_team_state_required"
 );
 
 const pendingUpdateObject = {

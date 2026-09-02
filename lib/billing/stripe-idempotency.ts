@@ -35,6 +35,24 @@ export function stripeUpgradeToBusinessIdempotencyKey(
   return `quotr:upgrade:business:${billingEnvironment}:${orgId}:${stripeSubscriptionId}`;
 }
 
+export function stripeSeatAddIdempotencyKey(
+  billingEnvironment: BillingEnvironment,
+  orgId: string,
+  operationId: string,
+  desiredPaidSeatQuantity: number
+): string {
+  return `quotr:seat:add:${billingEnvironment}:${orgId}:${operationId}:q${desiredPaidSeatQuantity}`;
+}
+
+export function stripeSeatRemoveIdempotencyKey(
+  billingEnvironment: BillingEnvironment,
+  orgId: string,
+  operationId: string,
+  desiredPaidSeatQuantity: number
+): string {
+  return `quotr:seat:remove:${billingEnvironment}:${orgId}:${operationId}:q${desiredPaidSeatQuantity}`;
+}
+
 export function resolveCustomerCreateRace(input: {
   mappingAfterCreate: { orgId: string; stripeCustomerId: string } | null;
   createdStripeCustomerId: string;

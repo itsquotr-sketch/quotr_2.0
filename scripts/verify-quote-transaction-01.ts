@@ -486,7 +486,7 @@ const migrations = readdirSync("supabase/migrations")
   .filter((name) => name.endsWith(".sql"))
   .sort();
 assert(
-  "041 quote transaction exists; 042–048 follow additively",
+  "041 quote transaction exists; later migrations follow additively",
   migrations.includes("041_quote_transaction.sql") &&
     migrations.includes("042_quote_delivery.sql") &&
     migrations.includes("043_project_client_email.sql") &&
@@ -494,7 +494,8 @@ assert(
     migrations.includes("045_commercial_close.sql") &&
     migrations.includes("046_billing_foundation.sql") &&
     migrations.includes("047_past_due_authority.sql") &&
-    migrations.at(-1) === "048_billing_checkout_trial.sql"
+    migrations.includes("048_billing_checkout_trial.sql") &&
+    migrations.at(-1) === "049_organisation_memberships.sql"
 );
 assert("viewed status added", migrationSrc.includes("'viewed'"));
 assert(

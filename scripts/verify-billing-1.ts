@@ -292,10 +292,11 @@ assert(
   migrations.includes("046_billing_foundation.sql")
 );
 assert(
-  "048 billing checkout trial is latest numbered local migration",
+  "049 organisation memberships is latest numbered local migration",
   migrations.includes("047_past_due_authority.sql") &&
     migrations.includes("048_billing_checkout_trial.sql") &&
-    migrations[migrations.length - 1] === "048_billing_checkout_trial.sql"
+    migrations.includes("049_organisation_memberships.sql") &&
+    migrations[migrations.length - 1] === "049_organisation_memberships.sql"
 );
 assert(
   "047 only adds past_due_since",

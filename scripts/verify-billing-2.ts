@@ -441,9 +441,13 @@ assert(
 );
 
 assert(
-  "seat_limit when member count reaches paid seats",
-  decide(businessActive, "team.invite", "strict", { memberCount: 2 }).reasonCode ===
+  "seat_limit when reserved users reach Business self-service max",
+  decide(businessActive, "team.invite", "strict", { memberCount: 5 }).reasonCode ===
     "seat_limit"
+);
+assert(
+  "Business with 2 reserved users still allows invite entitlement",
+  decide(businessActive, "team.invite", "strict", { memberCount: 2 }).ok === true
 );
 
 const builderSell = calculateEstimateSellFromCost(1000, 25);
@@ -481,7 +485,8 @@ const pricingSrc = file("lib/pricing/actions.ts");
 const assistantSrc = file("lib/assistant/actions.ts");
 assert(
   "Quote send is gated at the server action",
-  sendSrc.includes('requireOrgEntitlement(loaded.orgId, "quotes.send")')
+  sendSrc.includes('permission: "quotes.send"') &&
+    sendSrc.includes('entitlement: "quotes.send"')
 );
 assert(
   "public acceptance is not gated on contractor billing",
@@ -489,19 +494,23 @@ assert(
 );
 assert(
   "Project create is gated",
-  projectSrc.includes('entitlementDeniedError(orgId, "projects.create")')
+  projectSrc.includes('permission: "projects.create"') &&
+    projectSrc.includes('entitlement: "projects.create"')
 );
 assert(
   "Estimate generate is gated",
-  assistantSrc.includes('entitlementDeniedError(orgId, "estimates.create")')
+  assistantSrc.includes('permission: "estimates.run"') &&
+    assistantSrc.includes('entitlement: "estimates.create"')
 );
 assert(
   "Pricing create is gated",
-  pricingSrc.includes('entitlementDeniedError(orgId, "pricing.access")')
+  pricingSrc.includes('permission: "pricing.edit"') &&
+    pricingSrc.includes('entitlement: "pricing.access"')
 );
 assert(
   "Quote create is gated",
-  sendSrc.includes('entitlementDeniedError(orgId, "quotes.create")')
+  sendSrc.includes('permission: "quotes.create"') &&
+    sendSrc.includes('entitlement: "quotes.create"')
 );
 
 const migrations = readdirSync("supabase/migrations")
@@ -509,10 +518,11 @@ const migrations = readdirSync("supabase/migrations")
   .sort();
 const migration047 = file("supabase/migrations/047_past_due_authority.sql");
 assert(
-  "047 past_due authority exists locally; 048 is latest numbered file",
+  "047 past_due authority exists locally; 049 is latest numbered file",
   migrations.includes("047_past_due_authority.sql") &&
     migrations.includes("048_billing_checkout_trial.sql") &&
-    migrations[migrations.length - 1] === "048_billing_checkout_trial.sql"
+    migrations.includes("049_organisation_memberships.sql") &&
+    migrations[migrations.length - 1] === "049_organisation_memberships.sql"
 );
 assert(
   "047 only adds past_due_since; no overlay columns; no backfill",

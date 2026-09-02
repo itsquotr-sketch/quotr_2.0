@@ -201,13 +201,29 @@ export function BillingPageContent({
           </CardHeader>
           <CardContent className="space-y-1 text-sm">
             {view.monthlyPriceLabel ? <p>{view.monthlyPriceLabel}</p> : null}
+            {view.planCode === "business" ? (
+              <div className="space-y-1 text-muted-foreground">
+                {view.activeUserCount != null ? (
+                  <p>
+                    {view.activeUserCount} active{" "}
+                    {view.activeUserCount === 1 ? "user" : "users"}
+                  </p>
+                ) : null}
+                {view.reservedUserCount != null &&
+                view.maxSelfServiceUsers != null ? (
+                  <p>
+                    {view.reservedUserCount} of {view.maxSelfServiceUsers} users
+                  </p>
+                ) : null}
+                {view.extraUserPriceLabel ? <p>{view.extraUserPriceLabel}</p> : null}
+              </div>
+            ) : view.planCode === "builder" ? (
+              <p className="text-muted-foreground">1 user</p>
+            ) : null}
             {view.currentPeriodEnd ? (
               <p className="text-muted-foreground">
                 Current period ends {view.currentPeriodEnd}.
               </p>
-            ) : null}
-            {view.planCode === "business" ? (
-              <p className="text-muted-foreground">Current users: 1</p>
             ) : null}
           </CardContent>
           <CardFooter className="flex flex-wrap gap-2">
@@ -256,9 +272,14 @@ export function BillingPageContent({
       ) : null}
 
       <p className="text-sm text-muted-foreground">
-        Additional Business users are $35 + GST per user/month. Team management
-        arrives later.
+        Additional Business users are $35 + GST per user/month. Invite people
+        from Team.
       </p>
+      {view.billingManageBlockedReason ? (
+        <p className="text-sm text-muted-foreground">
+          {view.billingManageBlockedReason}
+        </p>
+      ) : null}
     </div>
   );
 }
@@ -286,7 +307,7 @@ function PlanSelectCard({
       <CardContent className="text-sm text-muted-foreground">
         {plan === "builder"
           ? "1 user. Core estimating accuracy, Pricing, Quotes, sending and acceptance."
-          : "First user included. Core estimating accuracy, Pricing, Quotes, sending and acceptance."}
+          : "First user included. Add up to 5 people. Additional users $35 + GST/month."}
       </CardContent>
       <CardFooter>
         <Button type="button" disabled={disabled} onClick={onSelect}>

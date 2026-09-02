@@ -11,6 +11,7 @@ import { internalDeploymentLabel } from "@/lib/deployment/environment";
 import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { needsCompanyBasics } from "@/lib/setup/actions";
+import { lookupPendingInvitationForCurrentUser } from "@/lib/team/public-invite";
 
 const SETUP_REQUIRED_PATH = "/app/setup-required";
 const SETUP_BASICS_PATH = "/app/setup?mode=basics";
@@ -50,6 +51,10 @@ export default async function AppLayout({
     }
 
     if (!onSetupRequired) {
+      const pending = await lookupPendingInvitationForCurrentUser();
+      if (pending.kind !== "none") {
+        redirect("/invite/continue");
+      }
       redirect(SETUP_REQUIRED_PATH);
     }
 

@@ -9,6 +9,7 @@ import {
   Menu,
   Settings2,
   UserRound,
+  Users,
 } from "lucide-react";
 import { FeedbackLink } from "@/components/layout/feedback-link";
 import { SidebarAccount } from "@/components/layout/sidebar-account";
@@ -26,6 +27,7 @@ import { cn } from "@/lib/utils";
 
 const MENU_LINKS = [
   { href: "/app/settings/company", label: "Company", icon: Building2 },
+  { href: "/app/settings/team", label: "Team", icon: Users },
   { href: "/app/settings/billing", label: "Billing", icon: CreditCard },
   { href: "/app/setup", label: "Setup", icon: Settings2, showIncomplete: true },
 ] as const;

@@ -22,12 +22,30 @@ import type {
 } from "@/lib/rates/types";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 import { z } from "zod";
 
 const MISSING_ORG_ERROR: RatesActionResult = {
   error:
     "Your organisation profile could not be loaded. Try signing out and back in, or contact support.",
 };
+
+async function requireRatesWriteContext(): Promise<
+  { ok: true; context: AuthOrgContext } | { ok: false; error: RatesActionResult }
+> {
+  const context = await getAuthOrgContext();
+  if (!context) {
+    return { ok: false, error: MISSING_ORG_ERROR };
+  }
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.rates.manage",
+    entitlement: "company_rates.basic",
+  });
+  if (denied) return { ok: false, error: denied };
+  return { ok: true, context };
+}
 
 const VALID_RATE_TYPES = [
   "labour",
@@ -171,12 +189,11 @@ export async function saveRateSettings(
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return MISSING_ORG_ERROR;
+  const loaded = await requireRatesWriteContext();
+  if (!loaded.ok) {
+    return loaded.error;
   }
-
-  const { supabase, orgId } = context;
+  const { supabase, orgId } = loaded.context;
 
   await ensureDefaultSettings(supabase, orgId);
 
@@ -252,12 +269,11 @@ export async function createRate(input: RateInput): Promise<RatesActionResult> {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return MISSING_ORG_ERROR;
+  const loaded = await requireRatesWriteContext();
+  if (!loaded.ok) {
+    return loaded.error;
   }
-
-  const { supabase, orgId } = context;
+  const { supabase, orgId } = loaded.context;
   const data = parsed.data;
 
   const { data: created, error } = await supabase
@@ -304,12 +320,11 @@ export async function updateRate(input: RateInput): Promise<RatesActionResult> {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return MISSING_ORG_ERROR;
+  const loaded = await requireRatesWriteContext();
+  if (!loaded.ok) {
+    return loaded.error;
   }
-
-  const { supabase, orgId } = context;
+  const { supabase, orgId } = loaded.context;
   const data = parsed.data;
 
   const owned = await verifyRateOwnership(supabase, orgId, data.id!);
@@ -351,9 +366,9 @@ export async function upsertRate(input: RateInput): Promise<RatesActionResult> {
     return updateRate(input);
   }
 
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return MISSING_ORG_ERROR;
+  const loaded = await requireRatesWriteContext();
+  if (!loaded.ok) {
+    return loaded.error;
   }
 
   const parsed = rateInputSchema.safeParse(input);
@@ -361,7 +376,7 @@ export async function upsertRate(input: RateInput): Promise<RatesActionResult> {
     return { fieldErrors: parsed.error.flatten().fieldErrors };
   }
 
-  const { supabase, orgId } = context;
+  const { supabase, orgId } = loaded.context;
   const data = parsed.data;
 
   const { data: upserted, error } = await supabase
@@ -396,12 +411,11 @@ export async function upsertRate(input: RateInput): Promise<RatesActionResult> {
 }
 
 export async function deactivateRate(rateId: string): Promise<RatesActionResult> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return MISSING_ORG_ERROR;
+  const loaded = await requireRatesWriteContext();
+  if (!loaded.ok) {
+    return loaded.error;
   }
-
-  const { supabase, orgId } = context;
+  const { supabase, orgId } = loaded.context;
 
   const owned = await verifyRateOwnership(supabase, orgId, rateId);
   if (!owned) {
@@ -426,12 +440,11 @@ export async function deactivateRate(rateId: string): Promise<RatesActionResult>
 }
 
 export async function reactivateRate(rateId: string): Promise<RatesActionResult> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return MISSING_ORG_ERROR;
+  const loaded = await requireRatesWriteContext();
+  if (!loaded.ok) {
+    return loaded.error;
   }
-
-  const { supabase, orgId } = context;
+  const { supabase, orgId } = loaded.context;
 
   const owned = await verifyRateOwnership(supabase, orgId, rateId);
   if (!owned) {
@@ -470,12 +483,11 @@ export async function setRateActive(
  * present Quotr benchmarks as "Your company rate" (R2C).
  */
 export async function createStarterRates(): Promise<RatesActionResult> {
-  const context = await getAuthOrgContext();
-  if (!context) {
-    return MISSING_ORG_ERROR;
+  const loaded = await requireRatesWriteContext();
+  if (!loaded.ok) {
+    return loaded.error;
   }
-
-  const { supabase, orgId } = context;
+  const { supabase, orgId } = loaded.context;
 
   const coreKeys = [
     "labour.carpenter.hour",

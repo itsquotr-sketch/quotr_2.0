@@ -56,11 +56,16 @@ export type BillingPageView = {
   trialEndsOn: string | null;
   currentPeriodEnd: string | null;
   paidSeatQuantity: number | null;
+  activeUserCount: number | null;
+  reservedUserCount: number | null;
+  maxSelfServiceUsers: number | null;
+  extraUserPriceLabel: string | null;
   canCheckout: boolean;
   canManagePortal: boolean;
   canUpgradeToBusiness: boolean;
   canDowngradeToBuilder: boolean;
   checkoutBlockedReason: string | null;
+  billingManageBlockedReason: string | null;
 };
 
 function kindFromState(state: OrgBillingState): BillingPageKind {
@@ -93,7 +98,12 @@ function kindFromState(state: OrgBillingState): BillingPageKind {
 
 export function buildBillingPageView(
   state: OrgBillingState,
-  now: Date = new Date()
+  now: Date = new Date(),
+  options?: {
+    canManageBilling?: boolean;
+    activeUserCount?: number | null;
+    reservedUserCount?: number | null;
+  }
 ): BillingPageView {
   const kind = kindFromState(state);
   const sub = state.subscription;
@@ -138,14 +148,28 @@ export function buildBillingPageView(
       ? formatTrialEndDate(sub.currentPeriodEnd)
       : null,
     paidSeatQuantity: sub?.paidSeatQuantity ?? null,
-    canCheckout: checkout.ok,
+    activeUserCount: options?.activeUserCount ?? sub?.paidSeatQuantity ?? null,
+    reservedUserCount: options?.reservedUserCount ?? null,
+    maxSelfServiceUsers: display?.maxSelfServiceUsers ?? null,
+    extraUserPriceLabel:
+      planCode === "business" && display?.extraSeatExclusiveMonthlyNzd != null
+        ? `Additional users are $${display.extraSeatExclusiveMonthlyNzd} + GST/month each.`
+        : null,
+    canCheckout: checkout.ok && options?.canManageBilling !== false,
     canManagePortal: Boolean(
       state.customer?.stripeCustomerId &&
         sub?.source === "stripe" &&
-        sub.status !== "cancelled"
+        sub.status !== "cancelled" &&
+        options?.canManageBilling !== false
     ),
-    canUpgradeToBusiness: upgrade.ok,
-    canDowngradeToBuilder: downgrade.ok,
+    canUpgradeToBusiness:
+      upgrade.ok && options?.canManageBilling !== false,
+    canDowngradeToBuilder:
+      downgrade.ok && options?.canManageBilling !== false,
     checkoutBlockedReason: checkout.ok ? null : checkout.errorSafe,
+    billingManageBlockedReason:
+      options?.canManageBilling === false
+        ? "Only the Owner can change the subscription or open billing management."
+        : null,
   };
 }

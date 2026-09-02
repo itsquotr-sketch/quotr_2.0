@@ -17,5 +17,9 @@ export function isPostAuthContinuePath(path: string | null | undefined): boolean
   if (typeof path !== "string") return false;
   const trimmed = path.trim();
   if (!trimmed.startsWith("/") || trimmed.startsWith("//")) return false;
-  return trimmed.startsWith("/app/") || trimmed === "/app";
+  return (
+    trimmed.startsWith("/app/") ||
+    trimmed === "/app" ||
+    trimmed.startsWith("/invite/")
+  );
 }
