@@ -95,10 +95,11 @@ const quote = {
 console.log("=== QUOTE-ACCEPTANCE-01 ===\n");
 
 assert(
-  "044 acceptance remains; 045 commercial close remains; 046 billing is latest additive",
+  "044 acceptance remains; 045 commercial close remains; 046–047 billing follow additively",
   migrations.includes("044_quote_acceptance.sql") &&
     migrations.includes("045_commercial_close.sql") &&
-    migrations.at(-1) === "046_billing_foundation.sql"
+    migrations.includes("046_billing_foundation.sql") &&
+    migrations.at(-1) === "047_past_due_authority.sql"
 );
 assert(
   "041 accept/decline RPCs remain",
@@ -404,11 +405,10 @@ assert(
     migrationSrc.includes("Manually marked accepted by the contractor.")
 );
 assert(
-  "entitlement seam quotes.acceptance, no plan names",
+  "public acceptance is transaction completion, not contractor billing",
   entitlementsSrc.includes('"quotes.acceptance"') &&
-    actionsSrc.includes('requireOrgEntitlement') &&
-    actionsSrc.includes('"quotes.acceptance"') &&
-    !entitlementsSrc.includes("business") &&
+    entitlementsSrc.includes("transaction completion") &&
+    !actionsSrc.includes("requireOrgEntitlement") &&
     !entitlementsSrc.includes("starter")
 );
 assert(

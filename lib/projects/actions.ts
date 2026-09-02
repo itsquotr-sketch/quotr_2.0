@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
+import { entitlementDeniedError } from "@/lib/billing/entitlement-server";
 import { projectDetailsSchema } from "@/lib/projects/schema";
 import {
   applyProjectListFilter,
@@ -302,6 +303,8 @@ export async function createProject(
   }
 
   const { supabase, user, orgId } = context;
+  const denied = await entitlementDeniedError(orgId, "projects.create");
+  if (denied) return denied;
   const {
     title,
     client_name,

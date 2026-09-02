@@ -1,4 +1,5 @@
 import { unixSecondsToIso } from "@/lib/billing/events";
+import { resolvePastDueSince } from "@/lib/billing/past-due";
 import { resolvePlanFromStripePriceItems } from "@/lib/billing/prices";
 import { mapStripeSubscriptionStatus } from "@/lib/billing/status";
 import type {
@@ -175,6 +176,12 @@ export function mapStripeSubscriptionToMirror(input: {
           : null,
       lastStripeEventCreatedAt: nowIso,
       lastStripeEventId: input.eventId,
+      pastDueSince: resolvePastDueSince({
+        previousStatus: existing?.status ?? null,
+        nextStatus: status,
+        existingPastDueSince: existing?.pastDueSince ?? null,
+        eventCreatedUnix: input.eventCreatedUnix,
+      }),
       createdAt: existing?.createdAt ?? nowIso,
       updatedAt: nowIso,
     },

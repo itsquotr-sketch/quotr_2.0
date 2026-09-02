@@ -24,6 +24,7 @@ import {
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
 import { evaluatePackageQuickEstimateReadiness } from "@/lib/assistant/readiness/package-quick-estimate";
 import { canRunStageAction } from "@/lib/assistant/state";
+import { entitlementDeniedError } from "@/lib/billing/entitlement-server";
 import { legacyQualityRequiresScopeReview } from "@/lib/assistant/clarify/quality-gate";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
@@ -1270,6 +1271,9 @@ async function runEstimateGeneration(
   } else if (!canRunStageAction(stage, "generate_estimate")) {
     return { error: "This action is not available at the current stage." };
   }
+
+  const denied = await entitlementDeniedError(orgId, "estimates.create");
+  if (denied) return denied;
 
   const [{ data: existingEstimate }, contextResult] = await Promise.all([
     supabase

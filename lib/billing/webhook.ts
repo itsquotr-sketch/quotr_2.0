@@ -10,6 +10,7 @@ import {
   mapStripeSubscriptionToMirror,
   parseStripeSubscriptionLike,
 } from "@/lib/billing/mirror";
+import { resolvePastDueSince } from "@/lib/billing/past-due";
 import { validateTrustedBillingMetadata } from "@/lib/billing/customers";
 import type { BillingStore } from "@/lib/billing/store";
 import type {
@@ -393,7 +394,15 @@ async function applyInvoiceEvent(input: {
     existing.status === "incomplete"
   ) {
     patch.status = "past_due";
+    patch.pastDueSince = resolvePastDueSince({
+      previousStatus: existing.status,
+      nextStatus: "past_due",
+      existingPastDueSince: existing.pastDueSince,
+      eventCreatedUnix: input.event.created,
+    });
   }
+  // Already past_due: do not reset past_due_since. Do not bump
+  // lastStripeEventCreatedAt — subscription objects remain authority.
 
   if (Object.keys(patch).length > 0) {
     await input.store.patchSubscription(

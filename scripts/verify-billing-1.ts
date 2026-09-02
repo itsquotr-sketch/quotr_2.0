@@ -43,7 +43,7 @@ import type {
   StripePriceConfig,
 } from "../lib/billing/types";
 import { processBillingStripeEvent } from "../lib/billing/webhook";
-import { requireOrgEntitlement } from "../lib/quotes/entitlements";
+import { evaluateOrgEntitlement } from "../lib/billing/entitlements";
 
 function assert(label: string, ok: boolean, detail = "") {
   console.log(ok ? "PASS" : "FAIL", label + (ok || !detail ? "" : ` — ${detail}`));
@@ -288,8 +288,20 @@ const migrations = readdirSync("supabase/migrations")
 console.log("=== BILLING-1 subscription authority foundation ===\n");
 
 assert(
-  "latest numbered migration is 046",
-  migrations[migrations.length - 1] === "046_billing_foundation.sql"
+  "046 billing foundation remains",
+  migrations.includes("046_billing_foundation.sql")
+);
+assert(
+  "047 past_due authority is latest numbered local migration",
+  migrations.includes("047_past_due_authority.sql") &&
+    migrations[migrations.length - 1] === "047_past_due_authority.sql"
+);
+assert(
+  "047 only adds past_due_since",
+  /add column if not exists past_due_since timestamptz/.test(
+    file("supabase/migrations/047_past_due_authority.sql")
+  ) &&
+    !/create table/i.test(file("supabase/migrations/047_past_due_authority.sql"))
 );
 assert("046 does not drop subscription_tier", !/drop column.*subscription_tier/i.test(migration046));
 assert(
@@ -652,18 +664,40 @@ assert(
 );
 
 assert(
-  "quotes.send remains allowed",
-  requireOrgEntitlement(ORG_A, "quotes.send").ok === true
+  "quotes.send remains allowed in compatibility without billing row",
+  evaluateOrgEntitlement({
+    state: {
+      orgId: ORG_A,
+      billingEnvironment: "test",
+      customer: null,
+      subscription: null,
+      activeOverride: null,
+      effectiveTrialState: null,
+    },
+    capability: "quotes.send",
+    mode: "compatibility",
+  }).ok === true
 );
 assert(
-  "quotes.acceptance remains allowed",
-  requireOrgEntitlement(ORG_A, "quotes.acceptance").ok === true
+  "quotes.acceptance remains allowed in compatibility without billing row",
+  evaluateOrgEntitlement({
+    state: {
+      orgId: ORG_A,
+      billingEnvironment: "test",
+      customer: null,
+      subscription: null,
+      activeOverride: null,
+      effectiveTrialState: null,
+    },
+    capability: "quotes.acceptance",
+    mode: "compatibility",
+  }).ok === true
 );
 assert(
-  "entitlement seam is not paid-enforced",
-  /ok: true/.test(entitlementsSrc) &&
-    !/getOrgBillingState/.test(entitlementsSrc) &&
-    !/org_subscriptions/.test(entitlementsSrc)
+  "BILLING-1 store does not own entitlement enforcement",
+  entitlementsSrc.includes("evaluateOrgEntitlement") &&
+    entitlementsSrc.includes("requireOrgEntitlement") &&
+    !entitlementsSrc.includes("org_subscriptions")
 );
 
 assert("webhook route uses nodejs runtime", /runtime = "nodejs"/.test(webhookRouteSrc));
@@ -929,9 +963,126 @@ async function runAsyncChecks() {
     })
   );
   const afterFailed = await invoiceStore.getSubscriptionByOrg(ORG_A, "test");
+  const failedAt = new Date(1_700_000_800 * 1000).toISOString();
   assert(
     "invoice.payment_failed can mark past_due without replacing subscription object",
     invoiceFailed.result === "processed" && afterFailed?.status === "past_due"
+  );
+  assert(
+    "active → past_due sets past_due_since from invoice event time",
+    afterFailed?.pastDueSince === failedAt &&
+      afterFailed.lastStripeEventCreatedAt ===
+        new Date(1_700_000_100 * 1000).toISOString()
+  );
+
+  const repeatFailed = await process(
+    invoiceStore,
+    event({
+      id: "evt_invoice_failed_repeat",
+      type: "invoice.payment_failed",
+      created: 1_700_000_800 + 2 * 86400,
+      object: {
+        id: "in_fail_repeat",
+        customer: CUSTOMER_A,
+        subscription: "sub_pay",
+      },
+    })
+  );
+  const afterRepeat = await invoiceStore.getSubscriptionByOrg(ORG_A, "test");
+  assert(
+    "repeated payment_failed does not reset past_due_since",
+    repeatFailed.result === "processed" &&
+      afterRepeat?.status === "past_due" &&
+      afterRepeat.pastDueSince === failedAt
+  );
+
+  const recovered = await process(
+    invoiceStore,
+    event({
+      id: "evt_sub_recovered",
+      type: "customer.subscription.updated",
+      created: 1_700_001_000,
+      object: subscriptionObject({
+        id: "sub_pay",
+        customer: CUSTOMER_A,
+        status: "active",
+        items: [{ price: PRICES.builderMonthly }],
+      }),
+    })
+  );
+  const afterRecovered = await invoiceStore.getSubscriptionByOrg(ORG_A, "test");
+  assert(
+    "past_due → active clears past_due_since",
+    recovered.result === "processed" &&
+      afterRecovered?.status === "active" &&
+      afterRecovered.pastDueSince === null
+  );
+
+  const stalePastDue = await process(
+    invoiceStore,
+    event({
+      id: "evt_stale_past_due",
+      type: "customer.subscription.updated",
+      created: 1_700_000_200,
+      object: subscriptionObject({
+        id: "sub_pay",
+        customer: CUSTOMER_A,
+        status: "past_due",
+        items: [{ price: PRICES.builderMonthly }],
+      }),
+    })
+  );
+  const afterStalePastDue = await invoiceStore.getSubscriptionByOrg(ORG_A, "test");
+  assert(
+    "old webhook after recovery cannot recreate stale past_due",
+    stalePastDue.result === "ignored" &&
+      stalePastDue.errorCode === "stale_event" &&
+      afterStalePastDue?.status === "active" &&
+      afterStalePastDue.pastDueSince === null
+  );
+
+  const staleInvoice = await process(
+    invoiceStore,
+    event({
+      id: "evt_stale_invoice_failed",
+      type: "invoice.payment_failed",
+      created: 1_700_000_900,
+      object: {
+        id: "in_fail_stale",
+        customer: CUSTOMER_A,
+        subscription: "sub_pay",
+      },
+    })
+  );
+  const afterStaleInvoice = await invoiceStore.getSubscriptionByOrg(ORG_A, "test");
+  assert(
+    "payment_failed after newer subscription active cannot regress state",
+    staleInvoice.result === "ignored" &&
+      staleInvoice.errorCode === "stale_event" &&
+      afterStaleInvoice?.status === "active" &&
+      afterStaleInvoice.pastDueSince === null
+  );
+
+  const secondIncident = await process(
+    invoiceStore,
+    event({
+      id: "evt_new_past_due",
+      type: "customer.subscription.updated",
+      created: 1_700_002_000,
+      object: subscriptionObject({
+        id: "sub_pay",
+        customer: CUSTOMER_A,
+        status: "past_due",
+        items: [{ price: PRICES.builderMonthly }],
+      }),
+    })
+  );
+  const afterSecond = await invoiceStore.getSubscriptionByOrg(ORG_A, "test");
+  assert(
+    "new past_due incident after recovery sets a new past_due_since",
+    secondIncident.result === "processed" &&
+      afterSecond?.status === "past_due" &&
+      afterSecond.pastDueSince === new Date(1_700_002_000 * 1000).toISOString()
   );
 
   const mappingStore = createMemoryStore({

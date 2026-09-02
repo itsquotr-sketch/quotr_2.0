@@ -1,8 +1,8 @@
 # Quotr billing architecture
 
-**Classification:** CANONICAL organisation subscription authority (BILLING-1).  
-**Status:** Preview 046 applied. Preview app deployed. Stripe TEST keys/prices remain owner setup. Entitlements not enforced.  
-**Does not enforce entitlements.** Billing gates access later (BILLING-2). Estimating, Pricing, Quote money, delivery, and acceptance are unchanged.
+**Classification:** CANONICAL organisation subscription authority (BILLING-1) plus entitlement evaluation (BILLING-2 local).  
+**Status:** Preview 046 applied. 047 past_due authority is local / unapplied. Stripe TEST foundation verified. BILLING-2 entitlement authority is local / compatibility mode / not deployed.  
+**BILLING-2 evaluates and can enforce capabilities. Preview orgs without billing rows stay usable until BILLING-3.** Estimating, Pricing, Quote money, delivery, and acceptance evidence are unchanged.
 
 Related:
 
@@ -215,11 +215,13 @@ Events implemented:
 | `customer.subscription.created/updated/deleted` | Mirror |
 | `checkout.session.completed` | Record/ignore (`checkout_deferred_billing_3`) |
 | `invoice.paid` | Record processed; **do not** force `active` |
-| `invoice.payment_failed` | May set `past_due` if not stale; does **not** bump subscription event version |
+| `invoice.payment_failed` | May set `past_due` and `past_due_since` on first transition if not stale; does **not** bump subscription event version; repeated failures do not reset `past_due_since` |
 
 ### Out-of-order protection
 
-Mirror applies only when `event.created` ≥ `org_subscriptions.last_stripe_event_created_at`. Older events are ignored (`stale_event`). Invoice events do not advance that timestamp, so they cannot block a newer subscription object.
+Mirror applies only when `event.created` ≥ `org_subscriptions.last_stripe_event_created_at`. Older events are ignored (`stale_event`). Invoice events do not advance that timestamp, so they cannot block a newer subscription object and cannot recreate past_due after a newer recovery.
+
+`past_due_since` is the 7-day grace clock. It is set once per incident from the event that first enters past_due, preserved while still past_due, and cleared on recovery. `updated_at` / `current_period_end` / later Stripe watermarks are not grace authority.
 
 ---
 

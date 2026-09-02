@@ -176,10 +176,11 @@ console.log("=== COMMERCIAL-CLOSE-01 ===\n");
 
 console.log("--- Schema / default ---");
 assert(
-  "045 commercial close remains; 046 billing is latest additive",
+  "045 commercial close remains; 046–047 billing follow additively",
   migrations.includes("044_quote_acceptance.sql") &&
     migrations.includes("045_commercial_close.sql") &&
-    migrations.at(-1) === "046_billing_foundation.sql"
+    migrations.includes("046_billing_foundation.sql") &&
+    migrations.at(-1) === "047_past_due_authority.sql"
 );
 assert(
   "045 sets new-quote DB default to detailed without rewriting rows",
@@ -480,7 +481,7 @@ assert(
   !closeSrc.toLowerCase().includes("subscription_tier") &&
     !flushSrc.includes("quotes.send") &&
     entitlementsSrc.includes('"quotes.acceptance"') &&
-    entitlementsSrc.includes("Future billing seam")
+    entitlementsSrc.includes("transaction completion")
 );
 
 console.log("\n--- Sidebar / terms / mobile ---");

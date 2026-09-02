@@ -11,7 +11,7 @@ import {
   readStripePriceConfig,
   resolvePlanFromStripePriceItems,
 } from "@/lib/billing/prices";
-import { requireOrgEntitlement } from "@/lib/quotes/entitlements";
+import { evaluateOrgEntitlement } from "@/lib/billing/entitlements";
 import {
   getStripeClient,
   getStripeWebhookSecret,
@@ -194,9 +194,30 @@ function internalTrialProbe() {
     expired_persisted_status: expired.status === "trialing",
     expired_derived:
       deriveInternalTrialAccessState(expired, now) === "trial_expired",
-    send_still_allowed: requireOrgEntitlement("org", "quotes.send").ok,
-    acceptance_still_allowed: requireOrgEntitlement("org", "quotes.acceptance")
-      .ok,
+    send_still_allowed: evaluateOrgEntitlement({
+      state: {
+        orgId: "org",
+        billingEnvironment: "test",
+        customer: null,
+        subscription: null,
+        activeOverride: null,
+        effectiveTrialState: null,
+      },
+      capability: "quotes.send",
+      mode: "compatibility",
+    }).ok,
+    acceptance_still_allowed: evaluateOrgEntitlement({
+      state: {
+        orgId: "org",
+        billingEnvironment: "test",
+        customer: null,
+        subscription: null,
+        activeOverride: null,
+        effectiveTrialState: null,
+      },
+      capability: "quotes.acceptance",
+      mode: "compatibility",
+    }).ok,
   };
 }
 

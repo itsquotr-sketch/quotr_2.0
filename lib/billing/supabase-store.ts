@@ -38,6 +38,7 @@ type SubscriptionRow = {
   cancelled_at: string | null;
   last_stripe_event_created_at: string | null;
   last_stripe_event_id: string | null;
+  past_due_since: string | null;
   created_at: string;
   updated_at: string;
 };
@@ -97,6 +98,7 @@ function mapSubscription(row: SubscriptionRow): OrgSubscription {
     cancelledAt: row.cancelled_at,
     lastStripeEventCreatedAt: row.last_stripe_event_created_at,
     lastStripeEventId: row.last_stripe_event_id,
+    pastDueSince: row.past_due_since ?? null,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -144,6 +146,7 @@ function subscriptionWrite(row: OrgSubscription) {
     cancelled_at: row.cancelledAt,
     last_stripe_event_created_at: row.lastStripeEventCreatedAt,
     last_stripe_event_id: row.lastStripeEventId,
+    past_due_since: row.pastDueSince,
   };
 }
 
@@ -281,6 +284,9 @@ export function createSupabaseBillingStore(): BillingStore {
       }
       if (patch.lastStripeEventId !== undefined) {
         update.last_stripe_event_id = patch.lastStripeEventId;
+      }
+      if (patch.pastDueSince !== undefined) {
+        update.past_due_since = patch.pastDueSince;
       }
       const { data, error } = await admin
         .from("org_subscriptions")

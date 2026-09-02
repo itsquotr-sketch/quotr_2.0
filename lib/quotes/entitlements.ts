@@ -1,29 +1,19 @@
 /**
- * Future billing seam. Do not hard-code plan names.
+ * Quote-facing entitlement keys and evaluation.
  *
- * Builder + Business: quotes.send, quotes.acceptance
- * Business additionally: quote.approval, margin.guardrails, team roles/audit.
+ * Server enforcement lives in `@/lib/billing/entitlement-server`
+ * (`requireOrgEntitlement`, `hasOrgEntitlement`).
  *
- * QUOTE-DELIVERY-01 and QUOTE-ACCEPTANCE-01 must call this at the
- * server boundary against the issuer organisation. BILLING-1 stores
- * subscription authority but does not enforce it. Until BILLING-2,
- * known Quote capabilities remain allowed. Do not trust a browser plan value.
+ * Quote send: requireOrgEntitlement(orgId, "quotes.send") at the send action.
+ * Public client "quotes.acceptance" is transaction completion of an already
+ * issued Quote and is not gated on contractor billing.
+ *
+ * Canonical: quotes.approval. Legacy alias: quote.approval.
  */
-export type QuoteEntitlementKey =
-  | "quotes.send"
-  | "quotes.acceptance"
-  | "quote.approval"
-  | "margin.guardrails";
-
-export function requireOrgEntitlement(
-  _orgId: string,
-  entitlement: QuoteEntitlementKey
-): { ok: true } | { ok: false; error: string } {
-  if (entitlement === "quotes.send" || entitlement === "quotes.acceptance") {
-    return { ok: true };
-  }
-  return {
-    ok: false,
-    error: "This capability is not available on the current plan.",
-  };
-}
+export {
+  evaluateOrgEntitlement,
+  hasOrgEntitlementFromState,
+} from "@/lib/billing/entitlements";
+export type { EntitlementDecision } from "@/lib/billing/entitlements";
+export type { EntitlementCapability } from "@/lib/billing/capabilities";
+export type { QuoteEntitlementKey } from "@/lib/billing/entitlement-compat";

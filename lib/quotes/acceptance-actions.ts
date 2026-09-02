@@ -1,7 +1,6 @@
 "use server";
 
 import { headers } from "next/headers";
-import { requireOrgEntitlement } from "@/lib/quotes/entitlements";
 import {
   buildQuoteAcceptanceDeclarationFromQuote,
   QUOTE_ACCEPTANCE_DECLARATION_VERSION,
@@ -94,14 +93,6 @@ export async function acceptPublicQuoteByToken(input: {
     return { error: "This quote link is not valid." };
   }
 
-  const entitlement = requireOrgEntitlement(
-    document.issuerOrgId ?? document.quote.org_id,
-    "quotes.acceptance"
-  );
-  if (!entitlement.ok) {
-    return { error: entitlement.error };
-  }
-
   const canonical = buildQuoteAcceptanceDeclarationFromQuote(document.quote);
   const validated = validateClientAcceptanceInput({
     signerName: input.signerName,
@@ -174,14 +165,6 @@ export async function declinePublicQuoteByToken(input: {
   const document = await lookupPublicQuoteByToken(input.token);
   if (!document) {
     return { error: "This quote link is not valid." };
-  }
-
-  const entitlement = requireOrgEntitlement(
-    document.issuerOrgId ?? document.quote.org_id,
-    "quotes.acceptance"
-  );
-  if (!entitlement.ok) {
-    return { error: entitlement.error };
   }
 
   const message = input.message?.trim() || "";

@@ -5,8 +5,8 @@ import { createSupabaseBillingStore } from "@/lib/billing/supabase-store";
 import type { OrgBillingState } from "@/lib/billing/types";
 
 /**
- * Server-side organisation billing summary. Input to BILLING-2.
- * Does not enforce capabilities, paywalls, or trial expiry.
+ * Server-side organisation billing summary. Input to entitlement evaluation.
+ * Does not cache across requests. Webhook updates are visible on the next read.
  */
 export async function getOrgBillingState(
   orgId: string

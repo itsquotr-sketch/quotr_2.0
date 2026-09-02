@@ -85,7 +85,7 @@ import type {
 import { ACTIVE_PIPELINE_STATUSES } from "@/lib/projects/status";
 import { getCompanySettingsWithContext } from "@/lib/settings/company-settings-loader";
 import { getLatestQuoteSummaryWithContext, getQuoteWorkspaceDataWithContext } from "@/lib/quotes/quote-loaders";
-import { requireOrgEntitlement } from "@/lib/quotes/entitlements";
+import { requireOrgEntitlement, entitlementDeniedError } from "@/lib/billing/entitlement-server";
 import {
   quoteDeliveryIdempotencyKey,
   normalizeDeliveryEmail,
@@ -615,6 +615,8 @@ export async function createQuoteFromPricing(input: {
   }
 
   const { supabase, user, orgId } = auth;
+  const denied = await entitlementDeniedError(orgId, "quotes.create");
+  if (denied) return denied;
   const { projectId, pricingDocumentId } = parsed.data;
 
   const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
@@ -1138,6 +1140,11 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
     return { error: loaded.error };
   }
 
+  const sendEntitlement = await requireOrgEntitlement(loaded.orgId, "quotes.send");
+  if (!sendEntitlement.ok) {
+    return { error: sendEntitlement.error };
+  }
+
   const { supabase, orgId, quote, user } = loaded;
   if (quoteHasActiveSendLock(quote)) {
     return {
@@ -1261,7 +1268,7 @@ export async function sendQuoteToClient(input: {
     return { error: loaded.error };
   }
 
-  const entitlement = requireOrgEntitlement(loaded.orgId, "quotes.send");
+  const entitlement = await requireOrgEntitlement(loaded.orgId, "quotes.send");
   if (!entitlement.ok) {
     return { error: entitlement.error };
   }

@@ -87,6 +87,11 @@ export type OrgSubscription = {
   cancelledAt: string | null;
   lastStripeEventCreatedAt: string | null;
   lastStripeEventId: string | null;
+  /**
+   * Start of the current past_due incident. Null when not past_due, or when
+   * the incident start is unknown (no backfill). Grace is past_due_since + 7 days.
+   */
+  pastDueSince: string | null;
   createdAt: string;
   updatedAt: string;
 };
@@ -117,6 +122,16 @@ export type OrgBillingOverride = {
   createdBy: string | null;
   operatorRef: string | null;
   createdAt: string;
+  /**
+   * Optional capability overlays. Resolver/test-only. Not persisted.
+   * 046 stores plan/status/seats/expiry only. 047 adds past_due_since on
+   * org_subscriptions — not overlay columns. Explicit deny beats plan allow;
+   * explicit allow grants otherwise unavailable keys in-memory only.
+   * Custom contract v1 uses configured plan/capability basis and seat override.
+   * Persistent overlays need a later migration and platform-admin work.
+   */
+  capabilityAllow?: string[];
+  capabilityDeny?: string[];
 };
 
 /**

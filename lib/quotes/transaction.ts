@@ -1,8 +1,8 @@
 import type { Quote, QuoteStatus } from "@/lib/quotes/types";
 
-// Future entitlements (do not hard-code plan names):
+// Entitlements are resolved by lib/billing — not by plan-name checks here.
 // Builder + Business: quotes.send, quotes.acceptance
-// Business additionally: quote.approval, margin.guardrails, team roles/audit.
+// Business additionally: quotes.approval, margin.guardrails, team roles/audit.
 
 export const QUOTE_SNAPSHOT_IMMUTABLE_STATUSES: QuoteStatus[] = [
   "sent",

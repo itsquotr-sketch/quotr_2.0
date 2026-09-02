@@ -47,6 +47,7 @@ export function buildInternalTrialSubscription(input: {
     cancelledAt: null,
     lastStripeEventCreatedAt: null,
     lastStripeEventId: null,
+    pastDueSince: null,
     createdAt: isoNow,
     updatedAt: isoNow,
   };
