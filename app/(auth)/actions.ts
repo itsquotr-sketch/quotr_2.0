@@ -47,7 +47,7 @@ const signupSchema = z.object({
   organisation_name: z
     .string()
     .trim()
-    .max(200, "Organisation name is too long")
+    .max(200, "Company name is too long")
     .optional(),
   email: z.email("Invalid email address"),
   password: passwordSchema,
@@ -64,8 +64,8 @@ const repairSchema = z.object({
   organisation_name: z
     .string()
     .trim()
-    .min(1, "Organisation name is required")
-    .max(200, "Organisation name is too long"),
+    .min(1, "Company name is required")
+    .max(200, "Company name is too long"),
 });
 
 function signupFail(
@@ -139,7 +139,7 @@ export async function signup(
 
   if (!inviteToken && !organisation_name?.trim()) {
     return {
-      fieldErrors: { organisation_name: ["Organisation name is required"] },
+      fieldErrors: { organisation_name: ["Company name is required"] },
     };
   }
 

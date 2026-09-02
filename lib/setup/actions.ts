@@ -24,6 +24,11 @@ import {
   normalizeCountryCode,
   normalizeCurrencyCode,
 } from "@/lib/setup/locale-catalogue";
+import {
+  ONBOARDING_LABOUR_RATE,
+  parseOptionalLabourCost,
+  parseOptionalTargetMargin,
+} from "@/lib/setup/pricing-basics";
 
 type SetupAuthContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -34,7 +39,7 @@ type SetupAuthContext = {
 
 const MISSING_ORG_ERROR: ActionResult = {
   error:
-    "Your organisation profile could not be loaded. Try signing out and back in, or contact support.",
+    "Your company profile could not be loaded. Try signing out and back in, or contact support.",
 };
 
 async function getSetupAuthContext(): Promise<SetupAuthContext | null> {
@@ -216,6 +221,107 @@ export async function saveCompanyBasics(
   revalidatePath("/app/setup");
   revalidatePath("/app/settings/company");
   revalidatePath("/app/rates");
+
+  return { success: true };
+}
+
+const pricingBasicsSchema = z.object({
+  labourCost: z.union([z.string(), z.number()]).nullable().optional(),
+  targetMarginPercent: z.union([z.string(), z.number()]).nullable().optional(),
+  skipLabour: z.boolean().optional(),
+  skipMargin: z.boolean().optional(),
+});
+
+/**
+ * Optional first-run pricing basics.
+ * Labour writes labour.carpenter.hour cost_rate (sell left unset so margin applies).
+ * Margin writes organisation_settings.default_margin_percent.
+ * Skip leaves benchmarks allowed and 20% default margin.
+ */
+export async function savePricingBasics(input: {
+  labourCost?: string | number | null;
+  targetMarginPercent?: string | number | null;
+  skipLabour?: boolean;
+  skipMargin?: boolean;
+}): Promise<ActionResult> {
+  const parsed = pricingBasicsSchema.safeParse(input);
+  if (!parsed.success) {
+    return { error: "Could not save pricing basics. Please try again." };
+  }
+
+  const context = await getSetupAuthContext();
+  if (!context) {
+    return MISSING_ORG_ERROR;
+  }
+
+  const { supabase, orgId } = context;
+
+  const labour = parsed.data.skipLabour
+    ? ({ skip: true } as const)
+    : parseOptionalLabourCost(parsed.data.labourCost);
+  if ("error" in labour) {
+    return { fieldErrors: { labourCost: [labour.error] } };
+  }
+
+  const margin = parsed.data.skipMargin
+    ? ({ skip: true } as const)
+    : parseOptionalTargetMargin(parsed.data.targetMarginPercent);
+  if ("error" in margin) {
+    return { fieldErrors: { targetMarginPercent: [margin.error] } };
+  }
+
+  if (!labour.skip) {
+    const row = ONBOARDING_LABOUR_RATE;
+    const { error } = await supabase.from("rates").upsert(
+      {
+        org_id: orgId,
+        rate_type: row.rate_type,
+        trade: row.trade ?? null,
+        work_area_type: row.work_area_type ?? null,
+        item_key: row.item_key,
+        label: row.label,
+        unit: row.unit,
+        cost_rate: labour.costRate,
+        sell_rate: null,
+        markup_percent: null,
+        active: true,
+      },
+      { onConflict: "org_id,rate_type,item_key" }
+    );
+    if (error) {
+      return { error: "Could not save your labour cost. Please try again." };
+    }
+  }
+
+  if (!margin.skip) {
+    const { error } = await supabase
+      .from("organisation_settings")
+      .update({ default_margin_percent: margin.marginPercent })
+      .eq("org_id", orgId);
+    if (error) {
+      return { error: "Could not save your target margin. Please try again." };
+    }
+  }
+
+  const { data: settings } = await supabase
+    .from("organisation_settings")
+    .select("onboarding_status")
+    .eq("org_id", orgId)
+    .maybeSingle();
+
+  if (settings?.onboarding_status !== "completed") {
+    await supabase
+      .from("organisation_settings")
+      .update({
+        onboarding_status: "in_progress",
+        onboarding_step: "rates",
+      })
+      .eq("org_id", orgId);
+  }
+
+  revalidatePath("/app/setup");
+  revalidatePath("/app/rates");
+  revalidatePath("/app/dashboard");
 
   return { success: true };
 }

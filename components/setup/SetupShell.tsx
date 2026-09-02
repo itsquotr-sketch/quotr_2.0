@@ -11,11 +11,14 @@ import { getSetupState } from "@/lib/setup/actions";
 import { CalibrationHub } from "@/components/calibration/CalibrationHub";
 import type { CalibrationScenarioStatus } from "@/lib/calibration/persistence-types";
 import { CompanyBasicsStep } from "./CompanyBasicsStep";
+import { FirstRunProgress } from "./FirstRunProgress";
+import { FirstRunReady } from "./FirstRunReady";
+import { PricingBasicsStep } from "./PricingBasicsStep";
 import { RatesStep } from "./RatesStep";
 import type { SetupState, SetupStep } from "./types";
 import { WorkAreasStep } from "./WorkAreasStep";
 
-export type SetupShellMode = "basics" | "improve";
+export type SetupShellMode = "basics" | "pricing" | "ready" | "improve";
 
 type ImproveSection = "company" | "work_areas" | "rates" | "calibrate";
 
@@ -70,12 +73,49 @@ export function SetupShell({
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <PageHeader
           title="Welcome to Quotr"
-          description="Confirm a few company basics, then start quoting."
+          description="A few company details, then how you price."
           actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
         />
         <FormContainer>
           <div className="mx-auto w-full max-w-lg">
+            <FirstRunProgress current="company" />
             <CompanyBasicsStep state={state} mode="basics" />
+          </div>
+        </FormContainer>
+      </div>
+    );
+  }
+
+  if (mode === "pricing") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <PageHeader
+          title="How you price"
+          description="Optional labour cost and target margin — skip if you are not sure yet."
+          actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
+        />
+        <FormContainer>
+          <div className="mx-auto w-full max-w-lg">
+            <FirstRunProgress current="pricing" />
+            <PricingBasicsStep state={state} />
+          </div>
+        </FormContainer>
+      </div>
+    );
+  }
+
+  if (mode === "ready") {
+    return (
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
+        <PageHeader
+          title="Start your first job"
+          description="You can refine details as you go."
+          actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
+        />
+        <FormContainer>
+          <div className="mx-auto w-full max-w-lg">
+            <FirstRunProgress current="job" />
+            <FirstRunReady />
           </div>
         </FormContainer>
       </div>

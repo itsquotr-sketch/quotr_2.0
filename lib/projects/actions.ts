@@ -298,7 +298,7 @@ export async function createProject(
   if (!context) {
     return {
       error:
-        "Your organisation profile could not be loaded. Try signing out and back in.",
+        "Your company profile could not be loaded. Try signing out and back in.",
     };
   }
 

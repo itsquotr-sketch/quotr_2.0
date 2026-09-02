@@ -13,6 +13,12 @@ import {
   PLAN_DISPLAY_CATALOGUE,
 } from "@/lib/billing/display-catalogue";
 import type { CheckoutPlanCode } from "@/lib/billing/checkout-plan";
+import {
+  BUILDER_PLAN_HEADLINE,
+  BUILDER_PLAN_SUMMARY,
+  BUSINESS_PLAN_HEADLINE,
+  BUSINESS_PLAN_SUMMARY,
+} from "@/lib/billing/plan-copy";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -306,8 +312,8 @@ function PlanSelectCard({
       </CardHeader>
       <CardContent className="text-sm text-muted-foreground">
         {plan === "builder"
-          ? "1 user. Core estimating accuracy, Pricing, Quotes, sending and acceptance."
-          : "First user included. Add up to 5 people. Additional users $35 + GST/month."}
+          ? `${BUILDER_PLAN_HEADLINE} ${BUILDER_PLAN_SUMMARY}`
+          : `${BUSINESS_PLAN_HEADLINE} ${BUSINESS_PLAN_SUMMARY}`}
       </CardContent>
       <CardFooter>
         <Button type="button" disabled={disabled} onClick={onSelect}>

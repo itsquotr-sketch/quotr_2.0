@@ -90,7 +90,13 @@ export function ImproveSetupCard({
   const items = readiness.recommendedSetup
     .filter((item) => SECONDARY_IDS.has(item.id))
     .filter((item) => item.id !== "work_types" || item.title.startsWith("Choose"))
-    .slice(0, 4);
+    .filter((item) => {
+      if (item.id === "labour_rate" && readiness.hasLabourRate) return false;
+      // First-run already offered 20% default; don't nag confirmation.
+      if (item.id === "default_margin") return false;
+      return true;
+    })
+    .slice(0, 1);
 
   if (items.length === 0) {
     return null;

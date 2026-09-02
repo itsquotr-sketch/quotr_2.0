@@ -79,8 +79,8 @@ function main() {
   const basics = read("components/setup/CompanyBasicsStep.tsx");
   assert("basics shows company name", /Company name/.test(basics));
   assert("basics shows currency", /Currency/.test(basics));
-  assert("basics shows GST", /GST/.test(basics));
-  assert("basics Continue to Quotr CTA", /Continue to Quotr/.test(basics));
+  assert("basics shows GST registered question", /Are you GST registered/.test(basics));
+  assert("basics Continue CTA", /Continue/.test(basics));
   assert(
     "basics does not force labour rates",
     !/labour rate|carpenter/i.test(basics)
@@ -177,7 +177,7 @@ function main() {
 
   section("DASHBOARD");
   const dashboard = read("app/(protected)/app/dashboard/page.tsx");
-  assert("Create your first project CTA", /Create your first project/.test(dashboard));
+  assert("Create your first job CTA", /Start your first job/.test(dashboard));
   assert("ImproveSetupCard used", /ImproveSetupCard/.test(dashboard));
   assert(
     "SetupPromptCard no longer primary",

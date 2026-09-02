@@ -92,11 +92,11 @@ assert("estimateReady without labour", afterBasics.estimateReady);
 
 section("DASHBOARD CTA");
 const dash = read("app/(protected)/app/dashboard/page.tsx");
-assert("Create your first project primary copy", dash.includes("Create your first project"));
+assert("Start your first job primary copy", dash.includes("Start your first job"));
 assert(
   "empty secondary does not duplicate Improve card title",
-  dash.includes("Optional company setup") &&
-    !/Create your first project[\s\S]*Improve Quotr for your business[\s\S]*ImproveSetupCard/.test(
+  dash.includes("Optional company details") &&
+    !/Start your first job[\s\S]*Improve Quotr for your business[\s\S]*ImproveSetupCard/.test(
       dash
     )
 );

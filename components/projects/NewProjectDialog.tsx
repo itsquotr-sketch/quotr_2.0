@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Separator } from "@/components/ui/separator";
 import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 
@@ -32,9 +31,14 @@ const selectClassName = cn(
 
 type NewProjectDialogProps = {
   trigger?: React.ReactElement<{ onClick?: React.MouseEventHandler }>;
+  /** Conversational first-job CTA. Project remains the entity. */
+  intent?: "default" | "first-job";
 };
 
-export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
+export function NewProjectDialog({
+  trigger,
+  intent = "default",
+}: NewProjectDialogProps) {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [clientName, setClientName] = useState("");
@@ -44,7 +48,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
   const [priority, setPriority] = useState<ProjectPriority>("normal");
   const [dueDate, setDueDate] = useState("");
   const [notes, setNotes] = useState("");
-  const [notesOpen, setNotesOpen] = useState(false);
+  const [moreOpen, setMoreOpen] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [denial, setDenial] = useState<{
     reasonCode?: string;
@@ -62,7 +66,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
     setPriority("normal");
     setDueDate("");
     setNotes("");
-    setNotesOpen(false);
+    setMoreOpen(false);
     setError(null);
     setDenial(null);
     setFieldErrors({});
@@ -122,18 +126,20 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
           },
         } as React.Attributes)
       ) : (
-        <Button type="button" onClick={() => setOpen(true)}>
-          New project
+        <Button type="button" size="touch" onClick={() => setOpen(true)} className="w-full sm:w-auto">
+          {intent === "first-job" ? "Start your first job" : "New project"}
         </Button>
       )}
 
       <Dialog open={open} onOpenChange={handleOpenChange}>
         <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Create project</DialogTitle>
+            <DialogTitle>
+              {intent === "first-job" ? "Start a job" : "Create project"}
+            </DialogTitle>
             <DialogDescription>
-              Add the essentials now. You can refine the brief in the project
-              assistant.
+              Plans, photos and full details aren&apos;t required. Add what you
+              know now.
             </DialogDescription>
           </DialogHeader>
 
@@ -153,7 +159,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
             ) : null}
 
             <div className="space-y-2">
-              <Label htmlFor="project-title">Project title</Label>
+              <Label htmlFor="project-title">Job name</Label>
               <Input
                 id="project-title"
                 value={title}
@@ -168,14 +174,9 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
             </div>
 
             <div className="space-y-3">
-              <p className="text-sm font-medium">Client / site details</p>
+              <p className="text-sm font-medium">Client and site (optional)</p>
               <div className="space-y-2">
-                <Label htmlFor="client-name">
-                  Client name{" "}
-                  <span className="font-normal text-muted-foreground">
-                    (optional)
-                  </span>
-                </Label>
+                <Label htmlFor="client-name">Client</Label>
                 <Input
                   id="client-name"
                   value={clientName}
@@ -190,12 +191,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
                 ) : null}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="client-email">
-                  Client email{" "}
-                  <span className="font-normal text-muted-foreground">
-                    (optional)
-                  </span>
-                </Label>
+                <Label htmlFor="client-email">Email</Label>
                 <Input
                   id="client-email"
                   type="email"
@@ -213,12 +209,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
                 ) : null}
               </div>
               <div className="space-y-2">
-                <Label htmlFor="site-address">
-                  Site address{" "}
-                  <span className="font-normal text-muted-foreground">
-                    (optional)
-                  </span>
-                </Label>
+                <Label htmlFor="site-address">Site</Label>
                 <Input
                   id="site-address"
                   value={siteAddress}
@@ -236,7 +227,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
 
             <div className="space-y-2">
               <Label htmlFor="project-brief">
-                Brief / description{" "}
+                What do you know about the job?{" "}
                 <span className="font-normal text-muted-foreground">
                   (optional)
                 </span>
@@ -245,7 +236,7 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
                 id="project-brief"
                 value={briefText}
                 onChange={(event) => setBriefText(event.target.value)}
-                placeholder="Describe the job scope or anything helpful for the estimate…"
+                placeholder="e.g. Spoke to Jane about a 6×3 timber deck, no plans yet."
                 rows={3}
                 maxLength={5000}
               />
@@ -256,88 +247,60 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
               ) : null}
             </div>
 
-            <Separator />
-
-            <div className="space-y-3">
-              <p className="text-sm font-medium">Internal details</p>
-              <div className="grid gap-3 sm:grid-cols-2">
-                <div className="space-y-2">
-                  <Label htmlFor="priority">Priority</Label>
-                  <select
-                    id="priority"
-                    value={priority}
-                    onChange={(event) =>
-                      setPriority(event.target.value as ProjectPriority)
-                    }
-                    className={selectClassName}
-                  >
-                    {PRIORITY_OPTIONS.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                  {fieldErrors.priority?.[0] ? (
-                    <p className="text-sm text-destructive">
-                      {fieldErrors.priority[0]}
-                    </p>
-                  ) : null}
+            <div>
+              {!moreOpen ? (
+                <button
+                  type="button"
+                  className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
+                  onClick={() => setMoreOpen(true)}
+                >
+                  + Priority, due date, or notes
+                </button>
+              ) : (
+                <div className="space-y-3">
+                  <p className="text-sm font-medium">More details (optional)</p>
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="priority">Priority</Label>
+                      <select
+                        id="priority"
+                        value={priority}
+                        onChange={(event) =>
+                          setPriority(event.target.value as ProjectPriority)
+                        }
+                        className={selectClassName}
+                      >
+                        {PRIORITY_OPTIONS.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="due-date">Due date</Label>
+                      <Input
+                        id="due-date"
+                        type="date"
+                        value={dueDate}
+                        onChange={(event) => setDueDate(event.target.value)}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-2" data-create-project-notes>
+                    <Label htmlFor="notes">Notes</Label>
+                    <Textarea
+                      id="notes"
+                      value={notes}
+                      onChange={(event) => setNotes(event.target.value)}
+                      placeholder="Internal notes…"
+                      rows={2}
+                      maxLength={5000}
+                      data-create-notes-composer
+                    />
+                  </div>
                 </div>
-                <div className="space-y-2">
-                  <Label htmlFor="due-date">
-                    Due date{" "}
-                    <span className="font-normal text-muted-foreground">
-                      (optional)
-                    </span>
-                  </Label>
-                  <Input
-                    id="due-date"
-                    type="date"
-                    value={dueDate}
-                    onChange={(event) => setDueDate(event.target.value)}
-                  />
-                  {fieldErrors.due_date?.[0] ? (
-                    <p className="text-sm text-destructive">
-                      {fieldErrors.due_date[0]}
-                    </p>
-                  ) : null}
-                </div>
-              </div>
-              <div className="space-y-2" data-create-project-notes>
-                <Label htmlFor="notes">
-                  Notes{" "}
-                  <span className="font-normal text-muted-foreground">
-                    (optional)
-                  </span>
-                </Label>
-                {!notesOpen && !notes.trim() ? (
-                  <button
-                    type="button"
-                    className="flex h-10 w-full items-center justify-start rounded-xl border border-dashed border-border/70 bg-muted/15 px-3 text-left text-sm text-muted-foreground md:hidden"
-                    onClick={() => setNotesOpen(true)}
-                    data-create-notes-collapsed
-                  >
-                    + Add notes
-                  </button>
-                ) : null}
-                <Textarea
-                  id="notes"
-                  value={notes}
-                  onChange={(event) => setNotes(event.target.value)}
-                  placeholder="Internal notes for your team…"
-                  rows={2}
-                  maxLength={5000}
-                  className={cn(
-                    !notesOpen && !notes.trim() && "hidden md:flex"
-                  )}
-                  data-create-notes-composer
-                />
-                {fieldErrors.notes?.[0] ? (
-                  <p className="text-sm text-destructive">
-                    {fieldErrors.notes[0]}
-                  </p>
-                ) : null}
-              </div>
+              )}
             </div>
 
             <DialogFooter>
@@ -350,7 +313,11 @@ export function NewProjectDialog({ trigger }: NewProjectDialogProps) {
                 Cancel
               </Button>
               <Button type="submit" disabled={pending || !title.trim()}>
-                {pending ? "Creating…" : "Create project"}
+                {pending
+                  ? "Creating…"
+                  : intent === "first-job"
+                    ? "Start job"
+                    : "Create project"}
               </Button>
             </DialogFooter>
           </form>

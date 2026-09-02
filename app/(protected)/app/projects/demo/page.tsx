@@ -1,3 +1,4 @@
+import { notFound } from "next/navigation";
 import { AssistantShell } from "@/components/assistant/AssistantShell";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -5,6 +6,10 @@ import { buildDemoAssistantState } from "@/lib/assistant/mock-seed";
 import { createClient } from "@/lib/supabase/server";
 
 export default async function DemoProjectPage() {
+  if (process.env.NODE_ENV === "production") {
+    notFound();
+  }
+
   const supabase = await createClient();
   const {
     data: { user },

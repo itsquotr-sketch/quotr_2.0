@@ -61,7 +61,7 @@ export function entitlementDenialMessage(input: {
     return "This capability is not included in the current organisation agreement.";
   }
   if (input.reasonCode === "billing_uninitialized") {
-    return "Billing is not initialized for this organisation yet.";
+    return "Your account is still being set up. Try again in a moment.";
   }
 
   if (input.trialTeamDenied) {
@@ -74,22 +74,8 @@ export function entitlementDenialMessage(input: {
     case "team.assign_projects":
     case "team.roles":
       return "Team members are available on Quotr Business. Upgrade to invite up to five users.";
-    case "analytics.business":
-      return "Business analytics are available on Quotr Business.";
-    case "quotes.approval":
-      return "Quote approvals are available on Quotr Business.";
-    case "margin.guardrails":
-      return "Margin guardrails are available on Quotr Business.";
-    case "quotes.templates.multiple":
-      return "Multiple quote templates are available on Quotr Business.";
-    case "company_rates.governed":
-      return "Governed company rates are available on Quotr Business.";
-    case "calibration.comprehensive":
-      return "Comprehensive calibration is available on Quotr Business.";
-    case "audit.team":
-      return "Team audit history is available on Quotr Business.";
     default:
-      return "This capability is not available on the current plan.";
+      return "This is not included on the current plan.";
   }
 }
 

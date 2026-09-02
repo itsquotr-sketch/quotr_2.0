@@ -141,7 +141,7 @@ function SignupForm() {
         <CardDescription>
           {inviteToken
             ? "Create your login. You will join the company that invited you — we will not create a second company."
-            : "Set up your organisation and start building structured estimates."}
+            : "Set up your company and start your first job."}
         </CardDescription>
       </CardHeader>
       <form action={formAction} className="flex flex-col gap-(--card-spacing)">
@@ -173,7 +173,7 @@ function SignupForm() {
 
           {inviteToken ? null : (
             <div className="space-y-2">
-              <Label htmlFor="organisation_name">Organisation / company</Label>
+              <Label htmlFor="organisation_name">Company name</Label>
               <Input
                 id="organisation_name"
                 name="organisation_name"

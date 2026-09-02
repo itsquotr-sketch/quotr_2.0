@@ -50,7 +50,7 @@ function main() {
   assert("setup page reads mode searchParam", /mode/.test(setupPage));
   assert(
     "basics ready + mode=basics redirects Dashboard",
-    /mode === "basics"/.test(setupPage) && /dashboard/.test(setupPage)
+    /modeParam === "basics"/.test(setupPage) && /dashboard/.test(setupPage)
   );
   const dashboard = read("app/(protected)/app/dashboard/page.tsx");
   assert(
@@ -58,8 +58,8 @@ function main() {
     !/CompanyBasicsStep/.test(dashboard)
   );
   assert(
-    "dashboard Create first project primary",
-    /Create your first project/.test(dashboard)
+    "dashboard Start first job primary",
+    /Start your first job/.test(dashboard)
   );
   assert(
     "no Work Area / rate gate before Dashboard in layout",
@@ -118,13 +118,13 @@ function main() {
     "AU suggests 10%",
     COMPANY_COUNTRIES.find((c) => c.code === "AU")?.suggestedGstPercent === 10
   );
-  assert("GST input allows 0", /min="0"/.test(basicsUi));
-  assert("gstTouched for override", /gstTouched/.test(basicsUi));
+  assert("GST registered yes/no", /Are you GST registered/.test(basicsUi));
+  assert("GST no sets customer quotes without GST copy", /not add GST/.test(basicsUi));
 
   section("SETUP SAVE / REVIEW");
   assert(
-    "basics mode Continues to Quotr",
-    /Continue to Quotr/.test(basicsUi)
+    "basics mode Continues to pricing",
+    /mode=pricing/.test(basicsUi) && /Continue/.test(basicsUi)
   );
   assert(
     "optional mode Save company basics",

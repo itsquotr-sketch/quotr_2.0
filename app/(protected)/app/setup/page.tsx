@@ -18,26 +18,20 @@ const IMPROVE_SECTIONS = new Set([
 export default async function SetupPage({ searchParams }: SetupPageProps) {
   const params = await searchParams;
   const basicsNeeded = await needsCompanyBasics();
-
-  // Force basics mode while gated; ignore other modes to avoid loops.
-  const mode =
-    basicsNeeded || params.mode === "basics"
-      ? "basics"
-      : params.mode === "improve"
-        ? "improve"
-        : "improve";
+  const modeParam = params.mode;
 
   // Basics already confirmed — don't keep user on forced basics URL.
-  if (!basicsNeeded && params.mode === "basics") {
+  if (!basicsNeeded && modeParam === "basics") {
     redirect("/app/dashboard");
   }
 
-  // Missing basics always use basics mode (layout also redirects here).
   const shellMode = basicsNeeded
     ? "basics"
-    : mode === "basics"
-      ? "basics"
-      : "improve";
+    : modeParam === "pricing"
+      ? "pricing"
+      : modeParam === "ready"
+        ? "ready"
+        : "improve";
 
   const sectionParam = params.section?.trim();
   const initialImproveSection =

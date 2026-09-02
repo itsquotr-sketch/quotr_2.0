@@ -12,7 +12,7 @@ export default function AuthLayout({
           Quotr
         </Link>
         <p className="mt-1.5 text-sm text-muted-foreground sm:mt-2">
-          Estimate faster with structured project information.
+          Turn job notes into a clear estimate and quote.
         </p>
       </div>
       <div className="w-full max-w-sm">{children}</div>

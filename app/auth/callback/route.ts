@@ -5,6 +5,13 @@ import {
   classifyAuthProviderError,
   type AuthErrorCategory,
 } from "@/lib/auth/errors";
+import {
+  fullNameFromUserMetadata,
+  organisationNameFromUserMetadata,
+  resolveEmailConfirmDestination,
+  type PendingInviteKind,
+} from "@/lib/auth/email-confirm-destination";
+import { provisionOrganisationForCurrentUser } from "@/lib/auth/provisioning";
 import { getSafeInternalPath } from "@/lib/auth/safe-redirect";
 import "@/lib/env";
 
@@ -13,8 +20,9 @@ import "@/lib/env";
  *
  * Exchange the `code` server-side, set session cookies, then route:
  * - recovery next=/reset-password → reset page (session required)
- * - provisioned profile/org → safe next (default dashboard)
- * - authenticated but missing profile/org → /app/setup-required
+ * - invite next=/invite/… → invitation (BILLING-4)
+ * - ordinary Owner → provision if needed → company basics
+ * - authenticated but missing company and not invited → /app/setup-required
  *
  * Never logs auth codes or tokens.
  */
@@ -90,7 +98,6 @@ export async function GET(request: NextRequest) {
     return redirectAuthError(origin, next, "CONFIRMATION_LINK_INVALID");
   }
 
-  // Password recovery: keep session and land on reset page.
   let destination = next;
   if (next.startsWith("/reset-password")) {
     destination = "/reset-password";
@@ -103,18 +110,57 @@ export async function GET(request: NextRequest) {
       .eq("id", user.id)
       .maybeSingle();
 
-    if (!profile?.org_id) {
-      destination = "/invite/continue";
-    } else {
+    let hasOrg = Boolean(profile?.org_id);
+    if (hasOrg && profile?.org_id) {
       const { data: organisation } = await supabase
         .from("organisations")
         .select("id")
         .eq("id", profile.org_id)
         .maybeSingle();
-      if (!organisation) {
-        destination = "/app/setup-required";
+      hasOrg = Boolean(organisation);
+    }
+
+    let pendingInvite: PendingInviteKind = "none";
+    if (!hasOrg) {
+      const { data: pending } = await supabase.rpc(
+        "lookup_pending_invitation_for_current_user"
+      );
+      const row = Array.isArray(pending) ? pending[0] : pending;
+      const count = Number(row?.invite_count ?? 0);
+      if (count > 1) pendingInvite = "multiple";
+      else if (count === 1) pendingInvite = "one";
+    }
+
+    let provisioned = false;
+    const orgName = organisationNameFromUserMetadata(
+      user.user_metadata as Record<string, unknown>
+    );
+    if (!hasOrg && pendingInvite === "none" && orgName) {
+      const result = await provisionOrganisationForCurrentUser(
+        supabase as never,
+        {
+          organisationName: orgName,
+          fullName: fullNameFromUserMetadata(
+            user.user_metadata as Record<string, unknown>,
+            user.email
+          ),
+          correlationId,
+          userId: user.id,
+          context: "signup",
+        }
+      );
+      provisioned = result.ok;
+      if (result.ok === false && result.category === "INVITE_PENDING") {
+        pendingInvite = "one";
       }
     }
+
+    destination = resolveEmailConfirmDestination({
+      next,
+      hasOrg,
+      pendingInvite,
+      provisioned,
+    });
   }
 
   // Rebuild redirect to final destination while preserving session cookies.

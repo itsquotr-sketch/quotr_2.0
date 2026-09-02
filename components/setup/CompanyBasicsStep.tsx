@@ -21,6 +21,11 @@ import {
   resolveCountryForForm,
   resolveCurrencyForForm,
 } from "@/lib/setup/locale-catalogue";
+import {
+  gstRateFromRegisteredChoice,
+  gstRegisteredFromRate,
+  type GstRegisteredChoice,
+} from "@/lib/setup/gst-registered";
 import type { CompanyBasicsInput, SetupState } from "./types";
 
 export type CompanyBasicsMode = "basics" | "optional";
@@ -28,7 +33,7 @@ export type CompanyBasicsMode = "basics" | "optional";
 type CompanyBasicsStepProps = {
   state: SetupState;
   /**
-   * basics — first-run gate: save → Dashboard
+   * basics — first-run gate: save → pricing basics
    * optional — Setup improve: save stays in Setup (parent callback)
    */
   mode?: CompanyBasicsMode;
@@ -52,17 +57,17 @@ export function CompanyBasicsStep({
     settings?.currency,
     getCountryOption(initialCountry)?.suggestedCurrency ?? "NZD"
   );
-  const initialGst =
-    settings?.default_gst_rate != null
-      ? String(settings.default_gst_rate)
-      : String(getCountryOption(initialCountry)?.suggestedGstPercent ?? 15);
+  const suggestedGst =
+    getCountryOption(initialCountry)?.suggestedGstPercent ?? 15;
+  const derivedRegistered = gstRegisteredFromRate(settings?.default_gst_rate);
 
   const [country, setCountry] = useState(initialCountry);
   const [currency, setCurrency] = useState(initialCurrency);
   const [currencyTouched, setCurrencyTouched] = useState(false);
-  const [gstTouched, setGstTouched] = useState(false);
   const [region, setRegion] = useState(settings?.region ?? "");
-  const [gstRate, setGstRate] = useState(initialGst);
+  const [gstRegistered, setGstRegistered] = useState<GstRegisteredChoice | "">(
+    derivedRegistered ?? ""
+  );
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
@@ -74,21 +79,29 @@ export function CompanyBasicsStep({
     if (!currencyTouched) {
       setCurrency(option.suggestedCurrency);
     }
-    if (!gstTouched) {
-      setGstRate(String(option.suggestedGstPercent));
-    }
   }
 
   async function persistBasics(): Promise<boolean> {
     setError(null);
     setFieldErrors({});
-    setSaving(true);
 
+    if (gstRegistered !== "yes" && gstRegistered !== "no") {
+      setFieldErrors({
+        gst_registered: ["Choose whether you are GST registered."],
+      });
+      return false;
+    }
+
+    setSaving(true);
+    const countryOption = getCountryOption(country);
     const input: CompanyBasicsInput = {
       currency,
       country,
       region: region || undefined,
-      default_gst_rate: Number(gstRate),
+      default_gst_rate: gstRateFromRegisteredChoice(
+        gstRegistered,
+        countryOption?.suggestedGstPercent ?? suggestedGst
+      ),
     };
 
     const result = await saveCompanyBasics(input);
@@ -111,7 +124,7 @@ export function CompanyBasicsStep({
     if (!ok) return;
 
     if (mode === "basics") {
-      router.push("/app/dashboard");
+      router.push("/app/setup?mode=pricing");
       router.refresh();
       return;
     }
@@ -130,7 +143,7 @@ export function CompanyBasicsStep({
         </CardTitle>
         <CardDescription>
           {isBasicsGate
-            ? "Set up your company — we just need a few basics so Quotr uses the right currency and tax settings."
+            ? "A few company details so quotes use the right currency and tax."
             : "Update country, currency, and tax. Changes apply to new pricing and quotes."}
         </CardDescription>
       </CardHeader>
@@ -220,39 +233,59 @@ export function CompanyBasicsStep({
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="basics-gst">GST / tax rate (%)</Label>
-            <Input
-              id="basics-gst"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="100"
-              step="0.01"
-              value={gstRate}
-              onChange={(event) => {
-                setGstTouched(true);
-                setGstRate(event.target.value);
-              }}
-              required
-              className="h-11"
-            />
+          <fieldset className="space-y-3">
+            <legend className="text-sm font-medium leading-none">
+              Are you GST registered?
+            </legend>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <label className="flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-input px-3 text-sm has-[:checked]:border-ring has-[:checked]:ring-3 has-[:checked]:ring-ring/50">
+                <input
+                  type="radio"
+                  name="gst_registered"
+                  value="yes"
+                  checked={gstRegistered === "yes"}
+                  onChange={() => setGstRegistered("yes")}
+                  className="size-4"
+                />
+                Yes
+              </label>
+              <label className="flex h-11 cursor-pointer items-center gap-2 rounded-lg border border-input px-3 text-sm has-[:checked]:border-ring has-[:checked]:ring-3 has-[:checked]:ring-ring/50">
+                <input
+                  type="radio"
+                  name="gst_registered"
+                  value="no"
+                  checked={gstRegistered === "no"}
+                  onChange={() => setGstRegistered("no")}
+                  className="size-4"
+                />
+                No
+              </label>
+            </div>
+            {fieldErrors.gst_registered?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.gst_registered[0]}
+              </p>
+            ) : null}
             {fieldErrors.default_gst_rate?.[0] ? (
               <p className="text-sm text-destructive">
                 {fieldErrors.default_gst_rate[0]}
               </p>
             ) : null}
             <p className="text-xs text-muted-foreground">
-              Suggested from country. Use 0 if you do not charge GST/tax.
+              {gstRegistered === "no"
+                ? "Customer quotes will not add GST. You can change this later in Company settings."
+                : gstRegistered === "yes"
+                  ? `Customer quotes will use ${getCountryOption(country)?.suggestedGstPercent ?? 15}% GST. You can change the rate later in Company settings.`
+                  : "This is for customer quotes only — not your Quotr subscription."}
             </p>
-          </div>
+          </fieldset>
         </CardContent>
         <CardFooter className="flex flex-col gap-3 border-t sm:flex-row sm:justify-end">
           <Button type="submit" className="h-11 w-full sm:w-auto" disabled={saving}>
             {saving
               ? "Saving…"
               : isBasicsGate
-                ? "Continue to Quotr"
+                ? "Continue"
                 : "Save company basics"}
           </Button>
         </CardFooter>

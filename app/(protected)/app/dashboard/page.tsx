@@ -52,11 +52,15 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
       <PageHeader
         compactOnMobile
         title="Dashboard"
-        description="Quote faster. Miss less. Track projects from brief to quote."
+        description={
+          isEmpty
+            ? "Start with what you know. Plans aren't required."
+            : "Quote faster. Miss less. Track projects from brief to quote."
+        }
         actions={
           <div className="flex items-center gap-2">
             <div className="hidden md:block">
-              <NewProjectDialog />
+              <NewProjectDialog intent={isEmpty ? "first-job" : "default"} />
             </div>
             <UserMenu />
           </div>
@@ -67,40 +71,44 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           {isEmpty ? (
             <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-8 text-center sm:px-6">
               <h2 className="text-lg font-semibold tracking-tight">
-                Create your first project
+                Start your first job
               </h2>
               <p className="mx-auto mt-2 max-w-md text-sm text-muted-foreground">
-                Capture the job, build scope, and generate a quick estimate.
-                Optional company setup can improve accuracy as you go.
+                Add what you know now — plans and full details aren&apos;t
+                required.
               </p>
               <div className="mt-5 flex flex-col items-center gap-3 sm:flex-row sm:justify-center">
-                <NewProjectDialog />
+                <NewProjectDialog intent="first-job" />
                 <Link
                   href="/app/setup?mode=improve"
                   className="text-sm font-medium text-muted-foreground underline-offset-4 hover:text-foreground hover:underline"
                 >
-                  Optional company setup
+                  Optional company details
                 </Link>
               </div>
             </div>
-          ) : null}
+          ) : (
+            <>
+              <ImproveSetupCard
+                readiness={readiness}
+                hasProjects
+              />
+              <DashboardSummaryCards summary={summary} activeFilter={filter} />
+            </>
+          )}
 
-          <ImproveSetupCard
-            readiness={readiness}
-            hasProjects={!isEmpty}
-          />
-          <DashboardSummaryCards summary={summary} activeFilter={filter} />
-
-          <Suspense fallback={null}>
-            <DashboardProjectList
-              projects={projects.map((project) => ({
-                ...project,
-                nextAction: getProjectNextAction(project),
-              }))}
-              initialFilter={filter}
-              initialSearch={search}
-            />
-          </Suspense>
+          {isEmpty ? null : (
+            <Suspense fallback={null}>
+              <DashboardProjectList
+                projects={projects.map((project) => ({
+                  ...project,
+                  nextAction: getProjectNextAction(project),
+                }))}
+                initialFilter={filter}
+                initialSearch={search}
+              />
+            </Suspense>
+          )}
         </div>
       </PageContainer>
     </div>

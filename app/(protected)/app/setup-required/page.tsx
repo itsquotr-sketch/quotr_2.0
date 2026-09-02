@@ -89,7 +89,7 @@ export default function SetupRequiredPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="organisation_name">Organisation / company</Label>
+            <Label htmlFor="organisation_name">Company name</Label>
             <Input
               id="organisation_name"
               name="organisation_name"
