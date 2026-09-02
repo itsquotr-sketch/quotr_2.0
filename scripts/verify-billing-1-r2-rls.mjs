@@ -98,6 +98,54 @@ if (!existingOther?.id) {
   seededOtherId = inserted.data.id;
 }
 
+const { data: existingOwnSub } = await admin
+  .from("org_subscriptions")
+  .select("id")
+  .eq("org_id", FIXTURE_ORG)
+  .eq("billing_environment", "test")
+  .maybeSingle();
+let seededOwnSubId = null;
+if (!existingOwnSub?.id) {
+  const inserted = await admin
+    .from("org_subscriptions")
+    .insert({
+      org_id: FIXTURE_ORG,
+      billing_environment: "test",
+      plan_code: "builder",
+      status: "trialing",
+      source: "internal_trial",
+      paid_seat_quantity: 1,
+    })
+    .select("id")
+    .single();
+  if (inserted.error || !inserted.data?.id) fail("Could not seed own-org subscription.");
+  seededOwnSubId = inserted.data.id;
+}
+
+const { data: existingOtherSub } = await admin
+  .from("org_subscriptions")
+  .select("id")
+  .eq("org_id", otherOrg.id)
+  .eq("billing_environment", "test")
+  .maybeSingle();
+let seededOtherSubId = null;
+if (!existingOtherSub?.id) {
+  const inserted = await admin
+    .from("org_subscriptions")
+    .insert({
+      org_id: otherOrg.id,
+      billing_environment: "test",
+      plan_code: "builder",
+      status: "trialing",
+      source: "internal_trial",
+      paid_seat_quantity: 1,
+    })
+    .select("id")
+    .single();
+  if (inserted.error || !inserted.data?.id) fail("Could not seed other-org subscription.");
+  seededOtherSubId = inserted.data.id;
+}
+
 const { data: ownerProfile } = await admin
   .from("profiles")
   .select("id")
@@ -126,6 +174,10 @@ const otherCustomers = await member
   .from("org_billing_customers")
   .select("org_id")
   .eq("org_id", otherOrg.id);
+const otherSubs = await member
+  .from("org_subscriptions")
+  .select("org_id")
+  .eq("org_id", otherOrg.id);
 const insertOwn = await member.from("org_billing_customers").insert({
   org_id: FIXTURE_ORG,
   billing_environment: "live",
@@ -149,13 +201,25 @@ const insertSub = await member.from("org_subscriptions").insert({
   source: "internal_trial",
   paid_seat_quantity: 1,
 });
+const updateSub = await member
+  .from("org_subscriptions")
+  .update({ paid_seat_quantity: 5 })
+  .eq("org_id", FIXTURE_ORG)
+  .select("id");
+const deleteSub = await member
+  .from("org_subscriptions")
+  .delete()
+  .eq("org_id", FIXTURE_ORG)
+  .select("id");
 
 const anonSelectCustomers = await anon.from("org_billing_customers").select("id").limit(1);
 const anonSelectSubs = await anon.from("org_subscriptions").select("id").limit(1);
 const anonSelectEvents = await anon.from("stripe_processed_events").select("id").limit(1);
 
 const ownCustomerIds = (ownCustomers.data ?? []).map((row) => row.org_id);
+const ownSubIds = (ownSubs.data ?? []).map((row) => row.org_id);
 const otherVisible = (otherCustomers.data ?? []).length > 0;
+const otherSubVisible = (otherSubs.data ?? []).length > 0;
 
 let report;
 try {
@@ -164,11 +228,16 @@ try {
     authenticated_select_own_subscriptions: !ownSubs.error,
     own_customer_org_ids_are_self: ownCustomerIds.every((id) => id === FIXTURE_ORG),
     own_customer_row_visible: ownCustomerIds.length > 0,
+    own_subscription_org_ids_are_self: ownSubIds.every((id) => id === FIXTURE_ORG),
+    own_subscription_row_visible: ownSubIds.length > 0,
     cannot_select_other_org: !otherVisible && !otherCustomers.error,
+    cannot_select_other_org_subscription: !otherSubVisible && !otherSubs.error,
     cannot_insert_customer: Boolean(insertOwn.error),
     cannot_update_customer: Boolean(updateOwn.error) || (updateOwn.data ?? []).length === 0,
     cannot_delete_customer: Boolean(deleteOwn.error) || (deleteOwn.data ?? []).length === 0,
     cannot_insert_subscription: Boolean(insertSub.error),
+    cannot_update_subscription: Boolean(updateSub.error) || (updateSub.data ?? []).length === 0,
+    cannot_delete_subscription: Boolean(deleteSub.error) || (deleteSub.data ?? []).length === 0,
     anon_denied_customers:
       Boolean(anonSelectCustomers.error) || (anonSelectCustomers.data ?? []).length === 0,
     anon_denied_subscriptions:
@@ -183,6 +252,12 @@ try {
   if (seededOtherId) {
     await admin.from("org_billing_customers").delete().eq("id", seededOtherId);
   }
+  if (seededOwnSubId) {
+    await admin.from("org_subscriptions").delete().eq("id", seededOwnSubId);
+  }
+  if (seededOtherSubId) {
+    await admin.from("org_subscriptions").delete().eq("id", seededOtherSubId);
+  }
 }
 
 if (!report) process.exit(1);
@@ -192,11 +267,16 @@ const green =
   report.authenticated_select_own_subscriptions &&
   report.own_customer_org_ids_are_self &&
   report.own_customer_row_visible &&
+  report.own_subscription_org_ids_are_self &&
+  report.own_subscription_row_visible &&
   report.cannot_select_other_org &&
+  report.cannot_select_other_org_subscription &&
   report.cannot_insert_customer &&
   report.cannot_update_customer &&
   report.cannot_delete_customer &&
   report.cannot_insert_subscription &&
+  report.cannot_update_subscription &&
+  report.cannot_delete_subscription &&
   report.anon_denied_customers &&
   report.anon_denied_subscriptions &&
   report.anon_denied_events;

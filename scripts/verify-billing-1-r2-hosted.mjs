@@ -35,9 +35,11 @@ function parseEnvFile(filePath) {
   return env;
 }
 
-function fail(message) {
-  console.error(`[billing-1-r2] ${message}`);
-  process.exit(1);
+function missingRelation(error) {
+  const message = error?.message ?? "";
+  return /could not find the table|relation .* does not exist|schema cache/i.test(
+    message
+  );
 }
 
 async function postWebhook(url, headers, body = "{}") {
@@ -207,8 +209,14 @@ const mirror = await probe("mirror");
 
 const productionEvents = await production
   .from("stripe_processed_events")
-  .select("id", { count: "exact", head: true });
-const productionHasBillingTable = !productionEvents.error;
+  .select("id")
+  .limit(1);
+const productionBillingTableState = productionEvents.error
+  ? missingRelation(productionEvents.error)
+    ? "missing"
+    : "error"
+  : "present";
+const productionHasBillingTable = productionBillingTableState === "present";
 
 const report = {
   origin: UNIQUE,
@@ -218,10 +226,12 @@ const report = {
   idempotency: replay.json,
   livemode: livemode.json,
   mirror: mirror.json,
+  production_billing_table_state: productionBillingTableState,
   production_billing_table_present: productionHasBillingTable,
   production_event_count_if_table: productionHasBillingTable
-    ? productionEvents.count
+    ? (productionEvents.data ?? []).length
     : null,
+  production_error_code: productionEvents.error?.code ?? null,
 };
 console.log(JSON.stringify(report, null, 2));
 
@@ -233,6 +243,7 @@ const green =
   configResult.webhook_secret_prefix === "whsec" &&
   configResult.prices_match === true &&
   configResult.mapping?.builder === true &&
+  configResult.mapping?.business_base === true &&
   configResult.mapping?.business_plus_1_seat === true &&
   configResult.mapping?.business_plus_3_seats === true &&
   configResult.mapping?.business_plus_4_seats === true &&
@@ -241,5 +252,5 @@ const green =
   replay.json?.ok === true &&
   livemode.json?.ok === true &&
   mirror.json?.ok === true &&
-  productionHasBillingTable === false;
+  productionBillingTableState === "missing";
 if (!green) fail("Hosted Stripe TEST foundation probe was not fully green.");

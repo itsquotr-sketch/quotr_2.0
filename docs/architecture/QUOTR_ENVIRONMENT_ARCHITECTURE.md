@@ -114,7 +114,7 @@ Until a Production app exists, Resend is Preview-only in practice.
 | --- | --- | --- |
 | `ANTHROPIC_API_KEY` / `ANTHROPIC_MODEL` | May keep existing non-billing test configuration. Live AI remains opt-in (`RUN_LIVE_AI_TESTS`, `SCOPE_DISCOVERY_ENABLED`) | Unchanged |
 | Google Maps / Google generative | Not used | Not used |
-| Stripe | BILLING-1 foundation in code. Preview TEST keys later. Production LIVE keys not in BILLING-1. | LIVE keys later; not configured in BILLING-1 |
+| Stripe | BILLING-1-R2: Preview TEST keys configured and verified. Production LIVE keys not in BILLING-1. | LIVE keys later; not configured in BILLING-1 |
 
 Do not rotate keys in ENVIRONMENT-01.
 

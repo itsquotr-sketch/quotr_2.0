@@ -24,7 +24,6 @@ const CHROME = "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe";
 const SHOT_DIR = path.join(ROOT, ".tmp-billing-1-r2");
 const PAYWALL_RE =
   /upgrade to (builder|business)|subscribe now|billing required|trial expired|choose a plan|paywall/i;
-const TOKEN_RE = /\/q\/(qt_[A-Za-z0-9_-]{43})/;
 const HUMAN_UA =
   "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36";
 
@@ -137,21 +136,48 @@ function withBypass(pathname) {
 }
 
 async function clickText(text) {
-  const handle = await page.waitForFunction(
+  const clicked = await page.waitForFunction(
     (needle) => {
       const nodes = Array.from(
         document.querySelectorAll("button, a, [role='button']")
       );
-      return (
-        nodes.find((el) => (el.textContent || "").trim() === needle) || null
-      );
+      const el = nodes.find((node) => (node.textContent || "").trim() === needle);
+      if (!(el instanceof HTMLElement)) return false;
+      el.click();
+      return true;
     },
     { timeout: 20000 },
     text
   );
-  const el = await handle.asElement();
-  if (!el) throw new Error(`clickText missing: ${text}`);
-  await el.click();
+  if (!clicked) throw new Error(`clickText missing: ${text}`);
+}
+
+async function clickVisibleExact(label) {
+  const clicked = await page.evaluate((needle) => {
+    const nodes = Array.from(
+      document.querySelectorAll("button, a, [role='button']")
+    );
+    const el = nodes.find((node) => {
+      if ((node.textContent || "").trim() !== needle) return false;
+      const rect = node.getBoundingClientRect();
+      return rect.width > 0 && rect.height > 0;
+    });
+    if (!(el instanceof HTMLElement)) return false;
+    el.click();
+    return true;
+  }, label);
+  if (!clicked) throw new Error(`clickVisibleExact missing: ${label}`);
+}
+
+async function dump(label) {
+  const text = await page.evaluate(() => document.body.innerText);
+  const pathname = await page.evaluate(() => location.pathname);
+  fs.writeFileSync(path.join(SHOT_DIR, `${label}.txt`), `${pathname}\n\n${text}`, "utf8");
+  await page.screenshot({
+    path: path.join(SHOT_DIR, `${label}.png`),
+    fullPage: true,
+  });
+  return text;
 }
 
 const report = {
@@ -176,7 +202,7 @@ try {
 
   await page.goto(withBypass("/app/dashboard"), { waitUntil: "networkidle2" });
   assertNoPaywall(await page.evaluate(() => document.body.innerText), "dashboard");
-  await clickText("New project");
+  await clickVisibleExact("New project");
   await page.waitForSelector("#project-title");
   await page.type("#project-title", `BILLING-1-R2 ${stamp}`);
   const createBtn = await page.evaluateHandle(() =>
@@ -211,26 +237,101 @@ try {
   await page.goto(withBypass(`/app/projects/${PROJECT_ID}/pricing/${PRICING_ID}`), {
     waitUntil: "networkidle2",
   });
-  const pricingText = await page.evaluate(() => document.body.innerText);
+  const pricingText = await dump("nopaywall-pricing");
   assertNoPaywall(pricingText, "pricing");
   report.pricing = "opened";
 
-  await clickText("Create quote");
+  const needsReview = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("button")).some((el) =>
+      /^Mark as reviewed$/i.test((el.textContent || "").trim())
+    )
+  );
+  if (needsReview) {
+    await page.evaluate(() => {
+      const box = document.querySelector('[role="checkbox"]');
+      if (box instanceof HTMLElement) box.click();
+    });
+    await clickVisibleExact("Mark as reviewed");
+    await page.waitForFunction(
+      () =>
+        !Array.from(document.querySelectorAll("button")).some((el) =>
+          /^Mark as reviewed$/i.test((el.textContent || "").trim())
+        ),
+      { timeout: 30000 }
+    );
+    report.pricing = "marked_reviewed";
+  }
+
+  const quoteAction = await page.evaluate(() => {
+    const labels = Array.from(
+      document.querySelectorAll("button, a, [role='button']")
+    ).map((el) => (el.textContent || "").trim());
+    if (labels.some((label) => /^Create quote$/i.test(label))) return "create";
+    if (labels.some((label) => /^Open quote$/i.test(label))) return "open";
+    return "missing";
+  });
+  if (quoteAction === "missing") fail("Pricing page had neither Create quote nor Open quote.");
+  await clickVisibleExact(quoteAction === "open" ? "Open quote" : "Create quote");
   await page.waitForFunction(
     () => /\/quotes\//.test(location.pathname),
     { timeout: 45000 }
   );
   const quotePath = await page.evaluate(() => location.pathname);
   const quoteId = (quotePath.match(/\/quotes\/([0-9a-f-]{36})/i) || [])[1];
-  if (!quoteId) fail("Create quote did not navigate to a quote.");
-  report.quote = "created";
-  assertNoPaywall(await page.evaluate(() => document.body.innerText), "quote");
+  if (!quoteId) fail("Quote navigation did not land on a quote.");
+  report.quote = quoteAction === "open" ? "opened_existing" : "created";
+  assertNoPaywall(await dump("nopaywall-quote"), "quote");
 
   await page.waitForFunction(
-    () => /Send quote/i.test(document.body.innerText),
+    () =>
+      Array.from(document.querySelectorAll("button, a, [role='button']")).some(
+        (el) => {
+          const label = (el.textContent || "").trim();
+          return /^Send quote$/i.test(label) || /^Create revision$/i.test(label);
+        }
+      ),
     { timeout: 30000 }
   );
-  await clickText("Send quote");
+  const quoteButtons = await page.evaluate(() =>
+    Array.from(document.querySelectorAll("button, a, [role='button']")).map(
+      (el) => (el.textContent || "").trim()
+    )
+  );
+  if (!quoteButtons.some((label) => /^Send quote$/i.test(label))) {
+    if (!quoteButtons.some((label) => /^Create revision$/i.test(label))) {
+      fail("Quote page had neither Send quote nor Create revision.");
+    }
+    const beforePath = await page.evaluate(() => location.pathname);
+    await clickVisibleExact("Create revision");
+    await page.waitForFunction(
+      (prev) => {
+        const moved =
+          /\/quotes\//.test(location.pathname) && location.pathname !== prev;
+        const sendReady = Array.from(
+          document.querySelectorAll("button, a, [role='button']")
+        ).some((el) => /^Send quote$/i.test((el.textContent || "").trim()));
+        const alert = document.querySelector("[role='alert']");
+        return moved || sendReady || Boolean(alert && alert.textContent?.trim());
+      },
+      { timeout: 60000 },
+      beforePath
+    );
+    const alertText = await page.evaluate(
+      () => document.querySelector("[role='alert']")?.textContent?.trim() ?? ""
+    );
+    if (alertText) fail(`Create revision failed: ${alertText}`);
+    report.quote = "revision_created";
+    assertNoPaywall(await dump("nopaywall-revision"), "revision");
+  }
+
+  await page.waitForFunction(
+    () =>
+      Array.from(document.querySelectorAll("button, a, [role='button']")).some(
+        (el) => /^Send quote$/i.test((el.textContent || "").trim())
+      ),
+    { timeout: 30000 }
+  );
+  await clickVisibleExact("Send quote");
   await page.waitForFunction(
     () =>
       Array.from(document.querySelectorAll("#quote-send-email")).some(
@@ -309,19 +410,72 @@ try {
     { timeout: 30000 }
   );
   assertNoPaywall(await page.evaluate(() => document.body.innerText), "public quote");
-  await clickText("Accept quote");
-  await page.waitForSelector("#quote-accept-name");
-  await page.type("#quote-accept-name", "Preview Client");
-  const acceptBtn = await page.evaluateHandle(() =>
-    Array.from(document.querySelectorAll("button")).find((b) =>
-      /^Accept quote$/i.test((b.textContent || "").trim())
-    )
-  );
-  const acceptEl = acceptBtn.asElement();
-  if (acceptEl) await acceptEl.click();
+  await clickVisibleExact("Accept quote");
   await page.waitForFunction(
-    () => /accepted|Thank you/i.test(document.body.innerText),
-    { timeout: 45000 }
+    () =>
+      Array.from(document.querySelectorAll("#quote-accept-name")).some(
+        (node) => node instanceof HTMLElement && node.getClientRects().length > 0
+      ),
+    { timeout: 20000 }
+  );
+  await page.evaluate((email) => {
+    const fill = (id, value) => {
+      const el = Array.from(document.querySelectorAll(`#${id}`)).find(
+        (node) => node instanceof HTMLInputElement && node.getClientRects().length > 0
+      );
+      if (!(el instanceof HTMLInputElement)) return;
+      const proto = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        "value"
+      );
+      proto?.set?.call(el, value);
+      el.dispatchEvent(new Event("input", { bubbles: true }));
+      el.dispatchEvent(new Event("change", { bubbles: true }));
+    };
+    fill("quote-accept-name", "Preview Client");
+    fill("quote-accept-email", email);
+    const names = Array.from(document.querySelectorAll("#quote-accept-name"));
+    const name = names.find(
+      (node) => node instanceof HTMLElement && node.getClientRects().length > 0
+    );
+    let root = name?.parentElement ?? null;
+    while (root) {
+      const box = root.querySelector("input[type='checkbox']");
+      if (box instanceof HTMLInputElement) {
+        if (!box.checked) box.click();
+        break;
+      }
+      root = root.parentElement;
+    }
+  }, recipientEmail);
+  const acceptMarked = await page.evaluate(() => {
+    const names = Array.from(document.querySelectorAll("#quote-accept-name"));
+    const name = names.find(
+      (node) => node instanceof HTMLElement && node.getClientRects().length > 0
+    );
+    if (!(name instanceof HTMLElement)) return false;
+    let root = name.parentElement;
+    while (root) {
+      const hasForm =
+        /Your name/i.test(root.innerText) && /Your email/i.test(root.innerText);
+      const btn = Array.from(root.querySelectorAll("button")).find((node) =>
+        /^Accept quote$/i.test((node.textContent || "").trim())
+      );
+      if (hasForm && btn instanceof HTMLElement && btn.getClientRects().length > 0) {
+        btn.setAttribute("data-b1r2-accept", "1");
+        return true;
+      }
+      root = root.parentElement;
+    }
+    return false;
+  });
+  if (!acceptMarked) fail("Accept form confirm button missing.");
+  await page.$eval("[data-b1r2-accept='1']", (el) => {
+    if (el instanceof HTMLElement) el.click();
+  });
+  await page.waitForFunction(
+    () => /accepted|Thank you|already/i.test(document.body.innerText),
+    { timeout: 60000 }
   );
   report.accept = "accepted";
   assertNoPaywall(await page.evaluate(() => document.body.innerText), "accepted quote");
@@ -334,6 +488,13 @@ try {
   if ((subAfter ?? 0) > 0) fail("No-paywall flow wrote an org_subscriptions row.");
 
   console.log(JSON.stringify({ ok: true, ...report }, null, 2));
+} catch (error) {
+  try {
+    await dump("nopaywall-error");
+  } catch {
+    // Ignore dump failures.
+  }
+  fail(error instanceof Error ? error.message : "No-paywall check failed.");
 } finally {
   await browser.close();
 }

@@ -80,7 +80,7 @@ Stripe event `livemode` must match:
 
 Mismatch → ignore the event.
 
-Preview Stripe = TEST only (later). Production Stripe = LIVE only (later; **not configured in BILLING-1**).
+Preview Stripe = TEST only (BILLING-1-R2 verified). Production Stripe = LIVE only (later; **not configured in BILLING-1**).
 
 Every billing row carries `billing_environment` even though Preview (`shhpjsoldmqtkdbgrbtm` / `quotr_preview`) and Production (`lxvnylhsbvudzzupxeqr` / `quotr_2.0`) are separate databases.
 
