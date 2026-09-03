@@ -3,6 +3,7 @@ import {
   parseQuoteIssuerSnapshot,
   resolveQuoteIssuerSettings,
 } from "@/lib/quotes/issuer-snapshot";
+import { resolveDisplayTimezone } from "@/lib/org/timezone";
 import {
   isMissingNotificationTableError,
   type QuoteNotificationEmailKind,
@@ -162,6 +163,7 @@ export async function sendPendingQuoteResponseNotificationDeliveries(
     { issuer_snapshot: parseQuoteIssuerSnapshot(issuerSnapshot) },
     null
   );
+  const displayTimeZone = resolveDisplayTimezone(issuer?.timezone);
   const company = getCompanyDisplayName(issuer) || null;
   const payloadByNotification = new Map(
     notifications.rows.map((row) => [
@@ -198,6 +200,7 @@ export async function sendPendingQuoteResponseNotificationDeliveries(
       occurredAt:
         payloadString(payload, "acceptedAt") ??
         payloadString(payload, "declinedAt"),
+      timeZone: displayTimeZone,
       declineNote: payloadString(payload, "messagePreview"),
       actionUrl,
     });

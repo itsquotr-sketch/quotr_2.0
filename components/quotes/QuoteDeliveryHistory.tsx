@@ -25,9 +25,11 @@ function statusLabel(status: QuoteDeliveryRecord["status"]): string {
 export function QuoteDeliveryHistory({
   deliveries,
   viewedAt,
+  timeZone,
 }: {
   deliveries: QuoteDeliveryRecord[];
   viewedAt: string | null;
+  timeZone?: string;
 }) {
   if (deliveries.length === 0 && !viewedAt) return null;
 
@@ -38,7 +40,7 @@ export function QuoteDeliveryHistory({
         <p className="text-xs text-foreground">
           First client-page view{" "}
           <span className="text-muted-foreground">
-            {formatQuoteDateTime(viewedAt)}
+            {formatQuoteDateTime(viewedAt, timeZone)}
           </span>
         </p>
       ) : null}
@@ -52,12 +54,12 @@ export function QuoteDeliveryHistory({
             <p className="text-muted-foreground">
               {statusLabel(row.status)}
               {row.submitted_at
-                ? ` · ${formatQuoteDateTime(row.submitted_at)}`
+                ? ` · ${formatQuoteDateTime(row.submitted_at, timeZone)}`
                 : ""}
             </p>
             {row.delivered_at ? (
               <p className="text-muted-foreground">
-                Delivered {formatQuoteDateTime(row.delivered_at)}
+                Delivered {formatQuoteDateTime(row.delivered_at, timeZone)}
               </p>
             ) : null}
             {row.status === "failed" && row.failure_message_safe ? (

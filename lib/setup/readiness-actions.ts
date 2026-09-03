@@ -41,7 +41,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       supabase
         .from("organisation_settings")
         .select(
-          "currency, country, region, default_gst_rate, default_margin_percent, onboarding_status, trading_name, legal_name, contact_email, contact_phone, address_line_1, city, logo_url"
+          "currency, country, region, timezone, default_gst_rate, default_margin_percent, onboarding_status, trading_name, legal_name, contact_email, contact_phone, address_line_1, city, logo_url"
         )
         .eq("org_id", orgId)
         .maybeSingle(),
@@ -111,5 +111,6 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     addressLine1: (settings?.address_line_1 as string | null) ?? null,
     city: (settings?.city as string | null) ?? null,
     logoUrl: (settings?.logo_url as string | null) ?? null,
+    timezone: (settings?.timezone as string | null) ?? null,
   });
 }

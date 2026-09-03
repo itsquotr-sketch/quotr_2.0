@@ -57,6 +57,14 @@ export const COMPANY_SETUP_FIELD_CLASSIFICATION: readonly ClassifiedSetupField[]
       notes: "Optional; improves local rate context when present.",
     },
     {
+      id: "organisation_settings.timezone",
+      label: "Timezone",
+      source: "organisation_settings",
+      classification: "REQUIRED_BEFORE_FIRST_PROJECT",
+      notes:
+        "IANA identifier required on new first-run. Existing NULL uses Auckland display fallback and is not a gate.",
+    },
+    {
       id: "organisation_settings.default_gst_rate",
       label: "Default GST / tax rate",
       source: "organisation_settings",

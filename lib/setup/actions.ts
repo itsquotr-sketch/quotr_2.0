@@ -24,6 +24,7 @@ import {
   normalizeCountryCode,
   normalizeCurrencyCode,
 } from "@/lib/setup/locale-catalogue";
+import { isCatalogueTimezone } from "@/lib/org/timezone";
 import {
   ONBOARDING_LABOUR_RATE,
   parseOptionalLabourCost,
@@ -160,6 +161,7 @@ const companyBasicsSchema = z.object({
     .min(1, "Country is required")
     .max(64, "Country is too long"),
   region: z.string().trim().max(120).optional(),
+  timezone: z.string().trim().max(64).optional(),
   contact_email: z
     .string()
     .trim()
@@ -228,11 +230,28 @@ export async function saveCompanyBasics(
   const shouldMarkWorkNext =
     !alreadyCompleted && (!existing || currentStep === "company");
 
+  const timezone = data.timezone?.trim() || "";
+  if (shouldMarkWorkNext && !isCatalogueTimezone(timezone)) {
+    return {
+      fieldErrors: {
+        timezone: ["Select the timezone your company works in."],
+      },
+    };
+  }
+  if (timezone && !isCatalogueTimezone(timezone)) {
+    return {
+      fieldErrors: {
+        timezone: ["Select a valid timezone."],
+      },
+    };
+  }
+
   const payload = {
     org_id: orgId,
     currency: currencyCode,
     country: countryCode,
     region: data.region?.trim() || null,
+    ...(timezone ? { timezone } : {}),
     contact_email: data.contact_email.trim(),
     contact_phone: data.contact_phone?.trim() || null,
     default_gst_rate: data.default_gst_rate,

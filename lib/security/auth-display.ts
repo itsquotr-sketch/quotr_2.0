@@ -8,6 +8,7 @@ export type AuthDisplayProfile = {
   fullName: string | null;
   organisationName: string | null;
   tradingName: string | null;
+  timezone: string | null;
 };
 
 /**
@@ -30,7 +31,7 @@ export const getAuthDisplayProfile = cache(
           .maybeSingle(),
         auth.supabase
           .from("organisation_settings")
-          .select("trading_name")
+          .select("trading_name, timezone")
           .eq("org_id", auth.orgId)
           .maybeSingle(),
         auth.supabase
@@ -45,6 +46,7 @@ export const getAuthDisplayProfile = cache(
       fullName: profile?.full_name ?? null,
       organisationName: organisation?.name ?? null,
       tradingName: (settings?.trading_name as string | null) ?? null,
+      timezone: (settings?.timezone as string | null) ?? null,
     };
   }
 );

@@ -121,8 +121,8 @@ export const QUOTE_DISPLAY_TIMEZONE = DEFAULT_ORG_TIMEZONE;
 
 /**
  * Display a stored UTC timestamp in the organisation timezone.
- * Pass timeZone when organisation_settings.timezone exists; until then
- * Pacific/Auckland is the NZ default.
+ * Pass organisation_settings.timezone (or resolved issuer timezone).
+ * Missing/invalid values fall back to Pacific/Auckland. Evidence stays UTC.
  */
 export function formatQuoteDateTime(
   value: string | null | undefined,

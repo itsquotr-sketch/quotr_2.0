@@ -20,6 +20,7 @@ type AppShellProps = {
   showTeamNav?: boolean;
   deploymentLabel?: "Local" | "Preview" | null;
   billingNotice?: TrialBannerNotice | null;
+  displayTimezone?: string | null;
 };
 
 function isQuotePrintRoute(pathname: string | null): boolean {
@@ -40,6 +41,7 @@ export function AppShell({
   showTeamNav = false,
   deploymentLabel = null,
   billingNotice = null,
+  displayTimezone = null,
 }: AppShellProps) {
   const pathname = usePathname();
 
@@ -63,6 +65,7 @@ export function AppShell({
         setupIncomplete,
         showTeamNav,
         deploymentLabel,
+        displayTimezone,
       }}
     >
       <div className="flex min-h-dvh w-full md:h-dvh md:overflow-hidden">

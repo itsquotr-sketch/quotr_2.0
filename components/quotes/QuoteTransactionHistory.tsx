@@ -13,14 +13,17 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 
-function formatStamp(value: string | null): string | null {
-  return formatQuoteDateTime(value);
+function formatStamp(value: string | null, timeZone?: string): string | null {
+  return formatQuoteDateTime(value, timeZone);
 }
 
-function revisionLine(revision: QuoteThreadRevision): string {
+function revisionLine(
+  revision: QuoteThreadRevision,
+  timeZone?: string
+): string {
   const status = getQuoteStatusDefinition(revision.status).label;
   const parts = [`Revision ${revision.revision_number}`, status];
-  const sent = formatStamp(revision.sent_at);
+  const sent = formatStamp(revision.sent_at, timeZone);
   if (sent) parts.push(`Sent ${sent}`);
   if (revision.viewed_at) parts.push("Viewed");
   if (revision.accepted_at) parts.push("Accepted");
@@ -64,6 +67,7 @@ type QuoteTransactionHistoryProps = {
   currentQuoteId: string;
   revisions: QuoteThreadRevision[];
   events: QuoteEventRecord[];
+  timeZone?: string;
 };
 
 export function QuoteTransactionHistory({
@@ -71,6 +75,7 @@ export function QuoteTransactionHistory({
   currentQuoteId,
   revisions,
   events,
+  timeZone,
 }: QuoteTransactionHistoryProps) {
   const ordered = [...revisions].sort(
     (a, b) => b.revision_number - a.revision_number
@@ -102,7 +107,7 @@ export function QuoteTransactionHistory({
                     <span className="font-medium">{eventLabel(event)}</span>
                     <span className="text-muted-foreground">
                       {" "}
-                      {formatQuoteDateTime(event.occurred_at)}
+                      {formatQuoteDateTime(event.occurred_at, timeZone)}
                     </span>
                   </li>
                 ))
@@ -116,14 +121,14 @@ export function QuoteTransactionHistory({
           <li key={revision.id} className="text-xs leading-relaxed">
             {revision.id === currentQuoteId ? (
               <span className="font-medium text-foreground">
-                {revisionLine(revision)}
+                {revisionLine(revision, timeZone)}
               </span>
             ) : (
               <Link
                 href={`/app/projects/${projectId}/quotes/${revision.id}`}
                 className="text-muted-foreground underline-offset-2 hover:underline"
               >
-                {revisionLine(revision)}
+                {revisionLine(revision, timeZone)}
               </Link>
             )}
           </li>

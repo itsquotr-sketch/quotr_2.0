@@ -124,6 +124,7 @@ export default async function AppLayout({
       showTeamNav={showTeamNav}
       deploymentLabel={internalDeploymentLabel()}
       billingNotice={billingNotice}
+      displayTimezone={display?.timezone ?? null}
     >
       {children}
     </AppShell>

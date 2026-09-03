@@ -9,6 +9,7 @@ import {
 } from "@/lib/quotes/display";
 import { formatPricingDate } from "@/lib/pricing/format";
 import { resolveQuoteIssuerSettings } from "@/lib/quotes/issuer-snapshot";
+import { resolveDisplayTimezone } from "@/lib/org/timezone";
 import { formatClientQuoteStatusLabel } from "@/lib/quotes/status";
 import { isQuoteExpired } from "@/lib/quotes/transaction";
 import type { Quote } from "@/lib/quotes/types";
@@ -29,12 +30,14 @@ export function QuotePublicShell({
   const expired = isQuoteExpired(quote);
   const issuer = resolveQuoteIssuerSettings(quote, null);
   const companyName = getCompanyDisplayName(issuer);
+  const displayTimeZone = resolveDisplayTimezone(issuer?.timezone);
   const statusLabel = formatClientQuoteStatusLabel(quote.status, {
     superseded,
     expired,
   });
   const acceptedAt = formatQuoteDateTime(
-    acceptance?.accepted_at ?? quote.accepted_at
+    acceptance?.accepted_at ?? quote.accepted_at,
+    displayTimeZone
   );
 
   return (
@@ -110,9 +113,9 @@ export function QuotePublicShell({
           role="status"
         >
           <p className="font-medium">Quote declined</p>
-          {quote.declined_at && formatQuoteDateTime(quote.declined_at) ? (
+          {quote.declined_at && formatQuoteDateTime(quote.declined_at, displayTimeZone) ? (
             <p className="mt-1">
-              {formatQuoteDateTime(quote.declined_at)}
+              {formatQuoteDateTime(quote.declined_at, displayTimeZone)}
             </p>
           ) : null}
           <p className="mt-1">Your response has been recorded.</p>

@@ -33,6 +33,7 @@ import type { Quote, QuoteItem } from "@/lib/quotes/types";
 import { brandColourTint, getBrandColours } from "@/lib/settings/branding";
 import type { CompanySettings } from "@/lib/settings/types";
 import { resolveQuoteIssuerSettings } from "@/lib/quotes/issuer-snapshot";
+import { resolveDisplayTimezone } from "@/lib/org/timezone";
 import { cn } from "@/lib/utils";
 import { QuoteCompanyLogo } from "@/components/quotes/QuoteCompanyLogo";
 
@@ -258,6 +259,9 @@ export function QuoteTemplate({
   const companySettings = resolveQuoteIssuerSettings(
     quote,
     liveCompanySettings
+  );
+  const displayTimeZone = resolveDisplayTimezone(
+    liveCompanySettings?.timezone ?? companySettings?.timezone
   );
   const companyName = getCompanyDisplayName(companySettings);
   const companyAddress = companySettings
@@ -620,7 +624,11 @@ export function QuoteTemplate({
             accentColour={brandAccent}
           />
       </div>
-      <QuoteAcceptanceRecordSection quote={quote} acceptance={acceptance} />
+      <QuoteAcceptanceRecordSection
+        quote={quote}
+        acceptance={acceptance}
+        timeZone={displayTimeZone}
+      />
     </article>
   );
 }

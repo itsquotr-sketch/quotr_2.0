@@ -32,6 +32,7 @@ import {
   parseCompanySettingsSection,
   type CompanySettingsSectionId,
 } from "@/lib/setup/recommendation-destinations";
+import { ORG_TIMEZONE_CATALOGUE } from "@/lib/org/timezone";
 import { cn } from "@/lib/utils";
 
 type CompanySettingsContentProps = {
@@ -115,6 +116,7 @@ export function CompanySettingsContent({
   const [addressLine2, setAddressLine2] = useState(settings.addressLine2 ?? "");
   const [city, setCity] = useState(settings.city ?? "");
   const [region, setRegion] = useState(settings.region ?? "");
+  const [timezone, setTimezone] = useState(settings.timezone ?? "");
   const [postcode, setPostcode] = useState(settings.postcode ?? "");
   const [addressCountry, setAddressCountry] = useState(
     settings.addressCountry ?? "New Zealand"
@@ -209,6 +211,7 @@ export function CompanySettingsContent({
       addressLine2,
       city,
       region,
+      timezone: timezone || null,
       postcode,
       addressCountry,
       nzbn,
@@ -425,6 +428,33 @@ export function CompanySettingsContent({
               placeholder="e.g. Auckland"
             />
           </div>
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="company-timezone">Timezone</Label>
+          <select
+            id="company-timezone"
+            value={timezone}
+            onChange={(event) => setTimezone(event.target.value)}
+            className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+          >
+            <option value="">
+              Not set — times shown as Auckland / Wellington
+            </option>
+            {ORG_TIMEZONE_CATALOGUE.map((option) => (
+              <option key={option.id} value={option.id}>
+                {option.label}
+              </option>
+            ))}
+          </select>
+          {fieldErrors.timezone?.[0] ? (
+            <p className="text-sm text-destructive">
+              {fieldErrors.timezone[0]}
+            </p>
+          ) : null}
+          <p className="text-xs text-muted-foreground">
+            Used to show quote acceptance and send times in your local time.
+            Changing this does not rewrite stored UTC evidence.
+          </p>
         </div>
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">

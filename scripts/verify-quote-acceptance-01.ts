@@ -103,7 +103,8 @@ assert(
     migrations.includes("048_billing_checkout_trial.sql") &&
     migrations.includes("049_organisation_memberships.sql") &&
     migrations.includes("050_unbind_removed_membership.sql") &&
-    migrations.at(-1) === "050_unbind_removed_membership.sql"
+    migrations.includes("051_organisation_timezone.sql") &&
+    migrations.at(-1) === "051_organisation_timezone.sql"
 );
 assert(
   "041 accept/decline RPCs remain",

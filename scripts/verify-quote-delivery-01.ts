@@ -88,7 +88,8 @@ assert(
     migrations.includes("048_billing_checkout_trial.sql") &&
     migrations.includes("049_organisation_memberships.sql") &&
     migrations.includes("050_unbind_removed_membership.sql") &&
-    migrations[migrations.length - 1] === "050_unbind_removed_membership.sql"
+    migrations.includes("051_organisation_timezone.sql") &&
+    migrations[migrations.length - 1] === "051_organisation_timezone.sql"
 );
 
 assert(
@@ -729,7 +730,8 @@ assert(
 assert(
   "Project client_email is optional default only",
   projectSchemaSrc.includes("client_email") &&
-    newProjectSrc.includes("Client email") &&
+    (newProjectSrc.includes("Client email") ||
+      newProjectSrc.includes('htmlFor="client-email"')) &&
     editProjectSrc.includes("edit-client-email") &&
     sendSheetSrc.includes("projectClientEmail") &&
     sendSheetSrc.includes("quote.client_name") &&

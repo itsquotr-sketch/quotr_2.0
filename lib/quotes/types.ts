@@ -35,6 +35,7 @@ export type QuoteIssuerSnapshot = {
   region: string | null;
   postcode: string | null;
   addressCountry: string;
+  timezone?: string | null;
   nzbn: string | null;
   gstNumber: string | null;
   logoUrl: string | null;

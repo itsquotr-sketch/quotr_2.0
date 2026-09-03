@@ -24,6 +24,7 @@ export type QuoteResponseEmailInput = {
   signerName: string | null;
   totalInclGst: number | null;
   occurredAt: string | null;
+  timeZone?: string | null;
   declineNote: string | null;
   actionUrl: string | null;
 };
@@ -35,7 +36,7 @@ export function buildQuoteResponseNotificationEmail(
   const number = input.quoteNumber.trim() || "Quote";
   const signer = input.signerName?.trim() || "A client";
   const company = input.companyName?.trim() || "";
-  const occurred = formatQuoteDateTime(input.occurredAt);
+  const occurred = formatQuoteDateTime(input.occurredAt, input.timeZone ?? undefined);
   const total =
     input.totalInclGst != null ? formatPricingMoney(input.totalInclGst) : null;
   const note = input.declineNote?.trim() || null;

@@ -133,12 +133,25 @@ const permissionSrc = file("lib/team/permissions.ts");
 const invitePolicy = file("lib/team/invite-policy.ts");
 
 const migration050 = file("supabase/migrations/050_unbind_removed_membership.sql");
+const migration051 = file("supabase/migrations/051_organisation_timezone.sql");
 assert(
-  "049 memberships remain and 050 unbind is latest numbered local migration",
+  "049 memberships remain and 051 timezone is latest numbered local migration",
   files.includes("049_organisation_memberships.sql") &&
     files.includes("050_unbind_removed_membership.sql") &&
+    files.includes("051_organisation_timezone.sql") &&
     files.filter((name) => name.endsWith(".sql")).sort().at(-1) ===
-      "050_unbind_removed_membership.sql"
+      "051_organisation_timezone.sql"
+);
+assert(
+  "051 is environment-neutral product SQL (no Preview/Production refs or fixture ids)",
+  !/shhpjsoldmqtkdbgrbtm/.test(migration051) &&
+    !/lxvnylhsbvudzzupxeqr/.test(migration051) &&
+    !/PREVIEW ONLY/.test(migration051) &&
+    !/select 'test'::text/.test(migration051) &&
+    !/\bcus_|\bsub_|\bprice_/.test(migration051) &&
+    !/[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}/i.test(
+      migration051
+    )
 );
 assert(
   "050 is environment-neutral product SQL (no Preview/Production refs or fixture ids)",

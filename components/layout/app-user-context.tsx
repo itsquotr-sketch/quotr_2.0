@@ -11,6 +11,8 @@ export type AppUserContextValue = {
   showTeamNav?: boolean;
   /** Internal operator label. Never render on public Quote pages. */
   deploymentLabel?: "Local" | "Preview" | null;
+  /** IANA timezone for in-app timestamp display. */
+  displayTimezone?: string | null;
 };
 
 const AppUserContext = createContext<AppUserContextValue>({});

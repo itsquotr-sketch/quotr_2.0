@@ -5,7 +5,7 @@ import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import type { CompanySettings } from "@/lib/settings/types";
 
 const COMPANY_SETTINGS_SELECT =
-  "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
+  "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, timezone, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
 
 export async function ensureCompanySettingsRow(
   supabase: AuthOrgContext["supabase"],
@@ -49,6 +49,7 @@ export function mapCompanySettingsRow(
     addressLine2: (row.address_line_2 as string | null) ?? null,
     city: (row.city as string | null) ?? null,
     region: (row.region as string | null) ?? null,
+    timezone: (row.timezone as string | null) ?? null,
     postcode: (row.postcode as string | null) ?? null,
     addressCountry: (row.address_country as string) ?? "New Zealand",
     nzbn: (row.nzbn as string | null) ?? null,

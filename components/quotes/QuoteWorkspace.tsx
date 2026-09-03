@@ -45,6 +45,7 @@ import { QuoteTransactionHistory } from "@/components/quotes/QuoteTransactionHis
 import { QuoteDeliveryHistory } from "@/components/quotes/QuoteDeliveryHistory";
 import { QuoteAcceptanceDetails } from "@/components/quotes/QuoteAcceptanceDetails";
 import { QuoteSendSheet } from "@/components/quotes/QuoteSendSheet";
+import { resolveDisplayTimezone } from "@/lib/org/timezone";
 
 type QuoteWorkspaceProps = {
   initialData: QuoteWorkspaceData;
@@ -71,7 +72,9 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
     recentEvents = [],
     deliveries = [],
     acceptance = null,
+    companySettings,
   } = initialData;
+  const displayTimeZone = resolveDisplayTimezone(companySettings?.timezone);
   const quoteId = quote.id;
   const projectId = quote.project_id;
 
@@ -163,6 +166,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         <QuoteDeliveryHistory
           deliveries={deliveries}
           viewedAt={quote.viewed_at}
+          timeZone={displayTimeZone}
         />
       ) : null}
       {threadRevisions.length > 0 ? (
@@ -171,6 +175,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
           currentQuoteId={quoteId}
           revisions={threadRevisions}
           events={recentEvents}
+          timeZone={displayTimeZone}
         />
       ) : null}
     </>
@@ -247,7 +252,11 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             : undefined
         }
       />
-      <QuoteAcceptanceDetails quote={quote} acceptance={acceptance} />
+      <QuoteAcceptanceDetails
+        quote={quote}
+        acceptance={acceptance}
+        timeZone={displayTimeZone}
+      />
       {deliveryAndHistory}
     </div>
   );
@@ -261,6 +270,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
           acceptance={acceptance}
           isSaving={isSaving}
           onSave={isEditable ? handleSaveQuote : undefined}
+          timeZone={displayTimeZone}
         />
       </div>
 

@@ -49,6 +49,7 @@ export type CompanySetupReadiness = {
   hasLogo: boolean;
   hasAddress: boolean;
   hasContactEmail: boolean;
+  hasTimezone: boolean;
   organisationName: string;
   currency: string;
   country: string;
@@ -84,6 +85,7 @@ export type CompanySetupReadinessInput = {
   addressLine1: string | null;
   city: string | null;
   logoUrl?: string | null;
+  timezone?: string | null;
 };
 
 function nonEmpty(value: string | null | undefined): boolean {
@@ -213,6 +215,7 @@ export function computeCompanySetupReadiness(
   const hasAddress = nonEmpty(input.addressLine1) || nonEmpty(input.city);
   const hasContactEmail = nonEmpty(input.contactEmail);
   const hasLogo = nonEmpty(input.logoUrl);
+  const hasTimezone = nonEmpty(input.timezone);
   const companyRateCount =
     input.companyRateCount != null && Number.isFinite(input.companyRateCount)
       ? Math.max(0, Math.floor(input.companyRateCount))
@@ -311,6 +314,7 @@ export function computeCompanySetupReadiness(
     hasLogo,
     hasAddress,
     hasContactEmail,
+    hasTimezone,
     organisationName,
     currency,
     country,

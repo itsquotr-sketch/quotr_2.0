@@ -9,6 +9,7 @@ import {
 } from "@/lib/quotes/notification-actions";
 import type { QuoteNotificationRecord } from "@/lib/quotes/notifications";
 import { formatQuoteDateTime } from "@/lib/quotes/display";
+import { useAppUser } from "@/components/layout/app-user-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -21,6 +22,7 @@ type NotificationBellProps = {
 };
 
 export function NotificationBell({ variant = "header" }: NotificationBellProps) {
+  const { displayTimezone } = useAppUser();
   const [items, setItems] = useState<QuoteNotificationRecord[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [pending, startTransition] = useTransition();
@@ -96,7 +98,7 @@ export function NotificationBell({ variant = "header" }: NotificationBellProps) 
                   {item.body}
                 </p>
                 <p className="mt-1 text-[11px] text-muted-foreground">
-                  {formatQuoteDateTime(item.created_at) ?? ""}
+                  {formatQuoteDateTime(item.created_at, displayTimezone ?? undefined) ?? ""}
                 </p>
               </Link>
             ))

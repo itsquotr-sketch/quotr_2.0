@@ -35,6 +35,8 @@ export type PersonalisationLadderInput = {
   hasContactEmail: boolean;
   hasAddress: boolean;
   hasLogo: boolean;
+  /** False when organisation_settings.timezone is NULL. */
+  hasTimezone?: boolean;
 };
 
 const WORK_STEP: PersonalisationStep = {
@@ -86,7 +88,10 @@ export function resolvePersonalisationNextStep(
   if (input.companyRateCount < RATE_REVIEW_MIN_COMPANY_RATES) return RATES_STEP;
 
   const profileIncomplete =
-    !input.hasContactEmail || !input.hasAddress || !input.hasLogo;
+    !input.hasContactEmail ||
+    !input.hasAddress ||
+    !input.hasLogo ||
+    input.hasTimezone === false;
   if (profileIncomplete) return PROFILE_STEP;
 
   return null;

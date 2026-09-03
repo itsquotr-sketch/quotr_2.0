@@ -33,6 +33,7 @@ export function ImproveSetupCard({
     hasContactEmail: readiness.hasContactEmail,
     hasAddress: readiness.hasAddress,
     hasLogo: readiness.hasLogo,
+    hasTimezone: readiness.hasTimezone,
   });
 
   if (!next) {

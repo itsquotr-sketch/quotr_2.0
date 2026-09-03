@@ -7,13 +7,15 @@ import type { Quote } from "@/lib/quotes/types";
 export function QuoteAcceptanceRecordSection({
   quote,
   acceptance,
+  timeZone,
 }: {
   quote: Quote;
   acceptance: QuoteAcceptanceRecord | null;
+  timeZone?: string;
 }) {
   if (!acceptance || quote.status !== "accepted") return null;
 
-  const acceptedAt = formatQuoteDateTime(acceptance.accepted_at);
+  const acceptedAt = formatQuoteDateTime(acceptance.accepted_at, timeZone);
   const isClient = acceptance.source === "client";
 
   return (

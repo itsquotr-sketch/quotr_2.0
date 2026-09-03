@@ -6,6 +6,7 @@ import { USER_ERRORS, toUserError } from "@/lib/errors/user-message";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import type { createClient } from "@/lib/supabase/server";
 import { validateLegacyLogoUrl } from "@/lib/settings/logo";
+import { isCatalogueTimezone } from "@/lib/org/timezone";
 import type {
   CompanySettings,
   CompanySettingsActionResult,
@@ -39,6 +40,10 @@ const companySettingsSchema = z.object({
   addressLine2: optionalText,
   city: optionalText,
   region: optionalText,
+  timezone: z
+    .union([z.string().trim(), z.literal(""), z.null()])
+    .optional()
+    .transform((value) => (value === "" || value == null ? null : value)),
   postcode: optionalText,
   addressCountry: z
     .string()
@@ -169,6 +174,7 @@ function mapSettingsRow(
     addressLine2: (row.address_line_2 as string | null) ?? null,
     city: (row.city as string | null) ?? null,
     region: (row.region as string | null) ?? null,
+    timezone: (row.timezone as string | null) ?? null,
     postcode: (row.postcode as string | null) ?? null,
     addressCountry: (row.address_country as string) ?? "New Zealand",
     nzbn: (row.nzbn as string | null) ?? null,
@@ -244,7 +250,7 @@ export async function getOrgQuoteDefaultsForOrg(
 }
 
 const COMPANY_SETTINGS_SELECT =
-  "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
+  "trading_name, legal_name, contact_email, contact_phone, website, address_line_1, address_line_2, city, region, postcode, address_country, timezone, nzbn, gst_number, default_gst_rate, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
 
 export async function getCompanySettings(): Promise<CompanySettings | null> {
   return loadCompanySettingsForRequest();
@@ -302,6 +308,19 @@ export async function updateCompanySettings(
   if (data.addressLine2 !== undefined) update.address_line_2 = data.addressLine2;
   if (data.city !== undefined) update.city = data.city;
   if (data.region !== undefined) update.region = data.region;
+  if (data.timezone !== undefined) {
+    if (data.timezone == null || data.timezone === "") {
+      update.timezone = null;
+    } else if (!isCatalogueTimezone(data.timezone)) {
+      return {
+        fieldErrors: {
+          timezone: ["Select a valid timezone."],
+        },
+      };
+    } else {
+      update.timezone = data.timezone;
+    }
+  }
   if (data.postcode !== undefined) update.postcode = data.postcode;
   if (data.addressCountry !== undefined) {
     update.address_country = data.addressCountry;

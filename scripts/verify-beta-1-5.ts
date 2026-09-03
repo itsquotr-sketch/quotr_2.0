@@ -232,8 +232,8 @@ function main() {
       "Pacific/Chatham"
   );
   assert(
-    "AU is not silently guessed",
-    defaultTimezoneForCountry({ country: "AU" }) === null
+    "AU proposes Sydney / Melbourne",
+    defaultTimezoneForCountry({ country: "AU" }) === "Australia/Sydney"
   );
   assert(
     "missing stored timezone falls back to Auckland",
@@ -246,17 +246,17 @@ function main() {
       formatQuoteDateTime(accepted, "Pacific/Auckland")
   );
   assert(
-    "quote display default is Auckland until schema exists",
+    "quote display fallback remains Auckland",
     QUOTE_DISPLAY_TIMEZONE === "Pacific/Auckland"
   );
   assert(
-    "no timezone column migration 051",
-    !existsSync(join(process.cwd(), "supabase/migrations/051_organisation_timezone.sql")) &&
-      !existsSync(join(process.cwd(), "supabase/migrations/051_beta_1_5.sql"))
+    "051 organisation timezone migration exists",
+    existsSync(join(process.cwd(), "supabase/migrations/051_organisation_timezone.sql"))
   );
   assert(
-    "company basics does not collect unpersistable timezone",
-    !/Pacific\/Auckland/.test(read("components/setup/CompanyBasicsStep.tsx"))
+    "company basics collects persistable timezone",
+    /basics-timezone/.test(read("components/setup/CompanyBasicsStep.tsx")) &&
+      /timezonesForCountry/.test(read("components/setup/CompanyBasicsStep.tsx"))
   );
 
   section("PRICING SKIP + MARGIN EXAMPLE");
@@ -423,7 +423,7 @@ function main() {
   section("SIGNATURE TIMEZONE PATH");
   assert(
     "acceptance record uses formatQuoteDateTime",
-    /formatQuoteDateTime\(acceptance.accepted_at\)/.test(
+    /formatQuoteDateTime\(acceptance.accepted_at, timeZone\)/.test(
       read("components/quotes/QuoteAcceptanceRecord.tsx")
     )
   );
@@ -434,10 +434,14 @@ function main() {
     )
   );
 
-  section("NO MIGRATION / NO BETA-2");
+  section("MIGRATION 051 / NO BETA-2");
   assert(
-    "no new supabase migration 051+",
-    !existsSync(join(process.cwd(), "supabase/migrations/051_organisation_timezone.sql"))
+    "051 organisation timezone is the latest numbered migration",
+    existsSync(join(process.cwd(), "supabase/migrations/051_organisation_timezone.sql"))
+  );
+  assert(
+    "no BETA-2 migration 052",
+    !existsSync(join(process.cwd(), "supabase/migrations/052_beta_2.sql"))
   );
   assert(
     "company email uses existing contact_email column",

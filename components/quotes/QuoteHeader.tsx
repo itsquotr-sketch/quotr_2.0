@@ -20,6 +20,7 @@ type QuoteHeaderProps = {
   acceptance?: QuoteAcceptanceRecord | null;
   isSaving?: boolean;
   onSave?: () => void;
+  timeZone?: string;
 };
 
 function buildMetaLine(quote: Quote, projectTitle: string): string {
@@ -35,6 +36,7 @@ export function QuoteHeader({
   acceptance = null,
   isSaving,
   onSave,
+  timeZone,
 }: QuoteHeaderProps) {
   const statusDef = getQuoteStatusDefinition(quote.status);
 
@@ -66,8 +68,8 @@ export function QuoteHeader({
                 {acceptance.source === "client" && acceptance.signer_name
                   ? `Accepted by client ${acceptance.signer_name}`
                   : formatAcceptanceSourceLabel(acceptance.source)}
-                {formatQuoteDateTime(acceptance.accepted_at)
-                  ? ` · ${formatQuoteDateTime(acceptance.accepted_at)}`
+                {formatQuoteDateTime(acceptance.accepted_at, timeZone)
+                  ? ` · ${formatQuoteDateTime(acceptance.accepted_at, timeZone)}`
                   : ""}
               </span>
             ) : null}

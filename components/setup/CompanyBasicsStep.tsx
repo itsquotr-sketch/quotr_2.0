@@ -26,6 +26,12 @@ import {
   gstRegisteredFromRate,
   type GstRegisteredChoice,
 } from "@/lib/setup/gst-registered";
+import {
+  defaultTimezoneForCountry,
+  isCatalogueTimezone,
+  ORG_TIMEZONE_CATALOGUE,
+  timezonesForCountry,
+} from "@/lib/org/timezone";
 import type { CompanyBasicsInput, SetupState } from "./types";
 
 export type CompanyBasicsMode = "basics" | "optional";
@@ -68,6 +74,20 @@ export function CompanyBasicsStep({
   const [currency, setCurrency] = useState(initialCurrency);
   const [currencyTouched, setCurrencyTouched] = useState(false);
   const [region, setRegion] = useState(settings?.region ?? "");
+  const [timezone, setTimezone] = useState(() => {
+    if (settings?.timezone && isCatalogueTimezone(settings.timezone)) {
+      return settings.timezone;
+    }
+    return (
+      defaultTimezoneForCountry({
+        country: initialCountry,
+        region: settings?.region,
+      }) ?? ""
+    );
+  });
+  const [timezoneTouched, setTimezoneTouched] = useState(
+    Boolean(settings?.timezone && isCatalogueTimezone(settings.timezone))
+  );
   const [contactEmail, setContactEmail] = useState(
     settings?.contact_email ?? userEmail ?? ""
   );
@@ -79,6 +99,15 @@ export function CompanyBasicsStep({
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
   const [saving, setSaving] = useState(false);
 
+  function proposeTimezone(nextCountry: string, nextRegion: string) {
+    if (timezoneTouched) return;
+    const suggested = defaultTimezoneForCountry({
+      country: nextCountry,
+      region: nextRegion,
+    });
+    if (suggested) setTimezone(suggested);
+  }
+
   function handleCountryChange(nextCountry: string) {
     setCountry(nextCountry);
     const option = getCountryOption(nextCountry);
@@ -86,6 +115,7 @@ export function CompanyBasicsStep({
     if (!currencyTouched) {
       setCurrency(option.suggestedCurrency);
     }
+    proposeTimezone(nextCountry, region);
   }
 
   async function persistBasics(): Promise<boolean> {
@@ -105,6 +135,7 @@ export function CompanyBasicsStep({
       currency,
       country,
       region: region || undefined,
+      timezone: timezone || undefined,
       contact_email: contactEmail,
       contact_phone: contactPhone || undefined,
       default_gst_rate: gstRateFromRegisteredChoice(
@@ -235,10 +266,60 @@ export function CompanyBasicsStep({
             <Input
               id="basics-region"
               value={region}
-              onChange={(event) => setRegion(event.target.value)}
+              onChange={(event) => {
+                const nextRegion = event.target.value;
+                setRegion(nextRegion);
+                proposeTimezone(country, nextRegion);
+              }}
               placeholder="e.g. Auckland"
               className="h-11"
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="basics-timezone">Timezone</Label>
+            <select
+              id="basics-timezone"
+              value={timezone}
+              onChange={(event) => {
+                setTimezoneTouched(true);
+                setTimezone(event.target.value);
+              }}
+              required={isBasicsGate}
+              className={selectClassName}
+            >
+              {!timezone ? (
+                <option value="" disabled>
+                  Select timezone
+                </option>
+              ) : null}
+              {(() => {
+                const options = timezonesForCountry(country);
+                if (
+                  timezone &&
+                  !options.some((option) => option.id === timezone)
+                ) {
+                  const extra = ORG_TIMEZONE_CATALOGUE.find(
+                    (option) => option.id === timezone
+                  );
+                  if (extra) options.push(extra);
+                }
+                return options.map((option) => (
+                  <option key={option.id} value={option.id}>
+                    {option.label}
+                  </option>
+                ));
+              })()}
+            </select>
+            {fieldErrors.timezone?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.timezone[0]}
+              </p>
+            ) : null}
+            <p className="text-xs text-muted-foreground">
+              Suggested from country — quote times are shown in this timezone.
+              Stored times stay in UTC.
+            </p>
           </div>
 
           <div className="space-y-2">

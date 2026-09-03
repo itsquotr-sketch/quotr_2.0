@@ -9,6 +9,7 @@ export type CompanySettings = {
   addressLine2: string | null;
   city: string | null;
   region: string | null;
+  timezone?: string | null;
   postcode: string | null;
   addressCountry: string;
   nzbn: string | null;
@@ -40,6 +41,7 @@ export type CompanySettingsInput = {
   addressLine2?: string;
   city?: string;
   region?: string;
+  timezone?: string | null;
   postcode?: string;
   addressCountry?: string;
   nzbn?: string;

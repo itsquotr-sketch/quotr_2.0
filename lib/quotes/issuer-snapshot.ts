@@ -16,6 +16,7 @@ export function captureQuoteIssuerSnapshot(
     addressLine2: settings.addressLine2,
     city: settings.city,
     region: settings.region,
+    timezone: settings.timezone ?? null,
     postcode: settings.postcode,
     addressCountry: settings.addressCountry,
     nzbn: settings.nzbn,
@@ -54,6 +55,7 @@ export function parseQuoteIssuerSnapshot(
     addressLine2: text("addressLine2"),
     city: text("city"),
     region: text("region"),
+    timezone: text("timezone"),
     postcode: text("postcode"),
     addressCountry:
       typeof row.addressCountry === "string" && row.addressCountry.trim()
@@ -93,6 +95,7 @@ export function resolveQuoteIssuerSettings(
     addressLine2: snapshot.addressLine2,
     city: snapshot.city,
     region: snapshot.region,
+    timezone: liveSettings?.timezone ?? snapshot.timezone ?? null,
     postcode: snapshot.postcode,
     addressCountry: snapshot.addressCountry,
     nzbn: snapshot.nzbn,

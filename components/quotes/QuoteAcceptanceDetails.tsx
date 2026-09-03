@@ -21,9 +21,11 @@ import {
 export function QuoteAcceptanceDetails({
   quote,
   acceptance,
+  timeZone,
 }: {
   quote: Quote;
   acceptance: QuoteAcceptanceRecord | null;
+  timeZone?: string;
 }) {
   if (!acceptance || quote.status !== "accepted") return null;
 
@@ -39,13 +41,13 @@ export function QuoteAcceptanceDetails({
       {acceptance.source === "client" && acceptance.signer_name ? (
         <p className="text-sm text-muted-foreground">
           Accepted by {acceptance.signer_name}
-          {formatQuoteDateTime(acceptance.accepted_at)
-            ? ` · ${formatQuoteDateTime(acceptance.accepted_at)}`
+          {formatQuoteDateTime(acceptance.accepted_at, timeZone)
+            ? ` · ${formatQuoteDateTime(acceptance.accepted_at, timeZone)}`
             : ""}
         </p>
       ) : (
         <p className="text-sm text-muted-foreground">
-          {formatQuoteDateTime(acceptance.accepted_at) ?? "Recorded"}
+          {formatQuoteDateTime(acceptance.accepted_at, timeZone) ?? "Recorded"}
         </p>
       )}
       <Sheet>
@@ -78,7 +80,7 @@ export function QuoteAcceptanceDetails({
             ) : null}
             <div>
               <dt className="text-muted-foreground">Accepted</dt>
-              <dd>{formatQuoteDateTime(acceptance.accepted_at) ?? "—"}</dd>
+              <dd>{formatQuoteDateTime(acceptance.accepted_at, timeZone) ?? "—"}</dd>
             </div>
             <div>
               <dt className="text-muted-foreground">Quote / revision</dt>
