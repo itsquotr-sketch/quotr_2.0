@@ -265,7 +265,7 @@ export function computeCompanySetupReadiness(
       id: "calibrate",
       title: "Calibrate your first work type",
       reason:
-        "~3 min. Tell Quotr how you would price an example job — evidence only, not automatic rate changes.",
+        "~3 min. Tell Quotr how your crew normally completes a few common tasks.",
       href: getSetupRecommendationHref("calibrate"),
       severity: "optional",
       dimension: "pricing",

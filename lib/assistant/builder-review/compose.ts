@@ -197,6 +197,7 @@ export function mapLineCategory(
 export function mapRateLabel(raw: string): string {
   const type = classifyRateSource(raw);
   if (type === "user_rate") return "Company rate";
+  if (type === "calibrated_productivity") return "Your calibrated productivity";
   if (type === "benchmark") return "Quotr benchmark";
   if (type === "fallback") return "Preliminary fallback";
   if (type === "missing") return "Rate required";

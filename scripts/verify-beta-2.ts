@@ -169,7 +169,18 @@ function main() {
   assert("primary review CTA", readyCard.includes("reviewEstimate") && readyCard.includes("data-estimate-ready-primary-cta"));
   assert("edit job is secondary", readyCard.includes("editJob"));
   assert("estimate/pricing boundary copy", read("components/assistant/mode/EstimateReadySurface.tsx").includes("working estimate"));
-  assert("calibration is later, not interrupting", read("components/assistant/mode/EstimateReadySurface.tsx").includes("Calibrate later"));
+  assert(
+    "calibration is later, not interrupting",
+    read("components/assistant/mode/EstimateReadySurface.tsx").includes(
+      "data-estimate-calibrate-later"
+    ) &&
+      read("components/assistant/mode/EstimateReadySurface.tsx").includes(
+        "Calibrate how you work"
+      ) &&
+      read("components/assistant/mode/EstimateReadySurface.tsx").includes(
+        "dashboard"
+      )
+  );
   assert("target gross margin, not markup", read("components/assistant/MarginEditControl.tsx").includes("Target gross margin"));
 
   section("MOBILE / NAV");
@@ -190,9 +201,8 @@ function main() {
   assert("calculate-estimate not importing beta-2 copy", !calc.includes("gst-display") && !calc.includes("action-labels"));
   assert("sell-from-margin formula file untouched by presentation", sellFromMargin.includes("deriveSellFromCost") || sellFromMargin.includes("margin"));
   assert(
-    "no new migration 052",
-    latestMigration() === "051_organisation_timezone.sql" ||
-      (latestMigration() != null && latestMigration()!.startsWith("051_"))
+    "no BETA-2-owned migration 052",
+    latestMigration() === "052_company_productivity_calibration.sql"
   );
 
   section("EMPTY / LEGACY COPY");
@@ -447,8 +457,8 @@ function main() {
       shell.includes("estimate.assumptionMetadata")
   );
   assert(
-    "no migration 052",
-    latestMigration() != null && latestMigration()!.startsWith("051_")
+    "no BETA-2-owned migration 052",
+    latestMigration() === "052_company_productivity_calibration.sql"
   );
 
   if (process.exitCode) {

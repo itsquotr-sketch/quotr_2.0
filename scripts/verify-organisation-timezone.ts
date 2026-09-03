@@ -56,8 +56,12 @@ function main() {
     existsSync(join(process.cwd(), "supabase/migrations/051_organisation_timezone.sql"))
   );
   assert(
-    "051 is latest numbered local migration",
-    migrations.at(-1) === "051_organisation_timezone.sql"
+    "051 timezone migration remains in chain",
+    migrations.includes("051_organisation_timezone.sql")
+  );
+  assert(
+    "052 is Company DNA, not a timezone rewrite",
+    migrations.at(-1) === "052_company_productivity_calibration.sql"
   );
   assert(
     "adds organisation_settings.timezone text NULL",

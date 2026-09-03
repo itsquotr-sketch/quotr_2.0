@@ -36,8 +36,8 @@ export default async function CalibrateScenarioPage({ params }: PageProps) {
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
-        title="Calibrate Quotr"
-        description="Example job comparison — evidence only, not automatic rate changes."
+        title="Historical pricing notes"
+        description="This older example-job comparison is kept as evidence. It does not change estimates. Calibrate crew productivity from Make Quotr price more like you."
         actions={
           <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
         }

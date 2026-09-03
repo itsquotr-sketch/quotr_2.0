@@ -21,6 +21,7 @@ export type BuilderReviewCategoryId = (typeof BUILDER_REVIEW_CATEGORIES)[number]
 
 export type BuilderReviewRateLabel =
   | "Company rate"
+  | "Your calibrated productivity"
   | "Quotr benchmark"
   | "Preliminary fallback"
   | "Rate required"

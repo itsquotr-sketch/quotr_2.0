@@ -264,8 +264,9 @@ const acceptanceSrc = file("lib/quotes/acceptance-actions.ts");
 const rls046 = file("supabase/migrations/046_billing_foundation.sql");
 
 assert(
-  "051 is latest numbered local migration; 048 trial remains",
-  migrations.at(-1) === "051_organisation_timezone.sql" &&
+  "052 Company DNA is latest numbered local migration; 048 trial remains",
+  migrations.at(-1) === "052_company_productivity_calibration.sql" &&
+    migrations.includes("048_billing_checkout_trial.sql") &&
     migrations.includes("049_organisation_memberships.sql") &&
     migrations.includes("050_unbind_removed_membership.sql") &&
     /ensure_org_internal_trial/.test(migration048)

@@ -175,7 +175,11 @@ assert(
 
 const shell = read("components/setup/SetupShell.tsx");
 assert("SetupShell has Calibrate section", shell.includes('"calibrate"'));
-assert("SetupShell mounts CalibrationHub", shell.includes("CalibrationHub"));
+assert(
+  "SetupShell mounts Company DNA hub as primary calibrate",
+  shell.includes("CompanyDnaHub")
+);
+assert("legacy CalibrationHub preserved", hub.includes("Do this later"));
 
 section("AUTHORITY");
 const actions = read("lib/calibration/actions.ts");
@@ -268,8 +272,9 @@ assert(
 
 section("BOUNDARIES");
 assert(
-  "no Company DNA module",
-  !existsSync(join(process.cwd(), "lib/company-dna"))
+  "033 calibration remains evidence-only; DNA is a separate module",
+  existsSync(join(process.cwd(), "lib/company-dna")) &&
+    existsSync(join(process.cwd(), "lib/calibration/actions.ts"))
 );
 assert(
   "Production Scope Discovery remains disabled docs",

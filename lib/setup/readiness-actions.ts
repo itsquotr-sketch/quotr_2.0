@@ -66,8 +66,8 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
         .eq("enabled", true)
         .limit(1),
       supabase
-        .from("calibration_responses")
-        .select("id, scenario_id")
+        .from("productivity_calibration_responses")
+        .select("id, calibration_task_key")
         .eq("org_id", orgId)
         .eq("status", "active"),
     ]);
@@ -80,7 +80,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     | undefined;
 
   const calibratedScenarioIds = new Set(
-    (calibrations ?? []).map((row) => String(row.scenario_id))
+    (calibrations ?? []).map((row) => String(row.calibration_task_key))
   );
 
   return computeCompanySetupReadiness({
@@ -103,7 +103,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     companyRateCount: companyRates?.length ?? 0,
     hasCalibration: calibratedScenarioIds.size > 0,
     calibratedScenarioCount: calibratedScenarioIds.size,
-    calibrationScenarioTotal: 2,
+    calibrationScenarioTotal: 9,
     tradingName: (settings?.trading_name as string | null) ?? null,
     legalName: (settings?.legal_name as string | null) ?? null,
     contactEmail: (settings?.contact_email as string | null) ?? null,

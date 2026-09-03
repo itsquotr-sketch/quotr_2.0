@@ -185,7 +185,8 @@ assert(
     migrations.includes("049_organisation_memberships.sql") &&
     migrations.includes("050_unbind_removed_membership.sql") &&
     migrations.includes("051_organisation_timezone.sql") &&
-    migrations.at(-1) === "051_organisation_timezone.sql"
+    migrations.includes("052_company_productivity_calibration.sql") &&
+    migrations.at(-1) === "052_company_productivity_calibration.sql"
 );
 assert(
   "045 sets new-quote DB default to detailed without rewriting rows",

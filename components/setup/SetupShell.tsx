@@ -8,8 +8,8 @@ import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { Button } from "@/components/ui/button";
 import { getSetupState } from "@/lib/setup/actions";
-import { CalibrationHub } from "@/components/calibration/CalibrationHub";
-import type { CalibrationScenarioStatus } from "@/lib/calibration/persistence-types";
+import { CompanyDnaHub } from "@/components/company-dna/CompanyDnaHub";
+import type { CompanyDnaHubState } from "@/lib/company-dna/actions";
 import { CompanyBasicsStep } from "./CompanyBasicsStep";
 import { FirstRunProgress } from "./FirstRunProgress";
 import { FirstRunReady } from "./FirstRunReady";
@@ -29,7 +29,7 @@ type SetupShellProps = {
   fullName?: string | null;
   /** Deep-link Improve section (e.g. calibrate from Dashboard tip). */
   initialImproveSection?: ImproveSection;
-  calibrationStatuses?: CalibrationScenarioStatus[];
+  dnaHub?: CompanyDnaHubState | null;
 };
 
 function getInitialImproveSection(
@@ -52,7 +52,7 @@ export function SetupShell({
   userEmail,
   fullName,
   initialImproveSection,
-  calibrationStatuses = [],
+  dnaHub = null,
 }: SetupShellProps) {
   const router = useRouter();
   const [state, setState] = useState(initialState);
@@ -224,12 +224,9 @@ export function SetupShell({
           />
         ) : null}
 
-        {section === "calibrate" ? (
-          <CalibrationHub
-            preferredWorkAreaTypes={state.workAreas
-              .filter((area) => area.enabled)
-              .map((area) => area.work_area_type)}
-            statuses={calibrationStatuses}
+        {section === "calibrate" && dnaHub ? (
+          <CompanyDnaHub
+            state={dnaHub}
             onSkip={() => {
               router.push("/app/dashboard");
             }}

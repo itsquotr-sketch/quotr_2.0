@@ -45,8 +45,8 @@ export function EstimateReadySurface({
           className="text-xs text-muted-foreground"
           data-estimate-calibrate-later
         >
-          Want Quotr to match how your crew works? Calibrate later from the
-          dashboard.
+          Want Quotr to match how your crew works? Calibrate how you work from
+          the dashboard.
         </p>
       ) : null}
       {!isStale && pricingCtaEnabled ? (

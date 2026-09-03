@@ -1,6 +1,6 @@
 import { redirect } from "next/navigation";
 import { SetupShell } from "@/components/setup/SetupShell";
-import { getCalibrationScenarioStatuses } from "@/lib/calibration/actions";
+import { getCompanyDnaHubState } from "@/lib/company-dna/actions";
 import { getFirstRunStage, getSetupState } from "@/lib/setup/actions";
 import {
   setupModeRedirect,
@@ -51,11 +51,11 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
     .eq("id", user!.id)
     .maybeSingle();
 
-  const [state, calibrationStatuses] = await Promise.all([
+  const [state, dnaHub] = await Promise.all([
     getSetupState(),
     shellMode === "improve"
-      ? getCalibrationScenarioStatuses()
-      : Promise.resolve([]),
+      ? getCompanyDnaHubState()
+      : Promise.resolve(null),
   ]);
 
   return (
@@ -65,7 +65,7 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
       userEmail={user?.email}
       fullName={profile?.full_name}
       initialImproveSection={initialImproveSection}
-      calibrationStatuses={calibrationStatuses}
+      dnaHub={dnaHub}
     />
   );
 }

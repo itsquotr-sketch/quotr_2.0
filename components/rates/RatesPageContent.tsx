@@ -35,6 +35,7 @@ import { BenchmarkFallbackSection } from "./BenchmarkFallbackSection";
 import { CalibrationSummaryCard } from "./CalibrationSummaryCard";
 import { CompanyDefaultsSection } from "./CompanyDefaultsSection";
 import { RatesTableSection } from "./RatesTableSection";
+import { CompanyDnaRatesCompare } from "./CompanyDnaRatesCompare";
 import { SpecificMaterialRatesSection } from "./SpecificMaterialRatesSection";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { resolveCompanyGrossMarginPercent } from "@/lib/rates/cost-first-presentation";
@@ -216,7 +217,9 @@ export function RatesPageContent({
 
       <div className="min-w-0">
         {activeSection === "core" ? (
-          <RatesTableSection
+          <div className="space-y-4">
+            <CompanyDnaRatesCompare rates={state.rates} variant="labour" />
+            <RatesTableSection
             title="Core labour"
             description={`Enter your cost per hour. Recommended charge-out uses your ${companyGrossMarginPercent}% company gross margin. Custom charge-outs stay until you switch to recommended.`}
             catalogue={LABOUR_RATE_CATALOGUE.filter(
@@ -231,10 +234,13 @@ export function RatesPageContent({
             variant="labour"
             showEngineColumn
           />
+          </div>
         ) : null}
 
         {activeSection === "productivity" ? (
-          <RatesTableSection
+          <div className="space-y-4">
+            <CompanyDnaRatesCompare rates={state.rates} variant="productivity" />
+            <RatesTableSection
             title="Labour productivity"
             description="Hours per physical unit — not dollars. Editing hours changes labour TIME. Your labour $/hr is under Core labour and changes MONEY, not hours. These hours include normal handling at the workface. Abnormal access/carry is a Project Condition, applied once."
             catalogue={catalogueEntriesForRatesSection(
@@ -251,6 +257,7 @@ export function RatesPageContent({
             variant="productivity"
             showEngineColumn
           />
+          </div>
         ) : null}
 
         {activeSection === "work_types" ? (
