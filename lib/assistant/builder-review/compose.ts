@@ -96,6 +96,7 @@ import type {
   BuilderReviewWorkAreaGroup,
   ComposeBuilderReviewInput,
 } from "@/lib/assistant/builder-review/types";
+import { isUserFacingEstimateAssumption } from "@/lib/assistant/presentation/user-facing-estimate-assumptions";
 
 const CATEGORY_LABELS: Record<BuilderReviewCategoryId, string> = {
   MATERIALS: "Materials",
@@ -822,6 +823,7 @@ function buildIssues(
   const assumptionKeys = new Set<string>();
   const assumptions: BuilderReviewIssue[] = [];
   for (const row of input.estimate.assumptions) {
+    if (!isUserFacingEstimateAssumption(row)) continue;
     const key = normalizeIssueKey(row);
     if (!key || assumptionKeys.has(key)) continue;
     assumptionKeys.add(key);

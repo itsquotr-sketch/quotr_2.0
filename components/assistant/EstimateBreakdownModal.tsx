@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/dialog";
 import { cn } from "@/lib/utils";
 import { defaultedFactWarnings } from "@/lib/estimate/assumption-metadata";
+import { getUserFacingEstimateAssumptions } from "@/lib/assistant/presentation/user-facing-estimate-assumptions";
 import {
   presentEstimateCategoryTotals,
   presentEstimateWorkAreaTotals,
@@ -57,6 +58,13 @@ const CATEGORY_ORDER: EstimateLineItemCategory[] = [
   "allowance",
   "contingency",
 ];
+
+function visibleAssumptionLines(assumptions: readonly string[] | undefined): string[] {
+  return getUserFacingEstimateAssumptions({
+    assumptions: assumptions ?? [],
+    limit: null,
+  });
+}
 
 const CATEGORY_BAR_COLORS: Record<EstimateLineItemCategory, string> = {
   labour: "bg-blue-500",
@@ -231,6 +239,8 @@ function WorkAreaScopeSection({ workArea }: { workArea: WorkArea }) {
   const toggle = (key: string) =>
     setOpenSections((prev) => ({ ...prev, [key]: !prev[key] }));
 
+  const visibleAssumptions = visibleAssumptionLines(workArea.assumptions);
+
   const sections: {
     key: string;
     title: string;
@@ -283,10 +293,10 @@ function WorkAreaScopeSection({ workArea }: { workArea: WorkArea }) {
       key: "assumptions",
       title: "Assumptions",
       defaultOpen: false,
-      empty: !(workArea.assumptions && workArea.assumptions.length),
+      empty: visibleAssumptions.length === 0,
       body: (
         <ul className="list-inside list-disc space-y-1 text-sm text-muted-foreground">
-          {(workArea.assumptions ?? []).map((item) => (
+          {visibleAssumptions.map((item) => (
             <li key={item}>{item}</li>
           ))}
         </ul>
@@ -684,6 +694,18 @@ export function EstimateBreakdownModal({
     [estimate]
   );
 
+  const userFacingAssumptions = useMemo(
+    () =>
+      estimate
+        ? getUserFacingEstimateAssumptions({
+            assumptions: estimate.assumptions,
+            assumptionMetadata: estimate.assumptionMetadata,
+            limit: null,
+          })
+        : [],
+    [estimate]
+  );
+
   if (!estimate) return null;
 
   const categoryBarSegments = CATEGORY_ORDER.filter(
@@ -919,11 +941,14 @@ export function EstimateBreakdownModal({
                             .join(", ")}
                         </p>
                       ) : null}
-                      {wa.assumptions && wa.assumptions.length > 0 ? (
+                      {(() => {
+                        const visible = visibleAssumptionLines(wa.assumptions);
+                        return visible.length > 0 ? (
                         <p className="mt-1 text-xs text-muted-foreground">
-                          Assumptions: {wa.assumptions.join("; ")}
+                          Assumptions: {visible.join("; ")}
                         </p>
-                      ) : null}
+                        ) : null;
+                      })()}
                       {wa.missingInfo && wa.missingInfo.length > 0 ? (
                         <p className="mt-1 text-xs text-amber-800 dark:text-amber-200">
                           Unresolved: {wa.missingInfo.join("; ")}
@@ -963,7 +988,7 @@ export function EstimateBreakdownModal({
                   </div>
                 ) : null}
                 <ul className="list-inside list-disc space-y-1 break-words text-sm text-muted-foreground">
-                  {estimate.assumptions.map((item) => (
+                  {userFacingAssumptions.map((item) => (
                     <li key={item}>{item}</li>
                   ))}
                 </ul>

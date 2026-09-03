@@ -2,27 +2,20 @@
  * DECK-2B — Deterministic Quick Estimate confidence band (presentation only).
  * Uses existing estimate confidence % + assumption/missing signals — no AI guess.
  */
-import { GENERAL_ESTIMATE_ASSUMPTIONS } from "@/lib/estimate/summary";
+import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
+import {
+  getUserFacingEstimateAssumptions,
+  isBoundaryAssumptionCopy,
+} from "@/lib/assistant/presentation/user-facing-estimate-assumptions";
 
 export type QuickEstimateConfidenceBand = "High" | "Medium" | "Low";
 
-const BOUNDARY_COPY_PATTERNS = [
-  /internal working estimate/i,
-  /not a client quote/i,
-  /review it before creating final pricing/i,
-];
-
-export function isBoundaryAssumptionCopy(line: string): boolean {
-  const trimmed = line.trim();
-  if (!trimmed) return true;
-  if (GENERAL_ESTIMATE_ASSUMPTIONS.includes(trimmed)) return true;
-  return BOUNDARY_COPY_PATTERNS.some((pattern) => pattern.test(trimmed));
-}
+export { isBoundaryAssumptionCopy };
 
 export function estimatingAssumptionsForDisplay(
   assumptions: readonly string[]
 ): string[] {
-  return assumptions.filter((line) => !isBoundaryAssumptionCopy(line));
+  return getUserFacingEstimateAssumptions({ assumptions, limit: null });
 }
 
 export type QuickEstimateConfidencePresentation = {
@@ -96,25 +89,12 @@ export function deriveQuickEstimateConfidencePresentation(params: {
 
 export function rankQuickEstimateAssumptions(
   assumptions: readonly string[],
-  limit = 3
+  limit = 3,
+  assumptionMetadata?: AssumptionMetadata | null
 ): readonly string[] {
-  const ranked = estimatingAssumptionsForDisplay(assumptions)
-    .map((item) => item.trim())
-    .filter(Boolean)
-    .filter((item, index, array) => array.indexOf(item) === index);
-
-  const priority = (line: string): number => {
-    const lower = line.toLowerCase();
-    if (/demolition|removal|access|carry|balustrade|fall|pricing|missing/.test(lower)) {
-      return 0;
-    }
-    if (/assume|standard|default|preliminary|unless/.test(lower)) {
-      return 1;
-    }
-    return 2;
-  };
-
-  return ranked
-    .sort((a, b) => priority(a) - priority(b) || a.localeCompare(b))
-    .slice(0, limit);
+  return getUserFacingEstimateAssumptions({
+    assumptions,
+    assumptionMetadata,
+    limit,
+  });
 }

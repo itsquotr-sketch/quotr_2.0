@@ -24,6 +24,11 @@ import {
   presentEstimateConfidenceCopy,
   selectEstimatingAssumptionPhrase,
 } from "../lib/assistant/presentation/estimate-confidence-copy";
+import {
+  classifyEstimateAssumptionLine,
+  getUserFacingEstimateAssumptions,
+  isUserFacingEstimateAssumption,
+} from "../lib/assistant/presentation/user-facing-estimate-assumptions";
 
 function assert(label: string, ok: boolean) {
   console.log(ok ? "PASS" : "FAIL", label);
@@ -290,7 +295,161 @@ function main() {
   assert("not-sure remains journal token", valueField.includes('onSubmit("Not sure")') && valueField.includes("data-clarify-use-assumption"));
   assert("estimate-now still cannot bypass must-know", compose.includes("canEstimateNow: !blocksEstimate"));
   assert("calculate-estimate still not importing polish copy", !calc.includes("estimate-confidence-copy") && !calc.includes("action-labels"));
-  assert("rank filters boundary copy", confidenceBand.includes("estimatingAssumptionsForDisplay"));
+  assert(
+    "rank uses user-facing helper",
+    confidenceBand.includes("getUserFacingEstimateAssumptions") &&
+      confidenceBand.includes("estimatingAssumptionsForDisplay")
+  );
+
+  section("BETA-2.2 DIAGNOSTIC COPY FILTER");
+  const helper = read("lib/assistant/presentation/user-facing-estimate-assumptions.ts");
+  const summary = read("lib/estimate/summary.ts");
+  const deckCalc = read("lib/estimate/calculators/deck.ts");
+  const fenceDefaults = read("lib/estimate/fence-defaults.ts");
+  const reviewCompose = read("lib/assistant/builder-review/compose.ts");
+  const mixedPersisted = [
+    "This is an internal working estimate, not a client quote.",
+    "Pricing includes overhead and margin allowance.",
+    "Deck commercial authority: structural PACKAGE_FALLBACK (Substructure package remains money authority because the detailed model cannot be reconstructed safely) Labour PACKAGE_FALLBACK (Lumped Deck labour remains commercial authority)",
+    "Assumed 1.0m deck height",
+    "No fascia included unless confirmed.",
+    "Physical model is detailed. Package remains money until Timber commercial coverage is complete.",
+    "Fence 1A physical takeoff is independent of commercial authority. Package lm lines remain monetary authority. They are not detailed component calculations.",
+    "Quick Estimate uses the standard retaining-wall package while detailed component prices are still being completed.",
+  ];
+  const visible = getUserFacingEstimateAssumptions({
+    assumptions: mixedPersisted,
+    limit: 5,
+  });
+  const visibleBlob = visible.join("\n");
+  const diagnosticOnly = getUserFacingEstimateAssumptions({
+    assumptions: [
+      "This is an internal working estimate, not a client quote.",
+      "Deck commercial authority: structural PACKAGE_FALLBACK (package remains money)",
+    ],
+    limit: 5,
+  });
+
+  assert(
+    "helper is presentation-only",
+    helper.includes("Persisted estimate.assumptions, calculator output, and goldens are unchanged") &&
+      helper.includes("Legacy compatibility")
+  );
+  assert(
+    "structured defaultedFacts are preferred over strings",
+    helper.includes("assumptionMetadata.defaultedFacts") &&
+      helper.includes("formatDefaultedFactForBuilder")
+  );
+  assert(
+    "PACKAGE_FALLBACK is a system diagnostic",
+    classifyEstimateAssumptionLine(
+      "Deck commercial authority: structural PACKAGE_FALLBACK (Substructure package remains money authority)"
+    ) === "system_diagnostic"
+  );
+  assert(
+    "boundary copy is classified boundary",
+    classifyEstimateAssumptionLine(GENERAL_ESTIMATE_ASSUMPTIONS[0]) === "boundary"
+  );
+  assert(
+    "fence package XOR note is package diagnostic",
+    classifyEstimateAssumptionLine(
+      "Fence 1A physical takeoff is independent of commercial authority. Package lm lines remain monetary authority. They are not detailed component calculations."
+    ) === "package_diagnostic"
+  );
+  assert(
+    "physical height assumption is retained",
+    classifyEstimateAssumptionLine("Assumed 1.0m deck height") === "physical" &&
+      visible.some((line) => /1\.0m deck height/i.test(line))
+  );
+  assert(
+    "physical fascia assumption is retained",
+    visible.some((line) => /fascia/i.test(line))
+  );
+  assert(
+    "internal diagnostics excluded from Estimate Ready",
+    !visibleBlob.includes("PACKAGE_FALLBACK") &&
+      !/commercial authority/i.test(visibleBlob) &&
+      !visible.some((line) => /package remains money/i.test(line))
+  );
+  assert(
+    "boundary copy excluded from Estimate Ready",
+    !visible.some((line) => /internal working estimate/i.test(line)) &&
+      !visible.some((line) => /overhead and margin/i.test(line))
+  );
+  assert(
+    "visible assumption cap is 3–5",
+    visible.length <= 5 && visible.length >= 2
+  );
+  assert(
+    "confidence uses filtered assumptions not first persisted",
+    selectEstimatingAssumptionPhrase(mixedPersisted, null) !== mixedPersisted[0] &&
+      !String(selectEstimatingAssumptionPhrase(mixedPersisted, null)).includes(
+        "PACKAGE_FALLBACK"
+      ) &&
+      !presentEstimateConfidenceCopy({
+        band: "Medium",
+        assumptionPhrase: selectEstimatingAssumptionPhrase(mixedPersisted, null),
+      }).explanation.includes("PACKAGE_FALLBACK")
+  );
+  assert(
+    "generic confidence fallback when none",
+    diagnosticOnly.length === 0 &&
+      selectEstimatingAssumptionPhrase(
+        [
+          "This is an internal working estimate, not a client quote.",
+          "Deck commercial authority: structural PACKAGE_FALLBACK (package remains money)",
+        ],
+        null
+      ) === null &&
+      presentEstimateConfidenceCopy({
+        band: "Medium",
+        assumptionPhrase: selectEstimatingAssumptionPhrase(
+          [
+            "This is an internal working estimate, not a client quote.",
+            "Deck commercial authority: structural PACKAGE_FALLBACK (package remains money)",
+          ],
+          null
+        ),
+      }).explanation === "Based on the job information currently available."
+  );
+  assert(
+    "fallback calculator does not hide physical risk",
+    isUserFacingEstimateAssumption("Assumed 1.0m deck height") &&
+      !isUserFacingEstimateAssumption(
+        "Deck commercial authority: structural PACKAGE_FALLBACK (Substructure package remains money authority)"
+      )
+  );
+  assert(
+    "estimator persisted assumptions unchanged",
+    summary.includes("...GENERAL_ESTIMATE_ASSUMPTIONS") &&
+      summary.includes("...params.assumptions") &&
+      summary.includes("...defaultedWarnings") &&
+      deckCalc.includes("Deck commercial authority:") &&
+      fenceDefaults.includes("FENCE_PACKAGE_XOR_NOTE") &&
+      !helper.includes("recordDefaultedNumber")
+  );
+  assert(
+    "calculators and economics not imported by helper",
+    !helper.includes("calculators/deck") &&
+      !helper.includes("sell-from-margin") &&
+      !calc.includes("user-facing-estimate-assumptions") &&
+      !sellFromMargin.includes("user-facing-estimate-assumptions")
+  );
+  assert(
+    "Builder Review filters diagnostics",
+    reviewCompose.includes("isUserFacingEstimateAssumption") &&
+      shell.includes("getUserFacingEstimateAssumptions") === false &&
+      shell.includes("rankQuickEstimateAssumptions")
+  );
+  assert(
+    "Estimate Ready wires metadata into ranking",
+    shell.includes("MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS") &&
+      shell.includes("estimate.assumptionMetadata")
+  );
+  assert(
+    "no migration 052",
+    latestMigration() != null && latestMigration()!.startsWith("051_")
+  );
 
   if (process.exitCode) {
     console.log("\nBETA-2 verifier FAILED");

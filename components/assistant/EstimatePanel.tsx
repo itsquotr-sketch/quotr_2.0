@@ -51,8 +51,8 @@ import {
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
 import {
   deriveQuickEstimateConfidencePresentation,
-  rankQuickEstimateAssumptions,
 } from "@/lib/assistant/presentation/quick-estimate-confidence";
+import { getUserFacingEstimateAssumptions } from "@/lib/assistant/presentation/user-facing-estimate-assumptions";
 import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
 import { fenceQuoteBlockingLabels } from "@/lib/estimate/fence-quote-readiness";
 import type { AssistantUnderstandingSummary } from "@/lib/assistant/presentation/assistant-understanding-summary";
@@ -459,12 +459,17 @@ export function EstimatePanel({
       : estimate
         ? estimate.missingInfo.filter((item) => item.trim())
         : [];
-  const topAssumptions = estimate
-    ? rankQuickEstimateAssumptions(
-        estimate.assumptions,
-        MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS
-      )
+  const userFacingAssumptions = estimate
+    ? getUserFacingEstimateAssumptions({
+        assumptions: estimate.assumptions,
+        assumptionMetadata: estimate.assumptionMetadata,
+        limit: null,
+      })
     : [];
+  const topAssumptions = userFacingAssumptions.slice(
+    0,
+    MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS
+  );
   const scopeSummaryLine =
     quickEstimatePresentation?.estimatedWorkAreas &&
     quickEstimatePresentation.estimatedWorkAreas !== "None yet"
@@ -472,7 +477,7 @@ export function EstimatePanel({
       : understandingSummaries[0]?.compactLine ?? null;
 
   const assumptionCount = estimate
-    ? estimate.assumptions.length
+    ? userFacingAssumptions.length
     : scopeReview
       ? scopeReview.generalAssumptions.length
       : 0;
@@ -858,7 +863,7 @@ export function EstimatePanel({
                     </li>
                   ))}
                 </ul>
-                {estimate.assumptions.length > topAssumptions.length ? (
+                {userFacingAssumptions.length > topAssumptions.length ? (
                   <button
                     type="button"
                     className="mt-1 text-xs text-muted-foreground underline-offset-2 hover:underline"
@@ -1299,7 +1304,7 @@ export function EstimatePanel({
                         : `${assumptionCount} assumption${assumptionCount === 1 ? "" : "s"}`
                     }
                   >
-                    {estimate.assumptions.length === 0 ? (
+                    {userFacingAssumptions.length === 0 ? (
                       <p className="text-xs text-muted-foreground">
                         No assumptions listed for this estimate.
                       </p>
@@ -1311,9 +1316,9 @@ export function EstimatePanel({
                             <span>{item}</span>
                           </li>
                         ))}
-                        {estimate.assumptions.length > topAssumptions.length ? (
+                        {userFacingAssumptions.length > topAssumptions.length ? (
                           <li className="text-muted-foreground">
-                            +{estimate.assumptions.length - topAssumptions.length}{" "}
+                            +{userFacingAssumptions.length - topAssumptions.length}{" "}
                             more —{" "}
                             <button
                               type="button"
@@ -1392,21 +1397,21 @@ export function EstimatePanel({
                     : `${assumptionCount} assumption${assumptionCount === 1 ? "" : "s"}`
                 }
               >
-                {estimate.assumptions.length === 0 ? (
+                {userFacingAssumptions.length === 0 ? (
                   <p className="text-xs text-muted-foreground">
                     No assumptions listed for this estimate.
                   </p>
                 ) : (
                   <ul className="space-y-1 text-xs text-foreground/90">
-                    {estimate.assumptions.slice(0, 8).map((item) => (
+                    {userFacingAssumptions.slice(0, 8).map((item) => (
                       <li key={item} className="flex gap-1.5">
                         <span aria-hidden>•</span>
                         <span>{item}</span>
                       </li>
                     ))}
-                    {estimate.assumptions.length > 8 ? (
+                    {userFacingAssumptions.length > 8 ? (
                       <li className="text-muted-foreground">
-                        +{estimate.assumptions.length - 8} more — use full
+                        +{userFacingAssumptions.length - 8} more — use full
                         breakdown
                       </li>
                     ) : null}

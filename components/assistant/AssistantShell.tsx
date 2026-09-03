@@ -2463,7 +2463,8 @@ export function AssistantShell({
                     }
                     assumptions={rankQuickEstimateAssumptions(
                       estimate.assumptions,
-                      MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS
+                      MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS,
+                      estimate.assumptionMetadata
                     )}
                     attentionItems={completedEstimateAttentionItems}
                     workAreaTotals={Array.from(

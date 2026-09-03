@@ -1,19 +1,26 @@
 /**
- * BETA-2.1 — Estimate confidence presentation only.
+ * BETA-2.1 / BETA-2.2 — Estimate confidence presentation only.
  * Does not change persisted assumptions, confidence %, or estimator output.
  */
 import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
-import {
-  estimatingAssumptionsForDisplay,
-  type QuickEstimateConfidenceBand,
-} from "@/lib/assistant/presentation/quick-estimate-confidence";
+import type { QuickEstimateConfidenceBand } from "@/lib/assistant/presentation/quick-estimate-confidence";
+import { getUserFacingEstimateAssumptions } from "@/lib/assistant/presentation/user-facing-estimate-assumptions";
 
 const GENERIC_CONFIDENCE_FALLBACK =
   "Based on the job information currently available.";
 
+const MAX_CONFIDENCE_PHRASE_CHARS = 90;
+
+function phraseFromLine(line: string): string | null {
+  const cleaned = line.replace(/^Assumed\s+/i, "").replace(/\.$/, "").trim();
+  if (!cleaned || cleaned.length > MAX_CONFIDENCE_PHRASE_CHARS) return null;
+  return cleaned;
+}
+
 /**
  * Prefer structured defaulted-fact metadata, then the first genuine
- * estimating assumption. Never invent an assumption.
+ * builder-facing estimating assumption. Never invent an assumption.
+ * Never use first persisted diagnostic/boundary copy.
  */
 export function selectEstimatingAssumptionPhrase(
   assumptions: readonly string[],
@@ -23,9 +30,16 @@ export function selectEstimatingAssumptionPhrase(
   if (fact) {
     return fact.label.trim().replace(/\.$/, "");
   }
-  const line = estimatingAssumptionsForDisplay(assumptions)[0];
-  if (!line) return null;
-  return line.replace(/^Assumed\s+/i, "").replace(/\.$/, "").trim() || null;
+  const visible = getUserFacingEstimateAssumptions({
+    assumptions,
+    assumptionMetadata: metadata,
+    limit: 5,
+  });
+  for (const line of visible) {
+    const phrase = phraseFromLine(line);
+    if (phrase) return phrase;
+  }
+  return null;
 }
 
 export function presentEstimateConfidenceCopy(params: {
