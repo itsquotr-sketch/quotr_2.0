@@ -48,7 +48,7 @@ import { measureServerLoad } from "@/lib/perf/timing";
 import { getAnthropicModel } from "@/lib/ai/anthropic";
 import { buildInitialAnalysisInput } from "@/lib/project-notes/build-analysis-source";
 import { isInternalProjectNote } from "@/lib/project-notes/types";
-import { USER_ERRORS } from "@/lib/errors/user-message";
+import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 import { buildLiveProjectConditionsSnapshot } from "@/lib/assistant/builder-interview-live";
 import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
@@ -166,6 +166,14 @@ export async function saveBriefAndSeedWorkAreas(
   const { auth, stage } = loaded;
   const { supabase, orgId } = auth;
 
+  const analyseDenied = await permissionDeniedError({
+    orgId,
+    userId: auth.user.id,
+    permission: "projects.edit",
+    entitlement: "projects.create",
+  });
+  if (analyseDenied) return analyseDenied;
+
   if (isStageAtOrBeyond(stage, "confirm_work_areas")) {
     timing.mark("T13");
     logAnalyseJobTiming({
@@ -237,7 +245,13 @@ export async function saveBriefAndSeedWorkAreas(
       success: false,
       errorClass: "unknown",
     });
-    return { error: briefError.message };
+    logBriefAnalysisFailure(projectId, {
+      briefLength: trimmed.length,
+      noteCount: noteRows.length,
+      combinedInputLength: trimmed.length,
+      reason: `brief persist failed: ${briefError.message}`,
+    });
+    return { error: UNKNOWN_ANALYSIS_ERROR };
   }
   timing.mark("T3");
 
@@ -309,7 +323,13 @@ export async function saveBriefAndSeedWorkAreas(
         success: false,
         errorClass: "unknown",
       });
-      return { error: insertError.message };
+      logBriefAnalysisFailure(projectId, {
+        briefLength: trimmed.length,
+        noteCount: noteRows.length,
+        combinedInputLength: analysisSource.length,
+        reason: `work area insert failed: ${insertError.message}`,
+      });
+      return { error: UNKNOWN_ANALYSIS_ERROR };
     }
   }
   timing.mark("T7");
@@ -383,7 +403,13 @@ export async function saveBriefAndSeedWorkAreas(
             success: false,
             errorClass: "unknown",
           });
-          return { error: updateError.message };
+          logBriefAnalysisFailure(projectId, {
+            briefLength: trimmed.length,
+            noteCount: noteRows.length,
+            combinedInputLength: analysisSource.length,
+            reason: `fact update failed: ${updateError.message}`,
+          });
+          return { error: UNKNOWN_ANALYSIS_ERROR };
         }
         continue;
       }
@@ -403,7 +429,13 @@ export async function saveBriefAndSeedWorkAreas(
           success: false,
           errorClass: "unknown",
         });
-        return { error: factsError.message };
+        logBriefAnalysisFailure(projectId, {
+          briefLength: trimmed.length,
+          noteCount: noteRows.length,
+          combinedInputLength: analysisSource.length,
+          reason: `fact insert failed: ${factsError.message}`,
+        });
+        return { error: UNKNOWN_ANALYSIS_ERROR };
       }
     }
   }
@@ -426,7 +458,13 @@ export async function saveBriefAndSeedWorkAreas(
       success: false,
       errorClass: "unknown",
     });
-    return { error: stageError.message };
+    logBriefAnalysisFailure(projectId, {
+      briefLength: trimmed.length,
+      noteCount: noteRows.length,
+      combinedInputLength: analysisSource.length,
+      reason: `stage update failed: ${stageError.message}`,
+    });
+    return { error: UNKNOWN_ANALYSIS_ERROR };
   }
   timing.mark("T10");
 
@@ -485,7 +523,13 @@ export async function saveBriefAndSeedWorkAreas(
           success: false,
           errorClass: "unknown",
         });
-        return { error: failed.error.message };
+        logBriefAnalysisFailure(projectId, {
+          briefLength: trimmed.length,
+          noteCount: noteRows.length,
+          combinedInputLength: analysisSource.length,
+          reason: `constraint persist failed: ${failed.error.message}`,
+        });
+        return { error: UNKNOWN_ANALYSIS_ERROR };
       }
     }
   }
@@ -547,6 +591,14 @@ export async function confirmWorkAreas(
   const { auth, stage } = loaded;
   const { supabase } = auth;
 
+  const confirmDenied = await permissionDeniedError({
+    orgId: auth.orgId,
+    userId: auth.user.id,
+    permission: "projects.edit",
+    entitlement: "projects.create",
+  });
+  if (confirmDenied) return confirmDenied;
+
   if (isStageAtOrBeyond(stage, "quality")) {
     return { success: true };
   }
@@ -563,7 +615,8 @@ export async function confirmWorkAreas(
       .eq("project_id", projectId);
 
     if (error) {
-      return { error: error.message };
+      console.error("[confirmWorkAreas] work area update failed:", error.message);
+      return { error: toUserError(error, "confirmWorkAreas", USER_ERRORS.workAreaSaveFailed) };
     }
   }
 
@@ -573,7 +626,10 @@ export async function confirmWorkAreas(
     .eq("id", projectId);
 
   if (stageError) {
-    return { error: stageError.message };
+    console.error("[confirmWorkAreas] stage update failed:", stageError.message);
+    return {
+      error: toUserError(stageError, "confirmWorkAreas", USER_ERRORS.workAreaSaveFailed),
+    };
   }
 
   await markEstimateStaleWithContext(auth, projectId);
@@ -619,7 +675,8 @@ async function createDynamicQuestionBlockIfNeeded(
         .eq("question_block_id", block.id)
         .eq("project_id", projectId);
       if (countError) {
-        return { error: countError.message };
+        console.error("[createDynamicQuestionBlockIfNeeded] count failed:", countError.message);
+        return { error: toUserError(countError, "question-block", USER_ERRORS.generic) };
       }
       if ((count ?? 0) > 0) {
         usable.push(block.id);
@@ -861,7 +918,8 @@ export async function saveQuality(
       .eq("id", projectId);
 
     if (updateError) {
-      return { error: updateError.message };
+      console.error("[saveQuality] update failed:", updateError.message);
+      return { error: toUserError(updateError, "saveQuality", USER_ERRORS.generic) };
     }
 
     revalidateAssistantPaths(projectId);
@@ -941,7 +999,8 @@ export async function saveQuality(
     .eq("id", projectId);
 
   if (updateError) {
-    return { error: updateError.message };
+    console.error("[saveQuality] stage update failed:", updateError.message);
+    return { error: toUserError(updateError, "saveQuality", USER_ERRORS.generic) };
   }
 
   revalidateAssistantPaths(projectId);
@@ -989,7 +1048,8 @@ export async function updateProjectQualityLevel(
     .eq("id", projectId);
 
   if (updateError) {
-    return { error: updateError.message };
+    console.error("[updateQualityLevel] update failed:", updateError.message);
+    return { error: toUserError(updateError, "updateQualityLevel", USER_ERRORS.generic) };
   }
 
   await markEstimateStaleWithContext(auth, projectId);
@@ -1236,7 +1296,8 @@ export async function saveConstraints(
     .eq("id", projectId);
 
   if (stageError) {
-    return { error: stageError.message };
+    console.error("[saveConstraints] stage update failed:", stageError.message);
+    return { error: toUserError(stageError, "saveConstraints", USER_ERRORS.generic) };
   }
 
   await markEstimateStaleWithContext(auth, projectId);
@@ -1401,7 +1462,8 @@ async function runEstimateGeneration(
       .eq("id", projectId);
 
     if (stageError) {
-      return { error: stageError.message };
+      console.error("[runEstimateGeneration] stage update failed:", stageError.message);
+      return { error: toUserError(stageError, "generateEstimate", USER_ERRORS.estimateGenerateFailed) };
     }
   }
 

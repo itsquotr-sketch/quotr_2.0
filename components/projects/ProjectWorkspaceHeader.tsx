@@ -22,7 +22,7 @@ export function ProjectWorkspaceHeader({
     <div className="space-y-1 sm:space-y-2">
       <Link
         href="/app/dashboard"
-        className="inline-flex min-h-9 items-center gap-1.5 text-xs font-medium text-muted-foreground transition-colors hover:text-foreground"
+        className="inline-flex min-h-11 items-center gap-1.5 text-sm font-medium text-muted-foreground transition-colors hover:text-foreground"
       >
         <ArrowLeft className="size-3.5" />
         <span className="sm:inline">Dashboard</span>

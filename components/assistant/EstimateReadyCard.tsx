@@ -7,29 +7,42 @@ import {
   attentionShowsReviewButton,
   type QuickEstimateAttentionItem,
 } from "@/lib/assistant/presentation/quick-estimate-view-model";
+import {
+  ESTIMATE_RANGE_EXPLANATION,
+  presentEstimateGst,
+  usesQuotrBenchmarkRates,
+} from "@/lib/assistant/presentation/gst-display";
 import { staleEstimateMoneyPresentation } from "@/lib/assistant/mode/derive";
 import { cn } from "@/lib/utils";
+import Link from "next/link";
 
 type EstimateReadyCardProps = {
   workAreaSummaryLine: string;
   workAreaSummaryDetail?: string | null;
   recommendedSell: number;
+  sellLow?: number | null;
+  sellHigh?: number | null;
+  gstRate?: number | null;
+  estimatedCost?: number | null;
+  targetMarginPercent?: number | null;
   isStale?: boolean;
   isRegenerating?: boolean;
   confidenceBand?: string | null;
+  confidenceReasons?: readonly string[];
   assumptions: readonly string[];
   attentionItems: readonly QuickEstimateAttentionItem[];
+  workAreaTotals?: readonly { name: string; sell: number }[];
+  rateSourceSummary?: string | null;
   onReviewEstimate?: () => void;
   onEditJob?: () => void;
   onUpdateEstimate?: () => void;
   onReviewAttention?: (item: QuickEstimateAttentionItem) => void;
-  /** RECOVERY-5B — centre card focuses on review context; sell lives in Builder Review + sidebar. */
   compactResult?: boolean;
   className?: string;
 };
 
-const CONCISE_ASSUMPTION_LIMIT = 2;
-const CONCISE_CHECK_LIMIT = 1;
+const CONCISE_ASSUMPTION_LIMIT = 4;
+const CONCISE_CHECK_LIMIT = 2;
 
 function severityLabel(item: QuickEstimateAttentionItem): string {
   if (item.productSeverity === "assumption") return "Assumption";
@@ -42,11 +55,19 @@ export function EstimateReadyCard({
   workAreaSummaryLine,
   workAreaSummaryDetail,
   recommendedSell,
+  sellLow = null,
+  sellHigh = null,
+  gstRate = null,
+  estimatedCost = null,
+  targetMarginPercent = null,
   isStale = false,
   isRegenerating = false,
   confidenceBand,
+  confidenceReasons = [],
   assumptions,
   attentionItems,
+  workAreaTotals = [],
+  rateSourceSummary = null,
   onReviewEstimate,
   onEditJob,
   onUpdateEstimate,
@@ -55,6 +76,8 @@ export function EstimateReadyCard({
   className,
 }: EstimateReadyCardProps) {
   const money = staleEstimateMoneyPresentation(isStale);
+  const gst = presentEstimateGst(recommendedSell, gstRate);
+  const showBenchmark = usesQuotrBenchmarkRates(rateSourceSummary);
   const checks = attentionItems.filter(
     (item) =>
       item.productSeverity === "check" ||
@@ -110,7 +133,9 @@ export function EstimateReadyCard({
             </p>
             <p className="mt-0.5 text-lg font-medium text-muted-foreground line-through">
               {formatCurrency(recommendedSell)}{" "}
-              <span className="text-xs font-medium">+ GST</span>
+              {gst.showGst ? (
+                <span className="text-xs font-medium">ex GST</span>
+              ) : null}
             </p>
           </div>
         </>
@@ -129,26 +154,55 @@ export function EstimateReadyCard({
               </p>
             ) : null}
           </div>
-          <div className="mt-3">
+          <div className="mt-3" data-estimate-recommended-sell>
             <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
               {money.sellLabel}
             </p>
             <p className="mt-0.5 text-3xl font-semibold tracking-tight tabular-nums">
-              {formatCurrency(recommendedSell)}{" "}
-              <span className="text-sm font-medium text-muted-foreground">
-                + GST
-              </span>
+              {formatCurrency(gst.exGst)}{" "}
+              {gst.showGst ? (
+                <span className="text-sm font-medium text-muted-foreground">
+                  ex GST
+                </span>
+              ) : null}
             </p>
+            {gst.showGst ? (
+              <p className="mt-1 text-sm text-foreground" data-estimate-gst>
+                {formatCurrency(gst.inclGst)} incl GST
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {formatCurrency(gst.gstAmount)} GST
+                </span>
+              </p>
+            ) : null}
           </div>
+          {sellLow != null && sellHigh != null ? (
+            <div className="mt-3" data-estimate-range>
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                Indicative range
+              </p>
+              <p className="mt-0.5 text-sm font-medium">
+                {formatCurrency(sellLow)} – {formatCurrency(sellHigh)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {ESTIMATE_RANGE_EXPLANATION}
+              </p>
+            </div>
+          ) : null}
           {confidenceBand ? (
-            <p className="mt-2 text-sm">
-              <span className="text-muted-foreground">Confidence </span>
-              <span className="font-medium">{confidenceBand}</span>
+            <p className="mt-2 text-sm" data-estimate-confidence>
+              <span className="font-medium">{confidenceBand} confidence</span>
+              {confidenceReasons[0] ? (
+                <span className="text-muted-foreground">
+                  {" "}
+                  — {confidenceReasons[0]}
+                </span>
+              ) : null}
             </p>
           ) : null}
           {compactResult ? (
             <p className="mt-2 text-sm text-muted-foreground">
-              Review materials, labour, allowances, and assumptions in Builder Review.
+              This is your working estimate. Review it before creating final Pricing.
             </p>
           ) : null}
         </>
@@ -211,6 +265,51 @@ export function EstimateReadyCard({
             ))}
           </ul>
         </div>
+      ) : null}
+
+      {!isStale && !compactResult && workAreaTotals.length > 0 ? (
+        <div className="mt-3" data-estimate-work-area-totals>
+          <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
+            Work Areas
+          </p>
+          <ul className="mt-1 space-y-1 text-sm">
+            {workAreaTotals.slice(0, 6).map((area) => (
+              <li key={area.name} className="flex justify-between gap-3">
+                <span className="min-w-0 truncate">{area.name}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  {formatCurrency(area.sell)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      ) : null}
+
+      {!isStale && !compactResult && (estimatedCost != null || targetMarginPercent != null) ? (
+        <div className="mt-3 text-xs text-muted-foreground" data-estimate-composition>
+          {estimatedCost != null ? (
+            <span>Estimated cost {formatCurrency(estimatedCost)}</span>
+          ) : null}
+          {estimatedCost != null && targetMarginPercent != null ? " · " : null}
+          {targetMarginPercent != null ? (
+            <span>Target gross margin {targetMarginPercent.toFixed(0)}%</span>
+          ) : null}
+        </div>
+      ) : null}
+
+      {!isStale && showBenchmark ? (
+        <p
+          className="mt-3 text-xs text-muted-foreground"
+          data-estimate-benchmark-note
+        >
+          Some rates use Quotr benchmarks. Add your own rates anytime.{" "}
+          <Link
+            href="/app/rates"
+            className="font-medium underline-offset-2 hover:underline"
+          >
+            Review rates
+          </Link>
+        </p>
       ) : null}
 
       <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">

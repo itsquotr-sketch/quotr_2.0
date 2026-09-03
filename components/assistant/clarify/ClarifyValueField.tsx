@@ -127,6 +127,11 @@ export function ClarifyValueField({
           {ASSISTANT_ACTION_LABELS.useQuotrAssumption}
         </Button>
       ) : null}
+      {candidate.assumable && !candidate.blocksEstimate ? (
+        <p className="text-xs text-muted-foreground" data-clarify-assumption-hint>
+          We&apos;ll use a typical assumption and show it in your estimate.
+        </p>
+      ) : null}
       </div>
     </div>
   );

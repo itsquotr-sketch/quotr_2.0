@@ -4,9 +4,9 @@ import type { StepperStepSummary } from "@/lib/assistant/stage-completion-summar
 import { toPlanningDisplayStage } from "@/lib/assistant/clarify/planning-stage";
 
 export const STEPPER_STAGES = [
-  { key: "brief", label: "Brief" },
-  { key: "confirm_work_areas", label: "Job Plan" },
-  { key: "quality", label: "Clarify" },
+  { key: "brief", label: "Job details" },
+  { key: "confirm_work_areas", label: "Work" },
+  { key: "quality", label: "Details" },
   { key: "estimate_ready", label: "Estimate" },
 ] as const;
 

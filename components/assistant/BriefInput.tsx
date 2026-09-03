@@ -42,7 +42,7 @@ export function BriefInput({
       <Textarea
         value={text}
         onChange={(e) => setText(e.target.value)}
-        placeholder="Describe the job… e.g. 3m wide by 6m long hardwood deck with stairs and a pergola"
+        placeholder="e.g. Replace existing 6 × 3m deck. About 1m high. Kwila decking. Access down side of house."
         rows={4}
         disabled={disabled}
       />

@@ -5,6 +5,7 @@ import {
   SCOPE_CATALOGUE,
   type ScopeCatalogueItem,
 } from "@/lib/scopes/catalogue";
+import { FIRST_RUN_PRIMARY_WORK_AREA_TYPES } from "@/lib/setup/first-run-work-areas";
 import { getWorkAreaCapabilityLabel } from "@/lib/work-areas/support-contract";
 import type { WorkArea } from "@/components/assistant/types";
 import { Badge } from "@/components/ui/badge";
@@ -52,11 +53,20 @@ export function AddWorkAreaDialog({
     const available = SCOPE_CATALOGUE.filter((item) =>
       isAvailableToAdd(item, workAreas)
     );
+    const preferred = new Map<string, number>(
+      FIRST_RUN_PRIMARY_WORK_AREA_TYPES.map((type, index) => [type, index])
+    );
+    const sorted = [...available].sort((a, b) => {
+      const aRank = preferred.get(a.type) ?? 1000;
+      const bRank = preferred.get(b.type) ?? 1000;
+      if (aRank !== bRank) return aRank - bRank;
+      return a.label.localeCompare(b.label);
+    });
 
     const normalized = query.trim().toLowerCase();
-    if (!normalized) return available;
+    if (!normalized) return sorted;
 
-    return available.filter(
+    return sorted.filter(
       (item) =>
         item.label.toLowerCase().includes(normalized) ||
         item.category.toLowerCase().includes(normalized) ||
@@ -75,11 +85,10 @@ export function AddWorkAreaDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-h-[85vh] overflow-hidden sm:max-w-lg">
         <DialogHeader>
-          <DialogTitle>Add work area</DialogTitle>
+          <DialogTitle>Add another Work Area</DialogTitle>
           <DialogDescription>
-            Choose a work area for this project. Capability labels show how
-            mature that estimate is — they are not equally accurate. Company
-            work-type preferences do not limit what you can add.
+            Add a missed piece of work to this job. Every supported Work Area is
+            available — company preferences only change the order.
           </DialogDescription>
         </DialogHeader>
 
@@ -165,7 +174,7 @@ export function AddWorkAreaDialog({
                 Adding…
               </>
             ) : (
-              "Add work area"
+              "Add another Work Area"
             )}
           </Button>
         </div>

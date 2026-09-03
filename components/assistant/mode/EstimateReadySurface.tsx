@@ -29,11 +29,29 @@ export function EstimateReadySurface({
       data-update-estimate-busy={isRegenerating ? "true" : "false"}
     >
       {children}
+      {!isStale ? (
+        <p
+          className="text-xs text-muted-foreground"
+          data-estimate-pricing-boundary
+        >
+          This is your working estimate. Review it before creating final Pricing.
+        </p>
+      ) : null}
+      {!isStale ? (
+        <p
+          className="text-xs text-muted-foreground"
+          data-estimate-calibrate-later
+        >
+          Want Quotr to match how your crew works? Calibrate later from the
+          dashboard.
+        </p>
+      ) : null}
       {!isStale && pricingCtaEnabled ? (
         <div className="lg:hidden" data-estimate-ready-mobile-pricing>
           <PrepareFinalPricingButton
             projectId={projectId}
-            className="h-11 w-full min-h-11 bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
+            className="h-11 w-full min-h-11"
+            variant="outline"
             label={ASSISTANT_ACTION_LABELS.continueToPricing}
           />
         </div>

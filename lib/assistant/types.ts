@@ -122,6 +122,7 @@ export type AssistantState = {
   panelScopeSummaries: PanelScopeSummary[];
   derivedFactDisplays: DerivedFactDisplay[];
   defaultMarginPercent: number;
+  defaultGstRate: number;
 };
 
 /** Authoritative margin totals returned after persist (3.2.2-R2). */

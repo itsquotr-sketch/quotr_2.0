@@ -27,13 +27,13 @@ export const ANALYSE_JOB_PROVIDER = "anthropic" as const;
 export const ANALYSE_JOB_TIMEOUT_CODE = "ANALYSE_JOB_TIMEOUT";
 
 export const UNKNOWN_ANALYSIS_ERROR =
-  "We couldn't analyse your job. Please try again.";
+  "Quotr hit a temporary problem analysing this job. Please try again.";
 export const NO_CAPTURE_ERROR =
   "Add a brief or at least one site note before analysing.";
 export const AI_SETUP_ERROR =
-  "AI setup is missing. Check your organisation configuration.";
+  "Quotr couldn't analyse this job right now. Please try again.";
 export const AI_PARSE_ERROR =
-  "Quotr could not understand the analysis response. Please try again.";
+  "Quotr couldn't understand enough about this job. Try adding more detail, then try again.";
 export const NO_WORK_AREAS_ERROR =
   "No supported work areas were detected. Try adding more detail about the job, or add a work area manually.";
 
@@ -140,6 +140,15 @@ export function classifyAnalysisError(error: unknown): AnalysisErrorClass {
   if (message.includes("anthropic_api_key")) return "setup";
   if (message.includes("invalid") && message.includes("model")) {
     return "provider_invalid";
+  }
+  if (
+    /pgrst\d+/.test(message) ||
+    message.includes("relation") ||
+    message.includes("postgrest") ||
+    message.includes("could not find the table") ||
+    message.includes("schema cache")
+  ) {
+    return "unknown";
   }
 
   return "unknown";

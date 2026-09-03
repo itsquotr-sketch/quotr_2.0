@@ -6,8 +6,10 @@ import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-quest
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
+import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 import { assertOrgOwnsActiveProject, assertOrgOwnsWorkArea } from "@/lib/security/org-ownership";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 import {
   LAST_ACTIVE_WORK_AREA_MESSAGE,
   isActiveCanonicalWorkAreaStatus,
@@ -46,8 +48,16 @@ export async function addWorkAreaToProject(input: {
     return { error: "Not authenticated." };
   }
 
-  const { supabase, orgId } = context;
+  const { supabase, orgId, user } = context;
   const { projectId, workAreaType } = parsed.data;
+
+  const denied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "projects.edit",
+    entitlement: "projects.create",
+  });
+  if (denied) return denied;
 
   const ownedProject = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in ownedProject) {
@@ -96,7 +106,8 @@ export async function addWorkAreaToProject(input: {
       .eq("project_id", projectId);
 
     if (error) {
-      return { error: error.message };
+      console.error("[addWorkAreaToProject] restore failed:", error.message);
+      return { error: toUserError(error, "addWorkArea", USER_ERRORS.workAreaSaveFailed) };
     }
 
     workArea = {
@@ -130,7 +141,14 @@ export async function addWorkAreaToProject(input: {
       .single();
 
     if (error || !inserted) {
-      return { error: error?.message ?? "Failed to add work area." };
+      console.error("[addWorkAreaToProject] insert failed:", error?.message);
+      return {
+        error: toUserError(
+          error,
+          "addWorkArea",
+          USER_ERRORS.workAreaSaveFailed
+        ),
+      };
     }
 
     workArea = inserted;
@@ -186,8 +204,16 @@ export async function excludeWorkAreaFromProject(input: {
     return { error: "Not authenticated." };
   }
 
-  const { supabase, orgId } = context;
+  const { supabase, orgId, user } = context;
   const { projectId, workAreaId } = parsed.data;
+
+  const denied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "projects.edit",
+    entitlement: "projects.create",
+  });
+  if (denied) return denied;
 
   const ownedProject = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in ownedProject) {
@@ -236,7 +262,8 @@ export async function excludeWorkAreaFromProject(input: {
     .eq("project_id", projectId);
 
   if (error) {
-    return { error: error.message };
+    console.error("[excludeWorkAreaFromProject] update failed:", error.message);
+    return { error: toUserError(error, "excludeWorkArea", USER_ERRORS.workAreaSaveFailed) };
   }
 
   await markEstimateStaleWithContext(context, projectId);

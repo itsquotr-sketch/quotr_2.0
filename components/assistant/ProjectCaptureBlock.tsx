@@ -22,6 +22,8 @@ type ProjectCaptureBlockProps = {
   isAnalysing?: boolean;
   /** After initial analysis — view/edit notes only, no Analyse Job */
   submitted?: boolean;
+  analyseError?: string | null;
+  onRetryAnalyse?: () => void;
 };
 
 export function buildProjectCaptureSummary(
@@ -48,6 +50,8 @@ export function ProjectCaptureBlock({
   disabled,
   isAnalysing,
   submitted = false,
+  analyseError = null,
+  onRetryAnalyse,
 }: ProjectCaptureBlockProps) {
   const briefIncluded = briefText.trim().length > 0;
   const [progressElapsedMs, setProgressElapsedMs] = useState(0);
@@ -83,7 +87,7 @@ export function ProjectCaptureBlock({
               htmlFor="project-brief"
               className="text-sm font-semibold text-foreground"
             >
-              Project Brief — Job overview
+              Tell Quotr about the job
             </Label>
             {briefIncluded ? (
               <span className="rounded-md border border-border/60 bg-background px-1.5 py-0.5 text-[10px] font-medium text-muted-foreground">
@@ -92,15 +96,14 @@ export function ProjectCaptureBlock({
             ) : null}
           </div>
           <p className="text-xs text-muted-foreground">
-            Describe the overall job. Quotr uses this when analysing the
-            project.
+            Write it the way you would tell a leading hand — not a specification.
           </p>
         </div>
         <Textarea
           id="project-brief"
           value={briefText}
           onChange={(event) => onBriefChange(event.target.value)}
-          placeholder="Describe the job… e.g. 3m wide by 6m long hardwood deck with stairs and a pergola"
+          placeholder="e.g. Replace existing 6 × 3m deck. About 1m high. Kwila decking. Access down side of house."
           rows={4}
           disabled={disabled || submitted}
           readOnly={submitted}
@@ -118,14 +121,14 @@ export function ProjectCaptureBlock({
             id="site-notes-heading"
             className="text-sm font-semibold text-foreground"
           >
-            <span className="sm:hidden">Site notes</span>
+            <span className="sm:hidden">Site notes (optional)</span>
             <span className="hidden sm:inline">
-              Site Notes — Ongoing observations
+              Site notes — optional extras
             </span>
           </h4>
           <p className="hidden text-xs text-muted-foreground sm:block">
-            Add individual measurements, access issues, client requests and site
-            conditions as you inspect the job.
+            Extra measurements, access, or client requests. The job description
+            above is the main place to tell Quotr about the work.
           </p>
         </div>
         <div
@@ -154,6 +157,33 @@ export function ProjectCaptureBlock({
           {isAnalysing ? (
             <AnalysisProgressBanner label={progressLabel} />
           ) : null}
+          {analyseError && !isAnalysing ? (
+            <div
+              className="space-y-2 rounded-xl border border-destructive/30 bg-destructive/5 px-3.5 py-3"
+              role="alert"
+              data-analyse-error
+            >
+              <p className="text-sm text-destructive">{analyseError}</p>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <Button
+                  type="button"
+                  className="h-11 min-h-11 w-full sm:w-auto"
+                  data-analyse-retry
+                  onClick={onRetryAnalyse ?? onAnalyse}
+                  disabled={disabled}
+                >
+                  Try again
+                </Button>
+                <p className="self-center text-xs text-muted-foreground">
+                  Your job details are still here.
+                </p>
+              </div>
+            </div>
+          ) : null}
+          <p className="text-xs text-muted-foreground">
+            Quotr will identify the work involved and what it still needs to
+            know.
+          </p>
           <Button
             type="button"
             onClick={onAnalyse}

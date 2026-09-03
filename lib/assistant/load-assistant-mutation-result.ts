@@ -37,6 +37,7 @@ export async function loadAssistantMutationResult(
     { data: constraints },
     { data: estimate },
     { data: projectFacts },
+    { data: organisationSettings },
   ] = await Promise.all([
     supabase
       .from("projects")
@@ -81,6 +82,11 @@ export async function loadAssistantMutationResult(
       .select("key, work_area_id, value, source")
       .eq("project_id", projectId)
       .eq("org_id", orgId),
+    supabase
+      .from("organisation_settings")
+      .select("default_margin_percent, default_gst_rate")
+      .eq("org_id", orgId)
+      .maybeSingle(),
   ]);
 
   if (!project) {
@@ -96,7 +102,9 @@ export async function loadAssistantMutationResult(
     estimate: estimate ?? null,
     lineItems: [],
     projectFacts: projectFacts ?? [],
-    defaultMarginPercent: DEFAULT_MARGIN_PERCENT,
+    defaultMarginPercent:
+      organisationSettings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT,
+    defaultGstRate: Number(organisationSettings?.default_gst_rate ?? 15),
   });
 
   return buildAssistantMutationResult({

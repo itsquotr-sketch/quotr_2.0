@@ -33,7 +33,11 @@ import { cn } from "@/lib/utils";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { defaultedFactWarnings } from "@/lib/estimate/assumption-metadata";
 import { needsCalibrationRefresh } from "@/lib/estimate/calibration-version";
-import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
+import {
+  ESTIMATE_RANGE_EXPLANATION,
+  presentEstimateGst,
+} from "@/lib/assistant/presentation/gst-display";
 import { AssistantEmptyState } from "@/components/assistant/AssistantEmptyState";
 import { presentAssistantError } from "@/lib/assistant/presentation/error-messages";
 import {
@@ -67,6 +71,7 @@ type EstimatePanelProps = {
   isSavingMargin?: boolean;
   marginSaveLabel?: string | null;
   defaultMarginPercent?: number;
+  defaultGstRate?: number;
   panelScopeSummaries?: PanelScopeSummary[];
   scopeReview?: ScopeReview;
   questionsSubmitted?: boolean;
@@ -307,6 +312,7 @@ export function EstimatePanel({
   isSavingMargin,
   marginSaveLabel = null,
   defaultMarginPercent = DEFAULT_MARGIN_PERCENT,
+  defaultGstRate = 15,
   panelScopeSummaries = [],
   scopeReview,
   constraintsSubmitted = false,
@@ -723,7 +729,7 @@ export function EstimatePanel({
           aria-live="polite"
         >
           <Loader2 className="size-4 animate-spin" aria-hidden />
-          Generating Quick Estimate…
+          {ASSISTANT_LOADING_COPY.estimateGenerate}
         </div>
       ) : !estimate ? (
         <div className="space-y-4">
@@ -991,11 +997,19 @@ export function EstimatePanel({
               >
                 {formatCurrency(estimate.recommendedSell)}
               </p>
+              {presentEstimateGst(estimate.recommendedSell, defaultGstRate).showGst ? (
+                <p className="mt-1 text-xs text-muted-foreground" data-estimate-gst>
+                  {formatCurrency(
+                    presentEstimateGst(estimate.recommendedSell, defaultGstRate).inclGst
+                  )}{" "}
+                  incl GST
+                </p>
+              ) : null}
             </div>
 
             <div>
               <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
-                Estimate range
+                Indicative range
               </p>
               <p
                 className={cn(
@@ -1004,6 +1018,9 @@ export function EstimatePanel({
                 )}
               >
                 {formatCurrencyRange(estimate.sellLow, estimate.sellHigh)}
+              </p>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                {ESTIMATE_RANGE_EXPLANATION}
               </p>
             </div>
 
@@ -1028,7 +1045,7 @@ export function EstimatePanel({
                 tertiary
               />
               <MetricRow
-                label="Margin"
+                label="Target gross margin"
                 value={financialView?.marginLabel ?? "—"}
                 dimmed={isStale}
                 tertiary
@@ -1419,7 +1436,7 @@ export function EstimatePanel({
           data-mobile-qe-header="estimate"
         >
           <p className="text-sm font-semibold">
-            {compactCommercialSidebar ? "Commercial Overview" : "Quick Estimate"}
+            {compactCommercialSidebar ? "Commercial Overview" : "Estimate"}
           </p>
           <p className="mt-0.5 text-xs text-muted-foreground">
             Draft estimate based on your inputs
@@ -1434,7 +1451,7 @@ export function EstimatePanel({
           data-mobile-qe-header="pending"
         >
           <div className="min-w-0">
-            <p className="text-sm font-semibold">Quick Estimate</p>
+            <p className="text-sm font-semibold">Estimate</p>
             <p className="truncate text-xs text-muted-foreground">
               {mobileSummary.primaryLine}
             </p>
@@ -1454,7 +1471,7 @@ export function EstimatePanel({
 
       <CardHeader className="hidden pb-3 lg:block">
         <CardTitle className="text-base">
-          {estimate && compactCommercialSidebar ? "Commercial Overview" : "Quick Estimate"}
+          {estimate && compactCommercialSidebar ? "Commercial Overview" : "Estimate"}
         </CardTitle>
         <CardDescription>
           {estimate

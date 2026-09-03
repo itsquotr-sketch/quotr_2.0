@@ -108,7 +108,7 @@ export async function getAssistantStateWithContext(
       .eq("org_id", orgId),
     supabase
       .from("organisation_settings")
-      .select("default_margin_percent")
+      .select("default_margin_percent, default_gst_rate")
       .eq("org_id", orgId)
       .maybeSingle(),
   ]);
@@ -157,6 +157,7 @@ export async function getAssistantStateWithContext(
     projectFacts: projectFacts ?? [],
     defaultMarginPercent:
       organisationSettings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT,
+    defaultGstRate: Number(organisationSettings?.default_gst_rate ?? 15),
     requirementSnapshotRequirements,
   });
 }

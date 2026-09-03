@@ -172,7 +172,10 @@ export async function completeClarifyPlanning(input: {
       .update({ quality_level: DEFAULT_ESTIMATE_QUALITY })
       .eq("id", input.projectId)
       .eq("org_id", orgId);
-    if (qualityError) return { error: qualityError.message };
+    if (qualityError) {
+      console.error("[continueToEstimate] quality update failed:", qualityError.message);
+      return { error: "Could not continue." };
+    }
   }
 
   const { data: afterQuality } = await supabase

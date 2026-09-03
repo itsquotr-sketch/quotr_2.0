@@ -107,12 +107,12 @@ export function composeEstimateReadiness(
 
   return {
     heading: enough
-      ? "Ready to estimate"
+      ? "That's enough to build your estimate."
       : blockerCopy
         ? "Need a bit more"
-        : "Ready to estimate",
+        : "That's enough to build your estimate.",
     explanation: enough
-      ? "All required details resolved."
+      ? "All required details resolved. You can still change the job afterward."
       : blockerCopy ?? "Answer the remaining required estimating questions.",
     known,
     assumptions,

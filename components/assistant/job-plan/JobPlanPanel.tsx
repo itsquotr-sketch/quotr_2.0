@@ -90,7 +90,7 @@ export function JobPlanPanel({
     return (
       <div className="space-y-3 overflow-x-hidden" data-job-plan-panel>
         <p className="text-sm text-muted-foreground">
-          Analyse Job first, then confirm the Job Plan.
+          Analyse the job first, then confirm the Work Areas.
         </p>
         {onAddWorkArea ? (
           <Button
@@ -101,7 +101,7 @@ export function JobPlanPanel({
             data-job-plan-add-work-area
             onClick={() => setAddOpen(true)}
           >
-            + Add work area
+            + Add another Work Area
           </Button>
         ) : null}
         {onAddWorkArea ? (
@@ -127,6 +127,14 @@ export function JobPlanPanel({
       data-job-plan-panel
       data-job-plan-primary="true"
     >
+      <div className="space-y-1">
+        <p className="text-sm font-medium" data-job-plan-found-heading>
+          Here&apos;s the work I found.
+        </p>
+        <p className="text-xs text-muted-foreground" data-work-area-term>
+          Work Areas are the main pieces of work Quotr will estimate separately.
+        </p>
+      </div>
       <div className="flex flex-col gap-3">
         {cardsToRender.map((card) => (
           <JobPlanWorkAreaCardView
@@ -186,7 +194,7 @@ export function JobPlanPanel({
                 disabled={isSaving || isAddingWorkArea}
                 onClick={() => setAddOpen(true)}
               >
-                + Add work area
+                + Add another Work Area
               </Button>
             ) : null}
           </div>

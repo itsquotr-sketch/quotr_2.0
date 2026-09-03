@@ -100,6 +100,8 @@ import { writeJobPlanScopeDecision } from "@/lib/assistant/job-plan/actions";
 import { overlayFact } from "@/lib/assistant/job-plan/facts";
 import { JOB_PLAN_IS_PRIMARY } from "@/lib/assistant/job-plan/flags";
 import { UNKNOWN_ANALYSIS_ERROR } from "@/lib/ai/analyse-job-contract";
+import { presentAssistantError } from "@/lib/assistant/presentation/error-messages";
+import { isTechnicalErrorText } from "@/lib/errors/user-message";
 import {
   jobPlanFactsFromAssistantState,
   jobPlanWorkAreasFromUi,
@@ -667,7 +669,16 @@ export function AssistantShell({
         const result = await fn();
 
         if (result.error) {
-          setActionError(result.error);
+          setActionError(
+            isTechnicalErrorText(result.error)
+              ? presentAssistantError(
+                  action === "brief" ? "analyse_job" : "generic"
+                )
+              : presentAssistantError(
+                  action === "brief" ? "analyse_job" : "generic",
+                  result.error
+                )
+          );
           if (result.reasonCode) {
             setActionDenial({
               reasonCode: result.reasonCode,
@@ -2281,7 +2292,7 @@ export function AssistantShell({
         deemphasised={assistantMode !== "planning"}
       />
 
-      {actionError ? (
+      {actionError && (briefSubmitted || actionDenial) ? (
         actionDenial ? (
           <BillingAccessDenied
             error={actionError}
@@ -2410,6 +2421,13 @@ export function AssistantShell({
                       workAreaLists.included
                     )}
                     recommendedSell={estimate.recommendedSell}
+                    sellLow={estimate.sellLow}
+                    sellHigh={estimate.sellHigh}
+                    gstRate={initialState.defaultGstRate}
+                    estimatedCost={estimate.recommendedCost}
+                    targetMarginPercent={
+                      estimate.targetMarginPercent ?? estimate.marginPercent
+                    }
                     isStale={displayEstimateStale}
                     isRegenerating={updatingEstimate}
                     confidenceBand={
@@ -2421,12 +2439,45 @@ export function AssistantShell({
                         attentionCount: completedEstimateAttentionItems.length,
                       }).band
                     }
+                    confidenceReasons={
+                      estimate.assumptions.length > 0
+                        ? [
+                            `Quotr had to assume ${estimate.assumptions[0]!.replace(/^Assumed\s+/i, "").replace(/\.$/, "")}.`,
+                            ...deriveQuickEstimateConfidencePresentation({
+                              confidencePercent: estimate.confidence,
+                              assumptionSeverity:
+                                estimate.assumptionMetadata?.assumptionSeverity,
+                              missingInfoCount: estimate.missingInfo.length,
+                              attentionCount:
+                                completedEstimateAttentionItems.length,
+                            }).reasons,
+                          ]
+                        : deriveQuickEstimateConfidencePresentation({
+                            confidencePercent: estimate.confidence,
+                            assumptionSeverity:
+                              estimate.assumptionMetadata?.assumptionSeverity,
+                            missingInfoCount: estimate.missingInfo.length,
+                            attentionCount:
+                              completedEstimateAttentionItems.length,
+                          }).reasons
+                    }
                     assumptions={rankQuickEstimateAssumptions(
                       estimate.assumptions,
                       MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS
                     )}
                     attentionItems={completedEstimateAttentionItems}
-                    compactResult
+                    workAreaTotals={Array.from(
+                      estimate.lineItems.reduce((map, item) => {
+                        const name = item.workAreaName?.trim() || "Unallocated";
+                        map.set(
+                          name,
+                          (map.get(name) ?? 0) + Number(item.recommendedSell ?? 0)
+                        );
+                        return map;
+                      }, new Map<string, number>())
+                    ).map(([name, sell]) => ({ name, sell }))}
+                    rateSourceSummary={estimate.rateSourceSummary}
+                    compactResult={false}
                     onReviewEstimate={() => setBuilderReviewOpen(true)}
                     onEditJob={() => openEditJob(null)}
                     onUpdateEstimate={
@@ -2500,15 +2551,6 @@ export function AssistantShell({
                           </dd>
                         </dl>
                       ) : null}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="h-11 min-h-11 w-full sm:w-auto"
-                        data-estimate-ready-edit-job
-                        onClick={() => openEditJob(null)}
-                      >
-                        {ASSISTANT_ACTION_LABELS.editJob}
-                      </Button>
                     </div>
                   </CompletedSetupDisclosure>
                   <div
@@ -2724,11 +2766,11 @@ export function AssistantShell({
           {/* 1. Project Capture */}
           {(captureIsCurrent || !briefSubmitted || briefSubmitted) && (
           <CollapsibleStageCard
-            title="Project Capture"
+            title="Job details"
             subtitle={
               briefSubmitted
-                ? "Brief and site notes are source material. Later notes can be analysed into proposed updates."
-                : "Start with a brief, site notes or rough scope. Quotr will help identify work areas and questions."
+                ? "What you told Quotr about the job."
+                : "Tell Quotr what you know. It will find the work involved."
             }
             statusLabel={
               captureIsCurrent
@@ -2760,6 +2802,12 @@ export function AssistantShell({
               disabled={pendingAction != null}
               isAnalysing={pendingAction === "brief"}
               submitted={briefSubmitted}
+              analyseError={
+                !briefSubmitted && actionError && !actionDenial
+                  ? actionError
+                  : null
+              }
+              onRetryAnalyse={handleAnalyseJob}
             />
           </CollapsibleStageCard>
           )}
@@ -2767,8 +2815,8 @@ export function AssistantShell({
           {/* 2. Job Plan — primary Work Area + user-facing scope confirmation */}
           {briefSubmitted ? (
             <CollapsibleStageCard
-              title="Job Plan"
-              subtitle="Quotr proposed this from your brief — scan, correct, continue"
+              title="Work"
+              subtitle="Work Areas are the main pieces of work Quotr will estimate separately."
               statusLabel={
                 workAreasIsCurrent
                   ? "Current"
@@ -2831,11 +2879,11 @@ export function AssistantShell({
 
           {CLARIFY_IS_PRIMARY && workAreasConfirmed ? (
             <CollapsibleStageCard
-              title="Clarify"
+              title="Details"
               subtitle={
                 clarifyView.enoughToEstimate
-                  ? "Ready to estimate"
-                  : "A few things could improve this estimate"
+                  ? "That's enough to build your estimate."
+                  : "I need a few details to tighten the estimate."
               }
               statusLabel={
                 clarifyView.enoughToEstimate
@@ -3250,6 +3298,7 @@ export function AssistantShell({
             isSavingMargin={isSavingMargin}
             marginSaveLabel={marginSaveLabel}
             defaultMarginPercent={initialState.defaultMarginPercent}
+            defaultGstRate={initialState.defaultGstRate}
             panelScopeSummaries={initialState.panelScopeSummaries}
             scopeReview={displayedAssistant.scopeReview}
             questionsSubmitted={questionsSubmitted}

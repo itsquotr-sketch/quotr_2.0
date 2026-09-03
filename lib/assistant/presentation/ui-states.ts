@@ -45,8 +45,8 @@ export const ASSISTANT_EMPTY_STATES = Object.freeze({
     nextAction: "Add a project brief to continue.",
   },
   work_areas: {
-    title: "No Work Areas have been confirmed.",
-    nextAction: "Confirm Work Areas to continue.",
+    title: "No Work Areas on this job yet.",
+    nextAction: "Analyse the job, or add a Work Area.",
   },
   scope_review: {
     title:
@@ -69,11 +69,11 @@ export const ASSISTANT_EMPTY_STATES = Object.freeze({
   estimate_review: {
     title:
       "The estimate review will appear once the required project details are complete.",
-    nextAction: "Complete Scope Details and Project Conditions to continue.",
+    nextAction: "Answer the remaining details to continue.",
   },
   quick_estimate: {
-    title: "Job plan confirmed. Estimate when clarified or safely assumed.",
-    nextAction: "Answer remaining Clarify questions, or Estimate now using assumptions.",
+    title: "Work confirmed. Estimate when the important details are in, or safely assumed.",
+    nextAction: "Answer remaining details, or estimate now using assumptions.",
   },
 } as const);
 

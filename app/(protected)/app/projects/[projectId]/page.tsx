@@ -115,7 +115,7 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
         <WorkspaceHeaderBar
           actions={<UserMenu />}
         >
-          <ProjectWorkspaceHeader project={project} subtitle="Project assistant" />
+          <ProjectWorkspaceHeader project={project} />
         </WorkspaceHeaderBar>
       }
       nav={

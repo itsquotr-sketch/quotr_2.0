@@ -91,7 +91,7 @@ export function MarginEditControl({
 
     return (
       <div className="flex items-baseline justify-between gap-3">
-        <span className="shrink-0 text-xs text-muted-foreground">Margin</span>
+        <span className="shrink-0 text-xs text-muted-foreground">Target gross margin</span>
         <div className="flex items-center gap-2">
           <span className="text-right text-sm font-medium">
             {formatPercent(marginPercent)}
@@ -128,7 +128,7 @@ export function MarginEditControl({
       data-margin-edit-form
     >
       <p className="text-xs font-medium text-muted-foreground">
-        Target margin %
+        Target gross margin %
       </p>
       <div className="flex items-center gap-2">
         <Input

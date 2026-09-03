@@ -27,10 +27,6 @@ function isQuotePrintRoute(pathname: string | null): boolean {
   return Boolean(pathname?.match(/\/quotes\/[^/]+\/print$/));
 }
 
-function isProjectRoute(pathname: string | null): boolean {
-  return Boolean(pathname?.startsWith("/app/projects/"));
-}
-
 export function AppShell({
   children,
   userEmail,
@@ -53,7 +49,7 @@ export function AppShell({
     );
   }
 
-  const showMobileNav = !isProjectRoute(pathname);
+  const showMobileNav = true;
 
   return (
     <AppUserProvider

@@ -331,37 +331,38 @@ export function ClarifyReadinessCard({
       <div>
         {readiness.blocksEstimate ? (
           <>
-            <SectionEyebrow>Need a bit more</SectionEyebrow>
-            <p className="mt-1 text-base font-semibold tracking-tight">
-              {readiness.heading}
+            <SectionEyebrow>Need this to estimate</SectionEyebrow>
+            <p
+              className="mt-1 text-base font-semibold tracking-tight"
+              data-readiness-blocker={readiness.blocksEstimate ? "true" : undefined}
+            >
+              {readiness.blockerCopy ?? readiness.heading}
             </p>
           </>
         ) : (
           <>
             <SectionEyebrow>Ready to estimate</SectionEyebrow>
             <p className="mt-1 text-base font-semibold tracking-tight">
-              All required details resolved
+              That&apos;s enough to build your estimate.
             </p>
           </>
         )}
-        <p className="mt-1 text-sm text-muted-foreground">{readiness.explanation}</p>
-        {readiness.confidenceLabel ? (
-          <p className="mt-1 text-xs text-muted-foreground" data-readiness-confidence>
-            {readiness.confidenceLabel}
-          </p>
-        ) : null}
-      </div>
-
-      {readiness.blockerCopy && readiness.blocksEstimate ? (
-        <p className="text-sm font-medium" data-readiness-blocker>
-          {readiness.blockerCopy}
+        <p className="mt-1 text-sm text-muted-foreground">
+          {readiness.blocksEstimate
+            ? readiness.explanation
+            : "All required details resolved. You can still change the job afterward."}
+        </p>
+      {readiness.confidenceLabel ? (
+        <p className="mt-1 text-xs text-muted-foreground" data-readiness-confidence>
+          {readiness.confidenceLabel}
         </p>
       ) : null}
+    </div>
 
       {readiness.known.length > 0 ? (
         <div data-readiness-known>
           <p className={PREMIUM.eyebrow}>
-            Using
+            Known
           </p>
           <ul className="mt-1 space-y-0.5 text-sm">
             {readiness.known.map((row) => (
@@ -374,7 +375,7 @@ export function ClarifyReadinessCard({
       {readiness.assumptions.length > 0 ? (
         <div data-readiness-assumptions>
           <p className={PREMIUM.eyebrow}>
-            Assuming
+            We&apos;ve assumed
           </p>
           <ul className="mt-1 space-y-0.5 text-sm">
             {readiness.assumptions.map((row) => (
@@ -394,7 +395,7 @@ export function ClarifyReadinessCard({
         >
           {isSaving
             ? ASSISTANT_ACTION_LABELS.saving
-            : ASSISTANT_ACTION_LABELS.estimateNow}
+            : ASSISTANT_ACTION_LABELS.generateEstimate}
         </Button>
       </ActionFooter>
     </div>

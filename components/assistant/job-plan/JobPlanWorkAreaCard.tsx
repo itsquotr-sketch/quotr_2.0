@@ -110,7 +110,7 @@ function ScopeRow({
               className="mt-0.5 block text-[11px] font-medium text-muted-foreground"
               data-job-plan-check-status=""
             >
-              Check
+              Need to confirm
             </span>
           ) : null}
           {tone === "excluded" ? (
@@ -118,7 +118,7 @@ function ScopeRow({
           ) : null}
           {tone === "available" ? (
             <span className="mt-0.5 block text-[11px] font-medium text-muted-foreground">
-              Available
+              Optional
             </span>
           ) : null}
         </span>
@@ -126,9 +126,9 @@ function ScopeRow({
           {tone === "included"
             ? ", included"
             : tone === "check"
-              ? ", not confirmed"
+              ? ", need to confirm"
               : tone === "available"
-                ? ", available"
+                ? ", optional"
                 : ", not included"}
         </span>
       </span>
@@ -300,11 +300,11 @@ export function JobPlanWorkAreaCardView({
         >
           <DialogContent showCloseButton>
             <DialogHeader>
-              <DialogTitle>Remove from estimate?</DialogTitle>
+              <DialogTitle>Remove {card.name} from this estimate?</DialogTitle>
               <DialogDescription>
-                Remove {card.name} from this estimate? Existing details will be
-                kept in case you add it back later. The estimate will need to be
-                updated.
+                This only removes {card.name} from this project estimate. It
+                does not change your company work preferences. You can add it
+                back later.
               </DialogDescription>
             </DialogHeader>
             <div className="flex justify-end gap-2">
@@ -405,7 +405,7 @@ export function JobPlanWorkAreaCardView({
           data-job-plan-section="check"
         >
           <h4 className={PREMIUM.eyebrow}>
-            Check
+            Need to confirm
           </h4>
           <ul className="mt-0.5" aria-label="Items to confirm">
             {card.notConfirmed.map((item) => (
@@ -432,9 +432,9 @@ export function JobPlanWorkAreaCardView({
           data-job-plan-section="available"
         >
           <h4 className={PREMIUM.eyebrow}>
-            Available
+            Optional
           </h4>
-          <ul className="mt-0.5" aria-label="Available supported scope">
+          <ul className="mt-0.5" aria-label="Optional supported scope">
             {card.editAvailable!.map((item) => (
               <ScopeRow
                 key={item.id}

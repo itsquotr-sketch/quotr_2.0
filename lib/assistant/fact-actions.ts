@@ -10,6 +10,7 @@ import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 
 const updateFactSchema = z.object({
   projectId: z.string().uuid(),
@@ -40,9 +41,17 @@ export async function updateProjectFact(
     return { error: "Not authenticated." };
   }
 
-  const { supabase, orgId } = context;
+  const { supabase, orgId, user } = context;
   const { projectId, workAreaId, key, label, value, unit, valueType } =
     parsed.data;
+
+  const denied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "projects.edit",
+    entitlement: "projects.create",
+  });
+  if (denied) return denied;
 
   const ownedProject = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in ownedProject) {

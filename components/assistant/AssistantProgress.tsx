@@ -18,9 +18,9 @@ function resolveDisplayIndex(stage: AssistantStage): number {
 
 function getMobileStepLabel(stage: AssistantStage): string {
   const display = toPlanningDisplayStage(stage);
-  if (display === "brief") return "Brief";
-  if (display === "job_plan") return "Job Plan";
-  if (display === "clarify") return "Clarify";
+  if (display === "brief") return "Job details";
+  if (display === "job_plan") return "Work";
+  if (display === "clarify") return "Details";
   return "Estimate";
 }
 

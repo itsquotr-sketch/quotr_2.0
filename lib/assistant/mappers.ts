@@ -463,6 +463,7 @@ export function buildAssistantState(input: {
   lineItems: DbLineItem[];
   projectFacts?: DbProjectFact[];
   defaultMarginPercent?: number;
+  defaultGstRate?: number;
   requirementSnapshotRequirements?: readonly import("@/lib/estimate/requirements").EstimateRequirement[];
 }): AssistantState {
   const workAreas = input.workAreas.map(mapWorkArea);
@@ -626,5 +627,6 @@ export function buildAssistantState(input: {
     panelScopeSummaries: buildPanelScopeSummariesFromScopeReview(scopeReview),
     derivedFactDisplays: buildDerivedFactDisplays(mergedFacts),
     defaultMarginPercent: input.defaultMarginPercent ?? DEFAULT_MARGIN_PERCENT,
+    defaultGstRate: input.defaultGstRate ?? 15,
   };
 }

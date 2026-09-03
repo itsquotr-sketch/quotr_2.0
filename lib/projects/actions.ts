@@ -3,6 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
 import { getAuthOrgContext } from "@/lib/assistant/state";
+import { toUserError, USER_ERRORS } from "@/lib/errors/user-message";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 import { projectDetailsSchema } from "@/lib/projects/schema";
 import {
@@ -372,7 +373,13 @@ export async function createProject(
 
       if (fallbackError || !fallbackProject) {
         console.error("[createProject] insert failed:", fallbackError?.message);
-        return { error: fallbackError?.message ?? "Failed to create project." };
+        return {
+          error: toUserError(
+            fallbackError,
+            "createProject",
+            USER_ERRORS.projectSaveFailed
+          ),
+        };
       }
 
       revalidatePath("/app/dashboard");
@@ -380,7 +387,9 @@ export async function createProject(
     }
 
     console.error("[createProject] insert failed:", error?.message);
-    return { error: error?.message ?? "Failed to create project." };
+    return {
+      error: toUserError(error, "createProject", USER_ERRORS.projectSaveFailed),
+    };
   }
 
   revalidatePath("/app/dashboard");
@@ -453,7 +462,8 @@ export async function updateProject(
   const { error } = await query;
 
   if (error) {
-    return { error: error.message };
+    console.error("[updateProject] update failed:", error.message);
+    return { error: toUserError(error, "updateProject", USER_ERRORS.projectSaveFailed) };
   }
 
   // Stage 3.1A-R1: Project client/site are authoritative before quote.

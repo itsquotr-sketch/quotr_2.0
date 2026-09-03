@@ -658,6 +658,7 @@ export function buildDemoAssistantState(): import("@/lib/assistant/types").Assis
     panelScopeSummaries: buildPanelScopeSummariesFromScopeReview(scopeReview),
     derivedFactDisplays: [],
     defaultMarginPercent: DEFAULT_MARGIN_PERCENT,
+    defaultGstRate: 15,
     requirementSnapshotRequirements: [],
   };
 }
