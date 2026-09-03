@@ -122,18 +122,25 @@ function stringCoveredByFact(line: string, fact: DefaultedFactEntry): boolean {
   return line.includes(String(fact.assumedValue));
 }
 
+function isHighImpactPhysical(line: string): boolean {
+  const lower = line.toLowerCase();
+  return (
+    /^assumed\b/.test(lower) ||
+    /unless confirmed/.test(lower) ||
+    /demolition|existing .+ removal/.test(lower) ||
+    /site access|normal site access/.test(lower) ||
+    /waste factor|procurement\/waste/.test(lower) ||
+    /board section assumed/.test(lower) ||
+    /deck height|step width|tread depth/.test(lower)
+  );
+}
+
 function impactRank(line: string): number {
   const lower = line.toLowerCase();
-  if (
-    /demolition|removal|access|carry|balustrade|fall|pricing|missing|height|footing/.test(
-      lower
-    )
-  ) {
-    return 0;
-  }
-  if (/assume|standard|default|preliminary|unless/.test(lower)) {
-    return 1;
-  }
+  if (isHighImpactPhysical(line)) return 0;
+  if (/assume|standard|default|preliminary|unless/.test(lower)) return 1;
+  // Long calculator method notes stay available in Builder Review.
+  if (line.length > 140) return 4;
   return 2;
 }
 

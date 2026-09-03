@@ -7,7 +7,7 @@ export type EstimatePriorityClass = "P0" | "P1" | "P2" | "P3";
 export const MAX_QUICK_ESTIMATE_P0_QUESTIONS = 3;
 
 /** Level 1 assumption disclosure cap (initial surface). */
-export const MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS = 5;
+export const MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS = 4;
 
 /** Project Conditions ASK batch for Quick Estimate path. */
 export const QUICK_ESTIMATE_PROJECT_CONDITIONS_BATCH_SIZE = 3;

@@ -44,7 +44,7 @@ type EstimateReadyCardProps = {
   className?: string;
 };
 
-const CONCISE_ASSUMPTION_LIMIT = 5;
+const CONCISE_ASSUMPTION_LIMIT = 4;
 const CONCISE_CHECK_LIMIT = 2;
 
 function severityLabel(item: QuickEstimateAttentionItem): string {
