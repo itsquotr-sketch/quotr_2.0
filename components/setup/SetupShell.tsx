@@ -152,7 +152,7 @@ export function SetupShell({
         description="Optional setup to personalise estimates. You can create projects anytime."
         actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
       />
-      <FormContainer className="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">
+      <FormContainer innerClassName="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">
         <div className="mb-6 space-y-3">
           <p className="text-sm text-muted-foreground">
             Choose a section below. Nothing here blocks creating a project.

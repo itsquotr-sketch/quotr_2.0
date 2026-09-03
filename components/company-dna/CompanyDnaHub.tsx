@@ -83,7 +83,7 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
                       size: "sm",
                       variant: area.status === "benchmarks" ? "default" : "outline",
                     }),
-                    "min-h-11"
+                    "min-h-11 scroll-mb-[5.5rem]"
                   )}
                   data-company-dna-hub-cta
                 >

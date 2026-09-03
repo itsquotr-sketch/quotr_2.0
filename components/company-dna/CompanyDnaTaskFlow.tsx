@@ -232,11 +232,11 @@ export function CompanyDnaTaskFlow({
           </p>
         ) : null}
 
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0">
           {saved && nextTask ? (
             <Link
               href={`/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`}
-              className={cn(buttonVariants(), "min-h-11")}
+              className={cn(buttonVariants(), "min-h-11 scroll-mb-[5.5rem]")}
               data-company-dna-next-task
             >
               {DNA_NEXT_TASK_CTA}
@@ -244,7 +244,7 @@ export function CompanyDnaTaskFlow({
           ) : canCalibrate ? (
             <Button
               type="button"
-              className="min-h-11"
+              className="min-h-11 scroll-mb-[5.5rem]"
               disabled={saving || !preview}
               onClick={() => void onSave(confirmRequired)}
             >

@@ -63,7 +63,7 @@ export default async function CompanyDnaTaskPage({ params }: PageProps) {
           <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
         }
       />
-      <FormContainer className="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">
+      <FormContainer innerClassName="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">
         <CompanyDnaTaskFlow
           task={task}
           alreadyCalibrated={alreadyCalibrated}
