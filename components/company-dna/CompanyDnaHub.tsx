@@ -60,35 +60,35 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
             return (
               <li
                 key={area.workAreaType}
-                className="rounded-xl border bg-card p-4 space-y-2"
+                className="rounded-xl border bg-card p-3 sm:p-4 space-y-2"
                 data-company-dna-work-area={area.workAreaType}
                 data-company-dna-status={area.status}
               >
-                <div className="flex flex-wrap items-baseline justify-between gap-2">
+                <div className="flex items-center justify-between gap-3">
                   <h3 className="text-sm font-medium">
                     {COMPANY_DNA_WORK_AREA_LABELS[area.workAreaType]}
                   </h3>
-                  <span className="text-xs text-muted-foreground">
-                    {formatDnaProgressCopy(area)}
-                    {preferred ? " · Common for your company" : ""}
-                  </span>
+                  <Link
+                    href={href}
+                    className={cn(
+                      buttonVariants({
+                        size: "sm",
+                        variant: area.status === "benchmarks" ? "default" : "outline",
+                      }),
+                      "min-h-11 shrink-0 scroll-mb-[5.5rem]"
+                    )}
+                    data-company-dna-hub-cta
+                  >
+                    {cta}
+                  </Link>
                 </div>
+                <p className="text-xs text-muted-foreground">
+                  {formatDnaProgressCopy(area)}
+                  {preferred ? " · Common for your company" : ""}
+                </p>
                 <p className="text-sm text-muted-foreground">
                   {area.statusLabel}
                 </p>
-                <Link
-                  href={href}
-                  className={cn(
-                    buttonVariants({
-                      size: "sm",
-                      variant: area.status === "benchmarks" ? "default" : "outline",
-                    }),
-                    "min-h-11 scroll-mb-[5.5rem]"
-                  )}
-                  data-company-dna-hub-cta
-                >
-                  {cta}
-                </Link>
               </li>
             );
           })}
