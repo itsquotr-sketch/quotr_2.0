@@ -21,11 +21,13 @@ import type { OrganisationSettings } from "@/components/setup/types";
 type CompanyDefaultsSectionProps = {
   settings: OrganisationSettings | null;
   onSettingsChange: (settings: OrganisationSettings) => void;
+  readOnly?: boolean;
 };
 
 export function CompanyDefaultsSection({
   settings,
   onSettingsChange,
+  readOnly = false,
 }: CompanyDefaultsSectionProps) {
   const [margin, setMargin] = useState(
     String(settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT)
@@ -55,6 +57,9 @@ export function CompanyDefaultsSection({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (readOnly) {
+      return;
+    }
     setError(null);
     setFieldErrors({});
     setNotice(null);
@@ -100,6 +105,9 @@ export function CompanyDefaultsSection({
           Default gross margin (0–95%, default 20%) and estimating preferences.
           GST and quote contact details live in Company settings — not duplicated
           here as rate authority.
+          {readOnly
+            ? " Only owners and admins can change company pricing defaults."
+            : null}
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit} className="flex flex-col gap-(--card-spacing)">
@@ -127,6 +135,7 @@ export function CompanyDefaultsSection({
                 step="0.1"
                 value={margin}
                 onChange={(event) => setMargin(event.target.value)}
+                disabled={readOnly}
                 required
               />
               <p className="text-xs text-muted-foreground">
@@ -149,6 +158,7 @@ export function CompanyDefaultsSection({
                 step="0.1"
                 value={contingency}
                 onChange={(event) => setContingency(event.target.value)}
+                disabled={readOnly}
                 required
               />
               {fieldErrors.default_contingency_percent?.[0] ? (
@@ -168,6 +178,7 @@ export function CompanyDefaultsSection({
                 step="0.01"
                 value={budgetFactor}
                 onChange={(event) => setBudgetFactor(event.target.value)}
+                disabled={readOnly}
                 required
               />
               {fieldErrors.budget_rate_factor?.[0] ? (
@@ -187,6 +198,7 @@ export function CompanyDefaultsSection({
                 step="0.01"
                 value={premiumFactor}
                 onChange={(event) => setPremiumFactor(event.target.value)}
+                disabled={readOnly}
                 required
               />
               {fieldErrors.premium_rate_factor?.[0] ? (
@@ -202,6 +214,7 @@ export function CompanyDefaultsSection({
               <Checkbox
                 id="prefer-user-rates"
                 checked={preferUserRates}
+                disabled={readOnly}
                 onCheckedChange={(checked) =>
                   setPreferUserRates(checked === true)
                 }
@@ -220,6 +233,7 @@ export function CompanyDefaultsSection({
               <Checkbox
                 id="allow-benchmark-rates"
                 checked={allowBenchmarkRates}
+                disabled={readOnly}
                 onCheckedChange={(checked) =>
                   setAllowBenchmarkRates(checked === true)
                 }
@@ -239,6 +253,7 @@ export function CompanyDefaultsSection({
               <Checkbox
                 id="show-profit"
                 checked={showProfit}
+                disabled={readOnly}
                 onCheckedChange={(checked) => setShowProfit(checked === true)}
               />
               <div>
@@ -249,11 +264,13 @@ export function CompanyDefaultsSection({
             </div>
           </div>
         </CardContent>
-        <CardFooter className="border-t">
-          <Button type="submit" disabled={saving}>
-            {saving ? "Saving…" : "Save defaults"}
-          </Button>
-        </CardFooter>
+        {readOnly ? null : (
+          <CardFooter className="border-t">
+            <Button type="submit" disabled={saving}>
+              {saving ? "Saving…" : "Save defaults"}
+            </Button>
+          </CardFooter>
+        )}
       </form>
     </Card>
   );

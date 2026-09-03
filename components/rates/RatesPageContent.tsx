@@ -372,6 +372,7 @@ export function RatesPageContent({
             onSettingsChange={(settings) =>
               setState((prev) => ({ ...prev, settings }))
             }
+            readOnly={!state.canManageRates}
           />
         ) : null}
 

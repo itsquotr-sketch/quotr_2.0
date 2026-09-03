@@ -394,7 +394,7 @@ assert("omitted high-impact flag keeps beta-1-5 behaviour", ladderCompat?.id ===
 assert("hub shows preferred first copy", hub.includes("Your usual work is listed first"));
 assert("hub does not hide other areas behind Show all", !hub.includes("Show all"));
 assert("hub mobile bottom padding", hub.includes("pb-[calc(4.5rem+env(safe-area-inset-bottom))]"));
-assert("task mobile bottom padding", flow.includes("pb-[calc(4.5rem+env(safe-area-inset-bottom))]"));
+assert("task mobile bottom padding", flow.includes("pb-[calc(5.5rem+env(safe-area-inset-bottom))]"));
 assert(
   "setup shell mobile padding",
   read("components/setup/SetupShell.tsx").includes("pb-[calc(6rem+env(safe-area-inset-bottom))]")
@@ -417,6 +417,71 @@ assert("friendly labels", RATE_SOURCE_FRIENDLY_LABELS.calibrated_productivity ==
 assert("estimator commercial edit hidden", ratesPage.includes("readOnly={!state.canManageRates}"));
 assert("rates table supports readOnly", ratesTable.includes("readOnly"));
 assert("estimator can still calibrate in compare", ratesPage.includes("canCalibrate={state.canCalibrate}"));
+
+const defaultsUi = read("components/rates/CompanyDefaultsSection.tsx");
+const ratesActions = read("lib/rates/actions.ts");
+const setupActions = read("lib/setup/actions.ts");
+const marginActions = read("lib/assistant/margin-actions.ts");
+const dnaActions = read("lib/company-dna/actions.ts");
+const permissions = read("lib/team/permissions.ts");
+const migrationFiles = readdirSync(join(process.cwd(), "supabase/migrations"));
+
+assert(
+  "defaults inherit canManageRates",
+  /<CompanyDefaultsSection[\s\S]*readOnly=\{!state\.canManageRates\}/.test(ratesPage)
+);
+assert("defaults section accepts readOnly", defaultsUi.includes("readOnly = false"));
+assert("defaults hide save when readOnly", defaultsUi.includes("{readOnly ? null : ("));
+assert("defaults margin input disabled when readOnly", defaultsUi.includes("disabled={readOnly}"));
+assert(
+  "saveRateSettings requires rates write context",
+  /export async function saveRateSettings[\s\S]{0,800}requireRatesWriteContext/.test(
+    ratesActions
+  )
+);
+assert(
+  "rates write uses company.rates.manage",
+  /permission: "company.rates.manage"/.test(ratesActions)
+);
+assert(
+  "saveCompanyDefaults uses company.rates.manage",
+  /export async function saveCompanyDefaults[\s\S]{0,1200}company\.rates\.manage/.test(
+    setupActions
+  )
+);
+assert(
+  "savePricingBasics uses company.rates.manage",
+  /export async function savePricingBasics[\s\S]{0,1200}company\.rates\.manage/.test(
+    setupActions
+  )
+);
+assert(
+  "no raw DB error on saveRateSettings",
+  /export async function saveRateSettings[\s\S]{0,1600}Could not save company defaults/.test(
+    ratesActions
+  )
+);
+assert(
+  "project margin is not company.rates.manage",
+  !marginActions.includes("company.rates.manage") &&
+    marginActions.includes("export async function updateEstimateMargin")
+);
+assert("Estimator keeps pricing.edit", roleAllowsPermission("estimator", "pricing.edit"));
+assert("Viewer cannot pricing.edit", !roleAllowsPermission("viewer", "pricing.edit"));
+assert("Owner can manage rates", roleAllowsPermission("owner", "company.rates.manage"));
+assert(
+  "calibration still company.calibration.manage",
+  dnaActions.includes("company.calibration.manage")
+);
+assert(
+  "no new defaults permission invented",
+  !permissions.includes("company.defaults") &&
+    permissions.includes('"company.rates.manage"')
+);
+assert(
+  "no migration 053",
+  !migrationFiles.some((name) => name.startsWith("053"))
+);
 
 const historical = read("components/calibration/CalibrationHub.tsx");
 assert("legacy hub not called calibration in title", historical.includes("Historical pricing notes"));

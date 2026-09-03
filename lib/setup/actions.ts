@@ -7,6 +7,7 @@ import {
   validateMarginPercent,
 } from "@/lib/security/margin-validation";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import type { createClient } from "@/lib/supabase/server";
 import { revalidatePath } from "next/cache";
@@ -311,6 +312,16 @@ export async function savePricingBasics(input: {
     return MISSING_ORG_ERROR;
   }
 
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.rates.manage",
+    entitlement: "company_rates.basic",
+  });
+  if (denied) {
+    return denied;
+  }
+
   const { supabase, orgId } = context;
 
   const labour = parsed.data.skipLabour
@@ -471,6 +482,16 @@ export async function saveCompanyDefaults(
     return MISSING_ORG_ERROR;
   }
 
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.rates.manage",
+    entitlement: "company_rates.basic",
+  });
+  if (denied) {
+    return denied;
+  }
+
   const { supabase, orgId } = context;
   const data = parsed.data;
 
@@ -507,7 +528,7 @@ export async function saveCompanyDefaults(
     .upsert(payload, { onConflict: "org_id" });
 
   if (error) {
-    return { error: error.message };
+    return { error: "Could not save company defaults. Please try again." };
   }
 
   return {};

@@ -234,7 +234,7 @@ export async function saveRateSettings(
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return { error: "Could not save company defaults. Please try again." };
   }
 
   return { success: true };
