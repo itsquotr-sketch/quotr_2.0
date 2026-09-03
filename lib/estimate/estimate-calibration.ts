@@ -43,6 +43,7 @@ export function countRateSources(
     derived_from_margin: 0,
     benchmark: 0,
     productivity: 0,
+    calibrated_productivity: 0,
     fallback: 0,
     missing: 0,
     default: 0,

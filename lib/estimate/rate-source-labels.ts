@@ -6,6 +6,7 @@ export type RateSourceType =
   | "derived_from_margin"
   | "benchmark"
   | "productivity"
+  | "calibrated_productivity"
   | "fallback"
   | "missing"
   | "default";
@@ -15,7 +16,8 @@ export const RATE_SOURCE_FRIENDLY_LABELS: Record<RateSourceType, string> = {
   work_area_rate: "Your work area rate",
   derived_from_margin: "Derived from margin",
   benchmark: "Quotr benchmark",
-  productivity: "Benchmark productivity",
+  productivity: "Quotr benchmark",
+  calibrated_productivity: "Your calibrated productivity",
   fallback: "Fallback allowance",
   missing: "Pricing required",
   default: "Default allowance",
@@ -30,6 +32,13 @@ export function classifyRateSource(raw: string): RateSourceType {
   const source = raw.trim().toLowerCase();
 
   if (!source) return "default";
+
+  if (
+    source.includes("your calibrated productivity") ||
+    source === "calibrated_productivity"
+  ) {
+    return "calibrated_productivity";
+  }
 
   if (
     source.includes("your company rate") ||
@@ -83,6 +92,10 @@ export function normalizeRateSourceLabel(raw: string): string {
 
 export function isUserRateSource(type: RateSourceType): boolean {
   return type === "user_rate" || type === "work_area_rate";
+}
+
+export function isCalibratedProductivitySource(type: RateSourceType): boolean {
+  return type === "calibrated_productivity";
 }
 
 export function isBenchmarkLikeSource(type: RateSourceType): boolean {

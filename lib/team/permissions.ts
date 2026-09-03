@@ -20,6 +20,7 @@ export const ORG_PERMISSIONS = [
   "quotes.send",
   "company.edit",
   "company.rates.manage",
+  "company.calibration.manage",
 ] as const;
 
 export type OrgPermission = (typeof ORG_PERMISSIONS)[number];
@@ -38,6 +39,8 @@ const ADMIN: ReadonlySet<OrgPermission> = new Set([
   "quotes.create",
   "quotes.send",
   "company.edit",
+  "company.rates.manage",
+  "company.calibration.manage",
 ]);
 
 const ESTIMATOR: ReadonlySet<OrgPermission> = new Set([
@@ -49,6 +52,7 @@ const ESTIMATOR: ReadonlySet<OrgPermission> = new Set([
   "pricing.edit",
   "quotes.create",
   "quotes.send",
+  "company.calibration.manage",
 ]);
 
 const VIEWER: ReadonlySet<OrgPermission> = new Set([

@@ -35,6 +35,7 @@ export function mapLabourRateSourceToRequirement(
     case "benchmark":
     case "productivity":
       return "benchmark";
+    case "calibrated_productivity":
     case "derived_from_margin":
       return "company";
   }

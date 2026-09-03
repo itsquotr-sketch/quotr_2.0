@@ -72,6 +72,16 @@ function normalizeRate(rate: Record<string, unknown>): RatesPageRate {
     markup_percent:
       rate.markup_percent != null ? Number(rate.markup_percent) : null,
     active: Boolean(rate.active),
+    source:
+      rate.source === "calibrated_productivity"
+        ? "calibrated_productivity"
+        : rate.source === "explicit_company"
+          ? "explicit_company"
+          : null,
+    source_calibration_id:
+      rate.source_calibration_id != null
+        ? String(rate.source_calibration_id)
+        : null,
     updated_at:
       rate.updated_at != null ? String(rate.updated_at) : null,
   };
@@ -130,7 +140,7 @@ export async function getRatesPageState(): Promise<RatesPageState> {
     supabase
       .from("rates")
       .select(
-        "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active, updated_at"
+        "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active, source, source_calibration_id, updated_at"
       )
       .eq("org_id", orgId)
       .order("rate_type")
@@ -290,6 +300,9 @@ export async function createRate(input: RateInput): Promise<RatesActionResult> {
       sell_rate: data.sell_rate ?? null,
       markup_percent: data.markup_percent ?? null,
       active: data.active ?? true,
+      source: "explicit_company",
+      source_calibration_id: null,
+      updated_by: loaded.context.user.id,
     })
     .select(
       "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active"
@@ -345,6 +358,9 @@ export async function updateRate(input: RateInput): Promise<RatesActionResult> {
       sell_rate: data.sell_rate ?? null,
       markup_percent: data.markup_percent ?? null,
       active: data.active ?? true,
+      source: "explicit_company",
+      source_calibration_id: null,
+      updated_by: loaded.context.user.id,
       updated_at: new Date().toISOString(),
     })
     .eq("id", data.id)
@@ -394,6 +410,9 @@ export async function upsertRate(input: RateInput): Promise<RatesActionResult> {
         sell_rate: data.sell_rate ?? null,
         markup_percent: data.markup_percent ?? null,
         active: data.active ?? true,
+        source: "explicit_company",
+        source_calibration_id: null,
+        updated_by: loaded.context.user.id,
         updated_at: new Date().toISOString(),
       },
       { onConflict: "org_id,rate_type,item_key" }

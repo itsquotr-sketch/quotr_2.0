@@ -10,8 +10,11 @@ import type { ProductivityRate } from "@/lib/estimate/types";
  * Hourly labour $ is a separate rate; changing it must not change hours.
  */
 
-const PRODUCTIVITY_SOURCE = getRateSourceLabel("productivity");
+const PRODUCTIVITY_SOURCE = getRateSourceLabel("benchmark");
 const COMPANY_PRODUCTIVITY_SOURCE = getRateSourceLabel("user_rate");
+const CALIBRATED_PRODUCTIVITY_SOURCE = getRateSourceLabel(
+  "calibrated_productivity"
+);
 
 function normalizeProductivityUnit(unit: string): string {
   return unit.toLowerCase().replace("²", "2").replace(/\s+/g, "");
@@ -342,12 +345,15 @@ export function resolveProductivity(params: {
     params.unit
   );
   if (company?.cost_rate != null) {
+    const calibrated = company.source === "calibrated_productivity";
     return {
       key: params.productivityKey,
       label: company.label || params.productivityKey,
       hoursPerUnit: Number(company.cost_rate),
       unit: params.unit ?? company.unit ?? "unit",
-      sourceLabel: COMPANY_PRODUCTIVITY_SOURCE,
+      sourceLabel: calibrated
+        ? CALIBRATED_PRODUCTIVITY_SOURCE
+        : COMPANY_PRODUCTIVITY_SOURCE,
     };
   }
 

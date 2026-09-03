@@ -154,7 +154,7 @@ export async function getEstimateContextWithContext(
     supabase
       .from("rates")
       .select(
-        "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active"
+        "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active, source, source_calibration_id"
       )
       .eq("org_id", orgId)
       .eq("active", true),

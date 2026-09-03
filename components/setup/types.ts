@@ -56,6 +56,8 @@ export type OrganisationRate = {
   sell_rate: number | null;
   markup_percent: number | null;
   active: boolean;
+  source?: "explicit_company" | "calibrated_productivity" | null;
+  source_calibration_id?: string | null;
 };
 
 export type SetupState = {
