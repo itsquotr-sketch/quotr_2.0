@@ -117,6 +117,13 @@ type EstimatePanelProps = {
   understandingSummaries?: readonly AssistantUnderstandingSummary[];
   /** DECK-2B-R2 — after estimate, sidebar is commercial metrics only. */
   compactCommercialSidebar?: boolean;
+  /**
+   * Canonical Work Area confirmation is projects.stage >= quality,
+   * not Analyse success.
+   */
+  workAreasConfirmed?: boolean;
+  /** After Builder Review, Continue to Pricing may be the primary progression. */
+  pricingProgressionPrimary?: boolean;
   /** R3 — optional cost breakdown for Commercial Overview. */
   commercialBreakdown?: {
     materialsCost?: number | null;
@@ -328,6 +335,8 @@ export function EstimatePanel({
   projectConditionsAttention = [],
   understandingSummaries = [],
   compactCommercialSidebar = false,
+  workAreasConfirmed = false,
+  pricingProgressionPrimary = false,
   commercialBreakdown = null,
   onViewBreakdown,
   onGenerate,
@@ -644,7 +653,16 @@ export function EstimatePanel({
       ) : (
         <PrepareFinalPricingButton
           projectId={projectId}
-          className="w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
+          variant={
+            compactCommercialSidebar && !pricingProgressionPrimary
+              ? "outline"
+              : "default"
+          }
+          className={
+            compactCommercialSidebar && !pricingProgressionPrimary
+              ? "w-full"
+              : "w-full bg-[var(--brand-orange)] text-white hover:bg-[var(--brand-orange)]/90"
+          }
           label={
             compactCommercialSidebar
               ? ASSISTANT_ACTION_LABELS.continueToPricing
@@ -771,7 +789,19 @@ export function EstimatePanel({
               </Button>
             </>
           ) : (
-            <AssistantEmptyState stage="quick_estimate" />
+            <AssistantEmptyState
+              stage="quick_estimate"
+              title={
+                workAreasConfirmed
+                  ? undefined
+                  : "Review the work Quotr found"
+              }
+              nextActionLabel={
+                workAreasConfirmed
+                  ? undefined
+                  : "Confirm the Work Areas to continue."
+              }
+            />
           )}
 
           {quickEstimatePresentation ? (
@@ -1188,8 +1218,16 @@ export function EstimatePanel({
             </p>
           ) : null}
 
-          {/* Primary CTA — commercial decision */}
-          {pricingActions}
+          {/* Pricing progression — secondary until Builder Review */}
+          <div
+            data-estimate-pricing-cta={
+              compactCommercialSidebar && !pricingProgressionPrimary
+                ? "secondary"
+                : "primary"
+            }
+          >
+            {pricingActions}
+          </div>
 
           <p className="text-[11px] text-muted-foreground">
             Internal only — not a quote.
@@ -1425,6 +1463,7 @@ export function EstimatePanel({
       )}
       data-estimate-panel-active={isActiveStage ? "true" : "false"}
       data-compact-commercial-sidebar={compactCommercialSidebar ? "true" : "false"}
+      data-work-areas-confirmed={workAreasConfirmed ? "true" : "false"}
       data-quick-estimate-sticky="lg"
       data-ready-to-generate={canGenerateEstimate && !estimate ? "true" : "false"}
       data-mobile-qe-expanded={mobileExpanded ? "true" : "false"}
@@ -1478,9 +1517,11 @@ export function EstimatePanel({
             ? "Draft estimate based on your inputs"
             : canGenerateEstimate
               ? "Ready to generate your draft estimate"
-              : constraintsSubmitted
-                ? "A few things left to clarify"
-                : "Job plan confirmed. Estimate when clarified or safely assumed."}
+              : !workAreasConfirmed
+                ? "Review the work Quotr found"
+                : constraintsSubmitted
+                  ? "A few things left to clarify"
+                  : "Work confirmed. Estimate when the important details are in, or safely assumed."}
         </CardDescription>
       </CardHeader>
 

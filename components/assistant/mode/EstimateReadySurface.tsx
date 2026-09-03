@@ -10,6 +10,8 @@ type EstimateReadySurfaceProps = {
   isStale: boolean;
   isRegenerating?: boolean;
   pricingCtaEnabled: boolean;
+  /** After Builder Review, Continue to Pricing is the primary next action. */
+  pricingCtaPrimary?: boolean;
   children: ReactNode;
 };
 
@@ -18,6 +20,7 @@ export function EstimateReadySurface({
   isStale,
   isRegenerating = false,
   pricingCtaEnabled,
+  pricingCtaPrimary = false,
   children,
 }: EstimateReadySurfaceProps) {
   return (
@@ -47,11 +50,15 @@ export function EstimateReadySurface({
         </p>
       ) : null}
       {!isStale && pricingCtaEnabled ? (
-        <div className="lg:hidden" data-estimate-ready-mobile-pricing>
+        <div
+          className="lg:hidden"
+          data-estimate-ready-mobile-pricing
+          data-estimate-pricing-cta={pricingCtaPrimary ? "primary" : "secondary"}
+        >
           <PrepareFinalPricingButton
             projectId={projectId}
             className="h-11 w-full min-h-11"
-            variant="outline"
+            variant={pricingCtaPrimary ? "default" : "outline"}
             label={ASSISTANT_ACTION_LABELS.continueToPricing}
           />
         </div>

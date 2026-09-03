@@ -162,6 +162,10 @@ import {
   deriveQuickEstimateConfidencePresentation,
   rankQuickEstimateAssumptions,
 } from "@/lib/assistant/presentation/quick-estimate-confidence";
+import {
+  presentEstimateConfidenceCopy,
+  selectEstimatingAssumptionPhrase,
+} from "@/lib/assistant/presentation/estimate-confidence-copy";
 import { MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS } from "@/lib/scopes/estimate-priority";
 import { composeCurrentWorkAreaScopeState } from "@/lib/assistant/current-work-area-scope-state";
 import { listManualScopeItemsForProject } from "@/lib/work-areas/scope-items/actions";
@@ -351,6 +355,7 @@ export function AssistantShell({
   const workAreaSaveGuardRef = useRef(createLatestWriteGuard());
   const [breakdownOpen, setBreakdownOpen] = useState(false);
   const [builderReviewOpen, setBuilderReviewOpen] = useState(false);
+  const [builderReviewCompleted, setBuilderReviewCompleted] = useState(false);
   const [refineAfterEstimateOpen, setRefineAfterEstimateOpen] = useState(false);
   const [refineAfterEstimateFocusKey, setRefineAfterEstimateFocusKey] = useState<
     string | null
@@ -917,6 +922,7 @@ export function AssistantShell({
     }) => {
       const nav = resolveAttentionNavigation(item);
       if (nav.kind === "builder_review") {
+        setBuilderReviewCompleted(true);
         setBuilderReviewOpen(true);
         return;
       }
@@ -2048,8 +2054,8 @@ export function AssistantShell({
   const projectInformationLabel = CLARIFY_IS_PRIMARY
     ? workAreasConfirmed && !estimateReady
       ? clarifyView.enoughToEstimate
-        ? "Job plan confirmed · Estimate ready"
-        : `Job plan confirmed · ${clarifyView.visibleCount} thing${
+        ? "Work confirmed · Estimate ready"
+        : `Work confirmed · ${clarifyView.visibleCount} thing${
             clarifyView.visibleCount === 1 ? "" : "s"
           } to clarify`
       : null
@@ -2345,6 +2351,7 @@ export function AssistantShell({
               isStale={displayEstimateStale}
               isRegenerating={updatingEstimate}
               pricingCtaEnabled={!pricingSummary}
+              pricingCtaPrimary={builderReviewCompleted}
             >
               {refineAfterEstimateOpen && refineView.hasCandidates ? (
                 <RefineEstimatePanel
@@ -2439,27 +2446,20 @@ export function AssistantShell({
                         attentionCount: completedEstimateAttentionItems.length,
                       }).band
                     }
-                    confidenceReasons={
-                      estimate.assumptions.length > 0
-                        ? [
-                            `Quotr had to assume ${estimate.assumptions[0]!.replace(/^Assumed\s+/i, "").replace(/\.$/, "")}.`,
-                            ...deriveQuickEstimateConfidencePresentation({
-                              confidencePercent: estimate.confidence,
-                              assumptionSeverity:
-                                estimate.assumptionMetadata?.assumptionSeverity,
-                              missingInfoCount: estimate.missingInfo.length,
-                              attentionCount:
-                                completedEstimateAttentionItems.length,
-                            }).reasons,
-                          ]
-                        : deriveQuickEstimateConfidencePresentation({
-                            confidencePercent: estimate.confidence,
-                            assumptionSeverity:
-                              estimate.assumptionMetadata?.assumptionSeverity,
-                            missingInfoCount: estimate.missingInfo.length,
-                            attentionCount:
-                              completedEstimateAttentionItems.length,
-                          }).reasons
+                    confidenceExplanation={
+                      presentEstimateConfidenceCopy({
+                        band: deriveQuickEstimateConfidencePresentation({
+                          confidencePercent: estimate.confidence,
+                          assumptionSeverity:
+                            estimate.assumptionMetadata?.assumptionSeverity,
+                          missingInfoCount: estimate.missingInfo.length,
+                          attentionCount: completedEstimateAttentionItems.length,
+                        }).band,
+                        assumptionPhrase: selectEstimatingAssumptionPhrase(
+                          estimate.assumptions,
+                          estimate.assumptionMetadata
+                        ),
+                      }).explanation
                     }
                     assumptions={rankQuickEstimateAssumptions(
                       estimate.assumptions,
@@ -2478,7 +2478,11 @@ export function AssistantShell({
                     ).map(([name, sell]) => ({ name, sell }))}
                     rateSourceSummary={estimate.rateSourceSummary}
                     compactResult={false}
-                    onReviewEstimate={() => setBuilderReviewOpen(true)}
+                    reviewIsPrimary={!builderReviewCompleted}
+                    onReviewEstimate={() => {
+                      setBuilderReviewCompleted(true);
+                      setBuilderReviewOpen(true);
+                    }}
                     onEditJob={() => openEditJob(null)}
                     onUpdateEstimate={
                       displayEstimateStale ? handleRegenerateEstimate : undefined
@@ -3325,6 +3329,8 @@ export function AssistantShell({
             projectInformationLabel={projectInformationLabel}
             projectConditionsAttention={projectConditionsAttention}
             compactCommercialSidebar={assistantMode === "estimate_ready"}
+            workAreasConfirmed={workAreasConfirmed}
+            pricingProgressionPrimary={builderReviewCompleted}
             commercialBreakdown={commercialBreakdown}
             onViewBreakdown={() => {
               setBuilderReviewOpen(false);

@@ -28,6 +28,7 @@ type EstimateReadyCardProps = {
   isStale?: boolean;
   isRegenerating?: boolean;
   confidenceBand?: string | null;
+  confidenceExplanation?: string | null;
   confidenceReasons?: readonly string[];
   assumptions: readonly string[];
   attentionItems: readonly QuickEstimateAttentionItem[];
@@ -38,6 +39,8 @@ type EstimateReadyCardProps = {
   onUpdateEstimate?: () => void;
   onReviewAttention?: (item: QuickEstimateAttentionItem) => void;
   compactResult?: boolean;
+  /** After Builder Review, Review estimate is no longer the primary progression. */
+  reviewIsPrimary?: boolean;
   className?: string;
 };
 
@@ -63,6 +66,7 @@ export function EstimateReadyCard({
   isStale = false,
   isRegenerating = false,
   confidenceBand,
+  confidenceExplanation = null,
   confidenceReasons = [],
   assumptions,
   attentionItems,
@@ -73,6 +77,7 @@ export function EstimateReadyCard({
   onUpdateEstimate,
   onReviewAttention,
   compactResult = false,
+  reviewIsPrimary = true,
   className,
 }: EstimateReadyCardProps) {
   const money = staleEstimateMoneyPresentation(isStale);
@@ -192,7 +197,12 @@ export function EstimateReadyCard({
           {confidenceBand ? (
             <p className="mt-2 text-sm" data-estimate-confidence>
               <span className="font-medium">{confidenceBand} confidence</span>
-              {confidenceReasons[0] ? (
+              {confidenceExplanation ? (
+                <span className="text-muted-foreground">
+                  {" "}
+                  — {confidenceExplanation}
+                </span>
+              ) : confidenceReasons[0] ? (
                 <span className="text-muted-foreground">
                   {" "}
                   — {confidenceReasons[0]}
@@ -329,8 +339,10 @@ export function EstimateReadyCard({
         {!isStale && onReviewEstimate ? (
           <Button
             type="button"
+            variant={reviewIsPrimary ? "default" : "outline"}
             className="h-11 min-h-11 w-full sm:w-auto"
-            data-estimate-ready-primary-cta="review"
+            data-estimate-ready-primary-cta={reviewIsPrimary ? "review" : undefined}
+            data-estimate-ready-secondary-cta={reviewIsPrimary ? undefined : "review"}
             data-builder-review-entry="true"
             onClick={onReviewEstimate}
           >

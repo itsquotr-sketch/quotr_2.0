@@ -15,6 +15,15 @@ import { ANALYSE_JOB_PROGRESS_STEPS } from "../lib/assistant/analyse-job-progres
 import { roleAllowsPermission } from "../lib/team/permissions";
 import { classifyAnalysisError, userMessageForAnalysisError, UNKNOWN_ANALYSIS_ERROR } from "../lib/ai/analyse-job-contract";
 import { DEFAULT_MARGIN_PERCENT } from "../lib/estimate/constants";
+import { GENERAL_ESTIMATE_ASSUMPTIONS } from "../lib/estimate/summary";
+import {
+  isBoundaryAssumptionCopy,
+  estimatingAssumptionsForDisplay,
+} from "../lib/assistant/presentation/quick-estimate-confidence";
+import {
+  presentEstimateConfidenceCopy,
+  selectEstimatingAssumptionPhrase,
+} from "../lib/assistant/presentation/estimate-confidence-copy";
 
 function assert(label: string, ok: boolean) {
   console.log(ok ? "PASS" : "FAIL", label);
@@ -191,6 +200,97 @@ function main() {
   section("ASSUMPTION AUTHORITY");
   assert("facts remain write target for clarify", compose.includes('writeTarget: "FACT"') || read("lib/assistant/job-plan/actions.ts").includes("updateProjectFact"));
   assert("not sure writes Not sure token", valueField.includes('onSubmit("Not sure")'));
+
+  section("BETA-2.1 POLISH");
+  const page = read("app/(protected)/app/projects/[projectId]/page.tsx");
+  const readySurface = read("components/assistant/mode/EstimateReadySurface.tsx");
+  const confidenceCopy = read("lib/assistant/presentation/estimate-confidence-copy.ts");
+  const confidenceBand = read("lib/assistant/presentation/quick-estimate-confidence.ts");
+
+  assert(
+    "desktop pricing CTA is outline before review",
+    estimatePanel.includes("compactCommercialSidebar && !pricingProgressionPrimary") &&
+      estimatePanel.includes('variant={') &&
+      estimatePanel.includes('"outline"')
+  );
+  assert(
+    "mobile pricing CTA starts outline",
+    readySurface.includes('variant={pricingCtaPrimary ? "default" : "outline"}')
+  );
+  assert(
+    "Review estimate is primary before review",
+    readyCard.includes("reviewIsPrimary") &&
+      readyCard.includes('variant={reviewIsPrimary ? "default" : "outline"}')
+  );
+  assert(
+    "confirmation uses stage quality, not Analyse success",
+    shell.includes('workAreasConfirmed = isStageAtOrBeyond(stage, "quality")') &&
+      estimatePanel.includes("workAreasConfirmed") &&
+      estimatePanel.includes("Review the work Quotr found") &&
+      !estimatePanel.includes("Job plan confirmed. Estimate when clarified")
+  );
+  assert(
+    "labour rate does not interrupt pre-estimate project",
+    !page.includes("{!(hasEstimate || tabContext.hasEstimate)") &&
+      page.includes("data-post-estimate-guidance") &&
+      readyCard.includes("Some rates use Quotr benchmarks")
+  );
+  assert(
+    "boundary copy is not an estimating assumption",
+    GENERAL_ESTIMATE_ASSUMPTIONS.every((line) => isBoundaryAssumptionCopy(line)) &&
+      estimatingAssumptionsForDisplay(GENERAL_ESTIMATE_ASSUMPTIONS).length === 0
+  );
+  assert(
+    "confidence does not use internal working estimate",
+    selectEstimatingAssumptionPhrase(GENERAL_ESTIMATE_ASSUMPTIONS, null) === null &&
+      !presentEstimateConfidenceCopy({
+        band: "Medium",
+        assumptionPhrase: selectEstimatingAssumptionPhrase(
+          [
+            "This is an internal working estimate, not a client quote.",
+            "Assumed normal site access",
+          ],
+          null
+        ),
+      }).explanation.includes("internal working estimate")
+  );
+  assert(
+    "medium confidence uses genuine assumption phrase",
+    presentEstimateConfidenceCopy({
+      band: "Medium",
+      assumptionPhrase: "site access",
+    }).explanation.includes("including site access")
+  );
+  assert(
+    "high/low confidence copy is builder language",
+    presentEstimateConfidenceCopy({ band: "High", assumptionPhrase: null }).explanation ===
+      "Most key job details are known." &&
+      presentEstimateConfidenceCopy({ band: "Low", assumptionPhrase: null }).explanation.includes(
+        "still based on assumptions"
+      )
+  );
+  assert(
+    "fallback does not invent an assumption",
+    presentEstimateConfidenceCopy({ band: "Medium", assumptionPhrase: null }).explanation ===
+      "Based on the job information currently available."
+  );
+  assert("confidence helper is presentation-only", confidenceCopy.includes("Does not change persisted assumptions"));
+  assert(
+    "structured defaulted facts preferred",
+    selectEstimatingAssumptionPhrase(["This is an internal working estimate, not a client quote."], {
+      defaultedFacts: [
+        {
+          key: "site.access",
+          label: "site access",
+          assumedValue: "normal",
+        },
+      ],
+    }) === "site access"
+  );
+  assert("not-sure remains journal token", valueField.includes('onSubmit("Not sure")') && valueField.includes("data-clarify-use-assumption"));
+  assert("estimate-now still cannot bypass must-know", compose.includes("canEstimateNow: !blocksEstimate"));
+  assert("calculate-estimate still not importing polish copy", !calc.includes("estimate-confidence-copy") && !calc.includes("action-labels"));
+  assert("rank filters boundary copy", confidenceBand.includes("estimatingAssumptionsForDisplay"));
 
   if (process.exitCode) {
     console.log("\nBETA-2 verifier FAILED");

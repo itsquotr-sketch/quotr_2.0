@@ -2,8 +2,28 @@
  * DECK-2B — Deterministic Quick Estimate confidence band (presentation only).
  * Uses existing estimate confidence % + assumption/missing signals — no AI guess.
  */
+import { GENERAL_ESTIMATE_ASSUMPTIONS } from "@/lib/estimate/summary";
 
 export type QuickEstimateConfidenceBand = "High" | "Medium" | "Low";
+
+const BOUNDARY_COPY_PATTERNS = [
+  /internal working estimate/i,
+  /not a client quote/i,
+  /review it before creating final pricing/i,
+];
+
+export function isBoundaryAssumptionCopy(line: string): boolean {
+  const trimmed = line.trim();
+  if (!trimmed) return true;
+  if (GENERAL_ESTIMATE_ASSUMPTIONS.includes(trimmed)) return true;
+  return BOUNDARY_COPY_PATTERNS.some((pattern) => pattern.test(trimmed));
+}
+
+export function estimatingAssumptionsForDisplay(
+  assumptions: readonly string[]
+): string[] {
+  return assumptions.filter((line) => !isBoundaryAssumptionCopy(line));
+}
 
 export type QuickEstimateConfidencePresentation = {
   readonly band: QuickEstimateConfidenceBand;
@@ -78,7 +98,7 @@ export function rankQuickEstimateAssumptions(
   assumptions: readonly string[],
   limit = 3
 ): readonly string[] {
-  const ranked = [...assumptions]
+  const ranked = estimatingAssumptionsForDisplay(assumptions)
     .map((item) => item.trim())
     .filter(Boolean)
     .filter((item, index, array) => array.indexOf(item) === index);

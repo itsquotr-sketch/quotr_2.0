@@ -129,9 +129,6 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       <DuplicatedProjectBanner
         show={Boolean(project.duplicated_from_project_id)}
       />
-      {!(hasEstimate || tabContext.hasEstimate) ? (
-        <SetupGuidanceServerBanner dimension="estimate" />
-      ) : null}
       <AssistantShell
         key={assistantState.project.stage}
         initialState={assistantState}
