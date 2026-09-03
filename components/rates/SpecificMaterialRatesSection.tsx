@@ -9,12 +9,14 @@ type SpecificMaterialRatesSectionProps = {
   rates: RatesPageRate[];
   onRatesChange: (rates: RatesPageRate[]) => void;
   companyGrossMarginPercent?: number;
+  readOnly?: boolean;
 };
 
 export function SpecificMaterialRatesSection({
   rates,
   onRatesChange,
   companyGrossMarginPercent,
+  readOnly = false,
 }: SpecificMaterialRatesSectionProps) {
   return (
     <div className="space-y-4">
@@ -41,6 +43,7 @@ export function SpecificMaterialRatesSection({
           companyGrossMarginPercent={companyGrossMarginPercent}
           variant="grouped"
           showEngineColumn
+          readOnly={readOnly}
         />
         );
       })}

@@ -377,16 +377,16 @@ assert("client does not submit derived productivity", !actions.includes("p_deriv
 assert("legacy 033 not auto-promoted", !actions.includes('.from("calibration_responses")'));
 
 const hub = read("components/company-dna/CompanyDnaHub.tsx");
-assert("landing copy", hub.includes("Make Quotr price more like you"));
-assert("progress copy", hub.includes("of") && hub.includes("calibrated"));
-assert("no percent DNA gamification", !hub.includes("% Company DNA"));
-
 const flow = read("components/company-dna/CompanyDnaTaskFlow.tsx");
-assert("crew language", flow.includes("How many people from your team"));
+const dnaCopy = read("lib/company-dna/copy.ts");
+assert("landing copy", hub.includes("Make Quotr price more like you"));
+assert("progress copy", dnaCopy.includes("of") && dnaCopy.includes("calibrated"));
+assert("no percent DNA gamification", !hub.includes("% Company DNA"));
+assert("crew language", dnaCopy.includes("How many people from your team"));
 assert("hours input", flow.includes("hours"));
 assert("no raw productivity prompt", !/enter productivity/i.test(flow));
 assert("thumb-friendly controls", flow.includes("min-h-11"));
-assert("reset CTA", flow.includes("Use Quotr benchmark"));
+assert("reset CTA", dnaCopy.includes("Use Quotr benchmark"));
 
 const shell = read("components/setup/SetupShell.tsx");
 assert("dashboard calibrate uses DNA hub", shell.includes("CompanyDnaHub"));

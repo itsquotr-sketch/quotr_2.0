@@ -32,7 +32,8 @@ export function deriveAssistantUiMode(
 }
 
 export const STALE_ESTIMATE_HEADING = "Estimate needs updating";
-export const STALE_ESTIMATE_EXPLANATION = "Job details changed";
+export const STALE_ESTIMATE_EXPLANATION =
+  "Update this estimate to apply the latest job details and company settings.";
 
 export function staleEstimateMoneyPresentation(
   isStale: boolean

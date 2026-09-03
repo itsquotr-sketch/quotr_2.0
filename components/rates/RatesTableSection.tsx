@@ -42,6 +42,7 @@ type RatesTableSectionProps = {
   variant?: "labour" | "grouped" | "productivity";
   showEngineColumn?: boolean;
   showAddButton?: boolean;
+  readOnly?: boolean;
 };
 
 function EngineBadge({
@@ -112,6 +113,7 @@ function RateMobileCard({
   companyGrossMarginPercent,
   onEdit,
   onAdoptBenchmark,
+  readOnly = false,
 }: {
   entry: RateCatalogueEntry;
   rate: RatesPageRate | undefined;
@@ -119,6 +121,7 @@ function RateMobileCard({
   companyGrossMarginPercent: number;
   onEdit: () => void;
   onAdoptBenchmark?: () => void;
+  readOnly?: boolean;
 }) {
   const hasCompanyRate = Boolean(rate?.active && rate.cost_rate != null);
   const canAdopt =
@@ -184,29 +187,31 @@ function RateMobileCard({
             </p>
           ) : null}
         </div>
-        <div className="flex shrink-0 flex-col gap-1">
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8"
-            onClick={onEdit}
-          >
-            <Pencil className="mr-1 size-3.5" />
-            {hasCompanyRate ? "Edit" : "Add your rate"}
-          </Button>
-          {canAdopt ? (
+        {readOnly ? null : (
+          <div className="flex shrink-0 flex-col gap-1">
             <Button
               type="button"
-              variant="ghost"
+              variant="outline"
               size="sm"
-              className="h-8 text-xs"
-              onClick={onAdoptBenchmark}
+              className="h-8"
+              onClick={onEdit}
             >
-              {isProductivityEntry(entry) ? "Use starter hours" : "Use benchmark cost"}
+              <Pencil className="mr-1 size-3.5" />
+              {hasCompanyRate ? "Edit" : "Add your rate"}
             </Button>
-          ) : null}
-        </div>
+            {canAdopt ? (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={onAdoptBenchmark}
+              >
+                {isProductivityEntry(entry) ? "Use starter hours" : "Use benchmark cost"}
+              </Button>
+            ) : null}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -221,6 +226,7 @@ function RateRow({
   companyGrossMarginPercent,
   onEdit,
   onAdoptBenchmark,
+  readOnly = false,
 }: {
   entry: RateCatalogueEntry;
   rate: RatesPageRate | undefined;
@@ -230,6 +236,7 @@ function RateRow({
   companyGrossMarginPercent: number;
   onEdit: () => void;
   onAdoptBenchmark?: () => void;
+  readOnly?: boolean;
 }) {
   const hasCompanyRate = Boolean(rate?.active && rate.cost_rate != null);
   const canAdopt =
@@ -300,6 +307,7 @@ function RateRow({
         </td>
       ) : null}
       <td className="px-3 py-2.5 text-right">
+        {readOnly ? null : (
         <div className="flex flex-wrap items-center justify-end gap-1">
           {canAdopt ? (
             <Button
@@ -316,6 +324,7 @@ function RateRow({
             {hasCompanyRate ? "Edit" : "Add your rate"}
           </Button>
         </div>
+        )}
       </td>
     </tr>
   );
@@ -331,6 +340,7 @@ export function RatesTableSection({
   variant = "labour",
   showEngineColumn = false,
   showAddButton = true,
+  readOnly = false,
 }: RatesTableSectionProps) {
   const margin = resolveCompanyGrossMarginPercent(companyGrossMarginPercent);
   const rateMap = useMemo(
@@ -451,7 +461,7 @@ export function RatesTableSection({
             <CardTitle className="text-base">{title}</CardTitle>
             <CardDescription className="mt-1.5">{description}</CardDescription>
           </div>
-          {showAddButton && unsetEntries.length > 0 ? (
+          {showAddButton && !readOnly && unsetEntries.length > 0 ? (
             <Button
               type="button"
               variant="outline"
@@ -507,7 +517,9 @@ export function RatesTableSection({
                             Engine
                           </th>
                         ) : null}
+                        {readOnly ? null : (
                         <th className="px-3 py-2 text-right">Actions</th>
+                        )}
                       </tr>
                     </thead>
                     <tbody>
@@ -527,6 +539,7 @@ export function RatesTableSection({
                           onAdoptBenchmark={() => {
                             void handleAdoptBenchmark(entry);
                           }}
+                          readOnly={readOnly}
                         />
                       ))}
                     </tbody>
@@ -548,6 +561,7 @@ export function RatesTableSection({
                       onAdoptBenchmark={() => {
                         void handleAdoptBenchmark(entry);
                       }}
+                      readOnly={readOnly}
                     />
                   ))}
                 </div>
@@ -557,7 +571,7 @@ export function RatesTableSection({
         </CardContent>
       </Card>
 
-      {editingEntry ? (
+      {editingEntry && !readOnly ? (
         <RateEditDialog
           key={`${editingEntry.item_key}-${rateMap.get(editingEntry.item_key)?.id ?? "new"}`}
           open={Boolean(editingEntry)}

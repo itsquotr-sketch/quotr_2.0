@@ -68,11 +68,11 @@ export function CalibrationHub({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Calibrate Quotr</CardTitle>
+        <CardTitle>Historical pricing notes</CardTitle>
         <CardDescription>
-          Calibration helps Quotr understand how your business prices this type
-          of work. It won’t automatically change your company rates. Choose an
-          example below — about 3 minutes.
+          These older example-job comparisons are kept as evidence. They do not
+          change estimates. Calibrate crew productivity from Make Quotr price
+          more like you.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">

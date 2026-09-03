@@ -5,7 +5,7 @@ import {
   formatLabourHours,
 } from "@/lib/estimate/builder-presentation-format";
 import { shapeLabourHours } from "@/lib/estimate/labour-hours";
-import { buildPersistedLineItemNotes } from "@/lib/estimate/line-item-metadata";
+import { buildPersistedLineItemNotes, inferProductivitySourceType } from "@/lib/estimate/line-item-metadata";
 import { normalizeRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import {
   buildAuthoritativeEstimateAmounts,
@@ -109,6 +109,7 @@ export function createLabourLineItem(params: {
   adjustmentLabel?: string;
   sortOrder: number;
   organisationSettings: OrganisationSettings | null;
+  productivitySourceType?: RateSourceType;
 }): EstimateLineItemInput {
   const adjustmentFactor = params.adjustmentFactor ?? 1;
   const qualityFactor = params.qualityFactor ?? 1;
@@ -141,6 +142,9 @@ export function createLabourLineItem(params: {
       ? `${formatLabourHours(labourHoursResult.baseHours)} base h · ${adjustmentSummary} → ${formatLabourHours(labourHours)} h`
       : `${formatLabourHours(labourHours)} h`;
   const noteParts = [equation, params.notes].filter(Boolean);
+  const productivitySourceType =
+    params.productivitySourceType ??
+    inferProductivitySourceType(params.notes);
 
   return withRateMetadata(
     {
@@ -158,6 +162,7 @@ export function createLabourLineItem(params: {
       identitySummary,
       sortOrder: params.sortOrder,
       componentKey: params.componentKey,
+      productivitySourceType,
       ...buildAmounts(
         money.recommendedCost,
         money.recommendedSell,
@@ -370,6 +375,7 @@ export function buildLineItemNotes(item: EstimateLineItemInput): string | null {
       costRate: item.costRate,
       sellRate: item.sellRate,
       rateSourceType: item.rateSourceType,
+      productivitySourceType: item.productivitySourceType,
       sellDerivedFromMargin: item.sellDerivedFromMargin,
       sellAuthority: item.sellAuthority,
       materialBuildUp: item.materialBuildUp,

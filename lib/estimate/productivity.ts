@@ -69,6 +69,7 @@ function productivityEntry(
     hoursPerUnit,
     unit,
     sourceLabel: PRODUCTIVITY_SOURCE,
+    sourceType: "benchmark",
   };
 }
 
@@ -354,6 +355,7 @@ export function resolveProductivity(params: {
       sourceLabel: calibrated
         ? CALIBRATED_PRODUCTIVITY_SOURCE
         : COMPANY_PRODUCTIVITY_SOURCE,
+      sourceType: calibrated ? "calibrated_productivity" : "user_rate",
     };
   }
 
@@ -369,6 +371,7 @@ export function resolveProductivity(params: {
     hoursPerUnit: params.fallbackHoursPerUnit,
     unit: params.unit ?? "unit",
     sourceLabel: PRODUCTIVITY_SOURCE,
+    sourceType: "benchmark",
   };
 }
 

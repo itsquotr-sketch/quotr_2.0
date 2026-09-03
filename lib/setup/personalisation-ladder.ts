@@ -30,6 +30,11 @@ export type PersonalisationLadderInput = {
   firstRunComplete: boolean;
   hasWorkTypePreferences: boolean;
   hasCalibration: boolean;
+  /**
+   * True when at least one Work Area has two high-impact tasks calibrated.
+   * When omitted, hasCalibration is treated as complete (existing callers).
+   */
+  hasHighImpactCalibration?: boolean;
   /** Active company rates with a cost (labour, material, scope, …). */
   companyRateCount: number;
   hasContactEmail: boolean;
@@ -54,6 +59,15 @@ const CALIBRATE_STEP: PersonalisationStep = {
   cta: "Calibrate how you work",
   href: "/app/setup?mode=improve&section=calibrate",
   helper: "About 3 minutes",
+};
+
+const CONTINUE_CALIBRATE_STEP: PersonalisationStep = {
+  id: "calibrate",
+  title: "Continue making Quotr price more like you",
+  reason:
+    "Finish the key tasks for the work you do most. One minor task is not enough.",
+  cta: "Continue calibration",
+  href: "/app/setup?mode=improve&section=calibrate",
 };
 
 const RATES_STEP: PersonalisationStep = {
@@ -84,7 +98,11 @@ export function resolvePersonalisationNextStep(
   if (!input.firstRunComplete) return null;
 
   if (!input.hasWorkTypePreferences) return WORK_STEP;
-  if (!input.hasCalibration) return CALIBRATE_STEP;
+  const calibrationComplete =
+    input.hasHighImpactCalibration ?? input.hasCalibration;
+  if (!calibrationComplete) {
+    return input.hasCalibration ? CONTINUE_CALIBRATE_STEP : CALIBRATE_STEP;
+  }
   if (input.companyRateCount < RATE_REVIEW_MIN_COMPANY_RATES) return RATES_STEP;
 
   const profileIncomplete =

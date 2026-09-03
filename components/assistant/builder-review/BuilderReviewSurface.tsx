@@ -94,7 +94,8 @@ export function BuilderReviewSurface({
             Estimate needs updating
           </p>
           <p className="mt-1 text-xs text-amber-900/90 dark:text-amber-200/90">
-            Review shows the previous estimate. Update after job changes.
+            Update this estimate to apply the latest job details and company
+            settings.
           </p>
           {onUpdateEstimate ? (
             <Button
@@ -456,6 +457,27 @@ export function BuilderReviewSurface({
                                 {line.supporting ? (
                                   <p className="text-xs break-words text-muted-foreground">
                                     {line.supporting}
+                                  </p>
+                                ) : null}
+                                {labour &&
+                                (line.labourRateLabel || line.productivityLabel) ? (
+                                  <p
+                                    className="text-xs text-muted-foreground"
+                                    data-builder-review-labour-provenance
+                                  >
+                                    {line.labourRateLabel ? (
+                                      <span data-labour-rate-source={line.labourRateLabel}>
+                                        Labour rate: {line.labourRateLabel}
+                                      </span>
+                                    ) : null}
+                                    {line.labourRateLabel && line.productivityLabel
+                                      ? " · "
+                                      : null}
+                                    {line.productivityLabel ? (
+                                      <span data-productivity-source={line.productivityLabel}>
+                                        Productivity: {line.productivityLabel}
+                                      </span>
+                                    ) : null}
                                   </p>
                                 ) : null}
                                 {line.rateContext ? (

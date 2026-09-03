@@ -6,6 +6,7 @@ import type {
   QuantityBasis,
 } from "@/lib/estimate/line-item-metadata";
 import type { PricingOwner } from "@/lib/estimate/pricing-ownership";
+import type { RateSourceType } from "@/lib/estimate/rate-source-labels";
 
 export type AssistantStage =
   | "brief"
@@ -101,6 +102,7 @@ export type EstimateLineItem = {
   marginPercent: number;
   markupPercent?: number;
   rateSource: string;
+  productivitySourceType?: RateSourceType;
   quantity?: number;
   unit?: string;
   labourHours?: number;

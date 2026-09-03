@@ -130,27 +130,46 @@ export async function getRatesPageState(): Promise<RatesPageState> {
   const context = await getAuthOrgContext();
 
   if (!context) {
-    return { settings: null, rates: [], preferredWorkAreaTypes: [] };
+    return {
+      settings: null,
+      rates: [],
+      preferredWorkAreaTypes: [],
+      canManageRates: false,
+      canCalibrate: false,
+    };
   }
 
   const { supabase, orgId } = context;
   const settingsRow = await ensureDefaultSettings(supabase, orgId);
 
-  const [{ data: rates }, { data: preferredRows }] = await Promise.all([
-    supabase
-      .from("rates")
-      .select(
-        "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active, source, source_calibration_id, updated_at"
-      )
-      .eq("org_id", orgId)
-      .order("rate_type")
-      .order("label"),
-    supabase
-      .from("organisation_work_areas")
-      .select("work_area_type")
-      .eq("org_id", orgId)
-      .eq("enabled", true),
-  ]);
+  const [{ data: rates }, { data: preferredRows }, ratesDenied, calibrateDenied] =
+    await Promise.all([
+      supabase
+        .from("rates")
+        .select(
+          "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active, source, source_calibration_id, updated_at"
+        )
+        .eq("org_id", orgId)
+        .order("rate_type")
+        .order("label"),
+      supabase
+        .from("organisation_work_areas")
+        .select("work_area_type")
+        .eq("org_id", orgId)
+        .eq("enabled", true),
+      permissionDeniedError({
+        orgId,
+        userId: context.user.id,
+        permission: "company.rates.manage",
+        entitlement: "company_rates.basic",
+      }),
+      permissionDeniedError({
+        orgId,
+        userId: context.user.id,
+        permission: "company.calibration.manage",
+        entitlement: "calibration.basic",
+      }),
+    ]);
 
   return {
     settings: settingsRow ? normalizeSettings(settingsRow) : null,
@@ -158,6 +177,8 @@ export async function getRatesPageState(): Promise<RatesPageState> {
     preferredWorkAreaTypes: (preferredRows ?? []).map(
       (row) => row.work_area_type as string
     ),
+    canManageRates: ratesDenied == null,
+    canCalibrate: calibrateDenied == null,
   };
 }
 

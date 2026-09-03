@@ -1,7 +1,6 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
   Card,
@@ -12,9 +11,10 @@ import {
 } from "@/components/ui/card";
 import {
   COMPANY_DNA_WORK_AREA_LABELS,
-  listCompanyDnaTasksForWorkArea,
 } from "@/lib/company-dna/catalogue";
 import type { CompanyDnaHubState } from "@/lib/company-dna/actions";
+import { formatDnaProgressCopy } from "@/lib/company-dna/copy";
+import { nextCompanyDnaTask, workAreaHubCta } from "@/lib/company-dna/progress";
 import { cn } from "@/lib/utils";
 
 type CompanyDnaHubProps = {
@@ -23,22 +23,11 @@ type CompanyDnaHubProps = {
 };
 
 export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
-  const [showAll, setShowAll] = useState(
-    state.preferredWorkAreaTypes.length === 0
-  );
-
-  const visible = useMemo(() => {
-    if (showAll || state.preferredWorkAreaTypes.length === 0) {
-      return state.progress;
-    }
-    const preferred = state.progress.filter((item) =>
-      state.preferredWorkAreaTypes.includes(item.workAreaType)
-    );
-    return preferred.length > 0 ? preferred : state.progress;
-  }, [showAll, state.preferredWorkAreaTypes, state.progress]);
-
   return (
-    <Card data-company-dna-hub>
+    <Card
+      data-company-dna-hub
+      className="pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"
+    >
       <CardHeader>
         <CardTitle>Make Quotr price more like you</CardTitle>
         <CardDescription>
@@ -47,50 +36,40 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <p className="text-sm text-muted-foreground">
-            One task at a time. You can reset to the Quotr benchmark later.
-          </p>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            onClick={() => setShowAll((prev) => !prev)}
-          >
-            {showAll ? "Show preferred first" : "Show all"}
-          </Button>
-        </div>
+        <p className="text-sm text-muted-foreground">
+          Your usual work is listed first. Key tasks first. You can reset to the
+          Quotr benchmark later.
+        </p>
 
         <ul className="space-y-3">
-          {visible.map((area) => {
+          {state.progress.map((area) => {
             const preferred = state.preferredWorkAreaTypes.includes(
               area.workAreaType
             );
-            const nextTask = listCompanyDnaTasksForWorkArea(
-              area.workAreaType
-            ).find(
-              (task) =>
-                !area.tasks.some(
-                  (status) =>
-                    status.calibrationTaskKey === task.calibrationTaskKey &&
-                    status.calibrated
-                )
-            );
+            const calibratedKeys = area.tasks
+              .filter((status) => status.calibrated)
+              .map((status) => status.calibrationTaskKey);
+            const nextTask = nextCompanyDnaTask({
+              workAreaType: area.workAreaType,
+              calibratedTaskKeys: calibratedKeys,
+            });
             const href = nextTask
               ? `/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`
               : `/app/setup/dna/${encodeURIComponent(area.tasks[0]?.calibrationTaskKey ?? "")}`;
+            const cta = workAreaHubCta(area.status);
             return (
               <li
                 key={area.workAreaType}
                 className="rounded-xl border bg-card p-4 space-y-2"
                 data-company-dna-work-area={area.workAreaType}
+                data-company-dna-status={area.status}
               >
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <h3 className="text-sm font-medium">
                     {COMPANY_DNA_WORK_AREA_LABELS[area.workAreaType]}
                   </h3>
                   <span className="text-xs text-muted-foreground">
-                    {area.calibratedCount} of {area.taskTotal} calibrated
+                    {formatDnaProgressCopy(area)}
                     {preferred ? " · Common for your company" : ""}
                   </span>
                 </div>
@@ -102,23 +81,21 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
                   className={cn(
                     buttonVariants({
                       size: "sm",
-                      variant:
-                        area.status === "benchmarks" ? "default" : "outline",
+                      variant: area.status === "benchmarks" ? "default" : "outline",
                     }),
                     "min-h-11"
                   )}
+                  data-company-dna-hub-cta
                 >
-                  {area.status === "benchmarks"
-                    ? `Calibrate ${COMPANY_DNA_WORK_AREA_LABELS[area.workAreaType]}`
-                    : "Continue / edit"}
+                  {cta}
                 </Link>
               </li>
             );
           })}
         </ul>
 
-        <div className="flex flex-wrap gap-2 border-t pt-4">
-          <Button type="button" variant="ghost" onClick={() => onSkip?.()}>
+        <div className="flex flex-wrap gap-2 border-t pt-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+          <Button type="button" variant="ghost" className="min-h-11" onClick={() => onSkip?.()}>
             Do this later
           </Button>
         </div>

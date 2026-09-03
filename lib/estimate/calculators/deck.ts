@@ -831,11 +831,12 @@ export function calculateDeck(
         notes: labourExpandedNotes({
           physicalDriver: "Physical driver: deck area.",
           adjustmentDetail: labourAdjustmentDetail,
-          productivity: `Productivity: ${demoProductivity.hoursPerUnit} h/m²`,
+          productivity: `Productivity: ${demoProductivity.hoursPerUnit} h/m² · ${demoProductivity.sourceLabel}`,
         }),
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         ...rateFieldsFromResolved(labourRate),
+        productivitySourceType: demoProductivity.sourceType,
       })
     );
   }

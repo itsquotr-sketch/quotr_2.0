@@ -373,6 +373,7 @@ export function mapLineItem(row: DbLineItem): EstimateLineItem {
     markupPercent:
       row.markup_percent != null ? Number(row.markup_percent) : undefined,
     rateSource: normalizeRateSourceLabel(row.rate_source ?? ""),
+    productivitySourceType: metadata.productivitySourceType,
     quantity: metadata.quantity,
     unit: metadata.unit,
     labourHours: metadata.labourHours,

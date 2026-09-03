@@ -1,6 +1,7 @@
 "use server";
 
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
+import { orgHasHighImpactCalibration } from "@/lib/company-dna/progress";
 import {
   computeCompanySetupReadiness,
   type CompanySetupReadiness,
@@ -24,6 +25,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       hasLabourRate: false,
       hasWorkTypePreferences: false,
       hasCalibration: false,
+      hasHighImpactCalibration: false,
       tradingName: null,
       legalName: null,
       contactEmail: null,
@@ -102,6 +104,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     hasWorkTypePreferences: (preferredWorkAreas?.length ?? 0) > 0,
     companyRateCount: companyRates?.length ?? 0,
     hasCalibration: calibratedScenarioIds.size > 0,
+    hasHighImpactCalibration: orgHasHighImpactCalibration(calibratedScenarioIds),
     calibratedScenarioCount: calibratedScenarioIds.size,
     calibrationScenarioTotal: 9,
     tradingName: (settings?.trading_name as string | null) ?? null,

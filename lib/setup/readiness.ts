@@ -46,6 +46,7 @@ export type CompanySetupReadiness = {
   hasWorkTypePreferences: boolean;
   companyRateCount: number;
   hasCalibration: boolean;
+  hasHighImpactCalibration: boolean;
   hasLogo: boolean;
   hasAddress: boolean;
   hasContactEmail: boolean;
@@ -74,6 +75,8 @@ export type CompanySetupReadinessInput = {
   companyRateCount?: number;
   /** True when org has at least one active calibration response. */
   hasCalibration?: boolean;
+  /** True when two high-impact tasks are calibrated on at least one Work Area. */
+  hasHighImpactCalibration?: boolean;
   /** Distinct active calibrated scenarios (for subtle “another” tip). */
   calibratedScenarioCount?: number;
   /** MVP catalogue size used for “another” tip (default 2). */
@@ -311,6 +314,9 @@ export function computeCompanySetupReadiness(
     hasWorkTypePreferences: input.hasWorkTypePreferences,
     companyRateCount,
     hasCalibration: Boolean(input.hasCalibration),
+    hasHighImpactCalibration: Boolean(
+      input.hasHighImpactCalibration ?? input.hasCalibration
+    ),
     hasLogo,
     hasAddress,
     hasContactEmail,

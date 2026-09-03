@@ -58,6 +58,8 @@ export type LineItemMetadata = {
   costRate?: number;
   sellRate?: number;
   rateSourceType?: RateSourceType;
+  /** Distinct from labour $/h rateSourceType — hours-per-unit authority. */
+  productivitySourceType?: RateSourceType;
   sellDerivedFromMargin?: boolean;
   /** Current sell authority. Distinct from rateSourceType. */
   sellAuthority?: SellAuthority;
@@ -242,6 +244,9 @@ export function buildPricingNotesFromEstimateLineItem(
   if (metadata.rateSourceType) {
     metaToStore.rateSourceType = metadata.rateSourceType;
   }
+  if (metadata.productivitySourceType) {
+    metaToStore.productivitySourceType = metadata.productivitySourceType;
+  }
   if (Object.keys(metaToStore).length === 0) {
     return displayNotes || null;
   }
@@ -265,6 +270,24 @@ export function stampSellAuthorityOnNotes(
       sellDerivedFromMargin: sellAuthority === "derived_from_gross_margin",
     },
   });
+}
+
+export function inferProductivitySourceType(
+  notes?: string | null
+): RateSourceType | undefined {
+  if (!notes) return undefined;
+  const lower = notes.toLowerCase();
+  if (!lower.includes("productivity:")) return undefined;
+  if (lower.includes("your calibrated productivity")) {
+    return "calibrated_productivity";
+  }
+  if (lower.includes("your company rate") || lower.includes("your rate")) {
+    return "user_rate";
+  }
+  if (lower.includes("quotr benchmark")) {
+    return "benchmark";
+  }
+  return undefined;
 }
 
 export function resolveLineItemRateSource(params: {

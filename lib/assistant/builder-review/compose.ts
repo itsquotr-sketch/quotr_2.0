@@ -82,6 +82,10 @@ import {
   FENCE_TAKEOFF_COMPONENT_KEYS,
 } from "@/lib/estimate/fence-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  labourRateProvenanceLabel,
+  productivityProvenanceLabel,
+} from "@/lib/company-dna/provenance-display";
 import type { EstimateLineItem } from "@/components/assistant/types";
 import type { EstimateRequirement, MaterialRequirement } from "@/lib/estimate/requirements";
 import type {
@@ -269,6 +273,15 @@ function mapRwBuilderLabel(label: string): string {
 export function toPricedLine(item: EstimateLineItem): BuilderReviewPricedLine {
   const category = mapLineCategory(item);
   const rateLabel = mapRateLabel(item.rateSource ?? "");
+  const labourRateLabel =
+    category === "LABOUR" ? labourRateProvenanceLabel(item.rateSource ?? "") : null;
+  const productivityLabel =
+    category === "LABOUR"
+      ? productivityProvenanceLabel({
+          notes: item.notes,
+          productivitySourceType: item.productivitySourceType,
+        })
+      : null;
   const variance = timberRateVarianceContext({
     itemKey: item.itemKey,
     unit: item.unit,
@@ -290,6 +303,8 @@ export function toPricedLine(item: EstimateLineItem): BuilderReviewPricedLine {
     labourHours: item.labourHours ?? null,
     costRate: item.costRate ?? null,
     rateLabel,
+    labourRateLabel,
+    productivityLabel,
     itemKey: item.itemKey ?? null,
     componentKey: item.componentKey ?? item.itemKey ?? null,
     isAllowance: isAllowanceLine(item),

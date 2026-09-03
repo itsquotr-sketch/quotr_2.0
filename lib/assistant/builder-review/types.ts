@@ -40,6 +40,8 @@ export type BuilderReviewPricedLine = {
   readonly labourHours: number | null;
   readonly costRate: number | null;
   readonly rateLabel: BuilderReviewRateLabel;
+  readonly labourRateLabel: string | null;
+  readonly productivityLabel: string | null;
   readonly itemKey: string | null;
   readonly componentKey: string | null;
   readonly isAllowance: boolean;

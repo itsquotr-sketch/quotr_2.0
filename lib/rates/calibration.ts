@@ -102,6 +102,10 @@ export function getRateSourceLabel(
   const catalogue = key ? getCatalogueEntry(key) : undefined;
   const hasActiveCost = Boolean(rate?.active && rate.cost_rate != null);
 
+  if (hasActiveCost && rate?.source === "calibrated_productivity") {
+    return "Your calibrated productivity";
+  }
+
   return companyRateAuthorityLabel({
     hasActiveCostRate: hasActiveCost,
     isLegacyScopePackage: key ? isLegacyScopePackageKey(key) : false,

@@ -29,6 +29,7 @@ export function ImproveSetupCard({
     firstRunComplete: true,
     hasWorkTypePreferences: readiness.hasWorkTypePreferences,
     hasCalibration: readiness.hasCalibration,
+    hasHighImpactCalibration: readiness.hasHighImpactCalibration,
     companyRateCount: readiness.companyRateCount,
     hasContactEmail: readiness.hasContactEmail,
     hasAddress: readiness.hasAddress,

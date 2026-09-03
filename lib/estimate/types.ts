@@ -94,6 +94,8 @@ export type EstimateLineItemInput = {
   productivityUnit?: string;
   rateSource: string;
   rateSourceType?: RateSourceType;
+  /** Hours-per-unit source, distinct from labour $/h rateSourceType. */
+  productivitySourceType?: RateSourceType;
   itemKey?: string;
   /**
    * Stable semantic component identity for REQ-4A mapping (e.g. decking.surface).
@@ -189,6 +191,7 @@ export type ProductivityRate = {
   hoursPerUnit: number;
   unit: string;
   sourceLabel: string;
+  sourceType?: RateSourceType;
 };
 
 export type ResolvedRate = {

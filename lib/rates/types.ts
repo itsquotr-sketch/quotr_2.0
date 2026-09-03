@@ -12,6 +12,8 @@ export type RatesPageState = {
   rates: RatesPageRate[];
   /** Preferred work-area types for section ordering (personalisation only). */
   preferredWorkAreaTypes: string[];
+  canManageRates: boolean;
+  canCalibrate: boolean;
 };
 
 export type RateSettingsInput = {

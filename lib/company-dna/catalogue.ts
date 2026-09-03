@@ -27,6 +27,7 @@ export type CompanyDnaTaskDefinition = {
   authorityUnit: string;
   benchmarkProductivity: number;
   rateLabel: string;
+  whyItMatters: string;
   isHighImpact: boolean;
   sortOrder: number;
 };
@@ -39,9 +40,11 @@ export const COMPANY_DNA_TASKS: readonly CompanyDnaTaskDefinition[] = [
     productivityRateKey: "deck.substructure.install.hours_per_framing_lm",
     label: "Deck framing",
     prompt:
-      "Think about a fairly normal 20 m² deck with good access, ground-level / low height, and standard timber framing.",
+      "Think about framing a typical 20 m² timber deck — ground-level or low, normal access, standard timber.",
     scenarioSummary:
-      "20 m² timber deck · ground-level / low · normal access · standard framing",
+      "20 m² timber deck · ground-level or low · normal access · standard framing",
+    whyItMatters:
+      "Quotr uses this to estimate how many labour hours your crew needs for deck framing.",
     referenceQuantity: 20,
     referenceUnit: "m2",
     authorityQuantity: 80,
@@ -58,9 +61,11 @@ export const COMPANY_DNA_TASKS: readonly CompanyDnaTaskDefinition[] = [
     productivityRateKey: "deck.decking.install.hours_per_lm",
     label: "Decking installation",
     prompt:
-      "Think about laying decking on a fairly normal 20 m² deck with good access and standard boards.",
+      "Think about laying decking boards on a typical 20 m² timber deck with normal access and standard boards.",
     scenarioSummary:
       "20 m² timber deck · normal access · standard decking boards",
+    whyItMatters:
+      "Quotr uses this to estimate how many labour hours your crew needs to lay decking.",
     referenceQuantity: 20,
     referenceUnit: "m2",
     authorityQuantity: 142.8571,
@@ -77,8 +82,10 @@ export const COMPANY_DNA_TASKS: readonly CompanyDnaTaskDefinition[] = [
     productivityRateKey: "deck.posts.install.hours_per_ea",
     label: "Piles / posts",
     prompt:
-      "Think about setting piles or posts for a fairly normal 20 m² ground-level deck with good access.",
-    scenarioSummary: "20 m² timber deck · 9 supports · normal access",
+      "Think about setting piles or posts for a typical 20 m² ground-level timber deck with normal access.",
+    scenarioSummary: "20 m² timber deck · 9 supports · ground-level · normal access",
+    whyItMatters:
+      "Quotr uses this to estimate how many labour hours your crew needs to set deck piles or posts.",
     referenceQuantity: 20,
     referenceUnit: "m2",
     authorityQuantity: 9,
@@ -95,9 +102,11 @@ export const COMPANY_DNA_TASKS: readonly CompanyDnaTaskDefinition[] = [
     productivityRateKey: "deck.demolition_hours_per_m2",
     label: "Existing deck removal",
     prompt:
-      "Think about taking up an existing 20 m² timber deck with good access.",
+      "Think about taking up an existing 20 m² timber deck with normal access.",
     scenarioSummary:
       "20 m² existing timber deck · normal access · strip and remove",
+    whyItMatters:
+      "Quotr uses this when a job includes removing an existing deck. It is a secondary task — framing and decking matter more.",
     referenceQuantity: 20,
     referenceUnit: "m2",
     authorityQuantity: 20,
@@ -114,9 +123,11 @@ export const COMPANY_DNA_TASKS: readonly CompanyDnaTaskDefinition[] = [
     productivityRateKey: "fence.post.install.hours_per_post",
     label: "Fence posts",
     prompt:
-      "Think about setting posts for a fairly normal 20 lm timber paling fence, 1.8 m high, straight run, good access.",
+      "Think about setting posts for a typical 20 lm timber paling fence — 1.8 m high, straight run, normal access.",
     scenarioSummary:
-      "20 lm · 1.8 m timber paling · 13 posts · normal access · straight run",
+      "20 lm · 1.8 m timber paling · 13 posts · straight run · normal access",
+    whyItMatters:
+      "Quotr uses this to estimate how many labour hours your crew needs to set fence posts.",
     referenceQuantity: 20,
     referenceUnit: "lm",
     authorityQuantity: 13,
@@ -133,9 +144,11 @@ export const COMPANY_DNA_TASKS: readonly CompanyDnaTaskDefinition[] = [
     productivityRateKey: "fence.board.vertical.hours_per_lm",
     label: "Fence palings",
     prompt:
-      "Think about hanging palings on a fairly normal 20 lm × 1.8 m timber paling fence with good access.",
+      "Think about hanging palings on a typical 20 lm × 1.8 m timber paling fence with normal access.",
     scenarioSummary:
-      "20 lm · 1.8 m timber paling · vertical boards · normal access",
+      "20 lm · 1.8 m timber paling · vertical boards · straight run · normal access",
+    whyItMatters:
+      "Quotr uses this to estimate how many labour hours your crew needs to hang fence palings.",
     referenceQuantity: 20,
     referenceUnit: "lm",
     authorityQuantity: 241.2,
@@ -152,9 +165,11 @@ export const COMPANY_DNA_TASKS: readonly CompanyDnaTaskDefinition[] = [
     productivityRateKey: "fence.rail.install.hours_per_lm",
     label: "Fence rails",
     prompt:
-      "Think about fixing rails on a fairly normal 20 lm × 1.8 m timber paling fence with good access.",
+      "Think about fixing rails on a typical 20 lm × 1.8 m timber paling fence with normal access.",
     scenarioSummary:
-      "20 lm · 1.8 m timber paling · 3 rails · normal access",
+      "20 lm · 1.8 m timber paling · 3 rails · straight run · normal access",
+    whyItMatters:
+      "Quotr uses this to estimate how many labour hours your crew needs to fix fence rails.",
     referenceQuantity: 20,
     referenceUnit: "lm",
     authorityQuantity: 60,
@@ -171,9 +186,11 @@ export const COMPANY_DNA_TASKS: readonly CompanyDnaTaskDefinition[] = [
     productivityRateKey: "retaining_wall.timber.piles.install.hours_per_ea",
     label: "Retaining wall piles",
     prompt:
-      "Think about setting timber piles for a fairly normal 10 lm × 1.0 m timber retaining wall with good access.",
+      "Think about setting timber piles for a typical 10 lm timber retaining wall, about 1.0 m high, with normal access.",
     scenarioSummary:
-      "10 lm · 1.0 m timber retaining · 10 piles · normal access",
+      "10 lm timber retaining · about 1.0 m high · 10 piles · normal access",
+    whyItMatters:
+      "Quotr uses this to estimate how many labour hours your crew needs to set timber retaining piles.",
     referenceQuantity: 10,
     referenceUnit: "lm",
     authorityQuantity: 10,
@@ -191,9 +208,11 @@ export const COMPANY_DNA_TASKS: readonly CompanyDnaTaskDefinition[] = [
       "retaining_wall.timber.face_boards.install.hours_per_m2",
     label: "Retaining wall face boards",
     prompt:
-      "Think about fixing face boards on a fairly normal 10 lm × 1.0 m timber retaining wall once the piles are in.",
+      "Think about fixing face boards on a typical 10 lm timber retaining wall, about 1.0 m high, once the piles are in.",
     scenarioSummary:
-      "10 lm · 1.0 m timber retaining · 10 m² face · piles already in · normal access",
+      "10 lm timber retaining · about 1.0 m high · 10 m² face · piles already in · normal access",
+    whyItMatters:
+      "Quotr uses this to estimate how many labour hours your crew needs to fix timber retaining face boards.",
     referenceQuantity: 10,
     referenceUnit: "lm",
     authorityQuantity: 10,

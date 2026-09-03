@@ -13,6 +13,7 @@ import { BuilderReviewSurface } from "@/components/assistant/builder-review/Buil
 import { CommercialOverviewMetrics } from "@/components/assistant/CommercialOverviewMetrics";
 import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { EstimateReadyCard } from "@/components/assistant/EstimateReadyCard";
+import { labourProductivityDisclosureFromLines } from "@/lib/company-dna/provenance-display";
 import { EstimateBreakdownModal } from "@/components/assistant/EstimateBreakdownModal";
 import { EstimatePanel } from "@/components/assistant/EstimatePanel";
 import { MarginEditControl } from "@/components/assistant/MarginEditControl";
@@ -2478,6 +2479,9 @@ export function AssistantShell({
                       }, new Map<string, number>())
                     ).map(([name, sell]) => ({ name, sell }))}
                     rateSourceSummary={estimate.rateSourceSummary}
+                    labourProductivityDisclosure={labourProductivityDisclosureFromLines(
+                      estimate.lineItems
+                    )}
                     compactResult={false}
                     reviewIsPrimary={!builderReviewCompleted}
                     onReviewEstimate={() => {

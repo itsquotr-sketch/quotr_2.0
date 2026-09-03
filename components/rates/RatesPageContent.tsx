@@ -218,7 +218,11 @@ export function RatesPageContent({
       <div className="min-w-0">
         {activeSection === "core" ? (
           <div className="space-y-4">
-            <CompanyDnaRatesCompare rates={state.rates} variant="labour" />
+            <CompanyDnaRatesCompare
+              rates={state.rates}
+              variant="labour"
+              canCalibrate={state.canCalibrate}
+            />
             <RatesTableSection
             title="Core labour"
             description={`Enter your cost per hour. Recommended charge-out uses your ${companyGrossMarginPercent}% company gross margin. Custom charge-outs stay until you switch to recommended.`}
@@ -233,16 +237,25 @@ export function RatesPageContent({
             companyGrossMarginPercent={companyGrossMarginPercent}
             variant="labour"
             showEngineColumn
+            readOnly={!state.canManageRates}
           />
           </div>
         ) : null}
 
         {activeSection === "productivity" ? (
-          <div className="space-y-4">
-            <CompanyDnaRatesCompare rates={state.rates} variant="productivity" />
+          <div className="space-y-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+            <CompanyDnaRatesCompare
+              rates={state.rates}
+              variant="productivity"
+              preferredWorkAreaTypes={preferred}
+              canCalibrate={state.canCalibrate}
+              onChanged={() => {
+                void refresh();
+              }}
+            />
             <RatesTableSection
-            title="Labour productivity"
-            description="Hours per physical unit — not dollars. Editing hours changes labour TIME. Your labour $/hr is under Core labour and changes MONEY, not hours. These hours include normal handling at the workface. Abnormal access/carry is a Project Condition, applied once."
+            title="All productivity keys"
+            description="Advanced view of every labour-hours key. Lower means fewer labour hours per unit. Prefer the calibration cards above for Company DNA. Editing hours here changes labour TIME, not carpenter $/hr."
             catalogue={catalogueEntriesForRatesSection(
               [
                 ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
@@ -256,6 +269,7 @@ export function RatesPageContent({
             companyGrossMarginPercent={companyGrossMarginPercent}
             variant="productivity"
             showEngineColumn
+            readOnly={!state.canManageRates}
           />
           </div>
         ) : null}
@@ -264,10 +278,9 @@ export function RatesPageContent({
           <div className="space-y-4">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <p className="text-sm text-muted-foreground">
-                Component rates calculators actually use
-                {preferred.length > 0
-                  ? " — preferred work types listed first."
-                  : "."}
+                High-value materials for the work you actually price. Set your
+                own rate only where it matters — you can remove an override
+                later. Preferred work types are listed first.
               </p>
               <Button
                 type="button"
@@ -306,6 +319,7 @@ export function RatesPageContent({
                   variant="grouped"
                   showEngineColumn
                   showAddButton={false}
+                  readOnly={!state.canManageRates}
                 />
               ))
             )}
@@ -317,6 +331,7 @@ export function RatesPageContent({
             rates={state.rates}
             onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
             companyGrossMarginPercent={companyGrossMarginPercent}
+            readOnly={!state.canManageRates}
           />
         ) : null}
 
@@ -331,6 +346,7 @@ export function RatesPageContent({
               companyGrossMarginPercent={companyGrossMarginPercent}
               variant="grouped"
               showEngineColumn
+              readOnly={!state.canManageRates}
             />
             <RatesTableSection
               title="Retaining-wall legacy package fallback"
@@ -345,6 +361,7 @@ export function RatesPageContent({
               companyGrossMarginPercent={companyGrossMarginPercent}
               variant="grouped"
               showEngineColumn
+              readOnly={!state.canManageRates}
             />
           </div>
         ) : null}

@@ -34,6 +34,7 @@ type EstimateReadyCardProps = {
   attentionItems: readonly QuickEstimateAttentionItem[];
   workAreaTotals?: readonly { name: string; sell: number }[];
   rateSourceSummary?: string | null;
+  labourProductivityDisclosure?: string | null;
   onReviewEstimate?: () => void;
   onEditJob?: () => void;
   onUpdateEstimate?: () => void;
@@ -72,6 +73,7 @@ export function EstimateReadyCard({
   attentionItems,
   workAreaTotals = [],
   rateSourceSummary = null,
+  labourProductivityDisclosure = null,
   onReviewEstimate,
   onEditJob,
   onUpdateEstimate,
@@ -305,6 +307,15 @@ export function EstimateReadyCard({
             <span>Target gross margin {targetMarginPercent.toFixed(0)}%</span>
           ) : null}
         </div>
+      ) : null}
+
+      {!isStale && labourProductivityDisclosure ? (
+        <p
+          className="mt-3 text-xs text-muted-foreground"
+          data-estimate-productivity-disclosure
+        >
+          {labourProductivityDisclosure}
+        </p>
       ) : null}
 
       {!isStale && showBenchmark ? (
