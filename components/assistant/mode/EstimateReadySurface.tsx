@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 
 type EstimateReadySurfaceProps = {
   projectId: string;
+  estimateId?: string;
   isStale: boolean;
   isRegenerating?: boolean;
   pricingCtaEnabled: boolean;
@@ -18,6 +19,7 @@ type EstimateReadySurfaceProps = {
 
 export function EstimateReadySurface({
   projectId,
+  estimateId,
   isStale,
   isRegenerating = false,
   pricingCtaEnabled,
@@ -59,6 +61,7 @@ export function EstimateReadySurface({
         >
           <PrepareFinalPricingButton
             projectId={projectId}
+            estimateId={estimateId}
             className="h-11 w-full min-h-11"
             variant={pricingCtaPrimary ? "default" : "outline"}
             label={ASSISTANT_ACTION_LABELS.continueToPricing}

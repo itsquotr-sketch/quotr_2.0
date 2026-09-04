@@ -346,7 +346,11 @@ function main() {
     "no BETA-3-owned migration 053",
     latestMigration() === "052_company_productivity_calibration.sql"
   );
-  assert("applyPricingFinalSell does not change total_cost inputs", pricingActions.includes("totalCost: item.total_cost"));
+  assert(
+    "create pricing uses the current/latest estimate",
+    pricingActions.includes('.order("created_at", { ascending: false })') &&
+      pricingActions.includes("Generate an estimate before continuing to pricing.")
+  );
 
   section("ACCEPTANCE EVIDENCE");
   assert("contractor sees client name and timestamp", acceptDetails.includes("Accepted by") && acceptDetails.includes("formatQuoteDateTime"));

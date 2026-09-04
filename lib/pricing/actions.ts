@@ -458,6 +458,10 @@ export async function createPricingFromEstimate(input: {
 
   if (estimateId) {
     estimateQuery = estimateQuery.eq("id", estimateId);
+  } else {
+    estimateQuery = estimateQuery
+      .order("created_at", { ascending: false })
+      .limit(1);
   }
 
   const { data: estimate, error: estimateError } =
@@ -465,7 +469,7 @@ export async function createPricingFromEstimate(input: {
 
   if (estimateError || !estimate) {
     return {
-      error: "Generate a quick estimate before preparing final pricing.",
+      error: "Generate an estimate before continuing to pricing.",
     };
   }
 

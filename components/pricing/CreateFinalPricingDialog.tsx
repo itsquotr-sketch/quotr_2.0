@@ -16,12 +16,14 @@ import { createPricingFromEstimate } from "@/lib/pricing/actions";
 
 type CreateFinalPricingDialogProps = {
   projectId: string;
+  estimateId?: string;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 };
 
 export function CreateFinalPricingDialog({
   projectId,
+  estimateId,
   open,
   onOpenChange,
 }: CreateFinalPricingDialogProps) {
@@ -37,7 +39,10 @@ export function CreateFinalPricingDialog({
     setError(null);
     setDenial(null);
     startTransition(async () => {
-      const result = await createPricingFromEstimate({ projectId });
+      const result = await createPricingFromEstimate({
+        projectId,
+        estimateId,
+      });
       if (result.error) {
         setError(result.error);
         if (result.reasonCode) {

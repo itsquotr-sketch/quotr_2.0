@@ -2349,6 +2349,7 @@ export function AssistantShell({
           {assistantMode === "estimate_ready" && estimate ? (
             <EstimateReadySurface
               projectId={project.id}
+              estimateId={generationProjection?.estimateId}
               isStale={displayEstimateStale}
               isRegenerating={updatingEstimate}
               pricingCtaEnabled={!pricingSummary}
@@ -2376,6 +2377,7 @@ export function AssistantShell({
                   view={builderReviewView}
                   isRegenerating={updatingEstimate}
                   projectId={project.id}
+                  estimateId={generationProjection?.estimateId}
                   pricingDocumentId={pricingSummary?.id ?? null}
                   gstRate={initialState.defaultGstRate}
                   showContinueToPricing={!pricingSummary && !displayEstimateStale}

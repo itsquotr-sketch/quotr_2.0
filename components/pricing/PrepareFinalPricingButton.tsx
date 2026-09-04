@@ -7,6 +7,7 @@ import { CreateFinalPricingDialog } from "@/components/pricing/CreateFinalPricin
 
 type PrepareFinalPricingButtonProps = {
   projectId: string;
+  estimateId?: string;
   variant?: "default" | "outline";
   className?: string;
   label?: string;
@@ -14,6 +15,7 @@ type PrepareFinalPricingButtonProps = {
 
 export function PrepareFinalPricingButton({
   projectId,
+  estimateId,
   variant = "default",
   className,
   label = "Continue to Pricing",
@@ -32,6 +34,7 @@ export function PrepareFinalPricingButton({
       </Button>
       <CreateFinalPricingDialog
         projectId={projectId}
+        estimateId={estimateId}
         open={open}
         onOpenChange={setOpen}
       />

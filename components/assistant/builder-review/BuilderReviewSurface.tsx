@@ -26,6 +26,7 @@ type BuilderReviewSurfaceProps = {
   onUpdateEstimate?: () => void;
   onChangeMaterial?: (workAreaId: string | null) => void;
   projectId?: string;
+  estimateId?: string;
   pricingDocumentId?: string | null;
   gstRate?: number | null;
   showContinueToPricing?: boolean;
@@ -48,6 +49,7 @@ export function BuilderReviewSurface({
   onUpdateEstimate,
   onChangeMaterial,
   projectId,
+  estimateId,
   pricingDocumentId = null,
   gstRate = null,
   showContinueToPricing = false,
@@ -718,6 +720,7 @@ export function BuilderReviewSurface({
         {showContinueToPricing && projectId && !view.overview.isStale ? (
           <PrepareFinalPricingButton
             projectId={projectId}
+            estimateId={estimateId}
             className="h-11 min-h-11 w-full sm:w-auto"
             label={ASSISTANT_ACTION_LABELS.continueToPricing}
           />
