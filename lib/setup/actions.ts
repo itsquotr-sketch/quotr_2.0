@@ -570,6 +570,12 @@ export async function saveOrganisationWorkAreas(input: {
   if (!context) {
     return MISSING_ORG_ERROR;
   }
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.edit",
+  });
+  if (denied) return denied;
 
   const { supabase, orgId } = context;
   const selectionMap = new Map(
@@ -648,6 +654,12 @@ export async function savePrimaryWorkAreas(input: {
   if (!context) {
     return MISSING_ORG_ERROR;
   }
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.edit",
+  });
+  if (denied) return denied;
 
   const { supabase, orgId } = context;
   const selectionMap = new Map(

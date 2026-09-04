@@ -32,15 +32,15 @@ It does **not** require every future feature.
 
 - [ ] Builder: 1 user, no Team nav, full estimating accuracy, DNA, send, accept
 - [ ] Business: Team, roles, shared rates; no fake analytics
-- [ ] Viewer / Estimator / Admin matrix matches DNA-02.1 + BILLING-4
-- [ ] **Do not invite Estimators until migration 053 is approved** (RLS bypass)
+- [ ] Viewer / Estimator / Admin matrix matches DNA-02.1 + BILLING-4 + `docs/architecture/QUOTR_RLS_ROLE_MATRIX.md`
+- [ ] Estimators may be invited only after Preview 053 PostgREST proof is green
 
 ## Security
 
 - [ ] Cross-org isolation via `auth_org_id()` holds
 - [ ] Public quote is token RPC only; no cost/GM/benchmark in client payload
 - [ ] Service-role not in `NEXT_PUBLIC_*`
-- [ ] 053 proposal reviewed; **not** applied until owner says so
+- [ ] 053 role-aware RLS applied on Preview; Production still 045
 - [ ] Production not touched
 
 ## Email
@@ -68,10 +68,10 @@ It does **not** require every future feature.
 
 ## Production migration (plan only)
 
-- [ ] Sequence 046→052 documented in `docs/BETA_RELEASE_RUNBOOK.md`
-- [ ] 053 proposed, not created
+- [ ] Sequence 046→053 documented in `docs/BETA_RELEASE_RUNBOOK.md`
+- [ ] 053 created; Preview-only until Production 046–052 exist
 - [ ] No missing 037 (gap is historical and documented)
-- [ ] **Do not apply** until owner-approved release
+- [ ] **Do not apply** Production until owner-approved release
 
 ## Rollback
 
@@ -96,7 +96,7 @@ It does **not** require every future feature.
 - Quote expiry uses New Zealand (Auckland) calendar dates
 - Two people editing a draft quote at once is not locked
 - Logo on an already-sent quote follows the live company logo
-- Team invites are Business-only and should wait on 053
+- Team invites are Business-only and require 053 + hosted invite proof
 - Calibration covers the shipped work types only
 - No advanced analytics, voice, or image features
 
@@ -104,8 +104,8 @@ It does **not** require every future feature.
 
 | Option | When |
 | --- | --- |
-| **GO FOR CONTROLLED BETA** | Owner-only testers, Preview, 053 deferred as known limitation, smoke green |
+| **GO FOR CONTROLLED BETA** | Preview, 053 RLS green, smoke green, Estimator/Viewer proven |
 | **GO WITH KNOWN LIMITATIONS** | Same, plus explicit register items E/F/G/H/L |
 | **NO-GO** | Broken signup/quote/accept, money mismatch, cross-org leak, Preview on live Stripe, or Production accidentally in path |
 
-Production is **NO-GO** until 046→052 (+ agreed 053), LIVE Stripe, Auth SMTP, and owner release approval.
+Production is **NO-GO** until 046→053, LIVE Stripe, Auth SMTP, and owner release approval.

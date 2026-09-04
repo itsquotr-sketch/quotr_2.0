@@ -292,15 +292,16 @@ assert(
   migrations.includes("046_billing_foundation.sql")
 );
 assert(
-  "051 timezone remains; 052 Company DNA is latest numbered local migration; 049 memberships remain",
+  "051 timezone remains; 053 role RLS is latest numbered local migration; 049 memberships remain",
   migrations.includes("047_past_due_authority.sql") &&
     migrations.includes("048_billing_checkout_trial.sql") &&
     migrations.includes("049_organisation_memberships.sql") &&
     migrations.includes("050_unbind_removed_membership.sql") &&
     migrations.includes("051_organisation_timezone.sql") &&
     migrations.includes("052_company_productivity_calibration.sql") &&
+    migrations.includes("053_role_aware_rls_hardening.sql") &&
     migrations[migrations.length - 1] ===
-      "052_company_productivity_calibration.sql"
+      "053_role_aware_rls_hardening.sql"
 );
 assert(
   "047 only adds past_due_since",

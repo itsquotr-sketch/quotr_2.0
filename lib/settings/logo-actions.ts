@@ -6,6 +6,7 @@ import {
   getAuthOrgContext,
   type AuthOrgContext,
 } from "@/lib/security/auth-org-context";
+import { permissionDeniedError } from "@/lib/team/permission-server";
 import {
   getCompanySettings,
   updateCompanySettings,
@@ -70,6 +71,12 @@ export async function uploadCompanyLogo(
   if (!context) {
     return { error: USER_ERRORS.session };
   }
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.edit",
+  });
+  if (denied) return denied;
 
   const file = formData.get("logo");
   if (!(file instanceof File)) {
@@ -178,6 +185,12 @@ export async function removeCompanyLogo(): Promise<CompanyLogoActionResult> {
   if (!context) {
     return { error: USER_ERRORS.session };
   }
+  const denied = await permissionDeniedError({
+    orgId: context.orgId,
+    userId: context.user.id,
+    permission: "company.edit",
+  });
+  if (denied) return denied;
 
   try {
     // Clear authoritative settings first so quotes never point at a deleted asset.

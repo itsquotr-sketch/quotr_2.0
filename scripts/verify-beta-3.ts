@@ -348,7 +348,7 @@ function main() {
   assert("sell-from-margin formula file untouched by presentation", sellFromMargin.includes("deriveSellFromCost"));
   assert(
     "no BETA-3-owned migration 053",
-    latestMigration() === "052_company_productivity_calibration.sql"
+    latestMigration() === "053_role_aware_rls_hardening.sql"
   );
   assert(
     "create pricing uses the current/latest estimate",

@@ -135,13 +135,14 @@ const invitePolicy = file("lib/team/invite-policy.ts");
 const migration050 = file("supabase/migrations/050_unbind_removed_membership.sql");
 const migration051 = file("supabase/migrations/051_organisation_timezone.sql");
 assert(
-  "049 memberships remain and 052 Company DNA is latest numbered local migration",
+  "049 memberships remain and 053 role RLS is latest numbered local migration",
   files.includes("049_organisation_memberships.sql") &&
     files.includes("050_unbind_removed_membership.sql") &&
     files.includes("051_organisation_timezone.sql") &&
     files.includes("052_company_productivity_calibration.sql") &&
+    files.includes("053_role_aware_rls_hardening.sql") &&
     files.filter((name) => name.endsWith(".sql")).sort().at(-1) ===
-      "052_company_productivity_calibration.sql"
+      "053_role_aware_rls_hardening.sql"
 );
 assert(
   "051 is environment-neutral product SQL (no Preview/Production refs or fixture ids)",

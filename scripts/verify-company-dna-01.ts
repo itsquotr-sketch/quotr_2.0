@@ -119,7 +119,16 @@ console.log("=== COMPANY DNA-01 ===\n");
 const migrationDir = join(process.cwd(), "supabase/migrations");
 const files = readdirSync(migrationDir).filter((name) => name.endsWith(".sql"));
 assert("052 migration file present", files.some((name) => name.startsWith("052_")));
-assert("no 053 yet", !files.some((name) => name.startsWith("053_")));
+assert(
+  "053 is role-aware RLS, not DNA economics",
+  files.some((name) => name.startsWith("053_role_aware_rls"))
+);
+const hardening = read("supabase/migrations/053_role_aware_rls_hardening.sql");
+assert(
+  "053 does not rewrite DNA evidence or catalogue",
+  !/create table public\.productivity_calibration_/.test(hardening) &&
+    !hardening.includes("save_productivity_calibration")
+);
 
 const migration = read("supabase/migrations/052_company_productivity_calibration.sql");
 assert("evidence table", migration.includes("create table public.productivity_calibration_responses"));

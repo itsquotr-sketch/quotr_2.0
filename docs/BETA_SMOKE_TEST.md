@@ -113,8 +113,15 @@ npx --yes tsx scripts/verify-company-dna-01.ts
 npx --yes tsx scripts/verify-company-dna-02.ts
 npx --yes tsx scripts/verify-beta-3.ts
 npx --yes tsx scripts/verify-beta-launch.ts
+npx --yes tsx scripts/verify-security-053.ts
 npx tsc --noEmit
 npm run build:safe
+```
+
+After Preview 053 apply, also run live PostgREST proof:
+
+```
+npx --yes tsx scripts/verify-security-053.ts --live
 ```
 
 No live Stripe. No Production.

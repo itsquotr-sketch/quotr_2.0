@@ -518,15 +518,16 @@ const migrations = readdirSync("supabase/migrations")
   .sort();
 const migration047 = file("supabase/migrations/047_past_due_authority.sql");
 assert(
-  "047 past_due authority exists locally; 052 Company DNA is latest numbered file",
+  "047 past_due authority exists locally; 053 role RLS is latest numbered file",
   migrations.includes("047_past_due_authority.sql") &&
     migrations.includes("048_billing_checkout_trial.sql") &&
     migrations.includes("049_organisation_memberships.sql") &&
     migrations.includes("050_unbind_removed_membership.sql") &&
     migrations.includes("051_organisation_timezone.sql") &&
     migrations.includes("052_company_productivity_calibration.sql") &&
+    migrations.includes("053_role_aware_rls_hardening.sql") &&
     migrations[migrations.length - 1] ===
-      "052_company_productivity_calibration.sql"
+      "053_role_aware_rls_hardening.sql"
 );
 assert(
   "047 only adds past_due_since; no overlay columns; no backfill",

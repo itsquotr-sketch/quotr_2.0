@@ -308,17 +308,24 @@ function main() {
 
   section("MIGRATIONS");
   const latest = latestMigration();
-  assert("latest migration is 052", latest === "052_company_productivity_calibration.sql");
+  assert("latest migration is 053", latest === "053_role_aware_rls_hardening.sql");
   const numbers = migrationNumbers();
   assert("no migration 037", !numbers.includes("037"));
-  assert("046 through 052 present", ["046", "047", "048", "049", "050", "051", "052"].every((n) => numbers.includes(n)));
   assert(
-    "migration 053 SQL does not exist",
-    !existsSync(join(process.cwd(), "supabase/migrations/053_organisation_settings_rls.sql")) &&
-      !readdirSync(join(process.cwd(), "supabase/migrations")).some((name) => name.startsWith("053_"))
+    "046 through 053 present",
+    ["046", "047", "048", "049", "050", "051", "052", "053"].every((n) => numbers.includes(n))
+  );
+  assert(
+    "052 Company DNA remains",
+    existsSync(join(process.cwd(), "supabase/migrations/052_company_productivity_calibration.sql"))
   );
   const proposal = read("docs/runbooks/MIGRATION_053_ROLE_RLS_PROPOSAL.md");
-  assert("053 proposal exists and is not applied", proposal.includes("DO NOT CREATE") || proposal.includes("Proposal only"));
+  assert(
+    "053 role RLS exists and is no longer proposal-only",
+    existsSync(join(process.cwd(), "supabase/migrations/053_role_aware_rls_hardening.sql")) &&
+      proposal.includes("053_role_aware_rls_hardening.sql") &&
+      !proposal.includes("DO NOT CREATE / APPLY")
+  );
 
   section("WEBHOOK / EMAIL / FEEDBACK");
   assert(

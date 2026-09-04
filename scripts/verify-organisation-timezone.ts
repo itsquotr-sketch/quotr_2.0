@@ -61,7 +61,11 @@ function main() {
   );
   assert(
     "052 is Company DNA, not a timezone rewrite",
-    migrations.at(-1) === "052_company_productivity_calibration.sql"
+    migrations.includes("052_company_productivity_calibration.sql")
+  );
+  assert(
+    "053 is role-aware RLS, not a timezone rewrite",
+    migrations.at(-1) === "053_role_aware_rls_hardening.sql"
   );
   assert(
     "adds organisation_settings.timezone text NULL",

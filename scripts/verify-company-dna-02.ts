@@ -170,7 +170,10 @@ console.log("=== COMPANY DNA-02 ===\n");
 
 const migrationDir = join(process.cwd(), "supabase/migrations");
 const files = readdirSync(migrationDir).filter((name) => name.endsWith(".sql"));
-assert("no 053 migration", !files.some((name) => name.startsWith("053_")));
+assert(
+  "053 is role-aware RLS, not DNA economics",
+  files.some((name) => name.startsWith("053_role_aware_rls"))
+);
 
 const framing = getCompanyDnaTask("deck.framing.v1")!;
 const decking = getCompanyDnaTask("deck.decking.v1")!;
@@ -479,8 +482,11 @@ assert(
     permissions.includes('"company.rates.manage"')
 );
 assert(
-  "no migration 053",
-  !migrationFiles.some((name) => name.startsWith("053"))
+  "053 is role-aware RLS, not a DNA rewrite",
+  migrationFiles.some((name) => name.startsWith("053_role_aware_rls")) &&
+    !read("supabase/migrations/053_role_aware_rls_hardening.sql").includes(
+      "save_productivity_calibration"
+    )
 );
 
 const historical = read("components/calibration/CalibrationHub.tsx");

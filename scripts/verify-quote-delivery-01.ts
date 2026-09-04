@@ -90,8 +90,9 @@ assert(
     migrations.includes("050_unbind_removed_membership.sql") &&
     migrations.includes("051_organisation_timezone.sql") &&
     migrations.includes("052_company_productivity_calibration.sql") &&
+    migrations.includes("053_role_aware_rls_hardening.sql") &&
     migrations[migrations.length - 1] ===
-      "052_company_productivity_calibration.sql"
+      "053_role_aware_rls_hardening.sql"
 );
 
 assert(

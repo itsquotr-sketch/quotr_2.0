@@ -201,8 +201,8 @@ function main() {
   assert("calculate-estimate not importing beta-2 copy", !calc.includes("gst-display") && !calc.includes("action-labels"));
   assert("sell-from-margin formula file untouched by presentation", sellFromMargin.includes("deriveSellFromCost") || sellFromMargin.includes("margin"));
   assert(
-    "no BETA-2-owned migration 052",
-    latestMigration() === "052_company_productivity_calibration.sql"
+    "no BETA-2-owned migration 053",
+    latestMigration() === "053_role_aware_rls_hardening.sql"
   );
 
   section("EMPTY / LEGACY COPY");
@@ -457,8 +457,8 @@ function main() {
       shell.includes("estimate.assumptionMetadata")
   );
   assert(
-    "no BETA-2-owned migration 052",
-    latestMigration() === "052_company_productivity_calibration.sql"
+    "no BETA-2-owned migration 053",
+    latestMigration() === "053_role_aware_rls_hardening.sql"
   );
 
   if (process.exitCode) {
