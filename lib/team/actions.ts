@@ -8,13 +8,11 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { selfServiceUserLimit } from "@/lib/team/capacity";
 import { isUsableInviteEmail, normalizeInviteEmail } from "@/lib/team/email-normalize";
-import {
-  sendOrganisationInviteEmail,
-  inviteAcceptPath,
-} from "@/lib/team/invite-email";
+import { sendOrganisationInviteEmail } from "@/lib/team/invite-email";
 import { validateInviteRole } from "@/lib/team/invite-policy";
 import { requireEntitlementAndPermission } from "@/lib/team/permission-server";
 import { getAuthSiteOrigin } from "@/lib/auth/site-url";
+import { buildInviteAcceptUrl } from "@/lib/email/application-email";
 import { generateInviteToken, hashInviteToken, isWellFormedInviteToken } from "@/lib/team/tokens";
 import {
   buildTeamPageView,
@@ -215,7 +213,7 @@ export async function inviteTeamMember(input: {
   }
   const row = Array.isArray(data) ? data[0] : data;
   const origin = await getAuthSiteOrigin();
-  const acceptUrl = `${origin}${inviteAcceptPath(rawToken)}`;
+  const acceptUrl = buildInviteAcceptUrl(origin, rawToken);
   const { data: profile } = await context.supabase
     .from("profiles")
     .select("full_name")
@@ -227,15 +225,21 @@ export async function inviteTeamMember(input: {
     .eq("id", context.orgId)
     .maybeSingle();
 
-  const emailed = await sendOrganisationInviteEmail({
-    to: normalizeInviteEmail(input.email),
-    organisationName: organisation?.name ?? "Quotr",
-    inviterName: profile?.full_name?.trim() || "A teammate",
-    role: input.role as MembershipRole,
-    acceptUrl,
-    expiresAt: row?.expires_at ? new Date(row.expires_at) : new Date(),
-    idempotencyKey: `invite:${context.orgId}:${row?.invitation_id ?? "unknown"}`,
-  });
+  const emailed = acceptUrl
+    ? await sendOrganisationInviteEmail({
+        to: normalizeInviteEmail(input.email),
+        organisationName: organisation?.name ?? "Quotr",
+        inviterName: profile?.full_name?.trim() || "A teammate",
+        role: input.role as MembershipRole,
+        acceptUrl,
+        expiresAt: row?.expires_at ? new Date(row.expires_at) : new Date(),
+        idempotencyKey: `invite:${context.orgId}:${row?.invitation_id ?? "unknown"}`,
+      })
+    : {
+        ok: false as const,
+        errorSafe:
+          "Invitation email is not configured yet. You can resend after email is set up.",
+      };
 
   revalidatePath(TEAM_PATH);
   if (!emailed.ok) {

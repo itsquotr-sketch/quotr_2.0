@@ -38,6 +38,9 @@ const SERVER_ENV_CHECKS: EnvCheck[] = [
   { name: "BILLING_ENVIRONMENT", value: process.env.BILLING_ENVIRONMENT, required: false },
   { name: "STRIPE_SECRET_KEY", value: process.env.STRIPE_SECRET_KEY, required: false },
   { name: "STRIPE_WEBHOOK_SECRET", value: process.env.STRIPE_WEBHOOK_SECRET, required: false },
+  { name: "RESEND_FROM_EMAIL", value: process.env.RESEND_FROM_EMAIL, required: false },
+  { name: "RESEND_TEAM_FROM_EMAIL", value: process.env.RESEND_TEAM_FROM_EMAIL, required: false },
+  { name: "RESEND_QUOTE_FROM_EMAIL", value: process.env.RESEND_QUOTE_FROM_EMAIL, required: false },
 ];
 
 function formatMissing(checks: EnvCheck[]): string[] {

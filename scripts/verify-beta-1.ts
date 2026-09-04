@@ -447,6 +447,8 @@ function main() {
   const feedbackConfigured = envKeyConfigured("NEXT_PUBLIC_FEEDBACK_EMAIL");
   const resendKeyConfigured = envKeyConfigured("RESEND_API_KEY");
   const resendFromConfigured = envKeyConfigured("RESEND_FROM_EMAIL");
+  const resendTeamFromConfigured = envKeyConfigured("RESEND_TEAM_FROM_EMAIL");
+  const resendQuoteFromConfigured = envKeyConfigured("RESEND_QUOTE_FROM_EMAIL");
   console.log(
     "INFO NEXT_PUBLIC_FEEDBACK_EMAIL",
     feedbackConfigured ? "configured" : "not configured"
@@ -458,6 +460,14 @@ function main() {
   console.log(
     "INFO RESEND_FROM_EMAIL",
     resendFromConfigured ? "configured" : "not configured"
+  );
+  console.log(
+    "INFO RESEND_TEAM_FROM_EMAIL",
+    resendTeamFromConfigured ? "configured" : "not configured"
+  );
+  console.log(
+    "INFO RESEND_QUOTE_FROM_EMAIL",
+    resendQuoteFromConfigured ? "configured" : "not configured"
   );
   assert("env presence check ran", true);
 

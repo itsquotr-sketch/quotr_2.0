@@ -15,6 +15,7 @@ import {
   PRODUCTION_AUTH_SITE_ORIGIN_PLACEHOLDER,
   buildAuthCallbackUrl,
   normalizeAuthSiteOrigin,
+  resolveConfiguredSiteOrigin,
 } from "../lib/auth/site-url";
 
 function assert(label: string, ok: boolean) {
@@ -109,6 +110,19 @@ function main() {
     "malformed rejected",
     normalizeAuthSiteOrigin("not a url") === null
   );
+
+  const previousVercelEnv = process.env.VERCEL_ENV;
+  const previousSiteUrl = process.env.NEXT_PUBLIC_SITE_URL;
+  process.env.VERCEL_ENV = "preview";
+  process.env.NEXT_PUBLIC_SITE_URL = "http://localhost:3000";
+  assert(
+    "Preview localhost SITE_URL uses stable branch origin",
+    resolveConfiguredSiteOrigin() === PREVIEW_AUTH_SITE_ORIGIN_STABLE
+  );
+  if (previousVercelEnv === undefined) delete process.env.VERCEL_ENV;
+  else process.env.VERCEL_ENV = previousVercelEnv;
+  if (previousSiteUrl === undefined) delete process.env.NEXT_PUBLIC_SITE_URL;
+  else process.env.NEXT_PUBLIC_SITE_URL = previousSiteUrl;
 
   section("CALLBACK URL CONSTRUCTION");
   const signupCb = buildAuthCallbackUrl(

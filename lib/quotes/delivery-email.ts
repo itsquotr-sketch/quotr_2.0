@@ -3,8 +3,13 @@ import { formatQuoteReference, getCompanyDisplayName } from "@/lib/quotes/displa
 import { validateLegacyLogoUrl } from "@/lib/settings/logo";
 import type { Quote } from "@/lib/quotes/types";
 import type { CompanySettings } from "@/lib/settings/types";
-
-const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+import {
+  extractEmailAddress as extractApplicationEmailAddress,
+  formatQuoteDeliveryFromHeader as formatApplicationQuoteFromHeader,
+  isSafeMailboxAddress,
+  quoteChannelFromAddress,
+} from "@/lib/email/application-email";
+import { resolveConfiguredSiteOrigin } from "@/lib/auth/site-url";
 
 function escapeHtml(value: string): string {
   return value
@@ -17,43 +22,22 @@ function escapeHtml(value: string): string {
 export function isSafeContractorReplyToEmail(
   value: string | null | undefined
 ): boolean {
-  const trimmed = value?.trim() ?? "";
-  if (!trimmed) return false;
-  if (/[\r\n,<>]/.test(trimmed)) return false;
-  return EMAIL_PATTERN.test(trimmed);
+  return isSafeMailboxAddress(value);
 }
 
 export function extractEmailAddress(value: string): string | null {
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  const angled = trimmed.match(/<([^>]+)>/);
-  const candidate = (angled?.[1] ?? trimmed).trim();
-  return isSafeContractorReplyToEmail(candidate) ? candidate : null;
+  return extractApplicationEmailAddress(value);
 }
 
 export function formatQuoteDeliveryFromHeader(
   companyName: string | null | undefined,
   fromAddressRaw: string
 ): string {
-  const address = extractEmailAddress(fromAddressRaw) ?? fromAddressRaw.trim();
-  const company = companyName?.trim() ?? "";
-  if (!company) {
-    return address;
-  }
-  const display = `${company} via Quotr`;
-  const quoted = /[,<>@"]/.test(display)
-    ? `"${display.replaceAll('"', '\\"')}"`
-    : display;
-  return `${quoted} <${address}>`;
+  return formatApplicationQuoteFromHeader(companyName, fromAddressRaw);
 }
 
 export function quoteDeliveryReplyToFallback(): string | null {
-  const configured = process.env.RESEND_REPLY_TO_EMAIL?.trim();
-  if (configured && isSafeContractorReplyToEmail(configured)) {
-    return configured;
-  }
-  const from = quoteDeliveryFromAddress();
-  return from ? extractEmailAddress(from) : null;
+  return null;
 }
 
 export function resolveQuoteDeliveryReplyTo(
@@ -62,7 +46,7 @@ export function resolveQuoteDeliveryReplyTo(
   if (isSafeContractorReplyToEmail(issuerEmail)) {
     return issuerEmail!.trim();
   }
-  return quoteDeliveryReplyToFallback();
+  return null;
 }
 
 export function quoteEmailSafeLogoUrl(
@@ -196,14 +180,11 @@ export function buildQuoteDeliveryEmail(input: {
 }
 
 export function quoteDeliverySiteOrigin(): string | null {
-  const raw = process.env["NEXT_PUBLIC_SITE_URL"]?.trim();
-  if (!raw) return null;
-  return raw.replace(/\/+$/, "");
+  return resolveConfiguredSiteOrigin();
 }
 
 export function quoteDeliveryFromAddress(): string | null {
-  const from = process.env["RESEND_FROM_EMAIL"]?.trim();
-  return from || null;
+  return quoteChannelFromAddress();
 }
 
 export function isQuoteDeliveryProviderConfigured(): boolean {

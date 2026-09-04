@@ -825,21 +825,24 @@ assert(
 );
 
 assert(
-  "FROM display uses contractor via Quotr and verified address",
+  "FROM display uses contractor via Quotr and quotes@get-quotr.com",
   formatQuoteDeliveryFromHeader(
     "ERC Contracting",
-    "quotes@quotes.get-quotr.com"
-  ) === "ERC Contracting via Quotr <quotes@quotes.get-quotr.com>" &&
+    "quotes@get-quotr.com"
+  ) === "ERC Contracting via Quotr <quotes@get-quotr.com>" &&
     formatQuoteDeliveryFromHeader(
       "ERC Contracting",
-      "Quotr Limited <quotes@quotes.get-quotr.com>"
-    ) === "ERC Contracting via Quotr <quotes@quotes.get-quotr.com>"
+      "Quotr Limited <quotes@get-quotr.com>"
+    ) === "ERC Contracting via Quotr <quotes@get-quotr.com>" &&
+    formatQuoteDeliveryFromHeader(null, "quotes@get-quotr.com") ===
+      "Quotr <quotes@get-quotr.com>"
 );
 
 assert(
-  "Reply-To uses issuer email, never recipient input",
+  "Reply-To uses issuer email, never recipient input, omitted when missing",
   resolveQuoteDeliveryReplyTo("office@erc.example") ===
     "office@erc.example" &&
+    resolveQuoteDeliveryReplyTo(null) === null &&
     !isSafeContractorReplyToEmail("not-an-email") &&
     !isSafeContractorReplyToEmail("office@erc.example\nBcc:evil@x.com") &&
     resolveQuoteDeliveryReplyTo("client@example.com") ===

@@ -1,8 +1,6 @@
 import { formatPricingMoney } from "@/lib/pricing/format";
-import {
-  formatQuoteDeliveryFromHeader,
-  quoteEmailSafeLogoUrl,
-} from "@/lib/quotes/delivery-email";
+import { quoteEmailSafeLogoUrl } from "@/lib/quotes/delivery-email";
+import { quoteDeliveryFromHeader } from "@/lib/email/application-email";
 import { formatQuoteDateTime } from "@/lib/quotes/display";
 import type { QuoteNotificationEmailKind } from "@/lib/quotes/notifications";
 
@@ -159,7 +157,5 @@ function wrapContractorFirstEmail(input: {
 }
 
 export function quoteResponseNotificationFromHeader(companyName: string | null): string | null {
-  const from = process.env["RESEND_FROM_EMAIL"]?.trim();
-  if (!from) return null;
-  return formatQuoteDeliveryFromHeader(companyName, from);
+  return quoteDeliveryFromHeader(companyName);
 }

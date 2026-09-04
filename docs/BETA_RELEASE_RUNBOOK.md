@@ -122,9 +122,10 @@ Set on **Production** environment. Never put Preview secrets here.
 | `STRIPE_PRICE_BUSINESS_SEAT_MONTHLY` | Yes | LIVE additional user |
 | `STRIPE_TAX_RATE_NZ_GST` | Recommended | LIVE `txr_…` 15% |
 | `STRIPE_PORTAL_CONFIGURATION_ID` | Recommended | No plan/seat switching if that remains policy |
-| `RESEND_API_KEY` | Yes | Production sending |
-| `RESEND_FROM_EMAIL` | Yes | Verified domain |
-| `RESEND_REPLY_TO_EMAIL` | Recommended | |
+| `RESEND_API_KEY` | Yes | Production sending-only |
+| `RESEND_FROM_EMAIL` | Yes | Fallback `no-reply@get-quotr.com` |
+| `RESEND_TEAM_FROM_EMAIL` | Yes | `Quotr <no-reply@get-quotr.com>` |
+| `RESEND_QUOTE_FROM_EMAIL` | Yes | `quotes@get-quotr.com` |
 | `RESEND_WEBHOOK_SECRET` | If using delivery webhooks | |
 | `QUOTE_DELIVERY_PROVIDER` | Optional | Omit or non-`mock` in Production |
 | `SCOPE_DISCOVERY_ENABLED` | Must not be `true` unless gated | |
@@ -187,12 +188,14 @@ Resend webhook: `/api/webhooks/resend` if delivery tracking is enabled.
 
 ## 7. Resend Production plan
 
-Auth SMTP and app email **may** use separate Resend keys.
+Auth SMTP and application Resend **use separate channels**. See `docs/architecture/QUOTR_APPLICATION_EMAIL.md`.
 
 Minimum:
 
-- Verified sending domain (SPF/DKIM/DMARC)
-- `RESEND_FROM_EMAIL` for quotes/invites
+- Verified sending domain `get-quotr.com` (SPF/DKIM/DMARC)
+- `RESEND_TEAM_FROM_EMAIL` → `Quotr <no-reply@get-quotr.com>`
+- `RESEND_QUOTE_FROM_EMAIL` → `quotes@get-quotr.com`
+- `RESEND_FROM_EMAIL` fallback → `no-reply@get-quotr.com`
 - Auth SMTP from-address for confirm/reset (Supabase Auth settings, not Vercel)
 - Scope keys to sending only; never commit them
 
