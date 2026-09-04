@@ -3343,6 +3343,7 @@ export function AssistantShell({
             compactCommercialSidebar={assistantMode === "estimate_ready"}
             workAreasConfirmed={workAreasConfirmed}
             pricingProgressionPrimary={builderReviewCompleted}
+            hidePricingProgression={builderReviewOpen}
             commercialBreakdown={commercialBreakdown}
             onViewBreakdown={() => {
               setBuilderReviewOpen(false);

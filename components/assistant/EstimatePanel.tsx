@@ -124,6 +124,8 @@ type EstimatePanelProps = {
   workAreasConfirmed?: boolean;
   /** After Builder Review, Continue to Pricing may be the primary progression. */
   pricingProgressionPrimary?: boolean;
+  /** Hide sidebar Continue to Pricing while Builder Review owns the CTA. */
+  hidePricingProgression?: boolean;
   /** R3 — optional cost breakdown for Commercial Overview. */
   commercialBreakdown?: {
     materialsCost?: number | null;
@@ -337,6 +339,7 @@ export function EstimatePanel({
   compactCommercialSidebar = false,
   workAreasConfirmed = false,
   pricingProgressionPrimary = false,
+  hidePricingProgression = false,
   commercialBreakdown = null,
   onViewBreakdown,
   onGenerate,
@@ -1224,6 +1227,7 @@ export function EstimatePanel({
           ) : null}
 
           {/* Pricing progression — secondary until Builder Review */}
+          {!hidePricingProgression ? (
           <div
             data-estimate-pricing-cta={
               compactCommercialSidebar && !pricingProgressionPrimary
@@ -1233,6 +1237,7 @@ export function EstimatePanel({
           >
             {pricingActions}
           </div>
+          ) : null}
 
           <p className="text-[11px] text-muted-foreground">
             Internal only — not a quote.

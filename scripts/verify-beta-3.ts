@@ -131,6 +131,10 @@ function main() {
       readySurface.includes("pricingCtaEnabled && !reviewOpen")
   );
   assert(
+    "Duplicate sidebar pricing CTA hidden while review is open",
+    read("components/assistant/EstimatePanel.tsx").includes("hidePricingProgression")
+  );
+  assert(
     "Edit job remains secondary on review",
     review.includes("data-builder-review-edit-job") &&
       review.includes('variant="outline"')
