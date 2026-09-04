@@ -58,7 +58,8 @@ export function QuoteAcceptanceDetails({
           <SheetHeader>
             <SheetTitle>Acceptance details</SheetTitle>
             <SheetDescription>
-              Immutable evidence for {formatQuoteNumberRevision(quote)}.
+              Digital acceptance record for {formatQuoteNumberRevision(quote)}.
+              This is not an identity-verified signature.
             </SheetDescription>
           </SheetHeader>
           <dl className="space-y-2 px-6 pb-6 text-sm">
@@ -94,10 +95,8 @@ export function QuoteAcceptanceDetails({
             </div>
             {acceptance.snapshot_fingerprint ? (
               <div>
-                <dt className="text-muted-foreground">Fingerprint</dt>
-                <dd className="break-all font-mono text-xs">
-                  {acceptance.snapshot_fingerprint}
-                </dd>
+                <dt className="text-muted-foreground">Quote record</dt>
+                <dd>{formatQuoteNumberRevision(quote)}</dd>
               </div>
             ) : null}
             {acceptance.acceptance_declaration ? (

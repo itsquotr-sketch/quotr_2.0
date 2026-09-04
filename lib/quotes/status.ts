@@ -11,8 +11,8 @@ export type QuoteStatusDefinition = {
 export const QUOTE_STATUSES: QuoteStatusDefinition[] = [
   {
     value: "draft",
-    label: "Draft",
-    description: "Quote is being prepared.",
+    label: "Ready to send",
+    description: "Quote is ready to send to the client.",
     variant: "secondary",
     sortOrder: 10,
   },
@@ -96,6 +96,56 @@ export function formatQuoteBadgeLabel(status: QuoteStatus): string {
       return "Quote expired";
     case "superseded":
       return "Quote superseded";
+    default:
+      return getQuoteStatusDefinition(status).label;
+  }
+}
+
+/** Contractor-facing status. Draft quotes from Pricing are ready to send. */
+export function formatContractorQuoteStatusLabel(
+  status: QuoteStatus,
+  options?: { superseded?: boolean; expired?: boolean }
+): string {
+  if (options?.superseded || status === "superseded") {
+    return "Superseded";
+  }
+  if (options?.expired || status === "expired") {
+    return "Expired";
+  }
+  switch (status) {
+    case "draft":
+      return "Ready to send";
+    case "sent":
+      return "Sent";
+    case "viewed":
+      return "Viewed";
+    case "accepted":
+      return "Accepted";
+    case "declined":
+      return "Declined";
+    case "archived":
+      return "Archived";
+    default:
+      return getQuoteStatusDefinition(status).label;
+  }
+}
+
+export function contractorQuoteNextActionLabel(status: QuoteStatus): string {
+  switch (status) {
+    case "draft":
+      return "Send quote";
+    case "sent":
+      return "Waiting for the client";
+    case "viewed":
+      return "Client has viewed this quote";
+    case "accepted":
+      return "Quote accepted";
+    case "declined":
+      return "Quote declined";
+    case "expired":
+      return "Quote expired";
+    case "superseded":
+      return "Open the latest revision";
     default:
       return getQuoteStatusDefinition(status).label;
   }

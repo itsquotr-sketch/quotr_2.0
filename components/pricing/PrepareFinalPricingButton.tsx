@@ -16,7 +16,7 @@ export function PrepareFinalPricingButton({
   projectId,
   variant = "default",
   className,
-  label = "Prepare final pricing",
+  label = "Continue to Pricing",
 }: PrepareFinalPricingButtonProps) {
   const [open, setOpen] = useState(false);
 
@@ -57,7 +57,7 @@ export function OpenFinalPricingLink({
         <Link href={`/app/projects/${projectId}/pricing/${pricingDocumentId}`} />
       }
     >
-      Open final pricing
+      Open Pricing
     </Button>
   );
 }

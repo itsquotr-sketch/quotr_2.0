@@ -27,10 +27,16 @@ export function getQuoteCurrency(
 }
 
 export function formatGstTreatmentNote(
-  settings: CompanySettings | null
+  settings: CompanySettings | null,
+  gstRate?: number | null
 ): string {
   const currency = getQuoteCurrency(settings);
   const currencyPart = currency ? ` in ${currency}` : "";
+  if (gstRate != null && gstRate <= 0) {
+    return currency
+      ? `All amounts are in ${currency}.`
+      : "All amounts are as shown.";
+  }
   return `All amounts${currencyPart} are GST exclusive unless stated otherwise.`;
 }
 

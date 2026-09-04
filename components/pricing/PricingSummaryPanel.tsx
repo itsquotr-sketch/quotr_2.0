@@ -74,24 +74,19 @@ export function PricingSummaryPanel({
       <CardContent className={cn("space-y-3", compact && "pt-0")}>
         <div className="space-y-2 rounded-lg border border-border/60 bg-muted/20 px-3 py-3">
           <SummaryRow
-            label="Sell ex GST"
+            label="Your final price"
             value={view.subtotalSellFormatted}
             prominent
           />
           {!compact ? (
             <>
               <MetricRow
-                label="Total cost"
+                label="Estimated cost"
                 value={view.subtotalCostFormatted}
                 tertiary
               />
               <MetricRow
-                label="Gross profit"
-                value={view.profitLabel}
-                tertiary
-              />
-              <MetricRow
-                label="Gross margin"
+                label="Expected gross margin"
                 value={view.marginLabel}
                 tertiary
               />
@@ -99,11 +94,11 @@ export function PricingSummaryPanel({
           ) : (
             <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1 pt-1 text-xs text-muted-foreground">
               <span>Cost {view.subtotalCostFormatted}</span>
-              <span>GP {view.profitLabel}</span>
-              <span>{view.marginLabel}</span>
+              <span>{view.marginLabel} gross margin</span>
             </div>
           )}
         </div>
+        {view.showGst ? (
         <div className={cn("rounded-lg border border-border/60 bg-card px-3 py-3", !compact && "border-[var(--brand-orange-muted)]/60")}>
           <SummaryRow
             label={view.gstLabel}
@@ -117,6 +112,15 @@ export function PricingSummaryPanel({
             />
           </div>
         </div>
+        ) : (
+          <div className="rounded-lg border border-border/60 bg-card px-3 py-3">
+            <SummaryRow
+              label="Total"
+              value={view.totalInclGstFormatted}
+              prominent
+            />
+          </div>
+        )}
 
         <div className="hidden lg:block">
           <CreateQuoteButton
@@ -129,14 +133,14 @@ export function PricingSummaryPanel({
             {quoteSummary
               ? "Open the client quote created from this pricing."
               : isReviewed
-                ? "Create a client-facing quote from reviewed pricing."
-                : "Mark pricing as reviewed before creating a client quote."}
+                ? "Create a client-facing quote from this pricing."
+                : "Mark pricing as reviewed before creating a quote."}
           </p>
         </div>
         {pricingChangedAfterQuote ? (
           <p className="text-xs text-amber-800 dark:text-amber-200">
-            Existing quotes are not updated automatically. Revise or create a
-            new quote if needed.
+          Existing quotes are not updated automatically. Create a revision if
+          you need to send an updated quote.
           </p>
         ) : null}
       </CardContent>

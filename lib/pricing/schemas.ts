@@ -217,6 +217,11 @@ export const deleteManualPricingItemsInputSchema = z.object({
   itemIds: z.array(uuidSchema).min(1).max(200),
 });
 
+export const applyPricingFinalSellInputSchema = z.object({
+  pricingDocumentId: uuidSchema,
+  finalSellExGst: moneyAmountSchema,
+});
+
 /** Validate derived gross-margin / markup pair without changing formulas. */
 export const derivedCommercialPercentsSchema = z.object({
   margin_percent: grossMarginPercentSchema,

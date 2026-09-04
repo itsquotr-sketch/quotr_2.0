@@ -649,8 +649,8 @@ export function EstimatePanel({
               </Button>
               <p className="text-center text-xs text-muted-foreground">
                 {pricingSummary.status === "reviewed"
-                  ? "Create a quote from reviewed final pricing."
-                  : "Mark final pricing as reviewed before creating a quote."}
+                  ? "Create a quote from reviewed pricing."
+                  : "Mark pricing as reviewed before creating a quote."}
               </p>
             </>
           )}

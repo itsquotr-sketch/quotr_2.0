@@ -13,6 +13,7 @@ import {
 } from "@/lib/pricing/action-guards";
 import {
   addPricingItemInputSchema,
+  applyPricingFinalSellInputSchema,
   createPricingFromEstimateInputSchema,
   deleteManualPricingItemsInputSchema,
   deletePricingItemInputSchema,
@@ -76,6 +77,10 @@ import {
   getPricingWorkspaceDataWithContext,
   getProjectWorkspaceTabContextWithContext,
 } from "@/lib/pricing/pricing-loaders";
+import {
+  allocateFinalSell,
+  unitSellForAllocatedTotal,
+} from "@/lib/pricing/final-sell";
 import type {
   PricingActionState,
   PricingDocumentInput,
@@ -87,6 +92,19 @@ import { ACTIVE_PIPELINE_STATUSES } from "@/lib/projects/status";
 
 const PRICING_SAVE_FAILED =
   "Could not save pricing changes. Please try again.";
+
+async function requirePricingEditPermission(auth: {
+  orgId: string;
+  user: { id: string };
+}): Promise<{ error: string } | null> {
+  const denied = await permissionDeniedError({
+    orgId: auth.orgId,
+    userId: auth.user.id,
+    permission: "pricing.edit",
+  });
+  if (!denied) return null;
+  return { error: denied.error };
+}
 
 async function loadOwnedPricingDocument(pricingDocumentId: string) {
   const auth = await requireAuthOrgContext();
@@ -848,7 +866,9 @@ export async function updatePricingDocument(
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, document } = loaded;
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
   const documentInput = parsed.data.document;
   const gstRate = resolvePricingGstForUpdate({
     mutationGstRate: documentInput.gst_rate,
@@ -965,7 +985,9 @@ export async function updatePricingItem(
     return { error: auth.error };
   }
 
-  const { supabase, orgId } = auth;
+  const { supabase, orgId, user } = auth;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
   const item = parsed.data.item;
 
   const ownedItem = await assertOrgOwnsPricingItem(
@@ -1146,7 +1168,9 @@ export async function addPricingItem(input: {
     return { error: auth.error };
   }
 
-  const { supabase, orgId } = auth;
+  const { supabase, orgId, user } = auth;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
   const {
     pricingDocumentId,
     projectId,
@@ -1326,7 +1350,9 @@ export async function duplicatePricingItem(
     return { error: auth.error };
   }
 
-  const { supabase, orgId } = auth;
+  const { supabase, orgId, user } = auth;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
 
   const ownedItem = await assertOrgOwnsPricingItem(
     auth,
@@ -1495,7 +1521,9 @@ export async function deletePricingItem(
     return { error: auth.error };
   }
 
-  const { supabase, orgId } = auth;
+  const { supabase, orgId, user } = auth;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
 
   const ownedItem = await assertOrgOwnsPricingItem(
     auth,
@@ -1588,7 +1616,9 @@ export async function markPricingReviewed(
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, document } = loaded;
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
 
   const { error } = await supabase
     .from("pricing_documents")
@@ -1627,7 +1657,9 @@ export async function setPricingItemsQuoteVisibility(input: {
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, document } = loaded;
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
   const uniqueIds = Array.from(new Set(parsed.data.itemIds));
 
   const { data: ownedRows, error: loadError } = await supabase
@@ -1719,7 +1751,9 @@ export async function deleteManualPricingItems(input: {
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, document } = loaded;
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
   const uniqueIds = Array.from(new Set(parsed.data.itemIds));
 
   const { data: ownedRows, error: loadError } = await supabase
@@ -1806,5 +1840,162 @@ export async function deleteManualPricingItems(input: {
     document: updatedDocument,
     deletedItemIds: manualIds,
     skippedCount: uniqueIds.length - manualIds.length,
+  };
+}
+
+export async function applyPricingFinalSell(input: {
+  pricingDocumentId: string;
+  finalSellExGst: number;
+}): Promise<PricingActionState> {
+  const parsed = parsePricingInput(applyPricingFinalSellInputSchema, input);
+  if (!parsed.ok) {
+    return { error: parsed.error };
+  }
+
+  const loaded = await loadOwnedPricingDocument(parsed.data.pricingDocumentId);
+  if ("error" in loaded) {
+    return { error: loaded.error };
+  }
+
+  const { supabase, orgId, document, user } = loaded;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
+
+  const { data: rows, error: loadError } = await supabase
+    .from("pricing_items")
+    .select("*")
+    .eq("pricing_document_id", parsed.data.pricingDocumentId)
+    .eq("org_id", orgId);
+
+  if (loadError) {
+    return {
+      error: toUserError(loadError, "pricing-final-sell-load", PRICING_SAVE_FAILED),
+    };
+  }
+
+  const items = (rows ?? []).map((row) => mapPricingItem(row));
+  const allocated = allocateFinalSell(items, parsed.data.finalSellExGst);
+  if (!allocated.ok) {
+    return { error: allocated.error };
+  }
+
+  const computedRows: Array<{
+    id: string;
+    fields: PersistedPricingItemMoneyFields;
+  }> = [];
+
+  for (const allocation of allocated.allocations) {
+    const item = items.find((row) => row.id === allocation.itemId);
+    if (!item) {
+      return { error: PRICING_SAVE_FAILED };
+    }
+    const unitSell = unitSellForAllocatedTotal({
+      calculation_mode: item.calculation_mode,
+      quantity: item.quantity,
+      calculated_quantity: item.calculated_quantity,
+      unit_sell: item.unit_sell,
+      totalSell: allocation.totalSell,
+    });
+    const computed = computePricingItemMoneyFields({
+      quantity: item.quantity,
+      unit: item.unit,
+      unitCost: item.unit_cost,
+      unitSell,
+      totalCost: item.total_cost,
+      totalSell: allocation.totalSell,
+      itemType: item.item_type,
+      calculationMode: item.calculation_mode,
+      productivityRate: item.productivity_rate,
+      productivityUnit: item.productivity_unit,
+      calculatedQuantity: item.calculated_quantity,
+      manualSellOverride: true,
+      requestId: `pricing-final-sell-${item.id}`,
+      sourceReferences: ["pricing:final_sell"],
+    });
+    if (!computed.ok) {
+      return { error: computed.error };
+    }
+    const commercial = validateComputedItemForPersistence({
+      totalCost: computed.fields.totalCost,
+      totalSell: computed.fields.totalSell,
+      marginPercent: computed.fields.marginPercent,
+      markupPercent: computed.fields.markupPercent,
+      costKnown: computed.fields.costKnown,
+    });
+    if (!commercial.ok) {
+      return { error: commercial.error };
+    }
+    computedRows.push({ id: item.id, fields: computed.fields });
+  }
+
+  for (const row of computedRows) {
+    const { error } = await supabase
+      .from("pricing_items")
+      .update({
+        unit_sell: row.fields.unitSell,
+        total_sell: row.fields.totalSell,
+        total_cost: row.fields.totalCost,
+        unit_cost: row.fields.unitCost,
+        quantity: row.fields.quantity,
+        gross_profit: row.fields.grossProfit,
+        margin_percent: row.fields.marginPercent,
+        markup_percent: row.fields.markupPercent,
+        calculated_quantity: row.fields.calculatedQuantity,
+        manually_edited: true,
+      })
+      .eq("id", row.id)
+      .eq("org_id", orgId);
+    if (error) {
+      return {
+        error: toUserError(error, "pricing-final-sell-update", PRICING_SAVE_FAILED),
+      };
+    }
+  }
+
+  await logPricingAuditEvent({
+    supabase,
+    organisationId: orgId,
+    projectId: document.project_id,
+    pricingDocumentId: parsed.data.pricingDocumentId,
+    itemId: computedRows[0]?.id ?? parsed.data.pricingDocumentId,
+    userId: user.id,
+    action: "pricing_item_update",
+    oldValues: { subtotal_sell: document.subtotal_sell },
+    newValues: {
+      subtotal_sell: parsed.data.finalSellExGst,
+      manually_edited: true,
+    },
+  });
+
+  await recalculateAndPersistDocumentTotals(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId,
+    resolveStoredPricingDocumentGstRate(document.gst_rate).rate,
+    true
+  );
+
+  const [updatedDocument, updatedItems] = await Promise.all([
+    loadPricingDocumentById(supabase, orgId, parsed.data.pricingDocumentId),
+    supabase
+      .from("pricing_items")
+      .select("*")
+      .eq("pricing_document_id", parsed.data.pricingDocumentId)
+      .eq("org_id", orgId),
+  ]);
+
+  if (!updatedDocument) {
+    return { error: "Failed to load updated pricing document." };
+  }
+
+  revalidatePricingProjectPath(
+    document.project_id,
+    parsed.data.pricingDocumentId
+  );
+
+  return {
+    success: true,
+    document: updatedDocument,
+    items: (updatedItems.data ?? []).map((row) => mapPricingItem(row)),
   };
 }

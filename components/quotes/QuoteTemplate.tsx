@@ -1,6 +1,7 @@
 import type { CSSProperties } from "react";
 import { EmptyState } from "@/components/layout/empty-state";
 import { formatPricingDate, formatPricingMoney } from "@/lib/pricing/format";
+import { presentStoredGst } from "@/lib/pricing/gst-presentation";
 import {
   DEFAULT_VARIATION_WORDING,
   formatCompanyAddress,
@@ -279,7 +280,16 @@ export function QuoteTemplate({
   const website = companySettings?.website?.trim();
   const contactPrimary = [email, phone].filter(Boolean).join(" · ");
 
-  const gstTreatmentNote = formatGstTreatmentNote(companySettings);
+  const gstPresentation = presentStoredGst({
+    gstRate: quote.gst_rate,
+    gstAmount: quote.gst_amount,
+    subtotalExGst: quote.subtotal,
+    totalInclGst: quote.total_incl_gst,
+  });
+  const gstTreatmentNote = formatGstTreatmentNote(
+    companySettings,
+    quote.gst_rate
+  );
   const termsSections = resolveClientFacingTermsSections({
     quoteTerms: filterInternalLinesFromBlock(quote.terms),
     issuerPaymentTerms: companySettings?.defaultPaymentTerms ?? null,
@@ -547,18 +557,26 @@ export function QuoteTemplate({
         <div className="ml-auto max-w-[240px] space-y-1 text-sm print:max-w-[220px] print:text-[10pt]">
           <div className="flex justify-between gap-4">
             <span className="text-neutral-500">
-              {hasOptional ? "Base subtotal" : "Subtotal"}
+              {hasOptional
+                ? gstPresentation.showGst
+                  ? "Base subtotal"
+                  : "Base price"
+                : gstPresentation.showGst
+                  ? "Price ex GST"
+                  : "Price"}
             </span>
             <span className="tabular-nums text-neutral-900">
               {formatPricingMoney(quote.subtotal)}
             </span>
           </div>
+          {gstPresentation.showGst ? (
           <div className="flex justify-between gap-4">
-            <span className="text-neutral-500">GST ({quote.gst_rate}%)</span>
+            <span className="text-neutral-500">{gstPresentation.gstLabel}</span>
             <span className="tabular-nums text-neutral-900">
               {formatPricingMoney(quote.gst_amount)}
             </span>
           </div>
+          ) : null}
           <div
             className="flex justify-between gap-4 border-t pt-1.5 text-sm font-semibold text-neutral-900 print:text-[11pt]"
             style={
@@ -567,7 +585,7 @@ export function QuoteTemplate({
                 : undefined
             }
           >
-            <span>Total incl. GST</span>
+            <span>{gstPresentation.showGst ? "Total incl. GST" : "Total"}</span>
             <span className="tabular-nums">
               {formatPricingMoney(quote.total_incl_gst)}
             </span>

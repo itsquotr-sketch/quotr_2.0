@@ -5,7 +5,7 @@ import { useState } from "react";
 import { Badge } from "@/components/ui/badge";
 import { CreateFinalPricingDialog } from "@/components/pricing/CreateFinalPricingDialog";
 import type { PricingSummary } from "@/lib/pricing/types";
-import { getQuoteStatusDefinition } from "@/lib/quotes/status";
+import { formatContractorQuoteStatusLabel } from "@/lib/quotes/status";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { cn } from "@/lib/utils";
 
@@ -73,7 +73,7 @@ export function ProjectWorkspaceTabs({
             aria-selected={activeTab === "assistant"}
             className={tabClass(activeTab === "assistant")}
           >
-            Assistant
+            Estimate
           </Link>
 
           {pricingHref ? (
@@ -104,8 +104,8 @@ export function ProjectWorkspaceTabs({
                 estimateIsStale
                   ? "Regenerate the estimate before preparing final pricing."
                   : !hasEstimate
-                    ? "Generate a quick estimate first."
-                    : "Create final pricing from current estimate"
+                    ? "Generate an estimate first."
+                    : "Continue to Pricing from the current estimate"
               }
               onClick={handlePricingTabClick}
               className={cn(
@@ -135,7 +135,7 @@ export function ProjectWorkspaceTabs({
             >
               Quote
               <Badge variant="outline" className="text-[10px]">
-                {getQuoteStatusDefinition(quoteSummary!.status).label}
+                {formatContractorQuoteStatusLabel(quoteSummary!.status)}
               </Badge>
             </Link>
           ) : (
@@ -143,7 +143,7 @@ export function ProjectWorkspaceTabs({
               role="tab"
               aria-selected={activeTab === "quote"}
               aria-disabled="true"
-              title="Create a quote from reviewed final pricing on the Final Pricing tab."
+              title="Create a quote from reviewed pricing."
               className={cn(
                 tabClassDisabled,
                 activeTab === "quote" &&

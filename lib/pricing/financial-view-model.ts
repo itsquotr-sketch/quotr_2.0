@@ -10,6 +10,7 @@ import {
   formatProfitabilityDisplay,
 } from "@/lib/financial-presentation/format";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
+import { presentStoredGst } from "@/lib/pricing/gst-presentation";
 import { isManualScopePricingRequiredNote } from "@/lib/work-areas/scope-items/pricing-bridge";
 
 export function pricingItemViewModel(item: PricingItem) {
@@ -50,6 +51,13 @@ export function pricingDocumentViewModel(document: PricingDocument) {
     markupPercent: document.markup_percent,
   });
 
+  const gst = presentStoredGst({
+    gstRate: document.gst_rate,
+    gstAmount: document.gst_amount,
+    subtotalExGst: document.subtotal_sell,
+    totalInclGst: document.total_incl_gst,
+  });
+
   return {
     costKnown,
     subtotalCostFormatted: formatPricingMoney(document.subtotal_cost),
@@ -59,7 +67,8 @@ export function pricingDocumentViewModel(document: PricingDocument) {
     totalInclGstFormatted: formatPricingMoney(document.total_incl_gst),
     profitLabel: profitability.profitLabel,
     marginLabel: profitability.marginLabel,
-    gstLabel: `GST (${document.gst_rate}%)`,
+    gstLabel: gst.gstLabel,
+    showGst: gst.showGst,
   };
 }
 

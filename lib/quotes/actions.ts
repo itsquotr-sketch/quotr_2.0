@@ -760,7 +760,13 @@ export async function updateQuote(
     return { error: loaded.error };
   }
 
-  const { supabase, orgId, quote } = loaded;
+  const { supabase, orgId, quote, user } = loaded;
+  const denied = await permissionDeniedError({
+    orgId,
+    userId: user.id,
+    permission: "quotes.create",
+  });
+  if (denied) return { error: denied.error };
   const editableError = assertQuoteEditable(quote);
   if (editableError) {
     return { error: editableError };

@@ -46,6 +46,7 @@ import { QuoteDeliveryHistory } from "@/components/quotes/QuoteDeliveryHistory";
 import { QuoteAcceptanceDetails } from "@/components/quotes/QuoteAcceptanceDetails";
 import { QuoteSendSheet } from "@/components/quotes/QuoteSendSheet";
 import { resolveDisplayTimezone } from "@/lib/org/timezone";
+import { formatQuoteDateTime } from "@/lib/quotes/display";
 
 type QuoteWorkspaceProps = {
   initialData: QuoteWorkspaceData;
@@ -272,7 +273,36 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
           onSave={isEditable ? handleSaveQuote : undefined}
           timeZone={displayTimeZone}
         />
+        {quote.pricing_document_id ? (
+          <p className="mt-2">
+            <Link
+              href={`/app/projects/${projectId}/pricing/${quote.pricing_document_id}`}
+              className="text-sm font-medium text-muted-foreground underline-offset-4 hover:underline"
+            >
+              Back to Pricing
+            </Link>
+          </p>
+        ) : null}
       </div>
+
+      {(quote.status === "sent" || quote.status === "viewed") &&
+      deliveries[0] ? (
+        <div
+          className="rounded-lg border border-emerald-300/80 bg-emerald-50/80 px-4 py-3 text-sm text-emerald-950 print:hidden dark:border-emerald-900/40 dark:bg-emerald-950/20 dark:text-emerald-100"
+          data-quote-send-success
+          role="status"
+        >
+          <p className="font-medium">
+            {quote.status === "viewed" ? "Viewed" : "Sent"}
+          </p>
+          <p className="mt-1">
+            {deliveries[0].recipient_email}
+            {deliveries[0].submitted_at
+              ? ` · ${formatQuoteDateTime(deliveries[0].submitted_at, displayTimeZone)}`
+              : ""}
+          </p>
+        </div>
+      ) : null}
 
       {sendLockActive ? (
         <div
@@ -321,8 +351,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </div>
       ) : (
         <WorkspaceBanner className="print:hidden">
-          Client-facing quote — review scope, pricing, exclusions and terms before
-          sending.
+          Preview exactly what the client will see, then send the quote.
         </WorkspaceBanner>
       )}
 
@@ -338,17 +367,22 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
         </CardHeader>
         <CardContent className="space-y-3">
           <div>
-            <p className="text-[11px] text-muted-foreground">Client total</p>
+            <p className="text-[11px] text-muted-foreground">
+              {quoteFinance.showGst ? "Client total incl GST" : "Client total"}
+            </p>
             <p className="text-2xl font-semibold tabular-nums tracking-tight">
               {quoteFinance.totalInclGstFormatted}
             </p>
-            <p className="text-xs text-muted-foreground">
-              {quoteFinance.subtotalFormatted} ex GST
-            </p>
+            {quoteFinance.showGst ? (
+              <p className="text-xs text-muted-foreground">
+                {quoteFinance.subtotalFormatted} ex GST
+              </p>
+            ) : null}
           </div>
           <div className="flex gap-2">
             <Button
               type="button"
+              variant={canIssueQuoteDelivery(quote.status) ? "outline" : "default"}
               className="h-11 flex-1"
               onClick={() => {
                 setMobilePreviewOpen((open) => !open);
@@ -363,7 +397,15 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             >
               {mobilePreviewOpen ? "Hide preview" : "Preview quote"}
             </Button>
-            {isEditable ? (
+            {canIssueQuoteDelivery(quote.status) ? (
+              <Button
+                type="button"
+                className="h-11 flex-1"
+                onClick={() => setSendOpen(true)}
+              >
+                Send quote
+              </Button>
+            ) : isEditable ? (
               <Button
                 type="button"
                 variant="outline"
@@ -374,7 +416,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
                     ?.scrollIntoView({ behavior: "smooth", block: "start" });
                 }}
               >
-                Edit details
+                Edit quote
               </Button>
             ) : null}
           </div>
@@ -472,7 +514,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             id="quote-client-preview"
           >
             <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
-              Client preview
+              What the client will see
             </p>
             <div className="mx-auto w-full max-w-[1040px]">{template}</div>
           </div>

@@ -62,6 +62,7 @@ export function QuoteMobileActionBar({
       {canSave && onSave ? (
         <Button
           type="button"
+          variant={showSend ? "outline" : "default"}
           className="h-11 min-w-0 flex-1"
           disabled={busy}
           onClick={onSave}
@@ -79,7 +80,6 @@ export function QuoteMobileActionBar({
       {showSend ? (
         <Button
           type="button"
-          variant={canSave ? "outline" : "default"}
           className="h-11 min-w-0 flex-1"
           disabled={busy}
           onClick={onSendQuote}

@@ -2353,6 +2353,7 @@ export function AssistantShell({
               isRegenerating={updatingEstimate}
               pricingCtaEnabled={!pricingSummary}
               pricingCtaPrimary={builderReviewCompleted}
+              reviewOpen={builderReviewOpen}
             >
               {refineAfterEstimateOpen && refineView.hasCandidates ? (
                 <RefineEstimatePanel
@@ -2374,6 +2375,10 @@ export function AssistantShell({
                 <BuilderReviewSurface
                   view={builderReviewView}
                   isRegenerating={updatingEstimate}
+                  projectId={project.id}
+                  pricingDocumentId={pricingSummary?.id ?? null}
+                  gstRate={initialState.defaultGstRate}
+                  showContinueToPricing={!pricingSummary && !displayEstimateStale}
                   onBack={() => setBuilderReviewOpen(false)}
                   onEditJob={() => {
                     openEditJob(null);

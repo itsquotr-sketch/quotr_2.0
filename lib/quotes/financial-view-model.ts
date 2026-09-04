@@ -5,8 +5,15 @@
 
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
 import { formatPricingMoney, formatPricingPercent } from "@/lib/pricing/format";
+import { presentStoredGst } from "@/lib/pricing/gst-presentation";
 
 export function quoteDocumentViewModel(quote: Quote) {
+  const gst = presentStoredGst({
+    gstRate: quote.gst_rate,
+    gstAmount: quote.gst_amount,
+    subtotalExGst: quote.subtotal,
+    totalInclGst: quote.total_incl_gst,
+  });
   return {
     status: quote.status,
     revisionNumber: quote.revision_number,
@@ -16,7 +23,8 @@ export function quoteDocumentViewModel(quote: Quote) {
     gstRate: quote.gst_rate,
     gstAmountFormatted: formatPricingMoney(quote.gst_amount),
     totalInclGstFormatted: formatPricingMoney(quote.total_incl_gst),
-    gstLabel: `GST (${quote.gst_rate}%)`,
+    gstLabel: gst.gstLabel,
+    showGst: gst.showGst,
   };
 }
 

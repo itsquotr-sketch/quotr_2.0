@@ -100,7 +100,9 @@ export function QuoteAcceptSheet({
           <p className="text-neutral-600">{companyName}</p>
         ) : null}
         <p className="mt-1 font-medium tabular-nums">
-          {view.totalInclGstFormatted} incl GST
+          {view.showGst
+            ? `${view.totalInclGstFormatted} incl GST`
+            : view.totalInclGstFormatted}
         </p>
       </div>
       <div className="space-y-1.5">
@@ -195,7 +197,8 @@ export function QuoteAcceptSheet({
           <DialogHeader>
             <DialogTitle>Accept quote</DialogTitle>
             <DialogDescription>
-              Confirm this exact quote revision. Optional items stay optional.
+              Record your digital acceptance of this quote. This is not an
+              identity-verified signature.
             </DialogDescription>
           </DialogHeader>
           {fields}
@@ -211,7 +214,8 @@ export function QuoteAcceptSheet({
           <SheetHeader>
             <SheetTitle>Accept quote</SheetTitle>
             <SheetDescription>
-              Confirm this exact quote revision. Optional items stay optional.
+              Record your digital acceptance of this quote. This is not an
+              identity-verified signature.
             </SheetDescription>
           </SheetHeader>
           <div className="px-6 pb-4">{fields}</div>

@@ -57,10 +57,11 @@ export function CreateFinalPricingDialog({
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent showCloseButton className="sm:max-w-md">
         <DialogHeader>
-          <DialogTitle>Create final pricing?</DialogTitle>
+          <DialogTitle>Continue to Pricing?</DialogTitle>
           <DialogDescription>
-            Create final pricing from the current estimate? You can review and
-            edit all line items before marking pricing as reviewed.
+            Pricing is where you decide what to charge. Quotr’s estimate stays
+            as the working recommendation. You can still adjust Work Area
+            prices before creating a quote.
           </DialogDescription>
         </DialogHeader>
         {error ? (
@@ -84,7 +85,7 @@ export function CreateFinalPricingDialog({
             Cancel
           </Button>
           <Button type="button" disabled={isPending} onClick={handleCreate}>
-            {isPending ? "Creating…" : "Create final pricing"}
+            {isPending ? "Creating…" : "Continue to Pricing"}
           </Button>
         </DialogFooter>
       </DialogContent>

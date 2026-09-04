@@ -35,7 +35,7 @@ export function QuoteDeliveryHistory({
 
   return (
     <div className="space-y-2 rounded-lg border border-border/60 bg-card px-3 py-2.5 print:hidden">
-      <p className="text-xs font-medium text-muted-foreground">Delivery</p>
+        <p className="text-xs font-medium text-muted-foreground">Sent</p>
       {viewedAt ? (
         <p className="text-xs text-foreground">
           First client-page view{" "}
@@ -48,7 +48,7 @@ export function QuoteDeliveryHistory({
         {deliveries.map((row) => (
           <li key={row.id} className="text-xs leading-relaxed">
             <p className="font-medium">
-              {row.attempt_number > 1 ? "Resent" : "Submitted"} to{" "}
+                {row.attempt_number > 1 ? "Resent" : "Submitted"} to{" "}
               {row.recipient_email}
             </p>
             <p className="text-muted-foreground">

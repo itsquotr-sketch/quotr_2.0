@@ -12,6 +12,8 @@ import type {
   BuilderReviewView,
 } from "@/lib/assistant/builder-review";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { presentEstimateGst } from "@/lib/assistant/presentation/gst-display";
+import { PrepareFinalPricingButton, OpenFinalPricingLink } from "@/components/pricing/PrepareFinalPricingButton";
 import { cn } from "@/lib/utils";
 
 type BuilderReviewSurfaceProps = {
@@ -23,6 +25,10 @@ type BuilderReviewSurfaceProps = {
   onImprove?: (improvement: BuilderReviewImprovement) => void;
   onUpdateEstimate?: () => void;
   onChangeMaterial?: (workAreaId: string | null) => void;
+  projectId?: string;
+  pricingDocumentId?: string | null;
+  gstRate?: number | null;
+  showContinueToPricing?: boolean;
   className?: string;
 };
 
@@ -41,20 +47,19 @@ export function BuilderReviewSurface({
   onImprove,
   onUpdateEstimate,
   onChangeMaterial,
+  projectId,
+  pricingDocumentId = null,
+  gstRate = null,
+  showContinueToPricing = false,
   className,
 }: BuilderReviewSurfaceProps) {
   const multi = view.workAreas.length > 1;
+  const gst = presentEstimateGst(view.overview.recommendedSell, gstRate);
+  const topAssumptions = view.assumptions.slice(0, 3);
   const [openAreas, setOpenAreas] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
-    if (view.workAreas.length === 1) {
-      init[view.workAreas[0]!.workAreaName] = true;
-    } else {
-      for (const wa of view.workAreas) {
-        init[wa.workAreaName] = false;
-      }
-      if (view.workAreas[0]) {
-        init[view.workAreas[0]!.workAreaName] = true;
-      }
+    for (const wa of view.workAreas) {
+      init[wa.workAreaName] = false;
     }
     return init;
   });
@@ -81,9 +86,12 @@ export function BuilderReviewSurface({
           ← Back
         </Button>
         <p className="text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
-          Builder Review
+          Review estimate
         </p>
       </div>
+      <p className="text-sm text-muted-foreground" data-builder-review-purpose>
+        Check Quotr’s working estimate before deciding your final price.
+      </p>
 
       {view.overview.isStale ? (
         <div
@@ -117,39 +125,76 @@ export function BuilderReviewSurface({
         className="rounded-xl border border-border/60 bg-card px-4 py-3.5"
         data-builder-review-overview
       >
-        <div className="flex flex-wrap items-end justify-between gap-3">
-          <div>
+        <div className="space-y-3">
+          <div data-builder-review-recommended-sell>
             <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
               Recommended sell
             </p>
-            <p className="mt-0.5 text-xl font-semibold tracking-tight tabular-nums">
-              {formatCurrency(view.overview.recommendedSell)}{" "}
-              <span className="text-sm font-medium text-muted-foreground">
-                + GST
-              </span>
+            <p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums">
+              {formatCurrency(gst.exGst)}{" "}
+              {gst.showGst ? (
+                <span className="text-sm font-medium text-muted-foreground">
+                  ex GST
+                </span>
+              ) : null}
             </p>
-          </div>
-          <div className="text-right">
-            <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-              Direct cost
-            </p>
-            <p className="text-sm font-semibold tabular-nums">
-              {formatCurrency(view.overview.recommendedCost)}
-            </p>
-            <p className="text-xs text-muted-foreground">
-              GM {view.overview.marginPercent.toFixed(1)}%
-            </p>
-            {view.overview.marginSourceLabel ? (
-              <p className="max-w-[16rem] text-[11px] leading-snug text-muted-foreground">
-                {view.overview.marginSourceLabel}
+            {gst.showGst ? (
+              <p className="mt-1 text-sm" data-builder-review-gst>
+                {formatCurrency(gst.inclGst)} incl GST
+                <span className="text-muted-foreground">
+                  {" "}
+                  · {formatCurrency(gst.gstAmount)} GST
+                </span>
               </p>
             ) : null}
           </div>
+          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm" data-builder-review-cost-margin>
+            <span>
+              Estimated cost{" "}
+              <span className="font-medium tabular-nums">
+                {formatCurrency(view.overview.recommendedCost)}
+              </span>
+            </span>
+            <span>
+              Target gross margin{" "}
+              <span className="font-medium tabular-nums">
+                {view.overview.marginPercent.toFixed(1)}%
+              </span>
+            </span>
+          </div>
+          {view.overview.marginSourceLabel ? (
+            <p className="text-[11px] leading-snug text-muted-foreground">
+              {view.overview.marginSourceLabel}
+            </p>
+          ) : null}
         </div>
 
-        <p className="mt-3 text-sm text-foreground/90">
-          {view.overview.workAreaNames.join(" · ")}
-        </p>
+        {view.workAreas.length > 0 ? (
+          <ul className="mt-3 space-y-1 border-t border-border/40 pt-3 text-sm" data-builder-review-wa-totals>
+            {view.workAreas.map((wa) => (
+              <li key={wa.workAreaName} className="flex justify-between gap-3">
+                <span className="min-w-0 truncate">{wa.workAreaName}</span>
+                <span className="shrink-0 tabular-nums text-muted-foreground">
+                  {formatCurrency(wa.sell)}
+                </span>
+              </li>
+            ))}
+          </ul>
+        ) : (
+          <p className="mt-3 text-sm text-foreground/90">
+            {view.overview.workAreaNames.join(" · ")}
+          </p>
+        )}
+
+        {topAssumptions.length > 0 ? (
+          <ul className="mt-3 space-y-1 text-sm" data-builder-review-key-assumptions>
+            {topAssumptions.map((item) => (
+              <li key={item.id} className="text-muted-foreground">
+                {item.label}
+              </li>
+            ))}
+          </ul>
+        ) : null}
 
         {view.overview.confidenceBand ? (
           <div className="mt-3" data-builder-review-confidence>
@@ -166,32 +211,33 @@ export function BuilderReviewSurface({
         ) : null}
 
         {view.overview.categorySummary.length > 0 ? (
-          <ul
-            className="mt-3 grid gap-1.5 border-t border-border/40 pt-3 sm:grid-cols-2"
-            data-builder-review-category-summary
-          >
-            {view.overview.categorySummary.map((row) => (
-              <li
-                key={row.id}
-                className="flex items-center justify-between gap-2 text-xs"
-              >
-                <span className="text-muted-foreground">{row.label}</span>
-                <span className="font-medium">{formatCurrency(row.cost)}</span>
-              </li>
-            ))}
-          </ul>
+          <details className="mt-3" data-builder-review-category-summary>
+            <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
+              Cost breakdown
+            </summary>
+            <ul className="mt-2 grid gap-1.5 sm:grid-cols-2">
+              {view.overview.categorySummary.map((row) => (
+                <li
+                  key={row.id}
+                  className="flex items-center justify-between gap-2 text-xs"
+                >
+                  <span className="text-muted-foreground">{row.label}</span>
+                  <span className="font-medium">{formatCurrency(row.cost)}</span>
+                </li>
+              ))}
+            </ul>
+            <p
+              className="mt-2 text-[11px] text-muted-foreground"
+              data-builder-review-cost-reconcile={
+                view.costReconciles ? "true" : "false"
+              }
+            >
+              {view.costReconciles
+                ? "Category totals match estimated cost."
+                : "Category totals are approximate — check line items."}
+            </p>
+          </details>
         ) : null}
-
-        <p
-          className="mt-2 text-[11px] text-muted-foreground"
-          data-builder-review-cost-reconcile={
-            view.costReconciles ? "true" : "false"
-          }
-        >
-          {view.costReconciles
-            ? "Category totals reconcile to estimate cost."
-            : "Category totals are approximate — check line items."}
-        </p>
       </div>
 
       {view.improvements.length > 0 ? (
@@ -243,17 +289,6 @@ export function BuilderReviewSurface({
                 {ASSISTANT_ACTION_LABELS.refineEstimate}
               </Button>
             ) : null}
-            {onEditJob ? (
-              <Button
-                type="button"
-                variant="outline"
-                className="h-11 min-h-11 w-full sm:w-auto"
-                data-builder-review-edit-job
-                onClick={onEditJob}
-              >
-                {ASSISTANT_ACTION_LABELS.editJob}
-              </Button>
-            ) : null}
           </div>
         </div>
       ) : null}
@@ -284,11 +319,11 @@ export function BuilderReviewSurface({
                   <p className="text-sm font-semibold">{wa.workAreaName}</p>
                   {!multi ? (
                     <p className="text-xs text-muted-foreground">
-                      Cost {formatCurrency(wa.cost)}
+                      {formatCurrency(wa.sell)}
                     </p>
                   ) : (
                     <p className="text-xs text-muted-foreground">
-                      {formatCurrency(wa.cost)} cost
+                      {formatCurrency(wa.sell)}
                     </p>
                   )}
                   {multi && !open ? (
@@ -452,7 +487,9 @@ export function BuilderReviewSurface({
                                   {line.label}
                                 </p>
                                 {line.isAllowance ? (
-                                  <StatusPill tone="neutral">Allowance</StatusPill>
+                                  <StatusPill tone="neutral">
+                                    Allowance — budgeted amount included in the price
+                                  </StatusPill>
                                 ) : null}
                                 {line.supporting ? (
                                   <p className="text-xs break-words text-muted-foreground">
@@ -673,6 +710,42 @@ export function BuilderReviewSurface({
           ) : null}
         </div>
       ) : null}
+
+      <div
+        className="flex flex-col gap-2 sm:flex-row sm:flex-wrap"
+        data-builder-review-cta
+      >
+        {showContinueToPricing && projectId && !view.overview.isStale ? (
+          <PrepareFinalPricingButton
+            projectId={projectId}
+            className="h-11 min-h-11 w-full sm:w-auto"
+            label={ASSISTANT_ACTION_LABELS.continueToPricing}
+          />
+        ) : null}
+        {pricingDocumentId && projectId && !view.overview.isStale ? (
+          <div className="w-full sm:w-auto" data-builder-review-open-pricing>
+            <OpenFinalPricingLink
+              projectId={projectId}
+              pricingDocumentId={pricingDocumentId}
+            />
+          </div>
+        ) : null}
+        {onEditJob ? (
+          <Button
+            type="button"
+            variant="outline"
+            className="h-11 min-h-11 w-full sm:w-auto"
+            data-builder-review-edit-job
+            onClick={onEditJob}
+          >
+            {ASSISTANT_ACTION_LABELS.editJob}
+          </Button>
+        ) : null}
+      </div>
+      <p className="text-xs text-muted-foreground">
+        To change these numbers, edit the job and update the estimate. Pricing
+        is where you set the final price.
+      </p>
     </section>
   );
 }

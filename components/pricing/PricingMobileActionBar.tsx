@@ -2,7 +2,7 @@
 
 import { Loader2 } from "lucide-react";
 import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
-import { formatPricingMoney } from "@/lib/pricing/format";
+import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
 import type { PricingDocument } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { Button } from "@/components/ui/button";
@@ -30,6 +30,7 @@ export function PricingMobileActionBar({
   className,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
+  const view = pricingDocumentViewModel(document);
 
   return (
     <div
@@ -42,10 +43,12 @@ export function PricingMobileActionBar({
       <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
         <div className="min-w-0" data-pricing-mobile-total="true">
           <p className="text-[11px] font-medium text-muted-foreground">
-            Total incl. GST
+            {view.showGst ? "Total incl. GST" : "Your final price"}
           </p>
           <p className="text-lg font-semibold tabular-nums tracking-tight">
-            {formatPricingMoney(document.total_incl_gst)}
+            {view.showGst
+              ? view.totalInclGstFormatted
+              : view.subtotalSellFormatted}
           </p>
         </div>
         <div

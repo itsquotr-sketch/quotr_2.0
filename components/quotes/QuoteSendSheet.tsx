@@ -57,6 +57,7 @@ function SendFields({
   error,
   denial,
   success,
+  publicPath,
 }: {
   quote: Quote;
   projectTitle: string;
@@ -72,6 +73,7 @@ function SendFields({
     upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   } | null;
   success: string | null;
+  publicPath: string | null;
 }) {
   const view = quoteDocumentViewModel(quote);
 
@@ -113,7 +115,9 @@ function SendFields({
         <p className="font-medium">{formatQuoteNumberRevision(quote)}</p>
         <p className="text-muted-foreground">{projectTitle}</p>
         <p className="mt-1 font-medium tabular-nums">
-          {view.totalInclGstFormatted} incl GST
+          {view.showGst
+            ? `${view.totalInclGstFormatted} incl GST`
+            : view.totalInclGstFormatted}
         </p>
         {quote.valid_until ? (
           <p className="text-muted-foreground">
@@ -135,9 +139,25 @@ function SendFields({
         )
       ) : null}
       {success ? (
-        <p className="text-sm text-green-700 dark:text-green-400" role="status">
-          {success}
-        </p>
+        <div className="space-y-2" data-quote-send-success-panel>
+          <p className="text-sm text-green-700 dark:text-green-400" role="status">
+            {success}
+          </p>
+          {publicPath ? (
+            <Button
+              type="button"
+              variant="outline"
+              className="h-11 w-full"
+              onClick={() => {
+                const origin =
+                  typeof window !== "undefined" ? window.location.origin : "";
+                void navigator.clipboard.writeText(`${origin}${publicPath}`);
+              }}
+            >
+              Copy client link
+            </Button>
+          ) : null}
+        </div>
       ) : null}
     </div>
   );
@@ -175,6 +195,7 @@ export function QuoteSendSheet({
     upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   } | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+  const [publicPath, setPublicPath] = useState<string | null>(null);
   const [needsFinalizeId, setNeedsFinalizeId] = useState<string | null>(
     deliveries.find((row) => row.status === "accepted")?.id ?? null
   );
@@ -213,6 +234,7 @@ export function QuoteSendSheet({
         return;
       }
       setNeedsFinalizeId(null);
+      setPublicPath(result.publicPath ?? null);
       setSuccess(
         result.emailSubmitted
           ? `Quote sent to ${result.recipientEmail ?? recipientEmail}.`
@@ -255,6 +277,7 @@ export function QuoteSendSheet({
       error={error}
       denial={denial}
       success={success}
+      publicPath={publicPath}
     />
   );
   const actions = (

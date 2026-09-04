@@ -130,6 +130,7 @@ export type PricingActionState = {
   success?: boolean;
   pricingDocumentId?: string;
   item?: PricingItem;
+  items?: PricingItem[];
   deletedItemId?: string;
   deletedItemIds?: string[];
   updatedItemIds?: string[];

@@ -87,18 +87,23 @@ export function QuoteSummaryPanel({
       <CardHeader className="pb-2">
         <CardTitle className="text-base">Quote summary</CardTitle>
         <p className="text-xs text-muted-foreground">
-          Client-facing totals (GST exclusive subtotal)
+          What the client will see
         </p>
       </CardHeader>
       <CardContent className="space-y-3">
-        <SummaryRow label="Subtotal" value={view.subtotalFormatted} />
         <SummaryRow
-          label={view.gstLabel}
-          value={view.gstAmountFormatted}
+          label={view.showGst ? "Price ex GST" : "Price"}
+          value={view.subtotalFormatted}
         />
+        {view.showGst ? (
+          <SummaryRow
+            label={view.gstLabel}
+            value={view.gstAmountFormatted}
+          />
+        ) : null}
         <div className="border-t pt-3">
           <SummaryRow
-            label="Total incl. GST"
+            label={view.showGst ? "Total incl. GST" : "Total"}
             value={view.totalInclGstFormatted}
             prominent
           />
@@ -134,19 +139,24 @@ export function QuoteSummaryPanel({
             </Button>
           ) : null}
           {canMarkSent && onMarkSent ? (
-            <Button
-              type="button"
-              variant="ghost"
-              className="w-full text-muted-foreground"
-              disabled={isPending}
-              onClick={() => runAction(onMarkSent)}
-            >
-              {isPending ? (
-                <Loader2 className="size-4 animate-spin" />
-              ) : (
-                "Mark sent without email"
-              )}
-            </Button>
+            <details className="pt-1">
+              <summary className="cursor-pointer text-xs text-muted-foreground">
+                More send options
+              </summary>
+              <Button
+                type="button"
+                variant="ghost"
+                className="mt-2 w-full text-muted-foreground"
+                disabled={isPending}
+                onClick={() => runAction(onMarkSent)}
+              >
+                {isPending ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  "Mark sent without email"
+                )}
+              </Button>
+            </details>
           ) : null}
           {canMarkAccepted && onMarkAccepted ? (
             <Button

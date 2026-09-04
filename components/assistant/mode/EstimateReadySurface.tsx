@@ -12,6 +12,7 @@ type EstimateReadySurfaceProps = {
   pricingCtaEnabled: boolean;
   /** After Builder Review, Continue to Pricing is the primary next action. */
   pricingCtaPrimary?: boolean;
+  reviewOpen?: boolean;
   children: ReactNode;
 };
 
@@ -21,6 +22,7 @@ export function EstimateReadySurface({
   isRegenerating = false,
   pricingCtaEnabled,
   pricingCtaPrimary = false,
+  reviewOpen = false,
   children,
 }: EstimateReadySurfaceProps) {
   return (
@@ -32,7 +34,7 @@ export function EstimateReadySurface({
       data-update-estimate-busy={isRegenerating ? "true" : "false"}
     >
       {children}
-      {!isStale ? (
+      {!isStale && !reviewOpen ? (
         <p
           className="text-xs text-muted-foreground"
           data-estimate-pricing-boundary
@@ -40,7 +42,7 @@ export function EstimateReadySurface({
           This is your working estimate. Review it before creating final Pricing.
         </p>
       ) : null}
-      {!isStale ? (
+      {!isStale && !reviewOpen ? (
         <p
           className="text-xs text-muted-foreground"
           data-estimate-calibrate-later
@@ -49,7 +51,7 @@ export function EstimateReadySurface({
           the dashboard.
         </p>
       ) : null}
-      {!isStale && pricingCtaEnabled ? (
+      {!isStale && pricingCtaEnabled && !reviewOpen ? (
         <div
           className="lg:hidden"
           data-estimate-ready-mobile-pricing

@@ -53,7 +53,9 @@ export function QuotePublicActions({
       >
         <div className="flex items-center justify-between gap-3">
           <p className="min-w-0 text-sm font-semibold tabular-nums">
-            {view.totalInclGstFormatted} incl GST
+            {view.showGst
+              ? `${view.totalInclGstFormatted} incl GST`
+              : view.totalInclGstFormatted}
           </p>
           <div className="flex shrink-0 gap-2">
             <Button

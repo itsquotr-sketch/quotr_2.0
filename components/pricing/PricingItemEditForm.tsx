@@ -70,7 +70,7 @@ function calculationHelperText(mode: CalculationMode): string {
     case "productivity_labour":
       return "Scope quantity × productivity calculates labour hours. Labour hours × hourly rate calculates totals.";
     case "lump_sum":
-      return "Allowance/lump sum items are edited directly.";
+      return "Allowance or lump sum — a budgeted amount included in the price, edited directly.";
     default:
       return "Qty × unit rate calculates totals.";
   }
@@ -459,15 +459,9 @@ export function PricingItemEditForm({
               </span>
             </span>
             <span>
-              Margin:{" "}
+              Gross margin:{" "}
               <span className="font-medium text-foreground">
                 {profitPreview.marginLabel}
-              </span>
-            </span>
-            <span>
-              Markup:{" "}
-              <span className="font-medium text-foreground">
-                {profitPreview.markupLabel}
               </span>
             </span>
           </div>

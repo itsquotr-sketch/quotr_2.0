@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState, useTransition } from "react";
 import { RecalibrationBanner } from "@/components/pricing/RecalibrationBanner";
 import { EmptyState } from "@/components/layout/empty-state";
-import { WorkspaceBanner } from "@/components/layout/workspace-banner";
 import { PricingBulkToolbar } from "@/components/pricing/PricingBulkToolbar";
+import { PricingDecisionCard } from "@/components/pricing/PricingDecisionCard";
 import { PricingDetailsCard } from "@/components/pricing/PricingDetailsCard";
 import { PricingGroupControl } from "@/components/pricing/PricingGroupControl";
 import { PricingHeader } from "@/components/pricing/PricingHeader";
@@ -15,6 +15,7 @@ import { PricingTermsCard } from "@/components/pricing/PricingTermsCard";
 import { PricingWorkAreaSection } from "@/components/pricing/PricingWorkAreaSection";
 import {
   addPricingItem,
+  applyPricingFinalSell,
   deleteManualPricingItems,
   deletePricingItem,
   duplicatePricingItem,
@@ -58,7 +59,8 @@ export function PricingWorkspace({
   const [document, setDocument] = useState<PricingDocument>(initialData.document);
   const [items, setItems] = useState<PricingItem[]>(initialData.items);
   const [workAreas, setWorkAreas] = useState(initialData.workAreas);
-  const { projectTitle, latestEstimateIsStale } = initialData;
+  const { projectTitle, latestEstimateIsStale, latestEstimateRecommendedSell } =
+    initialData;
   const projectId = document.project_id;
   const pricingDocumentId = document.id;
 
@@ -226,6 +228,23 @@ export function PricingWorkspace({
     [applyDocumentUpdate]
   );
 
+  const handleApplyFinalSell = useCallback(
+    async (finalSellExGst: number) => {
+      const result = await applyPricingFinalSell({
+        pricingDocumentId,
+        finalSellExGst,
+      });
+      if (!result.error && result.document) {
+        setDocument(result.document);
+        if (result.items) {
+          setItems(result.items);
+        }
+      }
+      return result;
+    },
+    [pricingDocumentId]
+  );
+
   const handleAddItem = useCallback(
     async (workAreaId: string | null) => {
       const result = await addPricingItem({
@@ -310,24 +329,19 @@ export function PricingWorkspace({
         onSaveDocument={handleSaveDocument}
       />
 
-      <div className="md:hidden">
-        <PricingSummaryPanel
-          document={document}
-          projectId={projectId}
-          quoteSummary={quoteSummary}
-          pricingChangedAfterQuote={pricingChangedAfterQuote}
-          compact
-        />
-      </div>
-
-      <WorkspaceBanner>
-        Internal pricing — review before creating a client quote.
-      </WorkspaceBanner>
+      <PricingDecisionCard
+        document={document}
+        items={items}
+        workAreas={workAreas}
+        recommendedSell={latestEstimateRecommendedSell}
+        disabled={isSaving}
+        onApplyFinalSell={handleApplyFinalSell}
+      />
 
       {quoteSummary != null ? (
         <p className="text-xs leading-relaxed text-muted-foreground">
-          A quote exists for this project. Work area description or pricing
-          changes may require a quote revision.
+          A quote already exists. Changing this price does not change a sent
+          quote. Create a revision if you need to send an updated quote.
         </p>
       ) : null}
 
@@ -371,21 +385,32 @@ export function PricingWorkspace({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-5">
-          <PricingDetailsCard
-            title={document.title}
-            clientName={document.client_name}
-            siteAddress={document.site_address}
-            pricingDate={document.pricing_date}
-            validUntil={document.valid_until}
-            scopeSummary={document.scope_summary}
-            onChange={handleDocumentChange}
-          />
+          <details className="rounded-lg border border-border/60 bg-card">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+              Client and job details
+            </summary>
+            <div className="border-t border-border/60 p-3">
+              <PricingDetailsCard
+                title={document.title}
+                clientName={document.client_name}
+                siteAddress={document.site_address}
+                pricingDate={document.pricing_date}
+                validUntil={document.valid_until}
+                scopeSummary={document.scope_summary}
+                onChange={handleDocumentChange}
+              />
+            </div>
+          </details>
 
-          <div className="space-y-4">
+          <details className="rounded-lg border border-border/60 bg-card" data-pricing-advanced-lines>
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+              Adjust Work Area prices
+            </summary>
+            <div className="space-y-4 border-t border-border/60 p-3">
             {items.length === 0 ? (
               <EmptyState
                 title="No pricing items yet"
-                description="Line items appear here after you prepare final pricing from your estimate. Check each work area section below or add items manually."
+                description="Line items appear here after you continue to Pricing from your estimate."
               />
             ) : null}
             {items.length > 0 ? (
@@ -426,15 +451,23 @@ export function PricingWorkspace({
                 showAddItem={groupBy === "work_area"}
               />
             ))}
-          </div>
+            </div>
+          </details>
 
-          <PricingTermsCard
-            assumptions={document.assumptions}
-            exclusions={document.exclusions}
-            terms={document.terms}
-            internalNotes={document.internal_notes}
-            onChange={handleDocumentChange}
-          />
+          <details className="rounded-lg border border-border/60 bg-card">
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+              Terms and exclusions
+            </summary>
+            <div className="border-t border-border/60">
+              <PricingTermsCard
+                assumptions={document.assumptions}
+                exclusions={document.exclusions}
+                terms={document.terms}
+                internalNotes={document.internal_notes}
+                onChange={handleDocumentChange}
+              />
+            </div>
+          </details>
         </div>
 
         <PricingSummaryPanel
@@ -462,3 +495,4 @@ export function PricingWorkspace({
     </div>
   );
 }
+

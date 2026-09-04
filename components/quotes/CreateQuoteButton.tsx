@@ -80,7 +80,7 @@ export function CreateQuoteButton({
       </Button>
       {!isReviewed ? (
         <p className="text-xs leading-relaxed text-muted-foreground">
-          Mark final pricing as reviewed before creating a quote.
+          Mark pricing as reviewed before creating a quote.
         </p>
       ) : null}
       {error ? (

@@ -57,7 +57,7 @@ export function PricingWorkAreaSection({
   onAddItem,
   showAddItem = true,
 }: PricingWorkAreaSectionProps) {
-  const [expanded, setExpanded] = useState(true);
+  const [expanded, setExpanded] = useState(false);
   const [isPending, startTransition] = useTransition();
   const isDesktop = useIsDesktop();
   const itemLayout = isDesktop ? "table" : "card";
@@ -107,7 +107,7 @@ export function PricingWorkAreaSection({
                 {formatPricingMoney(sectionTotals.subtotalSell)}
               </span>
               <span className="text-muted-foreground">
-                charge · {sectionProfitability.marginLabel} margin
+                · {sectionProfitability.marginLabel} gross margin
               </span>
             </div>
           </div>
