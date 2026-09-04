@@ -44,7 +44,7 @@ export function QuoteMobileActionBar({
   return (
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t bg-background/95 p-3 backdrop-blur-sm xl:hidden print:hidden",
+        "fixed inset-x-0 bottom-0 z-40 flex gap-2 border-t bg-background/95 p-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))] backdrop-blur-sm xl:hidden print:hidden",
         className
       )}
     >

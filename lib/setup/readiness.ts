@@ -202,10 +202,26 @@ export function computeCompanySetupReadiness(
     severity: "recommended",
     dimension: "pricing",
   };
-  if (usingDefaultMargin || !input.hasLabourRate) {
+  // After first-run, 20% is an accepted company default. Do not nag Pricing
+  // on every job. Keep a Setup recommendation while labour is still missing
+  // or basics are unconfirmed.
+  if (!companyBasicsReady && usingDefaultMargin) {
     missingPricingSetup.push(marginSuggestion);
+  }
+  if (usingDefaultMargin || !input.hasLabourRate) {
     if (!recommendedSetup.some((item) => item.id === marginSuggestion.id)) {
       recommendedSetup.push(marginSuggestion);
+    }
+  }
+  if (!input.hasLabourRate) {
+    const labourForPricing = missingEstimateSetup.find(
+      (item) => item.id === "labour_rate"
+    );
+    if (
+      labourForPricing &&
+      !missingPricingSetup.some((item) => item.id === "labour_rate")
+    ) {
+      missingPricingSetup.push(labourForPricing);
     }
   }
 

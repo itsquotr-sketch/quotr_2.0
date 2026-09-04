@@ -33,6 +33,11 @@ import {
 } from "@/lib/setup/pricing-basics";
 import { resolveFirstRunStage, type FirstRunStage } from "@/lib/setup/first-run-stage";
 import { hasEnabledPrimaryWorkArea } from "@/lib/setup/first-run-work-areas";
+import { toUserError } from "@/lib/errors/user-message";
+
+function setupDbError(error: unknown): ActionResult {
+  return { error: toUserError(error, "setup") };
+}
 
 type SetupAuthContext = {
   supabase: Awaited<ReturnType<typeof createClient>>;
@@ -588,7 +593,7 @@ export async function saveOrganisationWorkAreas(input: {
     .upsert(rows, { onConflict: "org_id,work_area_type" });
 
   if (upsertError) {
-    return { error: upsertError.message };
+    return setupDbError(upsertError);
   }
 
   const { data: settings } = await supabase
@@ -608,7 +613,7 @@ export async function saveOrganisationWorkAreas(input: {
       .eq("org_id", orgId);
 
     if (settingsError) {
-      return { error: settingsError.message };
+      return setupDbError(settingsError);
     }
   }
 
@@ -665,7 +670,7 @@ export async function savePrimaryWorkAreas(input: {
     .upsert(rows, { onConflict: "org_id,work_area_type" });
 
   if (upsertError) {
-    return { error: upsertError.message };
+    return setupDbError(upsertError);
   }
 
   revalidatePath("/app/setup");
@@ -742,7 +747,7 @@ export async function saveStarterRates(input: {
         .upsert(rowsToUpsert, { onConflict: "org_id,rate_type,item_key" });
 
       if (error) {
-        return { error: error.message };
+        return setupDbError(error);
       }
     }
   }
@@ -760,7 +765,7 @@ export async function saveStarterRates(input: {
       .eq("org_id", orgId);
 
     if (settingsError) {
-      return { error: settingsError.message };
+      return setupDbError(settingsError);
     }
   }
 
@@ -789,7 +794,7 @@ export async function completeSetup(): Promise<ActionResult> {
     .eq("org_id", orgId);
 
   if (error) {
-    return { error: error.message };
+    return setupDbError(error);
   }
 
   return { success: true };

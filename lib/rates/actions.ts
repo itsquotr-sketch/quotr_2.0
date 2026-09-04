@@ -23,7 +23,12 @@ import type {
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 import { permissionDeniedError } from "@/lib/team/permission-server";
+import { toUserError } from "@/lib/errors/user-message";
 import { z } from "zod";
+
+function ratesDbError(error: unknown): RatesActionResult {
+  return { error: toUserError(error, "rates") };
+}
 
 const MISSING_ORG_ERROR: RatesActionResult = {
   error:
@@ -337,7 +342,7 @@ export async function createRate(input: RateInput): Promise<RatesActionResult> {
           "A rate with this item key already exists. Edit the existing rate instead.",
       };
     }
-    return { error: error.message };
+    return ratesDbError(error);
   }
 
   return { success: true, rate: normalizeRate(created) };
@@ -392,7 +397,7 @@ export async function updateRate(input: RateInput): Promise<RatesActionResult> {
     .single();
 
   if (error) {
-    return { error: error.message };
+    return ratesDbError(error);
   }
 
   return { success: true, rate: normalizeRate(updated) };
@@ -444,7 +449,7 @@ export async function upsertRate(input: RateInput): Promise<RatesActionResult> {
     .single();
 
   if (error) {
-    return { error: error.message };
+    return ratesDbError(error);
   }
 
   return { success: true, rate: normalizeRate(upserted) };
@@ -473,7 +478,7 @@ export async function deactivateRate(rateId: string): Promise<RatesActionResult>
     .single();
 
   if (error) {
-    return { error: error.message };
+    return ratesDbError(error);
   }
 
   return { success: true, rate: normalizeRate(updated) };
@@ -502,7 +507,7 @@ export async function reactivateRate(rateId: string): Promise<RatesActionResult>
     .single();
 
   if (error) {
-    return { error: error.message };
+    return ratesDbError(error);
   }
 
   return { success: true, rate: normalizeRate(updated) };
@@ -559,7 +564,7 @@ export async function createStarterRates(): Promise<RatesActionResult> {
   });
 
   if (error) {
-    return { error: error.message };
+    return ratesDbError(error);
   }
 
   return { success: true };
