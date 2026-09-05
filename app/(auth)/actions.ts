@@ -21,6 +21,8 @@ import {
   getAuthSiteOrigin,
 } from "@/lib/auth/site-url";
 import { createClient } from "@/lib/supabase/server";
+import { lookupPublicInvitation } from "@/lib/team/public-invite";
+import { normalizeInviteEmail } from "@/lib/team/email-normalize";
 import { isWellFormedInviteToken } from "@/lib/team/tokens";
 
 export type AuthActionState = {
@@ -143,6 +145,30 @@ export async function signup(
     };
   }
 
+  let signupEmail = email;
+  if (inviteToken) {
+    const invitation = await lookupPublicInvitation(inviteToken);
+    const invitedEmail = invitation?.emailDisplay?.trim() ?? "";
+    if (
+      !invitation ||
+      invitation.expired ||
+      invitation.status !== "pending" ||
+      !invitedEmail
+    ) {
+      return {
+        error: "This invitation is no longer valid.",
+      };
+    }
+    if (normalizeInviteEmail(email) !== normalizeInviteEmail(invitedEmail)) {
+      return {
+        fieldErrors: {
+          email: ["This invitation was sent to a different email address."],
+        },
+      };
+    }
+    signupEmail = invitedEmail;
+  }
+
   logAuthEvent({
     event: "signup_started",
     correlationId,
@@ -156,14 +182,16 @@ export async function signup(
   );
 
   const { data: authData, error: authError } = await supabase.auth.signUp({
-    email,
+    email: signupEmail,
     password,
     options: {
       emailRedirectTo,
-      data: {
-        full_name,
-        organisation_name,
-      },
+      data: inviteToken
+        ? { full_name }
+        : {
+            full_name,
+            organisation_name,
+          },
     },
   });
 
@@ -186,7 +214,7 @@ export async function signup(
 
   const hasSession = await ensureSignupSession(
     supabase,
-    email,
+    signupEmail,
     password,
     Boolean(authData.session)
   );
@@ -206,7 +234,7 @@ export async function signup(
     return {
       error: presentAuthError("CONFIRMATION_PENDING"),
       confirmationPending: true,
-      confirmationEmail: email,
+      confirmationEmail: signupEmail,
     };
   }
 

@@ -112,6 +112,37 @@ export function InviteAcceptContent(props: {
   const expired =
     props.invitation.expired || props.invitation.status === "expired";
 
+  if (props.invitation.status === "accepted") {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            You&apos;re already in {props.invitation.organisationName}
+          </CardTitle>
+          <CardDescription>
+            This invitation has already been accepted.
+          </CardDescription>
+        </CardHeader>
+        <CardFooter>
+          <Button
+            render={
+              <Link
+                href={
+                  props.signedIn
+                    ? "/app/dashboard"
+                    : `/login?next=${encodeURIComponent(`/invite/${props.token}`)}`
+                }
+              />
+            }
+            className="h-11 w-full"
+          >
+            {props.signedIn ? "Open Quotr" : "Sign in"}
+          </Button>
+        </CardFooter>
+      </Card>
+    );
+  }
+
   if (expired && props.invitation.status !== "accepting") {
     return (
       <Card>
@@ -202,8 +233,7 @@ export function InviteAcceptContent(props: {
       <CardHeader>
         <CardTitle>Join {props.invitation.organisationName}</CardTitle>
         <CardDescription>
-          You&apos;ll join as {roleLabel}. Additional people on Business cost
-          $35 + GST/month, prorated for the current billing period.
+          You were invited as {roleLabel}.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-3">

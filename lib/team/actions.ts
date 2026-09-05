@@ -31,56 +31,12 @@ import {
   SEAT_QUEUED_MESSAGE,
 } from "@/lib/team/seat-queue";
 
+import { lookupPublicInvitation } from "@/lib/team/public-invite";
+import { mapTeamRpcError, teamRpcErrorBlob } from "@/lib/team/rpc-errors";
+
 export type TeamActionResult = { error?: string; success?: boolean; warning?: string };
 
 const TEAM_PATH = "/app/settings/team";
-
-function mapTeamRpcError(message: string | undefined): string {
-  const m = (message ?? "").toUpperCase();
-  if (m.includes("INVITE_OWNER_ONLY")) {
-    return "Only the Owner can invite people. Additional users are billed.";
-  }
-  if (m.includes("SEAT_LIMIT")) {
-    return "This Business account already has 5 people including pending invitations.";
-  }
-  if (m.includes("INVITE_NOT_AVAILABLE")) {
-    return "Team members are available on Quotr Business after you subscribe.";
-  }
-  if (m.includes("INVALID_EMAIL")) return "Enter a valid email address.";
-  if (m.includes("INVALID_ROLE")) return "Choose Admin, Estimator, or Viewer.";
-  if (m.includes("EMAIL_MISMATCH")) {
-    return "Sign in with the email this invitation was sent to.";
-  }
-  if (m.includes("EMAIL_UNVERIFIED")) {
-    return "Confirm your email before joining this company.";
-  }
-  if (m.includes("INVITE_EXPIRED")) return "This invitation has expired.";
-  if (m.includes("INVITE_NOT_PENDING") || m.includes("INVITE_NOT_FOUND")) {
-    return "This invitation is no longer valid.";
-  }
-  if (m.includes("ALREADY_IN_OTHER_ORG")) {
-    return "This email already belongs to a different Quotr company. A person can only be in one company.";
-  }
-  if (m.includes("OWNER_CANNOT_BE_REMOVED") || m.includes("OWNER_ROLE_LOCKED")) {
-    return "The Owner cannot be removed or changed in this version.";
-  }
-  if (m.includes("REMOVE_OWNER_ONLY")) {
-    return "Only the Owner can remove people from this company.";
-  }
-  if (m.includes("PENDING_INVITATION")) {
-    return "You have an invitation to join a company. Open the invite link instead of creating a new company.";
-  }
-  if (m.includes("SUBSCRIPTION_SCHEDULED_TO_CANCEL")) {
-    return "This subscription is scheduled to end. Resume your Business subscription before adding another user.";
-  }
-  if (m.includes("BILLING_NOT_ACTIVE")) {
-    return "Your Business subscription needs to be active before you can add another user.";
-  }
-  if (m.includes("SEAT_IN_FLIGHT")) {
-    return "This seat is being billed. Wait until it finishes, then you can remove the person.";
-  }
-  return "That team action could not be completed. Try again.";
-}
 
 export async function getTeamPageState(): Promise<TeamPageView | { error: string }> {
   const context = await getAuthOrgContext();
@@ -209,7 +165,7 @@ export async function inviteTeamMember(input: {
     p_token_hash: hashInviteToken(rawToken),
   });
   if (error) {
-    return { error: mapTeamRpcError(error.message) };
+    return { error: mapTeamRpcError(error) };
   }
   const row = Array.isArray(data) ? data[0] : data;
   const origin = await getAuthSiteOrigin();
@@ -266,7 +222,7 @@ export async function cancelTeamInvitation(
   const { error } = await context.supabase.rpc("cancel_organisation_invitation_v1", {
     p_invitation_id: invitationId,
   });
-  if (error) return { error: mapTeamRpcError(error.message) };
+  if (error) return { error: mapTeamRpcError(error) };
   revalidatePath(TEAM_PATH);
   return { success: true };
 }
@@ -288,7 +244,7 @@ export async function changeTeamMemberRole(input: {
     p_membership_id: input.membershipId,
     p_next_role: input.role,
   });
-  if (error) return { error: mapTeamRpcError(error.message) };
+  if (error) return { error: mapTeamRpcError(error) };
   revalidatePath(TEAM_PATH);
   return { success: true };
 }
@@ -307,7 +263,7 @@ export async function removeTeamMember(membershipId: string): Promise<TeamAction
   const { data, error } = await context.supabase.rpc("remove_organisation_member_v1", {
     p_membership_id: membershipId,
   });
-  if (error) return { error: mapTeamRpcError(error.message) };
+  if (error) return { error: mapTeamRpcError(error) };
   const row = Array.isArray(data) ? data[0] : data;
   if (row?.operation_id && row.operation_status === "pending") {
     try {
@@ -344,11 +300,30 @@ export async function acceptInvitation(rawToken: string): Promise<TeamActionResu
   if (!user) {
     return { error: "Sign in to accept this invitation." };
   }
+  const invitation = await lookupPublicInvitation(rawToken);
+  if (
+    invitation?.emailDisplay &&
+    user.email &&
+    normalizeInviteEmail(user.email) !==
+      normalizeInviteEmail(invitation.emailDisplay)
+  ) {
+    return { error: "Sign in with the email this invitation was sent to." };
+  }
 
-  const { data, error } = await supabase.rpc("begin_invitation_acceptance_v1", {
+  let { data, error } = await supabase.rpc("begin_invitation_acceptance_v1", {
     p_token_hash: hashInviteToken(rawToken),
   });
-  if (error) return { error: mapTeamRpcError(error.message) };
+  if (
+    error &&
+    /23505|DUPLICATE KEY|UNIQUE CONSTRAINT/i.test(teamRpcErrorBlob(error))
+  ) {
+    const retry = await supabase.rpc("begin_invitation_acceptance_v1", {
+      p_token_hash: hashInviteToken(rawToken),
+    });
+    data = retry.data;
+    error = retry.error;
+  }
+  if (error) return { error: mapTeamRpcError(error) };
   const row = (Array.isArray(data) ? data[0] : data) as BeginAcceptanceRow | undefined;
   if (!row) return { error: "This invitation could not be accepted." };
   if (row.already_member) {
@@ -366,7 +341,22 @@ export async function acceptPendingInvitationForCurrentUser(): Promise<TeamActio
   const { data, error } = await supabase.rpc(
     "begin_invitation_acceptance_for_current_user"
   );
-  if (error) return { error: mapTeamRpcError(error.message) };
+  if (
+    error &&
+    /23505|DUPLICATE KEY|UNIQUE CONSTRAINT/i.test(teamRpcErrorBlob(error))
+  ) {
+    const retry = await supabase.rpc(
+      "begin_invitation_acceptance_for_current_user"
+    );
+    if (retry.error) return { error: mapTeamRpcError(retry.error) };
+    const retryRow = (Array.isArray(retry.data) ? retry.data[0] : retry.data) as
+      | BeginAcceptanceRow
+      | undefined;
+    if (!retryRow) return { error: "No invitation is waiting for this email." };
+    if (retryRow.already_member) return { success: true };
+    return finalizeSeatActivation(retryRow);
+  }
+  if (error) return { error: mapTeamRpcError(error) };
   const row = (Array.isArray(data) ? data[0] : data) as BeginAcceptanceRow | undefined;
   if (!row) return { error: "No invitation is waiting for this email." };
   if (row.already_member) return { success: true };
@@ -420,13 +410,13 @@ async function finalizeSeatActivation(
 export async function retryOwnSeatActivation(): Promise<TeamActionResult> {
   const supabase = await (await import("@/lib/supabase/server")).createClient();
   const { data, error } = await supabase.rpc("complete_own_pending_membership_v1");
-  if (error) return { error: mapTeamRpcError(error.message) };
+  if (error) return { error: mapTeamRpcError(error) };
   if (data === true) return { success: true };
 
   const { data: beginData, error: beginError } = await supabase.rpc(
     "begin_invitation_acceptance_for_current_user"
   );
-  if (beginError) return { error: mapTeamRpcError(beginError.message) };
+  if (beginError) return { error: mapTeamRpcError(beginError) };
   const row = (Array.isArray(beginData) ? beginData[0] : beginData) as
     | BeginAcceptanceRow
     | undefined;

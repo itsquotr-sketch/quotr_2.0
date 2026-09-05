@@ -158,8 +158,7 @@ export function InviteContinueContent(props: {
       <CardHeader>
         <CardTitle>Join {props.view.organisationName}</CardTitle>
         <CardDescription>
-          You were invited as {ROLE_LABELS[props.view.role]}. Additional people
-          on Business cost $35 + GST/month once you join.
+          You were invited as {ROLE_LABELS[props.view.role]}.
         </CardDescription>
       </CardHeader>
       <CardContent>

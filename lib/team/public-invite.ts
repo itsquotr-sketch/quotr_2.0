@@ -43,7 +43,7 @@ function mapPublicRow(row: {
     expiresAt,
     inviterName: row.inviter_name?.trim() || "A teammate",
     emailDisplay: row.email_display ?? "",
-    expired: status === "expired" || status === "cancelled" || status === "accepted",
+    expired: status === "expired" || status === "cancelled",
     waitKind: mapWaitKind(row.wait_kind),
   };
 }

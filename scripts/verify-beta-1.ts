@@ -71,7 +71,7 @@ function main() {
   console.log("=== BETA-1 first-run + plan-truth verification ===");
 
   section("SIGNUP COPY");
-  const signup = read("app/(auth)/signup/page.tsx");
+  const signup = `${read("app/(auth)/signup/page.tsx")}\n${read("components/auth/SignupForm.tsx")}`;
   const authLayout = read("app/(auth)/layout.tsx");
   const authActions = read("app/(auth)/actions.ts");
   assert("signup label is Company name", /Company name/.test(signup));

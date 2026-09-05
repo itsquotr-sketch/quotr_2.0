@@ -320,7 +320,7 @@ function testSecurityBoundary() {
 
   // Client pages must not import admin.
   for (const page of [
-    "app/(auth)/signup/page.tsx",
+    "components/auth/SignupForm.tsx",
     "app/(auth)/login/page.tsx",
   ]) {
     const src = read(page);

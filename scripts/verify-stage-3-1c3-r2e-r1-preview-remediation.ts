@@ -38,7 +38,7 @@ console.log("=== Stage 3.1C.3-R2E-R1 preview remediation verification ===\n");
 
 section("FIRST RUN");
 const actions = read("app/(auth)/actions.ts");
-const signupPage = read("app/(auth)/signup/page.tsx");
+const signupPage = `${read("app/(auth)/signup/page.tsx")}\n${read("components/auth/SignupForm.tsx")}`;
 const authContinue = read("components/auth/AuthContinue.tsx");
 assert(
   "signup returns continueTo instead of soft redirect",

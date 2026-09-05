@@ -132,7 +132,7 @@ function main() {
     "no service-role in signup actions",
     !actions.includes("createAdminClient")
   );
-  const signupPage = read("app/(auth)/signup/page.tsx");
+  const signupPage = `${read("app/(auth)/signup/page.tsx")}\n${read("components/auth/SignupForm.tsx")}`;
   assert(
     "confirmation pending dedicated UX",
     /Check your email/.test(signupPage) && /confirmationPending/.test(signupPage)

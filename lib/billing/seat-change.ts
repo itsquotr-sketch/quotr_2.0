@@ -171,7 +171,7 @@ export function seatMutationAlreadyApplied(
 }
 
 export const SEAT_ADD_DISCLOSURE =
-  "This user will cost $35 + GST/month once they join. Their first charge is prorated for the remainder of your billing period. If they never join, you are not charged.";
+  "Additional Business users cost $35 + GST/month each. Billing begins when they accept the invitation. The first charge may be prorated for the current billing period.";
 
 export const SEAT_REMOVE_DISCLOSURE =
   "Removing this person will immediately remove their access. Your Business subscription will be updated to the lower user count. Any unused time is credited to your next invoice — it is not refunded as cash.";
