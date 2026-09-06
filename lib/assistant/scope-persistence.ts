@@ -19,6 +19,7 @@ import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { resolveUiQuestionInputType } from "@/lib/scopes/question-input-types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
+import { disclosedBoardWidthForNotSure } from "@/lib/estimate/deck-board-width";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -320,15 +321,28 @@ export async function commitUserFactEdit(
       )
     : params.value;
 
+  const disclosedBoardWidth = disclosedBoardWidthForNotSure(storedValue);
+  const factValue =
+    params.key === "deck.board_width_mm" && disclosedBoardWidth
+      ? disclosedBoardWidth.value
+      : storedValue;
+  const factSource =
+    params.key === "deck.board_width_mm" && disclosedBoardWidth
+      ? disclosedBoardWidth.source
+      : "user";
+
   const factResult = await upsertScopedFact(supabase, {
     orgId: params.orgId,
     projectId: params.projectId,
     workAreaId: params.workAreaId,
     key: params.key,
     label: params.label,
-    value: storedValue,
-    unit: params.unit,
-    source: "user",
+    value: factValue,
+    unit:
+      params.key === "deck.board_width_mm"
+        ? params.unit ?? "mm"
+        : params.unit,
+    source: factSource,
   });
 
   if (!factResult.ok) {
@@ -339,7 +353,7 @@ export async function commitUserFactEdit(
     projectId: params.projectId,
     workAreaId: params.workAreaId,
     key: params.key,
-    value: storedValue,
+    value: factValue,
     inputType: params.valueType,
   });
 

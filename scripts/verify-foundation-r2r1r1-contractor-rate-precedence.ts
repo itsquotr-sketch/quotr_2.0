@@ -320,13 +320,11 @@ const caseD = calculateDeck(
 );
 const lineD = deckingLine(caseD);
 check(
-  "CASE D: unknown width uses honest m² package, no fake lm",
-  lineD?.label === "Decking package" &&
-    lineD.unit === "m²" &&
-    lineD.quantity === ownerArea &&
-    lineD.costRate === 160 &&
-    lineD.materialBuildUp == null &&
-    lineD.materialRateResolution?.conversionNote == null
+  "CASE D: unknown width uses disclosed 140 mm lm takeoff",
+  lineD?.unit === "lm" &&
+    lineD.quantity === 126.65 &&
+    Math.abs((lineD.costRate ?? 0) - 22.4) < 0.02 &&
+    caseD.assumptions.some((line) => /140 mm decking/i.test(line))
 );
 
 const caseDEmpty = calculateDeck(
@@ -338,10 +336,10 @@ const caseDEmpty = calculateDeck(
 );
 const lineDEmpty = deckingLine(caseDEmpty);
 check(
-  "CASE D: unknown width + no company rate → Quotr m² package",
-  lineDEmpty?.unit === "m²" &&
-    lineDEmpty.quantity === ownerArea &&
-    lineDEmpty.costRate === DECK_BENCHMARKS.hardwoodDecking.cost
+  "CASE D: unknown width + no company rate → disclosed 140 mm Quotr lm",
+  lineDEmpty?.unit === "lm" &&
+    lineDEmpty.quantity === 126.65 &&
+    lineDEmpty.costRate === DECK_BENCHMARKS.hardwoodLm.cost
 );
 
 // CASE E — benchmarks disabled, no company rate

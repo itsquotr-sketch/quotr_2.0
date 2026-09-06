@@ -26,6 +26,7 @@ const FENCE_HARD_MINIMUM_KEYS = new Set([
 const DECK_ASSUMABLE_KEYS = new Set([
   "deck.height_m",
   "deck.board_material",
+  "deck.board_width_mm",
   "deck.existing_deck_removal",
 ]);
 

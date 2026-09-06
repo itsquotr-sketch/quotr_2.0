@@ -30,7 +30,7 @@ const STATUS_ITEMS: {
 ];
 
 function buildFilterHref(filter: ProjectListFilter): string {
-  if (filter === "active") {
+  if (filter === "all") {
     return "/app/dashboard";
   }
   return `/app/dashboard?filter=${filter}`;
@@ -38,7 +38,7 @@ function buildFilterHref(filter: ProjectListFilter): string {
 
 export function StatusCountRow({
   summary,
-  activeFilter = "active",
+  activeFilter = "all",
   className,
 }: StatusCountRowProps) {
   return (

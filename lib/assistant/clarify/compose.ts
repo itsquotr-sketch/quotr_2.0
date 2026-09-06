@@ -38,6 +38,10 @@ import {
 import { classifyFenceSystem, fenceGateScopeApplies, isModularFenceSystem, isTimberFenceSystem } from "@/lib/estimate/fence-systems";
 import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
 import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
+import {
+  DECK_BOARD_WIDTH_ASSUMPTION_STATEMENT,
+  DECK_BOARD_WIDTH_FACT_KEY,
+} from "@/lib/estimate/deck-board-width";
 import { STEP_WIDTH_ASSUMPTION_STATEMENT } from "@/lib/estimate/deck-steps-physical";
 import {
   getBooleanFact,
@@ -57,6 +61,7 @@ const PC_SCORES: Record<string, number> = {
 
 const CHECK_SCORES: Record<string, number> = {
   "deck.existing_deck_removal": 90,
+  "deck.board_width_mm": 88,
   "bathroom.demolition_required": 88,
   "fence.demolition_required": 88,
   "fence.gate_included": 86,
@@ -380,6 +385,33 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
 
     if (wa.type === "deck") {
       const facts = input.facts as EstimateFact[];
+      if (!factHas(input, DECK_BOARD_WIDTH_FACT_KEY, wa.id)) {
+        const template = getQuestionTemplateByKey(DECK_BOARD_WIDTH_FACT_KEY);
+        out.push({
+          id: `fact:${wa.id}:${DECK_BOARD_WIDTH_FACT_KEY}`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: DECK_BOARD_WIDTH_FACT_KEY,
+          constraintKey: null,
+          questionKey: DECK_BOARD_WIDTH_FACT_KEY,
+          label: template?.label ?? "Decking board width",
+          question:
+            template?.questionText ?? "How wide are the decking boards?",
+          askClass: "ASK_NOW",
+          inputType: "number",
+          unit: template?.unit ?? "mm",
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: true,
+          rankScore: CHECK_SCORES[DECK_BOARD_WIDTH_FACT_KEY] ?? 88,
+          rankReason: "REQUIRED_FOR_ECONOMIC_MODEL board width",
+          assumptionStatement: DECK_BOARD_WIDTH_ASSUMPTION_STATEMENT,
+          economicClass: "REQUIRED_FOR_ECONOMIC_MODEL",
+        });
+      }
       const stepsActive = deckStepsCommerciallyIncluded({
         facts,
         workAreaId: wa.id,

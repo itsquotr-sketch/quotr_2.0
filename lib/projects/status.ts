@@ -169,6 +169,9 @@ export const DASHBOARD_FILTER_OPTIONS: {
   { value: "archived", label: "Archived" },
 ];
 
+/** Default dashboard list: every non-deleted project, including won/lost. */
+export const DASHBOARD_DEFAULT_FILTER: ProjectListFilter = "all";
+
 export function parseProjectListFilter(value?: string): ProjectListFilter {
   if (value === "archived" || value === "all" || value === "active") {
     return value;
@@ -178,9 +181,17 @@ export function parseProjectListFilter(value?: string): ProjectListFilter {
     return value;
   }
 
-  return "active";
+  return DASHBOARD_DEFAULT_FILTER;
 }
 
 export function isLifecycleArchiveFilter(filter: ProjectListFilter): boolean {
   return filter === "archived";
+}
+
+/**
+ * "Start your first job" is allowed only when the organisation has
+ * zero projects — not zero active / draft / open-quote jobs.
+ */
+export function isFirstJobEmptyState(nonDeletedProjectCount: number): boolean {
+  return nonDeletedProjectCount <= 0;
 }

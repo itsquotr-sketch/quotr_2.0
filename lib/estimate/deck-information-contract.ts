@@ -70,11 +70,11 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
   },
   {
     factKey: "deck.board_width_mm",
-    questionClass: "REFINE",
+    questionClass: "ASSUME_IF_SKIPPED",
     calculatorConsumed: true,
     physical: true,
     commercial: true,
-    reason: "Decking lm takeoff when area known.",
+    reason: "Physical board coverage for lineal takeoff. 140 mm disclosed if skipped.",
   },
   {
     factKey: "deck.board_direction",

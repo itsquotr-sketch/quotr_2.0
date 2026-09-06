@@ -22,6 +22,8 @@ const WHY_THIS_MATTERS: Readonly<Record<string, string>> = Object.freeze({
     "Stairs affect access scope and related labour.",
   "deck.board_material":
     "Decking material affects material rates and finish allowances.",
+  "deck.board_width_mm":
+    "Board width drives how many lineal metres of decking are required.",
   "deck.fascia_included":
     "Fascia affects edge finishing materials and labour.",
   "pergola.length_m":

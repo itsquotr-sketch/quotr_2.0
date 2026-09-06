@@ -488,10 +488,35 @@ export function BuilderReviewSurface({
                                 <p className="text-sm font-medium leading-snug">
                                   {line.label}
                                 </p>
-                                {line.isAllowance ? (
+                                {line.isAllowance && !line.quantityFallback ? (
                                   <StatusPill tone="neutral">
                                     Allowance — budgeted amount included in the price
                                   </StatusPill>
+                                ) : null}
+                                {line.quantityFallback ? (
+                                  <div
+                                    className="space-y-0.5"
+                                    data-quantity-fallback={line.quantityFallback.kind}
+                                    data-fallback-label={line.quantityFallback.label}
+                                  >
+                                    <StatusPill
+                                      tone={
+                                        line.quantityFallback.kind === "physical_allowance"
+                                          ? "warning"
+                                          : "neutral"
+                                      }
+                                    >
+                                      {line.quantityFallback.label}
+                                    </StatusPill>
+                                    <p className="text-xs break-words text-muted-foreground">
+                                      {line.quantityFallback.reason}
+                                    </p>
+                                    {line.quantityFallback.confirmHint ? (
+                                      <p className="text-xs break-words text-muted-foreground">
+                                        {line.quantityFallback.confirmHint}
+                                      </p>
+                                    ) : null}
+                                  </div>
                                 ) : null}
                                 {line.supporting ? (
                                   <p className="text-xs break-words text-muted-foreground">

@@ -254,6 +254,7 @@ const clarifyFacts: EstimateFact[] = [
   fact("deck.area_m2", 27),
   fact("deck.height_m", 0.4),
   fact("deck.board_material", "Kwila"),
+  fact("deck.board_width_mm", 140),
   fact("deck.existing_deck_removal", false, "user"),
   fact("deck.vertical_face_boards_required", false, "user"),
   fact(DECK_STEPS_INCLUDED_FACT_KEY, true),

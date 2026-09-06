@@ -5,6 +5,7 @@
 
 import type { EstimateLineItem } from "@/components/assistant/types";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
+import type { LineFallbackPresentation } from "@/lib/estimate/fallback-presentation";
 
 export const BUILDER_REVIEW_CATEGORIES = [
   "MATERIALS",
@@ -23,7 +24,7 @@ export type BuilderReviewRateLabel =
   | "Company rate"
   | "Your calibrated productivity"
   | "Quotr benchmark"
-  | "Preliminary fallback"
+  | "Allowance used"
   | "Rate required"
   | "Default allowance"
   | "Work area rate"
@@ -50,6 +51,7 @@ export type BuilderReviewPricedLine = {
   readonly detail: string | null;
   readonly pricingHelper: string | null;
   readonly rateContext: string | null;
+  readonly quantityFallback: LineFallbackPresentation | null;
   readonly sourceLine: EstimateLineItem;
 };
 

@@ -340,18 +340,19 @@ const noWidthDeck = calculateDeck(
 );
 const noWidthLine = deckingLine(noWidthDeck);
 check(
-  "WIDTH UNKNOWN 29 no fake lm",
-  surfaceRequirement(noWidthDeck) == null && noWidthLine?.unit === "m²"
+  "WIDTH UNKNOWN 29 disclosed 140 mm takeoff",
+  surfaceRequirement(noWidthDeck) != null &&
+    noWidthDeck.assumptionMetadata?.defaultedFacts.some(
+      (fact) => fact.key === "deck.board_width_mm" && fact.assumedValue === 140
+    ) === true
 );
 check(
-  "WIDTH UNKNOWN 30 honest fallback/no-requirement behavior",
-  noWidthLine?.label === "Decking package" &&
-    (noWidthDeck.requirements ?? []).filter((item) => item.kind === "material")
-      .length === 0
+  "WIDTH UNKNOWN 30 assumed 140 mm matches confirmed 140 mm quantity",
+  surfaceRequirement(noWidthDeck)?.purchaseQuantity === 126.65
 );
 check(
-  "WIDTH UNKNOWN 31 no detailed-takeoff claim",
-  (noWidthLine?.notes ?? "").toLowerCase().includes("board width not confirmed")
+  "WIDTH UNKNOWN 31 assumption is disclosed",
+  noWidthDeck.assumptions.some((line) => /140 mm decking/i.test(line))
 );
 
 const quotrEstimate = calculateEstimate({

@@ -144,7 +144,14 @@ import type {
   EstimateContext,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
-import { detailedMoneyAllowed } from "@/lib/estimate/physical-requirement-resolution";
+import {
+  detailedMoneyAllowed,
+  PHYSICAL_REQUIREMENT_RESOLUTION,
+} from "@/lib/estimate/physical-requirement-resolution";
+import {
+  DECK_BOARD_WIDTH_ASSUMPTION_STATEMENT,
+  resolveDeckBoardWidthMm,
+} from "@/lib/estimate/deck-board-width";
 import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
 /** Facts this calculator reads for scope, quantity, material, labour, allowance, or takeoff. */
@@ -322,7 +329,26 @@ export function calculateDeck(
   const assumedArea = area == null;
 
   const materialLabel = getDeckMaterialLabel(material);
-  const boardWidthFact = getNumberFact(facts, workArea.id, "deck.board_width_mm");
+  const boardWidthResolved = resolveDeckBoardWidthMm({
+    facts,
+    workAreaId: workArea.id,
+  });
+  const boardWidthFact = boardWidthResolved.mm;
+  const boardWidthAssumed =
+    boardWidthResolved.resolution === PHYSICAL_REQUIREMENT_RESOLUTION.ASSUMED;
+  if (boardWidthAssumed) {
+    recordDefaultedNumber(assumptionMetadata, {
+      key: "deck.board_width_mm",
+      label: "Decking board width",
+      workAreaId: workArea.id,
+      assumedValue: boardWidthFact,
+      unit: " mm",
+      reason: "Board width not confirmed",
+      severity: "warning",
+    });
+    assumptions.push(DECK_BOARD_WIDTH_ASSUMPTION_STATEMENT);
+  }
+
   const wastagePercent = resolveMaterialWastage(
     context.materialWastageSettings,
     "decking"
@@ -409,7 +435,7 @@ export function calculateDeck(
         quantity: deckingBoardResult.totalLm,
         unit: "lm",
         formula: `${area} m² / ${boardWidthFact / 1000} m × (1 + ${wastagePercent}% waste)`,
-        confidence: "derived",
+        confidence: boardWidthAssumed ? "assumed" : "derived",
       }),
     });
   }

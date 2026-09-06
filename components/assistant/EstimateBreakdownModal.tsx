@@ -11,6 +11,8 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { RateSourceBadge } from "@/components/assistant/EstimateCalibrationPanel";
 import { PricingOwnershipBadge } from "@/components/pricing/PricingOwnershipBadge";
+import { StatusPill } from "@/components/ui/status-pill";
+import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import type {
   Estimate,
   EstimateLineItem,
@@ -396,6 +398,16 @@ function LineItemCard({
   compact?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
+  const fallback = presentLineFallback({
+    label: item.label,
+    notes: item.notes,
+    rateSource: item.rateSource,
+    quantityBasis: item.quantityBasis,
+    category: item.category,
+    itemKey: item.itemKey,
+    componentKey: item.componentKey,
+    materialBuildUps: item.materialBuildUps,
+  });
   const trustDetailLines = getCommercialTrustDetailLines({
     quantityBasis: item.quantityBasis,
     labourMinimum: item.labourMinimum,
@@ -457,11 +469,28 @@ function LineItemCard({
           <p className="break-words text-sm font-medium">{item.label}</p>
           <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
             <RateSourceBadge source={item.rateSource} />
+            {fallback ? (
+              <StatusPill
+                tone={fallback.kind === "physical_allowance" ? "warning" : "neutral"}
+              >
+                {fallback.label}
+              </StatusPill>
+            ) : null}
             <PricingOwnershipBadge
               owner={item.pricingOwner}
               includedInTotal={item.includedInTotal}
             />
           </div>
+          {fallback ? (
+            <p
+              className="mt-1.5 text-xs text-muted-foreground"
+              data-quantity-fallback={fallback.kind}
+              data-fallback-label={fallback.label}
+            >
+              {fallback.reason}
+              {fallback.confirmHint ? ` ${fallback.confirmHint}` : ""}
+            </p>
+          ) : null}
         </div>
         <div className="flex flex-wrap items-center gap-1.5">
           <Badge variant="secondary" className="w-fit shrink-0">

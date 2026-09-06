@@ -686,12 +686,13 @@ function inferDeck(
     });
   }
 
-  if (includesAny(brief, ["140mm"])) {
+  const boardWidthMatch = brief.match(/\b(90|140|150)\s*mm\b/i);
+  if (boardWidthMatch) {
     addFact(extraction, {
       workAreaType: "deck",
       key: "deck.board_width_mm",
       label: "Board width",
-      value: 140,
+      value: Number(boardWidthMatch[1]),
     });
   }
 

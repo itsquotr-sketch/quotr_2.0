@@ -7,6 +7,8 @@ const STATEMENTS: Record<string, string> = {
   "deck.existing_deck_removal": "No demolition included",
   "deck.vertical_face_boards_required": "No fascia included",
   "deck.skirting_included": "No full-height deck skirting / screening",
+  "deck.board_width_mm":
+    "Assuming 140 mm decking boards. Confirm board width to calculate this from the job details.",
   site_access: "Standard access",
   material_carry_distance: "Standard carry",
   waste_bin_access: "Standard waste handling",

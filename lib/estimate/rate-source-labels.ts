@@ -18,7 +18,7 @@ export const RATE_SOURCE_FRIENDLY_LABELS: Record<RateSourceType, string> = {
   benchmark: "Quotr benchmark",
   productivity: "Quotr benchmark",
   calibrated_productivity: "Your calibrated productivity",
-  fallback: "Fallback allowance",
+  fallback: "Allowance used",
   missing: "Pricing required",
   default: "Default allowance",
 };
@@ -68,7 +68,7 @@ export function classifyRateSource(raw: string): RateSourceType {
     return "missing";
   }
 
-  if (source.includes("fallback")) {
+  if (source.includes("fallback") || source.includes("allowance used")) {
     return "fallback";
   }
 

@@ -82,6 +82,7 @@ import {
   FENCE_TAKEOFF_COMPONENT_KEYS,
 } from "@/lib/estimate/fence-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import {
   labourRateProvenanceLabel,
   productivityProvenanceLabel,
@@ -203,7 +204,7 @@ export function mapRateLabel(raw: string): string {
   if (type === "user_rate") return "Company rate";
   if (type === "calibrated_productivity") return "Your calibrated productivity";
   if (type === "benchmark") return "Quotr benchmark";
-  if (type === "fallback") return "Preliminary fallback";
+  if (type === "fallback") return "Allowance used";
   if (type === "missing") return "Rate required";
   if (type === "default") return "Default allowance";
   if (type === "work_area_rate") return "Work area rate";
@@ -313,6 +314,16 @@ export function toPricedLine(item: EstimateLineItem): BuilderReviewPricedLine {
     detail: hierarchy.detail,
     pricingHelper: spoil && rateLabel === "Rate required" ? RW_SPOIL_REMOVAL_PRICING_HELPER : null,
     rateContext: variance?.copy ?? null,
+    quantityFallback: presentLineFallback({
+      label: item.label,
+      notes: item.notes,
+      rateSource: item.rateSource,
+      quantityBasis: item.quantityBasis,
+      category: item.category,
+      itemKey: item.itemKey,
+      componentKey: item.componentKey,
+      materialBuildUps: item.materialBuildUps,
+    }),
     sourceLine: item,
   };
 }
@@ -937,9 +948,22 @@ function buildIssues(
   }
 
   if (improvements.length < MAX_IMPROVEMENTS && !retainingWallOnly && !fenceOnly) {
+    const boardWidthAssumed = assumptions.some((assumption) =>
+      /board width|140 mm decking/i.test(assumption.label)
+    );
+    if (boardWidthAssumed) {
+      improvements.push({
+        id: "improve:deck-board-width",
+        label: "Confirm board width",
+        reason:
+          "Board width is not confirmed, so Quotr has used a disclosed 140 mm assumption.",
+        editSection: "job_plan",
+      });
+    }
     for (const assumption of assumptions) {
       if (improvements.length >= MAX_IMPROVEMENTS) break;
       if (/finish|standard|budget|premium/i.test(assumption.label)) continue;
+      if (/board width|140 mm decking/i.test(assumption.label)) continue;
       improvements.push({
         id: `improve:${assumption.id}`,
         label: assumption.label.replace(/^Assuming\s+/i, "Confirm "),

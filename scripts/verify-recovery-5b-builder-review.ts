@@ -231,7 +231,7 @@ check(
 );
 check(
   "18 fallback truthful",
-  mapRateLabel("Fallback allowance") === "Preliminary fallback"
+  mapRateLabel("Fallback allowance") === "Allowance used"
 );
 
 // TAKEOFF

@@ -9,6 +9,7 @@ import { ImproveSetupCard } from "@/components/setup/ImproveSetupCard";
 import {
   getDashboardPipelineSummary,
   listProjects,
+  organisationHasProjects,
 } from "@/lib/projects/actions";
 import { measureServerLoad } from "@/lib/perf/timing";
 import { getProjectNextAction } from "@/lib/projects/next-action";
@@ -26,25 +27,27 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   // Identity comes from AppShell / AppUserContext (layout). Do not re-fetch
   // auth+profile here — desktop UserMenu reads the shared context.
-  const { projects, summary, readiness } = await measureServerLoad(
+  const { projects, summary, readiness, hasProjects } = await measureServerLoad(
     "dashboard",
     async () => {
-      const [projectsResult, summaryResult, readinessResult] =
+      const [projectsResult, summaryResult, readinessResult, hasProjectsResult] =
         await Promise.all([
           listProjects({ filter, search }),
           getDashboardPipelineSummary(),
           getCompanySetupReadiness(),
+          organisationHasProjects(),
         ]);
 
       return {
         projects: projectsResult,
         summary: summaryResult,
         readiness: readinessResult,
+        hasProjects: hasProjectsResult,
       };
     }
   );
 
-  const isEmpty = projects.length === 0;
+  const isEmpty = !hasProjects;
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -66,10 +69,13 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         }
       />
       <PageContainer innerClassName="max-md:py-3 max-md:pb-4">
-        <div className="space-y-4 md:space-y-6">
+        <div className="space-y-4 md:space-y-6" data-has-projects={hasProjects ? "true" : "false"}>
           {isEmpty ? (
             <>
-              <div className="rounded-xl border border-border/70 bg-muted/20 px-4 py-8 text-center sm:px-6">
+              <div
+                className="rounded-xl border border-border/70 bg-muted/20 px-4 py-8 text-center sm:px-6"
+                data-first-job-empty="true"
+              >
                 <h2 className="text-lg font-semibold tracking-tight">
                   Start your first job
                 </h2>
@@ -87,7 +93,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
             <>
               <ImproveSetupCard
                 readiness={readiness}
-                hasProjects
+                hasProjects={!isEmpty}
               />
               <DashboardSummaryCards summary={summary} activeFilter={filter} />
             </>

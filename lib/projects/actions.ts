@@ -49,7 +49,7 @@ export async function listProjects(
     return [];
   }
 
-  const filter = options?.filter ?? "active";
+  const filter = options?.filter ?? "all";
   const search = options?.search?.trim().toLowerCase() ?? "";
   const lifecycleAvailable = await hasLifecycleColumns(context.supabase);
   const businessStatusAvailable = lifecycleAvailable
@@ -171,6 +171,34 @@ export async function listProjects(
       quote_summary: quoteByProject.get(project.id) ?? null,
     };
   });
+}
+
+/**
+ * Existence authority for the first-job empty state.
+ * Counts non-deleted projects regardless of commercial status.
+ */
+export async function organisationHasProjects(): Promise<boolean> {
+  const context = await getAuthOrgContext();
+  if (!context) {
+    return false;
+  }
+
+  const lifecycleAvailable = await hasLifecycleColumns(context.supabase);
+  let query = context.supabase
+    .from("projects")
+    .select("id", { count: "exact", head: true });
+
+  if (lifecycleAvailable) {
+    query = query.is("deleted_at", null);
+  }
+
+  const { count, error } = await query;
+  if (error) {
+    console.error("[organisationHasProjects] query failed:", error.message);
+    return false;
+  }
+
+  return (count ?? 0) > 0;
 }
 
 export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSummary> {

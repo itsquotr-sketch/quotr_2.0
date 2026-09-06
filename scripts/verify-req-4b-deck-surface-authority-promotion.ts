@@ -388,16 +388,15 @@ function testFallback() {
       }) === 1
   );
   check(
-    "27 width-unknown legacy fallback",
-    surfaceReq(noWidth) == null &&
-      surfaceLine(noWidth)?.label === "Decking package" &&
-      noWidth.commercialSelections?.some(
-        (item) =>
-          item.componentKey === DECK_SURFACE_COMPONENT_KEY &&
-          item.activeSource === "LEGACY_FALLBACK"
-      )
+    "27 width-unknown disclosed 140 mm requirement",
+    surfaceReq(noWidth) != null &&
+      noWidth.assumptions.some((line) => /140 mm decking/i.test(line))
   );
-  check("28 no fake lm requirement", surfaceReq(noWidth) == null);
+  check(
+    "28 width-unknown emits disclosed 140 mm lm requirement",
+    surfaceReq(noWidth) != null &&
+      (surfaceReq(noWidth)?.purchaseQuantity ?? 0) > 0
+  );
   check(
     "29 exactly one active source",
     countActiveComponentLines(noWidth.lineItems, {

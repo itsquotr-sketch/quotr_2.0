@@ -53,6 +53,8 @@ import {
   deriveQuickEstimateConfidencePresentation,
 } from "@/lib/assistant/presentation/quick-estimate-confidence";
 import { getUserFacingEstimateAssumptions } from "@/lib/assistant/presentation/user-facing-estimate-assumptions";
+import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
+import { StatusPill } from "@/components/ui/status-pill";
 import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
 import { fenceQuoteBlockingLabels } from "@/lib/estimate/fence-quote-readiness";
 import type { AssistantUnderstandingSummary } from "@/lib/assistant/presentation/assistant-understanding-summary";
@@ -473,6 +475,28 @@ export function EstimatePanel({
     0,
     MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS
   );
+  const physicalAllowances = (estimate?.lineItems ?? [])
+    .map((item) =>
+      presentLineFallback({
+        label: item.label,
+        notes: item.notes,
+        rateSource: item.rateSource,
+        quantityBasis: item.quantityBasis,
+        category: item.category,
+        itemKey: item.itemKey,
+        componentKey: item.componentKey,
+        materialBuildUps: item.materialBuildUps,
+      })
+    )
+    .filter(
+      (row): row is NonNullable<typeof row> =>
+        row != null && row.kind === "physical_allowance"
+    )
+    .filter(
+      (row, index, all) =>
+        all.findIndex((item) => item.reason === row.reason) === index
+    )
+    .slice(0, 3);
   const scopeSummaryLine =
     quickEstimatePresentation?.estimatedWorkAreas &&
     quickEstimatePresentation.estimatedWorkAreas !== "None yet"
@@ -851,6 +875,26 @@ export function EstimatePanel({
                 <p className="text-xs text-muted-foreground">
                   {confidencePresentation.reasons.join(" · ")}
                 </p>
+              </div>
+            ) : null}
+            {physicalAllowances.length > 0 ? (
+              <div data-estimate-physical-allowances="true">
+                <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+                  Allowances
+                </p>
+                <ul className="mt-1 space-y-1.5">
+                  {physicalAllowances.map((item) => (
+                    <li key={item.reason} className="space-y-0.5">
+                      <StatusPill tone="warning">{item.label}</StatusPill>
+                      <p className="text-xs text-foreground/90">{item.reason}</p>
+                      {item.confirmHint ? (
+                        <p className="text-xs text-muted-foreground">
+                          {item.confirmHint}
+                        </p>
+                      ) : null}
+                    </li>
+                  ))}
+                </ul>
               </div>
             ) : null}
             {topAssumptions.length > 0 ? (
