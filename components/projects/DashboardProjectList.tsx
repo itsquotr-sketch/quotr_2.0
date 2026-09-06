@@ -90,10 +90,10 @@ export function DashboardProjectList({
           : "Try a different status filter or create a new project.";
 
   return (
-    <div className="space-y-3 md:space-y-4">
+    <div className="space-y-3 rounded-xl border border-border/70 bg-card p-3 sm:p-4 md:space-y-4">
       <div className="flex flex-col gap-2.5 sm:flex-row sm:items-center sm:justify-between sm:gap-3">
         <form
-          className="relative min-w-0 flex-1 sm:max-w-sm"
+          className="relative min-w-0 flex-1 sm:max-w-md lg:max-w-lg"
           onSubmit={(event) => {
             event.preventDefault();
             const formData = new FormData(event.currentTarget);
@@ -153,6 +153,7 @@ export function DashboardProjectList({
                   ? "border-[var(--brand-orange-muted)] bg-[var(--brand-orange-muted)] text-foreground"
                   : "border-border/60 bg-card text-muted-foreground hover:border-border hover:text-foreground"
               )}
+              aria-pressed={initialFilter === option.value}
             >
               {option.label}
             </button>

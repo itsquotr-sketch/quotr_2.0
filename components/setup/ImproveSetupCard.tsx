@@ -2,13 +2,7 @@
 
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import type { CompanySetupReadiness } from "@/lib/setup/readiness";
 import { resolvePersonalisationNextStep } from "@/lib/setup/personalisation-ladder";
 
@@ -42,18 +36,22 @@ export function ImproveSetupCard({
   }
 
   return (
-    <Card className="border-border/70 bg-muted/15 shadow-none">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base">{next.title}</CardTitle>
-        <CardDescription>{next.reason}</CardDescription>
-      </CardHeader>
-      <CardContent className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-        {next.helper ? (
-          <p className="text-xs text-muted-foreground">{next.helper}</p>
-        ) : (
-          <span />
-        )}
-        <Button render={<Link href={next.href} />} className="h-10 w-full sm:w-auto">
+    <Card
+      data-dashboard-prompt
+      className="border-border/70 bg-muted/15 shadow-none"
+    >
+      <CardContent className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between sm:gap-6">
+        <div className="min-w-0">
+          <p className="text-sm font-medium">{next.title}</p>
+          <p className="mt-0.5 text-sm text-muted-foreground">{next.reason}</p>
+          {next.helper ? (
+            <p className="mt-1 text-xs text-muted-foreground">{next.helper}</p>
+          ) : null}
+        </div>
+        <Button
+          render={<Link href={next.href} />}
+          className="h-9 w-full shrink-0 sm:w-auto"
+        >
           {next.cta}
         </Button>
       </CardContent>

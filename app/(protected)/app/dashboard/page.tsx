@@ -78,7 +78,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
         }
       />
       <PageContainer innerClassName="max-md:py-3 max-md:pb-4">
-        <div className="space-y-4 md:space-y-6" data-has-projects={hasProjects ? "true" : "false"}>
+        <div className="space-y-4 md:space-y-5" data-has-projects={hasProjects ? "true" : "false"}>
           {isEmpty ? (
             <>
               <div
@@ -105,32 +105,36 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 readiness={readiness}
                 hasProjects={!isEmpty}
               />
-              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] lg:items-start">
+              <div data-dashboard-kpis>
                 <DashboardSummaryCards summary={summary} activeFilter={filter} />
-                <div className="hidden lg:block">
+              </div>
+              <div
+                data-dashboard-workspace
+                className="grid grid-cols-1 gap-4 lg:grid-cols-12 lg:items-start lg:gap-6"
+              >
+                <div
+                  data-dashboard-projects
+                  className="min-w-0 lg:col-span-8 xl:col-span-9"
+                >
+                  <Suspense fallback={null}>
+                    <DashboardProjectList
+                      projects={projects.map((project) => ({
+                        ...project,
+                        nextAction: getProjectNextAction(project),
+                      }))}
+                      initialFilter={filter}
+                      initialSearch={search}
+                    />
+                  </Suspense>
+                </div>
+                <div
+                  data-dashboard-activity
+                  className="min-w-0 lg:col-span-4 xl:col-span-3"
+                >
                   <RecentActivityCard items={activity} />
                 </div>
               </div>
             </>
-          )}
-
-          {isEmpty ? null : (
-            <Suspense fallback={null}>
-              <DashboardProjectList
-                projects={projects.map((project) => ({
-                  ...project,
-                  nextAction: getProjectNextAction(project),
-                }))}
-                initialFilter={filter}
-                initialSearch={search}
-              />
-            </Suspense>
-          )}
-
-          {isEmpty ? null : (
-            <div className="lg:hidden">
-              <RecentActivityCard items={activity} />
-            </div>
           )}
         </div>
       </PageContainer>

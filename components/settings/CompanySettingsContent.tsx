@@ -301,162 +301,160 @@ export function CompanySettingsContent({
         title="General"
         description="Company identity and address shown on quote previews. Personal Profile fields live under Account → Profile."
       >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="legal-name">Legal name</Label>
-            <LockedInput canEdit={canEdit}
-              id="legal-name"
-              value={legalName}
-              onChange={(event) => setLegalName(event.target.value)}
-              placeholder={settings.organisationName}
-            />
+        <div className="space-y-5" data-company-identity>
+          <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="legal-name">Legal name</Label>
+              <LockedInput canEdit={canEdit}
+                id="legal-name"
+                value={legalName}
+                onChange={(event) => setLegalName(event.target.value)}
+                placeholder={settings.organisationName}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="trading-name">Trading name</Label>
+              <LockedInput canEdit={canEdit}
+                id="trading-name"
+                value={tradingName}
+                onChange={(event) => setTradingName(event.target.value)}
+                placeholder="Name shown to clients"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-email">Email</Label>
+              <LockedInput canEdit={canEdit}
+                id="contact-email"
+                type="email"
+                value={contactEmail}
+                onChange={(event) => setContactEmail(event.target.value)}
+              />
+              {fieldErrors.contactEmail?.[0] ? (
+                <p className="text-sm text-destructive">
+                  {fieldErrors.contactEmail[0]}
+                </p>
+              ) : null}
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="contact-phone">Phone</Label>
+              <LockedInput canEdit={canEdit}
+                id="contact-phone"
+                value={contactPhone}
+                onChange={(event) => setContactPhone(event.target.value)}
+              />
+            </div>
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="trading-name">Trading name</Label>
-            <LockedInput canEdit={canEdit}
-              id="trading-name"
-              value={tradingName}
-              onChange={(event) => setTradingName(event.target.value)}
-              placeholder="Name shown to clients"
-            />
+          <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="gst-number">GST number</Label>
+              <LockedInput canEdit={canEdit}
+                id="gst-number"
+                value={gstNumber}
+                onChange={(event) => setGstNumber(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="nzbn">NZBN</Label>
+              <LockedInput canEdit={canEdit}
+                id="nzbn"
+                value={nzbn}
+                onChange={(event) => setNzbn(event.target.value)}
+              />
+            </div>
           </div>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="contact-email">Email</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="website">Website</Label>
             <LockedInput canEdit={canEdit}
-              id="contact-email"
-              type="email"
-              value={contactEmail}
-              onChange={(event) => setContactEmail(event.target.value)}
-            />
-            {fieldErrors.contactEmail?.[0] ? (
-              <p className="text-sm text-destructive">
-                {fieldErrors.contactEmail[0]}
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="contact-phone">Phone</Label>
-            <LockedInput canEdit={canEdit}
-              id="contact-phone"
-              value={contactPhone}
-              onChange={(event) => setContactPhone(event.target.value)}
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="website">Website</Label>
-          <LockedInput canEdit={canEdit}
-            id="website"
-            value={website}
-            onChange={(event) => setWebsite(event.target.value)}
-            placeholder="https://"
-          />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="gst-number">GST number</Label>
-            <LockedInput canEdit={canEdit}
-              id="gst-number"
-              value={gstNumber}
-              onChange={(event) => setGstNumber(event.target.value)}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="nzbn">NZBN</Label>
-            <LockedInput canEdit={canEdit}
-              id="nzbn"
-              value={nzbn}
-              onChange={(event) => setNzbn(event.target.value)}
+              id="website"
+              value={website}
+              onChange={(event) => setWebsite(event.target.value)}
+              placeholder="https://"
             />
           </div>
         </div>
 
-        <div className="border-t border-border/60 pt-4">
-          <p className="mb-4 text-sm font-medium">Business address</p>
-        <div className="space-y-2">
-          <Label htmlFor="address-line-1">Address line 1</Label>
-          <LockedInput canEdit={canEdit}
-            id="address-line-1"
-            value={addressLine1}
-            onChange={(event) => setAddressLine1(event.target.value)}
-          />
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="address-line-2">Address line 2</Label>
-          <LockedInput canEdit={canEdit}
-            id="address-line-2"
-            value={addressLine2}
-            onChange={(event) => setAddressLine2(event.target.value)}
-          />
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="city">City</Label>
+        <div className="space-y-5 border-t border-border/60 pt-6" data-company-address>
+          <p className="text-sm font-medium">Business address</p>
+          <div className="space-y-1.5">
+            <Label htmlFor="address-line-1">Address line 1</Label>
             <LockedInput canEdit={canEdit}
-              id="city"
-              value={city}
-              onChange={(event) => setCity(event.target.value)}
+              id="address-line-1"
+              value={addressLine1}
+              onChange={(event) => setAddressLine1(event.target.value)}
             />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="region">Region</Label>
+          <div className="space-y-1.5">
+            <Label htmlFor="address-line-2">Address line 2</Label>
             <LockedInput canEdit={canEdit}
-              id="region"
-              value={region}
-              onChange={(event) => setRegion(event.target.value)}
-              placeholder="e.g. Auckland"
+              id="address-line-2"
+              value={addressLine2}
+              onChange={(event) => setAddressLine2(event.target.value)}
             />
           </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="company-timezone">Timezone</Label>
-          <select
-            id="company-timezone"
-            value={timezone}
-            onChange={(event) => setTimezone(event.target.value)}
-            disabled={!canEdit}
-            className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
-          >
-            <option value="">
-              Not set — times shown as Auckland / Wellington
-            </option>
-            {ORG_TIMEZONE_CATALOGUE.map((option) => (
-              <option key={option.id} value={option.id}>
-                {option.label}
+          <div className="grid gap-x-4 gap-y-5 sm:grid-cols-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="city">City</Label>
+              <LockedInput canEdit={canEdit}
+                id="city"
+                value={city}
+                onChange={(event) => setCity(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="region">Region</Label>
+              <LockedInput canEdit={canEdit}
+                id="region"
+                value={region}
+                onChange={(event) => setRegion(event.target.value)}
+                placeholder="e.g. Auckland"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="postcode">Postcode</Label>
+              <LockedInput canEdit={canEdit}
+                id="postcode"
+                value={postcode}
+                onChange={(event) => setPostcode(event.target.value)}
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="address-country">Country</Label>
+              <LockedInput canEdit={canEdit}
+                id="address-country"
+                value={addressCountry}
+                onChange={(event) => setAddressCountry(event.target.value)}
+                required
+              />
+            </div>
+          </div>
+          <div className="space-y-1.5" data-timezone-field>
+            <Label htmlFor="company-timezone">Timezone</Label>
+            <select
+              id="company-timezone"
+              value={timezone}
+              onChange={(event) => setTimezone(event.target.value)}
+              disabled={!canEdit}
+              className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
+            >
+              <option value="">
+                Not set — times shown as Auckland / Wellington
               </option>
-            ))}
-          </select>
-          {fieldErrors.timezone?.[0] ? (
-            <p className="text-sm text-destructive">
-              {fieldErrors.timezone[0]}
+              {ORG_TIMEZONE_CATALOGUE.map((option) => (
+                <option key={option.id} value={option.id}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
+            {fieldErrors.timezone?.[0] ? (
+              <p className="text-sm text-destructive">
+                {fieldErrors.timezone[0]}
+              </p>
+            ) : null}
+            <p className="pt-1 text-xs leading-relaxed text-muted-foreground" data-timezone-helper>
+              Used to show quote acceptance and send times in your local time.
+              Changing this does not rewrite stored UTC evidence.
             </p>
-          ) : null}
-          <p className="text-xs text-muted-foreground">
-            Used to show quote acceptance and send times in your local time.
-            Changing this does not rewrite stored UTC evidence.
-          </p>
-        </div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="postcode">Postcode</Label>
-            <LockedInput canEdit={canEdit}
-              id="postcode"
-              value={postcode}
-              onChange={(event) => setPostcode(event.target.value)}
-            />
           </div>
-          <div className="space-y-2">
-            <Label htmlFor="address-country">Country</Label>
-            <LockedInput canEdit={canEdit}
-              id="address-country"
-              value={addressCountry}
-              onChange={(event) => setAddressCountry(event.target.value)}
-              required
-            />
-          </div>
-        </div>
         </div>
       </SectionCard>
       ) : null}
@@ -672,12 +670,15 @@ export function CompanySettingsContent({
       ) : null}
 
       {canEdit ? (
-      <Card className="sticky bottom-0 z-10 border-border/60 bg-background/95 shadow-none backdrop-blur-sm">
-        <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+      <Card
+        data-company-save-footer
+        className="border-border/60 shadow-none"
+      >
+        <CardContent className="flex flex-col gap-3 py-3 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
             {savedMessage ?? "Changes apply to new pricing and quotes."}
           </p>
-          <Button type="submit" disabled={saving} className="w-full sm:w-auto">
+          <Button type="submit" disabled={saving} className="h-10 w-full sm:w-auto">
             {saving ? "Saving…" : "Save company settings"}
           </Button>
         </CardContent>

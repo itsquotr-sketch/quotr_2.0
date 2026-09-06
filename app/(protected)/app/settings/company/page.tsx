@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { SettingsContainer } from "@/components/layout/page-containers";
+import { FormContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { CompanySettingsContent } from "@/components/settings/CompanySettingsContent";
@@ -65,7 +65,7 @@ export default async function CompanySettingsPage({
           <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
         }
       />
-      <SettingsContainer>
+      <FormContainer>
         <CompanySettingsContent
           initialSettings={settings}
           userEmail={user?.email}
@@ -73,7 +73,7 @@ export default async function CompanySettingsPage({
           initialSection={initialSection}
           canEdit={canEdit}
         />
-      </SettingsContainer>
+      </FormContainer>
     </div>
   );
 }

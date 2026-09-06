@@ -16,8 +16,12 @@ export const metadata: Metadata = {
   title: "Quotr",
   description: QUOTR_PRODUCT_LINE,
   icons: {
-    icon: [{ url: QUOTR_ICON_SRC, type: "image/png" }],
+    icon: [
+      { url: "/favicon.ico", type: "image/x-icon" },
+      { url: QUOTR_ICON_SRC, type: "image/png", sizes: "any" },
+    ],
     apple: QUOTR_ICON_SRC,
+    shortcut: QUOTR_ICON_SRC,
   },
 };
 

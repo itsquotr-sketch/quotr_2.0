@@ -5,7 +5,6 @@ import { usePathname } from "next/navigation";
 import { useState } from "react";
 import {
   Building2,
-  CreditCard,
   Menu,
   Settings2,
   UserRound,
@@ -28,7 +27,6 @@ import { cn } from "@/lib/utils";
 const MENU_LINKS = [
   { href: "/app/settings/company", label: "Company", icon: Building2 },
   { href: "/app/settings/team", label: "Team", icon: Users },
-  { href: "/app/settings/billing", label: "Billing", icon: CreditCard },
   { href: "/app/setup", label: "Setup", icon: Settings2, showIncomplete: true },
 ] as const;
 

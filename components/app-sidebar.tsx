@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Building2, CreditCard, DollarSign, LayoutDashboard, Settings2, Users } from "lucide-react";
+import { Building2, DollarSign, LayoutDashboard, Settings2, Users } from "lucide-react";
 import { FeedbackLink } from "@/components/layout/feedback-link";
 import { NotificationBell } from "@/components/layout/notification-bell";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
@@ -21,7 +21,6 @@ const NAV_ITEMS = [
   { href: "/app/rates", label: "Rates", icon: DollarSign },
   { href: "/app/settings/company", label: "Company", icon: Building2 },
   { href: "/app/settings/team", label: "Team", icon: Users },
-  { href: "/app/settings/billing", label: "Billing", icon: CreditCard },
   { href: "/app/setup", label: "Setup", icon: Settings2, showIncomplete: true },
 ] as const;
 
@@ -43,12 +42,16 @@ export function AppSidebarNav({
 
   return (
     <aside className="hidden h-dvh w-[232px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground print:hidden md:flex">
-      <div className="flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
-        <div className="min-w-0 rounded-md border border-white/10 bg-white/[0.97] px-2 py-1">
-          <QuotrLogo variant="wordmark" height={22} className="h-[22px] max-w-[148px]" />
+      <div className="flex h-12 shrink-0 items-center gap-2.5 border-b border-sidebar-border px-3">
+        <div className="flex h-8 items-center justify-center rounded-md border border-white/10 bg-white/[0.97] px-2.5">
+          <QuotrLogo
+            variant="wordmark"
+            height={18}
+            className="h-[18px] w-auto max-w-none object-contain"
+          />
         </div>
         {deploymentLabel ? (
-          <span className="rounded-full border border-sidebar-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground/70">
+          <span className="shrink-0 rounded-full border border-sidebar-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground/70">
             {deploymentLabel}
           </span>
         ) : null}

@@ -985,8 +985,8 @@ assert(
 );
 assert(
   "Billing nav and page exist",
-  /\/app\/settings\/billing/.test(file("components/app-sidebar.tsx")) &&
-    /label: "Billing"/.test(file("components/app-sidebar.tsx")) &&
+  /data-account-menu-billing/.test(file("components/layout/account-menu.tsx")) &&
+    /\/app\/settings\/billing/.test(file("components/layout/account-menu.tsx")) &&
     /Choose Builder/.test(billingPageSrc)
 );
 assert(
