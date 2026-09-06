@@ -10,6 +10,8 @@
  * Never blocks creating an estimate.
  */
 
+import { formatDnaDeckDashboardCta } from "@/lib/company-dna/copy";
+
 export type PersonalisationStepId =
   | "work_areas"
   | "calibrate"
@@ -42,6 +44,9 @@ export type PersonalisationLadderInput = {
   hasLogo: boolean;
   /** False when organisation_settings.timezone is NULL. */
   hasTimezone?: boolean;
+  preferredWorkAreaTypes?: string[];
+  deckKeyTasksCalibrated?: number;
+  deckKeyTasksTotal?: number;
 };
 
 const WORK_STEP: PersonalisationStep = {
@@ -98,9 +103,28 @@ export function resolvePersonalisationNextStep(
   if (!input.firstRunComplete) return null;
 
   if (!input.hasWorkTypePreferences) return WORK_STEP;
-  const calibrationComplete =
-    input.hasHighImpactCalibration ?? input.hasCalibration;
+  const prefersDeck = (input.preferredWorkAreaTypes ?? []).includes("deck");
+  const deckTotal = input.deckKeyTasksTotal ?? 3;
+  const deckCalibrated = input.deckKeyTasksCalibrated ?? 0;
+  const deckComplete = deckCalibrated >= deckTotal;
+  const calibrationComplete = prefersDeck
+    ? deckComplete
+    : (input.hasHighImpactCalibration ?? input.hasCalibration);
   if (!calibrationComplete) {
+    if (prefersDeck) {
+      const remaining = Math.max(0, deckTotal - deckCalibrated);
+      const copy = formatDnaDeckDashboardCta(remaining);
+      return {
+        id: "calibrate",
+        title: copy.title,
+        reason: copy.reason,
+        cta: copy.cta,
+        href:
+          remaining === deckTotal
+            ? "/app/setup/dna/deck"
+            : "/app/setup/dna/deck?view=continue",
+      };
+    }
     return input.hasCalibration ? CONTINUE_CALIBRATE_STEP : CALIBRATE_STEP;
   }
   if (input.companyRateCount < RATE_REVIEW_MIN_COMPANY_RATES) return RATES_STEP;

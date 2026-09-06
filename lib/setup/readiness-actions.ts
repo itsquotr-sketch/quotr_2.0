@@ -2,6 +2,7 @@
 
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { orgHasHighImpactCalibration } from "@/lib/company-dna/progress";
+import { deckV2ProgressCounts } from "@/lib/company-dna/deck-v2";
 import {
   computeCompanySetupReadiness,
   type CompanySetupReadiness,
@@ -26,6 +27,9 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       hasWorkTypePreferences: false,
       hasCalibration: false,
       hasHighImpactCalibration: false,
+      preferredWorkAreaTypes: [],
+      deckKeyTasksCalibrated: 0,
+      deckKeyTasksTotal: 3,
       tradingName: null,
       legalName: null,
       contactEmail: null,
@@ -63,10 +67,9 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
         .not("cost_rate", "is", null),
       supabase
         .from("organisation_work_areas")
-        .select("id")
+        .select("work_area_type")
         .eq("org_id", orgId)
-        .eq("enabled", true)
-        .limit(1),
+        .eq("enabled", true),
       supabase
         .from("productivity_calibration_responses")
         .select("id, calibration_task_key")
@@ -84,6 +87,10 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
   const calibratedScenarioIds = new Set(
     (calibrations ?? []).map((row) => String(row.calibration_task_key))
   );
+  const preferredWorkAreaTypes = (preferredWorkAreas ?? []).map((row) =>
+    String(row.work_area_type)
+  );
+  const deckCounts = deckV2ProgressCounts(calibratedScenarioIds);
 
   return computeCompanySetupReadiness({
     accountReady: true,
@@ -115,5 +122,8 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     city: (settings?.city as string | null) ?? null,
     logoUrl: (settings?.logo_url as string | null) ?? null,
     timezone: (settings?.timezone as string | null) ?? null,
+    preferredWorkAreaTypes,
+    deckKeyTasksCalibrated: deckCounts.tier1Calibrated,
+    deckKeyTasksTotal: deckCounts.tier1Total,
   });
 }

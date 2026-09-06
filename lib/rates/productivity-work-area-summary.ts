@@ -1,14 +1,17 @@
 import {
-  COMPANY_DNA_TASKS,
   COMPANY_DNA_WORK_AREA_LABELS,
   orderCompanyDnaWorkAreas,
   type CompanyDnaTaskDefinition,
   type CompanyDnaWorkAreaType,
 } from "@/lib/company-dna/catalogue";
 import {
-  companyDnaWorkAreaStatus,
   companyDnaWorkAreaStatusLabel,
 } from "@/lib/company-dna/derive";
+import {
+  companyDnaUiWorkAreaStatus,
+  isCompanyDnaDeckV2WorkArea,
+  listCompanyDnaUiTasksForWorkArea,
+} from "@/lib/company-dna/deck-v2";
 import { workAreaHubCta } from "@/lib/company-dna/progress";
 import type { RatesPageRate } from "@/lib/rates/types";
 
@@ -23,9 +26,12 @@ export type ProductivityWorkAreaSummary = {
   label: string;
   calibratedCount: number;
   taskTotal: number;
+  keyTaskCalibrated: number;
+  keyTaskTotal: number;
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
   cta: string;
+  generation: "v1" | "v2c";
   tasks: ProductivityTaskRow[];
 };
 
@@ -39,9 +45,7 @@ export function summarizeProductivityWorkAreas(
 ): ProductivityWorkAreaSummary[] {
   const order = orderCompanyDnaWorkAreas(preferredWorkAreaTypes);
   return order.map((workAreaType) => {
-    const catalogueTasks = COMPANY_DNA_TASKS.filter(
-      (task) => task.workAreaType === workAreaType
-    );
+    const catalogueTasks = listCompanyDnaUiTasksForWorkArea(workAreaType);
     const tasks: ProductivityTaskRow[] = catalogueTasks.map((task) => {
       const row = rates.find(
         (rate) =>
@@ -56,33 +60,51 @@ export function summarizeProductivityWorkAreas(
       };
     });
     const calibratedCount = tasks.filter((row) => row.calibrated).length;
-    const highImpactTotal = catalogueTasks.filter((task) => task.isHighImpact).length;
-    const highImpactCalibrated = catalogueTasks.filter(
-      (task) =>
-        task.isHighImpact &&
-        tasks.some(
-          (row) =>
-            row.task.calibrationTaskKey === task.calibrationTaskKey &&
-            row.calibrated
-        )
-    ).length;
-    const status = companyDnaWorkAreaStatus({
-      highImpactTotal,
-      highImpactCalibrated,
-      anyCalibrated: calibratedCount > 0,
+    const calibratedKeys = tasks
+      .filter((row) => row.calibrated)
+      .map((row) => row.task.calibrationTaskKey);
+    const status = companyDnaUiWorkAreaStatus({
+      workAreaType,
+      calibratedTaskKeys: calibratedKeys,
     });
+    const deckV2 = isCompanyDnaDeckV2WorkArea(workAreaType);
+    const keyTaskTotal = deckV2
+      ? catalogueTasks.filter((task) => task.priorityTier === 1).length
+      : catalogueTasks.filter((task) => task.isHighImpact).length;
+    const keyTaskCalibrated = deckV2
+      ? catalogueTasks.filter(
+          (task) =>
+            task.priorityTier === 1 &&
+            tasks.some(
+              (row) =>
+                row.task.calibrationTaskKey === task.calibrationTaskKey &&
+                row.calibrated
+            )
+        ).length
+      : catalogueTasks.filter(
+          (task) =>
+            task.isHighImpact &&
+            tasks.some(
+              (row) =>
+                row.task.calibrationTaskKey === task.calibrationTaskKey &&
+                row.calibrated
+            )
+        ).length;
     return {
       workAreaType,
       label: COMPANY_DNA_WORK_AREA_LABELS[workAreaType],
       calibratedCount,
       taskTotal: catalogueTasks.length,
+      keyTaskCalibrated,
+      keyTaskTotal,
       status,
       statusLabel:
         status === "benchmarks"
           ? "Not calibrated"
           : companyDnaWorkAreaStatusLabel(status),
       cta:
-        status === "calibrated" ? "View / Edit" : workAreaHubCta(status),
+        status === "calibrated" ? "View / Continue" : workAreaHubCta(status),
+      generation: deckV2 ? ("v2c" as const) : ("v1" as const),
       tasks,
     };
   });

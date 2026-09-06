@@ -184,8 +184,9 @@ check("no admin password mutation", !sql.includes("updateUserById") && !actions.
 check("V1 live catalogue still 9", COMPANY_DNA_TASKS.length === 9);
 check("current UI still 9", listCompanyDnaTasksVisibleInCurrentUi().length === 9);
 check(
-  "Rates summary still V1 counts",
+  "Rates Fence/RW remain V1 counts",
   summarizeProductivityWorkAreas([]).every((row) => {
+    if (row.workAreaType === "deck") return row.taskTotal === 7 && row.keyTaskTotal === 3;
     const v1Count = COMPANY_DNA_TASKS.filter(
       (task) => task.workAreaType === row.workAreaType
     ).length;
@@ -193,10 +194,9 @@ check(
   })
 );
 check(
-  "server action still V1-gated",
-  actions.includes("getCompanyDnaTask(") &&
-    actions.includes("DNA-V2C") &&
-    !/getCompanyDnaFoundationTask\s*\(/.test(actions)
+  "server action uses unified resolver",
+  actions.includes("resolveCompanyDnaTask") &&
+    !actions.includes("getCompanyDnaTask(")
 );
 check("V1 lookup rejects fascia", getCompanyDnaTask("deck.fascia.v1") == null);
 

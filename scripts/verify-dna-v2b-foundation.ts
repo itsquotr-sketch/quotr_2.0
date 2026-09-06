@@ -267,12 +267,15 @@ check(
 
 const ratesSummary = summarizeProductivityWorkAreas([]);
 check(
-  "Rates DNA summary still uses V1 task counts",
+  "Rates DNA summary is Deck V2C + Fence/RW V1",
   ratesSummary.every((row) => {
+    if (row.workAreaType === "deck") {
+      return row.taskTotal === 7 && row.keyTaskTotal === 3 && row.generation === "v2c";
+    }
     const v1Count = COMPANY_DNA_TASKS.filter(
       (task) => task.workAreaType === row.workAreaType
     ).length;
-    return row.taskTotal === v1Count;
+    return row.taskTotal === v1Count && row.generation === "v1";
   })
 );
 
@@ -560,13 +563,17 @@ check(
 
 const liveActions = read("lib/company-dna/actions.ts");
 check(
-  "live save still looks up V1 getCompanyDnaTask",
-  liveActions.includes("getCompanyDnaTask(") &&
-    !/getCompanyDnaFoundationTask\s*\(/.test(liveActions)
+  "live save uses unified foundation resolver",
+  liveActions.includes("resolveCompanyDnaTask") &&
+    read("lib/company-dna/resolve-task.ts").includes("getCompanyDnaFoundationTask")
 );
 check(
-  "live hub still uses COMPANY_DNA_TASKS",
-  read("lib/company-dna/actions.ts").includes("COMPANY_DNA_TASKS.filter")
+  "V1 live lookup helper still exists",
+  read("lib/company-dna/catalogue.ts").includes("export function getCompanyDnaTask")
+);
+check(
+  "live hub still lists Fence/RW from V1 catalogue",
+  read("lib/company-dna/deck-v2.ts").includes("listCompanyDnaTasksVisibleInCurrentUi(workAreaType)")
 );
 
 console.log(`\n=== ${passed} passed, ${failed} failed ===`);

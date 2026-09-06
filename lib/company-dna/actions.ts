@@ -2,17 +2,22 @@
 
 import { z } from "zod";
 import {
-  COMPANY_DNA_TASKS,
-  getCompanyDnaTask,
   orderCompanyDnaWorkAreas,
   type CompanyDnaWorkAreaType,
 } from "@/lib/company-dna/catalogue";
 import {
-  companyDnaWorkAreaStatus,
   companyDnaWorkAreaStatusLabel,
   deriveCompanyProductivity,
+  durationHoursFromClock,
   validateCompanyDnaInputs,
 } from "@/lib/company-dna/derive";
+import {
+  companyDnaUiWorkAreaStatus,
+  deckV2ProgressCounts,
+  isCompanyDnaDeckV2WorkArea,
+  listCompanyDnaUiTasksForWorkArea,
+} from "@/lib/company-dna/deck-v2";
+import { resolveCompanyDnaTask } from "@/lib/company-dna/resolve-task";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 
@@ -21,6 +26,8 @@ export type CompanyDnaTaskStatus = {
   calibrated: boolean;
   derivedProductivity: number | null;
   createdAt: string | null;
+  crewSize: number | null;
+  durationHours: number | null;
 };
 
 export type CompanyDnaWorkAreaProgress = {
@@ -32,6 +39,7 @@ export type CompanyDnaWorkAreaProgress = {
   highImpactTotal: number;
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
+  generation: "v1" | "v2c";
   tasks: CompanyDnaTaskStatus[];
 };
 
@@ -53,12 +61,36 @@ export type CompanyDnaActionResult = {
   faster?: boolean;
 };
 
-const saveSchema = z.object({
-  calibrationTaskKey: z.string().trim().min(1).max(128),
-  crewSize: z.number(),
-  durationHours: z.number(),
-  outlierConfirmed: z.boolean().optional(),
-});
+const saveSchema = z
+  .object({
+    calibrationTaskKey: z.string().trim().min(1).max(128),
+    crewSize: z.number(),
+    durationHours: z.number().optional(),
+    clockHours: z.number().optional(),
+    minutes: z.number().optional(),
+    outlierConfirmed: z.boolean().optional(),
+  })
+  .superRefine((value, ctx) => {
+    const hasClock =
+      value.clockHours != null || value.minutes != null;
+    if (!hasClock && value.durationHours == null) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "duration required",
+      });
+    }
+  });
+
+function resolvedDurationHours(input: {
+  durationHours?: number;
+  clockHours?: number;
+  minutes?: number;
+}): number {
+  if (input.clockHours != null || input.minutes != null) {
+    return durationHoursFromClock(input.clockHours ?? 0, input.minutes ?? 0);
+  }
+  return input.durationHours ?? Number.NaN;
+}
 
 async function requireCalibrationWrite() {
   const context = await getAuthOrgContext();
@@ -102,7 +134,7 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
       context.supabase
         .from("productivity_calibration_responses")
         .select(
-          "calibration_task_key, derived_productivity, created_at, status"
+          "calibration_task_key, derived_productivity, created_at, status, crew_size, duration_hours"
         )
         .eq("org_id", context.orgId)
         .eq("status", "active"),
@@ -126,9 +158,7 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
 
   const orderedWorkAreas = orderCompanyDnaWorkAreas(preferredWorkAreaTypes);
   const progress = orderedWorkAreas.map((workAreaType) => {
-    const tasks = COMPANY_DNA_TASKS.filter(
-      (task) => task.workAreaType === workAreaType
-    );
+    const tasks = listCompanyDnaUiTasksForWorkArea(workAreaType);
     const taskStatuses: CompanyDnaTaskStatus[] = tasks.map((task) => {
       const evidence = evidenceByTask.get(task.calibrationTaskKey);
       return {
@@ -140,25 +170,38 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
             : null,
         createdAt:
           evidence?.created_at != null ? String(evidence.created_at) : null,
+        crewSize:
+          evidence?.crew_size != null ? Number(evidence.crew_size) : null,
+        durationHours:
+          evidence?.duration_hours != null
+            ? Number(evidence.duration_hours)
+            : null,
       };
     });
-    const calibratedCount = taskStatuses.filter((task) => task.calibrated)
-      .length;
-    const highImpactTotal = tasks.filter((task) => task.isHighImpact).length;
-    const highImpactCalibrated = tasks.filter(
-      (task) =>
-        task.isHighImpact &&
-        taskStatuses.some(
-          (status) =>
-            status.calibrationTaskKey === task.calibrationTaskKey &&
-            status.calibrated
-        )
-    ).length;
-    const status = companyDnaWorkAreaStatus({
-      highImpactTotal,
-      highImpactCalibrated,
-      anyCalibrated: calibratedCount > 0,
+    const calibratedKeys = taskStatuses
+      .filter((status) => status.calibrated)
+      .map((status) => status.calibrationTaskKey);
+    const status = companyDnaUiWorkAreaStatus({
+      workAreaType,
+      calibratedTaskKeys: calibratedKeys,
     });
+    const deckCounts = isCompanyDnaDeckV2WorkArea(workAreaType)
+      ? deckV2ProgressCounts(calibratedKeys)
+      : null;
+    const highImpactTotal = deckCounts
+      ? deckCounts.tier1Total
+      : tasks.filter((task) => task.isHighImpact).length;
+    const highImpactCalibrated = deckCounts
+      ? deckCounts.tier1Calibrated
+      : tasks.filter(
+          (task) =>
+            task.isHighImpact &&
+            taskStatuses.some(
+              (status) =>
+                status.calibrationTaskKey === task.calibrationTaskKey &&
+                status.calibrated
+            )
+        ).length;
     return {
       workAreaType,
       label:
@@ -167,12 +210,15 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
           : workAreaType === "fence"
             ? "Fence"
             : "Deck",
-      calibratedCount,
+      calibratedCount: taskStatuses.filter((task) => task.calibrated).length,
       taskTotal: tasks.length,
       highImpactCalibrated,
       highImpactTotal,
       status,
       statusLabel: companyDnaWorkAreaStatusLabel(status),
+      generation: isCompanyDnaDeckV2WorkArea(workAreaType)
+        ? ("v2c" as const)
+        : ("v1" as const),
       tasks: taskStatuses,
     };
   });
@@ -188,7 +234,9 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
 export async function saveCompanyDnaCalibration(input: {
   calibrationTaskKey: string;
   crewSize: number;
-  durationHours: number;
+  durationHours?: number;
+  clockHours?: number;
+  minutes?: number;
   outlierConfirmed?: boolean;
 }): Promise<CompanyDnaActionResult> {
   const parsed = saveSchema.safeParse(input);
@@ -196,21 +244,20 @@ export async function saveCompanyDnaCalibration(input: {
     return { error: "Check crew size and hours, then try again." };
   }
 
-  const task = getCompanyDnaTask(parsed.data.calibrationTaskKey);
+  const task = resolveCompanyDnaTask(parsed.data.calibrationTaskKey);
   if (!task) {
-    // DNA-V2C: look up getCompanyDnaFoundationTask so seeded V2 keys can be
-    // saved from this action. RPC already persists any catalogue FK row.
     return { error: "Unknown calibration task." };
   }
 
+  const durationHours = resolvedDurationHours(parsed.data);
   const derived = deriveCompanyProductivity({
     task,
     crewSize: parsed.data.crewSize,
-    durationHours: parsed.data.durationHours,
+    durationHours: Number.isFinite(durationHours) ? durationHours : 0,
   });
   const validation = validateCompanyDnaInputs({
     crewSize: parsed.data.crewSize,
-    durationHours: parsed.data.durationHours,
+    durationHours,
     ratioToBenchmark: derived.ratioToBenchmark,
     outlierConfirmed: Boolean(parsed.data.outlierConfirmed),
   });
@@ -235,7 +282,7 @@ export async function saveCompanyDnaCalibration(input: {
     if (validation.code === "INVALID_CREW") {
       return { error: "Crew size must be between 1 and 20 people." };
     }
-    return { error: "Time must be between 0.25 and 200 hours." };
+    return { error: "Time must be at least 15 minutes and at most 200 hours." };
   }
 
   const loaded = await requireCalibrationWrite();
@@ -246,7 +293,7 @@ export async function saveCompanyDnaCalibration(input: {
     {
       p_calibration_task_key: parsed.data.calibrationTaskKey,
       p_crew_size: parsed.data.crewSize,
-      p_duration_hours: parsed.data.durationHours,
+      p_duration_hours: durationHours,
       p_outlier_confirmed: Boolean(parsed.data.outlierConfirmed),
     }
   );
@@ -292,7 +339,7 @@ export async function saveCompanyDnaCalibration(input: {
 export async function resetCompanyDnaCalibration(
   calibrationTaskKey: string
 ): Promise<CompanyDnaActionResult> {
-  const task = getCompanyDnaTask(calibrationTaskKey);
+  const task = resolveCompanyDnaTask(calibrationTaskKey);
   if (!task) {
     return { error: "Unknown calibration task." };
   }

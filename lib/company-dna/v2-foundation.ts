@@ -10,7 +10,9 @@
  *   exposeInCurrentUi, baselineMethod, prompts).
  * - Migration 054 seeds the persistable identity the RPC FK requires.
  *   Benchmarks, keys, and units in 054 must match this file.
- * - Live save UI still uses V1 `getCompanyDnaTask` until DNA-V2C.
+ * - Live save uses `resolveCompanyDnaTask` (foundation lookup).
+ * - DNA-V2C exposes Deck UI via `lib/company-dna/deck-v2.ts`, not
+ *   `exposeInCurrentUi` on Fence/RW rows.
  */
 import {
   COMPANY_DNA_TASKS,

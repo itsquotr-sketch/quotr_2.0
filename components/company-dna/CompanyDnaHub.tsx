@@ -14,6 +14,11 @@ import {
 } from "@/lib/company-dna/catalogue";
 import type { CompanyDnaHubState } from "@/lib/company-dna/actions";
 import { formatDnaProgressCopy } from "@/lib/company-dna/copy";
+import {
+  deckV2HubHref,
+  isCompanyDnaDeckV2WorkArea,
+  nextCompanyDnaDeckV2Task,
+} from "@/lib/company-dna/deck-v2";
 import { nextCompanyDnaTask, workAreaHubCta } from "@/lib/company-dna/progress";
 import { cn } from "@/lib/utils";
 
@@ -49,13 +54,21 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
             const calibratedKeys = area.tasks
               .filter((status) => status.calibrated)
               .map((status) => status.calibrationTaskKey);
-            const nextTask = nextCompanyDnaTask({
-              workAreaType: area.workAreaType,
-              calibratedTaskKeys: calibratedKeys,
-            });
-            const href = nextTask
-              ? `/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`
-              : `/app/setup/dna/${encodeURIComponent(area.tasks[0]?.calibrationTaskKey ?? "")}`;
+            const deckV2 = isCompanyDnaDeckV2WorkArea(area.workAreaType);
+            const nextTask = deckV2
+              ? nextCompanyDnaDeckV2Task({ calibratedTaskKeys: calibratedKeys })
+              : nextCompanyDnaTask({
+                  workAreaType: area.workAreaType,
+                  calibratedTaskKeys: calibratedKeys,
+                });
+            const href = deckV2
+              ? deckV2HubHref({
+                  status: area.status,
+                  nextTaskKey: nextTask?.calibrationTaskKey,
+                })
+              : nextTask
+                ? `/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`
+                : `/app/setup/dna/${encodeURIComponent(area.tasks[0]?.calibrationTaskKey ?? "")}`;
             const cta = workAreaHubCta(area.status);
             const compact = area.status === "calibrated";
             return (
@@ -67,6 +80,7 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
                 )}
                 data-company-dna-work-area={area.workAreaType}
                 data-company-dna-status={area.status}
+                data-company-dna-generation={area.generation}
                 data-setup-compact={compact ? "true" : undefined}
               >
                 <div className="flex items-center justify-between gap-3">

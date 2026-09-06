@@ -56,6 +56,9 @@ export type CompanySetupReadiness = {
   country: string;
   defaultMarginPercent: number;
   defaultGstRate: number;
+  preferredWorkAreaTypes: string[];
+  deckKeyTasksCalibrated: number;
+  deckKeyTasksTotal: number;
 };
 
 export type CompanySetupReadinessInput = {
@@ -81,6 +84,9 @@ export type CompanySetupReadinessInput = {
   calibratedScenarioCount?: number;
   /** MVP catalogue size used for “another” tip (default 2). */
   calibrationScenarioTotal?: number;
+  preferredWorkAreaTypes?: string[];
+  deckKeyTasksCalibrated?: number;
+  deckKeyTasksTotal?: number;
   tradingName: string | null;
   legalName: string | null;
   contactEmail: string | null;
@@ -342,5 +348,8 @@ export function computeCompanySetupReadiness(
     country,
     defaultMarginPercent,
     defaultGstRate,
+    preferredWorkAreaTypes: input.preferredWorkAreaTypes ?? [],
+    deckKeyTasksCalibrated: input.deckKeyTasksCalibrated ?? 0,
+    deckKeyTasksTotal: input.deckKeyTasksTotal ?? 3,
   };
 }

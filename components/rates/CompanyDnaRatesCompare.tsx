@@ -8,6 +8,7 @@ import {
 } from "@/lib/company-dna/catalogue";
 import { DNA_RATES_PRODUCTIVITY_HELPER, DNA_RESET_CTA } from "@/lib/company-dna/copy";
 import { resetCompanyDnaCalibration } from "@/lib/company-dna/actions";
+import { deckV2HubHref, nextCompanyDnaDeckV2Task } from "@/lib/company-dna/deck-v2";
 import { LABOUR_RATE_CATALOGUE } from "@/lib/rates/catalogue";
 import { summarizeProductivityWorkAreas } from "@/lib/rates/productivity-work-area-summary";
 import type { RatesPageRate } from "@/lib/rates/types";
@@ -121,15 +122,37 @@ export function CompanyDnaRatesCompare({
             key={group.workAreaType}
             className="rounded-lg border border-border/60"
             data-productivity-work-area={group.workAreaType}
+            data-productivity-generation={group.generation}
           >
             <div className="flex flex-wrap items-center gap-2 px-3 py-2.5">
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{group.label}</p>
                 <p className="text-xs text-muted-foreground">
-                  {group.calibratedCount} of {group.taskTotal} tasks calibrated
+                  {group.keyTaskTotal > 0
+                    ? `${group.keyTaskCalibrated} of ${group.keyTaskTotal} key tasks calibrated`
+                    : `${group.calibratedCount} of ${group.taskTotal} tasks calibrated`}
                 </p>
                 <p className="text-xs text-muted-foreground">{group.statusLabel}</p>
               </div>
+              {group.generation === "v2c" ? (
+                <Link
+                  href={deckV2HubHref({
+                    status: group.status,
+                    nextTaskKey: nextCompanyDnaDeckV2Task({
+                      calibratedTaskKeys: group.tasks
+                        .filter((row) => row.calibrated)
+                        .map((row) => row.task.calibrationTaskKey),
+                    })?.calibrationTaskKey,
+                  })}
+                  className={cn(
+                    buttonVariants({ variant: "outline", size: "sm" }),
+                    "h-8 shrink-0"
+                  )}
+                  data-company-dna-rates-cta
+                >
+                  {group.cta}
+                </Link>
+              ) : null}
               <Button
                 type="button"
                 variant="outline"
@@ -142,7 +165,7 @@ export function CompanyDnaRatesCompare({
                   }))
                 }
               >
-                {open ? "Hide" : group.cta}
+                {open ? "Hide" : group.generation === "v2c" ? "Show tasks" : group.cta}
               </Button>
             </div>
             {open ? (

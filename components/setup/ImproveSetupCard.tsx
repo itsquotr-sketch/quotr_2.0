@@ -29,6 +29,9 @@ export function ImproveSetupCard({
     hasAddress: readiness.hasAddress,
     hasLogo: readiness.hasLogo,
     hasTimezone: readiness.hasTimezone,
+    preferredWorkAreaTypes: readiness.preferredWorkAreaTypes,
+    deckKeyTasksCalibrated: readiness.deckKeyTasksCalibrated,
+    deckKeyTasksTotal: readiness.deckKeyTasksTotal,
   });
 
   if (!next) {

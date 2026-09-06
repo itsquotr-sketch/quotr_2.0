@@ -967,7 +967,17 @@ No extra estimate-time joins. Org rates already loaded per estimate. Catalogue i
 | **DNA-V2F** | Rates compact progress + Dashboard/setup copy + hosted proof | Prompts / Rates only |
 | **DNA-V2-EST-1** | Remaining estimator: optional pile machine/manual **key split**; optional Deck steps unit split. Fence demolition rates wiring **done in V2B**. | Calculator — **not** in C–F |
 
-Preferred next build: **DNA-V2C Deck UX** after DNA-V2B.1 review. Do not start V2C until reviewed.
+Preferred next build after DNA-V2C review: **DNA-V2D Fence UX**. Do not start V2D until reviewed.
+
+### DNA-V2C Deck UX
+
+**Status:** Deck-only task-level calibration. Fence/RW remain V1.
+
+- Unified save lookup: `resolveCompanyDnaTask` → foundation (V1 + seeded V2 keys)
+- Hours + minutes convert on the server with `durationHoursFromClock` before RPC
+- Deck UI order: posts → framing → decking → concrete → fascia → demolition → skirting
+- Completion: `companyDnaWorkAreaStatusV2` (3/3 Tier 1)
+- No migration 055
 
 Out of scope: Production, billing, quote acceptance, email, Dashboard **layout**, Rates **layout**, POLISH-01/02/03/03B, auth stability.
 
