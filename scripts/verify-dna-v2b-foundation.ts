@@ -267,7 +267,7 @@ check(
 
 const ratesSummary = summarizeProductivityWorkAreas([]);
 check(
-  "Rates DNA summary is Deck V2C + Fence V2D + RW V1",
+  "Rates DNA summary is Deck V2C + Fence V2D + RW V2E",
   ratesSummary.every((row) => {
     if (row.workAreaType === "deck") {
       return row.taskTotal === 7 && row.keyTaskTotal === 3 && row.generation === "v2c";
@@ -275,10 +275,7 @@ check(
     if (row.workAreaType === "fence") {
       return row.taskTotal === 9 && row.keyTaskTotal === 3 && row.generation === "v2d";
     }
-    const v1Count = COMPANY_DNA_TASKS.filter(
-      (task) => task.workAreaType === row.workAreaType
-    ).length;
-    return row.taskTotal === v1Count && row.generation === "v1";
+    return row.taskTotal === 15 && row.generation === "v2e";
   })
 );
 

@@ -3,7 +3,7 @@
  *
  * Run: npx --yes tsx scripts/verify-dna-v2d-fence-ux.ts
  *
- * No migration 055. RW V2 UI not exposed. Production not in scope.
+ * No migration 055. RW V2E UI is exposed. Production not in scope.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -250,9 +250,9 @@ check(
 );
 check("no steps in Fence UI", !fenceTasks.some((task) => task.calibrationTaskKey.includes("steps")));
 check(
-  "RW UI remains V1",
-  listCompanyDnaUiTasksForWorkArea("retaining_wall").length === 2 &&
-    !listCompanyDnaUiTasksForWorkArea("retaining_wall").some((task) =>
+  "RW UI is V2E 15 tasks",
+  listCompanyDnaUiTasksForWorkArea("retaining_wall").length === 15 &&
+    listCompanyDnaUiTasksForWorkArea("retaining_wall").some((task) =>
       task.calibrationTaskKey.includes("excavation")
     )
 );
@@ -411,7 +411,7 @@ check(
   "Rates Fence V2D 9/3",
   fenceRates?.taskTotal === 9 && fenceRates?.keyTaskTotal === 3 && fenceRates?.generation === "v2d"
 );
-check("Rates RW remains V1 2", rwRates?.taskTotal === 2 && rwRates?.generation === "v1");
+check("Rates RW is V2E 15", rwRates?.taskTotal === 15 && rwRates?.generation === "v2e");
 
 const fenceDash = formatDnaFenceDashboardCta(2);
 check("dashboard Fence remaining copy", fenceDash.cta.includes("2 more key Fence tasks"));
@@ -476,7 +476,11 @@ const continueExisting = resolvePersonalisationNextStep({
   hasLogo: false,
   preferredWorkAreaTypes: ["retaining_wall"],
 });
-check("RW-only ladder copy preserved", continueExisting?.cta === "Continue calibration");
+check(
+  "RW-only ladder uses Retaining V2E CTA",
+  continueExisting?.cta === "Improve your Retaining Wall estimates" &&
+    continueExisting.href === "/app/setup/dna/retaining-wall"
+);
 
 check("Owner can calibrate", roleAllowsPermission("owner", "company.calibration.manage"));
 check("Estimator can calibrate", roleAllowsPermission("estimator", "company.calibration.manage"));

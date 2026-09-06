@@ -28,22 +28,31 @@ import {
   DNA_RESET_CONFIRM_TITLE,
   DNA_RESET_CTA,
   deckV2TaskTitle,
+  formatDnaRwHubProgress,
 } from "@/lib/company-dna/copy";
 import {
   listCompanyDnaV2UiTasks,
   v2OptionalKeys,
 } from "@/lib/company-dna/v2-ui";
+import {
+  COMPANY_DNA_RW_SYSTEM_LABELS,
+  isCompanyDnaRwSharedTaskKey,
+  rwSystemOfTask,
+  rwTaskHref,
+  type CompanyDnaRwSystemProgress,
+} from "@/lib/company-dna/rw-v2";
 import { companyDnaWorkAreaStatusLabel } from "@/lib/company-dna/derive";
 import { cn } from "@/lib/utils";
 
 type CompanyDnaDeckSummaryProps = {
-  workAreaType?: "deck" | "fence";
+  workAreaType?: "deck" | "fence" | "retaining_wall";
   status: "benchmarks" | "partly" | "calibrated";
   tier1Calibrated: number;
   tier1Total: number;
   tasks: CompanyDnaTaskStatus[];
   nextOptionalHref: string | null;
   canCalibrate: boolean;
+  systemProgress?: CompanyDnaRwSystemProgress[];
 };
 
 export function CompanyDnaDeckSummary({
@@ -54,13 +63,20 @@ export function CompanyDnaDeckSummary({
   tasks,
   nextOptionalHref,
   canCalibrate,
+  systemProgress = [],
 }: CompanyDnaDeckSummaryProps) {
   const router = useRouter();
   const [resetting, setResetting] = useState<string | null>(null);
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
   const catalogue = listCompanyDnaV2UiTasks(workAreaType);
   const optionalCount = v2OptionalKeys(workAreaType).length;
-  const areaLabel = workAreaType === "fence" ? "Fence" : "Deck";
+  const areaLabel =
+    workAreaType === "fence"
+      ? "Fence"
+      : workAreaType === "retaining_wall"
+        ? "Retaining wall"
+        : "Deck";
+  const isRw = workAreaType === "retaining_wall";
   const evidence = new Map(
     tasks.map((task) => [task.calibrationTaskKey, task])
   );
@@ -77,19 +93,105 @@ export function CompanyDnaDeckSummary({
     <Card
       data-company-dna-deck-summary={workAreaType === "deck" ? "" : undefined}
       data-company-dna-fence-summary={workAreaType === "fence" ? "" : undefined}
+      data-company-dna-rw-summary={isRw ? "" : undefined}
       data-company-dna-v2-summary={workAreaType}
       className="mx-auto w-full max-w-xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"
     >
       <CardHeader>
         <CardTitle>{areaLabel} calibration</CardTitle>
         <CardDescription>
-          Key tasks: {tier1Calibrated} / {tier1Total} calibrated
+          {isRw && systemProgress.length > 0
+            ? formatDnaRwHubProgress({ systems: systemProgress })
+            : `Key tasks: ${tier1Calibrated} / ${tier1Total} calibrated`}
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-sm font-medium" data-company-dna-deck-summary-status>
           {companyDnaWorkAreaStatusLabel(status)}
         </p>
+        {isRw ? (
+          <div className="space-y-4">
+            {              (
+              [
+                ["shared", "Shared retaining tasks"],
+                ["timber", COMPANY_DNA_RW_SYSTEM_LABELS.timber],
+                ["sleeper", COMPANY_DNA_RW_SYSTEM_LABELS.sleeper],
+                ["masonry", COMPANY_DNA_RW_SYSTEM_LABELS.masonry],
+              ] as const
+            ).map(([group, heading]) => {
+              const groupTasks = catalogue.filter((task) => {
+                if (group === "shared") {
+                  return isCompanyDnaRwSharedTaskKey(task.calibrationTaskKey);
+                }
+                return rwSystemOfTask(task.calibrationTaskKey) === group;
+              });
+              if (groupTasks.length === 0) return null;
+              const systemRow =
+                group === "shared"
+                  ? null
+                  : systemProgress.find((item) => item.system === group);
+              return (
+                <div key={group} data-company-dna-rw-summary-group={group}>
+                  <p className="mb-2 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                    {heading}
+                    {systemRow
+                      ? ` · ${systemRow.tier1Calibrated} of ${systemRow.tier1Total} key tasks`
+                      : ""}
+                  </p>
+                  <ul className="space-y-2">
+                    {groupTasks.map((task) => {
+                      const row = evidence.get(task.calibrationTaskKey);
+                      const calibrated = Boolean(row?.calibrated);
+                      const system =
+                        group === "shared"
+                          ? "timber"
+                          : group;
+                      return (
+                        <li
+                          key={task.calibrationTaskKey}
+                          className="flex items-center justify-between gap-3 rounded-lg border px-3 py-2"
+                          data-company-dna-summary-task={task.calibrationTaskKey}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-medium">
+                              {deckV2TaskTitle(task.calibrationTaskKey, task.label)}
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              {calibrated ? "Your calibration" : "Quotr benchmark"}
+                            </p>
+                          </div>
+                          <div className="flex shrink-0 flex-wrap gap-1.5">
+                            <Link
+                              href={rwTaskHref(task.calibrationTaskKey, system)}
+                              className={cn(
+                                buttonVariants({ variant: "outline", size: "sm" }),
+                                "h-8"
+                              )}
+                            >
+                              Edit
+                            </Link>
+                            {calibrated && canCalibrate ? (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="sm"
+                                className="h-8"
+                                disabled={resetting === task.calibrationTaskKey}
+                                onClick={() => setConfirmKey(task.calibrationTaskKey)}
+                              >
+                                Reset
+                              </Button>
+                            ) : null}
+                          </div>
+                        </li>
+                      );
+                    })}
+                  </ul>
+                </div>
+              );
+            })}
+          </div>
+        ) : (
         <ul className="space-y-2">
           {catalogue.map((task) => {
             const row = evidence.get(task.calibrationTaskKey);
@@ -132,6 +234,7 @@ export function CompanyDnaDeckSummary({
             );
           })}
         </ul>
+        )}
         <div className="flex flex-col gap-2 sm:flex-row pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0">
           {nextOptionalHref ? (
             <Link

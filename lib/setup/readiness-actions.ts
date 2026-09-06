@@ -4,6 +4,10 @@ import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { orgHasHighImpactCalibration } from "@/lib/company-dna/progress";
 import { fenceV2ProgressCounts, deckV2ProgressCounts } from "@/lib/company-dna/v2-ui";
 import {
+  COMPANY_DNA_RW_TIMBER_TIER1_KEYS,
+  companyDnaRwWorkAreaStatus,
+} from "@/lib/company-dna/rw-v2";
+import {
   computeCompanySetupReadiness,
   type CompanySetupReadiness,
 } from "@/lib/setup/readiness";
@@ -32,6 +36,9 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       deckKeyTasksTotal: 3,
       fenceKeyTasksCalibrated: 0,
       fenceKeyTasksTotal: 3,
+      rwKeyTasksCalibrated: 0,
+      rwKeyTasksTotal: 3,
+      rwWorkAreaCalibrated: false,
       tradingName: null,
       legalName: null,
       contactEmail: null,
@@ -94,6 +101,9 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
   );
   const deckCounts = deckV2ProgressCounts(calibratedScenarioIds);
   const fenceCounts = fenceV2ProgressCounts(calibratedScenarioIds);
+  const rwTimberCalibrated = COMPANY_DNA_RW_TIMBER_TIER1_KEYS.filter((key) =>
+    calibratedScenarioIds.has(key)
+  ).length;
 
   return computeCompanySetupReadiness({
     accountReady: true,
@@ -130,5 +140,11 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     deckKeyTasksTotal: deckCounts.tier1Total,
     fenceKeyTasksCalibrated: fenceCounts.tier1Calibrated,
     fenceKeyTasksTotal: fenceCounts.tier1Total,
+    rwKeyTasksCalibrated: rwTimberCalibrated,
+    rwKeyTasksTotal: COMPANY_DNA_RW_TIMBER_TIER1_KEYS.length,
+    rwWorkAreaCalibrated:
+      companyDnaRwWorkAreaStatus({
+        calibratedTaskKeys: calibratedScenarioIds,
+      }) === "calibrated",
   });
 }

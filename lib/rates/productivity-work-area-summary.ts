@@ -9,9 +9,14 @@ import {
 } from "@/lib/company-dna/derive";
 import {
   companyDnaUiWorkAreaStatus,
+  companyDnaV2Generation,
   isCompanyDnaV2WorkArea,
   listCompanyDnaUiTasksForWorkArea,
 } from "@/lib/company-dna/v2-ui";
+import {
+  listRwSystemProgress,
+} from "@/lib/company-dna/rw-v2";
+import { formatDnaRwRatesSummary } from "@/lib/company-dna/copy";
 import { workAreaHubCta } from "@/lib/company-dna/progress";
 import type { RatesPageRate } from "@/lib/rates/types";
 
@@ -31,7 +36,8 @@ export type ProductivityWorkAreaSummary = {
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
   cta: string;
-  generation: "v1" | "v2c" | "v2d";
+  generation: "v1" | "v2c" | "v2d" | "v2e";
+  summaryLine?: string;
   tasks: ProductivityTaskRow[];
 };
 
@@ -68,19 +74,35 @@ export function summarizeProductivityWorkAreas(
       calibratedTaskKeys: calibratedKeys,
     });
     const v2 = isCompanyDnaV2WorkArea(workAreaType);
+    const systems =
+      workAreaType === "retaining_wall"
+        ? listRwSystemProgress(calibratedKeys)
+        : [];
+    const rwKeyTotal =
+      workAreaType === "retaining_wall"
+        ? systems.reduce((sum, row) => sum + row.tier1Total, 0)
+        : 0;
+    const rwKeyCalibrated =
+      workAreaType === "retaining_wall"
+        ? systems.reduce((sum, row) => sum + row.tier1Calibrated, 0)
+        : 0;
     const keyTaskTotal = v2
-      ? catalogueTasks.filter((task) => task.priorityTier === 1).length
+      ? workAreaType === "retaining_wall"
+        ? rwKeyTotal
+        : catalogueTasks.filter((task) => task.priorityTier === 1).length
       : catalogueTasks.filter((task) => task.isHighImpact).length;
     const keyTaskCalibrated = v2
-      ? catalogueTasks.filter(
-          (task) =>
-            task.priorityTier === 1 &&
-            tasks.some(
-              (row) =>
-                row.task.calibrationTaskKey === task.calibrationTaskKey &&
-                row.calibrated
-            )
-        ).length
+      ? workAreaType === "retaining_wall"
+        ? rwKeyCalibrated
+        : catalogueTasks.filter(
+            (task) =>
+              task.priorityTier === 1 &&
+              tasks.some(
+                (row) =>
+                  row.task.calibrationTaskKey === task.calibrationTaskKey &&
+                  row.calibrated
+              )
+          ).length
       : catalogueTasks.filter(
           (task) =>
             task.isHighImpact &&
@@ -104,11 +126,11 @@ export function summarizeProductivityWorkAreas(
           : companyDnaWorkAreaStatusLabel(status),
       cta:
         status === "calibrated" ? "View / Continue" : workAreaHubCta(status),
-      generation: v2
-        ? workAreaType === "fence"
-          ? ("v2d" as const)
-          : ("v2c" as const)
-        : ("v1" as const),
+      generation: companyDnaV2Generation(workAreaType),
+      summaryLine:
+        workAreaType === "retaining_wall"
+          ? formatDnaRwRatesSummary({ systems })
+          : undefined,
       tasks,
     };
   });

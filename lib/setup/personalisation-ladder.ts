@@ -51,6 +51,9 @@ export type PersonalisationLadderInput = {
   deckKeyTasksTotal?: number;
   fenceKeyTasksCalibrated?: number;
   fenceKeyTasksTotal?: number;
+  rwKeyTasksCalibrated?: number;
+  rwKeyTasksTotal?: number;
+  rwWorkAreaCalibrated?: boolean;
 };
 
 const WORK_STEP: PersonalisationStep = {
@@ -112,8 +115,11 @@ export function resolvePersonalisationNextStep(
   const deckCalibrated = input.deckKeyTasksCalibrated ?? 0;
   const fenceTotal = input.fenceKeyTasksTotal ?? 3;
   const fenceCalibrated = input.fenceKeyTasksCalibrated ?? 0;
+  const rwTotal = input.rwKeyTasksTotal ?? 3;
+  const rwCalibrated = input.rwKeyTasksCalibrated ?? 0;
   const prefersDeck = preferred.includes("deck");
   const prefersFence = preferred.includes("fence");
+  const prefersRw = preferred.includes("retaining_wall");
   const ordered = orderCompanyDnaWorkAreas(preferred);
   const nextV2Area = ordered.find((workArea) => {
     if (workArea === "deck" && prefersDeck && deckCalibrated < deckTotal) {
@@ -122,25 +128,51 @@ export function resolvePersonalisationNextStep(
     if (workArea === "fence" && prefersFence && fenceCalibrated < fenceTotal) {
       return true;
     }
+    if (
+      workArea === "retaining_wall" &&
+      prefersRw &&
+      !input.rwWorkAreaCalibrated &&
+      rwCalibrated < rwTotal
+    ) {
+      return true;
+    }
     return false;
   });
   const v2CalibrationComplete =
     (!prefersDeck || deckCalibrated >= deckTotal) &&
-    (!prefersFence || fenceCalibrated >= fenceTotal);
+    (!prefersFence || fenceCalibrated >= fenceTotal) &&
+    (!prefersRw || Boolean(input.rwWorkAreaCalibrated) || rwCalibrated >= rwTotal);
   const calibrationComplete =
-    prefersDeck || prefersFence
+    prefersDeck || prefersFence || prefersRw
       ? v2CalibrationComplete
       : (input.hasHighImpactCalibration ?? input.hasCalibration);
   if (!calibrationComplete) {
-    if (nextV2Area === "deck" || nextV2Area === "fence") {
+    if (
+      nextV2Area === "deck" ||
+      nextV2Area === "fence" ||
+      nextV2Area === "retaining_wall"
+    ) {
       const remaining =
         nextV2Area === "deck"
           ? Math.max(0, deckTotal - deckCalibrated)
-          : Math.max(0, fenceTotal - fenceCalibrated);
-      const total = nextV2Area === "deck" ? deckTotal : fenceTotal;
+          : nextV2Area === "fence"
+            ? Math.max(0, fenceTotal - fenceCalibrated)
+            : Math.max(0, rwTotal - rwCalibrated);
+      const total =
+        nextV2Area === "deck"
+          ? deckTotal
+          : nextV2Area === "fence"
+            ? fenceTotal
+            : rwTotal;
       const copy = formatDnaV2DashboardCta({
-        workAreaLabel: nextV2Area === "deck" ? "Deck" : "Fence",
+        workAreaLabel:
+          nextV2Area === "deck"
+            ? "Deck"
+            : nextV2Area === "fence"
+              ? "Fence"
+              : "Retaining Wall",
         remainingKeyTasks: remaining,
+        totalKeyTasks: total,
       });
       const landing = v2LandingPath(nextV2Area);
       return {

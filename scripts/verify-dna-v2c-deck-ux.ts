@@ -187,9 +187,9 @@ check(
   listCompanyDnaUiTasksForWorkArea("fence").length === 9
 );
 check(
-  "RW UI remains V1",
-  listCompanyDnaUiTasksForWorkArea("retaining_wall").length === 2 &&
-    !listCompanyDnaUiTasksForWorkArea("retaining_wall").some((task) =>
+  "RW UI is V2E 15 tasks",
+  listCompanyDnaUiTasksForWorkArea("retaining_wall").length === 15 &&
+    listCompanyDnaUiTasksForWorkArea("retaining_wall").some((task) =>
       task.calibrationTaskKey.includes("excavation")
     )
 );

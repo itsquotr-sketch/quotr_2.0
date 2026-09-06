@@ -32,6 +32,7 @@ export function formatDnaQuantityUnit(
 ): string {
   if (unit === "lm") return plural ? "lineal metres" : "lineal metre";
   if (unit === "m2") return "m²";
+  if (unit === "m3") return plural ? "cubic metres" : "cubic metre";
   if (unit === "bag") return plural ? "bags" : "bag";
   if (unit === "post") return plural ? "posts" : "post";
   if (unit === "gate") return plural ? "gates" : "gate";

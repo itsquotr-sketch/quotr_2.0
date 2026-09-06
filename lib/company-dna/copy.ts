@@ -136,6 +136,21 @@ export const DNA_FENCE_TIER1_COMPLETE_TITLE =
 export const DNA_FENCE_TIER1_COMPLETE_BODY =
   "You can keep refining other fence tasks now, or come back later.";
 
+export const DNA_RW_INTRO_TITLE =
+  "Calibrate how your team normally completes common retaining wall tasks.";
+
+export const DNA_RW_INTRO_BODY =
+  "We'll show you typical retaining wall work. Tell us how many workers you'd normally use and how long they'd take.";
+
+export const DNA_RW_NORMAL_CONDITIONS =
+  "Assume straightforward residential access, normal ground conditions and materials close to the work area.";
+
+export const DNA_RW_TIER1_COMPLETE_TITLE =
+  "Your timber retaining estimates are now using your key productivity.";
+
+export const DNA_RW_TIER1_COMPLETE_BODY =
+  "You can keep refining other retaining wall tasks now, or come back later.";
+
 export const DNA_SAVE_CONTINUE = "Save and continue";
 export const DNA_OUTLIER_YES = "Yes, use this";
 export const DNA_OUTLIER_BACK = "Go back";
@@ -148,6 +163,7 @@ export const DNA_RESET_CONFIRM_TITLE = "Use the Quotr benchmark?";
 export function formatDnaAuthorityUnitLabel(unit: string): string {
   if (unit === "lm") return "lineal metre";
   if (unit === "m2") return "m²";
+  if (unit === "m3") return "cubic metre";
   if (unit === "ea") return "each";
   if (unit === "bag") return "bag";
   if (unit === "post") return "post";
@@ -164,14 +180,28 @@ export function formatDnaPersonMinutesPerUnit(
   return `${minutes} person-minutes per ${formatDnaAuthorityUnitLabel(unit)}`;
 }
 
+export function formatDnaPersonHoursPerUnit(
+  productivityHoursPerUnit: number,
+  unit: string
+): string {
+  return `${formatDnaProductivityHours(productivityHoursPerUnit)} person-hours per ${formatDnaAuthorityUnitLabel(unit)}`;
+}
+
 export function formatDnaDeckResultPrimary(params: {
   productivityHoursPerUnit: number;
   unit: string;
 }): string {
-  return `Your crew normally allows about ${formatDnaPersonMinutesPerUnit(
-    params.productivityHoursPerUnit,
-    params.unit
-  )}.`;
+  const useHours = params.productivityHoursPerUnit >= 1.5;
+  const allowance = useHours
+    ? formatDnaPersonHoursPerUnit(
+        params.productivityHoursPerUnit,
+        params.unit
+      )
+    : formatDnaPersonMinutesPerUnit(
+        params.productivityHoursPerUnit,
+        params.unit
+      );
+  return `Your crew normally allows about ${allowance}.`;
 }
 
 export function formatDnaDeckResultComparison(params: {
@@ -208,7 +238,8 @@ export function formatDnaClockTimePerUnit(params: {
 }
 
 export function formatDnaHoursPerUnit(value: number, unit: string): string {
-  const displayUnit = unit === "m2" ? "m²" : unit;
+  const displayUnit =
+    unit === "m2" ? "m²" : unit === "m3" ? "m³" : unit;
   return `${formatDnaProductivityHours(value)} person-hours / ${displayUnit}`;
 }
 
@@ -233,6 +264,43 @@ export function dnaV2TaskTitle(taskKey: string, fallbackLabel: string): string {
   if (taskKey === "fence.capping.v1") return "Capping";
   if (taskKey === "fence.gate.v1") return "Gate";
   if (taskKey === "fence.demolition.v1") return "Demolition";
+  if (taskKey === "retaining_wall.excavation.machine.v1") {
+    return "Machine excavation";
+  }
+  if (taskKey === "retaining_wall.excavation.manual.v1") {
+    return "Manual excavation";
+  }
+  if (taskKey === "retaining_wall.piles.v1") {
+    return "Timber retaining piles (machine-assisted)";
+  }
+  if (taskKey === "retaining_wall.face.v1") {
+    return "Retaining wall face boards";
+  }
+  if (taskKey === "retaining_wall.drainage.v1") return "Drainage coil";
+  if (taskKey === "retaining_wall.backfill.v1") return "Drainage backfill";
+  if (taskKey === "retaining_wall.concrete.v1") {
+    return "Mix and place post-hole concrete";
+  }
+  if (taskKey === "retaining_wall.sleeper.posts.v1") {
+    return "Steel sleeper posts (machine-assisted)";
+  }
+  if (taskKey === "retaining_wall.sleeper.sleepers.v1") {
+    return "Concrete sleepers";
+  }
+  if (taskKey === "retaining_wall.masonry.subbase.v1") {
+    return "Prepare sub-base";
+  }
+  if (taskKey === "retaining_wall.masonry.footing.v1") {
+    return "Form and pour footing";
+  }
+  if (taskKey === "retaining_wall.masonry.rebar.v1") {
+    return "Install reinforcing";
+  }
+  if (taskKey === "retaining_wall.masonry.block.v1") return "Lay blockwork";
+  if (taskKey === "retaining_wall.masonry.core_fill.v1") return "Core fill";
+  if (taskKey === "retaining_wall.masonry.waterproof.v1") {
+    return "Waterproof the retaining face";
+  }
   return fallbackLabel;
 }
 
@@ -282,6 +350,36 @@ export function dnaV2ScenarioCopy(task: {
       return `Build and hang ${qty} timber fence gate — frame, hinges and latch. Palings stay on paling labour.`;
     case "fence.demolition.v1":
       return `Take down ${lm(qty)} of existing timber fence at the workface. Does not include skip-bin cartage, tip fees, or off-site disposal.`;
+    case "retaining_wall.excavation.machine.v1":
+      return `Excavate ${formatDnaScenarioMeasure(qty, "m3")} using a small excavator. This is your crew's labour attending the machine — not the plant hire cost. Do not include hand digging, pile holes, or spoil cartage.`;
+    case "retaining_wall.excavation.manual.v1":
+      return `Hand-dig ${formatDnaScenarioMeasure(qty, "m3")} when a digger cannot reach the workface. This is manual excavation — not machine excavation.`;
+    case "retaining_wall.piles.v1":
+      return `Install ${qty} timber retaining piles with machine-assisted / accessible access. Include set-out, attending the machine-dug hole, placing, aligning and plumbing. Do not include mixing concrete, bulk excavation, or mini-excavator hire. This does not apply to hand-dug or fully manual pile installation.`;
+    case "retaining_wall.face.v1":
+      return `Install retaining wall face boards / timber facing for ${formatDnaScenarioMeasure(qty, "m2")}. Piles already in. Do not include piles, drainage, or bulk excavation.`;
+    case "retaining_wall.drainage.v1":
+      return `Lay ${lm(qty)} of drainage coil (novacoil) behind the wall. Include joining and positioning. Do not include drainage metal, bulk excavation, or plant.`;
+    case "retaining_wall.backfill.v1":
+      return `Place, spread and basically consolidate ${formatDnaScenarioMeasure(qty, "m3")} of drainage metal. Does not include laying coil, bulk excavation, plate-compactor hire, or spoil haulage.`;
+    case "retaining_wall.concrete.v1":
+      return `Mix and place ${qty} bags of post-hole concrete, with piles or posts already set. Labour only — not the bag price, and not pile or post installation.`;
+    case "retaining_wall.sleeper.posts.v1":
+      return `Install ${qty} steel sleeper posts with machine-assisted / accessible access. Include set-out, attending the machine hole, placing, aligning and plumbing. Do not include sleeper install, mixing concrete, or mini-excavator hire. This does not apply to fully manual post installation.`;
+    case "retaining_wall.sleeper.sleepers.v1":
+      return `Set ${qty} concrete sleepers once the steel posts are in. Lift, slot, pack and level. Do not include post installation, concrete, or drainage.`;
+    case "retaining_wall.masonry.subbase.v1":
+      return `Place and compact ${formatDnaScenarioMeasure(qty, "m2")} of masonry footing sub-base. Trench already prepared. Do not include bulk excavation or pouring the footing.`;
+    case "retaining_wall.masonry.footing.v1":
+      return `Form and pour ${formatDnaScenarioMeasure(qty, "m3")} of masonry strip-footing concrete. Place, level and consolidate. This is not bagged post-hole concrete.`;
+    case "retaining_wall.masonry.rebar.v1":
+      return `Install ${lm(qty)} of stated masonry reinforcing. Do not invent a bar schedule.`;
+    case "retaining_wall.masonry.block.v1":
+      return `Lay ${formatDnaScenarioMeasure(qty, "m2")} of masonry retaining blockwork — self-perform, not a subcontractor. Do not include core fill, waterproofing, or the footing.`;
+    case "retaining_wall.masonry.core_fill.v1":
+      return `Core fill ${formatDnaScenarioMeasure(qty, "m3")} of grout once the blocks are laid. Do not include laying blockwork.`;
+    case "retaining_wall.masonry.waterproof.v1":
+      return `Waterproof ${formatDnaScenarioMeasure(qty, "m2")} of the retaining-side masonry face — self-perform. Do not include drainage metal or novacoil.`;
     default:
       return `Typical quantity: ${formatDnaScenarioMeasure(qty, task.authorityUnit)}.`;
   }
@@ -335,12 +433,14 @@ export function formatDnaDeckProgressIndicator(params: {
 export function formatDnaV2DashboardCta(params: {
   workAreaLabel: string;
   remainingKeyTasks: number;
+  totalKeyTasks?: number;
 }): {
   title: string;
   reason: string;
   cta: string;
 } {
   const area = params.workAreaLabel;
+  const total = params.totalKeyTasks ?? 3;
   if (params.remainingKeyTasks <= 0) {
     return {
       title: `Your ${area} estimates use your key productivity`,
@@ -348,7 +448,7 @@ export function formatDnaV2DashboardCta(params: {
       cta: `Review ${area} calibration`,
     };
   }
-  if (params.remainingKeyTasks === 3) {
+  if (params.remainingKeyTasks === total) {
     return {
       title: `Improve your ${area} estimates`,
       reason: `Tell Quotr how your crew normally completes a few common ${area.toLowerCase()} tasks.`,
@@ -386,7 +486,60 @@ export function formatDnaFenceDashboardCta(remainingKeyTasks: number): {
   });
 }
 
-export function dnaV2CompleteCopy(workAreaType: string): {
+export function formatDnaRwDashboardCta(params: {
+  remainingKeyTasks: number;
+  totalKeyTasks?: number;
+}): {
+  title: string;
+  reason: string;
+  cta: string;
+} {
+  return formatDnaV2DashboardCta({
+    workAreaLabel: "Retaining Wall",
+    remainingKeyTasks: params.remainingKeyTasks,
+    totalKeyTasks: params.totalKeyTasks,
+  });
+}
+
+export function formatDnaRwHubProgress(params: {
+  systems: ReadonlyArray<{
+    label: string;
+    status: "benchmarks" | "partly" | "calibrated";
+    tier1Calibrated: number;
+    tier1Total: number;
+  }>;
+}): string {
+  const complete = params.systems.filter((row) => row.status === "calibrated");
+  const remaining = params.systems.filter((row) => row.status !== "calibrated");
+  if (complete.length === params.systems.length) {
+    return "Timber, sleeper and masonry key tasks calibrated";
+  }
+  if (complete.length > 0) {
+    const names = complete.map((row) => row.label).join(", ");
+    const still = remaining.map((row) => row.label.toLowerCase()).join(" and ");
+    return `${names} retaining is calibrated · ${still} still use Quotr benchmarks`;
+  }
+  const next = params.systems.find((row) => row.tier1Calibrated > 0) ?? params.systems[0];
+  if (!next) return "Not calibrated";
+  return `${next.tier1Calibrated} of ${next.tier1Total} ${next.label.toLowerCase()} key tasks calibrated`;
+}
+
+export function formatDnaRwRatesSummary(params: {
+  systems: ReadonlyArray<{
+    label: string;
+    tier1Calibrated: number;
+    tier1Total: number;
+  }>;
+}): string {
+  return params.systems
+    .map((row) => `${row.label} ${row.tier1Calibrated}/${row.tier1Total}`)
+    .join(" · ");
+}
+
+export function dnaV2CompleteCopy(
+  workAreaType: string,
+  system?: string | null
+): {
   title: string;
   body: string;
 } {
@@ -394,6 +547,24 @@ export function dnaV2CompleteCopy(workAreaType: string): {
     return {
       title: DNA_FENCE_TIER1_COMPLETE_TITLE,
       body: DNA_FENCE_TIER1_COMPLETE_BODY,
+    };
+  }
+  if (workAreaType === "retaining_wall") {
+    if (system === "sleeper") {
+      return {
+        title: "Your sleeper retaining estimates are now using your key productivity.",
+        body: DNA_RW_TIER1_COMPLETE_BODY,
+      };
+    }
+    if (system === "masonry") {
+      return {
+        title: "Your masonry retaining estimates are now using your key productivity.",
+        body: DNA_RW_TIER1_COMPLETE_BODY,
+      };
+    }
+    return {
+      title: DNA_RW_TIER1_COMPLETE_TITLE,
+      body: DNA_RW_TIER1_COMPLETE_BODY,
     };
   }
   return {

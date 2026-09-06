@@ -13,11 +13,14 @@ import {
 } from "@/lib/company-dna/derive";
 import {
   companyDnaUiWorkAreaStatus,
+  companyDnaV2Generation,
   isCompanyDnaV2WorkArea,
   listCompanyDnaUiTasksForWorkArea,
   v2ProgressCounts,
 } from "@/lib/company-dna/v2-ui";
 import { resolveCompanyDnaTask } from "@/lib/company-dna/resolve-task";
+import { listRwSystemProgress } from "@/lib/company-dna/rw-v2";
+import { formatDnaRwHubProgress } from "@/lib/company-dna/copy";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 
@@ -39,7 +42,8 @@ export type CompanyDnaWorkAreaProgress = {
   highImpactTotal: number;
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
-  generation: "v1" | "v2c" | "v2d";
+  generation: "v1" | "v2c" | "v2d" | "v2e";
+  progressDetail?: string;
   tasks: CompanyDnaTaskStatus[];
 };
 
@@ -188,11 +192,20 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
     const v2Counts = isCompanyDnaV2WorkArea(workAreaType)
       ? v2ProgressCounts(workAreaType, calibratedKeys)
       : null;
+    const systems =
+      workAreaType === "retaining_wall"
+        ? listRwSystemProgress(calibratedKeys)
+        : [];
+    const timber = systems.find((row) => row.system === "timber");
     const highImpactTotal = v2Counts
-      ? v2Counts.tier1Total
+      ? workAreaType === "retaining_wall"
+        ? timber?.tier1Total ?? 3
+        : v2Counts.tier1Total
       : tasks.filter((task) => task.isHighImpact).length;
     const highImpactCalibrated = v2Counts
-      ? v2Counts.tier1Calibrated
+      ? workAreaType === "retaining_wall"
+        ? timber?.tier1Calibrated ?? 0
+        : v2Counts.tier1Calibrated
       : tasks.filter(
           (task) =>
             task.isHighImpact &&
@@ -216,11 +229,11 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
       highImpactTotal,
       status,
       statusLabel: companyDnaWorkAreaStatusLabel(status),
-      generation: isCompanyDnaV2WorkArea(workAreaType)
-        ? workAreaType === "fence"
-          ? ("v2d" as const)
-          : ("v2c" as const)
-        : ("v1" as const),
+      generation: companyDnaV2Generation(workAreaType),
+      progressDetail:
+        workAreaType === "retaining_wall"
+          ? formatDnaRwHubProgress({ systems })
+          : undefined,
       tasks: taskStatuses,
     };
   });

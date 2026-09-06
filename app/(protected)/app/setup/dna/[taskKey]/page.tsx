@@ -13,27 +13,36 @@ import {
   v2OptionalKeys,
   v2ProgressCounts,
 } from "@/lib/company-dna/v2-ui";
+import {
+  parseCompanyDnaRwSystem,
+  rwDefaultSystemForTask,
+  rwOptionalKeysForSystem,
+  rwSystemProgress,
+  rwSystemTier1Keys,
+} from "@/lib/company-dna/rw-v2";
 import { createClient } from "@/lib/supabase/server";
 import { needsCompanyBasics } from "@/lib/setup/actions";
 
 type PageProps = {
   params: Promise<{ taskKey: string }>;
+  searchParams: Promise<{ system?: string }>;
 };
 
-export default async function CompanyDnaTaskPage({ params }: PageProps) {
+export default async function CompanyDnaTaskPage({
+  params,
+  searchParams,
+}: PageProps) {
   if (await needsCompanyBasics()) {
     redirect("/app/setup?mode=basics");
   }
 
   const { taskKey } = await params;
+  const query = await searchParams;
   const decoded = decodeURIComponent(taskKey);
   const task = resolveCompanyDnaTask(decoded);
   if (!task) notFound();
   const v2 = isCompanyDnaV2TaskKey(task.calibrationTaskKey);
   if (!v2 && !task.exposeInCurrentUi) {
-    notFound();
-  }
-  if (task.workAreaType === "retaining_wall" && !task.exposeInCurrentUi) {
     notFound();
   }
 
@@ -64,8 +73,18 @@ export default async function CompanyDnaTaskPage({ params }: PageProps) {
     area?.tasks
       .filter((status) => status.calibrated)
       .map((status) => status.calibrationTaskKey) ?? [];
+  const rwSystem =
+    task.workAreaType === "retaining_wall"
+      ? parseCompanyDnaRwSystem(query.system) ??
+        rwDefaultSystemForTask(task.calibrationTaskKey)
+      : null;
   const counts = v2ProgressCounts(task.workAreaType, areaKeys);
-  const optionalKeys = v2OptionalKeys(task.workAreaType);
+  const systemProgress =
+    rwSystem != null ? rwSystemProgress(rwSystem, areaKeys) : null;
+  const optionalKeys =
+    rwSystem != null
+      ? rwOptionalKeysForSystem(rwSystem)
+      : v2OptionalKeys(task.workAreaType);
   const v1NextTask = nextCompanyDnaTaskAcrossHub({
     orderedWorkAreaTypes: hub.orderedWorkAreas,
     calibratedTaskKeys: calibratedKeys,
@@ -76,6 +95,7 @@ export default async function CompanyDnaTaskPage({ params }: PageProps) {
         workAreaType: task.workAreaType,
         calibratedTaskKeys: areaKeys,
         currentTaskKey: task.calibrationTaskKey,
+        system: rwSystem,
       })
     : null;
   const nextTask = remainingAfterSave;
@@ -83,16 +103,24 @@ export default async function CompanyDnaTaskPage({ params }: PageProps) {
     1,
     optionalKeys.findIndex((key) => key === task.calibrationTaskKey) + 1
   );
+  const tier1Total =
+    systemProgress?.tier1Total ?? counts.tier1Total;
+  const tier1Calibrated =
+    systemProgress?.tier1Calibrated ?? counts.tier1Calibrated;
   const completesTier1 =
     v2 &&
-    task.priorityTier === 1 &&
-    counts.tier1Calibrated + (alreadyCalibrated ? 0 : 1) >= counts.tier1Total;
+    (rwSystem
+      ? rwSystemTier1Keys(rwSystem).includes(task.calibrationTaskKey)
+      : task.priorityTier === 1) &&
+    tier1Calibrated + (alreadyCalibrated ? 0 : 1) >= tier1Total;
   const areaLabel =
     task.workAreaType === "fence"
       ? "Fence"
       : task.workAreaType === "deck"
         ? "Deck"
-        : "Calibrate how you work";
+        : task.workAreaType === "retaining_wall"
+          ? "Retaining wall"
+          : "Calibrate how you work";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -121,11 +149,12 @@ export default async function CompanyDnaTaskPage({ params }: PageProps) {
             nextTask={nextTask}
             remainingAfterSave={remainingAfterSave}
             completesTier1={Boolean(completesTier1)}
-            tier1Calibrated={counts.tier1Calibrated}
-            tier1Total={counts.tier1Total}
+            tier1Calibrated={tier1Calibrated}
+            tier1Total={tier1Total}
             optionalIndex={optionalIndex}
             optionalTotal={optionalKeys.length}
             includedCopy={task.workIncluded}
+            system={rwSystem}
           />
         ) : (
           <CompanyDnaTaskFlow

@@ -19,6 +19,7 @@ import {
   nextCompanyDnaV2Task,
   v2HubHref,
 } from "@/lib/company-dna/v2-ui";
+import { rwAllSystemsCalibrated } from "@/lib/company-dna/rw-v2";
 import { nextCompanyDnaTask, workAreaHubCta } from "@/lib/company-dna/progress";
 import { cn } from "@/lib/utils";
 
@@ -74,7 +75,14 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
                 ? `/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`
                 : `/app/setup/dna/${encodeURIComponent(area.tasks[0]?.calibrationTaskKey ?? "")}`;
             const cta = workAreaHubCta(area.status);
-            const compact = area.status === "calibrated";
+            const compact =
+              area.status === "calibrated" &&
+              (area.workAreaType !== "retaining_wall" ||
+                rwAllSystemsCalibrated(
+                  area.tasks
+                    .filter((status) => status.calibrated)
+                    .map((status) => status.calibrationTaskKey)
+                ));
             return (
               <li
                 key={area.workAreaType}
@@ -95,7 +103,7 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
                     <p className="text-xs text-muted-foreground">
                       {compact
                         ? area.statusLabel
-                        : formatDnaProgressCopy(area)}
+                        : area.progressDetail ?? formatDnaProgressCopy(area)}
                       {preferred ? " · Common for your company" : ""}
                     </p>
                   </div>

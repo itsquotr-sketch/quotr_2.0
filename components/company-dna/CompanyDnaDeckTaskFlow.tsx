@@ -27,8 +27,6 @@ import {
 } from "@/lib/company-dna/actions";
 import {
   DNA_CREW_HELPER,
-  DNA_DECK_TIER1_COMPLETE_BODY,
-  DNA_DECK_TIER1_COMPLETE_TITLE,
   DNA_DONE,
   DNA_KEEP_REFINING,
   DNA_OUTLIER_BACK,
@@ -52,6 +50,11 @@ import {
   formatDnaV2ProgressIndicator,
 } from "@/lib/company-dna/copy";
 import { v2LandingPath } from "@/lib/company-dna/v2-ui";
+import {
+  parseCompanyDnaRwSystem,
+  rwDefaultSystemForTask,
+  rwTaskHref,
+} from "@/lib/company-dna/rw-v2";
 import type { CompanyDnaFoundationTask } from "@/lib/company-dna/v2-foundation";
 import {
   clockFromDurationHours,
@@ -80,6 +83,7 @@ type CompanyDnaDeckTaskFlowProps = {
   optionalIndex: number;
   optionalTotal: number;
   includedCopy: string;
+  system?: string | null;
 };
 
 export function CompanyDnaDeckTaskFlow({
@@ -94,6 +98,7 @@ export function CompanyDnaDeckTaskFlow({
   optionalIndex,
   optionalTotal,
   includedCopy,
+  system,
 }: CompanyDnaDeckTaskFlowProps) {
   const router = useRouter();
   const existingClock =
@@ -189,9 +194,16 @@ export function CompanyDnaDeckTaskFlow({
     savedProductivity ??
     (evidence.calibrated ? evidence.derivedProductivity : null);
   const landing = v2LandingPath(task.workAreaType);
-  const completeCopy = dnaV2CompleteCopy(task.workAreaType);
+  const completeCopy = dnaV2CompleteCopy(task.workAreaType, system);
+  const rwSystem =
+    task.workAreaType === "retaining_wall"
+      ? parseCompanyDnaRwSystem(system) ??
+        rwDefaultSystemForTask(task.calibrationTaskKey)
+      : null;
   const nextHref = remainingAfterSave
-    ? `/app/setup/dna/${encodeURIComponent(remainingAfterSave.calibrationTaskKey)}`
+    ? rwSystem
+      ? rwTaskHref(remainingAfterSave.calibrationTaskKey, rwSystem)
+      : `/app/setup/dna/${encodeURIComponent(remainingAfterSave.calibrationTaskKey)}`
     : `${landing}?view=summary`;
   const progressCopy =
     task.workAreaType === "fence"
@@ -203,7 +215,21 @@ export function CompanyDnaDeckTaskFlow({
           optionalTotal,
           currentIsTier1,
         })
-      : formatDnaDeckProgressIndicator({
+      : task.workAreaType === "retaining_wall"
+        ? formatDnaV2ProgressIndicator({
+            workAreaLabel:
+              rwSystem === "sleeper"
+                ? "Sleeper retaining"
+                : rwSystem === "masonry"
+                  ? "Masonry retaining"
+                  : "Timber retaining",
+            tier1Calibrated,
+            tier1Total,
+            optionalIndex,
+            optionalTotal,
+            currentIsTier1,
+          })
+        : formatDnaDeckProgressIndicator({
           tier1Calibrated,
           tier1Total,
           optionalIndex,
@@ -219,6 +245,11 @@ export function CompanyDnaDeckTaskFlow({
       }
       data-company-dna-fence-task={
         task.workAreaType === "fence" ? task.calibrationTaskKey : undefined
+      }
+      data-company-dna-rw-task={
+        task.workAreaType === "retaining_wall"
+          ? task.calibrationTaskKey
+          : undefined
       }
       data-company-dna-v2-task={task.calibrationTaskKey}
       className="mx-auto w-full max-w-xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"
@@ -353,9 +384,13 @@ export function CompanyDnaDeckTaskFlow({
               ) : null}
               {!currentIsTier1 ? (
                 <Link
-                  href={nextTask
-                    ? `/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`
-                    : `${landing}?view=summary`}
+                  href={
+                    nextTask
+                      ? rwSystem
+                        ? rwTaskHref(nextTask.calibrationTaskKey, rwSystem)
+                        : `/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`
+                      : `${landing}?view=summary`
+                  }
                   className={cn(buttonVariants({ variant: "ghost" }), "min-h-11")}
                   data-company-dna-skip
                 >
@@ -424,14 +459,10 @@ export function CompanyDnaDeckTaskFlow({
         {view === "complete" ? (
           <div className="space-y-3" data-company-dna-deck-complete>
             <p className="text-base font-medium">
-              {task.workAreaType === "fence"
-                ? completeCopy.title
-                : DNA_DECK_TIER1_COMPLETE_TITLE}
+              {completeCopy.title}
             </p>
             <p className="text-sm text-muted-foreground">
-              {task.workAreaType === "fence"
-                ? completeCopy.body
-                : DNA_DECK_TIER1_COMPLETE_BODY}
+              {completeCopy.body}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0">
               <Link
@@ -443,7 +474,16 @@ export function CompanyDnaDeckTaskFlow({
               </Link>
               {remainingAfterSave ? (
                 <Link
-                  href={`/app/setup/dna/${encodeURIComponent(remainingAfterSave.calibrationTaskKey)}`}
+                  href={
+                    remainingAfterSave
+                      ? rwSystem
+                        ? rwTaskHref(
+                            remainingAfterSave.calibrationTaskKey,
+                            rwSystem
+                          )
+                        : `/app/setup/dna/${encodeURIComponent(remainingAfterSave.calibrationTaskKey)}`
+                      : `${landing}?view=summary`
+                  }
                   className={cn(buttonVariants({ variant: "outline" }), "min-h-11")}
                   data-company-dna-keep-refining
                 >

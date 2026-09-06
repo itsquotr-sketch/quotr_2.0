@@ -61,6 +61,9 @@ export type CompanySetupReadiness = {
   deckKeyTasksTotal: number;
   fenceKeyTasksCalibrated: number;
   fenceKeyTasksTotal: number;
+  rwKeyTasksCalibrated: number;
+  rwKeyTasksTotal: number;
+  rwWorkAreaCalibrated: boolean;
 };
 
 export type CompanySetupReadinessInput = {
@@ -91,6 +94,9 @@ export type CompanySetupReadinessInput = {
   deckKeyTasksTotal?: number;
   fenceKeyTasksCalibrated?: number;
   fenceKeyTasksTotal?: number;
+  rwKeyTasksCalibrated?: number;
+  rwKeyTasksTotal?: number;
+  rwWorkAreaCalibrated?: boolean;
   tradingName: string | null;
   legalName: string | null;
   contactEmail: string | null;
@@ -357,5 +363,8 @@ export function computeCompanySetupReadiness(
     deckKeyTasksTotal: input.deckKeyTasksTotal ?? 3,
     fenceKeyTasksCalibrated: input.fenceKeyTasksCalibrated ?? 0,
     fenceKeyTasksTotal: input.fenceKeyTasksTotal ?? 3,
+    rwKeyTasksCalibrated: input.rwKeyTasksCalibrated ?? 0,
+    rwKeyTasksTotal: input.rwKeyTasksTotal ?? 3,
+    rwWorkAreaCalibrated: Boolean(input.rwWorkAreaCalibrated),
   };
 }

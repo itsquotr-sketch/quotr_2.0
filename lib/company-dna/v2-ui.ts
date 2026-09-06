@@ -1,8 +1,7 @@
 /**
- * DNA-V2C/V2D — Work Area V2 UI exposure.
+ * DNA-V2C/V2D/V2E — Work Area V2 UI exposure.
  *
- * Deck and Fence use the V2 task-level experience.
- * Retaining Wall stays on V1 `COMPANY_DNA_TASKS`.
+ * Deck, Fence, and Retaining Wall use the V2 task-level experience.
  * Foundation `exposeInCurrentUi` is unchanged (new rows remain false).
  */
 import {
@@ -19,8 +18,23 @@ import {
   listCompanyDnaTasksVisibleInCurrentUi,
   type CompanyDnaFoundationTask,
 } from "@/lib/company-dna/v2-foundation";
+import {
+  COMPANY_DNA_RW_V2_UI_KEYS,
+  companyDnaRwWorkAreaStatus,
+  isCompanyDnaRwV2TaskKey,
+  listCompanyDnaRwV2UiTasks,
+  nextCompanyDnaRwV2Task,
+  parseCompanyDnaRwSystem,
+  rwOptionalKeysForSystem,
+  rwProgressCounts,
+  type CompanyDnaRwSystem,
+} from "@/lib/company-dna/rw-v2";
 
-export const COMPANY_DNA_V2_UI_WORK_AREAS = ["deck", "fence"] as const;
+export const COMPANY_DNA_V2_UI_WORK_AREAS = [
+  "deck",
+  "fence",
+  "retaining_wall",
+] as const;
 
 export type CompanyDnaV2UiWorkArea =
   (typeof COMPANY_DNA_V2_UI_WORK_AREAS)[number];
@@ -78,12 +92,17 @@ export const COMPANY_DNA_FENCE_OPTIONAL_KEYS = [
 const KEYS_BY_AREA: Record<CompanyDnaV2UiWorkArea, readonly string[]> = {
   deck: COMPANY_DNA_DECK_V2_UI_KEYS,
   fence: COMPANY_DNA_FENCE_V2_UI_KEYS,
+  retaining_wall: COMPANY_DNA_RW_V2_UI_KEYS,
 };
 
 export function isCompanyDnaV2WorkArea(
   workAreaType: string
 ): workAreaType is CompanyDnaV2UiWorkArea {
-  return workAreaType === "deck" || workAreaType === "fence";
+  return (
+    workAreaType === "deck" ||
+    workAreaType === "fence" ||
+    workAreaType === "retaining_wall"
+  );
 }
 
 export function isCompanyDnaDeckV2WorkArea(workAreaType: string): boolean {
@@ -92,6 +111,10 @@ export function isCompanyDnaDeckV2WorkArea(workAreaType: string): boolean {
 
 export function isCompanyDnaFenceV2WorkArea(workAreaType: string): boolean {
   return workAreaType === "fence";
+}
+
+export function isCompanyDnaRwV2WorkArea(workAreaType: string): boolean {
+  return workAreaType === "retaining_wall";
 }
 
 function tasksForKeys(keys: readonly string[], label: string): CompanyDnaFoundationTask[] {
@@ -117,6 +140,7 @@ export function listCompanyDnaV2UiTasks(
 ): CompanyDnaFoundationTask[] {
   if (workAreaType === "deck") return listCompanyDnaDeckV2UiTasks();
   if (workAreaType === "fence") return listCompanyDnaFenceV2UiTasks();
+  if (workAreaType === "retaining_wall") return listCompanyDnaRwV2UiTasks();
   return [];
 }
 
@@ -134,6 +158,11 @@ export function companyDnaUiWorkAreaStatus(params: {
   calibratedTaskKeys: Iterable<string>;
 }): "benchmarks" | "partly" | "calibrated" {
   const calibrated = new Set(params.calibratedTaskKeys);
+  if (params.workAreaType === "retaining_wall") {
+    return companyDnaRwWorkAreaStatus({
+      calibratedTaskKeys: calibrated,
+    });
+  }
   if (isCompanyDnaV2WorkArea(params.workAreaType)) {
     const tier1 = listCompanyDnaTier1Tasks(params.workAreaType);
     return companyDnaWorkAreaStatusV2({
@@ -165,7 +194,17 @@ export function nextCompanyDnaV2Task(params: {
   workAreaType: string;
   calibratedTaskKeys: Iterable<string>;
   currentTaskKey?: string;
+  system?: CompanyDnaRwSystem | string | null;
 }): CompanyDnaFoundationTask | null {
+  if (params.workAreaType === "retaining_wall") {
+    return nextCompanyDnaRwV2Task({
+      calibratedTaskKeys: params.calibratedTaskKeys,
+      currentTaskKey: params.currentTaskKey,
+      system: parseCompanyDnaRwSystem(
+        typeof params.system === "string" ? params.system : null
+      ),
+    });
+  }
   const calibrated = new Set(params.calibratedTaskKeys);
   if (params.currentTaskKey) calibrated.add(params.currentTaskKey);
   const tasks = listCompanyDnaV2UiTasks(params.workAreaType);
@@ -201,6 +240,9 @@ export function v2ProgressCounts(
   calibratedCount: number;
   taskTotal: number;
 } {
+  if (workAreaType === "retaining_wall") {
+    return rwProgressCounts(calibratedTaskKeys);
+  }
   const calibrated = new Set(calibratedTaskKeys);
   const tasks = listCompanyDnaV2UiTasks(workAreaType);
   const tier1 = tasks.filter((task) => task.priorityTier === 1);
@@ -229,10 +271,15 @@ export function fenceV2ProgressCounts(calibratedTaskKeys: Iterable<string>) {
   return v2ProgressCounts("fence", calibratedTaskKeys);
 }
 
+export function rwV2ProgressCounts(calibratedTaskKeys: Iterable<string>) {
+  return v2ProgressCounts("retaining_wall", calibratedTaskKeys);
+}
+
 export function isCompanyDnaV2TaskKey(taskKey: string): boolean {
   return (
     (COMPANY_DNA_DECK_V2_UI_KEYS as readonly string[]).includes(taskKey) ||
-    (COMPANY_DNA_FENCE_V2_UI_KEYS as readonly string[]).includes(taskKey)
+    (COMPANY_DNA_FENCE_V2_UI_KEYS as readonly string[]).includes(taskKey) ||
+    isCompanyDnaRwV2TaskKey(taskKey)
   );
 }
 
@@ -246,6 +293,7 @@ export function isCompanyDnaFenceV2TaskKey(taskKey: string): boolean {
 
 export function v2LandingPath(workAreaType: string): string {
   if (workAreaType === "fence") return "/app/setup/dna/fence";
+  if (workAreaType === "retaining_wall") return "/app/setup/dna/retaining-wall";
   return "/app/setup/dna/deck";
 }
 
@@ -281,15 +329,24 @@ export function workAreaUsesCompanyDnaV2Ui(
   return isCompanyDnaV2WorkArea(workAreaType);
 }
 
+export type CompanyDnaV2Generation = "v1" | "v2c" | "v2d" | "v2e";
+
 export function companyDnaV2Generation(
   workAreaType: string
-): "v1" | "v2c" | "v2d" {
+): CompanyDnaV2Generation {
   if (workAreaType === "deck") return "v2c";
   if (workAreaType === "fence") return "v2d";
+  if (workAreaType === "retaining_wall") return "v2e";
   return "v1";
 }
 
-export function v2OptionalKeys(workAreaType: string): readonly string[] {
+export function v2OptionalKeys(
+  workAreaType: string,
+  system?: CompanyDnaRwSystem | null
+): readonly string[] {
+  if (workAreaType === "retaining_wall") {
+    return rwOptionalKeysForSystem(system ?? "timber");
+  }
   if (workAreaType === "fence") return COMPANY_DNA_FENCE_OPTIONAL_KEYS;
   return COMPANY_DNA_DECK_OPTIONAL_KEYS;
 }

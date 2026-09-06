@@ -128,7 +128,9 @@ export function CompanyDnaRatesCompare({
               <div className="min-w-0 flex-1">
                 <p className="text-sm font-medium">{group.label}</p>
                 <p className="text-xs text-muted-foreground">
-                  {group.keyTaskTotal > 0
+                  {group.summaryLine
+                    ? group.summaryLine
+                    : group.keyTaskTotal > 0
                     ? `${group.keyTaskCalibrated} of ${group.keyTaskTotal} key tasks calibrated`
                     : `${group.calibratedCount} of ${group.taskTotal} tasks calibrated`}
                 </p>

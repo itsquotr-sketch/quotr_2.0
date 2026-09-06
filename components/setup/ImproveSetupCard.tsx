@@ -34,6 +34,9 @@ export function ImproveSetupCard({
     deckKeyTasksTotal: readiness.deckKeyTasksTotal,
     fenceKeyTasksCalibrated: readiness.fenceKeyTasksCalibrated,
     fenceKeyTasksTotal: readiness.fenceKeyTasksTotal,
+    rwKeyTasksCalibrated: readiness.rwKeyTasksCalibrated,
+    rwKeyTasksTotal: readiness.rwKeyTasksTotal,
+    rwWorkAreaCalibrated: readiness.rwWorkAreaCalibrated,
   });
 
   if (!next) {

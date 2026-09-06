@@ -184,14 +184,11 @@ check("no admin password mutation", !sql.includes("updateUserById") && !actions.
 check("V1 live catalogue still 9", COMPANY_DNA_TASKS.length === 9);
 check("current UI still 9", listCompanyDnaTasksVisibleInCurrentUi().length === 9);
 check(
-  "Rates Deck V2C, Fence V2D, RW V1",
+  "Rates Deck V2C, Fence V2D, RW V2E",
   summarizeProductivityWorkAreas([]).every((row) => {
     if (row.workAreaType === "deck") return row.taskTotal === 7 && row.keyTaskTotal === 3;
     if (row.workAreaType === "fence") return row.taskTotal === 9 && row.keyTaskTotal === 3;
-    const v1Count = COMPANY_DNA_TASKS.filter(
-      (task) => task.workAreaType === row.workAreaType
-    ).length;
-    return row.taskTotal === v1Count;
+    return row.taskTotal === 15 && row.generation === "v2e";
   })
 );
 check(

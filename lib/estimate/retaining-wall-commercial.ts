@@ -1045,12 +1045,19 @@ function labourSlot(params: {
   hourlyCost: number;
   rateProvenance: RequirementRateSource;
   fallbackHoursPerUnit?: number;
+  /**
+   * DNA-V2E: machine-assisted pile/post company rates must not leak onto
+   * the manual path. Manual stays on method fallback until DNA-V2-EST-1.
+   */
+  ignoreCompanyRate?: boolean;
 }): LabourRequirement {
-  const company = findCompanyProductivityRate(
-    params.rates,
-    params.productivityKey,
-    params.unit
-  );
+  const company = params.ignoreCompanyRate
+    ? null
+    : findCompanyProductivityRate(
+        params.rates,
+        params.productivityKey,
+        params.unit
+      );
   const starter =
     timber1DProductivityStarter(params.productivityKey) ??
     sleeper2AProductivityStarter(params.productivityKey) ??
@@ -1655,6 +1662,8 @@ export function commercializeRetainingWall(params: {
         hourlyCost: labourRate.costRate,
         rateProvenance: timberLabourSource,
         fallbackHoursPerUnit: timber1DPileHours(pilingMethod.method),
+        ignoreCompanyRate:
+          pilingMethod.method === RW_TIMBER_PILING_METHOD_MANUAL,
       }),
       labourSlot({
         workAreaId,
@@ -1722,6 +1731,8 @@ export function commercializeRetainingWall(params: {
         hourlyCost: labourRate.costRate,
         rateProvenance: detailedLabourSource,
         fallbackHoursPerUnit: sleeper2APostHours(pilingMethod.method),
+        ignoreCompanyRate:
+          pilingMethod.method === RW_TIMBER_PILING_METHOD_MANUAL,
       })
     );
     if (sleeperBags > 0) {

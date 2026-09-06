@@ -1,13 +1,13 @@
 # QUOTR — Company DNA V2 Architecture
 
-**Programme:** DNA-V2D — Fence task-level calibration UX  
-**Status:** Preview migration **054** applied (data-only). Deck V2C + Fence V2D UI. RW remains V1. Do **not** start DNA-V2E until reviewed.  
+**Programme:** DNA-V2E — Retaining Wall task-level calibration UX  
+**Status:** Preview migration **054** applied (data-only). Deck V2C + Fence V2D + Retaining V2E UI. Do **not** start DNA-V2F until reviewed.  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm` — latest applied migration **054**  
 **Production:** DO NOT TOUCH — must remain without 054  
 
 **Code is authority.** This document traces live Deck / Fence / Retaining Wall calculator consumption. It does not invent calibration tasks the estimator cannot consume independently.
 
-Verifiers: `verify-dna-v2a-coverage`, `verify-dna-v2b-foundation`, `verify-dna-v2b1-catalogue-seed`, `verify-dna-v2c-deck-ux`, `verify-dna-v2d-fence-ux`
+Verifiers: `verify-dna-v2a-coverage`, `verify-dna-v2b-foundation`, `verify-dna-v2b1-catalogue-seed`, `verify-dna-v2c-deck-ux`, `verify-dna-v2d-fence-ux`, `verify-dna-v2e-retaining-ux`
 
 ---
 
@@ -553,6 +553,18 @@ Canonical 10 lm × 1.0 m timber:
 | Bags | ~0.7 |
 
 Current catalogue has piles + face only. Excavation is the **highest-impact gap** on RW.
+
+### 9.6 DNA-V2E UI (live)
+
+Retaining Wall V2 exposes all 15 foundation keys through the shared V2 task flow. Completion is **system-aware**:
+
+- Timber Tier 1: machine excavation, piles, face
+- Sleeper Tier 1: machine excavation, sleeper posts, sleepers
+- Masonry Tier 1: machine excavation, block laying
+
+Work Area status is **calibrated if any relevant system has all its Tier 1**. Shared keys (excavation, drainage, backfill, bagged concrete) are calibrated once.
+
+**Pile method honesty:** `retaining_wall.piles.v1` / sleeper posts remain machine-assisted baselines. `labourSlot` ignores company rates on those keys when the job is MANUAL, so a machine-assisted calibration cannot leak onto hand-dug jobs. A calibratable manual pile task remains **DNA-V2-EST-1** and is not faked.
 
 ---
 
