@@ -101,6 +101,9 @@ function main() {
     !roleAllowsPermission("estimator", "company.rates.manage")
   );
   assert("Estimator cannot edit company", !roleAllowsPermission("estimator", "company.edit"));
+  assert("Owner can edit company", roleAllowsPermission("owner", "company.edit"));
+  assert("Admin can edit company", roleAllowsPermission("admin", "company.edit"));
+  assert("Viewer cannot edit company", !roleAllowsPermission("viewer", "company.edit"));
   assert(
     "Estimator can calibrate",
     roleAllowsPermission("estimator", "company.calibration.manage")

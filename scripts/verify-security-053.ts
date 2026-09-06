@@ -173,9 +173,55 @@ function staticMain() {
   assert("Estimator can projects.edit and pricing.edit", roleAllowsPermission("estimator", "projects.edit") && roleAllowsPermission("estimator", "pricing.edit"));
   assert("Viewer cannot projects.edit", !roleAllowsPermission("viewer", "projects.edit"));
   assert("Viewer cannot company.edit", !roleAllowsPermission("viewer", "company.edit"));
+  assert("Owner can company.edit", roleAllowsPermission("owner", "company.edit"));
   assert("Admin can company.edit and rates.manage", roleAllowsPermission("admin", "company.edit") && roleAllowsPermission("admin", "company.rates.manage"));
   assert("Admin cannot billing.manage", !roleAllowsPermission("admin", "billing.manage"));
   assert("Owner can billing.manage", roleAllowsPermission("owner", "billing.manage"));
+
+  section("COMPANY SETTINGS READ-ONLY UI");
+  const companyPage = read("app/(protected)/app/settings/company/page.tsx");
+  const companyUi = read("components/settings/CompanySettingsContent.tsx");
+  const logoField = read("components/settings/CompanyLogoField.tsx");
+  const companyActions = read("lib/settings/company-actions.ts");
+  assert(
+    "company page derives canEdit from company.edit",
+    companyPage.includes("requireOrgPermission") &&
+      companyPage.includes('permission: "company.edit"') &&
+      companyPage.includes("canEdit={canEdit}")
+  );
+  assert("CompanySettingsContent accepts canEdit", /canEdit: boolean/.test(companyUi));
+  assert(
+    "Estimator helper text",
+    companyUi.includes("Only owners and admins can change company settings.")
+  );
+  assert(
+    "fields lock when !canEdit",
+    companyUi.includes("LockedInput") &&
+      companyUi.includes("readOnly={!canEdit}") &&
+      companyUi.includes("disabled={!canEdit}")
+  );
+  assert(
+    "Save hidden when !canEdit",
+    companyUi.includes("{canEdit ?") &&
+      companyUi.includes("Save company settings")
+  );
+  assert(
+    "logo mutation hidden when readOnly",
+    logoField.includes("readOnly") &&
+      /readOnly \? null :/.test(logoField) &&
+      logoField.includes("Upload logo")
+  );
+  assert(
+    "updateCompanySettings still requires company.edit",
+    /permission: "company.edit"/.test(companyActions)
+  );
+  assert(
+    "company.edit UI does not wrap calibration",
+    !read("components/rates/RatesPageContent.tsx").includes("canEdit") &&
+      !read("components/calibration/CalibrationHub.tsx").includes(
+        'permission: "company.edit"'
+      )
+  );
 
   section("DNA / TEAM / PUBLIC QUOTE UNTOUCHED");
   const dna = read("supabase/migrations/052_company_productivity_calibration.sql");

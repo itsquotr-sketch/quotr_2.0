@@ -420,6 +420,12 @@ assert("friendly labels", RATE_SOURCE_FRIENDLY_LABELS.calibrated_productivity ==
 assert("estimator commercial edit hidden", ratesPage.includes("readOnly={!state.canManageRates}"));
 assert("rates table supports readOnly", ratesTable.includes("readOnly"));
 assert("estimator can still calibrate in compare", ratesPage.includes("canCalibrate={state.canCalibrate}"));
+assert(
+  "company settings canEdit does not gate DNA",
+  !ratesPage.includes("canEdit") &&
+    read("components/company-dna/CompanyDnaTaskFlow.tsx").includes("canCalibrate") &&
+    !read("components/company-dna/CompanyDnaTaskFlow.tsx").includes("company.edit")
+);
 
 const defaultsUi = read("components/rates/CompanyDefaultsSection.tsx");
 const ratesActions = read("lib/rates/actions.ts");

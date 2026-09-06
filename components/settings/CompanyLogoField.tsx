@@ -18,12 +18,14 @@ type CompanyLogoFieldProps = {
   logoUrl: string | null;
   onSettingsChange: (settings: CompanySettings) => void;
   className?: string;
+  readOnly?: boolean;
 };
 
 export function CompanyLogoField({
   logoUrl,
   onSettingsChange,
   className,
+  readOnly = false,
 }: CompanyLogoFieldProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [pending, startTransition] = useTransition();
@@ -118,9 +120,11 @@ export function CompanyLogoField({
     <div className={cn("space-y-3", className)}>
       <div>
         <Label>Company logo</Label>
-        <p className="mt-1 text-[11px] text-muted-foreground">
-          PNG, JPG or WebP · max 2 MB. Used on your quotes.
-        </p>
+        {readOnly ? null : (
+          <p className="mt-1 text-[11px] text-muted-foreground">
+            PNG, JPG or WebP · max 2 MB. Used on your quotes.
+          </p>
+        )}
       </div>
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center">
@@ -143,12 +147,15 @@ export function CompanyLogoField({
           ) : (
             <p className="text-center text-xs text-muted-foreground">
               {brokenRemote
-                ? "Current logo link could not be shown. Upload a new logo."
+                ? readOnly
+                  ? "Current logo could not be shown."
+                  : "Current logo link could not be shown. Upload a new logo."
                 : "No logo yet"}
             </p>
           )}
         </div>
 
+        {readOnly ? null : (
         <div className="flex flex-wrap items-center gap-2">
           <input
             ref={inputRef}
@@ -188,6 +195,7 @@ export function CompanyLogoField({
             <span className="text-xs text-muted-foreground">Saved</span>
           ) : null}
         </div>
+        )}
       </div>
 
       {error ? (

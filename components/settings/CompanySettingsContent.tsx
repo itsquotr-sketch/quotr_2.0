@@ -41,6 +41,7 @@ type CompanySettingsContentProps = {
   userFullName?: string | null;
   /** Deep-link from Setup recommendations (`?section=`). */
   initialSection?: CompanySettingsSectionId;
+  canEdit: boolean;
 };
 
 const COMPANY_SECTION_LABELS: Record<CompanySettingsSectionId, string> = {
@@ -61,12 +62,14 @@ function ColourField({
   value,
   onChange,
   placeholder,
+  readOnly = false,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (value: string) => void;
   placeholder: string;
+  readOnly?: boolean;
 }) {
   const safeColour = sanitizeBrandColour(value);
 
@@ -88,6 +91,7 @@ function ColourField({
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           className="font-mono text-sm"
+          readOnly={readOnly}
         />
       </div>
       {value.trim() && !safeColour ? (
@@ -100,11 +104,26 @@ function ColourField({
   );
 }
 
+function LockedInput({
+  canEdit,
+  ...props
+}: React.ComponentProps<typeof Input> & { canEdit: boolean }) {
+  return <Input {...props} readOnly={!canEdit} />;
+}
+
+function LockedTextarea({
+  canEdit,
+  ...props
+}: React.ComponentProps<typeof Textarea> & { canEdit: boolean }) {
+  return <Textarea {...props} readOnly={!canEdit} />;
+}
+
 export function CompanySettingsContent({
   initialSettings,
   userEmail,
   userFullName,
   initialSection = "general",
+  canEdit,
 }: CompanySettingsContentProps) {
   const [settings, setSettings] = useState(initialSettings);
   const [tradingName, setTradingName] = useState(settings.tradingName ?? "");
@@ -196,6 +215,9 @@ export function CompanySettingsContent({
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
+    if (!canEdit) {
+      return;
+    }
     setError(null);
     setFieldErrors({});
     setSavedMessage(null);
@@ -304,6 +326,12 @@ export function CompanySettingsContent({
         </CardContent>
       </Card>
 
+      {canEdit ? null : (
+        <p className="text-sm text-muted-foreground">
+          Only owners and admins can change company settings.
+        </p>
+      )}
+
       {error ? <StatusMessage variant="error">{error}</StatusMessage> : null}
       {savedMessage ? (
         <StatusMessage variant="success">{savedMessage}</StatusMessage>
@@ -323,7 +351,7 @@ export function CompanySettingsContent({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="legal-name">Legal name</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="legal-name"
               value={legalName}
               onChange={(event) => setLegalName(event.target.value)}
@@ -332,7 +360,7 @@ export function CompanySettingsContent({
           </div>
           <div className="space-y-2">
             <Label htmlFor="trading-name">Trading name</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="trading-name"
               value={tradingName}
               onChange={(event) => setTradingName(event.target.value)}
@@ -343,7 +371,7 @@ export function CompanySettingsContent({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="contact-email">Email</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="contact-email"
               type="email"
               value={contactEmail}
@@ -357,7 +385,7 @@ export function CompanySettingsContent({
           </div>
           <div className="space-y-2">
             <Label htmlFor="contact-phone">Phone</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="contact-phone"
               value={contactPhone}
               onChange={(event) => setContactPhone(event.target.value)}
@@ -366,7 +394,7 @@ export function CompanySettingsContent({
         </div>
         <div className="space-y-2">
           <Label htmlFor="website">Website</Label>
-          <Input
+          <LockedInput canEdit={canEdit}
             id="website"
             value={website}
             onChange={(event) => setWebsite(event.target.value)}
@@ -376,7 +404,7 @@ export function CompanySettingsContent({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="gst-number">GST number</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="gst-number"
               value={gstNumber}
               onChange={(event) => setGstNumber(event.target.value)}
@@ -384,7 +412,7 @@ export function CompanySettingsContent({
           </div>
           <div className="space-y-2">
             <Label htmlFor="nzbn">NZBN</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="nzbn"
               value={nzbn}
               onChange={(event) => setNzbn(event.target.value)}
@@ -396,7 +424,7 @@ export function CompanySettingsContent({
           <p className="mb-4 text-sm font-medium">Business address</p>
         <div className="space-y-2">
           <Label htmlFor="address-line-1">Address line 1</Label>
-          <Input
+          <LockedInput canEdit={canEdit}
             id="address-line-1"
             value={addressLine1}
             onChange={(event) => setAddressLine1(event.target.value)}
@@ -404,7 +432,7 @@ export function CompanySettingsContent({
         </div>
         <div className="space-y-2">
           <Label htmlFor="address-line-2">Address line 2</Label>
-          <Input
+          <LockedInput canEdit={canEdit}
             id="address-line-2"
             value={addressLine2}
             onChange={(event) => setAddressLine2(event.target.value)}
@@ -413,7 +441,7 @@ export function CompanySettingsContent({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="city">City</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="city"
               value={city}
               onChange={(event) => setCity(event.target.value)}
@@ -421,7 +449,7 @@ export function CompanySettingsContent({
           </div>
           <div className="space-y-2">
             <Label htmlFor="region">Region</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="region"
               value={region}
               onChange={(event) => setRegion(event.target.value)}
@@ -435,6 +463,7 @@ export function CompanySettingsContent({
             id="company-timezone"
             value={timezone}
             onChange={(event) => setTimezone(event.target.value)}
+            disabled={!canEdit}
             className="flex h-10 w-full rounded-lg border border-input bg-transparent px-3 py-2 text-sm shadow-xs outline-none focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 dark:bg-input/30"
           >
             <option value="">
@@ -459,7 +488,7 @@ export function CompanySettingsContent({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="postcode">Postcode</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="postcode"
               value={postcode}
               onChange={(event) => setPostcode(event.target.value)}
@@ -467,7 +496,7 @@ export function CompanySettingsContent({
           </div>
           <div className="space-y-2">
             <Label htmlFor="address-country">Country</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="address-country"
               value={addressCountry}
               onChange={(event) => setAddressCountry(event.target.value)}
@@ -487,7 +516,7 @@ export function CompanySettingsContent({
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="default-gst-rate">Default GST rate %</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="default-gst-rate"
               type="number"
               inputMode="decimal"
@@ -509,7 +538,7 @@ export function CompanySettingsContent({
             <Label htmlFor="default-validity-pricing">
               Default quote validity (days)
             </Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="default-validity-pricing"
               type="number"
               inputMode="numeric"
@@ -546,7 +575,7 @@ export function CompanySettingsContent({
       >
         <div className="space-y-2">
           <Label htmlFor="default-validity">Default quote validity (days)</Label>
-          <Input
+          <LockedInput canEdit={canEdit}
             id="default-validity"
             type="number"
             inputMode="numeric"
@@ -568,7 +597,7 @@ export function CompanySettingsContent({
         </div>
         <div className="space-y-2">
           <Label htmlFor="default-payment-terms">Payment terms</Label>
-          <Textarea
+          <LockedTextarea canEdit={canEdit}
             id="default-payment-terms"
             value={defaultPaymentTerms}
             onChange={(event) => setDefaultPaymentTerms(event.target.value)}
@@ -577,7 +606,7 @@ export function CompanySettingsContent({
         </div>
         <div className="space-y-2">
           <Label htmlFor="default-quote-terms">Quote terms</Label>
-          <Textarea
+          <LockedTextarea canEdit={canEdit}
             id="default-quote-terms"
             value={defaultQuoteTerms}
             onChange={(event) => setDefaultQuoteTerms(event.target.value)}
@@ -589,7 +618,7 @@ export function CompanySettingsContent({
           <p className="text-[11px] text-muted-foreground">
             One item per line when copied into pricing and quotes.
           </p>
-          <Textarea
+          <LockedTextarea canEdit={canEdit}
             id="default-exclusions"
             value={defaultQuoteExclusions}
             onChange={(event) => setDefaultQuoteExclusions(event.target.value)}
@@ -601,7 +630,7 @@ export function CompanySettingsContent({
           <p className="text-[11px] text-muted-foreground">
             One item per line when copied into new documents.
           </p>
-          <Textarea
+          <LockedTextarea canEdit={canEdit}
             id="default-assumptions"
             value={defaultQuoteAssumptions}
             onChange={(event) => setDefaultQuoteAssumptions(event.target.value)}
@@ -615,6 +644,7 @@ export function CompanySettingsContent({
       >
         <CompanyLogoField
           logoUrl={logoUrl.trim() ? logoUrl : null}
+          readOnly={!canEdit}
           onSettingsChange={(next) => {
             setLogoUrl(next.logoUrl ?? "");
             // Keep local form settings in sync when upload/remove returns full row.
@@ -627,6 +657,7 @@ export function CompanySettingsContent({
             value={brandPrimaryColour}
             onChange={setBrandPrimaryColour}
             placeholder="#1a1a1a"
+            readOnly={!canEdit}
           />
           <ColourField
             id="brand-accent"
@@ -634,8 +665,10 @@ export function CompanySettingsContent({
             value={brandAccentColour}
             onChange={setBrandAccentColour}
             placeholder="#2563eb"
+            readOnly={!canEdit}
           />
         </div>
+        {canEdit ? (
         <details className="rounded-lg border border-dashed border-border/70 bg-muted/10 px-3 py-2">
           <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
             Advanced — legacy logo link
@@ -647,7 +680,7 @@ export function CompanySettingsContent({
               only if you must.
             </p>
             <Label htmlFor="logo-url">Legacy logo URL</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="logo-url"
               value={
                 isOrganisationBrandingPublicUrl(
@@ -680,6 +713,7 @@ export function CompanySettingsContent({
             })()}
           </div>
         </details>
+        ) : null}
       </SectionCard>
       </>
       ) : null}
@@ -694,7 +728,7 @@ export function CompanySettingsContent({
             <Label htmlFor="default-material-wastage">
               Default material wastage %
             </Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="default-material-wastage"
               type="number"
               inputMode="decimal"
@@ -716,7 +750,7 @@ export function CompanySettingsContent({
           </div>
           <div className="space-y-2">
             <Label htmlFor="decking-wastage">Decking board wastage %</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="decking-wastage"
               type="number"
               inputMode="decimal"
@@ -733,7 +767,7 @@ export function CompanySettingsContent({
             <Label htmlFor="sheet-material-wastage">
               Sheet material wastage %
             </Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="sheet-material-wastage"
               type="number"
               inputMode="decimal"
@@ -750,7 +784,7 @@ export function CompanySettingsContent({
           </div>
           <div className="space-y-2">
             <Label htmlFor="flooring-wastage">Flooring wastage %</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="flooring-wastage"
               type="number"
               inputMode="decimal"
@@ -765,7 +799,7 @@ export function CompanySettingsContent({
           </div>
           <div className="space-y-2">
             <Label htmlFor="paint-wastage">Paint wastage %</Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="paint-wastage"
               type="number"
               inputMode="decimal"
@@ -782,7 +816,7 @@ export function CompanySettingsContent({
             <Label htmlFor="timber-framing-wastage">
               Timber/framing wastage %
             </Label>
-            <Input
+            <LockedInput canEdit={canEdit}
               id="timber-framing-wastage"
               type="number"
               inputMode="decimal"
@@ -801,6 +835,7 @@ export function CompanySettingsContent({
       </SectionCard>
       ) : null}
 
+      {canEdit ? (
       <Card className="sticky bottom-0 z-10 border-border/60 bg-background/95 shadow-none backdrop-blur-sm">
         <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
           <p className="text-xs text-muted-foreground">
@@ -811,6 +846,7 @@ export function CompanySettingsContent({
           </Button>
         </CardContent>
       </Card>
+      ) : null}
     </form>
   );
 }

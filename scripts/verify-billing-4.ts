@@ -11,6 +11,7 @@ import {
   expectedTwoUserRenewalCents,
   resolveSeatAddMutation,
   resolveSeatRemoveMutation,
+  SEAT_ADD_DISCLOSURE,
   SEAT_ADD_PAYMENT_BEHAVIOR,
   SEAT_ADD_PRORATION_BEHAVIOR,
   SEAT_REMOVE_PRORATION_BEHAVIOR,
@@ -892,9 +893,19 @@ assert(
 
 assert(
   "Owner invite copy is billing consent; no second approval at accept",
-  /This user will cost \$35 \+ GST\/month once they join/.test(
-    file("lib/billing/seat-change.ts")
-  ) && /does not require a second Owner approval/.test(invitePolicy)
+  SEAT_ADD_DISCLOSURE ===
+    "Additional Business users cost $35 + GST/month each. Billing begins when they accept the invitation. The first charge may be prorated for the current billing period." &&
+    /does not require a second Owner approval/.test(invitePolicy)
+);
+
+assert(
+  "recipient invite/join screen does not show seat price",
+  !/\$35/.test(file("components/invite/InviteAcceptContent.tsx")) &&
+    !/\$35/.test(file("components/invite/InviteContinueContent.tsx")) &&
+    /You were invited as \{roleLabel\}/.test(
+      file("components/invite/InviteAcceptContent.tsx")
+    ) &&
+    /SEAT_ADD_DISCLOSURE/.test(file("components/team/TeamPageContent.tsx"))
 );
 
 assert(
