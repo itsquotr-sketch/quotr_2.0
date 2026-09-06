@@ -1,0 +1,29 @@
+---
+description: Preview Auth stability — never rotate owner passwords after deploy
+alwaysApply: true
+---
+
+# Preview Auth stability
+
+Preview deploy does **not** log the owner out and must **not** change passwords.
+
+## Forbidden
+
+- Do not call `auth.admin.updateUserById({ password })` (or equivalent) on:
+  - `jeanluc@erccontracting.co.nz`
+  - `hello@erccontracting.co.nz`
+  - any email **without** a plus-address (`local+tag@domain`)
+- Do not treat `erccontracting` / `get-quotr` domain match as “fixture owner”.
+- Do not use unique Vercel URLs (`quotr-2-0-<id>-quotr1.vercel.app`) as the canonical login host.
+
+## Required
+
+- Canonical owner testing host: `https://quotr-2-0-git-hardening-stage-2a-security-quotr1.vercel.app`
+- Isolated hosted proofs must import `scripts/lib/preview-auth-fixture.ts` and call `assertSafePreviewPasswordMutation(email)` before any Admin password write.
+- Password rotation is allowed only for plus-address fixtures created for that proof.
+- Production Auth / Production Supabase is never in scope.
+
+## Session vs password
+
+- Unique deployment hostname → separate host-scoped cookies. That can look like logout. It must not mutate credentials.
+- Admin password update **does** invalidate refresh tokens and the old password. That is a P0 test-process defect if it hits a human inbox.
