@@ -509,6 +509,7 @@ export function calculateFence(
       productivityKey: "fence.demolition_hours_per_lm",
       unit: "lm",
       fallbackHoursPerUnit: 0.25,
+      rates: context.rates,
     });
     lineItems.push(
       createLabourLineItem({
@@ -523,6 +524,7 @@ export function calculateFence(
         adjustmentFactor: labourAdjustment,
         qualityFactor: NO_FINISH_QUALITY_FACTOR,
         rateSource: demoProductivity.sourceLabel,
+        productivitySourceType: demoProductivity.sourceType,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
       })

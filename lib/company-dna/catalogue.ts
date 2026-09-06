@@ -1,7 +1,11 @@
 /**
  * COMPANY DNA-01 — versioned crew/time calibration catalogue.
  * Must match supabase/migrations/052_company_productivity_calibration.sql seed.
- * Server RPC is authority; this copy drives UX and static verification.
+ * Server RPC is authority; this copy drives V1 UX and static verification.
+ *
+ * DNA-V2B foundation tasks live in `v2-foundation.ts` and are not part of
+ * this V1 list. Do not add V2 keys here until a data seed is approved and
+ * the V2 UI ships.
  */
 
 export const COMPANY_DNA_WORK_AREA_TYPES = [

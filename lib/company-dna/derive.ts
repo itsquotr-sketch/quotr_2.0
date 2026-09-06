@@ -114,3 +114,66 @@ export function companyDnaWorkAreaStatusLabel(
   if (status === "partly") return "Partly calibrated";
   return "Using Quotr benchmarks";
 }
+
+/**
+ * DNA-V2 completion helper. Not wired into V1 hub / Rates UX.
+ *
+ * Not calibrated: 0 Tier 1
+ * Partly calibrated: some but not all Tier 1
+ * Using your calibration: every Tier 1 task for that Work Area
+ */
+export function companyDnaWorkAreaStatusV2(params: {
+  tier1Total: number;
+  tier1Calibrated: number;
+}): "benchmarks" | "partly" | "calibrated" {
+  if (params.tier1Total <= 0 || params.tier1Calibrated <= 0) {
+    return "benchmarks";
+  }
+  if (params.tier1Calibrated >= params.tier1Total) return "calibrated";
+  return "partly";
+}
+
+export function durationHoursFromClock(
+  clockHours: number,
+  minutes: number
+): number {
+  const hours = Number.isFinite(clockHours) ? clockHours : NaN;
+  const mins = Number.isFinite(minutes) ? minutes : NaN;
+  if (!Number.isFinite(hours) || !Number.isFinite(mins)) return NaN;
+  if (hours < 0 || mins < 0 || mins >= 60) return NaN;
+  return round4(hours + mins / 60);
+}
+
+export function clockFromDurationHours(durationHours: number): {
+  hours: number;
+  minutes: number;
+} {
+  if (!Number.isFinite(durationHours) || durationHours < 0) {
+    return { hours: 0, minutes: 0 };
+  }
+  const totalMinutes = Math.round(durationHours * 60);
+  return {
+    hours: Math.floor(totalMinutes / 60),
+    minutes: totalMinutes % 60,
+  };
+}
+
+export function deriveCompanyProductivityFromClock(params: {
+  task: CompanyDnaTaskDefinition;
+  crewSize: number;
+  clockHours: number;
+  minutes: number;
+}): ProductivityDerivation & { durationHours: number } {
+  const durationHours = durationHoursFromClock(
+    params.clockHours,
+    params.minutes
+  );
+  return {
+    durationHours,
+    ...deriveCompanyProductivity({
+      task: params.task,
+      crewSize: params.crewSize,
+      durationHours: Number.isFinite(durationHours) ? durationHours : 0,
+    }),
+  };
+}
