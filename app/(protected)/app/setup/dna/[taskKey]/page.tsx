@@ -5,14 +5,14 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { CompanyDnaDeckTaskFlow } from "@/components/company-dna/CompanyDnaDeckTaskFlow";
 import { CompanyDnaTaskFlow } from "@/components/company-dna/CompanyDnaTaskFlow";
 import { getCompanyDnaHubState } from "@/lib/company-dna/actions";
-import {
-  COMPANY_DNA_DECK_OPTIONAL_KEYS,
-  deckV2ProgressCounts,
-  isCompanyDnaDeckV2TaskKey,
-  nextCompanyDnaDeckV2Task,
-} from "@/lib/company-dna/deck-v2";
 import { nextCompanyDnaTaskAcrossHub } from "@/lib/company-dna/progress";
 import { resolveCompanyDnaTask } from "@/lib/company-dna/resolve-task";
+import {
+  isCompanyDnaV2TaskKey,
+  nextCompanyDnaV2Task,
+  v2OptionalKeys,
+  v2ProgressCounts,
+} from "@/lib/company-dna/v2-ui";
 import { createClient } from "@/lib/supabase/server";
 import { needsCompanyBasics } from "@/lib/setup/actions";
 
@@ -29,11 +29,11 @@ export default async function CompanyDnaTaskPage({ params }: PageProps) {
   const decoded = decodeURIComponent(taskKey);
   const task = resolveCompanyDnaTask(decoded);
   if (!task) notFound();
-  const deckV2 = isCompanyDnaDeckV2TaskKey(task.calibrationTaskKey);
-  if (task.workAreaType !== "deck" && !task.exposeInCurrentUi) {
+  const v2 = isCompanyDnaV2TaskKey(task.calibrationTaskKey);
+  if (!v2 && !task.exposeInCurrentUi) {
     notFound();
   }
-  if (task.workAreaType === "deck" && !deckV2) {
+  if (task.workAreaType === "retaining_wall" && !task.exposeInCurrentUi) {
     notFound();
   }
 
@@ -60,40 +60,46 @@ export default async function CompanyDnaTaskPage({ params }: PageProps) {
       .filter((status) => status.calibrated)
       .map((status) => status.calibrationTaskKey)
   );
-  const deckKeys =
+  const areaKeys =
     area?.tasks
       .filter((status) => status.calibrated)
       .map((status) => status.calibrationTaskKey) ?? [];
-  const counts = deckV2ProgressCounts(deckKeys);
+  const counts = v2ProgressCounts(task.workAreaType, areaKeys);
+  const optionalKeys = v2OptionalKeys(task.workAreaType);
   const v1NextTask = nextCompanyDnaTaskAcrossHub({
     orderedWorkAreaTypes: hub.orderedWorkAreas,
     calibratedTaskKeys: calibratedKeys,
     currentTaskKey: task.calibrationTaskKey,
   });
-  const remainingAfterSave = deckV2
-    ? nextCompanyDnaDeckV2Task({
-        calibratedTaskKeys: deckKeys,
+  const remainingAfterSave = v2
+    ? nextCompanyDnaV2Task({
+        workAreaType: task.workAreaType,
+        calibratedTaskKeys: areaKeys,
         currentTaskKey: task.calibrationTaskKey,
       })
     : null;
   const nextTask = remainingAfterSave;
   const optionalIndex = Math.max(
     1,
-    COMPANY_DNA_DECK_OPTIONAL_KEYS.findIndex(
-      (key) => key === task.calibrationTaskKey
-    ) + 1
+    optionalKeys.findIndex((key) => key === task.calibrationTaskKey) + 1
   );
   const completesTier1 =
-    deckV2 &&
+    v2 &&
     task.priorityTier === 1 &&
     counts.tier1Calibrated + (alreadyCalibrated ? 0 : 1) >= counts.tier1Total;
+  const areaLabel =
+    task.workAreaType === "fence"
+      ? "Fence"
+      : task.workAreaType === "deck"
+        ? "Deck"
+        : "Calibrate how you work";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
-        title={deckV2 ? "Deck calibration" : "Calibrate how you work"}
+        title={v2 ? `${areaLabel} calibration` : "Calibrate how you work"}
         description={
-          deckV2
+          v2
             ? "Tell Quotr how your crew normally completes this task."
             : "Quotr turns crew size and time into labour hours for future estimates."
         }
@@ -102,7 +108,7 @@ export default async function CompanyDnaTaskPage({ params }: PageProps) {
         }
       />
       <FormContainer innerClassName="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">
-        {deckV2 ? (
+        {v2 ? (
           <CompanyDnaDeckTaskFlow
             task={task}
             evidence={{
@@ -118,7 +124,7 @@ export default async function CompanyDnaTaskPage({ params }: PageProps) {
             tier1Calibrated={counts.tier1Calibrated}
             tier1Total={counts.tier1Total}
             optionalIndex={optionalIndex}
-            optionalTotal={COMPANY_DNA_DECK_OPTIONAL_KEYS.length}
+            optionalTotal={optionalKeys.length}
             includedCopy={task.workIncluded}
           />
         ) : (

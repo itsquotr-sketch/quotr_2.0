@@ -30,13 +30,14 @@ import {
   deckV2TaskTitle,
 } from "@/lib/company-dna/copy";
 import {
-  COMPANY_DNA_DECK_OPTIONAL_KEYS,
-  listCompanyDnaDeckV2UiTasks,
-} from "@/lib/company-dna/deck-v2";
+  listCompanyDnaV2UiTasks,
+  v2OptionalKeys,
+} from "@/lib/company-dna/v2-ui";
 import { companyDnaWorkAreaStatusLabel } from "@/lib/company-dna/derive";
 import { cn } from "@/lib/utils";
 
 type CompanyDnaDeckSummaryProps = {
+  workAreaType?: "deck" | "fence";
   status: "benchmarks" | "partly" | "calibrated";
   tier1Calibrated: number;
   tier1Total: number;
@@ -46,6 +47,7 @@ type CompanyDnaDeckSummaryProps = {
 };
 
 export function CompanyDnaDeckSummary({
+  workAreaType = "deck",
   status,
   tier1Calibrated,
   tier1Total,
@@ -56,7 +58,9 @@ export function CompanyDnaDeckSummary({
   const router = useRouter();
   const [resetting, setResetting] = useState<string | null>(null);
   const [confirmKey, setConfirmKey] = useState<string | null>(null);
-  const catalogue = listCompanyDnaDeckV2UiTasks();
+  const catalogue = listCompanyDnaV2UiTasks(workAreaType);
+  const optionalCount = v2OptionalKeys(workAreaType).length;
+  const areaLabel = workAreaType === "fence" ? "Fence" : "Deck";
   const evidence = new Map(
     tasks.map((task) => [task.calibrationTaskKey, task])
   );
@@ -71,11 +75,13 @@ export function CompanyDnaDeckSummary({
 
   return (
     <Card
-      data-company-dna-deck-summary
+      data-company-dna-deck-summary={workAreaType === "deck" ? "" : undefined}
+      data-company-dna-fence-summary={workAreaType === "fence" ? "" : undefined}
+      data-company-dna-v2-summary={workAreaType}
       className="mx-auto w-full max-w-xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"
     >
       <CardHeader>
-        <CardTitle>Deck calibration</CardTitle>
+        <CardTitle>{areaLabel} calibration</CardTitle>
         <CardDescription>
           Key tasks: {tier1Calibrated} / {tier1Total} calibrated
         </CardDescription>
@@ -147,7 +153,7 @@ export function CompanyDnaDeckSummary({
           </Link>
         </div>
         <p className="text-xs text-muted-foreground">
-          Optional tasks: {COMPANY_DNA_DECK_OPTIONAL_KEYS.length}. They are not
+          Optional tasks: {optionalCount}. They are not
           required.
         </p>
       </CardContent>

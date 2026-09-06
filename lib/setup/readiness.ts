@@ -59,6 +59,8 @@ export type CompanySetupReadiness = {
   preferredWorkAreaTypes: string[];
   deckKeyTasksCalibrated: number;
   deckKeyTasksTotal: number;
+  fenceKeyTasksCalibrated: number;
+  fenceKeyTasksTotal: number;
 };
 
 export type CompanySetupReadinessInput = {
@@ -87,6 +89,8 @@ export type CompanySetupReadinessInput = {
   preferredWorkAreaTypes?: string[];
   deckKeyTasksCalibrated?: number;
   deckKeyTasksTotal?: number;
+  fenceKeyTasksCalibrated?: number;
+  fenceKeyTasksTotal?: number;
   tradingName: string | null;
   legalName: string | null;
   contactEmail: string | null;
@@ -351,5 +355,7 @@ export function computeCompanySetupReadiness(
     preferredWorkAreaTypes: input.preferredWorkAreaTypes ?? [],
     deckKeyTasksCalibrated: input.deckKeyTasksCalibrated ?? 0,
     deckKeyTasksTotal: input.deckKeyTasksTotal ?? 3,
+    fenceKeyTasksCalibrated: input.fenceKeyTasksCalibrated ?? 0,
+    fenceKeyTasksTotal: input.fenceKeyTasksTotal ?? 3,
   };
 }

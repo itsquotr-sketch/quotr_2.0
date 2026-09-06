@@ -3,6 +3,8 @@
  * Presentation only. Does not change derivation, RPCs, or economics.
  */
 
+import { formatDnaProductivityHours, formatDnaScenarioMeasure } from "@/lib/company-dna/quantity-format";
+
 export const DNA_CREW_HELPER =
   "How many people from your team would normally work on this task? Include everyone on it — an approximate answer is fine.";
 
@@ -119,6 +121,21 @@ export const DNA_DECK_TIER1_COMPLETE_TITLE =
 export const DNA_DECK_TIER1_COMPLETE_BODY =
   "You can keep refining other tasks now, or come back later.";
 
+export const DNA_FENCE_INTRO_TITLE =
+  "Calibrate how your team normally completes common fence tasks.";
+
+export const DNA_FENCE_INTRO_BODY =
+  "We'll show you a typical task. Tell us how many workers you'd normally use and how long they'd take.";
+
+export const DNA_FENCE_NORMAL_CONDITIONS =
+  "Assume straightforward residential access, normal ground conditions and materials close to the work area.";
+
+export const DNA_FENCE_TIER1_COMPLETE_TITLE =
+  "Your Fence estimates are now using your key productivity.";
+
+export const DNA_FENCE_TIER1_COMPLETE_BODY =
+  "You can keep refining other fence tasks now, or come back later.";
+
 export const DNA_SAVE_CONTINUE = "Save and continue";
 export const DNA_OUTLIER_YES = "Yes, use this";
 export const DNA_OUTLIER_BACK = "Go back";
@@ -134,6 +151,8 @@ export function formatDnaAuthorityUnitLabel(unit: string): string {
   if (unit === "ea") return "each";
   if (unit === "bag") return "bag";
   if (unit === "post") return "post";
+  if (unit === "gate") return "gate";
+  if (unit === "section") return "section";
   return unit;
 }
 
@@ -190,10 +209,10 @@ export function formatDnaClockTimePerUnit(params: {
 
 export function formatDnaHoursPerUnit(value: number, unit: string): string {
   const displayUnit = unit === "m2" ? "m²" : unit;
-  return `${value} person-hours / ${displayUnit}`;
+  return `${formatDnaProductivityHours(value)} person-hours / ${displayUnit}`;
 }
 
-export function deckV2TaskTitle(taskKey: string, fallbackLabel: string): string {
+export function dnaV2TaskTitle(taskKey: string, fallbackLabel: string): string {
   if (taskKey === "deck.posts.v1") return "Deck posts";
   if (taskKey === "deck.framing.v1") return "Deck framing";
   if (taskKey === "deck.decking.v1") return "Decking";
@@ -203,7 +222,69 @@ export function deckV2TaskTitle(taskKey: string, fallbackLabel: string): string 
   if (taskKey === "deck.fascia.v1") return "Fascia / edge boards";
   if (taskKey === "deck.skirting.v1") return "Full-height deck skirting";
   if (taskKey === "deck.demolition.v1") return "Existing deck removal";
+  if (taskKey === "fence.posts.v1") return "Fence posts";
+  if (taskKey === "fence.rails.v1") return "Rails";
+  if (taskKey === "fence.boards.v1") return "Palings";
+  if (taskKey === "fence.boards.horizontal.v1") return "Horizontal slats";
+  if (taskKey === "fence.concrete.v1") {
+    return "Mix and place concrete for fence posts";
+  }
+  if (taskKey === "fence.section.v1") return "Fence sections";
+  if (taskKey === "fence.capping.v1") return "Capping";
+  if (taskKey === "fence.gate.v1") return "Gate";
+  if (taskKey === "fence.demolition.v1") return "Demolition";
   return fallbackLabel;
+}
+
+export function deckV2TaskTitle(taskKey: string, fallbackLabel: string): string {
+  return dnaV2TaskTitle(taskKey, fallbackLabel);
+}
+
+export function dnaV2ScenarioCopy(task: {
+  calibrationTaskKey: string;
+  authorityQuantity: number;
+  authorityUnit: string;
+  referenceQuantity: number;
+  referenceUnit: string;
+}): string {
+  const qty = task.authorityQuantity;
+  const lm = (value: number) => formatDnaScenarioMeasure(value, "lm");
+  switch (task.calibrationTaskKey) {
+    case "deck.posts.v1":
+      return `Install ${qty} deck posts — include normal hole digging, setting, plumbing and securing the posts. Do not include mixing or placing concrete; that is a separate task.`;
+    case "deck.framing.v1":
+      return `Install ${lm(qty)} of deck framing — roughly the framing for a straightforward 20 m² deck.`;
+    case "deck.decking.v1":
+      return `Lay the decking boards for a typical 20 m² deck — ${lm(qty)} of boards.`;
+    case "deck.concrete.v1":
+      return `Mix and place ${qty} bags of 20 kg post-hole concrete, with the posts already set. This is labour time only — not the bag price.`;
+    case "deck.fascia.v1":
+      return `Fit ${lm(qty)} of fascia / edge boards. Installation only.`;
+    case "deck.skirting.v1":
+      return `Fit ${lm(qty)} of full-height deck skirting / screening.`;
+    case "deck.demolition.v1":
+      return `Strip and remove an existing ${qty} m² timber deck at the workface. Does not include skip-bin cartage, tip fees, or off-site disposal.`;
+    case "fence.posts.v1":
+      return `Install ${qty} fence posts — include normal hole digging, positioning, plumbing and setting the posts. Do not include mixing or placing concrete; that is a separate task.`;
+    case "fence.rails.v1":
+      return `Install ${lm(qty)} of fence rails — three rails on a typical 20 m paling fence.`;
+    case "fence.boards.v1":
+      return `Hang ${lm(qty)} of vertical palings / boards. This is not horizontal slats.`;
+    case "fence.boards.horizontal.v1":
+      return `Install about ${qty} lineal metres of horizontal slats — roughly a typical 18 m horizontal-slat fence. This is not vertical palings.`;
+    case "fence.concrete.v1":
+      return `Mix and place ${qty} bags of 20 kg post-hole concrete, with the posts already set. This is labour time only — not the bag price. Do not include digging holes or setting posts.`;
+    case "fence.section.v1":
+      return `Install ${qty} prefabricated fence sections, with the posts already in.`;
+    case "fence.capping.v1":
+      return `Fit ${lm(qty)} of fence capping. Installation only.`;
+    case "fence.gate.v1":
+      return `Build and hang ${qty} timber fence gate — frame, hinges and latch. Palings stay on paling labour.`;
+    case "fence.demolition.v1":
+      return `Take down ${lm(qty)} of existing timber fence at the workface. Does not include skip-bin cartage, tip fees, or off-site disposal.`;
+    default:
+      return `Typical quantity: ${formatDnaScenarioMeasure(qty, task.authorityUnit)}.`;
+  }
 }
 
 export function deckV2ScenarioCopy(task: {
@@ -213,32 +294,15 @@ export function deckV2ScenarioCopy(task: {
   referenceQuantity: number;
   referenceUnit: string;
 }): string {
-  const qty = task.authorityQuantity;
-  switch (task.calibrationTaskKey) {
-    case "deck.posts.v1":
-      return `Install ${qty} deck posts — include normal hole digging, setting, plumbing and securing the posts. Do not include mixing or placing concrete; that is a separate task.`;
-    case "deck.framing.v1":
-      return `Install ${qty} lineal metres of deck framing — roughly the framing for a straightforward 20 m² deck.`;
-    case "deck.decking.v1":
-      return `Lay the decking boards for a typical 20 m² deck — about ${qty} lineal metres of boards.`;
-    case "deck.concrete.v1":
-      return `Mix and place ${qty} bags of 20 kg post-hole concrete, with the posts already set. This is labour time only — not the bag price.`;
-    case "deck.fascia.v1":
-      return `Fit about ${qty} lineal metres of fascia / edge boards. Installation only.`;
-    case "deck.skirting.v1":
-      return `Fit about ${qty} lineal metres of full-height deck skirting / screening.`;
-    case "deck.demolition.v1":
-      return `Strip and remove an existing ${qty} m² timber deck at the workface. Does not include skip-bin cartage, tip fees, or off-site disposal.`;
-    default:
-      return `Typical quantity: ${qty} ${task.authorityUnit}.`;
-  }
+  return dnaV2ScenarioCopy(task);
 }
 
 export function deckV2IncludedCopy(workIncluded: string): string {
   return workIncluded;
 }
 
-export function formatDnaDeckProgressIndicator(params: {
+export function formatDnaV2ProgressIndicator(params: {
+  workAreaLabel: string;
   tier1Calibrated: number;
   tier1Total: number;
   optionalIndex: number;
@@ -250,9 +314,54 @@ export function formatDnaDeckProgressIndicator(params: {
       params.tier1Calibrated + 1,
       params.tier1Total
     );
-    return `Deck calibration · Task ${taskNumber} of ${params.tier1Total} key tasks`;
+    return `${params.workAreaLabel} calibration · Task ${taskNumber} of ${params.tier1Total} key tasks`;
   }
-  return `Refine your Deck calibration · Optional task ${params.optionalIndex} of ${params.optionalTotal}`;
+  return `Refine your ${params.workAreaLabel} calibration · Optional task ${params.optionalIndex} of ${params.optionalTotal}`;
+}
+
+export function formatDnaDeckProgressIndicator(params: {
+  tier1Calibrated: number;
+  tier1Total: number;
+  optionalIndex: number;
+  optionalTotal: number;
+  currentIsTier1: boolean;
+}): string {
+  return formatDnaV2ProgressIndicator({
+    workAreaLabel: "Deck",
+    ...params,
+  });
+}
+
+export function formatDnaV2DashboardCta(params: {
+  workAreaLabel: string;
+  remainingKeyTasks: number;
+}): {
+  title: string;
+  reason: string;
+  cta: string;
+} {
+  const area = params.workAreaLabel;
+  if (params.remainingKeyTasks <= 0) {
+    return {
+      title: `Your ${area} estimates use your key productivity`,
+      reason: `You can keep refining other ${area.toLowerCase()} tasks when you have a moment.`,
+      cta: `Review ${area} calibration`,
+    };
+  }
+  if (params.remainingKeyTasks === 3) {
+    return {
+      title: `Improve your ${area} estimates`,
+      reason: `Tell Quotr how your crew normally completes a few common ${area.toLowerCase()} tasks.`,
+      cta: `Improve your ${area} estimates`,
+    };
+  }
+  return {
+    title: `Improve your ${area} estimates`,
+    reason: `Finish the key ${area} tasks so estimates use your crew's pace.`,
+    cta: `Calibrate ${params.remainingKeyTasks} more key ${area} ${
+      params.remainingKeyTasks === 1 ? "task" : "tasks"
+    }`,
+  };
 }
 
 export function formatDnaDeckDashboardCta(remainingKeyTasks: number): {
@@ -260,26 +369,35 @@ export function formatDnaDeckDashboardCta(remainingKeyTasks: number): {
   reason: string;
   cta: string;
 } {
-  if (remainingKeyTasks <= 0) {
+  return formatDnaV2DashboardCta({
+    workAreaLabel: "Deck",
+    remainingKeyTasks,
+  });
+}
+
+export function formatDnaFenceDashboardCta(remainingKeyTasks: number): {
+  title: string;
+  reason: string;
+  cta: string;
+} {
+  return formatDnaV2DashboardCta({
+    workAreaLabel: "Fence",
+    remainingKeyTasks,
+  });
+}
+
+export function dnaV2CompleteCopy(workAreaType: string): {
+  title: string;
+  body: string;
+} {
+  if (workAreaType === "fence") {
     return {
-      title: "Your Deck estimates use your key productivity",
-      reason: "You can keep refining other deck tasks when you have a moment.",
-      cta: "Review Deck calibration",
-    };
-  }
-  if (remainingKeyTasks === 3) {
-    return {
-      title: "Improve your Deck estimates",
-      reason:
-        "Tell Quotr how your crew normally completes a few common deck tasks.",
-      cta: "Improve your Deck estimates",
+      title: DNA_FENCE_TIER1_COMPLETE_TITLE,
+      body: DNA_FENCE_TIER1_COMPLETE_BODY,
     };
   }
   return {
-    title: "Improve your Deck estimates",
-    reason: "Finish the key Deck tasks so estimates use your crew's pace.",
-    cta: `Calibrate ${remainingKeyTasks} more key Deck ${
-      remainingKeyTasks === 1 ? "task" : "tasks"
-    }`,
+    title: DNA_DECK_TIER1_COMPLETE_TITLE,
+    body: DNA_DECK_TIER1_COMPLETE_BODY,
   };
 }

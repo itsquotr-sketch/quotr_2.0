@@ -32,6 +32,8 @@ export function ImproveSetupCard({
     preferredWorkAreaTypes: readiness.preferredWorkAreaTypes,
     deckKeyTasksCalibrated: readiness.deckKeyTasksCalibrated,
     deckKeyTasksTotal: readiness.deckKeyTasksTotal,
+    fenceKeyTasksCalibrated: readiness.fenceKeyTasksCalibrated,
+    fenceKeyTasksTotal: readiness.fenceKeyTasksTotal,
   });
 
   if (!next) {

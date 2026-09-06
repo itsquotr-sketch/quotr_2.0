@@ -15,10 +15,10 @@ import {
 import type { CompanyDnaHubState } from "@/lib/company-dna/actions";
 import { formatDnaProgressCopy } from "@/lib/company-dna/copy";
 import {
-  deckV2HubHref,
-  isCompanyDnaDeckV2WorkArea,
-  nextCompanyDnaDeckV2Task,
-} from "@/lib/company-dna/deck-v2";
+  isCompanyDnaV2WorkArea,
+  nextCompanyDnaV2Task,
+  v2HubHref,
+} from "@/lib/company-dna/v2-ui";
 import { nextCompanyDnaTask, workAreaHubCta } from "@/lib/company-dna/progress";
 import { cn } from "@/lib/utils";
 
@@ -54,15 +54,19 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
             const calibratedKeys = area.tasks
               .filter((status) => status.calibrated)
               .map((status) => status.calibrationTaskKey);
-            const deckV2 = isCompanyDnaDeckV2WorkArea(area.workAreaType);
-            const nextTask = deckV2
-              ? nextCompanyDnaDeckV2Task({ calibratedTaskKeys: calibratedKeys })
+            const v2 = isCompanyDnaV2WorkArea(area.workAreaType);
+            const nextTask = v2
+              ? nextCompanyDnaV2Task({
+                  workAreaType: area.workAreaType,
+                  calibratedTaskKeys: calibratedKeys,
+                })
               : nextCompanyDnaTask({
                   workAreaType: area.workAreaType,
                   calibratedTaskKeys: calibratedKeys,
                 });
-            const href = deckV2
-              ? deckV2HubHref({
+            const href = v2
+              ? v2HubHref({
+                  workAreaType: area.workAreaType,
                   status: area.status,
                   nextTaskKey: nextTask?.calibrationTaskKey,
                 })

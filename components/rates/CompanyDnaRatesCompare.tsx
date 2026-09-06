@@ -8,7 +8,7 @@ import {
 } from "@/lib/company-dna/catalogue";
 import { DNA_RATES_PRODUCTIVITY_HELPER, DNA_RESET_CTA } from "@/lib/company-dna/copy";
 import { resetCompanyDnaCalibration } from "@/lib/company-dna/actions";
-import { deckV2HubHref, nextCompanyDnaDeckV2Task } from "@/lib/company-dna/deck-v2";
+import { nextCompanyDnaV2Task, v2HubHref } from "@/lib/company-dna/v2-ui";
 import { LABOUR_RATE_CATALOGUE } from "@/lib/rates/catalogue";
 import { summarizeProductivityWorkAreas } from "@/lib/rates/productivity-work-area-summary";
 import type { RatesPageRate } from "@/lib/rates/types";
@@ -134,11 +134,13 @@ export function CompanyDnaRatesCompare({
                 </p>
                 <p className="text-xs text-muted-foreground">{group.statusLabel}</p>
               </div>
-              {group.generation === "v2c" ? (
+              {group.generation !== "v1" ? (
                 <Link
-                  href={deckV2HubHref({
+                  href={v2HubHref({
+                    workAreaType: group.workAreaType,
                     status: group.status,
-                    nextTaskKey: nextCompanyDnaDeckV2Task({
+                    nextTaskKey: nextCompanyDnaV2Task({
+                      workAreaType: group.workAreaType,
                       calibratedTaskKeys: group.tasks
                         .filter((row) => row.calibrated)
                         .map((row) => row.task.calibrationTaskKey),
@@ -165,7 +167,7 @@ export function CompanyDnaRatesCompare({
                   }))
                 }
               >
-                {open ? "Hide" : group.generation === "v2c" ? "Show tasks" : group.cta}
+                {open ? "Hide" : group.generation !== "v1" ? "Show tasks" : group.cta}
               </Button>
             </div>
             {open ? (

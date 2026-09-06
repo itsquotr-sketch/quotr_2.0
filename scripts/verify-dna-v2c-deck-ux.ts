@@ -3,11 +3,12 @@
  *
  * Run: npx --yes tsx scripts/verify-dna-v2c-deck-ux.ts
  *
- * No migration 055. Fence/RW V2 UI not exposed. Production not in scope.
+ * No migration 055. RW V2 UI not exposed. Production not in scope.
+ * Rates Fence counts follow DNA-V2D (9 / 3). Deck presentation uses about 143.
  */
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
-import { COMPANY_DNA_TASKS, getCompanyDnaTask } from "../lib/company-dna/catalogue";
+import { getCompanyDnaTask } from "../lib/company-dna/catalogue";
 import {
   clockFromDurationHours,
   companyDnaWorkAreaStatusV2,
@@ -182,13 +183,8 @@ check(
 );
 check("no steps in Deck UI", !deckTasks.some((task) => task.calibrationTaskKey.includes("steps")));
 check(
-  "Fence UI remains V1",
-  listCompanyDnaUiTasksForWorkArea("fence")
-    .map((task) => task.calibrationTaskKey)
-    .join(",") ===
-    COMPANY_DNA_TASKS.filter((task) => task.workAreaType === "fence")
-      .map((task) => task.calibrationTaskKey)
-      .join(",")
+  "Fence UI is V2D nine tasks",
+  listCompanyDnaUiTasksForWorkArea("fence").length === 9
 );
 check(
   "RW UI remains V1",
@@ -254,7 +250,9 @@ check(
 check(
   "decking scenario keeps lineal-metre authority",
   decking.authorityUnit === "lm" &&
-    deckV2ScenarioCopy(decking).includes(String(decking.authorityQuantity)) &&
+    decking.authorityQuantity === 142.8571 &&
+    deckV2ScenarioCopy(decking).includes("about 143 lineal metres") &&
+    !deckV2ScenarioCopy(decking).includes("142.8571") &&
     deckV2ScenarioCopy(decking).includes("20 m²")
 );
 check(
@@ -370,21 +368,21 @@ check("optional skip only non-tier-1", flow.includes("DNA_SKIP_FOR_NOW") && flow
 check("reset confirmation dialog", flow.includes("DNA_RESET_CONFIRM_TITLE") && summary.includes("DNA_RESET_CONFIRM_TITLE"));
 check("result language", flow.includes("formatDnaDeckResultPrimary"));
 check("task page uses unified resolver", taskPage.includes("resolveCompanyDnaTask"));
-check("fence V2 keys 404", taskPage.includes("!task.exposeInCurrentUi") && taskPage.includes("notFound()"));
+check("non-V2 keys 404", taskPage.includes("!task.exposeInCurrentUi") && taskPage.includes("notFound()"));
 check("Deck landing exists", existsSync(join(process.cwd(), "app/(protected)/app/setup/dna/deck/page.tsx")));
 check("no /v2/ product URL", !landing.includes("/v2/") && !taskPage.includes("/dna/v2"));
 check("historical evidence fields loaded", actions.includes("crew_size") && actions.includes("duration_hours"));
 check("do not fabricate clock", flow.includes("Original workers and clock time"));
 
 const hub = read("components/company-dna/CompanyDnaHub.tsx");
-check("hub Deck uses V2 href", hub.includes("deckV2HubHref") && hub.includes('data-company-dna-generation'));
-check("hub Fence stays nextCompanyDnaTask", hub.includes("nextCompanyDnaTask"));
+check("hub uses V2 href helper", hub.includes("v2HubHref") && hub.includes('data-company-dna-generation'));
+check("hub RW stays nextCompanyDnaTask", hub.includes("nextCompanyDnaTask"));
 
 const rates = summarizeProductivityWorkAreas([]);
 const deckRates = rates.find((row) => row.workAreaType === "deck");
 const fenceRates = rates.find((row) => row.workAreaType === "fence");
 check("Rates Deck is 7 tasks / 3 key", deckRates?.taskTotal === 7 && deckRates?.keyTaskTotal === 3);
-check("Rates Fence remains 3", fenceRates?.taskTotal === 3 && fenceRates?.generation === "v1");
+check("Rates Fence is V2D 9 / 3 key", fenceRates?.taskTotal === 9 && fenceRates?.generation === "v2d");
 check(
   "Rates compact key-task copy",
   read("components/rates/CompanyDnaRatesCompare.tsx").includes("key tasks calibrated")

@@ -9,9 +9,9 @@ import {
 } from "@/lib/company-dna/derive";
 import {
   companyDnaUiWorkAreaStatus,
-  isCompanyDnaDeckV2WorkArea,
+  isCompanyDnaV2WorkArea,
   listCompanyDnaUiTasksForWorkArea,
-} from "@/lib/company-dna/deck-v2";
+} from "@/lib/company-dna/v2-ui";
 import { workAreaHubCta } from "@/lib/company-dna/progress";
 import type { RatesPageRate } from "@/lib/rates/types";
 
@@ -31,7 +31,7 @@ export type ProductivityWorkAreaSummary = {
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
   cta: string;
-  generation: "v1" | "v2c";
+  generation: "v1" | "v2c" | "v2d";
   tasks: ProductivityTaskRow[];
 };
 
@@ -67,11 +67,11 @@ export function summarizeProductivityWorkAreas(
       workAreaType,
       calibratedTaskKeys: calibratedKeys,
     });
-    const deckV2 = isCompanyDnaDeckV2WorkArea(workAreaType);
-    const keyTaskTotal = deckV2
+    const v2 = isCompanyDnaV2WorkArea(workAreaType);
+    const keyTaskTotal = v2
       ? catalogueTasks.filter((task) => task.priorityTier === 1).length
       : catalogueTasks.filter((task) => task.isHighImpact).length;
-    const keyTaskCalibrated = deckV2
+    const keyTaskCalibrated = v2
       ? catalogueTasks.filter(
           (task) =>
             task.priorityTier === 1 &&
@@ -104,7 +104,11 @@ export function summarizeProductivityWorkAreas(
           : companyDnaWorkAreaStatusLabel(status),
       cta:
         status === "calibrated" ? "View / Continue" : workAreaHubCta(status),
-      generation: deckV2 ? ("v2c" as const) : ("v1" as const),
+      generation: v2
+        ? workAreaType === "fence"
+          ? ("v2d" as const)
+          : ("v2c" as const)
+        : ("v1" as const),
       tasks,
     };
   });

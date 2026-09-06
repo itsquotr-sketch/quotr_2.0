@@ -2,7 +2,7 @@
 
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { orgHasHighImpactCalibration } from "@/lib/company-dna/progress";
-import { deckV2ProgressCounts } from "@/lib/company-dna/deck-v2";
+import { fenceV2ProgressCounts, deckV2ProgressCounts } from "@/lib/company-dna/v2-ui";
 import {
   computeCompanySetupReadiness,
   type CompanySetupReadiness,
@@ -30,6 +30,8 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       preferredWorkAreaTypes: [],
       deckKeyTasksCalibrated: 0,
       deckKeyTasksTotal: 3,
+      fenceKeyTasksCalibrated: 0,
+      fenceKeyTasksTotal: 3,
       tradingName: null,
       legalName: null,
       contactEmail: null,
@@ -91,6 +93,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     String(row.work_area_type)
   );
   const deckCounts = deckV2ProgressCounts(calibratedScenarioIds);
+  const fenceCounts = fenceV2ProgressCounts(calibratedScenarioIds);
 
   return computeCompanySetupReadiness({
     accountReady: true,
@@ -125,5 +128,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
     preferredWorkAreaTypes,
     deckKeyTasksCalibrated: deckCounts.tier1Calibrated,
     deckKeyTasksTotal: deckCounts.tier1Total,
+    fenceKeyTasksCalibrated: fenceCounts.tier1Calibrated,
+    fenceKeyTasksTotal: fenceCounts.tier1Total,
   });
 }

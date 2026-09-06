@@ -42,13 +42,16 @@ import {
   deckV2IncludedCopy,
   deckV2ScenarioCopy,
   deckV2TaskTitle,
+  dnaV2CompleteCopy,
   formatDnaClockTimePerUnit,
   formatDnaDeckProgressIndicator,
   formatDnaDeckResultComparison,
   formatDnaDeckResultPrimary,
   formatDnaHoursPerUnit,
   formatDnaOutlierPrompt,
+  formatDnaV2ProgressIndicator,
 } from "@/lib/company-dna/copy";
+import { v2LandingPath } from "@/lib/company-dna/v2-ui";
 import type { CompanyDnaFoundationTask } from "@/lib/company-dna/v2-foundation";
 import {
   clockFromDurationHours,
@@ -185,25 +188,44 @@ export function CompanyDnaDeckTaskFlow({
   const productivity =
     savedProductivity ??
     (evidence.calibrated ? evidence.derivedProductivity : null);
+  const landing = v2LandingPath(task.workAreaType);
+  const completeCopy = dnaV2CompleteCopy(task.workAreaType);
   const nextHref = remainingAfterSave
     ? `/app/setup/dna/${encodeURIComponent(remainingAfterSave.calibrationTaskKey)}`
-    : "/app/setup/dna/deck?view=summary";
+    : `${landing}?view=summary`;
+  const progressCopy =
+    task.workAreaType === "fence"
+      ? formatDnaV2ProgressIndicator({
+          workAreaLabel: "Fence",
+          tier1Calibrated,
+          tier1Total,
+          optionalIndex,
+          optionalTotal,
+          currentIsTier1,
+        })
+      : formatDnaDeckProgressIndicator({
+          tier1Calibrated,
+          tier1Total,
+          optionalIndex,
+          optionalTotal,
+          currentIsTier1,
+        });
 
   return (
     <Card
       data-company-dna-task={task.calibrationTaskKey}
-      data-company-dna-deck-task={task.calibrationTaskKey}
+      data-company-dna-deck-task={
+        task.workAreaType === "deck" ? task.calibrationTaskKey : undefined
+      }
+      data-company-dna-fence-task={
+        task.workAreaType === "fence" ? task.calibrationTaskKey : undefined
+      }
+      data-company-dna-v2-task={task.calibrationTaskKey}
       className="mx-auto w-full max-w-xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"
     >
       <CardHeader>
         <p className="text-xs text-muted-foreground" data-company-dna-deck-progress>
-          {formatDnaDeckProgressIndicator({
-            tier1Calibrated,
-            tier1Total,
-            optionalIndex,
-            optionalTotal,
-            currentIsTier1,
-          })}
+          {progressCopy}
         </p>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{scenario}</CardDescription>
@@ -333,7 +355,7 @@ export function CompanyDnaDeckTaskFlow({
                 <Link
                   href={nextTask
                     ? `/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`
-                    : "/app/setup/dna/deck?view=summary"}
+                    : `${landing}?view=summary`}
                   className={cn(buttonVariants({ variant: "ghost" }), "min-h-11")}
                   data-company-dna-skip
                 >
@@ -341,7 +363,7 @@ export function CompanyDnaDeckTaskFlow({
                 </Link>
               ) : (
                 <Link
-                  href="/app/setup/dna/deck"
+                  href={landing}
                   className={cn(buttonVariants({ variant: "ghost" }), "min-h-11")}
                 >
                   Back
@@ -401,9 +423,15 @@ export function CompanyDnaDeckTaskFlow({
 
         {view === "complete" ? (
           <div className="space-y-3" data-company-dna-deck-complete>
-            <p className="text-base font-medium">{DNA_DECK_TIER1_COMPLETE_TITLE}</p>
+            <p className="text-base font-medium">
+              {task.workAreaType === "fence"
+                ? completeCopy.title
+                : DNA_DECK_TIER1_COMPLETE_TITLE}
+            </p>
             <p className="text-sm text-muted-foreground">
-              {DNA_DECK_TIER1_COMPLETE_BODY}
+              {task.workAreaType === "fence"
+                ? completeCopy.body
+                : DNA_DECK_TIER1_COMPLETE_BODY}
             </p>
             <div className="flex flex-col gap-2 sm:flex-row pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0">
               <Link

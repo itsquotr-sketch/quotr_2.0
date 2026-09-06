@@ -267,10 +267,13 @@ check(
 
 const ratesSummary = summarizeProductivityWorkAreas([]);
 check(
-  "Rates DNA summary is Deck V2C + Fence/RW V1",
+  "Rates DNA summary is Deck V2C + Fence V2D + RW V1",
   ratesSummary.every((row) => {
     if (row.workAreaType === "deck") {
       return row.taskTotal === 7 && row.keyTaskTotal === 3 && row.generation === "v2c";
+    }
+    if (row.workAreaType === "fence") {
+      return row.taskTotal === 9 && row.keyTaskTotal === 3 && row.generation === "v2d";
     }
     const v1Count = COMPANY_DNA_TASKS.filter(
       (task) => task.workAreaType === row.workAreaType
@@ -572,8 +575,12 @@ check(
   read("lib/company-dna/catalogue.ts").includes("export function getCompanyDnaTask")
 );
 check(
-  "live hub still lists Fence/RW from V1 catalogue",
-  read("lib/company-dna/deck-v2.ts").includes("listCompanyDnaTasksVisibleInCurrentUi(workAreaType)")
+  "live hub uses V2 overlay for Deck/Fence and V1 list for RW",
+  read("lib/company-dna/v2-ui.ts").includes(
+    "listCompanyDnaTasksVisibleInCurrentUi(workAreaType)"
+  ) &&
+    read("lib/company-dna/v2-ui.ts").includes('if (workAreaType === "fence")') &&
+    read("components/company-dna/CompanyDnaHub.tsx").includes("isCompanyDnaV2WorkArea")
 );
 
 console.log(`\n=== ${passed} passed, ${failed} failed ===`);

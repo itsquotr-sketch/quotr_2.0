@@ -11,8 +11,8 @@
  * - Migration 054 seeds the persistable identity the RPC FK requires.
  *   Benchmarks, keys, and units in 054 must match this file.
  * - Live save uses `resolveCompanyDnaTask` (foundation lookup).
- * - DNA-V2C exposes Deck UI via `lib/company-dna/deck-v2.ts`, not
- *   `exposeInCurrentUi` on Fence/RW rows.
+ * - DNA-V2C exposes Deck UI via `lib/company-dna/v2-ui.ts`.
+ * - DNA-V2D exposes Fence UI the same way. RW rows stay `exposeInCurrentUi: false`.
  */
 import {
   COMPANY_DNA_TASKS,

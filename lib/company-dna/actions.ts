@@ -13,10 +13,10 @@ import {
 } from "@/lib/company-dna/derive";
 import {
   companyDnaUiWorkAreaStatus,
-  deckV2ProgressCounts,
-  isCompanyDnaDeckV2WorkArea,
+  isCompanyDnaV2WorkArea,
   listCompanyDnaUiTasksForWorkArea,
-} from "@/lib/company-dna/deck-v2";
+  v2ProgressCounts,
+} from "@/lib/company-dna/v2-ui";
 import { resolveCompanyDnaTask } from "@/lib/company-dna/resolve-task";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { permissionDeniedError } from "@/lib/team/permission-server";
@@ -39,7 +39,7 @@ export type CompanyDnaWorkAreaProgress = {
   highImpactTotal: number;
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
-  generation: "v1" | "v2c";
+  generation: "v1" | "v2c" | "v2d";
   tasks: CompanyDnaTaskStatus[];
 };
 
@@ -185,14 +185,14 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
       workAreaType,
       calibratedTaskKeys: calibratedKeys,
     });
-    const deckCounts = isCompanyDnaDeckV2WorkArea(workAreaType)
-      ? deckV2ProgressCounts(calibratedKeys)
+    const v2Counts = isCompanyDnaV2WorkArea(workAreaType)
+      ? v2ProgressCounts(workAreaType, calibratedKeys)
       : null;
-    const highImpactTotal = deckCounts
-      ? deckCounts.tier1Total
+    const highImpactTotal = v2Counts
+      ? v2Counts.tier1Total
       : tasks.filter((task) => task.isHighImpact).length;
-    const highImpactCalibrated = deckCounts
-      ? deckCounts.tier1Calibrated
+    const highImpactCalibrated = v2Counts
+      ? v2Counts.tier1Calibrated
       : tasks.filter(
           (task) =>
             task.isHighImpact &&
@@ -216,8 +216,10 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
       highImpactTotal,
       status,
       statusLabel: companyDnaWorkAreaStatusLabel(status),
-      generation: isCompanyDnaDeckV2WorkArea(workAreaType)
-        ? ("v2c" as const)
+      generation: isCompanyDnaV2WorkArea(workAreaType)
+        ? workAreaType === "fence"
+          ? ("v2d" as const)
+          : ("v2c" as const)
         : ("v1" as const),
       tasks: taskStatuses,
     };

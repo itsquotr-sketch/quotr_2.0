@@ -1,13 +1,13 @@
 # QUOTR — Company DNA V2 Architecture
 
-**Programme:** DNA-V2B.1 — V2 calibration catalogue data seed  
-**Status:** Preview migration **054** applied (data-only). V1 hub / Rates still nine tasks. Do **not** start DNA-V2C UI.  
+**Programme:** DNA-V2D — Fence task-level calibration UX  
+**Status:** Preview migration **054** applied (data-only). Deck V2C + Fence V2D UI. RW remains V1. Do **not** start DNA-V2E until reviewed.  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm` — latest applied migration **054**  
 **Production:** DO NOT TOUCH — must remain without 054  
 
 **Code is authority.** This document traces live Deck / Fence / Retaining Wall calculator consumption. It does not invent calibration tasks the estimator cannot consume independently.
 
-Verifiers: `verify-dna-v2a-coverage`, `verify-dna-v2b-foundation`, `verify-dna-v2b1-catalogue-seed`
+Verifiers: `verify-dna-v2a-coverage`, `verify-dna-v2b-foundation`, `verify-dna-v2b1-catalogue-seed`, `verify-dna-v2c-deck-ux`, `verify-dna-v2d-fence-ux`
 
 ---
 
@@ -967,11 +967,11 @@ No extra estimate-time joins. Org rates already loaded per estimate. Catalogue i
 | **DNA-V2F** | Rates compact progress + Dashboard/setup copy + hosted proof | Prompts / Rates only |
 | **DNA-V2-EST-1** | Remaining estimator: optional pile machine/manual **key split**; optional Deck steps unit split. Fence demolition rates wiring **done in V2B**. | Calculator — **not** in C–F |
 
-Preferred next build after DNA-V2C review: **DNA-V2D Fence UX**. Do not start V2D until reviewed.
+Preferred next build after DNA-V2D review: **DNA-V2E Retaining Wall UX**. Do not start V2E until reviewed.
 
 ### DNA-V2C Deck UX
 
-**Status:** Deck-only task-level calibration. Fence/RW remain V1.
+**Status:** Deck task-level calibration. Fence ships in V2D. RW remains V1.
 
 - Unified save lookup: `resolveCompanyDnaTask` → foundation (V1 + seeded V2 keys)
 - Hours + minutes convert on the server with `durationHoursFromClock` before RPC
@@ -980,6 +980,18 @@ Preferred next build after DNA-V2C review: **DNA-V2D Fence UX**. Do not start V2
 - No migration 055
 
 Out of scope: Production, billing, quote acceptance, email, Dashboard **layout**, Rates **layout**, POLISH-01/02/03/03B, auth stability.
+
+### DNA-V2D Fence UX
+
+**Status:** Fence task-level calibration reuses the Deck V2 architecture. RW remains V1.
+
+- Shared helpers: `lib/company-dna/v2-ui.ts`, `quantity-format.ts`, parameterized Deck task flow / summary
+- Fence UI order: posts → rails → palings → concrete → horizontal slats → sections → capping → gate → demolition
+- Completion: 3/3 Tier 1 (`fence.posts.v1`, `fence.rails.v1`, `fence.boards.v1`). Optional tasks do not block.
+- Presentation-only quantity formatter: Deck `142.8571 lm` stays exact internally; UI shows about 143 lineal metres
+- No migration 055. Same save/reset RPCs. No package lump, movement, waste, or cleanup keys.
+
+Out of scope: Production, DNA-V2E RW UI, estimator XOR/system changes.
 
 ---
 
@@ -993,11 +1005,11 @@ Auth stability: do not rotate passwords for `jeanluc@erccontracting.co.nz` or `h
 
 ## 32. Exact recommended next build
 
-**DNA-V2C — Deck calibration UX**, after V2B.1 review.
+**DNA-V2E — Retaining Wall calibration UX**, after DNA-V2D review.
 
-054 is applied on Preview. `saveCompanyDnaCalibration` must look up foundation tasks before new Deck keys can be saved from the app. Do not expose unfinished V2 workflow until the Deck UX ships.
+Preview is through 054. Deck and Fence use V2 task-level calibration. RW stays on V1 two high-impact tasks until V2E.
 
-STOP. Do not implement DNA-V2C UI until reviewed.
+STOP. Do not implement DNA-V2E UI until reviewed.
 
 ---
 

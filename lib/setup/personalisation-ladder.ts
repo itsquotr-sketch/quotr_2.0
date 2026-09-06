@@ -10,7 +10,9 @@
  * Never blocks creating an estimate.
  */
 
-import { formatDnaDeckDashboardCta } from "@/lib/company-dna/copy";
+import { formatDnaV2DashboardCta } from "@/lib/company-dna/copy";
+import { orderCompanyDnaWorkAreas } from "@/lib/company-dna/catalogue";
+import { v2LandingPath } from "@/lib/company-dna/v2-ui";
 
 export type PersonalisationStepId =
   | "work_areas"
@@ -47,6 +49,8 @@ export type PersonalisationLadderInput = {
   preferredWorkAreaTypes?: string[];
   deckKeyTasksCalibrated?: number;
   deckKeyTasksTotal?: number;
+  fenceKeyTasksCalibrated?: number;
+  fenceKeyTasksTotal?: number;
 };
 
 const WORK_STEP: PersonalisationStep = {
@@ -103,26 +107,48 @@ export function resolvePersonalisationNextStep(
   if (!input.firstRunComplete) return null;
 
   if (!input.hasWorkTypePreferences) return WORK_STEP;
-  const prefersDeck = (input.preferredWorkAreaTypes ?? []).includes("deck");
+  const preferred = input.preferredWorkAreaTypes ?? [];
   const deckTotal = input.deckKeyTasksTotal ?? 3;
   const deckCalibrated = input.deckKeyTasksCalibrated ?? 0;
-  const deckComplete = deckCalibrated >= deckTotal;
-  const calibrationComplete = prefersDeck
-    ? deckComplete
-    : (input.hasHighImpactCalibration ?? input.hasCalibration);
+  const fenceTotal = input.fenceKeyTasksTotal ?? 3;
+  const fenceCalibrated = input.fenceKeyTasksCalibrated ?? 0;
+  const prefersDeck = preferred.includes("deck");
+  const prefersFence = preferred.includes("fence");
+  const ordered = orderCompanyDnaWorkAreas(preferred);
+  const nextV2Area = ordered.find((workArea) => {
+    if (workArea === "deck" && prefersDeck && deckCalibrated < deckTotal) {
+      return true;
+    }
+    if (workArea === "fence" && prefersFence && fenceCalibrated < fenceTotal) {
+      return true;
+    }
+    return false;
+  });
+  const v2CalibrationComplete =
+    (!prefersDeck || deckCalibrated >= deckTotal) &&
+    (!prefersFence || fenceCalibrated >= fenceTotal);
+  const calibrationComplete =
+    prefersDeck || prefersFence
+      ? v2CalibrationComplete
+      : (input.hasHighImpactCalibration ?? input.hasCalibration);
   if (!calibrationComplete) {
-    if (prefersDeck) {
-      const remaining = Math.max(0, deckTotal - deckCalibrated);
-      const copy = formatDnaDeckDashboardCta(remaining);
+    if (nextV2Area === "deck" || nextV2Area === "fence") {
+      const remaining =
+        nextV2Area === "deck"
+          ? Math.max(0, deckTotal - deckCalibrated)
+          : Math.max(0, fenceTotal - fenceCalibrated);
+      const total = nextV2Area === "deck" ? deckTotal : fenceTotal;
+      const copy = formatDnaV2DashboardCta({
+        workAreaLabel: nextV2Area === "deck" ? "Deck" : "Fence",
+        remainingKeyTasks: remaining,
+      });
+      const landing = v2LandingPath(nextV2Area);
       return {
         id: "calibrate",
         title: copy.title,
         reason: copy.reason,
         cta: copy.cta,
-        href:
-          remaining === deckTotal
-            ? "/app/setup/dna/deck"
-            : "/app/setup/dna/deck?view=continue",
+        href: remaining === total ? landing : `${landing}?view=continue`,
       };
     }
     return input.hasCalibration ? CONTINUE_CALIBRATE_STEP : CALIBRATE_STEP;
