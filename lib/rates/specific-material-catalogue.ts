@@ -947,14 +947,15 @@ export const DECK_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
 export const DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   entry({
     item_key: "deck.concrete.premix.20kg.bag",
-    label: "20 kg premix concrete",
+    label: "Concrete bags",
     rate_type: "material",
     category: "material",
     work_area_type: "deck",
     workAreaLabel: "Deck concrete",
     unit: "bag",
     description:
-      "Exact 20 kg premix bag identity. Quotr benchmark $ / bag requires owner-approved catalogue defaultCostRate — do not invent a commercial rate. Company or project exact rate required until then; otherwise Pricing Required. Not residual fixings money.",
+      "20 kg general-purpose premixed concrete bag. Owner-approved Quotr benchmark $9.80 EX GST / bag. Estimating default — not a merchant quote and not a guaranteed purchase price. Company exact rate remains authoritative.",
+    defaultCostRate: 9.80,
     calculatorSupport: "used_now",
   }),
 ];
@@ -1526,7 +1527,7 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Deck concrete",
     description:
-      "20 kg premix bag identity. No invented $ benchmark — company exact or Pricing Required.",
+      "20 kg premix bag identity. Company exact rate wins; otherwise the owner-approved Quotr benchmark $9.80 EX GST / bag.",
     entries: DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {

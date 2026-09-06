@@ -217,11 +217,12 @@ export const FENCE_TIMBER_1B_MATERIAL_STARTERS: Record<string, FenceTimber1BStar
       "Reuses the current RW sleeper 20 kg premix starter band (~$11.50/bag ex GST). Company/Project exact on fence.concrete.premix.20kg.bag or deck.concrete.premix.20kg.bag wins.",
   },
   [RW_PREMIX_20KG_KEY]: {
-    costPerUnit: 11.5,
+    costPerUnit: 9.80,
     unit: "bag",
     identity: "20 kg bagged premix concrete (shared commercial bag key)",
     confidence: "low",
-    basis: "Alias of the shared deck.concrete.premix.20kg.bag commercial path.",
+    basis:
+      "Alias of the shared deck.concrete.premix.20kg.bag commercial path. Owner-approved Quotr benchmark $9.80 EX GST / bag.",
   },
 };
 

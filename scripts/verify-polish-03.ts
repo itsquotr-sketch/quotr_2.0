@@ -3,18 +3,26 @@
  *
  * Run: npx --yes tsx scripts/verify-polish-03.ts
  *
- * Presentation / feed derivation only. Does not change estimating formulas,
- * DNA math, billing, security, or schema.
+ * POLISH-03A adds the owner-approved Quotr benchmark on the existing
+ * deck.concrete.premix.20kg.bag catalogue key. Quantity formulas unchanged.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { deriveRecentActivity } from "../lib/dashboard/derive-recent-activity";
 import { formatActivityWhen } from "../lib/dashboard/format-activity-time";
-import { DECK_CONCRETE_MATERIAL_ITEM_KEY } from "../lib/estimate/deck-scope-2c";
+import { mapRateLabel } from "../lib/assistant/builder-review/compose";
+import { presentLineFallback } from "../lib/estimate/fallback-presentation";
+import {
+  DECK_CONCRETE_MATERIAL_ITEM_KEY,
+  purchasedConcreteBags,
+} from "../lib/estimate/deck-scope-2c";
+import { resolveMaterialRate } from "../lib/estimate/resolve-material-rate";
+import { FULL_RATE_CATALOGUE } from "../lib/rates/catalogue";
 import { DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE } from "../lib/rates/specific-material-catalogue";
 import { roleAllowsPermission } from "../lib/team/permissions";
 import { parseRatesSection } from "../lib/setup/recommendation-destinations";
 import { QUOTR_ICON_SRC, QUOTR_WORDMARK_SRC } from "../lib/branding/assets";
 import { summarizeProductivityWorkAreas } from "../lib/rates/productivity-work-area-summary";
+import type { OrganisationRate, OrganisationSettings } from "../components/setup/types";
 
 let passed = 0;
 let failed = 0;
@@ -263,25 +271,129 @@ console.log("\n--- CONCRETE ---\n");
 const concreteEntry = DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE.find(
   (entry) => entry.item_key === DECK_CONCRETE_MATERIAL_ITEM_KEY
 );
+const catalogueDupes = FULL_RATE_CATALOGUE.filter(
+  (entry) => entry.item_key === DECK_CONCRETE_MATERIAL_ITEM_KEY
+);
 const deckCalc = read("lib/estimate/calculators/deck.ts");
+const deckQty = read("lib/estimate/deck-scope-2c.ts");
 check(
   "canonical concrete bag material key",
   DECK_CONCRETE_MATERIAL_ITEM_KEY === "deck.concrete.premix.20kg.bag" &&
-    concreteEntry?.unit === "bag"
+    concreteEntry?.unit === "bag" &&
+    concreteEntry?.item_key === "deck.concrete.premix.20kg.bag"
 );
 check(
-  "no invented catalogue benchmark dollar",
-  concreteEntry != null && concreteEntry.defaultCostRate == null
+  "no duplicate catalogue item",
+  DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE.length === 1 &&
+    catalogueDupes.length === 1
 );
 check(
-  "calculator still resolves company rate then missing",
+  "owner-approved Quotr benchmark is $9.80 / bag",
+  concreteEntry?.defaultCostRate === 9.8 && concreteEntry?.unit === "bag"
+);
+check(
+  "Rates compact row shows Your rate and Quotr benchmark",
+  ratesTable.includes("Your rate") &&
+    ratesTable.includes("Quotr benchmark") &&
+    ratesTable.includes('"—"') &&
+    (concreteEntry?.label === "Concrete bags" ||
+      /Concrete bags/i.test(concreteEntry?.label ?? ""))
+);
+
+const polishSettings: OrganisationSettings = {
+  id: "s",
+  org_id: "o",
+  default_margin_percent: 20,
+  default_contingency_percent: 10,
+  default_gst_rate: 15,
+  budget_rate_factor: 0.9,
+  premium_rate_factor: 1.15,
+  currency: "NZD",
+  country: "NZ",
+  region: null,
+  onboarding_status: "completed",
+  onboarding_step: "completed",
+  onboarding_completed_at: null,
+  prefer_user_rates: true,
+  allow_benchmark_rates: true,
+  show_profit_in_estimates: true,
+};
+const companyBagRate: OrganisationRate = {
+  id: "r-bag",
+  rate_type: "material",
+  trade: null,
+  work_area_type: "deck",
+  item_key: DECK_CONCRETE_MATERIAL_ITEM_KEY,
+  label: "Concrete bags",
+  unit: "bag",
+  cost_rate: 12.5,
+  sell_rate: null,
+  markup_percent: null,
+  active: true,
+};
+const companyResolved = resolveMaterialRate({
+  orgRates: [companyBagRate],
+  materialKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
+  unit: "bag",
+  label: "Concrete bags",
+  benchmarkCostRate: concreteEntry?.defaultCostRate ?? 0,
+  organisationSettings: polishSettings,
+});
+const benchmarkResolved = resolveMaterialRate({
+  orgRates: [],
+  materialKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
+  unit: "bag",
+  label: "Concrete bags",
+  benchmarkCostRate: concreteEntry?.defaultCostRate ?? 0,
+  organisationSettings: polishSettings,
+});
+check(
+  "company rate overrides benchmark",
+  companyResolved.costRate === 12.5 &&
+    companyResolved.materialRateSource === "company_specific" &&
+    companyResolved.rateResolutionDisplay === "Your company rate" &&
+    companyResolved.costRate !== 9.8
+);
+check(
+  "benchmark used when company rate absent",
+  benchmarkResolved.costRate === 9.8 &&
+    benchmarkResolved.unit === "bag" &&
+    benchmarkResolved.materialRateSource === "benchmark_specific" &&
+    benchmarkResolved.rateResolutionDisplay === "Quotr benchmark"
+);
+const reviewBenchmark = presentLineFallback({
+  label: "Post-hole concrete",
+  rateSource: "Quotr benchmark",
+  itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
+  quantityBasis: {
+    sourceFact: "deck.concrete_bags_per_hole",
+    sourceLabel: "Post holes",
+    quantity: 10,
+    unit: "bag",
+    confidence: "derived",
+  },
+});
+check(
+  "Review names calculated-bag benchmark as Quotr benchmark, not Allowance used",
+  reviewBenchmark?.kind === "benchmark_rate" &&
+    reviewBenchmark.label === "Quotr benchmark" &&
+    mapRateLabel("Quotr benchmark") === "Quotr benchmark" &&
+    mapRateLabel("Fallback allowance") === "Allowance used"
+);
+check(
+  "calculator still prefers company rate then catalogue benchmark",
   deckCalc.includes("DECK_CONCRETE_MATERIAL_ITEM_KEY") &&
     deckCalc.includes('rateSourceType: "user_rate"') &&
-    deckCalc.includes('rateSourceType: "missing"')
+    deckCalc.includes('rateSourceType: "benchmark"') &&
+    deckCalc.includes("getCatalogueEntry")
 );
 check(
-  "Rates compact row can present missing benchmark as —",
-  ratesTable.includes("Quotr benchmark") && ratesTable.includes('"—"')
+  "bag quantity formula unchanged",
+  purchasedConcreteBags(4, 2.5) === 10 &&
+    deckQty.includes("Math.ceil(round2(supportCount * bagsPerHole)") &&
+    deckCalc.includes("purchasedConcreteBags") &&
+    deckCalc.includes("concreteBagsPerHole") &&
+    !deckCalc.includes("bagsEach * 20")
 );
 
 if (failed > 0) {

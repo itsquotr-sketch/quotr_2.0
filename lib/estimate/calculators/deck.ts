@@ -39,6 +39,7 @@ import {
   withMaterialBuildUp,
 } from "@/lib/estimate/material-buildup-meta";
 import { withMaterialRateResolution } from "@/lib/estimate/material-rate-pricing";
+import { getCatalogueEntry } from "@/lib/rates/catalogue";
 import { resolveDeckingBoardPricing } from "@/lib/estimate/deck-material-pricing";
 import {
   DECK_LABOUR_COMPONENT_KEY,
@@ -1243,54 +1244,103 @@ export function calculateDeck(
         rate.item_key === DECK_CONCRETE_MATERIAL_ITEM_KEY &&
         rate.cost_rate != null
     );
+    const bagQuantityBasis = quantityBasisFrom({
+      sourceFact: DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
+      sourceLabel: "Post holes and bags per hole",
+      quantity: bags,
+      unit: "bag",
+      formula: `${holeCount} holes × ${bagsEachDisplay} bags/hole`,
+      confidence: "derived",
+    });
     if (bags > 0 && companyConcrete?.cost_rate != null) {
       const unitCost = Number(companyConcrete.cost_rate);
       const unitSell =
         companyConcrete.sell_rate != null
           ? Number(companyConcrete.sell_rate)
           : unitCost / (1 - (context.organisationSettings?.default_margin_percent ?? 20) / 100);
-      lineItems.push({
-        ...createRateLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: DECK_CONCRETE_MATERIAL_LABEL,
-          category: "materials",
-          quantity: bags,
-          unit: "bag",
-          costRate: unitCost,
-          sellRate: unitSell,
-          rateSource: getRateSourceLabel("user_rate"),
-          rateSourceType: "user_rate",
-          itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
-          componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
-          notes: identitySummary,
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-        }),
-        identitySummary,
-      });
+      lineItems.push(
+        withCommercialMetadata(
+          {
+            ...createRateLineItem({
+              workAreaId: workArea.id,
+              workAreaName: workArea.name,
+              label: DECK_CONCRETE_MATERIAL_LABEL,
+              category: "materials",
+              quantity: bags,
+              unit: "bag",
+              costRate: unitCost,
+              sellRate: unitSell,
+              rateSource: getRateSourceLabel("user_rate"),
+              rateSourceType: "user_rate",
+              itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
+              componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
+              notes: identitySummary,
+              sortOrder: sortOrder++,
+              organisationSettings: context.organisationSettings,
+            }),
+            identitySummary,
+          },
+          { quantityBasis: bagQuantityBasis }
+        )
+      );
     } else if (bags > 0) {
-      lineItems.push({
-        ...createRateLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: DECK_CONCRETE_MATERIAL_LABEL,
-          category: "materials",
-          quantity: bags,
-          unit: "bag",
-          costRate: 0,
-          sellRate: 0,
-          rateSource: getRateSourceLabel("missing"),
-          rateSourceType: "missing",
-          itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
-          componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
-          notes: identitySummary,
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-        }),
-        identitySummary,
-      });
-      missingInfo.push("Concrete 20kg premix bag rate required");
+      const benchmarkCost = getCatalogueEntry(DECK_CONCRETE_MATERIAL_ITEM_KEY)
+        ?.defaultCostRate;
+      const allowBenchmark =
+        context.organisationSettings?.allow_benchmark_rates !== false;
+      if (benchmarkCost != null && allowBenchmark) {
+        const unitSell =
+          benchmarkCost /
+          (1 -
+            (context.organisationSettings?.default_margin_percent ?? 20) / 100);
+        lineItems.push(
+          withCommercialMetadata(
+            {
+              ...createRateLineItem({
+                workAreaId: workArea.id,
+                workAreaName: workArea.name,
+                label: DECK_CONCRETE_MATERIAL_LABEL,
+                category: "materials",
+                quantity: bags,
+                unit: "bag",
+                costRate: benchmarkCost,
+                sellRate: unitSell,
+                rateSource: getRateSourceLabel("benchmark"),
+                rateSourceType: "benchmark",
+                itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
+                componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
+                notes: identitySummary,
+                sortOrder: sortOrder++,
+                organisationSettings: context.organisationSettings,
+              }),
+              identitySummary,
+            },
+            { quantityBasis: bagQuantityBasis }
+          )
+        );
+      } else {
+        lineItems.push({
+          ...createRateLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: DECK_CONCRETE_MATERIAL_LABEL,
+            category: "materials",
+            quantity: bags,
+            unit: "bag",
+            costRate: 0,
+            sellRate: 0,
+            rateSource: getRateSourceLabel("missing"),
+            rateSourceType: "missing",
+            itemKey: DECK_CONCRETE_MATERIAL_ITEM_KEY,
+            componentKey: DECK_CONCRETE_BAGS_COMPONENT_KEY,
+            notes: identitySummary,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+          }),
+          identitySummary,
+        });
+        missingInfo.push("Concrete 20kg premix bag rate required");
+      }
     }
 
     const placeProductivity = resolveDeckConcretePlaceProductivity(context.rates);
