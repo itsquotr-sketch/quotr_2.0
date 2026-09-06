@@ -34,6 +34,13 @@ import { calculateQuoteBaseTotalsFromItems } from "@/lib/quotes/base-totals";
 import { resolveAuthoritativeQuoteItemTotal } from "@/lib/quotes/quote-commercial-engine-adapter";
 import type { QuoteItemFromPricing } from "@/lib/quotes/from-pricing";
 import { appendQuoteEvent } from "@/lib/quotes/events";
+import {
+  issuerSnapshotWithDisplayOptions,
+  NEW_QUOTE_DISPLAY_OPTIONS,
+  normalizeQuoteDisplayOptions,
+  resolveQuoteDisplayOptions,
+  type QuoteDisplayOptions,
+} from "@/lib/quotes/display-options";
 import { captureQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
 import { getCompanyDisplayName } from "@/lib/quotes/display";
 import { mapQuote, mapQuoteItem } from "@/lib/quotes/mappers";
@@ -162,6 +169,43 @@ async function loadOwnedQuote(quoteId: string) {
 
 function assertQuoteEditable(quote: ReturnType<typeof mapQuote>) {
   return assertQuoteSnapshotMutable(quote);
+}
+
+function issuerSnapshotRpcPayload(
+  issuer: ReturnType<typeof captureQuoteIssuerSnapshot>,
+  displayOptions: QuoteDisplayOptions | null | undefined
+) {
+  if (!issuer) return issuer;
+  const options = displayOptions
+    ? normalizeQuoteDisplayOptions(displayOptions)
+    : null;
+  return issuerSnapshotWithDisplayOptions(
+    issuer as unknown as Record<string, unknown>,
+    options
+  );
+}
+
+async function persistQuoteDisplayOptions(input: {
+  supabase: QuoteDbClient;
+  orgId: string;
+  quoteId: string;
+  issuer: ReturnType<typeof captureQuoteIssuerSnapshot> | null;
+  options: QuoteDisplayOptions;
+}): Promise<string | null> {
+  const payload = issuerSnapshotWithDisplayOptions(
+    input.issuer as unknown as Record<string, unknown> | null,
+    normalizeQuoteDisplayOptions(input.options)
+  );
+  const { error } = await input.supabase
+    .from("quotes")
+    .update({ issuer_snapshot: payload })
+    .eq("id", input.quoteId)
+    .eq("org_id", input.orgId)
+    .eq("status", "draft");
+  if (error) {
+    return toUserError(error, "quote-display-options", USER_ERRORS.quoteUpdateFailed);
+  }
+  return null;
 }
 
 type QuoteDbClient = Awaited<
@@ -711,6 +755,17 @@ export async function createQuoteFromPricing(input: {
     return { error: USER_ERRORS.quoteCreateFailed };
   }
 
+  const displayPersistError = await persistQuoteDisplayOptions({
+    supabase,
+    orgId,
+    quoteId,
+    issuer: null,
+    options: NEW_QUOTE_DISPLAY_OPTIONS,
+  });
+  if (displayPersistError) {
+    return { error: displayPersistError };
+  }
+
   const currentStatus = project.business_status as string;
   if (
     ACTIVE_PIPELINE_STATUSES.includes(
@@ -797,6 +852,12 @@ export async function updateQuote(
   if (quoteInput.terms !== undefined) update.terms = quoteInput.terms;
   if (quoteInput.presentation_mode !== undefined) {
     update.presentation_mode = quoteInput.presentation_mode;
+  }
+  if (quoteInput.display_options !== undefined) {
+    update.issuer_snapshot = issuerSnapshotWithDisplayOptions(
+      quote.issuer_snapshot as unknown as Record<string, unknown> | null,
+      normalizeQuoteDisplayOptions(quoteInput.display_options)
+    );
   }
 
   const { error } = await supabase
@@ -1241,7 +1302,10 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
 
   const sent = await runQuoteTxn(supabase, SEND_QUOTE_REVISION_RPC, {
     p_quote_id: parsed.data.quoteId,
-    p_issuer_snapshot: issuerSnapshot,
+    p_issuer_snapshot: issuerSnapshotRpcPayload(
+      issuerSnapshot,
+      quote.display_options
+    ),
     p_snapshot_fingerprint: snapshotFingerprint,
     p_fingerprint_version: QUOTE_SNAPSHOT_FINGERPRINT_VERSION,
   });
@@ -1559,7 +1623,10 @@ export async function sendQuoteToClient(input: {
     FINALIZE_QUOTE_DELIVERY_RPC,
     {
       p_delivery_id: deliveryId,
-      p_issuer_snapshot: issuerSnapshot,
+      p_issuer_snapshot: issuerSnapshotRpcPayload(
+        issuerSnapshot,
+        working.display_options
+      ),
       p_snapshot_fingerprint: snapshotFingerprint,
       p_fingerprint_version: QUOTE_SNAPSHOT_FINGERPRINT_VERSION,
     }
@@ -1661,7 +1728,10 @@ export async function finalizeQuoteDelivery(
     FINALIZE_QUOTE_DELIVERY_RPC,
     {
       p_delivery_id: delivery.id,
-      p_issuer_snapshot: issuerSnapshot,
+      p_issuer_snapshot: issuerSnapshotRpcPayload(
+        issuerSnapshot,
+        loaded.quote.display_options
+      ),
       p_snapshot_fingerprint: fingerprint,
       p_fingerprint_version: QUOTE_SNAPSHOT_FINGERPRINT_VERSION,
     }
@@ -1993,6 +2063,17 @@ export async function reviseQuote(input: {
     redirect(`/app/projects/${projectId}/quotes/${newQuoteId}`);
   }
 
+  const copiedDisplayError = await persistQuoteDisplayOptions({
+    supabase,
+    orgId,
+    quoteId: newQuoteId,
+    issuer: null,
+    options: resolveQuoteDisplayOptions(quote),
+  });
+  if (copiedDisplayError) {
+    return { error: copiedDisplayError };
+  }
+
   const { data: project } = await supabase
     .from("projects")
     .select("business_status")
@@ -2295,6 +2376,17 @@ export async function reviseQuoteFromFinalPricing(input: {
       resolvedPricingDocumentId
     );
     redirect(`/app/projects/${projectId}/quotes/${newQuoteId}`);
+  }
+
+  const copiedDisplayError = await persistQuoteDisplayOptions({
+    supabase,
+    orgId,
+    quoteId: newQuoteId,
+    issuer: null,
+    options: resolveQuoteDisplayOptions(quote),
+  });
+  if (copiedDisplayError) {
+    return { error: copiedDisplayError };
   }
 
   const currentStatus = project.business_status as string;

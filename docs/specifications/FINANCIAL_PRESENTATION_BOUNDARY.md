@@ -56,6 +56,7 @@ Do not create new preview surfaces that do not already exist.
 | React components | Calculate sell, GP, margin, markup, GST, or document totals with local formulas |
 | Formatting helpers | Aggregate items or derive sell-from-cost |
 | Quote print/preview | Recalculate historical snapshots |
+| Quote display toggles | Change cost, sell, GST, or document totals |
 | Confidence | Alter money |
 | Company DNA | Control arithmetic |
 | Parity helpers | Be imported into UI |

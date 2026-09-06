@@ -3,6 +3,7 @@ import {
   clientSafeQuoteLineDescription,
   isEstimatorDiagnosticDescription,
 } from "@/lib/quotes/client-line-description";
+import { parseQuoteDisplayOptions } from "@/lib/quotes/display-options";
 import { parseQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
 
@@ -39,6 +40,7 @@ export function mapQuote(row: Record<string, unknown>): Quote {
     declined_at: (row.declined_at as string | null) ?? null,
     expired_at: (row.expired_at as string | null) ?? null,
     issuer_snapshot: parseQuoteIssuerSnapshot(row.issuer_snapshot),
+    display_options: parseQuoteDisplayOptions(row.issuer_snapshot),
     snapshot_fingerprint: (row.snapshot_fingerprint as string | null) ?? null,
     snapshot_fingerprint_version:
       (row.snapshot_fingerprint_version as string | null) ?? null,

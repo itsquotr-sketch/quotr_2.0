@@ -1,4 +1,10 @@
 import { roundMoney } from "@/lib/pricing/calculations";
+import {
+  resolveQuoteDisplayOptions,
+  visibleQuoteDisplayColumns,
+  type QuoteDisplayColumn,
+  type QuoteDisplayOptions,
+} from "@/lib/quotes/display-options";
 import { groupQuoteItemsBySection } from "@/lib/quotes/mappers";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
 
@@ -60,6 +66,8 @@ export type QuoteClientPresentation = {
   optionalItems: QuoteItem[];
   groupedSections: QuoteGroupedSection[];
   includedSell: number;
+  display: QuoteDisplayOptions;
+  columns: QuoteDisplayColumn[];
 };
 
 /**
@@ -67,10 +75,12 @@ export type QuoteClientPresentation = {
  * document totals — callers must display stored quote.subtotal / gst / incl.
  */
 export function presentQuoteClientDocument(
-  quote: Pick<Quote, "presentation_mode" | "subtotal">,
+  quote: Pick<Quote, "presentation_mode" | "subtotal" | "display_options">,
   items: QuoteItem[]
 ): QuoteClientPresentation {
   const mode = parseQuotePresentationMode(quote.presentation_mode);
+  const display = resolveQuoteDisplayOptions(quote);
+  const columns = visibleQuoteDisplayColumns(display);
   const includedItems = quoteItemsForBaseTotal(items);
   const optionalItems = quoteItemsForOptionalDisplay(items);
   const groupedSections = groupQuoteItemsBySection(includedItems).map(
@@ -93,6 +103,8 @@ export function presentQuoteClientDocument(
     optionalItems,
     groupedSections,
     includedSell,
+    display,
+    columns,
   };
 }
 

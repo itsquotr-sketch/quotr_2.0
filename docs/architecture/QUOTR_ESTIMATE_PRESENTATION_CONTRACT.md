@@ -104,7 +104,7 @@ Bathroom: subcontract packages are honest first-class lines, not a failed takeof
 | --- | --- | --- |
 | Estimate / Builder Review | cost, sell, GM, assumptions, rate source labels the builder already sees | shadow diagnostics, internal authority enums as customer copy |
 | Pricing | deliberate edits; RECOVERY-1 sell authority | must not change sell merely by entering |
-| Quote | customer scope + priced items | material takeoff internals, rate provenance, `sellAuthority`, shadow, REAL-JOB $13,000 |
+| Quote | customer scope + priced items; column visibility from the issued snapshot | material takeoff internals, rate provenance, `sellAuthority`, shadow, REAL-JOB $13,000 |
 
 Job Plan included/excluded text is the future source of **clean customer scope wording**. Quote still snapshots Pricing, not Job Plan money.
 

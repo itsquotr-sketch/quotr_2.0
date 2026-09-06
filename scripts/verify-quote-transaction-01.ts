@@ -500,7 +500,8 @@ assert(
     migrations.includes("051_organisation_timezone.sql") &&
     migrations.includes("052_company_productivity_calibration.sql") &&
     migrations.includes("053_role_aware_rls_hardening.sql") &&
-    migrations.at(-1) === "053_role_aware_rls_hardening.sql"
+    migrations.includes("054_company_dna_v2_catalogue_seed.sql") &&
+    migrations.at(-1) === "054_company_dna_v2_catalogue_seed.sql"
 );
 assert("viewed status added", migrationSrc.includes("'viewed'"));
 assert(

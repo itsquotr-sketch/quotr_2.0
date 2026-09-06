@@ -993,7 +993,7 @@ No extra estimate-time joins. Org rates already loaded per estimate. Catalogue i
 | **DNA-V2F** | Hub / Rates / Dashboard closeout. No new maths. | **Complete** |
 | **DNA-V2-EST-1** | Remaining estimator: optional pile machine/manual **key split**; optional Deck steps unit split. Fence demolition rates wiring **done in V2B**. | Calculator — **not** in C–F |
 
-Preferred next product phase after DNA-V2F review: quote display work, not estimator DNA.
+Preferred next product phase after DNA-V2F review: owner review of Quote Display V1, then final pre-beta close when approved.
 
 ### DNA-V2C Deck UX
 
@@ -1031,11 +1031,9 @@ Auth stability: do not rotate passwords for `jeanluc@erccontracting.co.nz` or `h
 
 ## 32. Exact recommended next build
 
-**Quote display work**, after DNA-V2F review.
+**Quote Display V1** is implemented on Preview (no 055). Do not start final pre-beta close until reviewed.
 
-Preview is through 054. Deck, Fence, and Retaining Wall use V2 task-level calibration. Company DNA V2 is closed as a product.
-
-STOP. Do not implement quote display work until reviewed.
+STOP. Production is not in scope.
 
 ---
 

@@ -24,6 +24,7 @@ import {
   OPTIONAL_ITEMS_CLIENT_NOTE,
   presentQuoteClientDocument,
 } from "@/lib/quotes/presentation";
+import type { QuoteDisplayColumn, QuoteDisplayOptions } from "@/lib/quotes/display-options";
 import {
   clientSafeQuoteLineDescription,
   isEstimatorDiagnosticDescription,
@@ -58,8 +59,21 @@ function MetaRow({ label, value }: { label: string; value: string }) {
   );
 }
 
-function QuoteLineItemRow({ item }: { item: QuoteItem }) {
+function QuoteLineItemRow({
+  item,
+  columns,
+  display,
+}: {
+  item: QuoteItem;
+  columns: QuoteDisplayColumn[];
+  display: QuoteDisplayOptions;
+}) {
   const description = clientSafeQuoteLineDescription(item.description);
+  const quantityText = item.quantity != null ? String(item.quantity) : "—";
+  const unitText = item.unit ?? "—";
+  const unitPriceText =
+    item.unit_price != null ? formatPricingMoney(item.unit_price) : "—";
+  const lineTotalText = formatPricingMoney(item.total);
 
   return (
     <>
@@ -79,22 +93,36 @@ function QuoteLineItemRow({ item }: { item: QuoteItem }) {
             </p>
           ) : null}
         </td>
-        <td className="w-14 py-1.5 pr-2 text-right align-top whitespace-nowrap tabular-nums text-neutral-700 print:w-12 print:py-1 print:text-[9pt]">
-          {item.quantity != null ? item.quantity : "—"}
-        </td>
-        <td className="w-16 py-1.5 pr-2 text-right align-top whitespace-nowrap text-neutral-500 print:w-14 print:py-1 print:text-[9pt]">
-          {item.unit ?? "—"}
-        </td>
-        <td className="w-24 py-1.5 pr-2 text-right align-top whitespace-nowrap tabular-nums text-neutral-700 print:w-20 print:py-1 print:text-[9pt]">
-          {item.unit_price != null ? formatPricingMoney(item.unit_price) : "—"}
-        </td>
-        <td className="w-24 py-1.5 text-right align-top font-medium whitespace-nowrap tabular-nums text-neutral-900 print:w-20 print:py-1 print:text-[9pt]">
-          {formatPricingMoney(item.total)}
-        </td>
+        {display.show_quantity ? (
+          <td className="w-14 py-1.5 pr-2 text-right align-top whitespace-nowrap tabular-nums text-neutral-700 print:w-12 print:py-1 print:text-[9pt]">
+            {quantityText}
+          </td>
+        ) : null}
+        {display.show_unit ? (
+          <td className="w-16 py-1.5 pr-2 text-right align-top whitespace-nowrap text-neutral-500 print:w-14 print:py-1 print:text-[9pt]">
+            {unitText}
+          </td>
+        ) : null}
+        {display.show_unit_price ? (
+          <td
+            className="w-24 py-1.5 pr-2 text-right align-top whitespace-nowrap tabular-nums text-neutral-700 print:w-20 print:py-1 print:text-[9pt]"
+            data-quote-unit-price="true"
+          >
+            {unitPriceText}
+          </td>
+        ) : null}
+        {display.show_line_total ? (
+          <td className="w-24 py-1.5 text-right align-top font-medium whitespace-nowrap tabular-nums text-neutral-900 print:w-20 print:py-1 print:text-[9pt]">
+            {lineTotalText}
+          </td>
+        ) : null}
       </tr>
 
       <tr className="sm:hidden print:hidden">
-        <td colSpan={5} className="border-b border-neutral-200 py-2.5 last:border-0">
+        <td
+          colSpan={columns.length}
+          className="border-b border-neutral-200 py-2.5 last:border-0"
+        >
           <div className={cn("space-y-1", item.optional && "text-neutral-500")}>
             <p className="font-medium break-words text-neutral-900">{item.label}</p>
             {description ? (
@@ -103,20 +131,24 @@ function QuoteLineItemRow({ item }: { item: QuoteItem }) {
               </p>
             ) : null}
             <div className="flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-neutral-500">
-              <span>
-                Qty: {item.quantity != null ? item.quantity : "—"}
-                {item.unit ? ` ${item.unit}` : ""}
-              </span>
-              <span>
-                Unit:{" "}
-                {item.unit_price != null
-                  ? formatPricingMoney(item.unit_price)
-                  : "—"}
-              </span>
+              {display.show_quantity ? (
+                <span>
+                  Qty: {quantityText}
+                  {display.show_unit && item.unit ? ` ${item.unit}` : ""}
+                </span>
+              ) : null}
+              {display.show_unit && !display.show_quantity ? (
+                <span>Unit: {unitText}</span>
+              ) : null}
+              {display.show_unit_price ? (
+                <span data-quote-unit-price="true">Unit price: {unitPriceText}</span>
+              ) : null}
             </div>
-            <p className="text-sm font-medium tabular-nums text-neutral-900">
-              {formatPricingMoney(item.total)}
-            </p>
+            {display.show_line_total ? (
+              <p className="text-sm font-medium tabular-nums text-neutral-900">
+                {lineTotalText}
+              </p>
+            ) : null}
           </div>
         </td>
       </tr>
@@ -124,22 +156,35 @@ function QuoteLineItemRow({ item }: { item: QuoteItem }) {
   );
 }
 
+const COLUMN_COL_CLASS: Record<QuoteDisplayColumn, string | undefined> = {
+  description: undefined,
+  quantity: "w-14 print:w-12",
+  unit: "w-16 print:w-14",
+  unit_price: "w-24 print:w-20",
+  line_total: "w-24 print:w-20",
+};
+
 function QuoteItemsTable({
   items,
   brandPrimary,
+  display,
+  columns,
 }: {
   items: QuoteItem[];
   brandPrimary: string | null;
+  display: QuoteDisplayOptions;
+  columns: QuoteDisplayColumn[];
 }) {
   return (
     <div className="max-sm:overflow-x-hidden sm:overflow-x-auto">
-      <table className="quote-template-table w-full table-fixed text-xs print:text-[9pt]">
+      <table
+        className="quote-template-table w-full table-fixed text-xs print:text-[9pt]"
+        data-quote-line-columns={columns.join(",")}
+      >
         <colgroup>
-          <col />
-          <col className="w-14 print:w-12" />
-          <col className="w-16 print:w-14" />
-          <col className="w-24 print:w-20" />
-          <col className="w-24 print:w-20" />
+          {columns.map((column) => (
+            <col key={column} className={COLUMN_COL_CLASS[column]} />
+          ))}
         </colgroup>
         <thead className="hidden sm:table-header-group print:table-header-group">
           <tr
@@ -150,16 +195,35 @@ function QuoteItemsTable({
                 : undefined
             }
           >
-            <th className="pb-1 pr-3 font-medium">Item</th>
-            <th className="pb-1 pr-2 text-right font-medium">Qty</th>
-            <th className="pb-1 pr-2 text-right font-medium">Unit</th>
-            <th className="pb-1 pr-2 text-right font-medium">Unit price</th>
-            <th className="pb-1 text-right font-medium">Total</th>
+            {columns.map((column) => (
+              <th
+                key={column}
+                className={cn(
+                  "pb-1 font-medium",
+                  column === "description" ? "pr-3" : "pr-2 text-right last:pr-0"
+                )}
+              >
+                {column === "description"
+                  ? "Item"
+                  : column === "quantity"
+                    ? "Qty"
+                    : column === "unit"
+                      ? "Unit"
+                      : column === "unit_price"
+                        ? "Unit price"
+                        : "Total"}
+              </th>
+            ))}
           </tr>
         </thead>
         <tbody>
           {items.map((item) => (
-            <QuoteLineItemRow key={item.id} item={item} />
+            <QuoteLineItemRow
+              key={item.id}
+              item={item}
+              columns={columns}
+              display={display}
+            />
           ))}
         </tbody>
       </table>
@@ -228,10 +292,14 @@ function OptionalItemsSection({
   items,
   accentColour,
   brandPrimary,
+  display,
+  columns,
 }: {
   items: QuoteItem[];
   accentColour: string | null;
   brandPrimary: string | null;
+  display: QuoteDisplayOptions;
+  columns: QuoteDisplayColumn[];
 }) {
   if (items.length === 0) return null;
 
@@ -246,7 +314,12 @@ function OptionalItemsSection({
       <p className="mb-2 text-xs leading-relaxed text-neutral-500 print:mb-1.5 print:text-[9pt]">
         {OPTIONAL_ITEMS_CLIENT_NOTE}
       </p>
-      <QuoteItemsTable items={items} brandPrimary={brandPrimary} />
+      <QuoteItemsTable
+        items={items}
+        brandPrimary={brandPrimary}
+        display={display}
+        columns={columns}
+      />
     </section>
   );
 }
@@ -318,6 +391,14 @@ export function QuoteTemplate({
         "print:max-w-none print:rounded-none print:border-0 print:bg-white print:p-0 print:text-[10pt] print:leading-normal print:shadow-none print:text-black"
       )}
       style={brandStyle}
+      data-quote-show-quantity={presentation.display.show_quantity ? "true" : "false"}
+      data-quote-show-unit={presentation.display.show_unit ? "true" : "false"}
+      data-quote-show-unit-price={
+        presentation.display.show_unit_price ? "true" : "false"
+      }
+      data-quote-show-line-total={
+        presentation.display.show_line_total ? "true" : "false"
+      }
     >
       <header
         className={cn(
@@ -516,6 +597,8 @@ export function QuoteTemplate({
                   <QuoteItemsTable
                     items={section.items}
                     brandPrimary={brandPrimary}
+                    display={presentation.display}
+                    columns={presentation.columns}
                   />
                 </section>
               );
@@ -528,6 +611,8 @@ export function QuoteTemplate({
         items={presentation.optionalItems}
         accentColour={brandAccent}
         brandPrimary={brandPrimary}
+        display={presentation.display}
+        columns={presentation.columns}
       />
 
       <section
@@ -537,6 +622,7 @@ export function QuoteTemplate({
             ? "border-[var(--quote-brand-primary)]/20 bg-neutral-50/50"
             : "border-neutral-200 bg-neutral-50/80"
         )}
+        data-quote-document-totals="true"
         style={
           brandPrimary
             ? {

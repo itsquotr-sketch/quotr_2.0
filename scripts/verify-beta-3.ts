@@ -347,8 +347,8 @@ function main() {
   assert("calculate-estimate not importing beta-3 UX files", !calc.includes("PricingDecisionCard") && !calc.includes("final-sell"));
   assert("sell-from-margin formula file untouched by presentation", sellFromMargin.includes("deriveSellFromCost"));
   assert(
-    "no BETA-3-owned migration 053",
-    latestMigration() === "053_role_aware_rls_hardening.sql"
+    "no BETA-3-owned migration 053/054",
+    latestMigration() === "054_company_dna_v2_catalogue_seed.sql"
   );
   assert(
     "create pricing uses the current/latest estimate",

@@ -1,3 +1,4 @@
+import { parseQuoteDisplayOptions } from "@/lib/quotes/display-options";
 import { parseQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
 import {
   clientSafeQuoteLineDescription,
@@ -150,6 +151,7 @@ export function toPublicQuoteFromLookup(quote: Record<string, unknown>): Quote {
       quote.presentation_mode === "lump_sum"
         ? quote.presentation_mode
         : "grouped",
+    display_options: parseQuoteDisplayOptions(quote.issuer_snapshot),
   };
 }
 

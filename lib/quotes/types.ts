@@ -86,6 +86,12 @@ export type Quote = {
   superseded_at: string | null;
   revision_note: string | null;
   presentation_mode: "grouped" | "detailed" | "lump_sum";
+  /**
+   * Client column visibility frozen on the issued snapshot.
+   * Null/absent = legacy renderer (all columns including unit price).
+   * Parsed from issuer_snapshot.display_options — not a DB column.
+   */
+  display_options?: QuoteDisplayOptions | null;
   send_lock_delivery_id?: string | null;
   send_lock_fingerprint?: string | null;
 };
@@ -177,6 +183,7 @@ export type QuoteInput = {
   exclusions?: string[];
   terms?: string | null;
   presentation_mode?: "grouped" | "detailed" | "lump_sum";
+  display_options?: QuoteDisplayOptions;
 };
 
 export type QuoteItemInput = {
@@ -190,6 +197,7 @@ export type QuoteItemInput = {
   optional?: boolean;
 };
 
+import type { QuoteDisplayOptions } from "@/lib/quotes/display-options";
 import type { QuoteDeliveryRecord } from "@/lib/quotes/delivery-types";
 import type { CompanySettings } from "@/lib/settings/types";
 import type {

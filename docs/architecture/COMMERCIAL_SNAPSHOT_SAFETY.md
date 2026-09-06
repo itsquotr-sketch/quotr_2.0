@@ -18,6 +18,8 @@
 | Quote `status = draft` (active) | **RECALIBRATABLE SNAPSHOT** | Editable; refresh-from-pricing is explicit user action |
 | Quote `sent` / `accepted` / superseded | **HISTORICAL / IMMUTABLE SNAPSHOT** | Money does not silently change; revision creates a new draft |
 
+Client column visibility (`issuer_snapshot.display_options`) is presentation-only and is frozen with that issued snapshot. See `docs/architecture/QUOTR_QUOTE_SNAPSHOT_AND_DISPLAY.md`.
+
 Helpers: `commercialSnapshotKindForPricingDocument`, `commercialSnapshotKindForQuote`.
 
 ---

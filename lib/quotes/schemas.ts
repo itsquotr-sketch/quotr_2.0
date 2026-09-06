@@ -44,6 +44,14 @@ export const quoteInputSchema = z.object({
   exclusions: z.array(trimmedStringSchema(2000)).optional(),
   terms: z.union([trimmedStringSchema(10000), z.null()]).optional(),
   presentation_mode: z.enum(["grouped", "detailed", "lump_sum"]).optional(),
+  display_options: z
+    .object({
+      show_quantity: z.boolean(),
+      show_unit: z.boolean(),
+      show_unit_price: z.boolean(),
+      show_line_total: z.boolean(),
+    })
+    .optional(),
 });
 
 export const quoteItemInputSchema = z.object({

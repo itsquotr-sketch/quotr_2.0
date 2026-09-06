@@ -6,6 +6,7 @@ import { useCallback, useRef, useState, useTransition, type ReactNode } from "re
 import { Printer } from "lucide-react";
 import { QuoteHeader } from "@/components/quotes/QuoteHeader";
 import { QuoteMobileActionBar } from "@/components/quotes/QuoteMobileActionBar";
+import { QuoteDisplayControl } from "@/components/quotes/QuoteDisplayControl";
 import { QuotePresentationControl } from "@/components/quotes/QuotePresentationControl";
 import { QuoteSummaryPanel } from "@/components/quotes/QuoteSummaryPanel";
 import { QuoteTermsCard } from "@/components/quotes/QuoteTermsCard";
@@ -39,6 +40,11 @@ import {
   updateQuote,
 } from "@/lib/quotes/actions";
 import { REFRESH_FROM_PRICING_STATUSES } from "@/lib/quotes/revision";
+import type { QuoteDisplayOptions } from "@/lib/quotes/display-options";
+import {
+  formatQuoteDisplayPreview,
+  resolveQuoteDisplayOptions,
+} from "@/lib/quotes/display-options";
 import type { QuotePresentationMode } from "@/lib/quotes/presentation";
 import type { QuoteInput, QuoteWorkspaceData } from "@/lib/quotes/types";
 import { QuoteTransactionHistory } from "@/components/quotes/QuoteTransactionHistory";
@@ -158,6 +164,23 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
       router.refresh();
     });
   };
+
+  const handleDisplayOptionsChange = (options: QuoteDisplayOptions) => {
+    if (!isEditable) return;
+    setSaveError(null);
+    startSave(async () => {
+      const result = await updateQuote(quoteId, { display_options: options });
+      if (result.error) {
+        setSaveError(result.error);
+        return;
+      }
+      router.refresh();
+    });
+  };
+
+  const clientDisplaySummary = formatQuoteDisplayPreview(
+    resolveQuoteDisplayOptions(quote)
+  );
 
   const quoteFinance = quoteDocumentViewModel(quote);
 
@@ -501,6 +524,11 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
                 disabled={isSaving}
                 onChange={handlePresentationModeChange}
               />
+              <QuoteDisplayControl
+                quote={quote}
+                disabled={isSaving}
+                onChange={handleDisplayOptionsChange}
+              />
               </CardContent>
             </Card>
           ) : null}
@@ -515,6 +543,9 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
           >
             <p className="mb-2 px-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
               What the client will see
+            </p>
+            <p className="mb-2 px-1 text-xs text-muted-foreground">
+              Client will see: {clientDisplaySummary}
             </p>
             <div className="mx-auto w-full max-w-[1040px]">{template}</div>
           </div>

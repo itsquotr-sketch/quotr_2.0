@@ -247,6 +247,7 @@ Classification:
 | `docs/architecture/QUOTR_COST_FIRST_COMMERCIAL_MODEL.md` | **CANONICAL** — commercial money model |
 | `docs/architecture/QUOTR_RATE_AUTHORITY_AND_PROVENANCE_MODEL.md` | **CANONICAL** — rate provenance labels |
 | `docs/architecture/COMMERCIAL_SNAPSHOT_SAFETY.md` | **CANONICAL** — snapshot kinds |
+| `docs/architecture/QUOTR_QUOTE_SNAPSHOT_AND_DISPLAY.md` | **CANONICAL** — issued Quote presentation / client column controls |
 | `docs/specifications/ESTIMATE_COMMERCIAL_BOUNDARY.md` | **CANONICAL** — AI vs engine |
 | `docs/specifications/QUOTR_CONSTRAINT_TAXONOMY.md` | **CANONICAL** — constraint keys |
 | `docs/specifications/QUOTR_ESTIMATE_READINESS_MODEL.md` | **CANONICAL** — readiness states |
