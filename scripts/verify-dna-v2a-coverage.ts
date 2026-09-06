@@ -8,7 +8,7 @@
  *
  * Does not mutate catalogue, estimators, or the database.
  */
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { COMPANY_DNA_TASKS } from "../lib/company-dna/catalogue";
 import {
@@ -172,11 +172,14 @@ check(
     "utf8"
   ).includes("DNA-V2A")
 );
+const DNA_054 = read("supabase/migrations/054_company_dna_v2_catalogue_seed.sql");
+const DNA_054_CODE = DNA_054.replace(/--[^\n]*/g, "");
 check(
-  "V2A did not add migration 054",
-  !readdirSync(join(process.cwd(), "supabase/migrations")).some((name) =>
-    name.startsWith("054_")
-  )
+  "054 is a later data-only catalogue seed (no schema ALTER)",
+  existsSync(join(process.cwd(), "supabase/migrations/054_company_dna_v2_catalogue_seed.sql")) &&
+    !/\balter\s+table\b/i.test(DNA_054_CODE) &&
+    !/\bcreate\s+table\b/i.test(DNA_054_CODE) &&
+    DNA_054.includes("on conflict (calibration_task_key) do nothing")
 );
 check(
   "TS catalogue still matches 052 seed task count",

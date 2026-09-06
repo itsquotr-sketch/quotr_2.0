@@ -198,6 +198,8 @@ export async function saveCompanyDnaCalibration(input: {
 
   const task = getCompanyDnaTask(parsed.data.calibrationTaskKey);
   if (!task) {
+    // DNA-V2C: look up getCompanyDnaFoundationTask so seeded V2 keys can be
+    // saved from this action. RPC already persists any catalogue FK row.
     return { error: "Unknown calibration task." };
   }
 

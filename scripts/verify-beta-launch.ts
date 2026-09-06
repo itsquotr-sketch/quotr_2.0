@@ -311,7 +311,7 @@ function main() {
 
   section("MIGRATIONS");
   const latest = latestMigration();
-  assert("latest migration is 053", latest === "053_role_aware_rls_hardening.sql");
+  assert("latest migration is 054 DNA catalogue seed", latest === "054_company_dna_v2_catalogue_seed.sql");
   const numbers = migrationNumbers();
   assert("no migration 037", !numbers.includes("037"));
   assert(

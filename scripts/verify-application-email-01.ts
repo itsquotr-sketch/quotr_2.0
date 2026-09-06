@@ -211,9 +211,8 @@ assert(
     webhookSrc.includes("providerMessageId")
 );
 assert(
-  "no migration 054",
-  !migrations.includes("054_application_email.sql") &&
-    !migrations.some((name) => name.startsWith("054_"))
+  "no application-email migration 054",
+  !migrations.includes("054_application_email.sql")
 );
 assert(
   "canonical origin helper exists",

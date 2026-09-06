@@ -5,8 +5,12 @@
  * These rows are the non-UI coverage expansion for existing estimator keys.
  * They must not appear in V1 DNA UX or compact Rates DNA summaries.
  *
- * Hosted RPC save still requires a DB catalogue row (FK). V2B does not add
- * migration 054. New keys are code-side until a data seed is approved.
+ * Source of truth:
+ * - Code here is canonical for full metadata (tier, include/exclude,
+ *   exposeInCurrentUi, baselineMethod, prompts).
+ * - Migration 054 seeds the persistable identity the RPC FK requires.
+ *   Benchmarks, keys, and units in 054 must match this file.
+ * - Live save UI still uses V1 `getCompanyDnaTask` until DNA-V2C.
  */
 import {
   COMPANY_DNA_TASKS,
@@ -712,6 +716,28 @@ export const COMPANY_DNA_EXCLUDED_FROM_V2 = {
   cleanup: [] as string[],
   plantPrefix: "plant.",
 } as const;
+
+export function companyDnaPersistableCatalogueFields(
+  task: CompanyDnaFoundationTask
+) {
+  return {
+    calibrationTaskKey: task.calibrationTaskKey,
+    scenarioVersion: task.scenarioVersion,
+    workAreaType: task.workAreaType,
+    productivityRateKey: task.productivityRateKey,
+    label: task.label,
+    prompt: task.prompt,
+    scenarioSummary: task.scenarioSummary,
+    referenceQuantity: task.referenceQuantity,
+    referenceUnit: task.referenceUnit,
+    authorityQuantity: task.authorityQuantity,
+    authorityUnit: task.authorityUnit,
+    benchmarkProductivity: task.benchmarkProductivity,
+    rateLabel: task.rateLabel,
+    isHighImpact: task.isHighImpact,
+    sortOrder: task.sortOrder,
+  };
+}
 
 export function getCompanyDnaFoundationTask(
   taskKey: string

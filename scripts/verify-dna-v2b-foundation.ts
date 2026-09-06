@@ -195,11 +195,18 @@ function demoLine(result: ReturnType<typeof calculateFence>) {
 
 console.log("=== DNA-V2B FOUNDATION ===\n");
 
+const sql054 = read("supabase/migrations/054_company_dna_v2_catalogue_seed.sql");
+const sql054Code = sql054.replace(/--[^\n]*/g, "");
 check(
-  "no migration 054",
-  !numberedMigrations().some((name) => name.startsWith("054_"))
+  "054 is data-only catalogue seed",
+  numberedMigrations().some((name) => name === "054_company_dna_v2_catalogue_seed.sql") &&
+    !/\balter\s+table\b/i.test(sql054Code) &&
+    !/\bcreate\s+table\b/i.test(sql054Code)
 );
-check("latest numbered migration remains 053", numberedMigrations().at(-1)?.startsWith("053_") === true);
+check(
+  "latest numbered migration is 054 catalogue seed",
+  numberedMigrations().at(-1) === "054_company_dna_v2_catalogue_seed.sql"
+);
 check("V1 live catalogue still 9 tasks", COMPANY_DNA_TASKS.length === 9);
 check(
   "V1 foundation overlay still 9",
@@ -555,7 +562,7 @@ const liveActions = read("lib/company-dna/actions.ts");
 check(
   "live save still looks up V1 getCompanyDnaTask",
   liveActions.includes("getCompanyDnaTask(") &&
-    !liveActions.includes("getCompanyDnaFoundationTask")
+    !/getCompanyDnaFoundationTask\s*\(/.test(liveActions)
 );
 check(
   "live hub still uses COMPANY_DNA_TASKS",

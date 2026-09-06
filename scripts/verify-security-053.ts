@@ -96,8 +96,12 @@ function staticMain() {
   const migrations = numberedMigrations();
   const latest = migrations.at(-1) ?? null;
   assert(
-    "latest migration is 053_role_aware_rls_hardening.sql",
-    latest === "053_role_aware_rls_hardening.sql"
+    "053 remains in chain",
+    migrations.includes("053_role_aware_rls_hardening.sql")
+  );
+  assert(
+    "latest migration is 054 data-only DNA catalogue seed",
+    latest === "054_company_dna_v2_catalogue_seed.sql"
   );
   assert(
     "046 through 053 present",

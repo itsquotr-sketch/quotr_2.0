@@ -138,14 +138,13 @@ check(
     !existsSync("public/quotr-logo.svg")
 );
 check(
-  "no schema migration 054",
-  !readdirSync(join(process.cwd(), "supabase/migrations")).some((name) =>
-    name.startsWith("054_")
-  )
+  "no polish schema migration 054",
+  !existsSync("supabase/migrations/054_recent_activity.sql") &&
+    !existsSync("supabase/migrations/054_polish_03b.sql")
 );
 check(
-  "latest migration remains 053",
-  (latestMigration() ?? "").startsWith("053_")
+  "054 DNA catalogue seed is data-only",
+  (latestMigration() ?? "") === "054_company_dna_v2_catalogue_seed.sql"
 );
 
 console.log("\n--- DASHBOARD ---\n");

@@ -960,14 +960,15 @@ No extra estimate-time joins. Org rates already loaded per estimate. Catalogue i
 | Phase | Scope | Product behaviour |
 | --- | --- | --- |
 | **DNA-V2A** | This audit: architecture doc + coverage verifier | **None** |
-| **DNA-V2B** | Code-side foundation catalogue + clock/tier helpers + Fence demolition rates wiring. **No migration 054.** New keys hidden from V1 UX. Hosted save of new keys blocked until a data INSERT is approved. | **None** (V1 DNA UX unchanged) |
+| **DNA-V2B** | Code-side foundation catalogue + clock/tier helpers + Fence demolition rates wiring. New keys hidden from V1 UX. | **None** (V1 DNA UX unchanged) |
+| **DNA-V2B.1** | Migration **054** data-only catalogue seed. RPC can persist new keys. Server action still V1-gated. | **None** visible. Persistence unlocked for V2C. |
 | **DNA-V2C** | Deck task calibration UX (Tier 1 then 2). Requires approved catalogue seed if new keys must persist. | Deck DNA UX |
 | **DNA-V2D** | Fence UX + remaining presentation | Fence DNA UX |
 | **DNA-V2E** | RW timber (then sleeper); masonry later in same phase if cheap | RW DNA UX |
 | **DNA-V2F** | Rates compact progress + Dashboard/setup copy + hosted proof | Prompts / Rates only |
 | **DNA-V2-EST-1** | Remaining estimator: optional pile machine/manual **key split**; optional Deck steps unit split. Fence demolition rates wiring **done in V2B**. | Calculator — **not** in C–F |
 
-Preferred next build: **DNA-V2C Deck UX** after DNA-V2B review. Do not start V2C until reviewed.
+Preferred next build: **DNA-V2C Deck UX** after DNA-V2B.1 review. Do not start V2C until reviewed.
 
 Out of scope: Production, billing, quote acceptance, email, Dashboard **layout**, Rates **layout**, POLISH-01/02/03/03B, auth stability.
 
@@ -975,7 +976,7 @@ Out of scope: Production, billing, quote acceptance, email, Dashboard **layout**
 
 ## 31. Production status
 
-Production is **not in scope**. Preview only. No migration 054. No Production Auth / Production Supabase.
+Production is **not in scope**. Preview only. Migration **054** is Preview-first (data-only catalogue seed). Do not apply to Production in this phase. No Production Auth / Production Supabase.
 
 Auth stability: do not rotate passwords for `jeanluc@erccontracting.co.nz` or `hello@erccontracting.co.nz`. Plus-address fixtures only. Canonical owner host remains the git hardening URL.
 
@@ -983,9 +984,9 @@ Auth stability: do not rotate passwords for `jeanluc@erccontracting.co.nz` or `h
 
 ## 32. Exact recommended next build
 
-**DNA-V2C — Deck calibration UX**, after V2B review.
+**DNA-V2C — Deck calibration UX**, after V2B.1 review.
 
-Requires an approved data INSERT (not a schema ALTER) before new keys can be saved via `save_productivity_calibration` (FK to `productivity_calibration_catalogue`). Do not create `054` without that approval.
+054 is applied on Preview. `saveCompanyDnaCalibration` must look up foundation tasks before new Deck keys can be saved from the app. Do not expose unfinished V2 workflow until the Deck UX ships.
 
 STOP. Do not implement DNA-V2C UI until reviewed.
 
@@ -993,7 +994,7 @@ STOP. Do not implement DNA-V2C UI until reviewed.
 
 ## 33. DNA-V2B foundation outcomes
 
-**Status:** code-side foundation. No V2 UI. No migration 054.
+**Status:** code-side foundation + Preview 054 data seed. No V2 UI. V1 hub/Rates still nine tasks.
 
 Verifier: `npx --yes tsx scripts/verify-dna-v2b-foundation.ts`
 
@@ -1034,9 +1035,19 @@ Machine excavation and manual excavation are **distinct keys**. Drainage, backfi
 
 Do **not** split `retaining_wall.timber.piles.install.hours_per_ea` in V2B (would orphan V1 pile calibrations). Keep one V1 row constrained to **machine-assisted**. Same for sleeper posts. Split keys = **DNA-V2-EST-1**. Do not point two catalogue rows at one shared company rate.
 
-### Why no migration 054
+### Migration 054 (DNA-V2B.1)
 
-`save_productivity_calibration` FKs `calibration_task_key` to `productivity_calibration_catalogue`. Code-side rows cannot be saved until an INSERT seed is approved. V2A/V2B forbid creating 054 without that approval. Schema itself does not need ALTER.
+**Approved data-only seed:** `supabase/migrations/054_company_dna_v2_catalogue_seed.sql`
+
+- INSERT of the 22 V2B foundation keys into `productivity_calibration_catalogue`
+- `ON CONFLICT (calibration_task_key) DO NOTHING` — never mutates V1 rows
+- No ALTER, no new tables, no RLS, no RPC rewrite, no response/rate mutation
+
+**Source of truth:** code (`v2-foundation.ts`) is canonical for full metadata. 054 seeds the persistable identity the RPC FK requires (key, productivity key, quantities, units, benchmark, prompt/summary). Benchmarks must not drift.
+
+**V1 live UX remains 9 tasks** via `COMPANY_DNA_TASKS`. New DB rows do not appear in hub/Rates until DNA-V2C.
+
+**Save path:** `save_productivity_calibration` already looks up the DB catalogue. `saveCompanyDnaCalibration` still uses `getCompanyDnaTask` (V1 only). DNA-V2C must switch that lookup to `getCompanyDnaFoundationTask` without exposing unfinished UX before the Deck UI ships.
 
 ### Foundation coverage (honest consumed keys)
 

@@ -225,8 +225,8 @@ function main() {
 
   section("NO NEW MIGRATION");
   const latest = numberedMigrations().at(-1) ?? "";
-  assert("latest numbered migration remains 053", latest.startsWith("053_"));
-  assert("054 was not added", !existsSync(join(process.cwd(), "supabase/migrations/054_team_invite_accept.sql")));
+  assert("latest numbered migration is 054 DNA catalogue seed", latest.startsWith("054_"));
+  assert("054 was not a team-invite migration", !existsSync(join(process.cwd(), "supabase/migrations/054_team_invite_accept.sql")));
 
   section("DELIVERABILITY REGISTER");
   assert(
