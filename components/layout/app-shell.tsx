@@ -73,7 +73,7 @@ export function AppShell({
         <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-background md:overflow-hidden print:bg-white">
           <div className="flex h-12 shrink-0 items-center justify-between gap-3 border-b bg-background px-4 md:hidden print:hidden">
             <div className="flex min-w-0 items-center gap-2">
-              <QuotrLogo height={26} />
+              <QuotrLogo variant="icon" height={28} className="h-7 w-7" href="/app/dashboard" />
               {deploymentLabel ? (
                 <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-muted-foreground">
                   {deploymentLabel}

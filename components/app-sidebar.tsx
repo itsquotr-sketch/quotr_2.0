@@ -44,8 +44,8 @@ export function AppSidebarNav({
   return (
     <aside className="hidden h-dvh w-[232px] shrink-0 flex-col overflow-hidden border-r border-sidebar-border bg-sidebar text-sidebar-foreground print:hidden md:flex">
       <div className="flex h-12 shrink-0 items-center gap-2 border-b border-sidebar-border px-3">
-        <div className="rounded-md border border-white/10 bg-white/[0.97] px-2.5 py-1">
-          <QuotrLogo height={28} />
+        <div className="min-w-0 rounded-md border border-white/10 bg-white/[0.97] px-2 py-1">
+          <QuotrLogo variant="wordmark" height={22} className="h-[22px] max-w-[148px]" />
         </div>
         {deploymentLabel ? (
           <span className="rounded-full border border-sidebar-border px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-sidebar-foreground/70">

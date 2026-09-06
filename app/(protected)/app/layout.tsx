@@ -1,6 +1,7 @@
 import { headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { AppShell } from "@/components/layout/app-shell";
+import { QuotrLogo } from "@/components/layout/quotr-logo";
 import { getOrgBillingState } from "@/lib/billing/server";
 import { resolveEffectiveAccessPolicy } from "@/lib/billing/access-policy";
 import { shouldShowTeamPrimaryNav } from "@/lib/billing/team-nav-visibility";
@@ -63,7 +64,7 @@ export default async function AppLayout({
     return (
       <div className="flex min-h-svh flex-col items-center justify-center bg-muted px-4 py-8">
         <div className="mb-8 w-full max-w-sm text-center">
-          <p className="text-lg font-semibold tracking-tight">Quotr</p>
+          <QuotrLogo variant="wordmark" href={null} height={36} />
         </div>
         <div className="w-full max-w-sm">{children}</div>
       </div>

@@ -14,7 +14,7 @@ type RatesPageProps = {
 
 export default async function RatesPage({ searchParams }: RatesPageProps) {
   const params = await searchParams;
-  const initialSection = parseRatesSection(params.section) ?? "core";
+  const initialSection = parseRatesSection(params.section) ?? "defaults";
 
   const supabase = await createClient();
   const {

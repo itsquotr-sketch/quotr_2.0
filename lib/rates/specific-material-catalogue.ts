@@ -954,7 +954,7 @@ export const DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck concrete",
     unit: "bag",
     description:
-      "Exact 20 kg premix bag identity. No invented Quotr $ benchmark. Company or project exact rate required; otherwise Pricing Required. Not residual fixings money.",
+      "Exact 20 kg premix bag identity. Quotr benchmark $ / bag requires owner-approved catalogue defaultCostRate — do not invent a commercial rate. Company or project exact rate required until then; otherwise Pricing Required. Not residual fixings money.",
     calculatorSupport: "used_now",
   }),
 ];

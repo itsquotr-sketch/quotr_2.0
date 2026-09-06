@@ -2,10 +2,12 @@ import { Suspense } from "react";
 import { PageContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
+import { RecentActivityCard } from "@/components/dashboard/RecentActivityCard";
 import { DashboardProjectList } from "@/components/projects/DashboardProjectList";
 import { DashboardSummaryCards } from "@/components/projects/DashboardSummaryCards";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { ImproveSetupCard } from "@/components/setup/ImproveSetupCard";
+import { listRecentActivity } from "@/lib/dashboard/recent-activity";
 import {
   getDashboardPipelineSummary,
   listProjects,
@@ -27,22 +29,29 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
 
   // Identity comes from AppShell / AppUserContext (layout). Do not re-fetch
   // auth+profile here — desktop UserMenu reads the shared context.
-  const { projects, summary, readiness, hasProjects } = await measureServerLoad(
+  const { projects, summary, readiness, hasProjects, activity } = await measureServerLoad(
     "dashboard",
     async () => {
-      const [projectsResult, summaryResult, readinessResult, hasProjectsResult] =
-        await Promise.all([
-          listProjects({ filter, search }),
-          getDashboardPipelineSummary(),
-          getCompanySetupReadiness(),
-          organisationHasProjects(),
-        ]);
+      const [
+        projectsResult,
+        summaryResult,
+        readinessResult,
+        hasProjectsResult,
+        activityResult,
+      ] = await Promise.all([
+        listProjects({ filter, search }),
+        getDashboardPipelineSummary(),
+        getCompanySetupReadiness(),
+        organisationHasProjects(),
+        listRecentActivity(),
+      ]);
 
       return {
         projects: projectsResult,
         summary: summaryResult,
         readiness: readinessResult,
         hasProjects: hasProjectsResult,
+        activity: activityResult,
       };
     }
   );
@@ -88,6 +97,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 </div>
               </div>
               <ImproveSetupCard readiness={readiness} />
+              <RecentActivityCard items={activity} />
             </>
           ) : (
             <>
@@ -95,7 +105,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 readiness={readiness}
                 hasProjects={!isEmpty}
               />
-              <DashboardSummaryCards summary={summary} activeFilter={filter} />
+              <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(16rem,20rem)] lg:items-start">
+                <DashboardSummaryCards summary={summary} activeFilter={filter} />
+                <div className="hidden lg:block">
+                  <RecentActivityCard items={activity} />
+                </div>
+              </div>
             </>
           )}
 
@@ -110,6 +125,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
                 initialSearch={search}
               />
             </Suspense>
+          )}
+
+          {isEmpty ? null : (
+            <div className="lg:hidden">
+              <RecentActivityCard items={activity} />
+            </div>
           )}
         </div>
       </PageContainer>

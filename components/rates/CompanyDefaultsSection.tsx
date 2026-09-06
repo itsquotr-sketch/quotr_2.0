@@ -100,18 +100,16 @@ export function CompanyDefaultsSection({
   return (
     <Card className="border-border/60 shadow-none">
       <CardHeader>
-        <CardTitle>Company defaults</CardTitle>
+        <CardTitle className="text-base">Company defaults</CardTitle>
         <CardDescription>
-          Default gross margin (0–95%, default 20%) and estimating preferences.
-          GST and quote contact details live in Company settings — not duplicated
-          here as rate authority.
+          Target gross margin, contingency, and estimating preferences.
           {readOnly
             ? " Only owners and admins can change company pricing defaults."
             : null}
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit} className="flex flex-col gap-(--card-spacing)">
-        <CardContent className="space-y-6">
+        <CardContent className="space-y-3">
           {error ? (
             <p className="rounded-lg border border-destructive/20 bg-destructive/10 px-3 py-2 text-sm text-destructive">
               {error}
@@ -124,8 +122,8 @@ export function CompanyDefaultsSection({
             </p>
           ) : null}
 
-          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="space-y-1">
               <Label htmlFor="default-margin">Company gross margin %</Label>
               <Input
                 id="default-margin"
@@ -148,7 +146,7 @@ export function CompanyDefaultsSection({
               ) : null}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="default-contingency">Default contingency %</Label>
               <Input
                 id="default-contingency"
@@ -168,7 +166,7 @@ export function CompanyDefaultsSection({
               ) : null}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="budget-factor">Budget factor</Label>
               <Input
                 id="budget-factor"
@@ -188,7 +186,7 @@ export function CompanyDefaultsSection({
               ) : null}
             </div>
 
-            <div className="space-y-2">
+            <div className="space-y-1">
               <Label htmlFor="premium-factor">Premium factor</Label>
               <Input
                 id="premium-factor"

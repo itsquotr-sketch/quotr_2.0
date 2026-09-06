@@ -89,12 +89,15 @@ export function getSetupRecommendationHref(
 }
 
 export const RATES_SECTION_IDS = [
+  "defaults",
+  "materials",
   "core",
   "productivity",
   "work_types",
-  "materials",
+  "plant",
+  "subcontract",
+  "waste",
   "legacy",
-  "defaults",
   "benchmarks",
 ] as const;
 

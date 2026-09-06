@@ -135,7 +135,7 @@ export function MaterialWastageDefaultsSection({
                 }
                 disabled={readOnly}
                 required
-                className="h-11"
+                className="h-9"
               />
               {fieldErrors.defaultMaterialWastagePercent?.[0] ? (
                 <p className="text-sm text-destructive">
@@ -156,7 +156,7 @@ export function MaterialWastageDefaultsSection({
                 onChange={(event) => setDeckingWastagePercent(event.target.value)}
                 placeholder="Uses default"
                 disabled={readOnly}
-                className="h-11"
+                className="h-9"
               />
             </div>
             <div className="space-y-2">
@@ -176,7 +176,7 @@ export function MaterialWastageDefaultsSection({
                 }
                 placeholder="Uses default"
                 disabled={readOnly}
-                className="h-11"
+                className="h-9"
               />
             </div>
             <div className="space-y-2">
@@ -192,7 +192,7 @@ export function MaterialWastageDefaultsSection({
                 onChange={(event) => setFlooringWastagePercent(event.target.value)}
                 placeholder="Uses default"
                 disabled={readOnly}
-                className="h-11"
+                className="h-9"
               />
             </div>
             <div className="space-y-2">
@@ -208,7 +208,7 @@ export function MaterialWastageDefaultsSection({
                 onChange={(event) => setPaintWastagePercent(event.target.value)}
                 placeholder="Uses default"
                 disabled={readOnly}
-                className="h-11"
+                className="h-9"
               />
             </div>
             <div className="space-y-2">
@@ -228,7 +228,7 @@ export function MaterialWastageDefaultsSection({
                 }
                 placeholder="Uses default"
                 disabled={readOnly}
-                className="h-11"
+                className="h-9"
               />
             </div>
           </div>

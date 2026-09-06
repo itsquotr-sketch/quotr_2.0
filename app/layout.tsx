@@ -1,6 +1,10 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import "./globals.css";
+import {
+  QUOTR_ICON_SRC,
+  QUOTR_PRODUCT_LINE,
+} from "@/lib/branding/assets";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -10,7 +14,11 @@ const inter = Inter({
 
 export const metadata: Metadata = {
   title: "Quotr",
-  description: "Smart quoting for contractors",
+  description: QUOTR_PRODUCT_LINE,
+  icons: {
+    icon: [{ url: QUOTR_ICON_SRC, type: "image/png" }],
+    apple: QUOTR_ICON_SRC,
+  },
 };
 
 export default function RootLayout({

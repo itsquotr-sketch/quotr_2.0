@@ -16,7 +16,6 @@ import {
   formatProductivityHours,
   groupCatalogueByWorkArea,
 } from "@/lib/rates/catalogue";
-import { getRateSourceLabel } from "@/lib/rates/calibration";
 import { upsertRate } from "@/lib/rates/actions";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 import type { RatesPageRate } from "@/lib/rates/types";
@@ -45,65 +44,8 @@ type RatesTableSectionProps = {
   readOnly?: boolean;
 };
 
-function EngineBadge({
-  support,
-}: {
-  support: RateCatalogueEntry["calculatorSupport"];
-}) {
-  if (support === "used_now") {
-    return (
-      <Badge variant="secondary" className="text-[10px]">
-        Used now
-      </Badge>
-    );
-  }
-  if (support === "leftover") {
-    return (
-      <Badge variant="outline" className="text-[10px]">
-        Legacy
-      </Badge>
-    );
-  }
-  return (
-    <Badge variant="outline" className="text-[10px]">
-      Planned
-    </Badge>
-  );
-}
-
 function isProductivityEntry(entry: RateCatalogueEntry): boolean {
   return entry.rate_type === "productivity";
-}
-
-function ChargeOutCell({
-  rate,
-  companyGrossMarginPercent,
-}: {
-  rate: RatesPageRate | undefined;
-  companyGrossMarginPercent: number;
-}) {
-  const charge = displayChargeOut({
-    costRate: rate?.cost_rate,
-    sellRate: rate?.sell_rate,
-    companyGrossMarginPercent,
-  });
-  if (charge.value == null) {
-    return <span className="text-muted-foreground">—</span>;
-  }
-  return (
-    <span className="tabular-nums">
-      {formatMoney(charge.value)}
-      {charge.isCustom ? (
-        <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-          custom
-        </span>
-      ) : charge.isRecommended && rate?.cost_rate != null ? (
-        <span className="ml-1 text-[10px] font-normal text-muted-foreground">
-          recommended
-        </span>
-      ) : null}
-    </span>
-  );
 }
 
 function RateMobileCard({
@@ -133,72 +75,55 @@ function RateMobileCard({
     sellRate: rate?.sell_rate,
     companyGrossMarginPercent,
   });
+  const statusLabel = hasCompanyRate
+    ? "Your rate"
+    : entry.defaultCostRate != null
+      ? "Quotr benchmark"
+      : "Pricing required";
+  const yourRateDisplay = isProductivityEntry(entry)
+    ? formatProductivityHours(rate?.cost_rate ?? null, entry.unit)
+    : formatMoney(rate?.cost_rate);
+  const benchmarkDisplay = isProductivityEntry(entry)
+    ? entry.defaultCostRate != null
+      ? formatProductivityHours(entry.defaultCostRate, entry.unit)
+      : "—"
+    : entry.defaultCostRate != null
+      ? formatMoney(entry.defaultCostRate)
+      : "—";
 
   return (
-    <div className="rounded-lg border border-border/60 bg-card p-3">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1 space-y-1.5">
-          <p className="text-sm font-medium leading-snug">{labelColumn}</p>
-          {entry.trade ? (
-            <p className="text-xs text-muted-foreground">{entry.trade}</p>
-          ) : null}
-          {entry.description ? (
-            <p className="text-xs text-muted-foreground">{entry.description}</p>
-          ) : null}
-          <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-            <span>{formatRateUnit(entry.unit)}</span>
-            <span>·</span>
-            <span>{getRateSourceLabel(rate, entry.item_key)}</span>
-          </div>
-          <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm tabular-nums">
-            {isProductivityEntry(entry) ? (
-              <span>
-                Hours{" "}
-                <span className="font-medium">
-                  {formatProductivityHours(
-                    rate?.cost_rate ?? entry.defaultCostRate ?? null,
-                    entry.unit
-                  )}
-                </span>
-              </span>
-            ) : (
-              <>
-                <span>
-                  Your cost{" "}
-                  <span className="font-medium">{formatMoney(rate?.cost_rate)}</span>
-                </span>
-                <span>
-                  Charge-out{" "}
-                  <span className="font-medium">{formatMoney(charge.value)}</span>
-                  {charge.isCustom ? (
-                    <span className="ml-1 text-xs font-normal text-muted-foreground">
-                      (custom)
-                    </span>
-                  ) : null}
-                </span>
-              </>
-            )}
-          </div>
-          {!hasCompanyRate && entry.defaultCostRate != null ? (
-            <p className="text-xs text-muted-foreground">
-              {isProductivityEntry(entry)
-                ? `Quotr starter: ${formatProductivityHours(entry.defaultCostRate, entry.unit)}`
-                : `Quotr benchmark cost: $${entry.defaultCostRate.toFixed(entry.defaultCostRate % 1 === 0 ? 0 : 2)} ${formatRateUnit(entry.unit)}`}
-            </p>
-          ) : null}
-        </div>
+    <div className="border-b border-border/50 px-0 py-2.5 last:border-0 sm:grid sm:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto_auto] sm:items-center sm:gap-3">
+      <div className="min-w-0">
+        <p className="text-sm font-medium leading-snug">{labelColumn}</p>
+        {entry.trade ? (
+          <p className="text-xs text-muted-foreground">{entry.trade}</p>
+        ) : null}
+      </div>
+      <p className="mt-1 text-sm tabular-nums sm:mt-0">
+        <span className="text-xs text-muted-foreground sm:hidden">Your rate </span>
+        {yourRateDisplay}
+        <span className="sr-only">Your cost</span>
+      </p>
+      <p className="text-sm text-muted-foreground tabular-nums">
+        <span className="text-xs sm:hidden">Quotr benchmark </span>
+        {benchmarkDisplay}
+      </p>
+      <p className="text-xs text-muted-foreground">
+        {isProductivityEntry(entry)
+          ? `h/${formatRateUnit(entry.unit)}`
+          : formatRateUnit(entry.unit)}
+      </p>
+      <Badge variant={hasCompanyRate ? "secondary" : "outline"} className="mt-1 w-fit text-[10px] sm:mt-0">
+        {statusLabel}
+      </Badge>
+      <div className="mt-1.5 flex flex-wrap items-center gap-1 sm:mt-0 sm:justify-end">
+        {isProductivityEntry(entry) ? null : charge.value != null ? (
+          <span className="text-[11px] text-muted-foreground tabular-nums">
+            Charge-out {formatMoney(charge.value)}
+          </span>
+        ) : null}
         {readOnly ? null : (
-          <div className="flex shrink-0 flex-col gap-1">
-            <Button
-              type="button"
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={onEdit}
-            >
-              <Pencil className="mr-1 size-3.5" />
-              {hasCompanyRate ? "Edit" : "Add your rate"}
-            </Button>
+          <>
             {canAdopt ? (
               <Button
                 type="button"
@@ -210,123 +135,14 @@ function RateMobileCard({
                 {isProductivityEntry(entry) ? "Use starter hours" : "Use benchmark cost"}
               </Button>
             ) : null}
-          </div>
+            <Button type="button" variant="outline" size="sm" className="h-8" onClick={onEdit}>
+              <Pencil className="mr-1 size-3.5" />
+              {hasCompanyRate ? "Edit" : "Add"}
+            </Button>
+          </>
         )}
       </div>
     </div>
-  );
-}
-
-function RateRow({
-  entry,
-  rate,
-  showEngineColumn,
-  hideChargeOut = false,
-  labelColumn,
-  companyGrossMarginPercent,
-  onEdit,
-  onAdoptBenchmark,
-  readOnly = false,
-}: {
-  entry: RateCatalogueEntry;
-  rate: RatesPageRate | undefined;
-  showEngineColumn: boolean;
-  hideChargeOut?: boolean;
-  labelColumn: string;
-  companyGrossMarginPercent: number;
-  onEdit: () => void;
-  onAdoptBenchmark?: () => void;
-  readOnly?: boolean;
-}) {
-  const hasCompanyRate = Boolean(rate?.active && rate.cost_rate != null);
-  const canAdopt =
-    !hasCompanyRate &&
-    entry.defaultCostRate != null &&
-    typeof onAdoptBenchmark === "function";
-
-  return (
-    <tr className="border-b border-border/50 last:border-0">
-      <td className="px-3 py-2.5">
-        <div className="font-medium">{labelColumn}</div>
-        {entry.trade ? (
-          <div className="text-xs text-muted-foreground">{entry.trade}</div>
-        ) : null}
-        {entry.description ? (
-          <div className="text-xs text-muted-foreground">{entry.description}</div>
-        ) : null}
-        {!hasCompanyRate && entry.defaultCostRate != null ? (
-          <div className="text-xs text-muted-foreground">
-            {isProductivityEntry(entry)
-              ? `Quotr starter: ${formatProductivityHours(entry.defaultCostRate, entry.unit)}`
-              : `Quotr benchmark cost: $${entry.defaultCostRate.toFixed(entry.defaultCostRate % 1 === 0 ? 0 : 2)}`}
-          </div>
-        ) : null}
-      </td>
-      <td className="hidden px-3 py-2.5 text-muted-foreground sm:table-cell">
-        {isProductivityEntry(entry)
-          ? `h/${formatRateUnit(entry.unit)}`
-          : formatRateUnit(entry.unit)}
-      </td>
-      <td className="px-3 py-2.5 tabular-nums">
-        {isProductivityEntry(entry)
-          ? formatProductivityHours(
-              rate?.cost_rate ?? entry.defaultCostRate ?? null,
-              entry.unit
-            )
-          : formatMoney(rate?.cost_rate)}
-      </td>
-      {hideChargeOut ? null : (
-      <td className="px-3 py-2.5">
-        {isProductivityEntry(entry) ? (
-          <span className="text-muted-foreground">—</span>
-        ) : (
-          <ChargeOutCell
-            rate={rate}
-            companyGrossMarginPercent={companyGrossMarginPercent}
-          />
-        )}
-      </td>
-      )}
-      <td className="hidden px-3 py-2.5 text-xs text-muted-foreground md:table-cell">
-        {getRateSourceLabel(rate, entry.item_key)}
-      </td>
-      <td className="px-3 py-2.5">
-        {hasCompanyRate ? (
-          <Badge variant="secondary" className="text-[10px]">
-            Active
-          </Badge>
-        ) : (
-          <Badge variant="outline" className="text-[10px]">
-            {entry.defaultCostRate != null ? "Benchmark" : "Pricing required"}
-          </Badge>
-        )}
-      </td>
-      {showEngineColumn ? (
-        <td className="hidden px-3 py-2.5 lg:table-cell">
-          <EngineBadge support={entry.calculatorSupport} />
-        </td>
-      ) : null}
-      <td className="px-3 py-2.5 text-right">
-        {readOnly ? null : (
-        <div className="flex flex-wrap items-center justify-end gap-1">
-          {canAdopt ? (
-            <Button
-              type="button"
-              variant="ghost"
-              size="sm"
-              onClick={onAdoptBenchmark}
-            >
-              {isProductivityEntry(entry) ? "Use starter hours" : "Use benchmark cost"}
-            </Button>
-          ) : null}
-          <Button type="button" variant="ghost" size="sm" onClick={onEdit}>
-            <Pencil className="mr-1 size-3.5" />
-            {hasCompanyRate ? "Edit" : "Add your rate"}
-          </Button>
-        </div>
-        )}
-      </td>
-    </tr>
   );
 }
 
@@ -343,6 +159,7 @@ export function RatesTableSection({
   readOnly = false,
 }: RatesTableSectionProps) {
   const margin = resolveCompanyGrossMarginPercent(companyGrossMarginPercent);
+  void showEngineColumn;
   const rateMap = useMemo(
     () => new Map(rates.map((rate) => [rate.item_key, rate])),
     [rates]
@@ -490,63 +307,24 @@ export function RatesTableSection({
             </p>
           ) : (
             groups.map((group) => (
-              <div key={group.workAreaLabel || "labour"} className="space-y-2">
+              <div key={group.workAreaLabel || "labour"} className="space-y-1">
                 {((variant === "grouped" || variant === "productivity") &&
                 group.workAreaLabel) ? (
                   <h3 className="text-sm font-medium">{group.workAreaLabel}</h3>
                 ) : null}
 
-                <div className="hidden overflow-x-auto rounded-lg border border-border/60 md:block">
-                  <table className="w-full text-sm">
-                    <thead>
-                      <tr className="border-b border-border/60 bg-muted/30 text-left text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                        <th className="px-3 py-2">Item</th>
-                        <th className="hidden px-3 py-2 sm:table-cell">Unit</th>
-                        <th className="px-3 py-2">
-                          {productivityTable ? "Hours" : "Your cost"}
-                        </th>
-                        {productivityTable ? null : (
-                          <th className="px-3 py-2">Charge-out</th>
-                        )}
-                        <th className="hidden px-3 py-2 md:table-cell">
-                          Source
-                        </th>
-                        <th className="px-3 py-2">Status</th>
-                        {showEngineColumn ? (
-                          <th className="hidden px-3 py-2 lg:table-cell">
-                            Engine
-                          </th>
-                        ) : null}
-                        {readOnly ? null : (
-                        <th className="px-3 py-2 text-right">Actions</th>
-                        )}
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {group.entries.map((entry) => (
-                        <RateRow
-                          key={entry.item_key}
-                          entry={entry}
-                          rate={rateMap.get(entry.item_key)}
-                          showEngineColumn={showEngineColumn}
-                          hideChargeOut={productivityTable}
-                          labelColumn={entry.label}
-                          companyGrossMarginPercent={margin}
-                          onEdit={() => {
-                            setEditingEntry(entry);
-                            setNotice(null);
-                          }}
-                          onAdoptBenchmark={() => {
-                            void handleAdoptBenchmark(entry);
-                          }}
-                          readOnly={readOnly}
-                        />
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-
-                <div className="space-y-2 md:hidden">
+                <div
+                  className="min-w-0 overflow-hidden"
+                  data-rates-compact-list
+                >
+                  <div className="hidden border-b border-border/60 pb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground sm:grid sm:grid-cols-[minmax(0,1.4fr)_repeat(3,minmax(0,0.7fr))_auto_auto] sm:gap-3">
+                    <span>Item</span>
+                    <span>{productivityTable ? "Hours" : "Your rate"}</span>
+                    <span>Quotr benchmark</span>
+                    <span>Unit</span>
+                    <span>Status</span>
+                    <span className="text-right">Edit</span>
+                  </div>
                   {group.entries.map((entry) => (
                     <RateMobileCard
                       key={entry.item_key}
