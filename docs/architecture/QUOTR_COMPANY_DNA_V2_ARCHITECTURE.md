@@ -1,14 +1,13 @@
 # QUOTR — Company DNA V2 Architecture
 
-**Programme:** DNA-V2A — Task-level productivity coverage audit  
-**Status:** Architecture lock. Do **not** implement DNA-V2 UX, catalogue mutation, estimator formula change, or migration 054 in this phase.  
-**HEAD audited:** `bf6d43856eb48adb6b1666bfa6847ea519ef2763`  
-**Preview:** Supabase `shhpjsoldmqtkdbgrbtm` — latest applied migration **053**  
-**Production:** DO NOT TOUCH  
+**Programme:** DNA-V2B.1 — V2 calibration catalogue data seed  
+**Status:** Preview migration **054** applied (data-only). V1 hub / Rates still nine tasks. Do **not** start DNA-V2C UI.  
+**Preview:** Supabase `shhpjsoldmqtkdbgrbtm` — latest applied migration **054**  
+**Production:** DO NOT TOUCH — must remain without 054  
 
 **Code is authority.** This document traces live Deck / Fence / Retaining Wall calculator consumption. It does not invent calibration tasks the estimator cannot consume independently.
 
-Verifier: `npx --yes tsx scripts/verify-dna-v2a-coverage.ts`
+Verifiers: `verify-dna-v2a-coverage`, `verify-dna-v2b-foundation`, `verify-dna-v2b1-catalogue-seed`
 
 ---
 
@@ -925,7 +924,7 @@ Included/excluded copy can live in `prompt` / `scenario_summary` (or `mapping_me
 
 **NO SCHEMA MIGRATION NEEDED** to build DNA-V2.
 
-**PROPOSED FUTURE DATA MIGRATION (not 054 in this audit):** V2B/V2C+ will **INSERT** new `calibration_task_key` rows (fascia, bags, excavation, …) and new `scenario_version` keys when quantities/copy change. That is catalogue seed, not `ALTER TABLE`.
+**DATA MIGRATION 054 (DNA-V2B.1, Preview):** INSERT of the 22 approved V2B foundation keys into `productivity_calibration_catalogue`. Idempotent `ON CONFLICT DO NOTHING`. Catalogue seed, not `ALTER TABLE`. Not applied to Production.
 
 Do **not** UPDATE v1 `authority_quantity` in place (would misread old evidence).
 
@@ -1002,7 +1001,7 @@ Verifier: `npx --yes tsx scripts/verify-dna-v2b-foundation.ts`
 
 - **Kept (V1, 9 rows):** `deck.framing.v1`, `deck.decking.v1`, `deck.posts.v1`, `deck.demolition.v1`, `fence.posts.v1`, `fence.boards.v1`, `fence.rails.v1`, `retaining_wall.piles.v1`, `retaining_wall.face.v1`. Keys, authority quantities, and benchmarks unchanged.
 - **Live UX** still uses `COMPANY_DNA_TASKS` only. New rows have `exposeInCurrentUi: false`.
-- **New rows** live in `lib/company-dna/v2-foundation.ts`. They cannot be persisted via RPC until a catalogue INSERT is approved (FK).
+- **New rows** live in `lib/company-dna/v2-foundation.ts` and are now persistable via RPC after Preview 054. Live save action still V1-gated until DNA-V2C.
 
 ### Deck added / deferred
 
