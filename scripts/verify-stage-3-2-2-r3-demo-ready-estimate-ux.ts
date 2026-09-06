@@ -216,8 +216,8 @@ function main(): void {
   );
 
   check(
-    "22 Company DNA not started",
-    !existsSync(join("lib", "company-dna"))
+    "22 Company DNA V2 now exists (demo-ready freeze was pre-DNA)",
+    existsSync(join("lib", "company-dna"))
   );
 
   check(

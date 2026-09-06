@@ -391,7 +391,7 @@ check(
 const dash = formatDnaDeckDashboardCta(2);
 check(
   "dashboard remaining copy",
-  dash.cta.includes("2 more key Deck tasks") && dash.title.includes("Improve your Deck estimates")
+  dash.title.includes("2 more key Deck tasks") && dash.cta === "Continue calibration"
 );
 const startDash = resolvePersonalisationNextStep({
   firstRunComplete: true,
@@ -408,7 +408,8 @@ const startDash = resolvePersonalisationNextStep({
 });
 check(
   "dashboard Deck start CTA",
-  startDash?.cta === "Improve your Deck estimates" &&
+  startDash?.title === "Improve your Deck estimates" &&
+    startDash.cta === "Continue calibration" &&
     startDash.href === "/app/setup/dna/deck"
 );
 const continueExisting = resolvePersonalisationNextStep({

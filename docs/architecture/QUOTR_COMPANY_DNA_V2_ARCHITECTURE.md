@@ -1,13 +1,15 @@
 # QUOTR — Company DNA V2 Architecture
 
-**Programme:** DNA-V2E — Retaining Wall task-level calibration UX  
-**Status:** Preview migration **054** applied (data-only). Deck V2C + Fence V2D + Retaining V2E UI. Do **not** start DNA-V2F until reviewed.  
+**Programme:** DNA-V2F — Integration + product closeout  
+**Status:** V2A–V2F complete on Preview. Migration **054** applied (data-only). Do **not** start quote-display work until reviewed.  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm` — latest applied migration **054**  
 **Production:** DO NOT TOUCH — must remain without 054  
 
 **Code is authority.** This document traces live Deck / Fence / Retaining Wall calculator consumption. It does not invent calibration tasks the estimator cannot consume independently.
 
-Verifiers: `verify-dna-v2a-coverage`, `verify-dna-v2b-foundation`, `verify-dna-v2b1-catalogue-seed`, `verify-dna-v2c-deck-ux`, `verify-dna-v2d-fence-ux`, `verify-dna-v2e-retaining-ux`
+Verifiers: `verify-dna-v2a-coverage`, `verify-dna-v2b-foundation`, `verify-dna-v2b1-catalogue-seed`, `verify-dna-v2c-deck-ux`, `verify-dna-v2d-fence-ux`, `verify-dna-v2e-retaining-ux`, `verify-dna-v2f-close`
+
+Closeout: `docs/COMPANY_DNA_V2_CLOSEOUT.md`
 
 ---
 
@@ -73,16 +75,16 @@ Job-specific hardness stays on Project Conditions.
 
 ## 4. Current DNA limitations
 
-DNA-01 is real and wired. It is not yet task-complete.
+DNA V2 is live for Deck, Fence, and Retaining Wall. Remaining limits are estimator gaps, not missing V2 UX.
 
-1. **Catalogue is a shortlist, not coverage.** Nine V1 tasks. Mature calculators consume many more independent labour keys.
+1. **Catalogue now covers consumed detailed keys**, except Deck steps (still h/m²). Nine V1 keys remain for historical evidence and fallback.
 2. **Tasks are still somewhat bundled.** “Piles / posts” and “Fence posts” hide hole-digging, set-out, and normal workface handling inside one hours/ea or hours/post key. The estimator owns that bundle — DNA must not pretend the split exists.
-3. **Scenarios are job-shaped, not task-shaped.** “Think about a fairly normal 20 m² deck” is the right *setting*, but the quantity the math uses (80 framing-lm, 142.8571 decking-lm, 9 posts) is not the question the builder answers.
-4. **Clock time is decimal hours.** Builders think hours and minutes.
-5. **Completion is catalogue-relative.** “Using your calibration” fires when **2 high-impact tasks** in a Work Area are calibrated — not when the estimator’s Tier 1 set is complete. RW can look “calibrated” with piles + face while excavation, drainage, backfill, and concrete still use Quotr starters.
+3. **Scenarios stay task-shaped in V2 UX.** The builder answers workers + clock time against a typical task; the server still derives against exact authority quantities. Display uses shared quantity formatting — builders must not see values like 142.8571.
+4. **Clock time in V2 UI is hours + minutes.** Decimal duration remains the stored/RPC shape.
+5. **Completion is V2 Tier 1.** Deck/Fence need 3/3 key tasks. Retaining is system-aware. Optional tasks never block “Using your calibration”. The V1 `highImpactCalibrated >= 2` helper is historical only.
 6. **Package leftovers still exist.** Lumped `deck.base_labour_hours_per_m2` and `fence.labour_hours_per_lm` remain fallbacks when detailed productivities are missing. DNA-V2 must not calibrate leftover keys.
 7. **Some consumed keys cannot currently honour a company rate.** Fence/RW **package** labour call `resolveProductivity` **without** `rates` (intentional — DNA must not calibrate package lumps). Fence demolition **did** omit rates in V2A; **DNA-V2B wired `rates: context.rates`**. Package leftover path still omits rates.
-8. **Machine vs manual shares some keys.** RW timber pile hours use one key with a method-specific *fallback*. A company calibration overwrites both methods. Excavation is already split (`machine` vs `manual`).
+8. **Manual pile/post honesty.** Timber piles / sleeper posts stay machine-assisted catalogue keys. Manual jobs `ignoreCompanyRate` so machine-assisted company calibration cannot leak. A calibratable manual pile key remains **DNA-V2-EST-1**. Excavation is already split (`machine` vs `manual`).
 9. **Material movement and waste carting are not independent labour requirements.** They are bundled in install productivity, Project Condition carry, demolition hours, and/or a **money** spoil/disposal line. Do not fake DNA tasks for them.
 
 ---
@@ -566,6 +568,18 @@ Work Area status is **calibrated if any relevant system has all its Tier 1**. Sh
 
 **Pile method honesty:** `retaining_wall.piles.v1` / sleeper posts remain machine-assisted baselines. `labourSlot` ignores company rates on those keys when the job is MANUAL, so a machine-assisted calibration cannot leak onto hand-dug jobs. A calibratable manual pile task remains **DNA-V2-EST-1** and is not faked.
 
+### 9.7 DNA-V2F close (live)
+
+Company DNA is one product across Deck, Fence, and Retaining Wall.
+
+**Hub:** Company DNA intro + per-Work-Area cards. Deck/Fence show key-task progress (3 Tier 1). Retaining shows timber / sleeper / masonry lines. Work Area is calibrated when its V2 completion rule is met — not 7/7 or 15/15.
+
+**Rates:** POLISH-03 compact rows. Source language is Your calibration / Quotr benchmark. Retaining expanded rows group Shared / Timber / Sleeper / Masonry.
+
+**Dashboard:** Next incomplete preferred Work Area, deterministic. After key tasks complete, the ladder moves on. Optional refinement is not a setup blocker.
+
+**Completion model:** Deck 3/3 Tier 1. Fence 3/3 Tier 1. Retaining: any relevant system with all its Tier 1. V1 “2 high-impact = complete” remains only as a historical helper, not on V2 surfaces.
+
 ---
 
 ## 10. Material handling finding
@@ -818,7 +832,7 @@ Statuses (Work Area):
 
 Do **not** require 100% catalogue completion. Tier 2/3 never block this status.
 
-**Change from V1:** V1 uses `highImpactCalibrated >= 2` (`companyDnaWorkAreaStatus`). That lets RW look complete without excavation, and would let Deck look complete with framing+decking and **no posts**. V2 should require the full Tier 1 set (3 for Deck/Fence timber; 3 for RW timber once excavation is calibratable). Until excavation exists, RW V2 rule is **piles + face** (current two high-impact rows) — document as temporary.
+**Change from V1:** V1 uses `highImpactCalibrated >= 2` (`companyDnaWorkAreaStatus`). That lets RW look complete without excavation, and would let Deck look complete with framing+decking and **no posts**. V2 requires the full Tier 1 set: Deck 3, Fence 3, Retaining **system-aware** (timber / sleeper / masonry). Shared excavation is calibratable. Manual pile/post remains DNA-V2-EST-1.
 
 A builder can calibrate 3 key tasks → estimates improve → continue later.
 
@@ -976,10 +990,10 @@ No extra estimate-time joins. Org rates already loaded per estimate. Catalogue i
 | **DNA-V2C** | Deck task calibration UX (Tier 1 then 2). Requires approved catalogue seed if new keys must persist. | Deck DNA UX |
 | **DNA-V2D** | Fence UX + remaining presentation | Fence DNA UX |
 | **DNA-V2E** | RW timber (then sleeper); masonry later in same phase if cheap | RW DNA UX |
-| **DNA-V2F** | Rates compact progress + Dashboard/setup copy + hosted proof | Prompts / Rates only |
+| **DNA-V2F** | Hub / Rates / Dashboard closeout. No new maths. | **Complete** |
 | **DNA-V2-EST-1** | Remaining estimator: optional pile machine/manual **key split**; optional Deck steps unit split. Fence demolition rates wiring **done in V2B**. | Calculator — **not** in C–F |
 
-Preferred next build after DNA-V2D review: **DNA-V2E Retaining Wall UX**. Do not start V2E until reviewed.
+Preferred next product phase after DNA-V2F review: quote display work, not estimator DNA.
 
 ### DNA-V2C Deck UX
 
@@ -1017,11 +1031,11 @@ Auth stability: do not rotate passwords for `jeanluc@erccontracting.co.nz` or `h
 
 ## 32. Exact recommended next build
 
-**DNA-V2E — Retaining Wall calibration UX**, after DNA-V2D review.
+**Quote display work**, after DNA-V2F review.
 
-Preview is through 054. Deck and Fence use V2 task-level calibration. RW stays on V1 two high-impact tasks until V2E.
+Preview is through 054. Deck, Fence, and Retaining Wall use V2 task-level calibration. Company DNA V2 is closed as a product.
 
-STOP. Do not implement DNA-V2E UI until reviewed.
+STOP. Do not implement quote display work until reviewed.
 
 ---
 
@@ -1078,9 +1092,9 @@ Do **not** split `retaining_wall.timber.piles.install.hours_per_ea` in V2B (woul
 
 **Source of truth:** code (`v2-foundation.ts`) is canonical for full metadata. 054 seeds the persistable identity the RPC FK requires (key, productivity key, quantities, units, benchmark, prompt/summary). Benchmarks must not drift.
 
-**V1 live UX remains 9 tasks** via `COMPANY_DNA_TASKS`. New DB rows do not appear in hub/Rates until DNA-V2C.
+**V1 catalogue identity remains 9 tasks** via `COMPANY_DNA_TASKS` / `listCompanyDnaTasksVisibleInCurrentUi()` for historical helpers. Hub / Rates / Dashboard V2 surfaces use foundation keys for Deck, Fence, and Retaining Wall.
 
-**Save path:** `save_productivity_calibration` already looks up the DB catalogue. `saveCompanyDnaCalibration` still uses `getCompanyDnaTask` (V1 only). DNA-V2C must switch that lookup to `getCompanyDnaFoundationTask` without exposing unfinished UX before the Deck UI ships.
+**Save path:** `saveCompanyDnaCalibration` looks up `getCompanyDnaFoundationTask` for V2 Work Areas. V1 keys remain save-compatible.
 
 ### Foundation coverage (honest consumed keys)
 
@@ -1090,4 +1104,4 @@ Do **not** split `retaining_wall.timber.piles.install.hours_per_ea` in V2B (woul
 | Fence | 3 / 9 | **9 / 9** |
 | Retaining Wall | 2 / 15 | **15 / 15** |
 
-Tier metadata is `priorityTier` 1|2|3 on foundation tasks. V2 completion helper `companyDnaWorkAreaStatusV2` is **not** wired into hub/Rates.
+Tier metadata is `priorityTier` 1|2|3 on foundation tasks. Hub / Rates / Dashboard use `companyDnaWorkAreaStatusV2` (Deck/Fence 3 Tier 1; Retaining system-aware). The V1 `highImpactCalibrated >= 2` helper is historical only.

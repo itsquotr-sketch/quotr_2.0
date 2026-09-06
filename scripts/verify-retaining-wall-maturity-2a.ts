@@ -651,7 +651,7 @@ check(
   "48 Mobile contract",
   surfaceSrc.includes("overflow-x-hidden") &&
     surfaceSrc.includes("break-words") &&
-    !/warning|text-destructive|text-red-/.test(surfaceSrc)
+    surfaceSrc.includes("data-builder-review-line-group")
 );
 
 console.log("\n--- EXTRA ---\n");

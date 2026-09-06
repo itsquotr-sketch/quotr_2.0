@@ -85,9 +85,17 @@ export function orgHasHighImpactCalibration(
 }
 
 export function workAreaHubCta(status: "benchmarks" | "partly" | "calibrated"): string {
+  if (status === "benchmarks") return "Start calibration";
+  if (status === "partly") return "Continue calibration";
+  return "Review calibration";
+}
+
+export function ratesProductivityCta(
+  status: "benchmarks" | "partly" | "calibrated"
+): string {
   if (status === "benchmarks") return "Start";
   if (status === "partly") return "Continue";
-  return "Review";
+  return "View";
 }
 
 export function workAreaLabel(workAreaType: CompanyDnaWorkAreaType): string {

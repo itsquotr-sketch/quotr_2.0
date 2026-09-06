@@ -22,12 +22,17 @@ import {
 import type { CompanyDnaTaskStatus } from "@/lib/company-dna/actions";
 import { resetCompanyDnaCalibration } from "@/lib/company-dna/actions";
 import {
+  DNA_CALIBRATE,
   DNA_DONE,
   DNA_KEEP_REFINING,
+  DNA_RECALIBRATE,
   DNA_RESET_CONSEQUENCE,
   DNA_RESET_CONFIRM_TITLE,
   DNA_RESET_CTA,
+  DNA_SOURCE_QUOTR_BENCHMARK,
+  DNA_SOURCE_YOUR_CALIBRATION,
   deckV2TaskTitle,
+  formatDnaOptionalRemaining,
   formatDnaRwHubProgress,
 } from "@/lib/company-dna/copy";
 import {
@@ -157,7 +162,9 @@ export function CompanyDnaDeckSummary({
                               {deckV2TaskTitle(task.calibrationTaskKey, task.label)}
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              {calibrated ? "Your calibration" : "Quotr benchmark"}
+                              {calibrated
+                                ? DNA_SOURCE_YOUR_CALIBRATION
+                                : DNA_SOURCE_QUOTR_BENCHMARK}
                             </p>
                           </div>
                           <div className="flex shrink-0 flex-wrap gap-1.5">
@@ -168,7 +175,7 @@ export function CompanyDnaDeckSummary({
                                 "h-8"
                               )}
                             >
-                              Edit
+                              {calibrated ? DNA_RECALIBRATE : DNA_CALIBRATE}
                             </Link>
                             {calibrated && canCalibrate ? (
                               <Button
@@ -179,7 +186,7 @@ export function CompanyDnaDeckSummary({
                                 disabled={resetting === task.calibrationTaskKey}
                                 onClick={() => setConfirmKey(task.calibrationTaskKey)}
                               >
-                                Reset
+                                {DNA_RESET_CTA}
                               </Button>
                             ) : null}
                           </div>
@@ -206,28 +213,30 @@ export function CompanyDnaDeckSummary({
                   <p className="text-sm font-medium">
                     {deckV2TaskTitle(task.calibrationTaskKey, task.label)}
                   </p>
-                  <p className="text-xs text-muted-foreground">
-                    {calibrated ? "Your calibration" : "Quotr benchmark"}
-                  </p>
-                </div>
-                <div className="flex shrink-0 flex-wrap gap-1.5">
-                  <Link
-                    href={`/app/setup/dna/${encodeURIComponent(task.calibrationTaskKey)}`}
-                    className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8")}
-                  >
-                    Edit
-                  </Link>
-                  {calibrated && canCalibrate ? (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-8"
-                      disabled={resetting === task.calibrationTaskKey}
-                      onClick={() => setConfirmKey(task.calibrationTaskKey)}
+                    <p className="text-xs text-muted-foreground">
+                      {calibrated
+                        ? DNA_SOURCE_YOUR_CALIBRATION
+                        : DNA_SOURCE_QUOTR_BENCHMARK}
+                    </p>
+                  </div>
+                  <div className="flex shrink-0 flex-wrap gap-1.5">
+                    <Link
+                      href={`/app/setup/dna/${encodeURIComponent(task.calibrationTaskKey)}`}
+                      className={cn(buttonVariants({ variant: "outline", size: "sm" }), "h-8")}
                     >
-                      Reset
-                    </Button>
+                      {calibrated ? DNA_RECALIBRATE : DNA_CALIBRATE}
+                    </Link>
+                    {calibrated && canCalibrate ? (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-8"
+                        disabled={resetting === task.calibrationTaskKey}
+                        onClick={() => setConfirmKey(task.calibrationTaskKey)}
+                      >
+                        {DNA_RESET_CTA}
+                      </Button>
                   ) : null}
                 </div>
               </li>
@@ -256,8 +265,18 @@ export function CompanyDnaDeckSummary({
           </Link>
         </div>
         <p className="text-xs text-muted-foreground">
-          Optional tasks: {optionalCount}. They are not
-          required.
+          {status === "calibrated"
+            ? formatDnaOptionalRemaining({
+                optionalTotal: optionalCount,
+                optionalCalibrated: catalogue.filter(
+                  (task) =>
+                    v2OptionalKeys(workAreaType).includes(
+                      task.calibrationTaskKey
+                    ) && Boolean(evidence.get(task.calibrationTaskKey)?.calibrated)
+                ).length,
+              }) ??
+              "Key tasks complete. Optional refinement is available when you need it."
+            : "Optional tasks are not required to use your key productivity."}
         </p>
       </CardContent>
       <Dialog open={confirmKey != null} onOpenChange={(open) => !open && setConfirmKey(null)}>

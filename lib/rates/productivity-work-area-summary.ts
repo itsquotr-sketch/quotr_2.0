@@ -17,7 +17,7 @@ import {
   listRwSystemProgress,
 } from "@/lib/company-dna/rw-v2";
 import { formatDnaRwRatesSummary } from "@/lib/company-dna/copy";
-import { workAreaHubCta } from "@/lib/company-dna/progress";
+import { ratesProductivityCta } from "@/lib/company-dna/progress";
 import type { RatesPageRate } from "@/lib/rates/types";
 
 export type ProductivityTaskRow = {
@@ -33,6 +33,8 @@ export type ProductivityWorkAreaSummary = {
   taskTotal: number;
   keyTaskCalibrated: number;
   keyTaskTotal: number;
+  optionalCalibrated: number;
+  optionalTotal: number;
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
   cta: string;
@@ -112,6 +114,20 @@ export function summarizeProductivityWorkAreas(
                 row.calibrated
             )
         ).length;
+    const optionalTotal = v2
+      ? catalogueTasks.filter((task) => task.priorityTier !== 1).length
+      : 0;
+    const optionalCalibrated = v2
+      ? catalogueTasks.filter(
+          (task) =>
+            task.priorityTier !== 1 &&
+            tasks.some(
+              (row) =>
+                row.task.calibrationTaskKey === task.calibrationTaskKey &&
+                row.calibrated
+            )
+        ).length
+      : 0;
     return {
       workAreaType,
       label: COMPANY_DNA_WORK_AREA_LABELS[workAreaType],
@@ -119,13 +135,14 @@ export function summarizeProductivityWorkAreas(
       taskTotal: catalogueTasks.length,
       keyTaskCalibrated,
       keyTaskTotal,
+      optionalCalibrated,
+      optionalTotal,
       status,
       statusLabel:
         status === "benchmarks"
           ? "Not calibrated"
           : companyDnaWorkAreaStatusLabel(status),
-      cta:
-        status === "calibrated" ? "View / Continue" : workAreaHubCta(status),
+      cta: ratesProductivityCta(status),
       generation: companyDnaV2Generation(workAreaType),
       summaryLine:
         workAreaType === "retaining_wall"

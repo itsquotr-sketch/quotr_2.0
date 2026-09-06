@@ -513,9 +513,11 @@ check(
     lineByLabel(concretePriced.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.quantity === 45
 );
 check(
-  "27 YES + missing bag rate → material Pricing Required",
-  isPricingRequired(lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)) &&
-    lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.quantity === 45
+  "27 YES + missing company bag rate uses Quotr benchmark, not Pricing Required",
+  !isPricingRequired(lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)) &&
+    lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.quantity === 45 &&
+    lineByLabel(concreteYes.lineItems, DECK_CONCRETE_MATERIAL_LABEL)?.rateSourceType ===
+      "benchmark"
 );
 check(
   "28 YES + missing company h/bag uses Quotr starter, not Pricing Required",

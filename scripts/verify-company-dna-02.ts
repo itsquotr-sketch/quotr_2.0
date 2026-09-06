@@ -291,9 +291,9 @@ assert(
   })?.calibrationTaskKey === "deck.decking.v1"
 );
 
-assert("hub CTA start", workAreaHubCta("benchmarks") === "Start");
-assert("hub CTA continue", workAreaHubCta("partly") === "Continue");
-assert("hub CTA review", workAreaHubCta("calibrated") === "Review");
+assert("hub CTA start", workAreaHubCta("benchmarks") === "Start calibration");
+assert("hub CTA continue", workAreaHubCta("partly") === "Continue calibration");
+assert("hub CTA review", workAreaHubCta("calibrated") === "Review calibration");
 
 const copy = read("lib/company-dna/copy.ts");
 const flow = read("components/company-dna/CompanyDnaTaskFlow.tsx");
@@ -412,7 +412,7 @@ const ratesPage = read("components/rates/RatesPageContent.tsx");
 const ratesTable = read("components/rates/RatesTableSection.tsx");
 assert("rates productivity helper", DNA_RATES_PRODUCTIVITY_HELPER.includes("Lower means fewer labour hours"));
 assert("rates compare uses helper", ratesCompare.includes("DNA_RATES_PRODUCTIVITY_HELPER"));
-assert("rates compare Edit calibration", ratesCompare.includes("Edit calibration"));
+assert("rates compare Recalibrate", ratesCompare.includes("DNA_RECALIBRATE"));
 assert("rates compare Use Quotr benchmark", ratesCompare.includes("DNA_RESET_CTA"));
 assert("no raw enums in rates compare", !ratesCompare.includes("explicit_company") && !ratesCompare.includes("legacy_scope_rate"));
 assert("no raw enums in hub", !hub.includes("calibrated_productivity") && !hub.includes("explicit_company"));

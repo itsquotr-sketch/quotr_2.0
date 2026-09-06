@@ -13,7 +13,14 @@ import {
   COMPANY_DNA_WORK_AREA_LABELS,
 } from "@/lib/company-dna/catalogue";
 import type { CompanyDnaHubState } from "@/lib/company-dna/actions";
-import { formatDnaProgressCopy } from "@/lib/company-dna/copy";
+import {
+  DNA_HUB_CONCEPT,
+  DNA_HUB_INTRO,
+  DNA_HUB_TITLE,
+  formatDnaOptionalRemaining,
+  formatDnaProgressCopy,
+  formatDnaSupportedTaskCoverage,
+} from "@/lib/company-dna/copy";
 import {
   isCompanyDnaV2WorkArea,
   nextCompanyDnaV2Task,
@@ -32,16 +39,16 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
   return (
     <Card
       data-company-dna-hub
-      className="pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"
+      className="mx-auto w-full max-w-2xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"
     >
       <CardHeader>
-        <CardTitle>Make Quotr price more like you</CardTitle>
-        <CardDescription>
-          Tell Quotr how your crew normally completes a few common tasks. We’ll
-          use this to improve labour estimates. An approximate answer is fine.
-        </CardDescription>
+        <CardTitle>{DNA_HUB_TITLE}</CardTitle>
+        <CardDescription>{DNA_HUB_INTRO}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        <p className="text-sm text-muted-foreground" data-company-dna-hub-concept>
+          {DNA_HUB_CONCEPT}
+        </p>
         <p className="text-sm text-muted-foreground">
           Your usual work is listed first. Key tasks first. You can reset to the
           Quotr benchmark later.
@@ -78,17 +85,23 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
             const compact =
               area.status === "calibrated" &&
               (area.workAreaType !== "retaining_wall" ||
-                rwAllSystemsCalibrated(
-                  area.tasks
-                    .filter((status) => status.calibrated)
-                    .map((status) => status.calibrationTaskKey)
-                ));
+                rwAllSystemsCalibrated(calibratedKeys));
+            const keyProgress =
+              area.workAreaType === "retaining_wall"
+                ? null
+                : `${area.highImpactCalibrated} of ${area.highImpactTotal} key tasks`;
+            const optionalNote =
+              area.status === "calibrated"
+                ? formatDnaOptionalRemaining({
+                    optionalTotal: area.optionalTotal,
+                    optionalCalibrated: area.optionalCalibrated,
+                  })
+                : null;
             return (
               <li
                 key={area.workAreaType}
                 className={cn(
-                  "rounded-xl border bg-card",
-                  compact ? "px-3 py-2 sm:px-4" : "p-3 sm:p-4 space-y-2"
+                  "rounded-xl border bg-card p-3 sm:p-4 space-y-2"
                 )}
                 data-company-dna-work-area={area.workAreaType}
                 data-company-dna-status={area.status}
@@ -101,9 +114,7 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
                       {COMPANY_DNA_WORK_AREA_LABELS[area.workAreaType]}
                     </h3>
                     <p className="text-xs text-muted-foreground">
-                      {compact
-                        ? area.statusLabel
-                        : area.progressDetail ?? formatDnaProgressCopy(area)}
+                      {area.statusLabel}
                       {preferred ? " · Common for your company" : ""}
                     </p>
                   </div>
@@ -121,11 +132,34 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
                     {cta}
                   </Link>
                 </div>
-                {compact ? null : (
-                  <p className="text-sm text-muted-foreground">
-                    {area.statusLabel}
+                {keyProgress ? (
+                  <p className="text-sm text-muted-foreground">{keyProgress}</p>
+                ) : null}
+                {area.workAreaType === "retaining_wall" ? (
+                  <ul className="space-y-0.5 text-sm text-muted-foreground">
+                    {(area.systemLines ?? []).map((line) => (
+                      <li key={line}>{line}</li>
+                    ))}
+                  </ul>
+                ) : area.status === "calibrated" && area.taskTotal > area.highImpactTotal ? (
+                  <p className="text-xs text-muted-foreground">
+                    {formatDnaSupportedTaskCoverage({
+                      calibratedCount: area.calibratedCount,
+                      taskTotal: area.taskTotal,
+                    })}
                   </p>
-                )}
+                ) : area.progressDetail ? (
+                  <p className="text-sm text-muted-foreground">
+                    {area.progressDetail}
+                  </p>
+                ) : !v2 ? (
+                  <p className="text-sm text-muted-foreground">
+                    {formatDnaProgressCopy(area)}
+                  </p>
+                ) : null}
+                {optionalNote ? (
+                  <p className="text-xs text-muted-foreground">{optionalNote}</p>
+                ) : null}
               </li>
             );
           })}

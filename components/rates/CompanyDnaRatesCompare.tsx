@@ -4,11 +4,22 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { Button, buttonVariants } from "@/components/ui/button";
 import {
-  COMPANY_DNA_WORK_AREA_LABELS,
-} from "@/lib/company-dna/catalogue";
-import { DNA_RATES_PRODUCTIVITY_HELPER, DNA_RESET_CTA } from "@/lib/company-dna/copy";
+  DNA_CALIBRATE,
+  DNA_RECALIBRATE,
+  DNA_RATES_PRODUCTIVITY_HELPER,
+  DNA_RESET_CTA,
+  DNA_SOURCE_QUOTR_BENCHMARK,
+  DNA_SOURCE_YOUR_CALIBRATION,
+  formatDnaCompactHoursPerUnit,
+  formatDnaOptionalRemaining,
+  formatDnaRwSystemLine,
+} from "@/lib/company-dna/copy";
 import { resetCompanyDnaCalibration } from "@/lib/company-dna/actions";
 import { nextCompanyDnaV2Task, v2HubHref } from "@/lib/company-dna/v2-ui";
+import {
+  listRwSystemProgress,
+  rwSystemOfTask,
+} from "@/lib/company-dna/rw-v2";
 import { LABOUR_RATE_CATALOGUE } from "@/lib/rates/catalogue";
 import { summarizeProductivityWorkAreas } from "@/lib/rates/productivity-work-area-summary";
 import type { RatesPageRate } from "@/lib/rates/types";
@@ -23,23 +34,21 @@ type CompanyDnaRatesCompareProps = {
   onChanged?: () => void;
 };
 
+const RW_GROUPS = [
+  ["shared", "Shared"],
+  ["timber", "Timber"],
+  ["sleeper", "Sleeper"],
+  ["masonry", "Masonry"],
+] as const;
+
 function usedProductivitySource(rate: RatesPageRate | undefined): string {
   if (rate?.active && rate.cost_rate != null) {
     if (rate.source === "calibrated_productivity") {
-      return "Your calibrated productivity";
+      return DNA_SOURCE_YOUR_CALIBRATION;
     }
-    return "Your rate";
+    return "Your company rate";
   }
-  return "Quotr benchmark";
-}
-
-function formatHoursPerUnit(value: number, unit: string): string {
-  const displayUnit = unit === "m2" ? "m²" : unit;
-  const rounded =
-    Number.isInteger(value) || Math.abs(value) >= 1
-      ? String(value)
-      : String(value);
-  return `${rounded} h/${displayUnit}`;
+  return DNA_SOURCE_QUOTR_BENCHMARK;
 }
 
 export function CompanyDnaRatesCompare({
@@ -87,11 +96,11 @@ export function CompanyDnaRatesCompare({
         <div className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1">
           <h3 className="text-sm font-medium">{carpenter.label}</h3>
           <p className="text-xs text-muted-foreground">
-            {row?.cost_rate != null ? "Your rate" : "Quotr benchmark"}
+            {row?.cost_rate != null ? "Your company rate" : DNA_SOURCE_QUOTR_BENCHMARK}
           </p>
         </div>
         <p className="mt-1 text-sm tabular-nums">
-          Your rate:{" "}
+          Your company rate:{" "}
           {row?.cost_rate != null ? `${formatMoney(row.cost_rate)}/hr` : "—"}
         </p>
         <p className="text-sm text-muted-foreground tabular-nums">
@@ -100,8 +109,8 @@ export function CompanyDnaRatesCompare({
         <p className="text-sm">
           Used:{" "}
           {row?.cost_rate != null
-            ? `${formatMoney(row.cost_rate)}/hr — Your rate`
-            : `${formatMoney(carpenter.defaultCostRate ?? 60)}/hr — Quotr benchmark`}
+            ? `${formatMoney(row.cost_rate)}/hr — Your company rate`
+            : `${formatMoney(carpenter.defaultCostRate ?? 60)}/hr — ${DNA_SOURCE_QUOTR_BENCHMARK}`}
         </p>
       </div>
     );
@@ -117,6 +126,21 @@ export function CompanyDnaRatesCompare({
       ) : null}
       {groups.map((group) => {
         const open = Boolean(openAreas[group.workAreaType]);
+        const isV2 = group.generation !== "v1";
+        const calibratedKeys = group.tasks
+          .filter((row) => row.calibrated)
+          .map((row) => row.task.calibrationTaskKey);
+        const optionalNote =
+          group.status === "calibrated"
+            ? formatDnaOptionalRemaining({
+                optionalTotal: group.optionalTotal,
+                optionalCalibrated: group.optionalCalibrated,
+              })
+            : null;
+        const rwSystems =
+          group.workAreaType === "retaining_wall"
+            ? listRwSystemProgress(calibratedKeys)
+            : [];
         return (
           <div
             key={group.workAreaType}
@@ -135,17 +159,18 @@ export function CompanyDnaRatesCompare({
                     : `${group.calibratedCount} of ${group.taskTotal} tasks calibrated`}
                 </p>
                 <p className="text-xs text-muted-foreground">{group.statusLabel}</p>
+                {optionalNote ? (
+                  <p className="text-xs text-muted-foreground">{optionalNote}</p>
+                ) : null}
               </div>
-              {group.generation !== "v1" ? (
+              {isV2 ? (
                 <Link
                   href={v2HubHref({
                     workAreaType: group.workAreaType,
                     status: group.status,
                     nextTaskKey: nextCompanyDnaV2Task({
                       workAreaType: group.workAreaType,
-                      calibratedTaskKeys: group.tasks
-                        .filter((row) => row.calibrated)
-                        .map((row) => row.task.calibrationTaskKey),
+                      calibratedTaskKeys: calibratedKeys,
                     })?.calibrationTaskKey,
                   })}
                   className={cn(
@@ -169,80 +194,141 @@ export function CompanyDnaRatesCompare({
                   }))
                 }
               >
-                {open ? "Hide" : group.generation !== "v1" ? "Show tasks" : group.cta}
+                {open ? "Hide" : isV2 ? "Show tasks" : group.cta}
               </Button>
             </div>
             {open ? (
-              <div className="space-y-2 border-t border-border/60 px-3 py-2">
-                {group.tasks.map((row) => {
-                  const rate = rates.find(
-                    (item) =>
-                      item.item_key === row.task.productivityRateKey &&
-                      item.rate_type === "productivity" &&
-                      item.active
-                  );
-                  const used = usedProductivitySource(rate);
-                  const calibrated =
-                    rate?.active &&
-                    rate.cost_rate != null &&
-                    rate.source === "calibrated_productivity";
-                  return (
-                    <div
-                      key={row.task.calibrationTaskKey}
-                      className="rounded-md bg-muted/20 px-2.5 py-2"
-                      data-company-dna-rate-task={row.task.calibrationTaskKey}
-                    >
-                      <p className="text-sm font-medium">{row.task.label}</p>
-                      <p className="text-[11px] text-muted-foreground">
-                        {COMPANY_DNA_WORK_AREA_LABELS[row.task.workAreaType]}
-                      </p>
-                      <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                        Quotr benchmark:{" "}
-                        {formatHoursPerUnit(
-                          row.task.benchmarkProductivity,
-                          row.task.authorityUnit
-                        )}
-                      </p>
-                      <p className="text-xs text-muted-foreground tabular-nums">
-                        Your calibrated productivity:{" "}
-                        {rate?.cost_rate != null
-                          ? formatHoursPerUnit(rate.cost_rate, row.task.authorityUnit)
-                          : "—"}
-                      </p>
-                      <p className="text-xs">Used: {used}</p>
-                      {canCalibrate ? (
-                        <div className="mt-1.5 flex flex-wrap gap-1.5">
-                          <Link
-                            href={`/app/setup/dna/${encodeURIComponent(row.task.calibrationTaskKey)}`}
-                            className={cn(
-                              buttonVariants({ variant: "outline", size: "sm" }),
-                              "h-8"
-                            )}
-                          >
-                            Edit calibration
-                          </Link>
-                          {calibrated ? (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              className="h-8"
-                              disabled={resetting === row.task.calibrationTaskKey}
-                              onClick={() => void onReset(row.task.calibrationTaskKey)}
-                            >
-                              {DNA_RESET_CTA}
-                            </Button>
-                          ) : null}
+              <div className="space-y-3 border-t border-border/60 px-3 py-2">
+                {group.workAreaType === "retaining_wall"
+                  ? RW_GROUPS.map(([groupKey, heading]) => {
+                      const rows = group.tasks.filter((row) =>
+                        rwSystemOfTask(row.task.calibrationTaskKey) === groupKey
+                      );
+                      if (rows.length === 0) return null;
+                      const systemRow =
+                        groupKey === "shared"
+                          ? null
+                          : rwSystems.find((item) => item.system === groupKey);
+                      return (
+                        <div
+                          key={groupKey}
+                          data-company-dna-rate-group={groupKey}
+                        >
+                          <p className="mb-1.5 text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                            {heading}
+                            {systemRow
+                              ? ` · ${formatDnaRwSystemLine(systemRow).replace(`${systemRow.label}: `, "")}`
+                              : ""}
+                          </p>
+                          <div className="space-y-2">
+                            {rows.map((row) => (
+                              <RatesTaskRow
+                                key={row.task.calibrationTaskKey}
+                                row={row}
+                                rates={rates}
+                                canCalibrate={canCalibrate}
+                                resetting={resetting}
+                                onReset={onReset}
+                              />
+                            ))}
+                          </div>
                         </div>
-                      ) : null}
-                    </div>
-                  );
-                })}
+                      );
+                    })
+                  : group.tasks.map((row) => (
+                      <RatesTaskRow
+                        key={row.task.calibrationTaskKey}
+                        row={row}
+                        rates={rates}
+                        canCalibrate={canCalibrate}
+                        resetting={resetting}
+                        onReset={onReset}
+                      />
+                    ))}
               </div>
             ) : null}
           </div>
         );
       })}
+    </div>
+  );
+}
+
+function RatesTaskRow(params: {
+  row: {
+    task: {
+      calibrationTaskKey: string;
+      label: string;
+      productivityRateKey: string;
+      authorityUnit: string;
+      benchmarkProductivity: number;
+    };
+    calibrated: boolean;
+  };
+  rates: RatesPageRate[];
+  canCalibrate: boolean;
+  resetting: string | null;
+  onReset: (taskKey: string) => void;
+}) {
+  const rate = params.rates.find(
+    (item) =>
+      item.item_key === params.row.task.productivityRateKey &&
+      item.rate_type === "productivity" &&
+      item.active
+  );
+  const used = usedProductivitySource(rate);
+  const calibrated =
+    rate?.active &&
+    rate.cost_rate != null &&
+    rate.source === "calibrated_productivity";
+  return (
+    <div
+      className="rounded-md bg-muted/20 px-2.5 py-2"
+      data-company-dna-rate-task={params.row.task.calibrationTaskKey}
+    >
+      <p className="text-sm font-medium">{params.row.task.label}</p>
+      <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+        {DNA_SOURCE_QUOTR_BENCHMARK}:{" "}
+        {formatDnaCompactHoursPerUnit(
+          params.row.task.benchmarkProductivity,
+          params.row.task.authorityUnit
+        )}
+      </p>
+      <p className="text-xs text-muted-foreground tabular-nums">
+        {DNA_SOURCE_YOUR_CALIBRATION}:{" "}
+        {rate?.cost_rate != null
+          ? formatDnaCompactHoursPerUnit(
+              rate.cost_rate,
+              params.row.task.authorityUnit
+            )
+          : "—"}
+      </p>
+      <p className="text-xs">Used: {used}</p>
+      {params.canCalibrate ? (
+        <div className="mt-1.5 flex flex-wrap gap-1.5">
+          <Link
+            href={`/app/setup/dna/${encodeURIComponent(params.row.task.calibrationTaskKey)}`}
+            className={cn(
+              buttonVariants({ variant: "outline", size: "sm" }),
+              "h-8"
+            )}
+          >
+            {calibrated ? DNA_RECALIBRATE : DNA_CALIBRATE}
+          </Link>
+          {calibrated ? (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              className="h-8"
+              disabled={params.resetting === params.row.task.calibrationTaskKey}
+              onClick={() => params.onReset(params.row.task.calibrationTaskKey)}
+            >
+              {DNA_RESET_CTA}
+            </Button>
+          ) : null}
+        </div>
+      ) : null}
     </div>
   );
 }

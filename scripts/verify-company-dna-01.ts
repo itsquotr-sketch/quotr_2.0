@@ -388,7 +388,7 @@ assert("legacy 033 not auto-promoted", !actions.includes('.from("calibration_res
 const hub = read("components/company-dna/CompanyDnaHub.tsx");
 const flow = read("components/company-dna/CompanyDnaTaskFlow.tsx");
 const dnaCopy = read("lib/company-dna/copy.ts");
-assert("landing copy", hub.includes("Make Quotr price more like you"));
+assert("landing copy", hub.includes("Teach Quotr how your team normally works"));
 assert("progress copy", dnaCopy.includes("of") && dnaCopy.includes("calibrated"));
 assert("no percent DNA gamification", !hub.includes("% Company DNA"));
 assert("crew language", dnaCopy.includes("How many people from your team"));

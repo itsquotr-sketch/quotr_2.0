@@ -48,7 +48,7 @@ export function CompanyDnaDeckIntro({
               className={cn(buttonVariants(), "min-h-11")}
               data-company-dna-deck-start
             >
-              Start
+              Start calibration
             </Link>
           ) : null}
           <Link

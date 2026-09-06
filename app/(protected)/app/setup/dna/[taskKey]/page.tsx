@@ -157,6 +157,8 @@ export default async function CompanyDnaTaskPage({
             system={rwSystem}
           />
         ) : (
+          // Historical V1 flow kept for catalogue fallback / future non-V2 areas.
+          // Deck, Fence, and Retaining Wall use the V2 task flow above.
           <CompanyDnaTaskFlow
             task={task}
             alreadyCalibrated={alreadyCalibrated}

@@ -110,7 +110,7 @@ export const DNA_DECK_INTRO_TITLE =
   "Calibrate how your team normally completes common deck tasks.";
 
 export const DNA_DECK_INTRO_BODY =
-  "We'll show you a typical task. Tell us how many workers you'd use and how long they'd take. Quotr will use that to make future estimates more like yours.";
+  "We'll show you a typical task. Tell us how many workers you'd normally use and how long they'd take.";
 
 export const DNA_DECK_NORMAL_CONDITIONS =
   "Assume straightforward residential access, normal working conditions and materials close to the work area.";
@@ -150,6 +150,17 @@ export const DNA_RW_TIER1_COMPLETE_TITLE =
 
 export const DNA_RW_TIER1_COMPLETE_BODY =
   "You can keep refining other retaining wall tasks now, or come back later.";
+
+export const DNA_HUB_TITLE = "Company DNA";
+export const DNA_HUB_INTRO =
+  "Teach Quotr how your team normally works so future estimates use your productivity.";
+export const DNA_HUB_CONCEPT =
+  "Quotr learns how long your crew normally takes on key tasks and uses that productivity in future estimates.";
+
+export const DNA_SOURCE_YOUR_CALIBRATION = "Your calibration";
+export const DNA_SOURCE_QUOTR_BENCHMARK = "Quotr benchmark";
+export const DNA_SOURCE_COMPANY_RATE = "Your company rate";
+export const DNA_CALIBRATE = "Calibrate";
 
 export const DNA_SAVE_CONTINUE = "Save and continue";
 export const DNA_OUTLIER_YES = "Yes, use this";
@@ -452,15 +463,15 @@ export function formatDnaV2DashboardCta(params: {
     return {
       title: `Improve your ${area} estimates`,
       reason: `Tell Quotr how your crew normally completes a few common ${area.toLowerCase()} tasks.`,
-      cta: `Improve your ${area} estimates`,
+      cta: "Continue calibration",
     };
   }
   return {
-    title: `Improve your ${area} estimates`,
-    reason: `Finish the key ${area} tasks so estimates use your crew's pace.`,
-    cta: `Calibrate ${params.remainingKeyTasks} more key ${area} ${
+    title: `Calibrate ${params.remainingKeyTasks} more key ${area} ${
       params.remainingKeyTasks === 1 ? "task" : "tasks"
     }`,
+    reason: `Finish the key ${area} tasks so estimates use your crew's pace.`,
+    cta: "Continue calibration",
   };
 }
 
@@ -524,16 +535,63 @@ export function formatDnaRwHubProgress(params: {
   return `${next.tier1Calibrated} of ${next.tier1Total} ${next.label.toLowerCase()} key tasks calibrated`;
 }
 
+export function formatDnaRwSystemLine(params: {
+  label: string;
+  status: "benchmarks" | "partly" | "calibrated";
+  tier1Calibrated: number;
+  tier1Total: number;
+}): string {
+  if (params.status === "calibrated") return `${params.label}: Calibrated`;
+  if (params.status === "partly") {
+    return `${params.label}: ${params.tier1Calibrated} of ${params.tier1Total} key tasks`;
+  }
+  return `${params.label}: Uses Quotr benchmarks`;
+}
+
 export function formatDnaRwRatesSummary(params: {
   systems: ReadonlyArray<{
     label: string;
+    status?: "benchmarks" | "partly" | "calibrated";
     tier1Calibrated: number;
     tier1Total: number;
   }>;
 }): string {
-  return params.systems
-    .map((row) => `${row.label} ${row.tier1Calibrated}/${row.tier1Total}`)
-    .join(" · ");
+  const complete = params.systems.filter((row) =>
+    row.status
+      ? row.status === "calibrated"
+      : row.tier1Calibrated >= row.tier1Total && row.tier1Total > 0
+  );
+  const remaining = params.systems.filter((row) => !complete.includes(row));
+  if (complete.length === 0) return "Not calibrated";
+  if (remaining.length === 0) {
+    return "Timber, sleeper and masonry calibrated";
+  }
+  const names = complete.map((row) => row.label).join(" and ");
+  if (remaining.length > 1) {
+    return `${names} calibrated · Other systems using Quotr benchmarks`;
+  }
+  return `${names} calibrated · ${remaining[0]?.label ?? "Other systems"} using Quotr benchmarks`;
+}
+
+export function formatDnaOptionalRemaining(params: {
+  optionalTotal: number;
+  optionalCalibrated: number;
+}): string | null {
+  const remaining = Math.max(0, params.optionalTotal - params.optionalCalibrated);
+  if (params.optionalTotal <= 0 || remaining <= 0) return null;
+  return `${remaining} optional ${remaining === 1 ? "task" : "tasks"} still using Quotr benchmarks`;
+}
+
+export function formatDnaSupportedTaskCoverage(params: {
+  calibratedCount: number;
+  taskTotal: number;
+}): string {
+  return `${params.calibratedCount} of ${params.taskTotal} supported tasks calibrated`;
+}
+
+export function formatDnaCompactHoursPerUnit(value: number, unit: string): string {
+  const displayUnit = unit === "m2" ? "m²" : unit === "m3" ? "m³" : unit;
+  return `${formatDnaProductivityHours(value)} h/${displayUnit}`;
 }
 
 export function dnaV2CompleteCopy(

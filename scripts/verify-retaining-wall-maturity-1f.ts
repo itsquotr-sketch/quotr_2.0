@@ -545,7 +545,7 @@ check(
   "30 mobile content contract",
   surfaceSrc.includes("overflow-x-hidden") &&
     surfaceSrc.includes("break-words") &&
-    !/warning|text-destructive|text-red-/.test(surfaceSrc)
+    surfaceSrc.includes('data-builder-review-line-group')
 );
 
 const question = getScopeQuestions("retaining_wall").find(

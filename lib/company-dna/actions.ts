@@ -20,7 +20,10 @@ import {
 } from "@/lib/company-dna/v2-ui";
 import { resolveCompanyDnaTask } from "@/lib/company-dna/resolve-task";
 import { listRwSystemProgress } from "@/lib/company-dna/rw-v2";
-import { formatDnaRwHubProgress } from "@/lib/company-dna/copy";
+import {
+  formatDnaRwHubProgress,
+  formatDnaRwSystemLine,
+} from "@/lib/company-dna/copy";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 
@@ -40,10 +43,13 @@ export type CompanyDnaWorkAreaProgress = {
   taskTotal: number;
   highImpactCalibrated: number;
   highImpactTotal: number;
+  optionalCalibrated: number;
+  optionalTotal: number;
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
   generation: "v1" | "v2c" | "v2d" | "v2e";
   progressDetail?: string;
+  systemLines?: string[];
   tasks: CompanyDnaTaskStatus[];
 };
 
@@ -227,12 +233,21 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
       taskTotal: tasks.length,
       highImpactCalibrated,
       highImpactTotal,
+      optionalCalibrated: v2Counts?.optionalCalibrated ?? 0,
+      optionalTotal: v2Counts?.optionalTotal ?? 0,
       status,
-      statusLabel: companyDnaWorkAreaStatusLabel(status),
+      statusLabel:
+        status === "benchmarks"
+          ? "Not calibrated"
+          : companyDnaWorkAreaStatusLabel(status),
       generation: companyDnaV2Generation(workAreaType),
       progressDetail:
         workAreaType === "retaining_wall"
           ? formatDnaRwHubProgress({ systems })
+          : undefined,
+      systemLines:
+        workAreaType === "retaining_wall"
+          ? systems.map((row) => formatDnaRwSystemLine(row))
           : undefined,
       tasks: taskStatuses,
     };

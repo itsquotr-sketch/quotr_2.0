@@ -692,14 +692,14 @@ check(
   "Rates RW V2E 15 with system summary",
   rwRates?.taskTotal === 15 &&
     rwRates?.generation === "v2e" &&
-    (rwRates.summaryLine ?? "").includes("Timber") &&
+    (rwRates.summaryLine ?? "") === "Not calibrated" &&
     companyDnaV2Generation("retaining_wall") === "v2e"
 );
 check(
   "RW rates summary compact",
   formatDnaRwRatesSummary({
     systems: listRwSystemProgress([]),
-  }).includes("Timber 0/3")
+  }) === "Not calibrated"
 );
 check(
   "hub progress does not require 15 tasks",
@@ -751,7 +751,8 @@ const startRw = resolvePersonalisationNextStep({
 });
 check(
   "dashboard RW start CTA",
-  startRw?.cta === "Improve your Retaining Wall estimates" &&
+  startRw?.title === "Improve your Retaining Wall estimates" &&
+    startRw.cta === "Continue calibration" &&
     startRw.href === "/app/setup/dna/retaining-wall"
 );
 const deckUnchanged = resolvePersonalisationNextStep({
@@ -768,7 +769,8 @@ const deckUnchanged = resolvePersonalisationNextStep({
 });
 check(
   "Deck dashboard CTA unchanged",
-  deckUnchanged?.cta === "Improve your Deck estimates"
+  deckUnchanged?.title === "Improve your Deck estimates" &&
+    deckUnchanged.cta === "Continue calibration"
 );
 
 check("Owner can calibrate", roleAllowsPermission("owner", "company.calibration.manage"));

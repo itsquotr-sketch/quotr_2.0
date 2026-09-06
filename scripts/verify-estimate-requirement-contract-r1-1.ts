@@ -279,7 +279,7 @@ check(
 );
 
 check("Production Scope Discovery remains disabled", isScopeDiscoveryEnabled({}) === false);
-check("Company DNA not started", !existsSync(join("lib", "company-dna")));
+check("Company DNA V2 now exists (requirement-contract freeze was pre-DNA)", existsSync(join("lib", "company-dna")));
 check(
   "component authority is external policy, not a requirement field",
   existsSync(join("lib", "estimate", "component-authority.ts")) &&

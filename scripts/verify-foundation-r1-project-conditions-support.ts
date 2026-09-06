@@ -715,7 +715,7 @@ function main(): void {
   check("org isolation verifier still present", existsSync(join("scripts", "verify-org-isolation.ts")));
   check("RLS coverage verifier still present", existsSync(join("scripts", "verify-rls-coverage.ts")));
   check("Production Scope Discovery remains disabled", isScopeDiscoveryEnabled({}) === false);
-  check("Company DNA not started", !existsSync(join("lib", "company-dna")));
+  check("Company DNA V2 now exists (Foundation R1 freeze was pre-DNA)", existsSync(join("lib", "company-dna")));
   check(
     "planned analytics events exist as docs/types only",
     PLANNED_ANALYTICS_EVENT_TYPES.includes("estimate_generated") &&

@@ -116,11 +116,11 @@ export function companyDnaWorkAreaStatusLabel(
 }
 
 /**
- * DNA-V2 completion helper. Not wired into V1 hub / Rates UX.
+ * DNA-V2 completion helper. Hub / Rates / Dashboard V2 surfaces use this.
  *
  * Not calibrated: 0 Tier 1
  * Partly calibrated: some but not all Tier 1
- * Using your calibration: every Tier 1 task for that Work Area
+ * Using your calibration: every Tier 1 task for that Work Area (Retaining is system-aware)
  */
 export function companyDnaWorkAreaStatusV2(params: {
   tier1Total: number;

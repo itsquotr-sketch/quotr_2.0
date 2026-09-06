@@ -111,7 +111,7 @@ export function CompanyDnaRwIntro({
               className={cn(buttonVariants(), "min-h-11")}
               data-company-dna-rw-start
             >
-              Start
+              Start calibration
             </Link>
           ) : null}
           <Link

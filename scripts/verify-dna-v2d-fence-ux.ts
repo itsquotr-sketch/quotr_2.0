@@ -430,7 +430,9 @@ const startFence = resolvePersonalisationNextStep({
 });
 check(
   "dashboard Fence start CTA",
-  startFence?.cta === "Improve your Fence estimates" && startFence.href === "/app/setup/dna/fence"
+  startFence?.title === "Improve your Fence estimates" &&
+    startFence.cta === "Continue calibration" &&
+    startFence.href === "/app/setup/dna/fence"
 );
 const bothPreferred = resolvePersonalisationNextStep({
   firstRunComplete: true,
@@ -448,7 +450,8 @@ const bothPreferred = resolvePersonalisationNextStep({
 });
 check(
   "Deck complete then Fence prompt is deterministic",
-  bothPreferred?.cta === "Improve your Fence estimates"
+  bothPreferred?.title === "Improve your Fence estimates" &&
+    bothPreferred.cta === "Continue calibration"
 );
 const deckFirst = resolvePersonalisationNextStep({
   firstRunComplete: true,
@@ -478,7 +481,8 @@ const continueExisting = resolvePersonalisationNextStep({
 });
 check(
   "RW-only ladder uses Retaining V2E CTA",
-  continueExisting?.cta === "Improve your Retaining Wall estimates" &&
+  continueExisting?.title === "Improve your Retaining Wall estimates" &&
+    continueExisting.cta === "Continue calibration" &&
     continueExisting.href === "/app/setup/dna/retaining-wall"
 );
 

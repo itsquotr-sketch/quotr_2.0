@@ -203,6 +203,7 @@ export function mapRateLabel(raw: string): string {
   const type = classifyRateSource(raw);
   if (type === "user_rate") return "Company rate";
   if (type === "calibrated_productivity") return "Your calibrated productivity";
+  if (type === "productivity") return "Quotr productivity benchmark";
   if (type === "benchmark") return "Quotr benchmark";
   if (type === "fallback") return "Allowance used";
   if (type === "missing") return "Rate required";

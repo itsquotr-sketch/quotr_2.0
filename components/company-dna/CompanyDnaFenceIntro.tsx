@@ -48,7 +48,7 @@ export function CompanyDnaFenceIntro({
               className={cn(buttonVariants(), "min-h-11")}
               data-company-dna-fence-start
             >
-              Start
+              Start calibration
             </Link>
           ) : null}
           <Link
