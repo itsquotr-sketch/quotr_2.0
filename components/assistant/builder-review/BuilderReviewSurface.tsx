@@ -61,7 +61,7 @@ export function BuilderReviewSurface({
   const [openAreas, setOpenAreas] = useState<Record<string, boolean>>(() => {
     const init: Record<string, boolean> = {};
     for (const wa of view.workAreas) {
-      init[wa.workAreaName] = false;
+      init[wa.workAreaName] = true;
     }
     return init;
   });
@@ -303,6 +303,7 @@ export function BuilderReviewSurface({
               key={wa.workAreaName}
               className="overflow-hidden rounded-xl border border-border/60"
               data-builder-review-work-area={wa.workAreaType ?? wa.workAreaName}
+              data-builder-review-wa-open={open ? "true" : "false"}
               data-work-area-cost={wa.cost}
             >
               <button
@@ -347,7 +348,7 @@ export function BuilderReviewSurface({
               </button>
 
               {open ? (
-                <div className="space-y-4 border-t border-border/40 px-4 py-3">
+                <div className="space-y-4 overflow-x-hidden border-t border-border/40 px-4 py-3">
                   {wa.categories.map((cat) => (
                     <section
                       key={cat.id}

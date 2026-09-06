@@ -150,7 +150,7 @@ check(
 check(
   "7 mobile add affordance valid",
   jobPlanPanel.includes("min-h-11") &&
-    jobPlanPanel.includes("+ Add work area") &&
+    jobPlanPanel.includes("+ Add another Work Area") &&
     jobPlanPanel.includes("data-job-plan-add-work-area")
 );
 

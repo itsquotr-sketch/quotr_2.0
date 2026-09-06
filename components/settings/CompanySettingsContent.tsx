@@ -48,7 +48,6 @@ const COMPANY_SECTION_LABELS: Record<CompanySettingsSectionId, string> = {
   general: "General",
   pricing: "Pricing defaults",
   quotes: "Quotes",
-  advanced: "Advanced",
 };
 
 const COMPANY_SECTIONS = COMPANY_SECTION_IDS.map((id) => ({
@@ -167,33 +166,6 @@ export function CompanySettingsContent({
   const [brandAccentColour, setBrandAccentColour] = useState(
     settings.brandAccentColour ?? ""
   );
-  const [defaultMaterialWastagePercent, setDefaultMaterialWastagePercent] =
-    useState(String(settings.defaultMaterialWastagePercent));
-  const [deckingWastagePercent, setDeckingWastagePercent] = useState(
-    settings.deckingWastagePercent != null
-      ? String(settings.deckingWastagePercent)
-      : ""
-  );
-  const [sheetMaterialWastagePercent, setSheetMaterialWastagePercent] =
-    useState(
-      settings.sheetMaterialWastagePercent != null
-        ? String(settings.sheetMaterialWastagePercent)
-        : ""
-    );
-  const [flooringWastagePercent, setFlooringWastagePercent] = useState(
-    settings.flooringWastagePercent != null
-      ? String(settings.flooringWastagePercent)
-      : ""
-  );
-  const [paintWastagePercent, setPaintWastagePercent] = useState(
-    settings.paintWastagePercent != null ? String(settings.paintWastagePercent) : ""
-  );
-  const [timberFramingWastagePercent, setTimberFramingWastagePercent] =
-    useState(
-      settings.timberFramingWastagePercent != null
-        ? String(settings.timberFramingWastagePercent)
-        : ""
-    );
 
   const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string[]>>({});
@@ -247,25 +219,6 @@ export function CompanySettingsContent({
       logoUrl,
       brandPrimaryColour,
       brandAccentColour,
-      defaultMaterialWastagePercent: Number(defaultMaterialWastagePercent),
-      deckingWastagePercent:
-        deckingWastagePercent.trim() === ""
-          ? null
-          : Number(deckingWastagePercent),
-      sheetMaterialWastagePercent:
-        sheetMaterialWastagePercent.trim() === ""
-          ? null
-          : Number(sheetMaterialWastagePercent),
-      flooringWastagePercent:
-        flooringWastagePercent.trim() === ""
-          ? null
-          : Number(flooringWastagePercent),
-      paintWastagePercent:
-        paintWastagePercent.trim() === "" ? null : Number(paintWastagePercent),
-      timberFramingWastagePercent:
-        timberFramingWastagePercent.trim() === ""
-          ? null
-          : Number(timberFramingWastagePercent),
     });
 
     setSaving(false);
@@ -511,7 +464,7 @@ export function CompanySettingsContent({
       {activeSection === "pricing" ? (
       <SectionCard
         title="Pricing defaults"
-        description="Tax defaults for new pricing documents. Labour rates and default margin live on Rates."
+        description="Tax defaults for new pricing documents. Labour rates, default margin, and material wastage live on Rates → Defaults."
       >
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
@@ -716,123 +669,6 @@ export function CompanySettingsContent({
         ) : null}
       </SectionCard>
       </>
-      ) : null}
-
-      {activeSection === "advanced" ? (
-      <SectionCard
-        title="Advanced"
-        description="Material wastage defaults used before final pricing. You can still adjust pricing later."
-      >
-        <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="default-material-wastage">
-              Default material wastage %
-            </Label>
-            <LockedInput canEdit={canEdit}
-              id="default-material-wastage"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="50"
-              step="0.1"
-              value={defaultMaterialWastagePercent}
-              onChange={(event) =>
-                setDefaultMaterialWastagePercent(event.target.value)
-              }
-              required
-              className="h-11"
-            />
-            {fieldErrors.defaultMaterialWastagePercent?.[0] ? (
-              <p className="text-sm text-destructive">
-                {fieldErrors.defaultMaterialWastagePercent[0]}
-              </p>
-            ) : null}
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="decking-wastage">Decking board wastage %</Label>
-            <LockedInput canEdit={canEdit}
-              id="decking-wastage"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="50"
-              step="0.1"
-              value={deckingWastagePercent}
-              onChange={(event) => setDeckingWastagePercent(event.target.value)}
-              placeholder="Uses default"
-              className="h-11"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="sheet-material-wastage">
-              Sheet material wastage %
-            </Label>
-            <LockedInput canEdit={canEdit}
-              id="sheet-material-wastage"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="50"
-              step="0.1"
-              value={sheetMaterialWastagePercent}
-              onChange={(event) =>
-                setSheetMaterialWastagePercent(event.target.value)
-              }
-              placeholder="Uses default"
-              className="h-11"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="flooring-wastage">Flooring wastage %</Label>
-            <LockedInput canEdit={canEdit}
-              id="flooring-wastage"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="50"
-              step="0.1"
-              value={flooringWastagePercent}
-              onChange={(event) => setFlooringWastagePercent(event.target.value)}
-              placeholder="Uses default"
-              className="h-11"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="paint-wastage">Paint wastage %</Label>
-            <LockedInput canEdit={canEdit}
-              id="paint-wastage"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="50"
-              step="0.1"
-              value={paintWastagePercent}
-              onChange={(event) => setPaintWastagePercent(event.target.value)}
-              placeholder="Uses default"
-              className="h-11"
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="timber-framing-wastage">
-              Timber/framing wastage %
-            </Label>
-            <LockedInput canEdit={canEdit}
-              id="timber-framing-wastage"
-              type="number"
-              inputMode="decimal"
-              min="0"
-              max="50"
-              step="0.1"
-              value={timberFramingWastagePercent}
-              onChange={(event) =>
-                setTimberFramingWastagePercent(event.target.value)
-              }
-              placeholder="Uses default"
-              className="h-11"
-            />
-          </div>
-        </div>
-      </SectionCard>
       ) : null}
 
       {canEdit ? (

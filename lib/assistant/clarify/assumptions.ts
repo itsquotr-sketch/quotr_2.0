@@ -2,6 +2,13 @@ import type {
   ClarifyAssumption,
   ClarifyCandidate,
 } from "@/lib/assistant/clarify/types";
+import {
+  builderFacingAssumptionStatement,
+  looksLikeInternalFactKey,
+  safeFactPresentationLabel,
+} from "@/lib/assistant/presentation/fact-key-labels";
+import { isDisclosedAssumptionSource } from "@/lib/estimate/deck-board-width";
+import type { EstimateFact } from "@/lib/estimate/types";
 
 const STATEMENTS: Record<string, string> = {
   "deck.existing_deck_removal": "No demolition included",
@@ -16,10 +23,11 @@ const STATEMENTS: Record<string, string> = {
   quality_level: "Standard finish",
   "deck.access_type": "No steps included",
   "bathroom.plumbing_changes": "Standard plumbing allowance",
+  "deck.substructure_included": "Assuming new framing / substructure is included.",
 };
 
 export function assumptionStatementForKey(key: string): string {
-  return STATEMENTS[key] ?? `Assumed for now: ${key}`;
+  return builderFacingAssumptionStatement(key, STATEMENTS[key] ?? null);
 }
 
 export function toClarifyAssumption(
@@ -27,12 +35,19 @@ export function toClarifyAssumption(
 ): ClarifyAssumption {
   return {
     id: `assumption:${candidate.id}`,
-    label: candidate.label,
-    statement:
+    label:
+      candidate.label && !looksLikeInternalFactKey(candidate.label)
+        ? candidate.label
+        : safeFactPresentationLabel(
+            candidate.constraintKey ?? candidate.factKey ?? candidate.questionKey
+          ),
+    statement: builderFacingAssumptionStatement(
+      candidate.constraintKey ?? candidate.factKey ?? candidate.questionKey,
       candidate.assumptionStatement ??
-      assumptionStatementForKey(
-        candidate.constraintKey ?? candidate.factKey ?? candidate.questionKey
-      ),
+        assumptionStatementForKey(
+          candidate.constraintKey ?? candidate.factKey ?? candidate.questionKey
+        )
+    ),
     factKey: candidate.factKey,
     constraintKey: candidate.constraintKey,
     workAreaId: candidate.workAreaId,
@@ -51,4 +66,26 @@ export function assumptionsFromSkipped(
   return skipped
     .filter((c) => c.assumable && !c.blocksEstimate)
     .map(toClarifyAssumption);
+}
+
+export function assumptionsFromPersistedFacts(
+  facts: readonly EstimateFact[]
+): ClarifyAssumption[] {
+  return facts
+    .filter(
+      (fact) =>
+        isDisclosedAssumptionSource(fact.source) &&
+        fact.value != null &&
+        fact.value !== ""
+    )
+    .map((fact) => ({
+      id: `assumption-fact:${fact.work_area_id ?? "project"}:${fact.key}`,
+      label: safeFactPresentationLabel(fact.key),
+      statement: assumptionStatementForKey(fact.key),
+      factKey: fact.key,
+      constraintKey: null,
+      workAreaId: fact.work_area_id,
+      source: "assumption" as const,
+      persistedExclusion: false,
+    }));
 }

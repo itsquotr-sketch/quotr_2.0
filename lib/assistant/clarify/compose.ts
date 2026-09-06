@@ -1,7 +1,7 @@
 import { previewProjectConditionAskCandidates } from "@/lib/builder-interview/project-filter";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
-import { assumptionsFromSkipped } from "@/lib/assistant/clarify/assumptions";
+import { assumptionsFromPersistedFacts, assumptionsFromSkipped } from "@/lib/assistant/clarify/assumptions";
 import { allocateClarifyBudget, sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
@@ -14,6 +14,10 @@ import {
   briefImpliesConstraint,
   stepsAreRelevant,
 } from "@/lib/assistant/clarify/suppress";
+import {
+  safeFactPresentationLabel,
+  safeFactQuestion,
+} from "@/lib/assistant/presentation/fact-key-labels";
 import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
 import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
@@ -204,8 +208,8 @@ function missingHardMinimum(
           factKey: key,
           constraintKey: null,
           questionKey: key,
-          label: template?.label ?? key,
-          question: template?.questionText ?? `What is ${key}?`,
+          label: safeFactPresentationLabel(key),
+          question: safeFactQuestion(key, template?.questionText),
           askClass: "HARD_MINIMUM",
           inputType: "number",
           unit: template?.unit,
@@ -263,10 +267,10 @@ function missingHardMinimum(
           factKey: row.key,
           constraintKey: null,
           questionKey: row.key,
-          label: template?.label ?? row.key,
+          label: safeFactPresentationLabel(row.key),
           question: unsupportedMaterial
             ? RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE
-            : (template?.questionText ?? `What is ${row.key}?`),
+            : safeFactQuestion(row.key, template?.questionText),
           askClass: "HARD_MINIMUM",
           inputType: row.inputType,
           unit: template?.unit,
@@ -326,10 +330,10 @@ function missingHardMinimum(
           factKey: row.key,
           constraintKey: null,
           questionKey: row.key,
-          label: template?.label ?? row.key,
+          label: safeFactPresentationLabel(row.key),
           question: unsupported
             ? FENCE_UNSUPPORTED_SYSTEM_MESSAGE
-            : (template?.questionText ?? `What is ${row.key}?`),
+            : safeFactQuestion(row.key, template?.questionText),
           askClass: "HARD_MINIMUM",
           inputType: row.inputType,
           unit: template?.unit,
@@ -526,8 +530,8 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           factKey: extra.key,
           constraintKey: null,
           questionKey: extra.key,
-          label: template?.label ?? extra.key,
-          question: template?.questionText ?? extra.key,
+          label: safeFactPresentationLabel(extra.key),
+          question: safeFactQuestion(extra.key, template?.questionText),
           askClass: "ASK_NOW",
           inputType:
             template?.inputType === "boolean"
@@ -618,8 +622,8 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         factKey: extra.key,
         constraintKey: null,
         questionKey: extra.key,
-        label: template?.label ?? extra.key,
-        question: template?.questionText ?? extra.key,
+        label: safeFactPresentationLabel(extra.key),
+        question: safeFactQuestion(extra.key, template?.questionText),
         askClass: "ASK_NOW",
         inputType:
           template?.inputType === "boolean"
@@ -679,7 +683,7 @@ function fallbackProjectCondition(
     factKey: null,
     constraintKey: params.targetKey,
     questionKey: params.questionKey,
-    label: params.targetKey.replace(/_/g, " "),
+    label: safeFactPresentationLabel(params.targetKey),
     question: params.question,
     askClass: "ASK_NOW",
     inputType: "select",
@@ -752,7 +756,7 @@ function projectConditionCandidates(
         factKey: null,
         constraintKey: c.targetKey,
         questionKey: c.questionKey,
-        label: c.targetKey.replace(/_/g, " "),
+        label: safeFactPresentationLabel(c.targetKey),
         question: c.question,
         askClass: "ASK_NOW" as const,
         inputType:
@@ -830,6 +834,14 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
     ...visible.filter((c) => c.assumable && !c.blocksEstimate),
     ...deferred,
   ]);
+  for (const persisted of assumptionsFromPersistedFacts(input.facts)) {
+    const already = estimateNowAssumptions.some(
+      (row) =>
+        row.factKey === persisted.factKey &&
+        row.workAreaId === persisted.workAreaId
+    );
+    if (!already) estimateNowAssumptions.push(persisted);
+  }
   if (
     !input.qualityLevel ||
     input.qualityLevel === "unknown"

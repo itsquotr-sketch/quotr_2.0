@@ -4,6 +4,7 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { RatesPageContent } from "@/components/rates/RatesPageContent";
 import { measureServerLoad } from "@/lib/perf/timing";
 import { getRatesPageState } from "@/lib/rates/actions";
+import { getCompanySettings } from "@/lib/settings/company-actions";
 import { parseRatesSection } from "@/lib/setup/recommendation-destinations";
 import { createClient } from "@/lib/supabase/server";
 
@@ -26,7 +27,10 @@ export default async function RatesPage({ searchParams }: RatesPageProps) {
     .eq("id", user!.id)
     .maybeSingle();
 
-  const state = await measureServerLoad("rates", () => getRatesPageState());
+  const [state, companySettings] = await Promise.all([
+    measureServerLoad("rates", () => getRatesPageState()),
+    getCompanySettings(),
+  ]);
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
@@ -45,6 +49,7 @@ export default async function RatesPage({ searchParams }: RatesPageProps) {
         <RatesPageContent
           initialState={state}
           initialSection={initialSection}
+          companySettings={companySettings}
         />
       </PageContainer>
     </div>

@@ -13,13 +13,6 @@ type PricingHeaderProps = {
   onSaveDocument?: () => void;
 };
 
-function buildMetaLine(document: PricingDocument, projectTitle: string): string {
-  const parts = [projectTitle];
-  if (document.client_name) parts.push(document.client_name);
-  if (document.site_address) parts.push(document.site_address);
-  return parts.join(" · ");
-}
-
 export function PricingHeader({
   document,
   projectTitle,
@@ -29,7 +22,7 @@ export function PricingHeader({
   const statusDef = getPricingStatusDefinition(document.status);
 
   return (
-    <div className="space-y-2 border-b pb-4">
+    <div className="space-y-2 border-b pb-4" data-pricing-identity-duplicate="false">
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div className="min-w-0 space-y-1">
           <div className="flex flex-wrap items-center gap-2">
@@ -38,8 +31,8 @@ export function PricingHeader({
             </h1>
             <Badge variant={statusDef.variant}>{statusDef.label}</Badge>
           </div>
-          <p className="text-sm text-muted-foreground">
-            {buildMetaLine(document, projectTitle)}
+          <p className="text-sm text-muted-foreground sm:hidden">
+            {projectTitle}
           </p>
         </div>
 

@@ -42,6 +42,8 @@ export type JobPlanSpecChip = {
   readonly label: string;
   readonly value: string;
   readonly advanced: boolean;
+  /** True when the value is a disclosed assumption, not a known fact. */
+  readonly assumed?: boolean;
 };
 
 export type JobPlanWorkAreaCard = {

@@ -12,6 +12,10 @@ import type {
   DefaultedFactEntry,
 } from "@/lib/estimate/assumption-metadata";
 import { GENERAL_ESTIMATE_ASSUMPTIONS } from "@/lib/estimate/summary";
+import {
+  builderFacingFactLabel,
+  looksLikeInternalFactKey,
+} from "@/lib/assistant/presentation/fact-key-labels";
 
 /** Estimate Ready initial disclosure cap (3–5). */
 export const USER_FACING_ESTIMATE_ASSUMPTION_LIMIT = 5;
@@ -87,6 +91,7 @@ export function classifyEstimateAssumptionLine(
     return "system_diagnostic";
   }
   if (INTERNAL_MODE_IDENTIFIER.test(trimmed)) return "system_diagnostic";
+  if (looksLikeInternalFactKey(trimmed)) return "system_diagnostic";
   if (PACKAGE_DIAGNOSTIC_PATTERNS.some((pattern) => pattern.test(trimmed))) {
     return "package_diagnostic";
   }
@@ -103,8 +108,14 @@ export function isUserFacingEstimateAssumption(line: string): boolean {
 }
 
 export function formatDefaultedFactForBuilder(fact: DefaultedFactEntry): string {
+  const label =
+    builderFacingFactLabel(fact.key) ??
+    (fact.label && !looksLikeInternalFactKey(fact.label) ? fact.label : null);
+  if (!label) {
+    return "An estimating assumption is being used.";
+  }
   const unitSuffix = fact.unit ?? "";
-  return `Assumed ${fact.label.toLowerCase()}: ${fact.assumedValue}${unitSuffix}`.trim();
+  return `Assumed ${label.toLowerCase()}: ${fact.assumedValue}${unitSuffix}`.trim();
 }
 
 function assumptionFingerprint(line: string): string {

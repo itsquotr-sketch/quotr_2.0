@@ -385,24 +385,11 @@ export function PricingWorkspace({
 
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_280px]">
         <div className="min-w-0 space-y-5">
-          <details className="rounded-lg border border-border/60 bg-card">
-            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
-              Client and job details
-            </summary>
-            <div className="border-t border-border/60 p-3">
-              <PricingDetailsCard
-                title={document.title}
-                clientName={document.client_name}
-                siteAddress={document.site_address}
-                pricingDate={document.pricing_date}
-                validUntil={document.valid_until}
-                scopeSummary={document.scope_summary}
-                onChange={handleDocumentChange}
-              />
-            </div>
-          </details>
-
-          <details className="rounded-lg border border-border/60 bg-card" data-pricing-advanced-lines>
+          <details
+            className="rounded-lg border border-border/60 bg-card"
+            open
+            data-pricing-work-area-adjustments
+          >
             <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
               Adjust Work Area prices
             </summary>
@@ -433,6 +420,7 @@ export function PricingWorkspace({
                 />
               </>
             ) : null}
+            <div data-pricing-advanced-lines>
             {groupedSections.map((section) => (
               <PricingWorkAreaSection
                 key={section.key}
@@ -451,6 +439,24 @@ export function PricingWorkspace({
                 showAddItem={groupBy === "work_area"}
               />
             ))}
+            </div>
+            </div>
+          </details>
+
+          <details className="rounded-lg border border-border/60 bg-card" data-pricing-quote-details>
+            <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium marker:content-none [&::-webkit-details-marker]:hidden">
+              Quote details
+            </summary>
+            <div className="border-t border-border/60 p-3">
+              <PricingDetailsCard
+                title={document.title}
+                clientName={document.client_name}
+                siteAddress={document.site_address}
+                pricingDate={document.pricing_date}
+                validUntil={document.valid_until}
+                scopeSummary={document.scope_summary}
+                onChange={handleDocumentChange}
+              />
             </div>
           </details>
 

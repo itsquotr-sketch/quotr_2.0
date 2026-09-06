@@ -34,15 +34,18 @@ import { cn } from "@/lib/utils";
 import { BenchmarkFallbackSection } from "./BenchmarkFallbackSection";
 import { CalibrationSummaryCard } from "./CalibrationSummaryCard";
 import { CompanyDefaultsSection } from "./CompanyDefaultsSection";
+import { MaterialWastageDefaultsSection } from "./MaterialWastageDefaultsSection";
 import { RatesTableSection } from "./RatesTableSection";
 import { CompanyDnaRatesCompare } from "./CompanyDnaRatesCompare";
 import { SpecificMaterialRatesSection } from "./SpecificMaterialRatesSection";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { resolveCompanyGrossMarginPercent } from "@/lib/rates/cost-first-presentation";
+import type { CompanySettings } from "@/lib/settings/types";
 
 type RatesPageContentProps = {
   initialState: RatesPageState;
   initialSection?: RatesSectionId;
+  companySettings?: CompanySettings | null;
 };
 
 /** Primary Rates navigation — used-now contractor setup. */
@@ -81,6 +84,7 @@ function replaceRatesSectionInUrl(section: RatesSectionId) {
 export function RatesPageContent({
   initialState,
   initialSection = "core",
+  companySettings = null,
 }: RatesPageContentProps) {
   const [state, setState] = useState(initialState);
   const [activeSection, setActiveSection] = useState<RatesSectionId>(
@@ -367,6 +371,7 @@ export function RatesPageContent({
         ) : null}
 
         {activeSection === "defaults" ? (
+          <div className="space-y-4" data-rates-defaults>
           <CompanyDefaultsSection
             settings={state.settings}
             onSettingsChange={(settings) =>
@@ -374,6 +379,13 @@ export function RatesPageContent({
             }
             readOnly={!state.canManageRates}
           />
+          {companySettings ? (
+            <MaterialWastageDefaultsSection
+              settings={companySettings}
+              readOnly={!state.canManageRates}
+            />
+          ) : null}
+          </div>
         ) : null}
 
         {activeSection === "benchmarks" ? (

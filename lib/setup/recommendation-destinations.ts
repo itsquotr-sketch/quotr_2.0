@@ -114,7 +114,6 @@ export const COMPANY_SECTION_IDS = [
   "general",
   "pricing",
   "quotes",
-  "advanced",
 ] as const;
 
 export type CompanySettingsSectionId = (typeof COMPANY_SECTION_IDS)[number];
@@ -124,7 +123,16 @@ export function parseCompanySettingsSection(
 ): CompanySettingsSectionId | null {
   if (!value) return null;
   const trimmed = value.trim();
+  if (trimmed === "advanced") {
+    return null;
+  }
   return (COMPANY_SECTION_IDS as readonly string[]).includes(trimmed)
     ? (trimmed as CompanySettingsSectionId)
     : null;
+}
+
+export function isMovedCompanyAdvancedSection(
+  value: string | null | undefined
+): boolean {
+  return value?.trim() === "advanced";
 }

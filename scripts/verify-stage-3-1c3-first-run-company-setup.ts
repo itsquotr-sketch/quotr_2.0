@@ -202,9 +202,12 @@ function main() {
     /quotes:\s*"Quotes"/.test(companyUi) || /"quotes"/.test(companyDestinations)
   );
   assert(
-    "Advanced section",
-    /advanced:\s*"Advanced"/.test(companyUi) ||
-      /"advanced"/.test(companyDestinations)
+    "Estimating defaults live on Rates Defaults, not Company Advanced",
+    /data-rates-wastage-defaults/.test(
+      read("components/rates/MaterialWastageDefaultsSection.tsx")
+    ) &&
+      /isMovedCompanyAdvancedSection/.test(companyDestinations) &&
+      !/advanced:\s*"Advanced"/.test(companyUi)
   );
   assert(
     "Profile boundary called out",

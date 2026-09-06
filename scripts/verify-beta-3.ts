@@ -156,8 +156,8 @@ function main() {
       review.includes("<details")
   );
   assert(
-    "Work Area details start collapsed",
-    review.includes("init[wa.workAreaName] = false")
+    "Work Area details start expanded",
+    review.includes("init[wa.workAreaName] = true")
   );
   assert(
     "Review GST uses presentEstimateGst (no formula change)",

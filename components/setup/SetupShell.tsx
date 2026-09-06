@@ -11,12 +11,23 @@ import { getSetupState } from "@/lib/setup/actions";
 import { CompanyDnaHub } from "@/components/company-dna/CompanyDnaHub";
 import type { CompanyDnaHubState } from "@/lib/company-dna/actions";
 import { CompanyBasicsStep } from "./CompanyBasicsStep";
+import { CompletedSetupSummary } from "./CompletedSetupSummary";
 import { FirstRunProgress } from "./FirstRunProgress";
 import { FirstRunReady } from "./FirstRunReady";
 import { PricingBasicsStep } from "./PricingBasicsStep";
 import { RatesStep } from "./RatesStep";
 import type { SetupState, SetupStep } from "./types";
 import { WorkAreasStep } from "./WorkAreasStep";
+import {
+  calibrationSetupSummary,
+  companyBasicsSummary,
+  isCalibrationSetupComplete,
+  isCompanyBasicsComplete,
+  isRatesSetupComplete,
+  isWorkAreasComplete,
+  ratesSetupSummary,
+  workAreasSummary,
+} from "@/lib/setup/completed-setup";
 
 export type SetupShellMode = "basics" | "work" | "pricing" | "ready" | "improve";
 
@@ -61,6 +72,9 @@ export function SetupShell({
       initialImproveSection ??
       getInitialImproveSection(initialState.settings)
   );
+  const [editingComplete, setEditingComplete] = useState<
+    Partial<Record<ImproveSection, boolean>>
+  >({});
 
   const refreshState = useCallback(async () => {
     const nextState = await getSetupState();
@@ -189,48 +203,103 @@ export function SetupShell({
         </div>
 
         {section === "company" ? (
-          <CompanyBasicsStep
-            state={state}
-            mode="optional"
-            userEmail={userEmail}
-            onSaved={() => {
-              void refreshState();
-            }}
-          />
+          isCompanyBasicsComplete(state) && !editingComplete.company ? (
+            <CompletedSetupSummary
+              title="Company details"
+              detail={companyBasicsSummary(state)}
+              onEdit={() =>
+                setEditingComplete((prev) => ({ ...prev, company: true }))
+              }
+            />
+          ) : (
+            <div data-setup-incomplete={isCompanyBasicsComplete(state) ? undefined : "true"}>
+              <CompanyBasicsStep
+                state={state}
+                mode="optional"
+                userEmail={userEmail}
+                onSaved={() => {
+                  setEditingComplete((prev) => ({ ...prev, company: false }));
+                  void refreshState();
+                }}
+              />
+            </div>
+          )
         ) : null}
 
         {section === "work_areas" ? (
-          <WorkAreasStep
-            state={state}
-            mode="improve"
-            onSaved={() => {
-              void refreshState();
-            }}
-            onSkip={() => setSection("rates")}
-          />
+          isWorkAreasComplete(state) && !editingComplete.work_areas ? (
+            <CompletedSetupSummary
+              title="Work types"
+              detail={workAreasSummary(state)}
+              onEdit={() =>
+                setEditingComplete((prev) => ({ ...prev, work_areas: true }))
+              }
+            />
+          ) : (
+            <div data-setup-incomplete={isWorkAreasComplete(state) ? undefined : "true"}>
+              <WorkAreasStep
+                state={state}
+                mode="improve"
+                onSaved={() => {
+                  setEditingComplete((prev) => ({ ...prev, work_areas: false }));
+                  void refreshState();
+                }}
+                onSkip={() => setSection("rates")}
+              />
+            </div>
+          )
         ) : null}
 
         {section === "rates" ? (
-          <RatesStep
-            state={state}
-            onSaved={() => {
-              void refreshState();
-              setSection("calibrate");
-            }}
-            onSkip={() => {
-              void refreshState();
-              setSection("calibrate");
-            }}
-          />
+          isRatesSetupComplete(state) && !editingComplete.rates ? (
+            <CompletedSetupSummary
+              title="Rates"
+              detail={ratesSetupSummary(state)}
+              onEdit={() =>
+                setEditingComplete((prev) => ({ ...prev, rates: true }))
+              }
+            />
+          ) : (
+            <div data-setup-incomplete={isRatesSetupComplete(state) ? undefined : "true"}>
+              <RatesStep
+                state={state}
+                onSaved={() => {
+                  setEditingComplete((prev) => ({ ...prev, rates: false }));
+                  void refreshState();
+                  setSection("calibrate");
+                }}
+                onSkip={() => {
+                  void refreshState();
+                  setSection("calibrate");
+                }}
+              />
+            </div>
+          )
         ) : null}
 
         {section === "calibrate" && dnaHub ? (
-          <CompanyDnaHub
-            state={dnaHub}
-            onSkip={() => {
-              router.push("/app/dashboard");
-            }}
-          />
+          isCalibrationSetupComplete(dnaHub) && !editingComplete.calibrate ? (
+            <CompletedSetupSummary
+              title="Calibration"
+              detail={calibrationSetupSummary(dnaHub)}
+              onEdit={() =>
+                setEditingComplete((prev) => ({ ...prev, calibrate: true }))
+              }
+            />
+          ) : (
+            <div
+              data-setup-incomplete={
+                isCalibrationSetupComplete(dnaHub) ? undefined : "true"
+              }
+            >
+              <CompanyDnaHub
+                state={dnaHub}
+                onSkip={() => {
+                  router.push("/app/dashboard");
+                }}
+              />
+            </div>
+          )
         ) : null}
       </FormContainer>
     </div>

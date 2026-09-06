@@ -418,11 +418,14 @@ check(
 );
 
 check(
-  "36 stepper = Brief / Job Plan / Clarify / Estimate",
-  stepper.includes('label: "Brief"') &&
-    stepper.includes('label: "Job Plan"') &&
-    stepper.includes('label: "Clarify"') &&
+  "36 stepper = Job details / Work / Details / Estimate",
+  stepper.includes('label: "Job details"') &&
+    stepper.includes('label: "Work"') &&
+    stepper.includes('label: "Details"') &&
     stepper.includes('label: "Estimate"') &&
+    !stepper.includes('label: "Brief"') &&
+    !stepper.includes('label: "Job Plan"') &&
+    !stepper.includes('label: "Clarify"') &&
     !stepper.includes('label: "Specification"') &&
     !stepper.includes('label: "Scope Details"') &&
     !stepper.includes('label: "Site Constraints"')
@@ -440,7 +443,7 @@ check(
 check(
   "39 no standalone empty Specification panel",
   shell.includes("(!CLARIFY_IS_PRIMARY || isEditingQuality)") &&
-    shell.includes('title="Clarify"')
+    shell.includes('title="Details"')
 );
 check(
   "40 Quick Estimate sidebar not duplicate Clarify",
@@ -448,7 +451,7 @@ check(
     !estimatePanel.includes("A few things could improve this estimate") &&
     shell.includes("CLARIFY_IS_PRIMARY && !estimateReady ? false : canGenerateEstimate") &&
     read("lib/assistant/presentation/ui-states.ts").includes(
-      "Job plan confirmed. Estimate when clarified or safely assumed."
+      "Work confirmed. Estimate when the important details are in, or safely assumed."
     )
 );
 check(

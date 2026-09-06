@@ -4,6 +4,7 @@ import type {
   EstimateReadinessView,
 } from "@/lib/assistant/readiness/types";
 import { RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE } from "@/lib/estimate/calculators/retaining-wall";
+import { looksLikeInternalFactKey } from "@/lib/assistant/presentation/fact-key-labels";
 
 const KNOWN_LIMIT = 5;
 const ASSUMPTION_LIMIT = 4;
@@ -31,7 +32,12 @@ function constraintKnown(
 function knownFromJobPlan(plan: ComposeReadinessInput["jobPlan"]): string[] {
   const out: string[] = [];
   for (const card of plan.cards) {
-    if (card.summary) out.push(card.summary);
+    const knownChips = card.specChips.filter((chip) => !chip.assumed);
+    if (knownChips.length > 0) {
+      out.push(knownChips.map((chip) => chip.value).join(" · "));
+    } else if (card.summary) {
+      out.push(card.summary);
+    }
   }
   return out;
 }
@@ -89,6 +95,7 @@ export function composeEstimateReadiness(
     constraintKnown(input.constraints, "site_access", "Access"),
   ]
     .filter((row): row is string => Boolean(row))
+    .filter((row) => !looksLikeInternalFactKey(row))
     .slice(0, KNOWN_LIMIT);
 
   const seen = new Set<string>();

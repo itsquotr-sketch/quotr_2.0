@@ -394,6 +394,7 @@ export async function updateCompanySettings(
   }
 
   revalidatePath(COMPANY_SETTINGS_PATH);
+  revalidatePath("/app/rates");
 
   return {
     settings: mapSettingsRow(context.organisationName, updated),

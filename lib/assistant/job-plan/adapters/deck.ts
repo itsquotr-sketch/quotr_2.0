@@ -1,4 +1,6 @@
 import type { EstimateFact } from "@/lib/estimate/types";
+import { getFact } from "@/lib/estimate/facts";
+import { isDisclosedAssumptionSource } from "@/lib/estimate/deck-board-width";
 import { effectiveJobPlanBoolean } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
   jobPlanNumber,
@@ -154,11 +156,17 @@ function compactSummary(
   }
   const boardWidth = jobPlanNumber(facts, workAreaId, "deck.board_width_mm");
   if (boardWidth != null) {
+    const widthFact = getFact(
+      facts as EstimateFact[],
+      workAreaId,
+      "deck.board_width_mm"
+    );
     chips.push({
       key: "board_width",
       label: "Boards",
       value: `${boardWidth}mm`,
       advanced: false,
+      assumed: isDisclosedAssumptionSource(widthFact?.source),
     });
   }
   if (isLowLevel(facts, workAreaId)) {
@@ -196,7 +204,9 @@ function compactSummary(
     });
   }
 
-  const quick = chips.filter((c) => !c.advanced).map((c) => c.value);
+  const quick = chips
+    .filter((c) => !c.advanced && !c.assumed)
+    .map((c) => c.value);
   return { summary: quick.join(" · "), chips };
 }
 
@@ -319,7 +329,7 @@ export const deckJobPlanAdapter: JobPlanWorkAreaAdapter = {
       name: workArea.name,
       status: workArea.status,
       summary,
-      specChips: chips.filter((c) => !c.advanced),
+      specChips: chips.filter((c) => !c.advanced && !c.assumed),
       included,
       notIncluded,
       notConfirmed,

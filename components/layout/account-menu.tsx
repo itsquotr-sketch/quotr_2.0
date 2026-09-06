@@ -2,7 +2,7 @@
 
 import { useTransition } from "react";
 import { useRouter } from "next/navigation";
-import { Building2, LogOut, UserRound } from "lucide-react";
+import { CreditCard, Building2, LogOut, UserRound } from "lucide-react";
 import { logout } from "@/app/(auth)/actions";
 import {
   getDisplayUserName,
@@ -163,10 +163,19 @@ export function AccountMenu({
         </DropdownMenuItem>
         <DropdownMenuItem
           className="min-h-10 cursor-pointer sm:min-h-8"
+          data-account-menu-company
           onClick={() => router.push("/app/settings/company")}
         >
           <Building2 className="size-4" />
           Company settings
+        </DropdownMenuItem>
+        <DropdownMenuItem
+          className="min-h-10 cursor-pointer sm:min-h-8"
+          data-account-menu-billing
+          onClick={() => router.push("/app/settings/billing")}
+        >
+          <CreditCard className="size-4" />
+          Billing
         </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem

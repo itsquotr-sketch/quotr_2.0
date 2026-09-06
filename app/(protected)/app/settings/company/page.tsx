@@ -1,4 +1,4 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { SettingsContainer } from "@/components/layout/page-containers";
 import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
@@ -6,7 +6,10 @@ import { CompanySettingsContent } from "@/components/settings/CompanySettingsCon
 import { measureServerLoad } from "@/lib/perf/timing";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getCompanySettings } from "@/lib/settings/company-actions";
-import { parseCompanySettingsSection } from "@/lib/setup/recommendation-destinations";
+import {
+  isMovedCompanyAdvancedSection,
+  parseCompanySettingsSection,
+} from "@/lib/setup/recommendation-destinations";
 import { createClient } from "@/lib/supabase/server";
 import { requireOrgPermission } from "@/lib/team/permission-server";
 
@@ -18,6 +21,9 @@ export default async function CompanySettingsPage({
   searchParams,
 }: CompanySettingsPageProps) {
   const params = await searchParams;
+  if (isMovedCompanyAdvancedSection(params.section)) {
+    redirect("/app/rates?section=defaults");
+  }
   const initialSection =
     parseCompanySettingsSection(params.section) ?? "general";
 
@@ -54,7 +60,7 @@ export default async function CompanySettingsPage({
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Company"
-        description="General company details, pricing defaults, quote identity, and advanced options."
+        description="Company identity, contact details, tax, timezone, quotes, and branding."
         actions={
           <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
         }
