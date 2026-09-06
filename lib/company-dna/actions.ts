@@ -140,7 +140,8 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
         .from("organisation_work_areas")
         .select("work_area_type")
         .eq("org_id", context.orgId)
-        .eq("enabled", true),
+        .eq("enabled", true)
+        .order("sort_order"),
       context.supabase
         .from("productivity_calibration_responses")
         .select(

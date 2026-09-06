@@ -161,7 +161,8 @@ export async function getRatesPageState(): Promise<RatesPageState> {
         .from("organisation_work_areas")
         .select("work_area_type")
         .eq("org_id", orgId)
-        .eq("enabled", true),
+        .eq("enabled", true)
+        .order("sort_order"),
       permissionDeniedError({
         orgId,
         userId: context.user.id,

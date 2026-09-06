@@ -243,6 +243,14 @@ const remainDeck = formatDnaV2DashboardCta({
 check("dashboard start title", startDeck.title === "Improve your Deck estimates");
 check("dashboard CTA is Continue calibration", startDeck.cta === "Continue calibration");
 check("dashboard remaining title", remainDeck.title.includes("2 more key Deck tasks"));
+check(
+  "hub preferred work areas order by sort_order",
+  actions.includes('.order("sort_order")')
+);
+check(
+  "dashboard preferred work areas order by sort_order",
+  read("lib/setup/readiness-actions.ts").includes('.order("sort_order")')
+);
 const afterDeck = resolvePersonalisationNextStep({
   firstRunComplete: true,
   hasWorkTypePreferences: true,

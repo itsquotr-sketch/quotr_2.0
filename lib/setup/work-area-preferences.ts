@@ -26,7 +26,8 @@ export async function loadPreferredWorkAreaTypes(
     .from("organisation_work_areas")
     .select("work_area_type")
     .eq("org_id", orgId)
-    .eq("enabled", true);
+    .eq("enabled", true)
+    .order("sort_order");
 
   if (error) {
     throw new Error(error.message);
