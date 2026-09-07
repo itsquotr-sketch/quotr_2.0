@@ -48,11 +48,10 @@ export default async function PricingPage({ params }: PricingPageProps) {
   const { data, project, tabContext, quoteSummaryForDoc, quoteSummary } =
     pageData;
 
-  const effectiveQuoteSummary = quoteSummaryForDoc ?? quoteSummary;
   const pricingChangedAfterQuote =
-    effectiveQuoteSummary != null &&
+    quoteSummaryForDoc != null &&
     new Date(data.document.updated_at).getTime() >
-      new Date(effectiveQuoteSummary.created_at).getTime();
+      new Date(quoteSummaryForDoc.created_at).getTime();
 
   return (
     <WorkspacePage
@@ -71,7 +70,7 @@ export default async function PricingPage({ params }: PricingPageProps) {
             id: pricingId,
             status: data.document.status,
           }}
-          quoteSummary={effectiveQuoteSummary}
+          quoteSummary={quoteSummaryForDoc ?? quoteSummary}
           hasEstimate={tabContext.hasEstimate}
           estimateIsStale={tabContext.estimateIsStale}
         />
@@ -81,7 +80,7 @@ export default async function PricingPage({ params }: PricingPageProps) {
       <SetupGuidanceServerBanner dimension="pricing" />
       <PricingWorkspace
         initialData={data}
-        quoteSummary={effectiveQuoteSummary}
+        quoteSummary={quoteSummaryForDoc}
         pricingChangedAfterQuote={pricingChangedAfterQuote}
       />
     </WorkspacePage>

@@ -371,6 +371,15 @@ assert(
     read("components/quotes/QuoteAcceptSheet.tsx").includes("data-quote-accept-submit")
 );
 assert(
+  "Create quote is bound to this pricing document, not another Quote on the project",
+  read("app/(protected)/app/projects/[projectId]/pricing/[pricingId]/page.tsx").includes(
+    "quoteSummary={quoteSummaryForDoc}"
+  ) &&
+    !read("app/(protected)/app/projects/[projectId]/pricing/[pricingId]/page.tsx").includes(
+      "effectiveQuoteSummary"
+    )
+);
+assert(
   "architecture documents issue-before-email and draft token rule",
   archSrc.includes("send_quote_revision_v1") &&
     archSrc.includes("Draft is never rendered as an issued Quote") &&
