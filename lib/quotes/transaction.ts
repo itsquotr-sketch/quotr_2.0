@@ -120,6 +120,14 @@ export function canIssueQuoteDelivery(status: QuoteStatus): boolean {
   return status === "draft";
 }
 
+/**
+ * Canonical Quote statuses that may be shown to a client via a public token.
+ * A token on a draft is never a valid issued Quote, even if a delivery row exists.
+ */
+export function isQuotePubliclyViewableStatus(status: QuoteStatus): boolean {
+  return status !== "draft" && status !== "archived";
+}
+
 export function canResendQuoteDelivery(status: QuoteStatus): boolean {
   return (
     status === "sent" ||

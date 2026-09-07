@@ -286,6 +286,7 @@ export function QuoteSendSheet({
         type="button"
         className="h-11 w-full"
         disabled={isPending}
+        data-quote-send-submit="true"
         onClick={submit}
       >
         {isPending ? (

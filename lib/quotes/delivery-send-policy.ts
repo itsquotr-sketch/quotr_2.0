@@ -51,7 +51,7 @@ export function createSimulatedQuoteSendState(): SimulatedQuoteSendState {
 }
 
 /**
- * Deterministic model of prepare → provider → finalize.
+ * Deterministic model of prepare → issue → provider → finalize.
  * Used by the delivery verifier; not a second production path.
  */
 export function simulateQuoteSendAttempt(
@@ -71,8 +71,16 @@ export function simulateQuoteSendAttempt(
   };
 
   if (input.kind === "send" && next.quoteStatus !== "draft") {
-    next.lastError = "invalid_transition";
-    return next;
+    const existing = next.deliveries.find((row) => row.key === input.key);
+    if (
+      !existing ||
+      (existing.status !== "accepted" &&
+        existing.status !== "submitted" &&
+        existing.status !== "preparing")
+    ) {
+      next.lastError = "invalid_transition";
+      return next;
+    }
   }
   if (input.kind === "resend" && next.quoteStatus !== "sent") {
     next.lastError = "invalid_transition";
@@ -119,10 +127,18 @@ export function simulateQuoteSendAttempt(
     return finalizeSimulatedDelivery(next, delivery, input.finalizeSucceeds !== false);
   }
 
+  // Issue / freeze before the external email API. Email failure must not
+  // leave a draft Quote that a client token can present as sent.
+  if (input.kind === "send" && next.quoteStatus === "draft") {
+    next.quoteStatus = "sent";
+    next.quoteSentCount += 1;
+    next.sentAt = next.sentAt ?? "2026-09-01T00:00:00.000Z";
+  }
+
   next.providerSubmitCount += 1;
   if (!input.providerAccepts) {
     delivery.status = "failed";
-    if (input.kind === "send") next.sendLock = false;
+    next.sendLock = false;
     next.lastError = PROVIDER_FAIL_MESSAGE;
     return next;
   }

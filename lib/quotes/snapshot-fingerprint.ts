@@ -3,6 +3,19 @@ import type { Quote, QuoteIssuerSnapshot, QuoteItem } from "@/lib/quotes/types";
 
 export const QUOTE_SNAPSHOT_FINGERPRINT_VERSION = "v1";
 
+/**
+ * Presentation-only keys must not enter the commercial fingerprint.
+ * Quantity, rates, and terms stay identical when column visibility changes.
+ */
+function issuerIdentityForFingerprint(
+  snapshot: QuoteIssuerSnapshot | null
+): Record<string, unknown> | null {
+  if (!snapshot) return null;
+  const row = { ...(snapshot as QuoteIssuerSnapshot & Record<string, unknown>) };
+  delete row.display_options;
+  return row;
+}
+
 function money(value: number): string {
   return Number(value).toFixed(2);
 }
@@ -77,7 +90,7 @@ export function buildQuoteSnapshotFingerprintPayload(
     gst_rate: money(quote.gst_rate),
     gst_amount: money(quote.gst_amount),
     total_incl_gst: money(quote.total_incl_gst),
-    issuer_snapshot: issuerSnapshot,
+    issuer_snapshot: issuerIdentityForFingerprint(issuerSnapshot),
     items: orderedItems.map((item) => ({
       sort_order: item.sort_order,
       section_title: item.section_title,

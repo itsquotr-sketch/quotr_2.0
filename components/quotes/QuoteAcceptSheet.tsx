@@ -178,6 +178,7 @@ export function QuoteAcceptSheet({
       type="button"
       className="h-11 w-full"
       disabled={isPending}
+      data-quote-accept-submit="true"
       onClick={submit}
     >
       {isPending ? <Loader2 className="size-4 animate-spin" /> : "Accept quote"}

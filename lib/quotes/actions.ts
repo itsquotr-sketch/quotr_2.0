@@ -1533,7 +1533,51 @@ export async function sendQuoteToClient(input: {
     };
   }
 
+  let quoteIssued = !isFirstSend;
+  let issuedThisRequest = false;
+
   if (decision === "submit") {
+    if (isFirstSend) {
+      const issued = await runQuoteTxn(supabase, SEND_QUOTE_REVISION_RPC, {
+        p_quote_id: working.id,
+        p_issuer_snapshot: issuerSnapshotRpcPayload(
+          issuerSnapshot,
+          working.display_options
+        ),
+        p_snapshot_fingerprint: snapshotFingerprint,
+        p_fingerprint_version: QUOTE_SNAPSHOT_FINGERPRINT_VERSION,
+      });
+      if ("error" in issued) {
+        await invokeQuoteDeliveryTxn(supabase as never, FAIL_QUOTE_DELIVERY_RPC, {
+          p_delivery_id: deliveryId,
+          p_failure_code: "issue_failed",
+          p_failure_message_safe: issued.error,
+        });
+        revalidateQuoteDashboard(
+          working.project_id,
+          working.id,
+          working.pricing_document_id
+        );
+        return {
+          error: issued.error,
+          quoteIssued: false,
+          emailSubmitted: false,
+          deliveryId,
+        };
+      }
+      quoteIssued = true;
+      issuedThisRequest = issued.result.idempotent !== true;
+      if (issuedThisRequest) {
+        await applyQuoteIssuedSideEffects({
+          supabase,
+          orgId,
+          userId: user.id,
+          quote: working,
+          previousStatus: "draft",
+        });
+      }
+    }
+
     const issuer = resolveQuoteIssuerSettings(working, companySettings);
     const { data: projectRow } = await supabase
       .from("projects")
@@ -1585,7 +1629,7 @@ export async function sendQuoteToClient(input: {
       );
       return {
         error: USER_ERRORS.quoteDeliveryFailed,
-        quoteIssued: !isFirstSend,
+        quoteIssued,
         emailSubmitted: false,
         recipientEmail,
         publicPath,
@@ -1608,7 +1652,7 @@ export async function sendQuoteToClient(input: {
       );
       return {
         error: "Email submitted — finalising Quote status.",
-        quoteIssued: false,
+        quoteIssued,
         emailSubmitted: true,
         needsFinalize: true,
         deliveryId,
@@ -1639,7 +1683,7 @@ export async function sendQuoteToClient(input: {
     );
     return {
       error: "Email submitted — finalising Quote status.",
-      quoteIssued: false,
+      quoteIssued,
       emailSubmitted: true,
       needsFinalize: true,
       deliveryId,
@@ -1648,7 +1692,11 @@ export async function sendQuoteToClient(input: {
     };
   }
 
-  if (isFirstSend && finalized.result.quoteStatus === "sent") {
+  if (
+    isFirstSend &&
+    !issuedThisRequest &&
+    finalized.result.quoteStatus === "sent"
+  ) {
     await applyQuoteIssuedSideEffects({
       supabase,
       orgId,

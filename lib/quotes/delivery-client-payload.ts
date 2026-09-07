@@ -1,4 +1,8 @@
-import { parseQuoteDisplayOptions } from "@/lib/quotes/display-options";
+import {
+  parseQuoteDisplayOptions,
+  resolveQuoteDisplayOptions,
+  type QuoteDisplayOptions,
+} from "@/lib/quotes/display-options";
 import { parseQuoteIssuerSnapshot } from "@/lib/quotes/issuer-snapshot";
 import {
   clientSafeQuoteLineDescription,
@@ -194,6 +198,24 @@ export function toPublicQuoteItemsFromLookup(
       updated_at: "",
     };
   });
+}
+
+/**
+ * Drop hidden presentation fields from the client-facing line payload.
+ * Line `total` stays when line-total is off so grouped Work Area totals
+ * can still be computed; the renderer does not show the per-line amount.
+ */
+export function redactPublicQuoteItemsForDisplay(
+  items: QuoteItem[],
+  display: QuoteDisplayOptions | null | undefined
+): QuoteItem[] {
+  const options = resolveQuoteDisplayOptions({ display_options: display });
+  return items.map((item) => ({
+    ...item,
+    quantity: options.show_quantity ? item.quantity : null,
+    unit: options.show_unit ? item.unit : null,
+    unit_price: options.show_unit_price ? item.unit_price : null,
+  }));
 }
 
 export { PUBLIC_QUOTE_KEYS, PUBLIC_ITEM_KEYS, FORBIDDEN_PUBLIC_KEYS };

@@ -10,6 +10,9 @@ import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { canClientAcceptQuote } from "../lib/quotes/acceptance";
 import {
+  redactPublicQuoteItemsForDisplay,
+} from "../lib/quotes/delivery-client-payload";
+import {
   applyQuantityUnitCoherence,
   formatQuoteDisplayPreview,
   issuerSnapshotWithDisplayOptions,
@@ -28,7 +31,7 @@ import {
   hashQuoteSnapshotFingerprint,
   QUOTE_SNAPSHOT_FINGERPRINT_VERSION,
 } from "../lib/quotes/snapshot-fingerprint";
-import { canMutateQuoteSnapshot } from "../lib/quotes/transaction";
+import { canMutateQuoteSnapshot, isQuotePubliclyViewableStatus } from "../lib/quotes/transaction";
 import { roleAllowsPermission } from "../lib/team/permissions";
 import type { Quote, QuoteItem } from "../lib/quotes/types";
 
@@ -132,6 +135,7 @@ const workspaceSrc = read("components/quotes/QuoteWorkspace.tsx");
 const controlSrc = read("components/quotes/QuoteDisplayControl.tsx");
 const mappersSrc = read("lib/quotes/mappers.ts");
 const payloadSrc = read("lib/quotes/delivery-client-payload.ts");
+const lookupSrc = read("lib/quotes/public-lookup.ts");
 const fingerprintSrc = read("lib/quotes/snapshot-fingerprint.ts");
 const schemasSrc = read("lib/quotes/schemas.ts");
 const emailSrc = read("lib/quotes/delivery-email.ts");
@@ -335,6 +339,26 @@ assert(
     mappersSrc.includes("parseQuoteDisplayOptions(row.issuer_snapshot)")
 );
 assert(
+  "official public renderer refuses draft Quotes",
+  lookupSrc.includes("isQuotePubliclyViewableStatus") &&
+    !isQuotePubliclyViewableStatus("draft") &&
+    isQuotePubliclyViewableStatus("sent") &&
+    !isQuotePubliclyViewableStatus("archived")
+);
+const redacted = redactPublicQuoteItemsForDisplay(items, {
+  ...NEW_QUOTE_DISPLAY_OPTIONS,
+});
+assert(
+  "public payload omits hidden unit price",
+  redacted.every((item) => item.unit_price == null) &&
+    items.some((item) => item.unit_price != null)
+);
+assert(
+  "template does not format hidden unit price",
+  templateSrc.includes("display.show_unit_price") &&
+    templateSrc.includes("item.unit_price != null")
+);
+assert(
   "no internal cost/margin in client template",
   !templateSrc.includes("gross margin") &&
     !templateSrc.includes("unit_cost") &&
@@ -378,9 +402,10 @@ assert(
   )
 );
 assert(
-  "fingerprint version stays v1 and does not hash display_options",
+  "fingerprint version stays v1 and strips display_options from issuer identity",
   QUOTE_SNAPSHOT_FINGERPRINT_VERSION === "v1" &&
-    !fingerprintSrc.includes("display_options")
+    fingerprintSrc.includes("issuerIdentityForFingerprint") &&
+    fingerprintSrc.includes("delete row.display_options")
 );
 const hashBase = hashQuoteSnapshotFingerprint(quoteDoc(), items, null);
 const hashDisplayChanged = hashQuoteSnapshotFingerprint(
@@ -393,6 +418,35 @@ const hashDisplayChanged = hashQuoteSnapshotFingerprint(
 assert(
   "changing display options does not change commercial fingerprint",
   hashBase === hashDisplayChanged
+);
+const issuerIdentity = {
+  organisationName: "ERC",
+  tradingName: null,
+  legalName: "ERC Ltd",
+  contactEmail: "hello@example.com",
+  contactPhone: null,
+  website: null,
+  addressLine1: null,
+  addressLine2: null,
+  city: null,
+  region: null,
+  postcode: null,
+  addressCountry: "New Zealand",
+  nzbn: null,
+  gstNumber: null,
+  logoUrl: null,
+  brandPrimaryColour: null,
+  brandAccentColour: null,
+  defaultPaymentTerms: null,
+  source: "send" as const,
+};
+assert(
+  "display_options nested on issuer snapshot are stripped from fingerprint v1",
+  hashQuoteSnapshotFingerprint(quoteDoc(), items, issuerIdentity) ===
+    hashQuoteSnapshotFingerprint(quoteDoc(), items, {
+      ...issuerIdentity,
+      display_options: { ...NEW_QUOTE_DISPLAY_OPTIONS, show_unit_price: true },
+    } as typeof issuerIdentity)
 );
 
 section("SECURITY");

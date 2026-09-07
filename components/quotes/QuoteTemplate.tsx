@@ -71,9 +71,14 @@ function QuoteLineItemRow({
   const description = clientSafeQuoteLineDescription(item.description);
   const quantityText = item.quantity != null ? String(item.quantity) : "—";
   const unitText = item.unit ?? "—";
-  const unitPriceText =
-    item.unit_price != null ? formatPricingMoney(item.unit_price) : "—";
-  const lineTotalText = formatPricingMoney(item.total);
+  const unitPriceText = display.show_unit_price
+    ? item.unit_price != null
+      ? formatPricingMoney(item.unit_price)
+      : "—"
+    : null;
+  const lineTotalText = display.show_line_total
+    ? formatPricingMoney(item.total)
+    : null;
 
   return (
     <>

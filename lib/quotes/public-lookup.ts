@@ -7,9 +7,11 @@ import {
 } from "@/lib/quotes/delivery-token";
 import {
   assertClientSafePublicQuotePayload,
+  redactPublicQuoteItemsForDisplay,
   toPublicQuoteFromLookup,
   toPublicQuoteItemsFromLookup,
 } from "@/lib/quotes/delivery-client-payload";
+import { isQuotePubliclyViewableStatus } from "@/lib/quotes/transaction";
 import type { Quote, QuoteItem } from "@/lib/quotes/types";
 import type {
   PublicQuoteAcceptanceSummary,
@@ -62,6 +64,11 @@ export async function lookupPublicQuoteByToken(
   });
   if (!safety.ok) return null;
 
+  const quote = toPublicQuoteFromLookup(quoteRow);
+  if (!isQuotePubliclyViewableStatus(quote.status)) {
+    return null;
+  }
+
   const recipient =
     row.recipient && typeof row.recipient === "object"
       ? (row.recipient as Record<string, unknown>)
@@ -76,8 +83,11 @@ export async function lookupPublicQuoteByToken(
       : null;
 
   return {
-    quote: toPublicQuoteFromLookup(quoteRow),
-    items: toPublicQuoteItemsFromLookup(itemRows),
+    quote,
+    items: redactPublicQuoteItemsForDisplay(
+      toPublicQuoteItemsFromLookup(itemRows),
+      quote.display_options
+    ),
     superseded: quoteRow.superseded === true,
     issuerOrgId: typeof row.orgId === "string" ? row.orgId : null,
     recipient: recipient

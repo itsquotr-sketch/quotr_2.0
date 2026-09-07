@@ -175,10 +175,12 @@ const finalizeFn = actionsSrc.slice(
 );
 
 assert(
-  "send order: config then prepare then provider then finalize",
+  "send order: prepare then issue then provider then finalize",
   sendFn.indexOf("isQuoteDeliveryProviderConfigured") <
     sendFn.indexOf("PREPARE_QUOTE_DELIVERY_RPC") &&
-    sendFn.indexOf("PREPARE_QUOTE_DELIVERY_RPC") < sendFn.indexOf("provider.send") &&
+    sendFn.indexOf("PREPARE_QUOTE_DELIVERY_RPC") <
+      sendFn.indexOf("SEND_QUOTE_REVISION_RPC") &&
+    sendFn.indexOf("SEND_QUOTE_REVISION_RPC") < sendFn.indexOf("provider.send") &&
     sendFn.indexOf("provider.send") <
       sendFn.indexOf("RECORD_QUOTE_DELIVERY_ACCEPTED_RPC") &&
     sendFn.indexOf("RECORD_QUOTE_DELIVERY_ACCEPTED_RPC") <
@@ -187,10 +189,10 @@ assert(
 );
 
 assert(
-  "provider failure keeps Quote draft (no quoteIssued, fail RPC, no unsend helper)",
-  sendFn.includes("quoteIssued: !isFirstSend") &&
-    sendFn.includes("FAIL_QUOTE_DELIVERY_RPC") &&
+  "provider failure does not unsend; first send issues before email",
+  sendFn.includes("FAIL_QUOTE_DELIVERY_RPC") &&
     sendFn.includes("USER_ERRORS.quoteDeliveryFailed") &&
+    sendFn.indexOf("SEND_QUOTE_REVISION_RPC") < sendFn.indexOf("provider.send") &&
     !sendFn.includes("markQuoteDraft")
 );
 
@@ -576,9 +578,9 @@ const rejected = simulateQuoteSendAttempt(createSimulatedQuoteSendState(), {
   providerAccepts: false,
 });
 assert(
-  "B. provider rejects → Quote Draft → delivery failed → lock released → no quote_sent",
-  rejected.quoteStatus === "draft" &&
-    rejected.quoteSentCount === 0 &&
+  "B. provider rejects → Quote already issued → delivery failed → lock released",
+  rejected.quoteStatus === "sent" &&
+    rejected.quoteSentCount === 1 &&
     rejected.deliveries[0]?.status === "failed" &&
     rejected.sendLock === false &&
     rejected.lastError === QUOTE_SEND_PROVIDER_FAIL_MESSAGE
@@ -591,8 +593,9 @@ let recovery = simulateQuoteSendAttempt(createSimulatedQuoteSendState(), {
   finalizeSucceeds: false,
 });
 assert(
-  "C1. provider accepted + DB finalise fails → no Quote sent, needs finalize",
-  recovery.quoteStatus === "draft" &&
+  "C1. provider accepted + DB finalise fails → Quote already sent, delivery needs finalize",
+  recovery.quoteStatus === "sent" &&
+    recovery.quoteSentCount === 1 &&
     recovery.needsFinalize &&
     recovery.providerSubmitCount === 1 &&
     recovery.deliveries[0]?.status === "accepted" &&
@@ -911,9 +914,10 @@ assert(
 );
 
 assert(
-  "send path still prepare → provider → accepted → finalize",
+  "send path is prepare → issue → provider → accepted → finalize",
   sendFn.indexOf("PREPARE_QUOTE_DELIVERY_RPC") <
-    sendFn.indexOf("provider.send") &&
+    sendFn.indexOf("SEND_QUOTE_REVISION_RPC") &&
+    sendFn.indexOf("SEND_QUOTE_REVISION_RPC") < sendFn.indexOf("provider.send") &&
     sendFn.indexOf("provider.send") <
       sendFn.indexOf("RECORD_QUOTE_DELIVERY_ACCEPTED_RPC") &&
     sendFn.indexOf("RECORD_QUOTE_DELIVERY_ACCEPTED_RPC") <
