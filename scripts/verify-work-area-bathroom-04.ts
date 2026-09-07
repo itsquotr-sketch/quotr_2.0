@@ -272,8 +272,9 @@ const finishClarify = composeBathroomClarify([
   fact("bathroom.demolition_required", "b1", false),
 ]);
 check(
-  "Clarify asks floor finish XOR",
-  finishClarify.candidates.some((c) => c.factKey === "bathroom.floor_finish_system")
+  "unanswered floor finish keeps Details from saying enough to estimate",
+  finishClarify.enoughToEstimate === false &&
+    finishClarify.candidates.some((c) => c.factKey === "bathroom.floor_finish_system")
 );
 check(
   "Clarify asks wall tile extent",

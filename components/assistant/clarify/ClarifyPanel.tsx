@@ -68,6 +68,7 @@ function ClarifyQuestion({
       className="space-y-3"
       data-clarify-question
       data-clarify-id={candidate.id}
+      data-clarify-fact-key={candidate.factKey ?? undefined}
     >
       <ContextLabel candidate={candidate} />
       <p className="text-base font-medium leading-snug">{candidate.question}</p>

@@ -24,6 +24,7 @@ import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-in
 import type {
   ClarifyAskClass,
   ClarifyCandidate,
+  ClarifyEconomicClass,
   ClarifyView,
   ComposeClarifyInput,
 } from "@/lib/assistant/clarify/types";
@@ -533,7 +534,8 @@ function pushBathroomClarifyFact(
   input: ComposeClarifyInput,
   wa: { id: string; name: string; type: string },
   key: string,
-  reason: string
+  reason: string,
+  economicClass?: ClarifyEconomicClass
 ): void {
   if (factHas(input, key, wa.id)) return;
   const template = getQuestionTemplateByKey(key);
@@ -560,10 +562,11 @@ function pushBathroomClarifyFact(
     writeTarget: "FACT",
     write: null,
     blocksEstimate: false,
-    assumable: true,
+    assumable: economicClass !== "REQUIRED_FOR_ECONOMIC_MODEL",
     rankScore: CHECK_SCORES[key] ?? 60,
     rankReason: reason,
     assumptionStatement: null,
+    economicClass,
   });
 }
 
@@ -719,7 +722,8 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           input,
           wa,
           "bathroom.floor_finish_system",
-          "Bathroom floor finish XOR"
+          "Bathroom floor finish XOR",
+          "REQUIRED_FOR_ECONOMIC_MODEL"
         );
       }
       if (bathroomQuestionGroupVisible("tile_format", jobScope, finishFlags)) {
