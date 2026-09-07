@@ -17,6 +17,17 @@ type ClarifyValueFieldProps = {
   onSubmit: (value: string | number) => void;
 };
 
+type LocalField = {
+  identity: string;
+  draft: string;
+  error: string | null;
+  lastSubmitted: string | null;
+};
+
+function emptyLocal(identity: string): LocalField {
+  return { identity, draft: "", error: null, lastSubmitted: null };
+}
+
 export function ClarifyValueField({
   candidate,
   isSaving,
@@ -31,34 +42,40 @@ export function ClarifyValueField({
         factKey: candidate.factKey,
       })
     : undefined;
-  const [draft, setDraft] = useState("");
-  const [error, setError] = useState<string | null>(null);
-  const [lastSubmitted, setLastSubmitted] = useState<string | null>(null);
+  const [local, setLocal] = useState<LocalField>(() => emptyLocal(fieldKey));
+
+  // Reset draft when the asked fact changes without unmounting. A React `key`
+  // remount would abort an in-flight Save server action started from this field.
+  if (local.identity !== fieldKey) {
+    setLocal(emptyLocal(fieldKey));
+  }
+  const active = local.identity === fieldKey ? local : emptyLocal(fieldKey);
+  const draft = active.draft;
+  const error = active.error;
+  const lastSubmitted = active.lastSubmitted;
 
   const commit = () => {
     if (isSaving) return;
     if (isNumber) {
       const parsed = parsePositiveClarifyNumber(draft);
       if (!parsed.ok) {
-        setError(parsed.error);
+        setLocal({ ...active, error: parsed.error });
         return;
       }
       const token = `${fieldKey}:${parsed.value}`;
       if (lastSubmitted === token) return;
-      setError(null);
-      setLastSubmitted(token);
+      setLocal({ ...active, error: null, lastSubmitted: token });
       onSubmit(parsed.value);
       return;
     }
     const trimmed = draft.trim();
     if (!trimmed) {
-      setError("Enter an answer.");
+      setLocal({ ...active, error: "Enter an answer." });
       return;
     }
     const token = `${fieldKey}:${trimmed}`;
     if (lastSubmitted === token) return;
-    setError(null);
-    setLastSubmitted(token);
+    setLocal({ ...active, error: null, lastSubmitted: token });
     onSubmit(trimmed);
   };
 
@@ -85,9 +102,12 @@ export function ClarifyValueField({
           className="min-h-11 max-w-[10rem] text-base md:text-sm"
           data-clarify-numeric={isNumber ? "true" : undefined}
           onChange={(event) => {
-            setDraft(event.target.value);
-            if (error) setError(null);
-            setLastSubmitted(null);
+            setLocal({
+              ...active,
+              draft: event.target.value,
+              error: null,
+              lastSubmitted: null,
+            });
           }}
           onKeyDown={(event) => {
             if (event.key === "Enter") {

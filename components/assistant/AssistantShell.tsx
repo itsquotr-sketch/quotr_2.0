@@ -242,6 +242,7 @@ export function AssistantShell({
   const { project } = initialState;
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
+  const [clarifyWritePending, setClarifyWritePending] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionDenial, setActionDenial] = useState<{
     reasonCode?: string;
@@ -1567,81 +1568,89 @@ export function AssistantShell({
   const handleClarifyValue = useCallback(
     async (candidate: ClarifyCandidate, value: string | number | boolean) => {
       const requestSeq = ++factMutationSeqRef.current;
-      if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
-        const constraintKey = candidate.constraintKey ?? candidate.questionKey;
-        setLiveConstraints((prev) => [
-          ...prev.filter((row) => row.key !== constraintKey),
+      setClarifyWritePending(true);
+      try {
+        if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
+          const constraintKey = candidate.constraintKey ?? candidate.questionKey;
+          setLiveConstraints((prev) => [
+            ...prev.filter((row) => row.key !== constraintKey),
+            {
+              id: constraintKey,
+              key: constraintKey,
+              label: candidate.label,
+              value,
+              source: "user",
+            },
+          ]);
+          const result = await runSerializedFactMutation(() =>
+            answerClarifyConstraint({
+              projectId: project.id,
+              questionKey: candidate.questionKey!,
+              value,
+            })
+          );
+          if (result.error) {
+            setActionError(result.error);
+            return;
+          }
+          if (!settleCanonicalMutation(result, requestSeq)) {
+            bridgeEstimateStaleAfterCanonicalWrite();
+            startTransition(() => {
+              router.refresh();
+            });
+          }
+          return;
+        }
+        if (!candidate.factKey) return;
+        tagOverlayFactSeq(
           {
-            id: constraintKey,
-            key: constraintKey,
-            label: candidate.label,
+            key: candidate.factKey,
+            work_area_id: candidate.workAreaId,
             value,
             source: "user",
           },
-        ]);
+          requestSeq
+        );
         const result = await runSerializedFactMutation(() =>
-          answerClarifyConstraint({
+          answerClarifySelectFact({
             projectId: project.id,
-            questionKey: candidate.questionKey!,
+            workAreaId: candidate.workAreaId,
+            key: candidate.factKey!,
+            label: candidate.label,
             value,
+            valueType:
+              typeof value === "string" && value.trim().toLowerCase() === "not sure"
+                ? "select"
+                : candidate.inputType === "number"
+                  ? "number"
+                  : candidate.inputType === "boolean"
+                    ? "boolean"
+                    : "select",
           })
         );
         if (result.error) {
           setActionError(result.error);
           return;
         }
+        // Overlay only after persist so the Save control stays mounted for the
+        // in-flight server action. Overlay-first remounted the next question
+        // and aborted consecutive numeric writes.
+        setJobPlanFactOverlay((prev) =>
+          overlayFact(prev, {
+            key: candidate.factKey!,
+            work_area_id: candidate.workAreaId,
+            value,
+            source: "user",
+          })
+        );
         if (!settleCanonicalMutation(result, requestSeq)) {
           bridgeEstimateStaleAfterCanonicalWrite();
           startTransition(() => {
             router.refresh();
           });
         }
-        return;
-      }
-      if (!candidate.factKey) return;
-      tagOverlayFactSeq(
-        {
-          key: candidate.factKey,
-          work_area_id: candidate.workAreaId,
-          value,
-          source: "user",
-        },
-        requestSeq
-      );
-      setJobPlanFactOverlay((prev) =>
-        overlayFact(prev, {
-          key: candidate.factKey!,
-          work_area_id: candidate.workAreaId,
-          value,
-          source: "user",
-        })
-      );
-      const result = await runSerializedFactMutation(() =>
-        answerClarifySelectFact({
-          projectId: project.id,
-          workAreaId: candidate.workAreaId,
-          key: candidate.factKey!,
-          label: candidate.label,
-          value,
-          valueType:
-            typeof value === "string" && value.trim().toLowerCase() === "not sure"
-              ? "select"
-              : candidate.inputType === "number"
-                ? "number"
-                : candidate.inputType === "boolean"
-                  ? "boolean"
-                  : "select",
-        })
-      );
-      if (result.error) {
-        setActionError(result.error);
-        return;
-      }
-      if (!settleCanonicalMutation(result, requestSeq)) {
-        bridgeEstimateStaleAfterCanonicalWrite();
-        startTransition(() => {
-          router.refresh();
-        });
+      } finally {
+        setClarifyWritePending(false);
       }
     },
     [
@@ -2359,7 +2368,7 @@ export function AssistantShell({
               {refineAfterEstimateOpen && refineView.hasCandidates ? (
                 <RefineEstimatePanel
                   view={refineView}
-                  isSaving={false}
+                  isSaving={clarifyWritePending}
                   canEstimateNow={false}
                   focusKey={refineAfterEstimateFocusKey}
                   isStale={displayEstimateStale}
@@ -2919,7 +2928,9 @@ export function AssistantShell({
                 readiness={estimateReadiness}
                 refineView={refineView}
                 isSaving={
-                  pendingAction === "clarify" || pendingAction === "estimate"
+                  clarifyWritePending ||
+                  pendingAction === "clarify" ||
+                  pendingAction === "estimate"
                 }
                 onAnswerBoolean={handleClarifyBoolean}
                 onAnswerValue={handleClarifyValue}

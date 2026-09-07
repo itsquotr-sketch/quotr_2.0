@@ -80,23 +80,40 @@ console.log("=== WA-BATHROOM-02C ===\n");
 console.log("--- Mechanism ---\n");
 const valueField = read("components/assistant/clarify/ClarifyValueField.tsx");
 const panel = read("components/assistant/clarify/ClarifyPanel.tsx");
+const shell = read("components/assistant/AssistantShell.tsx");
 const numeric = read("lib/assistant/clarify/numeric.ts");
 check(
   "field identity helper exists",
   numeric.includes("export function clarifyFieldIdentity")
 );
 check(
-  "ClarifyQuestion remounts on field identity",
-  panel.includes("key={clarifyFieldIdentity(showing ?? current)}")
+  "ClarifyQuestion does not remount on identity",
+  !panel.includes("key={clarifyFieldIdentity")
 );
 check(
-  "ClarifyValueField remounts on candidate identity",
-  panel.includes("key={clarifyFieldIdentity(candidate)}") &&
-    valueField.includes("clarifyFieldIdentity(candidate)")
+  "ClarifyValueField stays mounted and resets on identity",
+  !panel.includes("key={clarifyFieldIdentity(candidate)}") &&
+    valueField.includes("if (local.identity !== fieldKey)") &&
+    valueField.includes("setLocal(emptyLocal(fieldKey))")
 );
 check(
   "duplicate-save token is per-field",
   valueField.includes("${fieldKey}:${parsed.value}")
+);
+const valueHandler =
+  shell.match(
+    /const handleClarifyValue = useCallback\([\s\S]*?bridgeEstimateStaleAfterCanonicalWrite,/
+  )?.[0] ?? "";
+const persistIdx = valueHandler.indexOf("answerClarifySelectFact");
+const overlayIdx = valueHandler.lastIndexOf("setJobPlanFactOverlay");
+check(
+  "numeric persist completes before question overlay",
+  persistIdx >= 0 && overlayIdx > persistIdx
+);
+check(
+  "clarify write pending disables Save during persist",
+  shell.includes("clarifyWritePending") &&
+    valueField.includes("if (isSaving) return")
 );
 check(
   "no bathroom-specific reload hack",

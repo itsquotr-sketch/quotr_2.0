@@ -1,6 +1,6 @@
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
-/** Identity that must remount ClarifyValueField when the asked fact changes. */
+/** Stable identity for a Clarify field. Used to reset local draft without unmounting. */
 export function clarifyFieldIdentity(candidate: {
   id?: string | null;
   workAreaId?: string | null;
