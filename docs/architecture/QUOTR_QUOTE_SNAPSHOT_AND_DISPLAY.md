@@ -1,7 +1,7 @@
 # Quote snapshot and client display
 
 **Classification:** CANONICAL — Quote presentation on issued snapshots  
-**Status:** Active — QUOTE-DISPLAY-V1  
+**Status:** Active — QUOTE-DISPLAY-V1 / V1C final configurations  
 **Related:** `docs/architecture/COMMERCIAL_SNAPSHOT_SAFETY.md`, `docs/specifications/FINANCIAL_PRESENTATION_BOUNDARY.md`
 
 ---
@@ -54,11 +54,18 @@ Company / Rates / Setup do not store quote-display defaults in V1. Per Quote onl
 
 Do not apply V1 defaults retroactively to historical issued Quotes.
 
+Supported V1 configurations (Description is always on; the **grand total always remains visible**):
+
+- **Detailed:** Description, Qty, Unit, Unit price, Line total
+- **Standard default:** Description, Qty, Unit, Line total
+- **Summary:** Description, Line total
+- **Minimal line detail:** Description, Qty, Unit, with document total
+
 ---
 
 ## Quantity / Unit
 
-Independent toggles, with coherence: turning Quantity OFF also turns Unit OFF and disables Unit. A Unit column without Quantity is not shown.
+Independent toggles, with coherence: turning Quantity OFF also turns Unit OFF and disables Unit. Turning Quantity back on leaves Unit off until the builder turns Unit on again. A Unit column without Quantity is not shown.
 
 ---
 
