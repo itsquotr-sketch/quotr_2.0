@@ -87,6 +87,7 @@ const CHECK_SCORES: Record<string, number> = {
   "deck.balustrade_required": 20,
   "bathroom.plumbing_changes": 62,
   "bathroom.plumbing.level": 62,
+  "bathroom.electrical.level": 62,
   "bathroom.job_scope": 96,
   "bathroom.length_m": 95,
   "bathroom.width_m": 94,
@@ -677,6 +678,70 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           rankScore: CHECK_SCORES[key] ?? 60,
           rankReason: "Bathroom commercial plumbing",
           assumptionStatement: "Standard plumbing allowance",
+        });
+      }
+      if (
+        bathroomQuestionGroupVisible("fixtures", jobScope) &&
+        jobScope !== "vanity_only" &&
+        jobScope !== "shower_only" &&
+        !factHas(input, "bathroom.fixtures_included", wa.id)
+      ) {
+        const template = getQuestionTemplateByKey("bathroom.fixtures_included");
+        out.push({
+          id: `fact:${wa.id}:bathroom.fixtures_included`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: "bathroom.fixtures_included",
+          constraintKey: null,
+          questionKey: "bathroom.fixtures_included",
+          label: template?.label ?? "Fixtures included",
+          question:
+            template?.questionText ?? "Which bathroom fixtures are in this job?",
+          askClass: "ASK_NOW",
+          inputType: "select",
+          options: template?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: true,
+          rankScore: CHECK_SCORES["bathroom.fixtures_included"] ?? 58,
+          rankReason: "Bathroom fixtures",
+          assumptionStatement: null,
+        });
+      }
+      const electricalKey = "bathroom.electrical.level";
+      const electricalLegacy = "bathroom.electrical_changes";
+      if (
+        bathroomQuestionGroupVisible("electrical", jobScope) &&
+        !factHas(input, electricalKey, wa.id) &&
+        !factHas(input, electricalLegacy, wa.id)
+      ) {
+        const template = getQuestionTemplateByKey(electricalKey);
+        out.push({
+          id: `fact:${wa.id}:${electricalKey}`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: electricalKey,
+          constraintKey: null,
+          questionKey: electricalKey,
+          label: template?.label ?? "Electrical changes",
+          question:
+            template?.questionText ??
+            "What level of electrical work is included?",
+          askClass: "ASK_NOW",
+          inputType: "select",
+          options: template?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: true,
+          rankScore: CHECK_SCORES[electricalKey] ?? 60,
+          rankReason: "Bathroom commercial electrical",
+          assumptionStatement: null,
         });
       }
       const finishFlags = {

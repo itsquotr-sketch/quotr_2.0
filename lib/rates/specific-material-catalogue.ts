@@ -207,15 +207,14 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     recommended: true,
   }),
   entry({
-    item_key: "bathroom.framing.90x45.h1.2.lm",
+    item_key: "timber.framing.90x45.h1.2.lm",
     label: "90 × 45 H1.2 radiata pine framing",
     rate_type: "material",
     category: "material",
-    work_area_type: "bathroom",
-    workAreaLabel: "Bathroom framing",
+    workAreaLabel: "Framing timber",
     unit: "lm",
     description:
-      "Bathroom local nogging / fixture support. Not Deck H3.2 90×45. Owner-approved Quotr benchmark $6.20 ex GST / lm. Company exact rate wins.",
+      "Canonical physical 90×45 H1.2 framing. Bathroom local nogging and future Internal Walls may consume the same company rate. Not Deck H3.2 90×45. Owner-approved Quotr benchmark $6.20 ex GST / lm. Company exact rate wins. Legacy key bathroom.framing.90x45.h1.2.lm is an alias only.",
     defaultCostRate: 6.2,
     calculatorSupport: "used_now",
     recommended: true,
@@ -1591,6 +1590,61 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     calculatorSupport: "used_now",
     recommended: true,
   }),
+  entry({
+    item_key: "bathroom.fixture.vanity.install.hours_each",
+    label: "Vanity unit installation (hours/each)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom productivity",
+    unit: "each",
+    description:
+      "Builder person-hours to install a vanity unit. Not plumbing services. Hours, not dollars.",
+    defaultCostRate: 2.5,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.fixture.mirror.install.hours_each",
+    label: "Mirror installation (hours/each)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom productivity",
+    unit: "each",
+    description: "Builder person-hours to install a bathroom mirror. Hours, not dollars.",
+    defaultCostRate: 0.75,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.fixture.accessories.install.hours_each",
+    label: "Bathroom accessories installation (hours/set)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom productivity",
+    unit: "each",
+    description:
+      "Builder person-hours for one selected accessory set. Hours, not dollars.",
+    defaultCostRate: 0.5,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.fixture.shower_enclosure.install.hours_each",
+    label: "Standard shower enclosure installation (hours/each)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom productivity",
+    unit: "each",
+    description:
+      "Builder person-hours for a simple standard enclosure. Specialist install is selectable. Hours, not dollars.",
+    defaultCostRate: 3,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
 ];
 
 export const BATHROOM_FINISH_RATE_CATALOGUE: RateCatalogueEntry[] = [
@@ -1691,6 +1745,264 @@ export const BATHROOM_FINISH_RATE_CATALOGUE: RateCatalogueEntry[] = [
     defaultCostRate: 50,
     calculatorSupport: "used_now",
     recommended: true,
+  }),
+];
+
+function allowanceEntry(params: {
+  item_key: string;
+  label: string;
+  defaultCostRate: number;
+  unit?: string;
+  trade?: string;
+  description: string;
+}): RateCatalogueEntry {
+  return entry({
+    item_key: params.item_key,
+    label: params.label,
+    rate_type: "allowance",
+    category: "allowance",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom PC / trade allowances",
+    unit: params.unit ?? "each",
+    trade: params.trade,
+    description: params.description,
+    defaultCostRate: params.defaultCostRate,
+    calculatorSupport: "used_now",
+    recommended: true,
+  });
+}
+
+/** Generic fixture PC sums — not merchant SKUs. Not listed on Materials groups. */
+export const BATHROOM_FIXTURE_PC_CATALOGUE: RateCatalogueEntry[] = [
+  allowanceEntry({
+    item_key: "bathroom.fixture.toilet.pc.each",
+    label: "Toilet suite PC allowance",
+    defaultCostRate: 650,
+    description:
+      "Generic toilet PC allowance $650 ex GST each. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.vanity.pc.each",
+    label: "Vanity PC allowance",
+    defaultCostRate: 1200,
+    description:
+      "Generic vanity PC allowance $1,200 ex GST each. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.basin.pc.each",
+    label: "Separate basin PC allowance",
+    defaultCostRate: 400,
+    description:
+      "Generic basin PC allowance $400 ex GST each. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.shower.pc.each",
+    label: "Shower tray/base PC allowance",
+    defaultCostRate: 750,
+    description:
+      "Generic shower tray/base PC allowance $750 ex GST each. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.shower_enclosure.pc.each",
+    label: "Shower enclosure PC allowance",
+    defaultCostRate: 1200,
+    description:
+      "Generic shower enclosure/screen PC allowance $1,200 ex GST each. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.bath.pc.each",
+    label: "Bath PC allowance",
+    defaultCostRate: 1000,
+    description:
+      "Generic bath PC allowance $1,000 ex GST each. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.tapware.pc.each",
+    label: "Tapware set PC allowance",
+    defaultCostRate: 650,
+    unit: "allowance",
+    description:
+      "Generic tapware set PC allowance $650 ex GST. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.heated_towel_rail.pc.each",
+    label: "Heated towel rail PC allowance",
+    defaultCostRate: 450,
+    description:
+      "Generic heated towel rail PC allowance $450 ex GST each. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.mirror.pc.each",
+    label: "Mirror PC allowance",
+    defaultCostRate: 350,
+    description:
+      "Generic mirror PC allowance $350 ex GST each. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.extract_fan.pc.each",
+    label: "Extract fan PC allowance",
+    defaultCostRate: 300,
+    description:
+      "Generic extract fan PC allowance $300 ex GST each. Not a merchant quote. Company exact rate wins.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.fixture.accessories.pc.allowance",
+    label: "Bathroom accessories PC allowance",
+    defaultCostRate: 300,
+    unit: "allowance",
+    description:
+      "Generic accessories PC allowance $300 ex GST. Not a merchant quote. Company exact rate wins.",
+  }),
+];
+
+/** Plumbing/electrical hybrid bases and modifiers. Estimating allowances, not RFQ quotes. */
+export const BATHROOM_TRADE_ALLOWANCE_CATALOGUE: RateCatalogueEntry[] = [
+  allowanceEntry({
+    item_key: "bathroom.plumbing.minor.allowance",
+    label: "Bathroom plumbing — minor",
+    defaultCostRate: 1500,
+    unit: "allowance",
+    trade: "plumbing",
+    description:
+      "Mobilisation/rough-in plumbing allowance $1,500 ex GST. Fixture modifiers add on top. Not a subcontractor quotation.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.plumbing.standard.allowance",
+    label: "Bathroom plumbing — standard",
+    defaultCostRate: 3500,
+    unit: "allowance",
+    trade: "plumbing",
+    description:
+      "Mobilisation/rough-in plumbing allowance $3,500 ex GST. Fixture modifiers add on top. Not a subcontractor quotation.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.plumbing.major.allowance",
+    label: "Bathroom plumbing — major",
+    defaultCostRate: 6500,
+    unit: "allowance",
+    trade: "plumbing",
+    description:
+      "Mobilisation/rough-in plumbing allowance $6,500 ex GST. Fixture modifiers add on top. Not a subcontractor quotation.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.plumbing.modifier.toilet.each",
+    label: "Plumbing modifier — toilet",
+    defaultCostRate: 450,
+    trade: "plumbing",
+    description: "Toilet services addition $450 ex GST. Additive to plumbing base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.plumbing.modifier.vanity_basin.each",
+    label: "Plumbing modifier — vanity/basin",
+    defaultCostRate: 450,
+    trade: "plumbing",
+    description: "Vanity/basin services addition $450 ex GST. Additive to plumbing base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.plumbing.modifier.shower.each",
+    label: "Plumbing modifier — shower",
+    defaultCostRate: 750,
+    trade: "plumbing",
+    description: "Shower services addition $750 ex GST. Additive to plumbing base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.plumbing.modifier.bath.each",
+    label: "Plumbing modifier — bath",
+    defaultCostRate: 650,
+    trade: "plumbing",
+    description: "Bath services addition $650 ex GST. Additive to plumbing base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.plumbing.modifier.floor_waste.each",
+    label: "Plumbing modifier — floor waste",
+    defaultCostRate: 350,
+    trade: "plumbing",
+    description: "Floor waste addition $350 ex GST. Additive to plumbing base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.plumbing.modifier.relocation.each",
+    label: "Plumbing modifier — fixture relocation",
+    defaultCostRate: 500,
+    trade: "plumbing",
+    description:
+      "Significant fixture relocation $500 ex GST per relevant fixture. Additive to plumbing base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.minor.allowance",
+    label: "Bathroom electrical — minor",
+    defaultCostRate: 750,
+    unit: "allowance",
+    trade: "electrical",
+    description:
+      "Mobilisation/rough-in electrical allowance $750 ex GST. Point modifiers add on top. Not a subcontractor quotation.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.standard.allowance",
+    label: "Bathroom electrical — standard",
+    defaultCostRate: 1750,
+    unit: "allowance",
+    trade: "electrical",
+    description:
+      "Mobilisation/rough-in electrical allowance $1,750 ex GST. Point modifiers add on top. Not a subcontractor quotation.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.major.allowance",
+    label: "Bathroom electrical — major",
+    defaultCostRate: 3500,
+    unit: "allowance",
+    trade: "electrical",
+    description:
+      "Mobilisation/rough-in electrical allowance $3,500 ex GST. Point modifiers add on top. Not a subcontractor quotation.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.modifier.light.each",
+    label: "Electrical modifier — light/downlight",
+    defaultCostRate: 180,
+    trade: "electrical",
+    description: "Light/downlight point $180 ex GST each. Additive to electrical base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.modifier.extract_fan.each",
+    label: "Electrical modifier — extract fan",
+    defaultCostRate: 450,
+    trade: "electrical",
+    description: "Extract fan connection $450 ex GST. Additive to electrical base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.modifier.heated_towel_rail.each",
+    label: "Electrical modifier — heated towel rail",
+    defaultCostRate: 250,
+    trade: "electrical",
+    description: "Heated towel rail connection $250 ex GST. Additive to electrical base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.modifier.gpo.each",
+    label: "Electrical modifier — GPO",
+    defaultCostRate: 220,
+    trade: "electrical",
+    description: "GPO $220 ex GST each. Additive to electrical base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.modifier.mirror_power.each",
+    label: "Electrical modifier — mirror/vanity power",
+    defaultCostRate: 220,
+    trade: "electrical",
+    description: "Mirror/vanity power $220 ex GST. Additive to electrical base.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.modifier.ufh.each",
+    label: "Electrical modifier — underfloor heating connection",
+    defaultCostRate: 450,
+    trade: "electrical",
+    description:
+      "Underfloor-heating electrical connection $450 ex GST. Owns the old UFH lump on the mature path.",
+  }),
+  allowanceEntry({
+    item_key: "bathroom.electrical.modifier.new_circuit.each",
+    label: "Electrical modifier — new circuit",
+    defaultCostRate: 650,
+    trade: "electrical",
+    description: "New circuit $650 ex GST. Additive to electrical base.",
   }),
 ];
 

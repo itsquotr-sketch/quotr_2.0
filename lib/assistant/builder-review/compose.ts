@@ -84,12 +84,16 @@ import {
 import {
   BATHROOM_CEILING_LINING_COMPONENT,
   BATHROOM_CEILING_LINING_LABOUR_COMPONENT,
+  BATHROOM_ELECTRICAL_COMPONENT,
+  BATHROOM_FIXTURE_INSTALL_COMPONENTS,
+  BATHROOM_FIXTURE_SUPPLY_COMPONENTS,
   BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
   BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT,
   BATHROOM_FLOOR_TILE_INSTALL_COMPONENT,
   BATHROOM_FLOOR_TILE_MATERIAL_COMPONENT,
   BATHROOM_FRAMING_COMPONENT,
   BATHROOM_FRAMING_LABOUR_COMPONENT,
+  BATHROOM_PLUMBING_COMPONENT,
   BATHROOM_SHEET_VINYL_INSTALL_COMPONENT,
   BATHROOM_SHEET_VINYL_MATERIAL_COMPONENT,
   BATHROOM_VINYL_PLANK_INSTALL_COMPONENT,
@@ -447,7 +451,9 @@ function lineHierarchy(
 
   const rateBit =
     item.costRate != null && item.unit
-      ? `$${item.costRate}/${item.unit} · ${rateLabel}`
+      ? rateLabel === "PC allowance" || /pc allowance/i.test(spec ?? "")
+        ? `$${item.costRate}/${item.unit}`
+        : `$${item.costRate}/${item.unit} · ${rateLabel}`
       : rateLabel !== "Pricing Required" && rateLabel !== "Rate required"
         ? rateLabel
         : null;
@@ -643,6 +649,10 @@ function applyBathroomReviewGroups(
   const wallTileMaterials = new Set([BATHROOM_WALL_TILE_MATERIAL_COMPONENT]);
   const wallTileInstall = new Set([BATHROOM_WALL_TILE_INSTALL_COMPONENT]);
   const waterproofing = new Set([BATHROOM_WATERPROOFING_COMPONENT]);
+  const fixtureSupply = new Set(Object.values(BATHROOM_FIXTURE_SUPPLY_COMPONENTS));
+  const fixtureInstall = new Set(Object.values(BATHROOM_FIXTURE_INSTALL_COMPONENTS));
+  const plumbing = new Set([BATHROOM_PLUMBING_COMPONENT]);
+  const electrical = new Set([BATHROOM_ELECTRICAL_COMPONENT]);
 
   return categories.map((cat) => {
     if (cat.id === "MATERIALS" || cat.id === "PRICING_REQUIRED") {
@@ -670,15 +680,22 @@ function applyBathroomReviewGroups(
         "bathroom-wall-tiling",
         "Wall tiling"
       );
+      const fixtures = groupBathroomLines(
+        wallTile.remaining,
+        fixtureSupply,
+        "bathroom-fixtures",
+        "Fixtures"
+      );
       return {
         ...cat,
-        lines: wallTile.remaining,
+        lines: fixtures.remaining,
         lineGroups: [
           ...cat.lineGroups,
           ...(linings.group ? [linings.group] : []),
           ...(framing.group ? [framing.group] : []),
           ...(floorFinish.group ? [floorFinish.group] : []),
           ...(wallTile.group ? [wallTile.group] : []),
+          ...(fixtures.group ? [fixtures.group] : []),
         ],
       };
     }
@@ -695,13 +712,20 @@ function applyBathroomReviewGroups(
         "bathroom-framing-labour",
         "Local framing labour"
       );
+      const fixtureLabour = groupBathroomLines(
+        framing.remaining,
+        fixtureInstall,
+        "bathroom-fixture-labour",
+        "Fixture installation"
+      );
       return {
         ...cat,
-        lines: framing.remaining,
+        lines: fixtureLabour.remaining,
         lineGroups: [
           ...cat.lineGroups,
           ...(linings.group ? [linings.group] : []),
           ...(framing.group ? [framing.group] : []),
+          ...(fixtureLabour.group ? [fixtureLabour.group] : []),
         ],
       };
     }
@@ -724,14 +748,28 @@ function applyBathroomReviewGroups(
         "bathroom-waterproofing",
         "Waterproofing"
       );
+      const plumbingGroup = groupBathroomLines(
+        wp.remaining,
+        plumbing,
+        "bathroom-plumbing",
+        "Plumbing"
+      );
+      const electricalGroup = groupBathroomLines(
+        plumbingGroup.remaining,
+        electrical,
+        "bathroom-electrical",
+        "Electrical"
+      );
       return {
         ...cat,
-        lines: wp.remaining,
+        lines: electricalGroup.remaining,
         lineGroups: [
           ...cat.lineGroups,
           ...(floorInstall.group ? [floorInstall.group] : []),
           ...(wallInstall.group ? [wallInstall.group] : []),
           ...(wp.group ? [wp.group] : []),
+          ...(plumbingGroup.group ? [plumbingGroup.group] : []),
+          ...(electricalGroup.group ? [electricalGroup.group] : []),
         ],
       };
     }

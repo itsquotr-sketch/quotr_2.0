@@ -22,7 +22,7 @@ export type RefineCandidate = {
   readonly questionKey: string;
   readonly label: string;
   readonly question: string;
-  readonly inputType: "boolean" | "select" | "number";
+  readonly inputType: "boolean" | "select" | "number" | "text";
   readonly unit?: string;
   readonly options?: readonly string[];
   readonly writeTarget: ClarifyWriteTarget;

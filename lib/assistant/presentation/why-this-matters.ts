@@ -68,6 +68,16 @@ const WHY_THIS_MATTERS: Readonly<Record<string, string>> = Object.freeze({
     "Ceiling lining uses the same area as the bathroom floor when it is nested in Bathroom.",
   "bathroom.framing_level":
     "Local framing and nogging is bathroom fixture support, not a complete new wall.",
+  "bathroom.fixtures_included":
+    "Selected fixtures drive PC allowances, builder install hours, and plumbing or electrical modifiers.",
+  "bathroom.plumbing.level":
+    "Plumbing uses a mobilisation/rough-in allowance plus fixture modifiers. Bathroom floor area does not change it.",
+  "bathroom.electrical.level":
+    "Electrical uses a mobilisation/rough-in allowance plus selected points. Bathroom floor area does not change it.",
+  "bathroom.plumbing.scope_text":
+    "Scope notes travel with the plumbing allowance so a future subcontractor quote can replace the estimate without rebuilding the bathroom.",
+  "bathroom.electrical.scope_text":
+    "Scope notes travel with the electrical allowance so a future subcontractor quote can replace the estimate without rebuilding the bathroom.",
 });
 
 /**

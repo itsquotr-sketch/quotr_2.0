@@ -1,6 +1,6 @@
 # Quotr Bathroom Estimating Architecture
 
-**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO (floor finish XOR / tiling / waterproofing)**  
+**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO** + **WA-BATHROOM-05 GO (fixtures / plumbing / electrical / PC sums)**  
 **Date:** 2026-09-07  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
@@ -8,7 +8,7 @@
 **Migrations:** NONE. No 055.  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
 **Triage:** [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md)
-**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`, `scripts/verify-work-area-bathroom-04.ts`
+**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`, `scripts/verify-work-area-bathroom-04.ts`, `scripts/verify-work-area-bathroom-05.ts`
 
 Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band is unchanged (`trial_supported`).
 
@@ -24,12 +24,13 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | WA-BATHROOM-02 scope + geometry | **GO** |
 | WA-BATHROOM-03 physical substrates / linings / framing | **GO** |
 | WA-BATHROOM-04 floor finish / tiling / waterproofing | **GO** |
-| Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; plumbing/fixtures remain 05+) |
+| WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums | **GO** |
+| Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; 05 owns plumbing/fixtures) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
-| Variations / RFQ / Company DNA behaviour | **NO-GO** |
+| Variations / RFQ sending / Company DNA behaviour | **NO-GO** |
 | Production / migration 055 | **NO-GO** |
 
-**Next action after 04 GO:** [WA-BATHROOM-05](#47-implementation-phases) — fixtures / plumbing / electrical / PC sums. Do not start Internal Walls, Variations, or RFQ.
+**Next action after 05 GO:** [WA-BATHROOM-06](#47-implementation-phases) — demolition/waste / conditions / nested finish XOR / Review polish. Do not start Internal Walls, Variations, or RFQ sending.
 
 ---
 
@@ -1270,7 +1271,7 @@ Mature path = `bathroom.job_scope` present → mixed `bathroom.tiling.m2` lump i
 
 ### Prepared vs priced (04)
 
-`bathroom.floor_finish_system`, `bathroom.tile_extent`, and `bathroom.waterproofing_extent` are **priced** on the mature path (see §55). `bathroom.plumbing.level` / `bathroom.electrical.level` remain unpriced until WA-BATHROOM-05.
+`bathroom.floor_finish_system`, `bathroom.tile_extent`, and `bathroom.waterproofing_extent` are **priced** on the mature path (see §55). `bathroom.plumbing.level` / `bathroom.electrical.level` and per-fixture PC / ownership are **priced** on the mature path (see §56).
 
 ---
 
@@ -1291,7 +1292,7 @@ Verifier: `scripts/verify-work-area-bathroom-03.ts`
 | Plywood | `sheet.plywood.19mm.h3.2.each` (new; no invented $) |
 | Fibre cement | `sheet.fibre_cement.18mm.2400x1200.each` (new; no invented $) |
 | Aqualine (wall and ceiling) | `sheet.plasterboard.aqualine.each` (reuse existing fitout identity) |
-| Framing timber | `bathroom.framing.90x45.h1.2.lm` (not Deck H3.2 90×45) |
+| Framing timber | `timber.framing.90x45.h1.2.lm` (domain-neutral; alias `bathroom.framing.90x45.h1.2.lm`; not Deck H3.2 90×45) |
 | Floor labour productivity | `bathroom.floor_substrate.install.hours_per_m2` = 0.40 |
 | Wall labour productivity | `bathroom.lining.wall.install.hours_per_m2` = 0.30 |
 | Ceiling labour productivity | `bathroom.lining.ceiling.install.hours_per_m2` = 0.40 |
@@ -1388,6 +1389,71 @@ Mature path = stored `bathroom.job_scope`. Mixed tiling lump, tiling minimums, W
 
 Bathroom floor finish is nested Bathroom scope (`overlapGroup` `bathroom_floor_finish`). A future standalone Flooring Work Area must not double-price the same bathroom floor. Not suppressed against an immature Flooring runtime.
 
-### Next action after 04 GO
+---
 
-**WA-BATHROOM-05** — fixtures / plumbing / electrical / PC sums. Do not start Internal Walls, Variations, or RFQ.
+## 56. WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums
+
+**Status:** **GO** after deterministic verifier `scripts/verify-work-area-bathroom-05.ts`. Hosted Preview proof SHA pending until Preview deploy of this commit.
+
+### Shared material identity
+
+Work Area **requirement** identities may be Bathroom-specific (`bathroom.framing`, `bathroom.lining.wall`).
+
+Physical **material** identities must be domain-neutral when the same product can be consumed by multiple Work Areas:
+
+| Identity | Classification |
+| --- | --- |
+| `sheet.plywood.19mm.h3.2.each` | SHARED PHYSICAL MATERIAL |
+| `sheet.fibre_cement.18mm.2400x1200.each` | SHARED PHYSICAL MATERIAL |
+| `sheet.plasterboard.aqualine.each` | SHARED PHYSICAL MATERIAL (Bathroom wall + ceiling; future Internal Walls/Ceilings) |
+| `timber.framing.90x45.h1.2.lm` | SHARED PHYSICAL MATERIAL (Bathroom nogging; future Internal Walls). Legacy `bathroom.framing.90x45.h1.2.lm` is an alias only — one catalogue row |
+| `bathroom.tile.material.m2` / vinyl `*.m2` | PC / ALLOWANCE (generic product family, not a merchant SKU) |
+| `bathroom.tile.install.m2`, `bathroom.waterproofing.install.m2` | SUBCONTRACT RATE |
+| `bathroom.floor_substrate.install.hours_per_m2` etc. | PRODUCTIVITY RATE |
+| `bathroom.fixture.*.supply` / `.install` | WORK-AREA REQUIREMENT |
+| `bathroom.plumbing` / `bathroom.electrical` | SUBCONTRACT REQUIREMENT |
+
+Do **not** create `bathroom.aqualine`, `internal_walls.aqualine`, or `ceilings.aqualine`.
+
+**PC vs Materials page:** a specific merchant product → shared Materials identity. A generic fixture/tile PC sum → allowance catalogue (`bathroom.fixture.*.pc.*`), not a duplicate Materials row per Work Area.
+
+### Fixture catalogue and ownership
+
+Canonical ids: toilet, vanity, basin, shower, shower_enclosure, bath, tapware, heated_towel_rail, mirror, extract_fan, accessories, other. Legacy labels (`Towel rail`, `Mirror/cabinet`, `includes_vanity`) still parse.
+
+Per selected fixture: `SUPPLY` | `INSTALL` | `SUPPLY_AND_INSTALL`. Default BOTH. `bathroom.fixtures_client_supplied` maps all selected fixtures to INSTALL. Supply and install are never forced into one lump.
+
+Install ownership V1:
+
+- Plumber: toilet, basin, shower services, bath, tapware
+- Electrician: heated towel rail, extract fan
+- Builder: vanity (2.5 h), mirror (0.75 h), accessories (0.50 h), shower enclosure (3.0 h, default builder; specialist selectable)
+- `other`: supply PC only if a company/other rate exists; no invented install
+
+### Fixture PC sums
+
+Owner-approved Quotr PC allowances (ex GST). Not merchant quotes. Company exact rate wins. Finish level does **not** multiply PCs or install hours (`getQualityFactor` has no mid-range; 04 already forces `qualityFactor: 1` on physical lines). Explicit PCs only.
+
+### Plumbing / electrical hybrid
+
+Base = mobilisation/rough-in. Modifiers = fixture/service-specific additions. Floor area is not an authority.
+
+Plumbing `bathroom.plumbing.level`: none $0 / minor $1,500 / standard $3,500 / major $6,500. Modifiers: toilet $450, vanity/basin $450, shower $750, bath $650, floor waste $350, relocation $500 each.
+
+Electrical `bathroom.electrical.level`: none $0 / minor $750 / standard $1,750 / major $3,500. Modifiers: light $180 each, extract fan $450, heated rail $250, GPO $220 each, mirror/vanity power $220, UFH connection $450, new circuit $650.
+
+Canonical facts (reuse, do not duplicate booleans): `bathroom.fixtures_included`, `bathroom.fixture.{id}.ownership`, `bathroom.plumbing.level`, `bathroom.plumbing.floor_waste_included`, `bathroom.plumbing.relocation_count`, `bathroom.electrical.level`, `bathroom.electrical.light_count`, `bathroom.electrical.gpo_count`, `bathroom.electrical.mirror_power_included`, `bathroom.electrical.new_circuit_included`, `bathroom.ventilation_included`, `bathroom.underfloor_heating_included`.
+
+Editable scope text: `bathroom.plumbing.scope_text`, `bathroom.electrical.scope_text`. Optional in Quick Estimate. Refine + Builder Review.
+
+One `SubcontractRequirement` per trade (`bathroom.plumbing`, `bathroom.electrical`) with `allowanceCost`. Future RFQ sets `quotedCost` on the same object — no Bathroom-specific RFQ schema and no sending. Company lump on `bathroom.plumbing.allowance` / `bathroom.electrical.allowance` replaces the hybrid total.
+
+Mature path supersedes bundled fixture lumps, 8 h client-supplied lump, Minor/Major-only plumbing/electrical money, extractor lump, and UFH electrical lump. Legacy without `job_scope` keeps those.
+
+### Rate-source presentation
+
+One chip per line: PC allowance / Your company rate / Quotr benchmark / Rate required. Tile PC no longer concatenates “PC allowance” and “Quotr benchmark” in the supporting line.
+
+### Next action after 05 GO
+
+**WA-BATHROOM-06** — demolition/waste / conditions / nested finish XOR / Review polish. Do not start Internal Walls, Variations, or RFQ sending.

@@ -6,6 +6,12 @@
  * It does not own tiling/plumbing/fixture money.
  */
 
+import {
+  getArrayFact,
+  getBooleanFact,
+  getStringFact,
+} from "@/lib/estimate/facts";
+
 export const BATHROOM_JOB_SCOPE_VALUES = [
   "strip_out_only",
   "vanity_only",
@@ -391,9 +397,11 @@ export type BathroomQuestionGroup =
   | "shower_geometry"
   | "waterproofing"
   | "fixtures"
+  | "fixture_ownership"
   | "shower_type"
   | "plumbing"
   | "electrical"
+  | "electrical_components"
   | "ventilation"
   | "linings"
   | "ceiling_lining"
@@ -402,6 +410,7 @@ export type BathroomQuestionGroup =
   | "underfloor_heating"
   | "framing"
   | "finish_level"
+  | "trade_scope_text"
   | "legacy_renovation_type"
   | "always";
 
@@ -428,11 +437,31 @@ const GROUP_BY_FACT_KEY: Record<string, BathroomQuestionGroup> = {
   "bathroom.bath_surround_area_m2": "waterproofing",
   "bathroom.fixtures_client_supplied": "fixtures",
   "bathroom.fixtures_included": "fixtures",
+  "bathroom.fixture.toilet.ownership": "fixture_ownership",
+  "bathroom.fixture.vanity.ownership": "fixture_ownership",
+  "bathroom.fixture.basin.ownership": "fixture_ownership",
+  "bathroom.fixture.shower.ownership": "fixture_ownership",
+  "bathroom.fixture.shower_enclosure.ownership": "fixture_ownership",
+  "bathroom.fixture.bath.ownership": "fixture_ownership",
+  "bathroom.fixture.tapware.ownership": "fixture_ownership",
+  "bathroom.fixture.heated_towel_rail.ownership": "fixture_ownership",
+  "bathroom.fixture.mirror.ownership": "fixture_ownership",
+  "bathroom.fixture.extract_fan.ownership": "fixture_ownership",
+  "bathroom.fixture.accessories.ownership": "fixture_ownership",
+  "bathroom.fixture.other.ownership": "fixture_ownership",
   "bathroom.shower_type": "shower_type",
   "bathroom.plumbing.level": "plumbing",
   "bathroom.plumbing_changes": "plumbing",
+  "bathroom.plumbing.floor_waste_included": "plumbing",
+  "bathroom.plumbing.relocation_count": "plumbing",
+  "bathroom.plumbing.scope_text": "trade_scope_text",
   "bathroom.electrical.level": "electrical",
   "bathroom.electrical_changes": "electrical",
+  "bathroom.electrical.light_count": "electrical_components",
+  "bathroom.electrical.gpo_count": "electrical_components",
+  "bathroom.electrical.mirror_power_included": "electrical_components",
+  "bathroom.electrical.new_circuit_included": "electrical_components",
+  "bathroom.electrical.scope_text": "trade_scope_text",
   "bathroom.ventilation_included": "ventilation",
   "bathroom.wall_lining_included": "linings",
   "bathroom.ceiling_lining_included": "ceiling_lining",
@@ -549,6 +578,8 @@ export function bathroomQuestionGroupVisible(
         scope === "full_renovation" ||
         scope === "custom"
       );
+    case "fixture_ownership":
+      return bathroomQuestionGroupVisible("fixtures", scope, flags);
     case "shower_type":
       return (
         scope === "shower_only" ||
@@ -574,6 +605,13 @@ export function bathroomQuestionGroupVisible(
         scope === "new_fitout" ||
         scope === "full_renovation" ||
         scope === "custom"
+      );
+    case "electrical_components":
+      return bathroomQuestionGroupVisible("electrical", scope, flags);
+    case "trade_scope_text":
+      return (
+        bathroomQuestionGroupVisible("plumbing", scope, flags) ||
+        bathroomQuestionGroupVisible("electrical", scope, flags)
       );
     case "linings":
     case "ceiling_lining":
@@ -831,16 +869,130 @@ export const BATHROOM_DEMOLITION_FACT_KEY =
 
 export const BATHROOM_FIXTURE_CATALOGUE = [
   "Toilet",
-  "Shower",
-  "Bath",
   "Vanity",
   "Basin",
+  "Shower",
+  "Shower enclosure",
+  "Bath",
   "Mixer/tapware",
+  "Heated towel rail",
   "Mirror/cabinet",
-  "Towel rail",
+  "Extract fan",
   "Accessories",
   "Other",
 ] as const;
+
+export const BATHROOM_FIXTURE_OWNERSHIP_OPTIONS = [
+  "Supply and install",
+  "Supply only",
+  "Install only",
+] as const;
+
+export type BathroomFixtureOwnership = "supply" | "install" | "supply_and_install";
+
+export type BathroomFixtureId =
+  | "toilet"
+  | "vanity"
+  | "basin"
+  | "shower"
+  | "shower_enclosure"
+  | "bath"
+  | "tapware"
+  | "heated_towel_rail"
+  | "mirror"
+  | "extract_fan"
+  | "accessories"
+  | "other";
+
+const FIXTURE_ALIASES: Array<{ id: BathroomFixtureId; match: RegExp }> = [
+  { id: "shower_enclosure", match: /enclosure|screen/ },
+  { id: "heated_towel_rail", match: /heated|towel/ },
+  { id: "extract_fan", match: /extract|extractor|fan/ },
+  { id: "tapware", match: /tapware|mixer|tap/ },
+  { id: "shower", match: /shower/ },
+  { id: "toilet", match: /toilet|\bwc\b/ },
+  { id: "vanity", match: /vanity/ },
+  { id: "basin", match: /basin/ },
+  { id: "bath", match: /\bbath\b/ },
+  { id: "mirror", match: /mirror|cabinet/ },
+  { id: "accessories", match: /accessor/ },
+  { id: "other", match: /other/ },
+];
+
+export function parseBathroomFixtureId(value: unknown): BathroomFixtureId | null {
+  if (value == null || value === "") return null;
+  const lower = String(value).trim().toLowerCase();
+  if (lower === "not sure" || lower === "unknown" || lower === "unsure") return null;
+  for (const row of FIXTURE_ALIASES) {
+    if (row.match.test(lower)) return row.id;
+  }
+  return null;
+}
+
+export function parseBathroomFixtureOwnership(
+  value: unknown
+): BathroomFixtureOwnership | null {
+  if (value == null || value === "") return null;
+  const lower = String(value).trim().toLowerCase().replace(/[_-]+/g, " ");
+  if (lower === "not sure" || lower === "unknown" || lower === "unsure") return null;
+  if (lower === "supply" || lower === "supply only" || lower === "supply_only") {
+    return "supply";
+  }
+  if (
+    lower === "install" ||
+    lower === "install only" ||
+    lower === "install_only" ||
+    lower.includes("client")
+  ) {
+    return "install";
+  }
+  if (
+    lower === "both" ||
+    lower === "supply and install" ||
+    lower === "supply_and_install"
+  ) {
+    return "supply_and_install";
+  }
+  return null;
+}
+
+export function bathroomFixtureOwnershipFactKey(id: BathroomFixtureId): string {
+  return `bathroom.fixture.${id}.ownership`;
+}
+
+export function parseBathroomSelectedFixtures(params: {
+  facts: readonly { key: string; work_area_id: string | null; value: unknown }[];
+  workAreaId: string;
+}): BathroomFixtureId[] {
+  const facts = params.facts as never;
+  const listed = getArrayFact(facts, params.workAreaId, "bathroom.fixtures_included");
+  const ids: BathroomFixtureId[] = [];
+  const seen = new Set<BathroomFixtureId>();
+  const push = (id: BathroomFixtureId | null) => {
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+    ids.push(id);
+  };
+  for (const row of listed) push(parseBathroomFixtureId(row));
+  if (getBooleanFact(facts, params.workAreaId, "bathroom.includes_vanity")) {
+    push("vanity");
+  }
+  if (getBooleanFact(facts, params.workAreaId, "bathroom.includes_shower")) {
+    push("shower");
+  }
+  if (getBooleanFact(facts, params.workAreaId, "bathroom.includes_toilet")) {
+    push("toilet");
+  }
+  if (ids.length === 0) {
+    const scope = resolveBathroomJobScope({
+      jobScope: getStringFact(facts, params.workAreaId, "bathroom.job_scope"),
+      renovationType: getStringFact(facts, params.workAreaId, "bathroom.renovation_type"),
+    });
+    if (scope === "vanity_only") push("vanity");
+    if (scope === "shower_only") push("shower");
+  }
+  return ids;
+}
 
 export function shouldHideBathroomQuestion(params: {
   factKey: string;
@@ -913,8 +1065,23 @@ export function shouldHideBathroomQuestion(params: {
     );
   }
   if (params.factKey === "bathroom.fixtures_included") {
-    if (params.clientSuppliedFixtures === true) return true;
-    if (params.clientSuppliedFixtures === null) return true;
+    if (params.jobScope === "vanity_only" || params.jobScope === "shower_only") {
+      return true;
+    }
+  }
+  if (params.factKey === "bathroom.fixtures_client_supplied") return true;
+  if (params.factKey.endsWith(".ownership")) return true;
+  if (
+    params.factKey === "bathroom.plumbing.scope_text" ||
+    params.factKey === "bathroom.electrical.scope_text" ||
+    params.factKey === "bathroom.electrical.light_count" ||
+    params.factKey === "bathroom.electrical.gpo_count" ||
+    params.factKey === "bathroom.electrical.mirror_power_included" ||
+    params.factKey === "bathroom.electrical.new_circuit_included" ||
+    params.factKey === "bathroom.plumbing.floor_waste_included" ||
+    params.factKey === "bathroom.plumbing.relocation_count"
+  ) {
+    return true;
   }
   if (params.factKey === "bathroom.plumbing_changes") return true;
   if (params.factKey === "bathroom.electrical_changes") return true;

@@ -14,6 +14,8 @@ import {
   RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
   FENCE_PRODUCTIVITY_RATE_CATALOGUE,
   BATHROOM_PRODUCTIVITY_RATE_CATALOGUE,
+  BATHROOM_FIXTURE_PC_CATALOGUE,
+  BATHROOM_TRADE_ALLOWANCE_CATALOGUE,
 } from "@/lib/rates/specific-material-catalogue";
 
 function entry(
@@ -588,6 +590,8 @@ export const ALL_RATE_CATALOGUE: RateCatalogueEntry[] = [
 export const FULL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...ALL_RATE_CATALOGUE,
   ...SPECIFIC_MATERIAL_RATE_CATALOGUE,
+  ...BATHROOM_FIXTURE_PC_CATALOGUE,
+  ...BATHROOM_TRADE_ALLOWANCE_CATALOGUE,
   ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
   ...RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
   ...FENCE_PRODUCTIVITY_RATE_CATALOGUE,
@@ -598,10 +602,15 @@ export const RECOMMENDED_RATE_CATALOGUE = ALL_RATE_CATALOGUE.filter(
   (entry) => entry.recommended
 );
 
+const CATALOGUE_ITEM_ALIASES: Record<string, string> = {
+  "bathroom.framing.90x45.h1.2.lm": "timber.framing.90x45.h1.2.lm",
+};
+
 export function getCatalogueEntry(
   itemKey: string
 ): RateCatalogueEntry | undefined {
-  return FULL_RATE_CATALOGUE.find((entry) => entry.item_key === itemKey);
+  const canonical = CATALOGUE_ITEM_ALIASES[itemKey] ?? itemKey;
+  return FULL_RATE_CATALOGUE.find((entry) => entry.item_key === canonical);
 }
 
 export function formatRateUnit(unit: string): string {

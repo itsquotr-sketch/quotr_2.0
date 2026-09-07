@@ -67,6 +67,21 @@ Do **not** invent the full merchant list in this lock. Owner provides catalogue 
 
 **`purchaseQuantity`** on MaterialRequirement is the continuous **estimating** quantity after waste/conversion. Future procurement (`orderQuantity` / `packQuantity` / `stockLengthPlan`) must not redefine it.
 
+### One physical material → many Work Area requirements
+
+A Work Area **requirement** key may be Work-Area-specific (`bathroom.framing`, `bathroom.lining.wall`).
+
+A **physical material** identity must be domain-neutral when the same product can be used by more than one Work Area. The builder sees **one** Materials / Rates row. Changing that company rate must affect every consuming requirement.
+
+Live Bathroom examples:
+
+- `sheet.plasterboard.aqualine.each` — Bathroom wall lining and Bathroom ceiling lining (future Internal Walls / Ceilings may consume the same row). Do not create `bathroom.aqualine`.
+- `timber.framing.90x45.h1.2.lm` — Bathroom local nogging. Legacy `bathroom.framing.90x45.h1.2.lm` is an alias only. Do not keep a second Bathroom-only company Materials row for the same 90×45 H1.2.
+
+Generic PC / allowance identities (`bathroom.tile.material.m2`, `bathroom.fixture.vanity.pc.each`) are **not** merchant SKUs. They belong in the allowance catalogue, not as duplicate physical Materials rows per Work Area.
+
+See `docs/architecture/QUOTR_BATHROOM_ESTIMATING_ARCHITECTURE.md` §56.
+
 ---
 
 ## 3. Planned category coverage (taxonomy only)

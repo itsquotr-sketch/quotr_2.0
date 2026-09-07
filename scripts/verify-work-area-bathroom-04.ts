@@ -235,8 +235,10 @@ check(
 );
 check(
   "03 H1.2 $6.20",
-  getCatalogueEntry("bathroom.framing.90x45.h1.2.lm")?.defaultCostRate ===
-    BATHROOM_FRAMING_H12_BENCHMARK
+  getCatalogueEntry("timber.framing.90x45.h1.2.lm")?.defaultCostRate ===
+    BATHROOM_FRAMING_H12_BENCHMARK &&
+    getCatalogueEntry("bathroom.framing.90x45.h1.2.lm")?.item_key ===
+      "timber.framing.90x45.h1.2.lm"
 );
 check("tile waste 10%", near(BATHROOM_TILE_WASTE_FACTOR, 0.1));
 check("purchase 7.92 from 7.2", near(bathroomPurchaseAreaM2(7.2), 7.92));

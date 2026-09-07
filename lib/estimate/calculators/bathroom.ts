@@ -33,6 +33,8 @@ import {
   buildBathroomFinishEnvelope,
   resolveBathroomFinishSelection,
 } from "@/lib/estimate/bathroom-finishes";
+import { buildBathroomFixtureEnvelope } from "@/lib/estimate/bathroom-fixtures";
+import { buildBathroomTradeEnvelope } from "@/lib/estimate/bathroom-trades";
 import { PHYSICAL_REQUIREMENT_RESOLUTION } from "@/lib/estimate/physical-requirement-resolution";
 import {
   bathroomTradeLevelIncluded,
@@ -275,6 +277,31 @@ export function calculateBathroom(
     assumptions.push(...finishes.assumptions);
     missingInfo.push(...finishes.missingInfo);
     sortOrder = finishes.nextSortOrder;
+  }
+
+  if (maturePath) {
+    const fixtures = buildBathroomFixtureEnvelope({
+      context,
+      workArea,
+      sortOrderStart: sortOrder,
+    });
+    lineItems.push(...fixtures.lineItems);
+    requirements.push(...fixtures.requirements);
+    assumptions.push(...fixtures.assumptions);
+    missingInfo.push(...fixtures.missingInfo);
+    sortOrder = fixtures.nextSortOrder;
+
+    const trades = buildBathroomTradeEnvelope({
+      context,
+      workArea,
+      selectedFixtures: fixtures.selected,
+      sortOrderStart: sortOrder,
+    });
+    lineItems.push(...trades.lineItems);
+    requirements.push(...trades.requirements);
+    assumptions.push(...trades.assumptions);
+    missingInfo.push(...trades.missingInfo);
+    sortOrder = trades.nextSortOrder;
   }
 
   if (demolitionRequired) {
@@ -546,13 +573,14 @@ export function calculateBathroom(
     );
   }
 
+  let fixturesCost = 0;
   const clientSuppliedFixtures = getBooleanFact(
     facts,
     workArea.id,
     "bathroom.fixtures_client_supplied"
   );
 
-  let fixturesCost = 0;
+  if (!maturePath) {
   let fixturesSell = 0;
 
   if (clientSuppliedFixtures) {
@@ -825,6 +853,7 @@ export function calculateBathroom(
         overlapGroup: "bathroom_ventilation",
       })
     );
+  }
   }
 
   if (!maturePath && getBooleanFact(facts, workArea.id, "bathroom.wall_lining_included")) {
@@ -1108,13 +1137,34 @@ export const BATHROOM_CALCULATOR_CONSUMED_FACTS = [
   "bathroom.includes_vanity",
   "bathroom.includes_shower",
   "bathroom.includes_toilet",
+  "bathroom.fixture.toilet.ownership",
+  "bathroom.fixture.vanity.ownership",
+  "bathroom.fixture.basin.ownership",
+  "bathroom.fixture.shower.ownership",
+  "bathroom.fixture.shower_enclosure.ownership",
+  "bathroom.fixture.bath.ownership",
+  "bathroom.fixture.tapware.ownership",
+  "bathroom.fixture.heated_towel_rail.ownership",
+  "bathroom.fixture.mirror.ownership",
+  "bathroom.fixture.extract_fan.ownership",
+  "bathroom.fixture.accessories.ownership",
+  "bathroom.fixture.other.ownership",
+  "bathroom.fixture.shower_enclosure.install_owner",
   "bathroom.underfloor_heating_included",
   "bathroom.plumbing.level",
   "bathroom.plumbing_changes",
   "bathroom.plumbing_allowance",
+  "bathroom.plumbing.floor_waste_included",
+  "bathroom.plumbing.relocation_count",
+  "bathroom.plumbing.scope_text",
   "bathroom.electrical.level",
   "bathroom.electrical_changes",
   "bathroom.electrical_allowance",
+  "bathroom.electrical.light_count",
+  "bathroom.electrical.gpo_count",
+  "bathroom.electrical.mirror_power_included",
+  "bathroom.electrical.new_circuit_included",
+  "bathroom.electrical.scope_text",
   "bathroom.ventilation_included",
   "bathroom.wall_lining_included",
   "bathroom.wall_lining_area_m2",

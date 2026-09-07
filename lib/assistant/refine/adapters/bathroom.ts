@@ -1,5 +1,6 @@
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import {
+  BATHROOM_FIXTURE_OWNERSHIP_OPTIONS,
   BATHROOM_FLOOR_FINISH_OPTIONS,
   BATHROOM_FLOOR_SUBSTRATE_OPTIONS,
   BATHROOM_FRAMING_LEVEL_OPTIONS,
@@ -8,12 +9,15 @@ import {
   BATHROOM_TRADE_LEVEL_OPTIONS,
   BATHROOM_WALL_TILE_EXTENT_OPTIONS,
   BATHROOM_WATERPROOFING_EXTENT_OPTIONS,
+  bathroomFixtureOwnershipFactKey,
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
+  parseBathroomSelectedFixtures,
   parseBathroomWallTileExtent,
   parseBathroomWaterproofingExtent,
   resolveBathroomJobScope,
 } from "@/lib/estimate/bathroom-scope";
+import { BATHROOM_FIXTURE_LABELS } from "@/lib/estimate/bathroom-fixtures";
 import type { RefineCandidate, RefineWorkAreaAdapter } from "@/lib/assistant/refine/types";
 
 function knownFact(
@@ -231,6 +235,34 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         questionKey: "bathroom.plumbing.level",
         label: "Plumbing intensity",
         question: "What level of plumbing work is included?",
+        inputType: "select",
+        options: [...BATHROOM_TRADE_LEVEL_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    const electricalKnown =
+      knownFact(facts, workAreaId, "bathroom.electrical.level") ||
+      knownFact(facts, workAreaId, "bathroom.electrical_changes");
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("electrical", jobScope) &&
+      !electricalKnown
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.electrical.level`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.electrical.level",
+        constraintKey: null,
+        questionKey: "bathroom.electrical.level",
+        label: "Electrical intensity",
+        question: "What level of electrical work is included?",
         inputType: "select",
         options: [...BATHROOM_TRADE_LEVEL_OPTIONS],
         writeTarget: "FACT",
@@ -554,6 +586,107 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         questionKey: "bathroom.waterproofing_area_m2",
         label: "Waterproofing area",
         question: "Approximate waterproofing area?",
+        inputType: "number",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    const selectedFixtures = parseBathroomSelectedFixtures({
+      facts,
+      workAreaId,
+    });
+    if (jobScope && bathroomQuestionGroupVisible("fixtures", jobScope)) {
+      for (const id of selectedFixtures) {
+        const factKey = bathroomFixtureOwnershipFactKey(id);
+        if (knownFact(facts, workAreaId, factKey)) continue;
+        out.push({
+          id: `refine:${workAreaId}:${factKey}`,
+          group: "specification",
+          tier: "high_value",
+          workAreaId,
+          workAreaName,
+          workAreaType: "bathroom",
+          factKey,
+          constraintKey: null,
+          questionKey: factKey,
+          label: `${BATHROOM_FIXTURE_LABELS[id]} supply / install`,
+          question: `Is the ${BATHROOM_FIXTURE_LABELS[id].toLowerCase()} supply, install, or both?`,
+          inputType: "select",
+          options: [...BATHROOM_FIXTURE_OWNERSHIP_OPTIONS],
+          writeTarget: "FACT",
+          write: null,
+          consumedByCalculator: true,
+        });
+      }
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("plumbing", jobScope) &&
+      !knownFact(facts, workAreaId, "bathroom.plumbing.scope_text")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.plumbing.scope_text`,
+        group: "specification",
+        tier: "advanced",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.plumbing.scope_text",
+        constraintKey: null,
+        questionKey: "bathroom.plumbing.scope_text",
+        label: "Plumbing scope notes",
+        question: "Any plumbing scope notes for the subcontractor?",
+        inputType: "text",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("electrical", jobScope) &&
+      !knownFact(facts, workAreaId, "bathroom.electrical.scope_text")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.electrical.scope_text`,
+        group: "specification",
+        tier: "advanced",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.electrical.scope_text",
+        constraintKey: null,
+        questionKey: "bathroom.electrical.scope_text",
+        label: "Electrical scope notes",
+        question: "Any electrical scope notes for the subcontractor?",
+        inputType: "text",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("electrical", jobScope) &&
+      !knownFact(facts, workAreaId, "bathroom.electrical.light_count")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.electrical.light_count`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.electrical.light_count",
+        constraintKey: null,
+        questionKey: "bathroom.electrical.light_count",
+        label: "Light points",
+        question: "How many new bathroom light or downlight points?",
         inputType: "number",
         writeTarget: "FACT",
         write: null,

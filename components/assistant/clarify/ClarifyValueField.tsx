@@ -99,7 +99,11 @@ export function ClarifyValueField({
             unit ? `${candidate.label} in ${unit}` : candidate.label
           }
           aria-invalid={error ? true : undefined}
-          className="min-h-11 max-w-[10rem] text-base md:text-sm"
+          className={
+            isNumber
+              ? "min-h-11 max-w-[10rem] text-base md:text-sm"
+              : "min-h-11 w-full text-base md:text-sm"
+          }
           data-clarify-numeric={isNumber ? "true" : undefined}
           onChange={(event) => {
             setLocal({

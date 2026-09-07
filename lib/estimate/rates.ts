@@ -34,7 +34,16 @@ const ITEM_KEY_ALIASES: Record<string, string[]> = {
   "bathroom.waterproofing.allowance": ["bathroom_waterproofing_m2"],
   "bathroom.tiling.m2": ["bathroom_tiling_m2"],
   "bathroom.plumbing.allowance": ["bathroom_plumbing_allowance"],
+  "bathroom.plumbing.standard.allowance": [
+    "bathroom.plumbing.allowance",
+    "bathroom_plumbing_allowance",
+  ],
   "bathroom.electrical.allowance": ["bathroom_electrical_allowance"],
+  "bathroom.electrical.standard.allowance": [
+    "bathroom.electrical.allowance",
+    "bathroom_electrical_allowance",
+  ],
+  "timber.framing.90x45.h1.2.lm": ["bathroom.framing.90x45.h1.2.lm"],
   "kitchen.cabinetry.install": ["kitchen_install_lm", "kitchen_install_each"],
   "internal_walls.framing.lm": ["internal_wall_framing_lm"],
   "sheet.plasterboard.standard.each": [
