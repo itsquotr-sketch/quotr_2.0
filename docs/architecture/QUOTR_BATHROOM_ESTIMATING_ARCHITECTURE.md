@@ -4,6 +4,7 @@
 **Date:** 2026-09-07  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
+**WA-BATHROOM-05 hosted proof:** `a329b7c450f22bd240a80714beb0b479212a522e`  
 **Production:** DO NOT TOUCH (through 045)  
 **Migrations:** NONE. No 055.  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
@@ -24,7 +25,7 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | WA-BATHROOM-02 scope + geometry | **GO** |
 | WA-BATHROOM-03 physical substrates / linings / framing | **GO** |
 | WA-BATHROOM-04 floor finish / tiling / waterproofing | **GO** |
-| WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums | **GO** |
+| WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums | **GO** (hosted `a329b7c`) |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; 05 owns plumbing/fixtures) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ sending / Company DNA behaviour | **NO-GO** |
@@ -1393,7 +1394,7 @@ Bathroom floor finish is nested Bathroom scope (`overlapGroup` `bathroom_floor_f
 
 ## 56. WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums
 
-**Status:** **GO** after deterministic verifier `scripts/verify-work-area-bathroom-05.ts`. Hosted Preview proof SHA pending until Preview deploy of this commit.
+**Status:** **GO** after deterministic verifier `scripts/verify-work-area-bathroom-05.ts` and hosted Preview proof `a329b7c450f22bd240a80714beb0b479212a522e`.
 
 ### Shared material identity
 
