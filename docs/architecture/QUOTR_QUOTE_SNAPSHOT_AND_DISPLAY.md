@@ -130,6 +130,8 @@ Builder Send:
 
 Email failure after step 5 leaves the Quote **issued**. Delivery is `failed`. Builder resends without creating a new snapshot. Email failure does not roll the Quote back to draft.
 
+If email is accepted but `finalize_quote_delivery_v1` is still pending, the Quote is already `sent`. The builder Copy-client-link control must still expose `publicPath` from that request (held across `router.refresh()` for the same Quote id). A pending finalize is not a reason to hide the issued public URL.
+
 `finalize_quote_delivery_v1` still calls `send_quote_revision_v1` so an older in-flight “email accepted, issue pending” row can be recovered without a migration.
 
 ---

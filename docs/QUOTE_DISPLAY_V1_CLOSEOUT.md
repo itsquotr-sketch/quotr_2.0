@@ -8,7 +8,7 @@ Preview only. Migration **054**. No 055. Production not in scope.
 
 Hosted first-send now **issues before email**. A public token on a draft is not a valid issued Quote on the official renderer. Email failure after issue leaves the Quote `sent`.
 
-The previous V1 hosted timeout was not a finalize hang: Resend rejected `@example.com` (`invalid_recipient`), the Quote stayed draft, the delivery was `failed`, and Puppeteer then evaluated the page during the in-flight transition (`Runtime.callFunctionOn timed out`). The leftover token was **not** client-valid (delivery not accepted). SQL still allows draft lookup after an accepted delivery; the send path no longer uses that window, and `/q/[token]` refuses drafts.
+If email is accepted but finalize is still pending, Copy client link remains available (`data-quote-public-path`). Do not hide the issued URL behind a success-only panel.
 
 ## What shipped
 

@@ -138,16 +138,22 @@ function SendFields({
           </p>
         )
       ) : null}
-      {success ? (
+      {success || publicPath ? (
         <div className="space-y-2" data-quote-send-success-panel>
-          <p className="text-sm text-green-700 dark:text-green-400" role="status">
-            {success}
-          </p>
+          {success ? (
+            <p
+              className="text-sm text-green-700 dark:text-green-400"
+              role="status"
+            >
+              {success}
+            </p>
+          ) : null}
           {publicPath ? (
             <Button
               type="button"
               variant="outline"
               className="h-11 w-full"
+              data-quote-public-path={publicPath}
               onClick={() => {
                 const origin =
                   typeof window !== "undefined" ? window.location.origin : "";
@@ -195,10 +201,37 @@ export function QuoteSendSheet({
     upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   } | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
-  const [publicPath, setPublicPath] = useState<string | null>(null);
+  const publicPathStorageKey = `quotr:quote-public-path:${quote.id}`;
+  const [publicPath, setPublicPath] = useState<string | null>(() => {
+    if (typeof window === "undefined") return null;
+    try {
+      return sessionStorage.getItem(publicPathStorageKey);
+    } catch {
+      return null;
+    }
+  });
+  const [pathQuoteId, setPathQuoteId] = useState(quote.id);
+  if (pathQuoteId !== quote.id) {
+    setPathQuoteId(quote.id);
+    try {
+      setPublicPath(sessionStorage.getItem(publicPathStorageKey));
+    } catch {
+      setPublicPath(null);
+    }
+  }
   const [needsFinalizeId, setNeedsFinalizeId] = useState<string | null>(
     deliveries.find((row) => row.status === "accepted")?.id ?? null
   );
+
+  const rememberPublicPath = (path: string | null | undefined) => {
+    if (!path) return;
+    setPublicPath(path);
+    try {
+      sessionStorage.setItem(publicPathStorageKey, path);
+    } catch {
+      /* private mode / quota */
+    }
+  };
 
   const submit = () => {
     setError(null);
@@ -211,6 +244,7 @@ export function QuoteSendSheet({
         recipientEmail,
         message,
       });
+      rememberPublicPath(result.publicPath);
       if (result.needsFinalize) {
         setNeedsFinalizeId(result.deliveryId ?? null);
         setError("Email submitted — finalising Quote status.");
@@ -234,7 +268,6 @@ export function QuoteSendSheet({
         return;
       }
       setNeedsFinalizeId(null);
-      setPublicPath(result.publicPath ?? null);
       setSuccess(
         result.emailSubmitted
           ? `Quote sent to ${result.recipientEmail ?? recipientEmail}.`

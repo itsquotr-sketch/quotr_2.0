@@ -371,6 +371,12 @@ assert(
     read("components/quotes/QuoteAcceptSheet.tsx").includes("data-quote-accept-submit")
 );
 assert(
+  "issued public path survives finalize-pending / refresh",
+  read("components/quotes/QuoteSendSheet.tsx").includes("data-quote-public-path") &&
+    read("components/quotes/QuoteSendSheet.tsx").includes("rememberPublicPath") &&
+    read("components/quotes/QuoteSendSheet.tsx").includes("result.needsFinalize")
+);
+assert(
   "Create quote is bound to this pricing document, not another Quote on the project",
   read("app/(protected)/app/projects/[projectId]/pricing/[pricingId]/page.tsx").includes(
     "quoteSummary={quoteSummaryForDoc}"
