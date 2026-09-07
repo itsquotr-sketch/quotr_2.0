@@ -1,6 +1,6 @@
 # Quotr Bathroom Estimating Architecture
 
-**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 implemented (scope + geometry)** + **WA-BATHROOM-03 physical path implemented (GO after hosted proof)**  
+**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 implemented (scope + geometry)** + **WA-BATHROOM-03 implemented (physical substrates / linings / framing)**  
 **Date:** 2026-09-07  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
@@ -22,13 +22,13 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | --- | --- |
 | WA-BATHROOM-01 architecture / gap audit | **GO** |
 | WA-BATHROOM-02 scope + geometry | **GO** |
-| WA-BATHROOM-03 physical substrates / linings / framing | **pending hosted proof** |
+| WA-BATHROOM-03 physical substrates / linings / framing | **GO** |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (deferred to 04–07) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ / Company DNA behaviour | **NO-GO** |
 | Production / migration 055 | **NO-GO** |
 
-**Next action:** [WA-BATHROOM-03](#47-implementation-phases) — physical substrates / linings / framing. Do not start until this 02 close is reviewed.
+**Next action:** [WA-BATHROOM-04](#54-wa-bathroom-03-physical-substrates--linings--framing) — floor finish XOR (tile / sheet vinyl / vinyl plank), distinct from floor substrate. Do not start until this 03 close is reviewed.
 
 ---
 
@@ -1271,7 +1271,7 @@ Mature path = `bathroom.job_scope` present → tiling money only if `tiling_incl
 
 ## 54. WA-BATHROOM-03 physical substrates / linings / framing
 
-**Status:** implemented on the mature `bathroom.job_scope` path. Mark **GO** only after hosted proof.
+**Status:** **GO** after deterministic verifier + hosted Preview proof (`d57f566`).
 
 Verifier: `scripts/verify-work-area-bathroom-03.ts`
 
