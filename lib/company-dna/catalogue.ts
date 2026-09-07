@@ -12,6 +12,7 @@ export const COMPANY_DNA_WORK_AREA_TYPES = [
   "deck",
   "fence",
   "retaining_wall",
+  "bathroom",
 ] as const;
 
 export type CompanyDnaWorkAreaType =
@@ -235,6 +236,7 @@ export const COMPANY_DNA_WORK_AREA_LABELS: Record<
   deck: "Deck",
   fence: "Fence",
   retaining_wall: "Retaining wall",
+  bathroom: "Bathroom",
 };
 
 export function getCompanyDnaTask(

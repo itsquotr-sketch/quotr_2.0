@@ -2200,7 +2200,7 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Sheet materials",
     description:
-      "Planned per-sheet rates. Current lining estimates still use m² packages; sheet counts are takeoff only.",
+      "Shared physical sheets. Bathroom consumes Aqualine, 19 mm H3.2 plywood, and 18 mm fibre cement from this group — one identity, many Work Area requirements. Company exact rate wins.",
     entries: SHEET_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {

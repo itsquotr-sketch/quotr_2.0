@@ -40,8 +40,8 @@ Product judgements (frequency, beta value, marketing, weights) are labelled **re
 | ISD high-level set | **15** | 14 + `commercial_fitout` (not creatable) |
 | Unsupported recognised labels | **14** | cladding, roofing, windows, landscaping, earthworks, drainage, plumbing, electrical, carpentry, renovation, extension, other, custom, commercial_fitout |
 | ISD canonical scope ids | **43** | Mix of WAs + components (fascia, tiling, partitions, …) |
-| Company DNA Work Areas | **3** | deck, fence, retaining_wall |
-| Calculators that emit `requirements` | **3** | deck, fence, retaining_wall |
+| Company DNA Work Areas | **4** | deck, fence, retaining_wall, bathroom |
+| Calculators that emit `requirements` | **4** | deck, fence, retaining_wall, bathroom |
 
 **The original 14-area model is still the product catalogue.** Nothing was added or removed from `SCOPE_CATALOGUE`. What changed is **maturity of three types**, plus richer ISD component language that must not be mistaken for extra Work Areas.
 
@@ -77,7 +77,7 @@ Deck, Fence, Retaining wall, Bathroom renovation, Kitchen renovation, Pergola, I
 
 Omitted from first-run: External Stairs, Ceilings, Doors, Plastering.
 
-**Add Work Area + Improve Setup:** all 14. Badges from stale `support-contract.ts` (Deck/Bathroom “Trial-supported”; Fence/RW/Pergola/Kitchen “Developing”; rest “Component”). First-run cards have **no** badge.
+**Add Work Area + Improve Setup:** all 14. Badges: Deck/Fence/RW/Bathroom **Supported**; Pergola/Kitchen **Developing**; rest **Component**. First-run cards have **no** badge (beta backlog if differentiation is needed there).
 
 **Analyse:** may suggest any of the 14. Heuristic enrichers exist for 12 types; **no dedicated `inferFlooring` or `inferCeilings`**. Flooring facts are only patched when a flooring WA is already present. Ceilings ride painting heuristics. The LLM prompt still lists flooring and ceilings facts.
 
@@ -98,7 +98,7 @@ Omitted from first-run: External Stairs, Ceilings, Doors, Plastering.
 | 8 | Deterministic fixtures + conditions + polished flow | MATURE |
 | 9 | Company DNA where useful | MATURE + personalised |
 
-Deck / Fence / Retaining Wall are **reference mature (8)**, DNA-personalised on labour (**9 on labour axes**). Residual lumps (e.g. deck balustrade) do not drop them below 8.
+Deck / Fence / Retaining Wall / Bathroom are **reference mature (8)** with DNA on consumed labour keys (**9 on those axes**). Residual lumps (e.g. deck balustrade; bathroom trade allowances) do not drop them below 8.
 
 ---
 
@@ -119,7 +119,7 @@ Deck / Fence / Retaining Wall are **reference mature (8)**, DNA-personalised on 
 | Calculator-only? | **None.** All 14 have templates + calculators. Unknown types only hit “No calculator available”. |
 | Adapter gap | Job Plan/Refine dedicated: deck, fence, retaining_wall, bathroom, painting. Others use generic Job Plan and **no** Refine adapter. |
 | Consumed-fact contract | Only deck, fence, retaining_wall, bathroom, kitchen, painting |
-| Requirement envelope | Only deck, fence, retaining_wall |
+| Requirement envelope | Only deck, fence, retaining_wall, bathroom |
 
 Windows is **not** a product Work Area. Doors is internal-door scoped. Cladding is **not** a product Work Area; exterior painting is not cladding.
 

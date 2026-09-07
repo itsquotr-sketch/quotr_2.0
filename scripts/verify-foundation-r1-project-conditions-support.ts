@@ -591,8 +591,8 @@ function main(): void {
 
   // 13–14. Support + commercial parent
   console.log("\n13-14 SUPPORTED WA + COMMERCIAL PARENT");
-  check("deck is trial-supported", isTrialSupportedWorkAreaType("deck"));
-  check("bathroom is trial-supported", isTrialSupportedWorkAreaType("bathroom"));
+  check("deck is supported Work Area", isTrialSupportedWorkAreaType("deck"));
+  check("bathroom is supported Work Area", isTrialSupportedWorkAreaType("bathroom"));
   check(
     "commercial interior components are the six fitout WAs + demolition",
     COMMERCIAL_INTERIOR_COMPONENT_TYPES.length === 7 &&
@@ -614,8 +614,8 @@ function main(): void {
   check(
     "customer labels never use A/B/C/D/E",
     !["A", "B", "C", "D", "E"].includes(getWorkAreaCapabilityLabel("deck")) &&
-      getWorkAreaCapabilityLabel("deck") === "Trial-supported" &&
-      getWorkAreaCapabilityLabel("fence") === "Developing" &&
+      getWorkAreaCapabilityLabel("deck") === "Supported" &&
+      getWorkAreaCapabilityLabel("fence") === "Supported" &&
       getWorkAreaCapabilityLabel("demolition") === "Component"
   );
 

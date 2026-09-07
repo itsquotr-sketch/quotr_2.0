@@ -188,6 +188,9 @@ check(
   summarizeProductivityWorkAreas([]).every((row) => {
     if (row.workAreaType === "deck") return row.taskTotal === 7 && row.keyTaskTotal === 3;
     if (row.workAreaType === "fence") return row.taskTotal === 9 && row.keyTaskTotal === 3;
+    if (row.workAreaType === "bathroom") {
+      return row.taskTotal === 6 && row.keyTaskTotal === 3 && row.generation === "v2f";
+    }
     return row.taskTotal === 15 && row.generation === "v2e";
   })
 );
@@ -301,7 +304,7 @@ check("fence demolition benchmark fallback", benchDemo.hoursPerUnit === 0.25);
 
 const architecture = read("docs/architecture/QUOTR_COMPANY_DNA_V2_ARCHITECTURE.md");
 check("architecture records 054 seed", architecture.includes("054_company_dna_v2_catalogue_seed.sql"));
-check("architecture records V1 UX still narrower", architecture.includes("V1 live UX remains 9 tasks"));
+check("architecture records V1 UX still narrower", architecture.includes("V1 catalogue identity remains 9 tasks"));
 
 if (!LIVE) {
   console.log("\n(skip live Preview probe — pass --live)\n");

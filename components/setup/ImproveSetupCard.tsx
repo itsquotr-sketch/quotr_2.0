@@ -37,6 +37,8 @@ export function ImproveSetupCard({
     rwKeyTasksCalibrated: readiness.rwKeyTasksCalibrated,
     rwKeyTasksTotal: readiness.rwKeyTasksTotal,
     rwWorkAreaCalibrated: readiness.rwWorkAreaCalibrated,
+    bathroomKeyTasksCalibrated: readiness.bathroomKeyTasksCalibrated,
+    bathroomKeyTasksTotal: readiness.bathroomKeyTasksTotal,
   });
 
   if (!next) {

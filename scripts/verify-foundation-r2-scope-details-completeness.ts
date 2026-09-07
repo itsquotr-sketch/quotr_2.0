@@ -603,10 +603,10 @@ function main(): void {
     "no FOUNDATION-R2 migration",
     !migrations.some((f) => /r2|scope.details.completeness/i.test(f))
   );
-  check("deck remains trial-supported", getWorkAreaCapabilityBand("deck") === "trial_supported");
+  check("deck is supported", getWorkAreaCapabilityBand("deck") === "supported");
   check(
-    "bathroom remains trial-supported",
-    getWorkAreaCapabilityBand("bathroom") === "trial_supported"
+    "bathroom is supported",
+    getWorkAreaCapabilityBand("bathroom") === "supported"
   );
   check(
     "kitchen remains developing",

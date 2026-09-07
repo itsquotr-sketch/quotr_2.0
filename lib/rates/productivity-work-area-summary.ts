@@ -38,7 +38,7 @@ export type ProductivityWorkAreaSummary = {
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
   cta: string;
-  generation: "v1" | "v2c" | "v2d" | "v2e";
+  generation: "v1" | "v2c" | "v2d" | "v2e" | "v2f";
   summaryLine?: string;
   tasks: ProductivityTaskRow[];
 };

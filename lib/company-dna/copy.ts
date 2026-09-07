@@ -151,6 +151,21 @@ export const DNA_RW_TIER1_COMPLETE_TITLE =
 export const DNA_RW_TIER1_COMPLETE_BODY =
   "You can keep refining other retaining wall tasks now, or come back later.";
 
+export const DNA_BATHROOM_INTRO_TITLE =
+  "Calibrate how your team normally completes common bathroom tasks.";
+
+export const DNA_BATHROOM_INTRO_BODY =
+  "We'll show you a typical task. Tell us how many workers you'd normally use and how long they'd take.";
+
+export const DNA_BATHROOM_NORMAL_CONDITIONS =
+  "Assume a normal residential bathroom, straightforward access, and materials close to the work area. Do not include plumbing, electrical, tiling, or stopping — those are trade allowances, not crew DNA.";
+
+export const DNA_BATHROOM_TIER1_COMPLETE_TITLE =
+  "Your Bathroom estimates are now using your key productivity.";
+
+export const DNA_BATHROOM_TIER1_COMPLETE_BODY =
+  "Optional tasks still use Quotr benchmarks until you calibrate them. You can reset any task later.";
+
 export const DNA_HUB_TITLE = "Company DNA";
 export const DNA_HUB_INTRO =
   "Teach Quotr how your team normally works so future estimates use your productivity.";
@@ -312,6 +327,16 @@ export function dnaV2TaskTitle(taskKey: string, fallbackLabel: string): string {
   if (taskKey === "retaining_wall.masonry.waterproof.v1") {
     return "Waterproof the retaining face";
   }
+  if (taskKey === "bathroom.lining.wall.v1") return "Bathroom wall lining";
+  if (taskKey === "bathroom.lining.ceiling.v1") return "Bathroom ceiling lining";
+  if (taskKey === "bathroom.framing.v1") return "Local framing / nogging";
+  if (taskKey === "bathroom.floor_substrate.v1") return "Floor substrate";
+  if (taskKey === "bathroom.demolition.floor.v1") {
+    return "Floor finish removal";
+  }
+  if (taskKey === "bathroom.demolition.wall.v1") {
+    return "Wall lining removal";
+  }
   return fallbackLabel;
 }
 
@@ -391,6 +416,18 @@ export function dnaV2ScenarioCopy(task: {
       return `Core fill ${formatDnaScenarioMeasure(qty, "m3")} of grout once the blocks are laid. Do not include laying blockwork.`;
     case "retaining_wall.masonry.waterproof.v1":
       return `Waterproof ${formatDnaScenarioMeasure(qty, "m2")} of the retaining-side masonry face — self-perform. Do not include drainage metal or novacoil.`;
+    case "bathroom.lining.wall.v1":
+      return `Install about ${formatDnaScenarioMeasure(qty, "m2")} of Aqualine wall lining. Include measure, cut, fit, screw and normal service penetrations. Do not include stopping, painting, tiling, or demolition.`;
+    case "bathroom.lining.ceiling.v1":
+      return `Install about ${formatDnaScenarioMeasure(qty, "m2")} of Aqualine ceiling lining. Include measure, cut, fit, screw and normal penetrations. Do not include stopping, painting, or demolition.`;
+    case "bathroom.framing.v1":
+      return `Fit about ${lm(qty)} of local bathroom nogging and fixture supports. Do not include complete partition walls.`;
+    case "bathroom.floor_substrate.v1":
+      return `Lay about ${formatDnaScenarioMeasure(qty, "m2")} of plywood or fibre-cement floor substrate. Include measure, cut, fit and screw. Do not include floor finish, waterproofing, demolition, or major levelling.`;
+    case "bathroom.demolition.floor.v1":
+      return `Strip about ${formatDnaScenarioMeasure(qty, "m2")} of existing bathroom floor finish at the workface. Do not include skip-bin cartage or new substrate.`;
+    case "bathroom.demolition.wall.v1":
+      return `Strip about ${formatDnaScenarioMeasure(qty, "m2")} of existing wet-area wall lining at the workface. Do not include skip-bin cartage or new lining.`;
     default:
       return `Typical quantity: ${formatDnaScenarioMeasure(qty, task.authorityUnit)}.`;
   }
@@ -605,6 +642,12 @@ export function dnaV2CompleteCopy(
     return {
       title: DNA_FENCE_TIER1_COMPLETE_TITLE,
       body: DNA_FENCE_TIER1_COMPLETE_BODY,
+    };
+  }
+  if (workAreaType === "bathroom") {
+    return {
+      title: DNA_BATHROOM_TIER1_COMPLETE_TITLE,
+      body: DNA_BATHROOM_TIER1_COMPLETE_BODY,
     };
   }
   if (workAreaType === "retaining_wall") {

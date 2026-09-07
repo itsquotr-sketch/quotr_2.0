@@ -46,6 +46,7 @@ export function getFirstRunPrimaryWorkAreas(): ScopeCatalogueItem[] {
     if (isUnsupportedWorkAreaType(item.type)) return [];
     const band = getWorkAreaCapabilityBand(item.type);
     if (
+      band !== "supported" &&
       band !== "trial_supported" &&
       band !== "developing" &&
       band !== "component"

@@ -32,6 +32,10 @@ import {
   RW_EXCAVATION_MANUAL_HOURS_KEY,
 } from "@/lib/estimate/retaining-wall-family-coverage";
 import { RW_PRODUCTIVITY_KEYS } from "@/lib/estimate/retaining-wall-productivity";
+import {
+  BATHROOM_DEMOLITION_PRODUCTIVITY_KEYS,
+  BATHROOM_PRODUCTIVITY_KEYS,
+} from "@/lib/estimate/bathroom-identities";
 
 export type CompanyDnaPriorityTier = 1 | 2 | 3;
 
@@ -685,6 +689,161 @@ export const COMPANY_DNA_V2B_NEW_TASKS: readonly CompanyDnaFoundationTask[] = [
   }),
 ];
 
+/**
+ * WA-BATHROOM-08 — Bathroom DNA. Estimator already consumes each key.
+ * Not part of DNA-V2B.1 / migration 054. Persistable identity is seeded
+ * out-of-band on Preview (no 055). V1 hub list stays 9 rows.
+ */
+export const COMPANY_DNA_BATHROOM_TASKS: readonly CompanyDnaFoundationTask[] = [
+  v2Task({
+    calibrationTaskKey: "bathroom.lining.wall.v1",
+    scenarioVersion: "1",
+    workAreaType: "bathroom",
+    productivityRateKey: BATHROOM_PRODUCTIVITY_KEYS.wallLiningM2,
+    label: "Bathroom wall lining",
+    prompt:
+      "Think of a normal bathroom where your team installs about 20 m² of Aqualine wall lining.",
+    scenarioSummary:
+      "20 m² Aqualine wall lining · measure, cut, fit, screw · normal bathroom · normal access",
+    referenceQuantity: 20,
+    referenceUnit: "m2",
+    authorityQuantity: 20,
+    authorityUnit: "m2",
+    benchmarkProductivity: 0.3,
+    rateLabel: "Bathroom wall lining (hours/m²)",
+    sortOrder: 10,
+    priorityTier: 1,
+    baselineMethod: null,
+    workIncluded:
+      "Measure, cut, fit and screw wet-area wall lining, including normal service penetrations",
+    workExcluded:
+      "Stopping, painting, tiling, demolition, full partition walls, ceiling lining",
+    normalAssumptions: `${NORMAL_ACCESS} · lining only · framing already in if needed`,
+  }),
+  v2Task({
+    calibrationTaskKey: "bathroom.lining.ceiling.v1",
+    scenarioVersion: "1",
+    workAreaType: "bathroom",
+    productivityRateKey: BATHROOM_PRODUCTIVITY_KEYS.ceilingLiningM2,
+    label: "Bathroom ceiling lining",
+    prompt:
+      "Think of a normal bathroom where your team installs about 8 m² of Aqualine ceiling lining.",
+    scenarioSummary:
+      "8 m² Aqualine ceiling lining · measure, cut, fit, screw · normal bathroom · normal access",
+    referenceQuantity: 8,
+    referenceUnit: "m2",
+    authorityQuantity: 8,
+    authorityUnit: "m2",
+    benchmarkProductivity: 0.4,
+    rateLabel: "Bathroom ceiling lining (hours/m²)",
+    sortOrder: 20,
+    priorityTier: 1,
+    baselineMethod: null,
+    workIncluded:
+      "Measure, cut, fit and screw wet-area ceiling lining, including normal penetrations",
+    workExcluded:
+      "Stopping, painting, demolition, wall lining, standalone Ceilings Work Area",
+    normalAssumptions: `${NORMAL_ACCESS} · nested bathroom ceiling · not a full-house ceiling job`,
+  }),
+  v2Task({
+    calibrationTaskKey: "bathroom.framing.v1",
+    scenarioVersion: "1",
+    workAreaType: "bathroom",
+    productivityRateKey: BATHROOM_PRODUCTIVITY_KEYS.framingLm,
+    label: "Bathroom local framing / nogging",
+    prompt:
+      "Think of a normal bathroom where your team fits about 12 lm of local nogging and fixture supports.",
+    scenarioSummary:
+      "12 lm local bathroom framing / nogging · fixture supports · not complete partition walls",
+    referenceQuantity: 12,
+    referenceUnit: "lm",
+    authorityQuantity: 12,
+    authorityUnit: "lm",
+    benchmarkProductivity: 0.2,
+    rateLabel: "Bathroom local framing (hours/lm)",
+    sortOrder: 30,
+    priorityTier: 1,
+    baselineMethod: null,
+    workIncluded:
+      "Local nogging, fixture supports and small bathroom framing changes",
+    workExcluded:
+      "Complete partition walls, Internal Walls Work Area, lining, demolition",
+    normalAssumptions: `${NORMAL_ACCESS} · local bathroom framing only`,
+  }),
+  v2Task({
+    calibrationTaskKey: "bathroom.floor_substrate.v1",
+    scenarioVersion: "1",
+    workAreaType: "bathroom",
+    productivityRateKey: BATHROOM_PRODUCTIVITY_KEYS.floorSubstrateM2,
+    label: "Bathroom floor substrate",
+    prompt:
+      "Think of a normal bathroom where your team lays about 8 m² of plywood or fibre-cement floor substrate.",
+    scenarioSummary:
+      "8 m² floor substrate · measure, cut, fit, screw · normal bathroom · normal access",
+    referenceQuantity: 8,
+    referenceUnit: "m2",
+    authorityQuantity: 8,
+    authorityUnit: "m2",
+    benchmarkProductivity: 0.4,
+    rateLabel: "Bathroom floor substrate (hours/m²)",
+    sortOrder: 40,
+    priorityTier: 2,
+    baselineMethod: null,
+    workIncluded: "Measure, cut, fit and fix/screw floor substrate sheets",
+    workExcluded:
+      "Floor finish, waterproofing, demolition, major levelling, joist repair",
+    normalAssumptions: `${NORMAL_ACCESS} · substrate only · not the finished floor`,
+  }),
+  v2Task({
+    calibrationTaskKey: "bathroom.demolition.floor.v1",
+    scenarioVersion: "1",
+    workAreaType: "bathroom",
+    productivityRateKey: BATHROOM_DEMOLITION_PRODUCTIVITY_KEYS.floor_finish,
+    label: "Bathroom floor finish removal",
+    prompt:
+      "Think of a normal bathroom where your team strips about 8 m² of existing floor finish.",
+    scenarioSummary:
+      "8 m² existing bathroom floor finish · strip at the workface · normal access",
+    referenceQuantity: 8,
+    referenceUnit: "m2",
+    authorityQuantity: 8,
+    authorityUnit: "m2",
+    benchmarkProductivity: 0.25,
+    rateLabel: "Bathroom floor finish removal (hours/m²)",
+    sortOrder: 50,
+    priorityTier: 2,
+    baselineMethod: null,
+    workIncluded: "Strip existing bathroom floor finish at the workface",
+    workExcluded:
+      "New substrate, skip-bin cartage, tip fees, wall lining removal",
+    normalAssumptions: `${NORMAL_ACCESS} · removal labour only · waste money is separate`,
+  }),
+  v2Task({
+    calibrationTaskKey: "bathroom.demolition.wall.v1",
+    scenarioVersion: "1",
+    workAreaType: "bathroom",
+    productivityRateKey: BATHROOM_DEMOLITION_PRODUCTIVITY_KEYS.wall_lining,
+    label: "Bathroom wall lining removal",
+    prompt:
+      "Think of a normal bathroom where your team strips about 20 m² of existing wall lining.",
+    scenarioSummary:
+      "20 m² existing wet-area wall lining · strip at the workface · normal access",
+    referenceQuantity: 20,
+    referenceUnit: "m2",
+    authorityQuantity: 20,
+    authorityUnit: "m2",
+    benchmarkProductivity: 0.2,
+    rateLabel: "Bathroom wall lining removal (hours/m²)",
+    sortOrder: 60,
+    priorityTier: 2,
+    baselineMethod: null,
+    workIncluded: "Strip existing wet-area wall lining at the workface",
+    workExcluded:
+      "New lining, skip-bin cartage, ceiling removal, complete partition demolition",
+    normalAssumptions: `${NORMAL_ACCESS} · removal labour only · waste money is separate`,
+  }),
+];
+
 /** Keys that remain estimator-consumed but are too misleading to calibrate in V2B. */
 export const COMPANY_DNA_V2B_DEFERRED_KEYS = [
   "deck.steps.install.hours_per_m2",
@@ -701,6 +860,7 @@ export const COMPANY_DNA_V2B_DEFERRED_REASONS: Record<
 export const COMPANY_DNA_FOUNDATION_TASKS: readonly CompanyDnaFoundationTask[] = [
   ...COMPANY_DNA_V1_FOUNDATION_TASKS,
   ...COMPANY_DNA_V2B_NEW_TASKS,
+  ...COMPANY_DNA_BATHROOM_TASKS,
 ];
 
 export const COMPANY_DNA_EXCLUDED_FROM_V2 = {
@@ -711,6 +871,7 @@ export const COMPANY_DNA_EXCLUDED_FROM_V2 = {
     "retaining_wall.base_labour_hours_per_face_m2",
     "retaining_wall.excavation_hours_per_face_m2",
     "retaining_wall.drainage_hours_per_m",
+    "bathroom.labour_hours_per_m2",
   ],
   conditionLike: ["deck.elevated_extra_hours_per_m2"],
   materialMovement: [] as string[],

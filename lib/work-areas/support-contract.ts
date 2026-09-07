@@ -12,6 +12,7 @@ export const SUPPORTED_WORK_AREA_CONTRACT_VERSION = "foundation-r1.0" as const;
 
 /** Customer-facing bands — never A/B/C/D/E in UI. */
 export type WorkAreaCapabilityBand =
+  | "supported"
   | "trial_supported"
   | "developing"
   | "component"
@@ -35,14 +36,14 @@ export type WorkAreaSupportEntry = {
   notes: string;
 };
 
-const TRIAL_SUPPORTED_TYPES = ["deck", "bathroom"] as const;
-
-const TIER2_DEVELOPING_TYPES = [
-  "retaining_wall",
+const MATURE_SUPPORTED_TYPES = [
+  "deck",
   "fence",
-  "pergola",
-  "kitchen",
+  "retaining_wall",
+  "bathroom",
 ] as const;
+
+const TIER2_DEVELOPING_TYPES = ["pergola", "kitchen"] as const;
 
 /** Commercial interior is composed of these product WAs — not a parent calculator. */
 export const COMMERCIAL_INTERIOR_COMPONENT_TYPES = [
@@ -101,19 +102,16 @@ function entry(
 }
 
 export const WORK_AREA_SUPPORT_ENTRIES: readonly WorkAreaSupportEntry[] = [
-  entry(
-    "deck",
-    "tier1_trial",
-    "trial_supported",
-    "Trial-supported",
-    "Trial Quick Estimate. Takeoff / labour breakdown not yet claimed."
-  ),
-  entry(
-    "bathroom",
-    "tier1_trial",
-    "trial_supported",
-    "Trial-supported",
-    "Trial Quick Estimate. Trade packages / allowances."
+  ...MATURE_SUPPORTED_TYPES.map((type) =>
+    entry(
+      type,
+      "tier1_trial",
+      "supported",
+      "Supported",
+      type === "bathroom"
+        ? "Mature Bathroom estimating path. Nested wet-area work; specialist trades remain allowances."
+        : `Mature ${type === "retaining_wall" ? "Retaining Wall" : type} estimating path.`
+    )
   ),
   ...TIER2_DEVELOPING_TYPES.map((type) =>
     entry(
@@ -175,7 +173,11 @@ export function getWorkAreaCapabilityLabel(type: string): string {
 }
 
 export function isTrialSupportedWorkAreaType(type: string): boolean {
-  return (TRIAL_SUPPORTED_TYPES as readonly string[]).includes(type);
+  return (MATURE_SUPPORTED_TYPES as readonly string[]).includes(type);
+}
+
+export function isMatureSupportedWorkAreaType(type: string): boolean {
+  return (MATURE_SUPPORTED_TYPES as readonly string[]).includes(type);
 }
 
 export function isCommercialInteriorComponentType(type: string): boolean {

@@ -2,6 +2,7 @@
 
 import { z } from "zod";
 import {
+  COMPANY_DNA_WORK_AREA_LABELS,
   orderCompanyDnaWorkAreas,
   type CompanyDnaWorkAreaType,
 } from "@/lib/company-dna/catalogue";
@@ -47,7 +48,7 @@ export type CompanyDnaWorkAreaProgress = {
   optionalTotal: number;
   status: "benchmarks" | "partly" | "calibrated";
   statusLabel: string;
-  generation: "v1" | "v2c" | "v2d" | "v2e";
+  generation: "v1" | "v2c" | "v2d" | "v2e" | "v2f";
   progressDetail?: string;
   systemLines?: string[];
   tasks: CompanyDnaTaskStatus[];
@@ -224,12 +225,7 @@ export async function getCompanyDnaHubState(): Promise<CompanyDnaHubState> {
         ).length;
     return {
       workAreaType,
-      label:
-        workAreaType === "retaining_wall"
-          ? "Retaining wall"
-          : workAreaType === "fence"
-            ? "Fence"
-            : "Deck",
+      label: COMPANY_DNA_WORK_AREA_LABELS[workAreaType],
       calibratedCount: taskStatuses.filter((task) => task.calibrated).length,
       taskTotal: tasks.length,
       highImpactCalibrated,

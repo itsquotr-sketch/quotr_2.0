@@ -36,6 +36,7 @@ export const MATURE_REFERENCE_WORK_AREA_TYPES = [
   "deck",
   "fence",
   "retaining_wall",
+  "bathroom",
 ] as const;
 
 export type MatureReferenceWorkAreaType =

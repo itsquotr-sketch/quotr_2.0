@@ -2,7 +2,7 @@
 
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { orgHasHighImpactCalibration } from "@/lib/company-dna/progress";
-import { fenceV2ProgressCounts, deckV2ProgressCounts } from "@/lib/company-dna/v2-ui";
+import { fenceV2ProgressCounts, deckV2ProgressCounts, bathroomV2ProgressCounts } from "@/lib/company-dna/v2-ui";
 import {
   COMPANY_DNA_RW_TIMBER_TIER1_KEYS,
   companyDnaRwWorkAreaStatus,
@@ -39,6 +39,8 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       rwKeyTasksCalibrated: 0,
       rwKeyTasksTotal: 3,
       rwWorkAreaCalibrated: false,
+      bathroomKeyTasksCalibrated: 0,
+      bathroomKeyTasksTotal: 3,
       tradingName: null,
       legalName: null,
       contactEmail: null,
@@ -102,6 +104,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
   );
   const deckCounts = deckV2ProgressCounts(calibratedScenarioIds);
   const fenceCounts = fenceV2ProgressCounts(calibratedScenarioIds);
+  const bathroomCounts = bathroomV2ProgressCounts(calibratedScenarioIds);
   const rwTimberCalibrated = COMPANY_DNA_RW_TIMBER_TIER1_KEYS.filter((key) =>
     calibratedScenarioIds.has(key)
   ).length;
@@ -147,5 +150,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       companyDnaRwWorkAreaStatus({
         calibratedTaskKeys: calibratedScenarioIds,
       }) === "calibrated",
+    bathroomKeyTasksCalibrated: bathroomCounts.tier1Calibrated,
+    bathroomKeyTasksTotal: bathroomCounts.tier1Total,
   });
 }

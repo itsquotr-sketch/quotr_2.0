@@ -247,8 +247,12 @@ assert(
   orderCompanyDnaWorkAreas(["fence", "deck"])[0] === "fence"
 );
 assert(
-  "unsupported WA not invented",
-  !orderCompanyDnaWorkAreas(["bathroom"]).includes("bathroom" as never)
+  "bathroom is a Company DNA Work Area",
+  orderCompanyDnaWorkAreas(["bathroom"])[0] === "bathroom"
+);
+assert(
+  "kitchen is not a Company DNA Work Area",
+  !orderCompanyDnaWorkAreas(["kitchen"]).includes("kitchen" as never)
 );
 
 const status = companyDnaWorkAreaStatus({
@@ -388,7 +392,7 @@ assert("legacy 033 not auto-promoted", !actions.includes('.from("calibration_res
 const hub = read("components/company-dna/CompanyDnaHub.tsx");
 const flow = read("components/company-dna/CompanyDnaTaskFlow.tsx");
 const dnaCopy = read("lib/company-dna/copy.ts");
-assert("landing copy", hub.includes("Teach Quotr how your team normally works"));
+assert("landing copy", dnaCopy.includes("Teach Quotr how your team normally works"));
 assert("progress copy", dnaCopy.includes("of") && dnaCopy.includes("calibrated"));
 assert("no percent DNA gamification", !hub.includes("% Company DNA"));
 assert("crew language", dnaCopy.includes("How many people from your team"));

@@ -1,6 +1,6 @@
 # Quotr Bathroom Estimating Architecture
 
-**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO** + **WA-BATHROOM-05 GO** + **WA-BATHROOM-06 GO** + **WA-BATHROOM-07 GO (rate authority / commercial close)**  
+**Status:** CANONICAL — WA-BATHROOM-01…**07 GO** + **WA-BATHROOM-08 MATURE (DNA + hosted close)**  
 **Date:** 2026-09-08  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
@@ -8,14 +8,14 @@
 **WA-BATHROOM-06 hosted proof:** `f7a4d0b4c068d4b8fb88f7c14f2dec9e87461593`  
 **WA-BATHROOM-07 hosted proof:** `d47d098add5905e30b2f138798995a040b802ed5`  
 **Production:** DO NOT TOUCH (through 045)  
-**Migrations:** NONE. No 055.  
+**Migrations:** NONE. No 055. Bathroom DNA catalogue rows are code-defined; Preview hosted save uses `scripts/seed-preview-bathroom-dna-catalogue.ts` (not a numbered migration).  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
 **Triage:** [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md)
-**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`, `scripts/verify-work-area-bathroom-04.ts`, `scripts/verify-work-area-bathroom-05.ts`, `scripts/verify-work-area-bathroom-06.ts`, `scripts/verify-work-area-bathroom-07.ts`
+**Verifier:** `scripts/verify-work-area-bathroom-02.ts` … `07.ts`, canonical **`scripts/verify-work-area-bathroom-maturity.ts`**
 
-Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band is unchanged (`trial_supported`).
+Bathroom is a **MATURE** Work Area (factory WA-0…WA-9). Customer UI shows **Supported** alongside Deck, Fence, and Retaining Wall. Do not expose V2 / WA-08 / generation to builders.
 
-**Target maturity:** honest **SUPPORTED hybrid** first (physical carpentry + transparent specialist allowances). **MATURE** only after WA-BATHROOM-03…08 close. Do not claim Deck-depth on day one.
+**Closeout:** [BATHROOM_MATURITY_CLOSEOUT.md](../BATHROOM_MATURITY_CLOSEOUT.md)
 
 ---
 
@@ -30,12 +30,13 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums | **GO** (hosted `a329b7c`) |
 | WA-BATHROOM-06 demolition / waste / nested finishing / Review | **GO** (hosted `f7a4d0b`) |
 | WA-BATHROOM-07 rate authority / commercial close / legacy fallback removal | **GO** (hosted `d47d098`) |
+| WA-BATHROOM-08 Company DNA + final maturity + hosted close | **GO** (canonical `verify-work-area-bathroom-maturity.ts`) |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; 05 owns plumbing/fixtures) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
-| Variations / RFQ sending / Company DNA behaviour | **NO-GO** |
+| Variations / RFQ sending | **NO-GO** |
 | Production / migration 055 | **NO-GO** |
 
-**Next action after 07 GO:** [WA-BATHROOM-08](#58-wa-bathroom-07-rate-authority--commercial-close) — DNA candidates only where keys are consumed; mobile + hosted maturity close; `verify-work-area-bathroom-maturity.ts`. Do not start Internal Walls, Ceilings, Doors, Variations, or RFQ sending.
+**Next action after 07 GO:** [WA-BATHROOM-08](#59-wa-bathroom-08-company-dna--final-maturity) — **GO.** See §59.
 
 ---
 
@@ -46,9 +47,9 @@ Bathroom is a **PARTIAL / FALLBACK hybrid package estimator**, not a physical Wo
 | Layer | Current state |
 | --- | --- |
 | Catalogue | `bathroom` in `SCOPE_CATALOGUE` — “Bathroom renovation”, `estimateSupport: "calculator"` |
-| UI band (stale) | `trial_supported` — same band as Deck (`lib/work-areas/support-contract.ts`) |
-| First-run | Shown, no badge — appears equal to Deck / Fence / RW |
-| Factory label | **PARTIAL** (triage level **5**) |
+| UI band | `supported` — same band as Deck / Fence / Retaining Wall (`lib/work-areas/support-contract.ts`) |
+| First-run | Shown, no badge (Add Work Area shows **Supported**) |
+| Factory label | **MATURE** (WA-0…WA-9; DNA on consumed builder-labour keys) |
 | Calculator | `lib/estimate/calculators/bathroom.ts` — priced **line items**, no `requirements` envelope |
 | Questions | 20 templates in `lib/scopes/templates/bathroom.ts` |
 | Consumed-fact contract | Yes — incomplete vs what the calculator actually reads |
@@ -1055,18 +1056,19 @@ Existing Bathroom projects may have `bathroom.area_m2`, renovation_type, boolean
 
 ---
 
-## 45. UI maturity recommendation
+## 45. UI maturity
 
-**Do not change UI in this audit.**
+After WA-BATHROOM-08:
 
-| When | Label |
+| Surface | Label |
 | --- | --- |
-| Now (stale) | `trial_supported` — **misleading vs Deck** |
-| During WA-BATHROOM-02…07 (before hosted close) | **Beta / Coming** — not equal to Deck |
-| After WA-BATHROOM-08 hosted close | **Available / Supported** (hybrid) or **Mature** only if factory WA-0…7+9 closed |
-| First-run | Keep visible (beta demand) but must not imply Deck-grade until close |
+| Add Work Area / Improve Setup | **Supported** (`band: supported`) for Deck, Fence, Retaining Wall, Bathroom |
+| Kitchen / Pergola | **Developing** |
+| Nested components | **Component** |
+| First-run cards | Visible, **no badge** (beta backlog) |
+| Builder-facing name | Bathroom — no V2 / WA-08 / maturity 9 |
 
-`support-contract.ts` update is an implementation-phase UI chore, not 01.
+`support-contract.ts` is the live catalogue. Historical `trial_supported` remains in the TypeScript union for compatibility.
 
 ---
 
@@ -1568,5 +1570,31 @@ Selected mature materials, builder labour, subcontracts, PCs, and waste all emit
 
 ### Next action after 07 GO
 
-**WA-BATHROOM-08** — DNA candidates only where keys are consumed; mobile + hosted maturity close; `verify-work-area-bathroom-maturity.ts`. Do not start Internal Walls, Ceilings, Doors, Variations, or RFQ sending.
+**WA-BATHROOM-08** — **GO.** See §59.
+
+---
+
+## 59. WA-BATHROOM-08 Company DNA + final maturity + hosted close
+
+**GO.** Canonical verifier: `scripts/verify-work-area-bathroom-maturity.ts`. Runtime is namespaced to Bathroom. Production untouched. No 055.
+
+### DNA
+
+Tier 1 (exactly 3): wall lining 20 m², ceiling lining 8 m², local framing 12 lm.
+
+Secondary: floor substrate 8 m², floor-finish demolition 8 m², wall-lining demolition 20 m².
+
+Do not calibrate plumbing/electrical/tiler/WP/paint/stopping/PC/waste (commercial, not crew DNA). Fixture install hours stay on Quotr benchmarks (too small/noisy).
+
+Resolver: `resolveCompanyDnaTask` / existing V2 UX. Company calibration overrides that task’s productivity only. Absent DNA → Quotr benchmark productivity, never Pricing Required.
+
+Bathroom DNA catalogue identity is code (`COMPANY_DNA_BATHROOM_TASKS`). Hosted save still needs Preview `productivity_calibration_catalogue` rows; seed with `scripts/seed-preview-bathroom-dna-catalogue.ts`. Do not invent migration 055 in this phase.
+
+### Exposure
+
+Customer badge **Supported** for Deck, Fence, Retaining Wall, Bathroom. Kitchen/Pergola remain Developing. Interior components remain Component. Builders never see V2 / WA-08 / maturity level 9.
+
+### Next action after 08 GO
+
+**WA-INTERNAL-WALLS-01** — domain architecture + current-state gap audit. Do not start it from this close.
 

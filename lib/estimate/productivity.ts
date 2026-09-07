@@ -332,6 +332,24 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     0.2,
     "lm"
   ),
+  "bathroom.demolition.floor_finish.hours_per_m2": productivityEntry(
+    "bathroom.demolition.floor_finish.hours_per_m2",
+    "Bathroom floor finish removal",
+    0.25,
+    "m²"
+  ),
+  "bathroom.demolition.wall_lining.hours_per_m2": productivityEntry(
+    "bathroom.demolition.wall_lining.hours_per_m2",
+    "Bathroom wall lining removal",
+    0.2,
+    "m²"
+  ),
+  "bathroom.demolition.ceiling.hours_per_m2": productivityEntry(
+    "bathroom.demolition.ceiling.hours_per_m2",
+    "Bathroom ceiling lining removal",
+    0.25,
+    "m²"
+  ),
   "kitchen.labour_hours_per_m2": productivityEntry(
     "kitchen.labour_hours_per_m2",
     "Kitchen labour",

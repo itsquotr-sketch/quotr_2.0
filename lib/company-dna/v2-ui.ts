@@ -34,6 +34,7 @@ export const COMPANY_DNA_V2_UI_WORK_AREAS = [
   "deck",
   "fence",
   "retaining_wall",
+  "bathroom",
 ] as const;
 
 export type CompanyDnaV2UiWorkArea =
@@ -89,10 +90,32 @@ export const COMPANY_DNA_FENCE_OPTIONAL_KEYS = [
   "fence.demolition.v1",
 ] as const;
 
+export const COMPANY_DNA_BATHROOM_V2_UI_KEYS = [
+  "bathroom.lining.wall.v1",
+  "bathroom.lining.ceiling.v1",
+  "bathroom.framing.v1",
+  "bathroom.floor_substrate.v1",
+  "bathroom.demolition.floor.v1",
+  "bathroom.demolition.wall.v1",
+] as const;
+
+export const COMPANY_DNA_BATHROOM_TIER1_KEYS = [
+  "bathroom.lining.wall.v1",
+  "bathroom.lining.ceiling.v1",
+  "bathroom.framing.v1",
+] as const;
+
+export const COMPANY_DNA_BATHROOM_OPTIONAL_KEYS = [
+  "bathroom.floor_substrate.v1",
+  "bathroom.demolition.floor.v1",
+  "bathroom.demolition.wall.v1",
+] as const;
+
 const KEYS_BY_AREA: Record<CompanyDnaV2UiWorkArea, readonly string[]> = {
   deck: COMPANY_DNA_DECK_V2_UI_KEYS,
   fence: COMPANY_DNA_FENCE_V2_UI_KEYS,
   retaining_wall: COMPANY_DNA_RW_V2_UI_KEYS,
+  bathroom: COMPANY_DNA_BATHROOM_V2_UI_KEYS,
 };
 
 export function isCompanyDnaV2WorkArea(
@@ -101,7 +124,8 @@ export function isCompanyDnaV2WorkArea(
   return (
     workAreaType === "deck" ||
     workAreaType === "fence" ||
-    workAreaType === "retaining_wall"
+    workAreaType === "retaining_wall" ||
+    workAreaType === "bathroom"
   );
 }
 
@@ -115,6 +139,10 @@ export function isCompanyDnaFenceV2WorkArea(workAreaType: string): boolean {
 
 export function isCompanyDnaRwV2WorkArea(workAreaType: string): boolean {
   return workAreaType === "retaining_wall";
+}
+
+export function isCompanyDnaBathroomV2WorkArea(workAreaType: string): boolean {
+  return workAreaType === "bathroom";
 }
 
 function tasksForKeys(keys: readonly string[], label: string): CompanyDnaFoundationTask[] {
@@ -135,12 +163,17 @@ export function listCompanyDnaFenceV2UiTasks(): CompanyDnaFoundationTask[] {
   return tasksForKeys(COMPANY_DNA_FENCE_V2_UI_KEYS, "Fence");
 }
 
+export function listCompanyDnaBathroomV2UiTasks(): CompanyDnaFoundationTask[] {
+  return tasksForKeys(COMPANY_DNA_BATHROOM_V2_UI_KEYS, "Bathroom");
+}
+
 export function listCompanyDnaV2UiTasks(
   workAreaType: string
 ): CompanyDnaFoundationTask[] {
   if (workAreaType === "deck") return listCompanyDnaDeckV2UiTasks();
   if (workAreaType === "fence") return listCompanyDnaFenceV2UiTasks();
   if (workAreaType === "retaining_wall") return listCompanyDnaRwV2UiTasks();
+  if (workAreaType === "bathroom") return listCompanyDnaBathroomV2UiTasks();
   return [];
 }
 
@@ -271,6 +304,10 @@ export function fenceV2ProgressCounts(calibratedTaskKeys: Iterable<string>) {
   return v2ProgressCounts("fence", calibratedTaskKeys);
 }
 
+export function bathroomV2ProgressCounts(calibratedTaskKeys: Iterable<string>) {
+  return v2ProgressCounts("bathroom", calibratedTaskKeys);
+}
+
 export function rwV2ProgressCounts(calibratedTaskKeys: Iterable<string>) {
   return v2ProgressCounts("retaining_wall", calibratedTaskKeys);
 }
@@ -279,6 +316,7 @@ export function isCompanyDnaV2TaskKey(taskKey: string): boolean {
   return (
     (COMPANY_DNA_DECK_V2_UI_KEYS as readonly string[]).includes(taskKey) ||
     (COMPANY_DNA_FENCE_V2_UI_KEYS as readonly string[]).includes(taskKey) ||
+    (COMPANY_DNA_BATHROOM_V2_UI_KEYS as readonly string[]).includes(taskKey) ||
     isCompanyDnaRwV2TaskKey(taskKey)
   );
 }
@@ -291,9 +329,14 @@ export function isCompanyDnaFenceV2TaskKey(taskKey: string): boolean {
   return (COMPANY_DNA_FENCE_V2_UI_KEYS as readonly string[]).includes(taskKey);
 }
 
+export function isCompanyDnaBathroomV2TaskKey(taskKey: string): boolean {
+  return (COMPANY_DNA_BATHROOM_V2_UI_KEYS as readonly string[]).includes(taskKey);
+}
+
 export function v2LandingPath(workAreaType: string): string {
   if (workAreaType === "fence") return "/app/setup/dna/fence";
   if (workAreaType === "retaining_wall") return "/app/setup/dna/retaining-wall";
+  if (workAreaType === "bathroom") return "/app/setup/dna/bathroom";
   return "/app/setup/dna/deck";
 }
 
@@ -329,7 +372,7 @@ export function workAreaUsesCompanyDnaV2Ui(
   return isCompanyDnaV2WorkArea(workAreaType);
 }
 
-export type CompanyDnaV2Generation = "v1" | "v2c" | "v2d" | "v2e";
+export type CompanyDnaV2Generation = "v1" | "v2c" | "v2d" | "v2e" | "v2f";
 
 export function companyDnaV2Generation(
   workAreaType: string
@@ -337,6 +380,7 @@ export function companyDnaV2Generation(
   if (workAreaType === "deck") return "v2c";
   if (workAreaType === "fence") return "v2d";
   if (workAreaType === "retaining_wall") return "v2e";
+  if (workAreaType === "bathroom") return "v2f";
   return "v1";
 }
 
@@ -348,6 +392,7 @@ export function v2OptionalKeys(
     return rwOptionalKeysForSystem(system ?? "timber");
   }
   if (workAreaType === "fence") return COMPANY_DNA_FENCE_OPTIONAL_KEYS;
+  if (workAreaType === "bathroom") return COMPANY_DNA_BATHROOM_OPTIONAL_KEYS;
   return COMPANY_DNA_DECK_OPTIONAL_KEYS;
 }
 

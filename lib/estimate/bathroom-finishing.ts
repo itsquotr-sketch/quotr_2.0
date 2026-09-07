@@ -393,7 +393,7 @@ export function buildBathroomFinishingEnvelope(params: {
           emitSubcontract({
             componentKey: BATHROOM_PAINTING_COMPONENT,
             itemKey: BATHROOM_PAINTING_KEY,
-            label: "Painting allowance",
+            label: "Painting",
             areaM2: round2(total),
             identity: `${presentBathroomAreaM2(round2(total))} paintable · walls ${presentBathroomAreaM2(wallPaint ?? 0)} · ceiling ${presentBathroomAreaM2(ceilingPaint)}`,
             extraAssumptions: [

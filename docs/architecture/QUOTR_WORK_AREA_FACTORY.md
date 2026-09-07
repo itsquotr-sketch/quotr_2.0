@@ -9,7 +9,7 @@
 **Verifier helper:** `scripts/lib/work-area-maturity-verifier.ts`  
 **Runtime:** no calculator, question, Analyse, visibility, DNA, or migration change in this phase.
 
-This is the repeatable build standard for every future Work Area. Deck, Fence, and Retaining Wall are the reference mature systems. Not every Work Area needs Retaining Wall depth. Every mature Work Area must remain physically explainable and deterministically tested.
+This is the repeatable build standard for every future Work Area. Deck, Fence, Retaining Wall, and Bathroom are the reference mature systems.
 
 ---
 
@@ -24,7 +24,7 @@ Customer UI must not imply maturity where the calculator is generic. Internal gr
 | **SUPPORTED** | Reasonable estimate path: facts, high-value questions, calculator-owned quantities, commercial pipeline, explainable review. Some allowances may remain. | Shown. Do not call it Mature. |
 | **MATURE** | Factory WA-0…WA-7 + WA-9 closed. Deterministic fixture. Mobile smoke. Isolation. DNA (WA-8) only where useful. | Full product claim |
 
-Runtime `lib/work-areas/support-contract.ts` still says Deck/Bathroom are `trial_supported` and Fence/Retaining are `developing`. That is **stale**. Do not change those labels in this phase. Expansion planning uses the labels above.
+Runtime `lib/work-areas/support-contract.ts` exposes Deck, Fence, Retaining Wall, and Bathroom as customer **Supported**. Kitchen and Pergola remain Developing. Interior components remain Component.
 
 Company DNA is **not** required for MATURE. It is required only when an independent labour productivity key exists, the estimate consumes it, contractors vary, and a builder-friendly scenario exists.
 
@@ -144,7 +144,7 @@ Every mature Work Area audits this union:
 | Subcontract | If a trade is bought in (else N/A, documented) |
 | Waste / demolition | If strip-out or spoil exists (else N/A, documented) |
 
-Only Deck, Fence, and Retaining Wall currently emit the requirement envelope. Fitout/bathroom/kitchen/pergola emit priced line items. Future MATURE WAs must emit requirements, not only commercial lines.
+Only Deck, Fence, Retaining Wall, and Bathroom currently emit the requirement envelope.
 
 Keys stay namespaced. Shared plant/sheet catalogue keys must be listed in the verifier helper allow-list.
 
@@ -225,7 +225,7 @@ Every mature Work Area requires:
 Shared:
 
 - Product type list from `SCOPE_CATALOGUE` (no second catalogue)
-- Mature reference types: `deck`, `fence`, `retaining_wall`
+- Mature reference types: `deck`, `fence`, `retaining_wall`, `bathroom`
 - Factory stage checklist (WA-8 optional)
 - Namespace isolation (`{type}.` vs foreign prefixes; shared `plant.` / `sheet.` allow-list)
 
@@ -237,7 +237,7 @@ scripts/verify-work-area-<slug>-maturity.ts
 
 Import the helper. Add WA-specific physical/commercial fixtures. Follow Deck/Fence/Retaining verifier style: code assertions + fixture estimate + Builder Review compose + isolation against a second confirmed WA.
 
-Bathroom phase verifier: `scripts/verify-work-area-bathroom-02.ts` (WA-BATHROOM-02). Do not add `scripts/verify-work-area-bathroom-maturity.ts` until WA-BATHROOM-08.
+Bathroom phase verifier: `scripts/verify-work-area-bathroom-02.ts` (WA-BATHROOM-02). Canonical close: `scripts/verify-work-area-bathroom-maturity.ts` (WA-BATHROOM-08).
 
 Do not implement all future verifiers in this phase.
 
@@ -297,7 +297,7 @@ Do not silently skip factory stages to satisfy demand — reduce depth (SUPPORTE
 | Consumed-fact contracts | `lib/estimate/consumed-facts.ts` (6 of 14) |
 | Job Plan adapters | deck, bathroom, painting, retaining_wall, fence + generic |
 | Refine adapters | same five; no generic |
-| Company DNA | deck, fence, retaining_wall only |
+| Company DNA | deck, fence, retaining_wall, bathroom |
 | Project Conditions | `lib/project-conditions/*` |
 | Quote drafts | `lib/work-areas/quote-description.ts` (all 14) |
 | Bathroom architecture (WA-BATHROOM-01) | `docs/architecture/QUOTR_BATHROOM_ESTIMATING_ARCHITECTURE.md` |

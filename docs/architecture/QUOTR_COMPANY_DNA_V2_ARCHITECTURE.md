@@ -1090,7 +1090,7 @@ Do **not** split `retaining_wall.timber.piles.install.hours_per_ea` in V2B (woul
 
 **Source of truth:** code (`v2-foundation.ts`) is canonical for full metadata. 054 seeds the persistable identity the RPC FK requires (key, productivity key, quantities, units, benchmark, prompt/summary). Benchmarks must not drift.
 
-**V1 catalogue identity remains 9 tasks** via `COMPANY_DNA_TASKS` / `listCompanyDnaTasksVisibleInCurrentUi()` for historical helpers. Hub / Rates / Dashboard V2 surfaces use foundation keys for Deck, Fence, and Retaining Wall.
+**V1 catalogue identity remains 9 tasks** via `COMPANY_DNA_TASKS` / `listCompanyDnaTasksVisibleInCurrentUi()` for historical helpers. Hub / Rates / Dashboard V2 surfaces use foundation keys for Deck, Fence, Retaining Wall, and Bathroom (WA-BATHROOM-08). Bathroom tasks are code-defined (`COMPANY_DNA_BATHROOM_TASKS`) and are **not** in migration 054. Preview hosted save seeds catalogue rows via `scripts/seed-preview-bathroom-dna-catalogue.ts`. No 055.
 
 **Save path:** `saveCompanyDnaCalibration` looks up `getCompanyDnaFoundationTask` for V2 Work Areas. V1 keys remain save-compatible.
 

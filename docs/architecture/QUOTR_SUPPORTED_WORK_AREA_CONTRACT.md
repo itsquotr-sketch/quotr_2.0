@@ -1,7 +1,7 @@
 # Quotr Supported Work Area Contract
 
-**Classification:** RUNTIME display bands in `lib/work-areas/support-contract.ts` — **stale vs Deck/Fence/Retaining maturity**. Expansion / exposure policy: [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md) + [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md). Do not change those runtime labels in WORK-AREA-FACTORY-01. **Historical product view:** `docs/product/QUOTR_SUPPORTED_WORK_AREAS.md`.  
-**Status:** FOUNDATION-R1 Complete. FOUNDATION-R1-R1 Complete — Owner Preview Validated (2026-08-16). FOUNDATION-R2 Complete Local / Owner Preview remediation pending R2-R1. FOUNDATION-R2-R1 Complete Local / Owner Preview Pending.  
+**Classification:** RUNTIME display bands in `lib/work-areas/support-contract.ts`. Expansion / exposure policy: [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md) + [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md). WA-BATHROOM-08 corrected Deck / Fence / Retaining Wall / Bathroom to customer **Supported**.  
+**Status:** FOUNDATION-R1 Complete. FOUNDATION-R1-R1 Complete — Owner Preview Validated (2026-08-16). FOUNDATION-R2 Complete Local / Owner Preview remediation pending R2-R1. FOUNDATION-R2-R1 Complete Local / Owner Preview Pending. **WA-BATHROOM-08 exposure correction.**  
 **Code:** `lib/work-areas/support-contract.ts`  
 **Audit (historical):** `docs/audits/SUPPORTED_WORK_AREA_COVERAGE_AUDIT.md`  
 **Owner:** OD-CAT-01, OD-CAT-02, OD-CAT-03, OD-T1-01
@@ -16,12 +16,12 @@ Internal grades A–E remain audit language only. **Customer UI never shows A/B/
 
 | Band | Label | Product types |
 | --- | --- | --- |
-| `trial_supported` | Trial-supported | `deck`, `bathroom` |
-| `developing` | Developing | `retaining_wall`, `fence`, `pergola`, `kitchen` |
+| `supported` | Supported | `deck`, `fence`, `retaining_wall`, `bathroom` |
+| `developing` | Developing | `pergola`, `kitchen` |
 | `component` | Component | `demolition`, `external_stairs`, `internal_walls`, `ceilings`, `doors`, `flooring`, `painting`, `plastering` |
 | `unsupported` | Not supported yet | cladding, roofing, windows, landscaping, earthworks, services-as-WAs, other/custom |
 
-Tier-1 “Supported” is **not** claimed (OD-T1-01): Deck/Bathroom remain **Trial-supported** until scope + questions + conditions + calculator + labour/material verification are all defensible.
+Builders never see V2, WA-08, or maturity level 9. The four mature Work Areas simply appear as **Supported**.
 
 ---
 

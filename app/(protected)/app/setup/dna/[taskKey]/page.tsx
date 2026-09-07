@@ -120,7 +120,9 @@ export default async function CompanyDnaTaskPage({
         ? "Deck"
         : task.workAreaType === "retaining_wall"
           ? "Retaining wall"
-          : "Calibrate how you work";
+          : task.workAreaType === "bathroom"
+            ? "Bathroom"
+            : "Calibrate how you work";
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">

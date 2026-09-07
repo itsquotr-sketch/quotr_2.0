@@ -54,6 +54,8 @@ export type PersonalisationLadderInput = {
   rwKeyTasksCalibrated?: number;
   rwKeyTasksTotal?: number;
   rwWorkAreaCalibrated?: boolean;
+  bathroomKeyTasksCalibrated?: number;
+  bathroomKeyTasksTotal?: number;
 };
 
 const WORK_STEP: PersonalisationStep = {
@@ -117,9 +119,12 @@ export function resolvePersonalisationNextStep(
   const fenceCalibrated = input.fenceKeyTasksCalibrated ?? 0;
   const rwTotal = input.rwKeyTasksTotal ?? 3;
   const rwCalibrated = input.rwKeyTasksCalibrated ?? 0;
+  const bathroomTotal = input.bathroomKeyTasksTotal ?? 3;
+  const bathroomCalibrated = input.bathroomKeyTasksCalibrated ?? 0;
   const prefersDeck = preferred.includes("deck");
   const prefersFence = preferred.includes("fence");
   const prefersRw = preferred.includes("retaining_wall");
+  const prefersBathroom = preferred.includes("bathroom");
   const ordered = orderCompanyDnaWorkAreas(preferred);
   const nextV2Area = ordered.find((workArea) => {
     if (workArea === "deck" && prefersDeck && deckCalibrated < deckTotal) {
@@ -136,41 +141,56 @@ export function resolvePersonalisationNextStep(
     ) {
       return true;
     }
+    if (
+      workArea === "bathroom" &&
+      prefersBathroom &&
+      bathroomCalibrated < bathroomTotal
+    ) {
+      return true;
+    }
     return false;
   });
   const v2CalibrationComplete =
     (!prefersDeck || deckCalibrated >= deckTotal) &&
     (!prefersFence || fenceCalibrated >= fenceTotal) &&
-    (!prefersRw || Boolean(input.rwWorkAreaCalibrated) || rwCalibrated >= rwTotal);
+    (!prefersRw || Boolean(input.rwWorkAreaCalibrated) || rwCalibrated >= rwTotal) &&
+    (!prefersBathroom || bathroomCalibrated >= bathroomTotal);
   const calibrationComplete =
-    prefersDeck || prefersFence || prefersRw
+    prefersDeck || prefersFence || prefersRw || prefersBathroom
       ? v2CalibrationComplete
       : (input.hasHighImpactCalibration ?? input.hasCalibration);
   if (!calibrationComplete) {
     if (
       nextV2Area === "deck" ||
       nextV2Area === "fence" ||
-      nextV2Area === "retaining_wall"
+      nextV2Area === "retaining_wall" ||
+      nextV2Area === "bathroom"
     ) {
       const remaining =
         nextV2Area === "deck"
           ? Math.max(0, deckTotal - deckCalibrated)
           : nextV2Area === "fence"
             ? Math.max(0, fenceTotal - fenceCalibrated)
-            : Math.max(0, rwTotal - rwCalibrated);
+            : nextV2Area === "bathroom"
+              ? Math.max(0, bathroomTotal - bathroomCalibrated)
+              : Math.max(0, rwTotal - rwCalibrated);
       const total =
         nextV2Area === "deck"
           ? deckTotal
           : nextV2Area === "fence"
             ? fenceTotal
-            : rwTotal;
+            : nextV2Area === "bathroom"
+              ? bathroomTotal
+              : rwTotal;
       const copy = formatDnaV2DashboardCta({
         workAreaLabel:
           nextV2Area === "deck"
             ? "Deck"
             : nextV2Area === "fence"
               ? "Fence"
-              : "Retaining Wall",
+              : nextV2Area === "bathroom"
+                ? "Bathroom"
+                : "Retaining Wall",
         remainingKeyTasks: remaining,
         totalKeyTasks: total,
       });

@@ -50,7 +50,7 @@ import { companyDnaWorkAreaStatusLabel } from "@/lib/company-dna/derive";
 import { cn } from "@/lib/utils";
 
 type CompanyDnaDeckSummaryProps = {
-  workAreaType?: "deck" | "fence" | "retaining_wall";
+  workAreaType?: "deck" | "fence" | "retaining_wall" | "bathroom";
   status: "benchmarks" | "partly" | "calibrated";
   tier1Calibrated: number;
   tier1Total: number;
@@ -80,7 +80,9 @@ export function CompanyDnaDeckSummary({
       ? "Fence"
       : workAreaType === "retaining_wall"
         ? "Retaining wall"
-        : "Deck";
+        : workAreaType === "bathroom"
+          ? "Bathroom"
+          : "Deck";
   const isRw = workAreaType === "retaining_wall";
   const evidence = new Map(
     tasks.map((task) => [task.calibrationTaskKey, task])
@@ -98,6 +100,7 @@ export function CompanyDnaDeckSummary({
     <Card
       data-company-dna-deck-summary={workAreaType === "deck" ? "" : undefined}
       data-company-dna-fence-summary={workAreaType === "fence" ? "" : undefined}
+      data-company-dna-bathroom-summary={workAreaType === "bathroom" ? "" : undefined}
       data-company-dna-rw-summary={isRw ? "" : undefined}
       data-company-dna-v2-summary={workAreaType}
       className="mx-auto w-full max-w-xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"

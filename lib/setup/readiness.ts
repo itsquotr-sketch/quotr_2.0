@@ -64,6 +64,8 @@ export type CompanySetupReadiness = {
   rwKeyTasksCalibrated: number;
   rwKeyTasksTotal: number;
   rwWorkAreaCalibrated: boolean;
+  bathroomKeyTasksCalibrated: number;
+  bathroomKeyTasksTotal: number;
 };
 
 export type CompanySetupReadinessInput = {
@@ -97,6 +99,8 @@ export type CompanySetupReadinessInput = {
   rwKeyTasksCalibrated?: number;
   rwKeyTasksTotal?: number;
   rwWorkAreaCalibrated?: boolean;
+  bathroomKeyTasksCalibrated?: number;
+  bathroomKeyTasksTotal?: number;
   tradingName: string | null;
   legalName: string | null;
   contactEmail: string | null;
@@ -366,5 +370,7 @@ export function computeCompanySetupReadiness(
     rwKeyTasksCalibrated: input.rwKeyTasksCalibrated ?? 0,
     rwKeyTasksTotal: input.rwKeyTasksTotal ?? 3,
     rwWorkAreaCalibrated: Boolean(input.rwWorkAreaCalibrated),
+    bathroomKeyTasksCalibrated: input.bathroomKeyTasksCalibrated ?? 0,
+    bathroomKeyTasksTotal: input.bathroomKeyTasksTotal ?? 3,
   };
 }
