@@ -188,7 +188,9 @@ assert(
     migrations.includes("052_company_productivity_calibration.sql") &&
     migrations.includes("053_role_aware_rls_hardening.sql") &&
     migrations.includes("054_company_dna_v2_catalogue_seed.sql") &&
-    migrations.at(-1) === "054_company_dna_v2_catalogue_seed.sql"
+    migrations.includes("056_bathroom_company_dna_catalogue_seed.sql") &&
+    migrations.at(-1) === "056_bathroom_company_dna_catalogue_seed.sql" &&
+    !migrations.some((name) => name.startsWith("055_"))
 );
 assert(
   "045 sets new-quote DB default to detailed without rewriting rows",

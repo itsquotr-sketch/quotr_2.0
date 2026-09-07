@@ -1,13 +1,14 @@
 # Bathroom maturity closeout
 
-**Status:** WA-BATHROOM-08 GO — Bathroom is Quotr’s fourth mature Work Area.  
+**Status:** BATHROOM MATURE — FINAL GO  
 **Date:** 2026-09-08  
 **Branch:** `hardening/stage-2a-security`  
-**Preview:** `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
-**Hosted proof:** `aebd962` (`ok: true`) on canonical Preview alias.  
-**Canonical verifier:** `scripts/verify-work-area-bathroom-maturity.ts` (64/0)  
+**Preview:** `shhpjsoldmqtkdbgrbtm`, migrations through **056** (055 reserved for QDISP-SQL-055)  
+**Hosted commercial proof:** `aebd962`  
+**Hosted DNA persistence:** canonical Preview alias, normal UI Save. Wall lining 7.8 h → 15.6 h; ceiling 2.9 h unchanged; cost $19,221 → $19,687; sell $24,497 → $25,196; labour $1,885 → $2,351; materials/subcontract unchanged. Reset returns 7.8 h / $19,221. Screenshots: `.tmp-wa-bathroom-08b/shots/`.  
+**Canonical verifier:** `scripts/verify-work-area-bathroom-maturity.ts` (`--live` 118/0)  
 **Phase regressions:** `verify-work-area-bathroom-02` … `07` remain.  
-**Production:** DO NOT TOUCH. **No migration 055.**
+**Production:** DO NOT TOUCH. **No migration 055.** Preview applied **056** Bathroom DNA catalogue seed (data-only). No GRANT/RLS change.
 
 Customer UI shows **Bathroom** as **Supported**, same band as Deck, Fence, and Retaining Wall. Builders never see V2, WA-08, or maturity level 9.
 
@@ -36,9 +37,11 @@ Status: 0/3 Not calibrated → 1–2/3 Partly calibrated → 3/3 Using your cali
 
 Resolver is canonical V2 (`resolveCompanyDnaTask`). Absent DNA uses Quotr productivity benchmarks — never Pricing Required.
 
-Hosted DNA **save** still needs Preview `productivity_calibration_catalogue` rows. Seed: `scripts/seed-preview-bathroom-dna-catalogue.ts`. Code is authority. Do not casually create 055.
+**Catalogue ownership:** `productivity_calibration_catalogue` is system-owned (SELECT-only for authenticated/service_role). Company values live in `productivity_calibration_responses` + `rates` (`source = calibrated_productivity`). `save_productivity_calibration` **SELECT**s the catalogue then writes org evidence/rates. It never INSERTs catalogue rows.
 
-**Named limitation:** Preview `service_role` has SELECT-only GRANT on `productivity_calibration_catalogue` (052). Seed upsert returns `permission denied`. Hosted DNA **UI** ships; hosted **save** cannot persist until a postgres-role seed or a later approved data-only catalogue migration. Deterministic DNA effect is proven via org `rates` with `source: calibrated_productivity` (same end state as a successful RPC). Absent DNA still uses Quotr benchmarks — Bathroom remains usable.
+**Seed:** `supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql` — six Bathroom tasks, `INSERT … ON CONFLICT DO NOTHING`. Applied Preview only (37 catalogue rows: Deck 7, Fence 9, RW 15, Bathroom 6). Production not applied. 055 remains reserved for QDISP-SQL-055 (same skip as missing 037). Runtime Save does not INSERT catalogue rows.
+
+**Runtime save authority:** UI → `saveCompanyDnaCalibration` → RPC `save_productivity_calibration` (SELECT catalogue by `calibration_task_key`, INSERT evidence, UPSERT org `rates`). Reset deactivates the company rate and retains evidence.
 
 ## Rate hierarchy
 
@@ -64,7 +67,7 @@ One identity, many Work Area requirements:
 - RFQ not implemented. Subcontract allowances are not returned quotes.
 - Specialist proprietary systems may be Pricing Required.
 - First-run cards still have no maturity badge (Add Work Area does).
-- Bathroom DNA catalogue is not in 054; Preview seed is out-of-band until a future data-only migration is approved.
+- Bathroom DNA catalogue is in **056** (not 054). 055 remains reserved.
 
 ## Legacy
 

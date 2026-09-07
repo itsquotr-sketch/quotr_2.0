@@ -203,9 +203,14 @@ function sellByLabel(items: readonly EstimateLineItemInput[], label: string): nu
 
 console.log("=== DNA-V2D FENCE UX ===\n");
 
+check("no migration 055", !numberedMigrations().some((name) => name.startsWith("055_")));
 check(
-  "no migration 055",
-  numberedMigrations().at(-1) === "054_company_dna_v2_catalogue_seed.sql"
+  "054 remains in chain",
+  numberedMigrations().includes("054_company_dna_v2_catalogue_seed.sql")
+);
+check(
+  "latest is 056 Bathroom DNA seed",
+  numberedMigrations().at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
 );
 check(
   "V2C exposed constant remains Deck-only",
@@ -414,7 +419,7 @@ check(
 check("Rates RW is V2E 15", rwRates?.taskTotal === 15 && rwRates?.generation === "v2e");
 
 const fenceDash = formatDnaFenceDashboardCta(2);
-check("dashboard Fence remaining copy", fenceDash.cta.includes("2 more key Fence tasks"));
+check("dashboard Fence remaining copy", fenceDash.title.includes("2 more key Fence tasks"));
 const startFence = resolvePersonalisationNextStep({
   firstRunComplete: true,
   hasWorkTypePreferences: true,

@@ -1,9 +1,9 @@
 # QUOTR — Company DNA V2 Architecture
 
 **Programme:** DNA-V2F — Integration + product closeout  
-**Status:** V2A–V2F complete on Preview. Migration **054** applied (data-only). Do **not** start quote-display work until reviewed.  
-**Preview:** Supabase `shhpjsoldmqtkdbgrbtm` — latest applied migration **054**  
-**Production:** DO NOT TOUCH — must remain without 054  
+**Status:** V2A–V2F complete on Preview. Migration **054** applied (data-only). Bathroom persistable catalogue is **056** (data-only, Preview). Do **not** start quote-display work until reviewed.  
+**Preview:** Supabase `shhpjsoldmqtkdbgrbtm` — latest applied migration **056** (055 reserved for QDISP-SQL-055)  
+**Production:** DO NOT TOUCH — must remain without 054 / 056  
 
 **Code is authority.** This document traces live Deck / Fence / Retaining Wall calculator consumption. It does not invent calibration tasks the estimator cannot consume independently.
 
@@ -1090,7 +1090,7 @@ Do **not** split `retaining_wall.timber.piles.install.hours_per_ea` in V2B (woul
 
 **Source of truth:** code (`v2-foundation.ts`) is canonical for full metadata. 054 seeds the persistable identity the RPC FK requires (key, productivity key, quantities, units, benchmark, prompt/summary). Benchmarks must not drift.
 
-**V1 catalogue identity remains 9 tasks** via `COMPANY_DNA_TASKS` / `listCompanyDnaTasksVisibleInCurrentUi()` for historical helpers. Hub / Rates / Dashboard V2 surfaces use foundation keys for Deck, Fence, Retaining Wall, and Bathroom (WA-BATHROOM-08). Bathroom tasks are code-defined (`COMPANY_DNA_BATHROOM_TASKS`) and are **not** in migration 054. Preview hosted save seeds catalogue rows via `scripts/seed-preview-bathroom-dna-catalogue.ts`. No 055.
+**V1 catalogue identity remains 9 tasks** via `COMPANY_DNA_TASKS` / `listCompanyDnaTasksVisibleInCurrentUi()` for historical helpers. Hub / Rates / Dashboard V2 surfaces use foundation keys for Deck, Fence, Retaining Wall, and Bathroom (WA-BATHROOM-08). Bathroom persistable identity is `supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql` (data-only, Preview applied). Not in 054. No 055 (reserved for QDISP-SQL-055). Catalogue remains SELECT-only; `save_productivity_calibration` looks up seeded rows and writes org evidence/rates.
 
 **Save path:** `saveCompanyDnaCalibration` looks up `getCompanyDnaFoundationTask` for V2 Work Areas. V1 keys remain save-compatible.
 

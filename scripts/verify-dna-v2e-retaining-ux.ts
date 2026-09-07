@@ -276,9 +276,14 @@ function prodByComponent(
 
 console.log("=== DNA-V2E RETAINING WALL UX ===\n");
 
+check("no migration 055", !numberedMigrations().some((name) => name.startsWith("055_")));
 check(
-  "no migration 055",
-  numberedMigrations().at(-1) === "054_company_dna_v2_catalogue_seed.sql"
+  "054 remains in chain",
+  numberedMigrations().includes("054_company_dna_v2_catalogue_seed.sql")
+);
+check(
+  "latest is 056 Bathroom DNA seed",
+  numberedMigrations().at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
 );
 check(
   "V2C exposed constant remains Deck-only",
@@ -734,7 +739,7 @@ check("mobile max width reused", flow.includes("max-w-xl") && intro.includes("ma
 check("V1 piles/face still resolve", resolveCompanyDnaTask("retaining_wall.piles.v1") != null);
 
 const rwDash = formatDnaRwDashboardCta({ remainingKeyTasks: 2, totalKeyTasks: 3 });
-check("dashboard remaining copy", rwDash.cta.includes("2 more key Retaining Wall tasks"));
+check("dashboard remaining copy", rwDash.title.includes("2 more key Retaining Wall tasks"));
 const startRw = resolvePersonalisationNextStep({
   firstRunComplete: true,
   hasWorkTypePreferences: true,

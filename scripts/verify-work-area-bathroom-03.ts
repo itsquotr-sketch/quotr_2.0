@@ -532,8 +532,12 @@ console.log("\n--- Migrations / production guard ---\n");
 const migrations = numberedMigrations();
 check("no migration 055", !migrations.some((name) => name.startsWith("055_")));
 check(
-  "latest numbered migration still 054 or earlier",
-  migrations.every((name) => Number(name.slice(0, 3)) <= 54)
+  "054 remains in chain",
+  migrations.includes("054_company_dna_v2_catalogue_seed.sql")
+);
+check(
+  "latest numbered migration is 056 Bathroom DNA seed",
+  migrations.at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
 );
 check("no production supabase project in 03 files", !read("lib/estimate/bathroom-physical.ts").includes("production"));
 

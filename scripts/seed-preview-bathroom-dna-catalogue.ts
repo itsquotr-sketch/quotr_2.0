@@ -1,11 +1,9 @@
 /**
  * Preview-only Bathroom DNA catalogue seed (WA-BATHROOM-08).
  *
- * Not a numbered migration. Production must not apply this.
- * Hosted DNA save needs these rows because save_productivity_calibration
- * looks up productivity_calibration_catalogue.
- *
- * Run: npx --yes tsx scripts/seed-preview-bathroom-dna-catalogue.ts
+ * Canonical seed is supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql.
+ * This script remains Preview-only SELECT/upsert for debugging. service_role is
+ * SELECT-only on the catalogue (052); upsert is expected to fail. Use 056.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";

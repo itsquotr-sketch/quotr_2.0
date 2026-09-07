@@ -136,7 +136,14 @@ function qtyByLabel(items: readonly EstimateLineItemInput[], label: string): num
 console.log("=== DNA-V2F CLOSE ===\n");
 
 check("no migration 055", !numberedMigrations().some((name) => name.startsWith("055_")));
-check("054 remains latest", numberedMigrations().at(-1)?.startsWith("054_") === true);
+check(
+  "054 remains in chain",
+  numberedMigrations().includes("054_company_dna_v2_catalogue_seed.sql")
+);
+check(
+  "latest is 056 Bathroom DNA seed",
+  numberedMigrations().at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
+);
 
 const hub = read("components/company-dna/CompanyDnaHub.tsx");
 const rates = read("components/rates/CompanyDnaRatesCompare.tsx");

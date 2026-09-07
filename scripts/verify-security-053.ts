@@ -100,8 +100,12 @@ function staticMain() {
     migrations.includes("053_role_aware_rls_hardening.sql")
   );
   assert(
-    "latest migration is 054 data-only DNA catalogue seed",
-    latest === "054_company_dna_v2_catalogue_seed.sql"
+    "054 remains in chain",
+    migrations.includes("054_company_dna_v2_catalogue_seed.sql")
+  );
+  assert(
+    "latest migration is 056 Bathroom DNA catalogue seed",
+    latest === "056_bathroom_company_dna_catalogue_seed.sql"
   );
   assert(
     "046 through 053 present",

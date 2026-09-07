@@ -692,7 +692,7 @@ export const COMPANY_DNA_V2B_NEW_TASKS: readonly CompanyDnaFoundationTask[] = [
 /**
  * WA-BATHROOM-08 — Bathroom DNA. Estimator already consumes each key.
  * Not part of DNA-V2B.1 / migration 054. Persistable identity is seeded
- * out-of-band on Preview (no 055). V1 hub list stays 9 rows.
+ * by data-only migration 056 (055 reserved for QDISP-SQL-055). V1 hub list stays 9 rows.
  */
 export const COMPANY_DNA_BATHROOM_TASKS: readonly CompanyDnaFoundationTask[] = [
   v2Task({

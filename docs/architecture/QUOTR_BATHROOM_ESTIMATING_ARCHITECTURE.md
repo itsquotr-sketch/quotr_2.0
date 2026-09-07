@@ -9,7 +9,7 @@
 **WA-BATHROOM-07 hosted proof:** `d47d098add5905e30b2f138798995a040b802ed5`  
 **WA-BATHROOM-08 hosted proof:** `aebd96271b8188bdbe3a7b575c1ef3c22453f90b` (`ok: true`)  
 **Production:** DO NOT TOUCH (through 045)  
-**Migrations:** NONE. No 055. Bathroom DNA catalogue rows are code-defined; Preview hosted save uses `scripts/seed-preview-bathroom-dna-catalogue.ts` (not a numbered migration).  
+**Migrations:** Preview through **056** (Bathroom DNA catalogue seed). **No 055** (reserved for QDISP-SQL-055). Production DO NOT TOUCH.  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
 **Triage:** [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md)
 **Verifier:** `scripts/verify-work-area-bathroom-02.ts` … `07.ts`, canonical **`scripts/verify-work-area-bathroom-maturity.ts`**
@@ -1577,7 +1577,7 @@ Selected mature materials, builder labour, subcontracts, PCs, and waste all emit
 
 ## 59. WA-BATHROOM-08 Company DNA + final maturity + hosted close
 
-**GO.** Hosted `aebd962` (`ok: true`). Canonical verifier: `scripts/verify-work-area-bathroom-maturity.ts`. Runtime is namespaced to Bathroom. Production untouched. No 055.
+**BATHROOM MATURE — FINAL GO.** Hosted commercial `aebd962`. Hosted DNA persistence on the canonical Preview alias (`ok: true`): UI Save of wall lining (2 workers × 6 h / 20 m² → 0.6 h/m²) persists, survives reload, doubles wall labour (7.8 → 15.6 h) without changing ceiling (2.9 h) or Aqualine $, and Reset returns the Quotr benchmark. Canonical verifier: `scripts/verify-work-area-bathroom-maturity.ts`. Runtime is namespaced to Bathroom. Production untouched. No 055. Preview applied **056** data-only catalogue seed. Catalogue remains SELECT-only.
 
 ### DNA
 
@@ -1589,7 +1589,7 @@ Do not calibrate plumbing/electrical/tiler/WP/paint/stopping/PC/waste (commercia
 
 Resolver: `resolveCompanyDnaTask` / existing V2 UX. Company calibration overrides that task’s productivity only. Absent DNA → Quotr benchmark productivity, never Pricing Required.
 
-Bathroom DNA catalogue identity is code (`COMPANY_DNA_BATHROOM_TASKS`). Preview `service_role` is SELECT-only on `productivity_calibration_catalogue` (052), so hosted **save** cannot persist catalogue rows without a later postgres-role seed or approved data-only migration. Deterministic DNA effect is proven via org `rates`. Bathroom remains usable without DNA.
+Bathroom DNA catalogue identity is code (`COMPANY_DNA_BATHROOM_TASKS`) plus data-only **056** seed of the six persistable catalogue rows. Catalogue stays SELECT-only (052). `save_productivity_calibration` looks up those rows and writes organisation evidence + productivity rates. 055 remains reserved. Production not applied.
 
 ### Exposure
 

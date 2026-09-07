@@ -204,8 +204,8 @@ check(
     !/\bcreate\s+table\b/i.test(sql054Code)
 );
 check(
-  "latest numbered migration is 054 catalogue seed",
-  numberedMigrations().at(-1) === "054_company_dna_v2_catalogue_seed.sql"
+  "latest numbered migration is 056 Bathroom DNA seed",
+  numberedMigrations().at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
 );
 check("V1 live catalogue still 9 tasks", COMPANY_DNA_TASKS.length === 9);
 check(
@@ -267,13 +267,16 @@ check(
 
 const ratesSummary = summarizeProductivityWorkAreas([]);
 check(
-  "Rates DNA summary is Deck V2C + Fence V2D + RW V2E",
+  "Rates DNA summary is Deck V2C + Fence V2D + RW V2E + Bathroom V2F",
   ratesSummary.every((row) => {
     if (row.workAreaType === "deck") {
       return row.taskTotal === 7 && row.keyTaskTotal === 3 && row.generation === "v2c";
     }
     if (row.workAreaType === "fence") {
       return row.taskTotal === 9 && row.keyTaskTotal === 3 && row.generation === "v2d";
+    }
+    if (row.workAreaType === "bathroom") {
+      return row.taskTotal === 6 && row.keyTaskTotal === 3 && row.generation === "v2f";
     }
     return row.taskTotal === 15 && row.generation === "v2e";
   })

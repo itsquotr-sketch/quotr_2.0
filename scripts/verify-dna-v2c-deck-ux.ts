@@ -172,7 +172,14 @@ const migrations = readdirSync(join(process.cwd(), "supabase/migrations"))
   .filter((name) => /^\d+_/.test(name) && name.endsWith(".sql"))
   .sort();
 check("no migration 055", !migrations.some((name) => name.startsWith("055_")));
-check("054 remains latest", migrations.at(-1)?.startsWith("054_") === true);
+check(
+  "054 remains in chain",
+  migrations.includes("054_company_dna_v2_catalogue_seed.sql")
+);
+check(
+  "latest is 056 Bathroom DNA seed",
+  migrations.at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
+);
 
 const deckTasks = listCompanyDnaDeckV2UiTasks();
 check("Deck UI has 7 tasks", deckTasks.length === 7);

@@ -166,7 +166,12 @@ const migrations = numberedMigrations();
 
 const sqlCode = sql.replace(/--[^\n]*/g, "");
 check("054 file present", existsSync(join(process.cwd(), "supabase/migrations", MIGRATION_NAME)));
-check("latest numbered migration is 054", migrations.at(-1) === MIGRATION_NAME);
+check("054 remains in chain", migrations.includes(MIGRATION_NAME));
+check("no migration 055", !migrations.some((name) => name.startsWith("055_")));
+check(
+  "latest numbered migration is 056 Bathroom DNA seed",
+  migrations.at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
+);
 check("053 remains in chain", migrations.includes("053_role_aware_rls_hardening.sql"));
 check("052 V1 seed remains", migrations.includes("052_company_productivity_calibration.sql"));
 check("no ALTER TABLE", !/\balter\s+table\b/i.test(sqlCode));
