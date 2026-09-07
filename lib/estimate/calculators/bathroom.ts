@@ -16,11 +16,23 @@ import {
   getBooleanFact,
   getBooleanFactAny,
   getFinishLevel,
-  getNumberFact,
   getStringFact,
   getTradeChangesIncluded,
   round2,
 } from "@/lib/estimate/facts";
+import {
+  BATHROOM_LENGTH_WIDTH_REQUIRED_MESSAGE,
+  BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT,
+  resolveBathroomGeometry,
+} from "@/lib/estimate/bathroom-geometry";
+import { PHYSICAL_REQUIREMENT_RESOLUTION } from "@/lib/estimate/physical-requirement-resolution";
+import {
+  bathroomTradeLevelIncluded,
+  bathroomTradeLevelIsMajor,
+  isMatureBathroomPath,
+  resolveBathroomJobScope,
+  resolveBathroomTradeLevel,
+} from "@/lib/estimate/bathroom-scope";
 import {
   createAllowanceLineItem,
   createFixedLabourLineItem,
@@ -39,10 +51,7 @@ import {
 } from "@/lib/estimate/material-buildup-meta";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
 import { baseConfidence } from "@/lib/estimate/summary";
-import {
-  createAssumptionMetadata,
-  recordDefaultedNumber,
-} from "@/lib/estimate/assumption-metadata";
+import { createAssumptionMetadata } from "@/lib/estimate/assumption-metadata";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -50,12 +59,21 @@ import type {
 } from "@/lib/estimate/types";
 import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
-function carpentryPrepHours(areaM2: number, renovationType: string | null): number {
-  const base = renovationType?.toLowerCase().includes("full") ? 16 : 10;
+function carpentryPrepHours(
+  areaM2: number,
+  renovationType: string | null,
+  jobScopeFull: boolean
+): number {
+  const base =
+    jobScopeFull || renovationType?.toLowerCase().includes("full") ? 16 : 10;
   return round2(Math.min(32, base + areaM2 * 0.5));
 }
 
-function isFullOrStandardRenovation(renovationType: string | null): boolean {
+function isFullOrStandardRenovation(
+  renovationType: string | null,
+  jobScopeFull: boolean
+): boolean {
+  if (jobScopeFull) return true;
   const lower = renovationType?.toLowerCase() ?? "";
   return lower.includes("full") || lower.includes("standard");
 }
@@ -81,12 +99,52 @@ export function calculateBathroom(
   const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
-  const area = getNumberFact(facts, workArea.id, "bathroom.area_m2");
-  if (!area) missingInfo.push(formatMissing("Bathroom area"));
+  const jobScope = resolveBathroomJobScope({
+    jobScope: getStringFact(facts, workArea.id, "bathroom.job_scope"),
+    renovationType: getStringFact(facts, workArea.id, "bathroom.renovation_type"),
+  });
+  const maturePath = isMatureBathroomPath(
+    getStringFact(facts, workArea.id, "bathroom.job_scope")
+  );
+  const tilingIncludedEarly = getBooleanFact(
+    facts,
+    workArea.id,
+    "bathroom.tiling_included"
+  );
+  const geometry = resolveBathroomGeometry({
+    facts,
+    workAreaId: workArea.id,
+    tilingIncluded: tilingIncludedEarly,
+    wallLiningIncluded: getBooleanFact(
+      facts,
+      workArea.id,
+      "bathroom.wall_lining_included"
+    ),
+    floorPrepIncluded: getBooleanFact(
+      facts,
+      workArea.id,
+      "bathroom.floor_prep_included"
+    ),
+    waterproofingIncluded: getBooleanFactAny(facts, workArea.id, [
+      "bathroom.waterproofing_included",
+      "bathroom.waterproofing_required",
+    ]),
+    floorFinish: getStringFact(
+      facts,
+      workArea.id,
+      "bathroom.floor_finish_system"
+    ),
+  });
+
+  if (
+    geometry.geometryRequired &&
+    geometry.floorResolution ===
+      PHYSICAL_REQUIREMENT_RESOLUTION.INFORMATION_REQUIRED
+  ) {
+    missingInfo.push(BATHROOM_LENGTH_WIDTH_REQUIRED_MESSAGE);
+  }
 
   const tileExtent = getStringFact(facts, workArea.id, "bathroom.tile_extent");
-  if (!tileExtent) missingInfo.push(formatMissing("Tiling extent"));
-
   const finishLevel = getFinishLevel(
     facts,
     workArea.id,
@@ -107,17 +165,12 @@ export function calculateBathroom(
     assumptions.push(qualityNote);
   }
 
-  let effectiveArea = area;
-  if (!effectiveArea) {
-    effectiveArea = recordDefaultedNumber(assumptionMetadata, {
-      key: "bathroom.area_m2",
-      label: "Bathroom area",
-      workAreaId: workArea.id,
-      assumedValue: 5,
-      unit: "m²",
-      reason: "No bathroom area provided",
-    });
-    assumptions.push("Using assumed bathroom area of 5 m² for rough estimate.");
+  const effectiveArea = geometry.floorAreaM2;
+  if (geometry.assumedHeight) {
+    assumptions.push(BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT);
+  }
+  if (jobScope) {
+    assumptions.push(`Bathroom job scope: ${jobScope.replace(/_/g, " ")}.`);
   }
 
   const qualityFactor = getQualityFactor(
@@ -130,6 +183,8 @@ export function calculateBathroom(
   });
 
   const renovationType = getStringFact(facts, workArea.id, "bathroom.renovation_type");
+  const jobScopeFull =
+    jobScope === "full_renovation" || jobScope === "new_fitout";
   const demolitionRequired = getBooleanFact(
     facts,
     workArea.id,
@@ -155,7 +210,7 @@ export function calculateBathroom(
       workAreaType: "bathroom",
     }) ??
     undefined;
-  const smallJobFactor = smallBathroomFactor(effectiveArea);
+  const smallJobFactor = smallBathroomFactor(effectiveArea ?? 99);
 
   if (demolitionRequired) {
     const demo = resolveProductivity({
@@ -199,12 +254,18 @@ export function calculateBathroom(
     );
   }
 
-  const carpentryHours = carpentryPrepHours(effectiveArea, renovationType);
-  const carpentryMinTotal = renovationType?.toLowerCase().includes("full") ? 16 : 8;
+  const carpentryHours = carpentryPrepHours(
+    effectiveArea ?? 0,
+    renovationType,
+    jobScopeFull
+  );
+  const carpentryMinTotal =
+    jobScopeFull || renovationType?.toLowerCase().includes("full") ? 16 : 8;
   const carpentryMinimums = applyLabourMinimums({
     calculatedHours: carpentryHours,
     minCrewSize: 2,
-    minDurationHours: renovationType?.toLowerCase().includes("full") ? 8 : 4,
+    minDurationHours:
+      jobScopeFull || renovationType?.toLowerCase().includes("full") ? 8 : 4,
     minTotalHours: carpentryMinTotal,
     accessFactor,
     smallJobFactor,
@@ -237,29 +298,29 @@ export function calculateBathroom(
     )
   );
 
-  const tilingIncludedEarly = getBooleanFact(
-    facts,
-    workArea.id,
-    "bathroom.tiling_included"
-  );
   const waterproofingIncluded = getBooleanFactAny(facts, workArea.id, [
     "bathroom.waterproofing_included",
     "bathroom.waterproofing_required",
   ]);
 
+  const tilingIncluded = tilingIncludedEarly;
+  const tilingOn = maturePath
+    ? tilingIncluded === true
+    : tilingIncluded !== false;
+
   const tilingResolved = resolveBathroomTotalTilingArea(
     facts,
     workArea.id,
-    effectiveArea,
-    tilingIncludedEarly
+    effectiveArea ?? 0,
+    tilingOn
   );
 
   if (waterproofingIncluded) {
     const waterproofingAreaResult = resolveBathroomWaterproofingArea(
       facts,
       workArea.id,
-      effectiveArea,
-      tilingIncludedEarly !== false ? tilingResolved.basis : null
+      effectiveArea ?? 0,
+      tilingOn ? tilingResolved.basis : null
     );
 
     const waterproofingArea = waterproofingAreaResult.area;
@@ -347,9 +408,7 @@ export function calculateBathroom(
     organisationSettings: context.organisationSettings,
   });
 
-  const tilingIncluded = getBooleanFact(facts, workArea.id, "bathroom.tiling_included");
-
-  if (tilingIncluded !== false) {
+  if (tilingOn) {
     const totalTilingArea = tilingResolved.area;
     const tilingWastage = resolveMaterialWastage(
       context.materialWastageSettings,
@@ -558,12 +617,18 @@ export function calculateBathroom(
     );
   }
 
+  const plumbingLevel = resolveBathroomTradeLevel({
+    canonical: getStringFact(facts, workArea.id, "bathroom.plumbing.level"),
+    legacy:
+      getStringFact(facts, workArea.id, "bathroom.plumbing_changes") ??
+      getBooleanFact(facts, workArea.id, "bathroom.plumbing_allowance"),
+  });
   const plumbingChanges =
+    bathroomTradeLevelIncluded(plumbingLevel) ??
     getTradeChangesIncluded(facts, workArea.id, "bathroom.plumbing_changes") ??
     getBooleanFact(facts, workArea.id, "bathroom.plumbing_allowance");
   if (plumbingChanges) {
-    const plumbingLevel = getStringFact(facts, workArea.id, "bathroom.plumbing_changes");
-    const isMajor = plumbingLevel?.toLowerCase().includes("major");
+    const isMajor = bathroomTradeLevelIsMajor(plumbingLevel);
     const plumbingCost = isMajor
       ? BATHROOM_BENCHMARKS.plumbingMajor.cost
       : BATHROOM_BENCHMARKS.plumbingMinor.cost;
@@ -606,16 +671,18 @@ export function calculateBathroom(
     assumptions.push("Plumbing by others — excluded from estimate.");
   }
 
+  const electricalLevel = resolveBathroomTradeLevel({
+    canonical: getStringFact(facts, workArea.id, "bathroom.electrical.level"),
+    legacy:
+      getStringFact(facts, workArea.id, "bathroom.electrical_changes") ??
+      getBooleanFact(facts, workArea.id, "bathroom.electrical_allowance"),
+  });
   const electricalChanges =
+    bathroomTradeLevelIncluded(electricalLevel) ??
     getTradeChangesIncluded(facts, workArea.id, "bathroom.electrical_changes") ??
     getBooleanFact(facts, workArea.id, "bathroom.electrical_allowance");
   if (electricalChanges) {
-    const electricalLevel = getStringFact(
-      facts,
-      workArea.id,
-      "bathroom.electrical_changes"
-    );
-    const isMajor = electricalLevel?.toLowerCase().includes("major");
+    const isMajor = bathroomTradeLevelIsMajor(electricalLevel);
     const electricalCost = isMajor
       ? BATHROOM_BENCHMARKS.electricalMajor.cost
       : BATHROOM_BENCHMARKS.electricalMinor.cost;
@@ -697,7 +764,7 @@ export function calculateBathroom(
     const wallLiningResolved = resolveBathroomWallLiningArea(
       facts,
       workArea.id,
-      effectiveArea
+      effectiveArea ?? 0
     );
     const wallLiningArea = wallLiningResolved.area;
 
@@ -829,19 +896,26 @@ export function calculateBathroom(
     );
   }
 
-  if (renovationType?.toLowerCase().includes("full")) {
+  if (jobScopeFull || renovationType?.toLowerCase().includes("full")) {
     assumptions.push("Full strip-out and rebuild — component trade allowances applied.");
-  } else if (renovationType?.toLowerCase().includes("minor")) {
+  } else if (renovationType?.toLowerCase().includes("minor") || jobScope === "fixture_replacement") {
     assumptions.push("Minor refresh scope — limited strip-out and trade changes assumed.");
   }
 
   const hasComponentFinishes =
     waterproofingIncluded === true ||
-    tilingIncluded !== false ||
+    tilingOn ||
     fixturesCost > 0 ||
     clientSuppliedFixtures === true;
 
-  if (!hasComponentFinishes) {
+  const skipPackage =
+    maturePath &&
+    jobScope != null &&
+    jobScope !== "full_renovation" &&
+    jobScope !== "new_fitout" &&
+    jobScope !== "custom";
+
+  if (!hasComponentFinishes && effectiveArea != null && !skipPackage) {
     let materialsCost = effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.cost;
     let materialsSell = effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.sell;
     materialsCost = Math.max(
@@ -885,7 +959,7 @@ export function calculateBathroom(
     (item) => item.pricingOwner === "subcontractor_allowance"
   ).length;
   const needsCoordination =
-    isFullOrStandardRenovation(renovationType) &&
+    isFullOrStandardRenovation(renovationType, jobScopeFull) &&
     (subcontractorAllowanceCount >= 3 ||
       (demolitionRequired && renovationType?.toLowerCase().includes("full")));
 
@@ -928,26 +1002,42 @@ export function calculateBathroom(
 
 /** Facts this calculator reads for scope, quantity, material, labour, or allowance. */
 export const BATHROOM_CALCULATOR_CONSUMED_FACTS = [
+  "bathroom.job_scope",
   "bathroom.area_m2",
+  "bathroom.length_m",
+  "bathroom.width_m",
+  "bathroom.wall_height_m",
+  "bathroom.floor_area_m2",
+  "bathroom.ceiling_area_m2",
+  "bathroom.gross_wall_area_m2",
   "bathroom.tile_extent",
   "bathroom.finish_level",
   "bathroom.renovation_type",
   "bathroom.demolition_required",
   "bathroom.tiling_included",
+  "bathroom.floor_tiling_area_m2",
+  "bathroom.wall_tiling_area_m2",
+  "bathroom.total_tiling_area_m2",
   "bathroom.waterproofing_included",
   "bathroom.waterproofing_required",
+  "bathroom.waterproofing_area_m2",
   "bathroom.fixtures_client_supplied",
   "bathroom.fixtures_included",
   "bathroom.includes_vanity",
   "bathroom.includes_shower",
   "bathroom.includes_toilet",
   "bathroom.underfloor_heating_included",
+  "bathroom.plumbing.level",
   "bathroom.plumbing_changes",
   "bathroom.plumbing_allowance",
+  "bathroom.electrical.level",
   "bathroom.electrical_changes",
   "bathroom.electrical_allowance",
   "bathroom.ventilation_included",
   "bathroom.wall_lining_included",
+  "bathroom.wall_lining_area_m2",
+  "bathroom.perimeter_m",
   "bathroom.shower_type",
   "bathroom.floor_prep_included",
+  "bathroom.floor_finish_system",
 ] as const;

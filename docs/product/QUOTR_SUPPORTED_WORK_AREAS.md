@@ -1,6 +1,6 @@
 # Quotr Supported Work Areas
 
-**Status:** CANONICAL — product view of recognition vs estimating support  
+**Status:** HISTORICAL product-band view (2026-08-17). **Do not use `trial_supported` / `developing` as current estimator maturity.** Live expansion authority: [QUOTR_WORK_AREA_FACTORY.md](../architecture/QUOTR_WORK_AREA_FACTORY.md) + [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md). Runtime bands in `lib/work-areas/support-contract.ts` are stale relative to Deck / Fence / Retaining Wall.  
 **Date:** 2026-08-17  
 **HEAD:** `a4de0f875b3497f11d4bcd0379865a811ca4bf1c`  
 **Code contract:** `docs/architecture/QUOTR_SUPPORTED_WORK_AREA_CONTRACT.md` + `lib/work-areas/support-contract.ts`  

@@ -23,6 +23,7 @@ const STATEMENTS: Record<string, string> = {
   quality_level: "Standard finish",
   "deck.access_type": "No steps included",
   "bathroom.plumbing_changes": "Standard plumbing allowance",
+  "bathroom.plumbing.level": "Standard plumbing allowance",
   "deck.substructure_included": "Assuming new framing / substructure is included.",
 };
 

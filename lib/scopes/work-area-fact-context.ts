@@ -35,6 +35,12 @@ export const FACT_KEY_CONSUMERS: Readonly<Record<string, readonly string[]>> =
     "pergola.length_m": ["Pergola area derivation", "Pergola estimate"],
     "pergola.width_m": ["Pergola area derivation", "Pergola estimate"],
     "pergola.area_m2": ["Pergola estimate"],
+    "bathroom.length_m": ["Bathroom floor area derivation", "Bathroom estimate"],
+    "bathroom.width_m": ["Bathroom floor area derivation", "Bathroom estimate"],
+    "bathroom.wall_height_m": ["Bathroom wall area derivation", "Bathroom estimate"],
+    "bathroom.floor_area_m2": ["Bathroom estimate"],
+    "bathroom.area_m2": ["Bathroom estimate"],
+    "bathroom.job_scope": ["Bathroom estimate"],
     "bathroom.floor_tiling_area_m2": ["Bathroom tiling"],
     "bathroom.wall_tiling_area_m2": ["Bathroom tiling"],
   });

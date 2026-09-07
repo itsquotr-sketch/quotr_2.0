@@ -452,14 +452,19 @@ function buildFenceDraft(
 }
 
 function buildBathroomDraft(facts?: WorkAreaQuoteFact[]): string {
-  const area = factValue(facts, "bathroom.area_m2");
+  const jobScope = factValue(facts, "bathroom.job_scope");
+  const area =
+    factValue(facts, "bathroom.floor_area_m2") ??
+    factValue(facts, "bathroom.area_m2");
   const tiling = factValue(facts, "bathroom.tile_extent");
   const renovationType = factValue(facts, "bathroom.renovation_type");
 
   let draft =
     "Carry out bathroom renovation works to the agreed scope, including selected fixtures, linings, waterproofing, tiling and associated trade coordination where included.";
 
-  if (renovationType) {
+  if (jobScope) {
+    draft = `Carry out ${String(jobScope).replace(/_/g, " ")} bathroom works to the agreed scope, including selected fixtures, linings, waterproofing, tiling and associated trade coordination where included.`;
+  } else if (renovationType) {
     draft = `Carry out ${renovationType.toLowerCase()} bathroom works to the agreed scope, including selected fixtures, linings, waterproofing, tiling and associated trade coordination where included.`;
   }
 

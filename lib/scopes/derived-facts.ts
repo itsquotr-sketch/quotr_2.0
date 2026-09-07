@@ -171,6 +171,59 @@ export function deriveFactsForProject(params: {
     }
 
     if (workArea.type === "bathroom") {
+      const length = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "bathroom.length_m")
+      );
+      const width = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "bathroom.width_m")
+      );
+      const height = toPositiveNumber(
+        getFactValue(lookup, workArea.id, "bathroom.wall_height_m")
+      );
+      if (length && width) {
+        const floor = roundToTwoDecimals(length * width);
+        const existingFloor = lookup.get(`${workArea.id}:bathroom.floor_area_m2`);
+        if (!existingFloor || existingFloor.source !== "user") {
+          derived.push({
+            work_area_id: workArea.id,
+            key: "bathroom.floor_area_m2",
+            label: "Bathroom floor area",
+            value: floor,
+            unit: "m²",
+            source: "derived",
+          });
+        }
+        const existingCeiling = lookup.get(
+          `${workArea.id}:bathroom.ceiling_area_m2`
+        );
+        if (!existingCeiling || existingCeiling.source !== "user") {
+          derived.push({
+            work_area_id: workArea.id,
+            key: "bathroom.ceiling_area_m2",
+            label: "Bathroom ceiling area",
+            value: floor,
+            unit: "m²",
+            source: "derived",
+          });
+        }
+        if (height) {
+          const wall = roundToTwoDecimals(2 * (length + width) * height);
+          const existingWall = lookup.get(
+            `${workArea.id}:bathroom.gross_wall_area_m2`
+          );
+          if (!existingWall || existingWall.source !== "user") {
+            derived.push({
+              work_area_id: workArea.id,
+              key: "bathroom.gross_wall_area_m2",
+              label: "Bathroom wall area (gross)",
+              value: wall,
+              unit: "m²",
+              source: "derived",
+            });
+          }
+        }
+      }
+
       const floorArea = toPositiveNumber(
         getFactValue(lookup, workArea.id, "bathroom.floor_tiling_area_m2")
       );
@@ -365,6 +418,42 @@ export function buildDerivedFactDisplays(
       displays.push({
         workAreaId: fact.work_area_id,
         label: "Calculated total tiling area",
+        text: `${fact.value} m²`,
+      });
+      continue;
+    }
+
+    if (
+      fact.key === "bathroom.floor_area_m2" &&
+      typeof fact.value === "number"
+    ) {
+      displays.push({
+        workAreaId: fact.work_area_id,
+        label: "Calculated floor area",
+        text: `${fact.value} m²`,
+      });
+      continue;
+    }
+
+    if (
+      fact.key === "bathroom.ceiling_area_m2" &&
+      typeof fact.value === "number"
+    ) {
+      displays.push({
+        workAreaId: fact.work_area_id,
+        label: "Calculated ceiling area",
+        text: `${fact.value} m²`,
+      });
+      continue;
+    }
+
+    if (
+      fact.key === "bathroom.gross_wall_area_m2" &&
+      typeof fact.value === "number"
+    ) {
+      displays.push({
+        workAreaId: fact.work_area_id,
+        label: "Calculated wall area (openings not deducted)",
         text: `${fact.value} m²`,
       });
       continue;

@@ -1,6 +1,6 @@
 # Quotr Work Area Estimating Coverage
 
-**Status:** CANONICAL — ESTIMATOR-SAFETY-0 (trust / commercial integrity hardening)  
+**Status:** HISTORICAL estimator-safety snapshot (2026-08-20). **Expansion planning authority:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md) + [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md). Deck / Fence / Retaining Wall have matured past the bands in §6.  
 **Date:** 2026-08-20  
 **Related:** [QUOTR_SUPPORTED_WORK_AREA_CONTRACT.md](./QUOTR_SUPPORTED_WORK_AREA_CONTRACT.md), [QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md](./QUOTR_COMPANY_MATERIALS_AND_RATES_CONTRACT.md), [QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md](./QUOTR_ESTIMATING_ENGINE_ARCHITECTURE.md)
 

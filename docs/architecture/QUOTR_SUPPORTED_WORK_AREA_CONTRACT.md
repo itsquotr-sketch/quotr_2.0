@@ -1,6 +1,6 @@
 # Quotr Supported Work Area Contract
 
-**Classification:** CANONICAL code-level capability bands. **CANONICAL product view:** `docs/product/QUOTR_SUPPORTED_WORK_AREAS.md`.  
+**Classification:** RUNTIME display bands in `lib/work-areas/support-contract.ts` — **stale vs Deck/Fence/Retaining maturity**. Expansion / exposure policy: [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md) + [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md). Do not change those runtime labels in WORK-AREA-FACTORY-01. **Historical product view:** `docs/product/QUOTR_SUPPORTED_WORK_AREAS.md`.  
 **Status:** FOUNDATION-R1 Complete. FOUNDATION-R1-R1 Complete — Owner Preview Validated (2026-08-16). FOUNDATION-R2 Complete Local / Owner Preview remediation pending R2-R1. FOUNDATION-R2-R1 Complete Local / Owner Preview Pending.  
 **Code:** `lib/work-areas/support-contract.ts`  
 **Audit (historical):** `docs/audits/SUPPORTED_WORK_AREA_COVERAGE_AUDIT.md`  

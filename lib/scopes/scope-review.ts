@@ -619,10 +619,15 @@ export function buildCompactPanelSummary(
       return parts.length > 0 ? parts.join(", ") : "Retaining wall";
     }
     case "bathroom": {
-      const area = byKey.get("bathroom.area_m2")?.value;
+      const jobScope = byKey.get("bathroom.job_scope")?.value;
+      const area =
+        byKey.get("bathroom.floor_area_m2")?.value ??
+        byKey.get("bathroom.area_m2")?.value;
       const tiling = byKey.get("bathroom.tile_extent")?.value;
-      if (area && tiling) return `${area} bathroom, ${tiling.toLowerCase()}`;
+      if (jobScope && area) return `${area} bathroom, ${String(jobScope).replace(/_/g, " ")}`;
+      if (area && tiling) return `${area} bathroom, ${String(tiling).toLowerCase()}`;
       if (area) return `${area} bathroom renovation`;
+      if (jobScope) return `Bathroom ${String(jobScope).replace(/_/g, " ")}`;
       return "Bathroom renovation";
     }
     case "kitchen": {

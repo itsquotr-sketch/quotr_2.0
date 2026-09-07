@@ -545,6 +545,12 @@ export function shouldSkipTemplateQuestion(
     return hasLength && hasWidth;
   }
 
+  if (template.factKey === "bathroom.area_m2") {
+    const hasLength = hasFactValue(factLookup, workArea.id, "bathroom.length_m");
+    const hasWidth = hasFactValue(factLookup, workArea.id, "bathroom.width_m");
+    return hasLength && hasWidth;
+  }
+
   if (template.factKey === "pergola.area_m2") {
     const hasLength = hasFactValue(factLookup, workArea.id, "pergola.length_m");
     const hasWidth = hasFactValue(factLookup, workArea.id, "pergola.width_m");

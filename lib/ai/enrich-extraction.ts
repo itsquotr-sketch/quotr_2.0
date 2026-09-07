@@ -520,6 +520,55 @@ function inferBathroom(
     allowedTypes
   );
 
+  const dims =
+    brief.match(/(\d+(?:\.\d+)?)\s*m\s*(?:by|x|×)\s*(\d+(?:\.\d+)?)\s*m/i) ??
+    brief.match(/(\d+(?:\.\d+)?)\s*m\s*[x×]\s*(\d+(?:\.\d+)?)\s*m/i);
+  if (dims) {
+    addFact(extraction, {
+      workAreaType: "bathroom",
+      key: "bathroom.length_m",
+      label: "Bathroom length",
+      value: Number(dims[1]),
+      unit: "m",
+    });
+    addFact(extraction, {
+      workAreaType: "bathroom",
+      key: "bathroom.width_m",
+      label: "Bathroom width",
+      value: Number(dims[2]),
+      unit: "m",
+    });
+  }
+
+  const heightMatch = brief.match(
+    /(\d+(?:\.\d+)?)\s*m\s*(?:ceilings?|wall height|high)/i
+  );
+  if (heightMatch) {
+    addFact(extraction, {
+      workAreaType: "bathroom",
+      key: "bathroom.wall_height_m",
+      label: "Wall height",
+      value: Number(heightMatch[1]),
+      unit: "m",
+    });
+  }
+
+  if (includesAny(brief, ["vanity only", "replace vanity", "vanity replacement"])) {
+    addFact(extraction, {
+      workAreaType: "bathroom",
+      key: "bathroom.job_scope",
+      label: "Bathroom work",
+      value: "vanity_only",
+    });
+  } else if (includesAny(brief, ["full bathroom", "full renovation", "strip-out and rebuild"])) {
+    addFact(extraction, {
+      workAreaType: "bathroom",
+      key: "bathroom.job_scope",
+      label: "Bathroom work",
+      value: "full_renovation",
+    });
+  }
+
   if (includesAny(brief, ["full bathroom", "strip-out", "strip out"])) {
     addFact(extraction, {
       workAreaType: "bathroom",

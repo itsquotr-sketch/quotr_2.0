@@ -20,6 +20,7 @@ import { resolveUiQuestionInputType } from "@/lib/scopes/question-input-types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
 import { disclosedBoardWidthForNotSure } from "@/lib/estimate/deck-board-width";
+import { disclosedWallHeightForNotSure } from "@/lib/estimate/bathroom-geometry";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -322,14 +323,19 @@ export async function commitUserFactEdit(
     : params.value;
 
   const disclosedBoardWidth = disclosedBoardWidthForNotSure(storedValue);
+  const disclosedWallHeight = disclosedWallHeightForNotSure(storedValue);
   const factValue =
     params.key === "deck.board_width_mm" && disclosedBoardWidth
       ? disclosedBoardWidth.value
-      : storedValue;
+      : params.key === "bathroom.wall_height_m" && disclosedWallHeight
+        ? disclosedWallHeight.value
+        : storedValue;
   const factSource =
     params.key === "deck.board_width_mm" && disclosedBoardWidth
       ? disclosedBoardWidth.source
-      : "user";
+      : params.key === "bathroom.wall_height_m" && disclosedWallHeight
+        ? disclosedWallHeight.source
+        : "user";
 
   const factResult = await upsertScopedFact(supabase, {
     orgId: params.orgId,

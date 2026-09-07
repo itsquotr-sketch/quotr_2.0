@@ -48,7 +48,14 @@ import {
 } from "@/lib/estimate/deck-board-width";
 import { STEP_WIDTH_ASSUMPTION_STATEMENT } from "@/lib/estimate/deck-steps-physical";
 import {
+  bathroomGeometryNeed,
+  bathroomQuestionGroupVisible,
+  resolveBathroomJobScope,
+} from "@/lib/estimate/bathroom-scope";
+import { BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT } from "@/lib/estimate/bathroom-geometry";
+import {
   getBooleanFact,
+  getNumberFact,
   getStringFact,
   hasFactValue,
   isNotSureValue,
@@ -75,6 +82,11 @@ const CHECK_SCORES: Record<string, number> = {
   "deck.access_type": 35,
   "deck.balustrade_required": 20,
   "bathroom.plumbing_changes": 62,
+  "bathroom.plumbing.level": 62,
+  "bathroom.job_scope": 96,
+  "bathroom.length_m": 95,
+  "bathroom.width_m": 94,
+  "bathroom.wall_height_m": 70,
 };
 
 function factHas(
@@ -350,6 +362,120 @@ function missingHardMinimum(
         });
       }
     }
+
+    if (card.workAreaType === "bathroom") {
+      const facts = input.facts as EstimateFact[];
+      const jobScope = resolveBathroomJobScope({
+        jobScope: getStringFact(facts, card.workAreaId, "bathroom.job_scope"),
+        renovationType: getStringFact(
+          facts,
+          card.workAreaId,
+          "bathroom.renovation_type"
+        ),
+      });
+      const geometryNeed = bathroomGeometryNeed(jobScope, {
+        tilingIncluded: getBooleanFact(
+          facts,
+          card.workAreaId,
+          "bathroom.tiling_included"
+        ),
+        wallLiningIncluded: getBooleanFact(
+          facts,
+          card.workAreaId,
+          "bathroom.wall_lining_included"
+        ),
+        floorPrepIncluded: getBooleanFact(
+          facts,
+          card.workAreaId,
+          "bathroom.floor_prep_included"
+        ),
+        waterproofingIncluded: getBooleanFact(
+          facts,
+          card.workAreaId,
+          "bathroom.waterproofing_included"
+        ),
+        floorFinish: getStringFact(
+          facts,
+          card.workAreaId,
+          "bathroom.floor_finish_system"
+        ),
+      });
+      const lengthKnown = getNumberFact(
+        facts,
+        card.workAreaId,
+        "bathroom.length_m"
+      );
+      const widthKnown = getNumberFact(
+        facts,
+        card.workAreaId,
+        "bathroom.width_m"
+      );
+      const floorKnown =
+        (lengthKnown != null && widthKnown != null) ||
+        getNumberFact(facts, card.workAreaId, "bathroom.floor_area_m2") !=
+          null ||
+        getNumberFact(facts, card.workAreaId, "bathroom.area_m2") != null ||
+        (jobScope === "retile_floor" &&
+          getNumberFact(
+            facts,
+            card.workAreaId,
+            "bathroom.floor_tiling_area_m2"
+          ) != null);
+      const missing: {
+        key: string;
+        inputType: ClarifyCandidate["inputType"];
+        rankScore: number;
+      }[] = [];
+      if (!jobScope) {
+        missing.push({
+          key: "bathroom.job_scope",
+          inputType: "select",
+          rankScore: 1000,
+        });
+      }
+      if (geometryNeed !== "none" && !floorKnown) {
+        if (lengthKnown == null) {
+          missing.push({
+            key: "bathroom.length_m",
+            inputType: "number",
+            rankScore: 999,
+          });
+        }
+        if (widthKnown == null) {
+          missing.push({
+            key: "bathroom.width_m",
+            inputType: "number",
+            rankScore: 998,
+          });
+        }
+      }
+      for (const row of missing) {
+        const template = getQuestionTemplateByKey(row.key);
+        out.push({
+          id: `hard:${card.workAreaId}:${row.key}`,
+          source: "scope_fact",
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          workAreaType: card.workAreaType,
+          factKey: row.key,
+          constraintKey: null,
+          questionKey: row.key,
+          label: safeFactPresentationLabel(row.key),
+          question: safeFactQuestion(row.key, template?.questionText),
+          askClass: "HARD_MINIMUM",
+          inputType: row.inputType,
+          unit: template?.unit,
+          options: template?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: true,
+          assumable: false,
+          rankScore: row.rankScore,
+          rankReason: "HARD_MINIMUM bathroom core",
+          assumptionStatement: null,
+        });
+      }
+    }
   }
   return out;
 }
@@ -358,32 +484,93 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
   const out: ClarifyCandidate[] = [];
   for (const wa of input.workAreas.filter((w) => w.status !== "excluded")) {
     if (wa.type === "bathroom") {
-      const key = "bathroom.plumbing_changes";
-      if (factHas(input, key, wa.id)) continue;
-      const template = getQuestionTemplateByKey(key);
-      out.push({
-        id: `fact:${wa.id}:${key}`,
-        source: "scope_fact",
-        workAreaId: wa.id,
-        workAreaName: wa.name,
-        workAreaType: wa.type,
-        factKey: key,
-        constraintKey: null,
-        questionKey: key,
-        label: template?.label ?? "Plumbing changes",
-        question:
-          template?.questionText ?? "What level of plumbing changes are included?",
-        askClass: "ASK_NOW",
-        inputType: "select",
-        options: template?.options,
-        writeTarget: "FACT",
-        write: null,
-        blocksEstimate: false,
-        assumable: true,
-        rankScore: CHECK_SCORES[key] ?? 60,
-        rankReason: "Bathroom commercial plumbing",
-        assumptionStatement: "Standard plumbing allowance",
+      const facts = input.facts as EstimateFact[];
+      const jobScope = resolveBathroomJobScope({
+        jobScope: getStringFact(facts, wa.id, "bathroom.job_scope"),
+        renovationType: getStringFact(facts, wa.id, "bathroom.renovation_type"),
       });
+      const geometryNeed = bathroomGeometryNeed(jobScope, {
+        tilingIncluded: getBooleanFact(facts, wa.id, "bathroom.tiling_included"),
+        waterproofingIncluded: getBooleanFact(
+          facts,
+          wa.id,
+          "bathroom.waterproofing_included"
+        ),
+        wallLiningIncluded: getBooleanFact(
+          facts,
+          wa.id,
+          "bathroom.wall_lining_included"
+        ),
+        floorPrepIncluded: getBooleanFact(
+          facts,
+          wa.id,
+          "bathroom.floor_prep_included"
+        ),
+        floorFinish: getStringFact(facts, wa.id, "bathroom.floor_finish_system"),
+      });
+      if (
+        geometryNeed === "full" &&
+        getNumberFact(facts, wa.id, "bathroom.wall_height_m") == null
+      ) {
+        const heightKey = "bathroom.wall_height_m";
+        const heightTemplate = getQuestionTemplateByKey(heightKey);
+        out.push({
+          id: `fact:${wa.id}:${heightKey}`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: heightKey,
+          constraintKey: null,
+          questionKey: heightKey,
+          label: heightTemplate?.label ?? "Wall height",
+          question:
+            heightTemplate?.questionText ?? "What is the bathroom wall height?",
+          askClass: "ASK_NOW",
+          inputType: "number",
+          unit: heightTemplate?.unit,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: true,
+          rankScore: CHECK_SCORES[heightKey] ?? 70,
+          rankReason: "Bathroom wall height",
+          assumptionStatement: BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT,
+        });
+      }
+      const key = "bathroom.plumbing.level";
+      const legacyKey = "bathroom.plumbing_changes";
+      if (
+        bathroomQuestionGroupVisible("plumbing", jobScope) &&
+        !factHas(input, key, wa.id) &&
+        !factHas(input, legacyKey, wa.id)
+      ) {
+        const template = getQuestionTemplateByKey(key);
+        out.push({
+          id: `fact:${wa.id}:${key}`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: key,
+          constraintKey: null,
+          questionKey: key,
+          label: template?.label ?? "Plumbing changes",
+          question:
+            template?.questionText ??
+            "What level of plumbing changes are included?",
+          askClass: "ASK_NOW",
+          inputType: "select",
+          options: template?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: true,
+          rankScore: CHECK_SCORES[key] ?? 60,
+          rankReason: "Bathroom commercial plumbing",
+          assumptionStatement: "Standard plumbing allowance",
+        });
+      }
       continue;
     }
 

@@ -214,7 +214,11 @@ function main(): void {
   console.log("\nBATHROOM");
   check(
     "bathroom geometry",
-    has("bathroom", "bathroom.area_m2")
+    has("bathroom", "bathroom.job_scope") &&
+      has("bathroom", "bathroom.length_m") &&
+      has("bathroom", "bathroom.width_m") &&
+      has("bathroom", "bathroom.wall_height_m") &&
+      has("bathroom", "bathroom.area_m2")
   );
   check(
     "bathroom demolition + waterproofing + tiling + fixtures",
@@ -240,9 +244,11 @@ function main(): void {
     "waterproofing extent gated until waterproofing = Yes",
     Boolean(wpExtent) &&
       hidden(wpExtent!, "bath-1", [
+        { key: "bathroom.job_scope", value: "full_renovation" },
         { key: "bathroom.waterproofing_included", value: false },
       ]) &&
       !hidden(wpExtent!, "bath-1", [
+        { key: "bathroom.job_scope", value: "full_renovation" },
         { key: "bathroom.waterproofing_included", value: true },
       ])
   );
@@ -265,7 +271,9 @@ function main(): void {
   );
   check(
     "bathroom services scope present",
-    has("bathroom", "bathroom.plumbing_changes") &&
+    has("bathroom", "bathroom.plumbing.level") &&
+      has("bathroom", "bathroom.plumbing_changes") &&
+      has("bathroom", "bathroom.electrical.level") &&
       has("bathroom", "bathroom.electrical_changes")
   );
   check(

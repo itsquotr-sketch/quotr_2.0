@@ -142,7 +142,8 @@ function isHighImpactPhysical(line: string): boolean {
     /site access|normal site access/.test(lower) ||
     /waste factor|procurement\/waste/.test(lower) ||
     /board section assumed/.test(lower) ||
-    /deck height|step width|tread depth/.test(lower)
+    /deck height|step width|tread depth/.test(lower) ||
+    /wall height assumed/.test(lower)
   );
 }
 

@@ -810,27 +810,45 @@ check(
   Boolean(deckAdapter) && refineFactsAreContractBacked("deck", deckKeys) && deckKeys.length > 0
 );
 
-const bathroomKeys = adapterKeys(bathroomAdapter!, [
-  {
-    id: "demo",
-    label: "Demolition",
-    sourceFactKey: "bathroom.demolition_required",
-    write: {
-      factKey: "bathroom.demolition_required",
-      valueType: "boolean",
-      includeValue: true,
-      excludeValue: false,
-      label: "Demolition",
-    },
-    workAreaId: "wa",
-  },
-]);
+const bathroomKeys = bathroomAdapter
+  ? bathroomAdapter
+      .candidates({
+        workAreaId: "wa",
+        workAreaName: "Test",
+        facts: [
+          {
+            key: "bathroom.job_scope",
+            work_area_id: "wa",
+            value: "full_renovation",
+          },
+        ],
+        briefText: null,
+        notConfirmed: [
+          {
+            id: "demo",
+            label: "Demolition",
+            sourceFactKey: "bathroom.demolition_required",
+            write: {
+              factKey: "bathroom.demolition_required",
+              valueType: "boolean",
+              includeValue: true,
+              excludeValue: false,
+              label: "Demolition",
+            },
+            workAreaId: "wa",
+          },
+        ],
+      })
+      .map((c) => c.factKey)
+      .filter((k): k is string => Boolean(k))
+  : [];
 check(
   "25 Bathroom refine keys verified",
   Boolean(bathroomAdapter) &&
     refineFactsAreContractBacked("bathroom", bathroomKeys) &&
     bathroomKeys.includes("bathroom.demolition_required") &&
-    bathroomKeys.includes("bathroom.plumbing_changes")
+    (bathroomKeys.includes("bathroom.plumbing.level") ||
+      bathroomKeys.includes("bathroom.plumbing_changes"))
 );
 
 const paintingKeys = adapterKeys(paintingAdapter!);

@@ -7,6 +7,10 @@ import {
 } from "@/lib/scopes/fact-values";
 import { isNotSureValue } from "@/lib/scopes/fact-labels";
 import type { ScopeQuestionTemplate } from "@/lib/scopes/types";
+import {
+  resolveBathroomJobScope,
+  shouldHideBathroomQuestion,
+} from "@/lib/estimate/bathroom-scope";
 
 type FactLookup = Map<string, ProjectFactRecord>;
 
@@ -99,6 +103,60 @@ export function shouldHideConditionalQuestion(
   confirmedTypes?: Set<string>
 ): boolean {
   const key = template.factKey;
+
+  if (key.startsWith("bathroom.")) {
+    const jobScope = resolveBathroomJobScope({
+      jobScope: strFact(lookup, workAreaId, "bathroom.job_scope"),
+      renovationType: strFact(lookup, workAreaId, "bathroom.renovation_type"),
+    });
+    const lengthKnown = numFact(lookup, workAreaId, "bathroom.length_m") != null;
+    const widthKnown = numFact(lookup, workAreaId, "bathroom.width_m") != null;
+    const floorAreaSatisfied =
+      (lengthKnown && widthKnown) ||
+      numFact(lookup, workAreaId, "bathroom.floor_area_m2") != null ||
+      numFact(lookup, workAreaId, "bathroom.area_m2") != null ||
+      (jobScope === "retile_floor" &&
+        numFact(lookup, workAreaId, "bathroom.floor_tiling_area_m2") != null);
+    const wallHeightKnown =
+      numFact(lookup, workAreaId, "bathroom.wall_height_m") != null;
+    const tilingIncluded = boolFact(lookup, workAreaId, "bathroom.tiling_included");
+    const waterproofingIncluded = boolFact(
+      lookup,
+      workAreaId,
+      "bathroom.waterproofing_included"
+    );
+    const clientSuppliedFixtures = boolFact(
+      lookup,
+      workAreaId,
+      "bathroom.fixtures_client_supplied"
+    );
+    if (
+      shouldHideBathroomQuestion({
+        factKey: key,
+        jobScope,
+        floorAreaSatisfied,
+        wallHeightKnown,
+        lengthKnown,
+        widthKnown,
+        tilingIncluded,
+        waterproofingIncluded,
+        clientSuppliedFixtures,
+        wallLiningIncluded: boolFact(
+          lookup,
+          workAreaId,
+          "bathroom.wall_lining_included"
+        ),
+        floorPrepIncluded: boolFact(
+          lookup,
+          workAreaId,
+          "bathroom.floor_prep_included"
+        ),
+        floorFinish: strFact(lookup, workAreaId, "bathroom.floor_finish_system"),
+      })
+    ) {
+      return true;
+    }
+  }
 
   if (key === "deck.stairs_required") {
     return true;
@@ -530,6 +588,11 @@ export function shouldHideConditionalQuestion(
   }
 
   if (key === "bathroom.shower_type") {
+    const jobScope = resolveBathroomJobScope({
+      jobScope: strFact(lookup, workAreaId, "bathroom.job_scope"),
+      renovationType: strFact(lookup, workAreaId, "bathroom.renovation_type"),
+    });
+    if (jobScope === "shower_only") return false;
     const fixtures = lookupValue(lookup, workAreaId, "bathroom.fixtures_included");
     if (Array.isArray(fixtures) && !fixtures.some((f) => String(f).toLowerCase().includes("shower"))) {
       return true;

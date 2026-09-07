@@ -1,5 +1,6 @@
 import { effectiveJobPlanBoolean } from "@/lib/assistant/job-plan/exclusion-provenance";
 import { jobPlanNumber, jobPlanString, presentationFromBoolean } from "@/lib/assistant/job-plan/facts";
+import { resolveBathroomJobScope } from "@/lib/estimate/bathroom-scope";
 import type {
   JobPlanAdapterContext,
   JobPlanScopeItem,
@@ -45,15 +46,40 @@ export const bathroomJobPlanAdapter: JobPlanWorkAreaAdapter = {
   workAreaType: "bathroom",
   project(workArea: JobPlanWorkAreaInput, context: JobPlanAdapterContext): JobPlanWorkAreaCard {
     const id = workArea.id;
-    const area = jobPlanNumber(context.facts, id, "bathroom.area_m2");
-    const reno = jobPlanString(context.facts, id, "bathroom.renovation_type");
+    const jobScope = resolveBathroomJobScope({
+      jobScope: jobPlanString(context.facts, id, "bathroom.job_scope"),
+      renovationType: jobPlanString(context.facts, id, "bathroom.renovation_type"),
+    });
+    const length = jobPlanNumber(context.facts, id, "bathroom.length_m");
+    const width = jobPlanNumber(context.facts, id, "bathroom.width_m");
+    const height = jobPlanNumber(context.facts, id, "bathroom.wall_height_m");
+    const floor =
+      jobPlanNumber(context.facts, id, "bathroom.floor_area_m2") ??
+      (length != null && width != null ? Math.round(length * width * 100) / 100 : null) ??
+      jobPlanNumber(context.facts, id, "bathroom.area_m2");
     const finish = jobPlanString(context.facts, id, "bathroom.finish_level");
     const chips = [
-      area != null
-        ? { key: "area", label: "Area", value: `${area}m²`, advanced: false }
+      jobScope
+        ? {
+            key: "scope",
+            label: "Work",
+            value: jobScope.replace(/_/g, " "),
+            advanced: false,
+          }
         : null,
-      reno
-        ? { key: "reno", label: "Type", value: reno, advanced: false }
+      length != null && width != null
+        ? {
+            key: "plan",
+            label: "Plan",
+            value: `${length} × ${width} m`,
+            advanced: false,
+          }
+        : null,
+      height != null
+        ? { key: "height", label: "Height", value: `${height} m`, advanced: false }
+        : null,
+      floor != null
+        ? { key: "area", label: "Floor", value: `${floor}m²`, advanced: false }
         : null,
       finish
         ? { key: "finish", label: "Finish", value: finish, advanced: false }
