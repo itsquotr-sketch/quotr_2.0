@@ -51,6 +51,8 @@ import {
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
   isMatureBathroomPath,
+  parseBathroomWallTileExtent,
+  parseBathroomWaterproofingExtent,
   resolveBathroomJobScope,
 } from "@/lib/estimate/bathroom-scope";
 import { BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT } from "@/lib/estimate/bathroom-geometry";
@@ -88,6 +90,17 @@ const CHECK_SCORES: Record<string, number> = {
   "bathroom.length_m": 95,
   "bathroom.width_m": 94,
   "bathroom.wall_height_m": 70,
+  "bathroom.floor_finish_system": 86,
+  "bathroom.tile_extent": 84,
+  "bathroom.waterproofing_included": 83,
+  "bathroom.waterproofing_extent": 82,
+  "bathroom.tile_format": 80,
+  "bathroom.shower.width_m": 79,
+  "bathroom.shower.depth_m": 78,
+  "bathroom.shower.wall_height_m": 77,
+  "bathroom.wall_tiling_area_m2": 76,
+  "bathroom.waterproofing_area_m2": 75,
+  "bathroom.bath_surround_area_m2": 74,
 };
 
 function factHas(
@@ -515,6 +528,45 @@ function missingHardMinimum(
   return out;
 }
 
+function pushBathroomClarifyFact(
+  out: ClarifyCandidate[],
+  input: ComposeClarifyInput,
+  wa: { id: string; name: string; type: string },
+  key: string,
+  reason: string
+): void {
+  if (factHas(input, key, wa.id)) return;
+  const template = getQuestionTemplateByKey(key);
+  out.push({
+    id: `fact:${wa.id}:${key}`,
+    source: "scope_fact",
+    workAreaId: wa.id,
+    workAreaName: wa.name,
+    workAreaType: wa.type,
+    factKey: key,
+    constraintKey: null,
+    questionKey: key,
+    label: safeFactPresentationLabel(key),
+    question: safeFactQuestion(key, template?.questionText),
+    askClass: "ASK_NOW",
+    inputType:
+      template?.inputType === "boolean"
+        ? "boolean"
+        : template?.inputType === "number"
+          ? "number"
+          : "select",
+    unit: template?.unit,
+    options: template?.options,
+    writeTarget: "FACT",
+    write: null,
+    blocksEstimate: false,
+    assumable: true,
+    rankScore: CHECK_SCORES[key] ?? 60,
+    rankReason: reason,
+    assumptionStatement: null,
+  });
+}
+
 function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
   const out: ClarifyCandidate[] = [];
   for (const wa of input.workAreas.filter((w) => w.status !== "excluded")) {
@@ -623,6 +675,135 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           rankReason: "Bathroom commercial plumbing",
           assumptionStatement: "Standard plumbing allowance",
         });
+      }
+      const finishFlags = {
+        tilingIncluded: getBooleanFact(facts, wa.id, "bathroom.tiling_included"),
+        waterproofingIncluded: getBooleanFact(
+          facts,
+          wa.id,
+          "bathroom.waterproofing_included"
+        ),
+        wallLiningIncluded: getBooleanFact(
+          facts,
+          wa.id,
+          "bathroom.wall_lining_included"
+        ),
+        ceilingLiningIncluded: getBooleanFact(
+          facts,
+          wa.id,
+          "bathroom.ceiling_lining_included"
+        ),
+        floorPrepIncluded: getBooleanFact(
+          facts,
+          wa.id,
+          "bathroom.floor_prep_included"
+        ),
+        floorSubstrate: getStringFact(
+          facts,
+          wa.id,
+          "bathroom.floor_substrate_system"
+        ),
+        floorFinish: getStringFact(facts, wa.id, "bathroom.floor_finish_system"),
+        wallTileExtent:
+          getStringFact(facts, wa.id, "bathroom.tile_extent") ??
+          getStringFact(facts, wa.id, "bathroom.wall_tile_height"),
+        waterproofingExtent: getStringFact(
+          facts,
+          wa.id,
+          "bathroom.waterproofing_extent"
+        ),
+      };
+      if (bathroomQuestionGroupVisible("floor_finish", jobScope, finishFlags)) {
+        pushBathroomClarifyFact(
+          out,
+          input,
+          wa,
+          "bathroom.floor_finish_system",
+          "Bathroom floor finish XOR"
+        );
+      }
+      if (bathroomQuestionGroupVisible("tile_format", jobScope, finishFlags)) {
+        pushBathroomClarifyFact(
+          out,
+          input,
+          wa,
+          "bathroom.tile_format",
+          "Tile format metadata"
+        );
+      }
+      if (bathroomQuestionGroupVisible("wall_tiling", jobScope, finishFlags)) {
+        pushBathroomClarifyFact(
+          out,
+          input,
+          wa,
+          "bathroom.tile_extent",
+          "Wall tiling extent"
+        );
+        if (parseBathroomWallTileExtent(finishFlags.wallTileExtent) === "custom") {
+          pushBathroomClarifyFact(
+            out,
+            input,
+            wa,
+            "bathroom.wall_tiling_area_m2",
+            "Custom wall tile area"
+          );
+        }
+      }
+      if (bathroomQuestionGroupVisible("shower_geometry", jobScope, finishFlags)) {
+        pushBathroomClarifyFact(
+          out,
+          input,
+          wa,
+          "bathroom.shower.width_m",
+          "Shower width"
+        );
+        pushBathroomClarifyFact(
+          out,
+          input,
+          wa,
+          "bathroom.shower.depth_m",
+          "Shower depth"
+        );
+        pushBathroomClarifyFact(
+          out,
+          input,
+          wa,
+          "bathroom.shower.wall_height_m",
+          "Shower wall height"
+        );
+      }
+      if (
+        bathroomQuestionGroupVisible("waterproofing", jobScope, finishFlags) &&
+        finishFlags.waterproofingIncluded === true
+      ) {
+        pushBathroomClarifyFact(
+          out,
+          input,
+          wa,
+          "bathroom.waterproofing_extent",
+          "Waterproofing extent"
+        );
+        const wpExtent = parseBathroomWaterproofingExtent(
+          finishFlags.waterproofingExtent
+        );
+        if (wpExtent === "custom") {
+          pushBathroomClarifyFact(
+            out,
+            input,
+            wa,
+            "bathroom.waterproofing_area_m2",
+            "Custom waterproofing area"
+          );
+        }
+        if (wpExtent === "bath_surround") {
+          pushBathroomClarifyFact(
+            out,
+            input,
+            wa,
+            "bathroom.bath_surround_area_m2",
+            "Bath surround area"
+          );
+        }
       }
       continue;
     }

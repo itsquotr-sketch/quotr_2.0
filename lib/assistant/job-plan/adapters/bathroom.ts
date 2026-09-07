@@ -1,6 +1,10 @@
 import { effectiveJobPlanBoolean } from "@/lib/assistant/job-plan/exclusion-provenance";
 import { jobPlanNumber, jobPlanString, presentationFromBoolean } from "@/lib/assistant/job-plan/facts";
-import { bathroomQuestionGroupVisible, resolveBathroomJobScope } from "@/lib/estimate/bathroom-scope";
+import {
+  bathroomQuestionGroupVisible,
+  isMatureBathroomPath,
+  resolveBathroomJobScope,
+} from "@/lib/estimate/bathroom-scope";
 import type {
   JobPlanAdapterContext,
   JobPlanScopeItem,
@@ -89,7 +93,8 @@ export const bathroomJobPlanAdapter: JobPlanWorkAreaAdapter = {
     const items = [
       boolScope(id, "demolition", "Demolition / strip-out", "bathroom.demolition_required", context, "User-facing bathroom scope"),
       boolScope(id, "waterproofing", "Waterproofing", "bathroom.waterproofing_included", context, "User-facing bathroom scope"),
-      ...(bathroomQuestionGroupVisible("tiling", jobScope)
+      ...(bathroomQuestionGroupVisible("tiling", jobScope) &&
+      !isMatureBathroomPath(jobScope)
         ? [
             boolScope(
               id,

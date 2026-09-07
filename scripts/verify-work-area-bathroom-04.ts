@@ -8,6 +8,8 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 import { composeBuilderReview } from "../lib/assistant/builder-review/compose";
+import { composeClarifyView } from "../lib/assistant/clarify/compose";
+import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import {
   BATHROOM_FIBRE_CEMENT_SHEET_BENCHMARK,
   BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
@@ -119,6 +121,28 @@ function ctx(
     },
     rates: [],
   } as unknown as EstimateContext;
+}
+
+function composeBathroomClarify(facts: EstimateFact[], workAreaId = "b1") {
+  const workAreas = [wa(workAreaId, "bathroom", "Bathroom")];
+  const plan = composeJobPlan({
+    workAreas: workAreas.map((row) => ({
+      id: row.id,
+      type: row.type,
+      name: row.name,
+      status: "confirmed" as const,
+    })),
+    facts,
+  });
+  return composeClarifyView({
+    stage: "quality",
+    briefText: null,
+    qualityLevel: "standard",
+    workAreas,
+    facts,
+    constraints: [],
+    jobPlan: plan,
+  });
 }
 
 function mapCalcLines(items: readonly EstimateLineItemInput[]): EstimateLineItem[] {
@@ -237,6 +261,91 @@ check(
 check(
   "legacy Floor and walls WP → floor_and_shower",
   parseBathroomWaterproofingExtent("Floor and walls") === "floor_and_shower"
+);
+
+console.log("\n--- Questions ---\n");
+const finishClarify = composeBathroomClarify([
+  fact("bathroom.job_scope", "b1", "full_renovation"),
+  fact("bathroom.length_m", "b1", 3),
+  fact("bathroom.width_m", "b1", 2.4),
+  fact("bathroom.wall_height_m", "b1", 2.4),
+  fact("bathroom.demolition_required", "b1", false),
+]);
+check(
+  "Clarify asks floor finish XOR",
+  finishClarify.candidates.some((c) => c.factKey === "bathroom.floor_finish_system")
+);
+check(
+  "Clarify asks wall tile extent",
+  finishClarify.candidates.some((c) => c.factKey === "bathroom.tile_extent") ||
+    finishClarify.deferred.some((c) => c.factKey === "bathroom.tile_extent")
+);
+check(
+  "Clarify does not ask mixed tiling on mature path",
+  !finishClarify.candidates.some((c) => c.factKey === "bathroom.tiling_included") &&
+    !finishClarify.deferred.some((c) => c.factKey === "bathroom.tiling_included")
+);
+const tileFormatClarify = composeBathroomClarify([
+  fact("bathroom.job_scope", "b1", "full_renovation"),
+  fact("bathroom.length_m", "b1", 3),
+  fact("bathroom.width_m", "b1", 2.4),
+  fact("bathroom.floor_finish_system", "b1", "tile"),
+  fact("bathroom.demolition_required", "b1", false),
+]);
+check(
+  "Tile format asked only after tile selected",
+  tileFormatClarify.candidates.some((c) => c.factKey === "bathroom.tile_format") ||
+    tileFormatClarify.deferred.some((c) => c.factKey === "bathroom.tile_format")
+);
+const vinylNoTileFormat = composeBathroomClarify([
+  fact("bathroom.job_scope", "b1", "full_renovation"),
+  fact("bathroom.length_m", "b1", 3),
+  fact("bathroom.width_m", "b1", 2.4),
+  fact("bathroom.floor_finish_system", "b1", "sheet_vinyl"),
+  fact("bathroom.demolition_required", "b1", false),
+]);
+check(
+  "Sheet vinyl does not ask tile format",
+  !vinylNoTileFormat.candidates.some((c) => c.factKey === "bathroom.tile_format") &&
+    !vinylNoTileFormat.deferred.some((c) => c.factKey === "bathroom.tile_format")
+);
+const wpExtentClarify = composeBathroomClarify([
+  fact("bathroom.job_scope", "b1", "full_renovation"),
+  fact("bathroom.length_m", "b1", 3),
+  fact("bathroom.width_m", "b1", 2.4),
+  fact("bathroom.demolition_required", "b1", false),
+  fact("bathroom.waterproofing_included", "b1", true),
+]);
+check(
+  "WP extent asked after waterproofing included",
+  wpExtentClarify.candidates.some(
+    (c) => c.factKey === "bathroom.waterproofing_extent"
+  ) ||
+    wpExtentClarify.deferred.some(
+      (c) => c.factKey === "bathroom.waterproofing_extent"
+    )
+);
+const vanityClarify = composeBathroomClarify([
+  fact("bathroom.job_scope", "b1", "vanity_only"),
+]);
+check(
+  "Vanity-only does not ask floor finish or wall tile",
+  !vanityClarify.candidates.some(
+    (c) =>
+      c.factKey === "bathroom.floor_finish_system" ||
+      c.factKey === "bathroom.tile_extent"
+  ) &&
+    !vanityClarify.deferred.some(
+      (c) =>
+        c.factKey === "bathroom.floor_finish_system" ||
+        c.factKey === "bathroom.tile_extent"
+    )
+);
+check(
+  "mature Job Plan hides mixed tiling toggle",
+  read("lib/assistant/job-plan/adapters/bathroom.ts").includes(
+    "!isMatureBathroomPath(jobScope)"
+  )
 );
 
 console.log("\n--- Fixture A floor tile ---\n");

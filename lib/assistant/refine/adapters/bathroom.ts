@@ -1,11 +1,17 @@
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import {
+  BATHROOM_FLOOR_FINISH_OPTIONS,
   BATHROOM_FLOOR_SUBSTRATE_OPTIONS,
   BATHROOM_FRAMING_LEVEL_OPTIONS,
   BATHROOM_JOB_SCOPE_OPTIONS,
+  BATHROOM_TILE_FORMAT_OPTIONS,
   BATHROOM_TRADE_LEVEL_OPTIONS,
+  BATHROOM_WALL_TILE_EXTENT_OPTIONS,
+  BATHROOM_WATERPROOFING_EXTENT_OPTIONS,
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
+  parseBathroomWallTileExtent,
+  parseBathroomWaterproofingExtent,
   resolveBathroomJobScope,
 } from "@/lib/estimate/bathroom-scope";
 import type { RefineCandidate, RefineWorkAreaAdapter } from "@/lib/assistant/refine/types";
@@ -26,6 +32,24 @@ function knownFact(
       hasFactValue(f.value) &&
       !isNotSureValue(f.value)
   );
+}
+
+function stringFact(
+  facts: readonly {
+    key: string;
+    work_area_id: string | null;
+    value: unknown;
+  }[],
+  workAreaId: string,
+  key: string
+): string | null {
+  const row = facts.find(
+    (f) => f.key === key && f.work_area_id === workAreaId
+  );
+  if (row == null || !hasFactValue(row.value) || isNotSureValue(row.value)) {
+    return null;
+  }
+  return String(row.value);
 }
 
 export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
@@ -307,6 +331,230 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         question: "How much local framing or nogging is required?",
         inputType: "select",
         options: [...BATHROOM_FRAMING_LEVEL_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    const finishFlags = {
+      tilingIncluded: facts.some(
+        (f) =>
+          f.key === "bathroom.tiling_included" &&
+          f.work_area_id === workAreaId &&
+          f.value === true
+      ),
+      waterproofingIncluded:
+        facts.find(
+          (f) =>
+            f.key === "bathroom.waterproofing_included" &&
+            f.work_area_id === workAreaId
+        )?.value === true
+          ? true
+          : facts.find(
+                (f) =>
+                  f.key === "bathroom.waterproofing_included" &&
+                  f.work_area_id === workAreaId
+              )?.value === false
+            ? false
+            : null,
+      floorFinish: stringFact(facts, workAreaId, "bathroom.floor_finish_system"),
+      wallTileExtent:
+        stringFact(facts, workAreaId, "bathroom.tile_extent") ??
+        stringFact(facts, workAreaId, "bathroom.wall_tile_height"),
+      waterproofingExtent: stringFact(
+        facts,
+        workAreaId,
+        "bathroom.waterproofing_extent"
+      ),
+    };
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("floor_finish", jobScope, finishFlags) &&
+      !knownFact(facts, workAreaId, "bathroom.floor_finish_system")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.floor_finish_system`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.floor_finish_system",
+        constraintKey: null,
+        questionKey: "bathroom.floor_finish_system",
+        label: "Floor finish",
+        question: "What floor finish is being installed?",
+        inputType: "select",
+        options: [...BATHROOM_FLOOR_FINISH_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("tile_format", jobScope, finishFlags) &&
+      !knownFact(facts, workAreaId, "bathroom.tile_format")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.tile_format`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.tile_format",
+        constraintKey: null,
+        questionKey: "bathroom.tile_format",
+        label: "Tile format",
+        question: "What tile format is being used?",
+        inputType: "select",
+        options: [...BATHROOM_TILE_FORMAT_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("wall_tiling", jobScope, finishFlags) &&
+      !knownFact(facts, workAreaId, "bathroom.tile_extent")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.tile_extent`,
+        group: "scope",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.tile_extent",
+        constraintKey: null,
+        questionKey: "bathroom.tile_extent",
+        label: "Wall tiling",
+        question: "Are any bathroom walls being tiled, and to what extent?",
+        inputType: "select",
+        options: [...BATHROOM_WALL_TILE_EXTENT_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("shower_geometry", jobScope, finishFlags)
+    ) {
+      if (!knownFact(facts, workAreaId, "bathroom.shower.width_m")) {
+        out.push({
+          id: `refine:${workAreaId}:bathroom.shower.width_m`,
+          group: "specification",
+          tier: "high_value",
+          workAreaId,
+          workAreaName,
+          workAreaType: "bathroom",
+          factKey: "bathroom.shower.width_m",
+          constraintKey: null,
+          questionKey: "bathroom.shower.width_m",
+          label: "Shower width",
+          question: "What is the shower width?",
+          inputType: "number",
+          writeTarget: "FACT",
+          write: null,
+          consumedByCalculator: true,
+        });
+      }
+      if (!knownFact(facts, workAreaId, "bathroom.shower.depth_m")) {
+        out.push({
+          id: `refine:${workAreaId}:bathroom.shower.depth_m`,
+          group: "specification",
+          tier: "high_value",
+          workAreaId,
+          workAreaName,
+          workAreaType: "bathroom",
+          factKey: "bathroom.shower.depth_m",
+          constraintKey: null,
+          questionKey: "bathroom.shower.depth_m",
+          label: "Shower depth",
+          question: "What is the shower depth?",
+          inputType: "number",
+          writeTarget: "FACT",
+          write: null,
+          consumedByCalculator: true,
+        });
+      }
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("waterproofing", jobScope, finishFlags) &&
+      finishFlags.waterproofingIncluded === true &&
+      !knownFact(facts, workAreaId, "bathroom.waterproofing_extent")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.waterproofing_extent`,
+        group: "scope",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.waterproofing_extent",
+        constraintKey: null,
+        questionKey: "bathroom.waterproofing_extent",
+        label: "Waterproofing extent",
+        question: "What areas are being waterproofed?",
+        inputType: "select",
+        options: [...BATHROOM_WATERPROOFING_EXTENT_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      parseBathroomWallTileExtent(finishFlags.wallTileExtent) === "custom" &&
+      !knownFact(facts, workAreaId, "bathroom.wall_tiling_area_m2")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.wall_tiling_area_m2`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.wall_tiling_area_m2",
+        constraintKey: null,
+        questionKey: "bathroom.wall_tiling_area_m2",
+        label: "Wall tiling area",
+        question: "Approximate wall tiling area?",
+        inputType: "number",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      parseBathroomWaterproofingExtent(finishFlags.waterproofingExtent) ===
+        "custom" &&
+      !knownFact(facts, workAreaId, "bathroom.waterproofing_area_m2")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.waterproofing_area_m2`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.waterproofing_area_m2",
+        constraintKey: null,
+        questionKey: "bathroom.waterproofing_area_m2",
+        label: "Waterproofing area",
+        question: "Approximate waterproofing area?",
+        inputType: "number",
         writeTarget: "FACT",
         write: null,
         consumedByCalculator: true,
