@@ -842,6 +842,10 @@ check(
     electricalLine?.rateSource === BATHROOM_QUOTR_ALLOWANCE_LABEL
 );
 check("Review Demolition group", /"label":"Demolition"/.test(reviewText));
+check(
+  "Review demolition rows name each removal",
+  /Floor finish removal/.test(reviewText) && /Wall lining removal/.test(reviewText)
+);
 check("Review Waste / disposal group", /"label":"Waste \/ disposal"/.test(reviewText));
 check("Review Finishing group", /"label":"Finishing"/.test(reviewText));
 check("Review Plumbing group", /"label":"Plumbing"/.test(reviewText));

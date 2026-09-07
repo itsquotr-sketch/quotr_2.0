@@ -603,7 +603,8 @@ function groupBathroomLines(
   lines: readonly BuilderReviewPricedLine[],
   componentKeys: ReadonlySet<string>,
   id: string,
-  label: string
+  label: string,
+  includeChildLabels = false
 ): { remaining: BuilderReviewPricedLine[]; group: BuilderReviewLineGroup | null } {
   const children = lines.filter(
     (line) => line.componentKey != null && componentKeys.has(line.componentKey)
@@ -622,7 +623,11 @@ function groupBathroomLines(
         children.reduce((sum, line) => sum + line.recommendedCost, 0)
       ),
       supporting: children
-        .map((line) => line.supporting ?? line.label)
+        .map((line) =>
+          includeChildLabels
+            ? [line.label, line.supporting].filter(Boolean).join(" — ")
+            : (line.supporting ?? line.label)
+        )
         .filter((text): text is string => Boolean(text))
         .join(" · ") || null,
       secondary: null,
@@ -738,7 +743,8 @@ function applyBathroomReviewGroups(
         fixtureLabour.remaining,
         demolitionLabour,
         "bathroom-demolition",
-        "Demolition"
+        "Demolition",
+        true
       );
       return {
         ...cat,

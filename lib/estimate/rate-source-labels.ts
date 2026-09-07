@@ -87,6 +87,8 @@ export function classifyRateSource(raw: string): RateSourceType {
 }
 
 export function normalizeRateSourceLabel(raw: string): string {
+  if (/pc allowance/i.test(raw)) return "PC allowance";
+  if (/quotr allowance/i.test(raw)) return "Quotr allowance";
   return getRateSourceLabel(classifyRateSource(raw));
 }
 
