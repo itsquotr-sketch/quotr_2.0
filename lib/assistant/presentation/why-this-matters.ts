@@ -46,6 +46,14 @@ const WHY_THIS_MATTERS: Readonly<Record<string, string>> = Object.freeze({
     "Working-hour restrictions can affect programme and labour productivity.",
   floor_level:
     "Floor level can affect access, carrying and handling effort.",
+  "bathroom.floor_substrate_system":
+    "Floor substrate quantity uses the bathroom floor area and a 10% sheet waste.",
+  "bathroom.wall_lining_included":
+    "Wall lining quantity uses gross wall area. Door and window openings are not deducted.",
+  "bathroom.ceiling_lining_included":
+    "Ceiling lining uses the same area as the bathroom floor when it is nested in Bathroom.",
+  "bathroom.framing_level":
+    "Local framing and nogging is bathroom fixture support, not a complete new wall.",
 });
 
 /**

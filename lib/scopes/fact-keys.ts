@@ -147,6 +147,12 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
     "electrical.level": "bathroom.electrical.level",
     floor_finish: "bathroom.floor_finish_system",
     floor_finish_system: "bathroom.floor_finish_system",
+    floor_substrate: "bathroom.floor_substrate_system",
+    floor_substrate_system: "bathroom.floor_substrate_system",
+    wall_lining: "bathroom.wall_lining_included",
+    wall_lining_included: "bathroom.wall_lining_included",
+    ceiling_lining: "bathroom.ceiling_lining_included",
+    ceiling_lining_included: "bathroom.ceiling_lining_included",
     framing_level: "bathroom.framing_level",
   },
   doors: {

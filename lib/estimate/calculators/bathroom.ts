@@ -25,6 +25,10 @@ import {
   BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT,
   resolveBathroomGeometry,
 } from "@/lib/estimate/bathroom-geometry";
+import {
+  buildBathroomPhysicalEnvelope,
+  resolveBathroomPhysicalSelection,
+} from "@/lib/estimate/bathroom-physical";
 import { PHYSICAL_REQUIREMENT_RESOLUTION } from "@/lib/estimate/physical-requirement-resolution";
 import {
   bathroomTradeLevelIncluded,
@@ -57,6 +61,7 @@ import type {
   EstimateContext,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
+import type { EstimateRequirement } from "@/lib/estimate/requirements";
 import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
 
 function carpentryPrepHours(
@@ -96,6 +101,7 @@ export function calculateBathroom(
     "Hazardous material testing/removal unless specifically stated",
   ];
   const lineItems: CalculatorResult["lineItems"] = [];
+  const requirements: EstimateRequirement[] = [];
   const assumptionMetadata = createAssumptionMetadata();
   let sortOrder = 1;
 
@@ -111,19 +117,32 @@ export function calculateBathroom(
     workArea.id,
     "bathroom.tiling_included"
   );
+  const physicalSelection = maturePath
+    ? resolveBathroomPhysicalSelection({ facts, workAreaId: workArea.id })
+    : null;
   const geometry = resolveBathroomGeometry({
     facts,
     workAreaId: workArea.id,
     tilingIncluded: tilingIncludedEarly,
-    wallLiningIncluded: getBooleanFact(
-      facts,
-      workArea.id,
-      "bathroom.wall_lining_included"
-    ),
+    wallLiningIncluded:
+      physicalSelection?.wallLining === "aqualine" ||
+      physicalSelection?.wallLining === "other"
+        ? true
+        : getBooleanFact(facts, workArea.id, "bathroom.wall_lining_included"),
+    ceilingLiningIncluded:
+      physicalSelection?.ceilingLining === "aqualine" ||
+      physicalSelection?.ceilingLining === "other"
+        ? true
+        : getBooleanFact(facts, workArea.id, "bathroom.ceiling_lining_included"),
     floorPrepIncluded: getBooleanFact(
       facts,
       workArea.id,
       "bathroom.floor_prep_included"
+    ),
+    floorSubstrate: physicalSelection?.floorSubstrate ?? getStringFact(
+      facts,
+      workArea.id,
+      "bathroom.floor_substrate_system"
     ),
     waterproofingIncluded: getBooleanFactAny(facts, workArea.id, [
       "bathroom.waterproofing_included",
@@ -212,6 +231,22 @@ export function calculateBathroom(
     undefined;
   const smallJobFactor = smallBathroomFactor(effectiveArea ?? 99);
 
+  if (maturePath && physicalSelection) {
+    const physical = buildBathroomPhysicalEnvelope({
+      context,
+      workArea,
+      geometry,
+      selection: physicalSelection,
+      accessFactor,
+      sortOrderStart: sortOrder,
+    });
+    lineItems.push(...physical.lineItems);
+    requirements.push(...physical.requirements);
+    assumptions.push(...physical.assumptions);
+    missingInfo.push(...physical.missingInfo);
+    sortOrder = physical.nextSortOrder;
+  }
+
   if (demolitionRequired) {
     const demo = resolveProductivity({
       productivityKey: "bathroom.demolition_hours_allowance",
@@ -254,6 +289,7 @@ export function calculateBathroom(
     );
   }
 
+  if (!maturePath) {
   const carpentryHours = carpentryPrepHours(
     effectiveArea ?? 0,
     renovationType,
@@ -297,6 +333,7 @@ export function calculateBathroom(
       }
     )
   );
+  }
 
   const waterproofingIncluded = getBooleanFactAny(facts, workArea.id, [
     "bathroom.waterproofing_included",
@@ -760,7 +797,7 @@ export function calculateBathroom(
     );
   }
 
-  if (getBooleanFact(facts, workArea.id, "bathroom.wall_lining_included")) {
+  if (!maturePath && getBooleanFact(facts, workArea.id, "bathroom.wall_lining_included")) {
     const wallLiningResolved = resolveBathroomWallLiningArea(
       facts,
       workArea.id,
@@ -872,7 +909,14 @@ export function calculateBathroom(
     );
   }
 
-  if (getBooleanFact(facts, workArea.id, "bathroom.floor_prep_included")) {
+  if (
+    getBooleanFact(facts, workArea.id, "bathroom.floor_prep_included") &&
+    !(
+      maturePath &&
+      (physicalSelection?.floorSubstrate === "treated_plywood" ||
+        physicalSelection?.floorSubstrate === "fibre_cement")
+    )
+  ) {
     lineItems.push(
       withPricingOwnership(
         createAllowanceLineItem({
@@ -909,11 +953,11 @@ export function calculateBathroom(
     clientSuppliedFixtures === true;
 
   const skipPackage =
-    maturePath &&
-    jobScope != null &&
-    jobScope !== "full_renovation" &&
-    jobScope !== "new_fitout" &&
-    jobScope !== "custom";
+    maturePath ||
+    (jobScope != null &&
+      jobScope !== "full_renovation" &&
+      jobScope !== "new_fitout" &&
+      jobScope !== "custom");
 
   if (!hasComponentFinishes && effectiveArea != null && !skipPackage) {
     let materialsCost = effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.cost;
@@ -992,6 +1036,7 @@ export function calculateBathroom(
 
   return {
     lineItems,
+    requirements: requirements.length > 0 ? requirements : undefined,
     assumptions,
     missingInfo,
     exclusions,
@@ -1040,4 +1085,8 @@ export const BATHROOM_CALCULATOR_CONSUMED_FACTS = [
   "bathroom.shower_type",
   "bathroom.floor_prep_included",
   "bathroom.floor_finish_system",
+  "bathroom.floor_substrate_system",
+  "bathroom.ceiling_lining_included",
+  "bathroom.framing_level",
+  "bathroom.wall_lining_system",
 ] as const;

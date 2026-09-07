@@ -109,11 +109,35 @@ export const BATHROOM_FRAMING_LEVEL_FACT_KEY =
 
 export const BATHROOM_FRAMING_LEVEL_OPTIONS = [
   "None",
-  "Minor",
-  "Standard",
-  "Major",
+  "Minor — a few supports/nogs",
+  "Standard — several supports and local framing changes",
+  "Major — extensive local bathroom framing",
   "Not sure",
 ] as const;
+
+export const BATHROOM_FLOOR_SUBSTRATE_VALUES = [
+  "treated_plywood",
+  "fibre_cement",
+  "none",
+  "other",
+] as const;
+
+export type BathroomFloorSubstrateSystem =
+  (typeof BATHROOM_FLOOR_SUBSTRATE_VALUES)[number];
+
+export const BATHROOM_FLOOR_SUBSTRATE_FACT_KEY =
+  "bathroom.floor_substrate_system" as const;
+
+export const BATHROOM_FLOOR_SUBSTRATE_OPTIONS = [
+  "19 mm treated plywood",
+  "18 mm fibre cement",
+  "Other",
+  "None",
+  "Not sure",
+] as const;
+
+export const BATHROOM_CEILING_LINING_FACT_KEY =
+  "bathroom.ceiling_lining_included" as const;
 
 export const BATHROOM_TRADE_LEVEL_VALUES = [
   "none",
@@ -205,7 +229,9 @@ export function bathroomGeometryNeed(
   flags?: {
     tilingIncluded?: boolean | null;
     wallLiningIncluded?: boolean | null;
+    ceilingLiningIncluded?: boolean | null;
     floorPrepIncluded?: boolean | null;
+    floorSubstrate?: string | null;
     waterproofingIncluded?: boolean | null;
     floorFinish?: string | null;
   }
@@ -219,7 +245,9 @@ export function bathroomGeometryNeed(
       const finishes =
         flags?.tilingIncluded === true ||
         flags?.wallLiningIncluded === true ||
+        flags?.ceilingLiningIncluded === true ||
         flags?.floorPrepIncluded === true ||
+        Boolean(flags?.floorSubstrate && flags.floorSubstrate !== "none") ||
         flags?.waterproofingIncluded === true ||
         Boolean(flags?.floorFinish && flags.floorFinish !== "none");
       return finishes ? "full" : "none";
@@ -236,7 +264,9 @@ export function bathroomGeometryNeed(
       const finishes =
         flags?.tilingIncluded === true ||
         flags?.wallLiningIncluded === true ||
+        flags?.ceilingLiningIncluded === true ||
         flags?.floorPrepIncluded === true ||
+        Boolean(flags?.floorSubstrate && flags.floorSubstrate !== "none") ||
         flags?.waterproofingIncluded === true ||
         Boolean(flags?.floorFinish && flags.floorFinish !== "none");
       return finishes ? "full" : "none";
@@ -261,7 +291,9 @@ export type BathroomQuestionGroup =
   | "electrical"
   | "ventilation"
   | "linings"
+  | "ceiling_lining"
   | "floor_prep"
+  | "floor_substrate"
   | "underfloor_heating"
   | "framing"
   | "finish_level"
@@ -292,7 +324,9 @@ const GROUP_BY_FACT_KEY: Record<string, BathroomQuestionGroup> = {
   "bathroom.electrical_changes": "electrical",
   "bathroom.ventilation_included": "ventilation",
   "bathroom.wall_lining_included": "linings",
+  "bathroom.ceiling_lining_included": "ceiling_lining",
   "bathroom.floor_prep_included": "floor_prep",
+  "bathroom.floor_substrate_system": "floor_substrate",
   "bathroom.underfloor_heating_included": "underfloor_heating",
   "bathroom.framing_level": "framing",
   "bathroom.finish_level": "finish_level",
@@ -308,7 +342,9 @@ export function bathroomQuestionGroupForFact(
 export type BathroomQuestionFlags = {
   tilingIncluded?: boolean | null;
   wallLiningIncluded?: boolean | null;
+  ceilingLiningIncluded?: boolean | null;
   floorPrepIncluded?: boolean | null;
+  floorSubstrate?: string | null;
   waterproofingIncluded?: boolean | null;
   floorFinish?: string | null;
 };
@@ -400,6 +436,7 @@ export function bathroomQuestionGroupVisible(
         scope === "custom"
       );
     case "linings":
+    case "ceiling_lining":
     case "framing":
       return (
         scope === "reline" ||
@@ -408,6 +445,7 @@ export function bathroomQuestionGroupVisible(
         scope === "custom"
       );
     case "floor_prep":
+    case "floor_substrate":
       return (
         scope === "retile_floor" ||
         scope === "reline" ||
@@ -427,6 +465,32 @@ export function bathroomQuestionGroupVisible(
     default:
       return true;
   }
+}
+
+export function parseBathroomFloorSubstrate(
+  value: unknown
+): BathroomFloorSubstrateSystem | null {
+  if (value == null || value === "") return null;
+  const lower = String(value).trim().toLowerCase();
+  if (lower === "not sure" || lower === "unknown" || lower === "unsure") {
+    return null;
+  }
+  if (lower === "none" || lower === "no") return "none";
+  if (lower === "other") return "other";
+  if (lower.includes("fibre") || lower.includes("fiber") || lower.includes("cement")) {
+    return "fibre_cement";
+  }
+  if (
+    lower.includes("ply") ||
+    lower.includes("treated_plywood") ||
+    lower === "treated_plywood"
+  ) {
+    return "treated_plywood";
+  }
+  if ((BATHROOM_FLOOR_SUBSTRATE_VALUES as readonly string[]).includes(lower)) {
+    return lower as BathroomFloorSubstrateSystem;
+  }
+  return null;
 }
 
 export function parseBathroomFloorFinish(
@@ -540,7 +604,9 @@ export function shouldHideBathroomQuestion(params: {
   waterproofingIncluded: boolean | null;
   clientSuppliedFixtures: boolean | null;
   wallLiningIncluded?: boolean | null;
+  ceilingLiningIncluded?: boolean | null;
   floorPrepIncluded?: boolean | null;
+  floorSubstrate?: string | null;
   floorFinish?: string | null;
 }): boolean {
   const group = bathroomQuestionGroupForFact(params.factKey);
@@ -550,7 +616,9 @@ export function shouldHideBathroomQuestion(params: {
     tilingIncluded: params.tilingIncluded,
     waterproofingIncluded: params.waterproofingIncluded,
     wallLiningIncluded: params.wallLiningIncluded,
+    ceilingLiningIncluded: params.ceilingLiningIncluded,
     floorPrepIncluded: params.floorPrepIncluded,
+    floorSubstrate: params.floorSubstrate,
     floorFinish: params.floorFinish,
   };
   if (!bathroomQuestionGroupVisible(group, params.jobScope, flags)) return true;

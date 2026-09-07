@@ -109,7 +109,9 @@ export function resolveBathroomGeometry(params: {
   workAreaId: string;
   tilingIncluded?: boolean | null;
   wallLiningIncluded?: boolean | null;
+  ceilingLiningIncluded?: boolean | null;
   floorPrepIncluded?: boolean | null;
+  floorSubstrate?: string | null;
   waterproofingIncluded?: boolean | null;
   floorFinish?: string | null;
 }): BathroomGeometryResolution {
@@ -125,7 +127,9 @@ export function resolveBathroomGeometry(params: {
   const geometryNeed = bathroomGeometryNeed(jobScope, {
     tilingIncluded: params.tilingIncluded,
     wallLiningIncluded: params.wallLiningIncluded,
+    ceilingLiningIncluded: params.ceilingLiningIncluded,
     floorPrepIncluded: params.floorPrepIncluded,
+    floorSubstrate: params.floorSubstrate,
     waterproofingIncluded: params.waterproofingIncluded,
     floorFinish: params.floorFinish,
   });

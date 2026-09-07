@@ -308,6 +308,30 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     2.0,
     "m²"
   ),
+  "bathroom.floor_substrate.install.hours_per_m2": productivityEntry(
+    "bathroom.floor_substrate.install.hours_per_m2",
+    "Bathroom floor substrate installation",
+    0.4,
+    "m²"
+  ),
+  "bathroom.lining.wall.install.hours_per_m2": productivityEntry(
+    "bathroom.lining.wall.install.hours_per_m2",
+    "Bathroom wall lining",
+    0.3,
+    "m²"
+  ),
+  "bathroom.lining.ceiling.install.hours_per_m2": productivityEntry(
+    "bathroom.lining.ceiling.install.hours_per_m2",
+    "Bathroom ceiling lining",
+    0.4,
+    "m²"
+  ),
+  "bathroom.framing.install.hours_per_lm": productivityEntry(
+    "bathroom.framing.install.hours_per_lm",
+    "Bathroom local framing / nogging",
+    0.2,
+    "lm"
+  ),
   "kitchen.labour_hours_per_m2": productivityEntry(
     "kitchen.labour_hours_per_m2",
     "Kitchen labour",

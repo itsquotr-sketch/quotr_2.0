@@ -816,13 +816,14 @@ const emitting = calcFiles.filter((p) => {
   return text.includes("requirements:");
 });
 check(
-  "EMITTERS only Deck calculator emits requirements",
-  emitting.length === 3 &&
+  "EMITTERS mature calculators emit requirements",
+  emitting.length === 4 &&
     emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/deck.ts")) &&
     emitting.some((p) =>
       p.replace(/\\/g, "/").endsWith("calculators/retaining-wall.ts")
     ) &&
-    emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/fence.ts"))
+    emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/fence.ts")) &&
+    emitting.some((p) => p.replace(/\\/g, "/").endsWith("calculators/bathroom.ts"))
 );
 
 console.log(`\n=== REQ-3.1 Results: ${passed} passed, ${failed} failed ===`);

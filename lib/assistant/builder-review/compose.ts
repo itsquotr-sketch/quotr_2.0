@@ -81,6 +81,16 @@ import {
   FENCE_SECTIONS_COMPONENT,
   FENCE_TAKEOFF_COMPONENT_KEYS,
 } from "@/lib/estimate/fence-identities";
+import {
+  BATHROOM_CEILING_LINING_COMPONENT,
+  BATHROOM_CEILING_LINING_LABOUR_COMPONENT,
+  BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
+  BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT,
+  BATHROOM_FRAMING_COMPONENT,
+  BATHROOM_FRAMING_LABOUR_COMPONENT,
+  BATHROOM_WALL_LINING_COMPONENT,
+  BATHROOM_WALL_LINING_LABOUR_COMPONENT,
+} from "@/lib/estimate/bathroom-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import {
@@ -558,6 +568,108 @@ function workAreaTypeForName(
   return match
     ? { id: match.id, type: match.type }
     : { id: null, type: null };
+}
+
+function groupBathroomLines(
+  lines: readonly BuilderReviewPricedLine[],
+  componentKeys: ReadonlySet<string>,
+  id: string,
+  label: string
+): { remaining: BuilderReviewPricedLine[]; group: BuilderReviewLineGroup | null } {
+  const children = lines.filter(
+    (line) => line.componentKey != null && componentKeys.has(line.componentKey)
+  );
+  if (children.length === 0) {
+    return { remaining: [...lines], group: null };
+  }
+  return {
+    remaining: lines.filter(
+      (line) => !line.componentKey || !componentKeys.has(line.componentKey)
+    ),
+    group: {
+      id,
+      label,
+      recommendedCost: round2(
+        children.reduce((sum, line) => sum + line.recommendedCost, 0)
+      ),
+      supporting: children
+        .map((line) => line.supporting)
+        .filter((text): text is string => Boolean(text))
+        .join(" · ") || null,
+      secondary: null,
+      itemKey: children[0]?.itemKey ?? null,
+      showChangeMaterial: false,
+      rateContext: null,
+      children,
+    },
+  };
+}
+
+function applyBathroomReviewGroups(
+  categories: BuilderReviewCategoryGroup[]
+): BuilderReviewCategoryGroup[] {
+  const liningMaterials = new Set([
+    BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
+    BATHROOM_WALL_LINING_COMPONENT,
+    BATHROOM_CEILING_LINING_COMPONENT,
+  ]);
+  const liningLabour = new Set([
+    BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT,
+    BATHROOM_WALL_LINING_LABOUR_COMPONENT,
+    BATHROOM_CEILING_LINING_LABOUR_COMPONENT,
+  ]);
+  const framingMaterials = new Set([BATHROOM_FRAMING_COMPONENT]);
+  const framingLabour = new Set([BATHROOM_FRAMING_LABOUR_COMPONENT]);
+
+  return categories.map((cat) => {
+    if (cat.id === "MATERIALS" || cat.id === "PRICING_REQUIRED") {
+      const linings = groupBathroomLines(
+        cat.lines,
+        liningMaterials,
+        "bathroom-linings",
+        "Bathroom linings"
+      );
+      const framing = groupBathroomLines(
+        linings.remaining,
+        framingMaterials,
+        "bathroom-framing",
+        "Local framing"
+      );
+      return {
+        ...cat,
+        lines: framing.remaining,
+        lineGroups: [
+          ...cat.lineGroups,
+          ...(linings.group ? [linings.group] : []),
+          ...(framing.group ? [framing.group] : []),
+        ],
+      };
+    }
+    if (cat.id === "LABOUR") {
+      const linings = groupBathroomLines(
+        cat.lines,
+        liningLabour,
+        "bathroom-linings-labour",
+        "Bathroom lining labour"
+      );
+      const framing = groupBathroomLines(
+        linings.remaining,
+        framingLabour,
+        "bathroom-framing-labour",
+        "Local framing labour"
+      );
+      return {
+        ...cat,
+        lines: framing.remaining,
+        lineGroups: [
+          ...cat.lineGroups,
+          ...(linings.group ? [linings.group] : []),
+          ...(framing.group ? [framing.group] : []),
+        ],
+      };
+    }
+    return cat;
+  });
 }
 
 function buildPileLineGroup(
@@ -1200,6 +1312,10 @@ export function composeBuilderReview(
           lineGroups: [...cat.lineGroups, sleeperPostGroup],
         };
       });
+    }
+
+    if (meta.type === "bathroom") {
+      categories = applyBathroomReviewGroups(categories);
     }
 
     return {

@@ -101,6 +101,30 @@ export const bathroomJobPlanAdapter: JobPlanWorkAreaAdapter = {
             ),
           ]
         : []),
+      ...(bathroomQuestionGroupVisible("linings", jobScope)
+        ? [
+            boolScope(
+              id,
+              "wall-lining",
+              "Wall lining",
+              "bathroom.wall_lining_included",
+              context,
+              "User-facing bathroom scope"
+            ),
+          ]
+        : []),
+      ...(bathroomQuestionGroupVisible("ceiling_lining", jobScope)
+        ? [
+            boolScope(
+              id,
+              "ceiling-lining",
+              "Ceiling lining",
+              "bathroom.ceiling_lining_included",
+              context,
+              "User-facing bathroom scope"
+            ),
+          ]
+        : []),
     ];
 
     return {

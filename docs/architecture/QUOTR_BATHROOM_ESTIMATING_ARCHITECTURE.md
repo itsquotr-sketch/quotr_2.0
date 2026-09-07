@@ -1,6 +1,6 @@
 # Quotr Bathroom Estimating Architecture
 
-**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 implemented (scope + geometry)**  
+**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 implemented (scope + geometry)** + **WA-BATHROOM-03 physical path implemented (GO after hosted proof)**  
 **Date:** 2026-09-07  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
@@ -8,7 +8,7 @@
 **Migrations:** NONE. No 055.  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
 **Triage:** [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md)
-**Verifier:** `scripts/verify-work-area-bathroom-02.ts`
+**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`
 
 Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band is unchanged (`trial_supported`).
 
@@ -22,6 +22,7 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | --- | --- |
 | WA-BATHROOM-01 architecture / gap audit | **GO** |
 | WA-BATHROOM-02 scope + geometry | **GO** |
+| WA-BATHROOM-03 physical substrates / linings / framing | **pending hosted proof** |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (deferred to 04–07) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ / Company DNA behaviour | **NO-GO** |
@@ -1266,4 +1267,64 @@ Mature path = `bathroom.job_scope` present → tiling money only if `tiling_incl
 
 `bathroom.floor_finish_system` (tile / sheet_vinyl / vinyl_plank / other / none), `bathroom.framing_level` (none / minor / standard / major), `bathroom.plumbing.level` and `bathroom.electrical.level` (none / minor / **standard** / major; Standard uses existing Minor $), `bathroom.waterproofing_extent` kept, `bathroom.tile_extent` remains canonical ( `wall_tile_height` is legacy refinement), `bathroom.demolition_required` preserved. Fixture catalogue unchanged.
 
-**STOP. Do not start WA-BATHROOM-03 until reviewed.**
+---
+
+## 54. WA-BATHROOM-03 physical substrates / linings / framing
+
+**Status:** implemented on the mature `bathroom.job_scope` path. Mark **GO** only after hosted proof.
+
+Verifier: `scripts/verify-work-area-bathroom-03.ts`
+
+### Identities
+
+| Role | Key |
+| --- | --- |
+| Floor substrate fact | `bathroom.floor_substrate_system` = `treated_plywood \| fibre_cement \| none \| other` |
+| Wall lining | `bathroom.wall_lining_included` (Not sure → ASSUMED_DISCLOSED 13 mm GIB Aqualine) |
+| Ceiling lining | `bathroom.ceiling_lining_included` |
+| Framing level | `bathroom.framing_level` = `none \| minor \| standard \| major` (unknown → INFO_REQUIRED, never silent Standard) |
+| Plywood | `sheet.plywood.19mm.h3.2.each` (new; no invented $) |
+| Fibre cement | `sheet.fibre_cement.18mm.2400x1200.each` (new; no invented $) |
+| Aqualine (wall and ceiling) | `sheet.plasterboard.aqualine.each` (reuse existing fitout identity) |
+| Framing timber | `bathroom.framing.90x45.h1.2.lm` (not Deck H3.2 90×45) |
+| Floor labour productivity | `bathroom.floor_substrate.install.hours_per_m2` = 0.40 |
+| Wall labour productivity | `bathroom.lining.wall.install.hours_per_m2` = 0.30 |
+| Ceiling labour productivity | `bathroom.lining.ceiling.install.hours_per_m2` = 0.40 |
+| Framing labour productivity | `bathroom.framing.install.hours_per_lm` = 0.20 |
+
+Requirement component keys: `bathroom.floor_substrate`, `bathroom.lining.wall`, `bathroom.lining.ceiling`, `bathroom.framing`, plus `.install` labour suffixes.
+
+### Formulas
+
+- Geometry authority: `resolveBathroomGeometry` (do not require persisted `floor_area_m2` / `gross_wall_area_m2`).
+- Sheet waste once: purchase area = physical area × 1.10; sheets = ceil(purchase / 2.88). 2400 × 1200.
+- Walls: no opening deductions. Disclose that fact when wall lining is emitted.
+- Framing lm = gross wall area × intensity (`none` 0 / `minor` 0.20 / `standard` 0.50 / `major` 1.00). Exact derived lm; no 10% sheet waste on timber.
+- Labour hours = physical qty × productivity. Money = hours × company carpenter $/h. No crew/8h minimum on these new hours.
+
+### Scope rules
+
+Component facts decide inclusion. `full_renovation` asks the questions; it does not auto-enable every physical component. Vanity-only emits none of these unless independently selected. Floor Not sure → disclosed 19 mm H3.2 plywood. Wall/ceiling Not sure → disclosed Aqualine.
+
+### Legacy boundary
+
+Mature path = stored `bathroom.job_scope`. Legacy regenerate without that fact keeps carpentry/prep hours, lining lumps, $400 floor-prep, and the $18k package. Historical snapshots unchanged. Mature path must not also price generic carpentry for the same substrate / lining / nogging work.
+
+### Rate gaps
+
+| Identity | Company rate | Quotr benchmark | Unit | Gap |
+| --- | --- | --- | --- | --- |
+| `sheet.plywood.19mm.h3.2.each` | no | no | each | NEEDS BENCHMARK / Pricing Required |
+| `sheet.fibre_cement.18mm.2400x1200.each` | no | no | each | NEEDS BENCHMARK / Pricing Required |
+| `sheet.plasterboard.aqualine.each` | maybe | yes ($26 / $38 fitout catalogue) | each | QUOTR BENCHMARK AVAILABLE — owner should confirm |
+| `bathroom.framing.90x45.h1.2.lm` | no | no | lm | NEEDS BENCHMARK / Pricing Required |
+
+Labour $ uses canonical `labour.carpenter.hour`. Do not invent material dollars.
+
+### Sibling Work Area future isolation contract
+
+Bathroom nested floor substrate / wall lining / ceiling lining may exist inside Bathroom. If a future explicit sibling Work Area (Internal Walls, Ceilings, Flooring) already owns that same selected surface in the same room, do not double-price. That XOR is **not** implemented here because those Work Areas are not matured. Do not treat “any Ceilings WA on the project” as suppress-Bathroom-ceiling.
+
+### Next action after 03 GO
+
+**WA-BATHROOM-04** — floor finish XOR (tile / sheet vinyl / vinyl plank) as distinct from floor substrate. No tiling subcontract money rewrite beyond what 04 owns. Do not start Internal Walls, Variations, or RFQ.

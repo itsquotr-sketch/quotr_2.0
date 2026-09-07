@@ -401,10 +401,20 @@ function missingHardMinimum(
           card.workAreaId,
           "bathroom.wall_lining_included"
         ),
+        ceilingLiningIncluded: getBooleanFact(
+          facts,
+          card.workAreaId,
+          "bathroom.ceiling_lining_included"
+        ),
         floorPrepIncluded: getBooleanFact(
           facts,
           card.workAreaId,
           "bathroom.floor_prep_included"
+        ),
+        floorSubstrate: getStringFact(
+          facts,
+          card.workAreaId,
+          "bathroom.floor_substrate_system"
         ),
         waterproofingIncluded: getBooleanFact(
           facts,
@@ -518,10 +528,20 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           wa.id,
           "bathroom.wall_lining_included"
         ),
+        ceilingLiningIncluded: getBooleanFact(
+          facts,
+          wa.id,
+          "bathroom.ceiling_lining_included"
+        ),
         floorPrepIncluded: getBooleanFact(
           facts,
           wa.id,
           "bathroom.floor_prep_included"
+        ),
+        floorSubstrate: getStringFact(
+          facts,
+          wa.id,
+          "bathroom.floor_substrate_system"
         ),
         floorFinish: getStringFact(facts, wa.id, "bathroom.floor_finish_system"),
       });

@@ -556,8 +556,8 @@ check(
     isCalculatorConsumedFact("bathroom", "bathroom.plumbing.level")
 );
 check(
-  "unused framing_level not on consumed contract",
-  !(BATHROOM_CALCULATOR_CONSUMED_FACTS as readonly string[]).includes(
+  "framing_level is on consumed contract",
+  (BATHROOM_CALCULATOR_CONSUMED_FACTS as readonly string[]).includes(
     "bathroom.framing_level"
   )
 );

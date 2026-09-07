@@ -146,10 +146,20 @@ export function shouldHideConditionalQuestion(
           workAreaId,
           "bathroom.wall_lining_included"
         ),
+        ceilingLiningIncluded: boolFact(
+          lookup,
+          workAreaId,
+          "bathroom.ceiling_lining_included"
+        ),
         floorPrepIncluded: boolFact(
           lookup,
           workAreaId,
           "bathroom.floor_prep_included"
+        ),
+        floorSubstrate: strFact(
+          lookup,
+          workAreaId,
+          "bathroom.floor_substrate_system"
         ),
         floorFinish: strFact(lookup, workAreaId, "bathroom.floor_finish_system"),
       })

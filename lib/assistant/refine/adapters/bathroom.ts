@@ -1,5 +1,7 @@
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import {
+  BATHROOM_FLOOR_SUBSTRATE_OPTIONS,
+  BATHROOM_FRAMING_LEVEL_OPTIONS,
   BATHROOM_JOB_SCOPE_OPTIONS,
   BATHROOM_TRADE_LEVEL_OPTIONS,
   bathroomGeometryNeed,
@@ -66,6 +68,28 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         (f) =>
           f.key === "bathroom.tiling_included" && f.work_area_id === workAreaId
       )?.value === true,
+      wallLiningIncluded: facts.find(
+        (f) =>
+          f.key === "bathroom.wall_lining_included" &&
+          f.work_area_id === workAreaId
+      )?.value === true,
+      ceilingLiningIncluded: facts.find(
+        (f) =>
+          f.key === "bathroom.ceiling_lining_included" &&
+          f.work_area_id === workAreaId
+      )?.value === true,
+      floorPrepIncluded: facts.find(
+        (f) =>
+          f.key === "bathroom.floor_prep_included" &&
+          f.work_area_id === workAreaId
+      )?.value === true,
+      floorSubstrate: String(
+        facts.find(
+          (f) =>
+            f.key === "bathroom.floor_substrate_system" &&
+            f.work_area_id === workAreaId
+        )?.value ?? ""
+      ) || null,
       waterproofingIncluded: facts.find(
         (f) =>
           f.key === "bathroom.waterproofing_included" &&
@@ -165,6 +189,104 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         question: "What level of plumbing work is included?",
         inputType: "select",
         options: [...BATHROOM_TRADE_LEVEL_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("floor_substrate", jobScope) &&
+      !knownFact(facts, workAreaId, "bathroom.floor_substrate_system")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.floor_substrate_system`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.floor_substrate_system",
+        constraintKey: null,
+        questionKey: "bathroom.floor_substrate_system",
+        label: "Floor substrate",
+        question: "Does the bathroom need a new floor substrate?",
+        inputType: "select",
+        options: [...BATHROOM_FLOOR_SUBSTRATE_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("linings", jobScope) &&
+      !knownFact(facts, workAreaId, "bathroom.wall_lining_included")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.wall_lining_included`,
+        group: "scope",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.wall_lining_included",
+        constraintKey: null,
+        questionKey: "bathroom.wall_lining_included",
+        label: "Wall lining",
+        question: "Are the bathroom walls being relined?",
+        inputType: "boolean",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("ceiling_lining", jobScope) &&
+      !knownFact(facts, workAreaId, "bathroom.ceiling_lining_included")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.ceiling_lining_included`,
+        group: "scope",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.ceiling_lining_included",
+        constraintKey: null,
+        questionKey: "bathroom.ceiling_lining_included",
+        label: "Ceiling lining",
+        question: "Is the bathroom ceiling being relined?",
+        inputType: "boolean",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("framing", jobScope) &&
+      !knownFact(facts, workAreaId, "bathroom.framing_level")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.framing_level`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.framing_level",
+        constraintKey: null,
+        questionKey: "bathroom.framing_level",
+        label: "Framing / nogging",
+        question: "How much local framing or nogging is required?",
+        inputType: "select",
+        options: [...BATHROOM_FRAMING_LEVEL_OPTIONS],
         writeTarget: "FACT",
         write: null,
         consumedByCalculator: true,
