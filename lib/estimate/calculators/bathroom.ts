@@ -35,6 +35,8 @@ import {
 } from "@/lib/estimate/bathroom-finishes";
 import { buildBathroomFixtureEnvelope } from "@/lib/estimate/bathroom-fixtures";
 import { buildBathroomTradeEnvelope } from "@/lib/estimate/bathroom-trades";
+import { buildBathroomDemolitionEnvelope } from "@/lib/estimate/bathroom-demolition";
+import { buildBathroomFinishingEnvelope } from "@/lib/estimate/bathroom-finishing";
 import { PHYSICAL_REQUIREMENT_RESOLUTION } from "@/lib/estimate/physical-requirement-resolution";
 import {
   bathroomTradeLevelIncluded,
@@ -166,6 +168,21 @@ export function calculateBathroom(
       facts,
       workArea.id,
       "bathroom.waterproofing_extent"
+    ),
+    demolitionComponents: getArrayFact(
+      facts,
+      workArea.id,
+      "bathroom.demolition.components"
+    ),
+    paintingIncluded: getBooleanFact(
+      facts,
+      workArea.id,
+      "bathroom.painting_included"
+    ),
+    stoppingIncluded: getBooleanFact(
+      facts,
+      workArea.id,
+      "bathroom.stopping_included"
     ),
   });
 
@@ -302,9 +319,34 @@ export function calculateBathroom(
     assumptions.push(...trades.assumptions);
     missingInfo.push(...trades.missingInfo);
     sortOrder = trades.nextSortOrder;
+
+    const demolition = buildBathroomDemolitionEnvelope({
+      context,
+      workArea,
+      geometry,
+      accessFactor,
+      sortOrderStart: sortOrder,
+    });
+    lineItems.push(...demolition.lineItems);
+    requirements.push(...demolition.requirements);
+    assumptions.push(...demolition.assumptions);
+    missingInfo.push(...demolition.missingInfo);
+    sortOrder = demolition.nextSortOrder;
+
+    const finishing = buildBathroomFinishingEnvelope({
+      context,
+      workArea,
+      geometry,
+      sortOrderStart: sortOrder,
+    });
+    lineItems.push(...finishing.lineItems);
+    requirements.push(...finishing.requirements);
+    assumptions.push(...finishing.assumptions);
+    missingInfo.push(...finishing.missingInfo);
+    sortOrder = finishing.nextSortOrder;
   }
 
-  if (demolitionRequired) {
+  if (!maturePath && demolitionRequired) {
     const demo = resolveProductivity({
       productivityKey: "bathroom.demolition_hours_allowance",
       unit: "allowance",
@@ -1176,4 +1218,8 @@ export const BATHROOM_CALCULATOR_CONSUMED_FACTS = [
   "bathroom.ceiling_lining_included",
   "bathroom.framing_level",
   "bathroom.wall_lining_system",
+  "bathroom.demolition.components",
+  "bathroom.waste.level",
+  "bathroom.stopping_included",
+  "bathroom.painting_included",
 ] as const;

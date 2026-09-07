@@ -1,6 +1,6 @@
 # Quotr Bathroom Estimating Architecture
 
-**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO** + **WA-BATHROOM-05 GO (fixtures / plumbing / electrical / PC sums)**  
+**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO** + **WA-BATHROOM-05 GO** + **WA-BATHROOM-06 GO (demolition / waste / nested finishing / Review close)**  
 **Date:** 2026-09-07  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
@@ -9,7 +9,7 @@
 **Migrations:** NONE. No 055.  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
 **Triage:** [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md)
-**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`, `scripts/verify-work-area-bathroom-04.ts`, `scripts/verify-work-area-bathroom-05.ts`
+**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`, `scripts/verify-work-area-bathroom-04.ts`, `scripts/verify-work-area-bathroom-05.ts`, `scripts/verify-work-area-bathroom-06.ts`
 
 Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band is unchanged (`trial_supported`).
 
@@ -26,12 +26,13 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | WA-BATHROOM-03 physical substrates / linings / framing | **GO** |
 | WA-BATHROOM-04 floor finish / tiling / waterproofing | **GO** |
 | WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums | **GO** (hosted `a329b7c`) |
+| WA-BATHROOM-06 demolition / waste / nested finishing / Review | **GO** (hosted SHA in §57) |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; 05 owns plumbing/fixtures) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ sending / Company DNA behaviour | **NO-GO** |
 | Production / migration 055 | **NO-GO** |
 
-**Next action after 05 GO:** [WA-BATHROOM-06](#47-implementation-phases) — demolition/waste / conditions / nested finish XOR / Review polish. Do not start Internal Walls, Variations, or RFQ sending.
+**Next action after 06 GO:** [WA-BATHROOM-07](#47-implementation-phases) — owner-approved rates through `resolveRate`; kill $18k path; commercial proof. Do not start Internal Walls, Variations, or RFQ sending.
 
 ---
 
@@ -322,25 +323,28 @@ Requirement generation is **flag-driven**, not “if bathroom WA exists, emit ev
 
 ## 10. Demolition architecture
 
-Optional. `bathroom.demolition_required` remains the include flag.
+Optional. Not silent on every Bathroom. `strip_out_only` implies demolition unless `bathroom.demolition_required === false`. `full_renovation` does **not** auto-imply; the existing demolition question still applies.
 
-Physical drivers (no unexplained package minimum):
+**Mature labour** is modular (physical quantity × owner-approved productivity → person-hours). No generic 8 h / 10 h package on the mature path. Legacy lump remains only when `job_scope` is absent.
 
-- Floor area (floor covering / substrate strip)
-- Wall lining area (if linings stripped)
-- Ceiling area (if ceiling stripped — flag, not automatic)
-- Fixture count (vanity, WC, shower, bath)
+| Component | Identity | Productivity |
+| --- | --- | --- |
+| Floor finish | `bathroom.demolition.floor_finish` | 0.25 h/m² |
+| Wall lining | `bathroom.demolition.wall_lining` | 0.20 h/m² |
+| Ceiling lining | `bathroom.demolition.ceiling` | 0.25 h/m² |
+| Vanity | `bathroom.demolition.vanity` | 1.0 h each |
+| Toilet | `bathroom.demolition.toilet` | 0.75 h each |
+| Shower / enclosure | `bathroom.demolition.shower` | 1.5 h each |
+| Bath | `bathroom.demolition.bath` | 1.5 h each |
+| Other fixture | `bathroom.demolition.fixture` | 0.75 h each |
 
-Requirement split:
+Dedicated fixture hours win over the generic fixture average. Project Conditions (`getCombinedLabourAccessFactor`) modify **how hard** the hours are. Scope decides **what** is removed. Hazmat / asbestos → Pricing Required; ordinary demolition is not priced.
 
-| Kind | Authority |
-| --- | --- |
-| Labour | Independent `bathroom.demolition.hours_per_m2` (or hours per fixture for fixture-only strip) — **REQUIREMENT GAP** today (lump allowance only) |
-| Waste | Visible bathroom waste requirement — not buried in carpentry |
-| Plant | N/A unless skip/hire later |
-| Material | N/A |
+**Overlap:** Bathroom owns nested strip-out. Standalone Demolition WA is immature — Bathroom still emits its lines and adds an assumption if a sibling demolition WA exists. Do not mature Demolition WA here.
 
-Boundary vs `demolition` WA: bathroom strip-out stays on Bathroom. Standalone Demolition WA must not also price `bathroom_demolition` overlap group. Existing ISD `bathroom.demolition` relationship already suppresses if demolition WA accepted — keep that XOR.
+**Flooring removal boundary:** Bathroom floor-finish removal stays nested. Future standalone Flooring must not double-price that same removal.
+
+**Internal Walls / Ceilings removal boundary:** Bathroom wet-area wall and ceiling lining removal stays nested. Future Internal Walls / Ceilings must not double-price the same selected removal.
 
 ---
 
@@ -707,30 +711,36 @@ Current `bathroom.fixtures.allowance` is a **sum of hardcoded fixture lumps** pa
 
 ## 27. Waste
 
-**Current Bathroom calculator emits no waste / skip / disposal line.** Demo is labour only. ISD may suggest `waste_removal` as a non-product scope.
+**WA-BATHROOM-06 implemented.** Mature Bathroom waste is a separate `WasteRequirement` (`bathroom.waste.disposal`), not buried in demolition labour.
 
-Target: visible **Bathroom waste/disposal** requirement when demolition or strip is selected. Drivers: floor area + lining area + fixture count (coarse). V1 does **not** need density modelling.
+Physical density/volume is **not** wired for Bathroom V1. Chosen model: a transparent disposal **allowance** inferred from selected demolition intensity:
 
-`DEMOLITION_BENCHMARKS.bathroomEach` / `wastePerM2` / `skipBinEach` — **REUSE as candidate rate class** for nested bathroom waste, not a second Demolition WA. **NEEDS OWNER**.
+| Level | Score | Quotr allowance (ex GST) | Catalogue key |
+| --- | --- | --- | --- |
+| minor | ≤2 | $350 | `bathroom.waste.minor.allowance` |
+| standard | ≤5 | $650 | `bathroom.waste.standard.allowance` |
+| major | else | $1,000 | `bathroom.waste.major.allowance` |
 
-Must not be buried in carpentry or the $18k package.
+Scoring: floor finish = 1; wall lining / ceiling = 2 each; shower / bath = 2; other fixtures = 1. Builder may override with `bathroom.waste.level` (hidden from Quick Estimate). Company lump on `bathroom.waste.disposal.allowance` replaces the derived total.
+
+Do not invent density precision. Do not ask a separate waste question when demolition scope is known.
 
 ---
 
 ## 28. Painting / plastering boundary
 
-Quotr has sibling WAs `painting` and `plastering`. Internal walls / ceilings already have nested `stopping_included` / `painting_included` **allowances**.
+**WA-BATHROOM-06 implemented.** Nested flags `bathroom.stopping_included` and `bathroom.painting_included` (default off; Refine / Job Plan, not Quick Estimate).
 
-**Bathroom calculator has no nested stopping/painting flags.** ISD `bathroom.painting` may suggest adding Painting WA.
+**XOR rules (implemented):**
 
-**XOR rules:**
+1. If a sibling `painting` WA is confirmed → nested bathroom painting is **not** priced.
+2. If a sibling `plastering` WA is confirmed → nested bathroom stopping is **not** priced.
+3. Otherwise Bathroom may nest stopping/painting as subcontract **allowances**. They are not independent Work Areas and are not added by default.
+4. Nested paint uses `bathroom.painting.m2` ($30 ex GST / m²), **not** Painting WA `painting.material.m2`. Stopping uses `bathroom.stopping.m2` ($28 ex GST / m²). Company rate wins. Finish level does not multiply.
 
-1. If sibling `painting` WA is confirmed and covers the bathroom surfaces → Bathroom must **not** emit painting.
-2. If sibling `plastering` WA covers bathroom stopping → Bathroom must **not** emit stopping.
-3. If neither sibling exists, Bathroom **may** nest stopping/painting as **allowances** (same pattern as internal_walls), default **off** unless job-scope is full reno / reline and user includes finishing.
-4. Nested flags are allowances or “add sibling WA” prompts — they must **not** silently generate a second full Painting estimate.
+**Stopping authority:** selected new plasterboard lining area (wall + ceiling). Floor area is not authority. Tiled walls still receive joint stopping / substrate prep — tiled area is **not** deducted from stopping.
 
-Recommend facts: `bathroom.stopping_included`, `bathroom.painting_included` (nested, default off). Prefer sibling WAs when the builder already uses them.
+**Painting authority:** paintable wall (gross wall minus tiled wall) + ceiling when painting is selected. Full-height tile → wall paint 0; half-height tile leaves the upper wall paintable. No paint on tiled surfaces.
 
 ---
 
@@ -1457,4 +1467,35 @@ One chip per line: PC allowance / Your company rate / Quotr benchmark / Rate req
 
 ### Next action after 05 GO
 
-**WA-BATHROOM-06** — demolition/waste / conditions / nested finish XOR / Review polish. Do not start Internal Walls, Variations, or RFQ sending.
+**Closed by WA-BATHROOM-06.** See §57.
+
+---
+
+## 57. WA-BATHROOM-06 demolition / waste / nested finishing / Review close
+
+**GO** pending hosted Preview proof of this commit. Runtime is namespaced to Bathroom. Deck / Fence / RW / DNA / Billing / Security unchanged. Production untouched. No 055.
+
+### Demolition
+
+Optional. `strip_out_only` implies demolition unless explicitly false. `full_renovation` does not auto-imply. Modular labour: physical driver × productivity × Project Condition access factor. No generic package minimum on the mature path.
+
+### Waste
+
+Transparent allowance (not density): minor $350 / standard $650 / major $1,000 from demolition score. Company lump `bathroom.waste.disposal.allowance` wins. Visible `WasteRequirement`.
+
+### Stopping / painting
+
+Off unless selected. Stopping = selected new plasterboard lining m² including under tiles (`bathroom.stopping.m2` $28). Painting = paintable wall (gross − tiled) + ceiling (`bathroom.painting.m2` $30). Sibling Painting / Plastering WAs suppress nested lines. Finish level does not multiply.
+
+### Overlap
+
+Bathroom owns nested strip-out, floor-finish removal, and wet-area lining removal. Standalone Demolition WA is immature — Bathroom emits and discloses. Future Flooring / Internal Walls / Ceilings must not double-price the same selected removal.
+
+### Review
+
+Fixture pairing: `Vanity — PC allowance $1,200` (name on every PC). Plumbing / electrical chip: **Quotr allowance**, not a quoted subcontract price. Groups: Geometry (existing), Demolition, Framing/substrates, Linings, Floor finish, Wall tiling, Waterproofing, Fixtures, Plumbing, Electrical, Finishing, Waste / disposal.
+
+### Next action after 06 GO
+
+**WA-BATHROOM-07** — owner-approved rates through `resolveRate`; kill remaining $18k / fallback package path; commercial proof. Do not start Internal Walls, Variations, or RFQ sending.
+

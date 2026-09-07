@@ -130,6 +130,26 @@ export const bathroomJobPlanAdapter: JobPlanWorkAreaAdapter = {
             ),
           ]
         : []),
+      ...(bathroomQuestionGroupVisible("finishing", jobScope)
+        ? [
+            boolScope(
+              id,
+              "stopping",
+              "Stopping / plastering",
+              "bathroom.stopping_included",
+              context,
+              "User-facing bathroom nested finishing"
+            ),
+            boolScope(
+              id,
+              "painting",
+              "Painting",
+              "bathroom.painting_included",
+              context,
+              "User-facing bathroom nested finishing"
+            ),
+          ]
+        : []),
     ];
 
     return {

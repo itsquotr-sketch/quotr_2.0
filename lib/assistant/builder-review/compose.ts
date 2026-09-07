@@ -84,6 +84,7 @@ import {
 import {
   BATHROOM_CEILING_LINING_COMPONENT,
   BATHROOM_CEILING_LINING_LABOUR_COMPONENT,
+  BATHROOM_DEMOLITION_COMPONENTS,
   BATHROOM_ELECTRICAL_COMPONENT,
   BATHROOM_FIXTURE_INSTALL_COMPONENTS,
   BATHROOM_FIXTURE_SUPPLY_COMPONENTS,
@@ -93,15 +94,19 @@ import {
   BATHROOM_FLOOR_TILE_MATERIAL_COMPONENT,
   BATHROOM_FRAMING_COMPONENT,
   BATHROOM_FRAMING_LABOUR_COMPONENT,
+  BATHROOM_PAINTING_COMPONENT,
   BATHROOM_PLUMBING_COMPONENT,
   BATHROOM_SHEET_VINYL_INSTALL_COMPONENT,
   BATHROOM_SHEET_VINYL_MATERIAL_COMPONENT,
+  BATHROOM_STOPPING_COMPONENT,
   BATHROOM_VINYL_PLANK_INSTALL_COMPONENT,
   BATHROOM_VINYL_PLANK_MATERIAL_COMPONENT,
   BATHROOM_WALL_LINING_COMPONENT,
   BATHROOM_WALL_LINING_LABOUR_COMPONENT,
   BATHROOM_WALL_TILE_INSTALL_COMPONENT,
   BATHROOM_WALL_TILE_MATERIAL_COMPONENT,
+  BATHROOM_WASTE_ALLOWANCE_KEY,
+  BATHROOM_WASTE_COMPONENT,
   BATHROOM_WATERPROOFING_COMPONENT,
 } from "@/lib/estimate/bathroom-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
@@ -204,6 +209,13 @@ export function mapLineCategory(
   ) {
     return source === "missing" ? "PRICING_REQUIRED" : "WASTE";
   }
+  if (
+    item.componentKey === BATHROOM_WASTE_COMPONENT ||
+    item.itemKey === BATHROOM_WASTE_ALLOWANCE_KEY ||
+    /^bathroom\.waste\./.test(item.itemKey ?? "")
+  ) {
+    return source === "missing" ? "PRICING_REQUIRED" : "WASTE";
+  }
   if (source === "missing") return "PRICING_REQUIRED";
 
   switch (item.category) {
@@ -224,6 +236,7 @@ export function mapLineCategory(
 
 export function mapRateLabel(raw: string): string {
   if (/pc allowance/i.test(raw)) return "PC allowance";
+  if (/quotr allowance/i.test(raw)) return "Quotr allowance";
   const type = classifyRateSource(raw);
   if (type === "user_rate") return "Company rate";
   if (type === "calibrated_productivity") return "Your calibrated productivity";
@@ -609,7 +622,7 @@ function groupBathroomLines(
         children.reduce((sum, line) => sum + line.recommendedCost, 0)
       ),
       supporting: children
-        .map((line) => line.supporting)
+        .map((line) => line.supporting ?? line.label)
         .filter((text): text is string => Boolean(text))
         .join(" · ") || null,
       secondary: null,
@@ -651,8 +664,11 @@ function applyBathroomReviewGroups(
   const waterproofing = new Set([BATHROOM_WATERPROOFING_COMPONENT]);
   const fixtureSupply = new Set(Object.values(BATHROOM_FIXTURE_SUPPLY_COMPONENTS));
   const fixtureInstall = new Set(Object.values(BATHROOM_FIXTURE_INSTALL_COMPONENTS));
+  const demolitionLabour = new Set(Object.values(BATHROOM_DEMOLITION_COMPONENTS));
   const plumbing = new Set([BATHROOM_PLUMBING_COMPONENT]);
   const electrical = new Set([BATHROOM_ELECTRICAL_COMPONENT]);
+  const finishing = new Set([BATHROOM_STOPPING_COMPONENT, BATHROOM_PAINTING_COMPONENT]);
+  const waste = new Set([BATHROOM_WASTE_COMPONENT]);
 
   return categories.map((cat) => {
     if (cat.id === "MATERIALS" || cat.id === "PRICING_REQUIRED") {
@@ -718,14 +734,21 @@ function applyBathroomReviewGroups(
         "bathroom-fixture-labour",
         "Fixture installation"
       );
+      const demolition = groupBathroomLines(
+        fixtureLabour.remaining,
+        demolitionLabour,
+        "bathroom-demolition",
+        "Demolition"
+      );
       return {
         ...cat,
-        lines: fixtureLabour.remaining,
+        lines: demolition.remaining,
         lineGroups: [
           ...cat.lineGroups,
           ...(linings.group ? [linings.group] : []),
           ...(framing.group ? [framing.group] : []),
           ...(fixtureLabour.group ? [fixtureLabour.group] : []),
+          ...(demolition.group ? [demolition.group] : []),
         ],
       };
     }
@@ -760,9 +783,15 @@ function applyBathroomReviewGroups(
         "bathroom-electrical",
         "Electrical"
       );
+      const finishingGroup = groupBathroomLines(
+        electricalGroup.remaining,
+        finishing,
+        "bathroom-finishing",
+        "Finishing"
+      );
       return {
         ...cat,
-        lines: electricalGroup.remaining,
+        lines: finishingGroup.remaining,
         lineGroups: [
           ...cat.lineGroups,
           ...(floorInstall.group ? [floorInstall.group] : []),
@@ -770,6 +799,23 @@ function applyBathroomReviewGroups(
           ...(wp.group ? [wp.group] : []),
           ...(plumbingGroup.group ? [plumbingGroup.group] : []),
           ...(electricalGroup.group ? [electricalGroup.group] : []),
+          ...(finishingGroup.group ? [finishingGroup.group] : []),
+        ],
+      };
+    }
+    if (cat.id === "WASTE" || cat.id === "ALLOWANCES") {
+      const wasteGroup = groupBathroomLines(
+        cat.lines,
+        waste,
+        "bathroom-waste",
+        "Waste / disposal"
+      );
+      return {
+        ...cat,
+        lines: wasteGroup.remaining,
+        lineGroups: [
+          ...cat.lineGroups,
+          ...(wasteGroup.group ? [wasteGroup.group] : []),
         ],
       };
     }

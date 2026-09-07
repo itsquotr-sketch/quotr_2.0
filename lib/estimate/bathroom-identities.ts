@@ -335,3 +335,74 @@ export const BATHROOM_FINISH_LEVEL_PC_STATEMENT =
   "Finish level does not scale fixture PC sums or fixture installation hours. Explicit PC benchmarks apply.";
 export const BATHROOM_PC_NOT_MERCHANT_STATEMENT =
   "PC allowances are estimating sums, not merchant quotes.";
+
+/** WA-BATHROOM-06 — demolition / waste / nested finishing. */
+export const BATHROOM_DEMOLITION_COMPONENTS = {
+  floor_finish: "bathroom.demolition.floor_finish",
+  wall_lining: "bathroom.demolition.wall_lining",
+  ceiling: "bathroom.demolition.ceiling",
+  vanity: "bathroom.demolition.vanity",
+  toilet: "bathroom.demolition.toilet",
+  shower: "bathroom.demolition.shower",
+  bath: "bathroom.demolition.bath",
+  fixture: "bathroom.demolition.fixture",
+} as const;
+
+export const BATHROOM_DEMOLITION_PRODUCTIVITY_KEYS = {
+  floor_finish: "bathroom.demolition.floor_finish.hours_per_m2",
+  wall_lining: "bathroom.demolition.wall_lining.hours_per_m2",
+  ceiling: "bathroom.demolition.ceiling.hours_per_m2",
+  vanity: "bathroom.demolition.vanity.hours_each",
+  toilet: "bathroom.demolition.toilet.hours_each",
+  shower: "bathroom.demolition.shower.hours_each",
+  bath: "bathroom.demolition.bath.hours_each",
+  fixture: "bathroom.demolition.fixture.hours_each",
+} as const;
+
+export const BATHROOM_DEMOLITION_PRODUCTIVITY_BENCHMARKS = {
+  floor_finish: 0.25,
+  wall_lining: 0.2,
+  ceiling: 0.25,
+  vanity: 1,
+  toilet: 0.75,
+  shower: 1.5,
+  bath: 1.5,
+  fixture: 0.75,
+} as const;
+
+export const BATHROOM_WASTE_COMPONENT = "bathroom.waste.disposal" as const;
+export const BATHROOM_WASTE_ALLOWANCE_KEY =
+  "bathroom.waste.disposal.allowance" as const;
+export const BATHROOM_WASTE_LEVEL_KEYS = {
+  minor: "bathroom.waste.minor.allowance",
+  standard: "bathroom.waste.standard.allowance",
+  major: "bathroom.waste.major.allowance",
+} as const;
+export const BATHROOM_WASTE_LEVEL_BENCHMARKS = {
+  minor: 350,
+  standard: 650,
+  major: 1000,
+} as const;
+
+export const BATHROOM_STOPPING_COMPONENT = "bathroom.stopping" as const;
+export const BATHROOM_STOPPING_KEY = "bathroom.stopping.m2" as const;
+export const BATHROOM_STOPPING_BENCHMARK = 28;
+export const BATHROOM_PAINTING_COMPONENT = "bathroom.painting" as const;
+export const BATHROOM_PAINTING_KEY = "bathroom.painting.m2" as const;
+export const BATHROOM_PAINTING_BENCHMARK = 30;
+
+export const BATHROOM_STOPPING_UNDER_TILE_STATEMENT =
+  "Stopping uses selected new plasterboard lining area. Tiled walls still receive joint stopping / substrate prep, so tiled area is not deducted from stopping.";
+export const BATHROOM_PAINT_TILE_XOR_STATEMENT =
+  "Tiled wall surfaces are not painted. Half-height tile leaves the upper wall paintable. Full-height tile leaves no wall paint unless overridden.";
+export const BATHROOM_DEMOLITION_NESTED_STATEMENT =
+  "Bathroom owns this room's strip-out. A standalone Demolition Work Area must not also price the same bathroom demolition.";
+export const BATHROOM_FLOORING_REMOVAL_NESTED_STATEMENT =
+  "Bathroom floor-finish removal is nested Bathroom scope. A future standalone Flooring Work Area must not double-price the same removal.";
+export const BATHROOM_LINING_REMOVAL_NESTED_STATEMENT =
+  "Bathroom wet-area wall and ceiling lining removal is nested Bathroom scope. Future Internal Walls / Ceilings must not double-price the same selected removal.";
+export const BATHROOM_HAZMAT_PRICING_REQUIRED =
+  "Hazardous materials / asbestos — specialist pricing required. Ordinary bathroom demolition is not priced.";
+export const BATHROOM_WASTE_ALLOWANCE_STATEMENT =
+  "Bathroom disposal is a transparent strip-out allowance derived from selected demolition, not a density model.";
+export const BATHROOM_QUOTR_ALLOWANCE_LABEL = "Quotr allowance";

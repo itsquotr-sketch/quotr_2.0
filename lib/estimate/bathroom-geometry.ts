@@ -117,6 +117,9 @@ export function resolveBathroomGeometry(params: {
   floorFinish?: string | null;
   wallTileExtent?: string | null;
   waterproofingExtent?: string | null;
+  demolitionComponents?: readonly string[] | null;
+  paintingIncluded?: boolean | null;
+  stoppingIncluded?: boolean | null;
 }): BathroomGeometryResolution {
   const facts = params.facts as EstimateFact[];
   const jobScope = resolveBathroomJobScope({
@@ -137,6 +140,9 @@ export function resolveBathroomGeometry(params: {
     floorFinish: params.floorFinish,
     wallTileExtent: params.wallTileExtent,
     waterproofingExtent: params.waterproofingExtent,
+    demolitionComponents: params.demolitionComponents,
+    paintingIncluded: params.paintingIncluded,
+    stoppingIncluded: params.stoppingIncluded,
   });
   const geometryRequired = geometryNeed !== "none";
 

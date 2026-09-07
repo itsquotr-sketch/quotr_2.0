@@ -362,10 +362,15 @@ export function buildBathroomTradeEnvelope(params: {
       `${plumbingLevel[0]!.toUpperCase()}${plumbingLevel.slice(1)}`,
       lump
         ? `Company plumbing lump $${lump.amount}`
-        : `Base $${basePart.amount}`,
-      ...modifiers.map((row) => `${row.label} +$${row.amount}`),
-      `Total $${total}`,
-    ];
+        : `Quotr allowance: $${total}`,
+      lump
+        ? null
+        : `Includes: ${plumbingLevel} base $${basePart.amount}${
+            modifiers.length
+              ? `, ${modifiers.map((row) => `${row.label.toLowerCase()} +$${row.amount}`).join(", ")}`
+              : ""
+          }`,
+    ].filter(Boolean) as string[];
     if (scopeText) breakdown.push(`Scope: ${scopeText}`);
     const emitted = emitTradeLine({
       workArea,
@@ -379,7 +384,7 @@ export function buildBathroomTradeEnvelope(params: {
         ? `Company plumbing allowance replaces the hybrid total. ${BATHROOM_PLUMBING_BASE_STATEMENT}`
         : `${BATHROOM_PLUMBING_BASE_STATEMENT}${scopeText ? ` Scope: ${scopeText}` : ""}`,
       amount: total,
-      sourceLabel: lump?.sourceLabel ?? (company ? "Your company rate" : "Quotr benchmark"),
+      sourceLabel: lump?.sourceLabel ?? (company ? "Your company rate" : "Quotr allowance"),
       company,
       scopeText,
       factKeys: [
@@ -504,10 +509,15 @@ export function buildBathroomTradeEnvelope(params: {
       `${electricalLevel[0]!.toUpperCase()}${electricalLevel.slice(1)}`,
       lump
         ? `Company electrical lump $${lump.amount}`
-        : `Base $${basePart.amount}`,
-      ...modifiers.map((row) => `${row.label} +$${row.amount}`),
-      `Total $${total}`,
-    ];
+        : `Quotr allowance: $${total}`,
+      lump
+        ? null
+        : `Includes: ${electricalLevel} base $${basePart.amount}${
+            modifiers.length
+              ? `, ${modifiers.map((row) => `${row.label.toLowerCase()} +$${row.amount}`).join(", ")}`
+              : ""
+          }`,
+    ].filter(Boolean) as string[];
     if (scopeText) breakdown.push(`Scope: ${scopeText}`);
     const emitted = emitTradeLine({
       workArea,
@@ -521,7 +531,7 @@ export function buildBathroomTradeEnvelope(params: {
         ? `Company electrical allowance replaces the hybrid total. ${BATHROOM_ELECTRICAL_BASE_STATEMENT}`
         : `${BATHROOM_ELECTRICAL_BASE_STATEMENT}${scopeText ? ` Scope: ${scopeText}` : ""}`,
       amount: total,
-      sourceLabel: lump?.sourceLabel ?? (company ? "Your company rate" : "Quotr benchmark"),
+      sourceLabel: lump?.sourceLabel ?? (company ? "Your company rate" : "Quotr allowance"),
       company,
       scopeText,
       factKeys: [

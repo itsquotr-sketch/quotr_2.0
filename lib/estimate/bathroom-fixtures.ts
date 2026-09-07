@@ -316,7 +316,22 @@ export function buildBathroomFixtureEnvelope(params: {
                 organisationSettings: context.organisationSettings,
                 qualityFactor: 1,
               }),
-              identitySummary: `Supply: PC allowance $${rate.costRate}`,
+              identitySummary: (() => {
+                const installNote =
+                  installOwner === "plumber"
+                    ? "Install: included in plumbing scope"
+                    : installOwner === "electrician"
+                      ? "Install: included in electrical scope"
+                      : ownsInstall(ownership)
+                        ? null
+                        : "Supply only — no install";
+                return [
+                  `${label} — PC allowance $${rate.costRate}`,
+                  installNote,
+                ]
+                  .filter(Boolean)
+                  .join(" · ");
+              })(),
             },
             {
               pricingOwner: "contractor_material",
@@ -447,7 +462,7 @@ export function buildBathroomFixtureEnvelope(params: {
             organisationSettings: context.organisationSettings,
           }),
           componentKey: installComponent,
-          identitySummary: `Install: Builder, ${hours} hours`,
+          identitySummary: `${label} — Builder, ${hours} hours`,
         },
         {
           pricingOwner: "in_house_labour",

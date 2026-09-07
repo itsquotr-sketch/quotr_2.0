@@ -1,5 +1,6 @@
-import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
+import { hasFactValue, isNotSureValue, getBooleanFact } from "@/lib/estimate/facts";
 import {
+  BATHROOM_DEMOLITION_COMPONENT_OPTIONS,
   BATHROOM_FIXTURE_OWNERSHIP_OPTIONS,
   BATHROOM_FLOOR_FINISH_OPTIONS,
   BATHROOM_FLOOR_SUBSTRATE_OPTIONS,
@@ -9,6 +10,7 @@ import {
   BATHROOM_TRADE_LEVEL_OPTIONS,
   BATHROOM_WALL_TILE_EXTENT_OPTIONS,
   BATHROOM_WATERPROOFING_EXTENT_OPTIONS,
+  bathroomDemolitionImpliedByScope,
   bathroomFixtureOwnershipFactKey,
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
@@ -211,6 +213,83 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         inputType: "boolean",
         writeTarget: "FACT",
         write: demolition.write,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("demolition", jobScope, {
+        demolitionRequired:
+          getBooleanFact(facts as never, workAreaId, "bathroom.demolition_required") ===
+            true || bathroomDemolitionImpliedByScope(jobScope),
+      }) &&
+      !knownFact(facts, workAreaId, "bathroom.demolition.components")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.demolition.components`,
+        group: "scope",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.demolition.components",
+        constraintKey: null,
+        questionKey: "bathroom.demolition.components",
+        label: "What is being stripped out",
+        question: "What existing bathroom items are being removed?",
+        inputType: "select",
+        options: [...BATHROOM_DEMOLITION_COMPONENT_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("finishing", jobScope) &&
+      !knownFact(facts, workAreaId, "bathroom.stopping_included")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.stopping_included`,
+        group: "specification",
+        tier: "advanced",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.stopping_included",
+        constraintKey: null,
+        questionKey: "bathroom.stopping_included",
+        label: "Stopping / plastering",
+        question: "Is stopping or plastering of new linings included?",
+        inputType: "boolean",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("finishing", jobScope) &&
+      !knownFact(facts, workAreaId, "bathroom.painting_included")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.painting_included`,
+        group: "specification",
+        tier: "advanced",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.painting_included",
+        constraintKey: null,
+        questionKey: "bathroom.painting_included",
+        label: "Painting",
+        question: "Is painting of remaining bathroom surfaces included?",
+        inputType: "boolean",
+        writeTarget: "FACT",
+        write: null,
         consumedByCalculator: true,
       });
     }

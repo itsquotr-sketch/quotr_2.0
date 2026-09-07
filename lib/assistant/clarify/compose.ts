@@ -58,6 +58,7 @@ import {
 } from "@/lib/estimate/bathroom-scope";
 import { BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT } from "@/lib/estimate/bathroom-geometry";
 import {
+  getArrayFact,
   getBooleanFact,
   getNumberFact,
   getStringFact,
@@ -78,6 +79,7 @@ const CHECK_SCORES: Record<string, number> = {
   "deck.existing_deck_removal": 90,
   "deck.board_width_mm": 88,
   "bathroom.demolition_required": 88,
+  "bathroom.demolition.components": 87,
   "fence.demolition_required": 88,
   "fence.gate_included": 86,
   "fence.top_capping": 70,
@@ -449,6 +451,21 @@ function missingHardMinimum(
           card.workAreaId,
           "bathroom.waterproofing_extent"
         ),
+        demolitionComponents: getArrayFact(
+          facts,
+          card.workAreaId,
+          "bathroom.demolition.components"
+        ),
+        paintingIncluded: getBooleanFact(
+          facts,
+          card.workAreaId,
+          "bathroom.painting_included"
+        ),
+        stoppingIncluded: getBooleanFact(
+          facts,
+          card.workAreaId,
+          "bathroom.stopping_included"
+        ),
       });
       const lengthKnown = getNumberFact(
         facts,
@@ -616,6 +633,13 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           wa.id,
           "bathroom.waterproofing_extent"
         ),
+        demolitionComponents: getArrayFact(
+          facts,
+          wa.id,
+          "bathroom.demolition.components"
+        ),
+        paintingIncluded: getBooleanFact(facts, wa.id, "bathroom.painting_included"),
+        stoppingIncluded: getBooleanFact(facts, wa.id, "bathroom.stopping_included"),
       });
       if (
         geometryNeed === "full" &&
@@ -678,6 +702,37 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           rankScore: CHECK_SCORES[key] ?? 60,
           rankReason: "Bathroom commercial plumbing",
           assumptionStatement: "Standard plumbing allowance",
+        });
+      }
+      if (
+        bathroomQuestionGroupVisible("demolition", jobScope) &&
+        (jobScope === "strip_out_only" ||
+          getBooleanFact(facts, wa.id, "bathroom.demolition_required") === true) &&
+        !factHas(input, "bathroom.demolition.components", wa.id)
+      ) {
+        const template = getQuestionTemplateByKey("bathroom.demolition.components");
+        out.push({
+          id: `fact:${wa.id}:bathroom.demolition.components`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: "bathroom.demolition.components",
+          constraintKey: null,
+          questionKey: "bathroom.demolition.components",
+          label: template?.label ?? "What is being stripped out",
+          question:
+            template?.questionText ?? "What existing bathroom items are being removed?",
+          askClass: "ASK_NOW",
+          inputType: "select",
+          options: template?.options,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: true,
+          assumable: false,
+          rankScore: CHECK_SCORES["bathroom.demolition.components"] ?? 87,
+          rankReason: "Bathroom demolition scope",
+          assumptionStatement: null,
         });
       }
       if (
@@ -780,6 +835,13 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           wa.id,
           "bathroom.waterproofing_extent"
         ),
+        demolitionComponents: getArrayFact(
+          facts,
+          wa.id,
+          "bathroom.demolition.components"
+        ),
+        paintingIncluded: getBooleanFact(facts, wa.id, "bathroom.painting_included"),
+        stoppingIncluded: getBooleanFact(facts, wa.id, "bathroom.stopping_included"),
       };
       if (bathroomQuestionGroupVisible("floor_finish", jobScope, finishFlags)) {
         pushBathroomClarifyFact(

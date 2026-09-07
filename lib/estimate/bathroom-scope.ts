@@ -310,6 +310,9 @@ export type BathroomGeometryFlags = {
   floorFinish?: string | null;
   wallTileExtent?: string | null;
   waterproofingExtent?: string | null;
+  demolitionComponents?: readonly string[] | null;
+  paintingIncluded?: boolean | null;
+  stoppingIncluded?: boolean | null;
 };
 
 function wallExtentNeedsRoomGeometry(extent: string | null | undefined): boolean {
@@ -348,39 +351,81 @@ function structuralFinishNeedsFullGeometry(flags?: BathroomGeometryFlags): boole
   );
 }
 
+function strongerGeometryNeed(
+  a: BathroomGeometryNeed,
+  b: BathroomGeometryNeed
+): BathroomGeometryNeed {
+  if (a === "full" || b === "full") return "full";
+  if (a === "floor" || b === "floor") return "floor";
+  return "none";
+}
+
+function demolitionFinishGeometryNeed(
+  flags?: BathroomGeometryFlags
+): BathroomGeometryNeed {
+  const comps = (flags?.demolitionComponents ?? [])
+    .map((row) => parseBathroomDemolitionComponent(row))
+    .filter((id): id is BathroomDemolitionComponentId => id != null);
+  const demo: BathroomGeometryNeed =
+    comps.includes("wall_lining") || comps.includes("ceiling")
+      ? "full"
+      : comps.includes("floor_finish")
+        ? "floor"
+        : "none";
+  const finish: BathroomGeometryNeed =
+    flags?.paintingIncluded === true || flags?.stoppingIncluded === true
+      ? "full"
+      : "none";
+  return strongerGeometryNeed(demo, finish);
+}
+
 export function bathroomGeometryNeed(
   scope: BathroomJobScope | null,
   flags?: BathroomGeometryFlags
 ): BathroomGeometryNeed {
   if (!scope) return "none";
+  const extra = demolitionFinishGeometryNeed(flags);
   switch (scope) {
     case "vanity_only":
     case "fixture_replacement":
-      return "none";
+      return extra;
     case "shower_only": {
-      if (wallExtentNeedsRoomGeometry(flags?.wallTileExtent)) return "full";
-      if (structuralFinishNeedsFullGeometry(flags)) return "full";
-      if (finishNeedsFloorGeometry(flags)) return "floor";
-      return "none";
+      if (wallExtentNeedsRoomGeometry(flags?.wallTileExtent)) {
+        return strongerGeometryNeed("full", extra);
+      }
+      if (structuralFinishNeedsFullGeometry(flags)) {
+        return strongerGeometryNeed("full", extra);
+      }
+      if (finishNeedsFloorGeometry(flags)) {
+        return strongerGeometryNeed("floor", extra);
+      }
+      return extra;
     }
     case "retile_floor":
-      return wallExtentNeedsRoomGeometry(flags?.wallTileExtent) ? "full" : "floor";
+      return strongerGeometryNeed(
+        wallExtentNeedsRoomGeometry(flags?.wallTileExtent) ? "full" : "floor",
+        extra
+      );
     case "strip_out_only":
-      return "floor";
+      return strongerGeometryNeed("floor", extra);
     case "reline":
     case "new_fitout":
     case "full_renovation":
       return "full";
     case "custom": {
-      if (wallExtentNeedsRoomGeometry(flags?.wallTileExtent)) return "full";
-      if (structuralFinishNeedsFullGeometry(flags)) return "full";
-      if (finishNeedsFloorGeometry(flags) || flags?.tilingIncluded === true) {
-        return "floor";
+      if (wallExtentNeedsRoomGeometry(flags?.wallTileExtent)) {
+        return strongerGeometryNeed("full", extra);
       }
-      return "none";
+      if (structuralFinishNeedsFullGeometry(flags)) {
+        return strongerGeometryNeed("full", extra);
+      }
+      if (finishNeedsFloorGeometry(flags) || flags?.tilingIncluded === true) {
+        return strongerGeometryNeed("floor", extra);
+      }
+      return extra;
     }
     default:
-      return "none";
+      return extra;
   }
 }
 
@@ -411,12 +456,15 @@ export type BathroomQuestionGroup =
   | "framing"
   | "finish_level"
   | "trade_scope_text"
+  | "finishing"
   | "legacy_renovation_type"
   | "always";
 
 const GROUP_BY_FACT_KEY: Record<string, BathroomQuestionGroup> = {
   "bathroom.job_scope": "job_scope",
   "bathroom.demolition_required": "demolition",
+  "bathroom.demolition.components": "demolition",
+  "bathroom.waste.level": "demolition",
   "bathroom.length_m": "geometry",
   "bathroom.width_m": "geometry",
   "bathroom.wall_height_m": "wall_height",
@@ -462,6 +510,8 @@ const GROUP_BY_FACT_KEY: Record<string, BathroomQuestionGroup> = {
   "bathroom.electrical.mirror_power_included": "electrical_components",
   "bathroom.electrical.new_circuit_included": "electrical_components",
   "bathroom.electrical.scope_text": "trade_scope_text",
+  "bathroom.stopping_included": "finishing",
+  "bathroom.painting_included": "finishing",
   "bathroom.ventilation_included": "ventilation",
   "bathroom.wall_lining_included": "linings",
   "bathroom.ceiling_lining_included": "ceiling_lining",
@@ -489,6 +539,7 @@ export type BathroomQuestionFlags = {
   floorFinish?: string | null;
   wallTileExtent?: string | null;
   waterproofingExtent?: string | null;
+  demolitionRequired?: boolean | null;
 };
 
 export function bathroomQuestionGroupVisible(
@@ -506,7 +557,15 @@ export function bathroomQuestionGroupVisible(
   switch (group) {
     case "demolition":
       return (
+        flags?.demolitionRequired === true ||
         scope === "strip_out_only" ||
+        scope === "reline" ||
+        scope === "new_fitout" ||
+        scope === "full_renovation" ||
+        scope === "custom"
+      );
+    case "finishing":
+      return (
         scope === "reline" ||
         scope === "new_fitout" ||
         scope === "full_renovation" ||
@@ -866,6 +925,111 @@ export const BATHROOM_WATERPROOFING_EXTENT_FACT_KEY =
   "bathroom.waterproofing_extent" as const;
 export const BATHROOM_DEMOLITION_FACT_KEY =
   "bathroom.demolition_required" as const;
+export const BATHROOM_DEMOLITION_COMPONENTS_FACT_KEY =
+  "bathroom.demolition.components" as const;
+export const BATHROOM_WASTE_LEVEL_FACT_KEY = "bathroom.waste.level" as const;
+export const BATHROOM_STOPPING_INCLUDED_FACT_KEY =
+  "bathroom.stopping_included" as const;
+export const BATHROOM_PAINTING_INCLUDED_FACT_KEY =
+  "bathroom.painting_included" as const;
+
+export const BATHROOM_DEMOLITION_COMPONENT_VALUES = [
+  "floor_finish",
+  "wall_lining",
+  "ceiling",
+  "vanity",
+  "toilet",
+  "shower",
+  "bath",
+  "fixture",
+] as const;
+
+export type BathroomDemolitionComponentId =
+  (typeof BATHROOM_DEMOLITION_COMPONENT_VALUES)[number];
+
+export const BATHROOM_DEMOLITION_COMPONENT_OPTIONS = [
+  "Floor finish",
+  "Wall lining",
+  "Ceiling lining",
+  "Vanity",
+  "Toilet",
+  "Shower / enclosure",
+  "Bath",
+  "Other fixtures",
+] as const;
+
+const DEMOLITION_COMPONENT_BY_NORMALISED: Record<
+  string,
+  BathroomDemolitionComponentId
+> = {
+  floor_finish: "floor_finish",
+  "floor finish": "floor_finish",
+  floor: "floor_finish",
+  wall_lining: "wall_lining",
+  "wall lining": "wall_lining",
+  walls: "wall_lining",
+  ceiling: "ceiling",
+  "ceiling lining": "ceiling",
+  vanity: "vanity",
+  toilet: "toilet",
+  wc: "toilet",
+  shower: "shower",
+  "shower enclosure": "shower",
+  "shower / enclosure": "shower",
+  bath: "bath",
+  fixture: "fixture",
+  fixtures: "fixture",
+  "other fixtures": "fixture",
+};
+
+export function parseBathroomDemolitionComponent(
+  value: unknown
+): BathroomDemolitionComponentId | null {
+  if (value == null || value === "") return null;
+  const lower = String(value).trim().toLowerCase();
+  return DEMOLITION_COMPONENT_BY_NORMALISED[lower] ?? null;
+}
+
+export function parseBathroomDemolitionComponents(params: {
+  facts: readonly { key: string; work_area_id?: string | null; value: unknown }[];
+  workAreaId: string;
+}): BathroomDemolitionComponentId[] {
+  const listed = getArrayFact(
+    params.facts as never,
+    params.workAreaId,
+    BATHROOM_DEMOLITION_COMPONENTS_FACT_KEY
+  );
+  const out: BathroomDemolitionComponentId[] = [];
+  for (const row of listed ?? []) {
+    const id = parseBathroomDemolitionComponent(row);
+    if (id && !out.includes(id)) out.push(id);
+  }
+  return out;
+}
+
+export function bathroomDemolitionImpliedByScope(
+  scope: BathroomJobScope | null
+): boolean {
+  return scope === "strip_out_only";
+}
+
+export const BATHROOM_WASTE_LEVEL_VALUES = [
+  "minor",
+  "standard",
+  "major",
+] as const;
+export type BathroomWasteLevel = (typeof BATHROOM_WASTE_LEVEL_VALUES)[number];
+
+export function parseBathroomWasteLevel(
+  value: unknown
+): BathroomWasteLevel | null {
+  if (value == null || value === "") return null;
+  const lower = String(value).trim().toLowerCase();
+  if (lower === "minor" || lower.includes("small")) return "minor";
+  if (lower === "major" || lower.includes("full")) return "major";
+  if (lower === "standard") return "standard";
+  return null;
+}
 
 export const BATHROOM_FIXTURE_CATALOGUE = [
   "Toilet",
@@ -1063,6 +1227,16 @@ export function shouldHideBathroomQuestion(params: {
       parseBathroomWaterproofingExtent(params.waterproofingExtent) !==
       "bath_surround"
     );
+  }
+  if (params.factKey === "bathroom.demolition_required") {
+    if (params.jobScope === "strip_out_only") return true;
+  }
+  if (params.factKey === "bathroom.waste.level") return true;
+  if (
+    params.factKey === "bathroom.stopping_included" ||
+    params.factKey === "bathroom.painting_included"
+  ) {
+    return true;
   }
   if (params.factKey === "bathroom.fixtures_included") {
     if (params.jobScope === "vanity_only" || params.jobScope === "shower_only") {

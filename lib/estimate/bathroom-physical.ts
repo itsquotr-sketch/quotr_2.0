@@ -92,8 +92,10 @@ export function resolveBathroomPhysicalSelection(params: {
   workAreaId: string;
 }): BathroomPhysicalSelection {
   const { facts, workAreaId } = params;
+  const jobScope = getStringFact(facts as never, workAreaId, "bathroom.job_scope");
+  const stripOutOnly = jobScope === "strip_out_only";
   const substrateRaw = factValue(facts, workAreaId, "bathroom.floor_substrate_system");
-  const floorSubstrateAssumed = isNotSureValue(substrateRaw);
+  const floorSubstrateAssumed = !stripOutOnly && isNotSureValue(substrateRaw);
   const floorSubstrate = floorSubstrateAssumed
     ? "treated_plywood"
     : parseBathroomFloorSubstrate(substrateRaw);
@@ -106,7 +108,7 @@ export function resolveBathroomPhysicalSelection(params: {
   );
   let wallLining: BathroomPhysicalSelection["wallLining"] = null;
   let wallLiningAssumed = false;
-  if (isNotSureValue(wallRaw) || isNotSureValue(wallSystem)) {
+  if (!stripOutOnly && (isNotSureValue(wallRaw) || isNotSureValue(wallSystem))) {
     wallLining = "aqualine";
     wallLiningAssumed = true;
   } else if (wallSystem) {
@@ -126,7 +128,7 @@ export function resolveBathroomPhysicalSelection(params: {
   const ceilingRaw = factValue(facts, workAreaId, "bathroom.ceiling_lining_included");
   let ceilingLining: BathroomPhysicalSelection["ceilingLining"] = null;
   let ceilingLiningAssumed = false;
-  if (isNotSureValue(ceilingRaw)) {
+  if (!stripOutOnly && isNotSureValue(ceilingRaw)) {
     ceilingLining = "aqualine";
     ceilingLiningAssumed = true;
   } else {

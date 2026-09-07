@@ -78,6 +78,14 @@ const WHY_THIS_MATTERS: Readonly<Record<string, string>> = Object.freeze({
     "Scope notes travel with the plumbing allowance so a future subcontractor quote can replace the estimate without rebuilding the bathroom.",
   "bathroom.electrical.scope_text":
     "Scope notes travel with the electrical allowance so a future subcontractor quote can replace the estimate without rebuilding the bathroom.",
+  "bathroom.demolition_required":
+    "Bathroom demolition is optional. It is priced from selected surfaces and fixtures, not a hidden package.",
+  "bathroom.demolition.components":
+    "Selected removal drives demolition labour hours and the disposal allowance level.",
+  "bathroom.stopping_included":
+    "Stopping uses selected new plasterboard lining area. Tiled walls are not deducted.",
+  "bathroom.painting_included":
+    "Painting uses remaining paintable wall plus ceiling. Tiled wall surfaces are not painted.",
 });
 
 /**
