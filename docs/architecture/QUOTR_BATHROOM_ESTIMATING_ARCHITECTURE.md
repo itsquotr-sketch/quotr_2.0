@@ -1,6 +1,6 @@
 # Quotr Bathroom Estimating Architecture
 
-**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 implemented (scope + geometry)** + **WA-BATHROOM-03 implemented (physical substrates / linings / framing)** + **WA-BATHROOM-04 implemented (floor finish XOR / tiling / waterproofing)**  
+**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO (floor finish XOR / tiling / waterproofing)**  
 **Date:** 2026-09-07  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
@@ -23,13 +23,13 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | WA-BATHROOM-01 architecture / gap audit | **GO** |
 | WA-BATHROOM-02 scope + geometry | **GO** |
 | WA-BATHROOM-03 physical substrates / linings / framing | **GO** |
-| WA-BATHROOM-04 floor finish / tiling / waterproofing | **IMPLEMENTED — mark GO only after hosted Preview proof** |
+| WA-BATHROOM-04 floor finish / tiling / waterproofing | **GO** |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; plumbing/fixtures remain 05+) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ / Company DNA behaviour | **NO-GO** |
 | Production / migration 055 | **NO-GO** |
 
-**Next action after 04 hosted GO:** [WA-BATHROOM-05](#47-implementation-phases) — fixtures / services. Do not start until this 04 close is reviewed.
+**Next action after 04 GO:** [WA-BATHROOM-05](#47-implementation-phases) — fixtures / plumbing / electrical / PC sums. Do not start Internal Walls, Variations, or RFQ.
 
 ---
 
@@ -1266,11 +1266,11 @@ Unknown scope asks only `job_scope`. Known facts are not reasked. Quick Estimate
 
 ### Tiling-null decision
 
-Mature path = `bathroom.job_scope` present → tiling money only if `tiling_included === true`. `null ≠ yes`. Legacy regenerate without `job_scope` keeps `!== false`. Snapshots immutable.
+Mature path = `bathroom.job_scope` present → mixed `bathroom.tiling.m2` lump is **not** emitted. Floor/wall tile money follows `bathroom.floor_finish_system` and `bathroom.tile_extent` (04). `tiling_included` is hidden on the mature Job Plan. Legacy regenerate without `job_scope` keeps mixed tiling `!== false`. Snapshots immutable.
 
-### Prepared (not priced) facts
+### Prepared vs priced (04)
 
-`bathroom.floor_finish_system` (tile / sheet_vinyl / vinyl_plank / other / none), `bathroom.framing_level` (none / minor / standard / major), `bathroom.plumbing.level` and `bathroom.electrical.level` (none / minor / **standard** / major; Standard uses existing Minor $), `bathroom.waterproofing_extent` kept, `bathroom.tile_extent` remains canonical ( `wall_tile_height` is legacy refinement), `bathroom.demolition_required` preserved. Fixture catalogue unchanged.
+`bathroom.floor_finish_system`, `bathroom.tile_extent`, and `bathroom.waterproofing_extent` are **priced** on the mature path (see §55). `bathroom.plumbing.level` / `bathroom.electrical.level` remain unpriced until WA-BATHROOM-05.
 
 ---
 
@@ -1338,9 +1338,11 @@ Bathroom nested floor substrate / wall lining / ceiling lining may exist inside 
 
 ## 55. WA-BATHROOM-04 floor finish, tiling, and waterproofing
 
-**Status:** **IMPLEMENTED.** Mark **GO** only after deterministic verifier + hosted Preview proof on the canonical alias.
+**Status:** **GO** after deterministic verifier (`scripts/verify-work-area-bathroom-04.ts`, 81/0) + hosted Preview proof on the canonical alias (`8ed833f`).
 
 Verifier: `scripts/verify-work-area-bathroom-04.ts`
+
+Hosted (canonical alias, plus-address fixture, 390px): retile floor Review 7.2/7.92 + tiler; full reno floor + full-height walls 25.92/28.51; sheet vinyl $55/m² no tile line; vanity-only no finish/WP money; floor-finish XOR question `bathroom.floor_finish_system`.
 
 ### Floor XOR
 
@@ -1380,7 +1382,7 @@ Types: MaterialRequirement + SubcontractRequirement. No Bathroom-specific envelo
 
 ### Legacy boundary
 
-Mature path = stored `bathroom.job_scope`. Mixed tiling lump, tiling minimums, WP tiling-area proxy, and $1,200 WP minimum remain on regenerate without `job_scope`. Historical snapshots unchanged.
+Mature path = stored `bathroom.job_scope`. Mixed tiling lump, tiling minimums, WP tiling-area proxy, and $1,200 WP minimum remain on regenerate without `job_scope`. Historical snapshots unchanged. Mature Job Plan hides the mixed `bathroom.tiling_included` toggle. Unanswered `bathroom.floor_finish_system` is asked before estimate-ready (REQUIRED_FOR_ECONOMIC_MODEL) when that question group is visible.
 
 ### Flooring Work Area overlap
 
