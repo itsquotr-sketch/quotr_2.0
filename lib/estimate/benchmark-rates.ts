@@ -53,6 +53,7 @@ export const RETAINING_WALL_BENCHMARKS = {
 } as const;
 
 export const BATHROOM_BENCHMARKS = {
+  // LEGACY ONLY — not consumed on mature `bathroom.job_scope` path (WA-BATHROOM-07).
   materialsPerM2: { cost: 1800, sell: 2600 },
   minimumPackage: { cost: 18000, sell: 25000 },
   waterproofing: { cost: 1200, sell: 1800 },

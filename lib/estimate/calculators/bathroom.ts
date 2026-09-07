@@ -46,6 +46,9 @@ import {
   resolveBathroomTradeLevel,
 } from "@/lib/estimate/bathroom-scope";
 import {
+  BATHROOM_MATURE_FALLBACK_PROHIBITION_STATEMENT,
+} from "@/lib/estimate/bathroom-commercial-authority";
+import {
   createAllowanceLineItem,
   createFixedLabourLineItem,
   createRateLineItem,
@@ -210,9 +213,11 @@ export function calculateBathroom(
     assumptions.push(`Finish level from project spec: ${finishLevel}.`);
   }
 
-  const qualityNote = getQualityFactorNote(context.project);
-  if (qualityNote) {
-    assumptions.push(qualityNote);
+  if (!maturePath) {
+    const qualityNote = getQualityFactorNote(context.project);
+    if (qualityNote) {
+      assumptions.push(qualityNote);
+    }
   }
 
   const effectiveArea = geometry.floorAreaM2;
@@ -389,6 +394,7 @@ export function calculateBathroom(
   }
 
   if (!maturePath) {
+  // LEGACY ONLY — generic carpentry/prep hours. Mature path uses physical labour envelopes.
   const carpentryHours = carpentryPrepHours(
     effectiveArea ?? 0,
     renovationType,
@@ -1010,13 +1016,10 @@ export function calculateBathroom(
     );
   }
 
+  // LEGACY ONLY — $400 floor-prep lump. Mature path uses plywood / fibre-cement substrate takeoff.
   if (
-    getBooleanFact(facts, workArea.id, "bathroom.floor_prep_included") &&
-    !(
-      maturePath &&
-      (physicalSelection?.floorSubstrate === "treated_plywood" ||
-        physicalSelection?.floorSubstrate === "fibre_cement")
-    )
+    !maturePath &&
+    getBooleanFact(facts, workArea.id, "bathroom.floor_prep_included")
   ) {
     lineItems.push(
       withPricingOwnership(
@@ -1053,86 +1056,91 @@ export function calculateBathroom(
     fixturesCost > 0 ||
     clientSuppliedFixtures === true;
 
-  const skipPackage =
-    maturePath ||
-    (jobScope != null &&
+  if (maturePath) {
+    assumptions.push(BATHROOM_MATURE_FALLBACK_PROHIBITION_STATEMENT);
+  } else {
+    // LEGACY ONLY — $18k / $25k package floor and materialsPerM2. Never on mature job_scope.
+    const skipPackage =
+      jobScope != null &&
       jobScope !== "full_renovation" &&
       jobScope !== "new_fitout" &&
-      jobScope !== "custom");
+      jobScope !== "custom";
 
-  if (!hasComponentFinishes && effectiveArea != null && !skipPackage) {
-    let materialsCost = effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.cost;
-    let materialsSell = effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.sell;
-    materialsCost = Math.max(
-      materialsCost,
-      BATHROOM_BENCHMARKS.minimumPackage.cost
-    );
-    materialsSell = Math.max(
-      materialsSell,
-      BATHROOM_BENCHMARKS.minimumPackage.sell
-    );
+    if (!hasComponentFinishes && effectiveArea != null && !skipPackage) {
+      let materialsCost = effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.cost;
+      let materialsSell = effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.sell;
+      materialsCost = Math.max(
+        materialsCost,
+        BATHROOM_BENCHMARKS.minimumPackage.cost
+      );
+      materialsSell = Math.max(
+        materialsSell,
+        BATHROOM_BENCHMARKS.minimumPackage.sell
+      );
 
-    lineItems.push(
-      withPricingOwnership(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Bathroom materials/finishes allowance",
-          category: "materials",
-          recommendedCost: materialsCost,
-          recommendedSell: materialsSell,
-          rateSource: "Benchmark allowance",
-          notes: `Rough bathroom package allowance · Finish level: ${finishLevel}`,
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-          qualityFactor,
-        }),
-        {
-          pricingOwner: "contractor_material",
-          scopeKey: "bathroom.materials_package",
-          overlapGroup: "bathroom_materials",
-        }
-      )
-    );
-  } else {
-    assumptions.push(
-      "Component-based bathroom pricing — broad package labour/materials not applied."
-    );
-  }
+      lineItems.push(
+        withPricingOwnership(
+          createAllowanceLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Bathroom materials/finishes allowance",
+            category: "materials",
+            recommendedCost: materialsCost,
+            recommendedSell: materialsSell,
+            rateSource: "Benchmark allowance",
+            notes: `Rough bathroom package allowance · Finish level: ${finishLevel}`,
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+            qualityFactor,
+          }),
+          {
+            pricingOwner: "contractor_material",
+            scopeKey: "bathroom.materials_package",
+            overlapGroup: "bathroom_materials",
+          }
+        )
+      );
+    } else {
+      assumptions.push(
+        "Component-based bathroom pricing — broad package labour/materials not applied."
+      );
+    }
 
-  const subcontractorAllowanceCount = lineItems.filter(
-    (item) => item.pricingOwner === "subcontractor_allowance"
-  ).length;
-  const needsCoordination =
-    isFullOrStandardRenovation(renovationType, jobScopeFull) &&
-    (subcontractorAllowanceCount >= 3 ||
-      (demolitionRequired && renovationType?.toLowerCase().includes("full")));
+    const subcontractorAllowanceCount = lineItems.filter(
+      (item) => item.pricingOwner === "subcontractor_allowance"
+    ).length;
+    const needsCoordination =
+      isFullOrStandardRenovation(renovationType, jobScopeFull) &&
+      (subcontractorAllowanceCount >= 3 ||
+        (demolitionRequired && renovationType?.toLowerCase().includes("full")));
 
-  if (needsCoordination) {
-    lineItems.push(
-      withPricingOwnership(
-        createAllowanceLineItem({
-          workAreaId: workArea.id,
-          workAreaName: workArea.name,
-          label: "Project coordination and site allowance",
-          category: "allowance",
-          recommendedCost: BATHROOM_BENCHMARKS.coordinationAllowance.cost,
-          recommendedSell: BATHROOM_BENCHMARKS.coordinationAllowance.sell,
-          rateSource: "Benchmark allowance",
-          notes: "Sequencing, site visits and trade coordination for multi-trade bathroom renovation.",
-          sortOrder: sortOrder++,
-          organisationSettings: context.organisationSettings,
-        }),
-        {
-          pricingOwner: "in_house_labour",
-          scopeKey: "bathroom.coordination",
-          overlapGroup: "bathroom_coordination",
-        }
-      )
-    );
-    assumptions.push(
-      "Project coordination allowance included for multi-trade bathroom renovation."
-    );
+    // LEGACY ONLY — $800/$1,200 coordination lump.
+    if (needsCoordination) {
+      lineItems.push(
+        withPricingOwnership(
+          createAllowanceLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Project coordination and site allowance",
+            category: "allowance",
+            recommendedCost: BATHROOM_BENCHMARKS.coordinationAllowance.cost,
+            recommendedSell: BATHROOM_BENCHMARKS.coordinationAllowance.sell,
+            rateSource: "Benchmark allowance",
+            notes: "Sequencing, site visits and trade coordination for multi-trade bathroom renovation.",
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+          }),
+          {
+            pricingOwner: "in_house_labour",
+            scopeKey: "bathroom.coordination",
+            overlapGroup: "bathroom_coordination",
+          }
+        )
+      );
+      assumptions.push(
+        "Project coordination allowance included for multi-trade bathroom renovation."
+      );
+    }
   }
 
   return {

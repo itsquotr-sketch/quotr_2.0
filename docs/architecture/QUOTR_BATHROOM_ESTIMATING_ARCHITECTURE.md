@@ -1,7 +1,7 @@
 # Quotr Bathroom Estimating Architecture
 
-**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO** + **WA-BATHROOM-05 GO** + **WA-BATHROOM-06 GO (demolition / waste / nested finishing / Review close)**  
-**Date:** 2026-09-07  
+**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO** + **WA-BATHROOM-05 GO** + **WA-BATHROOM-06 GO** + **WA-BATHROOM-07 commercial authority implemented (hosted proof pending)**  
+**Date:** 2026-09-08  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
 **WA-BATHROOM-05 hosted proof:** `a329b7c450f22bd240a80714beb0b479212a522e`  
@@ -10,7 +10,7 @@
 **Migrations:** NONE. No 055.  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
 **Triage:** [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md)
-**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`, `scripts/verify-work-area-bathroom-04.ts`, `scripts/verify-work-area-bathroom-05.ts`, `scripts/verify-work-area-bathroom-06.ts`
+**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`, `scripts/verify-work-area-bathroom-04.ts`, `scripts/verify-work-area-bathroom-05.ts`, `scripts/verify-work-area-bathroom-06.ts`, `scripts/verify-work-area-bathroom-07.ts`
 
 Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band is unchanged (`trial_supported`).
 
@@ -28,12 +28,13 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | WA-BATHROOM-04 floor finish / tiling / waterproofing | **GO** |
 | WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums | **GO** (hosted `a329b7c`) |
 | WA-BATHROOM-06 demolition / waste / nested finishing / Review | **GO** (hosted `f7a4d0b`) |
+| WA-BATHROOM-07 rate authority / commercial close / legacy fallback removal | **IMPLEMENTED** — hosted proof pending. See §58 |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; 05 owns plumbing/fixtures) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ sending / Company DNA behaviour | **NO-GO** |
 | Production / migration 055 | **NO-GO** |
 
-**Next action after 06 GO:** [WA-BATHROOM-07](#47-implementation-phases) — owner-approved rates through `resolveRate`; kill $18k path; commercial proof. Do not start Internal Walls, Variations, or RFQ sending.
+**Next action after 06 GO:** [WA-BATHROOM-07](#58-wa-bathroom-07-rate-authority--commercial-close) — owner-approved rates through `resolveRate`; kill remaining $18k / fallback package path; commercial proof. Do not start Internal Walls, Variations, or RFQ sending.
 
 ---
 
@@ -1498,5 +1499,73 @@ Fixture pairing: `Vanity — PC allowance $1,200` (name on every PC). Plumbing /
 
 ### Next action after 06 GO
 
-**WA-BATHROOM-07** — owner-approved rates through `resolveRate`; kill remaining $18k / fallback package path; commercial proof. Do not start Internal Walls, Variations, or RFQ sending.
+**WA-BATHROOM-07** — implemented locally; hosted Preview proof still required before GO. See §58.
+
+---
+
+## 58. WA-BATHROOM-07 rate authority + commercial close + legacy fallback removal
+
+**IMPLEMENTED locally.** Verifier: `scripts/verify-work-area-bathroom-07.ts`. Hosted Preview proof pending — commercial authority is **not marked complete** until that proof.
+
+Invariant module: `lib/estimate/bathroom-commercial-authority.ts`.
+
+### Canonical commercial rule
+
+Cost-first. For every mature Bathroom requirement: physical quantity or allowance authority → resolve cost source → commercial engine owns sell (`sell = cost / (1 − gm)` unless an explicit sell override exists on the rate). Bathroom does not own a Work-Area margin formula.
+
+Hierarchy: company exact rate → Quotr specific benchmark → Pricing Required / explicit PC or trade allowance.
+
+### Mature-path fallback prohibition
+
+Canonical `bathroom.job_scope` must never emit:
+
+- $18k / $25k package (`bathroom.materials_package`, `scope.bathroom.m2`)
+- mixed tiling (`bathroom.tiling.m2`)
+- generic carpentry/prep
+- fixture bundle / 8h client install lump
+- leftover $400 floor-prep lump
+- $800/$1,200 coordination lump
+- legacy plumbing/electrical Minor/Major formula
+- extractor / UFH lumps
+- qualityFactor scaling on 03–06 envelopes (hardcoded `qualityFactor: 1`)
+
+Historical Bathrooms **without** `job_scope` retain LEGACY ONLY compatibility. Do not delete leftover keys. Do not reinterpret snapshots.
+
+### Rate inventory (grouped)
+
+| Group | Keys | Default | Company override | Mature consumed | Recommendation |
+| --- | --- | --- | --- | --- | --- |
+| SHARED MATERIAL | `sheet.plywood.19mm.h3.2.each` | $145 / sheet | yes | yes | KEEP |
+| SHARED MATERIAL | `sheet.fibre_cement.18mm.2400x1200.each` | $95 / sheet | yes | yes | KEEP |
+| SHARED MATERIAL | `sheet.plasterboard.aqualine.each` | catalogue Aqualine | yes | wall + ceiling, one identity | KEEP |
+| SHARED MATERIAL | `timber.framing.90x45.h1.2.lm` | $6.20 / lm | yes | yes | KEEP (`bathroom.framing…` alias) |
+| BUILDER LABOUR | `labour.carpenter.hour` | $60 cost / $90 sell | yes | all mature builder hours | KEEP |
+| PRODUCTIVITY | `bathroom.*.hours_per_m2` / `hours_each` / `hours_per_lm` | task-specific | yes | yes | KEEP (not dollars) |
+| PC | `bathroom.fixture.*.pc.*`, `bathroom.tile.material.m2`, vinyl material keys | owner-approved PC | may override $ | yes | KEEP; not Materials SKUs |
+| SUBCONTRACT | tiler / WP / vinyl install / plumbing / electrical / stopping / painting | owner-approved | company lump **replaces** hybrid | yes | KEEP |
+| WASTE | `bathroom.waste.{minor,standard,major,disposal}.allowance` | 350 / 650 / 1000 | company disposal lump wins | yes | KEEP |
+| LEGACY ONLY | `scope.bathroom.m2` | planned package | n/a | **no** | HIDE FROM MODERN RATES UI |
+| LEGACY ONLY | `bathroom.tiling.m2` | mixed tiling leftover | legacy path | **no** | KEEP LEGACY |
+| LEGACY ONLY | `bathroom.fixtures.allowance` | fixture bundle | legacy path | **no** | KEEP LEGACY |
+| LEGACY ONLY | `bathroom.waterproofing.allowance` | lump leftover vs `install.m2` | starter still seeds | **no** on mature | KEEP LEGACY |
+
+### PC vs company chip
+
+Company/project rate on a PC key overrides the dollar amount. The line remains a PC allowance (generic product family, not a merchant SKU). Single chip: **PC allowance** (Quotr catalogue) or **Your company rate** (company rate on that key). Never both. Tile material PC and tiler install stay separate keys.
+
+### Full deterministic commercial fixture
+
+3.0 × 2.4 × 2.4 full renovation, demolition selected, 19 mm H3.2 plywood, Aqualine walls + ceiling, Standard framing, floor tile, half-height wall tile, WP floor + shower (0.9 × 0.9 × 2.1), vanity/toilet/mirror BOTH, plumbing Standard + toilet + vanity, electrical Standard + 4 lights + fan + heated rail (install only), stopping yes, painting yes, waste derived major.
+
+Local cost **$19,220.51** ex GST; sell **$24,496.80** via the commercial engine (not a Bathroom margin). Every dollar is quantity × rate or an explicit allowance/PC. No $18k package.
+
+Partial: vanity-only = vanity PC $1,200 + 2.5 h + plumbing $1,950. strip_out_only = demolition + waste. retile_floor = tile + tiler. shower_only = selected shower tile + WP.
+
+### Requirement completeness
+
+Selected mature materials, builder labour, subcontracts, PCs, and waste all emit in the requirement envelope. No opaque calculator money remains on the mature path after coordination / floor-prep / package gates.
+
+### Next action after 07 GO
+
+**WA-BATHROOM-08** — DNA candidates only where keys are consumed; mobile + hosted maturity close; `verify-work-area-bathroom-maturity.ts`. Do not start Internal Walls, Ceilings, Doors, Variations, or RFQ sending.
 
