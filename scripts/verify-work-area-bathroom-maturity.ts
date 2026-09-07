@@ -499,6 +499,13 @@ check(
   existsSync(join(process.cwd(), "app/(protected)/app/setup/dna/bathroom/page.tsx"))
 );
 check(
+  "Bathroom DNA task progress is not Deck copy",
+  readFileSync(
+    join(process.cwd(), "components/company-dna/CompanyDnaDeckTaskFlow.tsx"),
+    "utf8"
+  ).includes('workAreaLabel: "Bathroom"')
+);
+check(
   "Bathroom DNA tasks not in 054",
   !readFileSync(join(process.cwd(), "supabase/migrations/054_company_dna_v2_catalogue_seed.sql"), "utf8").includes(
     "bathroom.lining.wall.v1"

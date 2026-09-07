@@ -229,6 +229,15 @@ export function CompanyDnaDeckTaskFlow({
             optionalTotal,
             currentIsTier1,
           })
+        : task.workAreaType === "bathroom"
+          ? formatDnaV2ProgressIndicator({
+              workAreaLabel: "Bathroom",
+              tier1Calibrated,
+              tier1Total,
+              optionalIndex,
+              optionalTotal,
+              currentIsTier1,
+            })
         : formatDnaDeckProgressIndicator({
           tier1Calibrated,
           tier1Total,
@@ -250,6 +259,9 @@ export function CompanyDnaDeckTaskFlow({
         task.workAreaType === "retaining_wall"
           ? task.calibrationTaskKey
           : undefined
+      }
+      data-company-dna-bathroom-task={
+        task.workAreaType === "bathroom" ? task.calibrationTaskKey : undefined
       }
       data-company-dna-v2-task={task.calibrationTaskKey}
       className="mx-auto w-full max-w-xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"
