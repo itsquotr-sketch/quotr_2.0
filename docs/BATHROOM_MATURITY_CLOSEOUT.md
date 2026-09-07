@@ -4,7 +4,8 @@
 **Date:** 2026-09-08  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
-**Canonical verifier:** `scripts/verify-work-area-bathroom-maturity.ts`  
+**Hosted proof:** `aebd962` (`ok: true`) on canonical Preview alias.  
+**Canonical verifier:** `scripts/verify-work-area-bathroom-maturity.ts` (64/0)  
 **Phase regressions:** `verify-work-area-bathroom-02` … `07` remain.  
 **Production:** DO NOT TOUCH. **No migration 055.**
 

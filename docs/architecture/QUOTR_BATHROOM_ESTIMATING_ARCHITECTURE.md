@@ -7,6 +7,7 @@
 **WA-BATHROOM-05 hosted proof:** `a329b7c450f22bd240a80714beb0b479212a522e`  
 **WA-BATHROOM-06 hosted proof:** `f7a4d0b4c068d4b8fb88f7c14f2dec9e87461593`  
 **WA-BATHROOM-07 hosted proof:** `d47d098add5905e30b2f138798995a040b802ed5`  
+**WA-BATHROOM-08 hosted proof:** `aebd96271b8188bdbe3a7b575c1ef3c22453f90b` (`ok: true`)  
 **Production:** DO NOT TOUCH (through 045)  
 **Migrations:** NONE. No 055. Bathroom DNA catalogue rows are code-defined; Preview hosted save uses `scripts/seed-preview-bathroom-dna-catalogue.ts` (not a numbered migration).  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
@@ -30,7 +31,7 @@ Bathroom is a **MATURE** Work Area (factory WA-0…WA-9). Customer UI shows **Su
 | WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums | **GO** (hosted `a329b7c`) |
 | WA-BATHROOM-06 demolition / waste / nested finishing / Review | **GO** (hosted `f7a4d0b`) |
 | WA-BATHROOM-07 rate authority / commercial close / legacy fallback removal | **GO** (hosted `d47d098`) |
-| WA-BATHROOM-08 Company DNA + final maturity + hosted close | **GO** (canonical `verify-work-area-bathroom-maturity.ts`) |
+| WA-BATHROOM-08 Company DNA + final maturity + hosted close | **GO** (hosted `aebd962`) |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; 05 owns plumbing/fixtures) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ sending | **NO-GO** |
@@ -1576,7 +1577,7 @@ Selected mature materials, builder labour, subcontracts, PCs, and waste all emit
 
 ## 59. WA-BATHROOM-08 Company DNA + final maturity + hosted close
 
-**GO.** Canonical verifier: `scripts/verify-work-area-bathroom-maturity.ts`. Runtime is namespaced to Bathroom. Production untouched. No 055.
+**GO.** Hosted `aebd962` (`ok: true`). Canonical verifier: `scripts/verify-work-area-bathroom-maturity.ts`. Runtime is namespaced to Bathroom. Production untouched. No 055.
 
 ### DNA
 
@@ -1588,7 +1589,7 @@ Do not calibrate plumbing/electrical/tiler/WP/paint/stopping/PC/waste (commercia
 
 Resolver: `resolveCompanyDnaTask` / existing V2 UX. Company calibration overrides that task’s productivity only. Absent DNA → Quotr benchmark productivity, never Pricing Required.
 
-Bathroom DNA catalogue identity is code (`COMPANY_DNA_BATHROOM_TASKS`). Hosted save still needs Preview `productivity_calibration_catalogue` rows; seed with `scripts/seed-preview-bathroom-dna-catalogue.ts`. Do not invent migration 055 in this phase.
+Bathroom DNA catalogue identity is code (`COMPANY_DNA_BATHROOM_TASKS`). Preview `service_role` is SELECT-only on `productivity_calibration_catalogue` (052), so hosted **save** cannot persist catalogue rows without a later postgres-role seed or approved data-only migration. Deterministic DNA effect is proven via org `rates`. Bathroom remains usable without DNA.
 
 ### Exposure
 
