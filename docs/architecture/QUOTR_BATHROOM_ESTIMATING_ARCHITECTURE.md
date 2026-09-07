@@ -5,6 +5,7 @@
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
 **WA-BATHROOM-05 hosted proof:** `a329b7c450f22bd240a80714beb0b479212a522e`  
+**WA-BATHROOM-06 hosted proof:** `f7a4d0b4c068d4b8fb88f7c14f2dec9e87461593`  
 **Production:** DO NOT TOUCH (through 045)  
 **Migrations:** NONE. No 055.  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
@@ -26,7 +27,7 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | WA-BATHROOM-03 physical substrates / linings / framing | **GO** |
 | WA-BATHROOM-04 floor finish / tiling / waterproofing | **GO** |
 | WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums | **GO** (hosted `a329b7c`) |
-| WA-BATHROOM-06 demolition / waste / nested finishing / Review | **GO** (hosted SHA in §57) |
+| WA-BATHROOM-06 demolition / waste / nested finishing / Review | **GO** (hosted `f7a4d0b`) |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; 05 owns plumbing/fixtures) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ sending / Company DNA behaviour | **NO-GO** |
@@ -1473,7 +1474,7 @@ One chip per line: PC allowance / Your company rate / Quotr benchmark / Rate req
 
 ## 57. WA-BATHROOM-06 demolition / waste / nested finishing / Review close
 
-**GO** pending hosted Preview proof of this commit. Runtime is namespaced to Bathroom. Deck / Fence / RW / DNA / Billing / Security unchanged. Production untouched. No 055.
+**GO.** Hosted Preview proof: `f7a4d0b4c068d4b8fb88f7c14f2dec9e87461593`. Runtime is namespaced to Bathroom. Deck / Fence / RW / DNA / Billing / Security unchanged. Production untouched. No 055.
 
 ### Demolition
 
