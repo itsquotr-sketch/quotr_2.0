@@ -9,6 +9,7 @@ import type { RefineView } from "@/lib/assistant/refine/types";
 import { ClarifyReadinessCard } from "@/components/assistant/clarify/ClarifyReadiness";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
+import { clarifyFieldIdentity } from "@/lib/assistant/clarify/numeric";
 import { shouldShowWhyThisMatters, whyThisMattersForKey } from "@/lib/assistant/presentation/why-this-matters";
 
 type ClarifyPanelProps = {
@@ -123,6 +124,7 @@ function ClarifyQuestion({
         </div>
       ) : (
         <ClarifyValueField
+          key={clarifyFieldIdentity(candidate)}
           candidate={candidate}
           isSaving={isSaving}
           onSubmit={(value) => onAnswerValue?.(candidate, value)}
@@ -189,6 +191,7 @@ export function ClarifyPanel({
         {countCopy}
       </p>
       <ClarifyQuestion
+        key={clarifyFieldIdentity(showing ?? current)}
         candidate={showing ?? current}
         isSaving={isSaving}
         onAnswerBoolean={wrapBoolean}

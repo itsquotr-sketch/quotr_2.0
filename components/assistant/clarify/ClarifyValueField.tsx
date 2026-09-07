@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import {
+  clarifyFieldIdentity,
   parsePositiveClarifyNumber,
   resolveClarifyUnit,
 } from "@/lib/assistant/clarify/numeric";
@@ -22,6 +23,7 @@ export function ClarifyValueField({
   onSubmit,
 }: ClarifyValueFieldProps) {
   const isNumber = candidate.inputType === "number";
+  const fieldKey = clarifyFieldIdentity(candidate);
   const unit = isNumber
     ? resolveClarifyUnit({
         unit: candidate.unit,
@@ -41,7 +43,7 @@ export function ClarifyValueField({
         setError(parsed.error);
         return;
       }
-      const token = String(parsed.value);
+      const token = `${fieldKey}:${parsed.value}`;
       if (lastSubmitted === token) return;
       setError(null);
       setLastSubmitted(token);
@@ -53,9 +55,10 @@ export function ClarifyValueField({
       setError("Enter an answer.");
       return;
     }
-    if (lastSubmitted === trimmed) return;
+    const token = `${fieldKey}:${trimmed}`;
+    if (lastSubmitted === token) return;
     setError(null);
-    setLastSubmitted(trimmed);
+    setLastSubmitted(token);
     onSubmit(trimmed);
   };
 
@@ -63,6 +66,8 @@ export function ClarifyValueField({
     <div
       className="space-y-2"
       data-clarify-value-field="true"
+      data-clarify-field-key={fieldKey}
+      data-clarify-fact-key={candidate.factKey ?? undefined}
       data-clarify-input-type={candidate.inputType}
     >
       <div className="flex items-center gap-2">

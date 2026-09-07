@@ -477,6 +477,14 @@ check(
       c.factKey === "bathroom.wall_height_m"
   )
 );
+check(
+  "Clarify vanity-only does not assume tiling",
+  !vanityClarify.estimateNowAssumptions.some(
+    (row) =>
+      row.factKey === "bathroom.tiling_included" ||
+      /assuming tiling/i.test(row.statement)
+  )
+);
 
 console.log("\n--- Priority ---\n");
 const p0 = allBathroomQs.filter((q) => q.estimatePriorityClass === "P0");

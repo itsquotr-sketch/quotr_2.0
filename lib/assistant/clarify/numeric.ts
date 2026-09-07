@@ -1,5 +1,22 @@
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
+/** Identity that must remount ClarifyValueField when the asked fact changes. */
+export function clarifyFieldIdentity(candidate: {
+  id?: string | null;
+  workAreaId?: string | null;
+  factKey?: string | null;
+  questionKey?: string | null;
+}): string {
+  if (candidate.id) return candidate.id;
+  return [
+    candidate.workAreaId,
+    candidate.factKey,
+    candidate.questionKey,
+  ]
+    .filter((part): part is string => Boolean(part))
+    .join(":");
+}
+
 export function resolveClarifyUnit(input: {
   unit?: string;
   questionKey?: string | null;

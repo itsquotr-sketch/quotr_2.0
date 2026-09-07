@@ -11,6 +11,7 @@ import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-lab
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
 import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
+import { clarifyFieldIdentity } from "@/lib/assistant/clarify/numeric";
 
 const GROUP_LABEL: Record<RefineGroupId, string> = {
   scope: "Scope",
@@ -108,6 +109,7 @@ function RefineField({
         </div>
       ) : (
         <ClarifyValueField
+          key={clarifyFieldIdentity(mapped)}
           candidate={mapped}
           isSaving={isSaving}
           onSubmit={(value) => onAnswerValue?.(mapped, value)}

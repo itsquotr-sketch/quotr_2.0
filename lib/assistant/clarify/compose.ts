@@ -50,6 +50,7 @@ import { STEP_WIDTH_ASSUMPTION_STATEMENT } from "@/lib/estimate/deck-steps-physi
 import {
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
+  isMatureBathroomPath,
   resolveBathroomJobScope,
 } from "@/lib/estimate/bathroom-scope";
 import { BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT } from "@/lib/estimate/bathroom-geometry";
@@ -123,6 +124,16 @@ function askClassForScopeKey(key: string): ClarifyAskClass {
   return "ASSUME_IF_SKIPPED";
 }
 
+function suppressMatureUnansweredBathroomTiling(
+  input: ComposeClarifyInput,
+  workAreaId: string | null
+): boolean {
+  if (!workAreaId) return false;
+  return isMatureBathroomPath(
+    getStringFact(input.facts as EstimateFact[], workAreaId, "bathroom.job_scope")
+  );
+}
+
 function candidateFromJobPlanCheck(
   input: ComposeClarifyInput,
   card: ComposeClarifyInput["jobPlan"]["cards"][number],
@@ -148,6 +159,12 @@ function candidateFromJobPlanCheck(
     return null;
   }
   if (key === "deck.balustrade_required" && !shouldAskBalustrade(input, card.workAreaId)) {
+    return null;
+  }
+  if (
+    key === "bathroom.tiling_included" &&
+    suppressMatureUnansweredBathroomTiling(input, card.workAreaId)
+  ) {
     return null;
   }
   if (shouldSuppressKnownSpec(key, card.workAreaId, input)) return null;
@@ -1016,11 +1033,19 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
     (w) => w.status !== "excluded"
   ).length;
   const { visible, deferred } = allocateClarifyBudget(ranked, confirmedCount);
-  const assumptions = assumptionsFromSkipped(deferred);
   const estimateNowAssumptions = assumptionsFromSkipped([
     ...visible.filter((c) => c.assumable && !c.blocksEstimate),
     ...deferred,
-  ]);
+  ]).filter(
+    (row) =>
+      row.factKey !== "bathroom.tiling_included" ||
+      !suppressMatureUnansweredBathroomTiling(input, row.workAreaId)
+  );
+  const assumptions = assumptionsFromSkipped(deferred).filter(
+    (row) =>
+      row.factKey !== "bathroom.tiling_included" ||
+      !suppressMatureUnansweredBathroomTiling(input, row.workAreaId)
+  );
   for (const persisted of assumptionsFromPersistedFacts(input.facts)) {
     const already = estimateNowAssumptions.some(
       (row) =>
