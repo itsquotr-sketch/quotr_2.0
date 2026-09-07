@@ -86,10 +86,19 @@ import {
   BATHROOM_CEILING_LINING_LABOUR_COMPONENT,
   BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
   BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT,
+  BATHROOM_FLOOR_TILE_INSTALL_COMPONENT,
+  BATHROOM_FLOOR_TILE_MATERIAL_COMPONENT,
   BATHROOM_FRAMING_COMPONENT,
   BATHROOM_FRAMING_LABOUR_COMPONENT,
+  BATHROOM_SHEET_VINYL_INSTALL_COMPONENT,
+  BATHROOM_SHEET_VINYL_MATERIAL_COMPONENT,
+  BATHROOM_VINYL_PLANK_INSTALL_COMPONENT,
+  BATHROOM_VINYL_PLANK_MATERIAL_COMPONENT,
   BATHROOM_WALL_LINING_COMPONENT,
   BATHROOM_WALL_LINING_LABOUR_COMPONENT,
+  BATHROOM_WALL_TILE_INSTALL_COMPONENT,
+  BATHROOM_WALL_TILE_MATERIAL_COMPONENT,
+  BATHROOM_WATERPROOFING_COMPONENT,
 } from "@/lib/estimate/bathroom-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
@@ -210,6 +219,7 @@ export function mapLineCategory(
 }
 
 export function mapRateLabel(raw: string): string {
+  if (/pc allowance/i.test(raw)) return "PC allowance";
   const type = classifyRateSource(raw);
   if (type === "user_rate") return "Company rate";
   if (type === "calibrated_productivity") return "Your calibrated productivity";
@@ -323,7 +333,7 @@ export function toPricedLine(item: EstimateLineItem): BuilderReviewPricedLine {
     specification: hierarchy.supporting,
     supporting: hierarchy.supporting,
     detail: hierarchy.detail,
-    pricingHelper: spoil && rateLabel === "Rate required" ? RW_SPOIL_REMOVAL_PRICING_HELPER : null,
+    pricingHelper: spoil && (rateLabel === "Rate required" || rateLabel === "Pricing Required") ? RW_SPOIL_REMOVAL_PRICING_HELPER : null,
     rateContext: variance?.copy ?? null,
     quantityFallback: presentLineFallback({
       label: item.label,
@@ -438,7 +448,7 @@ function lineHierarchy(
   const rateBit =
     item.costRate != null && item.unit
       ? `$${item.costRate}/${item.unit} · ${rateLabel}`
-      : rateLabel !== "Rate required"
+      : rateLabel !== "Pricing Required" && rateLabel !== "Rate required"
         ? rateLabel
         : null;
   const stepTreadDetail =
@@ -620,6 +630,19 @@ function applyBathroomReviewGroups(
   ]);
   const framingMaterials = new Set([BATHROOM_FRAMING_COMPONENT]);
   const framingLabour = new Set([BATHROOM_FRAMING_LABOUR_COMPONENT]);
+  const floorFinishMaterials = new Set([
+    BATHROOM_FLOOR_TILE_MATERIAL_COMPONENT,
+    BATHROOM_SHEET_VINYL_MATERIAL_COMPONENT,
+    BATHROOM_VINYL_PLANK_MATERIAL_COMPONENT,
+  ]);
+  const floorFinishInstall = new Set([
+    BATHROOM_FLOOR_TILE_INSTALL_COMPONENT,
+    BATHROOM_SHEET_VINYL_INSTALL_COMPONENT,
+    BATHROOM_VINYL_PLANK_INSTALL_COMPONENT,
+  ]);
+  const wallTileMaterials = new Set([BATHROOM_WALL_TILE_MATERIAL_COMPONENT]);
+  const wallTileInstall = new Set([BATHROOM_WALL_TILE_INSTALL_COMPONENT]);
+  const waterproofing = new Set([BATHROOM_WATERPROOFING_COMPONENT]);
 
   return categories.map((cat) => {
     if (cat.id === "MATERIALS" || cat.id === "PRICING_REQUIRED") {
@@ -635,13 +658,27 @@ function applyBathroomReviewGroups(
         "bathroom-framing",
         "Local framing"
       );
+      const floorFinish = groupBathroomLines(
+        framing.remaining,
+        floorFinishMaterials,
+        "bathroom-floor-finish",
+        "Floor finish"
+      );
+      const wallTile = groupBathroomLines(
+        floorFinish.remaining,
+        wallTileMaterials,
+        "bathroom-wall-tiling",
+        "Wall tiling"
+      );
       return {
         ...cat,
-        lines: framing.remaining,
+        lines: wallTile.remaining,
         lineGroups: [
           ...cat.lineGroups,
           ...(linings.group ? [linings.group] : []),
           ...(framing.group ? [framing.group] : []),
+          ...(floorFinish.group ? [floorFinish.group] : []),
+          ...(wallTile.group ? [wallTile.group] : []),
         ],
       };
     }
@@ -665,6 +702,36 @@ function applyBathroomReviewGroups(
           ...cat.lineGroups,
           ...(linings.group ? [linings.group] : []),
           ...(framing.group ? [framing.group] : []),
+        ],
+      };
+    }
+    if (cat.id === "SUBCONTRACT") {
+      const floorInstall = groupBathroomLines(
+        cat.lines,
+        floorFinishInstall,
+        "bathroom-floor-finish-install",
+        "Floor finish"
+      );
+      const wallInstall = groupBathroomLines(
+        floorInstall.remaining,
+        wallTileInstall,
+        "bathroom-wall-tiling-install",
+        "Wall tiling"
+      );
+      const wp = groupBathroomLines(
+        wallInstall.remaining,
+        waterproofing,
+        "bathroom-waterproofing",
+        "Waterproofing"
+      );
+      return {
+        ...cat,
+        lines: wp.remaining,
+        lineGroups: [
+          ...cat.lineGroups,
+          ...(floorInstall.group ? [floorInstall.group] : []),
+          ...(wallInstall.group ? [wallInstall.group] : []),
+          ...(wp.group ? [wp.group] : []),
         ],
       };
     }

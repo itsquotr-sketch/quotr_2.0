@@ -46,6 +46,20 @@ const WHY_THIS_MATTERS: Readonly<Record<string, string>> = Object.freeze({
     "Working-hour restrictions can affect programme and labour productivity.",
   floor_level:
     "Floor level can affect access, carrying and handling effort.",
+  "bathroom.floor_finish_system":
+    "Bathroom floor finish is one primary system. Floor substrate is separate.",
+  "bathroom.tile_extent":
+    "Wall tiling extent. Floor tiles come from the floor finish, not this question.",
+  "bathroom.tile_format":
+    "Tile format is used for an approximate tile count. Quantity is still priced in m².",
+  "bathroom.shower.width_m":
+    "Shower width is used with depth and wall height for shower-only tiling and waterproofing.",
+  "bathroom.shower.depth_m":
+    "Shower depth is used with width and wall height for shower-only tiling and waterproofing.",
+  "bathroom.shower.wall_height_m":
+    "Shower wall height is used for tiled or waterproofed shower walls, not the whole bathroom.",
+  "bathroom.waterproofing_extent":
+    "Waterproofing uses selected wet areas only. It is not copied from the tiling area.",
   "bathroom.floor_substrate_system":
     "Floor substrate quantity uses the bathroom floor area and a 10% sheet waste.",
   "bathroom.wall_lining_included":

@@ -162,6 +162,12 @@ export function shouldHideConditionalQuestion(
           "bathroom.floor_substrate_system"
         ),
         floorFinish: strFact(lookup, workAreaId, "bathroom.floor_finish_system"),
+        wallTileExtent: strFact(lookup, workAreaId, "bathroom.tile_extent"),
+        waterproofingExtent: strFact(
+          lookup,
+          workAreaId,
+          "bathroom.waterproofing_extent"
+        ),
       })
     ) {
       return true;
@@ -434,12 +440,10 @@ export function shouldHideConditionalQuestion(
   if (
     key === "bathroom.floor_tiling_area_m2" ||
     key === "bathroom.wall_tiling_area_m2" ||
-    key === "bathroom.tile_extent" ||
     key === "bathroom.wall_tile_height"
   ) {
     const tiling = boolFact(lookup, workAreaId, "bathroom.tiling_included");
     if (tiling === false) return true;
-    if (tiling === null) return true;
     return false;
   }
 

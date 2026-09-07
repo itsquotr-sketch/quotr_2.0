@@ -426,6 +426,14 @@ function missingHardMinimum(
           card.workAreaId,
           "bathroom.floor_finish_system"
         ),
+        wallTileExtent:
+          getStringFact(facts, card.workAreaId, "bathroom.tile_extent") ??
+          getStringFact(facts, card.workAreaId, "bathroom.wall_tile_height"),
+        waterproofingExtent: getStringFact(
+          facts,
+          card.workAreaId,
+          "bathroom.waterproofing_extent"
+        ),
       });
       const lengthKnown = getNumberFact(
         facts,
@@ -544,6 +552,14 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           "bathroom.floor_substrate_system"
         ),
         floorFinish: getStringFact(facts, wa.id, "bathroom.floor_finish_system"),
+        wallTileExtent:
+          getStringFact(facts, wa.id, "bathroom.tile_extent") ??
+          getStringFact(facts, wa.id, "bathroom.wall_tile_height"),
+        waterproofingExtent: getStringFact(
+          facts,
+          wa.id,
+          "bathroom.waterproofing_extent"
+        ),
       });
       if (
         geometryNeed === "full" &&

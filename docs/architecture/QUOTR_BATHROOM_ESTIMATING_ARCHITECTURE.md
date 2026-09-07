@@ -1,6 +1,6 @@
 # Quotr Bathroom Estimating Architecture
 
-**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 implemented (scope + geometry)** + **WA-BATHROOM-03 implemented (physical substrates / linings / framing)**  
+**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 implemented (scope + geometry)** + **WA-BATHROOM-03 implemented (physical substrates / linings / framing)** + **WA-BATHROOM-04 implemented (floor finish XOR / tiling / waterproofing)**  
 **Date:** 2026-09-07  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
@@ -8,7 +8,7 @@
 **Migrations:** NONE. No 055.  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
 **Triage:** [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md)
-**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`
+**Verifier:** `scripts/verify-work-area-bathroom-02.ts`, `scripts/verify-work-area-bathroom-02c.ts`, `scripts/verify-work-area-bathroom-03.ts`, `scripts/verify-work-area-bathroom-04.ts`
 
 Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band is unchanged (`trial_supported`).
 
@@ -23,12 +23,13 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | WA-BATHROOM-01 architecture / gap audit | **GO** |
 | WA-BATHROOM-02 scope + geometry | **GO** |
 | WA-BATHROOM-03 physical substrates / linings / framing | **GO** |
-| Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (deferred to 04–07) |
+| WA-BATHROOM-04 floor finish / tiling / waterproofing | **IMPLEMENTED — mark GO only after hosted Preview proof** |
+| Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; plumbing/fixtures remain 05+) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ / Company DNA behaviour | **NO-GO** |
 | Production / migration 055 | **NO-GO** |
 
-**Next action:** [WA-BATHROOM-04](#54-wa-bathroom-03-physical-substrates--linings--framing) — floor finish XOR (tile / sheet vinyl / vinyl plank), distinct from floor substrate. Do not start until this 03 close is reviewed.
+**Next action after 04 hosted GO:** [WA-BATHROOM-05](#47-implementation-phases) — fixtures / services. Do not start until this 04 close is reviewed.
 
 ---
 
@@ -81,11 +82,13 @@ It **prices**. It does **not** own room geometry, sheet counts as money, indepen
 | `bathroom.fixtures_client_supplied` | bool | yes | **Yes** — install hours vs fixture $ lumps |
 | `bathroom.fixtures_included` | multi | no | **Partial** — only Vanity / Shower / Toilet map to $ |
 | `bathroom.waterproofing_included` | bool | yes | **Yes** |
-| `bathroom.waterproofing_extent` | enum | no | **No** — asked, not consumed |
-| `bathroom.tiling_included` | bool | no | **Yes** — default **on** unless explicit `false` |
-| `bathroom.floor_tiling_area_m2` | m² | no | **Yes** (via commercial-realism) — **not** in consumed-fact list |
-| `bathroom.wall_tiling_area_m2` | m² | no | **Yes** (via commercial-realism) — **not** in consumed-fact list |
-| `bathroom.tile_extent` | enum | no | **Notes only** — does not change m² |
+| `bathroom.waterproofing_extent` | enum | no | **Yes on mature path** — `none \| floor_only \| floor_and_shower \| shower_only \| bath_surround \| custom` |
+| `bathroom.tiling_included` | bool | no | **Legacy money gate.** Hidden on mature path; floor XOR + wall extent own tiling |
+| `bathroom.floor_tiling_area_m2` | m² | no | **Yes** — optional explicit floor tile area |
+| `bathroom.wall_tiling_area_m2` | m² | no | **Yes** — custom wall tile authority |
+| `bathroom.tile_extent` | enum | no | **Yes on mature path** — wall tiling extent |
+| `bathroom.tile_format` | enum | no | **Metadata only** — approximate tile count |
+| `bathroom.shower.width_m` / `depth_m` / `wall_height_m` | m | no | **Yes** — shower-only tile / WP walls |
 | `bathroom.shower_type` | enum | no | **Partial** — Aqualine vs plasterboard label only |
 | `bathroom.wall_tile_height` | enum | no | **No** — asked, not consumed |
 | `bathroom.ventilation_included` | bool | no | **Yes** — extractor lump |
@@ -463,7 +466,7 @@ XOR — one primary system:
 
 Do not price tile + vinyl together unless user sets **separate areas** (e.g. timber look in dry zone + tile in shower — explicit split facts, not two full-room systems).
 
-**Current:** no floor-finish XOR. Tiling defaults on. Flooring WA is a separate package (`flooring.type` includes Vinyl/Tile). Isolation: if Bathroom floor finish is selected, do not also let `flooring` WA price the same bathroom floor without XOR / overlap group `bathroom_floor_finish`.
+**Current:** mature path (`bathroom.job_scope` stored) prices exactly one primary floor finish from `bathroom.floor_finish_system`. Substrate remains independent. Mixed `bathroom.tiling.m2` is **SUPERSEDED** on the mature path and retained for legacy regenerate without `job_scope`. Future standalone Flooring Work Area must not double-price the same bathroom floor (`bathroom_floor_finish` overlap group). That XOR is documented, not implemented against an immature Flooring runtime.
 
 ---
 
@@ -478,7 +481,7 @@ approx_plank_count = floor_area / (0.915 × 0.152)
 
 **Do not invent pack coverage or pack counts.** If pack m² is later owner-approved, then ceil to packs.
 
-Current `FITOUT_BENCHMARKS.vinylPerM2` ($85 / $130) is flooring-WA package — **REUSE as researchable placeholder class only**, **NEEDS OWNER** before Bathroom money.
+**Implemented (04):** sheet vinyl material $55/m² purchase (10% waste) + install $45/m² net. Vinyl plank material $65/m² purchase (10% waste) + install $50/m² net. Typical plank 915 × 152 mm is approximate count metadata only — no pack counts. `other` is Pricing Required / explicit allowance, not a fabricated product.
 
 ---
 
@@ -496,13 +499,13 @@ Wall tiling extent (architecture):
 | None | 0 |
 | Shower only | Disclosed shower-wall assumption **or** custom m² — **INFO_REQUIRED** if neither |
 | Partial / selected | Custom m² |
-| Half height | `gross_wall_area_m2 × 0.5` as **ASSUMED_DISCLOSED** only after extent chosen; openings not deducted |
+| Half height | `perimeter × 1.2 m` (V1). Openings not deducted |
 | Full height | `gross_wall_area_m2` disclosed gross |
-| Custom m² | KNOWN |
+| Custom m² | `bathroom.wall_tiling_area_m2` as physical authority |
 
-**Do not assume all bathroom walls are tiled.** Current `tile_extent` options (Floor only / Floor and walls / Full height / Splashback) are close — **REUSE presentation**, **consume them**. `wall_tile_height` duplicates extent — **merge**.
+**Do not assume all bathroom walls are tiled.** Canonical wall authority is `bathroom.tile_extent` (`none | shower_only | half_height | full_height | custom`). `wall_tile_height` is dual-read only.
 
-Current product **can** store floor + wall tile m² and derive total. It **cannot** derive wall tile from extent × geometry because geometry does not exist.
+**Implemented (04):** floor tile uses physical floor or explicit `bathroom.floor_tiling_area_m2`. Shower-only uses `bathroom.shower.width_m` / `depth_m` / `wall_height_m` (two walls). Unanswered shower geometry → INFO_REQUIRED. Not sure → ASSUMED_DISCLOSED 0.9 + 0.9 × 2.1 m = 3.78 m². Never a floor-area proxy.
 
 ---
 
@@ -518,7 +521,7 @@ approx_tile_count = tile_area_m2 / tile_face_area_m2
 
 Primary requirement remains **required m²** unless pack coverage is known. Waste **once** (`flooring` or dedicated tile wastage — owner later). Current tiling already applies `flooring` wastage to the mixed allowance — **REUSE category**, split when material vs subcontract split.
 
-Finish level may scale **PC $/m² for unspecified tile**, not m² quantity.
+**Implemented (04):** tile material PC $65 ex GST / m² on purchase area (net × 1.10). Tiler $95 ex GST / m² on net area. Separate requirements. Finish level does not change m². Format metadata 600×600 / 600×300 / 300×300 / mosaic / custom — approximate tile count only.
 
 ---
 
@@ -526,11 +529,11 @@ Finish level may scale **PC $/m² for unspecified tile**, not m² quantity.
 
 Tiling install is a **$/m² subcontract benchmark** on physically calculated tile area.
 
-**Current mixes tile material + tiler in `bathroom.tiling.m2` ($180 / $280)** plus a **$2,200 / $3,400 minimum**, labelled “Tiling allowance”, category subcontractor.
+**Implemented (04):** mature path SUPERSEDES mixed `bathroom.tiling.m2` + $2,200 / $3,400 minimums. Legacy without `job_scope` retains the mixed lump.
 
 | Current | Decision |
 | --- | --- |
-| `bathroom.tiling.m2` | **SUPERSEDE** as mixed rate. Split: `bathroom.tile.material.m2` (PC/material) + `bathroom.tiling.install.m2` (subcontract) |
+| `bathroom.tiling.m2` | **SUPERSEDE** as mixed rate. Split: `bathroom.tile.material.m2` (PC/material) + `bathroom.tile.install.m2` (subcontract) |
 | `tilingMinimum` | **REMOVE FROM MATURE PATH** as hidden floor. If a small-job floor remains, it must be labelled “minimum tiler call-out” and owner-approved |
 | `bathroom.tiling_hours_per_m2` = 2.0 | **NOT DNA**. Subcontract $ rate, not builder productivity. **LOW VALUE / NOT DNA** |
 
@@ -547,12 +550,14 @@ Components (include flags):
 - Bath surround
 - Selected wet walls
 
-`bathroom.waterproofing_extent` already asks Floor only / Floor and walls / Shower-wet only — **REUSE**, **consume**.
+`bathroom.waterproofing_extent` canonical values: `none | floor_only | floor_and_shower | shower_only | bath_surround | custom`. Legacy “Floor and walls” dual-reads as floor_and_shower (not all bathroom walls).
+
+**Implemented (04):** WP subcontract `bathroom.waterproofing.install.m2` at $75 ex GST / m² on selected physical components only. Not a tiling-area proxy. No $1,200 minimum on the mature path. Company subcontract rate overrides. Not sure / unanswered extent → INFO_REQUIRED rather than waterproofing everything.
 
 | Current | Decision |
 | --- | --- |
 | `bathroom.waterproofing.allowance` catalogue lump $1,200 | **SUPERSEDE** as primary; keep only as fallback min if owner wants call-out |
-| `waterproofingPerM2` $90 / $140 hardcoded (bypasses `resolveRate`) | Promote to catalogue key `bathroom.waterproofing.m2` — **NEEDS OWNER** |
+| `waterproofingPerM2` $90 / $140 hardcoded (bypasses `resolveRate`) | Catalogue key `bathroom.waterproofing.install.m2` — owner-approved $75 / m² |
 | Tiling-area proxy | **REMOVE FROM MATURE PATH** |
 | `bathroom.waterproofing_hours_allowance` | Unused. **NOT DNA** (subcontract) |
 
@@ -1314,10 +1319,10 @@ Mature path = stored `bathroom.job_scope`. Legacy regenerate without that fact k
 
 | Identity | Company rate | Quotr benchmark | Unit | Gap |
 | --- | --- | --- | --- | --- |
-| `sheet.plywood.19mm.h3.2.each` | no | no | each | NEEDS BENCHMARK / Pricing Required |
-| `sheet.fibre_cement.18mm.2400x1200.each` | no | no | each | NEEDS BENCHMARK / Pricing Required |
+| `sheet.plywood.19mm.h3.2.each` | maybe | yes ($145 / sheet) | each | Owner-approved in 04 |
+| `sheet.fibre_cement.18mm.2400x1200.each` | maybe | yes ($95 / sheet) | each | Owner-approved in 04 |
 | `sheet.plasterboard.aqualine.each` | maybe | yes ($26 / $38 fitout catalogue) | each | QUOTR BENCHMARK AVAILABLE — owner should confirm |
-| `bathroom.framing.90x45.h1.2.lm` | no | no | lm | NEEDS BENCHMARK / Pricing Required |
+| `bathroom.framing.90x45.h1.2.lm` | maybe | yes ($6.20 / lm) | lm | Owner-approved in 04 |
 
 Labour $ uses canonical `labour.carpenter.hour`. Do not invent material dollars.
 
@@ -1327,4 +1332,60 @@ Bathroom nested floor substrate / wall lining / ceiling lining may exist inside 
 
 ### Next action after 03 GO
 
-**WA-BATHROOM-04** — floor finish XOR (tile / sheet vinyl / vinyl plank) as distinct from floor substrate. No tiling subcontract money rewrite beyond what 04 owns. Do not start Internal Walls, Variations, or RFQ.
+**WA-BATHROOM-04** — implemented. See §55.
+
+---
+
+## 55. WA-BATHROOM-04 floor finish, tiling, and waterproofing
+
+**Status:** **IMPLEMENTED.** Mark **GO** only after deterministic verifier + hosted Preview proof on the canonical alias.
+
+Verifier: `scripts/verify-work-area-bathroom-04.ts`
+
+### Floor XOR
+
+Exactly one primary system from `bathroom.floor_finish_system`: `tile | sheet_vinyl | vinyl_plank | none | other`. Floor substrate is independent. Changing system supersedes prior floor-finish requirements.
+
+### Tile
+
+- Waste **once** on material purchase (10%). Tiler uses **net** area.
+- Floor tile authority: physical floor or explicit `bathroom.floor_tiling_area_m2`.
+- Wall extent: `bathroom.tile_extent` = `none | shower_only | half_height | full_height | custom` (dual-read `wall_tile_height`).
+- Half height: perimeter × **1.2 m**. Full height: gross wall. Custom: `bathroom.wall_tiling_area_m2`.
+- Shower-only: `bathroom.shower.width_m` / `depth_m` / `wall_height_m`. Unanswered → INFO_REQUIRED. Not sure → ASSUMED_DISCLOSED two walls 0.9 m × 2.1 m = **3.78 m²**.
+- Openings not deducted; disclosed.
+- Tile PC $65/m² purchase. Tiler $95/m² net. Format metadata only.
+
+### Waterproofing
+
+Independent of tiling. Extent `bathroom.waterproofing_extent`: `none | floor_only | floor_and_shower | shower_only | bath_surround | custom`. Area = selected components only. Subcontract $75/m². No tiling-area proxy. No $1,200 minimum on the mature path.
+
+### Vinyl
+
+Sheet vinyl: material $55/m² purchase + install $45/m² net. Vinyl plank: material $65/m² purchase + install $50/m² net. 10% material waste once.
+
+### Requirement identities
+
+| Role | Component key | Rate key |
+| --- | --- | --- |
+| Floor tile material | `bathroom.floor_finish.tile.material` | `bathroom.tile.material.m2` |
+| Floor tiler | `bathroom.floor_finish.tile.install` | `bathroom.tile.install.m2` |
+| Wall tile material | `bathroom.wall_tile.material` | `bathroom.tile.material.m2` |
+| Wall tiler | `bathroom.wall_tile.install` | `bathroom.tile.install.m2` |
+| Waterproofing | `bathroom.waterproofing` | `bathroom.waterproofing.install.m2` |
+| Sheet vinyl material / install | `bathroom.floor_finish.sheet_vinyl.material` / `.install` | matching `*.m2` keys |
+| Vinyl plank material / install | `bathroom.floor_finish.vinyl_plank.material` / `.install` | matching `*.m2` keys |
+
+Types: MaterialRequirement + SubcontractRequirement. No Bathroom-specific envelope type.
+
+### Legacy boundary
+
+Mature path = stored `bathroom.job_scope`. Mixed tiling lump, tiling minimums, WP tiling-area proxy, and $1,200 WP minimum remain on regenerate without `job_scope`. Historical snapshots unchanged.
+
+### Flooring Work Area overlap
+
+Bathroom floor finish is nested Bathroom scope (`overlapGroup` `bathroom_floor_finish`). A future standalone Flooring Work Area must not double-price the same bathroom floor. Not suppressed against an immature Flooring runtime.
+
+### Next action after 04 GO
+
+**WA-BATHROOM-05** — fixtures / plumbing / electrical / PC sums. Do not start Internal Walls, Variations, or RFQ.

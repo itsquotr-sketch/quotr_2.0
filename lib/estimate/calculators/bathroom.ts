@@ -29,6 +29,10 @@ import {
   buildBathroomPhysicalEnvelope,
   resolveBathroomPhysicalSelection,
 } from "@/lib/estimate/bathroom-physical";
+import {
+  buildBathroomFinishEnvelope,
+  resolveBathroomFinishSelection,
+} from "@/lib/estimate/bathroom-finishes";
 import { PHYSICAL_REQUIREMENT_RESOLUTION } from "@/lib/estimate/physical-requirement-resolution";
 import {
   bathroomTradeLevelIncluded,
@@ -153,6 +157,14 @@ export function calculateBathroom(
       workArea.id,
       "bathroom.floor_finish_system"
     ),
+    wallTileExtent:
+      getStringFact(facts, workArea.id, "bathroom.tile_extent") ??
+      getStringFact(facts, workArea.id, "bathroom.wall_tile_height"),
+    waterproofingExtent: getStringFact(
+      facts,
+      workArea.id,
+      "bathroom.waterproofing_extent"
+    ),
   });
 
   if (
@@ -245,6 +257,24 @@ export function calculateBathroom(
     assumptions.push(...physical.assumptions);
     missingInfo.push(...physical.missingInfo);
     sortOrder = physical.nextSortOrder;
+  }
+
+  const finishSelection = maturePath
+    ? resolveBathroomFinishSelection({ facts, workAreaId: workArea.id })
+    : null;
+  if (maturePath && finishSelection) {
+    const finishes = buildBathroomFinishEnvelope({
+      context,
+      workArea,
+      geometry,
+      selection: finishSelection,
+      sortOrderStart: sortOrder,
+    });
+    lineItems.push(...finishes.lineItems);
+    requirements.push(...finishes.requirements);
+    assumptions.push(...finishes.assumptions);
+    missingInfo.push(...finishes.missingInfo);
+    sortOrder = finishes.nextSortOrder;
   }
 
   if (demolitionRequired) {
@@ -352,7 +382,7 @@ export function calculateBathroom(
     tilingOn
   );
 
-  if (waterproofingIncluded) {
+  if (!maturePath && waterproofingIncluded) {
     const waterproofingAreaResult = resolveBathroomWaterproofingArea(
       facts,
       workArea.id,
@@ -445,7 +475,7 @@ export function calculateBathroom(
     organisationSettings: context.organisationSettings,
   });
 
-  if (tilingOn) {
+  if (!maturePath && tilingOn) {
     const totalTilingArea = tilingResolved.area;
     const tilingWastage = resolveMaterialWastage(
       context.materialWastageSettings,
@@ -1066,6 +1096,13 @@ export const BATHROOM_CALCULATOR_CONSUMED_FACTS = [
   "bathroom.waterproofing_included",
   "bathroom.waterproofing_required",
   "bathroom.waterproofing_area_m2",
+  "bathroom.waterproofing_extent",
+  "bathroom.tile_format",
+  "bathroom.wall_tile_height",
+  "bathroom.shower.width_m",
+  "bathroom.shower.depth_m",
+  "bathroom.shower.wall_height_m",
+  "bathroom.bath_surround_area_m2",
   "bathroom.fixtures_client_supplied",
   "bathroom.fixtures_included",
   "bathroom.includes_vanity",

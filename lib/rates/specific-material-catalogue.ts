@@ -187,7 +187,8 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom sheet materials",
     unit: "each",
     description:
-      "2400 × 1200 19 mm H3.2 treated structural plywood. No invented Quotr dollar rate — company exact or Pricing Required.",
+      "2400 × 1200 19 mm H3.2 treated structural plywood. Owner-approved Quotr benchmark $145 ex GST / sheet. Company exact rate wins.",
+    defaultCostRate: 145,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -200,7 +201,8 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom sheet materials",
     unit: "each",
     description:
-      "2400 × 1200 18 mm fibre cement sheet. No invented Quotr dollar rate — company exact or Pricing Required.",
+      "2400 × 1200 18 mm fibre cement sheet. Owner-approved Quotr benchmark $95 ex GST / sheet. Company exact rate wins.",
+    defaultCostRate: 95,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -213,7 +215,8 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom framing",
     unit: "lm",
     description:
-      "Bathroom local nogging / fixture support. Not Deck H3.2 90×45. No invented Quotr $/lm — company exact or Pricing Required.",
+      "Bathroom local nogging / fixture support. Not Deck H3.2 90×45. Owner-approved Quotr benchmark $6.20 ex GST / lm. Company exact rate wins.",
+    defaultCostRate: 6.2,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -1590,6 +1593,107 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
 ];
 
+export const BATHROOM_FINISH_RATE_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: "bathroom.tile.material.m2",
+    label: "Bathroom tile supply allowance",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom floor finish",
+    unit: "m2",
+    description:
+      "PC / material allowance for unspecified tile. Owner-approved Quotr $65 ex GST / m² on purchase area after 10% waste. Not a merchant quote. Company exact rate wins.",
+    defaultCostRate: 65,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.tile.install.m2",
+    label: "Bathroom tiler installation",
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom tiling",
+    unit: "m2",
+    description:
+      "Tiler installation only. Owner-approved Quotr $95 ex GST / m² on net tiled area. Does not include tile material. Company subcontract rate wins.",
+    defaultCostRate: 95,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.waterproofing.install.m2",
+    label: "Bathroom waterproofing",
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom waterproofing",
+    unit: "m2",
+    description:
+      "Waterproofing subcontract on physically calculated wet area. Owner-approved Quotr $75 ex GST / m². Not a tiling-area proxy. Company subcontract rate wins.",
+    defaultCostRate: 75,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.floor_finish.sheet_vinyl.material.m2",
+    label: "Bathroom sheet vinyl supply",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom floor finish",
+    unit: "m2",
+    description:
+      "Sheet vinyl material. Owner-approved Quotr $55 ex GST / m² on purchase area after 10% waste. Company exact rate wins.",
+    defaultCostRate: 55,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.floor_finish.sheet_vinyl.install.m2",
+    label: "Bathroom sheet vinyl installation",
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom floor finish",
+    unit: "m2",
+    description:
+      "Sheet vinyl installation on net floor area. Owner-approved Quotr $45 ex GST / m². Company subcontract rate wins.",
+    defaultCostRate: 45,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.floor_finish.vinyl_plank.material.m2",
+    label: "Bathroom vinyl plank supply",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom floor finish",
+    unit: "m2",
+    description:
+      "Vinyl plank material. Owner-approved Quotr $65 ex GST / m² on purchase area after 10% waste. Company exact rate wins.",
+    defaultCostRate: 65,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "bathroom.floor_finish.vinyl_plank.install.m2",
+    label: "Bathroom vinyl plank installation",
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "bathroom",
+    workAreaLabel: "Bathroom floor finish",
+    unit: "m2",
+    description:
+      "Vinyl plank installation on net floor area. Owner-approved Quotr $50 ex GST / m². Company subcontract rate wins.",
+    defaultCostRate: 50,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+];
+
 export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DECKING_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -1602,6 +1706,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...PAINTING_SPECIFIC_MATERIAL_CATALOGUE,
   ...FENCE_TIMBER_SPECIFIC_MATERIAL_CATALOGUE,
   ...FENCE_MODULAR_SPECIFIC_MATERIAL_CATALOGUE,
+  ...BATHROOM_FINISH_RATE_CATALOGUE,
 ];
 
 export const SPECIFIC_MATERIAL_RATE_GROUPS = [
@@ -1670,5 +1775,11 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "Manufactured section $/EA and modular post $/EA. Company product (including width×height SKU) outranks Quotr generic benchmarks. Nominal 1.8 m wide × matching fence height unless the Company SKU says otherwise.",
     entries: FENCE_MODULAR_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Bathroom floor finish / tiling / waterproofing",
+    description:
+      "Separate tile/vinyl material PC and subcontract installation. Waterproofing uses physical wet area, not tiling area.",
+    entries: BATHROOM_FINISH_RATE_CATALOGUE,
   },
 ] as const;

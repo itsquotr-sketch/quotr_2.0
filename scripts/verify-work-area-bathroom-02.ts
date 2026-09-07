@@ -376,8 +376,16 @@ check(
   bathroomGeometryNeed("shower_only") === "none"
 );
 check(
-  "shower_only + tiling → full",
-  bathroomGeometryNeed("shower_only", { tilingIncluded: true }) === "full"
+  "shower_only + tiling included does not force whole-room geometry",
+  bathroomGeometryNeed("shower_only", { tilingIncluded: true }) === "none"
+);
+check(
+  "shower_only + full-height wall tile → full",
+  bathroomGeometryNeed("shower_only", { wallTileExtent: "full_height" }) === "full"
+);
+check(
+  "shower_only + floor tile → floor",
+  bathroomGeometryNeed("shower_only", { floorFinish: "tile" }) === "floor"
 );
 check(
   "retile_floor → floor",

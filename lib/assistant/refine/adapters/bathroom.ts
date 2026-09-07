@@ -95,6 +95,26 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
           f.key === "bathroom.waterproofing_included" &&
           f.work_area_id === workAreaId
       )?.value === true,
+      floorFinish: String(
+        facts.find(
+          (f) =>
+            f.key === "bathroom.floor_finish_system" &&
+            f.work_area_id === workAreaId
+        )?.value ?? ""
+      ) || null,
+      wallTileExtent: String(
+        facts.find(
+          (f) =>
+            f.key === "bathroom.tile_extent" && f.work_area_id === workAreaId
+        )?.value ?? ""
+      ) || null,
+      waterproofingExtent: String(
+        facts.find(
+          (f) =>
+            f.key === "bathroom.waterproofing_extent" &&
+            f.work_area_id === workAreaId
+        )?.value ?? ""
+      ) || null,
     });
     if (geometryNeed !== "none") {
       const hasLength = knownFact(facts, workAreaId, "bathroom.length_m");

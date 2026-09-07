@@ -376,9 +376,9 @@ const aqualineCat = getCatalogueEntry(BATHROOM_AQUALINE_SHEET_KEY);
 const framingCat = getCatalogueEntry(BATHROOM_FRAMING_TIMBER_KEY);
 const genericPlywood = getCatalogueEntry("sheet.plywood.each");
 check("19 mm H3.2 plywood catalogue identity exists", plywoodCat?.item_key === BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY);
-check("19 mm plywood has no invented defaultCostRate", plywoodCat?.defaultCostRate == null);
-check("fibre cement has no invented defaultCostRate", fibreCat?.defaultCostRate == null);
-check("H1.2 framing has no invented defaultCostRate", framingCat?.defaultCostRate == null);
+check("19 mm plywood Quotr benchmark $145", plywoodCat?.defaultCostRate === 145);
+check("fibre cement Quotr benchmark $95", fibreCat?.defaultCostRate === 95);
+check("H1.2 framing Quotr benchmark $6.20", framingCat?.defaultCostRate === 6.2);
 check(
   "Aqualine reuses existing sheet identity with Quotr benchmark",
   aqualineCat?.item_key === BATHROOM_AQUALINE_SHEET_KEY &&
@@ -391,11 +391,12 @@ check(
     BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY !== "sheet.plywood.each"
 );
 check(
-  "Fixture A plywood line is Pricing Required",
+  "Fixture A plywood line is Quotr benchmark $145",
   a.lineItems.some(
     (item) =>
       item.itemKey === BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY &&
-      item.rateSourceType === "missing"
+      item.rateSourceType === "benchmark" &&
+      item.costRate === 145
   )
 );
 check(

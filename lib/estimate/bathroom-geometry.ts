@@ -88,6 +88,7 @@ export type BathroomGeometryResolution = {
   lengthM: number | null;
   widthM: number | null;
   wallHeightM: number | null;
+  perimeterM: number | null;
   floorAreaM2: number | null;
   ceilingAreaM2: number | null;
   grossWallAreaM2: number | null;
@@ -114,6 +115,8 @@ export function resolveBathroomGeometry(params: {
   floorSubstrate?: string | null;
   waterproofingIncluded?: boolean | null;
   floorFinish?: string | null;
+  wallTileExtent?: string | null;
+  waterproofingExtent?: string | null;
 }): BathroomGeometryResolution {
   const facts = params.facts as EstimateFact[];
   const jobScope = resolveBathroomJobScope({
@@ -132,6 +135,8 @@ export function resolveBathroomGeometry(params: {
     floorSubstrate: params.floorSubstrate,
     waterproofingIncluded: params.waterproofingIncluded,
     floorFinish: params.floorFinish,
+    wallTileExtent: params.wallTileExtent,
+    waterproofingExtent: params.waterproofingExtent,
   });
   const geometryRequired = geometryNeed !== "none";
 
@@ -229,7 +234,9 @@ export function resolveBathroomGeometry(params: {
 
   let ceilingAreaM2: number | null = null;
   let grossWallAreaM2: number | null = null;
+  let perimeterM: number | null = null;
   if (lengthM != null && widthM != null) {
+    perimeterM = round2(2 * (lengthM + widthM));
     const derived = deriveBathroomGeometry({
       lengthM,
       widthM,
@@ -254,6 +261,7 @@ export function resolveBathroomGeometry(params: {
     lengthM,
     widthM,
     wallHeightM,
+    perimeterM,
     floorAreaM2,
     ceilingAreaM2,
     grossWallAreaM2,
