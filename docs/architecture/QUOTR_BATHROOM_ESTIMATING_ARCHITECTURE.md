@@ -1,11 +1,12 @@
 # Quotr Bathroom Estimating Architecture
 
-**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO** + **WA-BATHROOM-05 GO** + **WA-BATHROOM-06 GO** + **WA-BATHROOM-07 commercial authority implemented (hosted proof pending)**  
+**Status:** CANONICAL — WA-BATHROOM-01 architecture + **WA-BATHROOM-02 GO** + **WA-BATHROOM-03 GO** + **WA-BATHROOM-04 GO** + **WA-BATHROOM-05 GO** + **WA-BATHROOM-06 GO** + **WA-BATHROOM-07 GO (rate authority / commercial close)**  
 **Date:** 2026-09-08  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
 **WA-BATHROOM-05 hosted proof:** `a329b7c450f22bd240a80714beb0b479212a522e`  
 **WA-BATHROOM-06 hosted proof:** `f7a4d0b4c068d4b8fb88f7c14f2dec9e87461593`  
+**WA-BATHROOM-07 hosted proof:** `d47d098add5905e30b2f138798995a040b802ed5`  
 **Production:** DO NOT TOUCH (through 045)  
 **Migrations:** NONE. No 055.  
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
@@ -28,13 +29,13 @@ Bathroom remains a **SUPPORTED hybrid**. Do not mark Mature. UI capability band 
 | WA-BATHROOM-04 floor finish / tiling / waterproofing | **GO** |
 | WA-BATHROOM-05 fixtures / plumbing / electrical / PC sums | **GO** (hosted `a329b7c`) |
 | WA-BATHROOM-06 demolition / waste / nested finishing / Review | **GO** (hosted `f7a4d0b`) |
-| WA-BATHROOM-07 rate authority / commercial close / legacy fallback removal | **IMPLEMENTED** — hosted proof pending. See §58 |
+| WA-BATHROOM-07 rate authority / commercial close / legacy fallback removal | **GO** (hosted `d47d098`) |
 | Implement tiling/WP/plumbing/fixture money in 02 | **NO-GO** (04 owns tiling/WP; 05 owns plumbing/fixtures) |
 | Start Internal Walls / Ceilings / Doors | **NO-GO** |
 | Variations / RFQ sending / Company DNA behaviour | **NO-GO** |
 | Production / migration 055 | **NO-GO** |
 
-**Next action after 06 GO:** [WA-BATHROOM-07](#58-wa-bathroom-07-rate-authority--commercial-close) — owner-approved rates through `resolveRate`; kill remaining $18k / fallback package path; commercial proof. Do not start Internal Walls, Variations, or RFQ sending.
+**Next action after 07 GO:** [WA-BATHROOM-08](#58-wa-bathroom-07-rate-authority--commercial-close) — DNA candidates only where keys are consumed; mobile + hosted maturity close; `verify-work-area-bathroom-maturity.ts`. Do not start Internal Walls, Ceilings, Doors, Variations, or RFQ sending.
 
 ---
 
@@ -1117,7 +1118,7 @@ Preferred split (refined only where architecture requires):
 | **WA-BATHROOM-04** | Floor-finish XOR, vinyl, tiling geometry, tile material vs tiler, waterproofing area | No mixed tiling allowance as primary; no WP=tiling proxy |
 | **WA-BATHROOM-05** | Per-fixture supply/install/PC; plumbing/electrical hybrid + Standard + scope_text | No bundled fixtures allowance; no plumbing $/m² |
 | **WA-BATHROOM-06** | Demolition/waste; conditions; nested finish XOR; Builder Review / Job Plan / Refine | No buried waste; Review explainable |
-| **WA-BATHROOM-07** | Owner-approved rates wired through `resolveRate`; kill $18k path; commercial proof | Company → benchmark → PR |
+| **WA-BATHROOM-07** | Owner-approved rates through `resolveRate`; kill $18k path; commercial proof | **GO** — company → benchmark → PR |
 | **WA-BATHROOM-08** | DNA **candidates only where keys consumed**; mobile + hosted close; `verify-work-area-bathroom-maturity.ts` | Factory WA-9. DNA optional |
 
 Do not start Internal Walls, Variations, or RFQ inside these phases.
@@ -1499,13 +1500,13 @@ Fixture pairing: `Vanity — PC allowance $1,200` (name on every PC). Plumbing /
 
 ### Next action after 06 GO
 
-**WA-BATHROOM-07** — implemented locally; hosted Preview proof still required before GO. See §58.
+**WA-BATHROOM-07** — **GO.** See §58.
 
 ---
 
 ## 58. WA-BATHROOM-07 rate authority + commercial close + legacy fallback removal
 
-**IMPLEMENTED locally.** Verifier: `scripts/verify-work-area-bathroom-07.ts`. Hosted Preview proof pending — commercial authority is **not marked complete** until that proof.
+**GO.** Hosted Preview proof: `d47d098add5905e30b2f138798995a040b802ed5`. Verifier: `scripts/verify-work-area-bathroom-07.ts`. Runtime is namespaced to Bathroom. Deck / Fence / RW / DNA / Billing / Security unchanged. Production untouched. No 055.
 
 Invariant module: `lib/estimate/bathroom-commercial-authority.ts`.
 
