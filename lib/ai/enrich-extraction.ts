@@ -15,6 +15,8 @@ import {
   isExternalStairsFactKey,
   shouldSuggestExternalStairs,
 } from "@/lib/scopes/deck-stairs-boundary";
+import { applyInternalWallsFactWrite } from "@/lib/estimate/internal-walls-wall-types";
+import type { EstimateFact } from "@/lib/estimate/types";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
 
@@ -158,7 +160,7 @@ function addFact(
     workAreaType: string | null;
     key: string;
     label: string;
-    value: string | number | boolean | string[];
+    value: string | number | boolean | string[] | Record<string, unknown>[];
     unit?: string;
     confidence?: number;
   }
@@ -264,6 +266,8 @@ function inferInternalWalls(
     "m of new internal wall",
     "line both sides with",
     "new internal wall",
+    "90x45",
+    "90×45",
   ];
   if (!includesAny(brief, patterns)) return;
 
@@ -275,7 +279,23 @@ function inferInternalWalls(
     allowedTypes
   );
 
-  const length = matchLinearMetres(brief);
+  if (
+    includesAny(brief, ["new internal wall", "new partition", "new wall"]) &&
+    !includesAny(brief, ["remove", "reline", "form opening"])
+  ) {
+    addFact(extraction, {
+      workAreaType: "internal_walls",
+      key: "internal_walls.job_scope",
+      label: "Wall work",
+      value: "new_partition",
+    });
+  }
+
+  const length =
+    matchLinearMetres(brief) ??
+    (brief.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+of/i)
+      ? Number(brief.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+of/i)![1])
+      : null);
   if (length !== null) {
     addFact(extraction, {
       workAreaType: "internal_walls",
@@ -286,7 +306,9 @@ function inferInternalWalls(
     });
   }
 
-  const heightMatch = brief.match(/(\d+(?:\.\d+)?)\s*m\s+high/i);
+  const heightMatch =
+    brief.match(/(\d+(?:\.\d+)?)\s*m\s+high/i) ||
+    brief.match(/(\d+(?:\.\d+)?)\s*high/i);
   if (heightMatch) {
     addFact(extraction, {
       workAreaType: "internal_walls",
@@ -297,7 +319,7 @@ function inferInternalWalls(
     });
   }
 
-  if (includesAny(brief, ["timber framed", "timber frame"])) {
+  if (includesAny(brief, ["timber framed", "timber frame", "90x45", "90×45", "140x45", "140×45"])) {
     addFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.framing_type",
@@ -340,6 +362,85 @@ function inferInternalWalls(
       label: "Skirtings",
       value: true,
     });
+  }
+
+  const proposedLength =
+    length ??
+    (extraction.facts.find((f) => f.key === "internal_walls.length_lm")?.value as
+      | number
+      | undefined) ??
+    null;
+  const proposedHeight =
+    heightMatch != null
+      ? Number(heightMatch[1])
+      : ((extraction.facts.find((f) => f.key === "internal_walls.height_m")
+          ?.value as number | undefined) ?? null);
+  if (proposedLength != null || proposedHeight != null || includesAny(brief, ["90x45", "90×45", "timber"])) {
+    let facts: EstimateFact[] = [];
+    const workAreaId = "extract";
+    facts = applyInternalWallsFactWrite({
+      facts,
+      workAreaId,
+      key: "internal_walls.add_wall_type",
+      value: true,
+    });
+    if (includesAny(brief, ["timber", "90x45", "90×45", "140x45", "140×45"])) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId,
+        key: "internal_walls.wall_type.frame_system",
+        value: "Timber framing",
+      });
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId,
+        key: "internal_walls.wall_type.frame_size",
+        value: includesAny(brief, ["140x45", "140×45"])
+          ? "140 mm timber framing — 140×45"
+          : "90 mm timber framing — 90×45",
+      });
+    }
+    if (proposedLength != null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId,
+        key: "internal_walls.wall_type.length_lm",
+        value: proposedLength,
+      });
+    }
+    if (proposedHeight != null) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId,
+        key: "internal_walls.wall_type.height_m",
+        value: proposedHeight,
+      });
+    }
+    if (includesAny(brief, ["gib", "plasterboard", "both sides"])) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId,
+        key: "internal_walls.wall_type.side_a_product",
+        value: "Standard GIB",
+      });
+      if (includesAny(brief, ["both sides"])) {
+        facts = applyInternalWallsFactWrite({
+          facts,
+          workAreaId,
+          key: "internal_walls.wall_type.same_lining_both_sides",
+          value: true,
+        });
+      }
+    }
+    const wallTypes = facts.find((row) => row.key === "internal_walls.wall_types")?.value;
+    if (Array.isArray(wallTypes) && wallTypes.length > 0) {
+      addFact(extraction, {
+        workAreaType: "internal_walls",
+        key: "internal_walls.wall_types",
+        label: "Wall types",
+        value: wallTypes as Record<string, unknown>[],
+      });
+    }
   }
 }
 

@@ -29,6 +29,12 @@ const BATHROOM_HARD_MINIMUM_KEYS = new Set([
   "bathroom.width_m",
 ]);
 
+const INTERNAL_WALLS_HARD_MINIMUM_KEYS = new Set([
+  "internal_walls.job_scope",
+  "internal_walls.wall_type.length_lm",
+  "internal_walls.wall_type.frame_system",
+]);
+
 const DECK_ASSUMABLE_KEYS = new Set([
   "deck.height_m",
   "deck.board_material",
@@ -67,6 +73,9 @@ export function getLevel1BlockingClass(
     return "HARD_MINIMUM";
   }
   if (BATHROOM_HARD_MINIMUM_KEYS.has(template.factKey)) {
+    return "HARD_MINIMUM";
+  }
+  if (INTERNAL_WALLS_HARD_MINIMUM_KEYS.has(template.factKey)) {
     return "HARD_MINIMUM";
   }
   if (DECK_ASSUMABLE_KEYS.has(template.factKey)) {

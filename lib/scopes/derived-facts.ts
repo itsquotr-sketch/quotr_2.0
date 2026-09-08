@@ -145,6 +145,10 @@ export function deriveFactsForProject(params: {
     }
 
     if (workArea.type === "internal_walls") {
+      const wallTypes = getFactValue(lookup, workArea.id, "internal_walls.wall_types");
+      if (Array.isArray(wallTypes) && wallTypes.length > 0) {
+        continue;
+      }
       const length = toPositiveNumber(
         getFactValue(lookup, workArea.id, "internal_walls.length_lm")
       );

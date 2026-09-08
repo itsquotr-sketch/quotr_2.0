@@ -2396,6 +2396,15 @@ export function AssistantShell({
                   onDone={closeRefineAfterEstimate}
                   onAnswerBoolean={handleClarifyBoolean}
                   onAnswerValue={handleClarifyValue}
+                  onWallTypeAction={(workAreaId, key, value, label) => {
+                    void handleFactSave({
+                      workAreaId,
+                      key,
+                      label,
+                      value,
+                      inputType: typeof value === "boolean" ? "boolean" : "text",
+                    });
+                  }}
                 />
               ) : builderReviewOpen && builderReviewView ? (
                 <BuilderReviewSurface

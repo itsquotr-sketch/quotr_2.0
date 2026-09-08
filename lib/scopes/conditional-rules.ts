@@ -11,6 +11,17 @@ import {
   resolveBathroomJobScope,
   shouldHideBathroomQuestion,
 } from "@/lib/estimate/bathroom-scope";
+import {
+  parseInternalWallsJobScope,
+  shouldHideInternalWallsQuestion,
+  structuralGateApplies,
+} from "@/lib/estimate/internal-walls-scope";
+import {
+  nextInternalWallsWallTypeField,
+  parseInternalWallsWallTypes,
+  resolveInternalWallsWallTypes,
+} from "@/lib/estimate/internal-walls-wall-types";
+import type { EstimateFact } from "@/lib/estimate/types";
 
 type FactLookup = Map<string, ProjectFactRecord>;
 
@@ -103,6 +114,44 @@ export function shouldHideConditionalQuestion(
   confirmedTypes?: Set<string>
 ): boolean {
   const key = template.factKey;
+
+  if (key.startsWith("internal_walls.")) {
+    const jobScope = parseInternalWallsJobScope(
+      strFact(lookup, workAreaId, "internal_walls.job_scope")
+    );
+    const wallTypesRaw = lookupValue(
+      lookup,
+      workAreaId,
+      "internal_walls.wall_types"
+    );
+    const canonicalTypes = parseInternalWallsWallTypes(wallTypesRaw);
+    const facts: EstimateFact[] = [];
+    for (const fact of lookup.values()) {
+      if (fact.work_area_id === workAreaId) {
+        facts.push({
+          key: fact.key,
+          work_area_id: fact.work_area_id,
+          value: fact.value,
+        });
+      }
+    }
+    const resolved = resolveInternalWallsWallTypes({ facts, workAreaId });
+    const active = resolved.types.find((row) => row.id === resolved.activeId) ??
+      resolved.types[0] ??
+      null;
+    const nextField = nextInternalWallsWallTypeField({
+      type: active,
+      jobScope,
+    });
+    const mature = jobScope != null || canonicalTypes.length > 0;
+    return shouldHideInternalWallsQuestion({
+      factKey: key,
+      jobScope,
+      mature,
+      nextWallTypeField: nextField,
+      structuralApplies: structuralGateApplies(jobScope),
+    });
+  }
 
   if (key.startsWith("bathroom.")) {
     const jobScope = resolveBathroomJobScope({

@@ -1,5 +1,7 @@
 import { isKnownValue } from "@/lib/assistant/clarify/suppress";
 import { getRefineAdapter } from "@/lib/assistant/refine/adapters/registry";
+import { internalWallsRefinePanel } from "@/lib/assistant/refine/adapters/internal-walls";
+import type { EstimateFact } from "@/lib/estimate/types";
 import {
   isCalculatorConsumedConstraint,
   isCalculatorConsumedFact,
@@ -154,6 +156,15 @@ export function composeRefineView(input: ComposeRefineInput): RefineView {
     highValue: attachCurrent(highValue),
     advanced: attachCurrent(advanced),
     hasCandidates: unique.length > 0,
+    wallTypePanels: input.workAreas
+      .filter((row) => row.status !== "excluded" && row.type === "internal_walls")
+      .map((wa) =>
+        internalWallsRefinePanel({
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          facts: input.facts as EstimateFact[],
+        })
+      ),
   };
 }
 

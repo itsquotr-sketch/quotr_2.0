@@ -59,8 +59,23 @@ import {
 } from "@/lib/estimate/bathroom-scope";
 import { BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT } from "@/lib/estimate/bathroom-geometry";
 import {
+  INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
+  INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
+  parseInternalWallsJobScope,
+  parseInternalWallsStructuralInvolvement,
+  structuralGateApplies,
+  wallTypesRequiredForScope,
+} from "@/lib/estimate/internal-walls-scope";
+import {
+  INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT,
+  nextInternalWallsWallTypeField,
+  resolveInternalWallsWallTypes,
+  wallTypeFieldCurrentValue,
+} from "@/lib/estimate/internal-walls-wall-types";
+import {
   getArrayFact,
   getBooleanFact,
+  getFact,
   getNumberFact,
   getStringFact,
   hasFactValue,
@@ -105,6 +120,15 @@ const CHECK_SCORES: Record<string, number> = {
   "bathroom.plumbing.level": 62,
   "bathroom.electrical.level": 62,
   "bathroom.job_scope": 96,
+  "internal_walls.job_scope": 96,
+  "internal_walls.structural_involvement": 95,
+  "internal_walls.wall_type.frame_system": 94,
+  "internal_walls.wall_type.frame_size": 93,
+  "internal_walls.wall_type.length_lm": 92,
+  "internal_walls.wall_type.height_m": 70,
+  "internal_walls.wall_type.stud_centres_mm": 68,
+  "internal_walls.wall_type.side_a_product": 86,
+  "internal_walls.wall_type.same_lining_both_sides": 84,
   "bathroom.length_m": 95,
   "bathroom.width_m": 94,
   "bathroom.wall_height_m": 70,
@@ -590,6 +614,92 @@ function missingHardMinimum(
         });
       }
     }
+
+    if (card.workAreaType === "internal_walls") {
+      const facts = input.facts as EstimateFact[];
+      const jobScope = parseInternalWallsJobScope(
+        getStringFact(facts, card.workAreaId, INTERNAL_WALLS_JOB_SCOPE_FACT_KEY)
+      );
+      const structural = parseInternalWallsStructuralInvolvement(
+        getFact(facts, card.workAreaId, INTERNAL_WALLS_STRUCTURAL_FACT_KEY)?.value
+      );
+      const resolved = resolveInternalWallsWallTypes({
+        facts,
+        workAreaId: card.workAreaId,
+      });
+      const active =
+        resolved.types.find((row) => row.id === resolved.activeId) ??
+        resolved.types[0] ??
+        null;
+      const missing: {
+        key: string;
+        inputType: ClarifyCandidate["inputType"];
+        rankScore: number;
+        assumable?: boolean;
+        statement?: string | null;
+      }[] = [];
+      if (!jobScope) {
+        missing.push({
+          key: INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
+          inputType: "select",
+          rankScore: 1000,
+        });
+      }
+      if (structuralGateApplies(jobScope) && !structural) {
+        missing.push({
+          key: INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
+          inputType: "select",
+          rankScore: 999,
+        });
+      }
+      const nextField = nextInternalWallsWallTypeField({
+        type: active,
+        jobScope,
+      });
+      if (
+        wallTypesRequiredForScope(jobScope) &&
+        (nextField === "internal_walls.wall_type.frame_system" ||
+          nextField === "internal_walls.wall_type.length_lm")
+      ) {
+        missing.push({
+          key: nextField,
+          inputType:
+            nextField === "internal_walls.wall_type.length_lm"
+              ? "number"
+              : "select",
+          rankScore: 998,
+        });
+      }
+      for (const row of missing) {
+        const template = getQuestionTemplateByKey(row.key);
+        out.push({
+          id: `hard:${card.workAreaId}:${row.key}`,
+          source: "scope_fact",
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          workAreaType: card.workAreaType,
+          factKey: row.key,
+          constraintKey: null,
+          questionKey: row.key,
+          label: safeFactPresentationLabel(row.key),
+          question: safeFactQuestion(row.key, template?.questionText),
+          askClass: "HARD_MINIMUM",
+          inputType: row.inputType,
+          unit: template?.unit,
+          options: template?.options,
+          currentValue: row.key.startsWith("internal_walls.wall_type.")
+            ? wallTypeFieldCurrentValue(active, row.key)
+            : undefined,
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: true,
+          assumable: false,
+          rankScore: row.rankScore,
+          rankReason: "HARD_MINIMUM internal walls core",
+          assumptionStatement: null,
+        });
+      }
+    }
   }
   return out;
 }
@@ -1008,6 +1118,63 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           "Bathroom framing / nogging",
           "REQUIRED_FOR_ECONOMIC_MODEL"
         );
+      }
+      continue;
+    }
+
+    if (wa.type === "internal_walls") {
+      const facts = input.facts as EstimateFact[];
+      const jobScope = parseInternalWallsJobScope(
+        getStringFact(facts, wa.id, INTERNAL_WALLS_JOB_SCOPE_FACT_KEY)
+      );
+      const resolved = resolveInternalWallsWallTypes({
+        facts,
+        workAreaId: wa.id,
+      });
+      const active =
+        resolved.types.find((row) => row.id === resolved.activeId) ??
+        resolved.types[0] ??
+        null;
+      const nextField = nextInternalWallsWallTypeField({
+        type: active,
+        jobScope,
+      });
+      if (
+        nextField &&
+        nextField !== "internal_walls.wall_type.frame_system" &&
+        nextField !== "internal_walls.wall_type.length_lm"
+      ) {
+        const template = getQuestionTemplateByKey(nextField);
+        out.push({
+          id: `fact:${wa.id}:${nextField}`,
+          source: "scope_fact",
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          workAreaType: wa.type,
+          factKey: nextField,
+          constraintKey: null,
+          questionKey: nextField,
+          label: safeFactPresentationLabel(nextField),
+          question: safeFactQuestion(nextField, template?.questionText),
+          askClass:
+            nextField === "internal_walls.wall_type.height_m"
+              ? "ASSUME_IF_SKIPPED"
+              : "ASK_NOW",
+          inputType: clarifyInputTypeFromTemplate(template),
+          unit: template?.unit,
+          options: template?.options,
+          currentValue: wallTypeFieldCurrentValue(active, nextField),
+          writeTarget: "FACT",
+          write: null,
+          blocksEstimate: false,
+          assumable: nextField === "internal_walls.wall_type.height_m",
+          rankScore: CHECK_SCORES[nextField] ?? 70,
+          rankReason: "Progressive wall type configuration",
+          assumptionStatement:
+            nextField === "internal_walls.wall_type.height_m"
+              ? INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT
+              : null,
+        });
       }
       continue;
     }

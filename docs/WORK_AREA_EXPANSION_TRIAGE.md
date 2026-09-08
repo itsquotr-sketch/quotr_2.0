@@ -1,27 +1,27 @@
 # Work Area Expansion Triage
 
-**Status:** CANONICAL — WORK-AREA-FACTORY-01 + WA-BATHROOM-01 + **WA-BATHROOM-02 GO**  
-**Date:** 2026-09-07  
-**HEAD:** `4d11ab3c55b94e3bc11ff3845b39a13d88501314` plus WORK-AREA-FACTORY / Bathroom architecture docs  
-**Hosted product (context):** `64bbfb807e714632bde77fca7bd3e11dab654dde`  
+**Status:** CANONICAL — WORK-AREA-FACTORY-01 + Bathroom **MATURE** + **WA-INTERNAL-WALLS-02 foundation**  
+**Date:** 2026-09-09  
+**HEAD:** see git after 02 commit  
 **Branch:** `hardening/stage-2a-security`  
-**Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **054**  
+**Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **056**  
 **Production:** DO NOT TOUCH (through 045)  
 **Factory standard:** [QUOTR_WORK_AREA_FACTORY.md](./architecture/QUOTR_WORK_AREA_FACTORY.md)  
-**Bathroom architecture:** [QUOTR_BATHROOM_ESTIMATING_ARCHITECTURE.md](./architecture/QUOTR_BATHROOM_ESTIMATING_ARCHITECTURE.md)
+**Bathroom architecture:** [QUOTR_BATHROOM_ESTIMATING_ARCHITECTURE.md](./architecture/QUOTR_BATHROOM_ESTIMATING_ARCHITECTURE.md)  
+**Internal Walls architecture:** [QUOTR_INTERNAL_WALLS_ESTIMATING_ARCHITECTURE.md](./architecture/QUOTR_INTERNAL_WALLS_ESTIMATING_ARCHITECTURE.md)
 
-This file is an audit / triage / factory-design record. WORK-AREA-FACTORY-01 implemented no new Work Area. WA-BATHROOM-01 is architecture only. **WA-BATHROOM-02 implemented Bathroom job-scope + geometry** (see Bathroom architecture §53). Do not start Internal Walls, Variations, or RFQ.
+This file is an audit / triage / factory-design record. Bathroom is **MATURE**. **WA-INTERNAL-WALLS-02** is wall-type + job-scope foundation — Internal Walls is **not** mature and has **no framing/lining money**. Do not start WA-INTERNAL-WALLS-03, Ceilings, Doors, Variations, or RFQ from this file.
 
 ### Owner-approved build order (beta override — locked)
 
 Technical Wave 1 in §17 ranked Pergola → Internal walls → Flooring. **Owner has overridden that sequence.**
 
-1. **Bathroom** (`bathroom`) — next implementation after this audit  
-2. **Internal Walls** (`internal_walls`)  
-3. **Ceilings** (`ceilings`)  
+1. **Bathroom** (`bathroom`) — **MATURE — FINAL GO**
+2. **Internal Walls** (`internal_walls`) — **WA-INTERNAL-WALLS-02 foundation GO.** Not Supported. Not Mature. No timber/lining takeoff yet.
+3. **Ceilings** (`ceilings`)
 4. **Doors** (`doors`)
 
-**Pergola is no longer Wave 1 priority.** Do not start Pergola, Internal Walls, Ceilings, Doors, Variations, or RFQ until Bathroom factory phases complete (or owner re-orders again).
+**Pergola is no longer Wave 1 priority.** Do not start Ceilings, Doors, Variations, or RFQ until Internal Walls factory phases complete (or owner re-orders again).
 
 Code is authority. Older “14 Work Areas” docs remain historically useful; their **maturity bands are stale**.
 
@@ -443,15 +443,15 @@ Technical ranking in §16 still explains **reuse vs effort**. It is **not** the 
 | Order | Work Area | Why now | Main risk | Phases | Effort |
 | --- | --- | --- | --- | --- | --- |
 | **1st build** | **Bathroom** | Owner-approved. Highest beta/marketing wet-area demand. Architecture: [QUOTR_BATHROOM_ESTIMATING_ARCHITECTURE.md](./architecture/QUOTR_BATHROOM_ESTIMATING_ARCHITECTURE.md) | Silent 5 m², $18k package, mixed trade lumps, UI implying Deck-grade. Hybrid SUPPORTED — not Deck-depth on day one | WA-BATHROOM-02…08 (factory WA-0…WA-7 + WA-9; DNA optional) | **VERY HIGH** (SUPPORTED hybrid still **HIGH**) |
-| 2 | **Internal walls** | Next after Bathroom. Ordinary-job expansion; partition XOR vs bathroom nogging | Steel XOR, openings, nested paint/stop | Factory WA-0…WA-7 + WA-9 | **HIGH** |
+| 2 | **Internal walls** | Architecture: [QUOTR_INTERNAL_WALLS_ESTIMATING_ARCHITECTURE.md](./architecture/QUOTR_INTERNAL_WALLS_ESTIMATING_ARCHITECTURE.md). **WA-INTERNAL-WALLS-02 GO** (job_scope + Wall Types + geometry). Mature path no silent 20 m² and no package money. Not Supported. Not Mature. | Timber/lining takeoff, steel XOR, openings, nested paint/stop | 02 closed; next **03** timber + lining takeoff | **HIGH** |
 | 3 | **Ceilings** | After Internal walls. Sheet + labour pattern; Bathroom nested ceiling XOR | Double-count bathroom ceilings | Factory WA-0…WA-7 (SUPPORTED OK) | **HIGH** |
 | 4 | **Doors** | After Ceilings. Count model; Internal walls openings leftover | Default-3-doors silent quantity; no windows | Factory WA-0…WA-7 (SUPPORTED OK) | **MEDIUM** |
 
 **Pergola is not Wave 1.** Flooring remains a strong later candidate; it is not in this owner sequence.
 
-Do not begin Bathroom **implementation** in WA-BATHROOM-01 (architecture only).
+Do not begin Bathroom **implementation** in WA-BATHROOM-01 (architecture only). Bathroom implementation is complete (MATURE).
 
-**Exact next implementation: Bathroom (`bathroom`) — WA-BATHROOM-02.**
+**Exact next factory phase after this file: WA-INTERNAL-WALLS-03 (timber + lining takeoff).** Do not start it from WA-INTERNAL-WALLS-02.
 
 ---
 

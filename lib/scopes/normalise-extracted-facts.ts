@@ -784,17 +784,20 @@ export function normaliseExtractedFactKey(
 
 export function normaliseExtractedFactValue(
   key: string,
-  value: string | number | boolean | string[],
+  value: string | number | boolean | string[] | Record<string, unknown>[],
   workAreaType: string | null
-): string | number | boolean | string[] {
+): string | number | boolean | string[] | Record<string, unknown>[] {
   if (Array.isArray(value)) {
+    if (value.every((item) => typeof item === "object" && item !== null)) {
+      return value as Record<string, unknown>[];
+    }
     if (key.endsWith(".surfaces")) {
-      return normaliseSurfacesArray(value) as string[];
+      return normaliseSurfacesArray(value as string[]) as string[];
     }
     if (key.endsWith(".scope_items")) {
-      return normaliseScopeItemsArray(value) as string[];
+      return normaliseScopeItemsArray(value as string[]) as string[];
     }
-    return value;
+    return value as string[];
   }
 
   let next: unknown = value;

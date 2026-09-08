@@ -4,6 +4,7 @@ import {
   formatMissing,
   getArrayFact,
   getBooleanFact,
+  getFact,
   getNumberFact,
   getStringFact,
   isFlooringRemovalOnly,
@@ -43,6 +44,26 @@ import type {
   EstimateContext,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
+import {
+  INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT,
+  INTERNAL_WALLS_LENGTH_REQUIRED_MESSAGE,
+  INTERNAL_WALLS_STRUCTURAL_SPECIALIST_MESSAGE,
+  INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT,
+  INTERNAL_WALLS_WALL_TYPE_REQUIRED_MESSAGE,
+  grossFaceAreaM2,
+  linedFaceCount,
+  resolveInternalWallsWallTypes,
+  wallTypeNeedsLength,
+} from "@/lib/estimate/internal-walls-wall-types";
+import {
+  INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
+  INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
+  isMatureInternalWallsPath,
+  parseInternalWallsJobScope,
+  parseInternalWallsStructuralInvolvement,
+  structuralBlocksEstimate,
+  wallTypesRequiredForScope,
+} from "@/lib/estimate/internal-walls-scope";
 
 type FitoutConfig = {
   areaKey: string;
@@ -137,11 +158,121 @@ function calculateAreaBasedFitout(
   };
 }
 
+export const INTERNAL_WALLS_CALCULATOR_CONSUMED_FACTS = [
+  INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
+  "internal_walls.wall_types",
+  INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
+  "internal_walls.active_wall_type_id",
+  "internal_walls.wall_type.label",
+  "internal_walls.wall_type.frame_system",
+  "internal_walls.wall_type.frame_size",
+  "internal_walls.wall_type.length_lm",
+  "internal_walls.wall_type.height_m",
+  "internal_walls.wall_type.stud_centres_mm",
+  "internal_walls.wall_type.same_lining_both_sides",
+  "internal_walls.wall_type.side_a_lined",
+  "internal_walls.wall_type.side_a_product",
+  "internal_walls.wall_type.side_a_thickness_mm",
+  "internal_walls.wall_type.side_a_sheet_length_mm",
+  "internal_walls.wall_type.side_a_layers",
+  "internal_walls.wall_type.side_b_lined",
+  "internal_walls.wall_type.side_b_product",
+  "internal_walls.wall_type.side_b_thickness_mm",
+  "internal_walls.wall_type.side_b_sheet_length_mm",
+  "internal_walls.wall_type.side_b_layers",
+  "internal_walls.length_lm",
+  "internal_walls.height_m",
+  "internal_walls.area_m2",
+  "internal_walls.framing_type",
+  "internal_walls.wall_lining_type",
+  "internal_walls.plasterboard_type",
+  "internal_walls.lining_sides",
+  "internal_walls.demolition_included",
+  "internal_walls.skirtings_included",
+  "internal_walls.skirting_length_lm",
+  "internal_walls.insulation_included",
+  "internal_walls.stopping_included",
+  "internal_walls.painting_included",
+] as const;
+
+function calculateInternalWallsMature(
+  context: EstimateContext,
+  workArea: EstimateWorkArea
+): CalculatorResult {
+  const { facts } = context;
+  const missingInfo: string[] = [];
+  const assumptions: string[] = [];
+  const assumptionMetadata = createAssumptionMetadata();
+
+  const jobScope = parseInternalWallsJobScope(
+    getStringFact(facts, workArea.id, INTERNAL_WALLS_JOB_SCOPE_FACT_KEY)
+  );
+  const structural = parseInternalWallsStructuralInvolvement(
+    getFact(facts, workArea.id, INTERNAL_WALLS_STRUCTURAL_FACT_KEY)?.value
+  );
+  const resolved = resolveInternalWallsWallTypes({
+    facts,
+    workAreaId: workArea.id,
+  });
+
+  if (jobScope) {
+    assumptions.push(`Internal walls job scope: ${jobScope.replace(/_/g, " ")}.`);
+  }
+
+  if (structuralBlocksEstimate(jobScope, structural)) {
+    missingInfo.push(INTERNAL_WALLS_STRUCTURAL_SPECIALIST_MESSAGE);
+    return {
+      lineItems: [],
+      assumptions,
+      missingInfo,
+      exclusions: [],
+      confidence: baseConfidence(missingInfo.length),
+      assumptionMetadata,
+    };
+  }
+
+  if (wallTypesRequiredForScope(jobScope) && resolved.types.length === 0) {
+    missingInfo.push(INTERNAL_WALLS_WALL_TYPE_REQUIRED_MESSAGE);
+  }
+
+  for (const type of resolved.types) {
+    if (type.height_source === "assumed_disclosed") {
+      assumptions.push(INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT);
+    }
+    if (wallTypeNeedsLength(type, jobScope)) {
+      missingInfo.push(INTERNAL_WALLS_LENGTH_REQUIRED_MESSAGE);
+    }
+    const area = grossFaceAreaM2(type.length_lm, type.height_m);
+    if (area != null) {
+      assumptions.push(
+        `${type.label ?? "Wall type"} gross wall face ${area} m² · ${linedFaceCount(type)} lined face${linedFaceCount(type) === 1 ? "" : "s"}.`
+      );
+    }
+  }
+
+  if (missingInfo.length === 0 && resolved.types.length > 0) {
+    assumptions.push(INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT);
+  }
+
+  return {
+    lineItems: [],
+    assumptions,
+    missingInfo,
+    exclusions: [],
+    confidence: baseConfidence(missingInfo.length),
+    assumptionMetadata,
+  };
+}
+
 export function calculateInternalWalls(
   context: EstimateContext,
   workArea: EstimateWorkArea
 ): CalculatorResult {
   const { facts } = context;
+  if (isMatureInternalWallsPath({ facts, workAreaId: workArea.id })) {
+    return calculateInternalWallsMature(context, workArea);
+  }
+
   const missingInfo: string[] = [];
   const assumptions: string[] = [];
   const lineItems: CalculatorResult["lineItems"] = [];

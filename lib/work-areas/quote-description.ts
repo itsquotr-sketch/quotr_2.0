@@ -581,6 +581,7 @@ function buildKitchenDraft(facts?: WorkAreaQuoteFact[]): string {
 }
 
 function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
+  const jobScope = factValue(facts, "internal_walls.job_scope");
   const length = factValue(facts, "internal_walls.length_lm");
   const height = factValue(facts, "internal_walls.height_m");
   const lining = factValue(facts, "internal_walls.wall_lining_type");
@@ -589,7 +590,9 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
   let draft =
     "Construct internal wall works to the agreed scope, including framing, lining and associated finishing where included.";
 
-  if (length && height) {
+  if (jobScope) {
+    draft = `Internal wall works: ${jobScope.replace(/_/g, " ")}. Framing and lining quantities are confirmed from the recorded wall types.`;
+  } else if (length && height) {
     draft = `Construct approximately ${length} lm of ${height} m high internal wall to the agreed scope, including framing, lining and associated finishing where included.`;
   }
 

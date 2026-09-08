@@ -12,6 +12,7 @@ import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
 import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
 import { OptionSelect } from "@/components/assistant/selection/OptionSelect";
+import { InternalWallsWallTypesPanel } from "@/components/assistant/refine/InternalWallsWallTypesPanel";
 
 const GROUP_LABEL: Record<RefineGroupId, string> = {
   scope: "Scope",
@@ -132,6 +133,7 @@ export function RefineEstimatePanel({
   onUpdateEstimate,
   onAnswerBoolean,
   onAnswerValue,
+  onWallTypeAction,
 }: {
   view: RefineView;
   isSaving?: boolean;
@@ -148,6 +150,12 @@ export function RefineEstimatePanel({
   onAnswerValue?: (
     candidate: ClarifyCandidate,
     value: string | number | boolean | string[]
+  ) => void;
+  onWallTypeAction?: (
+    workAreaId: string,
+    key: string,
+    value: string | boolean,
+    label: string
   ) => void;
 }) {
   const [localValues, setLocalValues] = useState<
@@ -258,6 +266,44 @@ export function RefineEstimatePanel({
               {updateError}
             </p>
           ) : null}
+        </div>
+      ) : null}
+
+      {view.wallTypePanels && view.wallTypePanels.length > 0 && onWallTypeAction ? (
+        <div className="space-y-4" data-refine-wall-types>
+          {view.wallTypePanels.map((panel) => (
+            <InternalWallsWallTypesPanel
+              key={panel.workAreaId}
+              panel={panel}
+              onAdd={(workAreaId) =>
+                onWallTypeAction(workAreaId, "internal_walls.add_wall_type", true, "Add wall type")
+              }
+              onDuplicate={(workAreaId, wallTypeId) =>
+                onWallTypeAction(
+                  workAreaId,
+                  "internal_walls.duplicate_wall_type",
+                  wallTypeId,
+                  "Duplicate wall type"
+                )
+              }
+              onDelete={(workAreaId, wallTypeId) =>
+                onWallTypeAction(
+                  workAreaId,
+                  "internal_walls.delete_wall_type",
+                  wallTypeId,
+                  "Remove wall type"
+                )
+              }
+              onSelect={(workAreaId, wallTypeId) =>
+                onWallTypeAction(
+                  workAreaId,
+                  "internal_walls.active_wall_type_id",
+                  wallTypeId,
+                  "Selected wall type"
+                )
+              }
+            />
+          ))}
         </div>
       ) : null}
 

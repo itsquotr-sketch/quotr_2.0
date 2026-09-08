@@ -21,6 +21,13 @@ import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
 import { disclosedBoardWidthForNotSure } from "@/lib/estimate/deck-board-width";
 import { disclosedWallHeightForNotSure } from "@/lib/estimate/bathroom-geometry";
+import {
+  INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
+  INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
+  applyInternalWallsFactWrite,
+  isInternalWallsWallTypeWriteKey,
+} from "@/lib/estimate/internal-walls-wall-types";
+import type { EstimateFact } from "@/lib/estimate/types";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
@@ -110,6 +117,82 @@ export async function upsertScopedFact(
   if (error) {
     return { ok: false, error: error.message };
   }
+  return { ok: true };
+}
+
+async function persistInternalWallsCollectionWrite(
+  supabase: SupabaseClient,
+  params: {
+    orgId: string;
+    projectId: string;
+    workAreaId: string;
+    key: string;
+    value: unknown;
+  }
+): Promise<ScopePersistResult | null> {
+  if (!isInternalWallsWallTypeWriteKey(params.key)) return null;
+
+  const { data: rows, error } = await supabase
+    .from("project_facts")
+    .select("key, value, work_area_id")
+    .eq("project_id", params.projectId)
+    .eq("work_area_id", params.workAreaId)
+    .in("key", [
+      INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
+      INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
+    ]);
+
+  if (error) {
+    return { ok: false, error: error.message };
+  }
+
+  const current: EstimateFact[] = (rows ?? []).map((row) => ({
+    key: row.key,
+    work_area_id: row.work_area_id,
+    value: row.value,
+  }));
+  const next = applyInternalWallsFactWrite({
+    facts: current,
+    workAreaId: params.workAreaId,
+    key: params.key,
+    value: params.value,
+  });
+
+  const wallTypes = next.find(
+    (row) =>
+      row.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY &&
+      row.work_area_id === params.workAreaId
+  );
+  const active = next.find(
+    (row) =>
+      row.key === INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY &&
+      row.work_area_id === params.workAreaId
+  );
+
+  const typesResult = await upsertScopedFact(supabase, {
+    orgId: params.orgId,
+    projectId: params.projectId,
+    workAreaId: params.workAreaId,
+    key: INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
+    label: "Wall types",
+    value: wallTypes?.value ?? [],
+    source: "user",
+  });
+  if (!typesResult.ok) return typesResult;
+
+  if (active?.value) {
+    const activeResult = await upsertScopedFact(supabase, {
+      orgId: params.orgId,
+      projectId: params.projectId,
+      workAreaId: params.workAreaId,
+      key: INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
+      label: "Selected wall type",
+      value: active.value,
+      source: "user",
+    });
+    if (!activeResult.ok) return activeResult;
+  }
+
   return { ok: true };
 }
 
@@ -232,7 +315,22 @@ export async function commitUserAnswerToScope(
 ): Promise<ScopePersistResult> {
   const storedValue = normalizeAnswerForStorage(params.value, params.inputType);
 
-  const factResult = await upsertScopedFact(supabase, {
+  const collectionWrite = params.workAreaId
+    ? await persistInternalWallsCollectionWrite(supabase, {
+        orgId: params.orgId,
+        projectId: params.projectId,
+        workAreaId: params.workAreaId,
+        key: params.key,
+        value: storedValue,
+      })
+    : null;
+  if (collectionWrite && !collectionWrite.ok) {
+    return collectionWrite;
+  }
+
+  const factResult = collectionWrite?.ok
+    ? { ok: true as const }
+    : await upsertScopedFact(supabase, {
     orgId: params.orgId,
     projectId: params.projectId,
     workAreaId: params.workAreaId,
@@ -321,6 +419,27 @@ export async function commitUserFactEdit(
         params.valueType
       )
     : params.value;
+
+  if (params.workAreaId && isInternalWallsWallTypeWriteKey(params.key)) {
+    const collectionWrite = await persistInternalWallsCollectionWrite(supabase, {
+      orgId: params.orgId,
+      projectId: params.projectId,
+      workAreaId: params.workAreaId,
+      key: params.key,
+      value: storedValue,
+    });
+    if (collectionWrite && !collectionWrite.ok) {
+      return collectionWrite;
+    }
+    const mirror = await mirrorFactOntoQuestions(supabase, {
+      projectId: params.projectId,
+      workAreaId: params.workAreaId,
+      key: params.key,
+      value: storedValue,
+      inputType: params.valueType,
+    });
+    return mirror;
+  }
 
   const disclosedBoardWidth = disclosedBoardWidthForNotSure(storedValue);
   const disclosedWallHeight = disclosedWallHeightForNotSure(storedValue);

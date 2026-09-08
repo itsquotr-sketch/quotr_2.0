@@ -22,6 +22,7 @@ const factValueSchema = z.union([
   z.number(),
   z.boolean(),
   z.array(z.string()),
+  z.array(z.record(z.string(), z.unknown())),
   z.null(),
 ]);
 
@@ -84,7 +85,9 @@ export function coerceExtractionPayload(raw: unknown): AIExtractionOutput {
         typeof value === "string" ||
         typeof value === "number" ||
         typeof value === "boolean" ||
-        (Array.isArray(value) && value.every((item) => typeof item === "string"))
+        (Array.isArray(value) && value.every((item) => typeof item === "string")) ||
+        (Array.isArray(value) &&
+          value.every((item) => typeof item === "object" && item !== null && !Array.isArray(item)))
       ) {
         return {
           work_area_type:

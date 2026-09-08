@@ -7,6 +7,10 @@ import {
   isNotSureValue,
 } from "@/lib/estimate/facts";
 import {
+  applyInternalWallsFactWrite,
+  isInternalWallsWallTypeWriteKey,
+} from "@/lib/estimate/internal-walls-wall-types";
+import {
   CANONICAL_PROJECT_CONDITION_KEYS,
   isLocalWorkAreaAccessFactKey,
   isProjectConditionDuplicateFactKey,
@@ -67,6 +71,14 @@ export function overlayFact(
   facts: readonly EstimateFact[],
   next: EstimateFact
 ): EstimateFact[] {
+  if (next.work_area_id && isInternalWallsWallTypeWriteKey(next.key)) {
+    return applyInternalWallsFactWrite({
+      facts: facts as EstimateFact[],
+      workAreaId: next.work_area_id,
+      key: next.key,
+      value: next.value,
+    });
+  }
   const without = facts.filter(
     (row) =>
       !(row.key === next.key && row.work_area_id === next.work_area_id)

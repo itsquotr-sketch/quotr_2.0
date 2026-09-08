@@ -1,6 +1,7 @@
 import { bathroomRefineAdapter } from "@/lib/assistant/refine/adapters/bathroom";
 import { deckRefineAdapter } from "@/lib/assistant/refine/adapters/deck";
 import { fenceRefineAdapter } from "@/lib/assistant/refine/adapters/fence";
+import { internalWallsRefineAdapter } from "@/lib/assistant/refine/adapters/internal-walls";
 import { paintingRefineAdapter } from "@/lib/assistant/refine/adapters/painting";
 import { retainingWallRefineAdapter } from "@/lib/assistant/refine/adapters/retaining-wall";
 import type { RefineWorkAreaAdapter } from "@/lib/assistant/refine/types";
@@ -12,6 +13,7 @@ const BY_TYPE = new Map<string, RefineWorkAreaAdapter>([
   [paintingRefineAdapter.workAreaType, paintingRefineAdapter],
   [retainingWallRefineAdapter.workAreaType, retainingWallRefineAdapter],
   [fenceRefineAdapter.workAreaType, fenceRefineAdapter],
+  [internalWallsRefineAdapter.workAreaType, internalWallsRefineAdapter],
 ]);
 
 export function getRefineAdapter(workAreaType: string): RefineWorkAreaAdapter | null {

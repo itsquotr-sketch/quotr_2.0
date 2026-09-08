@@ -1,5 +1,6 @@
 import type { JobPlanScopeWrite } from "@/lib/assistant/job-plan/types";
 import type { ClarifyWriteTarget } from "@/lib/assistant/clarify/types";
+import type { InternalWallsWallTypeSummary } from "@/lib/estimate/internal-walls-wall-types";
 
 export type RefineGroupId =
   | "scope"
@@ -36,6 +37,15 @@ export type RefineView = {
   readonly highValue: readonly RefineCandidate[];
   readonly advanced: readonly RefineCandidate[];
   readonly hasCandidates: boolean;
+  readonly wallTypePanels?: readonly InternalWallsRefinePanel[];
+};
+
+export type InternalWallsRefinePanel = {
+  readonly workAreaId: string;
+  readonly workAreaName: string;
+  readonly types: readonly InternalWallsWallTypeSummary[];
+  readonly activeId: string | null;
+  readonly assumedHeight: boolean;
 };
 
 export type ComposeRefineInput = {
