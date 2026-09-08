@@ -491,6 +491,44 @@ check(
   clarifyUnknown.candidates.some((row) => row.factKey === INTERNAL_WALLS_JOB_SCOPE_FACT_KEY)
 );
 
+const afterTimberOnly = composeIwClarify([
+  {
+    key: INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
+    work_area_id: "w1",
+    value: "new_partition",
+    source: "user",
+  },
+  ...writeWall("w1", [
+    { key: "internal_walls.wall_type.frame_system", value: "Timber framing" },
+  ]),
+]);
+check(
+  "timber-only still blocks on frame size",
+  afterTimberOnly.candidates.some(
+    (row) =>
+      row.factKey === "internal_walls.wall_type.frame_size" && row.blocksEstimate
+  ) && afterTimberOnly.enoughToEstimate === false
+);
+const afterSize = composeIwClarify([
+  {
+    key: INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
+    work_area_id: "w1",
+    value: "new_partition",
+    source: "user",
+  },
+  ...writeWall("w1", [
+    { key: "internal_walls.wall_type.frame_system", value: "Timber framing" },
+    { key: "internal_walls.wall_type.frame_size", value: "90 mm timber framing — 90×45" },
+  ]),
+]);
+check(
+  "size-only still blocks on length",
+  afterSize.candidates.some(
+    (row) =>
+      row.factKey === "internal_walls.wall_type.length_lm" && row.blocksEstimate
+  ) && afterSize.enoughToEstimate === false
+);
+
 const questions = getScopeQuestions("internal_walls");
 const hideLookup = lookupFacts("w1", fixtureAFacts);
 check(

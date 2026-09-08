@@ -659,6 +659,7 @@ function missingHardMinimum(
       if (
         wallTypesRequiredForScope(jobScope) &&
         (nextField === "internal_walls.wall_type.frame_system" ||
+          nextField === "internal_walls.wall_type.frame_size" ||
           nextField === "internal_walls.wall_type.length_lm")
       ) {
         missing.push({
@@ -1142,6 +1143,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
       if (
         nextField &&
         nextField !== "internal_walls.wall_type.frame_system" &&
+        nextField !== "internal_walls.wall_type.frame_size" &&
         nextField !== "internal_walls.wall_type.length_lm"
       ) {
         const template = getQuestionTemplateByKey(nextField);
