@@ -296,7 +296,11 @@ check(
     demoTemplate.includes('inputType: "multi_select"')
 );
 const refineAdapter = read("lib/assistant/refine/adapters/bathroom.ts");
-check("Refine demolition stays visible after first toggle", refineAdapter.includes("multi_select"));
+check(
+  "multi-select Continue awaits the full selected set before advancing",
+  clarifySrc.includes("Promise.resolve(onAnswerValue?.(showing, value))") &&
+    clarifySrc.includes("advance(showing)")
+);
 const demoCalc = bathroom(answeredCore);
 const demoKeys = (demoCalc.requirements ?? [])
   .filter((row) => row.kind === "labour" && String(row.componentKey).startsWith("bathroom.demolition."))

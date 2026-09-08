@@ -25,7 +25,7 @@ type ClarifyPanelProps = {
   onAnswerValue?: (
     candidate: ClarifyCandidate,
     value: string | number | boolean | string[]
-  ) => void;
+  ) => void | Promise<unknown>;
   onEstimateNow?: () => void;
 };
 
@@ -234,7 +234,15 @@ export function ClarifyPanel({
         onAnswerBoolean={wrapBoolean}
         onAnswerValue={wrapValue}
         onContinueMulti={() => {
-          if (showing) advance(showing);
+          if (!showing) return;
+          const value = localValues[showing.id] ?? showing.currentValue;
+          if (Array.isArray(value)) {
+            void Promise.resolve(onAnswerValue?.(showing, value)).finally(() => {
+              advance(showing);
+            });
+            return;
+          }
+          advance(showing);
         }}
       />
       <ActionFooter
