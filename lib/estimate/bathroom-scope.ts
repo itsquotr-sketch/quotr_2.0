@@ -185,15 +185,17 @@ export const BATHROOM_FRAMING_LEVEL_FACT_KEY =
 
 export const BATHROOM_FRAMING_LEVEL_OPTIONS = [
   "None",
-  "Minor — a few supports/nogs",
+  "Minor — a few nogs/supports",
   "Standard — several supports and local framing changes",
-  "Major — extensive local bathroom framing",
+  "Major — extensive bathroom reframing",
   "Not sure",
 ] as const;
 
 export const BATHROOM_FLOOR_SUBSTRATE_VALUES = [
   "treated_plywood",
   "fibre_cement",
+  "fibre_cement_flooring_19mm",
+  "secura_flooring",
   "none",
   "other",
 ] as const;
@@ -205,10 +207,28 @@ export const BATHROOM_FLOOR_SUBSTRATE_FACT_KEY =
   "bathroom.floor_substrate_system" as const;
 
 export const BATHROOM_FLOOR_SUBSTRATE_OPTIONS = [
+  "Keep existing floor",
   "19 mm treated plywood",
-  "18 mm fibre cement",
+  "19 mm fibre-cement flooring",
+  "Secura flooring",
   "Other",
-  "None",
+  "Not sure",
+] as const;
+
+export const BATHROOM_FLOOR_SUBSTRATE_SHEET_SIZE_FACT_KEY =
+  "bathroom.floor_substrate_sheet_size" as const;
+
+export const BATHROOM_FC_FLOORING_SHEET_SIZE_VALUES = [
+  "2700x600",
+  "1800x900",
+] as const;
+
+export type BathroomFcFlooringSheetSize =
+  (typeof BATHROOM_FC_FLOORING_SHEET_SIZE_VALUES)[number];
+
+export const BATHROOM_FC_FLOORING_SHEET_SIZE_OPTIONS = [
+  "2700 × 600 mm",
+  "1800 × 900 mm",
   "Not sure",
 ] as const;
 
@@ -470,6 +490,8 @@ const GROUP_BY_FACT_KEY: Record<string, BathroomQuestionGroup> = {
   "bathroom.wall_height_m": "wall_height",
   "bathroom.area_m2": "legacy_area",
   "bathroom.floor_finish_system": "floor_finish",
+  "bathroom.floor_substrate_system": "floor_substrate",
+  "bathroom.floor_substrate_sheet_size": "floor_substrate",
   "bathroom.tile_format": "tile_format",
   "bathroom.tiling_included": "tiling",
   "bathroom.floor_tiling_area_m2": "tiling",
@@ -516,7 +538,6 @@ const GROUP_BY_FACT_KEY: Record<string, BathroomQuestionGroup> = {
   "bathroom.wall_lining_included": "linings",
   "bathroom.ceiling_lining_included": "ceiling_lining",
   "bathroom.floor_prep_included": "floor_prep",
-  "bathroom.floor_substrate_system": "floor_substrate",
   "bathroom.underfloor_heating_included": "underfloor_heating",
   "bathroom.framing_level": "framing",
   "bathroom.finish_level": "finish_level",
@@ -712,20 +733,60 @@ export function parseBathroomFloorSubstrate(
   if (lower === "not sure" || lower === "unknown" || lower === "unsure") {
     return null;
   }
-  if (lower === "none" || lower === "no") return "none";
+  if (
+    lower === "none" ||
+    lower === "no" ||
+    lower.includes("keep existing") ||
+    lower === "existing" ||
+    lower === "existing_or_none"
+  ) {
+    return "none";
+  }
   if (lower === "other") return "other";
-  if (lower.includes("fibre") || lower.includes("fiber") || lower.includes("cement")) {
+  if (lower.includes("secura")) return "secura_flooring";
+  if (
+    lower === "fibre_cement_flooring_19mm" ||
+    lower.includes("19 mm fibre") ||
+    lower.includes("19mm fibre") ||
+    lower.includes("19 mm fiber") ||
+    (lower.includes("fibre-cement flooring") && !lower.includes("18"))
+  ) {
+    return "fibre_cement_flooring_19mm";
+  }
+  if (
+    lower === "fibre_cement" ||
+    lower.includes("18 mm fibre") ||
+    lower.includes("18mm fibre") ||
+    lower.includes("18 mm fiber")
+  ) {
     return "fibre_cement";
   }
   if (
     lower.includes("ply") ||
     lower.includes("treated_plywood") ||
-    lower === "treated_plywood"
+    lower === "treated_plywood" ||
+    lower === "treated_plywood_19mm"
   ) {
     return "treated_plywood";
   }
   if ((BATHROOM_FLOOR_SUBSTRATE_VALUES as readonly string[]).includes(lower)) {
     return lower as BathroomFloorSubstrateSystem;
+  }
+  return null;
+}
+
+export function parseBathroomFcFlooringSheetSize(
+  value: unknown
+): BathroomFcFlooringSheetSize | null {
+  if (value == null || value === "") return null;
+  const lower = String(value).trim().toLowerCase().replace(/\s+/g, "");
+  if (lower === "notsure" || lower === "unknown" || lower === "unsure") {
+    return null;
+  }
+  if (lower.includes("2700") && lower.includes("600")) return "2700x600";
+  if (lower.includes("1800") && lower.includes("900")) return "1800x900";
+  if ((BATHROOM_FC_FLOORING_SHEET_SIZE_VALUES as readonly string[]).includes(lower)) {
+    return lower as BathroomFcFlooringSheetSize;
   }
   return null;
 }

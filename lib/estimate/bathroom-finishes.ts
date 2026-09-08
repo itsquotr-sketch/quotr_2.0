@@ -112,12 +112,21 @@ export function bathroomTileFaceAreaM2(
   return null;
 }
 
+export function bathroomTileFormatDisplay(
+  format: BathroomTileFormat | null
+): string | null {
+  if (format === "600x600") return "600 × 600";
+  if (format === "600x300") return "600 × 300";
+  if (format === "300x300") return "300 × 300";
+  return null;
+}
+
 export function bathroomApproxCount(
   purchaseAreaM2: number,
   faceAreaM2: number | null
 ): number | null {
   if (faceAreaM2 == null || faceAreaM2 <= 0) return null;
-  return Math.ceil(purchaseAreaM2 / faceAreaM2);
+  return Math.ceil(purchaseAreaM2 / faceAreaM2 - 1e-12);
 }
 
 type FinishRate = {
@@ -485,6 +494,7 @@ export function buildBathroomFinishEnvelope(params: {
     pcAllowance: boolean;
     extraAssumptions: RequirementAssumption[];
     identityExtra?: string;
+    sizeLabel?: string | null;
     approxCount?: number | null;
     countNoun?: string;
   }) => {
@@ -502,9 +512,10 @@ export function buildBathroomFinishEnvelope(params: {
       rateType: "subcontractor",
       context,
     });
+    const formatLabel = args.sizeLabel ?? null;
     const countBit =
       args.approxCount != null
-        ? ` Approx. ${args.approxCount} ${args.countNoun ?? "tiles"} (count only, not boxes).`
+        ? `Approx. ${args.approxCount} ${args.countNoun ?? "tiles"}`
         : "";
     const wasteAssumption: RequirementAssumption[] = [
       {
@@ -515,9 +526,10 @@ export function buildBathroomFinishEnvelope(params: {
       ...args.extraAssumptions,
     ];
     const identity = [
-      `Net ${presentBathroomAreaM2(args.netAreaM2)}`,
-      `10% material waste`,
-      `Purchase ${presentBathroomAreaM2(purchase)}`,
+      `${presentBathroomAreaM2(args.netAreaM2)} net`,
+      `${presentBathroomAreaM2(purchase)} incl. waste`,
+      formatLabel,
+      countBit,
       args.identityExtra,
     ]
       .filter(Boolean)
@@ -537,7 +549,7 @@ export function buildBathroomFinishEnvelope(params: {
         priced: materialRate.priced,
         materialKey: args.materialKey,
         category: args.materialCategory,
-        specification: identity + countBit,
+        specification: identity,
         baseQuantity: args.netAreaM2,
         baseUnit: "m2",
         wasteFactor: BATHROOM_TILE_WASTE_FACTOR,
@@ -578,7 +590,7 @@ export function buildBathroomFinishEnvelope(params: {
       })
     );
 
-    const materialNotes = `${identity}.${countBit} ${BATHROOM_FLOOR_FINISH_XOR_STATEMENT}`;
+    const materialNotes = `${identity}. ${BATHROOM_FLOOR_FINISH_XOR_STATEMENT}`;
     if (materialRate.priced && materialRate.costRate != null && materialRate.sellRate != null) {
       lineItems.push(
         withPricingOwnership(
@@ -601,7 +613,7 @@ export function buildBathroomFinishEnvelope(params: {
               organisationSettings: context.organisationSettings,
               qualityFactor: 1,
             }),
-            identitySummary: identity + countBit,
+            identitySummary: identity,
           },
           {
             pricingOwner: "contractor_material",
@@ -699,6 +711,7 @@ export function buildBathroomFinishEnvelope(params: {
         pcAllowance: true,
         extraAssumptions: [],
         identityExtra: "Tile supply PC allowance",
+        sizeLabel: bathroomTileFormatDisplay(selection.tileFormat),
         approxCount: bathroomApproxCount(bathroomPurchaseAreaM2(net), tileFace),
         countNoun: "tiles",
       });
@@ -831,6 +844,7 @@ export function buildBathroomFinishEnvelope(params: {
       pcAllowance: true,
       extraAssumptions: wallAssumptions,
       identityExtra: `Extent: ${selection.wallTileExtent?.replace(/_/g, " ")}`,
+      sizeLabel: bathroomTileFormatDisplay(selection.tileFormat),
       approxCount: bathroomApproxCount(bathroomPurchaseAreaM2(wallNet), tileFace),
       countNoun: "tiles",
     });

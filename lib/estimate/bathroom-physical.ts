@@ -16,9 +16,10 @@ import {
   BATHROOM_CEILING_LINING_LABOUR_COMPONENT,
   BATHROOM_CEILING_NESTED_STATEMENT,
   BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
-  BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY,
   BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT,
-  BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
+  BATHROOM_TILE_UNDERLAY_COMPONENT,
+  BATHROOM_TILE_UNDERLAY_LABOUR_REQUIRED,
+  BATHROOM_TILE_UNDERLAY_SIZE_REQUIRED,
   BATHROOM_FRAMING_COMPONENT,
   BATHROOM_FRAMING_LABOUR_COMPONENT,
   BATHROOM_FRAMING_REQUIRED_MESSAGE,
@@ -35,7 +36,6 @@ import { BATHROOM_OPENINGS_NOT_DEDUCTED_STATEMENT } from "@/lib/estimate/bathroo
 import { bathroomFramingTakeoff, presentBathroomLm } from "@/lib/estimate/bathroom-framing";
 import {
   bathroomLiningHours,
-  bathroomSheetMaterialLabel,
   bathroomSheetTakeoff,
   presentBathroomAreaM2,
   presentBathroomHours,
@@ -46,6 +46,12 @@ import {
   type BathroomFloorSubstrateSystem,
   type BathroomFramingLevel,
 } from "@/lib/estimate/bathroom-scope";
+import {
+  bathroomStructuralMaterialIdentity,
+  bathroomStructuralSheetTakeoff,
+  bathroomTileUnderlayIdentity,
+  resolveBathroomFloorBuildUp,
+} from "@/lib/estimate/bathroom-floor-buildup";
 import { round2 } from "@/lib/estimate/facts";
 import { getBooleanFact, getFact, getStringFact, isNotSureValue } from "@/lib/estimate/facts";
 import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
@@ -300,6 +306,7 @@ export function buildBathroomPhysicalEnvelope(params: {
   emittedPhysical: boolean;
 } {
   const { context, workArea, geometry, selection } = params;
+  const facts = context.facts;
   const requirements: EstimateRequirement[] = [];
   const lineItems: EstimateLineItemInput[] = [];
   const assumptions: string[] = [];
@@ -346,18 +353,40 @@ export function buildBathroomPhysicalEnvelope(params: {
   const ceilingArea = geometry.ceilingAreaM2 ?? geometry.floorAreaM2;
   const wallArea = geometry.grossWallAreaM2;
 
-  if (
-    (selection.floorSubstrate === "treated_plywood" ||
-      selection.floorSubstrate === "fibre_cement") &&
-    floorArea != null
-  ) {
-    const kind = selection.floorSubstrate === "fibre_cement" ? "fibre_cement" : "plywood";
-    const itemKey =
-      kind === "fibre_cement"
-        ? BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY
-        : BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY;
-    const takeoff = bathroomSheetTakeoff(floorArea);
-    const label = bathroomSheetMaterialLabel(kind);
+  const floorBuildUp = resolveBathroomFloorBuildUp({
+    substrateRaw: factValue(facts, workArea.id, "bathroom.floor_substrate_system"),
+    sheetSizeRaw: factValue(facts, workArea.id, "bathroom.floor_substrate_sheet_size"),
+    floorFinishRaw: factValue(facts, workArea.id, "bathroom.floor_finish_system"),
+    stripOutOnly:
+      getStringFact(facts as never, workArea.id, "bathroom.job_scope") ===
+      "strip_out_only",
+  });
+  assumptions.push(...floorBuildUp.assumptions);
+  const structuralIdentity =
+    floorBuildUp.structural &&
+    floorBuildUp.structural !== "none" &&
+    floorBuildUp.structural !== "other"
+      ? bathroomStructuralMaterialIdentity({
+          structural: floorBuildUp.structural,
+          fcSheetSize: floorBuildUp.fcSheetSize,
+        })
+      : null;
+
+  if (structuralIdentity && floorArea != null && structuralIdentity.sheet) {
+    if (
+      floorBuildUp.structural === "fibre_cement_flooring_19mm" &&
+      !floorBuildUp.fcSheetSize
+    ) {
+      missingInfo.push(
+        "Select 19 mm fibre-cement flooring sheet size for procurement."
+      );
+    }
+    const itemKey = structuralIdentity.itemKey;
+    const label = structuralIdentity.label;
+    const takeoff = bathroomStructuralSheetTakeoff(
+      floorArea,
+      structuralIdentity.sheet
+    );
     const productivity = resolveProductivity({
       productivityKey: BATHROOM_PRODUCTIVITY_KEYS.floorSubstrateM2,
       unit: "m2",
@@ -388,7 +417,7 @@ export function buildBathroomPhysicalEnvelope(params: {
         workAreaId: workArea.id,
         workAreaType: "bathroom",
         componentKey: BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
-        variantKey: kind,
+        variantKey: floorBuildUp.structural ?? "structural",
         description: `Floor substrate — ${label}`,
         confidence: "high",
         assumptions: selection.floorSubstrateAssumed
@@ -398,7 +427,7 @@ export function buildBathroomPhysicalEnvelope(params: {
         priced: rate.priced,
         materialKey: itemKey,
         category: "sheet",
-        specification: `${label} 2400 × 1200`,
+        specification: `${label} ${Math.round(structuralIdentity.sheet.lengthM * 1000)} × ${Math.round(structuralIdentity.sheet.widthM * 1000)}`,
         baseQuantity: takeoff.physicalAreaM2,
         baseUnit: "m2",
         wasteFactor: takeoff.wasteFactor,
@@ -517,6 +546,76 @@ export function buildBathroomPhysicalEnvelope(params: {
           overlapGroup: "bathroom_floor_substrate_install",
         }
       )
+    );
+  }
+
+  if (floorBuildUp.tileUnderlayRequired && floorArea != null) {
+    const underlay = bathroomTileUnderlayIdentity();
+    const purchaseAreaM2 = round2(floorArea * 1.1);
+    const identity = `${presentBathroomAreaM2(floorArea)} net · ${presentBathroomAreaM2(purchaseAreaM2)} purchase (10% waste) · ${underlay.label}`;
+    missingInfo.push(BATHROOM_TILE_UNDERLAY_SIZE_REQUIRED);
+    missingInfo.push(BATHROOM_TILE_UNDERLAY_LABOUR_REQUIRED);
+    const underlayRate = resolveExactMaterialRate({
+      itemKey: underlay.itemKey,
+      unit: "each",
+      context,
+    });
+    requirements.push(
+      buildMaterialRequirement({
+        workAreaId: workArea.id,
+        workAreaType: "bathroom",
+        componentKey: BATHROOM_TILE_UNDERLAY_COMPONENT,
+        variantKey: "6mm",
+        description: `Tile underlay — ${underlay.label}`,
+        confidence: "high",
+        assumptions: [
+          {
+            key: "bathroom.floor_tile_underlay",
+            text: identity,
+            source: "calculator_default",
+          },
+        ],
+        provenance: {
+          ...provenanceBase,
+          factKeys: [
+            ...provenanceBase.factKeys,
+            "bathroom.floor_finish_system",
+          ],
+        },
+        priced: underlayRate.priced,
+        materialKey: underlay.itemKey,
+        category: "sheet",
+        specification: identity,
+        baseQuantity: floorArea,
+        baseUnit: "m2",
+        wasteFactor: 0.1,
+        purchaseQuantity: purchaseAreaM2,
+        purchaseUnit: "m2",
+        rateSource: underlayRate.priced
+          ? underlayRate.sourceType === "user_rate"
+            ? "company"
+            : "benchmark"
+          : "missing",
+        unitCost: underlayRate.costRate,
+        totalCost:
+          underlayRate.priced && underlayRate.costRate != null
+            ? round2(purchaseAreaM2 * underlayRate.costRate)
+            : null,
+      })
+    );
+    lineItems.push(
+      unpricedMaterialLine({
+        workArea,
+        label: `Tile underlay — ${underlay.label}`,
+        quantity: purchaseAreaM2,
+        unit: "m²",
+        itemKey: underlay.itemKey,
+        componentKey: BATHROOM_TILE_UNDERLAY_COMPONENT,
+        identitySummary: identity,
+        notes: `${identity}. Pricing required — no approved 6 mm underlay sheet size or rate.`,
+        sortOrder: sortOrder++,
+        buildUp: null,
+      })
     );
   }
 

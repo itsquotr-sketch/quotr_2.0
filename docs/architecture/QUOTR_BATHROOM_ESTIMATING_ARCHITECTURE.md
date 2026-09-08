@@ -351,6 +351,8 @@ Dedicated fixture hours win over the generic fixture average. Project Conditions
 
 **Internal Walls / Ceilings removal boundary:** Bathroom wet-area wall and ceiling lining removal stays nested. Future Internal Walls / Ceilings must not double-price the same selected removal.
 
+Tiled bathroom floors use three independent layers (WA-BATHROOM-POLISH-01 / §58): structural XOR, derived 6 mm tile underlay where plywood + tile, floor finish XOR. Do not collapse 19 mm FC flooring, Secura, and 6 mm underlay into one fibre-cement identity.
+
 ---
 
 ## 11. Floor substrate model
@@ -1597,5 +1599,62 @@ Customer badge **Supported** for Deck, Fence, Retaining Wall, Bathroom. Kitchen/
 
 ### Next action after 08 GO
 
-**WA-INTERNAL-WALLS-01** — domain architecture + current-state gap audit. Do not start it from this close.
+**WA-BATHROOM-POLISH-01** — beta UX / floor build-up correction. See §58. Do not start Internal Walls / Ceilings / Doors / Variations / RFQ from this close.
+
+---
+
+## 58. WA-BATHROOM-POLISH-01 — beta UX + floor build-up
+
+**Status:** beta polish on Mature Bathroom. Does not reopen commercial architecture or the maturity programme.
+
+Verifier: `scripts/verify-work-area-bathroom-polish-01.ts`
+
+### Selection / Clarify / Refine / Details
+
+Shared control: `components/assistant/selection/OptionSelect.tsx`.
+
+Root cause of lag: option chips had no local selected state; Clarify applied overlay only after persist; `setClarifyWritePending(true)` disabled chips; demolition was `select` (radio). Numeric fields still overlay after persist so in-flight Save is not aborted by remount.
+
+Required behaviour: click → immediate highlight → background persist → remain selected after reload. Persist failure reverts overlay when that write is still latest. Latest seq wins; multi-select merges.
+
+Details in the stepper is Clarify (`ClarifyPanel`). Refine uses the same OptionSelect + local values. Legacy QuestionBlock also uses OptionSelect.
+
+### Condition readiness
+
+Bathroom P0 (must-ask before Ready, calculator-consumed, still assumable / Not sure): `site_access`, `material_carry_distance`, `occupied_site`, `working_hours`.
+
+Bathroom P1 (ask if budget allows; do not block Ready): `floor_level`, `waste_bin_access`.
+
+Review-only: parking, consent, client-supplied, by-others, protection, site_slope, etc.
+
+Deck-only jobs keep the previous PC filter. Ready is not “geometry exists”; deferred Bathroom P0 conditions block Ready until answered.
+
+### Floor build-up
+
+Three independent layers:
+
+1. Structural XOR: `treated_plywood` | legacy `fibre_cement` (18 mm 2400×1200) | `fibre_cement_flooring_19mm` | `secura_flooring` | `none` | `other`
+2. Derived 6 mm fibre-cement tile underlay when plywood + tile
+3. Floor finish XOR from WA-BATHROOM-04
+
+Secondary fact: `bathroom.floor_substrate_sheet_size` = `2700x600` | `1800x900` (both 1.62 m²/sheet).
+
+Plywood + tile → automatic `sheet.fibre_cement.tile_underlay.6mm.each` (purchase m² × 1.10). No approved canonical 6 mm sheet size → no sheet count; Pricing Required. No invented underlay productivity — labour is INFO_REQUIRED (`bathroom.tile_underlay.install.hours_per_m2` key exists, no benchmark number).
+
+19 mm FC flooring and Secura are tile-ready structural systems: no automatic 6 mm underlay.
+
+Legacy `fibre_cement` remains 18 mm 2400×1200. Do not remap historical estimates to 19 mm or Secura.
+
+Not sure structural floor: existing owner-approved 19 mm plywood assumption (not a new default).
+
+Substrate labour stays `bathroom.floor_substrate.install.hours_per_m2` = 0.40 across plywood / 19 mm FC / Secura / legacy 18 mm. Flag later if beta shows a material difference.
+
+### Tile count
+
+When tile dimensions are known: `ceil(purchase_area / tile_face_area)`. 7.2 m² net → 7.92 purchase → 22 × 600×600. No pack count. Mosaic/custom: no fabricated count.
+
+### DNA
+
+Shared V2 task flow: shorter scenario (`scenarioSummary`), collapsed Includes/Excludes, compact Crew / Hours / Minutes, progress `Bathroom calibration · Task X of 3`. Architecture unchanged.
+
 

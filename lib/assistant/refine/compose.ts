@@ -62,6 +62,46 @@ function projectConditionCandidates(
       consumedByCalculator: true,
     });
   }
+  if (!constraintKnown(input.constraints, "occupied_site")) {
+    out.push({
+      id: "refine:pc:occupied_site",
+      group: "project_conditions",
+      tier: "high_value",
+      workAreaId: null,
+      workAreaName: null,
+      workAreaType: null,
+      factKey: null,
+      constraintKey: "occupied_site",
+      questionKey: "interview.site.occupied_site",
+      label: "Occupied site",
+      question: "Is the site occupied during works?",
+      inputType: "boolean",
+      options: ["Yes", "No", "Not sure"],
+      writeTarget: "CONSTRAINT",
+      write: null,
+      consumedByCalculator: true,
+    });
+  }
+  if (!constraintKnown(input.constraints, "working_hours")) {
+    out.push({
+      id: "refine:pc:working_hours",
+      group: "project_conditions",
+      tier: "high_value",
+      workAreaId: null,
+      workAreaName: null,
+      workAreaType: null,
+      factKey: null,
+      constraintKey: "working_hours",
+      questionKey: "interview.site.working_hours",
+      label: "Working hours",
+      question: "Are there working-hour restrictions?",
+      inputType: "boolean",
+      options: ["No", "Yes", "Not sure"],
+      writeTarget: "CONSTRAINT",
+      write: null,
+      consumedByCalculator: true,
+    });
+  }
   return out;
 }
 
@@ -96,9 +136,23 @@ export function composeRefineView(input: ComposeRefineInput): RefineView {
 
   const highValue = unique.filter((row) => row.tier === "high_value");
   const advanced = unique.filter((row) => row.tier === "advanced");
+  const attachCurrent = (rows: RefineCandidate[]): RefineCandidate[] =>
+    rows.map((row) => {
+      const key = row.constraintKey ?? row.factKey;
+      if (!key) return row;
+      const raw = row.constraintKey
+        ? input.constraints.find((c) => c.key === key)?.value
+        : input.facts.find(
+            (f) =>
+              f.key === key &&
+              (row.workAreaId == null || f.work_area_id === row.workAreaId)
+          )?.value;
+      if (raw == null) return row;
+      return { ...row, currentValue: raw as RefineCandidate["currentValue"] };
+    });
   return {
-    highValue,
-    advanced,
+    highValue: attachCurrent(highValue),
+    advanced: attachCurrent(advanced),
     hasCandidates: unique.length > 0,
   };
 }

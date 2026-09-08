@@ -8,8 +8,9 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 import type { DerivedFactDisplay } from "@/lib/assistant/types";
 import type { Question } from "@/components/assistant/types";
-import { normalizeBooleanForUi, parseYesNoValue } from "@/lib/scopes/fact-values";
+import { normalizeBooleanForUi } from "@/lib/scopes/fact-values";
 import { formatSelectAnswerValue } from "@/lib/scopes/fact-labels";
+import { OptionSelect } from "@/components/assistant/selection/OptionSelect";
 import {
   classifyQuestionPresentationCategory,
   defaultExpandedQuestionCategories,
@@ -111,114 +112,6 @@ function formatAnswer(
   return String(value);
 }
 
-function chipValueMatches(
-  option: string,
-  value: string | number | boolean | string[] | null | undefined
-): boolean {
-  if (Array.isArray(value)) {
-    return value.includes(option);
-  }
-  if (value === option) return true;
-  const parsed = parseYesNoValue(value);
-  if (option === "Yes" || /^yes\b/i.test(option)) {
-    return parsed === true || value === true || value === "true";
-  }
-  if (option === "No" || /^no\b(?!t)/i.test(option)) {
-    return parsed === false || value === false || value === "false";
-  }
-  if (option === "Not sure") {
-    return (
-      value === "Not sure" ||
-      value === "not sure" ||
-      value === "not_sure"
-    );
-  }
-  if (typeof value === "string") {
-    const a = option.trim().toLowerCase();
-    const b = value.trim().toLowerCase();
-    if (a === b) return true;
-    if (a.split("—")[0]?.trim() && b.startsWith(a.split("—")[0]!.trim())) {
-      return true;
-    }
-    if (b.split("—")[0]?.trim() && a.startsWith(b.split("—")[0]!.trim())) {
-      return true;
-    }
-  }
-  return false;
-}
-
-function BooleanChips({
-  question,
-  value,
-  disabled,
-  onChange,
-}: {
-  question: Question;
-  value: string | number | boolean | string[] | null | undefined;
-  disabled?: boolean;
-  onChange: (val: string) => void;
-}) {
-  const options = question.options ?? ["Yes", "No", "Not sure"];
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(option)}
-          className={cn(
-            "rounded-2xl border px-3 py-1.5 text-sm transition-colors",
-            chipValueMatches(option, value)
-              ? "border-primary/30 bg-primary/5 font-medium text-primary ring-1 ring-primary/20"
-              : "border-border hover:bg-muted/50",
-            disabled && "pointer-events-none opacity-70"
-          )}
-        >
-          {option}
-        </button>
-      ))}
-    </div>
-  );
-}
-
-function SelectChips({
-  question,
-  value,
-  disabled,
-  onChange,
-}: {
-  question: Question;
-  value: string | number | boolean | string[] | null | undefined;
-  disabled?: boolean;
-  onChange: (val: string) => void;
-}) {
-  const options = question.options ?? [];
-
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => (
-        <button
-          key={option}
-          type="button"
-          disabled={disabled}
-          onClick={() => onChange(option)}
-          className={cn(
-            "rounded-2xl border px-3 py-1.5 text-sm transition-colors",
-            chipValueMatches(option, value)
-              ? "border-primary/30 bg-primary/5 font-medium text-primary ring-1 ring-primary/20"
-              : "border-border hover:bg-muted/50",
-            disabled && "pointer-events-none opacity-70"
-          )}
-        >
-          {formatSelectAnswerValue(option)}
-        </button>
-      ))}
-    </div>
-  );
-}
-
 export function QuestionField({
   question,
   value,
@@ -252,57 +145,36 @@ export function QuestionField({
       );
     case "select":
       return (
-        <SelectChips
-          question={question}
+        <OptionSelect
+          options={question.options ?? []}
           value={value}
           disabled={disabled}
-          onChange={onChange}
+          onSelect={(next) => {
+            const picked = Array.isArray(next) ? next[0] : next;
+            if (picked != null) onChange(picked);
+          }}
         />
       );
-    case "multi_select": {
-      const selected = Array.isArray(value)
-        ? value
-        : typeof value === "string" && value
-          ? value.split(",").map((item) => item.trim())
-          : [];
-      const options = question.options ?? [];
+    case "multi_select":
       return (
-        <div className="flex flex-wrap gap-2">
-          {options.map((option) => {
-            const isSelected = selected.includes(option);
-            return (
-              <button
-                key={option}
-                type="button"
-                disabled={disabled}
-                onClick={() => {
-                  const next = isSelected
-                    ? selected.filter((item) => item !== option)
-                    : [...selected, option];
-                  onChange(next as unknown as string);
-                }}
-                className={cn(
-                  "rounded-2xl border px-3 py-1.5 text-sm transition-colors",
-                  isSelected
-                    ? "border-primary/30 bg-primary/5 font-medium text-primary ring-1 ring-primary/20"
-                    : "border-border hover:bg-muted/50",
-                  disabled && "pointer-events-none opacity-70"
-                )}
-              >
-                {formatSelectAnswerValue(option)}
-              </button>
-            );
-          })}
-        </div>
+        <OptionSelect
+          options={question.options ?? []}
+          value={value}
+          multiple
+          disabled={disabled}
+          onSelect={(next) => onChange(next)}
+        />
       );
-    }
     case "boolean":
       return (
-        <BooleanChips
-          question={question}
+        <OptionSelect
+          options={question.options ?? ["Yes", "No", "Not sure"]}
           value={value}
           disabled={disabled}
-          onChange={onChange}
+          onSelect={(next) => {
+            const picked = Array.isArray(next) ? next[0] : next;
+            if (picked != null) onChange(picked);
+          }}
         />
       );
     case "text":

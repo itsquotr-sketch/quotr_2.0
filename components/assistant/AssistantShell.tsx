@@ -1566,11 +1566,28 @@ export function AssistantShell({
   );
 
   const handleClarifyValue = useCallback(
-    async (candidate: ClarifyCandidate, value: string | number | boolean) => {
+    async (
+      candidate: ClarifyCandidate,
+      value: string | number | boolean | string[]
+    ) => {
       const requestSeq = ++factMutationSeqRef.current;
-      setClarifyWritePending(true);
+      const isNumericOrText =
+        candidate.inputType === "number" || candidate.inputType === "text";
+      if (isNumericOrText) setClarifyWritePending(true);
+      const valueType =
+        Array.isArray(value) || candidate.inputType === "multi_select"
+          ? "multi_select"
+          : typeof value === "string" &&
+              value.trim().toLowerCase() === "not sure"
+            ? "select"
+            : candidate.inputType === "number"
+              ? "number"
+              : candidate.inputType === "boolean"
+                ? "boolean"
+                : "select";
       try {
         if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
+          if (Array.isArray(value)) return;
           const constraintKey = candidate.constraintKey ?? candidate.questionKey;
           setLiveConstraints((prev) => [
             ...prev.filter((row) => row.key !== constraintKey),
@@ -1591,6 +1608,9 @@ export function AssistantShell({
           );
           if (result.error) {
             setActionError(result.error);
+            setLiveConstraints((prev) =>
+              prev.filter((row) => row.key !== constraintKey)
+            );
             return;
           }
           if (!settleCanonicalMutation(result, requestSeq)) {
@@ -1602,15 +1622,16 @@ export function AssistantShell({
           return;
         }
         if (!candidate.factKey) return;
-        tagOverlayFactSeq(
-          {
-            key: candidate.factKey,
-            work_area_id: candidate.workAreaId,
-            value,
-            source: "user",
-          },
-          requestSeq
-        );
+        const overlayRow = {
+          key: candidate.factKey,
+          work_area_id: candidate.workAreaId,
+          value,
+          source: "user" as const,
+        };
+        tagOverlayFactSeq(overlayRow, requestSeq);
+        if (!isNumericOrText) {
+          setJobPlanFactOverlay((prev) => overlayFact(prev, overlayRow));
+        }
         const result = await runSerializedFactMutation(() =>
           answerClarifySelectFact({
             projectId: project.id,
@@ -1618,31 +1639,25 @@ export function AssistantShell({
             key: candidate.factKey!,
             label: candidate.label,
             value,
-            valueType:
-              typeof value === "string" && value.trim().toLowerCase() === "not sure"
-                ? "select"
-                : candidate.inputType === "number"
-                  ? "number"
-                  : candidate.inputType === "boolean"
-                    ? "boolean"
-                    : "select",
+            valueType,
           })
         );
         if (result.error) {
           setActionError(result.error);
+          const factIdentity = `${candidate.workAreaId ?? ""}:${candidate.factKey}`;
+          if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
+            setJobPlanFactOverlay((prev) =>
+              prev.filter(
+                (row) =>
+                  `${row.work_area_id ?? ""}:${row.key}` !== factIdentity
+              )
+            );
+          }
           return;
         }
-        // Overlay only after persist so the Save control stays mounted for the
-        // in-flight server action. Overlay-first remounted the next question
-        // and aborted consecutive numeric writes.
-        setJobPlanFactOverlay((prev) =>
-          overlayFact(prev, {
-            key: candidate.factKey!,
-            work_area_id: candidate.workAreaId,
-            value,
-            source: "user",
-          })
-        );
+        if (isNumericOrText) {
+          setJobPlanFactOverlay((prev) => overlayFact(prev, overlayRow));
+        }
         if (!settleCanonicalMutation(result, requestSeq)) {
           bridgeEstimateStaleAfterCanonicalWrite();
           startTransition(() => {
@@ -1650,7 +1665,7 @@ export function AssistantShell({
           });
         }
       } finally {
-        setClarifyWritePending(false);
+        if (isNumericOrText) setClarifyWritePending(false);
       }
     },
     [
@@ -2369,6 +2384,7 @@ export function AssistantShell({
                 <RefineEstimatePanel
                   view={refineView}
                   isSaving={clarifyWritePending}
+                  persistError={actionError}
                   canEstimateNow={false}
                   focusKey={refineAfterEstimateFocusKey}
                   isStale={displayEstimateStale}
@@ -2928,10 +2944,10 @@ export function AssistantShell({
                 readiness={estimateReadiness}
                 refineView={refineView}
                 isSaving={
-                  clarifyWritePending ||
                   pendingAction === "clarify" ||
                   pendingAction === "estimate"
                 }
+                persistError={actionError}
                 onAnswerBoolean={handleClarifyBoolean}
                 onAnswerValue={handleClarifyValue}
                 onEstimateNow={handleGenerateEstimate}

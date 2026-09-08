@@ -9,6 +9,7 @@ import type { RefineView } from "@/lib/assistant/refine/types";
 import { ClarifyReadinessCard } from "@/components/assistant/clarify/ClarifyReadiness";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
+import { OptionSelect } from "@/components/assistant/selection/OptionSelect";
 import { shouldShowWhyThisMatters, whyThisMattersForKey } from "@/lib/assistant/presentation/why-this-matters";
 
 type ClarifyPanelProps = {
@@ -16,13 +17,14 @@ type ClarifyPanelProps = {
   readiness: EstimateReadinessView;
   refineView: RefineView;
   isSaving?: boolean;
+  persistError?: string | null;
   onAnswerBoolean?: (
     candidate: ClarifyCandidate,
     presentation: "INCLUDED" | "NOT_INCLUDED"
   ) => void;
   onAnswerValue?: (
     candidate: ClarifyCandidate,
-    value: string | number | boolean
+    value: string | number | boolean | string[]
   ) => void;
   onEstimateNow?: () => void;
 };
@@ -44,14 +46,18 @@ function ContextLabel({ candidate }: { candidate: ClarifyCandidate }) {
 
 function ClarifyQuestion({
   candidate,
-  isSaving,
+  value,
+  persistError,
   onAnswerBoolean,
   onAnswerValue,
+  onContinueMulti,
 }: {
   candidate: ClarifyCandidate;
-  isSaving?: boolean;
+  value: string | number | boolean | string[] | null | undefined;
+  persistError?: string | null;
   onAnswerBoolean?: ClarifyPanelProps["onAnswerBoolean"];
   onAnswerValue?: ClarifyPanelProps["onAnswerValue"];
+  onContinueMulti?: () => void;
 }) {
   const [whyOpen, setWhyOpen] = useState(false);
   const whyKey = candidate.factKey ?? candidate.constraintKey ?? candidate.questionKey;
@@ -62,6 +68,8 @@ function ClarifyQuestion({
       ? whyThisMattersForKey(whyKey)
       : null;
   const showWhy = Boolean(whyText) && shouldShowWhyThisMatters(whyKey);
+  const isMulti = candidate.inputType === "multi_select";
+  const multiSelectedCount = Array.isArray(value) ? value.length : 0;
 
   return (
     <div
@@ -69,6 +77,7 @@ function ClarifyQuestion({
       data-clarify-question
       data-clarify-id={candidate.id}
       data-clarify-fact-key={candidate.factKey ?? undefined}
+      data-clarify-input-type={candidate.inputType}
     >
       <ContextLabel candidate={candidate} />
       <p className="text-base font-medium leading-snug">{candidate.question}</p>
@@ -87,46 +96,49 @@ function ClarifyQuestion({
         </div>
       ) : null}
       {candidate.inputType === "boolean" ? (
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            type="button"
-            className="min-h-11 w-full sm:w-auto"
-            disabled={isSaving}
-            aria-label={`Include ${candidate.label}`}
-            onClick={() => onAnswerBoolean?.(candidate, "INCLUDED")}
-          >
-            Include
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 w-full sm:w-auto"
-            disabled={isSaving}
-            aria-label={`Mark ${candidate.label} as not included`}
-            onClick={() => onAnswerBoolean?.(candidate, "NOT_INCLUDED")}
-          >
-            Not included
-          </Button>
-        </div>
+        <OptionSelect
+          options={["Include", "Not included"]}
+          value={
+            value === true || value === "INCLUDED" || value === "Yes"
+              ? "Include"
+              : value === false || value === "NOT_INCLUDED" || value === "No"
+                ? "Not included"
+                : null
+          }
+          error={persistError}
+          onSelect={(next) => {
+            const picked = Array.isArray(next) ? next[0] : next;
+            onAnswerBoolean?.(
+              candidate,
+              picked === "Include" ? "INCLUDED" : "NOT_INCLUDED"
+            );
+          }}
+        />
       ) : candidate.options && candidate.options.length > 0 ? (
-        <div className="grid gap-2">
-          {candidate.options.map((option) => (
-            <button
-              key={option}
+        <>
+          <OptionSelect
+            options={candidate.options}
+            value={value}
+            multiple={isMulti}
+            error={persistError}
+            onSelect={(next) => onAnswerValue?.(candidate, next)}
+          />
+          {isMulti ? (
+            <Button
               type="button"
-              disabled={isSaving}
-              className="min-h-11 rounded-xl border border-border bg-background px-4 py-3 text-left text-sm font-medium hover:bg-muted/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => onAnswerValue?.(candidate, option)}
+              className="min-h-11 w-full sm:w-auto"
+              data-clarify-multi-continue
+              disabled={candidate.blocksEstimate && multiSelectedCount === 0}
+              onClick={onContinueMulti}
             >
-              {option}
-            </button>
-          ))}
-        </div>
+              Continue
+            </Button>
+          ) : null}
+        </>
       ) : (
         <ClarifyValueField
           candidate={candidate}
-          isSaving={isSaving}
-          onSubmit={(value) => onAnswerValue?.(candidate, value)}
+          onSubmit={(next) => onAnswerValue?.(candidate, next)}
         />
       )}
     </div>
@@ -137,6 +149,7 @@ export function ClarifyPanel({
   view,
   readiness,
   isSaving,
+  persistError,
   onAnswerBoolean,
   onAnswerValue,
   onEstimateNow,
@@ -145,23 +158,43 @@ export function ClarifyPanel({
   const remaining = view.remainingRequiredCount ?? view.visibleCount;
   const [past, setPast] = useState<ClarifyCandidate[]>([]);
   const [rewind, setRewind] = useState<ClarifyCandidate | null>(null);
-  const showing = rewind ?? current;
+  const [heldMulti, setHeldMulti] = useState<ClarifyCandidate | null>(null);
+  const [localValues, setLocalValues] = useState<
+    Record<string, string | number | boolean | string[]>
+  >({});
+
+  const showing = rewind ?? heldMulti ?? current;
+
+  const advance = (candidate: ClarifyCandidate) => {
+    setPast((rows) => [...rows, candidate]);
+    setRewind(null);
+    setHeldMulti(null);
+  };
 
   const wrapBoolean: ClarifyPanelProps["onAnswerBoolean"] = (
     candidate,
     presentation
   ) => {
-    setPast((rows) => [...rows, candidate]);
-    setRewind(null);
+    setLocalValues((prev) => ({
+      ...prev,
+      [candidate.id]: presentation === "INCLUDED" ? "Include" : "Not included",
+    }));
+    advance(candidate);
     onAnswerBoolean?.(candidate, presentation);
   };
   const wrapValue: ClarifyPanelProps["onAnswerValue"] = (candidate, value) => {
-    setPast((rows) => [...rows, candidate]);
-    setRewind(null);
+    setLocalValues((prev) => ({ ...prev, [candidate.id]: value }));
+    if (candidate.inputType === "multi_select") {
+      setHeldMulti(candidate);
+      setRewind(null);
+      onAnswerValue?.(candidate, value);
+      return;
+    }
+    advance(candidate);
     onAnswerValue?.(candidate, value);
   };
 
-  if (view.enoughToEstimate || !current) {
+  if (!heldMulti && !rewind && (view.enoughToEstimate || !current)) {
     return (
       <ClarifyReadinessCard
         readiness={readiness}
@@ -180,6 +213,11 @@ export function ClarifyPanel({
           ? "Just a couple of things to confirm."
           : `${remaining} important details remaining`;
 
+  const shownValue =
+    showing != null
+      ? (localValues[showing.id] ?? showing.currentValue ?? null)
+      : null;
+
   return (
     <div
       className="space-y-5 overflow-x-hidden"
@@ -191,9 +229,13 @@ export function ClarifyPanel({
       </p>
       <ClarifyQuestion
         candidate={showing ?? current}
-        isSaving={isSaving}
+        value={shownValue}
+        persistError={persistError}
         onAnswerBoolean={wrapBoolean}
         onAnswerValue={wrapValue}
+        onContinueMulti={() => {
+          if (showing) advance(showing);
+        }}
       />
       <ActionFooter
         className="-mx-1"
@@ -210,10 +252,12 @@ export function ClarifyPanel({
               setPast((rows) => {
                 if (rows.length === 0) {
                   setRewind(null);
+                  setHeldMulti(null);
                   return rows;
                 }
                 const last = rows[rows.length - 1]!;
                 setRewind(last);
+                setHeldMulti(null);
                 return rows.slice(0, -1);
               });
             }}

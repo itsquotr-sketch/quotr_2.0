@@ -1,6 +1,7 @@
 import { hasFactValue, isNotSureValue, getBooleanFact } from "@/lib/estimate/facts";
 import {
   BATHROOM_DEMOLITION_COMPONENT_OPTIONS,
+  BATHROOM_FC_FLOORING_SHEET_SIZE_OPTIONS,
   BATHROOM_FIXTURE_OWNERSHIP_OPTIONS,
   BATHROOM_FLOOR_FINISH_OPTIONS,
   BATHROOM_FLOOR_SUBSTRATE_OPTIONS,
@@ -14,6 +15,8 @@ import {
   bathroomFixtureOwnershipFactKey,
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
+  parseBathroomDemolitionComponents,
+  parseBathroomFloorSubstrate,
   parseBathroomSelectedFixtures,
   parseBathroomWallTileExtent,
   parseBathroomWaterproofingExtent,
@@ -223,9 +226,9 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         demolitionRequired:
           getBooleanFact(facts as never, workAreaId, "bathroom.demolition_required") ===
             true || bathroomDemolitionImpliedByScope(jobScope),
-      }) &&
-      !knownFact(facts, workAreaId, "bathroom.demolition.components")
+      })
     ) {
+      const selected = parseBathroomDemolitionComponents({ facts, workAreaId });
       out.push({
         id: `refine:${workAreaId}:bathroom.demolition.components`,
         group: "scope",
@@ -237,9 +240,10 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         constraintKey: null,
         questionKey: "bathroom.demolition.components",
         label: "What is being stripped out",
-        question: "What existing bathroom items are being removed?",
-        inputType: "select",
+        question: "What items are being removed?",
+        inputType: "multi_select",
         options: [...BATHROOM_DEMOLITION_COMPONENT_OPTIONS],
+        currentValue: selected,
         writeTarget: "FACT",
         write: null,
         consumedByCalculator: true,
@@ -365,10 +369,42 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
         factKey: "bathroom.floor_substrate_system",
         constraintKey: null,
         questionKey: "bathroom.floor_substrate_system",
-        label: "Floor substrate",
-        question: "Does the bathroom need a new floor substrate?",
+        label: "Floor build-up",
+        question: "What is the bathroom floor built on / being rebuilt with?",
         inputType: "select",
         options: [...BATHROOM_FLOOR_SUBSTRATE_OPTIONS],
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+      });
+    }
+
+    if (
+      jobScope &&
+      bathroomQuestionGroupVisible("floor_substrate", jobScope) &&
+      parseBathroomFloorSubstrate(
+        facts.find(
+          (f) =>
+            f.key === "bathroom.floor_substrate_system" &&
+            f.work_area_id === workAreaId
+        )?.value
+      ) === "fibre_cement_flooring_19mm" &&
+      !knownFact(facts, workAreaId, "bathroom.floor_substrate_sheet_size")
+    ) {
+      out.push({
+        id: `refine:${workAreaId}:bathroom.floor_substrate_sheet_size`,
+        group: "specification",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "bathroom",
+        factKey: "bathroom.floor_substrate_sheet_size",
+        constraintKey: null,
+        questionKey: "bathroom.floor_substrate_sheet_size",
+        label: "Fibre-cement flooring size",
+        question: "What 19 mm fibre-cement flooring sheet size is being used?",
+        inputType: "select",
+        options: [...BATHROOM_FC_FLOORING_SHEET_SIZE_OPTIONS],
         writeTarget: "FACT",
         write: null,
         consumedByCalculator: true,

@@ -35,7 +35,8 @@ export type ClarifyCandidate = {
   readonly label: string;
   readonly question: string;
   readonly askClass: ClarifyAskClass;
-  readonly inputType: "boolean" | "select" | "number" | "text";
+  readonly inputType: "boolean" | "select" | "number" | "text" | "multi_select";
+  readonly currentValue?: string | number | boolean | string[] | null;
   readonly unit?: string;
   readonly options?: readonly string[];
   readonly writeTarget: ClarifyWriteTarget;

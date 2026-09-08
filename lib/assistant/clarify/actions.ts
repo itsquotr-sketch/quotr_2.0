@@ -35,8 +35,8 @@ export async function answerClarifySelectFact(input: {
   workAreaId: string | null;
   key: string;
   label: string;
-  value: string | number | boolean;
-  valueType: "number" | "select" | "boolean";
+  value: string | number | boolean | string[];
+  valueType: "number" | "select" | "boolean" | "multi_select";
 }): Promise<AssistantActionState> {
   return updateProjectFact({
     projectId: input.projectId,

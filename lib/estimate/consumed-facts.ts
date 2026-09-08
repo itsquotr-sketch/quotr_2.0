@@ -33,6 +33,8 @@ const CONTRACTS: Readonly<Record<string, readonly string[]>> = {
 export const SHARED_CONSUMED_CONSTRAINT_KEYS = [
   "site_access",
   "material_carry_distance",
+  "occupied_site",
+  "working_hours",
 ] as const;
 
 export function getCalculatorConsumedFacts(

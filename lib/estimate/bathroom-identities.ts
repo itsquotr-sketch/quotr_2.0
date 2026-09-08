@@ -14,6 +14,16 @@ export const BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY =
   "sheet.plywood.19mm.h3.2.each" as const;
 export const BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY =
   "sheet.fibre_cement.18mm.2400x1200.each" as const;
+export const BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY =
+  "sheet.fibre_cement.flooring.19mm.2700x600.each" as const;
+export const BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY =
+  "sheet.fibre_cement.flooring.19mm.1800x900.each" as const;
+export const BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY =
+  "sheet.fibre_cement.flooring.19mm.each" as const;
+export const BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY =
+  "sheet.fibre_cement.secura.flooring.2400x600.each" as const;
+export const BATHROOM_TILE_UNDERLAY_6MM_KEY =
+  "sheet.fibre_cement.tile_underlay.6mm.each" as const;
 export const BATHROOM_AQUALINE_SHEET_KEY =
   "sheet.plasterboard.aqualine.each" as const;
 export const BATHROOM_FRAMING_TIMBER_LEGACY_KEY =
@@ -24,6 +34,8 @@ export const BATHROOM_FRAMING_TIMBER_KEY =
 
 export const BATHROOM_FLOOR_SUBSTRATE_COMPONENT =
   "bathroom.floor_substrate" as const;
+export const BATHROOM_TILE_UNDERLAY_COMPONENT =
+  "bathroom.floor_tile_underlay" as const;
 export const BATHROOM_WALL_LINING_COMPONENT =
   "bathroom.lining.wall" as const;
 export const BATHROOM_CEILING_LINING_COMPONENT =
@@ -32,6 +44,8 @@ export const BATHROOM_FRAMING_COMPONENT = "bathroom.framing" as const;
 
 export const BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT =
   "bathroom.floor_substrate.install" as const;
+export const BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT =
+  "bathroom.floor_tile_underlay.install" as const;
 export const BATHROOM_WALL_LINING_LABOUR_COMPONENT =
   "bathroom.lining.wall.install" as const;
 export const BATHROOM_CEILING_LINING_LABOUR_COMPONENT =
@@ -41,6 +55,7 @@ export const BATHROOM_FRAMING_LABOUR_COMPONENT =
 
 export const BATHROOM_PRODUCTIVITY_KEYS = {
   floorSubstrateM2: "bathroom.floor_substrate.install.hours_per_m2",
+  tileUnderlayM2: "bathroom.tile_underlay.install.hours_per_m2",
   wallLiningM2: "bathroom.lining.wall.install.hours_per_m2",
   ceilingLiningM2: "bathroom.lining.ceiling.install.hours_per_m2",
   framingLm: "bathroom.framing.install.hours_per_lm",
@@ -62,6 +77,9 @@ export const BATHROOM_FRAMING_INTENSITY_LM_PER_M2 = {
 
 export const BATHROOM_PLYWOOD_LABEL = "19 mm H3.2 treated plywood";
 export const BATHROOM_FIBRE_CEMENT_LABEL = "18 mm fibre cement sheet";
+export const BATHROOM_FC_FLOORING_19MM_LABEL = "19 mm fibre-cement flooring";
+export const BATHROOM_SECURA_LABEL = "Secura flooring 2400 × 600";
+export const BATHROOM_TILE_UNDERLAY_6MM_LABEL = "6 mm fibre-cement tile underlay";
 export const BATHROOM_AQUALINE_LABEL = "13 mm GIB Aqualine";
 export const BATHROOM_FRAMING_TIMBER_LABEL = "90 × 45 H1.2 radiata pine";
 
@@ -75,6 +93,18 @@ export const BATHROOM_FRAMING_REQUIRED_MESSAGE =
   "How much local framing or nogging is required?";
 export const BATHROOM_SHEET_WASTE_STATEMENT =
   "10% sheet waste included.";
+export const BATHROOM_TILE_UNDERLAY_DERIVED_STATEMENT =
+  "6 mm fibre-cement tile underlay is required over 19 mm plywood when the floor finish is tile.";
+export const BATHROOM_TILE_UNDERLAY_SIZE_REQUIRED =
+  "6 mm fibre-cement tile-underlay sheet size is not in the approved catalogue, so sheet count is not shown.";
+export const BATHROOM_TILE_UNDERLAY_LABOUR_REQUIRED =
+  "6 mm tile-underlay installation labour needs an owner-approved productivity before hours can be priced.";
+export const BATHROOM_FC_19MM_TILE_READY_STATEMENT =
+  "19 mm fibre-cement flooring is treated as a tile-ready structural system, so 6 mm tile underlay is not added automatically.";
+export const BATHROOM_SECURA_TILE_READY_STATEMENT =
+  "Secura flooring is treated as a tile-ready structural system, so 6 mm tile underlay is not added automatically.";
+export const BATHROOM_LEGACY_18MM_FC_STATEMENT =
+  "Existing 18 mm fibre-cement 2400 × 1200 selection is kept as a legacy structural system and is not remapped to 19 mm flooring or Secura.";
 export const BATHROOM_CEILING_NESTED_STATEMENT =
   "Bathroom ceiling lining is included in Bathroom, not in Ceilings, unless a Ceilings Work Area is added for this room.";
 

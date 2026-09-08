@@ -460,7 +460,7 @@ export function formatDnaV2ProgressIndicator(params: {
       params.tier1Calibrated + 1,
       params.tier1Total
     );
-    return `${params.workAreaLabel} calibration · Task ${taskNumber} of ${params.tier1Total} key tasks`;
+    return `${params.workAreaLabel} calibration · Task ${taskNumber} of ${params.tier1Total}`;
   }
   return `Refine your ${params.workAreaLabel} calibration · Optional task ${params.optionalIndex} of ${params.optionalTotal}`;
 }

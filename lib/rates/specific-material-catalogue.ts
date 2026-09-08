@@ -201,8 +201,67 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Bathroom sheet materials",
     unit: "each",
     description:
-      "2400 × 1200 18 mm fibre cement sheet. Owner-approved Quotr benchmark $95 ex GST / sheet. Company exact rate wins.",
+      "2400 × 1200 18 mm fibre cement sheet. Owner-approved Quotr benchmark $95 ex GST / sheet. Company exact rate wins. LEGACY Bathroom structural selection only — not 19 mm flooring and not Secura.",
     defaultCostRate: 95,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "sheet.fibre_cement.flooring.19mm.2700x600.each",
+    label: "19 mm fibre-cement flooring 2700 × 600",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Sheet materials",
+    unit: "each",
+    description:
+      "Structural 19 mm fibre-cement flooring board 2700 × 600 (1.62 m²/sheet). Shared physical identity. No invented dollar rate — Pricing Required until company rate exists.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "sheet.fibre_cement.flooring.19mm.1800x900.each",
+    label: "19 mm fibre-cement flooring 1800 × 900",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Sheet materials",
+    unit: "each",
+    description:
+      "Structural 19 mm fibre-cement flooring board 1800 × 900 (1.62 m²/sheet). Shared physical identity. No invented dollar rate — Pricing Required until company rate exists.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "sheet.fibre_cement.flooring.19mm.each",
+    label: "19 mm fibre-cement flooring",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Sheet materials",
+    unit: "each",
+    description:
+      "Generic 19 mm fibre-cement flooring when sheet size is not yet chosen. Face area 1.62 m² for both listed formats. Pricing Required.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "sheet.fibre_cement.secura.flooring.2400x600.each",
+    label: "Secura flooring 2400 × 600",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Sheet materials",
+    unit: "each",
+    description:
+      "Secura fibre-cement flooring 2400 × 600 (1.44 m²/sheet). Distinct from generic 18 mm FC and 19 mm FC flooring. No invented dollar rate — Pricing Required.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "sheet.fibre_cement.tile_underlay.6mm.each",
+    label: "6 mm fibre-cement tile underlay",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Sheet materials",
+    unit: "each",
+    description:
+      "Shared 6 mm fibre-cement tile underlay used over 19 mm plywood when the floor finish is tile. Canonical sheet size is not in the approved catalogue, so takeoff is purchase m² only. No invented dollar rate.",
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2200,7 +2259,7 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Sheet materials",
     description:
-      "Shared physical sheets. Bathroom consumes Aqualine, 19 mm H3.2 plywood, and 18 mm fibre cement from this group — one identity, many Work Area requirements. Company exact rate wins.",
+      "Shared physical sheets. Bathroom consumes Aqualine, 19 mm H3.2 plywood, 18 mm fibre cement (legacy), 19 mm FC flooring, Secura, and 6 mm tile underlay from this group — one identity, many Work Area requirements. Company exact rate wins.",
     entries: SHEET_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {

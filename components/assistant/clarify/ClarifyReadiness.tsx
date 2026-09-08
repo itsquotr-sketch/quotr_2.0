@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
@@ -11,6 +11,7 @@ import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-lab
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
 import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
+import { OptionSelect } from "@/components/assistant/selection/OptionSelect";
 
 const GROUP_LABEL: Record<RefineGroupId, string> = {
   scope: "Scope",
@@ -34,6 +35,7 @@ function toClarifyCandidate(row: RefineCandidate): ClarifyCandidate {
     question: row.question,
     askClass: row.tier === "advanced" ? "ADVANCED" : "REFINEMENT",
     inputType: row.inputType,
+    currentValue: row.currentValue,
     unit: row.unit,
     options: row.options,
     writeTarget: row.writeTarget,
@@ -48,20 +50,26 @@ function toClarifyCandidate(row: RefineCandidate): ClarifyCandidate {
 
 function RefineField({
   candidate,
-  isSaving,
+  value,
+  persistError,
   focusKey,
   onAnswerBoolean,
   onAnswerValue,
 }: {
   candidate: RefineCandidate;
-  isSaving?: boolean;
+  value: string | number | boolean | string[] | null | undefined;
+  persistError?: string | null;
   focusKey?: string | null;
   onAnswerBoolean?: (candidate: ClarifyCandidate, presentation: "INCLUDED" | "NOT_INCLUDED") => void;
-  onAnswerValue?: (candidate: ClarifyCandidate, value: string | number | boolean) => void;
+  onAnswerValue?: (
+    candidate: ClarifyCandidate,
+    value: string | number | boolean | string[]
+  ) => void;
 }) {
   const mapped = toClarifyCandidate(candidate);
   const fieldKey = candidate.factKey ?? candidate.constraintKey;
   const focused = Boolean(focusKey && fieldKey === focusKey);
+  const isMulti = candidate.inputType === "multi_select";
   return (
     <div
       className={cn(
@@ -70,47 +78,40 @@ function RefineField({
           "rounded-xl ring-2 ring-[var(--brand-orange)]/30 ring-offset-2 ring-offset-background"
       )}
       data-refine-field={fieldKey}
+      data-refine-input-type={candidate.inputType}
     >
       <p className="text-sm font-medium leading-snug">{candidate.question}</p>
       {candidate.inputType === "boolean" ? (
-        <div className="flex flex-col gap-2 sm:flex-row">
-          <Button
-            type="button"
-            className="min-h-11 w-full sm:w-auto"
-            disabled={isSaving}
-            onClick={() => onAnswerBoolean?.(mapped, "INCLUDED")}
-          >
-            Include
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            className="min-h-11 w-full sm:w-auto"
-            disabled={isSaving}
-            onClick={() => onAnswerBoolean?.(mapped, "NOT_INCLUDED")}
-          >
-            Not included
-          </Button>
-        </div>
+        <OptionSelect
+          options={["Include", "Not included"]}
+          value={
+            value === true || value === "INCLUDED" || value === "Yes"
+              ? "Include"
+              : value === false || value === "NOT_INCLUDED" || value === "No"
+                ? "Not included"
+                : null
+          }
+          error={persistError}
+          onSelect={(next) => {
+            const picked = Array.isArray(next) ? next[0] : next;
+            onAnswerBoolean?.(
+              mapped,
+              picked === "Include" ? "INCLUDED" : "NOT_INCLUDED"
+            );
+          }}
+        />
       ) : candidate.options && candidate.options.length > 0 ? (
-        <div className="grid gap-2">
-          {candidate.options.map((option) => (
-            <button
-              key={option}
-              type="button"
-              disabled={isSaving}
-              className="min-h-11 rounded-xl border border-border px-4 py-3 text-left text-sm hover:bg-muted/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              onClick={() => onAnswerValue?.(mapped, option)}
-            >
-              {option}
-            </button>
-          ))}
-        </div>
+        <OptionSelect
+          options={candidate.options}
+          value={value}
+          multiple={isMulti}
+          error={persistError}
+          onSelect={(next) => onAnswerValue?.(mapped, next)}
+        />
       ) : (
         <ClarifyValueField
           candidate={mapped}
-          isSaving={isSaving}
-          onSubmit={(value) => onAnswerValue?.(mapped, value)}
+          onSubmit={(next) => onAnswerValue?.(mapped, next)}
         />
       )}
     </div>
@@ -120,6 +121,7 @@ function RefineField({
 export function RefineEstimatePanel({
   view,
   isSaving,
+  persistError,
   onDone,
   onEstimateNow,
   canEstimateNow,
@@ -133,6 +135,7 @@ export function RefineEstimatePanel({
 }: {
   view: RefineView;
   isSaving?: boolean;
+  persistError?: string | null;
   onDone: () => void;
   onEstimateNow?: () => void;
   canEstimateNow: boolean;
@@ -142,8 +145,14 @@ export function RefineEstimatePanel({
   updateError?: string | null;
   onUpdateEstimate?: () => void;
   onAnswerBoolean?: (candidate: ClarifyCandidate, presentation: "INCLUDED" | "NOT_INCLUDED") => void;
-  onAnswerValue?: (candidate: ClarifyCandidate, value: string | number | boolean) => void;
+  onAnswerValue?: (
+    candidate: ClarifyCandidate,
+    value: string | number | boolean | string[]
+  ) => void;
 }) {
+  const [localValues, setLocalValues] = useState<
+    Record<string, string | number | boolean | string[]>
+  >({});
   const allCandidates = useMemo(
     () => [...view.highValue, ...view.advanced],
     [view.advanced, view.highValue]
@@ -279,10 +288,26 @@ export function RefineEstimatePanel({
                       <RefineField
                         key={row.id}
                         candidate={row}
-                        isSaving={isSaving}
+                        value={localValues[row.id] ?? row.currentValue ?? null}
+                        persistError={persistError}
                         focusKey={focusKey}
-                        onAnswerBoolean={onAnswerBoolean}
-                        onAnswerValue={onAnswerValue}
+                        onAnswerBoolean={(candidate, presentation) => {
+                          setLocalValues((prev) => ({
+                            ...prev,
+                            [row.id]:
+                              presentation === "INCLUDED"
+                                ? "Include"
+                                : "Not included",
+                          }));
+                          onAnswerBoolean?.(candidate, presentation);
+                        }}
+                        onAnswerValue={(candidate, value) => {
+                          setLocalValues((prev) => ({
+                            ...prev,
+                            [row.id]: value,
+                          }));
+                          onAnswerValue?.(candidate, value);
+                        }}
                       />
                     ))}
                   </div>

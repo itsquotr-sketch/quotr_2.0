@@ -77,6 +77,13 @@ Live Bathroom examples:
 
 - `sheet.plasterboard.aqualine.each` — Bathroom wall lining and Bathroom ceiling lining (future Internal Walls / Ceilings may consume the same row). Do not create `bathroom.aqualine`.
 - `timber.framing.90x45.h1.2.lm` — Bathroom local nogging. Legacy `bathroom.framing.90x45.h1.2.lm` is an alias only. Do not keep a second Bathroom-only company Materials row for the same 90×45 H1.2.
+- `sheet.plywood.19mm.h3.2.each` — 19 mm H3.2 structural plywood. Bathroom floor substrate consumes it.
+- `sheet.fibre_cement.18mm.2400x1200.each` — **LEGACY** Bathroom 18 mm FC structural selection only. Not 19 mm flooring and not Secura.
+- `sheet.fibre_cement.flooring.19mm.2700x600.each` / `...1800x900.each` / generic `...19mm.each` — 19 mm fibre-cement flooring boards (1.62 m²/sheet). Shared physical identities; no invented $.
+- `sheet.fibre_cement.secura.flooring.2400x600.each` — Secura flooring 2400 × 600 (1.44 m²/sheet). Distinct from generic fibre cement.
+- `sheet.fibre_cement.tile_underlay.6mm.each` — 6 mm fibre-cement tile underlay. Shared; reusable by other tiled-floor Work Areas. No approved sheet size or $ in this phase.
+
+Do not create `bathroom.hardies.6mm` or Work-Area-prefixed duplicates of plywood / FC / Secura / underlay.
 
 Generic PC / allowance identities (`bathroom.tile.material.m2`, `bathroom.fixture.vanity.pc.each`) are **not** merchant SKUs. They belong in the allowance catalogue, not as duplicate physical Materials rows per Work Area.
 

@@ -52,6 +52,7 @@ import {
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
   isMatureBathroomPath,
+  parseBathroomFloorSubstrate,
   parseBathroomWallTileExtent,
   parseBathroomWaterproofingExtent,
   resolveBathroomJobScope,
@@ -70,10 +71,23 @@ import type { EstimateFact } from "@/lib/estimate/types";
 const PC_SCORES: Record<string, number> = {
   site_access: 85,
   material_carry_distance: 48,
-  waste_bin_access: 40,
-  occupied_site: 35,
-  working_hours: 30,
+  floor_level: 46,
+  waste_bin_access: 44,
+  occupied_site: 42,
+  working_hours: 40,
 };
+
+const BATHROOM_P0_CONDITION_KEYS = [
+  "site_access",
+  "material_carry_distance",
+  "occupied_site",
+  "working_hours",
+] as const;
+
+const BATHROOM_P1_CONDITION_KEYS = [
+  "floor_level",
+  "waste_bin_access",
+] as const;
 
 const CHECK_SCORES: Record<string, number> = {
   "deck.existing_deck_removal": 90,
@@ -95,6 +109,9 @@ const CHECK_SCORES: Record<string, number> = {
   "bathroom.width_m": 94,
   "bathroom.wall_height_m": 70,
   "bathroom.floor_finish_system": 86,
+  "bathroom.floor_substrate_system": 85,
+  "bathroom.floor_substrate_sheet_size": 84,
+  "bathroom.framing_level": 81,
   "bathroom.tile_extent": 84,
   "bathroom.waterproofing_included": 83,
   "bathroom.waterproofing_extent": 82,
@@ -106,6 +123,36 @@ const CHECK_SCORES: Record<string, number> = {
   "bathroom.waterproofing_area_m2": 75,
   "bathroom.bath_surround_area_m2": 74,
 };
+
+function clarifyInputTypeFromTemplate(
+  template: { inputType?: string } | null | undefined
+): ClarifyCandidate["inputType"] {
+  if (template?.inputType === "boolean") return "boolean";
+  if (template?.inputType === "number") return "number";
+  if (template?.inputType === "multi_select") return "multi_select";
+  if (template?.inputType === "text") return "text";
+  return "select";
+}
+
+function currentFactOrConstraintValue(
+  input: ComposeClarifyInput,
+  key: string,
+  workAreaId: string | null
+): unknown {
+  const fact = input.facts.find(
+    (row) =>
+      row.key === key && (workAreaId == null || row.work_area_id === workAreaId)
+  );
+  if (fact != null) return fact.value;
+  const constraint = input.constraints.find((row) => row.key === key);
+  return constraint?.value ?? null;
+}
+
+function bathroomWorkAreaPresent(input: ComposeClarifyInput): boolean {
+  return input.workAreas.some(
+    (wa) => wa.type === "bathroom" && wa.status !== "excluded"
+  );
+}
 
 function factHas(
   input: ComposeClarifyInput,
@@ -569,12 +616,7 @@ function pushBathroomClarifyFact(
     label: safeFactPresentationLabel(key),
     question: safeFactQuestion(key, template?.questionText),
     askClass: "ASK_NOW",
-    inputType:
-      template?.inputType === "boolean"
-        ? "boolean"
-        : template?.inputType === "number"
-          ? "number"
-          : "select",
+    inputType: clarifyInputTypeFromTemplate(template),
     unit: template?.unit,
     options: template?.options,
     writeTarget: "FACT",
@@ -724,7 +766,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           question:
             template?.questionText ?? "What existing bathroom items are being removed?",
           askClass: "ASK_NOW",
-          inputType: "select",
+          inputType: "multi_select",
           options: template?.options,
           writeTarget: "FACT",
           write: null,
@@ -903,8 +945,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           "Shower wall height"
         );
       }
-      if (
-        bathroomQuestionGroupVisible("waterproofing", jobScope, finishFlags) &&
+      if (bathroomQuestionGroupVisible("waterproofing", jobScope, finishFlags) &&
         finishFlags.waterproofingIncluded === true
       ) {
         pushBathroomClarifyFact(
@@ -935,6 +976,38 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
             "Bath surround area"
           );
         }
+      }
+      if (bathroomQuestionGroupVisible("floor_substrate", jobScope, finishFlags)) {
+        pushBathroomClarifyFact(
+          out,
+          input,
+          wa,
+          "bathroom.floor_substrate_system",
+          "Bathroom floor build-up"
+        );
+        if (
+          parseBathroomFloorSubstrate(
+            getStringFact(facts, wa.id, "bathroom.floor_substrate_system")
+          ) === "fibre_cement_flooring_19mm"
+        ) {
+          pushBathroomClarifyFact(
+            out,
+            input,
+            wa,
+            "bathroom.floor_substrate_sheet_size",
+            "19 mm fibre-cement flooring size"
+          );
+        }
+      }
+      if (bathroomQuestionGroupVisible("framing", jobScope, finishFlags)) {
+        pushBathroomClarifyFact(
+          out,
+          input,
+          wa,
+          "bathroom.framing_level",
+          "Bathroom framing / nogging",
+          "REQUIRED_FOR_ECONOMIC_MODEL"
+        );
       }
       continue;
     }
@@ -1216,6 +1289,8 @@ function fallbackProjectCondition(
     options: readonly string[];
     score: number;
     assumption: string;
+    inputType?: ClarifyCandidate["inputType"];
+    economicClass?: ClarifyCandidate["economicClass"];
   }
 ): ClarifyCandidate | null {
   if (constraintIsKnown(input.constraints, params.targetKey)) return null;
@@ -1238,7 +1313,7 @@ function fallbackProjectCondition(
     label: safeFactPresentationLabel(params.targetKey),
     question: params.question,
     askClass: "ASK_NOW",
-    inputType: "select",
+    inputType: params.inputType ?? "select",
     options: params.options,
     writeTarget: "CONSTRAINT",
     write: null,
@@ -1247,6 +1322,7 @@ function fallbackProjectCondition(
     rankScore: params.score,
     rankReason: `Project Condition · ${params.targetKey}`,
     assumptionStatement: params.assumption,
+    economicClass: params.economicClass,
   };
 }
 
@@ -1289,15 +1365,23 @@ function projectConditionCandidates(
     }
     if (briefImpliesConstraint(input.briefText, c.targetKey)) return [];
     if (c.inputType === "multi_select") return [];
-    // Initial Clarify only ranks commercially material PC questions.
-    if (
+    const bathroom = bathroomWorkAreaPresent(input);
+    const p0 = (BATHROOM_P0_CONDITION_KEYS as readonly string[]).includes(
+      c.targetKey
+    );
+    const p1 = (BATHROOM_P1_CONDITION_KEYS as readonly string[]).includes(
+      c.targetKey
+    );
+    if (bathroom) {
+      if (!p0 && !p1) return [];
+    } else if (
       c.targetKey !== "site_access" &&
       c.targetKey !== "material_carry_distance"
     ) {
       return [];
     }
     const score = PC_SCORES[c.targetKey] ?? 25;
-    if (score < 30) return [];
+    if (!bathroom && score < 30) return [];
     return [
       {
         id: `pc:${c.targetKey}`,
@@ -1329,11 +1413,22 @@ function projectConditionCandidates(
             ? "Standard access"
             : c.targetKey === "material_carry_distance"
               ? "Standard carry"
-              : null,
+              : c.targetKey === "occupied_site"
+                ? "Unoccupied site"
+                : c.targetKey === "working_hours"
+                  ? "Normal working hours"
+                  : c.targetKey === "floor_level"
+                    ? "Ground floor"
+                    : c.targetKey === "waste_bin_access"
+                      ? "Standard waste handling"
+                      : null,
+        economicClass:
+          bathroom && p0 ? ("REQUIRED_FOR_ECONOMIC_MODEL" as const) : undefined,
       },
     ];
   });
 
+  const bathroom = bathroomWorkAreaPresent(input);
   const extras = [
     fallbackProjectCondition(input, {
       targetKey: "site_access",
@@ -1342,6 +1437,7 @@ function projectConditionCandidates(
       options: ["Easy", "Moderate", "Difficult", "Very poor"],
       score: PC_SCORES.site_access,
       assumption: "Standard access",
+      economicClass: bathroom ? "REQUIRED_FOR_ECONOMIC_MODEL" : undefined,
     }),
     fallbackProjectCondition(input, {
       targetKey: "material_carry_distance",
@@ -1350,7 +1446,32 @@ function projectConditionCandidates(
       options: ["< 10m", "10–30m", "> 30m", "Not sure"],
       score: PC_SCORES.material_carry_distance,
       assumption: "Standard carry",
+      economicClass: bathroom ? "REQUIRED_FOR_ECONOMIC_MODEL" : undefined,
     }),
+    ...(bathroom
+      ? [
+          fallbackProjectCondition(input, {
+            targetKey: "occupied_site",
+            questionKey: "interview.site.occupied_site",
+            question: "Is the site occupied during works?",
+            options: ["Yes", "No", "Not sure"],
+            score: PC_SCORES.occupied_site,
+            assumption: "Unoccupied site",
+            inputType: "boolean",
+            economicClass: "REQUIRED_FOR_ECONOMIC_MODEL",
+          }),
+          fallbackProjectCondition(input, {
+            targetKey: "working_hours",
+            questionKey: "interview.site.working_hours",
+            question: "Are there working-hour restrictions?",
+            options: ["No", "Yes", "Not sure"],
+            score: PC_SCORES.working_hours,
+            assumption: "Normal working hours",
+            inputType: "boolean",
+            economicClass: "REQUIRED_FOR_ECONOMIC_MODEL",
+          }),
+        ]
+      : []),
   ].filter((row): row is ClarifyCandidate => row != null);
 
   const seen = new Set(fromPreview.map((c) => c.constraintKey ?? c.id));
@@ -1421,17 +1542,38 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
     }
   }
   const blocksEstimate = visible.some((c) => c.blocksEstimate);
-  const remainingRequiredCount = visible.filter(
-    (c) =>
-      c.askClass === "HARD_MINIMUM" ||
-      c.blocksEstimate ||
-      c.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL"
-  ).length;
+  const remainingRequiredCount =
+    visible.filter(
+      (c) =>
+        c.askClass === "HARD_MINIMUM" ||
+        c.blocksEstimate ||
+        c.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL"
+    ).length +
+    (bathroomWorkAreaPresent(input)
+      ? deferred.filter(
+          (c) =>
+            c.source === "project_condition" &&
+            c.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL"
+        ).length
+      : 0);
   const enoughToEstimate = remainingRequiredCount === 0 && !blocksEstimate;
 
+  const withCurrent = (rows: readonly ClarifyCandidate[]): ClarifyCandidate[] =>
+    rows.map((candidate) => {
+      const key = candidate.constraintKey ?? candidate.factKey;
+      if (!key) return candidate;
+      const rawValue = currentFactOrConstraintValue(
+        input,
+        key,
+        candidate.workAreaId
+      );
+      if (rawValue == null) return candidate;
+      return { ...candidate, currentValue: rawValue as ClarifyCandidate["currentValue"] };
+    });
+
   return {
-    candidates: visible,
-    deferred,
+    candidates: withCurrent(visible),
+    deferred: withCurrent(deferred),
     assumptions,
     estimateNowAssumptions,
     visibleCount: visible.length,

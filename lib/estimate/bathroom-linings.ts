@@ -8,8 +8,10 @@
 
 import {
   BATHROOM_AQUALINE_LABEL,
+  BATHROOM_FC_FLOORING_19MM_LABEL,
   BATHROOM_FIBRE_CEMENT_LABEL,
   BATHROOM_PLYWOOD_LABEL,
+  BATHROOM_SECURA_LABEL,
   BATHROOM_SHEET_AREA_M2,
   BATHROOM_SHEET_LENGTH_M,
   BATHROOM_SHEET_WASTE_FACTOR,
@@ -26,17 +28,23 @@ export type BathroomSheetTakeoff = {
   sheetWidthM: number;
 };
 
-export function bathroomSheetTakeoff(physicalAreaM2: number): BathroomSheetTakeoff {
+export function bathroomSheetTakeoff(
+  physicalAreaM2: number,
+  sheet?: { lengthM: number; widthM: number }
+): BathroomSheetTakeoff {
+  const sheetLengthM = sheet?.lengthM ?? BATHROOM_SHEET_LENGTH_M;
+  const sheetWidthM = sheet?.widthM ?? BATHROOM_SHEET_WIDTH_M;
+  const sheetAreaM2 = sheetLengthM * sheetWidthM;
   const purchaseAreaM2 = physicalAreaM2 * (1 + BATHROOM_SHEET_WASTE_FACTOR);
-  const sheetCount = Math.ceil(purchaseAreaM2 / BATHROOM_SHEET_AREA_M2 - 1e-12);
+  const sheetCount = Math.ceil(purchaseAreaM2 / sheetAreaM2 - 1e-12);
   return {
     physicalAreaM2,
     wasteFactor: BATHROOM_SHEET_WASTE_FACTOR,
     purchaseAreaM2,
-    sheetAreaM2: BATHROOM_SHEET_AREA_M2,
+    sheetAreaM2,
     sheetCount,
-    sheetLengthM: BATHROOM_SHEET_LENGTH_M,
-    sheetWidthM: BATHROOM_SHEET_WIDTH_M,
+    sheetLengthM,
+    sheetWidthM,
   };
 }
 
@@ -48,10 +56,12 @@ export function bathroomLiningHours(
 }
 
 export function bathroomSheetMaterialLabel(
-  kind: "plywood" | "fibre_cement" | "aqualine"
+  kind: "plywood" | "fibre_cement" | "aqualine" | "fibre_cement_flooring_19mm" | "secura_flooring"
 ): string {
   if (kind === "plywood") return BATHROOM_PLYWOOD_LABEL;
   if (kind === "fibre_cement") return BATHROOM_FIBRE_CEMENT_LABEL;
+  if (kind === "fibre_cement_flooring_19mm") return BATHROOM_FC_FLOORING_19MM_LABEL;
+  if (kind === "secura_flooring") return BATHROOM_SECURA_LABEL;
   return BATHROOM_AQUALINE_LABEL;
 }
 

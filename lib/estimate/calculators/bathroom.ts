@@ -1223,6 +1223,7 @@ export const BATHROOM_CALCULATOR_CONSUMED_FACTS = [
   "bathroom.floor_prep_included",
   "bathroom.floor_finish_system",
   "bathroom.floor_substrate_system",
+  "bathroom.floor_substrate_sheet_size",
   "bathroom.ceiling_lining_included",
   "bathroom.framing_level",
   "bathroom.wall_lining_system",

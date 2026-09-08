@@ -156,6 +156,7 @@ export default async function CompanyDnaTaskPage({
             optionalIndex={optionalIndex}
             optionalTotal={optionalKeys.length}
             includedCopy={task.workIncluded}
+            excludedCopy={task.workExcluded}
             system={rwSystem}
           />
         ) : (

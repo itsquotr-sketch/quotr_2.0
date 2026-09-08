@@ -26,7 +26,6 @@ import {
   saveCompanyDnaCalibration,
 } from "@/lib/company-dna/actions";
 import {
-  DNA_CREW_HELPER,
   DNA_DONE,
   DNA_KEEP_REFINING,
   DNA_OUTLIER_BACK,
@@ -38,7 +37,6 @@ import {
   DNA_SAVE_CONTINUE,
   DNA_SKIP_FOR_NOW,
   deckV2IncludedCopy,
-  deckV2ScenarioCopy,
   deckV2TaskTitle,
   dnaV2CompleteCopy,
   formatDnaClockTimePerUnit,
@@ -83,6 +81,7 @@ type CompanyDnaDeckTaskFlowProps = {
   optionalIndex: number;
   optionalTotal: number;
   includedCopy: string;
+  excludedCopy?: string | null;
   system?: string | null;
 };
 
@@ -98,6 +97,7 @@ export function CompanyDnaDeckTaskFlow({
   optionalIndex,
   optionalTotal,
   includedCopy,
+  excludedCopy,
   system,
 }: CompanyDnaDeckTaskFlowProps) {
   const router = useRouter();
@@ -142,7 +142,7 @@ export function CompanyDnaDeckTaskFlow({
   }, [clockHours, crewSize, minutes, task]);
 
   const title = deckV2TaskTitle(task.calibrationTaskKey, task.label);
-  const scenario = deckV2ScenarioCopy(task);
+  const scenario = task.scenarioSummary;
   const currentIsTier1 = task.priorityTier === 1;
   const canPrefillFromEvidence =
     evidence.calibrated &&
@@ -264,24 +264,28 @@ export function CompanyDnaDeckTaskFlow({
         task.workAreaType === "bathroom" ? task.calibrationTaskKey : undefined
       }
       data-company-dna-v2-task={task.calibrationTaskKey}
-      className="mx-auto w-full max-w-xl pb-[calc(1.5rem+env(safe-area-inset-bottom))] md:pb-0"
+      className="mx-auto w-full max-w-xl pb-4 md:pb-0"
     >
-      <CardHeader>
+      <CardHeader className="space-y-1.5 pb-3">
         <p className="text-xs text-muted-foreground" data-company-dna-deck-progress>
           {progressCopy}
         </p>
         <CardTitle>{title}</CardTitle>
         <CardDescription>{scenario}</CardDescription>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="space-y-3">
         {view === "form" ? (
           <>
-            <p
-              className="rounded-lg border bg-muted/40 px-3 py-2 text-sm text-muted-foreground"
+            <details
+              className="rounded-lg border px-3 py-2 text-sm"
               data-company-dna-deck-included
             >
-              What’s included: {deckV2IncludedCopy(includedCopy)}
-            </p>
+              <summary className="cursor-pointer font-medium">What’s included?</summary>
+              <ul className="mt-2 list-disc space-y-1 pl-4 text-muted-foreground">
+                <li>Includes: {deckV2IncludedCopy(includedCopy)}</li>
+                {excludedCopy ? <li>Excludes: {excludedCopy}</li> : null}
+              </ul>
+            </details>
             {showHistoricalWithoutClock ? (
               <p className="text-sm" data-company-dna-existing>
                 Your current calibration is{" "}
@@ -294,12 +298,9 @@ export function CompanyDnaDeckTaskFlow({
               </p>
             ) : null}
 
-            <p id="dna-crew-helper" className="text-sm text-muted-foreground">
-              {DNA_CREW_HELPER}
-            </p>
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="space-y-2">
-                <Label htmlFor="dna-crew">Workers</Label>
+            <div className="grid grid-cols-3 gap-2 sm:gap-3">
+              <div className="space-y-1.5">
+                <Label htmlFor="dna-crew">Crew</Label>
                 <Input
                   id="dna-crew"
                   type="number"
@@ -308,7 +309,7 @@ export function CompanyDnaDeckTaskFlow({
                   max={20}
                   step={1}
                   value={crewSize}
-                  aria-describedby="dna-crew-helper dna-crew-unit"
+                  aria-label="Workers"
                   onChange={(event) => {
                     setCrewSize(event.target.value);
                     setError(null);
@@ -316,11 +317,8 @@ export function CompanyDnaDeckTaskFlow({
                   className="h-11 text-base"
                   disabled={!canCalibrate}
                 />
-                <p id="dna-crew-unit" className="text-xs text-muted-foreground">
-                  people
-                </p>
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="dna-clock-hours">Hours</Label>
                 <Input
                   id="dna-clock-hours"
@@ -330,7 +328,7 @@ export function CompanyDnaDeckTaskFlow({
                   max={200}
                   step={1}
                   value={clockHours}
-                  aria-describedby="dna-time-helper"
+                  aria-label="Hours"
                   onChange={(event) => {
                     setClockHours(event.target.value);
                     setError(null);
@@ -339,12 +337,12 @@ export function CompanyDnaDeckTaskFlow({
                   disabled={!canCalibrate}
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-1.5">
                 <Label htmlFor="dna-minutes">Minutes</Label>
                 <select
                   id="dna-minutes"
                   value={minutes}
-                  aria-describedby="dna-time-helper"
+                  aria-label="Minutes"
                   onChange={(event) => {
                     setMinutes(event.target.value);
                     setError(null);
@@ -360,10 +358,6 @@ export function CompanyDnaDeckTaskFlow({
                 </select>
               </div>
             </div>
-            <p id="dna-time-helper" className="text-sm text-muted-foreground">
-              Enter clock time for the crew, not person-hours. Example: 2 people
-              working 1 hour 30 minutes → 1 hour and 30 minutes.
-            </p>
 
             {error ? (
               <p className="text-sm text-destructive" role="alert" id="dna-validation">
@@ -371,7 +365,7 @@ export function CompanyDnaDeckTaskFlow({
               </p>
             ) : null}
 
-            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap pb-[calc(5.5rem+env(safe-area-inset-bottom))] md:pb-0">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
               {canCalibrate ? (
                 <Button
                   type="button"

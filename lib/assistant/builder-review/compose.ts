@@ -99,6 +99,7 @@ import {
   BATHROOM_SHEET_VINYL_INSTALL_COMPONENT,
   BATHROOM_SHEET_VINYL_MATERIAL_COMPONENT,
   BATHROOM_STOPPING_COMPONENT,
+  BATHROOM_TILE_UNDERLAY_COMPONENT,
   BATHROOM_VINYL_PLANK_INSTALL_COMPONENT,
   BATHROOM_VINYL_PLANK_MATERIAL_COMPONENT,
   BATHROOM_WALL_LINING_COMPONENT,
@@ -643,7 +644,6 @@ function applyBathroomReviewGroups(
   categories: BuilderReviewCategoryGroup[]
 ): BuilderReviewCategoryGroup[] {
   const liningMaterials = new Set([
-    BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
     BATHROOM_WALL_LINING_COMPONENT,
     BATHROOM_CEILING_LINING_COMPONENT,
   ]);
@@ -654,7 +654,9 @@ function applyBathroomReviewGroups(
   ]);
   const framingMaterials = new Set([BATHROOM_FRAMING_COMPONENT]);
   const framingLabour = new Set([BATHROOM_FRAMING_LABOUR_COMPONENT]);
-  const floorFinishMaterials = new Set([
+  const floorBuildUpMaterials = new Set([
+    BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
+    BATHROOM_TILE_UNDERLAY_COMPONENT,
     BATHROOM_FLOOR_TILE_MATERIAL_COMPONENT,
     BATHROOM_SHEET_VINYL_MATERIAL_COMPONENT,
     BATHROOM_VINYL_PLANK_MATERIAL_COMPONENT,
@@ -689,14 +691,15 @@ function applyBathroomReviewGroups(
         "bathroom-framing",
         "Local framing"
       );
-      const floorFinish = groupBathroomLines(
+      const floorBuildUp = groupBathroomLines(
         framing.remaining,
-        floorFinishMaterials,
-        "bathroom-floor-finish",
-        "Floor finish"
+        floorBuildUpMaterials,
+        "bathroom-floor-buildup",
+        "Floor build-up",
+        true
       );
       const wallTile = groupBathroomLines(
-        floorFinish.remaining,
+        floorBuildUp.remaining,
         wallTileMaterials,
         "bathroom-wall-tiling",
         "Wall tiling"
@@ -712,9 +715,9 @@ function applyBathroomReviewGroups(
         lines: fixtures.remaining,
         lineGroups: [
           ...cat.lineGroups,
+          ...(floorBuildUp.group ? [floorBuildUp.group] : []),
           ...(linings.group ? [linings.group] : []),
           ...(framing.group ? [framing.group] : []),
-          ...(floorFinish.group ? [floorFinish.group] : []),
           ...(wallTile.group ? [wallTile.group] : []),
           ...(fixtures.group ? [fixtures.group] : []),
         ],
