@@ -81,7 +81,7 @@ Live Bathroom examples:
 - `sheet.fibre_cement.18mm.2400x1200.each` — **LEGACY** Bathroom 18 mm FC structural selection only. Not 19 mm flooring and not Secura.
 - `sheet.fibre_cement.flooring.19mm.2700x600.each` / `...1800x900.each` / generic `...19mm.each` — 19 mm fibre-cement flooring boards (1.62 m²/sheet). Shared physical identities; no invented $.
 - `sheet.fibre_cement.secura.flooring.2400x600.each` — Secura flooring 2400 × 600 (1.44 m²/sheet). Distinct from generic fibre cement.
-- `sheet.fibre_cement.tile_underlay.6mm.each` — 6 mm fibre-cement tile underlay. Shared; reusable by other tiled-floor Work Areas. No approved sheet size or $ in this phase.
+- `sheet.fibre_cement.tile_underlay.6mm.1800x1200.each` — 6 mm Hardie Ceramic Tile Underlay 1800 × 1200 (2.16 m²/sheet). Shared; reusable by other tiled-floor Work Areas. Legacy `sheet.fibre_cement.tile_underlay.6mm.each` is an alias only. No invented $.
 
 Do not create `bathroom.hardies.6mm` or Work-Area-prefixed duplicates of plywood / FC / Secura / underlay.
 

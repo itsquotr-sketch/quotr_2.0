@@ -23,7 +23,13 @@ export const BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY =
 export const BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY =
   "sheet.fibre_cement.secura.flooring.2400x600.each" as const;
 export const BATHROOM_TILE_UNDERLAY_6MM_KEY =
+  "sheet.fibre_cement.tile_underlay.6mm.1800x1200.each" as const;
+/** Provisional key consumed in POLISH-01. Alias only — one catalogue row. */
+export const BATHROOM_TILE_UNDERLAY_6MM_LEGACY_KEY =
   "sheet.fibre_cement.tile_underlay.6mm.each" as const;
+export const BATHROOM_TILE_UNDERLAY_SHEET_LENGTH_M = 1.8;
+export const BATHROOM_TILE_UNDERLAY_SHEET_WIDTH_M = 1.2;
+export const BATHROOM_TILE_UNDERLAY_SHEET_AREA_M2 = 2.16;
 export const BATHROOM_AQUALINE_SHEET_KEY =
   "sheet.plasterboard.aqualine.each" as const;
 export const BATHROOM_FRAMING_TIMBER_LEGACY_KEY =
@@ -63,6 +69,7 @@ export const BATHROOM_PRODUCTIVITY_KEYS = {
 
 export const BATHROOM_PRODUCTIVITY_BENCHMARKS = {
   floorSubstrateM2: 0.4,
+  tileUnderlayM2: 0.25,
   wallLiningM2: 0.3,
   ceilingLiningM2: 0.4,
   framingLm: 0.2,
@@ -79,7 +86,8 @@ export const BATHROOM_PLYWOOD_LABEL = "19 mm H3.2 treated plywood";
 export const BATHROOM_FIBRE_CEMENT_LABEL = "18 mm fibre cement sheet";
 export const BATHROOM_FC_FLOORING_19MM_LABEL = "19 mm fibre-cement flooring";
 export const BATHROOM_SECURA_LABEL = "Secura flooring 2400 × 600";
-export const BATHROOM_TILE_UNDERLAY_6MM_LABEL = "6 mm fibre-cement tile underlay";
+export const BATHROOM_TILE_UNDERLAY_6MM_LABEL =
+  "6 mm Hardie Ceramic Tile Underlay";
 export const BATHROOM_AQUALINE_LABEL = "13 mm GIB Aqualine";
 export const BATHROOM_FRAMING_TIMBER_LABEL = "90 × 45 H1.2 radiata pine";
 
@@ -94,11 +102,7 @@ export const BATHROOM_FRAMING_REQUIRED_MESSAGE =
 export const BATHROOM_SHEET_WASTE_STATEMENT =
   "10% sheet waste included.";
 export const BATHROOM_TILE_UNDERLAY_DERIVED_STATEMENT =
-  "6 mm fibre-cement tile underlay is required over 19 mm plywood when the floor finish is tile.";
-export const BATHROOM_TILE_UNDERLAY_SIZE_REQUIRED =
-  "6 mm fibre-cement tile-underlay sheet size is not in the approved catalogue, so sheet count is not shown.";
-export const BATHROOM_TILE_UNDERLAY_LABOUR_REQUIRED =
-  "6 mm tile-underlay installation labour needs an owner-approved productivity before hours can be priced.";
+  "6 mm Hardie Ceramic Tile Underlay is required over 19 mm plywood when the floor finish is tile.";
 export const BATHROOM_FC_19MM_TILE_READY_STATEMENT =
   "19 mm fibre-cement flooring is treated as a tile-ready structural system, so 6 mm tile underlay is not added automatically.";
 export const BATHROOM_SECURA_TILE_READY_STATEMENT =

@@ -28,9 +28,10 @@ import {
   BATHROOM_SECURA_TILE_READY_STATEMENT,
   BATHROOM_SHEET_VINYL_MATERIAL_COMPONENT,
   BATHROOM_TILE_UNDERLAY_6MM_KEY,
+  BATHROOM_TILE_UNDERLAY_6MM_LEGACY_KEY,
   BATHROOM_TILE_UNDERLAY_COMPONENT,
-  BATHROOM_TILE_UNDERLAY_LABOUR_REQUIRED,
-  BATHROOM_TILE_UNDERLAY_SIZE_REQUIRED,
+  BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT,
+  BATHROOM_TILE_UNDERLAY_SHEET_AREA_M2,
 } from "../lib/estimate/bathroom-identities";
 import {
   BATHROOM_FC_19MM_SHEET_AREA_M2,
@@ -56,7 +57,7 @@ import type {
   EstimateLineItemInput,
   EstimateWorkArea,
 } from "../lib/estimate/types";
-import type { MaterialRequirement } from "../lib/estimate/requirements";
+import type { LabourRequirement, MaterialRequirement } from "../lib/estimate/requirements";
 
 let passed = 0;
 let failed = 0;
@@ -127,6 +128,12 @@ function bathroom(facts: EstimateFact[], id = "b1") {
 function materials(result: ReturnType<typeof calculateBathroom>): MaterialRequirement[] {
   return (result.requirements ?? []).filter(
     (row): row is MaterialRequirement => row.kind === "material"
+  );
+}
+
+function labour(result: ReturnType<typeof calculateBathroom>): LabourRequirement[] {
+  return (result.requirements ?? []).filter(
+    (row): row is LabourRequirement => row.kind === "labour"
   );
 }
 
@@ -260,6 +267,21 @@ check(
       JSON.stringify(["Floor finish"])
 );
 check(
+  "hosted demolition persist contract keeps four independent values",
+  JSON.stringify(
+    ["floor finish", "wall lining", "vanity", "toilet"].reduce(
+      (selected, item) => mergeMultiSelectToggle(selected, item),
+      [] as string[]
+    )
+  ) === JSON.stringify(["floor finish", "wall lining", "vanity", "toilet"]) &&
+    JSON.stringify(
+      mergeMultiSelectToggle(
+        ["floor finish", "wall lining", "vanity", "toilet"],
+        "vanity"
+      )
+    ) === JSON.stringify(["floor finish", "wall lining", "toilet"])
+);
+check(
   "enum values highlight option labels",
   optionValueMatches("19 mm treated plywood", "treated_plywood") &&
     optionValueMatches("Minor — a few nogs/supports", "minor") &&
@@ -299,6 +321,10 @@ const pcKeys = allPc
   .filter((row) => row.source === "project_condition")
   .map((row) => row.constraintKey);
 check("Ready blocked while P0 conditions unknown", unknownPc.enoughToEstimate === false);
+check(
+  "Ready stays false even with answered Bathroom core facts while P0 conditions remain deferred",
+  answeredCore.length > 0 && unknownPc.enoughToEstimate === false
+);
 check(
   "P0 conditions participate before Ready",
   pcKeys.includes("site_access") &&
@@ -421,6 +447,12 @@ const fixtureA = bathroom([
   fact("bathroom.tile_format", "b1", "600x600"),
 ]);
 const aMats = materials(fixtureA);
+const aLabour = labour(fixtureA);
+const aUnderlayMat = aMats.find((row) => row.componentKey === BATHROOM_TILE_UNDERLAY_COMPONENT);
+const aUnderlayLab = aLabour.find(
+  (row) => row.componentKey === BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT
+);
+const aUnderlayTakeoff = bathroomStructuralSheetTakeoff(7.2, { lengthM: 1.8, widthM: 1.2 });
 check(
   "A plywood + underlay + tile, no 19 mm FC structural",
   aMats.some((row) => row.materialKey === BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY) &&
@@ -429,22 +461,47 @@ check(
     !aMats.some((row) => row.materialKey === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY)
 );
 check(
-  "A underlay is Pricing Required with missing size and labour",
-  fixtureA.missingInfo.includes(BATHROOM_TILE_UNDERLAY_SIZE_REQUIRED) &&
-    fixtureA.missingInfo.includes(BATHROOM_TILE_UNDERLAY_LABOUR_REQUIRED) &&
+  "A underlay sheet identity is 6 mm 1800×1200",
+  BATHROOM_TILE_UNDERLAY_6MM_KEY ===
+    "sheet.fibre_cement.tile_underlay.6mm.1800x1200.each" &&
+    near(BATHROOM_TILE_UNDERLAY_SHEET_AREA_M2, 2.16) &&
+    near(aUnderlayTakeoff.sheetAreaM2, 2.16)
+);
+check(
+  "A underlay 7.2 → 7.92 purchase → 4 sheets",
+  near(aUnderlayTakeoff.purchaseAreaM2, 7.92) &&
+    aUnderlayTakeoff.sheetCount === 4 &&
+    aUnderlayMat?.purchaseQuantity === 4 &&
+    aUnderlayMat?.purchaseUnit === "each"
+);
+check(
+  "A underlay productivity 0.25 h/m² and 1.8 person-hours",
+  BATHROOM_PRODUCTIVITY_BENCHMARKS.tileUnderlayM2 === 0.25 &&
+    near(aUnderlayLab?.baseHours, 1.8) &&
+    near(aUnderlayLab?.adjustedHours, 1.8) &&
+    aUnderlayLab?.rateKey === "labour.carpenter.hour"
+);
+check(
+  "A underlay labour is priced; material stays Pricing Required with no invented $",
+  aUnderlayLab?.priced === true &&
+    aUnderlayMat?.priced === false &&
+    getCatalogueEntry(BATHROOM_TILE_UNDERLAY_6MM_KEY)?.defaultCostRate == null &&
     fixtureA.lineItems.some(
       (item) =>
         item.componentKey === BATHROOM_TILE_UNDERLAY_COMPONENT &&
-        /Pricing required/i.test(item.notes ?? "")
+        /Pricing required/i.test(item.notes ?? "") &&
+        /4 sheets/i.test(item.identitySummary ?? "")
+    ) &&
+    fixtureA.lineItems.some(
+      (item) =>
+        item.componentKey === BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT &&
+        near(item.labourHours, 1.8)
     )
 );
 check(
-  "6 mm underlay has no invented sheet size or productivity number",
-  getCatalogueEntry(BATHROOM_TILE_UNDERLAY_6MM_KEY)?.defaultCostRate == null &&
-    !Object.prototype.hasOwnProperty.call(
-      BATHROOM_PRODUCTIVITY_BENCHMARKS,
-      "tileUnderlayM2"
-    )
+  "provisional 6 mm.each key aliases to the dimensioned identity",
+  getCatalogueEntry(BATHROOM_TILE_UNDERLAY_6MM_LEGACY_KEY)?.item_key ===
+    BATHROOM_TILE_UNDERLAY_6MM_KEY
 );
 
 const fixtureB = bathroom([
@@ -549,7 +606,20 @@ check(
   floorGroups.length >= 1 &&
     /plywood/i.test(floorBlob) &&
     /underlay/i.test(floorBlob) &&
-    /tile/i.test(floorBlob)
+    /tile/i.test(floorBlob) &&
+    /4 sheets/i.test(floorBlob) &&
+    /1800/i.test(floorBlob)
+);
+check(
+  "Review Floor labour shows plywood plus 1.8 h underlay",
+  reviewA.workAreas
+    .flatMap((row) => row.categories)
+    .flatMap((cat) => cat.lineGroups)
+    .some(
+      (group) =>
+        group.label === "Floor labour" &&
+        /1\.8 person-hours/i.test(JSON.stringify(group))
+    )
 );
 
 console.log("\n--- Shared material identity ---\n");
@@ -570,6 +640,11 @@ console.log("\n--- Substrate labour ---\n");
 check(
   "single substrate productivity 0.40 h/m² still used",
   BATHROOM_PRODUCTIVITY_BENCHMARKS.floorSubstrateM2 === 0.4
+);
+check(
+  "tile underlay is Quotr benchmark productivity, not DNA",
+  BATHROOM_PRODUCTIVITY_BENCHMARKS.tileUnderlayM2 === 0.25 &&
+    !read("lib/company-dna/v2-foundation.ts").includes("bathroom.tile_underlay")
 );
 
 console.log("\n--- DNA / migrations ---\n");

@@ -516,8 +516,8 @@ const pricedMissing = full.lineItems.filter(
 check("no priced line outside envelope", pricedMissing.length === 0, pricedMissing.map((item) => item.label).join(", "));
 const cost = full.lineItems.reduce((sum, item) => sum + (item.recommendedCost ?? 0), 0);
 const sell = full.lineItems.reduce((sum, item) => sum + (item.recommendedSell ?? 0), 0);
-check("comprehensive cost ~19220", near(cost, 19220.51, 1));
-check("comprehensive sell ~24496", near(sell, 24496.8, 1));
+check("comprehensive cost ~19328", near(cost, 19328.51, 1));
+check("comprehensive sell ~24658", near(sell, 24658.8, 1));
 check("painting label is not 'Painting allowance'", !full.lineItems.some((item) => item.label === "Painting allowance"));
 check("painting line exists", full.lineItems.some((item) => /^Painting$/i.test(item.label)));
 

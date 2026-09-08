@@ -44,6 +44,9 @@ const ITEM_KEY_ALIASES: Record<string, string[]> = {
     "bathroom_electrical_allowance",
   ],
   "timber.framing.90x45.h1.2.lm": ["bathroom.framing.90x45.h1.2.lm"],
+  "sheet.fibre_cement.tile_underlay.6mm.1800x1200.each": [
+    "sheet.fibre_cement.tile_underlay.6mm.each",
+  ],
   "kitchen.cabinetry.install": ["kitchen_install_lm", "kitchen_install_each"],
   "internal_walls.framing.lm": ["internal_wall_framing_lm"],
   "sheet.plasterboard.standard.each": [

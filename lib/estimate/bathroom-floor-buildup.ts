@@ -17,7 +17,11 @@ import {
   BATHROOM_LEGACY_18MM_FC_STATEMENT,
   BATHROOM_SECURA_TILE_READY_STATEMENT,
   BATHROOM_TILE_UNDERLAY_6MM_KEY,
+  BATHROOM_TILE_UNDERLAY_6MM_LABEL,
   BATHROOM_TILE_UNDERLAY_DERIVED_STATEMENT,
+  BATHROOM_TILE_UNDERLAY_SHEET_AREA_M2,
+  BATHROOM_TILE_UNDERLAY_SHEET_LENGTH_M,
+  BATHROOM_TILE_UNDERLAY_SHEET_WIDTH_M,
 } from "@/lib/estimate/bathroom-identities";
 import { bathroomSheetTakeoff } from "@/lib/estimate/bathroom-linings";
 import {
@@ -30,6 +34,10 @@ import {
 
 export const BATHROOM_FC_19MM_SHEET_AREA_M2 = 1.62;
 export const BATHROOM_SECURA_SHEET_AREA_M2 = 1.44;
+export const BATHROOM_TILE_UNDERLAY_SHEET = {
+  lengthM: BATHROOM_TILE_UNDERLAY_SHEET_LENGTH_M,
+  widthM: BATHROOM_TILE_UNDERLAY_SHEET_WIDTH_M,
+} as const;
 
 export type BathroomStructuralFloorKind =
   | "treated_plywood"
@@ -159,6 +167,11 @@ export function bathroomStructuralSheetTakeoff(
 export function bathroomTileUnderlayIdentity() {
   return {
     itemKey: BATHROOM_TILE_UNDERLAY_6MM_KEY,
-    label: "6 mm fibre-cement tile underlay",
+    label: BATHROOM_TILE_UNDERLAY_6MM_LABEL,
+    sheet: {
+      lengthM: BATHROOM_TILE_UNDERLAY_SHEET.lengthM,
+      widthM: BATHROOM_TILE_UNDERLAY_SHEET.widthM,
+    },
+    sheetAreaM2: BATHROOM_TILE_UNDERLAY_SHEET_AREA_M2,
   };
 }

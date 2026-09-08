@@ -18,8 +18,9 @@ import {
   BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
   BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT,
   BATHROOM_TILE_UNDERLAY_COMPONENT,
-  BATHROOM_TILE_UNDERLAY_LABOUR_REQUIRED,
-  BATHROOM_TILE_UNDERLAY_SIZE_REQUIRED,
+  BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT,
+  BATHROOM_TILE_UNDERLAY_6MM_KEY,
+  BATHROOM_TILE_UNDERLAY_6MM_LEGACY_KEY,
   BATHROOM_FRAMING_COMPONENT,
   BATHROOM_FRAMING_LABOUR_COMPONENT,
   BATHROOM_FRAMING_REQUIRED_MESSAGE,
@@ -200,11 +201,15 @@ function resolveExactMaterialRate(params: {
   sourceType: "user_rate" | "benchmark" | "missing";
   sourceLabel: string;
 } {
+  const lookupKeys =
+    params.itemKey === BATHROOM_TILE_UNDERLAY_6MM_KEY
+      ? [params.itemKey, BATHROOM_TILE_UNDERLAY_6MM_LEGACY_KEY]
+      : [params.itemKey];
   const company = params.context.rates.find(
     (rate) =>
       rate.active &&
       rate.rate_type === "material" &&
-      rate.item_key === params.itemKey &&
+      lookupKeys.includes(rate.item_key ?? "") &&
       rate.cost_rate != null
   );
   if (company?.cost_rate != null) {
@@ -551,14 +556,30 @@ export function buildBathroomPhysicalEnvelope(params: {
 
   if (floorBuildUp.tileUnderlayRequired && floorArea != null) {
     const underlay = bathroomTileUnderlayIdentity();
-    const purchaseAreaM2 = round2(floorArea * 1.1);
-    const identity = `${presentBathroomAreaM2(floorArea)} net · ${presentBathroomAreaM2(purchaseAreaM2)} purchase (10% waste) · ${underlay.label}`;
-    missingInfo.push(BATHROOM_TILE_UNDERLAY_SIZE_REQUIRED);
-    missingInfo.push(BATHROOM_TILE_UNDERLAY_LABOUR_REQUIRED);
+    const takeoff = bathroomStructuralSheetTakeoff(floorArea, underlay.sheet);
+    const productivity = resolveProductivity({
+      productivityKey: BATHROOM_PRODUCTIVITY_KEYS.tileUnderlayM2,
+      unit: "m2",
+      fallbackHoursPerUnit: BATHROOM_PRODUCTIVITY_BENCHMARKS.tileUnderlayM2,
+      rates: context.rates,
+    });
+    const hours = bathroomLiningHours(floorArea, productivity.hoursPerUnit);
+    const adjustedHours = hours * params.accessFactor;
     const underlayRate = resolveExactMaterialRate({
       itemKey: underlay.itemKey,
       unit: "each",
       context,
+    });
+    const identity = `${presentBathroomAreaM2(floorArea)} net · ${presentBathroomAreaM2(takeoff.purchaseAreaM2)} purchase (10% waste) · ${takeoff.sheetCount} sheets · ${underlay.label} 1800 × 1200`;
+    const buildUp = createSheetCountBuildUp({
+      result: {
+        sheetAreaM2: takeoff.sheetAreaM2,
+        baseSheetCount: takeoff.physicalAreaM2 / takeoff.sheetAreaM2,
+        totalSheetCount: takeoff.sheetCount,
+      },
+      areaM2: takeoff.physicalAreaM2,
+      wastagePercent: takeoff.wasteFactor * 100,
+      materialLabel: underlay.label,
     });
     requirements.push(
       buildMaterialRequirement({
@@ -585,12 +606,12 @@ export function buildBathroomPhysicalEnvelope(params: {
         priced: underlayRate.priced,
         materialKey: underlay.itemKey,
         category: "sheet",
-        specification: identity,
-        baseQuantity: floorArea,
+        specification: `${underlay.label} 1800 × 1200`,
+        baseQuantity: takeoff.physicalAreaM2,
         baseUnit: "m2",
-        wasteFactor: 0.1,
-        purchaseQuantity: purchaseAreaM2,
-        purchaseUnit: "m2",
+        wasteFactor: takeoff.wasteFactor,
+        purchaseQuantity: takeoff.sheetCount,
+        purchaseUnit: "each",
         rateSource: underlayRate.priced
           ? underlayRate.sourceType === "user_rate"
             ? "company"
@@ -599,23 +620,121 @@ export function buildBathroomPhysicalEnvelope(params: {
         unitCost: underlayRate.costRate,
         totalCost:
           underlayRate.priced && underlayRate.costRate != null
-            ? round2(purchaseAreaM2 * underlayRate.costRate)
+            ? round2(takeoff.sheetCount * underlayRate.costRate)
             : null,
       })
     );
-    lineItems.push(
-      unpricedMaterialLine({
-        workArea,
-        label: `Tile underlay — ${underlay.label}`,
-        quantity: purchaseAreaM2,
-        unit: "m²",
-        itemKey: underlay.itemKey,
-        componentKey: BATHROOM_TILE_UNDERLAY_COMPONENT,
-        identitySummary: identity,
-        notes: `${identity}. Pricing required — no approved 6 mm underlay sheet size or rate.`,
-        sortOrder: sortOrder++,
-        buildUp: null,
+    requirements.push(
+      buildLabourRequirement({
+        workAreaId: workArea.id,
+        workAreaType: "bathroom",
+        componentKey: BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT,
+        description: "Tile underlay installation",
+        confidence: "high",
+        assumptions: [],
+        provenance: {
+          ...provenanceBase,
+          factKeys: [
+            ...provenanceBase.factKeys,
+            "bathroom.floor_finish_system",
+          ],
+        },
+        priced: true,
+        trade: "carpenter",
+        baseHours: hours,
+        productivityBasis: {
+          key: productivity.key,
+          hoursPerUnit: productivity.hoursPerUnit,
+          unit: "m2",
+          quantity: floorArea,
+        },
+        adjustmentRef: { factors: [] },
+        adjustedHours,
+        rateKey: labourRate.itemKey ?? "labour.carpenter.hour",
+        hourlyCost: labourRate.costRate,
+        totalCost: round2(adjustedHours * labourRate.costRate),
+        rateProvenance:
+          labourRate.sourceType === "user_rate" ? "company" : "hardcoded_legacy",
       })
+    );
+    if (underlayRate.priced && underlayRate.costRate != null && underlayRate.sellRate != null) {
+      lineItems.push(
+        withPricingOwnership(
+          {
+            ...createRateLineItem({
+              workAreaId: workArea.id,
+              workAreaName: workArea.name,
+              label: `Tile underlay — ${underlay.label}`,
+              category: "materials",
+              quantity: takeoff.sheetCount,
+              unit: "each",
+              costRate: underlayRate.costRate,
+              sellRate: underlayRate.sellRate,
+              rateSource: underlayRate.sourceLabel,
+              rateSourceType: underlayRate.sourceType,
+              itemKey: underlay.itemKey,
+              componentKey: BATHROOM_TILE_UNDERLAY_COMPONENT,
+              notes: identity,
+              sortOrder: sortOrder++,
+              organisationSettings: context.organisationSettings,
+              qualityFactor: 1,
+            }),
+            identitySummary: identity,
+            materialBuildUp: buildUp,
+            materialBuildUps: [buildUp],
+          },
+          {
+            pricingOwner: "contractor_material",
+            scopeKey: BATHROOM_TILE_UNDERLAY_COMPONENT,
+            overlapGroup: "bathroom_floor_tile_underlay",
+          }
+        )
+      );
+    } else {
+      lineItems.push(
+        unpricedMaterialLine({
+          workArea,
+          label: `Tile underlay — ${underlay.label}`,
+          quantity: takeoff.sheetCount,
+          unit: "each",
+          itemKey: underlay.itemKey,
+          componentKey: BATHROOM_TILE_UNDERLAY_COMPONENT,
+          identitySummary: identity,
+          notes: `${identity}. Pricing required — no approved 6 mm underlay rate.`,
+          sortOrder: sortOrder++,
+          buildUp,
+        })
+      );
+    }
+    lineItems.push(
+      withPricingOwnership(
+        {
+          ...createFixedLabourLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label: "Tile underlay labour",
+            labourHours: round2(adjustedHours),
+            labourCostRate: labourRate.costRate,
+            labourSellRate: labourRate.sellRate,
+            rateSource: labourRate.sourceLabel,
+            rateSourceType: labourRate.sourceType,
+            itemKey: BATHROOM_PRODUCTIVITY_KEYS.tileUnderlayM2,
+            notes: presentBathroomHours(hours),
+            sortOrder: sortOrder++,
+            organisationSettings: context.organisationSettings,
+          }),
+          componentKey: BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT,
+          identitySummary: presentBathroomHours(hours),
+          productivityRate: productivity.hoursPerUnit,
+          productivityUnit: "m2",
+          productivitySourceType: productivity.sourceType,
+        },
+        {
+          pricingOwner: "in_house_labour",
+          scopeKey: BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT,
+          overlapGroup: "bathroom_floor_tile_underlay_install",
+        }
+      )
     );
   }
 

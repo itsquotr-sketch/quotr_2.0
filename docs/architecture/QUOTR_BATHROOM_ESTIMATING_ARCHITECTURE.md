@@ -1639,7 +1639,9 @@ Three independent layers:
 
 Secondary fact: `bathroom.floor_substrate_sheet_size` = `2700x600` | `1800x900` (both 1.62 m²/sheet).
 
-Plywood + tile → automatic `sheet.fibre_cement.tile_underlay.6mm.each` (purchase m² × 1.10). No approved canonical 6 mm sheet size → no sheet count; Pricing Required. No invented underlay productivity — labour is INFO_REQUIRED (`bathroom.tile_underlay.install.hours_per_m2` key exists, no benchmark number).
+Plywood + tile → automatic `sheet.fibre_cement.tile_underlay.6mm.1800x1200.each` (Hardie Ceramic Tile Underlay, 6 mm, 1800 × 1200, 2.16 m²/sheet). Waste once: purchase = floor × 1.10; sheets = ceil(purchase / 2.16). Deterministic 7.2 m² → 7.92 purchase → 4 sheets. No invented NZD material rate — Pricing Required until a valid company/material benchmark exists. Legacy provisional key `sheet.fibre_cement.tile_underlay.6mm.each` is an alias only.
+
+Owner-approved Quotr productivity: `bathroom.tile_underlay.install.hours_per_m2` = 0.25 person-hours / m² (independent task: set out, measure, cut, fit, fix, normal penetrations). Money via `labour.carpenter.hour`. Deterministic 7.2 × 0.25 = 1.8 person-hours. Not a Tier 1 Bathroom DNA task.
 
 19 mm FC flooring and Secura are tile-ready structural systems: no automatic 6 mm underlay.
 

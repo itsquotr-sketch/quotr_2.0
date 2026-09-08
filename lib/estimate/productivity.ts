@@ -314,6 +314,12 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     0.4,
     "m²"
   ),
+  "bathroom.tile_underlay.install.hours_per_m2": productivityEntry(
+    "bathroom.tile_underlay.install.hours_per_m2",
+    "Bathroom tile underlay installation",
+    0.25,
+    "m²"
+  ),
   "bathroom.lining.wall.install.hours_per_m2": productivityEntry(
     "bathroom.lining.wall.install.hours_per_m2",
     "Bathroom wall lining",

@@ -21,6 +21,9 @@ import {
   BATHROOM_FIXTURE_SUPPLY_COMPONENTS,
   BATHROOM_FLOOR_SUBSTRATE_COMPONENT,
   BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT,
+  BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT,
+  BATHROOM_TILE_UNDERLAY_6MM_KEY,
+  BATHROOM_TILE_UNDERLAY_6MM_LEGACY_KEY,
   BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
   BATHROOM_FLOOR_TILE_INSTALL_COMPONENT,
   BATHROOM_FLOOR_TILE_MATERIAL_COMPONENT,
@@ -551,6 +554,15 @@ check("stopping 33.12 × $28", near(stopping?.totalCost, 927.36));
 check("painting paintable 20.16 × $30", near(painting?.totalCost, 604.8));
 check("waste major $1000", near(wasteRow?.totalCost, 1000));
 check("floor labour 2.88 h × $60", near(floorLab?.adjustedHours, 2.88) && near(floorLab?.totalCost, 172.8));
+const underlayLab = labour(full).find(
+  (row) => row.componentKey === BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT
+);
+check(
+  "tile underlay labour 1.8 h × $60 via carpenter hour",
+  near(underlayLab?.adjustedHours, 1.8) &&
+    near(underlayLab?.totalCost, 108) &&
+    underlayLab?.rateKey === "labour.carpenter.hour"
+);
 check("wall labour 7.776 h", near(wallLab?.adjustedHours, 7.776));
 check("ceiling labour 2.88 h", near(ceilLab?.adjustedHours, 2.88));
 check("framing labour 2.592 h", near(framingLab?.adjustedHours, 2.592));
@@ -924,6 +936,13 @@ check(
   materialKeys.filter((key) => key.includes("90x45.h1.2")).length === 1
 );
 check(
+  "6 mm tile underlay appears once as the 1800×1200 identity",
+  materialKeys.filter((key) => key.includes("tile_underlay")).length === 1 &&
+    materialKeys.includes(BATHROOM_TILE_UNDERLAY_6MM_KEY) &&
+    getCatalogueEntry(BATHROOM_TILE_UNDERLAY_6MM_LEGACY_KEY)?.item_key ===
+      BATHROOM_TILE_UNDERLAY_6MM_KEY
+);
+check(
   "tile material and tiler both listed in finish catalogue",
   materialKeys.includes(BATHROOM_TILE_MATERIAL_KEY) &&
     materialKeys.includes(BATHROOM_TILE_INSTALL_KEY)
@@ -936,6 +955,7 @@ const leftover = [
   { key: "bathroom.fixtures.allowance", rec: "KEEP LEGACY (fixture bundle leftover)" },
   { key: "bathroom.waterproofing.allowance", rec: "KEEP LEGACY (lump leftover vs install.m2)" },
   { key: "bathroom.framing.90x45.h1.2.lm", rec: "KEEP alias" },
+  { key: "sheet.fibre_cement.tile_underlay.6mm.each", rec: "KEEP alias" },
 ];
 for (const row of leftover) {
   console.log(`  ${row.key}: ${row.rec}`);

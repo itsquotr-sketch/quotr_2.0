@@ -604,6 +604,8 @@ export const RECOMMENDED_RATE_CATALOGUE = ALL_RATE_CATALOGUE.filter(
 
 const CATALOGUE_ITEM_ALIASES: Record<string, string> = {
   "bathroom.framing.90x45.h1.2.lm": "timber.framing.90x45.h1.2.lm",
+  "sheet.fibre_cement.tile_underlay.6mm.each":
+    "sheet.fibre_cement.tile_underlay.6mm.1800x1200.each",
 };
 
 export function getCatalogueEntry(

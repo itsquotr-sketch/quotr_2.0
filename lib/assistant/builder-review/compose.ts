@@ -100,6 +100,7 @@ import {
   BATHROOM_SHEET_VINYL_MATERIAL_COMPONENT,
   BATHROOM_STOPPING_COMPONENT,
   BATHROOM_TILE_UNDERLAY_COMPONENT,
+  BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT,
   BATHROOM_VINYL_PLANK_INSTALL_COMPONENT,
   BATHROOM_VINYL_PLANK_MATERIAL_COMPONENT,
   BATHROOM_WALL_LINING_COMPONENT,
@@ -648,9 +649,12 @@ function applyBathroomReviewGroups(
     BATHROOM_CEILING_LINING_COMPONENT,
   ]);
   const liningLabour = new Set([
-    BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT,
     BATHROOM_WALL_LINING_LABOUR_COMPONENT,
     BATHROOM_CEILING_LINING_LABOUR_COMPONENT,
+  ]);
+  const floorLabour = new Set([
+    BATHROOM_FLOOR_SUBSTRATE_LABOUR_COMPONENT,
+    BATHROOM_TILE_UNDERLAY_LABOUR_COMPONENT,
   ]);
   const framingMaterials = new Set([BATHROOM_FRAMING_COMPONENT]);
   const framingLabour = new Set([BATHROOM_FRAMING_LABOUR_COMPONENT]);
@@ -724,8 +728,15 @@ function applyBathroomReviewGroups(
       };
     }
     if (cat.id === "LABOUR") {
-      const linings = groupBathroomLines(
+      const floorLab = groupBathroomLines(
         cat.lines,
+        floorLabour,
+        "bathroom-floor-labour",
+        "Floor labour",
+        true
+      );
+      const linings = groupBathroomLines(
+        floorLab.remaining,
         liningLabour,
         "bathroom-linings-labour",
         "Bathroom lining labour"
@@ -754,6 +765,7 @@ function applyBathroomReviewGroups(
         lines: demolition.remaining,
         lineGroups: [
           ...cat.lineGroups,
+          ...(floorLab.group ? [floorLab.group] : []),
           ...(linings.group ? [linings.group] : []),
           ...(framing.group ? [framing.group] : []),
           ...(fixtureLabour.group ? [fixtureLabour.group] : []),
