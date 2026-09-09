@@ -321,7 +321,7 @@ export function PricingWorkspace({
   };
 
   return (
-    <div className="space-y-5 pb-[calc(11rem+env(safe-area-inset-bottom))] md:pb-0">
+    <div className="space-y-5 pb-[calc(14.5rem+env(safe-area-inset-bottom))] md:pb-0">
       <PricingHeader
         document={document}
         projectTitle={projectTitle}
@@ -366,11 +366,14 @@ export function PricingWorkspace({
         />
       </div>
 
+      {/* Desktop/tablet review control; mobile uses PricingMobileActionBar CTA. */}
       {document.status !== "reviewed" ? (
-        <PricingReviewChecklist
-          onMarkReviewed={handleMarkReviewed}
-          disabled={isSaving}
-        />
+        <div className="hidden md:block">
+          <PricingReviewChecklist
+            onMarkReviewed={handleMarkReviewed}
+            disabled={isSaving}
+          />
+        </div>
       ) : (
         <p className="text-sm text-muted-foreground">
           Pricing reviewed. Further edits will revert status to draft.
@@ -492,6 +495,7 @@ export function PricingWorkspace({
         isSaving={isSaving}
         needsRecalibration={document.needs_recalibration}
         onSaveDocument={handleSaveDocument}
+        onMarkReviewed={handleMarkReviewed}
         onRecalibrate={() => {
           globalThis.document
             .getElementById("recalibration-banner")

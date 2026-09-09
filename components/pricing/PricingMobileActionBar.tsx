@@ -1,5 +1,6 @@
 "use client";
 
+import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
 import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
@@ -8,6 +9,10 @@ import type { QuoteSummary } from "@/lib/quotes/types";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
+/** Matches AppShell MobileNav: h-14 + safe-area. Keep pricing CTAs above it. */
+const MOBILE_NAV_CLEARANCE =
+  "bottom-[calc(3.5rem+env(safe-area-inset-bottom))]";
+
 type PricingMobileActionBarProps = {
   document: PricingDocument;
   projectId: string;
@@ -15,6 +20,7 @@ type PricingMobileActionBarProps = {
   isSaving?: boolean;
   needsRecalibration?: boolean;
   onSaveDocument?: () => void;
+  onMarkReviewed?: () => Promise<void>;
   onRecalibrate?: () => void;
   className?: string;
 };
@@ -26,21 +32,31 @@ export function PricingMobileActionBar({
   isSaving = false,
   needsRecalibration = false,
   onSaveDocument,
+  onMarkReviewed,
   onRecalibrate,
   className,
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
   const view = pricingDocumentViewModel(document);
+  const [isReviewing, startReview] = useTransition();
+
+  const handleMarkReviewed = () => {
+    if (!onMarkReviewed) return;
+    startReview(async () => {
+      await onMarkReviewed();
+    });
+  };
 
   return (
     <div
       className={cn(
-        "fixed inset-x-0 bottom-0 z-40 border-t bg-background/95 backdrop-blur-sm md:hidden print:hidden",
+        "fixed inset-x-0 z-40 border-t bg-background/95 backdrop-blur-sm md:hidden print:hidden",
+        MOBILE_NAV_CLEARANCE,
         className
       )}
       data-pricing-mobile-action-bar="true"
     >
-      <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 pt-3 pb-[calc(0.75rem+env(safe-area-inset-bottom))]">
+      <div className="mx-auto flex max-w-lg flex-col gap-3 px-4 py-3">
         <div className="min-w-0" data-pricing-mobile-total="true">
           <p className="text-[11px] font-medium text-muted-foreground">
             {view.showGst ? "Total incl. GST" : "Your final price"}
@@ -72,6 +88,41 @@ export function PricingMobileActionBar({
               quoteSummary={quoteSummary}
               presentation="bar"
             />
+          ) : !isReviewed && onMarkReviewed ? (
+            <>
+              <Button
+                type="button"
+                className="h-11 min-h-11 w-full"
+                disabled={isSaving || isReviewing}
+                onClick={handleMarkReviewed}
+                data-pricing-mobile-mark-reviewed="true"
+              >
+                {isReviewing ? (
+                  <>
+                    <Loader2 className="mr-1.5 size-4 animate-spin" />
+                    Marking…
+                  </>
+                ) : (
+                  "Mark as reviewed"
+                )}
+              </Button>
+              {onSaveDocument ? (
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-11 min-h-11 w-full"
+                  disabled={isSaving || isReviewing}
+                  onClick={onSaveDocument}
+                >
+                  {isSaving ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    "Save"
+                  )}
+                </Button>
+              ) : null}
+            </>
           ) : (
             <>
               {onSaveDocument ? (

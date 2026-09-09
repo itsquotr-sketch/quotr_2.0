@@ -414,7 +414,7 @@ check(
 check(
   31,
   "existing totals reused",
-  pricingBar.includes("formatPricingMoney(document.total_incl_gst)") &&
+  pricingBar.includes("pricingDocumentViewModel(document)") &&
     !pricingBar.includes("* 1.15") &&
     !pricingBar.includes("recalculateSellFromCost")
 );
@@ -430,6 +430,16 @@ check(
   "safe-area spacing",
   pricingBar.includes("env(safe-area-inset-bottom)") &&
     pricingWorkspace.includes("env(safe-area-inset-bottom)")
+);
+check(
+  33.1,
+  "pricing mobile bar clears AppShell MobileNav",
+  pricingBar.includes("bottom-[calc(3.5rem+env(safe-area-inset-bottom))]") &&
+    !pricingBar.includes("fixed inset-x-0 bottom-0") &&
+    pricingBar.includes('data-pricing-mobile-mark-reviewed="true"') &&
+    pricingWorkspace.includes("onMarkReviewed={handleMarkReviewed}") &&
+    pricingWorkspace.includes("hidden md:block") &&
+    pricingWorkspace.includes("PricingReviewChecklist")
 );
 check(
   34,
