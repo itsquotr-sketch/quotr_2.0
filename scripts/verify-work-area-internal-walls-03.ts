@@ -29,13 +29,11 @@ import {
   INTERNAL_WALLS_FRAMING_90_MATERIAL_COMPONENT,
   INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
   INTERNAL_WALLS_FRAMING_OTHER_COMPONENT,
-  INTERNAL_WALLS_FRAMING_STEEL_COMPONENT,
   INTERNAL_WALLS_LINING_NOT_PRICED_STATEMENT,
   INTERNAL_WALLS_OTHER_FRAMING_NOT_PRICED_MESSAGE,
   INTERNAL_WALLS_OTHER_TIMBER_SIZE_MESSAGE,
   INTERNAL_WALLS_PRODUCTIVITY_BENCHMARKS,
   INTERNAL_WALLS_PRODUCTIVITY_KEYS,
-  INTERNAL_WALLS_STEEL_FRAMING_NOT_PRICED_MESSAGE,
   INTERNAL_WALLS_STUD_CENTRES_REQUIRED_MESSAGE,
   INTERNAL_WALLS_TIMBER_140_KEY,
   INTERNAL_WALLS_TIMBER_90_KEY,
@@ -441,11 +439,10 @@ const steelFacts = [
 ];
 const steel = calculateInternalWalls(ctx([walls], steelFacts), walls);
 check(
-  "steel is Pricing Required, no timber",
-  steel.missingInfo.includes(INTERNAL_WALLS_STEEL_FRAMING_NOT_PRICED_MESSAGE) &&
-    mats(steel).some((row) => row.componentKey === INTERNAL_WALLS_FRAMING_STEEL_COMPONENT && !row.priced) &&
-    !mats(steel).some((row) => row.materialKey === INTERNAL_WALLS_TIMBER_90_KEY) &&
-    labs(steel).length === 0
+  "steel emits no timber",
+  !mats(steel).some((row) => row.materialKey === INTERNAL_WALLS_TIMBER_90_KEY) &&
+    !mats(steel).some((row) => row.materialKey === INTERNAL_WALLS_TIMBER_140_KEY) &&
+    labs(steel).every((row) => row.componentKey !== INTERNAL_WALLS_FRAMING_90_LABOUR_COMPONENT)
 );
 const otherFacts = [
   fact(INTERNAL_WALLS_JOB_SCOPE_FACT_KEY, "w1", "new_partition"),

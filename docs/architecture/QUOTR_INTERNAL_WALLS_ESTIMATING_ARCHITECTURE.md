@@ -1,6 +1,6 @@
 # Quotr Internal Walls Estimating Architecture
 
-**Status:** CANONICAL — **WA-INTERNAL-WALLS-03** timber framing physical takeoff + first requirement envelope  
+**Status:** CANONICAL — **WA-INTERNAL-WALLS-04** steel track/stud physical takeoff  
 **Date:** 2026-09-09  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **056**  
@@ -11,7 +11,8 @@
 **Verifier (01 audit):** `scripts/verify-work-area-internal-walls-01.ts`  
 **Verifier (02 foundation):** `scripts/verify-work-area-internal-walls-02.ts`  
 **Verifier (02C persist):** `scripts/verify-work-area-internal-walls-02c.ts`  
-**Verifier (03 timber framing):** `scripts/verify-work-area-internal-walls-03.ts`
+**Verifier (03 timber framing):** `scripts/verify-work-area-internal-walls-03.ts`  
+**Verifier (04 steel framing):** `scripts/verify-work-area-internal-walls-04.ts`
 
 Canonical Work Area type: **`internal_walls`**. ISD alias: **`partitions`**.
 
@@ -27,10 +28,11 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | WA-INTERNAL-WALLS-02 wall types + job scope + geometry | **GO** |
 | WA-INTERNAL-WALLS-02C nested persist + sheet length UX | **FINAL GO** |
 | WA-INTERNAL-WALLS-03 timber framing takeoff + envelope | **GO** |
-| Current product maturity | **PARTIAL** — timber framing money on mature path; lining/steel/openings not in 03 |
+| WA-INTERNAL-WALLS-04 steel track/stud takeoff | **GO** |
+| Current product maturity | **PARTIAL** — timber + standard steel track/stud on mature path; lining/openings not in 04 |
 | Customer UI band | **Component** — do not call Supported or Mature |
-| Lining / steel / openings money in 03 | **NO-GO** |
-| Start WA-INTERNAL-WALLS-04 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 04 |
+| Lining / openings money in 04 | **NO-GO** |
+| Start WA-INTERNAL-WALLS-05 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 05 |
 | Production / migration 055 | **NO-GO** |
 
 **Current factory score (honest):**
@@ -40,9 +42,9 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | WA-0 Discovery | **Written** — owner override: multiple Wall Types in one WA |
 | WA-1 Facts | **PARTIAL** — `job_scope`, `wall_types` JSON, structural gate. No openings takeoff |
 | WA-2 Clarify | **PARTIAL** — progressive job scope → Wall Type fields; Refine adapter + cards |
-| WA-3 Physical | **PARTIAL** — timber stud/plate/nog takeoff on mature path. No lining sheets, steel, openings |
-| WA-4 Requirements | **PARTIAL** — first envelope: timber material, framing labour, fixings allowance |
-| WA-5 Commercial | **PARTIAL on mature path** — shared 90×45 company→benchmark; 140×45 and fixings Pricing Required. Legacy $95/$145 suppressed when `job_scope` or `wall_types` present |
+| WA-3 Physical | **PARTIAL** — timber stud/plate/nog + steel track/stud on mature path. No lining sheets, openings |
+| WA-4 Requirements | **PARTIAL** — timber material/labour + steel track/stud/labour + shared fixings allowance |
+| WA-5 Commercial | **PARTIAL on mature path** — shared 90×45 company→benchmark; 140×45, steel track/stud, and fixings Pricing Required unless company rate. Legacy $95/$145 suppressed when `job_scope` or `wall_types` present |
 | WA-6 Conditions | **PARTIAL apply** — canonical `getCombinedLabourAccessFactor` on framing labour hours. No IW-specific multipliers. Finish level does not scale physical framing |
 | WA-7 Review | **PARTIAL** — Wall Type framing groups with compact takeoff rows. Lining not shown |
 | WA-8 DNA | **N/A** — productivity keys marked as future DNA candidates; no calibration rows |
@@ -115,7 +117,7 @@ Do not use 0.8 h/lm or Bathroom framing productivity. Labour $: `labour.carpente
 | timber 140×45 | Physical takeoff; material Pricing Required until company rate |
 | timber other | Takeoff quantities; Pricing Required / INFO_REQUIRED; no 90×45 fallback |
 | existing_frame | **No** timber, framing labour, or fixings |
-| steel | Recorded. **No timber.** Framing takeoff not yet supported / Pricing Required |
+| steel | **IW-04:** standard `track_and_stud` takeoff. **No timber.** Other steel systems Pricing Required |
 | other | **No timber fallback.** Pricing Required / Info Required |
 
 ### Structural / legacy
@@ -131,7 +133,7 @@ Wall Type heading + compact Framing rows (size, L×H, centres, studs, stud/plate
 ### Known limitations (03)
 
 - Lining sheets, lining labour, openings, insulation, skirting, cornice, stopping, painting, demolition, waste disposal: **not implemented**
-- Steel track/stud takeoff: **IW-04**
+- Steel track/stud takeoff: **IW-04** (this phase)
 - 140×45 has identity but no Quotr $/lm
 - Fixings have requirement structure but no shared rate
 - Company DNA not calibrated
@@ -144,6 +146,70 @@ Wall Type heading + compact Framing rows (size, L×H, centres, studs, stud/plate
 | A | 12 × 2.4, 90×45, 600 mm | 21 studs, 98.4 raw, **108.24 lm**, 28.8 m², **12.96 h** |
 | B | 8 × 3.0, 90×45, 400 mm | 21 studs, 103.0 raw, **113.3 lm**, 24 m², **10.8 h** |
 | C | 5 × 2.7, 140×45, 400 mm | 14 studs, 62.8 raw, **69.08 lm**, 13.5 m², **6.75 h**, no 90×45 material |
+
+---
+
+## 0D. WA-INTERNAL-WALLS-04 — steel track/stud takeoff
+
+V1 supports **standard non-load-bearing** `frame_system = steel` with `steel.system = track_and_stud`. Not structural steel, proprietary fire/acoustic systems, deflection heads, specialist seismic tracks, or engineering gauges. Those stay Pricing Required / specialist.
+
+IW-03 timber formulas are unchanged. Steel never emits timber material or timber labour.
+
+### Steel formulas (V1)
+
+```
+bottom_track_lm = L
+top_track_lm    = L
+total_track_lm  = 2 × L
+stud_count      = ceil(L / spacing - epsilon) + 1    // same end-stud convention as timber
+stud_lm         = stud_count × height_m
+wall_area_m2    = L × height_m                       // not lining faces
+labour_hours    = wall_area_m2 × 0.40
+purchase_lm     = raw lm                             // waste factor 0
+```
+
+No timber 2/3/4 nogging rows. No invented steel nogging/bridging/brace rule.
+
+### Waste
+
+No canonical steel-framing wastage category exists. `timber_framing` 10% is timber-only. Generic default 10% is not approved as steel framing waste. **V1 does not invent a percent** — purchase lm = raw lm. Owner may add a steel category later.
+
+### Shared material identities
+
+| Identity | Role |
+| --- | --- |
+| `steel.framing.track.lm` | Shared physical track. Code catalogue only. **No invented $/lm.** |
+| `steel.framing.stud.lm` | Shared physical stud. Code catalogue only. **No invented $/lm.** |
+
+No `internal_walls.steel.track…` physical keys. No width-specific products — catalogue had none to reuse. `steel.stud_width_mm` remains metadata only. **Supported commercial widths: none locked.** Missing width does not block V1 takeoff.
+
+### Productivity
+
+`internal_walls.framing.steel.track_and_stud.hours_per_m2` = **0.40** person-hours / m² wall. Future DNA candidate. No calibration row. Labour $: `labour.carpenter.hour`. Finish/quality does not scale qty or productivity (`qualityFactor: 1`). Canonical labour access on hours only.
+
+### Requirement envelope (per steel Wall Type)
+
+| Kind | Component key | Physical key / driver |
+| --- | --- | --- |
+| MaterialRequirement | `internal_walls.framing.steel.track.material` | `steel.framing.track.lm` |
+| MaterialRequirement | `internal_walls.framing.steel.stud.material` | `steel.framing.stud.lm` |
+| LabourRequirement | `internal_walls.framing.steel.track_and_stud.install` | wall m² × 0.40 |
+| MaterialRequirement (allowance) | `internal_walls.framing.fixings.allowance` | same IW-03 wall-area fixings. Not a duplicate steel-specific allowance. |
+
+### Deterministic fixtures
+
+| Type | Geometry | Expected |
+| --- | --- | --- |
+| Steel A | 10 × 2.4, track/stud, 600 mm | track **20 lm**, 18 studs, **43.2 lm**, 24 m², **9.6 h**, no timber |
+| Steel B | 8 × 3.0, track/stud, 400 mm | track **16 lm**, 21 studs, **63 lm**, 24 m², **9.6 h** |
+
+### Known limitations (04)
+
+- Lining, openings, insulation, skirting, cornice, stopping, painting, demolition: **not implemented**
+- Width-specific steel products/rates: **not invented**
+- Steel waste %: **owner decision pending** (V1 raw = purchase)
+- Steel nogging/bridging: **not invented**
+- Company DNA not calibrated
 
 ---
 
@@ -160,7 +226,7 @@ Wall Type heading + compact Framing rows (size, L×H, centres, studs, stud/plate
 | Length | **HARD REQUIRED** for build/reline Wall Types. Missing → INFO_REQUIRED. Do not invent. |
 | Stud centres | height ≤ 2.4 → recommended **600 mm**; height > 2.4 → recommended **400 mm**. Visible/editable. Builder may override 400 / 600 / custom. |
 | Nogging (recorded only) | ≤2.4 → **2 rows**; >2.4 and ≤3.2 → **3 rows**; >3.2 → **4 rows**. No timber calc in 02. |
-| Frame systems | `timber` / `steel` / `existing_frame` / `other`. Steel stores track-and-stud foundation. No takeoff. |
+| Frame systems | `timber` / `steel` / `existing_frame` / `other`. Steel stores track-and-stud foundation. Takeoff is IW-04. |
 | Timber sizes | `90x45` / `140x45` / `other`. User copy: "90 mm timber framing — 90×45". |
 | Lining | Side A and Side B independently. **02C:** "Same lining both sides?" is Yes/No. While Yes, Side B follows Side A. Switching to No keeps the copy, then independent. |
 | Layers | 1 or 2 per face. |

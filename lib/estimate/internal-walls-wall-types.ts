@@ -656,6 +656,15 @@ function applyRecommendedCentres(type: InternalWallsWallType): void {
   }
 }
 
+export function isInternalWallsSteelTrackAndStud(
+  type: Pick<InternalWallsWallType, "frame_system" | "steel">
+): boolean {
+  return (
+    type.frame_system === "steel" &&
+    (type.steel?.system == null || type.steel.system === "track_and_stud")
+  );
+}
+
 function applySteelFoundation(type: InternalWallsWallType): void {
   if (type.frame_system === "steel") {
     type.steel = type.steel ?? {

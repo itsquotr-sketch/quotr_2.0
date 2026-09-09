@@ -28,6 +28,15 @@ export const INTERNAL_WALLS_FRAMING_140_LABOUR_COMPONENT =
   "internal_walls.framing.timber.140x45.install" as const;
 export const INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT =
   "internal_walls.framing.fixings.allowance" as const;
+export const INTERNAL_WALLS_STEEL_TRACK_KEY = "steel.framing.track.lm" as const;
+export const INTERNAL_WALLS_STEEL_STUD_KEY = "steel.framing.stud.lm" as const;
+export const INTERNAL_WALLS_FRAMING_STEEL_TRACK_COMPONENT =
+  "internal_walls.framing.steel.track.material" as const;
+export const INTERNAL_WALLS_FRAMING_STEEL_STUD_COMPONENT =
+  "internal_walls.framing.steel.stud.material" as const;
+export const INTERNAL_WALLS_FRAMING_STEEL_LABOUR_COMPONENT =
+  "internal_walls.framing.steel.track_and_stud.install" as const;
+/** Unsupported steel systems only — not standard track-and-stud. */
 export const INTERNAL_WALLS_FRAMING_STEEL_COMPONENT =
   "internal_walls.framing.steel" as const;
 export const INTERNAL_WALLS_FRAMING_OTHER_COMPONENT =
@@ -42,23 +51,36 @@ export const INTERNAL_WALLS_FRAMING_90_HOURS_PER_M2_KEY =
 export const INTERNAL_WALLS_FRAMING_140_HOURS_PER_M2_KEY =
   "internal_walls.framing.timber.140x45.hours_per_m2" as const;
 
+/** Future Company DNA task — not calibrated in IW-04. */
+export const INTERNAL_WALLS_FRAMING_STEEL_HOURS_PER_M2_KEY =
+  "internal_walls.framing.steel.track_and_stud.hours_per_m2" as const;
+
 export const INTERNAL_WALLS_PRODUCTIVITY_KEYS = {
   timber90M2: INTERNAL_WALLS_FRAMING_90_HOURS_PER_M2_KEY,
   timber140M2: INTERNAL_WALLS_FRAMING_140_HOURS_PER_M2_KEY,
+  steelTrackAndStudM2: INTERNAL_WALLS_FRAMING_STEEL_HOURS_PER_M2_KEY,
 } as const;
 
 export const INTERNAL_WALLS_PRODUCTIVITY_BENCHMARKS = {
   timber90M2: 0.45,
   timber140M2: 0.5,
+  steelTrackAndStudM2: 0.4,
 } as const;
 
 export const INTERNAL_WALLS_FRAMING_WASTE_CATEGORY = "timber_framing" as const;
+
+/**
+ * No canonical steel-framing waste category exists (timber_framing is timber-only;
+ * default 10% is generic material waste, not approved steel framing waste).
+ * V1 purchase lm = raw lm. Do not invent a percent.
+ */
+export const INTERNAL_WALLS_STEEL_WASTE_FACTOR = 0 as const;
 
 export const INTERNAL_WALLS_STUD_CENTRES_REQUIRED_MESSAGE =
   "Add a stud spacing for this wall type.";
 
 export const INTERNAL_WALLS_STEEL_FRAMING_NOT_PRICED_MESSAGE =
-  "Steel framing takeoff is not priced yet.";
+  "This steel framing system is not priced yet.";
 
 export const INTERNAL_WALLS_OTHER_FRAMING_NOT_PRICED_MESSAGE =
   "This framing type needs a price before it can be estimated.";
@@ -76,6 +98,9 @@ export const INTERNAL_WALLS_FRAMING_COMPONENT_KEYS = [
   INTERNAL_WALLS_FRAMING_90_LABOUR_COMPONENT,
   INTERNAL_WALLS_FRAMING_140_LABOUR_COMPONENT,
   INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
+  INTERNAL_WALLS_FRAMING_STEEL_TRACK_COMPONENT,
+  INTERNAL_WALLS_FRAMING_STEEL_STUD_COMPONENT,
+  INTERNAL_WALLS_FRAMING_STEEL_LABOUR_COMPONENT,
   INTERNAL_WALLS_FRAMING_STEEL_COMPONENT,
   INTERNAL_WALLS_FRAMING_OTHER_COMPONENT,
 ] as const;

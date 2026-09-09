@@ -884,14 +884,14 @@ function applyInternalWallsReviewGroups(
     const lineGroups: BuilderReviewLineGroup[] = [...cat.lineGroups];
     for (const [overlap, children] of grouped) {
       const heading = wallTypeHeadingFromLabel(children[0]?.label ?? "Framing");
-      const materialChild = children.find((row) =>
+      const materialChildren = children.filter((row) =>
         (row.componentKey ?? "").includes(".material")
       );
       const labourChild = children.find((row) =>
         (row.componentKey ?? "").includes(".install")
       );
       const supportingParts = [
-        materialChild?.supporting,
+        ...materialChildren.map((row) => row.supporting).filter(Boolean),
         labourChild?.supporting
           ? `Labour: ${labourChild.supporting}`
           : null,
@@ -907,7 +907,7 @@ function applyInternalWallsReviewGroups(
         ),
         supporting: supportingParts.join(" · ") || null,
         secondary: "Framing",
-        itemKey: materialChild?.itemKey ?? children[0]?.itemKey ?? null,
+        itemKey: materialChildren[0]?.itemKey ?? children[0]?.itemKey ?? null,
         showChangeMaterial: false,
         rateContext: null,
         children,

@@ -350,6 +350,12 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     0.5,
     "m²"
   ),
+  "internal_walls.framing.steel.track_and_stud.hours_per_m2": productivityEntry(
+    "internal_walls.framing.steel.track_and_stud.hours_per_m2",
+    "Internal wall steel track-and-stud framing",
+    0.4,
+    "m²"
+  ),
   "bathroom.demolition.floor_finish.hours_per_m2": productivityEntry(
     "bathroom.demolition.floor_finish.hours_per_m2",
     "Bathroom floor finish removal",

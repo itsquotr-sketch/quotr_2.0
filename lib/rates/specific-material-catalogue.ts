@@ -304,6 +304,33 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
 ];
 
+export const STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: "steel.framing.track.lm",
+    label: "Steel partition track",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Steel framing",
+    unit: "lm",
+    description:
+      "Shared physical steel track for standard non-load-bearing internal partitions. Internal Walls track-and-stud takeoff consumes this identity. No invented Quotr $/lm — company exact rate, else Pricing Required. Not a Work-Area-scoped key.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "steel.framing.stud.lm",
+    label: "Steel partition stud",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Steel framing",
+    unit: "lm",
+    description:
+      "Shared physical steel stud for standard non-load-bearing internal partitions. Internal Walls track-and-stud takeoff consumes this identity. No invented Quotr $/lm — company exact rate, else Pricing Required. Not a Work-Area-scoped key.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+];
+
 export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   entry({
     item_key: "retaining_wall.backfill.m3",
@@ -2248,6 +2275,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DECK_POST_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE,
   ...SHEET_SPECIFIC_MATERIAL_CATALOGUE,
+  ...STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
   ...RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
   ...WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -2287,6 +2315,12 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "Shared physical sheets. Bathroom consumes Aqualine, 19 mm H3.2 plywood, 18 mm fibre cement (legacy), 19 mm FC flooring, Secura, and 6 mm tile underlay from this group — one identity, many Work Area requirements. Company exact rate wins.",
     entries: SHEET_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Steel framing",
+    description:
+      "Shared steel track and stud identities for standard internal partitions. Company exact $/lm wins. No invented Quotr benchmark — missing rates are Pricing Required.",
+    entries: STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Retaining / drainage",

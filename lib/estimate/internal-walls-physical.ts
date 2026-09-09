@@ -39,12 +39,17 @@ import {
   INTERNAL_WALLS_FRAMING_OTHER_COMPONENT,
   INTERNAL_WALLS_FRAMING_OTHER_TIMBER_MATERIAL_COMPONENT,
   INTERNAL_WALLS_FRAMING_STEEL_COMPONENT,
+  INTERNAL_WALLS_FRAMING_STEEL_LABOUR_COMPONENT,
+  INTERNAL_WALLS_FRAMING_STEEL_STUD_COMPONENT,
+  INTERNAL_WALLS_FRAMING_STEEL_TRACK_COMPONENT,
   INTERNAL_WALLS_FRAMING_WASTE_CATEGORY,
   INTERNAL_WALLS_OTHER_FRAMING_NOT_PRICED_MESSAGE,
   INTERNAL_WALLS_OTHER_TIMBER_SIZE_MESSAGE,
   INTERNAL_WALLS_PRODUCTIVITY_BENCHMARKS,
   INTERNAL_WALLS_PRODUCTIVITY_KEYS,
   INTERNAL_WALLS_STEEL_FRAMING_NOT_PRICED_MESSAGE,
+  INTERNAL_WALLS_STEEL_STUD_KEY,
+  INTERNAL_WALLS_STEEL_TRACK_KEY,
   INTERNAL_WALLS_STUD_CENTRES_REQUIRED_MESSAGE,
   INTERNAL_WALLS_TIMBER_140_KEY,
   INTERNAL_WALLS_TIMBER_140_LABEL,
@@ -54,13 +59,18 @@ import {
 } from "@/lib/estimate/internal-walls-identities";
 import {
   formatInternalWallsFramingTakeoff,
+  formatInternalWallsSteelTakeoff,
+  internalWallsSteelTakeoff,
   internalWallsTimberTakeoff,
   presentInternalWallsHours,
+  presentInternalWallsLm,
   resolveInternalWallsStudCentres,
+  type InternalWallsSteelTakeoff,
   type InternalWallsTimberTakeoff,
 } from "@/lib/estimate/internal-walls-framing";
 import {
   INTERNAL_WALLS_LENGTH_REQUIRED_MESSAGE,
+  isInternalWallsSteelTrackAndStud,
   wallTypeNeedsLength,
   type InternalWallsWallType,
 } from "@/lib/estimate/internal-walls-wall-types";
@@ -285,48 +295,95 @@ export function buildInternalWallsFramingEnvelope(params: {
     }
 
     if (type.frame_system === "steel") {
-      missingInfo.push(INTERNAL_WALLS_STEEL_FRAMING_NOT_PRICED_MESSAGE);
-      const area =
-        type.length_lm != null && type.height_m != null
-          ? round2(type.length_lm * type.height_m)
-          : null;
-      requirements.push(
-        buildMaterialRequirement({
-          workAreaId: workArea.id,
-          workAreaType: "internal_walls",
-          componentKey: INTERNAL_WALLS_FRAMING_STEEL_COMPONENT,
-          variantKey: type.id,
-          description: `${displayName} — steel framing`,
-          confidence: "low",
-          assumptions: [],
-          provenance: provenanceBase,
-          priced: false,
-          materialKey: null,
-          category: "FRAMING",
-          specification: "Steel track and stud — takeoff not yet supported",
-          baseQuantity: area ?? 0,
-          baseUnit: "m2",
-          wasteFactor: 0,
-          purchaseQuantity: area ?? 0,
-          purchaseUnit: "m2",
-          rateSource: "missing",
-          unitCost: null,
-          totalCost: null,
-        })
-      );
-      lineItems.push(
-        unpricedMaterialLine({
-          workArea,
-          label: `${displayName} — steel framing`,
-          quantity: area ?? 0,
-          unit: "m2",
-          componentKey: INTERNAL_WALLS_FRAMING_STEEL_COMPONENT,
-          identitySummary: "Framing takeoff not yet supported",
-          notes: INTERNAL_WALLS_STEEL_FRAMING_NOT_PRICED_MESSAGE,
-          sortOrder: sortOrder++,
-          overlapGroup,
-        })
-      );
+      if (!isInternalWallsSteelTrackAndStud(type)) {
+        missingInfo.push(INTERNAL_WALLS_STEEL_FRAMING_NOT_PRICED_MESSAGE);
+        const area =
+          type.length_lm != null && type.height_m != null
+            ? round2(type.length_lm * type.height_m)
+            : null;
+        requirements.push(
+          buildMaterialRequirement({
+            workAreaId: workArea.id,
+            workAreaType: "internal_walls",
+            componentKey: INTERNAL_WALLS_FRAMING_STEEL_COMPONENT,
+            variantKey: type.id,
+            description: `${displayName} — steel framing`,
+            confidence: "low",
+            assumptions: [],
+            provenance: provenanceBase,
+            priced: false,
+            materialKey: null,
+            category: "FRAMING",
+            specification: "Steel framing — system not supported in V1",
+            baseQuantity: area ?? 0,
+            baseUnit: "m2",
+            wasteFactor: 0,
+            purchaseQuantity: area ?? 0,
+            purchaseUnit: "m2",
+            rateSource: "missing",
+            unitCost: null,
+            totalCost: null,
+          })
+        );
+        lineItems.push(
+          unpricedMaterialLine({
+            workArea,
+            label: `${displayName} — steel framing`,
+            quantity: area ?? 0,
+            unit: "m2",
+            componentKey: INTERNAL_WALLS_FRAMING_STEEL_COMPONENT,
+            identitySummary: "Standard track and stud only",
+            notes: INTERNAL_WALLS_STEEL_FRAMING_NOT_PRICED_MESSAGE,
+            sortOrder: sortOrder++,
+            overlapGroup,
+          })
+        );
+        return;
+      }
+
+      if (wallTypeNeedsLength(type, jobScope) && type.length_lm == null) {
+        if (!missingInfo.includes(INTERNAL_WALLS_LENGTH_REQUIRED_MESSAGE)) {
+          missingInfo.push(INTERNAL_WALLS_LENGTH_REQUIRED_MESSAGE);
+        }
+        return;
+      }
+      if (type.length_lm == null || type.height_m == null) return;
+
+      const centres = resolveInternalWallsStudCentres(type);
+      if (!centres.ok) {
+        missingInfo.push(INTERNAL_WALLS_STUD_CENTRES_REQUIRED_MESSAGE);
+        return;
+      }
+
+      const productivity = resolveProductivity({
+        productivityKey: INTERNAL_WALLS_PRODUCTIVITY_KEYS.steelTrackAndStudM2,
+        unit: "m2",
+        fallbackHoursPerUnit: INTERNAL_WALLS_PRODUCTIVITY_BENCHMARKS.steelTrackAndStudM2,
+        rates: context.rates,
+      });
+      const takeoff = internalWallsSteelTakeoff({
+        type,
+        centresMm: centres.mm,
+        spacingM: centres.spacingM,
+        hoursPerM2: productivity.hoursPerUnit,
+      });
+      if (!takeoff) return;
+
+      emitSteelFraming({
+        workArea,
+        context,
+        type,
+        displayName,
+        overlapGroup,
+        takeoff,
+        labourRate,
+        productivity,
+        accessFactor,
+        provenanceBase,
+        requirements,
+        lineItems,
+        bumpSortOrder: () => sortOrder++,
+      });
       return;
     }
 
@@ -445,6 +502,270 @@ export function buildInternalWallsFramingEnvelope(params: {
     nextSortOrder: sortOrder,
     emittedFraming: requirements.length > 0 || lineItems.length > 0,
   };
+}
+
+function emitFramingLmMaterial(params: {
+  workArea: EstimateWorkArea;
+  context: EstimateContext;
+  type: InternalWallsWallType;
+  overlapGroup: string;
+  componentKey: string;
+  materialKey: string;
+  label: string;
+  specification: string;
+  identitySummary: string;
+  baseQuantity: number;
+  purchaseQuantity: number;
+  wasteFactor: number;
+  unpricedNotes: string;
+  requirements: EstimateRequirement[];
+  lineItems: EstimateLineItemInput[];
+  bumpSortOrder: () => number;
+}): void {
+  const rate = resolveExactMaterialRate({
+    itemKey: params.materialKey,
+    unit: "lm",
+    context: params.context,
+  });
+  params.requirements.push(
+    buildMaterialRequirement({
+      workAreaId: params.workArea.id,
+      workAreaType: "internal_walls",
+      componentKey: params.componentKey,
+      variantKey: params.type.id,
+      description: params.label,
+      confidence: "high",
+      assumptions: [],
+      provenance: {
+        calculatorSource: "internal-walls-framing",
+        factKeys: [
+          "internal_walls.wall_types",
+          "internal_walls.wall_type.frame_system",
+          "internal_walls.wall_type.length_lm",
+          "internal_walls.wall_type.height_m",
+          "internal_walls.wall_type.stud_centres_mm",
+        ],
+        constraintKeys: [],
+      },
+      priced: rate.priced,
+      materialKey: params.materialKey,
+      category: "FRAMING",
+      specification: params.specification,
+      baseQuantity: params.baseQuantity,
+      baseUnit: "lm",
+      wasteFactor: params.wasteFactor,
+      purchaseQuantity: params.purchaseQuantity,
+      purchaseUnit: "lm",
+      rateSource: rate.priced
+        ? rate.sourceType === "user_rate"
+          ? "company"
+          : "benchmark"
+        : "missing",
+      unitCost: rate.costRate,
+      totalCost:
+        rate.priced && rate.costRate != null
+          ? round2(params.purchaseQuantity * rate.costRate)
+          : null,
+    })
+  );
+  if (rate.priced && rate.costRate != null && rate.sellRate != null) {
+    params.lineItems.push(
+      withPricingOwnership(
+        {
+          ...createRateLineItem({
+            workAreaId: params.workArea.id,
+            workAreaName: params.workArea.name,
+            label: params.label,
+            category: "materials",
+            quantity: params.purchaseQuantity,
+            unit: "lm",
+            costRate: rate.costRate,
+            sellRate: rate.sellRate,
+            rateSource: rate.sourceLabel,
+            rateSourceType: rate.sourceType,
+            itemKey: params.materialKey,
+            componentKey: params.componentKey,
+            notes: params.specification,
+            sortOrder: params.bumpSortOrder(),
+            organisationSettings: params.context.organisationSettings,
+            qualityFactor: 1,
+          }),
+          identitySummary: params.identitySummary,
+        },
+        {
+          pricingOwner: "contractor_material",
+          scopeKey: params.componentKey,
+          overlapGroup: params.overlapGroup,
+        }
+      )
+    );
+  } else {
+    params.lineItems.push(
+      unpricedMaterialLine({
+        workArea: params.workArea,
+        label: params.label,
+        quantity: params.purchaseQuantity,
+        unit: "lm",
+        itemKey: params.materialKey,
+        componentKey: params.componentKey,
+        identitySummary: params.identitySummary,
+        notes: params.unpricedNotes,
+        sortOrder: params.bumpSortOrder(),
+        overlapGroup: params.overlapGroup,
+      })
+    );
+  }
+}
+
+function emitSteelFraming(params: {
+  workArea: EstimateWorkArea;
+  context: EstimateContext;
+  type: InternalWallsWallType;
+  displayName: string;
+  overlapGroup: string;
+  takeoff: InternalWallsSteelTakeoff;
+  labourRate: ReturnType<typeof resolveLabourRate>;
+  productivity: ReturnType<typeof resolveProductivity>;
+  accessFactor: number;
+  provenanceBase: {
+    calculatorSource: string;
+    factKeys: string[];
+    constraintKeys: string[];
+  };
+  requirements: EstimateRequirement[];
+  lineItems: EstimateLineItemInput[];
+  bumpSortOrder: () => number;
+}): void {
+  const {
+    workArea,
+    context,
+    type,
+    displayName,
+    overlapGroup,
+    takeoff,
+    labourRate,
+    productivity,
+    accessFactor,
+    provenanceBase,
+  } = params;
+  const supporting = formatInternalWallsSteelTakeoff(takeoff);
+  const trackSummary = `Track ${presentInternalWallsLm(takeoff.totalTrackLm)} (${presentInternalWallsLm(takeoff.topTrackLm)} top + ${presentInternalWallsLm(takeoff.bottomTrackLm)} bottom)`;
+  const studSummary = `${takeoff.studCount} studs · ${takeoff.studCount} × ${takeoff.heightM} m · ${presentInternalWallsLm(takeoff.studLm)}`;
+
+  emitFramingLmMaterial({
+    workArea,
+    context,
+    type,
+    overlapGroup,
+    componentKey: INTERNAL_WALLS_FRAMING_STEEL_TRACK_COMPONENT,
+    materialKey: INTERNAL_WALLS_STEEL_TRACK_KEY,
+    label: `${displayName} — steel track`,
+    specification: supporting,
+    identitySummary: `${takeoff.lengthLm} m × ${takeoff.heightM} m · ${takeoff.centresMm} mm centres · ${trackSummary}`,
+    baseQuantity: takeoff.totalTrackLm,
+    purchaseQuantity: takeoff.totalTrackLm,
+    wasteFactor: takeoff.wasteFactor,
+    unpricedNotes: `${trackSummary}. Pricing required — no approved steel track $/lm.`,
+    requirements: params.requirements,
+    lineItems: params.lineItems,
+    bumpSortOrder: params.bumpSortOrder,
+  });
+  emitFramingLmMaterial({
+    workArea,
+    context,
+    type,
+    overlapGroup,
+    componentKey: INTERNAL_WALLS_FRAMING_STEEL_STUD_COMPONENT,
+    materialKey: INTERNAL_WALLS_STEEL_STUD_KEY,
+    label: `${displayName} — steel studs`,
+    specification: supporting,
+    identitySummary: studSummary,
+    baseQuantity: takeoff.studLm,
+    purchaseQuantity: takeoff.studLm,
+    wasteFactor: takeoff.wasteFactor,
+    unpricedNotes: `${studSummary}. Pricing required — no approved steel stud $/lm.`,
+    requirements: params.requirements,
+    lineItems: params.lineItems,
+    bumpSortOrder: params.bumpSortOrder,
+  });
+
+  const labourLabel = `${displayName} — steel framing labour`;
+  const adjustedHours = round2(takeoff.labourHours * accessFactor);
+  params.requirements.push(
+    buildLabourRequirement({
+      workAreaId: workArea.id,
+      workAreaType: "internal_walls",
+      componentKey: INTERNAL_WALLS_FRAMING_STEEL_LABOUR_COMPONENT,
+      variantKey: type.id,
+      description: labourLabel,
+      confidence: "high",
+      assumptions: [],
+      provenance: provenanceBase,
+      priced: true,
+      trade: "carpenter",
+      baseHours: takeoff.labourHours,
+      productivityBasis: {
+        key: productivity.key,
+        hoursPerUnit: productivity.hoursPerUnit,
+        unit: "m2",
+        quantity: takeoff.wallAreaM2,
+      },
+      adjustmentRef: { factors: [] },
+      adjustedHours,
+      rateKey: labourRate.itemKey ?? INTERNAL_WALLS_CARPENTER_LABOUR_KEY,
+      hourlyCost: labourRate.costRate,
+      totalCost: labourRequirementTotalCost({
+        adjustedHours,
+        hourlyCost: labourRate.costRate,
+        hourlySell: labourRate.sellRate,
+      }),
+      rateProvenance:
+        labourRate.sourceType === "user_rate" ? "company" : "hardcoded_legacy",
+    })
+  );
+  params.lineItems.push(
+    withPricingOwnership(
+      {
+        ...createFixedLabourLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: labourLabel,
+          labourHours: adjustedHours,
+          labourCostRate: labourRate.costRate,
+          labourSellRate: labourRate.sellRate,
+          rateSource: labourRate.sourceLabel,
+          rateSourceType: labourRate.sourceType,
+          itemKey: productivity.key,
+          notes: presentInternalWallsHours(takeoff.labourHours),
+          sortOrder: params.bumpSortOrder(),
+          organisationSettings: context.organisationSettings,
+        }),
+        componentKey: INTERNAL_WALLS_FRAMING_STEEL_LABOUR_COMPONENT,
+        identitySummary: presentInternalWallsHours(takeoff.labourHours),
+        productivityRate: productivity.hoursPerUnit,
+        productivityUnit: "m2",
+        productivitySourceType: productivity.sourceType,
+      },
+      {
+        pricingOwner: "in_house_labour",
+        scopeKey: INTERNAL_WALLS_FRAMING_STEEL_LABOUR_COMPONENT,
+        overlapGroup,
+      }
+    )
+  );
+
+  emitFixings({
+    workArea,
+    type,
+    displayName,
+    overlapGroup,
+    takeoff,
+    provenanceBase,
+    supporting,
+    requirements: params.requirements,
+    lineItems: params.lineItems,
+    bumpSortOrder: params.bumpSortOrder,
+  });
 }
 
 function emitTimberFraming(params: {
@@ -698,7 +1019,7 @@ function emitFixings(params: {
   type: InternalWallsWallType;
   displayName: string;
   overlapGroup: string;
-  takeoff: InternalWallsTimberTakeoff;
+  takeoff: { wallAreaM2: number };
   provenanceBase: {
     calculatorSource: string;
     factKeys: string[];

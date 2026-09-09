@@ -17,6 +17,9 @@
 import { round2 } from "@/lib/estimate/facts";
 import {
   INTERNAL_WALLS_PRODUCTIVITY_BENCHMARKS,
+  INTERNAL_WALLS_STEEL_STUD_KEY,
+  INTERNAL_WALLS_STEEL_TRACK_KEY,
+  INTERNAL_WALLS_STEEL_WASTE_FACTOR,
   INTERNAL_WALLS_TIMBER_140_KEY,
   INTERNAL_WALLS_TIMBER_90_KEY,
 } from "@/lib/estimate/internal-walls-identities";
@@ -195,3 +198,87 @@ export function formatInternalWallsFramingTakeoff(takeoff: InternalWallsTimberTa
     `${presentInternalWallsLm(takeoff.purchaseTimberLm)} incl. waste`,
   ].join(" · ");
 }
+
+export type InternalWallsSteelTakeoff = {
+  wallTypeId: string;
+  lengthLm: number;
+  heightM: number;
+  centresMm: number;
+  spacingM: number;
+  studWidthMm: number | null;
+  studCount: number;
+  studLm: number;
+  bottomTrackLm: number;
+  topTrackLm: number;
+  totalTrackLm: number;
+  wallAreaM2: number;
+  labourHours: number;
+  hoursPerM2: number;
+  wasteFactor: number;
+  trackMaterialKey: typeof INTERNAL_WALLS_STEEL_TRACK_KEY;
+  studMaterialKey: typeof INTERNAL_WALLS_STEEL_STUD_KEY;
+};
+
+export function internalWallsSteelTakeoff(params: {
+  type: InternalWallsWallType;
+  centresMm: number;
+  spacingM: number;
+  hoursPerM2?: number | null;
+}): InternalWallsSteelTakeoff | null {
+  const { type } = params;
+  const lengthLm = type.length_lm;
+  const heightM = type.height_m;
+  if (
+    lengthLm == null ||
+    heightM == null ||
+    !(lengthLm > 0) ||
+    !(heightM > 0) ||
+    !(params.spacingM > 0) ||
+    !(params.centresMm > 0)
+  ) {
+    return null;
+  }
+
+  const studCount = internalWallsStudCount(lengthLm, params.spacingM);
+  const studLm = round2(studCount * heightM);
+  const bottomTrackLm = round2(lengthLm);
+  const topTrackLm = round2(lengthLm);
+  const totalTrackLm = round2(bottomTrackLm + topTrackLm);
+  const wallAreaM2 = round2(lengthLm * heightM);
+  const hoursPerM2 =
+    params.hoursPerM2 ?? INTERNAL_WALLS_PRODUCTIVITY_BENCHMARKS.steelTrackAndStudM2;
+  const labourHours = round2(wallAreaM2 * hoursPerM2);
+
+  return {
+    wallTypeId: type.id,
+    lengthLm,
+    heightM,
+    centresMm: params.centresMm,
+    spacingM: params.spacingM,
+    studWidthMm: type.steel?.stud_width_mm ?? null,
+    studCount,
+    studLm,
+    bottomTrackLm,
+    topTrackLm,
+    totalTrackLm,
+    wallAreaM2,
+    labourHours,
+    hoursPerM2,
+    wasteFactor: INTERNAL_WALLS_STEEL_WASTE_FACTOR,
+    trackMaterialKey: INTERNAL_WALLS_STEEL_TRACK_KEY,
+    studMaterialKey: INTERNAL_WALLS_STEEL_STUD_KEY,
+  };
+}
+
+export function formatInternalWallsSteelTakeoff(takeoff: InternalWallsSteelTakeoff): string {
+  return [
+    "Steel framing",
+    `${takeoff.lengthLm} m × ${takeoff.heightM} m`,
+    `${takeoff.centresMm} mm centres`,
+    `Track ${presentInternalWallsLm(takeoff.totalTrackLm)} (${presentInternalWallsLm(takeoff.topTrackLm)} top + ${presentInternalWallsLm(takeoff.bottomTrackLm)} bottom)`,
+    `${takeoff.studCount} studs`,
+    `${takeoff.studCount} × ${takeoff.heightM} m`,
+    `${presentInternalWallsLm(takeoff.studLm)} studs`,
+  ].join(" · ");
+}
+
