@@ -12,12 +12,18 @@ export function InternalWallsWallTypesPanel({
   onDuplicate,
   onDelete,
   onSelect,
+  onAddOpening,
+  onDeleteOpening,
+  onSelectOpening,
 }: {
   panel: InternalWallsRefinePanel;
   onAdd: (workAreaId: string) => void;
   onDuplicate: (workAreaId: string, wallTypeId: string) => void;
   onDelete: (workAreaId: string, wallTypeId: string) => void;
   onSelect: (workAreaId: string, wallTypeId: string) => void;
+  onAddOpening?: (workAreaId: string, wallTypeId: string, openingId: string) => void;
+  onDeleteOpening?: (workAreaId: string, wallTypeId: string, openingId: string) => void;
+  onSelectOpening?: (workAreaId: string, wallTypeId: string, openingId: string) => void;
 }) {
   return (
     <section
@@ -71,7 +77,13 @@ export function InternalWallsWallTypesPanel({
               >
                 <p className="text-sm font-medium">{type.displayName}</p>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  {[type.frameLine, type.geometryLine, type.centresLine, type.liningLine]
+                  {[
+                    type.frameLine,
+                    type.geometryLine,
+                    type.centresLine,
+                    type.liningLine,
+                    type.openingsLine,
+                  ]
                     .filter(Boolean)
                     .join(" · ")}
                 </p>
@@ -117,6 +129,73 @@ export function InternalWallsWallTypesPanel({
                   </>
                 ) : null}
               </div>
+              {selected ? (
+                <div className="mt-3 space-y-2" data-wall-type-openings={type.id}>
+                  {type.openings.map((opening) => {
+                    const openingSelected = opening.id === panel.activeOpeningId;
+                    return (
+                      <div
+                        key={opening.id}
+                        className={cn(
+                          "rounded-lg border px-3 py-2",
+                          openingSelected
+                            ? "border-[var(--brand-orange)]/40 bg-background"
+                            : "border-border/70 bg-background"
+                        )}
+                        data-opening-card={opening.id}
+                      >
+                        <p className="text-sm">{opening.summaryLine}</p>
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10 min-h-10 px-3"
+                            data-edit-opening={opening.id}
+                            onClick={() =>
+                              onSelectOpening?.(panel.workAreaId, type.id, opening.id)
+                            }
+                          >
+                            Edit
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            className="h-10 min-h-10 px-3"
+                            data-delete-opening={opening.id}
+                            onClick={() => {
+                              if (window.confirm("Remove this opening?")) {
+                                onDeleteOpening?.(
+                                  panel.workAreaId,
+                                  type.id,
+                                  opening.id
+                                );
+                              }
+                            }}
+                          >
+                            Delete
+                          </Button>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="h-10 min-h-10 w-full px-3 sm:w-auto"
+                    data-add-opening
+                    onClick={() => {
+                      const id =
+                        typeof crypto !== "undefined" &&
+                        typeof crypto.randomUUID === "function"
+                          ? crypto.randomUUID()
+                          : `op-${Date.now().toString(16)}`;
+                      onAddOpening?.(panel.workAreaId, type.id, id);
+                    }}
+                  >
+                    Add opening
+                  </Button>
+                </div>
+              ) : null}
             </article>
           );
         })}

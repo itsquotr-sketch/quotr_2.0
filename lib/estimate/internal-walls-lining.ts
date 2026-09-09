@@ -11,7 +11,10 @@
  *   purchase = purchase_per_layer × layers
  *
  * Labour uses installed sheets, not purchase/waste sheets.
- * Openings are not deducted (IW-06).
+ *
+ * IW-06: known openings deduct from net lined m² only. Sheet purchase /
+ * installed counts stay on the full-height wall-length sheet run unless a
+ * later phase can prove a whole bay is eliminated.
  */
 
 import { round2 } from "@/lib/estimate/facts";
@@ -148,6 +151,8 @@ export type InternalWallsLiningTakeoff =
       layers: number;
       lengthLm: number;
       heightM: number;
+      grossFaceAreaM2: number;
+      openingDeductionM2: number;
       netFaceAreaM2: number;
       installedLayerAreaM2: number;
       baseSheetsPerLayer: number;
@@ -180,6 +185,7 @@ export function internalWallsLiningFaceTakeoff(params: {
   side: InternalWallsLiningFaceSide;
   wasteFactor: number;
   hoursPerSheet: number | null;
+  openingDeductionM2?: number;
 }): InternalWallsLiningTakeoff {
   const { face, side, wasteFactor, hoursPerSheet } = params;
   if (!face.lined) {
@@ -285,8 +291,10 @@ export function internalWallsLiningFaceTakeoff(params: {
   );
   const installedSheets = baseSheetsPerLayer * layers;
   const purchaseSheets = purchaseSheetsPerLayer * layers;
-  const netFaceAreaM2 = round2(lengthLm * heightM);
-  const installedLayerAreaM2 = round2(netFaceAreaM2 * layers);
+  const grossFaceAreaM2 = lengthLm * heightM;
+  const openingDeductionM2 = Math.max(0, params.openingDeductionM2 ?? 0);
+  const netFaceAreaM2 = Math.max(0, grossFaceAreaM2 - openingDeductionM2);
+  const installedLayerAreaM2 = netFaceAreaM2 * layers;
   const identity = internalWallsLiningMaterialKey({
     product,
     thicknessMm,
@@ -310,6 +318,8 @@ export function internalWallsLiningFaceTakeoff(params: {
     layers,
     lengthLm,
     heightM,
+    grossFaceAreaM2,
+    openingDeductionM2,
     netFaceAreaM2,
     installedLayerAreaM2,
     baseSheetsPerLayer,
@@ -335,8 +345,14 @@ export function formatInternalWallsLiningTakeoff(
     `${takeoff.lengthLm} × ${takeoff.heightM} m`,
     `${takeoff.installedSheets} sheets installed`,
     `${takeoff.purchaseSheets} sheets incl. waste`,
-    `${takeoff.netFaceAreaM2} m²`,
-  ].join(" · ");
+    `${round2(takeoff.grossFaceAreaM2)} m² gross`,
+    takeoff.openingDeductionM2 > 0
+      ? `${round2(takeoff.openingDeductionM2)} m² opening deduction`
+      : null,
+    `${round2(takeoff.netFaceAreaM2)} m² net`,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 export function aggregateInternalWallsLiningPurchaseSheets(

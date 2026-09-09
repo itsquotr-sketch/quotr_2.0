@@ -138,6 +138,10 @@ const CHECK_SCORES: Record<string, number> = {
   "internal_walls.wall_type.side_a_sheet_length_mm": 85,
   "internal_walls.wall_type.side_a_layers": 84.5,
   "internal_walls.wall_type.same_lining_both_sides": 84,
+  "internal_walls.wall_type.has_openings": 83,
+  "internal_walls.opening.type": 82.5,
+  "internal_walls.opening.width_m": 82,
+  "internal_walls.opening.height_m": 81.5,
   "bathroom.length_m": 95,
   "bathroom.width_m": 94,
   "bathroom.wall_height_m": 70,
@@ -669,12 +673,16 @@ function missingHardMinimum(
         wallTypesRequiredForScope(jobScope) &&
         (nextField === "internal_walls.wall_type.frame_system" ||
           nextField === "internal_walls.wall_type.frame_size" ||
-          nextField === "internal_walls.wall_type.length_lm")
+          nextField === "internal_walls.wall_type.length_lm" ||
+          nextField === "internal_walls.opening.width_m" ||
+          nextField === "internal_walls.opening.height_m")
       ) {
         missing.push({
           key: nextField,
           inputType:
-            nextField === "internal_walls.wall_type.length_lm"
+            nextField === "internal_walls.wall_type.length_lm" ||
+            nextField === "internal_walls.opening.width_m" ||
+            nextField === "internal_walls.opening.height_m"
               ? "number"
               : "select",
           rankScore: 998,
@@ -697,7 +705,9 @@ function missingHardMinimum(
           inputType: row.inputType,
           unit: template?.unit,
           options: template?.options,
-          currentValue: row.key.startsWith("internal_walls.wall_type.")
+          currentValue:
+            row.key.startsWith("internal_walls.wall_type.") ||
+            row.key.startsWith("internal_walls.opening.")
             ? wallTypeFieldCurrentValue(active, row.key)
             : undefined,
           writeTarget: "FACT",
@@ -708,6 +718,7 @@ function missingHardMinimum(
           rankReason: "HARD_MINIMUM internal walls core",
           assumptionStatement: null,
           wallTypeId: active?.id ?? null,
+          openingId: active?.active_opening_id ?? active?.openings[0]?.id ?? null,
         });
       }
     }
@@ -1155,7 +1166,9 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         nextField &&
         nextField !== "internal_walls.wall_type.frame_system" &&
         nextField !== "internal_walls.wall_type.frame_size" &&
-        nextField !== "internal_walls.wall_type.length_lm"
+        nextField !== "internal_walls.wall_type.length_lm" &&
+        nextField !== "internal_walls.opening.width_m" &&
+        nextField !== "internal_walls.opening.height_m"
       ) {
         const template = getQuestionTemplateByKey(nextField);
         out.push({
@@ -1188,6 +1201,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
               ? INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT
               : null,
           wallTypeId: active?.id ?? null,
+          openingId: active?.active_opening_id ?? active?.openings[0]?.id ?? null,
         });
       }
       continue;

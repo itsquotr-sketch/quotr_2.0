@@ -50,7 +50,7 @@ export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
       ...summaries.slice(0, 3).map((row, index) => ({
         key: `wt-${row.id}`,
         label: row.displayName,
-        value: [row.frameLine, row.geometryLine].filter(Boolean).join(" · ") || "In progress",
+        value: [row.frameLine, row.geometryLine, row.openingsLine].filter(Boolean).join(" · ") || "In progress",
         advanced: index > 0,
       })),
     ].filter((row): row is JobPlanSpecChip => row != null);

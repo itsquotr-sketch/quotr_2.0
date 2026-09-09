@@ -110,7 +110,24 @@ export const INTERNAL_WALLS_LINING_LABOUR_OWNER_REQUIRED_MESSAGE =
   "Lining labour Pricing Required — no owner-approved hours/sheet." as const;
 
 export const INTERNAL_WALLS_LINING_GROSS_SHEET_ASSUMPTION =
-  "Lining sheet count is gross wall face / gross sheet run. Openings are not deducted yet." as const;
+  "Lining sheet count stays on the full-height sheet run. Known openings are deducted from net lined area only." as const;
+
+export const INTERNAL_WALLS_OPENING_FRAMING_90_MATERIAL_COMPONENT =
+  "internal_walls.opening.framing.timber.90x45.material" as const;
+export const INTERNAL_WALLS_OPENING_FRAMING_140_MATERIAL_COMPONENT =
+  "internal_walls.opening.framing.timber.140x45.material" as const;
+export const INTERNAL_WALLS_OPENING_FRAMING_OTHER_TIMBER_MATERIAL_COMPONENT =
+  "internal_walls.opening.framing.timber.other.material" as const;
+export const INTERNAL_WALLS_OPENING_FRAMING_STEEL_TRACK_COMPONENT =
+  "internal_walls.opening.framing.steel.track.material" as const;
+export const INTERNAL_WALLS_OPENING_FRAMING_STEEL_STUD_COMPONENT =
+  "internal_walls.opening.framing.steel.stud.material" as const;
+export const INTERNAL_WALLS_OPENING_FRAMING_STEEL_COMPONENT =
+  "internal_walls.opening.framing.steel" as const;
+export const INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT =
+  "internal_walls.opening.form.labour" as const;
+export const INTERNAL_WALLS_OPENING_LINING_MAKE_GOOD_COMPONENT =
+  "internal_walls.opening.lining.make_good" as const;
 
 /** Future Company DNA tasks — no owner-approved hours/sheet in IW-05. */
 export const INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS = {
@@ -182,4 +199,58 @@ export function internalWallsFramingOverlapGroup(wallTypeId: string): string {
 export function isInternalWallsFramingComponentKey(key: string | null | undefined): boolean {
   if (!key) return false;
   return (INTERNAL_WALLS_FRAMING_COMPONENT_KEYS as readonly string[]).includes(key);
+}
+
+export const INTERNAL_WALLS_OPENING_FRAMING_COMPONENT_KEYS = [
+  INTERNAL_WALLS_OPENING_FRAMING_90_MATERIAL_COMPONENT,
+  INTERNAL_WALLS_OPENING_FRAMING_140_MATERIAL_COMPONENT,
+  INTERNAL_WALLS_OPENING_FRAMING_OTHER_TIMBER_MATERIAL_COMPONENT,
+  INTERNAL_WALLS_OPENING_FRAMING_STEEL_TRACK_COMPONENT,
+  INTERNAL_WALLS_OPENING_FRAMING_STEEL_STUD_COMPONENT,
+  INTERNAL_WALLS_OPENING_FRAMING_STEEL_COMPONENT,
+  INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT,
+  INTERNAL_WALLS_OPENING_LINING_MAKE_GOOD_COMPONENT,
+] as const;
+
+export function internalWallsOpeningFramingOverlapGroup(
+  wallTypeId: string,
+  openingId: string
+): string {
+  return `internal_walls.opening.framing:${wallTypeId}:${openingId}`;
+}
+
+export function isInternalWallsOpeningComponentKey(
+  key: string | null | undefined
+): boolean {
+  if (!key) return false;
+  return (
+    INTERNAL_WALLS_OPENING_FRAMING_COMPONENT_KEYS as readonly string[]
+  ).includes(key);
+}
+
+export function looksLikeDoorProductMoney(params: {
+  label?: string | null;
+  componentKey?: string | null;
+  itemKey?: string | null;
+}): boolean {
+  const hay = [
+    params.label ?? "",
+    params.componentKey ?? "",
+    params.itemKey ?? "",
+  ]
+    .join(" ")
+    .toLowerCase();
+  if (!hay.trim()) return false;
+  if (hay.includes("door leaf / hardware")) return false;
+  if (hay.includes("door opening")) return false;
+  return (
+    /door leaf/.test(hay) ||
+    /door jamb/.test(hay) ||
+    /door frame/.test(hay) ||
+    /door hardware/.test(hay) ||
+    /door install/.test(hay) ||
+    /doors\.count/.test(hay) ||
+    /doors\.package/.test(hay) ||
+    /generic door allowance/.test(hay)
+  );
 }

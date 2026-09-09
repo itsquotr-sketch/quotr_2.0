@@ -59,6 +59,10 @@ import { INTERNAL_WALLS_LINING_NOT_PRICED_STATEMENT } from "@/lib/estimate/inter
 import { buildInternalWallsFramingEnvelope } from "@/lib/estimate/internal-walls-physical";
 import { buildInternalWallsLiningEnvelope } from "@/lib/estimate/internal-walls-lining-physical";
 import {
+  buildInternalWallsOpeningEnvelope,
+  typesForInfillFraming,
+} from "@/lib/estimate/internal-walls-opening-physical";
+import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
   isMatureInternalWallsPath,
@@ -183,6 +187,14 @@ export const INTERNAL_WALLS_CALCULATOR_CONSUMED_FACTS = [
   "internal_walls.wall_type.side_b_thickness_mm",
   "internal_walls.wall_type.side_b_sheet_length_mm",
   "internal_walls.wall_type.side_b_layers",
+  "internal_walls.wall_type.has_openings",
+  "internal_walls.add_opening",
+  "internal_walls.delete_opening",
+  "internal_walls.active_opening_id",
+  "internal_walls.opening.type",
+  "internal_walls.opening.width_m",
+  "internal_walls.opening.height_m",
+  "internal_walls.opening.label",
   "internal_walls.length_lm",
   "internal_walls.height_m",
   "internal_walls.area_m2",
@@ -256,19 +268,32 @@ function calculateInternalWallsMature(
   const framing = buildInternalWallsFramingEnvelope({
     context,
     workArea,
-    types: resolved.types,
+    types:
+      jobScope === "infill_opening"
+        ? typesForInfillFraming(resolved.types)
+        : resolved.types,
     jobScope,
     sortOrderStart: 1,
   });
   missingInfo.push(...framing.missingInfo);
   assumptions.push(...framing.assumptions);
 
-  const lining = buildInternalWallsLiningEnvelope({
+  const openings = buildInternalWallsOpeningEnvelope({
     context,
     workArea,
     types: resolved.types,
     jobScope,
     sortOrderStart: framing.nextSortOrder,
+  });
+  missingInfo.push(...openings.missingInfo);
+  assumptions.push(...openings.assumptions);
+
+  const lining = buildInternalWallsLiningEnvelope({
+    context,
+    workArea,
+    types: resolved.types,
+    jobScope,
+    sortOrderStart: openings.nextSortOrder,
   });
   missingInfo.push(...lining.missingInfo);
   assumptions.push(...lining.assumptions);
@@ -285,8 +310,16 @@ function calculateInternalWallsMature(
 
   const uniqueMissing = [...new Set(missingInfo)];
   const uniqueAssumptions = [...new Set(assumptions)];
-  const requirements = [...framing.requirements, ...lining.requirements];
-  const lineItems = [...framing.lineItems, ...lining.lineItems];
+  const requirements = [
+    ...framing.requirements,
+    ...openings.requirements,
+    ...lining.requirements,
+  ];
+  const lineItems = [
+    ...framing.lineItems,
+    ...openings.lineItems,
+    ...lining.lineItems,
+  ];
 
   return {
     lineItems,
@@ -753,6 +786,8 @@ export function calculateDoors(
   context: EstimateContext,
   workArea: EstimateWorkArea
 ): CalculatorResult {
+  // Internal Walls openings are holes in a partition. They do not set
+  // doors.count and must not inherit this default-3 lump.
   const { facts } = context;
   const missingInfo: string[] = [];
   const assumptions: string[] = [];

@@ -42,6 +42,8 @@ export type EstimateFact = {
   source?: string | null;
   /** Overlay-only Internal Walls target. Not a persisted sibling column. */
   wallTypeId?: string;
+  /** Overlay-only nested opening target. Not a persisted sibling column. */
+  openingId?: string;
 };
 
 export type EstimateConstraint = {

@@ -496,7 +496,7 @@ export function AssistantShell({
 
   const tagOverlayFactSeq = useCallback((row: EstimateFact, seq: number) => {
     overlaySeqByFactRef.current.set(
-      `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}`,
+      `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}:${row.openingId ?? ""}`,
       seq
     );
   }, []);
@@ -533,7 +533,7 @@ export function AssistantShell({
       );
       setJobPlanFactOverlay((prev) =>
         prev.filter((row) => {
-          const key = `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}`;
+          const key = `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}:${row.openingId ?? ""}`;
           const seq = overlaySeqByFactRef.current.get(key);
           return seq != null && seq > requestSeq;
         })
@@ -1172,6 +1172,7 @@ export function AssistantShell({
       unit?: string;
       inputType?: "number" | "select" | "boolean" | "text" | "multi_select";
       wallTypeId?: string | null;
+      openingId?: string | null;
     }) => {
       const factKey = `${input.workAreaId}:${input.key}`;
       recordPreviewPerf("question_save_ack", 0);
@@ -1185,6 +1186,7 @@ export function AssistantShell({
         value: input.value,
         source: "user",
         wallTypeId: input.wallTypeId ?? undefined,
+        openingId: input.openingId ?? undefined,
       };
       tagOverlayFactSeq(overlayRow, requestSeq);
       setJobPlanFactOverlay((prev) => appendJobPlanFactOverlay(prev, overlayRow));
@@ -1199,6 +1201,7 @@ export function AssistantShell({
           unit: input.unit,
           valueType: input.inputType,
           wallTypeId: input.wallTypeId ?? undefined,
+          openingId: input.openingId ?? undefined,
         })
       );
 
@@ -1206,12 +1209,12 @@ export function AssistantShell({
         setFactError(result.error);
         setSavingFactKey(null);
         endSavePerf();
-        const factIdentity = `${input.workAreaId}:${input.key}:${input.wallTypeId ?? ""}`;
+        const factIdentity = `${input.workAreaId}:${input.key}:${input.wallTypeId ?? ""}:${input.openingId ?? ""}`;
         if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
           setJobPlanFactOverlay((prev) =>
             prev.filter(
               (row) =>
-                `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}` !==
+                `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}:${row.openingId ?? ""}` !==
                 factIdentity
             )
           );
@@ -1689,6 +1692,7 @@ export function AssistantShell({
           value,
           source: "user" as const,
           wallTypeId: candidate.wallTypeId ?? undefined,
+          openingId: candidate.openingId ?? undefined,
         };
         tagOverlayFactSeq(overlayRow, requestSeq);
         const iwWrite = Boolean(
@@ -1717,16 +1721,17 @@ export function AssistantShell({
             value,
             valueType,
             wallTypeId: candidate.wallTypeId ?? undefined,
+            openingId: candidate.openingId ?? undefined,
           })
         );
         if (result.error) {
           setActionError(result.error);
-          const factIdentity = `${candidate.workAreaId ?? ""}:${candidate.factKey}:${candidate.wallTypeId ?? ""}`;
+          const factIdentity = `${candidate.workAreaId ?? ""}:${candidate.factKey}:${candidate.wallTypeId ?? ""}:${candidate.openingId ?? ""}`;
           if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
             setJobPlanFactOverlay((prev) =>
               prev.filter(
                 (row) =>
-                  `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}` !==
+                  `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}:${row.openingId ?? ""}` !==
                   factIdentity
               )
             );
@@ -2462,7 +2467,7 @@ export function AssistantShell({
                   onDone={closeRefineAfterEstimate}
                   onAnswerBoolean={handleClarifyBoolean}
                   onAnswerValue={handleClarifyValue}
-                  onWallTypeAction={(workAreaId, key, value, label, wallTypeId) => {
+                  onWallTypeAction={(workAreaId, key, value, label, wallTypeId, openingId) => {
                     void handleFactSave({
                       workAreaId,
                       key,
@@ -2470,6 +2475,7 @@ export function AssistantShell({
                       value,
                       inputType: typeof value === "boolean" ? "boolean" : "text",
                       wallTypeId,
+                      openingId,
                     });
                   }}
                 />

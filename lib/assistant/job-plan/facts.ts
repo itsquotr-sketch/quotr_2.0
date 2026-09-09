@@ -78,6 +78,7 @@ export function overlayFact(
       key: next.key,
       value: next.value,
       wallTypeId: next.wallTypeId,
+      openingId: next.openingId,
     });
   }
   const without = facts.filter(
@@ -103,7 +104,8 @@ export function appendJobPlanFactOverlay(
           !(
             row.key === next.key &&
             row.work_area_id === next.work_area_id &&
-            (row.wallTypeId ?? "") === (next.wallTypeId ?? "")
+            (row.wallTypeId ?? "") === (next.wallTypeId ?? "") &&
+            (row.openingId ?? "") === (next.openingId ?? "")
           )
       ),
       next,

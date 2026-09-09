@@ -135,7 +135,8 @@ export function RefineEstimatePanel({
     key: string,
     value: string | boolean,
     label: string,
-    wallTypeId?: string | null
+    wallTypeId?: string | null,
+    openingId?: string | null
   ) => void;
 }) {
   const [localValues, setLocalValues] = useState<
@@ -289,6 +290,36 @@ export function RefineEstimatePanel({
                   "internal_walls.active_wall_type_id",
                   wallTypeId,
                   "Selected wall type"
+                )
+              }
+              onAddOpening={(workAreaId, wallTypeId, openingId) =>
+                onWallTypeAction(
+                  workAreaId,
+                  "internal_walls.add_opening",
+                  openingId,
+                  "Add opening",
+                  wallTypeId,
+                  openingId
+                )
+              }
+              onDeleteOpening={(workAreaId, wallTypeId, openingId) =>
+                onWallTypeAction(
+                  workAreaId,
+                  "internal_walls.delete_opening",
+                  openingId,
+                  "Remove opening",
+                  wallTypeId,
+                  openingId
+                )
+              }
+              onSelectOpening={(workAreaId, wallTypeId, openingId) =>
+                onWallTypeAction(
+                  workAreaId,
+                  "internal_walls.active_opening_id",
+                  openingId,
+                  "Selected opening",
+                  wallTypeId,
+                  openingId
                 )
               }
             />

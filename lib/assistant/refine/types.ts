@@ -31,6 +31,8 @@ export type RefineCandidate = {
   readonly write: JobPlanScopeWrite | null;
   /** Internal Walls Refine writes target this Wall Type id. */
   readonly wallTypeId?: string | null;
+  /** Nested opening id for Internal Walls opening writes. */
+  readonly openingId?: string | null;
   /** Only fields the current calculator consumes may be true. */
   readonly consumedByCalculator: true;
 };
@@ -47,6 +49,7 @@ export type InternalWallsRefinePanel = {
   readonly workAreaName: string;
   readonly types: readonly InternalWallsWallTypeSummary[];
   readonly activeId: string | null;
+  readonly activeOpeningId: string | null;
   readonly assumedHeight: boolean;
 };
 

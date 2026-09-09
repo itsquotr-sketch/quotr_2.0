@@ -418,6 +418,8 @@ export function BuilderReviewSurface({
                               <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
                                 {group.id.startsWith("internal-walls-lining")
                                   ? "Lining details"
+                                  : group.id.startsWith("internal-walls-opening")
+                                  ? "Opening details"
                                   : group.id.startsWith("internal-walls-")
                                   ? "Framing details"
                                   : "Stock breakdown"}

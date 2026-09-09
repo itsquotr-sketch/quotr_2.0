@@ -139,8 +139,9 @@ check(
   questionKeys.includes("internal_walls.job_scope")
 );
 check(
-  "no opening facts in current templates",
-  !questionKeys.some((key) => /opening/i.test(key ?? ""))
+  "06 added opening facts to templates",
+  questionKeys.some((key) => key === "internal_walls.opening.width_m") &&
+    questionKeys.some((key) => key === "internal_walls.wall_type.has_openings")
 );
 check(
   "mature templates have estimatePriorityClass on job_scope",

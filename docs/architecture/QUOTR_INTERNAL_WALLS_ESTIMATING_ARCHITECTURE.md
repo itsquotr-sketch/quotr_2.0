@@ -1,6 +1,6 @@
 # Quotr Internal Walls Estimating Architecture
 
-**Status:** CANONICAL — **WA-INTERNAL-WALLS-05** lining product / face / layer + sheet takeoff  
+**Status:** CANONICAL — **WA-INTERNAL-WALLS-06** openings + structural gate + lining deductions  
 **Date:** 2026-09-09  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **056**  
@@ -13,7 +13,8 @@
 **Verifier (02C persist):** `scripts/verify-work-area-internal-walls-02c.ts`  
 **Verifier (03 timber framing):** `scripts/verify-work-area-internal-walls-03.ts`  
 **Verifier (04 steel framing):** `scripts/verify-work-area-internal-walls-04.ts`  
-**Verifier (05 lining takeoff):** `scripts/verify-work-area-internal-walls-05.ts`
+**Verifier (05 lining takeoff):** `scripts/verify-work-area-internal-walls-05.ts`  
+**Verifier (06 openings):** `scripts/verify-work-area-internal-walls-06.ts`
 
 Canonical Work Area type: **`internal_walls`**. ISD alias: **`partitions`**.
 
@@ -30,11 +31,12 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | WA-INTERNAL-WALLS-02C nested persist + sheet length UX | **FINAL GO** |
 | WA-INTERNAL-WALLS-03 timber framing takeoff + envelope | **GO** |
 | WA-INTERNAL-WALLS-04 steel track/stud takeoff | **GO** |
-| WA-INTERNAL-WALLS-05 lining sheets + labour | **GO** (this phase) |
-| Current product maturity | **PARTIAL** — timber + steel track/stud + lining sheets on mature path; openings not in 05 |
+| WA-INTERNAL-WALLS-05 lining sheets + labour | **GO** (historical) |
+| WA-INTERNAL-WALLS-06 openings + structural gate + lining deductions | **GO** (this phase) |
+| Current product maturity | **PARTIAL** — timber + steel + lining + openings on mature path; insulation/skirting/cornice/electrical not in 06 |
 | Customer UI band | **Component** — do not call Supported or Mature |
-| Openings / door deductions in 05 | **NO-GO** |
-| Start WA-INTERNAL-WALLS-06 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 06 |
+| Openings / door deductions in 06 | **GO** — net lined m² deducted; sheet purchase stays on the sheet-run |
+| Start WA-INTERNAL-WALLS-07 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 07 |
 | Production / migration 055 | **NO-GO** |
 
 **Current factory score (honest):**
@@ -220,7 +222,7 @@ No `internal_walls.steel.track…` physical keys. No width-specific products —
 
 Implemented on current branch HEAD. IW-03 timber and IW-04 steel formulas are unchanged. `same_lining_both_sides` remains a UX shortcut; the calculator always reads `side_a` / `side_b`.
 
-**IW-05 lining is gross wall face area / gross sheet run.** IW-06 will subtract known opening geometry. Do not treat current sheet counts as net of doors.
+**IW-05 lining is gross wall face area / gross sheet run.** IW-06 deducts known opening geometry from **net lined m² only**. Sheet purchase / installed counts stay on the full-height sheet run.
 
 ### Physical authority
 
@@ -298,7 +300,7 @@ Wall Type lining group: product, thickness, sheet size, layers, installed vs pur
 
 ### Known limitations (05)
 
-- Openings / door deductions: **IW-06**
+- Openings / door deductions: **closed in IW-06** (net m² only; sheet-run unchanged)
 - Insulation, skirting, cornice, stopping, painting, demolition, waste disposal: **not implemented**
 - No owner-approved lining hours/sheet — labour Pricing Required until company rate or DNA
 - Plywood / fibre-cement wall lining: catalogue gap
@@ -315,6 +317,90 @@ Wall Type lining group: product, thickness, sheet size, layers, installed vs pur
 | C | 5 × 2.7, Aqualine 13/2700 vs Standard 13/2700 | 5/6 each, separate identities |
 | D | existing frame 3 × 2.4, Standard 13/2400 Side A only | 3 installed / 4 purchase; **no framing** |
 | Too-short | 3.0 m wall, 2400 sheet | INFO_REQUIRED, no area math |
+
+---
+
+## 0E. WA-INTERNAL-WALLS-06 — openings + structural gate + lining deductions
+
+Nested `openings[]` on each Wall Type inside `internal_walls.wall_types` JSON. Stable UUID per opening. Logical write keys (`internal_walls.add_opening`, `internal_walls.opening.*`, `internal_walls.wall_type.has_openings`) patch the collection via the IW-02C CAS / `updateWallType` path. No migration. Do not flatten `opening_1` facts.
+
+### Types
+
+Canonical V1: `door` | `passage` | `other`. **Door means a door-sized framed opening only.** It does not create a door leaf, jamb/frame product, hardware, install, or a Doors Work Area. Review: “Door leaf / hardware: Not included”.
+
+### Geometry and validation
+
+`opening_area_m2 = width_m × height_m`. Missing dimensions → INFO_REQUIRED. Do not invent 810×1980. Width/height must be > 0. If wall length/height are known, opening width must be **less than** wall length and height must not exceed wall height. Exceeding wall geometry is INFO_REQUIRED — **no silent clamp**.
+
+### Lining deduction
+
+For new/extend/reline/mixed (not infill, not form-opening sheet takeoff):
+
+```
+net_face_area = max(0, gross_face_area − Σ opening_area)
+```
+
+Deduct only lined faces. One-side lining deducts Side A only. This net area is authority for lining metadata and future stopping/painting. **Do not allow negative area.**
+
+### Sheet count (conservative V1)
+
+Keep IW-05 full-height vertical sheet-run: `ceil(wall_length / 1.2)`. An 810 mm doorway on a 12 m wall does **not** eliminate a 1200 mm bay. Do not subtract `opening_area / sheet_area` from purchase count. Installed sheet labour stays on the sheet-run. Forming around openings is additional work, not a lining-hours cut.
+
+Waste remains **once** on that sheet-run (IW-05 10% `sheet_material`). Opening deduction does not apply waste twice.
+
+### Timber opening framing
+
+Keep the IW-03 base stud/plate/nog grid unchanged (conservative overtake: jambs are not subtracted from the grid).
+
+Per opening, **additive**:
+
+```
+trimmer_stud_count = 2
+trimmer_lm         = 2 × trimmer_height     // wall height if known, else opening height
+header_lm          = opening_width
+cripple_lm         = 0                      // deferred — false precision
+raw_lm             = trimmer_lm + header_lm
+purchase_lm        = raw_lm × (1 + timber_framing waste)
+```
+
+Same frame material (90×45 / 140×45). Waste once on opening raw lm (equivalent to combining then wasting once; not wasted again on a combined total). Shared keys `timber.framing.90x45.h1.2.lm` / `140x45`. Review `variantKey` = `{wallTypeId}:{openingId}`.
+
+### Steel opening framing
+
+Standard track/stud: 2 extra full-height jamb studs + head track = opening width. Waste 0 (IW-04). Materials Pricing Required until company steel $/lm. No boxed/proprietary jambs. Never fall back to timber.
+
+### Opening labour
+
+Key `internal_walls.opening.form.hours_each`. **No owner-approved hours.** Physical framing can complete; labour = **Pricing Required**. Does not block known base framing/lining.
+
+### form_opening
+
+Existing partition + new hole. Structural gate applies. Local opening framing + lining make-good Pricing Required if faces are lined. **No full new-wall timber/lining package.**
+
+### infill_opening
+
+Opening geometry **is** the infill. Local framing + lining on `width × height`. **Do not deduct** opening area (the hole is being closed). No 5 m / 12 m wall assumption.
+
+### Structural gate
+
+Already on `form_opening` / `remove_partition` / `infill_opening` / `mixed`. Yes / Not sure → INFO_REQUIRED specialist, no ordinary price. New non-loadbearing partition with a planned opening does **not** ask the structural question.
+
+### Doors overlap
+
+`calculateDoors` still defaults `count ?? 3` inside the Doors Work Area. Internal Walls openings do **not** set `doors.count`, do not spawn a Doors WA, and do not emit door leaf/frame/hardware/install money. Canonical future contract: Internal Walls = opening formation; Doors = door system.
+
+### Nested persist
+
+Opening IDs are UUIDs. Overlay identity includes `wallTypeId` + `openingId`. Editing Opening A must not overwrite Opening B, wall geometry, lining, or frame data.
+
+### Known limitations (06)
+
+- Cripple studs deferred
+- Sheet-run not reduced for doorways
+- Opening labour hours not invented
+- Lining returns / reveal make-good not sheet-counted
+- No lintel engineering
+- Insulation / skirting / cornice / electrical = **IW-07**, not started
 
 ---
 
@@ -1259,14 +1345,14 @@ Future implementation may need a **data-only** catalogue seed (DNA and/or materi
 | **02C** | Nested Wall Type persist + sheet length UX | Canonical `updateWallType` by stable ID; `{ v, types }` CAS; logical overlay rows keyed by Wall Type id; Yes/No same-both-sides; selectable sheet length with height recommendation |
 | **03** | Timber framing + first envelope | Shared 90×45 / 140×45 identities; stud/plate/nog takeoff; timber labour; fixings allowance structure; XOR timber vs existing frame / steel. **Lining sheets deferred.** |
 | **04** | Steel track/stud physical takeoff | **Closed (IW-04).** |
-| **05** | Lining sheets + labour | Face authority, product matrix, vertical sheet takeoff, 10% waste once, hours/sheet labour. **Closed (this phase).** Openings deferred |
-| **06** | Openings + structural gate + lining deductions | Deduct lining; trimmers; INFO_REQUIRED if load-bearing. **Do not start automatically.** |
-| **07** | Insulation + nested finishing XOR | Cavity area; stop/paint vs siblings |
+| **05** | Lining sheets + labour | Face authority, product matrix, vertical sheet takeoff, 10% waste once, hours/sheet labour. **Closed.** |
+| **06** | Openings + structural gate + lining deductions | **Closed (this phase).** Net lined m²; additive opening framing; Doors boundary. |
+| **07** | Insulation + skirting + cornice + electrical | **Do not start automatically.** |
 | **08** | Demolition + waste + Review | Separate demo labour; disposal allowance |
 | **09** | DNA | Only if productivity keys are consumed and owner calibrates |
 | **10** | Hosted close | Deterministic + Preview proof including lining |
 
-Do not start **06** (openings) in this phase.
+Do not start **07** (insulation / skirting / cornice / electrical) in this phase.
 
 ---
 

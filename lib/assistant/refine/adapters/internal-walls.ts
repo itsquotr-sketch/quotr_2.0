@@ -22,6 +22,11 @@ import {
   summariseWallType,
   wallTypeFieldCurrentValue,
 } from "@/lib/estimate/internal-walls-wall-types";
+import {
+  INTERNAL_WALLS_HAS_OPENINGS_KEY,
+  INTERNAL_WALLS_HAS_OPENINGS_OPTIONS,
+  INTERNAL_WALLS_OPENING_TYPE_OPTIONS,
+} from "@/lib/estimate/internal-walls-openings";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type {
   InternalWallsRefinePanel,
@@ -60,9 +65,10 @@ function candidate(params: {
   currentValue?: RefineCandidate["currentValue"];
   tier?: RefineCandidate["tier"];
   wallTypeId?: string | null;
+  openingId?: string | null;
 }): RefineCandidate {
   return {
-    id: `refine:${params.workAreaId}:${params.wallTypeId ?? "none"}:${params.factKey}`,
+    id: `refine:${params.workAreaId}:${params.wallTypeId ?? "none"}:${params.openingId ?? "none"}:${params.factKey}`,
     group: params.group ?? "specification",
     tier: params.tier ?? "high_value",
     workAreaId: params.workAreaId,
@@ -80,6 +86,7 @@ function candidate(params: {
     writeTarget: "FACT",
     write: null,
     wallTypeId: params.wallTypeId,
+    openingId: params.openingId,
     consumedByCalculator: true,
   };
 }
@@ -100,6 +107,11 @@ export function internalWallsRefinePanel(params: {
       summariseWallType(type, index, resolved.source)
     ),
     activeId: resolved.activeId,
+    activeOpeningId:
+      resolved.types.find((row) => row.id === resolved.activeId)
+        ?.active_opening_id ??
+      resolved.types[0]?.active_opening_id ??
+      null,
     assumedHeight: resolved.types.some(
       (type) => type.height_source === "assumed_disclosed"
     ),
@@ -196,20 +208,25 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
       );
     }
 
+    if (jobScope !== "infill_opening") {
+      out.push(
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: "internal_walls.wall_type.length_lm",
+          label: "Total wall length",
+          question: "What is the total wall length for this wall type?",
+          inputType: "number",
+          unit: "lm",
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            "internal_walls.wall_type.length_lm"
+          ),
+        })
+      );
+    }
+
     out.push(
-      candidate({
-        workAreaId,
-        workAreaName,
-        factKey: "internal_walls.wall_type.length_lm",
-        label: "Total wall length",
-        question: "What is the total wall length for this wall type?",
-        inputType: "number",
-        unit: "lm",
-        currentValue: wallTypeFieldCurrentValue(
-          active,
-          "internal_walls.wall_type.length_lm"
-        ),
-      }),
       candidate({
         workAreaId,
         workAreaName,
@@ -447,6 +464,80 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
       }
     }
 
+    const openingId = active?.active_opening_id ?? active?.openings[0]?.id ?? null;
+    if (jobScope !== "form_opening" && jobScope !== "infill_opening") {
+      out.push(
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: INTERNAL_WALLS_HAS_OPENINGS_KEY,
+          label: "Openings",
+          question: "Does this wall have any openings?",
+          inputType: "select",
+          options: INTERNAL_WALLS_HAS_OPENINGS_OPTIONS,
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            INTERNAL_WALLS_HAS_OPENINGS_KEY
+          ),
+          wallTypeId,
+        })
+      );
+    }
+    if (
+      jobScope === "form_opening" ||
+      jobScope === "infill_opening" ||
+      active?.has_openings === true ||
+      (active?.openings.length ?? 0) > 0
+    ) {
+      out.push(
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: "internal_walls.opening.type",
+          label: "Opening type",
+          question: "What kind of opening is this?",
+          inputType: "select",
+          options: INTERNAL_WALLS_OPENING_TYPE_OPTIONS,
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            "internal_walls.opening.type"
+          ),
+          wallTypeId,
+          openingId,
+        }),
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: "internal_walls.opening.width_m",
+          label: "Opening width",
+          question: "What is the opening width?",
+          inputType: "number",
+          unit: "m",
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            "internal_walls.opening.width_m"
+          ),
+          wallTypeId,
+          openingId,
+        }),
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: "internal_walls.opening.height_m",
+          label: "Opening height",
+          question: "What is the opening height?",
+          inputType: "number",
+          unit: "m",
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            "internal_walls.opening.height_m"
+          ),
+          wallTypeId,
+          openingId,
+        })
+      );
+    }
+
     out.push(
       candidate({
         workAreaId,
@@ -466,8 +557,9 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
     );
 
     return out.map((row) =>
-      row.factKey?.startsWith("internal_walls.wall_type.")
-        ? { ...row, wallTypeId }
+      row.factKey?.startsWith("internal_walls.wall_type.") ||
+      row.factKey?.startsWith("internal_walls.opening.")
+        ? { ...row, wallTypeId, openingId: row.openingId ?? openingId }
         : row
     );
   },

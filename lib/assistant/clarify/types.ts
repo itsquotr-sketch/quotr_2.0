@@ -49,6 +49,8 @@ export type ClarifyCandidate = {
   readonly economicClass?: ClarifyEconomicClass;
   /** Internal Walls writes target this Wall Type id. */
   readonly wallTypeId?: string | null;
+  /** Internal Walls nested opening target. */
+  readonly openingId?: string | null;
 };
 
 export type ClarifyAssumption = {

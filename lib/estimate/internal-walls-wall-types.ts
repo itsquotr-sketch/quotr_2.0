@@ -21,6 +21,26 @@ import {
   round2,
 } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
+import {
+  INTERNAL_WALLS_ACTIVE_OPENING_ID_FACT_KEY,
+  INTERNAL_WALLS_ADD_OPENING_KEY,
+  INTERNAL_WALLS_DELETE_OPENING_KEY,
+  INTERNAL_WALLS_HAS_OPENINGS_KEY,
+  INTERNAL_WALLS_OPENING_FIELD_PREFIX,
+  cloneOpening,
+  createEmptyOpening,
+  createOpeningId,
+  duplicateOpening,
+  formatOpeningDimensionsMm,
+  isClientOpeningId,
+  isInternalWallsOpeningWriteKey,
+  openingTypeDisplay,
+  parseInternalWallsOpeningType,
+  parseInternalWallsOpenings,
+  resolveActiveOpeningId,
+  summariseOpeningsLine,
+  type InternalWallsOpening,
+} from "@/lib/estimate/internal-walls-openings";
 
 export const INTERNAL_WALLS_WALL_TYPES_FACT_KEY =
   "internal_walls.wall_types" as const;
@@ -48,6 +68,7 @@ export const INTERNAL_WALLS_WALL_TYPE_FIELD_KEYS = [
   "internal_walls.wall_type.side_b_thickness_mm",
   "internal_walls.wall_type.side_b_sheet_length_mm",
   "internal_walls.wall_type.side_b_layers",
+  "internal_walls.wall_type.has_openings",
 ] as const;
 
 export const INTERNAL_WALLS_ADD_WALL_TYPE_KEY =
@@ -213,8 +234,9 @@ export type InternalWallsWallType = {
   same_lining_both_sides: boolean | null;
   side_a: InternalWallsFace;
   side_b: InternalWallsFace;
-  /** Future openings model. Empty in 02. */
-  openings: unknown[];
+  has_openings: boolean | null;
+  active_opening_id: string | null;
+  openings: InternalWallsOpening[];
 };
 
 export type InternalWallsWallTypeSource = "canonical" | "legacy_dual_read";
@@ -226,6 +248,9 @@ export type InternalWallsWallTypeSummary = {
   geometryLine: string | null;
   centresLine: string | null;
   liningLine: string | null;
+  openingsLine: string | null;
+  openingCount: number;
+  openings: readonly { id: string; summaryLine: string }[];
   grossFaceAreaM2: number | null;
   linedFaceCount: number;
   source: InternalWallsWallTypeSource;
@@ -333,6 +358,8 @@ export function createEmptyWallType(params?: {
     same_lining_both_sides: null,
     side_a: emptyFace(),
     side_b: emptyFace(),
+    has_openings: null,
+    active_opening_id: null,
     openings: [],
   };
 }
@@ -348,7 +375,9 @@ export function duplicateWallType(
     side_a: cloneFace(source.side_a),
     side_b: cloneFace(source.side_b),
     steel: source.steel ? { ...source.steel } : null,
-    openings: Array.isArray(source.openings) ? [...source.openings] : [],
+    has_openings: source.has_openings,
+    active_opening_id: null,
+    openings: source.openings.map((row) => duplicateOpening(row)),
   };
 }
 
@@ -618,6 +647,7 @@ export function parseInternalWallsWallType(
         : null;
   const sideA = parseFace(value.side_a);
   const sideB = sameBoth === true ? cloneFace(sideA) : parseFace(value.side_b);
+  const openings = parseInternalWallsOpenings(value.openings);
   return {
     id,
     label:
@@ -657,7 +687,21 @@ export function parseInternalWallsWallType(
     same_lining_both_sides: sameBoth,
     side_a: sideA,
     side_b: sideB,
-    openings: Array.isArray(value.openings) ? value.openings : [],
+    has_openings:
+      value.has_openings === true
+        ? true
+        : value.has_openings === false
+          ? false
+          : openings.length > 0
+            ? true
+            : null,
+    active_opening_id: resolveActiveOpeningId(
+      openings,
+      typeof value.active_opening_id === "string"
+        ? value.active_opening_id.trim()
+        : null
+    ),
+    openings,
   };
 }
 
@@ -701,6 +745,7 @@ export function isInternalWallsWallTypeWriteKey(key: string): boolean {
     key === INTERNAL_WALLS_ADD_WALL_TYPE_KEY ||
     key === INTERNAL_WALLS_DUPLICATE_WALL_TYPE_KEY ||
     key === INTERNAL_WALLS_DELETE_WALL_TYPE_KEY ||
+    isInternalWallsOpeningWriteKey(key) ||
     key.startsWith(INTERNAL_WALLS_WALL_TYPE_FIELD_PREFIX)
   );
 }
@@ -923,6 +968,7 @@ export function summariseWallType(
       : "None";
     liningLine = `Side A ${sideA} · Side B ${sideB}`;
   }
+  const openingsLine = summariseOpeningsLine(type.openings, type.has_openings);
   return {
     id: type.id,
     displayName: wallTypeDisplayName(type, index),
@@ -930,6 +976,18 @@ export function summariseWallType(
     geometryLine: geometry,
     centresLine: centres,
     liningLine,
+    openingsLine,
+    openingCount: type.openings.length,
+    openings: type.openings.map((row) => ({
+      id: row.id,
+      summaryLine: [
+        row.label,
+        openingTypeDisplay(row.type),
+        formatOpeningDimensionsMm(row.width_m, row.height_m),
+      ]
+        .filter(Boolean)
+        .join(" · ") || "Opening",
+    })),
     grossFaceAreaM2: area,
     linedFaceCount: lined,
     source,
@@ -1123,7 +1181,7 @@ export function updateWallType(
       side_a: cloneFace(row.side_a),
       side_b: cloneFace(row.side_b),
       steel: row.steel ? { ...row.steel } : null,
-      openings: Array.isArray(row.openings) ? [...row.openings] : [],
+      openings: row.openings.map((opening) => cloneOpening(opening)),
     };
     patch(next);
     applySteelFoundation(next);
@@ -1146,6 +1204,7 @@ export function applyInternalWallsFactWrite(params: {
   key: string;
   value: unknown;
   wallTypeId?: string | null;
+  openingId?: string | null;
 }): EstimateFact[] {
   const facts = params.facts.map((row) => ({ ...row })) as EstimateFact[];
   if (params.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY) {
@@ -1237,6 +1296,107 @@ export function applyInternalWallsFactWrite(params: {
       types = types.filter((row) => row.id !== deleteId);
       activeId = types[0]?.id ?? null;
     }
+  } else if (isInternalWallsOpeningWriteKey(params.key) && params.key !== INTERNAL_WALLS_HAS_OPENINGS_KEY) {
+    if (types.length === 0) {
+      const created = createEmptyWallType();
+      types = [created];
+      activeId = created.id;
+    }
+    const requested = params.wallTypeId?.trim() || null;
+    const targetId =
+      requested && types.some((row) => row.id === requested)
+        ? requested
+        : activeId && types.some((row) => row.id === activeId)
+          ? activeId
+          : types[0]!.id;
+    activeId = targetId;
+    types = updateWallType(types, targetId, (type) => {
+      if (params.key === INTERNAL_WALLS_ADD_OPENING_KEY) {
+        const requestedId = isClientOpeningId(params.value)
+          ? params.value.trim()
+          : params.openingId && isClientOpeningId(params.openingId)
+            ? params.openingId.trim()
+            : null;
+        const existing = requestedId
+          ? type.openings.find((row) => row.id === requestedId)
+          : null;
+        if (existing) {
+          type.active_opening_id = existing.id;
+          type.has_openings = true;
+          return;
+        }
+        const created = createEmptyOpening({
+          id: requestedId ?? createOpeningId(),
+        });
+        type.openings = [...type.openings, created];
+        type.active_opening_id = created.id;
+        type.has_openings = true;
+        return;
+      }
+      if (params.key === INTERNAL_WALLS_DELETE_OPENING_KEY) {
+        const deleteId =
+          (typeof params.value === "string" && params.value.trim()
+            ? params.value.trim()
+            : null) ??
+          params.openingId?.trim() ??
+          type.active_opening_id;
+        if (!deleteId) return;
+        type.openings = type.openings.filter((row) => row.id !== deleteId);
+        type.active_opening_id = type.openings[0]?.id ?? null;
+        if (type.openings.length === 0) type.has_openings = false;
+        return;
+      }
+      if (params.key === INTERNAL_WALLS_ACTIVE_OPENING_ID_FACT_KEY) {
+        const nextId = typeof params.value === "string" ? params.value.trim() : "";
+        if (nextId && type.openings.some((row) => row.id === nextId)) {
+          type.active_opening_id = nextId;
+        }
+        return;
+      }
+      if (type.openings.length === 0) {
+        const created = createEmptyOpening({
+          id:
+            params.openingId && isClientOpeningId(params.openingId)
+              ? params.openingId
+              : undefined,
+        });
+        type.openings = [created];
+        type.active_opening_id = created.id;
+        type.has_openings = true;
+      }
+      const requestedOpening =
+        params.openingId?.trim() ||
+        (typeof params.value === "object" &&
+        params.value &&
+        "id" in (params.value as object) &&
+        typeof (params.value as { id?: unknown }).id === "string"
+          ? String((params.value as { id: string }).id)
+          : null);
+      const openingId = resolveActiveOpeningId(
+        type.openings,
+        requestedOpening ?? type.active_opening_id
+      );
+      if (!openingId) return;
+      type.active_opening_id = openingId;
+      const field = params.key.slice(INTERNAL_WALLS_OPENING_FIELD_PREFIX.length);
+      type.openings = type.openings.map((row) => {
+        if (row.id !== openingId) return row;
+        const next = cloneOpening(row);
+        if (field === "type") {
+          next.type = parseInternalWallsOpeningType(params.value);
+        } else if (field === "width_m") {
+          next.width_m = parsePositiveNumber(params.value);
+        } else if (field === "height_m") {
+          next.height_m = parsePositiveNumber(params.value);
+        } else if (field === "label") {
+          next.label =
+            typeof params.value === "string" && params.value.trim()
+              ? params.value.trim()
+              : null;
+        }
+        return next;
+      });
+    });
   } else if (params.key.startsWith(INTERNAL_WALLS_WALL_TYPE_FIELD_PREFIX)) {
     if (types.length === 0) {
       const created = createEmptyWallType();
@@ -1406,6 +1566,31 @@ export function applyInternalWallsFactWrite(params: {
         type.side_b.layers = parseLayers(params.value);
         if (type.side_b.layers != null) type.side_b.lined = true;
         type.same_lining_both_sides = false;
+        return;
+      }
+      if (field === "has_openings") {
+        const normalised = String(params.value).trim().toLowerCase();
+        const yes =
+          params.value === true ||
+          normalised === "yes" ||
+          normalised === "included";
+        const no =
+          params.value === false ||
+          normalised === "no" ||
+          normalised === "not_included" ||
+          normalised === "not included";
+        if (yes) {
+          type.has_openings = true;
+          if (type.openings.length === 0) {
+            const created = createEmptyOpening();
+            type.openings = [created];
+            type.active_opening_id = created.id;
+          }
+        } else if (no) {
+          type.has_openings = false;
+          type.openings = [];
+          type.active_opening_id = null;
+        }
       }
     });
   } else {
@@ -1478,16 +1663,56 @@ export function wallTypeIsBuildOrReline(
   );
 }
 
+function nextOpeningField(type: InternalWallsWallType): string | null {
+  const active =
+    type.openings.find((row) => row.id === type.active_opening_id) ??
+    type.openings[0] ??
+    null;
+  if (!active) return "internal_walls.opening.type";
+  if (active.type == null) return "internal_walls.opening.type";
+  if (active.width_m == null) return "internal_walls.opening.width_m";
+  if (active.height_m == null) return "internal_walls.opening.height_m";
+  return null;
+}
+
 export function nextInternalWallsWallTypeField(params: {
   type: InternalWallsWallType | null;
   jobScope: string | null;
 }): string | null {
   if (params.jobScope === "remove_partition") return null;
-  if (params.jobScope === "form_opening" || params.jobScope === "infill_opening") {
-    return null;
-  }
   const type = params.type;
   if (!type) return "internal_walls.wall_type.frame_system";
+
+  if (params.jobScope === "form_opening" || params.jobScope === "infill_opening") {
+    if (type.frame_system == null) return "internal_walls.wall_type.frame_system";
+    if (type.frame_system === "timber" && type.frame_size == null) {
+      return "internal_walls.wall_type.frame_size";
+    }
+    if (params.jobScope === "form_opening" && type.height_m == null) {
+      return "internal_walls.wall_type.height_m";
+    }
+    if (params.jobScope === "infill_opening") {
+      if (type.stud_centres_mm == null && type.frame_system !== "existing_frame") {
+        return "internal_walls.wall_type.stud_centres_mm";
+      }
+    }
+    const openingNext = nextOpeningField(type);
+    if (openingNext) return openingNext;
+    if (!type.side_a.lined && type.side_a.product == null) {
+      return "internal_walls.wall_type.side_a_product";
+    }
+    if (type.side_a.lined && type.side_a.layers == null) {
+      return "internal_walls.wall_type.side_a_layers";
+    }
+    if (type.same_lining_both_sides == null && type.side_a.lined) {
+      return "internal_walls.wall_type.same_lining_both_sides";
+    }
+    if (type.same_lining_both_sides === false && !type.side_b.lined) {
+      return "internal_walls.wall_type.side_b_product";
+    }
+    return null;
+  }
+
   if (params.jobScope === "reline_existing") {
     if (type.frame_system == null) return "internal_walls.wall_type.frame_system";
     if (type.length_lm == null) return "internal_walls.wall_type.length_lm";
@@ -1495,6 +1720,8 @@ export function nextInternalWallsWallTypeField(params: {
     if (!type.side_a.lined && !type.side_b.lined) {
       return "internal_walls.wall_type.side_a_product";
     }
+    if (type.has_openings == null) return INTERNAL_WALLS_HAS_OPENINGS_KEY;
+    if (type.has_openings === true) return nextOpeningField(type);
     return null;
   }
   if (type.frame_system == null) return "internal_walls.wall_type.frame_system";
@@ -1518,6 +1745,8 @@ export function nextInternalWallsWallTypeField(params: {
   if (type.same_lining_both_sides === false && !type.side_b.lined) {
     return "internal_walls.wall_type.side_b_product";
   }
+  if (type.has_openings == null) return INTERNAL_WALLS_HAS_OPENINGS_KEY;
+  if (type.has_openings === true) return nextOpeningField(type);
   return null;
 }
 
@@ -1581,6 +1810,31 @@ export function wallTypeFieldCurrentValue(
       if (type.side_b.layers === 1) return "1 layer";
       if (type.side_b.layers === 2) return "2 layers";
       return type.side_b.layers;
+    case INTERNAL_WALLS_HAS_OPENINGS_KEY:
+      if (type.has_openings === true) return "Yes";
+      if (type.has_openings === false) return "No";
+      return null;
+    case "internal_walls.opening.type": {
+      const opening =
+        type.openings.find((row) => row.id === type.active_opening_id) ??
+        type.openings[0] ??
+        null;
+      return openingTypeDisplay(opening?.type ?? null);
+    }
+    case "internal_walls.opening.width_m": {
+      const opening =
+        type.openings.find((row) => row.id === type.active_opening_id) ??
+        type.openings[0] ??
+        null;
+      return opening?.width_m ?? null;
+    }
+    case "internal_walls.opening.height_m": {
+      const opening =
+        type.openings.find((row) => row.id === type.active_opening_id) ??
+        type.openings[0] ??
+        null;
+      return opening?.height_m ?? null;
+    }
     default:
       return null;
   }

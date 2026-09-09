@@ -54,6 +54,13 @@ import {
   wallTypeNeedsLength,
   type InternalWallsWallType,
 } from "@/lib/estimate/internal-walls-wall-types";
+import {
+  deductOpeningsFromLining,
+  liningUsesOpeningGeometry,
+  openingsEligibleForTakeoff,
+  sumOpeningAreaM2,
+  validateOpeningCollection,
+} from "@/lib/estimate/internal-walls-openings";
 
 function catalogueBenchmarkCost(itemKey: string): number | null {
   const entry = getCatalogueEntry(itemKey);
@@ -272,6 +279,42 @@ export function buildInternalWallsLiningEnvelope(params: {
     const displayName = wallTypeDisplayName(type, index);
     const overlapGroup = internalWallsLiningOverlapGroup(type.id);
 
+    if (jobScope === "form_opening") {
+      return;
+    }
+
+    if (liningUsesOpeningGeometry(jobScope)) {
+      const eligible = openingsEligibleForTakeoff(type.openings, {
+        wallLengthLm: null,
+        wallHeightM: null,
+        compareToWall: false,
+      });
+      for (const opening of eligible) {
+        emitLinedFaces({
+          type: {
+            ...type,
+            length_lm: opening.width_m,
+            height_m: opening.height_m,
+          },
+          displayName,
+          overlapGroup: `${overlapGroup}:infill:${opening.id}`,
+          openingDeductionM2: 0,
+          workArea,
+          context,
+          jobScope,
+          wasteFactor,
+          labourRate,
+          accessFactor,
+          provenanceBase,
+          missingInfo,
+          requirements,
+          lineItems,
+          bumpSortOrder: () => sortOrder++,
+        });
+      }
+      return;
+    }
+
     if (wallTypeNeedsLength(type, jobScope) && type.length_lm == null) {
       if (!missingInfo.includes(INTERNAL_WALLS_LENGTH_REQUIRED_MESSAGE)) {
         missingInfo.push(INTERNAL_WALLS_LENGTH_REQUIRED_MESSAGE);
@@ -279,75 +322,44 @@ export function buildInternalWallsLiningEnvelope(params: {
       return;
     }
 
-    const sides: InternalWallsLiningFaceSide[] = ["side_a", "side_b"];
-    for (const side of sides) {
-      const face = side === "side_a" ? type.side_a : type.side_b;
-      const productivityKey = face.product
-        ? liningProductivityKeyForProduct(face.product)
-        : null;
-      const companyProductivity =
-        productivityKey != null
-          ? findCompanyProductivityRate(context.rates, productivityKey, "sheet")
-          : undefined;
-      const hoursPerSheet =
-        companyProductivity?.cost_rate != null &&
-        Number(companyProductivity.cost_rate) > 0
-          ? Number(companyProductivity.cost_rate)
-          : null;
-
-      const takeoff = internalWallsLiningFaceTakeoff({
-        type,
-        face,
-        side,
-        wasteFactor,
-        hoursPerSheet,
-      });
-
-      if (!takeoff.ok) {
-        if (takeoff.kind === "not_lined") continue;
-        if (takeoff.kind === "incomplete" && takeoff.message == null) continue;
-        if (takeoff.kind === "too_short" && takeoff.message) {
-          missingInfo.push(takeoff.message);
-          continue;
-        }
-        if (
-          (takeoff.kind === "catalogue_gap" || takeoff.kind === "custom") &&
-          takeoff.message
-        ) {
-          emitCatalogueGap({
-            workArea,
-            type,
-            displayName,
-            side,
-            overlapGroup,
-            message: takeoff.message,
-            product: takeoff.product,
-            requirements,
-            lineItems,
-            bumpSortOrder: () => sortOrder++,
-          });
-          continue;
-        }
-        if (takeoff.message) missingInfo.push(takeoff.message);
-        continue;
+    const compareToWall = deductOpeningsFromLining(jobScope);
+    const validation = validateOpeningCollection({
+      openings: type.openings,
+      wallLengthLm: type.length_lm,
+      wallHeightM: type.height_m,
+      compareToWall,
+    });
+    if (!validation.ok && type.openings.length > 0) {
+      if (!missingInfo.includes(validation.message)) {
+        missingInfo.push(validation.message);
       }
-
-      emitLiningFace({
-        workArea,
-        context,
-        type,
-        displayName,
-        overlapGroup,
-        takeoff,
-        labourRate,
-        accessFactor,
-        provenanceBase,
-        productivityKey: productivityKey ?? liningProductivityKeyForProduct(takeoff.product),
-        requirements,
-        lineItems,
-        bumpSortOrder: () => sortOrder++,
-      });
     }
+    const eligible = compareToWall
+      ? openingsEligibleForTakeoff(type.openings, {
+          wallLengthLm: type.length_lm,
+          wallHeightM: type.height_m,
+          compareToWall,
+        })
+      : [];
+    const openingDeductionM2 = compareToWall ? sumOpeningAreaM2(eligible) : 0;
+
+    emitLinedFaces({
+      type,
+      displayName,
+      overlapGroup,
+      openingDeductionM2,
+      workArea,
+      context,
+      jobScope,
+      wasteFactor,
+      labourRate,
+      accessFactor,
+      provenanceBase,
+      missingInfo,
+      requirements,
+      lineItems,
+      bumpSortOrder: () => sortOrder++,
+    });
   });
 
   if (requirements.length > 0 || lineItems.length > 0) {
@@ -362,6 +374,117 @@ export function buildInternalWallsLiningEnvelope(params: {
     nextSortOrder: sortOrder,
     emittedLining: requirements.length > 0 || lineItems.length > 0,
   };
+}
+
+function emitLinedFaces(params: {
+  type: InternalWallsWallType;
+  displayName: string;
+  overlapGroup: string;
+  openingDeductionM2: number;
+  workArea: EstimateWorkArea;
+  context: EstimateContext;
+  jobScope: InternalWallsJobScope | null;
+  wasteFactor: number;
+  labourRate: ReturnType<typeof resolveLabourRate>;
+  accessFactor: number;
+  provenanceBase: {
+    calculatorSource: string;
+    factKeys: string[];
+    constraintKeys: string[];
+  };
+  missingInfo: string[];
+  requirements: EstimateRequirement[];
+  lineItems: EstimateLineItemInput[];
+  bumpSortOrder: () => number;
+}): void {
+  void params.jobScope;
+  const {
+    type,
+    displayName,
+    overlapGroup,
+    openingDeductionM2,
+    workArea,
+    context,
+    wasteFactor,
+    labourRate,
+    accessFactor,
+    provenanceBase,
+    missingInfo,
+    requirements,
+    lineItems,
+    bumpSortOrder,
+  } = params;
+  const sides: InternalWallsLiningFaceSide[] = ["side_a", "side_b"];
+  for (const side of sides) {
+    const face = side === "side_a" ? type.side_a : type.side_b;
+    const productivityKey = face.product
+      ? liningProductivityKeyForProduct(face.product)
+      : null;
+    const companyProductivity =
+      productivityKey != null
+        ? findCompanyProductivityRate(context.rates, productivityKey, "sheet")
+        : undefined;
+    const hoursPerSheet =
+      companyProductivity?.cost_rate != null &&
+      Number(companyProductivity.cost_rate) > 0
+        ? Number(companyProductivity.cost_rate)
+        : null;
+
+    const takeoff = internalWallsLiningFaceTakeoff({
+      type,
+      face,
+      side,
+      wasteFactor,
+      hoursPerSheet,
+      openingDeductionM2,
+    });
+
+    if (!takeoff.ok) {
+      if (takeoff.kind === "not_lined") continue;
+      if (takeoff.kind === "incomplete" && takeoff.message == null) continue;
+      if (takeoff.kind === "too_short" && takeoff.message) {
+        missingInfo.push(takeoff.message);
+        continue;
+      }
+      if (
+        (takeoff.kind === "catalogue_gap" || takeoff.kind === "custom") &&
+        takeoff.message
+      ) {
+        emitCatalogueGap({
+          workArea,
+          type,
+          displayName,
+          side,
+          overlapGroup,
+          message: takeoff.message,
+          product: takeoff.product,
+          requirements,
+          lineItems,
+          bumpSortOrder,
+        });
+        continue;
+      }
+      if (takeoff.message) missingInfo.push(takeoff.message);
+      continue;
+    }
+
+    emitLiningFace({
+      workArea,
+      context,
+      type,
+      displayName,
+      overlapGroup,
+      takeoff,
+      labourRate,
+      accessFactor,
+      provenanceBase,
+      productivityKey:
+        productivityKey ?? liningProductivityKeyForProduct(takeoff.product),
+      requirements,
+      lineItems,
+      bumpSortOrder,
+    });
+  }
 }
 
 function emitCatalogueGap(params: {

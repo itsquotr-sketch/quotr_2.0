@@ -111,7 +111,7 @@ import {
   BATHROOM_WASTE_COMPONENT,
   BATHROOM_WATERPROOFING_COMPONENT,
 } from "@/lib/estimate/bathroom-identities";
-import { isInternalWallsFramingComponentKey, isInternalWallsLiningComponentKey } from "@/lib/estimate/internal-walls-identities";
+import { isInternalWallsFramingComponentKey, isInternalWallsLiningComponentKey, isInternalWallsOpeningComponentKey } from "@/lib/estimate/internal-walls-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import {
@@ -869,9 +869,17 @@ function applyInternalWallsReviewGroups(
     const remaining: BuilderReviewPricedLine[] = [];
     const framingGrouped = new Map<string, BuilderReviewPricedLine[]>();
     const liningGrouped = new Map<string, BuilderReviewPricedLine[]>();
+    const openingGrouped = new Map<string, BuilderReviewPricedLine[]>();
     for (const line of cat.lines) {
       const overlap = line.sourceLine.overlapGroup ?? "";
       if (
+        overlap.startsWith("internal_walls.opening.framing:") &&
+        isInternalWallsOpeningComponentKey(line.componentKey)
+      ) {
+        const list = openingGrouped.get(overlap) ?? [];
+        list.push(line);
+        openingGrouped.set(overlap, list);
+      } else if (
         overlap.startsWith("internal_walls.framing:") &&
         isInternalWallsFramingComponentKey(line.componentKey)
       ) {
@@ -916,6 +924,37 @@ function applyInternalWallsReviewGroups(
         supporting: supportingParts.join(" · ") || null,
         secondary: "Framing",
         itemKey: materialChildren[0]?.itemKey ?? children[0]?.itemKey ?? null,
+        showChangeMaterial: false,
+        rateContext: null,
+        children,
+      });
+    }
+    for (const [overlap, children] of openingGrouped) {
+      const heading = wallTypeHeadingFromLabel(
+        children[0]?.label ?? "Opening framing"
+      );
+      const labourChild = children.find((row) =>
+        (row.componentKey ?? "").includes(".labour")
+      );
+      const supportingParts = [
+        ...children
+          .filter((row) => (row.componentKey ?? "").includes(".material") || (row.componentKey ?? "").includes(".steel"))
+          .map((row) => row.supporting)
+          .filter(Boolean),
+        labourChild
+          ? "Opening labour — Pricing Required"
+          : null,
+        "Door leaf / hardware: Not included",
+      ].filter((text): text is string => Boolean(text));
+      lineGroups.push({
+        id: `internal-walls-opening-${overlap.replace(/[^a-z0-9]+/gi, "-")}`,
+        label: `${heading} — opening framing`,
+        recommendedCost: round2(
+          children.reduce((sum, line) => sum + line.recommendedCost, 0)
+        ),
+        supporting: supportingParts.join(" · ") || null,
+        secondary: "Opening framing",
+        itemKey: children[0]?.itemKey ?? null,
         showChangeMaterial: false,
         rateContext: null,
         children,

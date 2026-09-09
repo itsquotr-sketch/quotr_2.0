@@ -204,6 +204,8 @@ export function wallTypesRequiredForScope(
     jobScope === "new_partition" ||
     jobScope === "extend_partition" ||
     jobScope === "reline_existing" ||
+    jobScope === "form_opening" ||
+    jobScope === "infill_opening" ||
     jobScope === "mixed" ||
     jobScope === "custom"
   );
@@ -265,6 +267,7 @@ const WALL_TYPE_FIELD_KEYS = new Set([
   "internal_walls.wall_type.side_b_thickness_mm",
   "internal_walls.wall_type.side_b_sheet_length_mm",
   "internal_walls.wall_type.side_b_layers",
+  "internal_walls.wall_type.has_openings",
 ]);
 
 export function shouldHideInternalWallsQuestion(params: {
@@ -290,12 +293,6 @@ export function shouldHideInternalWallsQuestion(params: {
   if (WALL_TYPE_FIELD_KEYS.has(key)) {
     if (!params.mature && params.jobScope == null) return true;
     if (params.jobScope === "remove_partition") return true;
-    if (
-      params.jobScope === "form_opening" ||
-      params.jobScope === "infill_opening"
-    ) {
-      return true;
-    }
     if (key === "internal_walls.wall_type.frame_size") {
       return params.nextWallTypeField !== key;
     }
@@ -313,6 +310,16 @@ export function shouldHideInternalWallsQuestion(params: {
     if (params.nextWallTypeField == null) {
       return true;
     }
+    return key !== params.nextWallTypeField;
+  }
+
+  if (
+    key === "internal_walls.wall_type.has_openings" ||
+    key.startsWith("internal_walls.opening.")
+  ) {
+    if (!params.mature && params.jobScope == null) return true;
+    if (params.jobScope === "remove_partition") return true;
+    if (params.nextWallTypeField == null) return true;
     return key !== params.nextWallTypeField;
   }
 

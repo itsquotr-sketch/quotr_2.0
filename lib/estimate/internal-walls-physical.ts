@@ -207,11 +207,7 @@ function timberLabel(frameSize: "90x45" | "140x45" | "other") {
 }
 
 function skipFramingForScope(jobScope: InternalWallsJobScope | null): boolean {
-  return (
-    jobScope === "remove_partition" ||
-    jobScope === "form_opening" ||
-    jobScope === "infill_opening"
-  );
+  return jobScope === "remove_partition" || jobScope === "form_opening";
 }
 
 export function aggregateInternalWallsTimberPurchaseLm(

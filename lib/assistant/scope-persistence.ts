@@ -136,6 +136,7 @@ async function persistInternalWallsCollectionWrite(
     key: string;
     value: unknown;
     wallTypeId?: string | null;
+    openingId?: string | null;
   }
 ): Promise<ScopePersistResult | null> {
   if (!isInternalWallsWallTypeWriteKey(params.key)) return null;
@@ -166,6 +167,7 @@ async function persistInternalWallsCollectionWrite(
       key: params.key,
       value: params.value,
       wallTypeId: params.wallTypeId,
+      openingId: params.openingId,
     });
 
     const wallTypes = next.find(
@@ -382,6 +384,7 @@ export async function commitUserAnswerToScope(
     inputType: "number" | "select" | "boolean" | "text" | "multi_select";
     value: string | number | boolean | string[];
     wallTypeId?: string | null;
+    openingId?: string | null;
   }
 ): Promise<ScopePersistResult> {
   const storedValue = normalizeAnswerForStorage(params.value, params.inputType);
@@ -394,6 +397,7 @@ export async function commitUserAnswerToScope(
         key: params.key,
         value: storedValue,
         wallTypeId: params.wallTypeId,
+        openingId: params.openingId,
       })
     : null;
   if (collectionWrite && !collectionWrite.ok) {
@@ -451,6 +455,7 @@ export async function commitUserFactEdit(
     unit?: string | null;
     valueType?: "number" | "select" | "boolean" | "text" | "multi_select";
     wallTypeId?: string | null;
+    openingId?: string | null;
   }
 ): Promise<ScopePersistResult & { blockedDerived?: boolean }> {
   const namespace = assertFactConstraintNamespace({
@@ -501,6 +506,7 @@ export async function commitUserFactEdit(
       key: params.key,
       value: storedValue,
       wallTypeId: params.wallTypeId,
+      openingId: params.openingId,
     });
     if (collectionWrite && !collectionWrite.ok) {
       return collectionWrite;
