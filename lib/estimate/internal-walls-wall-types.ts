@@ -424,15 +424,55 @@ export function materialFamilyForProduct(
 export function defaultThicknessMmForProduct(
   product: InternalWallsLiningProduct | null
 ): number | null {
-  if (!product) return null;
-  if (product === "plywood" || product === "fibre_cement" || product === "other") {
-    return null;
-  }
-  return 13;
+  const thicknesses = liningThicknessesMmForProduct(product);
+  if (thicknesses.includes(13)) return 13;
+  return thicknesses[0] ?? null;
 }
 
-export function recommendedStudCentresMm(heightM: number): 400 | 600 {
-  return heightM > 2.4 ? 400 : 600;
+export function liningThicknessesMmForProduct(
+  product: InternalWallsLiningProduct | null
+): readonly number[] {
+  if (!product) return [];
+  if (product === "plywood" || product === "fibre_cement" || product === "other") {
+    return [];
+  }
+  if (product === "fyreline" || product === "barrierline") return [13, 16];
+  return [10, 13];
+}
+
+export function liningSheetLengthsMmForProduct(
+  product: InternalWallsLiningProduct | null
+): readonly number[] {
+  if (materialFamilyForProduct(product) !== "plasterboard") return [];
+  return [...INTERNAL_WALLS_SHEET_LENGTHS_MM];
+}
+
+export function liningThicknessOptionsForProduct(
+  product: InternalWallsLiningProduct | null
+): string[] {
+  return liningThicknessesMmForProduct(product).map((mm) => `${mm} mm`);
+}
+
+export function liningSheetLengthOptionsForProduct(
+  product: InternalWallsLiningProduct | null
+): string[] {
+  return liningSheetLengthsMmForProduct(product).map((mm) => `${mm} mm`);
+}
+
+export function isLiningThicknessSupported(
+  product: InternalWallsLiningProduct | null,
+  thicknessMm: number | null
+): boolean {
+  if (product == null || thicknessMm == null) return false;
+  return liningThicknessesMmForProduct(product).includes(thicknessMm);
+}
+
+export function isLiningSheetLengthSupported(
+  product: InternalWallsLiningProduct | null,
+  lengthMm: number | null
+): boolean {
+  if (product == null || lengthMm == null) return false;
+  return liningSheetLengthsMmForProduct(product).includes(lengthMm);
 }
 
 /**
@@ -444,6 +484,25 @@ export function recommendedSheetLengthMm(heightM: number | null): number | null 
   const heightMm = Math.round(heightM * 1000);
   const found = INTERNAL_WALLS_SHEET_LENGTHS_MM.find((len) => len >= heightMm);
   return found ?? INTERNAL_WALLS_SHEET_LENGTHS_MM[INTERNAL_WALLS_SHEET_LENGTHS_MM.length - 1];
+}
+
+/**
+ * Smallest product-valid sheet length that spans wall height.
+ * Returns null when no validated length spans (Info Required / custom).
+ */
+export function recommendedSheetLengthMmForProduct(
+  product: InternalWallsLiningProduct | null,
+  heightM: number | null
+): number | null {
+  if (heightM == null || !Number.isFinite(heightM) || heightM <= 0) return null;
+  const lengths = liningSheetLengthsMmForProduct(product);
+  if (lengths.length === 0) return null;
+  const heightMm = Math.round(heightM * 1000);
+  return lengths.find((len) => len >= heightMm) ?? null;
+}
+
+export function recommendedStudCentresMm(heightM: number): 400 | 600 {
+  return heightM > 2.4 ? 400 : 600;
 }
 
 /**
@@ -697,7 +756,7 @@ function applyLiningDefaults(
       face.thickness_mm = defaultThicknessMmForProduct(face.product);
     }
     if (face.sheet_length_mm == null && face.material_family === "plasterboard") {
-      const recommended = recommendedSheetLengthMm(heightM);
+      const recommended = recommendedSheetLengthMmForProduct(face.product, heightM);
       if (recommended != null) {
         face.sheet_length_mm = recommended;
         face.sheet_length_source = "recommended";
@@ -710,8 +769,6 @@ function applyLiningDefaults(
 }
 
 function applyRecommendedSheetLength(type: InternalWallsWallType): void {
-  const recommended = recommendedSheetLengthMm(type.height_m);
-  if (recommended == null) return;
   const bump = (face: InternalWallsFace) => {
     if (
       !face.lined ||
@@ -720,6 +777,11 @@ function applyRecommendedSheetLength(type: InternalWallsWallType): void {
       return;
     }
     if (face.sheet_length_source === "override") return;
+    const recommended = recommendedSheetLengthMmForProduct(
+      face.product,
+      type.height_m
+    );
+    if (recommended == null) return;
     if (face.sheet_length_mm == null || face.sheet_length_mm < recommended) {
       face.sheet_length_mm = recommended;
       face.sheet_length_source = "recommended";
@@ -737,7 +799,7 @@ function plasterboardSheetLengthForProduct(
     return { mm: null, source: null };
   }
   return {
-    mm: recommendedSheetLengthMm(heightM),
+    mm: recommendedSheetLengthMmForProduct(product, heightM),
     source: "recommended",
   };
 }
@@ -1258,11 +1320,16 @@ export function applyInternalWallsFactWrite(params: {
         const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_a.product = product;
         type.side_a.lined = product != null;
-        type.side_a.thickness_mm =
-          previous.thickness_mm ?? defaultThicknessMmForProduct(product);
+        type.side_a.thickness_mm = isLiningThicknessSupported(
+          product,
+          previous.thickness_mm
+        )
+          ? previous.thickness_mm
+          : defaultThicknessMmForProduct(product);
         if (
           previous.sheet_length_source === "override" &&
-          previous.sheet_length_mm != null
+          previous.sheet_length_mm != null &&
+          isLiningSheetLengthSupported(product, previous.sheet_length_mm)
         ) {
           type.side_a.sheet_length_mm = previous.sheet_length_mm;
           type.side_a.sheet_length_source = "override";
@@ -1302,11 +1369,16 @@ export function applyInternalWallsFactWrite(params: {
         const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_b.product = product;
         type.side_b.lined = product != null;
-        type.side_b.thickness_mm =
-          previous.thickness_mm ?? defaultThicknessMmForProduct(product);
+        type.side_b.thickness_mm = isLiningThicknessSupported(
+          product,
+          previous.thickness_mm
+        )
+          ? previous.thickness_mm
+          : defaultThicknessMmForProduct(product);
         if (
           previous.sheet_length_source === "override" &&
-          previous.sheet_length_mm != null
+          previous.sheet_length_mm != null &&
+          isLiningSheetLengthSupported(product, previous.sheet_length_mm)
         ) {
           type.side_b.sheet_length_mm = previous.sheet_length_mm;
           type.side_b.sheet_length_source = "override";

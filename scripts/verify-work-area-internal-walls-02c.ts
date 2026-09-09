@@ -514,7 +514,7 @@ check(
 check(
   "sheet length is a Refine high-value select",
   adapterSrc.includes("internal_walls.wall_type.side_a_sheet_length_mm") &&
-    adapterSrc.includes("INTERNAL_WALLS_SHEET_LENGTH_OPTIONS")
+    adapterSrc.includes("liningSheetLengthOptionsForProduct")
 );
 check(
   "CAS persist retries on collection revision",

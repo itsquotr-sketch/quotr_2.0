@@ -148,7 +148,7 @@ export const internalWallsScope: ScopeDefinition = {
       key: "internal_walls.wall_type.side_a_sheet_length_mm",
       label: "Sheet length",
       questionText:
-        "What sheet length? Recommended length follows wall height. Product-specific availability is not yet confirmed.",
+        "What sheet length? Recommended length is the smallest validated product length that spans the wall height.",
       inputType: "select",
       options: [...INTERNAL_WALLS_SHEET_LENGTH_OPTIONS],
       required: false,

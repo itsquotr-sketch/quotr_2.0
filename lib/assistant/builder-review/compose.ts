@@ -111,7 +111,7 @@ import {
   BATHROOM_WASTE_COMPONENT,
   BATHROOM_WATERPROOFING_COMPONENT,
 } from "@/lib/estimate/bathroom-identities";
-import { isInternalWallsFramingComponentKey } from "@/lib/estimate/internal-walls-identities";
+import { isInternalWallsFramingComponentKey, isInternalWallsLiningComponentKey } from "@/lib/estimate/internal-walls-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import {
@@ -867,22 +867,30 @@ function applyInternalWallsReviewGroups(
 ): BuilderReviewCategoryGroup[] {
   return categories.map((cat) => {
     const remaining: BuilderReviewPricedLine[] = [];
-    const grouped = new Map<string, BuilderReviewPricedLine[]>();
+    const framingGrouped = new Map<string, BuilderReviewPricedLine[]>();
+    const liningGrouped = new Map<string, BuilderReviewPricedLine[]>();
     for (const line of cat.lines) {
       const overlap = line.sourceLine.overlapGroup ?? "";
       if (
         overlap.startsWith("internal_walls.framing:") &&
         isInternalWallsFramingComponentKey(line.componentKey)
       ) {
-        const list = grouped.get(overlap) ?? [];
+        const list = framingGrouped.get(overlap) ?? [];
         list.push(line);
-        grouped.set(overlap, list);
+        framingGrouped.set(overlap, list);
+      } else if (
+        overlap.startsWith("internal_walls.lining:") &&
+        isInternalWallsLiningComponentKey(line.componentKey)
+      ) {
+        const list = liningGrouped.get(overlap) ?? [];
+        list.push(line);
+        liningGrouped.set(overlap, list);
       } else {
         remaining.push(line);
       }
     }
     const lineGroups: BuilderReviewLineGroup[] = [...cat.lineGroups];
-    for (const [overlap, children] of grouped) {
+    for (const [overlap, children] of framingGrouped) {
       const heading = wallTypeHeadingFromLabel(children[0]?.label ?? "Framing");
       const materialChildren = children.filter((row) =>
         (row.componentKey ?? "").includes(".material")
@@ -907,6 +915,54 @@ function applyInternalWallsReviewGroups(
         ),
         supporting: supportingParts.join(" · ") || null,
         secondary: "Framing",
+        itemKey: materialChildren[0]?.itemKey ?? children[0]?.itemKey ?? null,
+        showChangeMaterial: false,
+        rateContext: null,
+        children,
+      });
+    }
+    for (const [overlap, children] of liningGrouped) {
+      const heading = wallTypeHeadingFromLabel(children[0]?.label ?? "Lining");
+      const materialChildren = children.filter((row) =>
+        (row.componentKey ?? "").includes(".material")
+      );
+      const labourChildren = children.filter((row) =>
+        (row.componentKey ?? "").includes(".install")
+      );
+      const bothSides =
+        materialChildren.length === 2 &&
+        materialChildren[0]?.supporting === materialChildren[1]?.supporting;
+      const installed = materialChildren.reduce((sum, row) => {
+        const match = (row.supporting ?? "").match(/(\d+) sheets installed/);
+        return match ? sum + Number(match[1]) : sum;
+      }, 0);
+      const purchase = materialChildren.reduce((sum, row) => {
+        const match = (row.supporting ?? "").match(/(\d+) sheets incl\. waste/);
+        return match ? sum + Number(match[1]) : sum;
+      }, 0);
+      const productLine = (materialChildren[0]?.supporting ?? "")
+        .split(" · ")
+        .slice(0, 3)
+        .join(" · ");
+      const supportingParts = [
+        bothSides ? "Both sides" : null,
+        productLine || null,
+        installed > 0 ? `${installed} sheets installed` : null,
+        purchase > 0 ? `${purchase} sheets incl. waste` : null,
+        ...labourChildren.map((row) =>
+          row.recommendedCost > 0
+            ? `Labour: ${row.supporting}`
+            : "Labour: Pricing Required"
+        ),
+      ].filter((text): text is string => Boolean(text));
+      lineGroups.push({
+        id: `internal-walls-lining-${overlap.replace(/[^a-z0-9]+/gi, "-")}`,
+        label: `${heading} — lining`,
+        recommendedCost: round2(
+          children.reduce((sum, line) => sum + line.recommendedCost, 0)
+        ),
+        supporting: supportingParts.join(" · ") || null,
+        secondary: "Lining",
         itemKey: materialChildren[0]?.itemKey ?? children[0]?.itemKey ?? null,
         showChangeMaterial: false,
         rateContext: null,

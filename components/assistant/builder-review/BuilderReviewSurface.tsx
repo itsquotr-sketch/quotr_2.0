@@ -416,7 +416,9 @@ export function BuilderReviewSurface({
                           {group.children.length > 0 ? (
                             <details className="group/stock mt-2">
                               <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-                                {group.id.startsWith("internal-walls-")
+                                {group.id.startsWith("internal-walls-lining")
+                                  ? "Lining details"
+                                  : group.id.startsWith("internal-walls-")
                                   ? "Framing details"
                                   : "Stock breakdown"}
                               </summary>

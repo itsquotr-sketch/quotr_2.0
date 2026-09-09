@@ -57,6 +57,7 @@ import {
 } from "@/lib/estimate/internal-walls-wall-types";
 import { INTERNAL_WALLS_LINING_NOT_PRICED_STATEMENT } from "@/lib/estimate/internal-walls-identities";
 import { buildInternalWallsFramingEnvelope } from "@/lib/estimate/internal-walls-physical";
+import { buildInternalWallsLiningEnvelope } from "@/lib/estimate/internal-walls-lining-physical";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
@@ -262,25 +263,39 @@ function calculateInternalWallsMature(
   missingInfo.push(...framing.missingInfo);
   assumptions.push(...framing.assumptions);
 
+  const lining = buildInternalWallsLiningEnvelope({
+    context,
+    workArea,
+    types: resolved.types,
+    jobScope,
+    sortOrderStart: framing.nextSortOrder,
+  });
+  missingInfo.push(...lining.missingInfo);
+  assumptions.push(...lining.assumptions);
+
   if (missingInfo.length === 0 && resolved.types.length > 0) {
-    assumptions.push(
-      framing.emittedFraming
-        ? INTERNAL_WALLS_LINING_NOT_PRICED_STATEMENT
-        : INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT
-    );
+    if (!lining.emittedLining) {
+      assumptions.push(
+        framing.emittedFraming
+          ? INTERNAL_WALLS_LINING_NOT_PRICED_STATEMENT
+          : INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT
+      );
+    }
   }
 
   const uniqueMissing = [...new Set(missingInfo)];
   const uniqueAssumptions = [...new Set(assumptions)];
+  const requirements = [...framing.requirements, ...lining.requirements];
+  const lineItems = [...framing.lineItems, ...lining.lineItems];
 
   return {
-    lineItems: framing.lineItems,
+    lineItems,
     assumptions: uniqueAssumptions,
     missingInfo: uniqueMissing,
     exclusions: [],
     confidence: baseConfidence(uniqueMissing.length),
     assumptionMetadata,
-    requirements: framing.requirements.length > 0 ? framing.requirements : undefined,
+    requirements: requirements.length > 0 ? requirements : undefined,
   };
 }
 

@@ -12,11 +12,12 @@ import {
   INTERNAL_WALLS_LAYER_OPTIONS,
   INTERNAL_WALLS_LINING_PRODUCT_OPTIONS,
   INTERNAL_WALLS_SAME_BOTH_SIDES_OPTIONS,
-  INTERNAL_WALLS_SHEET_LENGTH_OPTIONS,
   INTERNAL_WALLS_STUD_CENTRES_OPTIONS,
-  INTERNAL_WALLS_THICKNESS_OPTIONS,
   INTERNAL_WALLS_TIMBER_SIZE_OPTIONS,
-  recommendedSheetLengthMm,
+  liningSheetLengthOptionsForProduct,
+  liningThicknessOptionsForProduct,
+  materialFamilyForProduct,
+  recommendedSheetLengthMmForProduct,
   resolveInternalWallsWallTypes,
   summariseWallType,
   wallTypeFieldCurrentValue,
@@ -276,52 +277,76 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           "internal_walls.wall_type.side_a_product"
         ),
         wallTypeId,
-      }),
-      candidate({
-        workAreaId,
-        workAreaName,
-        factKey: "internal_walls.wall_type.side_a_thickness_mm",
-        label: "Side A thickness",
-        question: "What lining thickness is on Side A?",
-        inputType: "select",
-        options: INTERNAL_WALLS_THICKNESS_OPTIONS,
-        currentValue: wallTypeFieldCurrentValue(
-          active,
-          "internal_walls.wall_type.side_a_thickness_mm"
-        ),
-        wallTypeId,
-      }),
-      candidate({
-        workAreaId,
-        workAreaName,
-        factKey: "internal_walls.wall_type.side_a_sheet_length_mm",
-        label: "Sheet length",
-        question:
-          recommendedSheetLengthMm(active?.height_m ?? null) != null
-            ? `What sheet length? Recommended ${recommendedSheetLengthMm(active?.height_m ?? null)} mm for this wall height. Product-specific availability is not yet confirmed.`
-            : "What sheet length? Product-specific availability is not yet confirmed.",
-        inputType: "select",
-        options: INTERNAL_WALLS_SHEET_LENGTH_OPTIONS,
-        currentValue: wallTypeFieldCurrentValue(
-          active,
-          "internal_walls.wall_type.side_a_sheet_length_mm"
-        ),
-        wallTypeId,
-      }),
-      candidate({
-        workAreaId,
-        workAreaName,
-        factKey: "internal_walls.wall_type.side_a_layers",
-        label: "Side A layers",
-        question: "How many lining layers on Side A?",
-        inputType: "select",
-        options: INTERNAL_WALLS_LAYER_OPTIONS,
-        currentValue: wallTypeFieldCurrentValue(
-          active,
-          "internal_walls.wall_type.side_a_layers"
-        ),
-        wallTypeId,
-      }),
+      })
+    );
+
+    const sideAProduct = active?.side_a.product ?? null;
+    const sideAFamily = materialFamilyForProduct(sideAProduct);
+    if (sideAFamily === "plasterboard") {
+      const recommendedA = recommendedSheetLengthMmForProduct(
+        sideAProduct,
+        active?.height_m ?? null
+      );
+      const thicknessOptions = liningThicknessOptionsForProduct(sideAProduct);
+      const lengthOptions = liningSheetLengthOptionsForProduct(sideAProduct);
+      if (thicknessOptions.length > 0) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: "internal_walls.wall_type.side_a_thickness_mm",
+            label: "Side A thickness",
+            question: "What lining thickness is on Side A?",
+            inputType: "select",
+            options: thicknessOptions,
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              "internal_walls.wall_type.side_a_thickness_mm"
+            ),
+            wallTypeId,
+          })
+        );
+      }
+      if (lengthOptions.length > 0) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: "internal_walls.wall_type.side_a_sheet_length_mm",
+            label: "Sheet length",
+            question:
+              recommendedA != null
+                ? `What sheet length? Recommended ${recommendedA} mm — smallest length that spans this wall height.`
+                : "No validated sheet length spans this wall height.",
+            inputType: "select",
+            options: lengthOptions,
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              "internal_walls.wall_type.side_a_sheet_length_mm"
+            ),
+            wallTypeId,
+          })
+        );
+      }
+      out.push(
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: "internal_walls.wall_type.side_a_layers",
+          label: "Side A layers",
+          question: "How many lining layers on Side A?",
+          inputType: "select",
+          options: INTERNAL_WALLS_LAYER_OPTIONS,
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            "internal_walls.wall_type.side_a_layers"
+          ),
+          wallTypeId,
+        })
+      );
+    }
+
+    out.push(
       candidate({
         workAreaId,
         workAreaName,
@@ -353,51 +378,73 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             "internal_walls.wall_type.side_b_product"
           ),
           wallTypeId,
-        }),
-        candidate({
-          workAreaId,
-          workAreaName,
-          factKey: "internal_walls.wall_type.side_b_thickness_mm",
-          label: "Side B thickness",
-          question: "What lining thickness is on Side B?",
-          inputType: "select",
-          options: INTERNAL_WALLS_THICKNESS_OPTIONS,
-          currentValue: wallTypeFieldCurrentValue(
-            active,
-            "internal_walls.wall_type.side_b_thickness_mm"
-          ),
-          wallTypeId,
-        }),
-        candidate({
-          workAreaId,
-          workAreaName,
-          factKey: "internal_walls.wall_type.side_b_sheet_length_mm",
-          label: "Side B sheet length",
-          question:
-            "What sheet length on Side B? Product-specific availability is not yet confirmed.",
-          inputType: "select",
-          options: INTERNAL_WALLS_SHEET_LENGTH_OPTIONS,
-          currentValue: wallTypeFieldCurrentValue(
-            active,
-            "internal_walls.wall_type.side_b_sheet_length_mm"
-          ),
-          wallTypeId,
-        }),
-        candidate({
-          workAreaId,
-          workAreaName,
-          factKey: "internal_walls.wall_type.side_b_layers",
-          label: "Side B layers",
-          question: "How many lining layers on Side B?",
-          inputType: "select",
-          options: INTERNAL_WALLS_LAYER_OPTIONS,
-          currentValue: wallTypeFieldCurrentValue(
-            active,
-            "internal_walls.wall_type.side_b_layers"
-          ),
-          wallTypeId,
         })
       );
+      const sideBProduct = active.side_b.product;
+      const sideBFamily = materialFamilyForProduct(sideBProduct);
+      if (sideBFamily === "plasterboard") {
+        const recommendedB = recommendedSheetLengthMmForProduct(
+          sideBProduct,
+          active.height_m
+        );
+        const thicknessOptionsB = liningThicknessOptionsForProduct(sideBProduct);
+        const lengthOptionsB = liningSheetLengthOptionsForProduct(sideBProduct);
+        if (thicknessOptionsB.length > 0) {
+          out.push(
+            candidate({
+              workAreaId,
+              workAreaName,
+              factKey: "internal_walls.wall_type.side_b_thickness_mm",
+              label: "Side B thickness",
+              question: "What lining thickness is on Side B?",
+              inputType: "select",
+              options: thicknessOptionsB,
+              currentValue: wallTypeFieldCurrentValue(
+                active,
+                "internal_walls.wall_type.side_b_thickness_mm"
+              ),
+              wallTypeId,
+            })
+          );
+        }
+        if (lengthOptionsB.length > 0) {
+          out.push(
+            candidate({
+              workAreaId,
+              workAreaName,
+              factKey: "internal_walls.wall_type.side_b_sheet_length_mm",
+              label: "Side B sheet length",
+              question:
+                recommendedB != null
+                  ? `What sheet length on Side B? Recommended ${recommendedB} mm — smallest length that spans this wall height.`
+                  : "No validated sheet length spans this wall height.",
+              inputType: "select",
+              options: lengthOptionsB,
+              currentValue: wallTypeFieldCurrentValue(
+                active,
+                "internal_walls.wall_type.side_b_sheet_length_mm"
+              ),
+              wallTypeId,
+            })
+          );
+        }
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: "internal_walls.wall_type.side_b_layers",
+            label: "Side B layers",
+            question: "How many lining layers on Side B?",
+            inputType: "select",
+            options: INTERNAL_WALLS_LAYER_OPTIONS,
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              "internal_walls.wall_type.side_b_layers"
+            ),
+            wallTypeId,
+          })
+        );
+      }
     }
 
     out.push(

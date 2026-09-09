@@ -114,6 +114,59 @@ export const DECKING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
 ];
 
+/**
+ * Dimensioned Internal Walls plasterboard identities (code catalogue only).
+ * No invented $/sheet. Legacy 13 mm 2400×1200 Standard/Aqualine/Fyreline/Braceline
+ * keys above keep existing benchmarks and Bathroom Aqualine sharing.
+ */
+function dimensionedPlasterboardSheetCatalogue(): RateCatalogueEntry[] {
+  const families: Array<{
+    slug: string;
+    label: string;
+    thicknesses: readonly number[];
+  }> = [
+    { slug: "standard", label: "Standard GIB", thicknesses: [10, 13] },
+    { slug: "aqualine", label: "Aqualine", thicknesses: [10, 13] },
+    { slug: "fyreline", label: "Fyreline", thicknesses: [13, 16] },
+    { slug: "braceline", label: "Braceline", thicknesses: [10, 13] },
+    { slug: "noiseline", label: "Noiseline", thicknesses: [10, 13] },
+    { slug: "weatherline", label: "Weatherline", thicknesses: [10, 13] },
+    { slug: "barrierline", label: "Barrierline", thicknesses: [13, 16] },
+  ];
+  const lengths = [2400, 2700, 3000, 3600, 4800, 6000] as const;
+  const legacyThirteen2400 = new Set([
+    "standard",
+    "aqualine",
+    "fyreline",
+    "braceline",
+  ]);
+  const out: RateCatalogueEntry[] = [];
+  for (const family of families) {
+    for (const thickness of family.thicknesses) {
+      for (const length of lengths) {
+        if (thickness === 13 && length === 2400 && legacyThirteen2400.has(family.slug)) {
+          continue;
+        }
+        out.push(
+          entry({
+            item_key: `sheet.plasterboard.${family.slug}.${thickness}mm.${length}x1200.each`,
+            label: `${thickness} mm ${family.label} ${length} × 1200`,
+            rate_type: "material",
+            category: "material",
+            work_area_type: "internal_walls",
+            workAreaLabel: "Sheet materials",
+            unit: "each",
+            description:
+              "Dimensioned plasterboard sheet identity. No invented $/sheet — company exact or Pricing Required. Do not inherit the 2400×1200 13 mm benchmark.",
+            calculatorSupport: "used_now",
+          })
+        );
+      }
+    }
+  }
+  return out;
+}
+
 export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   entry({
     item_key: "sheet.plasterboard.standard.each",
@@ -123,11 +176,12 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "internal_walls",
     workAreaLabel: "Sheet materials",
     unit: "each",
-    description: "Per sheet (2.4 × 1.2 m) when sheet count build-up is calculated.",
+    description:
+      "Legacy generic identity for 13 mm Standard GIB 2400 × 1200 (2.4 × 1.2 m). Shared across Work Areas. Other thicknesses/lengths use dimensioned keys and do not inherit this rate.",
     defaultCostRate: FITOUT_BENCHMARKS.plasterboardSheet.cost,
     defaultSellRate: FITOUT_BENCHMARKS.plasterboardSheet.sell,
     recommended: true,
-    calculatorSupport: "planned",
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "sheet.plasterboard.fyreline.each",
@@ -137,9 +191,11 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "internal_walls",
     workAreaLabel: "Sheet materials",
     unit: "each",
+    description:
+      "Legacy generic identity for 13 mm Fyreline 2400 × 1200. Other sizes use dimensioned keys without this rate.",
     defaultCostRate: FITOUT_BENCHMARKS.fyrelineSheet.cost,
     defaultSellRate: FITOUT_BENCHMARKS.fyrelineSheet.sell,
-    calculatorSupport: "planned",
+    calculatorSupport: "used_now",
   }),
   entry({
     item_key: "sheet.plasterboard.aqualine.each",
@@ -149,6 +205,8 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "internal_walls",
     workAreaLabel: "Sheet materials",
     unit: "each",
+    description:
+      "Legacy generic identity for 13 mm Aqualine 2400 × 1200. Bathroom wall/ceiling lining and Internal Walls share this key.",
     defaultCostRate: FITOUT_BENCHMARKS.aqualineSheet.cost,
     defaultSellRate: FITOUT_BENCHMARKS.aqualineSheet.sell,
     calculatorSupport: "used_now",
@@ -162,10 +220,13 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "internal_walls",
     workAreaLabel: "Sheet materials",
     unit: "each",
+    description:
+      "Legacy generic identity for 13 mm Braceline 2400 × 1200. Other sizes use dimensioned keys without this rate.",
     defaultCostRate: FITOUT_BENCHMARKS.bracelineSheet.cost,
     defaultSellRate: FITOUT_BENCHMARKS.bracelineSheet.sell,
-    calculatorSupport: "planned",
+    calculatorSupport: "used_now",
   }),
+  ...dimensionedPlasterboardSheetCatalogue(),
   entry({
     item_key: "sheet.plywood.each",
     label: "Plywood sheet",
@@ -174,6 +235,8 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "internal_walls",
     workAreaLabel: "Sheet materials",
     unit: "each",
+    description:
+      "Generic unspecified plywood sheet. Not Internal Walls wall lining. Bathroom 19 mm H3.2 floor plywood is a different physical product.",
     defaultCostRate: FITOUT_BENCHMARKS.plywoodSheet.cost,
     defaultSellRate: FITOUT_BENCHMARKS.plywoodSheet.sell,
     calculatorSupport: "planned",

@@ -91,6 +91,76 @@ export const INTERNAL_WALLS_OTHER_TIMBER_SIZE_MESSAGE =
 export const INTERNAL_WALLS_LINING_NOT_PRICED_STATEMENT =
   "Lining materials and labour are not priced yet.";
 
+export const INTERNAL_WALLS_SHEET_TOO_SHORT_MESSAGE =
+  "Selected sheet length does not span the wall height." as const;
+
+export const INTERNAL_WALLS_PLYWOOD_LINING_GAP_MESSAGE =
+  "No canonical wall-lining plywood identity." as const;
+
+export const INTERNAL_WALLS_FIBRE_CEMENT_LINING_GAP_MESSAGE =
+  "No canonical wall-lining fibre-cement identity." as const;
+
+export const INTERNAL_WALLS_LINING_CUSTOM_MESSAGE =
+  "This lining product needs a price before it can be estimated." as const;
+
+export const INTERNAL_WALLS_LINING_THICKNESS_UNSUPPORTED_MESSAGE =
+  "This lining thickness is not a validated combination for the selected product." as const;
+
+export const INTERNAL_WALLS_LINING_LABOUR_OWNER_REQUIRED_MESSAGE =
+  "Lining labour Pricing Required — no owner-approved hours/sheet." as const;
+
+export const INTERNAL_WALLS_LINING_GROSS_SHEET_ASSUMPTION =
+  "Lining sheet count is gross wall face / gross sheet run. Openings are not deducted yet." as const;
+
+/** Future Company DNA tasks — no owner-approved hours/sheet in IW-05. */
+export const INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS = {
+  standard_gib: "internal_walls.lining.standard_gib.hours_per_sheet",
+  aqualine: "internal_walls.lining.aqualine.hours_per_sheet",
+  fyreline: "internal_walls.lining.fyreline.hours_per_sheet",
+  braceline: "internal_walls.lining.braceline.hours_per_sheet",
+  noiseline: "internal_walls.lining.noiseline.hours_per_sheet",
+  weatherline: "internal_walls.lining.weatherline.hours_per_sheet",
+  barrierline: "internal_walls.lining.barrierline.hours_per_sheet",
+  plywood: "internal_walls.lining.plywood.hours_per_sheet",
+  fibre_cement: "internal_walls.lining.fibre_cement.hours_per_sheet",
+  other: "internal_walls.lining.other.hours_per_sheet",
+} as const;
+
+export const INTERNAL_WALLS_LINING_WASTE_CATEGORY = "sheet_material" as const;
+
+export const INTERNAL_WALLS_PLASTERBOARD_SHEET_WIDTH_MM = 1200 as const;
+
+export const INTERNAL_WALLS_STANDARD_13_2400_KEY =
+  "sheet.plasterboard.standard.each" as const;
+export const INTERNAL_WALLS_AQUALINE_13_2400_KEY =
+  "sheet.plasterboard.aqualine.each" as const;
+export const INTERNAL_WALLS_FYRELINE_13_2400_KEY =
+  "sheet.plasterboard.fyreline.each" as const;
+export const INTERNAL_WALLS_BRACELINE_13_2400_KEY =
+  "sheet.plasterboard.braceline.each" as const;
+
+export function internalWallsLiningMaterialComponent(
+  product: string
+): string {
+  return `internal_walls.lining.${product}.material`;
+}
+
+export function internalWallsLiningLabourComponent(product: string): string {
+  return `internal_walls.lining.${product}.install`;
+}
+
+export function internalWallsLiningOverlapGroup(wallTypeId: string): string {
+  return `internal_walls.lining:${wallTypeId}`;
+}
+
+export function isInternalWallsLiningComponentKey(
+  key: string | null | undefined
+): boolean {
+  if (!key) return false;
+  return key.startsWith("internal_walls.lining.") &&
+    (key.endsWith(".material") || key.endsWith(".install"));
+}
+
 export const INTERNAL_WALLS_FRAMING_COMPONENT_KEYS = [
   INTERNAL_WALLS_FRAMING_90_MATERIAL_COMPONENT,
   INTERNAL_WALLS_FRAMING_140_MATERIAL_COMPONENT,

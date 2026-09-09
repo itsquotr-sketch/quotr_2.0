@@ -365,8 +365,8 @@ check("Fixture E one lined face", linedFaceCount(eType) === 1 && eType.side_a.pr
 const eCalc = calculateInternalWalls(ctx([walls], fixtureEFacts), walls);
 check(
   "Fixture E no framing package money",
-  eCalc.lineItems.length === 0 &&
-    !eCalc.lineItems.some((row) => /framing labour/i.test(row.label))
+  !eCalc.lineItems.some((row) => /framing labour|internal wall materials allowance/i.test(row.label)) &&
+    !eCalc.lineItems.some((row) => /timber|steel track|fixings/i.test(row.label))
 );
 
 console.log("\n--- Fixture F / structural ---\n");

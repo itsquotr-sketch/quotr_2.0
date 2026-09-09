@@ -1,6 +1,6 @@
 # Quotr Internal Walls Estimating Architecture
 
-**Status:** CANONICAL — **WA-INTERNAL-WALLS-04** steel track/stud physical takeoff  
+**Status:** CANONICAL — **WA-INTERNAL-WALLS-05** lining product / face / layer + sheet takeoff  
 **Date:** 2026-09-09  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **056**  
@@ -12,7 +12,8 @@
 **Verifier (02 foundation):** `scripts/verify-work-area-internal-walls-02.ts`  
 **Verifier (02C persist):** `scripts/verify-work-area-internal-walls-02c.ts`  
 **Verifier (03 timber framing):** `scripts/verify-work-area-internal-walls-03.ts`  
-**Verifier (04 steel framing):** `scripts/verify-work-area-internal-walls-04.ts`
+**Verifier (04 steel framing):** `scripts/verify-work-area-internal-walls-04.ts`  
+**Verifier (05 lining takeoff):** `scripts/verify-work-area-internal-walls-05.ts`
 
 Canonical Work Area type: **`internal_walls`**. ISD alias: **`partitions`**.
 
@@ -29,10 +30,11 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | WA-INTERNAL-WALLS-02C nested persist + sheet length UX | **FINAL GO** |
 | WA-INTERNAL-WALLS-03 timber framing takeoff + envelope | **GO** |
 | WA-INTERNAL-WALLS-04 steel track/stud takeoff | **GO** |
-| Current product maturity | **PARTIAL** — timber + standard steel track/stud on mature path; lining/openings not in 04 |
+| WA-INTERNAL-WALLS-05 lining sheets + labour | **GO** (this phase) |
+| Current product maturity | **PARTIAL** — timber + steel track/stud + lining sheets on mature path; openings not in 05 |
 | Customer UI band | **Component** — do not call Supported or Mature |
-| Lining / openings money in 04 | **NO-GO** |
-| Start WA-INTERNAL-WALLS-05 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 05 |
+| Openings / door deductions in 05 | **NO-GO** |
+| Start WA-INTERNAL-WALLS-06 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 06 |
 | Production / migration 055 | **NO-GO** |
 
 **Current factory score (honest):**
@@ -42,13 +44,13 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | WA-0 Discovery | **Written** — owner override: multiple Wall Types in one WA |
 | WA-1 Facts | **PARTIAL** — `job_scope`, `wall_types` JSON, structural gate. No openings takeoff |
 | WA-2 Clarify | **PARTIAL** — progressive job scope → Wall Type fields; Refine adapter + cards |
-| WA-3 Physical | **PARTIAL** — timber stud/plate/nog + steel track/stud on mature path. No lining sheets, openings |
-| WA-4 Requirements | **PARTIAL** — timber material/labour + steel track/stud/labour + shared fixings allowance |
-| WA-5 Commercial | **PARTIAL on mature path** — shared 90×45 company→benchmark; 140×45, steel track/stud, and fixings Pricing Required unless company rate. Legacy $95/$145 suppressed when `job_scope` or `wall_types` present |
-| WA-6 Conditions | **PARTIAL apply** — canonical `getCombinedLabourAccessFactor` on framing labour hours. No IW-specific multipliers. Finish level does not scale physical framing |
-| WA-7 Review | **PARTIAL** — Wall Type framing groups with compact takeoff rows. Lining not shown |
-| WA-8 DNA | **N/A** — productivity keys marked as future DNA candidates; no calibration rows |
-| WA-9 Hosted close | **PARTIAL** — local Type A/B/C fixtures. Live Preview Review after this SHA deploys. Pricing/Quote close deferred until lining matures |
+| WA-3 Physical | **PARTIAL** — timber stud/plate/nog + steel track/stud + lining sheets on mature path. No opening deductions |
+| WA-4 Requirements | **PARTIAL** — framing envelope + per-face lining Material/Labour requirements |
+| WA-5 Commercial | **PARTIAL on mature path** — 13 mm 2400×1200 Standard/Aqualine/Fyreline/Braceline use legacy shared sheet rates; other sizes Pricing Required. Lining labour hours/sheet is OWNER VALUE REQUIRED |
+| WA-6 Conditions | **PARTIAL apply** — canonical `getCombinedLabourAccessFactor` on framing and lining labour hours. Sheet counts do not change with access. Finish level does not scale physical lining |
+| WA-7 Review | **PARTIAL** — Wall Type framing + lining groups. Compact installed/purchase sheet counts. Openings not shown |
+| WA-8 DNA | **N/A** — lining hours/sheet keys reserved; no calibration rows and no invented benchmarks |
+| WA-9 Hosted close | **PARTIAL** — local Type A/B/C/D fixtures. Live Preview Review after this SHA deploys. Pricing/Quote close deferred |
 
 Do not infer maturity from file or question count.
 
@@ -205,11 +207,114 @@ No `internal_walls.steel.track…` physical keys. No width-specific products —
 
 ### Known limitations (04)
 
-- Lining, openings, insulation, skirting, cornice, stopping, painting, demolition: **not implemented**
+- Lining sheets: **IW-05** (this document §0D)
+- Openings, insulation, skirting, cornice, stopping, painting, demolition: **not implemented**
 - Width-specific steel products/rates: **not invented**
 - Steel waste %: **owner decision pending** (V1 raw = purchase)
 - Steel nogging/bridging: **not invented**
 - Company DNA not calibrated
+
+---
+
+## 0D. WA-INTERNAL-WALLS-05 — lining product / face / layer + sheet takeoff
+
+Implemented on current branch HEAD. IW-03 timber and IW-04 steel formulas are unchanged. `same_lining_both_sides` remains a UX shortcut; the calculator always reads `side_a` / `side_b`.
+
+**IW-05 lining is gross wall face area / gross sheet run.** IW-06 will subtract known opening geometry. Do not treat current sheet counts as net of doors.
+
+### Physical authority
+
+Each Wall Type has independent Side A and Side B. A lined face owns product, thickness_mm, sheet_length_mm, layers. Do not calculate lining from a generic one-side / both-sides multiplier.
+
+### V1 product matrix
+
+Plasterboard sheet width is **1200 mm** unless a specific identity proves otherwise. Lengths offered are the foundation set: 2400 / 2700 / 3000 / 3600 / 4800 / 6000 mm. Recommended length = smallest **product-valid** length that spans wall height.
+
+| Family | Thickness V1 | Sheet takeoff | Material identity | Rate |
+| --- | --- | --- | --- | --- |
+| Standard GIB | 10, 13 (not 16/25) | Yes, 1200 mm | 13 mm 2400×1200 → legacy `sheet.plasterboard.standard.each`. Other sizes dimensioned `sheet.plasterboard.standard.{t}mm.{L}x1200.each` | $18/$28 only on legacy 13/2400 |
+| Aqualine | 10, 13 | Yes | 13 mm 2400×1200 → `sheet.plasterboard.aqualine.each` (**Bathroom shared**). Other sizes dimensioned | $26/$38 only on legacy 13/2400 |
+| Fyreline | 13, 16 | Yes | 13 mm 2400×1200 → `sheet.plasterboard.fyreline.each`. Other sizes dimensioned | $24/$36 only on legacy 13/2400 |
+| Braceline | 10, 13 | Yes | 13 mm 2400×1200 → `sheet.plasterboard.braceline.each`. Other sizes dimensioned | $22/$32 only on legacy 13/2400 |
+| Noiseline | 10, 13 | Yes, 1200 mm | Dimensioned only. **No generic identity / no $/sheet** | Pricing Required |
+| Weatherline | 10, 13 | Yes | Dimensioned only | Pricing Required |
+| Barrierline | 13, 16 | Yes | Dimensioned only | Pricing Required |
+| Plywood | — | No | **MISSING CANONICAL WALL-LINING IDENTITY.** Do not reuse Bathroom 19 mm H3.2 floor plywood | Pricing Required / catalogue gap |
+| Fibre cement | — | No | **MISSING CANONICAL WALL-LINING IDENTITY.** Do not reuse Bathroom flooring/underlay FC | Pricing Required / catalogue gap |
+| Other | — | No | Custom | Pricing Required |
+
+25 mm is not a V1 plasterboard thickness. Stored unsupported thickness → INFO_REQUIRED, not silent area math.
+
+Legacy generic keys (`sheet.plasterboard.standard.each` etc.) are **aliases for 13 mm 2400×1200 only**. They stay shared so Bathroom Aqualine and Internal Walls 13/2400 Aqualine remain one Materials row. A new dimensioned 2700/3000 key does **not** inherit the 2400 benchmark.
+
+### Sheet-count formula (full-height vertical)
+
+When `sheet_length_mm >= wall_height_mm`:
+
+```
+base_sheets            = ceil(length_m / sheet_width_m − 1e-12)
+purchase_per_layer     = ceil(base_sheets × (1 + waste) − 1e-12)
+installed_sheet_count  = base_sheets × layers
+purchase_sheet_count   = purchase_per_layer × layers
+net_face_area          = length × height          // Review / future stopping — not sheet authority
+installed_layer_area   = net_face_area × layers
+```
+
+Owner waste: **10% once** via canonical `sheet_material` (`resolveMaterialWastage`). Company percent wins; default/fallback 10%. Do not waste area then waste sheets.
+
+If `sheet_length_mm < wall_height_mm`: **INFO_REQUIRED** — `"Selected sheet length does not span the wall height."` No silent area-only takeoff.
+
+If selected length > wall height: still one full sheet per wall-width bay. Offcut is not an optimisation model in V1.
+
+### Labour
+
+Hours per **installed sheet**, not h/m² and not purchase/waste sheets.
+
+Keys (future Company DNA; **no invented hours** in IW-05):
+
+- `internal_walls.lining.standard_gib.hours_per_sheet`
+- `internal_walls.lining.aqualine.hours_per_sheet`
+- `internal_walls.lining.fyreline.hours_per_sheet`
+- `internal_walls.lining.braceline.hours_per_sheet`
+- `internal_walls.lining.noiseline.hours_per_sheet`
+- `internal_walls.lining.weatherline.hours_per_sheet`
+- `internal_walls.lining.barrierline.hours_per_sheet`
+- `internal_walls.lining.plywood.hours_per_sheet`
+- `internal_walls.lining.fibre_cement.hours_per_sheet`
+
+Company productivity rate wins. Otherwise lining labour is **Pricing Required**. Do not copy Bathroom 0.3 h/m² or legacy 1.4 h/m². Labour $ = hours × `labour.carpenter.hour` when hours exist.
+
+### Requirements
+
+Per face: `internal_walls.lining.{product}.material` (purchase sheets) and `.install` (installed sheets × hours/sheet). `variantKey` = `{wallTypeId}:{side}`. Aggregate commercially only when `materialKey` is identical (13/2400 ≠ 13/3000; Fyreline ≠ Standard).
+
+Finish/quality does not scale sheet count, layers, identity, or productivity (`qualityFactor: 1`). Access may scale lining labour hours only.
+
+Mature path still suppresses `$95/$145` / `internalWallsPerM2` / `scope.internal_walls.m2` / 1.4 h/m² lining labour.
+
+### Builder Review
+
+Wall Type lining group: product, thickness, sheet size, layers, installed vs purchase, net m², labour hours or Pricing Required. Identical faces may summarise **Both sides** without hiding totals. Surface: “Lining details”.
+
+### Known limitations (05)
+
+- Openings / door deductions: **IW-06**
+- Insulation, skirting, cornice, stopping, painting, demolition, waste disposal: **not implemented**
+- No owner-approved lining hours/sheet — labour Pricing Required until company rate or DNA
+- Plywood / fibre-cement wall lining: catalogue gap
+- Noiseline / Weatherline / Barrierline: takeoff yes, no $/sheet
+- Company DNA not calibrated
+- No SQL seed (preview remains 056; do not create 055)
+
+### Deterministic fixtures
+
+| Type | Geometry / lining | Expected |
+| --- | --- | --- |
+| A | 12 × 2.4, Standard 13/2400, 1 layer, both sides | 10/11 per face; **20 installed / 22 purchase** |
+| B | 8 × 3.0, Fyreline 13/3000, 2 layers, both sides | 7 base, 8 purchase/layer; **28 installed / 32 purchase** |
+| C | 5 × 2.7, Aqualine 13/2700 vs Standard 13/2700 | 5/6 each, separate identities |
+| D | existing frame 3 × 2.4, Standard 13/2400 Side A only | 3 installed / 4 purchase; **no framing** |
+| Too-short | 3.0 m wall, 2400 sheet | INFO_REQUIRED, no area math |
 
 ---
 
@@ -1153,14 +1258,15 @@ Future implementation may need a **data-only** catalogue seed (DNA and/or materi
 | **02** | Job scope + Wall Types + geometry | **Closed (data/UX foundation).** Nested CRUD hosted close is **02C**. |
 | **02C** | Nested Wall Type persist + sheet length UX | Canonical `updateWallType` by stable ID; `{ v, types }` CAS; logical overlay rows keyed by Wall Type id; Yes/No same-both-sides; selectable sheet length with height recommendation |
 | **03** | Timber framing + first envelope | Shared 90×45 / 140×45 identities; stud/plate/nog takeoff; timber labour; fixings allowance structure; XOR timber vs existing frame / steel. **Lining sheets deferred.** |
-| **04** | Steel track/stud physical takeoff | Not started |
-| **05** | Lining sheets + openings | Deduct lining; trimmers; INFO_REQUIRED if load-bearing |
-| **06** | Insulation + nested finishing XOR | Cavity area; stop/paint vs siblings |
-| **07** | Demolition + waste + Review | Separate demo labour; disposal allowance |
-| **08** | DNA | Only if 03 productivity keys are consumed and owner calibrates |
-| **09** | Hosted close | Deterministic + Preview proof including lining |
+| **04** | Steel track/stud physical takeoff | **Closed (IW-04).** |
+| **05** | Lining sheets + labour | Face authority, product matrix, vertical sheet takeoff, 10% waste once, hours/sheet labour. **Closed (this phase).** Openings deferred |
+| **06** | Openings + structural gate + lining deductions | Deduct lining; trimmers; INFO_REQUIRED if load-bearing. **Do not start automatically.** |
+| **07** | Insulation + nested finishing XOR | Cavity area; stop/paint vs siblings |
+| **08** | Demolition + waste + Review | Separate demo labour; disposal allowance |
+| **09** | DNA | Only if productivity keys are consumed and owner calibrates |
+| **10** | Hosted close | Deterministic + Preview proof including lining |
 
-Do not start **04** (steel) in this phase.
+Do not start **06** (openings) in this phase.
 
 ---
 
