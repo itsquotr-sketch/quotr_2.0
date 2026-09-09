@@ -98,7 +98,7 @@ import {
 import { composeJobPlan } from "@/lib/assistant/job-plan/compose";
 import { applyJobPlanScopeWrite } from "@/lib/assistant/job-plan/apply-write";
 import { writeJobPlanScopeDecision } from "@/lib/assistant/job-plan/actions";
-import { overlayFact } from "@/lib/assistant/job-plan/facts";
+import { appendJobPlanFactOverlay, overlayFact } from "@/lib/assistant/job-plan/facts";
 import { JOB_PLAN_IS_PRIMARY } from "@/lib/assistant/job-plan/flags";
 import { UNKNOWN_ANALYSIS_ERROR } from "@/lib/ai/analyse-job-contract";
 import { presentAssistantError } from "@/lib/assistant/presentation/error-messages";
@@ -132,6 +132,7 @@ import {
   type EditJobSection,
 } from "@/lib/assistant/mode";
 import type { EstimateFact } from "@/lib/estimate/types";
+import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { startPreviewPerf, recordPreviewPerf } from "@/lib/assistant/preview-performance";
 import {
@@ -1137,6 +1138,7 @@ export function AssistantShell({
       value: string | number | boolean | string[];
       unit?: string;
       inputType?: "number" | "select" | "boolean" | "text" | "multi_select";
+      wallTypeId?: string | null;
     }) => {
       const factKey = `${input.workAreaId}:${input.key}`;
       recordPreviewPerf("question_save_ack", 0);
@@ -1144,15 +1146,15 @@ export function AssistantShell({
       setSavingFactKey(factKey);
       setFactError(null);
       const requestSeq = ++factMutationSeqRef.current;
-      tagOverlayFactSeq(
-        {
-          key: input.key,
-          work_area_id: input.workAreaId,
-          value: input.value,
-          source: "user",
-        },
-        requestSeq
-      );
+      const overlayRow: EstimateFact = {
+        key: input.key,
+        work_area_id: input.workAreaId,
+        value: input.value,
+        source: "user",
+        wallTypeId: input.wallTypeId ?? undefined,
+      };
+      tagOverlayFactSeq(overlayRow, requestSeq);
+      setJobPlanFactOverlay((prev) => appendJobPlanFactOverlay(prev, overlayRow));
 
       const result = await runSerializedFactMutation(() =>
         updateProjectFact({
@@ -1163,6 +1165,7 @@ export function AssistantShell({
           value: input.value,
           unit: input.unit,
           valueType: input.inputType,
+          wallTypeId: input.wallTypeId ?? undefined,
         })
       );
 
@@ -1170,6 +1173,15 @@ export function AssistantShell({
         setFactError(result.error);
         setSavingFactKey(null);
         endSavePerf();
+        const factIdentity = `${input.workAreaId}:${input.key}`;
+        if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
+          setJobPlanFactOverlay((prev) =>
+            prev.filter(
+              (row) =>
+                `${row.work_area_id ?? ""}:${row.key}` !== factIdentity
+            )
+          );
+        }
         return;
       }
 
@@ -1627,10 +1639,25 @@ export function AssistantShell({
           work_area_id: candidate.workAreaId,
           value,
           source: "user" as const,
+          wallTypeId: candidate.wallTypeId ?? undefined,
         };
         tagOverlayFactSeq(overlayRow, requestSeq);
+        const iwWrite = Boolean(
+          candidate.factKey &&
+            candidate.workAreaId &&
+            isInternalWallsWallTypeWriteKey(candidate.factKey)
+        );
         if (!isNumericOrText) {
-          setJobPlanFactOverlay((prev) => overlayFact(prev, overlayRow));
+          setJobPlanFactOverlay((prev) =>
+            iwWrite
+              ? appendJobPlanFactOverlay(prev, overlayRow)
+              : overlayFact(prev, overlayRow)
+          );
+        }
+        if (iwWrite && isNumericOrText) {
+          setJobPlanFactOverlay((prev) =>
+            appendJobPlanFactOverlay(prev, overlayRow)
+          );
         }
         const result = await runSerializedFactMutation(() =>
           answerClarifySelectFact({
@@ -1640,6 +1667,7 @@ export function AssistantShell({
             label: candidate.label,
             value,
             valueType,
+            wallTypeId: candidate.wallTypeId ?? undefined,
           })
         );
         if (result.error) {
@@ -1655,7 +1683,7 @@ export function AssistantShell({
           }
           return;
         }
-        if (isNumericOrText) {
+        if (isNumericOrText && !iwWrite) {
           setJobPlanFactOverlay((prev) => overlayFact(prev, overlayRow));
         }
         if (!settleCanonicalMutation(result, requestSeq)) {

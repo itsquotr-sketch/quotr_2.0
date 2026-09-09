@@ -37,6 +37,7 @@ export async function answerClarifySelectFact(input: {
   label: string;
   value: string | number | boolean | string[];
   valueType: "number" | "select" | "boolean" | "multi_select";
+  wallTypeId?: string;
 }): Promise<AssistantActionState> {
   return updateProjectFact({
     projectId: input.projectId,
@@ -45,6 +46,7 @@ export async function answerClarifySelectFact(input: {
     label: input.label,
     value: input.value,
     valueType: input.valueType,
+    wallTypeId: input.wallTypeId,
   });
 }
 

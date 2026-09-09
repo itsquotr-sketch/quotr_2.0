@@ -120,6 +120,8 @@ export async function upsertScopedFact(
   return { ok: true };
 }
 
+export const INTERNAL_WALLS_COLLECTION_WRITE_MAX_ATTEMPTS = 8;
+
 async function persistInternalWallsCollectionWrite(
   supabase: SupabaseClient,
   params: {
@@ -128,72 +130,122 @@ async function persistInternalWallsCollectionWrite(
     workAreaId: string;
     key: string;
     value: unknown;
+    wallTypeId?: string | null;
   }
 ): Promise<ScopePersistResult | null> {
   if (!isInternalWallsWallTypeWriteKey(params.key)) return null;
 
-  const { data: rows, error } = await supabase
-    .from("project_facts")
-    .select("key, value, work_area_id")
-    .eq("project_id", params.projectId)
-    .eq("work_area_id", params.workAreaId)
-    .in("key", [
-      INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
-      INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
-    ]);
+  for (let attempt = 0; attempt < INTERNAL_WALLS_COLLECTION_WRITE_MAX_ATTEMPTS; attempt++) {
+    const { data: rows, error } = await supabase
+      .from("project_facts")
+      .select("id, key, value, work_area_id, updated_at")
+      .eq("project_id", params.projectId)
+      .eq("work_area_id", params.workAreaId)
+      .in("key", [
+        INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
+        INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
+      ]);
 
-  if (error) {
-    return { ok: false, error: error.message };
-  }
+    if (error) {
+      return { ok: false, error: error.message };
+    }
 
-  const current: EstimateFact[] = (rows ?? []).map((row) => ({
-    key: row.key,
-    work_area_id: row.work_area_id,
-    value: row.value,
-  }));
-  const next = applyInternalWallsFactWrite({
-    facts: current,
-    workAreaId: params.workAreaId,
-    key: params.key,
-    value: params.value,
-  });
-
-  const wallTypes = next.find(
-    (row) =>
-      row.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY &&
-      row.work_area_id === params.workAreaId
-  );
-  const active = next.find(
-    (row) =>
-      row.key === INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY &&
-      row.work_area_id === params.workAreaId
-  );
-
-  const typesResult = await upsertScopedFact(supabase, {
-    orgId: params.orgId,
-    projectId: params.projectId,
-    workAreaId: params.workAreaId,
-    key: INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
-    label: "Wall types",
-    value: wallTypes?.value ?? [],
-    source: "user",
-  });
-  if (!typesResult.ok) return typesResult;
-
-  if (active?.value) {
-    const activeResult = await upsertScopedFact(supabase, {
-      orgId: params.orgId,
-      projectId: params.projectId,
+    const current: EstimateFact[] = (rows ?? []).map((row) => ({
+      key: row.key,
+      work_area_id: row.work_area_id,
+      value: row.value,
+    }));
+    const next = applyInternalWallsFactWrite({
+      facts: current,
       workAreaId: params.workAreaId,
-      key: INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
-      label: "Selected wall type",
-      value: active.value,
-      source: "user",
+      key: params.key,
+      value: params.value,
+      wallTypeId: params.wallTypeId,
     });
-    if (!activeResult.ok) return activeResult;
+
+    const wallTypes = next.find(
+      (row) =>
+        row.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY &&
+        row.work_area_id === params.workAreaId
+    );
+    const active = next.find(
+      (row) =>
+        row.key === INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY &&
+        row.work_area_id === params.workAreaId
+    );
+
+    const typesRow = (rows ?? []).find(
+      (row) => row.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY
+    );
+    if (typesRow) {
+      const { data: updated, error: updateError } = await supabase
+        .from("project_facts")
+        .update({
+          label: "Wall types",
+          value: wallTypes?.value ?? [],
+          source: "user",
+          confidence: 1,
+        })
+        .eq("id", typesRow.id)
+        .eq("project_id", params.projectId)
+        .eq("updated_at", typesRow.updated_at)
+        .select("id");
+      if (updateError) {
+        return { ok: false, error: updateError.message };
+      }
+      if (!updated?.length) {
+        continue;
+      }
+    } else {
+      const typesResult = await upsertScopedFact(supabase, {
+        orgId: params.orgId,
+        projectId: params.projectId,
+        workAreaId: params.workAreaId,
+        key: INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
+        label: "Wall types",
+        value: wallTypes?.value ?? [],
+        source: "user",
+      });
+      if (!typesResult.ok) {
+        if (attempt < INTERNAL_WALLS_COLLECTION_WRITE_MAX_ATTEMPTS - 1) {
+          continue;
+        }
+        return typesResult;
+      }
+    }
+
+    const activeRow = (rows ?? []).find(
+      (row) => row.key === INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY
+    );
+    if (active?.value) {
+      const activeResult = await upsertScopedFact(supabase, {
+        orgId: params.orgId,
+        projectId: params.projectId,
+        workAreaId: params.workAreaId,
+        key: INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
+        label: "Selected wall type",
+        value: active.value,
+        source: "user",
+      });
+      if (!activeResult.ok) return activeResult;
+    } else if (activeRow) {
+      const { error: deleteError } = await supabase
+        .from("project_facts")
+        .delete()
+        .eq("id", activeRow.id)
+        .eq("project_id", params.projectId);
+      if (deleteError) {
+        return { ok: false, error: deleteError.message };
+      }
+    }
+
+    return { ok: true };
   }
 
-  return { ok: true };
+  return {
+    ok: false,
+    error: "Wall types could not be saved. Try again.",
+  };
 }
 
 /**
@@ -311,6 +363,7 @@ export async function commitUserAnswerToScope(
     unit: string | null;
     inputType: "number" | "select" | "boolean" | "text" | "multi_select";
     value: string | number | boolean | string[];
+    wallTypeId?: string | null;
   }
 ): Promise<ScopePersistResult> {
   const storedValue = normalizeAnswerForStorage(params.value, params.inputType);
@@ -322,6 +375,7 @@ export async function commitUserAnswerToScope(
         workAreaId: params.workAreaId,
         key: params.key,
         value: storedValue,
+        wallTypeId: params.wallTypeId,
       })
     : null;
   if (collectionWrite && !collectionWrite.ok) {
@@ -378,6 +432,7 @@ export async function commitUserFactEdit(
     value: unknown;
     unit?: string | null;
     valueType?: "number" | "select" | "boolean" | "text" | "multi_select";
+    wallTypeId?: string | null;
   }
 ): Promise<ScopePersistResult & { blockedDerived?: boolean }> {
   const namespace = assertFactConstraintNamespace({
@@ -427,6 +482,7 @@ export async function commitUserFactEdit(
       workAreaId: params.workAreaId,
       key: params.key,
       value: storedValue,
+      wallTypeId: params.wallTypeId,
     });
     if (collectionWrite && !collectionWrite.ok) {
       return collectionWrite;

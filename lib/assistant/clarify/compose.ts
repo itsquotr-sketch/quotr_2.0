@@ -128,6 +128,9 @@ const CHECK_SCORES: Record<string, number> = {
   "internal_walls.wall_type.height_m": 70,
   "internal_walls.wall_type.stud_centres_mm": 68,
   "internal_walls.wall_type.side_a_product": 86,
+  "internal_walls.wall_type.side_a_thickness_mm": 85.5,
+  "internal_walls.wall_type.side_a_sheet_length_mm": 85,
+  "internal_walls.wall_type.side_a_layers": 84.5,
   "internal_walls.wall_type.same_lining_both_sides": 84,
   "bathroom.length_m": 95,
   "bathroom.width_m": 94,
@@ -698,6 +701,7 @@ function missingHardMinimum(
           rankScore: row.rankScore,
           rankReason: "HARD_MINIMUM internal walls core",
           assumptionStatement: null,
+          wallTypeId: active?.id ?? null,
         });
       }
     }
@@ -1176,6 +1180,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
             nextField === "internal_walls.wall_type.height_m"
               ? INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT
               : null,
+          wallTypeId: active?.id ?? null,
         });
       }
       continue;

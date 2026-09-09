@@ -47,6 +47,8 @@ export type ClarifyCandidate = {
   readonly rankReason: string;
   readonly assumptionStatement: string | null;
   readonly economicClass?: ClarifyEconomicClass;
+  /** Internal Walls writes target this Wall Type id. */
+  readonly wallTypeId?: string | null;
 };
 
 export type ClarifyAssumption = {

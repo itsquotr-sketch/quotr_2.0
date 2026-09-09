@@ -25,7 +25,7 @@ export function InternalWallsWallTypesPanel({
       data-internal-walls-wall-types
       data-work-area-id={panel.workAreaId}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
           <p className={PREMIUM.sectionTitle}>{panel.workAreaName}</p>
           <p className="mt-0.5 text-sm text-muted-foreground">

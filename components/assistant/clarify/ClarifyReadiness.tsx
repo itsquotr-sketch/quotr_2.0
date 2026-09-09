@@ -41,6 +41,7 @@ function toClarifyCandidate(row: RefineCandidate): ClarifyCandidate {
     options: row.options,
     writeTarget: row.writeTarget,
     write: row.write,
+    wallTypeId: row.wallTypeId,
     blocksEstimate: false,
     assumable: true,
     rankScore: 0,

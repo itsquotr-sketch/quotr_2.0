@@ -29,6 +29,8 @@ export type RefineCandidate = {
   readonly options?: readonly string[];
   readonly writeTarget: ClarifyWriteTarget;
   readonly write: JobPlanScopeWrite | null;
+  /** Internal Walls Refine writes target this Wall Type id. */
+  readonly wallTypeId?: string | null;
   /** Only fields the current calculator consumes may be true. */
   readonly consumedByCalculator: true;
 };

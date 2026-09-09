@@ -77,6 +77,7 @@ export function overlayFact(
       workAreaId: next.work_area_id,
       key: next.key,
       value: next.value,
+      wallTypeId: next.wallTypeId,
     });
   }
   const without = facts.filter(
@@ -84,4 +85,25 @@ export function overlayFact(
       !(row.key === next.key && row.work_area_id === next.work_area_id)
   );
   return [...without, next];
+}
+
+/**
+ * Queue a Refine/Clarify overlay row.
+ * Internal Walls stores the logical write; jobPlanFacts applies it onto
+ * latest base facts so a lining save cannot replace the whole collection.
+ */
+export function appendJobPlanFactOverlay(
+  overlay: readonly EstimateFact[],
+  next: EstimateFact
+): EstimateFact[] {
+  if (next.work_area_id && isInternalWallsWallTypeWriteKey(next.key)) {
+    return [
+      ...overlay.filter(
+        (row) =>
+          !(row.key === next.key && row.work_area_id === next.work_area_id)
+      ),
+      next,
+    ];
+  }
+  return overlayFact(overlay, next);
 }

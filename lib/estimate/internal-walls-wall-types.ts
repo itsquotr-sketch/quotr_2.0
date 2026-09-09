@@ -80,7 +80,25 @@ export const INTERNAL_WALLS_SHEET_LENGTHS_MM = [
   2400, 2700, 3000, 3600, 4800, 6000,
 ] as const;
 
+export const INTERNAL_WALLS_SHEET_LENGTH_OPTIONS = [
+  "2400 mm",
+  "2700 mm",
+  "3000 mm",
+  "3600 mm",
+  "4800 mm",
+  "6000 mm",
+] as const;
+
 export const INTERNAL_WALLS_THICKNESSES_MM = [10, 13, 16, 25] as const;
+
+export const INTERNAL_WALLS_THICKNESS_OPTIONS = [
+  "10 mm",
+  "13 mm",
+  "16 mm",
+  "25 mm",
+] as const;
+
+export const INTERNAL_WALLS_SAME_BOTH_SIDES_OPTIONS = ["Yes", "No"] as const;
 
 export const INTERNAL_WALLS_FRAME_SYSTEM_VALUES = [
   "timber",
@@ -170,6 +188,7 @@ export type InternalWallsFace = {
   product: InternalWallsLiningProduct | null;
   thickness_mm: number | null;
   sheet_length_mm: number | null;
+  sheet_length_source?: "recommended" | "override" | null;
   layers: number | null;
 };
 
@@ -269,6 +288,7 @@ function emptyFace(): InternalWallsFace {
     product: null,
     thickness_mm: null,
     sheet_length_mm: null,
+    sheet_length_source: null,
     layers: null,
   };
 }
@@ -405,6 +425,17 @@ export function recommendedStudCentresMm(heightM: number): 400 | 600 {
 }
 
 /**
+ * Smallest generic sheet length that covers the wall height.
+ * Visible recommendation only — not a product-availability claim.
+ */
+export function recommendedSheetLengthMm(heightM: number | null): number | null {
+  if (heightM == null || !Number.isFinite(heightM) || heightM <= 0) return null;
+  const heightMm = Math.round(heightM * 1000);
+  const found = INTERNAL_WALLS_SHEET_LENGTHS_MM.find((len) => len >= heightMm);
+  return found ?? INTERNAL_WALLS_SHEET_LENGTHS_MM[INTERNAL_WALLS_SHEET_LENGTHS_MM.length - 1];
+}
+
+/**
  * Owner nogging rule — recorded for 03 timber takeoff. Not calculated in 02.
  * height <= 2.4 → 2 rows; >2.4 and <=3.2 → 3 rows; >3.2 → 4 rows.
  */
@@ -453,6 +484,20 @@ function parsePositiveNumber(value: unknown): number | null {
   return null;
 }
 
+function parseMillimetreOption(value: unknown): number | null {
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    return value;
+  }
+  if (typeof value === "string") {
+    const match = value.trim().match(/^(\d+(?:\.\d+)?)/);
+    if (match) {
+      const parsed = Number(match[1]);
+      if (Number.isFinite(parsed) && parsed > 0) return parsed;
+    }
+  }
+  return parsePositiveNumber(value);
+}
+
 function parseFace(value: unknown): InternalWallsFace {
   if (!isRecord(value)) return emptyFace();
   const product = parseInternalWallsLiningProduct(value.product);
@@ -468,6 +513,11 @@ function parseFace(value: unknown): InternalWallsFace {
     product,
     thickness_mm: parsePositiveNumber(value.thickness_mm),
     sheet_length_mm: parsePositiveNumber(value.sheet_length_mm),
+    sheet_length_source:
+      value.sheet_length_source === "override" ||
+      value.sheet_length_source === "recommended"
+        ? value.sheet_length_source
+        : null,
     layers: parsePositiveNumber(value.layers),
   };
 }
@@ -589,12 +639,16 @@ function applySteelFoundation(type: InternalWallsWallType): void {
   }
 }
 
-function applyLiningDefaults(face: InternalWallsFace): void {
+function applyLiningDefaults(
+  face: InternalWallsFace,
+  heightM: number | null
+): void {
   if (!face.lined) {
     face.material_family = null;
     face.product = null;
     face.thickness_mm = null;
     face.sheet_length_mm = null;
+    face.sheet_length_source = null;
     face.layers = null;
     return;
   }
@@ -604,12 +658,49 @@ function applyLiningDefaults(face: InternalWallsFace): void {
       face.thickness_mm = defaultThicknessMmForProduct(face.product);
     }
     if (face.sheet_length_mm == null && face.material_family === "plasterboard") {
-      face.sheet_length_mm = 2400;
+      const recommended = recommendedSheetLengthMm(heightM);
+      if (recommended != null) {
+        face.sheet_length_mm = recommended;
+        face.sheet_length_source = "recommended";
+      }
     }
     if (face.layers == null) {
       face.layers = 1;
     }
   }
+}
+
+function applyRecommendedSheetLength(type: InternalWallsWallType): void {
+  const recommended = recommendedSheetLengthMm(type.height_m);
+  if (recommended == null) return;
+  const bump = (face: InternalWallsFace) => {
+    if (
+      !face.lined ||
+      materialFamilyForProduct(face.product) !== "plasterboard"
+    ) {
+      return;
+    }
+    if (face.sheet_length_source === "override") return;
+    if (face.sheet_length_mm == null || face.sheet_length_mm < recommended) {
+      face.sheet_length_mm = recommended;
+      face.sheet_length_source = "recommended";
+    }
+  };
+  bump(type.side_a);
+  if (type.same_lining_both_sides !== true) bump(type.side_b);
+}
+
+function plasterboardSheetLengthForProduct(
+  product: InternalWallsLiningProduct | null,
+  heightM: number | null
+): { mm: number | null; source: InternalWallsFace["sheet_length_source"] } {
+  if (materialFamilyForProduct(product) !== "plasterboard") {
+    return { mm: null, source: null };
+  }
+  return {
+    mm: recommendedSheetLengthMm(heightM),
+    source: "recommended",
+  };
 }
 
 function syncSameBothSides(type: InternalWallsWallType): void {
@@ -717,7 +808,11 @@ export function summariseWallType(
       type.side_a.layers != null && type.side_a.layers > 1
         ? ` · ${type.side_a.layers} layers`
         : "";
-    liningLine = `${thickness}${product}${layers} — both sides`;
+    const sheet =
+      type.side_a.sheet_length_mm != null
+        ? ` · ${type.side_a.sheet_length_mm} mm sheets`
+        : "";
+    liningLine = `${thickness}${product}${layers}${sheet} — both sides`;
   } else {
     const sideA = type.side_a.lined
       ? `${type.side_a.thickness_mm != null ? `${type.side_a.thickness_mm} mm ` : ""}${liningProductDisplay(type.side_a.product) ?? "Lined"}`
@@ -820,7 +915,7 @@ export function legacyWallTypeFromFlatFacts(params: {
   if (product || liningType) {
     type.side_a.lined = true;
     type.side_a.product = product;
-    applyLiningDefaults(type.side_a);
+    applyLiningDefaults(type.side_a, type.height_m);
     type.same_lining_both_sides = both;
     if (both) {
       type.side_b = cloneFace(type.side_a);
@@ -908,27 +1003,20 @@ function upsertFact(
   ];
 }
 
-function ensureActiveType(
-  types: InternalWallsWallType[],
-  activeId: string | null
-): { types: InternalWallsWallType[]; activeId: string } {
-  if (types.length === 0) {
-    const created = createEmptyWallType();
-    return { types: [created], activeId: created.id };
-  }
-  if (activeId && types.some((row) => row.id === activeId)) {
-    return { types, activeId };
-  }
-  return { types, activeId: types[0]!.id };
-}
-
-function patchActiveType(
-  types: InternalWallsWallType[],
-  activeId: string,
+/**
+ * Canonical Wall Type mutation: find by stable ID, merge nested fields,
+ * preserve siblings. Never replace the collection from a stale object.
+ */
+export function updateWallType(
+  wallTypes: readonly InternalWallsWallType[],
+  wallTypeId: string,
   patch: (type: InternalWallsWallType) => void
 ): InternalWallsWallType[] {
-  return types.map((row) => {
-    if (row.id !== activeId) return row;
+  if (!wallTypes.some((row) => row.id === wallTypeId)) {
+    return wallTypes.map((row) => row);
+  }
+  return wallTypes.map((row) => {
+    if (row.id !== wallTypeId) return row;
     const next = {
       ...row,
       side_a: cloneFace(row.side_a),
@@ -938,8 +1026,9 @@ function patchActiveType(
     };
     patch(next);
     applySteelFoundation(next);
-    applyLiningDefaults(next.side_a);
-    applyLiningDefaults(next.side_b);
+    applyLiningDefaults(next.side_a, next.height_m);
+    applyLiningDefaults(next.side_b, next.height_m);
+    applyRecommendedSheetLength(next);
     syncSameBothSides(next);
     applyRecommendedCentres(next);
     return next;
@@ -955,6 +1044,7 @@ export function applyInternalWallsFactWrite(params: {
   workAreaId: string;
   key: string;
   value: unknown;
+  wallTypeId?: string | null;
 }): EstimateFact[] {
   const facts = params.facts.map((row) => ({ ...row })) as EstimateFact[];
   if (params.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY) {
@@ -1021,11 +1111,21 @@ export function applyInternalWallsFactWrite(params: {
       activeId = types[0]?.id ?? null;
     }
   } else if (params.key.startsWith(INTERNAL_WALLS_WALL_TYPE_FIELD_PREFIX)) {
-    const ensured = ensureActiveType(types, activeId);
-    types = ensured.types;
-    activeId = ensured.activeId;
+    if (types.length === 0) {
+      const created = createEmptyWallType();
+      types = [created];
+      activeId = created.id;
+    }
+    const requested = params.wallTypeId?.trim() || null;
+    const targetId =
+      requested && types.some((row) => row.id === requested)
+        ? requested
+        : activeId && types.some((row) => row.id === activeId)
+          ? activeId
+          : types[0]!.id;
+    activeId = targetId;
     const field = params.key.slice(INTERNAL_WALLS_WALL_TYPE_FIELD_PREFIX.length);
-    types = patchActiveType(types, activeId, (type) => {
+    types = updateWallType(types, targetId, (type) => {
       if (field === "label") {
         type.label =
           typeof params.value === "string" && params.value.trim()
@@ -1068,15 +1168,17 @@ export function applyInternalWallsFactWrite(params: {
         return;
       }
       if (field === "same_lining_both_sides") {
+        const normalised = String(params.value).trim().toLowerCase();
         const yes =
           params.value === true ||
-          params.value === "Yes" ||
-          String(params.value).toLowerCase() === "yes" ||
-          String(params.value).toLowerCase().includes("same");
+          normalised === "yes" ||
+          normalised === "included" ||
+          normalised === "same";
         const no =
           params.value === false ||
-          params.value === "No" ||
-          String(params.value).toLowerCase() === "no";
+          normalised === "no" ||
+          normalised === "not_included" ||
+          normalised === "not included";
         type.same_lining_both_sides = yes ? true : no ? false : null;
         return;
       }
@@ -1087,20 +1189,22 @@ export function applyInternalWallsFactWrite(params: {
       }
       if (field === "side_a_product") {
         const product = parseInternalWallsLiningProduct(params.value);
+        const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_a.product = product;
         type.side_a.lined = product != null;
         type.side_a.thickness_mm = defaultThicknessMmForProduct(product);
-        type.side_a.sheet_length_mm =
-          materialFamilyForProduct(product) === "plasterboard" ? 2400 : null;
+        type.side_a.sheet_length_mm = sheet.mm;
+        type.side_a.sheet_length_source = sheet.source;
         type.side_a.layers = product != null ? type.side_a.layers ?? 1 : null;
         return;
       }
       if (field === "side_a_thickness_mm") {
-        type.side_a.thickness_mm = parsePositiveNumber(params.value);
+        type.side_a.thickness_mm = parseMillimetreOption(params.value);
         return;
       }
       if (field === "side_a_sheet_length_mm") {
-        type.side_a.sheet_length_mm = parsePositiveNumber(params.value);
+        type.side_a.sheet_length_mm = parseMillimetreOption(params.value);
+        type.side_a.sheet_length_source = "override";
         return;
       }
       if (field === "side_a_layers") {
@@ -1118,22 +1222,24 @@ export function applyInternalWallsFactWrite(params: {
       }
       if (field === "side_b_product") {
         const product = parseInternalWallsLiningProduct(params.value);
+        const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_b.product = product;
         type.side_b.lined = product != null;
         type.side_b.thickness_mm = defaultThicknessMmForProduct(product);
-        type.side_b.sheet_length_mm =
-          materialFamilyForProduct(product) === "plasterboard" ? 2400 : null;
+        type.side_b.sheet_length_mm = sheet.mm;
+        type.side_b.sheet_length_source = sheet.source;
         type.side_b.layers = product != null ? type.side_b.layers ?? 1 : null;
         type.same_lining_both_sides = false;
         return;
       }
       if (field === "side_b_thickness_mm") {
-        type.side_b.thickness_mm = parsePositiveNumber(params.value);
+        type.side_b.thickness_mm = parseMillimetreOption(params.value);
         type.same_lining_both_sides = false;
         return;
       }
       if (field === "side_b_sheet_length_mm") {
-        type.side_b.sheet_length_mm = parsePositiveNumber(params.value);
+        type.side_b.sheet_length_mm = parseMillimetreOption(params.value);
+        type.side_b.sheet_length_source = "override";
         type.same_lining_both_sides = false;
         return;
       }
@@ -1289,9 +1395,13 @@ export function wallTypeFieldCurrentValue(
     case "internal_walls.wall_type.side_a_product":
       return liningProductDisplay(type.side_a.product);
     case "internal_walls.wall_type.side_a_thickness_mm":
-      return type.side_a.thickness_mm;
+      return type.side_a.thickness_mm != null
+        ? `${type.side_a.thickness_mm} mm`
+        : null;
     case "internal_walls.wall_type.side_a_sheet_length_mm":
-      return type.side_a.sheet_length_mm;
+      return type.side_a.sheet_length_mm != null
+        ? `${type.side_a.sheet_length_mm} mm`
+        : null;
     case "internal_walls.wall_type.side_a_layers":
       if (type.side_a.layers === 1) return "1 layer";
       if (type.side_a.layers === 2) return "2 layers";
@@ -1301,9 +1411,13 @@ export function wallTypeFieldCurrentValue(
     case "internal_walls.wall_type.side_b_product":
       return liningProductDisplay(type.side_b.product);
     case "internal_walls.wall_type.side_b_thickness_mm":
-      return type.side_b.thickness_mm;
+      return type.side_b.thickness_mm != null
+        ? `${type.side_b.thickness_mm} mm`
+        : null;
     case "internal_walls.wall_type.side_b_sheet_length_mm":
-      return type.side_b.sheet_length_mm;
+      return type.side_b.sheet_length_mm != null
+        ? `${type.side_b.sheet_length_mm} mm`
+        : null;
     case "internal_walls.wall_type.side_b_layers":
       if (type.side_b.layers === 1) return "1 layer";
       if (type.side_b.layers === 2) return "2 layers";

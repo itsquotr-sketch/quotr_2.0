@@ -62,10 +62,10 @@ Do not infer maturity from file or question count.
 | Nogging (recorded only) | ≤2.4 → **2 rows**; >2.4 and ≤3.2 → **3 rows**; >3.2 → **4 rows**. No timber calc in 02. |
 | Frame systems | `timber` / `steel` / `existing_frame` / `other`. Steel stores track-and-stud foundation. No takeoff. |
 | Timber sizes | `90x45` / `140x45` / `other`. User copy: "90 mm timber framing — 90×45". |
-| Lining | Side A and Side B independently. "Same lining both sides" clones Side A → Side B. |
+| Lining | Side A and Side B independently. **02C:** "Same lining both sides?" is Yes/No. While Yes, Side B follows Side A. Switching to No keeps the copy, then independent. |
 | Layers | 1 or 2 per face. |
 | Products (foundation ids only) | Standard GIB, Aqualine, Fyreline, Braceline, Noiseline, Weatherline, Barrierline, Plywood, Fibre cement, Other. No invented rates. |
-| Thickness / sheet length | Schema only in 02. Plasterboard defaults 13 mm / 2400 mm when product selected. Width basis 1200 mm. |
+| Thickness / sheet length | **02C:** generic selectable 2400/2700/3000/3600/4800/6000 mm. Recommended = smallest generic length ≥ wall height. Never silent 2400 on a 3.0 m wall. Product availability not commercially validated until IW-05. Thickness edit persists; 13 mm remains plasterboard foundation default. |
 | Silent 20 m² | **Killed on mature path** (`job_scope` or canonical `wall_types`). Legacy projects without those facts retain fallback. |
 | Structural gate | Ask for form opening / remove / infill / mixed. Yes / Not sure → INFO_REQUIRED specialist. Do not ask for ordinary new partition. |
 | Openings / skirting / electrical / DNA | Not implemented. Storage permits future `openings[]` on each Wall Type. |
@@ -91,6 +91,8 @@ project_facts
 ```
 
 Plus WA-level scalars: `internal_walls.job_scope`, `internal_walls.structural_involvement`, `internal_walls.active_wall_type_id` (UI selection).
+
+**02C write rule:** one canonical mutator (`updateWallType` / `applyInternalWallsFactWrite`) patches by stable ID against the latest `wall_types` row. Persistence compare-and-swaps `updated_at` and retries so a lining save cannot restore an older sibling snapshot. Overlay stores logical field writes, applied onto latest base facts.
 
 Do **not** flatten `wall_1` / `wall_2` keys.
 
@@ -977,7 +979,8 @@ Future implementation may need a **data-only** catalogue seed (DNA and/or materi
 | Phase | Name | Does |
 | --- | --- | --- |
 | **01** | Architecture + gap audit | This document + verifier |
-| **02** | Job scope + Wall Types + geometry | **Closed.** JSON collection, kill silent 20 m² on mature path, Refine/Clarify/Job Plan foundation, no package rewrite |
+| **02** | Job scope + Wall Types + geometry | **Closed (data/UX foundation).** Nested CRUD hosted close is **02C**. |
+| **02C** | Nested Wall Type persist + sheet length UX | Canonical `updateWallType` by stable ID; CAS retry on `internal_walls.wall_types`; logical overlay rows; Yes/No same-both-sides; selectable sheet length with height recommendation |
 | **03** | Timber framing + lining sheets + envelope | Shared timber + GIB identities; requirements; XOR timber vs existing frame |
 | **04** | Openings + structural gate | Deduct lining; trimmers; INFO_REQUIRED if load-bearing |
 | **05** | Insulation + nested finishing XOR | Cavity area; stop/paint vs siblings |

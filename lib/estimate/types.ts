@@ -40,6 +40,8 @@ export type EstimateFact = {
   work_area_id: string | null;
   value: unknown;
   source?: string | null;
+  /** Overlay-only Internal Walls target. Not a persisted sibling column. */
+  wallTypeId?: string;
 };
 
 export type EstimateConstraint = {

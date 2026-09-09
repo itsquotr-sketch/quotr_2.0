@@ -11,8 +11,12 @@ import {
   INTERNAL_WALLS_FRAME_SYSTEM_OPTIONS,
   INTERNAL_WALLS_LAYER_OPTIONS,
   INTERNAL_WALLS_LINING_PRODUCT_OPTIONS,
+  INTERNAL_WALLS_SAME_BOTH_SIDES_OPTIONS,
+  INTERNAL_WALLS_SHEET_LENGTH_OPTIONS,
   INTERNAL_WALLS_STUD_CENTRES_OPTIONS,
+  INTERNAL_WALLS_THICKNESS_OPTIONS,
   INTERNAL_WALLS_TIMBER_SIZE_OPTIONS,
+  recommendedSheetLengthMm,
   resolveInternalWallsWallTypes,
   summariseWallType,
   wallTypeFieldCurrentValue,
@@ -54,9 +58,10 @@ function candidate(params: {
   unit?: string;
   currentValue?: RefineCandidate["currentValue"];
   tier?: RefineCandidate["tier"];
+  wallTypeId?: string | null;
 }): RefineCandidate {
   return {
-    id: `refine:${params.workAreaId}:${params.factKey}`,
+    id: `refine:${params.workAreaId}:${params.wallTypeId ?? "none"}:${params.factKey}`,
     group: params.group ?? "specification",
     tier: params.tier ?? "high_value",
     workAreaId: params.workAreaId,
@@ -73,6 +78,7 @@ function candidate(params: {
     currentValue: params.currentValue,
     writeTarget: "FACT",
     write: null,
+    wallTypeId: params.wallTypeId,
     consumedByCalculator: true,
   };
 }
@@ -119,6 +125,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
       resolved.types.find((row) => row.id === resolved.activeId) ??
       resolved.types[0] ??
       null;
+    const wallTypeId = active?.id ?? null;
 
     if (!jobScope) {
       out.push(
@@ -251,6 +258,38 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           active,
           "internal_walls.wall_type.side_a_product"
         ),
+        wallTypeId,
+      }),
+      candidate({
+        workAreaId,
+        workAreaName,
+        factKey: "internal_walls.wall_type.side_a_thickness_mm",
+        label: "Side A thickness",
+        question: "What lining thickness is on Side A?",
+        inputType: "select",
+        options: INTERNAL_WALLS_THICKNESS_OPTIONS,
+        currentValue: wallTypeFieldCurrentValue(
+          active,
+          "internal_walls.wall_type.side_a_thickness_mm"
+        ),
+        wallTypeId,
+      }),
+      candidate({
+        workAreaId,
+        workAreaName,
+        factKey: "internal_walls.wall_type.side_a_sheet_length_mm",
+        label: "Sheet length",
+        question:
+          recommendedSheetLengthMm(active?.height_m ?? null) != null
+            ? `What sheet length? Recommended ${recommendedSheetLengthMm(active?.height_m ?? null)} mm for this wall height. Product-specific availability is not yet confirmed.`
+            : "What sheet length? Product-specific availability is not yet confirmed.",
+        inputType: "select",
+        options: INTERNAL_WALLS_SHEET_LENGTH_OPTIONS,
+        currentValue: wallTypeFieldCurrentValue(
+          active,
+          "internal_walls.wall_type.side_a_sheet_length_mm"
+        ),
+        wallTypeId,
       }),
       candidate({
         workAreaId,
@@ -260,12 +299,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
         question: "How many lining layers on Side A?",
         inputType: "select",
         options: INTERNAL_WALLS_LAYER_OPTIONS,
-        group: "advanced",
-        tier: "advanced",
         currentValue: wallTypeFieldCurrentValue(
           active,
           "internal_walls.wall_type.side_a_layers"
         ),
+        wallTypeId,
       }),
       candidate({
         workAreaId,
@@ -273,12 +311,13 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
         factKey: "internal_walls.wall_type.same_lining_both_sides",
         label: "Same lining both sides",
         question: "Same lining both sides?",
-        inputType: "boolean",
-        options: ["Yes", "No", "Not sure"],
+        inputType: "select",
+        options: INTERNAL_WALLS_SAME_BOTH_SIDES_OPTIONS,
         currentValue: wallTypeFieldCurrentValue(
           active,
           "internal_walls.wall_type.same_lining_both_sides"
         ),
+        wallTypeId,
       })
     );
 
@@ -296,6 +335,36 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             active,
             "internal_walls.wall_type.side_b_product"
           ),
+          wallTypeId,
+        }),
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: "internal_walls.wall_type.side_b_thickness_mm",
+          label: "Side B thickness",
+          question: "What lining thickness is on Side B?",
+          inputType: "select",
+          options: INTERNAL_WALLS_THICKNESS_OPTIONS,
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            "internal_walls.wall_type.side_b_thickness_mm"
+          ),
+          wallTypeId,
+        }),
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: "internal_walls.wall_type.side_b_sheet_length_mm",
+          label: "Side B sheet length",
+          question:
+            "What sheet length on Side B? Product-specific availability is not yet confirmed.",
+          inputType: "select",
+          options: INTERNAL_WALLS_SHEET_LENGTH_OPTIONS,
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            "internal_walls.wall_type.side_b_sheet_length_mm"
+          ),
+          wallTypeId,
         }),
         candidate({
           workAreaId,
@@ -305,12 +374,11 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           question: "How many lining layers on Side B?",
           inputType: "select",
           options: INTERNAL_WALLS_LAYER_OPTIONS,
-          group: "advanced",
-          tier: "advanced",
           currentValue: wallTypeFieldCurrentValue(
             active,
             "internal_walls.wall_type.side_b_layers"
           ),
+          wallTypeId,
         })
       );
     }
@@ -329,9 +397,14 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           active,
           "internal_walls.wall_type.label"
         ),
+        wallTypeId,
       })
     );
 
-    return out;
+    return out.map((row) =>
+      row.factKey?.startsWith("internal_walls.wall_type.")
+        ? { ...row, wallTypeId }
+        : row
+    );
   },
 };
