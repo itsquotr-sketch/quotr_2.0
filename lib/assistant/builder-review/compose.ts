@@ -111,6 +111,7 @@ import {
   BATHROOM_WASTE_COMPONENT,
   BATHROOM_WATERPROOFING_COMPONENT,
 } from "@/lib/estimate/bathroom-identities";
+import { isInternalWallsFramingComponentKey } from "@/lib/estimate/internal-walls-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import {
@@ -461,6 +462,18 @@ function lineHierarchy(
     return {
       supporting: qtyUnit,
       detail: null,
+    };
+  }
+
+  if (isInternalWallsFramingComponentKey(item.componentKey)) {
+    return {
+      supporting: item.identitySummary || spec || qtyUnit,
+      detail:
+        item.notes &&
+        item.identitySummary &&
+        item.notes !== item.identitySummary
+          ? item.notes
+          : null,
     };
   }
 
@@ -841,6 +854,70 @@ function applyBathroomReviewGroups(
       };
     }
     return cat;
+  });
+}
+
+function wallTypeHeadingFromLabel(label: string): string {
+  const idx = label.indexOf(" — ");
+  return idx > 0 ? label.slice(0, idx) : "Framing";
+}
+
+function applyInternalWallsReviewGroups(
+  categories: BuilderReviewCategoryGroup[]
+): BuilderReviewCategoryGroup[] {
+  return categories.map((cat) => {
+    const remaining: BuilderReviewPricedLine[] = [];
+    const grouped = new Map<string, BuilderReviewPricedLine[]>();
+    for (const line of cat.lines) {
+      const overlap = line.sourceLine.overlapGroup ?? "";
+      if (
+        overlap.startsWith("internal_walls.framing:") &&
+        isInternalWallsFramingComponentKey(line.componentKey)
+      ) {
+        const list = grouped.get(overlap) ?? [];
+        list.push(line);
+        grouped.set(overlap, list);
+      } else {
+        remaining.push(line);
+      }
+    }
+    const lineGroups: BuilderReviewLineGroup[] = [...cat.lineGroups];
+    for (const [overlap, children] of grouped) {
+      const heading = wallTypeHeadingFromLabel(children[0]?.label ?? "Framing");
+      const materialChild = children.find((row) =>
+        (row.componentKey ?? "").includes(".material")
+      );
+      const labourChild = children.find((row) =>
+        (row.componentKey ?? "").includes(".install")
+      );
+      const supportingParts = [
+        materialChild?.supporting,
+        labourChild?.supporting
+          ? `Labour: ${labourChild.supporting}`
+          : null,
+        children.some((row) => (row.componentKey ?? "").includes("fixings"))
+          ? "Fixings: allowance / Pricing Required"
+          : null,
+      ].filter((text): text is string => Boolean(text));
+      lineGroups.push({
+        id: `internal-walls-${overlap.replace(/[^a-z0-9]+/gi, "-")}`,
+        label: heading,
+        recommendedCost: round2(
+          children.reduce((sum, line) => sum + line.recommendedCost, 0)
+        ),
+        supporting: supportingParts.join(" · ") || null,
+        secondary: "Framing",
+        itemKey: materialChild?.itemKey ?? children[0]?.itemKey ?? null,
+        showChangeMaterial: false,
+        rateContext: null,
+        children,
+      });
+    }
+    return {
+      ...cat,
+      lines: remaining,
+      lineGroups,
+    };
   });
 }
 
@@ -1488,6 +1565,9 @@ export function composeBuilderReview(
 
     if (meta.type === "bathroom") {
       categories = applyBathroomReviewGroups(categories);
+    }
+    if (meta.type === "internal_walls") {
+      categories = applyInternalWallsReviewGroups(categories);
     }
 
     return {

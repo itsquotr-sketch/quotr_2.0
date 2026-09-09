@@ -265,8 +265,12 @@ check(
 );
 check(
   "Fixture A no package money",
-  fixtureACalc.lineItems.length === 0 &&
-    fixtureACalc.assumptions.some((row) =>
+  !fixtureACalc.lineItems.some(
+    (row) =>
+      /internal wall materials allowance/i.test(row.label) ||
+      /wall framing labour/i.test(row.label)
+  ) &&
+    !fixtureACalc.assumptions.some((row) =>
       row.includes(INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT)
     )
 );

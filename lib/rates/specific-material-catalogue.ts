@@ -273,8 +273,20 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Framing timber",
     unit: "lm",
     description:
-      "Canonical physical 90×45 H1.2 framing. Bathroom local nogging and future Internal Walls may consume the same company rate. Not Deck H3.2 90×45. Owner-approved Quotr benchmark $6.20 ex GST / lm. Company exact rate wins. Legacy key bathroom.framing.90x45.h1.2.lm is an alias only.",
+      "Canonical physical 90×45 H1.2 framing. Bathroom local nogging and Internal Walls timber partitions consume the same company rate. Not Deck H3.2 90×45. Owner-approved Quotr benchmark $6.20 ex GST / lm. Company exact rate wins. Legacy key bathroom.framing.90x45.h1.2.lm is an alias only.",
     defaultCostRate: 6.2,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "timber.framing.140x45.h1.2.lm",
+    label: "140 × 45 H1.2 radiata pine framing",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Framing timber",
+    unit: "lm",
+    description:
+      "Canonical physical 140×45 H1.2 interior framing. Shared across Work Areas. Not Deck H3.2 140×45. No invented Quotr $/lm — company exact rate, else Pricing Required. Do not create Work-Area-scoped physical timber rows.",
     calculatorSupport: "used_now",
     recommended: true,
   }),

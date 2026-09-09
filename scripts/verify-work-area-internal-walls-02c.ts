@@ -21,7 +21,6 @@ import {
   INTERNAL_WALLS_DELETE_WALL_TYPE_KEY,
   INTERNAL_WALLS_DUPLICATE_WALL_TYPE_KEY,
   INTERNAL_WALLS_SHEET_LENGTH_OPTIONS,
-  INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT,
   INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
   applyInternalWallsFactWrite,
   createEmptyWallType,
@@ -588,10 +587,11 @@ const walls = wa("w1", "internal_walls", "Internal walls");
 const calc = calculateInternalWalls(ctx([walls], fireBoth), walls);
 check(
   "no silent 20 m² and no package money",
-  calc.lineItems.length === 0 &&
-    !calc.assumptions.some((row) => /20\s*m/.test(row)) &&
-    calc.assumptions.some((row) =>
-      row.includes(INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT)
+  !calc.assumptions.some((row) => /20\s*m/.test(row)) &&
+    !calc.lineItems.some(
+      (row) =>
+        /internal wall materials allowance/i.test(row.label) ||
+        /wall framing labour/i.test(row.label)
     )
 );
 

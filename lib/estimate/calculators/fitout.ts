@@ -55,6 +55,8 @@ import {
   resolveInternalWallsWallTypes,
   wallTypeNeedsLength,
 } from "@/lib/estimate/internal-walls-wall-types";
+import { INTERNAL_WALLS_LINING_NOT_PRICED_STATEMENT } from "@/lib/estimate/internal-walls-identities";
+import { buildInternalWallsFramingEnvelope } from "@/lib/estimate/internal-walls-physical";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
@@ -250,17 +252,35 @@ function calculateInternalWallsMature(
     }
   }
 
+  const framing = buildInternalWallsFramingEnvelope({
+    context,
+    workArea,
+    types: resolved.types,
+    jobScope,
+    sortOrderStart: 1,
+  });
+  missingInfo.push(...framing.missingInfo);
+  assumptions.push(...framing.assumptions);
+
   if (missingInfo.length === 0 && resolved.types.length > 0) {
-    assumptions.push(INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT);
+    assumptions.push(
+      framing.emittedFraming
+        ? INTERNAL_WALLS_LINING_NOT_PRICED_STATEMENT
+        : INTERNAL_WALLS_TAKEOFF_NOT_PRICED_STATEMENT
+    );
   }
 
+  const uniqueMissing = [...new Set(missingInfo)];
+  const uniqueAssumptions = [...new Set(assumptions)];
+
   return {
-    lineItems: [],
-    assumptions,
-    missingInfo,
+    lineItems: framing.lineItems,
+    assumptions: uniqueAssumptions,
+    missingInfo: uniqueMissing,
     exclusions: [],
-    confidence: baseConfidence(missingInfo.length),
+    confidence: baseConfidence(uniqueMissing.length),
     assumptionMetadata,
+    requirements: framing.requirements.length > 0 ? framing.requirements : undefined,
   };
 }
 

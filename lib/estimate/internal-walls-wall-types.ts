@@ -648,6 +648,7 @@ export function isInternalWallsWallTypeWriteKey(key: string): boolean {
 
 function applyRecommendedCentres(type: InternalWallsWallType): void {
   if (type.height_m == null) return;
+  if (type.stud_centres_source === "custom") return;
   const recommended = recommendedStudCentresMm(type.height_m);
   if (type.stud_centres_mm == null || type.stud_centres_source === "recommended") {
     type.stud_centres_mm = recommended;

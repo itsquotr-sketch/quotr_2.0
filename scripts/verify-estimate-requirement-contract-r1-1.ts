@@ -244,7 +244,7 @@ const emitting = calcFiles.filter((p) => {
 });
 check(
   "16 mature calculators emit EstimateRequirement objects",
-  emitting.length === 4 &&
+  emitting.length === 5 &&
     emitting.some((p) =>
       p.replace(/\\/g, "/").endsWith("calculators/deck.ts")
     ) &&
@@ -256,6 +256,9 @@ check(
     ) &&
     emitting.some((p) =>
       p.replace(/\\/g, "/").endsWith("calculators/bathroom.ts")
+    ) &&
+    emitting.some((p) =>
+      p.replace(/\\/g, "/").endsWith("calculators/fitout.ts")
     ),
   emitting.join(", ")
 );

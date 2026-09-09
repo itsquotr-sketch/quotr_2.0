@@ -338,6 +338,18 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     0.2,
     "lm"
   ),
+  "internal_walls.framing.timber.90x45.hours_per_m2": productivityEntry(
+    "internal_walls.framing.timber.90x45.hours_per_m2",
+    "Internal wall 90×45 timber framing",
+    0.45,
+    "m²"
+  ),
+  "internal_walls.framing.timber.140x45.hours_per_m2": productivityEntry(
+    "internal_walls.framing.timber.140x45.hours_per_m2",
+    "Internal wall 140×45 timber framing",
+    0.5,
+    "m²"
+  ),
   "bathroom.demolition.floor_finish.hours_per_m2": productivityEntry(
     "bathroom.demolition.floor_finish.hours_per_m2",
     "Bathroom floor finish removal",

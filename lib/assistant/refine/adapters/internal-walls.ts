@@ -241,8 +241,25 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             active,
             "internal_walls.wall_type.stud_centres_mm"
           ),
+          wallTypeId,
         })
       );
+      if (active.stud_centres_source === "custom") {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: "internal_walls.wall_type.stud_centres_mm",
+            label: "Custom stud spacing",
+            question: "What stud spacing (mm) should this wall type use?",
+            inputType: "number",
+            unit: "mm",
+            currentValue:
+              active.stud_centres_mm != null ? active.stud_centres_mm : null,
+            wallTypeId,
+          })
+        );
+      }
     }
 
     out.push(

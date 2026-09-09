@@ -671,7 +671,7 @@ function main(): void {
   });
   check(
     "mature calculators emit EstimateRequirement objects",
-    emitting.length === 4 &&
+    emitting.length === 5 &&
       emitting.some((p) =>
         p.replace(/\\/g, "/").endsWith("calculators/deck.ts")
       ) &&
@@ -683,6 +683,9 @@ function main(): void {
       ) &&
       emitting.some((p) =>
         p.replace(/\\/g, "/").endsWith("calculators/bathroom.ts")
+      ) &&
+      emitting.some((p) =>
+        p.replace(/\\/g, "/").endsWith("calculators/fitout.ts")
       ),
     emitting.join(", ")
   );

@@ -1,6 +1,6 @@
 # Quotr Internal Walls Estimating Architecture
 
-**Status:** CANONICAL — **WA-INTERNAL-WALLS-02** wall type collection + job scope + geometry foundation  
+**Status:** CANONICAL — **WA-INTERNAL-WALLS-03** timber framing physical takeoff + first requirement envelope  
 **Date:** 2026-09-09  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **056**  
@@ -9,7 +9,9 @@
 **Factory:** [QUOTR_WORK_AREA_FACTORY.md](./QUOTR_WORK_AREA_FACTORY.md)  
 **Triage:** [WORK_AREA_EXPANSION_TRIAGE.md](../WORK_AREA_EXPANSION_TRIAGE.md)  
 **Verifier (01 audit):** `scripts/verify-work-area-internal-walls-01.ts`  
-**Verifier (02 foundation):** `scripts/verify-work-area-internal-walls-02.ts`
+**Verifier (02 foundation):** `scripts/verify-work-area-internal-walls-02.ts`  
+**Verifier (02C persist):** `scripts/verify-work-area-internal-walls-02c.ts`  
+**Verifier (03 timber framing):** `scripts/verify-work-area-internal-walls-03.ts`
 
 Canonical Work Area type: **`internal_walls`**. ISD alias: **`partitions`**.
 
@@ -23,10 +25,12 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | --- | --- |
 | WA-INTERNAL-WALLS-01 architecture / gap audit | **GO** (historical) |
 | WA-INTERNAL-WALLS-02 wall types + job scope + geometry | **GO** |
-| Current product maturity | **PARTIAL** — foundation exists; no timber/lining takeoff money |
+| WA-INTERNAL-WALLS-02C nested persist + sheet length UX | **FINAL GO** |
+| WA-INTERNAL-WALLS-03 timber framing takeoff + envelope | **GO** |
+| Current product maturity | **PARTIAL** — timber framing money on mature path; lining/steel/openings not in 03 |
 | Customer UI band | **Component** — do not call Supported or Mature |
-| Framing / lining money in 02 | **NO-GO** |
-| Start WA-INTERNAL-WALLS-03 / Ceilings / Doors / Variations / RFQ | **NO-GO** |
+| Lining / steel / openings money in 03 | **NO-GO** |
+| Start WA-INTERNAL-WALLS-04 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 04 |
 | Production / migration 055 | **NO-GO** |
 
 **Current factory score (honest):**
@@ -36,17 +40,113 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | WA-0 Discovery | **Written** — owner override: multiple Wall Types in one WA |
 | WA-1 Facts | **PARTIAL** — `job_scope`, `wall_types` JSON, structural gate. No openings takeoff |
 | WA-2 Clarify | **PARTIAL** — progressive job scope → Wall Type fields; Refine adapter + cards |
-| WA-3 Physical | **FAIL for money** — geometry derived; no stud/sheet quantities |
-| WA-4 Requirements | **FAIL** — no envelope |
-| WA-5 Commercial | **FAIL on mature path** — package $95/$145 not used when `job_scope` or `wall_types` present |
-| WA-6 Conditions | **PARTIAL apply / FAIL consume** — Project Conditions reused, not consumed |
-| WA-7 Review | **PARTIAL** — Job Plan wall-type count + summaries; no commercial Refine |
-| WA-8 DNA | **N/A** |
-| WA-9 Hosted close | **FAIL** — local verifier only in 02 |
+| WA-3 Physical | **PARTIAL** — timber stud/plate/nog takeoff on mature path. No lining sheets, steel, openings |
+| WA-4 Requirements | **PARTIAL** — first envelope: timber material, framing labour, fixings allowance |
+| WA-5 Commercial | **PARTIAL on mature path** — shared 90×45 company→benchmark; 140×45 and fixings Pricing Required. Legacy $95/$145 suppressed when `job_scope` or `wall_types` present |
+| WA-6 Conditions | **PARTIAL apply** — canonical `getCombinedLabourAccessFactor` on framing labour hours. No IW-specific multipliers. Finish level does not scale physical framing |
+| WA-7 Review | **PARTIAL** — Wall Type framing groups with compact takeoff rows. Lining not shown |
+| WA-8 DNA | **N/A** — productivity keys marked as future DNA candidates; no calibration rows |
+| WA-9 Hosted close | **PARTIAL** — local Type A/B/C fixtures. Live Preview Review after this SHA deploys. Pricing/Quote close deferred until lining matures |
 
 Do not infer maturity from file or question count.
 
 ---
+
+## 0C. WA-INTERNAL-WALLS-03 — timber framing takeoff
+
+Implemented on current branch HEAD. IW-02C persist/UX behaviour is preserved (`wall_types` JSON, stable UUIDs, CAS, Side A/B, same lining both sides, sheet length, duplicate/delete, Refine, `active_wall_type_id`, legacy boundary).
+
+### Timber formulas (V1)
+
+```
+stud_spacing_m = selected/stored centres_mm / 1000
+stud_count     = ceil(length_lm / stud_spacing_m) + 1    // both ends; no opening trimmers
+stud_lm        = stud_count × height_m
+plate_lm       = 2 × length_lm                           // one top + one bottom; no double top plate
+nogging_rows   = height ≤ 2.4 → 2; >2.4 and ≤3.2 → 3; >3.2 → 4
+nogging_lm     = nogging_rows × length_lm                // procurement authority; not Bathroom intensity
+raw_timber_lm  = stud_lm + plate_lm + nogging_lm
+purchase_lm    = raw_timber_lm × (1 + timber_framing waste)
+wall_area_m2   = length_lm × height_m                    // framing area; not lining faces
+labour_hours   = wall_area_m2 × hours_per_m2
+```
+
+Stud centres: height ≤ 2.4 recommended **600 mm**; height > 2.4 recommended **400 mm**. Builder 400 / 600 / custom remains authoritative. Calculator uses stored spacing. Custom without a numeric value → **INFO_REQUIRED**. Spacing ≤ 0 does not divide.
+
+### Waste
+
+Canonical `timber_framing` wastage category (`resolveMaterialWastage`). Company percent wins; otherwise default / **10%** fallback. Applied **once** to total raw lm. Owner provisional 10% is the same canonical fallback, not a second IW-specific percent.
+
+### Shared material identities
+
+| Identity | Role |
+| --- | --- |
+| `timber.framing.90x45.h1.2.lm` | Shared physical 90×45 H1.2. Bathroom + Internal Walls. Benchmark **$6.20 / lm**. Company exact wins. |
+| `timber.framing.140x45.h1.2.lm` | Shared physical 140×45 H1.2, code catalogue only (no SQL seed). **No invented $/lm.** Company exact → else Pricing Required. |
+
+Do **not** create `internal_walls.90x45...` / `internal_walls.140x45...`. Materials page: one shared row per identity.
+
+### Productivity (owner-approved Quotr benchmarks; future DNA)
+
+| Key | Hours | DNA |
+| --- | --- | --- |
+| `internal_walls.framing.timber.90x45.hours_per_m2` | **0.45** person-hours / m² wall | likely Company DNA; **no calibration row in 03** |
+| `internal_walls.framing.timber.140x45.hours_per_m2` | **0.50** person-hours / m² wall | likely Company DNA; **no calibration row in 03** |
+
+Do not use 0.8 h/lm or Bathroom framing productivity. Labour $: `labour.carpenter.hour` (company hourly overrides hardcoded 60/90). No new sell maths.
+
+### Requirement envelope (per Wall Type, then aggregate same material)
+
+| Kind | Component key | Physical key / driver |
+| --- | --- | --- |
+| MaterialRequirement | `internal_walls.framing.timber.90x45.material` | `timber.framing.90x45.h1.2.lm` purchase lm |
+| MaterialRequirement | `internal_walls.framing.timber.140x45.material` | `timber.framing.140x45.h1.2.lm` purchase lm |
+| LabourRequirement | `internal_walls.framing.timber.90x45.install` | wall m² × 0.45 |
+| LabourRequirement | `internal_walls.framing.timber.140x45.install` | wall m² × 0.50 |
+| MaterialRequirement (allowance) | `internal_walls.framing.fixings.allowance` | wall framing area m². **No shared $/m² found.** Pricing Required. Covers anchors, nails/screws, small brackets, standard consumables — not a screw count. |
+
+`variantKey` = Wall Type UUID so Review keeps breakdown. Commercial totals may sum purchase lm by shared `materialKey` (e.g. Type A 108.24 + Type B 113.3 → 221.54 lm of 90×45).
+
+### Frame system
+
+| `frame_system` | IW-03 |
+| --- | --- |
+| timber 90×45 | Physical takeoff + priced material if rate exists |
+| timber 140×45 | Physical takeoff; material Pricing Required until company rate |
+| timber other | Takeoff quantities; Pricing Required / INFO_REQUIRED; no 90×45 fallback |
+| existing_frame | **No** timber, framing labour, or fixings |
+| steel | Recorded. **No timber.** Framing takeoff not yet supported / Pricing Required |
+| other | **No timber fallback.** Pricing Required / Info Required |
+
+### Structural / legacy
+
+Existing structural gate remains authoritative. Yes / Not sure on form / remove / infill / mixed → specialist INFO_REQUIRED, no ordinary partition framing price.
+
+Mature path (`job_scope` and/or canonical `wall_types`) never emits silent 20 m² or the $95/$145 internal wall package. Legacy projects without those facts keep the package calculator.
+
+### Builder Review
+
+Wall Type heading + compact Framing rows (size, L×H, centres, studs, stud/plate/nog lm, net, purchase incl. waste, labour hours, fixings allowance / Pricing Required). No requirement keys in builder copy. Mobile: wrap + `overflow-x-hidden`; group summary is “Framing details”.
+
+### Known limitations (03)
+
+- Lining sheets, lining labour, openings, insulation, skirting, cornice, stopping, painting, demolition, waste disposal: **not implemented**
+- Steel track/stud takeoff: **IW-04**
+- 140×45 has identity but no Quotr $/lm
+- Fixings have requirement structure but no shared rate
+- Company DNA not calibrated
+- Nested finishing XOR and Project Condition consumption beyond the global labour access helper: later
+
+### Deterministic fixtures
+
+| Type | Geometry | Expected purchase / labour |
+| --- | --- | --- |
+| A | 12 × 2.4, 90×45, 600 mm | 21 studs, 98.4 raw, **108.24 lm**, 28.8 m², **12.96 h** |
+| B | 8 × 3.0, 90×45, 400 mm | 21 studs, 103.0 raw, **113.3 lm**, 24 m², **10.8 h** |
+| C | 5 × 2.7, 140×45, 400 mm | 14 studs, 62.8 raw, **69.08 lm**, 13.5 m², **6.75 h**, no 90×45 material |
+
+---
+
 
 ## 0A. WA-INTERNAL-WALLS-02 — owner decisions recorded
 
@@ -114,7 +214,7 @@ Progressive: What wall work? → framing → dimensions → Side A → same both
 
 ---
 
-This document retains the **01 architecture / gap audit** below as historical current-state of the package calculator. 02 implements the foundation described in 0A. Do not start WA-INTERNAL-WALLS-03 from this phase.
+This document retains the **01 architecture / gap audit** below as historical current-state of the package calculator. 02 implements the foundation described in 0A. **03 timber framing is recorded in §0C.**
 
 Canonical Work Area type: **`internal_walls`**. ISD alias: **`partitions`**.
 
@@ -986,15 +1086,15 @@ Future implementation may need a **data-only** catalogue seed (DNA and/or materi
 | **01** | Architecture + gap audit | This document + verifier |
 | **02** | Job scope + Wall Types + geometry | **Closed (data/UX foundation).** Nested CRUD hosted close is **02C**. |
 | **02C** | Nested Wall Type persist + sheet length UX | Canonical `updateWallType` by stable ID; `{ v, types }` CAS; logical overlay rows keyed by Wall Type id; Yes/No same-both-sides; selectable sheet length with height recommendation |
-| **03** | Timber framing + lining sheets + envelope | Shared timber + GIB identities; requirements; XOR timber vs existing frame |
-| **04** | Openings + structural gate | Deduct lining; trimmers; INFO_REQUIRED if load-bearing |
-| **05** | Insulation + nested finishing XOR | Cavity area; stop/paint vs siblings |
-| **06** | Demolition + waste + Review | Separate demo labour; disposal allowance; builder copy |
-| **07** | Commercial close | Remove $95/m² package from mature path |
-| **08** | DNA | Only if 03 productivity keys are consumed |
-| **09** | Hosted close | Deterministic + Preview proof |
+| **03** | Timber framing + first envelope | Shared 90×45 / 140×45 identities; stud/plate/nog takeoff; timber labour; fixings allowance structure; XOR timber vs existing frame / steel. **Lining sheets deferred.** |
+| **04** | Steel track/stud physical takeoff | Not started |
+| **05** | Lining sheets + openings | Deduct lining; trimmers; INFO_REQUIRED if load-bearing |
+| **06** | Insulation + nested finishing XOR | Cavity area; stop/paint vs siblings |
+| **07** | Demolition + waste + Review | Separate demo labour; disposal allowance |
+| **08** | DNA | Only if 03 productivity keys are consumed and owner calibrates |
+| **09** | Hosted close | Deterministic + Preview proof including lining |
 
-Do not start 03 in this phase.
+Do not start **04** (steel) in this phase.
 
 ---
 
