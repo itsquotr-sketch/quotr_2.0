@@ -102,7 +102,7 @@ check(
 );
 const valueHandler =
   shell.match(
-    /const handleClarifyValue = useCallback\([\s\S]*?bridgeEstimateStaleAfterCanonicalWrite,/
+    /const handleClarifyValue = useCallback\([\s\S]*?tagOverlayFactSeq,\n    \]\n  \);/
   )?.[0] ?? "";
 const persistIdx = valueHandler.indexOf("answerClarifySelectFact");
 const overlayIdx = valueHandler.lastIndexOf("setJobPlanFactOverlay");

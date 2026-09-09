@@ -6,6 +6,7 @@ import { allocateClarifyBudget, clarifyQuestionBudget, sortClarifyCandidates } f
 import {
   isClarifyExtraFactKey,
   isInitialCaptureQuestion,
+  clarifyStoredInputType,
 } from "@/lib/assistant/clarify/question-contract";
 import { SHARED_CONSUMED_CONSTRAINT_KEYS } from "@/lib/estimate/consumed-facts";
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
@@ -157,7 +158,7 @@ const CHECK_SCORES: Record<string, number> = {
 };
 
 function clarifyInputTypeFromTemplate(
-  template: { inputType?: string } | null | undefined
+  template: { inputType?: string; options?: readonly string[] } | null | undefined
 ): ClarifyCandidate["inputType"] {
   if (template?.inputType === "boolean") return "boolean";
   if (template?.inputType === "number") return "number";
@@ -918,7 +919,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           question:
             template?.questionText ?? "Which bathroom fixtures are in this job?",
           askClass: "ASK_NOW",
-          inputType: "select",
+          inputType: clarifyInputTypeFromTemplate(template),
           options: template?.options,
           writeTarget: "FACT",
           write: null,
@@ -1339,12 +1340,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           label: safeFactPresentationLabel(extra.key),
           question: safeFactQuestion(extra.key, template?.questionText),
           askClass: "ASK_NOW",
-          inputType:
-            template?.inputType === "boolean"
-              ? "boolean"
-              : template?.inputType === "number"
-                ? "number"
-                : "select",
+          inputType: clarifyInputTypeFromTemplate(template),
           options: template?.options,
           writeTarget: "FACT",
           write: null,
@@ -1432,12 +1428,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         label: safeFactPresentationLabel(extra.key),
         question: safeFactQuestion(extra.key, template?.questionText),
         askClass: "ASK_NOW",
-        inputType:
-          template?.inputType === "boolean"
-            ? "boolean"
-            : template?.inputType === "number"
-              ? "number"
-              : "select",
+        inputType: clarifyInputTypeFromTemplate(template),
         options: template?.options,
         writeTarget: "FACT",
         write: null,
@@ -1577,12 +1568,10 @@ function projectConditionCandidates(
         label: safeFactPresentationLabel(c.targetKey),
         question: c.question,
         askClass: "ASK_NOW" as const,
-        inputType:
-          c.inputType === "boolean"
-            ? ("boolean" as const)
-            : c.inputType === "number"
-              ? ("number" as const)
-              : ("select" as const),
+        inputType: clarifyStoredInputType({
+          inputType: c.inputType,
+          options: c.options,
+        }),
         options: c.options,
         writeTarget: "CONSTRAINT" as const,
         write: null,
@@ -1640,7 +1629,7 @@ function projectConditionCandidates(
       options: ["Yes", "No", "Not sure"],
       score: PC_SCORES.occupied_site,
       assumption: "Unoccupied site",
-      inputType: "boolean",
+      inputType: "select",
       economicClass: bathroomWorkAreaPresent(input)
         ? "REQUIRED_FOR_ECONOMIC_MODEL"
         : undefined,
@@ -1652,7 +1641,7 @@ function projectConditionCandidates(
       options: ["No", "Yes", "Not sure"],
       score: PC_SCORES.working_hours,
       assumption: "Normal working hours",
-      inputType: "boolean",
+      inputType: "select",
       economicClass: bathroomWorkAreaPresent(input)
         ? "REQUIRED_FOR_ECONOMIC_MODEL"
         : undefined,

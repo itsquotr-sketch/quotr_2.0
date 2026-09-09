@@ -1,21 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import type { ClarifyCandidate, ClarifyView } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
 import type { RefineView } from "@/lib/assistant/refine/types";
 import { ClarifyReadinessCard } from "@/components/assistant/clarify/ClarifyReadiness";
+import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
-import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
-import { OptionSelect } from "@/components/assistant/selection/OptionSelect";
 import { shouldShowWhyThisMatters, whyThisMattersForKey } from "@/lib/assistant/presentation/why-this-matters";
 import {
   booleanChoiceOptions,
-  booleanChoiceToPresentation,
-  booleanPresentationToChoice,
+  clarifyControlType,
 } from "@/lib/assistant/clarify/question-contract";
+import {
+  currentClarifyCandidate,
+  effectiveRemainingRequiredCount,
+} from "@/lib/assistant/clarify/interaction";
 
 type ClarifyPanelProps = {
   view: ClarifyView;
@@ -73,9 +75,7 @@ function ClarifyQuestion({
       ? whyThisMattersForKey(whyKey)
       : null;
   const showWhy = Boolean(whyText) && shouldShowWhyThisMatters(whyKey);
-  const isMulti = candidate.inputType === "multi_select";
-  const multiSelectedCount = Array.isArray(value) ? value.length : 0;
-  const booleanOptions = booleanChoiceOptions(candidate);
+  const control = clarifyControlType(candidate);
 
   return (
     <div
@@ -84,6 +84,7 @@ function ClarifyQuestion({
       data-clarify-id={candidate.id}
       data-clarify-fact-key={candidate.factKey ?? undefined}
       data-clarify-input-type={candidate.inputType}
+      data-clarify-control-type={control}
     >
       <ContextLabel candidate={candidate} />
       <p className="text-base font-medium leading-snug">{candidate.question}</p>
@@ -101,47 +102,24 @@ function ClarifyQuestion({
           ) : null}
         </div>
       ) : null}
-      {candidate.inputType === "boolean" ? (
-        <OptionSelect
-          options={booleanOptions}
-          value={booleanPresentationToChoice(value, booleanOptions)}
-          error={persistError}
-          onSelect={(next) => {
-            const picked = Array.isArray(next) ? next[0] : next;
-            onAnswerBoolean?.(
-              candidate,
-              booleanChoiceToPresentation(String(picked ?? ""))
-            );
-          }}
-        />
-      ) : candidate.options && candidate.options.length > 0 ? (
-        <>
-          <OptionSelect
-            options={candidate.options}
-            value={value}
-            multiple={isMulti}
-            error={persistError}
-            onSelect={(next) => onAnswerValue?.(candidate, next)}
-          />
-          {isMulti ? (
-            <Button
-              type="button"
-              className="min-h-11 w-full sm:w-auto"
-              data-clarify-multi-continue
-              disabled={candidate.blocksEstimate && multiSelectedCount === 0}
-              onClick={onContinueMulti}
-            >
-              Continue
-            </Button>
-          ) : null}
-        </>
-      ) : (
-        <ClarifyValueField
-          candidate={candidate}
-          onSubmit={(next) => onAnswerValue?.(candidate, next)}
-        />
-      )}
+      <ClarifyAnswerControl
+        candidate={candidate}
+        value={value}
+        persistError={persistError}
+        onAnswerBoolean={onAnswerBoolean}
+        onAnswerValue={onAnswerValue}
+        onContinueMulti={onContinueMulti}
+      />
     </div>
+  );
+}
+
+function PersistError({ error }: { error?: string | null }) {
+  if (!error) return null;
+  return (
+    <p className="text-sm text-destructive" role="alert">
+      {error}
+    </p>
   );
 }
 
@@ -154,19 +132,34 @@ export function ClarifyPanel({
   onAnswerValue,
   onEstimateNow,
 }: ClarifyPanelProps) {
-  const current = view.candidates[0] ?? null;
-  const remaining = view.remainingRequiredCount ?? view.visibleCount;
   const [past, setPast] = useState<ClarifyCandidate[]>([]);
   const [rewind, setRewind] = useState<ClarifyCandidate | null>(null);
   const [heldMulti, setHeldMulti] = useState<ClarifyCandidate | null>(null);
   const [localValues, setLocalValues] = useState<
     Record<string, string | number | boolean | string[]>
   >({});
+  const continueLockRef = useRef(false);
 
-  const showing = rewind ?? heldMulti ?? current;
+  const locallyResolvedIds = useMemo(
+    () => new Set(past.map((row) => row.id)),
+    [past]
+  );
+  const showing = currentClarifyCandidate({
+    candidates: view.candidates,
+    locallyResolvedIds,
+    rewind,
+    heldMulti,
+  });
+  const remaining = effectiveRemainingRequiredCount({
+    remainingRequiredCount: view.remainingRequiredCount ?? view.visibleCount,
+    candidates: view.candidates,
+    locallyResolvedIds,
+  });
 
   const advance = (candidate: ClarifyCandidate) => {
-    setPast((rows) => [...rows, candidate]);
+    setPast((rows) =>
+      rows.some((row) => row.id === candidate.id) ? rows : [...rows, candidate]
+    );
     setRewind(null);
     setHeldMulti(null);
   };
@@ -191,29 +184,33 @@ export function ClarifyPanel({
   };
   const wrapValue: ClarifyPanelProps["onAnswerValue"] = (candidate, value) => {
     setLocalValues((prev) => ({ ...prev, [candidate.id]: value }));
-    if (candidate.inputType === "multi_select") {
+    const control = clarifyControlType(candidate);
+    if (control === "MULTI_SELECT") {
       setHeldMulti(candidate);
       setRewind(null);
-      onAnswerValue?.(candidate, value);
       return;
     }
     advance(candidate);
     onAnswerValue?.(candidate, value);
   };
 
-  if (
+  const showReady =
     !heldMulti &&
     !rewind &&
-    view.enoughToEstimate &&
-    view.remainingRequiredCount === 0 &&
-    !current
-  ) {
+    showing == null &&
+    remaining === 0 &&
+    (view.enoughToEstimate || view.remainingRequiredCount === 0);
+
+  if (showReady) {
     return (
-      <ClarifyReadinessCard
-        readiness={readiness}
-        isSaving={isSaving}
-        onEstimateNow={onEstimateNow}
-      />
+      <div className="space-y-3">
+        <PersistError error={persistError} />
+        <ClarifyReadinessCard
+          readiness={readiness}
+          isSaving={isSaving}
+          onEstimateNow={onEstimateNow}
+        />
+      </div>
     );
   }
 
@@ -231,13 +228,16 @@ export function ClarifyPanel({
       ? (localValues[showing.id] ?? showing.currentValue ?? null)
       : null;
 
-  if (!showing && view.remainingRequiredCount === 0) {
+  if (!showing) {
     return (
-      <ClarifyReadinessCard
-        readiness={readiness}
-        isSaving={isSaving}
-        onEstimateNow={onEstimateNow}
-      />
+      <div className="space-y-3">
+        <PersistError error={persistError} />
+        <ClarifyReadinessCard
+          readiness={readiness}
+          isSaving={isSaving}
+          onEstimateNow={onEstimateNow}
+        />
+      </div>
     );
   }
 
@@ -250,22 +250,29 @@ export function ClarifyPanel({
       <p className="text-sm text-muted-foreground" data-clarify-progress>
         {countCopy}
       </p>
+      <PersistError error={persistError} />
       <ClarifyQuestion
-        candidate={showing ?? current}
+        candidate={showing}
         value={shownValue}
         persistError={persistError}
         onAnswerBoolean={wrapBoolean}
         onAnswerValue={wrapValue}
         onContinueMulti={() => {
-          if (!showing) return;
-          const value = localValues[showing.id] ?? showing.currentValue;
-          if (Array.isArray(value)) {
-            void Promise.resolve(onAnswerValue?.(showing, value)).finally(() => {
-              advance(showing);
-            });
+          if (continueLockRef.current || clarifyControlType(showing) !== "MULTI_SELECT") {
             return;
           }
+          const value = localValues[showing.id] ?? showing.currentValue;
+          const set = Array.isArray(value)
+            ? value
+            : value == null || value === ""
+              ? []
+              : [String(value)];
+          if (showing.blocksEstimate && set.length === 0) return;
+          continueLockRef.current = true;
           advance(showing);
+          void Promise.resolve(onAnswerValue?.(showing, set)).finally(() => {
+            continueLockRef.current = false;
+          });
         }}
       />
       <ActionFooter

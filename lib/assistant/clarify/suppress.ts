@@ -93,7 +93,7 @@ export function constraintIsKnown(
   key: string
 ): boolean {
   const row = constraints.find((c) => c.key === key);
-  return isKnownValue(row?.value);
+  return hasFactValue(row?.value);
 }
 
 export function isLowLevelDeck(

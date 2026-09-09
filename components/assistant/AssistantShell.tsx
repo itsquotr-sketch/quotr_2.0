@@ -84,6 +84,11 @@ import {
   shouldApplyAssistantMutation,
   type AppliedAssistantMutation,
 } from "@/lib/assistant/assistant-mutation-result";
+import {
+  mergeConstraintSnapshotWithLaterOverlay,
+  persistClarifyValueType,
+  shouldRefreshAfterStaleMutation,
+} from "@/lib/assistant/clarify/interaction";
 import { useEstimateGenerationProjection } from "@/components/projects/estimate-generation-projection";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import {
@@ -239,6 +244,7 @@ export function AssistantShell({
   const appliedMutationRef = useRef<AppliedAssistantMutation | null>(null);
   const factMutationGateRef = useRef(Promise.resolve());
   const overlaySeqByFactRef = useRef(new Map<string, number>());
+  const overlaySeqByConstraintRef = useRef(new Map<string, number>());
   const estimateNavProjection = useEstimateGenerationProjection();
   const { project } = initialState;
 
@@ -498,11 +504,12 @@ export function AssistantShell({
   const settleCanonicalMutation = useCallback(
     (result: AssistantActionState, requestSeq: number): boolean => {
       if (result.recoveryRefresh) return false;
-      if (!result.assistantMutation) {
+      const mutation = result.assistantMutation;
+      if (!mutation) {
         return Boolean(result.success);
       }
       const incoming: AppliedAssistantMutation = {
-        projectId: result.assistantMutation.projectId,
+        projectId: mutation.projectId,
         requestSeq,
       };
       if (
@@ -515,8 +522,15 @@ export function AssistantShell({
         return true;
       }
       appliedMutationRef.current = incoming;
-      setAssistantMutationProjection(result.assistantMutation);
-      setLiveConstraints(result.assistantMutation.submittedConstraints);
+      setAssistantMutationProjection(mutation);
+      setLiveConstraints((prev) =>
+        mergeConstraintSnapshotWithLaterOverlay({
+          incoming: mutation.submittedConstraints,
+          previous: prev,
+          overlaySeqByKey: overlaySeqByConstraintRef.current,
+          requestSeq,
+        })
+      );
       setJobPlanFactOverlay((prev) =>
         prev.filter((row) => {
           const key = `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}`;
@@ -524,16 +538,32 @@ export function AssistantShell({
           return seq != null && seq > requestSeq;
         })
       );
-      if (
-        result.assistantMutation.hasEstimate &&
-        result.assistantMutation.estimateStale
-      ) {
+      if (mutation.hasEstimate && mutation.estimateStale) {
         setLocalEstimateStale(true);
         estimateNavProjection?.markEstimateStale();
       }
       return true;
     },
     [estimateNavProjection, project.id]
+  );
+
+  const onRejectedCanonicalMutation = useCallback(
+    (requestSeq: number) => {
+      bridgeEstimateStaleAfterCanonicalWrite();
+      if (
+        !shouldRefreshAfterStaleMutation({
+          factSeqByKey: overlaySeqByFactRef.current,
+          constraintSeqByKey: overlaySeqByConstraintRef.current,
+          requestSeq,
+        })
+      ) {
+        return;
+      }
+      startTransition(() => {
+        router.refresh();
+      });
+    },
+    [bridgeEstimateStaleAfterCanonicalWrite, router]
   );
 
   const applyProjectConditionsSnapshot = useCallback(
@@ -1192,16 +1222,12 @@ export function AssistantShell({
       setSavingFactKey(null);
       endSavePerf();
       if (!settleCanonicalMutation(result, requestSeq)) {
-        bridgeEstimateStaleAfterCanonicalWrite();
-        startTransition(() => {
-          router.refresh();
-        });
+        onRejectedCanonicalMutation(requestSeq);
       }
     },
     [
-      bridgeEstimateStaleAfterCanonicalWrite,
+      onRejectedCanonicalMutation,
       project.id,
-      router,
       runSerializedFactMutation,
       settleCanonicalMutation,
       tagOverlayFactSeq,
@@ -1218,6 +1244,7 @@ export function AssistantShell({
       setSavingConstraintKey(input.key);
       setConstraintError(null);
       const requestSeq = ++factMutationSeqRef.current;
+      overlaySeqByConstraintRef.current.set(input.key, requestSeq);
 
       const result = await runSerializedFactMutation(() =>
         updateProjectConstraint({
@@ -1248,16 +1275,12 @@ export function AssistantShell({
       });
       setSavingConstraintKey(null);
       if (!settleCanonicalMutation(result, requestSeq)) {
-        bridgeEstimateStaleAfterCanonicalWrite();
-        startTransition(() => {
-          router.refresh();
-        });
+        onRejectedCanonicalMutation(requestSeq);
       }
     },
     [
-      bridgeEstimateStaleAfterCanonicalWrite,
+      onRejectedCanonicalMutation,
       project.id,
-      router,
       runSerializedFactMutation,
       settleCanonicalMutation,
     ]
@@ -1474,14 +1497,11 @@ export function AssistantShell({
         setJobPlanScopeSaveStatus("idle");
       }, 2000);
       if (!settleCanonicalMutation(result, requestSeq)) {
-        bridgeEstimateStaleAfterCanonicalWrite();
-        startTransition(() => {
-          router.refresh();
-        });
+        onRejectedCanonicalMutation(requestSeq);
       }
     },
     [
-      bridgeEstimateStaleAfterCanonicalWrite,
+      onRejectedCanonicalMutation,
       project.id,
       router,
       runSerializedFactMutation,
@@ -1563,18 +1583,53 @@ export function AssistantShell({
           setActionError(result.error);
           return;
         }
+      } else if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
+        const constraintKey = candidate.constraintKey ?? candidate.questionKey;
+        const options = candidate.options ?? [];
+        const yesNo = options.some((option) => /^yes$/i.test(option.trim()));
+        const value =
+          presentation === "INCLUDED"
+            ? yesNo
+              ? "Yes"
+              : "Include"
+            : yesNo
+              ? "No"
+              : "Not included";
+        overlaySeqByConstraintRef.current.set(constraintKey, requestSeq);
+        setLiveConstraints((prev) => [
+          ...prev.filter((row) => row.key !== constraintKey),
+          {
+            id: constraintKey,
+            key: constraintKey,
+            label: candidate.label,
+            value,
+            source: "user",
+          },
+        ]);
+        result = await runSerializedFactMutation(() =>
+          answerClarifyConstraint({
+            projectId: project.id,
+            questionKey: candidate.questionKey,
+            value,
+          })
+        );
+        if (result.error) {
+          setActionError(result.error);
+          if (overlaySeqByConstraintRef.current.get(constraintKey) === requestSeq) {
+            setLiveConstraints((prev) =>
+              prev.filter((row) => row.key !== constraintKey)
+            );
+          }
+          return;
+        }
       }
       if (!settleCanonicalMutation(result, requestSeq)) {
-        bridgeEstimateStaleAfterCanonicalWrite();
-        startTransition(() => {
-          router.refresh();
-        });
+        onRejectedCanonicalMutation(requestSeq);
       }
     },
     [
-      bridgeEstimateStaleAfterCanonicalWrite,
+      onRejectedCanonicalMutation,
       project.id,
-      router,
       runSerializedFactMutation,
       settleCanonicalMutation,
       tagOverlayFactSeq,
@@ -1590,21 +1645,12 @@ export function AssistantShell({
       const isNumericOrText =
         candidate.inputType === "number" || candidate.inputType === "text";
       if (isNumericOrText) setClarifyWritePending(true);
-      const valueType =
-        Array.isArray(value) || candidate.inputType === "multi_select"
-          ? "multi_select"
-          : typeof value === "string" &&
-              value.trim().toLowerCase() === "not sure"
-            ? "select"
-            : candidate.inputType === "number"
-              ? "number"
-              : candidate.inputType === "boolean"
-                ? "boolean"
-                : "select";
+      const valueType = persistClarifyValueType(candidate, value);
       try {
         if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
           if (Array.isArray(value)) return;
           const constraintKey = candidate.constraintKey ?? candidate.questionKey;
+          overlaySeqByConstraintRef.current.set(constraintKey, requestSeq);
           setLiveConstraints((prev) => [
             ...prev.filter((row) => row.key !== constraintKey),
             {
@@ -1624,16 +1670,15 @@ export function AssistantShell({
           );
           if (result.error) {
             setActionError(result.error);
-            setLiveConstraints((prev) =>
-              prev.filter((row) => row.key !== constraintKey)
-            );
+            if (overlaySeqByConstraintRef.current.get(constraintKey) === requestSeq) {
+              setLiveConstraints((prev) =>
+                prev.filter((row) => row.key !== constraintKey)
+              );
+            }
             return;
           }
           if (!settleCanonicalMutation(result, requestSeq)) {
-            bridgeEstimateStaleAfterCanonicalWrite();
-            startTransition(() => {
-              router.refresh();
-            });
+            onRejectedCanonicalMutation(requestSeq);
           }
           return;
         }
@@ -1692,19 +1737,15 @@ export function AssistantShell({
           setJobPlanFactOverlay((prev) => overlayFact(prev, overlayRow));
         }
         if (!settleCanonicalMutation(result, requestSeq)) {
-          bridgeEstimateStaleAfterCanonicalWrite();
-          startTransition(() => {
-            router.refresh();
-          });
+          onRejectedCanonicalMutation(requestSeq);
         }
       } finally {
         if (isNumericOrText) setClarifyWritePending(false);
       }
     },
     [
-      bridgeEstimateStaleAfterCanonicalWrite,
+      onRejectedCanonicalMutation,
       project.id,
-      router,
       runSerializedFactMutation,
       settleCanonicalMutation,
       tagOverlayFactSeq,
@@ -1752,16 +1793,12 @@ export function AssistantShell({
         return;
       }
       if (!settleCanonicalMutation(result, requestSeq)) {
-        bridgeEstimateStaleAfterCanonicalWrite();
-        startTransition(() => {
-          router.refresh();
-        });
+        onRejectedCanonicalMutation(requestSeq);
       }
     },
     [
-      bridgeEstimateStaleAfterCanonicalWrite,
+      onRejectedCanonicalMutation,
       project.id,
-      router,
       runSerializedFactMutation,
       settleCanonicalMutation,
       tagOverlayFactSeq,
@@ -1847,16 +1884,12 @@ export function AssistantShell({
         lastResult &&
         !settleCanonicalMutation(lastResult, requestSeq)
       ) {
-        bridgeEstimateStaleAfterCanonicalWrite();
-        startTransition(() => {
-          router.refresh();
-        });
+        onRejectedCanonicalMutation(requestSeq);
       }
     },
     [
-      bridgeEstimateStaleAfterCanonicalWrite,
+      onRejectedCanonicalMutation,
       project.id,
-      router,
       runSerializedFactMutation,
       settleCanonicalMutation,
     ]

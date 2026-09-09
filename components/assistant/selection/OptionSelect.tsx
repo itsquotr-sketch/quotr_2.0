@@ -33,11 +33,17 @@ function splitOptionCopy(option: string): { title: string; detail: string | null
 }
 
 function selectedListFromValue(value: OptionSelectValue, multiple: boolean): string[] {
+  if (!multiple) return [];
   if (Array.isArray(value)) return value.map(String);
-  if (typeof value === "string" && value && multiple) {
+  if (typeof value === "string" && value) {
     return value.split(",").map((item) => item.trim()).filter(Boolean);
   }
   return [];
+}
+
+function exclusiveDisplayValue(value: OptionSelectValue): OptionSelectValue {
+  if (Array.isArray(value)) return value[0] ?? null;
+  return value;
 }
 
 export function OptionSelect({
@@ -56,7 +62,7 @@ export function OptionSelect({
     optimistic,
     committed: value,
   });
-
+  const exclusiveDisplay = multiple ? display : exclusiveDisplayValue(display);
   const selectedList = selectedListFromValue(display, multiple);
 
   return (
@@ -67,9 +73,8 @@ export function OptionSelect({
     >
       {options.map((option) => {
         const selected = multiple
-          ? selectedList.some((item) => optionValueMatches(option, item)) ||
-            optionValueMatches(option, selectedList)
-          : optionValueMatches(option, display);
+          ? selectedList.some((item) => optionValueMatches(option, item))
+          : optionValueMatches(option, exclusiveDisplay);
         const copy = splitOptionCopy(option);
         return (
           <button

@@ -16,6 +16,58 @@ import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
 export const BOOLEAN_INCLUDE_OPTIONS = ["Include", "Not included"] as const;
 export const BOOLEAN_YES_NO_OPTIONS = ["Yes", "No"] as const;
+export const BOOLEAN_YES_NO_NOT_SURE_OPTIONS = ["Yes", "No", "Not sure"] as const;
+
+/**
+ * Semantic control for Clarify / Refine. Template `inputType` is storage.
+ * Do not infer MULTI_SELECT from `options` being an array.
+ */
+export type ClarifyControlType =
+  | "SINGLE_SELECT"
+  | "BOOLEAN"
+  | "MULTI_SELECT"
+  | "NUMBER"
+  | "TEXT";
+
+export function hasNotSureOption(options?: readonly string[]): boolean {
+  return (options ?? []).some((option) => /^not sure$/i.test(option.trim()));
+}
+
+export function clarifyStoredInputType(params: {
+  readonly inputType?: string | null;
+  readonly options?: readonly string[];
+}): ClarifyCandidate["inputType"] {
+  const inputType = params.inputType;
+  if (inputType === "multi_select") return "multi_select";
+  if (inputType === "number") return "number";
+  if (inputType === "text") return "text";
+  if (inputType === "boolean") {
+    if (hasNotSureOption(params.options)) return "select";
+    return "boolean";
+  }
+  return "select";
+}
+
+export function clarifyControlType(candidate: {
+  readonly inputType: ClarifyCandidate["inputType"];
+  readonly options?: readonly string[];
+  readonly question: string;
+  readonly write?: unknown;
+}): ClarifyControlType {
+  if (candidate.inputType === "multi_select") return "MULTI_SELECT";
+  if (candidate.inputType === "number") return "NUMBER";
+  if (candidate.inputType === "text") return "TEXT";
+  if (candidate.inputType === "boolean") {
+    if (candidate.write) return "BOOLEAN";
+    if (hasNotSureOption(candidate.options)) return "SINGLE_SELECT";
+    return "BOOLEAN";
+  }
+  return "SINGLE_SELECT";
+}
+
+export function isIncludeQuestion(question: string): boolean {
+  return /^include\b/i.test(question.trim());
+}
 
 export function isInitialCaptureAskClass(askClass: ClarifyAskClass): boolean {
   return askClass === "HARD_MINIMUM" || askClass === "ASK_NOW";
@@ -75,7 +127,7 @@ export function booleanChoiceOptions(candidate: {
   const hasYes = opts.some((option) => /^yes\b/i.test(option));
   const hasNo = opts.some((option) => /^no\b(?!t)/i.test(option));
   if (hasYes && hasNo) return BOOLEAN_YES_NO_OPTIONS;
-  if (/^include\b/i.test(candidate.question.trim())) {
+  if (isIncludeQuestion(candidate.question)) {
     return BOOLEAN_INCLUDE_OPTIONS;
   }
   return BOOLEAN_YES_NO_OPTIONS;

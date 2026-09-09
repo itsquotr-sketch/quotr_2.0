@@ -232,8 +232,10 @@ const refineSrc = read("components/assistant/clarify/ClarifyReadiness.tsx");
 check(
   "shared OptionSelect is used by Clarify/Details/Refine/QuestionBlock",
   optionSrc.includes("data-option-selected") &&
-    clarifySrc.includes("OptionSelect") &&
-    refineSrc.includes("OptionSelect") &&
+    read("components/assistant/clarify/ClarifyAnswerControl.tsx").includes(
+      "OptionSelect"
+    ) &&
+    refineSrc.includes("ClarifyAnswerControl") &&
     read("components/assistant/QuestionBlock.tsx").includes("OptionSelect")
 );
 check(
@@ -297,9 +299,9 @@ check(
 );
 const refineAdapter = read("lib/assistant/refine/adapters/bathroom.ts");
 check(
-  "multi-select Continue awaits the full selected set before advancing",
-  clarifySrc.includes("Promise.resolve(onAnswerValue?.(showing, value))") &&
-    clarifySrc.includes("advance(showing)")
+  "multi-select Continue commits the full set and advances without waiting",
+  /advance\(showing\);\s*void Promise\.resolve\(onAnswerValue/.test(clarifySrc) &&
+    clarifySrc.includes("setHeldMulti(candidate)")
 );
 const demoCalc = bathroom(answeredCore);
 const demoKeys = (demoCalc.requirements ?? [])

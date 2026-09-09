@@ -13,6 +13,7 @@ import {
   booleanChoiceOptions,
   booleanChoiceToPresentation,
   booleanPresentationToChoice,
+  clarifyControlType,
   isInitialCaptureQuestion,
 } from "../lib/assistant/clarify/question-contract";
 import { CLARIFY_SINGLE_WA_BUDGET } from "../lib/assistant/clarify/flags";
@@ -360,11 +361,12 @@ check(
 );
 
 check(
-  "Yes/No is used for semantic boolean questions",
-  booleanChoiceOptions({
+  "occupied site Yes/No/Not sure is exclusive single-select",
+  clarifyControlType({
+    inputType: "boolean",
     question: "Is the site occupied during works?",
     options: ["Yes", "No", "Not sure"],
-  }).join() === BOOLEAN_YES_NO_OPTIONS.join()
+  }) === "SINGLE_SELECT"
 );
 check(
   "Include labels remain for Include-questions",
@@ -435,8 +437,11 @@ const refineSrc = read("components/assistant/clarify/ClarifyReadiness.tsx");
 check(
   "Clarify and Refine share OptionSelect optimistic selection",
   optionSrc.includes("setOptimistic") &&
-    clarifySrc.includes("OptionSelect") &&
-    refineSrc.includes("OptionSelect") &&
+    (clarifySrc.includes("OptionSelect") ||
+      read("components/assistant/clarify/ClarifyAnswerControl.tsx").includes(
+        "OptionSelect"
+      )) &&
+    refineSrc.includes("ClarifyAnswerControl") &&
     !/OptionSelect[\s\S]{0,260}disabled=\{isSaving\}/.test(refineSrc)
 );
 check(

@@ -11,13 +11,11 @@ import type { RefineCandidate, RefineGroupId, RefineView } from "@/lib/assistant
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
-import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
-import { OptionSelect } from "@/components/assistant/selection/OptionSelect";
+import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
 import { InternalWallsWallTypesPanel } from "@/components/assistant/refine/InternalWallsWallTypesPanel";
 import {
   booleanChoiceOptions,
-  booleanChoiceToPresentation,
-  booleanPresentationToChoice,
+  clarifyControlType,
 } from "@/lib/assistant/clarify/question-contract";
 
 const GROUP_LABEL: Record<RefineGroupId, string> = {
@@ -77,8 +75,6 @@ function RefineField({
   const mapped = toClarifyCandidate(candidate);
   const fieldKey = candidate.factKey ?? candidate.constraintKey;
   const focused = Boolean(focusKey && fieldKey === focusKey);
-  const isMulti = candidate.inputType === "multi_select";
-  const booleanOptions = booleanChoiceOptions(candidate);
   return (
     <div
       className={cn(
@@ -88,35 +84,16 @@ function RefineField({
       )}
       data-refine-field={fieldKey}
       data-refine-input-type={candidate.inputType}
+      data-refine-control-type={clarifyControlType(mapped)}
     >
       <p className="text-sm font-medium leading-snug">{candidate.question}</p>
-      {candidate.inputType === "boolean" ? (
-        <OptionSelect
-          options={[...booleanOptions]}
-          value={booleanPresentationToChoice(value, booleanOptions)}
-          error={persistError}
-          onSelect={(next) => {
-            const picked = Array.isArray(next) ? next[0] : next;
-            onAnswerBoolean?.(
-              mapped,
-              booleanChoiceToPresentation(String(picked ?? ""))
-            );
-          }}
-        />
-      ) : candidate.options && candidate.options.length > 0 ? (
-        <OptionSelect
-          options={candidate.options}
-          value={value}
-          multiple={isMulti}
-          error={persistError}
-          onSelect={(next) => onAnswerValue?.(mapped, next)}
-        />
-      ) : (
-        <ClarifyValueField
-          candidate={mapped}
-          onSubmit={(next) => onAnswerValue?.(mapped, next)}
-        />
-      )}
+      <ClarifyAnswerControl
+        candidate={mapped}
+        value={value}
+        persistError={persistError}
+        onAnswerBoolean={onAnswerBoolean}
+        onAnswerValue={onAnswerValue}
+      />
     </div>
   );
 }
