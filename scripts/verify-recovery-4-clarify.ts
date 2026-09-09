@@ -178,7 +178,13 @@ const realView = composeFor(realFacts, realJob.sourceBrief);
 const exemplarView = composeFor(exemplarFacts, exemplar.sourceBrief);
 const exemplarAssumedView = composeFor(
   [...exemplarFacts, fact("deck.step_width_m", DECK, "Not sure")],
-  exemplar.sourceBrief
+  exemplar.sourceBrief,
+  {
+    constraints: [
+      { key: "occupied_site", value: "No" },
+      { key: "working_hours", value: "No" },
+    ],
+  }
 );
 const shell = read("components/assistant/AssistantShell.tsx");
 const stepper = read("components/assistant/StepperNav.tsx");
@@ -262,8 +268,10 @@ check(
   "REAL-JOB is a normal ~0–3 outcome; not a ceiling"
 );
 check(
-  "12 Estimate now available if assumable",
-  realView.canEstimateNow === true && realView.blocksEstimate === false
+  "12 Estimate now waits for remaining ASK_NOW initial-capture questions",
+  realView.canEstimateNow === false &&
+    realView.enoughToEstimate === false &&
+    realView.remainingRequiredCount > 0
 );
 
 const skippedDemo = assumptionsFromSkipped(

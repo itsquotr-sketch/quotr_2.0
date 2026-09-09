@@ -286,15 +286,25 @@ const assumedWidthClarify = composeClarifyView({
   briefText: OWNER_BRIEF,
   qualityLevel: "standard",
   workAreas: [{ id: DECK_ID, type: "deck", name: "Deck", status: "confirmed" }],
-  facts: [...clarifyFacts, fact("deck.step_width_m", "Not sure")],
-  constraints: [{ key: "site_access", value: "Easy" }],
+  facts: [
+    ...clarifyFacts,
+    fact("deck.step_width_m", "Not sure"),
+    fact("deck.substructure_included", true, "user"),
+  ],
+  constraints: [
+    { key: "site_access", value: "Easy" },
+    { key: "material_carry_distance", value: "< 10m" },
+    { key: "occupied_site", value: "No" },
+    { key: "working_hours", value: "No" },
+  ],
   jobPlan,
 });
 assert(
   "Not sure / Quotr assumption resolves required step width",
   !assumedWidthClarify.candidates.some((c) => c.factKey === "deck.step_width_m") &&
+    !assumedWidthClarify.deferred.some((c) => c.factKey === "deck.step_width_m") &&
     assumedWidthClarify.enoughToEstimate,
-  `keys=${assumedWidthClarify.candidates.map((c) => c.factKey ?? c.constraintKey).join(",")} remaining=${assumedWidthClarify.remainingRequiredCount} enough=${assumedWidthClarify.enoughToEstimate}`
+  `keys=${[...assumedWidthClarify.candidates, ...assumedWidthClarify.deferred].map((c) => c.factKey ?? c.constraintKey).join(",")} remaining=${assumedWidthClarify.remainingRequiredCount} enough=${assumedWidthClarify.enoughToEstimate}`
 );
 
 const panel = read("components/assistant/clarify/ClarifyPanel.tsx");

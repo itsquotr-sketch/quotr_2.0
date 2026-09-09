@@ -2,8 +2,9 @@
 export const CLARIFY_IS_PRIMARY = true;
 
 /**
- * Soft UX target for a single Work Area (~0–3 initial questions).
- * Not a correctness ceiling — HARD_MINIMUM / non-assumable may exceed it.
+ * Soft UX target for a single Work Area visible batch (~0–3 questions).
+ * Not a correctness ceiling and not Ready. Remaining INITIAL_REQUIRED
+ * questions continue in later batches until resolved.
  */
 export const CLARIFY_SINGLE_WA_BUDGET = 3;
 

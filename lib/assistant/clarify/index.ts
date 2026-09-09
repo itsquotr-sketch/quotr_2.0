@@ -12,7 +12,19 @@ export {
   clarifyQuestionBudget,
   isClarifyMustAsk,
   sortClarifyCandidates,
+  unresolvedInitialCaptureCount,
 } from "@/lib/assistant/clarify/rank";
+export {
+  BOOLEAN_INCLUDE_OPTIONS,
+  BOOLEAN_YES_NO_OPTIONS,
+  booleanChoiceOptions,
+  booleanChoiceToPresentation,
+  booleanPresentationToChoice,
+  isClarifyExtraFactKey,
+  isDisclosedAssumptionQuestion,
+  isInitialCaptureQuestion,
+  isRefineOnlyQuestion,
+} from "@/lib/assistant/clarify/question-contract";
 export {
   CLARIFY_IS_PRIMARY,
   CLARIFY_SINGLE_WA_BUDGET,

@@ -501,7 +501,6 @@ check(
 console.log("\n--- Refine UX ---\n");
 const adapterSrc = read("lib/assistant/refine/adapters/internal-walls.ts");
 const templateSrc = read("lib/scopes/templates/internal-walls.ts");
-const refineSrc = read("components/assistant/clarify/ClarifyReadiness.tsx");
 const persistSrc = read("lib/assistant/scope-persistence.ts");
 const shellSrc = read("components/assistant/AssistantShell.tsx");
 check(
@@ -536,7 +535,8 @@ check(
 );
 check(
   "boolean Include/Not included still exists for other WAs",
-  refineSrc.includes("Include") && refineSrc.includes("Not included")
+  read("lib/assistant/clarify/question-contract.ts").includes("Include") &&
+    read("lib/assistant/clarify/question-contract.ts").includes("Not included")
 );
 
 const plan = composeJobPlan({

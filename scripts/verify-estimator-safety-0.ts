@@ -190,18 +190,16 @@ const coreCalc = calculateRetainingWall(
   wa(RW, "retaining_wall", "Retaining wall")
 );
 check(
-  "5 known length/height/material permits current estimate",
+  "5 known length/height/material does not hard-block the calculator",
   !core.readiness.blocksEstimate &&
-    core.readiness.canEstimateNow &&
     !coreCalc.lineItems.some((i) => i.label === "Retaining wall materials") &&
     coreCalc.lineItems.some((i) => /face board/i.test(i.label))
 );
 check(
-  "6 secondary unknowns may remain assumptions",
+  "6 secondary ASK_NOW facts still block Ready",
   !core.readiness.blocksEstimate &&
-    core.readiness.canEstimateNow &&
-    (coreCalc.assumptions.some((row) => /drainage|novacoil|backfill/i.test(row)) ||
-      coreCalc.missingInfo.length > 0)
+    core.readiness.canEstimateNow === false &&
+    core.clarify.remainingRequiredCount > 0
 );
 check(
   "7 Job Plan/Clarify does not ask post_spacing",
@@ -411,7 +409,6 @@ const concreteFace = 10 * 1.5 * RETAINING_WALL_BENCHMARKS.concreteFace.cost;
 check(
   "R1 supported timber passes",
   !timberCase.ui.readiness.blocksEstimate &&
-    timberCase.ui.readiness.canEstimateNow &&
     !timberCase.calc.lineItems.some((i) => i.label === "Retaining wall materials") &&
     timberCase.calc.lineItems.some((i) => /face board/i.test(i.label)) &&
     timberCase.calc.lineItems.reduce((sum, i) => sum + i.recommendedCost, 0) > 0 &&

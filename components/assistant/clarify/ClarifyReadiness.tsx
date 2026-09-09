@@ -14,6 +14,11 @@ import { cn } from "@/lib/utils";
 import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
 import { OptionSelect } from "@/components/assistant/selection/OptionSelect";
 import { InternalWallsWallTypesPanel } from "@/components/assistant/refine/InternalWallsWallTypesPanel";
+import {
+  booleanChoiceOptions,
+  booleanChoiceToPresentation,
+  booleanPresentationToChoice,
+} from "@/lib/assistant/clarify/question-contract";
 
 const GROUP_LABEL: Record<RefineGroupId, string> = {
   scope: "Scope",
@@ -73,6 +78,7 @@ function RefineField({
   const fieldKey = candidate.factKey ?? candidate.constraintKey;
   const focused = Boolean(focusKey && fieldKey === focusKey);
   const isMulti = candidate.inputType === "multi_select";
+  const booleanOptions = booleanChoiceOptions(candidate);
   return (
     <div
       className={cn(
@@ -86,20 +92,14 @@ function RefineField({
       <p className="text-sm font-medium leading-snug">{candidate.question}</p>
       {candidate.inputType === "boolean" ? (
         <OptionSelect
-          options={["Include", "Not included"]}
-          value={
-            value === true || value === "INCLUDED" || value === "Yes"
-              ? "Include"
-              : value === false || value === "NOT_INCLUDED" || value === "No"
-                ? "Not included"
-                : null
-          }
+          options={[...booleanOptions]}
+          value={booleanPresentationToChoice(value, booleanOptions)}
           error={persistError}
           onSelect={(next) => {
             const picked = Array.isArray(next) ? next[0] : next;
             onAnswerBoolean?.(
               mapped,
-              picked === "Include" ? "INCLUDED" : "NOT_INCLUDED"
+              booleanChoiceToPresentation(String(picked ?? ""))
             );
           }}
         />
@@ -350,12 +350,17 @@ export function RefineEstimatePanel({
                         persistError={persistError}
                         focusKey={focusKey}
                         onAnswerBoolean={(candidate, presentation) => {
+                          const options = booleanChoiceOptions(row);
                           setLocalValues((prev) => ({
                             ...prev,
                             [row.id]:
                               presentation === "INCLUDED"
-                                ? "Include"
-                                : "Not included",
+                                ? options.includes("Yes")
+                                  ? "Yes"
+                                  : "Include"
+                                : options.includes("Yes")
+                                  ? "No"
+                                  : "Not included",
                           }));
                           onAnswerBoolean?.(candidate, presentation);
                         }}

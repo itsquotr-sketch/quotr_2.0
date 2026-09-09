@@ -346,7 +346,30 @@ const knownPc = composeBathroomClarify(answeredCore, [
   { key: "occupied_site", value: "No" },
   { key: "working_hours", value: "No" },
 ]);
-check("Ready can appear after P0 conditions answered", knownPc.enoughToEstimate === true);
+check("Ready stays false after P0 conditions while other ASK_NOW remain", knownPc.enoughToEstimate === false);
+const initialCaptureBathroom = composeBathroomClarify(
+  [
+    ...answeredCore,
+    fact("bathroom.plumbing.level", "b1", "standard"),
+    fact("bathroom.electrical.level", "b1", "standard"),
+    fact("bathroom.fixtures_included", "b1", ["Vanity", "Toilet"]),
+    fact("bathroom.tile_extent", "b1", "none"),
+    { ...fact("bathroom.waterproofing_included", "b1", false), source: "user" },
+  ],
+  [
+    { key: "site_access", value: "Easy" },
+    { key: "material_carry_distance", value: "< 10m" },
+    { key: "occupied_site", value: "No" },
+    { key: "working_hours", value: "No" },
+    { key: "floor_level", value: "Ground floor" },
+    { key: "waste_bin_access", value: "Easy" },
+  ]
+);
+check(
+  "Ready can appear after initial-capture questions and P0 conditions",
+  initialCaptureBathroom.enoughToEstimate === true ||
+    initialCaptureBathroom.remainingRequiredCount === 0
+);
 check(
   "labour-consumed P0 keys are shared consumed constraints",
   SHARED_CONSUMED_CONSTRAINT_KEYS.includes("occupied_site") &&

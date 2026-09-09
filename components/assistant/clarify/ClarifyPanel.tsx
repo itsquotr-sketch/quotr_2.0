@@ -11,6 +11,11 @@ import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-lab
 import { ClarifyValueField } from "@/components/assistant/clarify/ClarifyValueField";
 import { OptionSelect } from "@/components/assistant/selection/OptionSelect";
 import { shouldShowWhyThisMatters, whyThisMattersForKey } from "@/lib/assistant/presentation/why-this-matters";
+import {
+  booleanChoiceOptions,
+  booleanChoiceToPresentation,
+  booleanPresentationToChoice,
+} from "@/lib/assistant/clarify/question-contract";
 
 type ClarifyPanelProps = {
   view: ClarifyView;
@@ -70,6 +75,7 @@ function ClarifyQuestion({
   const showWhy = Boolean(whyText) && shouldShowWhyThisMatters(whyKey);
   const isMulti = candidate.inputType === "multi_select";
   const multiSelectedCount = Array.isArray(value) ? value.length : 0;
+  const booleanOptions = booleanChoiceOptions(candidate);
 
   return (
     <div
@@ -97,20 +103,14 @@ function ClarifyQuestion({
       ) : null}
       {candidate.inputType === "boolean" ? (
         <OptionSelect
-          options={["Include", "Not included"]}
-          value={
-            value === true || value === "INCLUDED" || value === "Yes"
-              ? "Include"
-              : value === false || value === "NOT_INCLUDED" || value === "No"
-                ? "Not included"
-                : null
-          }
+          options={booleanOptions}
+          value={booleanPresentationToChoice(value, booleanOptions)}
           error={persistError}
           onSelect={(next) => {
             const picked = Array.isArray(next) ? next[0] : next;
             onAnswerBoolean?.(
               candidate,
-              picked === "Include" ? "INCLUDED" : "NOT_INCLUDED"
+              booleanChoiceToPresentation(String(picked ?? ""))
             );
           }}
         />
@@ -177,7 +177,14 @@ export function ClarifyPanel({
   ) => {
     setLocalValues((prev) => ({
       ...prev,
-      [candidate.id]: presentation === "INCLUDED" ? "Include" : "Not included",
+      [candidate.id]:
+        presentation === "INCLUDED"
+          ? booleanChoiceOptions(candidate).includes("Yes")
+            ? "Yes"
+            : "Include"
+          : booleanChoiceOptions(candidate).includes("Yes")
+            ? "No"
+            : "Not included",
     }));
     advance(candidate);
     onAnswerBoolean?.(candidate, presentation);
@@ -194,7 +201,13 @@ export function ClarifyPanel({
     onAnswerValue?.(candidate, value);
   };
 
-  if (!heldMulti && !rewind && (view.enoughToEstimate || !current)) {
+  if (
+    !heldMulti &&
+    !rewind &&
+    view.enoughToEstimate &&
+    view.remainingRequiredCount === 0 &&
+    !current
+  ) {
     return (
       <ClarifyReadinessCard
         readiness={readiness}
@@ -217,6 +230,16 @@ export function ClarifyPanel({
     showing != null
       ? (localValues[showing.id] ?? showing.currentValue ?? null)
       : null;
+
+  if (!showing && view.remainingRequiredCount === 0) {
+    return (
+      <ClarifyReadinessCard
+        readiness={readiness}
+        isSaving={isSaving}
+        onEstimateNow={onEstimateNow}
+      />
+    );
+  }
 
   return (
     <div

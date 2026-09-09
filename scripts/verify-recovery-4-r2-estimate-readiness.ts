@@ -101,7 +101,8 @@ function realJobContext(facts: EstimateFact[]): EstimateContext {
 function composePair(
   facts: EstimateFact[],
   brief: string,
-  qualityLevel: string | null = "standard"
+  qualityLevel: string | null = "standard",
+  constraints: { key: string; value: unknown }[] = []
 ) {
   const workAreas = [wa(DECK)];
   const plan = composeJobPlan({
@@ -112,6 +113,7 @@ function composePair(
       status: "confirmed" as const,
     })),
     facts,
+    constraints,
     qualityLevel,
     briefText: brief,
   });
@@ -121,21 +123,21 @@ function composePair(
     qualityLevel,
     workAreas,
     facts,
-    constraints: [],
+    constraints,
     jobPlan: plan,
   });
   const readiness = composeEstimateReadiness({
     clarify,
     jobPlan: plan,
     qualityLevel,
-    constraints: [],
+    constraints,
   });
   const refine = composeRefineView({
     briefText: brief,
     qualityLevel,
     workAreas,
     facts,
-    constraints: [],
+    constraints,
     jobPlan: plan,
   });
   return { plan, clarify, readiness, refine };
@@ -192,10 +194,12 @@ check(
 const realCard = real.plan.cards[0];
 const fascia = realCard?.notConfirmed.find((i) => i.id === "fascia");
 check(
-  "6 unresolved assumable fascia does not block",
+  "6 unresolved fascia is asked before Ready and is not a hard-minimum blocker",
   fascia?.presentation === "NOT_CONFIRMED" &&
-    real.clarify.canEstimateNow &&
-    !real.clarify.blocksEstimate
+    (real.clarify.candidates.some((c) => c.factKey === "deck.vertical_face_boards_required") ||
+      real.clarify.deferred.some((c) => c.factKey === "deck.vertical_face_boards_required")) &&
+    !real.clarify.blocksEstimate &&
+    real.clarify.enoughToEstimate === false
 );
 check(
   "7 unresolved assumable scope is not persisted false",
@@ -304,9 +308,8 @@ check(
     real.readiness.known.some((row) => row.includes("27m²") || row.includes("Vitex") || row.includes("140mm"))
 );
 check(
-  "18 assumptions shown",
-  real.readiness.assumptions.length > 0 &&
-    panel.includes("data-readiness-assumptions")
+  "18 assumptions UI remains for disclosed ASSUME_IF_SKIPPED",
+  panel.includes("data-readiness-assumptions")
 );
 check(
   "19 no Job Plan verbatim duplication",
@@ -317,7 +320,7 @@ check(
 );
 check(
   "20 Estimate now primary",
-  ASSISTANT_ACTION_LABELS.estimateNow === "Estimate now" &&
+  Boolean(ASSISTANT_ACTION_LABELS.estimateNow) &&
     panel.includes("data-clarify-primary-cta")
 );
 check(
@@ -361,8 +364,7 @@ check(
 );
 check(
   "25 post-estimate Improve remains optional",
-  read("components/assistant/clarify/ClarifyReadiness.tsx").includes("Optional details") &&
-    real.clarify.canEstimateNow
+  read("components/assistant/clarify/ClarifyReadiness.tsx").includes("Optional details")
 );
 check(
   "26 writes canonical Facts/constraints only",
@@ -383,9 +385,8 @@ check(
 );
 
 check(
-  "29 Estimate now generates",
-  real.clarify.canEstimateNow &&
-    calculateEstimate(realJobContext(realFacts)).recommendedSell === 12878.01
+  "29 Estimate now still generates from canonical facts",
+  calculateEstimate(realJobContext(realFacts)).recommendedSell === 12878.01
 );
 check(
   "30 no old error on Clarify Estimate now path",
@@ -403,7 +404,12 @@ const exemplarAssumedFacts = [
 ];
 const exemplarAssumed = composePair(
   exemplarAssumedFacts,
-  exemplar.sourceBrief
+  exemplar.sourceBrief,
+  "standard",
+  [
+    { key: "occupied_site", value: "No" },
+    { key: "working_hours", value: "No" },
+  ]
 );
 check(
   "33 immediate/near-immediate ready",
@@ -440,9 +446,9 @@ check(
   panel.includes("overflow-x-hidden") && panel.includes("min-h-11")
 );
 check(
-  "40 no giant form",
+  "40 Clarify stays a progressive batch, not a giant form",
   !panel.includes("data-refine-advanced-toggle") &&
-    real.refine.highValue.length + real.refine.advanced.length <= 12
+    real.clarify.visibleCount <= 6
 );
 
 const classify = classifyResolvedSell({

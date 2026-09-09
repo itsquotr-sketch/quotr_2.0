@@ -1,10 +1,15 @@
 "use client";
 
+import { useState } from "react";
 import { cn } from "@/lib/utils";
 import { formatSelectAnswerValue } from "@/lib/scopes/fact-labels";
 import { optionValueMatches } from "@/lib/scopes/option-match";
+import {
+  displayedOptionSelectValue,
+  type OptimisticSelectValue,
+} from "@/lib/assistant/selection/optimistic-select";
 
-export type OptionSelectValue = string | number | boolean | string[] | null | undefined;
+export type OptionSelectValue = OptimisticSelectValue;
 
 type OptionSelectProps = {
   options: readonly string[];
@@ -27,6 +32,14 @@ function splitOptionCopy(option: string): { title: string; detail: string | null
   };
 }
 
+function selectedListFromValue(value: OptionSelectValue, multiple: boolean): string[] {
+  if (Array.isArray(value)) return value.map(String);
+  if (typeof value === "string" && value && multiple) {
+    return value.split(",").map((item) => item.trim()).filter(Boolean);
+  }
+  return [];
+}
+
 export function OptionSelect({
   options,
   value,
@@ -36,19 +49,27 @@ export function OptionSelect({
   error,
   onSelect,
 }: OptionSelectProps) {
-  const selectedList = Array.isArray(value)
-    ? value
-    : typeof value === "string" && value && multiple
-      ? value.split(",").map((item) => item.trim()).filter(Boolean)
-      : [];
+  const [optimistic, setOptimistic] = useState<OptionSelectValue | undefined>(
+    undefined
+  );
+  const display = displayedOptionSelectValue({
+    optimistic,
+    committed: value,
+  });
+
+  const selectedList = selectedListFromValue(display, multiple);
 
   return (
-    <div className="grid gap-2" data-option-select={multiple ? "multi" : "single"}>
+    <div
+      className="grid w-full min-w-0 gap-2"
+      data-option-select={multiple ? "multi" : "single"}
+      data-option-optimistic={optimistic !== undefined ? "true" : "false"}
+    >
       {options.map((option) => {
         const selected = multiple
           ? selectedList.some((item) => optionValueMatches(option, item)) ||
             optionValueMatches(option, selectedList)
-          : optionValueMatches(option, value);
+          : optionValueMatches(option, display);
         const copy = splitOptionCopy(option);
         return (
           <button
@@ -58,7 +79,7 @@ export function OptionSelect({
             aria-pressed={selected}
             data-option-selected={selected ? "true" : "false"}
             className={cn(
-              "min-h-11 rounded-xl border px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "min-h-11 w-full min-w-0 rounded-xl border px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
               selected
                 ? "border-primary/40 bg-primary/10 font-medium text-foreground ring-1 ring-primary/25"
                 : "border-border bg-background hover:bg-muted/40",
@@ -69,9 +90,11 @@ export function OptionSelect({
                 const next = selected
                   ? selectedList.filter((item) => !optionValueMatches(option, item))
                   : [...selectedList, option];
+                setOptimistic(next);
                 onSelect(next);
                 return;
               }
+              setOptimistic(option);
               onSelect(option);
             }}
           >

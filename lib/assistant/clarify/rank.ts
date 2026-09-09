@@ -3,6 +3,7 @@ import {
   CLARIFY_MULTI_WA_BUDGET,
   CLARIFY_SINGLE_WA_BUDGET,
 } from "@/lib/assistant/clarify/flags";
+import { isInitialCaptureQuestion } from "@/lib/assistant/clarify/question-contract";
 
 function askRank(askClass: ClarifyAskClass): number {
   switch (askClass) {
@@ -44,7 +45,8 @@ export function clarifyQuestionBudget(confirmedWorkAreaCount: number): number {
 
 /**
  * Blocking / commercially necessary questions are never dropped solely
- * because the soft interaction budget is exhausted.
+ * because the soft interaction budget is exhausted. ASK_NOW initial-capture
+ * facts may wait for the next batch, but they still block Ready.
  */
 export function isClarifyMustAsk(candidate: ClarifyCandidate): boolean {
   return (
@@ -53,6 +55,12 @@ export function isClarifyMustAsk(candidate: ClarifyCandidate): boolean {
     !candidate.assumable ||
     candidate.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL"
   );
+}
+
+export function unresolvedInitialCaptureCount(
+  candidates: readonly ClarifyCandidate[]
+): number {
+  return candidates.filter(isInitialCaptureQuestion).length;
 }
 
 function isAssumableInitialAsk(candidate: ClarifyCandidate): boolean {
@@ -67,9 +75,10 @@ function isAssumableInitialAsk(candidate: ClarifyCandidate): boolean {
  * Allocate the initial Clarify interview.
  *
  * Soft budget is a UX target, not a quota to fill or a correctness ceiling.
- * Stop when remaining candidates are assumable/refinement/advanced beyond
+ * Stop the *visible batch* when remaining candidates are assumable beyond
  * the useful ASK_NOW set, or when the soft target is reached for assumable
  * questions. HARD_MINIMUM and non-assumable questions always survive.
+ * Deferred ASK_NOW initial-capture questions are not Ready.
  */
 export function allocateClarifyBudget(
   ranked: readonly ClarifyCandidate[],

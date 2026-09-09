@@ -2,7 +2,12 @@ import { previewProjectConditionAskCandidates } from "@/lib/builder-interview/pr
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
 import { assumptionsFromPersistedFacts, assumptionsFromSkipped } from "@/lib/assistant/clarify/assumptions";
-import { allocateClarifyBudget, sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
+import { allocateClarifyBudget, clarifyQuestionBudget, sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
+import {
+  isClarifyExtraFactKey,
+  isInitialCaptureQuestion,
+} from "@/lib/assistant/clarify/question-contract";
+import { SHARED_CONSUMED_CONSTRAINT_KEYS } from "@/lib/estimate/consumed-facts";
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
   blockingClassForKey,
@@ -717,6 +722,7 @@ function pushBathroomClarifyFact(
   reason: string,
   economicClass?: ClarifyEconomicClass
 ): void {
+  if (!isClarifyExtraFactKey(key)) return;
   if (factHas(input, key, wa.id)) return;
   const template = getQuestionTemplateByKey(key);
   out.push({
@@ -1319,6 +1325,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         if (cls === "REFINE" || cls === "DERIVED" || cls === "NOT_CONSUMED") {
           continue;
         }
+        if (!isClarifyExtraFactKey(extra.key)) continue;
         const template = getQuestionTemplateByKey(extra.key);
         out.push({
           id: `fact:${wa.id}:${extra.key}`,
@@ -1411,6 +1418,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
     for (const extra of extras) {
       if (factHas(input, extra.key, wa.id)) continue;
       if (retainingWallFactQuestionClass(extra.key) === "REFINE") continue;
+      if (!isClarifyExtraFactKey(extra.key)) continue;
       const template = getQuestionTemplateByKey(extra.key);
       out.push({
         id: `fact:${wa.id}:${extra.key}`,
@@ -1546,12 +1554,12 @@ function projectConditionCandidates(
     const p1 = (BATHROOM_P1_CONDITION_KEYS as readonly string[]).includes(
       c.targetKey
     );
+    const consumed = (SHARED_CONSUMED_CONSTRAINT_KEYS as readonly string[]).includes(
+      c.targetKey
+    );
     if (bathroom) {
       if (!p0 && !p1) return [];
-    } else if (
-      c.targetKey !== "site_access" &&
-      c.targetKey !== "material_carry_distance"
-    ) {
+    } else if (!consumed) {
       return [];
     }
     const score = PC_SCORES[c.targetKey] ?? 25;
@@ -1602,7 +1610,6 @@ function projectConditionCandidates(
     ];
   });
 
-  const bathroom = bathroomWorkAreaPresent(input);
   const extras = [
     fallbackProjectCondition(input, {
       targetKey: "site_access",
@@ -1611,7 +1618,9 @@ function projectConditionCandidates(
       options: ["Easy", "Moderate", "Difficult", "Very poor"],
       score: PC_SCORES.site_access,
       assumption: "Standard access",
-      economicClass: bathroom ? "REQUIRED_FOR_ECONOMIC_MODEL" : undefined,
+      economicClass: bathroomWorkAreaPresent(input)
+        ? "REQUIRED_FOR_ECONOMIC_MODEL"
+        : undefined,
     }),
     fallbackProjectCondition(input, {
       targetKey: "material_carry_distance",
@@ -1620,32 +1629,34 @@ function projectConditionCandidates(
       options: ["< 10m", "10–30m", "> 30m", "Not sure"],
       score: PC_SCORES.material_carry_distance,
       assumption: "Standard carry",
-      economicClass: bathroom ? "REQUIRED_FOR_ECONOMIC_MODEL" : undefined,
+      economicClass: bathroomWorkAreaPresent(input)
+        ? "REQUIRED_FOR_ECONOMIC_MODEL"
+        : undefined,
     }),
-    ...(bathroom
-      ? [
-          fallbackProjectCondition(input, {
-            targetKey: "occupied_site",
-            questionKey: "interview.site.occupied_site",
-            question: "Is the site occupied during works?",
-            options: ["Yes", "No", "Not sure"],
-            score: PC_SCORES.occupied_site,
-            assumption: "Unoccupied site",
-            inputType: "boolean",
-            economicClass: "REQUIRED_FOR_ECONOMIC_MODEL",
-          }),
-          fallbackProjectCondition(input, {
-            targetKey: "working_hours",
-            questionKey: "interview.site.working_hours",
-            question: "Are there working-hour restrictions?",
-            options: ["No", "Yes", "Not sure"],
-            score: PC_SCORES.working_hours,
-            assumption: "Normal working hours",
-            inputType: "boolean",
-            economicClass: "REQUIRED_FOR_ECONOMIC_MODEL",
-          }),
-        ]
-      : []),
+    fallbackProjectCondition(input, {
+      targetKey: "occupied_site",
+      questionKey: "interview.site.occupied_site",
+      question: "Is the site occupied during works?",
+      options: ["Yes", "No", "Not sure"],
+      score: PC_SCORES.occupied_site,
+      assumption: "Unoccupied site",
+      inputType: "boolean",
+      economicClass: bathroomWorkAreaPresent(input)
+        ? "REQUIRED_FOR_ECONOMIC_MODEL"
+        : undefined,
+    }),
+    fallbackProjectCondition(input, {
+      targetKey: "working_hours",
+      questionKey: "interview.site.working_hours",
+      question: "Are there working-hour restrictions?",
+      options: ["No", "Yes", "Not sure"],
+      score: PC_SCORES.working_hours,
+      assumption: "Normal working hours",
+      inputType: "boolean",
+      economicClass: bathroomWorkAreaPresent(input)
+        ? "REQUIRED_FOR_ECONOMIC_MODEL"
+        : undefined,
+    }),
   ].filter((row): row is ClarifyCandidate => row != null);
 
   const seen = new Set(fromPreview.map((c) => c.constraintKey ?? c.id));
@@ -1675,16 +1686,28 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
   const confirmedCount = input.workAreas.filter(
     (w) => w.status !== "excluded"
   ).length;
-  const { visible, deferred } = allocateClarifyBudget(ranked, confirmedCount);
-  const estimateNowAssumptions = assumptionsFromSkipped([
-    ...visible.filter((c) => c.assumable && !c.blocksEstimate),
-    ...deferred,
-  ]).filter(
+  let { visible, deferred } = allocateClarifyBudget(ranked, confirmedCount);
+  if (
+    visible.length === 0 &&
+    ranked.some(isInitialCaptureQuestion)
+  ) {
+    const leftover = ranked.filter(isInitialCaptureQuestion);
+    const batch = leftover.slice(0, clarifyQuestionBudget(confirmedCount));
+    const batchIds = new Set(batch.map((c) => c.id));
+    visible = batch;
+    deferred = ranked.filter((c) => !batchIds.has(c.id));
+  }
+  const skippedForAssumptions = [...visible, ...deferred].filter(
+    (c) => !isInitialCaptureQuestion(c) && c.assumable && !c.blocksEstimate
+  );
+  const estimateNowAssumptions = assumptionsFromSkipped(skippedForAssumptions).filter(
     (row) =>
       row.factKey !== "bathroom.tiling_included" ||
       !suppressMatureUnansweredBathroomTiling(input, row.workAreaId)
   );
-  const assumptions = assumptionsFromSkipped(deferred).filter(
+  const assumptions = assumptionsFromSkipped(
+    deferred.filter((c) => !isInitialCaptureQuestion(c))
+  ).filter(
     (row) =>
       row.factKey !== "bathroom.tiling_included" ||
       !suppressMatureUnansweredBathroomTiling(input, row.workAreaId)
@@ -1715,21 +1738,8 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
       estimateNowAssumptions.push(finish);
     }
   }
-  const blocksEstimate = visible.some((c) => c.blocksEstimate);
-  const remainingRequiredCount =
-    visible.filter(
-      (c) =>
-        c.askClass === "HARD_MINIMUM" ||
-        c.blocksEstimate ||
-        c.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL"
-    ).length +
-    (bathroomWorkAreaPresent(input)
-      ? deferred.filter(
-          (c) =>
-            c.source === "project_condition" &&
-            c.economicClass === "REQUIRED_FOR_ECONOMIC_MODEL"
-        ).length
-      : 0);
+  const blocksEstimate = ranked.some((c) => c.blocksEstimate);
+  const remainingRequiredCount = ranked.filter(isInitialCaptureQuestion).length;
   const enoughToEstimate = remainingRequiredCount === 0 && !blocksEstimate;
 
   const withCurrent = (rows: readonly ClarifyCandidate[]): ClarifyCandidate[] =>
