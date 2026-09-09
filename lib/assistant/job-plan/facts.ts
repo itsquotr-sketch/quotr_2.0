@@ -100,7 +100,11 @@ export function appendJobPlanFactOverlay(
     return [
       ...overlay.filter(
         (row) =>
-          !(row.key === next.key && row.work_area_id === next.work_area_id)
+          !(
+            row.key === next.key &&
+            row.work_area_id === next.work_area_id &&
+            (row.wallTypeId ?? "") === (next.wallTypeId ?? "")
+          )
       ),
       next,
     ];

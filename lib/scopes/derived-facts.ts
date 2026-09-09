@@ -7,6 +7,7 @@ import {
   toPositiveNumber,
   type ProjectFactRecord,
 } from "@/lib/scopes/fact-values";
+import { parseInternalWallsWallTypes } from "@/lib/estimate/internal-walls-wall-types";
 
 export type DerivedFactCandidate = {
   work_area_id: string;
@@ -145,8 +146,10 @@ export function deriveFactsForProject(params: {
     }
 
     if (workArea.type === "internal_walls") {
-      const wallTypes = getFactValue(lookup, workArea.id, "internal_walls.wall_types");
-      if (Array.isArray(wallTypes) && wallTypes.length > 0) {
+      const wallTypes = parseInternalWallsWallTypes(
+        getFactValue(lookup, workArea.id, "internal_walls.wall_types")
+      );
+      if (wallTypes.length > 0) {
         continue;
       }
       const length = toPositiveNumber(

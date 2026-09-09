@@ -26,6 +26,7 @@ import {
   applyInternalWallsFactWrite,
   createEmptyWallType,
   duplicateWallType,
+  parseInternalWallsCollectionEnvelope,
   parseInternalWallsWallTypes,
   recommendedSheetLengthMm,
   updateWallType,
@@ -202,6 +203,77 @@ check(
 check(
   "latest-state-wins keeps length 9 and Fyreline",
   latestB.length_lm === 9 && latestB.side_a.product === "fyreline"
+);
+const layeredThenStaleProduct = applyInternalWallsFactWrite({
+  facts: liningOnLatest,
+  workAreaId: "w1",
+  key: "internal_walls.wall_type.side_a_layers",
+  value: "2 layers",
+  wallTypeId: typeB!.id,
+});
+const staleProductRetry = applyInternalWallsFactWrite({
+  facts: layeredThenStaleProduct,
+  workAreaId: "w1",
+  key: "internal_walls.wall_type.side_a_product",
+  value: "Fyreline",
+  wallTypeId: typeB!.id,
+});
+check(
+  "later product write does not reset layers on latest type",
+  typesOf(staleProductRetry)[1]!.side_a.layers === 2 &&
+    typesOf(staleProductRetry)[1]!.side_a.product === "fyreline" &&
+    typesOf(staleProductRetry)[1]!.length_lm === 9
+);
+const envelope = parseInternalWallsCollectionEnvelope({
+  v: 4,
+  types: typesOf(staleProductRetry),
+});
+check(
+  "collection envelope unwraps types and revision",
+  envelope.v === 4 &&
+    envelope.types.length === 2 &&
+    envelope.types[1]!.side_a.layers === 2
+);
+const clientId = "aaaaaaaa-bbbb-4ccc-8ddd-eeeeeeeeeeee";
+const addedWithId = applyInternalWallsFactWrite({
+  facts: two,
+  workAreaId: "w1",
+  key: INTERNAL_WALLS_ADD_WALL_TYPE_KEY,
+  value: clientId,
+});
+check(
+  "Add uses client UUID when provided",
+  typesOf(addedWithId).some((row) => row.id === clientId) &&
+    typesOf(addedWithId).length === 3
+);
+const copyId = "bbbbbbbb-cccc-4ddd-8eee-ffffffffffff";
+const duplicatedWithId = applyInternalWallsFactWrite({
+  facts: two,
+  workAreaId: "w1",
+  key: INTERNAL_WALLS_DUPLICATE_WALL_TYPE_KEY,
+  value: typeA!.id,
+  wallTypeId: copyId,
+});
+check(
+  "Duplicate uses client UUID when provided",
+  typesOf(duplicatedWithId).some((row) => row.id === copyId) &&
+    typesOf(duplicatedWithId).length === 3
+);
+const overlayA = appendJobPlanFactOverlay([], {
+  key: "internal_walls.wall_type.length_lm",
+  work_area_id: "w1",
+  value: 11,
+  wallTypeId: typeA!.id,
+});
+const overlayBoth = appendJobPlanFactOverlay(overlayA, {
+  key: "internal_walls.wall_type.length_lm",
+  work_area_id: "w1",
+  value: 7,
+  wallTypeId: typeB!.id,
+});
+check(
+  "overlay keeps sibling Wall Type writes of the same key",
+  overlayBoth.length === 2
 );
 check(
   "Type A unchanged by Type B lining",
@@ -447,10 +519,11 @@ check(
     adapterSrc.includes("INTERNAL_WALLS_SHEET_LENGTH_OPTIONS")
 );
 check(
-  "CAS persist retries on updated_at",
-  persistSrc.includes("updated_at") &&
+  "CAS persist retries on collection revision",
+  persistSrc.includes("value->>v") &&
+    persistSrc.includes("v: envelope.v + 1") &&
     persistSrc.includes("INTERNAL_WALLS_COLLECTION_WRITE_MAX_ATTEMPTS") &&
-    INTERNAL_WALLS_COLLECTION_WRITE_MAX_ATTEMPTS >= 5
+    INTERNAL_WALLS_COLLECTION_WRITE_MAX_ATTEMPTS >= 8
 );
 check(
   "active id is deleted when cleared",

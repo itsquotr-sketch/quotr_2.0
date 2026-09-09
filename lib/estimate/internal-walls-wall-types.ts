@@ -1,8 +1,10 @@
 /**
  * WA-INTERNAL-WALLS-02 — structured Wall Type collection.
  *
- * Canonical store: one `internal_walls.wall_types` JSON array on project_facts
- * (jsonb). Stable UUID per Wall Type. Do not flatten wall_1 / wall_2 keys.
+ * Canonical store: `internal_walls.wall_types` on project_facts (jsonb).
+ * Logical model is a Wall Type array. Persistence may wrap `{ v, types }`
+ * so concurrent nested writes compare-and-swap an integer revision.
+ * Stable UUID per Wall Type. Do not flatten wall_1 / wall_2 keys.
  *
  * Logical `internal_walls.wall_type.*` keys are write addresses for Clarify /
  * Refine. They patch the JSON collection and are not persisted as sibling rows.
@@ -304,6 +306,15 @@ export function createWallTypeId(): string {
   return `wt-${Date.now().toString(16)}-${Math.random().toString(16).slice(2, 10)}`;
 }
 
+export function isClientWallTypeId(value: unknown): value is string {
+  if (typeof value !== "string") return false;
+  const trimmed = value.trim();
+  if (/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(trimmed)) {
+    return true;
+  }
+  return /^wt-[0-9a-f]+-[0-9a-f]+$/i.test(trimmed);
+}
+
 export function createEmptyWallType(params?: {
   id?: string;
   label?: string | null;
@@ -591,10 +602,22 @@ export function parseInternalWallsWallType(
   };
 }
 
-export function parseInternalWallsWallTypes(
-  value: unknown
-): InternalWallsWallType[] {
-  if (!Array.isArray(value)) return [];
+export function parseInternalWallsCollectionEnvelope(value: unknown): {
+  v: number;
+  types: InternalWallsWallType[];
+} {
+  if (Array.isArray(value)) {
+    return { v: 0, types: parseInternalWallsWallTypeList(value) };
+  }
+  if (isRecord(value) && Array.isArray(value.types)) {
+    const v =
+      typeof value.v === "number" && Number.isFinite(value.v) ? value.v : 0;
+    return { v, types: parseInternalWallsWallTypeList(value.types) };
+  }
+  return { v: 0, types: [] };
+}
+
+function parseInternalWallsWallTypeList(value: unknown[]): InternalWallsWallType[] {
   const types: InternalWallsWallType[] = [];
   const seen = new Set<string>();
   for (const row of value) {
@@ -604,6 +627,12 @@ export function parseInternalWallsWallTypes(
     types.push(parsed);
   }
   return types;
+}
+
+export function parseInternalWallsWallTypes(
+  value: unknown
+): InternalWallsWallType[] {
+  return parseInternalWallsCollectionEnvelope(value).types;
 }
 
 export function isInternalWallsWallTypeWriteKey(key: string): boolean {
@@ -1080,11 +1109,24 @@ export function applyInternalWallsFactWrite(params: {
     params.key === INTERNAL_WALLS_ADD_WALL_TYPE_KEY &&
     (params.value === true ||
       params.value === "Yes" ||
-      params.value === "Add wall type")
+      params.value === "Add wall type" ||
+      isClientWallTypeId(params.value))
   ) {
-    const created = createEmptyWallType();
-    types = [...types, created];
-    activeId = created.id;
+    const requestedId = isClientWallTypeId(params.value)
+      ? params.value.trim()
+      : null;
+    const existing = requestedId
+      ? types.find((row) => row.id === requestedId)
+      : null;
+    if (existing) {
+      activeId = existing.id;
+    } else {
+      const created = createEmptyWallType({
+        id: requestedId ?? undefined,
+      });
+      types = [...types, created];
+      activeId = created.id;
+    }
   } else if (params.key === INTERNAL_WALLS_DUPLICATE_WALL_TYPE_KEY) {
     const sourceId =
       typeof params.value === "string" && params.value.trim()
@@ -1092,14 +1134,27 @@ export function applyInternalWallsFactWrite(params: {
         : activeId;
     const source = types.find((row) => row.id === sourceId);
     if (source && !source.id.startsWith("legacy:")) {
-      const copy = duplicateWallType(source);
-      const index = types.findIndex((row) => row.id === source.id);
-      types = [
-        ...types.slice(0, index + 1),
-        copy,
-        ...types.slice(index + 1),
-      ];
-      activeId = copy.id;
+      const copyId =
+        params.wallTypeId &&
+        params.wallTypeId !== source.id &&
+        isClientWallTypeId(params.wallTypeId)
+          ? params.wallTypeId
+          : undefined;
+      const existingCopy = copyId
+        ? types.find((row) => row.id === copyId)
+        : null;
+      if (existingCopy) {
+        activeId = existingCopy.id;
+      } else {
+        const copy = duplicateWallType(source, copyId);
+        const index = types.findIndex((row) => row.id === source.id);
+        types = [
+          ...types.slice(0, index + 1),
+          copy,
+          ...types.slice(index + 1),
+        ];
+        activeId = copy.id;
+      }
     }
   } else if (params.key === INTERNAL_WALLS_DELETE_WALL_TYPE_KEY) {
     const deleteId =
@@ -1188,14 +1243,25 @@ export function applyInternalWallsFactWrite(params: {
         return;
       }
       if (field === "side_a_product") {
+        const previous = cloneFace(type.side_a);
         const product = parseInternalWallsLiningProduct(params.value);
         const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_a.product = product;
         type.side_a.lined = product != null;
-        type.side_a.thickness_mm = defaultThicknessMmForProduct(product);
-        type.side_a.sheet_length_mm = sheet.mm;
-        type.side_a.sheet_length_source = sheet.source;
-        type.side_a.layers = product != null ? type.side_a.layers ?? 1 : null;
+        type.side_a.thickness_mm =
+          previous.thickness_mm ?? defaultThicknessMmForProduct(product);
+        if (
+          previous.sheet_length_source === "override" &&
+          previous.sheet_length_mm != null
+        ) {
+          type.side_a.sheet_length_mm = previous.sheet_length_mm;
+          type.side_a.sheet_length_source = "override";
+        } else {
+          type.side_a.sheet_length_mm = sheet.mm;
+          type.side_a.sheet_length_source = sheet.source;
+        }
+        type.side_a.layers =
+          product != null ? previous.layers ?? 1 : null;
         return;
       }
       if (field === "side_a_thickness_mm") {
@@ -1221,14 +1287,25 @@ export function applyInternalWallsFactWrite(params: {
         return;
       }
       if (field === "side_b_product") {
+        const previous = cloneFace(type.side_b);
         const product = parseInternalWallsLiningProduct(params.value);
         const sheet = plasterboardSheetLengthForProduct(product, type.height_m);
         type.side_b.product = product;
         type.side_b.lined = product != null;
-        type.side_b.thickness_mm = defaultThicknessMmForProduct(product);
-        type.side_b.sheet_length_mm = sheet.mm;
-        type.side_b.sheet_length_source = sheet.source;
-        type.side_b.layers = product != null ? type.side_b.layers ?? 1 : null;
+        type.side_b.thickness_mm =
+          previous.thickness_mm ?? defaultThicknessMmForProduct(product);
+        if (
+          previous.sheet_length_source === "override" &&
+          previous.sheet_length_mm != null
+        ) {
+          type.side_b.sheet_length_mm = previous.sheet_length_mm;
+          type.side_b.sheet_length_source = "override";
+        } else {
+          type.side_b.sheet_length_mm = sheet.mm;
+          type.side_b.sheet_length_source = sheet.source;
+        }
+        type.side_b.layers =
+          product != null ? previous.layers ?? 1 : null;
         type.same_lining_both_sides = false;
         return;
       }

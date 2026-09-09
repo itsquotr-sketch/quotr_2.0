@@ -489,7 +489,10 @@ export function AssistantShell({
   );
 
   const tagOverlayFactSeq = useCallback((row: EstimateFact, seq: number) => {
-    overlaySeqByFactRef.current.set(`${row.work_area_id ?? ""}:${row.key}`, seq);
+    overlaySeqByFactRef.current.set(
+      `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}`,
+      seq
+    );
   }, []);
 
   const settleCanonicalMutation = useCallback(
@@ -516,7 +519,7 @@ export function AssistantShell({
       setLiveConstraints(result.assistantMutation.submittedConstraints);
       setJobPlanFactOverlay((prev) =>
         prev.filter((row) => {
-          const key = `${row.work_area_id ?? ""}:${row.key}`;
+          const key = `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}`;
           const seq = overlaySeqByFactRef.current.get(key);
           return seq != null && seq > requestSeq;
         })
@@ -1173,12 +1176,13 @@ export function AssistantShell({
         setFactError(result.error);
         setSavingFactKey(null);
         endSavePerf();
-        const factIdentity = `${input.workAreaId}:${input.key}`;
+        const factIdentity = `${input.workAreaId}:${input.key}:${input.wallTypeId ?? ""}`;
         if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
           setJobPlanFactOverlay((prev) =>
             prev.filter(
               (row) =>
-                `${row.work_area_id ?? ""}:${row.key}` !== factIdentity
+                `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}` !==
+                factIdentity
             )
           );
         }
@@ -1672,12 +1676,13 @@ export function AssistantShell({
         );
         if (result.error) {
           setActionError(result.error);
-          const factIdentity = `${candidate.workAreaId ?? ""}:${candidate.factKey}`;
+          const factIdentity = `${candidate.workAreaId ?? ""}:${candidate.factKey}:${candidate.wallTypeId ?? ""}`;
           if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
             setJobPlanFactOverlay((prev) =>
               prev.filter(
                 (row) =>
-                  `${row.work_area_id ?? ""}:${row.key}` !== factIdentity
+                  `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}` !==
+                  factIdentity
               )
             );
           }
@@ -2424,13 +2429,14 @@ export function AssistantShell({
                   onDone={closeRefineAfterEstimate}
                   onAnswerBoolean={handleClarifyBoolean}
                   onAnswerValue={handleClarifyValue}
-                  onWallTypeAction={(workAreaId, key, value, label) => {
+                  onWallTypeAction={(workAreaId, key, value, label, wallTypeId) => {
                     void handleFactSave({
                       workAreaId,
                       key,
                       label,
                       value,
                       inputType: typeof value === "boolean" ? "boolean" : "text",
+                      wallTypeId,
                     });
                   }}
                 />

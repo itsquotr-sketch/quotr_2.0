@@ -26,6 +26,7 @@ import {
   INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
   applyInternalWallsFactWrite,
   isInternalWallsWallTypeWriteKey,
+  parseInternalWallsCollectionEnvelope,
 } from "@/lib/estimate/internal-walls-wall-types";
 import type { EstimateFact } from "@/lib/estimate/types";
 
@@ -120,7 +121,11 @@ export async function upsertScopedFact(
   return { ok: true };
 }
 
-export const INTERNAL_WALLS_COLLECTION_WRITE_MAX_ATTEMPTS = 8;
+export const INTERNAL_WALLS_COLLECTION_WRITE_MAX_ATTEMPTS = 12;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
 
 async function persistInternalWallsCollectionWrite(
   supabase: SupabaseClient,
@@ -177,19 +182,32 @@ async function persistInternalWallsCollectionWrite(
     const typesRow = (rows ?? []).find(
       (row) => row.key === INTERNAL_WALLS_WALL_TYPES_FACT_KEY
     );
+    const envelope = parseInternalWallsCollectionEnvelope(typesRow?.value);
+    const nextEnvelope = {
+      v: envelope.v + 1,
+      types: parseInternalWallsCollectionEnvelope(wallTypes?.value).types,
+    };
     if (typesRow) {
-      const { data: updated, error: updateError } = await supabase
+      let updateQuery = supabase
         .from("project_facts")
         .update({
           label: "Wall types",
-          value: wallTypes?.value ?? [],
+          value: nextEnvelope,
           source: "user",
           confidence: 1,
         })
         .eq("id", typesRow.id)
-        .eq("project_id", params.projectId)
-        .eq("updated_at", typesRow.updated_at)
-        .select("id");
+        .eq("project_id", params.projectId);
+      if (isRecord(typesRow.value) && typeof typesRow.value.v === "number") {
+        updateQuery = updateQuery.filter(
+          "value->>v",
+          "eq",
+          String(typesRow.value.v)
+        );
+      } else {
+        updateQuery = updateQuery.eq("updated_at", typesRow.updated_at);
+      }
+      const { data: updated, error: updateError } = await updateQuery.select("id");
       if (updateError) {
         return { ok: false, error: updateError.message };
       }
@@ -203,7 +221,7 @@ async function persistInternalWallsCollectionWrite(
         workAreaId: params.workAreaId,
         key: INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
         label: "Wall types",
-        value: wallTypes?.value ?? [],
+        value: nextEnvelope,
         source: "user",
       });
       if (!typesResult.ok) {

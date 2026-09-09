@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
+import { createWallTypeId } from "@/lib/estimate/internal-walls-wall-types";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
@@ -156,7 +157,8 @@ export function RefineEstimatePanel({
     workAreaId: string,
     key: string,
     value: string | boolean,
-    label: string
+    label: string,
+    wallTypeId?: string | null
   ) => void;
 }) {
   const [localValues, setLocalValues] = useState<
@@ -276,17 +278,26 @@ export function RefineEstimatePanel({
             <InternalWallsWallTypesPanel
               key={panel.workAreaId}
               panel={panel}
-              onAdd={(workAreaId) =>
-                onWallTypeAction(workAreaId, "internal_walls.add_wall_type", true, "Add wall type")
-              }
-              onDuplicate={(workAreaId, wallTypeId) =>
+              onAdd={(workAreaId) => {
+                const id = createWallTypeId();
+                onWallTypeAction(
+                  workAreaId,
+                  "internal_walls.add_wall_type",
+                  id,
+                  "Add wall type",
+                  id
+                );
+              }}
+              onDuplicate={(workAreaId, wallTypeId) => {
+                const copyId = createWallTypeId();
                 onWallTypeAction(
                   workAreaId,
                   "internal_walls.duplicate_wall_type",
                   wallTypeId,
-                  "Duplicate wall type"
-                )
-              }
+                  "Duplicate wall type",
+                  copyId
+                );
+              }}
               onDelete={(workAreaId, wallTypeId) =>
                 onWallTypeAction(
                   workAreaId,

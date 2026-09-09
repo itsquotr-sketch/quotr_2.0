@@ -76,23 +76,28 @@ Do not infer maturity from file or question count.
 ```
 project_facts
   key = internal_walls.wall_types
-  value = [
-    {
-      id, label,
-      length_lm, height_m, height_source,
-      frame_system, frame_size, steel,
-      stud_centres_mm, stud_centres_source,
-      same_lining_both_sides,
-      side_a: { lined, material_family, product, thickness_mm, sheet_length_mm, layers },
-      side_b: { ... },
-      openings: []
-    }
-  ]
+  value = {
+    v: 1,
+    types: [
+      {
+        id, label,
+        length_lm, height_m, height_source,
+        frame_system, frame_size, steel,
+        stud_centres_mm, stud_centres_source,
+        same_lining_both_sides,
+        side_a: { lined, material_family, product, thickness_mm, sheet_length_mm, layers },
+        side_b: { ... },
+        openings: []
+      }
+    ]
+  }
 ```
+
+Readers unwrap `{ v, types }` or a legacy bare array via `parseInternalWallsWallTypes`. `v` is persist revision only (CAS), not pricing authority.
 
 Plus WA-level scalars: `internal_walls.job_scope`, `internal_walls.structural_involvement`, `internal_walls.active_wall_type_id` (UI selection).
 
-**02C write rule:** one canonical mutator (`updateWallType` / `applyInternalWallsFactWrite`) patches by stable ID against the latest `wall_types` row. Persistence compare-and-swaps `updated_at` and retries so a lining save cannot restore an older sibling snapshot. Overlay stores logical field writes, applied onto latest base facts.
+**02C write rule:** one canonical mutator (`updateWallType` / `applyInternalWallsFactWrite`) patches by stable ID against the latest `wall_types` row. Persistence wraps `{ v, types }` and compare-and-swaps `value->>v` (legacy rows still CAS `updated_at` once while wrapping). Overlay stores logical field writes, applied onto latest base facts. Add/Duplicate send a client UUID so overlay and persist share the same id. A later product write must not reset layers or an explicit sheet-length override on that type.
 
 Do **not** flatten `wall_1` / `wall_2` keys.
 
@@ -980,7 +985,7 @@ Future implementation may need a **data-only** catalogue seed (DNA and/or materi
 | --- | --- | --- |
 | **01** | Architecture + gap audit | This document + verifier |
 | **02** | Job scope + Wall Types + geometry | **Closed (data/UX foundation).** Nested CRUD hosted close is **02C**. |
-| **02C** | Nested Wall Type persist + sheet length UX | Canonical `updateWallType` by stable ID; CAS retry on `internal_walls.wall_types`; logical overlay rows; Yes/No same-both-sides; selectable sheet length with height recommendation |
+| **02C** | Nested Wall Type persist + sheet length UX | Canonical `updateWallType` by stable ID; `{ v, types }` CAS; logical overlay rows keyed by Wall Type id; Yes/No same-both-sides; selectable sheet length with height recommendation |
 | **03** | Timber framing + lining sheets + envelope | Shared timber + GIB identities; requirements; XOR timber vs existing frame |
 | **04** | Openings + structural gate | Deduct lining; trimmers; INFO_REQUIRED if load-bearing |
 | **05** | Insulation + nested finishing XOR | Cavity area; stop/paint vs siblings |
