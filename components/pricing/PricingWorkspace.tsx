@@ -375,9 +375,15 @@ export function PricingWorkspace({
           />
         </div>
       ) : (
-        <p className="text-sm text-muted-foreground">
-          Pricing reviewed. Further edits will revert status to draft.
-        </p>
+        <div
+          className="rounded-xl border border-border/60 bg-card px-4 py-3"
+          data-pricing-reviewed-status="true"
+        >
+          <p className="text-sm font-medium tracking-tight">Pricing reviewed</p>
+          <p className="mt-0.5 text-xs text-muted-foreground">
+            Further edits will revert status to draft.
+          </p>
+        </div>
       )}
 
       {saveError ? (

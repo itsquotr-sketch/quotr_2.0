@@ -180,7 +180,9 @@ export function CollapsibleStageCard({
               ) : null}
             </div>
             {isExpanded && subtitle ? (
-              <p className="text-xs text-muted-foreground">{subtitle}</p>
+              <p className="hidden text-xs text-muted-foreground md:block">
+                {subtitle}
+              </p>
             ) : null}
             {showCollapsedChrome && summaryContent ? (
               <div className="pt-0.5">{summaryContent}</div>

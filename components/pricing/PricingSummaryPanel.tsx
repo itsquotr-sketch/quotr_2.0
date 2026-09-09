@@ -122,20 +122,37 @@ export function PricingSummaryPanel({
           </div>
         )}
 
-        <div className="hidden lg:block">
+        <div
+          className={cn(
+            "hidden lg:block",
+            isReviewed &&
+              !quoteSummary &&
+              "rounded-xl border border-[var(--brand-orange-muted)]/70 bg-[var(--brand-orange-muted)]/25 p-3"
+          )}
+          data-pricing-desktop-quote-cta={
+            quoteSummary ? "open" : isReviewed ? "create" : "blocked"
+          }
+        >
+          {isReviewed && !quoteSummary ? (
+            <p className="mb-2.5 text-sm font-medium tracking-tight">
+              Next: Create quote
+            </p>
+          ) : null}
           <CreateQuoteButton
             projectId={projectId}
             pricingDocumentId={document.id}
             isReviewed={isReviewed}
             quoteSummary={quoteSummary}
           />
-          <p className="mt-2 text-xs text-muted-foreground">
-            {quoteSummary
-              ? "Open the client quote created from this pricing."
-              : isReviewed
-                ? "Create a client-facing quote from this pricing."
-                : "Mark pricing as reviewed before creating a quote."}
-          </p>
+          {quoteSummary ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Open the client quote created from this pricing.
+            </p>
+          ) : isReviewed ? (
+            <p className="mt-2 text-xs text-muted-foreground">
+              Create a client-facing quote from this pricing.
+            </p>
+          ) : null}
         </div>
         {pricingChangedAfterQuote ? (
           <p className="text-xs text-amber-800 dark:text-amber-200">

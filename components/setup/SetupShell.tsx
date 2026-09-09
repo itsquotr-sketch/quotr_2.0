@@ -86,6 +86,7 @@ export function SetupShell({
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <PageHeader
+          compactOnMobile
           title="Welcome to Quotr"
           description="A few company details, then the work you usually price."
           actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
@@ -108,6 +109,7 @@ export function SetupShell({
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <PageHeader
+          compactOnMobile
           title="Your work"
           description="Tell Quotr the jobs you usually price."
           actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
@@ -126,6 +128,7 @@ export function SetupShell({
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <PageHeader
+          compactOnMobile
           title="Your pricing basics"
           description="Optional labour cost and target margin — skip if you are not sure yet."
           actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
@@ -144,6 +147,7 @@ export function SetupShell({
     return (
       <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
         <PageHeader
+          compactOnMobile
           title="Start your first job"
           description="You can refine details as you go."
           actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
@@ -162,13 +166,14 @@ export function SetupShell({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
+        compactOnMobile
         title="Improve Quotr"
         description="Optional setup to personalise estimates. You can create projects anytime."
         actions={<UserMenu userEmail={userEmail} fullName={fullName} />}
       />
       <FormContainer innerClassName="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">
         <div className="mb-6 space-y-3">
-          <p className="text-sm text-muted-foreground">
+          <p className="hidden text-sm text-muted-foreground md:block">
             Choose a section below. Nothing here blocks creating a project.
           </p>
           <div className="flex flex-wrap gap-2">

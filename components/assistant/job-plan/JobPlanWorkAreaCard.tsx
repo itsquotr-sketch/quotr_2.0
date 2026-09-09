@@ -60,6 +60,18 @@ function ScopeRow({
   onToggle?: (presentation: "INCLUDED" | "NOT_INCLUDED") => void;
 }) {
   const stackOnMobile = showActions && Boolean(onToggle);
+  const [optimistic, setOptimistic] = useState<
+    "INCLUDED" | "NOT_INCLUDED" | null
+  >(null);
+  const committed =
+    tone === "included"
+      ? "INCLUDED"
+      : tone === "excluded"
+        ? "NOT_INCLUDED"
+        : null;
+  const selectedPresentation = optimistic ?? committed;
+  const includedSelected = selectedPresentation === "INCLUDED";
+  const excludedSelected = selectedPresentation === "NOT_INCLUDED";
 
   return (
     <li
@@ -134,26 +146,48 @@ function ScopeRow({
       </span>
       {showActions && onToggle ? (
         <span
-          className="flex w-full gap-1 sm:w-auto sm:shrink-0"
+          className="flex w-full gap-1.5 sm:w-auto sm:shrink-0"
           data-job-plan-check-actions={tone === "check" ? "true" : undefined}
         >
           <Button
             type="button"
             size="sm"
             variant="outline"
-            className="min-h-9 flex-1 sm:min-h-7 sm:flex-none"
+            className={cn(
+              "min-h-11 flex-1 px-3 sm:min-h-8 sm:flex-none",
+              includedSelected
+                ? "border-primary/40 bg-primary/10 font-medium text-foreground ring-1 ring-primary/20"
+                : "hover:bg-muted/40"
+            )}
             aria-label={`Include ${item.label}`}
-            onClick={() => onToggle("INCLUDED")}
+            aria-pressed={includedSelected}
+            data-scope-choice="included"
+            data-scope-choice-selected={includedSelected ? "true" : "false"}
+            onClick={() => {
+              setOptimistic("INCLUDED");
+              onToggle("INCLUDED");
+            }}
           >
             Include
           </Button>
           <Button
             type="button"
             size="sm"
-            variant="ghost"
-            className="min-h-9 flex-1 sm:min-h-7 sm:flex-none"
+            variant="outline"
+            className={cn(
+              "min-h-11 flex-1 border px-3 sm:min-h-8 sm:flex-none",
+              excludedSelected
+                ? "border-border bg-muted font-medium text-foreground ring-1 ring-border"
+                : "border-border bg-background text-muted-foreground hover:bg-muted/50 hover:text-foreground"
+            )}
             aria-label={`Mark ${item.label} as not included`}
-            onClick={() => onToggle("NOT_INCLUDED")}
+            aria-pressed={excludedSelected}
+            data-scope-choice="not-included"
+            data-scope-choice-selected={excludedSelected ? "true" : "false"}
+            onClick={() => {
+              setOptimistic("NOT_INCLUDED");
+              onToggle("NOT_INCLUDED");
+            }}
           >
             Not included
           </Button>

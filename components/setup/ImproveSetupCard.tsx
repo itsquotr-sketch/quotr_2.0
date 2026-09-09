@@ -55,7 +55,9 @@ export function ImproveSetupCard({
           <p className="text-sm font-medium">{next.title}</p>
           <p className="mt-0.5 text-sm text-muted-foreground">{next.reason}</p>
           {next.helper ? (
-            <p className="mt-1 text-xs text-muted-foreground">{next.helper}</p>
+            <p className="mt-1 hidden text-xs text-muted-foreground md:block">
+              {next.helper}
+            </p>
           ) : null}
         </div>
         <Button

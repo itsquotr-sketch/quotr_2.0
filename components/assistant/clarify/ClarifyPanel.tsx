@@ -243,7 +243,7 @@ export function ClarifyPanel({
 
   return (
     <div
-      className="space-y-5 overflow-x-hidden"
+      className="space-y-3 overflow-x-hidden md:space-y-5"
       data-clarify-panel
       data-clarify-count={view.visibleCount}
     >

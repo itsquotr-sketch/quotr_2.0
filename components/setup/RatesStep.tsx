@@ -270,7 +270,7 @@ export function RatesStep({ state, onSaved, onSkip }: RatesStepProps) {
         <section className="space-y-3">
           <div>
             <h3 className="text-sm font-medium">1. Your labour</h3>
-            <p className="mt-1 text-sm text-muted-foreground">
+            <p className="mt-1 hidden text-sm text-muted-foreground md:block">
               Your cost is what the person costs your business. Recommended
               charge-out uses your {companyGrossMarginPercent}% company gross
               margin.

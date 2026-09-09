@@ -131,7 +131,7 @@ export function JobPlanPanel({
         <p className="text-sm font-medium" data-job-plan-found-heading>
           Here&apos;s the work I found.
         </p>
-        <p className="text-xs text-muted-foreground" data-work-area-term>
+        <p className="hidden text-xs text-muted-foreground md:block" data-work-area-term>
           Work Areas are the main pieces of work Quotr will estimate separately.
         </p>
       </div>

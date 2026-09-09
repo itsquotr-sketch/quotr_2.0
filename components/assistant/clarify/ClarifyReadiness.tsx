@@ -223,7 +223,7 @@ export function RefineEstimatePanel({
               {focusedCandidate.label}
             </p>
           ) : (
-            <p className="mt-0.5 text-sm text-muted-foreground">
+            <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
               Optional details that this estimate actually uses to improve accuracy.
             </p>
           )}

@@ -91,7 +91,7 @@ export function BuilderReviewSurface({
           Review estimate
         </p>
       </div>
-      <p className="text-sm text-muted-foreground" data-builder-review-purpose>
+      <p className="hidden text-sm text-muted-foreground md:block" data-builder-review-purpose>
         Check Quotr’s working estimate before deciding your final price.
       </p>
 

@@ -457,7 +457,7 @@ export function QuoteWorkspace({ initialData, template }: QuoteWorkspaceProps) {
             >
               <CardHeader className="pb-3">
                 <CardTitle className="text-base">Quote settings</CardTitle>
-                <CardDescription className="text-xs">
+                <CardDescription className="hidden text-xs md:block">
                   Title, dates and scope summary shown on the client preview
                 </CardDescription>
               </CardHeader>

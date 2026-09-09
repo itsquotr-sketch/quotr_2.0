@@ -46,7 +46,7 @@ export function EstimateReadySurface({
       ) : null}
       {!isStale && !reviewOpen ? (
         <p
-          className="text-xs text-muted-foreground"
+          className="hidden text-xs text-muted-foreground md:block"
           data-estimate-calibrate-later
         >
           Want Quotr to match how your crew works? Calibrate how you work from

@@ -134,8 +134,13 @@ export function WorkAreasStep({
       <CardHeader>
         <CardTitle>Your work</CardTitle>
         <CardDescription>
-          What kind of work do you usually price? Choose the work your company
-          normally does. This does not limit the jobs you can estimate later.
+          <span className="md:hidden">
+            Choose the work you usually price. This does not limit later jobs.
+          </span>
+          <span className="hidden md:inline">
+            What kind of work do you usually price? Choose the work your company
+            normally does. This does not limit the jobs you can estimate later.
+          </span>
         </CardDescription>
       </CardHeader>
       <form onSubmit={handleSubmit}>

@@ -102,10 +102,13 @@ export function PricingDecisionCard({
       data-pricing-using-recommended={usingRecommended ? "true" : "false"}
     >
       <div>
-        <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
+        <p className="hidden text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground md:block">
           Pricing
         </p>
-        <p className="mt-1 text-sm text-muted-foreground">
+        <p className="mt-1 text-sm text-muted-foreground md:hidden">
+          The quote will use this price.
+        </p>
+        <p className="mt-1 hidden text-sm text-muted-foreground md:block">
           The estimate is Quotr’s working recommendation. Pricing is what you
           intend to charge. The quote will use this price.
         </p>

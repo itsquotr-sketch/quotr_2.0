@@ -289,7 +289,9 @@ function main() {
   assert("ready go to dashboard", /Go to dashboard/.test(ready));
   assert(
     "ready does not force calibration",
-    /benchmark rates/.test(ready) && !/Calibrate/.test(ready)
+    /standard rates/.test(ready) &&
+      /Personalise Quotr/.test(ready) &&
+      !/Calibrate/.test(ready)
   );
 
   section("DASHBOARD LADDER");

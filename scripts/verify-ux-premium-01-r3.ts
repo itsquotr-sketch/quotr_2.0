@@ -423,7 +423,24 @@ check(
   "Create Quote touch-safe",
   createQuote.includes('presentation?: "default" | "bar"') &&
     pricingBar.includes('presentation="bar"') &&
-    createQuote.includes("h-11 min-h-11 w-full")
+    createQuote.includes("h-11 min-h-11") &&
+    createQuote.includes("w-full")
+);
+check(
+  32.1,
+  "Not included is a bordered selectable control",
+  jobPlanCard.includes('data-scope-choice="not-included"') &&
+    jobPlanCard.includes("aria-pressed={excludedSelected}") &&
+    jobPlanCard.includes("border-border bg-background") &&
+    jobPlanCard.includes('aria-label={`Mark ${item.label} as not included`}')
+);
+check(
+  32.2,
+  "Desktop Create quote is primary after review",
+  pricingSummary.includes("data-pricing-desktop-quote-cta") &&
+    pricingSummary.includes("Next: Create quote") &&
+    createQuote.includes("data-pricing-create-quote-ready") &&
+    pricingWorkspace.includes("data-pricing-reviewed-status")
 );
 check(
   33,

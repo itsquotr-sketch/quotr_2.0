@@ -46,10 +46,10 @@ export function CompanyDnaHub({ state, onSkip }: CompanyDnaHubProps) {
         <CardDescription>{DNA_HUB_INTRO}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <p className="text-sm text-muted-foreground" data-company-dna-hub-concept>
+        <p className="hidden text-sm text-muted-foreground md:block" data-company-dna-hub-concept>
           {DNA_HUB_CONCEPT}
         </p>
-        <p className="text-sm text-muted-foreground">
+        <p className="hidden text-sm text-muted-foreground md:block">
           Your usual work is listed first. Key tasks first. You can reset to the
           Quotr benchmark later.
         </p>

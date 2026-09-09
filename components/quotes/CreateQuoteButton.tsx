@@ -7,6 +7,7 @@ import { BillingAccessDenied } from "@/components/billing/BillingAccessDenied";
 import { Button } from "@/components/ui/button";
 import { createQuoteFromPricing } from "@/lib/quotes/actions";
 import type { QuoteSummary } from "@/lib/quotes/types";
+import { cn } from "@/lib/utils";
 
 type CreateQuoteButtonProps = {
   projectId: string;
@@ -30,11 +31,13 @@ export function CreateQuoteButton({
     upgradeTarget?: "builder" | "business" | "builder_or_business" | null;
   } | null>(null);
 
+  const prominent = presentation === "bar" || isReviewed;
+
   if (quoteSummary) {
     return (
       <Button
         type="button"
-        className={presentation === "bar" ? "h-11 min-h-11 w-full" : "w-full"}
+        className={cn("w-full", prominent && "h-11 min-h-11")}
         render={
           <Link href={`/app/projects/${projectId}/quotes/${quoteSummary.id}`} />
         }
@@ -65,8 +68,13 @@ export function CreateQuoteButton({
     <div className="space-y-2">
       <Button
         type="button"
-        className={presentation === "bar" ? "h-11 min-h-11 w-full" : "w-full"}
+        className={cn(
+          "w-full",
+          prominent && "h-11 min-h-11",
+          isReviewed && presentation !== "bar" && "font-semibold"
+        )}
         disabled={!isReviewed || isPending}
+        data-pricing-create-quote-ready={isReviewed ? "true" : "false"}
         onClick={handleCreate}
       >
         {isPending ? (
