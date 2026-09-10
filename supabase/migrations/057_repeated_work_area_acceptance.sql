@@ -1,7 +1,8 @@
 -- EF02-E — repeated same-kind Work Area acceptance.
 -- Replaces type-only DUPLICATE_WORK_AREA with instance uniqueness
 -- (type + normalised name). Does not edit historical 029.
--- GENERATE ONLY. Do not apply in this ticket. Do not touch Production.
+-- Applied on Preview (shhpjsoldmqtkdbgrbtm) during EF02-FINAL.
+-- Do not apply to Production. Does not edit historical 029.
 
 create or replace function public.scope_discovery_confirmed_instance_id(
   p_project_id uuid,

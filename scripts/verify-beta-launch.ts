@@ -312,7 +312,16 @@ function main() {
   section("MIGRATIONS");
   const latest = latestMigration();
   assert("054 DNA catalogue seed remains", existsSync(join(process.cwd(), "supabase/migrations/054_company_dna_v2_catalogue_seed.sql")));
-  assert("latest migration is 056 Bathroom DNA catalogue seed", latest === "056_bathroom_company_dna_catalogue_seed.sql");
+  assert(
+    "056 Bathroom DNA catalogue seed remains",
+    existsSync(
+      join(process.cwd(), "supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql")
+    )
+  );
+  assert(
+    "latest migration is 057 repeated work area acceptance",
+    latest === "057_repeated_work_area_acceptance.sql"
+  );
   const numbers = migrationNumbers();
   assert("no migration 037", !numbers.includes("037"));
   assert(

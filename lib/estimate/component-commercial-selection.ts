@@ -102,7 +102,9 @@ export function assertNoDuplicateActiveComponents(
   const seen = new Map<string, number>();
   for (const item of lineItems) {
     if (!item.componentKey || !isActiveMoneyLine(item)) continue;
-    const key = `${item.workAreaId}::${item.componentKey}`;
+    const key = item.overlapGroup
+      ? `${item.workAreaId}::${item.overlapGroup}::${item.componentKey}`
+      : `${item.workAreaId}::${item.componentKey}`;
     seen.set(key, (seen.get(key) ?? 0) + 1);
   }
   for (const [key, count] of seen) {

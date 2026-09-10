@@ -80,7 +80,7 @@ check(
   split.map((row) => row.name).join(", ")
 );
 
-let facts: EstimateFact[] = applyExtractedInternalWallsToFacts({
+const facts: EstimateFact[] = applyExtractedInternalWallsToFacts({
   facts: [
     {
       key: "internal_walls.job_scope",

@@ -309,8 +309,8 @@ check(
   numberedMigrations().some((name) => name === "056_bathroom_company_dna_catalogue_seed.sql")
 );
 check(
-  "latest numbered migration is 056",
-  numberedMigrations().at(-1) === "056_bathroom_company_dna_catalogue_seed.sql"
+  "latest numbered migration is 057+",
+  numberedMigrations().at(-1) === "057_repeated_work_area_acceptance.sql"
 );
 const sql056 = readFileSync(
   join(process.cwd(), "supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql"),

@@ -462,7 +462,10 @@ export function ClarifyReadinessCard({
         </div>
       ) : null}
 
-      <ActionFooter innerClassName="flex-col sm:flex-row">
+      <ActionFooter
+        className="bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0"
+        innerClassName="flex-col sm:flex-row"
+      >
         <Button
           type="button"
           className="min-h-11 w-full"

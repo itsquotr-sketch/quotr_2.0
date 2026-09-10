@@ -631,9 +631,10 @@ check(
 );
 const migrations = numberedMigrations();
 check("no migration 055", !migrations.some((name) => name.startsWith("055_")));
+check("056 remains", migrations.some((name) => name.startsWith("056_")));
 check(
-  "latest numbered migration is 056+",
-  migrations[migrations.length - 1]?.startsWith("056_") === true
+  "latest numbered migration is 057+",
+  Number.parseInt(migrations[migrations.length - 1]?.slice(0, 3) ?? "0", 10) >= 57
 );
 check(
   "no new numbered migration in 02",

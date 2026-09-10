@@ -140,6 +140,30 @@ check(
   ready.generate.ready === ready.panel.enoughToEstimate &&
     ready.generate.ready === ready.estimate.ready
 );
+check(
+  "demolition applicability extras do not create a second generate gate",
+  evaluateGenerateEstimatePermission({
+    compose: composeClarifyInputFromEstimateContext({
+      stage: "work_area_questions",
+      briefText: COORDINATION_ORIGINAL_BRIEF,
+      qualityLevel: "standard",
+      workAreas,
+      facts,
+      constraints: [
+        { key: "site_access", value: "Easy" },
+        { key: "material_carry_distance", value: "< 10m" },
+      ],
+    }),
+    workAreas,
+    facts,
+    unresolvedRequiredProjectConditionKeys: [
+      "floor_level",
+      "services_isolated",
+      "hazardous_materials_risk",
+      "waste_bin_access",
+    ],
+  }).ready === true
+);
 
 console.log("\n=== Project-condition write race (EF02-A) ===\n");
 const readyConstraints = [

@@ -232,21 +232,26 @@ export function evaluatePackageQuickEstimateReadiness(
     }
   }
 
-  const pcBlocking = packageQuickEstimateBlockingProjectConditionKeys(
-    input.unresolvedRequiredProjectConditionKeys ?? []
-  );
-  for (const key of pcBlocking) {
-    blockers.push({
-      key,
-      requiredness: "REQUIRED_PROJECT_CONDITION",
-      declaredBy: "lib/project-conditions/applicability.ts (non-assumable required)",
-      expected: "canonical constraint value",
-      storedValue: undefined,
-      store: "constraints",
-      uiMayShowAnswered: false,
-      calculatorConsumes: false,
-      category: "project_condition",
-    });
+  // Details (Clarify) already owns ASK_NOW Project Conditions. Applicability
+  // extras such as demolition floor_level / services / hazmat must not create
+  // a second generate gate the Details Ready rail never asked.
+  if (!shouldUseAssumableProjectConditionGenerateGate()) {
+    const pcBlocking = packageQuickEstimateBlockingProjectConditionKeys(
+      input.unresolvedRequiredProjectConditionKeys ?? []
+    );
+    for (const key of pcBlocking) {
+      blockers.push({
+        key,
+        requiredness: "REQUIRED_PROJECT_CONDITION",
+        declaredBy: "lib/project-conditions/applicability.ts (non-assumable required)",
+        expected: "canonical constraint value",
+        storedValue: undefined,
+        store: "constraints",
+        uiMayShowAnswered: false,
+        calculatorConsumes: false,
+        category: "project_condition",
+      });
+    }
   }
 
   return {
