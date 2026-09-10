@@ -453,8 +453,12 @@ check(
     !askedKeys.has("deck.joist_centres_mm")
 );
 check(
-  "26 useful missing physical facts may surface",
-  realClarify.candidates.length + realClarify.deferred.length <= 6
+  "26 currently relevant Details questions are not presentation-capped",
+  realClarify.candidates.length === realClarify.visibleCount &&
+    realClarify.candidates.length ===
+      realClarify.groups.flatMap((group) =>
+        group.sections.flatMap((section) => section.candidates)
+      ).length
 );
 const realRefine = composeRefineView({
   briefText: realJob.sourceBrief ?? null,

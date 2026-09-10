@@ -1,10 +1,7 @@
 /**
- * Initial-capture vs Refine-only question contract.
- *
- * Clarify / Details asks unresolved INITIAL_REQUIRED facts in progressive
- * batches until they are resolved (or a disclosed ASSUME_IF_SKIPPED default
- * is already the architecture). Refine edits existing answers and optional
- * P2 / presentation detail. It is not the second half of initial capture.
+ * Clarify / Details asks unresolved HARD_MINIMUM, ASK_NOW, and relevant
+ * ASSUME_IF_SKIPPED facts in one grouped surface. Refine edits existing
+ * answers and optional P2 / presentation detail.
  */
 
 import type { ClarifyAskClass, ClarifyCandidate } from "@/lib/assistant/clarify/types";
@@ -74,8 +71,8 @@ export function isInitialCaptureAskClass(askClass: ClarifyAskClass): boolean {
 }
 
 /**
- * Unresolved initial-capture questions block Ready. Progressive batches may
- * hide them from the current screen, but they are not assumed away.
+ * Unresolved initial-capture questions block Ready. Details shows every
+ * currently relevant Details-owned question; they are not assumed away.
  */
 export function isInitialCaptureQuestion(candidate: ClarifyCandidate): boolean {
   if (candidate.blocksEstimate) return true;
@@ -98,6 +95,14 @@ export function isDisclosedAssumptionQuestion(candidate: ClarifyCandidate): bool
     candidate.assumable &&
     !candidate.blocksEstimate
   );
+}
+
+/** Details owns unresolved HARD_MINIMUM, ASK_NOW, and ASSUME_IF_SKIPPED. */
+export function isDetailsOwnedQuestion(candidate: ClarifyCandidate): boolean {
+  if (candidate.askClass === "HARD_MINIMUM") return true;
+  if (candidate.askClass === "ASK_NOW") return true;
+  if (candidate.askClass === "ASSUME_IF_SKIPPED") return true;
+  return false;
 }
 
 /** P2 / P3 extras belong in Refine, not initial Details. */

@@ -11,10 +11,14 @@ const SCREAMING_ENUM = /\b[A-Z][A-Z0-9]+(?:_[A-Z0-9]+)+\b/;
 
 const FRIENDLY_LABELS: Record<string, string> = {
   "deck.substructure_included": "Deck substructure included",
+  "deck.height_m": "Deck height",
+  "deck.board_material": "Decking material",
   "deck.board_width_mm": "Decking board width",
   "deck.existing_deck_removal": "Existing deck removal",
   "deck.vertical_face_boards_required": "Fascia / edge boards",
   "deck.skirting_included": "Deck skirting",
+  "deck.step_going_m": "Tread depth",
+  "deck.ground_clearance_m": "Fascia ground gap",
   "internal_walls.job_scope": "Wall work",
   "internal_walls.structural_involvement": "Load-bearing or structural",
   "internal_walls.wall_type.frame_system": "Framing",

@@ -33,6 +33,12 @@ export type RefineCandidate = {
   readonly wallTypeId?: string | null;
   /** Nested opening id for Internal Walls opening writes. */
   readonly openingId?: string | null;
+  /** Stable field identity. Not a presentation prefix (`refine:`, `pc:`). */
+  readonly semanticKey?: string | null;
+  /** Persisted fact/constraint source (`user`, `assumption`, …). */
+  readonly valueSource?: string | null;
+  /** True when the current value is ASSUMED_DISCLOSED, not a known user fact. */
+  readonly assumed?: boolean;
   /** Only fields the current calculator consumes may be true. */
   readonly consumedByCalculator: true;
 };
@@ -71,6 +77,7 @@ export type ComposeRefineInput = {
   readonly constraints: readonly {
     readonly key: string;
     readonly value: unknown;
+    readonly source?: string | null;
   }[];
   readonly jobPlan: {
     readonly cards: readonly {

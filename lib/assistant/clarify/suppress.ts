@@ -1,6 +1,7 @@
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { getEstimatePriorityClass } from "@/lib/scopes/estimate-priority";
 import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
+import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import type { ComposeClarifyInput } from "@/lib/assistant/clarify/types";
 import {
@@ -37,6 +38,15 @@ export function isKnownValue(value: unknown): boolean {
 }
 
 export function isAdvancedStructuralKey(key: string): boolean {
+  const deckClass = deckFactQuestionClass(key);
+  if (deckClass) {
+    return (
+      deckClass === "ADVANCED" ||
+      deckClass === "REFINE" ||
+      deckClass === "DERIVED" ||
+      deckClass === "NOT_CONSUMED"
+    );
+  }
   const template = getQuestionTemplateByKey(key);
   if (!template) {
     return /joist|bearer|footing|grade|treatment|engineering|consent|centres/i.test(
@@ -107,8 +117,13 @@ export function isLowLevelDeck(
   return false;
 }
 
+type DeckGateInput = {
+  readonly facts: ComposeClarifyInput["facts"];
+  readonly briefText?: string | null;
+};
+
 export function stepsAreRelevant(
-  input: ComposeClarifyInput,
+  input: DeckGateInput,
   workAreaId: string
 ): boolean {
   const brief = input.briefText ?? "";
@@ -118,7 +133,7 @@ export function stepsAreRelevant(
 }
 
 export function shouldAskBalustrade(
-  input: ComposeClarifyInput,
+  input: DeckGateInput,
   workAreaId: string
 ): boolean {
   if (isKnownValue(factValue(input.facts, "deck.balustrade_required", workAreaId))) {

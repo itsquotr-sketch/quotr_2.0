@@ -20,6 +20,7 @@ import {
 } from "@/lib/builder-interview/authority";
 import { isReservedConstraintKey } from "@/lib/scopes/domain-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
+import { disclosedProjectConditionForNotSure, disclosedProjectConditionValue } from "@/lib/project-conditions/consumed-authority";
 import { upsertProjectConstraintRecord } from "@/lib/assistant/scope-persistence";
 import { completeAssistantMutation } from "@/lib/assistant/complete-assistant-mutation";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
@@ -192,23 +193,44 @@ export async function saveBuilderInterviewProjectAnswers(input: {
       continue;
     }
 
-    if (answer.kind === "not_sure") {
-      // Explicit unknown — do not fabricate a value (D5 / 3.2.2).
-      items.push({ questionKey: answer.questionKey, status: "not_sure" });
-      continue;
-    }
-
-    if (answer.kind === "assume") {
-      // Durable assumption writes deferred to 3.2.4 — do not fake as user Constraint.
-      items.push({
-        questionKey: answer.questionKey,
-        status: "assumption_deferred",
+    if (answer.kind === "not_sure" || answer.kind === "assume") {
+      const disclosed = disclosedProjectConditionValue(def.targetKey);
+      if (!disclosed) {
+        items.push({
+          questionKey: answer.questionKey,
+          status: answer.kind === "assume" ? "assumption_deferred" : "not_sure",
+        });
+        continue;
+      }
+      const write = await upsertProjectConstraintRecord(supabase, {
+        orgId,
+        projectId,
+        key: def.targetKey,
+        label: def.question,
+        value: disclosed,
+        source: "assumption",
       });
+      if (!write.ok) {
+        items.push({
+          questionKey: answer.questionKey,
+          status: "error",
+          message: "Could not save this answer.",
+        });
+        failedCount += 1;
+        continue;
+      }
+      items.push({ questionKey: answer.questionKey, status: "saved" });
+      savedCount += 1;
       continue;
     }
 
     // kind === answer
-    if (answer.value === undefined || !isMeaningfulKnownValue(answer.value)) {
+    const remapped = disclosedProjectConditionForNotSure(
+      def.targetKey,
+      answer.value
+    );
+    const incomingValue = remapped?.value ?? answer.value;
+    if (incomingValue === undefined || !isMeaningfulKnownValue(incomingValue)) {
       items.push({
         questionKey: answer.questionKey,
         status: "error",
@@ -220,10 +242,13 @@ export async function saveBuilderInterviewProjectAnswers(input: {
 
     const inputType =
       def.inputType === "multi_select" ? "text" : def.inputType;
-    const storedValue = normalizeAnswerForStorage(
-      answer.value as string | number | boolean | string[],
-      inputType
-    );
+    const storedValue = remapped
+      ? remapped.value
+      : normalizeAnswerForStorage(
+          incomingValue as string | number | boolean | string[],
+          inputType
+        );
+    const writeSource = remapped ? remapped.source : "user";
 
     const { data: existing } = await supabase
       .from("constraints")
@@ -277,7 +302,7 @@ export async function saveBuilderInterviewProjectAnswers(input: {
       key: def.targetKey,
       label: def.question,
       value: storedValue,
-      source: "user",
+      source: writeSource,
     });
 
     if (!write.ok) {

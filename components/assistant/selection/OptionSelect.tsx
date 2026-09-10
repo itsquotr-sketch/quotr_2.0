@@ -18,6 +18,7 @@ type OptionSelectProps = {
   disabled?: boolean;
   pending?: boolean;
   error?: string | null;
+  compact?: boolean;
   onSelect: (next: string | string[]) => void;
 };
 
@@ -53,6 +54,7 @@ export function OptionSelect({
   disabled,
   pending,
   error,
+  compact = false,
   onSelect,
 }: OptionSelectProps) {
   const [optimistic, setOptimistic] = useState<OptionSelectValue | undefined>(
@@ -67,7 +69,7 @@ export function OptionSelect({
 
   return (
     <div
-      className="grid w-full min-w-0 gap-2"
+      className={cn("grid w-full min-w-0", compact ? "gap-1.5" : "gap-2")}
       data-option-select={multiple ? "multi" : "single"}
       data-option-optimistic={optimistic !== undefined ? "true" : "false"}
     >
@@ -84,7 +86,8 @@ export function OptionSelect({
             aria-pressed={selected}
             data-option-selected={selected ? "true" : "false"}
             className={cn(
-              "min-h-11 w-full min-w-0 rounded-xl border px-4 py-3 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              "w-full min-w-0 rounded-xl border px-4 text-left text-sm transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring",
+              compact ? "min-h-10 py-2.5" : "min-h-11 py-3",
               selected
                 ? "border-primary/40 bg-primary/10 font-medium text-foreground ring-1 ring-primary/25"
                 : "border-border bg-background hover:bg-muted/40",

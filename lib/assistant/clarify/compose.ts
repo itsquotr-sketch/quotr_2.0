@@ -1,14 +1,26 @@
 import { previewProjectConditionAskCandidates } from "@/lib/builder-interview/project-filter";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
-import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
 import { assumptionsFromPersistedFacts, assumptionsFromSkipped } from "@/lib/assistant/clarify/assumptions";
-import { allocateClarifyBudget, clarifyQuestionBudget, sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
+import { sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
+import { groupDetailsCandidates } from "@/lib/assistant/clarify/details-groups";
 import {
   isClarifyExtraFactKey,
+  isDetailsOwnedQuestion,
   isInitialCaptureQuestion,
   clarifyStoredInputType,
 } from "@/lib/assistant/clarify/question-contract";
 import { SHARED_CONSUMED_CONSTRAINT_KEYS } from "@/lib/estimate/consumed-facts";
+import {
+  DECK_BOARD_MATERIAL_ASSUMPTION_STATEMENT,
+  DECK_HEIGHT_ASSUMPTION_STATEMENT,
+} from "@/lib/estimate/disclosed-assumptions";
+import {
+  consumedProjectConditionAskClass,
+  isRequiredConsumedProjectCondition,
+  listConsumedProjectConditionDefs,
+  projectConditionAssumptionStatement,
+  projectConsumesConsumedCondition,
+} from "@/lib/project-conditions/consumed-authority";
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
 import {
   blockingClassForKey,
@@ -25,6 +37,11 @@ import {
   safeFactQuestion,
 } from "@/lib/assistant/presentation/fact-key-labels";
 import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
+import {
+  deckClarifyAskClass,
+  listDeckClarifyDescriptors,
+  mapDeckAskClassToClarify,
+} from "@/lib/estimate/deck-question-descriptors";
 import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
 import type {
@@ -48,12 +65,14 @@ import {
 } from "@/lib/estimate/calculators/fence";
 import { classifyFenceSystem, fenceGateScopeApplies, isModularFenceSystem, isTimberFenceSystem } from "@/lib/estimate/fence-systems";
 import { classifyRetainingWallSystem } from "@/lib/estimate/retaining-wall-systems";
-import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
 import {
   DECK_BOARD_WIDTH_ASSUMPTION_STATEMENT,
   DECK_BOARD_WIDTH_FACT_KEY,
 } from "@/lib/estimate/deck-board-width";
-import { STEP_WIDTH_ASSUMPTION_STATEMENT } from "@/lib/estimate/deck-steps-physical";
+import {
+  STEP_GOING_ASSUMPTION_STATEMENT,
+  STEP_WIDTH_ASSUMPTION_STATEMENT,
+} from "@/lib/estimate/deck-steps-physical";
 import {
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
@@ -117,21 +136,6 @@ const BATHROOM_P1_CONDITION_KEYS = [
   "waste_bin_access",
 ] as const;
 
-const REQUIRED_CONSUMED_PROJECT_CONDITION_KEYS = new Set([
-  "site_access",
-  "material_carry_distance",
-]);
-
-const LABOUR_ACCESS_WORK_AREA_TYPES = new Set([
-  "deck",
-  "fence",
-  "retaining_wall",
-  "bathroom",
-  "internal_walls",
-  "demolition",
-  "kitchen",
-]);
-
 function isOptionalInternalWallsClarifyKey(key: string): boolean {
   return (
     key.includes("has_openings") ||
@@ -154,23 +158,19 @@ function confirmedWorkAreaTypes(input: ComposeClarifyInput): string[] {
 }
 
 function projectConsumesConstraint(types: readonly string[], key: string): boolean {
-  if (key === "site_access" || key === "material_carry_distance") {
-    return types.some((type) => LABOUR_ACCESS_WORK_AREA_TYPES.has(type));
-  }
-  if (key === "occupied_site" || key === "working_hours") {
-    return types.some(
-      (type) =>
-        LABOUR_ACCESS_WORK_AREA_TYPES.has(type) ||
-        type === "painting" ||
-        type === "plastering"
-    );
+  if (consumedProjectConditionAskClass(key)) {
+    return projectConsumesConsumedCondition(types, key);
   }
   return true;
 }
 
 const CHECK_SCORES: Record<string, number> = {
   "deck.existing_deck_removal": 90,
+  "deck.board_material": 89,
   "deck.board_width_mm": 88,
+  "deck.height_m": 86,
+  "deck.step_width_m": 82,
+  "deck.step_going_m": 81,
   "bathroom.demolition_required": 88,
   "bathroom.demolition.components": 87,
   "fence.demolition_required": 88,
@@ -180,6 +180,7 @@ const CHECK_SCORES: Record<string, number> = {
   "deck.skirting_included": 52,
   "deck.access_type": 35,
   "deck.balustrade_required": 20,
+  "deck.ground_clearance_m": 40,
   "bathroom.plumbing_changes": 62,
   "bathroom.plumbing.level": 62,
   "bathroom.electrical.level": 62,
@@ -285,11 +286,41 @@ function factHas(
 }
 
 function askClassForScopeKey(key: string): ClarifyAskClass {
+  const deck = deckClarifyAskClass(key);
+  if (deck) return deck;
   if (isAdvancedStructuralKey(key)) return "ADVANCED";
   const blocking = blockingClassForKey(key);
   if (blocking === "HARD_MINIMUM") return "HARD_MINIMUM";
   if (blocking === "ASSUMABLE") return "ASK_NOW";
   return "ASSUME_IF_SKIPPED";
+}
+
+function deckClarifyAssumptionStatement(key: string): string | null {
+  if (key === "deck.height_m") return DECK_HEIGHT_ASSUMPTION_STATEMENT;
+  if (key === "deck.board_material") return DECK_BOARD_MATERIAL_ASSUMPTION_STATEMENT;
+  if (key === DECK_BOARD_WIDTH_FACT_KEY) return DECK_BOARD_WIDTH_ASSUMPTION_STATEMENT;
+  if (key === "deck.step_width_m") return STEP_WIDTH_ASSUMPTION_STATEMENT;
+  if (key === "deck.step_going_m") return STEP_GOING_ASSUMPTION_STATEMENT;
+  if (key === "deck.ground_clearance_m") {
+    return "Assuming a 20 mm fascia ground gap.";
+  }
+  if (key === "deck.existing_deck_removal") return "No demolition included";
+  if (key === "deck.vertical_face_boards_required") return "No fascia included";
+  if (key === "deck.substructure_included") {
+    return "Assuming new framing / substructure is included.";
+  }
+  return null;
+}
+
+function deckEconomicClass(key: string): ClarifyEconomicClass | undefined {
+  if (
+    key === DECK_BOARD_WIDTH_FACT_KEY ||
+    key === "deck.step_width_m" ||
+    key === "deck.step_going_m"
+  ) {
+    return "REQUIRED_FOR_ECONOMIC_MODEL";
+  }
+  return undefined;
 }
 
 function suppressMatureUnansweredBathroomTiling(
@@ -321,6 +352,7 @@ function candidateFromJobPlanCheck(
     fenceFactQuestionClass(key);
   if (
     questionClass === "REFINE" ||
+    questionClass === "ADVANCED" ||
     questionClass === "DERIVED" ||
     questionClass === "NOT_CONSUMED"
   ) {
@@ -341,13 +373,9 @@ function candidateFromJobPlanCheck(
 
   const template = getQuestionTemplateByKey(key);
   const askClass = askClassForScopeKey(key);
-  if (askClass === "ADVANCED" || askClass === "DERIVED_NEVER_ASK") return null;
-  const blocking = getLevel1BlockingClass(
-    template ?? {
-      factKey: key,
-      estimatePriorityClass: "P0",
-    }
-  );
+  if (askClass === "ADVANCED" || askClass === "DERIVED_NEVER_ASK" || askClass === "REFINEMENT") {
+    return null;
+  }
 
   return {
     id: `check:${card.workAreaId}:${item.id}`,
@@ -362,13 +390,13 @@ function candidateFromJobPlanCheck(
     question:
       template?.questionText ??
       `Should ${item.label.toLowerCase()} be included?`,
-    askClass: blocking === "HARD_MINIMUM" ? "HARD_MINIMUM" : "ASK_NOW",
+    askClass,
     inputType: item.write?.valueType === "select" ? "select" : "boolean",
     options: template?.options,
     writeTarget: "FACT",
     write: item.write,
-    blocksEstimate: blocking === "HARD_MINIMUM",
-    assumable: blocking !== "HARD_MINIMUM",
+    blocksEstimate: askClass === "HARD_MINIMUM",
+    assumable: askClass !== "HARD_MINIMUM",
     rankScore: CHECK_SCORES[key] ?? 50,
     rankReason: `Job Plan Check · commercial ${CHECK_SCORES[key] ?? 50}`,
     assumptionStatement:
@@ -392,7 +420,10 @@ function missingHardMinimum(
   const out: ClarifyCandidate[] = [];
   for (const card of input.jobPlan.cards) {
     if (card.workAreaType === "deck") {
-      for (const key of ["deck.length_m", "deck.width_m", "deck.area_m2"] as const) {
+      const hardKeys = listDeckClarifyDescriptors()
+        .filter((row) => row.askClass === "HARD_MINIMUM")
+        .map((row) => row.factKey);
+      for (const key of hardKeys) {
         if (shouldSuppressKnownSpec(key, card.workAreaId, input)) continue;
         if (factHas(input, key, card.workAreaId)) continue;
         const template = getQuestionTemplateByKey(key);
@@ -1367,62 +1398,59 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
     }
 
     if (wa.type === "deck") {
-      const facts = input.facts as EstimateFact[];
-      if (!factHas(input, DECK_BOARD_WIDTH_FACT_KEY, wa.id)) {
-        const template = getQuestionTemplateByKey(DECK_BOARD_WIDTH_FACT_KEY);
-        out.push({
-          id: `fact:${wa.id}:${DECK_BOARD_WIDTH_FACT_KEY}`,
-          source: "scope_fact",
-          workAreaId: wa.id,
-          workAreaName: wa.name,
-          workAreaType: wa.type,
-          factKey: DECK_BOARD_WIDTH_FACT_KEY,
-          constraintKey: null,
-          questionKey: DECK_BOARD_WIDTH_FACT_KEY,
-          label: template?.label ?? "Decking board width",
-          question:
-            template?.questionText ?? "How wide are the decking boards?",
-          askClass: "ASK_NOW",
-          inputType: "number",
-          unit: template?.unit ?? "mm",
-          writeTarget: "FACT",
-          write: null,
-          blocksEstimate: false,
-          assumable: true,
-          rankScore: CHECK_SCORES[DECK_BOARD_WIDTH_FACT_KEY] ?? 88,
-          rankReason: "REQUIRED_FOR_ECONOMIC_MODEL board width",
-          assumptionStatement: DECK_BOARD_WIDTH_ASSUMPTION_STATEMENT,
-          economicClass: "REQUIRED_FOR_ECONOMIC_MODEL",
-        });
-      }
-      const stepsActive = deckStepsCommerciallyIncluded({
-        facts,
+      const jobPlanKeys = new Set(
+        input.jobPlan.cards
+          .filter((card) => card.workAreaId === wa.id)
+          .flatMap((card) =>
+            card.notConfirmed
+              .map((item) => item.sourceFactKey)
+              .filter((key): key is string => Boolean(key))
+          )
+      );
+      const ctx = {
+        facts: input.facts,
         workAreaId: wa.id,
-      });
-      if (stepsActive && !factHas(input, "deck.step_width_m", wa.id)) {
-        const template = getQuestionTemplateByKey("deck.step_width_m");
+        briefText: input.briefText,
+      };
+      for (const descriptor of listDeckClarifyDescriptors()) {
+        const key = descriptor.factKey;
+        if (descriptor.askClass === "HARD_MINIMUM") continue;
+        if (jobPlanKeys.has(key)) continue;
+        if (!descriptor.isRelevant(ctx)) continue;
+        if (shouldSuppressKnownSpec(key, wa.id, input)) continue;
+        if (factHas(input, key, wa.id)) continue;
+        const template = getQuestionTemplateByKey(key);
+        const askClass = mapDeckAskClassToClarify(descriptor.askClass);
+        const economicClass = deckEconomicClass(key);
+        const inputType =
+          template != null
+            ? clarifyInputTypeFromTemplate(template)
+            : /_(mm|m2|m)$/.test(key)
+              ? "number"
+              : "select";
         out.push({
-          id: `fact:${wa.id}:deck.step_width_m`,
+          id: `fact:${wa.id}:${key}`,
           source: "scope_fact",
           workAreaId: wa.id,
           workAreaName: wa.name,
           workAreaType: wa.type,
-          factKey: "deck.step_width_m",
+          factKey: key,
           constraintKey: null,
-          questionKey: "deck.step_width_m",
-          label: template?.label ?? "Step width",
-          question: template?.questionText ?? "How wide are the steps?",
-          askClass: "ASK_NOW",
-          inputType: "number",
-          unit: template?.unit ?? "m",
+          questionKey: key,
+          label: template?.label ?? safeFactPresentationLabel(key),
+          question: safeFactQuestion(key, template?.questionText),
+          askClass,
+          inputType,
+          unit: template?.unit,
+          options: template?.options,
           writeTarget: "FACT",
           write: null,
-          blocksEstimate: false,
-          assumable: true,
-          rankScore: 82,
-          rankReason: "REQUIRED_FOR_ECONOMIC_MODEL step width",
-          assumptionStatement: STEP_WIDTH_ASSUMPTION_STATEMENT,
-          economicClass: "REQUIRED_FOR_ECONOMIC_MODEL",
+          blocksEstimate: askClass === "HARD_MINIMUM",
+          assumable: askClass !== "HARD_MINIMUM",
+          rankScore: CHECK_SCORES[key] ?? 50,
+          rankReason: `${descriptor.askClass} · ${descriptor.section}`,
+          assumptionStatement: deckClarifyAssumptionStatement(key),
+          economicClass,
         });
       }
       continue;
@@ -1745,7 +1773,11 @@ function projectConditionCandidates(
     }
     const score = PC_SCORES[c.targetKey] ?? 25;
     if (!bathroom && score < 30) return [];
-    const required = REQUIRED_CONSUMED_PROJECT_CONDITION_KEYS.has(c.targetKey);
+    const consumedClass = consumedProjectConditionAskClass(c.targetKey);
+    const required = consumedClass
+      ? consumedClass === "ASK_NOW"
+      : isRequiredConsumedProjectCondition(c.targetKey);
+    const askClass = consumedClass ?? (required ? "ASK_NOW" : "ASSUME_IF_SKIPPED");
     return [
       {
         id: `pc:${c.targetKey}`,
@@ -1758,7 +1790,7 @@ function projectConditionCandidates(
         questionKey: c.questionKey,
         label: safeFactPresentationLabel(c.targetKey),
         question: c.question,
-        askClass: required ? ("ASK_NOW" as const) : ("ASSUME_IF_SKIPPED" as const),
+        askClass,
         inputType: clarifyStoredInputType({
           inputType: c.inputType,
           options: c.options,
@@ -1771,19 +1803,12 @@ function projectConditionCandidates(
         rankScore: score,
         rankReason: `Project Condition · ${c.targetKey}`,
         assumptionStatement:
-          c.targetKey === "site_access"
-            ? "Standard access"
-            : c.targetKey === "material_carry_distance"
-              ? "Standard carry"
-              : c.targetKey === "occupied_site"
-                ? "Unoccupied site"
-                : c.targetKey === "working_hours"
-                  ? "Normal working hours"
-                  : c.targetKey === "floor_level"
-                    ? "Ground floor"
-                    : c.targetKey === "waste_bin_access"
-                      ? "Standard waste handling"
-                      : null,
+          projectConditionAssumptionStatement(c.targetKey) ??
+          (c.targetKey === "floor_level"
+            ? "Ground floor"
+            : c.targetKey === "waste_bin_access"
+              ? "Standard waste handling"
+              : null),
         economicClass: required
           ? ("REQUIRED_FOR_ECONOMIC_MODEL" as const)
           : bathroom && p0
@@ -1793,50 +1818,24 @@ function projectConditionCandidates(
     ];
   });
 
-  const extras = [
-    fallbackProjectCondition(input, {
-      targetKey: "site_access",
-      questionKey: "interview.site.site_access",
-      question: "How difficult is site access?",
-      options: ["Easy", "Moderate", "Difficult", "Very poor"],
-      score: PC_SCORES.site_access,
-      assumption: "Standard access",
-      required: true,
-    }),
-    fallbackProjectCondition(input, {
-      targetKey: "material_carry_distance",
-      questionKey: "interview.site.material_carry_distance",
-      question: "Distance from material drop-off or waste carting?",
-      options: ["< 10m", "10–30m", "> 30m", "Not sure"],
-      score: PC_SCORES.material_carry_distance,
-      assumption: "Standard carry",
-      required: true,
-    }),
-    fallbackProjectCondition(input, {
-      targetKey: "occupied_site",
-      questionKey: "interview.site.occupied_site",
-      question: "Is the site occupied during works?",
-      options: ["Yes", "No", "Not sure"],
-      score: PC_SCORES.occupied_site,
-      assumption: "Unoccupied site",
-      inputType: "select",
-      economicClass: bathroomWorkAreaPresent(input)
-        ? "REQUIRED_FOR_ECONOMIC_MODEL"
-        : undefined,
-    }),
-    fallbackProjectCondition(input, {
-      targetKey: "working_hours",
-      questionKey: "interview.site.working_hours",
-      question: "Are there working-hour restrictions?",
-      options: ["No", "Yes", "Not sure"],
-      score: PC_SCORES.working_hours,
-      assumption: "Normal working hours",
-      inputType: "select",
-      economicClass: bathroomWorkAreaPresent(input)
-        ? "REQUIRED_FOR_ECONOMIC_MODEL"
-        : undefined,
-    }),
-  ].filter((row): row is ClarifyCandidate => row != null);
+  const extras = listConsumedProjectConditionDefs()
+    .map((def) =>
+      fallbackProjectCondition(input, {
+        targetKey: def.key,
+        questionKey: def.questionKey,
+        question: def.question,
+        options: def.options,
+        score: PC_SCORES[def.key] ?? 25,
+        assumption: def.assumptionStatement,
+        inputType: def.inputType === "boolean" ? "select" : def.inputType,
+        required: def.askClass === "ASK_NOW",
+        economicClass:
+          bathroomWorkAreaPresent(input) && def.askClass === "ASSUME_IF_SKIPPED"
+            ? "REQUIRED_FOR_ECONOMIC_MODEL"
+            : undefined,
+      })
+    )
+    .filter((row): row is ClarifyCandidate => row != null);
 
   const seen = new Set(fromPreview.map((c) => c.constraintKey ?? c.id));
   for (const extra of extras) {
@@ -1862,20 +1861,8 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
 
   const filtered = raw.filter((c) => c.askClass !== "ADVANCED");
   const ranked = sortClarifyCandidates(filtered);
-  const confirmedCount = input.workAreas.filter(
-    (w) => w.status !== "excluded"
-  ).length;
-  let { visible, deferred } = allocateClarifyBudget(ranked, confirmedCount);
-  if (
-    visible.length === 0 &&
-    ranked.some(isInitialCaptureQuestion)
-  ) {
-    const leftover = ranked.filter(isInitialCaptureQuestion);
-    const batch = leftover.slice(0, clarifyQuestionBudget(confirmedCount));
-    const batchIds = new Set(batch.map((c) => c.id));
-    visible = batch;
-    deferred = ranked.filter((c) => !batchIds.has(c.id));
-  }
+  const visible = ranked.filter(isDetailsOwnedQuestion);
+  const deferred = ranked.filter((c) => !isDetailsOwnedQuestion(c));
   const skippedForAssumptions = [...visible, ...deferred].filter(
     (c) => !isInitialCaptureQuestion(c) && c.assumable && !c.blocksEstimate
   );
@@ -1934,9 +1921,14 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
       return { ...candidate, currentValue: rawValue as ClarifyCandidate["currentValue"] };
     });
 
+  const withVisible = withCurrent(visible);
   return {
-    candidates: withCurrent(visible),
+    candidates: withVisible,
     deferred: withCurrent(deferred),
+    groups: groupDetailsCandidates({
+      candidates: withVisible,
+      workAreas: input.workAreas,
+    }),
     assumptions,
     estimateNowAssumptions,
     visibleCount: visible.length,

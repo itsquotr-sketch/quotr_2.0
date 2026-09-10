@@ -176,7 +176,12 @@ check(
 check(
   "Details Ready waits on pendingWrites",
   read("lib/assistant/readiness/compose.ts").includes("pendingWrites") &&
-    shell.includes("pendingWrites: clarifyWritePending")
+    shell.includes("pendingWrites: pendingReadinessWrites")
+);
+check(
+  "pending-write authority covers every Clarify input type, not just number/text",
+  shell.includes("setPendingReadinessWrites((n) => n + 1)") &&
+    !shell.includes("if (isNumericOrText) setPendingReadinessWrites")
 );
 check(
   "Ready card requires readiness.enoughToEstimate",

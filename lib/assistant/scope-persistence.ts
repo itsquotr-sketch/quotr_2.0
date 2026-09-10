@@ -19,8 +19,7 @@ import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
 import { resolveUiQuestionInputType } from "@/lib/scopes/question-input-types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
-import { disclosedBoardWidthForNotSure } from "@/lib/estimate/deck-board-width";
-import { disclosedWallHeightForNotSure } from "@/lib/estimate/bathroom-geometry";
+import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumptions";
 import {
   INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
   INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
@@ -521,20 +520,9 @@ export async function commitUserFactEdit(
     return mirror;
   }
 
-  const disclosedBoardWidth = disclosedBoardWidthForNotSure(storedValue);
-  const disclosedWallHeight = disclosedWallHeightForNotSure(storedValue);
-  const factValue =
-    params.key === "deck.board_width_mm" && disclosedBoardWidth
-      ? disclosedBoardWidth.value
-      : params.key === "bathroom.wall_height_m" && disclosedWallHeight
-        ? disclosedWallHeight.value
-        : storedValue;
-  const factSource =
-    params.key === "deck.board_width_mm" && disclosedBoardWidth
-      ? disclosedBoardWidth.source
-      : params.key === "bathroom.wall_height_m" && disclosedWallHeight
-        ? disclosedWallHeight.source
-        : "user";
+  const disclosed = disclosedAssumptionForNotSure(params.key, storedValue);
+  const factValue = disclosed ? disclosed.value : storedValue;
+  const factSource = disclosed ? disclosed.source : "user";
 
   const factResult = await upsertScopedFact(supabase, {
     orgId: params.orgId,

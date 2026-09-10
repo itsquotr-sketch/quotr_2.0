@@ -9,6 +9,7 @@ import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { normalizeAnswerForStorage } from "@/lib/scopes/fact-values";
+import { disclosedProjectConditionForNotSure } from "@/lib/project-conditions/consumed-authority";
 
 const updateConstraintSchema = z.object({
   projectId: z.string().uuid(),
@@ -57,6 +58,7 @@ export async function updateProjectConstraint(
   const storedValue = inputType
     ? normalizeAnswerForStorage(value, inputType)
     : value;
+  const disclosed = disclosedProjectConditionForNotSure(key, storedValue);
 
   // Stage 3.1D: constraints own project-level keys; reject scoped fact keys.
   const result = await upsertProjectConstraintRecord(supabase, {
@@ -64,8 +66,8 @@ export async function updateProjectConstraint(
     projectId,
     key,
     label,
-    value: storedValue,
-    source: "user",
+    value: disclosed ? disclosed.value : storedValue,
+    source: disclosed ? disclosed.source : "user",
   });
 
   if (!result.ok) {

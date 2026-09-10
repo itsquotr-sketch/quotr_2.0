@@ -8,14 +8,25 @@ import {
   safeFactPresentationLabel,
 } from "@/lib/assistant/presentation/fact-key-labels";
 import { isDisclosedAssumptionSource } from "@/lib/estimate/deck-board-width";
+import {
+  DECK_BOARD_MATERIAL_ASSUMPTION_STATEMENT,
+  DECK_HEIGHT_ASSUMPTION_STATEMENT,
+} from "@/lib/estimate/disclosed-assumptions";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 const STATEMENTS: Record<string, string> = {
   "deck.existing_deck_removal": "No demolition included",
   "deck.vertical_face_boards_required": "No fascia included",
   "deck.skirting_included": "No full-height deck skirting / screening",
+  "deck.height_m": DECK_HEIGHT_ASSUMPTION_STATEMENT,
+  "deck.board_material": DECK_BOARD_MATERIAL_ASSUMPTION_STATEMENT,
   "deck.board_width_mm":
     "Assuming 140 mm decking boards. Confirm board width to calculate this from the job details.",
+  "deck.step_width_m":
+    "Assuming 1.0 m step width for pricing. Not the full deck edge unless specified.",
+  "deck.step_going_m":
+    "Assuming 280 mm stair tread depth for pricing (LOW-CONFIDENCE).",
+  "deck.ground_clearance_m": "Assuming a 20 mm fascia ground gap.",
   site_access: "Standard access",
   material_carry_distance: "Standard carry",
   waste_bin_access: "Standard waste handling",

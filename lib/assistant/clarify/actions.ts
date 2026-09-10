@@ -8,6 +8,7 @@ import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import type { QualityLevel } from "@/components/assistant/types";
 import type { JobPlanScopeWrite } from "@/lib/assistant/job-plan/types";
+import { persistSkippedClarifyAssumptions } from "@/lib/assistant/clarify/persist-assumptions";
 import { DEFAULT_ESTIMATE_QUALITY } from "@/lib/assistant/clarify/quality-gate";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { revalidatePath } from "next/cache";
@@ -125,7 +126,8 @@ async function submitOpenQuestionBlock(
 
 /**
  * Advance internal quality / questions / constraints without showing those
- * panels. Does not write false Facts for skipped assumable items.
+ * panels. Persists disclosed ASSUME_IF_SKIPPED values; does not write false
+ * exclusions for skipped ASK_NOW / HARD_MINIMUM items.
  */
 export async function completeClarifyPlanning(input: {
   projectId: string;
@@ -204,6 +206,15 @@ export async function completeClarifyPlanning(input: {
   if (stage === "constraints") {
     const saved = await saveConstraints(input.projectId, []);
     if (saved.error) return saved;
+  }
+
+  const assumed = await persistSkippedClarifyAssumptions({
+    supabase,
+    orgId,
+    projectId: input.projectId,
+  });
+  if (!assumed.ok) {
+    return { error: assumed.error };
   }
 
   if (input.generate) {

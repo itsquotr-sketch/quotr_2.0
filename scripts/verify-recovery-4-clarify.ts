@@ -10,7 +10,7 @@ import { applyJobPlanScopeWrite } from "../lib/assistant/job-plan/apply-write";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import { assumptionsFromSkipped } from "../lib/assistant/clarify/assumptions";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
-import { CLARIFY_IS_PRIMARY, CLARIFY_SINGLE_WA_BUDGET } from "../lib/assistant/clarify/flags";
+import { CLARIFY_IS_PRIMARY } from "../lib/assistant/clarify/flags";
 import {
   mapsLegacyStageToClarify,
   toPlanningDisplayStage,
@@ -262,10 +262,10 @@ const knownAccess = composeFor(realFacts, realJob.sourceBrief, {
 });
 check("10 known access suppresses", !hasKey(knownAccess, "site_access"));
 check(
-  "11 normal question count reasonable",
+  "11 currently relevant Details questions are not presentation-capped",
   realView.visibleCount >= 1 &&
-    realView.visibleCount <= CLARIFY_SINGLE_WA_BUDGET,
-  "REAL-JOB is a normal ~0–3 outcome; not a ceiling"
+    realView.visibleCount === realView.candidates.length,
+  "Details shows the complete currently relevant unresolved set"
 );
 check(
   "12 Estimate now waits for remaining ASK_NOW initial-capture questions",
@@ -403,9 +403,10 @@ const multiView = composeFor(
 );
 const multiSources = new Set(multiView.candidates.map((c) => c.workAreaName ?? "Project"));
 check(
-  "32 global candidate pool",
+  "32 global candidate pool is not presentation-capped",
   multiView.candidates.length >= 1 &&
-    composeSrc.includes("allocateClarifyBudget") &&
+    multiView.visibleCount === multiView.candidates.length &&
+    !composeSrc.includes("allocateClarifyBudget") &&
     !composeSrc.includes("perWorkArea")
 );
 check(

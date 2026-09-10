@@ -432,8 +432,10 @@ check(
 );
 
 check(
-  "36 one column",
-  panel.includes("overflow-x-hidden") && !panel.includes("lg:grid-cols")
+  "36 grouped cards stay inside one column on small screens, wider on desktop",
+  panel.includes("overflow-x-hidden") &&
+    panel.includes("grid-cols-1") &&
+    panel.includes("lg:grid-cols-2")
 );
 check(
   "37 Estimate primary",
@@ -446,9 +448,9 @@ check(
   panel.includes("overflow-x-hidden") && panel.includes("min-h-11")
 );
 check(
-  "40 Clarify stays a progressive batch, not a giant form",
+  "40 currently relevant Details questions are not presentation-capped",
   !panel.includes("data-refine-advanced-toggle") &&
-    real.clarify.visibleCount <= 6
+    real.clarify.visibleCount === real.clarify.candidates.length
 );
 
 const classify = classifyResolvedSell({

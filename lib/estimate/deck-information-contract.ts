@@ -7,6 +7,7 @@ export type DeckFactQuestionClass =
   | "ASK_NOW"
   | "ASSUME_IF_SKIPPED"
   | "REFINE"
+  | "ADVANCED"
   | "DERIVED"
   | "NOT_CONSUMED";
 
@@ -50,7 +51,8 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     calculatorConsumed: true,
     physical: false,
     commercial: true,
-    reason: "Elevated labour / balustrade relevance. Refine if unknown.",
+    reason:
+      "Elevated labour / balustrade relevance. Asked in Details when unresolved; disclosed assumption if skipped.",
   },
   {
     factKey: "deck.level",
@@ -306,6 +308,33 @@ export function deckFactQuestionClass(
     DECK_INFORMATION_CONTRACT.find((row) => row.factKey === factKey)
       ?.questionClass ?? null
   );
+}
+
+export const DECK_CLARIFY_ASK_CLASSES = [
+  "HARD_MINIMUM",
+  "ASK_NOW",
+  "ASSUME_IF_SKIPPED",
+] as const satisfies readonly DeckFactQuestionClass[];
+
+export function isDeckClarifyAskClass(
+  questionClass: DeckFactQuestionClass | null
+): boolean {
+  return (
+    questionClass === "HARD_MINIMUM" ||
+    questionClass === "ASK_NOW" ||
+    questionClass === "ASSUME_IF_SKIPPED"
+  );
+}
+
+/** Level 1 blocking is derived from the Deck contract — not template P1/P2. */
+export function mapDeckQuestionClassToLevel1(
+  questionClass: DeckFactQuestionClass
+): "HARD_MINIMUM" | "ASSUMABLE" | "REFINEMENT" {
+  if (questionClass === "HARD_MINIMUM") return "HARD_MINIMUM";
+  if (questionClass === "ASK_NOW" || questionClass === "ASSUME_IF_SKIPPED") {
+    return "ASSUMABLE";
+  }
+  return "REFINEMENT";
 }
 
 /**

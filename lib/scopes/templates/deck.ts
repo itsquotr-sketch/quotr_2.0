@@ -1,5 +1,11 @@
 import type { ScopeDefinition } from "@/lib/scopes/types";
 
+/**
+ * Deck question copy / input types live here.
+ * Ask classification is canonical in `lib/estimate/deck-information-contract.ts`
+ * (assembled at runtime by `lib/estimate/deck-question-descriptors.ts`).
+ * Do not add a conflicting `level1BlockingClass` for Deck facts.
+ */
 export const deckScope: ScopeDefinition = {
   type: "deck",
   label: "Deck",

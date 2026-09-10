@@ -25,9 +25,14 @@ export {
   hasNotSureOption,
   isClarifyExtraFactKey,
   isDisclosedAssumptionQuestion,
+  isDetailsOwnedQuestion,
   isInitialCaptureQuestion,
   isRefineOnlyQuestion,
 } from "@/lib/assistant/clarify/question-contract";
+export {
+  groupDetailsCandidates,
+  detailsSectionForCandidate,
+} from "@/lib/assistant/clarify/details-groups";
 export {
   CLARIFY_IS_PRIMARY,
   CLARIFY_SINGLE_WA_BUDGET,

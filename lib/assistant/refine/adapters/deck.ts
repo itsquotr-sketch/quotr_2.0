@@ -7,10 +7,13 @@ import {
 import {
   DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY,
   DECK_CONCRETE_TO_SUPPORTS_FACT_KEY,
-  deckStepsCommerciallyIncluded,
   newSubstructureIncluded,
   shouldAskPileReplacement,
 } from "@/lib/estimate/deck-scope-2c";
+import {
+  deckFactQuestionClass,
+  isDeckClarifyAskClass,
+} from "@/lib/estimate/deck-information-contract";
 import type {
   ComposeRefineInput,
   RefineCandidate,
@@ -77,23 +80,11 @@ const DECK_CHECK_COPY: Record<
   string,
   { question: string; options?: readonly string[] }
 > = {
-  "deck.existing_deck_removal": {
-    question: "Include existing deck removal?",
-  },
-  "deck.vertical_face_boards_required": {
-    question: "Include fascia / edge boards?",
-  },
   "deck.skirting_included": {
     question: "Is full-height deck skirting / screening included?",
   },
-  "deck.steps_included": {
-    question: "Are new steps included?",
-  },
   "deck.concrete_to_supports": {
     question: "Include concrete to piles or posts?",
-  },
-  "deck.balustrade_required": {
-    question: "Include a balustrade?",
   },
 };
 
@@ -104,10 +95,6 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
     const supportsRelevant =
       newSubstructureIncluded([...facts], workAreaId) ||
       shouldAskPileReplacement({ facts: [...facts], workAreaId });
-    const stepsActive = deckStepsCommerciallyIncluded({
-      facts: [...facts],
-      workAreaId,
-    });
     const concreteYes =
       getBooleanFact([...facts], workAreaId, DECK_CONCRETE_TO_SUPPORTS_FACT_KEY) ===
       true;
@@ -115,6 +102,7 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
     for (const item of notConfirmed) {
       const key = item.sourceFactKey;
       if (!key || !(key in DECK_CHECK_COPY)) continue;
+      if (isDeckClarifyAskClass(deckFactQuestionClass(key))) continue;
       if (key === DECK_CONCRETE_TO_SUPPORTS_FACT_KEY && !supportsRelevant) {
         continue;
       }
@@ -127,47 +115,6 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
         options: copy.options,
       });
       if (row) out.push(row);
-    }
-
-    if (!known(facts, workAreaId, "deck.board_material", briefText)) {
-      out.push({
-        id: `refine:${workAreaId}:deck.board_material`,
-        group: "specification",
-        tier: "high_value",
-        workAreaId,
-        workAreaName,
-        workAreaType: "deck",
-        factKey: "deck.board_material",
-        constraintKey: null,
-        questionKey: "deck.board_material",
-        label: "Decking material",
-        question: "What decking is being used?",
-        inputType: "select",
-        options: ["Treated Pine", "Hardwood", "Kwila", "Composite"],
-        writeTarget: "FACT",
-        write: null,
-        consumedByCalculator: true,
-      });
-    }
-
-    if (!known(facts, workAreaId, "deck.height_m", briefText)) {
-      out.push({
-        id: `refine:${workAreaId}:deck.height_m`,
-        group: "specification",
-        tier: "high_value",
-        workAreaId,
-        workAreaName,
-        workAreaType: "deck",
-        factKey: "deck.height_m",
-        constraintKey: null,
-        questionKey: "deck.height_m",
-        label: "Deck height",
-        question: "Approximate deck height above ground?",
-        inputType: "number",
-        writeTarget: "FACT",
-        write: null,
-        consumedByCalculator: true,
-      });
     }
 
     if (
@@ -217,52 +164,6 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
         question: "What is the existing substructure condition?",
         inputType: "select",
         options: ["Sound", "Partial replacement", "Full replacement", "None", "Unknown"],
-        writeTarget: "FACT",
-        write: null,
-        consumedByCalculator: true,
-      });
-    }
-
-    if (
-      stepsActive &&
-      !known(facts, workAreaId, "deck.step_width_m", briefText)
-    ) {
-      out.push({
-        id: `refine:${workAreaId}:deck.step_width_m`,
-        group: "specification",
-        tier: "high_value",
-        workAreaId,
-        workAreaName,
-        workAreaType: "deck",
-        factKey: "deck.step_width_m",
-        constraintKey: null,
-        questionKey: "deck.step_width_m",
-        label: "Step width",
-        question: "How wide are the steps?",
-        inputType: "number",
-        writeTarget: "FACT",
-        write: null,
-        consumedByCalculator: true,
-      });
-    }
-
-    if (
-      stepsActive &&
-      !known(facts, workAreaId, "deck.step_going_m", briefText)
-    ) {
-      out.push({
-        id: `refine:${workAreaId}:deck.step_going_m`,
-        group: "specification",
-        tier: "high_value",
-        workAreaId,
-        workAreaName,
-        workAreaType: "deck",
-        factKey: "deck.step_going_m",
-        constraintKey: null,
-        questionKey: "deck.step_going_m",
-        label: "Tread depth",
-        question: "How deep are the stair treads?",
-        inputType: "number",
         writeTarget: "FACT",
         write: null,
         consumedByCalculator: true,

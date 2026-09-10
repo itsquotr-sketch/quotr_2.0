@@ -421,13 +421,13 @@ check(
 );
 check(
   "Continue does not await persist before advance",
-  /advance\(showing\);\s*void Promise\.resolve\(onAnswerValue/.test(clarifySrc)
+  /advance\(candidate\);\s*void Promise\.resolve\(\s*onAnswerValue/.test(clarifySrc)
 );
 check(
   "multi-select toggles do not persist until Continue",
   /if \(control === "MULTI_SELECT"\)/.test(clarifySrc) &&
-    clarifySrc.includes("setHeldMulti(candidate)") &&
-    /setHeldMulti\(candidate\);\s*setRewind\(null\);\s*return;/.test(clarifySrc)
+    clarifySrc.includes("setHeldMultiId") &&
+    /setHeldMultiId\(candidate\.id\);\s*return;/.test(clarifySrc)
 );
 check(
   "no calculator / quote formula edits in this contract",

@@ -25,6 +25,8 @@ export const STEP_ARRANGEMENT_FROM_HEIGHT_STATEMENT =
   "Step arrangement estimated from deck height for pricing. Final compliant dimensions to be confirmed.";
 export const STEP_WIDTH_ASSUMPTION_STATEMENT =
   "Assuming 1.0 m step width for pricing. Not the full deck edge unless specified.";
+export const STEP_GOING_ASSUMPTION_STATEMENT =
+  "Assuming 280 mm stair tread depth for pricing (LOW-CONFIDENCE).";
 
 export type DeckStepsQuantities = {
   riseCount: number;

@@ -1,4 +1,5 @@
 import type { AssistantStage } from "@/components/assistant/types";
+import type { DetailsWorkAreaGroup } from "@/lib/assistant/clarify/details-groups";
 import type { JobPlanScopeWrite } from "@/lib/assistant/job-plan/types";
 
 export type ClarifyAskClass =
@@ -67,6 +68,7 @@ export type ClarifyAssumption = {
 export type ClarifyView = {
   readonly candidates: readonly ClarifyCandidate[];
   readonly deferred: readonly ClarifyCandidate[];
+  readonly groups: readonly DetailsWorkAreaGroup[];
   readonly assumptions: readonly ClarifyAssumption[];
   /** Disclosures if the builder chooses Estimate now now (visible + deferred). */
   readonly estimateNowAssumptions: readonly ClarifyAssumption[];

@@ -311,13 +311,13 @@ check(
     shellSrc.includes("onRejectedCanonicalMutation")
 );
 check(
-  "ClarifyPanel current question skips locally accepted ids",
-  clarifySrc.includes("currentClarifyCandidate") &&
-    clarifySrc.includes("locallyResolvedIds")
+  "ClarifyPanel skips locally accepted ids",
+  clarifySrc.includes("locallyResolvedIds") &&
+    clarifySrc.includes("setHeldMultiId")
 );
 check(
   "Continue advances before awaiting the set write",
-  /advance\(showing\);\s*void Promise\.resolve\(onAnswerValue/.test(clarifySrc)
+  /advance\(candidate\);\s*void Promise\.resolve\(\s*onAnswerValue/.test(clarifySrc)
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

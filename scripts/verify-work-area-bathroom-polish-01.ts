@@ -300,8 +300,8 @@ check(
 const refineAdapter = read("lib/assistant/refine/adapters/bathroom.ts");
 check(
   "multi-select Continue commits the full set and advances without waiting",
-  /advance\(showing\);\s*void Promise\.resolve\(onAnswerValue/.test(clarifySrc) &&
-    clarifySrc.includes("setHeldMulti(candidate)")
+  /advance\(candidate\);\s*void Promise\.resolve\(\s*onAnswerValue/.test(clarifySrc) &&
+    clarifySrc.includes("setHeldMultiId")
 );
 const demoCalc = bathroom(answeredCore);
 const demoKeys = (demoCalc.requirements ?? [])

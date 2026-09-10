@@ -1917,15 +1917,31 @@ function applyDiscoveredWorkAreaInstances(
     const instances = discovered.filter((row) => row.type === type);
     if (instances.length === 0) continue;
     if (instances.length === 1) {
-      const existing = extraction.workAreas.find((row) => row.type === type);
-      if (existing && instances[0]?.name) {
-        existing.name = instances[0].name;
-        existing.instance_key = instances[0].name;
-      } else if (!existing && instances[0]) {
+      // Discovery says this type is ONE logical instance. A raw model
+      // response can still propose several same-type rows for it (e.g. one
+      // per construction variant it described) — collapse every redundant
+      // raw proposal into a single canonical row so fact binding later has
+      // exactly one target, instead of leaving a fact-less phantom duplicate.
+      // Structured facts are filtered by type, not by row, so nothing is lost
+      // by removing the redundant rows here.
+      const sameType = extraction.workAreas.filter((row) => row.type === type);
+      const canonicalName = instances[0]?.name;
+      if (sameType.length > 0) {
+        const [canonical] = sameType;
+        if (canonicalName) {
+          canonical.name = canonicalName;
+          canonical.instance_key = canonicalName;
+        }
+        if (sameType.length > 1) {
+          extraction.workAreas = extraction.workAreas.filter(
+            (row) => row.type !== type || row === canonical
+          );
+        }
+      } else if (canonicalName) {
         extraction.workAreas.push({
           type,
-          name: instances[0].name,
-          instance_key: instances[0].name,
+          name: canonicalName,
+          instance_key: canonicalName,
           confidence: 0.9,
           rationale: `INSTANCE: ${instances[0].evidence}`,
         });

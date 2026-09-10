@@ -14,6 +14,7 @@ import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-lab
 type ClarifyValueFieldProps = {
   candidate: ClarifyCandidate;
   isSaving?: boolean;
+  compact?: boolean;
   onSubmit: (value: string | number) => void;
 };
 
@@ -31,6 +32,7 @@ function emptyLocal(identity: string): LocalField {
 export function ClarifyValueField({
   candidate,
   isSaving,
+  compact = false,
   onSubmit,
 }: ClarifyValueFieldProps) {
   const isNumber = candidate.inputType === "number";
@@ -156,7 +158,7 @@ export function ClarifyValueField({
           {ASSISTANT_ACTION_LABELS.useQuotrAssumption}
         </Button>
       ) : null}
-      {candidate.assumable && !candidate.blocksEstimate ? (
+      {candidate.assumable && !candidate.blocksEstimate && !compact ? (
         <p className="text-xs text-muted-foreground" data-clarify-assumption-hint>
           We&apos;ll use a typical assumption and show it in your estimate.
         </p>

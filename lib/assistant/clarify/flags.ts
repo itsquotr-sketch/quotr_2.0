@@ -2,14 +2,13 @@
 export const CLARIFY_IS_PRIMARY = true;
 
 /**
- * Soft UX target for a single Work Area visible batch (~0–3 questions).
- * Not a correctness ceiling and not Ready. Remaining INITIAL_REQUIRED
- * questions continue in later batches until resolved.
+ * Historical soft UX target. EF02-C2 Details presentation is not capped.
+ * Ranking helpers may still read these constants; they must not hide
+ * currently relevant Details questions.
  */
 export const CLARIFY_SINGLE_WA_BUDGET = 3;
 
 /**
- * Soft UX target for multi Work Area (~0–6 initial questions, not 3 per WA).
- * Not a correctness ceiling — HARD_MINIMUM / non-assumable may exceed it.
+ * Historical multi Work Area soft target. Not a Details presentation cap.
  */
 export const CLARIFY_MULTI_WA_BUDGET = 6;

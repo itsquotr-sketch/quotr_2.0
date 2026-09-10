@@ -53,7 +53,10 @@ const workAreas = [
   { id: "d1", type: "demolition", name: "Demolition / strip-out", status: "confirmed" as const },
 ];
 
-function authorities(constraints: readonly { key: string; value: string }[]) {
+function authorities(
+  constraints: readonly { key: string; value: string }[],
+  pendingWrites = 0
+) {
   const compose = composeClarifyInputFromEstimateContext({
     stage: "work_area_questions",
     briefText: COORDINATION_ORIGINAL_BRIEF,
@@ -68,6 +71,7 @@ function authorities(constraints: readonly { key: string; value: string }[]) {
     jobPlan: compose.jobPlan,
     qualityLevel: "standard",
     constraints,
+    pendingWrites,
   });
   const estimate = evaluateClarifyEstimateReadiness(compose);
   const generate = evaluateGenerateEstimatePermission({
@@ -135,6 +139,71 @@ check(
   "Create Estimate availability matches Ready",
   ready.generate.ready === ready.panel.enoughToEstimate &&
     ready.generate.ready === ready.estimate.ready
+);
+
+console.log("\n=== Project-condition write race (EF02-A) ===\n");
+const readyConstraints = [
+  { key: "site_access", value: "Easy" },
+  { key: "material_carry_distance", value: "< 10m" },
+];
+
+const unresolvedCarry = authorities([{ key: "site_access", value: "Easy" }], 0);
+check(
+  "select material_carry_distance unresolved: generation blocked",
+  unresolvedCarry.panel.enoughToEstimate === false
+);
+
+const persistencePending = authorities(readyConstraints, 1);
+check(
+  "carry answered but write still pending: Ready stays false, not a false-positive",
+  persistencePending.clarify.enoughToEstimate === true &&
+    persistencePending.panel.enoughToEstimate === false,
+  "clarify (fact-complete) view must already be true here so the pending gate is the only thing blocking Ready"
+);
+check(
+  "pending write surfaces a Saving state, not a contradictory Ready",
+  Boolean(persistencePending.panel.blockerCopy?.toLowerCase().includes("saving"))
+);
+
+const persistenceResolved = authorities(readyConstraints, 0);
+check(
+  "once persistence resolves: Ready flips true immediately",
+  persistenceResolved.panel.enoughToEstimate === true &&
+    persistenceResolved.generate.ready === true
+);
+
+console.log("\n=== Unified pending-write authority (source) ===\n");
+const shellForRace = read("components/assistant/AssistantShell.tsx");
+check(
+  "handleClarifyBoolean raises the unified counter unconditionally",
+  /setClarifyWritePending\(true\);\s*setPendingReadinessWrites\(\(n\) => n \+ 1\);/.test(
+    shellForRace
+  )
+);
+check(
+  "handleClarifyValue raises the unified counter unconditionally (covers select Project Conditions)",
+  /if \(isNumericOrText\) setClarifyWritePending\(true\);\s*setPendingReadinessWrites\(\(n\) => n \+ 1\);/.test(
+    shellForRace
+  )
+);
+check(
+  "both handlers release the counter in `finally` (survives early return and error paths)",
+  (shellForRace.match(
+    /finally \{\s*setClarifyWritePending\(false\);\s*setPendingReadinessWrites\(\(n\) => Math\.max\(0, n - 1\)\);\s*\}/g
+  ) ?? []).length === 2
+);
+check(
+  "Create Estimate is gated by the unified counter, not the number/text-only flag",
+  shellForRace.includes("pendingReadinessWrites > 0") &&
+    !/handleGenerateEstimate[\s\S]{0,200}clarifyWritePending/.test(shellForRace)
+);
+check(
+  "Details readiness is composed from the unified counter",
+  shellForRace.includes("pendingWrites: pendingReadinessWrites")
+);
+check(
+  "chip/select UI still does not disable via the number/text-only flag (unchanged UX)",
+  shellForRace.includes("if (isNumericOrText) setClarifyWritePending(true)")
 );
 
 if (failed > 0) {

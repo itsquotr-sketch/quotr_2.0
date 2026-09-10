@@ -17,6 +17,7 @@ export function ClarifyAnswerControl({
   value,
   persistError,
   continuePending,
+  compact = false,
   onAnswerBoolean,
   onAnswerValue,
   onContinueMulti,
@@ -25,6 +26,7 @@ export function ClarifyAnswerControl({
   value: string | number | boolean | string[] | null | undefined;
   persistError?: string | null;
   continuePending?: boolean;
+  compact?: boolean;
   onAnswerBoolean?: (
     candidate: ClarifyCandidate,
     presentation: "INCLUDED" | "NOT_INCLUDED"
@@ -46,6 +48,7 @@ export function ClarifyAnswerControl({
         options={booleanOptions}
         value={booleanPresentationToChoice(value, booleanOptions)}
         error={persistError}
+        compact={compact}
         onSelect={(next) => {
           const picked = Array.isArray(next) ? next[0] : next;
           onAnswerBoolean?.(
@@ -66,6 +69,7 @@ export function ClarifyAnswerControl({
           value={value}
           multiple
           error={persistError}
+          compact={compact}
           onSelect={(next) => onAnswerValue?.(candidate, next)}
         />
         {onContinueMulti ? (
@@ -94,6 +98,7 @@ export function ClarifyAnswerControl({
         value={exclusiveOptionSelectValue(value)}
         multiple={false}
         error={persistError}
+        compact={compact}
         onSelect={(next) => {
           const picked = Array.isArray(next) ? next[0] : next;
           onAnswerValue?.(candidate, picked ?? "");
@@ -105,6 +110,7 @@ export function ClarifyAnswerControl({
   return (
     <ClarifyValueField
       candidate={candidate}
+      compact={compact}
       onSubmit={(next) => onAnswerValue?.(candidate, next)}
     />
   );

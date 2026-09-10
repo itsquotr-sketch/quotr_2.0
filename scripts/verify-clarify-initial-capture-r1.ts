@@ -180,10 +180,10 @@ check(
     geometryOnly.remainingRequiredCount > 0
 );
 check(
-  "Visible batch stays progressive",
-  geometryOnly.visibleCount > 0 &&
-    geometryOnly.visibleCount <= Math.max(CLARIFY_SINGLE_WA_BUDGET, geometryOnly.candidates.filter((c) => c.askClass === "HARD_MINIMUM").length) &&
-    geometryOnly.remainingRequiredCount >= geometryOnly.visibleCount
+  "Visible Details is the complete currently relevant set, not a 3-question batch",
+  geometryOnly.visibleCount === geometryOnly.candidates.length &&
+    geometryOnly.visibleCount > 3 &&
+    geometryOnly.remainingRequiredCount <= geometryOnly.visibleCount
 );
 check(
   "Bathroom framing is initial-capture when relevant",
@@ -445,8 +445,10 @@ check(
     !/OptionSelect[\s\S]{0,260}disabled=\{isSaving\}/.test(refineSrc)
 );
 check(
-  "Ready card requires remainingRequiredCount === 0",
-  clarifySrc.includes("view.remainingRequiredCount === 0")
+  "Ready UI uses unified enoughToEstimate, not a stale remainingRequiredCount source string",
+  clarifySrc.includes("readiness.enoughToEstimate") &&
+    clarifySrc.includes("view.enoughToEstimate") &&
+    !clarifySrc.includes("view.remainingRequiredCount === 0")
 );
 check(
   "no calculator / quote formula edits in this contract",

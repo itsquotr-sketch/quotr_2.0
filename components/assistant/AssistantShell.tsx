@@ -138,6 +138,8 @@ import {
 } from "@/lib/assistant/mode";
 import type { EstimateFact } from "@/lib/estimate/types";
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
+import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumptions";
+import { disclosedProjectConditionForNotSure } from "@/lib/project-conditions/consumed-authority";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { startPreviewPerf, recordPreviewPerf } from "@/lib/assistant/preview-performance";
 import {
@@ -250,6 +252,12 @@ export function AssistantShell({
 
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [clarifyWritePending, setClarifyWritePending] = useState(false);
+  // Unified authority for "does a persisted Clarify answer of ANY input type
+  // (select/boolean/number/text/Project Condition) still have an in-flight
+  // write to the DB". Readiness/Create-Estimate gating reads this counter,
+  // not `clarifyWritePending` (which only covers number/text and intentionally
+  // does not disable select/chip UI while saving).
+  const [pendingReadinessWrites, setPendingReadinessWrites] = useState(0);
   const [actionError, setActionError] = useState<string | null>(null);
   const [actionDenial, setActionDenial] = useState<{
     reasonCode?: string;
@@ -1063,7 +1071,7 @@ export function AssistantShell({
       isGenerating ||
       pendingAction != null ||
       actionLockRef.current ||
-      clarifyWritePending
+      pendingReadinessWrites > 0
     ) {
       return;
     }
@@ -1089,7 +1097,7 @@ export function AssistantShell({
   }, [
     isGenerating,
     pendingAction,
-    clarifyWritePending,
+    pendingReadinessWrites,
     project.id,
     runAction,
     constraintsSubmitted,
@@ -1526,6 +1534,7 @@ export function AssistantShell({
     ) => {
       const requestSeq = ++factMutationSeqRef.current;
       setClarifyWritePending(true);
+      setPendingReadinessWrites((n) => n + 1);
       let result: AssistantActionState = { success: true };
       try {
       if (candidate.write && candidate.workAreaId) {
@@ -1639,6 +1648,7 @@ export function AssistantShell({
       }
       } finally {
         setClarifyWritePending(false);
+        setPendingReadinessWrites((n) => Math.max(0, n - 1));
       }
     },
     [
@@ -1659,11 +1669,16 @@ export function AssistantShell({
       const isNumericOrText =
         candidate.inputType === "number" || candidate.inputType === "text";
       if (isNumericOrText) setClarifyWritePending(true);
+      setPendingReadinessWrites((n) => n + 1);
       const valueType = persistClarifyValueType(candidate, value);
       try {
         if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
           if (Array.isArray(value)) return;
           const constraintKey = candidate.constraintKey ?? candidate.questionKey;
+          const disclosed = disclosedProjectConditionForNotSure(
+            constraintKey,
+            value
+          );
           overlaySeqByConstraintRef.current.set(constraintKey, requestSeq);
           setLiveConstraints((prev) => [
             ...prev.filter((row) => row.key !== constraintKey),
@@ -1671,8 +1686,8 @@ export function AssistantShell({
               id: constraintKey,
               key: constraintKey,
               label: candidate.label,
-              value,
-              source: "user",
+              value: disclosed ? disclosed.value : value,
+              source: disclosed ? disclosed.source : "user",
             },
           ]);
           const result = await runSerializedFactMutation(() =>
@@ -1697,11 +1712,12 @@ export function AssistantShell({
           return;
         }
         if (!candidate.factKey) return;
+        const disclosed = disclosedAssumptionForNotSure(candidate.factKey, value);
         const overlayRow = {
           key: candidate.factKey,
           work_area_id: candidate.workAreaId,
-          value,
-          source: "user" as const,
+          value: disclosed ? disclosed.value : value,
+          source: (disclosed ? disclosed.source : "user") as "user" | "assumption",
           wallTypeId: candidate.wallTypeId ?? undefined,
           openingId: candidate.openingId ?? undefined,
         };
@@ -1757,6 +1773,7 @@ export function AssistantShell({
         }
       } finally {
         setClarifyWritePending(false);
+        setPendingReadinessWrites((n) => Math.max(0, n - 1));
       }
     },
     [
@@ -1957,6 +1974,7 @@ export function AssistantShell({
         constraints: liveConstraints.map((row) => ({
           key: row.key,
           value: row.value,
+          source: row.source,
         })),
         qualityLevel: qualityLevel ?? project.qualityLevel,
         briefText: briefText || project.briefText,
@@ -1983,6 +2001,7 @@ export function AssistantShell({
         constraints: liveConstraints.map((row) => ({
           key: row.key,
           value: row.value,
+          source: row.source,
         })),
         jobPlan,
       }),
@@ -2008,10 +2027,11 @@ export function AssistantShell({
         constraints: liveConstraints.map((row) => ({
           key: row.key,
           value: row.value,
+          source: row.source,
         })),
-        pendingWrites: clarifyWritePending ? 1 : 0,
+        pendingWrites: pendingReadinessWrites,
       }),
-    [clarifyView, clarifyWritePending, jobPlan, liveConstraints, project.qualityLevel, qualityLevel]
+    [clarifyView, pendingReadinessWrites, jobPlan, liveConstraints, project.qualityLevel, qualityLevel]
   );
 
   const refineView = useMemo(
@@ -2024,6 +2044,7 @@ export function AssistantShell({
         constraints: liveConstraints.map((row) => ({
           key: row.key,
           value: row.value,
+          source: row.source,
         })),
         jobPlan,
       }),
@@ -2163,8 +2184,8 @@ export function AssistantShell({
     ? workAreasConfirmed && !estimateReady
       ? estimateReadiness.enoughToEstimate
         ? "Work confirmed · Estimate ready"
-        : `Work confirmed · ${clarifyView.visibleCount} thing${
-            clarifyView.visibleCount === 1 ? "" : "s"
+        : `Work confirmed · ${clarifyView.remainingRequiredCount} thing${
+            clarifyView.remainingRequiredCount === 1 ? "" : "s"
           } to clarify`
       : null
     : preferProjectConditionsAsk
@@ -3023,7 +3044,7 @@ export function AssistantShell({
               statusLabel={
                 estimateReadiness.enoughToEstimate
                   ? "Ready"
-                  : clarifyWritePending
+                  : pendingReadinessWrites > 0
                     ? "Saving"
                     : clarifyView.remainingRequiredCount > 0
                       ? `${clarifyView.remainingRequiredCount} to clarify`

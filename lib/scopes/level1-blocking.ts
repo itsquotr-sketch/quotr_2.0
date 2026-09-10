@@ -1,14 +1,12 @@
 import type { ScopeQuestionTemplate } from "@/lib/scopes/types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
+import {
+  deckFactQuestionClass,
+  mapDeckQuestionClassToLevel1,
+} from "@/lib/estimate/deck-information-contract";
 
 /** Level 1 — whether a missing fact blocks Estimate now. */
 export type Level1BlockingClass = "HARD_MINIMUM" | "ASSUMABLE" | "REFINEMENT";
-
-const DECK_HARD_MINIMUM_KEYS = new Set([
-  "deck.length_m",
-  "deck.width_m",
-  "deck.area_m2",
-]);
 
 const RETAINING_WALL_HARD_MINIMUM_KEYS = new Set([
   "retaining_wall.length_m",
@@ -35,13 +33,6 @@ const INTERNAL_WALLS_HARD_MINIMUM_KEYS = new Set([
   "internal_walls.wall_type.frame_system",
 ]);
 
-const DECK_ASSUMABLE_KEYS = new Set([
-  "deck.height_m",
-  "deck.board_material",
-  "deck.board_width_mm",
-  "deck.existing_deck_removal",
-]);
-
 /** Project Conditions that may be asked but do not block Level 1 when unresolved. */
 export const LEVEL1_ASSUMABLE_PROJECT_CONDITION_KEYS = new Set<string>([
   "site_access",
@@ -60,11 +51,12 @@ export function getLevel1BlockingClass(
     "factKey" | "level1BlockingClass" | "estimatePriorityClass"
   >
 ): Level1BlockingClass {
+  const deckClass = deckFactQuestionClass(template.factKey);
+  if (deckClass) {
+    return mapDeckQuestionClassToLevel1(deckClass);
+  }
   if (template.level1BlockingClass) {
     return template.level1BlockingClass;
-  }
-  if (DECK_HARD_MINIMUM_KEYS.has(template.factKey)) {
-    return "HARD_MINIMUM";
   }
   if (RETAINING_WALL_HARD_MINIMUM_KEYS.has(template.factKey)) {
     return "HARD_MINIMUM";
@@ -77,9 +69,6 @@ export function getLevel1BlockingClass(
   }
   if (INTERNAL_WALLS_HARD_MINIMUM_KEYS.has(template.factKey)) {
     return "HARD_MINIMUM";
-  }
-  if (DECK_ASSUMABLE_KEYS.has(template.factKey)) {
-    return "ASSUMABLE";
   }
   if (template.estimatePriorityClass === "P0") {
     return "ASSUMABLE";

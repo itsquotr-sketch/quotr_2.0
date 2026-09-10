@@ -27,6 +27,18 @@ export {
 } from "@/lib/project-conditions/applicability";
 
 export {
+  CONSUMED_PROJECT_CONDITION_KEYS,
+  consumedProjectConditionAskClass,
+  disclosedProjectConditionForNotSure,
+  getConsumedProjectConditionDef,
+  isRequiredConsumedProjectCondition,
+  listConsumedProjectConditionDefs,
+  projectConsumesConsumedCondition,
+  type ConsumedProjectConditionAskClass,
+  type ConsumedProjectConditionDef,
+} from "@/lib/project-conditions/consumed-authority";
+
+export {
   resolveLegacyCartingMetres,
   resolveLegacyFloorLevel,
   resolveLegacyHazmat,
