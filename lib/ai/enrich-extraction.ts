@@ -16,6 +16,13 @@ import {
   shouldSuggestExternalStairs,
 } from "@/lib/scopes/deck-stairs-boundary";
 import { applyInternalWallsFactWrite } from "@/lib/estimate/internal-walls-wall-types";
+import {
+  applyExtractedInternalWallsToFacts,
+  briefRequestsInternalWallsRebuild,
+  extractInternalWallsTypesFromBrief,
+  stripInventedInternalWallsFacts,
+} from "@/lib/estimate/internal-walls-brief";
+import { filterTopLevelWorkAreas } from "@/lib/work-areas/ownership";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
@@ -215,13 +222,21 @@ function inferPainting(
   allowedTypes: string[]
 ): void {
   const patterns = [
-    "paint wall",
-    "paint ceiling",
-    "repaint",
-    "two coats",
-    "2 coats",
+    "paint the whole house",
+    "paint the house",
+    "repaint all",
+    "repaint the house",
+    "paint existing",
+    "paint all walls",
+    "paint all bedrooms",
+    "paint walls and ceiling",
+    "repaint walls and",
+    "paint the interior",
+    "interior painting",
     "paint doors",
     "paint trims",
+    "two coats",
+    "2 coats",
   ];
   if (!includesAny(brief, patterns)) return;
 
@@ -229,7 +244,7 @@ function inferPainting(
     extraction,
     "painting",
     0.82,
-    "Painting mentioned in brief",
+    "EXPLICIT: Independent painting mentioned in brief",
     allowedTypes
   );
 
@@ -266,8 +281,16 @@ function inferInternalWalls(
     "m of new internal wall",
     "line both sides with",
     "new internal wall",
+    "new partition",
+    "build a partition",
+    "build a wall",
+    "rebuild the walls",
+    "rebuild walls",
+    "framed timber",
     "90x45",
     "90×45",
+    "45x90",
+    "45×90",
   ];
   if (!includesAny(brief, patterns)) return;
 
@@ -275,20 +298,37 @@ function inferInternalWalls(
     extraction,
     "internal_walls",
     0.85,
-    "Internal walls mentioned in brief",
+    "EXPLICIT: Internal walls mentioned in brief",
     allowedTypes
   );
 
-  if (
-    includesAny(brief, ["new internal wall", "new partition", "new wall"]) &&
-    !includesAny(brief, ["remove", "reline", "form opening"])
-  ) {
+  if (briefRequestsInternalWallsRebuild(brief)) {
     addFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.job_scope",
       label: "Wall work",
       value: "new_partition",
     });
+  }
+
+  const specs = extractInternalWallsTypesFromBrief(brief);
+  if (specs.length > 0) {
+    const seeded = applyExtractedInternalWallsToFacts({
+      facts: [],
+      workAreaId: "extract",
+      types: specs,
+    });
+    const wallTypes = seeded.find((row) => row.key === "internal_walls.wall_types")
+      ?.value;
+    if (Array.isArray(wallTypes) && wallTypes.length > 0) {
+      addFact(extraction, {
+        workAreaType: "internal_walls",
+        key: "internal_walls.wall_types",
+        label: "Wall types",
+        value: wallTypes as Record<string, unknown>[],
+      });
+    }
+    if (specs.length >= 2) return;
   }
 
   const length =
@@ -319,7 +359,7 @@ function inferInternalWalls(
     });
   }
 
-  if (includesAny(brief, ["timber framed", "timber frame", "90x45", "90×45", "140x45", "140×45"])) {
+  if (includesAny(brief, ["timber framed", "timber frame", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
     addFact(extraction, {
       workAreaType: "internal_walls",
       key: "internal_walls.framing_type",
@@ -375,7 +415,7 @@ function inferInternalWalls(
       ? Number(heightMatch[1])
       : ((extraction.facts.find((f) => f.key === "internal_walls.height_m")
           ?.value as number | undefined) ?? null);
-  if (proposedLength != null || proposedHeight != null || includesAny(brief, ["90x45", "90×45", "timber"])) {
+  if (proposedLength != null || proposedHeight != null || includesAny(brief, ["90x45", "90×45", "45x90", "timber"])) {
     let facts: EstimateFact[] = [];
     const workAreaId = "extract";
     facts = applyInternalWallsFactWrite({
@@ -384,7 +424,7 @@ function inferInternalWalls(
       key: "internal_walls.add_wall_type",
       value: true,
     });
-    if (includesAny(brief, ["timber", "90x45", "90×45", "140x45", "140×45"])) {
+    if (includesAny(brief, ["timber", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
       facts = applyInternalWallsFactWrite({
         facts,
         workAreaId,
@@ -449,10 +489,31 @@ function inferDoors(
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
+  if (
+    includesAny(brief, [
+      "no door",
+      "without a door",
+      "but no door",
+      "opening but no door",
+    ])
+  ) {
+    return;
+  }
+
   const doorMatch = brief.match(/(\d+)\s+(?:solid core\s+)?(?:internal\s+)?doors?/i);
   const hasDoors =
     doorMatch !== null ||
-    includesAny(brief, ["solid core door", "internal door", "install 2 internal"]);
+    includesAny(brief, [
+      "solid core door",
+      "internal door",
+      "install 2 internal",
+      "including door",
+      "include door",
+      "new door",
+      "door jamb",
+      "door hardware",
+      "door leaf",
+    ]);
 
   if (!hasDoors) return;
 
@@ -460,7 +521,7 @@ function inferDoors(
     extraction,
     "doors",
     0.84,
-    "Doors mentioned in brief",
+    "EXPLICIT: Doors mentioned in brief",
     allowedTypes
   );
 
@@ -1365,25 +1426,24 @@ function inferPlastering(
     "level 4 stopping",
     "level 5 stopping",
     "stop new gib",
+    "skim coat",
+    "skim-coat",
+    "repair and plaster",
+    "plaster the existing",
+    "plaster existing",
+    "stop all existing",
+    "plaster ceilings",
     "plastering",
-    "stopping",
-    "sand ready for paint",
     "patch repair",
-    "level 4",
-    "level 5",
   ];
 
-  const gibLinedWall =
-    includesAny(brief, ["lined both sides with gib", "lined with gib", "gib"]) &&
-    includesAny(brief, ["internal wall", "new internal wall", "build"]);
-
-  if (!includesAny(brief, patterns) && !gibLinedWall) return;
+  if (!includesAny(brief, patterns)) return;
 
   addWorkAreaIfMissing(
     extraction,
     "plastering",
     0.88,
-    "Plastering/stopping mentioned in brief",
+    "EXPLICIT: Independent plastering mentioned in brief",
     allowedTypes
   );
 
@@ -1412,30 +1472,6 @@ function inferPlastering(
       label: "Plastering level",
       value: "Level 5",
     });
-  } else if (gibLinedWall) {
-    addFact(extraction, {
-      workAreaType: "plastering",
-      key: "plastering.level",
-      label: "Plastering level",
-      value: "Level 4",
-    });
-  }
-
-  const wallLength = matchLinearMetres(brief);
-  const heightMatch = brief.match(/(\d+(?:\.\d+)?)\s*m\s+high/i);
-  if (gibLinedWall && wallLength && heightMatch) {
-    const height = Number(heightMatch[1]);
-    const bothSides = includesAny(brief, ["both sides"]);
-    const factor = bothSides ? 2 : 1;
-    if (Number.isFinite(height) && height > 0) {
-      addFact(extraction, {
-        workAreaType: "plastering",
-        key: "plastering.area_m2",
-        label: "Plastering area",
-        value: Math.round(wallLength * height * factor * 100) / 100,
-        unit: "m²",
-      });
-    }
   }
 
   if (includesAny(brief, ["stop new gib", "new plasterboard", "new gib", "lined with gib"])) {
@@ -1488,9 +1524,26 @@ function inferDemolitionAndRemoval(
     "rip out",
     "remove existing fence",
     "remove existing deck",
+    "removing 3 internal walls",
+    "removing internal walls",
+    "remove internal walls",
+    "removing internal wall",
+    "remove internal wall",
   ];
 
-  if (!includesAny(brief, removalPhrases) && !isFlooringRemovalOnly(brief)) {
+  const explicitInternalWallRemoval = includesAny(brief, [
+    "removing 3 internal walls",
+    "removing internal walls",
+    "remove internal walls",
+    "removing internal wall",
+    "remove internal wall",
+  ]);
+
+  if (
+    !includesAny(brief, removalPhrases) &&
+    !isFlooringRemovalOnly(brief) &&
+    !explicitInternalWallRemoval
+  ) {
     return;
   }
 
@@ -1546,6 +1599,7 @@ function inferDemolitionAndRemoval(
     isFlooringRemovalOnly(brief) ||
     includesAny(brief, ["soft strip", "strip out office", "office soft strip"]) ||
     hasExplicitFlooringRemoval ||
+    explicitInternalWallRemoval ||
     (includesAny(brief, ["remove carpet", "remove vinyl", "remove flooring"]) &&
       !hasWorkAreaType(extraction, "flooring"));
 
@@ -1554,7 +1608,9 @@ function inferDemolitionAndRemoval(
       extraction,
       "demolition",
       0.85,
-      "Standalone removal/strip-out in brief",
+      explicitInternalWallRemoval
+        ? "EXPLICIT: removing internal walls"
+        : "Standalone removal/strip-out in brief",
       allowedTypes
     );
 
@@ -1572,6 +1628,15 @@ function inferDemolitionAndRemoval(
         key: "demolition.scope_items",
         label: "Scope items",
         value: ["Flooring"],
+      });
+    }
+
+    if (explicitInternalWallRemoval) {
+      addFact(extraction, {
+        workAreaType: "demolition",
+        key: "demolition.scope_items",
+        label: "Scope items",
+        value: ["internal_walls"],
       });
     }
 
@@ -1639,7 +1704,7 @@ export function extractQualityFromBrief(
 
   if (
     includesAny(brief, [
-      "standard",
+      "standard finish",
       "average",
       "decent",
       "mid-range",
@@ -1863,6 +1928,27 @@ export function enrichExtractionFromBrief(params: {
   inferDemolitionAndRemoval(brief, extraction, params.allowedTypes);
   inferNoTiling(brief, extraction);
   applyConstraintFactsToWorkAreas(brief, extraction);
+  stripInventedInternalWallsFacts(extraction, params.briefText);
+  const owned = filterTopLevelWorkAreas({
+    briefText: params.briefText,
+    workAreas: extraction.workAreas,
+  });
+  extraction.workAreas = owned.workAreas.map((row) => {
+    const record = owned.records.find((item) => item.type === row.type);
+    return record
+      ? { ...row, rationale: `${record.classification}: ${record.evidence}` }
+      : row;
+  });
+  const keptTypes = new Set(extraction.workAreas.map((row) => row.type));
+  extraction.facts = extraction.facts.filter(
+    (fact) =>
+      fact.work_area_type == null || keptTypes.has(fact.work_area_type)
+  );
+  if (keptTypes.has("demolition")) {
+    extraction.facts = extraction.facts.filter(
+      (fact) => fact.key !== "internal_walls.demolition_included"
+    );
+  }
 
   const qualityLevel = extractQualityFromBrief(params.briefText);
   const constraints = extractConstraintsFromBrief(params.briefText);

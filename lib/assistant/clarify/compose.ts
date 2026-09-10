@@ -76,6 +76,7 @@ import {
   INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT,
   nextInternalWallsWallTypeField,
   resolveInternalWallsWallTypes,
+  wallTypeDisplayName,
   wallTypeFieldCurrentValue,
 } from "@/lib/estimate/internal-walls-wall-types";
 import {
@@ -83,6 +84,7 @@ import {
   internalWallsNestedFinishOmit,
   internalWallsPaintingOptions,
 } from "@/lib/estimate/internal-walls-finish";
+import { briefHasIndependentPlastering } from "@/lib/work-areas/ownership";
 import {
   getArrayFact,
   getBooleanFact,
@@ -683,31 +685,63 @@ function missingHardMinimum(
         confirmedTypes: input.workAreas
           .filter((row) => row.status !== "excluded")
           .map((row) => row.type),
+        independentPlastering: briefHasIndependentPlastering(
+          input.briefText ?? ""
+        ),
       });
-      const nextField = nextInternalWallsWallTypeField({
-        type: active,
-        jobScope,
-        omitStopping: omitHard.omitStopping,
-        omitPainting: omitHard.omitPainting,
-      });
-      if (
-        wallTypesRequiredForScope(jobScope) &&
-        (nextField === "internal_walls.wall_type.frame_system" ||
-          nextField === "internal_walls.wall_type.frame_size" ||
-          nextField === "internal_walls.wall_type.length_lm" ||
-          nextField === "internal_walls.opening.width_m" ||
-          nextField === "internal_walls.opening.height_m")
-      ) {
-        missing.push({
-          key: nextField,
-          inputType:
+      const typesForHard =
+        resolved.types.length > 0 ? resolved.types : [active];
+      for (const type of typesForHard) {
+        const nextField = nextInternalWallsWallTypeField({
+          type,
+          jobScope,
+          omitStopping: omitHard.omitStopping,
+          omitPainting: omitHard.omitPainting,
+        });
+        if (
+          wallTypesRequiredForScope(jobScope) &&
+          (nextField === "internal_walls.wall_type.frame_system" ||
+            nextField === "internal_walls.wall_type.frame_size" ||
             nextField === "internal_walls.wall_type.length_lm" ||
             nextField === "internal_walls.opening.width_m" ||
-            nextField === "internal_walls.opening.height_m"
-              ? "number"
-              : "select",
-          rankScore: 998,
-        });
+            nextField === "internal_walls.opening.height_m")
+        ) {
+          const template = getQuestionTemplateByKey(nextField);
+          const displayName = type
+            ? wallTypeDisplayName(type, typesForHard.indexOf(type))
+            : "Wall type";
+          out.push({
+            id: `hard:${card.workAreaId}:${type?.id ?? "new"}:${nextField}`,
+            source: "scope_fact",
+            workAreaId: card.workAreaId,
+            workAreaName: card.name,
+            workAreaType: card.workAreaType,
+            factKey: nextField,
+            constraintKey: null,
+            questionKey: nextField,
+            label: `${displayName} · ${safeFactPresentationLabel(nextField)}`,
+            question: `${displayName}: ${safeFactQuestion(nextField, template?.questionText)}`,
+            askClass: "HARD_MINIMUM",
+            inputType:
+              nextField === "internal_walls.wall_type.length_lm" ||
+              nextField === "internal_walls.opening.width_m" ||
+              nextField === "internal_walls.opening.height_m"
+                ? "number"
+                : "select",
+            unit: template?.unit,
+            options: template?.options,
+            currentValue: wallTypeFieldCurrentValue(type, nextField),
+            writeTarget: "FACT",
+            write: null,
+            blocksEstimate: true,
+            assumable: false,
+            rankScore: 998,
+            rankReason: "HARD_MINIMUM internal walls core",
+            assumptionStatement: null,
+            wallTypeId: type?.id ?? null,
+            openingId: type?.active_opening_id ?? type?.openings[0]?.id ?? null,
+          });
+        }
       }
       for (const row of missing) {
         const template = getQuestionTemplateByKey(row.key);
@@ -745,6 +779,32 @@ function missingHardMinimum(
     }
   }
   return out;
+}
+
+function internalWallsUnresolvedCopy(
+  displayName: string,
+  factKey: string,
+  fallback: string
+): string {
+  if (factKey.endsWith("insulation_included")) {
+    return `Choose whether ${displayName} includes insulation.`;
+  }
+  if (factKey.endsWith("sheet_length_mm")) {
+    return `${displayName} needs a sheet length.`;
+  }
+  if (factKey.endsWith("has_openings")) {
+    return `Does ${displayName} include openings?`;
+  }
+  if (factKey.endsWith("skirting")) {
+    return `Choose whether ${displayName} includes skirting.`;
+  }
+  if (factKey.endsWith("cornice")) {
+    return `Choose whether ${displayName} includes cornice.`;
+  }
+  if (factKey.endsWith("painting")) {
+    return `Choose whether ${displayName} includes wall painting.`;
+  }
+  return `${displayName}: ${fallback}`;
 }
 
 function pushBathroomClarifyFact(
@@ -1175,32 +1235,41 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         facts,
         workAreaId: wa.id,
       });
-      const active =
-        resolved.types.find((row) => row.id === resolved.activeId) ??
-        resolved.types[0] ??
-        null;
       const omitProgressive = internalWallsNestedFinishOmit({
         confirmedTypes: input.workAreas
           .filter((row) => row.status !== "excluded")
           .map((row) => row.type),
+        independentPlastering: briefHasIndependentPlastering(
+          input.briefText ?? ""
+        ),
       });
-      const nextField = nextInternalWallsWallTypeField({
-        type: active,
-        jobScope,
-        omitStopping: omitProgressive.omitStopping,
-        omitPainting: omitProgressive.omitPainting,
-      });
-      if (
-        nextField &&
-        nextField !== "internal_walls.wall_type.frame_system" &&
-        nextField !== "internal_walls.wall_type.frame_size" &&
-        nextField !== "internal_walls.wall_type.length_lm" &&
-        nextField !== "internal_walls.opening.width_m" &&
-        nextField !== "internal_walls.opening.height_m"
-      ) {
+      const types =
+        resolved.types.length > 0
+          ? resolved.types
+          : [null];
+      types.forEach((type, index) => {
+        const nextField = nextInternalWallsWallTypeField({
+          type,
+          jobScope,
+          omitStopping: omitProgressive.omitStopping,
+          omitPainting: omitProgressive.omitPainting,
+        });
+        if (
+          !nextField ||
+          nextField === "internal_walls.wall_type.frame_system" ||
+          nextField === "internal_walls.wall_type.frame_size" ||
+          nextField === "internal_walls.wall_type.length_lm" ||
+          nextField === "internal_walls.opening.width_m" ||
+          nextField === "internal_walls.opening.height_m"
+        ) {
+          return;
+        }
         const template = getQuestionTemplateByKey(nextField);
+        const displayName = type
+          ? wallTypeDisplayName(type, index)
+          : "Wall type";
         out.push({
-          id: `fact:${wa.id}:${nextField}`,
+          id: `fact:${wa.id}:${type?.id ?? "new"}:${nextField}`,
           source: "scope_fact",
           workAreaId: wa.id,
           workAreaName: wa.name,
@@ -1208,8 +1277,12 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           factKey: nextField,
           constraintKey: null,
           questionKey: nextField,
-          label: safeFactPresentationLabel(nextField),
-          question: safeFactQuestion(nextField, template?.questionText),
+          label: `${displayName} · ${safeFactPresentationLabel(nextField)}`,
+          question: internalWallsUnresolvedCopy(
+            displayName,
+            nextField,
+            safeFactQuestion(nextField, template?.questionText)
+          ),
           askClass:
             nextField === "internal_walls.wall_type.height_m"
               ? "ASSUME_IF_SKIPPED"
@@ -1217,24 +1290,24 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           inputType: clarifyInputTypeFromTemplate(template),
           unit: template?.unit,
           options:
-            nextField === INTERNAL_WALLS_PAINTING_SIDES_KEY && active
-              ? internalWallsPaintingOptions(active)
+            nextField === INTERNAL_WALLS_PAINTING_SIDES_KEY && type
+              ? internalWallsPaintingOptions(type)
               : template?.options,
-          currentValue: wallTypeFieldCurrentValue(active, nextField),
+          currentValue: wallTypeFieldCurrentValue(type, nextField),
           writeTarget: "FACT",
           write: null,
           blocksEstimate: false,
           assumable: nextField === "internal_walls.wall_type.height_m",
-          rankScore: CHECK_SCORES[nextField] ?? 70,
+          rankScore: (CHECK_SCORES[nextField] ?? 70) - index,
           rankReason: "Progressive wall type configuration",
           assumptionStatement:
             nextField === "internal_walls.wall_type.height_m"
               ? INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT
               : null,
-          wallTypeId: active?.id ?? null,
-          openingId: active?.active_opening_id ?? active?.openings[0]?.id ?? null,
+          wallTypeId: type?.id ?? null,
+          openingId: type?.active_opening_id ?? type?.openings[0]?.id ?? null,
         });
-      }
+      });
       continue;
     }
 

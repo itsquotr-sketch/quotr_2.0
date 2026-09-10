@@ -233,6 +233,20 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
         candidate({
           workAreaId,
           workAreaName,
+          factKey: "internal_walls.wall_type.wall_count",
+          label: "Physical wall count",
+          question: "How many physical walls share this specification?",
+          inputType: "number",
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            "internal_walls.wall_type.wall_count"
+          ),
+        })
+      );
+      out.push(
+        candidate({
+          workAreaId,
+          workAreaName,
           factKey: "internal_walls.wall_type.length_lm",
           label: "Total wall length",
           question: "What is the total wall length for this wall type?",

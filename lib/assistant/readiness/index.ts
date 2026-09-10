@@ -4,6 +4,11 @@ export {
   hardMinimumBlockerCopy,
 } from "@/lib/assistant/readiness/compose";
 export {
+  composeClarifyInputFromEstimateContext,
+  evaluateClarifyEstimateReadiness,
+  evaluateGenerateEstimatePermission,
+} from "@/lib/assistant/readiness/clarify-estimate";
+export {
   canonicalValueIsPresent,
   evaluatePackageQuickEstimateReadiness,
   packageQuickEstimateBlockingProjectConditionKeys,

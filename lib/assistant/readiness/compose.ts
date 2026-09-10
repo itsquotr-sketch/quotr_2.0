@@ -6,7 +6,7 @@ import type {
 import { RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE } from "@/lib/estimate/calculators/retaining-wall";
 import { looksLikeInternalFactKey } from "@/lib/assistant/presentation/fact-key-labels";
 
-const KNOWN_LIMIT = 5;
+const KNOWN_LIMIT = 8;
 const ASSUMPTION_LIMIT = 4;
 
 function qualityKnown(qualityLevel: string | null): string | null {
@@ -33,7 +33,11 @@ function knownFromJobPlan(plan: ComposeReadinessInput["jobPlan"]): string[] {
   const out: string[] = [];
   for (const card of plan.cards) {
     const knownChips = card.specChips.filter((chip) => !chip.assumed);
-    if (knownChips.length > 0) {
+    if (card.workAreaType === "internal_walls" && knownChips.length > 0) {
+      for (const chip of knownChips.slice(0, 6)) {
+        out.push(`${chip.label}: ${chip.value}`);
+      }
+    } else if (knownChips.length > 0) {
       out.push(knownChips.map((chip) => chip.value).join(" · "));
     } else if (card.summary) {
       out.push(card.summary);
@@ -110,17 +114,25 @@ export function composeEstimateReadiness(
     .map((c) => c.label);
 
   const blockerCopy = hardMinimumBlockerCopy(clarify.candidates);
-  const enough = clarify.enoughToEstimate && !clarify.blocksEstimate;
+  const pendingWrites = input.pendingWrites ?? 0;
+  const enough =
+    clarify.enoughToEstimate &&
+    !clarify.blocksEstimate &&
+    pendingWrites === 0;
 
   return {
     heading: enough
       ? "That's enough to build your estimate."
-      : blockerCopy
-        ? "Need a bit more"
-        : "That's enough to build your estimate.",
+      : pendingWrites > 0
+        ? "Saving the last answer"
+        : blockerCopy
+          ? "Need a bit more"
+          : "That's enough to build your estimate.",
     explanation: enough
       ? "All required details resolved. You can still change the job afterward."
-      : blockerCopy ?? "Answer the remaining required estimating questions.",
+      : pendingWrites > 0
+        ? "Saving the last answer, then the estimate can be built."
+        : blockerCopy ?? "Answer the remaining required estimating questions.",
     known,
     assumptions,
     checks,
@@ -129,9 +141,12 @@ export function composeEstimateReadiness(
       : assumptions.length > 0
         ? "Initial estimate — some assumptions"
         : "Good enough for an initial estimate",
-    canEstimateNow: clarify.canEstimateNow,
+    canEstimateNow: clarify.canEstimateNow && pendingWrites === 0,
     blocksEstimate: clarify.blocksEstimate,
-    blockerCopy,
+    blockerCopy:
+      pendingWrites > 0
+        ? "Saving the last answer, then the estimate can be built."
+        : blockerCopy,
     enoughToEstimate: enough,
   };
 }

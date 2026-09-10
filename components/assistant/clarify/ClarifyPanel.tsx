@@ -24,6 +24,7 @@ type ClarifyPanelProps = {
   readiness: EstimateReadinessView;
   refineView: RefineView;
   isSaving?: boolean;
+  isGenerating?: boolean;
   persistError?: string | null;
   onAnswerBoolean?: (
     candidate: ClarifyCandidate,
@@ -127,6 +128,7 @@ export function ClarifyPanel({
   view,
   readiness,
   isSaving,
+  isGenerating,
   persistError,
   onAnswerBoolean,
   onAnswerValue,
@@ -199,7 +201,8 @@ export function ClarifyPanel({
     !rewind &&
     showing == null &&
     remaining === 0 &&
-    (view.enoughToEstimate || view.remainingRequiredCount === 0);
+    view.enoughToEstimate === true &&
+    readiness.enoughToEstimate === true;
 
   if (showReady) {
     return (
@@ -208,6 +211,7 @@ export function ClarifyPanel({
         <ClarifyReadinessCard
           readiness={readiness}
           isSaving={isSaving}
+          isGenerating={isGenerating}
           onEstimateNow={onEstimateNow}
         />
       </div>
@@ -230,13 +234,15 @@ export function ClarifyPanel({
 
   if (!showing) {
     return (
-      <div className="space-y-3">
+      <div className="space-y-3" data-clarify-waiting>
         <PersistError error={persistError} />
-        <ClarifyReadinessCard
-          readiness={readiness}
-          isSaving={isSaving}
-          onEstimateNow={onEstimateNow}
-        />
+        <p className="text-sm text-muted-foreground">
+          {readiness.enoughToEstimate
+            ? "Saving the last answer…"
+            : view.enoughToEstimate
+              ? "Saving the last answer…"
+              : "A few more details are still needed before this estimate can be built."}
+        </p>
       </div>
     );
   }

@@ -93,6 +93,18 @@ export const internalWallsScope: ScopeDefinition = {
       category: "scope",
     },
     {
+      key: "internal_walls.wall_type.wall_count",
+      label: "Physical wall count",
+      questionText: "How many physical walls share this specification?",
+      inputType: "number",
+      required: false,
+      priority: 13.5,
+      estimatePriorityClass: "P2",
+      factKey: "internal_walls.wall_type.wall_count",
+      workAreaType: "internal_walls",
+      category: "measurement",
+    },
+    {
       key: "internal_walls.wall_type.length_lm",
       label: "Total wall length",
       questionText: "What is the total wall length for this wall type?",

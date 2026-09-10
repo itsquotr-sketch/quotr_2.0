@@ -382,12 +382,15 @@ export function internalWallsPaintingOptions(
 
 export function internalWallsNestedFinishOmit(params: {
   confirmedTypes?: Iterable<string> | null;
+  /** Independent plastering (e.g. lounge skim) does not own new-wall stopping. */
+  independentPlastering?: boolean;
 }): { omitStopping: boolean; omitPainting: boolean } {
   const types = new Set(
     [...(params.confirmedTypes ?? [])].map((row) => String(row))
   );
   return {
-    omitStopping: types.has("plastering"),
+    omitStopping:
+      types.has("plastering") && params.independentPlastering !== true,
     omitPainting: types.has("painting"),
   };
 }

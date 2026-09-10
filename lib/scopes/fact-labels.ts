@@ -178,6 +178,7 @@ const FACT_DISPLAY_LABELS: Record<string, string> = {
   "internal_walls.structural_involvement": "Load-bearing or structural",
   "internal_walls.wall_type.frame_system": "Framing",
   "internal_walls.wall_type.frame_size": "Timber framing",
+  "internal_walls.wall_type.wall_count": "Physical wall count",
   "internal_walls.wall_type.length_lm": "Total wall length",
   "internal_walls.wall_type.height_m": "Wall height",
   "internal_walls.wall_type.stud_centres_mm": "Stud spacing",

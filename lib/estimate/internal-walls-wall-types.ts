@@ -258,6 +258,8 @@ export type InternalWallsSteelMeta = {
 export type InternalWallsWallType = {
   id: string;
   label: string | null;
+  /** Physical walls represented by this specification. Does not multiply length_lm. */
+  wall_count: number | null;
   length_lm: number | null;
   height_m: number | null;
   height_source: "known" | "assumed_disclosed" | null;
@@ -288,6 +290,7 @@ export type InternalWallsWallTypeSource = "canonical" | "legacy_dual_read";
 export type InternalWallsWallTypeSummary = {
   id: string;
   displayName: string;
+  wallCount: number | null;
   frameLine: string | null;
   geometryLine: string | null;
   centresLine: string | null;
@@ -307,6 +310,8 @@ const FRAME_SYSTEM_BY_NORMALISED: Record<string, InternalWallsFrameSystem> = {
   "timber framed": "timber",
   "90x45": "timber",
   "90×45": "timber",
+  "45x90": "timber",
+  "45×90": "timber",
   steel: "steel",
   "steel framing": "steel",
   "steel stud": "steel",
@@ -322,11 +327,23 @@ const FRAME_SYSTEM_BY_NORMALISED: Record<string, InternalWallsFrameSystem> = {
 const TIMBER_SIZE_BY_NORMALISED: Record<string, InternalWallsTimberSize> = {
   "90x45": "90x45",
   "90×45": "90x45",
+  "45x90": "90x45",
+  "45×90": "90x45",
+  "90/45": "90x45",
+  "45/90": "90x45",
+  "90 x 45": "90x45",
+  "45 x 90": "90x45",
   "90 mm timber framing — 90×45": "90x45",
   "90 mm timber framing": "90x45",
   "90mm": "90x45",
   "140x45": "140x45",
   "140×45": "140x45",
+  "45x140": "140x45",
+  "45×140": "140x45",
+  "140/45": "140x45",
+  "45/140": "140x45",
+  "140 x 45": "140x45",
+  "45 x 140": "140x45",
   "140 mm timber framing — 140×45": "140x45",
   "140 mm timber framing": "140x45",
   "140mm": "140x45",
@@ -392,6 +409,7 @@ export function createEmptyWallType(params?: {
   return {
     id: params?.id ?? createWallTypeId(),
     label: params?.label ?? null,
+    wall_count: null,
     length_lm: null,
     height_m: null,
     height_source: null,
@@ -426,6 +444,7 @@ export function duplicateWallType(
     ...source,
     id: newId ?? createWallTypeId(),
     label: source.label ? `${source.label} copy` : null,
+    wall_count: source.wall_count,
     side_a: cloneFace(source.side_a),
     side_b: cloneFace(source.side_b),
     steel: source.steel ? { ...source.steel } : null,
@@ -457,7 +476,12 @@ export function parseInternalWallsTimberSize(
 ): InternalWallsTimberSize | null {
   if (!hasFactValue(value) || isNotSureValue(value)) return null;
   const normalised = String(value).trim().toLowerCase().replace(/\s+/g, " ");
-  return TIMBER_SIZE_BY_NORMALISED[normalised] ?? null;
+  const mapped = TIMBER_SIZE_BY_NORMALISED[normalised];
+  if (mapped) return mapped;
+  const compact = normalised.replace(/[×x\/]/g, "x").replace(/\s+/g, "");
+  if (compact === "45x90" || compact === "90x45") return "90x45";
+  if (compact === "45x140" || compact === "140x45") return "140x45";
+  return null;
 }
 
 export function parseInternalWallsLiningProduct(
@@ -646,6 +670,13 @@ function parsePositiveNumber(value: unknown): number | null {
   return null;
 }
 
+function parsePositiveInteger(value: unknown): number | null {
+  const parsed = parsePositiveNumber(value);
+  if (parsed == null) return null;
+  const rounded = Math.round(parsed);
+  return rounded >= 1 ? rounded : null;
+}
+
 function parseMillimetreOption(value: unknown): number | null {
   if (typeof value === "number" && Number.isFinite(value) && value > 0) {
     return value;
@@ -717,6 +748,7 @@ export function parseInternalWallsWallType(
       typeof value.label === "string" && value.label.trim()
         ? value.label.trim()
         : null,
+    wall_count: parsePositiveInteger(value.wall_count),
     length_lm: length,
     height_m: height,
     height_source:
@@ -988,7 +1020,7 @@ function parseStudCentresInput(value: unknown): {
   return null;
 }
 
-function wallTypeDisplayName(
+export function wallTypeDisplayName(
   type: InternalWallsWallType,
   index: number
 ): string {
@@ -1011,8 +1043,10 @@ export function summariseWallType(
   ].filter(Boolean);
   const geometry =
     type.length_lm != null && type.height_m != null
-      ? `${type.length_lm} m × ${type.height_m} m`
-      : null;
+      ? `${type.wall_count != null && type.wall_count > 1 ? `${type.wall_count} walls · ` : type.wall_count === 1 ? "1 wall · " : ""}${type.length_lm} m${type.wall_count != null && type.wall_count > 1 ? " total" : ""} × ${type.height_m} m`
+      : type.length_lm != null
+        ? `${type.length_lm} m`
+        : null;
   const centres =
     type.stud_centres_mm != null ? `${type.stud_centres_mm} mm centres` : null;
   let liningLine: string | null = null;
@@ -1053,6 +1087,7 @@ export function summariseWallType(
   return {
     id: type.id,
     displayName: wallTypeDisplayName(type, index),
+    wallCount: type.wall_count,
     frameLine: frameBits[0] ?? null,
     geometryLine: geometry,
     centresLine: centres,
@@ -1115,8 +1150,12 @@ export function summariseInternalWallsWorkArea(
   if (types.some((row) => row.painting && row.painting !== "none")) {
     extras.push("painting");
   }
+  const physicalWalls = types.reduce(
+    (sum, row) => sum + (row.wall_count != null && row.wall_count > 0 ? row.wall_count : 1),
+    0
+  );
   return [
-    `${types.length} Wall Type${types.length === 1 ? "" : "s"}`,
+    `${physicalWalls} wall${physicalWalls === 1 ? "" : "s"} · ${types.length} Wall Type${types.length === 1 ? "" : "s"}`,
     frames.length > 0 ? `${frames.join(" + ")} partitions` : null,
     openingCount > 0
       ? `${openingCount} opening${openingCount === 1 ? "" : "s"}`
@@ -1553,6 +1592,10 @@ export function applyInternalWallsFactWrite(params: {
             : null;
         return;
       }
+      if (field === "wall_count") {
+        type.wall_count = parsePositiveInteger(params.value);
+        return;
+      }
       if (field === "frame_system") {
         type.frame_system = parseInternalWallsFrameSystem(params.value);
         if (type.frame_system === "existing_frame") {
@@ -1958,6 +2001,8 @@ export function wallTypeFieldCurrentValue(
   switch (factKey) {
     case "internal_walls.wall_type.label":
       return type.label;
+    case "internal_walls.wall_type.wall_count":
+      return type.wall_count;
     case "internal_walls.wall_type.frame_system":
       return frameSystemDisplay(type.frame_system);
     case "internal_walls.wall_type.frame_size":

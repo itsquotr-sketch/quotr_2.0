@@ -5,6 +5,7 @@ import {
 } from "@/lib/estimate/internal-walls-scope";
 import {
   resolveInternalWallsWallTypes,
+  summariseInternalWallsWorkArea,
   summariseWallType,
 } from "@/lib/estimate/internal-walls-wall-types";
 import type {
@@ -43,24 +44,30 @@ export const internalWallsJobPlanAdapter: JobPlanWorkAreaAdapter = {
         ? {
             key: "wall-types",
             label: "Wall types",
-            value: String(summaries.length),
+            value: summariseInternalWallsWorkArea(resolved.types) ?? `${summaries.length} wall types`,
             advanced: false,
           }
         : null,
-      ...summaries.slice(0, 3).map((row, index) => ({
+      ...summaries.map((row) => ({
         key: `wt-${row.id}`,
         label: row.displayName,
-        value: [row.frameLine, row.geometryLine, row.openingsLine, row.finishLine].filter(Boolean).join(" · ") || "In progress",
-        advanced: index > 0,
+        value: [row.frameLine, row.geometryLine, row.liningLine].filter(Boolean).join(" · ") || "In progress",
+        advanced: false,
       })),
     ].filter((row): row is JobPlanSpecChip => row != null);
 
     const summaryParts = [
       jobScopeDisplay(jobScope),
       summaries.length === 1
-        ? summaries[0]!.displayName
+        ? [
+            summaries[0]!.displayName,
+            summaries[0]!.geometryLine,
+            summaries[0]!.liningLine,
+          ]
+            .filter(Boolean)
+            .join(" · ")
         : summaries.length > 1
-          ? `${summaries.length} wall types`
+          ? summariseInternalWallsWorkArea(resolved.types)
           : null,
     ].filter(Boolean);
 

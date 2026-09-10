@@ -1059,7 +1059,12 @@ export function AssistantShell({
   ]);
 
   const handleGenerateEstimate = useCallback(() => {
-    if (isGenerating || pendingAction != null || actionLockRef.current) {
+    if (
+      isGenerating ||
+      pendingAction != null ||
+      actionLockRef.current ||
+      clarifyWritePending
+    ) {
       return;
     }
     generationRequestSeqRef.current += 1;
@@ -1084,6 +1089,7 @@ export function AssistantShell({
   }, [
     isGenerating,
     pendingAction,
+    clarifyWritePending,
     project.id,
     runAction,
     constraintsSubmitted,
@@ -1519,7 +1525,9 @@ export function AssistantShell({
       presentation: "INCLUDED" | "NOT_INCLUDED"
     ) => {
       const requestSeq = ++factMutationSeqRef.current;
+      setClarifyWritePending(true);
       let result: AssistantActionState = { success: true };
+      try {
       if (candidate.write && candidate.workAreaId) {
         tagOverlayFactSeq(
           {
@@ -1629,6 +1637,9 @@ export function AssistantShell({
       if (!settleCanonicalMutation(result, requestSeq)) {
         onRejectedCanonicalMutation(requestSeq);
       }
+      } finally {
+        setClarifyWritePending(false);
+      }
     },
     [
       onRejectedCanonicalMutation,
@@ -1645,9 +1656,9 @@ export function AssistantShell({
       value: string | number | boolean | string[]
     ) => {
       const requestSeq = ++factMutationSeqRef.current;
+      setClarifyWritePending(true);
       const isNumericOrText =
         candidate.inputType === "number" || candidate.inputType === "text";
-      if (isNumericOrText) setClarifyWritePending(true);
       const valueType = persistClarifyValueType(candidate, value);
       try {
         if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
@@ -1745,7 +1756,7 @@ export function AssistantShell({
           onRejectedCanonicalMutation(requestSeq);
         }
       } finally {
-        if (isNumericOrText) setClarifyWritePending(false);
+        setClarifyWritePending(false);
       }
     },
     [
@@ -1998,8 +2009,9 @@ export function AssistantShell({
           key: row.key,
           value: row.value,
         })),
+        pendingWrites: clarifyWritePending ? 1 : 0,
       }),
-    [clarifyView, jobPlan, liveConstraints, project.qualityLevel, qualityLevel]
+    [clarifyView, clarifyWritePending, jobPlan, liveConstraints, project.qualityLevel, qualityLevel]
   );
 
   const refineView = useMemo(
@@ -2055,7 +2067,7 @@ export function AssistantShell({
     projectConditionsSnapshot?.readiness.canGenerateQuickEstimate
   );
   const canGenerateEstimate = CLARIFY_IS_PRIMARY
-    ? workAreasConfirmed && !estimateReady && clarifyView.canEstimateNow
+    ? workAreasConfirmed && !estimateReady && estimateReadiness.enoughToEstimate
     : constraintsSubmitted &&
       !estimateReady &&
       (!preferProjectConditionsAsk || projectConditionsReadyToGenerate);
@@ -2149,7 +2161,7 @@ export function AssistantShell({
   });
   const projectInformationLabel = CLARIFY_IS_PRIMARY
     ? workAreasConfirmed && !estimateReady
-      ? clarifyView.enoughToEstimate
+      ? estimateReadiness.enoughToEstimate
         ? "Work confirmed · Estimate ready"
         : `Work confirmed · ${clarifyView.visibleCount} thing${
             clarifyView.visibleCount === 1 ? "" : "s"
@@ -3004,14 +3016,16 @@ export function AssistantShell({
             <CollapsibleStageCard
               title="Details"
               subtitle={
-                clarifyView.enoughToEstimate
+                estimateReadiness.enoughToEstimate
                   ? "That's enough to build your estimate."
                   : "I need a few details to tighten the estimate."
               }
               statusLabel={
-                clarifyView.enoughToEstimate
+                estimateReadiness.enoughToEstimate
                   ? "Ready"
-                  : `${clarifyView.visibleCount} to clarify`
+                  : clarifyWritePending
+                    ? "Saving"
+                    : `${clarifyView.visibleCount} to clarify`
               }
               statusVariant="current"
               preferredExpanded={stagePrefersExpanded(
@@ -3027,7 +3041,11 @@ export function AssistantShell({
                 refineView={refineView}
                 isSaving={
                   pendingAction === "clarify" ||
-                  pendingAction === "estimate"
+                  pendingAction === "estimate" ||
+                  clarifyWritePending
+                }
+                isGenerating={
+                  pendingAction === "estimate" || isGenerating
                 }
                 persistError={actionError}
                 onAnswerBoolean={handleClarifyBoolean}

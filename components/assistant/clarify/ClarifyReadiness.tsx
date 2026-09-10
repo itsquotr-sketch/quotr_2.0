@@ -8,7 +8,7 @@ import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
 import type { RefineCandidate, RefineGroupId, RefineView } from "@/lib/assistant/refine/types";
-import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
+import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
 import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
@@ -411,10 +411,12 @@ export function RefineEstimatePanel({
 export function ClarifyReadinessCard({
   readiness,
   isSaving,
+  isGenerating,
   onEstimateNow,
 }: {
   readiness: EstimateReadinessView;
   isSaving?: boolean;
+  isGenerating?: boolean;
   onEstimateNow?: () => void;
 }) {
   return (
@@ -489,9 +491,11 @@ export function ClarifyReadinessCard({
           disabled={isSaving || readiness.blocksEstimate}
           onClick={onEstimateNow}
         >
-          {isSaving
-            ? ASSISTANT_ACTION_LABELS.saving
-            : ASSISTANT_ACTION_LABELS.generateEstimate}
+          {isGenerating
+            ? ASSISTANT_LOADING_COPY.estimateGenerate
+            : isSaving
+              ? ASSISTANT_ACTION_LABELS.saving
+              : ASSISTANT_ACTION_LABELS.generateEstimate}
         </Button>
       </ActionFooter>
     </div>

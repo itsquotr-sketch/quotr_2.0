@@ -335,6 +335,18 @@ const dummySteel: InternalWallsWallType = {
     layers: 1,
   },
   openings: [],
+  has_openings: false,
+  active_opening_id: null,
+  insulation_included: null,
+  insulation_type: null,
+  skirting: null,
+  cornice: null,
+  electrical: null,
+  electrical_note: null,
+  stopping_side_a: null,
+  stopping_side_b: null,
+  painting: null,
+  wall_count: null,
 };
 const steelTakeoffA = internalWallsSteelTakeoff({
   type: dummySteel,

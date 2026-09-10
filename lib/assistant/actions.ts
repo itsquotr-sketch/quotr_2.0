@@ -22,7 +22,11 @@ import {
   factDedupeKey,
 } from "@/lib/ai/mappers";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
-import { evaluatePackageQuickEstimateReadiness } from "@/lib/assistant/readiness/package-quick-estimate";
+import type { ComposeClarifyInput } from "@/lib/assistant/clarify/types";
+import {
+  composeClarifyInputFromEstimateContext,
+  evaluateGenerateEstimatePermission,
+} from "@/lib/assistant/readiness/clarify-estimate";
 import { canRunStageAction } from "@/lib/assistant/state";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 import { legacyQualityRequiresScopeReview } from "@/lib/assistant/clarify/quality-gate";
@@ -1341,13 +1345,18 @@ async function runEstimateGeneration(
   });
   if (denied) return denied;
 
-  const [{ data: existingEstimate }, contextResult] = await Promise.all([
+  const [{ data: existingEstimate }, contextResult, { data: projectRow }] = await Promise.all([
     supabase
       .from("estimates")
       .select("id, target_margin_percent")
       .eq("project_id", projectId)
       .maybeSingle(),
     getEstimateContextWithContext(auth, projectId),
+    supabase
+      .from("projects")
+      .select("brief_text")
+      .eq("id", projectId)
+      .maybeSingle(),
   ]);
 
   if ("error" in contextResult) {
@@ -1382,7 +1391,27 @@ async function runEstimateGeneration(
   });
 
   if (CLARIFY_IS_PRIMARY) {
-    const packageReadiness = evaluatePackageQuickEstimateReadiness({
+    const compose = composeClarifyInputFromEstimateContext({
+      stage: stage as ComposeClarifyInput["stage"],
+      briefText:
+        typeof projectRow?.brief_text === "string"
+          ? projectRow.brief_text
+          : null,
+      qualityLevel: contextResult.project.qualityLevel,
+      workAreas: contextResult.confirmedWorkAreas.map((wa) => ({
+        id: wa.id,
+        type: wa.type,
+        name: wa.name,
+        status: "confirmed",
+      })),
+      facts: contextResult.facts,
+      constraints: contextResult.constraints.map((row) => ({
+        key: row.key,
+        value: row.value,
+      })),
+    });
+    const permission = evaluateGenerateEstimatePermission({
+      compose,
       workAreas: contextResult.confirmedWorkAreas.map((wa) => ({
         id: wa.id,
         type: wa.type,
@@ -1394,10 +1423,10 @@ async function runEstimateGeneration(
           projectConditions.unresolvedRequiredKeys
         ),
     });
-    if (!packageReadiness.ready) {
+    if (!permission.ready) {
       return {
         error:
-          packageReadiness.builderCopy ?? USER_ERRORS.projectConditionsIncomplete,
+          permission.builderCopy ?? USER_ERRORS.projectConditionsIncomplete,
       };
     }
   } else if (!projectConditions.readiness.canGenerateQuickEstimate) {

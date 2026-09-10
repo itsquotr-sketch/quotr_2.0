@@ -37,7 +37,11 @@ export function InternalWallsWallTypesPanel({
           <p className="mt-0.5 text-sm text-muted-foreground">
             {panel.types.length === 0
               ? "Add a wall type to describe this work."
-              : `${panel.types.length} wall type${panel.types.length === 1 ? "" : "s"}`}
+              : `${panel.types.reduce(
+                  (sum, row) =>
+                    sum + (row.wallCount != null && row.wallCount > 0 ? row.wallCount : 1),
+                  0
+                )} walls · ${panel.types.length} Wall Type${panel.types.length === 1 ? "" : "s"}`}
           </p>
         </div>
         <Button

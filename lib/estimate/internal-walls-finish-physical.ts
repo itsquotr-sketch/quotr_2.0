@@ -664,6 +664,7 @@ export function buildInternalWallsFinishEnvelope(params: {
 
     const omit = internalWallsNestedFinishOmit({
       confirmedTypes: context.confirmedWorkAreas.map((row) => row.type),
+      independentPlastering: true,
     });
 
     if (!omit.omitStopping) {

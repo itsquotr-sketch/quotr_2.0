@@ -19,4 +19,5 @@ export type ComposeReadinessInput = {
   readonly jobPlan: JobPlanView;
   readonly qualityLevel: string | null;
   readonly constraints: readonly { readonly key: string; readonly value: unknown }[];
+  readonly pendingWrites?: number;
 };
