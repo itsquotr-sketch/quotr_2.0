@@ -194,3 +194,21 @@ export function shouldInsertWorkAreaInstance(
 ): boolean {
   return !existingKeys.has(workAreaInstanceKey(row.type, row.name));
 }
+
+/**
+ * Accidental duplicate INSTANCE — same type + normalised name.
+ * Same type with a different label is a new instance and must be allowed.
+ */
+export function isDuplicateWorkAreaInstance(params: {
+  readonly type: string;
+  readonly name: string;
+  readonly confirmed: readonly { type: string; name: string }[];
+}): boolean {
+  const type = params.type.trim();
+  const name = normaliseWorkAreaInstanceName(params.name);
+  if (!type || !name) return false;
+  const key = workAreaInstanceKey(type, name);
+  return params.confirmed.some(
+    (row) => workAreaInstanceKey(row.type, row.name) === key
+  );
+}

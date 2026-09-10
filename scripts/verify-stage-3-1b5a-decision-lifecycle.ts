@@ -821,6 +821,7 @@ async function main(): Promise<void> {
       hasScopeCreatingDecision: true,
       hasAcceptDecision: true,
       hasRejectDecision: false,
+      confirmedInstances: [],
       confirmedWorkAreaTypeExists: true,
     },
     orgA.orgId,

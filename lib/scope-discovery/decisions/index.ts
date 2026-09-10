@@ -36,8 +36,11 @@ export {
   evaluateAcceptEligibility,
   evaluateRejectEligibility,
   evaluateModifyEligibility,
+  applyScopeDiscoveryAccept,
   type SuggestionEligibilitySnapshot,
   type EligibilityBlockReason,
+  type ConfirmedWorkAreaInstance,
+  type AcceptedInstance,
 } from "./eligibility";
 
 export { mapRpcSuccess } from "./mappers";

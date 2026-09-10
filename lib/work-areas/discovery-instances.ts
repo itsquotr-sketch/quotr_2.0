@@ -147,6 +147,26 @@ function discoverInternalWallGroups(brief: string): DiscoveredWorkAreaInstance[]
     });
   }
   if (groups.length >= 2) return uniqueByName(groups);
+  const groundPartitions =
+    /\bground[-\s]?floor partitions?\b/.test(brief) ||
+    (/\bground[-\s]?floor\b/.test(brief) &&
+      /\bpartitions?\b/.test(brief) &&
+      !groundOffice);
+  const upstairsPartitions = /\bupstairs partitions?\b/.test(brief);
+  if (groundPartitions && upstairsPartitions) {
+    return uniqueByName([
+      {
+        type: "internal_walls",
+        name: "Ground Floor Partitions",
+        evidence: "Ground floor partitions",
+      },
+      {
+        type: "internal_walls",
+        name: "Upstairs Partitions",
+        evidence: "Upstairs partitions",
+      },
+    ]);
+  }
   return [
     {
       type: "internal_walls",
