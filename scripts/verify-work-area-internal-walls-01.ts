@@ -144,6 +144,12 @@ check(
     questionKeys.some((key) => key === "internal_walls.wall_type.has_openings")
 );
 check(
+  "07 added finish facts to templates",
+  questionKeys.includes("internal_walls.wall_type.skirting") &&
+    questionKeys.includes("internal_walls.wall_type.insulation") &&
+    questionKeys.includes("internal_walls.wall_type.electrical")
+);
+check(
   "mature templates have estimatePriorityClass on job_scope",
   questions.some((row) => row.factKey === "internal_walls.job_scope" && row.estimatePriorityClass === "P0")
 );

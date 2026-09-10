@@ -41,6 +41,26 @@ import {
   summariseOpeningsLine,
   type InternalWallsOpening,
 } from "@/lib/estimate/internal-walls-openings";
+import {
+  INTERNAL_WALLS_CORNICE_SIDES_KEY,
+  INTERNAL_WALLS_ELECTRICAL_KEY,
+  INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
+  INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
+  INTERNAL_WALLS_INSULATION_TYPE_KEY,
+  INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+  nextInternalWallsFinishField,
+  parseInternalWallsElectricalTier,
+  parseInternalWallsInsulationType,
+  parseInternalWallsSideSelection,
+  parseYesNo,
+  sideSelectionDisplay,
+  summariseFinishLine,
+  electricalTierDisplay,
+  insulationTypeDisplay,
+  type InternalWallsElectricalTier,
+  type InternalWallsInsulationType,
+  type InternalWallsSideSelection,
+} from "@/lib/estimate/internal-walls-finish";
 
 export const INTERNAL_WALLS_WALL_TYPES_FACT_KEY =
   "internal_walls.wall_types" as const;
@@ -69,6 +89,12 @@ export const INTERNAL_WALLS_WALL_TYPE_FIELD_KEYS = [
   "internal_walls.wall_type.side_b_sheet_length_mm",
   "internal_walls.wall_type.side_b_layers",
   "internal_walls.wall_type.has_openings",
+  "internal_walls.wall_type.insulation_included",
+  "internal_walls.wall_type.insulation",
+  "internal_walls.wall_type.skirting",
+  "internal_walls.wall_type.cornice",
+  "internal_walls.wall_type.electrical",
+  "internal_walls.wall_type.electrical_note",
 ] as const;
 
 export const INTERNAL_WALLS_ADD_WALL_TYPE_KEY =
@@ -237,6 +263,12 @@ export type InternalWallsWallType = {
   has_openings: boolean | null;
   active_opening_id: string | null;
   openings: InternalWallsOpening[];
+  insulation_included: boolean | null;
+  insulation_type: InternalWallsInsulationType | null;
+  skirting: InternalWallsSideSelection | null;
+  cornice: InternalWallsSideSelection | null;
+  electrical: InternalWallsElectricalTier | null;
+  electrical_note: string | null;
 };
 
 export type InternalWallsWallTypeSource = "canonical" | "legacy_dual_read";
@@ -249,6 +281,7 @@ export type InternalWallsWallTypeSummary = {
   centresLine: string | null;
   liningLine: string | null;
   openingsLine: string | null;
+  finishLine: string | null;
   openingCount: number;
   openings: readonly { id: string; summaryLine: string }[];
   grossFaceAreaM2: number | null;
@@ -361,6 +394,12 @@ export function createEmptyWallType(params?: {
     has_openings: null,
     active_opening_id: null,
     openings: [],
+    insulation_included: null,
+    insulation_type: null,
+    skirting: null,
+    cornice: null,
+    electrical: null,
+    electrical_note: null,
   };
 }
 
@@ -378,6 +417,12 @@ export function duplicateWallType(
     has_openings: source.has_openings,
     active_opening_id: null,
     openings: source.openings.map((row) => duplicateOpening(row)),
+    insulation_included: source.insulation_included,
+    insulation_type: source.insulation_type,
+    skirting: source.skirting,
+    cornice: source.cornice,
+    electrical: source.electrical,
+    electrical_note: source.electrical_note,
   };
 }
 
@@ -702,6 +747,20 @@ export function parseInternalWallsWallType(
         : null
     ),
     openings,
+    insulation_included:
+      value.insulation_included === true
+        ? true
+        : value.insulation_included === false
+          ? false
+          : parseYesNo(value.insulation_included),
+    insulation_type: parseInternalWallsInsulationType(value.insulation_type),
+    skirting: parseInternalWallsSideSelection(value.skirting),
+    cornice: parseInternalWallsSideSelection(value.cornice),
+    electrical: parseInternalWallsElectricalTier(value.electrical),
+    electrical_note:
+      typeof value.electrical_note === "string" && value.electrical_note.trim()
+        ? value.electrical_note.trim()
+        : null,
   };
 }
 
@@ -969,6 +1028,7 @@ export function summariseWallType(
     liningLine = `Side A ${sideA} · Side B ${sideB}`;
   }
   const openingsLine = summariseOpeningsLine(type.openings, type.has_openings);
+  const finishLine = summariseFinishLine(type);
   return {
     id: type.id,
     displayName: wallTypeDisplayName(type, index),
@@ -977,6 +1037,7 @@ export function summariseWallType(
     centresLine: centres,
     liningLine,
     openingsLine,
+    finishLine,
     openingCount: type.openings.length,
     openings: type.openings.map((row) => ({
       id: row.id,
@@ -1591,6 +1652,38 @@ export function applyInternalWallsFactWrite(params: {
           type.openings = [];
           type.active_opening_id = null;
         }
+        return;
+      }
+      if (field === "insulation_included") {
+        const included = parseYesNo(params.value);
+        type.insulation_included = included;
+        if (included !== true) type.insulation_type = null;
+        return;
+      }
+      if (field === "insulation") {
+        type.insulation_type = parseInternalWallsInsulationType(params.value);
+        if (type.insulation_type != null) type.insulation_included = true;
+        return;
+      }
+      if (field === "skirting") {
+        type.skirting = parseInternalWallsSideSelection(params.value);
+        return;
+      }
+      if (field === "cornice") {
+        type.cornice = parseInternalWallsSideSelection(params.value);
+        return;
+      }
+      if (field === "electrical") {
+        type.electrical = parseInternalWallsElectricalTier(params.value);
+        if (type.electrical !== "custom") type.electrical_note = null;
+        return;
+      }
+      if (field === "electrical_note") {
+        type.electrical_note =
+          typeof params.value === "string" && params.value.trim()
+            ? params.value.trim()
+            : null;
+        return;
       }
     });
   } else {
@@ -1710,7 +1803,7 @@ export function nextInternalWallsWallTypeField(params: {
     if (type.same_lining_both_sides === false && !type.side_b.lined) {
       return "internal_walls.wall_type.side_b_product";
     }
-    return null;
+    return nextInternalWallsFinishField({ type, jobScope: params.jobScope as never });
   }
 
   if (params.jobScope === "reline_existing") {
@@ -1721,8 +1814,11 @@ export function nextInternalWallsWallTypeField(params: {
       return "internal_walls.wall_type.side_a_product";
     }
     if (type.has_openings == null) return INTERNAL_WALLS_HAS_OPENINGS_KEY;
-    if (type.has_openings === true) return nextOpeningField(type);
-    return null;
+    if (type.has_openings === true) {
+      const openingNext = nextOpeningField(type);
+      if (openingNext) return openingNext;
+    }
+    return nextInternalWallsFinishField({ type, jobScope: params.jobScope as never });
   }
   if (type.frame_system == null) return "internal_walls.wall_type.frame_system";
   if (type.frame_system === "timber" && type.frame_size == null) {
@@ -1746,8 +1842,11 @@ export function nextInternalWallsWallTypeField(params: {
     return "internal_walls.wall_type.side_b_product";
   }
   if (type.has_openings == null) return INTERNAL_WALLS_HAS_OPENINGS_KEY;
-  if (type.has_openings === true) return nextOpeningField(type);
-  return null;
+  if (type.has_openings === true) {
+    const openingNext = nextOpeningField(type);
+    if (openingNext) return openingNext;
+  }
+  return nextInternalWallsFinishField({ type, jobScope: params.jobScope as never });
 }
 
 export function wallTypeFieldCurrentValue(
@@ -1814,6 +1913,20 @@ export function wallTypeFieldCurrentValue(
       if (type.has_openings === true) return "Yes";
       if (type.has_openings === false) return "No";
       return null;
+    case INTERNAL_WALLS_INSULATION_INCLUDED_KEY:
+      if (type.insulation_included === true) return "Yes";
+      if (type.insulation_included === false) return "No";
+      return null;
+    case INTERNAL_WALLS_INSULATION_TYPE_KEY:
+      return insulationTypeDisplay(type.insulation_type);
+    case INTERNAL_WALLS_SKIRTING_SIDES_KEY:
+      return sideSelectionDisplay(type.skirting);
+    case INTERNAL_WALLS_CORNICE_SIDES_KEY:
+      return sideSelectionDisplay(type.cornice);
+    case INTERNAL_WALLS_ELECTRICAL_KEY:
+      return electricalTierDisplay(type.electrical);
+    case INTERNAL_WALLS_ELECTRICAL_NOTE_KEY:
+      return type.electrical_note;
     case "internal_walls.opening.type": {
       const opening =
         type.openings.find((row) => row.id === type.active_opening_id) ??

@@ -83,6 +83,7 @@ export function InternalWallsWallTypesPanel({
                     type.centresLine,
                     type.liningLine,
                     type.openingsLine,
+                    type.finishLine,
                   ]
                     .filter(Boolean)
                     .join(" · ")}

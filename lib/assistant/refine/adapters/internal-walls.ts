@@ -27,6 +27,19 @@ import {
   INTERNAL_WALLS_HAS_OPENINGS_OPTIONS,
   INTERNAL_WALLS_OPENING_TYPE_OPTIONS,
 } from "@/lib/estimate/internal-walls-openings";
+import {
+  INTERNAL_WALLS_CORNICE_SIDES_KEY,
+  INTERNAL_WALLS_ELECTRICAL_KEY,
+  INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
+  INTERNAL_WALLS_ELECTRICAL_OPTIONS,
+  INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
+  INTERNAL_WALLS_INSULATION_INCLUDED_OPTIONS,
+  INTERNAL_WALLS_INSULATION_TYPE_KEY,
+  INTERNAL_WALLS_INSULATION_TYPE_OPTIONS,
+  INTERNAL_WALLS_SIDE_SELECTION_OPTIONS,
+  INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+  insulationAsksForScope,
+} from "@/lib/estimate/internal-walls-finish";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type {
   InternalWallsRefinePanel,
@@ -537,6 +550,104 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
         })
       );
     }
+
+    if (insulationAsksForScope(jobScope)) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
+            label: "Wall insulation",
+            question: "Include wall insulation?",
+            inputType: "select",
+            options: INTERNAL_WALLS_INSULATION_INCLUDED_OPTIONS,
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              INTERNAL_WALLS_INSULATION_INCLUDED_KEY
+            ),
+            wallTypeId,
+          })
+        );
+        if (active?.insulation_included === true) {
+          out.push(
+            candidate({
+              workAreaId,
+              workAreaName,
+              factKey: INTERNAL_WALLS_INSULATION_TYPE_KEY,
+              label: "Insulation type",
+              question: "What wall insulation type?",
+              inputType: "select",
+              options: INTERNAL_WALLS_INSULATION_TYPE_OPTIONS,
+              currentValue: wallTypeFieldCurrentValue(
+                active,
+                INTERNAL_WALLS_INSULATION_TYPE_KEY
+              ),
+              wallTypeId,
+            })
+          );
+        }
+      }
+      out.push(
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+          label: "Skirting",
+          question: "Include skirting?",
+          inputType: "select",
+          options: INTERNAL_WALLS_SIDE_SELECTION_OPTIONS,
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            INTERNAL_WALLS_SKIRTING_SIDES_KEY
+          ),
+          wallTypeId,
+        }),
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: INTERNAL_WALLS_CORNICE_SIDES_KEY,
+          label: "Cornice",
+          question: "Include cornice / cove?",
+          inputType: "select",
+          options: INTERNAL_WALLS_SIDE_SELECTION_OPTIONS,
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            INTERNAL_WALLS_CORNICE_SIDES_KEY
+          ),
+          wallTypeId,
+        }),
+        candidate({
+          workAreaId,
+          workAreaName,
+          factKey: INTERNAL_WALLS_ELECTRICAL_KEY,
+          label: "Electrical",
+          question: "Any electrical work associated with this wall?",
+          inputType: "select",
+          options: INTERNAL_WALLS_ELECTRICAL_OPTIONS,
+          currentValue: wallTypeFieldCurrentValue(
+            active,
+            INTERNAL_WALLS_ELECTRICAL_KEY
+          ),
+          wallTypeId,
+        })
+      );
+      if (active?.electrical === "custom") {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
+            label: "Electrical notes",
+            question: "Brief electrical allowance note?",
+            inputType: "text",
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              INTERNAL_WALLS_ELECTRICAL_NOTE_KEY
+            ),
+            wallTypeId,
+          })
+        );
+      }
 
     out.push(
       candidate({

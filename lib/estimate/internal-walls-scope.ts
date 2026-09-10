@@ -268,6 +268,12 @@ const WALL_TYPE_FIELD_KEYS = new Set([
   "internal_walls.wall_type.side_b_sheet_length_mm",
   "internal_walls.wall_type.side_b_layers",
   "internal_walls.wall_type.has_openings",
+  "internal_walls.wall_type.insulation_included",
+  "internal_walls.wall_type.insulation",
+  "internal_walls.wall_type.skirting",
+  "internal_walls.wall_type.cornice",
+  "internal_walls.wall_type.electrical",
+  "internal_walls.wall_type.electrical_note",
 ]);
 
 export function shouldHideInternalWallsQuestion(params: {

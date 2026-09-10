@@ -228,6 +228,91 @@ export function isInternalWallsOpeningComponentKey(
   ).includes(key);
 }
 
+/** Shared physical cavity identities — not Internal-Walls-specific SKUs. No catalogue rate in V1. */
+export function internalWallsInsulationMaterialKey(
+  type: "acoustic" | "thermal" | "fire_acoustic" | "other"
+): string {
+  if (type === "acoustic") return "insulation.wall.acoustic.m2";
+  if (type === "thermal") return "insulation.wall.thermal.m2";
+  if (type === "fire_acoustic") return "insulation.wall.fire_acoustic.m2";
+  return "insulation.wall.other.m2";
+}
+
+/** Shared physical trim identity. No canonical wall-skirting catalogue rate. */
+export const INTERNAL_WALLS_SKIRTING_MATERIAL_KEY = "skirting.wall.lm" as const;
+/** Shared physical trim identity. No canonical cornice catalogue rate. */
+export const INTERNAL_WALLS_CORNICE_MATERIAL_KEY = "cornice.wall.lm" as const;
+
+export const INTERNAL_WALLS_INSULATION_MATERIAL_COMPONENT =
+  "internal_walls.insulation.material" as const;
+export const INTERNAL_WALLS_INSULATION_LABOUR_COMPONENT =
+  "internal_walls.insulation.install" as const;
+export const INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT =
+  "internal_walls.skirting.material" as const;
+export const INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT =
+  "internal_walls.skirting.install" as const;
+export const INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT =
+  "internal_walls.cornice.material" as const;
+export const INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT =
+  "internal_walls.cornice.install" as const;
+export const INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_COMPONENT =
+  "internal_walls.electrical.allowance" as const;
+
+/** Future DNA — no owner-approved hours in IW-07. */
+export const INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY =
+  "internal_walls.insulation.install.hours_per_m2" as const;
+export const INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY =
+  "internal_walls.skirting.install.hours_per_lm" as const;
+export const INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY =
+  "internal_walls.cornice.install.hours_per_lm" as const;
+
+/**
+ * No canonical insulation wastage category (sheet_material / timber_framing
+ * do not apply). V1 purchase m² = net cavity m². Do not invent a percent.
+ */
+export const INTERNAL_WALLS_INSULATION_WASTE_FACTOR = 0 as const;
+
+export function internalWallsElectricalAllowanceItemKey(
+  tier: "minor" | "standard" | "heavy" | "custom"
+): string {
+  return `internal_walls.electrical.${tier}.allowance`;
+}
+
+export function internalWallsInsulationOverlapGroup(wallTypeId: string): string {
+  return `internal_walls.insulation:${wallTypeId}`;
+}
+
+export function internalWallsSkirtingOverlapGroup(wallTypeId: string): string {
+  return `internal_walls.skirting:${wallTypeId}`;
+}
+
+export function internalWallsCorniceOverlapGroup(wallTypeId: string): string {
+  return `internal_walls.cornice:${wallTypeId}`;
+}
+
+export function internalWallsElectricalOverlapGroup(wallTypeId: string): string {
+  return `internal_walls.electrical:${wallTypeId}`;
+}
+
+export const INTERNAL_WALLS_FINISH_COMPONENT_KEYS = [
+  INTERNAL_WALLS_INSULATION_MATERIAL_COMPONENT,
+  INTERNAL_WALLS_INSULATION_LABOUR_COMPONENT,
+  INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
+  INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT,
+  INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT,
+  INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
+  INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_COMPONENT,
+] as const;
+
+export function isInternalWallsFinishComponentKey(
+  key: string | null | undefined
+): boolean {
+  if (!key) return false;
+  return (INTERNAL_WALLS_FINISH_COMPONENT_KEYS as readonly string[]).includes(
+    key
+  );
+}
+
 export function looksLikeDoorProductMoney(params: {
   label?: string | null;
   componentKey?: string | null;

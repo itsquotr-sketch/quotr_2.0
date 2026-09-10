@@ -1,7 +1,7 @@
 # Quotr Internal Walls Estimating Architecture
 
-**Status:** CANONICAL — **WA-INTERNAL-WALLS-06** openings + structural gate + lining deductions  
-**Date:** 2026-09-09  
+**Status:** CANONICAL — **WA-INTERNAL-WALLS-07** insulation + skirting + cornice + electrical  
+**Date:** 2026-09-10  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **056**  
 **Production:** DO NOT TOUCH  
@@ -14,7 +14,8 @@
 **Verifier (03 timber framing):** `scripts/verify-work-area-internal-walls-03.ts`  
 **Verifier (04 steel framing):** `scripts/verify-work-area-internal-walls-04.ts`  
 **Verifier (05 lining takeoff):** `scripts/verify-work-area-internal-walls-05.ts`  
-**Verifier (06 openings):** `scripts/verify-work-area-internal-walls-06.ts`
+**Verifier (06 openings):** `scripts/verify-work-area-internal-walls-06.ts`  
+**Verifier (07 insulation/skirting/cornice/electrical):** `scripts/verify-work-area-internal-walls-07.ts`
 
 Canonical Work Area type: **`internal_walls`**. ISD alias: **`partitions`**.
 
@@ -32,11 +33,12 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | WA-INTERNAL-WALLS-03 timber framing takeoff + envelope | **GO** |
 | WA-INTERNAL-WALLS-04 steel track/stud takeoff | **GO** |
 | WA-INTERNAL-WALLS-05 lining sheets + labour | **GO** (historical) |
-| WA-INTERNAL-WALLS-06 openings + structural gate + lining deductions | **GO** (this phase) |
-| Current product maturity | **PARTIAL** — timber + steel + lining + openings on mature path; insulation/skirting/cornice/electrical not in 06 |
+| WA-INTERNAL-WALLS-06 openings + structural gate + lining deductions | **GO** |
+| WA-INTERNAL-WALLS-07 insulation + skirting + cornice + electrical | **GO** (this phase) |
+| Current product maturity | **PARTIAL** — timber + steel + lining + openings + finish allowances on mature path; stopping/painting not in 07 |
 | Customer UI band | **Component** — do not call Supported or Mature |
 | Openings / door deductions in 06 | **GO** — net lined m² deducted; sheet purchase stays on the sheet-run |
-| Start WA-INTERNAL-WALLS-07 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 07 |
+| Start WA-INTERNAL-WALLS-08 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 08 |
 | Production / migration 055 | **NO-GO** |
 
 **Current factory score (honest):**
@@ -400,9 +402,82 @@ Opening IDs are UUIDs. Overlay identity includes `wallTypeId` + `openingId`. Edi
 - Opening labour hours not invented
 - Lining returns / reveal make-good not sheet-counted
 - No lintel engineering
-- Insulation / skirting / cornice / electrical = **IW-07**, not started
+- Insulation / skirting / cornice / electrical = **IW-07** (closed)
 
 ---
+
+## 0F. WA-INTERNAL-WALLS-07 — insulation + skirting + cornice + electrical
+
+Per Wall Type fields on `internal_walls.wall_types` JSON. No migration. Do not infer from lining. Do not change IW-03–06 formulas.
+
+### Insulation
+
+Progressive: Include wall insulation? No / Yes. If Yes: Acoustic / Thermal / Fire / acoustic / Other.
+
+Ask for new / extend / reline / infill / mixed / custom. **Do not ask** for form_opening or remove_partition (cavity insulation is not the job). Reline / existing_frame: never assume Yes — emit only if explicitly selected.
+
+```
+gross_cavity_m2 = length × height
+net_cavity_m2   = max(0, gross − Σ opening_area)   // once; not × lined faces
+infill          = opening geometry only
+```
+
+Fixture A: 12 × 2.4, door 0.81 × 1.98 → **27.1962 m²**.
+
+Physical keys (shared, unpriced): `insulation.wall.acoustic.m2` / `thermal` / `fire_acoustic` / `other`. **No catalogue rate.** Quantity shown; material Pricing Required unless a company exact rate exists.
+
+Waste: **no canonical insulation wastage category.** Purchase m² = net cavity. Do not invent a percent. Owner decision required to add one later.
+
+Labour key `internal_walls.insulation.install.hours_per_m2` — **no owner hours.** Labour Pricing Required.
+
+### Skirting
+
+SINGLE_SELECT: No / Side A / Side B / Both sides. Independent of lining mirror.
+
+Per selected face: `max(0, wall_length − Σ opening_width)`. Door, passage, and other V1 types all interrupt floor skirting. One deduction per face — passage is not deducted twice on the same face. Do not deduct opening height.
+
+Both sides: 11.19 lm each, **22.38 lm** total on a 12 m wall with one 0.81 m door.
+
+Infill: only if selected, using infill width.
+
+Material identity `skirting.wall.lm` — no canonical wall-skirting product/rate (do not reuse deck full-height skirting). Profile Pricing Required. Labour `internal_walls.skirting.install.hours_per_lm` — no owner hours.
+
+### Cornice / cove
+
+Same side SINGLE_SELECT. Per selected face: wall length. **Ordinary doors/passages below wall height do not deduct.** Full-height openings (`height ≥ wall height`) deduct width.
+
+12 m wall + 0.81 × 1.98 door → **12.0 lm** per side, **24.0 lm** both.
+
+Infill: only if selected, infill width.
+
+Identity `cornice.wall.lm` — no canonical product/rate. Labour hours/lm unpriced.
+
+### Electrical
+
+SINGLE_SELECT: No / Minor / Standard / Heavy / Custom. Allowance only. No sockets, cable, switchboard, fire alarm, or data takeoff.
+
+Bathroom `bathroom.electrical.*.allowance` dollars are **not** valid Internal Walls ranges. IW keys `internal_walls.electrical.{minor|standard|heavy|custom}.allowance` have **no invented $**. Company exact → else Pricing Required.
+
+Per Wall Type. form_opening / infill / reline: optional, never assumed.
+
+Custom may take a brief note.
+
+### Requirement envelope
+
+Insulation material + labour; skirting material + labour (per side variant); cornice material + labour (per side); electrical subcontract allowance. `variantKey` includes wallTypeId and side where relevant.
+
+Changing finish does **not** change stud count, track, timber, sheet count, sheet product, or lining layers.
+
+### Known limitations (07)
+
+- No owner insulation/skirting/cornice hours
+- No canonical insulation waste %
+- No wall skirting/cornice SKU matrix
+- Electrical is an unpriced allowance until company rates exist
+- Stopping / painting = **IW-08**, not started
+
+---
+
 
 
 ## 0A. WA-INTERNAL-WALLS-02 — owner decisions recorded
@@ -1352,7 +1427,7 @@ Future implementation may need a **data-only** catalogue seed (DNA and/or materi
 | **09** | DNA | Only if productivity keys are consumed and owner calibrates |
 | **10** | Hosted close | Deterministic + Preview proof including lining |
 
-Do not start **07** (insulation / skirting / cornice / electrical) in this phase.
+Do not start **08** (stopping / painting / commercial close) in this phase.
 
 ---
 

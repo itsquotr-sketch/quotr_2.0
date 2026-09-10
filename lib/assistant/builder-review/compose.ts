@@ -111,7 +111,7 @@ import {
   BATHROOM_WASTE_COMPONENT,
   BATHROOM_WATERPROOFING_COMPONENT,
 } from "@/lib/estimate/bathroom-identities";
-import { isInternalWallsFramingComponentKey, isInternalWallsLiningComponentKey, isInternalWallsOpeningComponentKey } from "@/lib/estimate/internal-walls-identities";
+import { isInternalWallsFramingComponentKey, isInternalWallsLiningComponentKey, isInternalWallsOpeningComponentKey, isInternalWallsFinishComponentKey } from "@/lib/estimate/internal-walls-identities";
 import { classifyRateSource, getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import {
@@ -870,6 +870,7 @@ function applyInternalWallsReviewGroups(
     const framingGrouped = new Map<string, BuilderReviewPricedLine[]>();
     const liningGrouped = new Map<string, BuilderReviewPricedLine[]>();
     const openingGrouped = new Map<string, BuilderReviewPricedLine[]>();
+    const finishGrouped = new Map<string, BuilderReviewPricedLine[]>();
     for (const line of cat.lines) {
       const overlap = line.sourceLine.overlapGroup ?? "";
       if (
@@ -893,6 +894,16 @@ function applyInternalWallsReviewGroups(
         const list = liningGrouped.get(overlap) ?? [];
         list.push(line);
         liningGrouped.set(overlap, list);
+      } else if (
+        isInternalWallsFinishComponentKey(line.componentKey) &&
+        (overlap.startsWith("internal_walls.insulation:") ||
+          overlap.startsWith("internal_walls.skirting:") ||
+          overlap.startsWith("internal_walls.cornice:") ||
+          overlap.startsWith("internal_walls.electrical:"))
+      ) {
+        const list = finishGrouped.get(overlap) ?? [];
+        list.push(line);
+        finishGrouped.set(overlap, list);
       } else {
         remaining.push(line);
       }
@@ -1003,6 +1014,34 @@ function applyInternalWallsReviewGroups(
         supporting: supportingParts.join(" · ") || null,
         secondary: "Lining",
         itemKey: materialChildren[0]?.itemKey ?? children[0]?.itemKey ?? null,
+        showChangeMaterial: false,
+        rateContext: null,
+        children,
+      });
+    }
+    for (const [overlap, children] of finishGrouped) {
+      const heading = wallTypeHeadingFromLabel(children[0]?.label ?? "Finish");
+      const secondary = overlap.startsWith("internal_walls.insulation:")
+        ? "Insulation"
+        : overlap.startsWith("internal_walls.skirting:")
+          ? "Skirting"
+          : overlap.startsWith("internal_walls.cornice:")
+            ? "Cornice"
+            : "Electrical";
+      const supportingParts = children
+        .map((row) => row.supporting)
+        .filter((text, index, list): text is string =>
+          Boolean(text) && list.indexOf(text) === index
+        );
+      lineGroups.push({
+        id: `internal-walls-finish-${overlap.replace(/[^a-z0-9]+/gi, "-")}`,
+        label: `${heading} — ${secondary.toLowerCase()}`,
+        recommendedCost: round2(
+          children.reduce((sum, line) => sum + line.recommendedCost, 0)
+        ),
+        supporting: supportingParts.join(" · ") || null,
+        secondary,
+        itemKey: children[0]?.itemKey ?? null,
         showChangeMaterial: false,
         rateContext: null,
         children,

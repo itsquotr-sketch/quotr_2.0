@@ -62,6 +62,7 @@ import {
   buildInternalWallsOpeningEnvelope,
   typesForInfillFraming,
 } from "@/lib/estimate/internal-walls-opening-physical";
+import { buildInternalWallsFinishEnvelope } from "@/lib/estimate/internal-walls-finish-physical";
 import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
@@ -188,6 +189,12 @@ export const INTERNAL_WALLS_CALCULATOR_CONSUMED_FACTS = [
   "internal_walls.wall_type.side_b_sheet_length_mm",
   "internal_walls.wall_type.side_b_layers",
   "internal_walls.wall_type.has_openings",
+  "internal_walls.wall_type.insulation_included",
+  "internal_walls.wall_type.insulation",
+  "internal_walls.wall_type.skirting",
+  "internal_walls.wall_type.cornice",
+  "internal_walls.wall_type.electrical",
+  "internal_walls.wall_type.electrical_note",
   "internal_walls.add_opening",
   "internal_walls.delete_opening",
   "internal_walls.active_opening_id",
@@ -298,6 +305,16 @@ function calculateInternalWallsMature(
   missingInfo.push(...lining.missingInfo);
   assumptions.push(...lining.assumptions);
 
+  const finish = buildInternalWallsFinishEnvelope({
+    context,
+    workArea,
+    types: resolved.types,
+    jobScope,
+    sortOrderStart: lining.nextSortOrder,
+  });
+  missingInfo.push(...finish.missingInfo);
+  assumptions.push(...finish.assumptions);
+
   if (missingInfo.length === 0 && resolved.types.length > 0) {
     if (!lining.emittedLining) {
       assumptions.push(
@@ -314,11 +331,13 @@ function calculateInternalWallsMature(
     ...framing.requirements,
     ...openings.requirements,
     ...lining.requirements,
+    ...finish.requirements,
   ];
   const lineItems = [
     ...framing.lineItems,
     ...openings.lineItems,
     ...lining.lineItems,
+    ...finish.lineItems,
   ];
 
   return {
