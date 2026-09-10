@@ -441,7 +441,10 @@ check(
       read("components/assistant/clarify/ClarifyAnswerControl.tsx").includes(
         "OptionSelect"
       )) &&
-    refineSrc.includes("ClarifyAnswerControl") &&
+    (refineSrc.includes("ClarifyAnswerControl") ||
+      read("components/assistant/refine/RefineFieldRow.tsx").includes(
+        "ClarifyAnswerControl"
+      )) &&
     !/OptionSelect[\s\S]{0,260}disabled=\{isSaving\}/.test(refineSrc)
 );
 check(

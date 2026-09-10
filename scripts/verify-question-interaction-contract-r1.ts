@@ -408,7 +408,10 @@ const optionSrc = read("components/assistant/selection/OptionSelect.tsx");
 check(
   "Clarify and Refine share ClarifyAnswerControl",
   clarifySrc.includes("ClarifyAnswerControl") &&
-    refineSrc.includes("ClarifyAnswerControl") &&
+    (refineSrc.includes("ClarifyAnswerControl") ||
+      read("components/assistant/refine/RefineFieldRow.tsx").includes(
+        "ClarifyAnswerControl"
+      )) &&
     controlSrc.includes("clarifyControlType")
 );
 check(

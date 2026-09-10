@@ -1,102 +1,26 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import { createWallTypeId } from "@/lib/estimate/internal-walls-wall-types";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
-import type { RefineCandidate, RefineGroupId, RefineView } from "@/lib/assistant/refine/types";
+import type { RefineCandidate, RefineView } from "@/lib/assistant/refine/types";
 import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
-import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
 import { InternalWallsWallTypesPanel } from "@/components/assistant/refine/InternalWallsWallTypesPanel";
+import {
+  RefineFieldRow,
+  toRefineClarifyCandidate,
+} from "@/components/assistant/refine/RefineFieldRow";
+import { groupRefineCandidatesForDisplay } from "@/components/assistant/refine/refine-presentation";
 import {
   booleanChoiceOptions,
   clarifyControlType,
 } from "@/lib/assistant/clarify/question-contract";
-
-const GROUP_LABEL: Record<RefineGroupId, string> = {
-  scope: "Scope",
-  specification: "Specification",
-  structure: "Structure",
-  project_conditions: "Project Conditions",
-  advanced: "Advanced",
-};
-
-function toClarifyCandidate(row: RefineCandidate): ClarifyCandidate {
-  return {
-    id: row.id,
-    source: row.writeTarget === "CONSTRAINT" ? "project_condition" : "scope_fact",
-    workAreaId: row.workAreaId,
-    workAreaName: row.workAreaName,
-    workAreaType: row.workAreaType,
-    factKey: row.factKey,
-    constraintKey: row.constraintKey,
-    questionKey: row.questionKey,
-    label: row.label,
-    question: row.question,
-    askClass: row.tier === "advanced" ? "ADVANCED" : "REFINEMENT",
-    inputType: row.inputType,
-    currentValue: row.currentValue,
-    unit: row.unit,
-    options: row.options,
-    writeTarget: row.writeTarget,
-    write: row.write,
-    wallTypeId: row.wallTypeId,
-    blocksEstimate: false,
-    assumable: true,
-    rankScore: 0,
-    rankReason: "refine",
-    assumptionStatement: null,
-  };
-}
-
-function RefineField({
-  candidate,
-  value,
-  persistError,
-  focusKey,
-  onAnswerBoolean,
-  onAnswerValue,
-}: {
-  candidate: RefineCandidate;
-  value: string | number | boolean | string[] | null | undefined;
-  persistError?: string | null;
-  focusKey?: string | null;
-  onAnswerBoolean?: (candidate: ClarifyCandidate, presentation: "INCLUDED" | "NOT_INCLUDED") => void;
-  onAnswerValue?: (
-    candidate: ClarifyCandidate,
-    value: string | number | boolean | string[]
-  ) => void;
-}) {
-  const mapped = toClarifyCandidate(candidate);
-  const fieldKey = candidate.factKey ?? candidate.constraintKey;
-  const focused = Boolean(focusKey && fieldKey === focusKey);
-  return (
-    <div
-      className={cn(
-        "space-y-2",
-        focused &&
-          "rounded-xl ring-2 ring-[var(--brand-orange)]/30 ring-offset-2 ring-offset-background"
-      )}
-      data-refine-field={fieldKey}
-      data-refine-input-type={candidate.inputType}
-      data-refine-control-type={clarifyControlType(mapped)}
-    >
-      <p className="text-sm font-medium leading-snug">{candidate.question}</p>
-      <ClarifyAnswerControl
-        candidate={mapped}
-        value={value}
-        persistError={persistError}
-        onAnswerBoolean={onAnswerBoolean}
-        onAnswerValue={onAnswerValue}
-      />
-    </div>
-  );
-}
 
 export function RefineEstimatePanel({
   view,
@@ -142,34 +66,22 @@ export function RefineEstimatePanel({
   const [localValues, setLocalValues] = useState<
     Record<string, string | number | boolean | string[]>
   >({});
+  const [editingId, setEditingId] = useState<string | null | undefined>(undefined);
+  const continueLockRef = useRef(false);
   const allCandidates = useMemo(
     () => [...view.highValue, ...view.advanced],
     [view.advanced, view.highValue]
   );
 
-  const groupedByWorkArea = useMemo(() => {
-    const buckets = new Map<
-      string,
-      { label: string; rows: RefineCandidate[] }
-    >();
-    for (const row of allCandidates) {
-      const key = row.workAreaId ?? "project";
-      const label = row.workAreaName ?? "Site & project";
-      const existing = buckets.get(key) ?? { label, rows: [] };
-      existing.rows.push(row);
-      buckets.set(key, existing);
-    }
-    const groups = [...buckets.values()];
-    if (!focusKey) return groups;
-    const focusedIndex = groups.findIndex((bucket) =>
-      bucket.rows.some(
-        (row) => row.factKey === focusKey || row.constraintKey === focusKey
-      )
-    );
-    if (focusedIndex <= 0) return groups;
-    const focused = groups[focusedIndex]!;
-    return [focused, ...groups.filter((_, i) => i !== focusedIndex)];
-  }, [allCandidates, focusKey]);
+  const displayGroups = useMemo(
+    () =>
+      groupRefineCandidatesForDisplay({
+        candidates: allCandidates,
+        wallTypePanels: view.wallTypePanels,
+        focusKey,
+      }),
+    [allCandidates, focusKey, view.wallTypePanels]
+  );
 
   const focusedCandidate = focusKey
     ? allCandidates.find(
@@ -177,19 +89,118 @@ export function RefineEstimatePanel({
       )
     : null;
 
-  const groups: RefineGroupId[] = [
-    "scope",
-    "specification",
-    "structure",
-    "project_conditions",
-  ];
+  const workAreaGroups = displayGroups.filter((group) => group.kind === "work_area");
+  const projectGroup = displayGroups.find((group) => group.kind === "project_conditions");
+  const showUpdate = Boolean(isStale && onUpdateEstimate);
+  const showFooter = showUpdate || canEstimateNow;
+
+  const isEditing = (row: RefineCandidate) => {
+    if (editingId === undefined) {
+      return Boolean(
+        focusKey && (row.factKey === focusKey || row.constraintKey === focusKey)
+      );
+    }
+    return editingId === row.id;
+  };
+
+  const renderRow = (row: RefineCandidate) => {
+    const mapped = toRefineClarifyCandidate(row);
+    const value = localValues[row.id] ?? row.currentValue ?? null;
+    const control = clarifyControlType(mapped);
+    return (
+      <RefineFieldRow
+        key={row.id}
+        candidate={row}
+        value={value}
+        persistError={persistError}
+        focused={Boolean(
+          focusKey && (row.factKey === focusKey || row.constraintKey === focusKey)
+        )}
+        editing={isEditing(row)}
+        onToggleEdit={(next) => setEditingId(next ? row.id : null)}
+        onAnswerBoolean={(candidate, presentation) => {
+          const options = booleanChoiceOptions(row);
+          setLocalValues((prev) => ({
+            ...prev,
+            [row.id]:
+              presentation === "INCLUDED"
+                ? options.includes("Yes")
+                  ? "Yes"
+                  : "Include"
+                : options.includes("Yes")
+                  ? "No"
+                  : "Not included",
+          }));
+          onAnswerBoolean?.(candidate, presentation);
+          setEditingId(null);
+        }}
+        onAnswerValue={(candidate, nextValue) => {
+          setLocalValues((prev) => ({ ...prev, [row.id]: nextValue }));
+          if (control === "MULTI_SELECT") return;
+          onAnswerValue?.(candidate, nextValue);
+          setEditingId(null);
+        }}
+        onContinueMulti={() => {
+          if (continueLockRef.current) return;
+          continueLockRef.current = true;
+          const nextValue = localValues[row.id] ?? row.currentValue;
+          const set = Array.isArray(nextValue)
+            ? nextValue
+            : nextValue == null || nextValue === ""
+              ? []
+              : [String(nextValue)];
+          onAnswerValue?.(mapped, set);
+          setEditingId(null);
+          continueLockRef.current = false;
+        }}
+      />
+    );
+  };
+
+  const renderGroup = (group: (typeof displayGroups)[number], span = false) => (
+    <section
+      key={group.workAreaId ?? group.kind}
+      className={cn(
+        PREMIUM.card,
+        PREMIUM.cardPad,
+        "min-w-0",
+        span && "lg:col-span-2"
+      )}
+      data-refine-work-area={group.workAreaName}
+      data-refine-work-area-id={group.workAreaId ?? "project"}
+    >
+      <h2 className={PREMIUM.sectionTitle}>{group.workAreaName}</h2>
+      <div className="mt-3 space-y-4">
+        {group.sections.map((section) => (
+          <div
+            key={`${section.id}:${section.wallTypeId ?? ""}`}
+            data-refine-group={section.id}
+            data-refine-wall-type={section.wallTypeId ?? undefined}
+          >
+            {group.kind === "project_conditions" &&
+            section.id === "project_conditions" ? null : (
+              <SectionEyebrow>
+                {section.wallTypeLabel
+                  ? `${section.label} · ${section.wallTypeLabel}`
+                  : section.label}
+              </SectionEyebrow>
+            )}
+            <div className="mt-1 divide-y divide-border/70">
+              {section.candidates.map(renderRow)}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  );
 
   return (
     <div
-      className="space-y-4 overflow-x-hidden pb-[max(1rem,env(safe-area-inset-bottom))]"
+      className="space-y-4 overflow-x-hidden pb-2 md:space-y-5"
       data-refine-panel
       data-clarify-panel
       data-refine-all-visible="true"
+      data-refine-structured="true"
     >
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
@@ -202,7 +213,7 @@ export function RefineEstimatePanel({
             </p>
           ) : (
             <p className="mt-0.5 hidden text-sm text-muted-foreground md:block">
-              Optional details that this estimate actually uses to improve accuracy.
+              Review and edit what this estimate is using.
             </p>
           )}
         </div>
@@ -229,25 +240,16 @@ export function RefineEstimatePanel({
           <p className="mt-0.5 text-xs text-amber-900/90 dark:text-amber-200/90">
             Saved changes are on the job. Update the estimate when you are ready.
           </p>
-          {onUpdateEstimate ? (
-            <Button
-              type="button"
-              className="mt-3 h-11 w-full min-h-11 sm:w-auto"
-              data-refine-update-estimate
-              onClick={onUpdateEstimate}
-              disabled={isRegenerating}
-            >
-              {isRegenerating
-                ? ASSISTANT_ACTION_LABELS.updatingEstimate
-                : ASSISTANT_ACTION_LABELS.updateEstimate}
-            </Button>
-          ) : null}
           {updateError ? (
             <p className="mt-2 text-sm text-destructive" role="alert">
               {updateError}
             </p>
           ) : null}
         </div>
+      ) : persistError ? (
+        <p className="text-sm text-destructive" role="alert">
+          {persistError}
+        </p>
       ) : null}
 
       {view.wallTypePanels && view.wallTypePanels.length > 0 && onWallTypeAction ? (
@@ -327,81 +329,53 @@ export function RefineEstimatePanel({
         </div>
       ) : null}
 
-      {groupedByWorkArea.length > 0 ? (
-        <div className="space-y-4" data-refine-tier="all-actionable">
-          {groupedByWorkArea.map((workAreaBucket) => (
-            <section
-              key={workAreaBucket.label}
-              className="space-y-3"
-              data-refine-work-area={workAreaBucket.label}
-            >
-              <p className={PREMIUM.sectionTitle}>
-                {workAreaBucket.label}
-              </p>
-              {groups.map((group) => {
-                const rows = workAreaBucket.rows.filter((row) => row.group === group);
-                if (rows.length === 0) return null;
-                return (
-                  <div
-                    key={`${workAreaBucket.label}:${group}`}
-                    className="space-y-3"
-                    data-refine-group={group}
-                  >
-                    <p className={PREMIUM.eyebrow}>
-                      {GROUP_LABEL[group]}
-                    </p>
-                    {rows.map((row) => (
-                      <RefineField
-                        key={row.id}
-                        candidate={row}
-                        value={localValues[row.id] ?? row.currentValue ?? null}
-                        persistError={persistError}
-                        focusKey={focusKey}
-                        onAnswerBoolean={(candidate, presentation) => {
-                          const options = booleanChoiceOptions(row);
-                          setLocalValues((prev) => ({
-                            ...prev,
-                            [row.id]:
-                              presentation === "INCLUDED"
-                                ? options.includes("Yes")
-                                  ? "Yes"
-                                  : "Include"
-                                : options.includes("Yes")
-                                  ? "No"
-                                  : "Not included",
-                          }));
-                          onAnswerBoolean?.(candidate, presentation);
-                        }}
-                        onAnswerValue={(candidate, value) => {
-                          setLocalValues((prev) => ({
-                            ...prev,
-                            [row.id]: value,
-                          }));
-                          onAnswerValue?.(candidate, value);
-                        }}
-                      />
-                    ))}
-                  </div>
-                );
-              })}
-            </section>
-          ))}
+      {displayGroups.length > 0 ? (
+        <div
+          className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-2 lg:gap-6"
+          data-refine-tier="all-actionable"
+        >
+          {workAreaGroups.map((group) =>
+            renderGroup(group, workAreaGroups.length === 1)
+          )}
         </div>
       ) : null}
 
-      {canEstimateNow ? (
-        <ActionFooter>
-          <Button
-            type="button"
-            className="min-h-11 w-full"
-            data-clarify-primary-cta
-            disabled={isSaving}
-            onClick={onEstimateNow}
-          >
-            {isSaving
-              ? ASSISTANT_ACTION_LABELS.saving
-              : ASSISTANT_ACTION_LABELS.estimateNow}
-          </Button>
+      {projectGroup ? (
+        <div className="min-w-0">{renderGroup(projectGroup)}</div>
+      ) : null}
+
+      {showFooter ? (
+        <ActionFooter
+          className="-mx-1 bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0"
+          data-refine-cta-bar=""
+        >
+          <div className="flex w-full flex-col gap-2 sm:flex-row">
+            {showUpdate ? (
+              <Button
+                type="button"
+                className="min-h-11 w-full"
+                data-refine-update-estimate
+                onClick={onUpdateEstimate}
+                disabled={isRegenerating}
+              >
+                {isRegenerating
+                  ? ASSISTANT_ACTION_LABELS.updatingEstimate
+                  : ASSISTANT_ACTION_LABELS.updateEstimate}
+              </Button>
+            ) : (
+              <Button
+                type="button"
+                className="min-h-11 w-full"
+                data-clarify-primary-cta
+                disabled={isSaving}
+                onClick={onEstimateNow}
+              >
+                {isSaving
+                  ? ASSISTANT_ACTION_LABELS.saving
+                  : ASSISTANT_ACTION_LABELS.estimateNow}
+              </Button>
+            )}
+          </div>
         </ActionFooter>
       ) : null}
     </div>
