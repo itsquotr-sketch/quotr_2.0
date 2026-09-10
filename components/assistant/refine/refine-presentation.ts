@@ -10,6 +10,7 @@ import {
   booleanPresentationToChoice,
 } from "@/lib/assistant/clarify/question-contract";
 import type { RefineCandidate, RefineGroupId } from "@/lib/assistant/refine/types";
+import { candidateMatchesFocus } from "@/lib/assistant/question-identity";
 import { getDeckQuestionDescriptor } from "@/lib/estimate/deck-question-descriptors";
 import type { DeckQuestionSection } from "@/lib/estimate/deck-question-descriptors";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
@@ -250,8 +251,8 @@ export function groupRefineCandidatesForDisplay(params: {
   if (params.focusKey) {
     const focusedIndex = groups.findIndex((group) =>
       group.sections.some((section) =>
-        section.candidates.some(
-          (row) => row.factKey === params.focusKey || row.constraintKey === params.focusKey
+        section.candidates.some((row) =>
+          candidateMatchesFocus(row, params.focusKey)
         )
       )
     );

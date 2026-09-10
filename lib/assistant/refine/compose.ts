@@ -1,6 +1,7 @@
 import { getRefineAdapter } from "@/lib/assistant/refine/adapters/registry";
 import { internalWallsRefinePanel } from "@/lib/assistant/refine/adapters/internal-walls";
 import {
+  identityFromCaptureRow,
   isNestedRefineIdentity,
   questionSemanticKey,
 } from "@/lib/assistant/question-identity";
@@ -35,26 +36,12 @@ function isResolvedValue(value: unknown): boolean {
 }
 
 function stampSemantic(row: RefineCandidate): RefineCandidate {
-  if (isNestedRefineIdentity(row)) {
-    return { ...row, semanticKey: row.id };
-  }
-  const semanticKey = questionSemanticKey({
-    workAreaId: row.workAreaId,
-    factKey: row.factKey,
-    constraintKey: row.constraintKey,
-  });
+  const semanticKey = questionSemanticKey(identityFromCaptureRow(row));
   return { ...row, semanticKey: semanticKey ?? row.id };
 }
 
 function refineDedupeKey(row: RefineCandidate): string {
-  if (isNestedRefineIdentity(row)) return `nested:${row.id}`;
-  return (
-    questionSemanticKey({
-      workAreaId: row.workAreaId,
-      factKey: row.factKey,
-      constraintKey: row.constraintKey,
-    }) ?? row.id
-  );
+  return questionSemanticKey(identityFromCaptureRow(row)) ?? row.id;
 }
 
 function preferResolved(a: RefineCandidate, b: RefineCandidate): RefineCandidate {

@@ -53,6 +53,11 @@ import type {
   RefineCandidate,
   RefineWorkAreaAdapter,
 } from "@/lib/assistant/refine/types";
+import {
+  questionPresentationId,
+  questionSemanticKey,
+  wallTypeQuestionIdentity,
+} from "@/lib/assistant/question-identity";
 
 function knownFact(
   facts: readonly {
@@ -72,6 +77,27 @@ function knownFact(
   );
 }
 
+function refineNestedIdentity(params: {
+  workAreaId: string;
+  factKey: string;
+  wallTypeId?: string | null;
+  openingId?: string | null;
+}) {
+  return wallTypeQuestionIdentity(params);
+}
+
+function nestedRefineCandidateId(params: {
+  workAreaId: string;
+  wallTypeId?: string | null;
+  openingId?: string | null;
+  factKey: string;
+}): string {
+  return (
+    questionPresentationId("refine", refineNestedIdentity(params)) ??
+    `refine:${params.workAreaId}:${params.factKey}`
+  );
+}
+
 function candidate(params: {
   workAreaId: string;
   workAreaName: string;
@@ -87,8 +113,10 @@ function candidate(params: {
   wallTypeId?: string | null;
   openingId?: string | null;
 }): RefineCandidate {
+  const identity = refineNestedIdentity(params);
   return {
-    id: `refine:${params.workAreaId}:${params.wallTypeId ?? "none"}:${params.openingId ?? "none"}:${params.factKey}`,
+    id: nestedRefineCandidateId(params),
+    semanticKey: questionSemanticKey(identity),
     group: params.group ?? "specification",
     tier: params.tier ?? "high_value",
     workAreaId: params.workAreaId,
@@ -207,6 +235,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           active,
           "internal_walls.wall_type.frame_system"
         ),
+        wallTypeId,
       })
     );
 
@@ -224,6 +253,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             active,
             "internal_walls.wall_type.frame_size"
           ),
+          wallTypeId,
         })
       );
     }
@@ -241,6 +271,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             active,
             "internal_walls.wall_type.wall_count"
           ),
+          wallTypeId,
         })
       );
       out.push(
@@ -256,6 +287,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             active,
             "internal_walls.wall_type.length_lm"
           ),
+          wallTypeId,
         })
       );
     }
@@ -273,6 +305,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           active,
           "internal_walls.wall_type.height_m"
         ),
+        wallTypeId,
       })
     );
 
@@ -745,11 +778,37 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
       })
     );
 
-    return out.map((row) =>
-      row.factKey?.startsWith("internal_walls.wall_type.") ||
-      row.factKey?.startsWith("internal_walls.opening.")
-        ? { ...row, wallTypeId, openingId: row.openingId ?? openingId }
-        : row
-    );
+    return out.map((row) => {
+      if (
+        !row.factKey?.startsWith("internal_walls.wall_type.") &&
+        !row.factKey?.startsWith("internal_walls.opening.")
+      ) {
+        return row;
+      }
+      const nextWallTypeId = wallTypeId;
+      const nextOpeningId = row.factKey.startsWith("internal_walls.opening.")
+        ? (row.openingId ?? openingId)
+        : row.openingId;
+      const identity = refineNestedIdentity({
+        workAreaId,
+        factKey: row.factKey,
+        wallTypeId: nextWallTypeId,
+        openingId: nextOpeningId,
+      });
+      return {
+        ...row,
+        wallTypeId: nextWallTypeId,
+        openingId: nextOpeningId,
+        semanticKey: questionSemanticKey(identity),
+        id:
+          questionPresentationId("refine", identity) ??
+          nestedRefineCandidateId({
+            workAreaId,
+            wallTypeId: nextWallTypeId,
+            openingId: nextOpeningId,
+            factKey: row.factKey,
+          }),
+      };
+    });
   },
 };

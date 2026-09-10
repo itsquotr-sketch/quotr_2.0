@@ -82,6 +82,7 @@ export function RefineFieldRow({
           "rounded-lg ring-2 ring-[var(--brand-orange)]/30 ring-offset-2 ring-offset-background"
       )}
       data-refine-field={fieldKey}
+      data-refine-semantic={candidate.semanticKey ?? undefined}
       data-refine-row={candidate.id}
       data-refine-input-type={candidate.inputType}
       data-refine-control-type={control}

@@ -104,6 +104,7 @@ import { composeJobPlan } from "@/lib/assistant/job-plan/compose";
 import { applyJobPlanScopeWrite } from "@/lib/assistant/job-plan/apply-write";
 import { writeJobPlanScopeDecision } from "@/lib/assistant/job-plan/actions";
 import { appendJobPlanFactOverlay, overlayFact } from "@/lib/assistant/job-plan/facts";
+import { overlayFactSemanticKey } from "@/lib/assistant/question-identity";
 import { JOB_PLAN_IS_PRIMARY } from "@/lib/assistant/job-plan/flags";
 import { UNKNOWN_ANALYSIS_ERROR } from "@/lib/ai/analyse-job-contract";
 import { presentAssistantError } from "@/lib/assistant/presentation/error-messages";
@@ -503,10 +504,7 @@ export function AssistantShell({
   );
 
   const tagOverlayFactSeq = useCallback((row: EstimateFact, seq: number) => {
-    overlaySeqByFactRef.current.set(
-      `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}:${row.openingId ?? ""}`,
-      seq
-    );
+    overlaySeqByFactRef.current.set(overlayFactSemanticKey(row), seq);
   }, []);
 
   const settleCanonicalMutation = useCallback(
@@ -541,7 +539,7 @@ export function AssistantShell({
       );
       setJobPlanFactOverlay((prev) =>
         prev.filter((row) => {
-          const key = `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}:${row.openingId ?? ""}`;
+          const key = overlayFactSemanticKey(row);
           const seq = overlaySeqByFactRef.current.get(key);
           return seq != null && seq > requestSeq;
         })
@@ -943,8 +941,17 @@ export function AssistantShell({
     if (!refineAfterEstimateFocusKey) return;
 
     window.requestAnimationFrame(() => {
-      const selector = `[data-refine-field="${refineAfterEstimateFocusKey}"] input, [data-refine-field="${refineAfterEstimateFocusKey}"] select, [data-refine-field="${refineAfterEstimateFocusKey}"] button`;
-      const el = document.querySelector<HTMLElement>(selector);
+      const quoted = refineAfterEstimateFocusKey.replace(/\\/g, "\\\\").replace(/"/g, '\\"');
+      const selectors = [
+        `[data-refine-semantic="${quoted}"] input, [data-refine-semantic="${quoted}"] select, [data-refine-semantic="${quoted}"] button`,
+        `[data-refine-row="${quoted}"] input, [data-refine-row="${quoted}"] select, [data-refine-row="${quoted}"] button`,
+        `[data-refine-field="${quoted}"] input, [data-refine-field="${quoted}"] select, [data-refine-field="${quoted}"] button`,
+      ];
+      let el: HTMLElement | null = null;
+      for (const selector of selectors) {
+        el = document.querySelector<HTMLElement>(selector);
+        if (el) break;
+      }
       el?.scrollIntoView({ block: "center", behavior: "smooth" });
       el?.focus?.({ preventScroll: true });
     });
@@ -1223,14 +1230,15 @@ export function AssistantShell({
         setFactError(result.error);
         setSavingFactKey(null);
         endSavePerf();
-        const factIdentity = `${input.workAreaId}:${input.key}:${input.wallTypeId ?? ""}:${input.openingId ?? ""}`;
+        const factIdentity = overlayFactSemanticKey({
+          work_area_id: input.workAreaId,
+          key: input.key,
+          wallTypeId: input.wallTypeId,
+          openingId: input.openingId,
+        });
         if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
           setJobPlanFactOverlay((prev) =>
-            prev.filter(
-              (row) =>
-                `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}:${row.openingId ?? ""}` !==
-                factIdentity
-            )
+            prev.filter((row) => overlayFactSemanticKey(row) !== factIdentity)
           );
         }
         return;
@@ -1753,14 +1761,15 @@ export function AssistantShell({
         );
         if (result.error) {
           setActionError(result.error);
-          const factIdentity = `${candidate.workAreaId ?? ""}:${candidate.factKey}:${candidate.wallTypeId ?? ""}:${candidate.openingId ?? ""}`;
+          const factIdentity = overlayFactSemanticKey({
+            work_area_id: candidate.workAreaId,
+            key: candidate.factKey!,
+            wallTypeId: candidate.wallTypeId,
+            openingId: candidate.openingId,
+          });
           if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
             setJobPlanFactOverlay((prev) =>
-              prev.filter(
-                (row) =>
-                  `${row.work_area_id ?? ""}:${row.key}:${row.wallTypeId ?? ""}:${row.openingId ?? ""}` !==
-                  factIdentity
-              )
+              prev.filter((row) => overlayFactSemanticKey(row) !== factIdentity)
             );
           }
           return;
@@ -2487,7 +2496,7 @@ export function AssistantShell({
               {refineAfterEstimateOpen && refineView.hasCandidates ? (
                 <RefineEstimatePanel
                   view={refineView}
-                  isSaving={clarifyWritePending}
+                  isSaving={Boolean(savingFactKey) || clarifyWritePending}
                   persistError={actionError}
                   canEstimateNow={false}
                   focusKey={refineAfterEstimateFocusKey}
@@ -2500,8 +2509,8 @@ export function AssistantShell({
                   onDone={closeRefineAfterEstimate}
                   onAnswerBoolean={handleClarifyBoolean}
                   onAnswerValue={handleClarifyValue}
-                  onWallTypeAction={(workAreaId, key, value, label, wallTypeId, openingId) => {
-                    void handleFactSave({
+                  onWallTypeAction={(workAreaId, key, value, label, wallTypeId, openingId) =>
+                    handleFactSave({
                       workAreaId,
                       key,
                       label,
@@ -2509,8 +2518,8 @@ export function AssistantShell({
                       inputType: typeof value === "boolean" ? "boolean" : "text",
                       wallTypeId,
                       openingId,
-                    });
-                  }}
+                    })
+                  }
                 />
               ) : builderReviewOpen && builderReviewView ? (
                 <BuilderReviewSurface
@@ -2541,7 +2550,13 @@ export function AssistantShell({
                         c.label.trim().toLowerCase().includes(query) ||
                         query.includes(c.label.trim().toLowerCase())
                     );
-                    openRefineAfterEstimate(match?.factKey ?? match?.constraintKey ?? null);
+                    openRefineAfterEstimate(
+                      match?.semanticKey ??
+                        match?.id ??
+                        match?.factKey ??
+                        match?.constraintKey ??
+                        null
+                    );
                   }}
                   onUpdateEstimate={
                     displayEstimateStale ? handleRegenerateEstimate : undefined

@@ -4,6 +4,10 @@ import { assumptionsFromPersistedFacts, assumptionsFromSkipped } from "@/lib/ass
 import { sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
 import { groupDetailsCandidates } from "@/lib/assistant/clarify/details-groups";
 import {
+  questionPresentationId,
+  wallTypeQuestionIdentity,
+} from "@/lib/assistant/question-identity";
+import {
   isClarifyExtraFactKey,
   isDetailsOwnedQuestion,
   isInitialCaptureQuestion,
@@ -793,7 +797,13 @@ function missingHardMinimum(
             ? wallTypeDisplayName(type, typesForHard.indexOf(type))
             : "Wall type";
           out.push({
-            id: `hard:${card.workAreaId}:${type?.id ?? "new"}:${nextField}`,
+            id: internalWallsClarifyId(
+              "hard",
+              card.workAreaId,
+              nextField,
+              type?.id,
+              type?.active_opening_id ?? type?.openings[0]?.id
+            ),
             source: "scope_fact",
             workAreaId: card.workAreaId,
             workAreaName: card.name,
@@ -828,7 +838,7 @@ function missingHardMinimum(
       for (const row of missing) {
         const template = getQuestionTemplateByKey(row.key);
         out.push({
-          id: `hard:${card.workAreaId}:${row.key}`,
+          id: internalWallsClarifyId("hard", card.workAreaId, row.key),
           source: "scope_fact",
           workAreaId: card.workAreaId,
           workAreaName: card.name,
@@ -861,6 +871,26 @@ function missingHardMinimum(
     }
   }
   return out;
+}
+
+function internalWallsClarifyId(
+  surface: "hard" | "fact",
+  workAreaId: string,
+  factKey: string,
+  wallTypeId?: string | null,
+  openingId?: string | null
+): string {
+  return (
+    questionPresentationId(
+      surface,
+      wallTypeQuestionIdentity({
+        workAreaId,
+        factKey,
+        wallTypeId,
+        openingId,
+      })
+    ) ?? `${surface}:${workAreaId}:${factKey}`
+  );
 }
 
 function internalWallsUnresolvedCopy(
@@ -1351,7 +1381,13 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           ? wallTypeDisplayName(type, index)
           : "Wall type";
         out.push({
-          id: `fact:${wa.id}:${type?.id ?? "new"}:${nextField}`,
+          id: internalWallsClarifyId(
+            "fact",
+            wa.id,
+            nextField,
+            type?.id,
+            type?.active_opening_id ?? type?.openings[0]?.id
+          ),
           source: "scope_fact",
           workAreaId: wa.id,
           workAreaName: wa.name,

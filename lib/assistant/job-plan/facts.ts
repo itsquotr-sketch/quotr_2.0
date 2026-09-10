@@ -10,6 +10,7 @@ import {
   applyInternalWallsFactWrite,
   isInternalWallsWallTypeWriteKey,
 } from "@/lib/estimate/internal-walls-wall-types";
+import { overlayFactSemanticKey } from "@/lib/assistant/question-identity";
 import {
   CANONICAL_PROJECT_CONDITION_KEYS,
   isLocalWorkAreaAccessFactKey,
@@ -98,15 +99,10 @@ export function appendJobPlanFactOverlay(
   next: EstimateFact
 ): EstimateFact[] {
   if (next.work_area_id && isInternalWallsWallTypeWriteKey(next.key)) {
+    const nextIdentity = overlayFactSemanticKey(next);
     return [
       ...overlay.filter(
-        (row) =>
-          !(
-            row.key === next.key &&
-            row.work_area_id === next.work_area_id &&
-            (row.wallTypeId ?? "") === (next.wallTypeId ?? "") &&
-            (row.openingId ?? "") === (next.openingId ?? "")
-          )
+        (row) => overlayFactSemanticKey(row) !== nextIdentity
       ),
       next,
     ];

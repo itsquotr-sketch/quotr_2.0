@@ -1,13 +1,19 @@
 "use client";
 
+import { useRef, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT } from "@/lib/estimate/internal-walls-wall-types";
 import type { InternalWallsRefinePanel } from "@/lib/assistant/refine/types";
+import {
+  releaseSingleActivation,
+  tryBeginSingleActivation,
+} from "@/lib/assistant/refine/single-activation";
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
 
 export function InternalWallsWallTypesPanel({
   panel,
+  isSaving = false,
   onAdd,
   onDuplicate,
   onDelete,
@@ -17,14 +23,27 @@ export function InternalWallsWallTypesPanel({
   onSelectOpening,
 }: {
   panel: InternalWallsRefinePanel;
-  onAdd: (workAreaId: string) => void;
+  isSaving?: boolean;
+  onAdd: (workAreaId: string) => void | Promise<unknown>;
   onDuplicate: (workAreaId: string, wallTypeId: string) => void;
   onDelete: (workAreaId: string, wallTypeId: string) => void;
   onSelect: (workAreaId: string, wallTypeId: string) => void;
-  onAddOpening?: (workAreaId: string, wallTypeId: string, openingId: string) => void;
+  onAddOpening?: (
+    workAreaId: string,
+    wallTypeId: string,
+    openingId: string
+  ) => void | Promise<unknown>;
   onDeleteOpening?: (workAreaId: string, wallTypeId: string, openingId: string) => void;
   onSelectOpening?: (workAreaId: string, wallTypeId: string, openingId: string) => void;
 }) {
+  const addTypeLock = useRef(false);
+  const addOpeningLock = useRef(false);
+  const [addTypePending, setAddTypePending] = useState(false);
+  const [addOpeningPending, setAddOpeningPending] = useState(false);
+
+  const addBusy = isSaving || addTypePending;
+  const openingBusy = isSaving || addOpeningPending;
+
   return (
     <section
       className="space-y-3"
@@ -49,9 +68,18 @@ export function InternalWallsWallTypesPanel({
           variant="outline"
           className="h-11 min-h-11 shrink-0 px-3"
           data-add-wall-type
-          onClick={() => onAdd(panel.workAreaId)}
+          data-add-wall-type-pending={addBusy ? "true" : undefined}
+          disabled={addBusy}
+          onClick={() => {
+            if (isSaving || !tryBeginSingleActivation(addTypeLock)) return;
+            setAddTypePending(true);
+            void Promise.resolve(onAdd(panel.workAreaId)).finally(() => {
+              releaseSingleActivation(addTypeLock);
+              setAddTypePending(false);
+            });
+          }}
         >
-          Add wall type
+          {addBusy ? "Adding…" : "Add wall type"}
         </Button>
       </div>
       {panel.assumedHeight ? (
@@ -188,16 +216,27 @@ export function InternalWallsWallTypesPanel({
                     variant="outline"
                     className="h-10 min-h-10 w-full px-3 sm:w-auto"
                     data-add-opening
+                    data-add-opening-pending={openingBusy ? "true" : undefined}
+                    disabled={openingBusy}
                     onClick={() => {
+                      if (isSaving || !tryBeginSingleActivation(addOpeningLock)) {
+                        return;
+                      }
+                      setAddOpeningPending(true);
                       const id =
                         typeof crypto !== "undefined" &&
                         typeof crypto.randomUUID === "function"
                           ? crypto.randomUUID()
                           : `op-${Date.now().toString(16)}`;
-                      onAddOpening?.(panel.workAreaId, type.id, id);
+                      void Promise.resolve(
+                        onAddOpening?.(panel.workAreaId, type.id, id)
+                      ).finally(() => {
+                        releaseSingleActivation(addOpeningLock);
+                        setAddOpeningPending(false);
+                      });
                     }}
                   >
-                    Add opening
+                    {openingBusy ? "Adding…" : "Add opening"}
                   </Button>
                 </div>
               ) : null}

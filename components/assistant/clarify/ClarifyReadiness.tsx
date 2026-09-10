@@ -17,6 +17,7 @@ import {
   toRefineClarifyCandidate,
 } from "@/components/assistant/refine/RefineFieldRow";
 import { groupRefineCandidatesForDisplay } from "@/components/assistant/refine/refine-presentation";
+import { candidateMatchesFocus } from "@/lib/assistant/question-identity";
 import {
   booleanChoiceOptions,
   clarifyControlType,
@@ -61,7 +62,7 @@ export function RefineEstimatePanel({
     label: string,
     wallTypeId?: string | null,
     openingId?: string | null
-  ) => void;
+  ) => void | Promise<unknown>;
 }) {
   const [localValues, setLocalValues] = useState<
     Record<string, string | number | boolean | string[]>
@@ -71,6 +72,10 @@ export function RefineEstimatePanel({
   const allCandidates = useMemo(
     () => [...view.highValue, ...view.advanced],
     [view.advanced, view.highValue]
+  );
+  const candidateIds = useMemo(
+    () => new Set(allCandidates.map((row) => row.id)),
+    [allCandidates]
   );
 
   const displayGroups = useMemo(
@@ -84,9 +89,7 @@ export function RefineEstimatePanel({
   );
 
   const focusedCandidate = focusKey
-    ? allCandidates.find(
-        (row) => row.factKey === focusKey || row.constraintKey === focusKey
-      )
+    ? allCandidates.find((row) => candidateMatchesFocus(row, focusKey))
     : null;
 
   const workAreaGroups = displayGroups.filter((group) => group.kind === "work_area");
@@ -96,9 +99,10 @@ export function RefineEstimatePanel({
 
   const isEditing = (row: RefineCandidate) => {
     if (editingId === undefined) {
-      return Boolean(
-        focusKey && (row.factKey === focusKey || row.constraintKey === focusKey)
-      );
+      return Boolean(focusKey && candidateMatchesFocus(row, focusKey));
+    }
+    if (typeof editingId === "string" && !candidateIds.has(editingId)) {
+      return false;
     }
     return editingId === row.id;
   };
@@ -113,9 +117,7 @@ export function RefineEstimatePanel({
         candidate={row}
         value={value}
         persistError={persistError}
-        focused={Boolean(
-          focusKey && (row.factKey === focusKey || row.constraintKey === focusKey)
-        )}
+        focused={Boolean(focusKey && candidateMatchesFocus(row, focusKey))}
         editing={isEditing(row)}
         onToggleEdit={(next) => setEditingId(next ? row.id : null)}
         onAnswerBoolean={(candidate, presentation) => {
@@ -258,9 +260,10 @@ export function RefineEstimatePanel({
             <InternalWallsWallTypesPanel
               key={panel.workAreaId}
               panel={panel}
-              onAdd={(workAreaId) => {
+              isSaving={isSaving}
+              onAdd={async (workAreaId) => {
                 const id = createWallTypeId();
-                onWallTypeAction(
+                await onWallTypeAction(
                   workAreaId,
                   "internal_walls.add_wall_type",
                   id,
@@ -286,24 +289,25 @@ export function RefineEstimatePanel({
                   "Remove wall type"
                 )
               }
-              onSelect={(workAreaId, wallTypeId) =>
+              onSelect={(workAreaId, wallTypeId) => {
+                setEditingId(null);
                 onWallTypeAction(
                   workAreaId,
                   "internal_walls.active_wall_type_id",
                   wallTypeId,
                   "Selected wall type"
-                )
-              }
-              onAddOpening={(workAreaId, wallTypeId, openingId) =>
-                onWallTypeAction(
+                );
+              }}
+              onAddOpening={async (workAreaId, wallTypeId, openingId) => {
+                await onWallTypeAction(
                   workAreaId,
                   "internal_walls.add_opening",
                   openingId,
                   "Add opening",
                   wallTypeId,
                   openingId
-                )
-              }
+                );
+              }}
               onDeleteOpening={(workAreaId, wallTypeId, openingId) =>
                 onWallTypeAction(
                   workAreaId,
@@ -314,7 +318,8 @@ export function RefineEstimatePanel({
                   openingId
                 )
               }
-              onSelectOpening={(workAreaId, wallTypeId, openingId) =>
+              onSelectOpening={(workAreaId, wallTypeId, openingId) => {
+                setEditingId(null);
                 onWallTypeAction(
                   workAreaId,
                   "internal_walls.active_opening_id",
@@ -322,8 +327,8 @@ export function RefineEstimatePanel({
                   "Selected opening",
                   wallTypeId,
                   openingId
-                )
-              }
+                );
+              }}
             />
           ))}
         </div>
