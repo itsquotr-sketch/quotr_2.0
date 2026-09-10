@@ -13,6 +13,8 @@ export class AIExtractionError extends Error {
 
 const workAreaSchema = z.object({
   type: z.string(),
+  name: z.string().optional(),
+  instance_key: z.string().optional(),
   confidence: z.number().min(0).max(1),
   rationale: z.string().optional().default(""),
 });
@@ -28,6 +30,8 @@ const factValueSchema = z.union([
 
 const factSchema = z.object({
   work_area_type: z.string().nullable(),
+  work_area_name: z.string().nullable().optional(),
+  work_area_instance: z.string().nullable().optional(),
   key: z.string(),
   label: z.string().optional().default(""),
   value: factValueSchema,
@@ -68,6 +72,11 @@ export function coerceExtractionPayload(raw: unknown): AIExtractionOutput {
     .filter(isRecord)
     .map((wa) => ({
       type: String(wa.type ?? ""),
+      name: typeof wa.name === "string" && wa.name.trim() ? wa.name.trim() : undefined,
+      instance_key:
+        typeof wa.instance_key === "string" && wa.instance_key.trim()
+          ? wa.instance_key.trim()
+          : undefined,
       confidence:
         typeof wa.confidence === "number" && Number.isFinite(wa.confidence)
           ? Math.min(1, Math.max(0, wa.confidence))
@@ -94,6 +103,12 @@ export function coerceExtractionPayload(raw: unknown): AIExtractionOutput {
             fact.work_area_type === null
               ? null
               : String(fact.work_area_type ?? ""),
+          work_area_name:
+            typeof fact.work_area_name === "string" ? fact.work_area_name : undefined,
+          work_area_instance:
+            typeof fact.work_area_instance === "string"
+              ? fact.work_area_instance
+              : undefined,
           key: String(fact.key ?? ""),
           label: String(fact.label ?? fact.key ?? ""),
           value,
@@ -146,21 +161,28 @@ export function validateAndFilterExtraction(
   const allowedSet = new Set(allowedTypes);
   const catalogueSet = new Set(catalogueTypes);
 
-  const workAreas = parsed.data.workAreas
-    .filter((wa) => allowedSet.has(wa.type) && catalogueSet.has(wa.type))
-    .reduce<Map<string, (typeof parsed.data.workAreas)[number]>>(
-      (byType, wa) => {
-        const existing = byType.get(wa.type);
-        if (!existing || wa.confidence > existing.confidence) {
-          byType.set(wa.type, wa);
-        }
-        return byType;
-      },
-      new Map()
-    );
+  const workAreas = parsed.data.workAreas.filter(
+    (wa) => allowedSet.has(wa.type) && catalogueSet.has(wa.type)
+  );
+
+  const byInstance = new Map<string, (typeof workAreas)[number]>();
+  const unnamedIndex = new Map<string, number>();
+  for (const wa of workAreas) {
+    const label = (wa.name ?? wa.instance_key ?? "").trim().toLowerCase();
+    let key = `${wa.type}::${label}`;
+    if (!label) {
+      const next = (unnamedIndex.get(wa.type) ?? 0) + 1;
+      unnamedIndex.set(wa.type, next);
+      key = `${wa.type}::#${next}`;
+    }
+    const existing = byInstance.get(key);
+    if (!existing || wa.confidence > existing.confidence) {
+      byInstance.set(key, wa);
+    }
+  }
 
   const dedupedWorkAreas = filterEmbeddedDemolitionWorkAreas(
-    Array.from(workAreas.values())
+    Array.from(byInstance.values())
   );
 
   if (dedupedWorkAreas.length === 0) {

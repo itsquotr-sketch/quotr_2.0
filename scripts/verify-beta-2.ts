@@ -136,7 +136,7 @@ function main() {
   assert("brief retained on retry", capture.includes("Your job details are still here"));
   assert("analyse helper explains outcome", capture.includes("identify the work involved"));
   assert("placeholder is builder language", capture.includes("Kwila") || capture.includes("6 × 3m"));
-  assert("existingTypes filter prevents duplicate work areas", actions.includes("existingTypes") && actions.includes("filter((row) => !existingTypes.has"));
+  assert("instance insert skips equivalent type+name, not type alone", actions.includes("shouldInsertWorkAreaInstance") && actions.includes("existingWorkAreaInstanceKeys"));
 
   section("WORK AREAS");
   assert("Need to confirm label", waCard.includes("Need to confirm"));

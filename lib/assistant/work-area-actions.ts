@@ -14,6 +14,7 @@ import {
   LAST_ACTIVE_WORK_AREA_MESSAGE,
   isActiveCanonicalWorkAreaStatus,
 } from "@/lib/assistant/work-area-active";
+import { nextWorkAreaInstanceLabel } from "@/lib/work-areas/instances";
 
 const CATALOGUE_BY_TYPE = new Map(
   SCOPE_CATALOGUE.map((item) => [item.type, item])
@@ -81,25 +82,27 @@ export async function addWorkAreaToProject(input: {
     .eq("project_id", projectId)
     .eq("type", workAreaType);
 
-  const confirmedDuplicate = (existingAreas ?? []).find(
+  const confirmedOfType = (existingAreas ?? []).filter(
     (area) => area.status === "confirmed"
   );
-  if (confirmedDuplicate) {
-    return {
-      error: `${catalogueItem.label} is already included in this project.`,
-    };
-  }
-
-  let workArea = (existingAreas ?? []).find(
+  const excludedOrSuggested = (existingAreas ?? []).find(
     (area) => area.status === "excluded" || area.status === "suggested"
   );
+  const instanceName = nextWorkAreaInstanceLabel(
+    workAreaType,
+    confirmedOfType.map((area) => area.name)
+  );
+
+  let workArea = excludedOrSuggested && confirmedOfType.length === 0
+    ? excludedOrSuggested
+    : undefined;
 
   if (workArea) {
     const { error } = await supabase
       .from("work_areas")
       .update({
         status: "confirmed",
-        name: catalogueItem.label,
+        name: instanceName,
         summary: catalogueItem.description,
       })
       .eq("id", workArea.id)
@@ -113,7 +116,7 @@ export async function addWorkAreaToProject(input: {
     workArea = {
       ...workArea,
       status: "confirmed",
-      name: catalogueItem.label,
+      name: instanceName,
     };
   } else {
     const { data: allAreas } = await supabase
@@ -131,7 +134,7 @@ export async function addWorkAreaToProject(input: {
         org_id: orgId,
         project_id: projectId,
         type: workAreaType,
-        name: catalogueItem.label,
+        name: instanceName,
         status: "confirmed",
         ai_confidence: null,
         summary: catalogueItem.description,
@@ -175,7 +178,7 @@ export async function addWorkAreaToProject(input: {
     workArea: {
       id: workArea.id,
       type: workAreaType,
-      name: catalogueItem.label,
+      name: instanceName,
       status: "confirmed",
       aiConfidence: 0,
       summary: catalogueItem.description,

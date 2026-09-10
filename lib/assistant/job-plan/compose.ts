@@ -5,6 +5,7 @@ import type {
   JobPlanView,
   JobPlanWorkAreaCard,
 } from "@/lib/assistant/job-plan/types";
+import { distinguishWorkAreaInstanceLabels } from "@/lib/work-areas/instances";
 import { isMonolithicCommercialFitoutType } from "@/lib/work-areas/support-contract";
 
 function assertNoLogisticsAsScope(card: JobPlanWorkAreaCard): JobPlanWorkAreaCard {
@@ -45,9 +46,15 @@ export function composeJobPlan(input: ComposeJobPlanInput): JobPlanView {
     .slice()
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
+  const displayNames = distinguishWorkAreaInstanceLabels(active);
+
   const cards = active.map((wa) => {
     const adapter = getJobPlanAdapter(wa.type);
-    return assertNoLogisticsAsScope(adapter.project(wa, context));
+    const labelled = {
+      ...wa,
+      name: displayNames.get(wa.id) ?? wa.name,
+    };
+    return assertNoLogisticsAsScope(adapter.project(labelled, context));
   });
 
   return {

@@ -138,7 +138,10 @@ const SITE_CONSTRAINTS = [
   { key: "working_hours", value: "No" },
 ] as const;
 
-function composeInput(facts: EstimateFact[]) {
+function composeInput(
+  facts: EstimateFact[],
+  constraints: readonly { key: string; value: string }[] = [...SITE_CONSTRAINTS]
+) {
   return composeClarifyInputFromEstimateContext({
     stage: "work_area_questions",
     briefText: COORDINATION_ORIGINAL_BRIEF,
@@ -158,7 +161,7 @@ function composeInput(facts: EstimateFact[]) {
       },
     ],
     facts,
-    constraints: [...SITE_CONSTRAINTS],
+    constraints: [...constraints],
   });
 }
 
@@ -186,30 +189,42 @@ check(
   )
 );
 
-console.log("\n=== Incomplete facts identify the real missing item ===\n");
-const incomplete = seedFacts();
-const incompleteCompose = composeInput(incomplete);
-const incompleteReady = evaluateClarifyEstimateReadiness(incompleteCompose);
-check("extracted construction is not Ready", incompleteReady.ready === false);
+console.log("\n=== Carry distance before Ready ===\n");
+const construction = seedFacts();
+const missingCarry = composeInput(construction, [
+  { key: "site_access", value: "Easy" },
+]);
+const missingCarryReady = evaluateClarifyEstimateReadiness(missingCarry);
 check(
-  "unresolved copy names the wall type / component",
-  Boolean(
-    incompleteReady.builderCopy &&
-      /Wall Type|insulation|opening|skirting|sheet length/i.test(
-        incompleteReady.builderCopy
-      )
-  ),
-  incompleteReady.builderCopy ?? "missing"
+  "carry unresolved is not Ready",
+  missingCarryReady.ready === false,
+  missingCarryReady.builderCopy ?? "missing"
 );
 check(
-  "diagnostics list unresolved initial facts",
-  incompleteReady.diagnostics.unresolved.length > 0 &&
-    incompleteReady.diagnostics.pendingWrites === 0
+  "unresolved copy is carry distance",
+  Boolean(
+    missingCarryReady.builderCopy &&
+      /drop-off|carry|carting/i.test(missingCarryReady.builderCopy)
+  ),
+  missingCarryReady.builderCopy ?? "missing"
 );
 
-const completeForPending = completeOptional(incomplete);
+const withCarry = composeInput(construction);
+const withCarryReady = evaluateClarifyEstimateReadiness(withCarry);
+check(
+  "extracted walls + carry is Ready without optional finish",
+  withCarryReady.ready === true,
+  withCarryReady.builderCopy ??
+    JSON.stringify(withCarryReady.diagnostics.unresolved.map((row) => row.question).slice(0, 8))
+);
+check(
+  "answering optional finish does not change Ready",
+  evaluateClarifyEstimateReadiness(composeInput(completeOptional(construction))).ready ===
+    withCarryReady.ready
+);
+
 const overlayReady = evaluateClarifyEstimateReadiness({
-  ...composeInput(completeForPending),
+  ...withCarry,
   pendingWrites: 1,
 });
 check(
@@ -219,8 +234,8 @@ check(
   overlayReady.builderCopy ?? "missing"
 );
 const detailsPending = composeEstimateReadiness({
-  clarify: composeClarifyView(composeInput(completeForPending)),
-  jobPlan: composeInput(completeForPending).jobPlan,
+  clarify: composeClarifyView(withCarry),
+  jobPlan: withCarry.jobPlan,
   qualityLevel: "standard",
   constraints: [...SITE_CONSTRAINTS],
   pendingWrites: 1,
@@ -230,9 +245,9 @@ check(
   detailsPending.enoughToEstimate === false
 );
 
-console.log("\n=== Completed optional answers ===\n");
-const complete = completeOptional(incomplete);
-const completeCompose = composeInput(complete);
+console.log("\n=== Completed construction ===\n");
+const complete = construction;
+const completeCompose = withCarry;
 const clarifyReady = evaluateClarifyEstimateReadiness(completeCompose);
 const generateReady = evaluateGenerateEstimatePermission({
   compose: completeCompose,
@@ -253,9 +268,9 @@ check(
 check(
   "stale persisted snapshot still rejects",
   evaluateGenerateEstimatePermission({
-    compose: incompleteCompose,
-    workAreas: incompleteCompose.workAreas,
-    facts: incomplete,
+    compose: missingCarry,
+    workAreas: missingCarry.workAreas,
+    facts: construction,
     unresolvedRequiredProjectConditionKeys: [],
   }).ready === false
 );

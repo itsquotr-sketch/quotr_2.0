@@ -1656,9 +1656,9 @@ export function AssistantShell({
       value: string | number | boolean | string[]
     ) => {
       const requestSeq = ++factMutationSeqRef.current;
-      setClarifyWritePending(true);
       const isNumericOrText =
         candidate.inputType === "number" || candidate.inputType === "text";
+      if (isNumericOrText) setClarifyWritePending(true);
       const valueType = persistClarifyValueType(candidate, value);
       try {
         if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
@@ -3025,7 +3025,9 @@ export function AssistantShell({
                   ? "Ready"
                   : clarifyWritePending
                     ? "Saving"
-                    : `${clarifyView.visibleCount} to clarify`
+                    : clarifyView.remainingRequiredCount > 0
+                      ? `${clarifyView.remainingRequiredCount} to clarify`
+                      : "Need details"
               }
               statusVariant="current"
               preferredExpanded={stagePrefersExpanded(

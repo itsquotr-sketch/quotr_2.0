@@ -174,6 +174,7 @@ const SCOPE_CONSTRAINT_KEYS: Record<string, string[]> = {
     "services_isolated",
     "protection_dust_control",
     "occupied_site",
+    "material_carry_distance",
   ],
   painting: [
     "occupied_site",

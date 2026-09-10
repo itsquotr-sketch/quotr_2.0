@@ -30,12 +30,10 @@ type AddWorkAreaDialogProps = {
 };
 
 function isAvailableToAdd(
-  item: ScopeCatalogueItem,
-  workAreas: WorkArea[]
+  _item: ScopeCatalogueItem,
+  _workAreas: WorkArea[]
 ): boolean {
-  const existing = workAreas.find((area) => area.type === item.type);
-  if (!existing) return true;
-  return existing.status === "excluded";
+  return true;
 }
 
 export function AddWorkAreaDialog({
@@ -137,9 +135,19 @@ export function AddWorkAreaDialog({
                   <p className="mt-2 text-xs leading-relaxed text-muted-foreground">
                     {item.description}
                   </p>
-                  {wasExcluded ? (
+                  {wasExcluded &&
+                  !workAreas.some(
+                    (area) => area.type === item.type && area.status === "confirmed"
+                  ) ? (
                     <p className="mt-1 text-xs text-muted-foreground">
                       Previously excluded — will be restored.
+                    </p>
+                  ) : workAreas.some(
+                      (area) =>
+                        area.type === item.type && area.status === "confirmed"
+                    ) ? (
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Adds another {item.label} to this job.
                     </p>
                   ) : null}
                 </button>

@@ -1,5 +1,9 @@
 import type { AIExtractionOutput } from "@/lib/ai/schema";
 import type { ScopeCatalogueItem } from "@/lib/scopes/catalogue";
+import {
+  bindFactToWorkAreaId,
+  nextWorkAreaInstanceLabel,
+} from "@/lib/work-areas/instances";
 
 export type WorkAreaInsertRow = {
   org_id: string;
@@ -24,13 +28,6 @@ export type ProjectFactInsertRow = {
   confidence: number;
 };
 
-function getCatalogueLabel(
-  type: string,
-  catalogueByType: Map<string, ScopeCatalogueItem>
-): string {
-  return catalogueByType.get(type)?.label ?? type;
-}
-
 function getWorkAreaSummary(
   type: string,
   rationale: string | undefined,
@@ -47,16 +44,30 @@ export function aiWorkAreasToRows(params: {
   projectId: string;
   catalogueByType: Map<string, ScopeCatalogueItem>;
 }): WorkAreaInsertRow[] {
-  return params.output.workAreas.map((wa, index) => ({
-    org_id: params.orgId,
-    project_id: params.projectId,
-    type: wa.type,
-    name: getCatalogueLabel(wa.type, params.catalogueByType),
-    status: "suggested" as const,
-    ai_confidence: wa.confidence,
-    summary: getWorkAreaSummary(wa.type, wa.rationale, params.catalogueByType),
-    sort_order: index + 1,
-  }));
+  const usedNamesByType = new Map<string, string[]>();
+  return params.output.workAreas.map((wa, index) => {
+    const usedNames = usedNamesByType.get(wa.type) ?? [];
+    const named = typeof wa.name === "string" ? wa.name.trim() : "";
+    const collision = usedNames.some(
+      (row) => row.toLowerCase() === named.toLowerCase()
+    );
+    const name =
+      named && !collision
+        ? named
+        : nextWorkAreaInstanceLabel(wa.type, usedNames);
+    usedNames.push(name);
+    usedNamesByType.set(wa.type, usedNames);
+    return {
+      org_id: params.orgId,
+      project_id: params.projectId,
+      type: wa.type,
+      name,
+      status: "suggested" as const,
+      ai_confidence: wa.confidence,
+      summary: getWorkAreaSummary(wa.type, wa.rationale, params.catalogueByType),
+      sort_order: index + 1,
+    };
+  });
 }
 
 export function aiFactsToRows(params: {
@@ -64,6 +75,7 @@ export function aiFactsToRows(params: {
   orgId: string;
   projectId: string;
   workAreaIdByType: Map<string, string>;
+  workAreas?: readonly { id: string; type: string; name: string }[];
 }): ProjectFactInsertRow[] {
   const rows: ProjectFactInsertRow[] = [];
 
@@ -73,9 +85,18 @@ export function aiFactsToRows(params: {
     let workAreaId: string | null = null;
 
     if (fact.work_area_type !== null) {
-      const mappedId = params.workAreaIdByType.get(fact.work_area_type);
-      if (!mappedId) continue;
-      workAreaId = mappedId;
+      if (params.workAreas && params.workAreas.length > 0) {
+        const bound = bindFactToWorkAreaId({
+          fact,
+          workAreas: params.workAreas,
+        });
+        if (!bound) continue;
+        workAreaId = bound;
+      } else {
+        const mappedId = params.workAreaIdByType.get(fact.work_area_type);
+        if (!mappedId) continue;
+        workAreaId = mappedId;
+      }
     }
 
     rows.push({

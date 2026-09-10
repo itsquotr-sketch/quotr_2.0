@@ -117,6 +117,57 @@ const BATHROOM_P1_CONDITION_KEYS = [
   "waste_bin_access",
 ] as const;
 
+const REQUIRED_CONSUMED_PROJECT_CONDITION_KEYS = new Set([
+  "site_access",
+  "material_carry_distance",
+]);
+
+const LABOUR_ACCESS_WORK_AREA_TYPES = new Set([
+  "deck",
+  "fence",
+  "retaining_wall",
+  "bathroom",
+  "internal_walls",
+  "demolition",
+  "kitchen",
+]);
+
+function isOptionalInternalWallsClarifyKey(key: string): boolean {
+  return (
+    key.includes("has_openings") ||
+    key.includes("opening.") ||
+    key.includes("insulation") ||
+    key.includes("skirting") ||
+    key.includes("cornice") ||
+    key.includes("electrical") ||
+    key.includes("stopping") ||
+    key.endsWith(".painting") ||
+    key.endsWith("_painting") ||
+    key === INTERNAL_WALLS_PAINTING_SIDES_KEY
+  );
+}
+
+function confirmedWorkAreaTypes(input: ComposeClarifyInput): string[] {
+  return input.workAreas
+    .filter((row) => row.status !== "excluded")
+    .map((row) => row.type);
+}
+
+function projectConsumesConstraint(types: readonly string[], key: string): boolean {
+  if (key === "site_access" || key === "material_carry_distance") {
+    return types.some((type) => LABOUR_ACCESS_WORK_AREA_TYPES.has(type));
+  }
+  if (key === "occupied_site" || key === "working_hours") {
+    return types.some(
+      (type) =>
+        LABOUR_ACCESS_WORK_AREA_TYPES.has(type) ||
+        type === "painting" ||
+        type === "plastering"
+    );
+  }
+  return true;
+}
+
 const CHECK_SCORES: Record<string, number> = {
   "deck.existing_deck_removal": 90,
   "deck.board_width_mm": 88,
@@ -1286,7 +1337,9 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           askClass:
             nextField === "internal_walls.wall_type.height_m"
               ? "ASSUME_IF_SKIPPED"
-              : "ASK_NOW",
+              : isOptionalInternalWallsClarifyKey(nextField)
+                ? "REFINEMENT"
+                : "ASK_NOW",
           inputType: clarifyInputTypeFromTemplate(template),
           unit: template?.unit,
           options:
@@ -1297,7 +1350,9 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           writeTarget: "FACT",
           write: null,
           blocksEstimate: false,
-          assumable: nextField === "internal_walls.wall_type.height_m",
+          assumable:
+            nextField === "internal_walls.wall_type.height_m" ||
+            isOptionalInternalWallsClarifyKey(nextField),
           rankScore: (CHECK_SCORES[nextField] ?? 70) - index,
           rankReason: "Progressive wall type configuration",
           assumptionStatement:
@@ -1582,6 +1637,7 @@ function fallbackProjectCondition(
     assumption: string;
     inputType?: ClarifyCandidate["inputType"];
     economicClass?: ClarifyCandidate["economicClass"];
+    required?: boolean;
   }
 ): ClarifyCandidate | null {
   if (constraintIsKnown(input.constraints, params.targetKey)) return null;
@@ -1592,6 +1648,15 @@ function fallbackProjectCondition(
     return null;
   }
   if (briefImpliesConstraint(input.briefText, params.targetKey)) return null;
+  if (
+    !projectConsumesConstraint(
+      confirmedWorkAreaTypes(input),
+      params.targetKey
+    )
+  ) {
+    return null;
+  }
+  const required = Boolean(params.required);
   return {
     id: `pc:${params.targetKey}`,
     source: "project_condition",
@@ -1603,17 +1668,19 @@ function fallbackProjectCondition(
     questionKey: params.questionKey,
     label: safeFactPresentationLabel(params.targetKey),
     question: params.question,
-    askClass: "ASK_NOW",
+    askClass: required ? "ASK_NOW" : "ASSUME_IF_SKIPPED",
     inputType: params.inputType ?? "select",
     options: params.options,
     writeTarget: "CONSTRAINT",
     write: null,
     blocksEstimate: false,
-    assumable: true,
+    assumable: !required,
     rankScore: params.score,
     rankReason: `Project Condition · ${params.targetKey}`,
     assumptionStatement: params.assumption,
-    economicClass: params.economicClass,
+    economicClass: required
+      ? "REQUIRED_FOR_ECONOMIC_MODEL"
+      : params.economicClass,
   };
 }
 
@@ -1656,6 +1723,11 @@ function projectConditionCandidates(
     }
     if (briefImpliesConstraint(input.briefText, c.targetKey)) return [];
     if (c.inputType === "multi_select") return [];
+    if (
+      !projectConsumesConstraint(confirmedWorkAreaTypes(input), c.targetKey)
+    ) {
+      return [];
+    }
     const bathroom = bathroomWorkAreaPresent(input);
     const p0 = (BATHROOM_P0_CONDITION_KEYS as readonly string[]).includes(
       c.targetKey
@@ -1673,6 +1745,7 @@ function projectConditionCandidates(
     }
     const score = PC_SCORES[c.targetKey] ?? 25;
     if (!bathroom && score < 30) return [];
+    const required = REQUIRED_CONSUMED_PROJECT_CONDITION_KEYS.has(c.targetKey);
     return [
       {
         id: `pc:${c.targetKey}`,
@@ -1685,7 +1758,7 @@ function projectConditionCandidates(
         questionKey: c.questionKey,
         label: safeFactPresentationLabel(c.targetKey),
         question: c.question,
-        askClass: "ASK_NOW" as const,
+        askClass: required ? ("ASK_NOW" as const) : ("ASSUME_IF_SKIPPED" as const),
         inputType: clarifyStoredInputType({
           inputType: c.inputType,
           options: c.options,
@@ -1694,7 +1767,7 @@ function projectConditionCandidates(
         writeTarget: "CONSTRAINT" as const,
         write: null,
         blocksEstimate: false,
-        assumable: true,
+        assumable: !required,
         rankScore: score,
         rankReason: `Project Condition · ${c.targetKey}`,
         assumptionStatement:
@@ -1711,8 +1784,11 @@ function projectConditionCandidates(
                     : c.targetKey === "waste_bin_access"
                       ? "Standard waste handling"
                       : null,
-        economicClass:
-          bathroom && p0 ? ("REQUIRED_FOR_ECONOMIC_MODEL" as const) : undefined,
+        economicClass: required
+          ? ("REQUIRED_FOR_ECONOMIC_MODEL" as const)
+          : bathroom && p0
+            ? ("REQUIRED_FOR_ECONOMIC_MODEL" as const)
+            : undefined,
       },
     ];
   });
@@ -1725,9 +1801,7 @@ function projectConditionCandidates(
       options: ["Easy", "Moderate", "Difficult", "Very poor"],
       score: PC_SCORES.site_access,
       assumption: "Standard access",
-      economicClass: bathroomWorkAreaPresent(input)
-        ? "REQUIRED_FOR_ECONOMIC_MODEL"
-        : undefined,
+      required: true,
     }),
     fallbackProjectCondition(input, {
       targetKey: "material_carry_distance",
@@ -1736,9 +1810,7 @@ function projectConditionCandidates(
       options: ["< 10m", "10–30m", "> 30m", "Not sure"],
       score: PC_SCORES.material_carry_distance,
       assumption: "Standard carry",
-      economicClass: bathroomWorkAreaPresent(input)
-        ? "REQUIRED_FOR_ECONOMIC_MODEL"
-        : undefined,
+      required: true,
     }),
     fallbackProjectCondition(input, {
       targetKey: "occupied_site",

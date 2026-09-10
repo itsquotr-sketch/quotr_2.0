@@ -22,6 +22,7 @@ import {
   extractInternalWallsTypesFromBrief,
   stripInventedInternalWallsFacts,
 } from "@/lib/estimate/internal-walls-brief";
+import { discoverWorkAreaInstances } from "@/lib/work-areas/discovery-instances";
 import { filterTopLevelWorkAreas } from "@/lib/work-areas/ownership";
 import type { EstimateFact } from "@/lib/estimate/types";
 
@@ -321,6 +322,13 @@ function inferInternalWalls(
     const wallTypes = seeded.find((row) => row.key === "internal_walls.wall_types")
       ?.value;
     if (Array.isArray(wallTypes) && wallTypes.length > 0) {
+      extraction.facts = extraction.facts.filter(
+        (fact) =>
+          !(
+            fact.key === "internal_walls.wall_types" &&
+            fact.work_area_type === "internal_walls"
+          )
+      );
       addFact(extraction, {
         workAreaType: "internal_walls",
         key: "internal_walls.wall_types",
@@ -672,7 +680,7 @@ function inferBathroom(
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
-  if (!includesAny(brief, ["bathroom"])) return;
+  if (!includesAny(brief, ["bathroom", "ensuite"])) return;
 
   addWorkAreaIfMissing(
     extraction,
@@ -1897,6 +1905,46 @@ function mergePossibleConstraints(
   }
 }
 
+function applyDiscoveredWorkAreaInstances(
+  briefText: string,
+  extraction: AIExtractionOutput,
+  allowedTypes: string[]
+): void {
+  const discovered = discoverWorkAreaInstances(briefText);
+  const types = [...new Set(discovered.map((row) => row.type))];
+  for (const type of types) {
+    if (!allowedTypes.includes(type)) continue;
+    const instances = discovered.filter((row) => row.type === type);
+    if (instances.length === 0) continue;
+    if (instances.length === 1) {
+      const existing = extraction.workAreas.find((row) => row.type === type);
+      if (existing && instances[0]?.name) {
+        existing.name = instances[0].name;
+        existing.instance_key = instances[0].name;
+      } else if (!existing && instances[0]) {
+        extraction.workAreas.push({
+          type,
+          name: instances[0].name,
+          instance_key: instances[0].name,
+          confidence: 0.9,
+          rationale: `INSTANCE: ${instances[0].evidence}`,
+        });
+      }
+      continue;
+    }
+    extraction.workAreas = extraction.workAreas.filter((row) => row.type !== type);
+    for (const instance of instances) {
+      extraction.workAreas.push({
+        type,
+        name: instance.name,
+        instance_key: instance.name,
+        confidence: 0.9,
+        rationale: `INSTANCE: ${instance.evidence}`,
+      });
+    }
+  }
+}
+
 export function enrichExtractionFromBrief(params: {
   briefText: string;
   extraction: AIExtractionOutput;
@@ -1927,6 +1975,7 @@ export function enrichExtractionFromBrief(params: {
   inferPlastering(brief, extraction, params.allowedTypes);
   inferDemolitionAndRemoval(brief, extraction, params.allowedTypes);
   inferNoTiling(brief, extraction);
+  applyDiscoveredWorkAreaInstances(params.briefText, extraction, params.allowedTypes);
   applyConstraintFactsToWorkAreas(brief, extraction);
   stripInventedInternalWallsFacts(extraction, params.briefText);
   const owned = filterTopLevelWorkAreas({

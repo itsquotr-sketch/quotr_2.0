@@ -125,9 +125,7 @@ export function composeEstimateReadiness(
       ? "That's enough to build your estimate."
       : pendingWrites > 0
         ? "Saving the last answer"
-        : blockerCopy
-          ? "Need a bit more"
-          : "That's enough to build your estimate.",
+        : "Need a bit more",
     explanation: enough
       ? "All required details resolved. You can still change the job afterward."
       : pendingWrites > 0

@@ -228,8 +228,12 @@ const jobPlan = composeJobPlan({
 const iwCard = jobPlan.cards.find((card) => card.workAreaType === "internal_walls");
 check(
   "Job Plan shows 2 Wall Types",
-  Boolean(iwCard?.specChips.some((chip) => /2 Wall Types/i.test(chip.value))) &&
-    (iwCard?.specChips.filter((chip) => chip.key.startsWith("wt-")).length ?? 0) >= 2
+  Boolean(
+    iwCard &&
+      /2 Wall Types/i.test(iwCard.summary) &&
+      iwCard.included.some((row) => /Wall Type 1/i.test(row.label)) &&
+      iwCard.included.some((row) => /Wall Type 2/i.test(row.label))
+  )
 );
 const clarify = composeClarifyView({
   stage: "work_area_questions",
@@ -267,8 +271,27 @@ check(
     (iwCard?.specChips.filter((chip) => chip.key.startsWith("wt-")).length ?? 0) >= 2
 );
 check(
-  "Details is not Ready until optional components are chosen",
+  "Details is not Ready without required Project Conditions",
   clarify.enoughToEstimate === false
+);
+const readyClarify = composeClarifyView({
+  stage: "work_area_questions",
+  briefText: BRIEF,
+  qualityLevel: "standard",
+  workAreas: [
+    { id: "w1", type: "internal_walls", name: "Internal walls", status: "confirmed" },
+    { id: "d1", type: "demolition", name: "Demolition / strip-out", status: "confirmed" },
+  ],
+  facts,
+  constraints: [
+    { key: "site_access", value: "Easy" },
+    { key: "material_carry_distance", value: "< 10m" },
+  ],
+  jobPlan,
+});
+check(
+  "Details is Ready with known walls + carry, without optional finish",
+  readyClarify.enoughToEstimate === true
 );
 
 if (failed > 0) {

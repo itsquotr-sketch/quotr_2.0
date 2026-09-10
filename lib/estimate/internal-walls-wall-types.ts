@@ -1050,8 +1050,15 @@ export function summariseWallType(
   const centres =
     type.stud_centres_mm != null ? `${type.stud_centres_mm} mm centres` : null;
   let liningLine: string | null = null;
+  const liningResolved =
+    type.side_a.product != null ||
+    type.side_b.product != null ||
+    type.side_a.lined ||
+    type.side_b.lined;
   const lined = linedFaceCount(type);
-  if (lined === 0) {
+  if (!liningResolved) {
+    liningLine = null;
+  } else if (lined === 0) {
     liningLine = "No lining";
   } else if (
     type.same_lining_both_sides === true ||
@@ -1620,6 +1627,7 @@ export function applyInternalWallsFactWrite(params: {
           type.height_m = parsePositiveNumber(params.value);
           type.height_source = type.height_m != null ? "known" : null;
         }
+        applyRecommendedCentres(type);
         return;
       }
       if (field === "stud_centres_mm") {

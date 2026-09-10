@@ -32,6 +32,10 @@ import { permissionDeniedError } from "@/lib/team/permission-server";
 import { legacyQualityRequiresScopeReview } from "@/lib/assistant/clarify/quality-gate";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
+import {
+  existingWorkAreaInstanceKeys,
+  shouldInsertWorkAreaInstance,
+} from "@/lib/work-areas/instances";
 import type {
   AssistantActionState,
   ConstraintInput,
@@ -301,11 +305,14 @@ export async function saveBriefAndSeedWorkAreas(
 
   const { data: existingWorkAreas } = await supabase
     .from("work_areas")
-    .select("id, type")
+    .select("id, type, name")
     .eq("project_id", projectId);
 
-  const existingTypes = new Set(
-    (existingWorkAreas ?? []).map((row) => row.type)
+  const existingInstanceKeys = existingWorkAreaInstanceKeys(
+    (existingWorkAreas ?? []).map((row) => ({
+      type: row.type,
+      name: row.name,
+    }))
   );
 
   const workAreaRows = aiWorkAreasToRows({
@@ -313,7 +320,12 @@ export async function saveBriefAndSeedWorkAreas(
     orgId,
     projectId,
     catalogueByType: CATALOGUE_BY_TYPE,
-  }).filter((row) => !existingTypes.has(row.type));
+  }).filter((row) =>
+    shouldInsertWorkAreaInstance(
+      { type: row.type, name: row.name },
+      existingInstanceKeys
+    )
+  );
 
   if (workAreaRows.length > 0) {
     const { error: insertError } = await supabase
@@ -340,7 +352,7 @@ export async function saveBriefAndSeedWorkAreas(
 
   const { data: allWorkAreas, error: workAreasError } = await supabase
     .from("work_areas")
-    .select("id, type")
+    .select("id, type, name")
     .eq("project_id", projectId);
 
   if (workAreasError || !allWorkAreas || allWorkAreas.length === 0) {
@@ -362,6 +374,7 @@ export async function saveBriefAndSeedWorkAreas(
     orgId,
     projectId,
     workAreaIdByType,
+    workAreas: allWorkAreas,
   });
 
   if (factRows.length > 0) {
