@@ -899,7 +899,9 @@ function applyInternalWallsReviewGroups(
         (overlap.startsWith("internal_walls.insulation:") ||
           overlap.startsWith("internal_walls.skirting:") ||
           overlap.startsWith("internal_walls.cornice:") ||
-          overlap.startsWith("internal_walls.electrical:"))
+          overlap.startsWith("internal_walls.electrical:") ||
+          overlap.startsWith("internal_walls.stopping:") ||
+          overlap.startsWith("internal_walls.painting:"))
       ) {
         const list = finishGrouped.get(overlap) ?? [];
         list.push(line);
@@ -1027,9 +1029,22 @@ function applyInternalWallsReviewGroups(
           ? "Skirting"
           : overlap.startsWith("internal_walls.cornice:")
             ? "Cornice"
-            : "Electrical";
+            : overlap.startsWith("internal_walls.stopping:")
+              ? "Stopping"
+              : overlap.startsWith("internal_walls.painting:")
+                ? "Painting"
+                : "Electrical";
       const supportingParts = children
-        .map((row) => row.supporting)
+        .map((row) => {
+          const base = row.supporting;
+          const needsPricing =
+            row.rateLabel === "Rate required" ||
+            row.rateLabel === "Pricing Required";
+          if (needsPricing && (!base || !/pricing required/i.test(base))) {
+            return [base, "Pricing Required"].filter(Boolean).join(" · ");
+          }
+          return base;
+        })
         .filter((text, index, list): text is string =>
           Boolean(text) && list.indexOf(text) === index
         );

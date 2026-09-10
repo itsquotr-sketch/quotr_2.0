@@ -47,19 +47,25 @@ import {
   INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
   INTERNAL_WALLS_INSULATION_TYPE_KEY,
+  INTERNAL_WALLS_PAINTING_SIDES_KEY,
   INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
   nextInternalWallsFinishField,
   parseInternalWallsElectricalTier,
   parseInternalWallsInsulationType,
   parseInternalWallsSideSelection,
+  parseInternalWallsStoppingLevel,
   parseYesNo,
   sideSelectionDisplay,
+  stoppingLevelDisplay,
   summariseFinishLine,
   electricalTierDisplay,
   insulationTypeDisplay,
   type InternalWallsElectricalTier,
   type InternalWallsInsulationType,
   type InternalWallsSideSelection,
+  type InternalWallsStoppingLevel,
 } from "@/lib/estimate/internal-walls-finish";
 
 export const INTERNAL_WALLS_WALL_TYPES_FACT_KEY =
@@ -95,6 +101,9 @@ export const INTERNAL_WALLS_WALL_TYPE_FIELD_KEYS = [
   "internal_walls.wall_type.cornice",
   "internal_walls.wall_type.electrical",
   "internal_walls.wall_type.electrical_note",
+  "internal_walls.wall_type.stopping_side_a",
+  "internal_walls.wall_type.stopping_side_b",
+  "internal_walls.wall_type.painting",
 ] as const;
 
 export const INTERNAL_WALLS_ADD_WALL_TYPE_KEY =
@@ -269,6 +278,9 @@ export type InternalWallsWallType = {
   cornice: InternalWallsSideSelection | null;
   electrical: InternalWallsElectricalTier | null;
   electrical_note: string | null;
+  stopping_side_a: InternalWallsStoppingLevel | null;
+  stopping_side_b: InternalWallsStoppingLevel | null;
+  painting: InternalWallsSideSelection | null;
 };
 
 export type InternalWallsWallTypeSource = "canonical" | "legacy_dual_read";
@@ -400,6 +412,9 @@ export function createEmptyWallType(params?: {
     cornice: null,
     electrical: null,
     electrical_note: null,
+    stopping_side_a: null,
+    stopping_side_b: null,
+    painting: null,
   };
 }
 
@@ -423,6 +438,9 @@ export function duplicateWallType(
     cornice: source.cornice,
     electrical: source.electrical,
     electrical_note: source.electrical_note,
+    stopping_side_a: source.stopping_side_a,
+    stopping_side_b: source.stopping_side_b,
+    painting: source.painting,
   };
 }
 
@@ -761,6 +779,9 @@ export function parseInternalWallsWallType(
       typeof value.electrical_note === "string" && value.electrical_note.trim()
         ? value.electrical_note.trim()
         : null,
+    stopping_side_a: parseInternalWallsStoppingLevel(value.stopping_side_a),
+    stopping_side_b: parseInternalWallsStoppingLevel(value.stopping_side_b),
+    painting: parseInternalWallsSideSelection(value.painting),
   };
 }
 
@@ -1053,6 +1074,57 @@ export function summariseWallType(
     linedFaceCount: lined,
     source,
   };
+}
+
+export function summariseInternalWallsWorkArea(
+  types: readonly InternalWallsWallType[]
+): string | null {
+  if (types.length === 0) return null;
+  const frames: string[] = [];
+  if (types.some((row) => row.frame_system === "timber")) frames.push("timber");
+  if (types.some((row) => row.frame_system === "steel")) frames.push("steel");
+  if (types.some((row) => row.frame_system === "existing_frame")) {
+    frames.push("existing frame");
+  }
+  const openingCount = types.reduce(
+    (sum, row) => sum + row.openings.length,
+    0
+  );
+  const extras: string[] = [];
+  if (types.some((row) => row.insulation_included === true)) {
+    extras.push("insulation");
+  }
+  if (types.some((row) => row.skirting && row.skirting !== "none")) {
+    extras.push("skirting");
+  }
+  if (types.some((row) => row.cornice && row.cornice !== "none")) {
+    extras.push("cornice");
+  }
+  if (types.some((row) => row.electrical && row.electrical !== "none")) {
+    extras.push("electrical");
+  }
+  if (
+    types.some(
+      (row) =>
+        (row.stopping_side_a && row.stopping_side_a !== "none") ||
+        (row.stopping_side_b && row.stopping_side_b !== "none")
+    )
+  ) {
+    extras.push("stopping");
+  }
+  if (types.some((row) => row.painting && row.painting !== "none")) {
+    extras.push("painting");
+  }
+  return [
+    `${types.length} Wall Type${types.length === 1 ? "" : "s"}`,
+    frames.length > 0 ? `${frames.join(" + ")} partitions` : null,
+    openingCount > 0
+      ? `${openingCount} opening${openingCount === 1 ? "" : "s"}`
+      : null,
+    extras.length > 0 ? extras.join(" / ") : null,
+  ]
+    .filter(Boolean)
+    .join(" · ");
 }
 
 function mapLegacyFrameSystem(value: string | null): InternalWallsFrameSystem | null {
@@ -1685,6 +1757,18 @@ export function applyInternalWallsFactWrite(params: {
             : null;
         return;
       }
+      if (field === "stopping_side_a") {
+        type.stopping_side_a = parseInternalWallsStoppingLevel(params.value);
+        return;
+      }
+      if (field === "stopping_side_b") {
+        type.stopping_side_b = parseInternalWallsStoppingLevel(params.value);
+        return;
+      }
+      if (field === "painting") {
+        type.painting = parseInternalWallsSideSelection(params.value);
+        return;
+      }
     });
   } else {
     return facts;
@@ -1771,6 +1855,8 @@ function nextOpeningField(type: InternalWallsWallType): string | null {
 export function nextInternalWallsWallTypeField(params: {
   type: InternalWallsWallType | null;
   jobScope: string | null;
+  omitStopping?: boolean;
+  omitPainting?: boolean;
 }): string | null {
   if (params.jobScope === "remove_partition") return null;
   const type = params.type;
@@ -1803,7 +1889,12 @@ export function nextInternalWallsWallTypeField(params: {
     if (type.same_lining_both_sides === false && !type.side_b.lined) {
       return "internal_walls.wall_type.side_b_product";
     }
-    return nextInternalWallsFinishField({ type, jobScope: params.jobScope as never });
+    return nextInternalWallsFinishField({
+      type,
+      jobScope: params.jobScope as never,
+      omitStopping: params.omitStopping,
+      omitPainting: params.omitPainting,
+    });
   }
 
   if (params.jobScope === "reline_existing") {
@@ -1818,7 +1909,12 @@ export function nextInternalWallsWallTypeField(params: {
       const openingNext = nextOpeningField(type);
       if (openingNext) return openingNext;
     }
-    return nextInternalWallsFinishField({ type, jobScope: params.jobScope as never });
+    return nextInternalWallsFinishField({
+      type,
+      jobScope: params.jobScope as never,
+      omitStopping: params.omitStopping,
+      omitPainting: params.omitPainting,
+    });
   }
   if (type.frame_system == null) return "internal_walls.wall_type.frame_system";
   if (type.frame_system === "timber" && type.frame_size == null) {
@@ -1846,7 +1942,12 @@ export function nextInternalWallsWallTypeField(params: {
     const openingNext = nextOpeningField(type);
     if (openingNext) return openingNext;
   }
-  return nextInternalWallsFinishField({ type, jobScope: params.jobScope as never });
+  return nextInternalWallsFinishField({
+    type,
+    jobScope: params.jobScope as never,
+    omitStopping: params.omitStopping,
+    omitPainting: params.omitPainting,
+  });
 }
 
 export function wallTypeFieldCurrentValue(
@@ -1927,6 +2028,12 @@ export function wallTypeFieldCurrentValue(
       return electricalTierDisplay(type.electrical);
     case INTERNAL_WALLS_ELECTRICAL_NOTE_KEY:
       return type.electrical_note;
+    case INTERNAL_WALLS_STOPPING_SIDE_A_KEY:
+      return stoppingLevelDisplay(type.stopping_side_a);
+    case INTERNAL_WALLS_STOPPING_SIDE_B_KEY:
+      return stoppingLevelDisplay(type.stopping_side_b);
+    case INTERNAL_WALLS_PAINTING_SIDES_KEY:
+      return sideSelectionDisplay(type.painting);
     case "internal_walls.opening.type": {
       const opening =
         type.openings.find((row) => row.id === type.active_opening_id) ??

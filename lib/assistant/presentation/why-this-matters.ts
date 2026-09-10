@@ -86,6 +86,12 @@ const WHY_THIS_MATTERS: Readonly<Record<string, string>> = Object.freeze({
     "Stopping uses selected new plasterboard lining area. Tiled walls are not deducted.",
   "bathroom.painting_included":
     "Painting uses remaining paintable wall plus ceiling. Tiled wall surfaces are not painted.",
+  "internal_walls.wall_type.stopping_side_a":
+    "Stopping is the final visible plasterboard face only. Layers do not multiply area. Side A is independent of Side B.",
+  "internal_walls.wall_type.stopping_side_b":
+    "Stopping is the final visible plasterboard face only. Layers do not multiply area. Side B is independent of Side A.",
+  "internal_walls.wall_type.painting":
+    "Wall-face painting uses net lined area after openings. Coats do not multiply wall area. Skirting, cornice and doors are not included here.",
 });
 
 /**

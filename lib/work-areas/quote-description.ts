@@ -8,6 +8,8 @@ import {
   fenceQuoteReadiness,
   fenceQuoteSystemPhrase,
 } from "@/lib/estimate/fence-quote-readiness";
+import { parseInternalWallsJobScope } from "@/lib/estimate/internal-walls-scope";
+import { parseInternalWallsWallTypes } from "@/lib/estimate/internal-walls-wall-types";
 
 export type WorkAreaQuoteFact = {
   key: string;
@@ -581,21 +583,118 @@ function buildKitchenDraft(facts?: WorkAreaQuoteFact[]): string {
 }
 
 function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
-  const jobScope = factValue(facts, "internal_walls.job_scope");
-  const length = factValue(facts, "internal_walls.length_lm");
-  const height = factValue(facts, "internal_walls.height_m");
-  const lining = factValue(facts, "internal_walls.wall_lining_type");
-  const sides = factValue(facts, "internal_walls.lining_sides");
+  const jobScopeRaw = factValue(facts, "internal_walls.job_scope");
+  const jobScope = parseInternalWallsJobScope(jobScopeRaw);
+  const types = parseInternalWallsQuoteTypes(facts);
+
+  if (types.length > 0) {
+    const hasTimber = types.some((row) => row.frame_system === "timber");
+    const hasSteel = types.some((row) => row.frame_system === "steel");
+    const hasExisting = types.some(
+      (row) => row.frame_system === "existing_frame"
+    );
+    const hasLining = types.some(
+      (row) => row.side_a.lined || row.side_b.lined
+    );
+    const hasInsulation = types.some((row) => row.insulation_included === true);
+    const hasSkirting = types.some(
+      (row) => row.skirting && row.skirting !== "none"
+    );
+    const hasCornice = types.some(
+      (row) => row.cornice && row.cornice !== "none"
+    );
+    const hasElectrical = types.some(
+      (row) => row.electrical && row.electrical !== "none"
+    );
+    const hasStopping = types.some(
+      (row) =>
+        (row.stopping_side_a && row.stopping_side_a !== "none") ||
+        (row.stopping_side_b && row.stopping_side_b !== "none")
+    );
+    const hasPainting = types.some(
+      (row) => row.painting && row.painting !== "none"
+    );
+    const hasOpenings = types.some((row) => row.openings.length > 0);
+    const frameBits = [
+      hasTimber ? "timber framing" : null,
+      hasSteel ? "steel framing" : null,
+      hasExisting ? "lining to existing frames" : null,
+    ].filter((row): row is string => Boolean(row));
+
+    let draft =
+      jobScope === "form_opening"
+        ? "Form openings in existing internal walls to the agreed sizes."
+        : jobScope === "infill_opening"
+          ? "Infill existing openings with matching internal wall construction."
+          : jobScope === "reline_existing"
+            ? "Reline existing internal wall frames as selected."
+            : jobScope === "remove_partition"
+              ? "Remove the selected internal partitions."
+              : `Supply and install internal partitions${
+                  frameBits.length > 0 ? ` including ${frameBits.join(" and ")}` : ""
+                } as selected.`;
+
+    if (jobScope !== "remove_partition" && hasLining) {
+      draft = appendScopeClause(
+        draft,
+        "Plasterboard lining is included where selected."
+      );
+    }
+    if (hasInsulation) {
+      draft = appendScopeClause(draft, "Wall insulation is included where selected.");
+    }
+    if (hasSkirting) {
+      draft = appendScopeClause(draft, "Skirting is included where selected.");
+    }
+    if (hasCornice) {
+      draft = appendScopeClause(draft, "Cornice is included where selected.");
+    }
+    if (hasStopping) {
+      draft = appendScopeClause(
+        draft,
+        "Plasterboard stopping is included to the selected faces."
+      );
+    }
+    if (hasPainting) {
+      draft = appendScopeClause(
+        draft,
+        "Wall-face painting is included to the selected faces."
+      );
+    }
+    if (hasElectrical) {
+      draft = appendScopeClause(
+        draft,
+        "An electrical allowance is included where selected."
+      );
+    }
+    if (hasOpenings || jobScope === "form_opening") {
+      draft = appendScopeClause(
+        draft,
+        "Openings are formed as specified. Door leaves, frames, hardware and door installation are not included unless a separate Doors work area is confirmed."
+      );
+    }
+    draft = appendScopeClause(
+      draft,
+      "Services relocation and fire or acoustic certification are excluded unless specifically included."
+    );
+    return finalizeDraft(draft);
+  }
 
   let draft =
     "Construct internal wall works to the agreed scope, including framing, lining and associated finishing where included.";
 
-  if (jobScope) {
-    draft = `Internal wall works: ${jobScope.replace(/_/g, " ")}. Framing and lining quantities are confirmed from the recorded wall types.`;
-  } else if (length && height) {
-    draft = `Construct approximately ${length} lm of ${height} m high internal wall to the agreed scope, including framing, lining and associated finishing where included.`;
+  if (jobScopeRaw) {
+    draft = `Internal wall works: ${jobScopeRaw.replace(/_/g, " ")}. Framing and lining quantities are confirmed from the recorded wall types.`;
+  } else {
+    const length = factValue(facts, "internal_walls.length_lm");
+    const height = factValue(facts, "internal_walls.height_m");
+    if (length && height) {
+      draft = `Construct approximately ${length} lm of ${height} m high internal wall to the agreed scope, including framing, lining and associated finishing where included.`;
+    }
   }
 
+  const lining = factValue(facts, "internal_walls.wall_lining_type");
+  const sides = factValue(facts, "internal_walls.lining_sides");
   if (lining) {
     draft = appendScopeClause(draft, `${lining} lining is included where applicable.`);
   }
@@ -615,6 +714,16 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
   );
 
   return finalizeDraft(draft);
+}
+
+function parseInternalWallsQuoteTypes(facts?: WorkAreaQuoteFact[]) {
+  const raw = facts?.find((row) => row.key === "internal_walls.wall_types")?.value;
+  if (!raw) return [];
+  try {
+    return parseInternalWallsWallTypes(JSON.parse(raw));
+  } catch {
+    return [];
+  }
 }
 
 function buildCeilingsDraft(facts?: WorkAreaQuoteFact[]): string {

@@ -76,7 +76,11 @@ async function loadWorkAreaFacts(
 
   return (facts ?? [])
     .map((fact) => {
-      const value = formatFactValueForDisplay(fact.value);
+      const raw = fact.value;
+      const value =
+        raw && typeof raw === "object"
+          ? JSON.stringify(raw)
+          : formatFactValueForDisplay(raw);
       if (!value) {
         return null;
       }

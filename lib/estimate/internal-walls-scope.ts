@@ -274,6 +274,9 @@ const WALL_TYPE_FIELD_KEYS = new Set([
   "internal_walls.wall_type.cornice",
   "internal_walls.wall_type.electrical",
   "internal_walls.wall_type.electrical_note",
+  "internal_walls.wall_type.stopping_side_a",
+  "internal_walls.wall_type.stopping_side_b",
+  "internal_walls.wall_type.painting",
 ]);
 
 export function shouldHideInternalWallsQuestion(params: {

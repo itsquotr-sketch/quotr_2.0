@@ -36,9 +36,16 @@ import {
   INTERNAL_WALLS_INSULATION_INCLUDED_OPTIONS,
   INTERNAL_WALLS_INSULATION_TYPE_KEY,
   INTERNAL_WALLS_INSULATION_TYPE_OPTIONS,
+  INTERNAL_WALLS_PAINTING_SIDES_KEY,
   INTERNAL_WALLS_SIDE_SELECTION_OPTIONS,
   INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+  INTERNAL_WALLS_STOPPING_OPTIONS,
+  INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
+  faceEligibleForPainting,
+  faceEligibleForStopping,
   insulationAsksForScope,
+  internalWallsPaintingOptions,
 } from "@/lib/estimate/internal-walls-finish";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type {
@@ -648,6 +655,63 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
           })
         );
       }
+
+    if (jobScope !== "form_opening") {
+      if (faceEligibleForStopping(active?.side_a)) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+            label: "Stopping — Side A",
+            question: "Include stopping to Side A?",
+            inputType: "select",
+            options: INTERNAL_WALLS_STOPPING_OPTIONS,
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              INTERNAL_WALLS_STOPPING_SIDE_A_KEY
+            ),
+            wallTypeId,
+          })
+        );
+      }
+      if (faceEligibleForStopping(active?.side_b)) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
+            label: "Stopping — Side B",
+            question: "Include stopping to Side B?",
+            inputType: "select",
+            options: INTERNAL_WALLS_STOPPING_OPTIONS,
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              INTERNAL_WALLS_STOPPING_SIDE_B_KEY
+            ),
+            wallTypeId,
+          })
+        );
+      }
+      if (active && (faceEligibleForPainting(active.side_a) || faceEligibleForPainting(active.side_b))) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: INTERNAL_WALLS_PAINTING_SIDES_KEY,
+            label: "Wall painting",
+            question: "Include wall painting?",
+            inputType: "select",
+            options: internalWallsPaintingOptions(active),
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              INTERNAL_WALLS_PAINTING_SIDES_KEY
+            ),
+            wallTypeId,
+          })
+        );
+      }
+    }
 
     out.push(
       candidate({

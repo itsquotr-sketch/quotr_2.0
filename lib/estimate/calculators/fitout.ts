@@ -53,6 +53,7 @@ import {
   grossFaceAreaM2,
   linedFaceCount,
   resolveInternalWallsWallTypes,
+  summariseInternalWallsWorkArea,
   wallTypeNeedsLength,
 } from "@/lib/estimate/internal-walls-wall-types";
 import { INTERNAL_WALLS_LINING_NOT_PRICED_STATEMENT } from "@/lib/estimate/internal-walls-identities";
@@ -195,6 +196,9 @@ export const INTERNAL_WALLS_CALCULATOR_CONSUMED_FACTS = [
   "internal_walls.wall_type.cornice",
   "internal_walls.wall_type.electrical",
   "internal_walls.wall_type.electrical_note",
+  "internal_walls.wall_type.stopping_side_a",
+  "internal_walls.wall_type.stopping_side_b",
+  "internal_walls.wall_type.painting",
   "internal_walls.add_opening",
   "internal_walls.delete_opening",
   "internal_walls.active_opening_id",
@@ -239,6 +243,10 @@ function calculateInternalWallsMature(
 
   if (jobScope) {
     assumptions.push(`Internal walls job scope: ${jobScope.replace(/_/g, " ")}.`);
+  }
+  const workAreaSummary = summariseInternalWallsWorkArea(resolved.types);
+  if (workAreaSummary) {
+    assumptions.push(workAreaSummary);
   }
 
   if (structuralBlocksEstimate(jobScope, structural)) {

@@ -142,6 +142,8 @@ export function shouldHideConditionalQuestion(
     const nextField = nextInternalWallsWallTypeField({
       type: active,
       jobScope,
+      omitStopping: confirmedTypes?.has("plastering") === true,
+      omitPainting: confirmedTypes?.has("painting") === true,
     });
     const mature = jobScope != null || canonicalTypes.length > 0;
     return shouldHideInternalWallsQuestion({

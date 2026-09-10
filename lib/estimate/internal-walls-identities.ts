@@ -257,6 +257,10 @@ export const INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT =
   "internal_walls.cornice.install" as const;
 export const INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_COMPONENT =
   "internal_walls.electrical.allowance" as const;
+export const INTERNAL_WALLS_STOPPING_COMPONENT =
+  "internal_walls.stopping" as const;
+export const INTERNAL_WALLS_PAINTING_COMPONENT =
+  "internal_walls.painting" as const;
 
 /** Future DNA — no owner-approved hours in IW-07. */
 export const INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY =
@@ -294,6 +298,14 @@ export function internalWallsElectricalOverlapGroup(wallTypeId: string): string 
   return `internal_walls.electrical:${wallTypeId}`;
 }
 
+export function internalWallsStoppingOverlapGroup(wallTypeId: string): string {
+  return `internal_walls.stopping:${wallTypeId}`;
+}
+
+export function internalWallsPaintingOverlapGroup(wallTypeId: string): string {
+  return `internal_walls.painting:${wallTypeId}`;
+}
+
 export const INTERNAL_WALLS_FINISH_COMPONENT_KEYS = [
   INTERNAL_WALLS_INSULATION_MATERIAL_COMPONENT,
   INTERNAL_WALLS_INSULATION_LABOUR_COMPONENT,
@@ -302,7 +314,17 @@ export const INTERNAL_WALLS_FINISH_COMPONENT_KEYS = [
   INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT,
   INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
   INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_COMPONENT,
+  INTERNAL_WALLS_STOPPING_COMPONENT,
+  INTERNAL_WALLS_PAINTING_COMPONENT,
 ] as const;
+
+export function internalWallsStoppingItemKey(
+  level: "level_4" | "level_5" | "custom"
+): string {
+  return `stopping.plasterboard.${level === "level_4" ? "level4" : level === "level_5" ? "level5" : "custom"}.m2`;
+}
+
+export const INTERNAL_WALLS_PAINTING_MATERIAL_KEY = "painting.wall.m2" as const;
 
 export function isInternalWallsFinishComponentKey(
   key: string | null | undefined

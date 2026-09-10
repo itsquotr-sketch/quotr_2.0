@@ -1,6 +1,6 @@
 # Quotr Internal Walls Estimating Architecture
 
-**Status:** CANONICAL — **WA-INTERNAL-WALLS-07** insulation + skirting + cornice + electrical  
+**Status:** CANONICAL — **WA-INTERNAL-WALLS-08** stopping + painting + commercial close  
 **Date:** 2026-09-10  
 **Branch:** `hardening/stage-2a-security`  
 **Preview:** Supabase `shhpjsoldmqtkdbgrbtm`, migrations through **056**  
@@ -15,7 +15,9 @@
 **Verifier (04 steel framing):** `scripts/verify-work-area-internal-walls-04.ts`  
 **Verifier (05 lining takeoff):** `scripts/verify-work-area-internal-walls-05.ts`  
 **Verifier (06 openings):** `scripts/verify-work-area-internal-walls-06.ts`  
-**Verifier (07 insulation/skirting/cornice/electrical):** `scripts/verify-work-area-internal-walls-07.ts`
+**Verifier (07 insulation/skirting/cornice/electrical):** `scripts/verify-work-area-internal-walls-07.ts`  
+**Verifier (08 stopping/painting/close):** `scripts/verify-work-area-internal-walls-08.ts`  
+**Verifier (maturity IW-01→08):** `scripts/verify-work-area-internal-walls-maturity.ts`
 
 Canonical Work Area type: **`internal_walls`**. ISD alias: **`partitions`**.
 
@@ -34,11 +36,12 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | WA-INTERNAL-WALLS-04 steel track/stud takeoff | **GO** |
 | WA-INTERNAL-WALLS-05 lining sheets + labour | **GO** (historical) |
 | WA-INTERNAL-WALLS-06 openings + structural gate + lining deductions | **GO** |
-| WA-INTERNAL-WALLS-07 insulation + skirting + cornice + electrical | **GO** (this phase) |
-| Current product maturity | **PARTIAL** — timber + steel + lining + openings + finish allowances on mature path; stopping/painting not in 07 |
-| Customer UI band | **Component** — do not call Supported or Mature |
+| WA-INTERNAL-WALLS-07 insulation + skirting + cornice + electrical | **GO** |
+| WA-INTERNAL-WALLS-08 stopping + painting + commercial close | **GO** (this phase) |
+| Current product maturity | **MATURE (beta)** — timber + steel + lining + openings + finish + stopping + painting on mature path. Missing commercial rates remain Pricing Required. |
+| Customer UI band | **Component** — mature Work Area, not a package |
 | Openings / door deductions in 06 | **GO** — net lined m² deducted; sheet purchase stays on the sheet-run |
-| Start WA-INTERNAL-WALLS-08 / Ceilings / Doors / Variations / RFQ | **NO-GO** until owner starts 08 |
+| Start Ceilings / Doors / Variations / RFQ | **NO-GO** — do not start automatically |
 | Production / migration 055 | **NO-GO** |
 
 **Current factory score (honest):**
@@ -46,15 +49,15 @@ Owner domain input after 01 **overrides** the 01 recommendation of one summed-le
 | Stage | Score |
 | --- | --- |
 | WA-0 Discovery | **Written** — owner override: multiple Wall Types in one WA |
-| WA-1 Facts | **PARTIAL** — `job_scope`, `wall_types` JSON, structural gate. No openings takeoff |
-| WA-2 Clarify | **PARTIAL** — progressive job scope → Wall Type fields; Refine adapter + cards |
-| WA-3 Physical | **PARTIAL** — timber stud/plate/nog + steel track/stud + lining sheets on mature path. No opening deductions |
-| WA-4 Requirements | **PARTIAL** — framing envelope + per-face lining Material/Labour requirements |
-| WA-5 Commercial | **PARTIAL on mature path** — 13 mm 2400×1200 Standard/Aqualine/Fyreline/Braceline use legacy shared sheet rates; other sizes Pricing Required. Lining labour hours/sheet is OWNER VALUE REQUIRED |
-| WA-6 Conditions | **PARTIAL apply** — canonical `getCombinedLabourAccessFactor` on framing and lining labour hours. Sheet counts do not change with access. Finish level does not scale physical lining |
-| WA-7 Review | **PARTIAL** — Wall Type framing + lining groups. Compact installed/purchase sheet counts. Openings not shown |
-| WA-8 DNA | **N/A** — lining hours/sheet keys reserved; no calibration rows and no invented benchmarks |
-| WA-9 Hosted close | **PARTIAL** — local Type A/B/C/D fixtures. Live Preview Review after this SHA deploys. Pricing/Quote close deferred |
+| WA-1 Facts | **V1 complete** — `job_scope`, `wall_types` JSON (geometry, frame, lining, openings, finish, stopping, painting), structural gate |
+| WA-2 Clarify | **V1 complete** — progressive capture; ASK_NOW blocks Ready; Refine adapter + cards |
+| WA-3 Physical | **V1 complete** — timber, steel, lining sheets, opening deductions, insulation/trims/electrical quantities, stopping/painting net face |
+| WA-4 Requirements | **V1 complete envelope** on mature path — no package fallback |
+| WA-5 Commercial | **PARTIAL** — catalogue rates where they exist; stopping/painting/insulation/skirting/cornice/electrical and lining labour remain Pricing Required without company rates |
+| WA-6 Conditions | **PARTIAL apply** — canonical `getCombinedLabourAccessFactor` on framing and lining labour hours. Sheet counts do not change with access. Finish level does not scale physical lining. Coats do not multiply paint area |
+| WA-7 Review | **V1 complete groups** — Framing, Lining, Openings, Insulation, Skirting, Cornice, Electrical, Stopping, Painting. Empty hidden. Priced vs Pricing Required vs Info Required |
+| WA-8 DNA | **N/A** — no IW-08 invented hours/m², $/m², or litre coverage |
+| WA-9 Hosted close | **PARTIAL** — local fixtures + verifiers. Live Preview Pricing → Quote persist is post-deploy |
 
 Do not infer maturity from file or question count.
 
@@ -474,7 +477,84 @@ Changing finish does **not** change stud count, track, timber, sheet count, shee
 - No canonical insulation waste %
 - No wall skirting/cornice SKU matrix
 - Electrical is an unpriced allowance until company rates exist
-- Stopping / painting = **IW-08**, not started
+- Stopping / painting = **IW-08** (closed)
+
+---
+
+## 0G. WA-INTERNAL-WALLS-08 — stopping + painting + commercial close
+
+Per Wall Type / face on existing `internal_walls.wall_types` JSON. No migration. IW-03–07 formulas unchanged.
+
+### Stopping
+
+SINGLE_SELECT per eligible plasterboard face: No / Level 4 / Level 5 / Custom.
+
+Eligible lining: Standard GIB, Aqualine, Fyreline, Braceline, Noiseline, Weatherline, Barrierline (plasterboard family). **Do not auto-offer** plywood, fibre cement, or Other.
+
+Face authority is explicit. Same finish both sides is not a stored shortcut.
+
+```
+stopping_area_m2_per_face = net_visible_face
+net_visible_face          = max(0, gross − Σ opening_area)   // IW-06 lining net
+infill                    = opening geometry only
+layers                    = do not multiply
+```
+
+Fixture A: 12 × 2.4, door 0.81 × 1.98, Level 4 both faces → **27.1962 m² per face, 54.3924 m² total**.
+
+Double-layer Fyreline 8 × 3.0 both faces, no openings → **24 m² per face, 48 m² total. Not 96.**
+
+Commercial: subcontract/service requirement on `stopping.plasterboard.level4.m2` / `level5.m2` / `custom.m2`. **No catalogue rate. No compound kg, tape lm, or hours/m² invented.** Quantity visible + Pricing Required unless a company exact rate exists. Level 4 and Level 5 stay distinct even when both unpriced.
+
+Do not reuse `bathroom.stopping.m2` ($28). Do not use `FITOUT_BENCHMARKS.stoppingPerM2` on the mature path.
+
+If a Plastering Work Area is also confirmed, nested stopping questions and requirements are omitted (XOR).
+
+### Painting
+
+SINGLE_SELECT: No / Side A / Side B / Both sides (options filtered to plasterboard faces). Wall-face only.
+
+```
+paint_area_m2_per_selected_face = net lined face (IW-06)
+coats                           = do not multiply wall area
+```
+
+Fixture: both sides on Fixture A geometry → **27.1962 m² each, 54.3924 m² total**.
+
+Identity `painting.wall.m2`. **No litres.** `paint.litre` and `painting.material.m2` belong to the Painting Work Area / m² package — not nested IW coverage. No invented hours/m². Pricing Required unless a company exact `painting.wall.m2` rate exists.
+
+Do not auto-paint plywood / FC. Do not add skirting, cornice, or door painting.
+
+If a Painting Work Area is confirmed, nested painting is omitted (XOR).
+
+### Info Required vs Pricing Required
+
+| Condition | Status |
+| --- | --- |
+| Missing wall height / custom centres / opening dims / structural Not sure | **INFO_REQUIRED** — estimate does not commercially close |
+| Known m² stopping or painting with no rate | **PRICING_REQUIRED** — quantity visible, not a completed $0 |
+| READY | All relevant capture questions resolved **and** no blocking INFO_REQUIRED. Missing rates do **not** block Ready. |
+
+### Final requirement envelope
+
+Framing (timber or steel) + labour + fixings; lining by face + install; openings extra framing + labour; insulation; skirting; cornice; electrical allowance; stopping; painting. Traceable to Work Area + Wall Type (+ side / opening). No package fallback. No anonymous lumps.
+
+### Builder Review / Pricing / Quote
+
+Review groups per Wall Type: Framing, Lining, Openings, Insulation, Skirting, Cornice, Electrical, Stopping, Painting. Empty groups hidden. Priced vs Rate required / Pricing Required vs Info Required are distinct.
+
+Pricing uses existing override authority. Physical facts stay on `wall_types`. Company exact rates price stopping/painting; otherwise they remain visible Pricing Required.
+
+Quote copy reflects **selected** scope only (no hardcoded insulation/stopping sentence). Openings may say they are formed; door leaves / frames / hardware / installation are excluded unless a Doors Work Area is confirmed.
+
+### Known remaining gaps (08)
+
+- No owner stopping $/m² or hours/m² (Level 4 or 5)
+- No owner wall-paint $/m², hours/m², or defensible litre coverage for nested IW
+- Insulation / skirting / cornice / electrical still unpriced without company rates
+- Lining labour hours/sheet still owner-required except where previously reserved
+- Live hosted Preview Pricing → Quote persist is post-deploy
+- One-side lining still asks Side B product until None is a first-class capture (pre-existing IW-05)
 
 ---
 

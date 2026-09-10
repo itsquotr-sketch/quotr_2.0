@@ -79,6 +79,11 @@ import {
   wallTypeFieldCurrentValue,
 } from "@/lib/estimate/internal-walls-wall-types";
 import {
+  INTERNAL_WALLS_PAINTING_SIDES_KEY,
+  internalWallsNestedFinishOmit,
+  internalWallsPaintingOptions,
+} from "@/lib/estimate/internal-walls-finish";
+import {
   getArrayFact,
   getBooleanFact,
   getFact,
@@ -142,6 +147,15 @@ const CHECK_SCORES: Record<string, number> = {
   "internal_walls.opening.type": 82.5,
   "internal_walls.opening.width_m": 82,
   "internal_walls.opening.height_m": 81.5,
+  "internal_walls.wall_type.insulation_included": 81,
+  "internal_walls.wall_type.insulation": 80.5,
+  "internal_walls.wall_type.skirting": 80,
+  "internal_walls.wall_type.cornice": 79.5,
+  "internal_walls.wall_type.electrical": 79,
+  "internal_walls.wall_type.electrical_note": 78.5,
+  "internal_walls.wall_type.stopping_side_a": 78,
+  "internal_walls.wall_type.stopping_side_b": 77.5,
+  "internal_walls.wall_type.painting": 77,
   "bathroom.length_m": 95,
   "bathroom.width_m": 94,
   "bathroom.wall_height_m": 70,
@@ -665,9 +679,16 @@ function missingHardMinimum(
           rankScore: 999,
         });
       }
+      const omitHard = internalWallsNestedFinishOmit({
+        confirmedTypes: input.workAreas
+          .filter((row) => row.status !== "excluded")
+          .map((row) => row.type),
+      });
       const nextField = nextInternalWallsWallTypeField({
         type: active,
         jobScope,
+        omitStopping: omitHard.omitStopping,
+        omitPainting: omitHard.omitPainting,
       });
       if (
         wallTypesRequiredForScope(jobScope) &&
@@ -1158,9 +1179,16 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         resolved.types.find((row) => row.id === resolved.activeId) ??
         resolved.types[0] ??
         null;
+      const omitProgressive = internalWallsNestedFinishOmit({
+        confirmedTypes: input.workAreas
+          .filter((row) => row.status !== "excluded")
+          .map((row) => row.type),
+      });
       const nextField = nextInternalWallsWallTypeField({
         type: active,
         jobScope,
+        omitStopping: omitProgressive.omitStopping,
+        omitPainting: omitProgressive.omitPainting,
       });
       if (
         nextField &&
@@ -1188,7 +1216,10 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
               : "ASK_NOW",
           inputType: clarifyInputTypeFromTemplate(template),
           unit: template?.unit,
-          options: template?.options,
+          options:
+            nextField === INTERNAL_WALLS_PAINTING_SIDES_KEY && active
+              ? internalWallsPaintingOptions(active)
+              : template?.options,
           currentValue: wallTypeFieldCurrentValue(active, nextField),
           writeTarget: "FACT",
           write: null,
