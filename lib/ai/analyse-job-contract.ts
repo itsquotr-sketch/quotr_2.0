@@ -48,6 +48,10 @@ export type AnalysisErrorClass =
   | "schema"
   | "setup"
   | "no_work_areas"
+  | "persist_work_areas"
+  | "persist_facts"
+  | "persist_constraints"
+  | "persist_stage"
   | "unknown";
 
 export function getErrorStatus(error: unknown): number | null {

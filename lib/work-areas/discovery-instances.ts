@@ -112,6 +112,147 @@ function discoverDecks(brief: string): DiscoveredWorkAreaInstance[] {
   return uniqueByName(found);
 }
 
+const SINGLE_INTERNAL_WALLS_INSTANCE: DiscoveredWorkAreaInstance = {
+  type: "internal_walls",
+  name: "Internal walls",
+  evidence: "Internal walls / partitions",
+};
+
+type InternalWallLocation = {
+  readonly id: string;
+  readonly pattern: RegExp;
+  readonly partitionsName: string;
+  readonly wallsName: string;
+};
+
+/**
+ * Distinct logical LOCATION / commercial PACKAGE identities.
+ * Physical wall specification (lining, timber size, steel vs timber)
+ * is not a location and must not create another Work Area.
+ */
+const INTERNAL_WALL_LOCATIONS: readonly InternalWallLocation[] = [
+  {
+    id: "ground_floor",
+    pattern: /\bground[-\s]?floor\b|\bdownstairs\b/,
+    partitionsName: "Ground Floor Partitions",
+    wallsName: "Ground Floor Internal Walls",
+  },
+  {
+    id: "upstairs",
+    pattern: /\bupstairs\b/,
+    partitionsName: "Upstairs Partitions",
+    wallsName: "Upstairs Internal Walls",
+  },
+  {
+    id: "level_1",
+    pattern: /\bfirst[-\s]?floor\b|\blevel\s*1\b|\b1st[-\s]?floor\b/,
+    partitionsName: "Level 1 Partitions",
+    wallsName: "Level 1 Internal Walls",
+  },
+  {
+    id: "second_floor",
+    pattern: /\bsecond[-\s]?floor\b|\blevel\s*2\b|\b2nd[-\s]?floor\b/,
+    partitionsName: "Second Floor Partitions",
+    wallsName: "Second Floor Internal Walls",
+  },
+];
+
+function hasExplicitMultiPackageLanguage(brief: string): boolean {
+  return (
+    /\b(?:two|2)\s+separate\b/.test(brief) ||
+    /\bseparate(?:ly)?\s+(?:packages?|internal[-\s]walls?|partitions?)\b/.test(
+      brief
+    ) ||
+    /\bseparate packages?\b/.test(brief) ||
+    (/\bsplit into\b/.test(brief) && /\bpackages?\b/.test(brief)) ||
+    /\bseparate internal walls\b/.test(brief)
+  );
+}
+
+function locationBoundToWallScope(
+  brief: string,
+  location: InternalWallLocation
+): boolean {
+  const compound =
+    new RegExp(
+      `${location.pattern.source}\\s+(?:office\\s+)?(?:partitions?|internal[-\s]walls?)`,
+      "i"
+    ).test(brief) ||
+    new RegExp(
+      `(?:partitions?|internal[-\s]walls?)\\s+(?:to(?:\\s+the)?\\s+|on(?:\\s+the)?\\s+)?${location.pattern.source}`,
+      "i"
+    ).test(brief);
+  return compound;
+}
+
+function usesPartitionNoun(brief: string): boolean {
+  return /\bpartitions?\b/.test(brief);
+}
+
+function namedPackageHits(brief: string): DiscoveredWorkAreaInstance[] {
+  const found: DiscoveredWorkAreaInstance[] = [];
+  const labelled: Array<{ pattern: RegExp; name: string; evidence: string }> = [
+    {
+      pattern: /\bground[-\s]?floor office\b/,
+      name: "Ground Floor Office",
+      evidence: "Ground-floor office partitions",
+    },
+    {
+      pattern: /\bupstairs tenancy\b/,
+      name: "Upstairs Tenancy",
+      evidence: "Upstairs tenancy partitions",
+    },
+    {
+      pattern: /\bground[-\s]?floor partitions?\b/,
+      name: "Ground Floor Partitions",
+      evidence: "Ground floor partitions",
+    },
+    {
+      pattern: /\bupstairs partitions?\b/,
+      name: "Upstairs Partitions",
+      evidence: "Upstairs partitions",
+    },
+    {
+      pattern: /\bground[-\s]?floor internal[-\s]walls?\b|\binternal[-\s]walls? (?:to(?: the)? |on(?: the)? )?ground[-\s]?floor\b/,
+      name: "Ground Floor Internal Walls",
+      evidence: "Ground floor internal walls",
+    },
+    {
+      pattern: /\bupstairs internal[-\s]walls?\b|\binternal[-\s]walls? upstairs\b/,
+      name: "Upstairs Internal Walls",
+      evidence: "Upstairs internal walls",
+    },
+    {
+      pattern: /\b(?:first[-\s]?floor|level\s*1|1st[-\s]?floor) partitions?\b/,
+      name: "Level 1 Partitions",
+      evidence: "Level 1 partitions",
+    },
+  ];
+  for (const row of labelled) {
+    if (!row.pattern.test(brief)) continue;
+    found.push({
+      type: "internal_walls",
+      name: row.name,
+      evidence: row.evidence,
+    });
+  }
+  return uniqueByName(found);
+}
+
+function locationPackageHits(brief: string): DiscoveredWorkAreaInstance[] {
+  const noun = usesPartitionNoun(brief) ? "partitions" : "walls";
+  const hits: DiscoveredWorkAreaInstance[] = [];
+  for (const location of INTERNAL_WALL_LOCATIONS) {
+    if (!location.pattern.test(brief)) continue;
+    hits.push({
+      type: "internal_walls",
+      name: noun === "partitions" ? location.partitionsName : location.wallsName,
+      evidence: location.id.replace(/_/g, " "),
+    });
+  }
+  return uniqueByName(hits);
+}
+
 function discoverInternalWallGroups(brief: string): DiscoveredWorkAreaInstance[] {
   if (!briefHasExplicitInternalWalls(brief) && !/\bpartition/.test(brief)) {
     return [];
@@ -126,54 +267,107 @@ function discoverInternalWallGroups(brief: string): DiscoveredWorkAreaInstance[]
       },
     ];
   }
-  const groups: DiscoveredWorkAreaInstance[] = [];
+
   const groundOffice =
     /\bground[-\s]?floor office\b/.test(brief) ||
-    /\bground[-\s]?floor\b/.test(brief) && /\boffice\b/.test(brief);
+    (/\bground[-\s]?floor\b/.test(brief) && /\boffice\b/.test(brief));
   const upstairsTenancy = /\bupstairs tenancy\b/.test(brief);
   const separately = /\bseparately\b/.test(brief);
   if (groundOffice && (upstairsTenancy || separately)) {
-    groups.push({
-      type: "internal_walls",
-      name: "Ground Floor Office",
-      evidence: "Ground-floor office partitions",
-    });
-  }
-  if (upstairsTenancy) {
-    groups.push({
-      type: "internal_walls",
-      name: "Upstairs Tenancy",
-      evidence: "Upstairs tenancy partitions",
-    });
-  }
-  if (groups.length >= 2) return uniqueByName(groups);
-  const groundPartitions =
-    /\bground[-\s]?floor partitions?\b/.test(brief) ||
-    (/\bground[-\s]?floor\b/.test(brief) &&
-      /\bpartitions?\b/.test(brief) &&
-      !groundOffice);
-  const upstairsPartitions = /\bupstairs partitions?\b/.test(brief);
-  if (groundPartitions && upstairsPartitions) {
-    return uniqueByName([
+    const groups: DiscoveredWorkAreaInstance[] = [
       {
         type: "internal_walls",
-        name: "Ground Floor Partitions",
-        evidence: "Ground floor partitions",
+        name: "Ground Floor Office",
+        evidence: "Ground-floor office partitions",
       },
-      {
+    ];
+    if (upstairsTenancy) {
+      groups.push({
         type: "internal_walls",
-        name: "Upstairs Partitions",
-        evidence: "Upstairs partitions",
-      },
-    ]);
+        name: "Upstairs Tenancy",
+        evidence: "Upstairs tenancy partitions",
+      });
+    } else {
+      groups.push({
+        type: "internal_walls",
+        name: usesPartitionNoun(brief)
+          ? "Upstairs Partitions"
+          : "Upstairs Internal Walls",
+        evidence: "Separate upstairs partitions",
+      });
+    }
+    return uniqueByName(groups);
   }
-  return [
-    {
-      type: "internal_walls",
-      name: "Internal walls",
-      evidence: "Internal walls / partitions",
-    },
-  ];
+
+  const named = namedPackageHits(brief);
+  if (named.length >= 2) return named;
+
+  const boundLocations = INTERNAL_WALL_LOCATIONS.filter((location) =>
+    locationBoundToWallScope(brief, location)
+  );
+  if (boundLocations.length >= 2) {
+    const noun = usesPartitionNoun(brief) ? "partitions" : "walls";
+    return uniqueByName(
+      boundLocations.map((location) => ({
+        type: "internal_walls" as const,
+        name:
+          noun === "partitions" ? location.partitionsName : location.wallsName,
+        evidence: location.id.replace(/_/g, " "),
+      }))
+    );
+  }
+
+  const packageHits = locationPackageHits(brief);
+  if (packageHits.length >= 2 && hasExplicitMultiPackageLanguage(brief)) {
+    return packageHits;
+  }
+
+  if (named.length === 1 && packageHits.length >= 2 && hasExplicitMultiPackageLanguage(brief)) {
+    return packageHits;
+  }
+
+  return named.length === 1 ? named : [SINGLE_INTERNAL_WALLS_INSTANCE];
+}
+
+/**
+ * Slice of the brief that belongs to one discovered Internal Walls instance.
+ * Used so instance-specific facts do not bind to ofType[0].
+ *
+ * Concatenates every span that starts with this instance's name until the
+ * next sibling name, so a later measured sentence is not lost to an
+ * earlier heading mention.
+ */
+export function snippetForDiscoveredInstance(
+  briefText: string,
+  instance: DiscoveredWorkAreaInstance,
+  siblings: readonly DiscoveredWorkAreaInstance[]
+): string {
+  const hay = normalise(briefText);
+  const names = [instance, ...siblings]
+    .map((row) => row.name.toLowerCase())
+    .filter((name, index, all) => all.indexOf(name) === index);
+  type Hit = { name: string; index: number };
+  const hits: Hit[] = [];
+  for (const name of names) {
+    let from = 0;
+    while (from < hay.length) {
+      const index = hay.indexOf(name, from);
+      if (index < 0) break;
+      hits.push({ name, index });
+      from = index + Math.max(name.length, 1);
+    }
+  }
+  hits.sort((a, b) => a.index - b.index);
+  const own = instance.name.toLowerCase();
+  const parts: string[] = [];
+  for (let i = 0; i < hits.length; i += 1) {
+    const hit = hits[i]!;
+    if (hit.name !== own) continue;
+    const end = hits[i + 1]?.index ?? hay.length;
+    parts.push(hay.slice(hit.index, end).trim());
+  }
+  if (parts.length > 0) return parts.join(" ");
+  return hay;
 }
 
 export function discoverWorkAreaInstances(

@@ -20,6 +20,7 @@ import { resolveUiQuestionInputType } from "@/lib/scopes/question-input-types";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { DERIVABLE_RESULT_FACT_KEYS } from "@/lib/scopes/dimension-derivation";
 import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumptions";
+import { isNotSureValue } from "@/lib/estimate/facts";
 import {
   INTERNAL_WALLS_ACTIVE_WALL_TYPE_ID_FACT_KEY,
   INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
@@ -439,6 +440,36 @@ export async function commitUserAnswerToScope(
 }
 
 /**
+ * Canonical Clarify / Refine fact write order:
+ * Not sure token → disclosed assumption (value + source=assumption)
+ * else → type normalisation with source=user.
+ *
+ * Never coerce "Not sure" through Number() before assumption lookup.
+ */
+export function resolveCommittedFactWrite(params: {
+  key: string;
+  value: unknown;
+  valueType?: "number" | "select" | "boolean" | "text" | "multi_select";
+}): { value: unknown; source: "user" | "assumption" } {
+  if (isNotSureValue(params.value)) {
+    const disclosed = disclosedAssumptionForNotSure(params.key, params.value);
+    if (disclosed) {
+      return { value: disclosed.value, source: disclosed.source };
+    }
+    return { value: params.value, source: "user" };
+  }
+
+  const storedValue = params.valueType
+    ? normalizeAnswerForStorage(
+        params.value as string | number | boolean | string[],
+        params.valueType
+      )
+    : params.value;
+
+  return { value: storedValue, source: "user" };
+}
+
+/**
  * Direct fact edit commit: Fact SoT, then mirror questions.
  * Rejects editing when caller marks derived-only (caller should check source).
  */
@@ -490,12 +521,17 @@ export async function commitUserFactEdit(
     };
   }
 
-  const storedValue = params.valueType
-    ? normalizeAnswerForStorage(
-        params.value as string | number | boolean | string[],
-        params.valueType
-      )
-    : params.value;
+  const resolved = resolveCommittedFactWrite({
+    key: params.key,
+    value: params.value,
+    valueType: params.valueType,
+  });
+  const storedValue = resolved.value;
+  const factSource = resolved.source;
+
+  if (typeof storedValue === "number" && !Number.isFinite(storedValue)) {
+    return { ok: false, error: "Invalid fact update." };
+  }
 
   if (params.workAreaId && isInternalWallsWallTypeWriteKey(params.key)) {
     const collectionWrite = await persistInternalWallsCollectionWrite(supabase, {
@@ -520,17 +556,13 @@ export async function commitUserFactEdit(
     return mirror;
   }
 
-  const disclosed = disclosedAssumptionForNotSure(params.key, storedValue);
-  const factValue = disclosed ? disclosed.value : storedValue;
-  const factSource = disclosed ? disclosed.source : "user";
-
   const factResult = await upsertScopedFact(supabase, {
     orgId: params.orgId,
     projectId: params.projectId,
     workAreaId: params.workAreaId,
     key: params.key,
     label: params.label,
-    value: factValue,
+    value: storedValue,
     unit:
       params.key === "deck.board_width_mm"
         ? params.unit ?? "mm"
@@ -546,7 +578,7 @@ export async function commitUserFactEdit(
     projectId: params.projectId,
     workAreaId: params.workAreaId,
     key: params.key,
-    value: factValue,
+    value: storedValue,
     inputType: params.valueType,
   });
 

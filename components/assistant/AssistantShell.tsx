@@ -1576,7 +1576,16 @@ export function AssistantShell({
         );
         if (result.error) {
           setActionError(result.error);
-          return;
+          const factIdentity = overlayFactSemanticKey({
+            work_area_id: candidate.workAreaId,
+            key: candidate.write.factKey,
+          });
+          if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
+            setJobPlanFactOverlay((prev) =>
+              prev.filter((row) => overlayFactSemanticKey(row) !== factIdentity)
+            );
+          }
+          return result;
         }
       } else if (candidate.factKey) {
         const value = presentation === "INCLUDED";
@@ -1609,7 +1618,16 @@ export function AssistantShell({
         );
         if (result.error) {
           setActionError(result.error);
-          return;
+          const factIdentity = overlayFactSemanticKey({
+            work_area_id: candidate.workAreaId,
+            key: candidate.factKey!,
+          });
+          if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
+            setJobPlanFactOverlay((prev) =>
+              prev.filter((row) => overlayFactSemanticKey(row) !== factIdentity)
+            );
+          }
+          return result;
         }
       } else if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
         const constraintKey = candidate.constraintKey ?? candidate.questionKey;
@@ -1648,12 +1666,14 @@ export function AssistantShell({
               prev.filter((row) => row.key !== constraintKey)
             );
           }
-          return;
+          return result;
         }
       }
       if (!settleCanonicalMutation(result, requestSeq)) {
         onRejectedCanonicalMutation(requestSeq);
       }
+      setActionError(null);
+      return result;
       } finally {
         setClarifyWritePending(false);
         setPendingReadinessWrites((n) => Math.max(0, n - 1));
@@ -1681,7 +1701,7 @@ export function AssistantShell({
       const valueType = persistClarifyValueType(candidate, value);
       try {
         if (candidate.writeTarget === "CONSTRAINT" && candidate.questionKey) {
-          if (Array.isArray(value)) return;
+          if (Array.isArray(value)) return { error: "Invalid fact update." };
           const constraintKey = candidate.constraintKey ?? candidate.questionKey;
           const disclosed = disclosedProjectConditionForNotSure(
             constraintKey,
@@ -1712,14 +1732,15 @@ export function AssistantShell({
                 prev.filter((row) => row.key !== constraintKey)
               );
             }
-            return;
+            return result;
           }
           if (!settleCanonicalMutation(result, requestSeq)) {
             onRejectedCanonicalMutation(requestSeq);
           }
-          return;
+          setActionError(null);
+          return result;
         }
-        if (!candidate.factKey) return;
+        if (!candidate.factKey) return { error: "Invalid fact update." };
         const disclosed = disclosedAssumptionForNotSure(candidate.factKey, value);
         const overlayRow = {
           key: candidate.factKey,
@@ -1772,7 +1793,7 @@ export function AssistantShell({
               prev.filter((row) => overlayFactSemanticKey(row) !== factIdentity)
             );
           }
-          return;
+          return result;
         }
         if (isNumericOrText && !iwWrite) {
           setJobPlanFactOverlay((prev) => overlayFact(prev, overlayRow));
@@ -1780,6 +1801,8 @@ export function AssistantShell({
         if (!settleCanonicalMutation(result, requestSeq)) {
           onRejectedCanonicalMutation(requestSeq);
         }
+        setActionError(null);
+        return result;
       } finally {
         setClarifyWritePending(false);
         setPendingReadinessWrites((n) => Math.max(0, n - 1));

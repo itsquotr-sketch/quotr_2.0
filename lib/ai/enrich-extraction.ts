@@ -22,7 +22,7 @@ import {
   extractInternalWallsTypesFromBrief,
   stripInventedInternalWallsFacts,
 } from "@/lib/estimate/internal-walls-brief";
-import { discoverWorkAreaInstances } from "@/lib/work-areas/discovery-instances";
+import { discoverWorkAreaInstances, snippetForDiscoveredInstance } from "@/lib/work-areas/discovery-instances";
 import { filterTopLevelWorkAreas } from "@/lib/work-areas/ownership";
 import type { EstimateFact } from "@/lib/estimate/types";
 
@@ -166,6 +166,7 @@ function addFact(
   extraction: AIExtractionOutput,
   params: {
     workAreaType: string | null;
+    workAreaName?: string;
     key: string;
     label: string;
     value: string | number | boolean | string[] | Record<string, unknown>[];
@@ -174,14 +175,18 @@ function addFact(
   }
 ): void {
   if (shouldDropDuplicateFactOnIngest(params.key)) return;
+  const instanceName = params.workAreaName?.trim() || undefined;
   const exists = extraction.facts.some(
     (fact) =>
-      fact.key === params.key && fact.work_area_type === params.workAreaType
+      fact.key === params.key &&
+      fact.work_area_type === params.workAreaType &&
+      (fact.work_area_name ?? "") === (instanceName ?? "")
   );
   if (exists) return;
 
   extraction.facts.push({
     work_area_type: params.workAreaType,
+    work_area_name: instanceName,
     key: params.key,
     label: params.label,
     value: params.value,
@@ -270,6 +275,88 @@ function inferPainting(
   }
 }
 
+function addInternalWallsFactsFromSnippet(
+  extraction: AIExtractionOutput,
+  snippet: string,
+  workAreaName: string
+): void {
+  if (briefRequestsInternalWallsRebuild(snippet) || includesAny(snippet, ["timber framed", "timber frame"])) {
+    addFact(extraction, {
+      workAreaType: "internal_walls",
+      workAreaName,
+      key: "internal_walls.job_scope",
+      label: "Wall work",
+      value: "new_partition",
+    });
+  }
+
+  const specs = extractInternalWallsTypesFromBrief(
+    snippet.includes("internal wall") || snippet.includes("partition")
+      ? snippet
+      : `internal walls. ${snippet}`
+  );
+  if (specs.length > 0) {
+    const seeded = applyExtractedInternalWallsToFacts({
+      facts: [],
+      workAreaId: "extract",
+      types: specs,
+    });
+    const wallTypes = seeded.find((row) => row.key === "internal_walls.wall_types")
+      ?.value;
+    if (Array.isArray(wallTypes) && wallTypes.length > 0) {
+      addFact(extraction, {
+        workAreaType: "internal_walls",
+        workAreaName,
+        key: "internal_walls.wall_types",
+        label: "Wall types",
+        value: wallTypes as Record<string, unknown>[],
+      });
+    }
+  }
+
+  const length =
+    matchLinearMetres(snippet) ??
+    (snippet.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+of/i)
+      ? Number(snippet.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+of/i)![1])
+      : snippet.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+long/i)
+        ? Number(snippet.match(/(\d+(?:\.\d+)?)\s*m(?:etre)?s?\s+long/i)![1])
+        : null);
+  if (length !== null) {
+    addFact(extraction, {
+      workAreaType: "internal_walls",
+      workAreaName,
+      key: "internal_walls.length_lm",
+      label: "Wall length",
+      value: length,
+      unit: "lm",
+    });
+  }
+
+  const heightMatch =
+    snippet.match(/(\d+(?:\.\d+)?)\s*m\s+high/i) ||
+    snippet.match(/(\d+(?:\.\d+)?)\s*high/i);
+  if (heightMatch) {
+    addFact(extraction, {
+      workAreaType: "internal_walls",
+      workAreaName,
+      key: "internal_walls.height_m",
+      label: "Wall height",
+      value: Number(heightMatch[1]),
+      unit: "m",
+    });
+  }
+
+  if (includesAny(snippet, ["timber framed", "timber frame", "90x45", "90×45", "45x90", "45×90", "140x45", "140×45"])) {
+    addFact(extraction, {
+      workAreaType: "internal_walls",
+      workAreaName,
+      key: "internal_walls.framing_type",
+      label: "Framing type",
+      value: "Timber",
+    });
+  }
+}
+
 function inferInternalWalls(
   brief: string,
   extraction: AIExtractionOutput,
@@ -293,7 +380,7 @@ function inferInternalWalls(
     "45x90",
     "45×90",
   ];
-  if (!includesAny(brief, patterns)) return;
+  if (!includesAny(brief, patterns) && !/\bpartition/.test(brief)) return;
 
   addWorkAreaIfMissing(
     extraction,
@@ -302,6 +389,17 @@ function inferInternalWalls(
     "EXPLICIT: Internal walls mentioned in brief",
     allowedTypes
   );
+
+  const iwGroups = discoverWorkAreaInstances(brief).filter(
+    (row) => row.type === "internal_walls"
+  );
+  if (iwGroups.length >= 2) {
+    for (const group of iwGroups) {
+      const snippet = snippetForDiscoveredInstance(brief, group, iwGroups);
+      addInternalWallsFactsFromSnippet(extraction, snippet, group.name);
+    }
+    return;
+  }
 
   if (briefRequestsInternalWallsRebuild(brief)) {
     addFact(extraction, {

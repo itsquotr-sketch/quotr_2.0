@@ -20,6 +20,7 @@ import {
   aiFactsToRows,
   aiWorkAreasToRows,
   factDedupeKey,
+  dedupePendingFactRows,
 } from "@/lib/ai/mappers";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
 import type { ComposeClarifyInput } from "@/lib/assistant/clarify/types";
@@ -36,6 +37,9 @@ import {
   existingWorkAreaInstanceKeys,
   shouldInsertWorkAreaInstance,
 } from "@/lib/work-areas/instances";
+import {
+  type AnalysePersistFailureClass,
+} from "@/lib/assistant/analyse-persist-safety";
 import type {
   AssistantActionState,
   ConstraintInput,
@@ -50,6 +54,7 @@ import { loadProjectStage } from "@/lib/assistant/load-project-stage";
 import { getEstimateContextWithContext } from "@/lib/estimate/context";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
 import { persistEstimateResult } from "@/lib/estimate/persist-estimate";
+import { evaluateEstimateGenerationSuccess } from "@/lib/estimate/estimate-generation-success";
 import { loadEstimateGenerationResult } from "@/lib/assistant/load-estimate-generation-result";
 import { completeAssistantMutation } from "@/lib/assistant/complete-assistant-mutation";
 import { measureServerLoad } from "@/lib/perf/timing";
@@ -93,6 +98,7 @@ function logBriefAnalysisFailure(
     noteCount: number;
     combinedInputLength: number;
     reason: string;
+    failureClass?: string;
   }
 ) {
   console.error("[saveBriefAndSeedWorkAreas]", {
@@ -101,6 +107,7 @@ function logBriefAnalysisFailure(
     noteCount: context.noteCount,
     combinedInputLength: context.combinedInputLength,
     model: getAnthropicModel(),
+    failureClass: context.failureClass ?? null,
     reason: context.reason,
   });
 }
@@ -144,6 +151,35 @@ function loadAnalysisCapableWorkAreaTypes(): string[] {
   return getAnalysisCapableWorkAreaTypes();
 }
 
+async function rollbackThisAttemptSuggestedWorkAreas(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  params: {
+    projectId: string;
+    insertedWorkAreaIds: readonly string[];
+    revertStage: boolean;
+  }
+): Promise<void> {
+  if (params.insertedWorkAreaIds.length > 0) {
+    await supabase
+      .from("project_facts")
+      .delete()
+      .eq("project_id", params.projectId)
+      .in("work_area_id", [...params.insertedWorkAreaIds]);
+    await supabase
+      .from("work_areas")
+      .delete()
+      .eq("project_id", params.projectId)
+      .eq("status", "suggested")
+      .in("id", [...params.insertedWorkAreaIds]);
+  }
+  if (params.revertStage) {
+    await supabase
+      .from("projects")
+      .update({ stage: "brief" })
+      .eq("id", params.projectId);
+  }
+}
+
 export async function saveBriefAndSeedWorkAreas(
   projectId: string,
   briefText: string
@@ -157,6 +193,8 @@ export async function saveBriefAndSeedWorkAreas(
 
   const timing = startAnalyseJobTiming();
   let lastErrorClass: string | null = null;
+  let insertedWorkAreaIds: string[] = [];
+  let stageUpdated = false;
 
   try {
   const loaded = await loadProjectStage(projectId);
@@ -303,6 +341,31 @@ export async function saveBriefAndSeedWorkAreas(
 
   const extraction = extractionResult.output;
 
+  const failPersist = async (
+    failureClass: AnalysePersistFailureClass,
+    reason: string
+  ): Promise<AssistantActionState> => {
+    await rollbackThisAttemptSuggestedWorkAreas(supabase, {
+      projectId,
+      insertedWorkAreaIds,
+      revertStage: stageUpdated,
+    });
+    timing.mark("T13");
+    logAnalyseJobTiming({
+      marks: timing.marks,
+      success: false,
+      errorClass: failureClass,
+    });
+    logBriefAnalysisFailure(projectId, {
+      briefLength: trimmed.length,
+      noteCount: noteRows.length,
+      combinedInputLength: analysisSource.length,
+      failureClass,
+      reason,
+    });
+    return { error: UNKNOWN_ANALYSIS_ERROR };
+  };
+
   const { data: existingWorkAreas } = await supabase
     .from("work_areas")
     .select("id, type, name")
@@ -328,25 +391,18 @@ export async function saveBriefAndSeedWorkAreas(
   );
 
   if (workAreaRows.length > 0) {
-    const { error: insertError } = await supabase
+    const { data: insertedWorkAreas, error: insertError } = await supabase
       .from("work_areas")
-      .insert(workAreaRows);
+      .insert(workAreaRows)
+      .select("id");
 
     if (insertError) {
-      timing.mark("T13");
-      logAnalyseJobTiming({
-        marks: timing.marks,
-        success: false,
-        errorClass: "unknown",
-      });
-      logBriefAnalysisFailure(projectId, {
-        briefLength: trimmed.length,
-        noteCount: noteRows.length,
-        combinedInputLength: analysisSource.length,
-        reason: `work area insert failed: ${insertError.message}`,
-      });
-      return { error: UNKNOWN_ANALYSIS_ERROR };
+      return failPersist(
+        "persist_work_areas",
+        `work area insert failed: ${insertError.message}`
+      );
     }
+    insertedWorkAreaIds = (insertedWorkAreas ?? []).map((row) => row.id);
   }
   timing.mark("T7");
 
@@ -356,6 +412,13 @@ export async function saveBriefAndSeedWorkAreas(
     .eq("project_id", projectId);
 
   if (workAreasError || !allWorkAreas || allWorkAreas.length === 0) {
+    if (insertedWorkAreaIds.length > 0) {
+      await rollbackThisAttemptSuggestedWorkAreas(supabase, {
+        projectId,
+        insertedWorkAreaIds,
+        revertStage: false,
+      });
+    }
     timing.mark("T13");
     logAnalyseJobTiming({
       marks: timing.marks,
@@ -414,19 +477,10 @@ export async function saveBriefAndSeedWorkAreas(
           .eq("project_id", projectId);
 
         if (updateError) {
-          timing.mark("T13");
-          logAnalyseJobTiming({
-            marks: timing.marks,
-            success: false,
-            errorClass: "unknown",
-          });
-          logBriefAnalysisFailure(projectId, {
-            briefLength: trimmed.length,
-            noteCount: noteRows.length,
-            combinedInputLength: analysisSource.length,
-            reason: `fact update failed: ${updateError.message}`,
-          });
-          return { error: UNKNOWN_ANALYSIS_ERROR };
+          return failPersist(
+            "persist_facts",
+            `fact update failed: ${updateError.message}`
+          );
         }
         continue;
       }
@@ -437,22 +491,13 @@ export async function saveBriefAndSeedWorkAreas(
     if (factsToInsert.length > 0) {
       const { error: factsError } = await supabase
         .from("project_facts")
-        .insert(factsToInsert);
+        .insert(dedupePendingFactRows(factsToInsert));
 
       if (factsError) {
-        timing.mark("T13");
-        logAnalyseJobTiming({
-          marks: timing.marks,
-          success: false,
-          errorClass: "unknown",
-        });
-        logBriefAnalysisFailure(projectId, {
-          briefLength: trimmed.length,
-          noteCount: noteRows.length,
-          combinedInputLength: analysisSource.length,
-          reason: `fact insert failed: ${factsError.message}`,
-        });
-        return { error: UNKNOWN_ANALYSIS_ERROR };
+        return failPersist(
+          "persist_facts",
+          `fact insert failed: ${factsError.message}`
+        );
       }
     }
   }
@@ -469,20 +514,12 @@ export async function saveBriefAndSeedWorkAreas(
     .eq("id", projectId);
 
   if (stageError) {
-    timing.mark("T13");
-    logAnalyseJobTiming({
-      marks: timing.marks,
-      success: false,
-      errorClass: "unknown",
-    });
-    logBriefAnalysisFailure(projectId, {
-      briefLength: trimmed.length,
-      noteCount: noteRows.length,
-      combinedInputLength: analysisSource.length,
-      reason: `stage update failed: ${stageError.message}`,
-    });
-    return { error: UNKNOWN_ANALYSIS_ERROR };
+    return failPersist(
+      "persist_stage",
+      `stage update failed: ${stageError.message}`
+    );
   }
+  stageUpdated = true;
   timing.mark("T10");
 
   if (extractionResult.constraints.length > 0) {
@@ -534,19 +571,10 @@ export async function saveBriefAndSeedWorkAreas(
       const results = await Promise.all(constraintWrites);
       const failed = results.find((r) => r.error);
       if (failed?.error) {
-        timing.mark("T13");
-        logAnalyseJobTiming({
-          marks: timing.marks,
-          success: false,
-          errorClass: "unknown",
-        });
-        logBriefAnalysisFailure(projectId, {
-          briefLength: trimmed.length,
-          noteCount: noteRows.length,
-          combinedInputLength: analysisSource.length,
-          reason: `constraint persist failed: ${failed.error.message}`,
-        });
-        return { error: UNKNOWN_ANALYSIS_ERROR };
+        return failPersist(
+          "persist_constraints",
+          `constraint persist failed: ${failed.error.message}`
+        );
       }
     }
   }
@@ -1484,6 +1512,26 @@ async function runEstimateGeneration(
       markupPercent: totals.markupPercent,
       estimateSellAuthority: "project_target_margin" as const,
     };
+  }
+
+  const generationSuccess = evaluateEstimateGenerationSuccess({
+    confirmedWorkAreas: contextResult.confirmedWorkAreas,
+    facts: contextResult.facts,
+    result: estimateResult,
+  });
+  if (!generationSuccess.ok) {
+    console.error("[runEstimateGeneration] empty mature estimate refused", {
+      projectId,
+      classification: generationSuccess.classification,
+      lineCount: estimateResult.lineItems.length,
+      includedLineCount: estimateResult.lineItems.filter(
+        (item) => item.includedInTotal !== false
+      ).length,
+      missingInfo: estimateResult.missingInfo,
+      requirementCount: estimateResult.requirements?.length ?? 0,
+      workAreaTypes: contextResult.confirmedWorkAreas.map((area) => area.type),
+    });
+    return { error: USER_ERRORS.estimateUnusable };
   }
 
   const persistResult = await persistEstimateResult(

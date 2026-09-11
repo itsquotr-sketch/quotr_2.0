@@ -112,7 +112,7 @@ export function aiFactsToRows(params: {
     });
   }
 
-  return rows;
+  return dedupePendingFactRows(rows);
 }
 
 export function factDedupeKey(
@@ -120,4 +120,22 @@ export function factDedupeKey(
   key: string
 ): string {
   return workAreaId ? `${workAreaId}:${key}` : `project:${key}`;
+}
+
+/**
+ * Safety guard before project_facts insert.
+ * Last-write-wins only for the SAME work_area_id + key.
+ * Distinct workAreaIds with the same key stay as separate rows.
+ */
+export function dedupePendingFactRows(
+  rows: readonly ProjectFactInsertRow[]
+): ProjectFactInsertRow[] {
+  const lastByKey = new Map<string, ProjectFactInsertRow>();
+  const order: string[] = [];
+  for (const row of rows) {
+    const key = factDedupeKey(row.work_area_id, row.key);
+    if (!lastByKey.has(key)) order.push(key);
+    lastByKey.set(key, row);
+  }
+  return order.map((key) => lastByKey.get(key)!);
 }

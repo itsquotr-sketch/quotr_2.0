@@ -12,6 +12,7 @@ import {
   type ClarifyControlType,
 } from "@/lib/assistant/clarify/question-contract";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
+import { isNotSureValue } from "@/lib/estimate/facts";
 
 export function shouldPersistOnOptionToggle(control: ClarifyControlType): boolean {
   return control !== "MULTI_SELECT";
@@ -31,10 +32,42 @@ export function persistClarifyValueType(
     return "multi_select";
   }
   if (typeof value === "boolean") return "boolean";
+  if (isNotSureValue(value)) return "select";
   if (typeof value === "number" || candidate.inputType === "number") {
     return "number";
   }
   return "select";
+}
+
+/** True when a Clarify persist result should rewind the optimistic advance. */
+export function clarifyPersistResultFailed(result: unknown): boolean {
+  return Boolean(
+    result &&
+      typeof result === "object" &&
+      "error" in result &&
+      typeof (result as { error?: unknown }).error === "string" &&
+      (result as { error: string }).error.length > 0
+  );
+}
+
+/**
+ * Ready card must not appear while the current answer failed to persist,
+ * even if the candidate was already hidden locally.
+ */
+export function detailsReadyCardVisible(params: {
+  visibleGroupCount: number;
+  remaining: number;
+  viewEnoughToEstimate: boolean;
+  readinessEnoughToEstimate: boolean;
+  persistError?: string | null;
+}): boolean {
+  return (
+    params.visibleGroupCount === 0 &&
+    params.remaining === 0 &&
+    params.viewEnoughToEstimate === true &&
+    params.readinessEnoughToEstimate === true &&
+    !params.persistError
+  );
 }
 
 export function currentClarifyCandidate(params: {

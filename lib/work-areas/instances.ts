@@ -156,6 +156,20 @@ export type ExtractionFact = {
   readonly key: string;
 };
 
+function instanceHintMatchesName(name: string, hint: string): boolean {
+  if (!hint) return false;
+  if (name === hint) return true;
+  if (name.startsWith(`${hint} `) || hint.startsWith(`${name} `)) return true;
+  return false;
+}
+
+/**
+ * Bind an extracted fact to a Work Area Instance.
+ *
+ * One instance of the type: bind to it.
+ * Several instances: require work_area_name / instance hint.
+ * Never silently attach an ambiguous same-key fact to ofType[0].
+ */
 export function bindFactToWorkAreaId(params: {
   fact: ExtractionFact;
   workAreas: readonly { id: string; type: string; name: string }[];
@@ -165,21 +179,23 @@ export function bindFactToWorkAreaId(params: {
     (row) => row.type === params.fact.work_area_type
   );
   if (ofType.length === 0) return null;
+  if (ofType.length === 1) return ofType[0]?.id ?? null;
+
   const instanceHint = normaliseWorkAreaInstanceName(
     params.fact.work_area_instance ?? params.fact.work_area_name ?? ""
   ).toLowerCase();
-  if (instanceHint) {
-    const named = ofType.find((row) => {
-      const name = normaliseWorkAreaInstanceName(row.name).toLowerCase();
-      return (
-        name === instanceHint ||
-        workAreaInstanceKey(row.type, row.name) ===
-          `${row.type}::${instanceHint}`
-      );
-    });
-    if (named) return named.id;
-  }
-  return ofType[0]?.id ?? null;
+  if (!instanceHint) return null;
+
+  const matches = ofType.filter((row) => {
+    const name = normaliseWorkAreaInstanceName(row.name).toLowerCase();
+    return (
+      instanceHintMatchesName(name, instanceHint) ||
+      workAreaInstanceKey(row.type, row.name) ===
+        `${row.type}::${instanceHint}`
+    );
+  });
+  if (matches.length === 1) return matches[0]?.id ?? null;
+  return null;
 }
 
 export function existingWorkAreaInstanceKeys(

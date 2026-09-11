@@ -1,3 +1,5 @@
+import { ESTIMATE_UNUSABLE_USER_MESSAGE } from "@/lib/estimate/estimate-generation-success";
+
 const GENERIC_ERROR =
   "Something went wrong. Please try again. If the problem continues, use Report issue in the account menu.";
 
@@ -106,6 +108,7 @@ export const USER_ERRORS = {
   quoteDeliveryFailed: "Quote email could not be sent. Please try again.",
   estimateGenerateFailed:
     "Something went wrong while generating the estimate. Please try again.",
+  estimateUnusable: ESTIMATE_UNUSABLE_USER_MESSAGE,
   projectConditionsIncomplete:
     "Complete the remaining project information before generating the estimate.",
   estimateSaveFailed:

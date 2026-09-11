@@ -17,7 +17,11 @@ import {
   booleanChoiceOptions,
   clarifyControlType,
 } from "@/lib/assistant/clarify/question-contract";
-import { effectiveRemainingRequiredCount } from "@/lib/assistant/clarify/interaction";
+import {
+  clarifyPersistResultFailed,
+  detailsReadyCardVisible,
+  effectiveRemainingRequiredCount,
+} from "@/lib/assistant/clarify/interaction";
 
 type ClarifyPanelProps = {
   view: ClarifyView;
@@ -29,7 +33,7 @@ type ClarifyPanelProps = {
   onAnswerBoolean?: (
     candidate: ClarifyCandidate,
     presentation: "INCLUDED" | "NOT_INCLUDED"
-  ) => void;
+  ) => void | Promise<unknown>;
   onAnswerValue?: (
     candidate: ClarifyCandidate,
     value: string | number | boolean | string[]
@@ -160,6 +164,15 @@ export function ClarifyPanel({
     setHeldMultiId(null);
   };
 
+  const rollbackFailedClarifyPersist = (candidate: ClarifyCandidate) => {
+    setLocallyResolved((ids) => ids.filter((id) => id !== candidate.id));
+    setLocalValues((prev) => {
+      const next = { ...prev };
+      delete next[candidate.id];
+      return next;
+    });
+  };
+
   const wrapBoolean: ClarifyPanelProps["onAnswerBoolean"] = (
     candidate,
     presentation
@@ -176,7 +189,13 @@ export function ClarifyPanel({
             : "Not included",
     }));
     advance(candidate);
-    onAnswerBoolean?.(candidate, presentation);
+    void Promise.resolve(onAnswerBoolean?.(candidate, presentation)).then(
+      (result) => {
+        if (clarifyPersistResultFailed(result)) {
+          rollbackFailedClarifyPersist(candidate);
+        }
+      }
+    );
   };
   const wrapValue: ClarifyPanelProps["onAnswerValue"] = (candidate, value) => {
     setLocalValues((prev) => ({ ...prev, [candidate.id]: value }));
@@ -186,14 +205,20 @@ export function ClarifyPanel({
       return;
     }
     advance(candidate);
-    onAnswerValue?.(candidate, value);
+    void Promise.resolve(onAnswerValue?.(candidate, value)).then((result) => {
+      if (clarifyPersistResultFailed(result)) {
+        rollbackFailedClarifyPersist(candidate);
+      }
+    });
   };
 
-  const showReady =
-    visibleGroups.length === 0 &&
-    remaining === 0 &&
-    view.enoughToEstimate === true &&
-    readiness.enoughToEstimate === true;
+  const showReady = detailsReadyCardVisible({
+    visibleGroupCount: visibleGroups.length,
+    remaining,
+    viewEnoughToEstimate: view.enoughToEstimate === true,
+    readinessEnoughToEstimate: readiness.enoughToEstimate === true,
+    persistError,
+  });
 
   if (showReady) {
     return (
@@ -289,7 +314,11 @@ export function ClarifyPanel({
                                 advance(candidate);
                                 void Promise.resolve(
                                   onAnswerValue?.(candidate, set)
-                                ).finally(() => {
+                                ).then((result) => {
+                                  if (clarifyPersistResultFailed(result)) {
+                                    rollbackFailedClarifyPersist(candidate);
+                                  }
+                                }).finally(() => {
                                   continueLockRef.current = false;
                                 });
                               }
