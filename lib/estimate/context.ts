@@ -10,11 +10,6 @@ import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import {
-  hasLifecycleColumns,
-  isMissingLifecycleColumnsError,
-  markLifecycleColumnsUnavailable,
-} from "@/lib/projects/query-utils";
-import {
   deriveFactsForProject,
   mergeDerivedFactsIntoRecords,
 } from "@/lib/scopes/derived-facts";
@@ -76,8 +71,7 @@ function mapMaterialWastageSettings(
 
 export async function getEstimateContextWithContext(
   context: AuthOrgContext,
-  projectId: string,
-  retried = false
+  projectId: string
 ): Promise<EstimateContext | { error: string }> {
   const owned = await assertOrgOwnsActiveProject(context, projectId);
   if ("error" in owned) {
@@ -85,8 +79,9 @@ export async function getEstimateContextWithContext(
   }
 
   const { supabase, orgId } = context;
-  const lifecycleAvailable = await hasLifecycleColumns(supabase);
 
+  // Ownership already enforced active+org. One quality_level read — no
+  // extra lifecycle probe or deleted_at re-query in this request.
   const { data: project, error: projectError } = await supabase
     .from("projects")
     .select("id, quality_level")
@@ -95,32 +90,7 @@ export async function getEstimateContextWithContext(
     .maybeSingle();
 
   if (projectError || !project) {
-    if (projectError && isMissingLifecycleColumnsError(projectError) && !retried) {
-      markLifecycleColumnsUnavailable();
-      return getEstimateContextWithContext(context, projectId, true);
-    }
     return { error: "Project not found." };
-  }
-
-  if (lifecycleAvailable) {
-    const { data: lifecycleRow, error: lifecycleError } = await supabase
-      .from("projects")
-      .select("deleted_at")
-      .eq("id", projectId)
-      .eq("org_id", orgId)
-      .maybeSingle();
-
-    if (lifecycleError) {
-      if (isMissingLifecycleColumnsError(lifecycleError) && !retried) {
-        markLifecycleColumnsUnavailable();
-        return getEstimateContextWithContext(context, projectId, true);
-      }
-      return { error: "Project not found." };
-    }
-
-    if (lifecycleRow?.deleted_at) {
-      return { error: "Project not found." };
-    }
   }
 
   const [

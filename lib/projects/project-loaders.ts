@@ -8,15 +8,13 @@ import {
 } from "@/lib/security/auth-org-context";
 import {
   getProjectSelect,
-  hasBusinessStatusColumns,
-  hasClientEmailColumn,
-  hasLifecycleColumns,
   isMissingBusinessStatusColumnsError,
   isMissingClientEmailColumnError,
   isMissingLifecycleColumnsError,
   markBusinessStatusColumnsUnavailable,
   markClientEmailColumnUnavailable,
   markLifecycleColumnsUnavailable,
+  probeProjectSchemaColumns,
   withLifecycleDefaults,
 } from "@/lib/projects/query-utils";
 import type { Project } from "@/lib/projects/types";
@@ -26,11 +24,11 @@ export async function getProjectWithContext(
   projectId: string,
   retried = false
 ): Promise<Project> {
-  const lifecycleAvailable = await hasLifecycleColumns(context.supabase);
-  const businessStatusAvailable = lifecycleAvailable
-    ? await hasBusinessStatusColumns(context.supabase)
-    : false;
-  const clientEmailAvailable = await hasClientEmailColumn(context.supabase);
+  const {
+    lifecycleAvailable,
+    businessStatusAvailable,
+    clientEmailAvailable,
+  } = await probeProjectSchemaColumns(context.supabase);
 
   let query = context.supabase
     .from("projects")

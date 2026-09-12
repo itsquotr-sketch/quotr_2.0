@@ -1,10 +1,16 @@
+import { isPerf01AInstrumentationEnabled } from "@/lib/perf/perf-01a";
+
 const isDev = process.env.NODE_ENV === "development";
+
+function shouldLogServerLoad(): boolean {
+  return isDev || isPerf01AInstrumentationEnabled();
+}
 
 export async function measureServerLoad<T>(
   label: string,
   loader: () => Promise<T>
 ): Promise<T> {
-  if (!isDev) {
+  if (!shouldLogServerLoad()) {
     return loader();
   }
 
@@ -13,6 +19,7 @@ export async function measureServerLoad<T>(
     return await loader();
   } finally {
     const durationMs = Math.round(performance.now() - start);
-    console.info(`[perf] ${label}: ${durationMs}ms`);
+    const prefix = isPerf01AInstrumentationEnabled() ? "[perf-01a]" : "[perf]";
+    console.info(`${prefix} ${label}: ${durationMs}ms`);
   }
 }

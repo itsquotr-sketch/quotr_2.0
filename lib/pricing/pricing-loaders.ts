@@ -50,7 +50,10 @@ export async function getLatestPricingSummaryWithContext(
 export async function getProjectWorkspaceTabContextWithContext(
   auth: AuthOrgContext,
   projectId: string,
-  options?: { pricingSummary?: PricingSummary | null }
+  options?: {
+    pricingSummary?: PricingSummary | null;
+    pricingSummaryPromise?: Promise<PricingSummary | null>;
+  }
 ): Promise<{
   hasEstimate: boolean;
   estimateIsStale: boolean;
@@ -66,9 +69,10 @@ export async function getProjectWorkspaceTabContextWithContext(
   }
 
   const pricingSummaryPromise =
-    options && "pricingSummary" in options
+    options?.pricingSummaryPromise ??
+    (options && "pricingSummary" in options
       ? Promise.resolve(options.pricingSummary ?? null)
-      : getLatestPricingSummaryWithContext(auth, projectId);
+      : getLatestPricingSummaryWithContext(auth, projectId));
 
   const [pricingSummary, estimateResult] = await Promise.all([
     pricingSummaryPromise,
@@ -92,17 +96,11 @@ export async function getPricingWorkspaceDataWithContext(
   projectId: string,
   pricingDocumentId: string
 ): Promise<PricingWorkspaceData> {
-  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
-  if ("error" in ownedProject) {
-    notFound();
-  }
-
-  const ownedDocument = await assertOrgOwnsPricingDocument(
-    auth,
-    pricingDocumentId,
-    projectId
-  );
-  if ("error" in ownedDocument) {
+  const [ownedProject, ownedDocument] = await Promise.all([
+    assertOrgOwnsActiveProject(auth, projectId),
+    assertOrgOwnsPricingDocument(auth, pricingDocumentId, projectId),
+  ]);
+  if ("error" in ownedProject || "error" in ownedDocument) {
     notFound();
   }
 

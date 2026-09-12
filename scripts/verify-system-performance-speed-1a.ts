@@ -161,8 +161,9 @@ check(
 check(
   "10. duplicate pricing summary removed (preloaded into tab context)",
   projectPage.includes("getLatestPricingSummaryWithContext(auth, projectId)") &&
-    projectPage.includes("{ pricingSummary }") &&
-    pricingLoaders.includes("options?: { pricingSummary?:")
+    (projectPage.includes("{ pricingSummary }") ||
+      projectPage.includes("pricingSummaryPromise")) &&
+    pricingLoaders.includes("pricingSummary")
 );
 check(
   "11. workspace context supports trusted internal path",

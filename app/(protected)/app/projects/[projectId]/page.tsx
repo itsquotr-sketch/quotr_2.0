@@ -48,6 +48,8 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       notFound();
     }
 
+    const pricingSummaryPromise = getLatestPricingSummaryWithContext(auth, projectId);
+
     const [
       project,
       assistantState,
@@ -55,20 +57,18 @@ export default async function ProjectPage({ params }: ProjectPageProps) {
       pendingNoteProposal,
       pricingSummary,
       quoteSummary,
+      tabContext,
     ] = await Promise.all([
       getProjectWithContext(auth, projectId),
       getAssistantStateWithContext(auth, projectId),
       listProjectNotesWithContext(auth, projectId),
       getPendingNoteProposalWithContext(auth, projectId),
-      getLatestPricingSummaryWithContext(auth, projectId),
+      pricingSummaryPromise,
       getLatestQuoteSummaryWithContext(auth, projectId),
+      getProjectWorkspaceTabContextWithContext(auth, projectId, {
+        pricingSummaryPromise,
+      }),
     ]);
-
-    const tabContext = await getProjectWorkspaceTabContextWithContext(
-      auth,
-      projectId,
-      { pricingSummary }
-    );
 
     return {
       project,

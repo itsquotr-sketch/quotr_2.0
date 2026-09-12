@@ -98,8 +98,6 @@ export function mapCompanySettingsRow(
 export async function getCompanySettingsWithContext(
   context: AuthOrgContext
 ): Promise<CompanySettings | null> {
-  await ensureCompanySettingsRow(context.supabase, context.orgId);
-
   const [{ data: organisation }, { data: row, error }] = await Promise.all([
     context.supabase
       .from("organisations")
@@ -113,13 +111,34 @@ export async function getCompanySettingsWithContext(
       .maybeSingle(),
   ]);
 
-  if (error || !row) {
+  if (!error && row) {
+    return mapCompanySettingsRow(
+      organisation?.name ?? "Your company",
+      row
+    );
+  }
+
+  const created = await ensureCompanySettingsRow(
+    context.supabase,
+    context.orgId
+  );
+  if (!created) {
+    return null;
+  }
+
+  const { data: createdRow, error: createdError } = await context.supabase
+    .from("organisation_settings")
+    .select(COMPANY_SETTINGS_SELECT)
+    .eq("org_id", context.orgId)
+    .maybeSingle();
+
+  if (createdError || !createdRow) {
     return null;
   }
 
   return mapCompanySettingsRow(
     organisation?.name ?? "Your company",
-    row
+    createdRow
   );
 }
 

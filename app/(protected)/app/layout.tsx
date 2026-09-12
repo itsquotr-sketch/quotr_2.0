@@ -75,9 +75,10 @@ export default async function AppLayout({
     redirect("/app/dashboard");
   }
 
-  const [display, firstRunStage] = await Promise.all([
+  const [display, firstRunStage, billingState] = await Promise.all([
     getAuthDisplayProfile(),
     getFirstRunStage(),
+    getOrgBillingState(auth.orgId).catch(() => null),
   ]);
 
   const forcedSetup = firstRunForcedPath(firstRunStage);
@@ -92,27 +93,28 @@ export default async function AppLayout({
 
   let billingNotice: TrialBannerNotice | null = null;
   let showTeamNav = false;
-  try {
-    const billingState = await getOrgBillingState(auth.orgId);
-    const policy = resolveEffectiveAccessPolicy(billingState);
-    showTeamNav = shouldShowTeamPrimaryNav({
-      source: policy.source,
-      planCode: policy.planCode,
-    });
-    if (
-      !pathname?.startsWith("/app/settings/billing") &&
-      billingState.subscription?.source === "internal_trial"
-    ) {
-      billingNotice = trialBannerNotice(
-        deriveTrialCountdown({
-          trialEndsAt: billingState.subscription.trialEndsAt,
-          effectiveTrialState: billingState.effectiveTrialState,
-        })
-      );
+  if (billingState) {
+    try {
+      const policy = resolveEffectiveAccessPolicy(billingState);
+      showTeamNav = shouldShowTeamPrimaryNav({
+        source: policy.source,
+        planCode: policy.planCode,
+      });
+      if (
+        !pathname?.startsWith("/app/settings/billing") &&
+        billingState.subscription?.source === "internal_trial"
+      ) {
+        billingNotice = trialBannerNotice(
+          deriveTrialCountdown({
+            trialEndsAt: billingState.subscription.trialEndsAt,
+            effectiveTrialState: billingState.effectiveTrialState,
+          })
+        );
+      }
+    } catch {
+      billingNotice = null;
+      showTeamNav = false;
     }
-  } catch {
-    billingNotice = null;
-    showTeamNav = false;
   }
 
   return (

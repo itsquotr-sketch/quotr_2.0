@@ -290,3 +290,33 @@ export function resetLifecycleColumnsCacheForTests() {
   businessStatusColumnsConfirmed = false;
   clientEmailColumnConfirmed = false;
 }
+
+export type ProjectSchemaProbe = {
+  lifecycleAvailable: boolean;
+  businessStatusAvailable: boolean;
+  clientEmailAvailable: boolean;
+};
+
+/**
+ * PERFORMANCE-01A — three column-existence probes are independent.
+ * businessStatus is only consumed when lifecycle columns exist; the probe
+ * itself does not need that result to run.
+ */
+export async function probeProjectSchemaColumns(
+  supabase: Awaited<
+    ReturnType<typeof import("@/lib/supabase/server").createClient>
+  >
+): Promise<ProjectSchemaProbe> {
+  const [lifecycleAvailable, businessStatusAvailable, clientEmailAvailable] =
+    await Promise.all([
+      hasLifecycleColumns(supabase),
+      hasBusinessStatusColumns(supabase),
+      hasClientEmailColumn(supabase),
+    ]);
+
+  return {
+    lifecycleAvailable,
+    businessStatusAvailable: lifecycleAvailable && businessStatusAvailable,
+    clientEmailAvailable,
+  };
+}

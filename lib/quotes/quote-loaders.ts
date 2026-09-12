@@ -53,18 +53,15 @@ export async function getQuoteWorkspaceDataWithContext(
   projectId: string,
   quoteId: string
 ): Promise<QuoteWorkspaceData> {
-  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
-  if ("error" in ownedProject) {
-    notFound();
-  }
-
-  const ownedQuote = await assertOrgOwnsQuote(auth, quoteId, projectId);
-  if ("error" in ownedQuote) {
-    notFound();
-  }
-
   const { supabase, orgId } = auth;
-  const clientEmailAvailable = await hasClientEmailColumn(supabase);
+  const [ownedProject, ownedQuote, clientEmailAvailable] = await Promise.all([
+    assertOrgOwnsActiveProject(auth, projectId),
+    assertOrgOwnsQuote(auth, quoteId, projectId),
+    hasClientEmailColumn(supabase),
+  ]);
+  if ("error" in ownedProject || "error" in ownedQuote) {
+    notFound();
+  }
 
   const [{ data: project }, { data: quote }, { data: items }, companySettings] =
     await Promise.all([
@@ -106,36 +103,64 @@ export async function getQuoteWorkspaceDataWithContext(
       ? project.client_email
       : null;
 
-  let pricingDocumentUpdatedAt: string | null = null;
-  if (quote.pricing_document_id) {
-    const { data: pricingDoc } = await supabase
-      .from("pricing_documents")
-      .select("updated_at")
-      .eq("id", quote.pricing_document_id)
-      .eq("org_id", orgId)
-      .maybeSingle();
-    pricingDocumentUpdatedAt = pricingDoc?.updated_at ?? null;
-  }
-
-  const { data: projectQuotes } = await supabase
-    .from("quotes")
-    .select("id, status, pricing_document_id, created_at, revision_number")
-    .eq("project_id", projectId)
-    .eq("org_id", orgId)
-    .neq("status", "archived");
-
   const mappedQuote = mapQuote(quote);
   const rootId = quoteThreadId(mappedQuote);
 
-  const { data: threadRows } = await supabase
-    .from("quotes")
-    .select(
-      "id, revision_number, status, quote_number, sent_at, viewed_at, accepted_at, declined_at, expired_at, superseded_by_quote_id, superseded_at, created_at"
-    )
-    .eq("org_id", orgId)
-    .eq("project_id", projectId)
-    .or(`id.eq.${rootId},parent_quote_id.eq.${rootId}`)
-    .order("revision_number", { ascending: true });
+  const [
+    { data: pricingDoc },
+    { data: projectQuotes },
+    { data: threadRows },
+    { data: deliveryRows, error: deliveryError },
+    { data: acceptanceRow, error: acceptanceError },
+    { data: declineRow, error: declineError },
+  ] = await Promise.all([
+    quote.pricing_document_id
+      ? supabase
+          .from("pricing_documents")
+          .select("updated_at")
+          .eq("id", quote.pricing_document_id)
+          .eq("org_id", orgId)
+          .maybeSingle()
+      : Promise.resolve({ data: null }),
+    supabase
+      .from("quotes")
+      .select("id, status, pricing_document_id, created_at, revision_number")
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .neq("status", "archived"),
+    supabase
+      .from("quotes")
+      .select(
+        "id, revision_number, status, quote_number, sent_at, viewed_at, accepted_at, declined_at, expired_at, superseded_by_quote_id, superseded_at, created_at"
+      )
+      .eq("org_id", orgId)
+      .eq("project_id", projectId)
+      .or(`id.eq.${rootId},parent_quote_id.eq.${rootId}`)
+      .order("revision_number", { ascending: true }),
+    supabase
+      .from("quote_deliveries")
+      .select(
+        "id, quote_id, recipient_email, recipient_name, message, provider, kind, status, attempt_number, snapshot_fingerprint, provider_message_id, submitted_at, delivered_at, failed_at, failure_code, failure_message_safe, created_at"
+      )
+      .eq("org_id", orgId)
+      .eq("quote_id", quoteId)
+      .order("created_at", { ascending: false })
+      .limit(20),
+    supabase
+      .from("quote_acceptances")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("quote_id", quoteId)
+      .maybeSingle(),
+    supabase
+      .from("quote_declines")
+      .select("*")
+      .eq("org_id", orgId)
+      .eq("quote_id", quoteId)
+      .maybeSingle(),
+  ]);
+
+  const pricingDocumentUpdatedAt = pricingDoc?.updated_at ?? null;
 
   const threadRevisions: QuoteThreadRevision[] = (threadRows ?? []).map(
     (row) => ({
@@ -198,16 +223,6 @@ export async function getQuoteWorkspaceDataWithContext(
         }))
   );
 
-  const { data: deliveryRows, error: deliveryError } = await supabase
-    .from("quote_deliveries")
-    .select(
-      "id, quote_id, recipient_email, recipient_name, message, provider, kind, status, attempt_number, snapshot_fingerprint, provider_message_id, submitted_at, delivered_at, failed_at, failure_code, failure_message_safe, created_at"
-    )
-    .eq("org_id", orgId)
-    .eq("quote_id", quoteId)
-    .order("created_at", { ascending: false })
-    .limit(20);
-
   const deliveries = deliveryError
     ? []
     : (deliveryRows ?? []).map((row) => ({
@@ -235,21 +250,6 @@ export async function getQuoteWorkspaceDataWithContext(
 
   let acceptance = null;
   let decline = null;
-  const [{ data: acceptanceRow, error: acceptanceError }, { data: declineRow, error: declineError }] =
-    await Promise.all([
-      supabase
-        .from("quote_acceptances")
-        .select("*")
-        .eq("org_id", orgId)
-        .eq("quote_id", quoteId)
-        .maybeSingle(),
-      supabase
-        .from("quote_declines")
-        .select("*")
-        .eq("org_id", orgId)
-        .eq("quote_id", quoteId)
-        .maybeSingle(),
-    ]);
   if (!acceptanceError && acceptanceRow) {
     acceptance = mapQuoteAcceptance(acceptanceRow as Record<string, unknown>);
   } else if (acceptanceError && !isMissingQuoteAcceptanceTableError(acceptanceError)) {
