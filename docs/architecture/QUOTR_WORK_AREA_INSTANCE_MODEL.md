@@ -1,12 +1,42 @@
 # Quotr Work Area Instance Model
 
-**Status:** CANONICAL — ESTIMATING-FOUNDATION-02  
-**Date:** 2026-09-10  
+**Status:** EF02 — GO  
+**Date:** 2026-09-12  
 **Branch:** `hardening/stage-2a-security`  
-**Production / migration 055:** DO NOT TOUCH  
-**Preview schema:** through **056**. This phase adds **no migration**.
+**HEAD:** `dc57024f443f0ed17de0fe33554eec77953f3fb9`  
+**Production:** untouched. Do not migrate. Do not deploy.  
+**Preview:** `shhpjsoldmqtkdbgrbtm`. Migration **057** present (`scope_discovery_confirmed_instance_id`). Canonical alias on this SHA.
 
 This is the product hierarchy for repeating work and nested construction. It does not start Ceilings, Doors, Painting rooms, or Flooring groups as new calculators.
+
+---
+
+## Formal closure (2026-09-12)
+
+Estimating Foundation 02 is **GO**. Runtime behaviour is frozen at `dc57024f443f0ed17de0fe33554eec77953f3fb9`. This record does not change calculators, estimation architecture, or schema.
+
+**Hosted-proven:**
+
+- numeric assumptions
+- explicit numeric user provenance
+- complete Details / Refine behaviour
+- repeated Work Area instances
+- repeated Deck generation
+- two-IW Analyse
+- two-IW Estimate
+- Pricing/Quote `work_area_id` provenance
+- invalid-empty estimate refusal
+- supported mature IW estimate
+- false-Ready protection
+- mobile footer/nav safety.
+
+**Deterministically verified:**
+
+- Analyse atomic rollback of Work Areas/facts/stage/constraints
+- restoration of pre-existing constraint values/sources
+- partial `Promise.all` constraint rollback.
+
+**Residual QA note:** Hosted mid-constraint-write failure injection could not be induced reliably without externally racing the same rows. Local deterministic rollback verifier covers the exact failure contract. This is test-infrastructure debt, not an open EF02 P1 product defect.
 
 ---
 
