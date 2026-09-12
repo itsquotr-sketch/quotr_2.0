@@ -401,6 +401,12 @@ check(
       "return UNKNOWN_ANALYSIS_ERROR"
     )
 );
+check(
+  "F: failed Analyse restores only touched constraints",
+  actionsSrc.includes("snapshotTouchedConstraints") &&
+    actionsSrc.includes("restoreTouchedConstraints") &&
+    actionsSrc.includes("constraint rollback failed")
+);
 
 console.log("\n=== H/I. Bathroom / Deck discovery regression ===\n");
 

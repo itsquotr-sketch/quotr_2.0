@@ -39,6 +39,9 @@ import {
 } from "@/lib/work-areas/instances";
 import {
   type AnalysePersistFailureClass,
+  type TouchedConstraintSnapshot,
+  planConstraintRollback,
+  snapshotTouchedConstraints,
 } from "@/lib/assistant/analyse-persist-safety";
 import type {
   AssistantActionState,
@@ -151,14 +154,62 @@ function loadAnalysisCapableWorkAreaTypes(): string[] {
   return getAnalysisCapableWorkAreaTypes();
 }
 
+async function restoreTouchedConstraints(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  params: {
+    projectId: string;
+    snapshots: readonly TouchedConstraintSnapshot[];
+  }
+): Promise<{ ok: true } | { ok: false; reason: string }> {
+  if (params.snapshots.length === 0) return { ok: true };
+  const plan = planConstraintRollback(params.snapshots);
+  for (const key of plan.deleteKeys) {
+    const { error } = await supabase
+      .from("constraints")
+      .delete()
+      .eq("project_id", params.projectId)
+      .eq("key", key);
+    if (error) {
+      return { ok: false, reason: `delete ${key}: ${error.message}` };
+    }
+  }
+  for (const prior of plan.restore) {
+    const { error } = await supabase
+      .from("constraints")
+      .update({
+        label: prior.label,
+        value: prior.value,
+        source: prior.source,
+      })
+      .eq("id", prior.id)
+      .eq("project_id", params.projectId);
+    if (error) {
+      return { ok: false, reason: `restore ${prior.key}: ${error.message}` };
+    }
+  }
+  return { ok: true };
+}
+
 async function rollbackThisAttemptSuggestedWorkAreas(
   supabase: Awaited<ReturnType<typeof createClient>>,
   params: {
     projectId: string;
     insertedWorkAreaIds: readonly string[];
     revertStage: boolean;
+    constraintSnapshots?: readonly TouchedConstraintSnapshot[];
   }
 ): Promise<void> {
+  const constraintRollback = await restoreTouchedConstraints(supabase, {
+    projectId: params.projectId,
+    snapshots: params.constraintSnapshots ?? [],
+  });
+  if (!constraintRollback.ok) {
+    console.error("[saveBriefAndSeedWorkAreas] constraint rollback failed", {
+      projectId: params.projectId,
+      keys: (params.constraintSnapshots ?? []).map((row) => row.key),
+      reason: constraintRollback.reason,
+    });
+  }
   if (params.insertedWorkAreaIds.length > 0) {
     await supabase
       .from("project_facts")
@@ -195,6 +246,8 @@ export async function saveBriefAndSeedWorkAreas(
   let lastErrorClass: string | null = null;
   let insertedWorkAreaIds: string[] = [];
   let stageUpdated = false;
+  let constraintSnapshots: TouchedConstraintSnapshot[] = [];
+  let supabaseForRollback: Awaited<ReturnType<typeof createClient>> | null = null;
 
   try {
   const loaded = await loadProjectStage(projectId);
@@ -211,6 +264,7 @@ export async function saveBriefAndSeedWorkAreas(
 
   const { auth, stage } = loaded;
   const { supabase, orgId } = auth;
+  supabaseForRollback = supabase;
 
   const analyseDenied = await permissionDeniedError({
     orgId,
@@ -349,6 +403,7 @@ export async function saveBriefAndSeedWorkAreas(
       projectId,
       insertedWorkAreaIds,
       revertStage: stageUpdated,
+      constraintSnapshots,
     });
     timing.mark("T13");
     logAnalyseJobTiming({
@@ -525,17 +580,17 @@ export async function saveBriefAndSeedWorkAreas(
   if (extractionResult.constraints.length > 0) {
     const { data: existingConstraints } = await supabase
       .from("constraints")
-      .select("id, key, source")
+      .select("id, key, label, value, source")
       .eq("project_id", projectId);
 
     const existingByKey = new Map(
       (existingConstraints ?? []).map((row) => [row.key, row])
     );
 
-    // Stage 3.2.2-R1: parallelise independent constraint upserts (serial awaits
-    // previously extended the Analyse → Work Areas gap).
-    const constraintWrites: PromiseLike<{ error: { message: string } | null }>[] =
-      [];
+    const writes: {
+      key: string;
+      write: PromiseLike<{ error: { message: string } | null }>;
+    }[] = [];
     for (const constraint of extractionResult.constraints) {
       const existing = existingByKey.get(constraint.key);
       if (existing?.source === "user") {
@@ -543,8 +598,9 @@ export async function saveBriefAndSeedWorkAreas(
         continue;
       }
       if (existing) {
-        constraintWrites.push(
-          supabase
+        writes.push({
+          key: constraint.key,
+          write: supabase
             .from("constraints")
             .update({
               label: constraint.label,
@@ -552,23 +608,34 @@ export async function saveBriefAndSeedWorkAreas(
               source: "ai_extracted",
             })
             .eq("id", existing.id)
-            .eq("project_id", projectId)
-        );
+            .eq("project_id", projectId),
+        });
       } else {
-        constraintWrites.push(
-          supabase.from("constraints").insert({
+        writes.push({
+          key: constraint.key,
+          write: supabase.from("constraints").insert({
             org_id: orgId,
             project_id: projectId,
             key: constraint.key,
             label: constraint.label,
             value: constraint.value,
             source: "ai_extracted",
-          })
-        );
+          }),
+        });
       }
     }
-    if (constraintWrites.length > 0) {
-      const results = await Promise.all(constraintWrites);
+    constraintSnapshots = snapshotTouchedConstraints(
+      (existingConstraints ?? []).map((row) => ({
+        id: row.id,
+        key: row.key,
+        label: row.label,
+        value: row.value,
+        source: row.source,
+      })),
+      writes.map((row) => row.key)
+    );
+    if (writes.length > 0) {
+      const results = await Promise.all(writes.map((row) => row.write));
       const failed = results.find((r) => r.error);
       if (failed?.error) {
         return failPersist(
@@ -595,6 +662,14 @@ export async function saveBriefAndSeedWorkAreas(
   return assistantResult;
   } catch (error) {
     lastErrorClass = classifyAnalysisError(error);
+    if (supabaseForRollback) {
+      await rollbackThisAttemptSuggestedWorkAreas(supabaseForRollback, {
+        projectId,
+        insertedWorkAreaIds,
+        revertStage: stageUpdated,
+        constraintSnapshots,
+      });
+    }
     logBriefAnalysisFailure(projectId, {
       briefLength: trimmed.length,
       noteCount: 0,
