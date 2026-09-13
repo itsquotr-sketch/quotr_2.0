@@ -22,7 +22,7 @@ import {
 } from "@/lib/estimate/labour-requirement";
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
 import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
-import { findCompanyProductivityRate } from "@/lib/estimate/productivity";
+import { resolveProductivity } from "@/lib/estimate/productivity";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
@@ -37,6 +37,7 @@ import {
   INTERNAL_WALLS_LINING_GROSS_SHEET_ASSUMPTION,
   INTERNAL_WALLS_LINING_LABOUR_OWNER_REQUIRED_MESSAGE,
   INTERNAL_WALLS_LINING_WASTE_CATEGORY,
+  internalWallsLiningHoursPerSheetFallback,
   internalWallsLiningLabourComponent,
   internalWallsLiningMaterialComponent,
   internalWallsLiningOverlapGroup,
@@ -414,20 +415,28 @@ function emitLinedFaces(params: {
     lineItems,
     bumpSortOrder,
   } = params;
-  const sides: InternalWallsLiningFaceSide[] = ["side_a", "side_b"];
+    const sides: InternalWallsLiningFaceSide[] = ["side_a", "side_b"];
   for (const side of sides) {
     const face = side === "side_a" ? type.side_a : type.side_b;
     const productivityKey = face.product
       ? liningProductivityKeyForProduct(face.product)
       : null;
-    const companyProductivity =
+    const fallbackHours =
+      face.product != null
+        ? internalWallsLiningHoursPerSheetFallback(face.product)
+        : null;
+    const productivity =
       productivityKey != null
-        ? findCompanyProductivityRate(context.rates, productivityKey, "sheet")
-        : undefined;
+        ? resolveProductivity({
+            productivityKey,
+            unit: "sheet",
+            fallbackHoursPerUnit: fallbackHours ?? 0,
+            rates: context.rates,
+          })
+        : null;
     const hoursPerSheet =
-      companyProductivity?.cost_rate != null &&
-      Number(companyProductivity.cost_rate) > 0
-        ? Number(companyProductivity.cost_rate)
+      productivity != null && productivity.hoursPerUnit > 0
+        ? productivity.hoursPerUnit
         : null;
 
     const takeoff = internalWallsLiningFaceTakeoff({
@@ -717,6 +726,8 @@ function emitLiningFace(params: {
             rateSource: params.labourRate.sourceLabel,
             rateSourceType: params.labourRate.sourceType,
             itemKey: INTERNAL_WALLS_CARPENTER_LABOUR_KEY,
+            sellDerivedFromMargin: params.labourRate.sellDerivedFromMargin,
+            sellAuthority: params.labourRate.sellAuthority,
             notes: `${takeoff.installedSheets} sheets installed · ${presentInternalWallsHours(adjustedHours)}`,
             sortOrder: params.bumpSortOrder(),
             organisationSettings: context.organisationSettings,

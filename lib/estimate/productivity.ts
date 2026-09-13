@@ -356,6 +356,48 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     0.4,
     "m²"
   ),
+  "internal_walls.lining.standard_gib.hours_per_sheet": productivityEntry(
+    "internal_walls.lining.standard_gib.hours_per_sheet",
+    "Internal wall Standard GIB lining",
+    0.4,
+    "sheet"
+  ),
+  "internal_walls.lining.aqualine.hours_per_sheet": productivityEntry(
+    "internal_walls.lining.aqualine.hours_per_sheet",
+    "Internal wall Aqualine lining",
+    0.4,
+    "sheet"
+  ),
+  "internal_walls.lining.fyreline.hours_per_sheet": productivityEntry(
+    "internal_walls.lining.fyreline.hours_per_sheet",
+    "Internal wall Fyreline lining",
+    0.4,
+    "sheet"
+  ),
+  "internal_walls.lining.braceline.hours_per_sheet": productivityEntry(
+    "internal_walls.lining.braceline.hours_per_sheet",
+    "Internal wall Braceline lining",
+    0.4,
+    "sheet"
+  ),
+  "internal_walls.lining.noiseline.hours_per_sheet": productivityEntry(
+    "internal_walls.lining.noiseline.hours_per_sheet",
+    "Internal wall Noiseline lining",
+    0.4,
+    "sheet"
+  ),
+  "internal_walls.lining.weatherline.hours_per_sheet": productivityEntry(
+    "internal_walls.lining.weatherline.hours_per_sheet",
+    "Internal wall Weatherline lining",
+    0.4,
+    "sheet"
+  ),
+  "internal_walls.lining.barrierline.hours_per_sheet": productivityEntry(
+    "internal_walls.lining.barrierline.hours_per_sheet",
+    "Internal wall Barrierline lining",
+    0.4,
+    "sheet"
+  ),
   "bathroom.demolition.floor_finish.hours_per_m2": productivityEntry(
     "bathroom.demolition.floor_finish.hours_per_m2",
     "Bathroom floor finish removal",

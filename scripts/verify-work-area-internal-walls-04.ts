@@ -417,7 +417,7 @@ check("Fixture A track/stud are separate requirements", aTrack != null && aStud 
 check("Fixture A waste factor 0", aTrack?.wasteFactor === 0 && aStud?.wasteFactor === 0);
 check("Fixture A track/stud Pricing Required", aTrack?.priced === false && aStud?.priced === false);
 check("Fixture A labour still priced", aLab?.priced === true);
-check("Fixture A fixings reused on wall area", aFix?.priced === false && aFix.rateSource === "missing" && near(aFix.purchaseQuantity, 24));
+check("Fixture A fixings reused on wall area", aFix?.priced === true && aFix.rateSource === "benchmark" && near(aFix.purchaseQuantity, 24) && near(aFix.unitCost, 8));
 check("Fixture A no legacy package", !isLegacyPackage(a));
 check("Fixture A quantity visible on unpriced lines", a.lineItems.some((row) => row.itemKey === INTERNAL_WALLS_STEEL_TRACK_KEY && row.quantity === 20));
 

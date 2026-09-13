@@ -92,6 +92,8 @@ function resolveExactMaterialRate(params: {
   sellRate: number | null;
   sourceType: "user_rate" | "benchmark" | "missing";
   sourceLabel: string;
+  sellDerivedFromMargin?: boolean;
+  sellAuthority?: ReturnType<typeof resolveRate>["sellAuthority"];
 } {
   const company = params.context.rates.find(
     (rate) =>
@@ -116,6 +118,8 @@ function resolveExactMaterialRate(params: {
       sellRate: resolved.sellRate,
       sourceType: "user_rate",
       sourceLabel: resolved.sourceLabel,
+      sellDerivedFromMargin: resolved.sellDerivedFromMargin,
+      sellAuthority: resolved.sellAuthority,
     };
   }
   const benchmark = catalogueBenchmarkCost(params.itemKey);
@@ -137,6 +141,8 @@ function resolveExactMaterialRate(params: {
       sellRate: resolved.sellRate,
       sourceType: "benchmark",
       sourceLabel: resolved.sourceLabel,
+      sellDerivedFromMargin: resolved.sellDerivedFromMargin,
+      sellAuthority: resolved.sellAuthority,
     };
   }
   return {
@@ -752,6 +758,7 @@ function emitSteelFraming(params: {
 
   emitFixings({
     workArea,
+    context,
     type,
     displayName,
     overlapGroup,
@@ -1012,6 +1019,7 @@ function emitTimberFraming(params: {
 
 function emitFixings(params: {
   workArea: EstimateWorkArea;
+  context: EstimateContext;
   type: InternalWallsWallType;
   displayName: string;
   overlapGroup: string;
@@ -1028,6 +1036,7 @@ function emitFixings(params: {
 }): void {
   const {
     workArea,
+    context,
     type,
     displayName,
     overlapGroup,
@@ -1036,6 +1045,11 @@ function emitFixings(params: {
     supporting,
   } = params;
   const label = `${displayName} — framing fixings allowance`;
+  const rate = resolveExactMaterialRate({
+    itemKey: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
+    unit: "m2",
+    context,
+  });
   params.requirements.push(
     buildMaterialRequirement({
       workAreaId: workArea.id,
@@ -1047,37 +1061,79 @@ function emitFixings(params: {
       assumptions: [
         {
           key: "internal_walls.framing.fixings",
-          text: "General framing-fixings allowance on wall framing area. Anchors, nails/screws, small brackets, standard consumables. Not a screw-count takeoff.",
+          text: "General framing-fixings allowance on wall framing area. Anchors, nails/screws, plasterboard screws, small brackets, typical adhesive, standard consumables. Not a screw-count takeoff.",
           source: "calculator_default",
         },
       ],
       provenance: provenanceBase,
-      priced: false,
+      priced: rate.priced,
       materialKey: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
       category: "FIXINGS",
-      specification: `${takeoff.wallAreaM2} m² wall framing area · allowance`,
+      specification: `${takeoff.wallAreaM2} m² wall framing area · combined fixings / connectors / sundries allowance`,
       baseQuantity: takeoff.wallAreaM2,
       baseUnit: "m2",
       wasteFactor: 0,
       purchaseQuantity: takeoff.wallAreaM2,
       purchaseUnit: "m2",
-      rateSource: "missing",
-      unitCost: null,
-      totalCost: null,
+      rateSource: rate.priced
+        ? rate.sourceType === "user_rate"
+          ? "company"
+          : "benchmark"
+        : "missing",
+      unitCost: rate.costRate,
+      totalCost:
+        rate.priced && rate.costRate != null
+          ? round2(takeoff.wallAreaM2 * rate.costRate)
+          : null,
     })
   );
-  params.lineItems.push(
-    unpricedMaterialLine({
-      workArea,
-      label,
-      quantity: takeoff.wallAreaM2,
-      unit: "m2",
-      itemKey: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
-      componentKey: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
-      identitySummary: `${takeoff.wallAreaM2} m² wall area · framing fixings allowance`,
-      notes: `${supporting}. Pricing required — no approved framing-fixings $/m².`,
-      sortOrder: params.bumpSortOrder(),
-      overlapGroup,
-    })
-  );
+  if (rate.priced && rate.costRate != null && rate.sellRate != null) {
+    params.lineItems.push(
+      withPricingOwnership(
+        {
+          ...createRateLineItem({
+            workAreaId: workArea.id,
+            workAreaName: workArea.name,
+            label,
+            category: "materials",
+            quantity: takeoff.wallAreaM2,
+            unit: "m2",
+            costRate: rate.costRate,
+            sellRate: rate.sellRate,
+            rateSource: rate.sourceLabel,
+            rateSourceType: rate.sourceType,
+            itemKey: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
+            componentKey: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
+            sellDerivedFromMargin: rate.sellDerivedFromMargin,
+            sellAuthority: rate.sellAuthority,
+            notes: `${supporting}. Combined fixings / connectors / sundries COST allowance on wall framing area.`,
+            sortOrder: params.bumpSortOrder(),
+            organisationSettings: context.organisationSettings,
+            qualityFactor: 1,
+          }),
+          identitySummary: `${takeoff.wallAreaM2} m² wall area · framing fixings allowance`,
+        },
+        {
+          pricingOwner: "contractor_material",
+          scopeKey: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
+          overlapGroup,
+        }
+      )
+    );
+  } else {
+    params.lineItems.push(
+      unpricedMaterialLine({
+        workArea,
+        label,
+        quantity: takeoff.wallAreaM2,
+        unit: "m2",
+        itemKey: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
+        componentKey: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
+        identitySummary: `${takeoff.wallAreaM2} m² wall area · framing fixings allowance`,
+        notes: `${supporting}. Pricing required — no approved framing-fixings $/m².`,
+        sortOrder: params.bumpSortOrder(),
+        overlapGroup,
+      })
+    );
+  }
 }

@@ -28,6 +28,14 @@ export const INTERNAL_WALLS_FRAMING_140_LABOUR_COMPONENT =
   "internal_walls.framing.timber.140x45.install" as const;
 export const INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT =
   "internal_walls.framing.fixings.allowance" as const;
+
+/**
+ * Combined framing + lining fixings / connectors / sundries COST $/m² of
+ * wall framing area. Not a screw-count takeoff. Covers plate anchors, nails,
+ * plasterboard screws, typical adhesive, small brackets, and minor consumables.
+ * Company exact wins. Sell derives from applicable gross margin.
+ */
+export const INTERNAL_WALLS_FRAMING_FIXINGS_COST_PER_M2 = 8 as const;
 export const INTERNAL_WALLS_STEEL_TRACK_KEY = "steel.framing.track.lm" as const;
 export const INTERNAL_WALLS_STEEL_STUD_KEY = "steel.framing.stud.lm" as const;
 export const INTERNAL_WALLS_FRAMING_STEEL_TRACK_COMPONENT =
@@ -109,6 +117,13 @@ export const INTERNAL_WALLS_LINING_THICKNESS_UNSUPPORTED_MESSAGE =
 export const INTERNAL_WALLS_LINING_LABOUR_OWNER_REQUIRED_MESSAGE =
   "Lining labour Pricing Required — no owner-approved hours/sheet." as const;
 
+/**
+ * Quotr lining productivity: person-hours per installed sheet (not purchase
+ * / waste sheets, not bathroom 0.3 h/m², not legacy 1.4 h/m²). Company
+ * hours/sheet wins. Labour $ remains labour.carpenter.hour cost-first.
+ */
+export const INTERNAL_WALLS_LINING_HOURS_PER_SHEET = 0.4 as const;
+
 export const INTERNAL_WALLS_LINING_GROSS_SHEET_ASSUMPTION =
   "Lining sheet count stays on the full-height sheet run. Known openings are deducted from net lined area only." as const;
 
@@ -129,7 +144,6 @@ export const INTERNAL_WALLS_OPENING_FORM_LABOUR_COMPONENT =
 export const INTERNAL_WALLS_OPENING_LINING_MAKE_GOOD_COMPONENT =
   "internal_walls.opening.lining.make_good" as const;
 
-/** Future Company DNA tasks — no owner-approved hours/sheet in IW-05. */
 export const INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS = {
   standard_gib: "internal_walls.lining.standard_gib.hours_per_sheet",
   aqualine: "internal_walls.lining.aqualine.hours_per_sheet",
@@ -141,6 +155,17 @@ export const INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS = {
   plywood: "internal_walls.lining.plywood.hours_per_sheet",
   fibre_cement: "internal_walls.lining.fibre_cement.hours_per_sheet",
   other: "internal_walls.lining.other.hours_per_sheet",
+} as const;
+
+/** Plasterboard lining only. Plywood / fibre-cement / other stay catalogue-gap. */
+export const INTERNAL_WALLS_LINING_PRODUCTIVITY_BENCHMARKS = {
+  standard_gib: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+  aqualine: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+  fyreline: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+  braceline: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+  noiseline: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+  weatherline: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+  barrierline: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
 } as const;
 
 export const INTERNAL_WALLS_LINING_WASTE_CATEGORY = "sheet_material" as const;
@@ -164,6 +189,17 @@ export function internalWallsLiningMaterialComponent(
 
 export function internalWallsLiningLabourComponent(product: string): string {
   return `internal_walls.lining.${product}.install`;
+}
+
+export function internalWallsLiningHoursPerSheetFallback(
+  product: string
+): number | null {
+  if (product in INTERNAL_WALLS_LINING_PRODUCTIVITY_BENCHMARKS) {
+    return INTERNAL_WALLS_LINING_PRODUCTIVITY_BENCHMARKS[
+      product as keyof typeof INTERNAL_WALLS_LINING_PRODUCTIVITY_BENCHMARKS
+    ];
+  }
+  return null;
 }
 
 export function internalWallsLiningOverlapGroup(wallTypeId: string): string {

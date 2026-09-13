@@ -45,6 +45,12 @@ import {
 } from "@/lib/estimate/fence-identities";
 import { FENCE_MODULAR_1C_MATERIAL_STARTERS } from "@/lib/estimate/fence-modular-1c";
 import { FENCE_TIMBER_1B_MATERIAL_STARTERS } from "@/lib/estimate/fence-timber-1b";
+import {
+  INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
+  INTERNAL_WALLS_FRAMING_FIXINGS_COST_PER_M2,
+  INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+  INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS,
+} from "@/lib/estimate/internal-walls-identities";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 
 function entry(
@@ -360,6 +366,20 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Canonical physical 90×45 H1.2 framing. Bathroom local nogging and Internal Walls timber partitions consume the same company rate. Not Deck H3.2 90×45. Owner-approved Quotr benchmark $6.20 ex GST / lm. Company exact rate wins. Legacy key bathroom.framing.90x45.h1.2.lm is an alias only.",
     defaultCostRate: 6.2,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
+    label: "Internal wall fixings, connectors & sundries",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Framing timber",
+    unit: "m2",
+    description:
+      "Quotr COST allowance per m² of wall framing area for Internal Walls framing + lining fixings. Covers plate anchors, nails/screws, plasterboard screws, typical adhesive, small brackets, and minor consumables. Not a screw-count takeoff. Company exact wins. Sell derives from applicable gross margin.",
+    defaultCostRate: INTERNAL_WALLS_FRAMING_FIXINGS_COST_PER_M2,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -1919,6 +1939,92 @@ export const BATHROOM_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     defaultCostRate: 0.75,
     calculatorSupport: "used_now",
     recommended: true,
+  }),
+];
+
+export const INTERNAL_WALLS_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS.standard_gib,
+    label: "Internal wall Standard GIB lining (hours/sheet)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "sheet",
+    description:
+      "Person-hours per installed plasterboard sheet. Measure, cut, fit, screw-fix. Not purchase/waste sheets, not bathroom 0.3 h/m², not legacy 1.4 h/m². Company hours/sheet wins. Hours, not dollars.",
+    defaultCostRate: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS.aqualine,
+    label: "Internal wall Aqualine lining (hours/sheet)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "sheet",
+    description:
+      "Person-hours per installed Aqualine sheet. Same Internal Walls lining productivity as Standard GIB. Company hours/sheet wins. Hours, not dollars.",
+    defaultCostRate: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS.fyreline,
+    label: "Internal wall Fyreline lining (hours/sheet)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "sheet",
+    defaultCostRate: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS.braceline,
+    label: "Internal wall Braceline lining (hours/sheet)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "sheet",
+    defaultCostRate: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS.noiseline,
+    label: "Internal wall Noiseline lining (hours/sheet)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "sheet",
+    defaultCostRate: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS.weatherline,
+    label: "Internal wall Weatherline lining (hours/sheet)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "sheet",
+    defaultCostRate: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS.barrierline,
+    label: "Internal wall Barrierline lining (hours/sheet)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "sheet",
+    defaultCostRate: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
+    calculatorSupport: "used_now",
   }),
 ];
 

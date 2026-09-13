@@ -291,10 +291,10 @@ check(
     getCatalogueEntry("sheet.plasterboard.barrierline.13mm.2400x1200.each")?.defaultCostRate == null
 );
 check(
-  "productivity keys exist without invented hours/sheet",
+  "productivity keys have documented Quotr hours/sheet",
   INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS.standard_gib ===
     "internal_walls.lining.standard_gib.hours_per_sheet" &&
-    !read("lib/estimate/productivity.ts").includes("internal_walls.lining.standard_gib.hours_per_sheet")
+    read("lib/estimate/productivity.ts").includes("internal_walls.lining.standard_gib.hours_per_sheet")
 );
 check(
   "recommended product length spans height",
@@ -383,8 +383,9 @@ check(
   aLabour.length === 2 && aLabour.every((row) => near(row.productivityBasis.quantity, 10))
 );
 check(
-  "Fixture A lining labour Pricing Required — no invented hours/sheet",
-  aLabour.every((row) => row.priced === false && row.rateProvenance === "missing")
+  "Fixture A lining labour priced on both faces from Quotr hours/sheet",
+  aLabour.length === 2 &&
+    aLabour.every((row) => row.priced === true && near(row.baseHours, 4) && near(row.productivityBasis.hoursPerUnit, 0.4))
 );
 check(
   "Fixture A Standard uses legacy 13/2400 shared key",
@@ -587,7 +588,7 @@ const withHours = calculateInternalWalls(
         rate_type: "productivity",
         label: "Standard GIB lining",
         unit: "sheet",
-        cost_rate: 0.4,
+        cost_rate: 0.25,
         sell_rate: null,
         active: true,
         markup_percent: null,
@@ -604,7 +605,7 @@ const pricedLabour = labs(withHours).filter(
 check(
   "company hours/sheet prices labour on installed sheets only",
   pricedLabour.length === 2 &&
-    pricedLabour.every((row) => row.priced === true && near(row.baseHours, 4))
+    pricedLabour.every((row) => row.priced === true && near(row.baseHours, 2.5))
 );
 check(
   "labour money uses carpenter hourly",

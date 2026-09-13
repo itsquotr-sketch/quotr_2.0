@@ -499,9 +499,9 @@ check(
 const live = internalWallsIdentityInvariantFixtures();
 check(
   "single-instance IW output fingerprint unchanged",
-  live.A.labourHours === 12.96 &&
-    live.A.commercial.recommendedCost === 1844.69 &&
-    live.A.commercial.recommendedSell === 2500.26
+  live.A.labourHours === 20.96 &&
+    live.A.commercial.recommendedCost === 2555.09 &&
+    live.A.commercial.recommendedSell === 3193.86
 );
 
 check(

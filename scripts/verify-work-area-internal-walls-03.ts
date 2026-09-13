@@ -318,7 +318,7 @@ check("Type A labour 12.96 h on 28.8 m²", near(aLab?.baseHours, 12.96) && near(
 check("Type A labour uses carpenter hour", aLab?.rateKey === INTERNAL_WALLS_CARPENTER_LABOUR_KEY || (aLab?.rateKey ?? "").includes("carpenter"));
 check("Type A 90 priced from benchmark", aMat?.priced === true && aMat.rateSource === "benchmark");
 check("Type A no 140 material", !mats(a).some((row) => row.materialKey === INTERNAL_WALLS_TIMBER_140_KEY));
-check("Type A fixings Pricing Required on wall area", aFix?.priced === false && aFix.rateSource === "missing" && near(aFix.purchaseQuantity, 28.8));
+check("Type A fixings priced on wall area", aFix?.priced === true && aFix.rateSource === "benchmark" && near(aFix.purchaseQuantity, 28.8) && near(aFix.unitCost, 8));
 check("Type A no legacy package", !isLegacyPackage(a));
 check(
   "Type A lining not priced, not old takeoff-not-priced",
@@ -668,8 +668,8 @@ check(
   ) === true
 );
 check(
-  "Pricing Required shown for 140 and fixings",
-  /Rate required|Pricing required/i.test(reviewText) && /fixings/i.test(reviewText)
+  "Pricing Required shown for 140",
+  /Rate required|Pricing required/i.test(reviewText) && /140/.test(reviewText)
 );
 check(
   "Review surface wraps compact rows",

@@ -379,8 +379,8 @@ check(
   `cost=${bathroomCost}`
 );
 check(
-  "locked Bathroom sell ~24658.8",
-  near(bathroomSell, 24658.8, 1),
+  "locked Bathroom sell ~24160.65 (EST-COMMERCIAL-01B cost-first)",
+  near(bathroomSell, 24160.65, 1),
   `sell=${bathroomSell}`
 );
 
@@ -471,15 +471,15 @@ check(
 
 console.log("\n--- Locked IW-ID Fixture D ---\n");
 const live = internalWallsIdentityInvariantFixtures();
-check("IW-ID Fixture D labour 12.96", live.D.labourHours === 12.96, String(live.D.labourHours));
+check("IW-ID Fixture D labour 21.76", live.D.labourHours === 21.76, String(live.D.labourHours));
 check(
-  "IW-ID Fixture D cost 1965.06",
-  live.D.commercial.recommendedCost === 1965.06,
+  "IW-ID Fixture D cost 2723.46",
+  live.D.commercial.recommendedCost === 2723.46,
   String(live.D.commercial.recommendedCost)
 );
 check(
-  "IW-ID Fixture D sell 2650.72",
-  live.D.commercial.recommendedSell === 2650.72,
+  "IW-ID Fixture D sell 3404.32",
+  live.D.commercial.recommendedSell === 3404.32,
   String(live.D.commercial.recommendedSell)
 );
 const dFacts = applyExtractedInternalWallsToFacts({

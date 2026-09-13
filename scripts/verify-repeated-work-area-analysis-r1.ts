@@ -448,18 +448,18 @@ console.log("\n=== Numerical output protection (IW-ID fixture D) ===\n");
 const live = internalWallsIdentityInvariantFixtures();
 check("IW-ID Fixture D is present", Boolean(live.D));
 check(
-  "IW-ID Fixture D labour 12.96",
-  live.D.labourHours === 12.96,
+  "IW-ID Fixture D labour 21.76",
+  live.D.labourHours === 21.76,
   String(live.D.labourHours)
 );
 check(
-  "IW-ID Fixture D cost 1965.06",
-  live.D.commercial.recommendedCost === 1965.06,
+  "IW-ID Fixture D cost 2723.46",
+  live.D.commercial.recommendedCost === 2723.46,
   String(live.D.commercial.recommendedCost)
 );
 check(
-  "IW-ID Fixture D sell 2650.72",
-  live.D.commercial.recommendedSell === 2650.72,
+  "IW-ID Fixture D sell 3404.32",
+  live.D.commercial.recommendedSell === 3404.32,
   String(live.D.commercial.recommendedSell)
 );
 
