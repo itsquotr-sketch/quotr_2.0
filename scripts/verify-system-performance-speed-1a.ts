@@ -51,6 +51,7 @@ console.log("verify-system-performance-speed-1a: starting…\n");
 const authSrc = read("lib/security/auth-org-context.ts");
 const serverSrc = read("lib/supabase/server.ts");
 const ownershipSrc = read("lib/security/org-ownership.ts");
+const ownershipReadSrc = read("lib/security/org-ownership-read.ts");
 const audit = read("docs/audits/SYSTEM_PERFORMANCE_SPEED_0_BASELINE.md");
 const projectPage = read(
   "app/(protected)/app/projects/[projectId]/page.tsx"
@@ -147,8 +148,17 @@ check(
     ownershipSrc.includes('.is("deleted_at", null)')
 );
 check(
-  "8c. ownership helper is not process-global identity-cached",
-  !ownershipSrc.includes("cache(") && !ownershipSrc.includes("new Map")
+  "8c. ownership is not process-global identity-cached",
+  !ownershipSrc.includes("unstable_cache") &&
+    !ownershipSrc.includes("new Map") &&
+    !ownershipSrc.includes("cache(") &&
+    !ownershipReadSrc.includes("unstable_cache") &&
+    !ownershipReadSrc.includes("new Map") &&
+    ownershipReadSrc.includes("assertOrgOwnsActiveProjectForRead") &&
+    ownershipReadSrc.includes('import { cache } from "react"') &&
+    ownershipSrc.includes(
+      "export async function assertOrgOwnsActiveProject("
+    )
 );
 
 console.log("\n-- LOADER CONSOLIDATION --");

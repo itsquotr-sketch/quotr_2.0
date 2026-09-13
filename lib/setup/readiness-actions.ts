@@ -1,6 +1,7 @@
 "use server";
 
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
+import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 import { orgHasHighImpactCalibration } from "@/lib/company-dna/progress";
 import { fenceV2ProgressCounts, deckV2ProgressCounts, bathroomV2ProgressCounts } from "@/lib/company-dna/v2-ui";
 import {
@@ -52,16 +53,10 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
 
   const { supabase, orgId } = context;
 
-  const [{ data: organisation }, { data: settings }, { data: labourRates }, { data: companyRates }, { data: preferredWorkAreas }, { data: calibrations }] =
+  const [{ data: organisation }, settings, { data: labourRates }, { data: companyRates }, { data: preferredWorkAreas }, { data: calibrations }] =
     await Promise.all([
       supabase.from("organisations").select("name").eq("id", orgId).maybeSingle(),
-      supabase
-        .from("organisation_settings")
-        .select(
-          "currency, country, region, timezone, default_gst_rate, default_margin_percent, onboarding_status, trading_name, legal_name, contact_email, contact_phone, address_line_1, city, logo_url"
-        )
-        .eq("org_id", orgId)
-        .maybeSingle(),
+      loadOrganisationSettingsRow(orgId),
       supabase
         .from("rates")
         .select("id")

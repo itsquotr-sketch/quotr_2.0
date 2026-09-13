@@ -2,6 +2,7 @@ import "server-only";
 
 import { cache } from "react";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
+import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 
 export type AuthDisplayProfile = {
   userEmail?: string;
@@ -22,18 +23,14 @@ export const getAuthDisplayProfile = cache(
       return null;
     }
 
-    const [{ data: organisation }, { data: settings }, { data: profile }] =
+    const [{ data: organisation }, settings, { data: profile }] =
       await Promise.all([
         auth.supabase
           .from("organisations")
           .select("name")
           .eq("id", auth.orgId)
           .maybeSingle(),
-        auth.supabase
-          .from("organisation_settings")
-          .select("trading_name, timezone")
-          .eq("org_id", auth.orgId)
-          .maybeSingle(),
+        loadOrganisationSettingsRow(auth.orgId),
         auth.supabase
           .from("profiles")
           .select("full_name")

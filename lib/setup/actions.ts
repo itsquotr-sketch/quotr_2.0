@@ -7,6 +7,7 @@ import {
   validateMarginPercent,
 } from "@/lib/security/margin-validation";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
+import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import type { createClient } from "@/lib/supabase/server";
@@ -134,12 +135,8 @@ export async function getFirstRunStage(): Promise<FirstRunStage> {
     return "basics";
   }
 
-  const [{ data: settings }, { data: preferredWorkAreas }] = await Promise.all([
-    context.supabase
-      .from("organisation_settings")
-      .select("onboarding_status, onboarding_step")
-      .eq("org_id", context.orgId)
-      .maybeSingle(),
+  const [settings, { data: preferredWorkAreas }] = await Promise.all([
+    loadOrganisationSettingsRow(context.orgId),
     context.supabase
       .from("organisation_work_areas")
       .select("work_area_type, enabled")
@@ -149,8 +146,8 @@ export async function getFirstRunStage(): Promise<FirstRunStage> {
   ]);
 
   return resolveFirstRunStage({
-    onboardingStatus: settings?.onboarding_status,
-    onboardingStep: settings?.onboarding_step,
+    onboardingStatus: settings?.onboarding_status as string | null | undefined,
+    onboardingStep: settings?.onboarding_step as string | null | undefined,
     hasPrimaryWorkAreas: (preferredWorkAreas?.length ?? 0) > 0,
   });
 }

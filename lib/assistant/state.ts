@@ -14,7 +14,8 @@ import {
   requireAuthOrgContext,
   type AuthOrgContext,
 } from "@/lib/security/auth-org-context";
-import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProjectForRead } from "@/lib/security/org-ownership-read";
+import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 
 export {
   assertStage,
@@ -35,7 +36,7 @@ export async function getAssistantStateWithContext(
 ): Promise<AssistantState> {
   // Soft-deleted projects are not found — children stay stored but hidden from
   // normal active assistant queries (Batch 2A.4 / S1-017).
-  const owned = await assertOrgOwnsActiveProject(auth, projectId);
+  const owned = await assertOrgOwnsActiveProjectForRead(auth, projectId);
   if ("error" in owned) {
     notFound();
   }
@@ -65,7 +66,7 @@ export async function getAssistantStateWithContext(
     { data: constraints },
     { data: estimate },
     { data: projectFacts },
-    { data: organisationSettings },
+    organisationSettings,
   ] = await Promise.all([
     supabase
       .from("work_areas")
@@ -106,11 +107,7 @@ export async function getAssistantStateWithContext(
       .select("key, work_area_id, value, source")
       .eq("project_id", projectId)
       .eq("org_id", orgId),
-    supabase
-      .from("organisation_settings")
-      .select("default_margin_percent, default_gst_rate")
-      .eq("org_id", orgId)
-      .maybeSingle(),
+    loadOrganisationSettingsRow(orgId),
   ]);
 
   const { data: lineItems } = estimate?.id
@@ -156,7 +153,9 @@ export async function getAssistantStateWithContext(
     lineItems: lineItems ?? [],
     projectFacts: projectFacts ?? [],
     defaultMarginPercent:
-      organisationSettings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT,
+      organisationSettings?.default_margin_percent != null
+        ? Number(organisationSettings.default_margin_percent)
+        : DEFAULT_MARGIN_PERCENT,
     defaultGstRate: Number(organisationSettings?.default_gst_rate ?? 15),
     requirementSnapshotRequirements,
   });

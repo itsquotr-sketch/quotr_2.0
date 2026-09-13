@@ -6,7 +6,7 @@ import {
   requireAuthOrgContext,
   type AuthOrgSuccess,
 } from "@/lib/security/auth-org-context";
-import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProjectForRead } from "@/lib/security/org-ownership-read";
 
 export type LoadedProjectStage = {
   auth: AuthOrgSuccess;
@@ -27,7 +27,7 @@ async function loadProjectStageUncached(
     };
   }
 
-  const owned = await assertOrgOwnsActiveProject(auth, projectId);
+  const owned = await assertOrgOwnsActiveProjectForRead(auth, projectId);
   if ("error" in owned) {
     return { error: "Project not found." as const };
   }

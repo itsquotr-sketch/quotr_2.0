@@ -20,10 +20,8 @@ import {
   isAuthOrgSuccess,
   requireAuthOrgContext,
 } from "@/lib/security/auth-org-context";
-import {
-  assertOrgOwnsActiveProject,
-  assertOrgOwnsQuote,
-} from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProjectForRead } from "@/lib/security/org-ownership-read";
+import { assertOrgOwnsQuote } from "@/lib/security/org-ownership";
 import { getCompanySettingsWithContext } from "@/lib/settings/company-settings-loader";
 import { hasClientEmailColumn } from "@/lib/projects/query-utils";
 import {
@@ -36,7 +34,7 @@ export async function getLatestQuoteSummaryWithContext(
   auth: AuthOrgContext,
   projectId: string
 ): Promise<QuoteSummary | null> {
-  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProjectForRead(auth, projectId);
   if ("error" in ownedProject) {
     return null;
   }
@@ -55,7 +53,7 @@ export async function getQuoteWorkspaceDataWithContext(
 ): Promise<QuoteWorkspaceData> {
   const { supabase, orgId } = auth;
   const [ownedProject, ownedQuote, clientEmailAvailable] = await Promise.all([
-    assertOrgOwnsActiveProject(auth, projectId),
+    assertOrgOwnsActiveProjectForRead(auth, projectId),
     assertOrgOwnsQuote(auth, quoteId, projectId),
     hasClientEmailColumn(supabase),
   ]);

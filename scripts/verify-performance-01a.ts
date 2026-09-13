@@ -69,7 +69,8 @@ check(
 );
 check(
   "3. quote ownership + schema probe are independent Promise.all",
-  quoteLoaders.includes("assertOrgOwnsActiveProject(auth, projectId)") &&
+  (quoteLoaders.includes("assertOrgOwnsActiveProject(auth, projectId)") ||
+      quoteLoaders.includes("assertOrgOwnsActiveProjectForRead(auth, projectId)")) &&
     quoteLoaders.includes("assertOrgOwnsQuote(auth, quoteId, projectId)") &&
     quoteLoaders.includes("hasClientEmailColumn(supabase)") &&
     /const \[ownedProject, ownedQuote, clientEmailAvailable\] = await Promise\.all/.test(
@@ -108,16 +109,20 @@ check(
   "8. estimate context no longer sequential lifecycle/deleted_at re-read",
   !estimateContext.includes("hasLifecycleColumns") &&
     !estimateContext.includes('select("deleted_at")') &&
-    estimateContext.includes("assertOrgOwnsActiveProject") &&
+    (estimateContext.includes("assertOrgOwnsActiveProjectForRead") ||
+      estimateContext.includes("assertOrgOwnsActiveProject")) &&
     estimateContext.includes('select("id, quality_level")')
 );
 
 console.log("\n-- AUTH / FROZEN SURFACES --");
 check(
   "9. assertOrgOwnsActiveProject still used by loaders",
-  estimateContext.includes("assertOrgOwnsActiveProject") &&
-    quoteLoaders.includes("assertOrgOwnsActiveProject") &&
-    pricingLoaders.includes("assertOrgOwnsActiveProject") &&
+  (estimateContext.includes("assertOrgOwnsActiveProject") ||
+      estimateContext.includes("assertOrgOwnsActiveProjectForRead")) &&
+    (quoteLoaders.includes("assertOrgOwnsActiveProject") ||
+      quoteLoaders.includes("assertOrgOwnsActiveProjectForRead")) &&
+    (pricingLoaders.includes("assertOrgOwnsActiveProject") ||
+      pricingLoaders.includes("assertOrgOwnsActiveProjectForRead")) &&
     ownership.includes("eq(\"org_id\", ctx.orgId)")
 );
 check(

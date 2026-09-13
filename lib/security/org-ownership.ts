@@ -32,19 +32,51 @@ export async function assertOrgOwnsProject(
   return { projectId: data.id };
 }
 
+type ActiveProjectOwnershipResult = OwnershipError | { projectId: string };
+
+let underlyingActiveProjectOwnershipCount = 0;
+
+function noteUnderlyingActiveProjectOwnership(): void {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  underlyingActiveProjectOwnershipCount += 1;
+}
+
 /**
- * Ownership for normal active application queries/mutations.
+ * Dev/test-only counter of actual active-project ownership queries.
+ * Always 0 in production. No PII.
+ */
+export function getUnderlyingActiveProjectOwnershipCount(): number {
+  return process.env.NODE_ENV === "production"
+    ? 0
+    : underlyingActiveProjectOwnershipCount;
+}
+
+/**
+ * Dev/test-only reset. No-op in production.
+ */
+export function resetUnderlyingActiveProjectOwnershipCount(): void {
+  if (process.env.NODE_ENV === "production") {
+    return;
+  }
+  underlyingActiveProjectOwnershipCount = 0;
+}
+
+/**
+ * Uncached active-project ownership. Use for mutations and post-write
+ * verification (e.g. loadEstimateGenerationResult after persist).
+ *
  * Soft-deleted projects are treated as not found so their children are hidden
  * from active flows without hard-deleting stored child rows (S1-017 / 2A.4).
  * Lifecycle paths that must see deleted projects should use assertOrgOwnsProject.
- *
- * Not request-cached: each loader still enforces org+project predicates
- * (defence in depth). Auth/org discovery is memoised separately.
  */
 export async function assertOrgOwnsActiveProject(
   ctx: AuthOrgContext,
   projectId: string
-): Promise<OwnershipError | { projectId: string }> {
+): Promise<ActiveProjectOwnershipResult> {
+  noteUnderlyingActiveProjectOwnership();
+
   const { data, error } = await ctx.supabase
     .from("projects")
     .select("id")

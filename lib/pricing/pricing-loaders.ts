@@ -12,16 +12,14 @@ import type {
 } from "@/lib/pricing/types";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
-import {
-  assertOrgOwnsActiveProject,
-  assertOrgOwnsPricingDocument,
-} from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProjectForRead } from "@/lib/security/org-ownership-read";
+import { assertOrgOwnsPricingDocument } from "@/lib/security/org-ownership";
 
 export async function getLatestPricingSummaryWithContext(
   auth: AuthOrgContext,
   projectId: string
 ): Promise<PricingSummary | null> {
-  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProjectForRead(auth, projectId);
   if ("error" in ownedProject) {
     return null;
   }
@@ -59,7 +57,7 @@ export async function getProjectWorkspaceTabContextWithContext(
   estimateIsStale: boolean;
   pricingSummary: PricingSummary | null;
 }> {
-  const ownedProject = await assertOrgOwnsActiveProject(auth, projectId);
+  const ownedProject = await assertOrgOwnsActiveProjectForRead(auth, projectId);
   if ("error" in ownedProject) {
     return {
       hasEstimate: false,
@@ -97,7 +95,7 @@ export async function getPricingWorkspaceDataWithContext(
   pricingDocumentId: string
 ): Promise<PricingWorkspaceData> {
   const [ownedProject, ownedDocument] = await Promise.all([
-    assertOrgOwnsActiveProject(auth, projectId),
+    assertOrgOwnsActiveProjectForRead(auth, projectId),
     assertOrgOwnsPricingDocument(auth, pricingDocumentId, projectId),
   ]);
   if ("error" in ownedProject || "error" in ownedDocument) {

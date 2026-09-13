@@ -6,7 +6,7 @@ import type { NoteProposal } from "@/lib/project-notes/proposals/types";
 import type { ProjectNote } from "@/lib/project-notes/types";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
-import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProjectForRead } from "@/lib/security/org-ownership-read";
 
 const INITIAL_NOTES_LIMIT = 20;
 
@@ -58,7 +58,7 @@ export async function listProjectNotesWithContext(
   projectId: string,
   options?: { limit?: number }
 ): Promise<ProjectNoteListResult> {
-  const owned = await assertOrgOwnsActiveProject(context, projectId);
+  const owned = await assertOrgOwnsActiveProjectForRead(context, projectId);
   if ("error" in owned) {
     return { notes: [], totalCount: 0, pendingAnalysisCount: 0 };
   }
@@ -107,7 +107,7 @@ export async function getPendingNoteProposalWithContext(
   context: AuthOrgContext,
   projectId: string
 ): Promise<NoteProposal | null> {
-  const owned = await assertOrgOwnsActiveProject(context, projectId);
+  const owned = await assertOrgOwnsActiveProjectForRead(context, projectId);
   if ("error" in owned) return null;
 
   const { data } = await context.supabase

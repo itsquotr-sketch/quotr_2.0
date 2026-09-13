@@ -6,33 +6,15 @@ import type {
 import type { EstimateContext } from "@/lib/estimate/types";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
-import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
-import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
+import { assertOrgOwnsActiveProjectForRead } from "@/lib/security/org-ownership-read";
+import { DEFAULT_ORGANISATION_SETTINGS } from "@/lib/settings/default-organisation-settings";
+import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import {
   deriveFactsForProject,
   mergeDerivedFactsIntoRecords,
 } from "@/lib/scopes/derived-facts";
 import { applyScopeCrossoverResolution } from "@/lib/scopes/scope-crossover";
-
-const DEFAULT_ORGANISATION_SETTINGS: OrganisationSettings = {
-  id: "",
-  org_id: "",
-  default_margin_percent: DEFAULT_MARGIN_PERCENT,
-  default_contingency_percent: 10,
-  default_gst_rate: 15,
-  budget_rate_factor: 0.9,
-  premium_rate_factor: 1.15,
-  currency: "NZD",
-  country: "NZ",
-  region: null,
-  onboarding_status: "completed",
-  onboarding_step: "completed",
-  onboarding_completed_at: null,
-  prefer_user_rates: true,
-  allow_benchmark_rates: true,
-  show_profit_in_estimates: true,
-};
 
 function mapMaterialWastageSettings(
   row: Record<string, unknown> | null | undefined
@@ -73,7 +55,7 @@ export async function getEstimateContextWithContext(
   context: AuthOrgContext,
   projectId: string
 ): Promise<EstimateContext | { error: string }> {
-  const owned = await assertOrgOwnsActiveProject(context, projectId);
+  const owned = await assertOrgOwnsActiveProjectForRead(context, projectId);
   if ("error" in owned) {
     return { error: "Project not found." };
   }
@@ -97,7 +79,7 @@ export async function getEstimateContextWithContext(
     { data: workAreas },
     { data: projectFacts },
     { data: constraints },
-    { data: organisationSettings },
+    organisationSettings,
     { data: rates },
   ] = await Promise.all([
     supabase
@@ -114,13 +96,7 @@ export async function getEstimateContextWithContext(
       .from("constraints")
       .select("key, label, value")
       .eq("project_id", projectId),
-    supabase
-      .from("organisation_settings")
-      .select(
-        "id, org_id, default_margin_percent, default_contingency_percent, budget_rate_factor, premium_rate_factor, currency, country, region, onboarding_status, onboarding_step, onboarding_completed_at, prefer_user_rates, allow_benchmark_rates, show_profit_in_estimates, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent"
-      )
-      .eq("org_id", orgId)
-      .maybeSingle(),
+    loadOrganisationSettingsRow(orgId),
     supabase
       .from("rates")
       .select(
@@ -172,7 +148,8 @@ export async function getEstimateContextWithContext(
       value: constraint.value,
     })),
     organisationSettings:
-      organisationSettings ?? DEFAULT_ORGANISATION_SETTINGS,
+      (organisationSettings as OrganisationSettings | null) ??
+      DEFAULT_ORGANISATION_SETTINGS,
     materialWastageSettings: mapMaterialWastageSettings(organisationSettings),
     rates: (rates ?? []) as OrganisationRate[],
   };
