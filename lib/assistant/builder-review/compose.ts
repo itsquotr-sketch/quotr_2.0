@@ -982,8 +982,9 @@ function applyInternalWallsReviewGroups(
         (row.componentKey ?? "").includes(".install")
       );
       const bothSides =
-        materialChildren.length === 2 &&
-        materialChildren[0]?.supporting === materialChildren[1]?.supporting;
+        materialChildren.some((row) => /Both sides/i.test(row.supporting ?? "")) ||
+        (materialChildren.length === 2 &&
+          materialChildren[0]?.supporting === materialChildren[1]?.supporting);
       const installed = materialChildren.reduce((sum, row) => {
         const match = (row.supporting ?? "").match(/(\d+) sheets installed/);
         return match ? sum + Number(match[1]) : sum;

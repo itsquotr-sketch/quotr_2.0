@@ -1,4 +1,5 @@
 import { round2 } from "@/lib/estimate/facts";
+import { aggregateInternalWallsLiningCommercialLines } from "@/lib/estimate/internal-walls-lining-commercial";
 import type { EstimateLineItemInput } from "@/lib/estimate/types";
 
 export type PricingOwner =
@@ -205,6 +206,8 @@ export function dedupePricedItemsByScopeOwnership(
     return item;
     })
     .filter((item): item is EstimateLineItemInput => item != null);
+
+  next = aggregateInternalWallsLiningCommercialLines(next);
 
   const disposalIndexes: number[] = [];
   for (let i = 0; i < next.length; i++) {
