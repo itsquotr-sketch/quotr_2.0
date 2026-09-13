@@ -90,6 +90,17 @@ function getDefaultMarginPercent(settings: OrganisationSettings | null): number 
   return settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT;
 }
 
+/** Quotr fallback sell from cost using company default GM. Never a paired benchmark sell. */
+export function quotrFallbackSellFromCost(
+  cost: number,
+  organisationSettings: OrganisationSettings | null | undefined
+): number {
+  return deriveSellFromCost(
+    cost,
+    getDefaultMarginPercent(organisationSettings ?? null)
+  );
+}
+
 function getLowFactor(settings: OrganisationSettings | null): number {
   return settings?.budget_rate_factor ?? 0.9;
 }

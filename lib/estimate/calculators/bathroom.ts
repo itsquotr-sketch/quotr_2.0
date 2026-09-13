@@ -56,7 +56,7 @@ import {
 import { rateFieldsFromResolved } from "@/lib/estimate/line-item-helpers";
 import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate, quotrFallbackSellFromCost } from "@/lib/estimate/rates";
 import { calculateFlooringAreaWithWastage, calculateSheetCount } from "@/lib/estimate/material-buildups";
 import {
   createFlooringAreaBuildUp,
@@ -74,6 +74,10 @@ import type {
 } from "@/lib/estimate/types";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
 import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
+
+function gmSell(cost: number, context: EstimateContext): number {
+  return quotrFallbackSellFromCost(cost, context.organisationSettings);
+}
 
 function carpentryPrepHours(
   areaM2: number,
@@ -470,18 +474,13 @@ export function calculateBathroom(
       waterproofingArea && waterproofingArea > 0
         ? waterproofingArea * BATHROOM_BENCHMARKS.waterproofingPerM2.cost
         : 0;
-    const areaBasedSell =
-      waterproofingArea && waterproofingArea > 0
-        ? waterproofingArea * BATHROOM_BENCHMARKS.waterproofingPerM2.sell
-        : 0;
-
+    const waterproofingCost =
+      areaBasedCost || BATHROOM_BENCHMARKS.waterproofingMinimum.cost;
     const waterproofingApplied = applyAllowanceMinimum({
-      calculatedCost:
-        areaBasedCost || BATHROOM_BENCHMARKS.waterproofingMinimum.cost,
-      calculatedSell:
-        areaBasedSell || BATHROOM_BENCHMARKS.waterproofingMinimum.sell,
+      calculatedCost: waterproofingCost,
+      calculatedSell: gmSell(waterproofingCost, context),
       minimumCost: BATHROOM_BENCHMARKS.waterproofingMinimum.cost,
-      minimumSell: BATHROOM_BENCHMARKS.waterproofingMinimum.sell,
+      minimumSell: gmSell(BATHROOM_BENCHMARKS.waterproofingMinimum.cost, context),
       reason: "Minimum waterproofing trade allowance",
       scopeKey: "bathroom.waterproofing",
     });
@@ -507,6 +506,8 @@ export function calculateBathroom(
         recommendedCost: waterproofingApplied.cost,
         recommendedSell: waterproofingApplied.sell,
         rateSource: "Benchmark allowance",
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -546,7 +547,6 @@ export function calculateBathroom(
     workAreaType: "bathroom",
     unit: "m2",
     fallbackCostRate: BATHROOM_BENCHMARKS.tilingPerM2.cost,
-    fallbackSellRate: BATHROOM_BENCHMARKS.tilingPerM2.sell,
     organisationSettings: context.organisationSettings,
   });
 
@@ -582,6 +582,8 @@ export function calculateBathroom(
         costRate: tilingRates.costRate,
         sellRate: tilingRates.sellRate,
         rateSource: tilingRates.sourceLabel,
+        sellDerivedFromMargin: tilingRates.sellDerivedFromMargin,
+        sellAuthority: tilingRates.sellAuthority,
         notes: tileExtent
           ? `${tileExtent} tiling allowance based on approx. ${totalTilingArea} m² total tiling area`
           : `Tiling allowance based on approx. ${totalTilingArea} m² total tiling area`,
@@ -605,7 +607,10 @@ export function calculateBathroom(
       tilingItem,
       {
         minimumCost: BATHROOM_BENCHMARKS.tilingMinimum.cost * qualityFactor,
-        minimumSell: BATHROOM_BENCHMARKS.tilingMinimum.sell * qualityFactor,
+        minimumSell: gmSell(
+          BATHROOM_BENCHMARKS.tilingMinimum.cost * qualityFactor,
+          context
+        ),
         reason: "Minimum tiling trade allowance",
         scopeKey: "bathroom.tiling",
       },
@@ -629,8 +634,6 @@ export function calculateBathroom(
   );
 
   if (!maturePath) {
-  let fixturesSell = 0;
-
   if (clientSuppliedFixtures) {
     assumptions.push("Bathroom fixtures client supplied — install labour only.");
     const fixtureInstall = resolveProductivity({
@@ -676,25 +679,21 @@ export function calculateBathroom(
         const rates = fixtureMap[fixture];
         if (rates) {
           fixturesCost += rates.cost;
-          fixturesSell += rates.sell;
         }
       }
     } else {
       if (getBooleanFact(facts, workArea.id, "bathroom.includes_vanity")) {
         fixturesCost += BATHROOM_BENCHMARKS.vanity.cost;
-        fixturesSell += BATHROOM_BENCHMARKS.vanity.sell;
       } else {
         missingInfo.push(formatMissing("Vanity scope"));
       }
       if (getBooleanFact(facts, workArea.id, "bathroom.includes_shower")) {
         fixturesCost += BATHROOM_BENCHMARKS.shower.cost;
-        fixturesSell += BATHROOM_BENCHMARKS.shower.sell;
       } else {
         missingInfo.push(formatMissing("Shower scope"));
       }
       if (getBooleanFact(facts, workArea.id, "bathroom.includes_toilet")) {
         fixturesCost += BATHROOM_BENCHMARKS.toilet.cost;
-        fixturesSell += BATHROOM_BENCHMARKS.toilet.sell;
       } else {
         missingInfo.push(formatMissing("Toilet scope"));
       }
@@ -709,7 +708,6 @@ export function calculateBathroom(
       workAreaType: "bathroom",
       unit: "allowance",
       fallbackCostRate: fixturesCost,
-      fallbackSellRate: fixturesSell,
       organisationSettings: context.organisationSettings,
     });
 
@@ -745,8 +743,13 @@ export function calculateBathroom(
           label: "Underfloor heating allowance",
           category: "subcontractor",
           recommendedCost: BATHROOM_BENCHMARKS.underfloorHeating.cost,
-          recommendedSell: BATHROOM_BENCHMARKS.underfloorHeating.sell,
+          recommendedSell: gmSell(
+            BATHROOM_BENCHMARKS.underfloorHeating.cost,
+            context
+          ),
           rateSource: "Benchmark allowance",
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -775,14 +778,11 @@ export function calculateBathroom(
     const plumbingCost = isMajor
       ? BATHROOM_BENCHMARKS.plumbingMajor.cost
       : BATHROOM_BENCHMARKS.plumbingMinor.cost;
-    const plumbingSell = isMajor
-      ? BATHROOM_BENCHMARKS.plumbingMajor.sell
-      : BATHROOM_BENCHMARKS.plumbingMinor.sell;
     const plumbingApplied = applyAllowanceMinimum({
       calculatedCost: plumbingCost,
-      calculatedSell: plumbingSell,
+      calculatedSell: gmSell(plumbingCost, context),
       minimumCost: BATHROOM_BENCHMARKS.plumbingMinor.cost,
-      minimumSell: BATHROOM_BENCHMARKS.plumbingMinor.sell,
+      minimumSell: gmSell(BATHROOM_BENCHMARKS.plumbingMinor.cost, context),
       reason: "Minimum plumbing trade allowance",
       scopeKey: "bathroom.plumbing",
     });
@@ -794,6 +794,8 @@ export function calculateBathroom(
       recommendedCost: plumbingApplied.cost,
       recommendedSell: plumbingApplied.sell,
       rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
@@ -829,14 +831,11 @@ export function calculateBathroom(
     const electricalCost = isMajor
       ? BATHROOM_BENCHMARKS.electricalMajor.cost
       : BATHROOM_BENCHMARKS.electricalMinor.cost;
-    const electricalSell = isMajor
-      ? BATHROOM_BENCHMARKS.electricalMajor.sell
-      : BATHROOM_BENCHMARKS.electricalMinor.sell;
     const electricalApplied = applyAllowanceMinimum({
       calculatedCost: electricalCost,
-      calculatedSell: electricalSell,
+      calculatedSell: gmSell(electricalCost, context),
       minimumCost: BATHROOM_BENCHMARKS.electricalMinor.cost,
-      minimumSell: BATHROOM_BENCHMARKS.electricalMinor.sell,
+      minimumSell: gmSell(BATHROOM_BENCHMARKS.electricalMinor.cost, context),
       reason: "Minimum electrical trade allowance",
       scopeKey: "bathroom.electrical",
     });
@@ -848,6 +847,8 @@ export function calculateBathroom(
       recommendedCost: electricalApplied.cost,
       recommendedSell: electricalApplied.sell,
       rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
@@ -871,9 +872,9 @@ export function calculateBathroom(
   if (getBooleanFact(facts, workArea.id, "bathroom.ventilation_included")) {
     const ventilationApplied = applyAllowanceMinimum({
       calculatedCost: BATHROOM_BENCHMARKS.extractorFan.cost,
-      calculatedSell: BATHROOM_BENCHMARKS.extractorFan.sell,
+      calculatedSell: gmSell(BATHROOM_BENCHMARKS.extractorFan.cost, context),
       minimumCost: BATHROOM_BENCHMARKS.extractorFan.cost,
-      minimumSell: BATHROOM_BENCHMARKS.extractorFan.sell,
+      minimumSell: gmSell(BATHROOM_BENCHMARKS.extractorFan.cost, context),
       reason: "Minimum ventilation trade allowance",
       scopeKey: "bathroom.ventilation",
     });
@@ -885,6 +886,8 @@ export function calculateBathroom(
       recommendedCost: ventilationApplied.cost,
       recommendedSell: ventilationApplied.sell,
       rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
@@ -953,9 +956,13 @@ export function calculateBathroom(
               category: "materials",
               recommendedCost:
                 wallLiningArea * BATHROOM_BENCHMARKS.wallLiningPerM2.cost,
-              recommendedSell:
-                wallLiningArea * BATHROOM_BENCHMARKS.wallLiningPerM2.sell,
+              recommendedSell: gmSell(
+                wallLiningArea * BATHROOM_BENCHMARKS.wallLiningPerM2.cost,
+                context
+              ),
               rateSource: "Benchmark allowance",
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
               sortOrder: sortOrder++,
               organisationSettings: context.organisationSettings,
               qualityFactor,
@@ -1029,8 +1036,13 @@ export function calculateBathroom(
           label: "Floor levelling/substrate prep allowance",
           category: "subcontractor",
           recommendedCost: BATHROOM_BENCHMARKS.floorPrepMinor.cost,
-          recommendedSell: BATHROOM_BENCHMARKS.floorPrepMinor.sell,
+          recommendedSell: gmSell(
+            BATHROOM_BENCHMARKS.floorPrepMinor.cost,
+            context
+          ),
           rateSource: "Benchmark allowance",
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -1068,15 +1080,11 @@ export function calculateBathroom(
 
     if (!hasComponentFinishes && effectiveArea != null && !skipPackage) {
       let materialsCost = effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.cost;
-      let materialsSell = effectiveArea * BATHROOM_BENCHMARKS.materialsPerM2.sell;
       materialsCost = Math.max(
         materialsCost,
         BATHROOM_BENCHMARKS.minimumPackage.cost
       );
-      materialsSell = Math.max(
-        materialsSell,
-        BATHROOM_BENCHMARKS.minimumPackage.sell
-      );
+      const materialsSell = gmSell(materialsCost, context);
 
       lineItems.push(
         withPricingOwnership(
@@ -1088,6 +1096,8 @@ export function calculateBathroom(
             recommendedCost: materialsCost,
             recommendedSell: materialsSell,
             rateSource: "Benchmark allowance",
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
             notes: `Rough bathroom package allowance · Finish level: ${finishLevel}`,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
@@ -1124,8 +1134,13 @@ export function calculateBathroom(
             label: "Project coordination and site allowance",
             category: "allowance",
             recommendedCost: BATHROOM_BENCHMARKS.coordinationAllowance.cost,
-            recommendedSell: BATHROOM_BENCHMARKS.coordinationAllowance.sell,
+            recommendedSell: gmSell(
+              BATHROOM_BENCHMARKS.coordinationAllowance.cost,
+              context
+            ),
             rateSource: "Benchmark allowance",
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
             notes: "Sequencing, site visits and trade coordination for multi-trade bathroom renovation.",
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,

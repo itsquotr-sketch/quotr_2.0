@@ -206,7 +206,6 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Legacy generic identity for 13 mm Standard GIB 2400 × 1200 (2.4 × 1.2 m). Shared across Work Areas. Other thicknesses/lengths use dimensioned keys and do not inherit this rate.",
     defaultCostRate: FITOUT_BENCHMARKS.plasterboardSheet.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.plasterboardSheet.sell,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -221,7 +220,6 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Legacy generic identity for 13 mm Fyreline 2400 × 1200. Other sizes use dimensioned keys without this rate.",
     defaultCostRate: FITOUT_BENCHMARKS.fyrelineSheet.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.fyrelineSheet.sell,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -235,7 +233,6 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Legacy generic identity for 13 mm Aqualine 2400 × 1200. Bathroom wall/ceiling lining and Internal Walls share this key.",
     defaultCostRate: FITOUT_BENCHMARKS.aqualineSheet.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.aqualineSheet.sell,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -250,7 +247,6 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Legacy generic identity for 13 mm Braceline 2400 × 1200. Other sizes use dimensioned keys without this rate.",
     defaultCostRate: FITOUT_BENCHMARKS.bracelineSheet.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.bracelineSheet.sell,
     calculatorSupport: "used_now",
   }),
   ...dimensionedPlasterboardSheetCatalogue(),
@@ -265,7 +261,6 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Generic unspecified plywood sheet. Not Internal Walls wall lining. Bathroom 19 mm H3.2 floor plywood is a different physical product.",
     defaultCostRate: FITOUT_BENCHMARKS.plywoodSheet.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.plywoodSheet.sell,
     calculatorSupport: "planned",
   }),
   entry({
@@ -389,7 +384,6 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Sheet materials",
     unit: "m2",
     defaultCostRate: FITOUT_BENCHMARKS.ceilingTilePerM2.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.ceilingTilePerM2.sell,
     calculatorSupport: "planned",
   }),
 ];
@@ -433,7 +427,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Purchase m³ after the Timber 1D 1.25 procurement factor. In-place volume stays the labour driver. Not a face-m² package.",
     defaultCostRate: 72,
-    defaultSellRate: 90,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -448,7 +441,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "150×50 H4 No.2 / retaining-grade face board (not SG8). Purchase lm × company or Quotr starter $/lm.",
     defaultCostRate: 12.8,
-    defaultSellRate: 16,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -463,7 +455,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "200×50 H4 No.2 / retaining-grade face board (not SG8). Purchase lm × company or Quotr starter $/lm.",
     defaultCostRate: 17.4,
-    defaultSellRate: 21.75,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -478,7 +469,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Legacy generic H5 SED $/lm. 1D-R1 prices stock-length EA by 150–175 mm class. Not used for detailed timber money.",
     defaultCostRate: 28,
-    defaultSellRate: 35,
     recommended: false,
     calculatorSupport: "leftover",
   }),
@@ -493,7 +483,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Purchase EA of 1.8 m H5 SED 150–175 mm. Estimating default diameter class — not structural design.",
     defaultCostRate: 38,
-    defaultSellRate: 47.5,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -508,7 +497,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Purchase EA of 2.4 m H5 SED 150–175 mm. Estimating default diameter class — not structural design.",
     defaultCostRate: 52,
-    defaultSellRate: 65,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -523,7 +511,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Purchase EA of 2.7 m H5 SED 150–175 mm.",
     defaultCostRate: 60,
-    defaultSellRate: 75,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -537,7 +524,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     unit: "ea",
     description: "Purchase EA of 3.0 m H5 SED 150–175 mm.",
     defaultCostRate: 68,
-    defaultSellRate: 85,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -551,7 +537,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     unit: "ea",
     description: "Purchase EA of 3.6 m H5 SED 150–175 mm.",
     defaultCostRate: 88,
-    defaultSellRate: 110,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -593,7 +578,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Accessible-site starter for machine-assisted timber pile holes. Dry hire, ex GST. Not priced when access cannot take a machine.",
     defaultCostRate: 420,
-    defaultSellRate: 525,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -621,7 +605,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "LOW-CONFIDENCE QUOTR STARTER BENCHMARK for a 2000×200 mm class sleeper. Not a trusted current market price. Company/Project exact overrides. Purchase EA — cut/end bays still buy a full unit.",
     defaultCostRate: 36,
-    defaultSellRate: 45,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -636,7 +619,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "LOW-CONFIDENCE QUOTR STARTER BENCHMARK for H-section retaining posts $/lm. Not a supplier quote. Stock-length SKUs are not invented. Company may also set an EA rate.",
     defaultCostRate: 58,
-    defaultSellRate: 72.5,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -651,7 +633,6 @@ export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "MEDIUM-CONFIDENCE Quotr starter in the current NZ 20 kg GP/rapid retail band (~$11–12/bag ex GST). Bags = ceil(hole m³ / 0.01 m³ yield). Estimating-grade premix — not a specified structural mix. Company exact overrides.",
     defaultCostRate: 11.5,
-    defaultSellRate: 14.38,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -857,7 +838,6 @@ export const FLOORING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Flooring",
     unit: "m2",
     defaultCostRate: FITOUT_BENCHMARKS.flooringPerM2.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.flooringPerM2.sell,
     recommended: true,
     calculatorSupport: "planned",
   }),
@@ -870,7 +850,6 @@ export const FLOORING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Flooring",
     unit: "m2",
     defaultCostRate: FITOUT_BENCHMARKS.vinylPerM2.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.vinylPerM2.sell,
     calculatorSupport: "planned",
   }),
   entry({
@@ -882,7 +861,6 @@ export const FLOORING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Flooring",
     unit: "m2",
     defaultCostRate: FITOUT_BENCHMARKS.carpetPerM2.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.carpetPerM2.sell,
     calculatorSupport: "planned",
   }),
 ];
@@ -898,7 +876,6 @@ export const PAINTING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     unit: "l",
     description: "Per litre when paint quantity build-up is calculated. Not currently priced — paint is still an m² package.",
     defaultCostRate: FITOUT_BENCHMARKS.paintPerLitre.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.paintPerLitre.sell,
     recommended: true,
     calculatorSupport: "planned",
   }),
@@ -911,7 +888,6 @@ export const PAINTING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Painting",
     unit: "m2",
     defaultCostRate: FITOUT_BENCHMARKS.paintingPerM2.cost,
-    defaultSellRate: FITOUT_BENCHMARKS.paintingPerM2.sell,
     calculatorSupport: "used_now",
   }),
 ];
@@ -1511,7 +1487,6 @@ function fenceStarterEntry(
 ): RateCatalogueEntry {
   const starter = FENCE_TIMBER_1B_MATERIAL_STARTERS[itemKey];
   const cost = starter?.costPerUnit;
-  const sell = cost != null ? Math.round((cost / 0.8) * 100) / 100 : undefined;
   return entry({
     item_key: itemKey,
     label,
@@ -1522,7 +1497,6 @@ function fenceStarterEntry(
     unit: starter?.unit ?? "lm",
     description: starter?.basis ?? "LOW-CONFIDENCE Quotr starter. Company exact overrides.",
     defaultCostRate: cost,
-    defaultSellRate: sell,
     calculatorSupport: "used_now",
     recommended: true,
     ...extra,
@@ -1564,7 +1538,6 @@ function fenceModularStarterEntry(
 ): RateCatalogueEntry {
   const starter = FENCE_MODULAR_1C_MATERIAL_STARTERS[itemKey];
   const cost = starter?.costPerUnit;
-  const sell = cost != null ? Math.round((cost / 0.8) * 100) / 100 : undefined;
   return entry({
     item_key: itemKey,
     label,
@@ -1575,7 +1548,6 @@ function fenceModularStarterEntry(
     unit: starter?.unit ?? "ea",
     description: starter?.basis ?? "LOW-CONFIDENCE Quotr generic benchmark. Not a supplier SKU.",
     defaultCostRate: cost,
-    defaultSellRate: sell,
     calculatorSupport: "used_now",
     recommended: true,
     ...extra,

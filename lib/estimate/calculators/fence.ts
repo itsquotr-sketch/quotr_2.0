@@ -25,7 +25,7 @@ import {
   withMaterialBuildUp,
 } from "@/lib/estimate/material-buildup-meta";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate, quotrFallbackSellFromCost } from "@/lib/estimate/rates";
 import { baseConfidence } from "@/lib/estimate/summary";
 import {
   createAssumptionMetadata,
@@ -165,13 +165,14 @@ function getFenceMaterialRates(material: string | null, context: EstimateContext
       workAreaType: "fence",
       unit: "lm",
       fallbackCostRate: FENCE_BENCHMARKS.metalPerLm.cost,
-      fallbackSellRate: FENCE_BENCHMARKS.metalPerLm.sell,
       organisationSettings: context.organisationSettings,
     });
     return {
       cost: resolved.costRate,
       sell: resolved.sellRate,
       rateSource: resolved.sourceLabel,
+      sellDerivedFromMargin: resolved.sellDerivedFromMargin,
+      sellAuthority: resolved.sellAuthority,
       materialLabel: normalized.includes("composite") || normalized.includes("plastic")
         ? "composite"
         : "metal",
@@ -185,7 +186,6 @@ function getFenceMaterialRates(material: string | null, context: EstimateContext
     workAreaType: "fence",
     unit: "lm",
     fallbackCostRate: FENCE_BENCHMARKS.timberPerLm.cost,
-    fallbackSellRate: FENCE_BENCHMARKS.timberPerLm.sell,
     organisationSettings: context.organisationSettings,
   });
 
@@ -193,6 +193,8 @@ function getFenceMaterialRates(material: string | null, context: EstimateContext
     cost: resolved.costRate,
     sell: resolved.sellRate,
     rateSource: resolved.sourceLabel,
+    sellDerivedFromMargin: resolved.sellDerivedFromMargin,
+    sellAuthority: resolved.sellAuthority,
     materialLabel: "timber",
   };
 }
@@ -358,6 +360,8 @@ export function calculateFence(
           costRate: adjustedCostRate,
           sellRate: adjustedSellRate,
           rateSource: materialRates.rateSource,
+          sellDerivedFromMargin: materialRates.sellDerivedFromMargin,
+          sellAuthority: materialRates.sellAuthority,
           notes: height
             ? `${height} m high · height factor ${heightFactor.toFixed(2)}`
             : undefined,
@@ -391,7 +395,6 @@ export function calculateFence(
       workAreaType: "fence",
       unit: "allowance",
       fallbackCostRate: FENCE_BENCHMARKS.gate.cost,
-      fallbackSellRate: FENCE_BENCHMARKS.gate.sell,
       organisationSettings: context.organisationSettings,
     });
 
@@ -420,6 +423,8 @@ export function calculateFence(
         recommendedCost: round2(gateRates.costRate * gateCount),
         recommendedSell: round2(gateRates.sellRate * gateCount),
         rateSource: gateRates.sourceLabel,
+        sellDerivedFromMargin: gateRates.sellDerivedFromMargin,
+        sellAuthority: gateRates.sellAuthority,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -537,8 +542,13 @@ export function calculateFence(
           workAreaName: workArea.name,
           label: "Fence disposal allowance",
           recommendedCost: FENCE_BENCHMARKS.disposalAllowance.cost,
-          recommendedSell: FENCE_BENCHMARKS.disposalAllowance.sell,
+          recommendedSell: quotrFallbackSellFromCost(
+            FENCE_BENCHMARKS.disposalAllowance.cost,
+            context.organisationSettings
+          ),
           ...benchmarkRateFields(),
+          sellDerivedFromMargin: true,
+          sellAuthority: "derived_from_gross_margin",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor: NO_FINISH_QUALITY_FACTOR,
@@ -561,7 +571,6 @@ export function calculateFence(
       workAreaType: "fence",
       unit: "lm",
       fallbackCostRate: FENCE_BENCHMARKS.finishAllowanceLm.cost,
-      fallbackSellRate: FENCE_BENCHMARKS.finishAllowanceLm.sell,
       organisationSettings: context.organisationSettings,
     });
 
@@ -575,6 +584,8 @@ export function calculateFence(
         recommendedCost: round2(finishRates.costRate * finishQuantity),
         recommendedSell: round2(finishRates.sellRate * finishQuantity),
         rateSource: finishRates.sourceLabel,
+        sellDerivedFromMargin: finishRates.sellDerivedFromMargin,
+        sellAuthority: finishRates.sellAuthority,
         notes: [
           finishType ? `${finishType} finish` : null,
           finishSides ? `${finishSides.replace(/_/g, " ")}` : null,

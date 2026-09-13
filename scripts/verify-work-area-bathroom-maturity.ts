@@ -517,7 +517,7 @@ check("no priced line outside envelope", pricedMissing.length === 0, pricedMissi
 const cost = full.lineItems.reduce((sum, item) => sum + (item.recommendedCost ?? 0), 0);
 const sell = full.lineItems.reduce((sum, item) => sum + (item.recommendedSell ?? 0), 0);
 check("comprehensive cost ~19328", near(cost, 19328.51, 1));
-check("comprehensive sell ~24658", near(sell, 24658.8, 1));
+check("comprehensive sell ~24161 (01B F-SFM 20% GM)", near(sell, 24160.65, 1));
 check("painting label is not 'Painting allowance'", !full.lineItems.some((item) => item.label === "Painting allowance"));
 check("painting line exists", full.lineItems.some((item) => /^Painting$/i.test(item.label)));
 
@@ -525,7 +525,7 @@ const review = composeBuilderReview({
   estimate: {
     recommendedCost: cost,
     recommendedSell: sell,
-    marginPercent: 21.5,
+    marginPercent: 20,
     confidence: full.confidence,
     assumptions: full.assumptions,
     missingInfo: full.missingInfo,

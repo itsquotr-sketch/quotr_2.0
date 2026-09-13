@@ -17,7 +17,7 @@ import {
 } from "@/lib/estimate/line-items";
 import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate, quotrFallbackSellFromCost } from "@/lib/estimate/rates";
 import {
   calculateFlooringAreaWithWastage,
   calculateLinealMetresWithWastage,
@@ -73,6 +73,13 @@ import {
   structuralBlocksEstimate,
   wallTypesRequiredForScope,
 } from "@/lib/estimate/internal-walls-scope";
+
+function gmSell(
+  cost: number,
+  context: { organisationSettings: EstimateContext["organisationSettings"] }
+): number {
+  return quotrFallbackSellFromCost(cost, context.organisationSettings);
+}
 
 type FitoutConfig = {
   areaKey: string;
@@ -149,8 +156,10 @@ function calculateAreaBasedFitout(
       quantity: effectiveArea,
       unit: "m²",
       costRate: config.rate.cost,
-      sellRate: config.rate.sell,
+      sellRate: gmSell(config.rate.cost, context),
       rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
@@ -410,8 +419,10 @@ export function calculateInternalWalls(
         quantity: length ?? 10,
         unit: "lm",
         costRate: FITOUT_BENCHMARKS.removalPerM2.cost * 2,
-        sellRate: FITOUT_BENCHMARKS.removalPerM2.sell * 2,
+        sellRate: gmSell(FITOUT_BENCHMARKS.removalPerM2.cost * 2, context),
         rateSource: "Benchmark allowance",
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor: getQualityFactor(
@@ -508,8 +519,10 @@ export function calculateInternalWalls(
         quantity: effectiveArea,
         unit: "m²",
         costRate: FITOUT_BENCHMARKS.internalWallsPerM2.cost,
-        sellRate: FITOUT_BENCHMARKS.internalWallsPerM2.sell,
+        sellRate: gmSell(FITOUT_BENCHMARKS.internalWallsPerM2.cost, context),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -550,8 +563,10 @@ export function calculateInternalWalls(
             quantity: skirtingBuildUp?.totalLm ?? skirtingLm,
             unit: "lm",
             costRate: FITOUT_BENCHMARKS.skirtingLm.cost,
-            sellRate: FITOUT_BENCHMARKS.skirtingLm.sell,
+            sellRate: gmSell(FITOUT_BENCHMARKS.skirtingLm.cost, context),
             rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
             qualityFactor,
@@ -572,8 +587,10 @@ export function calculateInternalWalls(
         quantity: effectiveArea,
         unit: "m²",
         costRate: FITOUT_BENCHMARKS.insulationPerM2.cost,
-        sellRate: FITOUT_BENCHMARKS.insulationPerM2.sell,
+        sellRate: gmSell(FITOUT_BENCHMARKS.insulationPerM2.cost, context),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -589,8 +606,13 @@ export function calculateInternalWalls(
         label: "Stopping/plastering allowance",
         category: "subcontractor",
         recommendedCost: effectiveArea * FITOUT_BENCHMARKS.stoppingPerM2.cost,
-        recommendedSell: effectiveArea * FITOUT_BENCHMARKS.stoppingPerM2.sell,
+        recommendedSell: gmSell(
+          effectiveArea * FITOUT_BENCHMARKS.stoppingPerM2.cost,
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -605,8 +627,13 @@ export function calculateInternalWalls(
         workAreaName: workArea.name,
         label: "Painting allowance",
         recommendedCost: effectiveArea * FITOUT_BENCHMARKS.paintingPerM2.cost,
-        recommendedSell: effectiveArea * FITOUT_BENCHMARKS.paintingPerM2.sell,
+        recommendedSell: gmSell(
+          effectiveArea * FITOUT_BENCHMARKS.paintingPerM2.cost,
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -696,8 +723,10 @@ export function calculateCeilings(
           quantity: edgeBuildUp?.totalLm ?? edgeLm,
           unit: "lm",
           costRate: FITOUT_BENCHMARKS.skirtingLm.cost,
-          sellRate: FITOUT_BENCHMARKS.skirtingLm.sell,
+          sellRate: gmSell(FITOUT_BENCHMARKS.skirtingLm.cost, context),
           rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
           sortOrder: result.lineItems.length + 1,
           organisationSettings: context.organisationSettings,
           qualityFactor: getQualityFactor(
@@ -726,8 +755,10 @@ export function calculateCeilings(
         quantity: effectiveCeilingArea,
         unit: "m²",
         costRate: FITOUT_BENCHMARKS.removalPerM2.cost,
-        sellRate: FITOUT_BENCHMARKS.removalPerM2.sell,
+        sellRate: gmSell(FITOUT_BENCHMARKS.removalPerM2.cost, context),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -745,8 +776,10 @@ export function calculateCeilings(
         quantity: effectiveCeilingArea,
         unit: "m²",
         costRate: FITOUT_BENCHMARKS.ceilingBattensPerM2.cost,
-        sellRate: FITOUT_BENCHMARKS.ceilingBattensPerM2.sell,
+        sellRate: gmSell(FITOUT_BENCHMARKS.ceilingBattensPerM2.cost, context),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -764,8 +797,10 @@ export function calculateCeilings(
         quantity: effectiveCeilingArea,
         unit: "m²",
         costRate: FITOUT_BENCHMARKS.insulationPerM2.cost,
-        sellRate: FITOUT_BENCHMARKS.insulationPerM2.sell,
+        sellRate: gmSell(FITOUT_BENCHMARKS.insulationPerM2.cost, context),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -781,8 +816,13 @@ export function calculateCeilings(
         label: "Ceiling stopping/plastering allowance",
         category: "subcontractor",
         recommendedCost: effectiveCeilingArea * FITOUT_BENCHMARKS.stoppingPerM2.cost,
-        recommendedSell: effectiveCeilingArea * FITOUT_BENCHMARKS.stoppingPerM2.sell,
+        recommendedSell: gmSell(
+          effectiveCeilingArea * FITOUT_BENCHMARKS.stoppingPerM2.cost,
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -797,8 +837,13 @@ export function calculateCeilings(
         workAreaName: workArea.name,
         label: "Ceiling painting allowance",
         recommendedCost: effectiveCeilingArea * FITOUT_BENCHMARKS.paintingPerM2.cost,
-        recommendedSell: effectiveCeilingArea * FITOUT_BENCHMARKS.paintingPerM2.sell,
+        recommendedSell: gmSell(
+          effectiveCeilingArea * FITOUT_BENCHMARKS.paintingPerM2.cost,
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -849,10 +894,15 @@ export function calculateDoors(
       recommendedCost: installOnly
         ? effectiveCount * FITOUT_BENCHMARKS.doorInstallEach.cost
         : effectiveCount * FITOUT_BENCHMARKS.doorsEach.cost,
-      recommendedSell: installOnly
-        ? effectiveCount * FITOUT_BENCHMARKS.doorInstallEach.sell
-        : effectiveCount * FITOUT_BENCHMARKS.doorsEach.sell,
+      recommendedSell: gmSell(
+        installOnly
+          ? effectiveCount * FITOUT_BENCHMARKS.doorInstallEach.cost
+          : effectiveCount * FITOUT_BENCHMARKS.doorsEach.cost,
+        context
+      ),
       rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
       notes: getStringFact(facts, workArea.id, "doors.door_type") ?? undefined,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
@@ -873,6 +923,8 @@ export function calculateDoors(
         recommendedCost: effectiveCount * 60,
         recommendedSell: effectiveCount * 90,
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -888,8 +940,13 @@ export function calculateDoors(
         workAreaName: workArea.name,
         label: "Architraves allowance",
         recommendedCost: archLm * FITOUT_BENCHMARKS.architraveLm.cost,
-        recommendedSell: archLm * FITOUT_BENCHMARKS.architraveLm.sell,
+        recommendedSell: gmSell(
+          archLm * FITOUT_BENCHMARKS.architraveLm.cost,
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -904,8 +961,13 @@ export function calculateDoors(
         workAreaName: workArea.name,
         label: "Door painting/staining allowance",
         recommendedCost: effectiveCount * FITOUT_BENCHMARKS.doorPaintingEach.cost,
-        recommendedSell: effectiveCount * FITOUT_BENCHMARKS.doorPaintingEach.sell,
+        recommendedSell: gmSell(
+          effectiveCount * FITOUT_BENCHMARKS.doorPaintingEach.cost,
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -922,8 +984,10 @@ export function calculateDoors(
           workAreaName: workArea.name,
           label: "Door frame allowance",
           recommendedCost: effectiveCount * 120,
-          recommendedSell: effectiveCount * 180,
+          recommendedSell: gmSell(effectiveCount * 120, context),
           rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -937,8 +1001,10 @@ export function calculateDoors(
           workAreaName: workArea.name,
           label: "Door hardware installation",
           recommendedCost: effectiveCount * 80,
-          recommendedSell: effectiveCount * 120,
+          recommendedSell: gmSell(effectiveCount * 80, context),
           rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -1000,8 +1066,10 @@ export function calculateFlooring(
           quantity: area,
           unit: "m²",
           costRate: FITOUT_BENCHMARKS.removalPerM2.cost,
-          sellRate: FITOUT_BENCHMARKS.removalPerM2.sell,
+          sellRate: gmSell(FITOUT_BENCHMARKS.removalPerM2.cost, context),
           rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -1022,8 +1090,13 @@ export function calculateFlooring(
             workAreaName: workArea.name,
             label: "Flooring disposal allowance",
             recommendedCost: area * FITOUT_BENCHMARKS.removalPerM2.cost,
-            recommendedSell: area * FITOUT_BENCHMARKS.removalPerM2.sell,
+            recommendedSell: gmSell(
+              area * FITOUT_BENCHMARKS.removalPerM2.cost,
+              context
+            ),
             rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
             qualityFactor,
@@ -1094,8 +1167,10 @@ export function calculateFlooring(
         quantity: area,
         unit: "m²",
         costRate: FITOUT_BENCHMARKS.removalPerM2.cost,
-        sellRate: FITOUT_BENCHMARKS.removalPerM2.sell,
+        sellRate: gmSell(FITOUT_BENCHMARKS.removalPerM2.cost, context),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor: getQualityFactor(
@@ -1124,12 +1199,16 @@ export function calculateFlooring(
           (isMajor
             ? FITOUT_BENCHMARKS.floorPrepMajor.cost
             : FITOUT_BENCHMARKS.floorPrepMinor.cost),
-        recommendedSell:
+        recommendedSell: gmSell(
           floorArea *
-          (isMajor
-            ? FITOUT_BENCHMARKS.floorPrepMajor.sell
-            : FITOUT_BENCHMARKS.floorPrepMinor.sell),
+            (isMajor
+              ? FITOUT_BENCHMARKS.floorPrepMajor.cost
+              : FITOUT_BENCHMARKS.floorPrepMinor.cost),
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         notes: prepLevel,
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
@@ -1148,8 +1227,10 @@ export function calculateFlooring(
         quantity: floorArea,
         unit: "m²",
         costRate: FITOUT_BENCHMARKS.underlayPerM2.cost,
-        sellRate: FITOUT_BENCHMARKS.underlayPerM2.sell,
+        sellRate: gmSell(FITOUT_BENCHMARKS.underlayPerM2.cost, context),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -1165,8 +1246,13 @@ export function calculateFlooring(
         workAreaName: workArea.name,
         label: "Scotia/skirting allowance",
         recommendedCost: perimeterLm * FITOUT_BENCHMARKS.skirtingLm.cost,
-        recommendedSell: perimeterLm * FITOUT_BENCHMARKS.skirtingLm.sell,
+        recommendedSell: gmSell(
+          perimeterLm * FITOUT_BENCHMARKS.skirtingLm.cost,
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -1181,8 +1267,13 @@ export function calculateFlooring(
         workAreaName: workArea.name,
         label: "Flooring disposal allowance",
         recommendedCost: floorArea * FITOUT_BENCHMARKS.removalPerM2.cost,
-        recommendedSell: floorArea * FITOUT_BENCHMARKS.removalPerM2.sell,
+        recommendedSell: gmSell(
+          floorArea * FITOUT_BENCHMARKS.removalPerM2.cost,
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -1210,6 +1301,8 @@ export function calculateFlooring(
         recommendedCost: stairCount * 45,
         recommendedSell: stairCount * 68,
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -1380,7 +1473,6 @@ export function calculatePainting(
       workAreaType: "painting",
       unit: "m2",
       fallbackCostRate: FITOUT_BENCHMARKS.paintingPerM2.cost,
-      fallbackSellRate: FITOUT_BENCHMARKS.paintingPerM2.sell,
       organisationSettings: context.organisationSettings,
     });
 
@@ -1396,6 +1488,8 @@ export function calculatePainting(
           costRate: paintingRates.costRate,
           sellRate: paintingRates.sellRate,
           rateSource: paintingRates.sourceLabel,
+          sellDerivedFromMargin: paintingRates.sellDerivedFromMargin,
+          sellAuthority: paintingRates.sellAuthority,
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -1417,7 +1511,6 @@ export function calculatePainting(
       workAreaType: "painting",
       unit: "each",
       fallbackCostRate: FITOUT_BENCHMARKS.doorPaintingEach.cost,
-      fallbackSellRate: FITOUT_BENCHMARKS.doorPaintingEach.sell,
       organisationSettings: context.organisationSettings,
     });
     lineItems.push(
@@ -1428,6 +1521,8 @@ export function calculatePainting(
         recommendedCost: doorCount * doorRates.costRate,
         recommendedSell: doorCount * doorRates.sellRate,
         rateSource: doorRates.sourceLabel,
+        sellDerivedFromMargin: doorRates.sellDerivedFromMargin,
+        sellAuthority: doorRates.sellAuthority,
         notes: `${doorCount} door(s)`,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -1447,7 +1542,6 @@ export function calculatePainting(
       workAreaType: "painting",
       unit: "lm",
       fallbackCostRate: FITOUT_BENCHMARKS.skirtingLm.cost * 0.6,
-      fallbackSellRate: FITOUT_BENCHMARKS.skirtingLm.sell * 0.6,
       organisationSettings: context.organisationSettings,
     });
     lineItems.push(
@@ -1458,6 +1552,8 @@ export function calculatePainting(
         recommendedCost: trimLm * trimRates.costRate,
         recommendedSell: trimLm * trimRates.sellRate,
         rateSource: trimRates.sourceLabel,
+        sellDerivedFromMargin: trimRates.sellDerivedFromMargin,
+        sellAuthority: trimRates.sellAuthority,
         notes:
           getNumberFact(facts, workArea.id, "painting.joinery_surround_length_lm") ==
           null
@@ -1529,10 +1625,14 @@ export function calculatePlastering(
         recommendedCost:
           (getNumberFact(facts, workArea.id, "plastering.area_m2") ?? 20) *
           FITOUT_BENCHMARKS.plasteringPerM2.cost,
-        recommendedSell:
+        recommendedSell: gmSell(
           (getNumberFact(facts, workArea.id, "plastering.area_m2") ?? 20) *
-          FITOUT_BENCHMARKS.plasteringPerM2.sell,
+            FITOUT_BENCHMARKS.plasteringPerM2.cost,
+          context
+        ),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         notes: level,
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
@@ -1552,8 +1652,10 @@ export function calculatePlastering(
         workAreaName: workArea.name,
         label: "Sanding/prep allowance",
         recommendedCost: sandArea * 8,
-        recommendedSell: sandArea * 12,
+        recommendedSell: gmSell(sandArea * 8, context),
         rateSource: "Benchmark allowance",
+      sellDerivedFromMargin: true,
+      sellAuthority: "derived_from_gross_margin",
         sortOrder: result.lineItems.length + 1,
         organisationSettings: context.organisationSettings,
         qualityFactor: getQualityFactor(

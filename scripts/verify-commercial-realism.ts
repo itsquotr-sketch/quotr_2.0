@@ -290,8 +290,10 @@ const smallBathroom = calculateBathroom(
 
 const smallTiling = findItem(smallBathroom.lineItems, /tiling allowance/i);
 assert(
-  (smallTiling?.recommendedSell ?? 0) >= BATHROOM_BENCHMARKS.tilingMinimum.sell,
-  "Small bathroom tiling at or above minimum allowance"
+  (smallTiling?.recommendedCost ?? 0) >= BATHROOM_BENCHMARKS.tilingMinimum.cost &&
+    (smallTiling?.recommendedSell ?? 0) >=
+      BATHROOM_BENCHMARKS.tilingMinimum.cost / 0.8,
+  "Small bathroom tiling at or above cost-first minimum allowance"
 );
 
 console.log("\n--- Test 7: Kitchen by others ---");

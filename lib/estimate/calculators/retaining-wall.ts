@@ -23,7 +23,7 @@ import {
   createRateLineItem,
 } from "@/lib/estimate/line-items";
 import { resolveProductivity } from "@/lib/estimate/productivity";
-import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate, quotrFallbackSellFromCost } from "@/lib/estimate/rates";
 import { calculateBackfillVolume, calculateDrainageLm } from "@/lib/estimate/material-buildups";
 import {
   createBackfillVolumeBuildUp,
@@ -296,13 +296,14 @@ function getWallMaterialRates(material: string | null, context: EstimateContext)
       workAreaType: "retaining_wall",
       unit: "m2",
       fallbackCostRate: RETAINING_WALL_BENCHMARKS.concreteFace.cost,
-      fallbackSellRate: RETAINING_WALL_BENCHMARKS.concreteFace.sell,
       organisationSettings: context.organisationSettings,
     });
     return {
       cost: resolved.costRate,
       sell: resolved.sellRate,
       rateSource: resolved.sourceLabel,
+      sellDerivedFromMargin: resolved.sellDerivedFromMargin,
+      sellAuthority: resolved.sellAuthority,
     };
   }
 
@@ -313,7 +314,6 @@ function getWallMaterialRates(material: string | null, context: EstimateContext)
     workAreaType: "retaining_wall",
     unit: "m2",
     fallbackCostRate: RETAINING_WALL_BENCHMARKS.timberFace.cost,
-    fallbackSellRate: RETAINING_WALL_BENCHMARKS.timberFace.sell,
     organisationSettings: context.organisationSettings,
   });
 
@@ -321,6 +321,8 @@ function getWallMaterialRates(material: string | null, context: EstimateContext)
     cost: resolved.costRate,
     sell: resolved.sellRate,
     rateSource: resolved.sourceLabel,
+    sellDerivedFromMargin: resolved.sellDerivedFromMargin,
+    sellAuthority: resolved.sellAuthority,
   };
 }
 
@@ -563,7 +565,6 @@ export function calculateRetainingWall(
       workAreaType: "retaining_wall",
       unit: "lm",
       fallbackCostRate: RETAINING_WALL_BENCHMARKS.novacoilPerM.cost,
-      fallbackSellRate: RETAINING_WALL_BENCHMARKS.novacoilPerM.sell,
       organisationSettings: context.organisationSettings,
     });
 
@@ -622,8 +623,13 @@ export function calculateRetainingWall(
             label: "Drainage connection allowance",
             category: "subcontractor",
             recommendedCost: RETAINING_WALL_BENCHMARKS.drainConnection.cost,
-            recommendedSell: RETAINING_WALL_BENCHMARKS.drainConnection.sell,
+            recommendedSell: quotrFallbackSellFromCost(
+              RETAINING_WALL_BENCHMARKS.drainConnection.cost,
+              context.organisationSettings
+            ),
             rateSource: "Benchmark allowance",
+            sellDerivedFromMargin: true,
+            sellAuthority: "derived_from_gross_margin",
             notes: drainConnection,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,
@@ -654,6 +660,8 @@ export function calculateRetainingWall(
       costRate: materialRates.cost,
       sellRate: materialRates.sell,
       rateSource: materialRates.rateSource,
+      sellDerivedFromMargin: materialRates.sellDerivedFromMargin,
+      sellAuthority: materialRates.sellAuthority,
       sortOrder: sortOrder++,
       organisationSettings: context.organisationSettings,
       qualityFactor,
@@ -711,7 +719,6 @@ export function calculateRetainingWall(
           workAreaType: "retaining_wall",
           unit: "m2",
           fallbackCostRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.cost,
-          fallbackSellRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.sell,
           organisationSettings: context.organisationSettings,
         });
 
@@ -743,7 +750,6 @@ export function calculateRetainingWall(
         workAreaType: "retaining_wall",
         unit: "m2",
         fallbackCostRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.cost,
-        fallbackSellRate: RETAINING_WALL_BENCHMARKS.backfillPerFaceM2.sell,
         organisationSettings: context.organisationSettings,
       });
 
@@ -1134,20 +1140,23 @@ export function calculateRetainingWall(
   });
 
   if (cartingDistance && cartingDistance > 0) {
+    const cartingCost =
+      cartingDistance > 30
+        ? RETAINING_WALL_BENCHMARKS.cartingLong.cost
+        : RETAINING_WALL_BENCHMARKS.cartingModerate.cost;
     lineItems.push(
       createAllowanceLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Carting/material handling allowance",
-        recommendedCost:
-          cartingDistance > 30
-            ? RETAINING_WALL_BENCHMARKS.cartingLong.cost
-            : RETAINING_WALL_BENCHMARKS.cartingModerate.cost,
-        recommendedSell:
-          cartingDistance > 30
-            ? RETAINING_WALL_BENCHMARKS.cartingLong.sell
-            : RETAINING_WALL_BENCHMARKS.cartingModerate.sell,
+        recommendedCost: cartingCost,
+        recommendedSell: quotrFallbackSellFromCost(
+          cartingCost,
+          context.organisationSettings
+        ),
         rateSource: "Benchmark allowance",
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
         notes: `${cartingDistance} m carting distance — haulage cost, not a second site-access labour multiplier`,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
@@ -1182,7 +1191,6 @@ export function calculateRetainingWall(
       workAreaType: "retaining_wall",
       unit: "allowance",
       fallbackCostRate: RETAINING_WALL_BENCHMARKS.disposalAllowance.cost,
-      fallbackSellRate: RETAINING_WALL_BENCHMARKS.disposalAllowance.sell,
       organisationSettings: context.organisationSettings,
     });
 
@@ -1195,6 +1203,8 @@ export function calculateRetainingWall(
         recommendedCost: disposalRates.costRate,
         recommendedSell: disposalRates.sellRate,
         rateSource: disposalRates.sourceLabel,
+        sellDerivedFromMargin: disposalRates.sellDerivedFromMargin,
+        sellAuthority: disposalRates.sellAuthority,
         notes: [
           `${effectiveLength} m wall length allowance basis`,
           cartingDistance ? `${cartingDistance} m carting distance` : null,
