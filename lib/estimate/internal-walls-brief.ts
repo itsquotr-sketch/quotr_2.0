@@ -6,6 +6,7 @@
 
 import type { AIExtractionOutput } from "@/lib/ai/schema";
 import type { EstimateFact } from "@/lib/estimate/types";
+import type { InternalWallsJobScope } from "@/lib/estimate/internal-walls-scope";
 import {
   applyInternalWallsFactWrite,
   createWallTypeId,
@@ -13,6 +14,7 @@ import {
   parseInternalWallsLiningProduct,
   parseInternalWallsTimberSize,
   recommendedSheetLengthMmForProduct,
+  storedInternalWallsWallTypes,
   type InternalWallsLiningProduct,
   type InternalWallsTimberSize,
 } from "@/lib/estimate/internal-walls-wall-types";
@@ -218,6 +220,84 @@ export function briefRequestsInternalWallsRebuild(briefText: string): boolean {
   ]);
 }
 
+export function briefRemovesExistingInternalWalls(briefText: string): boolean {
+  const brief = normalise(briefText);
+  if (!/\b(walls?|partitions?)\b/.test(brief)) return false;
+  return (
+    /\b(remov(?:e|ing|al)|demolish(?:ing)?|taking down|take down|strip(?:ping)? out)\b/.test(
+      brief
+    ) || includesAny(brief, ["remove existing", "remove the walls"])
+  );
+}
+
+function briefRebuildsOrReplacesInternalWalls(briefText: string): boolean {
+  const brief = normalise(briefText);
+  return (
+    briefRequestsInternalWallsRebuild(brief) ||
+    includesAny(brief, [
+      "rebuild",
+      "replace the walls",
+      "replace the wall",
+      "replace them",
+      "replace with",
+    ])
+  );
+}
+
+/**
+ * Existing job_scope enum: NEW / REMOVE / MIXED.
+ * Remove-then-rebuild is mixed — never silently new_partition.
+ */
+export function classifyInternalWallsJobScopeFromBrief(
+  briefText: string
+): InternalWallsJobScope | null {
+  const removes = briefRemovesExistingInternalWalls(briefText);
+  const rebuilds = briefRebuildsOrReplacesInternalWalls(briefText);
+  if (removes && rebuilds) return "mixed";
+  if (removes) return "remove_partition";
+  if (rebuilds) return "new_partition";
+  return null;
+}
+
+function extractedWallTypeSpecIsAssigned(
+  type: ExtractedInternalWallsType
+): boolean {
+  if (type.lengthLm == null) return false;
+  if (!type.sideA.product) return false;
+  if (type.sameLiningBothSides === true) return true;
+  if (type.sameLiningBothSides === false) return Boolean(type.sideB.product);
+  return false;
+}
+
+function extractedWallTypeSignature(type: ExtractedInternalWallsType): string {
+  return [
+    type.lengthLm ?? "",
+    type.heightM ?? "",
+    type.frameSize ?? type.frameSystem ?? "",
+    type.sideA.product ?? "",
+    type.sideB.product ?? "",
+    type.sameLiningBothSides === true
+      ? "same"
+      : type.sameLiningBothSides === false
+        ? "mixed"
+        : "",
+  ].join("|");
+}
+
+/**
+ * 2+ extracted groups with incomplete or overlapping spec assignment.
+ * Unambiguous distinct types (the coordination fixture) must not confirm.
+ */
+export function internalWallsWallTypeGroupingIsAmbiguous(
+  types: readonly ExtractedInternalWallsType[]
+): boolean {
+  if (types.length < 2) return false;
+  const complete = types.every(extractedWallTypeSpecIsAssigned);
+  const signatures = types.map(extractedWallTypeSignature);
+  const distinct = new Set(signatures).size === types.length;
+  return !(complete && distinct);
+}
+
 function liningSelectValue(product: InternalWallsLiningProduct | null): string | null {
   return liningProductDisplay(product);
 }
@@ -270,15 +350,19 @@ export function applyExtractedInternalWallsToFacts(params: {
   workAreaId: string;
   types: readonly ExtractedInternalWallsType[];
 }): EstimateFact[] {
+  const existing = storedInternalWallsWallTypes(params.facts, params.workAreaId);
   let facts = params.facts;
-  for (const spec of params.types) {
-    const wallTypeId = createWallTypeId();
-    facts = applyInternalWallsFactWrite({
-      facts,
-      workAreaId: params.workAreaId,
-      key: "internal_walls.add_wall_type",
-      value: wallTypeId,
-    });
+  for (let index = 0; index < params.types.length; index += 1) {
+    const spec = params.types[index]!;
+    const wallTypeId = existing[index]?.id ?? createWallTypeId();
+    if (!existing[index]) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        key: "internal_walls.add_wall_type",
+        value: wallTypeId,
+      });
+    }
     facts = applyInternalWallsFactWrite({
       facts,
       workAreaId: params.workAreaId,

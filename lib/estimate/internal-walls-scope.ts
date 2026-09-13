@@ -79,6 +79,15 @@ export type InternalWallsStructuralInvolvement =
 export const INTERNAL_WALLS_STRUCTURAL_FACT_KEY =
   "internal_walls.structural_involvement" as const;
 
+/** Details confirmation when parser grouping of 2+ wall types is ambiguous. */
+export const INTERNAL_WALLS_WALL_TYPES_GROUPING_CONFIRMED_FACT_KEY =
+  "internal_walls.wall_types_grouping_confirmed" as const;
+
+export const INTERNAL_WALLS_WALL_TYPES_GROUPING_OPTIONS = [
+  "Yes, that's right",
+  "Need to correct the grouping",
+] as const;
+
 export const INTERNAL_WALLS_STRUCTURAL_OPTIONS = [
   "No",
   "Yes",
@@ -132,6 +141,19 @@ export function jobScopeDisplay(
   if (value === "remove_partition") return "Remove partition";
   if (value === "mixed") return "Mixed";
   return "Custom / other";
+}
+
+export function parseInternalWallsWallTypesGroupingConfirmed(
+  value: unknown
+): boolean | null {
+  if (value == null || isNotSureValue(value)) return null;
+  if (value === true) return true;
+  if (value === false) return false;
+  const normalised = String(value).trim().toLowerCase();
+  if (!normalised) return null;
+  if (normalised === "yes" || normalised.startsWith("yes,")) return true;
+  if (normalised.includes("correct") || normalised === "no") return false;
+  return null;
 }
 
 export function parseInternalWallsStructuralInvolvement(
@@ -288,6 +310,10 @@ export function shouldHideInternalWallsQuestion(params: {
 }): boolean {
   const key = params.factKey;
   if (key === INTERNAL_WALLS_JOB_SCOPE_FACT_KEY) return false;
+
+  if (key === INTERNAL_WALLS_WALL_TYPES_GROUPING_CONFIRMED_FACT_KEY) {
+    return true;
+  }
 
   if (
     (INTERNAL_WALLS_LEGACY_QUESTION_KEYS as readonly string[]).includes(key)

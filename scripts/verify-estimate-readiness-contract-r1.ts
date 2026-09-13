@@ -93,12 +93,23 @@ function seedFacts(): EstimateFact[] {
       {
         key: "internal_walls.job_scope",
         work_area_id: "w1",
-        value: "new_partition",
+        value: "mixed",
+      },
+      {
+        key: "internal_walls.structural_involvement",
+        work_area_id: "w1",
+        value: "no",
       },
     ],
     workAreaId: "w1",
     types,
   });
+}
+
+function seedFactsWithoutStructural(): EstimateFact[] {
+  return seedFacts().filter(
+    (row) => row.key !== "internal_walls.structural_involvement"
+  );
 }
 
 function completeOptional(facts: EstimateFact[]): EstimateFact[] {
@@ -221,6 +232,16 @@ check(
   withCarryReady.ready === true,
   withCarryReady.builderCopy ??
     JSON.stringify(withCarryReady.diagnostics.unresolved.map((row) => row.question).slice(0, 8))
+);
+const mixedUnresolvedStructural = evaluateClarifyEstimateReadiness(
+  composeInput(seedFactsWithoutStructural())
+);
+check(
+  "mixed remove/rebuild without structural is not Ready",
+  mixedUnresolvedStructural.ready === false &&
+    mixedUnresolvedStructural.diagnostics.unresolved.some(
+      (row) => row.factKey === "internal_walls.structural_involvement"
+    )
 );
 check(
   "answering optional finish does not change Ready",

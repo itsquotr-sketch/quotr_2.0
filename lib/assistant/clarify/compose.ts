@@ -90,15 +90,22 @@ import {
 } from "@/lib/estimate/bathroom-scope";
 import { BATHROOM_WALL_HEIGHT_ASSUMPTION_STATEMENT } from "@/lib/estimate/bathroom-geometry";
 import {
+  extractInternalWallsTypesFromBrief,
+  internalWallsWallTypeGroupingIsAmbiguous,
+} from "@/lib/estimate/internal-walls-brief";
+import {
   INTERNAL_WALLS_JOB_SCOPE_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
+  INTERNAL_WALLS_WALL_TYPES_GROUPING_CONFIRMED_FACT_KEY,
   parseInternalWallsJobScope,
   parseInternalWallsStructuralInvolvement,
+  parseInternalWallsWallTypesGroupingConfirmed,
   structuralGateApplies,
   wallTypesRequiredForScope,
 } from "@/lib/estimate/internal-walls-scope";
 import {
   INTERNAL_WALLS_HEIGHT_ASSUMPTION_STATEMENT,
+  isInternalWallsHardMinimumProgressiveField,
   nextInternalWallsWallTypeField,
   resolveInternalWallsWallTypes,
   wallTypeDisplayName,
@@ -199,6 +206,7 @@ const CHECK_SCORES: Record<string, number> = {
   "bathroom.job_scope": 96,
   "internal_walls.job_scope": 96,
   "internal_walls.structural_involvement": 95,
+  "internal_walls.wall_types_grouping_confirmed": 94.5,
   "internal_walls.wall_type.frame_system": 94,
   "internal_walls.wall_type.frame_size": 93,
   "internal_walls.wall_type.length_lm": 92,
@@ -775,6 +783,25 @@ function missingHardMinimum(
           rankScore: 999,
         });
       }
+      const groupingSpecs = extractInternalWallsTypesFromBrief(
+        input.briefText ?? ""
+      );
+      if (
+        internalWallsWallTypeGroupingIsAmbiguous(groupingSpecs) &&
+        parseInternalWallsWallTypesGroupingConfirmed(
+          getFact(
+            facts,
+            card.workAreaId,
+            INTERNAL_WALLS_WALL_TYPES_GROUPING_CONFIRMED_FACT_KEY
+          )?.value
+        ) !== true
+      ) {
+        missing.push({
+          key: INTERNAL_WALLS_WALL_TYPES_GROUPING_CONFIRMED_FACT_KEY,
+          inputType: "select",
+          rankScore: 997,
+        });
+      }
       const omitHard = internalWallsNestedFinishOmit({
         confirmedTypes: input.workAreas
           .filter((row) => row.status !== "excluded")
@@ -794,11 +821,8 @@ function missingHardMinimum(
         });
         if (
           wallTypesRequiredForScope(jobScope) &&
-          (nextField === "internal_walls.wall_type.frame_system" ||
-            nextField === "internal_walls.wall_type.frame_size" ||
-            nextField === "internal_walls.wall_type.length_lm" ||
-            nextField === "internal_walls.opening.width_m" ||
-            nextField === "internal_walls.opening.height_m")
+          nextField != null &&
+          isInternalWallsHardMinimumProgressiveField(nextField)
         ) {
           const template = getQuestionTemplateByKey(nextField);
           const displayName = type
@@ -1376,11 +1400,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         });
         if (
           !nextField ||
-          nextField === "internal_walls.wall_type.frame_system" ||
-          nextField === "internal_walls.wall_type.frame_size" ||
-          nextField === "internal_walls.wall_type.length_lm" ||
-          nextField === "internal_walls.opening.width_m" ||
-          nextField === "internal_walls.opening.height_m"
+          isInternalWallsHardMinimumProgressiveField(nextField)
         ) {
           return;
         }

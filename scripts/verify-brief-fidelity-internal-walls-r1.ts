@@ -112,7 +112,7 @@ let facts: EstimateFact[] = [
   {
     key: "internal_walls.job_scope",
     work_area_id: "w1",
-    value: "new_partition",
+    value: "mixed",
   },
 ];
 facts = applyExtractedInternalWallsToFacts({
@@ -198,6 +198,14 @@ check(
   "Work Areas Internal Walls + Demolition only",
   waTypes.join(",") === "demolition,internal_walls",
   waTypes.join(",")
+);
+check(
+  "enrichment classifies remove-then-rebuild as mixed",
+  enriched.facts.some(
+    (row) =>
+      row.key === "internal_walls.job_scope" &&
+      (row.value === "mixed" || row.value === "Mixed")
+  )
 );
 check(
   "no plastering / painting / doors",
@@ -290,8 +298,37 @@ const readyClarify = composeClarifyView({
   jobPlan,
 });
 check(
-  "Details is Ready with known walls + carry, without optional finish",
-  readyClarify.enoughToEstimate === true
+  "Details is not Ready with mixed remove/rebuild until structural gate is answered",
+  readyClarify.enoughToEstimate === false &&
+    [...readyClarify.candidates, ...readyClarify.deferred].some(
+      (row) => row.factKey === "internal_walls.structural_involvement"
+    )
+);
+const readyAfterStructural = composeClarifyView({
+  stage: "work_area_questions",
+  briefText: BRIEF,
+  qualityLevel: "standard",
+  workAreas: [
+    { id: "w1", type: "internal_walls", name: "Internal walls", status: "confirmed" },
+    { id: "d1", type: "demolition", name: "Demolition / strip-out", status: "confirmed" },
+  ],
+  facts: [
+    ...facts,
+    {
+      key: "internal_walls.structural_involvement",
+      work_area_id: "w1",
+      value: "no",
+    },
+  ],
+  constraints: [
+    { key: "site_access", value: "Easy" },
+    { key: "material_carry_distance", value: "< 10m" },
+  ],
+  jobPlan,
+});
+check(
+  "Details is Ready with known walls + carry + structural No, without optional finish",
+  readyAfterStructural.enoughToEstimate === true
 );
 
 if (failed > 0) {

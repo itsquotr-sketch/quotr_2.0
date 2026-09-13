@@ -1903,6 +1903,23 @@ function nextOpeningField(type: InternalWallsWallType): string | null {
   return null;
 }
 
+/** Progressive next-fields that must block Ready (frame, openings, lining). */
+export function isInternalWallsHardMinimumProgressiveField(
+  factKey: string
+): boolean {
+  return (
+    factKey === "internal_walls.wall_type.frame_system" ||
+    factKey === "internal_walls.wall_type.frame_size" ||
+    factKey === "internal_walls.wall_type.length_lm" ||
+    factKey === "internal_walls.opening.width_m" ||
+    factKey === "internal_walls.opening.height_m" ||
+    factKey === "internal_walls.wall_type.side_a_product" ||
+    factKey === "internal_walls.wall_type.side_a_thickness_mm" ||
+    factKey === "internal_walls.wall_type.same_lining_both_sides" ||
+    factKey === "internal_walls.wall_type.side_b_product"
+  );
+}
+
 export function nextInternalWallsWallTypeField(params: {
   type: InternalWallsWallType | null;
   jobScope: string | null;

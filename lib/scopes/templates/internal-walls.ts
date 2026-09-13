@@ -4,6 +4,8 @@ import {
   INTERNAL_WALLS_JOB_SCOPE_OPTIONS,
   INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
   INTERNAL_WALLS_STRUCTURAL_OPTIONS,
+  INTERNAL_WALLS_WALL_TYPES_GROUPING_CONFIRMED_FACT_KEY,
+  INTERNAL_WALLS_WALL_TYPES_GROUPING_OPTIONS,
 } from "@/lib/estimate/internal-walls-scope";
 import {
   INTERNAL_WALLS_FRAME_SYSTEM_OPTIONS,
@@ -63,6 +65,20 @@ export const internalWallsScope: ScopeDefinition = {
       factKey: INTERNAL_WALLS_STRUCTURAL_FACT_KEY,
       workAreaType: "internal_walls",
       category: "risk",
+    },
+    {
+      key: INTERNAL_WALLS_WALL_TYPES_GROUPING_CONFIRMED_FACT_KEY,
+      label: "Wall type grouping",
+      questionText:
+        "We've grouped these into separate wall types from the brief. Does that match the walls on site?",
+      inputType: "select",
+      options: [...INTERNAL_WALLS_WALL_TYPES_GROUPING_OPTIONS],
+      required: false,
+      priority: 7,
+      estimatePriorityClass: "P0",
+      factKey: INTERNAL_WALLS_WALL_TYPES_GROUPING_CONFIRMED_FACT_KEY,
+      workAreaType: "internal_walls",
+      category: "scope",
     },
     {
       key: "internal_walls.wall_type.frame_system",
@@ -155,6 +171,7 @@ export const internalWallsScope: ScopeDefinition = {
       required: false,
       priority: 17,
       estimatePriorityClass: "P0",
+      level1BlockingClass: "HARD_MINIMUM",
       factKey: "internal_walls.wall_type.side_a_product",
       workAreaType: "internal_walls",
       category: "finish",
@@ -208,6 +225,7 @@ export const internalWallsScope: ScopeDefinition = {
       required: false,
       priority: 19,
       estimatePriorityClass: "P0",
+      level1BlockingClass: "HARD_MINIMUM",
       factKey: "internal_walls.wall_type.same_lining_both_sides",
       workAreaType: "internal_walls",
       category: "finish",
@@ -221,6 +239,7 @@ export const internalWallsScope: ScopeDefinition = {
       required: false,
       priority: 21,
       estimatePriorityClass: "P0",
+      level1BlockingClass: "HARD_MINIMUM",
       factKey: "internal_walls.wall_type.side_b_product",
       workAreaType: "internal_walls",
       category: "finish",

@@ -101,6 +101,9 @@ Fact key rules:
 - "13mm standard GIB on both sides" → Standard GIB 13 mm both faces. Do NOT create a Plastering Work Area.
 - "13mm standard GIB on one side and 13mm aqualine on the other" → two different faces; same_lining_both_sides=false.
 - "removing 3 internal walls" / "remove internal walls" → demolition Work Area for the removal, plus Internal Walls for rebuild if stated. Do not also set internal_walls.demolition_included for the same walls.
+- "removing internal walls" and "rebuild" / "replace" in the same brief → internal_walls.job_scope=mixed. Do not classify remove-then-rebuild as new_partition.
+- "remove internal walls" with no rebuild/replace → internal_walls.job_scope=remove_partition.
+- "new internal wall" / "new partition" with no existing-wall removal → internal_walls.job_scope=new_partition.
 - "Fyreline" → internal_walls.plasterboard_type=Fyreline.
 - "insulated wall" → insulation on the wall type only if explicitly stated. Do not default insulation/skirting/cornice/painting/openings to included.
 - "add skirting" → skirting included only when stated.

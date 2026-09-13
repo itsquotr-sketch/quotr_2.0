@@ -29,8 +29,12 @@ const BATHROOM_HARD_MINIMUM_KEYS = new Set([
 
 const INTERNAL_WALLS_HARD_MINIMUM_KEYS = new Set([
   "internal_walls.job_scope",
+  "internal_walls.structural_involvement",
   "internal_walls.wall_type.length_lm",
   "internal_walls.wall_type.frame_system",
+  "internal_walls.wall_type.side_a_product",
+  "internal_walls.wall_type.same_lining_both_sides",
+  "internal_walls.wall_type.side_b_product",
 ]);
 
 /** Project Conditions that may be asked but do not block Level 1 when unresolved. */

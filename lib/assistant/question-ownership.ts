@@ -4,7 +4,8 @@
  * Deck uses the EF02-C1 canonical descriptors / information contract.
  * Fence / Retaining Wall use their information contracts for HARD_MINIMUM /
  * ASK_NOW. Bathroom plumbing/electrical intensity is Details-owned even
- * though template P1 would otherwise fall through to Refine.
+ * though template P1 would otherwise fall through to Refine. Internal Walls
+ * lining, job_scope, and the structural gate are Details-owned when unresolved.
  */
 
 import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
@@ -18,10 +19,24 @@ const BATHROOM_DETAILS_OWNED_FACT_KEYS = new Set([
   "bathroom.electrical.level",
 ]);
 
+const INTERNAL_WALLS_DETAILS_OWNED_FACT_KEYS = new Set([
+  "internal_walls.job_scope",
+  "internal_walls.structural_involvement",
+  "internal_walls.wall_types_grouping_confirmed",
+  "internal_walls.wall_type.side_a_product",
+  "internal_walls.wall_type.same_lining_both_sides",
+  "internal_walls.wall_type.side_b_product",
+]);
+
 type DetailsAskClass = "HARD_MINIMUM" | "ASK_NOW" | "ASSUME_IF_SKIPPED";
 
 function bathroomDetailsAskClass(factKey: string): DetailsAskClass | null {
   if (BATHROOM_DETAILS_OWNED_FACT_KEYS.has(factKey)) return "ASK_NOW";
+  return null;
+}
+
+function internalWallsDetailsAskClass(factKey: string): DetailsAskClass | null {
+  if (INTERNAL_WALLS_DETAILS_OWNED_FACT_KEYS.has(factKey)) return "HARD_MINIMUM";
   return null;
 }
 
@@ -74,6 +89,13 @@ export function detailsAskClassForFact(
     (workAreaType === "bathroom" || factKey.startsWith("bathroom."))
   ) {
     return bathroomClass;
+  }
+  const iwClass = internalWallsDetailsAskClass(factKey);
+  if (
+    iwClass &&
+    (workAreaType === "internal_walls" || factKey.startsWith("internal_walls."))
+  ) {
+    return iwClass;
   }
   const template = getQuestionTemplateByKey(factKey);
   if (!template) return null;

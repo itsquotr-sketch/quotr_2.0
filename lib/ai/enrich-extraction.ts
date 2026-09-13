@@ -18,7 +18,7 @@ import {
 import { applyInternalWallsFactWrite } from "@/lib/estimate/internal-walls-wall-types";
 import {
   applyExtractedInternalWallsToFacts,
-  briefRequestsInternalWallsRebuild,
+  classifyInternalWallsJobScopeFromBrief,
   extractInternalWallsTypesFromBrief,
   stripInventedInternalWallsFacts,
 } from "@/lib/estimate/internal-walls-brief";
@@ -275,20 +275,28 @@ function inferPainting(
   }
 }
 
+function addInternalWallsJobScopeFromText(
+  extraction: AIExtractionOutput,
+  text: string,
+  workAreaName?: string
+): void {
+  const jobScope = classifyInternalWallsJobScopeFromBrief(text);
+  if (!jobScope) return;
+  addFact(extraction, {
+    workAreaType: "internal_walls",
+    workAreaName,
+    key: "internal_walls.job_scope",
+    label: "Wall work",
+    value: jobScope,
+  });
+}
+
 function addInternalWallsFactsFromSnippet(
   extraction: AIExtractionOutput,
   snippet: string,
   workAreaName: string
 ): void {
-  if (briefRequestsInternalWallsRebuild(snippet) || includesAny(snippet, ["timber framed", "timber frame"])) {
-    addFact(extraction, {
-      workAreaType: "internal_walls",
-      workAreaName,
-      key: "internal_walls.job_scope",
-      label: "Wall work",
-      value: "new_partition",
-    });
-  }
+  addInternalWallsJobScopeFromText(extraction, snippet, workAreaName);
 
   const specs = extractInternalWallsTypesFromBrief(
     snippet.includes("internal wall") || snippet.includes("partition")
@@ -401,14 +409,7 @@ function inferInternalWalls(
     return;
   }
 
-  if (briefRequestsInternalWallsRebuild(brief)) {
-    addFact(extraction, {
-      workAreaType: "internal_walls",
-      key: "internal_walls.job_scope",
-      label: "Wall work",
-      value: "new_partition",
-    });
-  }
+  addInternalWallsJobScopeFromText(extraction, brief);
 
   const specs = extractInternalWallsTypesFromBrief(brief);
   if (specs.length > 0) {
