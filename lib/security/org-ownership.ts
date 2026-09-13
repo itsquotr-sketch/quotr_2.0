@@ -92,6 +92,42 @@ export async function assertOrgOwnsActiveProject(
   return { projectId: data.id };
 }
 
+export type ActiveProjectMutationOwnership = {
+  projectId: string;
+  stage: string;
+  quality_level: string | null;
+};
+
+/**
+ * PERFORMANCE-01C-2 — uncached pre-write ownership + stage/quality in one
+ * SELECT. Same fail-closed predicate as {@link assertOrgOwnsActiveProject}.
+ * Post-write verification must still call the uncached id-only helper.
+ */
+export async function assertOrgOwnsActiveProjectWithStage(
+  ctx: AuthOrgContext,
+  projectId: string
+): Promise<OwnershipError | ActiveProjectMutationOwnership> {
+  noteUnderlyingActiveProjectOwnership();
+
+  const { data, error } = await ctx.supabase
+    .from("projects")
+    .select("id, stage, quality_level")
+    .eq("id", projectId)
+    .eq("org_id", ctx.orgId)
+    .is("deleted_at", null)
+    .maybeSingle();
+
+  if (error || !data) {
+    return notFound("Project");
+  }
+
+  return {
+    projectId: data.id,
+    stage: data.stage as string,
+    quality_level: (data.quality_level as string | null) ?? null,
+  };
+}
+
 export async function assertOrgOwnsEstimate(
   ctx: AuthOrgContext,
   estimateId: string,

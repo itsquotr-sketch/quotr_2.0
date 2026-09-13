@@ -147,7 +147,8 @@ check(
   "5. mutation result + fact save stay on uncached ownership",
   mutationResult.includes("assertOrgOwnsActiveProject(auth, projectId)") &&
     !mutationResult.includes("ForRead") &&
-    factActions.includes("assertOrgOwnsActiveProject(context, projectId)") &&
+    (factActions.includes("assertOrgOwnsActiveProject(context, projectId)") ||
+      factActions.includes("assertOrgOwnsActiveProjectWithStage(context, projectId)")) &&
     !factActions.includes("ForRead")
 );
 check(

@@ -2,6 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import type { AssistantStage } from "@/components/assistant/types";
 import { completeAssistantMutation } from "@/lib/assistant/complete-assistant-mutation";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
@@ -9,7 +10,7 @@ import { commitUserFactEdit } from "@/lib/assistant/scope-persistence";
 import { getAuthOrgContext } from "@/lib/assistant/state";
 import type { AssistantActionState } from "@/lib/assistant/types";
 import { markEstimateStaleWithContext } from "@/lib/estimate/stale";
-import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
+import { assertOrgOwnsActiveProjectWithStage } from "@/lib/security/org-ownership";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 
 const updateFactSchema = z.object({
@@ -55,18 +56,8 @@ export async function updateProjectFact(
   });
   if (denied) return denied;
 
-  const ownedProject = await assertOrgOwnsActiveProject(context, projectId);
-  if ("error" in ownedProject) {
-    return { error: ownedProject.error };
-  }
-
-  const [{ data: project }, workAreaLookup] = await Promise.all([
-    supabase
-      .from("projects")
-      .select("id, stage, quality_level")
-      .eq("id", projectId)
-      .eq("org_id", orgId)
-      .maybeSingle(),
+  const [ownedProject, workAreaLookup] = await Promise.all([
+    assertOrgOwnsActiveProjectWithStage(context, projectId),
     workAreaId
       ? supabase
           .from("work_areas")
@@ -76,9 +67,8 @@ export async function updateProjectFact(
           .maybeSingle()
       : Promise.resolve({ data: { id: "ok" } }),
   ]);
-
-  if (!project) {
-    return { error: "Project not found." };
+  if ("error" in ownedProject) {
+    return { error: ownedProject.error };
   }
 
   if (workAreaId && !workAreaLookup.data) {
@@ -131,8 +121,8 @@ export async function updateProjectFact(
     orgId,
     projectId,
     {
-      stage: project.stage,
-      qualityLevel: project.quality_level,
+      stage: ownedProject.stage as AssistantStage,
+      qualityLevel: ownedProject.quality_level,
       skipDerivedPersist: true,
     }
   );

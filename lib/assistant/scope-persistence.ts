@@ -32,6 +32,11 @@ import type { EstimateFact } from "@/lib/estimate/types";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
 
+export type ScopedFactTargetRow = {
+  id: string;
+  source: string | null;
+};
+
 export type ScopeFactUpsertInput = {
   orgId: string;
   projectId: string;
@@ -42,6 +47,11 @@ export type ScopeFactUpsertInput = {
   unit?: string | null;
   source?: "user" | "ai_extracted" | "default" | "assumption" | "system";
   confidence?: number;
+  /**
+   * When present (including null = no row), skip the target project_facts
+   * SELECT. Omit so callers like IW / heal keep their own lookup.
+   */
+  existingTarget?: ScopedFactTargetRow | null;
 };
 
 export type ScopePersistResult = { ok: true } | { ok: false; error: string };
@@ -62,21 +72,29 @@ export async function upsertScopedFact(
     return { ok: false, error: namespace.error };
   }
 
-  let factQuery = supabase
-    .from("project_facts")
-    .select("id, source")
-    .eq("project_id", input.projectId)
-    .eq("key", input.key);
-
-  if (input.workAreaId) {
-    factQuery = factQuery.eq("work_area_id", input.workAreaId);
+  let existingFact: ScopedFactTargetRow | null;
+  if ("existingTarget" in input) {
+    existingFact = input.existingTarget ?? null;
   } else {
-    factQuery = factQuery.is("work_area_id", null);
-  }
+    let factQuery = supabase
+      .from("project_facts")
+      .select("id, source")
+      .eq("project_id", input.projectId)
+      .eq("key", input.key);
 
-  const { data: existingFact, error: selectError } = await factQuery.maybeSingle();
-  if (selectError) {
-    return { ok: false, error: selectError.message };
+    if (input.workAreaId) {
+      factQuery = factQuery.eq("work_area_id", input.workAreaId);
+    } else {
+      factQuery = factQuery.is("work_area_id", null);
+    }
+
+    const { data, error: selectError } = await factQuery.maybeSingle();
+    if (selectError) {
+      return { ok: false, error: selectError.message };
+    }
+    existingFact = data
+      ? { id: data.id, source: data.source ?? null }
+      : null;
   }
 
   const source = input.source ?? "user";
@@ -508,7 +526,10 @@ export async function commitUserFactEdit(
     factQuery = factQuery.is("work_area_id", null);
   }
 
-  const { data: existingFact } = await factQuery.maybeSingle();
+  const { data: existingFact, error: selectError } = await factQuery.maybeSingle();
+  if (selectError) {
+    return { ok: false, error: selectError.message };
+  }
   // Derived dimension results may be deliberately overridden by the user (3.1B.6R3).
   const allowDerivedOverride =
     existingFact?.source === "derived" &&
@@ -568,6 +589,9 @@ export async function commitUserFactEdit(
         ? params.unit ?? "mm"
         : params.unit,
     source: factSource,
+    existingTarget: existingFact
+      ? { id: existingFact.id, source: existingFact.source ?? null }
+      : null,
   });
 
   if (!factResult.ok) {
