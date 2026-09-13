@@ -7,6 +7,7 @@ import { AccountMenu } from "@/components/layout/account-menu";
 import { AppUserProvider } from "@/components/layout/app-user-context";
 import { MobileNav } from "@/components/layout/mobile-nav";
 import { NotificationBell } from "@/components/layout/notification-bell";
+import { NotificationProvider } from "@/components/layout/notification-context";
 import { QuotrLogo } from "@/components/layout/quotr-logo";
 import type { TrialBannerNotice } from "@/lib/billing/trial-countdown";
 
@@ -64,6 +65,7 @@ export function AppShell({
         displayTimezone,
       }}
     >
+      <NotificationProvider>
       <div className="flex min-h-dvh w-full md:h-dvh md:overflow-hidden">
         <AppSidebarNav
           setupIncomplete={setupIncomplete}
@@ -105,6 +107,7 @@ export function AppShell({
           {showMobileNav ? <MobileNav /> : null}
         </div>
       </div>
+      </NotificationProvider>
     </AppUserProvider>
   );
 }

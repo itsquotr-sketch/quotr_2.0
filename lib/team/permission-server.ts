@@ -1,5 +1,6 @@
 import "server-only";
 
+import { cache } from "react";
 import { requireOrgEntitlement } from "@/lib/billing/entitlement-server";
 import type { EntitlementCapability } from "@/lib/billing/capabilities";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
@@ -31,60 +32,87 @@ export type CompositionDecision =
       entitlementDenied?: boolean;
     };
 
-async function loadMembershipRole(input: {
-  orgId: string;
-  userId: string;
-}): Promise<MembershipRole | null> {
+async function loadMembershipRoleUncached(
+  orgId: string,
+  userId: string
+): Promise<MembershipRole | null> {
+  const input = { orgId, userId };
   const context = await getAuthOrgContext();
   if (!context || context.orgId !== input.orgId || context.user.id !== input.userId) {
     return null;
   }
 
-  const { data, error } = await context.supabase
-    .from("organisation_memberships")
-    .select("role, status")
-    .eq("org_id", input.orgId)
-    .eq("user_id", input.userId)
-    .in("status", ["active", "pending_billing"])
-    .maybeSingle();
-
-  if (error && isMissingMembershipRelation(error.message, error.code)) {
-    const { data: profile } = await context.supabase
+  const [membershipResult, profileResult] = await Promise.all([
+    context.supabase
+      .from("organisation_memberships")
+      .select("role, status")
+      .eq("org_id", orgId)
+      .eq("user_id", userId)
+      .in("status", ["active", "pending_billing"])
+      .maybeSingle(),
+    context.supabase
       .from("profiles")
-      .select("role")
-      .eq("id", input.userId)
-      .eq("org_id", input.orgId)
-      .maybeSingle();
+      .select("org_id, role")
+      .eq("id", userId)
+      .maybeSingle(),
+  ]);
+
+  if (
+    membershipResult.error &&
+    isMissingMembershipRelation(
+      membershipResult.error.message,
+      membershipResult.error.code
+    )
+  ) {
     const decision = decideMembershipAuthority({
       membershipTableAvailable: false,
       membership: null,
-      profile: { orgId: input.orgId, role: profile?.role ?? null },
+      profile: {
+        orgId,
+        role: profileResult.data?.role ?? null,
+      },
     });
     return membershipGrantsRolePermissions(decision) ? decision.role : null;
   }
 
-  if (error) {
+  if (membershipResult.error) {
     return null;
   }
 
-  const { data: profile } = await context.supabase
-    .from("profiles")
-    .select("org_id, role")
-    .eq("id", input.userId)
-    .maybeSingle();
-
+  const profile = profileResult.data;
   const decision = decideMembershipAuthority({
     membershipTableAvailable: true,
-    membership: data ? { role: data.role, status: data.status } : null,
+    membership: membershipResult.data
+      ? {
+          role: membershipResult.data.role,
+          status: membershipResult.data.status,
+        }
+      : null,
     profile: profile
       ? { orgId: profile.org_id, role: profile.role }
-      : { orgId: input.orgId, role: null },
+      : { orgId, role: null },
   });
 
   if (!membershipGrantsRolePermissions(decision)) {
     return null;
   }
   return decision.role;
+}
+
+/**
+ * Request-scoped membership role for READ/UI. Mutation paths still call
+ * requireOrgPermission in a new request, so this is not a post-write cache.
+ */
+const loadMembershipRoleCached: (
+  orgId: string,
+  userId: string
+) => Promise<MembershipRole | null> = cache(loadMembershipRoleUncached);
+
+async function loadMembershipRole(input: {
+  orgId: string;
+  userId: string;
+}): Promise<MembershipRole | null> {
+  return loadMembershipRoleCached(input.orgId, input.userId);
 }
 
 function isMissingMembershipRelation(

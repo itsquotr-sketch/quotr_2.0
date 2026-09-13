@@ -1,11 +1,13 @@
 "use server";
 
+import { cache } from "react";
 import { z } from "zod";
 import {
   MAX_MARGIN_PERCENT,
   MIN_MARGIN_PERCENT,
   validateMarginPercent,
 } from "@/lib/security/margin-validation";
+import { loadOrganisationName } from "@/lib/org/organisation-name-reader";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 import { permissionDeniedError } from "@/lib/team/permission-server";
@@ -58,15 +60,12 @@ async function getSetupAuthContext(): Promise<SetupAuthContext | null> {
     return null;
   }
 
-  const { data: organisation } = await context.supabase
-    .from("organisations")
-    .select("name")
-    .eq("id", context.orgId)
-    .maybeSingle();
+  const organisationName =
+    (await loadOrganisationName(context.orgId)) ?? "Your company";
 
   return {
     ...context,
-    organisationName: organisation?.name ?? "Your company",
+    organisationName,
   };
 }
 
@@ -130,6 +129,10 @@ export async function needsCompanyBasics(): Promise<boolean> {
 }
 
 export async function getFirstRunStage(): Promise<FirstRunStage> {
+  return getFirstRunStageCached();
+}
+
+async function getFirstRunStageUncached(): Promise<FirstRunStage> {
   const context = await getAuthOrgContext();
   if (!context) {
     return "basics";
@@ -151,6 +154,10 @@ export async function getFirstRunStage(): Promise<FirstRunStage> {
     hasPrimaryWorkAreas: (preferredWorkAreas?.length ?? 0) > 0,
   });
 }
+
+const getFirstRunStageCached: () => Promise<FirstRunStage> = cache(
+  getFirstRunStageUncached
+);
 
 const companyBasicsSchema = z.object({
   currency: z
@@ -409,23 +416,25 @@ export async function getSetupState(): Promise<SetupState> {
   }
 
   const { supabase, orgId, organisationName } = context;
-  const settingsRow = await ensureDefaultSettings(supabase, orgId);
+  const cachedSettings = await loadOrganisationSettingsRow(orgId);
+  const settingsRow = cachedSettings ?? (await ensureDefaultSettings(supabase, orgId));
 
-  const { data: workAreas } = await supabase
-    .from("organisation_work_areas")
-    .select(
-      "id, work_area_type, label, category, description, estimate_support, enabled, sort_order"
-    )
-    .eq("org_id", orgId)
-    .order("sort_order");
-
-  const { data: rates } = await supabase
-    .from("rates")
-    .select(
-      "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active"
-    )
-    .eq("org_id", orgId)
-    .eq("active", true);
+  const [{ data: workAreas }, { data: rates }] = await Promise.all([
+    supabase
+      .from("organisation_work_areas")
+      .select(
+        "id, work_area_type, label, category, description, estimate_support, enabled, sort_order"
+      )
+      .eq("org_id", orgId)
+      .order("sort_order"),
+    supabase
+      .from("rates")
+      .select(
+        "id, rate_type, trade, work_area_type, item_key, label, unit, cost_rate, sell_rate, markup_percent, active"
+      )
+      .eq("org_id", orgId)
+      .eq("active", true),
+  ]);
 
   return {
     organisationName,

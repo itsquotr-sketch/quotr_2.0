@@ -2,6 +2,8 @@ import "server-only";
 
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
+import { loadOrganisationName } from "@/lib/org/organisation-name-reader";
+import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 import type { CompanySettings } from "@/lib/settings/types";
 
 const COMPANY_SETTINGS_SELECT =
@@ -98,24 +100,15 @@ export function mapCompanySettingsRow(
 export async function getCompanySettingsWithContext(
   context: AuthOrgContext
 ): Promise<CompanySettings | null> {
-  const [{ data: organisation }, { data: row, error }] = await Promise.all([
-    context.supabase
-      .from("organisations")
-      .select("name")
-      .eq("id", context.orgId)
-      .maybeSingle(),
-    context.supabase
-      .from("organisation_settings")
-      .select(COMPANY_SETTINGS_SELECT)
-      .eq("org_id", context.orgId)
-      .maybeSingle(),
+  const [organisationName, row] = await Promise.all([
+    loadOrganisationName(context.orgId),
+    loadOrganisationSettingsRow(context.orgId),
   ]);
+  const name = organisationName ?? "Your company";
+  const error = null;
 
   if (!error && row) {
-    return mapCompanySettingsRow(
-      organisation?.name ?? "Your company",
-      row
-    );
+    return mapCompanySettingsRow(name, row);
   }
 
   const created = await ensureCompanySettingsRow(
@@ -136,10 +129,7 @@ export async function getCompanySettingsWithContext(
     return null;
   }
 
-  return mapCompanySettingsRow(
-    organisation?.name ?? "Your company",
-    createdRow
-  );
+  return mapCompanySettingsRow(name, createdRow);
 }
 
 export async function loadCompanySettingsForRequest(): Promise<CompanySettings | null> {

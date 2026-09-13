@@ -1,6 +1,7 @@
 import "server-only";
 
 import { cache } from "react";
+import { loadOrganisationName } from "@/lib/org/organisation-name-reader";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 
@@ -23,25 +24,20 @@ export const getAuthDisplayProfile = cache(
       return null;
     }
 
-    const [{ data: organisation }, settings, { data: profile }] =
-      await Promise.all([
-        auth.supabase
-          .from("organisations")
-          .select("name")
-          .eq("id", auth.orgId)
-          .maybeSingle(),
-        loadOrganisationSettingsRow(auth.orgId),
-        auth.supabase
-          .from("profiles")
-          .select("full_name")
-          .eq("id", auth.user.id)
-          .maybeSingle(),
-      ]);
+    const [organisationName, settings, { data: profile }] = await Promise.all([
+      loadOrganisationName(auth.orgId),
+      loadOrganisationSettingsRow(auth.orgId),
+      auth.supabase
+        .from("profiles")
+        .select("full_name")
+        .eq("id", auth.user.id)
+        .maybeSingle(),
+    ]);
 
     return {
       userEmail: auth.user.email,
       fullName: profile?.full_name ?? null,
-      organisationName: organisation?.name ?? null,
+      organisationName,
       tradingName: (settings?.trading_name as string | null) ?? null,
       timezone: (settings?.timezone as string | null) ?? null,
     };

@@ -10,7 +10,6 @@ import {
   applyProjectListFilter,
   clientEmailMigrationRequiredMessage,
   getProjectSelect,
-  hasBusinessStatusColumns,
   hasClientEmailColumn,
   hasLifecycleColumns,
   isMissingBusinessStatusColumnsError,
@@ -19,6 +18,7 @@ import {
   markBusinessStatusColumnsUnavailable,
   markClientEmailColumnUnavailable,
   markLifecycleColumnsUnavailable,
+  probeProjectSchemaColumns,
   withLifecycleDefaults,
 } from "@/lib/projects/query-utils";
 import { getProjectWithContext } from "@/lib/projects/project-loaders";
@@ -51,11 +51,11 @@ export async function listProjects(
 
   const filter = options?.filter ?? "all";
   const search = options?.search?.trim().toLowerCase() ?? "";
-  const lifecycleAvailable = await hasLifecycleColumns(context.supabase);
-  const businessStatusAvailable = lifecycleAvailable
-    ? await hasBusinessStatusColumns(context.supabase)
-    : false;
-  const clientEmailAvailable = await hasClientEmailColumn(context.supabase);
+  const {
+    lifecycleAvailable,
+    businessStatusAvailable,
+    clientEmailAvailable,
+  } = await probeProjectSchemaColumns(context.supabase);
 
   let query = context.supabase
     .from("projects")
@@ -142,24 +142,25 @@ export async function listProjects(
   }
 
   const projectIds = projects.map((project) => project.id);
-  const { data: estimates, error: estimatesError } = await context.supabase
-    .from("estimates")
-    .select("project_id, is_stale")
-    .in("project_id", projectIds);
+  const [estimatesResult, pricingByProject, quoteByProject] = await Promise.all([
+    context.supabase
+      .from("estimates")
+      .select("project_id, is_stale")
+      .in("project_id", projectIds),
+    getPricingSummariesForProjects(projectIds),
+    getQuoteSummariesForProjects(projectIds),
+  ]);
 
-  if (estimatesError) {
-    console.error("[listProjects] estimates query failed:", estimatesError.message);
+  if (estimatesResult.error) {
+    console.error("[listProjects] estimates query failed:", estimatesResult.error.message);
   }
 
   const estimateByProject = new Map(
-    (estimates ?? []).map((estimate) => [
+    (estimatesResult.data ?? []).map((estimate) => [
       estimate.project_id,
       { is_stale: estimate.is_stale ?? false },
     ])
   );
-
-  const pricingByProject = await getPricingSummariesForProjects(projectIds);
-  const quoteByProject = await getQuoteSummariesForProjects(projectIds);
 
   return projects.map((project) => {
     const estimate = estimateByProject.get(project.id);
@@ -214,10 +215,10 @@ export async function getDashboardPipelineSummary(): Promise<DashboardPipelineSu
     };
   }
 
-  const lifecycleAvailable = await hasLifecycleColumns(context.supabase);
-  const businessStatusAvailable = lifecycleAvailable
-    ? await hasBusinessStatusColumns(context.supabase)
-    : false;
+  const {
+    lifecycleAvailable,
+    businessStatusAvailable,
+  } = await probeProjectSchemaColumns(context.supabase);
 
   if (!lifecycleAvailable || !businessStatusAvailable) {
     const projects = await listProjects({ filter: "active" });

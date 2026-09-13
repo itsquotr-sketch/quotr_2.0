@@ -1,15 +1,10 @@
 "use client";
 
-import { useEffect, useState, useTransition } from "react";
 import Link from "next/link";
 import { Bell } from "lucide-react";
-import {
-  listMyQuoteNotifications,
-  markMyQuoteNotificationsRead,
-} from "@/lib/quotes/notification-actions";
-import type { QuoteNotificationRecord } from "@/lib/quotes/notifications";
 import { formatQuoteDateTime } from "@/lib/quotes/display";
 import { useAppUser } from "@/components/layout/app-user-context";
+import { useNotifications } from "@/components/layout/notification-context";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -23,38 +18,15 @@ type NotificationBellProps = {
 
 export function NotificationBell({ variant = "header" }: NotificationBellProps) {
   const { displayTimezone } = useAppUser();
-  const [items, setItems] = useState<QuoteNotificationRecord[]>([]);
-  const [unreadCount, setUnreadCount] = useState(0);
-  const [pending, startTransition] = useTransition();
+  const { items, unreadCount, pending, markOpenRead } = useNotifications();
   const isSidebar = variant === "sidebar";
 
-  useEffect(() => {
-    startTransition(async () => {
-      const result = await listMyQuoteNotifications();
-      setItems(result.notifications);
-      setUnreadCount(result.unreadCount);
-    });
-  }, []);
-
-  function handleOpenChange(open: boolean) {
-    if (!open) return;
-    const unreadIds = items.filter((item) => !item.read_at).map((item) => item.id);
-    if (unreadIds.length === 0) return;
-    startTransition(async () => {
-      await markMyQuoteNotificationsRead(unreadIds);
-      setItems((current) =>
-        current.map((item) =>
-          unreadIds.includes(item.id)
-            ? { ...item, read_at: item.read_at ?? new Date().toISOString() }
-            : item
-        )
-      );
-      setUnreadCount(0);
-    });
-  }
-
   return (
-    <DropdownMenu onOpenChange={handleOpenChange}>
+    <DropdownMenu
+      onOpenChange={(open) => {
+        if (open) markOpenRead();
+      }}
+    >
       <DropdownMenuTrigger
         className={cn(
           "relative inline-flex size-9 items-center justify-center rounded-lg outline-none",

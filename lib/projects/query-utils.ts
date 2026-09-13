@@ -19,6 +19,34 @@ export const PROJECT_SELECT = `${PROJECT_SELECT_BASE}, ${PROJECT_SELECT_LIFECYCL
 
 export const PROJECT_SELECT_WITHOUT_BUSINESS_STATUS = `${PROJECT_SELECT_BASE}, ${PROJECT_SELECT_LIFECYCLE}`;
 
+/** Dashboard list/KPI columns — omits notes/brief unused by the list UI. */
+export function getDashboardProjectSelect(
+  lifecycleAvailable: boolean,
+  businessStatusAvailable: boolean,
+  clientEmailAvailable = false
+): string {
+  const cols = [
+    "id",
+    "title",
+    "client_name",
+    "site_address",
+    "priority",
+    "due_date",
+    "stage",
+    "created_at",
+  ];
+  if (clientEmailAvailable) {
+    cols.push("client_email");
+  }
+  if (lifecycleAvailable) {
+    cols.push("archived_at", "deleted_at");
+  }
+  if (businessStatusAvailable) {
+    cols.push("business_status");
+  }
+  return cols.join(", ");
+}
+
 export function clientEmailMigrationRequiredMessage(): string {
   return "Client email requires a database update. Please run migration 043_project_client_email.sql.";
 }

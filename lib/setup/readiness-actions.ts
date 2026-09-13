@@ -1,5 +1,6 @@
 "use server";
 
+import { loadOrganisationName } from "@/lib/org/organisation-name-reader";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 import { orgHasHighImpactCalibration } from "@/lib/company-dna/progress";
@@ -53,21 +54,13 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
 
   const { supabase, orgId } = context;
 
-  const [{ data: organisation }, settings, { data: labourRates }, { data: companyRates }, { data: preferredWorkAreas }, { data: calibrations }] =
+  const [organisationName, settings, { data: companyRates }, { data: preferredWorkAreas }, { data: calibrations }] =
     await Promise.all([
-      supabase.from("organisations").select("name").eq("id", orgId).maybeSingle(),
+      loadOrganisationName(orgId),
       loadOrganisationSettingsRow(orgId),
       supabase
         .from("rates")
-        .select("id")
-        .eq("org_id", orgId)
-        .eq("active", true)
-        .eq("rate_type", "labour")
-        .not("cost_rate", "is", null)
-        .limit(1),
-      supabase
-        .from("rates")
-        .select("id")
+        .select("id, rate_type")
         .eq("org_id", orgId)
         .eq("active", true)
         .not("cost_rate", "is", null),
@@ -106,7 +99,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
 
   return computeCompanySetupReadiness({
     accountReady: true,
-    organisationName: organisation?.name ?? "Your company",
+    organisationName: organisationName ?? "Your company",
     onboardingStatus: onboardingStatus ?? null,
     currency: (settings?.currency as string | null) ?? null,
     country: (settings?.country as string | null) ?? null,
@@ -119,7 +112,7 @@ export async function getCompanySetupReadiness(): Promise<CompanySetupReadiness>
       settings?.default_margin_percent != null
         ? Number(settings.default_margin_percent)
         : null,
-    hasLabourRate: (labourRates?.length ?? 0) > 0,
+    hasLabourRate: (companyRates ?? []).some((row) => row.rate_type === "labour"),
     hasWorkTypePreferences: (preferredWorkAreas?.length ?? 0) > 0,
     companyRateCount: companyRates?.length ?? 0,
     hasCalibration: calibratedScenarioIds.size > 0,

@@ -12,7 +12,7 @@ import { cache } from "react";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
 
 export const ORGANISATION_SETTINGS_RAW_SELECT =
-  "id, org_id, trading_name, legal_name, contact_email, contact_phone, timezone, currency, country, region, default_gst_rate, default_margin_percent, default_contingency_percent, budget_rate_factor, premium_rate_factor, onboarding_status, onboarding_step, onboarding_completed_at, prefer_user_rates, allow_benchmark_rates, show_profit_in_estimates, address_line_1, city, logo_url, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
+  "id, org_id, trading_name, legal_name, contact_email, contact_phone, timezone, currency, country, region, default_gst_rate, default_margin_percent, default_contingency_percent, budget_rate_factor, premium_rate_factor, onboarding_status, onboarding_step, onboarding_completed_at, prefer_user_rates, allow_benchmark_rates, show_profit_in_estimates, address_line_1, address_line_2, city, website, postcode, address_country, nzbn, gst_number, default_quote_validity_days, default_payment_terms, default_quote_terms, default_quote_exclusions, default_quote_assumptions, logo_url, brand_primary_colour, brand_accent_colour, default_material_wastage_percent, decking_wastage_percent, sheet_material_wastage_percent, flooring_wastage_percent, paint_wastage_percent, timber_framing_wastage_percent";
 
 export type OrganisationSettingsRawRow = Record<string, unknown>;
 

@@ -22,6 +22,7 @@ import type {
 } from "@/lib/rates/types";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import type { AuthOrgContext } from "@/lib/security/auth-org-context";
+import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-settings-reader";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 import { toUserError } from "@/lib/errors/user-message";
 import { z } from "zod";
@@ -145,7 +146,9 @@ export async function getRatesPageState(): Promise<RatesPageState> {
   }
 
   const { supabase, orgId } = context;
-  const settingsRow = await ensureDefaultSettings(supabase, orgId);
+  const cachedSettings = await loadOrganisationSettingsRow(orgId);
+  const settingsRow =
+    cachedSettings ?? (await ensureDefaultSettings(supabase, orgId));
 
   const [{ data: rates }, { data: preferredRows }, ratesDenied, calibrateDenied] =
     await Promise.all([

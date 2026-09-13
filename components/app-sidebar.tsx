@@ -1,6 +1,6 @@
 "use client";
 
-import Link from "next/link";
+import Link, { useLinkStatus } from "next/link";
 import { usePathname } from "next/navigation";
 import { Building2, DollarSign, LayoutDashboard, Settings2, Users } from "lucide-react";
 import { FeedbackLink } from "@/components/layout/feedback-link";
@@ -23,6 +23,17 @@ const NAV_ITEMS = [
   { href: "/app/settings/team", label: "Team", icon: Users },
   { href: "/app/setup", label: "Setup", icon: Settings2, showIncomplete: true },
 ] as const;
+
+function NavPendingMark() {
+  const { pending } = useLinkStatus();
+  if (!pending) return null;
+  return (
+    <span
+      className="size-1.5 shrink-0 rounded-full bg-[var(--brand-orange)]"
+      aria-hidden
+    />
+  );
+}
 
 type AppSidebarNavProps = {
   setupIncomplete?: boolean;
@@ -67,10 +78,12 @@ export function AppSidebarNav({
             <Link
               key={href}
               href={href}
+              prefetch
               className={cn(navLinkClass, isActive && activeNavClass)}
             >
               <Icon className="size-4 opacity-80" />
               <span className="flex-1">{label}</span>
+              <NavPendingMark />
               {showBadge ? (
                 <Badge
                   variant="secondary"

@@ -11,7 +11,6 @@ import {
   nextCompanyDnaRwV2Task,
   rwTaskHref,
 } from "@/lib/company-dna/rw-v2";
-import { createClient } from "@/lib/supabase/server";
 import { needsCompanyBasics } from "@/lib/setup/actions";
 
 type PageProps = {
@@ -48,16 +47,6 @@ export default async function CompanyDnaRetainingWallLandingPage({
     redirect(rwTaskHref(nextTask.calibrationTaskKey));
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
   const showSummary = view === "summary";
 
   return (
@@ -66,7 +55,7 @@ export default async function CompanyDnaRetainingWallLandingPage({
         title="Retaining wall calibration"
         description="Tell Quotr how your crew normally completes common retaining wall tasks."
         actions={
-          <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
+          <UserMenu />
         }
       />
       <FormContainer innerClassName="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">

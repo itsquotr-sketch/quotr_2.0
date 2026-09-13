@@ -10,7 +10,6 @@ import {
   listCompanyDnaDeckV2UiTasks,
   nextCompanyDnaDeckV2Task,
 } from "@/lib/company-dna/deck-v2";
-import { createClient } from "@/lib/supabase/server";
 import { needsCompanyBasics } from "@/lib/setup/actions";
 
 type PageProps = {
@@ -43,16 +42,6 @@ export default async function CompanyDnaDeckLandingPage({
     redirect(`/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`);
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
   const showSummary =
     view === "summary" ||
     (area?.status === "calibrated" && view !== "intro");
@@ -63,7 +52,7 @@ export default async function CompanyDnaDeckLandingPage({
         title="Deck calibration"
         description="Tell Quotr how your crew normally completes common deck tasks."
         actions={
-          <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
+          <UserMenu />
         }
       />
       <FormContainer innerClassName="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">

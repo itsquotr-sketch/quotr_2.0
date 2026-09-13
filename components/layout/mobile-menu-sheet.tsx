@@ -86,7 +86,13 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
                     "h-11 w-full justify-start gap-2 px-3",
                     isActive && "bg-muted"
                   )}
-                  render={<Link href={href} onClick={() => setOpen(false)} />}
+                  render={
+                    <Link
+                      href={href}
+                      prefetch
+                      onClick={() => setOpen(false)}
+                    />
+                  }
                 >
                   <Icon className="size-4" />
                   <span className="flex-1 text-left">{label}</span>

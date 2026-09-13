@@ -4,13 +4,13 @@ import { PageHeader } from "@/components/layout/page-header";
 import { UserMenu } from "@/components/layout/user-menu";
 import { CompanySettingsContent } from "@/components/settings/CompanySettingsContent";
 import { measureServerLoad } from "@/lib/perf/timing";
+import { getAuthDisplayProfile } from "@/lib/security/auth-display";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { getCompanySettings } from "@/lib/settings/company-actions";
 import {
   isMovedCompanyAdvancedSection,
   parseCompanySettingsSection,
 } from "@/lib/setup/recommendation-destinations";
-import { createClient } from "@/lib/supabase/server";
 import { requireOrgPermission } from "@/lib/team/permission-server";
 
 type CompanySettingsPageProps = {
@@ -27,49 +27,38 @@ export default async function CompanySettingsPage({
   const initialSection =
     parseCompanySettingsSection(params.section) ?? "general";
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
-  const settings = await measureServerLoad("company-settings", () =>
-    getCompanySettings()
-  );
-  if (!settings) {
-    notFound();
-  }
-
-  const auth = await getAuthOrgContext();
-  const canEdit = auth
-    ? (
+  const [settings, canEdit, display] = await Promise.all([
+    measureServerLoad("company-settings", () => getCompanySettings()),
+    (async () => {
+      const auth = await getAuthOrgContext();
+      if (!auth) return false;
+      return (
         await requireOrgPermission({
           orgId: auth.orgId,
           userId: auth.user.id,
           permission: "company.edit",
         })
-      ).ok
-    : false;
+      ).ok;
+    })(),
+    getAuthDisplayProfile(),
+  ]);
+
+  if (!settings) {
+    notFound();
+  }
 
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
       <PageHeader
         title="Company"
         description="Company identity, contact details, tax, timezone, quotes, and branding."
-        actions={
-          <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
-        }
+        actions={<UserMenu />}
       />
       <FormContainer>
         <CompanySettingsContent
           initialSettings={settings}
-          userEmail={user?.email}
-          userFullName={profile?.full_name}
+          userEmail={display?.userEmail}
+          userFullName={display?.fullName}
           initialSection={initialSection}
           canEdit={canEdit}
         />

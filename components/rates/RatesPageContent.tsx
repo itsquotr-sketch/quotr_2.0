@@ -1,35 +1,32 @@
 "use client";
 
+import dynamic from "next/dynamic";
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { buttonVariants } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { SettingsSectionNav } from "@/components/layout/section-nav";
-import { LABOUR_RATE_CATALOGUE, SCOPE_RATE_CATALOGUE } from "@/lib/rates/catalogue";
-import {
-  DECK_PRODUCTIVITY_RATE_CATALOGUE,
-  FENCE_PRODUCTIVITY_RATE_CATALOGUE,
-  RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
-  SPECIFIC_MATERIAL_RATE_GROUPS,
-  WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
-} from "@/lib/rates/specific-material-catalogue";
-import { catalogueEntriesForRatesSection } from "@/lib/rates/rate-section-contract";
 import { getRatesPageState } from "@/lib/rates/actions";
-import type { RateCatalogueEntry } from "@/lib/rates/types";
-import type { RatesPageState } from "@/lib/rates/types";
+import type { RatesPageRate, RatesPageState } from "@/lib/rates/types";
 import {
   parseRatesSection,
   type RatesSectionId,
 } from "@/lib/setup/recommendation-destinations";
 import { cn } from "@/lib/utils";
-import { BenchmarkFallbackSection } from "./BenchmarkFallbackSection";
 import { CompanyDefaultsSection } from "./CompanyDefaultsSection";
 import { MaterialWastageDefaultsSection } from "./MaterialWastageDefaultsSection";
-import { RatesTableSection } from "./RatesTableSection";
-import { CompanyDnaRatesCompare } from "./CompanyDnaRatesCompare";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { resolveCompanyGrossMarginPercent } from "@/lib/rates/cost-first-presentation";
 import type { CompanySettings } from "@/lib/settings/types";
+
+const RatesNonDefaultSections = dynamic(
+  () =>
+    import("./RatesNonDefaultSections").then((mod) => mod.RatesNonDefaultSections),
+  {
+    loading: () => (
+      <div className="h-40 rounded-lg border border-dashed border-border/70 bg-muted/10" />
+    ),
+  }
+);
 
 type RatesPageContentProps = {
   initialState: RatesPageState;
@@ -72,46 +69,6 @@ function viewFor(section: RatesSectionId): RatesSectionId {
   return section;
 }
 
-function plantCatalogue(): RateCatalogueEntry[] {
-  return catalogueEntriesForRatesSection(
-    SPECIFIC_MATERIAL_RATE_GROUPS.flatMap((group) => [...group.entries]).filter(
-      (entry) =>
-        entry.item_key.startsWith("plant.") ||
-        entry.workAreaLabel?.toLowerCase().includes("plant")
-    ),
-    "material"
-  );
-}
-
-function subcontractCatalogue(): RateCatalogueEntry[] {
-  return catalogueEntriesForRatesSection(
-    SPECIFIC_MATERIAL_RATE_GROUPS.flatMap((group) => [...group.entries]).filter(
-      (entry) => entry.category === "subcontractor"
-    ),
-    "material"
-  );
-}
-
-function materialGroups() {
-  return SPECIFIC_MATERIAL_RATE_GROUPS.filter((group) => {
-    const title = group.title.toLowerCase();
-    if (title.startsWith("waste")) return false;
-    const onlyPlant = group.entries.every(
-      (entry) =>
-        entry.item_key.startsWith("plant.") ||
-        entry.workAreaLabel?.toLowerCase().includes("plant")
-    );
-    return !onlyPlant;
-  }).map((group) => ({
-    ...group,
-    entries: group.entries.filter(
-      (entry) =>
-        !entry.item_key.startsWith("plant.") &&
-        !entry.workAreaLabel?.toLowerCase().includes("plant")
-    ),
-  }));
-}
-
 export function RatesPageContent({
   initialState,
   initialSection = "defaults",
@@ -120,12 +77,6 @@ export function RatesPageContent({
   const [state, setState] = useState(initialState);
   const [activeSection, setActiveSection] = useState<RatesSectionId>(
     parseRatesSection(initialSection) ?? "defaults"
-  );
-  const [materialQuery, setMaterialQuery] = useState("");
-
-  const preferred = useMemo(
-    () => state.preferredWorkAreaTypes ?? [],
-    [state.preferredWorkAreaTypes]
   );
 
   async function refresh() {
@@ -141,6 +92,10 @@ export function RatesPageContent({
 
   const view = viewFor(activeSection);
   const navActive = navIdFor(activeSection);
+  const showNonDefault =
+    view !== "defaults" ||
+    activeSection === LEGACY_RATES_SECTION.id ||
+    activeSection === "benchmarks";
 
   const activeLabel =
     RATES_SECTIONS.find((section) => section.id === navActive)?.label ??
@@ -152,30 +107,9 @@ export function RatesPageContent({
     state.settings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT
   );
 
-  const filteredMaterialGroups = useMemo(() => {
-    const q = materialQuery.trim().toLowerCase();
-    return materialGroups()
-      .map((group) => {
-        const entries = catalogueEntriesForRatesSection(group.entries, "material");
-        if (!q) return { ...group, entries };
-        return {
-          ...group,
-          entries: entries.filter(
-            (entry) =>
-              entry.label.toLowerCase().includes(q) ||
-              entry.item_key.toLowerCase().includes(q)
-          ),
-        };
-      })
-      .filter((group) => group.entries.length > 0);
-  }, [materialQuery]);
-
-  const plantEntries = plantCatalogue();
-  const subcontractEntries = subcontractCatalogue();
-  const wasteEntries = catalogueEntriesForRatesSection(
-    WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
-    "material"
-  );
+  function onRatesChange(rates: RatesPageRate[]) {
+    setState((prev) => ({ ...prev, rates }));
+  }
 
   return (
     <div className="space-y-4" data-rates-compact>
@@ -199,184 +133,6 @@ export function RatesPageContent({
       </p>
 
       <div className="min-w-0">
-        {view === "core" ? (
-          <div className="space-y-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
-            <RatesTableSection
-              title="Labour"
-              description={`Enter your cost per hour. Recommended charge-out uses your ${companyGrossMarginPercent}% company gross margin.`}
-              catalogue={LABOUR_RATE_CATALOGUE.filter(
-                (entry) =>
-                  entry.item_key === "labour.carpenter.hour" ||
-                  entry.item_key === "labour.labourer.hour" ||
-                  entry.item_key === "labour.general.hour"
-              )}
-              rates={state.rates}
-              onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-              companyGrossMarginPercent={companyGrossMarginPercent}
-              variant="labour"
-              showEngineColumn
-              readOnly={!state.canManageRates}
-            />
-            <div>
-              <h3 className="mb-2 text-sm font-semibold tracking-tight">
-                Labour productivity
-              </h3>
-              <CompanyDnaRatesCompare
-                rates={state.rates}
-                variant="productivity"
-                preferredWorkAreaTypes={preferred}
-                canCalibrate={state.canCalibrate}
-                onChanged={() => {
-                  void refresh();
-                }}
-              />
-            </div>
-            <details className="rounded-lg border border-dashed border-border/70 px-3 py-2">
-              <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-                All productivity keys
-              </summary>
-              <div className="mt-3">
-                <RatesTableSection
-                  title="All productivity keys"
-                  description="Advanced view of every labour-hours key. Lower means fewer labour hours per unit. Prefer the Work Area groups above. Editing hours here changes labour TIME, not carpenter $/hr."
-                  catalogue={catalogueEntriesForRatesSection(
-                    [
-                      ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
-                      ...RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
-                      ...FENCE_PRODUCTIVITY_RATE_CATALOGUE,
-                    ],
-                    "productivity"
-                  )}
-                  rates={state.rates}
-                  onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-                  companyGrossMarginPercent={companyGrossMarginPercent}
-                  variant="productivity"
-                  showEngineColumn
-                  readOnly={!state.canManageRates}
-                />
-              </div>
-            </details>
-          </div>
-        ) : null}
-
-        {view === "materials" ? (
-          <div className="space-y-4">
-            <div className="space-y-1">
-              <h2 className="text-base font-semibold tracking-tight">Materials</h2>
-              <p className="text-sm text-muted-foreground">
-                Your rate is primary when set. Otherwise Quotr benchmark is used
-                where one exists.
-              </p>
-            </div>
-            <Input
-              type="search"
-              value={materialQuery}
-              onChange={(event) => setMaterialQuery(event.target.value)}
-              placeholder="Search rates"
-              aria-label="Search rates"
-              className="h-9 max-w-sm"
-            />
-            {filteredMaterialGroups.length === 0 ? (
-              <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">
-                No matching material rates.
-              </p>
-            ) : (
-              filteredMaterialGroups.map((group) => (
-                <RatesTableSection
-                  key={group.title}
-                  title={group.title}
-                  description={group.description}
-                  catalogue={group.entries}
-                  rates={state.rates}
-                  onRatesChange={(rates) =>
-                    setState((prev) => ({ ...prev, rates }))
-                  }
-                  companyGrossMarginPercent={companyGrossMarginPercent}
-                  variant="grouped"
-                  showEngineColumn
-                  readOnly={!state.canManageRates}
-                />
-              ))
-            )}
-          </div>
-        ) : null}
-
-        {view === "plant" ? (
-          plantEntries.length === 0 ? (
-            <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">
-              No plant rates to manage yet.
-            </p>
-          ) : (
-            <RatesTableSection
-              title="Plant"
-              description="Hire and plant day rates used by current estimates."
-              catalogue={plantEntries}
-              rates={state.rates}
-              onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-              companyGrossMarginPercent={companyGrossMarginPercent}
-              variant="grouped"
-              showEngineColumn
-              readOnly={!state.canManageRates}
-            />
-          )
-        ) : null}
-
-        {view === "subcontract" ? (
-          subcontractEntries.length === 0 ? (
-            <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">
-              No subcontract rates to manage yet.
-            </p>
-          ) : (
-            <RatesTableSection
-              title="Subcontract"
-              description="Company subcontract rates."
-              catalogue={subcontractEntries}
-              rates={state.rates}
-              onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-              companyGrossMarginPercent={companyGrossMarginPercent}
-              variant="grouped"
-              showEngineColumn
-              readOnly={!state.canManageRates}
-            />
-          )
-        ) : null}
-
-        {view === "waste" ? (
-          wasteEntries.length === 0 ? (
-            <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">
-              No waste rates to manage yet.
-            </p>
-          ) : (
-            <RatesTableSection
-              title="Waste"
-              description="Spoil removal and disposal identities. Material wastage percentages live under Defaults."
-              catalogue={wasteEntries}
-              rates={state.rates}
-              onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-              companyGrossMarginPercent={companyGrossMarginPercent}
-              variant="grouped"
-              showEngineColumn
-              readOnly={!state.canManageRates}
-            />
-          )
-        ) : null}
-
-        {activeSection === "legacy" ? (
-          <div className="space-y-4">
-            <RatesTableSection
-              title="Legacy package rates"
-              description="Older overall package rates kept for history and compatibility. Current estimates use labour, productivity, and materials above."
-              catalogue={SCOPE_RATE_CATALOGUE}
-              rates={state.rates}
-              onRatesChange={(rates) => setState((prev) => ({ ...prev, rates }))}
-              companyGrossMarginPercent={companyGrossMarginPercent}
-              variant="grouped"
-              showEngineColumn
-              readOnly={!state.canManageRates}
-            />
-          </div>
-        ) : null}
-
         {view === "defaults" ? (
           <div className="space-y-4" data-rates-defaults>
             <CompanyDefaultsSection
@@ -395,8 +151,17 @@ export function RatesPageContent({
           </div>
         ) : null}
 
-        {activeSection === "benchmarks" ? (
-          <BenchmarkFallbackSection settings={state.settings} />
+        {showNonDefault ? (
+          <RatesNonDefaultSections
+            view={view}
+            activeSection={activeSection}
+            state={state}
+            onRatesChange={onRatesChange}
+            onChanged={() => {
+              void refresh();
+            }}
+            companyGrossMarginPercent={companyGrossMarginPercent}
+          />
         ) : null}
       </div>
 

@@ -6,7 +6,6 @@ import {
   setupModeRedirect,
   setupShellMode,
 } from "@/lib/setup/first-run-stage";
-import { createClient } from "@/lib/supabase/server";
 
 type SetupPageProps = {
   searchParams: Promise<{ mode?: string; section?: string }>;
@@ -40,17 +39,6 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
           | "calibrate")
       : undefined;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
   const [state, dnaHub] = await Promise.all([
     getSetupState(),
     shellMode === "improve"
@@ -62,8 +50,6 @@ export default async function SetupPage({ searchParams }: SetupPageProps) {
     <SetupShell
       initialState={state}
       mode={shellMode}
-      userEmail={user?.email}
-      fullName={profile?.full_name}
       initialImproveSection={initialImproveSection}
       dnaHub={dnaHub}
     />

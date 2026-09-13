@@ -20,7 +20,6 @@ import {
   rwSystemProgress,
   rwSystemTier1Keys,
 } from "@/lib/company-dna/rw-v2";
-import { createClient } from "@/lib/supabase/server";
 import { needsCompanyBasics } from "@/lib/setup/actions";
 
 type PageProps = {
@@ -45,16 +44,6 @@ export default async function CompanyDnaTaskPage({
   if (!v2 && !task.exposeInCurrentUi) {
     notFound();
   }
-
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
 
   const hub = await getCompanyDnaHubState();
   const area = hub.progress.find(
@@ -134,7 +123,7 @@ export default async function CompanyDnaTaskPage({
             : "Quotr turns crew size and time into labour hours for future estimates."
         }
         actions={
-          <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
+          <UserMenu />
         }
       />
       <FormContainer innerClassName="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">

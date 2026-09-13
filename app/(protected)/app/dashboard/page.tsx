@@ -7,16 +7,10 @@ import { DashboardProjectList } from "@/components/projects/DashboardProjectList
 import { DashboardSummaryCards } from "@/components/projects/DashboardSummaryCards";
 import { NewProjectDialog } from "@/components/projects/NewProjectDialog";
 import { ImproveSetupCard } from "@/components/setup/ImproveSetupCard";
-import { listRecentActivity } from "@/lib/dashboard/recent-activity";
-import {
-  getDashboardPipelineSummary,
-  listProjects,
-  organisationHasProjects,
-} from "@/lib/projects/actions";
+import { loadDashboardPageData } from "@/lib/dashboard/load-dashboard-page";
 import { measureServerLoad } from "@/lib/perf/timing";
 import { getProjectNextAction } from "@/lib/projects/next-action";
 import { parseProjectListFilter } from "@/lib/projects/status";
-import { getCompanySetupReadiness } from "@/lib/setup/readiness-actions";
 
 type DashboardPageProps = {
   searchParams: Promise<{ filter?: string; q?: string }>;
@@ -31,29 +25,7 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
   // auth+profile here — desktop UserMenu reads the shared context.
   const { projects, summary, readiness, hasProjects, activity } = await measureServerLoad(
     "dashboard",
-    async () => {
-      const [
-        projectsResult,
-        summaryResult,
-        readinessResult,
-        hasProjectsResult,
-        activityResult,
-      ] = await Promise.all([
-        listProjects({ filter, search }),
-        getDashboardPipelineSummary(),
-        getCompanySetupReadiness(),
-        organisationHasProjects(),
-        listRecentActivity(),
-      ]);
-
-      return {
-        projects: projectsResult,
-        summary: summaryResult,
-        readiness: readinessResult,
-        hasProjects: hasProjectsResult,
-        activity: activityResult,
-      };
-    }
+    () => loadDashboardPageData({ filter, search })
   );
 
   const isEmpty = !hasProjects;

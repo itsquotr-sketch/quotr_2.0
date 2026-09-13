@@ -409,6 +409,7 @@ assert("viewer hides save", flow.includes("canCalibrate") && flow.includes("DNA_
 
 const ratesCompare = read("components/rates/CompanyDnaRatesCompare.tsx");
 const ratesPage = read("components/rates/RatesPageContent.tsx");
+const ratesNonDefault = read("components/rates/RatesNonDefaultSections.tsx");
 const ratesTable = read("components/rates/RatesTableSection.tsx");
 assert("rates productivity helper", DNA_RATES_PRODUCTIVITY_HELPER.includes("Lower means fewer labour hours"));
 assert("rates compare uses helper", ratesCompare.includes("DNA_RATES_PRODUCTIVITY_HELPER"));
@@ -419,7 +420,7 @@ assert("no raw enums in hub", !hub.includes("calibrated_productivity") && !hub.i
 assert("friendly labels", RATE_SOURCE_FRIENDLY_LABELS.calibrated_productivity === "Your calibrated productivity");
 assert("estimator commercial edit hidden", ratesPage.includes("readOnly={!state.canManageRates}"));
 assert("rates table supports readOnly", ratesTable.includes("readOnly"));
-assert("estimator can still calibrate in compare", ratesPage.includes("canCalibrate={state.canCalibrate}"));
+assert("estimator can still calibrate in compare", ratesNonDefault.includes("canCalibrate={state.canCalibrate}"));
 assert(
   "company settings canEdit does not gate DNA",
   !ratesPage.includes("canEdit") &&

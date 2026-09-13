@@ -5,7 +5,6 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { CalibrationFlow } from "@/components/calibration/CalibrationFlow";
 import { getActiveCalibrationForScenario } from "@/lib/calibration/actions";
 import { getCalibrationScenario } from "@/lib/calibration/catalogue";
-import { createClient } from "@/lib/supabase/server";
 import { needsCompanyBasics } from "@/lib/setup/actions";
 
 type PageProps = {
@@ -21,16 +20,6 @@ export default async function CalibrateScenarioPage({ params }: PageProps) {
   const scenario = getCalibrationScenario(decodeURIComponent(scenarioId));
   if (!scenario) notFound();
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
   const existing = await getActiveCalibrationForScenario(scenario.id);
 
   return (
@@ -39,7 +28,7 @@ export default async function CalibrateScenarioPage({ params }: PageProps) {
         title="Historical pricing notes"
         description="This older example-job comparison is kept as evidence. It does not change estimates. Calibrate crew productivity from Make Quotr price more like you."
         actions={
-          <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
+          <UserMenu />
         }
       />
       <FormContainer>

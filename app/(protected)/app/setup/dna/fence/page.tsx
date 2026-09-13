@@ -10,7 +10,6 @@ import {
   listCompanyDnaFenceV2UiTasks,
   nextCompanyDnaV2Task,
 } from "@/lib/company-dna/v2-ui";
-import { createClient } from "@/lib/supabase/server";
 import { needsCompanyBasics } from "@/lib/setup/actions";
 
 type PageProps = {
@@ -46,16 +45,6 @@ export default async function CompanyDnaFenceLandingPage({
     redirect(`/app/setup/dna/${encodeURIComponent(nextTask.calibrationTaskKey)}`);
   }
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
   const showSummary =
     view === "summary" ||
     (area?.status === "calibrated" && view !== "intro");
@@ -66,7 +55,7 @@ export default async function CompanyDnaFenceLandingPage({
         title="Fence calibration"
         description="Tell Quotr how your crew normally completes common fence tasks."
         actions={
-          <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
+          <UserMenu />
         }
       />
       <FormContainer innerClassName="pb-[calc(6rem+env(safe-area-inset-bottom))] md:pb-6">
