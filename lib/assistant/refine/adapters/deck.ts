@@ -118,59 +118,6 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
     }
 
     if (
-      shouldAskPileReplacement({ facts: [...facts], workAreaId }) &&
-      !known(facts, workAreaId, "deck.pile_or_post_replacement_required", briefText)
-    ) {
-      out.push({
-        id: `refine:${workAreaId}:deck.pile_or_post_replacement_required`,
-        group: "structure",
-        tier: "advanced",
-        workAreaId,
-        workAreaName,
-        workAreaType: "deck",
-        factKey: "deck.pile_or_post_replacement_required",
-        constraintKey: null,
-        questionKey: "deck.pile_or_post_replacement_required",
-        label: "Pile / post replacement",
-        question: "Replace existing piles or posts?",
-        inputType: "boolean",
-        writeTarget: "FACT",
-        write: {
-          factKey: "deck.pile_or_post_replacement_required",
-          valueType: "boolean",
-          includeValue: true,
-          excludeValue: false,
-          label: "Pile / post replacement",
-        },
-        consumedByCalculator: true,
-      });
-    }
-
-    if (
-      !newSubstructureIncluded([...facts], workAreaId) &&
-      !known(facts, workAreaId, "deck.substructure_condition", briefText)
-    ) {
-      out.push({
-        id: `refine:${workAreaId}:deck.substructure_condition`,
-        group: "structure",
-        tier: "advanced",
-        workAreaId,
-        workAreaName,
-        workAreaType: "deck",
-        factKey: "deck.substructure_condition",
-        constraintKey: null,
-        questionKey: "deck.substructure_condition",
-        label: "Existing substructure condition",
-        question: "What is the existing substructure condition?",
-        inputType: "select",
-        options: ["Sound", "Partial replacement", "Full replacement", "None", "Unknown"],
-        writeTarget: "FACT",
-        write: null,
-        consumedByCalculator: true,
-      });
-    }
-
-    if (
       supportsRelevant &&
       concreteYes &&
       !known(facts, workAreaId, DECK_CONCRETE_BAGS_PER_HOLE_FACT_KEY, briefText)

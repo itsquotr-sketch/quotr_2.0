@@ -20,6 +20,7 @@ import {
 import {
   deckStepsCommerciallyIncluded,
   newSubstructureIncluded,
+  pileReplacementApplicable,
   shouldAskPileReplacement,
 } from "@/lib/estimate/deck-scope-2c";
 import type { EstimateFact } from "@/lib/estimate/types";
@@ -65,6 +66,8 @@ const SECTIONS: Record<string, DeckQuestionSection> = {
   "deck.ground_clearance_m": "boarding",
   "deck.fascia_material": "boarding",
   "deck.substructure_included": "structure",
+  "deck.pile_or_post_replacement_required": "structure",
+  "deck.substructure_condition": "structure",
   "deck.joist_centres_mm": "structure",
   "deck.joist_section": "structure",
   "deck.joist_direction": "structure",
@@ -134,6 +137,12 @@ export function deckFactIsRelevant(
     case "deck.concrete_bags_per_hole":
       return showConcrete(ctx);
     case "deck.pile_or_post_replacement_required":
+      return pileReplacementApplicable({
+        facts: asEstimateFacts(ctx.facts),
+        workAreaId: ctx.workAreaId,
+      });
+    case "deck.substructure_condition":
+      return !newSubstructureIncluded(asEstimateFacts(ctx.facts), ctx.workAreaId);
     case "deck.pile_or_post_count":
       return shouldAskPileReplacement({
         facts: asEstimateFacts(ctx.facts),

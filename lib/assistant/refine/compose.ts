@@ -14,6 +14,10 @@ import {
 } from "@/lib/estimate/consumed-facts";
 import { isDisclosedAssumptionSource } from "@/lib/estimate/deck-board-width";
 import { deckFactIsRelevant } from "@/lib/estimate/deck-question-descriptors";
+import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
+import { fenceFactIsRelevant } from "@/lib/estimate/fence-question-relevance";
+import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
+import { retainingWallFactIsRelevant } from "@/lib/estimate/retaining-wall-question-relevance";
 import { isUnresolvedCaptureValue } from "@/lib/estimate/disclosed-assumptions";
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
@@ -59,7 +63,18 @@ function isEditableConsumedFact(workAreaType: string, factKey: string): boolean 
     return false;
   }
   const template = getQuestionTemplateByKey(factKey);
-  if (template && getEstimatePriorityClass(template) === "P3") return false;
+  if (template && getEstimatePriorityClass(template) === "P3") {
+    const contract =
+      fenceFactQuestionClass(factKey) ??
+      retainingWallFactQuestionClass(factKey);
+    if (
+      contract !== "HARD_MINIMUM" &&
+      contract !== "ASK_NOW" &&
+      contract !== "ASSUME_IF_SKIPPED"
+    ) {
+      return false;
+    }
+  }
   return true;
 }
 
@@ -74,6 +89,21 @@ function factIsRelevant(
       facts: input.facts,
       workAreaId,
       briefText: input.briefText,
+    });
+  }
+  if (workAreaType === "fence" || factKey.startsWith("fence.")) {
+    return fenceFactIsRelevant(factKey, {
+      facts: input.facts,
+      workAreaId,
+    });
+  }
+  if (
+    workAreaType === "retaining_wall" ||
+    factKey.startsWith("retaining_wall.")
+  ) {
+    return retainingWallFactIsRelevant(factKey, {
+      facts: input.facts,
+      workAreaId,
     });
   }
   return true;

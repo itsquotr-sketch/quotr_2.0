@@ -47,7 +47,9 @@ import {
   mapDeckAskClassToClarify,
 } from "@/lib/estimate/deck-question-descriptors";
 import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
+import { fenceFactIsRelevant } from "@/lib/estimate/fence-question-relevance";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
+import { retainingWallFactIsRelevant } from "@/lib/estimate/retaining-wall-question-relevance";
 import type {
   ClarifyAskClass,
   ClarifyCandidate,
@@ -173,13 +175,19 @@ const CHECK_SCORES: Record<string, number> = {
   "deck.board_material": 89,
   "deck.board_width_mm": 88,
   "deck.height_m": 86,
+  "deck.pile_or_post_replacement_required": 84,
+  "deck.substructure_condition": 83,
   "deck.step_width_m": 82,
   "deck.step_going_m": 81,
   "bathroom.demolition_required": 88,
   "bathroom.demolition.components": 87,
   "fence.demolition_required": 88,
+  "fence.disposal_required": 67,
   "fence.gate_included": 86,
   "fence.top_capping": 70,
+  "fence.finish_required": 66,
+  "fence.finish_type": 65,
+  "fence.finish_sides": 64,
   "deck.vertical_face_boards_required": 55,
   "deck.skirting_included": 52,
   "deck.access_type": 35,
@@ -1557,6 +1565,28 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
         reason: "Existing fence removal",
         score: 68,
       });
+      extras.push({
+        key: "fence.disposal_required",
+        reason: "Disposal of removed fencing",
+        score: 67,
+      });
+      extras.push(
+        {
+          key: "fence.finish_required",
+          reason: "Fence painting or staining",
+          score: 66,
+        },
+        {
+          key: "fence.finish_type",
+          reason: "Fence finish type",
+          score: 65,
+        },
+        {
+          key: "fence.finish_sides",
+          reason: "Fence finish sides",
+          score: 64,
+        }
+      );
       for (const extra of extras) {
         if (factHas(input, extra.key, wa.id)) continue;
         const cls = fenceFactQuestionClass(extra.key);
@@ -1564,6 +1594,14 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           continue;
         }
         if (!isClarifyExtraFactKey(extra.key)) continue;
+        if (
+          !fenceFactIsRelevant(extra.key, {
+            facts,
+            workAreaId: wa.id,
+          })
+        ) {
+          continue;
+        }
         const template = getQuestionTemplateByKey(extra.key);
         out.push({
           id: `fact:${wa.id}:${extra.key}`,
@@ -1635,11 +1673,28 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
       });
     }
     if (system === "CONCRETE_MASONRY_WALL") {
-      extras.push({
-        key: "retaining_wall.waterproofing_required",
-        reason: "Masonry waterproofing",
-        score: 64,
-      });
+      extras.push(
+        {
+          key: "retaining_wall.block_laying_method",
+          reason: "Masonry block-laying ownership",
+          score: 72,
+        },
+        {
+          key: "retaining_wall.masonry.subcontract_scope",
+          reason: "Masonry subcontract commercial scope",
+          score: 71,
+        },
+        {
+          key: "retaining_wall.waterproofing_required",
+          reason: "Masonry waterproofing",
+          score: 64,
+        },
+        {
+          key: "retaining_wall.waterproofing_type",
+          reason: "Masonry waterproofing type",
+          score: 63,
+        }
+      );
     }
     if (system === "TIMBER_RETAINING_WALL") {
       extras.push({
@@ -1649,9 +1704,17 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
       });
     }
     for (const extra of extras) {
-      if (factHas(input, extra.key, wa.id)) continue;
-      if (retainingWallFactQuestionClass(extra.key) === "REFINE") continue;
-      if (!isClarifyExtraFactKey(extra.key)) continue;
+        if (factHas(input, extra.key, wa.id)) continue;
+        if (retainingWallFactQuestionClass(extra.key) === "REFINE") continue;
+        if (!isClarifyExtraFactKey(extra.key)) continue;
+        if (
+          !retainingWallFactIsRelevant(extra.key, {
+            facts,
+            workAreaId: wa.id,
+          })
+        ) {
+          continue;
+        }
       const template = getQuestionTemplateByKey(extra.key);
       out.push({
         id: `fact:${wa.id}:${extra.key}`,

@@ -103,6 +103,24 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     reason: "Demolition labour only if included.",
   },
   {
+    factKey: "deck.pile_or_post_replacement_required",
+    questionClass: "ASK_NOW",
+    calculatorConsumed: true,
+    physical: false,
+    commercial: true,
+    reason:
+      "Replacement labour/material only when existing supports may be reused. Not for a new substructure layout.",
+  },
+  {
+    factKey: "deck.substructure_condition",
+    questionClass: "ASK_NOW",
+    calculatorConsumed: true,
+    physical: true,
+    commercial: true,
+    reason:
+      "Existing substructure condition. Affects reuse vs replacement. Asked only when existing supports remain.",
+  },
+  {
     factKey: "deck.vertical_face_boards_required",
     questionClass: "ASK_NOW",
     calculatorConsumed: true,

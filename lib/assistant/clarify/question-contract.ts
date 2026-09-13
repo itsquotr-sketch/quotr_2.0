@@ -105,15 +105,21 @@ export function isDetailsOwnedQuestion(candidate: ClarifyCandidate): boolean {
   return false;
 }
 
-/** P2 / P3 extras belong in Refine, not initial Details. */
+/** P2 / P3 extras belong in Refine, not initial Details — unless the
+ * Work Area information contract already classifies the fact as Details-owned.
+ */
 export function isClarifyExtraFactKey(factKey: string): boolean {
-  const template = getQuestionTemplateByKey(factKey);
-  const priority = template ? getEstimatePriorityClass(template) : null;
-  if (priority === "P3") return false;
   const contract =
     deckFactQuestionClass(factKey) ??
     fenceFactQuestionClass(factKey) ??
     retainingWallFactQuestionClass(factKey);
+  if (
+    contract === "HARD_MINIMUM" ||
+    contract === "ASK_NOW" ||
+    contract === "ASSUME_IF_SKIPPED"
+  ) {
+    return true;
+  }
   if (
     contract === "REFINE" ||
     contract === "DERIVED" ||
@@ -121,6 +127,9 @@ export function isClarifyExtraFactKey(factKey: string): boolean {
   ) {
     return false;
   }
+  const template = getQuestionTemplateByKey(factKey);
+  const priority = template ? getEstimatePriorityClass(template) : null;
+  if (priority === "P3") return false;
   return true;
 }
 

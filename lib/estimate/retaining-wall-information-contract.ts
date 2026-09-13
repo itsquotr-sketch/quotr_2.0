@@ -315,22 +315,23 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
     },
     {
       factKey: "retaining_wall.block_laying_method",
-      questionClass: "REFINE",
-      calculatorConsumed: true,
-      physical: false,
-      commercial: false,
-      confidence: false,
-      reason: "SELF_PERFORM vs SUBCONTRACT block laying only. XOR — no duplicate money.",
-    },
-    {
-      factKey: "retaining_wall.masonry.subcontract_scope",
-      questionClass: "REFINE",
+      questionClass: "ASK_NOW",
       calculatorConsumed: true,
       physical: false,
       commercial: true,
       confidence: false,
       reason:
-        "Masonry-only. When block laying is subcontract: LABOUR_ONLY vs LABOUR_AND_BLOCK_MATERIALS. Does not subcontract the whole wall.",
+        "SELF_PERFORM vs SUBCONTRACT block laying. XOR — no duplicate money. Must be resolved before Ready when masonry is in scope.",
+    },
+    {
+      factKey: "retaining_wall.masonry.subcontract_scope",
+      questionClass: "ASK_NOW",
+      calculatorConsumed: true,
+      physical: false,
+      commercial: true,
+      confidence: false,
+      reason:
+        "Masonry-only. When block laying is subcontract: LABOUR_ONLY vs LABOUR_AND_BLOCK_MATERIALS. Relevant only on the subcontract path. Does not subcontract the whole wall.",
     },
     {
       factKey: "retaining_wall.footing_width_m",
@@ -379,12 +380,13 @@ export const RETAINING_WALL_INFORMATION_CONTRACT: readonly RetainingWallInformat
     },
     {
       factKey: "retaining_wall.waterproofing_type",
-      questionClass: "REFINE",
+      questionClass: "ASK_NOW",
       calculatorConsumed: true,
       physical: true,
       commercial: false,
       confidence: false,
-      reason: "LIQUID_MEMBRANE or SHEET_MEMBRANE.",
+      reason:
+        "LIQUID_MEMBRANE or SHEET_MEMBRANE. Asked before Ready when waterproofing is included. Hidden when waterproofing is No.",
     },
     {
       factKey: "retaining_wall.waterproofing_method",

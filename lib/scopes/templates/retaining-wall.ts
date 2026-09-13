@@ -360,6 +360,18 @@ export const retainingWallScope: ScopeDefinition = {
       category: "scope",
     },
     {
+      key: "retaining_wall.masonry.subcontract_scope",
+      label: "Masonry subcontractor provides",
+      questionText: "What will the masonry subcontractor provide?",
+      inputType: "select",
+      options: ["Labour only", "Labour + blocks & laying materials"],
+      required: false,
+      priority: 84.5,
+      factKey: "retaining_wall.masonry.subcontract_scope",
+      workAreaType: "retaining_wall",
+      category: "scope",
+    },
+    {
       key: "retaining_wall.waterproofing_required",
       label: "Waterproofing",
       questionText: "Include waterproofing behind the masonry wall?",

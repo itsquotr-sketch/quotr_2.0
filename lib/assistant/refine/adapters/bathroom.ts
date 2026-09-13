@@ -15,12 +15,14 @@ import {
   bathroomFixtureOwnershipFactKey,
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
+  bathroomTradeLevelIncluded,
   parseBathroomDemolitionComponents,
   parseBathroomFloorSubstrate,
   parseBathroomSelectedFixtures,
   parseBathroomWallTileExtent,
   parseBathroomWaterproofingExtent,
   resolveBathroomJobScope,
+  resolveBathroomTradeLevel,
 } from "@/lib/estimate/bathroom-scope";
 import { BATHROOM_FIXTURE_LABELS } from "@/lib/estimate/bathroom-fixtures";
 import type { RefineCandidate, RefineWorkAreaAdapter } from "@/lib/assistant/refine/types";
@@ -59,6 +61,26 @@ function stringFact(
     return null;
   }
   return String(row.value);
+}
+
+function tradeLevelIncluded(
+  facts: readonly {
+    key: string;
+    work_area_id: string | null;
+    value: unknown;
+  }[],
+  workAreaId: string,
+  canonicalKey: string,
+  legacyKey: string
+): boolean {
+  return (
+    bathroomTradeLevelIncluded(
+      resolveBathroomTradeLevel({
+        canonical: stringFact(facts, workAreaId, canonicalKey),
+        legacy: stringFact(facts, workAreaId, legacyKey),
+      })
+    ) === true
+  );
 }
 
 export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
@@ -740,6 +762,12 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
     if (
       jobScope &&
       bathroomQuestionGroupVisible("plumbing", jobScope) &&
+      tradeLevelIncluded(
+        facts,
+        workAreaId,
+        "bathroom.plumbing.level",
+        "bathroom.plumbing_changes"
+      ) &&
       !knownFact(facts, workAreaId, "bathroom.plumbing.scope_text")
     ) {
       out.push({
@@ -764,6 +792,12 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
     if (
       jobScope &&
       bathroomQuestionGroupVisible("electrical", jobScope) &&
+      tradeLevelIncluded(
+        facts,
+        workAreaId,
+        "bathroom.electrical.level",
+        "bathroom.electrical_changes"
+      ) &&
       !knownFact(facts, workAreaId, "bathroom.electrical.scope_text")
     ) {
       out.push({
@@ -788,6 +822,12 @@ export const bathroomRefineAdapter: RefineWorkAreaAdapter = {
     if (
       jobScope &&
       bathroomQuestionGroupVisible("electrical", jobScope) &&
+      tradeLevelIncluded(
+        facts,
+        workAreaId,
+        "bathroom.electrical.level",
+        "bathroom.electrical_changes"
+      ) &&
       !knownFact(facts, workAreaId, "bathroom.electrical.light_count")
     ) {
       out.push({
