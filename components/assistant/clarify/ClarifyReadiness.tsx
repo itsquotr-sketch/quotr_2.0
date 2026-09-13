@@ -1,8 +1,10 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
+import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import { createWallTypeId } from "@/lib/estimate/internal-walls-wall-types";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
@@ -462,6 +464,12 @@ export function ClarifyReadinessCard({
         </div>
       ) : null}
 
+      {isSaving ? (
+        <div data-clarify-save-status>
+          <SaveStatusIndicator status="saving" isSaving />
+        </div>
+      ) : null}
+
       <ActionFooter
         className="bottom-[calc(3.5rem+env(safe-area-inset-bottom))] md:bottom-0"
         innerClassName="flex-col sm:flex-row"
@@ -473,11 +481,19 @@ export function ClarifyReadinessCard({
           disabled={isSaving || readiness.blocksEstimate}
           onClick={onEstimateNow}
         >
-          {isGenerating
-            ? ASSISTANT_LOADING_COPY.estimateGenerate
-            : isSaving
-              ? ASSISTANT_ACTION_LABELS.saving
-              : ASSISTANT_ACTION_LABELS.generateEstimate}
+          {isGenerating ? (
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              {ASSISTANT_LOADING_COPY.estimateGenerate}
+            </span>
+          ) : isSaving ? (
+            <span className="inline-flex items-center justify-center gap-1.5">
+              <Loader2 className="size-3.5 animate-spin" aria-hidden />
+              {ASSISTANT_ACTION_LABELS.saving}
+            </span>
+          ) : (
+            ASSISTANT_ACTION_LABELS.generateEstimate
+          )}
         </Button>
       </ActionFooter>
     </div>

@@ -6,6 +6,7 @@ import { formatSelectAnswerValue } from "@/lib/scopes/fact-labels";
 import { optionValueMatches } from "@/lib/scopes/option-match";
 import {
   displayedOptionSelectValue,
+  shouldIgnorePendingSingleSelectActivation,
   type OptimisticSelectValue,
 } from "@/lib/assistant/selection/optimistic-select";
 
@@ -72,6 +73,7 @@ export function OptionSelect({
       className={cn("grid w-full min-w-0", compact ? "gap-1.5" : "gap-2")}
       data-option-select={multiple ? "multi" : "single"}
       data-option-optimistic={optimistic !== undefined ? "true" : "false"}
+      data-option-pending={pending ? "true" : undefined}
     >
       {options.map((option) => {
         const selected = multiple
@@ -102,6 +104,14 @@ export function OptionSelect({
                 onSelect(next);
                 return;
               }
+              if (
+                shouldIgnorePendingSingleSelectActivation({
+                  pending,
+                  multiple,
+                })
+              ) {
+                return;
+              }
               setOptimistic(option);
               onSelect(option);
             }}
@@ -116,9 +126,9 @@ export function OptionSelect({
         );
       })}
       {pending ? (
-        <p className="text-xs text-muted-foreground" data-option-pending>
+        <span className="sr-only" data-option-pending-label>
           Saving…
-        </p>
+        </span>
       ) : null}
       {error ? (
         <p className="text-sm text-destructive" role="alert">

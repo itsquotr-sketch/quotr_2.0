@@ -22,6 +22,28 @@ export function shouldAdvanceOnSelect(control: ClarifyControlType): boolean {
   return control === "SINGLE_SELECT" || control === "BOOLEAN";
 }
 
+/** Same Details control already saving — do not queue another write. */
+export function shouldIgnoreDuplicateClarifyActivation(params: {
+  readonly pendingCandidateId: string | null | undefined;
+  readonly candidateId: string;
+}): boolean {
+  return params.pendingCandidateId === params.candidateId;
+}
+
+/**
+ * Keep the last visible / last required answer on screen with Saving…
+ * until persist settles. Mid-flow questions still advance immediately.
+ */
+export function shouldHoldClarifyQuestionUntilPersist(params: {
+  readonly remainingRequiredBeforeAnswer: number;
+  readonly visibleCandidateCount: number;
+}): boolean {
+  return (
+    params.remainingRequiredBeforeAnswer <= 1 ||
+    params.visibleCandidateCount <= 1
+  );
+}
+
 export function persistClarifyValueType(
   candidate: {
     readonly inputType: ClarifyCandidate["inputType"];

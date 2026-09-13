@@ -1,6 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
+import { Loader2 } from "lucide-react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
@@ -21,7 +22,10 @@ import {
   clarifyPersistResultFailed,
   detailsReadyCardVisible,
   effectiveRemainingRequiredCount,
+  shouldHoldClarifyQuestionUntilPersist,
+  shouldIgnoreDuplicateClarifyActivation,
 } from "@/lib/assistant/clarify/interaction";
+import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 
 type ClarifyPanelProps = {
   view: ClarifyView;
@@ -45,6 +49,8 @@ function ClarifyQuestion({
   candidate,
   value,
   persistError,
+  pending,
+  continuePending,
   onAnswerBoolean,
   onAnswerValue,
   onContinueMulti,
@@ -52,6 +58,8 @@ function ClarifyQuestion({
   candidate: ClarifyCandidate;
   value: string | number | boolean | string[] | null | undefined;
   persistError?: string | null;
+  pending?: boolean;
+  continuePending?: boolean;
   onAnswerBoolean?: ClarifyPanelProps["onAnswerBoolean"];
   onAnswerValue?: ClarifyPanelProps["onAnswerValue"];
   onContinueMulti?: () => void;
@@ -98,6 +106,8 @@ function ClarifyQuestion({
         candidate={candidate}
         value={value}
         persistError={persistError}
+        pending={pending}
+        continuePending={continuePending}
         compact
         onAnswerBoolean={onAnswerBoolean}
         onAnswerValue={onAnswerValue}
@@ -128,10 +138,14 @@ export function ClarifyPanel({
 }: ClarifyPanelProps) {
   const [resolvedIds, setLocallyResolved] = useState<string[]>([]);
   const [heldMultiId, setHeldMultiId] = useState<string | null>(null);
+  const [heldPendingId, setHeldPendingId] = useState<string | null>(null);
+  const [pendingIds, setPendingIds] = useState<string[]>([]);
+  const [continuePending, setContinuePending] = useState(false);
   const [localValues, setLocalValues] = useState<
     Record<string, string | number | boolean | string[]>
   >({});
   const continueLockRef = useRef(false);
+  const pendingLockRef = useRef<Set<string>>(new Set());
 
   const locallyResolvedIds = useMemo(() => new Set(resolvedIds), [resolvedIds]);
   const remaining = effectiveRemainingRequiredCount({
@@ -149,13 +163,14 @@ export function ClarifyPanel({
             ...section,
             candidates: section.candidates.filter((row) => {
               if (heldMultiId && row.id === heldMultiId) return true;
+              if (heldPendingId && row.id === heldPendingId) return true;
               return !locallyResolvedIds.has(row.id);
             }),
           }))
           .filter((section) => section.candidates.length > 0),
       }))
       .filter((group) => group.sections.length > 0);
-  }, [heldMultiId, locallyResolvedIds, view.groups]);
+  }, [heldMultiId, heldPendingId, locallyResolvedIds, view.groups]);
 
   const advance = (candidate: ClarifyCandidate) => {
     setLocallyResolved((ids) =>
@@ -173,10 +188,45 @@ export function ClarifyPanel({
     });
   };
 
+  const visibleCandidateCount = visibleGroups.reduce(
+    (count, group) =>
+      count +
+      group.sections.reduce(
+        (sectionCount, section) => sectionCount + section.candidates.length,
+        0
+      ),
+    0
+  );
+
+  const beginPending = (candidateId: string): boolean => {
+    if (
+      shouldIgnoreDuplicateClarifyActivation({
+        pendingCandidateId: pendingLockRef.current.has(candidateId)
+          ? candidateId
+          : null,
+        candidateId,
+      })
+    ) {
+      return false;
+    }
+    pendingLockRef.current.add(candidateId);
+    setPendingIds((ids) =>
+      ids.includes(candidateId) ? ids : [...ids, candidateId]
+    );
+    return true;
+  };
+
+  const endPending = (candidateId: string) => {
+    pendingLockRef.current.delete(candidateId);
+    setPendingIds((ids) => ids.filter((id) => id !== candidateId));
+    setHeldPendingId((current) => (current === candidateId ? null : current));
+  };
+
   const wrapBoolean: ClarifyPanelProps["onAnswerBoolean"] = (
     candidate,
     presentation
   ) => {
+    if (!beginPending(candidate.id)) return;
     setLocalValues((prev) => ({
       ...prev,
       [candidate.id]:
@@ -188,28 +238,56 @@ export function ClarifyPanel({
             ? "No"
             : "Not included",
     }));
-    advance(candidate);
-    void Promise.resolve(onAnswerBoolean?.(candidate, presentation)).then(
-      (result) => {
+    const hold = shouldHoldClarifyQuestionUntilPersist({
+      remainingRequiredBeforeAnswer: remaining,
+      visibleCandidateCount,
+    });
+    if (hold) {
+      setHeldPendingId(candidate.id);
+    } else {
+      advance(candidate);
+    }
+    void Promise.resolve(onAnswerBoolean?.(candidate, presentation))
+      .then((result) => {
         if (clarifyPersistResultFailed(result)) {
           rollbackFailedClarifyPersist(candidate);
+        } else if (hold) {
+          advance(candidate);
         }
-      }
-    );
+      })
+      .finally(() => {
+        endPending(candidate.id);
+      });
   };
   const wrapValue: ClarifyPanelProps["onAnswerValue"] = (candidate, value) => {
-    setLocalValues((prev) => ({ ...prev, [candidate.id]: value }));
     const control = clarifyControlType(candidate);
     if (control === "MULTI_SELECT") {
+      setLocalValues((prev) => ({ ...prev, [candidate.id]: value }));
       setHeldMultiId(candidate.id);
       return;
     }
-    advance(candidate);
-    void Promise.resolve(onAnswerValue?.(candidate, value)).then((result) => {
-      if (clarifyPersistResultFailed(result)) {
-        rollbackFailedClarifyPersist(candidate);
-      }
+    if (!beginPending(candidate.id)) return;
+    setLocalValues((prev) => ({ ...prev, [candidate.id]: value }));
+    const hold = shouldHoldClarifyQuestionUntilPersist({
+      remainingRequiredBeforeAnswer: remaining,
+      visibleCandidateCount,
     });
+    if (hold) {
+      setHeldPendingId(candidate.id);
+    } else {
+      advance(candidate);
+    }
+    void Promise.resolve(onAnswerValue?.(candidate, value))
+      .then((result) => {
+        if (clarifyPersistResultFailed(result)) {
+          rollbackFailedClarifyPersist(candidate);
+        } else if (hold) {
+          advance(candidate);
+        }
+      })
+      .finally(() => {
+        endPending(candidate.id);
+      });
   };
 
   const showReady = detailsReadyCardVisible({
@@ -289,6 +367,10 @@ export function ClarifyPanel({
                         candidate={candidate}
                         value={localValues[candidate.id] ?? candidate.currentValue ?? null}
                         persistError={persistError}
+                        pending={pendingIds.includes(candidate.id)}
+                        continuePending={
+                          continuePending && candidate.id === heldMultiId
+                        }
                         onAnswerBoolean={wrapBoolean}
                         onAnswerValue={wrapValue}
                         onContinueMulti={
@@ -311,6 +393,7 @@ export function ClarifyPanel({
                                   return;
                                 }
                                 continueLockRef.current = true;
+                                setContinuePending(true);
                                 advance(candidate);
                                 void Promise.resolve(
                                   onAnswerValue?.(candidate, set)
@@ -320,6 +403,7 @@ export function ClarifyPanel({
                                   }
                                 }).finally(() => {
                                   continueLockRef.current = false;
+                                  setContinuePending(false);
                                 });
                               }
                             : undefined
@@ -349,6 +433,7 @@ export function ClarifyPanel({
                   candidate={candidate}
                   value={localValues[candidate.id] ?? candidate.currentValue ?? null}
                   persistError={persistError}
+                  pending={pendingIds.includes(candidate.id)}
                   onAnswerBoolean={wrapBoolean}
                   onAnswerValue={wrapValue}
                 />
@@ -360,11 +445,20 @@ export function ClarifyPanel({
 
       {visibleGroups.length === 0 ? (
         <div className="space-y-3" data-clarify-waiting>
+          {pendingIds.length > 0 || isSaving ? (
+            <div data-clarify-save-status>
+              <SaveStatusIndicator status="saving" isSaving />
+            </div>
+          ) : null}
           <p className="text-sm text-muted-foreground">
-            {readiness.enoughToEstimate || view.enoughToEstimate
+            {readiness.enoughToEstimate || view.enoughToEstimate || pendingIds.length > 0
               ? "Saving the last answer…"
               : "A few more details are still needed before this estimate can be built."}
           </p>
+        </div>
+      ) : pendingIds.length > 0 ? (
+        <div className="min-h-5" data-clarify-save-status>
+          <SaveStatusIndicator status="saving" isSaving />
         </div>
       ) : null}
 
@@ -381,9 +475,14 @@ export function ClarifyPanel({
               disabled={isSaving || isGenerating}
               onClick={onEstimateNow}
             >
-              {isSaving || isGenerating
-                ? ASSISTANT_ACTION_LABELS.saving
-                : ASSISTANT_ACTION_LABELS.estimateNow}
+              {isSaving || isGenerating ? (
+                <span className="inline-flex items-center justify-center gap-1.5">
+                  <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                  {ASSISTANT_ACTION_LABELS.saving}
+                </span>
+              ) : (
+                ASSISTANT_ACTION_LABELS.estimateNow
+              )}
             </Button>
           ) : view.canEstimateNow ? (
             <Button

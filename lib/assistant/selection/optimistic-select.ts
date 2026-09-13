@@ -49,6 +49,13 @@ export function shouldClearOptimisticSelect(params: {
   return optionSelectValuesEqual(params.optimistic, params.committed);
 }
 
+export function shouldIgnorePendingSingleSelectActivation(params: {
+  readonly pending?: boolean;
+  readonly multiple?: boolean;
+}): boolean {
+  return Boolean(params.pending) && params.multiple !== true;
+}
+
 export function nextSingleSelectValue(option: string): string {
   return option;
 }

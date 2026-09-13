@@ -1,7 +1,8 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState, useTransition } from "react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -29,6 +30,7 @@ export function CreateFinalPricingDialog({
 }: CreateFinalPricingDialogProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
+  const createLockRef = useRef(false);
   const [error, setError] = useState<string | null>(null);
   const [denial, setDenial] = useState<{
     reasonCode?: string;
@@ -36,25 +38,31 @@ export function CreateFinalPricingDialog({
   } | null>(null);
 
   const handleCreate = () => {
+    if (isPending || createLockRef.current) return;
+    createLockRef.current = true;
     setError(null);
     setDenial(null);
     startTransition(async () => {
-      const result = await createPricingFromEstimate({
-        projectId,
-        estimateId,
-      });
-      if (result.error) {
-        setError(result.error);
-        if (result.reasonCode) {
-          setDenial({
-            reasonCode: result.reasonCode,
-            upgradeTarget: result.upgradeTarget,
-          });
+      try {
+        const result = await createPricingFromEstimate({
+          projectId,
+          estimateId,
+        });
+        if (result.error) {
+          setError(result.error);
+          if (result.reasonCode) {
+            setDenial({
+              reasonCode: result.reasonCode,
+              upgradeTarget: result.upgradeTarget,
+            });
+          }
+          return;
         }
-        return;
+        onOpenChange(false);
+        router.refresh();
+      } finally {
+        createLockRef.current = false;
       }
-      onOpenChange(false);
-      router.refresh();
     });
   };
 
@@ -89,8 +97,20 @@ export function CreateFinalPricingDialog({
           >
             Cancel
           </Button>
-          <Button type="button" disabled={isPending} onClick={handleCreate}>
-            {isPending ? "Creating…" : "Continue to Pricing"}
+          <Button
+            type="button"
+            disabled={isPending}
+            data-pricing-create-pending={isPending ? "true" : undefined}
+            onClick={handleCreate}
+          >
+            {isPending ? (
+              <span className="inline-flex items-center gap-1.5">
+                <Loader2 className="size-3.5 animate-spin" aria-hidden />
+                Creating…
+              </span>
+            ) : (
+              "Continue to Pricing"
+            )}
           </Button>
         </DialogFooter>
       </DialogContent>
