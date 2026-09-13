@@ -8,6 +8,10 @@ import {
   membershipGrantsRolePermissions,
 } from "@/lib/team/membership-authority";
 import {
+  composeEntitlementAndPermissionDecision,
+  runIndependentEntitlementAndPermissionChecks,
+} from "@/lib/team/entitlement-permission-composition";
+import {
   PERMISSION_DENIED_MESSAGE,
   roleAllowsPermission,
   type OrgPermission,
@@ -116,6 +120,9 @@ export async function requireOrgPermission(input: {
 /**
  * Canonical server-action rule: organisation entitlement AND member permission.
  * Plan logic is not duplicated here. Role permissions require an ACTIVE membership.
+ *
+ * PERFORMANCE-01C-3 — entitlement and membership reads are independent and
+ * run concurrently. Denial messages keep entitlement-first precedence.
  */
 export async function requireEntitlementAndPermission(input: {
   orgId: string;
@@ -123,31 +130,20 @@ export async function requireEntitlementAndPermission(input: {
   permission: OrgPermission;
   entitlement?: EntitlementCapability | null;
 }): Promise<CompositionDecision> {
-  if (input.entitlement) {
-    const entitled = await requireOrgEntitlement(input.orgId, input.entitlement);
-    if (!entitled.ok) {
-      return {
-        ok: false,
-        error: entitled.message ?? "This action is not available.",
-        reasonCode: entitled.reasonCode ?? "upgrade_required",
-        entitlementDenied: true,
-      };
-    }
-  }
+  const capability = input.entitlement;
+  const { entitled, permitted } =
+    await runIndependentEntitlementAndPermissionChecks({
+      entitlement: capability,
+      checkEntitlement: () => requireOrgEntitlement(input.orgId, capability!),
+      checkPermission: () =>
+        requireOrgPermission({
+          orgId: input.orgId,
+          userId: input.userId,
+          permission: input.permission,
+        }),
+    });
 
-  const permitted = await requireOrgPermission({
-    orgId: input.orgId,
-    userId: input.userId,
-    permission: input.permission,
-  });
-  if (!permitted.ok) {
-    return {
-      ok: false,
-      error: permitted.error,
-      reasonCode: permitted.reasonCode,
-    };
-  }
-  return permitted;
+  return composeEntitlementAndPermissionDecision({ entitled, permitted });
 }
 
 export async function permissionDeniedError(input: {
