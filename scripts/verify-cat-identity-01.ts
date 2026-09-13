@@ -366,7 +366,7 @@ const deck1 = calculateEstimate({
   ],
   materialWastageSettings: { decking: 10, default: 5 },
 } as never);
-check("44 Deck 1 golden $48,340", Math.round(deck1.recommendedSell) === 48340);
+check("44 Deck 1 golden $39,638", Math.round(deck1.recommendedSell) === 39638);
 
 check("45 no migration 037", !existsSync("supabase/migrations/037"));
 check(

@@ -593,7 +593,7 @@ const deck1 = calculateEstimate({
   ],
   materialWastageSettings: { decking: 10, default: 5 },
 } as never);
-check("51 Deck golden $48,340 unchanged", Math.round(deck1.recommendedSell) === 48340);
+check("51 Deck golden $39,638 unchanged", Math.round(deck1.recommendedSell) === 39638);
 
 const snapshot = buildEstimateRequirementSnapshotV1({
   generationId: "deck-1c-b2-rate-ref-01",

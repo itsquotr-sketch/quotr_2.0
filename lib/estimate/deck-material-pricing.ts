@@ -134,7 +134,6 @@ export function resolveDeckingBoardPricing(params: {
       unit: "lm",
       label: params.label,
       benchmarkCostRate: lmBench.cost,
-      benchmarkSellRate: lmBench.sell,
       organisationSettings: settings,
     });
 
@@ -145,7 +144,6 @@ export function resolveDeckingBoardPricing(params: {
       unit: "m2",
       label: params.label,
       benchmarkCostRate: m2Bench.cost,
-      benchmarkSellRate: m2Bench.sell,
       organisationSettings: settings,
     });
 

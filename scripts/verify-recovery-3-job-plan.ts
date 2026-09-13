@@ -327,7 +327,7 @@ const classify = classifyResolvedSell({
 check(
   "29 RECOVERY-1 sell parity remains",
   baseline.recommendedCost === 8620.53 &&
-    baseline.recommendedSell === 12878.01 &&
+    baseline.recommendedSell === 10775.44 &&
     classify.sellAuthority === "derived_from_gross_margin" &&
     classify.sellRate === deriveSellFromCost(22.5, 23.5)
 );
@@ -548,7 +548,7 @@ check(
   baseline.recommendedCost === afterPlan.recommendedCost &&
     baseline.recommendedSell === afterPlan.recommendedSell &&
     baseline.recommendedCost === 8620.53 &&
-    baseline.recommendedSell === 12878.01
+    baseline.recommendedSell === 10775.44
 );
 
 console.log("\n=== Multi-WA Job Plan fixture ===");

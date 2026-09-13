@@ -345,8 +345,8 @@ const deckDecision = evaluateEstimateGenerationSuccess({
 check("Deck generate succeeds", deckDecision.ok === true);
 check("Deck included lines > 0", hasMeaningfulEstimateOutput(deckResult));
 check(
-  "locked Deck sell $48,340 unchanged",
-  Math.round(deckResult.recommendedSell) === 48340,
+  "locked Deck sell $39,638 unchanged",
+  Math.round(deckResult.recommendedSell) === 39638,
   `sell=${deckResult.recommendedSell}`
 );
 

@@ -406,8 +406,8 @@ const deck1 = calculateEstimate({
   materialWastageSettings: { decking: 10, default: 5 },
 } as never);
 check(
-  "44 Deck 1 golden sell $48,340",
-  Math.round(deck1.recommendedSell) === 48340
+  "44 Deck 1 golden sell $39,638",
+  Math.round(deck1.recommendedSell) === 39638
 );
 
 const reconciliation = refDeck.deckSubstructureReconciliation;

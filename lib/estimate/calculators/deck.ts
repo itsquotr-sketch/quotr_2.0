@@ -32,7 +32,8 @@ import {
   rateFieldsFromResolved,
 } from "@/lib/estimate/line-item-helpers";
 import { resolveProductivity, isTrustedProductivityHours } from "@/lib/estimate/productivity";
-import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate, deriveSellFromCost } from "@/lib/estimate/rates";
+import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { calculateDeckingBoardLm } from "@/lib/estimate/material-buildups";
 import {
   createDeckingBoardBuildUp,
@@ -63,10 +64,13 @@ import {
   DECK_FASCIA_BUILDER_LABEL,
   DECK_FASCIA_COMPONENT_KEY,
   DECK_FASCIA_INSTALL_COMPONENT_KEY,
+  DECK_FASCIA_LABOUR_FALLBACK_COST_PER_LM,
+  DECK_FASCIA_MATERIAL_ITEM_KEY,
   DECK_SKIRTING_BUILDER_LABEL,
   DECK_SKIRTING_COMPONENT_KEY,
   DECK_SKIRTING_INSTALL_COMPONENT_KEY,
   DECK_SKIRTING_INSTALL_LABEL,
+  DECK_SKIRTING_MATERIAL_ITEM_KEY,
   calculateDeckFasciaQuantities,
   calculateDeckSkirtingQuantities,
   deckSkirtingIncluded,
@@ -154,6 +158,17 @@ import {
   resolveDeckBoardWidthMm,
 } from "@/lib/estimate/deck-board-width";
 import { resolveLegacyWorkAreaAccess } from "@/lib/project-conditions/legacy-adapter";
+import type { OrganisationSettings } from "@/components/setup/types";
+
+function quotrFallbackSellFromCost(
+  cost: number,
+  organisationSettings: OrganisationSettings | null
+): number {
+  return deriveSellFromCost(
+    cost,
+    organisationSettings?.default_margin_percent ?? DEFAULT_MARGIN_PERCENT
+  );
+}
 
 /** Facts this calculator reads for scope, quantity, material, labour, allowance, or takeoff. */
 export const DECK_CALCULATOR_CONSUMED_FACTS = [
@@ -778,7 +793,6 @@ export function calculateDeck(
         workAreaType: "deck",
         unit: "m2",
         fallbackCostRate: DECK_BENCHMARKS.framing.cost,
-        fallbackSellRate: DECK_BENCHMARKS.framing.sell,
         organisationSettings: context.organisationSettings,
       });
 
@@ -807,7 +821,6 @@ export function calculateDeck(
     workAreaType: "deck",
     unit: "m2",
     fallbackCostRate: DECK_BENCHMARKS.fixings.cost,
-    fallbackSellRate: DECK_BENCHMARKS.fixings.sell,
     organisationSettings: context.organisationSettings,
   });
 
@@ -891,8 +904,13 @@ export function calculateDeck(
         workAreaName: workArea.name,
         label: "Balustrade allowance",
         recommendedCost: DECK_BENCHMARKS.balustradeAllowance.cost,
-        recommendedSell: DECK_BENCHMARKS.balustradeAllowance.sell,
+        recommendedSell: quotrFallbackSellFromCost(
+          DECK_BENCHMARKS.balustradeAllowance.cost,
+          context.organisationSettings
+        ),
         ...benchmarkRateFields(),
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -910,8 +928,13 @@ export function calculateDeck(
         workAreaName: workArea.name,
         label: "Handrail allowance",
         recommendedCost: DECK_BENCHMARKS.handrailAllowance.cost,
-        recommendedSell: DECK_BENCHMARKS.handrailAllowance.sell,
+        recommendedSell: quotrFallbackSellFromCost(
+          DECK_BENCHMARKS.handrailAllowance.cost,
+          context.organisationSettings
+        ),
         ...benchmarkRateFields(),
+        sellDerivedFromMargin: true,
+        sellAuthority: "derived_from_gross_margin",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         qualityFactor,
@@ -958,7 +981,6 @@ export function calculateDeck(
       workAreaType: "deck",
       unit: "each",
       fallbackCostRate: DECK_BENCHMARKS.postReplacementEach.cost,
-      fallbackSellRate: DECK_BENCHMARKS.postReplacementEach.sell,
       organisationSettings: context.organisationSettings,
     });
 
@@ -972,6 +994,8 @@ export function calculateDeck(
           recommendedCost: round2(postRates.costRate * pileCount),
           recommendedSell: round2(postRates.sellRate * pileCount),
           rateSource: postRates.sourceLabel,
+          sellDerivedFromMargin: postRates.sellDerivedFromMargin,
+          sellAuthority: postRates.sellAuthority,
           notes: `${pileCount} piles/posts`,
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
@@ -986,8 +1010,13 @@ export function calculateDeck(
           label: "Pile/post replacement allowance",
           category: "allowance",
           recommendedCost: DECK_BENCHMARKS.substructureReplacementAllowance.cost,
-          recommendedSell: DECK_BENCHMARKS.substructureReplacementAllowance.sell,
+          recommendedSell: quotrFallbackSellFromCost(
+            DECK_BENCHMARKS.substructureReplacementAllowance.cost,
+            context.organisationSettings
+          ),
           ...benchmarkRateFields(),
+          sellDerivedFromMargin: true,
+          sellAuthority: "derived_from_gross_margin",
           notes: "Count subject to confirmation",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
@@ -1024,8 +1053,13 @@ export function calculateDeck(
           label: "Substructure replacement allowance",
           category: "allowance",
           recommendedCost: allowance.cost,
-          recommendedSell: allowance.sell,
+          recommendedSell: quotrFallbackSellFromCost(
+            allowance.cost,
+            context.organisationSettings
+          ),
           ...benchmarkRateFields(),
+          sellDerivedFromMargin: true,
+          sellAuthority: "derived_from_gross_margin",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -1079,6 +1113,15 @@ export function calculateDeck(
         wastePercent: wastagePercent,
       }),
     ]);
+    const fasciaRates = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: DECK_FASCIA_MATERIAL_ITEM_KEY,
+      workAreaType: "deck",
+      unit: "lm",
+      fallbackCostRate: DECK_BENCHMARKS.faceBoardLm.cost,
+      organisationSettings: context.organisationSettings,
+    });
     lineItems.push({
       ...createRateLineItem({
         workAreaId: workArea.id,
@@ -1087,13 +1130,11 @@ export function calculateDeck(
         category: "materials",
         quantity: fasciaQty.fasciaPurchaseLm,
         unit: "lm",
-        costRate: DECK_BENCHMARKS.faceBoardLm.cost,
-        sellRate: DECK_BENCHMARKS.faceBoardLm.sell,
-        rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         componentKey: DECK_FASCIA_COMPONENT_KEY,
         notes: fasciaIdentity,
+        ...rateFieldsFromResolved(fasciaRates, DECK_FASCIA_MATERIAL_ITEM_KEY),
       }),
       identitySummary: fasciaIdentity,
     });
@@ -1127,9 +1168,19 @@ export function calculateDeck(
           workAreaId: workArea.id,
           workAreaName: workArea.name,
           label: "Fascia labour allowance",
-          recommendedCost: round2(fasciaQty.fasciaNetLm * 35),
-          recommendedSell: round2(fasciaQty.fasciaNetLm * 55),
-          rateSource: "Benchmark allowance",
+          recommendedCost: round2(
+            fasciaQty.fasciaNetLm * DECK_FASCIA_LABOUR_FALLBACK_COST_PER_LM
+          ),
+          recommendedSell: quotrFallbackSellFromCost(
+            round2(
+              fasciaQty.fasciaNetLm * DECK_FASCIA_LABOUR_FALLBACK_COST_PER_LM
+            ),
+            context.organisationSettings
+          ),
+          rateSource: getRateSourceLabel("benchmark"),
+          rateSourceType: "benchmark",
+          sellDerivedFromMargin: true,
+          sellAuthority: "derived_from_gross_margin",
           sortOrder: sortOrder++,
           organisationSettings: context.organisationSettings,
           qualityFactor,
@@ -1170,6 +1221,15 @@ export function calculateDeck(
         wastePercent: wastagePercent,
       }),
     ]);
+    const skirtingRates = resolveRate({
+      rates: context.rates,
+      rateType: "material",
+      itemKey: DECK_SKIRTING_MATERIAL_ITEM_KEY,
+      workAreaType: "deck",
+      unit: "lm",
+      fallbackCostRate: DECK_BENCHMARKS.faceBoardLm.cost,
+      organisationSettings: context.organisationSettings,
+    });
     lineItems.push({
       ...createRateLineItem({
         workAreaId: workArea.id,
@@ -1178,13 +1238,11 @@ export function calculateDeck(
         category: "materials",
         quantity: skirtingQty.skirtingPurchaseLm,
         unit: "lm",
-        costRate: DECK_BENCHMARKS.faceBoardLm.cost,
-        sellRate: DECK_BENCHMARKS.faceBoardLm.sell,
-        rateSource: "Benchmark allowance",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
         componentKey: DECK_SKIRTING_COMPONENT_KEY,
         notes: skirtingIdentity,
+        ...rateFieldsFromResolved(skirtingRates, DECK_SKIRTING_MATERIAL_ITEM_KEY),
       }),
       identitySummary: skirtingIdentity,
     });
@@ -1641,20 +1699,17 @@ export function calculateDeck(
           ? {
               label: "Stair set allowance",
               cost: DECK_BENCHMARKS.stairsAllowance.cost,
-              sell: DECK_BENCHMARKS.stairsAllowance.sell,
               notes: "External stair set allowance included with deck.",
             }
           : multi
             ? {
                 label: "Multi-side step-down allowance",
                 cost: DECK_BENCHMARKS.multiSideStairsAllowance.cost,
-                sell: DECK_BENCHMARKS.multiSideStairsAllowance.sell,
                 notes: "Steps included — detailed chain incomplete; allowance is commercial authority.",
               }
             : {
                 label: "Step-down allowance",
                 cost: DECK_BENCHMARKS.stepAllowance.cost,
-                sell: DECK_BENCHMARKS.stepAllowance.sell,
                 notes: "Steps included — detailed chain incomplete; allowance is commercial authority.",
               };
         lineItems.push(
@@ -1663,8 +1718,13 @@ export function calculateDeck(
             workAreaName: workArea.name,
             label: allowance.label,
             recommendedCost: allowance.cost,
-            recommendedSell: allowance.sell,
+            recommendedSell: quotrFallbackSellFromCost(
+              allowance.cost,
+              context.organisationSettings
+            ),
             ...benchmarkRateFields(),
+            sellDerivedFromMargin: true,
+            sellAuthority: "derived_from_gross_margin",
             notes: allowance.notes,
             sortOrder: sortOrder++,
             organisationSettings: context.organisationSettings,

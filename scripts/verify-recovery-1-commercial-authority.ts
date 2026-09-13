@@ -196,7 +196,7 @@ function round2(value: number) {
 
 /** DEFAULT-RATE ENGINE FIXTURE — empty company rates, not Owner $78 labour. */
 const DEFAULT_RATE_REAL_JOB_COST = 8620.53;
-const DEFAULT_RATE_REAL_JOB_SELL = 12878.01;
+const DEFAULT_RATE_REAL_JOB_SELL = 10775.44;
 
 console.log("=== RECOVERY-1 commercial authority ===\n");
 
@@ -246,7 +246,7 @@ const framingResolved = resolveRate({
   organisationSettings: orgSettings,
 });
 check(
-  "4 framing benchmark is legacy paired $120/$180",
+  "4 framing resolver still pairs when caller passes fallbackSellRate",
   framingResolved.costRate === 120 &&
     framingResolved.sellRate === 180 &&
     framingResolved.sellAuthority === "legacy_paired_rate" &&
@@ -264,7 +264,7 @@ const fixingsResolved = resolveRate({
   organisationSettings: orgSettings,
 });
 check(
-  "5 fixings benchmark is legacy paired $25/$40",
+  "5 fixings resolver still pairs when caller passes fallbackSellRate",
   fixingsResolved.costRate === 25 &&
     fixingsResolved.sellRate === 40 &&
     fixingsResolved.sellAuthority === "legacy_paired_rate"
@@ -275,10 +275,10 @@ const labourResolved = resolveLabourRate({
   organisationSettings: orgSettings,
 });
 check(
-  "6 default labour is grandfathered pair $60/$90",
+  "6 default labour is cost 60 with sell derived from applicable GM",
   labourResolved.costRate === 60 &&
-    labourResolved.sellRate === 90 &&
-    labourResolved.sellAuthority === "legacy_paired_rate"
+    labourResolved.sellRate === 75 &&
+    labourResolved.sellAuthority === "derived_from_gross_margin"
 );
 
 const empty = calculateEstimate(realJobContext([]));
@@ -292,7 +292,7 @@ check(
   empty.recommendedCost === DEFAULT_RATE_REAL_JOB_COST
 );
 check(
-  "8 REAL-JOB DEFAULT-RATE ENGINE sell is $12,878.01",
+  "8 REAL-JOB DEFAULT-RATE ENGINE sell is $10,775.44",
   empty.recommendedSell === DEFAULT_RATE_REAL_JOB_SELL
 );
 check(
@@ -537,9 +537,9 @@ const pricingBeforeMargin = calculateAuthoritativeFieldsFromEstimateLine({
   notes: residualNotes,
 });
 check(
-  "31 Pricing without project GM copies residual pair $1,080",
+  "31 Pricing without project GM copies residual derived sell $843.75",
   pricingBeforeMargin.ok &&
-    pricingBeforeMargin.fields.totalSell === 1080 &&
+    pricingBeforeMargin.fields.totalSell === 843.75 &&
     pricingBeforeMargin.fields.totalCost === 675
 );
 
@@ -651,14 +651,14 @@ check(
     noGmPricingJoists.fields.totalSell === emptyJoists!.recommendedSell
 );
 check(
-  "60 no-GM Pricing preserves fixings pair $1,080",
-  noGmPricingFixings.ok && noGmPricingFixings.fields.totalSell === 1080
+  "60 no-GM Pricing copies fixings derived sell $843.75",
+  noGmPricingFixings.ok && noGmPricingFixings.fields.totalSell === 843.75
 );
 check(
-  "61 no-GM sellAuthority is legacy_paired_rate on residual",
-  emptyFixings?.sellAuthority === "legacy_paired_rate" &&
+  "61 no-GM sellAuthority is derived_from_gross_margin on residual",
+  emptyFixings?.sellAuthority === "derived_from_gross_margin" &&
     noGmPricingFixings.ok &&
-    noGmPricingFixings.sellAuthority === "legacy_paired_rate"
+    noGmPricingFixings.sellAuthority === "derived_from_gross_margin"
 );
 
 const targetGmQuote = mapPricingItemsToQuoteItems(
@@ -803,11 +803,12 @@ check(
 );
 
 check(
-  "43 surface A: Quotr benchmark is paired $22/$34",
+  "43 surface A: Quotr hardwood fallback is cost 22 with derived sell 27.50",
   emptySurface?.costRate === 22 &&
-    emptySurface.sellRate === 34 &&
+    emptySurface.sellRate === 27.5 &&
     emptySurface.rateSourceType === "benchmark" &&
-    emptySurface.sellDerivedFromMargin !== true
+    emptySurface.sellDerivedFromMargin === true &&
+    emptySurface.sellAuthority === "derived_from_gross_margin"
 );
 check(
   "43b surface B: company exact cost-only is user_rate + derived sell",

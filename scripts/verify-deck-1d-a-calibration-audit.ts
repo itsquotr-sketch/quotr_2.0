@@ -161,7 +161,7 @@ const deck1 = calculateEstimate({
   ],
   materialWastageSettings: { decking: 10, default: 5 },
 } as never);
-check("Deck golden $48,340 unchanged", Math.round(deck1.recommendedSell) === 48340);
+check("Deck golden $39,638 unchanged", Math.round(deck1.recommendedSell) === 39638);
 
 console.log("\n--- DECK-RATE-REF-01 comparison (diagnostic) ---");
 console.log(`legacy substructure package cost  ${framing?.recommendedCost}`);

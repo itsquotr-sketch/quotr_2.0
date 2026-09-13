@@ -241,8 +241,8 @@ check("16 REAL-JOB assumptions path visible via understanding summary", () => {
 
 const realCalibration = runDeckCalibration(realJob);
 check(
-  "17 REAL-JOB DEFAULT-RATE ENGINE sell is $12,878.01",
-  realCalibration.commercialSafety.estimateSell === 12878.01,
+  "17 REAL-JOB DEFAULT-RATE ENGINE sell is $10,775.44",
+  realCalibration.commercialSafety.estimateSell === 10775.44,
   `sell=${realCalibration.commercialSafety.estimateSell}`
 );
 
@@ -378,7 +378,7 @@ check(
 
 check("39 REAL-JOB DEFAULT-RATE sell stable on re-run", () => {
   const second = runDeckCalibration(realJob);
-  return second.commercialSafety.estimateSell === 12878.01;
+  return second.commercialSafety.estimateSell === 10775.44;
 });
 
 check("40 top assumptions capped initially", () => {

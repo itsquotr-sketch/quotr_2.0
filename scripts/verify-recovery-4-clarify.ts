@@ -490,7 +490,7 @@ check(
 check(
   "44 unchanged facts = unchanged sell",
   baseline.recommendedSell === afterClarify.recommendedSell &&
-    baseline.recommendedSell === 12878.01
+    baseline.recommendedSell === 10775.44
 );
 
 const classify = classifyResolvedSell({
@@ -501,7 +501,7 @@ const classify = classifyResolvedSell({
 check(
   "45 RECOVERY-1 parity",
   baseline.recommendedCost === 8620.53 &&
-    baseline.recommendedSell === 12878.01 &&
+    baseline.recommendedSell === 10775.44 &&
     classify.sellAuthority === "derived_from_gross_margin" &&
     classify.sellRate === deriveSellFromCost(22.5, 23.5) &&
     existsSync("scripts/verify-recovery-1-commercial-authority.ts")

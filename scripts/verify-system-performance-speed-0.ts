@@ -188,8 +188,8 @@ const realContext = {
 
 const realEstimate = calculateEstimate(realContext);
 check(
-  "REAL-JOB-01 recommendedSell golden 12878.01",
-  realEstimate.recommendedSell === 12878.01,
+  "REAL-JOB-01 recommendedSell golden 10775.44",
+  realEstimate.recommendedSell === 10775.44,
   `got ${realEstimate.recommendedSell}`
 );
 check(

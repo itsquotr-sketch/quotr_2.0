@@ -200,7 +200,7 @@ check(
   "13 sell authority unchanged as projection",
   review.costReconciles &&
     Math.abs(baseline.recommendedCost - 8620.53) < 0.02 &&
-    Math.abs(baseline.recommendedSell - 12878.01) < 0.02
+    Math.abs(baseline.recommendedSell - 10775.44) < 0.02
 );
 
 // MATERIALS

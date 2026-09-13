@@ -445,8 +445,9 @@ check(
     concreteMat?.quantity === 45
 );
 check(
-  "32 missing material rate not zero money silently accepted as priced",
-  concreteMat?.rateSource.toLowerCase().includes("pricing required") &&
+  "32 missing company bag rate uses Quotr benchmark, not silent zero money",
+  concreteMat?.rateSourceType === "benchmark" &&
+    (concreteMat?.recommendedCost ?? 0) > 0 &&
     composeSrc.includes("PRICING_REQUIRED")
 );
 check(

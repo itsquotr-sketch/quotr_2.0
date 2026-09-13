@@ -852,11 +852,11 @@ check(
     (deck1Estimate.requirements?.some(
       (item) => item.kind === "material" && item.componentKey === "decking.surface"
     ) ?? false) &&
-    Math.round(deck1Estimate.recommendedSell) === 48340
+    Math.round(deck1Estimate.recommendedSell) === 39638
 );
 check(
   "GENERATE Deck 1 sell unchanged",
-  deck1Sell === 48340 && Math.round(deck1Estimate.recommendedSell) === 48340
+  deck1Sell === 39638 && Math.round(deck1Estimate.recommendedSell) === 39638
 );
 
 const fence2Facts = [

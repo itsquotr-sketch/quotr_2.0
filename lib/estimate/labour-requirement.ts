@@ -28,9 +28,9 @@ export function mapLabourRateSourceToRequirement(
     case "default":
     case "fallback":
     case "missing":
-      // resolveLabourRate still returns the grandfathered 60/90 pair when no
-      // company labour rate exists. sourceType "missing" is a label (CM-03);
-      // the pricing truth is hardcoded legacy, not an unpriced component.
+      // resolveLabourRate still returns Quotr $60 cost when no company labour
+      // rate exists (sell derived from GM). sourceType "missing" is a label
+      // (CM-03); the pricing truth is hardcoded legacy, not an unpriced component.
       return "hardcoded_legacy";
     case "benchmark":
     case "productivity":

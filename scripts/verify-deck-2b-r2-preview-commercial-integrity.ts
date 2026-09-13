@@ -190,8 +190,8 @@ const collidingRatesEstimate = calculateEstimate(
   realJobContext([collidingHardwoodLm])
 );
 check(
-  "7 fixture empty-rates sell is DEFAULT-RATE ENGINE $12,878.01",
-  emptyRatesEstimate.recommendedSell === 12878.01,
+  "7 fixture empty-rates sell is DEFAULT-RATE ENGINE $10,775.44",
+  emptyRatesEstimate.recommendedSell === 10775.44,
   `sell=${emptyRatesEstimate.recommendedSell}`
 );
 
@@ -372,7 +372,7 @@ check(
 );
 check(
   "30 fixture calibration sell unchanged",
-  runDeckCalibration(realJob).commercialSafety.estimateSell === 12878.01
+  runDeckCalibration(realJob).commercialSafety.estimateSell === 10775.44
 );
 
 check(

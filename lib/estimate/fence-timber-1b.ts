@@ -57,7 +57,7 @@ export const FENCE_RAIL_LABOUR_DECISION =
   "labour-h per required rail lm (not fence lm). Reacts to 2 vs 3 rails at the 1.5 m height threshold.";
 
 export const FENCE_LABOUR_RATE_PATH =
-  "Project exact → Company exact labour.carpenter.hour → labour.general.hour → Quotr carpenter 60/90. No second Fence labour $/h.";
+  "Project exact → Company exact labour.carpenter.hour → labour.general.hour → Quotr carpenter $60 cost (sell from company GM). No second Fence labour $/h.";
 
 export const FENCE_TIMBER_1B_ACCESS_RULE = {
   method: "PER_INTENT_PROJECT_CONDITION_MODIFIERS" as const,

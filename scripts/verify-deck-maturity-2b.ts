@@ -969,7 +969,8 @@ check(
     emptyLabourResolved.itemKey === "labour.carpenter.hour" &&
     emptyLabourResolved.costRate === 60 &&
     emptyLabourResolved.sourceType === "default" &&
-    emptyLabourResolved.sellAuthority === "legacy_paired_rate"
+    emptyLabourResolved.sellAuthority === "derived_from_gross_margin" &&
+    emptyLabourResolved.sellRate === 75
 );
 check(
   "88 productivity hours and labour $/hr stay separate",
@@ -1030,39 +1031,35 @@ const kwilaSell = sumSell(kwilaDeck.lineItems);
 const kwilaDirect = sumCost(kwilaDeck.lineItems);
 const kwilaGp = round2(kwilaSell - kwilaDirect);
 const kwilaEffectiveGm = round2((kwilaGp / kwilaSell) * 100);
-const defaultGmIsNotEffective =
-  Math.abs(kwilaEffectiveGm - 20) > 1 &&
-  Math.abs(kwilaSell - deriveSellFromCost(kwilaDirect, 20)) > 1;
 
 check(
   "91 sell-line provenance identified",
-  sellAuthorities.has("legacy_paired_rate") &&
-    sellAuthorities.has("derived_from_gross_margin") &&
+  sellAuthorities.has("derived_from_gross_margin") &&
     !sellAuthorities.has("explicit_sell_override") &&
     included(kwilaDeck.lineItems).every((item) => item.sellAuthority != null) &&
     kwilaDeck.lineItems.find((item) => item.label === "Decking")
-      ?.sellAuthority === "legacy_paired_rate" &&
+      ?.sellAuthority === "derived_from_gross_margin" &&
     kwilaDeck.lineItems.find((item) => item.label === DECK_FIXINGS_RESIDUAL_LABEL)
-      ?.sellAuthority === "legacy_paired_rate" &&
+      ?.sellAuthority === "derived_from_gross_margin" &&
     kwilaDeck.lineItems.find((item) => item.label === "Decking installation")
-      ?.sellAuthority === "legacy_paired_rate" &&
+      ?.sellAuthority === "derived_from_gross_margin" &&
     kwilaDeck.lineItems.find((item) => item.label === "Joists")
       ?.sellAuthority === "derived_from_gross_margin"
 );
 check(
   "92 effective GM reconciles mathematically",
   Math.abs(kwilaDirect - 9893.43) < 0.02 &&
-    Math.abs(kwilaSell - 14575.21) < 0.02 &&
-    Math.abs(kwilaGp - (14575.21 - 9893.43)) < 0.02 &&
-    Math.abs(kwilaEffectiveGm - 32.12) < 0.05
+    Math.abs(kwilaSell - 12366.56) < 0.02 &&
+    Math.abs(kwilaGp - (12366.56 - 9893.43)) < 0.02 &&
+    Math.abs(kwilaEffectiveGm - 20) < 0.05
 );
 check(
-  "93 target/default GM is not treated as effective GM",
-  defaultGmIsNotEffective &&
+  "93 Effective vs Target GM remain distinct UI labels",
+  Math.abs(kwilaEffectiveGm - 20) < 0.05 &&
     read("components/assistant/CommercialOverviewMetrics.tsx").includes(
       'label="Effective gross margin"'
     ) &&
-    read("components/assistant/MarginEditControl.tsx").includes("Target margin %") &&
+    read("components/assistant/MarginEditControl.tsx").includes("Target gross margin") &&
     !read("lib/estimate/summary.ts").includes("default_margin_percent")
 );
 
@@ -1221,8 +1218,10 @@ check(
     realLabourSource.sourceType === "default" &&
     !hasPackage(realDeck.lineItems) &&
     labourHoursTotal(realDeck.lineItems) === 32.49 &&
-    included(realDeck.lineItems).some(
-      (item) => item.sellAuthority === "legacy_paired_rate"
+    included(realDeck.lineItems).every(
+      (item) =>
+        item.includedInTotal === false ||
+        item.sellAuthority === "derived_from_gross_margin"
     ) &&
     included(realDeck.lineItems).some(
       (item) => item.sellAuthority === "derived_from_gross_margin"
@@ -1242,9 +1241,21 @@ check(
     ).length === 1
 );
 
+const kwilaCompanyPair = calculateDeck(
+  ctx(kwilaFacts, [labourOrgRate("labour.carpenter.hour", 60, 90)]),
+  wa(kwilaId)
+);
+const pairedLabourOk = included(kwilaCompanyPair.lineItems)
+  .filter((item) => item.category === "labour")
+  .every(
+    (item) =>
+      item.sellRate === 90 && item.sellAuthority === "legacy_paired_rate"
+  );
 check(
-  "105 no silent flatten of grandfathered sells to 20%",
-  Math.abs(kwilaSell - deriveSellFromCost(kwilaDirect, 20)) > 100 &&
+  "105 Quotr fallbacks derive 20% GM; company paired sell is not flattened",
+  Math.abs(kwilaSell - 12366.56) < 0.02 &&
+    Math.abs(kwilaEffectiveGm - 20) < 0.05 &&
+    pairedLabourOk &&
     kwilaEstimate.estimateSellAuthority === "line_resolved_sells"
 );
 
@@ -1300,24 +1311,25 @@ check(
 check(
   "109 $78 cannot mutate global default labour fallback",
   emptyAfterOwner.costRate === 60 &&
-    emptyAfterOwner.sellRate === 90 &&
+    emptyAfterOwner.sellRate === 75 &&
+    emptyAfterOwner.sellAuthority === "derived_from_gross_margin" &&
     ratesSrc.includes("DEFAULT_LABOUR_COST_RATE = 60") &&
     !deckSrc.includes("78")
 );
 check(
   "110 Owner $78 effective GM reconciles",
   Math.abs(owner78Cost - 10478.25) < 0.02 &&
-    Math.abs(owner78Sell - 14818.89) < 0.02 &&
-    Math.abs(owner78Gm - 29.29) < 0.05
+    Math.abs(owner78Sell - 13097.59) < 0.02 &&
+    Math.abs(owner78Gm - 20) < 0.05
 );
 check(
-  "111 target margin is 20 and is not displayed as effective GM",
+  "111 target and effective GM share 20% on cost-first fallbacks; UI labels stay distinct",
   targetMargin === 20 &&
-    Math.abs(kwilaEffectiveGm - 20) > 1 &&
+    Math.abs(kwilaEffectiveGm - 20) < 0.05 &&
     read("components/assistant/CommercialOverviewMetrics.tsx").includes(
       "Effective gross margin"
     ) &&
-    read("components/assistant/MarginEditControl.tsx").includes("Target margin %")
+    read("components/assistant/MarginEditControl.tsx").includes("Target gross margin")
 );
 check(
   "112 residual excludes detailed structural timber",
@@ -1387,12 +1399,12 @@ check(
       "DEFAULT-RATE ENGINE"
     ) &&
     read("scripts/verify-recovery-5b-builder-review.ts").includes("8620.53") &&
-    read("scripts/verify-deck-2b-assisted-quick-estimate.ts").includes("12878.01")
+    read("scripts/verify-deck-2b-assisted-quick-estimate.ts").includes("10775.44")
 );
 check(
   "121 REAL-JOB DEFAULT-RATE golden matches engine",
   Math.abs(realDirect - 8620.53) < 0.02 &&
-    Math.abs(realSell - 12878.01) < 0.02 &&
+    Math.abs(realSell - 10775.44) < 0.02 &&
     realLabourSource.costRate === 60
 );
 check(
@@ -1434,7 +1446,7 @@ function printLineProvenance(
 }
 
 printLineProvenance(
-  "DEFAULT-RATE ENGINE FIXTURE — Owner Kwila empty rates ($60/$90 fallback, not Owner labour)",
+  "DEFAULT-RATE ENGINE FIXTURE — Owner Kwila empty rates ($60 cost + applicable GM, not Owner labour)",
   kwilaDeck.lineItems
 );
 printLineProvenance(

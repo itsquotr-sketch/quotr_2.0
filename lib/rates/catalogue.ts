@@ -34,9 +34,8 @@ export const LABOUR_RATE_CATALOGUE: RateCatalogueEntry[] = [
     category: "labour",
     trade: "carpenter",
     unit: "hour",
-    description: "Primary trade rate used across most estimates.",
+    description: "Primary trade rate used across most estimates. Quotr fallback is cost-only; charge-out uses company gross margin.",
     defaultCostRate: 60,
-    defaultSellRate: 90,
     recommended: true,
     calculatorSupport: "used_now",
     section: "labour",
@@ -186,7 +185,6 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Cost per square metre of deck area ($/m²) for the same boards. Fallback if you have no $/lm board rate under All materials — converted using known board width. Not a $/lm rate and not a whole-deck package (framing and fixings are separate).",
     defaultCostRate: DECK_BENCHMARKS.treatedPineDecking.cost,
-    defaultSellRate: DECK_BENCHMARKS.treatedPineDecking.sell,
     recommended: true,
     calculatorSupport: "used_now",
     section: "material",
@@ -202,7 +200,6 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Cost per square metre of deck area ($/m²) for the same boards, including kwila when no kwila m² row exists. Fallback if you have no $/lm board rate under All materials. Not equivalent to a $/lm rate. Framing and fixings are separate.",
     defaultCostRate: DECK_BENCHMARKS.hardwoodDecking.cost,
-    defaultSellRate: DECK_BENCHMARKS.hardwoodDecking.sell,
     recommended: true,
     calculatorSupport: "used_now",
     section: "material",
@@ -218,7 +215,6 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Cost per square metre of deck area ($/m²) for the same boards. Fallback if you have no $/lm board rate under All materials. Not a whole-deck package — framing and fixings are separate.",
     defaultCostRate: DECK_BENCHMARKS.compositeDecking.cost,
-    defaultSellRate: DECK_BENCHMARKS.compositeDecking.sell,
     recommended: true,
     calculatorSupport: "used_now",
     section: "material",
@@ -232,7 +228,6 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Deck",
     unit: "m2",
     defaultCostRate: DECK_BENCHMARKS.framing.cost,
-    defaultSellRate: DECK_BENCHMARKS.framing.sell,
     recommended: true,
     calculatorSupport: "used_now",
     section: "material",
@@ -248,7 +243,6 @@ export const MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Residual starter $/m² for decking screws/clips, hangers/brackets/bolts, DPC, blocking, consumables and small sundries. Not deck boards, joist/bearer/rim/pile timber, fascia, steps, concrete or delivery. Company override if you know your kit.",
     defaultCostRate: DECK_BENCHMARKS.fixings.cost,
-    defaultSellRate: DECK_BENCHMARKS.fixings.sell,
     recommended: true,
     calculatorSupport: "used_now",
     section: "material",

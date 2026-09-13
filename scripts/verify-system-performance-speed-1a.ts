@@ -263,8 +263,8 @@ const realContext = {
 } as unknown as EstimateContext;
 const realEstimate = calculateEstimate(realContext);
 check(
-  "18. estimator outputs unchanged (REAL-JOB-01 12878.01)",
-  realEstimate.recommendedSell === 12878.01,
+  "18. estimator outputs unchanged (REAL-JOB-01 10775.44)",
+  realEstimate.recommendedSell === 10775.44,
   `got ${realEstimate.recommendedSell}`
 );
 check(

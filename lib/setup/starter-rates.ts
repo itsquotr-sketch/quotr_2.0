@@ -54,10 +54,9 @@ export const CORE_LABOUR_STARTER_RATES: StarterRateRowDefinition[] = [
     fields: ["cost_rate", "sell_rate"],
     section: "labour",
     description:
-      "Primary trade rate Quotr uses for most in-house labour estimates.",
+      "Primary trade rate Quotr uses for most in-house labour estimates. Quotr fallback is cost-only; charge-out uses company gross margin.",
     benchmarkCost: 60,
-    benchmarkSell: 90,
-    authorityHint: "explicit",
+    authorityHint: "benchmark",
   },
   {
     item_key: "labour.labourer.hour",

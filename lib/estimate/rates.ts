@@ -16,7 +16,6 @@ import type { ResolvedLabourRate, ResolvedRate } from "@/lib/estimate/types";
 import { classifyResolvedSell } from "@/lib/commercial-engine/core/cost-first-authority";
 
 const DEFAULT_LABOUR_COST_RATE = 60;
-const DEFAULT_LABOUR_SELL_RATE = 90;
 
 /** Legacy onboarding keys mapped to current catalogue keys */
 const ITEM_KEY_ALIASES: Record<string, string[]> = {
@@ -378,10 +377,11 @@ export function resolveLabourRate(params: {
 
   const benchmarkAllowed = allowBenchmarkFallback(params.organisationSettings);
   const sourceType: RateSourceType = benchmarkAllowed ? "default" : "missing";
-  // Hardcoded DEFAULT_LABOUR cost/sell pair — grandfathered legacy paired (CF-D2)
+  // Quotr default labour is COST only. Sell derives from applicable GM
+  // (EST-COMMERCIAL-01A). Company rows with sell_rate stay paired above.
   const classified = classifyResolvedSell({
     costRate: DEFAULT_LABOUR_COST_RATE,
-    sellRate: DEFAULT_LABOUR_SELL_RATE,
+    sellRate: null,
     applicableGrossMarginPercent: marginPercent,
   });
 

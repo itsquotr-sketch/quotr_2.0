@@ -323,10 +323,11 @@ const settings: OrganisationSettings = {
     organisationSettings: settings,
   });
   check(
-    "10c default labour 60/90 labelled legacy paired",
+    "10c default labour 60 cost-only derives 75 from company GM",
     defaultLabour.costRate === 60 &&
-      defaultLabour.sellRate === 90 &&
-      defaultLabour.isLegacyPairedRate
+      defaultLabour.sellRate === 75 &&
+      defaultLabour.sellAuthority === "derived_from_gross_margin" &&
+      !defaultLabour.isLegacyPairedRate
   );
 
   check(

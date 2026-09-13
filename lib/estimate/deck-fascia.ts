@@ -21,8 +21,12 @@ export const DEFAULT_FASCIA_COURSES = 1;
 export const DECK_SKIRTING_INCLUDED_FACT_KEY = "deck.skirting_included";
 export const DECK_FASCIA_COMPONENT_KEY = "deck.fascia";
 export const DECK_FASCIA_INSTALL_COMPONENT_KEY = "deck.fascia.install";
+export const DECK_FASCIA_MATERIAL_ITEM_KEY = "deck.fascia.lm";
+/** Dollar-per-lm cost allowance when fascia productivity is not trusted. */
+export const DECK_FASCIA_LABOUR_FALLBACK_COST_PER_LM = 35;
 export const DECK_SKIRTING_COMPONENT_KEY = "deck.skirting";
 export const DECK_SKIRTING_INSTALL_COMPONENT_KEY = "deck.skirting.install";
+export const DECK_SKIRTING_MATERIAL_ITEM_KEY = "deck.skirting.lm";
 
 export type DeckFasciaQuantities = {
   edgeLengthM: number;

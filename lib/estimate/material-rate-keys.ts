@@ -14,6 +14,8 @@ export const MATERIAL_RATE_KEYS = {
   deckingHardwoodLm: "deck.material.hardwood.lm",
   deckingKwilaLm: "deck.material.kwila.lm",
   deckingCompositeLm: "deck.material.composite.lm",
+  deckFasciaLm: "deck.fascia.lm",
+  deckSkirtingLm: "deck.skirting.lm",
 
   plasterboardStandardSheet: "sheet.plasterboard.standard.each",
   plasterboardFyrelineSheet: "sheet.plasterboard.fyreline.each",

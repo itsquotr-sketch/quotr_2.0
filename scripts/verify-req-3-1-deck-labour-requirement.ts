@@ -807,7 +807,7 @@ check(
       } as never,
       wa("d1", "deck", "Deck 1")
     ).lineItems.reduce((sum, item) => sum + item.recommendedSell, 0)
-  ) === 48340
+  ) === 39638
 );
 
 const calcFiles = walkTs(join("lib", "estimate", "calculators"));

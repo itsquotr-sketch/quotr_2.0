@@ -9,6 +9,10 @@ import {
   defaultSupportIdentity,
   lightSupportIdentity,
 } from "@/lib/estimate/deck-default-identities";
+import {
+  DECK_FASCIA_MATERIAL_ITEM_KEY,
+  DECK_SKIRTING_MATERIAL_ITEM_KEY,
+} from "@/lib/estimate/deck-fascia";
 import { HOUSE_PILE_BENCHMARK_COST_EX_GST } from "@/lib/estimate/house-pile-benchmarks";
 import { STRUCTURAL_TIMBER_BENCHMARKS } from "@/lib/estimate/structural-timber-benchmarks";
 import { buildMaterialRateItemKey } from "@/lib/materials/identity";
@@ -64,7 +68,6 @@ export const DECKING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     description:
       "Cost per linear metre of board ($/lm). Preferred rate when board quantity is calculated.",
     defaultCostRate: DECK_BENCHMARKS.treatedPineLm.cost,
-    defaultSellRate: DECK_BENCHMARKS.treatedPineLm.sell,
     recommended: true,
     calculatorSupport: "used_now",
   }),
@@ -77,7 +80,6 @@ export const DECKING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Decking",
     unit: "lm",
     defaultCostRate: DECK_BENCHMARKS.hardwoodLm.cost,
-    defaultSellRate: DECK_BENCHMARKS.hardwoodLm.sell,
     recommended: true,
     calculatorSupport: "used_now",
     description:
@@ -92,7 +94,6 @@ export const DECKING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Decking",
     unit: "lm",
     defaultCostRate: DECK_BENCHMARKS.kwilaLm.cost,
-    defaultSellRate: DECK_BENCHMARKS.kwilaLm.sell,
     recommended: true,
     calculatorSupport: "used_now",
     description:
@@ -107,10 +108,36 @@ export const DECKING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Decking",
     unit: "lm",
     defaultCostRate: DECK_BENCHMARKS.compositeLm.cost,
-    defaultSellRate: DECK_BENCHMARKS.compositeLm.sell,
     calculatorSupport: "used_now",
     description:
       "Cost per linear metre of board ($/lm). Preferred rate when board quantity is calculated.",
+  }),
+  entry({
+    item_key: DECK_FASCIA_MATERIAL_ITEM_KEY,
+    label: "Deck fascia / edge boards",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "deck",
+    workAreaLabel: "Decking",
+    unit: "lm",
+    description:
+      "Cost per linear metre of fascia / edge board ($/lm). Company exact overrides. Quotr fallback is cost-only; charge-out uses company gross margin.",
+    defaultCostRate: DECK_BENCHMARKS.faceBoardLm.cost,
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: DECK_SKIRTING_MATERIAL_ITEM_KEY,
+    label: "Full-height deck skirting / screening",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "deck",
+    workAreaLabel: "Decking",
+    unit: "lm",
+    description:
+      "Cost per linear metre of full-height skirting / screening. Company exact overrides. Quotr fallback is cost-only; charge-out uses company gross margin.",
+    defaultCostRate: DECK_BENCHMARKS.faceBoardLm.cost,
+    calculatorSupport: "used_now",
   }),
 ];
 

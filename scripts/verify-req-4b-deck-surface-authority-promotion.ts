@@ -446,7 +446,7 @@ function testSafetyAndGoldens() {
     "34 Deck component cost parity",
     surfaceLine(bench)!.recommendedCost === surfaceReq(bench)!.totalCost
   );
-  check("37 Deck 1 golden sell $48,340", Math.round(deck1.recommendedSell) === 48340);
+  check("37 Deck 1 golden sell $39,638", Math.round(deck1.recommendedSell) === 39638);
   check(
     "38 deck.labour line money authority",
     getComponentCommercialAuthority({

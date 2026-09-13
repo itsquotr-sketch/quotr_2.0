@@ -313,7 +313,7 @@ check(
 );
 check(
   "30 unchanged inputs = same sell",
-  baseline.recommendedSell === 12878.01
+  baseline.recommendedSell === 10775.44
 );
 const classify = classifyResolvedSell({
   costRate: 22.5,
