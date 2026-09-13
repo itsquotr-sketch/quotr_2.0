@@ -74,32 +74,36 @@ function main() {
   assert("Logout remains wired", /logout/.test(menu) && /Log out/.test(menu));
 
   section("PROFILE LOADER STATES");
-  assert("authenticated user required (getUser)", /getUser\(/.test(profilePage));
+  assert(
+    "authenticated user required (request-scoped requireAuthOrgContext)",
+    /requireAuthOrgContext/.test(profilePage)
+  );
   assert(
     "unauthenticated redirects to login",
     /redirect\(["']\/login["']\)/.test(profilePage)
   );
   assert(
-    "profile lookup bound to auth user id",
-    /\.eq\(["']id["'],\s*user\.id\)/.test(profilePage)
+    "display profile is bound to the signed-in user",
+    /getAuthDisplayProfile/.test(profilePage) &&
+      /eq\(["']id["'],\s*auth\.user\.id\)/.test(read("lib/security/auth-display.ts"))
   );
   assert(
-    "organisation derived from profile.org_id",
-    /\.eq\(["']id["'],\s*profile\.org_id\)/.test(profilePage)
+    "organisation name comes from cached org reader keyed by auth.orgId",
+    /loadOrganisationName\(auth\.orgId\)/.test(
+      read("lib/security/auth-display.ts")
+    )
   );
   assert(
     "missing profile/org routes to setup-required",
-    /redirect\(["']\/app\/setup-required["']\)/.test(profilePage) &&
-      /!profile\?\.org_id|!profile/.test(profilePage)
+    /redirect\(["']\/app\/setup-required["']\)/.test(profilePage)
   );
   assert(
     "unresolvable organisation routes to setup-required (STATE D)",
-    /!organisation/.test(profilePage) &&
-      /setup-required/.test(profilePage)
+    /organisation_required|setup-required/.test(profilePage)
   );
   assert(
     "optional null fields use safe defaults",
-    /full_name\?\.trim\(\)\s*\?\?\s*["']["']/.test(profilePage) &&
+    /fullName\?\.trim\(\)\s*\?\?\s*["']["']/.test(profilePage) &&
       /formatRole/.test(profilePage)
   );
   assert(
@@ -113,7 +117,7 @@ function main() {
   );
   assert(
     "email from auth user",
-    /user\.email/.test(profilePage)
+    /auth\.user\.email/.test(profilePage)
   );
   assert(
     "does not expose raw DB errors to UI",

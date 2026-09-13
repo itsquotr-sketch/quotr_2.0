@@ -8,6 +8,7 @@ import { loadOrganisationSettingsRow } from "@/lib/settings/organisation-setting
 export type AuthDisplayProfile = {
   userEmail?: string;
   fullName: string | null;
+  role: string | null;
   organisationName: string | null;
   tradingName: string | null;
   timezone: string | null;
@@ -29,7 +30,7 @@ export const getAuthDisplayProfile = cache(
       loadOrganisationSettingsRow(auth.orgId),
       auth.supabase
         .from("profiles")
-        .select("full_name")
+        .select("full_name, role")
         .eq("id", auth.user.id)
         .maybeSingle(),
     ]);
@@ -37,6 +38,7 @@ export const getAuthDisplayProfile = cache(
     return {
       userEmail: auth.user.email,
       fullName: profile?.full_name ?? null,
+      role: profile?.role ?? null,
       organisationName,
       tradingName: (settings?.trading_name as string | null) ?? null,
       timezone: (settings?.timezone as string | null) ?? null,

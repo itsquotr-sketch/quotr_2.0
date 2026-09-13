@@ -104,14 +104,17 @@ function main() {
     gitTracked(profileRel)
   );
   const profilePage = read(profileRel);
-  assert("profile requires auth user", /getUser\(/.test(profilePage));
+  assert("profile requires signed-in org context", /requireAuthOrgContext/.test(profilePage));
   assert(
-    "profile loads full_name/role/org from profiles",
-    /full_name/.test(profilePage) && /role/.test(profilePage) && /org_id/.test(profilePage)
+    "profile reuses request-scoped display (full_name/role/org name)",
+    /getAuthDisplayProfile/.test(profilePage) &&
+      /fullName/.test(profilePage) &&
+      /display\.role/.test(profilePage) &&
+      /organisationName/.test(profilePage)
   );
   assert(
     "email from auth user, not client trust",
-    /user\.email/.test(profilePage)
+    /auth\.user\.email/.test(profilePage)
   );
   assert(
     "missing profile routes to setup-required",

@@ -1,6 +1,7 @@
 "use client";
 
 import { usePathname } from "next/navigation";
+import Link from "next/link";
 import { AppSidebarNav } from "@/components/app-sidebar";
 import { TrialNoticeBanner } from "@/components/billing/TrialNoticeBanner";
 import { AccountMenu } from "@/components/layout/account-menu";
@@ -66,6 +67,10 @@ export function AppShell({
       }}
     >
       <NotificationProvider>
+      <div className="hidden" aria-hidden="true">
+        <Link href="/app/profile" prefetch tabIndex={-1} />
+        <Link href="/app/settings/billing" prefetch tabIndex={-1} />
+      </div>
       <div className="flex min-h-dvh w-full md:h-dvh md:overflow-hidden">
         <AppSidebarNav
           setupIncomplete={setupIncomplete}

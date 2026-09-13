@@ -4,8 +4,8 @@ import { UserMenu } from "@/components/layout/user-menu";
 import { BillingPageContent } from "@/components/billing/BillingPageContent";
 import { buildBillingPageView } from "@/lib/billing/billing-page-view";
 import { getOrgBillingState } from "@/lib/billing/server";
+import { measureServerLoad } from "@/lib/perf/timing";
 import { requireAuthOrgContext } from "@/lib/security/auth-org-context";
-import { createClient } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 
 type BillingPageProps = {
@@ -20,7 +20,12 @@ export default async function BillingSettingsPage({
     redirect("/login");
   }
 
-  const params = await searchParams;
+  // Identity chrome comes from AppShell. Billing state is the same
+  // request-scoped helper layout already resolved — do not re-read auth.
+  const [params, state] = await Promise.all([
+    searchParams,
+    measureServerLoad("billing", () => getOrgBillingState(auth.orgId)),
+  ]);
   const checkout =
     params.checkout === "success" || params.checkout === "cancelled"
       ? params.checkout
@@ -30,17 +35,6 @@ export default async function BillingSettingsPage({
       ? params.upgrade
       : null;
 
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("full_name")
-    .eq("id", user!.id)
-    .maybeSingle();
-
-  const state = await getOrgBillingState(auth.orgId);
   const view = buildBillingPageView(state);
 
   return (
@@ -48,9 +42,7 @@ export default async function BillingSettingsPage({
       <PageHeader
         title="Billing"
         description="Trial, plan, and subscription for this organisation."
-        actions={
-          <UserMenu userEmail={user?.email} fullName={profile?.full_name} />
-        }
+        actions={<UserMenu />}
       />
       <SettingsContainer>
         <BillingPageContent

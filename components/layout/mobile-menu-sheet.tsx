@@ -62,7 +62,7 @@ export function MobileMenuSheet({ triggerClassName }: MobileMenuSheetProps) {
                 pathname === "/app/profile" && "bg-muted"
               )}
               render={
-                <Link href="/app/profile" onClick={() => setOpen(false)} />
+                <Link href="/app/profile" prefetch onClick={() => setOpen(false)} />
               }
             >
               <UserRound className="size-4" />
