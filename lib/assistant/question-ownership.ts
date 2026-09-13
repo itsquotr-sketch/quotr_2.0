@@ -5,7 +5,8 @@
  * Fence / Retaining Wall use their information contracts for HARD_MINIMUM /
  * ASK_NOW. Bathroom plumbing/electrical intensity is Details-owned even
  * though template P1 would otherwise fall through to Refine. Internal Walls
- * lining, job_scope, and the structural gate are Details-owned when unresolved.
+ * lining, job_scope, structural gate, and accessory applicability
+ * are Details-owned when unresolved.
  */
 
 import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
@@ -26,6 +27,17 @@ const INTERNAL_WALLS_DETAILS_OWNED_FACT_KEYS = new Set([
   "internal_walls.wall_type.side_a_product",
   "internal_walls.wall_type.same_lining_both_sides",
   "internal_walls.wall_type.side_b_product",
+  "internal_walls.wall_type.has_openings",
+  "internal_walls.opening.type",
+  "internal_walls.opening.width_m",
+  "internal_walls.opening.height_m",
+  "internal_walls.wall_type.insulation_included",
+  "internal_walls.wall_type.insulation",
+  "internal_walls.wall_type.skirting",
+  "internal_walls.wall_type.cornice",
+  "internal_walls.wall_type.stopping_side_a",
+  "internal_walls.wall_type.stopping_side_b",
+  "internal_walls.wall_type.painting",
 ]);
 
 type DetailsAskClass = "HARD_MINIMUM" | "ASK_NOW" | "ASSUME_IF_SKIPPED";

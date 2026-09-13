@@ -710,6 +710,7 @@ export function nextInternalWallsFinishField(params: {
   jobScope: InternalWallsJobScope | null;
   omitStopping?: boolean;
   omitPainting?: boolean;
+  omitElectrical?: boolean;
 }): string | null {
   if (params.jobScope === "remove_partition") return null;
   const type = params.type;
@@ -724,10 +725,6 @@ export function nextInternalWallsFinishField(params: {
   }
   if (type.skirting == null) return INTERNAL_WALLS_SKIRTING_SIDES_KEY;
   if (type.cornice == null) return INTERNAL_WALLS_CORNICE_SIDES_KEY;
-  if (type.electrical == null) return INTERNAL_WALLS_ELECTRICAL_KEY;
-  if (type.electrical === "custom" && !type.electrical_note) {
-    return INTERNAL_WALLS_ELECTRICAL_NOTE_KEY;
-  }
   if (
     stoppingAsksForScope(params.jobScope) &&
     params.omitStopping !== true
@@ -747,6 +744,12 @@ export function nextInternalWallsFinishField(params: {
     type.painting == null
   ) {
     return INTERNAL_WALLS_PAINTING_SIDES_KEY;
+  }
+  if (params.omitElectrical !== true) {
+    if (type.electrical == null) return INTERNAL_WALLS_ELECTRICAL_KEY;
+    if (type.electrical === "custom" && !type.electrical_note) {
+      return INTERNAL_WALLS_ELECTRICAL_NOTE_KEY;
+    }
   }
   return null;
 }

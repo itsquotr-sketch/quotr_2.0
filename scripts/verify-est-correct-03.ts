@@ -20,6 +20,7 @@ import type { RefineCandidate } from "../lib/assistant/refine/types";
 import { isUnresolvedCaptureValue } from "../lib/estimate/disclosed-assumptions";
 import {
   applyExtractedInternalWallsToFacts,
+  applyInternalWallsNoAccessoryScope,
   classifyInternalWallsJobScopeFromBrief,
   COORDINATION_ORIGINAL_BRIEF,
   extractInternalWallsTypesFromBrief,
@@ -349,6 +350,12 @@ check(
 const knownLining = composeSurfaces({
   facts: fixtureFacts([fact(INTERNAL_WALLS_STRUCTURAL_FACT_KEY, "w1", "no")]),
 });
+const readyComplete = composeSurfaces({
+  facts: applyInternalWallsNoAccessoryScope({
+    facts: fixtureFacts([fact(INTERNAL_WALLS_STRUCTURAL_FACT_KEY, "w1", "no")]),
+    workAreaId: "w1",
+  }),
+});
 check(
   "G known lining from brief is not re-asked",
   !initialFactKeys(knownLining.clarify).includes(
@@ -501,18 +508,16 @@ check(
   composeSurfaces({ facts: fixtureFacts() }).readiness.ready === false
 );
 check(
-  "MIXED + lining known + structural No + PCs → Ready may progress",
-  knownLining.readiness.ready === true,
-  knownLining.readiness.builderCopy ??
-    JSON.stringify(knownLining.readiness.diagnostics.unresolved.slice(0, 8))
+  "MIXED + lining known + structural No + accessory No + PCs → Ready may progress",
+  readyComplete.readiness.ready === true,
+  readyComplete.readiness.builderCopy ??
+    JSON.stringify(readyComplete.readiness.diagnostics.unresolved.slice(0, 8))
 );
 check(
-  "irrelevant openings/finish do not block Ready",
-  !initialFactKeys(knownLining.clarify).includes(
-    "internal_walls.wall_type.has_openings"
-  ) &&
-    !initialFactKeys(knownLining.clarify).includes(
-      "internal_walls.wall_type.skirting"
+  "irrelevant opening/skirting children do not block Ready after No",
+  !initialFactKeys(readyComplete.clarify).includes("internal_walls.opening.type") &&
+    !initialFactKeys(readyComplete.clarify).includes(
+      "internal_walls.wall_type.insulation"
     )
 );
 check(

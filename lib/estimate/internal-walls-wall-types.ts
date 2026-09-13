@@ -1925,6 +1925,7 @@ export function nextInternalWallsWallTypeField(params: {
   jobScope: string | null;
   omitStopping?: boolean;
   omitPainting?: boolean;
+  omitElectrical?: boolean;
 }): string | null {
   if (params.jobScope === "remove_partition") return null;
   const type = params.type;
@@ -1962,6 +1963,7 @@ export function nextInternalWallsWallTypeField(params: {
       jobScope: params.jobScope as never,
       omitStopping: params.omitStopping,
       omitPainting: params.omitPainting,
+      omitElectrical: params.omitElectrical,
     });
   }
 
@@ -1982,6 +1984,7 @@ export function nextInternalWallsWallTypeField(params: {
       jobScope: params.jobScope as never,
       omitStopping: params.omitStopping,
       omitPainting: params.omitPainting,
+      omitElectrical: params.omitElectrical,
     });
   }
   if (type.frame_system == null) return "internal_walls.wall_type.frame_system";
@@ -2015,6 +2018,7 @@ export function nextInternalWallsWallTypeField(params: {
     jobScope: params.jobScope as never,
     omitStopping: params.omitStopping,
     omitPainting: params.omitPainting,
+    omitElectrical: params.omitElectrical,
   });
 }
 

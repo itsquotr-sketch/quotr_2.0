@@ -747,7 +747,7 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
             workAreaName,
             factKey: INTERNAL_WALLS_PAINTING_SIDES_KEY,
             label: "Wall painting",
-            question: "Include wall painting?",
+            question: "Include painting to the new walls?",
             inputType: "select",
             options: internalWallsPaintingOptions(active),
             currentValue: wallTypeFieldCurrentValue(

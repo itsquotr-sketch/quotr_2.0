@@ -14,6 +14,7 @@ import { composeEstimateReadiness } from "../lib/assistant/readiness/compose";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import {
   applyExtractedInternalWallsToFacts,
+  applyInternalWallsNoAccessoryScope,
   canonicalTimberSizeFromText,
   COORDINATION_ORIGINAL_BRIEF,
   extractInternalWallsTypesFromBrief,
@@ -312,14 +313,17 @@ const readyAfterStructural = composeClarifyView({
     { id: "w1", type: "internal_walls", name: "Internal walls", status: "confirmed" },
     { id: "d1", type: "demolition", name: "Demolition / strip-out", status: "confirmed" },
   ],
-  facts: [
-    ...facts,
-    {
-      key: "internal_walls.structural_involvement",
-      work_area_id: "w1",
-      value: "no",
-    },
-  ],
+  facts: applyInternalWallsNoAccessoryScope({
+    facts: [
+      ...facts,
+      {
+        key: "internal_walls.structural_involvement",
+        work_area_id: "w1",
+        value: "no",
+      },
+    ],
+    workAreaId: "w1",
+  }),
   constraints: [
     { key: "site_access", value: "Easy" },
     { key: "material_carry_distance", value: "< 10m" },
@@ -327,7 +331,7 @@ const readyAfterStructural = composeClarifyView({
   jobPlan,
 });
 check(
-  "Details is Ready with known walls + carry + structural No, without optional finish",
+  "Details is Ready with known walls + carry + structural No + accessory No",
   readyAfterStructural.enoughToEstimate === true
 );
 

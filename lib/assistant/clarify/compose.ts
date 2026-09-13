@@ -112,6 +112,8 @@ import {
   wallTypeFieldCurrentValue,
 } from "@/lib/estimate/internal-walls-wall-types";
 import {
+  INTERNAL_WALLS_ELECTRICAL_KEY,
+  INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
   internalWallsNestedFinishOmit,
   internalWallsPaintingOptions,
@@ -151,16 +153,9 @@ const BATHROOM_P1_CONDITION_KEYS = [
 
 function isOptionalInternalWallsClarifyKey(key: string): boolean {
   return (
-    key.includes("has_openings") ||
-    key.includes("opening.") ||
-    key.includes("insulation") ||
-    key.includes("skirting") ||
-    key.includes("cornice") ||
     key.includes("electrical") ||
-    key.includes("stopping") ||
-    key.endsWith(".painting") ||
-    key.endsWith("_painting") ||
-    key === INTERNAL_WALLS_PAINTING_SIDES_KEY
+    key === INTERNAL_WALLS_ELECTRICAL_KEY ||
+    key === INTERNAL_WALLS_ELECTRICAL_NOTE_KEY
   );
 }
 
@@ -818,6 +813,7 @@ function missingHardMinimum(
           jobScope,
           omitStopping: omitHard.omitStopping,
           omitPainting: omitHard.omitPainting,
+          omitElectrical: true,
         });
         if (
           wallTypesRequiredForScope(jobScope) &&
@@ -1397,6 +1393,7 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           jobScope,
           omitStopping: omitProgressive.omitStopping,
           omitPainting: omitProgressive.omitPainting,
+          omitElectrical: true,
         });
         if (
           !nextField ||

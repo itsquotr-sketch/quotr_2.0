@@ -14,10 +14,20 @@ import {
   parseInternalWallsLiningProduct,
   parseInternalWallsTimberSize,
   recommendedSheetLengthMmForProduct,
+  resolveInternalWallsWallTypes,
   storedInternalWallsWallTypes,
   type InternalWallsLiningProduct,
   type InternalWallsTimberSize,
 } from "@/lib/estimate/internal-walls-wall-types";
+import { INTERNAL_WALLS_HAS_OPENINGS_KEY } from "@/lib/estimate/internal-walls-openings";
+import {
+  INTERNAL_WALLS_CORNICE_SIDES_KEY,
+  INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
+  INTERNAL_WALLS_PAINTING_SIDES_KEY,
+  INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
+  INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
+} from "@/lib/estimate/internal-walls-finish";
 
 export const COORDINATION_ORIGINAL_BRIEF =
   "I am renovating a house and removing 3 internal walls, I need to rebuild the walls completely. 2 of the walls are 45x90 framed timber with 13mm standard GIB on both sides (they total 9m long and are 2.4m high), and the other wall is 45x90 framed timber with 13mm standard GIB on one side and 13mm aqualine on the otherside (this wall is 3m long and 2.4m high)";
@@ -445,6 +455,39 @@ export function applyExtractedInternalWallsToFacts(params: {
         heightM: spec.heightM,
         prefix: "side_b",
         face: spec.sideB,
+      });
+    }
+  }
+  return facts;
+}
+
+/** Explicit builder "No" answers for accessory applicability. Not a silent default. */
+export function applyInternalWallsNoAccessoryScope(params: {
+  facts: EstimateFact[];
+  workAreaId: string;
+}): EstimateFact[] {
+  const resolved = resolveInternalWallsWallTypes({
+    facts: params.facts,
+    workAreaId: params.workAreaId,
+  });
+  let facts = params.facts;
+  const writes: Array<{ key: string; value: string }> = [
+    { key: INTERNAL_WALLS_HAS_OPENINGS_KEY, value: "No" },
+    { key: INTERNAL_WALLS_INSULATION_INCLUDED_KEY, value: "No" },
+    { key: INTERNAL_WALLS_SKIRTING_SIDES_KEY, value: "No" },
+    { key: INTERNAL_WALLS_CORNICE_SIDES_KEY, value: "No" },
+    { key: INTERNAL_WALLS_STOPPING_SIDE_A_KEY, value: "No" },
+    { key: INTERNAL_WALLS_STOPPING_SIDE_B_KEY, value: "No" },
+    { key: INTERNAL_WALLS_PAINTING_SIDES_KEY, value: "No" },
+  ];
+  for (const type of resolved.types) {
+    for (const row of writes) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId: type.id,
+        key: row.key,
+        value: row.value,
       });
     }
   }

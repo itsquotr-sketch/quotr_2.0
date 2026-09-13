@@ -442,7 +442,7 @@ export const internalWallsScope: ScopeDefinition = {
     {
       key: INTERNAL_WALLS_PAINTING_SIDES_KEY,
       label: "Wall painting",
-      questionText: "Include wall painting?",
+      questionText: "Include painting to the new walls?",
       inputType: "select",
       options: [...INTERNAL_WALLS_SIDE_SELECTION_OPTIONS],
       required: false,

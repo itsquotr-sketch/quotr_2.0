@@ -17,6 +17,7 @@ import { composeEstimateReadiness } from "../lib/assistant/readiness/compose";
 import { calculateInternalWalls } from "../lib/estimate/calculators/fitout";
 import {
   applyExtractedInternalWallsToFacts,
+  applyInternalWallsNoAccessoryScope,
   COORDINATION_ORIGINAL_BRIEF,
   extractInternalWallsTypesFromBrief,
 } from "../lib/estimate/internal-walls-brief";
@@ -88,21 +89,24 @@ function ctx(facts: EstimateFact[]): EstimateContext {
 
 function seedFacts(): EstimateFact[] {
   const types = extractInternalWallsTypesFromBrief(COORDINATION_ORIGINAL_BRIEF);
-  return applyExtractedInternalWallsToFacts({
-    facts: [
-      {
-        key: "internal_walls.job_scope",
-        work_area_id: "w1",
-        value: "mixed",
-      },
-      {
-        key: "internal_walls.structural_involvement",
-        work_area_id: "w1",
-        value: "no",
-      },
-    ],
+  return applyInternalWallsNoAccessoryScope({
+    facts: applyExtractedInternalWallsToFacts({
+      facts: [
+        {
+          key: "internal_walls.job_scope",
+          work_area_id: "w1",
+          value: "mixed",
+        },
+        {
+          key: "internal_walls.structural_involvement",
+          work_area_id: "w1",
+          value: "no",
+        },
+      ],
+      workAreaId: "w1",
+      types,
+    }),
     workAreaId: "w1",
-    types,
   });
 }
 

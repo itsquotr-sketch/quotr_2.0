@@ -14,6 +14,7 @@ import {
 import { composeEstimateReadiness } from "../lib/assistant/readiness/compose";
 import {
   applyExtractedInternalWallsToFacts,
+  applyInternalWallsNoAccessoryScope,
   COORDINATION_ORIGINAL_BRIEF,
   extractInternalWallsTypesFromBrief,
 } from "../lib/estimate/internal-walls-brief";
@@ -36,16 +37,19 @@ function read(rel: string): string {
   return readFileSync(join(process.cwd(), rel), "utf8");
 }
 
-const facts: EstimateFact[] = applyExtractedInternalWallsToFacts({
-  facts: [
-    {
-      key: "internal_walls.job_scope",
-      work_area_id: "w1",
-      value: "new_partition",
-    },
-  ],
+const facts: EstimateFact[] = applyInternalWallsNoAccessoryScope({
+  facts: applyExtractedInternalWallsToFacts({
+    facts: [
+      {
+        key: "internal_walls.job_scope",
+        work_area_id: "w1",
+        value: "new_partition",
+      },
+    ],
+    workAreaId: "w1",
+    types: extractInternalWallsTypesFromBrief(COORDINATION_ORIGINAL_BRIEF),
+  }),
   workAreaId: "w1",
-  types: extractInternalWallsTypesFromBrief(COORDINATION_ORIGINAL_BRIEF),
 });
 
 const workAreas = [
