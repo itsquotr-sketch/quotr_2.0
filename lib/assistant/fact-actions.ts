@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import type { AssistantStage } from "@/components/assistant/types";
+import { scalarFactWorkAreaReuse } from "@/lib/assistant/assistant-mutation-result-reload";
 import { completeAssistantMutation } from "@/lib/assistant/complete-assistant-mutation";
+import { ASSISTANT_WORK_AREA_COLUMNS } from "@/lib/assistant/estimate-generation-result";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { commitUserFactEdit } from "@/lib/assistant/scope-persistence";
@@ -93,16 +95,21 @@ export async function updateProjectFact(
     return { error: commit.error };
   }
 
-  const [{ data: workAreas }, { data: projectFactsRaw }] = await Promise.all([
+  const [workAreasResult, projectFactsResult] = await Promise.all([
     supabase
       .from("work_areas")
-      .select("id, type, status")
-      .eq("project_id", projectId),
+      .select(ASSISTANT_WORK_AREA_COLUMNS)
+      .eq("project_id", projectId)
+      .eq("org_id", orgId)
+      .order("sort_order", { ascending: true })
+      .order("created_at", { ascending: true }),
     supabase
       .from("project_facts")
       .select("key, work_area_id, value, source, conflict_warning")
       .eq("project_id", projectId),
   ]);
+  const workAreas = workAreasResult.data;
+  const projectFactsRaw = projectFactsResult.data;
 
   const derivedPersist = await persistDerivedFactsForProject(
     supabase,
@@ -132,7 +139,15 @@ export async function updateProjectFact(
   }
 
   await markEstimateStaleWithContext(context, projectId);
-  const mutation = await completeAssistantMutation(context, projectId);
+  const mutation = await completeAssistantMutation(
+    context,
+    projectId,
+    scalarFactWorkAreaReuse({
+      key,
+      workAreas,
+      error: workAreasResult.error,
+    })
+  );
   revalidateProjectPath(projectId);
   return mutation;
 }
