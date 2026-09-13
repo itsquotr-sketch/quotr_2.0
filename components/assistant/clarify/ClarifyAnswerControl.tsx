@@ -20,6 +20,7 @@ export function ClarifyAnswerControl({
   persistError,
   continuePending,
   pending = false,
+  disabled = false,
   compact = false,
   onAnswerBoolean,
   onAnswerValue,
@@ -30,6 +31,7 @@ export function ClarifyAnswerControl({
   persistError?: string | null;
   continuePending?: boolean;
   pending?: boolean;
+  disabled?: boolean;
   compact?: boolean;
   onAnswerBoolean?: (
     candidate: ClarifyCandidate,
@@ -44,7 +46,7 @@ export function ClarifyAnswerControl({
   const control = clarifyControlType(candidate);
   const booleanOptions = booleanChoiceOptions(candidate);
   const multiSelectedCount = Array.isArray(value) ? value.length : 0;
-  const showSaving = pending || Boolean(continuePending);
+  const showSaving = !disabled && (pending || Boolean(continuePending));
 
   if (control === "BOOLEAN") {
     return (
@@ -59,8 +61,10 @@ export function ClarifyAnswerControl({
           error={persistError}
           compact={compact}
           pending={pending}
+          disabled={disabled}
           onSelect={(next) => {
             if (pending) return;
+            if (disabled) return;
             const picked = Array.isArray(next) ? next[0] : next;
             onAnswerBoolean?.(
               candidate,
@@ -90,7 +94,11 @@ export function ClarifyAnswerControl({
           multiple
           error={persistError}
           compact={compact}
-          onSelect={(next) => onAnswerValue?.(candidate, next)}
+          disabled={disabled}
+          onSelect={(next) => {
+            if (disabled) return;
+            onAnswerValue?.(candidate, next);
+          }}
         />
         {onContinueMulti ? (
           <Button
@@ -98,6 +106,7 @@ export function ClarifyAnswerControl({
             className="min-h-11 w-full sm:w-auto"
             data-clarify-multi-continue
             disabled={
+              disabled ||
               continuePending ||
               (candidate.blocksEstimate && multiSelectedCount === 0)
             }
@@ -131,8 +140,10 @@ export function ClarifyAnswerControl({
           error={persistError}
           compact={compact}
           pending={pending}
+          disabled={disabled}
           onSelect={(next) => {
             if (pending) return;
+            if (disabled) return;
             const picked = Array.isArray(next) ? next[0] : next;
             onAnswerValue?.(candidate, picked ?? "");
           }}
@@ -152,6 +163,7 @@ export function ClarifyAnswerControl({
         candidate={candidate}
         compact={compact}
         isSaving={pending}
+        disabled={disabled}
         onSubmit={(next) => onAnswerValue?.(candidate, next)}
       />
       {showSaving ? (

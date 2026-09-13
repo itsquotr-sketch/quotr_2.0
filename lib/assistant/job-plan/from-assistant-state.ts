@@ -7,8 +7,18 @@ import type { WorkArea } from "@/components/assistant/types";
 export function jobPlanFactsFromAssistantState(
   state: AssistantState
 ): EstimateFact[] {
+  return jobPlanFactsFromReviewAndInterview(
+    state.scopeReview,
+    state.interviewFacts
+  );
+}
+
+export function jobPlanFactsFromReviewAndInterview(
+  scopeReview: AssistantState["scopeReview"],
+  interviewFacts: AssistantState["interviewFacts"]
+): EstimateFact[] {
   let facts: EstimateFact[] = [];
-  for (const wa of state.scopeReview.workAreas) {
+  for (const wa of scopeReview.workAreas) {
     for (const fact of wa.facts) {
       facts = overlayFact(facts, {
         key: fact.key,
@@ -18,7 +28,7 @@ export function jobPlanFactsFromAssistantState(
       });
     }
   }
-  for (const fact of state.interviewFacts) {
+  for (const fact of interviewFacts) {
     facts = overlayFact(facts, {
       key: fact.key,
       work_area_id: fact.workAreaId,

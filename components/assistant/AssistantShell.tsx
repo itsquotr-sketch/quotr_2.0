@@ -111,12 +111,17 @@ import { presentAssistantError } from "@/lib/assistant/presentation/error-messag
 import { isTechnicalErrorText } from "@/lib/errors/user-message";
 import {
   jobPlanFactsFromAssistantState,
+  jobPlanFactsFromReviewAndInterview,
   jobPlanWorkAreasFromUi,
 } from "@/lib/assistant/job-plan/from-assistant-state";
 import type { JobPlanScopeItem } from "@/lib/assistant/job-plan/types";
 import { composeClarifyView } from "@/lib/assistant/clarify/compose";
 import { composeBuilderReview } from "@/lib/assistant/builder-review";
 import { composeEstimateReadiness } from "@/lib/assistant/readiness/compose";
+import {
+  composeClarifyInputFromEstimateContext,
+  evaluateGenerateEstimatePermission,
+} from "@/lib/assistant/readiness/clarify-estimate";
 import { evaluatePackageQuickEstimateReadiness } from "@/lib/assistant/readiness/package-quick-estimate";
 import type { SaveStatus } from "@/lib/assistant/presentation/save-status";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
@@ -128,7 +133,15 @@ import {
   completeClarifyPlanning,
 } from "@/lib/assistant/clarify/actions";
 import { CLARIFY_IS_PRIMARY } from "@/lib/assistant/clarify/flags";
-import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
+import {
+  createGenerateOnceLock,
+  createPendingWriteTracker,
+  decideGenerateAfterSync,
+  delayMs,
+  remainingGenerateMinDisplayMs,
+  type GenerateEstimateStage,
+} from "@/lib/assistant/clarify/generate-sync";
+import type { ClarifyCandidate, ComposeClarifyInput } from "@/lib/assistant/clarify/types";
 import {
   ASSISTANT_MODES_PRIMARY,
   deriveAssistantUiMode,
@@ -142,7 +155,7 @@ import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-w
 import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumptions";
 import { disclosedProjectConditionForNotSure } from "@/lib/project-conditions/consumed-authority";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
-import { startPreviewPerf, recordPreviewPerf } from "@/lib/assistant/preview-performance";
+import { startPreviewPerf, recordPreviewPerf, previewPerfNow } from "@/lib/assistant/preview-performance";
 import {
   resolveActiveDisclosureStage,
   stagePrefersExpanded,
@@ -251,6 +264,23 @@ export function AssistantShell({
   const estimateNavProjection = useEstimateGenerationProjection();
   const { project } = initialState;
 
+  const pendingWriteTrackerRef = useRef(createPendingWriteTracker());
+  const generateLockRef = useRef(createGenerateOnceLock());
+  const generateUiStartedAtRef = useRef(0);
+  const generateAuthorityRef = useRef<{
+    stage: string;
+    briefText: string | null;
+    qualityLevel: string | null;
+    workAreas: readonly {
+      id: string;
+      type: string;
+      name: string;
+      status: string;
+    }[];
+    facts: EstimateFact[];
+    constraints: { key: string; value: unknown }[];
+  } | null>(null);
+
   const [pendingAction, setPendingAction] = useState<PendingAction>(null);
   const [clarifyWritePending, setClarifyWritePending] = useState(false);
   // Unified authority for "does a persisted Clarify answer of ANY input type
@@ -329,6 +359,13 @@ export function AssistantShell({
   );
 
   const [isGenerating, setIsGenerating] = useState(false);
+  const [generateStage, setGenerateStage] =
+    useState<GenerateEstimateStage>("building");
+  const [generateStartedAt, setGenerateStartedAt] = useState(0);
+  const [generateNotice, setGenerateNotice] = useState<string | null>(null);
+  const [generateReturnFocusId, setGenerateReturnFocusId] = useState<
+    string | null
+  >(null);
   const [isRegenerating, setIsRegenerating] = useState(false);
   const [isSavingMargin, setIsSavingMargin] = useState(false);
   const [marginSaveLabel, setMarginSaveLabel] = useState<string | null>(null);
@@ -714,18 +751,32 @@ export function AssistantShell({
 
       try {
         const result = await fn();
+        const settleGeneratingUi = async () => {
+          if (action !== "estimate") return;
+          const wait = remainingGenerateMinDisplayMs(
+            previewPerfNow() - generateUiStartedAtRef.current
+          );
+          if (wait > 0) await delayMs(wait);
+          setIsGenerating(false);
+        };
 
         if (result.error) {
-          setActionError(
-            isTechnicalErrorText(result.error)
-              ? presentAssistantError(
-                  action === "brief" ? "analyse_job" : "generic"
-                )
-              : presentAssistantError(
-                  action === "brief" ? "analyse_job" : "generic",
-                  result.error
-                )
-          );
+          if (action === "estimate") {
+            setGenerateNotice(
+              presentAssistantError("estimate_generate", result.error)
+            );
+          } else {
+            setActionError(
+              isTechnicalErrorText(result.error)
+                ? presentAssistantError(
+                    action === "brief" ? "analyse_job" : "generic"
+                  )
+                : presentAssistantError(
+                    action === "brief" ? "analyse_job" : "generic",
+                    result.error
+                  )
+            );
+          }
           if (result.reasonCode) {
             setActionDenial({
               reasonCode: result.reasonCode,
@@ -734,7 +785,7 @@ export function AssistantShell({
           }
           setPendingAction(null);
           if (action === "estimate") {
-            setIsGenerating(false);
+            await settleGeneratingUi();
           }
           if (action === "regenerate") {
             setIsRegenerating(false);
@@ -788,7 +839,7 @@ export function AssistantShell({
 
         setPendingAction(null);
         if (action === "estimate") {
-          setIsGenerating(false);
+          await settleGeneratingUi();
         }
         if (action === "regenerate") {
           setIsRegenerating(false);
@@ -801,7 +852,14 @@ export function AssistantShell({
         );
         setPendingAction(null);
         if (action === "estimate") {
+          const wait = remainingGenerateMinDisplayMs(
+            previewPerfNow() - generateUiStartedAtRef.current
+          );
+          if (wait > 0) await delayMs(wait);
           setIsGenerating(false);
+          setGenerateNotice(
+            presentAssistantError("estimate_generate")
+          );
         }
         if (action === "regenerate") {
           setIsRegenerating(false);
@@ -1077,38 +1135,144 @@ export function AssistantShell({
     if (
       isGenerating ||
       pendingAction != null ||
-      actionLockRef.current ||
-      pendingReadinessWrites > 0
+      actionLockRef.current
     ) {
       return;
     }
-    generationRequestSeqRef.current += 1;
+    if (actionError) {
+      return;
+    }
+    if (!generateLockRef.current.tryAcquire()) {
+      return;
+    }
+    generateUiStartedAtRef.current = previewPerfNow();
+    setGenerateStage(
+      pendingReadinessWrites > 0 || pendingWriteTrackerRef.current.size > 0
+        ? "saving"
+        : "readiness"
+    );
+    setGenerateStartedAt(Date.now());
     setIsGenerating(true);
+    setGenerateNotice(null);
+    setGenerateReturnFocusId(null);
     recordPreviewPerf("estimate_generate_ack", 0);
-    const endPerf = startPreviewPerf("estimate_generate_complete");
-    void runAction("estimate", async () => {
+
+    void (async () => {
+      const abortGenerating = async () => {
+        const wait = remainingGenerateMinDisplayMs(
+          previewPerfNow() - generateUiStartedAtRef.current
+        );
+        if (wait > 0) await delayMs(wait);
+        setIsGenerating(false);
+      };
       try {
-        if (CLARIFY_IS_PRIMARY && !constraintsSubmitted) {
-          const advanced = await completeClarifyPlanning({
-            projectId: project.id,
-            qualityLevel: qualityLevel ?? "standard",
-            generate: true,
-          });
-          return advanced;
+        let lastMutation: AssistantMutationResult | undefined;
+        if (
+          pendingReadinessWrites > 0 ||
+          pendingWriteTrackerRef.current.size > 0
+        ) {
+          setGenerateStage("saving");
         }
-        return await generateStaticEstimate(project.id);
+        {
+          const syncEnd = startPreviewPerf("estimate_generate_sync");
+          const settled = await pendingWriteTrackerRef.current.waitAll();
+          syncEnd();
+          lastMutation = settled.lastMutation;
+          const decision = decideGenerateAfterSync({
+            writeFailed: Boolean(settled.failed),
+            pendingWritesRemaining: settled.pendingRemaining,
+            permissionReady: true,
+          });
+          if (decision.reason === "write_failed" || settled.failed) {
+            setActionError(
+              presentAssistantError("save", settled.failed?.error)
+            );
+            await abortGenerating();
+            return;
+          }
+        }
+
+        setGenerateStage("readiness");
+        const snap = generateAuthorityRef.current;
+        const facts = lastMutation
+          ? jobPlanFactsFromReviewAndInterview(
+              lastMutation.scopeReview,
+              lastMutation.interviewFacts
+            )
+          : snap?.facts ?? [];
+        const constraints = lastMutation
+          ? lastMutation.submittedConstraints.map((row) => ({
+              key: row.key,
+              value: row.value,
+            }))
+          : snap?.constraints ?? [];
+        const workAreas = snap?.workAreas ?? [];
+        const compose = composeClarifyInputFromEstimateContext({
+          stage: (lastMutation?.stage ??
+            snap?.stage ??
+            "work_area_questions") as ComposeClarifyInput["stage"],
+          briefText: snap?.briefText ?? project.briefText,
+          qualityLevel: snap?.qualityLevel ?? qualityLevel,
+          workAreas,
+          facts,
+          constraints,
+        });
+        const permission = evaluateGenerateEstimatePermission({
+          compose,
+          workAreas,
+          facts,
+          unresolvedRequiredProjectConditionKeys: [],
+          pendingWrites: 0,
+        });
+        const readyDecision = decideGenerateAfterSync({
+          writeFailed: false,
+          pendingWritesRemaining: 0,
+          permissionReady: permission.ready,
+        });
+        if (!readyDecision.generate) {
+          setGenerateNotice(
+            permission.builderCopy ??
+              "One more detail is needed before the estimate can be built."
+          );
+          setGenerateReturnFocusId(
+            permission.diagnostics.unresolved[0]?.id ?? null
+          );
+          await abortGenerating();
+          return;
+        }
+
+        setGenerateStage("building");
+        generationRequestSeqRef.current += 1;
+        const endPerf = startPreviewPerf("estimate_generate_complete");
+        await runAction("estimate", async () => {
+          try {
+            if (CLARIFY_IS_PRIMARY && !constraintsSubmitted) {
+              const advanced = await completeClarifyPlanning({
+                projectId: project.id,
+                qualityLevel: qualityLevel ?? "standard",
+                generate: true,
+              });
+              return advanced;
+            }
+            return await generateStaticEstimate(project.id);
+          } finally {
+            endPerf();
+          }
+        });
       } finally {
-        endPerf();
+        generateLockRef.current.release();
       }
-    });
+    })();
   }, [
     isGenerating,
     pendingAction,
     pendingReadinessWrites,
     project.id,
+    project.briefText,
     runAction,
     constraintsSubmitted,
     qualityLevel,
+    actionError,
   ]);
 
   const handleRegenerateEstimate = useCallback(() => {
@@ -1536,10 +1700,11 @@ export function AssistantShell({
   );
 
   const handleClarifyBoolean = useCallback(
-    async (
+    (
       candidate: ClarifyCandidate,
       presentation: "INCLUDED" | "NOT_INCLUDED"
     ) => {
+      const work = (async () => {
       const requestSeq = ++factMutationSeqRef.current;
       setClarifyWritePending(true);
       setPendingReadinessWrites((n) => n + 1);
@@ -1678,6 +1843,9 @@ export function AssistantShell({
         setClarifyWritePending(false);
         setPendingReadinessWrites((n) => Math.max(0, n - 1));
       }
+      })();
+      pendingWriteTrackerRef.current.trackAction(work);
+      return work;
     },
     [
       onRejectedCanonicalMutation,
@@ -1689,10 +1857,11 @@ export function AssistantShell({
   );
 
   const handleClarifyValue = useCallback(
-    async (
+    (
       candidate: ClarifyCandidate,
       value: string | number | boolean | string[]
     ) => {
+      const work = (async () => {
       const requestSeq = ++factMutationSeqRef.current;
       const isNumericOrText =
         candidate.inputType === "number" || candidate.inputType === "text";
@@ -1807,6 +1976,9 @@ export function AssistantShell({
         setClarifyWritePending(false);
         setPendingReadinessWrites((n) => Math.max(0, n - 1));
       }
+      })();
+      pendingWriteTrackerRef.current.trackAction(work);
+      return work;
     },
     [
       onRejectedCanonicalMutation,
@@ -2065,6 +2237,18 @@ export function AssistantShell({
       }),
     [clarifyView, pendingReadinessWrites, jobPlan, liveConstraints, project.qualityLevel, qualityLevel]
   );
+
+  generateAuthorityRef.current = {
+    stage,
+    briefText: briefText || project.briefText,
+    qualityLevel: qualityLevel ?? project.qualityLevel,
+    workAreas: displayWorkAreas,
+    facts: jobPlanFacts,
+    constraints: liveConstraints.map((row) => ({
+      key: row.key,
+      value: row.value,
+    })),
+  };
 
   const refineView = useMemo(
     () =>
@@ -3075,12 +3259,14 @@ export function AssistantShell({
             <CollapsibleStageCard
               title="Details"
               subtitle={
-                estimateReadiness.enoughToEstimate
+                estimateReadiness.enoughToEstimate ||
+                estimateReadiness.canInitiateGenerate
                   ? "That's enough to build your estimate."
                   : "I need a few details to tighten the estimate."
               }
               statusLabel={
-                estimateReadiness.enoughToEstimate
+                estimateReadiness.enoughToEstimate ||
+                estimateReadiness.canInitiateGenerate
                   ? "Ready"
                   : pendingReadinessWrites > 0
                     ? "Saving"
@@ -3108,7 +3294,11 @@ export function AssistantShell({
                 isGenerating={
                   pendingAction === "estimate" || isGenerating
                 }
+                generateStage={generateStage}
+                generateStartedAt={generateStartedAt}
                 persistError={actionError}
+                generateNotice={generateNotice}
+                returnFocusId={generateReturnFocusId}
                 onAnswerBoolean={handleClarifyBoolean}
                 onAnswerValue={handleClarifyValue}
                 onEstimateNow={handleGenerateEstimate}
@@ -3497,7 +3687,9 @@ export function AssistantShell({
                 : pricingSummary
             }
             quoteSummary={quoteSummary}
-            isGenerating={isGenerating}
+            isGenerating={
+              isGenerating && !(CLARIFY_IS_PRIMARY && !estimateReady)
+            }
             isRegenerating={updatingEstimate}
             isSavingMargin={isSavingMargin}
             marginSaveLabel={marginSaveLabel}

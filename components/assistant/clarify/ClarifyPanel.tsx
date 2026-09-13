@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,7 @@ import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
 import type { RefineView } from "@/lib/assistant/refine/types";
 import { ClarifyReadinessCard } from "@/components/assistant/clarify/ClarifyReadiness";
 import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
+import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
@@ -19,12 +20,14 @@ import {
   clarifyControlType,
 } from "@/lib/assistant/clarify/question-contract";
 import {
+  canShowGenerateCta,
   clarifyPersistResultFailed,
   detailsReadyCardVisible,
   effectiveRemainingRequiredCount,
   shouldHoldClarifyQuestionUntilPersist,
   shouldIgnoreDuplicateClarifyActivation,
 } from "@/lib/assistant/clarify/interaction";
+import type { GenerateEstimateStage } from "@/lib/assistant/clarify/generate-sync";
 import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 
 type ClarifyPanelProps = {
@@ -33,7 +36,11 @@ type ClarifyPanelProps = {
   refineView: RefineView;
   isSaving?: boolean;
   isGenerating?: boolean;
+  generateStage?: GenerateEstimateStage;
+  generateStartedAt?: number;
   persistError?: string | null;
+  generateNotice?: string | null;
+  returnFocusId?: string | null;
   onAnswerBoolean?: (
     candidate: ClarifyCandidate,
     presentation: "INCLUDED" | "NOT_INCLUDED"
@@ -51,6 +58,8 @@ function ClarifyQuestion({
   persistError,
   pending,
   continuePending,
+  disabled,
+  focused,
   onAnswerBoolean,
   onAnswerValue,
   onContinueMulti,
@@ -60,6 +69,8 @@ function ClarifyQuestion({
   persistError?: string | null;
   pending?: boolean;
   continuePending?: boolean;
+  disabled?: boolean;
+  focused?: boolean;
   onAnswerBoolean?: ClarifyPanelProps["onAnswerBoolean"];
   onAnswerValue?: ClarifyPanelProps["onAnswerValue"];
   onContinueMulti?: () => void;
@@ -77,9 +88,13 @@ function ClarifyQuestion({
 
   return (
     <div
-      className="space-y-2 py-3 first:pt-0"
+      className={cn(
+        "space-y-2 py-3 first:pt-0",
+        focused && "rounded-lg ring-2 ring-primary/40 ring-offset-2 ring-offset-background"
+      )}
       data-clarify-question
       data-clarify-id={candidate.id}
+      data-clarify-return-focus={focused ? "true" : undefined}
       data-clarify-fact-key={candidate.factKey ?? undefined}
       data-clarify-constraint-key={candidate.constraintKey ?? undefined}
       data-clarify-input-type={candidate.inputType}
@@ -108,6 +123,7 @@ function ClarifyQuestion({
         persistError={persistError}
         pending={pending}
         continuePending={continuePending}
+        disabled={disabled}
         compact
         onAnswerBoolean={onAnswerBoolean}
         onAnswerValue={onAnswerValue}
@@ -131,7 +147,11 @@ export function ClarifyPanel({
   readiness,
   isSaving,
   isGenerating,
+  generateStage = "building",
+  generateStartedAt = 0,
   persistError,
+  generateNotice,
+  returnFocusId,
   onAnswerBoolean,
   onAnswerValue,
   onEstimateNow,
@@ -226,6 +246,7 @@ export function ClarifyPanel({
     candidate,
     presentation
   ) => {
+    if (isGenerating) return;
     if (!beginPending(candidate.id)) return;
     setLocalValues((prev) => ({
       ...prev,
@@ -260,6 +281,7 @@ export function ClarifyPanel({
       });
   };
   const wrapValue: ClarifyPanelProps["onAnswerValue"] = (candidate, value) => {
+    if (isGenerating) return;
     const control = clarifyControlType(candidate);
     if (control === "MULTI_SELECT") {
       setLocalValues((prev) => ({ ...prev, [candidate.id]: value }));
@@ -297,15 +319,37 @@ export function ClarifyPanel({
     readinessEnoughToEstimate: readiness.enoughToEstimate === true,
     persistError,
   });
+  const showGenerate = canShowGenerateCta({
+    persistError,
+    canInitiateGenerate: readiness.canInitiateGenerate === true,
+    enoughToEstimate: readiness.enoughToEstimate === true,
+  });
+
+  useEffect(() => {
+    if (!returnFocusId || isGenerating) return;
+    const node = document.querySelector(
+      `[data-clarify-id="${CSS.escape(returnFocusId)}"]`
+    );
+    if (node instanceof HTMLElement) {
+      node.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [isGenerating, returnFocusId]);
 
   if (showReady) {
     return (
       <div className="space-y-3">
         <PersistError error={persistError} />
+        {generateNotice && !persistError ? (
+          <p className="text-sm font-medium" role="alert">
+            {generateNotice}
+          </p>
+        ) : null}
         <ClarifyReadinessCard
           readiness={readiness}
-          isSaving={isSaving}
+          isSaving={isSaving && !isGenerating}
           isGenerating={isGenerating}
+          generateStage={generateStage}
+          generateStartedAt={generateStartedAt}
           onEstimateNow={onEstimateNow}
         />
       </div>
@@ -328,11 +372,23 @@ export function ClarifyPanel({
       data-clarify-panel
       data-details-complete-capture="true"
       data-clarify-count={view.visibleCount}
+      aria-busy={isGenerating ? "true" : undefined}
     >
+      {isGenerating ? (
+        <GenerateEstimateStatus
+          stage={generateStage}
+          startedAt={generateStartedAt}
+        />
+      ) : null}
       <p className="text-sm text-muted-foreground" data-clarify-progress>
         {countCopy}
       </p>
       <PersistError error={persistError} />
+      {generateNotice && !persistError ? (
+        <p className="text-sm font-medium" role="status">
+          {generateNotice}
+        </p>
+      ) : null}
 
       <div className="grid grid-cols-1 gap-4 md:gap-5 lg:grid-cols-2 lg:gap-6">
         {workAreaGroups.map((group) => (
@@ -371,12 +427,15 @@ export function ClarifyPanel({
                         continuePending={
                           continuePending && candidate.id === heldMultiId
                         }
+                        disabled={isGenerating}
+                        focused={returnFocusId === candidate.id}
                         onAnswerBoolean={wrapBoolean}
                         onAnswerValue={wrapValue}
                         onContinueMulti={
                           candidate.id === heldMultiId
                             ? () => {
                                 if (
+                                  isGenerating ||
                                   continueLockRef.current ||
                                   clarifyControlType(candidate) !== "MULTI_SELECT"
                                 ) {
@@ -434,6 +493,8 @@ export function ClarifyPanel({
                   value={localValues[candidate.id] ?? candidate.currentValue ?? null}
                   persistError={persistError}
                   pending={pendingIds.includes(candidate.id)}
+                  disabled={isGenerating}
+                  focused={returnFocusId === candidate.id}
                   onAnswerBoolean={wrapBoolean}
                   onAnswerValue={wrapValue}
                 />
@@ -445,18 +506,20 @@ export function ClarifyPanel({
 
       {visibleGroups.length === 0 ? (
         <div className="space-y-3" data-clarify-waiting>
-          {pendingIds.length > 0 || isSaving ? (
+          {!isGenerating && (pendingIds.length > 0 || isSaving) ? (
             <div data-clarify-save-status>
               <SaveStatusIndicator status="saving" isSaving />
             </div>
           ) : null}
           <p className="text-sm text-muted-foreground">
-            {readiness.enoughToEstimate || view.enoughToEstimate || pendingIds.length > 0
+            {isGenerating
+              ? "Quotr is generating your estimate."
+              : readiness.enoughToEstimate || view.enoughToEstimate || pendingIds.length > 0
               ? "Saving the last answer…"
               : "A few more details are still needed before this estimate can be built."}
           </p>
         </div>
-      ) : pendingIds.length > 0 ? (
+      ) : !isGenerating && pendingIds.length > 0 ? (
         <div className="min-h-5" data-clarify-save-status>
           <SaveStatusIndicator status="saving" isSaving />
         </div>
@@ -467,18 +530,19 @@ export function ClarifyPanel({
         data-clarify-cta-bar=""
       >
         <div className="flex w-full flex-col gap-2 sm:flex-row">
-          {readiness.enoughToEstimate ? (
+          {showGenerate ? (
             <Button
               type="button"
               className="min-h-11 w-full"
               data-clarify-primary-cta
-              disabled={isSaving || isGenerating}
+              disabled={isGenerating}
+              aria-disabled={isGenerating ? true : undefined}
               onClick={onEstimateNow}
             >
-              {isSaving || isGenerating ? (
+              {isGenerating ? (
                 <span className="inline-flex items-center justify-center gap-1.5">
                   <Loader2 className="size-3.5 animate-spin" aria-hidden />
-                  {ASSISTANT_ACTION_LABELS.saving}
+                  {ASSISTANT_ACTION_LABELS.generateEstimate}
                 </span>
               ) : (
                 ASSISTANT_ACTION_LABELS.estimateNow
@@ -490,7 +554,7 @@ export function ClarifyPanel({
               variant="outline"
               className="min-h-11 w-full"
               data-clarify-estimate-assumptions
-              disabled={isSaving}
+              disabled={isSaving || isGenerating}
               onClick={onEstimateNow}
             >
               {ASSISTANT_ACTION_LABELS.estimateNowUsingAssumptions}

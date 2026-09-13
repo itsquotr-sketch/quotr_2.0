@@ -115,19 +115,24 @@ export function composeEstimateReadiness(
 
   const blockerCopy = hardMinimumBlockerCopy(clarify.candidates);
   const pendingWrites = input.pendingWrites ?? 0;
+  const canInitiateGenerate =
+    clarify.enoughToEstimate && !clarify.blocksEstimate;
   const enough =
-    clarify.enoughToEstimate &&
-    !clarify.blocksEstimate &&
-    pendingWrites === 0;
+    canInitiateGenerate && pendingWrites === 0;
 
   return {
+    canInitiateGenerate,
     heading: enough
       ? "That's enough to build your estimate."
-      : pendingWrites > 0
+      : pendingWrites > 0 && canInitiateGenerate
+        ? "That's enough to build your estimate."
+        : pendingWrites > 0
         ? "Saving the last answer"
         : "Need a bit more",
     explanation: enough
       ? "All required details resolved. You can still change the job afterward."
+      : pendingWrites > 0 && canInitiateGenerate
+        ? "Create the estimate when you are ready. Quotr will finish saving first."
       : pendingWrites > 0
         ? "Saving the last answer, then the estimate can be built."
         : blockerCopy ?? "Answer the remaining required estimating questions.",

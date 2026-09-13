@@ -92,6 +92,19 @@ export function detailsReadyCardVisible(params: {
   );
 }
 
+/**
+ * Generate may be clicked while required answers are selected locally,
+ * even if persistence is still in flight. Generation still waits.
+ */
+export function canShowGenerateCta(params: {
+  persistError?: string | null;
+  canInitiateGenerate: boolean;
+  enoughToEstimate: boolean;
+}): boolean {
+  if (params.persistError) return false;
+  return params.canInitiateGenerate || params.enoughToEstimate;
+}
+
 export function currentClarifyCandidate(params: {
   readonly candidates: readonly ClarifyCandidate[];
   readonly locallyResolvedIds: ReadonlySet<string>;

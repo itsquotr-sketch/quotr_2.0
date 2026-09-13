@@ -12,6 +12,7 @@ export type PreviewPerfMark =
   | "question_save_complete"
   | "estimate_generate"
   | "estimate_generate_ack"
+  | "estimate_generate_sync"
   | "estimate_generate_complete"
   | "decision_action"
   | "builder_interview_load"

@@ -14,6 +14,7 @@ import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-lab
 type ClarifyValueFieldProps = {
   candidate: ClarifyCandidate;
   isSaving?: boolean;
+  disabled?: boolean;
   compact?: boolean;
   onSubmit: (value: string | number) => void;
 };
@@ -32,6 +33,7 @@ function emptyLocal(identity: string): LocalField {
 export function ClarifyValueField({
   candidate,
   isSaving,
+  disabled = false,
   compact = false,
   onSubmit,
 }: ClarifyValueFieldProps) {
@@ -96,7 +98,7 @@ export function ClarifyValueField({
           min={isNumber ? "0" : undefined}
           step={isNumber ? "any" : undefined}
           value={draft}
-          disabled={isSaving}
+          disabled={isSaving || disabled}
           aria-label={
             unit ? `${candidate.label} in ${unit}` : candidate.label
           }
@@ -140,7 +142,7 @@ export function ClarifyValueField({
       <Button
         type="button"
         className="min-h-11 w-full sm:w-auto"
-        disabled={isSaving}
+        disabled={isSaving || disabled}
         data-clarify-value-submit="true"
         onClick={commit}
       >
@@ -151,7 +153,7 @@ export function ClarifyValueField({
           type="button"
           variant="outline"
           className="min-h-11 w-full sm:w-auto"
-          disabled={isSaving}
+          disabled={isSaving || disabled}
           data-clarify-use-assumption="true"
           onClick={() => onSubmit("Not sure")}
         >

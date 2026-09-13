@@ -162,9 +162,10 @@ check(
     !readyFn.includes("pendingWrites")
 );
 check(
-  "shell still gates generate on pendingReadinessWrites",
+  "shell still waits on pendingReadinessWrites before generation",
   shell.includes("pendingReadinessWrites > 0") &&
-    shell.includes("pendingWrites: pendingReadinessWrites")
+    shell.includes("pendingWrites: pendingReadinessWrites") &&
+    shell.includes("waitAll")
 );
 check(
   "compose still requires pendingWrites === 0 for enoughToEstimate",
@@ -208,6 +209,10 @@ check(
   "pendingWrites keeps Create Estimate unavailable",
   pendingReady.enoughToEstimate === false &&
     pendingReady.canEstimateNow === false
+);
+check(
+  "pendingWrites still allows initiating Generate when locally complete",
+  pendingReady.canInitiateGenerate === true
 );
 check(
   "settled writes allow Ready when the view is enough",

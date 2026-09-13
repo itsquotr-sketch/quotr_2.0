@@ -12,6 +12,11 @@ export type EstimateReadinessView = {
   readonly blocksEstimate: boolean;
   readonly blockerCopy: string | null;
   readonly enoughToEstimate: boolean;
+  /**
+   * Local answers are complete enough to *initiate* Generate.
+   * Does not mean writes have settled or that generation may run yet.
+   */
+  readonly canInitiateGenerate: boolean;
 };
 
 export type ComposeReadinessInput = {

@@ -10,6 +10,8 @@ import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
 import type { RefineCandidate, RefineView } from "@/lib/assistant/refine/types";
+import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
+import type { GenerateEstimateStage } from "@/lib/assistant/clarify/generate-sync";
 import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant/presentation/action-labels";
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
@@ -393,11 +395,15 @@ export function ClarifyReadinessCard({
   readiness,
   isSaving,
   isGenerating,
+  generateStage = "building",
+  generateStartedAt = 0,
   onEstimateNow,
 }: {
   readiness: EstimateReadinessView;
   isSaving?: boolean;
   isGenerating?: boolean;
+  generateStage?: GenerateEstimateStage;
+  generateStartedAt?: number;
   onEstimateNow?: () => void;
 }) {
   return (
@@ -406,7 +412,14 @@ export function ClarifyReadinessCard({
       data-clarify-panel
       data-clarify-readiness
       data-clarify-empty="true"
+      aria-busy={isGenerating ? "true" : undefined}
     >
+      {isGenerating ? (
+        <GenerateEstimateStatus
+          stage={generateStage}
+          startedAt={generateStartedAt}
+        />
+      ) : (
       <div>
         {readiness.blocksEstimate ? (
           <>
@@ -437,6 +450,7 @@ export function ClarifyReadinessCard({
         </p>
       ) : null}
     </div>
+      )}
 
       {readiness.known.length > 0 ? (
         <div data-readiness-known>
@@ -464,7 +478,7 @@ export function ClarifyReadinessCard({
         </div>
       ) : null}
 
-      {isSaving ? (
+      {isSaving && !isGenerating ? (
         <div data-clarify-save-status>
           <SaveStatusIndicator status="saving" isSaving />
         </div>
@@ -478,7 +492,8 @@ export function ClarifyReadinessCard({
           type="button"
           className="min-h-11 w-full"
           data-clarify-primary-cta
-          disabled={isSaving || readiness.blocksEstimate}
+          disabled={isGenerating || readiness.blocksEstimate}
+          aria-disabled={isGenerating || readiness.blocksEstimate ? true : undefined}
           onClick={onEstimateNow}
         >
           {isGenerating ? (
