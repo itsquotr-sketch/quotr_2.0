@@ -477,6 +477,10 @@ export function buildInternalWallsFinishEnvelope(params: {
     };
   }
 
+  const omit = internalWallsNestedFinishOmit({
+    confirmedTypes: context.confirmedWorkAreas.map((row) => row.type),
+  });
+
   types.forEach((type, index) => {
     const displayName = wallTypeDisplayName(type, index);
 
@@ -661,11 +665,6 @@ export function buildInternalWallsFinishEnvelope(params: {
         sortOrder,
       });
     }
-
-    const omit = internalWallsNestedFinishOmit({
-      confirmedTypes: context.confirmedWorkAreas.map((row) => row.type),
-      independentPlastering: true,
-    });
 
     if (!omit.omitStopping) {
       const stopping = stoppingTakeoff({ type, jobScope });
