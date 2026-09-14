@@ -144,7 +144,7 @@ export type CeilingTimberStructure = {
 export type CeilingSteelStructure = {
   primary_spacing_mm: number;
   furring_spacing_mm: number;
-  direction: CeilingDirection;
+  direction: CeilingDirection | null;
 };
 
 export type CeilingSuspendedStructure = {
@@ -417,7 +417,10 @@ export function applyCeilingFamilyExclusivity(
   if (portion.structure.family !== "timber_direct_fix") {
     portion.structure.timber = undefined;
   }
-  if (portion.structure.family !== "steel_direct_fix") {
+  if (
+    portion.structure.family !== "steel_direct_fix" &&
+    portion.structure.family !== "suspended_steel"
+  ) {
     portion.structure.steel = undefined;
   }
   if (portion.structure.family !== "suspended_steel") {
@@ -599,15 +602,10 @@ function parseTimber(value: unknown): CeilingTimberStructure | undefined {
 
 function parseSteel(value: unknown): CeilingSteelStructure | undefined {
   if (!isRecord(value)) return undefined;
-  const direction =
-    parseEnum(value.direction, CEILINGS_DIRECTION_VALUES) ?? "along_length";
+  const direction = parseEnum(value.direction, CEILINGS_DIRECTION_VALUES);
   const primary_spacing_mm = parsePositiveNumber(value.primary_spacing_mm) ?? 0;
   const furring_spacing_mm = parsePositiveNumber(value.furring_spacing_mm) ?? 0;
-  if (
-    primary_spacing_mm <= 0 &&
-    furring_spacing_mm <= 0 &&
-    !parseEnum(value.direction, CEILINGS_DIRECTION_VALUES)
-  ) {
+  if (primary_spacing_mm <= 0 && furring_spacing_mm <= 0 && direction == null) {
     return undefined;
   }
   return { primary_spacing_mm, furring_spacing_mm, direction };
@@ -1375,22 +1373,26 @@ function applyPortionField(
   if (field === "primary_spacing_mm") {
     const spacing = parsePositiveNumber(value);
     if (spacing == null) return;
-    portion.structure.family = "steel_direct_fix";
+    if (portion.structure.family !== "suspended_steel") {
+      portion.structure.family = "steel_direct_fix";
+    }
     portion.structure.steel = {
       primary_spacing_mm: spacing,
       furring_spacing_mm: portion.structure.steel?.furring_spacing_mm ?? 0,
-      direction: portion.structure.steel?.direction ?? "along_length",
+      direction: portion.structure.steel?.direction ?? null,
     };
     return;
   }
   if (field === "furring_spacing_mm") {
     const spacing = parsePositiveNumber(value);
     if (spacing == null) return;
-    portion.structure.family = "steel_direct_fix";
+    if (portion.structure.family !== "suspended_steel") {
+      portion.structure.family = "steel_direct_fix";
+    }
     portion.structure.steel = {
       primary_spacing_mm: portion.structure.steel?.primary_spacing_mm ?? 0,
       furring_spacing_mm: spacing,
-      direction: portion.structure.steel?.direction ?? "along_length",
+      direction: portion.structure.steel?.direction ?? null,
     };
     return;
   }
@@ -1514,12 +1516,15 @@ function applyPortionField(
   if (field === "spacing_mm") {
     const spacing = parsePositiveNumber(value);
     if (spacing == null) return;
-    if (portion.structure.family === "steel_direct_fix") {
+    if (
+      portion.structure.family === "steel_direct_fix" ||
+      portion.structure.family === "suspended_steel"
+    ) {
       portion.structure.steel = {
         primary_spacing_mm:
           portion.structure.steel?.primary_spacing_mm ?? spacing,
         furring_spacing_mm: spacing,
-        direction: portion.structure.steel?.direction ?? "along_length",
+        direction: portion.structure.steel?.direction ?? null,
       };
       return;
     }
@@ -1534,10 +1539,13 @@ function applyPortionField(
   if (field === "direction") {
     const direction = parseEnum(value, CEILINGS_DIRECTION_VALUES);
     if (!direction) return;
-    if (portion.structure.family === "steel_direct_fix") {
+    if (
+      portion.structure.family === "steel_direct_fix" ||
+      portion.structure.family === "suspended_steel"
+    ) {
       portion.structure.steel = {
-        primary_spacing_mm: portion.structure.steel?.primary_spacing_mm ?? 1200,
-        furring_spacing_mm: portion.structure.steel?.furring_spacing_mm ?? 600,
+        primary_spacing_mm: portion.structure.steel?.primary_spacing_mm ?? 0,
+        furring_spacing_mm: portion.structure.steel?.furring_spacing_mm ?? 0,
         direction,
       };
       return;

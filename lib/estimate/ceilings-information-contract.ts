@@ -143,7 +143,7 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       calculatorConsumed: false,
       physical: true,
       commercial: true,
-      reason: "Steel primary channel spacing. Steel direct-fix only.",
+      reason: "Steel primary channel spacing. Steel direct-fix and suspended steel.",
     },
     {
       factKey: "ceilings.portion.furring_spacing_mm",
@@ -152,7 +152,7 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       calculatorConsumed: false,
       physical: true,
       commercial: true,
-      reason: "Steel furring spacing. Steel direct-fix only.",
+      reason: "Steel furring spacing. Steel direct-fix and suspended steel.",
     },
     {
       factKey: "ceilings.portion.direction",
@@ -546,11 +546,12 @@ export function ceilingsFactIsRelevant(
       return family === "timber_direct_fix";
     case "ceilings.portion.primary_spacing_mm":
     case "ceilings.portion.furring_spacing_mm":
-      return family === "steel_direct_fix";
+      return family === "steel_direct_fix" || family === "suspended_steel";
     case "ceilings.portion.direction":
       return (
         family === "timber_direct_fix" ||
         family === "steel_direct_fix" ||
+        family === "suspended_steel" ||
         lining === "timber_lined"
       );
     case "ceilings.portion.plasterboard_product":

@@ -435,6 +435,81 @@ export const STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
 ];
 
+export const CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: "steel.ceiling.perimeter_track.lm",
+    label: "Ceiling perimeter track / angle",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling steel",
+    unit: "lm",
+    description:
+      "Shared physical ceiling perimeter track / angle. Steel direct-fix and suspended steel takeoff consume this identity. No invented Quotr $/lm in WA-04B — company exact rate, else Pricing Required later. Not a partition-wall track SKU.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "steel.ceiling.primary_channel.lm",
+    label: "Ceiling primary channel",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling steel",
+    unit: "lm",
+    description:
+      "Shared physical ceiling primary channel. Steel direct-fix and suspended steel takeoff consume this identity. No invented Quotr $/lm in WA-04B.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "steel.ceiling.furring_channel.lm",
+    label: "Ceiling furring channel",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling steel",
+    unit: "lm",
+    description:
+      "Shared physical ceiling furring channel, perpendicular to the primary channels. Not a partition stud identity.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "steel.ceiling.crossover_clip.each",
+    label: "Ceiling crossover / suspension clip",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling steel",
+    unit: "each",
+    description:
+      "One clip per primary/furring intersection. Shared physical identity. No labour hours in WA-04B.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "steel.ceiling.dropper.each",
+    label: "Ceiling suspension dropper",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling steel",
+    unit: "each",
+    description:
+      "Suspended-steel dropper. Count from the support-point grid. No invented Quotr each-rate in WA-04B.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "steel.ceiling.suspension_wire.lm",
+    label: "Ceiling suspension wire",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling steel",
+    unit: "lm",
+    description:
+      "Canonical V1 wire length is dropper count × drop height. No tie, loop, waste, or fixing tails in WA-04B.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+];
+
 export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   entry({
     item_key: "retaining_wall.backfill.m3",
@@ -2444,6 +2519,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DECK_CONCRETE_SPECIFIC_MATERIAL_CATALOGUE,
   ...SHEET_SPECIFIC_MATERIAL_CATALOGUE,
   ...STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
+  ...CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE,
   ...RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
   ...WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -2489,6 +2565,12 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "Shared steel track and stud identities for standard internal partitions. Company exact $/lm wins. No invented Quotr benchmark — missing rates are Pricing Required.",
     entries: STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Ceiling steel",
+    description:
+      "Shared ceiling perimeter track, primary/furring channel, crossover clip, dropper, and suspension-wire identities. Company exact rate wins. No invented Quotr $/lm in WA-04B — missing rates stay unpriced. Not partition track/stud SKUs.",
+    entries: CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Retaining / drainage",

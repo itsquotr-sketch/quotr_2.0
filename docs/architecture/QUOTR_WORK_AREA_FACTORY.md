@@ -305,9 +305,9 @@ Do not silently skip factory stages to satisfy demand — reduce depth (SUPPORTE
 
 ---
 
-## 18. Ceilings nested model (WA-03A–WA-04A)
+## 18. Ceilings nested model (WA-03A–WA-04B)
 
-**Status:** Nested capture (WA-03A/B) is live. WA-04A adds geometry + timber direct-fix physical takeoff. Hosted nested estimates remain gated until lining/steel/commercial land.
+**Status:** Nested capture (WA-03A/B) is live. WA-04A adds geometry + timber direct-fix physical takeoff. WA-04B adds steel direct-fix + suspended steel physical takeoff. Hosted nested estimates remain gated until lining/tile/bulkhead/commercial land.
 
 Canonical tree:
 
@@ -342,7 +342,34 @@ installed_lm = runs × runDimension
 
 Physical kernel: `lib/estimate/ceilings-geometry.ts`, `ceilings-framing.ts`, `ceilings-physical.ts`. Shared timber identity `timber.framing.140x45.h1.2.lm`. Installed LM only — no waste percent, labour, or money.
 
+**Steel direct-fix (WA-04B):** run only when `structure.family = steel_direct_fix`. Length, width, primary spacing, furring spacing, and primary direction are required. No area-only layout. No 450 mm fallback inside the calculator.
+
+```
+perimeter = 2(L + W)
+primary:  runCount(cross, primarySpacing) × runDimension
+furring:  perpendicular equivalent (do not reuse primary run count)
+clips = primaryRuns × furringRuns
+```
+
+`along_length`: primary run = length, cross = width; furring run = width, cross = length. `along_width` swaps those dimensions. Shared helper: `runCountFromSpacing`.
+
+**Suspended steel (WA-04B):** run only when `structure.family = suspended_steel`. Reuses `calculateSteelCeilingFrame` for the base frame, then adds droppers and wire. Required extras: drop height, maximum dropper spacing, edge offset.
+
+```
+supportSpan = D − 2E
+intervals = ceil(supportSpan / maxSpacing − epsilon)
+points = intervals + 1
+droppers = pointsLength × pointsWidth
+wireLM = droppers × dropHeight
+```
+
+Support grid helper: `supportPointsBetweenEdgeOffsets`. If `D ≤ 2E`, one central support line in that direction (no negative span). Actual spacing (`supportSpan / intervals`) is diagnostic only — not a user fact. Wire V1 does not add tie, loop, waste, or tails.
+
+Identities: `steel.ceiling.perimeter_track.lm`, `steel.ceiling.primary_channel.lm`, `steel.ceiling.furring_channel.lm`, `steel.ceiling.crossover_clip.each`, `steel.ceiling.dropper.each`, `steel.ceiling.suspension_wire.lm`. Installed quantities only; purchase = installed; wastage unresolved.
+
+Tile & grid, existing framing, and timber direct-fix emit no steel/suspension requirements. Canonical structure family is authority.
+
 **Legacy:** `calculateCeilings` in `lib/estimate/calculators/fitout.ts` remains the hosted runtime. Nested `ceilings.portions` still cannot fall through to the flat estimator.
 
-**Next:** WA-04B steel / suspended physical takeoff.
+**Next:** WA-04C tile & grid physical takeoff.
 

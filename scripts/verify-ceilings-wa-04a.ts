@@ -258,7 +258,7 @@ const steel = calculateCeilingTimberFraming(
 );
 check(
   "K steel_direct_fix → no timber requirement from WA-04A",
-  steel.status === "deferred" && steel.installedFramingLM == null
+  steel.status === "not_applicable" && steel.installedFramingLM == null
 );
 
 const suspended = calculateCeilingTimberFraming(
@@ -266,7 +266,7 @@ const suspended = calculateCeilingTimberFraming(
 );
 check(
   "L suspended_steel → no timber requirement from WA-04A",
-  suspended.status === "deferred" && suspended.installedFramingLM == null
+  suspended.status === "not_applicable" && suspended.installedFramingLM == null
 );
 
 const custom = calculateCeilingTimberFraming(
@@ -470,11 +470,11 @@ check(
 );
 
 check(
-  "no nogging / lining / steel takeoff in WA-04A kernel",
+  "no nogging / lining takeoff in WA-04A timber kernel",
   !read("lib/estimate/ceilings-framing.ts").includes("nogging") &&
     !read("lib/estimate/ceilings-framing.ts").includes("recommendedNoggingRows") &&
+    !read("lib/estimate/ceilings-framing.ts").includes("dropper") &&
     !read("lib/estimate/ceilings-physical.ts").includes("calculateSheetCount") &&
-    !read("lib/estimate/ceilings-physical.ts").includes("dropper") &&
     !read("lib/estimate/ceilings-physical.ts").includes("hoursPer") &&
     !read("lib/estimate/ceilings-physical.ts").includes("priced: true")
 );

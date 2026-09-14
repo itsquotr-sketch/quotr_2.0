@@ -181,9 +181,9 @@ export function calculateCeilingTimberFraming(
     if (family === "steel_direct_fix" || family === "suspended_steel") {
       return emptyTakeoff(
         nestedItemId,
-        "deferred",
-        PHYSICAL_REQUIREMENT_RESOLUTION.INFORMATION_REQUIRED,
-        "Steel / suspended ceiling framing is not calculated in WA-04A."
+        "not_applicable",
+        PHYSICAL_REQUIREMENT_RESOLUTION.KNOWN,
+        "Steel / suspended ceiling framing is not timber."
       );
     }
     return emptyTakeoff(
