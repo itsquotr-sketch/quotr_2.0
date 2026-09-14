@@ -40,6 +40,8 @@ export async function answerClarifySelectFact(input: {
   valueType: "number" | "select" | "boolean" | "multi_select";
   wallTypeId?: string;
   openingId?: string;
+  nestedItemId?: string;
+  componentId?: string;
 }): Promise<AssistantActionState> {
   return updateProjectFact({
     projectId: input.projectId,
@@ -50,6 +52,8 @@ export async function answerClarifySelectFact(input: {
     valueType: input.valueType,
     wallTypeId: input.wallTypeId,
     openingId: input.openingId,
+    nestedItemId: input.nestedItemId,
+    componentId: input.componentId,
   });
 }
 

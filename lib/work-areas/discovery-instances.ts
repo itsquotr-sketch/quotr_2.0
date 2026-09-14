@@ -370,6 +370,28 @@ export function snippetForDiscoveredInstance(
   return hay;
 }
 
+function discoverCeilings(brief: string): DiscoveredWorkAreaInstance[] {
+  if (!/\bceiling/.test(brief)) return [];
+  const found: DiscoveredWorkAreaInstance[] = [];
+  const labelled: Array<{ pattern: RegExp; name: string }> = [
+    { pattern: /\bground[-\s]?floor ceilings?\b/, name: "Ground Floor Ceilings" },
+    { pattern: /\bdetached garage ceilings?\b|\bgarage ceilings?\b/, name: "Detached Garage Ceilings" },
+    { pattern: /\bupstairs ceilings?\b/, name: "Upstairs Ceilings" },
+    { pattern: /\bdownstairs ceilings?\b/, name: "Downstairs Ceilings" },
+  ];
+  for (const row of labelled) {
+    if (!row.pattern.test(brief)) continue;
+    found.push({
+      type: "ceilings",
+      name: row.name,
+      evidence: row.name,
+    });
+  }
+  if (found.length >= 2) return uniqueByName(found);
+  if (found.length === 1) return uniqueByName(found);
+  return [];
+}
+
 export function discoverWorkAreaInstances(
   briefText: string
 ): DiscoveredWorkAreaInstance[] {
@@ -378,6 +400,7 @@ export function discoverWorkAreaInstances(
     ...discoverBathrooms(brief),
     ...discoverDecks(brief),
     ...discoverInternalWallGroups(brief),
+    ...discoverCeilings(brief),
   ];
 }
 

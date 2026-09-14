@@ -9,6 +9,7 @@ import type { ClarifyCandidate, ClarifyView } from "@/lib/assistant/clarify/type
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
 import type { RefineView } from "@/lib/assistant/refine/types";
 import { ClarifyReadinessCard } from "@/components/assistant/clarify/ClarifyReadiness";
+import { NestedItemsPanel } from "@/components/assistant/clarify/NestedItemsPanel";
 import { ClarifyAnswerControl } from "@/components/assistant/clarify/ClarifyAnswerControl";
 import { GenerateEstimateStatus } from "@/components/assistant/clarify/GenerateEstimateStatus";
 import { ASSISTANT_ACTION_LABELS } from "@/lib/assistant/presentation/action-labels";
@@ -50,6 +51,12 @@ type ClarifyPanelProps = {
     value: string | number | boolean | string[]
   ) => void | Promise<unknown>;
   onEstimateNow?: () => void;
+  onNestedItemAction?: (
+    workAreaId: string,
+    key: string,
+    value: string | boolean,
+    nestedItemId?: string | null
+  ) => void | Promise<unknown>;
 };
 
 function ClarifyQuestion({
@@ -155,6 +162,7 @@ export function ClarifyPanel({
   onAnswerBoolean,
   onAnswerValue,
   onEstimateNow,
+  onNestedItemAction,
 }: ClarifyPanelProps) {
   const [resolvedIds, setLocallyResolved] = useState<string[]>([]);
   const [heldMultiId, setHeldMultiId] = useState<string | null>(null);
@@ -364,6 +372,7 @@ export function ClarifyPanel({
         : `${remaining} important details remaining`;
 
   const workAreaGroups = visibleGroups.filter((group) => group.workAreaId);
+  const nestedPanels = view.nestedItemPanels ?? [];
   const projectGroup = visibleGroups.find((group) => group.workAreaId == null);
 
   return (
@@ -404,17 +413,39 @@ export function ClarifyPanel({
             data-details-work-area-type={group.workAreaType ?? undefined}
           >
             <h2 className={PREMIUM.sectionTitle}>{group.workAreaName}</h2>
+            {nestedPanels
+              .filter((panel) => panel.workAreaId === group.workAreaId)
+              .map((panel) => (
+                <div key={`nested:${panel.workAreaId}`} className="mt-3">
+                  <NestedItemsPanel
+                    panel={panel}
+                    isSaving={isSaving}
+                    onAdd={(workAreaId, key) =>
+                      onNestedItemAction?.(workAreaId, key, true)
+                    }
+                    onDuplicate={(workAreaId, key, itemId) =>
+                      onNestedItemAction?.(workAreaId, key, itemId, itemId)
+                    }
+                    onDelete={(workAreaId, key, itemId) =>
+                      onNestedItemAction?.(workAreaId, key, itemId, itemId)
+                    }
+                  />
+                </div>
+              ))}
             <div className="mt-3 space-y-4">
               {group.sections.map((section) => (
                 <div
-                  key={`${section.id}:${section.wallTypeId ?? ""}`}
+                  key={`${section.id}:${section.nestedItemId ?? section.wallTypeId ?? ""}`}
                   data-details-section={section.id}
                   data-details-wall-type={section.wallTypeId ?? undefined}
+                  data-details-nested-item={section.nestedItemId ?? undefined}
                 >
                   <SectionEyebrow>
-                    {section.wallTypeLabel
-                      ? `${section.label} · ${section.wallTypeLabel}`
-                      : section.label}
+                    {section.nestedItemLabel
+                      ? `${section.nestedItemLabel} · ${section.label}`
+                      : section.wallTypeLabel
+                        ? `${section.label} · ${section.wallTypeLabel}`
+                        : section.label}
                   </SectionEyebrow>
                   <div className="mt-1 divide-y divide-border/70">
                     {section.candidates.map((candidate) => (

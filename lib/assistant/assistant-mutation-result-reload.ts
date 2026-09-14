@@ -26,6 +26,7 @@
  */
 
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
+import { isCeilingsPortionWriteKey } from "@/lib/estimate/ceilings-portions";
 
 export type AssistantMutationWorkAreaRow = {
   id: string;
@@ -82,6 +83,9 @@ export function scalarFactWorkAreaReuse(input: {
   error?: { message?: string } | null;
 }): AssistantMutationResultReuse | undefined {
   if (isInternalWallsWallTypeWriteKey(input.key)) {
+    return undefined;
+  }
+  if (isCeilingsPortionWriteKey(input.key)) {
     return undefined;
   }
   if (input.error || !Array.isArray(input.workAreas)) {

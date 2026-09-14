@@ -18,6 +18,7 @@ import {
   listConsumedProjectConditionDefs,
 } from "@/lib/project-conditions/consumed-authority";
 import { distinguishWorkAreaInstanceLabels } from "@/lib/work-areas/instances";
+import { ceilingsDetailsSectionId } from "@/lib/estimate/ceilings-information-contract";
 
 export type DetailsSectionId =
   | "dimensions"
@@ -32,6 +33,8 @@ export type DetailsSection = {
   readonly label: string;
   readonly wallTypeId: string | null;
   readonly wallTypeLabel: string | null;
+  readonly nestedItemId: string | null;
+  readonly nestedItemLabel: string | null;
   readonly candidates: readonly ClarifyCandidate[];
 };
 
@@ -103,19 +106,29 @@ export function detailsSectionForCandidate(
 ): DetailsSectionId {
   if (isProjectConditionCandidate(candidate)) return "project_conditions";
   if (candidate.factKey) {
+    if (
+      candidate.workAreaType === "ceilings" ||
+      candidate.factKey.startsWith("ceilings.portion.") ||
+      candidate.factKey.startsWith("ceilings.bulkhead.")
+    ) {
+      return ceilingsDetailsSectionId(candidate.factKey);
+    }
     const descriptor = getDeckQuestionDescriptor(candidate.factKey);
     if (descriptor) return DECK_SECTION_TO_GROUP[descriptor.section];
   }
   return "details";
 }
 
-function wallTypeLabel(candidate: ClarifyCandidate): string | null {
-  if (!candidate.wallTypeId) return null;
+function nestedItemLabel(candidate: ClarifyCandidate): string | null {
+  const nestedId = candidate.nestedItemId ?? candidate.wallTypeId;
+  if (!nestedId) return null;
   const fromLabel = candidate.label.split(" · ")[0]?.trim();
   if (fromLabel && fromLabel !== candidate.factKey) return fromLabel;
   const fromQuestion = candidate.question.split(":")[0]?.trim();
   if (fromQuestion && fromQuestion.length < 40) return fromQuestion;
-  return "Wall type";
+  if (candidate.workAreaType === "ceilings") return "Ceiling portion";
+  if (candidate.wallTypeId) return "Wall type";
+  return "Item";
 }
 
 function compareCandidates(a: ClarifyCandidate, b: ClarifyCandidate): number {
@@ -139,39 +152,46 @@ function buildSections(
       id: DetailsSectionId;
       wallTypeId: string | null;
       wallTypeLabel: string | null;
+      nestedItemId: string | null;
+      nestedItemLabel: string | null;
       rows: ClarifyCandidate[];
     }
   >();
   const order: string[] = [];
   for (const candidate of [...candidates].sort(compareCandidates)) {
     const sectionId = detailsSectionForCandidate(candidate);
-    const wallTypeId = candidate.wallTypeId ?? null;
-    const key = `${sectionId}::${wallTypeId ?? ""}`;
+    const nestedItemId = candidate.nestedItemId ?? candidate.wallTypeId ?? null;
+    const key = `${sectionId}::${nestedItemId ?? ""}`;
     const existing = byKey.get(key);
     if (existing) {
       existing.rows.push(candidate);
       continue;
     }
     order.push(key);
+    const label = nestedItemLabel(candidate);
     byKey.set(key, {
       id: sectionId,
-      wallTypeId,
-      wallTypeLabel: wallTypeLabel(candidate),
+      wallTypeId: candidate.wallTypeId ?? null,
+      wallTypeLabel: candidate.wallTypeId ? label : null,
+      nestedItemId,
+      nestedItemLabel: label,
       rows: [candidate],
     });
   }
   return order
     .map((key) => byKey.get(key)!)
     .sort((a, b) => {
-      const section = SECTION_ORDER.indexOf(a.id) - SECTION_ORDER.indexOf(b.id);
-      if (section !== 0) return section;
-      return (a.wallTypeLabel ?? "").localeCompare(b.wallTypeLabel ?? "");
+      const nested = (a.nestedItemLabel ?? "").localeCompare(b.nestedItemLabel ?? "");
+      if (nested !== 0) return nested;
+      return SECTION_ORDER.indexOf(a.id) - SECTION_ORDER.indexOf(b.id);
     })
     .map((row) => ({
       id: row.id,
       label: SECTION_LABEL[row.id],
       wallTypeId: row.wallTypeId,
       wallTypeLabel: row.wallTypeLabel,
+      nestedItemId: row.nestedItemId,
+      nestedItemLabel: row.nestedItemLabel,
       candidates: row.rows,
     }));
 }
@@ -233,6 +253,8 @@ export function groupDetailsCandidates(params: {
           label: "Project Conditions",
           wallTypeId: null,
           wallTypeLabel: null,
+          nestedItemId: null,
+          nestedItemLabel: null,
           candidates: [...pcs].sort(compareCandidates),
         },
       ],

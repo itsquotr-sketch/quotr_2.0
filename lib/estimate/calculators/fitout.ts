@@ -73,6 +73,10 @@ import {
   structuralBlocksEstimate,
   wallTypesRequiredForScope,
 } from "@/lib/estimate/internal-walls-scope";
+import {
+  CEILINGS_NESTED_NOT_CALCULATED_MESSAGE,
+  hasCanonicalCeilingsPortions,
+} from "@/lib/estimate/ceilings-portions";
 
 function gmSell(
   cost: number,
@@ -656,13 +660,25 @@ export function calculateCeilings(
   workArea: EstimateWorkArea
 ): CalculatorResult {
   /**
-   * LEGACY CEILINGS CALCULATOR — WA-03A.
+   * LEGACY CEILINGS CALCULATOR — WA-03A / WA-03B.
    * Package / area_m2 fallback. Hosted runtime until the nested Ceiling
-   * Portion calculator (WA-04) is gated in. Do not remove in 03A.
-   * Nested `ceilings.portions` is the canonical fact model; this function
-   * still reads only the flat legacy keys.
+   * Portion calculator (WA-04) is gated in.
+   *
+   * Temporary WA-03B safety: canonical nested `ceilings.portions` must
+   * not silently estimate through this flat calculator.
    */
   const { facts } = context;
+  if (hasCanonicalCeilingsPortions(facts, workArea.id)) {
+    return {
+      lineItems: [],
+      assumptions: [],
+      missingInfo: [
+        `${workArea.name}: ${CEILINGS_NESTED_NOT_CALCULATED_MESSAGE}`,
+      ],
+      exclusions: [],
+      confidence: 20,
+    };
+  }
   const result = calculateAreaBasedFitout(context, workArea, {
     areaKey: "ceilings.area_m2",
     rate: FITOUT_BENCHMARKS.ceilingsPerM2,

@@ -12,6 +12,7 @@
 import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
 import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
+import { ceilingsFactQuestionClass } from "@/lib/estimate/ceilings-information-contract";
 import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
@@ -108,6 +109,15 @@ export function detailsAskClassForFact(
     (workAreaType === "internal_walls" || factKey.startsWith("internal_walls."))
   ) {
     return iwClass;
+  }
+  const ceilingsClass = ceilingsFactQuestionClass(factKey);
+  if (
+    ceilingsClass &&
+    (workAreaType === "ceilings" ||
+      factKey.startsWith("ceilings.portion.") ||
+      factKey.startsWith("ceilings.bulkhead."))
+  ) {
+    return isDetailsAskClass(ceilingsClass) ? ceilingsClass : null;
   }
   const template = getQuestionTemplateByKey(factKey);
   if (!template) return null;

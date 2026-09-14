@@ -1,4 +1,5 @@
 import { bathroomJobPlanAdapter } from "@/lib/assistant/job-plan/adapters/bathroom";
+import { ceilingsJobPlanAdapter } from "@/lib/assistant/job-plan/adapters/ceilings";
 import { deckJobPlanAdapter } from "@/lib/assistant/job-plan/adapters/deck";
 import { fenceJobPlanAdapter } from "@/lib/assistant/job-plan/adapters/fence";
 import { genericJobPlanAdapter } from "@/lib/assistant/job-plan/adapters/generic";
@@ -14,6 +15,7 @@ const BY_TYPE = new Map<string, JobPlanWorkAreaAdapter>([
   [retainingWallJobPlanAdapter.workAreaType, retainingWallJobPlanAdapter],
   [fenceJobPlanAdapter.workAreaType, fenceJobPlanAdapter],
   [internalWallsJobPlanAdapter.workAreaType, internalWallsJobPlanAdapter],
+  [ceilingsJobPlanAdapter.workAreaType, ceilingsJobPlanAdapter],
 ]);
 
 export function getJobPlanAdapter(workAreaType: string): JobPlanWorkAreaAdapter {

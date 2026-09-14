@@ -8,6 +8,7 @@ import type { ClarifyAskClass, ClarifyCandidate } from "@/lib/assistant/clarify/
 import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract";
 import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
+import { ceilingsFactQuestionClass } from "@/lib/estimate/ceilings-information-contract";
 import { getEstimatePriorityClass } from "@/lib/scopes/estimate-priority";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
@@ -112,7 +113,8 @@ export function isClarifyExtraFactKey(factKey: string): boolean {
   const contract =
     deckFactQuestionClass(factKey) ??
     fenceFactQuestionClass(factKey) ??
-    retainingWallFactQuestionClass(factKey);
+    retainingWallFactQuestionClass(factKey) ??
+    ceilingsFactQuestionClass(factKey);
   if (
     contract === "HARD_MINIMUM" ||
     contract === "ASK_NOW" ||

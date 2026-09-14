@@ -603,10 +603,10 @@ check(
 const composeSrc = read("lib/assistant/clarify/compose.ts");
 const refineComposeSrc = read("lib/assistant/refine/compose.ts");
 check(
-  "R repeated Work Area generic machinery unaffected — no Ceilings compose branch",
-  !composeSrc.includes("lookupCeilingsInformationContract") &&
-    !composeSrc.includes("CEILINGS_INFORMATION_CONTRACT") &&
-    !refineComposeSrc.includes("lookupCeilingsInformationContract") &&
+  "R repeated Work Area generic machinery unaffected — Ceilings compose uses contract lookup",
+  composeSrc.includes("lookupCeilingsInformationContract") &&
+    composeSrc.includes("listCeilingsClarifyCandidates") &&
+    !refineComposeSrc.includes("CEILINGS_HARD_MINIMUM_KEYS") &&
     composeSrc.includes("withNestedIdentityAliases")
 );
 check(

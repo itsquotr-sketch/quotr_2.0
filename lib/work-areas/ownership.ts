@@ -46,6 +46,13 @@ export const WORK_AREA_SCOPE_OWNERS = {
     "fixtures",
     "local_painting",
     "local_stopping",
+    "bathroom_ceiling_lining",
+  ],
+  ceilings: [
+    "ceiling_structure",
+    "ceiling_lining",
+    "ceiling_insulation",
+    "ceiling_bulkheads",
   ],
 } as const;
 
@@ -74,6 +81,9 @@ export function briefHasIndependentPlastering(briefText: string): boolean {
     "level 4 stopping",
     "level 5 stopping",
     "stop new gib",
+    "stop new ceiling",
+    "stop the ceiling",
+    "stop ceiling",
     "independent plaster",
   ]);
 }
@@ -94,7 +104,95 @@ export function briefHasIndependentPainting(briefText: string): boolean {
     "repaint walls and trims",
     "paint the interior",
     "interior painting",
+    "paint the ceiling",
+    "paint ceiling",
+    "paint ceilings",
   ]);
+}
+
+function briefHasPaintOrStopCeilingOnly(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  const paintOrStop =
+    /\bpaint(?:ing)?(?:\s+the)?\s+ceilings?\b/.test(brief) ||
+    /\bstop(?:ping)?(?:\s+the)?\s+(?:new\s+)?ceilings?\b/.test(brief) ||
+    /\bstop new ceiling\b/.test(brief);
+  if (!paintOrStop) return false;
+  return !briefHasCeilingConstructionLanguage(brief);
+}
+
+function briefHasCeilingConstructionLanguage(brief: string): boolean {
+  return includesAny(brief, [
+    "replace ceiling",
+    "replace the ceiling",
+    "replace ceilings",
+    "new ceiling",
+    "new ceilings",
+    "gib ceiling",
+    "plasterboard ceiling",
+    "fyreline ceiling",
+    "aqualine ceiling",
+    "drop ceiling",
+    "suspended ceiling",
+    "ceiling tiles",
+    "t-bar",
+    "t bar",
+    "tile and grid",
+    "ceiling framing",
+    "ceiling battens",
+    "reline the ceiling",
+    "reline ceilings",
+    "line the ceiling",
+    "line ceilings",
+    "line existing ceiling",
+    "ceiling lining",
+    "ceilings throughout",
+    "ceilings through",
+    "ground floor ceiling",
+    "garage ceiling",
+    "detached garage ceiling",
+    "upstairs ceiling",
+    "downstairs ceiling",
+  ]);
+}
+
+export function briefHasExplicitCeilings(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  if (briefHasPaintOrStopCeilingOnly(briefText)) return false;
+  if (briefHasCeilingConstructionLanguage(brief)) return true;
+  if (/\bline\b.{0,80}\bceilings?\b/.test(brief) && !/\bpaint|\bstop/.test(brief)) {
+    return true;
+  }
+  const roomPackage =
+    /\b(main room|lounge|hallway|hall|living room)\b/.test(brief) &&
+    /\b(gib|fyreline|plasterboard|existing framing|timber framing)\b/.test(brief);
+  if (roomPackage && !briefHasExplicitInternalWalls(briefText)) return true;
+  return false;
+}
+
+export function briefHasBathroomEmbeddedCeiling(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  if (!/\bbathroom|\bensuite/.test(brief)) return false;
+  if (!/\bceiling/.test(brief)) return false;
+  const independentRooms =
+    /\blounge|\bhallway|\bhall\b|\bbedroom|\bliving room|\bthroughout the house|\bthrough lounge|\bground floor ceiling|\bgarage ceiling/.test(
+      brief
+    );
+  if (independentRooms && briefHasCeilingConstructionLanguage(brief)) {
+    return false;
+  }
+  return (
+    /\bbathroom.{0,80}ceiling|\bceiling.{0,80}bathroom|\bensuite.{0,80}ceiling|\bceiling lining/.test(
+      brief
+    ) && !/\bplus replace ceilings|\bplus new ceilings|\bthroughout/.test(brief)
+  );
+}
+
+export function briefHasIndependentCeilings(briefText: string): boolean {
+  if (!briefHasExplicitCeilings(briefText)) return false;
+  if (briefHasBathroomEmbeddedCeiling(briefText) && !/\bplus /.test(normaliseBrief(briefText))) {
+    return false;
+  }
+  return true;
 }
 
 export function briefHasIndependentDoors(briefText: string): boolean {
@@ -207,6 +305,45 @@ export function classifyProposedWorkArea(params: {
       evidence: explicit
         ? "Removal / strip-out stated in the brief"
         : "No standalone demolition language",
+      topLevel: explicit,
+    };
+  }
+
+  if (params.type === "ceilings") {
+    if (briefHasPaintOrStopCeilingOnly(brief)) {
+      return {
+        type: params.type,
+        classification: WORK_AREA_OWNERSHIP_CLASS.NOT_REQUESTED,
+        evidence: "Paint / stopping language does not create a Ceilings Work Area",
+        topLevel: false,
+      };
+    }
+    const independent = briefHasIndependentCeilings(brief);
+    if (independent) {
+      return {
+        type: params.type,
+        classification: WORK_AREA_OWNERSHIP_CLASS.EXPLICIT,
+        evidence: "Independent ceiling construction / lining stated",
+        topLevel: true,
+      };
+    }
+    if (hasBathroom && briefHasBathroomEmbeddedCeiling(brief)) {
+      return {
+        type: params.type,
+        classification: WORK_AREA_OWNERSHIP_CLASS.EMBEDDED,
+        evidence: "Bathroom owns embedded ceiling lining unless independent ceiling packages are stated",
+        topLevel: false,
+      };
+    }
+    const explicit = briefHasExplicitCeilings(brief);
+    return {
+      type: params.type,
+      classification: explicit
+        ? WORK_AREA_OWNERSHIP_CLASS.EXPLICIT
+        : WORK_AREA_OWNERSHIP_CLASS.NOT_REQUESTED,
+      evidence: explicit
+        ? "Ceiling construction stated in the brief"
+        : "No standalone ceiling construction language",
       topLevel: explicit,
     };
   }

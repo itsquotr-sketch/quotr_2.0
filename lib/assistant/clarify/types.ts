@@ -58,6 +58,24 @@ export type ClarifyCandidate = {
   readonly componentId?: string | null;
 };
 
+export type NestedItemPanelItem = {
+  readonly id: string;
+  readonly label: string;
+  readonly complete: boolean;
+  readonly summary: string;
+};
+
+export type NestedItemPanel = {
+  readonly workAreaId: string;
+  readonly workAreaType: string;
+  readonly workAreaName: string;
+  readonly itemKindLabel: string;
+  readonly items: readonly NestedItemPanelItem[];
+  readonly addKey: string;
+  readonly duplicateKey: string;
+  readonly deleteKey: string;
+};
+
 export type ClarifyAssumption = {
   readonly id: string;
   readonly label: string;
@@ -81,6 +99,7 @@ export type ClarifyView = {
   readonly blocksEstimate: boolean;
   readonly canEstimateNow: boolean;
   readonly enoughToEstimate: boolean;
+  readonly nestedItemPanels?: readonly NestedItemPanel[];
 };
 
 export type ComposeClarifyInput = {

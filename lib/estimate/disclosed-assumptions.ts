@@ -14,6 +14,11 @@ import {
   DEFAULT_STEP_WIDTH_M,
 } from "@/lib/estimate/deck-steps-physical";
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
+import {
+  CEILINGS_EDGE_OFFSET_ASSUMPTION_M,
+  CEILINGS_SUSPENSION_SPACING_ASSUMPTION_M,
+  CEILINGS_TIMBER_SPACING_ASSUMPTION_MM,
+} from "@/lib/estimate/ceilings-information-contract";
 
 export const DECK_HEIGHT_ASSUMPTION_M = 0.6;
 export const DECK_BOARD_MATERIAL_ASSUMPTION = "Hardwood";
@@ -30,6 +35,9 @@ const VALUE_BY_KEY: Record<string, string | number> = {
   "deck.step_width_m": DEFAULT_STEP_WIDTH_M,
   "deck.step_going_m": DEFAULT_STEP_GOING_M,
   "deck.ground_clearance_m": DEFAULT_FASCIA_GROUND_GAP_M,
+  "ceilings.portion.spacing_mm": CEILINGS_TIMBER_SPACING_ASSUMPTION_MM,
+  "ceilings.portion.suspension_spacing_m": CEILINGS_SUSPENSION_SPACING_ASSUMPTION_M,
+  "ceilings.portion.edge_offset_m": CEILINGS_EDGE_OFFSET_ASSUMPTION_M,
 };
 
 export function disclosedAssumptionValue(

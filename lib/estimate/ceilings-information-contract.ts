@@ -1,10 +1,9 @@
 /**
  * CEILINGS WA-03A — declarative information contract.
  *
- * Ask class vs contextual relevance. Not a second takeoff model.
- * Not wired into clarify/compose.ts in this slice (WA-03B).
- *
- * Lookup/relevance is ready for Details / Ready / Refine ownership.
+ * Ask class vs contextual relevance. Canonical source for Details,
+ * Ready, and Refine ownership. Do not hand-copy Ceiling relevance into
+ * compose / question-ownership / Refine.
  */
 
 import type { ClarifyAskClass } from "@/lib/assistant/clarify/types";
@@ -38,18 +37,32 @@ export type CeilingsInformationContext = {
   readonly componentId?: string | null;
   readonly portion?: CeilingPortion | null;
   readonly bulkhead?: CeilingBulkhead | null;
+  readonly briefText?: string | null;
+  readonly omitStopping?: boolean;
+  readonly omitPainting?: boolean;
 };
+
+export const CEILINGS_TIMBER_SPACING_ASSUMPTION_MM = 450;
+export const CEILINGS_SUSPENSION_SPACING_ASSUMPTION_M = 1.2;
+export const CEILINGS_EDGE_OFFSET_ASSUMPTION_M = 0.2;
+export const CEILINGS_TIMBER_SPACING_ASSUMPTION_STATEMENT =
+  "Assuming 450 mm timber framing centres.";
+export const CEILINGS_SUSPENSION_SPACING_ASSUMPTION_STATEMENT =
+  "Assuming 1.2 m maximum support spacing for the suspended ceiling.";
+export const CEILINGS_EDGE_OFFSET_ASSUMPTION_STATEMENT =
+  "Assuming a 0.2 m edge offset for the suspended ceiling.";
+export const CEILINGS_TILE_SIZE_ASSUMPTION = "600x600";
 
 export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContractRow[] =
   [
     {
       factKey: "ceilings.portion.geometry_mode",
-      askClass: "ASK_NOW",
+      askClass: "DERIVED_NEVER_ASK",
       scope: "portion",
       calculatorConsumed: false,
       physical: true,
       commercial: false,
-      reason: "Length×width vs area-only. Family gates which mode is valid.",
+      reason: "Length×width vs area-only. Derived from family; not independently asked.",
     },
     {
       factKey: "ceilings.portion.length_m",
@@ -98,7 +111,7 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
     },
     {
       factKey: "ceilings.portion.structure_requirements",
-      askClass: "ASK_NOW",
+      askClass: "ASSUME_IF_SKIPPED",
       scope: "portion",
       calculatorConsumed: false,
       physical: true,
@@ -116,12 +129,30 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
     },
     {
       factKey: "ceilings.portion.spacing_mm",
+      askClass: "ASSUME_IF_SKIPPED",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason: "Timber framing spacing. Disclosed 450 mm if skipped.",
+    },
+    {
+      factKey: "ceilings.portion.primary_spacing_mm",
       askClass: "ASK_NOW",
       scope: "portion",
       calculatorConsumed: false,
       physical: true,
       commercial: true,
-      reason: "Framing spacing. Timber or steel direct-fix only.",
+      reason: "Steel primary channel spacing. Steel direct-fix only.",
+    },
+    {
+      factKey: "ceilings.portion.furring_spacing_mm",
+      askClass: "ASK_NOW",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason: "Steel furring spacing. Steel direct-fix only.",
     },
     {
       factKey: "ceilings.portion.direction",
@@ -149,6 +180,42 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       physical: true,
       commercial: true,
       reason: "Standard / Aqualine / Fyreline / other. Plasterboard lining only.",
+    },
+    {
+      factKey: "ceilings.portion.plywood_spec",
+      askClass: "ASK_NOW",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason: "Plywood specification. Required when lining is plywood.",
+    },
+    {
+      factKey: "ceilings.portion.board_width_mm",
+      askClass: "HARD_MINIMUM",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason: "Timber-lined cover width. Area-only is not sufficient.",
+    },
+    {
+      factKey: "ceilings.portion.gap_mm",
+      askClass: "HARD_MINIMUM",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason: "Timber-lined gap. Required with board width and direction.",
+    },
+    {
+      factKey: "ceilings.portion.tile_size",
+      askClass: "ASK_NOW",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason: "Tile & Grid tile size. Area is sufficient for geometry.",
     },
     {
       factKey: "ceilings.portion.sheet_length_mm",
@@ -179,7 +246,7 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
     },
     {
       factKey: "ceilings.portion.height_m",
-      askClass: "ASK_NOW",
+      askClass: "ASSUME_IF_SKIPPED",
       scope: "portion",
       calculatorConsumed: false,
       physical: true,
@@ -194,6 +261,15 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       physical: false,
       commercial: true,
       reason: "Insulation include for this portion.",
+    },
+    {
+      factKey: "ceilings.portion.insulation_type",
+      askClass: "ASK_NOW",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: false,
+      commercial: true,
+      reason: "Insulation specification when insulation is included.",
     },
     {
       factKey: "ceilings.portion.bulkheads_present",
@@ -232,22 +308,40 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       reason: "Painting include.",
     },
     {
-      factKey: "ceilings.portion.penetrations",
-      askClass: "REFINEMENT",
+      factKey: "ceilings.portion.significant_penetrations",
+      askClass: "ASK_NOW",
       scope: "portion",
       calculatorConsumed: false,
       physical: true,
       commercial: false,
-      reason: "Known penetrations. Not a takeoff in 03A.",
+      reason: "Significant openings / hatches. Asked only where relevant.",
     },
     {
-      factKey: "ceilings.portion.fire_acoustic_system",
-      askClass: "ADVANCED",
+      factKey: "ceilings.portion.penetrations",
+      askClass: "ASK_NOW",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: false,
+      reason: "Approximate hatch / opening count when significant penetrations exist.",
+    },
+    {
+      factKey: "ceilings.portion.fire_acoustic_requirement",
+      askClass: "ASK_NOW",
       scope: "portion",
       calculatorConsumed: false,
       physical: true,
       commercial: true,
-      reason: "Fire / acoustic system. Not a V1 takeoff.",
+      reason: "Fire / acoustic requirement class. Asked only when relevant.",
+    },
+    {
+      factKey: "ceilings.portion.fire_acoustic_system",
+      askClass: "ASK_NOW",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason: "Named fire / acoustic system when specified. Do not invent a system.",
     },
     {
       factKey: "ceilings.portion.drop_height_m",
@@ -260,12 +354,12 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
     },
     {
       factKey: "ceilings.portion.suspension_spacing_m",
-      askClass: "ASK_NOW",
+      askClass: "ASSUME_IF_SKIPPED",
       scope: "suspended",
       calculatorConsumed: false,
       physical: true,
       commercial: true,
-      reason: "Suspension spacing. Relevant only for suspended_steel.",
+      reason: "Suspension spacing. Disclosed 1.2 m if skipped.",
     },
     {
       factKey: "ceilings.portion.edge_offset_m",
@@ -320,6 +414,15 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       physical: true,
       commercial: true,
       reason: "Bulkhead lining type. Required when a bulkhead exists.",
+    },
+    {
+      factKey: "ceilings.bulkhead.form",
+      askClass: "ASK_NOW",
+      scope: "bulkhead",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason: "Bulkhead form. Island/boxed/complex is unsupported specialist, not two-face.",
     },
     {
       factKey: "ceilings.bulkhead.topology",
@@ -381,6 +484,34 @@ function bulkheadExists(portion: CeilingPortion | null): boolean {
   return portion.has_bulkheads === true || portion.bulkheads.length > 0;
 }
 
+function briefMentionsFireAcoustic(briefText: string | null | undefined): boolean {
+  const brief = (briefText ?? "").toLowerCase();
+  return (
+    /\bfire(\s|-)?(rated|rating|system|ceiling)\b/.test(brief) ||
+    /\bacoustic\b/.test(brief) ||
+    /\bstc\b/.test(brief) ||
+    /\brw\b/.test(brief)
+  );
+}
+
+function briefMentionsPenetrations(briefText: string | null | undefined): boolean {
+  const brief = (briefText ?? "").toLowerCase();
+  return (
+    /\bpenetrat/.test(brief) ||
+    /\bhatch/.test(brief) ||
+    /\baccess panel/.test(brief) ||
+    /\bceiling opening/.test(brief)
+  );
+}
+
+function demolitionRelevant(portion: CeilingPortion | null): boolean {
+  const scope = portion?.structure.job_scope;
+  return (
+    scope === "replacement_lining_only" ||
+    scope === "complete_replacement"
+  );
+}
+
 export function ceilingsFactIsRelevant(
   factKey: string,
   ctx: CeilingsInformationContext
@@ -412,7 +543,10 @@ export function ceilingsFactIsRelevant(
     case "ceilings.portion.timber_size":
       return family === "timber_direct_fix";
     case "ceilings.portion.spacing_mm":
-      return family === "timber_direct_fix" || family === "steel_direct_fix";
+      return family === "timber_direct_fix";
+    case "ceilings.portion.primary_spacing_mm":
+    case "ceilings.portion.furring_spacing_mm":
+      return family === "steel_direct_fix";
     case "ceilings.portion.direction":
       return (
         family === "timber_direct_fix" ||
@@ -422,6 +556,13 @@ export function ceilingsFactIsRelevant(
     case "ceilings.portion.plasterboard_product":
     case "ceilings.portion.layers":
       return lining === "plasterboard";
+    case "ceilings.portion.plywood_spec":
+      return lining === "plywood";
+    case "ceilings.portion.board_width_mm":
+    case "ceilings.portion.gap_mm":
+      return lining === "timber_lined";
+    case "ceilings.portion.tile_size":
+      return family === "tile_and_grid" || lining === "tile_and_grid";
     case "ceilings.portion.sheet_length_mm":
     case "ceilings.portion.sheet_width_mm":
       return lining === "plasterboard" || lining === "plywood";
@@ -430,9 +571,110 @@ export function ceilingsFactIsRelevant(
         portion?.structure.job_scope === "new_ceiling" ||
         portion?.structure.job_scope === "complete_replacement"
       );
+    case "ceilings.portion.demolition_included":
+      return demolitionRelevant(portion);
+    case "ceilings.portion.stopping_included":
+      return ctx.omitStopping !== true;
+    case "ceilings.portion.painting_included":
+      return ctx.omitPainting !== true;
+    case "ceilings.portion.insulation_type":
+      return portion?.finish.insulation_included === true;
+    case "ceilings.portion.significant_penetrations":
+      return (
+        briefMentionsPenetrations(ctx.briefText) ||
+        portion?.significant_penetrations != null
+      );
+    case "ceilings.portion.penetrations":
+      return portion?.significant_penetrations === true;
+    case "ceilings.portion.fire_acoustic_requirement":
+      return (
+        briefMentionsFireAcoustic(ctx.briefText) ||
+        portion?.fire_acoustic_requirement != null ||
+        Boolean(portion?.fire_acoustic_system)
+      );
+    case "ceilings.portion.fire_acoustic_system":
+      return portion?.fire_acoustic_requirement === "specified";
     default:
       return true;
   }
+}
+
+export function ceilingsFactQuestionClass(
+  factKey: string
+): ClarifyAskClass | null {
+  return ceilingsContractRow(factKey)?.askClass ?? null;
+}
+
+export function listCeilingsInformationContract(): readonly CeilingsInformationContractRow[] {
+  return CEILINGS_INFORMATION_CONTRACT;
+}
+
+export function ceilingsDetailsSectionId(
+  factKey: string
+): "dimensions" | "materials" | "structure" | "scope" | "details" {
+  if (
+    factKey.includes("length_m") ||
+    factKey.includes("width_m") ||
+    factKey.includes("area_m2") ||
+    factKey.includes("geometry")
+  ) {
+    return "dimensions";
+  }
+  if (
+    factKey.includes("structure") ||
+    factKey.includes("timber") ||
+    factKey.includes("spacing") ||
+    factKey.includes("direction") ||
+    factKey.includes("drop") ||
+    factKey.includes("suspension") ||
+    factKey.includes("edge_offset") ||
+    factKey.includes("primary") ||
+    factKey.includes("furring") ||
+    factKey.includes("job_scope")
+  ) {
+    return "structure";
+  }
+  if (
+    factKey.includes("lining") ||
+    factKey.includes("plasterboard") ||
+    factKey.includes("plywood") ||
+    factKey.includes("tile") ||
+    factKey.includes("sheet") ||
+    factKey.includes("layers") ||
+    factKey.includes("board_width") ||
+    factKey.includes("gap_mm")
+  ) {
+    return "materials";
+  }
+  if (
+    factKey.includes("insulation") ||
+    factKey.includes("demolition") ||
+    factKey.includes("stopping") ||
+    factKey.includes("painting") ||
+    factKey.includes("bulkhead") ||
+    factKey.includes("penetrat") ||
+    factKey.includes("fire") ||
+    factKey.includes("height_m")
+  ) {
+    return "scope";
+  }
+  return "details";
+}
+
+export function ceilingsAssumptionStatement(factKey: string): string | null {
+  if (factKey === "ceilings.portion.spacing_mm") {
+    return CEILINGS_TIMBER_SPACING_ASSUMPTION_STATEMENT;
+  }
+  if (factKey === "ceilings.portion.suspension_spacing_m") {
+    return CEILINGS_SUSPENSION_SPACING_ASSUMPTION_STATEMENT;
+  }
+  if (factKey === "ceilings.portion.edge_offset_m") {
+    return CEILINGS_EDGE_OFFSET_ASSUMPTION_STATEMENT;
+  }
+  if (factKey === "ceilings.bulkhead.topology" || factKey === "ceilings.bulkhead.form") {
+    return CEILINGS_BULKHEAD_TOPOLOGY_ASSUMPTION;
+  }
+  return null;
 }
 
 export type CeilingsContractLookup = {

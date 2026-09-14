@@ -120,6 +120,12 @@ import {
 } from "@/lib/estimate/internal-walls-finish";
 import { briefHasIndependentPlastering } from "@/lib/work-areas/ownership";
 import {
+  ceilingsNestedItemPanel,
+  listCeilingsClarifyCandidates,
+} from "@/lib/estimate/ceilings-clarify";
+import { lookupCeilingsInformationContract } from "@/lib/estimate/ceilings-information-contract";
+import { resolveCeilingsPortions } from "@/lib/estimate/ceilings-portions";
+import {
   getArrayFact,
   getBooleanFact,
   getFact,
@@ -897,6 +903,32 @@ function missingHardMinimum(
         });
       }
     }
+
+    if (card.workAreaType === "ceilings") {
+      const omitStopping = input.workAreas.some(
+        (row) => row.status !== "excluded" && row.type === "plastering"
+      );
+      const omitPainting = input.workAreas.some(
+        (row) => row.status !== "excluded" && row.type === "painting"
+      );
+      const resolved = resolveCeilingsPortions({
+        facts: input.facts as EstimateFact[],
+        workAreaId: card.workAreaId,
+      });
+      if (resolved.source !== "legacy_dual_read") {
+        for (const candidate of listCeilingsClarifyCandidates({
+          facts: input.facts as EstimateFact[],
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          briefText: input.briefText,
+          omitStopping,
+          omitPainting,
+        })) {
+          if (candidate.askClass !== "HARD_MINIMUM") continue;
+          out.push(candidate);
+        }
+      }
+    }
   }
   return out;
 }
@@ -1455,6 +1487,42 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           openingId: type?.active_opening_id ?? type?.openings[0]?.id ?? null,
         });
       });
+      continue;
+    }
+
+    if (wa.type === "ceilings") {
+      const omitStopping = input.workAreas.some(
+        (row) => row.status !== "excluded" && row.type === "plastering"
+      );
+      const omitPainting = input.workAreas.some(
+        (row) => row.status !== "excluded" && row.type === "painting"
+      );
+      const resolved = resolveCeilingsPortions({
+        facts: input.facts as EstimateFact[],
+        workAreaId: wa.id,
+      });
+      if (resolved.source === "legacy_dual_read") continue;
+      for (const candidate of listCeilingsClarifyCandidates({
+        facts: input.facts as EstimateFact[],
+        workAreaId: wa.id,
+        workAreaName: wa.name,
+        briefText: input.briefText,
+        omitStopping,
+        omitPainting,
+      })) {
+        if (candidate.askClass === "HARD_MINIMUM") continue;
+        const lookup = lookupCeilingsInformationContract(candidate.factKey ?? "", {
+          facts: input.facts as EstimateFact[],
+          workAreaId: wa.id,
+          nestedItemId: candidate.nestedItemId,
+          componentId: candidate.componentId,
+          briefText: input.briefText,
+          omitStopping,
+          omitPainting,
+        });
+        if (!lookup.relevant) continue;
+        out.push(candidate);
+      }
       continue;
     }
 
@@ -2061,5 +2129,22 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
     blocksEstimate,
     canEstimateNow: !blocksEstimate && remainingRequiredCount === 0,
     enoughToEstimate,
+    nestedItemPanels: input.workAreas
+      .filter((row) => row.status !== "excluded" && row.type === "ceilings")
+      .map((wa) =>
+        ceilingsNestedItemPanel({
+          facts: input.facts as EstimateFact[],
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          briefText: input.briefText,
+          omitStopping: input.workAreas.some(
+            (row) => row.status !== "excluded" && row.type === "plastering"
+          ),
+          omitPainting: input.workAreas.some(
+            (row) => row.status !== "excluded" && row.type === "painting"
+          ),
+        })
+      )
+      .filter((row): row is NonNullable<typeof row> => row != null),
   };
 }

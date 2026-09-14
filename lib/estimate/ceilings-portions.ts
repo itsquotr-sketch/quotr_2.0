@@ -107,10 +107,22 @@ export const CEILINGS_BULKHEAD_LINING_VALUES = [
 export type CeilingBulkheadLining =
   (typeof CEILINGS_BULKHEAD_LINING_VALUES)[number];
 
-/** V1 topology only. Island/boxed bulkheads are later Pricing Required. */
+export const CEILINGS_BULKHEAD_FORM_VALUES = [
+  "conventional_two_face_downstand",
+  "island",
+  "boxed",
+  "complex",
+] as const;
+export type CeilingBulkheadForm = (typeof CEILINGS_BULKHEAD_FORM_VALUES)[number];
+
+/** V1 topology only. Island/boxed/complex bulkheads are later Pricing Required. */
 export const CEILINGS_BULKHEAD_TOPOLOGY_V1 =
   "conventional_two_face_downstand" as const;
-export type CeilingBulkheadTopology = typeof CEILINGS_BULKHEAD_TOPOLOGY_V1;
+export const CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED =
+  "unsupported_specialist" as const;
+export type CeilingBulkheadTopology =
+  | typeof CEILINGS_BULKHEAD_TOPOLOGY_V1
+  | typeof CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED;
 
 export const CEILINGS_BULKHEAD_TOPOLOGY_ASSUMPTION =
   "Assumes a standard wall-adjacent downstand bulkhead with an underside and one exposed vertical face.";
@@ -162,6 +174,7 @@ export type CeilingTile = {
 export type CeilingLining = {
   family: CeilingLiningFamily | null;
   plasterboard_product?: CeilingPlasterboardProduct;
+  plywood_spec?: string | null;
   sheet_length_mm?: number;
   sheet_width_mm?: number;
   layers?: number | null;
@@ -171,6 +184,7 @@ export type CeilingLining = {
 
 export type CeilingFinish = {
   insulation_included: boolean | null;
+  insulation_type: string | null;
   stopping_included: boolean | null;
   painting_included: boolean | null;
   demolition_included: boolean | null;
@@ -184,6 +198,7 @@ export type CeilingBulkhead = {
   height_m: number | null;
   framing_type: CeilingBulkheadFraming | null;
   lining_type: CeilingBulkheadLining | null;
+  form: CeilingBulkheadForm | null;
   topology: CeilingBulkheadTopology;
 };
 
@@ -198,7 +213,9 @@ export type CeilingPortion = {
   has_bulkheads: boolean | null;
   active_bulkhead_id: string | null;
   bulkheads: CeilingBulkhead[];
+  significant_penetrations: boolean | null;
   penetrations: string | null;
+  fire_acoustic_requirement: "none" | "specified" | "unknown_proprietary" | null;
   fire_acoustic_system: string | null;
 };
 
@@ -287,6 +304,7 @@ function emptyLining(): CeilingLining {
 function emptyFinish(): CeilingFinish {
   return {
     insulation_included: null,
+    insulation_type: null,
     stopping_included: null,
     painting_included: null,
     demolition_included: null,
@@ -305,6 +323,7 @@ export function createEmptyCeilingBulkhead(params?: {
     height_m: null,
     framing_type: null,
     lining_type: null,
+    form: null,
     topology: CEILINGS_BULKHEAD_TOPOLOGY_V1,
   };
 }
@@ -324,7 +343,9 @@ export function createEmptyCeilingPortion(params?: {
     has_bulkheads: null,
     active_bulkhead_id: null,
     bulkheads: [],
+    significant_penetrations: null,
     penetrations: null,
+    fire_acoustic_requirement: null,
     fire_acoustic_system: null,
   };
 }
@@ -343,7 +364,6 @@ export function duplicateCeilingBulkhead(
     ...cloneCeilingBulkhead(source),
     id: newId ?? createCeilingBulkheadId(),
     label: source.label ? `${source.label} copy` : null,
-    topology: CEILINGS_BULKHEAD_TOPOLOGY_V1,
   };
 }
 
@@ -365,6 +385,7 @@ function cloneLining(lining: CeilingLining): CeilingLining {
   return {
     family: lining.family,
     plasterboard_product: lining.plasterboard_product,
+    plywood_spec: lining.plywood_spec,
     sheet_length_mm: lining.sheet_length_mm,
     sheet_width_mm: lining.sheet_width_mm,
     layers: lining.layers,
@@ -479,10 +500,32 @@ export function duplicateCeilingPortion(
     has_bulkheads: source.has_bulkheads,
     active_bulkhead_id: null,
     bulkheads: source.bulkheads.map((row) => duplicateCeilingBulkhead(row)),
+    significant_penetrations: source.significant_penetrations,
     penetrations: source.penetrations,
+    fire_acoustic_requirement: source.fire_acoustic_requirement,
     fire_acoustic_system: source.fire_acoustic_system,
   };
   return applyCeilingFamilyExclusivity(copy);
+}
+
+export function ceilingBulkheadTopologyForForm(
+  form: CeilingBulkheadForm | null
+): CeilingBulkheadTopology {
+  if (form === "island" || form === "boxed" || form === "complex") {
+    return CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED;
+  }
+  return CEILINGS_BULKHEAD_TOPOLOGY_V1;
+}
+
+export function isUnsupportedCeilingBulkhead(
+  bulkhead: Pick<CeilingBulkhead, "form" | "topology">
+): boolean {
+  return (
+    bulkhead.topology === CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED ||
+    bulkhead.form === "island" ||
+    bulkhead.form === "boxed" ||
+    bulkhead.form === "complex"
+  );
 }
 
 export function parseCeilingBulkhead(value: unknown): CeilingBulkhead | null {
@@ -490,6 +533,11 @@ export function parseCeilingBulkhead(value: unknown): CeilingBulkhead | null {
   const id =
     typeof value.id === "string" && value.id.trim() ? value.id.trim() : null;
   if (!id) return null;
+  const form = parseEnum(value.form, CEILINGS_BULKHEAD_FORM_VALUES);
+  const storedTopology =
+    value.topology === CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED
+      ? CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED
+      : null;
   return {
     id,
     label:
@@ -501,7 +549,10 @@ export function parseCeilingBulkhead(value: unknown): CeilingBulkhead | null {
     height_m: parsePositiveNumber(value.height_m),
     framing_type: parseEnum(value.framing_type, CEILINGS_BULKHEAD_FRAMING_VALUES),
     lining_type: parseEnum(value.lining_type, CEILINGS_BULKHEAD_LINING_VALUES),
-    topology: CEILINGS_BULKHEAD_TOPOLOGY_V1,
+    form,
+    topology:
+      storedTopology ??
+      ceilingBulkheadTopologyForForm(form),
   };
 }
 
@@ -539,18 +590,24 @@ function parseGeometry(value: unknown): CeilingGeometry {
 function parseTimber(value: unknown): CeilingTimberStructure | undefined {
   if (!isRecord(value)) return undefined;
   const size = parseEnum(value.size, CEILINGS_TIMBER_SIZE_VALUES);
-  const spacing_mm = parsePositiveNumber(value.spacing_mm);
-  const direction = parseEnum(value.direction, CEILINGS_DIRECTION_VALUES);
-  if (!size || spacing_mm == null || !direction) return undefined;
+  if (!size) return undefined;
+  const spacing_mm = parsePositiveNumber(value.spacing_mm) ?? 0;
+  const direction =
+    parseEnum(value.direction, CEILINGS_DIRECTION_VALUES) ?? "along_length";
   return { size, spacing_mm, direction };
 }
 
 function parseSteel(value: unknown): CeilingSteelStructure | undefined {
   if (!isRecord(value)) return undefined;
-  const primary_spacing_mm = parsePositiveNumber(value.primary_spacing_mm);
-  const furring_spacing_mm = parsePositiveNumber(value.furring_spacing_mm);
-  const direction = parseEnum(value.direction, CEILINGS_DIRECTION_VALUES);
-  if (primary_spacing_mm == null || furring_spacing_mm == null || !direction) {
+  const direction =
+    parseEnum(value.direction, CEILINGS_DIRECTION_VALUES) ?? "along_length";
+  const primary_spacing_mm = parsePositiveNumber(value.primary_spacing_mm) ?? 0;
+  const furring_spacing_mm = parsePositiveNumber(value.furring_spacing_mm) ?? 0;
+  if (
+    primary_spacing_mm <= 0 &&
+    furring_spacing_mm <= 0 &&
+    !parseEnum(value.direction, CEILINGS_DIRECTION_VALUES)
+  ) {
     return undefined;
   }
   return { primary_spacing_mm, furring_spacing_mm, direction };
@@ -558,10 +615,10 @@ function parseSteel(value: unknown): CeilingSteelStructure | undefined {
 
 function parseSuspended(value: unknown): CeilingSuspendedStructure | undefined {
   if (!isRecord(value)) return undefined;
-  const drop_height_m = parsePositiveNumber(value.drop_height_m);
-  const max_spacing_m = parsePositiveNumber(value.max_spacing_m);
-  const edge_offset_m = parsePositiveNumber(value.edge_offset_m);
-  if (drop_height_m == null || max_spacing_m == null || edge_offset_m == null) {
+  const drop_height_m = parsePositiveNumber(value.drop_height_m) ?? 0;
+  const max_spacing_m = parsePositiveNumber(value.max_spacing_m) ?? 0;
+  const edge_offset_m = parsePositiveNumber(value.edge_offset_m) ?? 0;
+  if (drop_height_m <= 0 && max_spacing_m <= 0 && edge_offset_m <= 0) {
     return undefined;
   }
   return { drop_height_m, max_spacing_m, edge_offset_m };
@@ -608,6 +665,12 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
             CEILINGS_PLASTERBOARD_PRODUCT_VALUES
           ) ?? undefined
         : undefined,
+      plywood_spec: isRecord(value.lining)
+        ? typeof value.lining.plywood_spec === "string" &&
+          value.lining.plywood_spec.trim()
+          ? value.lining.plywood_spec.trim()
+          : null
+        : undefined,
       sheet_length_mm: isRecord(value.lining)
         ? parsePositiveNumber(value.lining.sheet_length_mm) ?? undefined
         : undefined,
@@ -623,12 +686,17 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
               const board_width_mm = parsePositiveNumber(
                 value.lining.timber_lined.board_width_mm
               );
-              const gap_mm = parsePositiveNumber(value.lining.timber_lined.gap_mm);
+              const gap_mm =
+                typeof value.lining.timber_lined.gap_mm === "number" &&
+                Number.isFinite(value.lining.timber_lined.gap_mm) &&
+                value.lining.timber_lined.gap_mm >= 0
+                  ? value.lining.timber_lined.gap_mm
+                  : parsePositiveNumber(value.lining.timber_lined.gap_mm) ?? 0;
               const direction = parseEnum(
                 value.lining.timber_lined.direction,
                 CEILINGS_DIRECTION_VALUES
               );
-              if (board_width_mm == null || gap_mm == null || !direction) {
+              if (board_width_mm == null || !direction) {
                 return undefined;
               }
               return { board_width_mm, gap_mm, direction };
@@ -645,6 +713,11 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
     finish: isRecord(value.finish)
       ? {
           insulation_included: parseTriBool(value.finish.insulation_included),
+          insulation_type:
+            typeof value.finish.insulation_type === "string" &&
+            value.finish.insulation_type.trim()
+              ? value.finish.insulation_type.trim()
+              : null,
           stopping_included: parseTriBool(value.finish.stopping_included),
           painting_included: parseTriBool(value.finish.painting_included),
           demolition_included: parseTriBool(value.finish.demolition_included),
@@ -662,10 +735,16 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
       return bulkheads[0]?.id ?? null;
     })(),
     bulkheads,
+    significant_penetrations: parseTriBool(value.significant_penetrations),
     penetrations:
       typeof value.penetrations === "string" && value.penetrations.trim()
         ? value.penetrations.trim()
         : null,
+    fire_acoustic_requirement: parseEnum(value.fire_acoustic_requirement, [
+      "none",
+      "specified",
+      "unknown_proprietary",
+    ] as const),
     fire_acoustic_system:
       typeof value.fire_acoustic_system === "string" &&
       value.fire_acoustic_system.trim()
@@ -743,6 +822,16 @@ export function storedCeilingsPortions(
   )?.value;
   return parseCeilingsPortions(raw);
 }
+
+export function hasCanonicalCeilingsPortions(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  return storedCeilingsPortions(facts, workAreaId).length > 0;
+}
+
+export const CEILINGS_NESTED_NOT_CALCULATED_MESSAGE =
+  "Ceiling quantities for this package are not available yet.";
 
 export function resolveCeilingsActivePortionId(
   facts: readonly EstimateFact[],
@@ -933,6 +1022,20 @@ export function applyCeilingsFactWrite(params: {
   }
 
   let portions = storedCeilingsPortions(facts, params.workAreaId);
+  if (portions.length === 0) {
+    const legacy = legacyPortionFromFlatFacts({
+      facts,
+      workAreaId: params.workAreaId,
+    });
+    if (legacy) {
+      portions = [
+        {
+          ...legacy,
+          id: createCeilingPortionId(),
+        },
+      ];
+    }
+  }
   let activeId = resolveCeilingsActivePortionId(
     facts,
     params.workAreaId,
@@ -1119,8 +1222,13 @@ export function applyCeilingsFactWrite(params: {
             params.value,
             CEILINGS_BULKHEAD_LINING_VALUES
           );
+        } else if (field === "form") {
+          next.form = parseEnum(params.value, CEILINGS_BULKHEAD_FORM_VALUES);
+          next.topology = ceilingBulkheadTopologyForForm(next.form);
         }
-        next.topology = CEILINGS_BULKHEAD_TOPOLOGY_V1;
+        if (next.form == null && next.topology !== CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED) {
+          next.topology = CEILINGS_BULKHEAD_TOPOLOGY_V1;
+        }
         return next;
       });
     });
@@ -1225,6 +1333,67 @@ function applyPortionField(
     }
     return;
   }
+  if (field === "plywood_spec") {
+    portion.lining.family = portion.lining.family ?? "plywood";
+    portion.lining.plywood_spec =
+      typeof value === "string" && value.trim() ? value.trim() : null;
+    return;
+  }
+  if (field === "tile_size") {
+    const size = parseEnum(value, CEILINGS_TILE_SIZE_VALUES);
+    if (!size) return;
+    portion.lining.family = "tile_and_grid";
+    portion.structure.family = "tile_and_grid";
+    portion.lining.tile = { size };
+    return;
+  }
+  if (field === "board_width_mm") {
+    const width = parsePositiveNumber(value);
+    if (width == null) return;
+    portion.lining.family = "timber_lined";
+    portion.lining.timber_lined = {
+      board_width_mm: width,
+      gap_mm: portion.lining.timber_lined?.gap_mm ?? 0,
+      direction: portion.lining.timber_lined?.direction ?? "along_length",
+    };
+    return;
+  }
+  if (field === "gap_mm") {
+    const gap =
+      typeof value === "number" && Number.isFinite(value) && value >= 0
+        ? value
+        : parsePositiveNumber(value);
+    if (gap == null) return;
+    portion.lining.family = "timber_lined";
+    portion.lining.timber_lined = {
+      board_width_mm: portion.lining.timber_lined?.board_width_mm ?? 0,
+      gap_mm: gap,
+      direction: portion.lining.timber_lined?.direction ?? "along_length",
+    };
+    return;
+  }
+  if (field === "primary_spacing_mm") {
+    const spacing = parsePositiveNumber(value);
+    if (spacing == null) return;
+    portion.structure.family = "steel_direct_fix";
+    portion.structure.steel = {
+      primary_spacing_mm: spacing,
+      furring_spacing_mm: portion.structure.steel?.furring_spacing_mm ?? 0,
+      direction: portion.structure.steel?.direction ?? "along_length",
+    };
+    return;
+  }
+  if (field === "furring_spacing_mm") {
+    const spacing = parsePositiveNumber(value);
+    if (spacing == null) return;
+    portion.structure.family = "steel_direct_fix";
+    portion.structure.steel = {
+      primary_spacing_mm: portion.structure.steel?.primary_spacing_mm ?? 0,
+      furring_spacing_mm: spacing,
+      direction: portion.structure.steel?.direction ?? "along_length",
+    };
+    return;
+  }
   if (field === "sheet_length_mm") {
     portion.lining.sheet_length_mm =
       parsePositiveNumber(value) ?? undefined;
@@ -1241,6 +1410,17 @@ function applyPortionField(
   }
   if (field === "insulation_included") {
     portion.finish.insulation_included = parseTriBool(value);
+    if (portion.finish.insulation_included === false) {
+      portion.finish.insulation_type = null;
+    }
+    return;
+  }
+  if (field === "insulation_type") {
+    portion.finish.insulation_type =
+      typeof value === "string" && value.trim() ? value.trim() : null;
+    if (portion.finish.insulation_type) {
+      portion.finish.insulation_included = true;
+    }
     return;
   }
   if (field === "stopping_included") {
@@ -1269,9 +1449,28 @@ function applyPortionField(
       typeof value === "string" && value.trim() ? value.trim() : null;
     return;
   }
+  if (field === "significant_penetrations") {
+    portion.significant_penetrations = parseTriBool(value);
+    if (portion.significant_penetrations === false) {
+      portion.penetrations = null;
+    }
+    return;
+  }
+  if (field === "fire_acoustic_requirement") {
+    portion.fire_acoustic_requirement = parseEnum(value, [
+      "none",
+      "specified",
+      "unknown_proprietary",
+    ] as const);
+    return;
+  }
   if (field === "fire_acoustic_system") {
     portion.fire_acoustic_system =
       typeof value === "string" && value.trim() ? value.trim() : null;
+    if (portion.fire_acoustic_system) {
+      portion.fire_acoustic_requirement =
+        portion.fire_acoustic_requirement ?? "specified";
+    }
     return;
   }
   if (field === "drop_height_m") {
@@ -1307,7 +1506,7 @@ function applyPortionField(
     portion.structure.family = "timber_direct_fix";
     portion.structure.timber = {
       size,
-      spacing_mm: portion.structure.timber?.spacing_mm ?? 600,
+      spacing_mm: portion.structure.timber?.spacing_mm ?? 0,
       direction: portion.structure.timber?.direction ?? "along_length",
     };
     return;
@@ -1354,7 +1553,7 @@ function applyPortionField(
     portion.structure.family = portion.structure.family ?? "timber_direct_fix";
     portion.structure.timber = {
       size: portion.structure.timber?.size ?? "140x45_h1.2",
-      spacing_mm: portion.structure.timber?.spacing_mm ?? 600,
+      spacing_mm: portion.structure.timber?.spacing_mm ?? 0,
       direction,
     };
   }

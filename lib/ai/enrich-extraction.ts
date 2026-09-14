@@ -23,7 +23,16 @@ import {
   stripInventedInternalWallsFacts,
 } from "@/lib/estimate/internal-walls-brief";
 import { discoverWorkAreaInstances, snippetForDiscoveredInstance } from "@/lib/work-areas/discovery-instances";
-import { filterTopLevelWorkAreas } from "@/lib/work-areas/ownership";
+import {
+  briefHasBathroomEmbeddedCeiling,
+  briefHasExplicitCeilings,
+  briefHasIndependentCeilings,
+  filterTopLevelWorkAreas,
+} from "@/lib/work-areas/ownership";
+import {
+  extractCeilingPortionsFromBrief,
+  seedExtractedCeilingsFact,
+} from "@/lib/estimate/ceilings-brief";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
@@ -239,6 +248,9 @@ function inferPainting(
     "repaint walls and",
     "paint the interior",
     "interior painting",
+    "paint the ceiling",
+    "paint ceiling",
+    "paint ceilings",
     "paint doors",
     "paint trims",
     "two coats",
@@ -1533,6 +1545,9 @@ function inferPlastering(
     "level 4 stopping",
     "level 5 stopping",
     "stop new gib",
+    "stop new ceiling",
+    "stop the ceiling",
+    "stop ceiling",
     "skim coat",
     "skim-coat",
     "repair and plaster",
@@ -2060,6 +2075,49 @@ function applyDiscoveredWorkAreaInstances(
   }
 }
 
+function inferCeilings(
+  brief: string,
+  extraction: AIExtractionOutput,
+  allowedTypes: string[]
+): void {
+  if (!briefHasExplicitCeilings(brief)) return;
+  if (
+    briefHasBathroomEmbeddedCeiling(brief) &&
+    !briefHasIndependentCeilings(brief)
+  ) {
+    return;
+  }
+
+  addWorkAreaIfMissing(
+    extraction,
+    "ceilings",
+    0.88,
+    "EXPLICIT: Ceiling construction mentioned in brief",
+    allowedTypes
+  );
+
+  const ceilingGroups = discoverWorkAreaInstances(brief).filter(
+    (row) => row.type === "ceilings"
+  );
+  if (ceilingGroups.length >= 2) {
+    for (const group of ceilingGroups) {
+      const snippet = snippetForDiscoveredInstance(brief, group, ceilingGroups);
+      const portions = extractCeilingPortionsFromBrief(snippet);
+      if (portions.length === 0) continue;
+      seedExtractedCeilingsFact(extraction, {
+        portions,
+        workAreaName: group.name,
+      });
+    }
+    return;
+  }
+
+  const portions = extractCeilingPortionsFromBrief(brief);
+  if (portions.length > 0) {
+    seedExtractedCeilingsFact(extraction, { portions });
+  }
+}
+
 export function enrichExtractionFromBrief(params: {
   briefText: string;
   extraction: AIExtractionOutput;
@@ -2079,6 +2137,7 @@ export function enrichExtractionFromBrief(params: {
   inferBathroom(brief, extraction, params.allowedTypes);
   inferKitchen(brief, extraction, params.allowedTypes);
   inferInternalWalls(brief, extraction, params.allowedTypes);
+  inferCeilings(brief, extraction, params.allowedTypes);
   inferDoors(brief, extraction, params.allowedTypes);
   inferPainting(brief, extraction, params.allowedTypes);
   inferFence(brief, extraction, params.allowedTypes);

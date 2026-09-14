@@ -152,6 +152,7 @@ import {
 } from "@/lib/assistant/mode";
 import type { EstimateFact } from "@/lib/estimate/types";
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
+import { isCeilingsPortionWriteKey } from "@/lib/estimate/ceilings-portions";
 import { disclosedAssumptionForNotSure } from "@/lib/estimate/disclosed-assumptions";
 import { disclosedProjectConditionForNotSure } from "@/lib/project-conditions/consumed-authority";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
@@ -1358,6 +1359,8 @@ export function AssistantShell({
       inputType?: "number" | "select" | "boolean" | "text" | "multi_select";
       wallTypeId?: string | null;
       openingId?: string | null;
+      nestedItemId?: string | null;
+      componentId?: string | null;
     }) => {
       const factKey = `${input.workAreaId}:${input.key}`;
       recordPreviewPerf("question_save_ack", 0);
@@ -1372,6 +1375,8 @@ export function AssistantShell({
         source: "user",
         wallTypeId: input.wallTypeId ?? undefined,
         openingId: input.openingId ?? undefined,
+        nestedItemId: input.nestedItemId ?? undefined,
+        componentId: input.componentId ?? undefined,
       };
       tagOverlayFactSeq(overlayRow, requestSeq);
       setJobPlanFactOverlay((prev) => appendJobPlanFactOverlay(prev, overlayRow));
@@ -1387,6 +1392,8 @@ export function AssistantShell({
           valueType: input.inputType,
           wallTypeId: input.wallTypeId ?? undefined,
           openingId: input.openingId ?? undefined,
+          nestedItemId: input.nestedItemId ?? undefined,
+          componentId: input.componentId ?? undefined,
         })
       );
 
@@ -1769,6 +1776,8 @@ export function AssistantShell({
             work_area_id: candidate.workAreaId,
             value,
             source: "user",
+            nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,
+            componentId: candidate.componentId ?? candidate.openingId ?? undefined,
           })
         );
         result = await runSerializedFactMutation(() =>
@@ -1779,6 +1788,10 @@ export function AssistantShell({
             label: candidate.label,
             value,
             valueType: "boolean",
+            wallTypeId: candidate.wallTypeId ?? undefined,
+            openingId: candidate.openingId ?? undefined,
+            nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,
+            componentId: candidate.componentId ?? candidate.openingId ?? undefined,
           })
         );
         if (result.error) {
@@ -1918,21 +1931,24 @@ export function AssistantShell({
           source: (disclosed ? disclosed.source : "user") as "user" | "assumption",
           wallTypeId: candidate.wallTypeId ?? undefined,
           openingId: candidate.openingId ?? undefined,
+          nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,
+          componentId: candidate.componentId ?? candidate.openingId ?? undefined,
         };
         tagOverlayFactSeq(overlayRow, requestSeq);
-        const iwWrite = Boolean(
+        const nestedWrite = Boolean(
           candidate.factKey &&
             candidate.workAreaId &&
-            isInternalWallsWallTypeWriteKey(candidate.factKey)
+            (isInternalWallsWallTypeWriteKey(candidate.factKey) ||
+              isCeilingsPortionWriteKey(candidate.factKey))
         );
         if (!isNumericOrText) {
           setJobPlanFactOverlay((prev) =>
-            iwWrite
+            nestedWrite
               ? appendJobPlanFactOverlay(prev, overlayRow)
               : overlayFact(prev, overlayRow)
           );
         }
-        if (iwWrite && isNumericOrText) {
+        if (nestedWrite && isNumericOrText) {
           setJobPlanFactOverlay((prev) =>
             appendJobPlanFactOverlay(prev, overlayRow)
           );
@@ -1947,6 +1963,8 @@ export function AssistantShell({
             valueType,
             wallTypeId: candidate.wallTypeId ?? undefined,
             openingId: candidate.openingId ?? undefined,
+            nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,
+            componentId: candidate.componentId ?? candidate.openingId ?? undefined,
           })
         );
         if (result.error) {
@@ -1964,7 +1982,7 @@ export function AssistantShell({
           }
           return result;
         }
-        if (isNumericOrText && !iwWrite) {
+        if (isNumericOrText && !nestedWrite) {
           setJobPlanFactOverlay((prev) => overlayFact(prev, overlayRow));
         }
         if (!settleCanonicalMutation(result, requestSeq)) {
@@ -3302,6 +3320,21 @@ export function AssistantShell({
                 onAnswerBoolean={handleClarifyBoolean}
                 onAnswerValue={handleClarifyValue}
                 onEstimateNow={handleGenerateEstimate}
+                onNestedItemAction={(workAreaId, key, value, nestedItemId) =>
+                  handleFactSave({
+                    workAreaId,
+                    key,
+                    label:
+                      key.includes("duplicate")
+                        ? "Duplicate ceiling portion"
+                        : key.includes("delete")
+                          ? "Remove ceiling portion"
+                          : "Add ceiling portion",
+                    value,
+                    inputType: typeof value === "boolean" ? "boolean" : "text",
+                    nestedItemId,
+                  })
+                }
               />
             </CollapsibleStageCard>
           ) : null}

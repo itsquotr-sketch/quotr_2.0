@@ -18,6 +18,7 @@ import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contrac
 import { fenceFactIsRelevant } from "@/lib/estimate/fence-question-relevance";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
 import { retainingWallFactIsRelevant } from "@/lib/estimate/retaining-wall-question-relevance";
+import { ceilingsFactIsRelevant } from "@/lib/estimate/ceilings-information-contract";
 import { isUnresolvedCaptureValue } from "@/lib/estimate/disclosed-assumptions";
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
@@ -106,12 +107,19 @@ function factIsRelevant(
       workAreaId,
     });
   }
-  if (
-    workAreaType === "retaining_wall" ||
-    factKey.startsWith("retaining_wall.")
-  ) {
+  if (workAreaType === "retaining_wall" || factKey.startsWith("retaining_wall.")) {
     return retainingWallFactIsRelevant(factKey, {
       facts: input.facts,
+      workAreaId,
+    });
+  }
+  if (
+    workAreaType === "ceilings" ||
+    factKey.startsWith("ceilings.portion.") ||
+    factKey.startsWith("ceilings.bulkhead.")
+  ) {
+    return ceilingsFactIsRelevant(factKey, {
+      facts: input.facts as EstimateFact[],
       workAreaId,
     });
   }
