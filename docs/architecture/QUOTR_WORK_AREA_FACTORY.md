@@ -305,9 +305,9 @@ Do not silently skip factory stages to satisfy demand — reduce depth (SUPPORTE
 
 ---
 
-## 18. Ceilings nested model (WA-03A–WA-04B)
+## 18. Ceilings nested model (WA-03A–WA-04C)
 
-**Status:** Nested capture (WA-03A/B) is live. WA-04A adds geometry + timber direct-fix physical takeoff. WA-04B adds steel direct-fix + suspended steel physical takeoff. Hosted nested estimates remain gated until lining/tile/bulkhead/commercial land.
+**Status:** Nested capture (WA-03A/B) is live. Physical takeoff covers geometry, timber/steel/suspended framing, linings, and tile & grid. Hosted nested estimates remain gated until bulkhead/insulation/fixings/labour/commercial land.
 
 Canonical tree:
 
@@ -369,7 +369,37 @@ Identities: `steel.ceiling.perimeter_track.lm`, `steel.ceiling.primary_channel.l
 
 Tile & grid, existing framing, and timber direct-fix emit no steel/suspension requirements. Canonical structure family is authority.
 
+**Plasterboard / plywood (WA-04C):** area-based. Area-only is valid. Sheet size must be resolved/disclosed — the calculator does not invent 3000×1200.
+
+```
+installed sheets = ceil(area / sheetArea) × layers
+purchase = ceil(installedPerLayer × (1 + waste) − epsilon) × layers
+```
+
+Shared helper: `countCoveredAreaSheets` in `lib/estimate/material-buildups.ts` (not the legacy `calculateSheetCount` 2.4×1.2 default). Waste once via `resolveMaterialWastage(..., "sheet_material")`. Labour later uses installed sheets. Shared plasterboard keys (`sheet.plasterboard.*`); plywood uses generic `sheet.plywood.each`. Layers are captured on the Portion — missing layers consume 1 (ASSUME_IF_SKIPPED).
+
+**Timber-lined (WA-04C):** length × width required. Area-only rejected.
+
+```
+module = board cover width + gap
+effectiveCross = cross − 2 × gap   // disclosed edge-gap convention
+runs = ceil((effectiveCross + gap) / module − epsilon)
+installed LM = runs × run length
+```
+
+Identity: `timber.lining.profile.lm` (not `timber.framing.*`). Wastage uses the generic `default` category (no lining-timber setting).
+
+**Tile & Grid (WA-04C):** integrated system. Area-only valid. No T-grid tee takeoff.
+
+```
+grid = area m²
+tiles = ceil(area / tileArea)
+purchase tiles = ceil(installed × (1 + waste) − epsilon)
+```
+
+Identities: `ceiling.grid.m2`, `ceiling.tile.300x300.each`, `ceiling.tile.600x600.each`, `ceiling.tile.1200x600.each`. Do not use leftover `ceiling.tile.m2`. Missing tile size is INFORMATION_REQUIRED (not silently 600×600). Structure and lining must both be tile_and_grid.
+
 **Legacy:** `calculateCeilings` in `lib/estimate/calculators/fitout.ts` remains the hosted runtime. Nested `ceilings.portions` still cannot fall through to the flat estimator.
 
-**Next:** WA-04C tile & grid physical takeoff.
+**Next:** WA-04D bulkheads, insulation, fixings/consumables.
 

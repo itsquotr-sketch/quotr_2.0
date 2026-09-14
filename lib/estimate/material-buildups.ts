@@ -50,6 +50,65 @@ export type SheetCountResult = {
   totalSheetCount: number;
 };
 
+/**
+ * Area-based installed/purchase sheet (or tile) count.
+ *
+ * Requires explicit sheet dimensions — no hidden 2400×1200 / 3000×1200.
+ * Installed = ceil(area / sheetArea − epsilon).
+ * Purchase = ceil(installedPerLayer × (1 + waste) − epsilon) × layers.
+ * Waste is applied once per layer, then multiplied by layer count.
+ *
+ * Distinct from calculateSheetCount, which rounds the area ratio and
+ * defaults missing sheet size to 2.4 × 1.2 (legacy fitout package helper).
+ */
+export const AREA_SHEET_COUNT_EPSILON = 1e-12;
+
+export type CoveredAreaSheetCount = {
+  readonly sheetAreaM2: number;
+  readonly installedSheetsPerLayer: number;
+  readonly purchaseSheetsPerLayer: number;
+  readonly installedSheets: number;
+  readonly purchaseSheets: number;
+  readonly wasteFactor: number;
+  readonly layerCount: number;
+};
+
+export function countCoveredAreaSheets(input: {
+  areaM2: number;
+  sheetLengthM: number;
+  sheetWidthM: number;
+  wastagePercent: number;
+  layerCount?: number;
+  epsilon?: number;
+}): CoveredAreaSheetCount | null {
+  if (!isPositive(input.areaM2)) return null;
+  if (!isPositive(input.sheetLengthM) || !isPositive(input.sheetWidthM)) {
+    return null;
+  }
+  if (!Number.isFinite(input.wastagePercent) || input.wastagePercent < 0) {
+    return null;
+  }
+  const layerCount = input.layerCount ?? 1;
+  if (!Number.isFinite(layerCount) || layerCount < 1) return null;
+  const epsilon = input.epsilon ?? AREA_SHEET_COUNT_EPSILON;
+  const sheetAreaM2 = input.sheetLengthM * input.sheetWidthM;
+  const installedSheetsPerLayer = Math.ceil(input.areaM2 / sheetAreaM2 - epsilon);
+  if (installedSheetsPerLayer < 1) return null;
+  const wasteFactor = input.wastagePercent / 100;
+  const purchaseSheetsPerLayer = Math.ceil(
+    installedSheetsPerLayer * (1 + wasteFactor) - epsilon
+  );
+  return {
+    sheetAreaM2,
+    installedSheetsPerLayer,
+    purchaseSheetsPerLayer,
+    installedSheets: installedSheetsPerLayer * layerCount,
+    purchaseSheets: purchaseSheetsPerLayer * layerCount,
+    wasteFactor,
+    layerCount,
+  };
+}
+
 export function calculateSheetCount(input: {
   areaM2?: number | null;
   sheetLengthM?: number;

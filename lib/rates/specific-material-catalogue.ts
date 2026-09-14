@@ -510,6 +510,72 @@ export const CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   }),
 ];
 
+export const TIMBER_LINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: "timber.lining.profile.lm",
+    label: "Timber lining / profile",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Timber lining",
+    unit: "lm",
+    description:
+      "Generic decorative timber lining / profile identity. Shared physical family for ceiling (and later wall) lining. Not structural timber.framing.*. No invented Quotr $/lm in WA-04C.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+];
+
+export const CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: "ceiling.grid.m2",
+    label: "Ceiling T-grid",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling tile & grid",
+    unit: "m2",
+    description:
+      "V1 T-grid as ceiling area m². Not a main-tee/cross-tee takeoff. Not ceiling.tile.m2. No invented Quotr $/m² in WA-04C.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "ceiling.tile.300x300.each",
+    label: "Ceiling tile 300 × 300",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling tile & grid",
+    unit: "each",
+    description:
+      "Dimensioned ceiling tile identity. Count is each, not m². No invented Quotr each-rate in WA-04C.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "ceiling.tile.600x600.each",
+    label: "Ceiling tile 600 × 600",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling tile & grid",
+    unit: "each",
+    description:
+      "Dimensioned ceiling tile identity. Count is each, not m². No invented Quotr each-rate in WA-04C.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "ceiling.tile.1200x600.each",
+    label: "Ceiling tile 1200 × 600",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling tile & grid",
+    unit: "each",
+    description:
+      "Dimensioned ceiling tile identity. Count is each, not m². No invented Quotr each-rate in WA-04C.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+];
+
 export const RETAINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
   entry({
     item_key: "retaining_wall.backfill.m3",
@@ -2520,6 +2586,8 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...SHEET_SPECIFIC_MATERIAL_CATALOGUE,
   ...STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
   ...CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE,
+  ...TIMBER_LINING_SPECIFIC_MATERIAL_CATALOGUE,
+  ...CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE,
   ...RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
   ...WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -2571,6 +2639,18 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "Shared ceiling perimeter track, primary/furring channel, crossover clip, dropper, and suspension-wire identities. Company exact rate wins. No invented Quotr $/lm in WA-04B — missing rates stay unpriced. Not partition track/stud SKUs.",
     entries: CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Timber lining",
+    description:
+      "Generic decorative timber lining / profile identity. Not structural framing timber. Company exact $/lm wins. No invented Quotr benchmark in WA-04C.",
+    entries: TIMBER_LINING_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Ceiling tile & grid",
+    description:
+      "T-grid as m² plus dimensioned tile-each identities. Not the leftover ceiling.tile.m2 package. No invented Quotr rates in WA-04C.",
+    entries: CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Retaining / drainage",

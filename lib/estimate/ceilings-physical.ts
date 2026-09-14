@@ -1,13 +1,14 @@
 /**
  * CEILINGS WA-04A/B — physical calculation kernel.
  *
- * Geometry + timber direct-fix + steel direct-fix + suspended steel.
+ * Geometry + timber/steel/suspended framing + lining + tile & grid.
  * Not hosted money. Not wired into calculateCeilings / customer estimate
  * output. Call from verifiers, the physical pipeline, or Preview diagnostics.
  *
- * Per-Portion, per-Work-Area. No same-product collapse. No lining, tile/grid,
- * bulkhead, labour, or waste percent in this slice. Purchase quantity equals
- * installed only; wastage remains unresolved until a later slice.
+ * Per-Portion, per-Work-Area. No same-product collapse. Nested downstands,
+ * thermal fill, consumables, labour hours, and hosted money are out of scope.
+ * Lining/tile wastage is applied once via resolveMaterialWastage.
+ * Framing purchase still equals installed; framing wastage remains unresolved.
  */
 
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
@@ -28,6 +29,19 @@ import {
   CEILINGS_TIMBER_FRAMING_COMPONENT,
   type CeilingTimberFramingTakeoff,
 } from "@/lib/estimate/ceilings-framing";
+import {
+  calculateCeilingLining,
+  CEILING_GRID_IDENTITY,
+  CEILING_GRID_M2_KEY,
+  CEILINGS_PLASTERBOARD_COMPONENT,
+  CEILINGS_PLYWOOD_COMPONENT,
+  CEILINGS_TILE_GRID_GRID_COMPONENT,
+  CEILINGS_TILE_GRID_TILE_COMPONENT,
+  CEILINGS_TIMBER_LINING_COMPONENT,
+  tileAndGridFamiliesDisagree,
+  type CeilingLiningTakeoff,
+} from "@/lib/estimate/ceilings-lining";
+import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import {
   calculateCeilingSteelFraming,
   calculateCeilingSuspendedFraming,
@@ -62,6 +76,7 @@ export type CeilingPortionPhysical = {
   readonly timber: CeilingTimberFramingTakeoff;
   readonly steel: CeilingSteelFrameTakeoff;
   readonly suspended: CeilingSuspendedTakeoff;
+  readonly lining: CeilingLiningTakeoff;
 };
 
 export type CeilingPhysicalResult = {
@@ -406,9 +421,236 @@ function suspendedRequirements(params: {
   ];
 }
 
+function liningAssumptions(lining: CeilingLiningTakeoff) {
+  const text: Array<{ key: string; text: string; source: "calculator_default" }> =
+    [];
+  if (lining.areaM2 != null) {
+    text.push({
+      key: "area_m2",
+      text: `${lining.areaM2} m² ceiling area`,
+      source: "calculator_default",
+    });
+  }
+  if (lining.sheetLengthM != null && lining.sheetWidthM != null) {
+    text.push({
+      key: "sheet_size_m",
+      text: `${lining.sheetLengthM} × ${lining.sheetWidthM} m sheets`,
+      source: "calculator_default",
+    });
+  }
+  if (lining.installedSheets != null) {
+    text.push({
+      key: "installed_sheets",
+      text: `${lining.installedSheets} installed sheets`,
+      source: "calculator_default",
+    });
+  }
+  if (lining.purchaseSheets != null) {
+    text.push({
+      key: "purchase_sheets",
+      text: `${lining.purchaseSheets} purchase sheets`,
+      source: "calculator_default",
+    });
+  }
+  if (lining.wasteFactor != null) {
+    text.push({
+      key: "waste_factor",
+      text: `${Math.round(lining.wasteFactor * 1000) / 10}% waste (once)`,
+      source: "calculator_default",
+    });
+  }
+  if (lining.direction) {
+    text.push({
+      key: "direction",
+      text:
+        lining.direction === "along_length"
+          ? "Boards along length"
+          : "Boards along width",
+      source: "calculator_default",
+    });
+  }
+  if (lining.boardCoverWidthM != null) {
+    text.push({
+      key: "board_cover_width_m",
+      text: `${lining.boardCoverWidthM} m board cover width`,
+      source: "calculator_default",
+    });
+  }
+  if (lining.gapM != null) {
+    text.push({
+      key: "gap_m",
+      text: `${lining.gapM} m inter-board gap`,
+      source: "calculator_default",
+    });
+  }
+  if (lining.edgeGapConvention) {
+    text.push({
+      key: "edge_gap_convention",
+      text: lining.edgeGapConvention,
+      source: "calculator_default",
+    });
+  }
+  if (lining.numberOfRuns != null) {
+    text.push({
+      key: "lining_runs",
+      text: `${lining.numberOfRuns} lining runs`,
+      source: "calculator_default",
+    });
+  }
+  if (lining.tileSize) {
+    text.push({
+      key: "tile_size",
+      text: `${lining.tileSize} tiles`,
+      source: "calculator_default",
+    });
+  }
+  if (lining.installedTiles != null) {
+    text.push({
+      key: "installed_tiles",
+      text: `${lining.installedTiles} installed tiles`,
+      source: "calculator_default",
+    });
+  }
+  return text;
+}
+
+const LINING_FACT_KEYS = [
+  "ceilings.portions",
+  "ceilings.portion.length_m",
+  "ceilings.portion.width_m",
+  "ceilings.portion.area_m2",
+  "ceilings.portion.lining_family",
+  "ceilings.portion.plasterboard_product",
+  "ceilings.portion.sheet_length_mm",
+  "ceilings.portion.sheet_width_mm",
+  "ceilings.portion.layers",
+] as const;
+
+function liningMaterialRequirement(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
+  portion: CeilingPortion;
+  lining: CeilingLiningTakeoff;
+}): MaterialRequirement[] {
+  const { lining, workArea, portion } = params;
+  if (lining.status !== "ok") return [];
+  const assumptions = liningAssumptions(lining);
+  const shared = {
+    workAreaId: workArea.id,
+    workAreaType: workArea.type || "ceilings",
+    variantKey: portion.id,
+    confidence:
+      lining.product.kind === "canonical" ? ("high" as const) : ("low" as const),
+    assumptions,
+    provenance: {
+      calculatorSource: "ceilings-physical",
+      factKeys: [...LINING_FACT_KEYS],
+      constraintKeys: [],
+    },
+    priced: false,
+    rateSource: "missing" as const,
+    unitCost: null,
+    totalCost: null,
+  };
+  const label = portion.label?.trim() || "Ceiling portion";
+
+  if (lining.family === "plasterboard" && lining.installedSheets != null) {
+    return [
+      buildMaterialRequirement({
+        ...shared,
+        componentKey: CEILINGS_PLASTERBOARD_COMPONENT,
+        description: `${label} — plasterboard lining`,
+        materialKey: lining.product.materialKey,
+        materialIdentity: lining.product.materialIdentity ?? undefined,
+        category: "LINING",
+        specification: lining.product.specification,
+        baseQuantity: lining.installedSheets,
+        baseUnit: "each",
+        wasteFactor: lining.wasteFactor ?? 0,
+        purchaseQuantity: lining.purchaseSheets ?? lining.installedSheets,
+        purchaseUnit: "each",
+      }),
+    ];
+  }
+  if (lining.family === "plywood" && lining.installedSheets != null) {
+    return [
+      buildMaterialRequirement({
+        ...shared,
+        componentKey: CEILINGS_PLYWOOD_COMPONENT,
+        description: `${label} — plywood lining`,
+        materialKey: lining.product.materialKey,
+        materialIdentity: lining.product.materialIdentity ?? undefined,
+        category: "LINING",
+        specification: lining.product.specification,
+        baseQuantity: lining.installedSheets,
+        baseUnit: "each",
+        wasteFactor: lining.wasteFactor ?? 0,
+        purchaseQuantity: lining.purchaseSheets ?? lining.installedSheets,
+        purchaseUnit: "each",
+      }),
+    ];
+  }
+  if (lining.family === "timber_lined" && lining.installedLm != null) {
+    return [
+      buildMaterialRequirement({
+        ...shared,
+        componentKey: CEILINGS_TIMBER_LINING_COMPONENT,
+        description: `${label} — timber lining`,
+        materialKey: lining.product.materialKey,
+        materialIdentity: lining.product.materialIdentity ?? undefined,
+        category: "LINING",
+        specification: lining.product.specification,
+        baseQuantity: lining.installedLm,
+        baseUnit: "lm",
+        wasteFactor: lining.wasteFactor ?? 0,
+        purchaseQuantity: lining.purchaseLm ?? lining.installedLm,
+        purchaseUnit: "lm",
+      }),
+    ];
+  }
+  if (lining.family === "tile_and_grid" && lining.gridAreaM2 != null) {
+    const rows: MaterialRequirement[] = [
+      buildMaterialRequirement({
+        ...shared,
+        componentKey: CEILINGS_TILE_GRID_GRID_COMPONENT,
+        description: `${label} — T-grid`,
+        materialKey: CEILING_GRID_M2_KEY,
+        materialIdentity: CEILING_GRID_IDENTITY,
+        category: "LINING",
+        specification: "Ceiling T-grid system",
+        baseQuantity: lining.gridAreaM2,
+        baseUnit: "m2",
+        wasteFactor: 0,
+        purchaseQuantity: lining.gridAreaM2,
+        purchaseUnit: "m2",
+      }),
+    ];
+    if (lining.installedTiles != null) {
+      rows.push(
+        buildMaterialRequirement({
+          ...shared,
+          componentKey: CEILINGS_TILE_GRID_TILE_COMPONENT,
+          description: `${label} — ceiling tiles`,
+          materialKey: lining.product.materialKey,
+          materialIdentity: lining.product.materialIdentity ?? undefined,
+          category: "LINING",
+          specification: lining.product.specification,
+          baseQuantity: lining.installedTiles,
+          baseUnit: "each",
+          wasteFactor: lining.wasteFactor ?? 0,
+          purchaseQuantity: lining.purchaseTiles ?? lining.installedTiles,
+          purchaseUnit: "each",
+        })
+      );
+    }
+    return rows;
+  }
+  return [];
+}
+
 export function calculatePortionCeilingsPhysical(params: {
   workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
   portion: CeilingPortion;
+  materialWastageSettings?: MaterialWastageSettings | null;
 }): {
   readonly portion: CeilingPortionPhysical;
   readonly requirements: readonly MaterialRequirement[];
@@ -417,31 +659,46 @@ export function calculatePortionCeilingsPhysical(params: {
   const timber = calculateCeilingTimberFraming(params.portion, geometry);
   const steel = calculateCeilingSteelFraming(params.portion, geometry);
   const suspended = calculateCeilingSuspendedFraming(params.portion, geometry);
+  const lining = calculateCeilingLining(
+    params.portion,
+    geometry,
+    params.materialWastageSettings
+  );
+  const suppressFraming = tileAndGridFamiliesDisagree(params.portion);
   const requirements: MaterialRequirement[] = [];
-  const timberRow = timberMaterialRequirement({
-    workArea: params.workArea,
-    portion: params.portion,
-    timber,
-  });
-  if (timberRow) requirements.push(timberRow);
-  if (steel.status === "ok") {
-    requirements.push(
-      ...steelFrameRequirements({
-        workArea: params.workArea,
-        portion: params.portion,
-        frame: steel,
-      })
-    );
+  if (!suppressFraming) {
+    const timberRow = timberMaterialRequirement({
+      workArea: params.workArea,
+      portion: params.portion,
+      timber,
+    });
+    if (timberRow) requirements.push(timberRow);
+    if (steel.status === "ok") {
+      requirements.push(
+        ...steelFrameRequirements({
+          workArea: params.workArea,
+          portion: params.portion,
+          frame: steel,
+        })
+      );
+    }
+    if (suspended.status === "ok") {
+      requirements.push(
+        ...suspendedRequirements({
+          workArea: params.workArea,
+          portion: params.portion,
+          suspended,
+        })
+      );
+    }
   }
-  if (suspended.status === "ok") {
-    requirements.push(
-      ...suspendedRequirements({
-        workArea: params.workArea,
-        portion: params.portion,
-        suspended,
-      })
-    );
-  }
+  requirements.push(
+    ...liningMaterialRequirement({
+      workArea: params.workArea,
+      portion: params.portion,
+      lining,
+    })
+  );
   return {
     portion: {
       workAreaId: params.workArea.id,
@@ -450,6 +707,7 @@ export function calculatePortionCeilingsPhysical(params: {
       timber,
       steel,
       suspended,
+      lining,
     },
     requirements,
   };
@@ -458,6 +716,7 @@ export function calculatePortionCeilingsPhysical(params: {
 export function calculateCeilingsPhysical(params: {
   readonly facts: readonly EstimateFact[];
   readonly workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
+  readonly materialWastageSettings?: MaterialWastageSettings | null;
 }): CeilingPhysicalResult {
   const workAreaId = params.workArea.id;
   if (!hasCanonicalCeilingsPortions(params.facts, workAreaId)) {
@@ -495,6 +754,7 @@ export function calculateCeilingsPhysical(params: {
     const calculated = calculatePortionCeilingsPhysical({
       workArea: params.workArea,
       portion,
+      materialWastageSettings: params.materialWastageSettings,
     });
     portions.push(calculated.portion);
     requirements.push(...calculated.requirements);
@@ -525,6 +785,14 @@ export function calculateCeilingsPhysical(params: {
     ) {
       if (calculated.portion.suspended.reason) {
         missingInfo.push(calculated.portion.suspended.reason);
+      }
+    }
+    if (
+      calculated.portion.lining.status === "information_required" ||
+      calculated.portion.lining.status === "invalid"
+    ) {
+      if (calculated.portion.lining.reason) {
+        missingInfo.push(calculated.portion.lining.reason);
       }
     }
   }
