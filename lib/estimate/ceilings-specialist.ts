@@ -89,3 +89,18 @@ export function ceilingPortionHasUnsupportedBulkhead(
 ): boolean {
   return portion.bulkheads.some((row) => isUnsupportedCeilingBulkhead(row));
 }
+
+export const CEILINGS_SPECIALIST_FIRE_ACOUSTIC_NOTICE =
+  "Specialist fire/acoustic system — specification/pricing required";
+
+export function ceilingPortionHasUnknownProprietaryFireAcoustic(
+  portion: CeilingPortion
+): boolean {
+  return (
+    portion.fire_acoustic_requirement === "unknown_proprietary" ||
+    portion.specialist_kind === "unknown_proprietary_fire" ||
+    portion.specialist_kind === "proprietary_acoustic" ||
+    ceilingPortionSpecialistKind(portion) === "unknown_proprietary_fire" ||
+    ceilingPortionSpecialistKind(portion) === "proprietary_acoustic"
+  );
+}

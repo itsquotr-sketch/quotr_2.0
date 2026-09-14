@@ -188,6 +188,10 @@ function supportingForLine(line: BuilderReviewPricedLine): string {
   return [...new Set(parts)].join(" · ");
 }
 
+function lineIsSharedCommercial(line: BuilderReviewPricedLine): boolean {
+  return (line.sourceLine.contributingNestedItemIds?.length ?? 0) > 1;
+}
+
 function makeGroup(
   id: string,
   label: string,
@@ -210,6 +214,7 @@ function makeGroup(
     showChangeMaterial: false,
     rateContext: pricingRequired ? "Pricing Required" : null,
     pricingRequired,
+    costHidden: children.length > 0 && children.every((row) => row.recommendedCost === 0) && !pricingRequired,
     children,
   };
 }
@@ -292,6 +297,7 @@ export function applyCeilingsReviewGroups(params: {
 }): {
   readonly categories: BuilderReviewCategoryGroup[];
   readonly portionGroups: readonly BuilderReviewPortionGroup[];
+  readonly sharedLineGroups: readonly BuilderReviewLineGroup[];
   readonly partialEstimateLabel: string | null;
   readonly resolvedSubtotalLabel: string | null;
 } {
@@ -305,6 +311,7 @@ export function applyCeilingsReviewGroups(params: {
     return {
       categories: params.categories,
       portionGroups: [],
+      sharedLineGroups: [],
       partialEstimateLabel: null,
       resolvedSubtotalLabel: null,
     };
@@ -322,9 +329,15 @@ export function applyCeilingsReviewGroups(params: {
   const portionGroups: BuilderReviewPortionGroup[] = portions.map(
     (portion, index) => {
       const owned = params.priced.filter((line) => {
+        if (lineIsSharedCommercial(line)) {
+          return false;
+        }
         if (line.sourceLine.nestedItemId === portion.id) return true;
-        if (line.sourceLine.contributingNestedItemIds?.includes(portion.id)) {
-          return true;
+        if (
+          line.sourceLine.nestedItemId &&
+          line.sourceLine.nestedItemId !== portion.id
+        ) {
+          return false;
         }
         if (line.sourceLine.componentId) {
           return portion.bulkheads.some(
@@ -343,13 +356,54 @@ export function applyCeilingsReviewGroups(params: {
           line.label.startsWith(`${labelPrefix} —`);
       });
 
-      const framing = owned.filter((row) => classifyCeilingBucket(row) === "framing");
-      const lining = owned.filter((row) => classifyCeilingBucket(row) === "lining");
-      const labour = owned.filter((row) => classifyCeilingBucket(row) === "labour");
-      const fixings = owned.filter((row) => classifyCeilingBucket(row) === "fixings");
-      const insulation = owned.filter(
-        (row) => classifyCeilingBucket(row) === "insulation"
+      const sharedForPortion = params.priced.filter(
+        (line) =>
+          lineIsSharedCommercial(line) &&
+          (line.sourceLine.contributingNestedItemIds?.includes(portion.id) ||
+            line.sourceLine.nestedItemId === portion.id)
       );
+
+      const contributionLines = sharedForPortion.map((line) => {
+        const qty = quantityFromRequirement(
+          waRequirements,
+          portion.id,
+          line.componentKey ?? line.itemKey ?? ""
+        );
+        return {
+          ...line,
+          recommendedCost: 0,
+          recommendedSell: 0,
+          quantity: qty.qty ?? line.quantity,
+          unit: qty.unit ?? line.unit,
+          supporting: [
+            qty.qty != null
+              ? `${Number.isInteger(qty.qty) ? qty.qty : qty.qty.toFixed(1)}${
+                  qty.unit ? ` ${qty.unit}` : line.unit ? ` ${line.unit}` : ""
+                }`
+              : null,
+            "Shared commercial line",
+          ]
+            .filter(Boolean)
+            .join(" · "),
+        };
+      });
+
+      const framing = owned.filter((row) => classifyCeilingBucket(row) === "framing");
+      const lining = [
+        ...owned.filter((row) => classifyCeilingBucket(row) === "lining"),
+        ...contributionLines.filter((row) => classifyCeilingBucket(row) === "lining"),
+      ];
+      const labour = owned.filter((row) => classifyCeilingBucket(row) === "labour");
+      const fixings = [
+        ...owned.filter((row) => classifyCeilingBucket(row) === "fixings"),
+        ...contributionLines.filter((row) => classifyCeilingBucket(row) === "fixings"),
+      ];
+      const insulation = [
+        ...owned.filter((row) => classifyCeilingBucket(row) === "insulation"),
+        ...contributionLines.filter(
+          (row) => classifyCeilingBucket(row) === "insulation"
+        ),
+      ];
       const bulkheadLines = owned.filter(
         (row) => classifyCeilingBucket(row) === "bulkhead"
       );
@@ -477,6 +531,53 @@ export function applyCeilingsReviewGroups(params: {
         /pricing required/i.test(row)
     );
 
+  const sharedMaterials = params.priced.filter(lineIsSharedCommercial);
+  const seenShared = new Set<string>();
+  const uniqueShared: BuilderReviewPricedLine[] = [];
+  for (const line of sharedMaterials) {
+    if (seenShared.has(line.id)) continue;
+    seenShared.add(line.id);
+    uniqueShared.push(line);
+  }
+  const sharedLineGroups: BuilderReviewLineGroup[] = [];
+  for (const line of uniqueShared) {
+    const ids = line.sourceLine.contributingNestedItemIds ?? [];
+    const names = ids
+      .map((id) => {
+        const index = portions.findIndex((row) => row.id === id);
+        return index >= 0
+          ? formatCeilingPortionLabel(portions[index]!, index)
+          : null;
+      })
+      .filter((row): row is string => Boolean(row));
+    const includesCue =
+      names.length > 0
+        ? `Includes ${names.join(" + ")}`
+        : ids.length > 1
+          ? `Includes ${ids.length} ceiling portions`
+          : null;
+    const qty =
+      line.quantity != null
+        ? `${Number.isInteger(line.quantity) ? line.quantity : line.quantity.toFixed(1)}${
+            line.unit ? ` ${line.unit}` : ""
+          }`
+        : null;
+    const group = makeGroup(
+      `ceilings-shared-${line.id}`,
+      line.label.replace(/^.* — /, ""),
+      "Shared materials",
+      [line]
+    );
+    if (!group) continue;
+    sharedLineGroups.push({
+      ...group,
+      supporting: [qty, includesCue, group.supporting]
+        .filter(Boolean)
+        .join(" · "),
+      costHidden: false,
+    });
+  }
+
   return {
     categories: params.categories.map((cat) => ({
       ...cat,
@@ -484,6 +585,7 @@ export function applyCeilingsReviewGroups(params: {
       lineGroups: [],
     })),
     portionGroups,
+    sharedLineGroups,
     partialEstimateLabel: hasPr
       ? CEILINGS_BUILDER_REVIEW_PARTIAL_MESSAGE
       : null,

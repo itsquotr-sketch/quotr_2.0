@@ -370,6 +370,111 @@ export function snippetForDiscoveredInstance(
   return hay;
 }
 
+const CEILING_PACKAGE_STOPWORDS = new Set([
+  "replace",
+  "replaced",
+  "new",
+  "existing",
+  "all",
+  "the",
+  "these",
+  "those",
+  "both",
+  "some",
+  "any",
+  "our",
+  "your",
+  "lined",
+  "install",
+  "installed",
+  "line",
+  "lining",
+  "plasterboard",
+  "gib",
+  "add",
+  "include",
+  "with",
+  "and",
+  "or",
+  "for",
+  "from",
+  "into",
+  "onto",
+  "throughout",
+]);
+
+function ceilingPackageLabelAllowed(label: string): boolean {
+  const words = label.trim().toLowerCase().split(/\s+/).filter(Boolean);
+  if (words.length === 0) return false;
+  if (words.some((word) => CEILING_PACKAGE_STOPWORDS.has(word))) return false;
+  return true;
+}
+
+function pushCeilingPackage(
+  found: DiscoveredWorkAreaInstance[],
+  label: string,
+  evidence: string
+): void {
+  const name = titleCase(label);
+  if (!name) return;
+  if (!ceilingPackageLabelAllowed(name)) return;
+  found.push({
+    type: "ceilings",
+    name: `${name} Ceilings`.replace(/\s+Ceilings\s+Ceilings$/i, " Ceilings"),
+    evidence,
+  });
+}
+
+function discoverGenericCeilingPackages(
+  brief: string
+): DiscoveredWorkAreaInstance[] {
+  const found: DiscoveredWorkAreaInstance[] = [];
+  const heading =
+    /\b((?:[a-z0-9]+(?:[-\s]+[a-z0-9]+){0,3}))\s+ceilings\s*[:—–]/gi;
+  for (const match of brief.matchAll(heading)) {
+    pushCeilingPackage(found, match[1] ?? "", match[0] ?? "");
+  }
+  const reversed =
+    /\bceilings\s*(?:[—–-]|:)\s*((?:[a-z0-9]+(?:[-\s]+[a-z0-9]+){0,3}))/gi;
+  for (const match of brief.matchAll(reversed)) {
+    const label = (match[1] ?? "").trim();
+    if (!label || !ceilingPackageLabelAllowed(label)) continue;
+    found.push({
+      type: "ceilings",
+      name: /ceilings$/i.test(label)
+        ? titleCase(label)
+        : `${titleCase(label)} Ceilings`,
+      evidence: match[0] ?? label,
+    });
+  }
+  const packages =
+    /\b((?:[a-z0-9]+(?:[-\s]+[a-z0-9]+){0,3}))\s+ceiling\s+packages?\b/gi;
+  for (const match of brief.matchAll(packages)) {
+    pushCeilingPackage(found, match[1] ?? "", match[0] ?? "");
+  }
+  const namedPlural: Array<{ label: string; evidence: string }> = [];
+  const plural = /\b((?:[a-z0-9]+(?:[-\s]+[a-z0-9]+){0,3}))\s+ceilings\b/gi;
+  for (const match of brief.matchAll(plural)) {
+    const label = (match[1] ?? "").trim();
+    if (!ceilingPackageLabelAllowed(label)) continue;
+    namedPlural.push({ label, evidence: match[0] ?? label });
+  }
+  const uniquePlural = uniqueByName(
+    namedPlural.map((row) => ({
+      type: "ceilings" as const,
+      name: `${titleCase(row.label)} Ceilings`.replace(
+        /\s+Ceilings\s+Ceilings$/i,
+        " Ceilings"
+      ),
+      evidence: row.evidence,
+    }))
+  );
+  if (uniquePlural.length >= 2) {
+    found.push(...uniquePlural);
+  }
+  return uniqueByName(found);
+}
+
 function discoverCeilings(brief: string): DiscoveredWorkAreaInstance[] {
   if (!/\bceiling/.test(brief)) return [];
   const found: DiscoveredWorkAreaInstance[] = [];
@@ -387,9 +492,16 @@ function discoverCeilings(brief: string): DiscoveredWorkAreaInstance[] {
       evidence: row.name,
     });
   }
-  if (found.length >= 2) return uniqueByName(found);
-  if (found.length === 1) return uniqueByName(found);
-  return [];
+  for (const row of discoverGenericCeilingPackages(brief)) {
+    const overlapping = found.some((existing) => {
+      const a = existing.name.toLowerCase();
+      const b = row.name.toLowerCase();
+      return a === b || a.includes(b) || b.includes(a);
+    });
+    if (overlapping) continue;
+    found.push(row);
+  }
+  return uniqueByName(found);
 }
 
 export function discoverWorkAreaInstances(

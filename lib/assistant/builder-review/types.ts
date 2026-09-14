@@ -66,6 +66,7 @@ export type BuilderReviewLineGroup = {
   readonly showChangeMaterial: boolean;
   readonly rateContext: string | null;
   readonly pricingRequired?: boolean;
+  readonly costHidden?: boolean;
   readonly children: readonly BuilderReviewPricedLine[];
 };
 
@@ -114,6 +115,7 @@ export type BuilderReviewWorkAreaGroup = {
   readonly sell: number;
   readonly categories: readonly BuilderReviewCategoryGroup[];
   readonly portionGroups?: readonly BuilderReviewPortionGroup[];
+  readonly sharedLineGroups?: readonly BuilderReviewLineGroup[];
   readonly partialEstimateLabel?: string | null;
   readonly resolvedSubtotalLabel?: string | null;
 };

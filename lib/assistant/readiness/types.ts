@@ -13,6 +13,12 @@ export type EstimateReadinessView = {
   readonly blockerCopy: string | null;
   readonly enoughToEstimate: boolean;
   /**
+   * Ceiling unknown_proprietary fire/acoustic (or equivalent) is a resolved
+   * answer, but the ordinary calculator is not Ready. Generate still opens a
+   * partial / Pricing Required estimate.
+   */
+  readonly specialistPricingRequired?: boolean;
+  /**
    * Local answers are complete enough to *initiate* Generate.
    * Does not mean writes have settled or that generation may run yet.
    */

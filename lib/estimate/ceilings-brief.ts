@@ -12,6 +12,8 @@ import {
   CEILINGS_PORTIONS_FACT_KEY,
   createEmptyCeilingPortion,
   createEmptyCeilingBulkhead,
+  normalizeExtractedCeilingPortions,
+  parseCeilingPortion,
   type CeilingJobScope,
   type CeilingLiningFamily,
   type CeilingPlasterboardProduct,
@@ -313,6 +315,54 @@ function labelFromSnippet(snippet: string): string | null {
   return null;
 }
 
+function snippetHasCeilingSignal(row: string): boolean {
+  return (
+    parseDimensions(row).length > 0 ||
+    canonicalCeilingStructureFamilyFromText(row) != null ||
+    canonicalCeilingLiningFamilyFromText(row) != null ||
+    /\bceiling\b/i.test(row) ||
+    labelFromSnippet(row) != null
+  );
+}
+
+function trimLeadingPortionSeparator(snippet: string): string {
+  return snippet.replace(/^(?:[,;]|\band\b|\banother\b)\s+/i, "").trim();
+}
+
+/**
+ * Split a clause on named ceiling-subject + geometry groups.
+ * Does not split coordinated rooms that share one "ceilings" noun
+ * ("lounge and hallway ceilings in plasterboard").
+ */
+function splitOnCeilingSubjects(text: string): string[] {
+  const subjectRe =
+    /\b(?:another\s+)?(?:[a-z][a-z0-9]*(?:[-\s][a-z0-9]+){0,2}\s+)?ceilings?\b/gi;
+  const hits: number[] = [];
+  for (const match of text.matchAll(subjectRe)) {
+    const index = match.index ?? 0;
+    const after = text.slice(index + match[0].length);
+    if (/^\s*height\b/i.test(after)) continue;
+    hits.push(index);
+  }
+  if (hits.length < 2) return [text];
+
+  const spans: string[] = [];
+  for (let i = 0; i < hits.length; i += 1) {
+    const start = i === 0 ? 0 : hits[i]!;
+    const end = hits[i + 1] ?? text.length;
+    const span = trimLeadingPortionSeparator(text.slice(start, end).trim());
+    if (span) spans.push(span);
+  }
+  const withGeometry = spans.filter((row) => parseDimensions(row).length > 0);
+  if (withGeometry.length < 2) return [text];
+  return spans.filter(
+    (row) =>
+      parseDimensions(row).length > 0 ||
+      canonicalCeilingLiningFamilyFromText(row) != null ||
+      canonicalCeilingPlasterboardProductFromText(row) != null
+  );
+}
+
 function splitPortionSnippets(brief: string): string[] {
   const trimmed = brief.trim();
   if (!trimmed) return [];
@@ -320,22 +370,23 @@ function splitPortionSnippets(brief: string): string[] {
     .split(/(?<=[.!?])\s+/)
     .map((row) => row.trim())
     .filter(Boolean);
-  if (bySentence.length >= 2) {
-    const withCeilingSignal = bySentence.filter(
-      (row) =>
-        parseDimensions(row).length > 0 ||
-        canonicalCeilingStructureFamilyFromText(row) != null ||
-        canonicalCeilingLiningFamilyFromText(row) != null ||
-        /\bceiling\b/i.test(row) ||
-        labelFromSnippet(row) != null
-    );
-    if (withCeilingSignal.length >= 2) return withCeilingSignal;
-    if (withCeilingSignal.length === 1 && bySentence.length >= 2) {
-      const labelled = bySentence.filter(
-        (row) => labelFromSnippet(row) != null || parseDimensions(row).length > 0
-      );
-      if (labelled.length >= 2) return labelled;
+  const expanded: string[] = [];
+  for (const sentence of bySentence.length > 0 ? bySentence : [trimmed]) {
+    const bySemi = sentence
+      .split(/\s*;\s*/)
+      .map((row) => row.trim())
+      .filter(Boolean);
+    for (const part of bySemi.length > 0 ? bySemi : [sentence]) {
+      expanded.push(...splitOnCeilingSubjects(part));
     }
+  }
+  const withCeilingSignal = expanded.filter(snippetHasCeilingSignal);
+  if (withCeilingSignal.length >= 2) return withCeilingSignal;
+  if (expanded.length >= 2) {
+    const labelled = expanded.filter(
+      (row) => labelFromSnippet(row) != null || parseDimensions(row).length > 0
+    );
+    if (labelled.length >= 2) return labelled;
   }
   return [trimmed];
 }
@@ -476,6 +527,165 @@ export function extractCeilingPortionsFromBrief(briefText: string): CeilingPorti
     }
   }
   return portions;
+}
+
+function cloneCeilingPortion(portion: CeilingPortion): CeilingPortion {
+  const parsed = parseCeilingPortion(JSON.parse(JSON.stringify(portion)));
+  return parsed ?? portion;
+}
+
+function firstPresent<T>(explicit: T, fallback: T): T {
+  if (explicit == null || explicit === "") return fallback;
+  return explicit;
+}
+
+function fillMissingCeilingPortion(
+  ai: CeilingPortion,
+  parsed: CeilingPortion
+): CeilingPortion {
+  const out = cloneCeilingPortion(ai);
+  out.label = firstPresent(out.label, parsed.label);
+  out.geometry = {
+    mode: out.geometry.mode,
+    length_m: out.geometry.length_m ?? parsed.geometry.length_m,
+    width_m: out.geometry.width_m ?? parsed.geometry.width_m,
+    area_m2: out.geometry.area_m2 ?? parsed.geometry.area_m2,
+    perimeter_m: out.geometry.perimeter_m ?? parsed.geometry.perimeter_m,
+  };
+  if (
+    out.geometry.length_m != null &&
+    out.geometry.width_m != null &&
+    ai.geometry.length_m == null &&
+    ai.geometry.width_m == null
+  ) {
+    out.geometry.mode = "length_width";
+  }
+  out.height_m = out.height_m ?? parsed.height_m;
+  out.structure = {
+    job_scope: out.structure.job_scope ?? parsed.structure.job_scope,
+    family: out.structure.family ?? parsed.structure.family,
+    timber: out.structure.timber ?? parsed.structure.timber,
+    steel: out.structure.steel ?? parsed.structure.steel,
+    suspended: out.structure.suspended ?? parsed.structure.suspended,
+  };
+  out.lining = {
+    family: out.lining.family ?? parsed.lining.family,
+    plasterboard_product:
+      out.lining.plasterboard_product ?? parsed.lining.plasterboard_product,
+    thickness_mm: out.lining.thickness_mm ?? parsed.lining.thickness_mm,
+    plywood_spec: firstPresent(out.lining.plywood_spec, parsed.lining.plywood_spec),
+    sheet_length_mm: out.lining.sheet_length_mm ?? parsed.lining.sheet_length_mm,
+    sheet_width_mm: out.lining.sheet_width_mm ?? parsed.lining.sheet_width_mm,
+    layers: out.lining.layers ?? parsed.lining.layers,
+    timber_lined: out.lining.timber_lined ?? parsed.lining.timber_lined,
+    tile: out.lining.tile ?? parsed.lining.tile,
+  };
+  out.finish = {
+    insulation_included:
+      out.finish.insulation_included ?? parsed.finish.insulation_included,
+    insulation_type: firstPresent(
+      out.finish.insulation_type,
+      parsed.finish.insulation_type
+    ),
+    stopping_included:
+      out.finish.stopping_included ?? parsed.finish.stopping_included,
+    painting_included:
+      out.finish.painting_included ?? parsed.finish.painting_included,
+    demolition_included:
+      out.finish.demolition_included ?? parsed.finish.demolition_included,
+  };
+  out.has_bulkheads = out.has_bulkheads ?? parsed.has_bulkheads;
+  if (out.bulkheads.length === 0 && parsed.bulkheads.length > 0) {
+    out.bulkheads = parsed.bulkheads.map((row) => ({ ...row }));
+    out.active_bulkhead_id = out.active_bulkhead_id ?? parsed.active_bulkhead_id;
+  }
+  out.significant_penetrations =
+    out.significant_penetrations ?? parsed.significant_penetrations;
+  out.penetrations = firstPresent(out.penetrations, parsed.penetrations);
+  out.fire_acoustic_requirement =
+    out.fire_acoustic_requirement ?? parsed.fire_acoustic_requirement;
+  out.fire_acoustic_system = firstPresent(
+    out.fire_acoustic_system,
+    parsed.fire_acoustic_system
+  );
+  out.specialist_kind = out.specialist_kind ?? parsed.specialist_kind;
+  return out;
+}
+
+function matchParsedPortion(
+  ai: CeilingPortion,
+  parsed: readonly CeilingPortion[],
+  index: number,
+  aiCount: number,
+  used: Set<number>
+): CeilingPortion | null {
+  const aiLabel = ai.label?.trim().toLowerCase();
+  if (aiLabel) {
+    const found = parsed.findIndex(
+      (row, i) => !used.has(i) && row.label?.trim().toLowerCase() === aiLabel
+    );
+    if (found >= 0) {
+      used.add(found);
+      return parsed[found] ?? null;
+    }
+  }
+  if (parsed.length !== aiCount) return null;
+  if (!used.has(index) && parsed[index]) {
+    used.add(index);
+    return parsed[index] ?? null;
+  }
+  return null;
+}
+
+/**
+ * Explicit valid AI nested Portions win. Deterministic parser fills only
+ * genuinely missing safe fields and must not overwrite stronger AI values
+ * or collapse Portion separation.
+ */
+export function mergeCeilingPortionsPreferringExplicitAi(
+  aiPortions: readonly CeilingPortion[],
+  parsedPortions: readonly CeilingPortion[]
+): CeilingPortion[] {
+  const ai = normalizeExtractedCeilingPortions(aiPortions);
+  if (ai.length > 0) {
+    const used = new Set<number>();
+    return ai.map((portion, index) => {
+      const match = matchParsedPortion(
+        portion,
+        parsedPortions,
+        index,
+        ai.length,
+        used
+      );
+      return match
+        ? fillMissingCeilingPortion(portion, match)
+        : cloneCeilingPortion(portion);
+    });
+  }
+  return parsedPortions.map((row) => cloneCeilingPortion(row));
+}
+
+export function readAiCeilingPortionsFromExtraction(
+  extraction: AIExtractionOutput,
+  workAreaName?: string
+): CeilingPortion[] {
+  const wanted = workAreaName ?? "";
+  const facts = extraction.facts.filter(
+    (fact) =>
+      fact.key === CEILINGS_PORTIONS_FACT_KEY &&
+      fact.work_area_type === "ceilings" &&
+      (fact.work_area_name ?? "") === wanted
+  );
+  const out: CeilingPortion[] = [];
+  const seen = new Set<string>();
+  for (const fact of facts) {
+    for (const portion of normalizeExtractedCeilingPortions(fact.value)) {
+      if (seen.has(portion.id)) continue;
+      seen.add(portion.id);
+      out.push(portion);
+    }
+  }
+  return out;
 }
 
 export function applyExtractedCeilingsToFacts(params: {

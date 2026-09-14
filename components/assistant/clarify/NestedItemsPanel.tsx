@@ -66,16 +66,25 @@ export function NestedItemsPanel({
             key={item.id}
             className={cn(
               "rounded-xl border px-3 py-3",
-              item.complete
+              item.specialistRequired
+                ? "border-amber-300/80 bg-amber-50/80 dark:border-amber-800/60 dark:bg-amber-950/30"
+                : item.complete
                 ? "border-border bg-background"
                 : "border-[var(--brand-orange)]/40 bg-[var(--brand-orange)]/5"
             )}
             data-nested-item-card={item.id}
             data-nested-item-complete={item.complete ? "true" : "false"}
+            data-nested-item-specialist={
+              item.specialistRequired ? "true" : "false"
+            }
           >
             <p className="text-sm font-medium">{item.label}</p>
             <p className="mt-1 text-sm text-muted-foreground">
-              {item.complete ? "Complete" : "Needs details"}
+              {item.specialistRequired
+                ? "Pricing required"
+                : item.complete
+                  ? "Complete"
+                  : "Needs details"}
               {item.summary ? ` · ${item.summary}` : ""}
             </p>
             {!item.id.startsWith("legacy:") && !item.id.startsWith("draft:") ? (

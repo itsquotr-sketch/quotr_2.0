@@ -693,19 +693,43 @@ function parseSuspended(value: unknown): CeilingSuspendedStructure | undefined {
   return { drop_height_m, max_spacing_m, edge_offset_m };
 }
 
+function liningRecord(value: Record<string, unknown>): Record<string, unknown> | null {
+  return isRecord(value.lining) ? value.lining : null;
+}
+
+function liningField(
+  value: Record<string, unknown>,
+  key: string
+): unknown {
+  const nested = liningRecord(value);
+  if (nested && nested[key] != null && nested[key] !== "") return nested[key];
+  return value[key];
+}
+
 export function parseCeilingPortion(value: unknown): CeilingPortion | null {
   if (!isRecord(value)) return null;
   const id =
     typeof value.id === "string" && value.id.trim() ? value.id.trim() : null;
   if (!id) return null;
   const bulkheads = parseBulkheads(value.bulkheads);
+  const plywoodSpecRaw = liningField(value, "plywood_spec");
   const portion: CeilingPortion = {
     id,
     label:
       typeof value.label === "string" && value.label.trim()
         ? value.label.trim()
         : null,
-    geometry: parseGeometry(value.geometry),
+    geometry: parseGeometry(
+      isRecord(value.geometry)
+        ? value.geometry
+        : {
+            length_m: value.length_m,
+            width_m: value.width_m,
+            area_m2: value.area_m2,
+            perimeter_m: value.perimeter_m,
+            mode: value.geometry_mode ?? value.mode,
+          }
+    ),
     height_m: parsePositiveNumber(value.height_m),
     structure: {
       job_scope: parseEnum(value.structure && isRecord(value.structure) ? value.structure.job_scope : value.job_scope, CEILINGS_JOB_SCOPE_VALUES),
@@ -715,35 +739,31 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
       ),
       timber: isRecord(value.structure)
         ? parseTimber(value.structure.timber)
-        : undefined,
+        : parseTimber(value.timber),
       steel: isRecord(value.structure)
         ? parseSteel(value.structure.steel)
-        : undefined,
+        : parseSteel(value.steel),
       suspended: isRecord(value.structure)
         ? parseSuspended(value.structure.suspended)
-        : undefined,
+        : parseSuspended(value.suspended),
     },
     lining: {
       family: parseEnum(
-        isRecord(value.lining) ? value.lining.family : value.lining_family,
+        liningField(value, "family") ?? value.lining_family,
         CEILINGS_LINING_FAMILY_VALUES
       ),
-      plasterboard_product: isRecord(value.lining)
-        ? parseEnum(
-            value.lining.plasterboard_product,
-            CEILINGS_PLASTERBOARD_PRODUCT_VALUES
-          ) ?? undefined
-        : undefined,
-      thickness_mm: isRecord(value.lining)
-        ? parseCeilingPlasterboardThickness(value.lining.thickness_mm) ??
-          undefined
-        : undefined,
-      plywood_spec: isRecord(value.lining)
-        ? typeof value.lining.plywood_spec === "string" &&
-          value.lining.plywood_spec.trim()
-          ? value.lining.plywood_spec.trim()
-          : null
-        : undefined,
+      plasterboard_product:
+        parseEnum(
+          liningField(value, "plasterboard_product"),
+          CEILINGS_PLASTERBOARD_PRODUCT_VALUES
+        ) ?? undefined,
+      thickness_mm:
+        parseCeilingPlasterboardThickness(liningField(value, "thickness_mm")) ??
+        undefined,
+      plywood_spec:
+        typeof plywoodSpecRaw === "string" && plywoodSpecRaw.trim()
+          ? plywoodSpecRaw.trim()
+          : undefined,
       sheet_length_mm: isRecord(value.lining)
         ? parsePositiveNumber(value.lining.sheet_length_mm) ?? undefined
         : undefined,
@@ -860,6 +880,55 @@ function parseCeilingPortionList(value: unknown[]): CeilingPortion[] {
 
 export function parseCeilingsPortions(value: unknown): CeilingPortion[] {
   return parseCeilingsCollectionEnvelope(value).portions;
+}
+
+export function isUsableExtractedCeilingPortion(
+  portion: CeilingPortion
+): boolean {
+  return (
+    Boolean(portion.label?.trim()) ||
+    portion.geometry.length_m != null ||
+    portion.geometry.width_m != null ||
+    portion.geometry.area_m2 != null ||
+    portion.structure.family != null ||
+    portion.structure.job_scope != null ||
+    portion.lining.family != null ||
+    portion.lining.plasterboard_product != null ||
+    portion.lining.thickness_mm != null ||
+    Boolean(portion.lining.plywood_spec?.trim()) ||
+    portion.specialist_kind != null ||
+    portion.fire_acoustic_requirement != null ||
+    portion.bulkheads.length > 0
+  );
+}
+
+function withAssignedCeilingIds(value: unknown): unknown {
+  if (Array.isArray(value)) {
+    return value.map((row) =>
+      isRecord(row) && (typeof row.id !== "string" || !row.id.trim())
+        ? { ...row, id: createCeilingPortionId() }
+        : row
+    );
+  }
+  if (isRecord(value) && Array.isArray(value.portions)) {
+    return {
+      ...value,
+      portions: withAssignedCeilingIds(value.portions),
+    };
+  }
+  return value;
+}
+
+/**
+ * Validate / canonicalise AI or deterministic `ceilings.portions`.
+ * Invalid rows are dropped. Missing ids are assigned, not trusted blindly.
+ */
+export function normalizeExtractedCeilingPortions(
+  value: unknown
+): CeilingPortion[] {
+  return parseCeilingsCollectionEnvelope(withAssignedCeilingIds(value)).portions.filter(
+    isUsableExtractedCeilingPortion
+  );
 }
 
 export function isCeilingsPortionWriteKey(key: string): boolean {

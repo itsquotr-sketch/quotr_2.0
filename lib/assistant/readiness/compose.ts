@@ -5,6 +5,7 @@ import type {
 } from "@/lib/assistant/readiness/types";
 import { RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE } from "@/lib/estimate/calculators/retaining-wall";
 import { looksLikeInternalFactKey } from "@/lib/assistant/presentation/fact-key-labels";
+import { CEILINGS_SPECIALIST_FIRE_ACOUSTIC_NOTICE } from "@/lib/estimate/ceilings-specialist";
 
 const KNOWN_LIMIT = 8;
 const ASSUMPTION_LIMIT = 4;
@@ -113,6 +114,12 @@ export function composeEstimateReadiness(
     .filter((c) => c.blocksEstimate)
     .map((c) => c.label);
 
+  const specialistPricingRequired = (clarify.nestedItemPanels ?? []).some(
+    (panel) =>
+      panel.workAreaType === "ceilings" &&
+      panel.items.some((item) => item.specialistRequired)
+  );
+
   const blockerCopy = hardMinimumBlockerCopy(clarify.candidates);
   const pendingWrites = input.pendingWrites ?? 0;
   const canInitiateGenerate =
@@ -122,14 +129,18 @@ export function composeEstimateReadiness(
 
   return {
     canInitiateGenerate,
-    heading: enough
+    heading: specialistPricingRequired
+      ? CEILINGS_SPECIALIST_FIRE_ACOUSTIC_NOTICE
+      : enough
       ? "That's enough to build your estimate."
       : pendingWrites > 0 && canInitiateGenerate
         ? "That's enough to build your estimate."
         : pendingWrites > 0
         ? "Saving the last answer"
         : "Need a bit more",
-    explanation: enough
+    explanation: specialistPricingRequired
+      ? "The fire/acoustic system is recorded, but it still needs specification and pricing. This is not an ordinary complete Ceiling."
+      : enough
       ? "All required details resolved. You can still change the job afterward."
       : pendingWrites > 0 && canInitiateGenerate
         ? "Create the estimate when you are ready. Quotr will finish saving first."
@@ -139,7 +150,9 @@ export function composeEstimateReadiness(
     known,
     assumptions,
     checks,
-    confidenceLabel: clarify.blocksEstimate
+    confidenceLabel: specialistPricingRequired
+      ? "Partial estimate — specialist Pricing Required"
+      : clarify.blocksEstimate
       ? null
       : assumptions.length > 0
         ? "Initial estimate — some assumptions"
@@ -151,5 +164,6 @@ export function composeEstimateReadiness(
         ? "Saving the last answer, then the estimate can be built."
         : blockerCopy,
     enoughToEstimate: enough,
+    specialistPricingRequired,
   };
 }

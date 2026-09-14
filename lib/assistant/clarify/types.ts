@@ -63,6 +63,7 @@ export type NestedItemPanelItem = {
   readonly label: string;
   readonly complete: boolean;
   readonly summary: string;
+  readonly specialistRequired?: boolean;
 };
 
 export type NestedItemPanel = {

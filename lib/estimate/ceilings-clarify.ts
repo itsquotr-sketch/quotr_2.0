@@ -46,6 +46,10 @@ import {
   type CeilingPortion,
 } from "@/lib/estimate/ceilings-portions";
 import type { EstimateFact } from "@/lib/estimate/types";
+import {
+  CEILINGS_SPECIALIST_FIRE_ACOUSTIC_NOTICE,
+  ceilingPortionHasUnknownProprietaryFireAcoustic,
+} from "@/lib/estimate/ceilings-specialist";
 
 export type CeilingsClarifyInput = {
   readonly facts: readonly EstimateFact[];
@@ -488,7 +492,11 @@ export function ceilingsWorkAreaIsReady(input: CeilingsClarifyInput): boolean {
     omitStopping: input.omitStopping,
     omitPainting: input.omitPainting,
   };
-  return portions.every((portion) => portionIsComplete(portion, ctx));
+  return portions.every(
+    (portion) =>
+      portionIsComplete(portion, ctx) &&
+      !ceilingPortionHasUnknownProprietaryFireAcoustic(portion)
+  );
 }
 
 export function summariseCeilingPortion(
@@ -590,11 +598,20 @@ export function ceilingsNestedItemPanel(
       const heading = `Ceiling portion ${index + 1}${
         portion.label?.trim() ? ` — ${portion.label.trim()}` : ""
       }`;
+      const specialist =
+        ceilingPortionHasUnknownProprietaryFireAcoustic(portion);
+      const questionsComplete = portionIsComplete(portion, ctx);
       return {
         id: portion.id,
         label: heading,
-        complete: portionIsComplete(portion, ctx),
-        summary: [summary.geometryLine, summary.structureLine, summary.liningLine]
+        complete: questionsComplete && !specialist,
+        specialistRequired: specialist,
+        summary: [
+          specialist ? CEILINGS_SPECIALIST_FIRE_ACOUSTIC_NOTICE : null,
+          summary.geometryLine,
+          summary.structureLine,
+          summary.liningLine,
+        ]
           .filter(Boolean)
           .join(" · "),
       };

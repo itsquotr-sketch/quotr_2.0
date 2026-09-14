@@ -745,6 +745,34 @@ function parseNestedCeilingsPortions(
   }
 }
 
+function formatBulkheadLiningPhrase(
+  bulkhead: CeilingPortion["bulkheads"][number]
+): string | null {
+  const lining = bulkhead.lining_type;
+  const thickness =
+    bulkhead.thickness_mm === 10
+      ? "10mm"
+      : bulkhead.thickness_mm === 13
+        ? "13mm"
+        : null;
+  if (lining === "standard") {
+    return thickness
+      ? `lined in ${thickness} Standard plasterboard`
+      : "lined in Standard plasterboard";
+  }
+  if (lining === "fyreline") {
+    return thickness
+      ? `lined in ${thickness} Fyreline plasterboard`
+      : "lined in Fyreline plasterboard";
+  }
+  if (lining === "aqualine") {
+    return thickness
+      ? `lined in ${thickness} Aqualine plasterboard`
+      : "lined in Aqualine plasterboard";
+  }
+  return null;
+}
+
 function nestedCeilingPortionScope(portion: CeilingPortion, index: number): string {
   const label = portion.label?.trim() || `Ceiling ${index + 1}`;
   const family = portion.structure.family;
@@ -788,9 +816,12 @@ function nestedCeilingPortionScope(portion: CeilingPortion, index: number): stri
       .join(" × ");
     const named = bulkhead.label?.trim() ?? "";
     const generic = !named || /^bulkhead\s*\d+$/i.test(named);
+    const liningPhrase = formatBulkheadLiningPhrase(bulkhead);
     sentence += ` Form and line ${
       generic ? "one wall-adjacent downstand bulkhead" : named
-    }${dims ? ` approximately ${dims}` : ""}.`;
+    }${dims ? ` approximately ${dims}` : ""}${
+      liningPhrase ? `, ${liningPhrase}` : ""
+    }.`;
   }
   return sentence;
 }

@@ -1726,6 +1726,9 @@ export function composeBuilderReview(
     let portionGroups = undefined as
       | ReturnType<typeof applyCeilingsReviewGroups>["portionGroups"]
       | undefined;
+    let sharedLineGroups = undefined as
+      | ReturnType<typeof applyCeilingsReviewGroups>["sharedLineGroups"]
+      | undefined;
     let partialEstimateLabel: string | null = null;
     let resolvedSubtotalLabel: string | null = null;
     if (meta.type === "ceilings") {
@@ -1740,6 +1743,7 @@ export function composeBuilderReview(
       });
       categories = grouped.categories;
       portionGroups = grouped.portionGroups;
+      sharedLineGroups = grouped.sharedLineGroups;
       partialEstimateLabel = grouped.partialEstimateLabel;
       resolvedSubtotalLabel = grouped.resolvedSubtotalLabel;
     }
@@ -1752,6 +1756,7 @@ export function composeBuilderReview(
       sell: wa.sell,
       categories,
       portionGroups,
+      sharedLineGroups,
       partialEstimateLabel,
       resolvedSubtotalLabel,
     };

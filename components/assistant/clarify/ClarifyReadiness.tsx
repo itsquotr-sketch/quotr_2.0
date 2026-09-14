@@ -504,6 +504,16 @@ export function ClarifyReadinessCard({
               {readiness.blockerCopy ?? readiness.heading}
             </p>
           </>
+        ) : readiness.specialistPricingRequired ? (
+          <>
+            <SectionEyebrow>Pricing required</SectionEyebrow>
+            <p
+              className="mt-1 text-base font-semibold tracking-tight"
+              data-readiness-specialist="true"
+            >
+              {readiness.heading}
+            </p>
+          </>
         ) : (
           <>
             <SectionEyebrow>Ready to estimate</SectionEyebrow>
@@ -515,6 +525,8 @@ export function ClarifyReadinessCard({
         <p className="mt-1 text-sm text-muted-foreground">
           {readiness.blocksEstimate
             ? readiness.explanation
+            : readiness.specialistPricingRequired
+              ? readiness.explanation
             : "All required details resolved. You can still change the job afterward."}
         </p>
       {readiness.confidenceLabel ? (

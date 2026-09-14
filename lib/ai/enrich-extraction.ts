@@ -31,6 +31,8 @@ import {
 } from "@/lib/work-areas/ownership";
 import {
   extractCeilingPortionsFromBrief,
+  mergeCeilingPortionsPreferringExplicitAi,
+  readAiCeilingPortionsFromExtraction,
   seedExtractedCeilingsFact,
 } from "@/lib/estimate/ceilings-brief";
 import type { EstimateFact } from "@/lib/estimate/types";
@@ -2102,7 +2104,9 @@ function inferCeilings(
   if (ceilingGroups.length >= 2) {
     for (const group of ceilingGroups) {
       const snippet = snippetForDiscoveredInstance(brief, group, ceilingGroups);
-      const portions = extractCeilingPortionsFromBrief(snippet);
+      const parsed = extractCeilingPortionsFromBrief(snippet);
+      const ai = readAiCeilingPortionsFromExtraction(extraction, group.name);
+      const portions = mergeCeilingPortionsPreferringExplicitAi(ai, parsed);
       if (portions.length === 0) continue;
       seedExtractedCeilingsFact(extraction, {
         portions,
@@ -2112,7 +2116,9 @@ function inferCeilings(
     return;
   }
 
-  const portions = extractCeilingPortionsFromBrief(brief);
+  const parsed = extractCeilingPortionsFromBrief(brief);
+  const ai = readAiCeilingPortionsFromExtraction(extraction);
+  const portions = mergeCeilingPortionsPreferringExplicitAi(ai, parsed);
   if (portions.length > 0) {
     seedExtractedCeilingsFact(extraction, { portions });
   }

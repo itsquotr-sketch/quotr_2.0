@@ -405,7 +405,9 @@ export function BuilderReviewSurface({
                                   ) : null}
                                 </div>
                                 <p className="shrink-0 text-sm font-semibold tabular-nums">
-                                  {group.pricingRequired && group.recommendedCost <= 0
+                                  {group.costHidden
+                                    ? null
+                                    : group.pricingRequired && group.recommendedCost <= 0
                                     ? "Pricing Required"
                                     : formatCurrency(group.recommendedCost)}
                                 </p>
@@ -442,7 +444,11 @@ export function BuilderReviewSurface({
                                           ) : null}
                                         </span>
                                         <span className="shrink-0 font-medium tabular-nums">
-                                          {childPr && child.recommendedCost <= 0
+                                          {group.costHidden ||
+                                          (child.recommendedCost === 0 &&
+                                            !childPr)
+                                            ? null
+                                            : childPr && child.recommendedCost <= 0
                                             ? "Pricing Required"
                                             : formatCurrency(child.recommendedCost)}
                                         </span>
@@ -466,6 +472,41 @@ export function BuilderReviewSurface({
                         </section>
                       ))
                     : null}
+                  {wa.sharedLineGroups && wa.sharedLineGroups.length > 0 ? (
+                    <section
+                      className="space-y-2 rounded-lg border border-border/50 px-3 py-3"
+                      data-builder-review-shared-materials
+                    >
+                      <p className="text-sm font-semibold">Shared materials</p>
+                      {wa.sharedLineGroups.map((group) => (
+                        <div
+                          key={group.id}
+                          className="px-0 py-2"
+                          data-builder-review-line-group={group.id}
+                          data-commercial="true"
+                          data-shared-commercial="true"
+                        >
+                          <div className="flex items-start justify-between gap-3">
+                            <div className="min-w-0 space-y-0.5">
+                              <p className="text-sm font-medium leading-snug">
+                                {group.label}
+                              </p>
+                              {group.supporting ? (
+                                <p className="text-xs break-words text-muted-foreground">
+                                  {group.supporting}
+                                </p>
+                              ) : null}
+                            </div>
+                            <p className="shrink-0 text-sm font-semibold tabular-nums">
+                              {group.pricingRequired && group.recommendedCost <= 0
+                                ? "Pricing Required"
+                                : formatCurrency(group.recommendedCost)}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </section>
+                  ) : null}
                   {(!wa.portionGroups || wa.portionGroups.length === 0)
                     ? wa.categories.map((cat) => (
                     <section

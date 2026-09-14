@@ -60,6 +60,9 @@ export function isUnresolvedCeilingPricingRequired(params: {
   if (cost > 0 || (params.unitCost != null && params.unitCost > 0)) {
     return false;
   }
+  if ((params.componentKey ?? "").toLowerCase().includes("ceilings.specialist")) {
+    return true;
+  }
   const meta = parseLineItemNotes(params.notes);
   const rateMissing =
     params.rateSourceType === "missing" ||
@@ -91,6 +94,8 @@ export function nestedCeilingsQuoteIsBlocked(params: {
     readonly total_sell?: number | null;
     readonly unit_cost?: number | null;
     readonly cost_known?: boolean | null;
+    readonly rateSourceType?: string | null;
+    readonly rate_source_type?: string | null;
   }[];
 }): boolean {
   if (
@@ -110,6 +115,7 @@ export function nestedCeilingsQuoteIsBlocked(params: {
         totalSell: item.total_sell,
         unitCost: item.unit_cost,
         costKnown: item.cost_known,
+        rateSourceType: item.rateSourceType ?? item.rate_source_type,
       })
     );
     if (!params.items || params.items.length === 0) return true;
@@ -125,6 +131,7 @@ export function nestedCeilingsQuoteIsBlocked(params: {
       totalSell: item.total_sell,
       unitCost: item.unit_cost,
       costKnown: item.cost_known,
+      rateSourceType: item.rateSourceType ?? item.rate_source_type,
     })
   );
 }
