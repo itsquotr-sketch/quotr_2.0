@@ -2024,17 +2024,26 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
   const remainingRequiredCount = ranked.filter(isInitialCaptureQuestion).length;
   const enoughToEstimate = remainingRequiredCount === 0 && !blocksEstimate;
 
+  const withNestedIdentityAliases = (
+    candidate: ClarifyCandidate
+  ): ClarifyCandidate => ({
+    ...candidate,
+    nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? null,
+    componentId: candidate.componentId ?? candidate.openingId ?? null,
+  });
+
   const withCurrent = (rows: readonly ClarifyCandidate[]): ClarifyCandidate[] =>
     rows.map((candidate) => {
-      const key = candidate.constraintKey ?? candidate.factKey;
-      if (!key) return candidate;
+      const aliased = withNestedIdentityAliases(candidate);
+      const key = aliased.constraintKey ?? aliased.factKey;
+      if (!key) return aliased;
       const rawValue = currentFactOrConstraintValue(
         input,
         key,
-        candidate.workAreaId
+        aliased.workAreaId
       );
-      if (rawValue == null) return candidate;
-      return { ...candidate, currentValue: rawValue as ClarifyCandidate["currentValue"] };
+      if (rawValue == null) return aliased;
+      return { ...aliased, currentValue: rawValue as ClarifyCandidate["currentValue"] };
     });
 
   const withVisible = withCurrent(visible);

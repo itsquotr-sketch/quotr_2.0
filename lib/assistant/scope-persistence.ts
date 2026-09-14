@@ -28,6 +28,13 @@ import {
   isInternalWallsWallTypeWriteKey,
   parseInternalWallsCollectionEnvelope,
 } from "@/lib/estimate/internal-walls-wall-types";
+import {
+  CEILINGS_ACTIVE_PORTION_ID_FACT_KEY,
+  CEILINGS_PORTIONS_FACT_KEY,
+  applyCeilingsFactWrite,
+  isCeilingsPortionWriteKey,
+  parseCeilingsCollectionEnvelope,
+} from "@/lib/estimate/ceilings-portions";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -286,6 +293,148 @@ async function persistInternalWallsCollectionWrite(
   };
 }
 
+export const CEILINGS_COLLECTION_WRITE_MAX_ATTEMPTS = 12;
+
+async function persistCeilingsPortionsCollectionWrite(
+  supabase: SupabaseClient,
+  params: {
+    orgId: string;
+    projectId: string;
+    workAreaId: string;
+    key: string;
+    value: unknown;
+    nestedItemId?: string | null;
+    componentId?: string | null;
+  }
+): Promise<ScopePersistResult | null> {
+  if (!isCeilingsPortionWriteKey(params.key)) return null;
+
+  for (let attempt = 0; attempt < CEILINGS_COLLECTION_WRITE_MAX_ATTEMPTS; attempt++) {
+    const { data: rows, error } = await supabase
+      .from("project_facts")
+      .select("id, key, value, work_area_id, updated_at")
+      .eq("project_id", params.projectId)
+      .eq("work_area_id", params.workAreaId)
+      .in("key", [
+        CEILINGS_PORTIONS_FACT_KEY,
+        CEILINGS_ACTIVE_PORTION_ID_FACT_KEY,
+      ]);
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    const current = (rows ?? []).map((row) => ({
+      key: row.key,
+      work_area_id: params.workAreaId,
+      value: row.value,
+    }));
+    const next = applyCeilingsFactWrite({
+      facts: current,
+      workAreaId: params.workAreaId,
+      key: params.key,
+      value: params.value,
+      nestedItemId: params.nestedItemId,
+      componentId: params.componentId,
+    });
+
+    const portions = next.find(
+      (row) =>
+        row.key === CEILINGS_PORTIONS_FACT_KEY &&
+        row.work_area_id === params.workAreaId
+    );
+    const active = next.find(
+      (row) =>
+        row.key === CEILINGS_ACTIVE_PORTION_ID_FACT_KEY &&
+        row.work_area_id === params.workAreaId
+    );
+
+    const portionsRow = (rows ?? []).find(
+      (row) => row.key === CEILINGS_PORTIONS_FACT_KEY
+    );
+    const envelope = parseCeilingsCollectionEnvelope(portionsRow?.value);
+    const nextEnvelope = {
+      v: envelope.v + 1,
+      portions: parseCeilingsCollectionEnvelope(portions?.value).portions,
+    };
+    if (portionsRow) {
+      let updateQuery = supabase
+        .from("project_facts")
+        .update({
+          label: "Ceiling portions",
+          value: nextEnvelope,
+          source: "user",
+          confidence: 1,
+        })
+        .eq("id", portionsRow.id)
+        .eq("project_id", params.projectId);
+      if (isRecord(portionsRow.value) && typeof portionsRow.value.v === "number") {
+        updateQuery = updateQuery.filter(
+          "value->>v",
+          "eq",
+          String(portionsRow.value.v)
+        );
+      } else {
+        updateQuery = updateQuery.eq("updated_at", portionsRow.updated_at);
+      }
+      const { data: updated, error: updateError } = await updateQuery.select("id");
+      if (updateError) {
+        return { ok: false, error: updateError.message };
+      }
+      if (!updated?.length) {
+        continue;
+      }
+    } else {
+      const portionsResult = await upsertScopedFact(supabase, {
+        orgId: params.orgId,
+        projectId: params.projectId,
+        workAreaId: params.workAreaId,
+        key: CEILINGS_PORTIONS_FACT_KEY,
+        label: "Ceiling portions",
+        value: nextEnvelope,
+        source: "user",
+      });
+      if (!portionsResult.ok) {
+        if (attempt < CEILINGS_COLLECTION_WRITE_MAX_ATTEMPTS - 1) {
+          continue;
+        }
+        return portionsResult;
+      }
+    }
+
+    const activeRow = (rows ?? []).find(
+      (row) => row.key === CEILINGS_ACTIVE_PORTION_ID_FACT_KEY
+    );
+    if (active?.value) {
+      const activeResult = await upsertScopedFact(supabase, {
+        orgId: params.orgId,
+        projectId: params.projectId,
+        workAreaId: params.workAreaId,
+        key: CEILINGS_ACTIVE_PORTION_ID_FACT_KEY,
+        label: "Selected ceiling portion",
+        value: active.value,
+        source: "user",
+      });
+      if (!activeResult.ok) return activeResult;
+    } else if (activeRow) {
+      const { error: deleteError } = await supabase
+        .from("project_facts")
+        .delete()
+        .eq("id", activeRow.id)
+        .eq("project_id", params.projectId);
+      if (deleteError) {
+        return { ok: false, error: deleteError.message };
+      }
+    }
+
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    error: "Ceiling portions could not be saved. Try again.",
+  };
+}
+
 /**
  * Mirror a fact value onto matching question rows (capture journal).
  * Never creates questions — only updates existing rows.
@@ -504,6 +653,8 @@ export async function commitUserFactEdit(
     valueType?: "number" | "select" | "boolean" | "text" | "multi_select";
     wallTypeId?: string | null;
     openingId?: string | null;
+    nestedItemId?: string | null;
+    componentId?: string | null;
   }
 ): Promise<ScopePersistResult & { blockedDerived?: boolean }> {
   const namespace = assertFactConstraintNamespace({
@@ -561,8 +712,31 @@ export async function commitUserFactEdit(
       workAreaId: params.workAreaId,
       key: params.key,
       value: storedValue,
-      wallTypeId: params.wallTypeId,
-      openingId: params.openingId,
+      wallTypeId: params.nestedItemId ?? params.wallTypeId,
+      openingId: params.componentId ?? params.openingId,
+    });
+    if (collectionWrite && !collectionWrite.ok) {
+      return collectionWrite;
+    }
+    const mirror = await mirrorFactOntoQuestions(supabase, {
+      projectId: params.projectId,
+      workAreaId: params.workAreaId,
+      key: params.key,
+      value: storedValue,
+      inputType: params.valueType,
+    });
+    return mirror;
+  }
+
+  if (params.workAreaId && isCeilingsPortionWriteKey(params.key)) {
+    const collectionWrite = await persistCeilingsPortionsCollectionWrite(supabase, {
+      orgId: params.orgId,
+      projectId: params.projectId,
+      workAreaId: params.workAreaId,
+      key: params.key,
+      value: storedValue,
+      nestedItemId: params.nestedItemId ?? params.wallTypeId,
+      componentId: params.componentId ?? params.openingId,
     });
     if (collectionWrite && !collectionWrite.ok) {
       return collectionWrite;

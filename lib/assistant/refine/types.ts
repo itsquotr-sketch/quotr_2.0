@@ -33,6 +33,10 @@ export type RefineCandidate = {
   readonly wallTypeId?: string | null;
   /** Nested opening id for Internal Walls opening writes. */
   readonly openingId?: string | null;
+  /** Generic nested item (Ceiling Portion; Internal Walls alias of wallTypeId). */
+  readonly nestedItemId?: string | null;
+  /** Generic nested component (Bulkhead; Internal Walls alias of openingId). */
+  readonly componentId?: string | null;
   /** Stable field identity. Not a presentation prefix (`refine:`, `pc:`). */
   readonly semanticKey?: string | null;
   /** Persisted fact/constraint source (`user`, `assumption`, …). */

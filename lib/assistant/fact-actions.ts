@@ -27,6 +27,8 @@ const updateFactSchema = z.object({
     .optional(),
   wallTypeId: z.string().min(1).max(80).optional(),
   openingId: z.string().min(1).max(80).optional(),
+  nestedItemId: z.string().min(1).max(80).optional(),
+  componentId: z.string().min(1).max(80).optional(),
 });
 
 function revalidateProjectPath(projectId: string) {
@@ -47,7 +49,7 @@ export async function updateProjectFact(
   }
 
   const { supabase, orgId, user } = context;
-  const { projectId, workAreaId, key, label, value, unit, valueType, wallTypeId, openingId } =
+  const { projectId, workAreaId, key, label, value, unit, valueType, wallTypeId, openingId, nestedItemId, componentId } =
     parsed.data;
 
   const denied = await permissionDeniedError({
@@ -89,6 +91,8 @@ export async function updateProjectFact(
     valueType,
     wallTypeId,
     openingId,
+    nestedItemId,
+    componentId,
   });
 
   if (!commit.ok) {

@@ -39,9 +39,18 @@ function isResolvedValue(value: unknown): boolean {
   return hasFactValue(value) && !isNotSureValue(value);
 }
 
+function withNestedIdentityAliases(row: RefineCandidate): RefineCandidate {
+  return {
+    ...row,
+    nestedItemId: row.nestedItemId ?? row.wallTypeId ?? null,
+    componentId: row.componentId ?? row.openingId ?? null,
+  };
+}
+
 function stampSemantic(row: RefineCandidate): RefineCandidate {
-  const semanticKey = questionSemanticKey(identityFromCaptureRow(row));
-  return { ...row, semanticKey: semanticKey ?? row.id };
+  const aliased = withNestedIdentityAliases(row);
+  const semanticKey = questionSemanticKey(identityFromCaptureRow(aliased));
+  return { ...aliased, semanticKey: semanticKey ?? row.id };
 }
 
 function refineDedupeKey(row: RefineCandidate): string {

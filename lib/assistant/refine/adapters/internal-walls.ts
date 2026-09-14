@@ -135,6 +135,8 @@ function candidate(params: {
     write: null,
     wallTypeId: params.wallTypeId,
     openingId: params.openingId,
+    nestedItemId: params.wallTypeId ?? null,
+    componentId: params.openingId ?? null,
     consumedByCalculator: true,
   };
 }

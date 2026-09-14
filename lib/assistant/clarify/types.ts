@@ -52,6 +52,10 @@ export type ClarifyCandidate = {
   readonly wallTypeId?: string | null;
   /** Internal Walls nested opening target. */
   readonly openingId?: string | null;
+  /** Generic nested item (Ceiling Portion; Internal Walls alias of wallTypeId). */
+  readonly nestedItemId?: string | null;
+  /** Generic nested component (Bulkhead; Internal Walls alias of openingId). */
+  readonly componentId?: string | null;
 };
 
 export type ClarifyAssumption = {

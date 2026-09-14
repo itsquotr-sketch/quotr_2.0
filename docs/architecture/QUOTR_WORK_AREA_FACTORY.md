@@ -301,3 +301,31 @@ Do not silently skip factory stages to satisfy demand — reduce depth (SUPPORTE
 | Project Conditions | `lib/project-conditions/*` |
 | Quote drafts | `lib/work-areas/quote-description.ts` (all 14) |
 | Bathroom architecture (WA-BATHROOM-01) | `docs/architecture/QUOTR_BATHROOM_ESTIMATING_ARCHITECTURE.md` |
+| Internal Walls architecture | `docs/architecture/QUOTR_INTERNAL_WALLS_ESTIMATING_ARCHITECTURE.md` |
+
+---
+
+## 18. Ceilings nested model (WA-03A foundation)
+
+**Status:** FOUNDATION ONLY — no physical calculator, Details, or Ready wiring in this slice.
+
+Canonical tree:
+
+```
+Project
+  → Ceiling Work Area Instance (one or more per project)
+    → Ceiling Portion (`ceilings.portions` JSON; one or more per Work Area)
+      → optional Bulkhead
+        → Component → Requirement → Commercial Line
+```
+
+**Identity:** generic `nestedItemId` = Ceiling Portion; `componentId` = Bulkhead. Internal Walls keeps `wallTypeId` / `openingId` and also populates the generic aliases. Ready is all-or-nothing across currently relevant portions — no partial-Ready per Portion.
+
+**Store:** `project_facts` nested JSON `ceilings.portions` with `{ v, portions }` compare-and-swap. No new table.
+
+**V1 bulkhead topology:** `conventional_two_face_downstand` only (underside + one exposed vertical face, wall-adjacent). Other topologies later: Pricing Required.
+
+**Legacy:** `calculateCeilings` in `lib/estimate/calculators/fitout.ts` remains hosted runtime until WA-04. Flat template keys stay.
+
+**Next:** WA-03B wires the information contract into extraction, Details, Ready, and ownership.
+

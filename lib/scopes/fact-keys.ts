@@ -180,6 +180,24 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
     finish_level: "plastering.level",
     level: "plastering.level",
   },
+  ceilings: {
+    area: "ceilings.area_m2",
+    area_m2: "ceilings.area_m2",
+    ceiling_type: "ceilings.ceiling_type",
+    structure_type: "ceilings.structure_type",
+    plasterboard_type: "ceilings.plasterboard_type",
+    demolition_included: "ceilings.demolition_included",
+    insulation_included: "ceilings.insulation_included",
+    stopping_included: "ceilings.stopping_included",
+    painting_included: "ceilings.painting_included",
+    battens_included: "ceilings.battens_included",
+    geometry_mode: "ceilings.portion.geometry_mode",
+    length_m: "ceilings.portion.length_m",
+    width_m: "ceilings.portion.width_m",
+    job_scope: "ceilings.portion.job_scope",
+    structure_family: "ceilings.portion.structure_family",
+    lining_family: "ceilings.portion.lining_family",
+  },
 };
 
 export function normalizeCanonicalFactKey(

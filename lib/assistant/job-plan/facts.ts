@@ -10,6 +10,10 @@ import {
   applyInternalWallsFactWrite,
   isInternalWallsWallTypeWriteKey,
 } from "@/lib/estimate/internal-walls-wall-types";
+import {
+  applyCeilingsFactWrite,
+  isCeilingsPortionWriteKey,
+} from "@/lib/estimate/ceilings-portions";
 import { overlayFactSemanticKey } from "@/lib/assistant/question-identity";
 import {
   CANONICAL_PROJECT_CONDITION_KEYS,
@@ -78,8 +82,18 @@ export function overlayFact(
       workAreaId: next.work_area_id,
       key: next.key,
       value: next.value,
-      wallTypeId: next.wallTypeId,
-      openingId: next.openingId,
+      wallTypeId: next.wallTypeId ?? next.nestedItemId,
+      openingId: next.openingId ?? next.componentId,
+    });
+  }
+  if (next.work_area_id && isCeilingsPortionWriteKey(next.key)) {
+    return applyCeilingsFactWrite({
+      facts: facts as EstimateFact[],
+      workAreaId: next.work_area_id,
+      key: next.key,
+      value: next.value,
+      nestedItemId: next.nestedItemId ?? next.wallTypeId,
+      componentId: next.componentId ?? next.openingId,
     });
   }
   const without = facts.filter(
@@ -98,7 +112,11 @@ export function appendJobPlanFactOverlay(
   overlay: readonly EstimateFact[],
   next: EstimateFact
 ): EstimateFact[] {
-  if (next.work_area_id && isInternalWallsWallTypeWriteKey(next.key)) {
+  if (
+    next.work_area_id &&
+    (isInternalWallsWallTypeWriteKey(next.key) ||
+      isCeilingsPortionWriteKey(next.key))
+  ) {
     const nextIdentity = overlayFactSemanticKey(next);
     return [
       ...overlay.filter(

@@ -44,6 +44,10 @@ export type EstimateFact = {
   wallTypeId?: string;
   /** Overlay-only nested opening target. Not a persisted sibling column. */
   openingId?: string;
+  /** Overlay-only generic nested item (Ceiling Portion). */
+  nestedItemId?: string;
+  /** Overlay-only generic nested component (Bulkhead). */
+  componentId?: string;
 };
 
 export type EstimateConstraint = {

@@ -10,6 +10,7 @@
  * quantities. Do not treat the second face as a duplicate of the first.
  */
 
+import { aggregateSameIdentityCommercialLines } from "@/lib/estimate/commercial-aggregation";
 import { round2 } from "@/lib/estimate/facts";
 import { isInternalWallsLiningComponentKey } from "@/lib/estimate/internal-walls-identities";
 import type { EstimateLineItemInput } from "@/lib/estimate/types";
@@ -46,29 +47,13 @@ export function exclusiveOverlapWinnerItems(
 export function aggregateInternalWallsLiningCommercialLines(
   items: readonly EstimateLineItemInput[]
 ): EstimateLineItemInput[] {
-  const seen = new Set<string>();
-  const groups = new Map<string, EstimateLineItemInput[]>();
-  for (const item of items) {
-    const key = liningCommercialAggregateKey(item);
-    if (!key || item.includedInTotal === false) continue;
-    const list = groups.get(key) ?? [];
-    list.push(item);
-    groups.set(key, list);
-  }
-
-  const out: EstimateLineItemInput[] = [];
-  for (const item of items) {
-    const key = liningCommercialAggregateKey(item);
-    if (!key || item.includedInTotal === false) {
-      out.push(item);
-      continue;
-    }
-    if (seen.has(key)) continue;
-    seen.add(key);
-    const members = groups.get(key) ?? [item];
-    out.push(members.length === 1 ? item : mergeLiningCommercialLines(members));
-  }
-  return out;
+  return aggregateSameIdentityCommercialLines(items, {
+    isEligible: (item) =>
+      liningCommercialAggregateKey(item) != null &&
+      item.includedInTotal !== false,
+    groupingKey: liningCommercialAggregateKey,
+    merge: mergeLiningCommercialLines,
+  });
 }
 
 function mergeLiningCommercialLines(

@@ -655,6 +655,13 @@ export function calculateCeilings(
   context: EstimateContext,
   workArea: EstimateWorkArea
 ): CalculatorResult {
+  /**
+   * LEGACY CEILINGS CALCULATOR — WA-03A.
+   * Package / area_m2 fallback. Hosted runtime until the nested Ceiling
+   * Portion calculator (WA-04) is gated in. Do not remove in 03A.
+   * Nested `ceilings.portions` is the canonical fact model; this function
+   * still reads only the flat legacy keys.
+   */
   const { facts } = context;
   const result = calculateAreaBasedFitout(context, workArea, {
     areaKey: "ceilings.area_m2",

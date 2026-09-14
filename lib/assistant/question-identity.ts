@@ -8,6 +8,8 @@
  * Flat facts: workAreaId + factKey.
  * Nested Internal Walls: workAreaId + factKey + nestedItemId (wallTypeId)
  *   + optional componentId (openingId).
+ * Nested Ceilings: workAreaId + factKey + nestedItemId (Ceiling Portion)
+ *   + optional componentId (Bulkhead).
  *
  * Do not persist draft nested ids. They exist only so pre-creation Clarify
  * rows stay stable across recomposition.
@@ -47,8 +49,8 @@ export function normalizeNestedId(
 
 /**
  * Stable unpersisted nested-item identity for a Work Area that has no Wall
- * Type yet. Derived from workAreaId so recomposition does not mint a new id.
- * Not a persisted Wall Type UUID and not passed to applyInternalWallsFactWrite.
+ * Type / Ceiling Portion yet. Derived from workAreaId so recomposition does
+ * not mint a new id. Not a persisted UUID and not passed to collection writes.
  */
 export function draftNestedItemId(workAreaId: string): string {
   return `draft:${workAreaId}`;
@@ -63,6 +65,17 @@ export function isInternalWallsNestedFactKey(factKey: string): boolean {
 
 export function isInternalWallsOpeningFactKey(factKey: string): boolean {
   return factKey.startsWith("internal_walls.opening.");
+}
+
+export function isCeilingsNestedFactKey(factKey: string): boolean {
+  return (
+    factKey.startsWith("ceilings.portion.") ||
+    factKey.startsWith("ceilings.bulkhead.")
+  );
+}
+
+export function isCeilingsBulkheadFactKey(factKey: string): boolean {
+  return factKey.startsWith("ceilings.bulkhead.");
 }
 
 export function wallTypeQuestionIdentity(params: {
@@ -86,6 +99,27 @@ export function wallTypeQuestionIdentity(params: {
   };
 }
 
+export function ceilingPortionQuestionIdentity(params: {
+  workAreaId: string;
+  factKey: string;
+  nestedItemId?: string | null;
+  componentId?: string | null;
+}): QuestionSemanticIdentity {
+  const nested = isCeilingsNestedFactKey(params.factKey);
+  const nestedItemId = nested
+    ? (normalizeNestedId(params.nestedItemId) ??
+      draftNestedItemId(params.workAreaId))
+    : undefined;
+  return {
+    workAreaId: params.workAreaId,
+    factKey: params.factKey,
+    nestedItemId,
+    componentId: isCeilingsBulkheadFactKey(params.factKey)
+      ? normalizeNestedId(params.componentId)
+      : undefined,
+  };
+}
+
 export function identityFromCaptureRow(row: {
   readonly workAreaId?: string | null;
   readonly workAreaType?: string | null;
@@ -93,6 +127,8 @@ export function identityFromCaptureRow(row: {
   readonly constraintKey?: string | null;
   readonly wallTypeId?: string | null;
   readonly openingId?: string | null;
+  readonly nestedItemId?: string | null;
+  readonly componentId?: string | null;
 }): QuestionSemanticIdentity {
   const constraintKey = row.constraintKey?.trim() ?? "";
   if (constraintKey) {
@@ -100,6 +136,8 @@ export function identityFromCaptureRow(row: {
   }
   const factKey = row.factKey?.trim() ?? "";
   const workAreaId = row.workAreaId?.trim() ?? "";
+  const nestedItemId = row.nestedItemId ?? row.wallTypeId;
+  const componentId = row.componentId ?? row.openingId;
   if (
     workAreaId &&
     factKey &&
@@ -109,15 +147,27 @@ export function identityFromCaptureRow(row: {
     return wallTypeQuestionIdentity({
       workAreaId,
       factKey,
-      wallTypeId: row.wallTypeId,
-      openingId: row.openingId,
+      wallTypeId: nestedItemId,
+      openingId: componentId,
+    });
+  }
+  if (
+    workAreaId &&
+    factKey &&
+    (row.workAreaType === "ceilings" || isCeilingsNestedFactKey(factKey))
+  ) {
+    return ceilingPortionQuestionIdentity({
+      workAreaId,
+      factKey,
+      nestedItemId,
+      componentId,
     });
   }
   return {
     workAreaId: row.workAreaId,
     factKey: row.factKey,
-    nestedItemId: normalizeNestedId(row.wallTypeId),
-    componentId: normalizeNestedId(row.openingId),
+    nestedItemId: normalizeNestedId(nestedItemId),
+    componentId: normalizeNestedId(componentId),
   };
 }
 
@@ -158,6 +208,8 @@ export function overlayFactSemanticKey(row: {
   readonly key: string;
   readonly wallTypeId?: string | null;
   readonly openingId?: string | null;
+  readonly nestedItemId?: string | null;
+  readonly componentId?: string | null;
 }): string {
   return (
     questionSemanticKey(
@@ -166,6 +218,8 @@ export function overlayFactSemanticKey(row: {
         factKey: row.key,
         wallTypeId: row.wallTypeId,
         openingId: row.openingId,
+        nestedItemId: row.nestedItemId,
+        componentId: row.componentId,
       })
     ) ?? `fact:${row.key}`
   );
@@ -174,9 +228,14 @@ export function overlayFactSemanticKey(row: {
 export function isNestedRefineIdentity(row: {
   readonly wallTypeId?: string | null;
   readonly openingId?: string | null;
+  readonly nestedItemId?: string | null;
+  readonly componentId?: string | null;
 }): boolean {
   return Boolean(
-    normalizeNestedId(row.wallTypeId) || normalizeNestedId(row.openingId)
+    normalizeNestedId(row.nestedItemId) ||
+      normalizeNestedId(row.componentId) ||
+      normalizeNestedId(row.wallTypeId) ||
+      normalizeNestedId(row.openingId)
   );
 }
 
@@ -190,6 +249,8 @@ export function candidateMatchesFocus(
     readonly constraintKey?: string | null;
     readonly wallTypeId?: string | null;
     readonly openingId?: string | null;
+    readonly nestedItemId?: string | null;
+    readonly componentId?: string | null;
   },
   focusKey: string | null | undefined
 ): boolean {
