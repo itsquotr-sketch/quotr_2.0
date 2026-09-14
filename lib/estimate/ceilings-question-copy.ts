@@ -132,6 +132,10 @@ const COPY: Record<string, CeilingQuestionCopyRow> = {
     label: "Insulation type",
     question: "Insulation type?",
   },
+  "ceilings.portion.insulation_spec": {
+    label: "Insulation specification",
+    question: "Insulation specification?",
+  },
   "ceilings.portion.bulkheads_present": {
     label: "Bulkheads",
     question: "Any bulkheads?",

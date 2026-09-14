@@ -73,6 +73,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
   "ceilings.portion.gap_mm": "Board gap",
   "ceilings.portion.tile_size": "Tile size",
   "ceilings.portion.insulation_type": "Insulation type",
+  "ceilings.portion.insulation_spec": "Insulation specification",
   "ceilings.portion.significant_penetrations": "Significant penetrations",
   "ceilings.portion.penetrations": "Penetration / hatch details",
   "ceilings.portion.fire_acoustic_requirement": "Fire / acoustic requirement",

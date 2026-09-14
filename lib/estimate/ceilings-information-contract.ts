@@ -18,6 +18,7 @@ import {
   CEILINGS_DELETE_PORTION_KEY,
   CEILINGS_DUPLICATE_PORTION_KEY,
   CEILINGS_PORTIONS_FACT_KEY,
+  ceilingInsulationNeedsSpecification,
   findCeilingBulkhead,
   findCeilingPortion,
   recommendedCeilingGeometryMode,
@@ -297,7 +298,16 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       calculatorConsumed: false,
       physical: true,
       commercial: true,
-      reason: "Insulation specification when insulation is included.",
+      reason: "Insulation family when insulation is included.",
+    },
+    {
+      factKey: "ceilings.portion.insulation_spec",
+      askClass: "ASK_NOW",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason: "Custom / specified insulation product when Other or existing specified.",
     },
     {
       factKey: "ceilings.portion.bulkheads_present",
@@ -621,6 +631,11 @@ export function ceilingsFactIsRelevant(
       return ctx.omitPainting !== true;
     case "ceilings.portion.insulation_type":
       return portion?.finish.insulation_included === true;
+    case "ceilings.portion.insulation_spec":
+      return (
+        portion?.finish.insulation_included === true &&
+        ceilingInsulationNeedsSpecification(portion.finish.insulation_type)
+      );
     case "ceilings.portion.significant_penetrations":
       return (
         briefMentionsPenetrations(ctx.briefText) ||
@@ -708,6 +723,7 @@ export function ceilingsDetailsSectionId(
   if (
     field === "insulation_included" ||
     field === "insulation_type" ||
+    field === "insulation_spec" ||
     field === "demolition_included" ||
     field === "stopping_included" ||
     field === "painting_included" ||

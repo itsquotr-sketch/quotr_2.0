@@ -1761,24 +1761,29 @@ export function AssistantShell({
         }
       } else if (candidate.factKey) {
         const value = presentation === "INCLUDED";
-        tagOverlayFactSeq(
-          {
-            key: candidate.factKey,
-            work_area_id: candidate.workAreaId,
-            value,
-            source: "user",
-          },
-          requestSeq
+        const overlayRow = {
+          key: candidate.factKey,
+          work_area_id: candidate.workAreaId,
+          value,
+          source: "user" as const,
+          wallTypeId: candidate.wallTypeId ?? undefined,
+          openingId: candidate.openingId ?? undefined,
+          nestedItemId:
+            candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,
+          componentId:
+            candidate.componentId ?? candidate.openingId ?? undefined,
+        };
+        tagOverlayFactSeq(overlayRow, requestSeq);
+        const nestedWrite = Boolean(
+          candidate.factKey &&
+            candidate.workAreaId &&
+            (isInternalWallsWallTypeWriteKey(candidate.factKey) ||
+              isCeilingsPortionWriteKey(candidate.factKey))
         );
         setJobPlanFactOverlay((prev) =>
-          overlayFact(prev, {
-            key: candidate.factKey!,
-            work_area_id: candidate.workAreaId,
-            value,
-            source: "user",
-            nestedItemId: candidate.nestedItemId ?? candidate.wallTypeId ?? undefined,
-            componentId: candidate.componentId ?? candidate.openingId ?? undefined,
-          })
+          nestedWrite
+            ? appendJobPlanFactOverlay(prev, overlayRow)
+            : overlayFact(prev, overlayRow)
         );
         result = await runSerializedFactMutation(() =>
           answerClarifySelectFact({
@@ -1799,6 +1804,10 @@ export function AssistantShell({
           const factIdentity = overlayFactSemanticKey({
             work_area_id: candidate.workAreaId,
             key: candidate.factKey!,
+            wallTypeId: candidate.wallTypeId,
+            openingId: candidate.openingId,
+            nestedItemId: candidate.nestedItemId,
+            componentId: candidate.componentId,
           });
           if (overlaySeqByFactRef.current.get(factIdentity) === requestSeq) {
             setJobPlanFactOverlay((prev) =>

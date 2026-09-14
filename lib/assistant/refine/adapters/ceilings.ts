@@ -29,6 +29,7 @@ import {
   CEILINGS_BULKHEAD_FRAMING_VALUES,
   CEILINGS_BULKHEAD_LINING_VALUES,
   CEILINGS_DIRECTION_VALUES,
+  CEILINGS_INSULATION_TYPE_VALUES,
   CEILINGS_JOB_SCOPE_VALUES,
   CEILINGS_LINING_FAMILY_VALUES,
   CEILINGS_PLASTERBOARD_PRODUCT_VALUES,
@@ -36,6 +37,7 @@ import {
   CEILINGS_STRUCTURE_FAMILY_VALUES,
   CEILINGS_TILE_SIZE_VALUES,
   CEILINGS_TIMBER_SIZE_VALUES,
+  ceilingInsulationNeedsSpecification,
   hasCanonicalCeilingsPortions,
   resolveCeilingsPortions,
   type CeilingPortion,
@@ -286,7 +288,21 @@ function portionFields(
     "boolean"
   );
   if (portion.finish.insulation_included === true) {
-    field("ceilings.portion.insulation_type", "Insulation spec", "Insulation specification?", "text");
+    field(
+      "ceilings.portion.insulation_type",
+      "Insulation type",
+      "Insulation type?",
+      "select",
+      CEILINGS_INSULATION_TYPE_VALUES
+    );
+    if (ceilingInsulationNeedsSpecification(portion.finish.insulation_type)) {
+      field(
+        "ceilings.portion.insulation_spec",
+        "Insulation spec",
+        "Insulation specification?",
+        "text"
+      );
+    }
   }
   field(
     "ceilings.portion.bulkheads_present",

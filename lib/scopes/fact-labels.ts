@@ -378,6 +378,11 @@ const ENUM_ANSWER_LABELS: Record<string, string> = {
   minor: "Minor",
   standard: "Standard",
   major: "Major",
+  thermal: "Thermal / standard ceiling insulation",
+  acoustic: "Acoustic insulation",
+  thermal_acoustic: "Combination thermal + acoustic",
+  existing_specified: "Existing specified product",
+  other: "Other / custom",
 };
 
 /**

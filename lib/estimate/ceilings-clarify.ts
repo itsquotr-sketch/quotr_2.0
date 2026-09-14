@@ -32,6 +32,7 @@ import {
   CEILINGS_DUPLICATE_PORTION_KEY,
   CEILINGS_JOB_SCOPE_VALUES,
   CEILINGS_LINING_FAMILY_VALUES,
+  CEILINGS_INSULATION_TYPE_VALUES,
   CEILINGS_PLASTERBOARD_PRODUCT_VALUES,
   CEILINGS_PLASTERBOARD_THICKNESS_OPTIONS,
   CEILINGS_STRUCTURE_FAMILY_VALUES,
@@ -42,6 +43,8 @@ import {
   CEILINGS_BULKHEAD_LINING_VALUES,
   CEILINGS_BULKHEAD_FORM_VALUES,
   CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED,
+  ceilingInsulationTypeSelectValue,
+  isCeilingInsulationType,
   ceilingPlasterboardThicknessLabel,
   findCeilingBulkhead,
   findCeilingPortion,
@@ -71,6 +74,9 @@ function clarifyInputType(factKey: string): ClarifyCandidate["inputType"] {
   if (factKey === "ceilings.portion.thickness_mm" || factKey === "ceilings.bulkhead.thickness_mm") {
     return "select";
   }
+  if (factKey === "ceilings.portion.insulation_type") {
+    return "select";
+  }
   const template = getQuestionTemplateByKey(factKey);
   if (template?.inputType === "boolean") return "boolean";
   if (template?.inputType === "number") return "number";
@@ -93,7 +99,7 @@ function clarifyInputType(factKey: string): ClarifyCandidate["inputType"] {
   }
   if (
     factKey === "ceilings.portion.plywood_spec" ||
-    factKey === "ceilings.portion.insulation_type" ||
+    factKey === "ceilings.portion.insulation_spec" ||
     factKey === "ceilings.portion.fire_acoustic_system" ||
     factKey === "ceilings.portion.penetrations"
   ) {
@@ -125,6 +131,8 @@ function optionsForKey(factKey: string): readonly string[] | undefined {
       return [...CEILINGS_TILE_SIZE_VALUES];
     case "ceilings.portion.fire_acoustic_requirement":
       return ["none", "specified", "unknown_proprietary"];
+    case "ceilings.portion.insulation_type":
+      return [...CEILINGS_INSULATION_TYPE_VALUES];
     case "ceilings.bulkhead.framing_type":
       return [...CEILINGS_BULKHEAD_FRAMING_VALUES];
     case "ceilings.bulkhead.lining_type":
@@ -249,7 +257,21 @@ export function ceilingPortionFieldCurrentValue(
     return offset > 0 ? offset : null;
   }
   if (field === "insulation_included") return portion.finish.insulation_included;
-  if (field === "insulation_type") return portion.finish.insulation_type;
+  if (field === "insulation_type") {
+    return ceilingInsulationTypeSelectValue(portion.finish.insulation_type);
+  }
+  if (field === "insulation_spec") {
+    if (portion.finish.insulation_spec?.trim()) {
+      return portion.finish.insulation_spec;
+    }
+    if (
+      portion.finish.insulation_type &&
+      !isCeilingInsulationType(portion.finish.insulation_type)
+    ) {
+      return portion.finish.insulation_type;
+    }
+    return null;
+  }
   if (field === "stopping_included") return portion.finish.stopping_included;
   if (field === "painting_included") return portion.finish.painting_included;
   if (field === "demolition_included") return portion.finish.demolition_included;

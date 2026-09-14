@@ -8,11 +8,15 @@ import {
 } from "@/lib/estimate/facts";
 import {
   applyInternalWallsFactWrite,
+  INTERNAL_WALLS_WALL_TYPES_FACT_KEY,
   isInternalWallsWallTypeWriteKey,
+  storedInternalWallsWallTypes,
 } from "@/lib/estimate/internal-walls-wall-types";
 import {
   applyCeilingsFactWrite,
+  CEILINGS_PORTIONS_FACT_KEY,
   isCeilingsPortionWriteKey,
+  storedCeilingsPortions,
 } from "@/lib/estimate/ceilings-portions";
 import { overlayFactSemanticKey } from "@/lib/assistant/question-identity";
 import {
@@ -72,11 +76,30 @@ export function isUnknownFactValue(value: unknown): boolean {
   return !hasFactValue(value) || isNotSureValue(value);
 }
 
+function queueLogicalNestedOverlay(
+  facts: readonly EstimateFact[],
+  next: EstimateFact
+): EstimateFact[] {
+  const nextIdentity = overlayFactSemanticKey(next);
+  return [
+    ...facts.filter((row) => overlayFactSemanticKey(row) !== nextIdentity),
+    next,
+  ];
+}
+
 export function overlayFact(
   facts: readonly EstimateFact[],
   next: EstimateFact
 ): EstimateFact[] {
   if (next.work_area_id && isInternalWallsWallTypeWriteKey(next.key)) {
+    // Overlay queues are not the canonical collection. Reconstructing a
+    // blank Wall Type here would replace the real nested snapshot on compose.
+    if (
+      next.key !== INTERNAL_WALLS_WALL_TYPES_FACT_KEY &&
+      storedInternalWallsWallTypes(facts, next.work_area_id).length === 0
+    ) {
+      return queueLogicalNestedOverlay(facts, next);
+    }
     return applyInternalWallsFactWrite({
       facts: facts as EstimateFact[],
       workAreaId: next.work_area_id,
@@ -87,6 +110,12 @@ export function overlayFact(
     });
   }
   if (next.work_area_id && isCeilingsPortionWriteKey(next.key)) {
+    if (
+      next.key !== CEILINGS_PORTIONS_FACT_KEY &&
+      storedCeilingsPortions(facts, next.work_area_id).length === 0
+    ) {
+      return queueLogicalNestedOverlay(facts, next);
+    }
     return applyCeilingsFactWrite({
       facts: facts as EstimateFact[],
       workAreaId: next.work_area_id,
@@ -105,8 +134,8 @@ export function overlayFact(
 
 /**
  * Queue a Refine/Clarify overlay row.
- * Internal Walls stores the logical write; jobPlanFacts applies it onto
- * latest base facts so a lining save cannot replace the whole collection.
+ * Internal Walls and Ceilings store the logical write; jobPlanFacts applies
+ * it onto latest base facts so a boolean save cannot replace the collection.
  */
 export function appendJobPlanFactOverlay(
   overlay: readonly EstimateFact[],

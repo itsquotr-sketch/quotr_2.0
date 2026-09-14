@@ -78,6 +78,44 @@ export const CEILINGS_PLASTERBOARD_PRODUCT_VALUES = [
 export type CeilingPlasterboardProduct =
   (typeof CEILINGS_PLASTERBOARD_PRODUCT_VALUES)[number];
 
+export const CEILINGS_INSULATION_TYPE_VALUES = [
+  "thermal",
+  "acoustic",
+  "thermal_acoustic",
+  "existing_specified",
+  "other",
+] as const;
+export type CeilingInsulationType =
+  (typeof CEILINGS_INSULATION_TYPE_VALUES)[number];
+
+export function isCeilingInsulationType(
+  value: string | null | undefined
+): value is CeilingInsulationType {
+  return (
+    typeof value === "string" &&
+    (CEILINGS_INSULATION_TYPE_VALUES as readonly string[]).includes(value)
+  );
+}
+
+export function ceilingInsulationTypeSelectValue(
+  raw: string | null | undefined
+): CeilingInsulationType | null {
+  if (!raw?.trim()) return null;
+  if (isCeilingInsulationType(raw)) return raw;
+  return "other";
+}
+
+export function ceilingInsulationNeedsSpecification(
+  type: string | null | undefined
+): boolean {
+  if (!type?.trim()) return false;
+  return (
+    type === "other" ||
+    type === "existing_specified" ||
+    !isCeilingInsulationType(type)
+  );
+}
+
 export const CEILINGS_PLASTERBOARD_THICKNESS_VALUES = [
   "10",
   "13",
@@ -247,6 +285,7 @@ export type CeilingLining = {
 export type CeilingFinish = {
   insulation_included: boolean | null;
   insulation_type: string | null;
+  insulation_spec: string | null;
   stopping_included: boolean | null;
   painting_included: boolean | null;
   demolition_included: boolean | null;
@@ -369,6 +408,7 @@ function emptyFinish(): CeilingFinish {
   return {
     insulation_included: null,
     insulation_type: null,
+    insulation_spec: null,
     stopping_included: null,
     painting_included: null,
     demolition_included: null,
@@ -811,6 +851,11 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
             value.finish.insulation_type.trim()
               ? value.finish.insulation_type.trim()
               : null,
+          insulation_spec:
+            typeof value.finish.insulation_spec === "string" &&
+            value.finish.insulation_spec.trim()
+              ? value.finish.insulation_spec.trim()
+              : null,
           stopping_included: parseTriBool(value.finish.stopping_included),
           painting_included: parseTriBool(value.finish.painting_included),
           demolition_included: parseTriBool(value.finish.demolition_included),
@@ -855,13 +900,21 @@ export function parseCeilingsCollectionEnvelope(value: unknown): {
   v: number;
   portions: CeilingPortion[];
 } {
-  if (Array.isArray(value)) {
-    return { v: 0, portions: parseCeilingPortionList(value) };
+  let parsed: unknown = value;
+  if (typeof parsed === "string" && parsed.trim()) {
+    try {
+      parsed = JSON.parse(parsed) as unknown;
+    } catch {
+      return { v: 0, portions: [] };
+    }
   }
-  if (isRecord(value) && Array.isArray(value.portions)) {
+  if (Array.isArray(parsed)) {
+    return { v: 0, portions: parseCeilingPortionList(parsed) };
+  }
+  if (isRecord(parsed) && Array.isArray(parsed.portions)) {
     const v =
-      typeof value.v === "number" && Number.isFinite(value.v) ? value.v : 0;
-    return { v, portions: parseCeilingPortionList(value.portions) };
+      typeof parsed.v === "number" && Number.isFinite(parsed.v) ? parsed.v : 0;
+    return { v, portions: parseCeilingPortionList(parsed.portions) };
   }
   return { v: 0, portions: [] };
 }
@@ -1573,14 +1626,39 @@ function applyPortionField(
     portion.finish.insulation_included = parseTriBool(value);
     if (portion.finish.insulation_included === false) {
       portion.finish.insulation_type = null;
+      portion.finish.insulation_spec = null;
     }
     return;
   }
   if (field === "insulation_type") {
-    portion.finish.insulation_type =
+    const trimmed =
       typeof value === "string" && value.trim() ? value.trim() : null;
-    if (portion.finish.insulation_type) {
+    if (!trimmed) {
+      portion.finish.insulation_type = null;
+      portion.finish.insulation_spec = null;
+      return;
+    }
+    if (isCeilingInsulationType(trimmed)) {
+      portion.finish.insulation_type = trimmed;
+      if (!ceilingInsulationNeedsSpecification(trimmed)) {
+        portion.finish.insulation_spec = null;
+      }
+    } else {
+      portion.finish.insulation_type = "other";
+      portion.finish.insulation_spec = trimmed;
+    }
+    portion.finish.insulation_included = true;
+    return;
+  }
+  if (field === "insulation_spec") {
+    const spec =
+      typeof value === "string" && value.trim() ? value.trim() : null;
+    portion.finish.insulation_spec = spec;
+    if (spec) {
       portion.finish.insulation_included = true;
+      if (!ceilingInsulationNeedsSpecification(portion.finish.insulation_type)) {
+        portion.finish.insulation_type = "other";
+      }
     }
     return;
   }

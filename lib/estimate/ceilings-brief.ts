@@ -623,6 +623,10 @@ function fillMissingCeilingPortion(
       out.finish.insulation_type,
       parsed.finish.insulation_type
     ),
+    insulation_spec: firstPresent(
+      out.finish.insulation_spec,
+      parsed.finish.insulation_spec
+    ),
     stopping_included:
       out.finish.stopping_included ?? parsed.finish.stopping_included,
     painting_included:

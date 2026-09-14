@@ -530,7 +530,7 @@ check(
 check(
   "Refine overlays IW writes immediately as logical rows",
   shellSrc.includes("appendJobPlanFactOverlay") &&
-    shellSrc.includes("iwWrite")
+    shellSrc.includes("nestedWrite")
 );
 check(
   "boolean Include/Not included still exists for other WAs",
