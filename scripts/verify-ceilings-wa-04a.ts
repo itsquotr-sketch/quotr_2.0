@@ -333,16 +333,19 @@ const two = calculateCeilingsPhysical({
   ]),
   workArea: wa(),
 });
+const twoFraming = two.requirements.filter(
+  (row) => row.componentKey === CEILINGS_TIMBER_FRAMING_COMPONENT
+);
 check(
   "P two Portions stay physically distinct",
   two.portions.length === 2 &&
-    two.requirements.length === 2 &&
+    twoFraming.length === 2 &&
     two.portions[0]?.nestedItemId === P1 &&
     two.portions[1]?.nestedItemId === P2 &&
     two.portions[0]?.timber.installedFramingLM === 32 &&
     two.portions[1]?.timber.numberOfRuns ===
       runCountFromSpacing(1.5, 0.45) &&
-    two.requirements[0]?.variantKey !== two.requirements[1]?.variantKey
+    twoFraming[0]?.variantKey !== twoFraming[1]?.variantKey
 );
 
 const groundFacts = writePortions(
@@ -389,12 +392,12 @@ check(
 
 check(
   "R no physical-level same-product collapse",
-  two.requirements.length === 2 &&
-    two.requirements[0]?.materialKey === INTERNAL_WALLS_TIMBER_140_KEY &&
-    two.requirements[1]?.materialKey === INTERNAL_WALLS_TIMBER_140_KEY &&
-    two.requirements[0]?.baseQuantity === 32 &&
-    two.requirements[1]?.baseQuantity !== 32 &&
-    two.requirements[0]?.requirementId !== two.requirements[1]?.requirementId
+  twoFraming.length === 2 &&
+    twoFraming[0]?.materialKey === INTERNAL_WALLS_TIMBER_140_KEY &&
+    twoFraming[1]?.materialKey === INTERNAL_WALLS_TIMBER_140_KEY &&
+    twoFraming[0]?.baseQuantity === 32 &&
+    twoFraming[1]?.baseQuantity !== 32 &&
+    twoFraming[0]?.requirementId !== twoFraming[1]?.requirementId
 );
 
 const nestedHosted = calculateEstimate(

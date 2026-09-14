@@ -272,7 +272,7 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       askClass: "ASK_NOW",
       scope: "portion",
       calculatorConsumed: false,
-      physical: false,
+      physical: true,
       commercial: true,
       reason: "Insulation include for this portion.",
     },
@@ -281,7 +281,7 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       askClass: "ASK_NOW",
       scope: "portion",
       calculatorConsumed: false,
-      physical: false,
+      physical: true,
       commercial: true,
       reason: "Insulation specification when insulation is included.",
     },
@@ -430,6 +430,16 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       reason: "Bulkhead lining type. Required when a bulkhead exists.",
     },
     {
+      factKey: "ceilings.bulkhead.thickness_mm",
+      askClass: "ASK_NOW",
+      scope: "bulkhead",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason:
+        "Bulkhead plasterboard thickness. Not inferred as 13 mm. Required for Standard / Aqualine / Fyreline.",
+    },
+    {
       factKey: "ceilings.bulkhead.form",
       askClass: "ASK_NOW",
       scope: "bulkhead",
@@ -539,6 +549,10 @@ export function ceilingsFactIsRelevant(
   if (row.scope === "bulkhead") {
     if (!bulkheadExists(portion)) return false;
     if (row.factKey === "ceilings.bulkhead.topology") return bulkheadExists(portion);
+    if (row.factKey === "ceilings.bulkhead.thickness_mm") {
+      const lining = bulkhead?.lining_type;
+      return lining === "standard" || lining === "aqualine" || lining === "fyreline";
+    }
     return bulkhead != null || bulkheadExists(portion);
   }
 

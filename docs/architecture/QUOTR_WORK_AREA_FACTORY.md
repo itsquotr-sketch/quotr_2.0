@@ -399,7 +399,25 @@ purchase tiles = ceil(installed × (1 + waste) − epsilon)
 
 Identities: `ceiling.grid.m2`, `ceiling.tile.300x300.each`, `ceiling.tile.600x600.each`, `ceiling.tile.1200x600.each`. Do not use leftover `ceiling.tile.m2`. Missing tile size is INFORMATION_REQUIRED (not silently 600×600). Structure and lining must both be tile_and_grid.
 
+**Bulkheads (WA-04D):** conventional wall-adjacent two-face downstand only. Island / boxed / complex stay `unsupported_specialist` and are not coerced into this model. End caps excluded from V1 lining.
+
+```
+longitudinal = 3 × L
+nogStations = runCountFromSpacing(L, 0.45)
+nogLM = stations × (D + H)
+total framing = 3L + nogLM
+lining area = L × (D + H)   // underside + one exposed vertical face
+```
+
+One lining layer is ASSUMED_DISCLOSED. Plasterboard thickness is explicit (`10` / `13` / `other`) — not a silent 13 mm. Timber framing uses shared `timber.framing.90x45.h1.2.lm` with a disclosed 90×45 assumption. Steel uses dedicated unresolved `steel.ceiling.bulkhead.framing.lm`. Sheet counts use `countCoveredAreaSheets`. Multiple bulkheads stay component-scoped (`nestedItemId` = Portion, `componentId` = Bulkhead).
+
+**Insulation (WA-04D):** when `insulation_included = true`, installed m² = ceiling area. Area-only is valid. No insulation wastage category exists, so installed = purchase and wastage is unresolved. Product identity stays unresolved unless a specification string is captured — no invented generic cost.
+
+**Fixings (WA-04D):** physical allowance bases only (priced: false). Timber framing / residual steel LM (excluding clips, droppers, wire) / plasterboard m² / plywood m² / timber lining LM / bulkhead framing LM + lining m². Tile & Grid grid m² is intended to include standard minor grid fixings — no second allowance.
+
+**Physical completeness:** each Portion reports `COMPLETE_PHYSICAL` | `INFORMATION_REQUIRED` | `UNSUPPORTED_SPECIALIST`. A Work Area is not physical-complete if any Portion is IR or specialist. Curved, coffered, complex raking, baffles, engineered systems, and unknown proprietary fire/acoustic systems do not calculate as ordinary rectangular plasterboard.
+
 **Legacy:** `calculateCeilings` in `lib/estimate/calculators/fitout.ts` remains the hosted runtime. Nested `ceilings.portions` still cannot fall through to the flat estimator.
 
-**Next:** WA-04D bulkheads, insulation, fixings/consumables.
+**Next:** WA-05 labour productivity, material costs, Pricing Required commercial lines, and hosted nested estimate.
 

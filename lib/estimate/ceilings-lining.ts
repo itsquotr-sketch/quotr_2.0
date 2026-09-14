@@ -274,7 +274,7 @@ function plasterboardLabel(product: CeilingPlasterboardProduct): string {
   return "Other plasterboard";
 }
 
-function resolvePlasterboardProduct(
+export function resolveCeilingPlasterboardProduct(
   product: CeilingPlasterboardProduct | undefined,
   thickness: CeilingPlasterboardThicknessMm | undefined,
   lengthMm: number,
@@ -501,7 +501,7 @@ function plasterboardTakeoff(params: {
       unresolvedProduct
     );
   }
-  const product = resolvePlasterboardProduct(
+  const product = resolveCeilingPlasterboardProduct(
     productCode,
     thickness,
     dims.lengthMm,

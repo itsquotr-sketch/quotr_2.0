@@ -602,8 +602,15 @@ const mixed = calculateCeilingsPhysical({
   ]),
   workArea: wa(),
 });
-const mixedA = mixed.requirements.filter((row) => row.variantKey === P1);
-const mixedB = mixed.requirements.filter((row) => row.variantKey === P2);
+function isFixingsAllowance(row: { componentKey: string }): boolean {
+  return row.componentKey.startsWith("ceilings.fixings.");
+}
+const mixedA = mixed.requirements.filter(
+  (row) => row.variantKey === P1 && !isFixingsAllowance(row)
+);
+const mixedB = mixed.requirements.filter(
+  (row) => row.variantKey === P2 && !isFixingsAllowance(row)
+);
 check(
   "W multi-Portion steel/suspended remain distinct",
   mixed.portions.length === 2 &&
@@ -676,7 +683,8 @@ check(
     twoPerimeters[1]?.baseQuantity === 14 &&
     twoPerimeters[0]?.requirementId !== twoPerimeters[1]?.requirementId &&
     twoPerimeters[0]?.variantKey !== twoPerimeters[1]?.variantKey &&
-    twoDirect.requirements.length === 8
+    twoDirect.requirements.filter((row) => !isFixingsAllowance(row)).length ===
+      8
 );
 
 const nestedHosted = calculateEstimate(

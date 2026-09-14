@@ -18,6 +18,7 @@ import {
   type CeilingPortion,
   type CeilingStructureFamily,
 } from "@/lib/estimate/ceilings-portions";
+import { canonicalCeilingSpecialistKindFromText } from "@/lib/estimate/ceilings-specialist";
 
 function normalise(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
@@ -431,6 +432,16 @@ function applySnippetToPortion(portion: CeilingPortion, snippet: string): void {
   if (includesAny(normalise(snippet), ["insulat"])) {
     portion.finish.insulation_included = true;
   }
+  const specialist = canonicalCeilingSpecialistKindFromText(snippet);
+  if (specialist) {
+    portion.specialist_kind = specialist;
+    if (
+      specialist === "unknown_proprietary_fire" ||
+      specialist === "proprietary_acoustic"
+    ) {
+      portion.fire_acoustic_requirement = "unknown_proprietary";
+    }
+  }
   portion.label = labelFromSnippet(snippet) ?? portion.label;
 }
 
@@ -443,7 +454,8 @@ export function extractCeilingPortionsFromBrief(briefText: string): CeilingPorti
       dims.length > 0 ||
       canonicalCeilingStructureFamilyFromText(snippet) != null ||
       canonicalCeilingLiningFamilyFromText(snippet) != null ||
-      bulkheadFormFromText(snippet) != null;
+      bulkheadFormFromText(snippet) != null ||
+      canonicalCeilingSpecialistKindFromText(snippet) != null;
     if (!hasSignal && snippets.length > 1) continue;
     const portion = createEmptyCeilingPortion({
       label: labelFromSnippet(snippet),

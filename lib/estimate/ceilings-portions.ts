@@ -156,6 +156,18 @@ export const CEILINGS_BULKHEAD_LINING_VALUES = [
 export type CeilingBulkheadLining =
   (typeof CEILINGS_BULKHEAD_LINING_VALUES)[number];
 
+export const CEILINGS_SPECIALIST_KIND_VALUES = [
+  "curved",
+  "complex_raking",
+  "coffered",
+  "proprietary_acoustic",
+  "unknown_proprietary_fire",
+  "feature_baffles",
+  "engineered_structural",
+] as const;
+export type CeilingSpecialistKind =
+  (typeof CEILINGS_SPECIALIST_KIND_VALUES)[number];
+
 export const CEILINGS_BULKHEAD_FORM_VALUES = [
   "conventional_two_face_downstand",
   "island",
@@ -248,6 +260,7 @@ export type CeilingBulkhead = {
   height_m: number | null;
   framing_type: CeilingBulkheadFraming | null;
   lining_type: CeilingBulkheadLining | null;
+  thickness_mm?: CeilingPlasterboardThicknessMm;
   form: CeilingBulkheadForm | null;
   topology: CeilingBulkheadTopology;
 };
@@ -267,6 +280,7 @@ export type CeilingPortion = {
   penetrations: string | null;
   fire_acoustic_requirement: "none" | "specified" | "unknown_proprietary" | null;
   fire_acoustic_system: string | null;
+  specialist_kind: CeilingSpecialistKind | null;
 };
 
 export type CeilingPortionSource = "canonical" | "legacy_dual_read";
@@ -373,6 +387,7 @@ export function createEmptyCeilingBulkhead(params?: {
     height_m: null,
     framing_type: null,
     lining_type: null,
+    thickness_mm: undefined,
     form: null,
     topology: CEILINGS_BULKHEAD_TOPOLOGY_V1,
   };
@@ -397,6 +412,7 @@ export function createEmptyCeilingPortion(params?: {
     penetrations: null,
     fire_acoustic_requirement: null,
     fire_acoustic_system: null,
+    specialist_kind: null,
   };
 }
 
@@ -605,6 +621,8 @@ export function parseCeilingBulkhead(value: unknown): CeilingBulkhead | null {
     height_m: parsePositiveNumber(value.height_m),
     framing_type: parseEnum(value.framing_type, CEILINGS_BULKHEAD_FRAMING_VALUES),
     lining_type: parseEnum(value.lining_type, CEILINGS_BULKHEAD_LINING_VALUES),
+    thickness_mm:
+      parseCeilingPlasterboardThickness(value.thickness_mm) ?? undefined,
     form,
     topology:
       storedTopology ??
@@ -805,6 +823,10 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
       value.fire_acoustic_system.trim()
         ? value.fire_acoustic_system.trim()
         : null,
+    specialist_kind: parseEnum(
+      value.specialist_kind,
+      CEILINGS_SPECIALIST_KIND_VALUES
+    ),
   };
   return applyCeilingFamilyExclusivity(portion);
 }
@@ -1277,6 +1299,9 @@ export function applyCeilingsFactWrite(params: {
             params.value,
             CEILINGS_BULKHEAD_LINING_VALUES
           );
+        } else if (field === "thickness_mm") {
+          next.thickness_mm =
+            parseCeilingPlasterboardThickness(params.value) ?? undefined;
         } else if (field === "form") {
           next.form = parseEnum(params.value, CEILINGS_BULKHEAD_FORM_VALUES);
           next.topology = ceilingBulkheadTopologyForForm(next.form);
@@ -1538,6 +1563,13 @@ function applyPortionField(
       portion.fire_acoustic_requirement =
         portion.fire_acoustic_requirement ?? "specified";
     }
+    return;
+  }
+  if (field === "specialist_kind") {
+    portion.specialist_kind = parseEnum(
+      value,
+      CEILINGS_SPECIALIST_KIND_VALUES
+    );
     return;
   }
   if (field === "drop_height_m") {

@@ -57,7 +57,9 @@ export type CeilingsClarifyInput = {
 };
 
 function clarifyInputType(factKey: string): ClarifyCandidate["inputType"] {
-  if (factKey === "ceilings.portion.thickness_mm") return "select";
+  if (factKey === "ceilings.portion.thickness_mm" || factKey === "ceilings.bulkhead.thickness_mm") {
+    return "select";
+  }
   const template = getQuestionTemplateByKey(factKey);
   if (template?.inputType === "boolean") return "boolean";
   if (template?.inputType === "number") return "number";
@@ -101,6 +103,7 @@ function optionsForKey(factKey: string): readonly string[] | undefined {
     case "ceilings.portion.plasterboard_product":
       return [...CEILINGS_PLASTERBOARD_PRODUCT_VALUES];
     case "ceilings.portion.thickness_mm":
+    case "ceilings.bulkhead.thickness_mm":
       return [...CEILINGS_PLASTERBOARD_THICKNESS_OPTIONS];
     case "ceilings.portion.timber_size":
       return [...CEILINGS_TIMBER_SIZE_VALUES];
@@ -144,6 +147,11 @@ export function ceilingPortionFieldCurrentValue(
     if (field === "height_m") return target.height_m;
     if (field === "framing_type") return target.framing_type;
     if (field === "lining_type") return target.lining_type;
+    if (field === "thickness_mm") {
+      return target.thickness_mm != null
+        ? ceilingPlasterboardThicknessLabel(target.thickness_mm)
+        : null;
+    }
     if (field === "form") return target.form;
     if (field === "topology") return target.topology;
     if (field === "label") return target.label;
@@ -356,7 +364,8 @@ function buildCandidate(params: {
     write: null,
     blocksEstimate:
       askClass === "HARD_MINIMUM" ||
-      params.factKey === "ceilings.portion.thickness_mm",
+      params.factKey === "ceilings.portion.thickness_mm" ||
+      params.factKey === "ceilings.bulkhead.thickness_mm",
     assumable: askClass === "ASSUME_IF_SKIPPED",
     rankScore:
       askClass === "HARD_MINIMUM" ? 1000 : askClass === "ASK_NOW" ? 80 : 40,

@@ -1,12 +1,11 @@
 /**
- * CEILINGS WA-04A/B — physical calculation kernel.
+ * CEILINGS WA-04A–D — physical calculation kernel.
  *
- * Geometry + timber/steel/suspended framing + lining + tile & grid.
- * Not hosted money. Not wired into calculateCeilings / customer estimate
- * output. Call from verifiers, the physical pipeline, or Preview diagnostics.
+ * Geometry, framing, lining, tile & grid, bulkheads, insulation, and
+ * residual fixings bases. Not hosted money. Not wired into
+ * calculateCeilings / customer estimate output.
  *
- * Per-Portion, per-Work-Area. No same-product collapse. Nested downstands,
- * thermal fill, consumables, labour hours, and hosted money are out of scope.
+ * Per-Portion, per-Work-Area. No same-product collapse. No labour hours.
  * Lining/tile wastage is applied once via resolveMaterialWastage.
  * Framing purchase still equals installed; framing wastage remains unresolved.
  */
@@ -66,6 +65,39 @@ import {
   type CeilingSteelFrameTakeoff,
   type CeilingSuspendedTakeoff,
 } from "@/lib/estimate/ceilings-steel";
+import {
+  calculateCeilingBulkheads,
+  CEILING_BULKHEAD_STEEL_FRAMING_IDENTITY,
+  CEILINGS_BULKHEAD_END_CAPS_EXCLUDED,
+  CEILINGS_BULKHEAD_FRAMING_STEEL_COMPONENT,
+  CEILINGS_BULKHEAD_FRAMING_TIMBER_COMPONENT,
+  CEILINGS_BULKHEAD_LINING_COMPONENT,
+  CEILINGS_BULKHEAD_LONGITUDINAL_ASSUMPTION,
+  CEILINGS_BULKHEAD_NOG_SPACING_ASSUMPTION,
+  CEILINGS_BULKHEAD_TIMBER_SIZE_ASSUMPTION,
+  type CeilingBulkheadTakeoff,
+} from "@/lib/estimate/ceilings-bulkheads";
+import {
+  calculateCeilingInsulation,
+  CEILINGS_INSULATION_COMPONENT,
+  CEILINGS_INSULATION_WASTAGE_UNRESOLVED,
+  type CeilingInsulationTakeoff,
+} from "@/lib/estimate/ceilings-insulation";
+import { ceilingFixingsRequirements } from "@/lib/estimate/ceilings-fixings";
+import {
+  ceilingPortionHasUnsupportedBulkhead,
+  ceilingPortionSpecialistKind,
+} from "@/lib/estimate/ceilings-specialist";
+import type { CeilingSpecialistKind } from "@/lib/estimate/ceilings-portions";
+
+export const CEILING_PHYSICAL_COMPLETENESS = {
+  COMPLETE_PHYSICAL: "COMPLETE_PHYSICAL",
+  INFORMATION_REQUIRED: "INFORMATION_REQUIRED",
+  UNSUPPORTED_SPECIALIST: "UNSUPPORTED_SPECIALIST",
+} as const;
+
+export type CeilingPhysicalCompleteness =
+  (typeof CEILING_PHYSICAL_COMPLETENESS)[keyof typeof CEILING_PHYSICAL_COMPLETENESS];
 
 export type CeilingPhysicalSource = "canonical" | "legacy_skipped" | "empty";
 
@@ -77,11 +109,16 @@ export type CeilingPortionPhysical = {
   readonly steel: CeilingSteelFrameTakeoff;
   readonly suspended: CeilingSuspendedTakeoff;
   readonly lining: CeilingLiningTakeoff;
+  readonly bulkheads: readonly CeilingBulkheadTakeoff[];
+  readonly insulation: CeilingInsulationTakeoff;
+  readonly completeness: CeilingPhysicalCompleteness;
+  readonly specialistKind: CeilingSpecialistKind | null;
 };
 
 export type CeilingPhysicalResult = {
   readonly workAreaId: string;
   readonly source: CeilingPhysicalSource;
+  readonly completeness: CeilingPhysicalCompleteness | "empty";
   readonly portions: readonly CeilingPortionPhysical[];
   readonly requirements: readonly MaterialRequirement[];
   readonly missingInfo: readonly string[];
@@ -655,6 +692,253 @@ function liningMaterialRequirement(params: {
   return [];
 }
 
+function bulkheadAssumptions(bulkhead: CeilingBulkheadTakeoff) {
+  const text: Array<{ key: string; text: string; source: "calculator_default" }> =
+    [];
+  if (bulkhead.topologyAssumption) {
+    text.push({
+      key: "topology",
+      text: bulkhead.topologyAssumption,
+      source: "calculator_default",
+    });
+  }
+  text.push({
+    key: "longitudinal_members",
+    text: CEILINGS_BULKHEAD_LONGITUDINAL_ASSUMPTION,
+    source: "calculator_default",
+  });
+  text.push({
+    key: "nog_spacing",
+    text: CEILINGS_BULKHEAD_NOG_SPACING_ASSUMPTION,
+    source: "calculator_default",
+  });
+  if (bulkhead.framingType === "timber") {
+    text.push({
+      key: "timber_size",
+      text: CEILINGS_BULKHEAD_TIMBER_SIZE_ASSUMPTION,
+      source: "calculator_default",
+    });
+  }
+  if (bulkhead.layerAssumption) {
+    text.push({
+      key: "layers",
+      text: bulkhead.layerAssumption,
+      source: "calculator_default",
+    });
+  }
+  text.push({
+    key: "end_caps",
+    text: CEILINGS_BULKHEAD_END_CAPS_EXCLUDED,
+    source: "calculator_default",
+  });
+  return text;
+}
+
+function bulkheadMaterialRequirements(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
+  portion: CeilingPortion;
+  bulkhead: CeilingBulkheadTakeoff;
+}): MaterialRequirement[] {
+  const { bulkhead, workArea, portion } = params;
+  if (bulkhead.status !== "ok" || bulkhead.framingLm == null) return [];
+  const variantKey = `${portion.id}::${bulkhead.componentId}`;
+  const assumptions = bulkheadAssumptions(bulkhead);
+  const shared = {
+    workAreaId: workArea.id,
+    workAreaType: workArea.type || "ceilings",
+    variantKey,
+    confidence: "high" as const,
+    assumptions,
+    provenance: {
+      calculatorSource: "ceilings-physical",
+      factKeys: [
+        "ceilings.portions",
+        "ceilings.bulkhead.length_m",
+        "ceilings.bulkhead.depth_m",
+        "ceilings.bulkhead.height_m",
+        "ceilings.bulkhead.framing_type",
+        "ceilings.bulkhead.lining_type",
+        "ceilings.bulkhead.thickness_mm",
+      ],
+      constraintKeys: [],
+    },
+    priced: false as const,
+    rateSource: "missing" as const,
+    unitCost: null,
+    totalCost: null,
+  };
+  const name = portion.label?.trim() || "Ceiling portion";
+  const rows: MaterialRequirement[] = [
+    buildMaterialRequirement({
+      ...shared,
+      componentKey:
+        bulkhead.framingType === "steel"
+          ? CEILINGS_BULKHEAD_FRAMING_STEEL_COMPONENT
+          : CEILINGS_BULKHEAD_FRAMING_TIMBER_COMPONENT,
+      description: `${name} — bulkhead framing`,
+      materialKey: bulkhead.framingMaterialKey,
+      materialIdentity:
+        bulkhead.framingType === "steel"
+          ? CEILING_BULKHEAD_STEEL_FRAMING_IDENTITY
+          : undefined,
+      category: "FRAMING",
+      specification: `${bulkhead.framingLm} lm bulkhead framing`,
+      baseQuantity: bulkhead.framingLm,
+      baseUnit: "lm",
+      wasteFactor: 0,
+      purchaseQuantity: bulkhead.framingLm,
+      purchaseUnit: "lm",
+    }),
+  ];
+  if (bulkhead.installedSheets != null) {
+    rows.push(
+      buildMaterialRequirement({
+        ...shared,
+        componentKey: CEILINGS_BULKHEAD_LINING_COMPONENT,
+        description: `${name} — bulkhead lining`,
+        materialKey: bulkhead.liningMaterialKey,
+        category: "LINING",
+        specification: bulkhead.liningSpecification ?? "Bulkhead lining",
+        baseQuantity: bulkhead.installedSheets,
+        baseUnit: "each",
+        wasteFactor: bulkhead.wasteFactor ?? 0,
+        purchaseQuantity: bulkhead.purchaseSheets ?? bulkhead.installedSheets,
+        purchaseUnit: "each",
+      })
+    );
+  }
+  return rows;
+}
+
+function insulationMaterialRequirement(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
+  portion: CeilingPortion;
+  insulation: CeilingInsulationTakeoff;
+}): MaterialRequirement | null {
+  const { insulation, workArea, portion } = params;
+  if (insulation.status !== "ok" || insulation.installedM2 == null) return null;
+  return buildMaterialRequirement({
+    workAreaId: workArea.id,
+    workAreaType: workArea.type || "ceilings",
+    componentKey: CEILINGS_INSULATION_COMPONENT,
+    variantKey: portion.id,
+    description: `${portion.label?.trim() || "Ceiling portion"} — insulation`,
+    confidence: insulation.specText ? "medium" : "low",
+    assumptions: [
+      {
+        key: "wastage",
+        text: CEILINGS_INSULATION_WASTAGE_UNRESOLVED,
+        source: "calculator_default",
+      },
+    ],
+    provenance: {
+      calculatorSource: "ceilings-physical",
+      factKeys: [
+        "ceilings.portions",
+        "ceilings.portion.insulation_included",
+        "ceilings.portion.insulation_type",
+        "ceilings.portion.area_m2",
+      ],
+      constraintKeys: [],
+    },
+    priced: false,
+    materialKey: insulation.materialKey,
+    materialIdentity: insulation.materialIdentity ?? undefined,
+    category: "INSULATION",
+    specification: insulation.specText ?? "Ceiling insulation",
+    baseQuantity: insulation.installedM2,
+    baseUnit: "m2",
+    wasteFactor: 0,
+    purchaseQuantity: insulation.purchaseM2 ?? insulation.installedM2,
+    purchaseUnit: "m2",
+    rateSource: "missing",
+    unitCost: null,
+    totalCost: null,
+  });
+}
+
+function includedStatusIncomplete(
+  status: string,
+  included: boolean
+): boolean {
+  if (!included) return false;
+  return status === "information_required" || status === "invalid";
+}
+
+function rollupPortionCompleteness(params: {
+  specialistKind: CeilingSpecialistKind | null;
+  unsupportedBulkhead: boolean;
+  missingBulkheads: boolean;
+  geometry: CeilingGeometryTakeoff;
+  timber: CeilingTimberFramingTakeoff;
+  steel: CeilingSteelFrameTakeoff;
+  suspended: CeilingSuspendedTakeoff;
+  lining: CeilingLiningTakeoff;
+  bulkheads: readonly CeilingBulkheadTakeoff[];
+  insulation: CeilingInsulationTakeoff;
+  skipOrdinary: boolean;
+}): CeilingPhysicalCompleteness {
+  if (params.specialistKind || params.unsupportedBulkhead) {
+    return CEILING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST;
+  }
+  if (params.missingBulkheads) {
+    return CEILING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED;
+  }
+  if (
+    includedStatusIncomplete(params.geometry.status, true) ||
+    includedStatusIncomplete(
+      params.timber.status,
+      params.timber.status !== "not_applicable"
+    ) ||
+    includedStatusIncomplete(
+      params.steel.status,
+      params.steel.status !== "not_applicable"
+    ) ||
+    includedStatusIncomplete(
+      params.suspended.status,
+      params.suspended.status !== "not_applicable"
+    ) ||
+    includedStatusIncomplete(
+      params.lining.status,
+      !params.skipOrdinary && params.lining.status !== "not_applicable"
+    ) ||
+    params.bulkheads.some(
+      (row) =>
+        row.status === "information_required" || row.status === "invalid"
+    ) ||
+    includedStatusIncomplete(
+      params.insulation.status,
+      params.insulation.status !== "not_applicable"
+    )
+  ) {
+    return CEILING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED;
+  }
+  return CEILING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL;
+}
+
+export function rollupCeilingsPhysicalCompleteness(
+  portions: readonly CeilingPortionPhysical[]
+): CeilingPhysicalCompleteness | "empty" {
+  if (portions.length === 0) return "empty";
+  if (
+    portions.some(
+      (row) =>
+        row.completeness === CEILING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST
+    )
+  ) {
+    return CEILING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST;
+  }
+  if (
+    portions.some(
+      (row) =>
+        row.completeness === CEILING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED
+    )
+  ) {
+    return CEILING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED;
+  }
+  return CEILING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL;
+}
+
 export function calculatePortionCeilingsPhysical(params: {
   workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
   portion: CeilingPortion;
@@ -663,6 +947,8 @@ export function calculatePortionCeilingsPhysical(params: {
   readonly portion: CeilingPortionPhysical;
   readonly requirements: readonly MaterialRequirement[];
 } {
+  const specialistKind = ceilingPortionSpecialistKind(params.portion);
+  const skipOrdinary = specialistKind != null;
   const geometry = deriveCeilingGeometry(params.portion);
   const timber = calculateCeilingTimberFraming(params.portion, geometry);
   const steel = calculateCeilingSteelFraming(params.portion, geometry);
@@ -672,9 +958,18 @@ export function calculatePortionCeilingsPhysical(params: {
     geometry,
     params.materialWastageSettings
   );
-  const suppressFraming = tileAndGridFamiliesDisagree(params.portion);
+  const bulkheads = calculateCeilingBulkheads({
+    portion: params.portion,
+    materialWastageSettings: params.materialWastageSettings,
+  });
+  const insulation = calculateCeilingInsulation({
+    portion: params.portion,
+    geometry,
+  });
+  const suppressFraming =
+    tileAndGridFamiliesDisagree(params.portion) || skipOrdinary;
   const requirements: MaterialRequirement[] = [];
-  if (!suppressFraming) {
+  if (!suppressFraming && !skipOrdinary) {
     const timberRow = timberMaterialRequirement({
       workArea: params.workArea,
       portion: params.portion,
@@ -700,13 +995,59 @@ export function calculatePortionCeilingsPhysical(params: {
       );
     }
   }
-  requirements.push(
-    ...liningMaterialRequirement({
-      workArea: params.workArea,
-      portion: params.portion,
-      lining,
-    })
-  );
+  if (!skipOrdinary) {
+    requirements.push(
+      ...liningMaterialRequirement({
+        workArea: params.workArea,
+        portion: params.portion,
+        lining,
+      })
+    );
+  }
+  for (const bulkhead of bulkheads) {
+    requirements.push(
+      ...bulkheadMaterialRequirements({
+        workArea: params.workArea,
+        portion: params.portion,
+        bulkhead,
+      })
+    );
+  }
+  const insulationRow = insulationMaterialRequirement({
+    workArea: params.workArea,
+    portion: params.portion,
+    insulation,
+  });
+  if (insulationRow) requirements.push(insulationRow);
+  if (!skipOrdinary) {
+    requirements.push(
+      ...ceilingFixingsRequirements({
+        workArea: params.workArea,
+        portion: params.portion,
+        timber,
+        steel,
+        suspended,
+        lining,
+        bulkheads,
+        includeFramingFixings: !suppressFraming,
+      })
+    );
+  }
+  const completeness = rollupPortionCompleteness({
+    specialistKind,
+    unsupportedBulkhead: ceilingPortionHasUnsupportedBulkhead(params.portion),
+    missingBulkheads:
+      params.portion.has_bulkheads === true &&
+      params.portion.bulkheads.length === 0,
+    geometry,
+    timber,
+    steel,
+    suspended,
+    lining,
+    bulkheads,
+    insulation,
+    skipOrdinary,
+  });
   return {
     portion: {
       workAreaId: params.workArea.id,
@@ -716,6 +1057,10 @@ export function calculatePortionCeilingsPhysical(params: {
       steel,
       suspended,
       lining,
+      bulkheads,
+      insulation,
+      completeness,
+      specialistKind,
     },
     requirements,
   };
@@ -736,6 +1081,7 @@ export function calculateCeilingsPhysical(params: {
       return {
         workAreaId,
         source: "legacy_skipped",
+        completeness: "empty",
         portions: [],
         requirements: [],
         missingInfo: [],
@@ -744,6 +1090,7 @@ export function calculateCeilingsPhysical(params: {
     return {
       workAreaId,
       source: "empty",
+      completeness: "empty",
       portions: [],
       requirements: [],
       missingInfo: [],
@@ -803,11 +1150,29 @@ export function calculateCeilingsPhysical(params: {
         missingInfo.push(calculated.portion.lining.reason);
       }
     }
+    for (const bulkhead of calculated.portion.bulkheads) {
+      if (
+        bulkhead.status === "information_required" ||
+        bulkhead.status === "invalid" ||
+        bulkhead.status === "unsupported_specialist"
+      ) {
+        if (bulkhead.reason) missingInfo.push(bulkhead.reason);
+      }
+    }
+    if (
+      calculated.portion.insulation.status === "information_required" ||
+      calculated.portion.insulation.status === "invalid"
+    ) {
+      if (calculated.portion.insulation.reason) {
+        missingInfo.push(calculated.portion.insulation.reason);
+      }
+    }
   }
 
   return {
     workAreaId,
     source: "canonical",
+    completeness: rollupCeilingsPhysicalCompleteness(portions),
     portions,
     requirements,
     missingInfo: [...new Set(missingInfo)],
@@ -817,5 +1182,15 @@ export function calculateCeilingsPhysical(params: {
 export function ceilingRequirementNestedItemId(
   requirement: MaterialRequirement
 ): string | undefined {
-  return requirement.variantKey;
+  const variant = requirement.variantKey;
+  if (!variant) return undefined;
+  return variant.includes("::") ? variant.split("::")[0] : variant;
+}
+
+export function ceilingRequirementComponentId(
+  requirement: MaterialRequirement
+): string | undefined {
+  const variant = requirement.variantKey;
+  if (!variant || !variant.includes("::")) return undefined;
+  return variant.split("::")[1];
 }
