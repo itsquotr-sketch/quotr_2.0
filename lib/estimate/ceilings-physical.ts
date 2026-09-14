@@ -469,6 +469,13 @@ function liningAssumptions(lining: CeilingLiningTakeoff) {
       source: "calculator_default",
     });
   }
+  if (lining.sheetSizeAssumption) {
+    text.push({
+      key: "sheet_size_assumption",
+      text: lining.sheetSizeAssumption,
+      source: "calculator_default",
+    });
+  }
   if (lining.areaM2 != null) {
     text.push({
       key: "area_m2",
@@ -476,7 +483,11 @@ function liningAssumptions(lining: CeilingLiningTakeoff) {
       source: "calculator_default",
     });
   }
-  if (lining.sheetLengthM != null && lining.sheetWidthM != null) {
+  if (
+    lining.sheetLengthM != null &&
+    lining.sheetWidthM != null &&
+    !lining.sheetSizeAssumption
+  ) {
     text.push({
       key: "sheet_size_m",
       text: `${lining.sheetLengthM} × ${lining.sheetWidthM} m sheets`,

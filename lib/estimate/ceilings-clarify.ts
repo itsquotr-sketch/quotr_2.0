@@ -56,6 +56,7 @@ import {
   CEILINGS_SPECIALIST_FIRE_ACOUSTIC_NOTICE,
   ceilingPortionHasUnknownProprietaryFireAcoustic,
 } from "@/lib/estimate/ceilings-specialist";
+import { ceilingDisclosedLiningAssumptionCurrentValue } from "@/lib/estimate/ceilings-disclosed-lining";
 
 export type CeilingsClarifyInput = {
   readonly facts: readonly EstimateFact[];
@@ -511,6 +512,12 @@ export function listCeilingsClarifyCandidates(
         continue;
       }
       if (isResolved(ceilingPortionFieldCurrentValue(portion, row.factKey), row.factKey)) {
+        continue;
+      }
+      if (
+        portion &&
+        ceilingDisclosedLiningAssumptionCurrentValue(portion, row.factKey)
+      ) {
         continue;
       }
       out.push(

@@ -516,9 +516,20 @@ check(
     )
 );
 
+const omittedLining = plasterPortion();
+omittedLining.lining.sheet_length_mm = undefined;
+omittedLining.lining.sheet_width_mm = undefined;
+omittedLining.lining.layers = null;
+const omittedCommercial = runCommercial([omittedLining]);
+const omittedReview = reviewOf(omittedCommercial.commercial, omittedCommercial.facts);
+const omittedLounge = omittedReview.workAreas[0]?.portionGroups?.find(
+  (row) => row.id === P1
+);
 check(
   "G assumptions surfaced",
-  (lounge?.assumptions.some((row) => /one layer/i.test(row)) ?? false) &&
+  (omittedLounge?.assumptions.some((row) => /3000\s*×\s*1200/i.test(row)) ?? false) &&
+    (omittedLounge?.assumptions.some((row) => /one layer/i.test(row)) ?? false) &&
+    !(lounge?.assumptions.some((row) => /ASSUMED_DISCLOSED|assumed_disclosed/i.test(row)) ?? false) &&
     !plasterReview.assumptions.some((row) => row.label === CEILINGS_DNA_COVERAGE) &&
     !plasterReview.assumptions.some((row) => row.label === CEILINGS_WIRE_LABOUR_DECISION) &&
     !isUserFacingEstimateAssumption(CEILINGS_DNA_COVERAGE)
@@ -956,8 +967,14 @@ check(
       true
 );
 
-const timberAssumptions = reviewOf(timber450.commercial, timber450.facts).workAreas[0]
-  ?.portionGroups?.[0]?.assumptions ?? [];
+const timberAssumed = timberPortion();
+timberAssumed.lining.layers = null;
+const timberAssumptionReview = reviewOf(
+  runCommercial([timberAssumed]).commercial,
+  writePortions([timberAssumed])
+);
+const timberAssumptions =
+  timberAssumptionReview.workAreas[0]?.portionGroups?.[0]?.assumptions ?? [];
 check(
   "assumption test surfaces spacing + one layer",
   timberAssumptions.some((row) => /450/i.test(row)) &&

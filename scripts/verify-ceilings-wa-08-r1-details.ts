@@ -11,7 +11,6 @@ import { join } from "node:path";
 import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import type { AIExtractionOutput } from "../lib/ai/schema";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
-import { detailsSectionForCandidate } from "../lib/assistant/clarify/details-groups";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import {
   identityFromCaptureRow,
@@ -28,6 +27,7 @@ import {
 } from "../lib/estimate/ceilings-clarify";
 import {
   CEILINGS_INFORMATION_CONTRACT,
+  ceilingsDetailsSectionId,
   ceilingsFactIsRelevant,
 } from "../lib/estimate/ceilings-information-contract";
 import {
@@ -69,10 +69,18 @@ const BH1 = "cccccccc-dddd-4eee-8fff-333333333333";
 const BRIEF =
   "Lounge ceiling is 4m x 3m with existing framing and 13mm Standard GIB.";
 const BEFORE_QUESTION_COUNT = 8;
+const AFTER_QUESTION_COUNT = 5;
 const BEFORE_FIRST_THREE = [
   "ceilings.portion.sheet_length_mm",
   "ceilings.portion.sheet_width_mm",
   "ceilings.portion.layers",
+] as const;
+const AFTER_REMAINING_KEYS = [
+  "ceilings.portion.height_m",
+  "ceilings.portion.insulation_included",
+  "ceilings.portion.bulkheads_present",
+  "ceilings.portion.stopping_included",
+  "ceilings.portion.painting_included",
 ] as const;
 
 const WA = {
@@ -385,20 +393,16 @@ check(
   Boolean(structureQ?.options?.length) &&
     structureQ?.inputType === "select" &&
     Boolean(productQ?.options?.length) &&
-    Boolean(thicknessQ?.options?.length) &&
-    fixtureQs.find((row) => row.factKey === "ceilings.portion.layers")
-      ?.inputType === "number" &&
-    fixtureQs.find((row) => row.factKey === "ceilings.portion.sheet_length_mm")
-      ?.inputType === "number"
+    Boolean(thicknessQ?.options?.length)
 );
 
-const sheetQ = fixtureQs.find(
-  (row) => row.factKey === "ceilings.portion.sheet_length_mm"
+const heightQ = fixtureQs.find(
+  (row) => row.factKey === "ceilings.portion.height_m"
 );
 check(
   "N assumption action appears only where contract permits",
-  sheetQ?.assumable === true &&
-    sheetQ.askClass === "ASSUME_IF_SKIPPED" &&
+  heightQ?.assumable === true &&
+    heightQ.askClass === "ASSUME_IF_SKIPPED" &&
     lengthQ?.assumable === false &&
     lengthQ.askClass === "HARD_MINIMUM" &&
     fixtureQs.find((row) => row.factKey === "ceilings.portion.insulation_included")
@@ -470,21 +474,17 @@ check(
     !fixtureKeys.includes("ceilings.portion.length_m")
 );
 
-const sheetSection = detailsSectionForCandidate(
-  fixtureQs.find((row) => row.factKey === "ceilings.portion.sheet_length_mm")!
-);
-const layersSection = detailsSectionForCandidate(
-  fixtureQs.find((row) => row.factKey === "ceilings.portion.layers")!
-);
 check(
   "sheet length/width sit in Materials, not Dimensions",
-  sheetSection === "materials" && layersSection === "materials"
+  ceilingsDetailsSectionId("ceilings.portion.sheet_length_mm") === "materials" &&
+    ceilingsDetailsSectionId("ceilings.portion.sheet_width_mm") === "materials" &&
+    ceilingsDetailsSectionId("ceilings.portion.layers") === "materials"
 );
 
 const afterQuestions = fixtureQs.map((row) => `${row.factKey}=${row.question}`);
 check(
   `AFTER fixture question count is ${fixtureQs.length} (BEFORE was ${BEFORE_QUESTION_COUNT})`,
-  fixtureQs.length === BEFORE_QUESTION_COUNT,
+  fixtureQs.length === AFTER_QUESTION_COUNT,
   afterQuestions.join(" | ")
 );
 check(
@@ -496,21 +496,9 @@ check(
 
 check(
   "fixture remaining questions have dedicated copy",
-  fixtureQs.some(
-    (row) =>
-      row.factKey === "ceilings.portion.sheet_length_mm" &&
-      row.question === "Sheet length?"
+  AFTER_REMAINING_KEYS.every((key) =>
+    fixtureQs.some((row) => row.factKey === key)
   ) &&
-    fixtureQs.some(
-      (row) =>
-        row.factKey === "ceilings.portion.sheet_width_mm" &&
-        row.question === "Sheet width?"
-    ) &&
-    fixtureQs.some(
-      (row) =>
-        row.factKey === "ceilings.portion.layers" &&
-        row.question === "How many layers?"
-    ) &&
     fixtureQs.some(
       (row) =>
         row.factKey === "ceilings.portion.bulkheads_present" &&
@@ -535,7 +523,10 @@ check(
       (row) =>
         row.factKey === "ceilings.portion.height_m" &&
         row.question === "Ceiling height?"
-    )
+    ) &&
+    !fixtureKeys.includes("ceilings.portion.sheet_length_mm") &&
+    !fixtureKeys.includes("ceilings.portion.sheet_width_mm") &&
+    !fixtureKeys.includes("ceilings.portion.layers")
 );
 
 const timberArea = createEmptyCeilingPortion({ id: P1, label: "Hall" });
@@ -640,16 +631,15 @@ check(
 );
 
 check(
-  "listCeilingsClarifyCandidates first unresolved keys match human-QA first 3",
+  "listCeilingsClarifyCandidates remaining keys match WA-08-R2 remaining 5",
   listCeilingsClarifyCandidates({
     facts: fixtureFacts,
     workAreaId: "c1",
     workAreaName: "Ceilings",
     briefText: BRIEF,
   })
-    .slice(0, 3)
     .map((row) => row.factKey)
-    .join(",") === BEFORE_FIRST_THREE.join(",")
+    .join(",") === AFTER_REMAINING_KEYS.join(",")
 );
 
 console.log("\n=== Fixture Details questions AFTER ===");

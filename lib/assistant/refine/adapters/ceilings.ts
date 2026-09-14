@@ -16,6 +16,7 @@ import type {
   RefineWorkAreaAdapter,
 } from "@/lib/assistant/refine/types";
 import { ceilingPortionFieldCurrentValue } from "@/lib/estimate/ceilings-clarify";
+import { ceilingDisclosedLiningAssumptionCurrentValue } from "@/lib/estimate/ceilings-disclosed-lining";
 import {
   ceilingsDetailsSectionId,
   ceilingsFactIsRelevant,
@@ -67,6 +68,8 @@ function candidate(params: {
   currentValue?: RefineCandidate["currentValue"];
   nestedItemId?: string | null;
   componentId?: string | null;
+  assumed?: boolean;
+  valueSource?: string | null;
 }): RefineCandidate {
   const identity = ceilingPortionQuestionIdentity({
     workAreaId: params.workAreaId,
@@ -100,6 +103,8 @@ function candidate(params: {
     nestedItemId: params.nestedItemId ?? null,
     componentId: params.componentId ?? null,
     consumedByCalculator: true,
+    assumed: params.assumed,
+    valueSource: params.valueSource ?? null,
   };
 }
 
@@ -149,6 +154,17 @@ function portionFields(
       structureFamily: portion.structure.family,
     });
     const copyLabel = ceilingQuestionLabel(factKey);
+    const stored = ceilingPortionFieldCurrentValue(
+      portion,
+      factKey,
+      componentId
+        ? portion.bulkheads.find((row) => row.id === componentId) ?? null
+        : null
+    );
+    const disclosed = ceilingDisclosedLiningAssumptionCurrentValue(
+      portion,
+      factKey
+    );
     pushIfResolved(out, {
       workAreaId,
       workAreaName,
@@ -160,13 +176,13 @@ function portionFields(
       unit,
       nestedItemId,
       componentId,
-      currentValue: ceilingPortionFieldCurrentValue(
-        portion,
-        factKey,
-        componentId
-          ? portion.bulkheads.find((row) => row.id === componentId) ?? null
-          : null
-      ),
+      currentValue: isResolved(stored)
+        ? stored
+        : disclosed
+          ? disclosed.value
+          : stored,
+      assumed: disclosed != null,
+      valueSource: disclosed?.source ?? null,
     });
   };
 

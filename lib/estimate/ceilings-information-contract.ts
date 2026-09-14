@@ -63,6 +63,10 @@ export const CEILINGS_TILE_SIZE_ASSUMPTION = "600x600";
 export const CEILINGS_LINING_LAYERS_ASSUMPTION = 1;
 export const CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT =
   "Assumes one layer of ceiling lining.";
+export const CEILINGS_PLASTERBOARD_SHEET_LENGTH_ASSUMPTION_MM = 3000;
+export const CEILINGS_PLASTERBOARD_SHEET_WIDTH_ASSUMPTION_MM = 1200;
+export const CEILINGS_PLASTERBOARD_SHEET_SIZE_ASSUMPTION_STATEMENT =
+  "Assumes 3000 × 1200 mm plasterboard sheets.";
 
 export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContractRow[] =
   [
@@ -245,7 +249,8 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       calculatorConsumed: false,
       physical: true,
       commercial: false,
-      reason: "Sheet length default. Plasterboard / plywood.",
+      reason:
+        "Sheet length. Ordinary plasterboard consumes 3000 mm as ASSUMED_DISCLOSED when omitted.",
     },
     {
       factKey: "ceilings.portion.sheet_width_mm",
@@ -254,7 +259,8 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       calculatorConsumed: false,
       physical: true,
       commercial: false,
-      reason: "Sheet width default. Plasterboard / plywood.",
+      reason:
+        "Sheet width. Ordinary plasterboard consumes 1200 mm as ASSUMED_DISCLOSED when omitted.",
     },
     {
       factKey: "ceilings.portion.layers",
@@ -264,7 +270,7 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       physical: true,
       commercial: true,
       reason:
-        "Lining layers where applicable (plasterboard). Omitted consumes 1 as ASSUMED_DISCLOSED.",
+        "Lining layers where applicable (plasterboard). Ordinary omitted consumes 1 as ASSUMED_DISCLOSED.",
     },
     {
       factKey: "ceilings.portion.height_m",

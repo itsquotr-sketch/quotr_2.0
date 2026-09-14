@@ -41,7 +41,18 @@ import {
 } from "@/lib/estimate/ceilings-geometry";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
-import { CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT } from "@/lib/estimate/ceilings-information-contract";
+import {
+  CEILINGS_LINING_LAYERS_ASSUMPTION,
+  CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT,
+  CEILINGS_PLASTERBOARD_SHEET_LENGTH_ASSUMPTION_MM,
+  CEILINGS_PLASTERBOARD_SHEET_SIZE_ASSUMPTION_STATEMENT,
+  CEILINGS_PLASTERBOARD_SHEET_WIDTH_ASSUMPTION_MM,
+} from "@/lib/estimate/ceilings-information-contract";
+import {
+  ceilingAllowsDisclosedPlasterboardLayers,
+  ceilingAllowsDisclosedPlasterboardSheetSize,
+  ceilingAllowsDisclosedPlasterboardSheetWidth,
+} from "@/lib/estimate/ceilings-disclosed-lining";
 
 export const CEILINGS_PLASTERBOARD_COMPONENT =
   "ceilings.lining.plasterboard.material" as const;
@@ -65,6 +76,7 @@ export const CEILING_TIMBER_LINING_EDGE_GAP_ASSUMPTION =
   "Edge gap on both sides equals the selected inter-board gap." as const;
 
 export type CeilingLayerCountSource = "known" | "assumed_disclosed";
+export type CeilingSheetSizeSource = "known" | "assumed_disclosed";
 
 export type CeilingLiningStatus =
   | "ok"
@@ -111,6 +123,8 @@ export type CeilingLiningTakeoff = {
   readonly layerCount: number | null;
   readonly layerCountSource: CeilingLayerCountSource | null;
   readonly layerAssumption: string | null;
+  readonly sheetSizeSource: CeilingSheetSizeSource | null;
+  readonly sheetSizeAssumption: string | null;
   readonly installedSheetsPerLayer: number | null;
   readonly purchaseSheetsPerLayer: number | null;
   readonly installedSheets: number | null;
@@ -215,6 +229,8 @@ function emptyTakeoff(
     layerCount: null,
     layerCountSource: null,
     layerAssumption: null,
+    sheetSizeSource: null,
+    sheetSizeAssumption: null,
     installedSheetsPerLayer: null,
     purchaseSheetsPerLayer: null,
     installedSheets: null,
@@ -382,6 +398,52 @@ function sheetDimsFromPortion(portion: CeilingPortion): {
   };
 }
 
+function plasterboardSheetDims(portion: CeilingPortion): {
+  lengthState: "missing" | "invalid" | "ok";
+  widthState: "missing" | "invalid" | "ok";
+  lengthMm: number | null;
+  widthMm: number | null;
+  source: CeilingSheetSizeSource | null;
+} {
+  const dims = sheetDimsFromPortion(portion);
+  if (dims.lengthState === "invalid" || dims.widthState === "invalid") {
+    return { ...dims, source: null };
+  }
+  let lengthMm = dims.lengthMm;
+  let widthMm = dims.widthMm;
+  let assumedLength = false;
+  let assumedWidth = false;
+  if (
+    widthMm == null &&
+    (lengthMm != null || ceilingAllowsDisclosedPlasterboardSheetSize(portion)) &&
+    ceilingAllowsDisclosedPlasterboardSheetWidth(portion)
+  ) {
+    widthMm = CEILINGS_PLASTERBOARD_SHEET_WIDTH_ASSUMPTION_MM;
+    assumedWidth = true;
+  }
+  if (
+    lengthMm == null &&
+    (widthMm == null ||
+      widthMm === CEILINGS_PLASTERBOARD_SHEET_WIDTH_ASSUMPTION_MM) &&
+    ceilingAllowsDisclosedPlasterboardSheetSize(portion)
+  ) {
+    lengthMm = CEILINGS_PLASTERBOARD_SHEET_LENGTH_ASSUMPTION_MM;
+    assumedLength = true;
+  }
+  if (lengthMm == null || widthMm == null) {
+    return { ...dims, lengthMm, widthMm, source: null };
+  }
+  const source: CeilingSheetSizeSource =
+    assumedLength || assumedWidth ? "assumed_disclosed" : "known";
+  return {
+    lengthState: "ok",
+    widthState: "ok",
+    lengthMm,
+    widthMm,
+    source,
+  };
+}
+
 function areaFromGeometry(geometry: CeilingGeometryTakeoff): number | null {
   if (geometry.status !== "ok" || geometry.area_m2 == null || !(geometry.area_m2 > 0)) {
     return null;
@@ -432,7 +494,7 @@ function plasterboardTakeoff(params: {
       unresolvedProduct
     );
   }
-  const dims = sheetDimsFromPortion(params.portion);
+  const dims = plasterboardSheetDims(params.portion);
   if (dims.lengthState === "invalid" || dims.widthState === "invalid") {
     return emptyTakeoff(
       nestedItemId,
@@ -478,13 +540,32 @@ function plasterboardTakeoff(params: {
     );
   }
   const layerKnown = layerState === "ok";
-  const layerCount = layerKnown ? (layerRaw as number) : 1;
+  if (!layerKnown && !ceilingAllowsDisclosedPlasterboardLayers(params.portion)) {
+    return emptyTakeoff(
+      nestedItemId,
+      "information_required",
+      "Lining layer count is required for this ceiling system.",
+      "plasterboard",
+      unresolvedProduct
+    );
+  }
+  const layerCount = layerKnown
+    ? (layerRaw as number)
+    : CEILINGS_LINING_LAYERS_ASSUMPTION;
   const layerCountSource: CeilingLayerCountSource = layerKnown
     ? "known"
     : "assumed_disclosed";
   const layerAssumption = layerKnown
     ? null
     : CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT;
+  const sheetSizeSource = dims.source;
+  const bothSheetDimsOmitted =
+    classifyPositive(params.portion.lining.sheet_length_mm) !== "ok" &&
+    classifyPositive(params.portion.lining.sheet_width_mm) !== "ok";
+  const sheetSizeAssumption =
+    sheetSizeSource === "assumed_disclosed" && bothSheetDimsOmitted
+      ? CEILINGS_PLASTERBOARD_SHEET_SIZE_ASSUMPTION_STATEMENT
+      : null;
   const counted = countCoveredAreaSheets({
     areaM2,
     sheetLengthM: dims.lengthMm / 1000,
@@ -517,6 +598,8 @@ function plasterboardTakeoff(params: {
     layerCount: counted.layerCount,
     layerCountSource,
     layerAssumption,
+    sheetSizeSource,
+    sheetSizeAssumption,
     installedSheetsPerLayer: counted.installedSheetsPerLayer,
     purchaseSheetsPerLayer: counted.purchaseSheetsPerLayer,
     installedSheets: counted.installedSheets,

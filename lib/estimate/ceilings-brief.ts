@@ -296,6 +296,33 @@ function parseDimensions(text: string): DimensionHit[] {
   return hits;
 }
 
+export function parseCeilingSheetSizeMmFromText(
+  text: string
+): { lengthMm: number; widthMm: number } | null {
+  const match = text.match(
+    /(\d{4})\s*[x×]\s*(\d{3,4})(?:\s*mm)?(?:\s*(?:plasterboard\s+)?sheets?)?/i
+  );
+  if (!match) return null;
+  const lengthMm = Number(match[1]);
+  const widthMm = Number(match[2]);
+  if (!(lengthMm >= 1800) || !(widthMm >= 600)) return null;
+  return { lengthMm, widthMm };
+}
+
+export function parseCeilingLiningLayersFromText(text: string): number | null {
+  const raw = normalise(text);
+  if (/\b(?:two|2)\s+layers?\b/.test(raw) || /\b2-layers?\b/.test(raw)) {
+    return 2;
+  }
+  if (/\b(?:three|3)\s+layers?\b/.test(raw) || /\b3-layers?\b/.test(raw)) {
+    return 3;
+  }
+  if (/\b(?:one|1)\s+layers?\b/.test(raw) || /\b1-layers?\b/.test(raw)) {
+    return 1;
+  }
+  return null;
+}
+
 const PORTION_LABEL_PATTERNS: readonly { pattern: RegExp; label: string }[] = [
   { pattern: /\bmain room\b/i, label: "Main room" },
   { pattern: /\blounge\b/i, label: "Lounge" },
@@ -438,6 +465,15 @@ function applySnippetToPortion(portion: CeilingPortion, snippet: string): void {
   if (thickness != null) {
     portion.lining.family = portion.lining.family ?? "plasterboard";
     portion.lining.thickness_mm = thickness;
+  }
+  const sheetSize = parseCeilingSheetSizeMmFromText(snippet);
+  if (sheetSize) {
+    portion.lining.sheet_length_mm = sheetSize.lengthMm;
+    portion.lining.sheet_width_mm = sheetSize.widthMm;
+  }
+  const layers = parseCeilingLiningLayersFromText(snippet);
+  if (layers != null) {
+    portion.lining.layers = layers;
   }
   const scope = canonicalCeilingJobScopeFromText(snippet);
   if (scope) portion.structure.job_scope = scope;

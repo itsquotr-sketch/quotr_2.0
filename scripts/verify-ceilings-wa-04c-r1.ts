@@ -377,15 +377,11 @@ check(
       (row) => row.text === CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT
     ) !== true &&
     layersLookup.askClass === "ASSUME_IF_SKIPPED" &&
-    listCeilingsClarifyCandidates({
+    !listCeilingsClarifyCandidates({
       facts: writePortions([portion({ product: "standard", thickness: 13 })]),
       workAreaId: "c1",
       workAreaName: "Ceilings",
-    }).some(
-      (row) =>
-        row.factKey === "ceilings.portion.layers" &&
-        row.assumptionStatement === CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT
-    )
+    }).some((row) => row.factKey === "ceilings.portion.layers")
 );
 
 const twoLayer = lining({ product: "standard", thickness: 13, layers: 2 });

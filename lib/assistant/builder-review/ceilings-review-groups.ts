@@ -21,9 +21,14 @@ import {
 import {
   CEILINGS_EDGE_OFFSET_ASSUMPTION_STATEMENT,
   CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT,
+  CEILINGS_PLASTERBOARD_SHEET_SIZE_ASSUMPTION_STATEMENT,
   CEILINGS_SUSPENSION_SPACING_ASSUMPTION_STATEMENT,
   CEILINGS_TIMBER_SPACING_ASSUMPTION_STATEMENT,
 } from "@/lib/estimate/ceilings-information-contract";
+import {
+  ceilingAllowsDisclosedPlasterboardLayers,
+  ceilingAllowsDisclosedPlasterboardSheetSize,
+} from "@/lib/estimate/ceilings-disclosed-lining";
 import { CEILING_TIMBER_LINING_EDGE_GAP_ASSUMPTION } from "@/lib/estimate/ceilings-lining";
 import {
   CEILINGS_BUILDER_REVIEW_PARTIAL_MESSAGE,
@@ -224,10 +229,30 @@ function builderFacingAssumptions(portion: CeilingPortion): string[] {
   const family = portion.structure.family;
   const lining = portion.lining.family;
   if (
-    (lining === "plasterboard" || lining === "plywood") &&
+    lining === "plasterboard" &&
+    ceilingAllowsDisclosedPlasterboardSheetSize(portion) &&
+    portion.lining.sheet_length_mm == null &&
+    portion.lining.sheet_width_mm == null
+  ) {
+    out.push(
+      `Assumed: ${CEILINGS_PLASTERBOARD_SHEET_SIZE_ASSUMPTION_STATEMENT.replace(/^Assumes\s+/i, "").replace(/\.$/, "")}`
+    );
+  }
+  if (
+    lining === "plasterboard" &&
+    ceilingAllowsDisclosedPlasterboardLayers(portion) &&
+    portion.lining.layers == null
+  ) {
+    out.push(
+      `Assumed: ${CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT.replace(/^Assumes\s+/i, "").replace(/\.$/, "")}`
+    );
+  } else if (
+    lining === "plywood" &&
     (portion.lining.layers == null || portion.lining.layers === 1)
   ) {
-    out.push(`Assumed: ${CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT.replace(/^Assumes\s+/i, "").replace(/\.$/, "")}`);
+    out.push(
+      `Assumed: ${CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT.replace(/^Assumes\s+/i, "").replace(/\.$/, "")}`
+    );
   }
   if (family === "timber_direct_fix" && portion.structure.timber?.spacing_mm === 450) {
     out.push(`Assumed: 450 mm timber framing centres`);
