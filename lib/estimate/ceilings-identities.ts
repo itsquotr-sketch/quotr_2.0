@@ -1,8 +1,9 @@
 /**
- * CEILINGS WA-05A — labour operations and productivity identities.
+ * CEILINGS WA-05A / WA-05B — labour operations and productivity identities.
  *
- * Physical material keys stay in the physical modules. These are the
- * commercial labour/productivity identities. No invented hours.
+ * Physical material keys stay in the physical modules. Quotr V1
+ * person-hours live in CEILINGS_QUOTR_PRODUCTIVITY_HOURS. Company DNA
+ * still does not cover Ceilings.
  */
 
 export const CEILINGS_TIMBER_FRAMING_LABOUR =
@@ -54,6 +55,44 @@ export const CEILINGS_PRODUCTIVITY_KEYS = {
   bulkheadLiningSheet: "ceilings.bulkhead.lining.install.hours_per_sheet",
   insulationM2: "ceilings.insulation.install.hours_per_m2",
 } as const;
+
+/** Quotr V1 person-hours per stated unit. Not Company DNA. */
+export const CEILINGS_QUOTR_PRODUCTIVITY_HOURS = {
+  [CEILINGS_PRODUCTIVITY_KEYS.timberFramingLm]: 0.12,
+  [CEILINGS_PRODUCTIVITY_KEYS.perimeterLm]: 0.08,
+  [CEILINGS_PRODUCTIVITY_KEYS.primaryLm]: 0.1,
+  [CEILINGS_PRODUCTIVITY_KEYS.furringLm]: 0.08,
+  [CEILINGS_PRODUCTIVITY_KEYS.clipEach]: 0.015,
+  [CEILINGS_PRODUCTIVITY_KEYS.dropperEach]: 0.1,
+  [CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet]: 0.5,
+  [CEILINGS_PRODUCTIVITY_KEYS.plywoodSheet]: 0.55,
+  [CEILINGS_PRODUCTIVITY_KEYS.timberLiningLm]: 0.1,
+  [CEILINGS_PRODUCTIVITY_KEYS.gridM2]: 0.18,
+  [CEILINGS_PRODUCTIVITY_KEYS.tileEach]: 0.025,
+  [CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingTimberLm]: 0.18,
+  [CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingSteelLm]: 0.16,
+  [CEILINGS_PRODUCTIVITY_KEYS.bulkheadLiningSheet]: 0.5,
+  [CEILINGS_PRODUCTIVITY_KEYS.insulationM2]: 0.05,
+} as const;
+
+export const TIMBER_FRAMING_140X45_H12_KEY =
+  "timber.framing.140x45.h1.2.lm" as const;
+export const TIMBER_FRAMING_140X45_H12_QUOTR_COST = 9.65;
+
+/** Residual consumables COST / physical unit. Company exact overrides. */
+export const CEILINGS_FIXINGS_QUOTR_COST = {
+  timberFramingLm: 0.75,
+  steelFramingLm: 0.6,
+  plasterboardM2: 2.5,
+  plywoodM2: 1.5,
+  timberLiningLm: 0.5,
+  bulkheadTimberFramingLm: 0.75,
+  bulkheadSteelFramingLm: 0.6,
+  bulkheadPlasterboardM2: 2.5,
+} as const;
+
+export const CEILINGS_PARTIAL_ESTIMATE_MESSAGE =
+  "PARTIAL ESTIMATE — PRICING REQUIRED" as const;
 
 export const CEILINGS_WIRE_LABOUR_DECISION =
   "V1 embeds ordinary suspension-wire installation in dropper productivity. No separate hours/lm wire operation. Do not double-count dropper + wire labour." as const;

@@ -1,9 +1,9 @@
 /**
- * CEILINGS WA-05A — commercial requirement layer.
+ * CEILINGS WA-05B — commercial requirement layer.
  *
  * Consumes calculateCeilingsPhysical. Does not recalculate geometry.
- * Does not invent Quotr COST or productivity numbers. Hosted nested
- * estimate remains guarded in calculateCeilings.
+ * Nested hosted estimate: calculateCeilings → physical → this module.
+ * Legacy flat Ceilings stay on calculateAreaBasedFitout.
  */
 
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
@@ -31,6 +31,8 @@ import {
 } from "@/lib/estimate/ceilings-bulkheads";
 import {
   CEILINGS_FIXINGS_BULKHEAD_FRAMING_COMPONENT,
+  CEILINGS_FIXINGS_BULKHEAD_FRAMING_STEEL_KEY,
+  CEILINGS_FIXINGS_BULKHEAD_FRAMING_TIMBER_KEY,
   CEILINGS_FIXINGS_BULKHEAD_LINING_COMPONENT,
   CEILINGS_FIXINGS_PLASTERBOARD_COMPONENT,
   CEILINGS_FIXINGS_PLYWOOD_COMPONENT,
@@ -42,6 +44,7 @@ import { CEILINGS_TIMBER_FRAMING_COMPONENT } from "@/lib/estimate/ceilings-frami
 import {
   CEILINGS_PLASTERBOARD_COMPONENT,
   CEILINGS_PLYWOOD_COMPONENT,
+  CEILING_PLYWOOD_SHEET_KEY,
   CEILINGS_TILE_GRID_GRID_COMPONENT,
   CEILINGS_TILE_GRID_TILE_COMPONENT,
   CEILINGS_TIMBER_LINING_COMPONENT,
@@ -62,6 +65,7 @@ import {
   CEILINGS_DNA_COVERAGE,
   CEILINGS_GRID_LABOUR,
   CEILINGS_INSULATION_LABOUR,
+  CEILINGS_PARTIAL_ESTIMATE_MESSAGE,
   CEILINGS_PLASTERBOARD_LABOUR,
   CEILINGS_PLYWOOD_LABOUR,
   CEILINGS_PRODUCTIVITY_KEYS,
@@ -77,6 +81,7 @@ import {
   CEILINGS_WIRE_LABOUR_DECISION,
   type CeilingLabourOperationSpec,
 } from "@/lib/estimate/ceilings-identities";
+import { derivedDimensionedPlasterboardCost } from "@/lib/estimate/ceilings-plasterboard-derived-cost";
 import { round2 } from "@/lib/estimate/facts";
 import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
@@ -86,8 +91,8 @@ import {
 } from "@/lib/estimate/line-items";
 import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
 import {
-  findCompanyProductivityRate,
   getQuotrProductivityBenchmark,
+  resolveProductivity,
 } from "@/lib/estimate/productivity";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { resolveLabourRate } from "@/lib/estimate/rates";
@@ -269,6 +274,30 @@ export function quotrCatalogueCost(itemKey: string | null): number | null {
   return null;
 }
 
+export function isGenericPlywoodSpecification(
+  specification: string | null | undefined
+): boolean {
+  const spec = (specification ?? "").trim().toLowerCase();
+  if (!spec) return true;
+  return (
+    spec === "generic" ||
+    spec === "plywood" ||
+    spec === "plywood sheet" ||
+    spec === "standard"
+  );
+}
+
+export function quotrCeilingMaterialCost(itemKey: string | null): {
+  readonly unitCost: number;
+  readonly derived: ReturnType<typeof derivedDimensionedPlasterboardCost>;
+} | null {
+  const catalogue = quotrCatalogueCost(itemKey);
+  if (catalogue != null) return { unitCost: catalogue, derived: null };
+  const derived = derivedDimensionedPlasterboardCost(itemKey);
+  if (derived != null) return { unitCost: derived.derivedCost, derived };
+  return null;
+}
+
 function findExactMaterialRate(
   rates: readonly OrganisationRate[],
   itemKey: string,
@@ -365,15 +394,45 @@ export function priceCeilingMaterial(params: {
     };
   }
   if (quotrStartersAllowed(params.organisationSettings)) {
-    const benchmark = quotrCatalogueCost(key);
-    if (benchmark != null) {
-      return {
-        ...requirement,
-        priced: true,
-        unitCost: benchmark,
-        totalCost: round2(requirement.purchaseQuantity * benchmark),
-        rateSource: "benchmark",
-      };
+    const skipGenericPlywood =
+      key === CEILING_PLYWOOD_SHEET_KEY &&
+      !isGenericPlywoodSpecification(requirement.specification);
+    if (!skipGenericPlywood) {
+      const catalogue = quotrCatalogueCost(key);
+      if (catalogue != null) {
+        return {
+          ...requirement,
+          priced: true,
+          unitCost: catalogue,
+          totalCost: round2(requirement.purchaseQuantity * catalogue),
+          rateSource: "benchmark",
+        };
+      }
+      const derived = derivedDimensionedPlasterboardCost(key);
+      if (derived != null) {
+        return {
+          ...requirement,
+          priced: true,
+          unitCost: derived.derivedCost,
+          totalCost: round2(requirement.purchaseQuantity * derived.derivedCost),
+          rateSource: "benchmark",
+          conversion: {
+            from: derived.baseKey,
+            to: key,
+            factor: derived.ratio,
+            sourceUnitCost: derived.baseCost,
+            basis: derived.basis,
+          },
+          assumptions: [
+            ...requirement.assumptions,
+            {
+              key: "derived_plasterboard_cost",
+              text: `Quotr derived COST from ${derived.baseKey} $${derived.baseCost} × ${derived.ratio} (sheet area ${derived.targetAreaM2} / 2.88 m²). Same family and thickness only.`,
+              source: "benchmark",
+            },
+          ],
+        };
+      }
     }
   }
   return {
@@ -394,23 +453,26 @@ export function resolveCeilingProductivity(params: {
   source: RequirementRateSource;
   sourceType: RateSourceType;
 } {
-  const company = findCompanyProductivityRate(
-    params.rates,
-    params.productivityKey,
-    params.unit
-  );
-  if (company?.cost_rate != null) {
-    const calibrated = company.source === "calibrated_productivity";
+  const resolved = resolveProductivity({
+    productivityKey: params.productivityKey,
+    unit: params.unit,
+    fallbackHoursPerUnit: 0,
+    rates: params.rates,
+  });
+  if (
+    resolved.sourceType === "user_rate" ||
+    resolved.sourceType === "calibrated_productivity"
+  ) {
     return {
-      hoursPerUnit: Number(company.cost_rate),
+      hoursPerUnit: resolved.hoursPerUnit,
       source: "company",
-      sourceType: calibrated ? "calibrated_productivity" : "user_rate",
+      sourceType: resolved.sourceType,
     };
   }
   const quotr = getQuotrProductivityBenchmark(params.productivityKey);
   if (quotr && quotr.hoursPerUnit > 0) {
     return {
-      hoursPerUnit: quotr.hoursPerUnit,
+      hoursPerUnit: resolved.hoursPerUnit > 0 ? resolved.hoursPerUnit : quotr.hoursPerUnit,
       source: "benchmark",
       sourceType: "productivity",
     };
@@ -680,6 +742,7 @@ function labourLine(params: {
         labourHours: 0,
         productivityRate: params.requirement.productivityBasis.hoursPerUnit,
         productivityUnit: unit,
+        productivitySourceType: "missing",
         sellDerivedFromMargin: false,
         sellAuthority: undefined,
       },
@@ -721,6 +784,10 @@ function labourLine(params: {
       componentId,
       sellDerivedFromMargin: params.labourSellDerived,
       sellAuthority: params.labourSellAuthority,
+      productivitySourceType:
+        params.requirement.rateProvenance === "company"
+          ? "user_rate"
+          : "productivity",
       sortOrder: params.sortOrder,
       notes: `${hours} person-hours × $${params.requirement.hourlyCost}/h cost. Installed ${qty} ${unit}.`,
       ...amounts,
@@ -753,14 +820,16 @@ function mergeCeilingMaterialLines(
   const merged = defaultMergeSameIdentityCommercialLines(members);
   const portions = [
     ...new Set(
-      members
-        .map((item) => item.nestedItemId)
-        .filter((id): id is string => Boolean(id))
+      members.flatMap((item) => [
+        ...(item.contributingNestedItemIds ?? []),
+        item.nestedItemId,
+      ]).filter((id): id is string => Boolean(id))
     ),
   ];
   return {
     ...merged,
     nestedItemId: members[0]?.nestedItemId,
+    contributingNestedItemIds: portions,
     notes: [
       members[0]?.notes,
       portions.length > 1 ? `Portions: ${portions.join(", ")}` : null,
@@ -853,7 +922,9 @@ export function ceilingCommercialCoverageTable(): CeilingRateCoverageRow[] {
     productivityKey: string | null,
     extras?: { companyMaterial?: boolean }
   ): CeilingRateCoverageRow => {
-    const quotrCost = quotrCatalogueCost(materialKey) != null;
+    const quotrCost =
+      quotrCatalogueCost(materialKey) != null ||
+      derivedDimensionedPlasterboardCost(materialKey) != null;
     const quotrProd = productivityKey
       ? getQuotrProductivityBenchmark(productivityKey) != null
       : false;
@@ -1041,9 +1112,15 @@ export function ceilingCommercialCoverageTable(): CeilingRateCoverageRow[] {
       null
     ),
     row(
-      "Bulkhead framing fixings",
+      "Bulkhead timber framing fixings",
       "lm",
-      "ceilings.fixings.bulkhead_framing",
+      CEILINGS_FIXINGS_BULKHEAD_FRAMING_TIMBER_KEY,
+      null
+    ),
+    row(
+      "Bulkhead steel framing fixings",
+      "lm",
+      CEILINGS_FIXINGS_BULKHEAD_FRAMING_STEEL_KEY,
       null
     ),
     row(
@@ -1199,15 +1276,28 @@ export function commercializeCeilings(params: {
     );
   }
 
+  const completeness = rollupCompleteness(params.physical, requirements);
+  const missingInfo = [...params.physical.missingInfo];
+  if (
+    completeness === CEILING_COMMERCIAL_COMPLETENESS.PRICING_REQUIRED ||
+    completeness === CEILING_COMMERCIAL_COMPLETENESS.UNSUPPORTED_SPECIALIST
+  ) {
+    missingInfo.push(CEILINGS_PARTIAL_ESTIMATE_MESSAGE);
+    for (const requirement of requirements) {
+      if (requirement.priced) continue;
+      missingInfo.push(`Pricing required: ${requirement.description}`);
+    }
+  }
+
   return {
-    completeness: rollupCompleteness(params.physical, requirements),
+    completeness,
     requirements,
     lineItems: aggregated.filter(
       (item) => !ceilingCommercialOwnsFinishMoney(item)
     ),
     coverage: ceilingCommercialCoverageTable(),
     assumptions,
-    missingInfo: [...params.physical.missingInfo],
+    missingInfo,
     wireLabourDecision: CEILINGS_WIRE_LABOUR_DECISION,
     dnaCoverage: CEILINGS_DNA_COVERAGE,
   };
@@ -1219,4 +1309,8 @@ export function ceilingLabourUsesInstalledQuantity(
   return requirement.productivityBasis.quantity > 0;
 }
 
-export { CEILINGS_DNA_COVERAGE, CEILINGS_WIRE_LABOUR_DECISION };
+export {
+  CEILINGS_DNA_COVERAGE,
+  CEILINGS_PARTIAL_ESTIMATE_MESSAGE,
+  CEILINGS_WIRE_LABOUR_DECISION,
+};

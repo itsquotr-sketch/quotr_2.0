@@ -74,9 +74,13 @@ import {
   wallTypesRequiredForScope,
 } from "@/lib/estimate/internal-walls-scope";
 import {
-  CEILINGS_NESTED_NOT_CALCULATED_MESSAGE,
   hasCanonicalCeilingsPortions,
 } from "@/lib/estimate/ceilings-portions";
+import { calculateCeilingsPhysical } from "@/lib/estimate/ceilings-physical";
+import {
+  CEILING_COMMERCIAL_COMPLETENESS,
+  commercializeCeilings,
+} from "@/lib/estimate/ceilings-commercial";
 
 function gmSell(
   cost: number,
@@ -660,23 +664,41 @@ export function calculateCeilings(
   workArea: EstimateWorkArea
 ): CalculatorResult {
   /**
-   * LEGACY CEILINGS CALCULATOR — WA-03A / WA-03B.
-   * Package / area_m2 fallback. Hosted runtime until the nested Ceiling
-   * Portion calculator (WA-04) is gated in.
-   *
-   * Temporary WA-03B safety: canonical nested `ceilings.portions` must
-   * not silently estimate through this flat calculator.
+   * Dual path:
+   * - Canonical nested `ceilings.portions` → physical + commercializeCeilings.
+   *   Never FITOUT_BENCHMARKS.ceilingsPerM2 / package add-ons.
+   * - LEGACY CEILINGS CALCULATOR: flat projects (no portions) → area_m2 package.
    */
   const { facts } = context;
   if (hasCanonicalCeilingsPortions(facts, workArea.id)) {
+    const physical = calculateCeilingsPhysical({
+      facts,
+      workArea,
+      materialWastageSettings: context.materialWastageSettings,
+    });
+    const commercial = commercializeCeilings({
+      physical,
+      workArea,
+      rates: context.rates,
+      organisationSettings: context.organisationSettings,
+    });
+    const missingInfo = [...commercial.missingInfo];
+    if (
+      commercial.completeness ===
+        CEILING_COMMERCIAL_COMPLETENESS.INFORMATION_REQUIRED &&
+      missingInfo.length === 0
+    ) {
+      missingInfo.push(
+        `${workArea.name}: Ceiling details are incomplete — estimate is not ready.`
+      );
+    }
     return {
-      lineItems: [],
-      assumptions: [],
-      missingInfo: [
-        `${workArea.name}: ${CEILINGS_NESTED_NOT_CALCULATED_MESSAGE}`,
-      ],
+      lineItems: [...commercial.lineItems],
+      assumptions: [...commercial.assumptions],
+      missingInfo,
       exclusions: [],
-      confidence: 20,
+      confidence: baseConfidence(missingInfo.length),
+      requirements: commercial.requirements,
     };
   }
   const result = calculateAreaBasedFitout(context, workArea, {

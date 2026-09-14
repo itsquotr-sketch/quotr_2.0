@@ -114,6 +114,8 @@ export type EstimateLineItemInput = {
   nestedItemId?: string;
   /** Nested component (e.g. bulkhead) when the line is not portion-scoped. */
   componentId?: string;
+  /** Compatible same-product aggregation contributors (Portion ids). */
+  contributingNestedItemIds?: string[];
   costRate?: number;
   sellRate?: number;
   sellDerivedFromMargin?: boolean;

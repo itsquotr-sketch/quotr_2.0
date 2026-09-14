@@ -700,19 +700,19 @@ const nestedHosted = calculateEstimate(
   )
 );
 check(
-  "Z hosted nested guard still holds",
+  "Z nested Ceiling uses the new engine, never the temporary guard",
   hasCanonicalCeilingsPortions(writePortions([steelPortion({})]), "c1") &&
-    nestedHosted.lineItems.length === 0 &&
-    nestedHosted.missingInfo.some((row) =>
+    nestedHosted.lineItems.length > 0 &&
+    !nestedHosted.missingInfo.some((row) =>
       row.includes(CEILINGS_NESTED_NOT_CALCULATED_MESSAGE)
     ) &&
-    !nestedHosted.lineItems.some((item) => item.quantity === 32) &&
-    !nestedHosted.lineItems.some((item) => item.quantity === 9.6) &&
-    !read("lib/estimate/calculators/fitout.ts").includes(
+    !nestedHosted.lineItems.some((item) =>
+      /materials allowance/i.test(item.label)
+    ) &&
+    read("lib/estimate/calculators/fitout.ts").includes(
       "calculateCeilingsPhysical"
     ) &&
-    !read("lib/estimate/calculators/fitout.ts").includes("ceilings-physical") &&
-    !read("lib/estimate/calculators/fitout.ts").includes("ceilings-steel")
+    read("lib/estimate/calculators/fitout.ts").includes("commercializeCeilings")
 );
 
 const legacyFacts: EstimateFact[] = [

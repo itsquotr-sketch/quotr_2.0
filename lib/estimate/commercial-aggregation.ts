@@ -95,6 +95,14 @@ export function defaultMergeSameIdentityCommercialLines<
     sellHigh: round2(
       members.reduce((sum, item) => sum + Number(item.sellHigh ?? 0), 0)
     ),
+    contributingNestedItemIds: [
+      ...new Set(
+        members.flatMap((item) => [
+          ...(item.contributingNestedItemIds ?? []),
+          item.nestedItemId,
+        ]).filter((id): id is string => Boolean(id))
+      ),
+    ],
   };
 }
 

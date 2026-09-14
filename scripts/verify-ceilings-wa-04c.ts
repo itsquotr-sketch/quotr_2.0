@@ -841,13 +841,16 @@ const nestedHosted = calculateEstimate(
   )
 );
 check(
-  "AG hosted nested guard still holds",
-  nestedHosted.lineItems.length === 0 &&
-    nestedHosted.missingInfo.some((row) =>
+  "AG nested Ceiling uses the new engine, never the temporary guard",
+  nestedHosted.lineItems.length > 0 &&
+    !nestedHosted.missingInfo.some((row) =>
       row.includes(CEILINGS_NESTED_NOT_CALCULATED_MESSAGE)
     ) &&
-    !read("lib/estimate/calculators/fitout.ts").includes("calculateCeilingsPhysical") &&
-    !read("lib/estimate/calculators/fitout.ts").includes("ceilings-lining")
+    !nestedHosted.lineItems.some((item) =>
+      /materials allowance/i.test(item.label)
+    ) &&
+    read("lib/estimate/calculators/fitout.ts").includes("calculateCeilingsPhysical") &&
+    read("lib/estimate/calculators/fitout.ts").includes("commercializeCeilings")
 );
 
 const legacyFacts: EstimateFact[] = [

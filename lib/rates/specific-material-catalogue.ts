@@ -51,9 +51,17 @@ import {
   INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
   INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS,
 } from "@/lib/estimate/internal-walls-identities";
-import { CEILINGS_PRODUCTIVITY_KEYS } from "@/lib/estimate/ceilings-identities";
+import {
+  CEILINGS_FIXINGS_QUOTR_COST,
+  CEILINGS_PRODUCTIVITY_KEYS,
+  CEILINGS_QUOTR_PRODUCTIVITY_HOURS,
+  TIMBER_FRAMING_140X45_H12_KEY,
+  TIMBER_FRAMING_140X45_H12_QUOTR_COST,
+} from "@/lib/estimate/ceilings-identities";
 import {
   CEILINGS_FIXINGS_BULKHEAD_FRAMING_COMPONENT,
+  CEILINGS_FIXINGS_BULKHEAD_FRAMING_STEEL_KEY,
+  CEILINGS_FIXINGS_BULKHEAD_FRAMING_TIMBER_KEY,
   CEILINGS_FIXINGS_BULKHEAD_LINING_COMPONENT,
   CEILINGS_FIXINGS_PLASTERBOARD_COMPONENT,
   CEILINGS_FIXINGS_PLYWOOD_COMPONENT,
@@ -394,14 +402,15 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     recommended: true,
   }),
   entry({
-    item_key: "timber.framing.140x45.h1.2.lm",
+    item_key: TIMBER_FRAMING_140X45_H12_KEY,
     label: "140 × 45 H1.2 radiata pine framing",
     rate_type: "material",
     category: "material",
     workAreaLabel: "Framing timber",
     unit: "lm",
     description:
-      "Canonical physical 140×45 H1.2 interior framing. Shared across Work Areas. Not Deck H3.2 140×45. No invented Quotr $/lm — company exact rate, else Pricing Required. Do not create Work-Area-scoped physical timber rows.",
+      "Canonical physical 140×45 H1.2 interior framing. Shared across Work Areas. Not Deck H3.2 140×45. Provisional Quotr COST $9.65/lm. Company exact wins. Sell derives from applicable gross margin. Do not create Work-Area-scoped physical timber rows.",
+    defaultCostRate: TIMBER_FRAMING_140X45_H12_QUOTR_COST,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -610,7 +619,8 @@ export const CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] =
     workAreaLabel: "Ceiling fixings",
     unit: "lm",
     description:
-      "Residual timber-framing fixings / consumables on installed framing LM. Not a screw count. No invented Quotr allowance in WA-05A — company exact, else Pricing Required. Not Internal Walls $/m² fixings.",
+      "Residual timber-framing fixings / consumables on installed framing LM. Not a screw count. Quotr COST $0.75/lm. Company exact wins. Sell derives from applicable gross margin. Not Internal Walls $/m² fixings.",
+    defaultCostRate: CEILINGS_FIXINGS_QUOTR_COST.timberFramingLm,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -623,7 +633,8 @@ export const CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] =
     workAreaLabel: "Ceiling fixings",
     unit: "lm",
     description:
-      "Residual steel-framing consumables on installed steel LM. Clips, droppers, and wire are counted separately. No invented Quotr allowance in WA-05A.",
+      "Residual steel-framing consumables on installed steel LM. Clips, droppers, and wire are counted separately. Quotr COST $0.60/lm. Company exact wins.",
+    defaultCostRate: CEILINGS_FIXINGS_QUOTR_COST.steelFramingLm,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -635,7 +646,8 @@ export const CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] =
     workAreaLabel: "Ceiling fixings",
     unit: "m2",
     description:
-      "Plasterboard lining fixings allowance on installed lining area. Not a screw-count takeoff. No invented Quotr allowance in WA-05A.",
+      "Plasterboard lining fixings allowance on installed lining area. Not a screw-count takeoff. Quotr COST $2.50/m². Company exact wins.",
+    defaultCostRate: CEILINGS_FIXINGS_QUOTR_COST.plasterboardM2,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -647,7 +659,8 @@ export const CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] =
     workAreaLabel: "Ceiling fixings",
     unit: "m2",
     description:
-      "Plywood lining fixings allowance on installed lining area. Distinct from plasterboard. No invented Quotr allowance in WA-05A.",
+      "Plywood lining fixings allowance on installed lining area. Distinct from plasterboard. Quotr COST $1.50/m². Company exact wins.",
+    defaultCostRate: CEILINGS_FIXINGS_QUOTR_COST.plywoodM2,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -659,19 +672,46 @@ export const CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] =
     workAreaLabel: "Ceiling fixings",
     unit: "lm",
     description:
-      "Timber-lining fixings allowance on installed lining LM. No invented Quotr allowance in WA-05A.",
+      "Timber-lining fixings allowance on installed lining LM. Quotr COST $0.50/lm. Company exact wins.",
+    defaultCostRate: CEILINGS_FIXINGS_QUOTR_COST.timberLiningLm,
     calculatorSupport: "used_now",
   }),
   entry({
     item_key: CEILINGS_FIXINGS_BULKHEAD_FRAMING_COMPONENT,
-    label: "Ceiling bulkhead framing fixings",
+    label: "Ceiling bulkhead framing fixings (legacy identity)",
     rate_type: "material",
     category: "material",
     work_area_type: "ceilings",
     workAreaLabel: "Ceiling fixings",
     unit: "lm",
     description:
-      "Bulkhead framing residual fixings on installed bulkhead framing LM. No invented Quotr allowance in WA-05A.",
+      "Legacy bulkhead framing fixings identity. Nested takeoff emits timber/steel-specific keys. Leftover — do not use as V1 COST authority.",
+    calculatorSupport: "leftover",
+  }),
+  entry({
+    item_key: CEILINGS_FIXINGS_BULKHEAD_FRAMING_TIMBER_KEY,
+    label: "Ceiling bulkhead timber framing fixings",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceiling fixings",
+    unit: "lm",
+    description:
+      "Bulkhead timber framing residual fixings on installed bulkhead framing LM. Quotr COST $0.75/lm. Company exact wins.",
+    defaultCostRate: CEILINGS_FIXINGS_QUOTR_COST.bulkheadTimberFramingLm,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: CEILINGS_FIXINGS_BULKHEAD_FRAMING_STEEL_KEY,
+    label: "Ceiling bulkhead steel framing residual fixings",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceiling fixings",
+    unit: "lm",
+    description:
+      "Bulkhead steel framing residual fixings on installed bulkhead framing LM. Quotr COST $0.60/lm. Company exact wins.",
+    defaultCostRate: CEILINGS_FIXINGS_QUOTR_COST.bulkheadSteelFramingLm,
     calculatorSupport: "used_now",
   }),
   entry({
@@ -683,7 +723,8 @@ export const CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] =
     workAreaLabel: "Ceiling fixings",
     unit: "m2",
     description:
-      "Bulkhead lining residual fixings on installed bulkhead lining area. No invented Quotr allowance in WA-05A.",
+      "Bulkhead plasterboard lining residual fixings on installed bulkhead lining area. Quotr COST $2.50/m². Company exact wins.",
+    defaultCostRate: CEILINGS_FIXINGS_QUOTR_COST.bulkheadPlasterboardM2,
     calculatorSupport: "used_now",
   }),
 ];
@@ -2285,7 +2326,8 @@ function ceilingProductivityEntry(
   itemKey: string,
   label: string,
   unit: string,
-  description: string
+  description: string,
+  hoursPerUnit: number
 ): RateCatalogueEntry {
   return entry({
     item_key: itemKey,
@@ -2295,7 +2337,8 @@ function ceilingProductivityEntry(
     work_area_type: "ceilings",
     workAreaLabel: "Ceilings productivity",
     unit,
-    description: `${description} No invented Quotr hours in WA-05A — company exact, else Pricing Required.`,
+    description: `${description} Quotr V1 fallback hours. Company DNA / company productivity override this. Not a labour $/h rate.`,
+    defaultCostRate: hoursPerUnit,
     calculatorSupport: "used_now",
     recommended: true,
   });
@@ -2306,91 +2349,114 @@ export const CEILING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     CEILINGS_PRODUCTIVITY_KEYS.timberFramingLm,
     "Ceiling timber framing (hours/lm)",
     "lm",
-    "Person-hours per installed framing LM. Not purchase/waste LM."
+    "Person-hours per installed framing LM. Not purchase/waste LM.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.timberFramingLm]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.perimeterLm,
     "Ceiling perimeter track (hours/lm)",
     "lm",
-    "Person-hours per installed perimeter track LM."
+    "Person-hours per installed perimeter track LM.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.perimeterLm]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.primaryLm,
     "Ceiling primary channel (hours/lm)",
     "lm",
-    "Person-hours per installed primary channel LM."
+    "Person-hours per installed primary channel LM.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.primaryLm]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.furringLm,
     "Ceiling furring channel (hours/lm)",
     "lm",
-    "Person-hours per installed furring channel LM."
+    "Person-hours per installed furring channel LM.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.furringLm]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.clipEach,
     "Ceiling crossover clip (hours/each)",
     "each",
-    "Person-hours per installed clip."
+    "Person-hours per installed clip.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.clipEach]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.dropperEach,
     "Ceiling dropper (hours/each, includes ordinary wire)",
     "each",
-    "Person-hours per dropper. Ordinary suspension-wire install is embedded. Do not double-count wire hours."
+    "Person-hours per dropper. Ordinary suspension-wire install is embedded. Do not double-count wire hours.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.dropperEach]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet,
     "Ceiling plasterboard (hours/installed sheet)",
     "sheet",
-    "Person-hours per installed sheet. Not purchase/waste sheets. Not stopping."
+    "Person-hours per installed sheet. Not purchase/waste sheets. Not stopping.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[
+      CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet
+    ]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.plywoodSheet,
     "Ceiling plywood (hours/installed sheet)",
     "sheet",
-    "Person-hours per installed plywood sheet. Not plasterboard productivity."
+    "Person-hours per installed plywood sheet. Not plasterboard productivity.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.plywoodSheet]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.timberLiningLm,
     "Ceiling timber lining (hours/lm)",
     "lm",
-    "Person-hours per installed lining LM."
+    "Person-hours per installed lining LM.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.timberLiningLm]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.gridM2,
     "Ceiling T-grid (hours/m²)",
     "m2",
-    "Person-hours per installed grid m²."
+    "Person-hours per installed grid m².",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.gridM2]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.tileEach,
     "Ceiling tile (hours/tile)",
     "each",
-    "Person-hours per installed tile. Not purchase/waste tiles."
+    "Person-hours per installed tile. Not purchase/waste tiles.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.tileEach]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingTimberLm,
     "Ceiling bulkhead timber framing (hours/lm)",
     "lm",
-    "Person-hours per installed bulkhead timber framing LM."
+    "Person-hours per installed bulkhead timber framing LM.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[
+      CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingTimberLm
+    ]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingSteelLm,
     "Ceiling bulkhead steel framing (hours/lm)",
     "lm",
-    "Person-hours per installed bulkhead steel framing LM."
+    "Person-hours per installed bulkhead steel framing LM.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[
+      CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingSteelLm
+    ]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.bulkheadLiningSheet,
     "Ceiling bulkhead lining (hours/installed sheet)",
     "sheet",
-    "Person-hours per installed bulkhead lining sheet. Not stopping or painting."
+    "Person-hours per installed bulkhead lining sheet. Not stopping or painting.",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[
+      CEILINGS_PRODUCTIVITY_KEYS.bulkheadLiningSheet
+    ]
   ),
   ceilingProductivityEntry(
     CEILINGS_PRODUCTIVITY_KEYS.insulationM2,
     "Ceiling insulation (hours/m²)",
     "m2",
-    "Person-hours per installed insulation m²."
+    "Person-hours per installed insulation m².",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.insulationM2]
   ),
 ];
 

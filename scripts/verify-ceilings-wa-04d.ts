@@ -629,12 +629,13 @@ const nestedHosted = calculateEstimate(
   estimateCtx(writePortions([ordinaryPortion({ length: 4, width: 3 })]))
 );
 check(
-  "AH hosted guard still holds",
-  nestedHosted.lineItems.length === 0 &&
-    nestedHosted.missingInfo.some((row) =>
+  "AH nested Ceiling uses the new engine, never the temporary guard",
+  nestedHosted.lineItems.length > 0 &&
+    !nestedHosted.missingInfo.some((row) =>
       row.includes(CEILINGS_NESTED_NOT_CALCULATED_MESSAGE)
     ) &&
-    !read("lib/estimate/calculators/fitout.ts").includes("calculateCeilingsPhysical")
+    read("lib/estimate/calculators/fitout.ts").includes("calculateCeilingsPhysical") &&
+    read("lib/estimate/calculators/fitout.ts").includes("commercializeCeilings")
 );
 
 const legacyFacts: EstimateFact[] = [

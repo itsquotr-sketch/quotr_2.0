@@ -508,11 +508,14 @@ const nestedEstimate = calculateEstimate(estimateCtx(existingFacts));
 check(
   "AB nested new Ceiling cannot silently use legacy flat calculator",
   hasCanonicalCeilingsPortions(existingFacts, "c1") &&
-    nestedEstimate.lineItems.length === 0 &&
-    nestedEstimate.missingInfo.some((row) =>
+    !nestedEstimate.missingInfo.some((row) =>
       row.includes(CEILINGS_NESTED_NOT_CALCULATED_MESSAGE)
     ) &&
-    !nestedEstimate.assumptions.some((row) => row.toLowerCase().includes("20"))
+    !nestedEstimate.lineItems.some((item) =>
+      /materials allowance/i.test(item.label)
+    ) &&
+    read("lib/estimate/calculators/fitout.ts").includes("commercializeCeilings") &&
+    read("lib/estimate/calculators/fitout.ts").includes("calculateCeilingsPhysical")
 );
 
 const gFacts = writePortions(

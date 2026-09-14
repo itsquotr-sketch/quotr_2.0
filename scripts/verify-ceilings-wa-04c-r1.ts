@@ -420,13 +420,13 @@ const nestedHosted = calculateEstimate(
   estimateCtx(writePortions([portion({ product: "standard", thickness: 13 })]))
 );
 check(
-  "O hosted nested estimator guard still holds",
-  nestedHosted.lineItems.length === 0 &&
-    nestedHosted.missingInfo.some((row) =>
+  "O nested Ceiling uses the new engine, never the temporary guard",
+  nestedHosted.lineItems.length > 0 &&
+    !nestedHosted.missingInfo.some((row) =>
       row.includes(CEILINGS_NESTED_NOT_CALCULATED_MESSAGE)
     ) &&
-    !read("lib/estimate/calculators/fitout.ts").includes("calculateCeilingsPhysical") &&
-    !read("lib/estimate/calculators/fitout.ts").includes("ceilings-lining")
+    read("lib/estimate/calculators/fitout.ts").includes("calculateCeilingsPhysical") &&
+    read("lib/estimate/calculators/fitout.ts").includes("commercializeCeilings")
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

@@ -2,8 +2,9 @@
  * CEILINGS WA-04A–D — physical calculation kernel.
  *
  * Geometry, framing, lining, tile & grid, bulkheads, insulation, and
- * residual fixings bases. Not hosted money. Not wired into
- * calculateCeilings / customer estimate output.
+ * residual fixings bases. No dollars. Hosted nested estimate consumes
+ * this via commercializeCeilings in calculateCeilings. Legacy flat
+ * Ceiling projects never enter this kernel.
  *
  * Per-Portion, per-Work-Area. No same-product collapse. No labour hours.
  * Lining/tile wastage is applied once via resolveMaterialWastage.

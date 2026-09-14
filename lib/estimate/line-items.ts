@@ -393,6 +393,9 @@ export function buildLineItemNotes(item: EstimateLineItemInput): string | null {
       labourMinimum: item.labourMinimum,
       allowanceMinimum: item.allowanceMinimum,
       identitySummary: item.identitySummary,
+      nestedItemId: item.nestedItemId,
+      componentId: item.componentId,
+      contributingNestedItemIds: item.contributingNestedItemIds,
     },
   });
 }

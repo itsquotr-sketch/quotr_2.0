@@ -112,6 +112,9 @@ export type EstimateLineItem = {
   sellRate?: number;
   itemKey?: string;
   componentKey?: string;
+  nestedItemId?: string;
+  componentId?: string;
+  contributingNestedItemIds?: string[];
   sellDerivedFromMargin?: boolean;
   notes?: string;
   identitySummary?: string;

@@ -1,4 +1,8 @@
 import type { OrganisationRate } from "@/components/setup/types";
+import {
+  CEILINGS_PRODUCTIVITY_KEYS,
+  CEILINGS_QUOTR_PRODUCTIVITY_HOURS,
+} from "@/lib/estimate/ceilings-identities";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { ProductivityRate } from "@/lib/estimate/types";
 
@@ -439,6 +443,104 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     "Kitchen benchtop labour",
     6,
     "allowance"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.timberFramingLm]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.timberFramingLm,
+    "Ceiling timber framing",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.timberFramingLm],
+    "lm"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.perimeterLm]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.perimeterLm,
+    "Ceiling perimeter track",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.perimeterLm],
+    "lm"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.primaryLm]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.primaryLm,
+    "Ceiling primary channel",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.primaryLm],
+    "lm"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.furringLm]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.furringLm,
+    "Ceiling furring channel",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.furringLm],
+    "lm"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.clipEach]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.clipEach,
+    "Ceiling crossover clip",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.clipEach],
+    "each"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.dropperEach]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.dropperEach,
+    "Ceiling dropper (includes ordinary wire)",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.dropperEach],
+    "each"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet,
+    "Ceiling plasterboard",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[
+      CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet
+    ],
+    "sheet"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.plywoodSheet]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.plywoodSheet,
+    "Ceiling plywood",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.plywoodSheet],
+    "sheet"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.timberLiningLm]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.timberLiningLm,
+    "Ceiling timber lining",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.timberLiningLm],
+    "lm"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.gridM2]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.gridM2,
+    "Ceiling T-grid",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.gridM2],
+    "m2"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.tileEach]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.tileEach,
+    "Ceiling tile",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.tileEach],
+    "each"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingTimberLm]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingTimberLm,
+    "Ceiling bulkhead timber framing",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[
+      CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingTimberLm
+    ],
+    "lm"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingSteelLm]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingSteelLm,
+    "Ceiling bulkhead steel framing",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[
+      CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingSteelLm
+    ],
+    "lm"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.bulkheadLiningSheet]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.bulkheadLiningSheet,
+    "Ceiling bulkhead lining",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[
+      CEILINGS_PRODUCTIVITY_KEYS.bulkheadLiningSheet
+    ],
+    "sheet"
+  ),
+  [CEILINGS_PRODUCTIVITY_KEYS.insulationM2]: productivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.insulationM2,
+    "Ceiling insulation",
+    CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.insulationM2],
+    "m2"
   ),
 };
 

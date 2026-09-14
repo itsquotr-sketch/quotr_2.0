@@ -27,6 +27,10 @@ export const CEILINGS_FIXINGS_TIMBER_LINING_COMPONENT =
   "ceilings.fixings.timber_lining" as const;
 export const CEILINGS_FIXINGS_BULKHEAD_FRAMING_COMPONENT =
   "ceilings.fixings.bulkhead_framing" as const;
+export const CEILINGS_FIXINGS_BULKHEAD_FRAMING_TIMBER_KEY =
+  "ceilings.fixings.bulkhead_framing.timber" as const;
+export const CEILINGS_FIXINGS_BULKHEAD_FRAMING_STEEL_KEY =
+  "ceilings.fixings.bulkhead_framing.steel" as const;
 export const CEILINGS_FIXINGS_BULKHEAD_LINING_COMPONENT =
   "ceilings.fixings.bulkhead_lining" as const;
 
@@ -45,6 +49,7 @@ function allowance(params: {
   baseQuantity: number;
   baseUnit: string;
   factKeys: readonly string[];
+  materialKey?: string;
 }): MaterialRequirement {
   return buildMaterialRequirement({
     workAreaId: params.workArea.id,
@@ -66,7 +71,7 @@ function allowance(params: {
       constraintKeys: [],
     },
     priced: false,
-    materialKey: params.componentKey,
+    materialKey: params.materialKey ?? params.componentKey,
     category: "FIXINGS",
     specification: params.specification,
     baseQuantity: params.baseQuantity,
@@ -226,6 +231,7 @@ export function ceilingFixingsRequirements(params: {
     if (bulkhead.status !== "ok") continue;
     const variantKey = `${portion.id}::${bulkhead.componentId}`;
     if (bulkhead.framingLm != null) {
+      const timberFraming = bulkhead.framingType !== "steel";
       out.push(
         allowance({
           workArea,
@@ -233,13 +239,16 @@ export function ceilingFixingsRequirements(params: {
           componentKey: CEILINGS_FIXINGS_BULKHEAD_FRAMING_COMPONENT,
           variantKey,
           description: `${label(portion)} — bulkhead framing fixings`,
-          specification: `${bulkhead.framingLm} lm bulkhead framing · residual fixings allowance`,
+          specification: `${bulkhead.framingLm} lm bulkhead ${timberFraming ? "timber" : "steel"} framing · residual fixings allowance`,
           assumption:
             "Bulkhead framing residual fixings on installed bulkhead framing LM.",
           assumptionKey: "ceilings.fixings.bulkhead_framing",
           baseQuantity: bulkhead.framingLm,
           baseUnit: "lm",
           factKeys: ["ceilings.portions", "ceilings.bulkhead.length_m"],
+          materialKey: timberFraming
+            ? CEILINGS_FIXINGS_BULKHEAD_FRAMING_TIMBER_KEY
+            : CEILINGS_FIXINGS_BULKHEAD_FRAMING_STEEL_KEY,
         })
       );
     }

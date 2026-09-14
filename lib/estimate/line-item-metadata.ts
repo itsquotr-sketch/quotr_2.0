@@ -77,6 +77,9 @@ export type LineItemMetadata = {
   allowanceMinimum?: AllowanceMinimumMeta;
   /** Concise Builder Review primary copy. Distinct from diagnostic notes. */
   identitySummary?: string;
+  nestedItemId?: string;
+  componentId?: string;
+  contributingNestedItemIds?: string[];
 };
 
 export function serializeLineItemMetadata(meta: LineItemMetadata): string {
@@ -228,6 +231,15 @@ export function buildPricingNotesFromEstimateLineItem(
   }
   if (metadata.identitySummary) {
     metaToStore.identitySummary = metadata.identitySummary;
+  }
+  if (metadata.nestedItemId) {
+    metaToStore.nestedItemId = metadata.nestedItemId;
+  }
+  if (metadata.componentId) {
+    metaToStore.componentId = metadata.componentId;
+  }
+  if (metadata.contributingNestedItemIds?.length) {
+    metaToStore.contributingNestedItemIds = [...metadata.contributingNestedItemIds];
   }
   if (metadata.sellAuthority) {
     metaToStore.sellAuthority = metadata.sellAuthority;

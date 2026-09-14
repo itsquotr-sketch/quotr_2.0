@@ -3,7 +3,7 @@
  *
  * Run: npx --yes tsx scripts/verify-ceilings-wa-05a.ts
  *
- * Preview only. Nested hosted estimator remains guarded.
+ * Preview only. Nested hosted estimator is wired in WA-05B.
  */
 import { spawnSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -571,12 +571,13 @@ check(
   companyPbLab.priced === true &&
     near(companyPbLab.productivityBasis.hoursPerUnit, 0.55) &&
     companyPbLab.rateProvenance === "company" &&
-    pbLab.priced === false &&
+    pbLab.priced === true &&
+    near(pbLab.productivityBasis.hoursPerUnit, 0.5) &&
     resolveCeilingProductivity({
       productivityKey: CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet,
       unit: "sheet",
       rates: [],
-    }).source === "missing"
+    }).source === "benchmark"
 );
 
 const steelPrimary = material(steel.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)!;
@@ -588,10 +589,11 @@ check(
 );
 
 check(
-  "V no matching productivity → Pricing Required",
-  pbLab.priced === false &&
-    pbLab.rateProvenance === "missing" &&
-    pbLab.totalCost == null
+  "V steel material stays Pricing Required while labour can resolve independently",
+  steelPrimary.priced === false &&
+    steelPrimary.rateSource === "missing" &&
+    labour(steel.commercial.requirements, "ceilings.steel.primary_channel.install")
+      ?.priced === true
 );
 
 const timberHours = runCommercial(
@@ -773,30 +775,31 @@ check(
 
 const nestedHosted = calculateEstimate(estimateCtx(writePortions([plasterPortion()])));
 check(
-  "AH nested hosted guard still holds",
-  nestedHosted.lineItems.length === 0 &&
-    nestedHosted.missingInfo.some((row) =>
+  "AH nested hosted Ceiling uses the new commercial engine",
+  nestedHosted.lineItems.length > 0 &&
+    !nestedHosted.missingInfo.some((row) =>
       row.includes(CEILINGS_NESTED_NOT_CALCULATED_MESSAGE)
     ) &&
-    !read("lib/estimate/calculators/fitout.ts").includes("commercializeCeilings") &&
-    !read("lib/estimate/calculators/fitout.ts").includes("calculateCeilingsPhysical")
+    read("lib/estimate/calculators/fitout.ts").includes("commercializeCeilings") &&
+    read("lib/estimate/calculators/fitout.ts").includes("calculateCeilingsPhysical")
 );
 
 const dim3000 = runCommercial([plasterPortion({ sheetLength: 3000 })]);
 const dimMat = material(dim3000.commercial.requirements, CEILINGS_PLASTERBOARD_COMPONENT)!;
 check(
-  "dimensioned 3000×1200 Standard has no Quotr COST",
+  "dimensioned 3000×1200 Standard derives from 2400×1200 Quotr COST",
   dimMat.materialKey === "sheet.plasterboard.standard.13mm.3000x1200.each" &&
-    dimMat.priced === false &&
-    quotrCatalogueCost(dimMat.materialKey) == null
+    dimMat.priced === true &&
+    near(dimMat.unitCost, 22.5) &&
+    dimMat.conversion?.basis === "quotr_derived_same_family_thickness_2400x1200"
 );
 
 const timber140 = material(timber.commercial.requirements, CEILINGS_TIMBER_FRAMING_COMPONENT)!;
 check(
-  "140×45 framing is Pricing Required without company rate",
+  "140×45 framing uses provisional Quotr COST without company rate",
   timber140.materialKey === "timber.framing.140x45.h1.2.lm" &&
-    timber140.priced === false &&
-    quotrCatalogueCost("timber.framing.140x45.h1.2.lm") == null
+    timber140.priced === true &&
+    near(timber140.unitCost, 9.65)
 );
 
 const timberCompany = runCommercial(
@@ -831,8 +834,14 @@ check(
 );
 
 check(
-  "plasterboard fixings remain Pricing Required",
-  material(pb.commercial.requirements, CEILINGS_FIXINGS_PLASTERBOARD_COMPONENT)?.priced === false
+  "plasterboard fixings resolve at Quotr $2.50/m²",
+  material(pb.commercial.requirements, CEILINGS_FIXINGS_PLASTERBOARD_COMPONENT)?.priced ===
+    true &&
+    near(
+      material(pb.commercial.requirements, CEILINGS_FIXINGS_PLASTERBOARD_COMPONENT)
+        ?.unitCost,
+      2.5
+    )
 );
 
 check(
@@ -852,7 +861,7 @@ check(
         rate_type: "productivity",
       }),
     ],
-  }).source === "missing"
+  }).hoursPerUnit === 0.5
 );
 
 const coverage = ceilingCommercialCoverageTable();
@@ -893,8 +902,8 @@ check(
     read("lib/estimate/ceilings-physical.ts").includes("unitCost: null")
 );
 check(
-  "nested commercial is not hosted",
-  !read("lib/estimate/calculators/fitout.ts").includes("commercializeCeilings")
+  "nested commercial is hosted through calculateCeilings",
+  read("lib/estimate/calculators/fitout.ts").includes("commercializeCeilings")
 );
 
 function spawnVerifier(script: string): boolean {

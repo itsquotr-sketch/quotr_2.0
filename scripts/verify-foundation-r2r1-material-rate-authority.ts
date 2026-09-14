@@ -198,9 +198,14 @@ const noWidth = calculateDeck(
 const packageLine = noWidth.lineItems.find(
   (item) => item.label === "Decking package"
 );
+const noWidthDecking = noWidth.lineItems.find(
+  (item) => item.label === "Decking" || item.label === "Decking package"
+);
 check(
-  "5c. m² package only when board width unknown",
-  packageLine?.unit === "m²" && packageLine.quantity === ownerArea
+  "5c. unknown board width uses disclosed 140 mm lm takeoff, not a silent m² package",
+  noWidthDecking?.label === "Decking" &&
+    noWidthDecking.unit === "lm" &&
+    packageLine == null
 );
 check(
   "8b. unknown width does not fake lm takeoff",
@@ -252,8 +257,8 @@ check(
   ].every((key) => usedNow.includes(key))
 );
 check(
-  "10b. unused sheet/paint-litre rates marked planned; timber backfill m³ is used_now",
-  planned.includes("sheet.plasterboard.standard.each") &&
+  "10b. plasterboard standard.each and timber backfill m³ are used_now; paint.litre remains planned",
+  usedNow.includes("sheet.plasterboard.standard.each") &&
     planned.includes("paint.litre") &&
     usedNow.includes("retaining_wall.backfill.m3")
 );
@@ -261,10 +266,10 @@ check(
 const deckSource = readFileSync("lib/estimate/calculators/deck.ts", "utf8");
 const bathSource = readFileSync("lib/estimate/calculators/bathroom.ts", "utf8");
 check(
-  "11. requirement emission is Deck surface + labour shadow",
+  "11. requirement emission is Deck surface + labour; Bathroom maturity may emit requirements",
   deckSource.includes("maybeBuildDeckSurfaceRequirement") &&
     deckSource.includes("buildDeckLabourRequirement") &&
-    !bathSource.includes("requirements:")
+    bathSource.includes("requirements:")
 );
 
 check(
