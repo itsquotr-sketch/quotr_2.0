@@ -376,7 +376,7 @@ installed sheets = ceil(area / sheetArea) × layers
 purchase = ceil(installedPerLayer × (1 + waste) − epsilon) × layers
 ```
 
-Shared helper: `countCoveredAreaSheets` in `lib/estimate/material-buildups.ts` (not the legacy `calculateSheetCount` 2.4×1.2 default). Waste once via `resolveMaterialWastage(..., "sheet_material")`. Labour later uses installed sheets. Shared plasterboard keys (`sheet.plasterboard.*`); plywood uses generic `sheet.plywood.each`. Layers are captured on the Portion — missing layers consume 1 (ASSUME_IF_SKIPPED).
+Shared helper: `countCoveredAreaSheets` in `lib/estimate/material-buildups.ts` (not the legacy `calculateSheetCount` 2.4×1.2 default). Waste once via `resolveMaterialWastage(..., "sheet_material")`. Labour later uses installed sheets. Shared plasterboard keys (`sheet.plasterboard.*`); plywood uses generic `sheet.plywood.each`. Plasterboard thickness is a canonical lining fact (`10` / `13` / `other`) — Standard / Aqualine / Fyreline do not silently imply 13 mm. Layers are captured on the Portion; omitted layers consume 1 as ASSUMED_DISCLOSED, not user-known.
 
 **Timber-lined (WA-04C):** length × width required. Area-only rejected.
 

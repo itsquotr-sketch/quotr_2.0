@@ -86,6 +86,7 @@ function portion(params: {
   area?: number | null;
   mode?: "length_width" | "area_only";
   product?: CeilingPortion["lining"]["plasterboard_product"];
+  thickness?: CeilingPortion["lining"]["thickness_mm"] | null;
   sheetLength?: number;
   sheetWidth?: number;
   layers?: number | null;
@@ -108,6 +109,9 @@ function portion(params: {
   row.structure.family = params.family ?? "existing_framing";
   if (params.lining) row.lining.family = params.lining;
   if (params.product) row.lining.plasterboard_product = params.product;
+  if (params.thickness !== undefined) {
+    row.lining.thickness_mm = params.thickness ?? undefined;
+  }
   if (params.sheetLength != null) row.lining.sheet_length_mm = params.sheetLength;
   if (params.sheetWidth != null) row.lining.sheet_width_mm = params.sheetWidth;
   if (params.layers !== undefined) row.lining.layers = params.layers;
@@ -224,6 +228,7 @@ const pb = calculateCeilingLining(
     length: 4,
     width: 3,
     product: "standard",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
   }),
@@ -252,6 +257,7 @@ const pbPhysical = physical([
     length: 4,
     width: 3,
     product: "standard",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
   }),
@@ -280,6 +286,7 @@ const areaOnly = calculateCeilingLining(
     width: null,
     area: 30,
     product: "standard",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
   }),
@@ -311,6 +318,7 @@ const otherPb = calculateCeilingLining(
     length: 4,
     width: 3,
     product: "other",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
   }),
@@ -579,6 +587,7 @@ const twoPb = physical([
     length: 4,
     width: 3,
     product: "standard",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
   }),
@@ -589,6 +598,7 @@ const twoPb = physical([
     length: 4,
     width: 3,
     product: "standard",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
   }),
@@ -616,6 +626,7 @@ const ground = calculateCeilingsPhysical({
           length: 4,
           width: 3,
           product: "standard",
+          thickness: 13,
           sheetLength: 3000,
           sheetWidth: 1200,
         }),
@@ -630,6 +641,7 @@ const ground = calculateCeilingsPhysical({
           length: 4,
           width: 3,
           product: "standard",
+          thickness: 13,
           sheetLength: 3000,
           sheetWidth: 1200,
         }),
@@ -650,6 +662,7 @@ const garage = calculateCeilingsPhysical({
           length: 4,
           width: 3,
           product: "standard",
+          thickness: 13,
           sheetLength: 3000,
           sheetWidth: 1200,
         }),
@@ -664,6 +677,7 @@ const garage = calculateCeilingsPhysical({
           length: 4,
           width: 3,
           product: "standard",
+          thickness: 13,
           sheetLength: 3000,
           sheetWidth: 1200,
         }),
@@ -691,6 +705,7 @@ const existingPlus = physical([
     width: null,
     area: 30,
     product: "standard",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
   }),
@@ -715,6 +730,7 @@ const timberPlus = physical([
     length: 4,
     width: 3,
     product: "standard",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
   }),
@@ -738,6 +754,7 @@ const steelPlus = physical([
     length: 4,
     width: 3,
     product: "standard",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
     steel: true,
@@ -761,6 +778,7 @@ const suspendedPlus = physical([
     length: 4,
     width: 3,
     product: "standard",
+    thickness: 13,
     sheetLength: 3000,
     sheetWidth: 1200,
     suspended: true,
@@ -815,6 +833,7 @@ const nestedHosted = calculateEstimate(
         length: 4,
         width: 3,
         product: "standard",
+        thickness: 13,
         sheetLength: 3000,
         sheetWidth: 1200,
       }),

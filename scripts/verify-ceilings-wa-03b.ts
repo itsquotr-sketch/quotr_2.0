@@ -95,6 +95,7 @@ function completeExistingArea(portionId: string) {
   portion.structure.family = "existing_framing";
   portion.lining.family = "plasterboard";
   portion.lining.plasterboard_product = "standard";
+  portion.lining.thickness_mm = 13;
   portion.finish.insulation_included = false;
   portion.has_bulkheads = false;
   return portion;

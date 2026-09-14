@@ -232,6 +232,7 @@ const FACT_DISPLAY_LABELS: Record<string, string> = {
   "ceilings.portion.direction": "Run direction",
   "ceilings.portion.lining_family": "Ceiling lining",
   "ceilings.portion.plasterboard_product": "Plasterboard type",
+  "ceilings.portion.thickness_mm": "Plasterboard thickness",
   "ceilings.portion.sheet_length_mm": "Sheet length",
   "ceilings.portion.sheet_width_mm": "Sheet width",
   "ceilings.portion.layers": "Lining layers",

@@ -25,11 +25,13 @@ import {
   INTERNAL_WALLS_FYRELINE_13_2400_KEY,
   INTERNAL_WALLS_STANDARD_13_2400_KEY,
 } from "@/lib/estimate/internal-walls-identities";
+import { isLiningThicknessSupported } from "@/lib/estimate/internal-walls-wall-types";
 import type { MaterialIdentity } from "@/lib/materials/identity";
 import type {
   CeilingDirection,
   CeilingLiningFamily,
   CeilingPlasterboardProduct,
+  CeilingPlasterboardThicknessMm,
   CeilingPortion,
   CeilingTileSize,
 } from "@/lib/estimate/ceilings-portions";
@@ -39,6 +41,7 @@ import {
 } from "@/lib/estimate/ceilings-geometry";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
+import { CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT } from "@/lib/estimate/ceilings-information-contract";
 
 export const CEILINGS_PLASTERBOARD_COMPONENT =
   "ceilings.lining.plasterboard.material" as const;
@@ -58,11 +61,10 @@ export const CEILING_TILE_300_KEY = "ceiling.tile.300x300.each" as const;
 export const CEILING_TILE_600_KEY = "ceiling.tile.600x600.each" as const;
 export const CEILING_TILE_1200_600_KEY = "ceiling.tile.1200x600.each" as const;
 
-/** V1 shared plasterboard thickness when Ceilings facts do not capture mm. */
-export const CEILINGS_PLASTERBOARD_V1_THICKNESS_MM = 13 as const;
-
 export const CEILING_TIMBER_LINING_EDGE_GAP_ASSUMPTION =
   "Edge gap on both sides equals the selected inter-board gap." as const;
+
+export type CeilingLayerCountSource = "known" | "assumed_disclosed";
 
 export type CeilingLiningStatus =
   | "ok"
@@ -107,6 +109,8 @@ export type CeilingLiningTakeoff = {
   readonly sheetLengthM: number | null;
   readonly sheetWidthM: number | null;
   readonly layerCount: number | null;
+  readonly layerCountSource: CeilingLayerCountSource | null;
+  readonly layerAssumption: string | null;
   readonly installedSheetsPerLayer: number | null;
   readonly purchaseSheetsPerLayer: number | null;
   readonly installedSheets: number | null;
@@ -209,6 +213,8 @@ function emptyTakeoff(
     sheetLengthM: null,
     sheetWidthM: null,
     layerCount: null,
+    layerCountSource: null,
+    layerAssumption: null,
     installedSheetsPerLayer: null,
     purchaseSheetsPerLayer: null,
     installedSheets: null,
@@ -270,6 +276,7 @@ function plasterboardLabel(product: CeilingPlasterboardProduct): string {
 
 function resolvePlasterboardProduct(
   product: CeilingPlasterboardProduct | undefined,
+  thickness: CeilingPlasterboardThicknessMm | undefined,
   lengthMm: number,
   widthMm: number
 ): CeilingSheetProductResolution {
@@ -281,16 +288,24 @@ function resolvePlasterboardProduct(
       specification: "Plasterboard product is not resolved",
     };
   }
-  if (product === "other") {
+  if (thickness == null) {
+    return {
+      kind: "unresolved",
+      materialKey: null,
+      materialIdentity: null,
+      specification: "Plasterboard thickness is not resolved",
+    };
+  }
+  if (product === "other" || thickness === "other") {
+    const spec =
+      thickness === "other"
+        ? `${plasterboardLabel(product)} — specified thickness unresolved`
+        : `${plasterboardLabel(product)} — identity unresolved`;
     return {
       kind: "custom",
       materialKey: null,
-      materialIdentity: liningIdentity(
-        "plasterboard",
-        "sheet",
-        "Other plasterboard"
-      ),
-      specification: "Other plasterboard — identity unresolved",
+      materialIdentity: liningIdentity("plasterboard", "sheet", spec),
+      specification: spec,
     };
   }
   const iwProduct = mapCeilingPlasterboardProduct(product);
@@ -302,9 +317,18 @@ function resolvePlasterboardProduct(
       specification: "Plasterboard product is not resolved",
     };
   }
+  const specification = `${thickness} mm ${plasterboardLabel(product)} ${lengthMm} × ${widthMm}`;
+  if (!isLiningThicknessSupported(iwProduct, thickness)) {
+    return {
+      kind: "custom",
+      materialKey: null,
+      materialIdentity: liningIdentity("plasterboard", "sheet", specification),
+      specification: `${specification} — identity unresolved`,
+    };
+  }
   const resolved = internalWallsLiningMaterialKey({
     product: iwProduct,
-    thicknessMm: CEILINGS_PLASTERBOARD_V1_THICKNESS_MM,
+    thicknessMm: thickness,
     lengthMm,
     widthMm,
   });
@@ -312,11 +336,18 @@ function resolvePlasterboardProduct(
     resolved.materialKey ??
     dimensionedPlasterboardKey({
       product: iwProduct,
-      thicknessMm: CEILINGS_PLASTERBOARD_V1_THICKNESS_MM,
+      thicknessMm: thickness,
       lengthMm,
       widthMm,
     });
-  const specification = `${CEILINGS_PLASTERBOARD_V1_THICKNESS_MM} mm ${plasterboardLabel(product)} ${lengthMm} × ${widthMm}`;
+  if (!materialKey) {
+    return {
+      kind: "custom",
+      materialKey: null,
+      materialIdentity: liningIdentity("plasterboard", "sheet", specification),
+      specification: `${specification} — identity unresolved`,
+    };
+  }
   return {
     kind: "canonical",
     materialKey: materialKey as string,
@@ -420,6 +451,21 @@ function plasterboardTakeoff(params: {
       unresolvedProduct
     );
   }
+  const thickness = params.portion.lining.thickness_mm;
+  if (thickness == null) {
+    return emptyTakeoff(
+      nestedItemId,
+      "information_required",
+      "Plasterboard thickness is required.",
+      "plasterboard",
+      {
+        kind: "unresolved",
+        materialKey: null,
+        materialIdentity: null,
+        specification: "Plasterboard thickness is not resolved",
+      }
+    );
+  }
   const layerRaw = params.portion.lining.layers;
   const layerState = classifyPositive(layerRaw);
   if (layerState === "invalid") {
@@ -431,7 +477,14 @@ function plasterboardTakeoff(params: {
       unresolvedProduct
     );
   }
-  const layerCount = layerState === "ok" ? (layerRaw as number) : 1;
+  const layerKnown = layerState === "ok";
+  const layerCount = layerKnown ? (layerRaw as number) : 1;
+  const layerCountSource: CeilingLayerCountSource = layerKnown
+    ? "known"
+    : "assumed_disclosed";
+  const layerAssumption = layerKnown
+    ? null
+    : CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT;
   const counted = countCoveredAreaSheets({
     areaM2,
     sheetLengthM: dims.lengthMm / 1000,
@@ -448,7 +501,12 @@ function plasterboardTakeoff(params: {
       unresolvedProduct
     );
   }
-  const product = resolvePlasterboardProduct(productCode, dims.lengthMm, dims.widthMm);
+  const product = resolvePlasterboardProduct(
+    productCode,
+    thickness,
+    dims.lengthMm,
+    dims.widthMm
+  );
   return {
     ...emptyTakeoff(nestedItemId, "ok", null, "plasterboard", product),
     status: "ok",
@@ -457,6 +515,8 @@ function plasterboardTakeoff(params: {
     sheetLengthM: dims.lengthMm / 1000,
     sheetWidthM: dims.widthMm / 1000,
     layerCount: counted.layerCount,
+    layerCountSource,
+    layerAssumption,
     installedSheetsPerLayer: counted.installedSheetsPerLayer,
     purchaseSheetsPerLayer: counted.purchaseSheetsPerLayer,
     installedSheets: counted.installedSheets,

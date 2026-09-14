@@ -29,6 +29,7 @@ import {
   CEILINGS_JOB_SCOPE_VALUES,
   CEILINGS_LINING_FAMILY_VALUES,
   CEILINGS_PLASTERBOARD_PRODUCT_VALUES,
+  CEILINGS_PLASTERBOARD_THICKNESS_OPTIONS,
   CEILINGS_STRUCTURE_FAMILY_VALUES,
   CEILINGS_TILE_SIZE_VALUES,
   CEILINGS_TIMBER_SIZE_VALUES,
@@ -37,6 +38,7 @@ import {
   CEILINGS_BULKHEAD_LINING_VALUES,
   CEILINGS_BULKHEAD_FORM_VALUES,
   CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED,
+  ceilingPlasterboardThicknessLabel,
   findCeilingBulkhead,
   recommendedCeilingGeometryMode,
   resolveCeilingsPortions,
@@ -55,6 +57,7 @@ export type CeilingsClarifyInput = {
 };
 
 function clarifyInputType(factKey: string): ClarifyCandidate["inputType"] {
+  if (factKey === "ceilings.portion.thickness_mm") return "select";
   const template = getQuestionTemplateByKey(factKey);
   if (template?.inputType === "boolean") return "boolean";
   if (template?.inputType === "number") return "number";
@@ -97,6 +100,8 @@ function optionsForKey(factKey: string): readonly string[] | undefined {
       return [...CEILINGS_LINING_FAMILY_VALUES];
     case "ceilings.portion.plasterboard_product":
       return [...CEILINGS_PLASTERBOARD_PRODUCT_VALUES];
+    case "ceilings.portion.thickness_mm":
+      return [...CEILINGS_PLASTERBOARD_THICKNESS_OPTIONS];
     case "ceilings.portion.timber_size":
       return [...CEILINGS_TIMBER_SIZE_VALUES];
     case "ceilings.portion.direction":
@@ -155,6 +160,11 @@ export function ceilingPortionFieldCurrentValue(
   if (field === "lining_family") return portion.lining.family;
   if (field === "plasterboard_product") {
     return portion.lining.plasterboard_product ?? null;
+  }
+  if (field === "thickness_mm") {
+    return portion.lining.thickness_mm != null
+      ? ceilingPlasterboardThicknessLabel(portion.lining.thickness_mm)
+      : null;
   }
   if (field === "plywood_spec") return portion.lining.plywood_spec ?? null;
   if (field === "tile_size") return portion.lining.tile?.size ?? null;
@@ -344,7 +354,9 @@ function buildCandidate(params: {
     currentValue,
     writeTarget: "FACT",
     write: null,
-    blocksEstimate: askClass === "HARD_MINIMUM",
+    blocksEstimate:
+      askClass === "HARD_MINIMUM" ||
+      params.factKey === "ceilings.portion.thickness_mm",
     assumable: askClass === "ASSUME_IF_SKIPPED",
     rankScore:
       askClass === "HARD_MINIMUM" ? 1000 : askClass === "ASK_NOW" ? 80 : 40,

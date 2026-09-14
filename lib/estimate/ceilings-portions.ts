@@ -78,6 +78,55 @@ export const CEILINGS_PLASTERBOARD_PRODUCT_VALUES = [
 export type CeilingPlasterboardProduct =
   (typeof CEILINGS_PLASTERBOARD_PRODUCT_VALUES)[number];
 
+export const CEILINGS_PLASTERBOARD_THICKNESS_VALUES = [
+  "10",
+  "13",
+  "other",
+] as const;
+export type CeilingPlasterboardThicknessMm = 10 | 13 | "other";
+
+export const CEILINGS_PLASTERBOARD_THICKNESS_OPTIONS = [
+  "10 mm",
+  "13 mm",
+  "Other / specified system",
+] as const;
+
+export function parseCeilingPlasterboardThickness(
+  value: unknown
+): CeilingPlasterboardThicknessMm | null {
+  if (value === 10 || value === 13) return value;
+  if (typeof value === "number" && Number.isFinite(value) && value > 0) {
+    if (value === 10) return 10;
+    if (value === 13) return 13;
+    return "other";
+  }
+  if (typeof value === "string") {
+    const normalised = value.trim().toLowerCase().replace(/\s+/g, " ");
+    if (normalised === "10" || normalised === "10mm" || normalised === "10 mm") {
+      return 10;
+    }
+    if (normalised === "13" || normalised === "13mm" || normalised === "13 mm") {
+      return 13;
+    }
+    if (
+      normalised === "other" ||
+      normalised === "custom" ||
+      normalised.includes("specified")
+    ) {
+      return "other";
+    }
+  }
+  return null;
+}
+
+export function ceilingPlasterboardThicknessLabel(
+  value: CeilingPlasterboardThicknessMm
+): string {
+  if (value === 10) return "10 mm";
+  if (value === 13) return "13 mm";
+  return "Other / specified system";
+}
+
 export const CEILINGS_TIMBER_SIZE_VALUES = ["140x45_h1.2", "other"] as const;
 export type CeilingTimberSize = (typeof CEILINGS_TIMBER_SIZE_VALUES)[number];
 
@@ -174,6 +223,7 @@ export type CeilingTile = {
 export type CeilingLining = {
   family: CeilingLiningFamily | null;
   plasterboard_product?: CeilingPlasterboardProduct;
+  thickness_mm?: CeilingPlasterboardThicknessMm;
   plywood_spec?: string | null;
   sheet_length_mm?: number;
   sheet_width_mm?: number;
@@ -385,6 +435,7 @@ function cloneLining(lining: CeilingLining): CeilingLining {
   return {
     family: lining.family,
     plasterboard_product: lining.plasterboard_product,
+    thickness_mm: lining.thickness_mm,
     plywood_spec: lining.plywood_spec,
     sheet_length_mm: lining.sheet_length_mm,
     sheet_width_mm: lining.sheet_width_mm,
@@ -413,6 +464,7 @@ export function applyCeilingFamilyExclusivity(
     portion.structure.suspended = undefined;
     portion.lining.timber_lined = undefined;
     portion.lining.plasterboard_product = undefined;
+    portion.lining.thickness_mm = undefined;
   }
   if (portion.structure.family !== "timber_direct_fix") {
     portion.structure.timber = undefined;
@@ -434,6 +486,7 @@ export function applyCeilingFamilyExclusivity(
   }
   if (portion.lining.family !== "plasterboard") {
     portion.lining.plasterboard_product = undefined;
+    portion.lining.thickness_mm = undefined;
   }
   return portion;
 }
@@ -662,6 +715,10 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
             value.lining.plasterboard_product,
             CEILINGS_PLASTERBOARD_PRODUCT_VALUES
           ) ?? undefined
+        : undefined,
+      thickness_mm: isRecord(value.lining)
+        ? parseCeilingPlasterboardThickness(value.lining.thickness_mm) ??
+          undefined
         : undefined,
       plywood_spec: isRecord(value.lining)
         ? typeof value.lining.plywood_spec === "string" &&
@@ -1327,6 +1384,14 @@ function applyPortionField(
     portion.lining.plasterboard_product =
       parseEnum(value, CEILINGS_PLASTERBOARD_PRODUCT_VALUES) ?? undefined;
     if (portion.lining.plasterboard_product) {
+      portion.lining.family = "plasterboard";
+    }
+    return;
+  }
+  if (field === "thickness_mm") {
+    portion.lining.thickness_mm =
+      parseCeilingPlasterboardThickness(value) ?? undefined;
+    if (portion.lining.thickness_mm != null) {
       portion.lining.family = "plasterboard";
     }
     return;

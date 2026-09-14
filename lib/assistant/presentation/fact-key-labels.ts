@@ -51,6 +51,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
   "ceilings.portion.structure_family": "Ceiling structure",
   "ceilings.portion.lining_family": "Ceiling lining",
   "ceilings.portion.plasterboard_product": "Plasterboard type",
+  "ceilings.portion.thickness_mm": "Plasterboard thickness",
   "ceilings.portion.height_m": "Ceiling height",
   "ceilings.portion.insulation_included": "Ceiling insulation",
   "ceilings.portion.bulkheads_present": "Bulkheads",

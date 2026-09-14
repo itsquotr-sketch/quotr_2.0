@@ -52,6 +52,9 @@ export const CEILINGS_SUSPENSION_SPACING_ASSUMPTION_STATEMENT =
 export const CEILINGS_EDGE_OFFSET_ASSUMPTION_STATEMENT =
   "Assuming a 0.2 m edge offset for the suspended ceiling.";
 export const CEILINGS_TILE_SIZE_ASSUMPTION = "600x600";
+export const CEILINGS_LINING_LAYERS_ASSUMPTION = 1;
+export const CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT =
+  "Assumes one layer of ceiling lining.";
 
 export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContractRow[] =
   [
@@ -182,6 +185,16 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       reason: "Standard / Aqualine / Fyreline / other. Plasterboard lining only.",
     },
     {
+      factKey: "ceilings.portion.thickness_mm",
+      askClass: "ASK_NOW",
+      scope: "portion",
+      calculatorConsumed: false,
+      physical: true,
+      commercial: true,
+      reason:
+        "Plasterboard thickness. Not inferred from Standard / Aqualine / Fyreline.",
+    },
+    {
       factKey: "ceilings.portion.plywood_spec",
       askClass: "ASK_NOW",
       scope: "portion",
@@ -242,7 +255,8 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
       calculatorConsumed: false,
       physical: true,
       commercial: true,
-      reason: "Lining layers where applicable (plasterboard).",
+      reason:
+        "Lining layers where applicable (plasterboard). Omitted consumes 1 as ASSUMED_DISCLOSED.",
     },
     {
       factKey: "ceilings.portion.height_m",
@@ -555,6 +569,7 @@ export function ceilingsFactIsRelevant(
         lining === "timber_lined"
       );
     case "ceilings.portion.plasterboard_product":
+    case "ceilings.portion.thickness_mm":
     case "ceilings.portion.layers":
       return lining === "plasterboard";
     case "ceilings.portion.plywood_spec":
@@ -638,6 +653,7 @@ export function ceilingsDetailsSectionId(
   if (
     factKey.includes("lining") ||
     factKey.includes("plasterboard") ||
+    factKey.includes("thickness") ||
     factKey.includes("plywood") ||
     factKey.includes("tile") ||
     factKey.includes("sheet") ||
@@ -671,6 +687,9 @@ export function ceilingsAssumptionStatement(factKey: string): string | null {
   }
   if (factKey === "ceilings.portion.edge_offset_m") {
     return CEILINGS_EDGE_OFFSET_ASSUMPTION_STATEMENT;
+  }
+  if (factKey === "ceilings.portion.layers") {
+    return CEILINGS_LINING_LAYERS_ASSUMPTION_STATEMENT;
   }
   if (factKey === "ceilings.bulkhead.topology" || factKey === "ceilings.bulkhead.form") {
     return CEILINGS_BULKHEAD_TOPOLOGY_ASSUMPTION;

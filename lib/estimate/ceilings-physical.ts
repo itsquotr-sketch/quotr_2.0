@@ -424,6 +424,13 @@ function suspendedRequirements(params: {
 function liningAssumptions(lining: CeilingLiningTakeoff) {
   const text: Array<{ key: string; text: string; source: "calculator_default" }> =
     [];
+  if (lining.layerAssumption) {
+    text.push({
+      key: "layers",
+      text: lining.layerAssumption,
+      source: "calculator_default",
+    });
+  }
   if (lining.areaM2 != null) {
     text.push({
       key: "area_m2",
@@ -521,6 +528,7 @@ const LINING_FACT_KEYS = [
   "ceilings.portion.area_m2",
   "ceilings.portion.lining_family",
   "ceilings.portion.plasterboard_product",
+  "ceilings.portion.thickness_mm",
   "ceilings.portion.sheet_length_mm",
   "ceilings.portion.sheet_width_mm",
   "ceilings.portion.layers",

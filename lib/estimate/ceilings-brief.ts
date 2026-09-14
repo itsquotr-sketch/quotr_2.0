@@ -156,6 +156,35 @@ export function canonicalCeilingPlasterboardProductFromText(
   return null;
 }
 
+const PLASTERBOARD_THICKNESS_CONTEXT = [
+  "gib",
+  "plasterboard",
+  "plaster board",
+  "fyreline",
+  "aqualine",
+  "standard",
+] as const;
+
+export function canonicalCeilingPlasterboardThicknessFromText(
+  text: string
+): 10 | 13 | "other" | null {
+  const raw = normalise(text);
+  if (!includesAny(raw, PLASTERBOARD_THICKNESS_CONTEXT)) return null;
+  const matches = [...raw.matchAll(/(\d+(?:\.\d+)?)\s*mm/g)];
+  for (const match of matches) {
+    const index = match.index ?? 0;
+    const after = raw.slice(index + match[0].length, index + match[0].length + 24);
+    if (/(centres|centers|spacing|crs)\b/.test(after)) continue;
+    const window = raw.slice(Math.max(0, index - 28), index + match[0].length + 28);
+    if (!includesAny(window, PLASTERBOARD_THICKNESS_CONTEXT)) continue;
+    const mm = Number(match[1]);
+    if (mm === 10) return 10;
+    if (mm === 13) return 13;
+    if (Number.isFinite(mm) && mm > 0) return "other";
+  }
+  return null;
+}
+
 export function canonicalCeilingJobScopeFromText(
   text: string
 ): CeilingJobScope | null {
@@ -352,6 +381,11 @@ function applySnippetToPortion(portion: CeilingPortion, snippet: string): void {
   if (product) {
     portion.lining.family = portion.lining.family ?? "plasterboard";
     portion.lining.plasterboard_product = product;
+  }
+  const thickness = canonicalCeilingPlasterboardThicknessFromText(snippet);
+  if (thickness != null) {
+    portion.lining.family = portion.lining.family ?? "plasterboard";
+    portion.lining.thickness_mm = thickness;
   }
   const scope = canonicalCeilingJobScopeFromText(snippet);
   if (scope) portion.structure.job_scope = scope;

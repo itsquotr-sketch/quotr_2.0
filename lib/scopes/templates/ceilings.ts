@@ -217,6 +217,18 @@ export const ceilingsScope: ScopeDefinition = {
       category: "scope",
     },
     {
+      key: "ceilings.portion.thickness_mm",
+      label: "Plasterboard thickness",
+      questionText: "What plasterboard thickness?",
+      inputType: "select",
+      options: ["10 mm", "13 mm", "Other / specified system"],
+      required: false,
+      priority: 36,
+      factKey: "ceilings.portion.thickness_mm",
+      workAreaType: "ceilings",
+      category: "scope",
+    },
+    {
       key: "ceilings.portion.length_m",
       label: "Ceiling length",
       questionText: "What is the length of this ceiling portion?",
