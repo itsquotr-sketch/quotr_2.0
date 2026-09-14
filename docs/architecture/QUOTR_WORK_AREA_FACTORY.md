@@ -305,9 +305,9 @@ Do not silently skip factory stages to satisfy demand — reduce depth (SUPPORTE
 
 ---
 
-## 18. Ceilings nested model (WA-03A foundation)
+## 18. Ceilings nested model (WA-03A–WA-04A)
 
-**Status:** FOUNDATION ONLY — no physical calculator, Details, or Ready wiring in this slice.
+**Status:** Nested capture (WA-03A/B) is live. WA-04A adds geometry + timber direct-fix physical takeoff. Hosted nested estimates remain gated until lining/steel/commercial land.
 
 Canonical tree:
 
@@ -325,7 +325,24 @@ Project
 
 **V1 bulkhead topology:** `conventional_two_face_downstand` only (underside + one exposed vertical face, wall-adjacent). Other topologies later: Pricing Required.
 
-**Legacy:** `calculateCeilings` in `lib/estimate/calculators/fitout.ts` remains hosted runtime until WA-04. Flat template keys stay.
+**Geometry (WA-04A):** calculated at takeoff time; not rewritten onto facts during render.
 
-**Next:** WA-03B wires the information contract into extraction, Details, Ready, and ownership.
+- `length_width`: require length_m > 0 and width_m > 0. `area_m2 = length × width`. `perimeter_lm = 2 × (length + width)`.
+- `area_only`: area_m2 only. Do not invent length, width, perimeter, or framing layout. Timber / steel / suspended cannot take off framing from area alone.
+
+**Timber direct-fix (WA-04A):** parallel joists/battens. No nogs.
+
+```
+spacing_m = spacing_mm / 1000
+runs = ceil(crossDimension / spacing_m - epsilon) + 1   // runCountFromSpacing
+installed_lm = runs × runDimension
+```
+
+`along_length`: run = length, cross = width. `along_width`: run = width, cross = length.
+
+Physical kernel: `lib/estimate/ceilings-geometry.ts`, `ceilings-framing.ts`, `ceilings-physical.ts`. Shared timber identity `timber.framing.140x45.h1.2.lm`. Installed LM only — no waste percent, labour, or money.
+
+**Legacy:** `calculateCeilings` in `lib/estimate/calculators/fitout.ts` remains the hosted runtime. Nested `ceilings.portions` still cannot fall through to the flat estimator.
+
+**Next:** WA-04B steel / suspended physical takeoff.
 
