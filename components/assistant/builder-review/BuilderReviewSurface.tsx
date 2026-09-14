@@ -130,7 +130,9 @@ export function BuilderReviewSurface({
         <div className="space-y-3">
           <div data-builder-review-recommended-sell>
             <p className="text-[11px] font-semibold uppercase tracking-[0.06em] text-muted-foreground">
-              Recommended sell
+              {view.overview.recommendedSellIsPartial
+                ? "Current priced total"
+                : "Recommended sell"}
             </p>
             <p className="mt-0.5 text-2xl font-semibold tracking-tight tabular-nums">
               {formatCurrency(gst.exGst)}{" "}
@@ -150,6 +152,14 @@ export function BuilderReviewSurface({
               </p>
             ) : null}
           </div>
+          {view.overview.partialEstimateLabel ? (
+            <p
+              className="rounded-lg border border-amber-300/80 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100"
+              data-builder-review-partial-estimate
+            >
+              {view.overview.partialEstimateLabel}
+            </p>
+          ) : null}
           <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm" data-builder-review-cost-margin>
             <span>
               Estimated cost{" "}
@@ -320,15 +330,11 @@ export function BuilderReviewSurface({
               >
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">{wa.workAreaName}</p>
-                  {!multi ? (
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(wa.sell)}
-                    </p>
-                  ) : (
-                    <p className="text-xs text-muted-foreground">
-                      {formatCurrency(wa.sell)}
-                    </p>
-                  )}
+                  <p className="text-xs text-muted-foreground">
+                    {wa.resolvedSubtotalLabel
+                      ? `${wa.resolvedSubtotalLabel} ${formatCurrency(wa.sell)}`
+                      : formatCurrency(wa.sell)}
+                  </p>
                   {multi && !open ? (
                     <p className="mt-0.5 text-[10px] text-muted-foreground">
                       {wa.categories
@@ -349,7 +355,119 @@ export function BuilderReviewSurface({
 
               {open ? (
                 <div className="space-y-4 overflow-x-hidden border-t border-border/40 px-4 py-3">
-                  {wa.categories.map((cat) => (
+                  {wa.partialEstimateLabel ? (
+                    <p
+                      className="rounded-lg border border-amber-300/80 bg-amber-50 px-3 py-2 text-sm text-amber-950 dark:border-amber-800/60 dark:bg-amber-950/40 dark:text-amber-100"
+                      data-builder-review-partial-estimate
+                    >
+                      {wa.partialEstimateLabel}
+                    </p>
+                  ) : null}
+                  {wa.portionGroups && wa.portionGroups.length > 0
+                    ? wa.portionGroups.map((portion) => (
+                        <section
+                          key={portion.id}
+                          className="space-y-2 rounded-lg border border-border/50 px-3 py-3"
+                          data-builder-review-portion={portion.id}
+                        >
+                          <div className="min-w-0">
+                            <p className="text-sm font-semibold">{portion.label}</p>
+                            {portion.areaLabel ? (
+                              <p className="text-xs text-muted-foreground">
+                                {portion.areaLabel}
+                              </p>
+                            ) : null}
+                            {portion.summary ? (
+                              <p className="text-xs break-words text-muted-foreground">
+                                {portion.summary}
+                              </p>
+                            ) : null}
+                          </div>
+                          {portion.lineGroups.map((group) => (
+                            <div
+                              key={group.id}
+                              className="px-0 py-2"
+                              data-builder-review-line-group={group.id}
+                              data-commercial="true"
+                              data-pricing-required={
+                                group.pricingRequired ? "true" : "false"
+                              }
+                            >
+                              <div className="flex items-start justify-between gap-3">
+                                <div className="min-w-0 space-y-0.5">
+                                  <p className="text-sm font-medium leading-snug">
+                                    {group.label}
+                                  </p>
+                                  {group.supporting ? (
+                                    <p className="text-xs break-words text-muted-foreground">
+                                      {group.supporting}
+                                    </p>
+                                  ) : null}
+                                </div>
+                                <p className="shrink-0 text-sm font-semibold tabular-nums">
+                                  {group.pricingRequired && group.recommendedCost <= 0
+                                    ? "Pricing Required"
+                                    : formatCurrency(group.recommendedCost)}
+                                </p>
+                              </div>
+                              {group.children.length > 0 ? (
+                                <ul className="mt-1.5 space-y-1.5">
+                                  {group.children.map((child) => {
+                                    const childPr =
+                                      Boolean(group.pricingRequired) ||
+                                      child.rateLabel === "Rate required" ||
+                                      child.category === "PRICING_REQUIRED";
+                                    return (
+                                      <li
+                                        key={child.id}
+                                        className="flex items-start justify-between gap-3 text-xs"
+                                        data-builder-review-stock-sku={
+                                          child.itemKey ?? child.id
+                                        }
+                                        data-pricing-required={
+                                          childPr ? "true" : "false"
+                                        }
+                                      >
+                                        <span className="min-w-0 break-words">
+                                          <span className="font-medium">
+                                            {child.label}
+                                          </span>
+                                          {child.quantity != null ? (
+                                            <span className="mt-0.5 block text-muted-foreground">
+                                              {formatQty(child.quantity, child.unit)}
+                                              {child.labourHours != null
+                                                ? ` · ${formatLabourHours(child.labourHours)}`
+                                                : ""}
+                                            </span>
+                                          ) : null}
+                                        </span>
+                                        <span className="shrink-0 font-medium tabular-nums">
+                                          {childPr && child.recommendedCost <= 0
+                                            ? "Pricing Required"
+                                            : formatCurrency(child.recommendedCost)}
+                                        </span>
+                                      </li>
+                                    );
+                                  })}
+                                </ul>
+                              ) : null}
+                            </div>
+                          ))}
+                          {portion.assumptions.length > 0 ? (
+                            <ul
+                              className="space-y-1 text-xs text-muted-foreground"
+                              data-builder-review-portion-assumptions
+                            >
+                              {portion.assumptions.map((item) => (
+                                <li key={item}>{item}</li>
+                              ))}
+                            </ul>
+                          ) : null}
+                        </section>
+                      ))
+                    : null}
+                  {(!wa.portionGroups || wa.portionGroups.length === 0)
+                    ? wa.categories.map((cat) => (
                     <section
                       key={cat.id}
                       className="space-y-2"
@@ -693,7 +811,8 @@ export function BuilderReviewSurface({
                         </details>
                       ) : null}
                     </section>
-                  ))}
+                  ))
+                    : null}
                 </div>
               ) : null}
             </div>

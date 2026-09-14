@@ -9,7 +9,15 @@
 import type { ClarifyAskClass } from "@/lib/assistant/clarify/types";
 import type { EstimateFact } from "@/lib/estimate/types";
 import {
+  CEILINGS_ACTIVE_BULKHEAD_ID_FACT_KEY,
+  CEILINGS_ACTIVE_PORTION_ID_FACT_KEY,
+  CEILINGS_ADD_BULKHEAD_KEY,
+  CEILINGS_ADD_PORTION_KEY,
   CEILINGS_BULKHEAD_TOPOLOGY_ASSUMPTION,
+  CEILINGS_DELETE_BULKHEAD_KEY,
+  CEILINGS_DELETE_PORTION_KEY,
+  CEILINGS_DUPLICATE_PORTION_KEY,
+  CEILINGS_PORTIONS_FACT_KEY,
   findCeilingBulkhead,
   findCeilingPortion,
   recommendedCeilingGeometryMode,
@@ -743,3 +751,27 @@ export function lookupCeilingsInformationContract(
     componentId: ctx.componentId,
   };
 }
+
+/** Calculator-owned Refine contract. Nested write keys patch `ceilings.portions`. */
+export const CEILINGS_CALCULATOR_CONSUMED_FACTS = [
+  CEILINGS_PORTIONS_FACT_KEY,
+  CEILINGS_ACTIVE_PORTION_ID_FACT_KEY,
+  CEILINGS_ACTIVE_BULKHEAD_ID_FACT_KEY,
+  CEILINGS_ADD_PORTION_KEY,
+  CEILINGS_DUPLICATE_PORTION_KEY,
+  CEILINGS_DELETE_PORTION_KEY,
+  CEILINGS_ADD_BULKHEAD_KEY,
+  CEILINGS_DELETE_BULKHEAD_KEY,
+  ...CEILINGS_INFORMATION_CONTRACT.map((row) => row.factKey),
+  "ceilings.portion.label",
+  "ceilings.bulkhead.label",
+  "ceilings.area_m2",
+  "ceilings.ceiling_type",
+  "ceilings.edge_lining_length_lm",
+  "ceilings.edge_lining_type",
+  "ceilings.demolition_included",
+  "ceilings.battens_included",
+  "ceilings.insulation_included",
+  "ceilings.stopping_included",
+  "ceilings.painting_included",
+] as const;

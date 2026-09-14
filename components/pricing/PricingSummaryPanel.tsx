@@ -1,9 +1,13 @@
 "use client";
 
 import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
-import type { PricingDocument } from "@/lib/pricing/types";
+import type { PricingDocument, PricingItem } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
+import {
+  CEILINGS_QUOTE_PR_BLOCK_MESSAGE,
+  nestedCeilingsQuoteIsBlocked,
+} from "@/lib/estimate/ceilings-quote-readiness";
 import { MetricRow } from "@/components/ui/metric-row";
 import {
   Card,
@@ -16,6 +20,7 @@ import { cn } from "@/lib/utils";
 type PricingSummaryPanelProps = {
   document: PricingDocument;
   projectId: string;
+  items?: PricingItem[];
   quoteSummary?: QuoteSummary | null;
   pricingChangedAfterQuote?: boolean;
   className?: string;
@@ -50,6 +55,7 @@ function SummaryRow({
 export function PricingSummaryPanel({
   document,
   projectId,
+  items = [],
   quoteSummary = null,
   pricingChangedAfterQuote = false,
   className,
@@ -57,6 +63,9 @@ export function PricingSummaryPanel({
 }: PricingSummaryPanelProps) {
   const isReviewed = document.status === "reviewed";
   const view = pricingDocumentViewModel(document);
+  const quoteBlockedReason = nestedCeilingsQuoteIsBlocked({ items })
+    ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
+    : null;
 
   return (
     <Card
@@ -127,13 +136,18 @@ export function PricingSummaryPanel({
             "hidden lg:block",
             isReviewed &&
               !quoteSummary &&
+              !quoteBlockedReason &&
               "rounded-xl border border-[var(--brand-orange-muted)]/70 bg-[var(--brand-orange-muted)]/25 p-3"
           )}
           data-pricing-desktop-quote-cta={
-            quoteSummary ? "open" : isReviewed ? "create" : "blocked"
+            quoteSummary
+              ? "open"
+              : isReviewed && !quoteBlockedReason
+                ? "create"
+                : "blocked"
           }
         >
-          {isReviewed && !quoteSummary ? (
+          {isReviewed && !quoteSummary && !quoteBlockedReason ? (
             <p className="mb-2.5 text-sm font-medium tracking-tight">
               Next: Create quote
             </p>
@@ -143,12 +157,13 @@ export function PricingSummaryPanel({
             pricingDocumentId={document.id}
             isReviewed={isReviewed}
             quoteSummary={quoteSummary}
+            quoteBlockedReason={quoteBlockedReason}
           />
           {quoteSummary ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Open the client quote created from this pricing.
             </p>
-          ) : isReviewed ? (
+          ) : isReviewed && !quoteBlockedReason ? (
             <p className="mt-2 text-xs text-muted-foreground">
               Create a client-facing quote from this pricing.
             </p>

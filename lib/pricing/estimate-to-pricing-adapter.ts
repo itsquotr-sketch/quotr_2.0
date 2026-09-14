@@ -126,7 +126,10 @@ export function calculateAuthoritativeFieldsFromEstimateLine(
   const overlay = (
     base: PersistedPricingItemMoneyFields
   ): PersistedPricingItemMoneyFields => {
-    const costKnown = !(recommendedCost === 0 && recommendedSell > 0);
+    const costKnown =
+      metadata.rateSourceType === "missing"
+        ? false
+        : !(recommendedCost === 0 && recommendedSell > 0);
     const grossProfit = costKnown
       ? roundMoney(recommendedSell - recommendedCost)
       : 0;

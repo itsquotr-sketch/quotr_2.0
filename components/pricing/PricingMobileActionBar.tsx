@@ -4,8 +4,12 @@ import { useTransition } from "react";
 import { Loader2 } from "lucide-react";
 import { CreateQuoteButton } from "@/components/quotes/CreateQuoteButton";
 import { pricingDocumentViewModel } from "@/lib/pricing/financial-view-model";
-import type { PricingDocument } from "@/lib/pricing/types";
+import type { PricingDocument, PricingItem } from "@/lib/pricing/types";
 import type { QuoteSummary } from "@/lib/quotes/types";
+import {
+  CEILINGS_QUOTE_PR_BLOCK_MESSAGE,
+  nestedCeilingsQuoteIsBlocked,
+} from "@/lib/estimate/ceilings-quote-readiness";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
@@ -16,6 +20,7 @@ const MOBILE_NAV_CLEARANCE =
 type PricingMobileActionBarProps = {
   document: PricingDocument;
   projectId: string;
+  items?: PricingItem[];
   quoteSummary?: QuoteSummary | null;
   isSaving?: boolean;
   needsRecalibration?: boolean;
@@ -28,6 +33,7 @@ type PricingMobileActionBarProps = {
 export function PricingMobileActionBar({
   document,
   projectId,
+  items = [],
   quoteSummary = null,
   isSaving = false,
   needsRecalibration = false,
@@ -38,6 +44,9 @@ export function PricingMobileActionBar({
 }: PricingMobileActionBarProps) {
   const isReviewed = document.status === "reviewed";
   const view = pricingDocumentViewModel(document);
+  const quoteBlockedReason = nestedCeilingsQuoteIsBlocked({ items })
+    ? CEILINGS_QUOTE_PR_BLOCK_MESSAGE
+    : null;
   const [isReviewing, startReview] = useTransition();
 
   const handleMarkReviewed = () => {
@@ -87,6 +96,7 @@ export function PricingMobileActionBar({
               isReviewed={isReviewed}
               quoteSummary={quoteSummary}
               presentation="bar"
+              quoteBlockedReason={quoteBlockedReason}
             />
           ) : !isReviewed && onMarkReviewed ? (
             <>
@@ -147,6 +157,7 @@ export function PricingMobileActionBar({
                 isReviewed={isReviewed}
                 quoteSummary={quoteSummary}
                 presentation="bar"
+                quoteBlockedReason={quoteBlockedReason}
               />
             </>
           )}

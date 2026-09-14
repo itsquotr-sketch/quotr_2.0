@@ -1,5 +1,6 @@
 import { getRefineAdapter } from "@/lib/assistant/refine/adapters/registry";
 import { internalWallsRefinePanel } from "@/lib/assistant/refine/adapters/internal-walls";
+import { ceilingsRefinePanel } from "@/lib/assistant/refine/adapters/ceilings";
 import {
   identityFromCaptureRow,
   isNestedRefineIdentity,
@@ -22,6 +23,7 @@ import { ceilingsFactIsRelevant } from "@/lib/estimate/ceilings-information-cont
 import { isUnresolvedCaptureValue } from "@/lib/estimate/disclosed-assumptions";
 import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
+import { isCeilingsPortionWriteKey } from "@/lib/estimate/ceilings-portions";
 import {
   getConsumedProjectConditionDef,
   listConsumedProjectConditionDefs,
@@ -70,6 +72,9 @@ function preferResolved(a: RefineCandidate, b: RefineCandidate): RefineCandidate
 function isEditableConsumedFact(workAreaType: string, factKey: string): boolean {
   if (!isCalculatorConsumedFact(workAreaType, factKey)) return false;
   if (workAreaType === "internal_walls" && isInternalWallsWallTypeWriteKey(factKey)) {
+    return false;
+  }
+  if (workAreaType === "ceilings" && isCeilingsPortionWriteKey(factKey)) {
     return false;
   }
   const template = getQuestionTemplateByKey(factKey);
@@ -357,6 +362,15 @@ export function composeRefineView(input: ComposeRefineInput): RefineView {
       .filter((row) => row.status !== "excluded" && row.type === "internal_walls")
       .map((wa) =>
         internalWallsRefinePanel({
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          facts: input.facts as EstimateFact[],
+        })
+      ),
+    ceilingPortionPanels: input.workAreas
+      .filter((row) => row.status !== "excluded" && row.type === "ceilings")
+      .map((wa) =>
+        ceilingsRefinePanel({
           workAreaId: wa.id,
           workAreaName: wa.name,
           facts: input.facts as EstimateFact[],

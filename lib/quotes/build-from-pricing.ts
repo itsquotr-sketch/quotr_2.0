@@ -4,6 +4,10 @@ import {
   parseStringArray,
   todayIsoDate,
 } from "@/lib/pricing/calculations";
+import {
+  CEILINGS_QUOTE_PR_BLOCK_MESSAGE,
+  nestedCeilingsQuoteIsBlocked,
+} from "@/lib/estimate/ceilings-quote-readiness";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
@@ -113,6 +117,9 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     ]);
 
   const items = (pricingItems ?? []).map((row) => mapPricingItem(row));
+  if (nestedCeilingsQuoteIsBlocked({ items })) {
+    return { error: CEILINGS_QUOTE_PR_BLOCK_MESSAGE };
+  }
   const workAreaNames = new Map(
     (workAreas ?? []).map((workArea) => [workArea.id, workArea.name])
   );
@@ -122,7 +129,13 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     if (!fact.work_area_id) {
       continue;
     }
-    const value = formatFactValueForDisplay(fact.value);
+    const value =
+      fact.key === "ceilings.portions" ||
+      fact.key === "internal_walls.wall_types"
+        ? typeof fact.value === "string"
+          ? fact.value
+          : JSON.stringify(fact.value)
+        : formatFactValueForDisplay(fact.value);
     if (!value) {
       continue;
     }

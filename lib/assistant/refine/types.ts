@@ -52,6 +52,23 @@ export type RefineView = {
   readonly advanced: readonly RefineCandidate[];
   readonly hasCandidates: boolean;
   readonly wallTypePanels?: readonly InternalWallsRefinePanel[];
+  readonly ceilingPortionPanels?: readonly CeilingsRefinePanel[];
+};
+
+export type CeilingsRefinePanel = {
+  readonly workAreaId: string;
+  readonly workAreaName: string;
+  readonly portions: readonly {
+    readonly id: string;
+    readonly displayName: string;
+    readonly summary: string;
+    readonly bulkheads: readonly {
+      readonly id: string;
+      readonly displayName: string;
+      readonly summary: string;
+    }[];
+  }[];
+  readonly activeId: string | null;
 };
 
 export type InternalWallsRefinePanel = {

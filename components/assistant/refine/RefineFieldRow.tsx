@@ -33,6 +33,8 @@ export function toRefineClarifyCandidate(row: RefineCandidate): ClarifyCandidate
     write: row.write,
     wallTypeId: row.wallTypeId,
     openingId: row.openingId,
+    nestedItemId: row.nestedItemId ?? row.wallTypeId,
+    componentId: row.componentId ?? row.openingId,
     blocksEstimate: false,
     assumable: true,
     rankScore: 0,

@@ -15,6 +15,7 @@ import { BATHROOM_CALCULATOR_CONSUMED_FACTS } from "@/lib/estimate/calculators/b
 import { DECK_CALCULATOR_CONSUMED_FACTS } from "@/lib/estimate/calculators/deck";
 import { FENCE_CALCULATOR_CONSUMED_FACTS } from "@/lib/estimate/calculators/fence";
 import { PAINTING_CALCULATOR_CONSUMED_FACTS, INTERNAL_WALLS_CALCULATOR_CONSUMED_FACTS } from "@/lib/estimate/calculators/fitout";
+import { CEILINGS_CALCULATOR_CONSUMED_FACTS } from "@/lib/estimate/ceilings-information-contract";
 import { KITCHEN_CALCULATOR_CONSUMED_FACTS } from "@/lib/estimate/calculators/kitchen";
 import { RETAINING_WALL_CALCULATOR_CONSUMED_FACTS } from "@/lib/estimate/calculators/retaining-wall";
 
@@ -28,6 +29,7 @@ const CONTRACTS: Readonly<Record<string, readonly string[]>> = {
   kitchen: KITCHEN_CALCULATOR_CONSUMED_FACTS,
   fence: FENCE_CALCULATOR_CONSUMED_FACTS,
   internal_walls: INTERNAL_WALLS_CALCULATOR_CONSUMED_FACTS,
+  ceilings: CEILINGS_CALCULATOR_CONSUMED_FACTS,
 };
 
 /** Project Conditions consumed by labour/access adjustments across calculators. */

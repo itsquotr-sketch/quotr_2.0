@@ -13,6 +13,7 @@ import type { RefineCandidate, RefineGroupId } from "@/lib/assistant/refine/type
 import { candidateMatchesFocus } from "@/lib/assistant/question-identity";
 import { getDeckQuestionDescriptor } from "@/lib/estimate/deck-question-descriptors";
 import type { DeckQuestionSection } from "@/lib/estimate/deck-question-descriptors";
+import { ceilingsDetailsSectionId } from "@/lib/estimate/ceilings-information-contract";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
 import { factHasValue } from "@/lib/scopes/fact-values";
 
@@ -109,6 +110,15 @@ export function refineSectionForCandidate(row: RefineCandidate): RefineUiSection
   if (row.factKey) {
     const descriptor = getDeckQuestionDescriptor(row.factKey);
     if (descriptor) return DECK_SECTION_TO_UI[descriptor.section];
+    if (
+      row.workAreaType === "ceilings" ||
+      row.factKey.startsWith("ceilings.portion.") ||
+      row.factKey.startsWith("ceilings.bulkhead.")
+    ) {
+      const section = ceilingsDetailsSectionId(row.factKey);
+      if (section === "details") return "details";
+      return section;
+    }
   }
   return FALLBACK_GROUP[row.group];
 }
@@ -168,7 +178,7 @@ function buildSections(
   const order: string[] = [];
   for (const row of [...rows].sort(compareRefineRows)) {
     const id = refineSectionForCandidate(row);
-    const wallTypeId = row.wallTypeId ?? null;
+    const wallTypeId = row.wallTypeId ?? row.nestedItemId ?? null;
     const key = `${id}::${wallTypeId ?? ""}`;
     const existing = byKey.get(key);
     if (existing) {
@@ -206,9 +216,17 @@ export function groupRefineCandidatesForDisplay(params: {
   readonly wallTypePanels?: readonly {
     readonly types: readonly { readonly id: string; readonly displayName: string }[];
   }[];
+  readonly ceilingPortionPanels?: readonly {
+    readonly portions: readonly { readonly id: string; readonly displayName: string }[];
+  }[];
   readonly focusKey?: string | null;
 }): RefineUiGroup[] {
-  const wallTypeNames = wallTypeLabelLookup(params.wallTypePanels);
+  const wallTypeNames = new Map(wallTypeLabelLookup(params.wallTypePanels));
+  for (const panel of params.ceilingPortionPanels ?? []) {
+    for (const portion of panel.portions) {
+      wallTypeNames.set(portion.id, portion.displayName);
+    }
+  }
   const pcs: RefineCandidate[] = [];
   const byWa = new Map<string, RefineCandidate[]>();
   const waMeta = new Map<

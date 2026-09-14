@@ -489,6 +489,7 @@ export function PricingWorkspace({
           className="hidden md:block"
           document={document}
           projectId={projectId}
+          items={items}
           quoteSummary={quoteSummary}
           pricingChangedAfterQuote={pricingChangedAfterQuote}
         />
@@ -497,6 +498,7 @@ export function PricingWorkspace({
       <PricingMobileActionBar
         document={document}
         projectId={projectId}
+        items={items}
         quoteSummary={quoteSummary}
         isSaving={isSaving}
         needsRecalibration={document.needs_recalibration}

@@ -159,6 +159,16 @@ function PricingItemRowComponent({
                     Pricing required
                   </Badge>
                 ) : null}
+                {pricingMetadata.contributingNestedItemIds &&
+                pricingMetadata.contributingNestedItemIds.length > 1 ? (
+                  <span
+                    className="text-[11px] text-muted-foreground"
+                    data-pricing-portion-contributors
+                  >
+                    Includes {pricingMetadata.contributingNestedItemIds.length}{" "}
+                    ceiling portions
+                  </span>
+                ) : null}
                 <span className="text-xs text-muted-foreground">{qtyLabel}</span>
               </div>
               <div className="flex flex-wrap items-center gap-3 text-sm">
@@ -229,6 +239,16 @@ function PricingItemRowComponent({
             >
               Pricing required
             </Badge>
+          ) : null}
+          {pricingMetadata.contributingNestedItemIds &&
+          pricingMetadata.contributingNestedItemIds.length > 1 ? (
+            <p
+              className="text-[11px] text-muted-foreground"
+              data-pricing-portion-contributors
+            >
+              Includes {pricingMetadata.contributingNestedItemIds.length}{" "}
+              ceiling portions
+            </p>
           ) : null}
           {item.internal_label !== item.client_label ? (
             <p className="truncate text-xs text-muted-foreground">

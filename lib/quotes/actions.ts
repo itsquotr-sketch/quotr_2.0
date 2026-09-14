@@ -30,6 +30,11 @@ import {
   assertOrgOwnsQuoteItem,
 } from "@/lib/security/org-ownership";
 import { buildQuoteSnapshotFromReviewedPricing } from "@/lib/quotes/build-from-pricing";
+import { mapPricingItem } from "@/lib/pricing/mappers";
+import {
+  CEILINGS_QUOTE_PR_BLOCK_MESSAGE,
+  nestedCeilingsQuoteIsBlocked,
+} from "@/lib/estimate/ceilings-quote-readiness";
 import { calculateQuoteBaseTotalsFromItems } from "@/lib/quotes/base-totals";
 import { resolveAuthoritativeQuoteItemTotal } from "@/lib/quotes/quote-commercial-engine-adapter";
 import type { QuoteItemFromPricing } from "@/lib/quotes/from-pricing";
@@ -1223,6 +1228,20 @@ export async function markQuoteSent(quoteId: string): Promise<QuoteActionState> 
   }
 
   const { supabase, orgId, quote, user } = loaded;
+  if (quote.pricing_document_id) {
+    const { data: pricingRows } = await supabase
+      .from("pricing_items")
+      .select("*")
+      .eq("pricing_document_id", quote.pricing_document_id)
+      .eq("org_id", orgId);
+    if (
+      nestedCeilingsQuoteIsBlocked({
+        items: (pricingRows ?? []).map((row) => mapPricingItem(row)),
+      })
+    ) {
+      return { error: CEILINGS_QUOTE_PR_BLOCK_MESSAGE };
+    }
+  }
   if (quoteHasActiveSendLock(quote)) {
     return {
       error: "This quote is already being sent. Retry finalising the email, or wait.",

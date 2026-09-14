@@ -6,6 +6,7 @@ export {
   toPricedLine,
   toTakeoffRow,
 } from "@/lib/assistant/builder-review/compose";
+export { applyCeilingsReviewGroups } from "@/lib/assistant/builder-review/ceilings-review-groups";
 export type {
   BuilderReviewCategoryGroup,
   BuilderReviewCategoryId,
@@ -14,6 +15,7 @@ export type {
   BuilderReviewLineGroup,
   BuilderReviewOverview,
   BuilderReviewPricedLine,
+  BuilderReviewPortionGroup,
   BuilderReviewTakeoffRow,
   BuilderReviewView,
   BuilderReviewWorkAreaGroup,

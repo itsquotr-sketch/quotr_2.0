@@ -5,6 +5,7 @@
 
 import type { EstimateLineItem } from "@/components/assistant/types";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
+import type { EstimateFact } from "@/lib/estimate/types";
 import type { LineFallbackPresentation } from "@/lib/estimate/fallback-presentation";
 
 export const BUILDER_REVIEW_CATEGORIES = [
@@ -64,7 +65,17 @@ export type BuilderReviewLineGroup = {
   readonly itemKey: string | null;
   readonly showChangeMaterial: boolean;
   readonly rateContext: string | null;
+  readonly pricingRequired?: boolean;
   readonly children: readonly BuilderReviewPricedLine[];
+};
+
+export type BuilderReviewPortionGroup = {
+  readonly id: string;
+  readonly label: string;
+  readonly summary: string | null;
+  readonly areaLabel: string | null;
+  readonly lineGroups: readonly BuilderReviewLineGroup[];
+  readonly assumptions: readonly string[];
 };
 
 export type BuilderReviewTakeoffRow = {
@@ -102,6 +113,9 @@ export type BuilderReviewWorkAreaGroup = {
   readonly cost: number;
   readonly sell: number;
   readonly categories: readonly BuilderReviewCategoryGroup[];
+  readonly portionGroups?: readonly BuilderReviewPortionGroup[];
+  readonly partialEstimateLabel?: string | null;
+  readonly resolvedSubtotalLabel?: string | null;
 };
 
 export type BuilderReviewIssue = {
@@ -136,6 +150,8 @@ export type BuilderReviewOverview = {
   readonly workAreaNames: readonly string[];
   readonly categorySummary: readonly BuilderReviewCategorySummary[];
   readonly isStale: boolean;
+  readonly partialEstimateLabel?: string | null;
+  readonly recommendedSellIsPartial?: boolean;
 };
 
 export type BuilderReviewView = {
@@ -180,4 +196,5 @@ export type ComposeBuilderReviewInput = {
     readonly workAreaId?: string;
   }[];
   readonly confidenceBand?: string | null;
+  readonly facts?: readonly EstimateFact[];
 };

@@ -59,6 +59,9 @@ const PACKAGE_DIAGNOSTIC_PATTERNS = [
   /uses the standard .+ package/i,
   /cannot be reconstructed safely/i,
   /independent of commercial/i,
+  /no ceiling v1 company dna/i,
+  /embeds ordinary suspension-wire/i,
+  /bathroom\.lining\.ceiling/i,
 ];
 
 const SYSTEM_DIAGNOSTIC_PATTERNS = [

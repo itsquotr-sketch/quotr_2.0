@@ -133,6 +133,9 @@ import type {
   ComposeBuilderReviewInput,
 } from "@/lib/assistant/builder-review/types";
 import { isUserFacingEstimateAssumption } from "@/lib/assistant/presentation/user-facing-estimate-assumptions";
+import { applyCeilingsReviewGroups } from "@/lib/assistant/builder-review/ceilings-review-groups";
+import { CEILINGS_PARTIAL_ESTIMATE_MESSAGE } from "@/lib/estimate/ceilings-identities";
+import { CEILINGS_BUILDER_REVIEW_PARTIAL_MESSAGE } from "@/lib/estimate/ceilings-quote-readiness";
 
 const CATEGORY_LABELS: Record<BuilderReviewCategoryId, string> = {
   MATERIALS: "Materials",
@@ -1720,6 +1723,27 @@ export function composeBuilderReview(
       categories = applyInternalWallsReviewGroups(categories);
     }
 
+    let portionGroups = undefined as
+      | ReturnType<typeof applyCeilingsReviewGroups>["portionGroups"]
+      | undefined;
+    let partialEstimateLabel: string | null = null;
+    let resolvedSubtotalLabel: string | null = null;
+    if (meta.type === "ceilings") {
+      const grouped = applyCeilingsReviewGroups({
+        categories,
+        priced,
+        facts: input.facts,
+        workAreaId: meta.id,
+        workAreaName: wa.name,
+        requirements,
+        missingInfo: input.estimate.missingInfo,
+      });
+      categories = grouped.categories;
+      portionGroups = grouped.portionGroups;
+      partialEstimateLabel = grouped.partialEstimateLabel;
+      resolvedSubtotalLabel = grouped.resolvedSubtotalLabel;
+    }
+
     return {
       workAreaId: meta.id,
       workAreaName: wa.name,
@@ -1727,6 +1751,9 @@ export function composeBuilderReview(
       cost: wa.cost,
       sell: wa.sell,
       categories,
+      portionGroups,
+      partialEstimateLabel,
+      resolvedSubtotalLabel,
     };
   });
 
@@ -1773,6 +1800,12 @@ export function composeBuilderReview(
 
   const { assumptions, checks, improvements } = buildIssues(input);
   const band = input.confidenceBand ?? null;
+  const ceilingPartial = workAreas.some((wa) => Boolean(wa.partialEstimateLabel)) ||
+    input.estimate.missingInfo.some(
+      (row) =>
+        row === CEILINGS_PARTIAL_ESTIMATE_MESSAGE ||
+        /partial estimate — pricing required/i.test(row)
+    );
 
   // Surface material requirements that are authoritative are NOT takeoff-under-allowance.
   // They appear only via priced lines. Ensure we never sum takeoff.
@@ -1802,6 +1835,10 @@ export function composeBuilderReview(
       workAreaNames: workAreas.map((wa) => wa.workAreaName),
       categorySummary,
       isStale: Boolean(input.estimate.isStale),
+      partialEstimateLabel: ceilingPartial
+        ? CEILINGS_BUILDER_REVIEW_PARTIAL_MESSAGE
+        : null,
+      recommendedSellIsPartial: ceilingPartial,
     },
     workAreas,
     assumptions,

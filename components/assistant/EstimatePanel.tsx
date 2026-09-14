@@ -57,6 +57,7 @@ import { presentLineFallback } from "@/lib/estimate/fallback-presentation";
 import { StatusPill } from "@/components/ui/status-pill";
 import { applyLevel1AttentionPresentation } from "@/lib/assistant/presentation/attention-severity";
 import { fenceQuoteBlockingLabels } from "@/lib/estimate/fence-quote-readiness";
+import { ceilingsQuoteBlockingLabels } from "@/lib/estimate/ceilings-quote-readiness";
 import type { AssistantUnderstandingSummary } from "@/lib/assistant/presentation/assistant-understanding-summary";
 import { AssistantUnderstandingSummaryCard } from "@/components/assistant/AssistantUnderstandingSummaryCard";
 import { MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS } from "@/lib/scopes/estimate-priority";
@@ -529,7 +530,10 @@ export function EstimatePanel({
       })),
       projectConditionsAttention,
       pricingRequiredLabels: estimate
-        ? fenceQuoteBlockingLabels(estimate.missingInfo)
+        ? [
+            ...fenceQuoteBlockingLabels(estimate.missingInfo),
+            ...ceilingsQuoteBlockingLabels(estimate.missingInfo),
+          ]
         : [],
       unresolvedScopeImpactLabels:
         unresolvedScopeImpactLabels.length > 0

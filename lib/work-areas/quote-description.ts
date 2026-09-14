@@ -10,6 +10,13 @@ import {
 } from "@/lib/estimate/fence-quote-readiness";
 import { parseInternalWallsJobScope } from "@/lib/estimate/internal-walls-scope";
 import { parseInternalWallsWallTypes } from "@/lib/estimate/internal-walls-wall-types";
+import {
+  parseCeilingsPortions,
+  type CeilingPortion,
+} from "@/lib/estimate/ceilings-portions";
+import {
+  formatCeilingLiningSummary,
+} from "@/lib/assistant/builder-review/ceilings-review-groups";
 
 export type WorkAreaQuoteFact = {
   key: string;
@@ -726,7 +733,81 @@ function parseInternalWallsQuoteTypes(facts?: WorkAreaQuoteFact[]) {
   }
 }
 
+function parseNestedCeilingsPortions(
+  facts?: WorkAreaQuoteFact[]
+): CeilingPortion[] {
+  const raw = facts?.find((row) => row.key === "ceilings.portions")?.value;
+  if (!raw) return [];
+  try {
+    return parseCeilingsPortions(JSON.parse(raw));
+  } catch {
+    return [];
+  }
+}
+
+function nestedCeilingPortionScope(portion: CeilingPortion, index: number): string {
+  const label = portion.label?.trim() || `Ceiling ${index + 1}`;
+  const family = portion.structure.family;
+  const lining = formatCeilingLiningSummary(portion);
+  let sentence = `${label}: `;
+  if (family === "tile_and_grid" || lining?.toLowerCase().includes("tile")) {
+    sentence += `Install a tile and grid ceiling.`;
+  } else if (family === "existing_framing" && lining) {
+    sentence += `Install ${lining} ceiling to existing framing.`;
+  } else if (family === "timber_direct_fix" && lining) {
+    sentence += `Construct new timber ceiling framing and install ${lining}.`;
+  } else if (family === "steel_direct_fix" && lining) {
+    sentence += `Install steel ceiling framing and ${lining}.`;
+  } else if (family === "suspended_steel" && lining) {
+    sentence += `Install a suspended steel ceiling and ${lining}.`;
+  } else if (lining) {
+    sentence += `Install ${lining} ceiling.`;
+  } else {
+    sentence += `Carry out ceiling works to the agreed scope.`;
+  }
+  sentence += " Allow for associated fixings and installation.";
+  if (portion.finish.insulation_included === true) {
+    if (portion.finish.insulation_type?.trim()) {
+      sentence += ` Include ${portion.finish.insulation_type} ceiling insulation.`;
+    } else {
+      sentence +=
+        " Ceiling insulation is included subject to product confirmation and pricing.";
+    }
+  }
+  for (const bulkhead of portion.bulkheads) {
+    const dims = [
+      bulkhead.length_m != null ? `${bulkhead.length_m.toFixed(1)}m long` : null,
+      bulkhead.depth_m != null
+        ? `${Math.round(bulkhead.depth_m * 1000)}mm deep`
+        : null,
+      bulkhead.height_m != null
+        ? `${Math.round(bulkhead.height_m * 1000)}mm high`
+        : null,
+    ]
+      .filter(Boolean)
+      .join(" × ");
+    const named = bulkhead.label?.trim() ?? "";
+    const generic = !named || /^bulkhead\s*\d+$/i.test(named);
+    sentence += ` Form and line ${
+      generic ? "one wall-adjacent downstand bulkhead" : named
+    }${dims ? ` approximately ${dims}` : ""}.`;
+  }
+  return sentence;
+}
+
 function buildCeilingsDraft(facts?: WorkAreaQuoteFact[]): string {
+  const nested = parseNestedCeilingsPortions(facts);
+  if (nested.length > 0) {
+    let draft = nested
+      .map((portion, index) => nestedCeilingPortionScope(portion, index))
+      .join(" ");
+    draft = appendScopeClause(
+      draft,
+      "Electrical/light relocation, stopping and painting are excluded unless included in a separate work area."
+    );
+    return finalizeDraft(draft);
+  }
+
   const area = factValue(facts, "ceilings.area_m2");
   const ceilingType = factValue(facts, "ceilings.ceiling_type");
 

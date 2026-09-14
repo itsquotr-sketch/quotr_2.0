@@ -6,6 +6,7 @@ import { ActionFooter } from "@/components/ui/action-footer";
 import { Button } from "@/components/ui/button";
 import { SaveStatusIndicator } from "@/components/assistant/SaveStatusIndicator";
 import { createWallTypeId } from "@/lib/estimate/internal-walls-wall-types";
+import { createCeilingPortionId } from "@/lib/estimate/ceilings-portions";
 import { SectionEyebrow } from "@/components/ui/section-eyebrow";
 import type { ClarifyCandidate } from "@/lib/assistant/clarify/types";
 import type { EstimateReadinessView } from "@/lib/assistant/readiness/types";
@@ -16,6 +17,7 @@ import { ASSISTANT_ACTION_LABELS, ASSISTANT_LOADING_COPY } from "@/lib/assistant
 import { PREMIUM } from "@/lib/ui/premium";
 import { cn } from "@/lib/utils";
 import { InternalWallsWallTypesPanel } from "@/components/assistant/refine/InternalWallsWallTypesPanel";
+import { CeilingsPortionsPanel } from "@/components/assistant/refine/CeilingsPortionsPanel";
 import {
   RefineFieldRow,
   toRefineClarifyCandidate,
@@ -87,9 +89,10 @@ export function RefineEstimatePanel({
       groupRefineCandidatesForDisplay({
         candidates: allCandidates,
         wallTypePanels: view.wallTypePanels,
+        ceilingPortionPanels: view.ceilingPortionPanels,
         focusKey,
       }),
-    [allCandidates, focusKey, view.wallTypePanels]
+    [allCandidates, focusKey, view.wallTypePanels, view.ceilingPortionPanels]
   );
 
   const focusedCandidate = focusKey
@@ -333,6 +336,76 @@ export function RefineEstimatePanel({
                   openingId
                 );
               }}
+            />
+          ))}
+        </div>
+      ) : null}
+
+      {view.ceilingPortionPanels && view.ceilingPortionPanels.length > 0 && onWallTypeAction ? (
+        <div className="space-y-4" data-refine-ceiling-portions>
+          {view.ceilingPortionPanels.map((panel) => (
+            <CeilingsPortionsPanel
+              key={panel.workAreaId}
+              panel={panel}
+              isSaving={isSaving}
+              onAdd={async (workAreaId) => {
+                const id = createCeilingPortionId();
+                await onWallTypeAction(
+                  workAreaId,
+                  "ceilings.add_portion",
+                  id,
+                  "Add ceiling",
+                  id
+                );
+              }}
+              onDuplicate={(workAreaId, portionId) => {
+                const copyId = createCeilingPortionId();
+                onWallTypeAction(
+                  workAreaId,
+                  "ceilings.duplicate_portion",
+                  portionId,
+                  "Duplicate ceiling",
+                  copyId
+                );
+              }}
+              onDelete={(workAreaId, portionId) =>
+                onWallTypeAction(
+                  workAreaId,
+                  "ceilings.delete_portion",
+                  portionId,
+                  "Remove ceiling"
+                )
+              }
+              onSelect={(workAreaId, portionId) => {
+                setEditingId(null);
+                onWallTypeAction(
+                  workAreaId,
+                  "ceilings.active_portion_id",
+                  portionId,
+                  "Selected ceiling",
+                  portionId
+                );
+              }}
+              onAddBulkhead={async (workAreaId, portionId, bulkheadId) => {
+                await onWallTypeAction(
+                  workAreaId,
+                  "ceilings.add_bulkhead",
+                  bulkheadId,
+                  "Add bulkhead",
+                  portionId,
+                  bulkheadId
+                );
+              }}
+              onDeleteBulkhead={(workAreaId, portionId, bulkheadId) =>
+                onWallTypeAction(
+                  workAreaId,
+                  "ceilings.delete_bulkhead",
+                  bulkheadId,
+                  "Remove bulkhead",
+                  portionId,
+                  bulkheadId
+                )
+              }
             />
           ))}
         </div>

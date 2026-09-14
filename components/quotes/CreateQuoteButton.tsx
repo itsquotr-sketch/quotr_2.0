@@ -15,6 +15,7 @@ type CreateQuoteButtonProps = {
   isReviewed: boolean;
   quoteSummary: QuoteSummary | null;
   presentation?: "default" | "bar";
+  quoteBlockedReason?: string | null;
 };
 
 export function CreateQuoteButton({
@@ -23,6 +24,7 @@ export function CreateQuoteButton({
   isReviewed,
   quoteSummary,
   presentation = "default",
+  quoteBlockedReason = null,
 }: CreateQuoteButtonProps) {
   const [isPending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
@@ -73,8 +75,10 @@ export function CreateQuoteButton({
           prominent && "h-11 min-h-11",
           isReviewed && presentation !== "bar" && "font-semibold"
         )}
-        disabled={!isReviewed || isPending}
-        data-pricing-create-quote-ready={isReviewed ? "true" : "false"}
+        disabled={!isReviewed || isPending || Boolean(quoteBlockedReason)}
+        data-pricing-create-quote-ready={
+          isReviewed && !quoteBlockedReason ? "true" : "false"
+        }
         onClick={handleCreate}
       >
         {isPending ? (
@@ -86,7 +90,14 @@ export function CreateQuoteButton({
           "Create quote"
         )}
       </Button>
-      {!isReviewed ? (
+      {quoteBlockedReason ? (
+        <p
+          className="text-xs leading-relaxed text-amber-800 dark:text-amber-200"
+          data-quote-blocked-pricing-required
+        >
+          {quoteBlockedReason}
+        </p>
+      ) : !isReviewed ? (
         <p className="text-xs leading-relaxed text-muted-foreground">
           Mark pricing as reviewed before creating a quote.
         </p>

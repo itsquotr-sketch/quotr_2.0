@@ -54,10 +54,15 @@ export function mapPricingDocument(row: Record<string, unknown>): PricingDocumen
 export function mapPricingItem(row: Record<string, unknown>): PricingItem {
   const totalCost = Number(row.total_cost ?? 0);
   const totalSell = Number(row.total_sell ?? 0);
-  const costKnown = inferPersistedLineCostKnown({
-    total_cost: totalCost,
-    total_sell: totalSell,
-  });
+  const costKnownFromNotes =
+    parseLineItemNotes(row.notes_internal as string | null).metadata
+      .rateSourceType === "missing" && totalCost <= 0
+      ? false
+      : inferPersistedLineCostKnown({
+          total_cost: totalCost,
+          total_sell: totalSell,
+        });
+  const costKnown = costKnownFromNotes;
   // Stored margin/profit may be the unknown-cost sentinel (0). cost_known tells
   // consumers not to treat that as a real 0% gross margin.
   const storedMargin = Number(row.margin_percent ?? 0);

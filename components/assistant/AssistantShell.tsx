@@ -2570,6 +2570,7 @@ export function AssistantShell({
         initialState.requirementSnapshotRequirements,
       attentionItems: completedEstimateAttentionItems,
       confidenceBand,
+      facts: jobPlanFacts,
     });
   }, [
     completedEstimateAttentionItems,
@@ -2578,6 +2579,7 @@ export function AssistantShell({
     estimate,
     generationProjection?.requirementSnapshotRequirements,
     initialState.requirementSnapshotRequirements,
+    jobPlanFacts,
   ]);
 
   const commercialBreakdown = useMemo(
