@@ -110,6 +110,10 @@ export type EstimateLineItemInput = {
    * Not the rate/item key. Persisted on estimate_line_items when present.
    */
   componentKey?: string;
+  /** Nested Ceiling Portion (or equivalent). Overlay provenance for Builder Review. */
+  nestedItemId?: string;
+  /** Nested component (e.g. bulkhead) when the line is not portion-scoped. */
+  componentId?: string;
   costRate?: number;
   sellRate?: number;
   sellDerivedFromMargin?: boolean;

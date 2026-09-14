@@ -51,6 +51,16 @@ import {
   INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
   INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS,
 } from "@/lib/estimate/internal-walls-identities";
+import { CEILINGS_PRODUCTIVITY_KEYS } from "@/lib/estimate/ceilings-identities";
+import {
+  CEILINGS_FIXINGS_BULKHEAD_FRAMING_COMPONENT,
+  CEILINGS_FIXINGS_BULKHEAD_LINING_COMPONENT,
+  CEILINGS_FIXINGS_PLASTERBOARD_COMPONENT,
+  CEILINGS_FIXINGS_PLYWOOD_COMPONENT,
+  CEILINGS_FIXINGS_STEEL_FRAMING_COMPONENT,
+  CEILINGS_FIXINGS_TIMBER_FRAMING_COMPONENT,
+  CEILINGS_FIXINGS_TIMBER_LINING_COMPONENT,
+} from "@/lib/estimate/ceilings-fixings";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 
 function entry(
@@ -404,7 +414,9 @@ export const SHEET_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Sheet materials",
     unit: "m2",
     defaultCostRate: FITOUT_BENCHMARKS.ceilingTilePerM2.cost,
-    calculatorSupport: "planned",
+    calculatorSupport: "leftover",
+    description:
+      "Legacy leftover package identity. Nested Ceiling tile-and-grid uses ceiling.tile.*.each + ceiling.grid.m2. Do not use this as component-level authority for the new calculator.",
   }),
 ];
 
@@ -508,6 +520,18 @@ export const CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     calculatorSupport: "used_now",
     recommended: true,
   }),
+  entry({
+    item_key: "steel.ceiling.bulkhead.framing.lm",
+    label: "Steel bulkhead framing",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Ceiling steel",
+    unit: "lm",
+    description:
+      "Shared physical steel bulkhead framing. Profile unresolved in V1. No invented Quotr $/lm in WA-05A — company exact rate, else Pricing Required.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
 ];
 
 export const TIMBER_LINING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
@@ -573,6 +597,94 @@ export const CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[]
       "Dimensioned ceiling tile identity. Count is each, not m². No invented Quotr each-rate in WA-04C.",
     calculatorSupport: "used_now",
     recommended: true,
+  }),
+];
+
+export const CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: CEILINGS_FIXINGS_TIMBER_FRAMING_COMPONENT,
+    label: "Ceiling timber framing fixings allowance",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceiling fixings",
+    unit: "lm",
+    description:
+      "Residual timber-framing fixings / consumables on installed framing LM. Not a screw count. No invented Quotr allowance in WA-05A — company exact, else Pricing Required. Not Internal Walls $/m² fixings.",
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: CEILINGS_FIXINGS_STEEL_FRAMING_COMPONENT,
+    label: "Ceiling steel framing residual fixings",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceiling fixings",
+    unit: "lm",
+    description:
+      "Residual steel-framing consumables on installed steel LM. Clips, droppers, and wire are counted separately. No invented Quotr allowance in WA-05A.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: CEILINGS_FIXINGS_PLASTERBOARD_COMPONENT,
+    label: "Ceiling plasterboard fixings allowance",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceiling fixings",
+    unit: "m2",
+    description:
+      "Plasterboard lining fixings allowance on installed lining area. Not a screw-count takeoff. No invented Quotr allowance in WA-05A.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: CEILINGS_FIXINGS_PLYWOOD_COMPONENT,
+    label: "Ceiling plywood fixings allowance",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceiling fixings",
+    unit: "m2",
+    description:
+      "Plywood lining fixings allowance on installed lining area. Distinct from plasterboard. No invented Quotr allowance in WA-05A.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: CEILINGS_FIXINGS_TIMBER_LINING_COMPONENT,
+    label: "Ceiling timber lining fixings allowance",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceiling fixings",
+    unit: "lm",
+    description:
+      "Timber-lining fixings allowance on installed lining LM. No invented Quotr allowance in WA-05A.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: CEILINGS_FIXINGS_BULKHEAD_FRAMING_COMPONENT,
+    label: "Ceiling bulkhead framing fixings",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceiling fixings",
+    unit: "lm",
+    description:
+      "Bulkhead framing residual fixings on installed bulkhead framing LM. No invented Quotr allowance in WA-05A.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: CEILINGS_FIXINGS_BULKHEAD_LINING_COMPONENT,
+    label: "Ceiling bulkhead lining fixings",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceiling fixings",
+    unit: "m2",
+    description:
+      "Bulkhead lining residual fixings on installed bulkhead lining area. No invented Quotr allowance in WA-05A.",
+    calculatorSupport: "used_now",
   }),
 ];
 
@@ -2169,6 +2281,119 @@ export const INTERNAL_WALLS_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
   }),
 ];
 
+function ceilingProductivityEntry(
+  itemKey: string,
+  label: string,
+  unit: string,
+  description: string
+): RateCatalogueEntry {
+  return entry({
+    item_key: itemKey,
+    label,
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "ceilings",
+    workAreaLabel: "Ceilings productivity",
+    unit,
+    description: `${description} No invented Quotr hours in WA-05A — company exact, else Pricing Required.`,
+    calculatorSupport: "used_now",
+    recommended: true,
+  });
+}
+
+export const CEILING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.timberFramingLm,
+    "Ceiling timber framing (hours/lm)",
+    "lm",
+    "Person-hours per installed framing LM. Not purchase/waste LM."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.perimeterLm,
+    "Ceiling perimeter track (hours/lm)",
+    "lm",
+    "Person-hours per installed perimeter track LM."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.primaryLm,
+    "Ceiling primary channel (hours/lm)",
+    "lm",
+    "Person-hours per installed primary channel LM."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.furringLm,
+    "Ceiling furring channel (hours/lm)",
+    "lm",
+    "Person-hours per installed furring channel LM."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.clipEach,
+    "Ceiling crossover clip (hours/each)",
+    "each",
+    "Person-hours per installed clip."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.dropperEach,
+    "Ceiling dropper (hours/each, includes ordinary wire)",
+    "each",
+    "Person-hours per dropper. Ordinary suspension-wire install is embedded. Do not double-count wire hours."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.plasterboardSheet,
+    "Ceiling plasterboard (hours/installed sheet)",
+    "sheet",
+    "Person-hours per installed sheet. Not purchase/waste sheets. Not stopping."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.plywoodSheet,
+    "Ceiling plywood (hours/installed sheet)",
+    "sheet",
+    "Person-hours per installed plywood sheet. Not plasterboard productivity."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.timberLiningLm,
+    "Ceiling timber lining (hours/lm)",
+    "lm",
+    "Person-hours per installed lining LM."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.gridM2,
+    "Ceiling T-grid (hours/m²)",
+    "m2",
+    "Person-hours per installed grid m²."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.tileEach,
+    "Ceiling tile (hours/tile)",
+    "each",
+    "Person-hours per installed tile. Not purchase/waste tiles."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingTimberLm,
+    "Ceiling bulkhead timber framing (hours/lm)",
+    "lm",
+    "Person-hours per installed bulkhead timber framing LM."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingSteelLm,
+    "Ceiling bulkhead steel framing (hours/lm)",
+    "lm",
+    "Person-hours per installed bulkhead steel framing LM."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.bulkheadLiningSheet,
+    "Ceiling bulkhead lining (hours/installed sheet)",
+    "sheet",
+    "Person-hours per installed bulkhead lining sheet. Not stopping or painting."
+  ),
+  ceilingProductivityEntry(
+    CEILINGS_PRODUCTIVITY_KEYS.insulationM2,
+    "Ceiling insulation (hours/m²)",
+    "m2",
+    "Person-hours per installed insulation m²."
+  ),
+];
+
 export const BATHROOM_FINISH_RATE_CATALOGUE: RateCatalogueEntry[] = [
   entry({
     item_key: "bathroom.tile.material.m2",
@@ -2588,6 +2813,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE,
   ...TIMBER_LINING_SPECIFIC_MATERIAL_CATALOGUE,
   ...CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE,
+  ...CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE,
   ...RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
   ...WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -2651,6 +2877,12 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "T-grid as m² plus dimensioned tile-each identities. Not the leftover ceiling.tile.m2 package. No invented Quotr rates in WA-04C.",
     entries: CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Ceiling fixings",
+    description:
+      "Residual fixings / consumables allowances for nested Ceilings. Company exact wins. No invented Quotr percentage in WA-05A. Tile/Grid minor fixings stay inside the grid m² rate.",
+    entries: CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Retaining / drainage",

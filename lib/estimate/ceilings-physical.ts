@@ -1180,7 +1180,7 @@ export function calculateCeilingsPhysical(params: {
 }
 
 export function ceilingRequirementNestedItemId(
-  requirement: MaterialRequirement
+  requirement: { readonly variantKey?: string }
 ): string | undefined {
   const variant = requirement.variantKey;
   if (!variant) return undefined;
@@ -1188,7 +1188,7 @@ export function ceilingRequirementNestedItemId(
 }
 
 export function ceilingRequirementComponentId(
-  requirement: MaterialRequirement
+  requirement: { readonly variantKey?: string }
 ): string | undefined {
   const variant = requirement.variantKey;
   if (!variant || !variant.includes("::")) return undefined;

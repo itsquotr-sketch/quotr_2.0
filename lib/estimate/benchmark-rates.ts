@@ -140,6 +140,7 @@ export const EXTERNAL_STAIRS_DEFAULT_RISER_M = 0.175;
 
 export const FITOUT_BENCHMARKS = {
   internalWallsPerM2: { cost: 95, sell: 145 },
+  /** @deprecated Legacy flat Ceiling package. Not nested Ceiling component authority. Keep for hosted legacy projects. */
   ceilingsPerM2: { cost: 75, sell: 115 },
   doorsEach: { cost: 280, sell: 420 },
   doorInstallEach: { cost: 110, sell: 165 },
@@ -165,7 +166,9 @@ export const FITOUT_BENCHMARKS = {
   architraveLm: { cost: 22, sell: 34 },
   doorPaintingEach: { cost: 85, sell: 130 },
   insulationPerM2: { cost: 12, sell: 18 },
+  /** @deprecated Legacy flat stopping add-on. Nested Ceilings must not consume this. */
   stoppingPerM2: { cost: 28, sell: 42 },
+  /** @deprecated Legacy flat Ceiling battens package. Not nested framing component authority. */
   ceilingBattensPerM2: { cost: 15, sell: 22 },
 } as const;
 

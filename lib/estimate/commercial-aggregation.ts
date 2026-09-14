@@ -13,7 +13,50 @@ export type SameIdentityAggregationOptions<T extends EstimateLineItemInput> = {
   readonly isEligible: (item: T) => boolean;
   readonly groupingKey: (item: T) => string | null;
   readonly merge?: (members: readonly T[]) => T;
+  readonly areCompatible?: (a: T, b: T) => boolean;
 };
+
+/**
+ * Same materialKey is not enough. Company vs manual, sell authority,
+ * ownership, and priced vs Pricing Required must stay separate.
+ */
+type AggregationCompatibilityFields = Pick<
+  EstimateLineItemInput,
+  | "workAreaId"
+  | "itemKey"
+  | "unit"
+  | "category"
+  | "componentKey"
+  | "componentId"
+  | "rateSource"
+  | "rateSourceType"
+  | "sellAuthority"
+  | "pricingOwner"
+  | "scopeKey"
+  | "includedInTotal"
+>;
+
+export function commercialLinesAggregationCompatible(
+  a: AggregationCompatibilityFields,
+  b: AggregationCompatibilityFields
+): boolean {
+  if (a.workAreaId !== b.workAreaId) return false;
+  if ((a.itemKey ?? "") !== (b.itemKey ?? "")) return false;
+  if ((a.unit ?? "") !== (b.unit ?? "")) return false;
+  if (a.category !== b.category) return false;
+  if ((a.componentKey ?? "") !== (b.componentKey ?? "")) return false;
+  if ((a.componentId ?? "") !== (b.componentId ?? "")) return false;
+  if ((a.rateSource ?? "") !== (b.rateSource ?? "")) return false;
+  if ((a.rateSourceType ?? "") !== (b.rateSourceType ?? "")) return false;
+  if ((a.sellAuthority ?? "") !== (b.sellAuthority ?? "")) return false;
+  if ((a.pricingOwner ?? "") !== (b.pricingOwner ?? "")) return false;
+  if ((a.scopeKey ?? "") !== (b.scopeKey ?? "")) return false;
+  if ((a.includedInTotal ?? true) !== (b.includedInTotal ?? true)) return false;
+  const aMissing = a.rateSourceType === "missing";
+  const bMissing = b.rateSourceType === "missing";
+  if (aMissing !== bMissing) return false;
+  return true;
+}
 
 export function defaultMergeSameIdentityCommercialLines<
   T extends EstimateLineItemInput,
@@ -60,6 +103,28 @@ export function defaultMergeSameIdentityCommercialLines<
  * the merged line (first-item provenance). Later members of that key are
  * consumed. Ineligible / ungrouped lines pass through unchanged.
  */
+function partitionCompatible<T extends EstimateLineItemInput>(
+  members: readonly T[],
+  areCompatible?: (a: T, b: T) => boolean
+): T[][] {
+  if (!areCompatible || members.length <= 1) {
+    return members.length ? [[...members]] : [];
+  }
+  const clusters: T[][] = [];
+  for (const item of members) {
+    const cluster = clusters.find((list) =>
+      list.every(
+        (member) =>
+          areCompatible(member, item) &&
+          commercialLinesAggregationCompatible(member, item)
+      )
+    );
+    if (cluster) cluster.push(item);
+    else clusters.push([item]);
+  }
+  return clusters;
+}
+
 export function aggregateSameIdentityCommercialLines<
   T extends EstimateLineItemInput,
 >(items: readonly T[], options: SameIdentityAggregationOptions<T>): T[] {
@@ -73,7 +138,7 @@ export function aggregateSameIdentityCommercialLines<
     groups.set(key, list);
   }
 
-  const seen = new Set<string>();
+  const consumed = new Set<T>();
   const merge = options.merge ?? defaultMergeSameIdentityCommercialLines;
   const out: T[] = [];
   for (const item of items) {
@@ -86,10 +151,13 @@ export function aggregateSameIdentityCommercialLines<
       out.push(item);
       continue;
     }
-    if (seen.has(key)) continue;
-    seen.add(key);
+    if (consumed.has(item)) continue;
     const members = groups.get(key) ?? [item];
-    out.push(members.length === 1 ? item : merge(members));
+    const clusters = partitionCompatible(members, options.areCompatible);
+    const cluster =
+      clusters.find((list) => list.includes(item)) ?? [item];
+    for (const member of cluster) consumed.add(member);
+    out.push(cluster.length === 1 ? item : merge(cluster));
   }
   return out;
 }

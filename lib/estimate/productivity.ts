@@ -442,6 +442,13 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
   ),
 };
 
+/** Existing Quotr hours/unit, or undefined. Never invents a hidden fallback. */
+export function getQuotrProductivityBenchmark(
+  productivityKey: string
+): ProductivityRate | undefined {
+  return BENCHMARK_PRODUCTIVITY[productivityKey];
+}
+
 export function resolveProductivity(params: {
   productivityKey: string;
   unit?: string;
