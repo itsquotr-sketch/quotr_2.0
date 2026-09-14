@@ -120,11 +120,15 @@ import {
 } from "@/lib/estimate/internal-walls-finish";
 import { briefHasIndependentPlastering } from "@/lib/work-areas/ownership";
 import {
+  ceilingNestedFactCurrentValue,
   ceilingsNestedItemPanel,
   listCeilingsClarifyCandidates,
 } from "@/lib/estimate/ceilings-clarify";
 import { lookupCeilingsInformationContract } from "@/lib/estimate/ceilings-information-contract";
-import { resolveCeilingsPortions } from "@/lib/estimate/ceilings-portions";
+import {
+  isCeilingsNestedFactKey,
+  resolveCeilingsPortions,
+} from "@/lib/estimate/ceilings-portions";
 import {
   getArrayFact,
   getBooleanFact,
@@ -2105,6 +2109,25 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
       const aliased = withNestedIdentityAliases(candidate);
       const key = aliased.constraintKey ?? aliased.factKey;
       if (!key) return aliased;
+      if (
+        (aliased.workAreaType === "ceilings" || isCeilingsNestedFactKey(key)) &&
+        aliased.workAreaId
+      ) {
+        const nestedValue = ceilingNestedFactCurrentValue({
+          facts: input.facts as EstimateFact[],
+          workAreaId: aliased.workAreaId,
+          factKey: aliased.factKey ?? key,
+          nestedItemId: aliased.nestedItemId,
+          componentId: aliased.componentId,
+        });
+        if (nestedValue != null) {
+          return {
+            ...aliased,
+            currentValue: nestedValue as ClarifyCandidate["currentValue"],
+          };
+        }
+        return aliased;
+      }
       const rawValue = currentFactOrConstraintValue(
         input,
         key,

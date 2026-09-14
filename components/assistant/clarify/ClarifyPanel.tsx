@@ -107,7 +107,10 @@ function ClarifyQuestion({
       data-clarify-input-type={candidate.inputType}
       data-clarify-control-type={control}
     >
-      <p className="break-words text-sm font-medium leading-snug md:text-[0.95rem]">
+      <p
+        className="break-words text-sm font-medium leading-snug md:text-[0.95rem]"
+        aria-label={candidate.label}
+      >
         {candidate.question}
       </p>
       {showWhy ? (

@@ -13,8 +13,12 @@ import {
 } from "@/lib/assistant/question-identity";
 import {
   safeFactPresentationLabel,
-  safeFactQuestion,
 } from "@/lib/assistant/presentation/fact-key-labels";
+import {
+  ceilingQuestionCopy,
+  ceilingQuestionLabel,
+  ceilingQuestionUnit,
+} from "@/lib/estimate/ceilings-question-copy";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import {
   CEILINGS_INFORMATION_CONTRACT,
@@ -40,6 +44,8 @@ import {
   CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED,
   ceilingPlasterboardThicknessLabel,
   findCeilingBulkhead,
+  findCeilingPortion,
+  isCeilingsNestedFactKey,
   recommendedCeilingGeometryMode,
   resolveCeilingsPortions,
   type CeilingBulkhead,
@@ -72,7 +78,8 @@ function clarifyInputType(factKey: string): ClarifyCandidate["inputType"] {
   if (
     factKey.endsWith("_m") ||
     factKey.endsWith("_m2") ||
-    factKey.endsWith("_mm")
+    factKey.endsWith("_mm") ||
+    factKey.endsWith(".layers")
   ) {
     return "number";
   }
@@ -165,7 +172,23 @@ export function ceilingPortionFieldCurrentValue(
   if (field === "geometry_mode") return portion.geometry.mode;
   if (field === "length_m") return portion.geometry.length_m;
   if (field === "width_m") return portion.geometry.width_m;
-  if (field === "area_m2") return portion.geometry.area_m2;
+  if (field === "area_m2") {
+    if (portion.geometry.area_m2 != null) return portion.geometry.area_m2;
+    if (
+      portion.geometry.length_m != null &&
+      portion.geometry.width_m != null &&
+      portion.geometry.length_m > 0 &&
+      portion.geometry.width_m > 0
+    ) {
+      return Number(
+        (portion.geometry.length_m * portion.geometry.width_m).toFixed(2)
+      );
+    }
+    return null;
+  }
+  if (field === "structure_requirements") {
+    return portion.structure.family;
+  }
   if (field === "height_m") return portion.height_m;
   if (field === "job_scope") return portion.structure.job_scope;
   if (field === "structure_family") return portion.structure.family;
@@ -309,10 +332,18 @@ function portionIsComplete(
   return true;
 }
 
-function questionCopy(factKey: string, displayName: string): string {
-  const template = getQuestionTemplateByKey(factKey);
-  const question = safeFactQuestion(factKey, template?.questionText);
-  return `${displayName}: ${question}`;
+function questionCopy(
+  factKey: string,
+  portion: CeilingPortion | null
+): string {
+  return (
+    ceilingQuestionCopy(factKey, {
+      liningFamily: portion?.lining.family ?? null,
+      structureFamily: portion?.structure.family ?? null,
+    }) ??
+    ceilingQuestionLabel(factKey) ??
+    safeFactPresentationLabel(factKey)
+  );
 }
 
 function buildCandidate(params: {
@@ -354,14 +385,13 @@ function buildCandidate(params: {
     constraintKey: null,
     questionKey: params.factKey,
     label: params.portion
-      ? `${displayName} · ${safeFactPresentationLabel(params.factKey)}`
-      : safeFactPresentationLabel(params.factKey),
-    question: params.portion
-      ? questionCopy(params.factKey, displayName)
-      : safeFactQuestion(params.factKey, template?.questionText),
+      ? `${displayName} · ${ceilingQuestionLabel(params.factKey) ?? safeFactPresentationLabel(params.factKey)}`
+      : ceilingQuestionLabel(params.factKey) ??
+        safeFactPresentationLabel(params.factKey),
+    question: questionCopy(params.factKey, params.portion),
     askClass,
     inputType,
-    unit: template?.unit,
+    unit: template?.unit ?? ceilingQuestionUnit(params.factKey),
     options: optionsForKey(params.factKey),
     currentValue,
     writeTarget: "FACT",
@@ -383,6 +413,26 @@ function buildCandidate(params: {
 function portionForLabel(portion: CeilingPortion, index: number): CeilingPortion {
   void index;
   return portion;
+}
+
+export function ceilingNestedFactCurrentValue(params: {
+  readonly facts: readonly EstimateFact[];
+  readonly workAreaId: string;
+  readonly factKey: string;
+  readonly nestedItemId?: string | null;
+  readonly componentId?: string | null;
+}): string | number | boolean | null {
+  if (!isCeilingsNestedFactKey(params.factKey)) return null;
+  const resolved = resolveCeilingsPortions({
+    facts: params.facts,
+    workAreaId: params.workAreaId,
+  });
+  const portion =
+    findCeilingPortion(resolved.portions, params.nestedItemId) ??
+    resolved.portions[0] ??
+    null;
+  const bulkhead = findCeilingBulkhead(portion, params.componentId);
+  return ceilingPortionFieldCurrentValue(portion, params.factKey, bulkhead);
 }
 
 export function listCeilingsClarifyCandidates(

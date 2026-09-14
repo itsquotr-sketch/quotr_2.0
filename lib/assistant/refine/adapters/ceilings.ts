@@ -21,6 +21,10 @@ import {
   ceilingsFactIsRelevant,
 } from "@/lib/estimate/ceilings-information-contract";
 import {
+  ceilingQuestionCopy,
+  ceilingQuestionLabel,
+} from "@/lib/estimate/ceilings-question-copy";
+import {
   CEILINGS_BULKHEAD_FRAMING_VALUES,
   CEILINGS_BULKHEAD_LINING_VALUES,
   CEILINGS_DIRECTION_VALUES,
@@ -140,12 +144,17 @@ function portionFields(
     ) {
       return;
     }
+    const copy = ceilingQuestionCopy(factKey, {
+      liningFamily: portion.lining.family,
+      structureFamily: portion.structure.family,
+    });
+    const copyLabel = ceilingQuestionLabel(factKey);
     pushIfResolved(out, {
       workAreaId,
       workAreaName,
       factKey,
-      label,
-      question,
+      label: copyLabel ?? label,
+      question: copy ?? question,
       inputType,
       options,
       unit,

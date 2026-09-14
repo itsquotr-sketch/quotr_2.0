@@ -2,6 +2,10 @@
  * POLISH-02 — builder-facing labels for facts and assumptions.
  * Presentation only. Never dump canonical keys into product UX.
  */
+import {
+  ceilingQuestionCopy,
+  ceilingQuestionLabel,
+} from "@/lib/estimate/ceilings-question-copy";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
 const GENERIC_ASSUMPTION = "An estimating assumption is being used.";
@@ -97,6 +101,8 @@ export function looksLikeInternalFactKey(text: string): boolean {
 }
 
 export function builderFacingFactLabel(key: string): string | null {
+  const ceiling = ceilingQuestionLabel(key);
+  if (ceiling) return ceiling;
   const mapped = FRIENDLY_LABELS[key];
   if (mapped) return mapped;
   const template = getQuestionTemplateByKey(key);
@@ -115,6 +121,8 @@ export function safeFactQuestion(
   key: string,
   templateQuestion?: string | null
 ): string {
+  const ceiling = ceilingQuestionCopy(key);
+  if (ceiling) return ceiling;
   if (templateQuestion && !looksLikeInternalFactKey(templateQuestion)) {
     return templateQuestion;
   }

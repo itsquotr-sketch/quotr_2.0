@@ -573,7 +573,8 @@ export function ceilingsFactIsRelevant(
     case "ceilings.portion.width_m":
       return lengthWidthRequired(portion);
     case "ceilings.portion.area_m2":
-      return areaOnlyValid(portion) || lengthWidthRequired(portion);
+      if (lengthWidthRequired(portion)) return false;
+      return areaOnlyValid(portion);
     case "ceilings.portion.geometry_mode":
       return family != null || lining != null;
     case "ceilings.portion.timber_size":
@@ -605,10 +606,7 @@ export function ceilingsFactIsRelevant(
     case "ceilings.portion.sheet_width_mm":
       return lining === "plasterboard" || lining === "plywood";
     case "ceilings.portion.structure_requirements":
-      return (
-        portion?.structure.job_scope === "new_ceiling" ||
-        portion?.structure.job_scope === "complete_replacement"
-      );
+      return false;
     case "ceilings.portion.demolition_included":
       return demolitionRelevant(portion);
     case "ceilings.portion.stopping_included":
@@ -647,53 +645,72 @@ export function listCeilingsInformationContract(): readonly CeilingsInformationC
   return CEILINGS_INFORMATION_CONTRACT;
 }
 
+function ceilingFactField(factKey: string, prefix: string): string {
+  return factKey.startsWith(prefix) ? factKey.slice(prefix.length) : factKey;
+}
+
 export function ceilingsDetailsSectionId(
   factKey: string
 ): "dimensions" | "materials" | "structure" | "scope" | "details" {
+  if (factKey.startsWith("ceilings.bulkhead.")) {
+    const field = ceilingFactField(factKey, "ceilings.bulkhead.");
+    if (field === "length_m" || field === "depth_m" || field === "height_m") {
+      return "dimensions";
+    }
+    if (field === "framing_type") return "structure";
+    if (field === "lining_type" || field === "thickness_mm") return "materials";
+    return "scope";
+  }
+  const field = ceilingFactField(factKey, "ceilings.portion.");
   if (
-    factKey.includes("length_m") ||
-    factKey.includes("width_m") ||
-    factKey.includes("area_m2") ||
-    factKey.includes("geometry")
+    field === "length_m" ||
+    field === "width_m" ||
+    field === "area_m2" ||
+    field === "geometry_mode"
   ) {
     return "dimensions";
   }
   if (
-    factKey.includes("structure") ||
-    factKey.includes("timber") ||
-    factKey.includes("spacing") ||
-    factKey.includes("direction") ||
-    factKey.includes("drop") ||
-    factKey.includes("suspension") ||
-    factKey.includes("edge_offset") ||
-    factKey.includes("primary") ||
-    factKey.includes("furring") ||
-    factKey.includes("job_scope")
+    field === "structure_family" ||
+    field === "structure_requirements" ||
+    field === "timber_size" ||
+    field === "spacing_mm" ||
+    field === "direction" ||
+    field === "drop_height_m" ||
+    field === "suspension_spacing_m" ||
+    field === "edge_offset_m" ||
+    field === "primary_spacing_mm" ||
+    field === "furring_spacing_mm" ||
+    field === "job_scope"
   ) {
     return "structure";
   }
   if (
-    factKey.includes("lining") ||
-    factKey.includes("plasterboard") ||
-    factKey.includes("thickness") ||
-    factKey.includes("plywood") ||
-    factKey.includes("tile") ||
-    factKey.includes("sheet") ||
-    factKey.includes("layers") ||
-    factKey.includes("board_width") ||
-    factKey.includes("gap_mm")
+    field === "lining_family" ||
+    field === "plasterboard_product" ||
+    field === "thickness_mm" ||
+    field === "plywood_spec" ||
+    field === "tile_size" ||
+    field === "sheet_length_mm" ||
+    field === "sheet_width_mm" ||
+    field === "layers" ||
+    field === "board_width_mm" ||
+    field === "gap_mm"
   ) {
     return "materials";
   }
   if (
-    factKey.includes("insulation") ||
-    factKey.includes("demolition") ||
-    factKey.includes("stopping") ||
-    factKey.includes("painting") ||
-    factKey.includes("bulkhead") ||
-    factKey.includes("penetrat") ||
-    factKey.includes("fire") ||
-    factKey.includes("height_m")
+    field === "insulation_included" ||
+    field === "insulation_type" ||
+    field === "demolition_included" ||
+    field === "stopping_included" ||
+    field === "painting_included" ||
+    field === "bulkheads_present" ||
+    field === "significant_penetrations" ||
+    field === "penetrations" ||
+    field === "fire_acoustic_requirement" ||
+    field === "fire_acoustic_system" ||
+    field === "height_m"
   ) {
     return "scope";
   }
