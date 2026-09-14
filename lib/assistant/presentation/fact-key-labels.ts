@@ -87,6 +87,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
   "ceilings.bulkhead.lining_type": "Bulkhead lining",
   "deck.step_width_m": "Step width",
   site_access: "Site access",
+  high_level_access: "High-level access",
   material_carry_distance: "Carry distance",
   waste_bin_access: "Waste access",
   occupied_site: "Occupied site",

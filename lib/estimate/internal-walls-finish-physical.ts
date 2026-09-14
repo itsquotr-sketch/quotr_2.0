@@ -1,20 +1,36 @@
 /**
- * WA-INTERNAL-WALLS-07/08 — insulation / skirting / cornice / electrical /
- * stopping / painting requirement envelope. Quantities are physical. Rates
- * and hours are Pricing Required unless a company exact rate already exists.
+ * WA-INTERNAL-WALLS-07/08 / EST-BENCHMARK-01A — insulation / skirting /
+ * cornice / electrical / stopping / painting requirement envelope.
+ *
+ * Quantities are physical. Ordinary thermal insulation, ordinary skirting
+ * material, and Level 4 stopping use Quotr COST fallbacks. Company exact
+ * wins. Acoustic / fire / custom / Level 5 remain Pricing Required.
  *
  * Does not change timber, steel, lining sheet-run, or opening formulas.
  */
 
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
 import { round2 } from "@/lib/estimate/facts";
-import { buildAmounts, createRateLineItem } from "@/lib/estimate/line-items";
+import { getCombinedLabourAccessFactor } from "@/lib/estimate/adjustments";
+import {
+  buildAmounts,
+  createFixedLabourLineItem,
+  createRateLineItem,
+} from "@/lib/estimate/line-items";
 import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
-import { buildLabourRequirement } from "@/lib/estimate/labour-requirement";
+import {
+  buildLabourRequirement,
+  labourRequirementTotalCost,
+} from "@/lib/estimate/labour-requirement";
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
 import { buildSubcontractRequirement } from "@/lib/estimate/subcontract-requirement";
-import { resolveRate } from "@/lib/estimate/rates";
+import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
+import { resolveProductivity } from "@/lib/estimate/productivity";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
+import {
+  WALL_INSULATION_HOURS_DERIVATION,
+  wallInsulationResolvesWithQuotr,
+} from "@/lib/estimate/insulation-fallback";
 import type { EstimateRequirement } from "@/lib/estimate/requirements";
 import type {
   EstimateContext,
@@ -385,6 +401,9 @@ function emitQtyMaterial(params: {
 
 function emitQtyLabour(params: {
   workArea: EstimateWorkArea;
+  context?: EstimateContext;
+  accessFactor?: number;
+  priceWithQuotr?: boolean;
   wallTypeId: string;
   variantKey?: string;
   overlapGroup: string;
@@ -399,6 +418,105 @@ function emitQtyLabour(params: {
   lineItems: EstimateLineItemInput[];
   sortOrder: number;
 }): number {
+  if (
+    params.priceWithQuotr &&
+    params.context &&
+    params.accessFactor != null &&
+    params.quantity > 0
+  ) {
+    const productivity = resolveProductivity({
+      productivityKey: params.hoursKey,
+      unit: params.unit,
+      fallbackHoursPerUnit: 0,
+      rates: params.context.rates,
+    });
+    const labourRate = resolveLabourRate({
+      rates: params.context.rates,
+      organisationSettings: params.context.organisationSettings,
+    });
+    if (productivity.hoursPerUnit > 0 && labourRate.costRate > 0) {
+      const baseHours = round2(params.quantity * productivity.hoursPerUnit);
+      const adjustedHours = round2(baseHours * params.accessFactor);
+      params.requirements.push(
+        buildLabourRequirement({
+          workAreaId: params.workArea.id,
+          workAreaType: "internal_walls",
+          componentKey: params.componentKey,
+          variantKey: params.variantKey ?? params.wallTypeId,
+          description: params.label,
+          confidence: "high",
+          assumptions: [
+            {
+              key: "wall_insulation_hours",
+              text: WALL_INSULATION_HOURS_DERIVATION,
+              source: "benchmark",
+            },
+          ],
+          provenance: {
+            calculatorSource: "internal-walls-finish",
+            factKeys: ["internal_walls.wall_types"],
+            constraintKeys: [
+              "site_access",
+              "material_carry_distance",
+              "occupied_site",
+              "working_hours",
+            ],
+          },
+          priced: true,
+          trade: "carpenter",
+          baseHours,
+          productivityBasis: {
+            key: params.hoursKey,
+            hoursPerUnit: productivity.hoursPerUnit,
+            unit: params.unit,
+            quantity: params.quantity,
+          },
+          adjustmentRef: { factors: [] },
+          adjustedHours,
+          rateKey: labourRate.itemKey ?? INTERNAL_WALLS_CARPENTER_LABOUR_KEY,
+          hourlyCost: labourRate.costRate,
+          totalCost: labourRequirementTotalCost({
+            adjustedHours,
+            hourlyCost: labourRate.costRate,
+            hourlySell: labourRate.sellRate,
+          }),
+          rateProvenance:
+            labourRate.sourceType === "user_rate" ? "company" : "hardcoded_legacy",
+        })
+      );
+      params.lineItems.push(
+        withPricingOwnership(
+          {
+            ...createFixedLabourLineItem({
+              workAreaId: params.workArea.id,
+              workAreaName: params.workArea.name,
+              label: params.label,
+              labourHours: adjustedHours,
+              labourCostRate: labourRate.costRate,
+              labourSellRate: labourRate.sellRate,
+              rateSource: labourRate.sourceLabel,
+              rateSourceType: labourRate.sourceType,
+              itemKey: params.hoursKey,
+              notes: params.identitySummary,
+              sortOrder: params.sortOrder,
+              organisationSettings: params.context.organisationSettings,
+            }),
+            componentKey: params.componentKey,
+            identitySummary: params.identitySummary,
+            productivityRate: productivity.hoursPerUnit,
+            productivityUnit: params.unit,
+            productivitySourceType: productivity.sourceType,
+          },
+          {
+            pricingOwner: "in_house_labour",
+            scopeKey: params.componentKey,
+            overlapGroup: params.overlapGroup,
+          }
+        )
+      );
+      return params.sortOrder + 1;
+    }
+  }
   params.requirements.push(
     buildLabourRequirement({
       workAreaId: params.workArea.id,
@@ -477,6 +595,9 @@ export function buildInternalWallsFinishEnvelope(params: {
     };
   }
 
+  const accessFactor = getCombinedLabourAccessFactor({
+    constraints: context.constraints,
+  });
   const omit = internalWallsNestedFinishOmit({
     confirmedTypes: context.confirmedWorkAreas.map((row) => row.type),
   });
@@ -524,15 +645,23 @@ export function buildInternalWallsFinishEnvelope(params: {
             lineItems,
             sortOrder,
           });
+          const thermal = wallInsulationResolvesWithQuotr(type.insulation_type);
           sortOrder = emitQtyLabour({
             workArea,
+            context,
+            accessFactor,
+            priceWithQuotr: thermal,
             wallTypeId: type.id,
             overlapGroup: overlap,
             componentKey: INTERNAL_WALLS_INSULATION_LABOUR_COMPONENT,
             hoursKey: INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
             label: `${displayName} — insulation labour`,
-            identitySummary: `${specification} · ${INTERNAL_WALLS_INSULATION_LABOUR_OWNER_REQUIRED_MESSAGE}`,
-            notes: INTERNAL_WALLS_INSULATION_LABOUR_OWNER_REQUIRED_MESSAGE,
+            identitySummary: thermal
+              ? `${specification} · ${WALL_INSULATION_HOURS_DERIVATION}`
+              : `${specification} · ${INTERNAL_WALLS_INSULATION_LABOUR_OWNER_REQUIRED_MESSAGE}`,
+            notes: thermal
+              ? WALL_INSULATION_HOURS_DERIVATION
+              : INTERNAL_WALLS_INSULATION_LABOUR_OWNER_REQUIRED_MESSAGE,
             quantity: area.areaM2,
             unit: "m2",
             requirements,
@@ -898,6 +1027,7 @@ function resolveExactServiceM2Rate(params: {
   costRate: number | null;
   sellRate: number | null;
   sourceLabel: string;
+  sourceType: "user_rate" | "benchmark" | "missing";
 } {
   const company = params.context.rates.find(
     (rate) =>
@@ -908,28 +1038,51 @@ function resolveExactServiceM2Rate(params: {
       rate.item_key === params.itemKey &&
       rate.cost_rate != null
   );
-  if (company?.cost_rate == null) {
+  if (company?.cost_rate != null) {
+    const resolved = resolveRate({
+      rates: params.context.rates,
+      rateType: "subcontractor",
+      itemKey: params.itemKey,
+      unit: "m2",
+      fallbackCostRate: company.cost_rate,
+      fallbackSellRate: company.sell_rate ?? undefined,
+      organisationSettings: params.context.organisationSettings,
+    });
     return {
-      priced: false,
-      costRate: null,
-      sellRate: null,
-      sourceLabel: getRateSourceLabel("missing"),
+      priced: true,
+      costRate: resolved.costRate,
+      sellRate: resolved.sellRate,
+      sourceLabel: resolved.sourceLabel,
+      sourceType: "user_rate",
     };
   }
-  const resolved = resolveRate({
-    rates: params.context.rates,
-    rateType: "subcontractor",
-    itemKey: params.itemKey,
-    unit: "m2",
-    fallbackCostRate: company.cost_rate,
-    fallbackSellRate: company.sell_rate ?? undefined,
-    organisationSettings: params.context.organisationSettings,
-  });
+  const benchmark = catalogueBenchmarkCost(params.itemKey);
+  if (
+    benchmark != null &&
+    params.context.organisationSettings?.allow_benchmark_rates !== false
+  ) {
+    const resolved = resolveRate({
+      rates: params.context.rates,
+      rateType: "subcontractor",
+      itemKey: params.itemKey,
+      unit: "m2",
+      fallbackCostRate: benchmark,
+      organisationSettings: params.context.organisationSettings,
+    });
+    return {
+      priced: true,
+      costRate: resolved.costRate,
+      sellRate: resolved.sellRate,
+      sourceLabel: resolved.sourceLabel,
+      sourceType: "benchmark",
+    };
+  }
   return {
-    priced: true,
-    costRate: resolved.costRate,
-    sellRate: resolved.sellRate,
-    sourceLabel: resolved.sourceLabel,
+    priced: false,
+    costRate: null,
+    sellRate: null,
+    sourceLabel: getRateSourceLabel("missing"),
+    sourceType: "missing",
   };
 }
 
@@ -997,7 +1150,7 @@ function emitServiceM2(params: {
             costRate: rate.costRate,
             sellRate: rate.sellRate,
             rateSource: rate.sourceLabel,
-            rateSourceType: "user_rate",
+            rateSourceType: rate.sourceType,
             itemKey: params.itemKey,
             componentKey: params.componentKey,
             notes: params.specification,

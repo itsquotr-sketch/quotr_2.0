@@ -164,6 +164,11 @@ export function briefImpliesConstraint(
   if (key === "working_hours") {
     return /working hours|after hours|weekend work/i.test(text);
   }
+  if (key === "high_level_access") {
+    return /scaffold|mewp|ewp|scissor lift|working at height|high-?level access/i.test(
+      text
+    );
+  }
   return false;
 }
 

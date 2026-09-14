@@ -6,8 +6,10 @@
  * Legacy flat Ceilings stay on calculateAreaBasedFitout.
  */
 
-import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
+import { getCombinedLabourAccessFactor } from "@/lib/estimate/adjustments";
+import { PROJECT_LABOUR_PRODUCTIVITY_FACTOR_KEY } from "@/lib/estimate/requirements";
 import { classifyResolvedSell } from "@/lib/commercial-engine/core/cost-first-authority";
+import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
 import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import {
   hasTrustedPhysicalQuantity,
@@ -50,6 +52,7 @@ import {
   CEILINGS_TIMBER_LINING_COMPONENT,
 } from "@/lib/estimate/ceilings-lining";
 import { CEILINGS_INSULATION_COMPONENT } from "@/lib/estimate/ceilings-insulation";
+import { CEILING_INSULATION_THERMAL_KEY } from "@/lib/estimate/insulation-fallback";
 import {
   CEILINGS_STEEL_CLIP_COMPONENT,
   CEILINGS_STEEL_FURRING_COMPONENT,
@@ -104,6 +107,7 @@ import type {
   RequirementRateSource,
 } from "@/lib/estimate/requirements";
 import type {
+  EstimateConstraint,
   EstimateLineItemInput,
   EstimateWorkArea,
 } from "@/lib/estimate/types";
@@ -488,7 +492,8 @@ function labourForMaterial(
   requirement: MaterialRequirement,
   rates: readonly OrganisationRate[],
   hourlyCost: number,
-  allowPricing: boolean
+  allowPricing: boolean,
+  accessFactor: number
 ): LabourRequirement | null {
   if (NO_LABOUR.has(requirement.componentKey)) return null;
   const spec = LABOUR_FOR_MATERIAL[requirement.componentKey];
@@ -509,6 +514,7 @@ function labourForMaterial(
     priced && productivity.hoursPerUnit != null
       ? round2(quantity * productivity.hoursPerUnit)
       : 0;
+  const adjustedHours = priced ? round2(baseHours * accessFactor) : 0;
   return buildLabourRequirement({
     workAreaId: requirement.workAreaId,
     workAreaType: requirement.workAreaType,
@@ -545,11 +551,16 @@ function labourForMaterial(
       unit: spec.unit,
       quantity,
     },
-    adjustmentRef: { factors: [] },
-    adjustedHours: baseHours,
+    adjustmentRef: {
+      factors:
+        priced && accessFactor !== 1
+          ? [{ key: PROJECT_LABOUR_PRODUCTIVITY_FACTOR_KEY, value: accessFactor }]
+          : [],
+    },
+    adjustedHours,
     rateKey: spec.productivityKey,
     hourlyCost: priced ? hourlyCost : null,
-    totalCost: priced ? round2(baseHours * hourlyCost) : null,
+    totalCost: priced ? round2(adjustedHours * hourlyCost) : null,
     rateProvenance: priced ? productivity.source : "missing",
   });
 }
@@ -1075,7 +1086,13 @@ export function ceilingCommercialCoverageTable(): CeilingRateCoverageRow[] {
       CEILINGS_PRODUCTIVITY_KEYS.bulkheadFramingSteelLm
     ),
     row(
-      "Insulation (product unspecified)",
+      "Thermal / standard ceiling insulation",
+      "m2",
+      CEILING_INSULATION_THERMAL_KEY,
+      CEILINGS_PRODUCTIVITY_KEYS.insulationM2
+    ),
+    row(
+      "Insulation (unspecified / acoustic / other)",
       "m2",
       "(unresolved)",
       CEILINGS_PRODUCTIVITY_KEYS.insulationM2,
@@ -1182,8 +1199,12 @@ export function commercializeCeilings(params: {
   workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
   rates: readonly OrganisationRate[];
   organisationSettings: OrganisationSettings | null;
+  constraints?: readonly EstimateConstraint[];
 }): CeilingCommercialResult {
   const assumptions: string[] = [CEILINGS_WIRE_LABOUR_DECISION, CEILINGS_DNA_COVERAGE];
+  const accessFactor = getCombinedLabourAccessFactor({
+    constraints: [...(params.constraints ?? [])],
+  });
   const labourRate = resolveLabourRate({
     rates: [...params.rates],
     organisationSettings: params.organisationSettings,
@@ -1233,7 +1254,8 @@ export function commercializeCeilings(params: {
       labourRate.costRate,
       allowPricing &&
         portion?.completeness !==
-          CEILING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED
+          CEILING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
+      accessFactor
     );
     if (labourRow) labour.push(labourRow);
   }

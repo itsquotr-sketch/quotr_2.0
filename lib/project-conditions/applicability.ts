@@ -6,8 +6,11 @@
  * Work Areas / Facts — it does not persist and does not create a second store.
  */
 
-import { isMeaningfulKnownValue } from "@/lib/builder-interview/authority";
+import {
+  isMeaningfulKnownValue,
+} from "@/lib/builder-interview/authority";
 import type { CanonicalProjectConditionKey } from "@/lib/project-conditions/canonical";
+import { applyHighLevelAccessRelevance } from "@/lib/project-conditions/relevance";
 import type {
   BuilderInterviewInput,
   InterviewConstraintInput,
@@ -220,6 +223,10 @@ export function evaluateApplicableProjectConditions(
     add(into, "by_others_trades", "optional", "Trade split");
   }
 
+  applyHighLevelAccessRelevance(input, (key, readiness, reason) =>
+    add(into, key, readiness, reason)
+  );
+
   return [...into.values()];
 }
 
@@ -256,3 +263,55 @@ export function getUnresolvedRequiredProjectConditionKeys(
 
 export const PROJECT_CONDITIONS_ESTIMATE_BLOCK_MESSAGE =
   "Complete the remaining project information before generating the estimate.";
+
+/**
+ * Details / Ready treat non-excluded Work Areas as confirmed so relevance
+ * is not lost when the assistant has not yet written `confirmed`.
+ */
+export function toConfirmedInterviewInput(params: {
+  readonly workAreas: readonly {
+    readonly id: string;
+    readonly type: string;
+    readonly name: string;
+    readonly status?: string | null;
+  }[];
+  readonly facts: readonly {
+    readonly key: string;
+    readonly work_area_id?: string | null;
+    readonly workAreaId?: string | null;
+    readonly value: unknown;
+  }[];
+  readonly constraints: readonly {
+    readonly key: string;
+    readonly value: unknown;
+  }[];
+}): BuilderInterviewInput {
+  return {
+    workAreas: params.workAreas
+      .filter((wa) => wa.status !== "excluded")
+      .map((wa, index) => ({
+        id: wa.id,
+        type: wa.type,
+        name: wa.name,
+        status: "confirmed",
+        sortOrder: index,
+      })),
+    facts: params.facts.map((fact) => ({
+      key: fact.key,
+      workAreaId: fact.workAreaId ?? fact.work_area_id ?? null,
+      value: fact.value,
+    })),
+    constraints: params.constraints.map((row) => ({
+      key: row.key,
+      value: row.value,
+    })),
+  };
+}
+
+export function applicableProjectConditionKeySet(
+  input: BuilderInterviewInput
+): ReadonlySet<string> {
+  return new Set(
+    evaluateApplicableProjectConditions(input).map((row) => row.key)
+  );
+}

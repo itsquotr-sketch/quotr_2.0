@@ -113,7 +113,7 @@ export const FACTORY_STAGE_CHECKS: readonly FactoryStageCheck[] = [
     stage: "WA-5",
     name: "Rate / commercial",
     required: true,
-    notes: "Company → specific benchmark → Pricing Required. No WA-specific pricing engine.",
+    notes: "Company → specific benchmark → Pricing Required. Ordinary V1 must have Quotr COST/hours or intentional PR. L5 close uses workAreaMayCloseAtL5.",
   },
   {
     stage: "WA-6",
@@ -137,7 +137,7 @@ export const FACTORY_STAGE_CHECKS: readonly FactoryStageCheck[] = [
     stage: "WA-9",
     name: "Deterministic + hosted close",
     required: true,
-    notes: "Fixture, XOR if relevant, isolation, mobile smoke, coexistence, this verifier.",
+    notes: "Fixture, XOR if relevant, isolation, mobile smoke, coexistence, ordinary V1 benchmark coverage closed.",
   },
 ];
 

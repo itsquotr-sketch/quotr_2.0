@@ -37,6 +37,9 @@ export const PROJECT_CONDITION_KEY_ALIASES: Readonly<Record<string, CanonicalPro
     working_hour_restrictions: "working_hours",
     hours_restriction: "working_hours",
     noise_hours: "working_hours",
+    scaffold: "high_level_access",
+    working_at_height: "high_level_access",
+    high_level_access_method: "high_level_access",
     parking: "parking_loading",
     loading: "parking_loading",
     hazmat: "hazardous_materials_risk",
@@ -145,6 +148,7 @@ export const DUPLICATE_FACT_TO_CONSTRAINT: Readonly<
 
 export type ProjectConditionSemanticTopic =
   | "site.access"
+  | "site.working_height"
   | "site.carry"
   | "site.floor_level"
   | "site.occupied"
@@ -163,6 +167,7 @@ export const CONSTRAINT_KEY_TO_TOPIC: Readonly<
   Record<CanonicalProjectConditionKey, ProjectConditionSemanticTopic>
 > = Object.freeze({
   site_access: "site.access",
+  high_level_access: "site.working_height",
   material_carry_distance: "site.carry",
   floor_level: "site.floor_level",
   occupied_site: "site.occupied",

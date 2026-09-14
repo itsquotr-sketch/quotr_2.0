@@ -17,6 +17,7 @@ export const TOPIC_PROJECT_CONSTRAINT_KEY: Partial<
   Record<SemanticTopicId, string>
 > = {
   "site.access": "site_access",
+  "site.working_height": "high_level_access",
   "site.carry": "material_carry_distance",
   "site.floor_level": "floor_level",
   "site.occupied": "occupied_site",

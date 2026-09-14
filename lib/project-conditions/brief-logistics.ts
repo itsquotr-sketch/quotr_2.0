@@ -58,7 +58,7 @@ export function briefSuppliesCarryDistance(briefText: string): boolean {
 }
 
 export function briefSuppliesSiteAccess(briefText: string): boolean {
-  return /restricted(?:\s+\w+)?\s+access|difficult access|easy access|rear access|site access|limited access|moderate access|poor access/i.test(
+  return /restricted(?:\s+\w+)?\s+access|difficult access|easy access|rear access|site access|limited access|moderate access|poor access|normal access|standard access/i.test(
     briefText
   );
 }

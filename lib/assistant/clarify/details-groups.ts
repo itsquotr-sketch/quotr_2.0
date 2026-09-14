@@ -17,6 +17,7 @@ import {
   CONSUMED_PROJECT_CONDITION_KEYS,
   listConsumedProjectConditionDefs,
 } from "@/lib/project-conditions/consumed-authority";
+import { projectConditionDetailsGroupLabel } from "@/lib/project-conditions/library";
 import { distinguishWorkAreaInstanceLabels } from "@/lib/work-areas/instances";
 import { ceilingsDetailsSectionId } from "@/lib/estimate/ceilings-information-contract";
 
@@ -221,6 +222,36 @@ export function groupDetailsCandidates(params: {
   }
 
   const groups: DetailsWorkAreaGroup[] = [];
+  if (pcs.length > 0) {
+    const byGroup = new Map<string, ClarifyCandidate[]>();
+    const order: string[] = [];
+    for (const candidate of [...pcs].sort(compareCandidates)) {
+      const label = candidate.constraintKey
+        ? projectConditionDetailsGroupLabel(candidate.constraintKey)
+        : "Project Conditions";
+      const existing = byGroup.get(label);
+      if (existing) {
+        existing.push(candidate);
+        continue;
+      }
+      order.push(label);
+      byGroup.set(label, [candidate]);
+    }
+    groups.push({
+      workAreaId: null,
+      workAreaName: "Project Conditions",
+      workAreaType: null,
+      sections: order.map((label) => ({
+        id: "project_conditions" as const,
+        label,
+        wallTypeId: null,
+        wallTypeLabel: null,
+        nestedItemId: null,
+        nestedItemLabel: null,
+        candidates: byGroup.get(label)!,
+      })),
+    });
+  }
   const seen = new Set<string>();
   for (const wa of activeAreas) {
     const rows = byWa.get(wa.id);
@@ -240,24 +271,6 @@ export function groupDetailsCandidates(params: {
       workAreaName: rows[0]?.workAreaName ?? "Work area",
       workAreaType: rows[0]?.workAreaType ?? null,
       sections: buildSections(rows),
-    });
-  }
-  if (pcs.length > 0) {
-    groups.push({
-      workAreaId: null,
-      workAreaName: "Project Conditions",
-      workAreaType: null,
-      sections: [
-        {
-          id: "project_conditions",
-          label: "Project Conditions",
-          wallTypeId: null,
-          wallTypeLabel: null,
-          nestedItemId: null,
-          nestedItemLabel: null,
-          candidates: [...pcs].sort(compareCandidates),
-        },
-      ],
     });
   }
   return groups;

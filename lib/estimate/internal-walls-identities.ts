@@ -264,7 +264,7 @@ export function isInternalWallsOpeningComponentKey(
   ).includes(key);
 }
 
-/** Shared physical cavity identities — not Internal-Walls-specific SKUs. No catalogue rate in V1. */
+/** Shared physical cavity identities. Thermal uses the ordinary Quotr COST fallback. */
 export function internalWallsInsulationMaterialKey(
   type: "acoustic" | "thermal" | "fire_acoustic" | "other"
 ): string {
@@ -274,7 +274,7 @@ export function internalWallsInsulationMaterialKey(
   return "insulation.wall.other.m2";
 }
 
-/** Shared physical trim identity. No canonical wall-skirting catalogue rate. */
+/** Ordinary pine/MDF wall skirting. Custom profiles stay Pricing Required. */
 export const INTERNAL_WALLS_SKIRTING_MATERIAL_KEY = "skirting.wall.lm" as const;
 /** Shared physical trim identity. No canonical cornice catalogue rate. */
 export const INTERNAL_WALLS_CORNICE_MATERIAL_KEY = "cornice.wall.lm" as const;
@@ -298,7 +298,7 @@ export const INTERNAL_WALLS_STOPPING_COMPONENT =
 export const INTERNAL_WALLS_PAINTING_COMPONENT =
   "internal_walls.painting" as const;
 
-/** Future DNA — no owner-approved hours in IW-07. */
+/** Ordinary thermal uses ceilings.insulation.install.hours_per_m2. Acoustic/fire stay PR. */
 export const INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY =
   "internal_walls.insulation.install.hours_per_m2" as const;
 export const INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY =

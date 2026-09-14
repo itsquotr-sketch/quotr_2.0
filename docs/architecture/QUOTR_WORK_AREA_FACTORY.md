@@ -92,7 +92,7 @@ Checklist:
 - [ ] Every consumed calculator fact is in the Work Area prefix.
 - [ ] Derived facts are listed in `DERIVED_FACT_KEYS` (or successor) and not asked.
 - [ ] Duplicate Project Condition keys are not asked (`PROJECT_CONDITION_DUPLICATE_FACT_KEYS`).
-- [ ] Local exceptions (`deck.access_type`, `ceilings.access`) are listed deliberately.
+- [ ] Local exceptions (`deck.access_type`) are listed deliberately. Ceiling working height is `ceilings.portion.height_m`, not a Project Condition. `ceilings.access` is historical only.
 - [ ] Aliases map to one canonical key (`lib/scopes/fact-keys.ts`).
 - [ ] No AI-invented keys outside the alias map.
 
@@ -162,15 +162,34 @@ company rate
 
 Cost-first commercial authority remains. No Work Area-specific pricing architecture. Missing trusted rate must not invent $0 and must not revert a detailed quantity to a whole-package price.
 
+### Benchmark coverage close (EST-BENCHMARK-01A)
+
+A Work Area cannot be **L5 / CLOSED** (Factory WA-9 MATURE) unless every ordinary V1 requirement is classified and live:
+
+- Quotr material COST fallback **or** an intentional Pricing Required classification
+- Quotr productivity fallback **or** an intentional Pricing Required classification
+- fixings / consumable resolution where relevant
+- global labour COST fallback (company labour COST → Quotr labour COST)
+
+`verifyWorkAreaBenchmarkCoverage(workArea)` is the generic contract. Future Work Areas fail close if a new ordinary component has neither `RESOLVES_WITH_QUOTR` nor `INTENTIONAL_PRICING_REQUIRED`.
+
+`NEEDS_NEW_QUOTR_BENCHMARK` is a classified 01A gap. It is **not** sufficient for L5 close — product owner must approve the missing COST/hours first. Do not invent values.
+
+Helper: `workAreaMayCloseAtL5` in `lib/estimate/benchmark-coverage.ts`. Inventories live in `lib/estimate/work-area-benchmark-coverage.ts`.
+
 ---
 
 ## 9. WA-6 — Conditions standard
 
 Project Conditions remain sibling to Facts. Canonical keys:
 
-`site_access`, `floor_level`, `material_carry_distance`, `waste_bin_access`, `services_isolated`, `occupied_site`, `working_hours`, `hazardous_materials_risk`, `parking_loading`, `protection_dust_control`, `client_supplied_items`, `by_others_trades`, `consent_engineering`, `site_slope`.
+`site_access`, `high_level_access`, `floor_level`, `material_carry_distance`, `waste_bin_access`, `services_isolated`, `occupied_site`, `working_hours`, `hazardous_materials_risk`, `parking_loading`, `protection_dust_control`, `client_supplied_items`, `by_others_trades`, `consent_engineering`, `site_slope`.
 
-Do not encode unusual job conditions into Company DNA. Applicability is already outdoor / interior / reno / consent sets in `lib/project-conditions/applicability.ts`. Extend that table; do not fork per-WA condition stores.
+Working height for interior work is a Work Area fact (`ceilings.portion.height_m`, `internal_walls.wall_type.height_m`). Do not ask height twice. `high_level_access` is the equipment/method Project Condition and becomes relevant only when interior working height exceeds 3.0 m.
+
+Ceiling-only jobs may show `site_access` as an assumable Details condition (disclosed "Standard access") so ordinary 2.4 m work can become Ready. `material_carry_distance` is not asked until a labour-access Work Area (Internal Walls, Bathroom, Deck, …) is on the Project. Occupancy and working hours remain assumable. Unresolved `high_level_access` blocks normal Ready.
+
+Do not encode unusual job conditions into Company DNA. Applicability is already outdoor / interior / reno / consent sets in `lib/project-conditions/applicability.ts`, plus height relevance in `lib/project-conditions/relevance.ts`. Extend that table; do not fork per-WA condition stores.
 
 ---
 
@@ -215,6 +234,7 @@ Every mature Work Area requires:
 - Mobile smoke
 - Multi-Work-Area coexistence with at least one mature reference WA
 - Canonical verifier `scripts/verify-work-area-<slug>-maturity.ts`
+- Ordinary V1 benchmark coverage closed (`workAreaMayCloseAtL5`) — no unclassified gap, no category C leftover
 
 ---
 

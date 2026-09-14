@@ -35,6 +35,7 @@ const REGISTRY_QUESTION_KEY: Record<
   material_carry_distance: "interview.site.material_carry_distance",
   occupied_site: "interview.site.occupied_site",
   working_hours: "interview.site.working_hours",
+  high_level_access: "interview.site.high_level_access",
 };
 
 const LABELS: Record<(typeof SHARED_CONSUMED_CONSTRAINT_KEYS)[number], string> = {
@@ -42,6 +43,7 @@ const LABELS: Record<(typeof SHARED_CONSUMED_CONSTRAINT_KEYS)[number], string> =
   material_carry_distance: "Carry distance",
   occupied_site: "Occupied site",
   working_hours: "Working hours",
+  high_level_access: "High-level access",
 };
 
 const ASSUMPTION_STATEMENT: Record<
@@ -52,6 +54,7 @@ const ASSUMPTION_STATEMENT: Record<
   material_carry_distance: "Standard carry",
   occupied_site: "Unoccupied site",
   working_hours: "Normal working hours",
+  high_level_access: "Mobile scaffold for work above 3.0 m",
 };
 
 const DISCLOSED_VALUE: Record<
@@ -62,6 +65,7 @@ const DISCLOSED_VALUE: Record<
   material_carry_distance: null,
   occupied_site: "No",
   working_hours: "No",
+  high_level_access: "Mobile scaffold",
 };
 
 const LABOUR_ACCESS_WORK_AREA_TYPES = new Set([
@@ -74,10 +78,20 @@ const LABOUR_ACCESS_WORK_AREA_TYPES = new Set([
   "kitchen",
 ]);
 
+export function labourAccessWorkAreaPresent(
+  workAreaTypes: readonly string[]
+): boolean {
+  return workAreaTypes.some((type) => LABOUR_ACCESS_WORK_AREA_TYPES.has(type));
+}
+
 export function consumedProjectConditionAskClass(
   key: string
 ): ConsumedProjectConditionAskClass | null {
-  if (key === "site_access" || key === "material_carry_distance") {
+  if (
+    key === "site_access" ||
+    key === "material_carry_distance" ||
+    key === "high_level_access"
+  ) {
     return "ASK_NOW";
   }
   if (key === "occupied_site" || key === "working_hours") {
@@ -90,19 +104,52 @@ export function isRequiredConsumedProjectCondition(key: string): boolean {
   return consumedProjectConditionAskClass(key) === "ASK_NOW";
 }
 
+/**
+ * ASK_NOW consumed keys block Ready only when a labour-access Work Area
+ * actually requires them, or when high-level access is currently applicable.
+ *
+ * Ceilings consume site_access / occupancy for Details, but ordinary
+ * ceiling-only Ready keeps the disclosed "Standard access" assumption.
+ * Carry is not asked on ceiling-only jobs.
+ */
+export function consumedConditionIsReadyBlocking(
+  key: string,
+  workAreaTypes: readonly string[]
+): boolean {
+  if (!projectConsumesConsumedCondition(workAreaTypes, key)) return false;
+  if (consumedProjectConditionAskClass(key) !== "ASK_NOW") return false;
+  if (key === "high_level_access") return true;
+  if (key === "site_access" || key === "material_carry_distance") {
+    return labourAccessWorkAreaPresent(workAreaTypes);
+  }
+  return true;
+}
+
 export function projectConsumesConsumedCondition(
   workAreaTypes: readonly string[],
   key: string
 ): boolean {
-  if (key === "site_access" || key === "material_carry_distance") {
+  if (key === "site_access") {
+    return workAreaTypes.some(
+      (type) =>
+        LABOUR_ACCESS_WORK_AREA_TYPES.has(type) || type === "ceilings"
+    );
+  }
+  if (key === "material_carry_distance") {
     return workAreaTypes.some((type) => LABOUR_ACCESS_WORK_AREA_TYPES.has(type));
+  }
+  if (key === "high_level_access") {
+    return workAreaTypes.some(
+      (type) => type === "ceilings" || type === "internal_walls"
+    );
   }
   if (key === "occupied_site" || key === "working_hours") {
     return workAreaTypes.some(
       (type) =>
         LABOUR_ACCESS_WORK_AREA_TYPES.has(type) ||
         type === "painting" ||
-        type === "plastering"
+        type === "plastering" ||
+        type === "ceilings"
     );
   }
   return false;

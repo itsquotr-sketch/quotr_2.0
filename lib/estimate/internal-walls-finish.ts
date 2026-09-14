@@ -146,10 +146,10 @@ export const INTERNAL_WALLS_INSULATION_INFILL_REQUIRED_MESSAGE =
   "Add the infill opening width and height to calculate insulation." as const;
 
 export const INTERNAL_WALLS_INSULATION_LABOUR_OWNER_REQUIRED_MESSAGE =
-  "Insulation labour Pricing Required — no owner-approved hours/m²." as const;
+  "Insulation labour Pricing Required — acoustic / fire / specified products have no generic hours fallback." as const;
 
 export const INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE =
-  "Skirting profile — Pricing Required. No canonical wall-skirting identity or rate." as const;
+  "Custom skirting profile — Pricing Required. Ordinary pine/MDF uses the Quotr COST fallback." as const;
 
 export const INTERNAL_WALLS_SKIRTING_LABOUR_OWNER_REQUIRED_MESSAGE =
   "Skirting labour Pricing Required — no owner-approved hours/lm." as const;
@@ -164,7 +164,7 @@ export const INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_REQUIRED_MESSAGE =
   "Electrical allowance — Pricing Required." as const;
 
 export const INTERNAL_WALLS_STOPPING_RATE_REQUIRED_MESSAGE =
-  "Stopping — Pricing Required. No owner-approved Internal Walls stopping rate." as const;
+  "Level 5 / custom stopping — Pricing Required. Ordinary Level 4 uses the Quotr COST fallback." as const;
 
 export const INTERNAL_WALLS_PAINTING_RATE_REQUIRED_MESSAGE =
   "Wall painting — Pricing Required. No owner-approved Internal Walls paint rate or coverage model." as const;

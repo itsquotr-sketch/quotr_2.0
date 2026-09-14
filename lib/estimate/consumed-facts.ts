@@ -38,6 +38,7 @@ export const SHARED_CONSUMED_CONSTRAINT_KEYS = [
   "material_carry_distance",
   "occupied_site",
   "working_hours",
+  "high_level_access",
 ] as const;
 
 export function getCalculatorConsumedFacts(

@@ -48,9 +48,17 @@ import { FENCE_TIMBER_1B_MATERIAL_STARTERS } from "@/lib/estimate/fence-timber-1
 import {
   INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
   INTERNAL_WALLS_FRAMING_FIXINGS_COST_PER_M2,
+  INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
   INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
   INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS,
+  INTERNAL_WALLS_SKIRTING_MATERIAL_KEY,
 } from "@/lib/estimate/internal-walls-identities";
+import {
+  CEILING_INSULATION_THERMAL_KEY,
+  ORDINARY_THERMAL_INSULATION_COST,
+  WALL_INSULATION_HOURS_PER_M2,
+  WALL_INSULATION_THERMAL_KEY,
+} from "@/lib/estimate/insulation-fallback";
 import {
   CEILINGS_FIXINGS_QUOTR_COST,
   CEILINGS_PRODUCTIVITY_KEYS,
@@ -726,6 +734,61 @@ export const CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] =
       "Bulkhead plasterboard lining residual fixings on installed bulkhead lining area. Quotr COST $2.50/m². Company exact wins.",
     defaultCostRate: CEILINGS_FIXINGS_QUOTR_COST.bulkheadPlasterboardM2,
     calculatorSupport: "used_now",
+  }),
+];
+
+export const ORDINARY_FINISH_FALLBACK_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: CEILING_INSULATION_THERMAL_KEY,
+    label: "Thermal / standard ceiling insulation",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Insulation",
+    unit: "m2",
+    description:
+      "Ordinary thermal / standard ceiling insulation COST. Reuses the existing FITOUT thermal insulation benchmark. Not a proprietary branded batt. Company exact wins. Sell derives from gross margin.",
+    defaultCostRate: ORDINARY_THERMAL_INSULATION_COST,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: WALL_INSULATION_THERMAL_KEY,
+    label: "Thermal / standard wall insulation",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Insulation",
+    unit: "m2",
+    description:
+      "Ordinary thermal wall insulation COST. Same FITOUT thermal insulation benchmark as ceiling thermal. Acoustic / fire-acoustic / other stay Pricing Required.",
+    defaultCostRate: ORDINARY_THERMAL_INSULATION_COST,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_SKIRTING_MATERIAL_KEY,
+    label: "Ordinary wall skirting",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Trim",
+    unit: "lm",
+    description:
+      "Ordinary pine/MDF wall skirting COST. Reuses FITOUT skirtingLm. Custom profiles stay Pricing Required. Company exact wins.",
+    defaultCostRate: FITOUT_BENCHMARKS.skirtingLm.cost,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: "stopping.plasterboard.level4.m2",
+    label: "Level 4 plasterboard stopping",
+    rate_type: "material",
+    category: "material",
+    workAreaLabel: "Stopping",
+    unit: "m2",
+    description:
+      "Ordinary Level 4 stopping on new plasterboard. Reuses the owner-approved bathroom.stopping.m2 / FITOUT stopping COST $28 ex GST / m². Company exact wins. Level 5 stays Pricing Required.",
+    defaultCostRate: FITOUT_BENCHMARKS.stoppingPerM2.cost,
+    calculatorSupport: "used_now",
+    recommended: true,
   }),
 ];
 
@@ -2320,6 +2383,20 @@ export const INTERNAL_WALLS_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     defaultCostRate: INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
     calculatorSupport: "used_now",
   }),
+  entry({
+    item_key: INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
+    label: "Internal wall thermal insulation (hours/m²)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "m2",
+    description:
+      "Person-hours per installed thermal insulation m². Derived from ceiling insulation hours (conservative). Company hours/m² win. Not acoustic/fire systems.",
+    defaultCostRate: WALL_INSULATION_HOURS_PER_M2,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
 ];
 
 function ceilingProductivityEntry(
@@ -2880,6 +2957,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...TIMBER_LINING_SPECIFIC_MATERIAL_CATALOGUE,
   ...CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE,
   ...CEILING_FIXINGS_SPECIFIC_MATERIAL_CATALOGUE,
+  ...ORDINARY_FINISH_FALLBACK_CATALOGUE,
   ...RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
   ...WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,

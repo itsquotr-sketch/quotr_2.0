@@ -681,6 +681,7 @@ export function calculateCeilings(
       workArea,
       rates: context.rates,
       organisationSettings: context.organisationSettings,
+      constraints: context.constraints,
     });
     const missingInfo = [...commercial.missingInfo];
     if (

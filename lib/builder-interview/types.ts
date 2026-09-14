@@ -51,6 +51,7 @@ export type EstimateImpactKind =
 /** Stable semantic topic for project↔WA deduplication (not key-string equality). */
 export type SemanticTopicId =
   | "site.access"
+  | "site.working_height"
   | "site.carry"
   | "site.floor_level"
   | "site.occupied"

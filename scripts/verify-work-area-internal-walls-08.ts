@@ -280,8 +280,9 @@ console.log("=== WA-INTERNAL-WALLS-08 ===\n");
 
 console.log("--- Rate audit ---\n");
 check(
-  "no shared stopping.plasterboard.level4 catalogue rate",
-  getCatalogueEntry("stopping.plasterboard.level4.m2") == null
+  "Level 4 stopping has ordinary Quotr COST (FITOUT stoppingPerM2 reused)",
+  getCatalogueEntry("stopping.plasterboard.level4.m2")?.defaultCostRate ===
+    FITOUT_BENCHMARKS.stoppingPerM2.cost
 );
 check(
   "no shared stopping.plasterboard.level5 catalogue rate",
@@ -305,7 +306,7 @@ check(
     getCatalogueEntry("paint.litre") != null
 );
 check(
-  "FITOUT stoppingPerM2 exists but must not be consumed on mature path",
+  "FITOUT stoppingPerM2 remains the canonical Level 4 COST reused via catalogue identity",
   FITOUT_BENCHMARKS.stoppingPerM2.cost === 28
 );
 
@@ -328,11 +329,16 @@ check(
   )
 );
 check(
-  "Fixture A stopping Pricing Required",
-  aStopReq.every((row) => row.priced === false) &&
+  "Fixture A stopping uses Quotr Level 4 COST",
+  aStopReq.every((row) => row.priced === true) &&
     aCalc.lineItems
       .filter((row) => row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT)
-      .every((row) => row.rateSourceType === "missing" && near(row.quantity, 27.1962))
+      .every(
+        (row) =>
+          row.rateSourceType === "benchmark" &&
+          near(row.quantity, 27.1962) &&
+          (row.recommendedCost ?? 0) > 0
+      )
 );
 check("Fixture A no layers multiplier in notes", aCalc.lineItems.every((row) => !/×\s*2 layers/i.test(row.notes ?? "")));
 check("Fixture A no legacy package", !isLegacyPackage(aCalc));
@@ -544,6 +550,12 @@ check(
   "Level 4 and Level 5 keys differ",
   internalWallsStoppingItemKey("level_4") !== internalWallsStoppingItemKey("level_5")
 );
+check(
+  "Level 5 remaining Pricing Required",
+  l5Calc.lineItems
+    .filter((row) => row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT)
+    .every((row) => row.rateSourceType === "missing")
+);
 
 console.log("\n--- Mixed Wall Types isolation ---\n");
 let mix = writeWall("w1", [{ key: INTERNAL_WALLS_ADD_WALL_TYPE_KEY, value: true }]);
@@ -562,10 +574,10 @@ check("full fixture has no INFO_REQUIRED", fullCalc.missingInfo.length === 0);
 check("full fixture has Pricing Required rows", pricingRequired > 0);
 check("no silent priced $0", !silentZero(fullCalc));
 check(
-  "unpriced stopping not a completed $0",
+  "Level 4 stopping is not a silent $0",
   fullCalc.lineItems
     .filter((row) => row.componentKey === INTERNAL_WALLS_STOPPING_COMPONENT)
-    .every((row) => row.rateSourceType === "missing" && /Pricing Required/i.test(row.notes ?? ""))
+    .every((row) => row.rateSourceType === "benchmark" && (row.recommendedCost ?? 0) > 0)
 );
 
 console.log("\n--- Pricing override ---\n");
@@ -659,7 +671,7 @@ check(
   !read("lib/estimate/internal-walls-finish.ts").includes("compound kg")
 );
 check(
-  "mature path does not use FITOUT stoppingPerM2",
+  "mature path does not import FITOUT stoppingPerM2 directly",
   !read("lib/estimate/internal-walls-finish-physical.ts").includes("stoppingPerM2")
 );
 

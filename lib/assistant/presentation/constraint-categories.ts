@@ -32,6 +32,7 @@ export const CONSTRAINT_CATEGORY_LABELS: Record<
 const KEY_CATEGORY: Readonly<Record<string, ConstraintPresentationCategory>> =
   Object.freeze({
     site_access: "access_movement",
+    high_level_access: "access_movement",
     material_carry_distance: "access_movement",
     waste_bin_access: "storage_deliveries",
     floor_level: "height_levels",

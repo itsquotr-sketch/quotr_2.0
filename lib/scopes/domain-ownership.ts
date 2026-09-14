@@ -74,6 +74,7 @@ export const RESERVED_CONSTRAINT_KEYS = [
   "by_others_trades",
   "consent_engineering",
   "site_slope",
+  "high_level_access",
 ] as const;
 
 export type ReservedConstraintKey = (typeof RESERVED_CONSTRAINT_KEYS)[number];

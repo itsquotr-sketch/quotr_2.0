@@ -144,6 +144,15 @@ const GLOBAL_CONSTRAINT_TEMPLATES: ConstraintTemplateSeed[] = [
     required: false,
     priority: 75,
   },
+  {
+    key: "high_level_access",
+    label: "High-level access",
+    question_text: "How will you reach the work at height?",
+    input_type: "select",
+    options: ["Mobile scaffold", "Scaffold", "MEWP", "Not sure"],
+    required: false,
+    priority: 18,
+  },
 ];
 
 const SCOPE_CONSTRAINT_KEYS: Record<string, string[]> = {

@@ -12,6 +12,11 @@ import {
 import type { CeilingPortion } from "@/lib/estimate/ceilings-portions";
 import type { CeilingGeometryTakeoff } from "@/lib/estimate/ceilings-geometry";
 import type { MaterialIdentity } from "@/lib/materials/identity";
+import {
+  CEILING_INSULATION_THERMAL_KEY,
+  ceilingInsulationMaterialKey,
+  ceilingInsulationSpecification,
+} from "@/lib/estimate/insulation-fallback";
 
 export const CEILINGS_INSULATION_COMPONENT =
   "ceilings.insulation.material" as const;
@@ -91,6 +96,8 @@ export function calculateCeilingInsulation(params: {
     );
   }
   const specText = params.portion.finish.insulation_type?.trim() || null;
+  const materialKey = ceilingInsulationMaterialKey(specText);
+  const specification = ceilingInsulationSpecification(specText);
   return {
     status: "ok",
     resolution: PHYSICAL_REQUIREMENT_RESOLUTION.DERIVED,
@@ -102,10 +109,12 @@ export function calculateCeilingInsulation(params: {
     wasteFactor: null,
     wastageUnresolved: true,
     specText,
-    materialKey: null,
+    materialKey,
     materialIdentity: {
       family: "insulation",
-      productFamily: "ceiling_insulation",
+      productFamily: materialKey === CEILING_INSULATION_THERMAL_KEY
+        ? "ceiling_insulation_thermal"
+        : "ceiling_insulation",
       section: null,
       grade: null,
       treatment: null,
@@ -114,7 +123,7 @@ export function calculateCeilingInsulation(params: {
       processing: null,
       processingKind: "unknown",
       species: null,
-      originalDescription: specText ?? "Ceiling insulation",
+      originalDescription: specification,
     },
   };
 }

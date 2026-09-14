@@ -85,6 +85,7 @@ import {
   type CeilingInsulationTakeoff,
 } from "@/lib/estimate/ceilings-insulation";
 import { ceilingFixingsRequirements } from "@/lib/estimate/ceilings-fixings";
+import { ceilingInsulationSpecification } from "@/lib/estimate/insulation-fallback";
 import {
   ceilingPortionHasUnsupportedBulkhead,
   ceilingPortionSpecialistKind,
@@ -835,7 +836,7 @@ function insulationMaterialRequirement(params: {
     componentKey: CEILINGS_INSULATION_COMPONENT,
     variantKey: portion.id,
     description: `${portion.label?.trim() || "Ceiling portion"} — insulation`,
-    confidence: insulation.specText ? "medium" : "low",
+    confidence: insulation.materialKey ? "medium" : "low",
     assumptions: [
       {
         key: "wastage",
@@ -857,7 +858,9 @@ function insulationMaterialRequirement(params: {
     materialKey: insulation.materialKey,
     materialIdentity: insulation.materialIdentity ?? undefined,
     category: "INSULATION",
-    specification: insulation.specText ?? "Ceiling insulation",
+    specification: insulation.specText
+      ? ceilingInsulationSpecification(insulation.specText)
+      : "Ceiling insulation",
     baseQuantity: insulation.installedM2,
     baseUnit: "m2",
     wasteFactor: 0,

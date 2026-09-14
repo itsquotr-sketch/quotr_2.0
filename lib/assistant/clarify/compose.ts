@@ -1,4 +1,8 @@
 import { previewProjectConditionAskCandidates } from "@/lib/builder-interview/project-filter";
+import {
+  applicableProjectConditionKeySet,
+  toConfirmedInterviewInput,
+} from "@/lib/project-conditions/applicability";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import { assumptionsFromPersistedFacts, assumptionsFromSkipped } from "@/lib/assistant/clarify/assumptions";
 import { sortClarifyCandidates } from "@/lib/assistant/clarify/rank";
@@ -19,6 +23,7 @@ import {
   DECK_HEIGHT_ASSUMPTION_STATEMENT,
 } from "@/lib/estimate/disclosed-assumptions";
 import {
+  consumedConditionIsReadyBlocking,
   consumedProjectConditionAskClass,
   isRequiredConsumedProjectCondition,
   listConsumedProjectConditionDefs,
@@ -141,6 +146,7 @@ import {
 import type { EstimateFact } from "@/lib/estimate/types";
 
 const PC_SCORES: Record<string, number> = {
+  high_level_access: 86,
   site_access: 85,
   material_carry_distance: 48,
   floor_level: 46,
@@ -1903,33 +1909,18 @@ function fallbackProjectCondition(
 function projectConditionCandidates(
   input: ComposeClarifyInput
 ): ClarifyCandidate[] {
+  const interview = toConfirmedInterviewInput({
+    workAreas: input.workAreas,
+    facts: input.facts,
+    constraints: input.constraints,
+  });
+  const applicableKeys = applicableProjectConditionKeySet(interview);
   const pc =
     input.pcCandidates ??
-    previewProjectConditionAskCandidates({
-      workAreas: input.workAreas.map((wa, index) => ({
-        id: wa.id,
-        type: wa.type,
-        name: wa.name,
-        status:
-          wa.status === "confirmed" ||
-          wa.status === "excluded" ||
-          wa.status === "suggested"
-            ? wa.status
-            : "suggested",
-        sortOrder: index,
-      })),
-      facts: input.facts.map((f) => ({
-        key: f.key,
-        workAreaId: f.work_area_id,
-        value: f.value,
-      })),
-      constraints: input.constraints.map((c) => ({
-        key: c.key,
-        value: c.value,
-      })),
-    });
+    previewProjectConditionAskCandidates(interview);
 
   const fromPreview: ClarifyCandidate[] = pc.flatMap((c) => {
+    if (!applicableKeys.has(c.targetKey)) return [];
     if (constraintIsKnown(input.constraints, c.targetKey)) return [];
     if (
       c.targetKey === "material_carry_distance" &&
@@ -1961,11 +1952,16 @@ function projectConditionCandidates(
     }
     const score = PC_SCORES[c.targetKey] ?? 25;
     if (!bathroom && score < 30) return [];
+    const types = confirmedWorkAreaTypes(input);
     const consumedClass = consumedProjectConditionAskClass(c.targetKey);
     const required = consumedClass
-      ? consumedClass === "ASK_NOW"
+      ? consumedConditionIsReadyBlocking(c.targetKey, types)
       : isRequiredConsumedProjectCondition(c.targetKey);
-    const askClass = consumedClass ?? (required ? "ASK_NOW" : "ASSUME_IF_SKIPPED");
+    const askClass = required
+      ? "ASK_NOW"
+      : consumedClass === "ASK_NOW"
+        ? "ASSUME_IF_SKIPPED"
+        : consumedClass ?? "ASSUME_IF_SKIPPED";
     return [
       {
         id: `pc:${c.targetKey}`,
@@ -2007,6 +2003,7 @@ function projectConditionCandidates(
   });
 
   const extras = listConsumedProjectConditionDefs()
+    .filter((def) => applicableKeys.has(def.key))
     .map((def) =>
       fallbackProjectCondition(input, {
         targetKey: def.key,
@@ -2016,7 +2013,10 @@ function projectConditionCandidates(
         score: PC_SCORES[def.key] ?? 25,
         assumption: def.assumptionStatement,
         inputType: def.inputType === "boolean" ? "select" : def.inputType,
-        required: def.askClass === "ASK_NOW",
+        required: consumedConditionIsReadyBlocking(
+          def.key,
+          confirmedWorkAreaTypes(input)
+        ),
         economicClass:
           bathroomWorkAreaPresent(input) && def.askClass === "ASSUME_IF_SKIPPED"
             ? "REQUIRED_FOR_ECONOMIC_MODEL"
