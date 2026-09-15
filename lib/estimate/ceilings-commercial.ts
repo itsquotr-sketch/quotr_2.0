@@ -73,6 +73,9 @@ import {
   CEILINGS_PLYWOOD_LABOUR,
   CEILINGS_PRODUCTIVITY_KEYS,
   CEILINGS_PAINTING_COMPONENT,
+  CEILINGS_PAINTING_LABOUR,
+  CEILINGS_PAINTING_MATERIAL_KEY,
+  CEILINGS_PAINTING_MATERIAL_LEGACY_ALIAS,
   CEILINGS_SPECIALIST_COMPONENT,
   CEILINGS_STOPPING_COMPONENT,
   CEILINGS_STEEL_CLIP_LABOUR,
@@ -84,6 +87,7 @@ import {
   CEILINGS_TIMBER_FRAMING_LABOUR,
   CEILINGS_TIMBER_LINING_LABOUR,
   CEILINGS_WIRE_LABOUR_DECISION,
+  PAINTING_LABOUR_HOURS_PER_M2_KEY,
   type CeilingLabourOperationSpec,
 } from "@/lib/estimate/ceilings-identities";
 import { derivedDimensionedPlasterboardCost } from "@/lib/estimate/ceilings-plasterboard-derived-cost";
@@ -252,6 +256,12 @@ const LABOUR_FOR_MATERIAL: Record<string, CeilingLabourOperationSpec> = {
     unit: "m2",
     description: "Ceiling insulation install",
   },
+  [CEILINGS_PAINTING_COMPONENT]: {
+    labourComponentKey: CEILINGS_PAINTING_LABOUR,
+    productivityKey: PAINTING_LABOUR_HOURS_PER_M2_KEY,
+    unit: "m2",
+    description: "Painting labour",
+  },
 };
 
 const LEGACY_PACKAGE_KEYS = new Set([
@@ -293,7 +303,11 @@ function applicableGrossMarginPercent(
 
 export function quotrCatalogueCost(itemKey: string | null): number | null {
   if (!itemKey || LEGACY_PACKAGE_KEYS.has(itemKey)) return null;
-  const entry = getCatalogueEntry(itemKey);
+  const canonical =
+    itemKey === CEILINGS_PAINTING_MATERIAL_LEGACY_ALIAS
+      ? CEILINGS_PAINTING_MATERIAL_KEY
+      : itemKey;
+  const entry = getCatalogueEntry(canonical);
   if (entry?.defaultCostRate != null && entry.defaultCostRate > 0) {
     return entry.defaultCostRate;
   }
@@ -324,21 +338,43 @@ export function quotrCeilingMaterialCost(itemKey: string | null): {
   return null;
 }
 
+function ceilingMaterialLookupKeys(itemKey: string): readonly string[] {
+  if (itemKey === CEILINGS_PAINTING_MATERIAL_KEY) {
+    return [CEILINGS_PAINTING_MATERIAL_KEY, CEILINGS_PAINTING_MATERIAL_LEGACY_ALIAS];
+  }
+  if (itemKey === CEILINGS_PAINTING_MATERIAL_LEGACY_ALIAS) {
+    return [CEILINGS_PAINTING_MATERIAL_KEY, CEILINGS_PAINTING_MATERIAL_LEGACY_ALIAS];
+  }
+  return [itemKey];
+}
+
 function findExactMaterialRate(
   rates: readonly OrganisationRate[],
   itemKey: string,
   unit: string
 ): OrganisationRate | undefined {
+  const keys = new Set(ceilingMaterialLookupKeys(itemKey));
   const matches = rates.filter(
     (rate) =>
       rate.active &&
       (rate.rate_type === "material" || rate.rate_type === "project_material") &&
-      rate.item_key === itemKey &&
+      keys.has(rate.item_key) &&
       rate.cost_rate != null &&
       materialRateUnitsMatch(rate.unit, unit)
   );
+  const preferCanonical = matches.find(
+    (rate) =>
+      rate.item_key === CEILINGS_PAINTING_MATERIAL_KEY &&
+      rate.rate_type === "project_material"
+  );
+  if (preferCanonical) return preferCanonical;
   return (
-    matches.find((rate) => rate.rate_type === "project_material") ?? matches[0]
+    matches.find((rate) => rate.rate_type === "project_material") ??
+    matches.find((rate) => rate.item_key === itemKey) ??
+    matches.find(
+      (rate) => rate.item_key === CEILINGS_PAINTING_MATERIAL_KEY
+    ) ??
+    matches[0]
   );
 }
 
@@ -1171,6 +1207,12 @@ export function ceilingCommercialCoverageTable(): CeilingRateCoverageRow[] {
       "m2",
       "ceilings.fixings.bulkhead_lining",
       null
+    ),
+    row(
+      "Ceiling painting materials",
+      "m2",
+      CEILINGS_PAINTING_MATERIAL_KEY,
+      PAINTING_LABOUR_HOURS_PER_M2_KEY
     ),
     {
       component: "Tile/Grid minor fixings",

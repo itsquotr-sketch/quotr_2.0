@@ -145,7 +145,9 @@ function classifyCeilingBucket(
     key.includes("ceilings.finish.stopping") ||
     key.includes("ceilings.finish.painting") ||
     key.includes("finish.stopping") ||
-    key.includes("finish.painting")
+    key.includes("finish.painting") ||
+    key === "painting.material.m2" ||
+    key === "painting.labour_hours_per_m2"
   ) {
     return "finishing";
   }

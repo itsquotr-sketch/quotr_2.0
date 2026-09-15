@@ -26,6 +26,7 @@ import {
   CEILINGS_FIXINGS_QUOTR_COST,
   CEILINGS_PARTIAL_ESTIMATE_MESSAGE,
   CEILINGS_PAINTING_COMPONENT,
+  CEILINGS_PAINTING_LABOUR,
   CEILINGS_PLASTERBOARD_LABOUR,
   CEILINGS_PRODUCTIVITY_KEYS,
   CEILINGS_QUOTR_PRODUCTIVITY_HOURS,
@@ -844,10 +845,14 @@ check(
     finish.commercial.requirements.some(
       (row) => row.componentKey === CEILINGS_PAINTING_COMPONENT
     ) &&
+    finish.commercial.requirements.some(
+      (row) => row.componentKey === CEILINGS_PAINTING_LABOUR
+    ) &&
     !finish.commercial.requirements.some(
       (row) =>
         /paint/i.test(row.componentKey) &&
-        row.componentKey !== CEILINGS_PAINTING_COMPONENT
+        row.componentKey !== CEILINGS_PAINTING_COMPONENT &&
+        row.componentKey !== CEILINGS_PAINTING_LABOUR
     ) &&
     !finish.commercial.lineItems.some((item) => /^ceiling painting$/i.test(item.label))
 );

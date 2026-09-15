@@ -978,11 +978,11 @@ function ceilingFinishRequirements(params: {
       buildMaterialRequirement({
         ...shared,
         componentKey: CEILINGS_PAINTING_COMPONENT,
-        description: `${name} — painting`,
+        description: `${name} — Painting materials`,
         assumptions: [],
         materialKey: CEILINGS_PAINTING_MATERIAL_KEY,
         category: "FINISHING",
-        specification: `${areaM2} m² plasterboard lining`,
+        specification: `${areaM2} m² plasterboard lining (paint materials)`,
       })
     );
   }

@@ -60,7 +60,7 @@ const ITEM_KEY_ALIASES: Record<string, string[]> = {
   "flooring.material.m2": ["flooring_vinyl_m2"],
   "flooring.vinyl.m2": ["flooring_vinyl_m2"],
   "flooring.prep.m2": ["flooring_prep_m2"],
-  "painting.material.m2": ["painting_internal_m2"],
+  "painting.material.m2": ["painting_internal_m2", "ceilings.painting.m2"],
   "painting.door.each": ["painting_door_each"],
   "painting.trim.lm": ["painting_trim_lm"],
   "plastering.level4.m2": ["plastering_level4_m2"],

@@ -67,6 +67,8 @@ import {
   CEILINGS_FIXINGS_QUOTR_COST,
   CEILINGS_PRODUCTIVITY_KEYS,
   CEILINGS_QUOTR_PRODUCTIVITY_HOURS,
+  PAINTING_LABOUR_HOURS_PER_M2,
+  PAINTING_LABOUR_HOURS_PER_M2_KEY,
   TIMBER_FRAMING_140X45_H12_KEY,
   TIMBER_FRAMING_140X45_H12_QUOTR_COST,
 } from "@/lib/estimate/ceilings-identities";
@@ -1302,6 +1304,8 @@ export const PAINTING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     work_area_type: "painting",
     workAreaLabel: "Painting",
     unit: "m2",
+    description:
+      "Paint materials COST per m² only. Not complete supply-and-apply. Application labour uses painting.labour_hours_per_m2. Company exact wins. Ceiling nested painting reuses this identity.",
     defaultCostRate: FITOUT_BENCHMARKS.paintingPerM2.cost,
     calculatorSupport: "used_now",
   }),
@@ -2587,6 +2591,23 @@ export const CEILING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
     "Person-hours per installed insulation m².",
     CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.insulationM2]
   ),
+];
+
+export const PAINTING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: PAINTING_LABOUR_HOURS_PER_M2_KEY,
+    label: "Painting application",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "painting",
+    workAreaLabel: "Painting",
+    unit: "m2",
+    description:
+      "Person-hours per painted m². Lower values mean fewer labour hours per m². Owner-approved Quotr V1 0.12 h/m². Company productivity wins. Not a materials $/m² rate and not a labour $/h rate.",
+    defaultCostRate: PAINTING_LABOUR_HOURS_PER_M2,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
 ];
 
 export const BATHROOM_FINISH_RATE_CATALOGUE: RateCatalogueEntry[] = [

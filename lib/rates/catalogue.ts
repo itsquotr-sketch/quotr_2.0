@@ -16,6 +16,7 @@ import {
   BATHROOM_PRODUCTIVITY_RATE_CATALOGUE,
   INTERNAL_WALLS_PRODUCTIVITY_RATE_CATALOGUE,
   CEILING_PRODUCTIVITY_RATE_CATALOGUE,
+  PAINTING_PRODUCTIVITY_RATE_CATALOGUE,
   BATHROOM_FIXTURE_PC_CATALOGUE,
   BATHROOM_TRADE_ALLOWANCE_CATALOGUE,
 } from "@/lib/rates/specific-material-catalogue";
@@ -585,6 +586,7 @@ export const FULL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...BATHROOM_PRODUCTIVITY_RATE_CATALOGUE,
   ...INTERNAL_WALLS_PRODUCTIVITY_RATE_CATALOGUE,
   ...CEILING_PRODUCTIVITY_RATE_CATALOGUE,
+  ...PAINTING_PRODUCTIVITY_RATE_CATALOGUE,
 ];
 
 export const RECOMMENDED_RATE_CATALOGUE = ALL_RATE_CATALOGUE.filter(
@@ -595,6 +597,7 @@ const CATALOGUE_ITEM_ALIASES: Record<string, string> = {
   "bathroom.framing.90x45.h1.2.lm": "timber.framing.90x45.h1.2.lm",
   "sheet.fibre_cement.tile_underlay.6mm.each":
     "sheet.fibre_cement.tile_underlay.6mm.1800x1200.each",
+  "ceilings.painting.m2": "painting.material.m2",
 };
 
 export function getCatalogueEntry(

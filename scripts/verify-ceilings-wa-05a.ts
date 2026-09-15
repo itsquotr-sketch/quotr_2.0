@@ -26,6 +26,7 @@ import {
   CEILINGS_SPECIALIST_COMPONENT,
   CEILINGS_STOPPING_COMPONENT,
   CEILINGS_PAINTING_COMPONENT,
+  CEILINGS_PAINTING_LABOUR,
   CEILINGS_STEEL_DROPPER_LABOUR,
   CEILINGS_TIMBER_FRAMING_LABOUR,
   CEILINGS_WIRE_LABOUR_DECISION,
@@ -740,10 +741,14 @@ check(
     finishFlags.commercial.requirements.some(
       (row) => row.componentKey === CEILINGS_PAINTING_COMPONENT
     ) &&
+    finishFlags.commercial.requirements.some(
+      (row) => row.componentKey === CEILINGS_PAINTING_LABOUR
+    ) &&
     !finishFlags.commercial.requirements.some(
       (row) =>
         /paint/i.test(row.componentKey) &&
-        row.componentKey !== CEILINGS_PAINTING_COMPONENT
+        row.componentKey !== CEILINGS_PAINTING_COMPONENT &&
+        row.componentKey !== CEILINGS_PAINTING_LABOUR
     ) &&
     !finishFlags.commercial.lineItems.some((item) =>
       /^ceiling painting$/i.test(item.label)

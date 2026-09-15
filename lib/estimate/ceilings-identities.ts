@@ -39,10 +39,20 @@ export const CEILINGS_STOPPING_COMPONENT =
   "ceilings.finish.stopping" as const;
 export const CEILINGS_PAINTING_COMPONENT =
   "ceilings.finish.painting" as const;
+export const CEILINGS_PAINTING_LABOUR =
+  "ceilings.finish.painting.install" as const;
 export const CEILINGS_STOPPING_MATERIAL_KEY =
   "stopping.plasterboard.level4.m2" as const;
+/** Canonical Painting WA material COST / m². Materials only — not S&A. */
 export const CEILINGS_PAINTING_MATERIAL_KEY =
+  "painting.material.m2" as const;
+/** Legacy Ceiling-only emit key. Resolves as alias of the canonical material. */
+export const CEILINGS_PAINTING_MATERIAL_LEGACY_ALIAS =
   "ceilings.painting.m2" as const;
+export const PAINTING_LABOUR_HOURS_PER_M2_KEY =
+  "painting.labour_hours_per_m2" as const;
+/** Owner-approved Quotr V1 painting application productivity. */
+export const PAINTING_LABOUR_HOURS_PER_M2 = 0.12;
 export const CEILINGS_STOPPING_LEVEL_ASSUMPTION =
   "Assumes Level 4 stopping on plasterboard lining surfaces." as const;
 
@@ -207,5 +217,11 @@ export const CEILING_LABOUR_OPERATIONS: readonly CeilingLabourOperationSpec[] = 
     productivityKey: CEILINGS_PRODUCTIVITY_KEYS.insulationM2,
     unit: "m2",
     description: "Ceiling insulation install",
+  },
+  {
+    labourComponentKey: CEILINGS_PAINTING_LABOUR,
+    productivityKey: PAINTING_LABOUR_HOURS_PER_M2_KEY,
+    unit: "m2",
+    description: "Painting labour",
   },
 ];

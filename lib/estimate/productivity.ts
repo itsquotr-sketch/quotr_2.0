@@ -2,6 +2,8 @@ import type { OrganisationRate } from "@/components/setup/types";
 import {
   CEILINGS_PRODUCTIVITY_KEYS,
   CEILINGS_QUOTR_PRODUCTIVITY_HOURS,
+  PAINTING_LABOUR_HOURS_PER_M2,
+  PAINTING_LABOUR_HOURS_PER_M2_KEY,
 } from "@/lib/estimate/ceilings-identities";
 import { WALL_INSULATION_HOURS_PER_M2 } from "@/lib/estimate/insulation-fallback";
 import {
@@ -558,6 +560,12 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     CEILINGS_PRODUCTIVITY_KEYS.insulationM2,
     "Ceiling insulation",
     CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.insulationM2],
+    "m2"
+  ),
+  [PAINTING_LABOUR_HOURS_PER_M2_KEY]: productivityEntry(
+    PAINTING_LABOUR_HOURS_PER_M2_KEY,
+    "Painting application",
+    PAINTING_LABOUR_HOURS_PER_M2,
     "m2"
   ),
 };

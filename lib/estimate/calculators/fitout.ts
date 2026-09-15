@@ -16,8 +16,10 @@ import {
   createRateLineItem,
 } from "@/lib/estimate/line-items";
 import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
-import { resolveProductivity } from "@/lib/estimate/productivity";
+import { resolveProductivity, isTrustedProductivityHours } from "@/lib/estimate/productivity";
 import { resolveLabourRate, resolveRate, quotrFallbackSellFromCost } from "@/lib/estimate/rates";
+import { PAINTING_LABOUR_HOURS_PER_M2_KEY } from "@/lib/estimate/ceilings-identities";
+import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import {
   calculateFlooringAreaWithWastage,
   calculateLinealMetresWithWastage,
@@ -1430,12 +1432,59 @@ export function calculatePainting(
     organisationSettings: context.organisationSettings,
   });
   const productivity = resolveProductivity({
-    productivityKey: "painting.labour_hours_per_m2",
+    productivityKey: PAINTING_LABOUR_HOURS_PER_M2_KEY,
     unit: "m²",
-    fallbackHoursPerUnit: 0.12,
+    fallbackHoursPerUnit: 0,
+    rates: context.rates,
   });
+  const productivityTrusted = isTrustedProductivityHours(
+    productivity.hoursPerUnit
+  );
 
   if (includesWallsOrCeilings || !includesDoors) {
+    if (productivityTrusted) {
+      lineItems.push(
+        createLabourLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Painting labour",
+          quantity: adjustedArea,
+          unit: "m²",
+          productivityHoursPerUnit: productivity.hoursPerUnit,
+          labourCostRate: labourRate.costRate,
+          labourSellRate: labourRate.sellRate,
+          rateSource: labourRate.sourceLabel,
+          productivitySourceType: productivity.sourceType,
+          itemKey: PAINTING_LABOUR_HOURS_PER_M2_KEY,
+          notes: [coats ? `${coats} coats` : null, prep ? `${prep} prep` : null]
+            .filter(Boolean)
+            .join(" · "),
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+        })
+      );
+    } else {
+      missingInfo.push(formatMissing("Painting productivity"));
+      lineItems.push(
+        createRateLineItem({
+          workAreaId: workArea.id,
+          workAreaName: workArea.name,
+          label: "Painting labour",
+          category: "labour",
+          quantity: adjustedArea,
+          unit: "m²",
+          costRate: 0,
+          sellRate: 0,
+          rateSource: getRateSourceLabel("missing"),
+          rateSourceType: "missing",
+          itemKey: PAINTING_LABOUR_HOURS_PER_M2_KEY,
+          notes: `Pricing Required productivity (${PAINTING_LABOUR_HOURS_PER_M2_KEY}). Not zero labour.`,
+          sortOrder: sortOrder++,
+          organisationSettings: context.organisationSettings,
+        })
+      );
+    }
+  } else if (productivityTrusted) {
     lineItems.push(
       createLabourLineItem({
         workAreaId: workArea.id,
@@ -1447,26 +1496,29 @@ export function calculatePainting(
         labourCostRate: labourRate.costRate,
         labourSellRate: labourRate.sellRate,
         rateSource: labourRate.sourceLabel,
-        notes: [coats ? `${coats} coats` : null, prep ? `${prep} prep` : null]
-          .filter(Boolean)
-          .join(" · "),
+        productivitySourceType: productivity.sourceType,
+        itemKey: PAINTING_LABOUR_HOURS_PER_M2_KEY,
+        notes: "Doors/trims scope — area allowance applied conservatively.",
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
       })
     );
   } else {
+    missingInfo.push(formatMissing("Painting productivity"));
     lineItems.push(
-      createLabourLineItem({
+      createRateLineItem({
         workAreaId: workArea.id,
         workAreaName: workArea.name,
         label: "Painting labour",
+        category: "labour",
         quantity: adjustedArea,
         unit: "m²",
-        productivityHoursPerUnit: productivity.hoursPerUnit,
-        labourCostRate: labourRate.costRate,
-        labourSellRate: labourRate.sellRate,
-        rateSource: labourRate.sourceLabel,
-        notes: "Doors/trims scope — area allowance applied conservatively.",
+        costRate: 0,
+        sellRate: 0,
+        rateSource: getRateSourceLabel("missing"),
+        rateSourceType: "missing",
+        itemKey: PAINTING_LABOUR_HOURS_PER_M2_KEY,
+        notes: `Pricing Required productivity (${PAINTING_LABOUR_HOURS_PER_M2_KEY}). Not zero labour.`,
         sortOrder: sortOrder++,
         organisationSettings: context.organisationSettings,
       })

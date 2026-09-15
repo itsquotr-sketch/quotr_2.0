@@ -409,13 +409,12 @@ check(
       stopping?.rateSource === "missing"
 );
 check(
-  "painting is priced only with an approved rate, otherwise PR",
-  paintingPriced
-    ? (painting?.unitCost ?? 0) > 0 && painting?.rateSource !== "missing"
-    : painting?.priced === false &&
-      painting?.unitCost == null &&
-      painting?.totalCost == null &&
-      painting?.rateSource === "missing"
+  "painting resolves with approved material authority (not false $0)",
+  paintingPriced &&
+    near(painting?.unitCost, 18) &&
+    near(painting?.totalCost, 288) &&
+    painting?.rateSource === "benchmark" &&
+    painting?.materialKey === CEILINGS_PAINTING_MATERIAL_KEY
 );
 check(
   "neither finish disappears and missing rates are not $0",
@@ -440,7 +439,7 @@ check(
     (bhFrame?.priced === false && bhFrame?.unitCost == null)
 );
 check(
-  "unresolved painting blocks quote readiness",
+  "resolved painting does not block quote readiness",
   nestedCeilingsQuoteIsBlocked({
     missingInfo: hosted.missingInfo,
     items: hosted.lineItems.map((item) => ({
@@ -453,7 +452,7 @@ check(
       unit_cost: item.costRate ?? null,
       rateSourceType: item.rateSourceType,
     })),
-  }) === true
+  }) === false
 );
 
 const review = composeBuilderReview({
