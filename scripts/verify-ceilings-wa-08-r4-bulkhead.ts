@@ -1,5 +1,6 @@
 /**
- * CEILINGS WA-08-R4 — ordinary supported Bulkhead topology + commercial closure.
+ * CEILINGS WA-08-R4 + WA-08-R5 — ordinary supported Bulkhead topology,
+ * conservative free-text classification, and commercial closure.
  *
  * Run: npx --yes tsx scripts/verify-ceilings-wa-08-r4-bulkhead.ts
  *
@@ -31,8 +32,13 @@ import {
 import {
   CEILINGS_BULKHEAD_FRAMING_TIMBER_LABOUR,
   CEILINGS_BULKHEAD_LINING_LABOUR,
+  CEILINGS_SPECIALIST_COMPONENT,
 } from "../lib/estimate/ceilings-identities";
-import { calculateCeilingsPhysical } from "../lib/estimate/ceilings-physical";
+import { CEILINGS_PLASTERBOARD_COMPONENT } from "../lib/estimate/ceilings-lining";
+import {
+  calculateCeilingsPhysical,
+  CEILING_PHYSICAL_COMPLETENESS,
+} from "../lib/estimate/ceilings-physical";
 import {
   applyCeilingsFactWrite,
   CEILINGS_ADD_BULKHEAD_KEY,
@@ -189,6 +195,11 @@ function snapshotBulkhead(bulkhead: CeilingBulkhead | undefined): Record<string,
     form: bulkhead?.form ?? null,
     topology_source: bulkhead?.topology_source ?? null,
   };
+}
+
+function classifiedBulkhead(phrase: string): CeilingBulkhead | null {
+  const portions = extractCeilingPortionsFromBrief(phrase);
+  return portions.flatMap((row) => row.bulkheads)[0] ?? null;
 }
 
 function material(
@@ -709,6 +720,188 @@ check(
 check(
   "Preview only — hardening branch URL",
   PREVIEW_AUTH_SITE_ORIGIN_STABLE.includes("hardening-stage-2a-security")
+);
+
+console.log("\n=== CEILINGS WA-08-R5 conservative bulkhead classification ===\n");
+
+type ClassifiedForm = CeilingBulkhead["form"] | "unresolved";
+
+function formOf(phrase: string): ClassifiedForm {
+  return classifiedBulkhead(phrase)?.form ?? "unresolved";
+}
+
+const r5Matrix: readonly {
+  phrase: string;
+  expected: ClassifiedForm;
+  ordinary: boolean;
+}[] = [
+  { phrase: "wall-adjacent bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  {
+    phrase: "standard wall adjacent downstand",
+    expected: CEILINGS_BULKHEAD_TOPOLOGY_V1,
+    ordinary: true,
+  },
+  { phrase: "bulkhead against the wall", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "island bulkhead", expected: "island", ordinary: false },
+  { phrase: "boxed bulkhead", expected: "boxed", ordinary: false },
+  { phrase: "curved feature bulkhead", expected: "complex", ordinary: false },
+  { phrase: "complex bulkhead", expected: "complex", ordinary: false },
+  { phrase: "floating bulkhead", expected: "complex", ordinary: false },
+  { phrase: "structural transfer bulkhead", expected: "complex", ordinary: false },
+  { phrase: "bulkhead in the middle of the room", expected: "complex", ordinary: false },
+  { phrase: "bulkhead exposed on all sides", expected: "complex", ordinary: false },
+  { phrase: "services bulkhead", expected: "complex", ordinary: false },
+  { phrase: "oversized bulkhead", expected: "complex", ordinary: false },
+  { phrase: "bulkhead not against a wall", expected: "complex", ordinary: false },
+];
+
+console.log("WA-08-R5 classification matrix");
+for (const row of r5Matrix) {
+  const bh = classifiedBulkhead(row.phrase);
+  const actual = bh?.form ?? "unresolved";
+  console.log(`  ${JSON.stringify(row.phrase)} → ${actual}`);
+  check(
+    `R5 ${row.phrase}`,
+    actual === row.expected &&
+      (row.ordinary
+        ? bh?.topology === CEILINGS_BULKHEAD_TOPOLOGY_V1 &&
+          !isUnsupportedCeilingBulkhead(bh)
+        : bh != null &&
+          bh.form !== CEILINGS_BULKHEAD_TOPOLOGY_V1 &&
+          bh.topology === CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED &&
+          isUnsupportedCeilingBulkhead(bh))
+  );
+}
+
+check(
+  "R5 A explicit ordinary descriptions",
+  formOf("wall-adjacent bulkhead") === CEILINGS_BULKHEAD_TOPOLOGY_V1 &&
+    formOf("standard wall adjacent downstand") === CEILINGS_BULKHEAD_TOPOLOGY_V1 &&
+    formOf("bulkhead against the wall") === CEILINGS_BULKHEAD_TOPOLOGY_V1
+);
+check(
+  "R5 B bare bulkhead keeps disclosed ordinary assumption",
+  classifiedBulkhead("bulkhead")?.topology === CEILINGS_BULKHEAD_TOPOLOGY_V1 &&
+    classifiedBulkhead("bulkhead")?.topology_source === "assumed_disclosed" &&
+    !isUnsupportedCeilingBulkhead(classifiedBulkhead("bulkhead")!)
+);
+check(
+  "R5 C existing specialist descriptions",
+  formOf("island bulkhead") === "island" &&
+    formOf("boxed bulkhead") === "boxed" &&
+    formOf("curved feature bulkhead") === "complex" &&
+    formOf("complex bulkhead") === "complex"
+);
+check(
+  "R5 D ambiguous/contradictory descriptions are not ordinary",
+  [
+    "floating bulkhead",
+    "structural transfer bulkhead",
+    "bulkhead in the middle of the room",
+    "bulkhead exposed on all sides",
+    "services bulkhead",
+    "oversized bulkhead",
+    "bulkhead not against a wall",
+  ].every((phrase) => formOf(phrase) !== CEILINGS_BULKHEAD_TOPOLOGY_V1)
+);
+
+const floatingBrief = extractCeilingPortionsFromBrief(
+  "Lounge ceiling 5m x 4m existing framing 13mm Standard GIB with a floating bulkhead."
+);
+const floatingPortion = floatingBrief[0]!;
+const floatingBhId = floatingPortion.bulkheads[0]!.id;
+let floatingFacts = writePortions(floatingBrief);
+floatingFacts = fillOrdinaryBulkheadFields(floatingFacts, floatingBhId);
+const floatingResolved = resolveCeilingsPortions({
+  facts: floatingFacts,
+  workAreaId: "c1",
+}).portions[0]!;
+const floatingTakeoff = calculateCeilingBulkhead({
+  portion: floatingResolved,
+  bulkhead: floatingResolved.bulkheads[0]!,
+  materialWastageSettings: WASTAGE,
+});
+const floatingRun = runCommercial(floatingFacts);
+const floatingBhReqKeys = floatingRun.commercial.requirements.filter((row) =>
+  (row.componentKey ?? "").includes("bulkhead")
+);
+const floatingSpecialist = floatingRun.commercial.requirements.find(
+  (row) => row.componentKey === CEILINGS_SPECIALIST_COMPONENT
+);
+const floatingLining = material(
+  floatingRun.commercial.requirements,
+  CEILINGS_PLASTERBOARD_COMPONENT
+);
+const floatingSpecialistLine = floatingRun.commercial.lineItems.find(
+  (item) => item.componentKey === CEILINGS_SPECIALIST_COMPONENT
+);
+check(
+  "R5 E floating bulkhead is unsupported specialist, not ordinary takeoff",
+  floatingResolved.bulkheads[0]!.form === "complex" &&
+    isUnsupportedCeilingBulkhead(floatingResolved.bulkheads[0]!) &&
+    floatingTakeoff.status === "unsupported_specialist" &&
+    floatingTakeoff.framingLm == null &&
+    floatingTakeoff.liningAreaM2 == null &&
+    floatingRun.physical.portions[0]?.bulkheads[0]?.status ===
+      "unsupported_specialist" &&
+    floatingRun.physical.completeness ===
+      CEILING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST &&
+    (floatingRun.commercial.completeness === "UNSUPPORTED_SPECIALIST" ||
+      floatingRun.commercial.completeness === "PRICING_REQUIRED" ||
+      floatingRun.commercial.completeness === "INFORMATION_REQUIRED")
+);
+check(
+  "R5 E no ordinary bulkhead quantities or benchmark money",
+  floatingBhReqKeys.every(
+    (row) =>
+      row.componentKey === CEILINGS_SPECIALIST_COMPONENT ||
+      (row.priced !== true &&
+        row.unitCost == null &&
+        row.totalCost == null &&
+        (row.baseQuantity == null || row.componentKey === CEILINGS_SPECIALIST_COMPONENT))
+  ) &&
+    !floatingBhReqKeys.some(
+      (row) =>
+        row.componentKey === CEILINGS_BULKHEAD_FRAMING_TIMBER_COMPONENT ||
+        row.componentKey === CEILINGS_BULKHEAD_LINING_COMPONENT ||
+        row.componentKey === CEILINGS_FIXINGS_BULKHEAD_FRAMING_COMPONENT ||
+        row.componentKey === CEILINGS_FIXINGS_BULKHEAD_LINING_COMPONENT ||
+        row.componentKey === CEILINGS_BULKHEAD_FRAMING_TIMBER_LABOUR ||
+        row.componentKey === CEILINGS_BULKHEAD_LINING_LABOUR
+    ) &&
+    floatingSpecialist?.priced === false &&
+    floatingSpecialist?.unitCost == null &&
+    floatingSpecialist?.totalCost == null &&
+    floatingSpecialist?.rateSource === "missing" &&
+    floatingSpecialistLine?.rateSourceType === "missing"
+);
+check(
+  "R5 E supported main-ceiling sibling still prices",
+  floatingLining?.priced === true &&
+    (floatingLining.unitCost ?? 0) > 0 &&
+    (floatingLining.totalCost ?? 0) > 0 &&
+    floatingLining.rateSource !== "missing"
+);
+check(
+  "R5 E missing rate is not a genuine $0 rate",
+  floatingSpecialist?.priced === false &&
+    floatingSpecialist?.unitCost !== 0 &&
+    floatingSpecialist?.unitCost == null &&
+    floatingRun.commercial.requirements
+      .filter((row) => row.priced === false)
+      .every((row) => row.unitCost == null && row.totalCost == null)
+);
+check(
+  "R5 F ordinary hosted fixture COST unchanged",
+  near(bhFrame?.totalCost, 173.6) &&
+    near(bhFix?.totalCost, 21) &&
+    near(bhFrameLab?.totalCost, 302.4) &&
+    near(bhLining?.totalCost, 67.5) &&
+    near(bhLiningFix?.totalCost, 12.5) &&
+    near(bhLiningLab?.totalCost, 60) &&
+    near(bulkheadRaw, 637) &&
+    fixtureRun.commercial.completeness === "COMPLETE_COMMERCIAL"
 );
 
 function spawnVerifier(script: string): boolean {

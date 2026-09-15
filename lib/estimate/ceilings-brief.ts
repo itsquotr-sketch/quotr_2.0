@@ -420,35 +420,238 @@ function splitPortionSnippets(brief: string): string[] {
   return [trimmed];
 }
 
+const BULKHEAD_ISLAND_SIGNALS = [
+  "island bulkhead",
+  "island bulkheads",
+] as const;
+
+const BULKHEAD_BOXED_SIGNALS = [
+  "boxed bulkhead",
+  "box bulkhead",
+  "four-sided bulkhead",
+  "four sided bulkhead",
+  "4 sided bulkhead",
+] as const;
+
+const BULKHEAD_COMPLEX_SIGNALS = [
+  "complex bulkhead",
+  "feature bulkhead",
+  "feature ceiling bulkhead",
+  "curved bulkhead",
+  "curved bulkheads",
+  "curved feature bulkhead",
+  "floating bulkhead",
+  "floating bulkheads",
+  "structural transfer bulkhead",
+  "transfer bulkhead",
+  "services bulkhead",
+  "service bulkhead",
+  "oversized bulkhead",
+  "oversize bulkhead",
+] as const;
+
+const BULKHEAD_NON_WALL_ADJACENT_SIGNALS = [
+  "in the middle of the room",
+  "in the middle of a room",
+  "middle of the room",
+  "centre of the room",
+  "center of the room",
+  "exposed on all sides",
+  "exposed all sides",
+  "not against a wall",
+  "not against the wall",
+  "not wall-adjacent",
+  "not wall adjacent",
+] as const;
+
+const BULKHEAD_ORDINARY_SIGNALS = [
+  "wall-adjacent",
+  "wall adjacent",
+  "against the wall",
+  "against a wall",
+  "standard downstand",
+  "ordinary downstand",
+  "conventional downstand",
+  "standard bulkhead",
+  "ordinary bulkhead",
+  "conventional bulkhead",
+] as const;
+
+/**
+ * Neutral ceiling-brief tokens. Leftover tokens after stripping these are
+ * treated as bulkhead qualifiers. Keep this as an allowlist of non-topology
+ * words, not a construction ontology.
+ */
+const BULKHEAD_BRIEF_NEUTRAL_TOKENS = new Set([
+  "a",
+  "an",
+  "the",
+  "with",
+  "and",
+  "add",
+  "added",
+  "plus",
+  "including",
+  "include",
+  "also",
+  "of",
+  "for",
+  "to",
+  "or",
+  "one",
+  "some",
+  "another",
+  "in",
+  "on",
+  "at",
+  "from",
+  "by",
+  "is",
+  "are",
+  "has",
+  "have",
+  "needs",
+  "need",
+  "please",
+  "replace",
+  "replaced",
+  "reline",
+  "relining",
+  "new",
+  "existing",
+  "ceiling",
+  "ceilings",
+  "room",
+  "lounge",
+  "hallway",
+  "hall",
+  "bedroom",
+  "kitchen",
+  "garage",
+  "office",
+  "living",
+  "main",
+  "plasterboard",
+  "plaster",
+  "board",
+  "gib",
+  "standard",
+  "fyreline",
+  "aqualine",
+  "timber",
+  "steel",
+  "framing",
+  "lining",
+  "sheets",
+  "sheet",
+  "layers",
+  "layer",
+  "mm",
+  "m",
+  "metres",
+  "meters",
+  "metre",
+  "meter",
+  "high",
+  "height",
+  "x",
+  "by",
+  "complete",
+  "replacement",
+  "job",
+  "area",
+  "sqm",
+  "square",
+  "direct",
+  "fix",
+  "direct-fix",
+  "battens",
+  "batten",
+  "joists",
+  "joist",
+  "structure",
+  "suitable",
+  "over",
+  "insulation",
+  "stopping",
+  "painting",
+  "demolition",
+  "drop",
+  "dropped",
+  "suspended",
+  "dropper",
+  "rondo",
+  "furring",
+  "channel",
+  "grid",
+  "tile",
+  "tiles",
+  "t-bar",
+  "tbar",
+  "t",
+  "bar",
+  "plywood",
+  "ply",
+  "lined",
+  "two",
+  "three",
+  "bulkhead",
+  "bulkheads",
+  "downstand",
+]);
+
+function hasRecognisedBulkheadMention(raw: string): boolean {
+  return /\bbulkheads?\b/.test(raw) || /\bdownstand\b/.test(raw);
+}
+
+function hasPositiveBulkheadMention(raw: string): boolean {
+  const stripped = raw
+    .replace(/\bno bulkheads?\b/g, " ")
+    .replace(/\bwithout (?:a |any )?bulkheads?\b/g, " ");
+  return hasRecognisedBulkheadMention(stripped);
+}
+
+function leftoverBulkheadQualifierTokens(raw: string): string[] {
+  const withoutDims = raw
+    .replace(/\d+(?:\.\d+)?/g, " ")
+    .replace(/[^\p{L}\s-]+/gu, " ");
+  return withoutDims
+    .split(/\s+/)
+    .map((token) => token.trim().toLowerCase())
+    .filter((token) => token.length > 0 && !BULKHEAD_BRIEF_NEUTRAL_TOKENS.has(token));
+}
+
+/**
+ * WA-08-R5 — conservative, deterministic bulkhead classification.
+ * Specialist / contradictory / non-wall-adjacent signals win. Bare
+ * "bulkhead" may keep the disclosed ordinary WA-08-R4 assumption.
+ * Qualified text that is not affirmatively ordinary stays unsupported.
+ */
 function bulkheadFormFromText(
   text: string
 ): "conventional_two_face_downstand" | "island" | "boxed" | "complex" | null {
   const raw = normalise(text);
-  if (includesAny(raw, ["island bulkhead", "island bulkheads"])) return "island";
+  if (!hasRecognisedBulkheadMention(raw)) return null;
+  if (!hasPositiveBulkheadMention(raw)) return null;
+
+  if (includesAny(raw, BULKHEAD_ISLAND_SIGNALS)) return "island";
+  if (includesAny(raw, BULKHEAD_BOXED_SIGNALS)) return "boxed";
   if (
-    includesAny(raw, [
-      "boxed bulkhead",
-      "box bulkhead",
-      "four-sided bulkhead",
-      "four sided bulkhead",
-      "4 sided bulkhead",
-    ])
-  ) {
-    return "boxed";
-  }
-  if (
-    includesAny(raw, [
-      "complex bulkhead",
-      "feature bulkhead",
-      "feature ceiling bulkhead",
-      "curved bulkhead",
-      "curved bulkheads",
-    ])
+    includesAny(raw, BULKHEAD_COMPLEX_SIGNALS) ||
+    includesAny(raw, BULKHEAD_NON_WALL_ADJACENT_SIGNALS)
   ) {
     return "complex";
   }
-  if (/\bbulkhead/.test(raw)) return "conventional_two_face_downstand";
-  return null;
+
+  if (includesAny(raw, BULKHEAD_ORDINARY_SIGNALS)) {
+    return "conventional_two_face_downstand";
+  }
+
+  if (!/\bbulkheads?\b/.test(raw)) return null;
+  if (leftoverBulkheadQualifierTokens(raw).length === 0) {
+    return "conventional_two_face_downstand";
+  }
+  return "complex";
 }
 
 function applySnippetToPortion(portion: CeilingPortion, snippet: string): void {
