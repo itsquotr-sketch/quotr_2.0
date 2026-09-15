@@ -24,6 +24,8 @@ import {
   CEILINGS_PLASTERBOARD_LABOUR,
   CEILINGS_PRODUCTIVITY_KEYS,
   CEILINGS_SPECIALIST_COMPONENT,
+  CEILINGS_STOPPING_COMPONENT,
+  CEILINGS_PAINTING_COMPONENT,
   CEILINGS_STEEL_DROPPER_LABOUR,
   CEILINGS_TIMBER_FRAMING_LABOUR,
   CEILINGS_WIRE_LABOUR_DECISION,
@@ -733,17 +735,30 @@ const finishFlags = runCommercial([
   plasterPortion({ painting: true, stopping: true, demolition: true }),
 ]);
 check(
-  "AD Painting ownership does not duplicate money",
+  "AD Painting ownership does not duplicate package money",
   !finishFlags.commercial.lineItems.some((item) => ceilingCommercialOwnsFinishMoney(item)) &&
-    !finishFlags.commercial.requirements.some((row) =>
-      /paint/i.test(row.componentKey)
+    finishFlags.commercial.requirements.some(
+      (row) => row.componentKey === CEILINGS_PAINTING_COMPONENT
+    ) &&
+    !finishFlags.commercial.requirements.some(
+      (row) =>
+        /paint/i.test(row.componentKey) &&
+        row.componentKey !== CEILINGS_PAINTING_COMPONENT
+    ) &&
+    !finishFlags.commercial.lineItems.some((item) =>
+      /^ceiling painting$/i.test(item.label)
     )
 );
 check(
-  "AE Plastering ownership does not duplicate money",
-  !finishFlags.commercial.requirements.some((row) =>
-    /stop/i.test(row.componentKey)
+  "AE Plastering ownership does not duplicate package money",
+  finishFlags.commercial.requirements.some(
+    (row) => row.componentKey === CEILINGS_STOPPING_COMPONENT
   ) &&
+    !finishFlags.commercial.requirements.some(
+      (row) =>
+        /stop/i.test(row.componentKey) &&
+        row.componentKey !== CEILINGS_STOPPING_COMPONENT
+    ) &&
     !read("lib/estimate/ceilings-commercial.ts").includes("FITOUT_BENCHMARKS") &&
     !read("lib/estimate/ceilings-commercial.ts").includes("stoppingPerM2")
 );

@@ -803,6 +803,12 @@ function nestedCeilingPortionScope(portion: CeilingPortion, index: number): stri
         " Ceiling insulation is included subject to product confirmation and pricing.";
     }
   }
+  if (portion.finish.stopping_included === true) {
+    sentence += " Stopping/plastering is included.";
+  }
+  if (portion.finish.painting_included === true) {
+    sentence += " Ceiling painting is included.";
+  }
   for (const bulkhead of portion.bulkheads) {
     const dims = [
       bulkhead.length_m != null ? `${bulkhead.length_m.toFixed(1)}m long` : null,
@@ -839,10 +845,28 @@ function buildCeilingsDraft(facts?: WorkAreaQuoteFact[]): string {
     let draft = nested
       .map((portion, index) => nestedCeilingPortionScope(portion, index))
       .join(" ");
+    const anyStopping = nested.some(
+      (row) => row.finish.stopping_included === true
+    );
+    const anyPainting = nested.some(
+      (row) => row.finish.painting_included === true
+    );
     draft = appendScopeClause(
       draft,
-      "Electrical/light relocation, stopping and painting are excluded unless included in a separate work area."
+      "Electrical/light relocation is excluded unless specifically included."
     );
+    if (!anyStopping) {
+      draft = appendScopeClause(
+        draft,
+        "Stopping and plastering are excluded unless included in a separate work area."
+      );
+    }
+    if (!anyPainting) {
+      draft = appendScopeClause(
+        draft,
+        "Painting is excluded unless included in a separate work area."
+      );
+    }
     return finalizeDraft(draft);
   }
 

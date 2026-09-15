@@ -25,10 +25,12 @@ import {
 import {
   CEILINGS_FIXINGS_QUOTR_COST,
   CEILINGS_PARTIAL_ESTIMATE_MESSAGE,
+  CEILINGS_PAINTING_COMPONENT,
   CEILINGS_PLASTERBOARD_LABOUR,
   CEILINGS_PRODUCTIVITY_KEYS,
   CEILINGS_QUOTR_PRODUCTIVITY_HOURS,
   CEILINGS_STEEL_PRIMARY_LABOUR,
+  CEILINGS_STOPPING_COMPONENT,
   CEILINGS_TIMBER_FRAMING_LABOUR,
   TIMBER_FRAMING_140X45_H12_KEY,
   TIMBER_FRAMING_140X45_H12_QUOTR_COST,
@@ -837,13 +839,28 @@ finishFlags.finish.stopping_included = true;
 finishFlags.finish.demolition_included = true;
 const finish = runCommercial([finishFlags]);
 check(
-  "AG no Painting duplicate",
+  "AG no Painting package duplicate",
   !finish.commercial.lineItems.some((item) => ceilingCommercialOwnsFinishMoney(item)) &&
-    !finish.commercial.requirements.some((row) => /paint/i.test(row.componentKey))
+    finish.commercial.requirements.some(
+      (row) => row.componentKey === CEILINGS_PAINTING_COMPONENT
+    ) &&
+    !finish.commercial.requirements.some(
+      (row) =>
+        /paint/i.test(row.componentKey) &&
+        row.componentKey !== CEILINGS_PAINTING_COMPONENT
+    ) &&
+    !finish.commercial.lineItems.some((item) => /^ceiling painting$/i.test(item.label))
 );
 check(
-  "AH no Plastering duplicate",
-  !finish.commercial.requirements.some((row) => /stop/i.test(row.componentKey))
+  "AH no Plastering package duplicate",
+  finish.commercial.requirements.some(
+    (row) => row.componentKey === CEILINGS_STOPPING_COMPONENT
+  ) &&
+    !finish.commercial.requirements.some(
+      (row) =>
+        /stop/i.test(row.componentKey) &&
+        row.componentKey !== CEILINGS_STOPPING_COMPONENT
+    )
 );
 check(
   "AI no Demolition duplicate",

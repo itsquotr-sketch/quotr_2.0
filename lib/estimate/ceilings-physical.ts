@@ -12,6 +12,7 @@
  */
 
 import { buildMaterialRequirement } from "@/lib/estimate/material-requirement";
+import { round2 } from "@/lib/estimate/facts";
 import type { MaterialRequirement } from "@/lib/estimate/requirements";
 import type { EstimateFact, EstimateWorkArea } from "@/lib/estimate/types";
 import type { MaterialIdentity } from "@/lib/materials/identity";
@@ -91,6 +92,13 @@ import {
   ceilingPortionSpecialistKind,
 } from "@/lib/estimate/ceilings-specialist";
 import type { CeilingSpecialistKind } from "@/lib/estimate/ceilings-portions";
+import {
+  CEILINGS_PAINTING_COMPONENT,
+  CEILINGS_PAINTING_MATERIAL_KEY,
+  CEILINGS_STOPPING_COMPONENT,
+  CEILINGS_STOPPING_LEVEL_ASSUMPTION,
+  CEILINGS_STOPPING_MATERIAL_KEY,
+} from "@/lib/estimate/ceilings-identities";
 
 export const CEILING_PHYSICAL_COMPLETENESS = {
   COMPLETE_PHYSICAL: "COMPLETE_PHYSICAL",
@@ -879,6 +887,108 @@ function insulationMaterialRequirement(params: {
   });
 }
 
+function plasterboardFinishAreaM2(params: {
+  portion: CeilingPortion;
+  lining: CeilingLiningTakeoff;
+  bulkheads: readonly CeilingBulkheadTakeoff[];
+}): number | null {
+  let area = 0;
+  if (params.portion.lining.family === "plasterboard") {
+    if (params.lining.status === "ok" && params.lining.areaM2 != null) {
+      area += params.lining.areaM2;
+    } else if (
+      params.portion.geometry.area_m2 != null &&
+      params.portion.geometry.area_m2 > 0
+    ) {
+      area += params.portion.geometry.area_m2;
+    }
+  }
+  for (const bulkhead of params.bulkheads) {
+    if (bulkhead.status === "unsupported_specialist") continue;
+    if (bulkhead.liningAreaM2 != null && bulkhead.liningAreaM2 > 0) {
+      area += bulkhead.liningAreaM2;
+      continue;
+    }
+    if (
+      bulkhead.lengthM != null &&
+      bulkhead.depthM != null &&
+      bulkhead.heightM != null
+    ) {
+      area += bulkhead.lengthM * (bulkhead.depthM + bulkhead.heightM);
+    }
+  }
+  return area > 0 ? round2(area) : null;
+}
+
+function ceilingFinishRequirements(params: {
+  workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
+  portion: CeilingPortion;
+  lining: CeilingLiningTakeoff;
+  bulkheads: readonly CeilingBulkheadTakeoff[];
+}): MaterialRequirement[] {
+  const areaM2 = plasterboardFinishAreaM2(params);
+  if (areaM2 == null) return [];
+  const name = params.portion.label?.trim() || "Ceiling portion";
+  const shared = {
+    workAreaId: params.workArea.id,
+    workAreaType: params.workArea.type || "ceilings",
+    variantKey: params.portion.id,
+    confidence: "medium" as const,
+    provenance: {
+      calculatorSource: "ceilings-physical",
+      factKeys: [
+        "ceilings.portions",
+        "ceilings.portion.stopping_included",
+        "ceilings.portion.painting_included",
+      ],
+      constraintKeys: [] as string[],
+    },
+    priced: false as const,
+    rateSource: "missing" as const,
+    unitCost: null,
+    totalCost: null,
+    baseQuantity: areaM2,
+    baseUnit: "m2" as const,
+    wasteFactor: 0,
+    purchaseQuantity: areaM2,
+    purchaseUnit: "m2" as const,
+  };
+  const rows: MaterialRequirement[] = [];
+  if (params.portion.finish.stopping_included === true) {
+    rows.push(
+      buildMaterialRequirement({
+        ...shared,
+        componentKey: CEILINGS_STOPPING_COMPONENT,
+        description: `${name} — stopping / plastering`,
+        assumptions: [
+          {
+            key: "stopping_level",
+            text: CEILINGS_STOPPING_LEVEL_ASSUMPTION,
+            source: "calculator_default",
+          },
+        ],
+        materialKey: CEILINGS_STOPPING_MATERIAL_KEY,
+        category: "FINISHING",
+        specification: `${areaM2} m² plasterboard lining (Level 4 stopping)`,
+      })
+    );
+  }
+  if (params.portion.finish.painting_included === true) {
+    rows.push(
+      buildMaterialRequirement({
+        ...shared,
+        componentKey: CEILINGS_PAINTING_COMPONENT,
+        description: `${name} — painting`,
+        assumptions: [],
+        materialKey: CEILINGS_PAINTING_MATERIAL_KEY,
+        category: "FINISHING",
+        specification: `${areaM2} m² plasterboard lining`,
+      })
+    );
+  }
+  return rows;
+}
+
 function includedStatusIncomplete(
   status: string,
   included: boolean
@@ -1041,6 +1151,16 @@ export function calculatePortionCeilingsPhysical(params: {
     insulation,
   });
   if (insulationRow) requirements.push(insulationRow);
+  if (!skipOrdinary) {
+    requirements.push(
+      ...ceilingFinishRequirements({
+        workArea: params.workArea,
+        portion: params.portion,
+        lining,
+        bulkheads,
+      })
+    );
+  }
   if (!skipOrdinary) {
     requirements.push(
       ...ceilingFixingsRequirements({

@@ -7,8 +7,6 @@
  * Preview only. No rate / main-ceiling formula changes. No Production.
  */
 import { spawnSync } from "node:child_process";
-import { readFileSync } from "node:fs";
-import { join } from "node:path";
 import type { EstimateLineItem } from "../components/assistant/types";
 import type { OrganisationSettings } from "../components/setup/types";
 import { composeBuilderReview } from "../lib/assistant/builder-review/compose";
@@ -79,10 +77,6 @@ function check(name: string, ok: boolean, detail = ""): void {
     failed += 1;
     console.log(`FAIL  ${name}${detail ? ` — ${detail}` : ""}`);
   }
-}
-
-function read(rel: string): string {
-  return readFileSync(join(process.cwd(), rel), "utf8");
 }
 
 function near(actual: number | null | undefined, expected: number, tol = 0.02): boolean {
@@ -754,6 +748,24 @@ const r5Matrix: readonly {
   { phrase: "services bulkhead", expected: "complex", ordinary: false },
   { phrase: "oversized bulkhead", expected: "complex", ordinary: false },
   { phrase: "bulkhead not against a wall", expected: "complex", ordinary: false },
+  { phrase: "timber bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "timber-framed bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "steel bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "steel-framed bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "plasterboard bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "GIB-lined bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "13mm Standard GIB bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "insulated bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "plastered bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  { phrase: "painted bulkhead", expected: CEILINGS_BULKHEAD_TOPOLOGY_V1, ordinary: true },
+  {
+    phrase: "timber bulkhead 4m long, 500mm deep and 500mm high",
+    expected: CEILINGS_BULKHEAD_TOPOLOGY_V1,
+    ordinary: true,
+  },
+  { phrase: "timber floating bulkhead", expected: "complex", ordinary: false },
+  { phrase: "steel island bulkhead", expected: "island", ordinary: false },
+  { phrase: "plasterboard boxed bulkhead", expected: "boxed", ordinary: false },
 ];
 
 console.log("WA-08-R5 classification matrix");
@@ -804,6 +816,36 @@ check(
     "oversized bulkhead",
     "bulkhead not against a wall",
   ].every((phrase) => formOf(phrase) !== CEILINGS_BULKHEAD_TOPOLOGY_V1)
+);
+check(
+  "R6 material/finish descriptors stay ordinary",
+  [
+    "timber bulkhead",
+    "timber-framed bulkhead",
+    "steel bulkhead",
+    "steel-framed bulkhead",
+    "plasterboard bulkhead",
+    "GIB-lined bulkhead",
+    "13mm Standard GIB bulkhead",
+    "insulated bulkhead",
+    "plastered bulkhead",
+    "painted bulkhead",
+    "timber bulkhead 4m long, 500mm deep and 500mm high",
+  ].every((phrase) => formOf(phrase) === CEILINGS_BULKHEAD_TOPOLOGY_V1)
+);
+check(
+  "R6 specialist plus material remains specialist",
+  formOf("timber floating bulkhead") === "complex" &&
+    formOf("steel island bulkhead") === "island" &&
+    formOf("plasterboard boxed bulkhead") === "boxed" &&
+    [
+      "timber floating bulkhead",
+      "steel island bulkhead",
+      "plasterboard boxed bulkhead",
+    ].every((phrase) => {
+      const bh = classifiedBulkhead(phrase);
+      return bh != null && isUnsupportedCeilingBulkhead(bh);
+    })
 );
 
 const floatingBrief = extractCeilingPortionsFromBrief(

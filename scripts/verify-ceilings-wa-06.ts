@@ -29,9 +29,11 @@ import {
 } from "../lib/estimate/ceilings-commercial";
 import {
   CEILINGS_DNA_COVERAGE,
+  CEILINGS_PAINTING_COMPONENT,
   CEILINGS_PARTIAL_ESTIMATE_MESSAGE,
   CEILINGS_PLASTERBOARD_LABOUR,
   CEILINGS_STEEL_PRIMARY_LABOUR,
+  CEILINGS_STOPPING_COMPONENT,
   CEILINGS_TIMBER_FRAMING_LABOUR,
   CEILINGS_WIRE_LABOUR_DECISION,
 } from "../lib/estimate/ceilings-identities";
@@ -769,12 +771,23 @@ finishFlags.finish.stopping_included = true;
 finishFlags.finish.demolition_included = true;
 const finish = runCommercial([finishFlags]);
 check(
-  "W Painting no duplicate",
-  !finish.commercial.lineItems.some((item) => ceilingCommercialOwnsFinishMoney(item))
+  "W Painting no duplicate package",
+  !finish.commercial.lineItems.some((item) => ceilingCommercialOwnsFinishMoney(item)) &&
+    finish.commercial.requirements.some(
+      (row) => row.componentKey === CEILINGS_PAINTING_COMPONENT
+    ) &&
+    !finish.commercial.lineItems.some((item) => /^ceiling painting$/i.test(item.label))
 );
 check(
-  "X Plastering no duplicate",
-  !finish.commercial.requirements.some((row) => /stop/i.test(row.componentKey))
+  "X Plastering no duplicate package",
+  finish.commercial.requirements.some(
+    (row) => row.componentKey === CEILINGS_STOPPING_COMPONENT
+  ) &&
+    !finish.commercial.requirements.some(
+      (row) =>
+        /stop/i.test(row.componentKey) &&
+        row.componentKey !== CEILINGS_STOPPING_COMPONENT
+    )
 );
 check(
   "Y Demolition no duplicate",

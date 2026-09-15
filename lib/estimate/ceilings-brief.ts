@@ -598,6 +598,24 @@ const BULKHEAD_BRIEF_NEUTRAL_TOKENS = new Set([
   "bulkhead",
   "bulkheads",
   "downstand",
+  "long",
+  "length",
+  "deep",
+  "depth",
+  "wide",
+  "width",
+  "projection",
+  "framed",
+  "insulated",
+  "thermal",
+  "plastered",
+  "painted",
+  "paint",
+  "line",
+  "millimetres",
+  "millimeters",
+  "millimetre",
+  "millimeter",
 ]);
 
 function hasRecognisedBulkheadMention(raw: string): boolean {
@@ -614,18 +632,29 @@ function hasPositiveBulkheadMention(raw: string): boolean {
 function leftoverBulkheadQualifierTokens(raw: string): string[] {
   const withoutDims = raw
     .replace(/\d+(?:\.\d+)?/g, " ")
-    .replace(/[^\p{L}\s-]+/gu, " ");
+    .replace(/[^\p{L}\s-]+/gu, " ")
+    .replace(/-/g, " ");
   return withoutDims
     .split(/\s+/)
     .map((token) => token.trim().toLowerCase())
     .filter((token) => token.length > 0 && !BULKHEAD_BRIEF_NEUTRAL_TOKENS.has(token));
 }
 
+function bulkheadMentionWindows(raw: string): string {
+  const windows: string[] = [];
+  const re = /\bbulkheads?\b|\bdownstand\b/gi;
+  for (const match of raw.matchAll(re)) {
+    const index = match.index ?? 0;
+    windows.push(raw.slice(Math.max(0, index - 80), index + match[0].length + 80));
+  }
+  return windows.join(" ");
+}
+
 /**
- * WA-08-R5 — conservative, deterministic bulkhead classification.
- * Specialist / contradictory / non-wall-adjacent signals win. Bare
- * "bulkhead" may keep the disclosed ordinary WA-08-R4 assumption.
- * Qualified text that is not affirmatively ordinary stays unsupported.
+ * WA-08-R5/R6 — conservative, deterministic bulkhead classification.
+ * Specialist / contradictory topology signals win. Ordinary material,
+ * framing, finish and dimension descriptors do not make a bulkhead
+ * specialist. Bare "bulkhead" may keep the disclosed ordinary assumption.
  */
 function bulkheadFormFromText(
   text: string
@@ -648,10 +677,121 @@ function bulkheadFormFromText(
   }
 
   if (!/\bbulkheads?\b/.test(raw)) return null;
-  if (leftoverBulkheadQualifierTokens(raw).length === 0) {
+  const qualifierSource = bulkheadMentionWindows(raw) || raw;
+  if (leftoverBulkheadQualifierTokens(qualifierSource).length === 0) {
     return "conventional_two_face_downstand";
   }
   return "complex";
+}
+
+const MEASURE_UNIT =
+  "(mm|millimetres?|millimeters?|m(?:etre|eter)?s?)";
+
+function metresFromMeasure(numberText: string, unitText: string): number | null {
+  const value = Number(numberText);
+  if (!Number.isFinite(value) || value <= 0) return null;
+  const unit = unitText.trim().toLowerCase();
+  if (unit.startsWith("mm") || unit.startsWith("millimet")) {
+    return Number((value / 1000).toFixed(4));
+  }
+  if (unit === "m" || unit.startsWith("metre") || unit.startsWith("meter")) {
+    return value;
+  }
+  return null;
+}
+
+function labelledMeasureMetres(
+  text: string,
+  labels: string
+): number | null {
+  const forward = new RegExp(
+    `(\\d+(?:\\.\\d+)?)\\s*${MEASURE_UNIT}\\s*(?:${labels})\\b`,
+    "i"
+  );
+  const reverse = new RegExp(
+    `(?:${labels})\\s*(?:of\\s+)?(\\d+(?:\\.\\d+)?)\\s*${MEASURE_UNIT}\\b`,
+    "i"
+  );
+  const match = text.match(forward) ?? text.match(reverse);
+  if (!match) return null;
+  if (match[1] && match[2]) return metresFromMeasure(match[1], match[2]);
+  if (match[3] && match[4]) return metresFromMeasure(match[3], match[4]);
+  return null;
+}
+
+function parseBulkheadTripleMetres(
+  text: string
+): { lengthM: number; depthM: number; heightM: number } | null {
+  if (!/\bbulkheads?\b/i.test(text)) return null;
+  const match = text.match(
+    new RegExp(
+      `(\\d+(?:\\.\\d+)?)\\s*${MEASURE_UNIT}\\s*[x×]\\s*(\\d+(?:\\.\\d+)?)\\s*${MEASURE_UNIT}\\s*[x×]\\s*(\\d+(?:\\.\\d+)?)\\s*${MEASURE_UNIT}`,
+      "i"
+    )
+  );
+  if (!match) return null;
+  const near = text.slice(
+    Math.max(0, (match.index ?? 0) - 24),
+    (match.index ?? 0) + match[0].length + 32
+  );
+  if (!/\bbulkheads?\b/i.test(near)) return null;
+  const lengthM = metresFromMeasure(match[1]!, match[2]!);
+  const depthM = metresFromMeasure(match[3]!, match[4]!);
+  const heightM = metresFromMeasure(match[5]!, match[6]!);
+  if (lengthM == null || depthM == null || heightM == null) return null;
+  return { lengthM, depthM, heightM };
+}
+
+function parseCeilingBulkheadDimensionsFromText(text: string): {
+  lengthM: number | null;
+  depthM: number | null;
+  heightM: number | null;
+} {
+  const triple = parseBulkheadTripleMetres(text);
+  if (triple) {
+    return {
+      lengthM: triple.lengthM,
+      depthM: triple.depthM,
+      heightM: triple.heightM,
+    };
+  }
+  const window = bulkheadMentionWindows(normalise(text)) || text;
+  return {
+    lengthM: labelledMeasureMetres(window, "long|length"),
+    depthM: labelledMeasureMetres(window, "deep|depth|projection|wide|width"),
+    heightM:
+      labelledMeasureMetres(window, "high|height") ??
+      labelledMeasureMetres(window, "drop"),
+  };
+}
+
+function bulkheadFramingFromText(
+  text: string
+): "timber" | "steel" | null {
+  const raw = normalise(text);
+  const window = bulkheadMentionWindows(raw) || raw;
+  if (/\bsteel(?:-|\s+)?framed\b|\bsteel bulkhead/.test(window)) return "steel";
+  if (/\btimber(?:-|\s+)?framed\b|\btimber bulkhead/.test(window)) return "timber";
+  return null;
+}
+
+function bulkheadLiningFromText(
+  text: string
+): { lining_type: "standard" | "aqualine" | "fyreline"; thickness_mm?: 10 | 13 } | null {
+  const window = bulkheadMentionWindows(normalise(text));
+  if (!window) return null;
+  if (/\bfyreline/.test(window)) {
+    return { lining_type: "fyreline" };
+  }
+  if (/\baqualine/.test(window)) {
+    return { lining_type: "aqualine" };
+  }
+  if (
+    /\bgib(?:-|\s+)?lined\b|\bplasterboard bulkhead|\bstandard gib/.test(window)
+  ) {
+    return { lining_type: "standard" };
+  }
+  return null;
 }
 
 function applySnippetToPortion(portion: CeilingPortion, snippet: string): void {
@@ -726,6 +866,30 @@ function applySnippetToPortion(portion: CeilingPortion, snippet: string): void {
     applyCeilingBulkheadTopologyState(bulkhead, {
       explicit: form !== "conventional_two_face_downstand",
     });
+    const dims = parseCeilingBulkheadDimensionsFromText(snippet);
+    bulkhead.length_m = dims.lengthM;
+    bulkhead.depth_m = dims.depthM;
+    bulkhead.height_m = dims.heightM;
+    const framing = bulkheadFramingFromText(snippet);
+    if (framing) bulkhead.framing_type = framing;
+    const lining = bulkheadLiningFromText(snippet);
+    if (lining) {
+      bulkhead.lining_type = lining.lining_type;
+      if (lining.thickness_mm != null) bulkhead.thickness_mm = lining.thickness_mm;
+    } else if (
+      form === "conventional_two_face_downstand" &&
+      portion.lining.family === "plasterboard"
+    ) {
+      const product = portion.lining.plasterboard_product;
+      if (product === "standard" || product === "aqualine" || product === "fyreline") {
+        bulkhead.lining_type = product;
+      } else if (product == null) {
+        bulkhead.lining_type = "standard";
+      }
+      if (portion.lining.thickness_mm === 10 || portion.lining.thickness_mm === 13) {
+        bulkhead.thickness_mm = portion.lining.thickness_mm;
+      }
+    }
     portion.bulkheads = [bulkhead];
     portion.active_bulkhead_id = bulkhead.id;
   } else if (/\bno bulkhead/.test(normalise(snippet))) {
@@ -853,9 +1017,12 @@ function fillMissingCeilingPortion(
   if (out.bulkheads.length === 0 && parsed.bulkheads.length > 0) {
     out.bulkheads = parsed.bulkheads.map((row) => ({ ...row }));
     out.active_bulkhead_id = out.active_bulkhead_id ?? parsed.active_bulkhead_id;
-  } else {
+  } else if (parsed.bulkheads.length > 0 && out.bulkheads.length > 0) {
     const parsedSpecialist = parsed.bulkheads.find((row) =>
       isUnsupportedCeilingBulkhead(row)
+    );
+    const parsedOrdinary = parsed.bulkheads.find(
+      (row) => !isUnsupportedCeilingBulkhead(row)
     );
     if (
       parsedSpecialist &&
@@ -867,6 +1034,35 @@ function fillMissingCeilingPortion(
       if (ordinary) {
         ordinary.form = parsedSpecialist.form;
         applyCeilingBulkheadTopologyState(ordinary, { explicit: true });
+      }
+    } else if (
+      parsedOrdinary &&
+      out.bulkheads.some((row) => isUnsupportedCeilingBulkhead(row))
+    ) {
+      const specialist = out.bulkheads.find((row) =>
+        isUnsupportedCeilingBulkhead(row)
+      );
+      if (specialist) {
+        specialist.form = parsedOrdinary.form;
+        applyCeilingBulkheadTopologyState(specialist, {
+          explicit: parsedOrdinary.topology_source === "explicit",
+        });
+      }
+    }
+    const parsedDims = parsed.bulkheads[0];
+    const target = out.bulkheads[0];
+    if (parsedDims && target) {
+      if (parsedDims.length_m != null) target.length_m = parsedDims.length_m;
+      if (parsedDims.depth_m != null) target.depth_m = parsedDims.depth_m;
+      if (parsedDims.height_m != null) target.height_m = parsedDims.height_m;
+      if (target.framing_type == null && parsedDims.framing_type != null) {
+        target.framing_type = parsedDims.framing_type;
+      }
+      if (target.lining_type == null && parsedDims.lining_type != null) {
+        target.lining_type = parsedDims.lining_type;
+      }
+      if (target.thickness_mm == null && parsedDims.thickness_mm != null) {
+        target.thickness_mm = parsedDims.thickness_mm;
       }
     }
   }

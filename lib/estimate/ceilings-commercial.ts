@@ -72,7 +72,9 @@ import {
   CEILINGS_PLASTERBOARD_LABOUR,
   CEILINGS_PLYWOOD_LABOUR,
   CEILINGS_PRODUCTIVITY_KEYS,
+  CEILINGS_PAINTING_COMPONENT,
   CEILINGS_SPECIALIST_COMPONENT,
+  CEILINGS_STOPPING_COMPONENT,
   CEILINGS_STEEL_CLIP_LABOUR,
   CEILINGS_STEEL_DROPPER_LABOUR,
   CEILINGS_STEEL_FURRING_LABOUR,
@@ -901,9 +903,13 @@ export function ceilingCommercialOwnsFinishMoney(
 ): boolean {
   const key = line.componentKey ?? "";
   if (
-    /\.(paint|painting|stopping|demolition|removal)(\.|$)/.test(key) ||
-    key.includes("ceilings.painting") ||
-    key.includes("ceilings.stopping") ||
+    key === CEILINGS_STOPPING_COMPONENT ||
+    key === CEILINGS_PAINTING_COMPONENT
+  ) {
+    return false;
+  }
+  if (
+    /\.(demolition|removal)(\.|$)/.test(key) ||
     key.includes("ceilings.demolition")
   ) {
     return true;

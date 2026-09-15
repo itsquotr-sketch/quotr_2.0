@@ -35,6 +35,16 @@ export const CEILINGS_INSULATION_LABOUR =
   "ceilings.insulation.install" as const;
 export const CEILINGS_SPECIALIST_COMPONENT =
   "ceilings.specialist.unsupported" as const;
+export const CEILINGS_STOPPING_COMPONENT =
+  "ceilings.finish.stopping" as const;
+export const CEILINGS_PAINTING_COMPONENT =
+  "ceilings.finish.painting" as const;
+export const CEILINGS_STOPPING_MATERIAL_KEY =
+  "stopping.plasterboard.level4.m2" as const;
+export const CEILINGS_PAINTING_MATERIAL_KEY =
+  "ceilings.painting.m2" as const;
+export const CEILINGS_STOPPING_LEVEL_ASSUMPTION =
+  "Assumes Level 4 stopping on plasterboard lining surfaces." as const;
 
 export const CEILINGS_PRODUCTIVITY_KEYS = {
   timberFramingLm: "ceilings.timber_framing.install.hours_per_lm",

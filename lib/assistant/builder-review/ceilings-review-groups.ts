@@ -138,9 +138,17 @@ function formatMoneyOrPr(
 
 function classifyCeilingBucket(
   line: BuilderReviewPricedLine
-): "framing" | "lining" | "labour" | "fixings" | "insulation" | "bulkhead" | "other" {
+): "framing" | "lining" | "labour" | "fixings" | "insulation" | "bulkhead" | "finishing" | "other" {
   const key = (line.componentKey ?? line.itemKey ?? "").toLowerCase();
   const componentId = line.sourceLine.componentId;
+  if (
+    key.includes("ceilings.finish.stopping") ||
+    key.includes("ceilings.finish.painting") ||
+    key.includes("finish.stopping") ||
+    key.includes("finish.painting")
+  ) {
+    return "finishing";
+  }
   if (componentId || key.includes("bulkhead")) return "bulkhead";
   if (key.includes("fixings")) return "fixings";
   if (key.includes("insulation")) {
@@ -437,6 +445,9 @@ export function applyCeilingsReviewGroups(params: {
       const bulkheadLines = owned.filter(
         (row) => classifyCeilingBucket(row) === "bulkhead"
       );
+      const finishing = owned.filter(
+        (row) => classifyCeilingBucket(row) === "finishing"
+      );
       const other = owned.filter((row) => classifyCeilingBucket(row) === "other");
 
       const lineGroups: BuilderReviewLineGroup[] = [];
@@ -501,6 +512,49 @@ export function applyCeilingsReviewGroups(params: {
             pricingRequired: true,
             children: [],
           });
+        }
+      }
+      if (
+        portion.finish.stopping_included === true ||
+        portion.finish.painting_included === true
+      ) {
+        const finishingGroup = makeGroup(
+          `ceilings-finishing-${portion.id}`,
+          "Finishing",
+          "Finishing",
+          finishing
+        );
+        if (finishingGroup) {
+          lineGroups.push(finishingGroup);
+        } else {
+          if (portion.finish.stopping_included === true) {
+            lineGroups.push({
+              id: `ceilings-finishing-stopping-${portion.id}`,
+              label: "Stopping / plastering",
+              recommendedCost: 0,
+              supporting: "Pricing Required",
+              secondary: "Finishing",
+              itemKey: null,
+              showChangeMaterial: false,
+              rateContext: "Pricing Required",
+              pricingRequired: true,
+              children: [],
+            });
+          }
+          if (portion.finish.painting_included === true) {
+            lineGroups.push({
+              id: `ceilings-finishing-painting-${portion.id}`,
+              label: "Painting",
+              recommendedCost: 0,
+              supporting: "Pricing Required",
+              secondary: "Finishing",
+              itemKey: null,
+              showChangeMaterial: false,
+              rateContext: "Pricing Required",
+              pricingRequired: true,
+              children: [],
+            });
+          }
         }
       }
       for (const bulkhead of portion.bulkheads) {
