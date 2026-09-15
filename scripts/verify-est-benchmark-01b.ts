@@ -17,6 +17,7 @@ import {
   liveQuotrProductivity,
   workAreaMayCloseAtL5,
 } from "../lib/estimate/benchmark-coverage";
+import { calculateEstimate } from "../lib/estimate/calculate-estimate";
 import { commercializeCeilings } from "../lib/estimate/ceilings-commercial";
 import {
   CEILINGS_INSULATION_LABOUR,
@@ -43,6 +44,7 @@ import { calculateCeilingsPhysical } from "../lib/estimate/ceilings-physical";
 import {
   applyCeilingsFactWrite,
   CEILINGS_PORTIONS_FACT_KEY,
+  createEmptyCeilingBulkhead,
   createEmptyCeilingPortion,
   type CeilingPortion,
 } from "../lib/estimate/ceilings-portions";
@@ -276,6 +278,26 @@ function runCeiling(portion: CeilingPortion, rates: OrganisationRate[] = []) {
     organisationSettings: SETTINGS,
   });
   return { facts, physical, commercial };
+}
+
+function hostedCeiling(
+  portion: CeilingPortion,
+  rates: OrganisationRate[] = [],
+  constraints: EstimateContext["constraints"] = []
+) {
+  return calculateEstimate({
+    project: { id: "est-benchmark-01b-hosted", qualityLevel: "standard" },
+    confirmedWorkAreas: [wa("ceilings", "c1", "Ceilings")],
+    facts: writePortions([portion]),
+    constraints,
+    organisationSettings: SETTINGS,
+    materialWastageSettings: {
+      defaultMaterialWastagePercent: 10,
+      sheetMaterialWastagePercent: 10,
+      timberFramingWastagePercent: 10,
+    },
+    rates,
+  } as unknown as EstimateContext);
 }
 
 function material(
@@ -569,6 +591,55 @@ check(
     thermalLab?.priced === true &&
     near(thermalLab.productivityBasis.hoursPerUnit, 0.05) &&
     near(thermalLab.baseHours, 0.6)
+);
+const hostedThermal = hostedCeiling(plasterPortion({ sheetLength: 3000, insulation: true }));
+const hostedBoard = hostedThermal.requirements.find(
+  (row) => row.kind === "material" && row.componentKey === CEILINGS_PLASTERBOARD_COMPONENT
+) as MaterialRequirement | undefined;
+const hostedThermalMat = hostedThermal.requirements.find(
+  (row) => row.kind === "material" && row.componentKey === CEILINGS_INSULATION_COMPONENT
+) as MaterialRequirement | undefined;
+check(
+  "T-hosted calculateEstimate thermal 4×3 resolves Quotr fallbacks",
+  hostedBoard?.priced === true &&
+    near(hostedBoard?.unitCost, 22.5) &&
+    hostedThermalMat?.priced === true &&
+    near(hostedThermalMat?.unitCost, ORDINARY_THERMAL_INSULATION_COST) &&
+    hostedThermal.lineItems.every((item) => item.rateSourceType !== "missing")
+);
+
+const disclosedBh = plasterPortion({ insulation: true });
+delete disclosedBh.lining.sheet_length_mm;
+delete disclosedBh.lining.sheet_width_mm;
+const bhRow = createEmptyCeilingBulkhead({
+  id: "bbbbbbbb-bbbb-4ccc-8ddd-222222222222",
+  label: "Downstand",
+});
+bhRow.form = "conventional_two_face_downstand";
+bhRow.topology = "conventional_two_face_downstand";
+bhRow.length_m = 5;
+bhRow.depth_m = 0.5;
+bhRow.height_m = 0.5;
+bhRow.framing_type = "timber";
+bhRow.lining_type = "standard";
+bhRow.thickness_mm = 13;
+disclosedBh.has_bulkheads = true;
+disclosedBh.bulkheads = [bhRow];
+const hostedDisclosedBh = hostedCeiling(disclosedBh);
+const disclosedBoard = hostedDisclosedBh.requirements.find(
+  (row) => row.kind === "material" && row.componentKey === CEILINGS_PLASTERBOARD_COMPONENT
+) as MaterialRequirement | undefined;
+check(
+  "T-hosted disclosed sheets + ordinary bulkhead still prices lounge lining",
+  disclosedBoard?.priced === true &&
+    disclosedBoard.materialKey === "sheet.plasterboard.standard.13mm.3000x1200.each" &&
+    near(disclosedBoard.unitCost, 22.5) &&
+    hostedDisclosedBh.lineItems.some(
+      (item) =>
+        item.componentKey === CEILINGS_PLASTERBOARD_COMPONENT &&
+        item.rateSourceType !== "missing" &&
+        near(item.costRate, 22.5)
+    )
 );
 const direct = runCeiling(steelPortion());
 check(

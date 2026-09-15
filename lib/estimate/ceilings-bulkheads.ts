@@ -13,7 +13,16 @@ import {
   type PhysicalRequirementResolution,
 } from "@/lib/estimate/physical-requirement-resolution";
 import { INTERNAL_WALLS_TIMBER_90_KEY } from "@/lib/estimate/internal-walls-identities";
-import { resolveCeilingPlasterboardProduct } from "@/lib/estimate/ceilings-lining";
+import {
+  resolveCeilingPlasterboardProduct,
+  resolveCeilingPlasterboardSheetDims,
+} from "@/lib/estimate/ceilings-lining";
+import {
+  CEILINGS_PLASTERBOARD_SHEET_LENGTH_ASSUMPTION_MM,
+  CEILINGS_PLASTERBOARD_SHEET_SIZE_ASSUMPTION_STATEMENT,
+  CEILINGS_PLASTERBOARD_SHEET_WIDTH_ASSUMPTION_MM,
+} from "@/lib/estimate/ceilings-information-contract";
+import { ceilingPortionSpecialistKind } from "@/lib/estimate/ceilings-specialist";
 import type { MaterialIdentity } from "@/lib/materials/identity";
 import type { MaterialWastageSettings } from "@/lib/settings/material-wastage";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
@@ -88,6 +97,8 @@ export type CeilingBulkheadTakeoff = {
   readonly framingMaterialKey: string | null;
   readonly liningMaterialKey: string | null;
   readonly liningSpecification: string | null;
+  readonly sheetSizeSource: "known" | "assumed_disclosed" | null;
+  readonly sheetSizeAssumption: string | null;
 };
 
 function classifyPositive(value: unknown): "missing" | "invalid" | "ok" {
@@ -167,6 +178,8 @@ function emptyTakeoff(
     framingMaterialKey: null,
     liningMaterialKey: null,
     liningSpecification: null,
+    sheetSizeSource: null,
+    sheetSizeAssumption: null,
   };
 }
 
@@ -177,6 +190,43 @@ function mapBulkheadLiningProduct(
     return lining;
   }
   return null;
+}
+
+function ordinaryBulkheadPlasterboard(
+  lining: CeilingBulkheadLining | null
+): boolean {
+  return lining === "standard" || lining === "aqualine" || lining === "fyreline";
+}
+
+function resolveBulkheadSheetDims(params: {
+  portion: CeilingPortion;
+  bulkhead: CeilingBulkhead;
+}): {
+  lengthMm: number;
+  widthMm: number;
+  source: "known" | "assumed_disclosed";
+} | null {
+  const fromPortion = resolveCeilingPlasterboardSheetDims(params.portion);
+  if (
+    fromPortion.lengthState === "invalid" ||
+    fromPortion.widthState === "invalid"
+  ) {
+    return null;
+  }
+  if (fromPortion.lengthMm != null && fromPortion.widthMm != null) {
+    return {
+      lengthMm: fromPortion.lengthMm,
+      widthMm: fromPortion.widthMm,
+      source: fromPortion.source ?? "known",
+    };
+  }
+  if (!ordinaryBulkheadPlasterboard(params.bulkhead.lining_type)) return null;
+  if (ceilingPortionSpecialistKind(params.portion) != null) return null;
+  return {
+    lengthMm: CEILINGS_PLASTERBOARD_SHEET_LENGTH_ASSUMPTION_MM,
+    widthMm: CEILINGS_PLASTERBOARD_SHEET_WIDTH_ASSUMPTION_MM,
+    source: "assumed_disclosed",
+  };
 }
 
 export function calculateCeilingBulkhead(params: {
@@ -274,17 +324,11 @@ export function calculateCeilingBulkhead(params: {
     );
   }
 
-  const sheetLengthMm = params.portion.lining.sheet_length_mm;
-  const sheetWidthMm = params.portion.lining.sheet_width_mm;
-  const sheetLengthOk =
-    typeof sheetLengthMm === "number" &&
-    Number.isFinite(sheetLengthMm) &&
-    sheetLengthMm > 0;
-  const sheetWidthOk =
-    typeof sheetWidthMm === "number" &&
-    Number.isFinite(sheetWidthMm) &&
-    sheetWidthMm > 0;
-  if (!sheetLengthOk || !sheetWidthOk) {
+  const sheetDims = resolveBulkheadSheetDims({
+    portion: params.portion,
+    bulkhead: params.bulkhead,
+  });
+  if (sheetDims == null) {
     return emptyTakeoff(
       nestedItemId,
       componentId,
@@ -292,6 +336,15 @@ export function calculateCeilingBulkhead(params: {
       "Bulkhead lining needs sheet length and width."
     );
   }
+  const sheetLengthMm = sheetDims.lengthMm;
+  const sheetWidthMm = sheetDims.widthMm;
+  const bothSheetDimsOmitted =
+    classifyPositive(params.portion.lining.sheet_length_mm) !== "ok" &&
+    classifyPositive(params.portion.lining.sheet_width_mm) !== "ok";
+  const sheetSizeAssumption =
+    sheetDims.source === "assumed_disclosed" && bothSheetDimsOmitted
+      ? CEILINGS_PLASTERBOARD_SHEET_SIZE_ASSUMPTION_STATEMENT
+      : null;
 
   const wastagePercent = resolveMaterialWastage(
     params.materialWastageSettings,
@@ -355,6 +408,8 @@ export function calculateCeilingBulkhead(params: {
     framingMaterialKey,
     liningMaterialKey: liningProduct.materialKey,
     liningSpecification: liningProduct.specification,
+    sheetSizeSource: sheetDims.source,
+    sheetSizeAssumption,
   };
 }
 

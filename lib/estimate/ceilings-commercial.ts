@@ -263,6 +263,26 @@ function quotrStartersAllowed(
   return organisationSettings?.allow_benchmark_rates !== false;
 }
 
+/**
+ * Trusted physical quantities may still resolve Quotr fallbacks when a
+ * sibling nested item is INFORMATION_REQUIRED. Physical already omitted
+ * untrusted quantities. Do not treat portion-level IR as a commercial
+ * kill-switch for complete lining / insulation / fixings / labour.
+ */
+function ceilingAllowsQuotrResolution(
+  portion: CeilingPortionPhysical | undefined,
+  componentKey: string
+): boolean {
+  if (
+    portion?.completeness ===
+      CEILING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST &&
+    componentKey === CEILINGS_SPECIALIST_COMPONENT
+  ) {
+    return false;
+  }
+  return true;
+}
+
 function applicableGrossMarginPercent(
   organisationSettings: OrganisationSettings | null
 ): number {
@@ -1232,29 +1252,22 @@ export function commercializeCeilings(params: {
     const portion = params.physical.portions.find(
       (row) => row.nestedItemId === nestedId
     );
-    const allowPricing =
-      portion == null ||
-      portion.completeness === CEILING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL ||
-      (portion.completeness ===
-        CEILING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST &&
-        requirement.componentKey !== CEILINGS_SPECIALIST_COMPONENT);
+    const allowPricing = ceilingAllowsQuotrResolution(
+      portion,
+      requirement.componentKey
+    );
     const priced = priceCeilingMaterial({
       requirement,
       rates: params.rates,
       organisationSettings: params.organisationSettings,
-      allowPricing:
-        allowPricing &&
-        portion?.completeness !==
-          CEILING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
+      allowPricing,
     });
     materials.push(priced);
     const labourRow = labourForMaterial(
       priced,
       params.rates,
       labourRate.costRate,
-      allowPricing &&
-        portion?.completeness !==
-          CEILING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
+      allowPricing,
       accessFactor
     );
     if (labourRow) labour.push(labourRow);

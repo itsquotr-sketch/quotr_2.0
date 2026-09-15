@@ -406,7 +406,7 @@ function sheetDimsFromPortion(portion: CeilingPortion): {
   };
 }
 
-function plasterboardSheetDims(portion: CeilingPortion): {
+export function resolveCeilingPlasterboardSheetDims(portion: CeilingPortion): {
   lengthState: "missing" | "invalid" | "ok";
   widthState: "missing" | "invalid" | "ok";
   lengthMm: number | null;
@@ -502,7 +502,7 @@ function plasterboardTakeoff(params: {
       unresolvedProduct
     );
   }
-  const dims = plasterboardSheetDims(params.portion);
+  const dims = resolveCeilingPlasterboardSheetDims(params.portion);
   if (dims.lengthState === "invalid" || dims.widthState === "invalid") {
     return emptyTakeoff(
       nestedItemId,

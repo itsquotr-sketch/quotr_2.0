@@ -739,6 +739,13 @@ function bulkheadAssumptions(bulkhead: CeilingBulkheadTakeoff) {
       source: "calculator_default",
     });
   }
+  if (bulkhead.sheetSizeAssumption) {
+    text.push({
+      key: "sheet_size",
+      text: bulkhead.sheetSizeAssumption,
+      source: "calculator_default",
+    });
+  }
   text.push({
     key: "end_caps",
     text: CEILINGS_BULKHEAD_END_CAPS_EXCLUDED,
