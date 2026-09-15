@@ -199,4 +199,5 @@ export type ComposeBuilderReviewInput = {
   }[];
   readonly confidenceBand?: string | null;
   readonly facts?: readonly EstimateFact[];
+  readonly briefText?: string | null;
 };

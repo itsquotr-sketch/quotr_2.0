@@ -1212,12 +1212,14 @@ export function calculateCeilingsPhysical(params: {
   readonly facts: readonly EstimateFact[];
   readonly workArea: Pick<EstimateWorkArea, "id" | "type" | "name">;
   readonly materialWastageSettings?: MaterialWastageSettings | null;
+  readonly briefText?: string | null;
 }): CeilingPhysicalResult {
   const workAreaId = params.workArea.id;
   if (!hasCanonicalCeilingsPortions(params.facts, workAreaId)) {
     const resolved = resolveCeilingsPortions({
       facts: params.facts,
       workAreaId,
+      briefText: params.briefText,
     });
     if (resolved.source === "legacy_dual_read") {
       return {
@@ -1242,6 +1244,7 @@ export function calculateCeilingsPhysical(params: {
   const resolved = resolveCeilingsPortions({
     facts: params.facts,
     workAreaId,
+    briefText: params.briefText,
   });
   const portions: CeilingPortionPhysical[] = [];
   const requirements: MaterialRequirement[] = [];

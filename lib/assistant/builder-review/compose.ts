@@ -1740,6 +1740,7 @@ export function composeBuilderReview(
         workAreaName: wa.name,
         requirements,
         missingInfo: input.estimate.missingInfo,
+        briefText: input.briefText,
       });
       categories = grouped.categories;
       portionGroups = grouped.portionGroups;

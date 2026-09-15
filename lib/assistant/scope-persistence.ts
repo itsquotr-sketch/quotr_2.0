@@ -32,6 +32,7 @@ import {
   CEILINGS_ACTIVE_PORTION_ID_FACT_KEY,
   CEILINGS_PORTIONS_FACT_KEY,
   applyCeilingsFactWrite,
+  ceilingsPortionsFactSourceForWrite,
   isCeilingsPortionWriteKey,
   parseCeilingsCollectionEnvelope,
 } from "@/lib/estimate/ceilings-portions";
@@ -312,7 +313,7 @@ async function persistCeilingsPortionsCollectionWrite(
   for (let attempt = 0; attempt < CEILINGS_COLLECTION_WRITE_MAX_ATTEMPTS; attempt++) {
     const { data: rows, error } = await supabase
       .from("project_facts")
-      .select("id, key, value, work_area_id, updated_at")
+      .select("id, key, value, work_area_id, updated_at, source")
       .eq("project_id", params.projectId)
       .eq("work_area_id", params.workAreaId)
       .in("key", [
@@ -323,10 +324,19 @@ async function persistCeilingsPortionsCollectionWrite(
       return { ok: false, error: error.message };
     }
 
+    const { data: projectRow } = await supabase
+      .from("projects")
+      .select("brief_text")
+      .eq("id", params.projectId)
+      .maybeSingle();
+    const briefText =
+      typeof projectRow?.brief_text === "string" ? projectRow.brief_text : null;
+
     const current = (rows ?? []).map((row) => ({
       key: row.key,
       work_area_id: params.workAreaId,
       value: row.value,
+      source: row.source,
     }));
     const next = applyCeilingsFactWrite({
       facts: current,
@@ -335,6 +345,7 @@ async function persistCeilingsPortionsCollectionWrite(
       value: params.value,
       nestedItemId: params.nestedItemId,
       componentId: params.componentId,
+      briefText,
     });
 
     const portions = next.find(
@@ -356,13 +367,18 @@ async function persistCeilingsPortionsCollectionWrite(
       v: envelope.v + 1,
       portions: parseCeilingsCollectionEnvelope(portions?.value).portions,
     };
+    const portionsSource = ceilingsPortionsFactSourceForWrite({
+      key: params.key,
+      previousSource: portionsRow?.source,
+      factSource: portions?.source,
+    });
     if (portionsRow) {
       let updateQuery = supabase
         .from("project_facts")
         .update({
           label: "Ceiling portions",
           value: nextEnvelope,
-          source: "user",
+          source: portionsSource,
           confidence: 1,
         })
         .eq("id", portionsRow.id)
@@ -391,7 +407,7 @@ async function persistCeilingsPortionsCollectionWrite(
         key: CEILINGS_PORTIONS_FACT_KEY,
         label: "Ceiling portions",
         value: nextEnvelope,
-        source: "user",
+        source: portionsSource,
       });
       if (!portionsResult.ok) {
         if (attempt < CEILINGS_COLLECTION_WRITE_MAX_ATTEMPTS - 1) {

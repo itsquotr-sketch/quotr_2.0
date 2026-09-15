@@ -66,7 +66,7 @@ export async function getEstimateContextWithContext(
   // extra lifecycle probe or deleted_at re-query in this request.
   const { data: project, error: projectError } = await supabase
     .from("projects")
-    .select("id, quality_level")
+    .select("id, quality_level, brief_text")
     .eq("id", projectId)
     .eq("org_id", orgId)
     .maybeSingle();
@@ -152,6 +152,8 @@ export async function getEstimateContextWithContext(
       DEFAULT_ORGANISATION_SETTINGS,
     materialWastageSettings: mapMaterialWastageSettings(organisationSettings),
     rates: (rates ?? []) as OrganisationRate[],
+    briefText:
+      typeof project.brief_text === "string" ? project.brief_text : null,
   };
 }
 

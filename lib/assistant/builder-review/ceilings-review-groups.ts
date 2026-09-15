@@ -332,6 +332,7 @@ export function applyCeilingsReviewGroups(params: {
   readonly workAreaName: string;
   readonly requirements: readonly EstimateRequirement[];
   readonly missingInfo: readonly string[];
+  readonly briefText?: string | null;
 }): {
   readonly categories: BuilderReviewCategoryGroup[];
   readonly portionGroups: readonly BuilderReviewPortionGroup[];
@@ -358,6 +359,7 @@ export function applyCeilingsReviewGroups(params: {
   const resolved = resolveCeilingsPortions({
     facts: params.facts!,
     workAreaId,
+    briefText: params.briefText,
   });
   const portions = resolved.portions;
   const waRequirements = params.requirements.filter(

@@ -675,6 +675,7 @@ export function calculateCeilings(
       facts,
       workArea,
       materialWastageSettings: context.materialWastageSettings,
+      briefText: context.briefText,
     });
     const commercial = commercializeCeilings({
       physical,

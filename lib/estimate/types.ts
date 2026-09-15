@@ -64,6 +64,7 @@ export type EstimateContext = {
   organisationSettings: OrganisationSettings | null;
   materialWastageSettings: MaterialWastageSettings | null;
   rates: OrganisationRate[];
+  briefText?: string | null;
 };
 
 export type LineItemCategory =

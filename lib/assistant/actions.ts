@@ -70,6 +70,8 @@ import { createClient } from "@/lib/supabase/server";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 import { getAnalysisCapableWorkAreaTypes } from "@/lib/scopes/capability";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
+import { mergePersistedCeilingPortionsOnReanalyse } from "@/lib/estimate/ceilings-brief";
+import { CEILINGS_PORTIONS_FACT_KEY } from "@/lib/estimate/ceilings-portions";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { filterPersistableAnswers } from "@/lib/assistant/answer-persistence";
 import {
@@ -498,7 +500,7 @@ export async function saveBriefAndSeedWorkAreas(
   if (factRows.length > 0) {
     const { data: existingFacts } = await supabase
       .from("project_facts")
-      .select("id, key, work_area_id, source")
+      .select("id, key, work_area_id, source, value")
       .eq("project_id", projectId);
 
     const existingByKey = new Map(
@@ -513,6 +515,43 @@ export async function saveBriefAndSeedWorkAreas(
     for (const row of factRows) {
       const dedupeKey = factDedupeKey(row.work_area_id, row.key);
       const existing = existingByKey.get(dedupeKey);
+
+      if (existing && row.key === CEILINGS_PORTIONS_FACT_KEY) {
+        const merged = mergePersistedCeilingPortionsOnReanalyse({
+          extracted: row.value,
+          persisted: existing.value,
+          briefText: trimmed,
+        });
+        const keepsUserSource = merged.some(
+          (portion) =>
+            portion.finish.stopping_authority === "user" ||
+            portion.finish.painting_authority === "user" ||
+            portion.finish.insulation_authority === "user" ||
+            portion.lining.thickness_authority === "user" ||
+            portion.bulkheads.some((bulkhead) => bulkhead.form_authority === "user")
+        );
+        const { error: mergeError } = await supabase
+          .from("project_facts")
+          .update({
+            label: row.label,
+            value: merged,
+            unit: row.unit,
+            source:
+              keepsUserSource && existing.source === "user"
+                ? "user"
+                : "ai_extracted",
+            confidence: row.confidence,
+          })
+          .eq("id", existing.id)
+          .eq("project_id", projectId);
+        if (mergeError) {
+          return failPersist(
+            "persist_facts",
+            `fact update failed: ${mergeError.message}`
+          );
+        }
+        continue;
+      }
 
       if (existing?.source === "user") {
         continue;
@@ -1551,7 +1590,14 @@ async function runEstimateGeneration(
 
   let estimateResult;
   try {
-    estimateResult = calculateEstimate(contextResult);
+    estimateResult = calculateEstimate({
+      ...contextResult,
+      briefText:
+        contextResult.briefText ??
+        (typeof projectRow?.brief_text === "string"
+          ? projectRow.brief_text
+          : null),
+    });
   } catch (error) {
     if (error instanceof EstimateEngineError) {
       return { error: USER_ERRORS.estimateGenerateFailed };

@@ -15,6 +15,7 @@
 
 import { getFact, getNumberFact, getStringFact, round2 } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
+import { classifyCeilingBulkheadFormFromText } from "@/lib/estimate/ceilings-bulkhead-classify";
 import {
   createStableClientId,
   isStableClientId,
@@ -296,7 +297,16 @@ export type CeilingLining = {
   layers?: number | null;
   timber_lined?: CeilingTimberLined;
   tile?: CeilingTile;
+  thickness_authority?: CeilingFieldAuthority;
 };
+
+export const CEILINGS_FIELD_AUTHORITY_VALUES = [
+  "extracted",
+  "assumed_disclosed",
+  "user",
+] as const;
+export type CeilingFieldAuthority =
+  (typeof CEILINGS_FIELD_AUTHORITY_VALUES)[number];
 
 export type CeilingFinish = {
   insulation_included: boolean | null;
@@ -305,6 +315,9 @@ export type CeilingFinish = {
   stopping_included: boolean | null;
   painting_included: boolean | null;
   demolition_included: boolean | null;
+  stopping_authority?: CeilingFieldAuthority;
+  painting_authority?: CeilingFieldAuthority;
+  insulation_authority?: CeilingFieldAuthority;
 };
 
 export type CeilingBulkhead = {
@@ -319,6 +332,7 @@ export type CeilingBulkhead = {
   form: CeilingBulkheadForm | null;
   topology: CeilingBulkheadTopology;
   topology_source: CeilingBulkheadTopologySource;
+  form_authority?: CeilingFieldAuthority;
 };
 
 export type CeilingPortion = {
@@ -433,6 +447,85 @@ export function applyCeilingBulkheadTopologyState(
   return bulkhead;
 }
 
+function parseFieldAuthority(value: unknown): CeilingFieldAuthority | undefined {
+  return parseEnum(value, CEILINGS_FIELD_AUTHORITY_VALUES) ?? undefined;
+}
+
+export function ceilingBulkheadFormAuthority(
+  bulkhead: Pick<CeilingBulkhead, "form" | "form_authority">
+): CeilingFieldAuthority | undefined {
+  if (bulkhead.form_authority) return bulkhead.form_authority;
+  if (bulkhead.form === "island" || bulkhead.form === "boxed") return "user";
+  return undefined;
+}
+
+export function healStaleMachineCeilingBulkhead(params: {
+  readonly bulkhead: CeilingBulkhead;
+  readonly briefText?: string | null;
+}): CeilingBulkhead {
+  const bulkhead = cloneCeilingBulkhead(params.bulkhead);
+  if (!isUnsupportedCeilingBulkhead(bulkhead)) return bulkhead;
+  if (ceilingBulkheadFormAuthority(bulkhead) === "user") return bulkhead;
+  if (bulkhead.form === "island" || bulkhead.form === "boxed") return bulkhead;
+  const brief = params.briefText?.trim() ?? "";
+  if (!brief) return bulkhead;
+  const classified = classifyCeilingBulkheadFormFromText(brief);
+  if (classified !== CEILINGS_BULKHEAD_TOPOLOGY_V1) return bulkhead;
+  bulkhead.form = CEILINGS_BULKHEAD_TOPOLOGY_V1;
+  applyCeilingBulkheadTopologyState(bulkhead, { explicit: false });
+  bulkhead.form_authority = "assumed_disclosed";
+  return bulkhead;
+}
+
+export function healStaleMachineCeilingPortions(params: {
+  readonly portions: readonly CeilingPortion[];
+  readonly briefText?: string | null;
+}): CeilingPortion[] {
+  return params.portions.map((portion) => ({
+    ...portion,
+    geometry: cloneGeometry(portion.geometry),
+    structure: cloneStructure(portion.structure),
+    lining: cloneLining(portion.lining),
+    finish: { ...portion.finish },
+    bulkheads: portion.bulkheads.map((bulkhead) =>
+      healStaleMachineCeilingBulkhead({
+        bulkhead,
+        briefText: params.briefText,
+      })
+    ),
+  }));
+}
+
+export function ceilingsPortionsFactSourceForWrite(params: {
+  readonly key: string;
+  readonly previousSource?: string | null;
+  readonly factSource?: string | null;
+}): "user" | "ai_extracted" | "default" | "assumption" | "system" {
+  const allowed = [
+    "user",
+    "ai_extracted",
+    "default",
+    "assumption",
+    "system",
+  ] as const;
+  if (
+    params.factSource &&
+    (allowed as readonly string[]).includes(params.factSource)
+  ) {
+    return params.factSource as (typeof allowed)[number];
+  }
+  if (params.key === `${CEILINGS_BULKHEAD_FIELD_PREFIX}form`) {
+    return "user";
+  }
+  if (
+    params.previousSource &&
+    (allowed as readonly string[]).includes(params.previousSource)
+  ) {
+    return params.previousSource as (typeof allowed)[number];
+  }
+  return "user";
+}
+
 function parseTriBool(value: unknown): boolean | null {
   if (value === true) return true;
   if (value === false) return false;
@@ -514,6 +607,7 @@ export function createEmptyCeilingBulkhead(params?: {
     form: CEILINGS_BULKHEAD_TOPOLOGY_V1,
     topology: CEILINGS_BULKHEAD_TOPOLOGY_V1,
     topology_source: "assumed_disclosed",
+    form_authority: "assumed_disclosed",
   };
 }
 
@@ -546,6 +640,7 @@ export function cloneCeilingBulkhead(
   return {
     ...bulkhead,
     topology_source: bulkhead.topology_source ?? "assumed_disclosed",
+    form_authority: bulkhead.form_authority,
   };
 }
 
@@ -585,6 +680,7 @@ function cloneLining(lining: CeilingLining): CeilingLining {
     layers: lining.layers,
     timber_lined: lining.timber_lined ? { ...lining.timber_lined } : undefined,
     tile: lining.tile ? { ...lining.tile } : undefined,
+    thickness_authority: lining.thickness_authority,
   };
 }
 
@@ -751,13 +847,18 @@ export function parseCeilingBulkhead(value: unknown): CeilingBulkhead | null {
     form,
     topology: ceilingBulkheadTopologyForForm(form),
     topology_source: storedSource ?? "assumed_disclosed",
+    form_authority: parseFieldAuthority(value.form_authority),
   };
-  return applyCeilingBulkheadTopologyState(bulkhead, {
+  const next = applyCeilingBulkheadTopologyState(bulkhead, {
     explicit:
       isSpecialistCeilingBulkheadForm(form) ||
       (storedSource === "explicit" &&
         isSpecialistCeilingBulkheadForm(form)),
   });
+  if (bulkhead.form_authority) {
+    next.form_authority = bulkhead.form_authority;
+  }
+  return next;
 }
 
 function parseBulkheads(value: unknown): CeilingBulkhead[] {
@@ -890,6 +991,9 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
       thickness_mm:
         parseCeilingPlasterboardThickness(liningField(value, "thickness_mm")) ??
         undefined,
+      thickness_authority: isRecord(value.lining)
+        ? parseFieldAuthority(value.lining.thickness_authority)
+        : undefined,
       plywood_spec:
         typeof plywoodSpecRaw === "string" && plywoodSpecRaw.trim()
           ? plywoodSpecRaw.trim()
@@ -949,6 +1053,11 @@ export function parseCeilingPortion(value: unknown): CeilingPortion | null {
           stopping_included: parseTriBool(value.finish.stopping_included),
           painting_included: parseTriBool(value.finish.painting_included),
           demolition_included: parseTriBool(value.finish.demolition_included),
+          stopping_authority: parseFieldAuthority(value.finish.stopping_authority),
+          painting_authority: parseFieldAuthority(value.finish.painting_authority),
+          insulation_authority: parseFieldAuthority(
+            value.finish.insulation_authority
+          ),
         }
       : emptyFinish(),
     has_bulkheads:
@@ -1160,6 +1269,7 @@ export function resolveCeilingsActivePortionId(
 export function resolveCeilingsPortions(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
+  briefText?: string | null;
 }): {
   portions: CeilingPortion[];
   source: CeilingPortionSource;
@@ -1167,13 +1277,17 @@ export function resolveCeilingsPortions(params: {
 } {
   const stored = storedCeilingsPortions(params.facts, params.workAreaId);
   if (stored.length > 0) {
-    return {
+    const portions = healStaleMachineCeilingPortions({
       portions: stored,
+      briefText: params.briefText,
+    });
+    return {
+      portions,
       source: "canonical",
       activeId: resolveCeilingsActivePortionId(
         params.facts,
         params.workAreaId,
-        stored
+        portions
       ),
     };
   }
@@ -1233,14 +1347,20 @@ function upsertFact(
   facts: EstimateFact[],
   workAreaId: string,
   key: string,
-  value: unknown
+  value: unknown,
+  source?: string | null
 ): EstimateFact[] {
   const without = facts.filter(
     (row) => !(row.key === key && row.work_area_id === workAreaId)
   );
   return [
     ...without,
-    { key, work_area_id: workAreaId, value, source: "user" },
+    {
+      key,
+      work_area_id: workAreaId,
+      value,
+      source: source ?? "user",
+    },
   ];
 }
 
@@ -1318,14 +1438,31 @@ export function applyCeilingsFactWrite(params: {
   value: unknown;
   nestedItemId?: string | null;
   componentId?: string | null;
+  factSource?: string | null;
+  briefText?: string | null;
 }): EstimateFact[] {
   const facts = params.facts.map((row) => ({ ...row })) as EstimateFact[];
+  const previousPortions = facts.find(
+    (row) =>
+      row.key === CEILINGS_PORTIONS_FACT_KEY &&
+      row.work_area_id === params.workAreaId
+  );
+  const nextSource = ceilingsPortionsFactSourceForWrite({
+    key: params.key,
+    previousSource: previousPortions?.source,
+    factSource: params.factSource,
+  });
   if (params.key === CEILINGS_PORTIONS_FACT_KEY) {
+    const portions = healStaleMachineCeilingPortions({
+      portions: parseCeilingsPortions(params.value),
+      briefText: params.briefText,
+    });
     return upsertFact(
       facts,
       params.workAreaId,
       CEILINGS_PORTIONS_FACT_KEY,
-      parseCeilingsPortions(params.value)
+      portions,
+      nextSource
     );
   }
 
@@ -1559,6 +1696,7 @@ export function applyCeilingsFactWrite(params: {
           applyCeilingBulkheadTopologyState(next, {
             explicit: next.form != null,
           });
+          next.form_authority = "user";
           return next;
         }
         if (!isSpecialistCeilingBulkheadForm(next.form)) {
@@ -1591,11 +1729,19 @@ export function applyCeilingsFactWrite(params: {
     return facts;
   }
 
+  if (params.key !== `${CEILINGS_BULKHEAD_FIELD_PREFIX}form`) {
+    portions = healStaleMachineCeilingPortions({
+      portions,
+      briefText: params.briefText,
+    });
+  }
+
   let next = upsertFact(
     facts,
     params.workAreaId,
     CEILINGS_PORTIONS_FACT_KEY,
-    portions
+    portions,
+    nextSource
   );
   if (activeId) {
     next = upsertFact(
@@ -1676,6 +1822,7 @@ function applyPortionField(
     if (portion.lining.thickness_mm != null) {
       portion.lining.family = "plasterboard";
     }
+    portion.lining.thickness_authority = "user";
     return;
   }
   if (field === "plywood_spec") {
@@ -1759,6 +1906,7 @@ function applyPortionField(
   }
   if (field === "insulation_included") {
     portion.finish.insulation_included = parseTriBool(value);
+    portion.finish.insulation_authority = "user";
     if (portion.finish.insulation_included === false) {
       portion.finish.insulation_type = null;
       portion.finish.insulation_spec = null;
@@ -1783,6 +1931,7 @@ function applyPortionField(
       portion.finish.insulation_spec = trimmed;
     }
     portion.finish.insulation_included = true;
+    portion.finish.insulation_authority = "user";
     return;
   }
   if (field === "insulation_spec") {
@@ -1795,14 +1944,17 @@ function applyPortionField(
         portion.finish.insulation_type = "other";
       }
     }
+    portion.finish.insulation_authority = "user";
     return;
   }
   if (field === "stopping_included") {
     portion.finish.stopping_included = parseTriBool(value);
+    portion.finish.stopping_authority = "user";
     return;
   }
   if (field === "painting_included") {
     portion.finish.painting_included = parseTriBool(value);
+    portion.finish.painting_authority = "user";
     return;
   }
   if (field === "demolition_included") {

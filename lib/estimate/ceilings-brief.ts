@@ -13,9 +13,11 @@ import {
   CEILINGS_PORTIONS_FACT_KEY,
   createEmptyCeilingPortion,
   createEmptyCeilingBulkhead,
+  healStaleMachineCeilingPortions,
   isUnsupportedCeilingBulkhead,
   normalizeExtractedCeilingPortions,
   parseCeilingPortion,
+  parseCeilingsPortions,
   type CeilingJobScope,
   type CeilingLiningFamily,
   type CeilingPlasterboardProduct,
@@ -23,6 +25,7 @@ import {
   type CeilingStructureFamily,
 } from "@/lib/estimate/ceilings-portions";
 import { canonicalCeilingSpecialistKindFromText } from "@/lib/estimate/ceilings-specialist";
+import { classifyCeilingBulkheadFormFromText, bulkheadMentionWindows } from "@/lib/estimate/ceilings-bulkhead-classify";
 
 function normalise(text: string): string {
   return text.trim().toLowerCase().replace(/\s+/g, " ");
@@ -420,268 +423,10 @@ function splitPortionSnippets(brief: string): string[] {
   return [trimmed];
 }
 
-const BULKHEAD_ISLAND_SIGNALS = [
-  "island bulkhead",
-  "island bulkheads",
-] as const;
-
-const BULKHEAD_BOXED_SIGNALS = [
-  "boxed bulkhead",
-  "box bulkhead",
-  "four-sided bulkhead",
-  "four sided bulkhead",
-  "4 sided bulkhead",
-] as const;
-
-const BULKHEAD_COMPLEX_SIGNALS = [
-  "complex bulkhead",
-  "feature bulkhead",
-  "feature ceiling bulkhead",
-  "curved bulkhead",
-  "curved bulkheads",
-  "curved feature bulkhead",
-  "floating bulkhead",
-  "floating bulkheads",
-  "structural transfer bulkhead",
-  "transfer bulkhead",
-  "services bulkhead",
-  "service bulkhead",
-  "oversized bulkhead",
-  "oversize bulkhead",
-] as const;
-
-const BULKHEAD_NON_WALL_ADJACENT_SIGNALS = [
-  "in the middle of the room",
-  "in the middle of a room",
-  "middle of the room",
-  "centre of the room",
-  "center of the room",
-  "exposed on all sides",
-  "exposed all sides",
-  "not against a wall",
-  "not against the wall",
-  "not wall-adjacent",
-  "not wall adjacent",
-] as const;
-
-const BULKHEAD_ORDINARY_SIGNALS = [
-  "wall-adjacent",
-  "wall adjacent",
-  "against the wall",
-  "against a wall",
-  "standard downstand",
-  "ordinary downstand",
-  "conventional downstand",
-  "standard bulkhead",
-  "ordinary bulkhead",
-  "conventional bulkhead",
-] as const;
-
-/**
- * Neutral ceiling-brief tokens. Leftover tokens after stripping these are
- * treated as bulkhead qualifiers. Keep this as an allowlist of non-topology
- * words, not a construction ontology.
- */
-const BULKHEAD_BRIEF_NEUTRAL_TOKENS = new Set([
-  "a",
-  "an",
-  "the",
-  "with",
-  "and",
-  "add",
-  "added",
-  "plus",
-  "including",
-  "include",
-  "also",
-  "of",
-  "for",
-  "to",
-  "or",
-  "one",
-  "some",
-  "another",
-  "in",
-  "on",
-  "at",
-  "from",
-  "by",
-  "is",
-  "are",
-  "has",
-  "have",
-  "needs",
-  "need",
-  "please",
-  "replace",
-  "replaced",
-  "reline",
-  "relining",
-  "new",
-  "existing",
-  "ceiling",
-  "ceilings",
-  "room",
-  "lounge",
-  "hallway",
-  "hall",
-  "bedroom",
-  "kitchen",
-  "garage",
-  "office",
-  "living",
-  "main",
-  "plasterboard",
-  "plaster",
-  "board",
-  "gib",
-  "standard",
-  "fyreline",
-  "aqualine",
-  "timber",
-  "steel",
-  "framing",
-  "lining",
-  "sheets",
-  "sheet",
-  "layers",
-  "layer",
-  "mm",
-  "m",
-  "metres",
-  "meters",
-  "metre",
-  "meter",
-  "high",
-  "height",
-  "x",
-  "by",
-  "complete",
-  "replacement",
-  "job",
-  "area",
-  "sqm",
-  "square",
-  "direct",
-  "fix",
-  "direct-fix",
-  "battens",
-  "batten",
-  "joists",
-  "joist",
-  "structure",
-  "suitable",
-  "over",
-  "insulation",
-  "stopping",
-  "painting",
-  "demolition",
-  "drop",
-  "dropped",
-  "suspended",
-  "dropper",
-  "rondo",
-  "furring",
-  "channel",
-  "grid",
-  "tile",
-  "tiles",
-  "t-bar",
-  "tbar",
-  "t",
-  "bar",
-  "plywood",
-  "ply",
-  "lined",
-  "two",
-  "three",
-  "bulkhead",
-  "bulkheads",
-  "downstand",
-  "long",
-  "length",
-  "deep",
-  "depth",
-  "wide",
-  "width",
-  "projection",
-  "framed",
-  "insulated",
-  "thermal",
-  "plastered",
-  "painted",
-  "paint",
-  "line",
-  "millimetres",
-  "millimeters",
-  "millimetre",
-  "millimeter",
-]);
-
-function hasRecognisedBulkheadMention(raw: string): boolean {
-  return /\bbulkheads?\b/.test(raw) || /\bdownstand\b/.test(raw);
-}
-
-function hasPositiveBulkheadMention(raw: string): boolean {
-  const stripped = raw
-    .replace(/\bno bulkheads?\b/g, " ")
-    .replace(/\bwithout (?:a |any )?bulkheads?\b/g, " ");
-  return hasRecognisedBulkheadMention(stripped);
-}
-
-function leftoverBulkheadQualifierTokens(raw: string): string[] {
-  const withoutDims = raw
-    .replace(/\d+(?:\.\d+)?/g, " ")
-    .replace(/[^\p{L}\s-]+/gu, " ")
-    .replace(/-/g, " ");
-  return withoutDims
-    .split(/\s+/)
-    .map((token) => token.trim().toLowerCase())
-    .filter((token) => token.length > 0 && !BULKHEAD_BRIEF_NEUTRAL_TOKENS.has(token));
-}
-
-function bulkheadMentionWindows(raw: string): string {
-  const windows: string[] = [];
-  const re = /\bbulkheads?\b|\bdownstand\b/gi;
-  for (const match of raw.matchAll(re)) {
-    const index = match.index ?? 0;
-    windows.push(raw.slice(Math.max(0, index - 80), index + match[0].length + 80));
-  }
-  return windows.join(" ");
-}
-
-/**
- * WA-08-R5/R6 — conservative, deterministic bulkhead classification.
- * Specialist / contradictory topology signals win. Ordinary material,
- * framing, finish and dimension descriptors do not make a bulkhead
- * specialist. Bare "bulkhead" may keep the disclosed ordinary assumption.
- */
 function bulkheadFormFromText(
   text: string
 ): "conventional_two_face_downstand" | "island" | "boxed" | "complex" | null {
-  const raw = normalise(text);
-  if (!hasRecognisedBulkheadMention(raw)) return null;
-  if (!hasPositiveBulkheadMention(raw)) return null;
-
-  if (includesAny(raw, BULKHEAD_ISLAND_SIGNALS)) return "island";
-  if (includesAny(raw, BULKHEAD_BOXED_SIGNALS)) return "boxed";
-  if (
-    includesAny(raw, BULKHEAD_COMPLEX_SIGNALS) ||
-    includesAny(raw, BULKHEAD_NON_WALL_ADJACENT_SIGNALS)
-  ) {
-    return "complex";
-  }
-
-  if (includesAny(raw, BULKHEAD_ORDINARY_SIGNALS)) {
-    return "conventional_two_face_downstand";
-  }
-
-  if (!/\bbulkheads?\b/.test(raw)) return null;
-  const qualifierSource = bulkheadMentionWindows(raw) || raw;
-  if (leftoverBulkheadQualifierTokens(qualifierSource).length === 0) {
-    return "conventional_two_face_downstand";
-  }
-  return "complex";
+  return classifyCeilingBulkheadFormFromText(text);
 }
 
 const MEASURE_UNIT =
@@ -866,6 +611,10 @@ function applySnippetToPortion(portion: CeilingPortion, snippet: string): void {
     applyCeilingBulkheadTopologyState(bulkhead, {
       explicit: form !== "conventional_two_face_downstand",
     });
+    bulkhead.form_authority =
+      form === "conventional_two_face_downstand"
+        ? "assumed_disclosed"
+        : "extracted";
     const dims = parseCeilingBulkheadDimensionsFromText(snippet);
     bulkhead.length_m = dims.lengthM;
     bulkhead.depth_m = dims.depthM;
@@ -1034,6 +783,7 @@ function fillMissingCeilingPortion(
       if (ordinary) {
         ordinary.form = parsedSpecialist.form;
         applyCeilingBulkheadTopologyState(ordinary, { explicit: true });
+        ordinary.form_authority = "extracted";
       }
     } else if (
       parsedOrdinary &&
@@ -1042,11 +792,13 @@ function fillMissingCeilingPortion(
       const specialist = out.bulkheads.find((row) =>
         isUnsupportedCeilingBulkhead(row)
       );
-      if (specialist) {
+      if (specialist && specialist.form_authority !== "user") {
         specialist.form = parsedOrdinary.form;
         applyCeilingBulkheadTopologyState(specialist, {
           explicit: parsedOrdinary.topology_source === "explicit",
         });
+        specialist.form_authority =
+          parsedOrdinary.form_authority ?? "assumed_disclosed";
       }
     }
     const parsedDims = parsed.bulkheads[0];
@@ -1132,16 +884,26 @@ export function mergeCeilingPortionsPreferringExplicitAi(
   return parsedPortions.map((row) => cloneCeilingPortion(row));
 }
 
+function ceilingPortionsFactNameMatches(
+  factName: string | null | undefined,
+  wanted?: string | null
+): boolean {
+  const name = factName ?? "";
+  if (wanted != null && wanted !== "") {
+    return name === wanted || name === "";
+  }
+  return true;
+}
+
 export function readAiCeilingPortionsFromExtraction(
   extraction: AIExtractionOutput,
   workAreaName?: string
 ): CeilingPortion[] {
-  const wanted = workAreaName ?? "";
   const facts = extraction.facts.filter(
     (fact) =>
       fact.key === CEILINGS_PORTIONS_FACT_KEY &&
       fact.work_area_type === "ceilings" &&
-      (fact.work_area_name ?? "") === wanted
+      ceilingPortionsFactNameMatches(fact.work_area_name, workAreaName)
   );
   const out: CeilingPortion[] = [];
   const seen = new Set<string>();
@@ -1165,6 +927,7 @@ export function applyExtractedCeilingsToFacts(params: {
     workAreaId: params.workAreaId,
     key: CEILINGS_PORTIONS_FACT_KEY,
     value: [...params.portions],
+    factSource: "ai_extracted",
   });
 }
 
@@ -1188,7 +951,7 @@ export function seedExtractedCeilingsFact(
       !(
         fact.key === CEILINGS_PORTIONS_FACT_KEY &&
         fact.work_area_type === "ceilings" &&
-        (fact.work_area_name ?? "") === (params.workAreaName ?? "")
+        ceilingPortionsFactNameMatches(fact.work_area_name, params.workAreaName)
       )
   );
   extraction.facts.push({
@@ -1198,5 +961,135 @@ export function seedExtractedCeilingsFact(
     label: "Ceiling portions",
     value: portions as Record<string, unknown>[],
     confidence: 0.9,
+  });
+}
+
+function overlayUserAuthoritativeCeilingPortion(
+  extracted: CeilingPortion,
+  persisted: CeilingPortion
+): CeilingPortion {
+  const next = cloneCeilingPortion(extracted);
+  next.id = persisted.id;
+  if (
+    persisted.finish.stopping_authority === "user" ||
+    (persisted.finish.stopping_included != null &&
+      next.finish.stopping_included == null)
+  ) {
+    next.finish.stopping_included = persisted.finish.stopping_included;
+    next.finish.stopping_authority =
+      persisted.finish.stopping_authority ?? "user";
+  }
+  if (
+    persisted.finish.painting_authority === "user" ||
+    (persisted.finish.painting_included != null &&
+      next.finish.painting_included == null)
+  ) {
+    next.finish.painting_included = persisted.finish.painting_included;
+    next.finish.painting_authority =
+      persisted.finish.painting_authority ?? "user";
+  }
+  if (
+    persisted.finish.insulation_authority === "user" ||
+    (persisted.finish.insulation_included != null &&
+      next.finish.insulation_included == null)
+  ) {
+    next.finish.insulation_included = persisted.finish.insulation_included;
+    next.finish.insulation_type = persisted.finish.insulation_type;
+    next.finish.insulation_spec = persisted.finish.insulation_spec;
+    next.finish.insulation_authority =
+      persisted.finish.insulation_authority ?? "user";
+  }
+  if (persisted.lining.thickness_authority === "user") {
+    next.lining.thickness_mm = persisted.lining.thickness_mm;
+    next.lining.thickness_authority = "user";
+  }
+  const persistedBulkheads = persisted.bulkheads;
+  next.bulkheads = next.bulkheads.map((bulkhead, index) => {
+    const match =
+      persistedBulkheads.find((row) => row.id === bulkhead.id) ??
+      persistedBulkheads[index];
+    if (!match) return bulkhead;
+    const out = { ...bulkhead, id: match.id };
+    if (match.form_authority === "user") {
+      out.form = match.form;
+      out.topology = match.topology;
+      out.topology_source = match.topology_source;
+      out.form_authority = "user";
+    }
+    return out;
+  });
+  if (persisted.active_bulkhead_id) {
+    next.active_bulkhead_id = persisted.active_bulkhead_id;
+  }
+  return next;
+}
+
+function matchReanalysePortion(
+  extracted: readonly CeilingPortion[],
+  persisted: CeilingPortion,
+  index: number,
+  used: Set<number>
+): CeilingPortion | null {
+  const byId = extracted.findIndex(
+    (row, i) => !used.has(i) && row.id === persisted.id
+  );
+  if (byId >= 0) {
+    used.add(byId);
+    return extracted[byId] ?? null;
+  }
+  const label = persisted.label?.trim().toLowerCase();
+  if (label) {
+    const byLabel = extracted.findIndex(
+      (row, i) => !used.has(i) && row.label?.trim().toLowerCase() === label
+    );
+    if (byLabel >= 0) {
+      used.add(byLabel);
+      return extracted[byLabel] ?? null;
+    }
+  }
+  if (extracted.length === 1 && !used.has(0) && index === 0) {
+    used.add(0);
+    return extracted[0] ?? null;
+  }
+  if (!used.has(index) && extracted[index]) {
+    used.add(index);
+    return extracted[index] ?? null;
+  }
+  return null;
+}
+
+export function mergePersistedCeilingPortionsOnReanalyse(params: {
+  readonly extracted: unknown;
+  readonly persisted: unknown;
+  readonly briefText?: string | null;
+}): CeilingPortion[] {
+  const extracted = parseCeilingsPortions(params.extracted);
+  const persisted = parseCeilingsPortions(params.persisted);
+  if (persisted.length === 0) {
+    return healStaleMachineCeilingPortions({
+      portions: extracted,
+      briefText: params.briefText,
+    });
+  }
+  if (extracted.length === 0) {
+    return healStaleMachineCeilingPortions({
+      portions: persisted,
+      briefText: params.briefText,
+    });
+  }
+  const used = new Set<number>();
+  const merged = persisted.map((portion, index) => {
+    const match = matchReanalysePortion(extracted, portion, index, used);
+    const next = match
+      ? overlayUserAuthoritativeCeilingPortion(match, portion)
+      : cloneCeilingPortion(portion);
+    return next;
+  });
+  extracted.forEach((row, index) => {
+    if (!used.has(index)) merged.push(cloneCeilingPortion(row));
+  });
+  return healStaleMachineCeilingPortions({
+    portions: merged,
+    briefText: params.briefText,
   });
 }
