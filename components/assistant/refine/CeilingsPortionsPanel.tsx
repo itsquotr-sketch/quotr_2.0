@@ -19,6 +19,7 @@ export function CeilingsPortionsPanel({
   onSelect,
   onAddBulkhead,
   onDeleteBulkhead,
+  onDuplicateBulkhead,
 }: {
   panel: CeilingsRefinePanel;
   isSaving?: boolean;
@@ -28,6 +29,7 @@ export function CeilingsPortionsPanel({
   onSelect: (workAreaId: string, portionId: string) => void;
   onAddBulkhead?: (workAreaId: string, portionId: string, bulkheadId: string) => void | Promise<unknown>;
   onDeleteBulkhead?: (workAreaId: string, portionId: string, bulkheadId: string) => void;
+  onDuplicateBulkhead?: (workAreaId: string, portionId: string, bulkheadId: string) => void;
 }) {
   const addLock = useRef(false);
   const addBhLock = useRef(false);
@@ -123,18 +125,34 @@ export function CeilingsPortionsPanel({
                       {bh.summary ? (
                         <p className="text-xs text-muted-foreground">{bh.summary}</p>
                       ) : null}
-                      <Button
-                        type="button"
-                        variant="outline"
-                        className="mt-2 h-10 min-h-10 px-3"
-                        onClick={() => {
-                          if (window.confirm("Remove this bulkhead?")) {
-                            onDeleteBulkhead?.(panel.workAreaId, portion.id, bh.id);
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-10 min-h-10 px-3"
+                          onClick={() =>
+                            onDuplicateBulkhead?.(
+                              panel.workAreaId,
+                              portion.id,
+                              bh.id
+                            )
                           }
-                        }}
-                      >
-                        Delete bulkhead
-                      </Button>
+                        >
+                          Duplicate bulkhead
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          className="h-10 min-h-10 px-3"
+                          onClick={() => {
+                            if (window.confirm("Remove this bulkhead?")) {
+                              onDeleteBulkhead?.(panel.workAreaId, portion.id, bh.id);
+                            }
+                          }}
+                        >
+                          Delete bulkhead
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   <Button

@@ -9,9 +9,11 @@ import type { AIExtractionOutput } from "@/lib/ai/schema";
 import type { EstimateFact } from "@/lib/estimate/types";
 import {
   applyCeilingsFactWrite,
+  applyCeilingBulkheadTopologyState,
   CEILINGS_PORTIONS_FACT_KEY,
   createEmptyCeilingPortion,
   createEmptyCeilingBulkhead,
+  isUnsupportedCeilingBulkhead,
   normalizeExtractedCeilingPortions,
   parseCeilingPortion,
   type CeilingJobScope,
@@ -423,12 +425,24 @@ function bulkheadFormFromText(
 ): "conventional_two_face_downstand" | "island" | "boxed" | "complex" | null {
   const raw = normalise(text);
   if (includesAny(raw, ["island bulkhead", "island bulkheads"])) return "island";
-  if (includesAny(raw, ["boxed bulkhead", "box bulkhead"])) return "boxed";
+  if (
+    includesAny(raw, [
+      "boxed bulkhead",
+      "box bulkhead",
+      "four-sided bulkhead",
+      "four sided bulkhead",
+      "4 sided bulkhead",
+    ])
+  ) {
+    return "boxed";
+  }
   if (
     includesAny(raw, [
       "complex bulkhead",
       "feature bulkhead",
       "feature ceiling bulkhead",
+      "curved bulkhead",
+      "curved bulkheads",
     ])
   ) {
     return "complex";
@@ -505,12 +519,10 @@ function applySnippetToPortion(portion: CeilingPortion, snippet: string): void {
   if (form) {
     portion.has_bulkheads = true;
     const bulkhead = createEmptyCeilingBulkhead();
-    if (form !== "conventional_two_face_downstand") {
-      bulkhead.form = form;
-      bulkhead.topology = "unsupported_specialist";
-    } else {
-      bulkhead.form = form;
-    }
+    bulkhead.form = form;
+    applyCeilingBulkheadTopologyState(bulkhead, {
+      explicit: form !== "conventional_two_face_downstand",
+    });
     portion.bulkheads = [bulkhead];
     portion.active_bulkhead_id = bulkhead.id;
   } else if (/\bno bulkhead/.test(normalise(snippet))) {
@@ -638,6 +650,22 @@ function fillMissingCeilingPortion(
   if (out.bulkheads.length === 0 && parsed.bulkheads.length > 0) {
     out.bulkheads = parsed.bulkheads.map((row) => ({ ...row }));
     out.active_bulkhead_id = out.active_bulkhead_id ?? parsed.active_bulkhead_id;
+  } else {
+    const parsedSpecialist = parsed.bulkheads.find((row) =>
+      isUnsupportedCeilingBulkhead(row)
+    );
+    if (
+      parsedSpecialist &&
+      out.bulkheads.some((row) => !isUnsupportedCeilingBulkhead(row))
+    ) {
+      const ordinary = out.bulkheads.find(
+        (row) => !isUnsupportedCeilingBulkhead(row)
+      );
+      if (ordinary) {
+        ordinary.form = parsedSpecialist.form;
+        applyCeilingBulkheadTopologyState(ordinary, { explicit: true });
+      }
+    }
   }
   out.significant_penetrations =
     out.significant_penetrations ?? parsed.significant_penetrations;

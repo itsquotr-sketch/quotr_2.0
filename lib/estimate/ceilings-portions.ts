@@ -34,6 +34,8 @@ export const CEILINGS_DUPLICATE_PORTION_KEY =
   "ceilings.duplicate_portion" as const;
 export const CEILINGS_DELETE_PORTION_KEY = "ceilings.delete_portion" as const;
 export const CEILINGS_ADD_BULKHEAD_KEY = "ceilings.add_bulkhead" as const;
+export const CEILINGS_DUPLICATE_BULKHEAD_KEY =
+  "ceilings.duplicate_bulkhead" as const;
 export const CEILINGS_DELETE_BULKHEAD_KEY =
   "ceilings.delete_bulkhead" as const;
 
@@ -226,6 +228,20 @@ export type CeilingBulkheadTopology =
 export const CEILINGS_BULKHEAD_TOPOLOGY_ASSUMPTION =
   "Assumes a standard wall-adjacent downstand bulkhead with an underside and one exposed vertical face.";
 
+export const CEILINGS_BULKHEAD_TOPOLOGY_SOURCE_VALUES = [
+  "assumed_disclosed",
+  "explicit",
+] as const;
+export type CeilingBulkheadTopologySource =
+  (typeof CEILINGS_BULKHEAD_TOPOLOGY_SOURCE_VALUES)[number];
+
+export const CEILINGS_BULKHEAD_FORM_REFINE_OPTIONS = [
+  "Standard wall-adjacent downstand",
+  "Island bulkhead",
+  "Boxed bulkhead",
+  "Feature / custom bulkhead",
+] as const;
+
 export type CeilingGeometry = {
   mode: CeilingGeometryMode;
   length_m: number | null;
@@ -302,6 +318,7 @@ export type CeilingBulkhead = {
   thickness_mm?: CeilingPlasterboardThicknessMm;
   form: CeilingBulkheadForm | null;
   topology: CeilingBulkheadTopology;
+  topology_source: CeilingBulkheadTopologySource;
 };
 
 export type CeilingPortion = {
@@ -348,6 +365,72 @@ function parseEnum<T extends string>(
   return (allowed as readonly string[]).includes(trimmed)
     ? (trimmed as T)
     : null;
+}
+
+export function isSpecialistCeilingBulkheadForm(
+  form: CeilingBulkheadForm | null | undefined
+): boolean {
+  return form === "island" || form === "boxed" || form === "complex";
+}
+
+export function parseCeilingBulkheadForm(
+  value: unknown
+): CeilingBulkheadForm | null {
+  const direct = parseEnum(value, CEILINGS_BULKHEAD_FORM_VALUES);
+  if (direct) return direct;
+  if (typeof value !== "string") return null;
+  const normalised = value.trim().toLowerCase().replace(/\s+/g, " ");
+  if (
+    normalised.includes("wall-adjacent") ||
+    normalised.includes("wall adjacent") ||
+    normalised === "standard wall-adjacent downstand" ||
+    normalised === "standard downstand"
+  ) {
+    return CEILINGS_BULKHEAD_TOPOLOGY_V1;
+  }
+  if (normalised.includes("island")) return "island";
+  if (
+    normalised.includes("boxed") ||
+    normalised.includes("four-sided") ||
+    normalised.includes("four sided") ||
+    normalised.includes("4 sided")
+  ) {
+    return "boxed";
+  }
+  if (
+    normalised.includes("feature") ||
+    normalised.includes("curved") ||
+    normalised.includes("custom") ||
+    normalised.includes("complex")
+  ) {
+    return "complex";
+  }
+  return null;
+}
+
+export function ceilingBulkheadFormRefineLabel(
+  form: CeilingBulkheadForm | null | undefined
+): string {
+  if (form === "island") return "Island bulkhead";
+  if (form === "boxed") return "Boxed bulkhead";
+  if (form === "complex") return "Feature / custom bulkhead";
+  return "Standard wall-adjacent downstand";
+}
+
+export function applyCeilingBulkheadTopologyState(
+  bulkhead: CeilingBulkhead,
+  params?: { readonly explicit?: boolean }
+): CeilingBulkhead {
+  if (isSpecialistCeilingBulkheadForm(bulkhead.form)) {
+    bulkhead.topology = CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED;
+    bulkhead.topology_source = "explicit";
+    return bulkhead;
+  }
+  bulkhead.form = CEILINGS_BULKHEAD_TOPOLOGY_V1;
+  bulkhead.topology = CEILINGS_BULKHEAD_TOPOLOGY_V1;
+  bulkhead.topology_source =
+    params?.explicit === true ? "explicit" : "assumed_disclosed";
+  return bulkhead;
 }
 
 function parseTriBool(value: unknown): boolean | null {
@@ -428,8 +511,9 @@ export function createEmptyCeilingBulkhead(params?: {
     framing_type: null,
     lining_type: null,
     thickness_mm: undefined,
-    form: null,
+    form: CEILINGS_BULKHEAD_TOPOLOGY_V1,
     topology: CEILINGS_BULKHEAD_TOPOLOGY_V1,
+    topology_source: "assumed_disclosed",
   };
 }
 
@@ -459,7 +543,10 @@ export function createEmptyCeilingPortion(params?: {
 export function cloneCeilingBulkhead(
   bulkhead: CeilingBulkhead
 ): CeilingBulkhead {
-  return { ...bulkhead };
+  return {
+    ...bulkhead,
+    topology_source: bulkhead.topology_source ?? "assumed_disclosed",
+  };
 }
 
 export function duplicateCeilingBulkhead(
@@ -623,7 +710,7 @@ export function duplicateCeilingPortion(
 export function ceilingBulkheadTopologyForForm(
   form: CeilingBulkheadForm | null
 ): CeilingBulkheadTopology {
-  if (form === "island" || form === "boxed" || form === "complex") {
+  if (isSpecialistCeilingBulkheadForm(form)) {
     return CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED;
   }
   return CEILINGS_BULKHEAD_TOPOLOGY_V1;
@@ -634,9 +721,7 @@ export function isUnsupportedCeilingBulkhead(
 ): boolean {
   return (
     bulkhead.topology === CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED ||
-    bulkhead.form === "island" ||
-    bulkhead.form === "boxed" ||
-    bulkhead.form === "complex"
+    isSpecialistCeilingBulkheadForm(bulkhead.form)
   );
 }
 
@@ -645,12 +730,12 @@ export function parseCeilingBulkhead(value: unknown): CeilingBulkhead | null {
   const id =
     typeof value.id === "string" && value.id.trim() ? value.id.trim() : null;
   if (!id) return null;
-  const form = parseEnum(value.form, CEILINGS_BULKHEAD_FORM_VALUES);
-  const storedTopology =
-    value.topology === CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED
-      ? CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED
-      : null;
-  return {
+  const form = parseCeilingBulkheadForm(value.form);
+  const storedSource = parseEnum(
+    value.topology_source,
+    CEILINGS_BULKHEAD_TOPOLOGY_SOURCE_VALUES
+  );
+  const bulkhead: CeilingBulkhead = {
     id,
     label:
       typeof value.label === "string" && value.label.trim()
@@ -664,10 +749,15 @@ export function parseCeilingBulkhead(value: unknown): CeilingBulkhead | null {
     thickness_mm:
       parseCeilingPlasterboardThickness(value.thickness_mm) ?? undefined,
     form,
-    topology:
-      storedTopology ??
-      ceilingBulkheadTopologyForForm(form),
+    topology: ceilingBulkheadTopologyForForm(form),
+    topology_source: storedSource ?? "assumed_disclosed",
   };
+  return applyCeilingBulkheadTopologyState(bulkhead, {
+    explicit:
+      isSpecialistCeilingBulkheadForm(form) ||
+      (storedSource === "explicit" &&
+        isSpecialistCeilingBulkheadForm(form)),
+  });
 }
 
 function parseBulkheads(value: unknown): CeilingBulkhead[] {
@@ -955,13 +1045,31 @@ export function isUsableExtractedCeilingPortion(
   );
 }
 
+function withAssignedBulkheadIds(
+  row: Record<string, unknown>
+): Record<string, unknown> {
+  if (!Array.isArray(row.bulkheads)) return row;
+  return {
+    ...row,
+    bulkheads: row.bulkheads.map((bulkhead) =>
+      isRecord(bulkhead) &&
+      (typeof bulkhead.id !== "string" || !bulkhead.id.trim())
+        ? { ...bulkhead, id: createCeilingBulkheadId() }
+        : bulkhead
+    ),
+  };
+}
+
 function withAssignedCeilingIds(value: unknown): unknown {
   if (Array.isArray(value)) {
-    return value.map((row) =>
-      isRecord(row) && (typeof row.id !== "string" || !row.id.trim())
-        ? { ...row, id: createCeilingPortionId() }
-        : row
-    );
+    return value.map((row) => {
+      if (!isRecord(row)) return row;
+      const withId =
+        typeof row.id !== "string" || !row.id.trim()
+          ? { ...row, id: createCeilingPortionId() }
+          : row;
+      return withAssignedBulkheadIds(withId);
+    });
   }
   if (isRecord(value) && Array.isArray(value.portions)) {
     return {
@@ -993,6 +1101,7 @@ export function isCeilingsPortionWriteKey(key: string): boolean {
     key === CEILINGS_DUPLICATE_PORTION_KEY ||
     key === CEILINGS_DELETE_PORTION_KEY ||
     key === CEILINGS_ADD_BULKHEAD_KEY ||
+    key === CEILINGS_DUPLICATE_BULKHEAD_KEY ||
     key === CEILINGS_DELETE_BULKHEAD_KEY ||
     key.startsWith(CEILINGS_PORTION_FIELD_PREFIX) ||
     key.startsWith(CEILINGS_BULKHEAD_FIELD_PREFIX)
@@ -1316,6 +1425,7 @@ export function applyCeilingsFactWrite(params: {
     }
   } else if (
     params.key === CEILINGS_ADD_BULKHEAD_KEY ||
+    params.key === CEILINGS_DUPLICATE_BULKHEAD_KEY ||
     params.key === CEILINGS_DELETE_BULKHEAD_KEY ||
     params.key === CEILINGS_ACTIVE_BULKHEAD_ID_FACT_KEY ||
     params.key.startsWith(CEILINGS_BULKHEAD_FIELD_PREFIX)
@@ -1353,6 +1463,26 @@ export function applyCeilingsFactWrite(params: {
         });
         portion.bulkheads = [...portion.bulkheads, created];
         portion.active_bulkhead_id = created.id;
+        portion.has_bulkheads = true;
+        return;
+      }
+      if (params.key === CEILINGS_DUPLICATE_BULKHEAD_KEY) {
+        const sourceId =
+          (typeof params.value === "string" &&
+          isClientCeilingBulkheadId(params.value)
+            ? params.value.trim()
+            : null) ??
+          (params.componentId && isClientCeilingBulkheadId(params.componentId)
+            ? params.componentId.trim()
+            : null) ??
+          portion.active_bulkhead_id;
+        const source = sourceId
+          ? portion.bulkheads.find((row) => row.id === sourceId)
+          : null;
+        if (!source) return;
+        const copy = duplicateCeilingBulkhead(source);
+        portion.bulkheads = [...portion.bulkheads, copy];
+        portion.active_bulkhead_id = copy.id;
         portion.has_bulkheads = true;
         return;
       }
@@ -1425,11 +1555,16 @@ export function applyCeilingsFactWrite(params: {
           next.thickness_mm =
             parseCeilingPlasterboardThickness(params.value) ?? undefined;
         } else if (field === "form") {
-          next.form = parseEnum(params.value, CEILINGS_BULKHEAD_FORM_VALUES);
-          next.topology = ceilingBulkheadTopologyForForm(next.form);
+          next.form = parseCeilingBulkheadForm(params.value);
+          applyCeilingBulkheadTopologyState(next, {
+            explicit: next.form != null,
+          });
+          return next;
         }
-        if (next.form == null && next.topology !== CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED) {
-          next.topology = CEILINGS_BULKHEAD_TOPOLOGY_V1;
+        if (!isSpecialistCeilingBulkheadForm(next.form)) {
+          applyCeilingBulkheadTopologyState(next, {
+            explicit: next.topology_source === "explicit",
+          });
         }
         return next;
       });
@@ -1680,6 +1815,10 @@ function applyPortionField(
     if (present === false) {
       portion.bulkheads = [];
       portion.active_bulkhead_id = null;
+    } else if (present === true && portion.bulkheads.length === 0) {
+      const created = createEmptyCeilingBulkhead();
+      portion.bulkheads = [created];
+      portion.active_bulkhead_id = created.id;
     }
     return;
   }

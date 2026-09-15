@@ -211,8 +211,8 @@ const COPY: Record<string, CeilingQuestionCopyRow> = {
     question: "Bulkhead lining thickness?",
   },
   "ceilings.bulkhead.form": {
-    label: "Bulkhead form",
-    question: "Bulkhead form?",
+    label: "Bulkhead type",
+    question: "Standard wall-adjacent downstand, or a specialist bulkhead?",
   },
   "ceilings.bulkhead.topology": {
     label: "Bulkhead topology",

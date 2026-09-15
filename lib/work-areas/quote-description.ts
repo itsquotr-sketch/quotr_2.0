@@ -11,6 +11,7 @@ import {
 import { parseInternalWallsJobScope } from "@/lib/estimate/internal-walls-scope";
 import { parseInternalWallsWallTypes } from "@/lib/estimate/internal-walls-wall-types";
 import {
+  isUnsupportedCeilingBulkhead,
   parseCeilingsPortions,
   type CeilingPortion,
 } from "@/lib/estimate/ceilings-portions";
@@ -817,6 +818,12 @@ function nestedCeilingPortionScope(portion: CeilingPortion, index: number): stri
     const named = bulkhead.label?.trim() ?? "";
     const generic = !named || /^bulkhead\s*\d+$/i.test(named);
     const liningPhrase = formatBulkheadLiningPhrase(bulkhead);
+    if (isUnsupportedCeilingBulkhead(bulkhead)) {
+      sentence += ` Specialist bulkhead${
+        dims ? ` approximately ${dims}` : ""
+      } requires pricing.`;
+      continue;
+    }
     sentence += ` Form and line ${
       generic ? "one wall-adjacent downstand bulkhead" : named
     }${dims ? ` approximately ${dims}` : ""}${

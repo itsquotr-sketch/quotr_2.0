@@ -15,6 +15,7 @@ import {
 import {
   CEILINGS_BULKHEAD_TOPOLOGY_ASSUMPTION,
   hasCanonicalCeilingsPortions,
+  isUnsupportedCeilingBulkhead,
   resolveCeilingsPortions,
   type CeilingPortion,
 } from "@/lib/estimate/ceilings-portions";
@@ -275,7 +276,11 @@ function builderFacingAssumptions(portion: CeilingPortion): string[] {
     out.push(CEILING_TIMBER_LINING_EDGE_GAP_ASSUMPTION);
   }
   if (portion.has_bulkheads === true && portion.bulkheads.length > 0) {
-    out.push(CEILINGS_BULKHEAD_TOPOLOGY_ASSUMPTION.replace(/^Assumes\s+/i, "Assumed: "));
+    if (portion.bulkheads.some((row) => !isUnsupportedCeilingBulkhead(row))) {
+      out.push(
+        CEILINGS_BULKHEAD_TOPOLOGY_ASSUMPTION.replace(/^Assumes\s+/i, "Assumed: ")
+      );
+    }
   }
   const waste = portion.lining.family === "plasterboard" || lining === "plywood" || lining === "tile_and_grid";
   if (waste) {
@@ -509,6 +514,17 @@ export function applyCeilingsReviewGroups(params: {
         ]
           .filter(Boolean)
           .join(" × ");
+        const liningArea =
+          bulkhead.length_m != null &&
+          bulkhead.depth_m != null &&
+          bulkhead.height_m != null
+            ? Number(
+                (bulkhead.length_m * (bulkhead.depth_m + bulkhead.height_m)).toFixed(1)
+              )
+            : null;
+        const assumption = isUnsupportedCeilingBulkhead(bulkhead)
+          ? null
+          : "standard wall-adjacent downstand with underside and one exposed vertical face";
         const bhGroup = makeGroup(
           `ceilings-bulkhead-${bulkhead.id}`,
           bulkhead.label?.trim() || "Bulkhead",
@@ -518,7 +534,12 @@ export function applyCeilingsReviewGroups(params: {
         if (bhGroup) {
           lineGroups.push({
             ...bhGroup,
-            supporting: [dims || null, bhGroup.supporting]
+            supporting: [
+              dims || null,
+              liningArea != null ? `${liningArea}m² lining` : null,
+              assumption,
+              bhGroup.supporting,
+            ]
               .filter(Boolean)
               .join(" · "),
           });

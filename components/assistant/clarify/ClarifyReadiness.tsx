@@ -396,6 +396,16 @@ export function RefineEstimatePanel({
                   bulkheadId
                 );
               }}
+              onDuplicateBulkhead={(workAreaId, portionId, bulkheadId) =>
+                onWallTypeAction(
+                  workAreaId,
+                  "ceilings.duplicate_bulkhead",
+                  bulkheadId,
+                  "Duplicate bulkhead",
+                  portionId,
+                  bulkheadId
+                )
+              }
               onDeleteBulkhead={(workAreaId, portionId, bulkheadId) =>
                 onWallTypeAction(
                   workAreaId,

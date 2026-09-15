@@ -79,7 +79,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
   "ceilings.portion.fire_acoustic_requirement": "Fire / acoustic requirement",
   "ceilings.portion.fire_acoustic_system": "Fire / acoustic system",
   "ceilings.portion.edge_offset_m": "Edge offset",
-  "ceilings.bulkhead.form": "Bulkhead form",
+  "ceilings.bulkhead.form": "Bulkhead type",
   "ceilings.bulkhead.length_m": "Bulkhead length",
   "ceilings.bulkhead.depth_m": "Bulkhead depth",
   "ceilings.bulkhead.height_m": "Bulkhead height",

@@ -41,7 +41,7 @@ import {
   CEILINGS_DIRECTION_VALUES,
   CEILINGS_BULKHEAD_FRAMING_VALUES,
   CEILINGS_BULKHEAD_LINING_VALUES,
-  CEILINGS_BULKHEAD_FORM_VALUES,
+  CEILINGS_BULKHEAD_FORM_REFINE_OPTIONS,
   CEILINGS_BULKHEAD_TOPOLOGY_UNSUPPORTED,
   ceilingInsulationTypeSelectValue,
   isCeilingInsulationType,
@@ -138,7 +138,7 @@ function optionsForKey(factKey: string): readonly string[] | undefined {
     case "ceilings.bulkhead.lining_type":
       return [...CEILINGS_BULKHEAD_LINING_VALUES];
     case "ceilings.bulkhead.form":
-      return [...CEILINGS_BULKHEAD_FORM_VALUES];
+      return [...CEILINGS_BULKHEAD_FORM_REFINE_OPTIONS];
     default:
       return undefined;
   }

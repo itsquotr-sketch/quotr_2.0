@@ -28,6 +28,7 @@ import {
 import {
   CEILINGS_BULKHEAD_FRAMING_VALUES,
   CEILINGS_BULKHEAD_LINING_VALUES,
+  CEILINGS_BULKHEAD_FORM_REFINE_OPTIONS,
   CEILINGS_DIRECTION_VALUES,
   CEILINGS_INSULATION_TYPE_VALUES,
   CEILINGS_JOB_SCOPE_VALUES,
@@ -37,8 +38,10 @@ import {
   CEILINGS_STRUCTURE_FAMILY_VALUES,
   CEILINGS_TILE_SIZE_VALUES,
   CEILINGS_TIMBER_SIZE_VALUES,
+  ceilingBulkheadFormRefineLabel,
   ceilingInsulationNeedsSpecification,
   hasCanonicalCeilingsPortions,
+  isUnsupportedCeilingBulkhead,
   resolveCeilingsPortions,
   type CeilingPortion,
 } from "@/lib/estimate/ceilings-portions";
@@ -344,6 +347,27 @@ function portionFields(
       undefined,
       componentId
     );
+    field(
+      "ceilings.bulkhead.form",
+      "Bulkhead type",
+      "Standard wall-adjacent downstand, or a specialist bulkhead?",
+      "select",
+      CEILINGS_BULKHEAD_FORM_REFINE_OPTIONS,
+      undefined,
+      componentId
+    );
+    const formRow = out[out.length - 1];
+    if (formRow?.factKey === "ceilings.bulkhead.form") {
+      const formAssumed =
+        bulkhead.topology_source === "assumed_disclosed" &&
+        !isUnsupportedCeilingBulkhead(bulkhead);
+      out[out.length - 1] = {
+        ...formRow,
+        currentValue: ceilingBulkheadFormRefineLabel(bulkhead.form),
+        assumed: formAssumed,
+        valueSource: formAssumed ? "assumption" : formRow.valueSource,
+      };
+    }
   }
 
   return out;
@@ -371,17 +395,23 @@ export function ceilingsRefinePanel(params: {
       ]
         .filter(Boolean)
         .join(" · "),
-      bulkheads: portion.bulkheads.map((bh, bhIndex) => ({
-        id: bh.id,
-        displayName: bh.label?.trim() || `Bulkhead ${bhIndex + 1}`,
-        summary: [
+      bulkheads: portion.bulkheads.map((bh, bhIndex) => {
+        const dims = [
           bh.length_m != null ? `${bh.length_m}m` : null,
           bh.depth_m != null ? `${bh.depth_m}m` : null,
           bh.height_m != null ? `${bh.height_m}m` : null,
         ]
           .filter(Boolean)
-          .join(" × "),
-      })),
+          .join(" × ");
+        const shape = isUnsupportedCeilingBulkhead(bh)
+          ? "specialist — pricing required"
+          : "standard wall-adjacent downstand";
+        return {
+          id: bh.id,
+          displayName: bh.label?.trim() || `Bulkhead ${bhIndex + 1}`,
+          summary: [dims || null, shape].filter(Boolean).join(" · "),
+        };
+      }),
     })),
     activeId: resolved.activeId,
   };

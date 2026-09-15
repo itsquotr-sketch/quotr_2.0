@@ -16,6 +16,7 @@ import {
   CEILINGS_BULKHEAD_TOPOLOGY_ASSUMPTION,
   CEILINGS_DELETE_BULKHEAD_KEY,
   CEILINGS_DELETE_PORTION_KEY,
+  CEILINGS_DUPLICATE_BULKHEAD_KEY,
   CEILINGS_DUPLICATE_PORTION_KEY,
   CEILINGS_PORTIONS_FACT_KEY,
   ceilingInsulationNeedsSpecification,
@@ -465,12 +466,13 @@ export const CEILINGS_INFORMATION_CONTRACT: readonly CeilingsInformationContract
     },
     {
       factKey: "ceilings.bulkhead.form",
-      askClass: "ASK_NOW",
+      askClass: "DERIVED_NEVER_ASK",
       scope: "bulkhead",
       calculatorConsumed: false,
       physical: true,
       commercial: true,
-      reason: "Bulkhead form. Island/boxed/complex is unsupported specialist, not two-face.",
+      reason:
+        "Ordinary bulkheads assume a standard wall-adjacent downstand. Island/boxed/feature stay specialist. Not asked as a technical enum.",
     },
     {
       factKey: "ceilings.bulkhead.topology",
@@ -800,6 +802,7 @@ export const CEILINGS_CALCULATOR_CONSUMED_FACTS = [
   CEILINGS_DUPLICATE_PORTION_KEY,
   CEILINGS_DELETE_PORTION_KEY,
   CEILINGS_ADD_BULKHEAD_KEY,
+  CEILINGS_DUPLICATE_BULKHEAD_KEY,
   CEILINGS_DELETE_BULKHEAD_KEY,
   ...CEILINGS_INFORMATION_CONTRACT.map((row) => row.factKey),
   "ceilings.portion.label",
