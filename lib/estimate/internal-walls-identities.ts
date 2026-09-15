@@ -38,6 +38,10 @@ export const INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT =
 export const INTERNAL_WALLS_FRAMING_FIXINGS_COST_PER_M2 = 8 as const;
 export const INTERNAL_WALLS_STEEL_TRACK_KEY = "steel.framing.track.lm" as const;
 export const INTERNAL_WALLS_STEEL_STUD_KEY = "steel.framing.stud.lm" as const;
+/** EST-BENCHMARK-01B — ordinary 92 mm track-and-stud COST. Not specialist steel. */
+export const INTERNAL_WALLS_STEEL_TRACK_QUOTR_COST = 5.5;
+export const INTERNAL_WALLS_STEEL_STUD_QUOTR_COST = 6.5;
+export const INTERNAL_WALLS_ORDINARY_STEEL_STUD_WIDTH_MM = 92;
 export const INTERNAL_WALLS_FRAMING_STEEL_TRACK_COMPONENT =
   "internal_walls.framing.steel.track.material" as const;
 export const INTERNAL_WALLS_FRAMING_STEEL_STUD_COMPONENT =
@@ -303,6 +307,10 @@ export const INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY =
   "internal_walls.insulation.install.hours_per_m2" as const;
 export const INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY =
   "internal_walls.skirting.install.hours_per_lm" as const;
+/** EST-BENCHMARK-01B — ordinary pine/MDF skirting productivity. */
+export const INTERNAL_WALLS_SKIRTING_HOURS_PER_LM = 0.1;
+export const INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION =
+  "Quotr V1 0.10 person-hours / lm ordinary wall skirting. Company productivity wins. Not deck full-height screening." as const;
 export const INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY =
   "internal_walls.cornice.install.hours_per_lm" as const;
 

@@ -50,6 +50,16 @@ export const CEILINGS_SUSPENSION_DROPPER_COMPONENT =
 export const CEILINGS_SUSPENSION_WIRE_COMPONENT =
   "ceilings.suspension.wire" as const;
 
+/** EST-BENCHMARK-01B — owner-approved ordinary V1 COST. Not sell. */
+export const CEILING_STEEL_QUOTR_COST = {
+  perimeterLm: 5.5,
+  primaryLm: 7.25,
+  furringLm: 4.2,
+  clipEach: 2,
+  dropperEach: 2,
+  wireLm: 0.42,
+} as const;
+
 function steelIdentity(
   productFamily: string,
   description: string

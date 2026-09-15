@@ -51,6 +51,7 @@ import {
   INTERNAL_WALLS_INSULATION_WASTE_FACTOR,
   INTERNAL_WALLS_PAINTING_COMPONENT,
   INTERNAL_WALLS_PAINTING_MATERIAL_KEY,
+  INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
   INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT,
   INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
@@ -414,6 +415,7 @@ function emitQtyLabour(params: {
   notes: string;
   quantity: number;
   unit: "m2" | "lm";
+  assumptionText?: string;
   requirements: EstimateRequirement[];
   lineItems: EstimateLineItemInput[];
   sortOrder: number;
@@ -447,8 +449,8 @@ function emitQtyLabour(params: {
           confidence: "high",
           assumptions: [
             {
-              key: "wall_insulation_hours",
-              text: WALL_INSULATION_HOURS_DERIVATION,
+              key: "finish_hours",
+              text: params.assumptionText ?? WALL_INSULATION_HOURS_DERIVATION,
               source: "benchmark",
             },
           ],
@@ -664,6 +666,7 @@ export function buildInternalWallsFinishEnvelope(params: {
               : INTERNAL_WALLS_INSULATION_LABOUR_OWNER_REQUIRED_MESSAGE,
             quantity: area.areaM2,
             unit: "m2",
+            assumptionText: WALL_INSULATION_HOURS_DERIVATION,
             requirements,
             lineItems,
             sortOrder,
@@ -708,16 +711,20 @@ export function buildInternalWallsFinishEnvelope(params: {
         });
         sortOrder = emitQtyLabour({
           workArea,
+          context,
+          accessFactor,
+          priceWithQuotr: true,
           wallTypeId: type.id,
           variantKey: `${type.id}:${face.side}`,
           overlapGroup: overlap,
           componentKey: INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT,
           hoursKey: INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
           label: `${displayName} — skirting labour`,
-          identitySummary: `${specification} · ${INTERNAL_WALLS_SKIRTING_LABOUR_OWNER_REQUIRED_MESSAGE}`,
-          notes: INTERNAL_WALLS_SKIRTING_LABOUR_OWNER_REQUIRED_MESSAGE,
+          identitySummary: `${specification} · ${INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION}`,
+          notes: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
           quantity: round2(face.lm),
           unit: "lm",
+          assumptionText: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
           requirements,
           lineItems,
           sortOrder,

@@ -782,7 +782,7 @@ check(
 );
 
 check(
-  "catalogue identities are ceiling-specific, unpriced, not partition SKUs",
+  "catalogue identities are ceiling-specific, not partition SKUs",
   read("lib/rates/specific-material-catalogue.ts").includes(
     STEEL_CEILING_PERIMETER_TRACK_KEY
   ) &&
@@ -804,9 +804,9 @@ check(
     read("lib/rates/specific-material-catalogue.ts").includes(
       "CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE"
     ) &&
-    !/item_key: "steel\.ceiling\.[^"]+"[\s\S]{0,400}defaultCostRate/.test(
-      read("lib/rates/specific-material-catalogue.ts")
-    )
+    !read("lib/rates/specific-material-catalogue.ts").includes("steel.ceiling.track.92") &&
+    STEEL_CEILING_PERIMETER_TRACK_KEY !== INTERNAL_WALLS_STEEL_TRACK_KEY &&
+    STEEL_CEILING_PRIMARY_CHANNEL_KEY !== INTERNAL_WALLS_STEEL_STUD_KEY
 );
 
 check(

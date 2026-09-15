@@ -377,8 +377,8 @@ check(
     iwCoverage.resolvesDeclaredButLiveMissing.length === 0
 );
 check(
-  "L5 close blocked while Category C remains",
-  !workAreaMayCloseAtL5(ceilingCoverage) && !workAreaMayCloseAtL5(iwCoverage)
+  "L5 close allowed once ordinary V1 COST is filled",
+  workAreaMayCloseAtL5(ceilingCoverage) && workAreaMayCloseAtL5(iwCoverage)
 );
 check(
   "thermal identities have live COST",
@@ -386,9 +386,9 @@ check(
     liveQuotrMaterialCost(WALL_INSULATION_THERMAL_KEY) === ORDINARY_THERMAL_INSULATION_COST
 );
 check(
-  "10 mm Standard remains Category C",
-  liveQuotrMaterialCost("sheet.plasterboard.standard.10mm.2400x1200.each") == null &&
-    listOwnerApprovalGaps("ceilings").some((row) => /10 mm Standard/i.test(row.component))
+  "10 mm Standard resolves at owner-approved $18",
+  liveQuotrMaterialCost("sheet.plasterboard.standard.10mm.2400x1200.each") === 18 &&
+    listOwnerApprovalGaps("ceilings").length === 0
 );
 
 console.log("\n--- G–J rate authority ---\n");
@@ -673,12 +673,12 @@ check("24 ordinary thermal insulation labour resolves", iwInsLab?.priced === tru
 check("24 ordinary skirting material resolves", iwSkirt?.priced === true);
 check("24 ordinary Level 4 stopping resolves", iwStop?.priced === true);
 check(
-  "24 skirting labour remains PR (Category C)",
+  "24 ordinary skirting labour resolves",
   (iwEasy.requirements ?? []).some(
     (row) =>
       row.kind === "labour" &&
       row.componentKey === INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT &&
-      row.priced === false
+      row.priced === true
   )
 );
 
@@ -702,8 +702,13 @@ check(
   unknownWa.ok === false && /no registered ordinary V1/.test(unknownWa.failures[0] ?? "")
 );
 
-console.log("\n--- Category C owner-approval list ---\n");
-for (const row of [...listOwnerApprovalGaps("ceilings"), ...listOwnerApprovalGaps("internal_walls")]) {
+console.log("\n--- Category C owner-approval list (must be empty after 01B) ---\n");
+const leftoverC = [
+  ...listOwnerApprovalGaps("ceilings"),
+  ...listOwnerApprovalGaps("internal_walls"),
+];
+check("no ordinary Category C remains", leftoverC.length === 0);
+for (const row of leftoverC) {
   console.log(`  C  ${row.workAreaType} · ${row.component} · ${row.materialIdentity ?? row.productivityOperation}`);
 }
 

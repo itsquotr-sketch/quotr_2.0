@@ -12,6 +12,14 @@ import { round2 } from "@/lib/estimate/facts";
 
 export const CANONICAL_PLASTERBOARD_SHEET_AREA_M2 = 2.88;
 
+/** EST-BENCHMARK-01B — shared 10 mm 2400×1200 COST. Not Ceiling/IW duplicates. */
+export const PLASTERBOARD_10MM_STANDARD_2400_COST = 18;
+export const PLASTERBOARD_10MM_AQUALINE_2400_COST = 26;
+export const PLASTERBOARD_10MM_STANDARD_2400_KEY =
+  "sheet.plasterboard.standard.10mm.2400x1200.each" as const;
+export const PLASTERBOARD_10MM_AQUALINE_2400_KEY =
+  "sheet.plasterboard.aqualine.10mm.2400x1200.each" as const;
+
 export const LEGACY_PLASTERBOARD_13_2400_KEYS: Record<string, string> = {
   standard: "sheet.plasterboard.standard.each",
   aqualine: "sheet.plasterboard.aqualine.each",

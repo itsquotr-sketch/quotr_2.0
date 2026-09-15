@@ -881,6 +881,15 @@ export function isInternalWallsSteelTrackAndStud(
   );
 }
 
+/** Ordinary V1 92 mm (or unspecified width, treated as 92 mm). Specialist widths stay PR. */
+export function isOrdinaryInternalWallsSteel92(
+  type: Pick<InternalWallsWallType, "frame_system" | "steel">
+): boolean {
+  if (!isInternalWallsSteelTrackAndStud(type)) return false;
+  const width = type.steel?.stud_width_mm;
+  return width == null || width === 92;
+}
+
 function applySteelFoundation(type: InternalWallsWallType): void {
   if (type.frame_system === "steel") {
     type.steel = type.steel ?? {

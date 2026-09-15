@@ -72,6 +72,14 @@ export const CEILING_TILE_300_KEY = "ceiling.tile.300x300.each" as const;
 export const CEILING_TILE_600_KEY = "ceiling.tile.600x600.each" as const;
 export const CEILING_TILE_1200_600_KEY = "ceiling.tile.1200x600.each" as const;
 
+/** EST-BENCHMARK-01B — ordinary generic commercial tile/grid COST. Not specialty. */
+export const CEILING_TILE_GRID_QUOTR_COST = {
+  gridM2: 15,
+  tile300Each: 4,
+  tile600Each: 16,
+  tile1200x600Each: 19,
+} as const;
+
 export const CEILING_TIMBER_LINING_EDGE_GAP_ASSUMPTION =
   "Edge gap on both sides equals the selected inter-board gap." as const;
 

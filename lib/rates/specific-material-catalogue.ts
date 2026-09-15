@@ -51,7 +51,11 @@ import {
   INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
   INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
   INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS,
+  INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
+  INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_SKIRTING_MATERIAL_KEY,
+  INTERNAL_WALLS_STEEL_STUD_QUOTR_COST,
+  INTERNAL_WALLS_STEEL_TRACK_QUOTR_COST,
 } from "@/lib/estimate/internal-walls-identities";
 import {
   CEILING_INSULATION_THERMAL_KEY,
@@ -66,6 +70,16 @@ import {
   TIMBER_FRAMING_140X45_H12_KEY,
   TIMBER_FRAMING_140X45_H12_QUOTR_COST,
 } from "@/lib/estimate/ceilings-identities";
+import {
+  PLASTERBOARD_10MM_AQUALINE_2400_COST,
+  PLASTERBOARD_10MM_STANDARD_2400_COST,
+} from "@/lib/estimate/ceilings-plasterboard-derived-cost";
+import {
+  CEILING_STEEL_QUOTR_COST,
+} from "@/lib/estimate/ceilings-steel";
+import {
+  CEILING_TILE_GRID_QUOTR_COST,
+} from "@/lib/estimate/ceilings-lining";
 import {
   CEILINGS_FIXINGS_BULKHEAD_FRAMING_COMPONENT,
   CEILINGS_FIXINGS_BULKHEAD_FRAMING_STEEL_KEY,
@@ -206,6 +220,14 @@ function dimensionedPlasterboardSheetCatalogue(): RateCatalogueEntry[] {
         if (thickness === 13 && length === 2400 && legacyThirteen2400.has(family.slug)) {
           continue;
         }
+        const approved10mm2400 =
+          thickness === 10 && length === 2400
+            ? family.slug === "standard"
+              ? PLASTERBOARD_10MM_STANDARD_2400_COST
+              : family.slug === "aqualine"
+                ? PLASTERBOARD_10MM_AQUALINE_2400_COST
+                : null
+            : null;
         out.push(
           entry({
             item_key: `sheet.plasterboard.${family.slug}.${thickness}mm.${length}x1200.each`,
@@ -216,8 +238,12 @@ function dimensionedPlasterboardSheetCatalogue(): RateCatalogueEntry[] {
             workAreaLabel: "Sheet materials",
             unit: "each",
             description:
-              "Dimensioned plasterboard sheet identity. No invented $/sheet — company exact or Pricing Required. Do not inherit the 2400×1200 13 mm benchmark.",
+              approved10mm2400 != null
+                ? `Owner-approved Quotr V1 COST $${approved10mm2400.toFixed(2)} / sheet for 10 mm 2400×1200. Shared across Work Areas. Other 10 mm sizes derive by sheet-area ratio. Company exact wins.`
+                : "Dimensioned plasterboard sheet identity. Same-family + same-thickness 2400×1200 COST may derive a rate. Do not inherit a different thickness.",
+            defaultCostRate: approved10mm2400 ?? undefined,
             calculatorSupport: "used_now",
+            recommended: approved10mm2400 != null,
           })
         );
       }
@@ -446,7 +472,8 @@ export const STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Steel framing",
     unit: "lm",
     description:
-      "Shared physical steel track for standard non-load-bearing internal partitions. Internal Walls track-and-stud takeoff consumes this identity. No invented Quotr $/lm — company exact rate, else Pricing Required. Not a Work-Area-scoped key.",
+      "Shared physical steel track for standard non-load-bearing internal partitions. Internal Walls ordinary 92 mm track-and-stud consumes this identity. Owner-approved Quotr V1 COST $5.50/lm. Company exact wins. Not deflection track / heavy gauge / specialist seismic-fire steel.",
+    defaultCostRate: INTERNAL_WALLS_STEEL_TRACK_QUOTR_COST,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -458,7 +485,8 @@ export const STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Steel framing",
     unit: "lm",
     description:
-      "Shared physical steel stud for standard non-load-bearing internal partitions. Internal Walls track-and-stud takeoff consumes this identity. No invented Quotr $/lm — company exact rate, else Pricing Required. Not a Work-Area-scoped key.",
+      "Shared physical steel stud for standard non-load-bearing internal partitions. Internal Walls ordinary 92 mm track-and-stud consumes this identity. Owner-approved Quotr V1 COST $6.50/lm. Company exact wins. Alternative stud widths stay Pricing Required unless company-rated.",
+    defaultCostRate: INTERNAL_WALLS_STEEL_STUD_QUOTR_COST,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -473,7 +501,8 @@ export const CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Ceiling steel",
     unit: "lm",
     description:
-      "Shared physical ceiling perimeter track / angle. Steel direct-fix and suspended steel takeoff consume this identity. No invented Quotr $/lm in WA-04B — company exact rate, else Pricing Required later. Not a partition-wall track SKU.",
+      "Shared physical ceiling perimeter track / angle. Steel direct-fix and suspended steel takeoff consume this identity. Owner-approved Quotr V1 COST $5.50/lm. Company exact wins. Not a partition-wall track SKU.",
+    defaultCostRate: CEILING_STEEL_QUOTR_COST.perimeterLm,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -485,7 +514,8 @@ export const CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Ceiling steel",
     unit: "lm",
     description:
-      "Shared physical ceiling primary channel. Steel direct-fix and suspended steel takeoff consume this identity. No invented Quotr $/lm in WA-04B.",
+      "Shared physical ceiling primary channel. Steel direct-fix and suspended steel takeoff consume this identity. Owner-approved Quotr V1 COST $7.25/lm. Company exact wins.",
+    defaultCostRate: CEILING_STEEL_QUOTR_COST.primaryLm,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -497,7 +527,8 @@ export const CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Ceiling steel",
     unit: "lm",
     description:
-      "Shared physical ceiling furring channel, perpendicular to the primary channels. Not a partition stud identity.",
+      "Shared physical ceiling furring channel, perpendicular to the primary channels. Owner-approved Quotr V1 COST $4.20/lm. Company exact wins. Not a partition stud identity.",
+    defaultCostRate: CEILING_STEEL_QUOTR_COST.furringLm,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -509,7 +540,8 @@ export const CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Ceiling steel",
     unit: "each",
     description:
-      "One clip per primary/furring intersection. Shared physical identity. No labour hours in WA-04B.",
+      "One clip per primary/furring intersection. Shared physical identity. Owner-approved Quotr V1 COST $2.00 each. Company exact wins.",
+    defaultCostRate: CEILING_STEEL_QUOTR_COST.clipEach,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -521,7 +553,8 @@ export const CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Ceiling steel",
     unit: "each",
     description:
-      "Suspended-steel dropper. Count from the support-point grid. No invented Quotr each-rate in WA-04B.",
+      "Suspended-steel dropper. Count from the support-point grid. Owner-approved Quotr V1 COST $2.00 each. Company exact wins.",
+    defaultCostRate: CEILING_STEEL_QUOTR_COST.dropperEach,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -533,7 +566,8 @@ export const CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Ceiling steel",
     unit: "lm",
     description:
-      "Canonical V1 wire length is dropper count × drop height. No tie, loop, waste, or fixing tails in WA-04B.",
+      "Canonical V1 wire length is dropper count × drop height. Owner-approved Quotr V1 COST $0.42/lm. Company exact wins. Wire labour stays embedded in dropper hours.",
+    defaultCostRate: CEILING_STEEL_QUOTR_COST.wireLm,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -575,7 +609,8 @@ export const CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[]
     workAreaLabel: "Ceiling tile & grid",
     unit: "m2",
     description:
-      "V1 T-grid as ceiling area m². Not a main-tee/cross-tee takeoff. Not ceiling.tile.m2. No invented Quotr $/m² in WA-04C.",
+      "V1 T-grid as ceiling area m². Not a main-tee/cross-tee takeoff. Not ceiling.tile.m2. Owner-approved Quotr V1 COST $15.00/m² for ordinary generic commercial grid. Specialty/acoustic/hygienic/fire-rated systems stay Pricing Required.",
+    defaultCostRate: CEILING_TILE_GRID_QUOTR_COST.gridM2,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -587,7 +622,8 @@ export const CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[]
     workAreaLabel: "Ceiling tile & grid",
     unit: "each",
     description:
-      "Dimensioned ceiling tile identity. Count is each, not m². No invented Quotr each-rate in WA-04C.",
+      "Dimensioned ceiling tile identity. Count is each, not m². Owner-approved Quotr V1 COST $4.00 each for ordinary generic 300×300. Specialty finishes stay Pricing Required.",
+    defaultCostRate: CEILING_TILE_GRID_QUOTR_COST.tile300Each,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -599,7 +635,8 @@ export const CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[]
     workAreaLabel: "Ceiling tile & grid",
     unit: "each",
     description:
-      "Dimensioned ceiling tile identity. Count is each, not m². No invented Quotr each-rate in WA-04C.",
+      "Dimensioned ceiling tile identity. Count is each, not m². Owner-approved Quotr V1 COST $16.00 each for ordinary generic 600×600. Specialty finishes stay Pricing Required.",
+    defaultCostRate: CEILING_TILE_GRID_QUOTR_COST.tile600Each,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -611,7 +648,8 @@ export const CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[]
     workAreaLabel: "Ceiling tile & grid",
     unit: "each",
     description:
-      "Dimensioned ceiling tile identity. Count is each, not m². No invented Quotr each-rate in WA-04C.",
+      "Dimensioned ceiling tile identity. Count is each, not m². Owner-approved Quotr V1 COST $19.00 each for ordinary generic 1200×600. Specialty finishes stay Pricing Required.",
+    defaultCostRate: CEILING_TILE_GRID_QUOTR_COST.tile1200x600Each,
     calculatorSupport: "used_now",
     recommended: true,
   }),
@@ -2397,6 +2435,20 @@ export const INTERNAL_WALLS_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     calculatorSupport: "used_now",
     recommended: true,
   }),
+  entry({
+    item_key: INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
+    label: "Internal wall ordinary skirting (hours/lm)",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "lm",
+    description:
+      "Person-hours per installed ordinary pine/MDF skirting LM. Owner-approved Quotr V1 0.10 h/lm. Company hours/lm win. Not deck full-height screening. Custom profiles stay Pricing Required.",
+    defaultCostRate: INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
 ];
 
 function ceilingProductivityEntry(
@@ -3001,13 +3053,13 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Steel framing",
     description:
-      "Shared steel track and stud identities for standard internal partitions. Company exact $/lm wins. No invented Quotr benchmark — missing rates are Pricing Required.",
+      "Shared steel track and stud identities for standard internal partitions. Ordinary 92 mm track-and-stud uses owner-approved Quotr V1 COST $5.50 / $6.50 per lm. Company exact wins. Specialist widths stay Pricing Required.",
     entries: STEEL_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
     title: "Ceiling steel",
     description:
-      "Shared ceiling perimeter track, primary/furring channel, crossover clip, dropper, and suspension-wire identities. Company exact rate wins. No invented Quotr $/lm in WA-04B — missing rates stay unpriced. Not partition track/stud SKUs.",
+      "Shared ceiling perimeter track, primary/furring channel, crossover clip, dropper, and suspension-wire identities. Owner-approved ordinary V1 COST. Company exact rate wins. Not partition track/stud SKUs. Proprietary steel systems stay Pricing Required.",
     entries: CEILING_STEEL_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {
@@ -3019,7 +3071,7 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Ceiling tile & grid",
     description:
-      "T-grid as m² plus dimensioned tile-each identities. Not the leftover ceiling.tile.m2 package. No invented Quotr rates in WA-04C.",
+      "T-grid as m² plus dimensioned tile-each identities. Ordinary generic commercial V1 COST. Not the leftover ceiling.tile.m2 package. Acoustic/hygienic/fire/specialty products stay Pricing Required.",
     entries: CEILING_TILE_GRID_SPECIFIC_MATERIAL_CATALOGUE,
   },
   {

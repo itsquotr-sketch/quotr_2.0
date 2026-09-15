@@ -152,7 +152,7 @@ export const INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE =
   "Custom skirting profile — Pricing Required. Ordinary pine/MDF uses the Quotr COST fallback." as const;
 
 export const INTERNAL_WALLS_SKIRTING_LABOUR_OWNER_REQUIRED_MESSAGE =
-  "Skirting labour Pricing Required — no owner-approved hours/lm." as const;
+  "Custom skirting labour — Pricing Required. Ordinary pine/MDF uses the Quotr 0.10 h/lm fallback." as const;
 
 export const INTERNAL_WALLS_CORNICE_PRODUCT_REQUIRED_MESSAGE =
   "Cornice product — Pricing Required. No canonical cornice identity or rate." as const;

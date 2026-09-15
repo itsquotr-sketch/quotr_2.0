@@ -48,6 +48,7 @@ import {
   CEILINGS_PLYWOOD_COMPONENT,
   CEILINGS_TILE_GRID_GRID_COMPONENT,
   CEILINGS_TILE_GRID_TILE_COMPONENT,
+  CEILINGS_TIMBER_LINING_COMPONENT,
 } from "../lib/estimate/ceilings-lining";
 import { CEILINGS_TIMBER_FRAMING_COMPONENT } from "../lib/estimate/ceilings-framing";
 import {
@@ -432,13 +433,16 @@ check(
     near(CANONICAL_PLASTERBOARD_SHEET_AREA_M2, 2.88)
 );
 check(
-  "H no cross-family plasterboard derivation",
+  "H no cross-family or cross-thickness plasterboard derivation",
   derivedDimensionedPlasterboardCost(
     "sheet.plasterboard.aqualine.13mm.3000x1200.each"
   )?.baseKey === "sheet.plasterboard.aqualine.each" &&
     derivedDimensionedPlasterboardCost(
       "sheet.plasterboard.standard.10mm.3000x1200.each"
-    ) == null &&
+    )?.baseKey === "sheet.plasterboard.standard.10mm.2400x1200.each" &&
+    derivedDimensionedPlasterboardCost(
+      "sheet.plasterboard.standard.10mm.3000x1200.each"
+    )?.baseKey !== "sheet.plasterboard.standard.each" &&
     derivedDimensionedPlasterboardCost("sheet.plasterboard.noiseline.13mm.3000x1200.each") ==
       null
 );
@@ -608,17 +612,19 @@ const fixture3 = runCommercial([steelPortion()]);
 const f3SteelMat = material(fixture3.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)!;
 const f3SteelLab = labour(fixture3.commercial.requirements, CEILINGS_STEEL_PRIMARY_LABOUR)!;
 check(
-  "T steel fixture retains PR material + resolved labour",
-  fixture3.commercial.completeness === "PRICING_REQUIRED" &&
-    f3SteelMat.priced === false &&
-    f3SteelMat.unitCost == null &&
+  "T steel fixture now resolves ordinary Quotr COST + labour",
+  fixture3.commercial.completeness === "COMPLETE_COMMERCIAL" &&
+    f3SteelMat.priced === true &&
+    near(f3SteelMat.unitCost, 7.25) &&
+    near(f3SteelMat.baseQuantity, 32) &&
     f3SteelLab.priced === true &&
     near(
       f3SteelLab.productivityBasis.hoursPerUnit,
       CEILINGS_QUOTR_PRODUCTIVITY_HOURS[CEILINGS_PRODUCTIVITY_KEYS.primaryLm]
     ) &&
     material(fixture3.commercial.requirements, CEILINGS_PLASTERBOARD_COMPONENT)?.priced ===
-      true
+      true &&
+    fixture3.commercial.requirements.every((row) => row.priced)
 );
 
 const fixture4 = runCommercial([tilePortion30()]);
@@ -627,11 +633,14 @@ const tiles = material(fixture4.commercial.requirements, CEILINGS_TILE_GRID_TILE
 const gridLab = labour(fixture4.commercial.requirements, "ceilings.grid.install")!;
 const tileLab = labour(fixture4.commercial.requirements, "ceilings.tile.install")!;
 check(
-  "U Tile/Grid fixture retains PR material + resolved labour",
+  "U Tile/Grid ordinary generic system now resolves",
   near(grid.baseQuantity, 30) &&
     near(tiles.baseQuantity, 84) &&
-    grid.priced === false &&
-    tiles.priced === false &&
+    grid.priced === true &&
+    near(grid.unitCost, 15) &&
+    near(grid.totalCost, 450) &&
+    tiles.priced === true &&
+    near(tiles.unitCost, 16) &&
     gridLab.priced === true &&
     tileLab.priced === true &&
     near(gridLab.adjustedHours, 5.4) &&
@@ -640,16 +649,26 @@ check(
       row.componentKey.includes("fixings")
     ) &&
     material(fixture4.commercial.requirements, CEILINGS_PLASTERBOARD_COMPONENT) == null &&
-    material(fixture4.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT) == null
+    material(fixture4.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT) == null &&
+    fixture4.commercial.completeness === "COMPLETE_COMMERCIAL"
 );
 
+const liningPortion = plasterPortion({ length: 4, width: 3 });
+liningPortion.lining.family = "timber_lined";
+liningPortion.lining.timber_lined = {
+  board_width_mm: 90,
+  gap_mm: 10,
+  direction: "along_length",
+};
+const liningPr = runCommercial([liningPortion]);
+const liningMat = material(liningPr.commercial.requirements, CEILINGS_TIMBER_LINING_COMPONENT)!;
 check(
-  "V PR lines are not $0-resolved",
-  f3SteelMat.priced === false &&
-    f3SteelMat.totalCost == null &&
-    fixture3.commercial.lineItems.some(
+  "V specialty timber lining remains PR and is not $0-resolved",
+  liningMat.priced === false &&
+    liningMat.totalCost == null &&
+    liningPr.commercial.lineItems.some(
       (item) =>
-        item.componentKey === CEILINGS_STEEL_PRIMARY_COMPONENT &&
+        item.componentKey === CEILINGS_TIMBER_LINING_COMPONENT &&
         item.rateSourceType === "missing" &&
         item.recommendedSell === 0 &&
         item.sellDerivedFromMargin !== true &&
@@ -659,10 +678,13 @@ check(
 
 const hosted3 = calculateEstimate(estimateCtx(writePortions([steelPortion()])));
 check(
-  "W PR estimate is marked incomplete",
-  hosted3.missingInfo.some((row) => row.includes(CEILINGS_PARTIAL_ESTIMATE_MESSAGE)) &&
-    hosted3.rateSourceSummary.toLowerCase().includes("missing") &&
-    fixture3.commercial.completeness === "PRICING_REQUIRED"
+  "W ordinary steel estimate is complete; specialty lining stays incomplete",
+  !hosted3.missingInfo.some((row) => row.includes(CEILINGS_PARTIAL_ESTIMATE_MESSAGE)) &&
+    fixture3.commercial.completeness === "COMPLETE_COMMERCIAL" &&
+    liningPr.commercial.completeness === "PRICING_REQUIRED" &&
+    calculateEstimate(estimateCtx(writePortions([liningPortion]))).missingInfo.some((row) =>
+      row.includes(CEILINGS_PARTIAL_ESTIMATE_MESSAGE)
+    )
 );
 
 const steelRates = [
@@ -883,10 +905,10 @@ check(
 );
 
 check(
-  "steel / grid / tile catalogue COST remains absent",
-  quotrCatalogueCost("steel.ceiling.primary_channel.lm") == null &&
-    quotrCatalogueCost("ceiling.grid.m2") == null &&
-    quotrCatalogueCost("ceiling.tile.600x600.each") == null &&
+  "steel / grid / tile catalogue COST is the approved V1 Quotr COST",
+  quotrCatalogueCost("steel.ceiling.primary_channel.lm") === 7.25 &&
+    quotrCatalogueCost("ceiling.grid.m2") === 15 &&
+    quotrCatalogueCost("ceiling.tile.600x600.each") === 16 &&
     quotrCeilingMaterialCost("sheet.plasterboard.standard.13mm.3000x1200.each")
       ?.unitCost === 22.5
 );

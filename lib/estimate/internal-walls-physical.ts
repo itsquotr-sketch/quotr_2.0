@@ -71,6 +71,7 @@ import {
 import {
   INTERNAL_WALLS_LENGTH_REQUIRED_MESSAGE,
   isInternalWallsSteelTrackAndStud,
+  isOrdinaryInternalWallsSteel92,
   wallTypeNeedsLength,
   type InternalWallsWallType,
 } from "@/lib/estimate/internal-walls-wall-types";
@@ -86,6 +87,7 @@ function resolveExactMaterialRate(params: {
   itemKey: string;
   unit: string;
   context: EstimateContext;
+  allowQuotrBenchmark?: boolean;
 }): {
   priced: boolean;
   costRate: number | null;
@@ -124,6 +126,7 @@ function resolveExactMaterialRate(params: {
   }
   const benchmark = catalogueBenchmarkCost(params.itemKey);
   if (
+    params.allowQuotrBenchmark !== false &&
     benchmark != null &&
     params.context.organisationSettings?.allow_benchmark_rates !== false
   ) {
@@ -520,6 +523,7 @@ function emitFramingLmMaterial(params: {
   purchaseQuantity: number;
   wasteFactor: number;
   unpricedNotes: string;
+  allowQuotrBenchmark?: boolean;
   requirements: EstimateRequirement[];
   lineItems: EstimateLineItemInput[];
   bumpSortOrder: () => number;
@@ -528,6 +532,7 @@ function emitFramingLmMaterial(params: {
     itemKey: params.materialKey,
     unit: "lm",
     context: params.context,
+    allowQuotrBenchmark: params.allowQuotrBenchmark,
   });
   params.requirements.push(
     buildMaterialRequirement({
@@ -668,6 +673,7 @@ function emitSteelFraming(params: {
     purchaseQuantity: takeoff.totalTrackLm,
     wasteFactor: takeoff.wasteFactor,
     unpricedNotes: `${trackSummary}. Pricing required — no approved steel track $/lm.`,
+    allowQuotrBenchmark: isOrdinaryInternalWallsSteel92(type),
     requirements: params.requirements,
     lineItems: params.lineItems,
     bumpSortOrder: params.bumpSortOrder,
@@ -686,6 +692,7 @@ function emitSteelFraming(params: {
     purchaseQuantity: takeoff.studLm,
     wasteFactor: takeoff.wasteFactor,
     unpricedNotes: `${studSummary}. Pricing required — no approved steel stud $/lm.`,
+    allowQuotrBenchmark: isOrdinaryInternalWallsSteel92(type),
     requirements: params.requirements,
     lineItems: params.lineItems,
     bumpSortOrder: params.bumpSortOrder,

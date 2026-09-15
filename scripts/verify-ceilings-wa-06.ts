@@ -43,6 +43,7 @@ import {
   CEILINGS_PLASTERBOARD_COMPONENT,
   CEILINGS_TILE_GRID_GRID_COMPONENT,
   CEILINGS_TILE_GRID_TILE_COMPONENT,
+  CEILINGS_TIMBER_LINING_COMPONENT,
 } from "../lib/estimate/ceilings-lining";
 import { CEILINGS_TIMBER_FRAMING_COMPONENT } from "../lib/estimate/ceilings-framing";
 import {
@@ -239,6 +240,17 @@ function steelPortion(params?: { id?: string }): CeilingPortion {
   row.structure.steel = {
     primary_spacing_mm: 450,
     furring_spacing_mm: 450,
+    direction: "along_length",
+  };
+  return row;
+}
+
+function liningPortion(): CeilingPortion {
+  const row = plasterPortion({ length: 4, width: 3 });
+  row.lining.family = "timber_lined";
+  row.lining.timber_lined = {
+    board_width_mm: 90,
+    gap_mm: 10,
     direction: "along_length",
   };
   return row;
@@ -538,24 +550,30 @@ check(
 const steel = runCommercial([steelPortion()]);
 const steelReview = reviewOf(steel.commercial, steel.facts);
 const steelGroups = steelReview.workAreas[0]?.portionGroups?.[0]?.lineGroups ?? [];
+const lining = runCommercial([liningPortion()]);
+const liningReview = reviewOf(lining.commercial, lining.facts);
+const liningGroups = liningReview.workAreas[0]?.portionGroups?.[0]?.lineGroups ?? [];
 check(
-  "H PR items visibly PR",
-  steel.commercial.completeness === "PRICING_REQUIRED" &&
-    steelGroups.some((row) => row.pricingRequired === true && /Pricing Required/i.test(row.supporting ?? row.rateContext ?? "")) &&
+  "H ordinary steel is priced; specialty lining stays visibly PR",
+  steel.commercial.completeness === "COMPLETE_COMMERCIAL" &&
+    material(steel.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.priced === true &&
+    /Quotr benchmark/i.test(JSON.stringify(steelReview)) &&
     steelGroups.some(
       (row) =>
         row.secondary === "Labour" &&
         labour(steel.commercial.requirements, CEILINGS_STEEL_PRIMARY_LABOUR)?.priced === true
-    )
+    ) &&
+    lining.commercial.completeness === "PRICING_REQUIRED" &&
+    liningGroups.some((row) => row.pricingRequired === true && /Pricing Required/i.test(row.supporting ?? row.rateContext ?? ""))
 );
 
 check(
-  "I partial estimate status visible",
-  steelReview.overview.partialEstimateLabel === "Some Ceiling items still require pricing." &&
-    steelReview.overview.recommendedSellIsPartial === true &&
-    steelReview.workAreas[0]?.partialEstimateLabel ===
+  "I partial estimate status visible for remaining PR",
+  liningReview.overview.partialEstimateLabel === "Some Ceiling items still require pricing." &&
+    liningReview.overview.recommendedSellIsPartial === true &&
+    liningReview.workAreas[0]?.partialEstimateLabel ===
       "Some Ceiling items still require pricing." &&
-    steelReview.workAreas[0]?.resolvedSubtotalLabel === "Current priced total"
+    liningReview.workAreas[0]?.resolvedSubtotalLabel === "Current priced total"
 );
 
 check(
@@ -654,14 +672,15 @@ check(
 
 const steelCleared = runCommercial([steelPortion()], steelRates);
 check(
-  "P PR→Complete transition works",
-  steel.commercial.completeness === "PRICING_REQUIRED" &&
+  "P company rates still override ordinary steel Quotr COST",
+  steel.commercial.completeness === "COMPLETE_COMMERCIAL" &&
     steelCleared.commercial.completeness === "COMPLETE_COMMERCIAL" &&
     near(
       material(steel.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.baseQuantity ?? -1,
       material(steelCleared.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.baseQuantity ?? -2
     ) &&
-    material(steelCleared.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.priced === true
+    material(steelCleared.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.priced === true &&
+    near(material(steelCleared.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.unitCost, 9)
 );
 
 const gm30 = runCommercial(
@@ -863,13 +882,15 @@ check(
 );
 
 check(
-  "AE steel partial/PR path end-to-end",
-  steel.commercial.completeness === "PRICING_REQUIRED" &&
-    material(steel.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.priced === false &&
+  "AE ordinary steel completes; specialty lining remains the PR quote path",
+  steel.commercial.completeness === "COMPLETE_COMMERCIAL" &&
+    material(steel.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)?.priced === true &&
     labour(steel.commercial.requirements, CEILINGS_STEEL_PRIMARY_LABOUR)?.priced === true &&
     material(steel.commercial.requirements, CEILINGS_PLASTERBOARD_COMPONENT)?.priced === true &&
+    lining.commercial.completeness === "PRICING_REQUIRED" &&
+    material(lining.commercial.requirements, CEILINGS_TIMBER_LINING_COMPONENT)?.priced === false &&
     nestedCeilingsQuoteIsBlocked({
-      missingInfo: steel.commercial.missingInfo,
+      missingInfo: lining.commercial.missingInfo,
       items: [prPricingItem()],
     }) &&
     steelCleared.commercial.completeness === "COMPLETE_COMMERCIAL" &&

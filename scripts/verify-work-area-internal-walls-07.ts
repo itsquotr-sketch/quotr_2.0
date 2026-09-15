@@ -39,6 +39,7 @@ import {
   INTERNAL_WALLS_FRAMING_90_MATERIAL_COMPONENT,
   INTERNAL_WALLS_INSULATION_LABOUR_COMPONENT,
   INTERNAL_WALLS_INSULATION_MATERIAL_COMPONENT,
+  INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
   INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT,
   INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
   internalWallsLiningMaterialComponent,
@@ -290,9 +291,12 @@ const bSkirtMats = mats(bCalc).filter(
 );
 check("Fixture B two face requirements", bSkirtMats.length === 2);
 check(
-  "Fixture B skirting labour PR",
+  "Fixture B ordinary skirting labour resolves at 0.10 h/lm",
   labs(bCalc).some(
-    (row) => row.componentKey === INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT && row.priced === false
+    (row) =>
+      row.componentKey === INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT &&
+      row.priced === true &&
+      near(row.productivityBasis.hoursPerUnit, INTERNAL_WALLS_SKIRTING_HOURS_PER_LM)
   )
 );
 

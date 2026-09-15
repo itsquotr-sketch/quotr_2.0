@@ -33,7 +33,9 @@ import {
   INTERNAL_WALLS_PRODUCTIVITY_KEYS,
   INTERNAL_WALLS_STEEL_FRAMING_NOT_PRICED_MESSAGE,
   INTERNAL_WALLS_STEEL_STUD_KEY,
+  INTERNAL_WALLS_STEEL_STUD_QUOTR_COST,
   INTERNAL_WALLS_STEEL_TRACK_KEY,
+  INTERNAL_WALLS_STEEL_TRACK_QUOTR_COST,
   INTERNAL_WALLS_STEEL_WASTE_FACTOR,
   INTERNAL_WALLS_STUD_CENTRES_REQUIRED_MESSAGE,
   INTERNAL_WALLS_TIMBER_90_KEY,
@@ -247,17 +249,17 @@ console.log("--- Identities / waste / widths ---\n");
 const track = getCatalogueEntry(INTERNAL_WALLS_STEEL_TRACK_KEY);
 const stud = getCatalogueEntry(INTERNAL_WALLS_STEEL_STUD_KEY);
 check(
-  "shared steel track identity exists without invented $/lm",
+  "shared steel track identity uses ordinary 92 mm Quotr COST",
   track?.item_key === INTERNAL_WALLS_STEEL_TRACK_KEY &&
     track.unit === "lm" &&
-    track.defaultCostRate == null &&
+    track.defaultCostRate === INTERNAL_WALLS_STEEL_TRACK_QUOTR_COST &&
     track.workAreaLabel === "Steel framing"
 );
 check(
-  "shared steel stud identity exists without invented $/lm",
+  "shared steel stud identity uses ordinary 92 mm Quotr COST",
   stud?.item_key === INTERNAL_WALLS_STEEL_STUD_KEY &&
     stud.unit === "lm" &&
-    stud.defaultCostRate == null &&
+    stud.defaultCostRate === INTERNAL_WALLS_STEEL_STUD_QUOTR_COST &&
     stud.workAreaLabel === "Steel framing"
 );
 check(
@@ -415,11 +417,19 @@ check("Fixture A no timber material", !mats(a).some((row) => row.materialKey ===
 check("Fixture A no timber labour", !labs(a).some((row) => row.componentKey === INTERNAL_WALLS_FRAMING_90_LABOUR_COMPONENT));
 check("Fixture A track/stud are separate requirements", aTrack != null && aStud != null && aTrack.materialKey === INTERNAL_WALLS_STEEL_TRACK_KEY && aStud.materialKey === INTERNAL_WALLS_STEEL_STUD_KEY);
 check("Fixture A waste factor 0", aTrack?.wasteFactor === 0 && aStud?.wasteFactor === 0);
-check("Fixture A track/stud Pricing Required", aTrack?.priced === false && aStud?.priced === false);
+check(
+  "Fixture A ordinary 92 mm track/stud resolve at Quotr COST",
+  aTrack?.priced === true &&
+    aStud?.priced === true &&
+    near(aTrack.unitCost, INTERNAL_WALLS_STEEL_TRACK_QUOTR_COST) &&
+    near(aStud.unitCost, INTERNAL_WALLS_STEEL_STUD_QUOTR_COST) &&
+    aTrack.rateSource === "benchmark" &&
+    aStud.rateSource === "benchmark"
+);
 check("Fixture A labour still priced", aLab?.priced === true);
 check("Fixture A fixings reused on wall area", aFix?.priced === true && aFix.rateSource === "benchmark" && near(aFix.purchaseQuantity, 24) && near(aFix.unitCost, 8));
 check("Fixture A no legacy package", !isLegacyPackage(a));
-check("Fixture A quantity visible on unpriced lines", a.lineItems.some((row) => row.itemKey === INTERNAL_WALLS_STEEL_TRACK_KEY && row.quantity === 20));
+check("Fixture A quantity visible on steel lines", a.lineItems.some((row) => row.itemKey === INTERNAL_WALLS_STEEL_TRACK_KEY && row.quantity === 20));
 
 console.log("\n--- Fixture B 8 × 3.0 steel / 400 ---\n");
 const bFacts = [
@@ -591,7 +601,12 @@ const companyTrack = calculateInternalWalls(
 const pricedTrack = mats(companyTrack).find((row) => row.componentKey === INTERNAL_WALLS_FRAMING_STEEL_TRACK_COMPONENT);
 const unpricedStud = mats(companyTrack).find((row) => row.componentKey === INTERNAL_WALLS_FRAMING_STEEL_STUD_COMPONENT);
 check("company exact track wins", pricedTrack?.priced === true && near(pricedTrack.unitCost, 12) && pricedTrack.rateSource === "company");
-check("stud remains Pricing Required when only track is priced", unpricedStud?.priced === false);
+check(
+  "stud still uses Quotr COST when only track has a company rate",
+  unpricedStud?.priced === true &&
+    near(unpricedStud.unitCost, INTERNAL_WALLS_STEEL_STUD_QUOTR_COST) &&
+    unpricedStud.rateSource === "benchmark"
+);
 const premium = calculateInternalWalls(
   ctx([walls], steelFactsA(), {
     project: { id: "p1", qualityLevel: "premium" },
@@ -665,8 +680,8 @@ check(
     !visibleReview.includes(INTERNAL_WALLS_FRAMING_STEEL_LABOUR_COMPONENT)
 );
 check(
-  "Pricing Required shown for steel materials and fixings",
-  /Rate required|Pricing required/i.test(reviewText) && /fixings/i.test(reviewText)
+  "Review shows Quotr benchmark for ordinary steel and still shows fixings",
+  /Quotr benchmark/i.test(reviewText) && /fixings/i.test(reviewText)
 );
 check(
   "Review surface wraps compact rows",

@@ -580,18 +580,22 @@ check(
     }).source === "benchmark"
 );
 
+const liningPrimary = lined.commercial.lineItems.find(
+  (item) => item.componentKey === CEILINGS_TIMBER_LINING_COMPONENT
+)!;
 const steelPrimary = material(steel.commercial.requirements, CEILINGS_STEEL_PRIMARY_COMPONENT)!;
 check(
-  "U no matching rate → Pricing Required",
-  steelPrimary.priced === false &&
-    steelPrimary.rateSource === "missing" &&
-    quotrCatalogueCost("steel.ceiling.primary_channel.lm") == null
+  "U no matching timber-lining rate → Pricing Required",
+  liningMat.priced === false &&
+    liningMat.rateSource === "missing" &&
+    quotrCatalogueCost("timber.lining.profile.lm") == null
 );
 
 check(
-  "V steel material stays Pricing Required while labour can resolve independently",
-  steelPrimary.priced === false &&
-    steelPrimary.rateSource === "missing" &&
+  "V ordinary steel material now resolves independently of labour",
+  steelPrimary.priced === true &&
+    near(steelPrimary.unitCost, 7.25) &&
+    steelPrimary.rateSource === "benchmark" &&
     labour(steel.commercial.requirements, "ceilings.steel.primary_channel.install")
       ?.priced === true
 );
@@ -629,15 +633,12 @@ check(
     near(pbSell.sellRate ?? -1, FITOUT_BENCHMARKS.plasterboardSheet.cost / 0.8)
 );
 
-const primaryLine = steel.commercial.lineItems.find(
-  (item) => item.componentKey === CEILINGS_STEEL_PRIMARY_COMPONENT
-)!;
 check(
   "Y Pricing Required line does not invent sell",
-  primaryLine.rateSourceType === "missing" &&
-    primaryLine.sellDerivedFromMargin !== true &&
-    primaryLine.sellAuthority == null &&
-    primaryLine.recommendedSell === 0
+  liningPrimary.rateSourceType === "missing" &&
+    liningPrimary.sellDerivedFromMargin !== true &&
+    liningPrimary.sellAuthority == null &&
+    liningPrimary.recommendedSell === 0
 );
 
 const a = plasterPortion({ id: P1, length: 3, width: 3 });

@@ -4,7 +4,11 @@ import {
   CEILINGS_QUOTR_PRODUCTIVITY_HOURS,
 } from "@/lib/estimate/ceilings-identities";
 import { WALL_INSULATION_HOURS_PER_M2 } from "@/lib/estimate/insulation-fallback";
-import { INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY } from "@/lib/estimate/internal-walls-identities";
+import {
+  INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
+  INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
+  INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
+} from "@/lib/estimate/internal-walls-identities";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import type { ProductivityRate } from "@/lib/estimate/types";
 
@@ -409,6 +413,12 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     "Internal wall thermal insulation",
     WALL_INSULATION_HOURS_PER_M2,
     "m2"
+  ),
+  [INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY]: productivityEntry(
+    INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
+    "Internal wall ordinary skirting",
+    INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
+    "lm"
   ),
   "bathroom.demolition.floor_finish.hours_per_m2": productivityEntry(
     "bathroom.demolition.floor_finish.hours_per_m2",
