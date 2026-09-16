@@ -253,6 +253,7 @@ const actionsSrc = read("lib/rates/actions.ts");
 const migrationSrc = read("supabase/migrations/038_rates_productivity_type.sql");
 const dialogSrc = read("components/rates/RateEditDialog.tsx");
 const ratesPage = read("components/rates/RatesPageContent.tsx");
+const ratesNonDefault = read("components/rates/RatesNonDefaultSections.tsx");
 const materialsSection = read("components/rates/SpecificMaterialRatesSection.tsx");
 const specEditor = read("components/assistant/job-plan/DeckQuickSpecEditor.tsx");
 const brSurface = read("components/assistant/builder-review/BuilderReviewSurface.tsx");
@@ -286,7 +287,8 @@ check(
     (row) => ratesSemanticSectionForRateType(row.rate_type) != null
   ) &&
     materialsSection.includes("catalogueEntriesForRatesSection") &&
-    ratesPage.includes('catalogueEntriesForRatesSection')
+    (ratesPage.includes("catalogueEntriesForRatesSection") ||
+      ratesNonDefault.includes("catalogueEntriesForRatesSection"))
 );
 
 console.log("\n== CONCRETE PRODUCTIVITY ==");

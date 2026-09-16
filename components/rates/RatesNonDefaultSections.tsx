@@ -4,9 +4,6 @@ import { useMemo, useState } from "react";
 import { Input } from "@/components/ui/input";
 import { LABOUR_RATE_CATALOGUE, SCOPE_RATE_CATALOGUE } from "@/lib/rates/catalogue";
 import {
-  DECK_PRODUCTIVITY_RATE_CATALOGUE,
-  FENCE_PRODUCTIVITY_RATE_CATALOGUE,
-  RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
   SPECIFIC_MATERIAL_RATE_GROUPS,
   WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
 } from "@/lib/rates/specific-material-catalogue";
@@ -14,7 +11,7 @@ import { catalogueEntriesForRatesSection } from "@/lib/rates/rate-section-contra
 import type { RateCatalogueEntry, RatesPageRate, RatesPageState } from "@/lib/rates/types";
 import type { RatesSectionId } from "@/lib/setup/recommendation-destinations";
 import { RatesTableSection } from "./RatesTableSection";
-import { CompanyDnaRatesCompare } from "./CompanyDnaRatesCompare";
+import { ProductivityByWorkArea } from "./ProductivityByWorkArea";
 import { BenchmarkFallbackSection } from "./BenchmarkFallbackSection";
 
 type RatesNonDefaultSectionsProps = {
@@ -121,43 +118,15 @@ export function RatesNonDefaultSections({
           showEngineColumn
           readOnly={!state.canManageRates}
         />
-        <div>
-          <h3 className="mb-2 text-sm font-semibold tracking-tight">
-            Labour productivity
-          </h3>
-          <CompanyDnaRatesCompare
-            rates={state.rates}
-            variant="productivity"
-            preferredWorkAreaTypes={preferred}
-            canCalibrate={state.canCalibrate}
-            onChanged={onChanged}
-          />
-        </div>
-        <details className="rounded-lg border border-dashed border-border/70 px-3 py-2">
-          <summary className="cursor-pointer text-xs font-medium text-muted-foreground">
-            All productivity keys
-          </summary>
-          <div className="mt-3">
-            <RatesTableSection
-              title="All productivity keys"
-              description="Advanced view of every labour-hours key. Lower means fewer labour hours per unit. Prefer the Work Area groups above. Editing hours here changes labour TIME, not carpenter $/hr."
-              catalogue={catalogueEntriesForRatesSection(
-                [
-                  ...DECK_PRODUCTIVITY_RATE_CATALOGUE,
-                  ...RETAINING_WALL_PRODUCTIVITY_RATE_CATALOGUE,
-                  ...FENCE_PRODUCTIVITY_RATE_CATALOGUE,
-                ],
-                "productivity"
-              )}
-              rates={state.rates}
-              onRatesChange={onRatesChange}
-              companyGrossMarginPercent={companyGrossMarginPercent}
-              variant="productivity"
-              showEngineColumn
-              readOnly={!state.canManageRates}
-            />
-          </div>
-        </details>
+        <ProductivityByWorkArea
+          rates={state.rates}
+          preferredWorkAreaTypes={preferred}
+          canCalibrate={state.canCalibrate}
+          readOnly={!state.canManageRates}
+          companyGrossMarginPercent={companyGrossMarginPercent}
+          onRatesChange={onRatesChange}
+          onChanged={onChanged}
+        />
       </div>
     );
   }

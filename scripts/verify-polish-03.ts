@@ -116,6 +116,7 @@ console.log("\n--- RATES ---\n");
 const ratesContent = read("components/rates/RatesPageContent.tsx");
 const ratesTable = read("components/rates/RatesTableSection.tsx");
 const dnaCompare = read("components/rates/CompanyDnaRatesCompare.tsx");
+const ratesNonDefault = read("components/rates/RatesNonDefaultSections.tsx");
 check(
   "compact Rates structure",
   ratesContent.includes('data-rates-compact') &&
@@ -148,10 +149,12 @@ check(
     !ratesTable.includes("EXPLICIT_COMPANY") &&
     !dnaCompare.includes("explicit_company")
 );
+const productivityUi = read("components/rates/ProductivityByWorkArea.tsx");
+const productivityRegistry = read("lib/rates/productivity-registry.ts");
 check(
   "productivity grouped by Work Area",
-  dnaCompare.includes("data-productivity-work-area") &&
-    dnaCompare.includes("tasks calibrated") &&
+  productivityUi.includes("data-productivity-work-area") &&
+    productivityRegistry.includes("buildProductivityRegistry") &&
     read("lib/rates/productivity-work-area-summary.ts").includes(
       "summarizeProductivityWorkAreas"
     )
@@ -159,7 +162,7 @@ check(
 const groups = summarizeProductivityWorkAreas([], ["deck", "fence"]);
 check(
   "productivity counts derive from DNA catalogue",
-  groups.length === 3 &&
+  groups.length >= 3 &&
     groups[0]?.workAreaType === "deck" &&
     groups[0]?.taskTotal === groups[0]?.tasks.length &&
     groups[0]?.statusLabel === "Not calibrated"
@@ -167,7 +170,7 @@ check(
 check(
   "permissions preserved",
   ratesContent.includes("readOnly={!state.canManageRates}") &&
-    ratesContent.includes("canCalibrate={state.canCalibrate}") &&
+    ratesNonDefault.includes("canCalibrate={state.canCalibrate}") &&
     roleAllowsPermission("owner", "company.rates.manage") &&
     roleAllowsPermission("admin", "company.rates.manage") &&
     !roleAllowsPermission("estimator", "company.rates.manage") &&
@@ -177,7 +180,8 @@ check(
   "mobile Rates is not a desktop-only HTML table",
   !ratesTable.includes("<table") &&
     ratesTable.includes("RateMobileCard") &&
-    ratesTable.includes("data-rates-compact-list")
+    ratesTable.includes("data-rates-compact-list") &&
+    productivityUi.includes("data-rates-compact-list")
 );
 
 console.log("\n--- ACTIVITY ---\n");

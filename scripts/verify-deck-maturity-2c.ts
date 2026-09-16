@@ -199,8 +199,8 @@ const kwilaFacts = Object.entries(KWILA.facts).map(([key, value]) =>
 const kwilaDeck = calculateDeck(ctx(kwilaFacts), wa(kwilaId));
 const kwila78 = calculateDeck(ctx(kwilaFacts, [labourOrgRate(78)]), wa(kwilaId));
 
-const ratesPage = read("components/rates/RatesPageContent.tsx");
-const ratesTable = read("components/rates/RatesTableSection.tsx");
+const ratesNonDefault = read("components/rates/RatesNonDefaultSections.tsx");
+const productivityUi = read("components/rates/ProductivityByWorkArea.tsx");
 const catalogueSrc = read("lib/rates/specific-material-catalogue.ts");
 const deckCalc = read("lib/estimate/calculators/deck.ts");
 const refineSrc = read("lib/assistant/refine/adapters/deck.ts");
@@ -214,7 +214,8 @@ const prodKeys = DECK_PRODUCTIVITY_RATE_CATALOGUE.map((e) => e.item_key);
 check(
   "1 Rates exposes Decking productivity",
   prodKeys.includes("deck.decking.install.hours_per_lm") &&
-    ratesPage.includes("Labour productivity") &&
+    productivityUi.includes("Labour productivity") &&
+    ratesNonDefault.includes("ProductivityByWorkArea") &&
     (RATES_SECTION_IDS as readonly string[]).includes("productivity")
 );
 check(
@@ -239,14 +240,14 @@ check(
 );
 check(
   "7 productivity edit persists via existing company-rate architecture",
-  ratesTable.includes("upsertRate") &&
-    ratesTable.includes("rate_type: editingEntry.rate_type") &&
-    ratesPage.includes("Labour productivity")
+  productivityUi.includes("upsertRate") &&
+    productivityUi.includes("rate_type: editingItem.catalogueEntry.rate_type") &&
+    productivityUi.includes("Labour productivity")
 );
 check(
   "7b Rates productivity UI is hours not dollars",
-  ratesPage.includes('variant="productivity"') &&
-    ratesTable.includes('productivityTable ? "Hours"') &&
+  productivityUi.includes("formatProductivityHours") &&
+    productivityUi.includes("Your productivity") &&
     catalogueSrc.includes("not dollars")
 );
 
