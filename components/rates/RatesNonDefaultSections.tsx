@@ -1,7 +1,5 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { Input } from "@/components/ui/input";
 import { LABOUR_RATE_CATALOGUE, SCOPE_RATE_CATALOGUE } from "@/lib/rates/catalogue";
 import {
   SPECIFIC_MATERIAL_RATE_GROUPS,
@@ -12,6 +10,7 @@ import type { RateCatalogueEntry, RatesPageRate, RatesPageState } from "@/lib/ra
 import type { RatesSectionId } from "@/lib/setup/recommendation-destinations";
 import { RatesTableSection } from "./RatesTableSection";
 import { ProductivityByWorkArea } from "./ProductivityByWorkArea";
+import { MaterialsByProductFamily } from "./MaterialsByProductFamily";
 import { BenchmarkFallbackSection } from "./BenchmarkFallbackSection";
 
 type RatesNonDefaultSectionsProps = {
@@ -43,26 +42,6 @@ function subcontractCatalogue(): RateCatalogueEntry[] {
   );
 }
 
-function materialGroups() {
-  return SPECIFIC_MATERIAL_RATE_GROUPS.filter((group) => {
-    const title = group.title.toLowerCase();
-    if (title.startsWith("waste")) return false;
-    const onlyPlant = group.entries.every(
-      (entry) =>
-        entry.item_key.startsWith("plant.") ||
-        entry.workAreaLabel?.toLowerCase().includes("plant")
-    );
-    return !onlyPlant;
-  }).map((group) => ({
-    ...group,
-    entries: group.entries.filter(
-      (entry) =>
-        !entry.item_key.startsWith("plant.") &&
-        !entry.workAreaLabel?.toLowerCase().includes("plant")
-    ),
-  }));
-}
-
 export function RatesNonDefaultSections({
   view,
   activeSection,
@@ -71,26 +50,7 @@ export function RatesNonDefaultSections({
   onChanged,
   companyGrossMarginPercent,
 }: RatesNonDefaultSectionsProps) {
-  const [materialQuery, setMaterialQuery] = useState("");
   const preferred = state.preferredWorkAreaTypes ?? [];
-
-  const filteredMaterialGroups = useMemo(() => {
-    const q = materialQuery.trim().toLowerCase();
-    return materialGroups()
-      .map((group) => {
-        const entries = catalogueEntriesForRatesSection(group.entries, "material");
-        if (!q) return { ...group, entries };
-        return {
-          ...group,
-          entries: entries.filter(
-            (entry) =>
-              entry.label.toLowerCase().includes(q) ||
-              entry.item_key.toLowerCase().includes(q)
-          ),
-        };
-      })
-      .filter((group) => group.entries.length > 0);
-  }, [materialQuery]);
 
   const plantEntries = plantCatalogue();
   const subcontractEntries = subcontractCatalogue();
@@ -133,42 +93,13 @@ export function RatesNonDefaultSections({
 
   if (view === "materials") {
     return (
-      <div className="space-y-4">
-        <div className="space-y-1">
-          <h2 className="text-base font-semibold tracking-tight">Materials</h2>
-          <p className="text-sm text-muted-foreground">
-            Your rate is primary when set. Otherwise Quotr benchmark is used
-            where one exists.
-          </p>
-        </div>
-        <Input
-          type="search"
-          value={materialQuery}
-          onChange={(event) => setMaterialQuery(event.target.value)}
-          placeholder="Search rates"
-          aria-label="Search rates"
-          className="h-9 max-w-sm"
+      <div className="space-y-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+        <MaterialsByProductFamily
+          rates={state.rates}
+          readOnly={!state.canManageRates}
+          companyGrossMarginPercent={companyGrossMarginPercent}
+          onRatesChange={onRatesChange}
         />
-        {filteredMaterialGroups.length === 0 ? (
-          <p className="rounded-lg border border-dashed px-3 py-3 text-sm text-muted-foreground">
-            No matching material rates.
-          </p>
-        ) : (
-          filteredMaterialGroups.map((group) => (
-            <RatesTableSection
-              key={group.title}
-              title={group.title}
-              description={group.description}
-              catalogue={group.entries}
-              rates={state.rates}
-              onRatesChange={onRatesChange}
-              companyGrossMarginPercent={companyGrossMarginPercent}
-              variant="grouped"
-              showEngineColumn
-              readOnly={!state.canManageRates}
-            />
-          ))
-        )}
       </div>
     );
   }
