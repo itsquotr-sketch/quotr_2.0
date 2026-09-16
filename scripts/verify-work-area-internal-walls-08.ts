@@ -285,16 +285,18 @@ check(
     FITOUT_BENCHMARKS.stoppingPerM2.cost
 );
 check(
-  "no shared stopping.plasterboard.level5 catalogue rate",
-  getCatalogueEntry("stopping.plasterboard.level5.m2") == null
+  "Level 5 stopping catalogue identity stays Pricing Required (no Quotr COST)",
+  getCatalogueEntry("stopping.plasterboard.level5.m2") != null &&
+    getCatalogueEntry("stopping.plasterboard.level5.m2")?.defaultCostRate == null
 );
 check(
   "bathroom.stopping.m2 is bathroom-specific",
   getCatalogueEntry("bathroom.stopping.m2")?.work_area_type === "bathroom"
 );
 check(
-  "painting.wall.m2 has no catalogue rate",
-  getCatalogueEntry("painting.wall.m2") == null
+  "painting.wall.m2 catalogue identity stays Pricing Required (no Quotr COST)",
+  getCatalogueEntry("painting.wall.m2") != null &&
+    getCatalogueEntry("painting.wall.m2")?.defaultCostRate == null
 );
 check(
   "do not reuse painting.material.m2 for IW nested paint",

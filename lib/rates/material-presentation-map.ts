@@ -634,6 +634,27 @@ export function classifyMaterialPresentation(
 
   if (key.startsWith("insulation.")) {
     const application = key.includes(".wall.") ? "Wall" : "Ceiling";
+    const isFireAcoustic = key.includes("fire_acoustic");
+    const isAcoustic = key.includes(".acoustic.") && !isFireAcoustic;
+    if (isFireAcoustic || isAcoustic) {
+      return base({
+        categoryId: "insulation",
+        familyId: "wall-specialty-insulation",
+        familyName: "Wall insulation",
+        familyDescription:
+          "Acoustic and fire-acoustic wall insulation. Pricing Required until a company rate exists — no Quotr V1 COST.",
+        variantLayout: "generic",
+        thickness: null,
+        sheetSize: null,
+        section: null,
+        gradeTreatment: isFireAcoustic ? "Fire and acoustic" : "Acoustic",
+        colourType: application,
+        usedInWorkAreaTypes: ["internal_walls"],
+        ordinary: true,
+        legacyKind: leftover ? "leftover" : null,
+        aliasOfKey: null,
+      });
+    }
     return base({
       categoryId: "insulation",
       familyId: "thermal-insulation",
@@ -734,17 +755,44 @@ export function classifyMaterialPresentation(
     });
   }
 
+  if (key === "painting.wall.m2") {
+    return base({
+      categoryId: "paint_stopping",
+      familyId: "wall-painting",
+      familyName: "Wall painting",
+      familyDescription:
+        "Internal Walls nested wall paint materials. Pricing Required until a company rate exists. Distinct from shared painting.material.m2.",
+      variantLayout: "generic",
+      thickness: null,
+      sheetSize: null,
+      section: null,
+      gradeTreatment: null,
+      colourType: "Per m² package",
+      usedInWorkAreaTypes: ["internal_walls"],
+      ordinary: true,
+      legacyKind: leftover ? "leftover" : null,
+      aliasOfKey: null,
+    });
+  }
+
   if (key.startsWith("stopping.") || key === "bathroom.stopping.m2") {
     return base({
       categoryId: "paint_stopping",
       familyId: "stopping",
       familyName: "Plasterboard stopping",
-      familyDescription: "Ordinary Level 4 stopping on new plasterboard.",
+      familyDescription:
+        key.includes("level5")
+          ? "Level 5 stopping. Pricing Required until a company rate exists."
+          : "Ordinary Level 4 stopping on new plasterboard.",
       variantLayout: "generic",
       thickness: null,
       sheetSize: null,
       section: null,
-      gradeTreatment: key.includes("level4") ? "Level 4" : null,
+      gradeTreatment: key.includes("level5")
+        ? "Level 5"
+        : key.includes("level4")
+          ? "Level 4"
+          : null,
       colourType: entry.label,
       usedInWorkAreaTypes: key.startsWith("bathroom.")
         ? ["bathroom"]
@@ -767,6 +815,26 @@ export function classifyMaterialPresentation(
       section: null,
       gradeTreatment: "Ordinary pine/MDF",
       colourType: null,
+      usedInWorkAreaTypes: ["internal_walls"],
+      ordinary: true,
+      legacyKind: leftover ? "leftover" : null,
+      aliasOfKey: null,
+    });
+  }
+
+  if (key === "cornice.wall.lm" || key.startsWith("cornice.")) {
+    return base({
+      categoryId: "trim",
+      familyId: "wall-cornice",
+      familyName: "Cornice",
+      familyDescription:
+        "Wall cornice / scotia. Pricing Required until a company rate exists — no Quotr V1 COST.",
+      variantLayout: "generic",
+      thickness: null,
+      sheetSize: null,
+      section: null,
+      gradeTreatment: null,
+      colourType: entry.label,
       usedInWorkAreaTypes: ["internal_walls"],
       ordinary: true,
       legacyKind: leftover ? "leftover" : null,

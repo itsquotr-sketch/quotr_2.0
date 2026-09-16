@@ -9,6 +9,7 @@
 
 import { getCombinedLabourAccessFactor } from "@/lib/estimate/adjustments";
 import { getCatalogueEntry } from "@/lib/rates/catalogue";
+import { derivedDimensionedPlasterboardCost } from "@/lib/estimate/ceilings-plasterboard-derived-cost";
 import { round2 } from "@/lib/estimate/facts";
 import {
   buildAmounts,
@@ -25,7 +26,10 @@ import { resolveLabourRate, resolveRate } from "@/lib/estimate/rates";
 import { resolveProductivity } from "@/lib/estimate/productivity";
 import { getRateSourceLabel } from "@/lib/estimate/rate-source-labels";
 import { resolveMaterialWastage } from "@/lib/settings/material-wastage";
-import type { EstimateRequirement } from "@/lib/estimate/requirements";
+import type {
+  EstimateRequirement,
+  MaterialRequirement,
+} from "@/lib/estimate/requirements";
 import type {
   EstimateContext,
   EstimateLineItemInput,
@@ -63,6 +67,8 @@ import {
   validateOpeningCollection,
 } from "@/lib/estimate/internal-walls-openings";
 
+const DERIVED_QUOTR_SOURCE_LABEL = "Derived Quotr benchmark";
+
 function catalogueBenchmarkCost(itemKey: string): number | null {
   const entry = getCatalogueEntry(itemKey);
   return entry?.defaultCostRate != null && entry.defaultCostRate > 0
@@ -80,6 +86,8 @@ function resolveExactMaterialRate(params: {
   sellRate: number | null;
   sourceType: "user_rate" | "benchmark" | "missing";
   sourceLabel: string;
+  conversion?: MaterialRequirement["conversion"];
+  assumptions?: MaterialRequirement["assumptions"];
 } {
   const company = params.context.rates.find(
     (rate) =>
@@ -106,11 +114,17 @@ function resolveExactMaterialRate(params: {
       sourceLabel: resolved.sourceLabel,
     };
   }
+  if (params.context.organisationSettings?.allow_benchmark_rates === false) {
+    return {
+      priced: false,
+      costRate: null,
+      sellRate: null,
+      sourceType: "missing",
+      sourceLabel: getRateSourceLabel("missing"),
+    };
+  }
   const benchmark = catalogueBenchmarkCost(params.itemKey);
-  if (
-    benchmark != null &&
-    params.context.organisationSettings?.allow_benchmark_rates !== false
-  ) {
+  if (benchmark != null) {
     const resolved = resolveRate({
       rates: params.context.rates,
       rateType: "material",
@@ -125,6 +139,38 @@ function resolveExactMaterialRate(params: {
       sellRate: resolved.sellRate,
       sourceType: "benchmark",
       sourceLabel: resolved.sourceLabel,
+    };
+  }
+  const derived = derivedDimensionedPlasterboardCost(params.itemKey);
+  if (derived != null) {
+    const resolved = resolveRate({
+      rates: params.context.rates,
+      rateType: "material",
+      itemKey: params.itemKey,
+      unit: params.unit,
+      fallbackCostRate: derived.derivedCost,
+      organisationSettings: params.context.organisationSettings,
+    });
+    return {
+      priced: true,
+      costRate: resolved.costRate,
+      sellRate: resolved.sellRate,
+      sourceType: "benchmark",
+      sourceLabel: DERIVED_QUOTR_SOURCE_LABEL,
+      conversion: {
+        from: derived.baseKey,
+        to: params.itemKey,
+        factor: derived.ratio,
+        sourceUnitCost: derived.baseCost,
+        basis: derived.basis,
+      },
+      assumptions: [
+        {
+          key: "derived_plasterboard_cost",
+          text: `Quotr derived COST from ${derived.baseKey} $${derived.baseCost} × ${derived.ratio} (sheet area ${derived.targetAreaM2} / 2.88 m²). Same family and thickness only.`,
+          source: "benchmark",
+        },
+      ],
     };
   }
   return {
@@ -603,7 +649,7 @@ function emitLiningFace(params: {
       variantKey,
       description: materialLabel,
       confidence: "high",
-      assumptions: [],
+      assumptions: rate.assumptions ?? [],
       provenance: params.provenanceBase,
       priced: rate.priced,
       materialKey: takeoff.materialKey,
@@ -614,6 +660,7 @@ function emitLiningFace(params: {
       wasteFactor: takeoff.wasteFactor,
       purchaseQuantity: takeoff.purchaseSheets,
       purchaseUnit: "each",
+      conversion: rate.conversion,
       rateSource: rate.priced
         ? rate.sourceType === "user_rate"
           ? "company"

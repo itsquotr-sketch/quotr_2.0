@@ -438,7 +438,13 @@ check(
   bLining.every((row) => row.materialKey === "sheet.plasterboard.fyreline.13mm.3000x1200.each") &&
     !bLining.some((row) => row.materialKey === INTERNAL_WALLS_FYRELINE_13_2400_KEY)
 );
-check("Fixture B Fyreline 3000 Pricing Required", bLining.every((row) => row.priced === false));
+check("Fixture B Fyreline 3000 uses derived Quotr", bLining.every(
+  (row) =>
+    row.priced === true &&
+    row.rateSource === "benchmark" &&
+    near(row.unitCost, 30) &&
+    near(row.totalCost, 16 * 30)
+));
 check(
   "Fixture B review copy keeps 2 layers",
   bLining.every((row) => (row.specification ?? "").includes("2 layers"))
@@ -471,7 +477,15 @@ check(
     near(cStd[0]?.purchaseQuantity, 6)
 );
 check("Fixture C does not collapse unlike products", cAq[0]?.materialKey !== cStd[0]?.materialKey);
-check("Fixture C 2700 keys are Pricing Required", cAq[0]?.priced === false && cStd[0]?.priced === false);
+check(
+  "Fixture C 2700 keys use derived Quotr",
+  cAq[0]?.priced === true &&
+    near(cAq[0]?.unitCost, 29.25) &&
+    near(cAq[0]?.totalCost, 6 * 29.25) &&
+    cStd[0]?.priced === true &&
+    near(cStd[0]?.unitCost, 20.25) &&
+    near(cStd[0]?.totalCost, 6 * 20.25)
+);
 check(
   "Fixture C steel framing still present",
   mats(c).some((row) => row.componentKey.includes("steel"))

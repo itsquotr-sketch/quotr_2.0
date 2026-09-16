@@ -46,11 +46,13 @@ import {
 import { FENCE_MODULAR_1C_MATERIAL_STARTERS } from "@/lib/estimate/fence-modular-1c";
 import { FENCE_TIMBER_1B_MATERIAL_STARTERS } from "@/lib/estimate/fence-timber-1b";
 import {
+  INTERNAL_WALLS_CORNICE_MATERIAL_KEY,
   INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
   INTERNAL_WALLS_FRAMING_FIXINGS_COST_PER_M2,
   INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
   INTERNAL_WALLS_LINING_HOURS_PER_SHEET,
   INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS,
+  INTERNAL_WALLS_PAINTING_MATERIAL_KEY,
   INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
   INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_SKIRTING_MATERIAL_KEY,
@@ -829,6 +831,66 @@ export const ORDINARY_FINISH_FALLBACK_CATALOGUE: RateCatalogueEntry[] = [
     defaultCostRate: FITOUT_BENCHMARKS.stoppingPerM2.cost,
     calculatorSupport: "used_now",
     recommended: true,
+  }),
+  entry({
+    item_key: "stopping.plasterboard.level5.m2",
+    label: "Level 5 plasterboard stopping",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Stopping",
+    unit: "m2",
+    description:
+      "Level 5 plasterboard stopping. No Quotr V1 COST — Pricing Required until a company exact rate exists. Company exact wins.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "insulation.wall.acoustic.m2",
+    label: "Acoustic wall insulation",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Insulation",
+    unit: "m2",
+    description:
+      "Acoustic wall insulation. No Quotr V1 COST — Pricing Required until a company exact rate exists. Distinct from ordinary thermal wall insulation.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: "insulation.wall.fire_acoustic.m2",
+    label: "Fire and acoustic wall insulation",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Insulation",
+    unit: "m2",
+    description:
+      "Fire and acoustic wall insulation. No Quotr V1 COST — Pricing Required until a company exact rate exists. Distinct from ordinary thermal wall insulation.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_CORNICE_MATERIAL_KEY,
+    label: "Cornice",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Trim",
+    unit: "lm",
+    description:
+      "Wall cornice / scotia. Custom profile — no Quotr V1 COST. Pricing Required until a company exact rate exists.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_PAINTING_MATERIAL_KEY,
+    label: "Wall paint materials",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Painting",
+    unit: "m2",
+    description:
+      "Internal Walls nested wall paint materials. Distinct from painting.material.m2 / Ceiling painting. No Quotr V1 COST — Pricing Required until a company exact rate exists. Sibling Painting work area is preferred for full paint scope.",
+    calculatorSupport: "used_now",
   }),
 ];
 

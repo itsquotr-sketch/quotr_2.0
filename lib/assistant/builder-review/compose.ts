@@ -243,6 +243,7 @@ export function mapLineCategory(
 export function mapRateLabel(raw: string): string {
   if (/pc allowance/i.test(raw)) return "PC allowance";
   if (/quotr allowance/i.test(raw)) return "Quotr allowance";
+  if (/derived quotr/i.test(raw)) return "Derived Quotr benchmark";
   const type = classifyRateSource(raw);
   if (type === "user_rate") return "Company rate";
   if (type === "calibrated_productivity") return "Your calibrated productivity";
