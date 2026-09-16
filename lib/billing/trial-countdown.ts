@@ -1,5 +1,10 @@
+import { resolveEffectiveAccessPolicy } from "@/lib/billing/access-policy";
 import { QUOTE_DISPLAY_TIMEZONE } from "@/lib/quotes/display";
-import type { EffectiveTrialState } from "@/lib/billing/types";
+import type {
+  EffectiveTrialState,
+  OrgBillingOverride,
+  OrgSubscription,
+} from "@/lib/billing/types";
 
 export type TrialCountdownTone =
   | "normal"
@@ -159,4 +164,37 @@ export function trialBannerNotice(
     ctaLabel: "Choose a plan",
     href: "/app/settings/billing",
   };
+}
+
+/**
+ * Global trial chrome must follow the same effective billing precedence as
+ * product access (override → stripe → internal trial → none).
+ *
+ * Do not key the banner off raw `org_subscriptions.source === internal_trial`
+ * alone: an active administrative/complimentary override (or paid Stripe row)
+ * is the effective entitlement even when a historical trial row remains.
+ */
+export function resolveTrialBannerNotice(input: {
+  subscription: OrgSubscription | null;
+  activeOverride: OrgBillingOverride | null;
+  effectiveTrialState: EffectiveTrialState | null;
+  now?: Date;
+}): TrialBannerNotice | null {
+  const policy = resolveEffectiveAccessPolicy({
+    subscription: input.subscription,
+    activeOverride: input.activeOverride,
+    now: input.now,
+  });
+
+  if (policy.source !== "internal_trial") {
+    return null;
+  }
+
+  return trialBannerNotice(
+    deriveTrialCountdown({
+      trialEndsAt: input.subscription?.trialEndsAt ?? null,
+      effectiveTrialState: input.effectiveTrialState,
+      now: input.now,
+    })
+  );
 }

@@ -6,8 +6,7 @@ import { getOrgBillingState } from "@/lib/billing/server";
 import { resolveEffectiveAccessPolicy } from "@/lib/billing/access-policy";
 import { shouldShowTeamPrimaryNav } from "@/lib/billing/team-nav-visibility";
 import {
-  deriveTrialCountdown,
-  trialBannerNotice,
+  resolveTrialBannerNotice,
   type TrialBannerNotice,
 } from "@/lib/billing/trial-countdown";
 import { internalDeploymentLabel } from "@/lib/deployment/environment";
@@ -95,21 +94,24 @@ export default async function AppLayout({
   let showTeamNav = false;
   if (billingState) {
     try {
-      const policy = resolveEffectiveAccessPolicy(billingState);
+      const policy = resolveEffectiveAccessPolicy({
+        subscription: billingState.subscription,
+        activeOverride: billingState.activeOverride,
+      });
       showTeamNav = shouldShowTeamPrimaryNav({
         source: policy.source,
         planCode: policy.planCode,
       });
-      if (
-        !pathname?.startsWith("/app/settings/billing") &&
-        billingState.subscription?.source === "internal_trial"
-      ) {
-        billingNotice = trialBannerNotice(
-          deriveTrialCountdown({
-            trialEndsAt: billingState.subscription.trialEndsAt,
-            effectiveTrialState: billingState.effectiveTrialState,
-          })
-        );
+      // Banner uses the same effective entitlement as access enforcement.
+      // Active override / paid Stripe hide trial chrome even when a historical
+      // internal_trial row remains. Lookup failure above leaves notice null
+      // (neutral — no false "Trial ended" flash before state resolves).
+      if (!pathname?.startsWith("/app/settings/billing")) {
+        billingNotice = resolveTrialBannerNotice({
+          subscription: billingState.subscription,
+          activeOverride: billingState.activeOverride,
+          effectiveTrialState: billingState.effectiveTrialState,
+        });
       }
     } catch {
       billingNotice = null;
