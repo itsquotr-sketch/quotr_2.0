@@ -66,15 +66,22 @@ function rate(
   };
 }
 
-console.log("=== RATES-MATERIALS-UI-01 ===\n");
+console.log("=== RATES-MATERIALS-UI-01 / 01R1 ===\n");
 
 const registrySrc = read("lib/rates/material-registry.ts");
 const mapSrc = read("lib/rates/material-presentation-map.ts");
 const uiSrc = read("components/rates/MaterialsByProductFamily.tsx");
 const ratesNonDefault = read("components/rates/RatesNonDefaultSections.tsx");
 const ratesPage = read("components/rates/RatesPageContent.tsx");
+const ratesPageServer = read("app/(protected)/app/rates/page.tsx");
+const specificSection = read("components/rates/SpecificMaterialRatesSection.tsx");
 const productivityUi = read("components/rates/ProductivityByWorkArea.tsx");
 const productivityRegistry = read("lib/rates/productivity-registry.ts");
+
+const materialsBranchMatch = ratesNonDefault.match(
+  /if \(view === "materials"\) \{([\s\S]*?)(?=\n  if \(view === |\n  if \(activeSection === |\n  return null;)/
+);
+const materialsBranch = materialsBranchMatch?.[1] ?? "";
 
 check(
   "canonical materials registry module present",
@@ -89,9 +96,37 @@ check(
     mapSrc.includes("gib-standard")
 );
 check(
-  "Rates materials uses MaterialsByProductFamily",
+  "Rates page server renders RatesPageContent",
+  ratesPageServer.includes("RatesPageContent") &&
+    ratesPageServer.includes("getRatesPageState")
+);
+check(
+  "RatesPageContent dynamically loads RatesNonDefaultSections",
+  ratesPage.includes('import("./RatesNonDefaultSections")') &&
+    ratesPage.includes("<RatesNonDefaultSections")
+);
+check(
+  "live Materials tab renders MaterialsByProductFamily",
   ratesNonDefault.includes("MaterialsByProductFamily") &&
-    ratesNonDefault.includes('view === "materials"')
+    ratesNonDefault.includes('view === "materials"') &&
+    ratesNonDefault.includes("data-rates-materials-live") &&
+    materialsBranch.includes("<MaterialsByProductFamily") &&
+    materialsBranch.includes("rates={state.rates}") &&
+    materialsBranch.includes("readOnly={!state.canManageRates}")
+);
+check(
+  "ordinary Materials route does not render legacy full list",
+  !materialsBranch.includes("RatesTableSection") &&
+    !materialsBranch.includes("materialQuery") &&
+    !materialsBranch.includes('aria-label="Search rates"') &&
+    !materialsBranch.includes("filteredMaterialGroups") &&
+    !materialsBranch.includes("SPECIFIC_MATERIAL_RATE_GROUPS.filter")
+);
+check(
+  "SpecificMaterialRatesSection delegates to MaterialsByProductFamily only",
+  specificSection.includes("MaterialsByProductFamily") &&
+    !specificSection.includes("RatesTableSection") &&
+    !specificSection.includes("SPECIFIC_MATERIAL_RATE_GROUPS.map")
 );
 check(
   "search and filters present",

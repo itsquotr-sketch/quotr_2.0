@@ -93,7 +93,10 @@ export function RatesNonDefaultSections({
 
   if (view === "materials") {
     return (
-      <div className="space-y-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0">
+      <div
+        className="space-y-4 pb-[calc(4.5rem+env(safe-area-inset-bottom))] md:pb-0"
+        data-rates-materials-live
+      >
         <MaterialsByProductFamily
           rates={state.rates}
           readOnly={!state.canManageRates}
