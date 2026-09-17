@@ -289,7 +289,10 @@ const bCalc = calculateInternalWalls(ctx([walls], bFacts), walls);
 const bSkirtMats = mats(bCalc).filter(
   (row) => row.componentKey === INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT
 );
-check("Fixture B two face requirements", bSkirtMats.length === 2);
+check(
+  "Fixture B one aggregated skirting material at total lm",
+  bSkirtMats.length === 1 && near(bSkirtMats[0]!.baseQuantity, 22.38)
+);
 check(
   "Fixture B ordinary skirting labour resolves at 0.10 h/lm",
   labs(bCalc).some(

@@ -2510,7 +2510,7 @@ export const INTERNAL_WALLS_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     workAreaLabel: "Internal Walls productivity",
     unit: "lm",
     description:
-      "Person-hours per installed ordinary pine/MDF skirting LM. Owner-approved Quotr V1 0.10 h/lm. Company hours/lm win. Not deck full-height screening. Custom profiles stay Pricing Required.",
+      "Person-hours per installed ordinary pine/MDF skirting LM. Quotr benchmark · 0.10 person-hours/lm. Company hours/lm win. Not deck full-height screening. Custom profiles stay Pricing Required.",
     defaultCostRate: INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
     calculatorSupport: "used_now",
     recommended: true,

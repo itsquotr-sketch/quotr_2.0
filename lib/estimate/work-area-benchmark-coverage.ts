@@ -877,7 +877,7 @@ export const INTERNAL_WALLS_BENCHMARK_REQUIREMENTS: readonly WorkAreaBenchmarkRe
       ordinaryV1: true,
       outcome: "RESOLVES_WITH_QUOTR",
       gapClass: "EXISTING_BENCHMARK_REUSED",
-      derivation: "Owner-approved Quotr V1 0.10 person-hours / lm. Company productivity wins.",
+      derivation: "Quotr benchmark · 0.10 person-hours/lm. Company productivity wins.",
       currentWithoutCompany: "Quotr productivity + global labour COST",
       notes: "Deck full-height screening hours/lm is not wall skirting. Custom profiles stay PR.",
     }),

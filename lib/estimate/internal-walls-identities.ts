@@ -310,7 +310,7 @@ export const INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY =
 /** EST-BENCHMARK-01B — ordinary pine/MDF skirting productivity. */
 export const INTERNAL_WALLS_SKIRTING_HOURS_PER_LM = 0.1;
 export const INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION =
-  "Quotr V1 0.10 person-hours / lm ordinary wall skirting. Company productivity wins. Not deck full-height screening." as const;
+  "Quotr benchmark · 0.10 person-hours/lm ordinary wall skirting. Company productivity wins. Not deck full-height screening." as const;
 export const INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY =
   "internal_walls.cornice.install.hours_per_lm" as const;
 

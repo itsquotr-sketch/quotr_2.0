@@ -413,6 +413,29 @@ export function selectedSides(
   return [];
 }
 
+/**
+ * Canonical trim / finish side-count rule.
+ * none → 0 · side A or B only → 1 · both sides → 2
+ */
+export function sideSelectionCount(
+  selection: InternalWallsSideSelection | null
+): 0 | 1 | 2 {
+  if (selection === "side_a" || selection === "side_b") return 1;
+  if (selection === "both") return 2;
+  return 0;
+}
+
+/** Client / summary wording — no raw enum values. */
+export function trimSideScopePhrase(
+  trim: "Skirting" | "Cornice",
+  selection: InternalWallsSideSelection | null
+): string | null {
+  if (selection === "both") return `${trim} to both sides`;
+  if (selection === "side_a") return `${trim} to Side A`;
+  if (selection === "side_b") return `${trim} to Side B`;
+  return null;
+}
+
 function eligibleOpenings(
   type: InternalWallsFinishHost
 ): InternalWallsOpening[] {
@@ -763,12 +786,10 @@ export function summariseFinishLine(type: InternalWallsFinishHost): string | nul
   } else if (type.insulation_included === false) {
     bits.push("No insulation");
   }
-  if (type.skirting && type.skirting !== "none") {
-    bits.push(`Skirting ${sideSelectionDisplay(type.skirting)}`);
-  }
-  if (type.cornice && type.cornice !== "none") {
-    bits.push(`Cornice ${sideSelectionDisplay(type.cornice)}`);
-  }
+  const skirtingScope = trimSideScopePhrase("Skirting", type.skirting);
+  if (skirtingScope) bits.push(skirtingScope);
+  const corniceScope = trimSideScopePhrase("Cornice", type.cornice);
+  if (corniceScope) bits.push(corniceScope);
   if (type.electrical && type.electrical !== "none") {
     bits.push(`Electrical ${electricalTierDisplay(type.electrical)}`);
   }

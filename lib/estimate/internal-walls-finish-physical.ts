@@ -77,7 +77,6 @@ import {
   INTERNAL_WALLS_PAINTING_AREA_RULE,
   INTERNAL_WALLS_PAINTING_RATE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_CORNICE_OPENING_RULE,
-  INTERNAL_WALLS_SKIRTING_LABOUR_OWNER_REQUIRED_MESSAGE,
   INTERNAL_WALLS_SKIRTING_OPENING_RULE,
   INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_STOPPING_AREA_RULE,
@@ -90,6 +89,7 @@ import {
   internalWallsNestedFinishOmit,
   paintingTakeoff,
   presentFinishQty,
+  sideSelectionDisplay,
   skirtingTakeoff,
   stoppingLevelDisplay,
   stoppingTakeoff,
@@ -676,113 +676,112 @@ export function buildInternalWallsFinishEnvelope(params: {
     }
 
     const skirting = skirtingTakeoff({ type, jobScope });
-    if (skirting && skirting.totalLm > 0) {
+    if (
+      skirting &&
+      skirting.totalLm > 0 &&
+      type.skirting &&
+      type.skirting !== "none"
+    ) {
       const overlap = internalWallsSkirtingOverlapGroup(type.id);
       assumptions.push(INTERNAL_WALLS_SKIRTING_OPENING_RULE);
-      const faces: Array<{ side: "side_a" | "side_b"; lm: number }> = [];
-      if (skirting.sideALm != null && skirting.sideALm > 0) {
-        faces.push({ side: "side_a", lm: skirting.sideALm });
-      }
-      if (skirting.sideBLm != null && skirting.sideBLm > 0) {
-        faces.push({ side: "side_b", lm: skirting.sideBLm });
-      }
-      for (const face of faces) {
-        const sideLabel = face.side === "side_a" ? "Side A" : "Side B";
-        const specification = `${sideLabel} · ${presentFinishQty(face.lm)} lm`;
-        sortOrder = emitQtyMaterial({
-          workArea,
-          context,
-          wallTypeId: type.id,
-          variantKey: `${type.id}:${face.side}`,
-          overlapGroup: overlap,
-          componentKey: INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
-          materialKey: INTERNAL_WALLS_SKIRTING_MATERIAL_KEY,
-          category: "TRIM",
-          label: `${displayName} — skirting`,
-          specification,
-          identitySummary: specification,
-          quantity: round2(face.lm),
-          unit: "lm",
-          wasteFactor: 0,
-          unpricedNotes: `${specification}. ${INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE}`,
-          requirements,
-          lineItems,
-          sortOrder,
-        });
-        sortOrder = emitQtyLabour({
-          workArea,
-          context,
-          accessFactor,
-          priceWithQuotr: true,
-          wallTypeId: type.id,
-          variantKey: `${type.id}:${face.side}`,
-          overlapGroup: overlap,
-          componentKey: INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT,
-          hoursKey: INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
-          label: `${displayName} — skirting labour`,
-          identitySummary: `${specification} · ${INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION}`,
-          notes: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
-          quantity: round2(face.lm),
-          unit: "lm",
-          assumptionText: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
-          requirements,
-          lineItems,
-          sortOrder,
-        });
-      }
+      // One commercial line per wall type: net face length × side count.
+      // Per-face emit shared overlapGroup|scopeKey and exclusive-winner
+      // dedupe discarded Side B (same CORRECT-01B lining collapse).
+      const sideLabel = sideSelectionDisplay(type.skirting) ?? "Skirting";
+      const quantity = round2(skirting.totalLm);
+      const specification = `${sideLabel} · ${presentFinishQty(quantity)} lm`;
+      const variantKey = `${type.id}:${type.skirting}`;
+      sortOrder = emitQtyMaterial({
+        workArea,
+        context,
+        wallTypeId: type.id,
+        variantKey,
+        overlapGroup: overlap,
+        componentKey: INTERNAL_WALLS_SKIRTING_MATERIAL_COMPONENT,
+        materialKey: INTERNAL_WALLS_SKIRTING_MATERIAL_KEY,
+        category: "TRIM",
+        label: `${displayName} — skirting`,
+        specification,
+        identitySummary: specification,
+        quantity,
+        unit: "lm",
+        wasteFactor: 0,
+        unpricedNotes: `${specification}. ${INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE}`,
+        requirements,
+        lineItems,
+        sortOrder,
+      });
+      sortOrder = emitQtyLabour({
+        workArea,
+        context,
+        accessFactor,
+        priceWithQuotr: true,
+        wallTypeId: type.id,
+        variantKey,
+        overlapGroup: overlap,
+        componentKey: INTERNAL_WALLS_SKIRTING_LABOUR_COMPONENT,
+        hoursKey: INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
+        label: `${displayName} — skirting labour`,
+        identitySummary: `${specification} · ${INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION}`,
+        notes: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
+        quantity,
+        unit: "lm",
+        assumptionText: INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION,
+        requirements,
+        lineItems,
+        sortOrder,
+      });
     }
 
     const cornice = corniceTakeoff({ type, jobScope });
-    if (cornice && cornice.totalLm > 0) {
+    if (
+      cornice &&
+      cornice.totalLm > 0 &&
+      type.cornice &&
+      type.cornice !== "none"
+    ) {
       const overlap = internalWallsCorniceOverlapGroup(type.id);
       assumptions.push(INTERNAL_WALLS_CORNICE_OPENING_RULE);
-      const faces: Array<{ side: "side_a" | "side_b"; lm: number }> = [];
-      if (cornice.sideALm != null && cornice.sideALm > 0) {
-        faces.push({ side: "side_a", lm: cornice.sideALm });
-      }
-      if (cornice.sideBLm != null && cornice.sideBLm > 0) {
-        faces.push({ side: "side_b", lm: cornice.sideBLm });
-      }
-      for (const face of faces) {
-        const sideLabel = face.side === "side_a" ? "Side A" : "Side B";
-        const specification = `${sideLabel} · ${presentFinishQty(face.lm)} lm`;
-        sortOrder = emitQtyMaterial({
-          workArea,
-          context,
-          wallTypeId: type.id,
-          variantKey: `${type.id}:${face.side}`,
-          overlapGroup: overlap,
-          componentKey: INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT,
-          materialKey: INTERNAL_WALLS_CORNICE_MATERIAL_KEY,
-          category: "TRIM",
-          label: `${displayName} — cornice`,
-          specification,
-          identitySummary: specification,
-          quantity: round2(face.lm),
-          unit: "lm",
-          wasteFactor: 0,
-          unpricedNotes: `${specification}. ${INTERNAL_WALLS_CORNICE_PRODUCT_REQUIRED_MESSAGE}`,
-          requirements,
-          lineItems,
-          sortOrder,
-        });
-        sortOrder = emitQtyLabour({
-          workArea,
-          wallTypeId: type.id,
-          variantKey: `${type.id}:${face.side}`,
-          overlapGroup: overlap,
-          componentKey: INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
-          hoursKey: INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
-          label: `${displayName} — cornice labour`,
-          identitySummary: `${specification} · ${INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE}`,
-          notes: INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE,
-          quantity: round2(face.lm),
-          unit: "lm",
-          requirements,
-          lineItems,
-          sortOrder,
-        });
-      }
+      const sideLabel = sideSelectionDisplay(type.cornice) ?? "Cornice";
+      const quantity = round2(cornice.totalLm);
+      const specification = `${sideLabel} · ${presentFinishQty(quantity)} lm`;
+      const variantKey = `${type.id}:${type.cornice}`;
+      sortOrder = emitQtyMaterial({
+        workArea,
+        context,
+        wallTypeId: type.id,
+        variantKey,
+        overlapGroup: overlap,
+        componentKey: INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT,
+        materialKey: INTERNAL_WALLS_CORNICE_MATERIAL_KEY,
+        category: "TRIM",
+        label: `${displayName} — cornice`,
+        specification,
+        identitySummary: specification,
+        quantity,
+        unit: "lm",
+        wasteFactor: 0,
+        unpricedNotes: `${specification}. ${INTERNAL_WALLS_CORNICE_PRODUCT_REQUIRED_MESSAGE}`,
+        requirements,
+        lineItems,
+        sortOrder,
+      });
+      sortOrder = emitQtyLabour({
+        workArea,
+        wallTypeId: type.id,
+        variantKey,
+        overlapGroup: overlap,
+        componentKey: INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
+        hoursKey: INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
+        label: `${displayName} — cornice labour`,
+        identitySummary: `${specification} · ${INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE}`,
+        notes: INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE,
+        quantity,
+        unit: "lm",
+        requirements,
+        lineItems,
+        sortOrder,
+      });
     }
 
     const electrical = type.electrical;
