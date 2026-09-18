@@ -44,9 +44,61 @@ export type ExtractedInternalWallsType = {
   frameSystem: "timber" | "steel" | "existing_frame" | null;
   frameSize: InternalWallsTimberSize | null;
   sameLiningBothSides: boolean | null;
+  /** Explicit none from brief language. Null means openings were not stated. */
+  hasOpenings: boolean | null;
   sideA: ExtractedInternalWallsFace;
   sideB: ExtractedInternalWallsFace;
 };
+
+const EXPLICIT_NO_OPENINGS_PHRASES = [
+  "no openings",
+  "no opening",
+  "without openings",
+  "no doors or windows",
+  "no door or window openings",
+] as const;
+
+const EXPLICIT_NO_OPENINGS_QUALIFIERS = [
+  "except",
+  "excepting",
+  "apart from",
+  "other than",
+  "besides",
+  "excluding",
+] as const;
+
+function noOpeningsPhraseIsQualified(brief: string, index: number, phrase: string): boolean {
+  const after = brief.slice(index + phrase.length, index + phrase.length + 48).trimStart();
+  if (/^(?:up|-up)\b/.test(after)) return true;
+  return EXPLICIT_NO_OPENINGS_QUALIFIERS.some(
+    (marker) => after === marker || after.startsWith(`${marker} `)
+  );
+}
+
+/**
+ * Deterministic explicit-negative openings language.
+ * Generic absence of opening information is not a “none” fact.
+ */
+export function briefStatesExplicitInternalWallsNoOpenings(
+  briefText: string
+): boolean {
+  const brief = normalise(briefText);
+  if (!brief) return false;
+  let matched = false;
+  for (const phrase of EXPLICIT_NO_OPENINGS_PHRASES) {
+    let from = 0;
+    while (from < brief.length) {
+      const index = brief.indexOf(phrase, from);
+      if (index === -1) break;
+      if (noOpeningsPhraseIsQualified(brief, index, phrase)) {
+        return false;
+      }
+      matched = true;
+      from = index + phrase.length;
+    }
+  }
+  return matched;
+}
 
 function normalise(text: string): string {
   return text
@@ -175,6 +227,9 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
     frameSystem: timber ? "timber" : null,
     frameSize,
     sameLiningBothSides: lining.sameBoth,
+    hasOpenings: briefStatesExplicitInternalWallsNoOpenings(text)
+      ? false
+      : null,
     sideA: lining.sideA,
     sideB: lining.sideB,
   };
@@ -457,6 +512,19 @@ export function applyExtractedInternalWallsToFacts(params: {
         face: spec.sideB,
       });
     }
+    const existingType = existing[index];
+    const userOwnsOpenings =
+      existingType != null &&
+      (existingType.has_openings === true || existingType.openings.length > 0);
+    if (spec.hasOpenings === false && !userOwnsOpenings) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_HAS_OPENINGS_KEY,
+        value: "No",
+      });
+    }
   }
   return facts;
 }
@@ -500,6 +568,9 @@ export function optionalInternalWallsFactIsInvented(
 ): boolean {
   const brief = normalise(briefText);
   if (key.includes("has_openings") || key.includes("opening.")) {
+    if (briefStatesExplicitInternalWallsNoOpenings(briefText)) {
+      return key.includes("opening.");
+    }
     return !includesAny(brief, ["opening", "doorway", "window"]);
   }
   if (key.includes("insulation")) {
@@ -533,7 +604,13 @@ export function stripInventedInternalWallsFacts(
       if (!Array.isArray(fact.value)) return true;
       fact.value = (fact.value as Record<string, unknown>[]).map((row) => {
         const next = { ...row };
-        if (!includesAny(normalise(briefText), ["opening", "doorway", "window"])) {
+        if (briefStatesExplicitInternalWallsNoOpenings(briefText)) {
+          next.has_openings = false;
+          next.openings = [];
+          next.active_opening_id = null;
+        } else if (
+          !includesAny(normalise(briefText), ["opening", "doorway", "window"])
+        ) {
           next.has_openings = null;
           next.openings = [];
           next.active_opening_id = null;
