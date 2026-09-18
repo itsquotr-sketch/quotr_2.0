@@ -46,6 +46,8 @@ import {
 import { FENCE_MODULAR_1C_MATERIAL_STARTERS } from "@/lib/estimate/fence-modular-1c";
 import { FENCE_TIMBER_1B_MATERIAL_STARTERS } from "@/lib/estimate/fence-timber-1b";
 import {
+  INTERNAL_WALLS_CORNICE_HOURS_PER_LM,
+  INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_CORNICE_MATERIAL_KEY,
   INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
   INTERNAL_WALLS_FRAMING_FIXINGS_COST_PER_M2,
@@ -2512,6 +2514,20 @@ export const INTERNAL_WALLS_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = 
     description:
       "Person-hours per installed ordinary pine/MDF skirting LM. Quotr benchmark · 0.10 person-hours/lm. Company hours/lm win. Not deck full-height screening. Custom profiles stay Pricing Required.",
     defaultCostRate: INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
+    label: "Internal wall cornice installation",
+    rate_type: "productivity",
+    category: "labour",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Internal Walls productivity",
+    unit: "lm",
+    description:
+      "Person-hours per installed ordinary straight wall cornice/scotia LM. Quotr benchmark · 0.20 person-hours/lm. Company hours/lm win. Not ornate, curved, high-access, removal, or specialist profiles.",
+    defaultCostRate: INTERNAL_WALLS_CORNICE_HOURS_PER_LM,
     calculatorSupport: "used_now",
     recommended: true,
   }),

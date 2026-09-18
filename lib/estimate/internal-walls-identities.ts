@@ -313,6 +313,10 @@ export const INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION =
   "Quotr benchmark · 0.10 person-hours/lm ordinary wall skirting. Company productivity wins. Not deck full-height screening." as const;
 export const INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY =
   "internal_walls.cornice.install.hours_per_lm" as const;
+/** Owner-approved ordinary straight wall cornice / scotia productivity. */
+export const INTERNAL_WALLS_CORNICE_HOURS_PER_LM = 0.2;
+export const INTERNAL_WALLS_CORNICE_HOURS_DERIVATION =
+  "Quotr benchmark · 0.20 person-hours/lm ordinary straight wall cornice/scotia. Company productivity wins. Not ornate, curved, or specialist profiles." as const;
 
 /**
  * No canonical insulation wastage category (sheet_material / timber_framing

@@ -22,6 +22,7 @@ import {
   trimSideScopePhrase,
 } from "../lib/estimate/internal-walls-finish";
 import {
+  INTERNAL_WALLS_CORNICE_HOURS_DERIVATION,
   INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
   INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT,
   INTERNAL_WALLS_FRAMING_90_MATERIAL_COMPONENT,
@@ -345,8 +346,12 @@ check(
 check(
   "derivation has no Quotr V1",
   !/Quotr V1/i.test(INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION) &&
+    !/Quotr V1/i.test(INTERNAL_WALLS_CORNICE_HOURS_DERIVATION) &&
     /Quotr benchmark · 0\.10 person-hours\/lm/.test(
       INTERNAL_WALLS_SKIRTING_HOURS_DERIVATION
+    ) &&
+    /Quotr benchmark · 0\.20 person-hours\/lm/.test(
+      INTERNAL_WALLS_CORNICE_HOURS_DERIVATION
     )
 );
 
@@ -402,14 +407,15 @@ check(
   bothCorniceMats.length === 1 && near(bothCorniceMats[0]!.quantity, 8)
 );
 check(
-  "hosted cornice labour qty 8 PR retains quantity",
+  "hosted cornice labour hours from 8 lm × 0.20",
   bothCorniceLabs.length === 1 &&
-    near(bothCorniceLabs[0]!.quantity, 8) &&
-    bothCorniceLabs[0]!.rateSourceType === "missing"
+    near(bothCorniceLabs[0]!.labourHours ?? bothCorniceLabs[0]!.quantity, 1.6)
 );
 check(
-  "no false $0 cornice labour quantity",
-  bothCorniceLabs[0]!.quantity === 8
+  "no false $0 cornice labour money",
+  bothCorniceLabs[0] != null &&
+    (bothCorniceLabs[0]!.recommendedCost ?? 0) > 0 &&
+    bothCorniceLabs[0]!.rateSourceType !== "missing"
 );
 check(
   "skirting material identity unchanged",

@@ -158,7 +158,7 @@ export const INTERNAL_WALLS_CORNICE_PRODUCT_REQUIRED_MESSAGE =
   "Cornice product — Pricing Required. No canonical cornice identity or rate." as const;
 
 export const INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE =
-  "Cornice labour Pricing Required — no owner-approved hours/lm." as const;
+  "Cornice labour Pricing Required — productivity or hourly labour COST did not resolve." as const;
 
 export const INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_REQUIRED_MESSAGE =
   "Electrical allowance — Pricing Required." as const;

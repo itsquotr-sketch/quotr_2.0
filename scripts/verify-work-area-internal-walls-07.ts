@@ -35,6 +35,7 @@ import {
 } from "../lib/estimate/internal-walls-finish";
 import {
   INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
+  INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT,
   INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_COMPONENT,
   INTERNAL_WALLS_FRAMING_90_MATERIAL_COMPONENT,
   INTERNAL_WALLS_INSULATION_LABOUR_COMPONENT,
@@ -313,9 +314,24 @@ check("Fixture C 12 lm each side", cCornice != null && near(cCornice.sideALm, 12
 check("Fixture C total 24 lm", cCornice != null && near(cCornice.totalLm, 24));
 const cCalc = calculateInternalWalls(ctx([walls], cFacts), walls);
 check(
-  "Fixture C cornice labour PR",
+  "Fixture C cornice labour uses approved 0.20 h/lm",
   labs(cCalc).some(
-    (row) => row.componentKey === INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT && row.priced === false
+    (row) =>
+      row.componentKey === INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT &&
+      row.priced === true &&
+      near(row.productivityBasis.hoursPerUnit, 0.2) &&
+      near(row.productivityBasis.quantity, 24) &&
+      near(row.baseHours, 4.8)
+  )
+);
+check(
+  "Fixture C cornice material remains Pricing Required",
+  mats(cCalc).some(
+    (row) =>
+      row.componentKey === INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT &&
+      row.priced === false &&
+      near(row.baseQuantity, 24) &&
+      row.totalCost == null
   )
 );
 

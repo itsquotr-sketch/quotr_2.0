@@ -7,6 +7,8 @@ import {
 } from "@/lib/estimate/ceilings-identities";
 import { WALL_INSULATION_HOURS_PER_M2 } from "@/lib/estimate/insulation-fallback";
 import {
+  INTERNAL_WALLS_CORNICE_HOURS_PER_LM,
+  INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
   INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
   INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
@@ -420,6 +422,12 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
     "Internal wall ordinary skirting",
     INTERNAL_WALLS_SKIRTING_HOURS_PER_LM,
+    "lm"
+  ),
+  [INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY]: productivityEntry(
+    INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
+    "Internal wall cornice installation",
+    INTERNAL_WALLS_CORNICE_HOURS_PER_LM,
     "lm"
   ),
   "bathroom.demolition.floor_finish.hours_per_m2": productivityEntry(

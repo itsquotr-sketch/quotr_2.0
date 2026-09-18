@@ -3,8 +3,9 @@
  * cornice / electrical / stopping / painting requirement envelope.
  *
  * Quantities are physical. Ordinary thermal insulation, ordinary skirting
- * material, and Level 4 stopping use Quotr COST fallbacks. Company exact
- * wins. Acoustic / fire / custom / Level 5 remain Pricing Required.
+ * material, ordinary cornice labour, and Level 4 stopping use Quotr COST
+ * or productivity fallbacks. Company exact wins. Acoustic / fire / custom
+ * / Level 5 / cornice material remain Pricing Required.
  *
  * Does not change timber, steel, lining sheet-run, or opening formulas.
  */
@@ -40,6 +41,7 @@ import type {
 import type { InternalWallsJobScope } from "@/lib/estimate/internal-walls-scope";
 import {
   INTERNAL_WALLS_CARPENTER_LABOUR_KEY,
+  INTERNAL_WALLS_CORNICE_HOURS_DERIVATION,
   INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
   INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT,
@@ -68,7 +70,6 @@ import {
   internalWallsStoppingOverlapGroup,
 } from "@/lib/estimate/internal-walls-identities";
 import {
-  INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE,
   INTERNAL_WALLS_CORNICE_PRODUCT_REQUIRED_MESSAGE,
   INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_INSULATION_LABOUR_OWNER_REQUIRED_MESSAGE,
@@ -768,16 +769,20 @@ export function buildInternalWallsFinishEnvelope(params: {
       });
       sortOrder = emitQtyLabour({
         workArea,
+        context,
+        accessFactor,
+        priceWithQuotr: true,
         wallTypeId: type.id,
         variantKey,
         overlapGroup: overlap,
         componentKey: INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
         hoursKey: INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
         label: `${displayName} — cornice labour`,
-        identitySummary: `${specification} · ${INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE}`,
-        notes: INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE,
+        identitySummary: `${specification} · ${INTERNAL_WALLS_CORNICE_HOURS_DERIVATION}`,
+        notes: INTERNAL_WALLS_CORNICE_HOURS_DERIVATION,
         quantity,
         unit: "lm",
+        assumptionText: INTERNAL_WALLS_CORNICE_HOURS_DERIVATION,
         requirements,
         lineItems,
         sortOrder,

@@ -11,6 +11,8 @@ import {
   PAINTING_LABOUR_HOURS_PER_M2_KEY,
 } from "../lib/estimate/ceilings-identities";
 import {
+  INTERNAL_WALLS_CORNICE_HOURS_PER_LM,
+  INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
   INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS,
   INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
@@ -213,9 +215,10 @@ const iwKeys = [
   INTERNAL_WALLS_LINING_PRODUCTIVITY_KEYS.barrierline,
   INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
   INTERNAL_WALLS_SKIRTING_INSTALL_HOURS_PER_LM_KEY,
+  INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
 ];
 const iwGroup = groups.find((row) => row.workAreaType === "internal_walls");
-check("Internal Walls has 9 catalogue keys", iwKeys.length === 9);
+check("Internal Walls has 10 catalogue keys", iwKeys.length === 10);
 check(
   "all Internal Walls keys visible",
   iwKeys.every((key) =>
@@ -226,6 +229,31 @@ check(
 check(
   "Internal Walls calibration not required",
   iwGroup?.calibrationSupported === false
+);
+const corniceItem = iwGroup?.items.find(
+  (item) => item.productivityKey === INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY
+);
+check(
+  "cornice label Internal wall cornice installation",
+  corniceItem?.label === "Internal wall cornice installation"
+);
+check(
+  "cornice Quotr benchmark 0.20 person-hours/lm",
+  corniceItem?.benchmarkHours === INTERNAL_WALLS_CORNICE_HOURS_PER_LM &&
+    corniceItem?.unit === "lm" &&
+    corniceItem?.effectiveSource === "benchmark" &&
+    corniceItem?.effectiveValue === 0.2
+);
+check(
+  "no duplicate cornice productivity key",
+  (iwGroup?.items.filter(
+    (item) => item.productivityKey === INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY
+  ).length ?? 0) === 1
+);
+check(
+  "cornice copy has no Quotr V1",
+  !/Quotr V1/i.test(corniceItem?.description ?? "") &&
+    !/Quotr V1/i.test(corniceItem?.label ?? "")
 );
 
 const paintingGroup = groups.find((row) => row.workAreaType === "painting");
@@ -271,6 +299,13 @@ const seededRates: RatesPageRate[] = [
     source: "explicit_company",
   }),
   rate({
+    item_key: INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
+    work_area_type: "internal_walls",
+    cost_rate: 0.25,
+    unit: "lm",
+    source: "explicit_company",
+  }),
+  rate({
     item_key: PAINTING_LABOUR_HOURS_PER_M2_KEY,
     work_area_type: "painting",
     cost_rate: 0.15,
@@ -299,6 +334,9 @@ const paintingOverride = seeded.items.find(
 const bathroomOverride = seeded.items.find(
   (item) => item.productivityKey === "bathroom.lining.wall.install.hours_per_m2"
 );
+const corniceOverride = seeded.items.find(
+  (item) => item.productivityKey === INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY
+);
 
 check(
   "deck override grouped under Deck",
@@ -323,6 +361,13 @@ check(
   "bathroom calibrated source preserved",
   bathroomOverride?.effectiveSource === "calibrated" &&
     bathroomOverride.companyOverrideHours === 0.33
+);
+check(
+  "cornice company override is the effective source",
+  corniceOverride?.effectiveSource === "company" &&
+    corniceOverride.companyOverrideHours === 0.25 &&
+    corniceOverride.effectiveValue === 0.25 &&
+    corniceOverride.benchmarkHours === 0.2
 );
 check(
   "override values unchanged vs seed",
