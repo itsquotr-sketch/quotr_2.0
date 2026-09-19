@@ -280,8 +280,27 @@ export function internalWallsInsulationMaterialKey(
 
 /** Ordinary pine/MDF wall skirting. Custom profiles stay Pricing Required. */
 export const INTERNAL_WALLS_SKIRTING_MATERIAL_KEY = "skirting.wall.lm" as const;
-/** Shared physical trim identity. No canonical cornice catalogue rate. */
+/** Generic / custom / unknown cornice or scotia. No Quotr material COST. */
 export const INTERNAL_WALLS_CORNICE_MATERIAL_KEY = "cornice.wall.lm" as const;
+export const INTERNAL_WALLS_CORNICE_GIB_COVE_CLASSIC_55_3600_KEY =
+  "cornice.wall.plaster.gib_cove_classic.55mm.3600.each" as const;
+export const INTERNAL_WALLS_CORNICE_OTHER_PLASTER_KEY =
+  "cornice.wall.plaster.other.lm" as const;
+export const INTERNAL_WALLS_CORNICE_MDF_SCOTIA_KEY =
+  "cornice.wall.scotia.mdf.lm" as const;
+export const INTERNAL_WALLS_CORNICE_PINE_SCOTIA_KEY =
+  "cornice.wall.scotia.pine.lm" as const;
+export const INTERNAL_WALLS_GIB_COVE_STOCK_LENGTH_M = 3.6;
+export const INTERNAL_WALLS_GIB_COVE_COST_PER_LM = 3.7;
+/** Owner-approved $3.70/lm × 3.6 m stock length. */
+export const INTERNAL_WALLS_GIB_COVE_COST_EACH = 13.32;
+export const INTERNAL_WALLS_GIB_COVE_STOCK_PURCHASE_RULE =
+  "GIB-Cove Classic is purchased as whole 3.6 m lengths. Ceiling(installed lm ÷ 3.6). Whole-length purchasing is the current allowance. No percentage waste. Adhesive and fixings are not included." as const;
+
+export function gibCoveClassicStockCount(installedLm: number): number {
+  if (!(installedLm > 0)) return 0;
+  return Math.ceil((installedLm - 1e-9) / INTERNAL_WALLS_GIB_COVE_STOCK_LENGTH_M);
+}
 
 export const INTERNAL_WALLS_INSULATION_MATERIAL_COMPONENT =
   "internal_walls.insulation.material" as const;

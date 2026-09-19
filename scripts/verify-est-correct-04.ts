@@ -386,12 +386,12 @@ const corniceYesType = resolveInternalWallsWallTypes({
   workAreaId: "w1",
 }).types[0]!;
 check(
-  "F cornice yes → sides resolved, no extra product interview",
+  "F cornice yes → sides resolved, type confirmation asked",
   nextInternalWallsFinishField({
     type: corniceYesType,
     jobScope: "new_partition",
     omitElectrical: true,
-  }) !== INTERNAL_WALLS_CORNICE_SIDES_KEY
+  }) === "internal_walls.wall_type.cornice_type"
 );
 
 const stoppingNoFacts = writeOnTypes(oneType, [

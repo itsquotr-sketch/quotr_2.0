@@ -937,7 +937,23 @@ export const INTERNAL_WALLS_BENCHMARK_REQUIREMENTS: readonly WorkAreaBenchmarkRe
       gapClass: "MUST_REMAIN_PRICING_REQUIRED",
       derivation: null,
       currentWithoutCompany: "PR",
-      notes: "Custom profile. No generic cornice material COST. Company exact wins.",
+      notes:
+        "Generic / custom / unknown cornice or scotia. No generic material COST. Not GIB-Cove Classic. Company exact wins.",
+    }),
+    row({
+      workAreaType: "internal_walls",
+      component: "GIB-Cove Classic 55mm × 3.6m",
+      materialIdentity: "cornice.wall.plaster.gib_cove_classic.55mm.3600.each",
+      physicalUnit: "each",
+      productivityOperation: null,
+      fixings: false,
+      ordinaryV1: true,
+      outcome: "RESOLVES_WITH_QUOTR",
+      gapClass: "EXISTING_BENCHMARK_REUSED",
+      derivation:
+        "Owner-approved $3.70/lm × 3.6m stock = $13.32 each. Whole-length purchase. Adhesive/fixings excluded.",
+      currentWithoutCompany: "Quotr $13.32 each",
+      notes: "Materials only. Installed lm is the physical basis; money is purchased lengths.",
     }),
     row({
       workAreaType: "internal_walls",

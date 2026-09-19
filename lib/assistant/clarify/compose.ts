@@ -117,9 +117,11 @@ import {
   wallTypeFieldCurrentValue,
 } from "@/lib/estimate/internal-walls-wall-types";
 import {
+  INTERNAL_WALLS_CORNICE_PRODUCT_KEY,
   INTERNAL_WALLS_ELECTRICAL_KEY,
   INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
+  corniceProductOptionsForType,
   internalWallsNestedFinishOmit,
   internalWallsPaintingOptions,
 } from "@/lib/estimate/internal-walls-finish";
@@ -235,7 +237,11 @@ const CHECK_SCORES: Record<string, number> = {
   "internal_walls.wall_type.insulation_included": 81,
   "internal_walls.wall_type.insulation": 80.5,
   "internal_walls.wall_type.skirting": 80,
+  "internal_walls.wall_type.cornice_included": 79.6,
   "internal_walls.wall_type.cornice": 79.5,
+  "internal_walls.wall_type.cornice_type": 79.45,
+  "internal_walls.wall_type.cornice_product": 79.4,
+  "internal_walls.wall_type.cornice_note": 79.35,
   "internal_walls.wall_type.electrical": 79,
   "internal_walls.wall_type.electrical_note": 78.5,
   "internal_walls.wall_type.stopping_side_a": 78,
@@ -980,8 +986,20 @@ function internalWallsUnresolvedCopy(
   if (factKey.endsWith("skirting")) {
     return `Choose whether ${displayName} includes skirting.`;
   }
+  if (factKey.endsWith("cornice_included")) {
+    return `Choose whether ${displayName} includes cornice/scotia.`;
+  }
+  if (factKey.endsWith("cornice_type")) {
+    return `What type of cornice/scotia is required on ${displayName}?`;
+  }
+  if (factKey.endsWith("cornice_product")) {
+    return `Which cornice or scotia product is required on ${displayName}?`;
+  }
+  if (factKey.endsWith("cornice_note")) {
+    return `Describe the custom cornice or scotia on ${displayName} if needed.`;
+  }
   if (factKey.endsWith("cornice")) {
-    return `Choose whether ${displayName} includes cornice.`;
+    return `Where is the cornice/scotia required on ${displayName}?`;
   }
   if (factKey.endsWith("painting")) {
     return `Choose whether ${displayName} includes wall painting.`;
@@ -1479,7 +1497,10 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
           options:
             nextField === INTERNAL_WALLS_PAINTING_SIDES_KEY && type
               ? internalWallsPaintingOptions(type)
-              : template?.options,
+              : nextField === INTERNAL_WALLS_CORNICE_PRODUCT_KEY && type
+                ? corniceProductOptionsForType(type.cornice_type) ??
+                  template?.options
+                : template?.options,
           currentValue: wallTypeFieldCurrentValue(type, nextField),
           writeTarget: "FACT",
           write: null,

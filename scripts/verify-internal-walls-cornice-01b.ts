@@ -414,7 +414,7 @@ check(
 );
 check(
   "cornice calculator does not hardcode $60",
-  !/60/.test(
+  !/\$60|costRate:\s*60|hourlyCost:\s*60/.test(
     finishSrc.slice(
       finishSrc.indexOf("const cornice = corniceTakeoff"),
       finishSrc.indexOf("const electrical = type.electrical")

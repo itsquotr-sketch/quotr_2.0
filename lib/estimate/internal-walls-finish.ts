@@ -19,8 +19,16 @@ export const INTERNAL_WALLS_INSULATION_TYPE_KEY =
   "internal_walls.wall_type.insulation" as const;
 export const INTERNAL_WALLS_SKIRTING_SIDES_KEY =
   "internal_walls.wall_type.skirting" as const;
+export const INTERNAL_WALLS_CORNICE_INCLUDED_KEY =
+  "internal_walls.wall_type.cornice_included" as const;
 export const INTERNAL_WALLS_CORNICE_SIDES_KEY =
   "internal_walls.wall_type.cornice" as const;
+export const INTERNAL_WALLS_CORNICE_TYPE_KEY =
+  "internal_walls.wall_type.cornice_type" as const;
+export const INTERNAL_WALLS_CORNICE_PRODUCT_KEY =
+  "internal_walls.wall_type.cornice_product" as const;
+export const INTERNAL_WALLS_CORNICE_NOTE_KEY =
+  "internal_walls.wall_type.cornice_note" as const;
 export const INTERNAL_WALLS_ELECTRICAL_KEY =
   "internal_walls.wall_type.electrical" as const;
 export const INTERNAL_WALLS_ELECTRICAL_NOTE_KEY =
@@ -36,7 +44,11 @@ export const INTERNAL_WALLS_FINISH_FIELD_KEYS = [
   INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
   INTERNAL_WALLS_INSULATION_TYPE_KEY,
   INTERNAL_WALLS_SKIRTING_SIDES_KEY,
+  INTERNAL_WALLS_CORNICE_INCLUDED_KEY,
   INTERNAL_WALLS_CORNICE_SIDES_KEY,
+  INTERNAL_WALLS_CORNICE_TYPE_KEY,
+  INTERNAL_WALLS_CORNICE_PRODUCT_KEY,
+  INTERNAL_WALLS_CORNICE_NOTE_KEY,
   INTERNAL_WALLS_ELECTRICAL_KEY,
   INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
@@ -83,6 +95,59 @@ export const INTERNAL_WALLS_SIDE_SELECTION_OPTIONS = [
   "Both sides",
 ] as const;
 
+export const INTERNAL_WALLS_CORNICE_INCLUDED_OPTIONS = [
+  "No",
+  "Yes",
+] as const;
+
+export const INTERNAL_WALLS_CORNICE_WHERE_OPTIONS = [
+  "Side A",
+  "Side B",
+  "Both sides",
+] as const;
+
+export const INTERNAL_WALLS_CORNICE_TYPE_VALUES = [
+  "plaster_cornice",
+  "timber_mdf_scotia",
+  "other_custom",
+  "unknown",
+] as const;
+
+export type InternalWallsCorniceType =
+  (typeof INTERNAL_WALLS_CORNICE_TYPE_VALUES)[number];
+
+export const INTERNAL_WALLS_CORNICE_TYPE_OPTIONS = [
+  "Plaster cornice/cove",
+  "Timber or MDF scotia",
+  "Other/custom",
+  "Not sure",
+] as const;
+
+export const INTERNAL_WALLS_CORNICE_PRODUCT_VALUES = [
+  "gib_cove_classic_55mm_3600",
+  "other_plaster_cornice",
+  "mdf_scotia",
+  "pine_timber_scotia",
+  "other_timber_scotia",
+  "unknown",
+] as const;
+
+export type InternalWallsCorniceProduct =
+  (typeof INTERNAL_WALLS_CORNICE_PRODUCT_VALUES)[number];
+
+export const INTERNAL_WALLS_CORNICE_PLASTER_PRODUCT_OPTIONS = [
+  "GIB-Cove® Classic 55mm × 3.6m",
+  "Other plaster cornice",
+  "Not sure",
+] as const;
+
+export const INTERNAL_WALLS_CORNICE_SCOTIA_PRODUCT_OPTIONS = [
+  "MDF scotia",
+  "Pine timber scotia",
+  "Other timber scotia",
+  "Not sure",
+] as const;
+
 export const INTERNAL_WALLS_ELECTRICAL_VALUES = [
   "none",
   "minor",
@@ -126,7 +191,11 @@ export type InternalWallsFinishHost = {
   insulation_included: boolean | null;
   insulation_type: InternalWallsInsulationType | null;
   skirting: InternalWallsSideSelection | null;
+  cornice_included?: boolean | null;
   cornice: InternalWallsSideSelection | null;
+  cornice_type?: InternalWallsCorniceType | null;
+  cornice_product?: InternalWallsCorniceProduct | null;
+  cornice_note?: string | null;
   electrical: InternalWallsElectricalTier | null;
   electrical_note: string | null;
   stopping_side_a?: InternalWallsStoppingLevel | null;
@@ -156,6 +225,9 @@ export const INTERNAL_WALLS_SKIRTING_LABOUR_OWNER_REQUIRED_MESSAGE =
 
 export const INTERNAL_WALLS_CORNICE_PRODUCT_REQUIRED_MESSAGE =
   "Cornice product — Pricing Required. No canonical cornice identity or rate." as const;
+
+export const INTERNAL_WALLS_CORNICE_ADHESIVE_EXCLUSION =
+  "Cornice adhesive and fixings are not included in the moulding rate." as const;
 
 export const INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE =
   "Cornice labour Pricing Required — productivity or hourly labour COST did not resolve." as const;
@@ -205,6 +277,44 @@ const SIDE_BY_NORMALISED: Record<string, InternalWallsSideSelection> = {
   both: "both",
   "both sides": "both",
 };
+
+const CORNICE_TYPE_BY_NORMALISED: Record<string, InternalWallsCorniceType> = {
+  plaster_cornice: "plaster_cornice",
+  "plaster cornice": "plaster_cornice",
+  "plaster cornice/cove": "plaster_cornice",
+  "plaster cornice / cove": "plaster_cornice",
+  cove: "plaster_cornice",
+  timber_mdf_scotia: "timber_mdf_scotia",
+  "timber or mdf scotia": "timber_mdf_scotia",
+  "timber/mdf scotia": "timber_mdf_scotia",
+  scotia: "timber_mdf_scotia",
+  other_custom: "other_custom",
+  "other/custom": "other_custom",
+  other: "other_custom",
+  custom: "other_custom",
+  unknown: "unknown",
+  "not sure": "unknown",
+};
+
+const CORNICE_PRODUCT_BY_NORMALISED: Record<string, InternalWallsCorniceProduct> =
+  {
+    gib_cove_classic_55mm_3600: "gib_cove_classic_55mm_3600",
+    "gib-cove® classic 55mm × 3.6m": "gib_cove_classic_55mm_3600",
+    "gib-cove classic 55mm × 3.6m": "gib_cove_classic_55mm_3600",
+    "gib-cove classic 55mm x 3.6m": "gib_cove_classic_55mm_3600",
+    "gib cove classic 55mm × 3.6m": "gib_cove_classic_55mm_3600",
+    other_plaster_cornice: "other_plaster_cornice",
+    "other plaster cornice": "other_plaster_cornice",
+    mdf_scotia: "mdf_scotia",
+    "mdf scotia": "mdf_scotia",
+    pine_timber_scotia: "pine_timber_scotia",
+    "pine timber scotia": "pine_timber_scotia",
+    "pine scotia": "pine_timber_scotia",
+    other_timber_scotia: "other_timber_scotia",
+    "other timber scotia": "other_timber_scotia",
+    unknown: "unknown",
+    "not sure": "unknown",
+  };
 
 const ELECTRICAL_BY_NORMALISED: Record<string, InternalWallsElectricalTier> = {
   none: "none",
@@ -272,6 +382,133 @@ export function parseInternalWallsSideSelection(
   const normalised = String(value).trim().toLowerCase();
   if (!normalised) return null;
   return SIDE_BY_NORMALISED[normalised] ?? null;
+}
+
+export function parseInternalWallsCorniceType(
+  value: unknown
+): InternalWallsCorniceType | null {
+  if (value == null) return null;
+  const normalised = String(value).trim().toLowerCase();
+  if (!normalised) return null;
+  return CORNICE_TYPE_BY_NORMALISED[normalised] ?? null;
+}
+
+export function parseInternalWallsCorniceProduct(
+  value: unknown
+): InternalWallsCorniceProduct | null {
+  if (value == null) return null;
+  const normalised = String(value)
+    .trim()
+    .toLowerCase()
+    .replace(/®/g, "")
+    .replace(/\s+/g, " ");
+  if (!normalised) return null;
+  return (
+    CORNICE_PRODUCT_BY_NORMALISED[normalised] ??
+    CORNICE_PRODUCT_BY_NORMALISED[normalised.replace(/x/g, "×")] ??
+    null
+  );
+}
+
+export function corniceTypeDisplay(
+  value: InternalWallsCorniceType | null | undefined
+): string | null {
+  if (value === "plaster_cornice") return "Plaster cornice/cove";
+  if (value === "timber_mdf_scotia") return "Timber or MDF scotia";
+  if (value === "other_custom") return "Other/custom";
+  if (value === "unknown") return "Not sure";
+  return null;
+}
+
+export function corniceProductDisplay(
+  value: InternalWallsCorniceProduct | null | undefined
+): string | null {
+  if (value === "gib_cove_classic_55mm_3600") {
+    return "GIB-Cove® Classic 55mm × 3.6m";
+  }
+  if (value === "other_plaster_cornice") return "Other plaster cornice";
+  if (value === "mdf_scotia") return "MDF scotia";
+  if (value === "pine_timber_scotia") return "Pine timber scotia";
+  if (value === "other_timber_scotia") return "Other timber scotia";
+  if (value === "unknown") return "Not sure";
+  return null;
+}
+
+export function corniceIsIncluded(type: InternalWallsFinishHost): boolean {
+  if (type.cornice_included === false) return false;
+  if (type.cornice === "none") return false;
+  if (type.cornice_included === true) return true;
+  return (
+    type.cornice === "side_a" ||
+    type.cornice === "side_b" ||
+    type.cornice === "both"
+  );
+}
+
+export function corniceHasLegacySidesOnly(type: InternalWallsFinishHost): boolean {
+  return (
+    type.cornice_included == null &&
+    type.cornice != null &&
+    type.cornice !== "none" &&
+    type.cornice_type == null &&
+    type.cornice_product == null
+  );
+}
+
+export function corniceLabourUsesOrdinaryProductivity(
+  type: InternalWallsFinishHost
+): boolean {
+  if (!corniceIsIncluded(type)) return false;
+  const corniceType = type.cornice_type ?? null;
+  const product = type.cornice_product ?? null;
+  if (corniceType == null) return true;
+  if (corniceType === "other_custom" || corniceType === "unknown") return false;
+  if (corniceType === "plaster_cornice") {
+    return product == null || product === "gib_cove_classic_55mm_3600";
+  }
+  if (corniceType === "timber_mdf_scotia") {
+    return (
+      product == null ||
+      product === "mdf_scotia" ||
+      product === "pine_timber_scotia"
+    );
+  }
+  return false;
+}
+
+export function corniceProductOptionsForType(
+  type: InternalWallsCorniceType | null | undefined
+): readonly string[] | null {
+  if (type === "plaster_cornice") {
+    return INTERNAL_WALLS_CORNICE_PLASTER_PRODUCT_OPTIONS;
+  }
+  if (type === "timber_mdf_scotia") {
+    return INTERNAL_WALLS_CORNICE_SCOTIA_PRODUCT_OPTIONS;
+  }
+  return null;
+}
+
+export function corniceProductCompatibleWithType(
+  type: InternalWallsCorniceType | null | undefined,
+  product: InternalWallsCorniceProduct | null | undefined
+): boolean {
+  if (product == null) return true;
+  if (type === "plaster_cornice") {
+    return (
+      product === "gib_cove_classic_55mm_3600" ||
+      product === "other_plaster_cornice" ||
+      product === "unknown"
+    );
+  }
+  if (type === "timber_mdf_scotia") {
+    return (
+      product === "mdf_scotia" ||
+      product === "pine_timber_scotia" ||
+      product === "other_timber_scotia" ||
+      product === "unknown"
+    );
+  }
+  return false;
 }
 
 export function parseInternalWallsElectricalTier(
@@ -747,7 +984,21 @@ export function nextInternalWallsFinishField(params: {
     }
   }
   if (type.skirting == null) return INTERNAL_WALLS_SKIRTING_SIDES_KEY;
-  if (type.cornice == null) return INTERNAL_WALLS_CORNICE_SIDES_KEY;
+  if (type.cornice_included == null && type.cornice == null) {
+    return INTERNAL_WALLS_CORNICE_INCLUDED_KEY;
+  }
+  if (corniceIsIncluded(type)) {
+    if (type.cornice == null || type.cornice === "none") {
+      return INTERNAL_WALLS_CORNICE_SIDES_KEY;
+    }
+    if (type.cornice_type == null) return INTERNAL_WALLS_CORNICE_TYPE_KEY;
+    if (
+      corniceProductOptionsForType(type.cornice_type) &&
+      type.cornice_product == null
+    ) {
+      return INTERNAL_WALLS_CORNICE_PRODUCT_KEY;
+    }
+  }
   if (
     stoppingAsksForScope(params.jobScope) &&
     params.omitStopping !== true
@@ -789,7 +1040,13 @@ export function summariseFinishLine(type: InternalWallsFinishHost): string | nul
   const skirtingScope = trimSideScopePhrase("Skirting", type.skirting);
   if (skirtingScope) bits.push(skirtingScope);
   const corniceScope = trimSideScopePhrase("Cornice", type.cornice);
-  if (corniceScope) bits.push(corniceScope);
+  if (corniceScope) {
+    const product = corniceProductDisplay(type.cornice_product);
+    const kind = corniceTypeDisplay(type.cornice_type);
+    bits.push([corniceScope, product ?? kind].filter(Boolean).join(" · "));
+  } else if (type.cornice_included === false) {
+    bits.push("No cornice");
+  }
   if (type.electrical && type.electrical !== "none") {
     bits.push(`Electrical ${electricalTierDisplay(type.electrical)}`);
   }

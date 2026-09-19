@@ -46,9 +46,14 @@ import {
 import { FENCE_MODULAR_1C_MATERIAL_STARTERS } from "@/lib/estimate/fence-modular-1c";
 import { FENCE_TIMBER_1B_MATERIAL_STARTERS } from "@/lib/estimate/fence-timber-1b";
 import {
+  INTERNAL_WALLS_CORNICE_GIB_COVE_CLASSIC_55_3600_KEY,
   INTERNAL_WALLS_CORNICE_HOURS_PER_LM,
   INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_CORNICE_MATERIAL_KEY,
+  INTERNAL_WALLS_CORNICE_MDF_SCOTIA_KEY,
+  INTERNAL_WALLS_CORNICE_OTHER_PLASTER_KEY,
+  INTERNAL_WALLS_CORNICE_PINE_SCOTIA_KEY,
+  INTERNAL_WALLS_GIB_COVE_COST_EACH,
   INTERNAL_WALLS_FRAMING_FIXINGS_COMPONENT,
   INTERNAL_WALLS_FRAMING_FIXINGS_COST_PER_M2,
   INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
@@ -879,7 +884,57 @@ export const ORDINARY_FINISH_FALLBACK_CATALOGUE: RateCatalogueEntry[] = [
     workAreaLabel: "Trim",
     unit: "lm",
     description:
-      "Wall cornice / scotia. Custom profile — no Quotr V1 COST. Pricing Required until a company exact rate exists.",
+      "Generic or unspecified wall cornice / scotia. Custom and unknown products stay Pricing Required. Not GIB-Cove Classic.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_CORNICE_GIB_COVE_CLASSIC_55_3600_KEY,
+    label: "GIB-Cove® Classic 55mm × 3.6m",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Trim",
+    unit: "each",
+    description:
+      "GIB-Cove® Classic Cornice Moulding 55mm × 3.6m. Quotr COST $13.32 each, derived from owner-approved $3.70/lm × 3.6m. Materials only. Adhesive and fixings are not included. Company exact wins.",
+    defaultCostRate: INTERNAL_WALLS_GIB_COVE_COST_EACH,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_CORNICE_OTHER_PLASTER_KEY,
+    label: "Other plaster cornice",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Trim",
+    unit: "lm",
+    description:
+      "Other plaster cornice / cove. No Quotr material COST — Pricing Required until a company exact rate exists.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_CORNICE_MDF_SCOTIA_KEY,
+    label: "MDF scotia",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Trim",
+    unit: "lm",
+    description:
+      "Ordinary MDF scotia. No owner-approved Quotr material COST — Pricing Required until a company exact rate exists.",
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: INTERNAL_WALLS_CORNICE_PINE_SCOTIA_KEY,
+    label: "Pine timber scotia",
+    rate_type: "material",
+    category: "material",
+    work_area_type: "internal_walls",
+    workAreaLabel: "Trim",
+    unit: "lm",
+    description:
+      "Ordinary pine timber scotia. No owner-approved Quotr material COST — Pricing Required until a company exact rate exists.",
     calculatorSupport: "used_now",
   }),
   entry({

@@ -3,9 +3,10 @@
  * cornice / electrical / stopping / painting requirement envelope.
  *
  * Quantities are physical. Ordinary thermal insulation, ordinary skirting
- * material, ordinary cornice labour, and Level 4 stopping use Quotr COST
- * or productivity fallbacks. Company exact wins. Acoustic / fire / custom
- * / Level 5 / cornice material remain Pricing Required.
+ * material, ordinary cornice labour, GIB-Cove Classic stock lengths, and
+ * Level 4 stopping use Quotr COST or productivity fallbacks. Company exact
+ * wins. Acoustic / fire / custom / Level 5 / generic cornice material remain
+ * Pricing Required.
  *
  * Does not change timber, steel, lining sheet-run, or opening formulas.
  */
@@ -41,11 +42,18 @@ import type {
 import type { InternalWallsJobScope } from "@/lib/estimate/internal-walls-scope";
 import {
   INTERNAL_WALLS_CARPENTER_LABOUR_KEY,
+  INTERNAL_WALLS_CORNICE_GIB_COVE_CLASSIC_55_3600_KEY,
   INTERNAL_WALLS_CORNICE_HOURS_DERIVATION,
   INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
   INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT,
   INTERNAL_WALLS_CORNICE_MATERIAL_KEY,
+  INTERNAL_WALLS_CORNICE_MDF_SCOTIA_KEY,
+  INTERNAL_WALLS_CORNICE_OTHER_PLASTER_KEY,
+  INTERNAL_WALLS_CORNICE_PINE_SCOTIA_KEY,
+  INTERNAL_WALLS_GIB_COVE_STOCK_LENGTH_M,
+  INTERNAL_WALLS_GIB_COVE_STOCK_PURCHASE_RULE,
+  gibCoveClassicStockCount,
   INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_COMPONENT,
   INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
   INTERNAL_WALLS_INSULATION_LABOUR_COMPONENT,
@@ -70,6 +78,8 @@ import {
   internalWallsStoppingOverlapGroup,
 } from "@/lib/estimate/internal-walls-identities";
 import {
+  INTERNAL_WALLS_CORNICE_ADHESIVE_EXCLUSION,
+  INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE,
   INTERNAL_WALLS_CORNICE_PRODUCT_REQUIRED_MESSAGE,
   INTERNAL_WALLS_ELECTRICAL_ALLOWANCE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_INSULATION_LABOUR_OWNER_REQUIRED_MESSAGE,
@@ -82,6 +92,9 @@ import {
   INTERNAL_WALLS_SKIRTING_PROFILE_REQUIRED_MESSAGE,
   INTERNAL_WALLS_STOPPING_AREA_RULE,
   INTERNAL_WALLS_STOPPING_RATE_REQUIRED_MESSAGE,
+  corniceIsIncluded,
+  corniceLabourUsesOrdinaryProductivity,
+  corniceProductDisplay,
   corniceTakeoff,
   electricalTierDisplay,
   insulationAreaForWallType,
@@ -304,16 +317,23 @@ function emitQtyMaterial(params: {
   specification: string;
   identitySummary: string;
   quantity: number;
-  unit: "m2" | "lm";
+  unit: "m2" | "lm" | "each";
   wasteFactor: number;
+  baseQuantity?: number;
+  baseUnit?: "m2" | "lm" | "each";
+  purchaseQuantity?: number;
+  purchaseUnit?: "m2" | "lm" | "each";
+  assumptionTexts?: readonly string[];
   unpricedNotes: string;
   requirements: EstimateRequirement[];
   lineItems: EstimateLineItemInput[];
   sortOrder: number;
 }): number {
+  const purchaseQuantity = params.purchaseQuantity ?? params.quantity;
+  const purchaseUnit = params.purchaseUnit ?? params.unit;
   const rate = resolveExactMaterialRate({
     itemKey: params.materialKey,
-    unit: params.unit,
+    unit: purchaseUnit,
     context: params.context,
   });
   params.requirements.push(
@@ -324,7 +344,11 @@ function emitQtyMaterial(params: {
       variantKey: params.variantKey ?? params.wallTypeId,
       description: params.label,
       confidence: "high",
-      assumptions: [],
+      assumptions: (params.assumptionTexts ?? []).map((text, index) => ({
+        key: `finish_material_${index}`,
+        text,
+        source: "benchmark" as const,
+      })),
       provenance: {
         calculatorSource: "internal-walls-finish",
         factKeys: ["internal_walls.wall_types"],
@@ -334,11 +358,11 @@ function emitQtyMaterial(params: {
       materialKey: params.materialKey,
       category: params.category,
       specification: params.specification,
-      baseQuantity: params.quantity,
-      baseUnit: params.unit,
+      baseQuantity: params.baseQuantity ?? params.quantity,
+      baseUnit: params.baseUnit ?? params.unit,
       wasteFactor: params.wasteFactor,
-      purchaseQuantity: params.quantity,
-      purchaseUnit: params.unit,
+      purchaseQuantity,
+      purchaseUnit,
       rateSource: rate.priced
         ? rate.sourceType === "user_rate"
           ? "company"
@@ -347,7 +371,7 @@ function emitQtyMaterial(params: {
       unitCost: rate.costRate,
       totalCost:
         rate.priced && rate.costRate != null
-          ? round2(params.quantity * rate.costRate)
+          ? round2(purchaseQuantity * rate.costRate)
           : null,
     })
   );
@@ -360,8 +384,8 @@ function emitQtyMaterial(params: {
             workAreaName: params.workArea.name,
             label: params.label,
             category: "materials",
-            quantity: params.quantity,
-            unit: params.unit,
+            quantity: purchaseQuantity,
+            unit: purchaseUnit,
             costRate: rate.costRate,
             sellRate: rate.sellRate,
             rateSource: rate.sourceLabel,
@@ -735,18 +759,46 @@ export function buildInternalWallsFinishEnvelope(params: {
     }
 
     const cornice = corniceTakeoff({ type, jobScope });
-    if (
-      cornice &&
-      cornice.totalLm > 0 &&
-      type.cornice &&
-      type.cornice !== "none"
-    ) {
+    if (cornice && cornice.totalLm > 0 && corniceIsIncluded(type)) {
       const overlap = internalWallsCorniceOverlapGroup(type.id);
       assumptions.push(INTERNAL_WALLS_CORNICE_OPENING_RULE);
       const sideLabel = sideSelectionDisplay(type.cornice) ?? "Cornice";
       const quantity = round2(cornice.totalLm);
-      const specification = `${sideLabel} · ${presentFinishQty(quantity)} lm`;
-      const variantKey = `${type.id}:${type.cornice}`;
+      const productLabel = corniceProductDisplay(type.cornice_product);
+      const isGibCove =
+        type.cornice_product === "gib_cove_classic_55mm_3600";
+      const stockCount = isGibCove ? gibCoveClassicStockCount(quantity) : null;
+      const specification = [
+        sideLabel,
+        `${presentFinishQty(quantity)} lm`,
+        productLabel,
+        stockCount != null
+          ? `${stockCount} × ${INTERNAL_WALLS_GIB_COVE_STOCK_LENGTH_M} m`
+          : null,
+      ]
+        .filter(Boolean)
+        .join(" · ");
+      const variantKey = `${type.id}:${type.cornice}:${type.cornice_product ?? type.cornice_type ?? "generic"}`;
+      const materialKey =
+        type.cornice_product === "gib_cove_classic_55mm_3600"
+          ? INTERNAL_WALLS_CORNICE_GIB_COVE_CLASSIC_55_3600_KEY
+          : type.cornice_product === "mdf_scotia"
+            ? INTERNAL_WALLS_CORNICE_MDF_SCOTIA_KEY
+            : type.cornice_product === "pine_timber_scotia"
+              ? INTERNAL_WALLS_CORNICE_PINE_SCOTIA_KEY
+              : type.cornice_product === "other_plaster_cornice"
+                ? INTERNAL_WALLS_CORNICE_OTHER_PLASTER_KEY
+                : INTERNAL_WALLS_CORNICE_MATERIAL_KEY;
+      const ordinaryLabour = corniceLabourUsesOrdinaryProductivity(type);
+      const materialAssumptions = isGibCove
+        ? [
+            INTERNAL_WALLS_GIB_COVE_STOCK_PURCHASE_RULE,
+            INTERNAL_WALLS_CORNICE_ADHESIVE_EXCLUSION,
+          ]
+        : [];
+      if (isGibCove) {
+        assumptions.push(INTERNAL_WALLS_CORNICE_ADHESIVE_EXCLUSION);
+      }
       sortOrder = emitQtyMaterial({
         workArea,
         context,
@@ -754,14 +806,19 @@ export function buildInternalWallsFinishEnvelope(params: {
         variantKey,
         overlapGroup: overlap,
         componentKey: INTERNAL_WALLS_CORNICE_MATERIAL_COMPONENT,
-        materialKey: INTERNAL_WALLS_CORNICE_MATERIAL_KEY,
+        materialKey,
         category: "TRIM",
         label: `${displayName} — cornice`,
         specification,
         identitySummary: specification,
-        quantity,
-        unit: "lm",
+        quantity: isGibCove ? stockCount ?? 0 : quantity,
+        unit: isGibCove ? "each" : "lm",
         wasteFactor: 0,
+        baseQuantity: quantity,
+        baseUnit: "lm",
+        purchaseQuantity: isGibCove ? stockCount ?? 0 : quantity,
+        purchaseUnit: isGibCove ? "each" : "lm",
+        assumptionTexts: materialAssumptions,
         unpricedNotes: `${specification}. ${INTERNAL_WALLS_CORNICE_PRODUCT_REQUIRED_MESSAGE}`,
         requirements,
         lineItems,
@@ -771,18 +828,24 @@ export function buildInternalWallsFinishEnvelope(params: {
         workArea,
         context,
         accessFactor,
-        priceWithQuotr: true,
+        priceWithQuotr: ordinaryLabour,
         wallTypeId: type.id,
         variantKey,
         overlapGroup: overlap,
         componentKey: INTERNAL_WALLS_CORNICE_LABOUR_COMPONENT,
         hoursKey: INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
         label: `${displayName} — cornice labour`,
-        identitySummary: `${specification} · ${INTERNAL_WALLS_CORNICE_HOURS_DERIVATION}`,
-        notes: INTERNAL_WALLS_CORNICE_HOURS_DERIVATION,
+        identitySummary: ordinaryLabour
+          ? `${specification} · ${INTERNAL_WALLS_CORNICE_HOURS_DERIVATION}`
+          : `${specification} · ${INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE}`,
+        notes: ordinaryLabour
+          ? INTERNAL_WALLS_CORNICE_HOURS_DERIVATION
+          : INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE,
         quantity,
         unit: "lm",
-        assumptionText: INTERNAL_WALLS_CORNICE_HOURS_DERIVATION,
+        assumptionText: ordinaryLabour
+          ? INTERNAL_WALLS_CORNICE_HOURS_DERIVATION
+          : INTERNAL_WALLS_CORNICE_LABOUR_OWNER_REQUIRED_MESSAGE,
         requirements,
         lineItems,
         sortOrder,

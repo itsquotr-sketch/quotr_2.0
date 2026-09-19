@@ -42,7 +42,11 @@ import {
   type InternalWallsOpening,
 } from "@/lib/estimate/internal-walls-openings";
 import {
+  INTERNAL_WALLS_CORNICE_INCLUDED_KEY,
+  INTERNAL_WALLS_CORNICE_NOTE_KEY,
+  INTERNAL_WALLS_CORNICE_PRODUCT_KEY,
   INTERNAL_WALLS_CORNICE_SIDES_KEY,
+  INTERNAL_WALLS_CORNICE_TYPE_KEY,
   INTERNAL_WALLS_ELECTRICAL_KEY,
   INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
@@ -51,7 +55,12 @@ import {
   INTERNAL_WALLS_SKIRTING_SIDES_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
+  corniceProductCompatibleWithType,
+  corniceProductDisplay,
+  corniceTypeDisplay,
   nextInternalWallsFinishField,
+  parseInternalWallsCorniceProduct,
+  parseInternalWallsCorniceType,
   parseInternalWallsElectricalTier,
   parseInternalWallsInsulationType,
   parseInternalWallsSideSelection,
@@ -62,6 +71,8 @@ import {
   summariseFinishLine,
   electricalTierDisplay,
   insulationTypeDisplay,
+  type InternalWallsCorniceProduct,
+  type InternalWallsCorniceType,
   type InternalWallsElectricalTier,
   type InternalWallsInsulationType,
   type InternalWallsSideSelection,
@@ -98,7 +109,11 @@ export const INTERNAL_WALLS_WALL_TYPE_FIELD_KEYS = [
   "internal_walls.wall_type.insulation_included",
   "internal_walls.wall_type.insulation",
   "internal_walls.wall_type.skirting",
+  "internal_walls.wall_type.cornice_included",
   "internal_walls.wall_type.cornice",
+  "internal_walls.wall_type.cornice_type",
+  "internal_walls.wall_type.cornice_product",
+  "internal_walls.wall_type.cornice_note",
   "internal_walls.wall_type.electrical",
   "internal_walls.wall_type.electrical_note",
   "internal_walls.wall_type.stopping_side_a",
@@ -277,7 +292,11 @@ export type InternalWallsWallType = {
   insulation_included: boolean | null;
   insulation_type: InternalWallsInsulationType | null;
   skirting: InternalWallsSideSelection | null;
+  cornice_included: boolean | null;
   cornice: InternalWallsSideSelection | null;
+  cornice_type: InternalWallsCorniceType | null;
+  cornice_product: InternalWallsCorniceProduct | null;
+  cornice_note: string | null;
   electrical: InternalWallsElectricalTier | null;
   electrical_note: string | null;
   stopping_side_a: InternalWallsStoppingLevel | null;
@@ -427,7 +446,11 @@ export function createEmptyWallType(params?: {
     insulation_included: null,
     insulation_type: null,
     skirting: null,
+    cornice_included: null,
     cornice: null,
+    cornice_type: null,
+    cornice_product: null,
+    cornice_note: null,
     electrical: null,
     electrical_note: null,
     stopping_side_a: null,
@@ -454,7 +477,11 @@ export function duplicateWallType(
     insulation_included: source.insulation_included,
     insulation_type: source.insulation_type,
     skirting: source.skirting,
+    cornice_included: source.cornice_included,
     cornice: source.cornice,
+    cornice_type: source.cornice_type,
+    cornice_product: source.cornice_product,
+    cornice_note: source.cornice_note,
     electrical: source.electrical,
     electrical_note: source.electrical_note,
     stopping_side_a: source.stopping_side_a,
@@ -805,7 +832,19 @@ export function parseInternalWallsWallType(
           : parseYesNo(value.insulation_included),
     insulation_type: parseInternalWallsInsulationType(value.insulation_type),
     skirting: parseInternalWallsSideSelection(value.skirting),
+    cornice_included:
+      value.cornice_included === true
+        ? true
+        : value.cornice_included === false
+          ? false
+          : parseYesNo(value.cornice_included),
     cornice: parseInternalWallsSideSelection(value.cornice),
+    cornice_type: parseInternalWallsCorniceType(value.cornice_type),
+    cornice_product: parseInternalWallsCorniceProduct(value.cornice_product),
+    cornice_note:
+      typeof value.cornice_note === "string" && value.cornice_note.trim()
+        ? value.cornice_note.trim()
+        : null,
     electrical: parseInternalWallsElectricalTier(value.electrical),
     electrical_note:
       typeof value.electrical_note === "string" && value.electrical_note.trim()
@@ -1801,8 +1840,78 @@ export function applyInternalWallsFactWrite(params: {
         type.skirting = parseInternalWallsSideSelection(params.value);
         return;
       }
+      if (field === "cornice_included") {
+        const included = parseYesNo(params.value);
+        type.cornice_included = included;
+        if (included !== true) {
+          type.cornice = included === false ? "none" : null;
+          type.cornice_type = null;
+          type.cornice_product = null;
+          type.cornice_note = null;
+        } else if (type.cornice === "none") {
+          type.cornice = null;
+        }
+        return;
+      }
       if (field === "cornice") {
-        type.cornice = parseInternalWallsSideSelection(params.value);
+        const sides = parseInternalWallsSideSelection(params.value);
+        type.cornice = sides;
+        if (sides === "none") {
+          type.cornice_included = false;
+          type.cornice_type = null;
+          type.cornice_product = null;
+          type.cornice_note = null;
+        } else if (sides != null) {
+          type.cornice_included = true;
+        }
+        return;
+      }
+      if (field === "cornice_type") {
+        type.cornice_type = parseInternalWallsCorniceType(params.value);
+        if (type.cornice_type != null) type.cornice_included = true;
+        if (
+          !corniceProductCompatibleWithType(
+            type.cornice_type,
+            type.cornice_product
+          )
+        ) {
+          type.cornice_product = null;
+        }
+        if (type.cornice_type !== "other_custom") {
+          type.cornice_note = null;
+        }
+        return;
+      }
+      if (field === "cornice_product") {
+        type.cornice_product = parseInternalWallsCorniceProduct(params.value);
+        if (type.cornice_product != null) type.cornice_included = true;
+        if (
+          type.cornice_type == null &&
+          type.cornice_product === "gib_cove_classic_55mm_3600"
+        ) {
+          type.cornice_type = "plaster_cornice";
+        }
+        if (
+          type.cornice_type == null &&
+          (type.cornice_product === "mdf_scotia" ||
+            type.cornice_product === "pine_timber_scotia" ||
+            type.cornice_product === "other_timber_scotia")
+        ) {
+          type.cornice_type = "timber_mdf_scotia";
+        }
+        if (
+          type.cornice_type == null &&
+          type.cornice_product === "other_plaster_cornice"
+        ) {
+          type.cornice_type = "plaster_cornice";
+        }
+        return;
+      }
+      if (field === "cornice_note") {
+        type.cornice_note =
+          typeof params.value === "string" && params.value.trim()
+            ? params.value.trim()
+            : null;
         return;
       }
       if (field === "electrical") {
@@ -2105,8 +2214,18 @@ export function wallTypeFieldCurrentValue(
       return insulationTypeDisplay(type.insulation_type);
     case INTERNAL_WALLS_SKIRTING_SIDES_KEY:
       return sideSelectionDisplay(type.skirting);
+    case INTERNAL_WALLS_CORNICE_INCLUDED_KEY:
+      if (type.cornice_included === true) return "Yes";
+      if (type.cornice_included === false) return "No";
+      return null;
     case INTERNAL_WALLS_CORNICE_SIDES_KEY:
       return sideSelectionDisplay(type.cornice);
+    case INTERNAL_WALLS_CORNICE_TYPE_KEY:
+      return corniceTypeDisplay(type.cornice_type);
+    case INTERNAL_WALLS_CORNICE_PRODUCT_KEY:
+      return corniceProductDisplay(type.cornice_product);
+    case INTERNAL_WALLS_CORNICE_NOTE_KEY:
+      return type.cornice_note;
     case INTERNAL_WALLS_ELECTRICAL_KEY:
       return electricalTierDisplay(type.electrical);
     case INTERNAL_WALLS_ELECTRICAL_NOTE_KEY:

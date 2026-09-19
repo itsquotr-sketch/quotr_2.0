@@ -20,7 +20,9 @@ import {
   applyInternalWallsFactWrite,
 } from "../lib/estimate/internal-walls-wall-types";
 import {
+  INTERNAL_WALLS_CORNICE_GIB_COVE_CLASSIC_55_3600_KEY,
   INTERNAL_WALLS_CORNICE_MATERIAL_KEY,
+  INTERNAL_WALLS_GIB_COVE_COST_EACH,
   INTERNAL_WALLS_PAINTING_MATERIAL_KEY,
 } from "../lib/estimate/internal-walls-identities";
 import { INTERNAL_WALLS_JOB_SCOPE_FACT_KEY } from "../lib/estimate/internal-walls-scope";
@@ -487,6 +489,32 @@ for (const row of fiveKeys) {
   check(
     `catalogue null COST ${row.key}`,
     entry != null && entry.defaultCostRate == null
+  );
+}
+
+{
+  const gibMatches = registry.items.filter(
+    (item) => item.canonicalKey === INTERNAL_WALLS_CORNICE_GIB_COVE_CLASSIC_55_3600_KEY
+  );
+  const gib = gibMatches[0];
+  check(
+    "GIB-Cove Classic is a single exact product",
+    gibMatches.length === 1 &&
+      gib != null &&
+      gib.ordinary === true &&
+      gib.unit === "each" &&
+      gib.familyId === "wall-cornice" &&
+      (gib.effectiveSource === "benchmark" ||
+        gib.effectiveSource === "direct_benchmark") &&
+      near(gib.quotrBenchmarkCost, INTERNAL_WALLS_GIB_COVE_COST_EACH) &&
+      gib.workAreaTypes.includes("internal_walls")
+  );
+  check(
+    "generic cornice.wall.lm is not the GIB product",
+    INTERNAL_WALLS_CORNICE_MATERIAL_KEY !==
+      INTERNAL_WALLS_CORNICE_GIB_COVE_CLASSIC_55_3600_KEY &&
+      getCatalogueEntry(INTERNAL_WALLS_CORNICE_MATERIAL_KEY)?.defaultCostRate ==
+        null
   );
 }
 

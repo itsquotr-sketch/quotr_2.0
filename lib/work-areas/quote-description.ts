@@ -609,8 +609,14 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
       (row) => row.skirting && row.skirting !== "none"
     );
     const hasCornice = types.some(
-      (row) => row.cornice && row.cornice !== "none"
+      (row) =>
+        row.cornice_included === true ||
+        (row.cornice != null && row.cornice !== "none")
     );
+    const hasGibCove = types.some(
+      (row) => row.cornice_product === "gib_cove_classic_55mm_3600"
+    );
+    const hasBothCornice = types.some((row) => row.cornice === "both");
     const hasElectrical = types.some(
       (row) => row.electrical && row.electrical !== "none"
     );
@@ -655,7 +661,16 @@ function buildInternalWallsDraft(facts?: WorkAreaQuoteFact[]): string {
       draft = appendScopeClause(draft, "Skirting is included where selected.");
     }
     if (hasCornice) {
-      draft = appendScopeClause(draft, "Cornice is included where selected.");
+      draft = appendScopeClause(
+        draft,
+        hasGibCove
+          ? hasBothCornice
+            ? "GIB-Cove Classic cornice is included to both sides where selected. Adhesive and fixings are not included."
+            : "GIB-Cove Classic cornice is included where selected. Adhesive and fixings are not included."
+          : hasBothCornice
+            ? "Cornice or scotia is included to both sides where selected."
+            : "Cornice or scotia is included where selected."
+      );
     }
     if (hasStopping) {
       draft = appendScopeClause(

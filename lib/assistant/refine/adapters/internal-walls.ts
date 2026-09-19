@@ -28,7 +28,16 @@ import {
   INTERNAL_WALLS_OPENING_TYPE_OPTIONS,
 } from "@/lib/estimate/internal-walls-openings";
 import {
+  INTERNAL_WALLS_CORNICE_INCLUDED_KEY,
+  INTERNAL_WALLS_CORNICE_INCLUDED_OPTIONS,
+  INTERNAL_WALLS_CORNICE_NOTE_KEY,
+  INTERNAL_WALLS_CORNICE_PRODUCT_KEY,
   INTERNAL_WALLS_CORNICE_SIDES_KEY,
+  INTERNAL_WALLS_CORNICE_TYPE_KEY,
+  INTERNAL_WALLS_CORNICE_TYPE_OPTIONS,
+  INTERNAL_WALLS_CORNICE_WHERE_OPTIONS,
+  corniceIsIncluded,
+  corniceProductOptionsForType,
   INTERNAL_WALLS_ELECTRICAL_KEY,
   INTERNAL_WALLS_ELECTRICAL_NOTE_KEY,
   INTERNAL_WALLS_ELECTRICAL_OPTIONS,
@@ -661,17 +670,90 @@ export const internalWallsRefineAdapter: RefineWorkAreaAdapter = {
         candidate({
           workAreaId,
           workAreaName,
-          factKey: INTERNAL_WALLS_CORNICE_SIDES_KEY,
-          label: "Cornice",
-          question: "Include cornice / cove?",
+          factKey: INTERNAL_WALLS_CORNICE_INCLUDED_KEY,
+          label: "Cornice / scotia",
+          question: "Include cornice/scotia?",
           inputType: "select",
-          options: INTERNAL_WALLS_SIDE_SELECTION_OPTIONS,
+          options: INTERNAL_WALLS_CORNICE_INCLUDED_OPTIONS,
           currentValue: wallTypeFieldCurrentValue(
             active,
-            INTERNAL_WALLS_CORNICE_SIDES_KEY
+            INTERNAL_WALLS_CORNICE_INCLUDED_KEY
           ),
           wallTypeId,
-        }),
+        })
+      );
+      if (active && corniceIsIncluded(active)) {
+        out.push(
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: INTERNAL_WALLS_CORNICE_SIDES_KEY,
+            label: "Cornice / scotia location",
+            question: "Where is the cornice/scotia required?",
+            inputType: "select",
+            options: INTERNAL_WALLS_CORNICE_WHERE_OPTIONS,
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              INTERNAL_WALLS_CORNICE_SIDES_KEY
+            ),
+            wallTypeId,
+          }),
+          candidate({
+            workAreaId,
+            workAreaName,
+            factKey: INTERNAL_WALLS_CORNICE_TYPE_KEY,
+            label: "Cornice / scotia type",
+            question: "What type of cornice/scotia is required?",
+            inputType: "select",
+            options: INTERNAL_WALLS_CORNICE_TYPE_OPTIONS,
+            currentValue: wallTypeFieldCurrentValue(
+              active,
+              INTERNAL_WALLS_CORNICE_TYPE_KEY
+            ),
+            wallTypeId,
+          })
+        );
+        const productOptions = corniceProductOptionsForType(active.cornice_type);
+        if (productOptions) {
+          out.push(
+            candidate({
+              workAreaId,
+              workAreaName,
+              factKey: INTERNAL_WALLS_CORNICE_PRODUCT_KEY,
+              label: "Cornice / scotia product",
+              question:
+                active.cornice_type === "timber_mdf_scotia"
+                  ? "Which scotia material is required?"
+                  : "Which plaster cornice product is required?",
+              inputType: "select",
+              options: productOptions,
+              currentValue: wallTypeFieldCurrentValue(
+                active,
+                INTERNAL_WALLS_CORNICE_PRODUCT_KEY
+              ),
+              wallTypeId,
+            })
+          );
+        }
+        if (active.cornice_type === "other_custom") {
+          out.push(
+            candidate({
+              workAreaId,
+              workAreaName,
+              factKey: INTERNAL_WALLS_CORNICE_NOTE_KEY,
+              label: "Cornice / scotia notes",
+              question: "Describe the custom cornice or scotia if needed.",
+              inputType: "text",
+              currentValue: wallTypeFieldCurrentValue(
+                active,
+                INTERNAL_WALLS_CORNICE_NOTE_KEY
+              ),
+              wallTypeId,
+            })
+          );
+        }
+      }
+      out.push(
         candidate({
           workAreaId,
           workAreaName,

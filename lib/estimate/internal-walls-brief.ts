@@ -21,12 +21,18 @@ import {
 } from "@/lib/estimate/internal-walls-wall-types";
 import { INTERNAL_WALLS_HAS_OPENINGS_KEY } from "@/lib/estimate/internal-walls-openings";
 import {
+  INTERNAL_WALLS_CORNICE_INCLUDED_KEY,
+  INTERNAL_WALLS_CORNICE_PRODUCT_KEY,
   INTERNAL_WALLS_CORNICE_SIDES_KEY,
+  INTERNAL_WALLS_CORNICE_TYPE_KEY,
   INTERNAL_WALLS_INSULATION_INCLUDED_KEY,
   INTERNAL_WALLS_PAINTING_SIDES_KEY,
   INTERNAL_WALLS_SKIRTING_SIDES_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_A_KEY,
   INTERNAL_WALLS_STOPPING_SIDE_B_KEY,
+  type InternalWallsCorniceProduct,
+  type InternalWallsCorniceType,
+  type InternalWallsSideSelection,
 } from "@/lib/estimate/internal-walls-finish";
 
 export const COORDINATION_ORIGINAL_BRIEF =
@@ -48,6 +54,17 @@ export type ExtractedInternalWallsType = {
   hasOpenings: boolean | null;
   sideA: ExtractedInternalWallsFace;
   sideB: ExtractedInternalWallsFace;
+  corniceIncluded?: boolean | null;
+  corniceSides?: InternalWallsSideSelection | null;
+  corniceType?: InternalWallsCorniceType | null;
+  corniceProduct?: InternalWallsCorniceProduct | null;
+};
+
+export type ExtractedInternalWallsCornice = {
+  included: boolean | null;
+  sides: InternalWallsSideSelection | null;
+  type: InternalWallsCorniceType | null;
+  product: InternalWallsCorniceProduct | null;
 };
 
 const EXPLICIT_NO_OPENINGS_PHRASES = [
@@ -239,6 +256,135 @@ function parseSegment(text: string, fallbackCount: number): ExtractedInternalWal
  * Split the brief into Wall Type segments. Combined length is authoritative;
  * wall_count is metadata and must not multiply length.
  */
+const CORNICE_SPECIALIST_TERMS = [
+  "ornate",
+  "decorative",
+  "curved",
+  "heritage",
+  "custom profile",
+  "fibrous plaster",
+  "specialist",
+] as const;
+
+export function briefHasSpecialistCorniceLanguage(briefText: string): boolean {
+  const brief = normalise(briefText);
+  return CORNICE_SPECIALIST_TERMS.some((term) => brief.includes(term));
+}
+
+export function briefHasGibCoveClassicLanguage(briefText: string): boolean {
+  const brief = normalise(briefText)
+    .replace(/®/g, "")
+    .replace(/×/g, "x")
+    .replace(/-/g, " ");
+  return (
+    (brief.includes("gib cove classic") && brief.includes("55")) ||
+    (brief.includes("55mm gib cove") && !brief.includes("ornate")) ||
+    (brief.includes("55 mm gib cove") && brief.includes("cove")) ||
+    /55\s*mm\s+gib\s+cove/.test(brief) ||
+    /gib\s+cove\s+classic\s+55/.test(brief)
+  );
+}
+
+export function extractInternalWallsCorniceFromBrief(
+  briefText: string
+): ExtractedInternalWallsCornice {
+  const empty: ExtractedInternalWallsCornice = {
+    included: null,
+    sides: null,
+    type: null,
+    product: null,
+  };
+  const brief = normalise(briefText);
+  const mentions =
+    includesAny(brief, ["cornice", "cove", "scotia"]) ||
+    briefHasGibCoveClassicLanguage(briefText);
+  if (!mentions) return empty;
+
+  const sides: InternalWallsSideSelection | null = includesAny(brief, [
+    "both sides",
+    "either side",
+    "each side",
+  ])
+    ? "both"
+    : includesAny(brief, ["side a", "one side only"])
+      ? "side_a"
+      : includesAny(brief, ["side b"])
+        ? "side_b"
+        : null;
+
+  if (briefHasSpecialistCorniceLanguage(briefText)) {
+    return {
+      included: true,
+      sides,
+      type: "other_custom",
+      product: null,
+    };
+  }
+
+  if (briefHasGibCoveClassicLanguage(briefText)) {
+    return {
+      included: true,
+      sides,
+      type: "plaster_cornice",
+      product: "gib_cove_classic_55mm_3600",
+    };
+  }
+
+  if (includesAny(brief, ["mdf scotia"])) {
+    return {
+      included: true,
+      sides,
+      type: "timber_mdf_scotia",
+      product: "mdf_scotia",
+    };
+  }
+  if (includesAny(brief, ["pine scotia", "pine timber scotia"])) {
+    return {
+      included: true,
+      sides,
+      type: "timber_mdf_scotia",
+      product: "pine_timber_scotia",
+    };
+  }
+  if (includesAny(brief, ["timber scotia"])) {
+    return {
+      included: true,
+      sides,
+      type: "timber_mdf_scotia",
+      product: "other_timber_scotia",
+    };
+  }
+
+  if (includesAny(brief, ["plaster cornice", "cove"])) {
+    return {
+      included: true,
+      sides,
+      type: "plaster_cornice",
+      product: null,
+    };
+  }
+
+  return {
+    included: true,
+    sides,
+    type: null,
+    product: null,
+  };
+}
+
+function withExtractedCornice(
+  type: ExtractedInternalWallsType,
+  cornice: ExtractedInternalWallsCornice
+): ExtractedInternalWallsType {
+  return {
+    ...type,
+    corniceIncluded: cornice.included,
+    corniceSides: cornice.sides,
+    corniceType: cornice.type,
+    corniceProduct: cornice.product,
+  };
+}
+
 export function extractInternalWallsTypesFromBrief(
   briefText: string
 ): ExtractedInternalWallsType[] {
@@ -264,11 +410,17 @@ export function extractInternalWallsTypesFromBrief(
     const types = segments
       .map((part, index) => parseSegment(part, index === 0 ? 2 : 1))
       .filter((row): row is ExtractedInternalWallsType => row != null);
-    if (types.length >= 2) return types;
+    if (types.length >= 2) {
+      const cornice = extractInternalWallsCorniceFromBrief(briefText);
+      return types.map((row) => withExtractedCornice(row, cornice));
+    }
   }
 
   const single = parseSegment(brief, 1);
-  return single ? [single] : [];
+  if (!single) return [];
+  return [
+    withExtractedCornice(single, extractInternalWallsCorniceFromBrief(briefText)),
+  ];
 }
 
 export function briefRequestsInternalWallsRebuild(briefText: string): boolean {
@@ -525,6 +677,79 @@ export function applyExtractedInternalWallsToFacts(params: {
         value: "No",
       });
     }
+    const userOwnsCorniceType = existingType?.cornice_type != null;
+    const userOwnsCorniceProduct = existingType?.cornice_product != null;
+    const userOwnsCorniceSides =
+      existingType != null &&
+      (existingType.cornice_included != null ||
+        existingType.cornice != null);
+    if (
+      spec.corniceIncluded === true &&
+      !userOwnsCorniceSides &&
+      existingType?.cornice_included == null
+    ) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_CORNICE_INCLUDED_KEY,
+        value: "Yes",
+      });
+    }
+    if (spec.corniceSides && spec.corniceSides !== "none" && !userOwnsCorniceSides) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_CORNICE_SIDES_KEY,
+        value:
+          spec.corniceSides === "both"
+            ? "Both sides"
+            : spec.corniceSides === "side_a"
+              ? "Side A"
+              : "Side B",
+      });
+    }
+    if (spec.corniceType && !userOwnsCorniceType) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_CORNICE_TYPE_KEY,
+        value:
+          spec.corniceType === "plaster_cornice"
+            ? "Plaster cornice/cove"
+            : spec.corniceType === "timber_mdf_scotia"
+              ? "Timber or MDF scotia"
+              : spec.corniceType === "other_custom"
+                ? "Other/custom"
+                : "Not sure",
+      });
+    }
+    if (
+      spec.corniceProduct &&
+      !userOwnsCorniceProduct &&
+      (!userOwnsCorniceType || existingType?.cornice_type === spec.corniceType)
+    ) {
+      facts = applyInternalWallsFactWrite({
+        facts,
+        workAreaId: params.workAreaId,
+        wallTypeId,
+        key: INTERNAL_WALLS_CORNICE_PRODUCT_KEY,
+        value:
+          spec.corniceProduct === "gib_cove_classic_55mm_3600"
+            ? "GIB-Cove® Classic 55mm × 3.6m"
+            : spec.corniceProduct === "mdf_scotia"
+              ? "MDF scotia"
+              : spec.corniceProduct === "pine_timber_scotia"
+                ? "Pine timber scotia"
+                : spec.corniceProduct === "other_timber_scotia"
+                  ? "Other timber scotia"
+                  : spec.corniceProduct === "other_plaster_cornice"
+                    ? "Other plaster cornice"
+                    : "Not sure",
+      });
+    }
   }
   return facts;
 }
@@ -543,6 +768,7 @@ export function applyInternalWallsNoAccessoryScope(params: {
     { key: INTERNAL_WALLS_HAS_OPENINGS_KEY, value: "No" },
     { key: INTERNAL_WALLS_INSULATION_INCLUDED_KEY, value: "No" },
     { key: INTERNAL_WALLS_SKIRTING_SIDES_KEY, value: "No" },
+    { key: INTERNAL_WALLS_CORNICE_INCLUDED_KEY, value: "No" },
     { key: INTERNAL_WALLS_CORNICE_SIDES_KEY, value: "No" },
     { key: INTERNAL_WALLS_STOPPING_SIDE_A_KEY, value: "No" },
     { key: INTERNAL_WALLS_STOPPING_SIDE_B_KEY, value: "No" },
@@ -579,8 +805,11 @@ export function optionalInternalWallsFactIsInvented(
   if (key.includes("skirting")) {
     return !includesAny(brief, ["skirting"]);
   }
-  if (key.includes("cornice")) {
-    return !includesAny(brief, ["cornice"]);
+  if (key.includes("cornice") || key.includes("scotia") || key.includes("cove")) {
+    if (key.includes("cornice_product") || key.includes("gib_cove")) {
+      return !briefHasGibCoveClassicLanguage(briefText);
+    }
+    return !includesAny(brief, ["cornice", "cove", "scotia"]);
   }
   if (key.includes("electrical")) {
     return !includesAny(brief, ["electrical", "power point", "switch"]);
@@ -620,7 +849,23 @@ export function stripInventedInternalWallsFacts(
           next.insulation_type = null;
         }
         if (!includesAny(normalise(briefText), ["skirting"])) next.skirting = null;
-        if (!includesAny(normalise(briefText), ["cornice"])) next.cornice = null;
+        if (!includesAny(normalise(briefText), ["cornice", "cove", "scotia"])) {
+          next.cornice_included = null;
+          next.cornice = null;
+          next.cornice_type = null;
+          next.cornice_product = null;
+          next.cornice_note = null;
+        } else if (briefHasSpecialistCorniceLanguage(briefText)) {
+          next.cornice_type = "other_custom";
+          if (next.cornice_product === "gib_cove_classic_55mm_3600") {
+            next.cornice_product = null;
+          }
+        } else if (
+          !briefHasGibCoveClassicLanguage(briefText) &&
+          next.cornice_product === "gib_cove_classic_55mm_3600"
+        ) {
+          next.cornice_product = null;
+        }
         if (!includesAny(normalise(briefText), ["electrical", "power point"])) {
           next.electrical = null;
         }

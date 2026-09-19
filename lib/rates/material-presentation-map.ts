@@ -822,13 +822,33 @@ export function classifyMaterialPresentation(
     });
   }
 
+  if (key === "cornice.wall.plaster.gib_cove_classic.55mm.3600.each") {
+    return base({
+      categoryId: "trim",
+      familyId: "wall-cornice",
+      familyName: "Cornice",
+      familyDescription:
+        "GIB-Cove® Classic 55mm × 3.6m. Quotr COST $13.32 each, derived from $3.70/lm × 3.6m. Materials only.",
+      variantLayout: "generic",
+      thickness: "55mm",
+      sheetSize: "3600mm",
+      section: null,
+      gradeTreatment: "GIB-Cove® Classic",
+      colourType: entry.label,
+      usedInWorkAreaTypes: ["internal_walls"],
+      ordinary: true,
+      legacyKind: leftover ? "leftover" : null,
+      aliasOfKey: null,
+    });
+  }
+
   if (key === "cornice.wall.lm" || key.startsWith("cornice.")) {
     return base({
       categoryId: "trim",
       familyId: "wall-cornice",
       familyName: "Cornice",
       familyDescription:
-        "Wall cornice / scotia. Pricing Required until a company rate exists — no Quotr V1 COST.",
+        "Wall cornice / scotia. Generic and unpriced products stay Pricing Required. GIB-Cove Classic is a separate exact product.",
       variantLayout: "generic",
       thickness: null,
       sheetSize: null,

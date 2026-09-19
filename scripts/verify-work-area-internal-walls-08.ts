@@ -269,6 +269,18 @@ function finishExtras(params?: {
       : []),
     { key: INTERNAL_WALLS_SKIRTING_SIDES_KEY, value: params?.skirting ? "Both sides" : "No" },
     { key: INTERNAL_WALLS_CORNICE_SIDES_KEY, value: params?.cornice ? "Both sides" : "No" },
+    ...(params?.cornice
+      ? [
+          {
+            key: "internal_walls.wall_type.cornice_type",
+            value: "Plaster cornice/cove",
+          },
+          {
+            key: "internal_walls.wall_type.cornice_product",
+            value: "GIB-Cove® Classic 55mm × 3.6m",
+          },
+        ]
+      : []),
     { key: INTERNAL_WALLS_ELECTRICAL_KEY, value: params?.electrical ? "Standard" : "No" },
     { key: INTERNAL_WALLS_STOPPING_SIDE_A_KEY, value: params?.stopping ?? "Level 4" },
     { key: INTERNAL_WALLS_STOPPING_SIDE_B_KEY, value: params?.stopping ?? "Level 4" },
