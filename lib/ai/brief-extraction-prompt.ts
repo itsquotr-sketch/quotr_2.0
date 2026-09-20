@@ -6,6 +6,7 @@ Rules:
 - "Replace the rear deck and build a new small deck at the front entrance" → two deck instances, Rear Deck and Front Entrance Deck.
 - Distinct Wall Types belong inside ONE internal_walls instance via internal_walls.wall_types. Do not emit one Internal Walls Work Area per Wall Type.
 - Distinct Ceiling Portions belong inside ONE ceilings instance via ceilings.portions. Do not emit one Ceilings Work Area per room unless the brief names commercially distinct packages (Ground Floor Ceilings vs Detached Garage Ceilings).
+- Distinct Door Sets belong inside ONE doors instance via doors.portions. Do not emit one Doors Work Area per Door Set. Do not flatten multiple Door Sets into doors.count.
 - Do not flatten multiple ceiling portions into one area_m2.
 - Separate Internal Walls instances only when locations/packages are commercially distinct (ground-floor office vs upstairs tenancy).
 - Attach instance-specific facts with work_area_name matching the instance name.
@@ -43,7 +44,9 @@ Fact key rules:
 - Kitchen: kitchen.area_m2, kitchen.renovation_type, kitchen.demolition_required, kitchen.cabinetry_included, kitchen.cabinetry_client_supplied, kitchen.cabinetry_type, kitchen.benchtop_included, kitchen.splashback_included, kitchen.rangehood_included, kitchen.flooring_included, kitchen.appliances_included, kitchen.appliances_client_supplied, kitchen.plumbing_changes, kitchen.electrical_changes.
 - Internal walls: internal_walls.job_scope, internal_walls.wall_types (array of wall type objects), internal_walls.length_lm, internal_walls.height_m, internal_walls.framing_type, internal_walls.wall_lining_type, internal_walls.plasterboard_type, internal_walls.lining_sides. Extract stated length, height, timber/90x45/45x90/140x45, and lining per face when explicit. 45x90 and 90x45 are the same timber size (canonical 90x45). Distinct lining specifications are distinct wall types; physical walls that share frame + lining may share one wall type with wall_count + combined length. Do not invent openings, insulation, skirting, cornice, electrical, stopping, or painting. Do not invent fire systems. GIB / plasterboard on a new partition is lining, not a Plastering Work Area.
 - Ceilings: ceilings.portions (array of portion objects with stable id, label, geometry length/width or area-only, job_scope, structure_family, lining_family, plasterboard_product, bulkheads). Also still accepted: ceilings.area_m2, ceilings.ceiling_type, ceilings.structure_type, ceilings.battens_included, ceilings.insulation_included, ceilings.stopping_included, ceilings.painting_included, ceilings.demolition_included. Extract multiple portions inside one Ceilings Work Area when rooms/areas have different geometry or lining. Do not invent dimensions, drop height, framing spacing, sheet type, fire systems, or bulkhead sizes. Map GIB to plasterboard. T-bar / ceiling tiles → tile_and_grid. Drop ceiling → suspended only with drop/suspended context. "Steel ceiling" alone is not enough to choose suspended vs direct-fix. Paint ceiling / stop ceiling alone is not a Ceilings Work Area.
-- Doors: doors.count, doors.door_type, doors.supply_scope, doors.prehung, doors.frames_included, doors.hardware_install_included, doors.hardware_client_supplied, doors.architraves_included, doors.painting_included, doors.existing_removal.
+- Distinct Door Sets belong inside ONE doors instance via doors.portions. Do not emit one Doors Work Area per Door Set.
+- Do not flatten multiple Door Sets into doors.count.
+- Doors: doors.portions (array of Door Set objects with stable id, label, installation_type, leaf_construction, height_mm, width_mm, quantity, hardware_included, other_description, specialist_kind). Canonical installation_type: prehung_internal | replacement_leaf | other_unsupported. Canonical leaf_construction: hollow_core | solid_core | other. Heights: 1980, 2200, 2400. Widths: 410, 610, 760, 810, 860, 910. hardware_included true means Quotr supplies and installs the standard latch/lever allowance. Do not invent width, quantity, or hardware. Do not claim 1980 as an extracted fact — that is the application default only. Opening-only language must not create a Door Set. Specialist/non-V1 systems (fire-rated, acoustic, exterior, aluminium, automatic, security, cavity slider, barn, bifold, glazed specialist, oversized, heritage/custom) use installation_type=other_unsupported with specialist_kind and a concise other_description. Never rewrite those as prehung_internal or replacement_leaf. A custom conventional hinged internal leaf into an existing frame is replacement_leaf with leaf_construction=other. Legacy flat keys still accepted only for hosted projects: doors.count, doors.door_type, doors.supply_scope, doors.prehung, doors.frames_included, doors.hardware_install_included, doors.hardware_client_supplied, doors.architraves_included, doors.painting_included, doors.existing_removal.
 - Flooring: flooring.area_m2, flooring.type, flooring.supply_scope, flooring.client_supplied, flooring.existing_flooring_removal, flooring.floor_prep_level, flooring.underlay_included, flooring.scotia_included, flooring.stairs_or_landings_included, flooring.disposal_included.
 - Painting: painting.location, painting.internal_area_m2, painting.external_area_m2, painting.surfaces (array), painting.coats_required, painting.prep_level, painting.paint_client_supplied, painting.door_painting_included, painting.primer_required.
 - Plastering: plastering.area_m2, plastering.level, plastering.surface_type, plastering.sanding_included, plastering.complexity.
@@ -116,11 +119,11 @@ Fact key rules:
 - "grid tile ceiling" → ceilings.ceiling_type=Ceiling tiles, ceilings.structure_type=Suspended grid.
 - "batten and line ceiling" → ceilings.battens_included=true, ceilings.ceiling_type=Plasterboard.
 - "paint ceiling" → ceilings.painting_included=true.
-- "install 4 solid core doors" → doors.count=4, doors.door_type=Solid core.
-- "supply and install prehung doors" → doors.supply_scope=Supply and install, doors.prehung=true.
-- "fire rated door" → doors.door_type=Fire rated.
-- "cavity slider" → doors.door_type=Cavity slider.
-- "hardware supplied by client" → doors.hardware_client_supplied=true.
+- "install 4 solid core doors" → one doors.portions Door Set: leaf_construction=solid_core, quantity=4. Do not invent width or hardware. Do not emit doors.count as the primary output.
+- "supply and install prehung doors" → installation_type=prehung_internal.
+- "replacement leaf" / "fit into existing frame" → installation_type=replacement_leaf.
+- "fire rated door" / "cavity slider" / "aluminium exterior door" → installation_type=other_unsupported with specialist_kind. Do not classify as prehung_internal.
+- Opening-only / "door opening" with no supply/install → no Doors Work Area and no Door Set.
 - "lay 60m² vinyl" → flooring.area_m2=60, flooring.type=Vinyl.
 - "remove carpet" → flooring.existing_flooring_removal=true.
 - "floor levelling" → flooring.floor_prep_level=Minor or Moderate as stated.

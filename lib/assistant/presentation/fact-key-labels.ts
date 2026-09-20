@@ -97,6 +97,7 @@ const FRIENDLY_LABELS: Record<string, string> = {
   "doors.portion.width_mm": "Door width",
   "doors.portion.quantity": "Door quantity",
   "doors.portion.hardware_included": "Hardware included",
+  "doors.portion.other_description": "Door description",
   "deck.step_width_m": "Step width",
   site_access: "Site access",
   high_level_access: "High-level access",

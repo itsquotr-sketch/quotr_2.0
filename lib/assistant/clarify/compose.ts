@@ -137,6 +137,16 @@ import {
   resolveCeilingsPortions,
 } from "@/lib/estimate/ceilings-portions";
 import {
+  doorNestedFactCurrentValue,
+  doorsNestedItemPanel,
+  listDoorsClarifyCandidates,
+} from "@/lib/estimate/doors-clarify";
+import { lookupDoorsInformationContract } from "@/lib/estimate/doors-information-contract";
+import {
+  hasDoorsPortionsFact,
+  isDoorsNestedFactKey,
+} from "@/lib/estimate/doors-portions";
+import {
   getArrayFact,
   getBooleanFact,
   getFact,
@@ -945,6 +955,22 @@ function missingHardMinimum(
         }
       }
     }
+
+    if (card.workAreaType === "doors") {
+      if (
+        hasDoorsPortionsFact(input.facts as EstimateFact[], card.workAreaId)
+      ) {
+        for (const candidate of listDoorsClarifyCandidates({
+          facts: input.facts as EstimateFact[],
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          briefText: input.briefText,
+        })) {
+          if (candidate.askClass !== "HARD_MINIMUM") continue;
+          out.push(candidate);
+        }
+      }
+    }
   }
   return out;
 }
@@ -1557,6 +1583,27 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
       continue;
     }
 
+    if (wa.type === "doors") {
+      if (!hasDoorsPortionsFact(input.facts as EstimateFact[], wa.id)) {
+        continue;
+      }
+      for (const candidate of listDoorsClarifyCandidates({
+        facts: input.facts as EstimateFact[],
+        workAreaId: wa.id,
+        workAreaName: wa.name,
+        briefText: input.briefText,
+      })) {
+        if (candidate.askClass === "HARD_MINIMUM") continue;
+        if (
+          !lookupDoorsInformationContract(candidate.factKey ?? "")
+        ) {
+          continue;
+        }
+        out.push(candidate);
+      }
+      continue;
+    }
+
     if (wa.type === "deck") {
       const jobPlanKeys = new Set(
         input.jobPlan.cards
@@ -2149,6 +2196,24 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
         }
         return aliased;
       }
+      if (
+        (aliased.workAreaType === "doors" || isDoorsNestedFactKey(key)) &&
+        aliased.workAreaId
+      ) {
+        const nestedValue = doorNestedFactCurrentValue({
+          facts: input.facts as EstimateFact[],
+          workAreaId: aliased.workAreaId,
+          factKey: aliased.factKey ?? key,
+          nestedItemId: aliased.nestedItemId,
+        });
+        if (nestedValue != null) {
+          return {
+            ...aliased,
+            currentValue: nestedValue as ClarifyCandidate["currentValue"],
+          };
+        }
+        return aliased;
+      }
       const rawValue = currentFactOrConstraintValue(
         input,
         key,
@@ -2173,22 +2238,35 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
     blocksEstimate,
     canEstimateNow: !blocksEstimate && remainingRequiredCount === 0,
     enoughToEstimate,
-    nestedItemPanels: input.workAreas
-      .filter((row) => row.status !== "excluded" && row.type === "ceilings")
-      .map((wa) =>
-        ceilingsNestedItemPanel({
-          facts: input.facts as EstimateFact[],
-          workAreaId: wa.id,
-          workAreaName: wa.name,
-          briefText: input.briefText,
-          omitStopping: input.workAreas.some(
-            (row) => row.status !== "excluded" && row.type === "plastering"
-          ),
-          omitPainting: input.workAreas.some(
-            (row) => row.status !== "excluded" && row.type === "painting"
-          ),
-        })
-      )
-      .filter((row): row is NonNullable<typeof row> => row != null),
+    nestedItemPanels: [
+      ...input.workAreas
+        .filter((row) => row.status !== "excluded" && row.type === "ceilings")
+        .map((wa) =>
+          ceilingsNestedItemPanel({
+            facts: input.facts as EstimateFact[],
+            workAreaId: wa.id,
+            workAreaName: wa.name,
+            briefText: input.briefText,
+            omitStopping: input.workAreas.some(
+              (row) => row.status !== "excluded" && row.type === "plastering"
+            ),
+            omitPainting: input.workAreas.some(
+              (row) => row.status !== "excluded" && row.type === "painting"
+            ),
+          })
+        ),
+      ...input.workAreas
+        .filter((row) => row.status !== "excluded" && row.type === "doors")
+        .filter((wa) =>
+          hasDoorsPortionsFact(input.facts as EstimateFact[], wa.id)
+        )
+        .map((wa) =>
+          doorsNestedItemPanel({
+            facts: input.facts as EstimateFact[],
+            workAreaId: wa.id,
+            workAreaName: wa.name,
+          })
+        ),
+    ].filter((row): row is NonNullable<typeof row> => row != null),
   };
 }

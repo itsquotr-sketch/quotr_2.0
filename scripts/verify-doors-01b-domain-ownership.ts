@@ -563,9 +563,9 @@ check(
 );
 
 check(
-  "inferDoors uses the ownership helper and does not seed doors.portions",
+  "inferDoors uses the ownership helper and seeds doors.portions",
   read("lib/ai/enrich-extraction.ts").includes("briefHasIndependentDoors") &&
-    !read("lib/ai/enrich-extraction.ts").includes('key: "doors.portions"')
+    read("lib/ai/enrich-extraction.ts").includes("seedExtractedDoorsFact")
 );
 
 if (failed > 0) {

@@ -171,6 +171,7 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
     quantity: "doors.portion.quantity",
     hardware_included: "doors.portion.hardware_included",
     label: "doors.portion.label",
+    other_description: "doors.portion.other_description",
   },
   flooring: {
     supply_by: "flooring.supply_scope",

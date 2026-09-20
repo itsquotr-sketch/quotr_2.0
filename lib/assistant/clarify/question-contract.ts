@@ -9,6 +9,7 @@ import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract"
 import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
 import { ceilingsFactQuestionClass } from "@/lib/estimate/ceilings-information-contract";
+import { doorsFactQuestionClass } from "@/lib/estimate/doors-information-contract";
 import { getEstimatePriorityClass } from "@/lib/scopes/estimate-priority";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
@@ -114,7 +115,8 @@ export function isClarifyExtraFactKey(factKey: string): boolean {
     deckFactQuestionClass(factKey) ??
     fenceFactQuestionClass(factKey) ??
     retainingWallFactQuestionClass(factKey) ??
-    ceilingsFactQuestionClass(factKey);
+    ceilingsFactQuestionClass(factKey) ??
+    doorsFactQuestionClass(factKey);
   if (
     contract === "HARD_MINIMUM" ||
     contract === "ASK_NOW" ||

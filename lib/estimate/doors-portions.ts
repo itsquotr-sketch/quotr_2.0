@@ -101,6 +101,7 @@ export type DoorPortion = {
   width_mm: DoorWidthMm | null;
   quantity: number | null;
   hardware_included: boolean | null;
+  other_description: string | null;
   installation_authority?: DoorFieldAuthority;
   leaf_authority?: DoorFieldAuthority;
   height_authority?: DoorFieldAuthority;
@@ -108,6 +109,7 @@ export type DoorPortion = {
   quantity_authority?: DoorFieldAuthority;
   hardware_authority?: DoorFieldAuthority;
   label_authority?: DoorFieldAuthority;
+  other_description_authority?: DoorFieldAuthority;
   specialist_kind: DoorSpecialistKind | null;
 };
 
@@ -149,6 +151,8 @@ function parseTriBool(value: unknown): boolean | null {
       normalised === "not_included" ||
       normalised === "not included" ||
       normalised === "excluded" ||
+      normalised === "excluded / reuse existing" ||
+      normalised.startsWith("excluded") ||
       normalised === "false"
     ) {
       return false;
@@ -177,13 +181,16 @@ export function parseDoorInstallationType(
     normalised === "pre hung" ||
     normalised === "prehung internal" ||
     normalised === "pre hung internal" ||
-    normalised === "internal prehung"
+    normalised === "internal prehung" ||
+    normalised === "prehung door set" ||
+    normalised === "pre hung door set"
   ) {
     return "prehung_internal";
   }
   if (
     normalised === "replacement" ||
     normalised === "replacement leaf" ||
+    normalised === "replacement door leaf" ||
     normalised === "leaf only" ||
     normalised === "leaf"
   ) {
@@ -192,7 +199,8 @@ export function parseDoorInstallationType(
   if (
     normalised === "other" ||
     normalised === "unsupported" ||
-    normalised === "other unsupported"
+    normalised === "other unsupported" ||
+    normalised === "other door system"
   ) {
     return "other_unsupported";
   }
@@ -227,7 +235,8 @@ function parseAllowedMm<T extends number>(
       : null;
   }
   if (typeof value === "string" && value.trim()) {
-    const parsed = Number(value.replace(/mm/i, "").trim());
+    const match = value.match(/(\d{3,4})/);
+    const parsed = match ? Number(match[1]) : Number(value.replace(/mm/i, "").trim());
     if (!Number.isFinite(parsed)) return null;
     const rounded = Math.round(parsed);
     return (allowed as readonly number[]).includes(rounded)
@@ -272,6 +281,12 @@ export function parseDoorSpecialistKind(
   return parseEnum(value, DOORS_SPECIALIST_KIND_VALUES);
 }
 
+export function parseDoorOtherDescription(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
+}
+
 export function doorPortionIsUnsupported(portion: DoorPortion): boolean {
   return (
     portion.installation_type === "other_unsupported" ||
@@ -292,6 +307,7 @@ export function createEmptyDoorPortion(params?: {
     width_mm: null,
     quantity: null,
     hardware_included: null,
+    other_description: null,
     height_authority: "assumed_disclosed",
     specialist_kind: null,
   };
@@ -331,6 +347,7 @@ export function parseDoorPortion(value: unknown): DoorPortion | null {
     width_mm: parseDoorWidthMm(value.width_mm),
     quantity: parseDoorQuantity(value.quantity),
     hardware_included: parseTriBool(value.hardware_included),
+    other_description: parseDoorOtherDescription(value.other_description),
     installation_authority: parseFieldAuthority(value.installation_authority),
     leaf_authority: parseFieldAuthority(value.leaf_authority),
     height_authority: parseFieldAuthority(value.height_authority),
@@ -338,6 +355,9 @@ export function parseDoorPortion(value: unknown): DoorPortion | null {
     quantity_authority: parseFieldAuthority(value.quantity_authority),
     hardware_authority: parseFieldAuthority(value.hardware_authority),
     label_authority: parseFieldAuthority(value.label_authority),
+    other_description_authority: parseFieldAuthority(
+      value.other_description_authority
+    ),
     specialist_kind: parseDoorSpecialistKind(value.specialist_kind),
   };
 }
@@ -425,6 +445,7 @@ export const DOORS_PORTION_FIELD_KEYS = [
   "doors.portion.quantity",
   "doors.portion.hardware_included",
   "doors.portion.label",
+  "doors.portion.other_description",
 ] as const;
 
 /** Calculator-owned nested contract. Logical keys patch `doors.portions`. */
@@ -464,6 +485,17 @@ export function hasCanonicalDoorsPortions(
   workAreaId: string
 ): boolean {
   return storedDoorsPortions(facts, workAreaId).length > 0;
+}
+
+/** Nested collection row exists, including an intentional empty Door Set list. */
+export function hasDoorsPortionsFact(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  return (
+    getFact(facts as EstimateFact[], workAreaId, DOORS_PORTIONS_FACT_KEY) !=
+    null
+  );
 }
 
 export function resolveDoorsActivePortionId(
@@ -610,7 +642,21 @@ export function overlayUserAuthoritativeDoorPortion(
     "hardware_included",
     "hardware_authority"
   );
+  overlayUserField(
+    next,
+    persisted,
+    "other_description",
+    "other_description_authority"
+  );
   if (persisted.specialist_kind != null && extracted.specialist_kind == null) {
+    next.specialist_kind = persisted.specialist_kind;
+  }
+  if (
+    persisted.installation_authority === "user" &&
+    persisted.installation_type === "other_unsupported"
+  ) {
+    next.installation_type = "other_unsupported";
+    next.installation_authority = "user";
     next.specialist_kind = persisted.specialist_kind;
   }
   return next;
@@ -710,6 +756,11 @@ function applyPortionField(
   if (field === "hardware_included") {
     portion.hardware_included = parseTriBool(value);
     portion.hardware_authority = "user";
+    return;
+  }
+  if (field === "other_description") {
+    portion.other_description = parseDoorOtherDescription(value);
+    portion.other_description_authority = "user";
     return;
   }
   if (field === "specialist_kind") {

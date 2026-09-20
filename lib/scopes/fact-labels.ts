@@ -263,6 +263,7 @@ const FACT_DISPLAY_LABELS: Record<string, string> = {
   "doors.portion.width_mm": "Door width",
   "doors.portion.quantity": "Door quantity",
   "doors.portion.hardware_included": "Hardware included",
+  "doors.portion.other_description": "Door description",
 };
 
 export function getCanonicalFactKey(

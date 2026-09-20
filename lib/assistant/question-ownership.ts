@@ -13,6 +13,7 @@ import { deckFactQuestionClass } from "@/lib/estimate/deck-information-contract"
 import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
 import { ceilingsFactQuestionClass } from "@/lib/estimate/ceilings-information-contract";
+import { doorsFactQuestionClass } from "@/lib/estimate/doors-information-contract";
 import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
@@ -45,15 +46,6 @@ const INTERNAL_WALLS_DETAILS_OWNED_FACT_KEYS = new Set([
   "internal_walls.wall_type.painting",
 ]);
 
-const DOORS_DETAILS_OWNED_FACT_KEYS = new Set([
-  "doors.portion.installation_type",
-  "doors.portion.leaf_construction",
-  "doors.portion.height_mm",
-  "doors.portion.width_mm",
-  "doors.portion.quantity",
-  "doors.portion.hardware_included",
-]);
-
 type DetailsAskClass = "HARD_MINIMUM" | "ASK_NOW" | "ASSUME_IF_SKIPPED";
 
 function bathroomDetailsAskClass(factKey: string): DetailsAskClass | null {
@@ -67,8 +59,8 @@ function internalWallsDetailsAskClass(factKey: string): DetailsAskClass | null {
 }
 
 function doorsDetailsAskClass(factKey: string): DetailsAskClass | null {
-  if (DOORS_DETAILS_OWNED_FACT_KEYS.has(factKey)) return "HARD_MINIMUM";
-  return null;
+  const cls = doorsFactQuestionClass(factKey);
+  return isDetailsAskClass(cls) ? cls : null;
 }
 
 function isDetailsAskClass(

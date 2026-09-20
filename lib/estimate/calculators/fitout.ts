@@ -80,7 +80,7 @@ import {
 } from "@/lib/estimate/ceilings-portions";
 import {
   DOORS_NESTED_NOT_CALCULATED_MESSAGE,
-  hasCanonicalDoorsPortions,
+  hasDoorsPortionsFact,
 } from "@/lib/estimate/doors-portions";
 import { calculateCeilingsPhysical } from "@/lib/estimate/ceilings-physical";
 import {
@@ -924,7 +924,7 @@ export function calculateDoors(
    *   doorsEach. Do not extend that benchmark here.
    */
   const { facts } = context;
-  if (hasCanonicalDoorsPortions(facts, workArea.id)) {
+  if (hasDoorsPortionsFact(facts, workArea.id)) {
     return {
       lineItems: [],
       assumptions: [],

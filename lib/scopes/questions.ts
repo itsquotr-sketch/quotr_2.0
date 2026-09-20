@@ -35,6 +35,7 @@ import { planLevel1Questions } from "@/lib/assistant/level1-question-plan";
 import type { InterviewCandidate } from "@/lib/builder-interview/types";
 import { isQuestionSuppressedByScopeItemExclusion } from "@/lib/scope-discovery/ui/scope-item-question-gates";
 import { isProjectConditionDuplicateFactKey } from "@/lib/project-conditions/canonical";
+import { DOORS_PORTIONS_FACT_KEY } from "@/lib/estimate/doors-portions";
 
 /**
  * Stage 3.1B.7F-R6: do not silently drop applicable questions on multi-WA jobs.
@@ -305,6 +306,16 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
   const candidates: CandidateQuestion[] = [];
 
   for (const workArea of confirmed) {
+    if (
+      workArea.type === "doors" &&
+      mergedFacts.some(
+        (row) =>
+          row.key === DOORS_PORTIONS_FACT_KEY &&
+          row.work_area_id === workArea.id
+      )
+    ) {
+      continue;
+    }
     const templates = getScopeQuestions(workArea.type);
     for (const template of templates) {
       if (!isQuickEstimateAskQuestion(template)) {
@@ -608,6 +619,16 @@ export function buildQuestionBlockFromProjectState(params: {
   const candidates: CandidateQuestion[] = [];
 
   for (const workArea of confirmed) {
+    if (
+      workArea.type === "doors" &&
+      mergedFacts.some(
+        (row) =>
+          row.key === DOORS_PORTIONS_FACT_KEY &&
+          row.work_area_id === workArea.id
+      )
+    ) {
+      continue;
+    }
     const templates = getScopeQuestions(workArea.type);
     if (templates.length === 0) {
       continue;
@@ -701,7 +722,15 @@ export function buildQuestionBlockForWorkArea(params: {
       .filter((workArea) => workArea.status === "confirmed")
       .map((workArea) => workArea.type)
   );
-  const templates = getScopeQuestions(params.workArea.type);
+  const templates =
+    params.workArea.type === "doors" &&
+    mergedFacts.some(
+      (row) =>
+        row.key === DOORS_PORTIONS_FACT_KEY &&
+        row.work_area_id === params.workArea.id
+    )
+      ? []
+      : getScopeQuestions(params.workArea.type);
   const candidates: CandidateQuestion[] = [];
 
   for (const template of templates) {

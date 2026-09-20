@@ -20,6 +20,7 @@ import {
 import { projectConditionDetailsGroupLabel } from "@/lib/project-conditions/library";
 import { distinguishWorkAreaInstanceLabels } from "@/lib/work-areas/instances";
 import { ceilingsDetailsSectionId } from "@/lib/estimate/ceilings-information-contract";
+import { DOORS_CONTRACT_FACT_ORDER } from "@/lib/estimate/doors-information-contract";
 
 export type DetailsSectionId =
   | "dimensions"
@@ -139,6 +140,9 @@ function compareCandidates(a: ClarifyCandidate, b: ClarifyCandidate): number {
   const aDeck = a.factKey ? DECK_FACT_ORDER.get(a.factKey) : undefined;
   const bDeck = b.factKey ? DECK_FACT_ORDER.get(b.factKey) : undefined;
   if (aDeck != null && bDeck != null && aDeck !== bDeck) return aDeck - bDeck;
+  const aDoor = a.factKey ? DOORS_CONTRACT_FACT_ORDER.get(a.factKey) : undefined;
+  const bDoor = b.factKey ? DOORS_CONTRACT_FACT_ORDER.get(b.factKey) : undefined;
+  if (aDoor != null && bDoor != null && aDoor !== bDoor) return aDoor - bDoor;
   const aPc = a.constraintKey ? PC_KEY_ORDER.get(a.constraintKey) : undefined;
   const bPc = b.constraintKey ? PC_KEY_ORDER.get(b.constraintKey) : undefined;
   if (aPc != null && bPc != null && aPc !== bPc) return aPc - bPc;

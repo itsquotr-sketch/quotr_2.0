@@ -570,7 +570,8 @@ export async function saveBriefAndSeedWorkAreas(
             portion.width_authority === "user" ||
             portion.quantity_authority === "user" ||
             portion.hardware_authority === "user" ||
-            portion.label_authority === "user"
+            portion.label_authority === "user" ||
+            portion.other_description_authority === "user"
         );
         const { error: mergeError } = await supabase
           .from("project_facts")

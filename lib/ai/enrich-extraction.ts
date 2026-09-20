@@ -36,6 +36,13 @@ import {
   readAiCeilingPortionsFromExtraction,
   seedExtractedCeilingsFact,
 } from "@/lib/estimate/ceilings-brief";
+import {
+  extractDoorPortionsFromBrief,
+  mergeDoorPortionsPreferringDeterministic,
+  readAiDoorPortionsFromExtraction,
+  seedExtractedDoorsFact,
+  stripLegacyDoorFactsFromExtraction,
+} from "@/lib/estimate/doors-brief";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
@@ -611,15 +618,9 @@ function inferDoors(
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
-  // Ownership helper is the single door supply/install gate. Do not write
-  // canonical `doors.portions` here (DOORS-01B). Legacy flat facts remain
-  // for hosted projects without portions and are not mapped into the
-  // collection.
   if (!briefHasIndependentDoors(brief)) {
     return;
   }
-
-  const doorMatch = brief.match(/(\d+)\s+(?:solid core\s+)?(?:internal\s+)?doors?/i);
 
   addWorkAreaIfMissing(
     extraction,
@@ -629,37 +630,12 @@ function inferDoors(
     allowedTypes
   );
 
-  if (doorMatch) {
-    addFact(extraction, {
-      workAreaType: "doors",
-      key: "doors.count",
-      label: "Door count",
-      value: Number(doorMatch[1]),
-    });
-  }
-
-  if (includesAny(brief, ["solid core"])) {
-    addFact(extraction, {
-      workAreaType: "doors",
-      key: "doors.door_type",
-      label: "Door type",
-      value: "Solid core",
-    });
-  }
-
-  if (
-    includesAny(brief, [
-      "client supplying doors",
-      "client supplied doors",
-      "client supplying kitchen cabinets and doors",
-    ])
-  ) {
-    addFact(extraction, {
-      workAreaType: "doors",
-      key: "doors.client_supplied",
-      label: "Client supplied doors",
-      value: true,
-    });
+  const parsed = extractDoorPortionsFromBrief(brief);
+  const ai = readAiDoorPortionsFromExtraction(extraction);
+  const portions = mergeDoorPortionsPreferringDeterministic(ai, parsed);
+  if (portions.length > 0) {
+    seedExtractedDoorsFact(extraction, { portions });
+    stripLegacyDoorFactsFromExtraction(extraction);
   }
 }
 
