@@ -82,6 +82,7 @@ import {
   DOORS_NESTED_NOT_CALCULATED_MESSAGE,
   hasDoorsPortionsFact,
 } from "@/lib/estimate/doors-portions";
+import { calculateDoorsPhysical } from "@/lib/estimate/doors-physical";
 import { calculateCeilingsPhysical } from "@/lib/estimate/ceilings-physical";
 import {
   CEILING_COMMERCIAL_COMPLETENESS,
@@ -916,21 +917,28 @@ export function calculateDoors(
   workArea: EstimateWorkArea
 ): CalculatorResult {
   /**
-   * Dual-path calculator boundary (DOORS-01B / later commercial ticket):
-   * - Canonical nested `doors.portions` → future physical + commercial path.
-   *   Incomplete nested fields must not fall through to the legacy lump.
+   * Dual-path calculator boundary (DOORS-01B / DOORS-03):
+   * - Canonical nested `doors.portions` → physical takeoff, not yet priced.
+   *   Incomplete, empty, or unsupported nested fields must not fall through
+   *   to the legacy lump.
    * - Legacy flat `doors.count` / FITOUT_BENCHMARKS.doorsEach remain for
    *   hosted projects without portions. Do not alias new identities onto
    *   doorsEach. Do not extend that benchmark here.
    */
   const { facts } = context;
   if (hasDoorsPortionsFact(facts, workArea.id)) {
+    const physical = calculateDoorsPhysical({ facts, workArea });
     return {
       lineItems: [],
-      assumptions: [],
-      missingInfo: [DOORS_NESTED_NOT_CALCULATED_MESSAGE],
+      assumptions: [...physical.assumptions],
+      missingInfo: [
+        DOORS_NESTED_NOT_CALCULATED_MESSAGE,
+        ...physical.missingInfo,
+      ],
       exclusions: [],
       confidence: 0,
+      requirements:
+        physical.requirements.length > 0 ? physical.requirements : undefined,
     };
   }
 
