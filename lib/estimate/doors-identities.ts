@@ -21,6 +21,35 @@ export const DOORS_LEAF_SOLID_CORE_KEY =
 export const DOORS_HARDWARE_STANDARD_KEY =
   "door.hardware.internal.standard.set" as const;
 
+/** Quotr V1 benchmark direct COST, ex GST. Not sell, not installed package. */
+export const DOORS_LEAF_HOLLOW_CORE_COST_EX_GST = 80 as const;
+export const DOORS_LEAF_SOLID_CORE_COST_EX_GST = 220 as const;
+export const DOORS_PREHUNG_HOLLOW_CORE_SET_COST_EX_GST = 240 as const;
+export const DOORS_PREHUNG_SOLID_CORE_SET_COST_EX_GST = 380 as const;
+export const DOORS_HARDWARE_STANDARD_COST_EX_GST = 55 as const;
+
+export const DOORS_LEAF_HOLLOW_CORE_LABEL =
+  "Hollow-core replacement internal door leaf" as const;
+export const DOORS_LEAF_SOLID_CORE_LABEL =
+  "Solid-core replacement internal door leaf" as const;
+export const DOORS_PREHUNG_HOLLOW_CORE_SET_LABEL =
+  "Hollow-core prehung internal door set" as const;
+export const DOORS_PREHUNG_SOLID_CORE_SET_LABEL =
+  "Solid-core prehung internal door set" as const;
+export const DOORS_HARDWARE_STANDARD_LABEL =
+  "Standard internal door latch/lever allowance" as const;
+
+export const DOORS_LEAF_HOLLOW_CORE_DESCRIPTION =
+  "Quotr benchmark COST $80.00 ex GST / each. Includes one ordinary hollow-core internal door leaf. Excludes frame/jamb, stops, hinges, latch/lever hardware, installation, trimming/making good, painting, and removal/disposal. Same COST for all supported sizes." as const;
+export const DOORS_LEAF_SOLID_CORE_DESCRIPTION =
+  "Quotr benchmark COST $220.00 ex GST / each. Includes one ordinary solid-core internal door leaf. Excludes frame/jamb, stops, hinges, latch/lever hardware, installation, trimming/making good, painting, and removal/disposal. Same COST for all supported sizes." as const;
+export const DOORS_PREHUNG_HOLLOW_CORE_SET_DESCRIPTION =
+  "Quotr benchmark COST $240.00 ex GST / each. Includes one ordinary hollow-core internal door leaf, standard timber jamb/frame, door stops, and standard hinges. Excludes latch/lever hardware, architraves, opening formation, structural work, installation labour, stopping/making good, painting, and removal/disposal. Same COST for all supported sizes." as const;
+export const DOORS_PREHUNG_SOLID_CORE_SET_DESCRIPTION =
+  "Quotr benchmark COST $380.00 ex GST / each. Includes one ordinary solid-core internal door leaf, standard timber jamb/frame, door stops, and standard hinges. Excludes latch/lever hardware, architraves, opening formation, structural work, installation labour, stopping/making good, painting, and removal/disposal. Same COST for all supported sizes." as const;
+export const DOORS_HARDWARE_STANDARD_DESCRIPTION =
+  "Quotr benchmark COST $55.00 ex GST / set. Ordinary internal-door latch/lever hardware material allowance — not a guaranteed named product. Excludes installation labour, premium/designer hardware, access control, electronic/security hardware, specialist locks, fire/acoustic hardware, door closers, and panic hardware." as const;
+
 export const DOORS_PREHUNG_SET_COMPONENT = "doors.prehung.set" as const;
 export const DOORS_REPLACEMENT_LEAF_COMPONENT =
   "doors.replacement.leaf" as const;

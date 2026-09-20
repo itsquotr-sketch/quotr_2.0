@@ -41,7 +41,8 @@ export type MaterialCategoryId =
   | "deck"
   | "fence"
   | "retaining"
-  | "flooring";
+  | "flooring"
+  | "doors";
 
 export type MaterialVariantLayout = "sheet" | "framing" | "generic";
 
@@ -84,6 +85,7 @@ export const MATERIAL_CATEGORY_ORDER: readonly MaterialCategoryId[] = [
   "fence",
   "retaining",
   "flooring",
+  "doors",
 ];
 
 export const MATERIAL_CATEGORY_NAMES: Record<MaterialCategoryId, string> = {
@@ -101,6 +103,7 @@ export const MATERIAL_CATEGORY_NAMES: Record<MaterialCategoryId, string> = {
   fence: "Fence",
   retaining: "Retaining walls",
   flooring: "Flooring",
+  doors: "Doors",
 };
 
 export const MATERIAL_WORK_AREA_LABELS: Record<string, string> = {
@@ -112,6 +115,7 @@ export const MATERIAL_WORK_AREA_LABELS: Record<string, string> = {
   internal_walls: "Internal Walls",
   painting: "Painting",
   flooring: "Flooring",
+  doors: "Doors",
 };
 
 const PLASTERBOARD_FAMILY_META: Record<
@@ -1228,6 +1232,49 @@ export function classifyMaterialPresentation(
     });
   }
 
+  if (key.startsWith("door.")) {
+    let familyId = "doors-other";
+    let familyName = "Doors";
+    let familyDescription =
+      "Ordinary nested Door Set material identities. Company exact overrides Quotr V1 COST.";
+    let colourType = entry.label;
+    if (key.startsWith("door.leaf.internal.")) {
+      familyId = "doors-internal-leaves";
+      familyName = "Internal door leaves";
+      familyDescription =
+        "Ordinary replacement internal door leaves. Frame/jamb, stops, hinges, hardware, and installation are separate.";
+      colourType = key.includes("solid_core") ? "Solid core" : "Hollow core";
+    } else if (key.startsWith("door.set.internal.prehung.")) {
+      familyId = "doors-prehung-sets";
+      familyName = "Prehung internal door sets";
+      familyDescription =
+        "Ordinary prehung internal door sets include leaf, standard timber jamb/frame, door stops, and standard hinges. Hardware and labour are separate.";
+      colourType = key.includes("solid_core") ? "Solid core" : "Hollow core";
+    } else if (key.startsWith("door.hardware.internal.")) {
+      familyId = "doors-hardware";
+      familyName = "Door hardware";
+      familyDescription =
+        "Ordinary internal latch/lever hardware material allowance. Not a named product. Installation and specialist hardware are excluded.";
+      colourType = "Standard latch/lever allowance";
+    }
+    return base({
+      categoryId: "doors",
+      familyId,
+      familyName,
+      familyDescription,
+      variantLayout: "generic",
+      thickness: null,
+      sheetSize: null,
+      section: null,
+      gradeTreatment: null,
+      colourType,
+      usedInWorkAreaTypes: ["doors"],
+      ordinary: !leftover,
+      legacyKind: leftover ? "leftover" : null,
+      aliasOfKey: null,
+    });
+  }
+
   if (key.startsWith("flooring.")) {
     return base({
       categoryId: "flooring",
@@ -1261,6 +1308,8 @@ export function classifyMaterialPresentation(
               ? "paint_stopping"
               : wa === "flooring"
                 ? "flooring"
+                : wa === "doors"
+                  ? "doors"
                 : "other_sheet";
   return base({
     categoryId: fallbackCategory,

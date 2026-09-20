@@ -102,6 +102,28 @@ import {
   CEILINGS_FIXINGS_TIMBER_FRAMING_COMPONENT,
   CEILINGS_FIXINGS_TIMBER_LINING_COMPONENT,
 } from "@/lib/estimate/ceilings-fixings";
+import {
+  DOORS_HARDWARE_STANDARD_COST_EX_GST,
+  DOORS_HARDWARE_STANDARD_DESCRIPTION,
+  DOORS_HARDWARE_STANDARD_KEY,
+  DOORS_HARDWARE_STANDARD_LABEL,
+  DOORS_LEAF_HOLLOW_CORE_COST_EX_GST,
+  DOORS_LEAF_HOLLOW_CORE_DESCRIPTION,
+  DOORS_LEAF_HOLLOW_CORE_KEY,
+  DOORS_LEAF_HOLLOW_CORE_LABEL,
+  DOORS_LEAF_SOLID_CORE_COST_EX_GST,
+  DOORS_LEAF_SOLID_CORE_DESCRIPTION,
+  DOORS_LEAF_SOLID_CORE_KEY,
+  DOORS_LEAF_SOLID_CORE_LABEL,
+  DOORS_PREHUNG_HOLLOW_CORE_SET_COST_EX_GST,
+  DOORS_PREHUNG_HOLLOW_CORE_SET_DESCRIPTION,
+  DOORS_PREHUNG_HOLLOW_CORE_SET_KEY,
+  DOORS_PREHUNG_HOLLOW_CORE_SET_LABEL,
+  DOORS_PREHUNG_SOLID_CORE_SET_COST_EX_GST,
+  DOORS_PREHUNG_SOLID_CORE_SET_DESCRIPTION,
+  DOORS_PREHUNG_SOLID_CORE_SET_KEY,
+  DOORS_PREHUNG_SOLID_CORE_SET_LABEL,
+} from "@/lib/estimate/doors-identities";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 
 function entry(
@@ -3152,6 +3174,74 @@ export const BATHROOM_TRADE_ALLOWANCE_CATALOGUE: RateCatalogueEntry[] = [
   }),
 ];
 
+export const DOORS_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: DOORS_LEAF_HOLLOW_CORE_KEY,
+    label: DOORS_LEAF_HOLLOW_CORE_LABEL,
+    rate_type: "material",
+    category: "material",
+    work_area_type: "doors",
+    workAreaLabel: "Doors",
+    unit: "each",
+    description: DOORS_LEAF_HOLLOW_CORE_DESCRIPTION,
+    defaultCostRate: DOORS_LEAF_HOLLOW_CORE_COST_EX_GST,
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: DOORS_LEAF_SOLID_CORE_KEY,
+    label: DOORS_LEAF_SOLID_CORE_LABEL,
+    rate_type: "material",
+    category: "material",
+    work_area_type: "doors",
+    workAreaLabel: "Doors",
+    unit: "each",
+    description: DOORS_LEAF_SOLID_CORE_DESCRIPTION,
+    defaultCostRate: DOORS_LEAF_SOLID_CORE_COST_EX_GST,
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: DOORS_PREHUNG_HOLLOW_CORE_SET_KEY,
+    label: DOORS_PREHUNG_HOLLOW_CORE_SET_LABEL,
+    rate_type: "material",
+    category: "material",
+    work_area_type: "doors",
+    workAreaLabel: "Doors",
+    unit: "each",
+    description: DOORS_PREHUNG_HOLLOW_CORE_SET_DESCRIPTION,
+    defaultCostRate: DOORS_PREHUNG_HOLLOW_CORE_SET_COST_EX_GST,
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: DOORS_PREHUNG_SOLID_CORE_SET_KEY,
+    label: DOORS_PREHUNG_SOLID_CORE_SET_LABEL,
+    rate_type: "material",
+    category: "material",
+    work_area_type: "doors",
+    workAreaLabel: "Doors",
+    unit: "each",
+    description: DOORS_PREHUNG_SOLID_CORE_SET_DESCRIPTION,
+    defaultCostRate: DOORS_PREHUNG_SOLID_CORE_SET_COST_EX_GST,
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+  entry({
+    item_key: DOORS_HARDWARE_STANDARD_KEY,
+    label: DOORS_HARDWARE_STANDARD_LABEL,
+    rate_type: "material",
+    category: "material",
+    work_area_type: "doors",
+    workAreaLabel: "Doors",
+    unit: "set",
+    description: DOORS_HARDWARE_STANDARD_DESCRIPTION,
+    defaultCostRate: DOORS_HARDWARE_STANDARD_COST_EX_GST,
+    recommended: true,
+    calculatorSupport: "used_now",
+  }),
+];
+
 export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DECKING_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -3171,6 +3261,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...FENCE_TIMBER_SPECIFIC_MATERIAL_CATALOGUE,
   ...FENCE_MODULAR_SPECIFIC_MATERIAL_CATALOGUE,
   ...BATHROOM_FINISH_RATE_CATALOGUE,
+  ...DOORS_SPECIFIC_MATERIAL_CATALOGUE,
 ];
 
 export const SPECIFIC_MATERIAL_RATE_GROUPS = [
@@ -3275,5 +3366,11 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "Separate tile/vinyl material PC and subcontract installation. Waterproofing uses physical wet area, not tiling area.",
     entries: BATHROOM_FINISH_RATE_CATALOGUE,
+  },
+  {
+    title: "Doors",
+    description:
+      "Ordinary nested Door Set material COST identities. Company exact overrides Quotr V1. Not legacy $280 supply/install, not labour, not size-specific SKUs, and not custom/specialist doors.",
+    entries: DOORS_SPECIFIC_MATERIAL_CATALOGUE,
   },
 ] as const;

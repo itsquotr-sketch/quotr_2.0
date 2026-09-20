@@ -626,6 +626,8 @@ export function formatRateUnit(unit: string): string {
     case "each":
     case "ea":
       return unit === "each" ? "each" : "ea";
+    case "set":
+      return "set";
     case "hole":
       return "hole";
     case "bag":
