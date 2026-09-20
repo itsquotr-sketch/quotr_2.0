@@ -195,26 +195,132 @@ export function briefHasIndependentCeilings(briefText: string): boolean {
   return true;
 }
 
-export function briefHasIndependentDoors(briefText: string): boolean {
+const DOOR_SUPPLY_EXCLUDE_PHRASES = [
+  "no door supply",
+  "without a door",
+  "without door",
+  "no door required",
+  "no doors required",
+  "door by others",
+  "doors by others",
+  "exclude door",
+  "exclude doors",
+  "opening but no door",
+  "but no door",
+] as const;
+
+const DOOR_OPENING_ONLY_PHRASES = [
+  "opening only",
+  "door opening only",
+  "openings only",
+] as const;
+
+const DOOR_SPECIALIST_PHRASES = [
+  "fire rated",
+  "fire-rated",
+  "fire door",
+  "acoustic door",
+  "acoustic-rated",
+  "cavity slider",
+  "cavity sliding",
+  "aluminium door",
+  "aluminum door",
+  "aluminium entrance",
+  "aluminum entrance",
+  "automatic door",
+  "access control",
+  "security door",
+  "barn door",
+  "bifold",
+  "exterior door",
+  "external door",
+  "entrance door",
+  "glazed door",
+] as const;
+
+function hasDoorToken(brief: string): boolean {
+  return (
+    /\bdoors?\b/.test(brief) ||
+    /\bprehung\b/.test(brief) ||
+    /\bpre-hung\b/.test(brief) ||
+    includesAny(brief, DOOR_SPECIALIST_PHRASES)
+  );
+}
+
+export function briefHasSpecialistDoorLanguage(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
-  if (includesAny(brief, ["no door", "without a door", "opening but no door"])) {
+  return includesAny(brief, DOOR_SPECIALIST_PHRASES);
+}
+
+/**
+ * Positive supply/install/replace/leaf/hardware language. Word order of
+ * “opening” vs “door” must not suppress this.
+ */
+export function briefRequestsDoorWork(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  if (!hasDoorToken(brief)) return false;
+  if (/\bsupply(?:\s+and|\s*&\s*)\s*install\b/.test(brief)) return true;
+  if (
+    /\breplace\b[\s\S]{0,80}\bdoors?\b|\bdoors?\b[\s\S]{0,80}\breplace\b/.test(
+      brief
+    )
+  ) {
+    return true;
+  }
+  if (/\bdoor leaves?\b/.test(brief) || /\bdoor leaf\b/.test(brief)) return true;
+  if (/\bprehung\b|\bpre-hung\b/.test(brief)) return true;
+  if (/\bhollow[-\s]?core\b/.test(brief) || /\bsolid[-\s]?core\b/.test(brief)) {
+    return true;
+  }
+  if (/\bdoor jamb\b|\bdoor hardware\b|\bjamb and hardware\b/.test(brief)) {
+    return true;
+  }
+  if (/\binstall\b[\s\S]{0,48}\bdoors?\b/.test(brief)) return true;
+  if (includesAny(brief, ["client supplying door", "client supplied door"])) {
+    return true;
+  }
+  if (/\bincluding (?:a |one |the )?doors?\b(?!\s+opening)/.test(brief)) {
+    return true;
+  }
+  if (/\binclude doors?\b(?!\s+opening)/.test(brief)) return true;
+  if (/\bnew doors?\b(?!\s+opening)/.test(brief)) return true;
+  if (/\binternal doors?\b(?!\s+opening)/.test(brief)) return true;
+  if (briefHasSpecialistDoorLanguage(briefText)) return true;
+  return false;
+}
+
+/**
+ * Explicit language that excludes door supply/install. Wins over a bare
+ * opening reference. Hard exclude phrases also win over leftover “door”
+ * tokens that are not supply/install work.
+ */
+export function briefExcludesDoorSupply(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  if (includesAny(brief, DOOR_SUPPLY_EXCLUDE_PHRASES)) return true;
+  if (/\bno doors?\b/.test(brief) && !briefRequestsDoorWork(briefText)) {
+    return true;
+  }
+  if (
+    includesAny(brief, DOOR_OPENING_ONLY_PHRASES) &&
+    !briefRequestsDoorWork(briefText)
+  ) {
+    return true;
+  }
+  if (
+    /\bexisting doors? retained\b/.test(brief) &&
+    !briefRequestsDoorWork(briefText)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+export function briefHasIndependentDoors(briefText: string): boolean {
+  if (includesAny(normaliseBrief(briefText), DOOR_SUPPLY_EXCLUDE_PHRASES)) {
     return false;
   }
-  return (
-    includesAny(brief, [
-      "including door",
-      "include door",
-      "new door",
-      "door leaf",
-      "door jamb",
-      "door hardware",
-      "solid core door",
-      "install door",
-      "supply and install door",
-      "internal door",
-    ]) &&
-    !/\bopening\b/.test(brief.split("door")[0] ?? "")
-  );
+  if (briefExcludesDoorSupply(briefText)) return false;
+  return briefRequestsDoorWork(briefText);
 }
 
 export function briefHasExplicitDemolition(briefText: string): boolean {
@@ -410,7 +516,9 @@ export function classifyProposedWorkArea(params: {
         ? WORK_AREA_OWNERSHIP_CLASS.EXPLICIT
         : WORK_AREA_OWNERSHIP_CLASS.NOT_REQUESTED,
       evidence: independent
-        ? "Door leaf / jamb / hardware stated"
+        ? briefHasSpecialistDoorLanguage(brief)
+          ? "Specialist door supply/install stated"
+          : "Door leaf / jamb / hardware stated"
         : "Opening formation is owned by Internal Walls",
       topLevel: independent,
     };

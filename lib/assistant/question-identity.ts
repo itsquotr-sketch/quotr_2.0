@@ -10,6 +10,7 @@
  *   + optional componentId (openingId).
  * Nested Ceilings: workAreaId + factKey + nestedItemId (Ceiling Portion)
  *   + optional componentId (Bulkhead).
+ * Nested Doors: workAreaId + factKey + nestedItemId (Door Set).
  *
  * Do not persist draft nested ids. They exist only so pre-creation Clarify
  * rows stay stable across recomposition.
@@ -78,6 +79,10 @@ export function isCeilingsBulkheadFactKey(factKey: string): boolean {
   return factKey.startsWith("ceilings.bulkhead.");
 }
 
+export function isDoorsNestedFactKey(factKey: string): boolean {
+  return factKey.startsWith("doors.portion.");
+}
+
 export function wallTypeQuestionIdentity(params: {
   workAreaId: string;
   factKey: string;
@@ -117,6 +122,23 @@ export function ceilingPortionQuestionIdentity(params: {
     componentId: isCeilingsBulkheadFactKey(params.factKey)
       ? normalizeNestedId(params.componentId)
       : undefined,
+  };
+}
+
+export function doorPortionQuestionIdentity(params: {
+  workAreaId: string;
+  factKey: string;
+  nestedItemId?: string | null;
+}): QuestionSemanticIdentity {
+  const nested = isDoorsNestedFactKey(params.factKey);
+  const nestedItemId = nested
+    ? (normalizeNestedId(params.nestedItemId) ??
+      draftNestedItemId(params.workAreaId))
+    : undefined;
+  return {
+    workAreaId: params.workAreaId,
+    factKey: params.factKey,
+    nestedItemId,
   };
 }
 
@@ -161,6 +183,17 @@ export function identityFromCaptureRow(row: {
       factKey,
       nestedItemId,
       componentId,
+    });
+  }
+  if (
+    workAreaId &&
+    factKey &&
+    (row.workAreaType === "doors" || isDoorsNestedFactKey(factKey))
+  ) {
+    return doorPortionQuestionIdentity({
+      workAreaId,
+      factKey,
+      nestedItemId,
     });
   }
   return {

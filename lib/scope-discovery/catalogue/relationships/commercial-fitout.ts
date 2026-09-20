@@ -92,8 +92,9 @@ export const COMMERCIAL_FITOUT_RELATIONSHIPS: readonly ScopeRelationship[] =
       candidateScopeType: "doors",
       suggestionKind: "DEPENDENCY",
       relationshipType: "LIKELY",
-      title: "Doors / openings",
-      description: "New partitions should consider doors/openings.",
+      title: "Door supply / install",
+      description:
+        "Internal Walls covers the framed opening. Doors covers the supplied or installed door set or replacement leaf.",
       requirementLevel: "MUST_CONSIDER",
       triggerConditions: parentAccepted("partitions"),
       suppressConditions: anyOf(

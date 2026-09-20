@@ -208,6 +208,29 @@ check(
   read("lib/ai/enrich-extraction.ts").includes("filterTopLevelWorkAreas")
 );
 
+console.log("\n=== DOORS-01B opening vs supply ===\n");
+const combinedSupply =
+  "Construct an internal wall with one 810 × 1980 opening and supply and install one hollow-core prehung internal door.";
+const combinedTypes = typesOf(combinedSupply);
+check(
+  "combined opening + door supply: Internal Walls + Doors",
+  combinedTypes.includes("internal_walls") && combinedTypes.includes("doors"),
+  combinedTypes.join(",")
+);
+check(
+  "no door supply: Internal Walls only",
+  (() => {
+    const types = typesOf(
+      "Construct an internal wall. Form one 810 × 1980 opening. No door supply."
+    );
+    return types.includes("internal_walls") && !types.includes("doors");
+  })()
+);
+check(
+  "specialist cavity slider still creates Doors",
+  typesOf("Install a cavity slider.").includes("doors")
+);
+
 if (failed > 0) {
   console.log(`\nFAILED ${failed}  passed ${passed}`);
   process.exit(1);

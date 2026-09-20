@@ -27,6 +27,7 @@ import {
   briefHasBathroomEmbeddedCeiling,
   briefHasExplicitCeilings,
   briefHasIndependentCeilings,
+  briefHasIndependentDoors,
   filterTopLevelWorkAreas,
 } from "@/lib/work-areas/ownership";
 import {
@@ -610,33 +611,15 @@ function inferDoors(
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
-  if (
-    includesAny(brief, [
-      "no door",
-      "without a door",
-      "but no door",
-      "opening but no door",
-    ])
-  ) {
+  // Ownership helper is the single door supply/install gate. Do not write
+  // canonical `doors.portions` here (DOORS-01B). Legacy flat facts remain
+  // for hosted projects without portions and are not mapped into the
+  // collection.
+  if (!briefHasIndependentDoors(brief)) {
     return;
   }
 
   const doorMatch = brief.match(/(\d+)\s+(?:solid core\s+)?(?:internal\s+)?doors?/i);
-  const hasDoors =
-    doorMatch !== null ||
-    includesAny(brief, [
-      "solid core door",
-      "internal door",
-      "install 2 internal",
-      "including door",
-      "include door",
-      "new door",
-      "door jamb",
-      "door hardware",
-      "door leaf",
-    ]);
-
-  if (!hasDoors) return;
 
   addWorkAreaIfMissing(
     extraction,

@@ -72,6 +72,10 @@ import { getAnalysisCapableWorkAreaTypes } from "@/lib/scopes/capability";
 import { persistDerivedFactsForProject } from "@/lib/assistant/persist-derived-facts";
 import { mergePersistedCeilingPortionsOnReanalyse } from "@/lib/estimate/ceilings-brief";
 import { CEILINGS_PORTIONS_FACT_KEY } from "@/lib/estimate/ceilings-portions";
+import {
+  DOORS_PORTIONS_FACT_KEY,
+  mergePersistedDoorsPortionsOnReanalyse,
+} from "@/lib/estimate/doors-portions";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { filterPersistableAnswers } from "@/lib/assistant/answer-persistence";
 import {
@@ -529,6 +533,44 @@ export async function saveBriefAndSeedWorkAreas(
             portion.finish.insulation_authority === "user" ||
             portion.lining.thickness_authority === "user" ||
             portion.bulkheads.some((bulkhead) => bulkhead.form_authority === "user")
+        );
+        const { error: mergeError } = await supabase
+          .from("project_facts")
+          .update({
+            label: row.label,
+            value: merged,
+            unit: row.unit,
+            source:
+              keepsUserSource && existing.source === "user"
+                ? "user"
+                : "ai_extracted",
+            confidence: row.confidence,
+          })
+          .eq("id", existing.id)
+          .eq("project_id", projectId);
+        if (mergeError) {
+          return failPersist(
+            "persist_facts",
+            `fact update failed: ${mergeError.message}`
+          );
+        }
+        continue;
+      }
+
+      if (existing && row.key === DOORS_PORTIONS_FACT_KEY) {
+        const merged = mergePersistedDoorsPortionsOnReanalyse({
+          extracted: row.value,
+          persisted: existing.value,
+        });
+        const keepsUserSource = merged.some(
+          (portion) =>
+            portion.installation_authority === "user" ||
+            portion.leaf_authority === "user" ||
+            portion.height_authority === "user" ||
+            portion.width_authority === "user" ||
+            portion.quantity_authority === "user" ||
+            portion.hardware_authority === "user" ||
+            portion.label_authority === "user"
         );
         const { error: mergeError } = await supabase
           .from("project_facts")

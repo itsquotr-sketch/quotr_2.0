@@ -128,6 +128,7 @@ function nestedItemLabel(candidate: ClarifyCandidate): string | null {
   const fromQuestion = candidate.question.split(":")[0]?.trim();
   if (fromQuestion && fromQuestion.length < 40) return fromQuestion;
   if (candidate.workAreaType === "ceilings") return "Ceiling portion";
+  if (candidate.workAreaType === "doors") return "Door set";
   if (candidate.wallTypeId) return "Wall type";
   return "Item";
 }

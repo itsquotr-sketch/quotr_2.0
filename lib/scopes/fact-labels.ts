@@ -254,6 +254,15 @@ const FACT_DISPLAY_LABELS: Record<string, string> = {
   "ceilings.bulkhead.framing_type": "Bulkhead framing",
   "ceilings.bulkhead.lining_type": "Bulkhead lining",
   "ceilings.bulkhead.topology": "Bulkhead shape",
+  "doors.portions": "Door sets",
+  "doors.active_portion_id": "Selected door set",
+  "doors.portion.label": "Door set location",
+  "doors.portion.installation_type": "Installation type",
+  "doors.portion.leaf_construction": "Leaf construction",
+  "doors.portion.height_mm": "Door height",
+  "doors.portion.width_mm": "Door width",
+  "doors.portion.quantity": "Door quantity",
+  "doors.portion.hardware_included": "Hardware included",
 };
 
 export function getCanonicalFactKey(

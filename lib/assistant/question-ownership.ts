@@ -45,6 +45,15 @@ const INTERNAL_WALLS_DETAILS_OWNED_FACT_KEYS = new Set([
   "internal_walls.wall_type.painting",
 ]);
 
+const DOORS_DETAILS_OWNED_FACT_KEYS = new Set([
+  "doors.portion.installation_type",
+  "doors.portion.leaf_construction",
+  "doors.portion.height_mm",
+  "doors.portion.width_mm",
+  "doors.portion.quantity",
+  "doors.portion.hardware_included",
+]);
+
 type DetailsAskClass = "HARD_MINIMUM" | "ASK_NOW" | "ASSUME_IF_SKIPPED";
 
 function bathroomDetailsAskClass(factKey: string): DetailsAskClass | null {
@@ -54,6 +63,11 @@ function bathroomDetailsAskClass(factKey: string): DetailsAskClass | null {
 
 function internalWallsDetailsAskClass(factKey: string): DetailsAskClass | null {
   if (INTERNAL_WALLS_DETAILS_OWNED_FACT_KEYS.has(factKey)) return "HARD_MINIMUM";
+  return null;
+}
+
+function doorsDetailsAskClass(factKey: string): DetailsAskClass | null {
+  if (DOORS_DETAILS_OWNED_FACT_KEYS.has(factKey)) return "HARD_MINIMUM";
   return null;
 }
 
@@ -122,6 +136,13 @@ export function detailsAskClassForFact(
       factKey.startsWith("ceilings.bulkhead."))
   ) {
     return isDetailsAskClass(ceilingsClass) ? ceilingsClass : null;
+  }
+  const doorsClass = doorsDetailsAskClass(factKey);
+  if (
+    doorsClass &&
+    (workAreaType === "doors" || factKey.startsWith("doors.portion."))
+  ) {
+    return doorsClass;
   }
   const template = getQuestionTemplateByKey(factKey);
   if (!template) return null;

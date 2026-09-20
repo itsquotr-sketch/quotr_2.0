@@ -78,6 +78,10 @@ import {
 import {
   hasCanonicalCeilingsPortions,
 } from "@/lib/estimate/ceilings-portions";
+import {
+  DOORS_NESTED_NOT_CALCULATED_MESSAGE,
+  hasCanonicalDoorsPortions,
+} from "@/lib/estimate/doors-portions";
 import { calculateCeilingsPhysical } from "@/lib/estimate/ceilings-physical";
 import {
   CEILING_COMMERCIAL_COMPLETENESS,
@@ -911,9 +915,27 @@ export function calculateDoors(
   context: EstimateContext,
   workArea: EstimateWorkArea
 ): CalculatorResult {
+  /**
+   * Dual-path calculator boundary (DOORS-01B / later commercial ticket):
+   * - Canonical nested `doors.portions` → future physical + commercial path.
+   *   Incomplete nested fields must not fall through to the legacy lump.
+   * - Legacy flat `doors.count` / FITOUT_BENCHMARKS.doorsEach remain for
+   *   hosted projects without portions. Do not alias new identities onto
+   *   doorsEach. Do not extend that benchmark here.
+   */
+  const { facts } = context;
+  if (hasCanonicalDoorsPortions(facts, workArea.id)) {
+    return {
+      lineItems: [],
+      assumptions: [],
+      missingInfo: [DOORS_NESTED_NOT_CALCULATED_MESSAGE],
+      exclusions: [],
+      confidence: 0,
+    };
+  }
+
   // Internal Walls openings are holes in a partition. They do not set
   // doors.count and must not inherit this default-3 lump.
-  const { facts } = context;
   const missingInfo: string[] = [];
   const assumptions: string[] = [];
   const lineItems: CalculatorResult["lineItems"] = [];
