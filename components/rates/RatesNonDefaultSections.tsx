@@ -4,6 +4,7 @@ import { LABOUR_RATE_CATALOGUE, SCOPE_RATE_CATALOGUE } from "@/lib/rates/catalog
 import {
   SPECIFIC_MATERIAL_RATE_GROUPS,
   WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
+  listSubcontractRatesCatalogueEntries,
 } from "@/lib/rates/specific-material-catalogue";
 import { catalogueEntriesForRatesSection } from "@/lib/rates/rate-section-contract";
 import type { RateCatalogueEntry, RatesPageRate, RatesPageState } from "@/lib/rates/types";
@@ -35,9 +36,7 @@ function plantCatalogue(): RateCatalogueEntry[] {
 
 function subcontractCatalogue(): RateCatalogueEntry[] {
   return catalogueEntriesForRatesSection(
-    SPECIFIC_MATERIAL_RATE_GROUPS.flatMap((group) => [...group.entries]).filter(
-      (entry) => entry.category === "subcontractor"
-    ),
+    listSubcontractRatesCatalogueEntries(),
     "material"
   );
 }
@@ -142,6 +141,7 @@ export function RatesNonDefaultSections({
         companyGrossMarginPercent={companyGrossMarginPercent}
         variant="grouped"
         showEngineColumn
+        showAddButton
         readOnly={!state.canManageRates}
       />
     );

@@ -1,8 +1,9 @@
 /**
- * FLOORING-03 — canonical Flooring Area component identities.
+ * FLOORING-03 / FLOORING-04B — canonical Flooring Area identities.
  *
- * Physical package keys, sheet reuse, and labour-operation identities only.
- * No COST rates, productivity hour values, or legacy lump aliases.
+ * Physical package keys, sheet reuse, labour-operation identities, and
+ * owner-approved finish subcontract COST benchmarks. No productivity hour
+ * values, waste, framing allowances, or legacy lump aliases.
  *
  * Reuse Bathroom `sheet.*` keys only where the physical product and unit
  * match exactly. Do not alias Bathroom labour, Bathroom tile packages,
@@ -38,6 +39,40 @@ export const FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_M2 =
 /** Optional floor-preparation allowance add-on. */
 export const FLOORING_FLOOR_PREPARATION_ALLOWANCE_M2 =
   "flooring.floor_preparation.allowance.m2" as const;
+
+/** Quotr V1 subcontract direct COST, ex GST / m². Not sell. */
+export const FLOORING_CARPET_SUPPLY_INSTALL_COST_EX_GST = 75 as const;
+export const FLOORING_VINYL_PLANK_SUPPLY_INSTALL_COST_EX_GST = 95 as const;
+export const FLOORING_TILE_SUPPLY_INSTALL_COST_EX_GST = 150 as const;
+export const FLOORING_HARDWOOD_SUPPLY_INSTALL_COST_EX_GST = 190 as const;
+export const FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_COST_EX_GST = 15 as const;
+export const FLOORING_FLOOR_PREPARATION_ALLOWANCE_COST_EX_GST = 35 as const;
+
+export const FLOORING_CARPET_SUPPLY_INSTALL_LABEL =
+  "Carpet supply and installation" as const;
+export const FLOORING_VINYL_PLANK_SUPPLY_INSTALL_LABEL =
+  "Vinyl plank / LVT supply and installation" as const;
+export const FLOORING_TILE_SUPPLY_INSTALL_LABEL =
+  "Floor tile supply and installation" as const;
+export const FLOORING_HARDWOOD_SUPPLY_INSTALL_LABEL =
+  "Hardwood / timber flooring supply and installation" as const;
+export const FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_LABEL =
+  "Carpet underlay supply and installation" as const;
+export const FLOORING_FLOOR_PREPARATION_ALLOWANCE_LABEL =
+  "Ordinary floor-preparation allowance" as const;
+
+export const FLOORING_CARPET_SUPPLY_INSTALL_DESCRIPTION =
+  "Quotr benchmark COST $75.00 ex GST / m². Includes ordinary carpet supply allowance, ordinary straight-lay installation, and standard installation accessories normally forming part of that package. Excludes underlay, preparation or levelling, existing finish removal, substrate work, framing, stairs, disposal, specialist patterns, moisture remediation, and skirting/scotia. Company exact subcontract rate wins." as const;
+export const FLOORING_VINYL_PLANK_SUPPLY_INSTALL_DESCRIPTION =
+  "Quotr benchmark COST $95.00 ex GST / m². Includes ordinary vinyl plank/LVT supply allowance, ordinary straight-lay installation, and standard adhesive/accessories where ordinarily required. Excludes sheet vinyl, preparation or self-levelling, removal, substrate, framing, disposal, moisture remediation, complex patterns, and trims beyond ordinary installation. Company exact subcontract rate wins." as const;
+export const FLOORING_TILE_SUPPLY_INSTALL_DESCRIPTION =
+  "Quotr benchmark COST $150.00 ex GST / m². Includes ordinary floor-tile supply allowance, standard straight-lay installation, and ordinary adhesive and grout. Excludes waterproofing, preparation/self-levelling, floor substrate or tile underlay, removal, disposal, premium tiles, herringbone or specialist patterns, specialist trims, movement-joint systems beyond ordinary work, and moisture or structural remediation. Tile dimensions are takeoff information only and do not change this V1 rate. Company exact subcontract rate wins." as const;
+export const FLOORING_HARDWOOD_SUPPLY_INSTALL_DESCRIPTION =
+  "Quotr benchmark COST $190.00 ex GST / m². Includes ordinary prefinished timber-flooring supply allowance, ordinary straight-lay installation, and standard adhesive/fixings where required. Excludes floor preparation, substrate, framing, removal, disposal, sanding or coating, moisture remediation, parquet, herringbone or specialist patterns, engineered specialist systems, and skirting/scotia. Board width and informational lineal metres do not change this V1 rate. Company exact subcontract rate wins." as const;
+export const FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_DESCRIPTION =
+  "Quotr benchmark COST $15.00 ex GST / m². Includes ordinary standard underlay supply and ordinary installation. Excludes premium acoustic or specialist systems, floor preparation, remediation, removal and disposal. The base carpet package excludes underlay. Company exact subcontract rate wins." as const;
+export const FLOORING_FLOOR_PREPARATION_ALLOWANCE_DESCRIPTION =
+  "Quotr benchmark COST $35.00 ex GST / m². Bounded allowance for ordinary minor floor preparation or self-levelling associated with vinyl-plank or tile installation. Does not cover all preparation risk. Excludes unlimited levelling, structural remediation, rotten substrate, moisture remediation, asbestos/hazardous material, extensive grinding, engineered screeds, major height correction, and substrate replacement. Company exact subcontract rate wins." as const;
 
 /** Substrate installation operation. Identity only — no hour value. */
 export const FLOORING_SUBSTRATE_INSTALL_HOURS_PER_SHEET =
@@ -100,6 +135,11 @@ export const FLOORING_ORDINARY_FINISH_PACKAGE_KEYS = [
 export const FLOORING_ORDINARY_ADDON_KEYS = [
   FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_M2,
   FLOORING_FLOOR_PREPARATION_ALLOWANCE_M2,
+] as const;
+
+export const FLOORING_SUBCONTRACT_RATE_KEYS = [
+  ...FLOORING_ORDINARY_FINISH_PACKAGE_KEYS,
+  ...FLOORING_ORDINARY_ADDON_KEYS,
 ] as const;
 
 export const FLOORING_ORDINARY_FRAMING_KEYS = [

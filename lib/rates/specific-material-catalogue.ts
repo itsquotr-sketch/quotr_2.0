@@ -136,6 +136,32 @@ import {
   DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR_KEY,
   DOORS_REPLACEMENT_LEAF_INSTALL_LABEL,
 } from "@/lib/estimate/doors-identities";
+import {
+  FLOORING_CARPET_SUPPLY_INSTALL_COST_EX_GST,
+  FLOORING_CARPET_SUPPLY_INSTALL_DESCRIPTION,
+  FLOORING_CARPET_SUPPLY_INSTALL_LABEL,
+  FLOORING_CARPET_SUPPLY_INSTALL_M2,
+  FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_COST_EX_GST,
+  FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_DESCRIPTION,
+  FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_LABEL,
+  FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_M2,
+  FLOORING_FLOOR_PREPARATION_ALLOWANCE_COST_EX_GST,
+  FLOORING_FLOOR_PREPARATION_ALLOWANCE_DESCRIPTION,
+  FLOORING_FLOOR_PREPARATION_ALLOWANCE_LABEL,
+  FLOORING_FLOOR_PREPARATION_ALLOWANCE_M2,
+  FLOORING_HARDWOOD_SUPPLY_INSTALL_COST_EX_GST,
+  FLOORING_HARDWOOD_SUPPLY_INSTALL_DESCRIPTION,
+  FLOORING_HARDWOOD_SUPPLY_INSTALL_LABEL,
+  FLOORING_HARDWOOD_SUPPLY_INSTALL_M2,
+  FLOORING_TILE_SUPPLY_INSTALL_COST_EX_GST,
+  FLOORING_TILE_SUPPLY_INSTALL_DESCRIPTION,
+  FLOORING_TILE_SUPPLY_INSTALL_LABEL,
+  FLOORING_TILE_SUPPLY_INSTALL_M2,
+  FLOORING_VINYL_PLANK_SUPPLY_INSTALL_COST_EX_GST,
+  FLOORING_VINYL_PLANK_SUPPLY_INSTALL_DESCRIPTION,
+  FLOORING_VINYL_PLANK_SUPPLY_INSTALL_LABEL,
+  FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
+} from "@/lib/estimate/flooring-identities";
 import type { RateCatalogueEntry } from "@/lib/rates/types";
 
 function entry(
@@ -1432,6 +1458,87 @@ export const FLOORING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] = [
     unit: "m2",
     defaultCostRate: FITOUT_BENCHMARKS.carpetPerM2.cost,
     calculatorSupport: "planned",
+  }),
+];
+
+export const FLOORING_SUBCONTRACT_RATE_CATALOGUE: RateCatalogueEntry[] = [
+  entry({
+    item_key: FLOORING_CARPET_SUPPLY_INSTALL_M2,
+    label: FLOORING_CARPET_SUPPLY_INSTALL_LABEL,
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring finish packages",
+    unit: "m2",
+    description: FLOORING_CARPET_SUPPLY_INSTALL_DESCRIPTION,
+    defaultCostRate: FLOORING_CARPET_SUPPLY_INSTALL_COST_EX_GST,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
+    label: FLOORING_VINYL_PLANK_SUPPLY_INSTALL_LABEL,
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring finish packages",
+    unit: "m2",
+    description: FLOORING_VINYL_PLANK_SUPPLY_INSTALL_DESCRIPTION,
+    defaultCostRate: FLOORING_VINYL_PLANK_SUPPLY_INSTALL_COST_EX_GST,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FLOORING_TILE_SUPPLY_INSTALL_M2,
+    label: FLOORING_TILE_SUPPLY_INSTALL_LABEL,
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring finish packages",
+    unit: "m2",
+    description: FLOORING_TILE_SUPPLY_INSTALL_DESCRIPTION,
+    defaultCostRate: FLOORING_TILE_SUPPLY_INSTALL_COST_EX_GST,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FLOORING_HARDWOOD_SUPPLY_INSTALL_M2,
+    label: FLOORING_HARDWOOD_SUPPLY_INSTALL_LABEL,
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring finish packages",
+    unit: "m2",
+    description: FLOORING_HARDWOOD_SUPPLY_INSTALL_DESCRIPTION,
+    defaultCostRate: FLOORING_HARDWOOD_SUPPLY_INSTALL_COST_EX_GST,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_M2,
+    label: FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_LABEL,
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring add-ons",
+    unit: "m2",
+    description: FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_DESCRIPTION,
+    defaultCostRate: FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_COST_EX_GST,
+    calculatorSupport: "used_now",
+    recommended: true,
+  }),
+  entry({
+    item_key: FLOORING_FLOOR_PREPARATION_ALLOWANCE_M2,
+    label: FLOORING_FLOOR_PREPARATION_ALLOWANCE_LABEL,
+    rate_type: "subcontractor",
+    category: "subcontractor",
+    work_area_type: "flooring",
+    workAreaLabel: "Flooring add-ons",
+    unit: "m2",
+    description: FLOORING_FLOOR_PREPARATION_ALLOWANCE_DESCRIPTION,
+    defaultCostRate: FLOORING_FLOOR_PREPARATION_ALLOWANCE_COST_EX_GST,
+    calculatorSupport: "used_now",
+    recommended: true,
   }),
 ];
 
@@ -3311,6 +3418,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...RETAINING_SPECIFIC_MATERIAL_CATALOGUE,
   ...WASTE_DISPOSAL_SPECIFIC_MATERIAL_CATALOGUE,
   ...FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
+  ...FLOORING_SUBCONTRACT_RATE_CATALOGUE,
   ...PAINTING_SPECIFIC_MATERIAL_CATALOGUE,
   ...FENCE_TIMBER_SPECIFIC_MATERIAL_CATALOGUE,
   ...FENCE_MODULAR_SPECIFIC_MATERIAL_CATALOGUE,
@@ -3394,8 +3502,14 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
   {
     title: "Flooring",
     description:
-      "Planned flooring material rates. Current flooring still uses a hardcoded m² package.",
+      "Planned flooring material rates. Nested finish packages live under Rates → Subcontract. Current flat flooring still uses a hardcoded m² package.",
     entries: FLOORING_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Flooring subcontract packages",
+    description:
+      "Ordinary nested Flooring supply-and-install packages and add-ons. Company exact subcontract COST overrides the Quotr V1 benchmark. Physical takeoff remains unpriced until FLOORING-05.",
+    entries: FLOORING_SUBCONTRACT_RATE_CATALOGUE,
   },
   {
     title: "Painting",
@@ -3428,3 +3542,9 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     entries: DOORS_SPECIFIC_MATERIAL_CATALOGUE,
   },
 ] as const;
+
+export function listSubcontractRatesCatalogueEntries(): RateCatalogueEntry[] {
+  return SPECIFIC_MATERIAL_RATE_GROUPS.flatMap((group) => [...group.entries]).filter(
+    (entry) => entry.category === "subcontractor"
+  );
+}
