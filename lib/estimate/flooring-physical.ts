@@ -32,7 +32,9 @@ import {
   flooringSubstrateSheetCoverageM2,
 } from "@/lib/estimate/flooring-identities";
 import {
-  flooringPortionIsUnsupported,
+  flooringPortionIsSpecialist,
+} from "@/lib/estimate/flooring-information-contract";
+import {
   FLOORING_PORTIONS_FACT_KEY,
   hasFlooringPortionsFact,
   resolveFlooringPortions,
@@ -72,6 +74,9 @@ export type FlooringPhysicalSource = "canonical" | "empty" | "legacy_skipped";
 
 export const FLOORING_NESTED_NOT_YET_PRICED_STATEMENT =
   "Nested Flooring physical quantities are not yet commercially priced." as const;
+
+export const FLOORING_PRODUCTIVITY_UNRESOLVED_STATEMENT =
+  "Productivity hours are unresolved. hoursPerUnit 0 is a shared-type placeholder, not a valid zero-hour labour quantity. FLOORING-04 must supply productivity authority." as const;
 
 const CALCULATOR_SOURCE = "flooring-physical" as const;
 const SHEET_COUNT_EPSILON = 1e-12;
@@ -252,8 +257,13 @@ export function summariseFlooringPhysicalPortion(
   const label = portion.label?.trim() || null;
   const area = physicalNetAreaM2(portion);
   const areaText = area != null ? presentFlooringAreaM2(area) : "area unanswered";
-  if (flooringPortionIsUnsupported(portion)) {
+  if (flooringPortionIsSpecialist(portion)) {
     const core = `${areaText} ${specialistPhrase(portion)} · specialist pricing required`;
+    return label ? `${label} · ${core}` : core;
+  }
+  if (portion.finish_type === "other") {
+    const desc = portion.other_description?.trim() || "custom flooring";
+    const core = `${areaText} ${desc}`;
     return label ? `${label} · ${core}` : core;
   }
   const extras: string[] = [];
@@ -286,7 +296,7 @@ function missingInfoLine(portion: FlooringPortion, fieldKey: string): string {
 
 function ordinaryMissingFields(portion: FlooringPortion): string[] {
   const missing: string[] = [];
-  if (portion.finish_type == null || portion.finish_type === "other") {
+  if (portion.finish_type == null) {
     missing.push("flooring.portion.finish_type");
   }
   if (portion.area_input_method == null) {
@@ -325,6 +335,62 @@ function ordinaryMissingFields(portion: FlooringPortion): string[] {
     !isPositiveFinite(portion.hardwood_board_width_mm)
   ) {
     missing.push("flooring.portion.hardwood_board_width_mm");
+  }
+  if (portion.substrate_required == null) {
+    missing.push("flooring.portion.substrate_required");
+  }
+  if (portion.substrate_required === true) {
+    if (portion.substrate_family == null) {
+      missing.push("flooring.portion.substrate_family");
+    }
+    if (
+      !portion.substrate_item_key ||
+      flooringSubstrateSheetCoverageM2(portion.substrate_item_key) == null
+    ) {
+      missing.push("flooring.portion.substrate_item_key");
+    }
+  }
+  if (portion.framing_required == null) {
+    missing.push("flooring.portion.framing_required");
+  }
+  if (
+    portion.framing_required === true &&
+    portion.framing_allowance_level == null
+  ) {
+    missing.push("flooring.portion.framing_allowance_level");
+  }
+  if (portion.finish_removal_required == null) {
+    missing.push("flooring.portion.finish_removal_required");
+  }
+  if (portion.finish_removal_required === true) {
+    if (portion.existing_finish_type == null) {
+      missing.push("flooring.portion.existing_finish_type");
+    }
+    if (portion.substrate_removal_required == null) {
+      missing.push("flooring.portion.substrate_removal_required");
+    }
+  }
+  return missing;
+}
+
+function customOrdinaryMissingFields(portion: FlooringPortion): string[] {
+  const missing: string[] = [];
+  if (!portion.other_description?.trim()) {
+    missing.push("flooring.portion.other_description");
+  }
+  if (portion.area_input_method == null) {
+    missing.push("flooring.portion.area_input_method");
+  } else if (physicalNetAreaM2(portion) == null) {
+    if (portion.area_input_method === "length_width") {
+      if (!isPositiveFinite(portion.length_m)) {
+        missing.push("flooring.portion.length_m");
+      }
+      if (!isPositiveFinite(portion.width_m)) {
+        missing.push("flooring.portion.width_m");
+      }
+    } else {
+      missing.push("flooring.portion.area_m2");
+    }
   }
   if (portion.substrate_required == null) {
     missing.push("flooring.portion.substrate_required");
@@ -546,6 +612,11 @@ function labourRow(params: {
     confidence: "medium",
     assumptions: [
       ...areaAssumptions(params.portion, params.areaM2),
+      {
+        key: "productivity_unresolved",
+        text: FLOORING_PRODUCTIVITY_UNRESOLVED_STATEMENT,
+        source: "calculator_default",
+      },
       ...(params.extraAssumptions ?? []),
     ],
     provenance: provenance(),
@@ -851,19 +922,12 @@ function framingRequirements(params: {
   const key = flooringFramingAllowanceKey(portion.framing_allowance_level);
   const level = portion.framing_allowance_level;
   return [
-    subcontractRow({
-      workArea,
-      portion,
-      componentKey: key,
-      description: `${owner} · ${level} subfloor framing allowance ${presentFlooringAreaM2(areaM2)}`,
-      areaM2,
-    }),
     packageRow({
       workArea,
       portion,
       componentKey: key,
-      description: `${owner} · ${level} subfloor framing ${presentFlooringAreaM2(areaM2)}`,
-      specification: `${level} subfloor framing allowance. Floor area basis only — no timber quantities.`,
+      description: `${owner} · ${level} subfloor framing allowance ${presentFlooringAreaM2(areaM2)}`,
+      specification: `${level} subfloor framing allowance. Floor area basis only — no timber, joist, blocking, labour quantities, or structural-design claim.`,
       areaM2,
     }),
   ];
@@ -957,8 +1021,12 @@ function specialistRequirement(params: {
     areaM2: areaM2 ?? 1,
     extraAssumptions: [
       {
-        key: "unsupported_specialist",
-        text: "Unsupported specialist or custom flooring. Ordinary finish packages, underlay, preparation, and sheet takeoff do not apply.",
+        key: params.portion.specialist_kind
+          ? "unsupported_specialist"
+          : "custom_ordinary_finish",
+        text: params.portion.specialist_kind
+          ? "Unsupported specialist flooring. Ordinary finish packages, underlay, preparation, and sheet takeoff do not apply."
+          : "Custom ordinary flooring. No ordinary carpet, vinyl, tile, or hardwood package key. Independently confirmed substrate, framing, or removal may remain visible.",
         source: "calculator_default",
       },
     ],
@@ -1006,7 +1074,7 @@ export function calculateFlooringPortionPhysical(params: {
 } {
   const { workArea, portion } = params;
 
-  if (flooringPortionIsUnsupported(portion)) {
+  if (flooringPortionIsSpecialist(portion)) {
     const missingFields = specialistMissingFields(portion);
     const area = physicalNetAreaM2(portion);
     const requirements: EstimateRequirement[] =
@@ -1020,6 +1088,61 @@ export function calculateFlooringPortionPhysical(params: {
         FLOORING_PHYSICAL_COMPLETENESS.UNSUPPORTED_SPECIALIST,
         missingFields
       ),
+      requirements,
+    };
+  }
+
+  if (portion.finish_type === "other") {
+    const missingFields = customOrdinaryMissingFields(portion);
+    if (missingFields.length > 0) {
+      return {
+        portion: emptyPortionPhysical(
+          workArea.id,
+          portion,
+          FLOORING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
+          missingFields
+        ),
+        requirements: [],
+      };
+    }
+    const areaM2 = physicalNetAreaM2(portion) as number;
+    const owner = portionDisplayName(portion);
+    const substrate = substrateRequirements({
+      workArea,
+      portion,
+      areaM2,
+      owner,
+    });
+    const requirements: EstimateRequirement[] = [
+      specialistRequirement({ workArea, portion, areaM2 }),
+      ...substrate.requirements,
+      ...framingRequirements({ workArea, portion, areaM2, owner }),
+      ...removalRequirements({ workArea, portion, areaM2, owner }),
+    ];
+    return {
+      portion: {
+        workAreaId: workArea.id,
+        nestedItemId: portion.id,
+        label: portion.label,
+        finish_type: portion.finish_type,
+        area_input_method: portion.area_input_method,
+        physicalNetAreaM2: areaM2,
+        tile: null,
+        hardwood: null,
+        substrate: substrate.takeoff,
+        underlay_required: portion.underlay_required,
+        floor_preparation_required: portion.floor_preparation_required,
+        substrate_required: portion.substrate_required,
+        framing_allowance_level: portion.framing_allowance_level,
+        finish_removal_required: portion.finish_removal_required,
+        existing_finish_type: portion.existing_finish_type,
+        substrate_removal_required: portion.substrate_removal_required,
+        other_description: portion.other_description,
+        specialist_kind: portion.specialist_kind,
+        completeness: FLOORING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
+        missingFields: [],
+        summary: summariseFlooringPhysicalPortion(portion),
+      },
       requirements,
     };
   }
@@ -1190,4 +1313,22 @@ export function flooringFinishPackageIdentity(
     return flooringFinishPackageKey(finish);
   }
   return null;
+}
+
+export function isFlooringLabourHoursPlaceholder(
+  requirement: EstimateRequirement
+): boolean {
+  if (requirement.kind !== "labour") return false;
+  return (
+    requirement.priced === false &&
+    requirement.baseHours === 0 &&
+    requirement.adjustedHours === 0 &&
+    requirement.productivityBasis.hoursPerUnit === 0 &&
+    requirement.hourlyCost == null &&
+    requirement.totalCost == null &&
+    requirement.rateProvenance === "missing" &&
+    requirement.assumptions.some(
+      (row) => row.key === "productivity_unresolved"
+    )
+  );
 }

@@ -16,6 +16,7 @@ import {
   BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY,
   BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
   BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY,
+  BATHROOM_SHEET_AREA_M2,
 } from "@/lib/estimate/bathroom-identities";
 
 /** Carpet supply-and-install subcontract package. */
@@ -124,27 +125,26 @@ export const FLOORING_SUBSTRATE_SHEET_KEYS = [
   BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY,
 ] as const;
 
-/** Face coverage m² / sheet. No waste. Generic 19 mm FC matches both listed formats. */
-export const FLOORING_SUBSTRATE_SHEET_COVERAGE_M2 = {
-  [BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY]: 2.4 * 1.2,
-  [BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY]: 2.4 * 1.2,
-  [BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY]: 2.7 * 0.6,
-  [BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY]: 1.8 * 0.9,
-  [BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY]: 1.62,
-  [BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY]: 2.4 * 0.6,
-} as const;
+/**
+ * Face coverage from the item-key millimetre tokens (`2400x1200`).
+ * That encoding is the catalogue identity, not a UI label.
+ * Keys without encoded size stay unresolved — never invent dimensions.
+ */
+const ITEM_KEY_SHEET_MM = /(\d{3,4})x(\d{3,4})/;
 
 export function flooringSubstrateSheetCoverageM2(
   itemKey: string | null | undefined
 ): number | null {
   if (!itemKey) return null;
-  const coverage =
-    FLOORING_SUBSTRATE_SHEET_COVERAGE_M2[
-      itemKey as keyof typeof FLOORING_SUBSTRATE_SHEET_COVERAGE_M2
-    ];
-  return coverage != null && Number.isFinite(coverage) && coverage > 0
-    ? coverage
-    : null;
+  if (itemKey === BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY) {
+    return BATHROOM_SHEET_AREA_M2;
+  }
+  const match = ITEM_KEY_SHEET_MM.exec(itemKey);
+  if (!match) return null;
+  const lengthM = Number(match[1]) / 1000;
+  const widthM = Number(match[2]) / 1000;
+  const coverage = lengthM * widthM;
+  return Number.isFinite(coverage) && coverage > 0 ? coverage : null;
 }
 
 export function isFlooringSubstrateSheetKey(
