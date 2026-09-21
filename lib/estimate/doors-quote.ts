@@ -88,25 +88,6 @@ export function customDoorLeafSupplyIsPriced(
   );
 }
 
-function locationNoun(label: string | null, quantity: number | null): string | null {
-  const raw = label?.trim();
-  if (!raw) return null;
-  const hadPluralDoors = /doors\s*$/i.test(raw);
-  let loc = raw.replace(/\s+doors?\s*$/i, "").trim();
-  if (!loc || /^doors?$/i.test(loc)) return null;
-  loc = loc.toLowerCase();
-  if (hadPluralDoors && quantity != null && quantity !== 1 && !loc.endsWith("s")) {
-    loc = `${loc}s`;
-  }
-  if (/^the\s+/i.test(loc)) return loc;
-  return `the ${loc}`;
-}
-
-function toLocationClause(label: string | null, quantity: number | null): string {
-  const noun = locationNoun(label, quantity);
-  return noun ? ` to ${noun}` : "";
-}
-
 function leafPhrase(portion: DoorPortion): string {
   if (portion.leaf_construction === "hollow_core") return "hollow-core";
   if (portion.leaf_construction === "solid_core") return "solid-core";
@@ -141,10 +122,13 @@ function ordinaryPrehungSentence(portion: DoorPortion): string {
   const qty = portion.quantity ?? 1;
   const dims = dimensionsPhrase(portion);
   const leaf = leafPhrase(portion);
-  const location = toLocationClause(portion.label, qty);
   const product = plural(qty, "prehung internal door set", "prehung internal door sets");
   const qtyDims = dims ? `${qty} × ${dims} ${leaf}` : `${qty} × ${leaf}`;
-  let sentence = `Supply and install ${qtyDims} ${product}${location}, including standard timber jambs, stops and hinges.`;
+  const jambs =
+    qty === 1
+      ? "including a standard timber jamb, stops and hinges"
+      : "including standard timber jambs, stops and hinges";
+  let sentence = `Supply and install ${qtyDims} ${product}, ${jambs}.`;
   if (portion.hardware_included === true) {
     sentence += ` ${hardwareIncludedSentence(qty)}`;
   } else if (portion.hardware_included === false) {
@@ -157,14 +141,13 @@ function ordinaryReplacementSentence(portion: DoorPortion): string {
   const qty = portion.quantity ?? 1;
   const dims = dimensionsPhrase(portion);
   const leaf = leafPhrase(portion);
-  const location = toLocationClause(portion.label, qty);
   const product = plural(
     qty,
     "replacement internal door leaf",
     "replacement internal door leaves"
   );
   const qtyDims = dims ? `${qty} × ${dims} ${leaf}` : `${qty} × ${leaf}`;
-  let sentence = `Supply and fit ${qtyDims} ${product}${location} to the existing retained frame/jamb.`;
+  let sentence = `Supply and fit ${qtyDims} ${product} to the existing retained frame/jamb.`;
   if (portion.hardware_included === true) {
     sentence += ` ${hardwareIncludedSentence(qty)}`;
   } else if (portion.hardware_included === false) {
@@ -196,11 +179,7 @@ function customOrdinarySentence(
 }
 
 function specialistSentence(portion: DoorPortion): string {
-  const location = toLocationClause(portion.label, portion.quantity);
-  const sentence = location
-    ? `Specialist door system${location} is excluded pending separate specification and pricing.`
-    : DOORS_QUOTE_SPECIALIST_PENDING;
-  return prefixLabel(portion.label, sentence);
+  return prefixLabel(portion.label, DOORS_QUOTE_SPECIALIST_PENDING);
 }
 
 export function doorsIncludedQuoteScopeCount(

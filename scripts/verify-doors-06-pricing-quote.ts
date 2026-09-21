@@ -699,12 +699,18 @@ check(
 );
 check(
   "26. Location appears when known",
-  /to the bedrooms/.test(prehungQuote) && /to the ensuite/.test(replacementQuote)
+  /Bedroom doors:/.test(prehungQuote) &&
+    /Ensuite door:/.test(replacementQuote) &&
+    !/to the bedrooms/.test(prehungQuote) &&
+    !/to the ensuite/.test(replacementQuote)
 );
 check(
   "27. Optional missing location does not create broken copy",
   !/to the \.|to the,|to undefined|to null/i.test(noLocationQuote) &&
-    /Supply and install 1 × 1980 × 810 mm/.test(noLocationQuote)
+    !/^[^:]*:/.test(noLocationQuote) &&
+    /Supply and install 1 × 1980 × 810 mm hollow-core prehung internal door set, including a standard timber jamb, stops and hinges/.test(
+      noLocationQuote
+    )
 );
 check(
   "28. Singular/plural grammar is correct",
