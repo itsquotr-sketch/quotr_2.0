@@ -12,6 +12,7 @@ import {
   applyDoorsFactWrite,
   cloneDoorPortion,
   createEmptyDoorPortion,
+  doorPortionFieldsCompatible,
   DOORS_HEIGHT_DISCLOSED_DEFAULT_MM,
   DOORS_HEIGHT_MM_VALUES,
   DOORS_PORTIONS_FACT_KEY,
@@ -85,7 +86,9 @@ const HARDWARE_INCLUDED_PHRASES = [
 const HARDWARE_EXCLUDED_PHRASES = [
   "reuse existing hardware",
   "using the existing hardware",
+  "using existing hardware",
   "existing hardware reused",
+  "existing hardware",
   "hardware by others",
   "exclude hardware",
   "excluding hardware",
@@ -243,15 +246,22 @@ function hardwareFromSnippet(text: string): boolean | null {
   return null;
 }
 
+function stripOpeningQuantityClauses(text: string): string {
+  return text.replace(
+    /\b(?:one|two|three|four|five|six|seven|eight|nine|ten|eleven|twelve|\d{1,2})\s+(?:\d{3,4}\s*(?:mm)?\s*[x×]\s*\d{3,4}\s*(?:mm)?\s+)?(?:door\s+)?openings?\b/gi,
+    " "
+  );
+}
+
 function quantityFromSnippet(text: string): number | null {
-  const raw = normalise(text);
+  const raw = stripOpeningQuantityClauses(normalise(text));
   const word = Object.keys(QUANTITY_WORDS)
     .sort((a, b) => b.length - a.length)
     .join("|");
   const tokenGroup = `(\\d{1,2}|${word})`;
   const patterned = raw.match(
     new RegExp(
-      `\\b${tokenGroup}\\s+(?:identical\\s+)?(?:door leaves|door leaf|doors|door)\\b`
+      `\\b${tokenGroup}\\s+(?:(?:\\d{3,4}\\s*(?:mm)?\\s*[x×]\\s*\\d{3,4}\\s*(?:mm)?|[a-z-]+)\\s+)*(?:door leaves|door leaf|doors|door)(?!\\s+opening)\\b`
     )
   );
   const leading = raw.match(
@@ -278,8 +288,9 @@ function quantityFromSnippet(text: string): number | null {
 }
 
 function locationFromSnippet(text: string): string | null {
-  const bedroom = text.match(/\bbedroom doors?\b/i);
-  if (bedroom) return "Bedroom doors";
+  const bedroomDoors = text.match(/\bbedroom doors?\b/i);
+  if (bedroomDoors) return "Bedroom doors";
+  if (/\bbedrooms?\b/i.test(text)) return "Bedrooms";
   const ensuite = text.match(/\bensuite\b/i);
   if (ensuite) return "Ensuite";
   const level = text.match(/\blevel\s+(\d+)\b/i);
@@ -416,6 +427,14 @@ export function dimensionsFromSnippet(text: string): {
   width: DoorWidthMm | null;
   unsupportedNote: string | null;
 } {
+  return readDimensionsFromSnippet(stripOpeningQuantityClauses(text));
+}
+
+function readDimensionsFromSnippet(text: string): {
+  height: DoorHeightMm | null;
+  width: DoorWidthMm | null;
+  unsupportedNote: string | null;
+} {
   const labelled = parseLabelledDimensions(text);
   if (labelled.height != null || labelled.width != null) {
     return {
@@ -463,14 +482,22 @@ function snippetHasDoorSignal(text: string): boolean {
   );
 }
 
+/**
+ * Split a brief into Door Set clauses. A new segment requires a new door
+ * action/product signal, not an intra-set “and” (jamb and stops, supply and
+ * install, frame and hardware, latch and lever).
+ *
+ * Separators: `;`, `plus`, `and then`, `and also`, `. Also` / `also` before a
+ * door action, `. Replace` / `. Supply and install`, and `and` + quantity.
+ */
 function splitDoorSetSnippets(briefText: string): string[] {
   const trimmed = briefText.trim();
   if (!trimmed) return [];
   const parts = trimmed
     .split(
-      /\s*(?:\bplus\b|\band also\b|\band then\b|;|\band\s+(?=(?:one|two|three|\d{1,2})\s+))\s*/i
+      /(?:\s*;\s*|\s+\bplus\b\s+|\s+\band then\b\s+|\s+\band also\b\s+|[.!?]\s+(?:also\s+)?(?=(?:replace|supply and install)\b)|\s+\balso\s+(?=(?:replace|supply and install|install|fit|add)\b)|\s+\band\s+(?=(?:one|two|three|four|five|six|seven|eight|nine|ten|\d{1,2})\s+))/i
     )
-    .map((row) => row.trim())
+    .map((row) => row.replace(/^(?:also|plus)\s+/i, "").trim())
     .filter(Boolean);
   const withSignal = parts.filter(snippetHasDoorSignal);
   if (withSignal.length >= 2) return withSignal;
@@ -564,17 +591,19 @@ function applySnippetToPortion(portion: DoorPortion, snippet: string): void {
 export function extractDoorPortionsFromBrief(briefText: string): DoorPortion[] {
   const snippets = splitDoorSetSnippets(briefText);
   const portions: DoorPortion[] = [];
-  for (const snippet of snippets) {
+  for (const [index, snippet] of snippets.entries()) {
     if (!snippetHasDoorSignal(snippet) && snippets.length > 1) continue;
     const portion = createEmptyDoorPortion({
       label: locationFromSnippet(snippet),
     });
     applySnippetToPortion(portion, snippet);
+    portion.clause_ordinal = index;
     portions.push(portion);
   }
   if (portions.length === 0 && briefText.trim()) {
     const fallback = createEmptyDoorPortion();
     applySnippetToPortion(fallback, briefText);
+    fallback.clause_ordinal = 0;
     if (
       fallback.installation_type != null ||
       fallback.leaf_construction != null ||
@@ -658,26 +687,50 @@ function matchAiPortion(
   index: number,
   used: Set<number>
 ): DoorPortion | null {
+  const take = (
+    predicate: (row: DoorPortion, i: number) => boolean
+  ): DoorPortion | null => {
+    const found = aiPortions.findIndex(
+      (row, i) => !used.has(i) && predicate(row, i)
+    );
+    if (found < 0) return null;
+    used.add(found);
+    return aiPortions[found] ?? null;
+  };
   const label = parsed.label?.trim().toLowerCase();
   if (label) {
-    const byLabel = aiPortions.findIndex(
-      (row, i) => !used.has(i) && row.label?.trim().toLowerCase() === label
+    const byLabel = take(
+      (row) =>
+        row.label?.trim().toLowerCase() === label &&
+        doorPortionFieldsCompatible(row, parsed)
     );
-    if (byLabel >= 0) {
-      used.add(byLabel);
-      return aiPortions[byLabel] ?? null;
-    }
+    if (byLabel) return byLabel;
   }
-  if (!used.has(index) && aiPortions[index]) {
-    used.add(index);
-    return aiPortions[index] ?? null;
+  if (parsed.clause_ordinal != null) {
+    const byOrdinal = take(
+      (row) =>
+        row.clause_ordinal === parsed.clause_ordinal &&
+        doorPortionFieldsCompatible(row, parsed)
+    );
+    if (byOrdinal) return byOrdinal;
   }
-  return null;
+  const byIndex = take(
+    (row, i) => i === index && doorPortionFieldsCompatible(row, parsed)
+  );
+  if (byIndex) return byIndex;
+  return take((row) => doorPortionFieldsCompatible(row, parsed));
 }
 
 /**
  * Deterministic parser is authoritative over unsafe AI ordinary
  * classification. AI may fill genuinely missing safe fields only.
+ *
+ * Matching: unused AI row with the same label, then clause ordinal, then
+ * same index, then any product-compatible row. A hybrid AI set (product from
+ * one clause, label from another) is not compatible with either
+ * deterministic set, so both clause-local portions are kept. Unused AI rows
+ * are not appended, which avoids duplicates when AI and deterministic
+ * describe the same set.
  */
 export function mergeDoorPortionsPreferringDeterministic(
   aiPortions: readonly DoorPortion[],

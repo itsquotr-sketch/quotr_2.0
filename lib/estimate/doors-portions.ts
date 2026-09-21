@@ -112,6 +112,8 @@ export type DoorPortion = {
   label_authority?: DoorFieldAuthority;
   other_description_authority?: DoorFieldAuthority;
   specialist_kind: DoorSpecialistKind | null;
+  /** 0-based clause index from brief segmentation. Stable on re-analysis. */
+  clause_ordinal?: number;
 };
 
 export type DoorPortionSource = "canonical";
@@ -360,6 +362,12 @@ export function parseDoorPortion(value: unknown): DoorPortion | null {
       value.other_description_authority
     ),
     specialist_kind: parseDoorSpecialistKind(value.specialist_kind),
+    clause_ordinal:
+      typeof value.clause_ordinal === "number" &&
+      Number.isInteger(value.clause_ordinal) &&
+      value.clause_ordinal >= 0
+        ? value.clause_ordinal
+        : undefined,
   };
 }
 
@@ -613,11 +621,68 @@ function overlayUserField<K extends keyof DoorPortion>(
   field: K,
   authorityField: keyof DoorPortion
 ): void {
-  const authority = persisted[authorityField];
-  if (authority === "user") {
+  if (persisted[authorityField] === "user") {
     next[field] = persisted[field];
     (next as DoorPortion)[authorityField] = "user" as never;
   }
+}
+
+const DOOR_USER_AUTHORITY_FIELDS = [
+  "installation_authority",
+  "leaf_authority",
+  "height_authority",
+  "width_authority",
+  "quantity_authority",
+  "hardware_authority",
+  "label_authority",
+  "other_description_authority",
+] as const;
+
+export function doorPortionHasUserAuthority(portion: DoorPortion): boolean {
+  return DOOR_USER_AUTHORITY_FIELDS.some((field) => portion[field] === "user");
+}
+
+/**
+ * Two portions describe the same Door Set when no shared product/label field
+ * conflicts. Used so a hybrid (clause-1 product + clause-2 label) does not
+ * match either deterministic set, and so AI cannot collapse two clauses.
+ */
+export function doorPortionFieldsCompatible(
+  left: DoorPortion,
+  right: DoorPortion
+): boolean {
+  const pairs: readonly [unknown, unknown][] = [
+    [left.installation_type, right.installation_type],
+    [left.leaf_construction, right.leaf_construction],
+    [left.height_mm, right.height_mm],
+    [left.width_mm, right.width_mm],
+    [left.quantity, right.quantity],
+    [left.hardware_included, right.hardware_included],
+    [left.specialist_kind, right.specialist_kind],
+  ];
+  for (const [a, b] of pairs) {
+    if (a != null && b != null && a !== b) return false;
+  }
+  const labelA = left.label?.trim().toLowerCase() ?? "";
+  const labelB = right.label?.trim().toLowerCase() ?? "";
+  if (labelA && labelB && labelA !== labelB) return false;
+  return true;
+}
+
+function isConsistentProductSubset(
+  persisted: readonly DoorPortion[],
+  extracted: readonly DoorPortion[]
+): boolean {
+  const used = new Set<number>();
+  for (const row of persisted) {
+    const idx = extracted.findIndex(
+      (candidate, i) =>
+        !used.has(i) && doorPortionFieldsCompatible(row, candidate)
+    );
+    if (idx < 0) return false;
+    used.add(idx);
+  }
+  return persisted.length > 0;
 }
 
 export function overlayUserAuthoritativeDoorPortion(
@@ -663,40 +728,73 @@ export function overlayUserAuthoritativeDoorPortion(
   return next;
 }
 
+function takeExtractedMatch(
+  extracted: readonly DoorPortion[],
+  used: Set<number>,
+  predicate: (row: DoorPortion, index: number) => boolean
+): DoorPortion | null {
+  const index = extracted.findIndex(
+    (row, i) => !used.has(i) && predicate(row, i)
+  );
+  if (index < 0) return null;
+  used.add(index);
+  return extracted[index] ?? null;
+}
+
 function matchReanalysePortion(
   extracted: readonly DoorPortion[],
   persisted: DoorPortion,
   index: number,
   used: Set<number>
 ): DoorPortion | null {
-  const byId = extracted.findIndex(
-    (row, i) => !used.has(i) && row.id === persisted.id
+  const byId = takeExtractedMatch(
+    extracted,
+    used,
+    (row) => row.id === persisted.id
   );
-  if (byId >= 0) {
-    used.add(byId);
-    return extracted[byId] ?? null;
+  if (byId) return byId;
+  if (persisted.clause_ordinal != null) {
+    const byOrdinal = takeExtractedMatch(
+      extracted,
+      used,
+      (row) =>
+        row.clause_ordinal === persisted.clause_ordinal &&
+        doorPortionFieldsCompatible(row, persisted)
+    );
+    if (byOrdinal) return byOrdinal;
   }
   const label = persisted.label?.trim().toLowerCase();
   if (label) {
-    const byLabel = extracted.findIndex(
-      (row, i) => !used.has(i) && row.label?.trim().toLowerCase() === label
+    const byLabel = takeExtractedMatch(
+      extracted,
+      used,
+      (row) =>
+        row.label?.trim().toLowerCase() === label &&
+        doorPortionFieldsCompatible(row, persisted)
     );
-    if (byLabel >= 0) {
-      used.add(byLabel);
-      return extracted[byLabel] ?? null;
-    }
+    if (byLabel) return byLabel;
   }
-  if (extracted.length === 1 && !used.has(0) && index === 0) {
-    used.add(0);
-    return extracted[0] ?? null;
-  }
-  if (!used.has(index) && extracted[index]) {
-    used.add(index);
-    return extracted[index] ?? null;
-  }
-  return null;
+  const byIndex = takeExtractedMatch(
+    extracted,
+    used,
+    (row, i) => i === index && doorPortionFieldsCompatible(row, persisted)
+  );
+  if (byIndex) return byIndex;
+  return takeExtractedMatch(extracted, used, (row) =>
+    doorPortionFieldsCompatible(row, persisted)
+  );
 }
 
+/**
+ * Re-analysis merge:
+ * - Match by stable id, then clause ordinal, then compatible label/product.
+ * - User-owned fields overlay onto the matched extracted portion.
+ * - Machine-owned hybrid (product+label not a consistent subset) is replaced
+ *   by the corrected extraction; leading persisted IDs are kept.
+ * - User-owned collections are never auto-split. Unused extracted rows are
+ *   not appended when the persisted set is a consistent product subset
+ *   (intentional deletion) or when any field is user-owned.
+ */
 export function mergePersistedDoorsPortionsOnReanalyse(params: {
   readonly extracted: unknown;
   readonly persisted: unknown;
@@ -705,6 +803,20 @@ export function mergePersistedDoorsPortionsOnReanalyse(params: {
   const persisted = parseDoorsPortions(params.persisted);
   if (persisted.length === 0) return extracted.map(cloneDoorPortion);
   if (extracted.length === 0) return persisted.map(cloneDoorPortion);
+  const hasUser = persisted.some(doorPortionHasUserAuthority);
+  const consistentSubset = isConsistentProductSubset(persisted, extracted);
+  if (
+    !hasUser &&
+    extracted.length > persisted.length &&
+    !consistentSubset
+  ) {
+    return extracted.map((row, i) => {
+      const next = cloneDoorPortion(row);
+      const previous = persisted[i];
+      if (previous) next.id = previous.id;
+      return next;
+    });
+  }
   const used = new Set<number>();
   const merged = persisted.map((portion, index) => {
     const match = matchReanalysePortion(extracted, portion, index, used);
@@ -712,9 +824,11 @@ export function mergePersistedDoorsPortionsOnReanalyse(params: {
       ? overlayUserAuthoritativeDoorPortion(match, portion)
       : cloneDoorPortion(portion);
   });
-  extracted.forEach((row, index) => {
-    if (!used.has(index)) merged.push(cloneDoorPortion(row));
-  });
+  if (!hasUser && !consistentSubset) {
+    extracted.forEach((row, index) => {
+      if (!used.has(index)) merged.push(cloneDoorPortion(row));
+    });
+  }
   return merged;
 }
 

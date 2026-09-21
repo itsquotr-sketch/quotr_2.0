@@ -32,16 +32,12 @@ export const doorsJobPlanAdapter: JobPlanWorkAreaAdapter = {
     const summaries = resolved.portions.map((portion, index) =>
       summariseDoorPortion(portion, index)
     );
-    const chips: JobPlanSpecChip[] = [
-      summaries.length > 0
-        ? {
-            key: "portions",
-            label: "Door sets",
-            value: String(summaries.length),
-            advanced: false,
-          }
-        : null,
-    ].filter((row): row is JobPlanSpecChip => row != null);
+    const chips: JobPlanSpecChip[] = summaries.map((row) => ({
+      key: `portion-${row.id}`,
+      label: row.displayName,
+      value: row.summary,
+      advanced: false,
+    }));
 
     const included: JobPlanScopeItem[] = summaries.map((row) => ({
       id: `${id}-${row.id}`,

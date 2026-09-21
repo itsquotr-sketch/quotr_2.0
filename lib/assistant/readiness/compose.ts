@@ -34,7 +34,11 @@ function knownFromJobPlan(plan: ComposeReadinessInput["jobPlan"]): string[] {
   const out: string[] = [];
   for (const card of plan.cards) {
     const knownChips = card.specChips.filter((chip) => !chip.assumed);
-    if (card.workAreaType === "internal_walls" && knownChips.length > 0) {
+    if (
+      (card.workAreaType === "internal_walls" ||
+        card.workAreaType === "doors") &&
+      knownChips.length > 0
+    ) {
       for (const chip of knownChips.slice(0, 6)) {
         out.push(`${chip.label}: ${chip.value}`);
       }
