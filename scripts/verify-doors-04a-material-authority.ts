@@ -794,16 +794,16 @@ check(
 );
 
 check(
-  "59. Custom/specialist stay PR; ordinary coverage may close at L5 without human-QA freeze",
+  "59. Custom/specialist stay PR; ordinary nested V1 is human-QA frozen",
   workAreaMayCloseAtL5(doorsCoverage) &&
     doorsCoverage.intentionalPr.length >= 2 &&
     DOORS_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         /pricing and quote/i.test(row.component) &&
-        row.outcome === "RESOLVES_WITH_QUOTR"
-    ) &&
-    DOORS_BENCHMARK_REQUIREMENTS.some((row) =>
-      /not human-qa frozen/i.test(row.notes)
+        row.outcome === "RESOLVES_WITH_QUOTR" &&
+        /human-qa frozen/i.test(row.notes) &&
+        /DOORS-07/.test(row.notes) &&
+        !/not human-qa frozen/i.test(row.notes)
     )
 );
 

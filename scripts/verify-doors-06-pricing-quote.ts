@@ -1093,15 +1093,19 @@ check(
     support?.band === "component"
 );
 check(
-  "69. Doors is not marked human-QA frozen",
+  "69. Ordinary nested Doors V1 is human-QA frozen",
   workAreaMayCloseAtL5(doorsCoverage) &&
-    /not human-qa frozen/i.test(
+    /human-qa frozen/i.test(
       DOORS_BENCHMARK_REQUIREMENTS.find((row) => /pricing and quote/i.test(row.component))?.notes ?? ""
     ) &&
     /DOORS-07/.test(
       DOORS_BENCHMARK_REQUIREMENTS.find((row) => /pricing and quote/i.test(row.component))?.notes ?? ""
     ) &&
-    /not human-qa frozen/i.test(support?.notes ?? "")
+    !/not human-qa frozen/i.test(
+      DOORS_BENCHMARK_REQUIREMENTS.find((row) => /pricing and quote/i.test(row.component))?.notes ?? ""
+    ) &&
+    /human-qa frozen/i.test(support?.notes ?? "") &&
+    !/not human-qa frozen/i.test(support?.notes ?? "")
 );
 check(
   "70. Production behaviour is not changed by feature flags or environment bypasses",

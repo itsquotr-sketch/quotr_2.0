@@ -932,14 +932,15 @@ check(
 );
 
 check(
-  "59. Ordinary Pricing/Quote coverage may close at L5; human QA remains DOORS-07",
+  "59. Ordinary nested V1 is human-QA frozen; custom/specialist stay PR",
   workAreaMayCloseAtL5(doorsCoverage) &&
     DOORS_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         /pricing and quote/i.test(row.component) &&
         row.outcome === "RESOLVES_WITH_QUOTR" &&
         /DOORS-07/.test(row.notes) &&
-        /not human-qa frozen/i.test(row.notes)
+        /human-qa frozen/i.test(row.notes) &&
+        !/not human-qa frozen/i.test(row.notes)
     )
 );
 

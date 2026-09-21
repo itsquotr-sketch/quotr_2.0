@@ -145,3 +145,14 @@ export function isHollowOrSolidDoorsMaterialKey(
     key === DOORS_LEAF_SOLID_CORE_KEY
   );
 }
+
+/**
+ * DOORS-07 — ordinary nested V1 is human-QA frozen.
+ * Custom/specialist remain intentional Pricing Required.
+ * Does not claim every door system.
+ */
+export const DOORS_V1_HUMAN_QA_FROZEN = true as const;
+export const DOORS_V1_COVERAGE_QUOTE_NOTES =
+  "Ordinary supported nested Door Sets. Custom/specialist stay Pricing Required with client-safe pending wording. Human-QA frozen — DOORS-07. Future Doors changes require explicit regression updates." as const;
+export const DOORS_V1_SUPPORT_NOTES =
+  "Ordinary nested Doors V1 is human-QA frozen. Custom/specialist stay Pricing Required. Future Doors changes require explicit regression updates." as const;

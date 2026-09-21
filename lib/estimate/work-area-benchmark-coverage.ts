@@ -38,6 +38,7 @@ import {
   DOORS_HARDWARE_STANDARD_KEY,
   DOORS_LEAF_HOLLOW_CORE_KEY,
   DOORS_LEAF_SOLID_CORE_KEY,
+  DOORS_V1_COVERAGE_QUOTE_NOTES,
   DOORS_PREHUNG_HOLLOW_CORE_SET_KEY,
   DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR_KEY,
   DOORS_PREHUNG_SOLID_CORE_SET_KEY,
@@ -1196,8 +1197,7 @@ export const DOORS_BENCHMARK_REQUIREMENTS: readonly WorkAreaBenchmarkRequirement
       derivation:
         "DOORS-06 nested doors.portions Quote builder; Pricing adopts hosted recommended_cost via existing lump-sum path",
       currentWithoutCompany: "Client-safe nested Quote + existing Pricing adoption",
-      notes:
-        "Ordinary supported nested Door Sets. Custom/specialist stay Pricing Required with client-safe pending wording. Not human-QA frozen — DOORS-07.",
+      notes: DOORS_V1_COVERAGE_QUOTE_NOTES,
     }),
   ];
 

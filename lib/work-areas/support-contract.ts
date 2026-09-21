@@ -131,7 +131,7 @@ export const WORK_AREA_SUPPORT_ENTRIES: readonly WorkAreaSupportEntry[] = [
       type === "external_stairs"
         ? "Often nested under Deck. Not a standalone Tier-1 claim."
         : type === "doors"
-          ? "Ordinary nested Doors price and quote through hosted COST. Custom/specialist stay pending. Not human-QA frozen."
+          ? "Ordinary nested Doors V1 is human-QA frozen. Custom/specialist stay Pricing Required. Future Doors changes require explicit regression updates."
           : "Commercial interior component. Price as this WA, not commercial_fitout."
     )
   ),
