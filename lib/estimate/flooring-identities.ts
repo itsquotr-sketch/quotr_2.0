@@ -1,13 +1,11 @@
 /**
- * FLOORING-03 / FLOORING-04B — canonical Flooring Area identities.
+ * FLOORING-03 / FLOORING-04B / FLOORING-04C — canonical Flooring Area identities.
  *
- * Physical package keys, sheet reuse, labour-operation identities, and
- * owner-approved finish subcontract COST benchmarks. No productivity hour
- * values, waste, framing allowances, or legacy lump aliases.
- *
- * Reuse Bathroom `sheet.*` keys only where the physical product and unit
- * match exactly. Do not alias Bathroom labour, Bathroom tile packages,
- * `scope.flooring.m2`, `flooring.material.m2`, or generic removal dollars.
+ * Physical package keys, sheet reuse, labour-operation identities,
+ * owner-approved finish subcontract COST, framing allowance COST, and
+ * substrate/removal productivity hours. Do not alias Bathroom labour,
+ * Bathroom tile packages, `scope.flooring.m2`, `flooring.material.m2`,
+ * or generic removal dollars.
  */
 
 import {
@@ -74,7 +72,7 @@ export const FLOORING_CARPET_UNDERLAY_SUPPLY_INSTALL_DESCRIPTION =
 export const FLOORING_FLOOR_PREPARATION_ALLOWANCE_DESCRIPTION =
   "Quotr benchmark COST $35.00 ex GST / m². Bounded allowance for ordinary minor floor preparation or self-levelling associated with vinyl-plank or tile installation. Does not cover all preparation risk. Excludes unlimited levelling, structural remediation, rotten substrate, moisture remediation, asbestos/hazardous material, extensive grinding, engineered screeds, major height correction, and substrate replacement. Company exact subcontract rate wins." as const;
 
-/** Substrate installation operation. Identity only — no hour value. */
+/** Substrate installation operation. Physical identity — do not rename. */
 export const FLOORING_SUBSTRATE_INSTALL_HOURS_PER_SHEET =
   "flooring.substrate.install.hours_per_sheet" as const;
 
@@ -95,6 +93,59 @@ export const FLOORING_HARDWOOD_REMOVE_HOURS_PER_M2 =
   "flooring.hardwood.remove.hours_per_m2" as const;
 export const FLOORING_SUBSTRATE_REMOVE_HOURS_PER_M2 =
   "flooring.substrate.remove.hours_per_m2" as const;
+
+/** Quotr V1 productivity, person-hours. Not dollars. */
+export const FLOORING_SUBSTRATE_INSTALL_HOURS_PER_SHEET_VALUE = 0.5 as const;
+export const FLOORING_CARPET_REMOVE_HOURS_PER_M2_VALUE = 0.12 as const;
+export const FLOORING_VINYL_PLANK_REMOVE_HOURS_PER_M2_VALUE = 0.2 as const;
+export const FLOORING_TILE_REMOVE_HOURS_PER_M2_VALUE = 0.55 as const;
+export const FLOORING_HARDWOOD_REMOVE_HOURS_PER_M2_VALUE = 0.35 as const;
+export const FLOORING_SUBSTRATE_REMOVE_HOURS_PER_M2_VALUE = 0.3 as const;
+
+export const FLOORING_SUBSTRATE_INSTALL_HOURS_LABEL =
+  "Flooring substrate sheet installation" as const;
+export const FLOORING_CARPET_REMOVE_HOURS_LABEL =
+  "Carpet finish removal" as const;
+export const FLOORING_VINYL_PLANK_REMOVE_HOURS_LABEL =
+  "Vinyl / LVT finish removal" as const;
+export const FLOORING_TILE_REMOVE_HOURS_LABEL =
+  "Floor tile finish removal" as const;
+export const FLOORING_HARDWOOD_REMOVE_HOURS_LABEL =
+  "Hardwood / timber finish removal" as const;
+export const FLOORING_SUBSTRATE_REMOVE_HOURS_LABEL =
+  "Flooring substrate removal" as const;
+
+export const FLOORING_SUBSTRATE_INSTALL_HOURS_DESCRIPTION =
+  "Quotr V1 0.50 person-hours per purchased whole substrate sheet. Applies to the FLOORING-03 whole-sheet count, not net m². Includes ordinary setting out, cutting, fitting and fixing of a selected supported flooring substrate sheet. Excludes substrate material COST, framing alteration, structural design, extensive levelling, finish flooring, removal, disposal, and specialist membranes or systems. Future labour COST uses labour.carpenter.hour. Company exact productivity wins." as const;
+export const FLOORING_CARPET_REMOVE_HOURS_DESCRIPTION =
+  "Quotr V1 0.12 person-hours / m² on the entered physical floor area. Ordinary carpet finish removal only. Excludes disposal/cartage, hazardous materials, structural repairs, substrate removal, grinding/remediation beyond ordinary uplift, and specialist systems. Future V1 labour COST uses labour.carpenter.hour. Company exact productivity wins." as const;
+export const FLOORING_VINYL_PLANK_REMOVE_HOURS_DESCRIPTION =
+  "Quotr V1 0.20 person-hours / m² on the entered physical floor area. Ordinary vinyl plank/LVT finish removal only. Excludes disposal/cartage, hazardous materials, structural repairs, substrate removal, grinding/remediation beyond ordinary uplift, and specialist systems. Future V1 labour COST uses labour.carpenter.hour. Company exact productivity wins." as const;
+export const FLOORING_TILE_REMOVE_HOURS_DESCRIPTION =
+  "Quotr V1 0.55 person-hours / m² on the entered physical floor area. Ordinary floor-tile finish removal only. Excludes disposal/cartage, hazardous materials, structural repairs, substrate removal, grinding/remediation beyond ordinary uplift, and specialist systems. Future V1 labour COST uses labour.carpenter.hour. Company exact productivity wins." as const;
+export const FLOORING_HARDWOOD_REMOVE_HOURS_DESCRIPTION =
+  "Quotr V1 0.35 person-hours / m² on the entered physical floor area. Ordinary hardwood/timber finish removal only. Excludes disposal/cartage, hazardous materials, structural repairs, substrate removal, grinding/remediation beyond ordinary uplift, and specialist systems. Future V1 labour COST uses labour.carpenter.hour. Company exact productivity wins." as const;
+export const FLOORING_SUBSTRATE_REMOVE_HOURS_DESCRIPTION =
+  "Quotr V1 0.30 person-hours / m² on the entered physical floor area. Separate from finish removal. Only when substrate removal is explicitly selected after finish removal. Excludes disposal, framing removal, structural work, hazardous materials, and reconstruction. Future V1 labour COST uses labour.carpenter.hour. Company exact productivity wins." as const;
+
+/** Combined non-structural below-substrate framing allowance COST, ex GST / m². */
+export const FLOORING_SUBFLOOR_FRAMING_MINOR_ALLOWANCE_COST_EX_GST = 45 as const;
+export const FLOORING_SUBFLOOR_FRAMING_STANDARD_ALLOWANCE_COST_EX_GST = 90 as const;
+export const FLOORING_SUBFLOOR_FRAMING_MAJOR_ALLOWANCE_COST_EX_GST = 160 as const;
+
+export const FLOORING_SUBFLOOR_FRAMING_MINOR_ALLOWANCE_LABEL =
+  "Minor below-substrate framing allowance" as const;
+export const FLOORING_SUBFLOOR_FRAMING_STANDARD_ALLOWANCE_LABEL =
+  "Standard below-substrate framing allowance" as const;
+export const FLOORING_SUBFLOOR_FRAMING_MAJOR_ALLOWANCE_LABEL =
+  "Major below-substrate framing allowance" as const;
+
+export const FLOORING_SUBFLOOR_FRAMING_MINOR_ALLOWANCE_DESCRIPTION =
+  "Quotr combined allowance COST $45.00 ex GST / m² on net Flooring Area. Bounded generic allowance for local packing, blocking, limited levelling and small isolated non-structural framing adjustments below the substrate. Not material-only and not a productivity hour rate. Excludes engineered or structural design, consent work, structural beam/joist replacement, foundations, major decay remediation, hazardous-material work, demolition/disposal unless separately listed, and work that cannot reasonably be covered by a generic area allowance. Structural or engineered scope stays Pricing Required. Company exact allowance wins." as const;
+export const FLOORING_SUBFLOOR_FRAMING_STANDARD_ALLOWANCE_DESCRIPTION =
+  "Quotr combined allowance COST $90.00 ex GST / m² on net Flooring Area. Bounded generic allowance for ordinary distributed blocking, packing, levelling and modest non-structural framing remediation across the selected area. Not material-only and not a productivity hour rate. Excludes engineered or structural design, consent work, structural beam/joist replacement, foundations, major decay remediation, hazardous-material work, demolition/disposal unless separately listed, and work that cannot reasonably be covered by a generic area allowance. Structural or engineered scope stays Pricing Required. Company exact allowance wins." as const;
+export const FLOORING_SUBFLOOR_FRAMING_MAJOR_ALLOWANCE_DESCRIPTION =
+  "Quotr combined allowance COST $160.00 ex GST / m² on net Flooring Area. Bounded generic allowance for substantial non-engineered framing remediation across the selected area. Not material-only and not a productivity hour rate. Excludes engineered or structural design, consent work, structural beam/joist replacement, foundations, major decay remediation, hazardous-material work, demolition/disposal unless separately listed, and work that cannot reasonably be covered by a generic area allowance. Structural or engineered scope stays Pricing Required. Company exact allowance wins." as const;
 
 export const FLOORING_SUBSTRATE_MATERIAL_COMPONENT =
   "flooring.substrate.material" as const;
@@ -117,8 +168,8 @@ export const FLOORING_SPECIALIST_COMPONENT =
   "flooring.specialist.unsupported" as const;
 
 /**
- * Existing carpenter/labourer COST paths. Nested Flooring does not resolve
- * hourly COST in FLOORING-03. FLOORING-04 decides removal trade if needed.
+ * Existing carpenter hourly COST path. FLOORING-04C does not hardcode $60.
+ * Nested Flooring does not emit labour COST until FLOORING-05.
  */
 export const FLOORING_CARPENTER_LABOUR_RATE_KEY =
   "labour.carpenter.hour" as const;
@@ -154,6 +205,11 @@ export const FLOORING_ORDINARY_REMOVAL_HOURS_KEYS = [
   FLOORING_TILE_REMOVE_HOURS_PER_M2,
   FLOORING_HARDWOOD_REMOVE_HOURS_PER_M2,
   FLOORING_SUBSTRATE_REMOVE_HOURS_PER_M2,
+] as const;
+
+export const FLOORING_PRODUCTIVITY_KEYS = [
+  FLOORING_SUBSTRATE_INSTALL_HOURS_PER_SHEET,
+  ...FLOORING_ORDINARY_REMOVAL_HOURS_KEYS,
 ] as const;
 
 export const FLOORING_SUBSTRATE_SHEET_KEYS = [

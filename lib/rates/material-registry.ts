@@ -18,7 +18,10 @@ import {
   type MaterialVariantLayout,
 } from "@/lib/rates/material-presentation-map";
 import { isMaterialRatesCatalogueEntry } from "@/lib/rates/rate-section-contract";
-import { FLOORING_SUBCONTRACT_RATE_KEYS } from "@/lib/estimate/flooring-identities";
+import {
+  FLOORING_ORDINARY_FRAMING_KEYS,
+  FLOORING_SUBCONTRACT_RATE_KEYS,
+} from "@/lib/estimate/flooring-identities";
 import type { RateCatalogueEntry, RatesPageRate } from "@/lib/rates/types";
 
 /** Ensure catalogue graph is fully initialized before reading specific arrays. */
@@ -134,6 +137,9 @@ const WASTE_KEYS = getWasteKeys();
 export function isMaterialsPageCatalogueEntry(entry: RateCatalogueEntry): boolean {
   if (!isMaterialRatesCatalogueEntry(entry)) return false;
   if ((FLOORING_SUBCONTRACT_RATE_KEYS as readonly string[]).includes(entry.item_key)) {
+    return false;
+  }
+  if ((FLOORING_ORDINARY_FRAMING_KEYS as readonly string[]).includes(entry.item_key)) {
     return false;
   }
   if (entry.item_key.startsWith("plant.")) return false;

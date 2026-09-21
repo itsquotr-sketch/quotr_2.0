@@ -79,6 +79,7 @@ const WORK_AREA_DISPLAY_LABELS: Record<string, string> = {
   internal_walls: "Internal Walls",
   painting: "Painting",
   doors: "Doors",
+  flooring: "Flooring",
   ...Object.fromEntries(
     Object.entries(COMPANY_DNA_WORK_AREA_LABELS).map(([key, label]) => [
       key,
@@ -99,6 +100,7 @@ const WORK_AREA_ORDER: readonly string[] = [
   "internal_walls",
   "painting",
   "doors",
+  "flooring",
 ];
 
 export function productivityWorkAreaLabel(workAreaType: string): string {

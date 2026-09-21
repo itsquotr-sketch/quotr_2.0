@@ -18,6 +18,7 @@ import {
   CEILING_PRODUCTIVITY_RATE_CATALOGUE,
   PAINTING_PRODUCTIVITY_RATE_CATALOGUE,
   DOORS_PRODUCTIVITY_RATE_CATALOGUE,
+  FLOORING_PRODUCTIVITY_RATE_CATALOGUE,
   BATHROOM_FIXTURE_PC_CATALOGUE,
   BATHROOM_TRADE_ALLOWANCE_CATALOGUE,
 } from "@/lib/rates/specific-material-catalogue";
@@ -589,6 +590,7 @@ export const FULL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...CEILING_PRODUCTIVITY_RATE_CATALOGUE,
   ...PAINTING_PRODUCTIVITY_RATE_CATALOGUE,
   ...DOORS_PRODUCTIVITY_RATE_CATALOGUE,
+  ...FLOORING_PRODUCTIVITY_RATE_CATALOGUE,
 ];
 
 export const RECOMMENDED_RATE_CATALOGUE = ALL_RATE_CATALOGUE.filter(
@@ -623,6 +625,8 @@ export function formatRateUnit(unit: string): string {
       return "framing lm";
     case "hour":
       return "hr";
+    case "sheet":
+      return "sheet";
     case "riser":
       return "riser";
     case "each":
