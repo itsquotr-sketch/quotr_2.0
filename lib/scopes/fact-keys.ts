@@ -182,6 +182,7 @@ const CANONICAL_SUFFIX_BY_SCOPE: Record<string, Record<string, string>> = {
     area_input_method: "flooring.portion.area_input_method",
     length_m: "flooring.portion.length_m",
     width_m: "flooring.portion.width_m",
+    area_m2: "flooring.portion.area_m2",
     underlay_required: "flooring.portion.underlay_required",
     floor_preparation_required: "flooring.portion.floor_preparation_required",
     tile_width_mm: "flooring.portion.tile_width_mm",

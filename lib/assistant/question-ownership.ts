@@ -14,6 +14,7 @@ import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contrac
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
 import { ceilingsFactQuestionClass } from "@/lib/estimate/ceilings-information-contract";
 import { doorsFactQuestionClass } from "@/lib/estimate/doors-information-contract";
+import { flooringFactQuestionClass } from "@/lib/estimate/flooring-information-contract";
 import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
@@ -135,6 +136,14 @@ export function detailsAskClassForFact(
     (workAreaType === "doors" || factKey.startsWith("doors.portion."))
   ) {
     return doorsClass;
+  }
+  const flooringClass = flooringFactQuestionClass(factKey);
+  if (
+    flooringClass &&
+    isDetailsAskClass(flooringClass) &&
+    (workAreaType === "flooring" || factKey.startsWith("flooring.portion."))
+  ) {
+    return flooringClass;
   }
   const template = getQuestionTemplateByKey(factKey);
   if (!template) return null;

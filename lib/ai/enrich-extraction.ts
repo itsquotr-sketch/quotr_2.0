@@ -29,7 +29,10 @@ import {
   briefHasIndependentBathroom,
   briefHasIndependentCeilings,
   briefHasIndependentDoors,
+  briefHasIndependentFlooring,
   briefHasIndependentKitchen,
+  briefFlooringOwnsConnectedRemoval,
+  briefHasStandaloneDemolitionPackage,
   filterTopLevelWorkAreas,
 } from "@/lib/work-areas/ownership";
 import {
@@ -45,6 +48,16 @@ import {
   seedExtractedDoorsFact,
   stripLegacyDoorFactsFromExtraction,
 } from "@/lib/estimate/doors-brief";
+import {
+  extractFlooringPortionsFromBrief,
+  FLOORING_BATHROOM_OVERLAP_WARNING,
+  flooringExtractionHasBathroomOverlap,
+  mergeFlooringPortionsPreferringDeterministic,
+  readAiFlooringPortionsFromExtraction,
+  seedExtractedFlooringFact,
+  stripLegacyFlooringFactsFromExtraction,
+} from "@/lib/estimate/flooring-brief";
+import { createEmptyFlooringPortion } from "@/lib/estimate/flooring-portions";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
@@ -638,6 +651,40 @@ function inferDoors(
   if (portions.length > 0) {
     seedExtractedDoorsFact(extraction, { portions });
     stripLegacyDoorFactsFromExtraction(extraction);
+  }
+}
+
+function inferFlooring(
+  brief: string,
+  extraction: AIExtractionOutput,
+  allowedTypes: string[]
+): void {
+  if (!briefHasIndependentFlooring(brief)) {
+    return;
+  }
+
+  addWorkAreaIfMissing(
+    extraction,
+    "flooring",
+    0.84,
+    "EXPLICIT: Independent Flooring Area stated",
+    allowedTypes
+  );
+
+  const parsed = extractFlooringPortionsFromBrief(brief);
+  const ai = readAiFlooringPortionsFromExtraction(extraction);
+  const merged = mergeFlooringPortionsPreferringDeterministic(ai, parsed);
+  const portions =
+    merged.length > 0 ? merged : [createEmptyFlooringPortion()];
+  seedExtractedFlooringFact(extraction, { portions });
+  stripLegacyFlooringFactsFromExtraction(extraction);
+  if (
+    flooringExtractionHasBathroomOverlap(
+      portions,
+      hasWorkAreaType(extraction, "bathroom")
+    )
+  ) {
+    extraction.warnings.push(FLOORING_BATHROOM_OVERLAP_WARNING);
   }
 }
 
@@ -1625,7 +1672,8 @@ function inferDemolitionAndRemoval(
   if (
     !includesAny(brief, removalPhrases) &&
     !isFlooringRemovalOnly(brief) &&
-    !explicitInternalWallRemoval
+    !explicitInternalWallRemoval &&
+    !briefHasStandaloneDemolitionPackage(brief)
   ) {
     return;
   }
@@ -1667,6 +1715,10 @@ function inferDemolitionAndRemoval(
     });
   }
 
+  const flooringOwnsRemoval =
+    briefFlooringOwnsConnectedRemoval(brief) &&
+    !briefHasStandaloneDemolitionPackage(brief);
+
   const hasExplicitFlooringRemoval =
     includesAny(brief, [
       "remove carpet",
@@ -1679,12 +1731,15 @@ function inferDemolitionAndRemoval(
     ]) && includesAny(brief, ["remove"]);
 
   const standaloneDemolition =
-    isFlooringRemovalOnly(brief) ||
-    includesAny(brief, ["soft strip", "strip out office", "office soft strip"]) ||
-    hasExplicitFlooringRemoval ||
-    explicitInternalWallRemoval ||
-    (includesAny(brief, ["remove carpet", "remove vinyl", "remove flooring"]) &&
-      !hasWorkAreaType(extraction, "flooring"));
+    !flooringOwnsRemoval &&
+    (briefHasStandaloneDemolitionPackage(brief) ||
+      (!briefHasIndependentFlooring(brief) && isFlooringRemovalOnly(brief)) ||
+      includesAny(brief, ["soft strip", "strip out office", "office soft strip"]) ||
+      (!briefHasIndependentFlooring(brief) && hasExplicitFlooringRemoval) ||
+      explicitInternalWallRemoval ||
+      (includesAny(brief, ["remove carpet", "remove vinyl", "remove flooring"]) &&
+        !hasWorkAreaType(extraction, "flooring") &&
+        !briefHasIndependentFlooring(brief)));
 
   if (standaloneDemolition) {
     addWorkAreaIfMissing(
@@ -1740,7 +1795,11 @@ function inferDemolitionAndRemoval(
     });
   }
 
-  if (isFlooringRemovalOnly(brief) && hasWorkAreaType(extraction, "flooring")) {
+  if (
+    isFlooringRemovalOnly(brief) &&
+    hasWorkAreaType(extraction, "flooring") &&
+    !extraction.facts.some((fact) => fact.key === "flooring.portions")
+  ) {
     addFact(extraction, {
       workAreaType: "flooring",
       key: "flooring.supply_scope",
@@ -2104,6 +2163,7 @@ export function enrichExtractionFromBrief(params: {
   inferInternalWalls(brief, extraction, params.allowedTypes);
   inferCeilings(brief, extraction, params.allowedTypes);
   inferDoors(brief, extraction, params.allowedTypes);
+  inferFlooring(brief, extraction, params.allowedTypes);
   inferPainting(brief, extraction, params.allowedTypes);
   inferFence(brief, extraction, params.allowedTypes);
   inferPergola(brief, extraction, params.allowedTypes);

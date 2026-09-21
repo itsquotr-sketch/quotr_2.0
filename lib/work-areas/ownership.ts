@@ -363,6 +363,203 @@ function kitchenTokenIsDoorLocation(clause: string): boolean {
   return false;
 }
 
+const FLOORING_FINISH_TOKEN =
+  "(?:carpet|vinyl(?:\\s+plank|\\s+planks)?|lvt|luxury\\s+vinyl|slat\\s+vinyl|vinyl\\s+slats|floor\\s+tiles?|tiled?\\s+floor|tile\\s+flooring|hardwood|timber\\s+floor(?:ing|boards?)?|flooring)";
+
+export function clauseHasFlooringOperation(clause: string): boolean {
+  const raw = clause.toLowerCase();
+  if (/\bsheet\s+vinyl\b/.test(raw) && !/\b(?:vinyl\s+plank|lvt|slat\s+vinyl)\b/.test(raw)) {
+    return true;
+  }
+  if (
+    /\b(?:install|lay|replace|supply and install|carpet|tile)\b/.test(raw) &&
+    new RegExp(`\\b${FLOORING_FINISH_TOKEN}\\b`).test(raw)
+  ) {
+    return true;
+  }
+  if (new RegExp(`\\b${FLOORING_FINISH_TOKEN}\\b`).test(raw)) return true;
+  if (/\b(?:floor tiles?|tile the (?:ensuite |bathroom )?floor)\b/.test(raw)) {
+    return true;
+  }
+  if (
+    /\breplace (?:the )?floor substrate\b/.test(raw) ||
+    /\bnew flooring substrate\b/.test(raw)
+  ) {
+    return true;
+  }
+  if (
+    /\b(?:flooring removal only|remove existing floor finish|uplift existing (?:carpet|vinyl|tiles?|hardwood))\b/.test(
+      raw
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function clauseHasIndependentBathroomSignal(clause: string): boolean {
+  return includesAny(clause, INDEPENDENT_BATHROOM_SIGNALS);
+}
+
+function clauseHasIndependentKitchenSignal(clause: string): boolean {
+  return includesAny(clause, INDEPENDENT_KITCHEN_SIGNALS);
+}
+
+export function bathroomTokenIsFlooringLocation(clause: string): boolean {
+  if (!/\b(?:ensuite|bathroom)\b/.test(clause)) return false;
+  if (!clauseHasFlooringOperation(clause)) return false;
+  if (clauseHasIndependentBathroomSignal(clause)) return false;
+  return true;
+}
+
+export function kitchenTokenIsFlooringLocation(clause: string): boolean {
+  if (!/\bkitchen\b/.test(clause)) return false;
+  if (!clauseHasFlooringOperation(clause)) return false;
+  if (clauseHasIndependentKitchenSignal(clause)) return false;
+  return true;
+}
+
+export function clauseIsBathroomOwnedFloor(clause: string): boolean {
+  if (!/\b(?:ensuite|bathroom)\b/.test(clause) && !clauseHasIndependentBathroomSignal(clause)) {
+    return false;
+  }
+  if (
+    /\b(?:bedrooms?|living rooms?|lounge|kitchen|hallway|laundry|entry)\b/.test(
+      clause
+    ) &&
+    !/\b(?:ensuite|bathroom)\s+floor/.test(clause.toLowerCase())
+  ) {
+    return false;
+  }
+  return (
+    clauseHasIndependentBathroomSignal(clause) &&
+    (clauseHasFlooringOperation(clause) ||
+      /\bfloor(?:ing)?\b/.test(clause.toLowerCase()) ||
+      /\btiles?\b/.test(clause.toLowerCase()))
+  );
+}
+
+export function clauseIsKitchenOwnedFloor(clause: string): boolean {
+  if (!/\bkitchen\b/.test(clause)) return false;
+  if (
+    /\b(?:bedrooms?|living rooms?|lounge|ensuite|bathroom|hallway|laundry|entry)\b/.test(
+      clause
+    ) &&
+    !/\bkitchen\s+floor/.test(clause.toLowerCase()) &&
+    !/\bflooring in the kitchen\b/.test(clause.toLowerCase())
+  ) {
+    return false;
+  }
+  return (
+    clauseHasIndependentKitchenSignal(clause) &&
+    (clauseHasFlooringOperation(clause) || /\bfloor(?:ing)?\b/.test(clause.toLowerCase()))
+  );
+}
+
+/**
+ * Standalone Flooring operations. Room nouns (bathroom, kitchen, ensuite)
+ * are locations unless an independent Bathroom/Kitchen renovation is stated
+ * in the same clause.
+ */
+function clauseIsDemolitionMentionOfFlooring(clause: string): boolean {
+  const raw = clause.toLowerCase();
+  if (
+    !/\b(?:demolition|demolish|strip[-\s]?out|rip out|soft strip)\b/.test(raw)
+  ) {
+    return false;
+  }
+  if (!/\bflooring\b/.test(raw) && !/\bfloor finish\b/.test(raw)) return false;
+  return !/\b(?:install|lay|supply and install|carpet the|tile the|replace flooring|new (?:carpet|vinyl|hardwood|timber)|flooring removal only|no new flooring)\b/.test(
+    raw
+  );
+}
+
+export function briefHasIndependentFlooring(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  if (
+    briefHasStandaloneDemolitionPackage(briefText) &&
+    !/\b(?:install|lay|supply and install|carpet the|tile the|replace flooring|new (?:carpet|vinyl|hardwood|timber)|flooring removal only|no new flooring)\b/.test(
+      brief
+    )
+  ) {
+    return false;
+  }
+  const clauses = ownershipClauses(brief);
+  for (const clause of clauses) {
+    if (!clauseHasFlooringOperation(clause)) continue;
+    if (clauseIsBathroomOwnedFloor(clause)) continue;
+    if (clauseIsKitchenOwnedFloor(clause)) continue;
+    if (clauseIsDemolitionMentionOfFlooring(clause)) continue;
+    return true;
+  }
+  if (
+    includesAny(brief, [
+      "flooring removal only",
+      "remove existing floor finish",
+      "no new flooring",
+    ]) &&
+    !briefHasStandaloneDemolitionPackage(briefText)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Wider demolition / strip-out package. Floor-finish removal connected to
+ * a new Flooring Area is not this — that stays a Flooring accessory.
+ */
+export function briefHasStandaloneDemolitionPackage(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  return includesAny(brief, [
+    "soft strip",
+    "strip out office",
+    "office soft strip",
+    "house internal demolition",
+    "demolition of house",
+    "demolish",
+    "internal demolition",
+    "rip out",
+    "removing internal wall",
+    "remove internal wall",
+    "removing 3 internal",
+  ]);
+}
+
+/**
+ * Floor-finish removal that belongs to a nested Flooring Area (connected
+ * replace/install, or an explicit Flooring removal-only scope). Never both
+ * Flooring and Demolition.
+ */
+export function briefFlooringOwnsConnectedRemoval(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  if (briefHasStandaloneDemolitionPackage(briefText) && !briefHasIndependentFlooring(briefText)) {
+    return false;
+  }
+  if (briefHasIndependentFlooring(briefText)) {
+    return (
+      includesAny(brief, [
+        "remove existing",
+        "remove the existing",
+        "uplift",
+        "uplift existing",
+        "strip out existing floor",
+        "existing flooring removal",
+        "flooring removal",
+        "remove carpet",
+        "remove vinyl",
+        "remove tiles",
+        "remove existing floor",
+      ]) ||
+      includesAny(brief, ["flooring removal only", "no new flooring", "removal only"])
+    );
+  }
+  return (
+    includesAny(brief, ["flooring removal only", "no new flooring"]) &&
+    !briefHasStandaloneDemolitionPackage(briefText)
+  );
+}
+
 const INDEPENDENT_BATHROOM_SIGNALS = [
   "renovate",
   "renovation",
@@ -416,10 +613,19 @@ export function briefHasIndependentBathroom(briefText: string): boolean {
     ) {
       return true;
     }
-    if (hasSignal && hasRoom && !bathroomTokenIsDoorLocation(clause)) {
+    if (
+      hasSignal &&
+      hasRoom &&
+      !bathroomTokenIsDoorLocation(clause) &&
+      !bathroomTokenIsFlooringLocation(clause)
+    ) {
       return true;
     }
-    if (/\b(?:ensuite|bathroom)\b/.test(clause) && !bathroomTokenIsDoorLocation(clause)) {
+    if (
+      /\b(?:ensuite|bathroom)\b/.test(clause) &&
+      !bathroomTokenIsDoorLocation(clause) &&
+      !bathroomTokenIsFlooringLocation(clause)
+    ) {
       return true;
     }
   }
@@ -450,6 +656,7 @@ export function briefHasIndependentKitchen(briefText: string): boolean {
   for (const clause of ownershipClauses(brief)) {
     if (!/\bkitchen\b/.test(clause)) continue;
     if (kitchenTokenIsDoorLocation(clause)) continue;
+    if (kitchenTokenIsFlooringLocation(clause)) continue;
     return true;
   }
   return false;
@@ -554,6 +761,18 @@ export function classifyProposedWorkArea(params: {
         type: params.type,
         classification: WORK_AREA_OWNERSHIP_CLASS.EMBEDDED,
         evidence: "Bathroom owns local demolition unless independent strip-out is stated",
+        topLevel: false,
+      };
+    }
+    if (
+      briefFlooringOwnsConnectedRemoval(brief) &&
+      !briefHasStandaloneDemolitionPackage(brief)
+    ) {
+      return {
+        type: params.type,
+        classification: WORK_AREA_OWNERSHIP_CLASS.EMBEDDED,
+        evidence:
+          "Floor-finish removal is an accessory of nested Flooring, not a separate Demolition Work Area",
         topLevel: false,
       };
     }
@@ -702,6 +921,20 @@ export function classifyProposedWorkArea(params: {
       evidence: independent
         ? "Independent kitchen renovation stated"
         : "Kitchen is a location label for another operation",
+      topLevel: independent,
+    };
+  }
+
+  if (params.type === "flooring") {
+    const independent = briefHasIndependentFlooring(brief);
+    return {
+      type: params.type,
+      classification: independent
+        ? WORK_AREA_OWNERSHIP_CLASS.EXPLICIT
+        : WORK_AREA_OWNERSHIP_CLASS.NOT_REQUESTED,
+      evidence: independent
+        ? "Independent Flooring Area stated"
+        : "Flooring is owned by Bathroom/Kitchen package or is not independently scoped",
       topLevel: independent,
     };
   }

@@ -147,6 +147,16 @@ import {
   isDoorsNestedFactKey,
 } from "@/lib/estimate/doors-portions";
 import {
+  flooringNestedFactCurrentValue,
+  flooringNestedItemPanel,
+  listFlooringClarifyCandidates,
+} from "@/lib/estimate/flooring-clarify";
+import { lookupFlooringInformationContract } from "@/lib/estimate/flooring-information-contract";
+import {
+  hasFlooringPortionsFact,
+  isFlooringNestedFactKey,
+} from "@/lib/estimate/flooring-portions";
+import {
   getArrayFact,
   getBooleanFact,
   getFact,
@@ -971,6 +981,22 @@ function missingHardMinimum(
         }
       }
     }
+
+    if (card.workAreaType === "flooring") {
+      if (
+        hasFlooringPortionsFact(input.facts as EstimateFact[], card.workAreaId)
+      ) {
+        for (const candidate of listFlooringClarifyCandidates({
+          facts: input.facts as EstimateFact[],
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          briefText: input.briefText,
+        })) {
+          if (candidate.askClass !== "HARD_MINIMUM") continue;
+          out.push(candidate);
+        }
+      }
+    }
   }
   return out;
 }
@@ -1604,6 +1630,24 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
       continue;
     }
 
+    if (wa.type === "flooring") {
+      if (hasFlooringPortionsFact(input.facts as EstimateFact[], wa.id)) {
+        for (const candidate of listFlooringClarifyCandidates({
+          facts: input.facts as EstimateFact[],
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          briefText: input.briefText,
+        })) {
+          if (candidate.askClass === "HARD_MINIMUM") continue;
+          if (!lookupFlooringInformationContract(candidate.factKey ?? "")) {
+            continue;
+          }
+          out.push(candidate);
+        }
+        continue;
+      }
+    }
+
     if (wa.type === "deck") {
       const jobPlanKeys = new Set(
         input.jobPlan.cards
@@ -2214,6 +2258,24 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
         }
         return aliased;
       }
+      if (
+        (aliased.workAreaType === "flooring" || isFlooringNestedFactKey(key)) &&
+        aliased.workAreaId
+      ) {
+        const nestedValue = flooringNestedFactCurrentValue({
+          facts: input.facts as EstimateFact[],
+          workAreaId: aliased.workAreaId,
+          factKey: aliased.factKey ?? key,
+          nestedItemId: aliased.nestedItemId,
+        });
+        if (nestedValue != null) {
+          return {
+            ...aliased,
+            currentValue: nestedValue as ClarifyCandidate["currentValue"],
+          };
+        }
+        return aliased;
+      }
       const rawValue = currentFactOrConstraintValue(
         input,
         key,
@@ -2262,6 +2324,18 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
         )
         .map((wa) =>
           doorsNestedItemPanel({
+            facts: input.facts as EstimateFact[],
+            workAreaId: wa.id,
+            workAreaName: wa.name,
+          })
+        ),
+      ...input.workAreas
+        .filter((row) => row.status !== "excluded" && row.type === "flooring")
+        .filter((wa) =>
+          hasFlooringPortionsFact(input.facts as EstimateFact[], wa.id)
+        )
+        .map((wa) =>
+          flooringNestedItemPanel({
             facts: input.facts as EstimateFact[],
             workAreaId: wa.id,
             workAreaName: wa.name,

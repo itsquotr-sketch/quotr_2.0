@@ -8,6 +8,7 @@
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { isFlooringNestedFactKey } from "../lib/assistant/question-identity";
+import { BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY } from "../lib/estimate/bathroom-identities";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
 import { calculateKitchen } from "../lib/estimate/calculators/kitchen";
 import { calculateDemolition } from "../lib/estimate/calculators/demolition";
@@ -461,13 +462,21 @@ substrateFacts = writeFlooring(
 substrateFacts = writeFlooring(
   substrateFacts,
   "flooring.portion.substrate_item_key",
+  BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
+  substrateId
+);
+const inventedKeyFacts = writeFlooring(
+  substrateFacts,
+  "flooring.portion.substrate_item_key",
   "particleboard.21mm.2400x1200",
   substrateId
 );
 check(
   "17. exact substrate key",
   storedFlooringPortions(substrateFacts, "f1")[0]?.substrate_item_key ===
-    "particleboard.21mm.2400x1200"
+    BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY &&
+    storedFlooringPortions(inventedKeyFacts, "f1")[0]?.substrate_item_key ==
+      null
 );
 
 let framingFacts = writeFlooring([], FLOORING_ADD_PORTION_KEY, true);

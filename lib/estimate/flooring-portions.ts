@@ -33,6 +33,14 @@
 import { getFact } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
 import {
+  BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY,
+  BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY,
+  BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY,
+  BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY,
+  BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
+  BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY,
+} from "@/lib/estimate/bathroom-identities";
+import {
   createStableClientId,
   isStableClientId,
 } from "@/lib/ids/stable-client-id";
@@ -267,9 +275,13 @@ export function parseFlooringFinishType(
   }
   if (
     normalised.includes("vinyl plank") ||
+    normalised.includes("vinyl planks") ||
     normalised.includes("lvt") ||
     normalised.includes("luxury vinyl") ||
     normalised.includes("slat vinyl") ||
+    normalised.includes("vinyl slats") ||
+    normalised.includes("vinyl flooring") ||
+    normalised.includes("vinyl floor") ||
     normalised === "slat" ||
     normalised === "vinyl"
   ) {
@@ -285,7 +297,14 @@ export function parseFlooringFinishType(
   ) {
     return "hardwood";
   }
-  if (normalised === "other" || normalised === "custom") return "other";
+  if (
+    normalised === "other" ||
+    normalised === "custom" ||
+    normalised.includes("other / custom") ||
+    normalised.includes("other custom")
+  ) {
+    return "other";
+  }
   return null;
 }
 
@@ -329,6 +348,7 @@ export function parseFlooringAreaInputMethod(
   if (
     normalised === "direct" ||
     normalised === "direct m2" ||
+    normalised === "direct area" ||
     normalised === "area" ||
     normalised === "area only" ||
     normalised === "m2"
@@ -337,6 +357,7 @@ export function parseFlooringAreaInputMethod(
   }
   if (
     normalised === "length width" ||
+    normalised === "length and width" ||
     normalised === "length x width" ||
     normalised === "l x w" ||
     normalised === "dimensions"
@@ -409,7 +430,14 @@ export function parseFlooringSubstrateFamily(
 export function parseFlooringFramingAllowanceLevel(
   value: unknown
 ): FlooringFramingAllowanceLevel | null {
-  return parseEnum(value, FLOORING_FRAMING_ALLOWANCE_LEVEL_VALUES);
+  const direct = parseEnum(value, FLOORING_FRAMING_ALLOWANCE_LEVEL_VALUES);
+  if (direct) return direct;
+  if (typeof value !== "string") return null;
+  const normalised = normalisedText(value);
+  if (normalised === "minor") return "minor";
+  if (normalised === "standard") return "standard";
+  if (normalised === "major") return "major";
+  return null;
 }
 
 export function parseFlooringExistingFinishType(
@@ -468,7 +496,39 @@ export function parseFlooringOtherDescription(value: unknown): string | null {
 export function parseFlooringSubstrateItemKey(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const trimmed = value.trim();
-  return trimmed ? trimmed : null;
+  if (!trimmed) return null;
+  const labels: Record<string, string> = {
+    "19 mm h3.2 structural plywood 2400 × 1200":
+      BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
+    "19 mm h3.2 structural plywood 2400 x 1200":
+      BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
+    "18 mm fibre-cement 2400 × 1200": BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY,
+    "18 mm fibre-cement 2400 x 1200": BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY,
+    "19 mm fibre-cement flooring 2700 × 600":
+      BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY,
+    "19 mm fibre-cement flooring 2700 x 600":
+      BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY,
+    "19 mm fibre-cement flooring 1800 × 900":
+      BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY,
+    "19 mm fibre-cement flooring 1800 x 900":
+      BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY,
+    "19 mm fibre-cement flooring": BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY,
+    "secura flooring 2400 × 600": BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY,
+    "secura flooring 2400 x 600": BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY,
+  };
+  const mapped = labels[trimmed.toLowerCase()];
+  if (mapped) return mapped;
+  if (
+    trimmed === BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY ||
+    trimmed === BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY ||
+    trimmed === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY ||
+    trimmed === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY ||
+    trimmed === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY ||
+    trimmed === BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY
+  ) {
+    return trimmed;
+  }
+  return null;
 }
 
 export function flooringPortionIsUnsupported(portion: FlooringPortion): boolean {
@@ -971,9 +1031,6 @@ export function flooringPortionFieldsCompatible(
   const pairs: readonly [unknown, unknown][] = [
     [left.finish_type, right.finish_type],
     [left.area_input_method, right.area_input_method],
-    [left.length_m, right.length_m],
-    [left.width_m, right.width_m],
-    [left.area_m2, right.area_m2],
     [left.tile_width_mm, right.tile_width_mm],
     [left.tile_length_mm, right.tile_length_mm],
     [left.hardwood_board_width_mm, right.hardwood_board_width_mm],
