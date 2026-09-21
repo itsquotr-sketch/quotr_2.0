@@ -935,7 +935,7 @@ check(
   "59. Doors is not falsely marked fully commercially mature",
   !workAreaMayCloseAtL5(doorsCoverage) &&
     doorsCoverage.needsOwnerApproval.some((row) =>
-      /hosted commercial/i.test(row.component)
+      /pricing and quote/i.test(row.component)
     )
 );
 
@@ -958,8 +958,9 @@ const doorsProdSrc = read("lib/estimate/doors-productivity.ts");
 const doorsIdentities = read("lib/estimate/doors-identities.ts");
 check(
   "61. Nested Doors does not use legacy dollar-derived hours",
-  nestedCalc.lineItems.length === 0 &&
-    nestedCalc.missingInfo.includes(DOORS_NESTED_NOT_CALCULATED_MESSAGE) &&
+  !nestedCalc.lineItems.some(
+    (row) => row.recommendedCost === FITOUT_BENCHMARKS.doorsEach.cost
+  ) &&
     !doorsProdSrc.includes("doorInstallEach") &&
     !doorsProdSrc.includes("/ 60") &&
     !doorsIdentities.includes("doorInstallEach") &&

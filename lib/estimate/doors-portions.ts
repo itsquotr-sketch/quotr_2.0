@@ -13,8 +13,8 @@
  * No takeoff, material COST, productivity, or money in this module.
  *
  * Dual-path calculator boundary:
- * - Canonical nested `doors.portions` → physical takeoff (DOORS-03).
- *   Commercial rates are not resolved on this path yet.
+ * - Canonical nested `doors.portions` → physical takeoff then
+ *   commercializeDoors (DOORS-05) on the hosted calculateDoors path.
  * - Legacy flat `doors.count` / `calculateDoors` lumps remain for hosted
  *   projects without portions. Nested portions must not fall through to
  *   FITOUT_BENCHMARKS.doorsEach merely because fields are incomplete.

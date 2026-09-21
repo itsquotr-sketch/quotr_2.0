@@ -771,11 +771,12 @@ check(
 const nestedCalc = calculateDoors(ctx(persist([ordinary({ quantity: 1 })])), WA);
 check(
   "57. Nested Doors never uses the legacy $280 package",
-  nestedCalc.lineItems.length === 0 &&
-    nestedCalc.missingInfo.includes(DOORS_NESTED_NOT_CALCULATED_MESSAGE) &&
-    !nestedCalc.lineItems.some(
-      (row) => row.recommendedCost === FITOUT_BENCHMARKS.doorsEach.cost
-    )
+  !nestedCalc.lineItems.some(
+    (row) =>
+      row.recommendedCost === FITOUT_BENCHMARKS.doorsEach.cost ||
+      /supply\/install allowance/i.test(row.label)
+  ) &&
+    nestedCalc.lineItems.some((row) => (row.recommendedCost ?? 0) > 0)
 );
 
 const doorsCoverage = verifyRegisteredWorkAreaBenchmarkCoverage("doors");
@@ -797,7 +798,7 @@ check(
   !workAreaMayCloseAtL5(doorsCoverage) &&
     doorsCoverage.intentionalPr.length >= 2 &&
     doorsCoverage.needsOwnerApproval.some((row) =>
-      /hosted commercial/i.test(row.component)
+      /pricing and quote/i.test(row.component)
     )
 );
 

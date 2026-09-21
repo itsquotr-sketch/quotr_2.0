@@ -883,36 +883,30 @@ console.log("\n=== DOORS-03 integration ===\n");
 const nestedOne = calculateDoors(ctx(persist([ordinary({ quantity: 1 })])), WA);
 check(
   "45. Nested Doors does not use legacy default three",
-  nestedOne.lineItems.length === 0 &&
-    nestedOne.missingInfo.includes(DOORS_NESTED_NOT_CALCULATED_MESSAGE) &&
-    materials(nestedOne.requirements ?? []).every(
-      (row) => row.baseQuantity !== 3 || row.materialKey !== DOORS_PREHUNG_HOLLOW_CORE_SET_KEY
-    ) &&
+  materials(nestedOne.requirements ?? []).every(
+    (row) =>
+      row.baseQuantity !== 3 ||
+      row.materialKey !== DOORS_PREHUNG_HOLLOW_CORE_SET_KEY
+  ) &&
     byMaterialKey(nestedOne.requirements ?? [], DOORS_PREHUNG_HOLLOW_CORE_SET_KEY)[0]
-      ?.baseQuantity === 1
+      ?.baseQuantity === 1 &&
+    !nestedOne.lineItems.some((row) => /default three|doors\.count/i.test(row.label))
 );
 
-function mentionsLegacyMoney(text: string): boolean {
-  return (
-    /\$280/.test(text) ||
-    /\$110/.test(text) ||
-    /\$80/.test(text) ||
-    /\$120/.test(text) ||
-    /\$60/.test(text) ||
-    /\$90/.test(text)
-  );
-}
 check(
   "46. Nested Doors does not use legacy $280",
   nestedOne.lineItems.every(
-    (row) => row.recommendedCost !== FITOUT_BENCHMARKS.doorsEach.cost
+    (row) =>
+      row.recommendedCost !== FITOUT_BENCHMARKS.doorsEach.cost &&
+      !/supply\/install allowance/i.test(row.label)
   ) &&
-    nestedOne.lineItems.length === 0 &&
-    !(nestedOne.requirements ?? []).some((row) => moneyResolved(row)) &&
-    !nestedOne.assumptions.some(mentionsLegacyMoney) &&
+    !nestedOne.lineItems.some(
+      (row) => row.recommendedCost === FITOUT_BENCHMARKS.doorsEach.cost
+    ) &&
     !read("lib/estimate/doors-physical.ts").includes("FITOUT_BENCHMARKS") &&
     !read("lib/estimate/doors-physical.ts").includes("doorsEach") &&
-    !read("lib/estimate/doors-physical.ts").includes("doorInstallEach")
+    !read("lib/estimate/doors-physical.ts").includes("doorInstallEach") &&
+    !read("lib/estimate/doors-commercial.ts").includes("doorsEach")
 );
 
 const emptyNested = calculateDoors(
@@ -952,9 +946,17 @@ const unsupportedNested = calculateDoors(
 );
 check(
   "49. Unsupported nested collection does not fall back",
-  unsupportedNested.lineItems.length === 0 &&
-    unsupportedNested.missingInfo.includes(DOORS_NESTED_NOT_CALCULATED_MESSAGE) &&
-    hasOrdinaryLines(unsupportedNested.requirements ?? []) === false
+  unsupportedNested.lineItems.every(
+    (row) =>
+      row.rateSourceType === "missing" &&
+      (row.recommendedCost === 0 || row.includedInTotal === false)
+  ) &&
+    !unsupportedNested.lineItems.some(
+      (row) => row.recommendedCost === FITOUT_BENCHMARKS.doorsEach.cost
+    ) &&
+    hasOrdinaryLines(unsupportedNested.requirements ?? []) === false &&
+    (unsupportedNested.missingInfo.includes(DOORS_NESTED_NOT_CALCULATED_MESSAGE) ||
+      unsupportedNested.missingInfo.some((row) => /pricing required/i.test(row)))
 );
 
 const legacyFacts: EstimateFact[] = [
@@ -1066,7 +1068,6 @@ const allPhysical = [
   ...custom.requirements,
   ...fireAcoustic.requirements,
   ...mixed.requirements,
-  ...(nestedOne.requirements ?? []),
 ];
 check(
   "54. No physical requirement contains resolved commercial money",

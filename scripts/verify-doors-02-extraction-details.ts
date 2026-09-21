@@ -23,13 +23,13 @@ import {
 import { DOORS_INFORMATION_CONTRACT } from "../lib/estimate/doors-information-contract";
 import { DOORS_REPLACEMENT_FRAME_DISCLOSURE } from "../lib/estimate/doors-question-copy";
 import { calculateDoors } from "../lib/estimate/calculators/fitout";
+import { FITOUT_BENCHMARKS } from "../lib/estimate/benchmark-rates";
 import {
   applyDoorsFactWrite,
   DOORS_ADD_PORTION_KEY,
   DOORS_DELETE_PORTION_KEY,
   DOORS_DUPLICATE_PORTION_KEY,
   DOORS_HEIGHT_DISCLOSED_DEFAULT_MM,
-  DOORS_NESTED_NOT_CALCULATED_MESSAGE,
   DOORS_PORTIONS_FACT_KEY,
   mergePersistedDoorsPortionsOnReanalyse,
   parseDoorsCollectionEnvelope,
@@ -749,8 +749,12 @@ const legacyCalc = calculateDoors(ctx(legacyFacts), {
 });
 check(
   "50. New nested portions do not use the legacy lump calculator",
-  nestedCalc.missingInfo.includes(DOORS_NESTED_NOT_CALCULATED_MESSAGE) &&
-    nestedCalc.lineItems.length === 0 &&
+  !nestedCalc.lineItems.some((row) =>
+    /supply\/install allowance/i.test(row.label)
+  ) &&
+    nestedCalc.lineItems.every(
+      (row) => row.recommendedCost !== FITOUT_BENCHMARKS.doorsEach.cost * 4
+    ) &&
     legacyCalc.lineItems.length > 0 &&
     !legacyFacts.some((row) => row.key === DOORS_PORTIONS_FACT_KEY)
 );

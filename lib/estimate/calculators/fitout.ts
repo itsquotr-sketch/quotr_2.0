@@ -78,16 +78,14 @@ import {
 import {
   hasCanonicalCeilingsPortions,
 } from "@/lib/estimate/ceilings-portions";
-import {
-  DOORS_NESTED_NOT_CALCULATED_MESSAGE,
-  hasDoorsPortionsFact,
-} from "@/lib/estimate/doors-portions";
+import { hasDoorsPortionsFact } from "@/lib/estimate/doors-portions";
 import { calculateDoorsPhysical } from "@/lib/estimate/doors-physical";
 import { calculateCeilingsPhysical } from "@/lib/estimate/ceilings-physical";
 import {
   CEILING_COMMERCIAL_COMPLETENESS,
   commercializeCeilings,
 } from "@/lib/estimate/ceilings-commercial";
+import { commercializeDoors } from "@/lib/estimate/doors-commercial";
 
 function gmSell(
   cost: number,
@@ -917,10 +915,10 @@ export function calculateDoors(
   workArea: EstimateWorkArea
 ): CalculatorResult {
   /**
-   * Dual-path calculator boundary (DOORS-01B / DOORS-03):
-   * - Canonical nested `doors.portions` → physical takeoff, not yet priced.
-   *   Incomplete, empty, or unsupported nested fields must not fall through
-   *   to the legacy lump.
+   * Dual-path calculator boundary (DOORS-01B / DOORS-05):
+   * - Canonical nested `doors.portions` → physical takeoff then
+   *   commercializeDoors. Incomplete, empty, or unsupported nested fields
+   *   must not fall through to the legacy lump.
    * - Legacy flat `doors.count` / FITOUT_BENCHMARKS.doorsEach remain for
    *   hosted projects without portions. Do not alias new identities onto
    *   doorsEach. Do not extend that benchmark here.
@@ -928,17 +926,23 @@ export function calculateDoors(
   const { facts } = context;
   if (hasDoorsPortionsFact(facts, workArea.id)) {
     const physical = calculateDoorsPhysical({ facts, workArea });
+    const commercial = commercializeDoors({
+      physical,
+      workArea,
+      rates: context.rates,
+      organisationSettings: context.organisationSettings,
+      constraints: context.constraints,
+    });
     return {
-      lineItems: [],
-      assumptions: [...physical.assumptions],
-      missingInfo: [
-        DOORS_NESTED_NOT_CALCULATED_MESSAGE,
-        ...physical.missingInfo,
-      ],
+      lineItems: [...commercial.lineItems],
+      assumptions: [...commercial.assumptions],
+      missingInfo: [...commercial.missingInfo],
       exclusions: [],
-      confidence: 0,
+      confidence: baseConfidence(commercial.missingInfo.length),
       requirements:
-        physical.requirements.length > 0 ? physical.requirements : undefined,
+        commercial.requirements.length > 0
+          ? commercial.requirements
+          : undefined,
     };
   }
 
