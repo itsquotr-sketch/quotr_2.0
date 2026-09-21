@@ -323,6 +323,160 @@ export function briefHasIndependentDoors(briefText: string): boolean {
   return briefRequestsDoorWork(briefText);
 }
 
+const DOOR_LOCATION_ROOM =
+  "(?:master\\s+|main\\s+|guest\\s+|family\\s+|downstairs\\s+|upstairs\\s+)?(?:ensuite|bathroom|bedrooms?|kitchen|laundry)";
+
+function ownershipClauses(brief: string): string[] {
+  return brief
+    .split(/(?:[.!?;]|\balso\b|\bplus\b)+/i)
+    .map((row) => row.trim())
+    .filter(Boolean);
+}
+
+function clauseHasDoorOperation(clause: string): boolean {
+  return (
+    /\bdoors?\b/.test(clause) ||
+    /\bleaf\b|\bleaves\b/.test(clause) ||
+    /\bprehung\b|\bpre-hung\b/.test(clause)
+  );
+}
+
+function bathroomTokenIsDoorLocation(clause: string): boolean {
+  if (!/\b(?:ensuite|bathroom)\b/.test(clause)) return false;
+  if (!clauseHasDoorOperation(clause)) return false;
+  if (/\b(?:ensuite|bathroom) doors?\b/.test(clause)) return true;
+  if (
+    new RegExp(`\\bto(?:\\s+the)?\\s+${DOOR_LOCATION_ROOM}\\b`, "i").test(
+      clause
+    )
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function kitchenTokenIsDoorLocation(clause: string): boolean {
+  if (!/\bkitchen\b/.test(clause)) return false;
+  if (!clauseHasDoorOperation(clause)) return false;
+  if (/\bkitchen doors?\b/.test(clause)) return true;
+  if (/\bto(?:\s+the)?\s+kitchen\b/.test(clause)) return true;
+  return false;
+}
+
+const INDEPENDENT_BATHROOM_SIGNALS = [
+  "renovate",
+  "renovation",
+  "reno",
+  "retile",
+  "retiling",
+  "waterproof",
+  "waterproofing",
+  "vanity",
+  "bathroom lining",
+  "bathroom linings",
+  "ensuite lining",
+  "ensuite linings",
+  "full bathroom",
+  "bathroom reno",
+  "ensuite reno",
+  "tiled shower",
+  "ensuite shower",
+  "bathroom shower",
+  "strip-out",
+  "strip out",
+  "bathroom works",
+  "ensuite works",
+] as const;
+
+/**
+ * Bathroom / ensuite mentioned as a Door Set location (to the ensuite,
+ * bathroom door) is not independent Bathroom Renovation scope.
+ */
+export function briefHasIndependentBathroom(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  for (const clause of ownershipClauses(brief)) {
+    const hasRoom =
+      /\b(?:ensuite|bathroom)\b/.test(clause) ||
+      includesAny(clause, ["vanity", "tiled shower"]);
+    const hasSignal = includesAny(clause, INDEPENDENT_BATHROOM_SIGNALS);
+    if (
+      hasSignal &&
+      includesAny(clause, [
+        "vanity",
+        "waterproof",
+        "waterproofing",
+        "retile",
+        "retiling",
+        "renovate",
+        "renovation",
+        "full bathroom",
+        "bathroom lining",
+        "bathroom linings",
+      ])
+    ) {
+      return true;
+    }
+    if (hasSignal && hasRoom && !bathroomTokenIsDoorLocation(clause)) {
+      return true;
+    }
+    if (/\b(?:ensuite|bathroom)\b/.test(clause) && !bathroomTokenIsDoorLocation(clause)) {
+      return true;
+    }
+  }
+  return false;
+}
+
+const INDEPENDENT_KITCHEN_SIGNALS = [
+  "cabinetry",
+  "flatpack",
+  "benchtop",
+  "splashback",
+  "rangehood",
+  "kitchen renovation",
+  "renovate the kitchen",
+  "renovate kitchen",
+  "remove existing kitchen",
+  "install flatpack",
+] as const;
+
+/**
+ * “kitchen door” / “to the kitchen” as a Door Set location is not Kitchen
+ * renovation scope. Cabinetry / benchtop / splashback remain independent.
+ */
+export function briefHasIndependentKitchen(briefText: string): boolean {
+  const brief = normaliseBrief(briefText);
+  if (includesAny(brief, INDEPENDENT_KITCHEN_SIGNALS)) return true;
+  if (!/\bkitchen\b/.test(brief)) return false;
+  for (const clause of ownershipClauses(brief)) {
+    if (!/\bkitchen\b/.test(clause)) continue;
+    if (kitchenTokenIsDoorLocation(clause)) continue;
+    return true;
+  }
+  return false;
+}
+
+/**
+ * Suggested (machine-owned) Bathroom / Kitchen rows that extraction no
+ * longer proposes. Confirmed / user-kept rows are never returned.
+ */
+export function staleSuggestedOwnedWorkAreasToDrop(params: {
+  readonly existing: readonly {
+    readonly id: string;
+    readonly type: string;
+    readonly status?: string | null;
+  }[];
+  readonly extractedTypes: readonly string[];
+}): string[] {
+  const extracted = new Set(params.extractedTypes);
+  return params.existing
+    .filter((row) => {
+      if (row.status !== "suggested") return false;
+      if (row.type !== "bathroom" && row.type !== "kitchen") return false;
+      return !extracted.has(row.type);
+    })
+    .map((row) => row.id);
+}
+
 export function briefHasExplicitDemolition(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
   return includesAny(brief, [
@@ -520,6 +674,34 @@ export function classifyProposedWorkArea(params: {
           ? "Specialist door supply/install stated"
           : "Door leaf / jamb / hardware stated"
         : "Opening formation is owned by Internal Walls",
+      topLevel: independent,
+    };
+  }
+
+  if (params.type === "bathroom") {
+    const independent = briefHasIndependentBathroom(brief);
+    return {
+      type: params.type,
+      classification: independent
+        ? WORK_AREA_OWNERSHIP_CLASS.EXPLICIT
+        : WORK_AREA_OWNERSHIP_CLASS.NOT_REQUESTED,
+      evidence: independent
+        ? "Independent bathroom / ensuite renovation stated"
+        : "Ensuite / bathroom is a location label for another operation",
+      topLevel: independent,
+    };
+  }
+
+  if (params.type === "kitchen") {
+    const independent = briefHasIndependentKitchen(brief);
+    return {
+      type: params.type,
+      classification: independent
+        ? WORK_AREA_OWNERSHIP_CLASS.EXPLICIT
+        : WORK_AREA_OWNERSHIP_CLASS.NOT_REQUESTED,
+      evidence: independent
+        ? "Independent kitchen renovation stated"
+        : "Kitchen is a location label for another operation",
       topLevel: independent,
     };
   }

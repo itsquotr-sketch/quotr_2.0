@@ -26,8 +26,10 @@ import { discoverWorkAreaInstances, snippetForDiscoveredInstance } from "@/lib/w
 import {
   briefHasBathroomEmbeddedCeiling,
   briefHasExplicitCeilings,
+  briefHasIndependentBathroom,
   briefHasIndependentCeilings,
   briefHasIndependentDoors,
+  briefHasIndependentKitchen,
   filterTopLevelWorkAreas,
 } from "@/lib/work-areas/ownership";
 import {
@@ -644,15 +646,13 @@ function inferKitchen(
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
-  if (!includesAny(brief, ["kitchen", "cabinetry", "flatpack", "benchtop", "splashback"])) {
-    return;
-  }
+  if (!briefHasIndependentKitchen(brief)) return;
 
   addWorkAreaIfMissing(
     extraction,
     "kitchen",
     0.86,
-    "Kitchen mentioned in brief",
+    "EXPLICIT: Independent kitchen renovation",
     allowedTypes
   );
 
@@ -752,13 +752,13 @@ function inferBathroom(
   extraction: AIExtractionOutput,
   allowedTypes: string[]
 ): void {
-  if (!includesAny(brief, ["bathroom", "ensuite"])) return;
+  if (!briefHasIndependentBathroom(brief)) return;
 
   addWorkAreaIfMissing(
     extraction,
     "bathroom",
     0.88,
-    "Bathroom mentioned in brief",
+    "EXPLICIT: Independent bathroom / ensuite renovation",
     allowedTypes
   );
 

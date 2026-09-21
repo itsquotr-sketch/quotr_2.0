@@ -37,6 +37,7 @@ import {
   existingWorkAreaInstanceKeys,
   shouldInsertWorkAreaInstance,
 } from "@/lib/work-areas/instances";
+import { staleSuggestedOwnedWorkAreasToDrop } from "@/lib/work-areas/ownership";
 import {
   type AnalysePersistFailureClass,
   type TouchedConstraintSnapshot,
@@ -429,11 +430,33 @@ export async function saveBriefAndSeedWorkAreas(
 
   const { data: existingWorkAreas } = await supabase
     .from("work_areas")
-    .select("id, type, name")
+    .select("id, type, name, status")
     .eq("project_id", projectId);
 
+  const staleIds = staleSuggestedOwnedWorkAreasToDrop({
+    existing: existingWorkAreas ?? [],
+    extractedTypes: extraction.workAreas.map((row) => row.type),
+  });
+  if (staleIds.length > 0) {
+    await supabase
+      .from("project_facts")
+      .delete()
+      .eq("project_id", projectId)
+      .in("work_area_id", staleIds);
+    await supabase
+      .from("work_areas")
+      .delete()
+      .eq("project_id", projectId)
+      .eq("status", "suggested")
+      .in("id", staleIds);
+  }
+
+  const remainingExisting = (existingWorkAreas ?? []).filter(
+    (row) => !staleIds.includes(row.id)
+  );
+
   const existingInstanceKeys = existingWorkAreaInstanceKeys(
-    (existingWorkAreas ?? []).map((row) => ({
+    remainingExisting.map((row) => ({
       type: row.type,
       name: row.name,
     }))

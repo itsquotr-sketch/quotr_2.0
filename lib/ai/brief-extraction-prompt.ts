@@ -7,6 +7,7 @@ Rules:
 - Distinct Wall Types belong inside ONE internal_walls instance via internal_walls.wall_types. Do not emit one Internal Walls Work Area per Wall Type.
 - Distinct Ceiling Portions belong inside ONE ceilings instance via ceilings.portions. Do not emit one Ceilings Work Area per room unless the brief names commercially distinct packages (Ground Floor Ceilings vs Detached Garage Ceilings).
 - Distinct Door Sets belong inside ONE doors instance via doors.portions. Do not emit one Doors Work Area per Door Set. Do not flatten multiple Door Sets into doors.count.
+- Room names used only as locations for another owned operation must not create that room's Work Area. "to the ensuite", "bathroom door", "bedroom doors", "kitchen door", and "laundry door" stay on Doors (or the owning operation). Create Bathroom Renovation only when ensuite/bathroom work is independently stated (renovate, retile, waterproof, vanity, linings, shower tiling). Create Kitchen only when kitchen renovation/cabinetry/benchtop work is independently stated.
 - Do not flatten multiple ceiling portions into one area_m2.
 - Separate Internal Walls instances only when locations/packages are commercially distinct (ground-floor office vs upstairs tenancy).
 - Attach instance-specific facts with work_area_name matching the instance name.

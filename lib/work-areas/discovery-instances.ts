@@ -7,7 +7,10 @@
  */
 
 import { COORDINATION_ORIGINAL_BRIEF } from "@/lib/estimate/internal-walls-brief";
-import { briefHasExplicitInternalWalls } from "@/lib/work-areas/ownership";
+import {
+  briefHasExplicitInternalWalls,
+  briefHasIndependentBathroom,
+} from "@/lib/work-areas/ownership";
 
 export type DiscoveredWorkAreaInstance = {
   readonly type: string;
@@ -41,6 +44,7 @@ function uniqueByName(
 }
 
 function discoverBathrooms(brief: string): DiscoveredWorkAreaInstance[] {
+  if (!briefHasIndependentBathroom(brief)) return [];
   const found: DiscoveredWorkAreaInstance[] = [];
   const labelled: Array<{ pattern: RegExp; name: string }> = [
     { pattern: /\bmaster ensuite\b/, name: "Master Ensuite" },

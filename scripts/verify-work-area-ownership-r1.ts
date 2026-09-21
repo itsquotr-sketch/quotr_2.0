@@ -168,6 +168,12 @@ check(
   doorTypes.includes("internal_walls") && doorTypes.includes("doors"),
   doorTypes.join(",")
 );
+check(
+  "ensuite as door location does not create Bathroom",
+  !typesOf(
+    "Supply and install one hollow-core prehung internal door to the ensuite."
+  ).includes("bathroom")
+);
 
 console.log("\n=== Opening only ===\n");
 const openingBrief = "Build a wall with an 810mm opening but no door.";
