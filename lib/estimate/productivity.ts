@@ -7,6 +7,17 @@ import {
 } from "@/lib/estimate/ceilings-identities";
 import { WALL_INSULATION_HOURS_PER_M2 } from "@/lib/estimate/insulation-fallback";
 import {
+  DOORS_HARDWARE_INSTALL_HOURS_PER_SET,
+  DOORS_HARDWARE_INSTALL_HOURS_PER_SET_KEY,
+  DOORS_HARDWARE_INSTALL_LABEL,
+  DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR,
+  DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR_KEY,
+  DOORS_PREHUNG_INSTALL_LABEL,
+  DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR,
+  DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR_KEY,
+  DOORS_REPLACEMENT_LEAF_INSTALL_LABEL,
+} from "@/lib/estimate/doors-identities";
+import {
   INTERNAL_WALLS_CORNICE_HOURS_PER_LM,
   INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
   INTERNAL_WALLS_INSULATION_INSTALL_HOURS_PER_M2_KEY,
@@ -37,6 +48,8 @@ function normalizeProductivityUnit(unit: string): string {
 const HOLE_UNITS = new Set(["hole", "h/hole", "hours_per_hole"]);
 const EA_UNITS = new Set(["ea", "each", "h/ea", "hours_per_ea"]);
 const BAG_UNITS = new Set(["bag", "bags", "h/bag", "hours_per_bag"]);
+const DOOR_UNITS = new Set(["door", "h/door", "hours_per_door"]);
+const SET_UNITS = new Set(["set", "h/set", "hours_per_set"]);
 
 /** Exact physical-unit families. h/hole is not h/ea unless a contract declares them compatible. */
 export function productivityUnitsCompatible(
@@ -51,6 +64,8 @@ export function productivityUnitsCompatible(
   if (HOLE_UNITS.has(have) && HOLE_UNITS.has(wanted)) return true;
   if (EA_UNITS.has(have) && EA_UNITS.has(wanted)) return true;
   if (BAG_UNITS.has(have) && BAG_UNITS.has(wanted)) return true;
+  if (DOOR_UNITS.has(have) && DOOR_UNITS.has(wanted)) return true;
+  if (SET_UNITS.has(have) && SET_UNITS.has(wanted)) return true;
   return false;
 }
 
@@ -575,6 +590,24 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     "Painting application",
     PAINTING_LABOUR_HOURS_PER_M2,
     "m2"
+  ),
+  [DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR_KEY]: productivityEntry(
+    DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR_KEY,
+    DOORS_PREHUNG_INSTALL_LABEL,
+    DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR,
+    "door"
+  ),
+  [DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR_KEY]: productivityEntry(
+    DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR_KEY,
+    DOORS_REPLACEMENT_LEAF_INSTALL_LABEL,
+    DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR,
+    "door"
+  ),
+  [DOORS_HARDWARE_INSTALL_HOURS_PER_SET_KEY]: productivityEntry(
+    DOORS_HARDWARE_INSTALL_HOURS_PER_SET_KEY,
+    DOORS_HARDWARE_INSTALL_LABEL,
+    DOORS_HARDWARE_INSTALL_HOURS_PER_SET,
+    "set"
   ),
 };
 

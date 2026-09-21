@@ -12,7 +12,6 @@ import { calculateDoors } from "../lib/estimate/calculators/fitout";
 import { FITOUT_BENCHMARKS } from "../lib/estimate/benchmark-rates";
 import {
   liveQuotrMaterialCost,
-  liveQuotrProductivity,
   workAreaMayCloseAtL5,
 } from "../lib/estimate/benchmark-coverage";
 import {
@@ -20,7 +19,6 @@ import {
 } from "../lib/estimate/doors-physical";
 import {
   DOORS_CUSTOM_LEAF_COMPONENT,
-  DOORS_HARDWARE_INSTALL_HOURS_PER_SET_KEY,
   DOORS_HARDWARE_STANDARD_COST_EX_GST,
   DOORS_HARDWARE_STANDARD_KEY,
   DOORS_HARDWARE_STANDARD_LABEL,
@@ -31,10 +29,8 @@ import {
   DOORS_ORDINARY_MATERIAL_KEYS,
   DOORS_PREHUNG_HOLLOW_CORE_SET_COST_EX_GST,
   DOORS_PREHUNG_HOLLOW_CORE_SET_KEY,
-  DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR_KEY,
   DOORS_PREHUNG_SOLID_CORE_SET_COST_EX_GST,
   DOORS_PREHUNG_SOLID_CORE_SET_KEY,
-  DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR_KEY,
   DOORS_SPECIALIST_COMPONENT,
 } from "../lib/estimate/doors-identities";
 import { DOORS_NESTED_NOT_CALCULATED_MESSAGE, DOORS_PORTIONS_FACT_KEY, type DoorPortion } from "../lib/estimate/doors-portions";
@@ -461,12 +457,9 @@ check(
 
 check(
   "28. Override does not create labour hours",
-  liveQuotrProductivity(DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR_KEY) == null &&
-    liveQuotrProductivity(DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR_KEY) == null &&
-    liveQuotrProductivity(DOORS_HARDWARE_INSTALL_HOURS_PER_SET_KEY) == null &&
-    qtyPhysical.requirements
-      .filter((row) => row.kind === "labour")
-      .every((row) => row.baseHours === 0 && row.priced === false)
+  qtyPhysical.requirements
+    .filter((row) => row.kind === "labour")
+    .every((row) => row.baseHours === 0 && row.priced === false)
 );
 
 console.log("\n=== DOORS-04A physical alignment ===\n");
@@ -787,10 +780,11 @@ check(
 
 const doorsCoverage = verifyRegisteredWorkAreaBenchmarkCoverage("doors");
 check(
-  "58. Benchmark coverage reports material authority only",
+  "58. Benchmark coverage still reports five ordinary material identities",
   doorsCoverage.ok &&
-    doorsCoverage.resolves.length === 5 &&
-    doorsCoverage.resolves.every((row) => row.productivityOperation == null) &&
+    doorsCoverage.resolves.filter((row) =>
+      FIVE.includes(row.materialIdentity as (typeof FIVE)[number])
+    ).length === 5 &&
     FIVE.every((key) =>
       DOORS_BENCHMARK_REQUIREMENTS.some(
         (row) => row.materialIdentity === key && row.outcome === "RESOLVES_WITH_QUOTR"
@@ -799,11 +793,12 @@ check(
 );
 
 check(
-  "59. Productivity remains unresolved/not falsely covered",
+  "59. Custom/specialist stay PR and Doors is not commercially closed",
   !workAreaMayCloseAtL5(doorsCoverage) &&
-    doorsCoverage.needsOwnerApproval.length === 3 &&
-    liveQuotrProductivity(DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR_KEY) == null &&
-    doorsCoverage.intentionalPr.length >= 2
+    doorsCoverage.intentionalPr.length >= 2 &&
+    doorsCoverage.needsOwnerApproval.some((row) =>
+      /hosted commercial/i.test(row.component)
+    )
 );
 
 const iwCoverage = verifyRegisteredWorkAreaBenchmarkCoverage("internal_walls");

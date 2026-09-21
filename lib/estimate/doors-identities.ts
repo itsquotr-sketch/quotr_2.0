@@ -67,8 +67,8 @@ export const DOORS_REPLACEMENT_LEAF_INSTALL_LABOUR =
 export const DOORS_HARDWARE_INSTALL_LABOUR = "doors.hardware.install" as const;
 
 /**
- * Future productivity identities. Referenced as operation keys only.
- * DOORS-03 does not register hour values or calculate hours.
+ * DOORS-04B — owner-approved Quotr V1 productivity (person-hours).
+ * Not labour COST, not sell, not dimension-specific, not material rates.
  */
 export const DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR_KEY =
   "doors.prehung.install.hours_per_door" as const;
@@ -77,8 +77,26 @@ export const DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR_KEY =
 export const DOORS_HARDWARE_INSTALL_HOURS_PER_SET_KEY =
   "doors.hardware.install.hours_per_set" as const;
 
-/** Unpriced labour rate identity — not registered as a COST. */
-export const DOORS_CARPENTER_LABOUR_RATE_KEY = "doors.carpenter.hour" as const;
+export const DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR = 2 as const;
+export const DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR = 1.5 as const;
+export const DOORS_HARDWARE_INSTALL_HOURS_PER_SET = 0.5 as const;
+
+export const DOORS_PREHUNG_INSTALL_LABEL =
+  "Prehung internal door-set installation" as const;
+export const DOORS_REPLACEMENT_LEAF_INSTALL_LABEL =
+  "Replacement internal door-leaf installation" as const;
+export const DOORS_HARDWARE_INSTALL_LABEL =
+  "Standard internal door hardware installation" as const;
+
+export const DOORS_PREHUNG_INSTALL_DESCRIPTION =
+  "Quotr V1 2.00 person-hours/door. Ordinary labour to position and fix a standard prehung internal door set into a prepared opening, plumb/level/adjust the standard jamb/frame, and complete ordinary final door-set adjustment. Standard hinges are in the prehung material. Excludes forming or resizing the opening, structural framing, architraves, stopping/making good, painting, removal/disposal, difficult access, specialist hardware, fire/acoustic certification, access control, and unusual remedial work. Same hours for all supported sizes and hollow/solid construction. Hours, not dollars." as const;
+export const DOORS_REPLACEMENT_LEAF_INSTALL_DESCRIPTION =
+  "Quotr V1 1.50 person-hours/door. Ordinary labour to fit one replacement internal door leaf into a retained existing frame/jamb, including normal fitting, hanging, and ordinary adjustment. Excludes frame/jamb replacement, opening alteration, substantial frame repair, architraves, stopping, painting, removal/disposal, and specialist door systems. Same hours for all supported sizes and hollow/solid construction. Hours, not dollars." as const;
+export const DOORS_HARDWARE_INSTALL_DESCRIPTION =
+  "Quotr V1 0.50 person-hours/set. Ordinary installation of one standard internal latch/lever hardware set. Excludes premium hardware, mortice locks beyond ordinary V1 scope, closers, panic hardware, electronic/security hardware, access control, fire/acoustic hardware, and remedial door/frame work. Not included inside prehung or replacement-leaf hours. Hours, not dollars." as const;
+
+/** Existing carpenter/builder labour COST path — not a Doors-specific $/hour. */
+export const DOORS_CARPENTER_LABOUR_RATE_KEY = "labour.carpenter.hour" as const;
 
 export const DOORS_ORDINARY_MATERIAL_KEYS = [
   DOORS_PREHUNG_HOLLOW_CORE_SET_KEY,
@@ -86,6 +104,12 @@ export const DOORS_ORDINARY_MATERIAL_KEYS = [
   DOORS_LEAF_HOLLOW_CORE_KEY,
   DOORS_LEAF_SOLID_CORE_KEY,
   DOORS_HARDWARE_STANDARD_KEY,
+] as const;
+
+export const DOORS_ORDINARY_PRODUCTIVITY_KEYS = [
+  DOORS_PREHUNG_INSTALL_HOURS_PER_DOOR_KEY,
+  DOORS_REPLACEMENT_LEAF_INSTALL_HOURS_PER_DOOR_KEY,
+  DOORS_HARDWARE_INSTALL_HOURS_PER_SET_KEY,
 ] as const;
 
 export const DOORS_ORDINARY_LABOUR_COMPONENTS = [
