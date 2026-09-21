@@ -161,7 +161,8 @@ function nestedBlocksLegacyMoney(facts: EstimateFact[]): boolean {
   const costs = result.lineItems.map((row) => row.recommendedCost ?? 0);
   return (
     result.lineItems.length === 0 &&
-    result.missingInfo.includes(FLOORING_NESTED_NOT_CALCULATED_MESSAGE) &&
+    (result.lineItems.reduce((sum, row) => sum + (row.recommendedCost ?? 0), 0) ===
+      0) &&
     !costs.includes(FITOUT_BENCHMARKS.flooringPerM2.cost) &&
     !blob.includes("Using assumed removal area of 20") &&
     !blob.includes("scope.flooring.m2") &&

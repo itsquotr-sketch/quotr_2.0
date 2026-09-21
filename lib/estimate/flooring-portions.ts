@@ -15,9 +15,9 @@
  * or dimensions.
  *
  * Dual-path calculator boundary:
- * - Canonical nested `flooring.portions` is not calculated on the legacy
- *   fitout package path. Nested portions must not fall through to the
- *   legacy generic Flooring m² allowance merely because fields are incomplete.
+ * - Canonical nested `flooring.portions` uses the Flooring physical kernel.
+ *   Nested portions must not fall through to the legacy generic Flooring m²
+ *   allowance merely because fields are incomplete.
  * - Legacy flat `flooring.area_m2` / calculateFlooring lumps remain for
  *   hosted projects without portions.
  *

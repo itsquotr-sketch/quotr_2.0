@@ -504,7 +504,7 @@ check("81. no duplicates after repeated re-analysis", repeat.length === 2 && new
 console.log("\n=== I. Legacy and cross-area safety ===\n");
 const completeFacts = persistPortions([carpetComplete, vinylComplete]);
 const nestedMoney = calculateFlooring(ctx(completeFacts), WA as never);
-check("82. nested complete remains no-money staged path", nestedMoney.lineItems.length === 0 && nestedMoney.missingInfo.includes(FLOORING_NESTED_NOT_CALCULATED_MESSAGE));
+check("82. nested complete remains no-money staged path", nestedMoney.lineItems.length === 0 && (nestedMoney.requirements?.length ?? 0) > 0 && !nestedMoney.missingInfo.includes(FLOORING_NESTED_NOT_CALCULATED_MESSAGE));
 check("83. nested incomplete does not use legacy", calculateFlooring(ctx(unlabeledIncomplete), WA as never).lineItems.length === 0);
 const specialist = persistPortions([{
   ...createEmptyFlooringPortion({ label: "Entry" }),

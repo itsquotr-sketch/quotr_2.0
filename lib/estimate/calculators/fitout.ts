@@ -79,11 +79,9 @@ import {
   hasCanonicalCeilingsPortions,
 } from "@/lib/estimate/ceilings-portions";
 import { hasDoorsPortionsFact } from "@/lib/estimate/doors-portions";
-import {
-  FLOORING_NESTED_NOT_CALCULATED_MESSAGE,
-  hasFlooringPortionsFact,
-} from "@/lib/estimate/flooring-portions";
+import { hasFlooringPortionsFact } from "@/lib/estimate/flooring-portions";
 import { calculateDoorsPhysical } from "@/lib/estimate/doors-physical";
+import { calculateFlooringPhysical } from "@/lib/estimate/flooring-physical";
 import { calculateCeilingsPhysical } from "@/lib/estimate/ceilings-physical";
 import {
   CEILING_COMMERCIAL_COMPLETENESS,
@@ -1118,21 +1116,24 @@ export function calculateFlooring(
   workArea: EstimateWorkArea
 ): CalculatorResult {
   /**
-   * Dual-path calculator boundary (FLOORING-01B):
-   * - Canonical nested `flooring.portions` is not calculated here.
+   * Dual-path calculator boundary (FLOORING-01B / FLOORING-03):
+   * - Canonical nested `flooring.portions` → physical takeoff only.
    *   Incomplete, empty, or unsupported nested fields must not fall through
-   *   to the legacy FITOUT package.
+   *   to the legacy FITOUT package. No COST, hours, or sell here.
    * - Legacy flat `flooring.area_m2` / FITOUT_BENCHMARKS.flooringPerM2 remain
    *   for hosted projects without portions. Do not extend that package here.
    */
   const { facts } = context;
   if (hasFlooringPortionsFact(facts, workArea.id)) {
+    const physical = calculateFlooringPhysical({ facts, workArea });
     return {
       lineItems: [],
-      assumptions: [],
-      missingInfo: [FLOORING_NESTED_NOT_CALCULATED_MESSAGE],
+      assumptions: [...physical.assumptions],
+      missingInfo: [...physical.missingInfo],
       exclusions: [],
-      confidence: baseConfidence(1),
+      confidence: baseConfidence(physical.missingInfo.length),
+      requirements:
+        physical.requirements.length > 0 ? physical.requirements : undefined,
     };
   }
 
