@@ -36,6 +36,7 @@ import type { InterviewCandidate } from "@/lib/builder-interview/types";
 import { isQuestionSuppressedByScopeItemExclusion } from "@/lib/scope-discovery/ui/scope-item-question-gates";
 import { isProjectConditionDuplicateFactKey } from "@/lib/project-conditions/canonical";
 import { DOORS_PORTIONS_FACT_KEY } from "@/lib/estimate/doors-portions";
+import { FLOORING_PORTIONS_FACT_KEY } from "@/lib/estimate/flooring-portions";
 
 /**
  * Stage 3.1B.7F-R6: do not silently drop applicable questions on multi-WA jobs.
@@ -311,6 +312,16 @@ export function buildMissingRequiredQuestionsForWorkAreas(params: {
       mergedFacts.some(
         (row) =>
           row.key === DOORS_PORTIONS_FACT_KEY &&
+          row.work_area_id === workArea.id
+      )
+    ) {
+      continue;
+    }
+    if (
+      workArea.type === "flooring" &&
+      mergedFacts.some(
+        (row) =>
+          row.key === FLOORING_PORTIONS_FACT_KEY &&
           row.work_area_id === workArea.id
       )
     ) {
@@ -629,6 +640,16 @@ export function buildQuestionBlockFromProjectState(params: {
     ) {
       continue;
     }
+    if (
+      workArea.type === "flooring" &&
+      mergedFacts.some(
+        (row) =>
+          row.key === FLOORING_PORTIONS_FACT_KEY &&
+          row.work_area_id === workArea.id
+      )
+    ) {
+      continue;
+    }
     const templates = getScopeQuestions(workArea.type);
     if (templates.length === 0) {
       continue;
@@ -723,12 +744,18 @@ export function buildQuestionBlockForWorkArea(params: {
       .map((workArea) => workArea.type)
   );
   const templates =
-    params.workArea.type === "doors" &&
-    mergedFacts.some(
-      (row) =>
-        row.key === DOORS_PORTIONS_FACT_KEY &&
-        row.work_area_id === params.workArea.id
-    )
+    (params.workArea.type === "doors" &&
+      mergedFacts.some(
+        (row) =>
+          row.key === DOORS_PORTIONS_FACT_KEY &&
+          row.work_area_id === params.workArea.id
+      )) ||
+    (params.workArea.type === "flooring" &&
+      mergedFacts.some(
+        (row) =>
+          row.key === FLOORING_PORTIONS_FACT_KEY &&
+          row.work_area_id === params.workArea.id
+      ))
       ? []
       : getScopeQuestions(params.workArea.type);
   const candidates: CandidateQuestion[] = [];

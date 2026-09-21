@@ -25,6 +25,7 @@ import { hasFactValue, isNotSureValue } from "@/lib/estimate/facts";
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
 import { isCeilingsPortionWriteKey } from "@/lib/estimate/ceilings-portions";
 import { isDoorsPortionWriteKey } from "@/lib/estimate/doors-portions";
+import { isFlooringPortionWriteKey } from "@/lib/estimate/flooring-portions";
 import {
   getConsumedProjectConditionDef,
   listConsumedProjectConditionDefs,
@@ -79,6 +80,9 @@ function isEditableConsumedFact(workAreaType: string, factKey: string): boolean 
     return false;
   }
   if (workAreaType === "doors" && isDoorsPortionWriteKey(factKey)) {
+    return false;
+  }
+  if (workAreaType === "flooring" && isFlooringPortionWriteKey(factKey)) {
     return false;
   }
   const template = getQuestionTemplateByKey(factKey);

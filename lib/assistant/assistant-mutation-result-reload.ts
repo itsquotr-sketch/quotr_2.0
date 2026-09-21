@@ -28,6 +28,7 @@
 import { isInternalWallsWallTypeWriteKey } from "@/lib/estimate/internal-walls-wall-types";
 import { isCeilingsPortionWriteKey } from "@/lib/estimate/ceilings-portions";
 import { isDoorsPortionWriteKey } from "@/lib/estimate/doors-portions";
+import { isFlooringPortionWriteKey } from "@/lib/estimate/flooring-portions";
 
 export type AssistantMutationWorkAreaRow = {
   id: string;
@@ -90,6 +91,9 @@ export function scalarFactWorkAreaReuse(input: {
     return undefined;
   }
   if (isDoorsPortionWriteKey(input.key)) {
+    return undefined;
+  }
+  if (isFlooringPortionWriteKey(input.key)) {
     return undefined;
   }
   if (input.error || !Array.isArray(input.workAreas)) {

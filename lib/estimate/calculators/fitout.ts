@@ -79,6 +79,10 @@ import {
   hasCanonicalCeilingsPortions,
 } from "@/lib/estimate/ceilings-portions";
 import { hasDoorsPortionsFact } from "@/lib/estimate/doors-portions";
+import {
+  FLOORING_NESTED_NOT_CALCULATED_MESSAGE,
+  hasFlooringPortionsFact,
+} from "@/lib/estimate/flooring-portions";
 import { calculateDoorsPhysical } from "@/lib/estimate/doors-physical";
 import { calculateCeilingsPhysical } from "@/lib/estimate/ceilings-physical";
 import {
@@ -1113,7 +1117,25 @@ export function calculateFlooring(
   context: EstimateContext,
   workArea: EstimateWorkArea
 ): CalculatorResult {
+  /**
+   * Dual-path calculator boundary (FLOORING-01B):
+   * - Canonical nested `flooring.portions` is not calculated here.
+   *   Incomplete, empty, or unsupported nested fields must not fall through
+   *   to the legacy FITOUT package.
+   * - Legacy flat `flooring.area_m2` / FITOUT_BENCHMARKS.flooringPerM2 remain
+   *   for hosted projects without portions. Do not extend that package here.
+   */
   const { facts } = context;
+  if (hasFlooringPortionsFact(facts, workArea.id)) {
+    return {
+      lineItems: [],
+      assumptions: [],
+      missingInfo: [FLOORING_NESTED_NOT_CALCULATED_MESSAGE],
+      exclusions: [],
+      confidence: baseConfidence(1),
+    };
+  }
+
   const removalOnly = isFlooringRemovalOnly(facts, workArea.id);
 
   if (removalOnly) {

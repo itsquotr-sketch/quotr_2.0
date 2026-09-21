@@ -77,6 +77,11 @@ import {
   DOORS_PORTIONS_FACT_KEY,
   mergePersistedDoorsPortionsOnReanalyse,
 } from "@/lib/estimate/doors-portions";
+import {
+  FLOORING_PORTIONS_FACT_KEY,
+  flooringPortionHasUserAuthority,
+  mergePersistedFlooringPortionsOnReanalyse,
+} from "@/lib/estimate/flooring-portions";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { filterPersistableAnswers } from "@/lib/assistant/answer-persistence";
 import {
@@ -596,6 +601,35 @@ export async function saveBriefAndSeedWorkAreas(
             portion.label_authority === "user" ||
             portion.other_description_authority === "user"
         );
+        const { error: mergeError } = await supabase
+          .from("project_facts")
+          .update({
+            label: row.label,
+            value: merged,
+            unit: row.unit,
+            source:
+              keepsUserSource && existing.source === "user"
+                ? "user"
+                : "ai_extracted",
+            confidence: row.confidence,
+          })
+          .eq("id", existing.id)
+          .eq("project_id", projectId);
+        if (mergeError) {
+          return failPersist(
+            "persist_facts",
+            `fact update failed: ${mergeError.message}`
+          );
+        }
+        continue;
+      }
+
+      if (existing && row.key === FLOORING_PORTIONS_FACT_KEY) {
+        const merged = mergePersistedFlooringPortionsOnReanalyse({
+          extracted: row.value,
+          persisted: existing.value,
+        });
+        const keepsUserSource = merged.some(flooringPortionHasUserAuthority);
         const { error: mergeError } = await supabase
           .from("project_facts")
           .update({

@@ -1185,6 +1185,15 @@ function buildRetainingWallDraft(facts?: WorkAreaQuoteFact[]): string {
 
 function buildFlooringDraft(name: string, facts?: WorkAreaQuoteFact[]): string {
   const label = name.trim() || "flooring";
+  const nestedCollection = facts?.find((fact) => fact.key === "flooring.portions")
+    ?.value;
+  if (nestedCollection) {
+    // Nested Quote wording is FLOORING-06. Do not dump collection JSON or
+    // compete with leftover scalar flooring.type / scotia facts.
+    return finalizeDraft(
+      `Carry out ${label.toLowerCase()} works to the agreed scope. Final floor selections, substrate conditions and moisture requirements are subject to confirmation.`
+    );
+  }
   const flooringType = factValue(facts, "flooring.type");
   const area = factValue(facts, "flooring.area_m2");
   const supplyScope = factValue(facts, "flooring.supply_scope");

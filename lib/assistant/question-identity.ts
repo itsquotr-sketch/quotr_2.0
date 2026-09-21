@@ -83,6 +83,10 @@ export function isDoorsNestedFactKey(factKey: string): boolean {
   return factKey.startsWith("doors.portion.");
 }
 
+export function isFlooringNestedFactKey(factKey: string): boolean {
+  return factKey.startsWith("flooring.portion.");
+}
+
 export function wallTypeQuestionIdentity(params: {
   workAreaId: string;
   factKey: string;
@@ -131,6 +135,23 @@ export function doorPortionQuestionIdentity(params: {
   nestedItemId?: string | null;
 }): QuestionSemanticIdentity {
   const nested = isDoorsNestedFactKey(params.factKey);
+  const nestedItemId = nested
+    ? (normalizeNestedId(params.nestedItemId) ??
+      draftNestedItemId(params.workAreaId))
+    : undefined;
+  return {
+    workAreaId: params.workAreaId,
+    factKey: params.factKey,
+    nestedItemId,
+  };
+}
+
+export function flooringPortionQuestionIdentity(params: {
+  workAreaId: string;
+  factKey: string;
+  nestedItemId?: string | null;
+}): QuestionSemanticIdentity {
+  const nested = isFlooringNestedFactKey(params.factKey);
   const nestedItemId = nested
     ? (normalizeNestedId(params.nestedItemId) ??
       draftNestedItemId(params.workAreaId))
@@ -191,6 +212,17 @@ export function identityFromCaptureRow(row: {
     (row.workAreaType === "doors" || isDoorsNestedFactKey(factKey))
   ) {
     return doorPortionQuestionIdentity({
+      workAreaId,
+      factKey,
+      nestedItemId,
+    });
+  }
+  if (
+    workAreaId &&
+    factKey &&
+    (row.workAreaType === "flooring" || isFlooringNestedFactKey(factKey))
+  ) {
+    return flooringPortionQuestionIdentity({
       workAreaId,
       factKey,
       nestedItemId,
