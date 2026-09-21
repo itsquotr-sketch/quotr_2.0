@@ -130,7 +130,9 @@ export const WORK_AREA_SUPPORT_ENTRIES: readonly WorkAreaSupportEntry[] = [
       "Component",
       type === "external_stairs"
         ? "Often nested under Deck. Not a standalone Tier-1 claim."
-        : "Commercial interior component. Price as this WA, not commercial_fitout."
+        : type === "doors"
+          ? "Ordinary nested Doors price and quote through hosted COST. Custom/specialist stay pending. Not human-QA frozen."
+          : "Commercial interior component. Price as this WA, not commercial_fitout."
     )
   ),
   entry(

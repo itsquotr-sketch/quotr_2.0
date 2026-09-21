@@ -1261,10 +1261,14 @@ check(
     )
 );
 check(
-  "68. Quote is not falsely claimed complete",
-  !workAreaMayCloseAtL5(doorsCoverage) &&
-    doorsCoverage.needsOwnerApproval.some((row) =>
-      /pricing and quote/i.test(row.component)
+  "68. Quote wording is implemented without claiming human-QA frozen",
+  workAreaMayCloseAtL5(doorsCoverage) &&
+    DOORS_BENCHMARK_REQUIREMENTS.some(
+      (row) =>
+        /pricing and quote/i.test(row.component) &&
+        row.outcome === "RESOLVES_WITH_QUOTR" &&
+        /DOORS-07/.test(row.notes) &&
+        /not human-qa frozen/i.test(row.notes)
     )
 );
 

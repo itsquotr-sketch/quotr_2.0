@@ -13,6 +13,7 @@ import {
   containsSuspiciousQuoteText,
   sanitizeClientQuoteLabel,
 } from "@/lib/quotes/sanitize";
+import { doorsPricingItemIsClientPriced } from "@/lib/estimate/doors-quote";
 
 const INTERNAL_PHRASES = [
   "benchmark",
@@ -139,6 +140,7 @@ export function mapPricingItemsToQuoteItems(
 
   return pricingItems
     .filter((item) => item.visible_on_quote)
+    .filter((item) => doorsPricingItemIsClientPriced(item))
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((item) => {
       let sectionDescription: string | null = null;
@@ -183,7 +185,10 @@ export function buildInclusionsFromPricing(
   workAreaNames: Map<string, string>
 ): string[] {
   const visibleItems = pricingItems.filter(
-    (item) => item.visible_on_quote && !item.optional
+    (item) =>
+      item.visible_on_quote &&
+      !item.optional &&
+      doorsPricingItemIsClientPriced(item)
   );
   const inclusions = new Set<string>();
 

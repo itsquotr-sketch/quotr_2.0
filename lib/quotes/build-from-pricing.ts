@@ -159,7 +159,13 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
       continue;
     }
     const list = pricingItemsByWorkAreaId.get(item.work_area_id) ?? [];
-    list.push({ label });
+    list.push({
+      label,
+      component_key: item.component_key,
+      cost_known: item.cost_known,
+      total_cost: item.total_cost,
+      total_sell: item.total_sell,
+    });
     pricingItemsByWorkAreaId.set(item.work_area_id, list);
   }
 

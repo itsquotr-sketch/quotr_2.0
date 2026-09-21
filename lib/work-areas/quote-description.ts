@@ -18,6 +18,10 @@ import {
 import {
   formatCeilingLiningSummary,
 } from "@/lib/assistant/builder-review/ceilings-review-groups";
+import {
+  buildNestedDoorsQuoteDraft,
+  hasNestedDoorsPortionsFact,
+} from "@/lib/estimate/doors-quote";
 
 export type WorkAreaQuoteFact = {
   key: string;
@@ -27,6 +31,10 @@ export type WorkAreaQuoteFact = {
 
 export type WorkAreaQuotePricingItem = {
   label: string;
+  component_key?: string | null;
+  cost_known?: boolean;
+  total_cost?: number;
+  total_sell?: number;
 };
 
 export type WorkAreaQuoteDraftInput = {
@@ -918,7 +926,14 @@ function buildCeilingsDraft(facts?: WorkAreaQuoteFact[]): string {
   return finalizeDraft(draft);
 }
 
-function buildDoorsDraft(facts?: WorkAreaQuoteFact[]): string {
+function buildDoorsDraft(
+  facts?: WorkAreaQuoteFact[],
+  pricingItems?: WorkAreaQuotePricingItem[]
+): string {
+  if (hasNestedDoorsPortionsFact(facts)) {
+    return finalizeDraft(buildNestedDoorsQuoteDraft(facts, pricingItems));
+  }
+
   const count = factValue(facts, "doors.count");
   const doorType = factValue(facts, "doors.door_type");
   const supplyScope = factValue(facts, "doors.supply_scope");
@@ -1294,7 +1309,7 @@ export function buildWorkAreaQuoteDescriptionDraft(
     case "ceilings":
       return buildCeilingsDraft(facts);
     case "doors":
-      return buildDoorsDraft(facts);
+      return buildDoorsDraft(facts, pricingItems);
     case "external_stairs":
       return buildExternalStairsDraft(facts);
     default:

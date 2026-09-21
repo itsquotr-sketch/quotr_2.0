@@ -932,10 +932,14 @@ check(
 );
 
 check(
-  "59. Doors is not falsely marked fully commercially mature",
-  !workAreaMayCloseAtL5(doorsCoverage) &&
-    doorsCoverage.needsOwnerApproval.some((row) =>
-      /pricing and quote/i.test(row.component)
+  "59. Ordinary Pricing/Quote coverage may close at L5; human QA remains DOORS-07",
+  workAreaMayCloseAtL5(doorsCoverage) &&
+    DOORS_BENCHMARK_REQUIREMENTS.some(
+      (row) =>
+        /pricing and quote/i.test(row.component) &&
+        row.outcome === "RESOLVES_WITH_QUOTR" &&
+        /DOORS-07/.test(row.notes) &&
+        /not human-qa frozen/i.test(row.notes)
     )
 );
 

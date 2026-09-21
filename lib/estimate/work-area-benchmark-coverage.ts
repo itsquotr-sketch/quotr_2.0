@@ -1190,12 +1190,14 @@ export const DOORS_BENCHMARK_REQUIREMENTS: readonly WorkAreaBenchmarkRequirement
       physicalUnit: "each",
       productivityOperation: null,
       fixings: false,
-      ordinaryV1: false,
-      outcome: "NEEDS_NEW_QUOTR_BENCHMARK",
-      gapClass: "NEEDS_NEW_QUOTR_BENCHMARK",
-      derivation: null,
-      currentWithoutCompany: "Not complete",
-      notes: "DOORS-05 does not complete client Quote wording or Pricing-tab close. workAreaMayCloseAtL5 stays false.",
+      ordinaryV1: true,
+      outcome: "RESOLVES_WITH_QUOTR",
+      gapClass: "EXISTING_BENCHMARK_REUSED",
+      derivation:
+        "DOORS-06 nested doors.portions Quote builder; Pricing adopts hosted recommended_cost via existing lump-sum path",
+      currentWithoutCompany: "Client-safe nested Quote + existing Pricing adoption",
+      notes:
+        "Ordinary supported nested Door Sets. Custom/specialist stay Pricing Required with client-safe pending wording. Not human-QA frozen — DOORS-07.",
     }),
   ];
 

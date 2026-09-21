@@ -794,11 +794,16 @@ check(
 );
 
 check(
-  "59. Custom/specialist stay PR and Doors is not commercially closed",
-  !workAreaMayCloseAtL5(doorsCoverage) &&
+  "59. Custom/specialist stay PR; ordinary coverage may close at L5 without human-QA freeze",
+  workAreaMayCloseAtL5(doorsCoverage) &&
     doorsCoverage.intentionalPr.length >= 2 &&
-    doorsCoverage.needsOwnerApproval.some((row) =>
-      /pricing and quote/i.test(row.component)
+    DOORS_BENCHMARK_REQUIREMENTS.some(
+      (row) =>
+        /pricing and quote/i.test(row.component) &&
+        row.outcome === "RESOLVES_WITH_QUOTR"
+    ) &&
+    DOORS_BENCHMARK_REQUIREMENTS.some((row) =>
+      /not human-qa frozen/i.test(row.notes)
     )
 );
 
