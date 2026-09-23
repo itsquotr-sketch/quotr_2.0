@@ -419,11 +419,18 @@ export function parseFlooringSubstrateFamily(
   if (
     normalised.includes("fibre cement") ||
     normalised.includes("fiber cement") ||
+    normalised.includes("fibre-cement") ||
     normalised.includes("hardie")
   ) {
     return "fibre_cement";
   }
-  if (normalised === "other") return "other";
+  if (
+    normalised === "other" ||
+    normalised.includes("custom") ||
+    normalised.includes("other /")
+  ) {
+    return "other";
+  }
   return null;
 }
 
@@ -529,6 +536,40 @@ export function parseFlooringSubstrateItemKey(value: unknown): string | null {
     return trimmed;
   }
   return null;
+}
+
+export function flooringSubstrateItemKeyMatchesFamily(
+  itemKey: string | null | undefined,
+  family: FlooringSubstrateFamily | null | undefined
+): boolean {
+  if (!itemKey || !family) return false;
+  if (itemKey === BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY) {
+    return family === "structural_plywood";
+  }
+  if (itemKey === BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY) {
+    return family === "secura" || family === "fibre_cement";
+  }
+  if (
+    itemKey === BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY ||
+    itemKey === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY ||
+    itemKey === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY ||
+    itemKey === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY
+  ) {
+    return family === "fibre_cement";
+  }
+  return family === "other";
+}
+
+function parseFlooringSubstrateStoredItemKey(
+  value: unknown,
+  family: FlooringSubstrateFamily | null
+): string | null {
+  const catalog = parseFlooringSubstrateItemKey(value);
+  if (catalog) return catalog;
+  if (family !== "other") return null;
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }
 
 export function flooringPortionIsUnsupported(portion: FlooringPortion): boolean {
@@ -661,7 +702,10 @@ export function parseFlooringPortion(value: unknown): FlooringPortion | null {
     ),
     substrate_required: parseTriBool(value.substrate_required),
     substrate_family: parseFlooringSubstrateFamily(value.substrate_family),
-    substrate_item_key: parseFlooringSubstrateItemKey(value.substrate_item_key),
+    substrate_item_key: parseFlooringSubstrateStoredItemKey(
+      value.substrate_item_key,
+      parseFlooringSubstrateFamily(value.substrate_family)
+    ),
     framing_required: parseTriBool(value.framing_required),
     framing_allowance_level: parseFlooringFramingAllowanceLevel(
       value.framing_allowance_level
@@ -1326,15 +1370,40 @@ function applyPortionField(
   if (field === "substrate_required") {
     portion.substrate_required = parseTriBool(value);
     portion.substrate_required_authority = "user";
+    if (portion.substrate_required === false) {
+      clearMachineOwnedField(
+        portion,
+        "substrate_family",
+        "substrate_family_authority"
+      );
+      clearMachineOwnedField(
+        portion,
+        "substrate_item_key",
+        "substrate_item_authority"
+      );
+    }
     return;
   }
   if (field === "substrate_family") {
     portion.substrate_family = parseFlooringSubstrateFamily(value);
     portion.substrate_family_authority = "user";
+    if (
+      portion.substrate_item_key &&
+      !flooringSubstrateItemKeyMatchesFamily(
+        portion.substrate_item_key,
+        portion.substrate_family
+      )
+    ) {
+      portion.substrate_item_key = null;
+      delete portion.substrate_item_authority;
+    }
     return;
   }
   if (field === "substrate_item_key") {
-    portion.substrate_item_key = parseFlooringSubstrateItemKey(value);
+    portion.substrate_item_key = parseFlooringSubstrateStoredItemKey(
+      value,
+      portion.substrate_family
+    );
     portion.substrate_item_authority = "user";
     return;
   }

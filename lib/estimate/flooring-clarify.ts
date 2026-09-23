@@ -110,12 +110,10 @@ export function flooringPortionFieldCurrentValue(
   if (field === "substrate_required") return yesNo(portion.substrate_required);
   if (field === "substrate_family") {
     if (portion.substrate_family === "particleboard") return "Particleboard";
-    if (portion.substrate_family === "structural_plywood") {
-      return "Structural plywood";
-    }
-    if (portion.substrate_family === "fibre_cement") return "Fibre-cement";
+    if (portion.substrate_family === "structural_plywood") return "Plywood";
+    if (portion.substrate_family === "fibre_cement") return "Fibre cement";
     if (portion.substrate_family === "secura") return "Secura";
-    if (portion.substrate_family === "other") return "Other";
+    if (portion.substrate_family === "other") return "Other / custom";
     return null;
   }
   if (field === "substrate_item_key") {
@@ -387,9 +385,9 @@ function buildCandidate(params: {
         safeFactPresentationLabel(params.factKey),
     question: flooringQuestionCopy(params.factKey),
     askClass: params.askClass,
-    inputType: flooringQuestionInputType(params.factKey),
+    inputType: flooringQuestionInputType(params.factKey, params.portion),
     unit: flooringQuestionUnit(params.factKey),
-    options: flooringQuestionOptions(params.factKey),
+    options: flooringQuestionOptions(params.factKey, params.portion),
     currentValue,
     writeTarget: "FACT",
     write: null,

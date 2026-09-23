@@ -10,6 +10,7 @@ import {
   BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY,
   BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY,
 } from "@/lib/estimate/bathroom-identities";
+import type { FlooringPortion, FlooringSubstrateFamily } from "@/lib/estimate/flooring-portions";
 
 export const FLOORING_FINISH_OPTIONS = [
   "Carpet",
@@ -54,11 +55,10 @@ export const FLOORING_HARDWOOD_WIDTH_OPTIONS = [
 ] as const;
 
 export const FLOORING_SUBSTRATE_FAMILY_OPTIONS = [
+  "Plywood",
   "Particleboard",
-  "Structural plywood",
-  "Fibre-cement",
-  "Secura",
-  "Other",
+  "Fibre cement",
+  "Other / custom",
 ] as const;
 
 export const FLOORING_FRAMING_LEVEL_OPTIONS = [
@@ -123,9 +123,9 @@ const QUESTIONS: Record<string, string> = {
   "flooring.portion.hardwood_board_width_mm": "What is the board width?",
   "flooring.portion.other_description":
     "What flooring system or finish is required?",
-  "flooring.portion.substrate_required": "Is a new floor substrate required?",
-  "flooring.portion.substrate_family": "What substrate family is required?",
-  "flooring.portion.substrate_item_key": "Which exact substrate product is required?",
+  "flooring.portion.substrate_required": "Is new floor substrate required?",
+  "flooring.portion.substrate_family": "What substrate material is required?",
+  "flooring.portion.substrate_item_key": "Which substrate product is required?",
   "flooring.portion.framing_required": "Is new framing below the floor required?",
   "flooring.portion.framing_allowance_level":
     "What subfloor framing allowance is required?",
@@ -150,7 +150,7 @@ const LABELS: Record<string, string> = {
   "flooring.portion.hardwood_board_width_mm": "Board width",
   "flooring.portion.other_description": "Description",
   "flooring.portion.substrate_required": "New substrate",
-  "flooring.portion.substrate_family": "Substrate family",
+  "flooring.portion.substrate_family": "Substrate material",
   "flooring.portion.substrate_item_key": "Substrate product",
   "flooring.portion.framing_required": "New framing",
   "flooring.portion.framing_allowance_level": "Framing allowance",
@@ -167,8 +167,67 @@ export function flooringQuestionLabel(factKey: string): string | null {
   return LABELS[factKey] ?? null;
 }
 
+export function flooringSubstrateFamilyOfItemKey(
+  itemKey: string | null | undefined
+): FlooringSubstrateFamily | null {
+  if (!itemKey) return null;
+  if (itemKey === BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY) {
+    return "structural_plywood";
+  }
+  if (itemKey === BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY) return "secura";
+  if (
+    itemKey === BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY ||
+    itemKey === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY ||
+    itemKey === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY ||
+    itemKey === BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY
+  ) {
+    return "fibre_cement";
+  }
+  return null;
+}
+
+export function flooringSubstrateItemKeyBelongsToFamily(
+  itemKey: string | null | undefined,
+  family: FlooringSubstrateFamily | null | undefined
+): boolean {
+  if (!itemKey || !family) return false;
+  const ofKey = flooringSubstrateFamilyOfItemKey(itemKey);
+  if (ofKey == null) return family === "other";
+  if (ofKey === family) return true;
+  if (family === "fibre_cement" && ofKey === "secura") return true;
+  return false;
+}
+
+export function flooringSubstrateItemOptionsForFamily(
+  family: FlooringSubstrateFamily | null | undefined
+): readonly string[] {
+  if (family === "structural_plywood") {
+    return [FLOORING_SUBSTRATE_ITEM_LABEL_BY_KEY[BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY]];
+  }
+  if (family === "fibre_cement") {
+    return [
+      FLOORING_SUBSTRATE_ITEM_LABEL_BY_KEY[BATHROOM_FLOOR_SUBSTRATE_FIBRE_CEMENT_KEY],
+      FLOORING_SUBSTRATE_ITEM_LABEL_BY_KEY[BATHROOM_FLOOR_SUBSTRATE_FC_19MM_2700_KEY],
+      FLOORING_SUBSTRATE_ITEM_LABEL_BY_KEY[BATHROOM_FLOOR_SUBSTRATE_FC_19MM_1800_KEY],
+      FLOORING_SUBSTRATE_ITEM_LABEL_BY_KEY[BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY],
+      FLOORING_SUBSTRATE_ITEM_LABEL_BY_KEY[BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY],
+    ];
+  }
+  if (family === "secura") {
+    return [FLOORING_SUBSTRATE_ITEM_LABEL_BY_KEY[BATHROOM_FLOOR_SUBSTRATE_SECURA_KEY]];
+  }
+  return [];
+}
+
+export function flooringSubstrateProductUsesDescription(
+  family: FlooringSubstrateFamily | null | undefined
+): boolean {
+  return family === "other";
+}
+
 export function flooringQuestionOptions(
-  factKey: string
+  factKey: string,
+  portion?: FlooringPortion | null
 ): readonly string[] | undefined {
   if (factKey === "flooring.portion.finish_type") return FLOORING_FINISH_OPTIONS;
   if (factKey === "flooring.portion.area_input_method") {
@@ -197,7 +256,10 @@ export function flooringQuestionOptions(
     return FLOORING_SUBSTRATE_FAMILY_OPTIONS;
   }
   if (factKey === "flooring.portion.substrate_item_key") {
-    return FLOORING_SUBSTRATE_ITEM_OPTIONS;
+    if (flooringSubstrateProductUsesDescription(portion?.substrate_family)) {
+      return undefined;
+    }
+    return flooringSubstrateItemOptionsForFamily(portion?.substrate_family);
   }
   if (factKey === "flooring.portion.framing_allowance_level") {
     return FLOORING_FRAMING_LEVEL_OPTIONS;
@@ -224,11 +286,18 @@ export function flooringQuestionUnit(factKey: string): string | undefined {
 }
 
 export function flooringQuestionInputType(
-  factKey: string
+  factKey: string,
+  portion?: FlooringPortion | null
 ): "boolean" | "select" | "number" | "text" {
   if (
     factKey === "flooring.portion.label" ||
     factKey === "flooring.portion.other_description"
+  ) {
+    return "text";
+  }
+  if (
+    factKey === "flooring.portion.substrate_item_key" &&
+    flooringSubstrateProductUsesDescription(portion?.substrate_family)
   ) {
     return "text";
   }

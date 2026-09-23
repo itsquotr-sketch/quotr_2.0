@@ -236,11 +236,13 @@ export function flooringFactIsRelevant(
   if (specialist) return false;
 
   if (factKey === "flooring.portion.substrate_required") return true;
-  if (
-    factKey === "flooring.portion.substrate_family" ||
-    factKey === "flooring.portion.substrate_item_key"
-  ) {
+  if (factKey === "flooring.portion.substrate_family") {
     return portion?.substrate_required === true;
+  }
+  if (factKey === "flooring.portion.substrate_item_key") {
+    return (
+      portion?.substrate_required === true && portion.substrate_family != null
+    );
   }
   if (factKey === "flooring.portion.framing_required") return true;
   if (factKey === "flooring.portion.framing_allowance_level") {
