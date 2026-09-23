@@ -1025,7 +1025,7 @@ function specialistRequirement(params: {
           ? "unsupported_specialist"
           : "custom_ordinary_finish",
         text: params.portion.specialist_kind
-          ? "Unsupported specialist flooring. Ordinary finish packages, underlay, preparation, and sheet takeoff do not apply."
+          ? "Specialist flooring supply and installation. Ordinary finish packages, underlay, preparation, and sheet takeoff do not apply."
           : "Custom ordinary flooring. No ordinary carpet, vinyl, tile, or hardwood package key. Independently confirmed substrate, framing, or removal may remain visible.",
         source: "calculator_default",
       },

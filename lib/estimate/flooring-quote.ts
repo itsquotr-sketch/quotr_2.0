@@ -15,6 +15,7 @@ import {
   FLOORING_FLOOR_PREPARATION_ALLOWANCE_M2,
   FLOORING_HARDWOOD_REMOVE_LABOUR,
   FLOORING_HARDWOOD_SUPPLY_INSTALL_M2,
+  FLOORING_SPECIALIST_COMPONENT,
   FLOORING_SUBFLOOR_FRAMING_MAJOR_ALLOWANCE_M2,
   FLOORING_SUBFLOOR_FRAMING_MINOR_ALLOWANCE_M2,
   FLOORING_SUBFLOOR_FRAMING_STANDARD_ALLOWANCE_M2,
@@ -39,6 +40,9 @@ import { round2 } from "@/lib/estimate/facts";
 
 export const FLOORING_QUOTE_SPECIALIST_PENDING =
   "Specialist flooring works are excluded pending separate specification and pricing." as const;
+
+export const FLOORING_QUOTE_SPECIALIST_INCLUDED =
+  "subject to the selected product specification." as const;
 
 export const FLOORING_QUOTE_CUSTOM_FINISH_EXCLUDED =
   "The specified custom flooring finish is excluded pending final selection and pricing." as const;
@@ -395,6 +399,23 @@ function specialistSentence(portion: FlooringPortion): string {
   return prefixLabel(portion.label, FLOORING_QUOTE_SPECIALIST_PENDING);
 }
 
+function specialistIncludedSentence(portion: FlooringPortion): string {
+  const area = areaPhrase(portion);
+  const kind =
+    portion.specialist_kind === "laminate"
+      ? "laminate flooring"
+      : portion.specialist_kind === "engineered_timber"
+        ? "engineered timber flooring"
+        : portion.specialist_kind === "sheet_vinyl"
+          ? "sheet vinyl flooring"
+          : portion.other_description?.trim() || "specialist flooring";
+  const body =
+    area != null
+      ? `Supply and install ${area} of the specified ${kind}, ${FLOORING_QUOTE_SPECIALIST_INCLUDED}`
+      : `Supply and install the specified ${kind}, ${FLOORING_QUOTE_SPECIALIST_INCLUDED}`;
+  return prefixLabel(portion.label, body);
+}
+
 export function flooringIncludedQuoteScopeCount(
   facts?: readonly FlooringQuoteFact[] | null,
   pricingItems?: readonly FlooringQuotePricingItem[] | null
@@ -432,8 +453,18 @@ export function buildNestedFlooringQuoteDraft(
 
   for (const portion of portions) {
     if (flooringPortionIsSpecialist(portion)) {
-      specialistCount += 1;
-      included.push(specialistSentence(portion));
+      const priced = componentIsPriced(
+        portion,
+        pricingItems,
+        FLOORING_SPECIALIST_COMPONENT
+      );
+      if (priced) {
+        ordinaryIncluded += 1;
+        included.push(specialistIncludedSentence(portion));
+      } else {
+        specialistCount += 1;
+        included.push(specialistSentence(portion));
+      }
       continue;
     }
     if (!flooringPortionIsInformationComplete(portion)) {

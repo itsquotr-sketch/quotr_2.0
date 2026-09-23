@@ -205,7 +205,7 @@ function PricingItemRowComponent({
               disabled={isPending}
               onClick={openEditor}
             >
-              Edit
+              {moneyView.pricingRequired ? "Add price" : "Edit"}
             </Button>
           </div>
         </div>
@@ -280,11 +280,23 @@ function PricingItemRowComponent({
         </div>
 
         <div className="flex items-center justify-end gap-0.5">
+          {moneyView.pricingRequired ? (
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-7 shrink-0 px-2 text-[11px]"
+              disabled={isPending}
+              onClick={() => (expanded ? setExpanded(false) : openEditor())}
+            >
+              Add price
+            </Button>
+          ) : null}
           <Button
             type="button"
             variant="ghost"
             size="icon-sm"
-            aria-label="Edit item"
+            aria-label={moneyView.pricingRequired ? "Add price" : "Edit item"}
             disabled={isPending}
             onClick={() => (expanded ? setExpanded(false) : openEditor())}
           >

@@ -36,6 +36,7 @@ import {
   FLOORING_SUBFLOOR_FRAMING_STANDARD_ALLOWANCE_M2,
   FLOORING_SUBSTRATE_INSTALL_HOURS_LABEL,
   FLOORING_SUBSTRATE_INSTALL_LABOUR,
+  FLOORING_SUBSTRATE_MATERIAL_COMPONENT,
   FLOORING_SUBSTRATE_REMOVE_HOURS_LABEL,
   FLOORING_SUBSTRATE_REMOVE_LABOUR,
   FLOORING_TILE_REMOVE_HOURS_LABEL,
@@ -61,7 +62,10 @@ import {
   type FlooringPortionPhysical,
   presentFlooringAreaM2,
 } from "@/lib/estimate/flooring-physical";
-import { FLOORING_NESTED_NOT_CALCULATED_MESSAGE } from "@/lib/estimate/flooring-portions";
+import {
+  FLOORING_NESTED_NOT_CALCULATED_MESSAGE,
+  FLOORING_SPECIALIST_PRICING_REQUIRED_MESSAGE,
+} from "@/lib/estimate/flooring-portions";
 import {
   isFlooringProductivityKey,
   resolveFlooringProductivityHours,
@@ -174,7 +178,15 @@ export function formatFlooringReviewTitle(
       ? presentFlooringAreaM2(portion.physicalNetAreaM2).replace(/\.0 m²$/, " m²")
       : "area unanswered";
   if (portion.specialist_kind != null) {
-    return `${label} — ${area} specialist flooring`;
+    const kind =
+      portion.specialist_kind === "laminate"
+        ? "laminate flooring"
+        : portion.specialist_kind === "engineered_timber"
+          ? "engineered timber flooring"
+          : portion.specialist_kind === "sheet_vinyl"
+            ? "sheet vinyl flooring"
+            : "specialist flooring";
+    return `${label} — ${area} ${kind}`;
   }
   if (portion.finish_type === "other") {
     const desc = portion.other_description?.trim() || "custom flooring";
@@ -627,7 +639,7 @@ function materialOrAllowanceLine(params: {
       : params.requirement.componentKey === FLOORING_CUSTOM_FINISH_COMPONENT
         ? "Custom ordinary flooring"
         : params.requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
-          ? "Unsupported specialist flooring"
+          ? "Specialist flooring supply and installation"
           : params.requirement.componentKey === FLOORING_CUSTOM_REMOVAL_COMPONENT
             ? "Custom existing-finish removal"
             : params.requirement.description;
@@ -957,13 +969,22 @@ export function commercializeFlooring(params: {
   }
 
   const completeness = rollupCompleteness(params.physical, requirements);
-  const missingInfo = [...params.physical.missingInfo];
+  const missingInfo = [...params.physical.missingInfo].filter(
+    (row) =>
+      row !== FLOORING_NESTED_NOT_CALCULATED_MESSAGE &&
+      !/canonical nested|legacy Flooring allowance path|UNSUPPORTED_SPECIALIST/i.test(
+        row
+      )
+  );
   const pricedAny = lineItems.some(
     (item) =>
       item.rateSourceType !== "missing" && (item.recommendedCost ?? 0) > 0
   );
-  if (!pricedAny) {
-    missingInfo.push(FLOORING_NESTED_NOT_CALCULATED_MESSAGE);
+  if (
+    !pricedAny &&
+    completeness === FLOORING_COMMERCIAL_COMPLETENESS.UNSUPPORTED_SPECIALIST
+  ) {
+    missingInfo.push(FLOORING_SPECIALIST_PRICING_REQUIRED_MESSAGE);
   }
   if (
     completeness === FLOORING_COMMERCIAL_COMPLETENESS.PRICING_REQUIRED ||
@@ -971,7 +992,18 @@ export function commercializeFlooring(params: {
   ) {
     for (const requirement of requirements) {
       if (requirement.priced) continue;
-      missingInfo.push(`Pricing required: ${requirement.description}`);
+      const human =
+        requirement.componentKey === FLOORING_SPECIALIST_COMPONENT
+          ? FLOORING_SPECIALIST_PRICING_REQUIRED_MESSAGE
+          : `Pricing required: ${requirement.description}`;
+      if (
+        /canonical nested|legacy Flooring allowance path|UNSUPPORTED_SPECIALIST|unsupported specialist/i.test(
+          human
+        )
+      ) {
+        continue;
+      }
+      missingInfo.push(human);
     }
   }
 
@@ -998,6 +1030,40 @@ export function flooringFramingCommercialCost(
 
 export function isFlooringFinishPackageComponent(key: string): boolean {
   return isOrdinaryFlooringFinishPackageKey(key);
+}
+
+/**
+ * Shared Pricing Required eligibility for Flooring components.
+ * Incomplete Details (missing area/finish) never emit a quantity-bearing
+ * requirement, so they cannot become a manual Pricing row.
+ * Other Work Areas inherit cost_known persistence on updatePricingItem
+ * but keep their own Quote/eligibility proofs.
+ */
+export function flooringComponentIsManualPricingEligible(
+  componentKey: string | null | undefined
+): boolean {
+  const key = componentKey ?? "";
+  return (
+    key === FLOORING_SPECIALIST_COMPONENT ||
+    key === FLOORING_CUSTOM_FINISH_COMPONENT ||
+    key === FLOORING_CUSTOM_REMOVAL_COMPONENT ||
+    key === FLOORING_SUBSTRATE_MATERIAL_COMPONENT ||
+    isFlooringFramingAllowanceKey(key)
+  );
+}
+
+export function flooringLineIsManualPricingEligible(item: {
+  componentKey?: string | null;
+  rateSourceType?: string | null;
+  quantity?: number | null;
+  recommendedCost?: number | null;
+}): boolean {
+  if (item.rateSourceType !== "missing") return false;
+  if (item.quantity == null || !Number.isFinite(item.quantity) || item.quantity <= 0) {
+    return false;
+  }
+  if (item.recommendedCost != null && item.recommendedCost > 0) return false;
+  return flooringComponentIsManualPricingEligible(item.componentKey);
 }
 
 export const FLOORING_ADDON_COMPONENT_KEYS = [

@@ -96,6 +96,36 @@ export function isFiniteNonNegativeMoney(value: number): boolean {
 }
 
 /**
+ * Shared Pricing Required honesty after `updatePricingItem`.
+ *
+ * Lump-sum 0/0 is an informational known-zero in the commercial engine.
+ * A previously unresolved line (cost_known=false) must stay unresolved at 0/0
+ * so clearing a manual price returns Pricing Required — not a silent $0 rate.
+ * Positive finite COST becomes known project money. Does not mint a company Rate.
+ */
+export function resolveCostKnownAfterPricingEdit(params: {
+  existingCostKnown: boolean | null | undefined;
+  computedCostKnown: boolean;
+  totalCost: number;
+  totalSell: number;
+  originatedAsPricingRequired?: boolean;
+}): boolean {
+  const cost = params.totalCost;
+  const sell = params.totalSell;
+  if (!Number.isFinite(cost) || !Number.isFinite(sell)) return false;
+  if (cost < 0 || sell < 0) return false;
+  const unresolvedZero = cost <= 0 && sell <= 0;
+  if (
+    unresolvedZero &&
+    (params.existingCostKnown === false || params.originatedAsPricingRequired)
+  ) {
+    return false;
+  }
+  if (cost > 0) return true;
+  return params.computedCostKnown;
+}
+
+/**
  * Post-calculation check before persistence (all modes, including lump_sum).
  * When costKnown is false, null margins are allowed (unknown-cost honesty);
  * callers persist the approved DB sentinel via persistCommercialMetric.

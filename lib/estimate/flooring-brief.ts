@@ -71,6 +71,17 @@ function conciseDescription(snippet: string): string {
   return `${collapsed.slice(0, 157).trim()}…`;
 }
 
+function specialistDescriptionFromKind(kind: FlooringSpecialistKind): string {
+  if (kind === "laminate") return "laminate flooring";
+  if (kind === "engineered_timber") return "engineered timber flooring";
+  if (kind === "sheet_vinyl") return "sheet vinyl flooring";
+  if (kind === "client_supplied") return "client-supplied flooring";
+  if (kind === "stairs_landings") return "stairs and landings flooring";
+  if (kind === "waterproofing") return "waterproofed flooring";
+  if (kind === "structural") return "structural flooring";
+  return "specialist flooring";
+}
+
 const SPECIALIST_PHRASES: readonly { kind: FlooringSpecialistKind; phrases: readonly string[] }[] =
   [
     { kind: "sheet_vinyl", phrases: ["sheet vinyl"] },
@@ -135,6 +146,10 @@ function locationFromSnippet(text: string): string | null {
   if (/\bkitchen\b/i.test(text)) return "Kitchen";
   if (/\blaundry\b/i.test(text)) return "Laundry";
   if (/\bhall(?:way)?\b/i.test(text)) return "Hallway";
+  if (/\bdining rooms?\b/i.test(text) || /\bdining\b/i.test(text)) {
+    return "Dining room";
+  }
+  if (/\boffices?\b/i.test(text)) return "Office";
   if (/\bentr(?:y|ance)\b/i.test(text)) return "Entry";
   return null;
 }
@@ -274,6 +289,7 @@ function substrateRequiredFromSnippet(text: string): boolean | null {
     [
       "replace the floor substrate",
       "replace floor substrate",
+      "replace the substrate",
       "install new flooring substrate",
       "new flooring substrate",
       "new floor substrate",
@@ -383,56 +399,202 @@ function framingLevelFromSnippet(
   return parseFlooringFramingAllowanceLevel(text);
 }
 
+const FINISH_REMOVAL_YES = [
+  "remove existing carpet",
+  "uplift existing vinyl",
+  "remove existing tiles",
+  "remove existing hardwood",
+  "remove existing floor finish",
+  "remove existing flooring",
+  "uplift existing",
+  "remove the existing floor",
+  "remove carpet and substrate",
+  "remove tile and substrate",
+  "remove vinyl and substrate",
+  "remove hardwood and substrate",
+  "remove the carpet",
+  "remove carpet",
+  "remove the tile",
+  "remove tile",
+  "remove the vinyl",
+  "remove vinyl",
+  "remove the hardwood",
+  "remove hardwood",
+] as const;
+
+const FINISH_REMOVAL_NO = [
+  "no flooring or substrate removal is required",
+  "no flooring or substrate removal required",
+  "no floor-covering removal required",
+  "no floor covering removal required",
+  "no existing flooring removal",
+  "existing flooring is to remain",
+  "retain the existing flooring where applicable",
+  "retain the existing flooring",
+  "no flooring removal is required",
+  "no flooring removal required",
+  "no floor removal required",
+  "no flooring removal",
+  "no floor removal",
+  "no removal is required",
+  "no removal in",
+  "no removal",
+  "install over existing finish",
+  "existing finish already removed",
+  "floor will be cleared by others",
+] as const;
+
+const SUBSTRATE_REMOVAL_YES = [
+  "remove existing floor substrate",
+  "remove existing particleboard",
+  "remove existing plywood",
+  "remove existing fibre-cement",
+  "remove existing fibre cement",
+  "strip out existing subfloor sheets",
+  "remove existing subfloor sheets",
+  "remove carpet and substrate",
+  "remove tile and substrate",
+  "remove vinyl and substrate",
+  "remove hardwood and substrate",
+  "remove the substrate",
+  "remove substrate",
+] as const;
+
+const SUBSTRATE_REMOVAL_NO = [
+  "no flooring or substrate removal is required",
+  "no flooring or substrate removal required",
+  "no substrate removal required",
+  "no substrate removal is required",
+  "no substrate removal",
+  "existing substrates and framing are to remain",
+  "existing substrate is to remain",
+  "existing substrates are to remain",
+  "retain the existing substrate",
+  "retain the substrate",
+  "retain existing substrate",
+] as const;
+
+type FlooringRemovalIntent = {
+  finish: boolean | null;
+  substrate: boolean | null;
+  existing: FlooringExistingFinishType | null;
+};
+
 function finishRemovalFromSnippet(text: string): boolean | null {
-  return triFromPhrases(
-    text,
-    [
-      "remove existing carpet",
-      "uplift existing vinyl",
-      "remove existing tiles",
-      "remove existing hardwood",
-      "remove existing floor finish",
-      "remove existing flooring",
-      "uplift existing",
-      "remove the existing floor",
-    ],
-    [
-      "no floor removal",
-      "no flooring removal",
-      "install over existing finish",
-      "existing finish already removed",
-      "floor will be cleared by others",
-      "no flooring removal is required",
-    ]
-  );
+  return triFromPhrases(text, FINISH_REMOVAL_YES, FINISH_REMOVAL_NO);
 }
 
 function existingFinishFromSnippet(
   text: string
 ): FlooringExistingFinishType | null {
   const match = text.match(
-    /\b(?:remove|uplift)\s+existing\s+(carpet|vinyl|tiles?|hardwood|timber|floor finish|flooring)\b/i
+    /\b(?:remove|uplift)\s+(?:the\s+)?(?:existing\s+)?(carpet|vinyl|tiles?|hardwood|timber)\b/i
   );
   if (!match) return null;
-  if (/^(?:floor finish|flooring)$/i.test(match[1])) return null;
   return parseFlooringExistingFinishType(match[1]);
 }
 
 function substrateRemovalFromSnippet(text: string): boolean | null {
-  return triFromPhrases(
-    text,
-    [
-      "remove existing floor substrate",
-      "remove existing particleboard",
-      "remove existing plywood",
-      "remove existing fibre-cement",
-      "remove existing fibre cement",
-      "strip out existing subfloor sheets",
-      "remove existing subfloor sheets",
-      "substrate removal",
-    ],
-    ["retain existing substrate", "no substrate removal"]
+  return triFromPhrases(text, SUBSTRATE_REMOVAL_YES, SUBSTRATE_REMOVAL_NO);
+}
+
+function removalIntentFromSnippet(text: string): FlooringRemovalIntent {
+  return {
+    finish: finishRemovalFromSnippet(text),
+    substrate: substrateRemovalFromSnippet(text),
+    existing: existingFinishFromSnippet(text),
+  };
+}
+
+function splitRemovalClauses(text: string): string[] {
+  return text
+    .split(/(?:[.!?;]\s+|\s+\bbut\b\s+|\s+\bhowever\b\s+)/i)
+    .map((row) => row.replace(/^(?:also|plus|and)\s+/i, "").trim())
+    .filter(Boolean);
+}
+
+function locationTokensMatch(
+  portionLabel: string | null,
+  clause: string
+): boolean {
+  const label = portionLabel?.trim().toLowerCase();
+  const clauseLocation = locationFromSnippet(clause);
+  if (!clauseLocation || !label) return false;
+  const clauseNorm = clauseLocation.trim().toLowerCase();
+  if (label === clauseNorm) return true;
+  if (label.startsWith(clauseNorm) || clauseNorm.startsWith(label)) return true;
+  return label.replace(/s$/, "") === clauseNorm.replace(/s$/, "");
+}
+
+function clauseAppliesToPortion(
+  clause: string,
+  portion: FlooringPortion
+): boolean {
+  const clauseLocation = locationFromSnippet(clause);
+  if (!clauseLocation) return true;
+  return locationTokensMatch(portion.label, clause);
+}
+
+function applyRemovalIntent(
+  portion: FlooringPortion,
+  intent: FlooringRemovalIntent,
+  overwrite: boolean
+): void {
+  if (
+    intent.finish != null &&
+    (overwrite || portion.finish_removal_required == null)
+  ) {
+    portion.finish_removal_required = intent.finish;
+    portion.finish_removal_authority = "extracted";
+  }
+  if (
+    intent.existing &&
+    portion.finish_removal_required !== false &&
+    (overwrite || portion.existing_finish_type == null)
+  ) {
+    portion.existing_finish_type = intent.existing;
+    portion.existing_finish_authority = "extracted";
+    if (portion.finish_removal_required == null && intent.finish !== false) {
+      portion.finish_removal_required = true;
+      portion.finish_removal_authority = "extracted";
+    }
+  }
+  if (
+    intent.substrate != null &&
+    (overwrite || portion.substrate_removal_required == null)
+  ) {
+    portion.substrate_removal_required = intent.substrate;
+    portion.substrate_removal_authority = "extracted";
+  }
+  if (portion.finish_removal_required === false) {
+    if (portion.existing_finish_authority !== "user") {
+      portion.existing_finish_type = null;
+      delete portion.existing_finish_authority;
+    }
+    if (
+      intent.substrate == null &&
+      portion.substrate_removal_authority !== "user" &&
+      portion.substrate_removal_required !== false
+    ) {
+      portion.substrate_removal_required = false;
+      portion.substrate_removal_authority = "extracted";
+    }
+  }
+}
+
+function applyClauseLocalRemoval(
+  portion: FlooringPortion,
+  text: string,
+  overwrite: boolean
+): void {
+  const clauses = splitRemovalClauses(text);
+  const targeted = clauses.filter((clause) =>
+    clauseAppliesToPortion(clause, portion)
   );
+  const rows = targeted.length > 0 ? targeted : overwrite ? clauses : [];
+  for (const clause of rows) {
+    applyRemovalIntent(portion, removalIntentFromSnippet(clause), overwrite);
+  }
 }
 
 function snippetHasFlooringSignal(text: string): boolean {
@@ -468,11 +630,7 @@ function applyGlobalConstraints(
     portion.framing_required = framing;
     portion.framing_required_authority = "extracted";
   }
-  const removal = finishRemovalFromSnippet(briefText);
-  if (portion.finish_removal_required == null && removal != null) {
-    portion.finish_removal_required = removal;
-    portion.finish_removal_authority = "extracted";
-  }
+  applyClauseLocalRemoval(portion, briefText, false);
 }
 
 function applySnippetToPortion(portion: FlooringPortion, snippet: string): void {
@@ -489,7 +647,7 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     portion.finish_authority = "extracted";
     portion.specialist_kind = specialist;
     portion.specialist_authority = "extracted";
-    portion.other_description = conciseDescription(snippet);
+    portion.other_description = specialistDescriptionFromKind(specialist);
     portion.other_description_authority = "extracted";
   } else if (finish) {
     portion.finish_type = finish;
@@ -604,25 +762,7 @@ function applySnippetToPortion(portion: FlooringPortion, snippet: string): void 
     }
   }
 
-  const finishRemoval = finishRemovalFromSnippet(snippet);
-  if (finishRemoval != null) {
-    portion.finish_removal_required = finishRemoval;
-    portion.finish_removal_authority = "extracted";
-  }
-  const existing = existingFinishFromSnippet(snippet);
-  if (existing && portion.finish_removal_required !== false) {
-    portion.existing_finish_type = existing;
-    portion.existing_finish_authority = "extracted";
-    if (portion.finish_removal_required == null && finishRemoval !== false) {
-      portion.finish_removal_required = true;
-      portion.finish_removal_authority = "extracted";
-    }
-  }
-  const substrateRemoval = substrateRemovalFromSnippet(snippet);
-  if (substrateRemoval != null) {
-    portion.substrate_removal_required = substrateRemoval;
-    portion.substrate_removal_authority = "extracted";
-  }
+  applyClauseLocalRemoval(portion, snippet, true);
 }
 
 export function extractFlooringPortionsFromBrief(briefText: string): FlooringPortion[] {
@@ -707,18 +847,32 @@ function fillMissingFlooringPortion(
     out.framing_allowance_level,
     secondary.framing_allowance_level
   );
-  out.finish_removal_required = firstPresent(
-    out.finish_removal_required,
-    secondary.finish_removal_required
-  );
-  out.existing_finish_type = firstPresent(
-    out.existing_finish_type,
-    secondary.existing_finish_type
-  );
-  out.substrate_removal_required = firstPresent(
-    out.substrate_removal_required,
-    secondary.substrate_removal_required
-  );
+  // Never invent removal or an existing finish type from AI. Deterministic
+  // negatives (false) win; unanswered stays unanswered. AI may only fill an
+  // explicit extracted No that the regex already owns via firstPresent(false).
+  if (out.finish_removal_required == null && secondary.finish_removal_required === false) {
+    out.finish_removal_required = false;
+  }
+  if (out.finish_removal_required === true) {
+    out.existing_finish_type = firstPresent(
+      out.existing_finish_type,
+      secondary.existing_finish_type
+    );
+    out.substrate_removal_required = firstPresent(
+      out.substrate_removal_required,
+      secondary.substrate_removal_required
+    );
+  } else if (out.finish_removal_required === false) {
+    if (out.existing_finish_authority !== "user") {
+      out.existing_finish_type = null;
+    }
+    if (
+      out.substrate_removal_authority !== "user" &&
+      secondary.substrate_removal_required === false
+    ) {
+      out.substrate_removal_required = false;
+    }
+  }
   out.other_description = firstPresent(
     out.other_description,
     secondary.other_description
@@ -749,12 +903,24 @@ function fillMissingFlooringPortion(
     out.framing_required_authority ?? secondary.framing_required_authority;
   out.framing_level_authority =
     out.framing_level_authority ?? secondary.framing_level_authority;
-  out.finish_removal_authority =
-    out.finish_removal_authority ?? secondary.finish_removal_authority;
-  out.existing_finish_authority =
-    out.existing_finish_authority ?? secondary.existing_finish_authority;
-  out.substrate_removal_authority =
-    out.substrate_removal_authority ?? secondary.substrate_removal_authority;
+  if (out.finish_removal_required != null) {
+    out.finish_removal_authority =
+      out.finish_removal_authority ??
+      (secondary.finish_removal_required === out.finish_removal_required
+        ? secondary.finish_removal_authority
+        : "extracted");
+  }
+  if (out.existing_finish_type != null) {
+    out.existing_finish_authority =
+      out.existing_finish_authority ?? secondary.existing_finish_authority;
+  }
+  if (out.substrate_removal_required != null) {
+    out.substrate_removal_authority =
+      out.substrate_removal_authority ??
+      (secondary.substrate_removal_required === out.substrate_removal_required
+        ? secondary.substrate_removal_authority
+        : "extracted");
+  }
   out.label_authority = out.label_authority ?? secondary.label_authority;
   out.other_description_authority =
     out.other_description_authority ?? secondary.other_description_authority;

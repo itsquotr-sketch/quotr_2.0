@@ -201,7 +201,10 @@ export function applyFlooringReviewGroups(params: {
         pricing.some((row) => /information required/i.test(row.label))
           ? "Information Required"
           : "Pricing Required",
-        pricing
+        pricing,
+        pricing.some((row) => /information required/i.test(row.label))
+          ? "Complete the remaining Details before this component can be priced."
+          : "Continue to Pricing and add a price."
       ),
     ].filter((row): row is BuilderReviewLineGroup => row != null);
 

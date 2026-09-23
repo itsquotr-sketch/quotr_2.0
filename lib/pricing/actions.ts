@@ -2,13 +2,14 @@
 
 import { revalidatePath } from "next/cache";
 import { notFound, redirect } from "next/navigation";
-import { buildPricingNotesFromEstimateLineItem } from "@/lib/estimate/line-item-metadata";
+import { buildPricingNotesFromEstimateLineItem, parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { isEstimateReadyForPricing } from "@/lib/estimate/persist-estimate-generation";
 import { logPricingAuditEvent } from "@/lib/audit/pricing-audit-log";
 import { toUserError } from "@/lib/errors/user-message";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 import {
   parsePricingInput,
+  resolveCostKnownAfterPricingEdit,
   validateComputedItemForPersistence,
 } from "@/lib/pricing/action-guards";
 import {
@@ -1015,7 +1016,7 @@ export async function updatePricingItem(
 
   const { data: existing, error: loadError } = await supabase
     .from("pricing_items")
-    .select("id, pricing_document_id, project_id, total_sell, client_label")
+    .select("id, pricing_document_id, project_id, total_sell, client_label, cost_known, notes_internal")
     .eq("id", parsed.data.pricingItemId)
     .eq("org_id", orgId)
     .maybeSingle();
@@ -1047,13 +1048,34 @@ export async function updatePricingItem(
     return { error: computed.error };
   }
   const totals = computed.fields;
+  const originatedAsPricingRequired =
+    parseLineItemNotes(item.notes_internal ?? existing.notes_internal)
+      .metadata.rateSourceType === "missing";
+  const costKnown = resolveCostKnownAfterPricingEdit({
+    existingCostKnown:
+      existing.cost_known === false
+        ? false
+        : existing.cost_known === true
+          ? true
+          : undefined,
+    computedCostKnown: totals.costKnown,
+    totalCost: totals.totalCost,
+    totalSell: totals.totalSell,
+    originatedAsPricingRequired,
+  });
+  if (!Number.isFinite(totals.totalCost) || !Number.isFinite(totals.totalSell)) {
+    return { error: "Pricing amounts must be finite numbers." };
+  }
+  if (totals.totalCost < 0 || totals.totalSell < 0) {
+    return { error: "Pricing amounts cannot be negative." };
+  }
 
   const commercial = validateComputedItemForPersistence({
     totalCost: totals.totalCost,
     totalSell: totals.totalSell,
     marginPercent: totals.marginPercent,
     markupPercent: totals.markupPercent,
-    costKnown: totals.costKnown,
+    costKnown,
   });
   if (!commercial.ok) {
     return { error: commercial.error };
@@ -1087,6 +1109,7 @@ export async function updatePricingItem(
       notes_internal: item.notes_internal ?? null,
       notes_client: item.notes_client ?? null,
       work_area_id: item.work_area_id ?? null,
+      cost_known: costKnown,
       manually_edited: true,
     })
     .eq("id", parsed.data.pricingItemId)
@@ -1112,6 +1135,8 @@ export async function updatePricingItem(
     },
     newValues: {
       total_sell: totals.totalSell,
+      total_cost: totals.totalCost,
+      cost_known: costKnown,
       client_label: item.client_label,
       manually_edited: true,
     },

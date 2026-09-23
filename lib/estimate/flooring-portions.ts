@@ -59,6 +59,10 @@ export const FLOORING_DELETE_PORTION_KEY = "flooring.delete_portion" as const;
 export const FLOORING_NESTED_NOT_CALCULATED_MESSAGE =
   "Canonical nested Flooring Areas are not calculated on the legacy Flooring allowance path." as const;
 
+/** User-facing Estimate/Improve copy. Never expose the nested/legacy diagnostic. */
+export const FLOORING_SPECIALIST_PRICING_REQUIRED_MESSAGE =
+  "Specialist flooring pricing is required." as const;
+
 export const FLOORING_FINISH_TYPE_VALUES = [
   "carpet",
   "vinyl_plank",
@@ -596,6 +600,13 @@ function clearMachineOwnedField<K extends keyof FlooringPortion>(
 export function sanitizeFlooringPortionInapplicableFields(
   portion: FlooringPortion
 ): FlooringPortion {
+  if (portion.finish_removal_required === false) {
+    clearMachineOwnedField(
+      portion,
+      "existing_finish_type",
+      "existing_finish_authority"
+    );
+  }
   const finish = portion.finish_type;
   if (!finish) return portion;
   if (!flooringFinishUsesUnderlay(finish)) {

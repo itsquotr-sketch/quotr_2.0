@@ -1440,6 +1440,13 @@ function buildIssues(
   }
 
   for (const row of input.estimate.missingInfo) {
+    if (
+      /canonical nested|legacy Flooring allowance path|UNSUPPORTED_SPECIALIST|unsupported specialist flooring/i.test(
+        row
+      )
+    ) {
+      continue;
+    }
     const key = normalizeIssueKey(row);
     if (!key || assumptionKeys.has(key) || checkKeys.has(key)) continue;
     checkKeys.add(key);
