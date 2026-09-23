@@ -149,19 +149,33 @@ export function matchPricingToEstimateLines(
 
   const bySourceId = new Map<string, PricingItem>();
   const byLabel = new Map<string, PricingItem>();
+  const byScope = new Map<string, PricingItem>();
 
   for (const item of pricingItems) {
     if (item.source_estimate_line_item_id) {
       bySourceId.set(item.source_estimate_line_item_id, item);
     }
     byLabel.set(labelKey(item.work_area_id, item.internal_label), item);
+    const scope = parseLineItemNotes(item.notes_internal).metadata.scopeKey;
+    if (scope && !byScope.has(scope)) {
+      byScope.set(scope, item);
+    }
   }
 
   for (const lineItem of estimateLineItems) {
     let match = bySourceId.get(lineItem.id) ?? null;
+    const lineScope =
+      parseLineItemNotes(lineItem.notes).metadata.scopeKey ?? null;
 
     if (match && usedPricingIds.has(match.id)) {
       match = null;
+    }
+
+    if (!match && lineScope) {
+      const scopeMatch = byScope.get(lineScope) ?? null;
+      if (scopeMatch && !usedPricingIds.has(scopeMatch.id)) {
+        match = scopeMatch;
+      }
     }
 
     if (!match) {
@@ -169,11 +183,18 @@ export function matchPricingToEstimateLines(
         labelKey(lineItem.work_area_id, lineItem.label)
       );
       if (labelMatch && !usedPricingIds.has(labelMatch.id)) {
-        const sourceStale =
-          labelMatch.source_estimate_line_item_id != null &&
-          !estimateIds.has(labelMatch.source_estimate_line_item_id);
-        if (sourceStale || labelMatch.source_estimate_line_item_id == null) {
-          match = labelMatch;
+        const labelScope =
+          parseLineItemNotes(labelMatch.notes_internal).metadata.scopeKey ??
+          null;
+        if (labelScope && lineScope && labelScope !== lineScope) {
+          match = null;
+        } else {
+          const sourceStale =
+            labelMatch.source_estimate_line_item_id != null &&
+            !estimateIds.has(labelMatch.source_estimate_line_item_id);
+          if (sourceStale || labelMatch.source_estimate_line_item_id == null) {
+            match = labelMatch;
+          }
         }
       }
     }

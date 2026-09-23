@@ -20,6 +20,7 @@ import {
   deletePricingItemInputSchema,
   duplicatePricingItemInputSchema,
   markPricingReviewedInputSchema,
+  setManualPriceForUnresolvedRequirementInputSchema,
   setPricingItemsQuoteVisibilityInputSchema,
   updatePricingDocumentInputSchema,
   updatePricingItemInputSchema,
@@ -52,6 +53,12 @@ import {
 } from "@/lib/pricing/commercial-engine-adapter";
 import { calculateAuthoritativeDocumentTotals } from "@/lib/pricing/authoritative-document-totals";
 import { valuesFromEstimateLineItem } from "@/lib/pricing/recalibration-helpers";
+import {
+  inferStoredPricingCostKnown,
+  mergeClientNotesPreservingIdentity,
+  PRICING_ITEM_UPDATE_SELECT,
+  saveManualPriceForUnresolvedRequirement,
+} from "@/lib/pricing/manual-requirement-promotion";
 import { buildManualScopePricingNotes } from "@/lib/work-areas/scope-items/pricing-bridge";
 import {
   buildScopeSummaryFromWorkAreas,
@@ -1016,7 +1023,7 @@ export async function updatePricingItem(
 
   const { data: existing, error: loadError } = await supabase
     .from("pricing_items")
-    .select("id, pricing_document_id, project_id, total_sell, client_label, cost_known, notes_internal")
+    .select(PRICING_ITEM_UPDATE_SELECT)
     .eq("id", parsed.data.pricingItemId)
     .eq("org_id", orgId)
     .maybeSingle();
@@ -1049,15 +1056,10 @@ export async function updatePricingItem(
   }
   const totals = computed.fields;
   const originatedAsPricingRequired =
-    parseLineItemNotes(item.notes_internal ?? existing.notes_internal)
-      .metadata.rateSourceType === "missing";
+    parseLineItemNotes(existing.notes_internal).metadata.rateSourceType ===
+    "missing";
   const costKnown = resolveCostKnownAfterPricingEdit({
-    existingCostKnown:
-      existing.cost_known === false
-        ? false
-        : existing.cost_known === true
-          ? true
-          : undefined,
+    existingCostKnown: inferStoredPricingCostKnown(existing),
     computedCostKnown: totals.costKnown,
     totalCost: totals.totalCost,
     totalSell: totals.totalSell,
@@ -1106,11 +1108,16 @@ export async function updatePricingItem(
       delivery_method: item.delivery_method,
       visible_on_quote: item.visible_on_quote ?? true,
       optional: item.optional ?? false,
-      notes_internal: item.notes_internal ?? null,
+      notes_internal: originatedAsPricingRequired
+        ? mergeClientNotesPreservingIdentity(
+            existing.notes_internal,
+            item.notes_internal,
+            costKnown
+          )
+        : (item.notes_internal ?? null),
       notes_client: item.notes_client ?? null,
       work_area_id: item.work_area_id ?? null,
-      cost_known: costKnown,
-      manually_edited: true,
+      manually_edited: originatedAsPricingRequired && !costKnown ? false : true,
     })
     .eq("id", parsed.data.pricingItemId)
     .eq("org_id", orgId);
@@ -1177,6 +1184,104 @@ export async function updatePricingItem(
     success: true,
     item: mapPricingItem(updatedItem.data),
     document: updatedDocument,
+  };
+}
+
+export async function setManualPriceForUnresolvedRequirement(input: {
+  projectId: string;
+  pricingDocumentId: string;
+  workAreaId: string;
+  nestedItemId: string;
+  componentKey: string;
+  totalCost: number;
+  totalSell?: number | null;
+}): Promise<PricingActionState> {
+  const parsed = parsePricingInput(
+    setManualPriceForUnresolvedRequirementInputSchema,
+    input
+  );
+  if (!parsed.ok) return { error: parsed.error };
+
+  const auth = await requireAuthOrgContext();
+  if (!isAuthOrgSuccess(auth)) return { error: auth.error };
+  const { supabase, orgId, user } = auth;
+  const denied = await requirePricingEditPermission({ orgId, user });
+  if (denied) return denied;
+
+  const ownedProject = await assertOrgOwnsActiveProject(
+    auth,
+    parsed.data.projectId
+  );
+  if ("error" in ownedProject) return { error: ownedProject.error };
+
+  const ownedDocument = await assertOrgOwnsPricingDocument(
+    auth,
+    parsed.data.pricingDocumentId,
+    parsed.data.projectId
+  );
+  if ("error" in ownedDocument) return { error: ownedDocument.error };
+
+  const saved = await saveManualPriceForUnresolvedRequirement(supabase, {
+    orgId,
+    identity: {
+      projectId: parsed.data.projectId,
+      workAreaId: parsed.data.workAreaId,
+      nestedItemId: parsed.data.nestedItemId,
+      componentKey: parsed.data.componentKey,
+    },
+    pricingDocumentId: parsed.data.pricingDocumentId,
+    totalCost: parsed.data.totalCost,
+    totalSell: parsed.data.totalSell,
+  });
+  if ("error" in saved) return { error: saved.error };
+
+  if (saved.item) {
+    await logPricingAuditEvent({
+      supabase,
+      organisationId: orgId,
+      projectId: parsed.data.projectId,
+      pricingDocumentId: parsed.data.pricingDocumentId,
+      itemId: saved.item.id,
+      userId: user.id,
+      action: saved.created ? "pricing_item_create" : "pricing_item_update",
+      newValues: {
+        total_cost: saved.item.total_cost,
+        total_sell: saved.item.total_sell,
+        component_key: parsed.data.componentKey,
+        nested_item_id: parsed.data.nestedItemId,
+        manually_edited: saved.item.manually_edited,
+        pricing_source: "user_override",
+      },
+    });
+  }
+
+  const document = await loadPricingDocumentById(
+    supabase,
+    orgId,
+    parsed.data.pricingDocumentId
+  );
+
+  revalidatePricingProjectPath(
+    parsed.data.projectId,
+    parsed.data.pricingDocumentId
+  );
+  revalidatePath(`/app/projects/${parsed.data.projectId}/quotes`);
+  const { data: quotes } = await supabase
+    .from("quotes")
+    .select("id")
+    .eq("project_id", parsed.data.projectId)
+    .eq("org_id", orgId);
+  for (const quote of quotes ?? []) {
+    revalidatePath(
+      `/app/projects/${parsed.data.projectId}/quotes/${quote.id as string}`
+    );
+  }
+
+  return {
+    success: true,
+    item: saved.item ?? undefined,
+    document: document ?? undefined,
+    pricingDocumentId: parsed.data.pricingDocumentId,
   };
 }
 

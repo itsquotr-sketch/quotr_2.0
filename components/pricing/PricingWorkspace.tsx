@@ -21,9 +21,15 @@ import {
   duplicatePricingItem,
   markPricingReviewed,
   setPricingItemsQuoteVisibility,
+  setManualPriceForUnresolvedRequirement,
   updatePricingDocument,
   updatePricingItem,
 } from "@/lib/pricing/actions";
+import { pricingItemViewModel } from "@/lib/pricing/financial-view-model";
+import {
+  identityFromPricingItem,
+  isPendingPricingItemId,
+} from "@/lib/pricing/manual-requirement-promotion";
 import {
   groupPricingItems,
   isManuallyAddedPricingItem,
@@ -101,7 +107,10 @@ export function PricingWorkspace({
     () => items.filter((item) => selectedIds.has(item.id)),
     [items, selectedIds]
   );
-  const canDeleteCount = selectedItems.filter(isManuallyAddedPricingItem).length;
+  const canDeleteCount = selectedItems.filter(
+    (item) =>
+      isManuallyAddedPricingItem(item) && !isPendingPricingItemId(item.id)
+  ).length;
 
   const handleToggleSelect = useCallback((itemId: string) => {
     setSelectedIds((current) => {
@@ -182,6 +191,45 @@ export function PricingWorkspace({
 
   const handleSaveItem = useCallback(
     async (itemId: string, input: PricingItemInput) => {
+      const currentItem = items.find((item) => item.id === itemId);
+      const promote =
+        currentItem != null &&
+        (isPendingPricingItemId(itemId) ||
+          pricingItemViewModel(currentItem).pricingRequired);
+      if (promote && currentItem) {
+        const identity = identityFromPricingItem(currentItem);
+        if (!identity) {
+          return {
+            error: "This item cannot be priced until its estimate requirement is identified.",
+          };
+        }
+        const result = await setManualPriceForUnresolvedRequirement({
+          projectId,
+          pricingDocumentId,
+          workAreaId: identity.workAreaId,
+          nestedItemId: identity.nestedItemId,
+          componentKey: identity.componentKey,
+          totalCost: input.total_cost ?? 0,
+          totalSell: input.total_sell,
+        });
+        if (!result.error && result.item) {
+          setItems((current) => {
+            const next = current.map((item) =>
+              item.id === itemId || item.id === result.item!.id
+                ? result.item!
+                : item
+            );
+            const seen = new Set<string>();
+            return next.filter((item) => {
+              if (seen.has(item.id)) return false;
+              seen.add(item.id);
+              return true;
+            });
+          });
+          if (result.document) applyDocumentUpdate(result.document);
+        }
+        return result;
+      }
       const result = await updatePricingItem(itemId, input);
       if (!result.error && result.item && result.document) {
         setItems((current) =>
@@ -191,11 +239,14 @@ export function PricingWorkspace({
       }
       return result;
     },
-    [applyDocumentUpdate]
+    [applyDocumentUpdate, items, pricingDocumentId, projectId]
   );
 
   const handleDuplicateItem = useCallback(
     async (itemId: string) => {
+      if (isPendingPricingItemId(itemId)) {
+        return { error: "Save a price before duplicating this item." };
+      }
       const result = await duplicatePricingItem(itemId);
       if (!result.error && result.item && result.document) {
         setItems((current) => {
@@ -216,6 +267,9 @@ export function PricingWorkspace({
 
   const handleDeleteItem = useCallback(
     async (itemId: string) => {
+      if (isPendingPricingItemId(itemId)) {
+        return { error: "Save a price before deleting this item." };
+      }
       const result = await deletePricingItem(itemId);
       if (!result.error && result.deletedItemId && result.document) {
         setItems((current) =>
@@ -291,7 +345,10 @@ export function PricingWorkspace({
 
   const handleBulkDelete = () => {
     const manualIds = selectedItems
-      .filter(isManuallyAddedPricingItem)
+      .filter(
+        (item) =>
+          isManuallyAddedPricingItem(item) && !isPendingPricingItemId(item.id)
+      )
       .map((item) => item.id);
     if (manualIds.length === 0) return;
     if (

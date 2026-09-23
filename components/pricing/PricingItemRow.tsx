@@ -115,6 +115,7 @@ function PricingItemRowComponent({
         isPending={isPending}
         onSave={handleSave}
         onCancel={closeEditor}
+        saveLabel={moneyView.pricingRequired ? "Add price" : "Save item"}
       />
       <PricingCalculationDetails item={item} rawNotes={item.notes_internal} />
     </div>

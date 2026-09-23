@@ -189,6 +189,20 @@ export const updatePricingItemInputSchema = z.object({
   item: pricingItemInputSchema,
 });
 
+/**
+ * Add price for an unresolved requirement. Identity is a lookup only.
+ * Description, quantity, ownership and Pricing item IDs are not accepted.
+ */
+export const setManualPriceForUnresolvedRequirementInputSchema = z.object({
+  projectId: uuidSchema,
+  pricingDocumentId: uuidSchema,
+  workAreaId: uuidSchema,
+  nestedItemId: trimmedStringSchema(200, { min: 1 }),
+  componentKey: trimmedStringSchema(200, { min: 1 }),
+  totalCost: moneyAmountSchema,
+  totalSell: optionalMoneyAmountSchema,
+});
+
 export const duplicatePricingItemInputSchema = z.object({
   pricingItemId: uuidSchema,
 });

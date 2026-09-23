@@ -6,6 +6,11 @@ import {
   mapPricingItem,
   mapPricingWorkArea,
 } from "@/lib/pricing/mappers";
+import {
+  eligibilityLineFromStoredEstimate,
+  projectEligibleUnresolvedPricingItems,
+} from "@/lib/pricing/manual-requirement-promotion";
+import type { EstimateLineItemRow } from "@/lib/pricing/recalibration-helpers";
 import type {
   PricingSummary,
   PricingWorkspaceData,
@@ -149,6 +154,32 @@ export async function getPricingWorkspaceDataWithContext(
     notFound();
   }
 
+  const mappedItems = (items ?? []).map((row) => mapPricingItem(row));
+  let workspaceItems = mappedItems;
+  const estimateId = (document.estimate_id as string | null) ?? null;
+  if (estimateId) {
+    const { data: estimateLines } = await supabase
+      .from("estimate_line_items")
+      .select(
+        "id, work_area_id, label, category, recommended_cost, recommended_sell, notes, sort_order, component_key"
+      )
+      .eq("estimate_id", estimateId)
+      .eq("org_id", orgId)
+      .order("sort_order");
+    const projected = projectEligibleUnresolvedPricingItems({
+      items: mappedItems,
+      estimateLines: ((estimateLines ?? []) as EstimateLineItemRow[]).map(
+        eligibilityLineFromStoredEstimate
+      ),
+      orgId,
+      projectId,
+      pricingDocumentId,
+    });
+    if (projected.length > 0) {
+      workspaceItems = [...mappedItems, ...projected];
+    }
+  }
+
   const mappedDocument = mapPricingDocument(document);
   if (
     mappedDocument.status === "draft" ||
@@ -168,7 +199,7 @@ export async function getPricingWorkspaceDataWithContext(
   return {
     projectTitle: project.title,
     document: mappedDocument,
-    items: (items ?? []).map((row) => mapPricingItem(row)),
+    items: workspaceItems,
     workAreas: (workAreas ?? []).map((row) => mapPricingWorkArea(row)),
     latestEstimateRecommendedSell:
       estimate?.recommended_sell != null

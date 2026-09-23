@@ -85,6 +85,7 @@ import {
   STEP_WIDTH_ASSUMPTION_STATEMENT,
 } from "@/lib/estimate/deck-steps-physical";
 import {
+  bathroomDemolitionImpliedByScope,
   bathroomGeometryNeed,
   bathroomQuestionGroupVisible,
   isMatureBathroomPath,
@@ -423,6 +424,21 @@ function candidateFromJobPlanCheck(
     suppressMatureUnansweredBathroomTiling(input, card.workAreaId)
   ) {
     return null;
+  }
+  if (key === "bathroom.demolition_required") {
+    const jobScope = resolveBathroomJobScope({
+      jobScope: getStringFact(
+        input.facts as EstimateFact[],
+        card.workAreaId,
+        "bathroom.job_scope"
+      ),
+      renovationType: getStringFact(
+        input.facts as EstimateFact[],
+        card.workAreaId,
+        "bathroom.renovation_type"
+      ),
+    });
+    if (bathroomDemolitionImpliedByScope(jobScope)) return null;
   }
   if (shouldSuppressKnownSpec(key, card.workAreaId, input)) return null;
   if (factHas(input, key, card.workAreaId)) return null;

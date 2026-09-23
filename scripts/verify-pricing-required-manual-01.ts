@@ -331,8 +331,10 @@ check(
   "1. updatePricingItem remains the authorised mutation",
   actionsSrc.includes("export async function updatePricingItem") &&
     actionsSrc.includes("assertOrgOwnsPricingItem") &&
-    actionsSrc.includes("cost_known: costKnown") &&
-    actionsSrc.includes("resolveCostKnownAfterPricingEdit")
+    actionsSrc.includes("resolveCostKnownAfterPricingEdit") &&
+    actionsSrc.includes("export async function setManualPriceForUnresolvedRequirement") &&
+    actionsSrc.includes("PRICING_ITEM_UPDATE_SELECT") &&
+    !actionsSrc.includes(".select(\"id, pricing_document_id, project_id, total_sell, client_label, cost_known, notes_internal\")")
 );
 check(
   "2. No second manual-pricing system",
