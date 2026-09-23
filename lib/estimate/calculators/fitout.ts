@@ -88,6 +88,7 @@ import {
   commercializeCeilings,
 } from "@/lib/estimate/ceilings-commercial";
 import { commercializeDoors } from "@/lib/estimate/doors-commercial";
+import { commercializeFlooring } from "@/lib/estimate/flooring-commercial";
 
 function gmSell(
   cost: number,
@@ -1116,24 +1117,33 @@ export function calculateFlooring(
   workArea: EstimateWorkArea
 ): CalculatorResult {
   /**
-   * Dual-path calculator boundary (FLOORING-01B / FLOORING-03):
-   * - Canonical nested `flooring.portions` → physical takeoff only.
-   *   Incomplete, empty, or unsupported nested fields must not fall through
-   *   to the legacy FITOUT package. No COST, hours, or sell here.
+   * Dual-path calculator boundary (FLOORING-01B / FLOORING-05):
+   * - Canonical nested `flooring.portions` → physical takeoff then
+   *   commercializeFlooring. Incomplete, empty, or unsupported nested
+   *   fields must not fall through to the legacy FITOUT package.
    * - Legacy flat `flooring.area_m2` / FITOUT_BENCHMARKS.flooringPerM2 remain
    *   for hosted projects without portions. Do not extend that package here.
    */
   const { facts } = context;
   if (hasFlooringPortionsFact(facts, workArea.id)) {
     const physical = calculateFlooringPhysical({ facts, workArea });
+    const commercial = commercializeFlooring({
+      physical,
+      workArea,
+      rates: context.rates,
+      organisationSettings: context.organisationSettings,
+      constraints: context.constraints,
+    });
     return {
-      lineItems: [],
-      assumptions: [...physical.assumptions],
-      missingInfo: [...physical.missingInfo],
+      lineItems: [...commercial.lineItems],
+      assumptions: [...commercial.assumptions],
+      missingInfo: [...commercial.missingInfo],
       exclusions: [],
-      confidence: baseConfidence(physical.missingInfo.length),
+      confidence: baseConfidence(commercial.missingInfo.length),
       requirements:
-        physical.requirements.length > 0 ? physical.requirements : undefined,
+        commercial.requirements.length > 0
+          ? commercial.requirements
+          : undefined,
     };
   }
 

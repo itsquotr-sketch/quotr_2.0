@@ -13,6 +13,7 @@ import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import { flooringPortionQuestionIdentity } from "../lib/assistant/question-identity";
 import { BATHROOM_FLOOR_SUBSTRATE_PLYWOOD_KEY } from "../lib/estimate/bathroom-identities";
+import { FITOUT_BENCHMARKS } from "../lib/estimate/benchmark-rates";
 import {
   mergeFlooringPortionsPreferringDeterministic,
 } from "../lib/estimate/flooring-brief";
@@ -504,7 +505,7 @@ check("81. no duplicates after repeated re-analysis", repeat.length === 2 && new
 console.log("\n=== I. Legacy and cross-area safety ===\n");
 const completeFacts = persistPortions([carpetComplete, vinylComplete]);
 const nestedMoney = calculateFlooring(ctx(completeFacts), WA as never);
-check("82. nested complete remains no-money staged path", nestedMoney.lineItems.length === 0 && (nestedMoney.requirements?.length ?? 0) > 0 && !nestedMoney.missingInfo.includes(FLOORING_NESTED_NOT_CALCULATED_MESSAGE));
+check("82. nested complete does not use FITOUT $120/m²", nestedMoney.lineItems.length > 0 && (nestedMoney.requirements?.length ?? 0) > 0 && !nestedMoney.lineItems.some((row) => row.costRate === FITOUT_BENCHMARKS.flooringPerM2.cost || row.recommendedCost === FITOUT_BENCHMARKS.flooringPerM2.cost) && !nestedMoney.missingInfo.includes(FLOORING_NESTED_NOT_CALCULATED_MESSAGE));
 check("83. nested incomplete does not use legacy", calculateFlooring(ctx(unlabeledIncomplete), WA as never).lineItems.length === 0);
 const specialist = persistPortions([{
   ...createEmptyFlooringPortion({ label: "Entry" }),
@@ -514,7 +515,8 @@ const specialist = persistPortions([{
   area_m2: 12,
   area_input_method: "direct_m2",
 }]);
-check("84. nested specialist does not use legacy", calculateFlooring(ctx(specialist), WA as never).lineItems.length === 0);
+const specialistCalc = calculateFlooring(ctx(specialist), WA as never);
+check("84. nested specialist does not use legacy", !specialistCalc.lineItems.some((row) => row.costRate === FITOUT_BENCHMARKS.flooringPerM2.cost || row.recommendedCost === FITOUT_BENCHMARKS.flooringPerM2.cost) && specialistCalc.lineItems.every((row) => row.rateSourceType === "missing" || (row.recommendedCost ?? 0) === 0));
 const legacy = calculateFlooring(ctx([{ key: "flooring.area_m2", work_area_id: "f1", value: 20 }]), WA as never);
 check("85. flat legacy control unchanged", legacy.lineItems.length > 0 && !legacy.missingInfo.includes(FLOORING_NESTED_NOT_CALCULATED_MESSAGE));
 

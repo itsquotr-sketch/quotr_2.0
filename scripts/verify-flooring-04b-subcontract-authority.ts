@@ -513,10 +513,14 @@ check(
 
 const nestedCalc = calculateFlooring(ctx(persist([ordinary()])), WA);
 check(
-  "D44. No commercial line items emitted",
-  nestedCalc.lineItems.length === 0 &&
-    (nestedCalc.requirements?.length ?? 0) > 0 &&
-    (nestedCalc.requirements ?? []).every((row) => row.priced === false)
+  "D44. Nested commercial line items use subcontract identities, not FITOUT",
+  nestedCalc.lineItems.length > 0 &&
+    nestedCalc.lineItems.some(
+      (row) => row.itemKey === FLOORING_CARPET_SUPPLY_INSTALL_M2
+    ) &&
+    nestedCalc.lineItems.every(
+      (row) => row.costRate !== FITOUT_BENCHMARKS.flooringPerM2.cost
+    )
 );
 
 const physicalMap = [
@@ -788,8 +792,11 @@ check(
     }).costRate == null
 );
 check(
-  "G61. Nested calculator still emits no line items",
-  nestedCalc.lineItems.length === 0
+  "G61. Nested calculator emits hosted commercial money without FITOUT fall-through",
+  nestedCalc.lineItems.length > 0 &&
+    nestedCalc.lineItems.every(
+      (row) => row.costRate !== FITOUT_BENCHMARKS.flooringPerM2.cost
+    )
 );
 
 const legacy = calculateFlooring(
@@ -879,8 +886,8 @@ check(
     workAreaMayCloseAtL5(coverage) === false &&
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
-        row.component === "Hosted commercial line items" &&
-        row.outcome === "INTENTIONAL_PRICING_REQUIRED"
+        row.component === "Pricing page integration" &&
+        row.outcome === "NEEDS_NEW_QUOTR_BENCHMARK"
     )
 );
 

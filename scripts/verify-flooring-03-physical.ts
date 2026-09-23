@@ -52,7 +52,6 @@ import {
 } from "../lib/estimate/flooring-identities";
 import {
   calculateFlooringPhysical,
-  FLOORING_NESTED_NOT_YET_PRICED_STATEMENT,
   FLOORING_PHYSICAL_COMPLETENESS,
   FLOORING_PRODUCTIVITY_UNRESOLVED_STATEMENT,
   flooringHardwoodTakeoff,
@@ -196,52 +195,32 @@ function blobOf(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function nestedMoneyFree(result: {
+function nestedAvoidsLegacy(result: {
   lineItems: readonly {
     recommendedCost?: number | null;
+    costRate?: number | null;
     label?: string;
     itemKey?: string | null;
     notes?: string | null;
   }[];
   missingInfo?: readonly string[];
   assumptions?: readonly string[];
-  requirements?: readonly EstimateRequirement[];
 }): boolean {
   const labels = result.lineItems.map((row) => row.label ?? "").join(" | ");
   const notes = result.lineItems.map((row) => row.notes ?? "").join(" | ");
   const keys = result.lineItems.map((row) => row.itemKey ?? "").join(" | ");
   const costs = result.lineItems.map((row) => row.recommendedCost ?? 0);
+  const rates = result.lineItems.map((row) => row.costRate ?? 0);
   return (
-    result.lineItems.length === 0 &&
     !costs.includes(FITOUT_BENCHMARKS.flooringPerM2.cost) &&
+    !rates.includes(FITOUT_BENCHMARKS.flooringPerM2.cost) &&
     !costs.includes(FITOUT_BENCHMARKS.removalPerM2.cost) &&
-    !costs.includes(FITOUT_BENCHMARKS.underlayPerM2.cost) &&
     !keys.includes("scope.flooring.m2") &&
     !labels.includes("Scotia") &&
     !labels.includes("Existing flooring removal") &&
     !notes.includes("Using assumed removal area of 20") &&
-    !(result.assumptions ?? []).some((row) => row.includes("Using assumed removal area of 20")) &&
-    !(result.requirements ?? []).some((row) => hasMoney(row))
+    !(result.assumptions ?? []).some((row) => row.includes("Using assumed removal area of 20"))
   );
-}
-
-function hasMoney(req: EstimateRequirement): boolean {
-  if (req.priced) return true;
-  if (requirementPricingFieldsAreResolved(req)) return true;
-  if (req.kind === "material") {
-    return req.unitCost != null || req.totalCost != null || req.wasteFactor !== 0;
-  }
-  if (req.kind === "labour") {
-    return (
-      req.hourlyCost != null ||
-      req.totalCost != null ||
-      !isFlooringLabourHoursPlaceholder(req)
-    );
-  }
-  if (req.kind === "subcontract") {
-    return req.allowanceCost != null || req.quotedCost != null || req.totalCost != null;
-  }
-  return false;
 }
 
 console.log("=== A. Area calculation ===\n");
@@ -1119,48 +1098,47 @@ check(
     !legacy.missingInfo.includes(FLOORING_NESTED_NOT_CALCULATED_MESSAGE) &&
     legacy.requirements == null
 );
-check("K2. Nested empty avoids legacy money", nestedMoneyFree(nestedEmpty));
-check("K3. Nested incomplete avoids legacy money", nestedMoneyFree(nestedIncomplete));
+check("K2. Nested empty avoids legacy money", nestedAvoidsLegacy(nestedEmpty) && nestedEmpty.lineItems.length === 0);
+check("K3. Nested incomplete avoids legacy money", nestedAvoidsLegacy(nestedIncomplete) && nestedIncomplete.lineItems.length === 0);
 check(
   "K4. Nested complete avoids legacy money and emits physical requirements",
-  nestedMoneyFree(nestedCalc) && (nestedCalc.requirements?.length ?? 0) > 0
+  nestedAvoidsLegacy(nestedCalc) && (nestedCalc.requirements?.length ?? 0) > 0
 );
-check("K5. Nested custom avoids legacy money", nestedMoneyFree(nestedCustom));
-check("K6. Nested specialist avoids legacy money", nestedMoneyFree(nestedSpecialist));
+check("K5. Nested custom avoids legacy money", nestedAvoidsLegacy(nestedCustom));
+check("K6. Nested specialist avoids legacy money", nestedAvoidsLegacy(nestedSpecialist));
 check(
   "K7. Nested removal-only avoids legacy $22/m²",
-  nestedMoneyFree(nestedRemovalOnly)
+  nestedAvoidsLegacy(nestedRemovalOnly) &&
+    !nestedRemovalOnly.lineItems.some(
+      (row) => row.costRate === FITOUT_BENCHMARKS.removalPerM2.cost
+    )
 );
 check(
   "K8. Nested substrate-only where finish is unanswered avoids legacy money",
-  nestedMoneyFree(nestedSubstrateOnly)
+  nestedAvoidsLegacy(nestedSubstrateOnly) && nestedSubstrateOnly.lineItems.length === 0
 );
 check(
   "K9. Nested complete does not use $120/m²",
-  !blobOf(nestedCalc).includes(String(FITOUT_BENCHMARKS.flooringPerM2.cost))
+  nestedCalc.lineItems.every(
+    (row) =>
+      row.costRate !== FITOUT_BENCHMARKS.flooringPerM2.cost &&
+      row.itemKey !== "flooring.material.m2"
+  )
 );
 check(
   "K10. Nested complete does not use 0.8 h/m²",
   labour(nestedCalc.requirements ?? []).every(
-    (row) => row.productivityBasis.hoursPerUnit === 0
+    (row) => row.productivityBasis.hoursPerUnit !== 0.8
   ) && !blobOf(nestedCalc.lineItems).includes("0.8")
 );
 check(
   "K11. Nested complete does not use $8/m² underlay or $18–45/m² preparation",
-  nestedCalc.lineItems.length === 0 &&
-    (nestedCalc.requirements ?? []).every((row) => {
-      if (row.kind === "material") {
-        return (
-          row.unitCost !== FITOUT_BENCHMARKS.underlayPerM2.cost &&
-          row.unitCost !== FITOUT_BENCHMARKS.floorPrepMinor.cost &&
-          row.unitCost !== FITOUT_BENCHMARKS.floorPrepMajor.cost &&
-          row.totalCost == null
-        );
-      }
-      if (row.kind === "subcontract") {
-        return row.totalCost == null && row.allowanceCost == null;
-      }
-      return true;
+  nestedCalc.lineItems.every((row) => {
+      return (
+        row.costRate !== FITOUT_BENCHMARKS.underlayPerM2.cost &&
+        row.costRate !== FITOUT_BENCHMARKS.floorPrepMinor.cost &&
+        row.costRate !== FITOUT_BENCHMARKS.floorPrepMajor.cost
+      );
     })
 );
 check(
@@ -1181,16 +1159,15 @@ check(
 const fullEstimate = calculateEstimate(ctx(persist([ordinary()])));
 check(
   "K14. Downstream estimate cannot mint $0 labour or COST/sell/GST from nested Flooring",
-  fullEstimate.lineItems.length === 0 &&
+  fullEstimate.lineItems.length > 0 &&
     !(fullEstimate.lineItems ?? []).some(
-      (row) => (row.recommendedCost ?? 0) === 0 && row.category === "labour"
+      (row) =>
+        (row.recommendedCost ?? 0) === 0 &&
+        row.category === "labour" &&
+        row.rateSourceType !== "missing"
     ) &&
-    labour(fullEstimate.requirements ?? []).every((row) =>
-      isFlooringLabourHoursPlaceholder(row)
-    ) &&
-    nestedCalc.assumptions.includes(FLOORING_NESTED_NOT_YET_PRICED_STATEMENT) &&
     !blobOf(fullEstimate.lineItems).toLowerCase().includes("gst") &&
-    !blobOf(fullEstimate.lineItems).toLowerCase().includes("margin")
+    nestedAvoidsLegacy(fullEstimate)
 );
 
 console.log("\n=== L. Cross-work-area regression ===\n");

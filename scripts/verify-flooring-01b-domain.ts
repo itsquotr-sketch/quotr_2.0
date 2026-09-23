@@ -160,16 +160,12 @@ function nestedBlocksLegacyMoney(facts: EstimateFact[]): boolean {
   const labels = result.lineItems.map((row) => row.label).join(" | ");
   const costs = result.lineItems.map((row) => row.recommendedCost ?? 0);
   return (
-    result.lineItems.length === 0 &&
-    (result.lineItems.reduce((sum, row) => sum + (row.recommendedCost ?? 0), 0) ===
-      0) &&
     !costs.includes(FITOUT_BENCHMARKS.flooringPerM2.cost) &&
+    !costs.includes(FITOUT_BENCHMARKS.removalPerM2.cost) &&
     !blob.includes("Using assumed removal area of 20") &&
     !blob.includes("scope.flooring.m2") &&
     !labels.includes("Scotia") &&
-    !labels.includes("Underlay") &&
-    !labels.includes("Existing flooring removal") &&
-    !labels.includes("Floor preparation")
+    !labels.includes("Existing flooring removal")
   );
 }
 
@@ -1010,11 +1006,12 @@ completeFacts = writeFlooring(
 );
 const completeResult = nestedFlooringResult(completeFacts);
 check(
-  "41. nested complete does not commercially calculate yet",
+  "41. nested complete does not fall through to legacy FITOUT money",
   nestedBlocksLegacyMoney(completeFacts) &&
-    completeResult.lineItems.length === 0 &&
     !completeResult.lineItems.some(
-      (row) => row.recommendedCost === FITOUT_BENCHMARKS.flooringPerM2.cost
+      (row) =>
+        row.recommendedCost === FITOUT_BENCHMARKS.flooringPerM2.cost ||
+        row.costRate === FITOUT_BENCHMARKS.flooringPerM2.cost
     )
 );
 

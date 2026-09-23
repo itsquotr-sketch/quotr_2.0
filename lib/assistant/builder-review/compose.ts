@@ -135,6 +135,7 @@ import type {
 import { isUserFacingEstimateAssumption } from "@/lib/assistant/presentation/user-facing-estimate-assumptions";
 import { applyCeilingsReviewGroups } from "@/lib/assistant/builder-review/ceilings-review-groups";
 import { applyDoorsReviewGroups } from "@/lib/assistant/builder-review/doors-review-groups";
+import { applyFlooringReviewGroups } from "@/lib/assistant/builder-review/flooring-review-groups";
 import { CEILINGS_PARTIAL_ESTIMATE_MESSAGE } from "@/lib/estimate/ceilings-identities";
 import { CEILINGS_BUILDER_REVIEW_PARTIAL_MESSAGE } from "@/lib/estimate/ceilings-quote-readiness";
 
@@ -1752,6 +1753,15 @@ export function composeBuilderReview(
     }
     if (meta.type === "doors") {
       const grouped = applyDoorsReviewGroups({
+        categories,
+        facts: input.facts ?? [],
+        workAreaId: meta.id,
+      });
+      categories = grouped.categories;
+      portionGroups = grouped.portionGroups;
+    }
+    if (meta.type === "flooring") {
+      const grouped = applyFlooringReviewGroups({
         categories,
         facts: input.facts ?? [],
         workAreaId: meta.id,

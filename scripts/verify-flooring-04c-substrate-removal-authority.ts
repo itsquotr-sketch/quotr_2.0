@@ -902,18 +902,20 @@ const legacy = calculateFlooring(
   WA
 );
 check(
-  "16b. Nested empty lineItems; flat legacy unchanged",
-  nested.lineItems.length === 0 &&
+  "16b. Nested commercialises without FITOUT; flat legacy unchanged",
+  nested.lineItems.length > 0 &&
+    nested.lineItems.every(
+      (row) => row.costRate !== FITOUT_BENCHMARKS.flooringPerM2.cost
+    ) &&
     (nested.requirements?.length ?? 0) > 0 &&
-    (nested.requirements ?? []).every((row) => row.priced === false) &&
     legacy.lineItems.length > 0 &&
     legacy.lineItems.some(
       (row) => row.costRate === FITOUT_BENCHMARKS.flooringPerM2.cost
     )
 );
 check(
-  "17. Nested calculator still emits no hosted commercial money after 04C",
-  nested.lineItems.length === 0 &&
+  "17. Nested calculator emits hosted money from 04C identities after commercialisation",
+  nested.lineItems.length > 0 &&
     calculateFlooring(
       ctx(
         persist([
@@ -931,7 +933,9 @@ check(
         ])
       ),
       WA
-    ).lineItems.length === 0
+    ).lineItems.some(
+      (row) => row.itemKey === FLOORING_SUBFLOOR_FRAMING_MAJOR_ALLOWANCE_M2
+    )
 );
 check(
   "17b. Nested Flooring still does not consume FITOUT $120/m²",
@@ -949,7 +953,7 @@ check(
         ])
       ),
       WA
-    ).lineItems.length === 0
+    ).lineItems.every((row) => row.costRate !== FITOUT_BENCHMARKS.flooringPerM2.cost)
 );
 const coverage = verifyRegisteredWorkAreaBenchmarkCoverage("flooring");
 check(
@@ -962,11 +966,11 @@ check(
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         row.component === "Hosted commercial line items" &&
-        row.outcome === "INTENTIONAL_PRICING_REQUIRED"
+        row.outcome === "RESOLVES_WITH_QUOTR"
     ) &&
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
-        row.component === "FLOORING-05 commercialisation wiring" &&
+        row.component === "Pricing page integration" &&
         row.outcome === "NEEDS_NEW_QUOTR_BENCHMARK"
     )
 );
