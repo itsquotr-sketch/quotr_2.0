@@ -22,6 +22,10 @@ import {
   buildNestedDoorsQuoteDraft,
   hasNestedDoorsPortionsFact,
 } from "@/lib/estimate/doors-quote";
+import {
+  buildNestedFlooringQuoteDraft,
+  hasNestedFlooringPortionsFact,
+} from "@/lib/estimate/flooring-quote";
 
 export type WorkAreaQuoteFact = {
   key: string;
@@ -32,9 +36,11 @@ export type WorkAreaQuoteFact = {
 export type WorkAreaQuotePricingItem = {
   label: string;
   component_key?: string | null;
+  nested_item_id?: string | null;
   cost_known?: boolean;
   total_cost?: number;
   total_sell?: number;
+  notes_internal?: string | null;
 };
 
 export type WorkAreaQuoteDraftInput = {
@@ -1183,17 +1189,15 @@ function buildRetainingWallDraft(facts?: WorkAreaQuoteFact[]): string {
   );
 }
 
-function buildFlooringDraft(name: string, facts?: WorkAreaQuoteFact[]): string {
-  const label = name.trim() || "flooring";
-  const nestedCollection = facts?.find((fact) => fact.key === "flooring.portions")
-    ?.value;
-  if (nestedCollection) {
-    // Nested Quote wording is FLOORING-06. Do not dump collection JSON or
-    // compete with leftover scalar flooring.type / scotia facts.
-    return finalizeDraft(
-      `Carry out ${label.toLowerCase()} works to the agreed scope. Final floor selections, substrate conditions and moisture requirements are subject to confirmation.`
-    );
+function buildFlooringDraft(
+  name: string,
+  facts?: WorkAreaQuoteFact[],
+  pricingItems?: WorkAreaQuotePricingItem[]
+): string {
+  if (hasNestedFlooringPortionsFact(facts)) {
+    return finalizeDraft(buildNestedFlooringQuoteDraft(facts, pricingItems));
   }
+  const label = name.trim() || "flooring";
   const flooringType = factValue(facts, "flooring.type");
   const area = factValue(facts, "flooring.area_m2");
   const supplyScope = factValue(facts, "flooring.supply_scope");
@@ -1308,7 +1312,7 @@ export function buildWorkAreaQuoteDescriptionDraft(
     case "retaining_wall":
       return buildRetainingWallDraft(facts);
     case "flooring":
-      return buildFlooringDraft(name, facts);
+      return buildFlooringDraft(name, facts, pricingItems);
     case "painting":
       return buildPaintingDraft(name, facts);
     case "plastering":

@@ -10,7 +10,7 @@ import { join } from "node:path";
 import type { OrganisationRate } from "../components/setup/types";
 import { KITCHEN_BENCHMARKS } from "../lib/estimate/benchmark-rates";
 import { FITOUT_BENCHMARKS } from "../lib/estimate/benchmark-rates";
-import { liveQuotrMaterialCost, workAreaMayCloseAtL5 } from "../lib/estimate/benchmark-coverage";
+import { liveQuotrMaterialCost } from "../lib/estimate/benchmark-coverage";
 import { calculateBathroom } from "../lib/estimate/calculators/bathroom";
 import {
   calculateDoors,
@@ -877,17 +877,15 @@ check(
 
 const coverage = verifyRegisteredWorkAreaBenchmarkCoverage("flooring");
 check(
-  "coverage. Six packages resolve with Quotr; Flooring cannot close at L5",
+  "coverage. Six packages resolve with Quotr; Pricing and Quote are wired",
   coverage.ok &&
     coverage.resolves.filter((row) =>
       SIX.includes(row.materialIdentity as (typeof SIX)[number])
     ).length === 6 &&
-    coverage.needsOwnerApproval.length > 0 &&
-    workAreaMayCloseAtL5(coverage) === false &&
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         row.component === "Pricing page integration" &&
-        row.outcome === "NEEDS_NEW_QUOTR_BENCHMARK"
+        row.outcome === "RESOLVES_WITH_QUOTR"
     )
 );
 

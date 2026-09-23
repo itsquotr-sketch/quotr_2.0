@@ -8,6 +8,7 @@ import {
   CEILINGS_QUOTE_PR_BLOCK_MESSAGE,
   nestedCeilingsQuoteIsBlocked,
 } from "@/lib/estimate/ceilings-quote-readiness";
+import { parseLineItemNotes } from "@/lib/estimate/line-item-metadata";
 import { mapPricingDocument, mapPricingItem } from "@/lib/pricing/mappers";
 import { DEFAULT_GST_RATE } from "@/lib/pricing/status";
 import { formatFactValueForDisplay } from "@/lib/scopes/fact-labels";
@@ -163,9 +164,11 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
     list.push({
       label,
       component_key: item.component_key,
+      nested_item_id: parseLineItemNotes(item.notes_internal).metadata.nestedItemId ?? null,
       cost_known: item.cost_known,
       total_cost: item.total_cost,
       total_sell: item.total_sell,
+      notes_internal: item.notes_internal,
     });
     pricingItemsByWorkAreaId.set(item.work_area_id, list);
   }

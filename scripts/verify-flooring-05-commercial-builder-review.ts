@@ -1217,18 +1217,23 @@ check(
     )
 );
 check(
-  "73. Pricing, Quote and human QA remain unwired; L5 blocked",
-  coverage.needsOwnerApproval.length > 0 &&
-    workAreaMayCloseAtL5(coverage) === false &&
+  "73. Pricing and Quote are wired; human QA is not frozen",
+  coverage.needsOwnerApproval.length === 0 &&
+    workAreaMayCloseAtL5(coverage) === true &&
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         row.component === "Pricing page integration" &&
-        row.outcome === "NEEDS_NEW_QUOTR_BENCHMARK"
+        row.outcome === "RESOLVES_WITH_QUOTR"
     ) &&
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         row.component === "Client Quote wording" &&
-        row.outcome === "NEEDS_NEW_QUOTR_BENCHMARK"
+        row.outcome === "RESOLVES_WITH_QUOTR"
+    ) &&
+    /not human-qa frozen/i.test(
+      FLOORING_BENCHMARK_REQUIREMENTS.find(
+        (row) => row.component === "Human hosted QA / freeze"
+      )?.notes ?? ""
     )
 );
 check(

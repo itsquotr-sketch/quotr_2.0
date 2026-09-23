@@ -14,6 +14,7 @@ import {
   sanitizeClientQuoteLabel,
 } from "@/lib/quotes/sanitize";
 import { doorsPricingItemIsClientPriced } from "@/lib/estimate/doors-quote";
+import { flooringPricingItemIsClientPriced } from "@/lib/estimate/flooring-quote";
 
 const INTERNAL_PHRASES = [
   "benchmark",
@@ -141,6 +142,7 @@ export function mapPricingItemsToQuoteItems(
   return pricingItems
     .filter((item) => item.visible_on_quote)
     .filter((item) => doorsPricingItemIsClientPriced(item))
+    .filter((item) => flooringPricingItemIsClientPriced(item))
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((item) => {
       let sectionDescription: string | null = null;

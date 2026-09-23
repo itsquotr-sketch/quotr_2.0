@@ -16,7 +16,6 @@ import {
 import {
   liveQuotrMaterialCost,
   liveQuotrProductivity,
-  workAreaMayCloseAtL5,
 } from "../lib/estimate/benchmark-coverage";
 import {
   BATHROOM_FLOOR_SUBSTRATE_FC_19MM_GENERIC_KEY,
@@ -957,12 +956,10 @@ check(
 );
 const coverage = verifyRegisteredWorkAreaBenchmarkCoverage("flooring");
 check(
-  "18. Coverage: packages, plywood, productivity, framing, removal resolve; L5 blocked",
+  "18. Coverage: packages, plywood, productivity, framing, removal resolve; Pricing wired",
   coverage.ok &&
     coverage.resolves.length >= 6 + 1 + 1 + 3 + 5 &&
     liveQuotrProductivity(FLOORING_SUBSTRATE_INSTALL_HOURS_PER_SHEET) === 0.5 &&
-    coverage.needsOwnerApproval.length > 0 &&
-    workAreaMayCloseAtL5(coverage) === false &&
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         row.component === "Hosted commercial line items" &&
@@ -971,7 +968,7 @@ check(
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         row.component === "Pricing page integration" &&
-        row.outcome === "NEEDS_NEW_QUOTR_BENCHMARK"
+        row.outcome === "RESOLVES_WITH_QUOTR"
     )
 );
 
