@@ -69,6 +69,7 @@ import {
   FLOORING_TILE_SUPPLY_INSTALL_M2,
   FLOORING_VINYL_PLANK_REMOVE_HOURS_PER_M2,
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
+  FLOORING_V1_COVERAGE_QUOTE_NOTES,
 } from "@/lib/estimate/flooring-identities";
 
 function row(
@@ -1557,12 +1558,12 @@ export const FLOORING_BENCHMARK_REQUIREMENTS: readonly WorkAreaBenchmarkRequirem
       physicalUnit: "m2",
       productivityOperation: null,
       fixings: false,
-      ordinaryV1: false,
-      outcome: "INTENTIONAL_PRICING_REQUIRED",
-      gapClass: "MUST_REMAIN_PRICING_REQUIRED",
-      derivation: null,
-      currentWithoutCompany: "Not human-QA frozen",
-      notes: "FLOORING-07. Human hosted QA has not occurred. Flooring is not human-QA frozen.",
+      ordinaryV1: true,
+      outcome: "RESOLVES_WITH_QUOTR",
+      gapClass: "EXISTING_BENCHMARK_REUSED",
+      derivation: "FLOORING-07 ordinary nested V1 human-QA freeze",
+      currentWithoutCompany: "Human-QA frozen",
+      notes: FLOORING_V1_COVERAGE_QUOTE_NOTES,
     }),
     row({
       workAreaType: "flooring",

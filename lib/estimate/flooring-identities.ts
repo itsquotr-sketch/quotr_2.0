@@ -293,3 +293,15 @@ export function flooringFinishRemovalLabourComponent(
   if (existing === "tile") return FLOORING_TILE_REMOVE_LABOUR;
   return FLOORING_HARDWOOD_REMOVE_LABOUR;
 }
+
+/**
+ * FLOORING-07 — ordinary nested V1 is human-QA frozen.
+ * Custom/specialist and exact unpriced substrate materials remain
+ * intentional Pricing Required. Does not claim laminate, sheet vinyl,
+ * structural framing, disposal, stairs, or unnamed finish products.
+ */
+export const FLOORING_V1_HUMAN_QA_FROZEN = true as const;
+export const FLOORING_V1_COVERAGE_QUOTE_NOTES =
+  "Ordinary supported nested Flooring Areas. Custom/specialist stay Pricing Required with client-safe pending wording. Human-QA frozen — FLOORING-07. Future Flooring changes require explicit regression updates." as const;
+export const FLOORING_V1_SUPPORT_NOTES =
+  "Ordinary nested Flooring V1 is human-QA frozen. Custom/specialist and exact unpriced substrate materials stay Pricing Required. Future Flooring changes require explicit FLOORING-07 regression updates." as const;

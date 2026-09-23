@@ -21,6 +21,9 @@
  * - Legacy flat `flooring.area_m2` / calculateFlooring lumps remain for
  *   hosted projects without portions.
  *
+ * FLOORING-07: ordinary nested Flooring V1 is human-QA frozen.
+ * Custom/specialist and exact unpriced substrate stay Pricing Required.
+ *
  * FLOORING-02 leftovers (not claimed here):
  * - Extraction, Details questions, takeoff, rates, productivity, money.
  * - Deleted-portion tombstones: this module does not persist a deletion

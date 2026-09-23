@@ -133,7 +133,7 @@ export const WORK_AREA_SUPPORT_ENTRIES: readonly WorkAreaSupportEntry[] = [
         : type === "doors"
           ? "Ordinary nested Doors V1 is human-QA frozen. Custom/specialist stay Pricing Required. Future Doors changes require explicit regression updates."
           : type === "flooring"
-            ? "Ordinary nested Flooring V1 has hosted estimate, Pricing and client Quote. Custom/specialist and exact FC/Secura material stay Pricing Required. Human hosted QA has not occurred; Flooring is not human-QA frozen."
+            ? "Ordinary nested Flooring V1 is human-QA frozen. Custom/specialist and exact unpriced substrate materials stay Pricing Required. Future Flooring changes require explicit FLOORING-07 regression updates."
             : "Commercial interior component. Price as this WA, not commercial_fitout."
     )
   ),

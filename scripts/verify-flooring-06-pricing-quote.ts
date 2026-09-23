@@ -32,6 +32,9 @@ import {
   FLOORING_SUBFLOOR_FRAMING_STANDARD_ALLOWANCE_M2,
   FLOORING_SUBSTRATE_INSTALL_LABOUR,
   FLOORING_SUBSTRATE_MATERIAL_COMPONENT,
+  FLOORING_V1_COVERAGE_QUOTE_NOTES,
+  FLOORING_V1_HUMAN_QA_FROZEN,
+  FLOORING_V1_SUPPORT_NOTES,
 } from "../lib/estimate/flooring-identities";
 import {
   FLOORING_QUOTE_CUSTOM_FINISH_EXCLUDED,
@@ -1055,8 +1058,9 @@ check(
 const coverage = verifyRegisteredWorkAreaBenchmarkCoverage("flooring");
 const support = getWorkAreaSupportEntry("flooring");
 check(
-  "62. Coverage: Pricing and Quote resolve; human QA is not frozen",
+  "62. Coverage: Pricing and Quote resolve; ordinary V1 is human-QA frozen",
   coverage.ok &&
+    FLOORING_V1_HUMAN_QA_FROZEN === true &&
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         row.component === "Pricing page integration" &&
@@ -1067,12 +1071,10 @@ check(
         row.component === "Client Quote wording" &&
         row.outcome === "RESOLVES_WITH_QUOTR"
     ) &&
-    /not human-qa frozen/i.test(
-      FLOORING_BENCHMARK_REQUIREMENTS.find(
-        (row) => row.component === "Human hosted QA / freeze"
-      )?.notes ?? ""
-    ) &&
-    /not human-qa frozen/i.test(support?.notes ?? "")
+    FLOORING_BENCHMARK_REQUIREMENTS.find(
+      (row) => row.component === "Human hosted QA / freeze"
+    )?.notes === FLOORING_V1_COVERAGE_QUOTE_NOTES &&
+    support?.notes === FLOORING_V1_SUPPORT_NOTES
 );
 check(
   "63. Ordinary Flooring may close at L5 after Pricing and Quote",
@@ -1093,10 +1095,11 @@ check(
 );
 
 check(
-  "65. Support contract describes ordinary scope and deferred specialist/QA",
-  /hosted estimate, Pricing and client Quote/i.test(support?.notes ?? "") &&
-    /Custom\/specialist/i.test(support?.notes ?? "") &&
-    /not human-QA frozen/i.test(support?.notes ?? "")
+  "65. Support contract freezes ordinary V1 without promoting the support band",
+  support?.notes === FLOORING_V1_SUPPORT_NOTES &&
+    support.band === "component" &&
+    /FLOORING-07/i.test(support.notes) &&
+    !/not human-QA frozen/i.test(support.notes)
 );
 
 check(

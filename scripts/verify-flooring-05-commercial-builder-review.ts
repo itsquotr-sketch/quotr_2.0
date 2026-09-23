@@ -51,6 +51,8 @@ import {
   FLOORING_TILE_SUPPLY_INSTALL_M2,
   FLOORING_VINYL_PLANK_REMOVE_HOURS_PER_M2,
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
+  FLOORING_V1_COVERAGE_QUOTE_NOTES,
+  FLOORING_V1_HUMAN_QA_FROZEN,
 } from "../lib/estimate/flooring-identities";
 import {
   calculateFlooringPhysical,
@@ -1217,9 +1219,10 @@ check(
     )
 );
 check(
-  "73. Pricing and Quote are wired; human QA is not frozen",
+  "73. Pricing and Quote are wired; ordinary V1 is human-QA frozen",
   coverage.needsOwnerApproval.length === 0 &&
     workAreaMayCloseAtL5(coverage) === true &&
+    FLOORING_V1_HUMAN_QA_FROZEN === true &&
     FLOORING_BENCHMARK_REQUIREMENTS.some(
       (row) =>
         row.component === "Pricing page integration" &&
@@ -1230,11 +1233,9 @@ check(
         row.component === "Client Quote wording" &&
         row.outcome === "RESOLVES_WITH_QUOTR"
     ) &&
-    /not human-qa frozen/i.test(
-      FLOORING_BENCHMARK_REQUIREMENTS.find(
-        (row) => row.component === "Human hosted QA / freeze"
-      )?.notes ?? ""
-    )
+    FLOORING_BENCHMARK_REQUIREMENTS.find(
+      (row) => row.component === "Human hosted QA / freeze"
+    )?.notes === FLOORING_V1_COVERAGE_QUOTE_NOTES
 );
 check(
   "74. FC/Secura and custom/specialist remain intentional PR",
