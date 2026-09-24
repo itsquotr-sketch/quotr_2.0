@@ -7,6 +7,7 @@
  */
 
 import { FULL_RATE_CATALOGUE } from "@/lib/rates/catalogue";
+import { claddingDisplayedCompanyValue } from "@/lib/estimate/cladding-authority";
 import {
   classifyMaterialPresentation,
   MATERIAL_CATEGORY_ORDER,
@@ -251,9 +252,16 @@ export function buildMaterialRegistryItem(params: {
     params.entry.rate_type
   );
   const benchmark = resolveBenchmark(params.entry);
-  const companyOverride =
-    companyRate?.cost_rate != null ? Number(companyRate.cost_rate) : null;
-  const effectiveSource = resolveEffectiveSource(companyRate, benchmark.kind);
+  const companyOverride = displayedCompanyOverride(
+    params.entry.item_key,
+    companyRate,
+    params.entry.rate_type,
+    params.entry.unit
+  );
+  const effectiveSource = resolveEffectiveSource(
+    companyOverride != null ? companyRate : null,
+    benchmark.kind
+  );
   const effectiveRate =
     companyOverride != null ? companyOverride : benchmark.cost;
 
@@ -291,6 +299,23 @@ export function buildMaterialRegistryItem(params: {
     companyRate,
     presentation,
   };
+}
+
+function displayedCompanyOverride(
+  itemKey: string,
+  companyRate: RatesPageRate | null,
+  rateType: string,
+  unit: string
+): number | null {
+  if (itemKey.startsWith("cladding.")) {
+    return claddingDisplayedCompanyValue({
+      identity: itemKey,
+      rate: companyRate,
+      rateType,
+      unit,
+    });
+  }
+  return companyRate?.cost_rate != null ? Number(companyRate.cost_rate) : null;
 }
 
 function familyStatusSummary(family: {

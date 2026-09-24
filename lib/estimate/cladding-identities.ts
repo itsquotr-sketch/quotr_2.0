@@ -90,6 +90,9 @@ export const CLADDING_SPECIALIST_CUSTOM =
 export const CLADDING_LABOUR_RATE_KEY_UNRESOLVED =
   "cladding.labour.rate.unresolved" as const;
 
+/** Existing carpenter hourly COST identity. The dollar benchmark lives in the labour catalogue. */
+export const CLADDING_CARPENTER_LABOUR_RATE_KEY = "labour.carpenter.hour" as const;
+
 export const CLADDING_SHEET_LENGTH_MM = 2400 as const;
 export const CLADDING_SHEET_WIDTH_MM = 1200 as const;
 export const CLADDING_SHEET_GAP_MM = 8 as const;

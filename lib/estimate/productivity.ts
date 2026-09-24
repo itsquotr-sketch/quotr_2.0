@@ -37,6 +37,7 @@ import {
   FLOORING_VINYL_PLANK_REMOVE_HOURS_PER_M2,
   FLOORING_VINYL_PLANK_REMOVE_HOURS_PER_M2_VALUE,
 } from "@/lib/estimate/flooring-identities";
+import { CLADDING_PRODUCTIVITY_BENCHMARKS } from "@/lib/estimate/cladding-authority";
 import {
   INTERNAL_WALLS_CORNICE_HOURS_PER_LM,
   INTERNAL_WALLS_CORNICE_INSTALL_HOURS_PER_LM_KEY,
@@ -664,6 +665,12 @@ const BENCHMARK_PRODUCTIVITY: Record<string, ProductivityRate> = {
     FLOORING_SUBSTRATE_REMOVE_HOURS_LABEL,
     FLOORING_SUBSTRATE_REMOVE_HOURS_PER_M2_VALUE,
     "m2"
+  ),
+  ...Object.fromEntries(
+    CLADDING_PRODUCTIVITY_BENCHMARKS.map((row) => [
+      row.key,
+      productivityEntry(row.key, row.label, row.hoursPerUnit, row.unit),
+    ])
   ),
 };
 

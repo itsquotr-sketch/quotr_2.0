@@ -16,6 +16,7 @@ import {
 } from "@/lib/company-dna/catalogue";
 import { isCompanyDnaV2WorkArea } from "@/lib/company-dna/v2-ui";
 import { FULL_RATE_CATALOGUE } from "@/lib/rates/catalogue";
+import { claddingDisplayedCompanyValue } from "@/lib/estimate/cladding-authority";
 import { isProductivityRatesCatalogueEntry } from "@/lib/rates/rate-section-contract";
 import type { RateCatalogueEntry, RatesPageRate } from "@/lib/rates/types";
 
@@ -101,6 +102,7 @@ const WORK_AREA_ORDER: readonly string[] = [
   "painting",
   "doors",
   "flooring",
+  "cladding",
 ];
 
 export function productivityWorkAreaLabel(workAreaType: string): string {
@@ -205,13 +207,24 @@ export function buildProductivityRegistryItem(params: {
   const { entry, rates, editable } = params;
   const workAreaType = entry.work_area_type?.trim() || "general";
   const companyRate = findCompanyProductivityRate(rates, entry.item_key);
-  const companyOverrideHours =
-    companyRate?.cost_rate != null ? Number(companyRate.cost_rate) : null;
+  const companyOverrideHours = entry.item_key.startsWith("cladding.")
+    ? claddingDisplayedCompanyValue({
+        identity: entry.item_key,
+        rate: companyRate,
+        rateType: "productivity",
+        unit: entry.unit,
+      })
+    : companyRate?.cost_rate != null
+      ? Number(companyRate.cost_rate)
+      : null;
   const benchmarkHours =
     entry.defaultCostRate != null && Number.isFinite(entry.defaultCostRate)
       ? Number(entry.defaultCostRate)
       : null;
-  const effectiveSource = resolveEffectiveSource(companyRate, benchmarkHours);
+  const effectiveSource = resolveEffectiveSource(
+    companyOverrideHours != null ? companyRate : null,
+    benchmarkHours
+  );
   const effectiveValue =
     companyOverrideHours != null ? companyOverrideHours : benchmarkHours;
 

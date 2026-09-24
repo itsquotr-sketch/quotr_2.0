@@ -71,6 +71,22 @@ import {
   FLOORING_VINYL_PLANK_SUPPLY_INSTALL_M2,
   FLOORING_V1_COVERAGE_QUOTE_NOTES,
 } from "@/lib/estimate/flooring-identities";
+import {
+  CLADDING_MATERIAL_BENCHMARKS,
+  CLADDING_MATERIAL_RATE_DESCRIPTION,
+  CLADDING_PRODUCTIVITY_BENCHMARKS,
+} from "@/lib/estimate/cladding-authority";
+import {
+  CLADDING_CARPENTER_LABOUR_RATE_KEY,
+  CLADDING_CAVITY_UNRESOLVED_M2,
+  CLADDING_CUSTOM_INSTALL_HOURS_PER_LM,
+  CLADDING_CUSTOM_REMOVE_HOURS_PER_M2,
+  CLADDING_SPECIALIST_BRICK_VENEER,
+  CLADDING_SPECIALIST_CUSTOM,
+  CLADDING_SPECIALIST_MASONRY,
+  CLADDING_TRIMS_UNRESOLVED,
+  CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2,
+} from "@/lib/estimate/cladding-identities";
 
 function row(
   partial: WorkAreaBenchmarkRequirement
@@ -1581,11 +1597,148 @@ export const FLOORING_BENCHMARK_REQUIREMENTS: readonly WorkAreaBenchmarkRequirem
     }),
   ];
 
+const CLADDING_BENCHMARK_REQUIREMENTS: readonly WorkAreaBenchmarkRequirement[] = [
+  ...CLADDING_MATERIAL_BENCHMARKS.map((item) =>
+    row({
+      workAreaType: "cladding",
+      component: item.label,
+      materialIdentity: item.key,
+      physicalUnit: item.unit,
+      productivityOperation: null,
+      fixings: true,
+      ordinaryV1: true,
+      outcome: "RESOLVES_WITH_QUOTR",
+      gapClass: "EXISTING_BENCHMARK_REUSED",
+      derivation: `Owner-approved Quotr V1 ${item.costExGst} ex GST / ${item.unit}`,
+      currentWithoutCompany: "Quotr COST only",
+      notes: CLADDING_MATERIAL_RATE_DESCRIPTION,
+    })
+  ),
+  ...CLADDING_PRODUCTIVITY_BENCHMARKS.map((item) =>
+    row({
+      workAreaType: "cladding",
+      component: item.label,
+      materialIdentity: null,
+      physicalUnit: item.unit,
+      productivityOperation: item.key,
+      fixings: false,
+      ordinaryV1: true,
+      outcome: "RESOLVES_WITH_QUOTR",
+      gapClass: "EXISTING_BENCHMARK_REUSED",
+      derivation: `Owner-approved Quotr V1 ${item.hoursPerUnit} person-hours / ${item.unit}`,
+      currentWithoutCompany: "Quotr hours only",
+      notes: "Hosted labour COST uses labour.carpenter.hour. Hours are not written onto physical placeholders yet.",
+    })
+  ),
+  row({
+    workAreaType: "cladding",
+    component: "Carpenter hourly COST",
+    materialIdentity: CLADDING_CARPENTER_LABOUR_RATE_KEY,
+    physicalUnit: "hour",
+    productivityOperation: null,
+    fixings: false,
+    ordinaryV1: true,
+    outcome: "RESOLVES_WITH_QUOTR",
+    gapClass: "EXISTING_BENCHMARK_REUSED",
+    derivation: "Existing labour.carpenter.hour catalogue COST",
+    currentWithoutCompany: "Quotr carpenter COST",
+    notes: "Recognised existing authority. Not a Cladding-specific hourly rate and not labour.labourer.hour or labour.general.hour.",
+  }),
+  ...[
+    ["Drained cavity", CLADDING_CAVITY_UNRESOLVED_M2],
+    ["Wall underlay or rigid air barrier", CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2],
+    ["Trims, corners and flashings", CLADDING_TRIMS_UNRESOLVED],
+    ["Brick veneer", CLADDING_SPECIALIST_BRICK_VENEER],
+    ["Masonry veneer", CLADDING_SPECIALIST_MASONRY],
+    ["Proprietary or custom cladding", CLADDING_SPECIALIST_CUSTOM],
+  ].map(([component, identity]) =>
+    row({
+      workAreaType: "cladding",
+      component: component!,
+      materialIdentity: identity!,
+      physicalUnit: "scope",
+      productivityOperation: null,
+      fixings: false,
+      ordinaryV1: true,
+      outcome: "INTENTIONAL_PRICING_REQUIRED",
+      gapClass: "MUST_REMAIN_PRICING_REQUIRED",
+      derivation: null,
+      currentWithoutCompany: "PR",
+      notes: "No starter money. Physical requirement stays with null money, never $0.",
+    })
+  ),
+  row({
+    workAreaType: "cladding",
+    component: "Custom cladding install",
+    materialIdentity: null,
+    physicalUnit: "lm",
+    productivityOperation: CLADDING_CUSTOM_INSTALL_HOURS_PER_LM,
+    fixings: false,
+    ordinaryV1: true,
+    outcome: "INTENTIONAL_PRICING_REQUIRED",
+    gapClass: "MUST_REMAIN_PRICING_REQUIRED",
+    derivation: null,
+    currentWithoutCompany: "PR",
+    notes: "Does not inherit an ordinary install operation.",
+  }),
+  row({
+    workAreaType: "cladding",
+    component: "Custom cladding removal",
+    materialIdentity: null,
+    physicalUnit: "m2",
+    productivityOperation: CLADDING_CUSTOM_REMOVE_HOURS_PER_M2,
+    fixings: false,
+    ordinaryV1: true,
+    outcome: "INTENTIONAL_PRICING_REQUIRED",
+    gapClass: "MUST_REMAIN_PRICING_REQUIRED",
+    derivation: null,
+    currentWithoutCompany: "PR",
+    notes: "Does not inherit an ordinary removal operation.",
+  }),
+  ...["Painting", "Scaffold", "Disposal"].map((component) =>
+    row({
+      workAreaType: "cladding",
+      component,
+      materialIdentity: null,
+      physicalUnit: "scope",
+      productivityOperation: null,
+      fixings: false,
+      ordinaryV1: true,
+      outcome: "INTENTIONAL_PRICING_REQUIRED",
+      gapClass: "MUST_REMAIN_PRICING_REQUIRED",
+      derivation: null,
+      currentWithoutCompany: "PR",
+      notes: "Separately scoped. No Cladding starter money.",
+    })
+  ),
+  ...[
+    ["Hosted commercialisation", "Commercial line items are not emitted by calculateCladding."],
+    ["Builder Review", "Builder Review is not wired for Cladding."],
+    ["Pricing and Quote", "Pricing and Quote are not wired for Cladding."],
+  ].map(([component, notes]) =>
+    row({
+      workAreaType: "cladding",
+      component: component!,
+      materialIdentity: null,
+      physicalUnit: "scope",
+      productivityOperation: null,
+      fixings: false,
+      ordinaryV1: false,
+      outcome: "NEEDS_NEW_QUOTR_BENCHMARK",
+      gapClass: "NEEDS_NEW_QUOTR_BENCHMARK",
+      derivation: null,
+      currentWithoutCompany: "NEEDS_NEW",
+      notes: notes!,
+    })
+  ),
+];
+
 const REGISTRY: Record<string, readonly WorkAreaBenchmarkRequirement[]> = {
   ceilings: CEILING_BENCHMARK_REQUIREMENTS,
   internal_walls: INTERNAL_WALLS_BENCHMARK_REQUIREMENTS,
   doors: DOORS_BENCHMARK_REQUIREMENTS,
   flooring: FLOORING_BENCHMARK_REQUIREMENTS,
+  cladding: CLADDING_BENCHMARK_REQUIREMENTS,
 };
 
 export function getWorkAreaBenchmarkRequirements(

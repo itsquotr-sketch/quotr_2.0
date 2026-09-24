@@ -137,6 +137,10 @@ import {
   DOORS_REPLACEMENT_LEAF_INSTALL_LABEL,
 } from "@/lib/estimate/doors-identities";
 import {
+  CLADDING_MATERIAL_BENCHMARKS,
+  CLADDING_PRODUCTIVITY_BENCHMARKS,
+} from "@/lib/estimate/cladding-authority";
+import {
   FLOORING_CARPET_REMOVE_HOURS_DESCRIPTION,
   FLOORING_CARPET_REMOVE_HOURS_LABEL,
   FLOORING_CARPET_REMOVE_HOURS_PER_M2,
@@ -3562,6 +3566,41 @@ export const FLOORING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] = [
   }),
 ];
 
+export const CLADDING_SPECIFIC_MATERIAL_CATALOGUE: RateCatalogueEntry[] =
+  CLADDING_MATERIAL_BENCHMARKS.map((row) =>
+    entry({
+      item_key: row.key,
+      label: row.label,
+      rate_type: "material",
+      category: "material",
+      work_area_type: "cladding",
+      workAreaLabel: "Cladding",
+      unit: row.unit,
+      description: row.description,
+      defaultCostRate: row.costExGst,
+      recommended: true,
+      calculatorSupport: "used_now",
+    })
+  );
+
+export const CLADDING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] =
+  CLADDING_PRODUCTIVITY_BENCHMARKS.map((row) =>
+    entry({
+      item_key: row.key,
+      label: row.label,
+      rate_type: "productivity",
+      category: "labour",
+      work_area_type: "cladding",
+      workAreaLabel:
+        row.group === "install" ? "Cladding installation" : "Cladding removal",
+      unit: row.unit,
+      description: row.description,
+      defaultCostRate: row.hoursPerUnit,
+      calculatorSupport: "used_now",
+      recommended: true,
+    })
+  );
+
 export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...DECKING_SPECIFIC_MATERIAL_CATALOGUE,
   ...DECK_FRAMING_SPECIFIC_MATERIAL_CATALOGUE,
@@ -3584,6 +3623,7 @@ export const SPECIFIC_MATERIAL_RATE_CATALOGUE: RateCatalogueEntry[] = [
   ...FENCE_MODULAR_SPECIFIC_MATERIAL_CATALOGUE,
   ...BATHROOM_FINISH_RATE_CATALOGUE,
   ...DOORS_SPECIFIC_MATERIAL_CATALOGUE,
+  ...CLADDING_SPECIFIC_MATERIAL_CATALOGUE,
 ];
 
 export const SPECIFIC_MATERIAL_RATE_GROUPS = [
@@ -3706,6 +3746,12 @@ export const SPECIFIC_MATERIAL_RATE_GROUPS = [
     description:
       "Ordinary nested Door Set material COST identities. Company exact overrides Quotr V1. Not legacy $280 supply/install, not labour, not size-specific SKUs, and not custom/specialist doors.",
     entries: DOORS_SPECIFIC_MATERIAL_CATALOGUE,
+  },
+  {
+    title: "Cladding",
+    description:
+      "Ordinary Cladding material COST ex GST by physical identity. Includes the nominated component and an ordinary fixing allowance. Company exact overrides Quotr. No default sell.",
+    entries: CLADDING_SPECIFIC_MATERIAL_CATALOGUE,
   },
 ] as const;
 

@@ -433,6 +433,38 @@ export function ProductivityByWorkArea({
                       />
                     ) : null}
 
+                    {group.workAreaType === "cladding" ? (
+                      <>
+                        <h4 className="pt-2 text-sm font-medium">
+                          Cladding installation
+                        </h4>
+                        <ProductivityOperationsList
+                          items={group.ordinaryItems.filter((item) =>
+                            item.productivityKey.includes(".install.")
+                          )}
+                          showKeys={showKeys}
+                          readOnly={readOnly}
+                          onEdit={(item) => {
+                            setEditingKey(item.productivityKey);
+                            setNotice(null);
+                          }}
+                        />
+                        <h4 className="pt-2 text-sm font-medium">
+                          Cladding removal
+                        </h4>
+                        <ProductivityOperationsList
+                          items={group.ordinaryItems.filter((item) =>
+                            item.productivityKey.includes(".remove.")
+                          )}
+                          showKeys={showKeys}
+                          readOnly={readOnly}
+                          onEdit={(item) => {
+                            setEditingKey(item.productivityKey);
+                            setNotice(null);
+                          }}
+                        />
+                      </>
+                    ) : (
                     <ProductivityOperationsList
                       items={group.ordinaryItems}
                       showKeys={showKeys}
@@ -442,6 +474,7 @@ export function ProductivityByWorkArea({
                         setNotice(null);
                       }}
                     />
+                    )}
 
                     {group.legacyItems.length > 0 ? (
                       <details className="rounded-md border border-dashed border-border/70 px-3 py-2">

@@ -42,7 +42,8 @@ export type MaterialCategoryId =
   | "fence"
   | "retaining"
   | "flooring"
-  | "doors";
+  | "doors"
+  | "cladding";
 
 export type MaterialVariantLayout = "sheet" | "framing" | "generic";
 
@@ -86,6 +87,7 @@ export const MATERIAL_CATEGORY_ORDER: readonly MaterialCategoryId[] = [
   "retaining",
   "flooring",
   "doors",
+  "cladding",
 ];
 
 export const MATERIAL_CATEGORY_NAMES: Record<MaterialCategoryId, string> = {
@@ -104,6 +106,7 @@ export const MATERIAL_CATEGORY_NAMES: Record<MaterialCategoryId, string> = {
   retaining: "Retaining walls",
   flooring: "Flooring",
   doors: "Doors",
+  cladding: "Cladding",
 };
 
 export const MATERIAL_WORK_AREA_LABELS: Record<string, string> = {
@@ -116,6 +119,7 @@ export const MATERIAL_WORK_AREA_LABELS: Record<string, string> = {
   painting: "Painting",
   flooring: "Flooring",
   doors: "Doors",
+  cladding: "Cladding",
 };
 
 const PLASTERBOARD_FAMILY_META: Record<
@@ -1294,6 +1298,60 @@ export function classifyMaterialPresentation(
     });
   }
 
+  if (key.startsWith("cladding.")) {
+    let familyId = "cladding-other";
+    let familyName = "Cladding";
+    let familyDescription =
+      "Ordinary Cladding material COST. Company exact overrides the Quotr benchmark.";
+    if (key.includes("bevelback")) {
+      familyId = "cladding-bevelback";
+      familyName = "Timber bevelback weatherboards";
+      familyDescription =
+        "Size-specific bevelback weatherboards, $/lm. Includes the board and an ordinary fixing allowance.";
+    } else if (key.includes("rusticated")) {
+      familyId = "cladding-rusticated";
+      familyName = "Timber rusticated weatherboards";
+      familyDescription =
+        "Size-specific rusticated weatherboards, $/lm. Includes the board and an ordinary fixing allowance.";
+    } else if (key.includes("vertical_shiplap")) {
+      familyId = "cladding-vertical-shiplap";
+      familyName = "Timber vertical shiplap";
+      familyDescription =
+        "Size-specific vertical shiplap, $/lm. Includes the board and an ordinary fixing allowance.";
+    } else if (key.includes("fibre_cement")) {
+      familyId = "cladding-fibre-cement";
+      familyName = "Fibre-cement weatherboards";
+      familyDescription =
+        "Size-specific fibre-cement weatherboards, $/lm. Includes the board and an ordinary fixing allowance.";
+    } else if (key.includes("sheet_board")) {
+      familyId = "cladding-sheet-boards";
+      familyName = "Board-and-batten boards";
+      familyDescription =
+        "Board-and-batten sheet board, $/m² of physical board area. The minimum sheet count is informational and does not multiply this rate.";
+    } else if (key.includes(".batten.")) {
+      familyId = "cladding-battens";
+      familyName = "Board-and-batten battens";
+      familyDescription =
+        "Size-specific board-and-batten battens, $/lm. Separate from the sheet-board rate.";
+    }
+    return base({
+      categoryId: "cladding",
+      familyId,
+      familyName,
+      familyDescription,
+      variantLayout: "generic",
+      thickness: null,
+      sheetSize: null,
+      section: null,
+      gradeTreatment: null,
+      colourType: entry.label,
+      usedInWorkAreaTypes: ["cladding"],
+      ordinary: !leftover,
+      legacyKind: leftover ? "leftover" : null,
+      aliasOfKey: null,
+    });
+  }
+
   const wa = entry.work_area_type?.trim();
   const fallbackCategory: MaterialCategoryId =
     wa === "deck"
@@ -1310,7 +1368,9 @@ export function classifyMaterialPresentation(
                 ? "flooring"
                 : wa === "doors"
                   ? "doors"
-                : "other_sheet";
+                  : wa === "cladding"
+                    ? "cladding"
+                    : "other_sheet";
   return base({
     categoryId: fallbackCategory,
     familyId: `reviewed-fallback-${(entry.workAreaLabel ?? entry.item_key)
