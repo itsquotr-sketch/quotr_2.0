@@ -30,7 +30,7 @@ import {
 
 export const CLADDING_V1_HUMAN_QA_FROZEN = false as const;
 export const CLADDING_SUPPORT_NOTES =
-  "Canonical nested domain, brief extraction and Details are wired. Physical takeoff, rates, commercialisation, Pricing and Quote remain unwired." as const;
+  "Canonical nested domain, brief extraction, Details and physical takeoff are wired. Material cost, productivity hours, commercial line items, Pricing and Quote remain unwired." as const;
 export const CLADDING_STAGED_NOT_CALCULATED_MESSAGE =
   "Cladding quantities and pricing will be calculated after the remaining section details are confirmed." as const;
 
@@ -187,7 +187,7 @@ export const CLADDING_PORTION_FIELD_KEYS = [
   "cladding.portion.other_description",
 ] as const;
 
-/** Staged calculator reads the collection only. Physical fields are not consumed. */
+/** The physical kernel reads this collection. Nested fields are not separate facts. */
 export const CLADDING_CALCULATOR_CONSUMED_FACTS = [
   CLADDING_PORTIONS_FACT_KEY,
 ] as const;

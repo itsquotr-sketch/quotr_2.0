@@ -1,11 +1,12 @@
 /**
- * CLADDING-01B — staged calculator guard.
+ * CLADDING-03 — nested physical takeoff, with no commercial lines.
  *
- * Recognises the Cladding Work Area so it cannot fall through to another
- * calculator. Emits no line items, no zero-dollar rows, and no invented area.
+ * Hosted path: calculateCladding → calculateCladdingPhysical.
+ * Line items stay empty. A work area with no sections keeps the
+ * details-required message and invents no area.
  */
 
-import { CLADDING_STAGED_NOT_CALCULATED_MESSAGE, storedCladdingPortions } from "@/lib/estimate/cladding-portions";
+import { calculateCladdingPhysical, claddingUnpricedCalculatorFields } from "@/lib/estimate/cladding-physical";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -16,12 +17,16 @@ export function calculateCladding(
   context: EstimateContext,
   workArea: EstimateWorkArea
 ): CalculatorResult {
-  storedCladdingPortions(context.facts, workArea.id);
+  const physical = calculateCladdingPhysical({
+    facts: context.facts,
+    workArea,
+  });
   return {
     lineItems: [],
     assumptions: [],
-    missingInfo: [CLADDING_STAGED_NOT_CALCULATED_MESSAGE],
+    missingInfo: [...physical.missingInfo],
     exclusions: [],
     confidence: 0,
+    ...claddingUnpricedCalculatorFields(physical),
   };
 }
