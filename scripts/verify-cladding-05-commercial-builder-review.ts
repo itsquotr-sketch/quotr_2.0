@@ -588,8 +588,8 @@ check(
 const coverage = verifyRegisteredWorkAreaBenchmarkCoverage("cladding");
 const support = getWorkAreaSupportEntry("cladding");
 check("hosted commercialisation and Builder Review resolve", coverage.ok && coverage.resolves.some((row) => row.component === "Hosted commercialisation") && coverage.resolves.some((row) => row.component === "Builder Review"));
-check("Pricing and Quote stay new work and L5 stays closed", coverage.needsOwnerApproval.map((row) => row.component).join("|") === "Pricing integration|Client Quote" && workAreaMayCloseAtL5(coverage) === false);
-check("support notes name the wired path and leave Pricing and Quote unwired", support?.notes === CLADDING_SUPPORT_NOTES && support.notes.includes("hosted commercialisation") && support.notes.includes("Pricing and Quote remain unwired") && support.band === "staged" && support.estimatableAsWorkArea === false && FROZEN === false);
+check("Pricing and Quote resolve and human QA stays open", coverage.needsOwnerApproval.length === 0 && workAreaMayCloseAtL5(coverage) === true && FROZEN === false);
+check("support notes name Pricing and Quote and leave human QA open", support?.notes === CLADDING_SUPPORT_NOTES && support.notes.includes("hosted commercialisation") && support.notes.includes("client Quote") && support.notes.includes("Human hosted QA has not occurred") && support.band === "staged" && support.estimatableAsWorkArea === false && FROZEN === false);
 
 const materialReq = fixtureA.requirements?.find((row) => row.kind === "material") as MaterialRequirement | undefined;
 check("priced requirement traces the physical quantity", close(materialReq?.purchaseQuantity, lmA) && materialReq?.materialKey === CLADDING_TIMBER_BEVELBACK_187X18_LM);

@@ -26,6 +26,10 @@ import {
   buildNestedFlooringQuoteDraft,
   hasNestedFlooringPortionsFact,
 } from "@/lib/estimate/flooring-quote";
+import {
+  buildNestedCladdingQuoteDraft,
+  hasNestedCladdingPortionsFact,
+} from "@/lib/estimate/cladding-quote";
 
 export type WorkAreaQuoteFact = {
   key: string;
@@ -1326,6 +1330,10 @@ export function buildWorkAreaQuoteDescriptionDraft(
     case "external_stairs":
       return buildExternalStairsDraft(facts);
     case "cladding":
+      if (hasNestedCladdingPortionsFact(facts)) {
+        const draft = buildNestedCladdingQuoteDraft(facts, pricingItems);
+        return draft ? finalizeDraft(draft) : "";
+      }
       return "";
     default:
       return enrichFromPricingItems(buildGenericDraft(name), pricingItems);

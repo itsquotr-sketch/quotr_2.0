@@ -15,6 +15,7 @@ import type { QualityLevel } from "@/components/assistant/types";
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
 import { deriveSellFromCost } from "@/lib/commercial-engine/core/sell-from-margin";
 import { calculateEstimate } from "@/lib/estimate/calculate-estimate";
+import { claddingLineIsManualPricingEligible } from "@/lib/estimate/cladding-quote";
 import { flooringLineIsManualPricingEligible } from "@/lib/estimate/flooring-commercial";
 import { buildLineItemNotes } from "@/lib/estimate/line-items";
 import {
@@ -193,7 +194,12 @@ export function evaluateManualPricingEligibility(
   if (line.recommendedCost != null && line.recommendedCost > 0) {
     return { ok: false, error: MANUAL_PRICE_NOT_ELIGIBLE };
   }
-  if (!flooringLineIsManualPricingEligible(line)) {
+  const componentKey = line.componentKey ?? "";
+  if (componentKey.startsWith("cladding.")) {
+    if (!claddingLineIsManualPricingEligible(line)) {
+      return { ok: false, error: MANUAL_PRICE_NOT_ELIGIBLE };
+    }
+  } else if (!flooringLineIsManualPricingEligible(line)) {
     return { ok: false, error: MANUAL_PRICE_NOT_ELIGIBLE };
   }
   return { ok: true };

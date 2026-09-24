@@ -13,6 +13,7 @@ import {
   containsSuspiciousQuoteText,
   sanitizeClientQuoteLabel,
 } from "@/lib/quotes/sanitize";
+import { claddingPricingItemIsClientPriced } from "@/lib/estimate/cladding-quote";
 import { doorsPricingItemIsClientPriced } from "@/lib/estimate/doors-quote";
 import { flooringPricingItemIsClientPriced } from "@/lib/estimate/flooring-quote";
 
@@ -143,6 +144,7 @@ export function mapPricingItemsToQuoteItems(
     .filter((item) => item.visible_on_quote)
     .filter((item) => doorsPricingItemIsClientPriced(item))
     .filter((item) => flooringPricingItemIsClientPriced(item))
+    .filter((item) => claddingPricingItemIsClientPriced(item))
     .sort((a, b) => a.sort_order - b.sort_order)
     .map((item) => {
       let sectionDescription: string | null = null;

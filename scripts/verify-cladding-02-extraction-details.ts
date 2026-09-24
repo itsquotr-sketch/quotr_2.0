@@ -370,11 +370,14 @@ const priced = calculateEstimate({
   facts: edited,
 });
 check("staged calculator emits no lines, cost, or default area", staged.lineItems.length === 0 && priced.lineItems.filter((line) => line.workAreaId === "c1").every((line) => (line.scopeKey ?? "").startsWith("cladding:") && line.itemKey !== "scope.cladding.m2" && (line.includedInTotal === false || (line.recommendedCost ?? 0) > 0)) && staged.missingInfo.includes(CLADDING_STAGED_NOT_CALCULATED_MESSAGE));
-check("quote description stays empty", buildWorkAreaQuoteDescriptionDraft({
-  type: "cladding",
-  name: "Cladding",
-  facts: [{ key: "cladding.portions", label: "Cladding sections", value: "[{\"cladding_system\":\"timber_bevelback\"}]" }],
-}) === "");
+check("incomplete quote stays pending and hides the system key", (() => {
+  const quote = buildWorkAreaQuoteDescriptionDraft({
+    type: "cladding",
+    name: "Cladding",
+    facts: [{ key: "cladding.portions", label: "Cladding sections", value: "[{\"cladding_system\":\"timber_bevelback\"}]" }],
+  });
+  return quote.includes("pending confirmation") && !quote.includes("timber_bevelback") && !quote.includes("Supply and install");
+})());
 check("prompt names cladding.portions and forbids money", BRIEF_EXTRACTION_SYSTEM_PROMPT.includes("cladding.portions") && BRIEF_EXTRACTION_SYSTEM_PROMPT.includes("Do not emit money"));
 check("domain modules do not mention painting cost rates", !BRIEF_EXTRACTION_SYSTEM_PROMPT.includes("painting.material.m2"));
 const bathroom = enrich("renovate the bathroom and install timber cladding");

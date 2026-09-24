@@ -134,7 +134,8 @@ export async function buildQuoteSnapshotFromReviewedPricing(input: {
       fact.key === "ceilings.portions" ||
       fact.key === "internal_walls.wall_types" ||
       fact.key === "doors.portions" ||
-      fact.key === "flooring.portions"
+      fact.key === "flooring.portions" ||
+      fact.key === "cladding.portions"
         ? typeof fact.value === "string"
           ? fact.value
           : JSON.stringify(fact.value)

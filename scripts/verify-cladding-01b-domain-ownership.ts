@@ -127,8 +127,9 @@ function main(): void {
   );
   check("4. Cladding is not human-QA frozen", CLADDING_V1_HUMAN_QA_FROZEN === false);
   check(
-    "5. Cladding is not L5-closeable",
-    workAreaMayCloseAtL5(verifyRegisteredWorkAreaBenchmarkCoverage("cladding")) === false
+    "5. coverage may close at L5 while human QA stays open",
+    workAreaMayCloseAtL5(verifyRegisteredWorkAreaBenchmarkCoverage("cladding")) === true &&
+      CLADDING_V1_HUMAN_QA_FROZEN === false
   );
   check(
     "6. Cladding is not a first-run primary and roofing stays unsupported",
@@ -611,10 +612,11 @@ function main(): void {
     ],
   });
   check(
-    "48. Quote serialisation does not emit cladding scope or raw JSON",
-    quote === "" &&
+    "48. Quote serialisation does not emit raw JSON or an included incomplete scope",
+    quote.includes("pending confirmation") &&
       !quote.includes("timber_bevelback") &&
-      !quote.includes("{")
+      !quote.includes("{") &&
+      !quote.includes("Supply and install")
   );
 
   const domainSource = [

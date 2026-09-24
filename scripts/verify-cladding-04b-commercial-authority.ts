@@ -596,16 +596,17 @@ check(
 const coverage = verifyRegisteredWorkAreaBenchmarkCoverage("cladding");
 const outcomes = new Map(coverage.resolves.map((row) => [row.component, row.outcome]));
 check(
-  "coverage resolves ordinary authority, keeps accessories Pricing Required, and stays short of L5",
+  "coverage resolves ordinary authority and Pricing, and keeps accessories Pricing Required",
   coverage.ok &&
     coverage.resolves.length ===
-      CLADDING_MATERIAL_BENCHMARKS.length + CLADDING_PRODUCTIVITY_BENCHMARKS.length + 3 &&
+      CLADDING_MATERIAL_BENCHMARKS.length + CLADDING_PRODUCTIVITY_BENCHMARKS.length + 5 &&
     coverage.intentionalPr.length >= 9 &&
-    coverage.needsOwnerApproval.length === 2 &&
-    !workAreaMayCloseAtL5(coverage) &&
+    coverage.needsOwnerApproval.length === 0 &&
+    workAreaMayCloseAtL5(coverage) &&
     outcomes.get("142 × 18 mm bevelback weatherboard") === "RESOLVES_WITH_QUOTR" &&
-    coverage.needsOwnerApproval.map((row) => row.component).join("|") ===
-      "Pricing integration|Client Quote"
+    outcomes.get("Pricing integration") === "RESOLVES_WITH_QUOTR" &&
+    outcomes.get("Client Quote") === "RESOLVES_WITH_QUOTR" &&
+    CLADDING_V1_HUMAN_QA_FROZEN === false
 );
 
 const support = getWorkAreaSupportEntry("cladding");

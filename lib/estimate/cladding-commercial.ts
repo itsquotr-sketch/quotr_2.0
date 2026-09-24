@@ -7,6 +7,7 @@
  */
 
 import type { OrganisationRate, OrganisationSettings } from "@/components/setup/types";
+import { deriveSellFromCost } from "@/lib/commercial-engine/core/sell-from-margin";
 import { getCombinedLabourAccessFactor } from "@/lib/estimate/adjustments";
 import {
   CLADDING_MATERIAL_BENCHMARKS,
@@ -509,14 +510,18 @@ function materialLine(params: {
     quantity: params.requirement.purchaseQuantity,
     unit: params.requirement.purchaseUnit,
     recommendedCost: included ? params.priced.totalCost : 0,
-    recommendedSell: included ? params.priced.totalCost : 0,
+    recommendedSell: included
+      ? sharedSell(params.priced.totalCost, params.organisationSettings)
+      : 0,
     unitCost: included ? params.priced.unitCost : undefined,
-    unitSell: included ? params.priced.unitCost : undefined,
+    unitSell: included
+      ? sharedSell(params.priced.unitCost, params.organisationSettings)
+      : undefined,
     rateSource: getRateSourceLabel(sourceType),
     rateSourceType: sourceType,
     itemKey: params.requirement.materialKey ?? undefined,
     componentKey: params.requirement.componentKey,
-    sellDerivedFromMargin: false,
+    sellDerivedFromMargin: included,
     sortOrder: params.sortOrder,
     organisationSettings: params.organisationSettings,
     notes: included
@@ -571,14 +576,18 @@ function labourLine(params: {
     quantity: qty,
     unit,
     recommendedCost: included ? params.priced.totalCost : 0,
-    recommendedSell: included ? params.priced.totalCost : 0,
+    recommendedSell: included
+      ? sharedSell(params.priced.totalCost, params.organisationSettings)
+      : 0,
     unitCost: included ? params.priced.hourlyCost : undefined,
-    unitSell: included ? params.priced.hourlyCost : undefined,
+    unitSell: included
+      ? sharedSell(params.priced.hourlyCost, params.organisationSettings)
+      : undefined,
     rateSource: getRateSourceLabel(sourceType),
     rateSourceType: sourceType,
     itemKey: params.requirement.componentKey,
     componentKey: params.requirement.componentKey,
-    sellDerivedFromMargin: false,
+    sellDerivedFromMargin: included,
     sortOrder: params.sortOrder,
     organisationSettings: params.organisationSettings,
     notes: note,
@@ -594,9 +603,13 @@ function labourLine(params: {
         : "productivity"
       : "missing",
     costRate: included ? params.priced.hourlyCost : undefined,
-    sellRate: included ? params.priced.hourlyCost : undefined,
+    sellRate: included
+      ? sharedSell(params.priced.hourlyCost, params.organisationSettings)
+      : undefined,
     recommendedCost: included ? params.priced.totalCost : 0,
-    recommendedSell: included ? params.priced.totalCost : 0,
+    recommendedSell: included
+      ? sharedSell(params.priced.totalCost, params.organisationSettings)
+      : 0,
   };
 }
 
@@ -626,6 +639,13 @@ function ownedLine(params: {
 
 function money(value: number): string {
   return `$${value.toFixed(2)}`;
+}
+
+function sharedSell(cost: number, settings: OrganisationSettings | null): number {
+  if (!(cost > 0)) return 0;
+  const margin = settings?.default_margin_percent;
+  const percent = margin != null && Number.isFinite(margin) ? margin : 20;
+  return deriveSellFromCost(cost, percent);
 }
 
 function rollup(
