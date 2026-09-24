@@ -503,8 +503,14 @@ const calculated = calculateCladding(
   { id: "c1", type: "cladding", name: "Cladding", sort_order: 1 }
 );
 check(
-  "calculateCladding still returns empty commercial line items",
-  calculated.lineItems.length === 0 && (calculated.requirements?.length ?? 0) > 0
+  "calculateCladding prices a complete section without changing the physical quantity",
+  calculated.lineItems.some((row) => (row.recommendedCost ?? 0) > 0) &&
+    (calculated.requirements?.length ?? 0) > 0 &&
+    close(
+      (calculated.requirements?.find((row) => row.kind === "material") as MaterialRequirement | undefined)
+        ?.baseQuantity,
+      30 / 0.155
+    )
 );
 
 const materials = buildMaterialRegistry({ rates: [] });
@@ -592,13 +598,14 @@ const outcomes = new Map(coverage.resolves.map((row) => [row.component, row.outc
 check(
   "coverage resolves ordinary authority, keeps accessories Pricing Required, and stays short of L5",
   coverage.ok &&
-    coverage.resolves.length === CLADDING_MATERIAL_BENCHMARKS.length + CLADDING_PRODUCTIVITY_BENCHMARKS.length + 1 &&
+    coverage.resolves.length ===
+      CLADDING_MATERIAL_BENCHMARKS.length + CLADDING_PRODUCTIVITY_BENCHMARKS.length + 3 &&
     coverage.intentionalPr.length >= 9 &&
-    coverage.needsOwnerApproval.length === 3 &&
+    coverage.needsOwnerApproval.length === 2 &&
     !workAreaMayCloseAtL5(coverage) &&
     outcomes.get("142 × 18 mm bevelback weatherboard") === "RESOLVES_WITH_QUOTR" &&
     coverage.needsOwnerApproval.map((row) => row.component).join("|") ===
-      "Hosted commercialisation|Builder Review|Pricing and Quote"
+      "Pricing integration|Client Quote"
 );
 
 const support = getWorkAreaSupportEntry("cladding");

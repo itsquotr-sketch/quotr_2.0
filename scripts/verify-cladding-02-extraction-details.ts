@@ -369,7 +369,7 @@ const priced = calculateEstimate({
   confirmedWorkAreas: [{ id: "c1", type: "cladding", name: "Cladding", sort_order: 1 } as EstimateWorkArea],
   facts: edited,
 });
-check("staged calculator emits no lines, cost, or default area", staged.lineItems.length === 0 && priced.lineItems.every((line) => line.workAreaId !== "c1") && staged.missingInfo.includes(CLADDING_STAGED_NOT_CALCULATED_MESSAGE));
+check("staged calculator emits no lines, cost, or default area", staged.lineItems.length === 0 && priced.lineItems.filter((line) => line.workAreaId === "c1").every((line) => (line.scopeKey ?? "").startsWith("cladding:") && line.itemKey !== "scope.cladding.m2" && (line.includedInTotal === false || (line.recommendedCost ?? 0) > 0)) && staged.missingInfo.includes(CLADDING_STAGED_NOT_CALCULATED_MESSAGE));
 check("quote description stays empty", buildWorkAreaQuoteDescriptionDraft({
   type: "cladding",
   name: "Cladding",

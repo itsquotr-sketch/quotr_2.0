@@ -1,12 +1,11 @@
 /**
- * CLADDING-03 — nested physical takeoff, with no commercial lines.
+ * CLADDING-05 — nested physical takeoff then hosted commercialisation.
  *
- * Hosted path: calculateCladding → calculateCladdingPhysical.
- * Line items stay empty. A work area with no sections keeps the
- * details-required message and invents no area.
+ * A work area with no sections keeps the details-required message.
  */
 
-import { calculateCladdingPhysical, claddingUnpricedCalculatorFields } from "@/lib/estimate/cladding-physical";
+import { commercializeCladding, claddingCommercialCalculatorFields } from "@/lib/estimate/cladding-commercial";
+import { calculateCladdingPhysical } from "@/lib/estimate/cladding-physical";
 import type {
   CalculatorResult,
   EstimateContext,
@@ -21,12 +20,19 @@ export function calculateCladding(
     facts: context.facts,
     workArea,
   });
+  const commercial = commercializeCladding({
+    physical,
+    workArea,
+    rates: context.rates,
+    organisationSettings: context.organisationSettings,
+    constraints: context.constraints,
+  });
   return {
-    lineItems: [],
-    assumptions: [],
-    missingInfo: [...physical.missingInfo],
-    exclusions: [],
-    confidence: 0,
-    ...claddingUnpricedCalculatorFields(physical),
+    lineItems: [...commercial.lineItems],
+    assumptions: [...commercial.assumptions],
+    missingInfo: [...commercial.missingInfo],
+    exclusions: [...commercial.exclusions],
+    confidence: commercial.lineItems.some((row) => (row.recommendedCost ?? 0) > 0) ? 0.6 : 0,
+    ...claddingCommercialCalculatorFields(commercial),
   };
 }

@@ -606,11 +606,14 @@ const calculated = calculateCladding(
   { id: "c1", type: "cladding", name: "Cladding", sort_order: 1 }
 );
 check(
-  "calculator returns physical requirements and empty line items",
-  calculated.lineItems.length === 0 &&
+  "calculator returns physical requirements and hosted commercial lines",
+  calculated.lineItems.some((row) => (row.recommendedCost ?? 0) > 0) &&
+    calculated.lineItems.every(
+      (row) => row.includedInTotal === false || (row.recommendedCost ?? 0) > 0
+    ) &&
     (calculated.requirements?.length ?? 0) > 0 &&
     calculated.assumptions.length === 0 &&
-    calculated.missingInfo.some((row) => row.includes(CLADDING_PHYSICAL_UNPRICED_MESSAGE)) &&
+    !calculated.missingInfo.some((row) => row.includes(CLADDING_PHYSICAL_UNPRICED_MESSAGE)) &&
     !calculated.missingInfo.includes(CLADDING_STAGED_NOT_CALCULATED_MESSAGE)
 );
 const emptyCalc = calculateCladding(
@@ -638,9 +641,11 @@ const estimated = calculateEstimate({
   facts: factsFor([portion({ id: "estimate" })]),
 });
 check(
-  "estimate lines stay empty and no zero-dollar cladding line appears",
-  estimated.lineItems.every((row) => row.workAreaId !== "c1") &&
-    estimated.recommendedCost === 0
+  "estimate lines are hosted commercial rows and no zero-dollar cladding line appears",
+  estimated.lineItems.some((row) => row.workAreaId === "c1" && (row.recommendedCost ?? 0) > 0) &&
+    estimated.lineItems
+      .filter((row) => row.workAreaId === "c1")
+      .every((row) => row.includedInTotal === false || (row.recommendedCost ?? 0) > 0)
 );
 const conditioned = calculateCladding(
   {
@@ -822,8 +827,10 @@ check(
   close(labour.productivityBasis.quantity, 30 / 0.155) && labour.productivityBasis.quantity !== 193.55
 );
 check(
-  "estimate requirements do not create a zero sell",
-  estimated.recommendedSell === 0 && estimated.lineItems.length === 0
+  "estimate requirements do not create a zero-dollar resolved line",
+  estimated.lineItems
+    .filter((row) => row.workAreaId === "c1" && row.includedInTotal !== false)
+    .every((row) => (row.recommendedCost ?? 0) > 0 && (row.recommendedSell ?? 0) > 0)
 );
 
 console.log(`\n${passed} passed, ${failed} failed`);

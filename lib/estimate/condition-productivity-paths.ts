@@ -16,6 +16,7 @@ export const PROJECT_CONDITION_PRODUCTIVITY_PATHS = [
     internalWalls: "applied via calculateInternalWalls accessFactor on framing/lining hours",
     doors: "applied via commercializeDoors labour hours (shared getCombinedLabourAccessFactor; no Doors-specific multiplier)",
     flooring: "applied via commercializeFlooring labour hours (shared getCombinedLabourAccessFactor; no Flooring-specific multiplier)",
+    cladding: "applied via commercializeCladding labour hours (shared getCombinedLabourAccessFactor; no Cladding-specific multiplier)",
     quantityEffect: "none",
   },
   {
@@ -27,6 +28,7 @@ export const PROJECT_CONDITION_PRODUCTIVITY_PATHS = [
     internalWalls: "applied via getCombinedLabourAccessFactor (explains hosted hours > raw hours)",
     doors: "applied via getCombinedLabourAccessFactor",
     flooring: "applied via getCombinedLabourAccessFactor",
+    cladding: "applied via getCombinedLabourAccessFactor",
     quantityEffect: "none — material quantities unchanged",
   },
   {
@@ -37,6 +39,7 @@ export const PROJECT_CONDITION_PRODUCTIVITY_PATHS = [
     internalWalls: "applied via getCombinedLabourAccessFactor",
     doors: "applied via getCombinedLabourAccessFactor",
     flooring: "applied via getCombinedLabourAccessFactor",
+    cladding: "applied via getCombinedLabourAccessFactor",
     quantityEffect: "none",
   },
   {
@@ -47,6 +50,7 @@ export const PROJECT_CONDITION_PRODUCTIVITY_PATHS = [
     internalWalls: "applied via getCombinedLabourAccessFactor",
     doors: "applied via getCombinedLabourAccessFactor",
     flooring: "applied via getCombinedLabourAccessFactor",
+    cladding: "applied via getCombinedLabourAccessFactor",
     quantityEffect: "none",
   },
   {
@@ -57,6 +61,7 @@ export const PROJECT_CONDITION_PRODUCTIVITY_PATHS = [
     internalWalls: "not consumed",
     doors: "not consumed as a Doors-specific rule; shared labour factor may still include slope when present",
     flooring: "not consumed as a Flooring-specific rule; shared labour factor may still include slope when present",
+    cladding: "not consumed as a Cladding-specific rule; shared labour factor may still include slope when present",
     quantityEffect: "none",
   },
   {
@@ -68,6 +73,7 @@ export const PROJECT_CONDITION_PRODUCTIVITY_PATHS = [
     internalWalls: "Ready-relevant when wall height_m > 3.0. No invented hours factor.",
     doors: "Not consumed. No invented Doors working-height hours factor.",
     flooring: "Not consumed. No invented Flooring working-height hours factor.",
+    cladding: "Not consumed. No invented Cladding working-height hours factor.",
     quantityEffect: "none",
   },
 ] as const;

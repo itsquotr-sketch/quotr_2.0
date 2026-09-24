@@ -9,6 +9,7 @@ export {
 export { applyCeilingsReviewGroups } from "@/lib/assistant/builder-review/ceilings-review-groups";
 export { applyDoorsReviewGroups } from "@/lib/assistant/builder-review/doors-review-groups";
 export { applyFlooringReviewGroups } from "@/lib/assistant/builder-review/flooring-review-groups";
+export { applyCladdingReviewGroups } from "@/lib/assistant/builder-review/cladding-review-groups";
 export type {
   BuilderReviewCategoryGroup,
   BuilderReviewCategoryId,

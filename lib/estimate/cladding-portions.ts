@@ -30,7 +30,7 @@ import {
 
 export const CLADDING_V1_HUMAN_QA_FROZEN = false as const;
 export const CLADDING_SUPPORT_NOTES =
-  "Canonical nested domain, brief extraction, Details and physical takeoff are wired. Material cost, productivity hours, commercial line items, Pricing and Quote remain unwired." as const;
+  "Canonical nested domain, brief extraction, Details, physical takeoff, material and productivity authority, hosted commercialisation and Builder Review are wired. Pricing and Quote remain unwired." as const;
 export const CLADDING_STAGED_NOT_CALCULATED_MESSAGE =
   "Cladding quantities and pricing will be calculated after the remaining section details are confirmed." as const;
 

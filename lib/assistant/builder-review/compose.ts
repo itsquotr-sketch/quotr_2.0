@@ -136,6 +136,7 @@ import { isUserFacingEstimateAssumption } from "@/lib/assistant/presentation/use
 import { applyCeilingsReviewGroups } from "@/lib/assistant/builder-review/ceilings-review-groups";
 import { applyDoorsReviewGroups } from "@/lib/assistant/builder-review/doors-review-groups";
 import { applyFlooringReviewGroups } from "@/lib/assistant/builder-review/flooring-review-groups";
+import { applyCladdingReviewGroups } from "@/lib/assistant/builder-review/cladding-review-groups";
 import { CEILINGS_PARTIAL_ESTIMATE_MESSAGE } from "@/lib/estimate/ceilings-identities";
 import { CEILINGS_BUILDER_REVIEW_PARTIAL_MESSAGE } from "@/lib/estimate/ceilings-quote-readiness";
 
@@ -1774,6 +1775,51 @@ export function composeBuilderReview(
         workAreaId: meta.id,
       });
       categories = grouped.categories;
+      portionGroups = grouped.portionGroups;
+    }
+    if (meta.type === "cladding") {
+      const unresolved = input.estimate.lineItems.filter((item) => {
+        if (item.includedInTotal !== false) return false;
+        const raw = item.workAreaName?.trim() || "";
+        return raw.toLowerCase() === wa.name.toLowerCase();
+      });
+      for (const line of unresolved.map(toPricedLine)) {
+        const existing = categories.find((cat) => cat.id === line.category);
+        if (existing) {
+          categories = categories.map((cat) =>
+            cat.id === line.category ? { ...cat, lines: [...cat.lines, line] } : cat
+          );
+          continue;
+        }
+        categories = [
+          ...categories,
+          {
+            id: line.category,
+            label: CATEGORY_LABELS[line.category],
+            cost: 0,
+            lines: [line],
+            takeoff: [],
+            takeoffDisclaimer: null,
+            takeoffUnavailableHint: null,
+            takeoffCollapsedByDefault: false,
+            takeoffTitle: "Planning takeoff",
+            groupNotes: [],
+            lineGroups: [],
+          },
+        ];
+      }
+      const grouped = applyCladdingReviewGroups({
+        categories,
+        facts: input.facts ?? [],
+        workAreaId: meta.id,
+      });
+      categories = grouped.categories.filter(
+        (cat) =>
+          cat.lines.length > 0 ||
+          cat.takeoff.length > 0 ||
+          cat.lineGroups.length > 0 ||
+          cat.groupNotes.length > 0
+      );
       portionGroups = grouped.portionGroups;
     }
 
