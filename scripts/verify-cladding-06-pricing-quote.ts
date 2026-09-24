@@ -280,7 +280,7 @@ check("removal quote states the exclusion", quoteRemoval.includes(CLADDING_QUOTE
 const withCavity = portion({ id: "north", label: "North elevation", cavity_included: true, wall_underlay_or_rab_included: true, trims_flashings_corners_included: true });
 const cavityEstimate = estimateOf([withCavity]);
 const unpricedAccessories = quoteOf([withCavity], cavityEstimate);
-check("unpriced cavity stays pending", unpricedAccessories.includes("drained cavity is excluded pending") && !unpricedAccessories.includes("Includes a drained cavity"));
+check("ordinary new cavity is included", unpricedAccessories.includes("Includes a drained cavity") && !unpricedAccessories.includes("drained-cavity construction"));
 check("unpriced underlay does not name a product", unpricedAccessories.includes("pending selection and pricing") && !/building paper|synthetic wrap/i.test(unpricedAccessories));
 check("unpriced trims stay pending", unpricedAccessories.includes(CLADDING_QUOTE_TRIMS_PENDING));
 const pricedAccessories = quoteOf([withCavity], cavityEstimate, [
@@ -289,11 +289,11 @@ const pricedAccessories = quoteOf([withCavity], cavityEstimate, [
 ]);
 check("priced cavity and underlay are included", pricedAccessories.includes("Includes a drained cavity system to the selected cladding area.") && pricedAccessories.includes("Includes the specified wall-underlay or rigid-air-barrier system."));
 check("priced cavity is not also excluded", !pricedAccessories.includes("drained-cavity construction"));
-check("ordinary cladding still prices beside an unpriced accessory", close(costOf(cavityEstimate.lineItems), 4296.78));
+check("ordinary cladding still prices beside an unpriced accessory", close(costOf(cavityEstimate.lineItems.filter((row) => !String(row.componentKey).includes("cavity") && !String(row.componentKey).includes("wall_underlay"))), 4296.78));
 
-const cavityLine = cavityEstimate.lineItems.find((row) => row.componentKey === "cladding.cavity.unresolved.m2") ?? null;
+const cavityLine = cavityEstimate.lineItems.find((row) => row.componentKey === "cladding.underlay_or_rab.unresolved.m2") ?? null;
 const trimsLine = cavityEstimate.lineItems.find((row) => row.componentKey === "cladding.trims_flashings_corners.unresolved") ?? null;
-check("known cavity area is manually priceable", evaluateManualPricingEligibility(cavityLine).ok && claddingLineIsManualPricingEligible(cavityLine ?? {}));
+check("unselected wall preparation stays manually priceable", evaluateManualPricingEligibility(cavityLine).ok && claddingLineIsManualPricingEligible(cavityLine ?? {}));
 check("trims without a quantity are not manually priceable", !evaluateManualPricingEligibility(trimsLine).ok);
 const projected = projectEligibleUnresolvedPricingItems({
   items: [],
@@ -309,7 +309,7 @@ const projectedAgain = projectEligibleUnresolvedPricingItems({
   projectId: "p1",
   pricingDocumentId: "pd",
 });
-check("manual promotion inserts one item per unresolved component", projected.some((row) => row.component_key === "cladding.cavity.unresolved.m2" && row.project_id === "p1" && row.org_id === "org"));
+check("manual promotion inserts the unresolved wall-preparation layer", projected.some((row) => row.component_key === "cladding.underlay_or_rab.unresolved.m2" && row.project_id === "p1" && row.org_id === "org") && !projected.some((row) => row.component_key === "cladding.cavity.timber_batten.m2"));
 check("refresh is idempotent", projectedAgain.length === 0);
 const manualMoney = computeManualPromotionMoney({ totalCost: 400, quantity: 30, unit: "m2", itemType: "material", marginPercent: 20 });
 check("manual COST uses shared margin", manualMoney.ok && close(manualMoney.ok ? manualMoney.fields.totalSell : 0, deriveSellFromCost(400, 20)));
@@ -318,14 +318,14 @@ check("zero manual COST does not become a known inclusion", zeroManual.ok && zer
 const cleared = quoteOf([withCavity], cavityEstimate, [
   { label: "Drained cavity", component_key: "cladding.cavity.unresolved.m2", nested_item_id: "north", cost_known: false, total_cost: 0, total_sell: 0, notes_internal: null },
 ]);
-check("clearing the price restores pending cavity", cleared.includes("excluded pending") && !cleared.includes("Includes a drained cavity"));
+check("clearing an unresolved layer restores pending selection", cleared.includes("pending selection") );
 
 const second = portion({ id: "south-cavity", label: "South elevation", direct_area_m2: 20, cavity_included: true });
 const twoCavities = estimateOf([withCavity, second]);
 const onlyNorth = quoteOf([withCavity, second], twoCavities, [
   { label: "Drained cavity", component_key: "cladding.cavity.unresolved.m2", nested_item_id: "north", cost_known: true, total_cost: 400, total_sell: 500, notes_internal: null },
 ]);
-check("one section price does not price its sibling", onlyNorth.includes("Includes a drained cavity") && onlyNorth.includes("South elevation:") && onlyNorth.includes("drained cavity is excluded pending"));
+check("each section keeps its own cavity inclusion", onlyNorth.includes("North elevation:") && onlyNorth.includes("South elevation:") && onlyNorth.split("Includes a drained cavity").length >= 3);
 check("manual pricing creates no company rate", baseContext.rates.length === 0);
 
 const custom = portion({
@@ -369,11 +369,11 @@ const brick = portion({
 });
 const brickEstimate = estimateOf([north, brick]);
 const brickQuote = quoteOf([north, brick], brickEstimate);
-check("unpriced brick stays specialist pending", brickQuote.includes(CLADDING_QUOTE_SPECIALIST_PENDING) && !brickQuote.includes("brick_veneer"));
+check("unpriced brick stays specialist pending", brickQuote.includes("Brick veneer cladding is excluded pending final specification and pricing.") && !brickQuote.includes("brick_veneer"));
 const brickPriced = quoteOf([north, brick], brickEstimate, [
   { label: "Brick", component_key: "cladding.specialist.brick_veneer", nested_item_id: "brick", cost_known: true, total_cost: 5000, total_sell: 6000, notes_internal: null },
 ]);
-check("priced brick uses the description and keeps the sibling", brickPriced.includes("Supply and install 25 m² of Recycled brick veneer.") && brickPriced.includes("187 × 18 mm") && !brickPriced.includes("brick_veneer"));
+check("priced brick uses the specialist sentence and keeps the sibling", brickPriced.includes("Supply and install 25 m² of the specified brick veneer cladding, subject to final product selection and confirmed construction details.") && brickPriced.includes("187 × 18 mm") && !brickPriced.includes("brick_veneer"));
 
 const gap = portion({ id: "gap", label: "South elevation", direct_area_m2: null, area_method: null });
 const mixed = quoteOf([north, gap], estimateOf([north, gap]));

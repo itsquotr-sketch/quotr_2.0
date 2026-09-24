@@ -279,6 +279,8 @@ function applySystemAndProfile(portion: CladdingPortion, text: string): void {
   if (!system) return;
 
   if (system === "timber_sheet_board_and_batten") {
+    portion.orientation = "vertical";
+    portion.orientation_authority = "assumed_disclosed";
     const profile = profileFor(system, null, null);
     if (profile) {
       applyProfile(portion, profile, {
@@ -373,7 +375,9 @@ function applyOpenings(portion: CladdingPortion, text: string): void {
   if (
     /net of openings/.test(clause) ||
     /already excludes windows and doors/.test(clause) ||
-    /area already excludes/.test(clause)
+    /areas? already excludes?/.test(clause) ||
+    /already excludes? openings/.test(clause) ||
+    /openings are already excluded/.test(clause)
   ) {
     portion.openings_already_deducted = true;
     portion.openings_deducted_authority = "extracted";
@@ -400,6 +404,7 @@ function applyBool(
 ): void {
   const clause = normalise(text);
   if (!pattern.test(clause)) return;
+  if ((portion as unknown as Record<string, unknown>)[field] != null) return;
   const wrapped = `(?:${pattern.source})`;
   const negative =
     new RegExp(
@@ -431,20 +436,76 @@ function applyBool(
   }
 }
 
+function decideAccessory(text: string, pattern: RegExp): "new" | "retained" | "excluded" | null {
+  const sentences = normalise(text)
+    .split(/[.;]/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => pattern.test(sentence));
+  if (sentences.length === 0) return null;
+  for (const sentence of sentences) {
+    const retained =
+      /\bremain|\bretain\b|\bno new\b|\bkept\b|\bto stay\b/.test(sentence);
+    if (retained) return "retained";
+    const including = sentence.match(new RegExp(`including[^.]{0,80}(?:${pattern.source})`, "i"));
+    const explicitNew =
+      (including != null && !/exclud/.test(including[0])) ||
+      new RegExp(`\\bnew (?:${pattern.source})\\b`, "i").test(sentence);
+    const excluded =
+      /\bexclud|\bnot included\b|\bnot required\b|\bby others\b|\bwithout\b|\bno\b/.test(
+        sentence
+      ) && !explicitNew;
+    if (retained) return "retained";
+    if (excluded) return "excluded";
+    if (explicitNew) return "new";
+  }
+  return null;
+}
+
+function applyAccessory(
+  portion: CladdingPortion,
+  text: string,
+  pattern: RegExp,
+  included: "cavity_included" | "wall_underlay_or_rab_included" | "trims_flashings_corners_included" | "painting_or_coating_included" | "scaffold_included",
+  state: "cavity_state" | "underlay_state" | "trims_state" | "painting_state" | "scaffold_state",
+  authority: "cavity_authority" | "underlay_authority" | "trims_authority" | "painting_authority" | "scaffold_authority"
+): void {
+  if (portion[included] != null) return;
+  const decision = decideAccessory(text, pattern);
+  if (!decision) return;
+  portion[included] = decision === "new";
+  portion[state] = decision;
+  portion[authority] = "extracted";
+  if (included !== "wall_underlay_or_rab_included" || decision !== "new") return;
+  const sentence = normalise(text)
+    .split(/[.;]/)
+    .find((row) => pattern.test(row)) ?? "";
+  const namesUnderlay = /\bunderlay\b/.test(sentence);
+  const namesBarrier = /\brigid air barrier\b|\brab\b/.test(sentence);
+  if (namesBarrier && !namesUnderlay) {
+    portion.wall_preparation = "rigid_air_barrier";
+    portion.wall_preparation_authority = "extracted";
+  } else if (namesUnderlay && !namesBarrier) {
+    portion.wall_preparation = "flexible_underlay";
+    portion.wall_preparation_authority = "extracted";
+  }
+}
+
 function applyInclusions(portion: CladdingPortion, text: string): void {
-  applyBool(portion, text, /cavity(?: battens)?|drained cavity/, "cavity_included", "cavity_authority");
-  applyBool(
+  applyAccessory(portion, text, /cavity(?: battens)?|drained cavity/, "cavity_included", "cavity_state", "cavity_authority");
+  applyAccessory(
     portion,
     text,
     /wall underlay|underlay|rigid air barrier|\brab\b/,
     "wall_underlay_or_rab_included",
+    "underlay_state",
     "underlay_authority"
   );
-  applyBool(
+  applyAccessory(
     portion,
     text,
     /trims|corners|flashings|scribers|facings/,
     "trims_flashings_corners_included",
+    "trims_state",
     "trims_authority"
   );
   applyBool(
@@ -454,12 +515,21 @@ function applyInclusions(portion: CladdingPortion, text: string): void {
     "existing_cladding_removal_required",
     "removal_authority"
   );
-  applyBool(
+  applyAccessory(
     portion,
     text,
     /painting|coating/,
     "painting_or_coating_included",
+    "painting_state",
     "painting_authority"
+  );
+  applyAccessory(
+    portion,
+    text,
+    /scaffold/,
+    "scaffold_included",
+    "scaffold_state",
+    "scaffold_authority"
   );
 }
 
@@ -485,7 +555,7 @@ function applyScope(portion: CladdingPortion, text: string): void {
 
 function applyLabel(portion: CladdingPortion, text: string): void {
   const match = text.match(
-    /\b((?:north|south|east|west|garage|front|rear)(?:\s+\w+){0,2}\s+elevation)\b/i
+    /\b((?:north|south|east|west|lower|upper|garage|front|rear)(?:\s+\w+){0,2}\s+elevation)\b/i
   );
   if (!match?.[1]) return;
   setExtracted(portion, "label", "label_authority", titleElevation(match[1]));
@@ -509,15 +579,37 @@ function snippetHasSignal(text: string): boolean {
   );
 }
 
+function sharedQualifierText(briefText: string): string {
+  return briefText
+    .split(/(?<=[.!?])\s+/)
+    .map((sentence) => sentence.trim())
+    .filter((sentence) => sentence.length > 0 && !snippetStartsSection(sentence))
+    .join(" ");
+}
+
 export function extractCladdingPortionsFromBrief(briefText: string): CladdingPortion[] {
   if (!briefHasIndependentCladding(briefText)) return [];
   const snippets = splitCladdingSnippets(briefText).filter(snippetHasSignal);
   const source = snippets.length > 0 ? snippets : [briefText];
+  const shared = sharedQualifierText(briefText);
   const portions: CladdingPortion[] = [];
   source.forEach((snippet, index) => {
     const portion = createEmptyCladdingPortion();
     portion.clause_ordinal = index;
     applySnippet(portion, snippet);
+    if (shared) {
+      if (portion.openings_already_deducted == null) applyOpenings(portion, shared);
+      applyInclusions(portion, shared);
+      if (portion.existing_cladding_removal_required == null) {
+        applyBool(
+          portion,
+          shared,
+          /removal/,
+          "existing_cladding_removal_required",
+          "removal_authority"
+        );
+      }
+    }
     const useful =
       portion.scope_intent != null ||
       portion.cladding_family != null ||
@@ -585,6 +677,10 @@ function fillMissing(primary: CladdingPortion, secondary: CladdingPortion): Clad
   }
   if (next.approved_profile_id && !claddingApprovedProfileById(next.approved_profile_id)) {
     next.approved_profile_id = null;
+  }
+  if (next.openings_already_deducted === true) {
+    next.opening_area_m2 = null;
+    next.opening_area_authority = next.openings_deducted_authority;
   }
   return next;
 }

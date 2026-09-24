@@ -3592,7 +3592,11 @@ export const CLADDING_PRODUCTIVITY_RATE_CATALOGUE: RateCatalogueEntry[] =
       category: "labour",
       work_area_type: "cladding",
       workAreaLabel:
-        row.group === "install" ? "Cladding installation" : "Cladding removal",
+        row.group === "install"
+          ? "Cladding installation"
+          : row.group === "accessory"
+            ? "Cladding accessories"
+            : "Cladding removal",
       unit: row.unit,
       description: row.description,
       defaultCostRate: row.hoursPerUnit,

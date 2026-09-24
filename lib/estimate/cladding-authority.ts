@@ -7,6 +7,8 @@
 
 import type { OrganisationRate } from "@/components/setup/types";
 import {
+  CLADDING_CAVITY_INSTALL_HOURS_PER_M2,
+  CLADDING_CAVITY_TIMBER_BATTEN_M2,
   CLADDING_BOARD_AND_BATTEN_BATTEN_INSTALL_HOURS_PER_LM,
   CLADDING_BOARD_AND_BATTEN_REMOVE_HOURS_PER_M2,
   CLADDING_BOARD_AND_BATTEN_SHEET_INSTALL_HOURS_PER_M2,
@@ -33,7 +35,11 @@ import {
   CLADDING_TIMBER_VERTICAL_SHIPLAP_135X21_LM,
   CLADDING_TIMBER_VERTICAL_SHIPLAP_90X21_LM,
   CLADDING_TIMBER_VERTICAL_SHIPLAP_INSTALL_HOURS_PER_LM,
+  CLADDING_RIGID_AIR_BARRIER_INSTALL_HOURS_PER_M2,
+  CLADDING_RIGID_AIR_BARRIER_M2,
   CLADDING_TIMBER_VERTICAL_SHIPLAP_REMOVE_HOURS_PER_M2,
+  CLADDING_WALL_UNDERLAY_FLEXIBLE_M2,
+  CLADDING_WALL_UNDERLAY_INSTALL_HOURS_PER_M2,
   claddingBattenMaterialKey,
 } from "@/lib/estimate/cladding-identities";
 
@@ -55,7 +61,8 @@ export type CladdingMaterialFamilyId =
   | "cladding-vertical-shiplap"
   | "cladding-fibre-cement"
   | "cladding-sheet-boards"
-  | "cladding-battens";
+  | "cladding-battens"
+  | "cladding-accessories";
 
 export type CladdingMaterialBenchmark = {
   readonly key: string;
@@ -66,7 +73,7 @@ export type CladdingMaterialBenchmark = {
   readonly description: string;
 };
 
-export type CladdingProductivityGroup = "install" | "removal";
+export type CladdingProductivityGroup = "install" | "removal" | "accessory";
 
 export type CladdingProductivityBenchmark = {
   readonly key: string;
@@ -104,6 +111,33 @@ export const CLADDING_MATERIAL_BENCHMARKS: readonly CladdingMaterialBenchmark[] 
   batten(65, 20, 4.9),
   batten(90, 19, 6.5),
   batten(90, 20, 6.7),
+  {
+    key: CLADDING_CAVITY_TIMBER_BATTEN_M2,
+    label: "Drained timber cavity",
+    unit: "m2",
+    costExGst: 9,
+    familyId: "cladding-accessories",
+    description:
+      "Direct COST ex GST for ordinary cavity battens and ordinary fixings. Quantity is the net cladding area. Excludes structural framing, proprietary engineered systems, flashings, wrap or rigid air barrier, remediation and scaffold.",
+  },
+  {
+    key: CLADDING_WALL_UNDERLAY_FLEXIBLE_M2,
+    label: "Flexible wall underlay",
+    unit: "m2",
+    costExGst: 5,
+    familyId: "cladding-accessories",
+    description:
+      "Direct COST ex GST for flexible wall underlay. Quantity is the gross wall area. Separate from rigid air barrier.",
+  },
+  {
+    key: CLADDING_RIGID_AIR_BARRIER_M2,
+    label: "Rigid air barrier",
+    unit: "m2",
+    costExGst: 28,
+    familyId: "cladding-accessories",
+    description:
+      "Direct COST ex GST for a rigid air barrier. Quantity is the gross wall area. Separate from flexible wall underlay.",
+  },
 ];
 
 export const CLADDING_PRODUCTIVITY_BENCHMARKS: readonly CladdingProductivityBenchmark[] = [
@@ -118,6 +152,33 @@ export const CLADDING_PRODUCTIVITY_BENCHMARKS: readonly CladdingProductivityBenc
   hours("removal", CLADDING_TIMBER_VERTICAL_SHIPLAP_REMOVE_HOURS_PER_M2, "Vertical shiplap removal", "m2", 0.35),
   hours("removal", CLADDING_BOARD_AND_BATTEN_REMOVE_HOURS_PER_M2, "Board-and-batten removal", "m2", 0.4),
   hours("removal", CLADDING_FIBRE_CEMENT_WEATHERBOARD_REMOVE_HOURS_PER_M2, "Fibre-cement weatherboard removal", "m2", 0.4),
+  {
+    key: CLADDING_CAVITY_INSTALL_HOURS_PER_M2,
+    label: "Drained timber cavity install",
+    unit: "m2",
+    hoursPerUnit: 0.15,
+    group: "accessory",
+    description:
+      "Person-hours to install ordinary cavity battens on the net cladding area. Labour COST uses labour.carpenter.hour. Excludes structural framing, proprietary systems, flashings, wrap and scaffold.",
+  },
+  {
+    key: CLADDING_WALL_UNDERLAY_INSTALL_HOURS_PER_M2,
+    label: "Flexible wall underlay install",
+    unit: "m2",
+    hoursPerUnit: 0.08,
+    group: "accessory",
+    description:
+      "Person-hours to install flexible wall underlay on the gross wall area. Labour COST uses labour.carpenter.hour. Separate from rigid air barrier.",
+  },
+  {
+    key: CLADDING_RIGID_AIR_BARRIER_INSTALL_HOURS_PER_M2,
+    label: "Rigid air barrier install",
+    unit: "m2",
+    hoursPerUnit: 0.18,
+    group: "accessory",
+    description:
+      "Person-hours to install a rigid air barrier on the gross wall area. Labour COST uses labour.carpenter.hour. Separate from flexible wall underlay.",
+  },
 ];
 
 const MATERIAL_BY_KEY = new Map(

@@ -12,7 +12,6 @@ import {
 import { CLADDING_REMOVAL_EXCLUSIONS } from "../lib/estimate/cladding-commercial";
 import {
   CLADDING_BOARD_AND_BATTEN_SHEET_M2,
-  CLADDING_CAVITY_UNRESOLVED_M2,
   CLADDING_SHEET_EQUIVALENT_LABEL,
   CLADDING_TIMBER_BEVELBACK_142X18_LM,
   CLADDING_TIMBER_BEVELBACK_187X18_LM,
@@ -137,6 +136,9 @@ const EXPECTED_MATERIAL: Record<string, number> = {
   "cladding.timber.board_and_batten.batten.65x20.lm": 4.9,
   "cladding.timber.board_and_batten.batten.90x19.lm": 6.5,
   "cladding.timber.board_and_batten.batten.90x20.lm": 6.7,
+  "cladding.cavity.timber_batten.m2": 9,
+  "cladding.wall_underlay.flexible.m2": 5,
+  "cladding.rigid_air_barrier.m2": 28,
 };
 const EXPECTED_HOURS: Record<string, [number, string]> = {
   "cladding.timber.bevelback.install.hours_per_lm": [0.12, "lm"],
@@ -150,9 +152,12 @@ const EXPECTED_HOURS: Record<string, [number, string]> = {
   "cladding.timber.vertical_shiplap.remove.hours_per_m2": [0.35, "m2"],
   "cladding.timber.board_and_batten.remove.hours_per_m2": [0.4, "m2"],
   "cladding.fibre_cement.weatherboard.remove.hours_per_m2": [0.4, "m2"],
+  "cladding.cavity.install.hours_per_m2": [0.15, "m2"],
+  "cladding.wall_underlay.install.hours_per_m2": [0.08, "m2"],
+  "cladding.rigid_air_barrier.install.hours_per_m2": [0.18, "m2"],
 };
 
-check("nineteen ordinary material identities stay registered", CLADDING_MATERIAL_BENCHMARKS.length === 19);
+check("ordinary material identities stay registered", CLADDING_MATERIAL_BENCHMARKS.length === 22);
 for (const row of CLADDING_MATERIAL_BENCHMARKS) {
   const entry = getCatalogueEntry(row.key);
   check(
@@ -164,7 +169,7 @@ for (const row of CLADDING_MATERIAL_BENCHMARKS) {
       entry.defaultSellRate == null
   );
 }
-check("eleven ordinary productivity identities stay registered", CLADDING_PRODUCTIVITY_BENCHMARKS.length === 11);
+check("ordinary productivity identities stay registered", CLADDING_PRODUCTIVITY_BENCHMARKS.length === 14);
 for (const row of CLADDING_PRODUCTIVITY_BENCHMARKS) {
   const entry = getCatalogueEntry(row.key);
   const expected = EXPECTED_HOURS[row.key];
@@ -396,8 +401,8 @@ const withCavity = estimateOf([
     trims_flashings_corners_included: true,
   }),
 ]);
-const cavity = line(withCavity.lineItems, CLADDING_CAVITY_UNRESOLVED_M2);
-check("accessory stays visible and null-money", cavity?.includedInTotal === false && cavity?.recommendedCost === 0 && cavity?.costRate == null);
+const cavity = line(withCavity.lineItems, "cladding.cavity.timber_batten.m2");
+check("new cavity prices the ordinary timber identity", cavity?.includedInTotal !== false && close(cavity?.recommendedCost, 270));
 check("accessory does not suppress ordinary pricing", close(line(withCavity.lineItems, CLADDING_TIMBER_BEVELBACK_187X18_LM)?.recommendedCost, 2903.23));
 check("underlay and trims stay unresolved", line(withCavity.lineItems, "cladding.underlay_or_rab.unresolved.m2")?.includedInTotal === false && line(withCavity.lineItems, "cladding.trims_flashings_corners.unresolved")?.includedInTotal === false);
 check(
@@ -429,7 +434,7 @@ const brickAndBoard = estimateOf([
   }),
 ]);
 const brickLine = brickAndBoard.lineItems.find((row) => row.nestedItemId === "brick");
-check("brick stays specialist with area and description", brickLine?.includedInTotal === false && (brickLine?.notes ?? "").includes("25") && (brickLine?.label ?? "").toLowerCase().includes("brick"));
+check("brick stays specialist with area and description", brickLine?.includedInTotal === false && brickLine?.quantity === 25 && (brickLine?.label ?? "").toLowerCase().includes("brick"));
 check("brick does not inherit bevelback productivity", !brickAndBoard.lineItems.some((row) => row.nestedItemId === "brick" && (row.componentKey ?? "").includes("bevelback.install")));
 check("supported sibling still prices beside brick", close(line(brickAndBoard.lineItems, CLADDING_TIMBER_BEVELBACK_187X18_LM)?.recommendedCost, 2903.23));
 
@@ -589,7 +594,7 @@ const coverage = verifyRegisteredWorkAreaBenchmarkCoverage("cladding");
 const support = getWorkAreaSupportEntry("cladding");
 check("hosted commercialisation and Builder Review resolve", coverage.ok && coverage.resolves.some((row) => row.component === "Hosted commercialisation") && coverage.resolves.some((row) => row.component === "Builder Review"));
 check("Pricing and Quote resolve and human QA stays open", coverage.needsOwnerApproval.length === 0 && workAreaMayCloseAtL5(coverage) === true && FROZEN === false);
-check("support notes name Pricing and Quote and leave human QA open", support?.notes === CLADDING_SUPPORT_NOTES && support.notes.includes("hosted commercialisation") && support.notes.includes("client Quote") && support.notes.includes("Human hosted QA has not occurred") && support.band === "staged" && support.estimatableAsWorkArea === false && FROZEN === false);
+check("support notes name Pricing and Quote and leave human QA open", support?.notes === CLADDING_SUPPORT_NOTES && support.notes.includes("hosted commercialisation") && support.notes.includes("client Quote") && support.notes.includes("Human hosted QA has not been re-run") && support.band === "staged" && support.estimatableAsWorkArea === false && FROZEN === false);
 
 const materialReq = fixtureA.requirements?.find((row) => row.kind === "material") as MaterialRequirement | undefined;
 check("priced requirement traces the physical quantity", close(materialReq?.purchaseQuantity, lmA) && materialReq?.materialKey === CLADDING_TIMBER_BEVELBACK_187X18_LM);

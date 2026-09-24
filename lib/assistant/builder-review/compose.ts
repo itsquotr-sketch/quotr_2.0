@@ -1599,7 +1599,33 @@ export function composeBuilderReview(
     })
     .map(toTakeoffRow);
 
-  const workAreas: BuilderReviewWorkAreaGroup[] = waTotals.map((wa) => {
+  const specialistOnlyNames = input.workAreas
+    .filter((area) => area.type === "cladding" && area.status !== "excluded")
+    .map((area) => area.name)
+    .filter((name) => {
+      const key = name.toLowerCase();
+      if (waTotals.some((row) => row.name.toLowerCase() === key)) return false;
+      return input.estimate.lineItems.some((item) => {
+        const raw = item.workAreaName?.trim().toLowerCase() || "";
+        return raw === key && item.includedInTotal === false && (item.componentKey ?? "").includes("cladding.specialist.");
+      });
+    });
+  const reviewAreas = [
+    ...waTotals,
+    ...specialistOnlyNames.map((name) => ({
+      name,
+      cost: 0,
+      sell: 0,
+      profit: 0,
+      marginPercent: 0,
+      costKnown: false as const,
+      hours: 0,
+      lineItemCount: 0,
+      items: [],
+    })),
+  ];
+
+  const workAreas: BuilderReviewWorkAreaGroup[] = reviewAreas.map((wa) => {
     const meta = workAreaTypeForName(wa.name, input.workAreas);
     const areaLines = lines.filter((item) => {
       const raw = item.workAreaName?.trim() || "";
@@ -1813,6 +1839,19 @@ export function composeBuilderReview(
         facts: input.facts ?? [],
         workAreaId: meta.id,
       });
+      const pricedHere = input.estimate.lineItems
+        .filter((item) => {
+          const raw = item.workAreaName?.trim() || "";
+          return raw.toLowerCase() === wa.name.toLowerCase() && item.includedInTotal !== false;
+        })
+        .reduce((sum, item) => sum + (item.recommendedCost ?? 0), 0);
+      const specialistPending = unresolved.some((item) =>
+        (item.componentKey ?? "").includes("cladding.specialist.")
+      );
+      if (specialistPending && pricedHere <= 0) {
+        partialEstimateLabel =
+          "Pricing required. Specialist cladding scope is known. Continue to Pricing to add the supplier or subcontractor price.";
+      }
       categories = grouped.categories.filter(
         (cat) =>
           cat.lines.length > 0 ||

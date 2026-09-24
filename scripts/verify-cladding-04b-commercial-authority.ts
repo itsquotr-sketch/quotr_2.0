@@ -144,6 +144,9 @@ const EXPECTED_MATERIAL: Record<string, number> = {
   "cladding.timber.board_and_batten.batten.65x20.lm": 4.9,
   "cladding.timber.board_and_batten.batten.90x19.lm": 6.5,
   "cladding.timber.board_and_batten.batten.90x20.lm": 6.7,
+  "cladding.cavity.timber_batten.m2": 9,
+  "cladding.wall_underlay.flexible.m2": 5,
+  "cladding.rigid_air_barrier.m2": 28,
 };
 
 const EXPECTED_HOURS: Record<string, number> = {
@@ -158,6 +161,9 @@ const EXPECTED_HOURS: Record<string, number> = {
   "cladding.timber.vertical_shiplap.remove.hours_per_m2": 0.35,
   "cladding.timber.board_and_batten.remove.hours_per_m2": 0.4,
   "cladding.fibre_cement.weatherboard.remove.hours_per_m2": 0.4,
+  "cladding.cavity.install.hours_per_m2": 0.15,
+  "cladding.wall_underlay.install.hours_per_m2": 0.08,
+  "cladding.rigid_air_barrier.install.hours_per_m2": 0.18,
 };
 
 check(
@@ -462,13 +468,13 @@ const withAccessories = physicalOf([
   }),
 ]);
 const accessoryMoney = withAccessories.requirements.filter((row) =>
-  [CLADDING_CAVITY_UNRESOLVED_M2, CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2, CLADDING_TRIMS_UNRESOLVED].includes(
+  [CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2, CLADDING_TRIMS_UNRESOLVED].includes(
     row.componentKey as typeof CLADDING_CAVITY_UNRESOLVED_M2
   )
 ) as MaterialRequirement[];
 check(
   "accessory requirements keep null money",
-  accessoryMoney.length === 3 &&
+  accessoryMoney.length === 2 &&
     accessoryMoney.every(
       (row) => row.unitCost == null && row.totalCost == null && row.priced === false && row.unitCost !== 0
     )
@@ -527,6 +533,7 @@ check(
         "Fibre-cement weatherboards",
         "Board-and-batten boards",
         "Board-and-batten battens",
+        "Cladding accessories",
       ].join("|") &&
     (claddingCategory?.families.flatMap((family) => family.ordinaryItems) ?? []).every(
       (item) =>
@@ -573,14 +580,20 @@ check(
 
 const productivity = buildProductivityRegistry({ rates: [] });
 const claddingOps = productivity.groups.find((group) => group.workAreaType === "cladding");
-const installKeys = claddingOps?.ordinaryItems.filter((item) => item.productivityKey.includes(".install.")) ?? [];
+const accessoryKeys = claddingOps?.ordinaryItems.filter((item) =>
+  item.productivityKey.includes(".cavity.") ||
+  item.productivityKey.includes(".wall_underlay.") ||
+  item.productivityKey.includes(".rigid_air_barrier.")
+) ?? [];
+const installKeys = claddingOps?.ordinaryItems.filter((item) => item.productivityKey.includes(".install.") && !accessoryKeys.some((row) => row.productivityKey === item.productivityKey)) ?? [];
 const removalKeys = claddingOps?.ordinaryItems.filter((item) => item.productivityKey.includes(".remove.")) ?? [];
 check(
   "Rates productivity groups Cladding installation and removal without a DNA calibration CTA",
   claddingOps?.workAreaLabel === "Cladding" &&
     installKeys.length === 6 &&
     removalKeys.length === 5 &&
-    [...installKeys, ...removalKeys].every(
+    accessoryKeys.length === 3 &&
+    [...installKeys, ...removalKeys, ...accessoryKeys].every(
       (item) =>
         item.label.length > 0 &&
         (item.description?.length ?? 0) > 0 &&

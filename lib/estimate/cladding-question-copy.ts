@@ -61,6 +61,9 @@ export function claddingQuestionOptions(
       .filter((label): label is string => Boolean(label));
     return [...rows, "Other / custom"];
   }
+  if (factKey === "cladding.portion.wall_preparation") {
+    return ["Flexible wall underlay", "Rigid air barrier", "Other / custom", "Not sure"];
+  }
   if (factKey === "cladding.portion.area_method") return ["Direct area", "Length × height"];
   if (
     factKey === "cladding.portion.openings_already_deducted" ||
@@ -116,8 +119,13 @@ export function claddingQuestionCopy(
     return "Include a drained cavity or cavity battens?";
   }
   if (factKey === "cladding.portion.wall_underlay_or_rab_included") {
-    return "Include wall underlay or a rigid air barrier?";
+    return "Include a wall-preparation layer?";
   }
+  if (factKey === "cladding.portion.wall_preparation") {
+    return "What wall-preparation layer is required?";
+  }
+  if (factKey === "cladding.portion.batten_width_mm") return "What batten width is required?";
+  if (factKey === "cladding.portion.batten_thickness_mm") return "What batten thickness is required?";
   if (factKey === "cladding.portion.trims_flashings_corners_included") {
     return "Include trims, corners and flashings?";
   }
@@ -146,7 +154,10 @@ export function claddingQuestionLabel(factKey: string): string {
     "cladding.portion.openings_already_deducted": "Openings already excluded",
     "cladding.portion.opening_area_m2": "Opening deduction",
     "cladding.portion.cavity_included": "Cavity",
-    "cladding.portion.wall_underlay_or_rab_included": "Underlay or air barrier",
+    "cladding.portion.wall_underlay_or_rab_included": "Wall-preparation layer",
+    "cladding.portion.wall_preparation": "Wall-preparation layer",
+    "cladding.portion.batten_width_mm": "Batten width",
+    "cladding.portion.batten_thickness_mm": "Batten thickness",
     "cladding.portion.trims_flashings_corners_included": "Trims and flashings",
     "cladding.portion.existing_cladding_removal_required": "Remove existing cladding",
     "cladding.portion.painting_or_coating_included": "Painting or coating",
@@ -167,7 +178,9 @@ export function claddingQuestionInputType(
     factKey === "cladding.portion.direct_area_m2" ||
     factKey === "cladding.portion.length_m" ||
     factKey === "cladding.portion.height_m" ||
-    factKey === "cladding.portion.opening_area_m2"
+    factKey === "cladding.portion.opening_area_m2" ||
+    factKey === "cladding.portion.batten_width_mm" ||
+    factKey === "cladding.portion.batten_thickness_mm"
   ) {
     return "number";
   }
@@ -190,6 +203,12 @@ export function claddingQuestionUnit(factKey: string): string | undefined {
   }
   if (factKey === "cladding.portion.length_m" || factKey === "cladding.portion.height_m") {
     return "m";
+  }
+  if (
+    factKey === "cladding.portion.batten_width_mm" ||
+    factKey === "cladding.portion.batten_thickness_mm"
+  ) {
+    return "mm";
   }
   return undefined;
 }

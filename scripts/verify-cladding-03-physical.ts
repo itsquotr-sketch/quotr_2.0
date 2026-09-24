@@ -424,7 +424,7 @@ const withAccessories = physicalOf([
   }),
 ]);
 const accessoryPortion = withAccessories.portions[0];
-check("cavity yes uses the net area and no material key", component(accessoryPortion?.components ?? [], CLADDING_CAVITY_UNRESOLVED_M2)?.quantity === 25 && component(accessoryPortion?.components ?? [], CLADDING_CAVITY_UNRESOLVED_M2)?.materialKey == null);
+check("cavity yes uses the net area and the ordinary timber identity", component(accessoryPortion?.components ?? [], "cladding.cavity.timber_batten.m2")?.quantity === 25 && component(accessoryPortion?.components ?? [], "cladding.cavity.timber_batten.m2")?.materialKey === "cladding.cavity.timber_batten.m2");
 check("underlay uses the gross wall area", component(accessoryPortion?.components ?? [], CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2)?.quantity === 30);
 check("underlay description keeps both products unnamed", withAccessories.requirements.some((row) => row.componentKey === CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2 && row.description.includes("wall underlay or rigid air barrier")));
 check("trims stay unresolved without a lineal quantity", component(accessoryPortion?.components ?? [], CLADDING_TRIMS_UNRESOLVED)?.quantity == null && accessoryPortion?.summary.includes(CLADDING_TRIMS_SPECIFICATION_MESSAGE) === true);

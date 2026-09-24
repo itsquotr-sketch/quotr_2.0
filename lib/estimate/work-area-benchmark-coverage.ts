@@ -1611,7 +1611,10 @@ const CLADDING_BENCHMARK_REQUIREMENTS: readonly WorkAreaBenchmarkRequirement[] =
       gapClass: "EXISTING_BENCHMARK_REUSED",
       derivation: `Owner-approved Quotr V1 ${item.costExGst} ex GST / ${item.unit}`,
       currentWithoutCompany: "Quotr COST only",
-      notes: CLADDING_MATERIAL_RATE_DESCRIPTION,
+      notes:
+        item.familyId === "cladding-accessories"
+          ? item.description
+          : CLADDING_MATERIAL_RATE_DESCRIPTION,
     })
   ),
   ...CLADDING_PRODUCTIVITY_BENCHMARKS.map((item) =>

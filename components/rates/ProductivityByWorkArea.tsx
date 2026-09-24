@@ -439,8 +439,29 @@ export function ProductivityByWorkArea({
                           Cladding installation
                         </h4>
                         <ProductivityOperationsList
-                          items={group.ordinaryItems.filter((item) =>
-                            item.productivityKey.includes(".install.")
+                          items={group.ordinaryItems.filter(
+                            (item) =>
+                              item.productivityKey.includes(".install.") &&
+                              !item.productivityKey.includes(".cavity.") &&
+                              !item.productivityKey.includes(".wall_underlay.") &&
+                              !item.productivityKey.includes(".rigid_air_barrier.")
+                          )}
+                          showKeys={showKeys}
+                          readOnly={readOnly}
+                          onEdit={(item) => {
+                            setEditingKey(item.productivityKey);
+                            setNotice(null);
+                          }}
+                        />
+                        <h4 className="pt-2 text-sm font-medium">
+                          Cladding accessories
+                        </h4>
+                        <ProductivityOperationsList
+                          items={group.ordinaryItems.filter(
+                            (item) =>
+                              item.productivityKey.includes(".cavity.") ||
+                              item.productivityKey.includes(".wall_underlay.") ||
+                              item.productivityKey.includes(".rigid_air_barrier.")
                           )}
                           showKeys={showKeys}
                           readOnly={readOnly}

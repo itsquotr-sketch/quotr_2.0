@@ -11,7 +11,12 @@ import {
   CLADDING_BATTEN_QUANTITY_UNRESOLVED,
   CLADDING_BOARD_AND_BATTEN_BATTEN_INSTALL_HOURS_PER_LM,
   CLADDING_BOARD_AND_BATTEN_SHEET_M2,
-  CLADDING_CAVITY_UNRESOLVED_M2,
+  CLADDING_CAVITY_INSTALL_HOURS_PER_M2,
+  CLADDING_CAVITY_TIMBER_BATTEN_M2,
+  CLADDING_RIGID_AIR_BARRIER_INSTALL_HOURS_PER_M2,
+  CLADDING_RIGID_AIR_BARRIER_M2,
+  CLADDING_WALL_UNDERLAY_FLEXIBLE_M2,
+  CLADDING_WALL_UNDERLAY_INSTALL_HOURS_PER_M2,
   CLADDING_CUSTOM_INSTALL_HOURS_PER_LM,
   CLADDING_CUSTOM_REMOVE_HOURS_PER_M2,
   CLADDING_CUSTOM_WEATHERBOARD_INFORMATIONAL_LM,
@@ -560,7 +565,13 @@ function buildSection(params: {
           : portion.cladding_family === "masonry"
             ? CLADDING_SPECIALIST_MASONRY
             : CLADDING_SPECIALIST_CUSTOM;
-      const description = portion.other_description?.trim() || name;
+      const named = portion.other_description?.trim();
+      const description =
+        portion.cladding_family === "brick_veneer"
+          ? `Brick veneer cladding supply and installation${named ? `. ${named}` : ""}`
+          : portion.cladding_family === "masonry"
+            ? `Masonry veneer cladding supply and installation${named ? `. ${named}` : ""}`
+            : named || name;
       pushMaterial({
         role: "specialist",
         componentKey,
@@ -781,38 +792,102 @@ function buildSection(params: {
   }
 
   if (emitNewWork && !specialist && net != null) {
-    if (portion.cavity_included === true && gross != null) {
+    if (portion.cavity_state === "retained") {
+      sentences.push("Existing drained cavity retained.");
+    }
+    if (portion.cavity_included === true && portion.cavity_state !== "retained" && portion.cavity_state !== "excluded") {
       pushMaterial({
-        role: "unresolved_scope",
-        componentKey: CLADDING_CAVITY_UNRESOLVED_M2,
-        materialKey: null,
-        category: "UNRESOLVED",
-        description: `${name}: drained cavity`,
+        role: "material",
+        componentKey: CLADDING_CAVITY_TIMBER_BATTEN_M2,
+        materialKey: CLADDING_CAVITY_TIMBER_BATTEN_M2,
+        category: "ACCESSORY",
+        description: `${name}: drained timber cavity`,
         specification:
-          "Cladding-owned drained cavity. Spacing, product quantity and material identity are unresolved.",
+          "Ordinary cavity battens and ordinary fixings. Excludes structural framing, proprietary systems, flashings, wrap, remediation and scaffold.",
         quantity: net,
         unit: "m2",
-        completeness: CLADDING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
-        unresolvedReason: "Cavity product quantity is unresolved.",
+        completeness: CLADDING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
+        unresolvedReason: null,
+      });
+      pushLabour({
+        componentKey: CLADDING_CAVITY_INSTALL_HOURS_PER_M2,
+        description: `${name}: drained timber cavity installation`,
+        quantity: net,
+        unit: "m2",
+        completeness: CLADDING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
       });
     } else if (portion.cavity_included == null) {
       missing.push(`${name}: Include a drained cavity or cavity battens?`);
     }
-    if (portion.wall_underlay_or_rab_included === true && gross != null) {
-      pushMaterial({
-        role: "unresolved_scope",
-        componentKey: CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2,
-        materialKey: null,
-        category: "UNRESOLVED",
-        description: `${name}: wall underlay or rigid air barrier`,
-        specification: "wall underlay or rigid air barrier",
-        quantity: gross,
-        unit: "m2",
-        completeness: CLADDING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
-        unresolvedReason: "Underlay or rigid air barrier product is unresolved.",
-      });
+    if (portion.underlay_state === "retained") {
+      sentences.push("Existing wall underlay retained.");
+    }
+    if (
+      portion.wall_underlay_or_rab_included === true &&
+      portion.underlay_state !== "retained" &&
+      portion.underlay_state !== "excluded" &&
+      gross != null
+    ) {
+      const preparation = portion.wall_preparation;
+      if (preparation === "flexible_underlay") {
+        pushMaterial({
+          role: "material",
+          componentKey: CLADDING_WALL_UNDERLAY_FLEXIBLE_M2,
+          materialKey: CLADDING_WALL_UNDERLAY_FLEXIBLE_M2,
+          category: "ACCESSORY",
+          description: `${name}: flexible wall underlay`,
+          specification: "Flexible wall underlay on the gross wall area.",
+          quantity: gross,
+          unit: "m2",
+          completeness: CLADDING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
+          unresolvedReason: null,
+        });
+        pushLabour({
+          componentKey: CLADDING_WALL_UNDERLAY_INSTALL_HOURS_PER_M2,
+          description: `${name}: flexible wall underlay installation`,
+          quantity: gross,
+          unit: "m2",
+          completeness: CLADDING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
+        });
+      } else if (preparation === "rigid_air_barrier") {
+        pushMaterial({
+          role: "material",
+          componentKey: CLADDING_RIGID_AIR_BARRIER_M2,
+          materialKey: CLADDING_RIGID_AIR_BARRIER_M2,
+          category: "ACCESSORY",
+          description: `${name}: rigid air barrier`,
+          specification: "Rigid air barrier on the gross wall area.",
+          quantity: gross,
+          unit: "m2",
+          completeness: CLADDING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
+          unresolvedReason: null,
+        });
+        pushLabour({
+          componentKey: CLADDING_RIGID_AIR_BARRIER_INSTALL_HOURS_PER_M2,
+          description: `${name}: rigid air barrier installation`,
+          quantity: gross,
+          unit: "m2",
+          completeness: CLADDING_PHYSICAL_COMPLETENESS.COMPLETE_PHYSICAL,
+        });
+      } else {
+        pushMaterial({
+          role: "unresolved_scope",
+          componentKey: CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2,
+          materialKey: null,
+          category: "UNRESOLVED",
+          description: `${name}: wall underlay or rigid air barrier`,
+          specification: "Flexible wall underlay and rigid air barrier are separate. The selection is not an ordinary identity.",
+          quantity: gross,
+          unit: "m2",
+          completeness: CLADDING_PHYSICAL_COMPLETENESS.INFORMATION_REQUIRED,
+          unresolvedReason: "Wall-preparation layer is custom, unsure, or not selected.",
+        });
+      }
     } else if (portion.wall_underlay_or_rab_included == null) {
-      missing.push(`${name}: Include wall underlay or a rigid air barrier?`);
+      missing.push(`${name}: Include a wall-preparation layer?`);
+    }
+    if (portion.trims_state === "retained") {
+      sentences.push("Existing trims retained.");
     }
     if (portion.trims_flashings_corners_included === true) {
       sentences.push(CLADDING_TRIMS_SPECIFICATION_MESSAGE);

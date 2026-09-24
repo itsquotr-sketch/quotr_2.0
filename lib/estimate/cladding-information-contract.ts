@@ -98,6 +98,18 @@ export const CLADDING_INFORMATION_CONTRACT: readonly CladdingInformationContract
       reason: "Height is required for length × height.",
     },
     {
+      factKey: "cladding.portion.batten_width_mm",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: false,
+      reason: "Board-and-batten needs the stated batten width.",
+    },
+    {
+      factKey: "cladding.portion.batten_thickness_mm",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: false,
+      reason: "Board-and-batten needs the stated batten thickness.",
+    },
+    {
       factKey: "cladding.portion.openings_already_deducted",
       askClass: "HARD_MINIMUM",
       calculatorConsumed: false,
@@ -119,7 +131,13 @@ export const CLADDING_INFORMATION_CONTRACT: readonly CladdingInformationContract
       factKey: "cladding.portion.wall_underlay_or_rab_included",
       askClass: "HARD_MINIMUM",
       calculatorConsumed: false,
-      reason: "Underlay or rigid air barrier inclusion is scope disclosure only.",
+      reason: "A wall-preparation layer is asked before a product is selected.",
+    },
+    {
+      factKey: "cladding.portion.wall_preparation",
+      askClass: "HARD_MINIMUM",
+      calculatorConsumed: false,
+      reason: "Flexible underlay and rigid air barrier are separate identities.",
     },
     {
       factKey: "cladding.portion.trims_flashings_corners_included",
@@ -215,6 +233,7 @@ function systemMatchesParents(portion: CladdingPortion): boolean {
     return system === "fibre_cement_horizontal_weatherboard";
   }
   if (portion.cladding_family !== "timber") return false;
+  if (system === "timber_sheet_board_and_batten") return true;
   if (portion.orientation === "horizontal") return HORIZONTAL_SYSTEMS.has(system);
   if (portion.orientation === "vertical") return VERTICAL_SYSTEMS.has(system);
   return false;
@@ -274,11 +293,12 @@ export function claddingFactIsRelevant(
     if (factKey === "cladding.portion.other_description") return true;
     if (!portion.other_description?.trim()) return false;
   } else if (portion.cladding_family === "timber") {
-    if (factKey === "cladding.portion.orientation") return true;
-    if (!portion.orientation) return false;
-    if (factKey === "cladding.portion.cladding_system") return true;
+    const boardAndBatten = portion.cladding_system === "timber_sheet_board_and_batten";
+    if (factKey === "cladding.portion.orientation") return !boardAndBatten;
+    if (!boardAndBatten && !portion.orientation) return false;
+    if (factKey === "cladding.portion.cladding_system") return !boardAndBatten;
     if (!systemMatchesParents(portion)) return false;
-    if (factKey === "cladding.portion.approved_profile") return true;
+    if (factKey === "cladding.portion.approved_profile") return !boardAndBatten || !profileReady(portion);
     if (!profileReady(portion)) return false;
   } else if (portion.cladding_family === "fibre_cement") {
     if (factKey === "cladding.portion.orientation") return false;
@@ -313,6 +333,15 @@ export function claddingFactIsRelevant(
     return false;
   }
   if (!geometryReady(portion)) return false;
+  if (
+    factKey === "cladding.portion.batten_width_mm" ||
+    factKey === "cladding.portion.batten_thickness_mm"
+  ) {
+    return portion.cladding_system === "timber_sheet_board_and_batten";
+  }
+  if (factKey === "cladding.portion.wall_preparation") {
+    return portion.wall_underlay_or_rab_included === true;
+  }
   if (specialist) {
     return factKey === "cladding.portion.existing_cladding_removal_required";
   }
@@ -350,9 +379,21 @@ export function claddingPortionIsInformationComplete(portion: CladdingPortion): 
     return true;
   }
   if (!portion.cladding_family) return false;
-  if (portion.cladding_family === "timber" && !portion.orientation) return false;
+  if (
+    portion.cladding_family === "timber" &&
+    portion.cladding_system !== "timber_sheet_board_and_batten" &&
+    !portion.orientation
+  ) {
+    return false;
+  }
   if (!systemMatchesParents(portion)) return false;
   if (!profileReady(portion)) return false;
+  if (
+    portion.cladding_system === "timber_sheet_board_and_batten" &&
+    (portion.batten_width_mm == null || portion.batten_thickness_mm == null)
+  ) {
+    return false;
+  }
   if (portion.cavity_included == null) return false;
   if (portion.wall_underlay_or_rab_included == null) return false;
   if (portion.trims_flashings_corners_included == null) return false;

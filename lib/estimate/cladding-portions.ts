@@ -30,7 +30,7 @@ import {
 
 export const CLADDING_V1_HUMAN_QA_FROZEN = false as const;
 export const CLADDING_SUPPORT_NOTES =
-  "Ordinary nested Cladding V1 now runs extraction, Details, physical takeoff, material/productivity authority, hosted commercialisation, Builder Review, Pricing and client Quote. Accessories, custom and specialist work remain Pricing Required where authority is absent. Human hosted QA has not occurred." as const;
+  "Ordinary nested Cladding V1 now runs extraction, Details, physical takeoff, material/productivity authority, hosted commercialisation, Builder Review, Pricing and client Quote. Ordinary new drained cavity, flexible wall underlay and rigid air barrier resolve from Quotr authority. Trims remain Pricing Required. Brick, masonry and custom work remain Pricing Required until a manual price is added. Human hosted QA has not been re-run." as const;
 export const CLADDING_STAGED_NOT_CALCULATED_MESSAGE =
   "Cladding quantities and pricing will be calculated after the remaining section details are confirmed." as const;
 
@@ -98,6 +98,18 @@ export const CLADDING_SPECIALIST_KIND_VALUES = [
 export type CladdingSpecialistKind =
   (typeof CLADDING_SPECIALIST_KIND_VALUES)[number];
 
+export const CLADDING_ACCESSORY_STATE_VALUES = ["new", "retained", "excluded"] as const;
+export type CladdingAccessoryState = (typeof CLADDING_ACCESSORY_STATE_VALUES)[number];
+
+export const CLADDING_WALL_PREPARATION_VALUES = [
+  "flexible_underlay",
+  "rigid_air_barrier",
+  "custom",
+  "unsure",
+] as const;
+export type CladdingWallPreparation =
+  (typeof CLADDING_WALL_PREPARATION_VALUES)[number];
+
 export type CladdingPortion = {
   id: string;
   clause_ordinal?: number;
@@ -122,10 +134,17 @@ export type CladdingPortion = {
   openings_already_deducted: boolean | null;
   opening_area_m2: number | null;
   cavity_included: boolean | null;
+  cavity_state: CladdingAccessoryState | null;
   wall_underlay_or_rab_included: boolean | null;
+  underlay_state: CladdingAccessoryState | null;
+  wall_preparation: CladdingWallPreparation | null;
   trims_flashings_corners_included: boolean | null;
+  trims_state: CladdingAccessoryState | null;
   existing_cladding_removal_required: boolean | null;
   painting_or_coating_included: boolean | null;
+  painting_state: CladdingAccessoryState | null;
+  scaffold_included: boolean | null;
+  scaffold_state: CladdingAccessoryState | null;
   specialist_kind: CladdingSpecialistKind | null;
   other_description: string | null;
   label_authority?: CladdingFieldAuthority;
@@ -150,6 +169,8 @@ export type CladdingPortion = {
   opening_area_authority?: CladdingFieldAuthority;
   cavity_authority?: CladdingFieldAuthority;
   underlay_authority?: CladdingFieldAuthority;
+  wall_preparation_authority?: CladdingFieldAuthority;
+  scaffold_authority?: CladdingFieldAuthority;
   trims_authority?: CladdingFieldAuthority;
   removal_authority?: CladdingFieldAuthority;
   painting_authority?: CladdingFieldAuthority;
@@ -180,6 +201,7 @@ export const CLADDING_PORTION_FIELD_KEYS = [
   "cladding.portion.opening_area_m2",
   "cladding.portion.cavity_included",
   "cladding.portion.wall_underlay_or_rab_included",
+  "cladding.portion.wall_preparation",
   "cladding.portion.trims_flashings_corners_included",
   "cladding.portion.existing_cladding_removal_required",
   "cladding.portion.painting_or_coating_included",
@@ -218,6 +240,8 @@ const USER_AUTHORITY_FIELDS = [
   "trims_authority",
   "removal_authority",
   "painting_authority",
+  "wall_preparation_authority",
+  "scaffold_authority",
   "specialist_kind_authority",
   "other_description_authority",
 ] as const satisfies readonly (keyof CladdingPortion)[];
@@ -331,10 +355,17 @@ export function createEmptyCladdingPortion(params?: {
     openings_already_deducted: null,
     opening_area_m2: null,
     cavity_included: null,
+    cavity_state: null,
     wall_underlay_or_rab_included: null,
+    underlay_state: null,
+    wall_preparation: null,
     trims_flashings_corners_included: null,
+    trims_state: null,
     existing_cladding_removal_required: null,
     painting_or_coating_included: null,
+    painting_state: null,
+    scaffold_included: null,
+    scaffold_state: null,
     specialist_kind: null,
     other_description: null,
   };
@@ -644,18 +675,28 @@ export function parseCladdingPortion(value: unknown): CladdingPortion | null {
   portion.openings_already_deducted = parseTriBool(value.openings_already_deducted);
   portion.opening_area_m2 = parseNonNegativeMeasure(value.opening_area_m2);
   portion.cavity_included = parseTriBool(value.cavity_included);
+  portion.cavity_state = parseEnum(value.cavity_state, CLADDING_ACCESSORY_STATE_VALUES);
   portion.wall_underlay_or_rab_included = parseTriBool(
     value.wall_underlay_or_rab_included
+  );
+  portion.underlay_state = parseEnum(value.underlay_state, CLADDING_ACCESSORY_STATE_VALUES);
+  portion.wall_preparation = parseEnum(
+    value.wall_preparation,
+    CLADDING_WALL_PREPARATION_VALUES
   );
   portion.trims_flashings_corners_included = parseTriBool(
     value.trims_flashings_corners_included
   );
+  portion.trims_state = parseEnum(value.trims_state, CLADDING_ACCESSORY_STATE_VALUES);
   portion.existing_cladding_removal_required = parseTriBool(
     value.existing_cladding_removal_required
   );
   portion.painting_or_coating_included = parseTriBool(
     value.painting_or_coating_included
   );
+  portion.painting_state = parseEnum(value.painting_state, CLADDING_ACCESSORY_STATE_VALUES);
+  portion.scaffold_included = parseTriBool(value.scaffold_included);
+  portion.scaffold_state = parseEnum(value.scaffold_state, CLADDING_ACCESSORY_STATE_VALUES);
   portion.specialist_kind = parseEnum(
     value.specialist_kind,
     CLADDING_SPECIALIST_KIND_VALUES
@@ -666,6 +707,18 @@ export function parseCladdingPortion(value: unknown): CladdingPortion | null {
   portion.family_authority = parseFieldAuthority(value.family_authority);
   portion.system_authority = parseFieldAuthority(value.system_authority);
   portion.orientation_authority = parseFieldAuthority(value.orientation_authority);
+  if (
+    portion.cladding_system === "timber_sheet_board_and_batten" &&
+    portion.orientation == null &&
+    portion.orientation_authority !== "user"
+  ) {
+    portion.orientation = "vertical";
+    portion.orientation_authority = "assumed_disclosed";
+  }
+  portion.wall_preparation_authority = parseFieldAuthority(
+    value.wall_preparation_authority
+  );
+  portion.scaffold_authority = parseFieldAuthority(value.scaffold_authority);
   portion.approved_profile_authority = parseFieldAuthority(
     value.approved_profile_authority
   );
@@ -1020,12 +1073,19 @@ export function overlayUserAuthoritativeCladdingPortion(
   );
   overlayUserField(next, persisted, "opening_area_m2", "opening_area_authority");
   overlayUserField(next, persisted, "cavity_included", "cavity_authority");
+  overlayUserField(next, persisted, "cavity_state", "cavity_authority");
   overlayUserField(
     next,
     persisted,
     "wall_underlay_or_rab_included",
     "underlay_authority"
   );
+  overlayUserField(next, persisted, "underlay_state", "underlay_authority");
+  overlayUserField(next, persisted, "wall_preparation", "wall_preparation_authority");
+  overlayUserField(next, persisted, "trims_state", "trims_authority");
+  overlayUserField(next, persisted, "painting_state", "painting_authority");
+  overlayUserField(next, persisted, "scaffold_included", "scaffold_authority");
+  overlayUserField(next, persisted, "scaffold_state", "scaffold_authority");
   overlayUserField(
     next,
     persisted,
@@ -1475,15 +1535,57 @@ function applyPortionField(
       "painting_or_coating_included",
       "painting_authority",
     ],
+    scaffold_included: ["scaffold_included", "scaffold_authority"],
   };
   if (boolMap[field]) {
     if (value != null && value !== "" && parseTriBool(value) == null && value !== true && value !== false) {
       return;
     }
     const [target, authority] = boolMap[field];
-    (portion as unknown as Record<string, unknown>)[target] =
-      value == null || value === "" ? null : parseTriBool(value);
+    const parsed = value == null || value === "" ? null : parseTriBool(value);
+    (portion as unknown as Record<string, unknown>)[target] = parsed;
     (portion as unknown as Record<string, unknown>)[authority] = "user";
+    const stateField =
+      field === "cavity_included"
+        ? "cavity_state"
+        : field === "wall_underlay_or_rab_included"
+          ? "underlay_state"
+          : field === "trims_flashings_corners_included"
+            ? "trims_state"
+            : field === "painting_or_coating_included"
+              ? "painting_state"
+              : field === "scaffold_included"
+                ? "scaffold_state"
+                : null;
+    if (stateField) {
+      (portion as unknown as Record<string, unknown>)[stateField] =
+        parsed === true ? "new" : parsed === false ? "excluded" : null;
+    }
+    if (field === "wall_underlay_or_rab_included" && parsed !== true) {
+      portion.wall_preparation = null;
+      portion.wall_preparation_authority = "user";
+    }
+    return;
+  }
+  if (field === "wall_preparation") {
+    const choice = normalisedChoice(value);
+    const parsed =
+      choice.includes("flexible")
+        ? "flexible_underlay"
+        : choice.includes("rigid")
+          ? "rigid_air_barrier"
+          : choice.includes("not sure") || choice.includes("unsure")
+            ? "unsure"
+            : choice.includes("other") || choice.includes("custom")
+              ? "custom"
+              : parseEnum(value, CLADDING_WALL_PREPARATION_VALUES);
+    portion.wall_preparation = parsed;
+    portion.wall_preparation_authority = "user";
+    if (parsed) {
+      portion.wall_underlay_or_rab_included = true;
+      portion.underlay_state = parsed === "custom" || parsed === "unsure" ? "new" : "new";
+      portion.underlay_authority = "user";
+    }
   }
 }
 

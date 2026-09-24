@@ -331,9 +331,11 @@ export function BuilderReviewSurface({
                 <div className="min-w-0">
                   <p className="text-sm font-semibold">{wa.workAreaName}</p>
                   <p className="text-xs text-muted-foreground">
-                    {wa.resolvedSubtotalLabel
-                      ? `${wa.resolvedSubtotalLabel} ${formatCurrency(wa.sell)}`
-                      : formatCurrency(wa.sell)}
+                    {wa.workAreaType === "cladding" && wa.partialEstimateLabel && wa.cost <= 0
+                      ? "Pricing required"
+                      : wa.resolvedSubtotalLabel
+                        ? `${wa.resolvedSubtotalLabel} ${formatCurrency(wa.sell)}`
+                        : formatCurrency(wa.sell)}
                   </p>
                   {multi && !open ? (
                     <p className="mt-0.5 text-[10px] text-muted-foreground">

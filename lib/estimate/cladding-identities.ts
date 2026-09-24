@@ -82,7 +82,19 @@ export const CLADDING_CUSTOM_WEATHERBOARD_INFORMATIONAL_LM =
 export const CLADDING_SPECIALIST_BRICK_VENEER =
   "cladding.specialist.brick_veneer" as const;
 export const CLADDING_SPECIALIST_MASONRY =
-  "cladding.specialist.masonry" as const;
+  "cladding.specialist.masonry_veneer" as const;
+export const CLADDING_CAVITY_TIMBER_BATTEN_M2 =
+  "cladding.cavity.timber_batten.m2" as const;
+export const CLADDING_CAVITY_INSTALL_HOURS_PER_M2 =
+  "cladding.cavity.install.hours_per_m2" as const;
+export const CLADDING_WALL_UNDERLAY_FLEXIBLE_M2 =
+  "cladding.wall_underlay.flexible.m2" as const;
+export const CLADDING_WALL_UNDERLAY_INSTALL_HOURS_PER_M2 =
+  "cladding.wall_underlay.install.hours_per_m2" as const;
+export const CLADDING_RIGID_AIR_BARRIER_M2 =
+  "cladding.rigid_air_barrier.m2" as const;
+export const CLADDING_RIGID_AIR_BARRIER_INSTALL_HOURS_PER_M2 =
+  "cladding.rigid_air_barrier.install.hours_per_m2" as const;
 export const CLADDING_SPECIALIST_CUSTOM =
   "cladding.specialist.custom" as const;
 
@@ -192,4 +204,7 @@ export const CLADDING_LABOUR_OPERATION_KEYS = [
   ...Object.values(REMOVE_HOURS_BY_SYSTEM),
   CLADDING_CUSTOM_REMOVE_HOURS_PER_M2,
   CLADDING_CUSTOM_INSTALL_HOURS_PER_LM,
+  CLADDING_CAVITY_INSTALL_HOURS_PER_M2,
+  CLADDING_WALL_UNDERLAY_INSTALL_HOURS_PER_M2,
+  CLADDING_RIGID_AIR_BARRIER_INSTALL_HOURS_PER_M2,
 ] as const;

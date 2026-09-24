@@ -10,8 +10,11 @@ import {
   presentCladdingMeasure,
 } from "@/lib/estimate/cladding-physical";
 import {
+  CLADDING_CAVITY_TIMBER_BATTEN_M2,
   CLADDING_CAVITY_UNRESOLVED_M2,
   CLADDING_CUSTOM_INSTALL_HOURS_PER_LM,
+  CLADDING_RIGID_AIR_BARRIER_M2,
+  CLADDING_WALL_UNDERLAY_FLEXIBLE_M2,
   CLADDING_CUSTOM_REMOVE_HOURS_PER_M2,
   CLADDING_CUSTOM_WEATHERBOARD_INFORMATIONAL_LM,
   CLADDING_SPECIALIST_BRICK_VENEER,
@@ -219,18 +222,29 @@ function accessorySentences(
   items: readonly CladdingQuotePricingItem[] | null | undefined
 ): string[] {
   const lines: string[] = [];
-  if (portion.cavity_included === true) {
+  if (portion.cavity_included === true && portion.cavity_state !== "retained") {
+    const priced =
+      componentPriced(portion.id, items, CLADDING_CAVITY_TIMBER_BATTEN_M2) ||
+      componentPriced(portion.id, items, CLADDING_CAVITY_UNRESOLVED_M2);
     lines.push(
-      componentPriced(portion.id, items, CLADDING_CAVITY_UNRESOLVED_M2)
+      priced
         ? "Includes a drained cavity system to the selected cladding area."
         : "A drained cavity is excluded pending confirmation and pricing."
     );
   }
-  if (portion.wall_underlay_or_rab_included === true) {
+  if (portion.wall_underlay_or_rab_included === true && portion.underlay_state !== "retained") {
+    const priced =
+      componentPriced(portion.id, items, CLADDING_WALL_UNDERLAY_FLEXIBLE_M2) ||
+      componentPriced(portion.id, items, CLADDING_RIGID_AIR_BARRIER_M2) ||
+      componentPriced(portion.id, items, CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2);
+    const named =
+      portion.wall_preparation === "rigid_air_barrier"
+        ? "Includes the specified rigid air barrier."
+        : portion.wall_preparation === "flexible_underlay"
+          ? "Includes the specified flexible wall underlay."
+          : "Includes the specified wall-underlay or rigid-air-barrier system.";
     lines.push(
-      componentPriced(portion.id, items, CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2)
-        ? "Includes the specified wall-underlay or rigid-air-barrier system."
-        : "Wall underlay or a rigid air barrier is excluded pending selection and pricing."
+      priced ? named : "Wall underlay or a rigid air barrier is excluded pending selection and pricing."
     );
   }
   if (portion.trims_flashings_corners_included === true) {
@@ -294,7 +308,13 @@ function specialistSentence(
       row.componentKey === CLADDING_SPECIALIST_MASONRY ||
       row.componentKey === CLADDING_SPECIALIST_CUSTOM
     )?.componentKey ?? CLADDING_SPECIALIST_CUSTOM;
-  if (!componentPriced(portion.id, items, key)) return CLADDING_QUOTE_SPECIALIST_PENDING;
+  const priced = componentPriced(portion.id, items, key);
+  if (portion.cladding_family === "brick_veneer" || key === CLADDING_SPECIALIST_BRICK_VENEER) {
+    if (!priced) return "Brick veneer cladding is excluded pending final specification and pricing.";
+    const area = physical.netAreaM2 != null ? `${areaText(physical.netAreaM2)} of ` : "";
+    return `Supply and install ${area}the specified brick veneer cladding, subject to final product selection and confirmed construction details.`;
+  }
+  if (!priced) return CLADDING_QUOTE_SPECIALIST_PENDING;
   const description = portion.other_description?.trim() || "the specified specialist cladding";
   const area = physical.netAreaM2 != null ? `${areaText(physical.netAreaM2)} of ` : "";
   return `Supply and install ${area}${description}.`;
@@ -303,10 +323,18 @@ function specialistSentence(
 function sharedExclusions(
   items: readonly CladdingQuotePricingItem[] | null | undefined
 ): string {
-  const cavity = anyPriced(items, (item) => item.component_key === CLADDING_CAVITY_UNRESOLVED_M2);
+  const cavity = anyPriced(
+    items,
+    (item) =>
+      item.component_key === CLADDING_CAVITY_UNRESOLVED_M2 ||
+      item.component_key === CLADDING_CAVITY_TIMBER_BATTEN_M2
+  );
   const underlay = anyPriced(
     items,
-    (item) => item.component_key === CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2
+    (item) =>
+      item.component_key === CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2 ||
+      item.component_key === CLADDING_WALL_UNDERLAY_FLEXIBLE_M2 ||
+      item.component_key === CLADDING_RIGID_AIR_BARRIER_M2
   );
   const trims = anyPriced(items, (item) => item.component_key === CLADDING_TRIMS_UNRESOLVED);
   const scaffold = anyPriced(

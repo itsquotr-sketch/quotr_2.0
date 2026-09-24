@@ -87,8 +87,8 @@ const ACCESSORY_LABELS: Record<string, string> = {
   [CLADDING_CAVITY_UNRESOLVED_M2]: "Drained cavity",
   [CLADDING_UNDERLAY_OR_RAB_UNRESOLVED_M2]: "Wall underlay or rigid air barrier",
   [CLADDING_TRIMS_UNRESOLVED]: "Trims, corners and flashings",
-  [CLADDING_SPECIALIST_BRICK_VENEER]: "Brick veneer",
-  [CLADDING_SPECIALIST_MASONRY]: "Masonry veneer",
+  [CLADDING_SPECIALIST_BRICK_VENEER]: "Brick veneer cladding supply and installation",
+  [CLADDING_SPECIALIST_MASONRY]: "Masonry veneer cladding supply and installation",
   [CLADDING_SPECIALIST_CUSTOM]: "Proprietary cladding",
   [CLADDING_CUSTOM_WEATHERBOARD_INFORMATIONAL_LM]: "Custom weatherboard",
   [CLADDING_CUSTOM_INSTALL_HOURS_PER_LM]: "Custom cladding installation",
@@ -526,7 +526,9 @@ function materialLine(params: {
     organisationSettings: params.organisationSettings,
     notes: included
       ? `${presentCladdingMeasure(params.requirement.purchaseQuantity)} ${params.requirement.purchaseUnit} × ${money(params.priced.unitCost)}`
-      : `Pricing Required. Quantity ${presentCladdingMeasure(params.requirement.purchaseQuantity)} ${params.requirement.purchaseUnit} remains visible.`,
+      : params.requirement.componentKey.includes(".specialist.")
+        ? "Continue to Pricing and add a price."
+        : `Pricing Required. Quantity ${presentCladdingMeasure(params.requirement.purchaseQuantity)} ${params.requirement.purchaseUnit} remains visible.`,
   });
   if (included) return line;
   return {

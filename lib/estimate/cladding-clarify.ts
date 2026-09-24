@@ -128,6 +128,9 @@ export function claddingPortionFieldCurrentValue(
   if (factKey === "cladding.portion.wall_underlay_or_rab_included") {
     return yesNo(portion.wall_underlay_or_rab_included);
   }
+  if (factKey === "cladding.portion.wall_preparation") return portion.wall_preparation;
+  if (factKey === "cladding.portion.batten_width_mm") return portion.batten_width_mm;
+  if (factKey === "cladding.portion.batten_thickness_mm") return portion.batten_thickness_mm;
   if (factKey === "cladding.portion.trims_flashings_corners_included") {
     return yesNo(portion.trims_flashings_corners_included);
   }

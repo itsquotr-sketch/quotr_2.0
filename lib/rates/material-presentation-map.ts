@@ -1303,7 +1303,16 @@ export function classifyMaterialPresentation(
     let familyName = "Cladding";
     let familyDescription =
       "Ordinary Cladding material COST. Company exact overrides the Quotr benchmark.";
-    if (key.includes("bevelback")) {
+    if (
+      key.includes(".cavity.") ||
+      key.includes(".wall_underlay.") ||
+      key.includes(".rigid_air_barrier.")
+    ) {
+      familyId = "cladding-accessories";
+      familyName = "Cladding accessories";
+      familyDescription =
+        "Ordinary new cavity, flexible wall underlay and rigid air barrier. Retained and excluded accessories are not priced here.";
+    } else if (key.includes("bevelback")) {
       familyId = "cladding-bevelback";
       familyName = "Timber bevelback weatherboards";
       familyDescription =
