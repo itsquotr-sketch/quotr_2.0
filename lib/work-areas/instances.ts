@@ -25,6 +25,7 @@ export const WORK_AREA_SHORT_LABEL: Record<string, string> = {
   painting: "Painting",
   plastering: "Plastering",
   retaining_wall: "Retaining wall",
+  cladding: "Cladding",
 };
 
 export type WorkAreaInstanceRef = {

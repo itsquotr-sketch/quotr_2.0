@@ -6,6 +6,7 @@
  * commercial maturity so UI does not claim every recognised type equally.
  */
 
+import { CLADDING_SUPPORT_NOTES } from "@/lib/estimate/cladding-portions";
 import { SCOPE_CATALOGUE } from "@/lib/scopes/catalogue";
 
 export const SUPPORTED_WORK_AREA_CONTRACT_VERSION = "foundation-r1.0" as const;
@@ -16,6 +17,7 @@ export type WorkAreaCapabilityBand =
   | "trial_supported"
   | "developing"
   | "component"
+  | "staged"
   | "unsupported";
 
 export type WorkAreaSupportRole =
@@ -23,6 +25,7 @@ export type WorkAreaSupportRole =
   | "tier2_developing"
   | "component_utility"
   | "commercial_parent"
+  | "staged_domain"
   | "unsupported";
 
 export type WorkAreaSupportEntry = {
@@ -64,7 +67,6 @@ const COMPONENT_UTILITY_TYPES = [
 export const COMMERCIAL_INTERIOR_PARENT_TYPE = "commercial_fitout" as const;
 
 export const UNSUPPORTED_WORK_AREA_TYPES = [
-  "cladding",
   "roofing",
   "windows",
   "landscaping",
@@ -96,7 +98,8 @@ function entry(
     band,
     label,
     inProductCatalogue: inProduct,
-    estimatableAsWorkArea: inProduct && band !== "unsupported",
+    estimatableAsWorkArea:
+      inProduct && band !== "unsupported" && band !== "staged",
     notes,
   };
 }
@@ -136,6 +139,13 @@ export const WORK_AREA_SUPPORT_ENTRIES: readonly WorkAreaSupportEntry[] = [
             ? "Ordinary nested Flooring V1 is human-QA frozen. Custom/specialist and exact unpriced substrate materials stay Pricing Required. Future Flooring changes require explicit FLOORING-07 regression updates."
             : "Commercial interior component. Price as this WA, not commercial_fitout."
     )
+  ),
+  entry(
+    "cladding",
+    "staged_domain",
+    "staged",
+    "Domain only",
+    CLADDING_SUPPORT_NOTES
   ),
   entry(
     COMMERCIAL_INTERIOR_PARENT_TYPE,

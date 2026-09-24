@@ -134,6 +134,16 @@ export const SCOPE_CATALOGUE: ScopeCatalogueItem[] = [
     suggestedRateTypes: ["scope", "labour", "material"],
   },
   {
+    type: "cladding",
+    label: "Cladding",
+    category: "External",
+    description:
+      "Exterior cladding sections. Canonical nested domain only; calculation is not available yet.",
+    estimateSupport: "not_supported",
+    defaultEnabled: false,
+    suggestedRateTypes: [],
+  },
+  {
     type: "plastering",
     label: "Plastering",
     category: "Finishes",

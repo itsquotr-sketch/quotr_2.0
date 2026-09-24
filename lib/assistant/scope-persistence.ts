@@ -52,6 +52,15 @@ import {
   isFlooringPortionWriteKey,
   parseFlooringCollectionEnvelope,
 } from "@/lib/estimate/flooring-portions";
+import {
+  CLADDING_ACTIVE_PORTION_ID_FACT_KEY,
+  CLADDING_PORTIONS_FACT_KEY,
+  applyCladdingFactWrite,
+  claddingPortionsFactSourceForWrite,
+  isCladdingPortionWriteKey,
+  nextCladdingCollectionEnvelope,
+  parseCladdingCollectionEnvelope,
+} from "@/lib/estimate/cladding-portions";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>;
@@ -753,6 +762,147 @@ async function persistFlooringPortionsCollectionWrite(
   };
 }
 
+export const CLADDING_COLLECTION_WRITE_MAX_ATTEMPTS = 12;
+
+async function persistCladdingPortionsCollectionWrite(
+  supabase: SupabaseClient,
+  params: {
+    orgId: string;
+    projectId: string;
+    workAreaId: string;
+    key: string;
+    value: unknown;
+    nestedItemId?: string | null;
+  }
+): Promise<ScopePersistResult | null> {
+  if (!isCladdingPortionWriteKey(params.key)) return null;
+
+  for (let attempt = 0; attempt < CLADDING_COLLECTION_WRITE_MAX_ATTEMPTS; attempt++) {
+    const { data: rows, error } = await supabase
+      .from("project_facts")
+      .select("id, key, value, work_area_id, updated_at, source")
+      .eq("project_id", params.projectId)
+      .eq("work_area_id", params.workAreaId)
+      .in("key", [CLADDING_PORTIONS_FACT_KEY, CLADDING_ACTIVE_PORTION_ID_FACT_KEY]);
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+
+    const current = (rows ?? []).map((row) => ({
+      key: row.key,
+      work_area_id: params.workAreaId,
+      value: row.value,
+      source: row.source,
+    }));
+    const next = applyCladdingFactWrite({
+      facts: current,
+      workAreaId: params.workAreaId,
+      key: params.key,
+      value: params.value,
+      nestedItemId: params.nestedItemId,
+    });
+
+    const portions = next.find(
+      (row) =>
+        row.key === CLADDING_PORTIONS_FACT_KEY &&
+        row.work_area_id === params.workAreaId
+    );
+    const active = next.find(
+      (row) =>
+        row.key === CLADDING_ACTIVE_PORTION_ID_FACT_KEY &&
+        row.work_area_id === params.workAreaId
+    );
+
+    const portionsRow = (rows ?? []).find(
+      (row) => row.key === CLADDING_PORTIONS_FACT_KEY
+    );
+    const nextEnvelope = nextCladdingCollectionEnvelope(
+      portionsRow?.value,
+      parseCladdingCollectionEnvelope(portions?.value).portions
+    );
+    const portionsSource = claddingPortionsFactSourceForWrite({
+      previousSource: portionsRow?.source,
+      factSource: portions?.source,
+    });
+    if (portionsRow) {
+      let updateQuery = supabase
+        .from("project_facts")
+        .update({
+          label: "Cladding sections",
+          value: nextEnvelope,
+          source: portionsSource,
+          confidence: 1,
+        })
+        .eq("id", portionsRow.id)
+        .eq("project_id", params.projectId);
+      if (isRecord(portionsRow.value) && typeof portionsRow.value.v === "number") {
+        updateQuery = updateQuery.filter(
+          "value->>v",
+          "eq",
+          String(portionsRow.value.v)
+        );
+      } else {
+        updateQuery = updateQuery.eq("updated_at", portionsRow.updated_at);
+      }
+      const { data: updated, error: updateError } = await updateQuery.select("id");
+      if (updateError) {
+        return { ok: false, error: updateError.message };
+      }
+      if (!updated?.length) {
+        continue;
+      }
+    } else {
+      const portionsResult = await upsertScopedFact(supabase, {
+        orgId: params.orgId,
+        projectId: params.projectId,
+        workAreaId: params.workAreaId,
+        key: CLADDING_PORTIONS_FACT_KEY,
+        label: "Cladding sections",
+        value: nextEnvelope,
+        source: portionsSource,
+      });
+      if (!portionsResult.ok) {
+        if (attempt < CLADDING_COLLECTION_WRITE_MAX_ATTEMPTS - 1) {
+          continue;
+        }
+        return portionsResult;
+      }
+    }
+
+    const activeRow = (rows ?? []).find(
+      (row) => row.key === CLADDING_ACTIVE_PORTION_ID_FACT_KEY
+    );
+    if (active?.value) {
+      const activeResult = await upsertScopedFact(supabase, {
+        orgId: params.orgId,
+        projectId: params.projectId,
+        workAreaId: params.workAreaId,
+        key: CLADDING_ACTIVE_PORTION_ID_FACT_KEY,
+        label: "Selected cladding section",
+        value: active.value,
+        source: portionsSource,
+      });
+      if (!activeResult.ok) return activeResult;
+    } else if (activeRow) {
+      const { error: deleteError } = await supabase
+        .from("project_facts")
+        .delete()
+        .eq("id", activeRow.id)
+        .eq("project_id", params.projectId);
+      if (deleteError) {
+        return { ok: false, error: deleteError.message };
+      }
+    }
+
+    return { ok: true };
+  }
+
+  return {
+    ok: false,
+    error: "Cladding sections could not be saved. Try again.",
+  };
+}
+
 /**
  * Mirror a fact value onto matching question rows (capture journal).
  * Never creates questions — only updates existing rows.
@@ -893,6 +1043,14 @@ export async function commitUserAnswerToScope(
         nestedItemId: params.wallTypeId,
       })) ??
       (await persistFlooringPortionsCollectionWrite(supabase, {
+        orgId: params.orgId,
+        projectId: params.projectId,
+        workAreaId: params.workAreaId,
+        key: params.key,
+        value: storedValue,
+        nestedItemId: params.wallTypeId,
+      })) ??
+      (await persistCladdingPortionsCollectionWrite(supabase, {
         orgId: params.orgId,
         projectId: params.projectId,
         workAreaId: params.workAreaId,
@@ -1109,6 +1267,28 @@ export async function commitUserFactEdit(
 
   if (params.workAreaId && isFlooringPortionWriteKey(params.key)) {
     const collectionWrite = await persistFlooringPortionsCollectionWrite(supabase, {
+      orgId: params.orgId,
+      projectId: params.projectId,
+      workAreaId: params.workAreaId,
+      key: params.key,
+      value: storedValue,
+      nestedItemId: params.nestedItemId ?? params.wallTypeId,
+    });
+    if (collectionWrite && !collectionWrite.ok) {
+      return collectionWrite;
+    }
+    const mirror = await mirrorFactOntoQuestions(supabase, {
+      projectId: params.projectId,
+      workAreaId: params.workAreaId,
+      key: params.key,
+      value: storedValue,
+      inputType: params.valueType,
+    });
+    return mirror;
+  }
+
+  if (params.workAreaId && isCladdingPortionWriteKey(params.key)) {
+    const collectionWrite = await persistCladdingPortionsCollectionWrite(supabase, {
       orgId: params.orgId,
       projectId: params.projectId,
       workAreaId: params.workAreaId,

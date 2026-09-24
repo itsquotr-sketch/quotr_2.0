@@ -30,6 +30,12 @@ import {
   isFlooringPortionWriteKey,
   storedFlooringPortions,
 } from "@/lib/estimate/flooring-portions";
+import {
+  applyCladdingFactWrite,
+  CLADDING_PORTIONS_FACT_KEY,
+  isCladdingPortionWriteKey,
+  storedCladdingPortions,
+} from "@/lib/estimate/cladding-portions";
 import { overlayFactSemanticKey } from "@/lib/assistant/question-identity";
 import {
   CANONICAL_PROJECT_CONDITION_KEYS,
@@ -167,6 +173,21 @@ export function overlayFact(
       nestedItemId: next.nestedItemId ?? next.wallTypeId,
     });
   }
+  if (next.work_area_id && isCladdingPortionWriteKey(next.key)) {
+    if (
+      next.key !== CLADDING_PORTIONS_FACT_KEY &&
+      storedCladdingPortions(facts, next.work_area_id).length === 0
+    ) {
+      return queueLogicalNestedOverlay(facts, next);
+    }
+    return applyCladdingFactWrite({
+      facts: facts as EstimateFact[],
+      workAreaId: next.work_area_id,
+      key: next.key,
+      value: next.value,
+      nestedItemId: next.nestedItemId ?? next.wallTypeId,
+    });
+  }
   const without = facts.filter(
     (row) =>
       !(row.key === next.key && row.work_area_id === next.work_area_id)
@@ -188,7 +209,8 @@ export function appendJobPlanFactOverlay(
     (isInternalWallsWallTypeWriteKey(next.key) ||
       isCeilingsPortionWriteKey(next.key) ||
       isDoorsPortionWriteKey(next.key) ||
-      isFlooringPortionWriteKey(next.key))
+      isFlooringPortionWriteKey(next.key) ||
+      isCladdingPortionWriteKey(next.key))
   ) {
     const nextIdentity = overlayFactSemanticKey(next);
     return [

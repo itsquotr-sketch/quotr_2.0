@@ -1325,6 +1325,8 @@ export function buildWorkAreaQuoteDescriptionDraft(
       return buildDoorsDraft(facts, pricingItems);
     case "external_stairs":
       return buildExternalStairsDraft(facts);
+    case "cladding":
+      return "";
     default:
       return enrichFromPricingItems(buildGenericDraft(name), pricingItems);
   }

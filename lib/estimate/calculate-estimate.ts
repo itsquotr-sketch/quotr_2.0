@@ -1,4 +1,5 @@
 import { calculateBathroom } from "@/lib/estimate/calculators/bathroom";
+import { calculateCladding } from "@/lib/estimate/calculators/cladding";
 import { calculateDeck } from "@/lib/estimate/calculators/deck";
 import { calculateDemolition } from "@/lib/estimate/calculators/demolition";
 import { calculateExternalStairs } from "@/lib/estimate/calculators/external-stairs";
@@ -43,6 +44,7 @@ const CALCULATORS: Record<string, WorkAreaCalculator> = {
   flooring: calculateFlooring,
   painting: calculatePainting,
   plastering: calculatePlastering,
+  cladding: calculateCladding,
 };
 
 export class EstimateEngineError extends Error {
