@@ -158,6 +158,14 @@ import {
   isFlooringNestedFactKey,
 } from "@/lib/estimate/flooring-portions";
 import {
+  claddingNestedFactCurrentValue,
+  claddingNestedItemPanel,
+  listCladdingClarifyCandidates,
+} from "@/lib/estimate/cladding-clarify";
+import { lookupCladdingInformationContract } from "@/lib/estimate/cladding-information-contract";
+import { hasCladdingPortionsFact } from "@/lib/estimate/cladding-portions";
+import { isCladdingNestedFactKey } from "@/lib/assistant/question-identity";
+import {
   getArrayFact,
   getBooleanFact,
   getFact,
@@ -1013,6 +1021,22 @@ function missingHardMinimum(
         }
       }
     }
+
+    if (card.workAreaType === "cladding") {
+      if (
+        hasCladdingPortionsFact(input.facts as EstimateFact[], card.workAreaId)
+      ) {
+        for (const candidate of listCladdingClarifyCandidates({
+          facts: input.facts as EstimateFact[],
+          workAreaId: card.workAreaId,
+          workAreaName: card.name,
+          briefText: input.briefText,
+        })) {
+          if (candidate.askClass !== "HARD_MINIMUM") continue;
+          out.push(candidate);
+        }
+      }
+    }
   }
   return out;
 }
@@ -1664,6 +1688,24 @@ function extraCommercialFacts(input: ComposeClarifyInput): ClarifyCandidate[] {
       }
     }
 
+    if (wa.type === "cladding") {
+      if (hasCladdingPortionsFact(input.facts as EstimateFact[], wa.id)) {
+        for (const candidate of listCladdingClarifyCandidates({
+          facts: input.facts as EstimateFact[],
+          workAreaId: wa.id,
+          workAreaName: wa.name,
+          briefText: input.briefText,
+        })) {
+          if (candidate.askClass === "HARD_MINIMUM") continue;
+          if (!lookupCladdingInformationContract(candidate.factKey ?? "")) {
+            continue;
+          }
+          out.push(candidate);
+        }
+        continue;
+      }
+    }
+
     if (wa.type === "deck") {
       const jobPlanKeys = new Set(
         input.jobPlan.cards
@@ -2292,6 +2334,24 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
         }
         return aliased;
       }
+      if (
+        (aliased.workAreaType === "cladding" || isCladdingNestedFactKey(key)) &&
+        aliased.workAreaId
+      ) {
+        const nestedValue = claddingNestedFactCurrentValue({
+          facts: input.facts as EstimateFact[],
+          workAreaId: aliased.workAreaId,
+          factKey: aliased.factKey ?? key,
+          nestedItemId: aliased.nestedItemId,
+        });
+        if (nestedValue != null) {
+          return {
+            ...aliased,
+            currentValue: nestedValue as ClarifyCandidate["currentValue"],
+          };
+        }
+        return aliased;
+      }
       const rawValue = currentFactOrConstraintValue(
         input,
         key,
@@ -2352,6 +2412,18 @@ export function composeClarifyView(input: ComposeClarifyInput): ClarifyView {
         )
         .map((wa) =>
           flooringNestedItemPanel({
+            facts: input.facts as EstimateFact[],
+            workAreaId: wa.id,
+            workAreaName: wa.name,
+          })
+        ),
+      ...input.workAreas
+        .filter((row) => row.status !== "excluded" && row.type === "cladding")
+        .filter((wa) =>
+          hasCladdingPortionsFact(input.facts as EstimateFact[], wa.id)
+        )
+        .map((wa) =>
+          claddingNestedItemPanel({
             facts: input.facts as EstimateFact[],
             workAreaId: wa.id,
             workAreaName: wa.name,

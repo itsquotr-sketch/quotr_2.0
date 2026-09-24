@@ -30,9 +30,9 @@ import {
 
 export const CLADDING_V1_HUMAN_QA_FROZEN = false as const;
 export const CLADDING_SUPPORT_NOTES =
-  "Canonical nested domain only. Extraction, Details, physical, rates, commercialisation, Pricing and Quote remain unwired." as const;
+  "Canonical nested domain, brief extraction and Details are wired. Physical takeoff, rates, commercialisation, Pricing and Quote remain unwired." as const;
 export const CLADDING_STAGED_NOT_CALCULATED_MESSAGE =
-  "Cladding calculation is staged and not yet available." as const;
+  "Cladding quantities and pricing will be calculated after the remaining section details are confirmed." as const;
 
 export const CLADDING_PORTIONS_FACT_KEY = "cladding.portions" as const;
 export const CLADDING_ACTIVE_PORTION_ID_FACT_KEY =
@@ -260,6 +260,17 @@ function parsePositiveMeasure(value: unknown): number | null {
   return numeric;
 }
 
+function parseNonNegativeMeasure(value: unknown): number | null {
+  const numeric =
+    typeof value === "number"
+      ? value
+      : typeof value === "string" && value.trim()
+        ? Number(value)
+        : Number.NaN;
+  if (!Number.isFinite(numeric) || numeric < 0) return null;
+  return numeric;
+}
+
 function parseTriBool(value: unknown): boolean | null {
   if (value === true) return true;
   if (value === false) return false;
@@ -350,7 +361,7 @@ function assignProfileMetadata(
   portion.approved_profile_id = profile.id;
   portion.cladding_family = profile.family;
   portion.cladding_system = profile.system;
-  portion.orientation = profile.orientation;
+  if (profile.orientation) portion.orientation = profile.orientation;
   portion.nominal_width_mm = profile.nominal_width_mm;
   portion.nominal_thickness_mm = profile.nominal_thickness_mm;
   portion.effective_cover_mm = profile.effective_cover_mm;
@@ -373,6 +384,123 @@ function clearMachineField(
   if (portion[authorityField] === "user") return;
   (portion as unknown as Record<string, unknown>)[field] = null;
   (portion as unknown as Record<string, unknown>)[authorityField] = undefined;
+}
+
+const HORIZONTAL_TIMBER_SYSTEMS = new Set<CladdingSystem>([
+  "timber_bevelback",
+  "timber_rusticated",
+]);
+const VERTICAL_TIMBER_SYSTEMS = new Set<CladdingSystem>([
+  "timber_vertical_shiplap",
+  "timber_sheet_board_and_batten",
+]);
+
+function profileConflictsWithParents(portion: CladdingPortion): boolean {
+  const profile = claddingApprovedProfileById(portion.approved_profile_id);
+  if (!profile) return false;
+  if (portion.cladding_family && portion.cladding_family !== profile.family) {
+    return true;
+  }
+  if (portion.cladding_system && portion.cladding_system !== profile.system) {
+    return true;
+  }
+  if (
+    portion.orientation &&
+    profile.orientation &&
+    portion.orientation !== profile.orientation
+  ) {
+    return true;
+  }
+  if (
+    portion.orientation === "horizontal" &&
+    VERTICAL_TIMBER_SYSTEMS.has(profile.system)
+  ) {
+    return true;
+  }
+  if (
+    portion.orientation === "vertical" &&
+    HORIZONTAL_TIMBER_SYSTEMS.has(profile.system)
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function clearMachineProfile(portion: CladdingPortion): void {
+  if (portion.approved_profile_authority === "user") return;
+  portion.approved_profile_id = null;
+  portion.approved_profile_authority = undefined;
+  clearMachineField(portion, "nominal_width_mm", "nominal_width_authority");
+  clearMachineField(portion, "nominal_thickness_mm", "nominal_thickness_authority");
+  clearMachineField(portion, "effective_cover_mm", "effective_cover_authority");
+  clearMachineField(portion, "board_sheet_length_mm", "board_sheet_length_authority");
+  clearMachineField(portion, "board_sheet_width_mm", "board_sheet_width_authority");
+  clearMachineField(portion, "board_gap_mm", "board_gap_authority");
+}
+
+function reconcileMachineChildren(portion: CladdingPortion): void {
+  if (
+    portion.cladding_family != null &&
+    SPECIALIST_FAMILIES.has(portion.cladding_family)
+  ) {
+    settleSpecialistFamily(portion);
+    return;
+  }
+  if (portion.cladding_family === "fibre_cement") {
+    if (
+      portion.orientation_authority !== "user" &&
+      portion.orientation === "vertical"
+    ) {
+      portion.orientation = null;
+      portion.orientation_authority = undefined;
+    }
+    if (
+      portion.system_authority !== "user" &&
+      portion.cladding_system &&
+      portion.cladding_system !== "fibre_cement_horizontal_weatherboard" &&
+      portion.cladding_system !== "specialist_unresolved"
+    ) {
+      portion.cladding_system = null;
+      portion.system_authority = undefined;
+    }
+  }
+  if (portion.cladding_family === "timber") {
+    if (
+      portion.system_authority !== "user" &&
+      portion.cladding_system === "fibre_cement_horizontal_weatherboard"
+    ) {
+      portion.cladding_system = null;
+      portion.system_authority = undefined;
+    }
+    if (
+      portion.orientation === "horizontal" &&
+      portion.system_authority !== "user" &&
+      portion.cladding_system &&
+      VERTICAL_TIMBER_SYSTEMS.has(portion.cladding_system)
+    ) {
+      portion.cladding_system = null;
+      portion.system_authority = undefined;
+    }
+    if (
+      portion.orientation === "vertical" &&
+      portion.system_authority !== "user" &&
+      portion.cladding_system &&
+      HORIZONTAL_TIMBER_SYSTEMS.has(portion.cladding_system)
+    ) {
+      portion.cladding_system = null;
+      portion.system_authority = undefined;
+    }
+  }
+  if (profileConflictsWithParents(portion)) clearMachineProfile(portion);
+}
+
+/** Profile that still matches the current family, system and orientation. */
+export function claddingVisibleApprovedProfile(
+  portion: CladdingPortion
+): CladdingApprovedProfile | null {
+  if (!portion.approved_profile_id) return null;
+  if (profileConflictsWithParents(portion)) return null;
+  return claddingApprovedProfileById(portion.approved_profile_id);
 }
 
 function markCustomProfile(portion: CladdingPortion): void {
@@ -514,7 +642,7 @@ export function parseCladdingPortion(value: unknown): CladdingPortion | null {
   portion.length_m = parsePositiveMeasure(value.length_m);
   portion.height_m = parsePositiveMeasure(value.height_m);
   portion.openings_already_deducted = parseTriBool(value.openings_already_deducted);
-  portion.opening_area_m2 = parsePositiveMeasure(value.opening_area_m2);
+  portion.opening_area_m2 = parseNonNegativeMeasure(value.opening_area_m2);
   portion.cavity_included = parseTriBool(value.cavity_included);
   portion.wall_underlay_or_rab_included = parseTriBool(
     value.wall_underlay_or_rab_included
@@ -674,6 +802,42 @@ export function isCladdingPortionWriteKey(key: string): boolean {
     key === CLADDING_DELETE_PORTION_KEY ||
     key.startsWith(CLADDING_PORTION_FIELD_PREFIX)
   );
+}
+
+export function hasCladdingPortionsFact(
+  facts: readonly EstimateFact[],
+  workAreaId: string
+): boolean {
+  return (
+    getFact(facts as EstimateFact[], workAreaId, CLADDING_PORTIONS_FACT_KEY) !=
+    null
+  );
+}
+
+export function resolveCladdingPortions(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+}): {
+  portions: CladdingPortion[];
+  activeId: string | null;
+} {
+  const portions = storedCladdingPortions(params.facts, params.workAreaId);
+  return {
+    portions,
+    activeId: resolveCladdingActivePortionId(
+      params.facts,
+      params.workAreaId,
+      portions
+    ),
+  };
+}
+
+export function findCladdingPortion(
+  portions: readonly CladdingPortion[],
+  portionId: string | null | undefined
+): CladdingPortion | null {
+  if (!portionId) return null;
+  return portions.find((row) => row.id === portionId) ?? null;
 }
 
 export function storedCladdingPortions(
@@ -1017,19 +1181,129 @@ function maybeUnbindMeasure(
   return true;
 }
 
+function normalisedChoice(value: unknown): string {
+  return typeof value === "string" ? value.trim().toLowerCase().replace(/\s+/g, " ") : "";
+}
+
+export function parseCladdingScopeInput(value: unknown): CladdingScopeIntent | null {
+  const direct = parseEnum(value, CLADDING_SCOPE_INTENT_VALUES);
+  if (direct) return direct;
+  const text = normalisedChoice(value);
+  if (!text) return null;
+  if (text.includes("removal only") || text === "removal_only") return "removal_only";
+  if (text.includes("replace") || text.includes("reclad")) return "replace";
+  if (text.includes("new cladding") || text === "install") return "install";
+  if (text.includes("suppress")) return "suppressed";
+  return null;
+}
+
+export function parseCladdingFamilyInput(value: unknown): CladdingFamily | null {
+  const direct = parseEnum(value, CLADDING_FAMILY_VALUES);
+  if (direct) return direct;
+  const text = normalisedChoice(value);
+  if (!text) return null;
+  if (text.includes("fibre") || text.includes("fiber")) return "fibre_cement";
+  if (text.includes("brick")) return "brick_veneer";
+  if (text.includes("masonry")) return "masonry";
+  if (text === "timber" || text.startsWith("timber")) return "timber";
+  if (text.includes("other") || text.includes("custom")) return "other";
+  return null;
+}
+
+export function parseCladdingOrientationInput(
+  value: unknown
+): CladdingOrientation | null {
+  const direct = parseEnum(value, CLADDING_ORIENTATION_VALUES);
+  if (direct) return direct;
+  const text = normalisedChoice(value);
+  if (text === "horizontal") return "horizontal";
+  if (text === "vertical") return "vertical";
+  return null;
+}
+
+function isCustomSystemChoice(value: unknown): boolean {
+  const text = normalisedChoice(value);
+  return text.includes("other") || text.includes("custom");
+}
+
+export function parseCladdingSystemInput(value: unknown): CladdingSystem | null {
+  const direct = parseEnum(value, CLADDING_SYSTEM_VALUES);
+  if (direct) return direct;
+  const text = normalisedChoice(value);
+  if (!text) return null;
+  if (text.includes("bevel")) return "timber_bevelback";
+  if (text.includes("rustic")) return "timber_rusticated";
+  if (text.includes("shiplap")) return "timber_vertical_shiplap";
+  if (text.includes("board") && text.includes("batten")) {
+    return "timber_sheet_board_and_batten";
+  }
+  if (text.includes("fibre") || text.includes("fiber") || text.includes("weatherboard")) {
+    if (text.includes("other") || text.includes("custom")) return "specialist_unresolved";
+    return "fibre_cement_horizontal_weatherboard";
+  }
+  if (isCustomSystemChoice(value)) return "specialist_unresolved";
+  return null;
+}
+
+export function parseCladdingAreaMethodInput(
+  value: unknown
+): CladdingAreaMethod | null {
+  const direct = parseEnum(value, CLADDING_AREA_METHOD_VALUES);
+  if (direct) return direct;
+  const text = normalisedChoice(value);
+  if (!text) return null;
+  if (text.includes("length")) return "length_height";
+  if (text.includes("direct")) return "direct_m2";
+  return null;
+}
+
+export function parseCladdingProfileInput(
+  value: unknown,
+  portion: CladdingPortion
+): string | null {
+  const text = typeof value === "string" ? value.trim() : "";
+  if (!text) return null;
+  if (claddingApprovedProfileById(text)) return text;
+  const choice = normalisedChoice(text);
+  if (choice.includes("other") || choice.includes("custom")) return null;
+  const width = choice.match(/(\d+)\s*(?:mm|×|x)/);
+  const thickness = choice.match(/[x×]\s*(\d+)/);
+  const widthMm = width ? Number(width[1]) : null;
+  const thicknessMm = thickness ? Number(thickness[1]) : null;
+  const match = claddingApprovedProfileById(
+    portion.cladding_system === "timber_bevelback" && widthMm && thicknessMm
+      ? `timber_bevelback_${widthMm}x${thicknessMm}`
+      : portion.cladding_system === "timber_rusticated" && widthMm && thicknessMm
+        ? `timber_rusticated_${widthMm}x${thicknessMm}`
+        : portion.cladding_system === "timber_vertical_shiplap" && widthMm && thicknessMm
+          ? `timber_vertical_shiplap_${widthMm}x${thicknessMm}`
+          : portion.cladding_system === "fibre_cement_horizontal_weatherboard" && widthMm
+            ? `fibre_cement_horizontal_weatherboard_${widthMm}`
+            : portion.cladding_system === "timber_sheet_board_and_batten" &&
+                choice.includes("2400")
+              ? "timber_sheet_board_and_batten"
+              : ""
+  );
+  return match?.id ?? null;
+}
+
 function applyPortionField(
   portion: CladdingPortion,
   field: string,
   value: unknown
 ): void {
   if (field === "approved_profile") {
-    const id = parseText(value);
-    if (!id) {
+    if (value == null || value === "") {
       portion.approved_profile_id = null;
       portion.approved_profile_authority = "user";
       return;
     }
-    if (!bindApprovedProfile(portion, id)) return;
+    if (isCustomSystemChoice(value) && !claddingApprovedProfileById(parseText(value) ?? "")) {
+      markCustomProfile(portion);
+      return;
+    }
+    const id = parseCladdingProfileInput(value, portion) ?? parseText(value);
+    if (!id || !bindApprovedProfile(portion, id)) return;
     return;
   }
   if (field === "label") {
@@ -1038,32 +1312,44 @@ function applyPortionField(
     return;
   }
   if (field === "scope_intent") {
-    const parsed = parseEnum(value, CLADDING_SCOPE_INTENT_VALUES);
+    const parsed = parseCladdingScopeInput(value);
     if (value != null && value !== "" && parsed == null) return;
     portion.scope_intent = parsed;
     portion.scope_intent_authority = "user";
+    if (parsed === "removal_only" && portion.removal_authority !== "user") {
+      portion.existing_cladding_removal_required = true;
+      portion.removal_authority = "user";
+    }
     return;
   }
   if (field === "cladding_family") {
-    const parsed = parseEnum(value, CLADDING_FAMILY_VALUES);
+    const parsed = parseCladdingFamilyInput(value);
     if (value != null && value !== "" && parsed == null) return;
     portion.cladding_family = parsed;
     portion.family_authority = "user";
-    settleSpecialistFamily(portion);
+    reconcileMachineChildren(portion);
     return;
   }
   if (field === "cladding_system") {
-    const parsed = parseEnum(value, CLADDING_SYSTEM_VALUES);
+    const parsed = parseCladdingSystemInput(value);
     if (value != null && value !== "" && parsed == null) return;
+    if (parsed === "specialist_unresolved" && isCustomSystemChoice(value)) {
+      portion.cladding_family = "other";
+      portion.family_authority = "user";
+      portion.specialist_kind = "other_custom";
+      portion.specialist_kind_authority = "user";
+    }
     portion.cladding_system = parsed;
     portion.system_authority = "user";
+    reconcileMachineChildren(portion);
     return;
   }
   if (field === "orientation") {
-    const parsed = parseEnum(value, CLADDING_ORIENTATION_VALUES);
+    const parsed = parseCladdingOrientationInput(value);
     if (value != null && value !== "" && parsed == null) return;
     portion.orientation = parsed;
     portion.orientation_authority = "user";
+    reconcileMachineChildren(portion);
     return;
   }
   if (field === "specialist_kind") {
@@ -1079,10 +1365,22 @@ function applyPortionField(
     return;
   }
   if (field === "area_method") {
-    const parsed = parseEnum(value, CLADDING_AREA_METHOD_VALUES);
+    const parsed = parseCladdingAreaMethodInput(value);
     if (value != null && value !== "" && parsed == null) return;
     portion.area_method = parsed;
     portion.area_method_authority = "user";
+    return;
+  }
+  if (field === "opening_area_m2") {
+    if (value == null || value === "") {
+      portion.opening_area_m2 = null;
+      portion.opening_area_authority = "user";
+      return;
+    }
+    const parsed = parseNonNegativeMeasure(value);
+    if (parsed == null) return;
+    portion.opening_area_m2 = parsed;
+    portion.opening_area_authority = "user";
     return;
   }
   const measureMap: Record<
@@ -1114,7 +1412,6 @@ function applyPortionField(
     direct_area_m2: ["direct_area_m2", "direct_area_authority", null],
     length_m: ["length_m", "length_authority", null],
     height_m: ["height_m", "height_authority", null],
-    opening_area_m2: ["opening_area_m2", "opening_area_authority", null],
   };
   if (measureMap[field]) {
     const [target, authority, profileField] = measureMap[field];

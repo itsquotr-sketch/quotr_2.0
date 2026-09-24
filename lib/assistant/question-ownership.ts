@@ -15,6 +15,7 @@ import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-in
 import { ceilingsFactQuestionClass } from "@/lib/estimate/ceilings-information-contract";
 import { doorsFactQuestionClass } from "@/lib/estimate/doors-information-contract";
 import { flooringFactQuestionClass } from "@/lib/estimate/flooring-information-contract";
+import { claddingFactQuestionClass } from "@/lib/estimate/cladding-information-contract";
 import { getLevel1BlockingClass } from "@/lib/scopes/level1-blocking";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 
@@ -144,6 +145,14 @@ export function detailsAskClassForFact(
     (workAreaType === "flooring" || factKey.startsWith("flooring.portion."))
   ) {
     return flooringClass;
+  }
+  const claddingClass = claddingFactQuestionClass(factKey);
+  if (
+    claddingClass &&
+    isDetailsAskClass(claddingClass) &&
+    (workAreaType === "cladding" || factKey.startsWith("cladding.portion."))
+  ) {
+    return claddingClass;
   }
   const template = getQuestionTemplateByKey(factKey);
   if (!template) return null;

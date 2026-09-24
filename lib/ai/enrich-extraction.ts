@@ -58,6 +58,15 @@ import {
   stripLegacyFlooringFactsFromExtraction,
 } from "@/lib/estimate/flooring-brief";
 import { createEmptyFlooringPortion } from "@/lib/estimate/flooring-portions";
+import { briefHasIndependentCladding } from "@/lib/work-areas/cladding-ownership";
+import {
+  extractCladdingPortionsFromBrief,
+  mergeCladdingPortionsPreferringDeterministic,
+  readAiCladdingPortionsFromExtraction,
+  seedExtractedCladdingFact,
+  stripLegacyCladdingFactsFromExtraction,
+} from "@/lib/estimate/cladding-brief";
+import { createEmptyCladdingPortion } from "@/lib/estimate/cladding-portions";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 export type QualityLevelExtract = "budget" | "standard" | "premium";
@@ -686,6 +695,27 @@ function inferFlooring(
   ) {
     extraction.warnings.push(FLOORING_BATHROOM_OVERLAP_WARNING);
   }
+}
+
+function inferCladding(
+  brief: string,
+  extraction: AIExtractionOutput,
+  allowedTypes: string[]
+): void {
+  if (!briefHasIndependentCladding(brief)) return;
+  addWorkAreaIfMissing(
+    extraction,
+    "cladding",
+    0.84,
+    "EXPLICIT: Cladding section stated",
+    allowedTypes
+  );
+  const parsed = extractCladdingPortionsFromBrief(brief);
+  const ai = readAiCladdingPortionsFromExtraction(extraction);
+  const merged = mergeCladdingPortionsPreferringDeterministic(ai, parsed);
+  const portions = merged.length > 0 ? merged : [createEmptyCladdingPortion()];
+  seedExtractedCladdingFact(extraction, { portions });
+  stripLegacyCladdingFactsFromExtraction(extraction);
 }
 
 function inferKitchen(
@@ -2164,6 +2194,7 @@ export function enrichExtractionFromBrief(params: {
   inferCeilings(brief, extraction, params.allowedTypes);
   inferDoors(brief, extraction, params.allowedTypes);
   inferFlooring(brief, extraction, params.allowedTypes);
+  inferCladding(brief, extraction, params.allowedTypes);
   inferPainting(brief, extraction, params.allowedTypes);
   inferFence(brief, extraction, params.allowedTypes);
   inferPergola(brief, extraction, params.allowedTypes);

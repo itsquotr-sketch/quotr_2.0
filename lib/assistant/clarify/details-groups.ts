@@ -21,6 +21,7 @@ import { projectConditionDetailsGroupLabel } from "@/lib/project-conditions/libr
 import { distinguishWorkAreaInstanceLabels } from "@/lib/work-areas/instances";
 import { ceilingsDetailsSectionId } from "@/lib/estimate/ceilings-information-contract";
 import { DOORS_CONTRACT_FACT_ORDER } from "@/lib/estimate/doors-information-contract";
+import { CLADDING_CONTRACT_FACT_ORDER } from "@/lib/estimate/cladding-information-contract";
 
 export type DetailsSectionId =
   | "dimensions"
@@ -130,6 +131,7 @@ function nestedItemLabel(candidate: ClarifyCandidate): string | null {
   if (fromQuestion && fromQuestion.length < 40) return fromQuestion;
   if (candidate.workAreaType === "ceilings") return "Ceiling portion";
   if (candidate.workAreaType === "doors") return "Door set";
+  if (candidate.workAreaType === "cladding") return "Cladding section";
   if (candidate.wallTypeId) return "Wall type";
   return "Item";
 }
@@ -143,6 +145,11 @@ function compareCandidates(a: ClarifyCandidate, b: ClarifyCandidate): number {
   const aDoor = a.factKey ? DOORS_CONTRACT_FACT_ORDER.get(a.factKey) : undefined;
   const bDoor = b.factKey ? DOORS_CONTRACT_FACT_ORDER.get(b.factKey) : undefined;
   if (aDoor != null && bDoor != null && aDoor !== bDoor) return aDoor - bDoor;
+  const aCladding = a.factKey ? CLADDING_CONTRACT_FACT_ORDER.get(a.factKey) : undefined;
+  const bCladding = b.factKey ? CLADDING_CONTRACT_FACT_ORDER.get(b.factKey) : undefined;
+  if (aCladding != null && bCladding != null && aCladding !== bCladding) {
+    return aCladding - bCladding;
+  }
   const aPc = a.constraintKey ? PC_KEY_ORDER.get(a.constraintKey) : undefined;
   const bPc = b.constraintKey ? PC_KEY_ORDER.get(b.constraintKey) : undefined;
   if (aPc != null && bPc != null && aPc !== bPc) return aPc - bPc;

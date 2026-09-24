@@ -45,6 +45,7 @@ const SUPPRESSED_PHRASES = [
   "no cladding work",
   "exclude cladding",
   "cladding not included",
+  "no recladding required",
 ] as const;
 
 function normalise(text: string): string {
@@ -84,7 +85,11 @@ function clauseMentionsCladding(clause: string): boolean {
     /\breclad/.test(clause) ||
     /\blinea\b/.test(clause) ||
     /\bbrick veneer\b/.test(clause) ||
-    /\bmasonry veneer\b/.test(clause)
+    /\bmasonry veneer\b/.test(clause) ||
+    /\bbevel-?back\b/.test(clause) ||
+    /\brusticated\b/.test(clause) ||
+    /\bshiplap\b/.test(clause) ||
+    /\bboard(?:\s|-)+and(?:\s|-)+batten\b/.test(clause)
   );
 }
 
@@ -141,10 +146,13 @@ function clauseIsPositive(clause: string): boolean {
     /\bbrick veneer cladding\b/.test(clause) ||
     /\bmasonry veneer\b/.test(clause) ||
     /\bexterior timber feature cladding\b/.test(clause) ||
+    /\btimber feature cladding\b/.test(clause) ||
     /\binstall cladding\b/.test(clause) ||
     /\bnew cladding\b/.test(clause) ||
     /\bnew weatherboards?\b/.test(clause) ||
     (/\binstall\b/.test(clause) && /\bweatherboards?\b/.test(clause)) ||
+    ((/\binstall\b|\breplace\b|\breclad|\bsupply\b/.test(clause) &&
+      clauseMentionsCladding(clause))) ||
     clauseIsRemovalOnly(clause)
   );
 }
@@ -178,6 +186,11 @@ function emptyDecision(evidence: string): CladdingOwnershipDecision {
     portions: [],
     evidence,
   };
+}
+
+/** True when the brief states Cladding work that should exist. */
+export function briefHasIndependentCladding(briefText: string): boolean {
+  return classifyCladdingOwnership(briefText).claddingPresent;
 }
 
 /**

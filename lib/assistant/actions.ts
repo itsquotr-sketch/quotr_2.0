@@ -82,6 +82,12 @@ import {
   flooringPortionHasUserAuthority,
   mergePersistedFlooringPortionsOnReanalyse,
 } from "@/lib/estimate/flooring-portions";
+import {
+  CLADDING_PORTIONS_FACT_KEY,
+  claddingPortionHasUserAuthority,
+  mergePersistedCladdingPortionsOnReanalyse,
+  nextCladdingCollectionEnvelope,
+} from "@/lib/estimate/cladding-portions";
 import { ensureMissingDetailsQuestionBlock } from "@/lib/assistant/missing-questions";
 import { filterPersistableAnswers } from "@/lib/assistant/answer-persistence";
 import {
@@ -606,6 +612,36 @@ export async function saveBriefAndSeedWorkAreas(
           .update({
             label: row.label,
             value: merged,
+            unit: row.unit,
+            source:
+              keepsUserSource && existing.source === "user"
+                ? "user"
+                : "ai_extracted",
+            confidence: row.confidence,
+          })
+          .eq("id", existing.id)
+          .eq("project_id", projectId);
+        if (mergeError) {
+          return failPersist(
+            "persist_facts",
+            `fact update failed: ${mergeError.message}`
+          );
+        }
+        continue;
+      }
+
+      if (existing && row.key === CLADDING_PORTIONS_FACT_KEY) {
+        const merged = mergePersistedCladdingPortionsOnReanalyse({
+          extracted: row.value,
+          persisted: existing.value,
+        });
+        const envelope = nextCladdingCollectionEnvelope(existing.value, merged);
+        const keepsUserSource = merged.some(claddingPortionHasUserAuthority);
+        const { error: mergeError } = await supabase
+          .from("project_facts")
+          .update({
+            label: row.label,
+            value: envelope,
             unit: row.unit,
             source:
               keepsUserSource && existing.source === "user"
