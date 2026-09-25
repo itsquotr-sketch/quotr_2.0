@@ -48,7 +48,7 @@ import { getCatalogueEntry } from "../lib/rates/catalogue";
 import { buildMaterialRegistry } from "../lib/rates/material-registry";
 import { buildProductivityRegistry, isProductivityCalibrationSupported } from "../lib/rates/productivity-registry";
 import type { EstimateFact } from "../lib/estimate/types";
-import { getWorkAreaSupportEntry } from "../lib/work-areas/support-contract";
+import { getWorkAreaSupportEntry, isMatureSupportedWorkAreaType } from "../lib/work-areas/support-contract";
 
 let passed = 0;
 let failed = 0;
@@ -619,17 +619,19 @@ check(
     outcomes.get("142 × 18 mm bevelback weatherboard") === "RESOLVES_WITH_QUOTR" &&
     outcomes.get("Pricing integration") === "RESOLVES_WITH_QUOTR" &&
     outcomes.get("Client Quote") === "RESOLVES_WITH_QUOTR" &&
-    CLADDING_V1_HUMAN_QA_FROZEN === false
+    CLADDING_V1_HUMAN_QA_FROZEN === true
 );
 
 const support = getWorkAreaSupportEntry("cladding");
 check(
-  "Cladding stays unfrozen, staged, and not estimatable",
-  CLADDING_V1_HUMAN_QA_FROZEN === false &&
+  "Cladding is human-QA frozen on the component band",
+  CLADDING_V1_HUMAN_QA_FROZEN === true &&
     FLOORING_V1_HUMAN_QA_FROZEN === true &&
     DOORS_V1_HUMAN_QA_FROZEN === true &&
-    support?.band === "staged" &&
-    support?.estimatableAsWorkArea === false
+    support?.band === "component" &&
+    support?.role === "component_utility" &&
+    support?.estimatableAsWorkArea === true &&
+    isMatureSupportedWorkAreaType("cladding") === false
 );
 
 const forbidden = [

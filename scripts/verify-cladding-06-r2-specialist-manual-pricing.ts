@@ -186,7 +186,7 @@ const masonry = {
 };
 const masonryPhysical = calculateCladdingPhysical({ facts: factsFor([masonry]), workArea });
 check("masonry uses the veneer specialist key", masonryPhysical.requirements.some((row) => row.componentKey === CLADDING_SPECIALIST_MASONRY && row.kind === "material" && row.baseQuantity === 10));
-check("freeze stays open", CLADDING_V1_HUMAN_QA_FROZEN === false);
+check("freeze stays closed", CLADDING_V1_HUMAN_QA_FROZEN === true);
 
 function parseEnv(file: string): Record<string, string> {
   try {

@@ -666,12 +666,12 @@ check(
 
 const support = getWorkAreaSupportEntry("cladding");
 check(
-  "support stays staged and not estimate-ready",
+  "support is the frozen component band and still names physical takeoff",
   support?.notes === CLADDING_SUPPORT_NOTES &&
     support.notes.includes("physical takeoff") &&
-    support.band === "staged" &&
-    support.estimatableAsWorkArea === false &&
-    CLADDING_V1_HUMAN_QA_FROZEN === false
+    support.band === "component" &&
+    support.estimatableAsWorkArea === true &&
+    CLADDING_V1_HUMAN_QA_FROZEN === true
 );
 check("doors and flooring remain frozen", DOORS_V1_HUMAN_QA_FROZEN === true && FLOORING_V1_HUMAN_QA_FROZEN === true);
 check(

@@ -54,6 +54,7 @@ import {
   getWorkAreaCapabilityLabel,
   getWorkAreaSupportEntry,
   isCommercialInteriorComponentType,
+  isMatureSupportedWorkAreaType,
   isMonolithicCommercialFitoutType,
   isTrialSupportedWorkAreaType,
   isUnsupportedWorkAreaType,
@@ -606,14 +607,15 @@ function main(): void {
       !PRODUCT_WA_TYPES.includes("commercial_fitout")
   );
   check(
-    "roofing stays unsupported and not creatable; cladding is staged domain-only",
+    "roofing stays unsupported and not creatable; cladding is a frozen component",
     isUnsupportedWorkAreaType("roofing") &&
       !PRODUCT_WA_TYPES.includes("roofing") &&
       PRODUCT_WA_TYPES.includes("cladding") &&
       !isUnsupportedWorkAreaType("cladding") &&
-      getWorkAreaSupportEntry("cladding")?.estimatableAsWorkArea === false &&
-      getWorkAreaSupportEntry("cladding")?.band === "staged" &&
-      getWorkAreaCapabilityLabel("cladding") === "Domain only"
+      !isMatureSupportedWorkAreaType("cladding") &&
+      getWorkAreaSupportEntry("cladding")?.estimatableAsWorkArea === true &&
+      getWorkAreaSupportEntry("cladding")?.band === "component" &&
+      getWorkAreaCapabilityLabel("cladding") === "Component"
   );
   check(
     "customer labels never use A/B/C/D/E",

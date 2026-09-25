@@ -142,9 +142,9 @@ export const WORK_AREA_SUPPORT_ENTRIES: readonly WorkAreaSupportEntry[] = [
   ),
   entry(
     "cladding",
-    "staged_domain",
-    "staged",
-    "Domain only",
+    "component_utility",
+    "component",
+    "Component",
     CLADDING_SUPPORT_NOTES
   ),
   entry(

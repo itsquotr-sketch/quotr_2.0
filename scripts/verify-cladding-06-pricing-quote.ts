@@ -400,7 +400,7 @@ check("windows do not create Doors or Internal Walls", (() => {
   return windows.claddingPresent && !windows.unrelatedWorkAreas.includes("doors") && !windows.unrelatedWorkAreas.includes("internal_walls");
 })());
 check("bathroom location does not create Bathroom", classifyCladdingOwnership("install timber cladding in the bathroom").unrelatedWorkAreas.length === 0);
-check("Doors and Flooring remain frozen", DOORS_V1_HUMAN_QA_FROZEN === true && FLOORING_V1_HUMAN_QA_FROZEN === true && CLADDING_V1_HUMAN_QA_FROZEN === false);
+check("Doors, Flooring and Cladding remain frozen", DOORS_V1_HUMAN_QA_FROZEN === true && FLOORING_V1_HUMAN_QA_FROZEN === true && CLADDING_V1_HUMAN_QA_FROZEN === true);
 
 const scanned = [
   "lib/estimate/cladding-quote.ts",
@@ -420,7 +420,7 @@ const openingQuote = quoteOf([openings], estimateOf([openings]));
 check("opening disclosure is client-safe", openingQuote.includes(CLADDING_QUOTE_OPENINGS) && !openingQuote.includes("opening_area"));
 check("scaffold exclusion is shared once", quoteA.includes(CLADDING_QUOTE_SCAFFOLD) && quoteA.split(CLADDING_QUOTE_SCAFFOLD).length === 2);
 const coverage = verifyRegisteredWorkAreaBenchmarkCoverage("cladding");
-check("Pricing and Quote resolve and human QA stays open", coverage.ok && workAreaMayCloseAtL5(coverage) && CLADDING_V1_HUMAN_QA_FROZEN === false && coverage.resolves.some((row) => row.component === "Client Quote"));
+check("Pricing and Quote resolve and human QA is frozen", coverage.ok && workAreaMayCloseAtL5(coverage) && CLADDING_V1_HUMAN_QA_FROZEN === true && coverage.resolves.some((row) => row.component === "Client Quote"));
 check("E per-line sell sums to $2,888.17 under shared rounding", close(sharedLineSellE, 2888.17));
 check("quote does not claim weathertightness or consent", !/weathertight|consent compliance|structural adequacy/i.test(quoteA));
 check("identical sections keep separate scope keys", new Set(adopt(estimateOf([north, portion({ ...north, id: "north-2", label: "North elevation" })])).map((row) => row.scopeKey)).size >= 4);

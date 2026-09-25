@@ -11,8 +11,8 @@
  * No takeoff, material COST, productivity, labour COST, waste, or quote
  * wording in this module. Derived quantities are not stored.
  *
- * CLADDING-01B is domain only. Ordinary nested Cladding is not human-QA
- * frozen and is not an L5 commercial close.
+ * Ordinary nested Cladding V1 is human-QA frozen. Custom, brick, masonry
+ * and unmeasured trims remain Pricing Required.
  */
 
 import { getFact } from "@/lib/estimate/facts";
@@ -28,9 +28,9 @@ import {
   isStableClientId,
 } from "@/lib/ids/stable-client-id";
 
-export const CLADDING_V1_HUMAN_QA_FROZEN = false as const;
+export const CLADDING_V1_HUMAN_QA_FROZEN = true as const;
 export const CLADDING_SUPPORT_NOTES =
-  "Ordinary nested Cladding V1 now runs extraction, Details, physical takeoff, material/productivity authority, hosted commercialisation, Builder Review, Pricing and client Quote. Ordinary new drained cavity, flexible wall underlay and rigid air barrier resolve from Quotr authority. Trims remain Pricing Required. Brick, masonry and custom work remain Pricing Required until a manual price is added. Human hosted QA has not been re-run." as const;
+  "Ordinary nested Cladding V1 is human-QA frozen across extraction, Details, physical takeoff, material/productivity authority, hosted commercialisation, Builder Review, Pricing and client Quote. Custom, brick, masonry, trims and other specialist scope remain Pricing Required where authority is absent." as const;
 export const CLADDING_STAGED_NOT_CALCULATED_MESSAGE =
   "Cladding quantities and pricing will be calculated after the remaining section details are confirmed." as const;
 

@@ -119,17 +119,17 @@ function main(): void {
     SCOPE_CATALOGUE.some((row) => row.type === "cladding" && row.label === "Cladding")
   );
   check(
-    "3. support notes state domain-only and unwired commercial path",
+    "3. support notes record the frozen ordinary V1 path",
     support?.notes === CLADDING_SUPPORT_NOTES &&
-      support.band === "staged" &&
-      support.estimatableAsWorkArea === false &&
-      getWorkAreaCapabilityLabel("cladding") === "Domain only"
+      support.band === "component" &&
+      support.estimatableAsWorkArea === true &&
+      getWorkAreaCapabilityLabel("cladding") === "Component"
   );
-  check("4. Cladding is not human-QA frozen", CLADDING_V1_HUMAN_QA_FROZEN === false);
+  check("4. Cladding is human-QA frozen", CLADDING_V1_HUMAN_QA_FROZEN === true);
   check(
-    "5. coverage may close at L5 while human QA stays open",
+    "5. coverage may close at L5 and human QA is frozen",
     workAreaMayCloseAtL5(verifyRegisteredWorkAreaBenchmarkCoverage("cladding")) === true &&
-      CLADDING_V1_HUMAN_QA_FROZEN === false
+      CLADDING_V1_HUMAN_QA_FROZEN === true
   );
   check(
     "6. Cladding is not a first-run primary and roofing stays unsupported",

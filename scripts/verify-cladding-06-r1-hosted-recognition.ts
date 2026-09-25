@@ -203,7 +203,7 @@ check("Garage quote names board-and-batten", quote2.includes("Garage elevation:"
 check("Garage quote hides sheet equivalent", !/sheet equivalent/i.test(quote2));
 const review2 = reviewOf(estimate2, qa2);
 check("Garage review is priced", (review2.workAreas[0]?.portionGroups ?? []).some((row) => row.label.includes("Garage") && row.lineGroups.some((group) => group.label === "Cladding material")));
-check("freeze stays open", CLADDING_V1_HUMAN_QA_FROZEN === false);
+check("freeze stays closed", CLADDING_V1_HUMAN_QA_FROZEN === true);
 
 const retainedPhrases = [
   "existing cavity remains",
