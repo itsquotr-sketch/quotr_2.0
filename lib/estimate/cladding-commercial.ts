@@ -39,6 +39,7 @@ import {
 } from "@/lib/estimate/cladding-physical";
 import { CLADDING_STAGED_NOT_CALCULATED_MESSAGE } from "@/lib/estimate/cladding-portions";
 import { resolveCladdingCarpenterHourlyCost } from "@/lib/estimate/cladding-rate-resolution";
+import { formatProductivity, formatQuantity } from "@/lib/estimate/builder-presentation-format";
 import { round2 } from "@/lib/estimate/facts";
 import { createAllowanceLineItem } from "@/lib/estimate/line-items";
 import { withPricingOwnership } from "@/lib/estimate/pricing-ownership";
@@ -567,9 +568,10 @@ function labourLine(params: {
       : "productivity"
     : "missing";
   const removal = params.requirement.componentKey.includes(".remove.");
+  const calculation = `${formatQuantity(qty)} ${unit} × ${formatProductivity(params.priced.hoursPerUnit)} h/${unit} = ${formatQuantity(params.priced.baseHours)} h base. Access × ${formatQuantity(params.accessFactor)} = ${formatQuantity(params.priced.adjustedHours)} h.`;
   const note = included
-    ? `${presentCladdingMeasure(qty)} ${unit} × ${params.priced.hoursPerUnit} h/${unit} = ${params.priced.baseHours} h base. Access × ${params.accessFactor} → ${params.priced.adjustedHours} h. Carpenter hourly COST is ${params.priced.hourlySource === "company" ? "the company rate" : "the Quotr benchmark"}.${removal ? ` ${CLADDING_REMOVAL_EXCLUSIONS}` : ""}`
-    : `Pricing Required. Quantity ${presentCladdingMeasure(qty)} ${unit} remains visible.`;
+    ? `${calculation} Carpenter hourly COST is ${params.priced.hourlySource === "company" ? "the company rate" : "the Quotr benchmark"}.${removal ? ` ${CLADDING_REMOVAL_EXCLUSIONS}` : ""}`
+    : `Pricing Required. Quantity ${formatQuantity(qty)} ${unit} remains visible.`;
   const line = createAllowanceLineItem({
     workAreaId: params.requirement.workAreaId,
     workAreaName: params.workAreaName,

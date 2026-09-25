@@ -137,8 +137,7 @@ import { applyCeilingsReviewGroups } from "@/lib/assistant/builder-review/ceilin
 import { applyDoorsReviewGroups } from "@/lib/assistant/builder-review/doors-review-groups";
 import { applyFlooringReviewGroups } from "@/lib/assistant/builder-review/flooring-review-groups";
 import { applyCladdingReviewGroups } from "@/lib/assistant/builder-review/cladding-review-groups";
-import { CEILINGS_PARTIAL_ESTIMATE_MESSAGE } from "@/lib/estimate/ceilings-identities";
-import { CEILINGS_BUILDER_REVIEW_PARTIAL_MESSAGE } from "@/lib/estimate/ceilings-quote-readiness";
+import { pricingNoticeForWorkAreaTypes } from "@/lib/assistant/builder-review/pricing-notice";
 
 const CATEGORY_LABELS: Record<BuilderReviewCategoryId, string> = {
   MATERIALS: "Materials",
@@ -1537,6 +1536,42 @@ function confidenceExplanation(
   return null;
 }
 
+function unresolvedPricingWorkAreaTypes(
+  input: ComposeBuilderReviewInput
+): string[] {
+  const areas = input.workAreas.filter((wa) => wa.status !== "excluded");
+  const areaById = new Map(areas.map((wa) => [wa.id, wa]));
+  const types: string[] = [];
+  for (const requirement of input.requirements ?? []) {
+    if (requirement.priced) continue;
+    if (requirement.kind === "material" && requirement.category === "INFORMATIONAL") {
+      continue;
+    }
+    const owned = areaById.get(requirement.workAreaId);
+    const type = owned?.type || requirement.workAreaType || "";
+    if (!type.trim() || !requirement.workAreaId.trim()) continue;
+    types.push(type);
+  }
+  if (types.length > 0) return types;
+  for (const item of input.estimate.lineItems) {
+    const cost = item.recommendedCost ?? 0;
+    const unresolved =
+      cost <= 0 &&
+      (item.includedInTotal === false ||
+        /pricing required|rate required/i.test(item.rateSource ?? ""));
+    if (!unresolved) continue;
+    const workAreaId = item.workAreaId?.trim() ?? "";
+    const byId = workAreaId ? areaById.get(workAreaId) : undefined;
+    const nameMatches = areas.filter(
+      (wa) => wa.name.trim().toLowerCase() === item.workAreaName.trim().toLowerCase()
+    );
+    const area = byId ?? (nameMatches.length === 1 ? nameMatches[0] : undefined);
+    if (!area?.type) continue;
+    types.push(area.type);
+  }
+  return types;
+}
+
 export function composeBuilderReview(
   input: ComposeBuilderReviewInput
 ): BuilderReviewView {
@@ -1919,12 +1954,9 @@ export function composeBuilderReview(
 
   const { assumptions, checks, improvements } = buildIssues(input);
   const band = input.confidenceBand ?? null;
-  const ceilingPartial = workAreas.some((wa) => Boolean(wa.partialEstimateLabel)) ||
-    input.estimate.missingInfo.some(
-      (row) =>
-        row === CEILINGS_PARTIAL_ESTIMATE_MESSAGE ||
-        /partial estimate — pricing required/i.test(row)
-    );
+  const pricingNotice = pricingNoticeForWorkAreaTypes(
+    unresolvedPricingWorkAreaTypes(input)
+  );
 
   // Surface material requirements that are authoritative are NOT takeoff-under-allowance.
   // They appear only via priced lines. Ensure we never sum takeoff.
@@ -1954,10 +1986,8 @@ export function composeBuilderReview(
       workAreaNames: workAreas.map((wa) => wa.workAreaName),
       categorySummary,
       isStale: Boolean(input.estimate.isStale),
-      partialEstimateLabel: ceilingPartial
-        ? CEILINGS_BUILDER_REVIEW_PARTIAL_MESSAGE
-        : null,
-      recommendedSellIsPartial: ceilingPartial,
+      partialEstimateLabel: pricingNotice,
+      recommendedSellIsPartial: pricingNotice != null,
     },
     workAreas,
     assumptions,

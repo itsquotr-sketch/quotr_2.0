@@ -89,6 +89,7 @@ export type EstimateLineItemCategory =
 
 export type EstimateLineItem = {
   id: string;
+  workAreaId?: string;
   workAreaName: string;
   label: string;
   category: EstimateLineItemCategory;

@@ -14,6 +14,7 @@ import {
 } from "@/lib/estimate/cladding-identities";
 import { calculateCladdingPhysical } from "@/lib/estimate/cladding-physical";
 import { CLADDING_PORTIONS_FACT_KEY } from "@/lib/estimate/cladding-portions";
+import { formatQuantity } from "@/lib/estimate/builder-presentation-format";
 import { round2 } from "@/lib/estimate/facts";
 import type { EstimateFact } from "@/lib/estimate/types";
 import type {
@@ -151,7 +152,7 @@ export function applyCladdingReviewGroups(params: {
       label: formatCladdingReviewTitle(portion),
       summary: portion.summary,
       areaLabel:
-        portion.netAreaM2 != null ? `${portion.netAreaM2} m² net` : null,
+        portion.netAreaM2 != null ? `${formatQuantity(portion.netAreaM2)} m² net` : null,
       lineGroups,
       assumptions: [...claddingReviewDisclosures(portion)],
     });
