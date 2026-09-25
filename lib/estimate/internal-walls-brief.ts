@@ -385,10 +385,44 @@ function withExtractedCornice(
   };
 }
 
+/**
+ * Sentences that state the wall itself. A mixed brief must not let door
+ * millimetres or cladding products become Internal Walls lining.
+ */
+export function internalWallsScopeText(briefText: string): string {
+  const sentences = briefText
+    .split(/(?<=[.!?])\s+/)
+    .map((row) => row.trim())
+    .filter(Boolean);
+  if (sentences.length <= 1) return briefText;
+  const relevant = sentences.filter((sentence) => {
+    const brief = normalise(sentence);
+    return includesAny(brief, [
+      "internal wall",
+      "internal partition",
+      "framed timber",
+      "timber framed",
+      "rebuild the walls",
+      "rebuild walls",
+      "new partition",
+      "90x45",
+      "90×45",
+      "45x90",
+      "45×90",
+      "140x45",
+      "140×45",
+      "both sides",
+      "no openings",
+    ]);
+  });
+  return relevant.length > 0 ? relevant.join(" ") : briefText;
+}
+
 export function extractInternalWallsTypesFromBrief(
   briefText: string
 ): ExtractedInternalWallsType[] {
-  const brief = normalise(briefText);
+  const scoped = internalWallsScopeText(briefText);
+  const brief = normalise(scoped);
   if (
     !includesAny(brief, [
       "internal wall",
@@ -411,7 +445,7 @@ export function extractInternalWallsTypesFromBrief(
       .map((part, index) => parseSegment(part, index === 0 ? 2 : 1))
       .filter((row): row is ExtractedInternalWallsType => row != null);
     if (types.length >= 2) {
-      const cornice = extractInternalWallsCorniceFromBrief(briefText);
+      const cornice = extractInternalWallsCorniceFromBrief(scoped);
       return types.map((row) => withExtractedCornice(row, cornice));
     }
   }
@@ -419,7 +453,7 @@ export function extractInternalWallsTypesFromBrief(
   const single = parseSegment(brief, 1);
   if (!single) return [];
   return [
-    withExtractedCornice(single, extractInternalWallsCorniceFromBrief(briefText)),
+    withExtractedCornice(single, extractInternalWallsCorniceFromBrief(scoped)),
   ];
 }
 
@@ -438,17 +472,24 @@ export function briefRequestsInternalWallsRebuild(briefText: string): boolean {
 }
 
 export function briefRemovesExistingInternalWalls(briefText: string): boolean {
-  const brief = normalise(briefText);
-  if (!/\b(walls?|partitions?)\b/.test(brief)) return false;
-  return (
-    /\b(remov(?:e|ing|al)|demolish(?:ing)?|taking down|take down|strip(?:ping)? out)\b/.test(
-      brief
-    ) || includesAny(brief, ["remove existing", "remove the walls"])
-  );
+  const scoped = internalWallsScopeText(briefText);
+  return scoped
+    .split(/(?<=[.!?])\s+/)
+    .some((sentence) => {
+      const text = normalise(sentence);
+      const mentionsWall = /\b(walls?|partitions?)\b/.test(text);
+      const mentionsRemoval =
+        /\b(remov(?:e|ing|al)|demolish(?:ing)?|taking down|take down|strip(?:ping)? out)\b/.test(
+          text
+        ) || includesAny(text, ["remove existing", "remove the walls"]);
+      if (!mentionsWall || !mentionsRemoval) return false;
+      if (/\b(no|not|without|don't|do not)\b/.test(text)) return false;
+      return true;
+    });
 }
 
 function briefRebuildsOrReplacesInternalWalls(briefText: string): boolean {
-  const brief = normalise(briefText);
+  const brief = normalise(internalWallsScopeText(briefText));
   return (
     briefRequestsInternalWallsRebuild(brief) ||
     includesAny(brief, [
@@ -457,6 +498,7 @@ function briefRebuildsOrReplacesInternalWalls(briefText: string): boolean {
       "replace the wall",
       "replace them",
       "replace with",
+      "construct",
     ])
   );
 }

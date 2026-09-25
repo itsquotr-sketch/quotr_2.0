@@ -159,6 +159,10 @@ export function briefHasExplicitCeilings(briefText: string): boolean {
   const brief = normaliseBrief(briefText);
   if (briefHasPaintOrStopCeilingOnly(briefText)) return false;
   if (briefHasCeilingConstructionLanguage(brief)) return true;
+  // "Lounge ceiling is 4m x 3m …" is an explicit ceiling even when the same
+  // brief also states Internal Walls. The room-package fallback below stays
+  // suppressed in that case so a wall brief cannot invent a ceiling.
+  if (/\bceilings?\s+(?:is|are)\b/.test(brief)) return true;
   if (/\bline\b.{0,80}\bceilings?\b/.test(brief) && !/\bpaint|\bstop/.test(brief)) {
     return true;
   }

@@ -501,6 +501,10 @@ function splitDoorSetSnippets(briefText: string): string[] {
     .filter(Boolean);
   const withSignal = parts.filter(snippetHasDoorSignal);
   if (withSignal.length >= 2) return withSignal;
+  // A mixed brief has one Door Set and other Work Area sentences. Keep the
+  // door clause only, so unrelated words such as "high" cannot suppress the
+  // door size pair.
+  if (withSignal.length === 1 && parts.length > 1) return withSignal;
   return [trimmed];
 }
 

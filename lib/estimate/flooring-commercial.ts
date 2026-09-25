@@ -518,6 +518,7 @@ function missingMoneyLine(params: {
       pricingOwner: params.pricingOwner,
       scopeKey,
       overlapGroup: `flooring.area:${nestedItemId}`,
+      includedInTotal: false,
     }
   );
 }

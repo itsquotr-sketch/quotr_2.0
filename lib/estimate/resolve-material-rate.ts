@@ -220,6 +220,7 @@ export function resolveMaterialRate(params: {
       rate.item_key === params.materialKey &&
       rate.rate_type === "material" &&
       rate.cost_rate != null &&
+      rate.cost_rate > 0 &&
       materialRateUnitsMatch(rate.unit, params.unit)
   );
 
@@ -242,6 +243,7 @@ export function resolveMaterialRate(params: {
         rate.item_key === params.categoryKey &&
         rate.rate_type === "material" &&
         rate.cost_rate != null &&
+        rate.cost_rate > 0 &&
         materialRateUnitsMatch(rate.unit || params.unit, params.unit)
     );
     if (categoryRate?.cost_rate != null) {
@@ -268,6 +270,7 @@ export function resolveMaterialRate(params: {
         rate.item_key === params.scopeKey &&
         rate.rate_type === "scope" &&
         rate.cost_rate != null &&
+        rate.cost_rate > 0 &&
         materialRateUnitsMatch(rate.unit || params.unit, params.unit)
     );
     if (scopeRate?.cost_rate != null) {

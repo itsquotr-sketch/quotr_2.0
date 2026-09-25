@@ -1635,16 +1635,25 @@ export function composeBuilderReview(
     .map(toTakeoffRow);
 
   const specialistOnlyNames = input.workAreas
-    .filter((area) => area.type === "cladding" && area.status !== "excluded")
-    .map((area) => area.name)
-    .filter((name) => {
-      const key = name.toLowerCase();
+    .filter(
+      (area) =>
+        area.status !== "excluded" &&
+        (area.type === "cladding" || area.type === "flooring")
+    )
+    .filter((area) => {
+      const key = area.name.toLowerCase();
       if (waTotals.some((row) => row.name.toLowerCase() === key)) return false;
       return input.estimate.lineItems.some((item) => {
         const raw = item.workAreaName?.trim().toLowerCase() || "";
-        return raw === key && item.includedInTotal === false && (item.componentKey ?? "").includes("cladding.specialist.");
+        if (raw !== key || item.includedInTotal !== false) return false;
+        const component = item.componentKey ?? "";
+        if (area.type === "cladding") {
+          return component.includes("cladding.specialist.");
+        }
+        return component.startsWith("flooring.");
       });
-    });
+    })
+    .map((area) => area.name);
   const reviewAreas = [
     ...waTotals,
     ...specialistOnlyNames.map((name) => ({
@@ -1830,6 +1839,36 @@ export function composeBuilderReview(
       portionGroups = grouped.portionGroups;
     }
     if (meta.type === "flooring") {
+      const unresolved = input.estimate.lineItems.filter((item) => {
+        if (item.includedInTotal !== false) return false;
+        const raw = item.workAreaName?.trim() || "";
+        return raw.toLowerCase() === wa.name.toLowerCase();
+      });
+      for (const line of unresolved.map(toPricedLine)) {
+        const existing = categories.find((cat) => cat.id === line.category);
+        if (existing) {
+          categories = categories.map((cat) =>
+            cat.id === line.category ? { ...cat, lines: [...cat.lines, line] } : cat
+          );
+          continue;
+        }
+        categories = [
+          ...categories,
+          {
+            id: line.category,
+            label: CATEGORY_LABELS[line.category],
+            cost: 0,
+            lines: [line],
+            takeoff: [],
+            takeoffDisclaimer: null,
+            takeoffUnavailableHint: null,
+            takeoffCollapsedByDefault: false,
+            takeoffTitle: "Planning takeoff",
+            groupNotes: [],
+            lineGroups: [],
+          },
+        ];
+      }
       const grouped = applyFlooringReviewGroups({
         categories,
         facts: input.facts ?? [],

@@ -412,6 +412,8 @@ function splitPortionSnippets(brief: string): string[] {
       expanded.push(...splitOnCeilingSubjects(part));
     }
   }
+  const explicitCeiling = expanded.filter((row) => /\bceilings?\b/i.test(row));
+  if (explicitCeiling.length >= 1) return explicitCeiling;
   const withCeilingSignal = expanded.filter(snippetHasCeilingSignal);
   if (withCeilingSignal.length >= 2) return withCeilingSignal;
   if (expanded.length >= 2) {
