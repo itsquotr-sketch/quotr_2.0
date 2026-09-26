@@ -113,7 +113,8 @@ assert(
     migrations.includes("059_hosted_lifecycle_event_adoption.sql") &&
     migrations.includes("060_preview_lifecycle_fixture_cleanup.sql") &&
     migrations.includes("061_preview_lifecycle_fixture_cleanup_order.sql") &&
-    migrations.at(-1) === "061_preview_lifecycle_fixture_cleanup_order.sql"
+    migrations.includes("062_remove_preview_lifecycle_cleanup.sql") &&
+    migrations.at(-1) === "062_remove_preview_lifecycle_cleanup.sql"
 );
 assert(
   "041 accept/decline RPCs remain",

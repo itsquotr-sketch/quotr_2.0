@@ -24,6 +24,10 @@ import {
   type ProjectLifecycleEvent,
 } from "../lib/projects/lifecycle-foundation";
 import {
+  cleanupPreviewFixtureOrgs,
+  registerPreviewFixtureOrg,
+} from "./lib/preview-admin-cleanup";
+import {
   assertSafePreviewPasswordMutation,
   isPasswordProtectedPreviewAccount,
 } from "./lib/preview-auth-fixture";
@@ -372,12 +376,15 @@ async function hostedProof(): Promise<void> {
   const projectEstimating = randomUUID();
   const projectB = randomUUID();
   let userId = "";
+  registerPreviewFixtureOrg(orgA);
+  registerPreviewFixtureOrg(orgB);
 
   async function cleanup(): Promise<void> {
-    const removedA = await admin.rpc("preview_lifecycle_fixture_cleanup", { p_org: orgA });
-    const removedB = await admin.rpc("preview_lifecycle_fixture_cleanup", { p_org: orgB });
-    if (removedA.error) console.error("cleanup org A", removedA.error.message);
-    if (removedB.error) console.error("cleanup org B", removedB.error.message);
+    try {
+      cleanupPreviewFixtureOrgs([orgA, orgB]);
+    } catch (error) {
+      console.error("cleanup", error instanceof Error ? error.message : error);
+    }
     if (userId) await admin.auth.admin.deleteUser(userId);
   }
 
