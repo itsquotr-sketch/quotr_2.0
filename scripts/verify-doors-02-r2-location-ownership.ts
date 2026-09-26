@@ -312,7 +312,7 @@ check(
   "Work card is Doors with two Door Sets",
   plan.cards.length === 1 &&
     plan.cards[0]?.workAreaType === "doors" &&
-    Boolean(plan.cards[0]?.summary?.includes("2 door sets"))
+    Boolean(plan.cards[0]?.summary?.includes("2 door specifications"))
 );
 
 const clarify = composeClarifyView({

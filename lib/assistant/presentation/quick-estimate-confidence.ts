@@ -3,6 +3,7 @@
  * Uses existing estimate confidence % + assumption/missing signals — no AI guess.
  */
 import type { AssumptionMetadata } from "@/lib/estimate/assumption-metadata";
+import type { EstimateFact } from "@/lib/estimate/types";
 import {
   getUserFacingEstimateAssumptions,
   isBoundaryAssumptionCopy,
@@ -90,11 +91,13 @@ export function deriveQuickEstimateConfidencePresentation(params: {
 export function rankQuickEstimateAssumptions(
   assumptions: readonly string[],
   limit = 3,
-  assumptionMetadata?: AssumptionMetadata | null
+  assumptionMetadata?: AssumptionMetadata | null,
+  facts?: readonly Pick<EstimateFact, "key" | "source" | "value">[] | null
 ): readonly string[] {
   return getUserFacingEstimateAssumptions({
     assumptions,
     assumptionMetadata,
+    facts,
     limit,
   });
 }

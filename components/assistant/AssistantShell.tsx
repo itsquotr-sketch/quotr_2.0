@@ -2265,6 +2265,9 @@ export function AssistantShell({
     [clarifyView, pendingReadinessWrites, jobPlan, liveConstraints, project.qualityLevel, qualityLevel]
   );
 
+  // Keep the generate snapshot current for the click handler. This assignment
+  // predates this presentation change.
+  // eslint-disable-next-line react-hooks/refs -- event-handler snapshot, not render output
   generateAuthorityRef.current = {
     stage,
     briefText: briefText || project.briefText,
@@ -2859,14 +2862,16 @@ export function AssistantShell({
                         }).band,
                         assumptionPhrase: selectEstimatingAssumptionPhrase(
                           estimate.assumptions,
-                          estimate.assumptionMetadata
+                          estimate.assumptionMetadata,
+                          jobPlanFacts
                         ),
                       }).explanation
                     }
                     assumptions={rankQuickEstimateAssumptions(
                       estimate.assumptions,
                       MAX_QUICK_ESTIMATE_TOP_ASSUMPTIONS,
-                      estimate.assumptionMetadata
+                      estimate.assumptionMetadata,
+                      jobPlanFacts
                     )}
                     attentionItems={completedEstimateAttentionItems}
                     workAreaTotals={Array.from(

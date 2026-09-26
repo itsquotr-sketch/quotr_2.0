@@ -12,6 +12,7 @@ import {
   DECK_BOARD_MATERIAL_ASSUMPTION_STATEMENT,
   DECK_HEIGHT_ASSUMPTION_STATEMENT,
 } from "@/lib/estimate/disclosed-assumptions";
+import { internalWallsJobScopeAssumptionStatement } from "@/lib/assistant/presentation/mixed-project-summaries";
 import type { EstimateFact } from "@/lib/estimate/types";
 
 const STATEMENTS: Record<string, string> = {
@@ -93,7 +94,10 @@ export function assumptionsFromPersistedFacts(
     .map((fact) => ({
       id: `assumption-fact:${fact.work_area_id ?? "project"}:${fact.key}`,
       label: safeFactPresentationLabel(fact.key),
-      statement: assumptionStatementForKey(fact.key),
+      statement:
+        fact.key === "internal_walls.job_scope"
+          ? internalWallsJobScopeAssumptionStatement(fact.value)
+          : assumptionStatementForKey(fact.key),
       factKey: fact.key,
       constraintKey: null,
       workAreaId: fact.work_area_id,

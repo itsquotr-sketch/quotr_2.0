@@ -704,7 +704,7 @@ const plan = composeJobPlan({
 });
 check(
   "Work card uses nested Door Set summaries, not KNOWN · 1",
-  Boolean(plan.cards[0]?.summary?.toLowerCase().includes("2 door sets")) &&
+  Boolean(plan.cards[0]?.summary?.toLowerCase().includes("2 door specifications")) &&
     !/KNOWN · 1/.test(plan.cards[0]?.summary ?? "") &&
     !summariseDoorPortion(bedroom!, 0).summary.includes("KNOWN · 1")
 );

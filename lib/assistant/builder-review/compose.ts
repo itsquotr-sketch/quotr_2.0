@@ -133,6 +133,7 @@ import type {
   ComposeBuilderReviewInput,
 } from "@/lib/assistant/builder-review/types";
 import { isUserFacingEstimateAssumption } from "@/lib/assistant/presentation/user-facing-estimate-assumptions";
+import { presentCalculatorAssumptionLine } from "@/lib/assistant/presentation/mixed-project-summaries";
 import { applyCeilingsReviewGroups } from "@/lib/assistant/builder-review/ceilings-review-groups";
 import { applyDoorsReviewGroups } from "@/lib/assistant/builder-review/doors-review-groups";
 import { applyFlooringReviewGroups } from "@/lib/assistant/builder-review/flooring-review-groups";
@@ -1368,14 +1369,15 @@ function buildIssues(
   const assumptionKeys = new Set<string>();
   const assumptions: BuilderReviewIssue[] = [];
   for (const row of input.estimate.assumptions) {
-    if (!isUserFacingEstimateAssumption(row)) continue;
-    const key = normalizeIssueKey(row);
+    const presented = presentCalculatorAssumptionLine(row, input.facts);
+    if (!presented || !isUserFacingEstimateAssumption(presented)) continue;
+    const key = normalizeIssueKey(presented);
     if (!key || assumptionKeys.has(key)) continue;
     assumptionKeys.add(key);
     assumptions.push({
       id: `assumption:${key}`,
       kind: "assumption",
-      label: row,
+      label: presented,
       detail: null,
       editSection: "details",
     });

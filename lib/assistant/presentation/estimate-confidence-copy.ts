@@ -24,7 +24,8 @@ function phraseFromLine(line: string): string | null {
  */
 export function selectEstimatingAssumptionPhrase(
   assumptions: readonly string[],
-  metadata?: AssumptionMetadata | null
+  metadata?: AssumptionMetadata | null,
+  facts?: readonly Pick<import("@/lib/estimate/types").EstimateFact, "key" | "source" | "value">[] | null
 ): string | null {
   const fact = metadata?.defaultedFacts.find((entry) => entry.label?.trim());
   if (fact) {
@@ -33,6 +34,7 @@ export function selectEstimatingAssumptionPhrase(
   const visible = getUserFacingEstimateAssumptions({
     assumptions,
     assumptionMetadata: metadata,
+    facts,
     limit: 5,
   });
   for (const line of visible) {

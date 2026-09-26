@@ -1,3 +1,4 @@
+import { formatCeilingKnownSummary } from "@/lib/assistant/presentation/mixed-project-summaries";
 import {
   summariseCeilingPortion,
 } from "@/lib/estimate/ceilings-clarify";
@@ -25,24 +26,31 @@ export const ceilingsJobPlanAdapter: JobPlanWorkAreaAdapter = {
       facts: context.facts as EstimateFact[],
       workAreaId: id,
     });
-    const summaries = resolved.portions.map((portion, index) =>
-      summariseCeilingPortion(portion, index)
-    );
-    const chips: JobPlanSpecChip[] = [
-      summaries.length > 0
-        ? {
-            key: "portions",
-            label: "Portions",
-            value: String(summaries.length),
-            advanced: false,
-          }
-        : null,
-    ].filter((row): row is JobPlanSpecChip => row != null);
+    const summaries = resolved.portions.map((portion, index) => {
+      const row = summariseCeilingPortion(portion, index);
+      const known = formatCeilingKnownSummary({
+        label: portion.label,
+        lengthM: portion.geometry.length_m,
+        widthM: portion.geometry.width_m,
+        areaM2: portion.geometry.area_m2,
+        structureFamily: portion.structure.family,
+        liningLabel: row.liningLine,
+      });
+      return { ...row, known };
+    });
+    const chips: JobPlanSpecChip[] = summaries
+      .filter((row) => row.known)
+      .map((row) => ({
+        key: `portion-${row.id}`,
+        label: "Ceiling",
+        value: row.known ?? "",
+        advanced: false,
+      }));
 
     const included: JobPlanScopeItem[] = summaries.map((row) => ({
       id: `${id}-${row.id}`,
       workAreaId: id,
-      label: [row.displayName, row.geometryLine, row.structureLine, row.liningLine]
+      label: row.known ?? [row.displayName, row.geometryLine, row.structureLine, row.liningLine]
         .filter(Boolean)
         .join(" · "),
       presentation: "INCLUDED",

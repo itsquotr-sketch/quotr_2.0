@@ -473,8 +473,9 @@ check(
   "Job Plan shows wall type count without JSON dump",
   plan.cards[0]!.specChips.some(
     (chip) =>
-      chip.label === "Wall types" &&
-      (chip.value === "1" || /\b1 Wall Type\b/.test(chip.value))
+      chip.label === "Internal Walls" &&
+      /partition/i.test(chip.value) &&
+      !/\bWall Type\b/.test(chip.value)
   ) && !JSON.stringify(plan.cards[0]).includes('"side_a"')
 );
 

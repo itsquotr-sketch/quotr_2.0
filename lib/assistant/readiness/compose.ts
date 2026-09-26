@@ -5,6 +5,7 @@ import type {
 } from "@/lib/assistant/readiness/types";
 import { RETAINING_WALL_UNSUPPORTED_MATERIAL_MESSAGE } from "@/lib/estimate/calculators/retaining-wall";
 import { looksLikeInternalFactKey } from "@/lib/assistant/presentation/fact-key-labels";
+import { isBareKnownSummaryLine } from "@/lib/assistant/presentation/mixed-project-summaries";
 import { CEILINGS_SPECIALIST_FIRE_ACOUSTIC_NOTICE } from "@/lib/estimate/ceilings-specialist";
 
 const KNOWN_LIMIT = 8;
@@ -105,6 +106,7 @@ export function composeEstimateReadiness(
   ]
     .filter((row): row is string => Boolean(row))
     .filter((row) => !looksLikeInternalFactKey(row))
+    .filter((row) => !isBareKnownSummaryLine(row))
     .slice(0, KNOWN_LIMIT);
 
   const seen = new Set<string>();

@@ -1,3 +1,4 @@
+import { doorsSpecificationCountLabel } from "@/lib/assistant/presentation/mixed-project-summaries";
 import {
   summariseDoorPortion,
 } from "@/lib/estimate/doors-clarify";
@@ -72,7 +73,7 @@ export const doorsJobPlanAdapter: JobPlanWorkAreaAdapter = {
       status: workArea.status,
       summary:
         summaries.length > 0
-          ? `${workArea.name} · ${summaries.length} door set${summaries.length === 1 ? "" : "s"}`
+          ? `${workArea.name} · ${doorsSpecificationCountLabel(summaries.length)}`
           : workArea.name,
       specChips: chips,
       included,

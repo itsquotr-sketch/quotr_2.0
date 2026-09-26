@@ -537,7 +537,7 @@ check(
 const card = planOf(hosted, QA_BRIEF).cards[0];
 check(
   "12. Work card says two Door Sets",
-  Boolean(card?.summary?.includes("2 door sets")) &&
+  Boolean(card?.summary?.includes("2 door specifications")) &&
     card?.included.length === 2 &&
     card.specChips.length === 2
 );

@@ -16,6 +16,8 @@ import {
   builderFacingFactLabel,
   looksLikeInternalFactKey,
 } from "@/lib/assistant/presentation/fact-key-labels";
+import { presentCalculatorAssumptionLine } from "@/lib/assistant/presentation/mixed-project-summaries";
+import type { EstimateFact } from "@/lib/estimate/types";
 
 /** Estimate Ready initial disclosure cap (3–5). */
 export const USER_FACING_ESTIMATE_ASSUMPTION_LIMIT = 5;
@@ -162,6 +164,7 @@ function impactRank(line: string): number {
 export function getUserFacingEstimateAssumptions(params: {
   readonly assumptions: readonly string[];
   readonly assumptionMetadata?: AssumptionMetadata | null;
+  readonly facts?: readonly Pick<EstimateFact, "key" | "source" | "value">[] | null;
   readonly limit?: number | null;
 }): string[] {
   const facts = params.assumptionMetadata?.defaultedFacts ?? [];
@@ -171,6 +174,8 @@ export function getUserFacingEstimateAssumptions(params: {
     .filter((line) => isUserFacingEstimateAssumption(line));
 
   const fromStrings = params.assumptions
+    .map((line) => presentCalculatorAssumptionLine(line, params.facts))
+    .filter((line): line is string => Boolean(line))
     .map((line) => line.trim())
     .filter(Boolean)
     .filter(isUserFacingEstimateAssumption)
