@@ -200,6 +200,7 @@ export const INTERNAL_WALLS_CALCULATOR_CONSUMED_FACTS = [
   "internal_walls.wall_type.label",
   "internal_walls.wall_type.frame_system",
   "internal_walls.wall_type.frame_size",
+  "internal_walls.wall_type.wall_count",
   "internal_walls.wall_type.length_lm",
   "internal_walls.wall_type.height_m",
   "internal_walls.wall_type.stud_centres_mm",

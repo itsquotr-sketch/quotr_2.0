@@ -1,4 +1,6 @@
 import { isImplicitScopeExclusion } from "@/lib/assistant/job-plan/exclusion-provenance";
+import { isCalculatorConsumedFact } from "@/lib/estimate/consumed-facts";
+import { deckFactIsRelevant } from "@/lib/estimate/deck-question-descriptors";
 import {
   getBooleanFact,
   hasFactValue,
@@ -10,15 +12,27 @@ import {
   newSubstructureIncluded,
   shouldAskPileReplacement,
 } from "@/lib/estimate/deck-scope-2c";
-import {
-  deckFactQuestionClass,
-  isDeckClarifyAskClass,
-} from "@/lib/estimate/deck-information-contract";
+import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import type {
   ComposeRefineInput,
   RefineCandidate,
   RefineWorkAreaAdapter,
 } from "@/lib/assistant/refine/types";
+
+/**
+ * Legacy aliases the calculator still reads, and takeoff facts Quotr derives.
+ * They stay readable. They are not canonical Refine keys.
+ */
+export const DECK_REFINE_EXCLUDED_KEYS = [
+  "deck.material",
+  "deck.demolition_required",
+  "deck.has_stairs",
+  "deck.has_balustrade",
+  "deck.joist_section",
+  "deck.joist_centres_mm",
+] as const;
+
+const DECK_REFINE_EXCLUDED = new Set<string>(DECK_REFINE_EXCLUDED_KEYS);
 
 function known(
   facts: ComposeRefineInput["facts"],
@@ -53,9 +67,11 @@ function fromCheck(
     tier: RefineCandidate["tier"];
     inputType: RefineCandidate["inputType"];
     options?: readonly string[];
+    unit?: string;
   }
 ): RefineCandidate | null {
   if (!item.sourceFactKey || !item.write) return null;
+  if (item.write.factKey !== item.sourceFactKey) return null;
   return {
     id: `refine:${item.workAreaId}:${item.sourceFactKey}`,
     group: params.group,
@@ -70,6 +86,7 @@ function fromCheck(
     question: params.question,
     inputType: params.inputType,
     options: params.options,
+    unit: params.unit,
     writeTarget: "FACT",
     write: item.write,
     consumedByCalculator: true,
@@ -101,18 +118,36 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
 
     for (const item of notConfirmed) {
       const key = item.sourceFactKey;
-      if (!key || !(key in DECK_CHECK_COPY)) continue;
-      if (isDeckClarifyAskClass(deckFactQuestionClass(key))) continue;
+      if (!key || !item.write) continue;
+      if (!isCalculatorConsumedFact("deck", key)) continue;
+      if (DECK_REFINE_EXCLUDED.has(key)) continue;
       if (key === DECK_CONCRETE_TO_SUPPORTS_FACT_KEY && !supportsRelevant) {
         continue;
       }
-      const copy = DECK_CHECK_COPY[key]!;
+      if (
+        key !== DECK_CONCRETE_TO_SUPPORTS_FACT_KEY &&
+        !deckFactIsRelevant(key, { facts, workAreaId, briefText })
+      ) {
+        continue;
+      }
+      const template = getQuestionTemplateByKey(key);
+      const copy = DECK_CHECK_COPY[key];
+      const inputType: RefineCandidate["inputType"] =
+        item.write.valueType === "boolean"
+          ? "boolean"
+          : template?.inputType === "number"
+            ? "number"
+            : "select";
       const row = fromCheck(item, workAreaName, "deck", {
-        question: copy.question,
-        group: "scope",
+        question: copy?.question ?? template?.questionText ?? item.label,
+        group: inputType === "number" ? "structure" : "scope",
         tier: "high_value",
-        inputType: copy.options ? "select" : "boolean",
-        options: copy.options,
+        inputType,
+        options:
+          inputType === "select"
+            ? copy?.options ?? template?.options
+            : undefined,
+        unit: inputType === "number" ? template?.unit : undefined,
       });
       if (row) out.push(row);
     }

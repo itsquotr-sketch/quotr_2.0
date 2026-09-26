@@ -17,6 +17,17 @@ import type {
   JobPlanWorkAreaInput,
 } from "@/lib/assistant/job-plan/types";
 
+/**
+ * Deck Job Plan is scalar. Scope rows are work-area facts.
+ * There is no nested portion collection, stable nested item id, or compare-and-swap.
+ */
+export const DECK_JOB_PLAN_ADAPTER_CONTRACT = {
+  shape: "scalar",
+  nestedCollectionFactKey: null,
+  stableNestedIdentity: false,
+  compareAndSwap: false,
+} as const;
+
 const ELEVATED_HEIGHT_M = 1;
 
 function booleanItem(params: {

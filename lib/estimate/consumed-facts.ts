@@ -130,6 +130,14 @@ const DECK_PHYSICAL_ONLY_FACTS = new Set<string>([
   "deck.fascia_material",
 ]);
 
+/**
+ * Physical wall count is read by the Internal Walls calculator summary.
+ * Commercial area uses total length and does not multiply by this count.
+ */
+const PRESENTATION_IDENTITY_FACTS = new Set<string>([
+  "internal_walls.wall_type.wall_count",
+]);
+
 /** Retaining Wall 1A physical/planning facts: takeoff only, not package money. */
 const RW_PHYSICAL_ONLY_FACTS = new Set<string>([
   "retaining_wall.is_raking",
@@ -165,6 +173,15 @@ export function getConsumedFactConsumption(
 ): ConsumedFactConsumption | null {
   if (!workAreaType || !factKey) return null;
   if (!isCalculatorConsumedFact(workAreaType, factKey)) return null;
+  if (PRESENTATION_IDENTITY_FACTS.has(factKey)) {
+    return {
+      factKey,
+      scope: false,
+      physical: true,
+      commercial: false,
+      confidence: false,
+    };
+  }
   if (workAreaType === "deck" && DECK_PHYSICAL_ONLY_FACTS.has(factKey)) {
     return {
       factKey,
