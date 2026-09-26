@@ -281,7 +281,8 @@ export const DECK_INFORMATION_CONTRACT: readonly DeckInformationContractRow[] = 
     calculatorConsumed: true,
     physical: true,
     commercial: true,
-    reason: "Fascia ground gap. Defaults 20 mm. Affects fascia board lm.",
+    reason:
+      "Skirting ground gap. Defaults 20 mm. Asked only when full-height skirting is included. Ordinary fascia does not use it.",
   },
   {
     factKey: "deck.fascia_material",

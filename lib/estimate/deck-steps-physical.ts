@@ -254,6 +254,31 @@ export function deckRefineKeepsDisclosedStepWidth(params: {
   });
 }
 
+function splitStepDimension(params: {
+  facts: EstimateFact[];
+  workAreaId: string;
+  factKey: string;
+  rejectUnstatedDeckEdge: boolean;
+}): { known: number | null; assumed: number | null } {
+  const row = getFact(params.facts, params.workAreaId, params.factKey);
+  const numeric = getNumberFact(params.facts, params.workAreaId, params.factKey);
+  if (numeric == null || !(numeric > 0)) return { known: null, assumed: null };
+  if (isNotSureValue(row?.value) || isDisclosedAssumptionSource(row?.source)) {
+    return { known: null, assumed: numeric };
+  }
+  if (
+    params.rejectUnstatedDeckEdge &&
+    looksLikeUnstatedFullDeckEdgeWidth({
+      facts: params.facts,
+      workAreaId: params.workAreaId,
+      widthM: numeric,
+    })
+  ) {
+    return { known: null, assumed: null };
+  }
+  return { known: numeric, assumed: null };
+}
+
 export function calculateDeckStepsQuantities(params: {
   facts: readonly EstimateFact[];
   workAreaId: string;
@@ -295,27 +320,27 @@ export function calculateDeckStepsQuantities(params: {
     });
   }
 
-  const rawWidthFact = getNumberFact(facts, params.workAreaId, "deck.step_width_m");
-  const widthFact =
-    rawWidthFact != null &&
-    rawWidthFact > 0 &&
-    !looksLikeUnstatedFullDeckEdgeWidth({
-      facts,
-      workAreaId: params.workAreaId,
-      widthM: rawWidthFact,
-    })
-      ? rawWidthFact
-      : null;
+  const widthParts = splitStepDimension({
+    facts,
+    workAreaId: params.workAreaId,
+    factKey: "deck.step_width_m",
+    rejectUnstatedDeckEdge: true,
+  });
   const widthResolved = resolvePhysicalRequirement({
-    knownValue: widthFact != null && widthFact > 0 ? widthFact : null,
-    assumptionValue: DEFAULT_STEP_WIDTH_M,
+    knownValue: widthParts.known,
+    assumptionValue: widthParts.assumed ?? DEFAULT_STEP_WIDTH_M,
     assumptionAllowed: params.assumeWidthIfMissing !== false,
   });
 
-  const goingFact = getNumberFact(facts, params.workAreaId, "deck.step_going_m");
+  const goingParts = splitStepDimension({
+    facts,
+    workAreaId: params.workAreaId,
+    factKey: "deck.step_going_m",
+    rejectUnstatedDeckEdge: false,
+  });
   const goingResolved = resolvePhysicalRequirement({
-    knownValue: goingFact != null && goingFact > 0 ? goingFact : null,
-    assumptionValue: DEFAULT_STEP_GOING_M,
+    knownValue: goingParts.known,
+    assumptionValue: goingParts.assumed ?? DEFAULT_STEP_GOING_M,
     assumptionAllowed: params.assumeGoingIfMissing !== false,
   });
 

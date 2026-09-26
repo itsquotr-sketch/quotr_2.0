@@ -17,6 +17,7 @@ import {
   isDeckClarifyAskClass,
   type DeckFactQuestionClass,
 } from "@/lib/estimate/deck-information-contract";
+import { deckSkirtingIncluded } from "@/lib/estimate/deck-fascia";
 import {
   deckStepsCommerciallyIncluded,
   newSubstructureIncluded,
@@ -128,6 +129,11 @@ export function deckFactIsRelevant(
     case "deck.step_going_m":
     case "deck.step_count":
       return deckStepsCommerciallyIncluded({
+        facts: asEstimateFacts(ctx.facts),
+        workAreaId: ctx.workAreaId,
+      });
+    case "deck.ground_clearance_m":
+      return deckSkirtingIncluded({
         facts: asEstimateFacts(ctx.facts),
         workAreaId: ctx.workAreaId,
       });

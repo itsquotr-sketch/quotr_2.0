@@ -12,10 +12,13 @@ import { enrichExtractionFromBrief } from "../lib/ai/enrich-extraction";
 import { coerceExtractionPayload } from "../lib/ai/schema";
 import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
+import { resolveCommittedFactWrite } from "../lib/assistant/scope-persistence";
 import { estimateNeedsUpdating } from "../lib/estimate/stale-semantics";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
 import {
   calculateDeckStepsQuantities,
+  DEFAULT_STEP_GOING_M,
+  DEFAULT_STEP_WIDTH_M,
   estimateDeckRiseCount,
   STEP_ARRANGEMENT_FROM_HEIGHT_STATEMENT,
   STEP_WIDTH_ASSUMPTION_STATEMENT,
@@ -299,12 +302,71 @@ const assumedWidthClarify = composeClarifyView({
   ],
   jobPlan,
 });
+const assumedWidthKeys = [
+  ...assumedWidthClarify.candidates,
+  ...assumedWidthClarify.deferred,
+].map((c) => c.factKey ?? c.constraintKey);
 assert(
   "Not sure / Quotr assumption resolves required step width",
   !assumedWidthClarify.candidates.some((c) => c.factKey === "deck.step_width_m") &&
     !assumedWidthClarify.deferred.some((c) => c.factKey === "deck.step_width_m") &&
-    assumedWidthClarify.enoughToEstimate,
-  `keys=${[...assumedWidthClarify.candidates, ...assumedWidthClarify.deferred].map((c) => c.factKey ?? c.constraintKey).join(",")} remaining=${assumedWidthClarify.remainingRequiredCount} enough=${assumedWidthClarify.enoughToEstimate}`
+    assumedWidthKeys.includes("deck.step_going_m") &&
+    !assumedWidthKeys.includes("deck.ground_clearance_m") &&
+    !assumedWidthClarify.enoughToEstimate,
+  `keys=${assumedWidthKeys.join(",")} remaining=${assumedWidthClarify.remainingRequiredCount} enough=${assumedWidthClarify.enoughToEstimate}`
+);
+const widthCommit = resolveCommittedFactWrite({
+  key: "deck.step_width_m",
+  value: "Not sure",
+  valueType: "number",
+});
+const goingCommit = resolveCommittedFactWrite({
+  key: "deck.step_going_m",
+  value: "Not sure",
+  valueType: "number",
+});
+const readyFacts: EstimateFact[] = [
+  ...clarifyFacts,
+  fact("deck.step_width_m", widthCommit.value, widthCommit.source),
+  fact("deck.step_going_m", goingCommit.value, goingCommit.source),
+  fact("deck.substructure_included", true, "user"),
+];
+const readyPlan = composeJobPlan({
+  workAreas: [{ id: DECK_ID, type: "deck", name: "Deck", status: "confirmed" }],
+  facts: readyFacts,
+  briefText: OWNER_BRIEF,
+});
+const readyClarify = composeClarifyView({
+  stage: "work_area_questions",
+  briefText: OWNER_BRIEF,
+  qualityLevel: "standard",
+  workAreas: [{ id: DECK_ID, type: "deck", name: "Deck", status: "confirmed" }],
+  facts: readyFacts,
+  constraints: [
+    { key: "site_access", value: "Easy" },
+    { key: "material_carry_distance", value: "< 10m" },
+    { key: "occupied_site", value: "No" },
+    { key: "working_hours", value: "No" },
+  ],
+  jobPlan: readyPlan,
+});
+const readyDeck = calculateDeck(ctx(readyFacts), wa());
+const readyKeys = [...readyClarify.candidates, ...readyClarify.deferred].map(
+  (c) => c.factKey ?? c.constraintKey
+);
+assert(
+  "persisted step assumptions clear blocking Details questions",
+  widthCommit.source === "assumption" &&
+    widthCommit.value === DEFAULT_STEP_WIDTH_M &&
+    goingCommit.source === "assumption" &&
+    goingCommit.value === DEFAULT_STEP_GOING_M &&
+    !readyKeys.includes("deck.step_width_m") &&
+    !readyKeys.includes("deck.step_going_m") &&
+    !readyKeys.includes("deck.ground_clearance_m") &&
+    readyClarify.enoughToEstimate &&
+    readyDeck.assumptions.includes(STEP_WIDTH_ASSUMPTION_STATEMENT) &&
+    readyDeck.assumptions.some((row) => /assuming stair tread depth 280 mm/i.test(row)),
+  `keys=${readyKeys.join(",")} remaining=${readyClarify.remainingRequiredCount} enough=${readyClarify.enoughToEstimate}`
 );
 
 const panel = read("components/assistant/clarify/ClarifyPanel.tsx");
