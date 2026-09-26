@@ -6,8 +6,15 @@
  * ASSUMED (disclosed), or INFORMATION_REQUIRED. Material, framing, and
  * labour consume this object — never a silent raw fallback.
  */
+import { isDisclosedAssumptionSource } from "@/lib/estimate/deck-board-width";
 import { deckStepsCommerciallyIncluded } from "@/lib/estimate/deck-scope-2c";
-import { getFact, getNumberFact, round2 } from "@/lib/estimate/facts";
+import {
+  getFact,
+  getNumberFact,
+  hasFactValue,
+  isNotSureValue,
+  round2,
+} from "@/lib/estimate/facts";
 import {
   detailedMoneyAllowed,
   resolvePhysicalRequirement,
@@ -141,6 +148,110 @@ function looksLikeUnstatedFullDeckEdgeWidth(params: {
   return [length, deckWidth].some(
     (edge) => edge != null && Math.abs(edge - params.widthM) < 0.05
   );
+}
+
+export const DECK_STEP_DIMENSION_FACT_KEYS = [
+  "deck.step_width_m",
+  "deck.step_going_m",
+] as const;
+
+export type DeckStepDimensionFactKey =
+  (typeof DECK_STEP_DIMENSION_FACT_KEYS)[number];
+
+export type DeckStepDimensionSurface =
+  | { surface: "off" }
+  | { surface: "details" }
+  | { surface: "refine_assumed"; value: number }
+  | { surface: "refine_owned"; value: number };
+
+function disclosedStepDimensionValue(
+  factKey: DeckStepDimensionFactKey,
+  numeric: number | null
+): number {
+  if (numeric != null && numeric > 0) return numeric;
+  return factKey === "deck.step_width_m"
+    ? DEFAULT_STEP_WIDTH_M
+    : DEFAULT_STEP_GOING_M;
+}
+
+/**
+ * Unresolved step dimensions stay in Details.
+ * A captured or disclosed assumption is a Refine Improve row.
+ * A user or extracted number is Refine-editable and is not an Improve item.
+ * A non-user width that copies the deck edge is the disclosed 1.0 m assumption.
+ */
+export function classifyDeckStepDimensionForRefine(params: {
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  factKey: DeckStepDimensionFactKey;
+}): DeckStepDimensionSurface {
+  if (
+    !deckStepsCommerciallyIncluded({
+      facts: params.facts,
+      workAreaId: params.workAreaId,
+    })
+  ) {
+    return { surface: "off" };
+  }
+
+  const row = getFact([...params.facts], params.workAreaId, params.factKey);
+  if (!row || !hasFactValue(row.value)) return { surface: "details" };
+
+  const numeric = getNumberFact(
+    [...params.facts],
+    params.workAreaId,
+    params.factKey
+  );
+
+  if (
+    isNotSureValue(row.value) ||
+    isDisclosedAssumptionSource(row.source)
+  ) {
+    return {
+      surface: "refine_assumed",
+      value: disclosedStepDimensionValue(params.factKey, numeric),
+    };
+  }
+
+  if (
+    params.factKey === "deck.step_width_m" &&
+    numeric != null &&
+    looksLikeUnstatedFullDeckEdgeWidth({
+      facts: params.facts,
+      workAreaId: params.workAreaId,
+      widthM: numeric,
+    })
+  ) {
+    return { surface: "refine_assumed", value: DEFAULT_STEP_WIDTH_M };
+  }
+
+  if (numeric != null && numeric > 0) {
+    return { surface: "refine_owned", value: numeric };
+  }
+
+  return { surface: "details" };
+}
+
+export function deckRefineKeepsDisclosedStepWidth(params: {
+  factKey: string | null | undefined;
+  facts: readonly EstimateFact[];
+  workAreaId: string;
+  storedValue: unknown;
+  candidateAssumed: boolean | undefined;
+}): boolean {
+  if (params.factKey !== "deck.step_width_m" || params.candidateAssumed !== true) {
+    return false;
+  }
+  const widthM =
+    typeof params.storedValue === "number"
+      ? params.storedValue
+      : Number(params.storedValue);
+  if (!Number.isFinite(widthM)) return false;
+  return looksLikeUnstatedFullDeckEdgeWidth({
+    facts: params.facts,
+    workAreaId: params.workAreaId,
+    widthM,
+  });
 }
 
 export function calculateDeckStepsQuantities(params: {

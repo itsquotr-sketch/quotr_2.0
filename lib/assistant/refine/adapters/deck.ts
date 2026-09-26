@@ -12,6 +12,10 @@ import {
   newSubstructureIncluded,
   shouldAskPileReplacement,
 } from "@/lib/estimate/deck-scope-2c";
+import {
+  classifyDeckStepDimensionForRefine,
+  DECK_STEP_DIMENSION_FACT_KEYS,
+} from "@/lib/estimate/deck-steps-physical";
 import { getQuestionTemplateByKey } from "@/lib/scopes/registry";
 import type {
   ComposeRefineInput,
@@ -150,6 +154,37 @@ export const deckRefineAdapter: RefineWorkAreaAdapter = {
         unit: inputType === "number" ? template?.unit : undefined,
       });
       if (row) out.push(row);
+    }
+
+    for (const factKey of DECK_STEP_DIMENSION_FACT_KEYS) {
+      const surface = classifyDeckStepDimensionForRefine({
+        facts,
+        workAreaId,
+        factKey,
+      });
+      if (surface.surface !== "refine_assumed") continue;
+      const template = getQuestionTemplateByKey(factKey);
+      out.push({
+        id: `refine:${workAreaId}:${factKey}`,
+        group: "structure",
+        tier: "high_value",
+        workAreaId,
+        workAreaName,
+        workAreaType: "deck",
+        factKey,
+        constraintKey: null,
+        questionKey: factKey,
+        label: template?.label ?? factKey,
+        question: template?.questionText ?? template?.label ?? factKey,
+        inputType: "number",
+        unit: template?.unit ?? "m",
+        writeTarget: "FACT",
+        write: null,
+        consumedByCalculator: true,
+        currentValue: surface.value,
+        valueSource: "assumption",
+        assumed: true,
+      });
     }
 
     if (

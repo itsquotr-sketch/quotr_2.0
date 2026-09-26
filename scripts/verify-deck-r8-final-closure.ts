@@ -8,6 +8,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { composeBuilderReview, toPricedLine } from "../lib/assistant/builder-review/compose";
+import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import { composeRefineView } from "../lib/assistant/refine/compose";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import { buildMinimalExtractionFromBrief } from "../lib/ai/enrich-extraction";
@@ -31,6 +32,7 @@ import {
 } from "../lib/estimate/deck-scope-2c";
 import {
   DEFAULT_STEP_GOING_M,
+  DEFAULT_STEP_WIDTH_M,
   calculateDeckStepsQuantities,
 } from "../lib/estimate/deck-steps-physical";
 import {
@@ -71,8 +73,13 @@ function read(path: string): string {
   return readFileSync(path, "utf8");
 }
 
-function fact(key: string, workAreaId: string, value: unknown): EstimateFact {
-  return { key, work_area_id: workAreaId, value };
+function fact(
+  key: string,
+  workAreaId: string,
+  value: unknown,
+  source?: string
+): EstimateFact {
+  return { key, work_area_id: workAreaId, value, source };
 }
 
 function wa(id: string): EstimateWorkArea & { status: "confirmed" } {
@@ -567,14 +574,66 @@ const refine = composeRefineView({
   qualityLevel: "standard",
   jobPlan,
 });
+const clarify = composeClarifyView({
+  stage: "work_area_questions",
+  workAreas: [wa(LIVE_ID)],
+  facts: liveFacts(),
+  constraints: [],
+  briefText: "3m x 9m Kwila deck with steps",
+  qualityLevel: "standard",
+  jobPlan,
+});
+const assumedGoingFacts = liveFacts([
+  fact("deck.step_going_m", LIVE_ID, DEFAULT_STEP_GOING_M, "assumption"),
+]);
+const assumedGoingPlan = composeJobPlan({
+  workAreas: [wa(LIVE_ID)],
+  facts: assumedGoingFacts,
+  constraints: [],
+  briefText: "3m x 9m Kwila deck with steps",
+});
+const assumedGoingRefine = composeRefineView({
+  workAreas: [wa(LIVE_ID)],
+  facts: assumedGoingFacts,
+  constraints: [],
+  briefText: "3m x 9m Kwila deck with steps",
+  qualityLevel: "standard",
+  jobPlan: assumedGoingPlan,
+});
+const assumedGoingClarify = composeClarifyView({
+  stage: "work_area_questions",
+  workAreas: [wa(LIVE_ID)],
+  facts: assumedGoingFacts,
+  constraints: [],
+  briefText: "3m x 9m Kwila deck with steps",
+  qualityLevel: "standard",
+  jobPlan: assumedGoingPlan,
+});
+const clarifyKeys = (view: { candidates: { factKey: string | null }[]; deferred: { factKey: string | null }[] }) =>
+  [...view.candidates, ...view.deferred].map((row) => row.factKey);
+const goingImprove = assumedGoingRefine.highValue.find(
+  (row) => row.factKey === "deck.step_going_m"
+);
+const edgeImprove = refine.highValue.find((row) => row.factKey === "deck.step_width_m");
 check(
   "22 Improve/check appears when appropriate",
   live.assumptions.some((row) => /assuming stair tread depth 280 mm/i.test(row)) &&
-    refine.highValue.some((row) => row.factKey === "deck.step_going_m") &&
     (liveReview.improvements.some((row) =>
       /confirm stair tread depth/i.test(row.label)
     ) ||
-      liveReview.assumptions.some((row) => /tread depth/i.test(row.label)))
+      liveReview.assumptions.some((row) => /tread depth/i.test(row.label))) &&
+    clarifyKeys(clarify).includes("deck.step_going_m") &&
+    !refine.highValue.some((row) => row.factKey === "deck.step_going_m") &&
+    !refine.advanced.some((row) => row.factKey === "deck.step_going_m") &&
+    edgeImprove?.assumed === true &&
+    edgeImprove.currentValue === DEFAULT_STEP_WIDTH_M &&
+    edgeImprove.label === "Step width" &&
+    edgeImprove.question === "How wide are the steps?" &&
+    goingImprove?.assumed === true &&
+    goingImprove.currentValue === DEFAULT_STEP_GOING_M &&
+    goingImprove.label === "Tread depth" &&
+    goingImprove.question === "How deep are the stair treads?" &&
+    !clarifyKeys(assumedGoingClarify).includes("deck.step_going_m")
 );
 check(
   "live stair width is not the unstated 9 m deck edge",

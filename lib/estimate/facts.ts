@@ -10,13 +10,6 @@ const NOT_SURE_VALUES = new Set([
   "unsure",
 ]);
 
-/** User-owned scalar facts are left untouched when analysis runs again. */
-export function userOwnedFactBlocksReanalysisOverwrite(
-  source: string | null | undefined
-): boolean {
-  return source === "user";
-}
-
 export function hasFactValue(value: unknown): boolean {
   return value !== null && value !== undefined && value !== "";
 }

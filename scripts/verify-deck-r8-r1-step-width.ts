@@ -9,6 +9,7 @@
 import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
 import { composeBuilderReview, toPricedLine } from "../lib/assistant/builder-review/compose";
+import { composeClarifyView } from "../lib/assistant/clarify/compose";
 import { composeRefineView } from "../lib/assistant/refine/compose";
 import { composeJobPlan } from "../lib/assistant/job-plan/compose";
 import { calculateDeck } from "../lib/estimate/calculators/deck";
@@ -56,8 +57,13 @@ function read(path: string): string {
   return readFileSync(path, "utf8");
 }
 
-function fact(key: string, workAreaId: string, value: unknown): EstimateFact {
-  return { key, work_area_id: workAreaId, value };
+function fact(
+  key: string,
+  workAreaId: string,
+  value: unknown,
+  source?: string
+): EstimateFact {
+  return { key, work_area_id: workAreaId, value, source };
 }
 
 function wa(id: string): EstimateWorkArea & { status: "confirmed" } {
@@ -229,21 +235,39 @@ function reviewOf(result: ReturnType<typeof calculateDeck>) {
   });
 }
 
-function refineOf(facts: EstimateFact[]) {
-  const jobPlan = composeJobPlan({
+function jobPlanOf(facts: EstimateFact[]) {
+  return composeJobPlan({
     workAreas: [wa(LIVE_ID)],
     facts,
     constraints: [],
     briefText: "Kwila deck with steps",
   });
+}
+
+function refineOf(facts: EstimateFact[]) {
   return composeRefineView({
     workAreas: [wa(LIVE_ID)],
     facts,
     constraints: [],
     briefText: "Kwila deck with steps",
     qualityLevel: "standard",
-    jobPlan,
+    jobPlan: jobPlanOf(facts),
   });
+}
+
+function clarifyKeysOf(facts: EstimateFact[]): string[] {
+  const view = composeClarifyView({
+    stage: "work_area_questions",
+    workAreas: [wa(LIVE_ID)],
+    facts,
+    constraints: [],
+    briefText: "Kwila deck with steps",
+    qualityLevel: "standard",
+    jobPlan: jobPlanOf(facts),
+  });
+  return [...view.candidates, ...view.deferred].flatMap((row) =>
+    row.factKey ? [row.factKey] : []
+  );
 }
 
 function spawnVerifier(script: string): boolean {
@@ -417,17 +441,27 @@ check(
     )
 );
 
+const assumedWidthFacts = [
+  ...omittedFacts,
+  fact("deck.step_width_m", LIVE_ID, DEFAULT_STEP_WIDTH_M, "assumption"),
+];
+const assumedWidthRefine = refineOf(assumedWidthFacts);
+const assumedWidthRow = assumedWidthRefine.highValue.find(
+  (row) => row.factKey === "deck.step_width_m"
+);
+const omittedClarifyKeys = clarifyKeysOf(omittedFacts);
 check(
   "5 Improve item appears when width assumed",
-  omittedRefine.highValue.some((row) => row.factKey === "deck.step_width_m") &&
-    omittedRefine.highValue.some(
-      (row) =>
-        row.factKey === "deck.step_width_m" &&
-        row.question === "How wide are the steps?" &&
-        row.label === "Step width"
-    ) &&
+  omittedClarifyKeys.includes("deck.step_width_m") &&
+    !omittedRefine.highValue.some((row) => row.factKey === "deck.step_width_m") &&
+    !omittedRefine.advanced.some((row) => row.factKey === "deck.step_width_m") &&
     (omittedReview.improvements.some((row) => /confirm (stair|step) width/i.test(row.label)) ||
-      omittedReview.assumptions.some((row) => /(stair|step) width/i.test(row.label)))
+      omittedReview.assumptions.some((row) => /(stair|step) width/i.test(row.label))) &&
+    assumedWidthRow?.label === "Step width" &&
+    assumedWidthRow.question === "How wide are the steps?" &&
+    assumedWidthRow.assumed === true &&
+    assumedWidthRow.currentValue === DEFAULT_STEP_WIDTH_M &&
+    !clarifyKeysOf(assumedWidthFacts).includes("deck.step_width_m")
 );
 
 const knownBothFacts = liveFacts([fact("deck.step_going_m", LIVE_ID, 0.28)]);

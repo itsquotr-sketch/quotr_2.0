@@ -32,10 +32,7 @@ import {
   SHARED_CONSUMED_CONSTRAINT_KEYS,
 } from "../lib/estimate/consumed-facts";
 import { DECK_INFORMATION_CONTRACT } from "../lib/estimate/deck-information-contract";
-import {
-  round2,
-  userOwnedFactBlocksReanalysisOverwrite,
-} from "../lib/estimate/facts";
+import { round2 } from "../lib/estimate/facts";
 import {
   sumIncludedLineItems,
   totalLabourHours,
@@ -501,10 +498,27 @@ check(
     planAfter.included.some((row) => row.sourceFactKey === "deck.existing_deck_removal") &&
     !planAfter.notConfirmed.some((row) => row.sourceFactKey === "deck.existing_deck_removal")
 );
+const userWidthKept = mergeDerivedFactsIntoRecords(
+  [{ key: "deck.step_width_m", work_area_id: "d1", value: 1.2, source: "user" }],
+  [{ key: "deck.step_width_m", work_area_id: "d1", value: 9, source: "derived" }]
+);
+const extractedWidthUpdated = mergeDerivedFactsIntoRecords(
+  [
+    {
+      key: "deck.step_width_m",
+      work_area_id: "d1",
+      value: 1.2,
+      source: "ai_extracted",
+    },
+  ],
+  [{ key: "deck.step_width_m", work_area_id: "d1", value: 1.4, source: "derived" }]
+);
 check(
   "E4 user-owned Deck facts block re-analysis overwrite",
-  userOwnedFactBlocksReanalysisOverwrite("user") === true &&
-    userOwnedFactBlocksReanalysisOverwrite("ai_extracted") === false
+  userWidthKept[0]?.value === 1.2 &&
+    userWidthKept[0]?.source === "user" &&
+    extractedWidthUpdated[0]?.value === 1.4 &&
+    extractedWidthUpdated[0]?.source === "derived"
 );
 const merged = mergeDerivedFactsIntoRecords(
   [{ key: "deck.area_m2", work_area_id: "d1", value: 36, source: "user" }],

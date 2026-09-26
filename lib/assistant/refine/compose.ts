@@ -15,6 +15,7 @@ import {
 } from "@/lib/estimate/consumed-facts";
 import { isDisclosedAssumptionSource } from "@/lib/estimate/deck-board-width";
 import { deckFactIsRelevant } from "@/lib/estimate/deck-question-descriptors";
+import { deckRefineKeepsDisclosedStepWidth } from "@/lib/estimate/deck-steps-physical";
 import { fenceFactQuestionClass } from "@/lib/estimate/fence-information-contract";
 import { fenceFactIsRelevant } from "@/lib/estimate/fence-question-relevance";
 import { retainingWallFactQuestionClass } from "@/lib/estimate/retaining-wall-information-contract";
@@ -313,7 +314,24 @@ function attachCurrent(
   if (!found || !isResolvedValue(found.value)) {
     return {
       ...stamped,
-      assumed: isDisclosedAssumptionSource(stamped.valueSource),
+      assumed:
+        stamped.assumed === true ||
+        isDisclosedAssumptionSource(stamped.valueSource),
+    };
+  }
+  if (
+    deckRefineKeepsDisclosedStepWidth({
+      factKey: row.factKey,
+      facts: input.facts,
+      workAreaId: row.workAreaId ?? found.work_area_id ?? "",
+      storedValue: found.value,
+      candidateAssumed: stamped.assumed,
+    })
+  ) {
+    return {
+      ...stamped,
+      valueSource: "assumption",
+      assumed: true,
     };
   }
   return {

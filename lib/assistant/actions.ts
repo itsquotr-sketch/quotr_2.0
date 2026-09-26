@@ -32,7 +32,6 @@ import { canRunStageAction } from "@/lib/assistant/state";
 import { permissionDeniedError } from "@/lib/team/permission-server";
 import { legacyQualityRequiresScopeReview } from "@/lib/assistant/clarify/quality-gate";
 import { isStageAtOrBeyond } from "@/lib/assistant/stage";
-import { userOwnedFactBlocksReanalysisOverwrite } from "@/lib/estimate/facts";
 import { filterEstimateBlockingProjectConditionKeys } from "@/lib/scopes/level1-blocking";
 import {
   existingWorkAreaInstanceKeys,
@@ -690,7 +689,7 @@ export async function saveBriefAndSeedWorkAreas(
         continue;
       }
 
-      if (userOwnedFactBlocksReanalysisOverwrite(existing?.source)) {
+      if (existing?.source === "user") {
         continue;
       }
 
