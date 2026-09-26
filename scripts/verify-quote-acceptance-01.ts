@@ -110,7 +110,10 @@ assert(
     migrations.includes("056_bathroom_company_dna_catalogue_seed.sql") &&
     migrations.includes("057_repeated_work_area_acceptance.sql") &&
     migrations.includes("058_project_lifecycle_foundation.sql") &&
-    migrations.at(-1) === "058_project_lifecycle_foundation.sql"
+    migrations.includes("059_hosted_lifecycle_event_adoption.sql") &&
+    migrations.includes("060_preview_lifecycle_fixture_cleanup.sql") &&
+    migrations.includes("061_preview_lifecycle_fixture_cleanup_order.sql") &&
+    migrations.at(-1) === "061_preview_lifecycle_fixture_cleanup_order.sql"
 );
 assert(
   "041 accept/decline RPCs remain",

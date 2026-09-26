@@ -12,6 +12,11 @@
  * - quotes + quote_items are the customer document. Revisions are new
  *   quote rows (016). quote_events (041) record quote transactions.
  * - quote_acceptances (044) are immutable acceptance evidence.
+ * - Hosted create, revision and send write quote_events inside the quote
+ *   transaction (041/042). Migration 059 copies quote_created,
+ *   quote_revision_created and quote_sent into this ledger in that same
+ *   transaction. Resends stay on quote_deliveries and do not add quote_sent.
+ *   Acceptance stays on the 058 snapshot trigger.
  *
  * This module adds a projection and a transition contract. It does not
  * replace those columns. An accepted commercial snapshot is a copy of the
@@ -932,11 +937,89 @@ export type LifecycleAnalytics = {
   estimateReadyCount: number;
   quoteCreatedCount: number;
   quoteSentCount: number;
+  /** One quote_sent milestone per revision. Resends are not included. */
+  firstSendCount: number;
+  /** Projects with at least one quote_sent milestone. Conversion denominator. */
+  sentProjectCount: number;
   quoteAcceptedCount: number;
+  /** Distinct projects that have an accepted commercial snapshot. */
+  acceptedBaselineCount: number;
+  /**
+   * Accepted project baselines divided by projects that have been sent.
+   * A second revision send does not increase the denominator. A resend
+   * does not create another quote_sent event.
+   */
   quoteConversion: number | null;
   acceptedRevenueExGst: number | null;
   durations: Array<{ projectId: string; durationMs: number | null }>;
 };
+
+export const QUOTE_CONVERSION_DEFINITION =
+  "accepted unique project baselines / projects with at least one quote_sent milestone";
+
+/** quote_events types that become one lifecycle milestone per quote revision. */
+export function lifecycleMilestoneForQuoteEvent(
+  quoteEventType: string
+): "quote_created" | "quote_sent" | null {
+  if (
+    quoteEventType === "quote_created" ||
+    quoteEventType === "quote_revision_created"
+  ) {
+    return "quote_created";
+  }
+  if (quoteEventType === "quote_sent") return "quote_sent";
+  return null;
+}
+
+export function quoteLifecycleIdempotencyKey(
+  milestone: "quote_created" | "quote_sent",
+  quoteId: string
+): string {
+  return `${milestone}:${quoteId}`;
+}
+
+/**
+ * Copies a successful quote transaction event into the lifecycle ledger.
+ * A failed transaction must pass succeeded: false and leaves the ledger unchanged.
+ */
+export function adoptHostedQuoteMilestone(
+  events: ProjectLifecycleEvent[],
+  input: {
+    succeeded: boolean;
+    quoteEventType: string;
+    orgId: string;
+    projectId: string;
+    quoteId: string;
+    revisionNumber: number;
+    actorUserId: string | null;
+    occurredAt: string;
+  }
+): ProjectLifecycleEvent[] {
+  if (!input.succeeded) return events;
+  const milestone = lifecycleMilestoneForQuoteEvent(input.quoteEventType);
+  if (!milestone) return events;
+  const idempotencyKey = quoteLifecycleIdempotencyKey(milestone, input.quoteId);
+  if (events.some((row) => row.orgId === input.orgId && row.idempotencyKey === idempotencyKey)) {
+    return events;
+  }
+  const built = buildLifecycleEvent({
+    orgId: input.orgId,
+    projectId: input.projectId,
+    actorUserId: input.actorUserId,
+    eventType: milestone,
+    occurredAt: input.occurredAt,
+    sourceEntityType: "quote",
+    sourceEntityId: input.quoteId,
+    idempotencyKey,
+    metadata: {
+      quoteId: input.quoteId,
+      revisionNumber: input.revisionNumber,
+    },
+    allowNullActor: false,
+  });
+  if (!built.ok) return events;
+  return [...events, built.event];
+}
 
 function countEvents(
   events: ProjectLifecycleEvent[],
@@ -952,6 +1035,14 @@ export function readLifecycleAnalytics(input: {
 }): LifecycleAnalytics {
   const quoteSentCount = countEvents(input.events, "quote_sent");
   const quoteAcceptedCount = countEvents(input.events, "quote_accepted");
+  const sentProjectCount = new Set(
+    input.events
+      .filter((row) => row.eventType === "quote_sent")
+      .map((row) => row.projectId)
+  ).size;
+  const acceptedBaselineCount = new Set(
+    input.snapshots.map((row) => row.projectId)
+  ).size;
   const missingSell = input.snapshots.some((row) => !isFiniteNumber(row.sellExGst));
   const acceptedRevenueExGst =
     input.snapshots.length === 0 || missingSell
@@ -978,9 +1069,12 @@ export function readLifecycleAnalytics(input: {
     estimateReadyCount: countEvents(input.events, "estimate_ready"),
     quoteCreatedCount: countEvents(input.events, "quote_created"),
     quoteSentCount,
+    firstSendCount: quoteSentCount,
+    sentProjectCount,
     quoteAcceptedCount,
+    acceptedBaselineCount,
     quoteConversion:
-      quoteSentCount > 0 ? quoteAcceptedCount / quoteSentCount : null,
+      sentProjectCount > 0 ? acceptedBaselineCount / sentProjectCount : null,
     acceptedRevenueExGst,
     durations,
   };
