@@ -34,7 +34,11 @@ export type DomainEntityId =
   | "note_proposal"
   | "photo"
   | "file_document"
-  | "historical_record";
+  | "historical_record"
+  | "accepted_commercial_snapshot"
+  | "project_lifecycle_event"
+  | "future_variation"
+  | "future_subcontractor_rfp";
 
 export type DomainEntityContract = {
   id: DomainEntityId;
@@ -346,6 +350,43 @@ export const DOMAIN_ENTITY_CONTRACTS: readonly DomainEntityContract[] = [
     lifecycle: "Emergent; Evidence Engine not implemented",
     freezePoint: "Quote snapshots already freeze commercial history",
     downstreamConsumers: ["Quote history UI", "future Evidence Engine"],
+  },
+  {
+    id: "accepted_commercial_snapshot",
+    purpose:
+      "Immutable accepted commercial baseline copied from one quote revision",
+    owner: "Organisation and project",
+    sourceOfTruth: "accepted_commercial_snapshots + accepted_commercial_snapshot_lines",
+    lifecycle: "created once at quote acceptance; ordinary update and delete rejected",
+    freezePoint: "Insert. Later variations must not rewrite this row.",
+    downstreamConsumers: ["Job activation", "future variations", "accepted revenue"],
+  },
+  {
+    id: "project_lifecycle_event",
+    purpose: "Append-only record that a lifecycle change occurred",
+    owner: "Organisation and project",
+    sourceOfTruth: "project_lifecycle_events",
+    lifecycle: "append only; not the commercial baseline",
+    freezePoint: "Insert. Ordinary update and delete rejected.",
+    downstreamConsumers: ["Activity history", "analytics counts and duration"],
+  },
+  {
+    id: "future_variation",
+    purpose: "Future signed change against an accepted baseline",
+    owner: "Organisation and project",
+    sourceOfTruth: "Not stored yet — boundary only, see lifecycle-foundation",
+    lifecycle: "own version and status; approval required before revised contract value",
+    freezePoint: "Must not edit the accepted commercial snapshot",
+    downstreamConsumers: ["Revised contract value", "future variation UI"],
+  },
+  {
+    id: "future_subcontractor_rfp",
+    purpose: "Future internal subcontractor pricing against project scope",
+    owner: "Organisation and project",
+    sourceOfTruth: "Not stored yet — boundary only, see lifecycle-foundation",
+    lifecycle: "invites and response revisions; explicit adoption before project cost",
+    freezePoint: "Must not change the client quote or accepted snapshot automatically",
+    downstreamConsumers: ["Internal buy pricing", "future pricing adoption"],
   },
 ];
 
