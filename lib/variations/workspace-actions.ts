@@ -4,11 +4,13 @@ import { DEFAULT_MARGIN_PERCENT } from "@/lib/estimate/constants";
 import { getAuthOrgContext } from "@/lib/security/auth-org-context";
 import { assertOrgOwnsActiveProject } from "@/lib/security/org-ownership";
 import { getCompanySettingsWithContext } from "@/lib/settings/company-settings-loader";
+import { loadVariation } from "@/lib/variations/actions";
 import {
-  loadRevisedContractValue,
-  loadVariation,
-} from "@/lib/variations/actions";
-import type { InternalVariation, VariationStatus } from "@/lib/variations/domain";
+  calculateRevisedContractValue,
+  type InternalVariation,
+  type RevisedVariationRevision,
+  type VariationStatus,
+} from "@/lib/variations/domain";
 import {
   formatContractMoney,
   variationEligibility,
@@ -127,22 +129,24 @@ export async function loadVariationWorkspace(projectId: string): Promise<
     }
   | Fail
 > {
-  const eligibility = await loadVariationEligibility(projectId);
-  if (!eligibility.ok) return eligibility;
-  if (!eligibility.eligible) {
-    return {
-      ok: true,
-      eligible: false,
-      reason: eligibility.reason,
-      rows: [],
-      summary: null,
-      projectTitle: eligibility.projectTitle,
-      clientName: eligibility.clientName,
-    };
-  }
   const owned = await ownedProject(projectId);
   if (!owned.ok) return owned;
-  const [variations, revisions, contract] = await Promise.all([
+  const [project, snapshot, lifecycle, variations, revisions, items] = await Promise.all([
+    owned.context.supabase
+      .from("projects")
+      .select("title, client_name, archived_at, business_status")
+      .eq("id", owned.projectId)
+      .maybeSingle(),
+    owned.context.supabase
+      .from("accepted_commercial_snapshots")
+      .select("currency, gst_rate, tax_treatment, sell_ex_gst, gst_amount, sell_incl_gst")
+      .eq("project_id", owned.projectId)
+      .maybeSingle(),
+    owned.context.supabase
+      .from("project_lifecycle_positions")
+      .select("stage")
+      .eq("project_id", owned.projectId)
+      .maybeSingle(),
     owned.context.supabase
       .from("variations")
       .select("id, variation_number, title, status, created_at, current_revision_id")
@@ -154,9 +158,51 @@ export async function loadVariationWorkspace(projectId: string): Promise<
         "id, variation_id, revision_number, status, title, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst, issued_at, accepted_at, rejected_at, withdrawn_at"
       )
       .eq("project_id", owned.projectId),
-    loadRevisedContractValue({ projectId: owned.projectId }),
+    owned.context.supabase
+      .from("variation_items")
+      .select("revision_id, item_type, line_sell_adjustment_ex_gst")
+      .eq("project_id", owned.projectId),
   ]);
-  if (variations.error || revisions.error || !contract.ok) {
+  if (project.error || !project.data || variations.error || revisions.error || items.error) {
+    return { ok: false, error: "Variations could not be loaded." };
+  }
+  const projectRow = project.data as {
+    title: string;
+    client_name: string | null;
+    archived_at: string | null;
+    business_status: string | null;
+  };
+  const stage = (lifecycle.data as { stage?: string } | null)?.stage ?? null;
+  const eligibility = variationEligibility({
+    hasAcceptedSnapshot: Boolean(snapshot.data),
+    archived: projectRow.archived_at != null || projectRow.business_status === "archived",
+    deleted: false,
+    stage,
+  });
+  if (!eligibility.eligible) {
+    return {
+      ok: true,
+      eligible: false,
+      reason: eligibility.reason,
+      rows: [],
+      summary: null,
+      projectTitle: projectRow.title,
+      clientName: projectRow.client_name?.trim() || "Client",
+    };
+  }
+  const snap = snapshot.data as {
+    currency: string;
+    gst_rate: unknown;
+    tax_treatment: string;
+    sell_ex_gst: unknown;
+    gst_amount: unknown;
+    sell_incl_gst: unknown;
+  };
+  const sellEx = money(snap.sell_ex_gst);
+  const gstAmount = money(snap.gst_amount);
+  const sellIncl = money(snap.sell_incl_gst);
+  const gstRate = money(snap.gst_rate);
+  if (sellEx == null || gstAmount == null || sellIncl == null || gstRate == null) {
     return { ok: false, error: "Variations could not be loaded." };
   }
   const revisionRows = (revisions.data ?? []) as Array<{
@@ -205,12 +251,56 @@ export async function loadVariationWorkspace(projectId: string): Promise<
       inclGst: money(current?.total_adjustment_incl_gst),
       createdAt: formatDate(variation.created_at) ?? "",
       issuedAt: formatDate(current?.issued_at ?? null),
+      acceptedAt: formatDate(current?.accepted_at ?? null),
+      declinedAt: formatDate(current?.rejected_at ?? null),
       outcomeLabel: outcome,
+      currentRevisionId: current?.id ?? null,
     });
   }
+  const itemRows = (items.data ?? []) as Array<{
+    revision_id: string;
+    item_type: string;
+    line_sell_adjustment_ex_gst: unknown;
+  }>;
+  const contractRevisions: RevisedVariationRevision[] = revisionRows.flatMap((revision) => {
+    if (!isStatus(revision.status)) return [];
+    const header = ((variations.data ?? []) as Array<{ id: string; current_revision_id: string | null }>).find(
+      (row) => row.id === revision.variation_id
+    );
+    return [{
+      id: revision.id,
+      status: revision.status,
+      isCurrent: header?.current_revision_id === revision.id,
+      totalSellAdjustmentExGst: money(revision.total_sell_adjustment_ex_gst),
+      gstAdjustment: money(revision.gst_adjustment),
+      totalAdjustmentInclGst: money(revision.total_adjustment_incl_gst),
+      items: itemRows.flatMap((item) => {
+        if (item.revision_id !== revision.id) return [];
+        if (item.item_type !== "addition" && item.item_type !== "omission" && item.item_type !== "no_cost_scope_change") {
+          return [];
+        }
+        return [{
+          itemType: item.item_type,
+          lineSellAdjustmentExGst: money(item.line_sell_adjustment_ex_gst),
+        }];
+      }),
+    }];
+  });
+  const contract = calculateRevisedContractValue({
+    baseline: {
+      currency: snap.currency,
+      gstRate,
+      taxTreatment: snap.tax_treatment,
+      sellExGst: sellEx,
+      gstAmount,
+      sellInclGst: sellIncl,
+    },
+    revisions: contractRevisions,
+  });
+  if (!contract.ok) return { ok: false, error: "Variations could not be loaded." };
   const summary: VariationListSummary = {
     originalAcceptedExGst: contract.value.originalAcceptedContractExGst,
-    originalAcceptedInclGst: contract.value.originalAcceptedContractExGst + 0,
+    originalAcceptedInclGst: sellIncl,
     acceptedAdjustmentExGst: contract.value.netAcceptedVariationAdjustmentExGst,
     revisedAcceptedExGst: contract.value.revisedContractValueExGst,
     revisedAcceptedInclGst: contract.value.revisedContractValueInclGst,
@@ -218,21 +308,14 @@ export async function loadVariationWorkspace(projectId: string): Promise<
     draftCount: rows.filter((row) => row.status === "draft").length,
     currency: contract.value.currency,
   };
-  const baselineIncl = await owned.context.supabase
-    .from("accepted_commercial_snapshots")
-    .select("sell_incl_gst")
-    .eq("project_id", owned.projectId)
-    .maybeSingle();
-  const incl = money((baselineIncl.data as { sell_incl_gst?: unknown } | null)?.sell_incl_gst);
-  if (incl != null) summary.originalAcceptedInclGst = incl;
   return {
     ok: true,
     eligible: true,
     reason: null,
     rows,
     summary,
-    projectTitle: eligibility.projectTitle,
-    clientName: eligibility.clientName,
+    projectTitle: projectRow.title,
+    clientName: projectRow.client_name?.trim() || "Client",
   };
 }
 
@@ -260,16 +343,21 @@ export async function loadVariationEditor(projectId: string, variationId: string
     }
   | Fail
 > {
-  const eligibility = await loadVariationEligibility(projectId);
-  if (!eligibility.ok) return eligibility;
-  const loaded = await loadVariation({ variationId });
-  if (!loaded.ok) return loaded;
-  if (loaded.variation.projectId !== projectId) {
-    return { ok: false, error: "That variation could not be found." };
-  }
   const owned = await ownedProject(projectId);
   if (!owned.ok) return owned;
-  const [snapshot, lines, areas, marginRow, company, revisionDates, acceptedRows] = await Promise.all([
+  const [loaded, project, lifecycle, snapshot, lines, areas, marginRow, company, revisionDates, acceptedRows] =
+    await Promise.all([
+    loadVariation({ variationId }),
+    owned.context.supabase
+      .from("projects")
+      .select("title, client_name, site_address, archived_at, business_status")
+      .eq("id", owned.projectId)
+      .maybeSingle(),
+    owned.context.supabase
+      .from("project_lifecycle_positions")
+      .select("stage")
+      .eq("project_id", owned.projectId)
+      .maybeSingle(),
     owned.context.supabase
       .from("accepted_commercial_snapshots")
       .select("id, currency, gst_rate, tax_treatment, sell_ex_gst, gst_amount, sell_incl_gst, revision_number")
@@ -297,6 +385,25 @@ export async function loadVariationEditor(projectId: string, variationId: string
       .eq("project_id", owned.projectId)
       .eq("status", "accepted"),
   ]);
+  if (!loaded.ok) return loaded;
+  if (loaded.variation.projectId !== projectId) {
+    return { ok: false, error: "That variation could not be found." };
+  }
+  if (project.error || !project.data) return { ok: false, error: "That project could not be found." };
+  const projectRow = project.data as {
+    title: string;
+    client_name: string | null;
+    site_address: string | null;
+    archived_at: string | null;
+    business_status: string | null;
+  };
+  const stage = (lifecycle.data as { stage?: string } | null)?.stage ?? null;
+  const eligibility = variationEligibility({
+    hasAcceptedSnapshot: Boolean(snapshot.data),
+    archived: projectRow.archived_at != null || projectRow.business_status === "archived",
+    deleted: false,
+    stage,
+  });
   const snap = snapshot.data as {
     id: string;
     currency: string;
@@ -384,9 +491,9 @@ export async function loadVariationEditor(projectId: string, variationId: string
     })),
     defaultMarginPercent: marginRaw ?? DEFAULT_MARGIN_PERCENT,
     companyName: company?.tradingName?.trim() || company?.organisationName || "Your company",
-    projectTitle: eligibility.projectTitle,
-    clientName: eligibility.clientName,
-    siteAddress: eligibility.siteAddress,
+    projectTitle: projectRow.title,
+    clientName: projectRow.client_name?.trim() || "Client",
+    siteAddress: projectRow.site_address,
     history,
     eligible: eligibility.eligible,
     reason: eligibility.reason,

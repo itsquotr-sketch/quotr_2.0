@@ -202,9 +202,11 @@ function sourceChecks(): void {
       m062.includes("drop function if exists public.preview_fixture_org(uuid)") &&
       sqlFiles().includes("062_remove_preview_lifecycle_cleanup.sql") &&
       sqlFiles().includes("063_variation_domain_foundation.sql") &&
-      sqlFiles().at(-1) === "064_variation_revision_client_wording.sql" &&
+      sqlFiles().includes("064_variation_revision_client_wording.sql") &&
+      sqlFiles().at(-1) === "065_delete_unissued_draft_variation.sql" &&
       !read("supabase/migrations/063_variation_domain_foundation.sql").includes("preview_fixture_org") &&
-      !read("supabase/migrations/064_variation_revision_client_wording.sql").includes("preview_fixture_org")
+      !read("supabase/migrations/064_variation_revision_client_wording.sql").includes("preview_fixture_org") &&
+      !read("supabase/migrations/065_delete_unissued_draft_variation.sql").includes("preview_fixture_org")
   );
   check(
     "N 062 is safe when 060 objects already exist",

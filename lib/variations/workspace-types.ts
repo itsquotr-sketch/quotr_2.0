@@ -37,7 +37,10 @@ export type VariationListRow = {
   inclGst: number | null;
   createdAt: string;
   issuedAt: string | null;
+  acceptedAt: string | null;
+  declinedAt: string | null;
   outcomeLabel: string | null;
+  currentRevisionId: string | null;
 };
 
 export type VariationListSummary = {

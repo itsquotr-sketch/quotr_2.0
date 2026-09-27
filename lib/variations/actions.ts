@@ -19,6 +19,7 @@ import {
   addDraftVariationItemSchema,
   createDraftVariationSchema,
   deleteDraftVariationItemSchema,
+  deleteUnissuedDraftVariationSchema,
   loadProjectVariationsSchema,
   loadVariationSchema,
   updateDraftVariationItemSchema,
@@ -36,6 +37,7 @@ const VARIATION_ERROR_COPY: Record<string, string> = {
   INVALID_TRANSITION: "That variation update is not available.",
   STALE_REVISION: "This variation has changed. Reload it and try again.",
   IMMUTABLE: "This variation revision can no longer be edited.",
+  ISSUED_HISTORY: "This Variation has commercial history, so it can’t be deleted.",
   UNRESOLVED_PRICING: "Enter a price for every item before issuing this variation.",
   INVALID_ITEM: "Check this variation item and try again.",
   INVALID_QUANTITY: "Enter a valid quantity.",
@@ -213,6 +215,20 @@ export async function deleteDraftVariationItem(input: unknown): Promise<ActionOk
   });
 }
 
+export async function deleteUnissuedDraftVariation(input: unknown): Promise<ActionOk | ActionFail> {
+  const context = await getAuthOrgContext();
+  if (!context) return fail("NOT_AUTHENTICATED");
+  const parsed = deleteUnissuedDraftVariationSchema.safeParse(input);
+  if (!parsed.success) return fail("INVALID_INPUT");
+  const owned = await assertOrgOwnsActiveProject(context, parsed.data.projectId);
+  if ("error" in owned) return fail("NOT_FOUND");
+  return runVariationRpc("delete_unissued_draft_variation_v1", {
+    p_project: owned.projectId,
+    p_variation: parsed.data.variationId,
+    p_revision: parsed.data.revisionId,
+  });
+}
+
 export async function createVariationRevision(input: unknown): Promise<ActionOk | ActionFail> {
   const parsed = variationRevisionCommandSchema.safeParse(input);
   if (!parsed.success) return fail("INVALID_INPUT");
@@ -316,28 +332,27 @@ async function loadInternalVariation(
 ): Promise<InternalVariation | ActionFail> {
   const context = await getAuthOrgContext();
   if (!context) return fail("NOT_AUTHENTICATED");
-  const variation = await context.supabase
-    .from("variations")
-    .select("id, project_id, variation_number, title, summary, status, current_revision_id, accepted_snapshot_id")
-    .eq("id", variationId)
-    .maybeSingle();
+  const [variation, revisions, items] = await Promise.all([
+    context.supabase
+      .from("variations")
+      .select("id, project_id, variation_number, title, summary, status, current_revision_id, accepted_snapshot_id")
+      .eq("id", variationId)
+      .maybeSingle(),
+    context.supabase
+      .from("variation_revisions")
+      .select("id, variation_id, revision_number, status, title, summary, currency, gst_rate, tax_treatment, total_direct_cost_adjustment, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst, proposed_time_effect_days, client_notes, internal_notes")
+      .eq("variation_id", variationId)
+      .order("revision_number", { ascending: true }),
+    context.supabase
+      .from("variation_items")
+      .select("id, revision_id, item_type, client_description, quantity, unit, unit_sell, unit_cost, line_sell_adjustment_ex_gst, line_cost_adjustment, sort_order, client_inclusion, client_exclusion, substitution_group_id, work_area_id, snapshot_line_id, internal_metadata")
+      .eq("variation_id", variationId)
+      .order("sort_order", { ascending: true }),
+  ]);
   if (variation.error || !variation.data) return fail("NOT_FOUND");
   const header = variation.data as VariationRow;
   if (!isStatus(header.status)) return fail("INVALID_INPUT");
-
-  const revisions = await context.supabase
-    .from("variation_revisions")
-    .select("id, variation_id, revision_number, status, title, summary, currency, gst_rate, tax_treatment, total_direct_cost_adjustment, total_sell_adjustment_ex_gst, gst_adjustment, total_adjustment_incl_gst, proposed_time_effect_days, client_notes, internal_notes")
-    .eq("variation_id", header.id)
-    .order("revision_number", { ascending: true });
-  if (revisions.error) return fail("INVALID_INPUT");
-
-  const items = await context.supabase
-    .from("variation_items")
-    .select("id, revision_id, item_type, client_description, quantity, unit, unit_sell, unit_cost, line_sell_adjustment_ex_gst, line_cost_adjustment, sort_order, client_inclusion, client_exclusion, substitution_group_id, work_area_id, snapshot_line_id, internal_metadata")
-    .eq("variation_id", header.id)
-    .order("sort_order", { ascending: true });
-  if (items.error) return fail("INVALID_INPUT");
+  if (revisions.error || items.error) return fail("INVALID_INPUT");
 
   const itemRows = (items.data ?? []) as ItemRow[];
   const mappedRevisions = ((revisions.data ?? []) as RevisionRow[]).flatMap((revision) => {

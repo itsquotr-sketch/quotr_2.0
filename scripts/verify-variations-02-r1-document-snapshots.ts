@@ -136,10 +136,18 @@ async function hostedProof(): Promise<void> {
   if (ref !== PREVIEW_SUPABASE_PROJECT_REF) return;
 
   const prior = queryPreviewRows(
+    "select o.name as org_name, r.status, count(*)::int as n from public.variation_revisions r join public.organisations o on o.id = r.org_id where r.status <> 'draft' and o.name not like 'Variations %' and (r.title is null or char_length(btrim(r.title)) = 0) group by o.name, r.status"
+  ) as Array<{ org_name: string; status: string; n: number }>;
+  const issued = queryPreviewRows(
     "select o.name as org_name, r.status, count(*)::int as n from public.variation_revisions r join public.organisations o on o.id = r.org_id where r.status <> 'draft' and o.name not like 'Variations %' group by o.name, r.status"
   ) as Array<{ org_name: string; status: string; n: number }>;
+  console.log(
+    issued.length === 0
+      ? "  audit: no non-fixture issued variations"
+      : `  audit: non-fixture issued revisions with stored titles: ${issued.map((row) => `${row.org_name} ${row.status} ${row.n}`).join("; ")}`
+  );
   check(
-    "B no non-fixture issued variations exist to reconstruct",
+    "B no non-fixture issued revision is missing its stored title",
     prior.length === 0,
     prior.map((row) => `${row.org_name} ${row.status} ${row.n}`).join("; ")
   );

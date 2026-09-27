@@ -89,6 +89,10 @@ export const variationRevisionCommandSchema = z
   })
   .strict();
 
+export const deleteUnissuedDraftVariationSchema = variationRevisionCommandSchema
+  .extend({ projectId: uuidSchema })
+  .strict();
+
 export const loadProjectVariationsSchema = z
   .object({ projectId: uuidSchema })
   .strict();

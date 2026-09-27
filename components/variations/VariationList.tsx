@@ -1,18 +1,28 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useState, useTransition } from "react";
+import { useRef, useState } from "react";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { createDraftVariation } from "@/lib/variations/actions";
+import { createDraftVariation, createVariationRevision } from "@/lib/variations/actions";
 import {
   formatContractMoney,
   formatSignedAdjustment,
   VARIATION_EMPTY_LIST,
+  VARIATION_PRICING_REQUIRED_LABEL,
 } from "@/lib/variations/presentation";
 import type { VariationListRow, VariationListSummary } from "@/lib/variations/workspace-types";
-import Link from "next/link";
 
 export function VariationList(props: {
   projectId: string;
@@ -22,19 +32,59 @@ export function VariationList(props: {
   summary: VariationListSummary | null;
 }) {
   const router = useRouter();
-  const [pending, startTransition] = useTransition();
+  const [createOpen, setCreateOpen] = useState(false);
   const [title, setTitle] = useState("");
   const [summary, setSummary] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
+  const [notice, setNotice] = useState<string | null>(null);
+  const createKey = useRef("");
+  const createLock = useRef(false);
   const currency = props.summary?.currency ?? "NZD";
 
+  function openCreate(): void {
+    createKey.current = crypto.randomUUID();
+    setError(null);
+    setCreateOpen(true);
+  }
+
+  function closeCreate(): void {
+    if (createLock.current) return;
+    setCreateOpen(false);
+  }
+
+  async function submitCreate(): Promise<void> {
+    if (createLock.current) return;
+    createLock.current = true;
+    setCreating(true);
+    setError(null);
+    const created = await createDraftVariation({
+      projectId: props.projectId,
+      title,
+      summary: summary || null,
+      idempotencyKey: createKey.current,
+    });
+    if (!created.ok || !created.variationId) {
+      createLock.current = false;
+      setCreating(false);
+      setError(created.ok ? "That variation could not be created." : created.error);
+      return;
+    }
+    router.push(`/app/projects/${props.projectId}/variations/${created.variationId}`);
+  }
+
   return (
-    <div data-variation-list="true" className="space-y-6">
+    <div data-variation-list="true" className="min-w-0 space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-xl font-semibold">Variations</h1>
           <p className="text-sm text-muted-foreground">Changes to the agreed scope and price.</p>
         </div>
+        {props.eligible ? (
+          <Button type="button" size="touch" onClick={openCreate}>
+            Create Variation
+          </Button>
+        ) : null}
       </div>
 
       {!props.eligible ? (
@@ -46,12 +96,14 @@ export function VariationList(props: {
       {props.summary ? (
         <section className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3" data-variation-summary="true">
           <SummaryCard label="Original accepted contract" value={formatContractMoney(props.summary.originalAcceptedInclGst, currency)} />
-          <SummaryCard label="Accepted Variation adjustments" value={formatSignedAdjustment(props.summary.acceptedAdjustmentExGst, currency)} />
+          <SummaryCard label="Accepted Variation adjustments, ex GST" value={formatSignedAdjustment(props.summary.acceptedAdjustmentExGst, currency)} />
           <SummaryCard label="Revised accepted contract" value={formatContractMoney(props.summary.revisedAcceptedInclGst, currency)} />
-          <SummaryCard label="Issued or pending Variations" value={formatSignedAdjustment(props.summary.pendingIssuedExGst, currency)} />
+          <SummaryCard label="Issued or pending Variations — ex GST" value={formatSignedAdjustment(props.summary.pendingIssuedExGst, currency)} />
           <SummaryCard label="Draft Variations" value={String(props.summary.draftCount)} />
         </section>
       ) : null}
+
+      {notice ? <p role="status" className="text-sm text-muted-foreground">{notice}</p> : null}
 
       {props.eligible && props.rows.length === 0 ? (
         <p className="rounded-2xl border bg-card px-4 py-3 text-sm">{VARIATION_EMPTY_LIST}</p>
@@ -61,83 +113,135 @@ export function VariationList(props: {
         <ul className="space-y-3">
           {props.rows.map((row) => (
             <li key={row.id} className="rounded-2xl border bg-card p-4 text-sm">
-              <div className="flex flex-wrap items-start justify-between gap-2">
-                <div>
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div className="min-w-0">
                   <p className="font-medium">Variation {row.variationNumber}</p>
-                  <p>{row.title}</p>
-                  <p className="text-muted-foreground">
-                    Revision {row.revisionNumber ?? "—"} · {row.statusLabel}
-                    {row.outcomeLabel ? ` · ${row.outcomeLabel}` : ""}
+                  <p className="mt-1 break-words">{row.title}</p>
+                  <p className="mt-2 text-muted-foreground">
+                    {row.revisionNumber == null ? "Current revision pending" : `Revision ${row.revisionNumber}`}
                   </p>
                 </div>
-                <Link className="underline" href={`/app/projects/${props.projectId}/variations/${row.id}`}>
-                  Open
-                </Link>
+                <Badge variant="outline">{row.statusLabel}</Badge>
               </div>
               <dl className="mt-3 grid gap-1">
-                <div className="flex justify-between gap-3"><dt>Net adjustment ex GST</dt><dd>{row.netExGst == null ? "—" : formatSignedAdjustment(row.netExGst, currency)}</dd></div>
-                <div className="flex justify-between gap-3"><dt>GST</dt><dd>{row.gst == null ? "—" : formatSignedAdjustment(row.gst, currency)}</dd></div>
-                <div className="flex justify-between gap-3"><dt>Adjustment incl GST</dt><dd>{row.inclGst == null ? "—" : formatSignedAdjustment(row.inclGst, currency)}</dd></div>
-                <div className="flex justify-between gap-3"><dt>Created</dt><dd>{row.createdAt}</dd></div>
+                <div className="flex flex-wrap justify-between gap-3">
+                  <dt>Net adjustment ex GST</dt>
+                  <dd className="tabular-nums">
+                    {row.netExGst == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(row.netExGst, currency)}
+                  </dd>
+                </div>
+                {row.createdAt ? <div className="flex justify-between gap-3"><dt>Created</dt><dd>{row.createdAt}</dd></div> : null}
                 {row.issuedAt ? <div className="flex justify-between gap-3"><dt>Issued</dt><dd>{row.issuedAt}</dd></div> : null}
+                {row.acceptedAt ? <div className="flex justify-between gap-3"><dt>Accepted</dt><dd>{row.acceptedAt}</dd></div> : null}
+                {row.declinedAt ? <div className="flex justify-between gap-3"><dt>Declined</dt><dd>{row.declinedAt}</dd></div> : null}
               </dl>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <Button variant="outline" size="touch" render={<Link href={`/app/projects/${props.projectId}/variations/${row.id}`} />}>
+                  {row.status === "draft" ? "Continue draft" : "View Variation"}
+                </Button>
+                {row.status === "issued" && row.currentRevisionId ? (
+                  <CreateRevisionButton
+                    projectId={props.projectId}
+                    variationId={row.id}
+                    revisionId={row.currentRevisionId}
+                    onDone={(href) => router.push(href)}
+                    onError={setNotice}
+                  />
+                ) : null}
+              </div>
             </li>
           ))}
         </ul>
       ) : null}
 
-      {props.eligible ? (
-        <form
-          data-variation-create="true"
-          className="rounded-2xl border bg-card p-4"
-          onSubmit={(event) => {
-            event.preventDefault();
-            setError(null);
-            startTransition(async () => {
-              const created = await createDraftVariation({
-                projectId: props.projectId,
-                title,
-                summary: summary || null,
-                idempotencyKey: crypto.randomUUID(),
-              });
-              if (!created.ok || !created.variationId) {
-                setError(created.ok ? "That variation could not be created." : created.error);
-                return;
-              }
-              router.push(`/app/projects/${props.projectId}/variations/${created.variationId}`);
-              router.refresh();
-            });
-          }}
-        >
-          <h2 className="text-base font-semibold">Create Variation</h2>
-          <div className="mt-3 grid gap-3">
-            <div className="grid gap-1.5">
-              <Label htmlFor="new-variation-title">Title</Label>
-              <Input id="new-variation-title" value={title} onChange={(event) => setTitle(event.target.value)} required />
-            </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="new-variation-summary">Client-facing summary</Label>
-              <textarea
-                id="new-variation-summary"
-                className="min-h-20 rounded-xl border bg-background px-3 py-2 text-sm"
-                value={summary}
-                onChange={(event) => setSummary(event.target.value)}
-              />
-            </div>
-            {error ? <p role="alert" className="text-sm">{error}</p> : null}
-            <Button type="submit" disabled={pending}>Create Variation</Button>
-          </div>
-        </form>
+      {props.eligible && createOpen ? (
+        <Dialog open={createOpen} onOpenChange={(open) => { if (!open) closeCreate(); }}>
+          <DialogContent className="max-h-[min(90vh,640px)] overflow-y-auto sm:max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Create Variation</DialogTitle>
+              <DialogDescription>Add the title and client-facing summary for a new draft.</DialogDescription>
+            </DialogHeader>
+            <form
+              data-variation-create="true"
+              className="grid gap-3"
+              onSubmit={(event) => {
+                event.preventDefault();
+                void submitCreate();
+              }}
+            >
+              <div className="grid gap-1.5">
+                <Label htmlFor="new-variation-title">Title</Label>
+                <Input id="new-variation-title" value={title} onChange={(event) => setTitle(event.target.value)} required />
+              </div>
+              <div className="grid gap-1.5">
+                <Label htmlFor="new-variation-summary">Client-facing summary</Label>
+                <textarea
+                  id="new-variation-summary"
+                  className="min-h-20 w-full rounded-xl border bg-background px-3 py-2 text-sm"
+                  value={summary}
+                  onChange={(event) => setSummary(event.target.value)}
+                />
+              </div>
+              {error ? <p role="alert" className="text-sm">{error}</p> : null}
+              <DialogFooter>
+                <Button type="button" variant="outline" size="touch" onClick={closeCreate} disabled={creating}>
+                  Cancel
+                </Button>
+                <Button type="submit" size="touch" disabled={creating}>
+                  {creating ? "Creating Variation…" : "Create Variation"}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       ) : null}
     </div>
   );
 }
 
+function CreateRevisionButton(props: {
+  projectId: string;
+  variationId: string;
+  revisionId: string;
+  onDone: (href: string) => void;
+  onError: (message: string) => void;
+}) {
+  const [pending, setPending] = useState(false);
+  const lock = useRef(false);
+  return (
+    <Button
+      type="button"
+      variant="outline"
+      size="touch"
+      disabled={pending}
+      onClick={() => {
+        if (lock.current) return;
+        lock.current = true;
+        setPending(true);
+        void createVariationRevision({
+          variationId: props.variationId,
+          revisionId: props.revisionId,
+        }).then((result) => {
+          if (!result.ok || !result.variationId) {
+            lock.current = false;
+            setPending(false);
+            props.onError(result.ok ? "That revision could not be created." : result.error);
+            return;
+          }
+          props.onDone(`/app/projects/${props.projectId}/variations/${props.variationId}`);
+        });
+      }}
+    >
+      {pending ? "Creating revision…" : "Create new revision"}
+    </Button>
+  );
+}
+
 function SummaryCard(props: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border bg-card px-4 py-3">
+    <div className="min-w-0 rounded-2xl border bg-card px-4 py-3">
       <p className="text-xs text-muted-foreground">{props.label}</p>
-      <p className="mt-1 text-sm font-medium tabular-nums">{props.value}</p>
+      <p className="mt-1 break-words text-sm font-medium tabular-nums">{props.value}</p>
     </div>
   );
 }

@@ -150,7 +150,7 @@ export type CommercialProvenance =
 export function provenanceLabel(provenance: CommercialProvenance): string {
   switch (provenance) {
     case "calculated":
-      return "Calculated from COST and margin";
+      return "Calculated from internal cost and target margin";
     case "manual":
       return "Manually entered";
     case "no_cost":
@@ -162,53 +162,130 @@ export function provenanceLabel(provenance: CommercialProvenance): string {
   }
 }
 
+export const VARIATION_READY_HEADING = "Ready to issue";
+export const VARIATION_READY_DETAIL = "This revision has the required details and pricing.";
+export const VARIATION_NOT_READY_HEADING = "Not ready to issue";
+
+export type VariationReadiness = {
+  ready: boolean;
+  blockerCodes: string[];
+  blockers: string[];
+};
+
+/**
+ * Flat manual item arithmetic. Quantity times unit cost and unit sell use
+ * the shared money rounding. Later material and labour components can replace
+ * the unit cost input without a second totals path.
+ */
+export function variationUnitLineReadout(input: {
+  quantity: number;
+  unit: string;
+  unitCost: number | null;
+  unitSell: number | null;
+  sign: 1 | -1;
+  currency: string;
+}): {
+  quantityLabel: string;
+  unitCostLabel: string | null;
+  lineCost: number | null;
+  lineCostLabel: string | null;
+  unitSellLabel: string | null;
+  lineSell: number | null;
+  lineSellLabel: string | null;
+  grossProfit: number | null;
+  grossProfitLabel: string | null;
+  marginLabel: string | null;
+} {
+  const quantityLabel = `${input.quantity} ${input.unit}`;
+  const lineCost = input.unitCost == null ? null : roundMoney(input.quantity * input.unitCost);
+  const lineSell = input.unitSell == null ? null : roundMoney(input.quantity * input.unitSell);
+  const signedCost = lineCost == null ? null : roundMoney(lineCost * input.sign);
+  const signedSell = lineSell == null ? null : roundMoney(lineSell * input.sign);
+  const grossProfit =
+    signedCost == null || signedSell == null ? null : roundMoney(signedSell - signedCost);
+  const margin =
+    grossProfit == null || signedSell == null || signedSell <= 0
+      ? null
+      : roundMoney((grossProfit / signedSell) * 100);
+  const times = (unitAmount: number, lineAmount: number, signed: number): string => {
+    const equation = `${input.quantity} × ${formatContractMoney(unitAmount, input.currency)} = ${formatContractMoney(lineAmount, input.currency)}`;
+    return input.sign < 0 ? formatSignedAdjustment(signed, input.currency) : equation;
+  };
+  return {
+    quantityLabel,
+    unitCostLabel: input.unitCost == null ? null : formatContractMoney(input.unitCost, input.currency),
+    lineCost,
+    lineCostLabel:
+      input.unitCost == null || lineCost == null || signedCost == null
+        ? null
+        : times(input.unitCost, lineCost, signedCost),
+    unitSellLabel: input.unitSell == null ? null : formatContractMoney(input.unitSell, input.currency),
+    lineSell,
+    lineSellLabel:
+      input.unitSell == null || lineSell == null || signedSell == null
+        ? null
+        : input.sign < 0
+          ? formatSignedAdjustment(signedSell, input.currency)
+          : `${input.quantity} × ${formatContractMoney(input.unitSell, input.currency)} = ${formatContractMoney(lineSell, input.currency)} ex GST`,
+    grossProfit,
+    grossProfitLabel: grossProfit == null ? null : formatSignedAdjustment(grossProfit, input.currency),
+    marginLabel: margin == null ? null : `${margin.toFixed(1)}%`,
+  };
+}
+
 export function variationIssueReadiness(input: {
   title: string;
   summary: string | null;
   items: readonly VariationItemInput[];
-}): { ready: boolean; blockers: string[] } {
+}): VariationReadiness {
   const blockers: string[] = [];
-  if (!input.title.trim()) blockers.push("Add a title before issuing.");
-  if (!input.summary?.trim()) {
-    blockers.push("Add a client-facing summary before issuing.");
+  const blockerCodes: string[] = [];
+  function add(code: string, message: string): void {
+    if (blockerCodes.includes(code) && blockers.includes(message)) return;
+    blockerCodes.push(code);
+    blockers.push(message);
   }
-  if (input.items.length === 0) blockers.push("Add at least one Variation item.");
+  if (!input.title.trim()) add("MISSING_TITLE", "Add a title before issuing.");
+  if (!input.summary?.trim()) {
+    add("MISSING_SUMMARY", "Add a client-facing summary before issuing.");
+  }
+  if (input.items.length === 0) add("EMPTY_VARIATION", "Add at least one Variation item.");
 
   const prepared: PreparedVariationItem[] = [];
   for (const item of input.items) {
     const result = prepareVariationItem(item);
     if (!result.ok) {
       if (item.unitSell == null && item.itemType !== "no_cost_scope_change") {
-        blockers.push(`Add a price for ${item.clientDescription.trim() || "this item"}.`);
+        add("UNRESOLVED_PRICING", `Add a price for ${item.clientDescription.trim() || "this item"}.`);
       } else if (item.itemType === "addition") {
-        blockers.push(`Enter a positive amount for ${item.clientDescription.trim() || "this addition"}.`);
+        add("INVALID_ADDITION", `Enter a positive amount for ${item.clientDescription.trim() || "this addition"}.`);
       } else if (item.itemType === "omission") {
-        blockers.push(`Enter the amount to remove for ${item.clientDescription.trim() || "this omission"}.`);
+        add("INVALID_OMISSION", `Enter the amount to remove for ${item.clientDescription.trim() || "this omission"}.`);
       } else {
-        blockers.push("Check this Variation item and try again.");
+        add("INVALID_ITEM", "Check this Variation item and try again.");
       }
       continue;
     }
     prepared.push(result.item);
     if (result.item.lineSellAdjustmentExGst == null) {
-      blockers.push(`Add a price for ${item.clientDescription.trim() || "this item"}.`);
+      add("UNRESOLVED_PRICING", `Add a price for ${item.clientDescription.trim() || "this item"}.`);
     }
   }
 
   const code = prepared.length === input.items.length ? variationIssueBlocker(prepared) : null;
   if (code === "EMPTY_VARIATION" && !blockers.some((line) => line.includes("at least one"))) {
-    blockers.push("Add at least one Variation item.");
+    add("EMPTY_VARIATION", "Add at least one Variation item.");
   }
   if (code === "INVALID_SUBSTITUTION") {
-    blockers.push("Complete both sides of the substitution.");
+    add("INVALID_SUBSTITUTION", "Complete both sides of the substitution.");
   }
   if (code === "UNRESOLVED_PRICING" && !blockers.some((line) => line.startsWith("Add a price"))) {
-    blockers.push(VARIATION_PRICING_REQUIRED_ACTION);
+    add("UNRESOLVED_PRICING", VARIATION_PRICING_REQUIRED_ACTION);
   }
   if (code === "ZERO_NET_UNDOCUMENTED") {
-    blockers.push("Describe the no-cost change, or price the additions and omissions.");
+    add("ZERO_NET_UNDOCUMENTED", "Describe the no-cost change, or price the additions and omissions.");
   }
-  return { ready: blockers.length === 0, blockers };
+  return { ready: blockers.length === 0, blockerCodes, blockers };
 }
 
 export function proposedRevisedContract(input: {
