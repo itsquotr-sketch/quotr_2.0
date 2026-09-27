@@ -9,7 +9,7 @@ import { formatContractorQuoteStatusLabel } from "@/lib/quotes/status";
 import type { QuoteSummary } from "@/lib/quotes/types";
 import { cn } from "@/lib/utils";
 
-export type ProjectWorkspaceTab = "assistant" | "pricing" | "quote";
+export type ProjectWorkspaceTab = "assistant" | "pricing" | "quote" | "variations";
 
 type ProjectWorkspaceTabsProps = {
   projectId: string;
@@ -156,6 +156,17 @@ export function ProjectWorkspaceTabs({
               </Badge>
             </span>
           )}
+
+          <Link
+            href={`/app/projects/${projectId}/variations`}
+            prefetch
+            role="tab"
+            aria-selected={activeTab === "variations"}
+            data-variations-nav="true"
+            className={tabClass(activeTab === "variations")}
+          >
+            Variations
+          </Link>
         </div>
       </div>
 
