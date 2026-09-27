@@ -102,6 +102,22 @@ export const VARIATION_COST_CATEGORIES = [
 
 export type VariationCostCategory = (typeof VARIATION_COST_CATEGORIES)[number];
 
+export const VARIATION_RATE_SOURCES = [
+  "manual",
+  "company_rate",
+  "quotr_benchmark",
+  "missing",
+] as const;
+
+export type VariationRateSource = (typeof VARIATION_RATE_SOURCES)[number];
+
+export function variationRateSourceLabel(source: VariationRateSource): string {
+  if (source === "company_rate") return "Company Rate";
+  if (source === "quotr_benchmark") return "Quotr benchmark";
+  if (source === "manual") return "Manual";
+  return "Pricing required";
+}
+
 export type VariationItemInput = {
   itemType: VariationItemType;
   clientDescription: string;
@@ -510,6 +526,13 @@ export type VariationCostComponent = {
   unitCost: number | null;
   lineCost: number | null;
   sortOrder: number;
+  costSource: VariationRateSource;
+  canonicalRateKey: string | null;
+  sourceLabel: string | null;
+  sourceUnit: string | null;
+  sourceUnitCost: number | null;
+  sourceSelectedAt: string | null;
+  sourceRecordId: string | null;
 };
 
 type InternalVariationItem = ClientFacingVariationItem & {

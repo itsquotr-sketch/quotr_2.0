@@ -309,7 +309,7 @@ check(
   numberedMigrations().some((name) => name === "056_bathroom_company_dna_catalogue_seed.sql")
 );
 check(
-  "latest numbered migration is 067 cost build-ups and 063 remains",
+  "latest numbered migration is 068 rate snapshots and 063 remains",
   numberedMigrations().includes("057_repeated_work_area_acceptance.sql") &&
     numberedMigrations().includes("058_project_lifecycle_foundation.sql") &&
     numberedMigrations().includes("062_remove_preview_lifecycle_cleanup.sql") &&
@@ -317,7 +317,8 @@ check(
     numberedMigrations().includes("064_variation_revision_client_wording.sql") &&
     numberedMigrations().includes("065_delete_unissued_draft_variation.sql") &&
     numberedMigrations().includes("066_variation_issued_withdrawal.sql") &&
-    numberedMigrations().at(-1) === "067_variation_cost_build_ups.sql"
+    numberedMigrations().includes("067_variation_cost_build_ups.sql") &&
+    numberedMigrations().at(-1) === "068_variation_component_rate_snapshots.sql"
 );
 const sql056 = readFileSync(
   join(process.cwd(), "supabase/migrations/056_bathroom_company_dna_catalogue_seed.sql"),

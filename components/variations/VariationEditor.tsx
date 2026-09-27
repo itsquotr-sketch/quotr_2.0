@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useRef, useState } from "react";
 import { VariationDocument } from "@/components/variations/VariationDocument";
+import { VariationRatePicker, type VariationRateChoice } from "@/components/variations/VariationRatePicker";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -31,7 +32,10 @@ import {
   issueVariationRevision,
   withdrawIssuedVariation,
   loadVariation,
+  refreshVariationComponentRate,
   saveDraftVariationBuildUp,
+  searchVariationComponentRates,
+  setVariationComponentManualCost,
   updateDraftVariation,
   updateDraftVariationItem,
 } from "@/lib/variations/actions";
@@ -43,6 +47,8 @@ import {
   type InternalVariation,
   type VariationCostCategory,
   type VariationItemType,
+  type VariationRateSource,
+  variationRateSourceLabel,
   type VariationPricingMode,
 } from "@/lib/variations/domain";
 import {
@@ -518,6 +524,7 @@ export function VariationEditor(props: EditorProps) {
                         <div key={component.id} className="min-w-0 rounded-xl border px-3 py-2">
                           <p className="break-words">{component.category} · {component.description}</p>
                           <p>{component.quantity} {component.unit} · {component.unitCost == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(component.lineCost ?? 0, currency)}</p>
+                          <p className="text-xs text-muted-foreground">{variationRateSourceLabel(component.costSource)}</p>
                         </div>
                       ))}
                     </div>
@@ -611,6 +618,7 @@ export function VariationEditor(props: EditorProps) {
           workAreas={props.workAreas}
           pending={pending}
           initial={null}
+          rateContext={{ projectId: props.projectId, variationId: variation.id, revisionId: current.id, onReload: reload }}
           onClose={() => setItemEditor(null)}
           onSave={(payload) =>
             void run(async () => {
@@ -661,6 +669,7 @@ export function VariationEditor(props: EditorProps) {
           scopeLines={props.scopeLines}
           workAreas={props.workAreas}
           pending={pending}
+          rateContext={{ projectId: props.projectId, variationId: variation.id, revisionId: current.id, onReload: reload }}
           onClose={() => setItemEditor(null)}
           onSave={(payload) =>
             void run(async () => {
@@ -888,15 +897,84 @@ type CostDraft = {
   quantity: string;
   unit: string;
   unitCost: string;
+  costSource: VariationRateSource;
+  canonicalRateKey: string | null;
+  sourceLabel: string | null;
+};
+
+type RateContext = {
+  projectId: string;
+  variationId: string;
+  revisionId: string;
+  itemId: string | null;
+  onReload: () => Promise<void>;
 };
 
 function blankCostDraft(): CostDraft {
-  return { key: crypto.randomUUID(), id: null, category: "material", description: "", quantity: "1", unit: "item", unitCost: "" };
+  return {
+    key: crypto.randomUUID(),
+    id: null,
+    category: "material",
+    description: "",
+    quantity: "1",
+    unit: "item",
+    unitCost: "",
+    costSource: "missing",
+    canonicalRateKey: null,
+    sourceLabel: null,
+  };
 }
 
-function ComponentEditor(props: { rows: CostDraft[]; currency: string; onChange: (rows: CostDraft[]) => void }) {
+function ComponentEditor(props: { rows: CostDraft[]; currency: string; onChange: (rows: CostDraft[]) => void; rateContext?: RateContext }) {
+  const [pickerKey, setPickerKey] = useState<string | null>(null);
+  const [pickerRates, setPickerRates] = useState<VariationRateChoice[]>([]);
+  const [pickerPending, setPickerPending] = useState(false);
+  const [pickerTruncated, setPickerTruncated] = useState(false);
+  const [rateError, setRateError] = useState<string | null>(null);
+  const [refreshKey, setRefreshKey] = useState<string | null>(null);
+  const [refreshProposal, setRefreshProposal] = useState<{ current: number | null; proposed: number | null; label: string | null } | null>(null);
   function update(key: string, patch: Partial<CostDraft>) {
     props.onChange(props.rows.map((row) => row.key === key ? { ...row, ...patch } : row));
+  }
+  async function applyManual(row: CostDraft, unitCost: string): Promise<void> {
+    const context = props.rateContext;
+    if (!context?.itemId || !row.id) return;
+    const parsed = unitCost.trim() === "" ? null : Number(unitCost);
+    if (parsed != null && !Number.isFinite(parsed)) return;
+    const result = await setVariationComponentManualCost({
+      projectId: context.projectId,
+      variationId: context.variationId,
+      revisionId: context.revisionId,
+      itemId: context.itemId,
+      componentId: row.id,
+      unitCost: parsed,
+    });
+    if (!result.ok) {
+      setRateError(result.error);
+      return;
+    }
+    update(row.key, {
+      unitCost: result.unitCost == null ? "" : String(result.unitCost),
+      costSource: result.costSource,
+      canonicalRateKey: null,
+      sourceLabel: null,
+    });
+    await context.onReload();
+  }
+  async function openRates(row: CostDraft, query = ""): Promise<void> {
+    setPickerKey(row.key);
+    setPickerPending(true);
+    setRateError(null);
+    const result = await searchVariationComponentRates({ category: row.category, unit: row.unit, query });
+    setPickerPending(false);
+    if (!result.ok) {
+      setRateError(result.error);
+      setPickerRates([]);
+      setPickerTruncated(false);
+      return;
+    }
+    setPickerRates(result.rates);
+    setPickerTruncated(result.truncated);
   }
   function move(index: number, direction: -1 | 1) {
     const next = index + direction;
@@ -924,7 +1002,144 @@ function ComponentEditor(props: { rows: CostDraft[]; currency: string; onChange:
               <Field id={`component-qty-${row.key}`} label="Quantity" value={row.quantity} onChange={(value) => update(row.key, { quantity: value })} numeric />
               <Field id={`component-unit-${row.key}`} label="Unit" value={row.unit} onChange={(value) => update(row.key, { unit: value })} />
             </div>
-            <Field id={`component-cost-${row.key}`} label="Unit cost" value={row.unitCost} onChange={(value) => update(row.key, { unitCost: value })} numeric />
+            <fieldset className="grid gap-2">
+              <legend className="text-sm font-medium">Cost source</legend>
+              <p className="text-sm">{variationRateSourceLabel(row.costSource)}{row.sourceLabel ? ` · ${row.sourceLabel}` : ""}</p>
+              <label className="flex min-h-11 items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name={`cost-source-${row.key}`}
+                  checked={row.costSource !== "company_rate" && row.costSource !== "quotr_benchmark"}
+                  onChange={() => {
+                    if (row.costSource === "company_rate" || row.costSource === "quotr_benchmark") {
+                      void applyManual(row, row.unitCost);
+                    }
+                  }}
+                />
+                Enter cost manually
+              </label>
+              <label className="flex min-h-11 items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name={`cost-source-${row.key}`}
+                  checked={row.costSource === "company_rate" || row.costSource === "quotr_benchmark" || pickerKey === row.key}
+                  onChange={() => void openRates(row)}
+                />
+                Select from Rates
+              </label>
+            </fieldset>
+            {row.costSource === "company_rate" || row.costSource === "quotr_benchmark" ? (
+              <p className="text-sm">Unit cost: {row.unitCost === "" ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(Number(row.unitCost), props.currency).replace(/^\+/, "")}</p>
+            ) : (
+              <Field id={`component-cost-${row.key}`} label="Unit cost" value={row.unitCost} onChange={(value) => update(row.key, { unitCost: value, costSource: value.trim() === "" ? "missing" : "manual", canonicalRateKey: null, sourceLabel: null })} numeric />
+            )}
+            {props.rateContext?.itemId && row.id && (row.costSource === "manual" || row.costSource === "missing") ? (
+              <Button type="button" variant="outline" size="touch" onClick={() => void applyManual(row, row.unitCost)}>Use manual cost</Button>
+            ) : null}
+            {props.rateContext?.itemId && row.id && row.canonicalRateKey ? (
+              <Button
+                type="button"
+                variant="outline"
+                size="touch"
+                onClick={() => {
+                  const context = props.rateContext;
+                  if (!context?.itemId || !row.id) return;
+                  void (async () => {
+                    setRateError(null);
+                    const preview = await refreshVariationComponentRate({
+                      projectId: context.projectId,
+                      variationId: context.variationId,
+                      revisionId: context.revisionId,
+                      itemId: context.itemId,
+                      componentId: row.id,
+                      confirm: false,
+                    });
+                    if (!preview.ok) {
+                      setRateError(preview.error);
+                      return;
+                    }
+                    setRefreshKey(row.key);
+                    setRefreshProposal({
+                      current: preview.currentCost ?? null,
+                      proposed: preview.proposedCost ?? null,
+                      label: preview.sourceLabel ?? null,
+                    });
+                  })();
+                }}
+              >
+                Refresh rate
+              </Button>
+            ) : null}
+            {refreshKey === row.key && refreshProposal ? (
+              <div className="grid gap-2 rounded-xl border p-3 text-sm">
+                <p>
+                  {refreshProposal.current === refreshProposal.proposed
+                    ? "This rate is already current."
+                    : `Update this component from ${refreshProposal.current == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(refreshProposal.current, props.currency).replace(/^\+/, "")} to ${refreshProposal.proposed == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(refreshProposal.proposed, props.currency).replace(/^\+/, "")}?`}
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  {refreshProposal.current !== refreshProposal.proposed ? (
+                    <Button
+                      type="button"
+                      size="touch"
+                      onClick={() => {
+                        const context = props.rateContext;
+                        if (!context?.itemId || !row.id) return;
+                        void (async () => {
+                          const applied = await refreshVariationComponentRate({
+                            projectId: context.projectId,
+                            variationId: context.variationId,
+                            revisionId: context.revisionId,
+                            itemId: context.itemId,
+                            componentId: row.id,
+                            confirm: true,
+                          });
+                          if (!applied.ok || applied.unitCost == null) {
+                            setRateError(applied.ok ? "That rate is no longer available to refresh." : applied.error);
+                            return;
+                          }
+                          update(row.key, {
+                            unitCost: String(applied.unitCost),
+                            costSource: applied.proposedSource ?? applied.costSource,
+                            sourceLabel: applied.sourceLabel ?? row.sourceLabel,
+                          });
+                          setRefreshKey(null);
+                          setRefreshProposal(null);
+                          await context.onReload();
+                        })();
+                      }}
+                    >
+                      Update this component
+                    </Button>
+                  ) : null}
+                  <Button type="button" variant="outline" size="touch" onClick={() => { setRefreshKey(null); setRefreshProposal(null); }}>Close</Button>
+                </div>
+              </div>
+            ) : null}
+            {pickerKey === row.key && props.rateContext?.itemId && row.id ? (
+              <VariationRatePicker
+                category={row.category}
+                unit={row.unit}
+                currency={props.currency}
+                selectedKey={row.canonicalRateKey}
+                projectId={props.rateContext.projectId}
+                variationId={props.rateContext.variationId}
+                revisionId={props.rateContext.revisionId}
+                itemId={props.rateContext.itemId}
+                componentId={row.id}
+                rates={pickerRates}
+                pending={pickerPending}
+                truncated={pickerTruncated}
+                onSearch={(query) => void openRates(row, query)}
+                onClose={() => setPickerKey(null)}
+                onApplied={(patch) => {
+                  update(row.key, patch);
+                  void props.rateContext?.onReload();
+                }}
+              />
+            ) : null}
+            {pickerKey === row.key && !row.id ? <p className="text-sm text-muted-foreground">Save this item, then select a rate.</p> : null}
+            {rateError ? <p role="alert" className="text-sm">{rateError}</p> : null}
             <p className="text-sm">Calculated line cost: {line == null ? VARIATION_PRICING_REQUIRED_LABEL : formatSignedAdjustment(line, props.currency).replace(/^\+/, "")}</p>
             <div className="flex flex-wrap gap-2">
               <Button type="button" variant="outline" size="touch" onClick={() => move(index, -1)} disabled={index === 0}>Move up</Button>
@@ -948,6 +1163,9 @@ function draftsFromComponents(components: InternalVariation["revisions"][number]
     quantity: String(component.quantity),
     unit: component.unit,
     unitCost: component.unitCost == null ? "" : String(component.unitCost),
+    costSource: component.costSource,
+    canonicalRateKey: component.canonicalRateKey,
+    sourceLabel: component.sourceLabel,
   }));
 }
 
@@ -1017,6 +1235,7 @@ function ItemDialog(props: {
   };
   onClose: () => void;
   onSave: (payload: ItemSavePayload) => void;
+  rateContext?: Omit<RateContext, "itemId">;
 }) {
   const initial = props.initial;
   const [kind, setKind] = useState<"addition" | "omission" | "substitution" | "no_cost">(initial?.kind ?? "addition");
@@ -1180,7 +1399,7 @@ function ItemDialog(props: {
               </select>
               {removeMode === "simple" ? <Field id="remove-amount" label="Amount to remove" value={removeMagnitude} onChange={setRemoveMagnitude} numeric /> : (
                 <>
-                  <ComponentEditor rows={removeComponents} currency={props.currency} onChange={setRemoveComponents} />
+                  <ComponentEditor rows={removeComponents} currency={props.currency} onChange={setRemoveComponents} rateContext={props.rateContext ? { ...props.rateContext, itemId: initial?.removeId ?? null } : undefined} />
                   <Field id="remove-sell-total" label="Client sell total, ex GST" value={removeSellTotal} onChange={setRemoveSellTotal} numeric />
                 </>
               )}
@@ -1193,7 +1412,7 @@ function ItemDialog(props: {
               </select>
               {addMode === "simple" ? <Field id="add-amount" label="Amount to add" value={addMagnitude} onChange={setAddMagnitude} numeric /> : (
                 <>
-                  <ComponentEditor rows={addComponents} currency={props.currency} onChange={setAddComponents} />
+                  <ComponentEditor rows={addComponents} currency={props.currency} onChange={setAddComponents} rateContext={props.rateContext ? { ...props.rateContext, itemId: initial?.addId ?? null } : undefined} />
                   <Field id="add-sell-total" label="Client sell total, ex GST" value={addSellTotal} onChange={setAddSellTotal} numeric />
                 </>
               )}
@@ -1260,7 +1479,7 @@ function ItemDialog(props: {
             <>
               <Field id="item-margin" label="Target gross margin" value={margin} onChange={(value) => { setMargin(value); if (provenance !== "manual") setProvenance("calculated"); }} numeric />
               <p className="text-xs text-muted-foreground">Target margin is the gross margin used to calculate client sell from internal cost.</p>
-              <ComponentEditor rows={components} currency={props.currency} onChange={(rows) => { setComponents(rows); if (provenance !== "manual") setProvenance("calculated"); }} />
+              <ComponentEditor rows={components} currency={props.currency} onChange={(rows) => { setComponents(rows); if (provenance !== "manual") setProvenance("calculated"); }} rateContext={props.rateContext ? { ...props.rateContext, itemId: initial?.itemId ?? null } : undefined} />
               <Field id="item-sell-total" label="Client sell total, ex GST" value={provenance === "calculated" && aggregateComponentCost(components.map((row) => componentLineCost(Number(row.quantity), row.unitCost.trim() === "" ? null : Number(row.unitCost)))) != null ? String(sellFromKnownCost(aggregateComponentCost(components.map((row) => componentLineCost(Number(row.quantity), row.unitCost.trim() === "" ? null : Number(row.unitCost)))) ?? 0, parsedMargin) ?? "") : sellTotal} onChange={(value) => { setSellTotal(value); setProvenance(value.trim() === "" ? "pricing_required" : "manual"); }} numeric />
               {kind === "omission" ? <p className="text-xs text-muted-foreground">{VARIATION_OMISSION_HELP}</p> : null}
               <p className="text-xs text-muted-foreground">{provenanceLabel(provenance === "calculated" ? "calculated" : provenance)}</p>
@@ -1304,6 +1523,7 @@ function EditExistingItem(props: {
   pending: boolean;
   onClose: () => void;
   onSave: (payload: ItemSavePayload) => void;
+  rateContext?: Omit<RateContext, "itemId">;
 }) {
   const item = props.items.find((row) => row.id === props.itemId);
   if (!item) return null;
@@ -1324,6 +1544,7 @@ function EditExistingItem(props: {
       pending={props.pending}
       onClose={props.onClose}
       onSave={props.onSave}
+      rateContext={props.rateContext}
       initial={{
         kind: paired ? "substitution" : item.itemType === "no_cost_scope_change" ? "no_cost" : item.itemType,
         lockedType: paired,

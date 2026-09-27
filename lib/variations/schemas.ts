@@ -147,3 +147,57 @@ export const saveDraftVariationBuildUpSchema = z
 export const convertDraftVariationItemToSimpleSchema = updateDraftVariationItemSchema
   .extend({ confirmModeChange: z.boolean() })
   .strict();
+
+const variationCostCategorySchema = z.enum([
+  "material",
+  "labour",
+  "subcontract",
+  "plant",
+  "allowance",
+  "other",
+]);
+
+export const searchVariationComponentRatesSchema = z
+  .object({
+    category: variationCostCategorySchema,
+    unit: trimmedStringSchema(40, { min: 1, requiredMessage: "Enter a unit." }),
+    query: z.string().trim().max(80).optional(),
+  })
+  .strict();
+
+export const selectVariationComponentRateSchema = z
+  .object({
+    projectId: uuidSchema,
+    variationId: uuidSchema,
+    revisionId: uuidSchema,
+    itemId: uuidSchema,
+    componentId: uuidSchema,
+    category: variationCostCategorySchema,
+    unit: trimmedStringSchema(40, { min: 1, requiredMessage: "Enter a unit." }),
+    canonicalKey: trimmedStringSchema(160, { min: 1, requiredMessage: "Choose a rate." }),
+  })
+  .strict();
+
+export const refreshVariationComponentRateSchema = selectVariationComponentRateSchema
+  .pick({
+    projectId: true,
+    variationId: true,
+    revisionId: true,
+    itemId: true,
+    componentId: true,
+  })
+  .extend({ confirm: z.boolean() })
+  .strict();
+
+export const setVariationComponentManualCostSchema = selectVariationComponentRateSchema
+  .pick({
+    projectId: true,
+    variationId: true,
+    revisionId: true,
+    itemId: true,
+    componentId: true,
+  })
+  .extend({
+    unitCost: z.union([z.null(), z.number().finite().min(0).max(10_000_000)]),
+  })
+  .strict();

@@ -119,7 +119,8 @@ assert(
     migrations.includes("065_delete_unissued_draft_variation.sql") &&
     migrations.includes("066_variation_issued_withdrawal.sql") &&
     migrations.includes("067_variation_cost_build_ups.sql") &&
-    migrations.at(-1) === "067_variation_cost_build_ups.sql"
+    migrations.includes("068_variation_component_rate_snapshots.sql") &&
+    migrations.at(-1) === "068_variation_component_rate_snapshots.sql"
 );
 assert(
   "041 accept/decline RPCs remain",
